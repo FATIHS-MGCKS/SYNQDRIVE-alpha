@@ -34,6 +34,14 @@ const DEFAULT_LEGACY_SIDECAR = path.join(
   RD004_B_SOURCE_FILES.legacySidecar,
 );
 const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'docs/audits/data/rd004-segment-b');
+const DEFAULT_FULL_SESSION = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-a/source-observations.jsonl',
+);
+const DEFAULT_HF_DIAGNOSTIC = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-b/rd004-b-hf-capture-completeness-diagnostic.json',
+);
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -50,6 +58,8 @@ function loadLegacySidecar(content: string): LegacyPreprocessedSpeedRow[] {
 function main(): void {
   const observationsPath = parseArg('--observations') ?? DEFAULT_OBSERVATIONS;
   const legacySidecarPath = parseArg('--legacy-sidecar') ?? DEFAULT_LEGACY_SIDECAR;
+  const fullSessionPath = parseArg('--full-session-observations') ?? DEFAULT_FULL_SESSION;
+  const hfDiagnosticPath = parseArg('--hf-diagnostic') ?? DEFAULT_HF_DIAGNOSTIC;
   const outDir = parseArg('--out-dir') ?? DEFAULT_OUT_DIR;
 
   assertSafeOutputPath(outDir);
@@ -66,7 +76,34 @@ function main(): void {
 
   const observations = loadRd004Jsonl(observationsContent);
   const legacySidecar = loadLegacySidecar(legacySidecarContent);
-  const result = runRd004SegmentBAnalysis({ observations, legacySidecar });
+  const fullSessionObservations = fs.existsSync(fullSessionPath)
+    ? loadRd004Jsonl(fs.readFileSync(fullSessionPath, 'utf8'))
+    : observations;
+
+  let diagnosticRequerySpeedTimestamps: string[] | null = null;
+  let diagnosticRequeryError: string | null = null;
+  if (fs.existsSync(hfDiagnosticPath)) {
+    const hfDiag = JSON.parse(fs.readFileSync(hfDiagnosticPath, 'utf8')) as {
+      requery?: {
+        requeryTimestamps?: string[] | null;
+        error?: string | null;
+        succeeded?: boolean;
+      };
+    };
+    if (hfDiag.requery?.succeeded && hfDiag.requery.requeryTimestamps?.length) {
+      diagnosticRequerySpeedTimestamps = hfDiag.requery.requeryTimestamps;
+    } else if (hfDiag.requery?.error) {
+      diagnosticRequeryError = hfDiag.requery.error;
+    }
+  }
+
+  const result = runRd004SegmentBAnalysis({
+    observations,
+    legacySidecar,
+    fullSessionObservations,
+    diagnosticRequerySpeedTimestamps,
+    diagnosticRequeryError,
+  });
 
   const paths = {
     sessionSummary: path.join(outDir, 'rd004-b-session-summary.json'),
@@ -82,6 +119,8 @@ function main(): void {
     supportingSignals: path.join(outDir, 'rd004-b-supporting-signals.json'),
     gearReverseValidation: path.join(outDir, 'rd004-b-gear-reverse-validation.json'),
     segmentAComparison: path.join(outDir, 'rd004-b-segment-a-comparison.json'),
+    transitionIntervalCensoring: path.join(outDir, 'rd004-b-transition-interval-censoring.json'),
+    hfCaptureCompleteness: path.join(outDir, 'rd004-b-hf-capture-completeness-diagnostic.json'),
     sourceManifest: path.join(outDir, RD004_B_SOURCE_FILES.manifest),
   };
 
@@ -154,6 +193,8 @@ function main(): void {
   fs.writeFileSync(paths.supportingSignals, stableStringify(result.supportingSignals));
   fs.writeFileSync(paths.gearReverseValidation, stableStringify(result.gearReverseValidation));
   fs.writeFileSync(paths.segmentAComparison, stableStringify(result.segmentAComparison));
+  fs.writeFileSync(paths.transitionIntervalCensoring, stableStringify(result.transitionIntervalCensoring));
+  fs.writeFileSync(paths.hfCaptureCompleteness, stableStringify(result.hfCaptureCompleteness));
 
   const outputSha256 = rd004SegmentBOutputSha256({
     sessionSummary,

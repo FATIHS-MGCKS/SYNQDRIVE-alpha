@@ -14,22 +14,8 @@
         "videoUtcMax": null,
         "videoTimingAuthority": "HIGH_CONFIDENCE",
         "observationKind": "TRANSITION_TIME_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "YES"
-      },
-      {
-        "id": "B-T02",
-        "label": "zero to forward motion after first stop (bounded window)",
-        "episodeId": "B-E5",
-        "landmarkKind": "ZERO_TO_FORWARD_MOTION",
-        "videoRelativeSeconds": null,
-        "videoRelativeSecondsMin": 673,
-        "videoRelativeSecondsMax": 673.5,
-        "videoUtc": null,
-        "videoUtcMin": "2026-09-04T03:58:15.216Z",
-        "videoUtcMax": "2026-09-04T03:58:15.716Z",
-        "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "observationKind": "BOUNDED_TRANSITION_WINDOW",
-        "CLOCK_FIT_ELIGIBLE": "YES"
+        "CLOCK_FIT_ELIGIBLE": "NO",
+        "ineligibleReason": "SPARSE_PROVIDER_TRANSITION_NOT_RESOLVED"
       }
     ],
     "SPEED_ACCURACY_HOLDOUT_SET": [
@@ -222,7 +208,7 @@
         "anchorSemantic": "VIDEO_STATE_ANCHOR"
       }
     ],
-    "CLOCK_CALIBRATION_ANCHOR_COUNT": 2,
+    "CLOCK_CALIBRATION_ANCHOR_COUNT": 1,
     "CLOCK_HOLDOUT_ANCHOR_COUNT": 17,
     "CLOCK_CALIBRATION_HOLDOUT_SEPARATED": "YES",
     "overlapRejected": []
@@ -1449,15 +1435,19 @@
     "VIDEO_MASTER_T0_UTC_ESTIMATE": "2026-09-04T03:47:02.216667Z",
     "PROVIDER_TIMESTAMP_OFFSET_VALIDATED": "NO",
     "VIDEO_TO_PROVIDER_OFFSET_SECONDS": null,
-    "OFFSET_CANDIDATE_RANGE_SUPPORTIVE": {
-      "minSeconds": 19.669000000000096,
-      "maxSeconds": 23.669000000000096
-    },
-    "OFFSET_CANDIDATE_SUPPORTIVE_ONLY": "YES",
+    "DRIFT_VALIDATED": "NO",
+    "CLOCK_FIT_PROVIDER_MATCH_COUNT": 0,
+    "OFFSET_CANDIDATE_RANGE_SUPPORTIVE": null,
+    "OFFSET_CANDIDATE_SUPPORTIVE_ONLY": "NO",
     "OFFSET_CANDIDATE_AROUND_14_SECONDS": "SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT",
     "B1_SUPPORTIVE_OFFSET_AROUND_14_SECONDS": "INVALIDATED_BY_WRONG_STOP_LANDMARK",
     "supportiveOffsetSeconds": null,
-    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [
+    "FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS": 21.669000000000096,
+    "FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY": "NO",
+    "SEGMENT_A_EXPLORATORY_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS": 22.205,
+    "SEGMENT_A_EXPLORATORY_DISPLACEMENT_CLOCK_AUTHORITY": "NO",
+    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [],
+    "VIDEO_TRANSITION_LANDMARKS_DOCUMENTED": [
       "B-T01",
       "B-T02"
     ],
@@ -1466,6 +1456,8 @@
         "FIRST_STOP_TRANSITION_VIDEO_T_SECONDS": 621.8,
         "FIRST_STOP_TRANSITION_VIDEO_UTC": "2026-09-04T03:57:24.016Z",
         "CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS": 21.669000000000096,
+        "FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS": 21.669000000000096,
+        "FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY": "NO",
         "CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS": "SPARSE_STATE_SAMPLE",
         "providerTransitionTimestamp": "2026-09-04T03:57:45.685Z",
         "providerFirstZeroTimestamp": "2026-09-04T03:57:45.685Z",
@@ -1483,39 +1475,103 @@
         "SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET": "YES",
         "note": "Displacement may combine clock offset and sparse HF sampling delay — not sufficient alone for global offset"
       },
+      "firstStopPair": {
+        "PAIR_LOCAL_DT_QUALIFIED": "YES",
+        "PAIR_PHYSICAL_CONTINUITY_VALIDATED": "NO",
+        "PAIR_VIDEO_CONSISTENCY": "CONTRADICTED_OR_UNRESOLVED",
+        "PAIR_43_TO_0_LOCAL_DT_SECONDS": 1,
+        "PAIR_43_TO_0_UPSTREAM_GAP_SECONDS": 28.745,
+        "derivedAccelerationMs2": -11.944444444444445,
+        "provider43Timestamp": "2026-09-04T03:57:44.685Z",
+        "provider0Timestamp": "2026-09-04T03:57:45.685Z",
+        "contextContinuity": "ISOLATED_BURST",
+        "physicalDerivativeConfidence": "LOW",
+        "videoConsistencyNote": "Video shows calm decel to 0 at t≈621.8; HF 43→0 in 1 s after ~28.7 s gap is not validated physical stop transition"
+      },
       "launch": {
+        "TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR": "YES",
         "FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN": 673,
         "FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX": 673.5,
         "FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY": 673.25,
         "FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MIN": "2026-09-04T03:58:15.216Z",
         "FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MAX": "2026-09-04T03:58:15.716Z",
-        "FIRST_LAUNCH_PROVIDER_TRANSITION": "2026-09-04T03:58:20.787Z",
-        "FIRST_LAUNCH_PROVIDER_SPEED_KMH": 20,
+        "FIRST_LAUNCH_PROVIDER_TRANSITION_EXACT": "NO",
+        "FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START": "2026-09-04T03:57:45.685Z",
+        "FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END": "2026-09-04T03:58:20.787Z",
+        "FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS": 35.102,
+        "FIRST_LAUNCH_TRANSITION_STATUS": "INTERVAL_CENSORED_BY_SPARSE_SAMPLING",
+        "FIRST_LAUNCH_PROVIDER_POSITIVE_OBSERVATION": "2026-09-04T03:58:20.787Z",
+        "FIRST_LAUNCH_PROVIDER_POSITIVE_SPEED_KMH": 20,
+        "FIRST_LAUNCH_PROVIDER_PREVIOUS_OBSERVATION": "2026-09-04T03:57:45.685Z",
         "FIRST_LAUNCH_PROVIDER_PREVIOUS_SPEED_KMH": 0,
-        "FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE": {
-          "minSeconds": 5.071000000000026,
-          "maxSeconds": 5.571000000000026
+        "FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE": "NO",
+        "FIRST_LAUNCH_CLOCK_REJECTION_REASON": "PROVIDER_TRANSITION_INTERVAL_TOO_WIDE",
+        "FIRST_LAUNCH_VIDEO_PROVIDER_OFFSET_COMPATIBILITY_INTERVAL": {
+          "minSeconds": -30.031,
+          "maxSeconds": 5.571
         },
-        "localGapBeforeSeconds": 629.019,
-        "note": "Bounded video window — midpoint is diagnostic only, not frame-exact event time"
+        "localGapBeforeSeconds": 35.102,
+        "note": "Provider observes 0 then 20 with 35.102 s gap — launch transition interval-censored; 20 km/h timestamp is NOT exact launch event"
       },
-      "offsetCandidates": [
-        {
-          "landmarkId": "B-T02",
-          "offsetSeconds": 5.321000000000026,
-          "confidence": "BOUNDED_TRANSITION_WINDOW"
+      "transitionIntervalCensoring": {
+        "B_T01_FIRST_STOP": {
+          "videoTransition": {
+            "tSeconds": 621.8,
+            "utc": "2026-09-04T03:57:24.016Z",
+            "confidence": "FRAME_VERIFIED"
+          },
+          "providerResolution": {
+            "status": "SPARSE_STATE_SAMPLE",
+            "sparseObservationDisplacementSeconds": 21.669000000000096,
+            "clockAuthority": "NO",
+            "pairSemantics": {
+              "PAIR_LOCAL_DT_QUALIFIED": "YES",
+              "PAIR_PHYSICAL_CONTINUITY_VALIDATED": "NO",
+              "PAIR_VIDEO_CONSISTENCY": "CONTRADICTED_OR_UNRESOLVED",
+              "PAIR_43_TO_0_LOCAL_DT_SECONDS": 1,
+              "PAIR_43_TO_0_UPSTREAM_GAP_SECONDS": 28.745,
+              "derivedAccelerationMs2": -11.944444444444445,
+              "provider43Timestamp": "2026-09-04T03:57:44.685Z",
+              "provider0Timestamp": "2026-09-04T03:57:45.685Z",
+              "contextContinuity": "ISOLATED_BURST",
+              "physicalDerivativeConfidence": "LOW",
+              "videoConsistencyNote": "Video shows calm decel to 0 at t≈621.8; HF 43→0 in 1 s after ~28.7 s gap is not validated physical stop transition"
+            }
+          }
+        },
+        "B_T02_FIRST_LAUNCH": {
+          "videoTransition": {
+            "tMin": 673,
+            "tMax": 673.5,
+            "confidence": "BOUNDED_WINDOW"
+          },
+          "providerResolution": {
+            "status": "INTERVAL_CENSORED_BY_SPARSE_SAMPLING",
+            "observationWindowStart": "2026-09-04T03:57:45.685Z",
+            "observationWindowEnd": "2026-09-04T03:58:20.787Z",
+            "observationWindowSeconds": 35.102,
+            "clockFitEligible": "NO",
+            "rejectionReason": "PROVIDER_TRANSITION_INTERVAL_TOO_WIDE",
+            "offsetCompatibilityInterval": {
+              "minSeconds": -30.031,
+              "maxSeconds": 5.571
+            }
+          }
         }
-      ]
+      },
+      "offsetCandidates": []
     },
     "A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED": "YES",
     "A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED": "NO",
     "A_B_SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS": 22.205,
     "SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET": "YES",
+    "EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR": "YES",
+    "NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS": "YES",
     "CLOCK_CALIBRATION_HOLDOUT_SEPARATED": "YES",
-    "CLOCK_CALIBRATION_ANCHOR_COUNT": 2,
+    "CLOCK_CALIBRATION_ANCHOR_COUNT": 1,
     "CLOCK_HOLDOUT_ANCHOR_COUNT": 17,
-    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "APPROX_22S_DISPLACEMENT_SUPPORTIVE_ONLY",
-    "OFFSET_MAD_SECONDS": 0,
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "NO_PROVIDER_CLOCK_LANDMARK_RESOLVED",
+    "OFFSET_MAD_SECONDS": null,
     "spreadSeconds": null,
     "OLD_T630_STOP_TRANSITION_INVALIDATED": "YES",
     "T630_CLASSIFICATION": "SUSTAINED_STOP_STATE",
@@ -1538,6 +1594,7 @@
       "episodeId": "B-E3",
       "status": "NOT_FOUND_IN_TELEMETRY",
       "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "LEGACY_EXPLORATORY_NOT_CANONICAL",
       "candidateOffsetSeconds": null
     },
     {
@@ -1550,9 +1607,12 @@
       "telemetryVideoRelativeProvisional": 643.469,
       "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
       "telemetryMatchConfidence": "HIGH",
-      "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 13.469000000000051,
-      "speedErrorKmh": 0
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "SUPERSEDED_WRONG_VIDEO_TRANSITION",
+      "candidateOffsetSeconds": null,
+      "rawExploratoryOffsetSeconds": 13.469000000000051,
+      "speedErrorKmh": 0,
+      "note": "Legacy exploratory landmark — B.3 forbids CLOCK_FIT_ELIGIBLE=YES in generated artifacts"
     },
     {
       "landmarkId": "CLK-B3",
@@ -1565,9 +1625,11 @@
       "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "LEGACY_EXPLORATORY_SUPERSEDED_BY_B3_TRANSITION_CENSORING",
       "candidateOffsetSeconds": null,
+      "rawExploratoryOffsetSeconds": -16.53099999999995,
       "speedErrorKmh": 0,
-      "note": "SAME_TELEMETRY_SAMPLE_CANNOT_COUNT_AS_MULTIPLE_CLOCK_LANDMARKS"
+      "note": "Legacy exploratory landmark — B.3 forbids CLOCK_FIT_ELIGIBLE=YES in generated artifacts"
     },
     {
       "landmarkId": "CLK-B4",
@@ -1575,6 +1637,7 @@
       "episodeId": "B-E5",
       "status": "NOT_FOUND_IN_TELEMETRY",
       "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "LEGACY_EXPLORATORY_NOT_CANONICAL",
       "candidateOffsetSeconds": null
     },
     {
@@ -1587,9 +1650,12 @@
       "telemetryVideoRelativeProvisional": 735.166,
       "candidateProviderTimestamp": "2026-09-04T03:59:17.382Z",
       "telemetryMatchConfidence": "MEDIUM",
-      "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 15.166000000000054,
-      "speedErrorKmh": 5
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "STATE_SNAPSHOT_ONLY",
+      "candidateOffsetSeconds": null,
+      "rawExploratoryOffsetSeconds": 15.166000000000054,
+      "speedErrorKmh": 5,
+      "note": "Legacy exploratory landmark — B.3 forbids CLOCK_FIT_ELIGIBLE=YES in generated artifacts"
     },
     {
       "landmarkId": "CLK-B6",
@@ -1597,6 +1663,7 @@
       "episodeId": "B-E7",
       "status": "NOT_FOUND_IN_TELEMETRY",
       "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "LEGACY_EXPLORATORY_NOT_CANONICAL",
       "candidateOffsetSeconds": null
     },
     {
@@ -1609,10 +1676,59 @@
       "telemetryVideoRelativeProvisional": 1004.083,
       "candidateProviderTimestamp": "2026-09-04T04:03:46.299Z",
       "telemetryMatchConfidence": "HIGH",
-      "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 14.08299999999997,
-      "speedErrorKmh": 0
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "CLOCK_FIT_REJECTION_REASON": "REVERSE_WITHOUT_DIRECTION_TELEMETRY",
+      "candidateOffsetSeconds": null,
+      "rawExploratoryOffsetSeconds": 14.08299999999997,
+      "speedErrorKmh": 0,
+      "note": "Legacy exploratory landmark — B.3 forbids CLOCK_FIT_ELIGIBLE=YES in generated artifacts"
     }
   ],
-  "note": "B.2: frame-verified transition landmarks (B-T01/B-T02) reassess clock; B.1 global search retained as legacy diagnostic only"
+  "transitionIntervalCensoring": {
+    "B_T01_FIRST_STOP": {
+      "videoTransition": {
+        "tSeconds": 621.8,
+        "utc": "2026-09-04T03:57:24.016Z",
+        "confidence": "FRAME_VERIFIED"
+      },
+      "providerResolution": {
+        "status": "SPARSE_STATE_SAMPLE",
+        "sparseObservationDisplacementSeconds": 21.669000000000096,
+        "clockAuthority": "NO",
+        "pairSemantics": {
+          "PAIR_LOCAL_DT_QUALIFIED": "YES",
+          "PAIR_PHYSICAL_CONTINUITY_VALIDATED": "NO",
+          "PAIR_VIDEO_CONSISTENCY": "CONTRADICTED_OR_UNRESOLVED",
+          "PAIR_43_TO_0_LOCAL_DT_SECONDS": 1,
+          "PAIR_43_TO_0_UPSTREAM_GAP_SECONDS": 28.745,
+          "derivedAccelerationMs2": -11.944444444444445,
+          "provider43Timestamp": "2026-09-04T03:57:44.685Z",
+          "provider0Timestamp": "2026-09-04T03:57:45.685Z",
+          "contextContinuity": "ISOLATED_BURST",
+          "physicalDerivativeConfidence": "LOW",
+          "videoConsistencyNote": "Video shows calm decel to 0 at t≈621.8; HF 43→0 in 1 s after ~28.7 s gap is not validated physical stop transition"
+        }
+      }
+    },
+    "B_T02_FIRST_LAUNCH": {
+      "videoTransition": {
+        "tMin": 673,
+        "tMax": 673.5,
+        "confidence": "BOUNDED_WINDOW"
+      },
+      "providerResolution": {
+        "status": "INTERVAL_CENSORED_BY_SPARSE_SAMPLING",
+        "observationWindowStart": "2026-09-04T03:57:45.685Z",
+        "observationWindowEnd": "2026-09-04T03:58:20.787Z",
+        "observationWindowSeconds": 35.102,
+        "clockFitEligible": "NO",
+        "rejectionReason": "PROVIDER_TRANSITION_INTERVAL_TOO_WIDE",
+        "offsetCompatibilityInterval": {
+          "minSeconds": -30.031,
+          "maxSeconds": 5.571
+        }
+      }
+    }
+  },
+  "note": "B.3: transition interval censoring + HF capture completeness; no provider clock landmark resolved; legacy global search retained as diagnostic only"
 }

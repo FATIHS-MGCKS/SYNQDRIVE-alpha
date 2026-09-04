@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b3-rd004-segment-b-evidence-correctness-hf-audit-2026-09-04',
+    version: '4.9.1053',
+    title: 'DI-EV-0035B.3 — RD004-B Transition Evidence Correctness + HF Capture Completeness Audit',
+    summary: [
+      'Fix launch predecessor bug: immediate sorted[i-1] neighbor; true gap 35.102 s (not ~629 s).',
+      'Launch interval-censored; +5.x s removed as clock evidence; FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE=NO.',
+      '43→0 in 1 s after 28.7 s gap: PAIR_PHYSICAL_CONTINUITY_VALIDATED=NO; context ISOLATED_BURST.',
+      'Stop displacement ~+21.7 s reclassified sparse observation only; STOP_TIMING_ERROR_SECONDS=null.',
+      'Legacy CLK landmarks forced CLOCK_FIT_ELIGIBLE=NO; CLOCK_FIT_PROVIDER_MATCH_COUNT=0.',
+      'HF live requery 108 vs sealed 66 buckets → CAPTURE_PIPELINE_SAMPLE_LOSS (PARTIAL validation).',
+      '50 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human/code review found remaining transition/clock semantics errors and required proof whether RD004 HF sparsity is upstream or capture-pipeline sample loss.',
+    previousBehavior:
+      'B.2 reported +5.x s launch clock displacement, supportive offset range, and stop timing with event-derived offset (timeErrorSeconds=0).',
+    details:
+      'Modules `reference-capture-rd004-b-segment-b.ts`, `reference-capture-rd004-b-hf-capture-completeness.ts`; new `rd004-b-hf-capture-completeness-diagnostic.json`, `rd004-b-transition-interval-censoring.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b2-rd004-segment-b-video-timeline-clock-reassessment-2026-09-04',
     version: '4.9.1052',
     title: 'DI-EV-0035B.2 — RD004-B Frame-Accurate Master Video Timeline + Transition Clock Reassessment',

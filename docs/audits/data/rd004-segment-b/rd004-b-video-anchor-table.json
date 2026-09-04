@@ -295,7 +295,8 @@
       "videoUtcMax": null,
       "videoTimingAuthority": "HIGH_CONFIDENCE",
       "observationKind": "TRANSITION_TIME_OBSERVATION",
-      "CLOCK_FIT_ELIGIBLE": "YES"
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "ineligibleReason": "SPARSE_PROVIDER_TRANSITION_NOT_RESOLVED"
     },
     {
       "id": "B-T02",
@@ -310,7 +311,8 @@
       "videoUtcMax": "2026-09-04T03:58:15.716Z",
       "videoTimingAuthority": "HIGH_CONFIDENCE",
       "observationKind": "BOUNDED_TRANSITION_WINDOW",
-      "CLOCK_FIT_ELIGIBLE": "YES"
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "ineligibleReason": "PROVIDER_TRANSITION_INTERVAL_TOO_WIDE"
     },
     {
       "id": "B-T03",

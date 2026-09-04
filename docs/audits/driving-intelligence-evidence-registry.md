@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-04 (DI-EV-0035B RD004-B Segment B validation)
+**Last updated:** 2026-09-04 (DI-EV-0035B.3 RD004-B evidence correctness + HF capture audit)
 
 ---
 
@@ -67,13 +67,14 @@
 | DI-EV-0035A | RD004-A | C — Video ↔ telemetry alignment | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (methodology) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_004` Segment A | SEGMENT_A_ALIGNMENT | — | DI-EV-0035A.1 | First RD004 comparison; circular clock offset + drift defects corrected in DI-EV-0035A.1 |
 | DI-EV-0035A.1 | RD004-A.1 | C — Video ↔ telemetry alignment (methodology closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (semantics) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V2 | DI-EV-0035A (method) | DI-EV-0035A.2 | Corrected landmark/clock/drift/preprocessing/percentile/path/bundle methodology; H offset semantics too strong in A.1 |
 | DI-EV-0035A.2 | RD004-A.2 | C — Video ↔ telemetry alignment (semantics closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT (Segment A) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V3 | DI-EV-0035A.1 (semantics) | — | H displacement NOT provider offset; CLOCK_FIT_ELIGIBLE=[]; true local peak attenuation independent maxima; 38 HF samples preserved |
-| DI-EV-0035B | RD004-B | C — Video ↔ telemetry validation + speed/clock | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment B | SEGMENT_B_VALIDATION | — | — | 66 HF samples; offset ~+14.3 s validated; MAE ~2.3 km/h; drift NO; gear/reverse telemetry NO; A.2 invariants preserved |
+| DI-EV-0035B.3 | RD004-B | C — Transition evidence correctness + HF capture audit | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · token `187336` · Segment B | SEGMENT_B_VALIDATION | — | — | Launch gap 35.102 s; +5 s clock evidence removed; CLOCK_FIT=0; stop ~21.7 s observation only; live requery 108 vs sealed 66 HF buckets → CAPTURE_PIPELINE_SAMPLE_LOSS (PARTIAL); offset/MAE null |
+| DI-EV-0035B | RD004-B | C — Video ↔ telemetry validation + speed/clock | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | SUPERSEDED | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment B | SEGMENT_B_VALIDATION | — | — | Superseded by B.1–B.3 closeout chain; original offset/MAE claims invalidated |
 
 ---
 
 ## Entry count
 
-**44** registry entries through DI-EV-0035B (Segment B validation added 2026-09-04).
+**45** registry entries through DI-EV-0035B.3 (Segment B B.3 audit added 2026-09-04).
 
 ---
 

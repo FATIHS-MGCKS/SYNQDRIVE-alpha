@@ -1,6 +1,6 @@
 /**
- * RD004-B.2 / DI-EV-0035B.2 — Segment B frame-accurate master video timeline + transition clock reassessment.
- * Builds on B.1 independent calibration/holdout separation. No production changes.
+ * RD004-B.3 / DI-EV-0035B.3 — Segment B evidence correctness + HF capture completeness audit.
+ * Builds on B.2 frame-accurate video timeline. No production changes.
  */
 import * as crypto from 'crypto';
 import {
@@ -34,10 +34,24 @@ import {
   identifyStaleHoldDuplicateRows,
   computePhysicalCadenceMetrics,
 } from './reference-capture-rd003-signal-quality';
+import { buildHfCaptureCompletenessDiagnostic } from './reference-capture-rd004-b-hf-capture-completeness';
 
-export const RD004_B_PHASE = 'RD004-B.2';
-export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.2';
+export const RD004_B_PHASE = 'RD004-B.3';
+export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.3';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
+
+export const TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR = 'YES';
+export const EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR = 'YES';
+export const NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS = 'YES';
+
+export const FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START = '2026-09-04T03:57:45.685Z';
+export const FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END = '2026-09-04T03:58:20.787Z';
+export const FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS = 35.102;
+
+export const FIRST_STOP_PAIR_43_TS = '2026-09-04T03:57:44.685Z';
+export const FIRST_STOP_PAIR_0_TS = '2026-09-04T03:57:45.685Z';
+export const FIRST_STOP_PAIR_UPSTREAM_GAP_SECONDS = 28.745;
+export const FIRST_STOP_PAIR_LOCAL_DT_SECONDS = 1.0;
 
 export const ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION = 'YES';
 export const SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET = 'YES';
@@ -98,8 +112,8 @@ export const STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE = 'YES';
 export const EXPLORATORY_PREVIOUS_OFFSET_SECONDS = 14.299;
 export const EXPLORATORY_PREVIOUS_SPEED_MAE_KMH = 2.263;
 
-/** B.2 frame-verified / bounded video transition landmarks for clock calibration. */
-export const CLOCK_CALIBRATION_LANDMARK_IDS = ['B-T01', 'B-T02'] as const;
+/** B.3 frame-verified video transition landmark for documentation; provider transition not resolved. */
+export const CLOCK_CALIBRATION_LANDMARK_IDS = ['B-T01'] as const;
 
 /** Deterministic holdout speed anchors — ordinary cruise/mid-speed frames only. */
 export const SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS = [
@@ -307,7 +321,8 @@ export const SEGMENT_B_VIDEO_TRANSITION_LANDMARKS: readonly SegmentBVideoTransit
     videoUtcMax: null,
     videoTimingAuthority: 'HIGH_CONFIDENCE',
     observationKind: 'TRANSITION_TIME_OBSERVATION',
-    CLOCK_FIT_ELIGIBLE: 'YES',
+    CLOCK_FIT_ELIGIBLE: 'NO',
+    ineligibleReason: 'SPARSE_PROVIDER_TRANSITION_NOT_RESOLVED',
   },
   {
     id: 'B-T02',
@@ -322,7 +337,8 @@ export const SEGMENT_B_VIDEO_TRANSITION_LANDMARKS: readonly SegmentBVideoTransit
     videoUtcMax: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX),
     videoTimingAuthority: 'HIGH_CONFIDENCE',
     observationKind: 'BOUNDED_TRANSITION_WINDOW',
-    CLOCK_FIT_ELIGIBLE: 'YES',
+    CLOCK_FIT_ELIGIBLE: 'NO',
+    ineligibleReason: 'PROVIDER_TRANSITION_INTERVAL_TOO_WIDE',
   },
   {
     id: 'B-T03',
@@ -1015,6 +1031,8 @@ export function assessCorrectedFirstStopDisplacement(points: QualifiedSpeedPoint
     FIRST_STOP_TRANSITION_VIDEO_T_SECONDS: videoT,
     FIRST_STOP_TRANSITION_VIDEO_UTC: videoUtc,
     CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS: displacement,
+    FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS: displacement,
+    FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY: 'NO' as const,
     CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS: status,
     providerTransitionTimestamp: transition?.providerTimestamp ?? null,
     providerFirstZeroTimestamp: zeroSample?.providerTimestamp ?? null,
@@ -1037,159 +1055,292 @@ export function assessCorrectedFirstStopDisplacement(points: QualifiedSpeedPoint
   };
 }
 
+export type ContextContinuityClass =
+  | 'CONTINUOUS_CONTEXT'
+  | 'GAP_ADJACENT'
+  | 'ISOLATED_BURST'
+  | 'VIDEO_CONTRADICTED'
+  | 'UNKNOWN';
+
+export function assessPairContextContinuity(
+  points: QualifiedSpeedPoint[],
+  pairIndex: number,
+): {
+  previousGapSeconds: number | null;
+  nextGapSeconds: number | null;
+  localPairDtSeconds: number | null;
+  contextContinuity: ContextContinuityClass;
+  physicalDerivativeConfidence: 'HIGH' | 'LOW' | 'UNKNOWN';
+} {
+  const sorted = [...points].sort(
+    (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
+  );
+  if (pairIndex < 1 || pairIndex >= sorted.length) {
+    return {
+      previousGapSeconds: null,
+      nextGapSeconds: null,
+      localPairDtSeconds: null,
+      contextContinuity: 'UNKNOWN',
+      physicalDerivativeConfidence: 'UNKNOWN',
+    };
+  }
+  const prev = sorted[pairIndex - 1]!;
+  const cur = sorted[pairIndex]!;
+  const prevPrev = pairIndex >= 2 ? sorted[pairIndex - 2]! : null;
+  const next = pairIndex + 1 < sorted.length ? sorted[pairIndex + 1]! : null;
+
+  const localPairDtSeconds =
+    (parseMs(cur.providerTimestamp)! - parseMs(prev.providerTimestamp)!) / 1000;
+  const previousGapSeconds = prevPrev
+    ? (parseMs(prev.providerTimestamp)! - parseMs(prevPrev.providerTimestamp)!) / 1000
+    : null;
+  const nextGapSeconds = next
+    ? (parseMs(next.providerTimestamp)! - parseMs(cur.providerTimestamp)!) / 1000
+    : null;
+
+  let contextContinuity: ContextContinuityClass = 'UNKNOWN';
+  if (previousGapSeconds != null && previousGapSeconds > 20 && (nextGapSeconds ?? 0) > 20) {
+    contextContinuity = 'ISOLATED_BURST';
+  } else if (previousGapSeconds != null && previousGapSeconds > 20) {
+    contextContinuity = 'GAP_ADJACENT';
+  } else if (
+    previousGapSeconds != null &&
+    previousGapSeconds <= 5 &&
+    (nextGapSeconds == null || nextGapSeconds <= 5)
+  ) {
+    contextContinuity = 'CONTINUOUS_CONTEXT';
+  } else {
+    contextContinuity = 'UNKNOWN';
+  }
+
+  const physicalDerivativeConfidence =
+    contextContinuity === 'CONTINUOUS_CONTEXT' && localPairDtSeconds <= 2
+      ? 'HIGH'
+      : contextContinuity === 'GAP_ADJACENT' || contextContinuity === 'ISOLATED_BURST'
+        ? 'LOW'
+        : 'UNKNOWN';
+
+  return {
+    previousGapSeconds,
+    nextGapSeconds,
+    localPairDtSeconds,
+    contextContinuity,
+    physicalDerivativeConfidence,
+  };
+}
+
+export function assessFirstStopProviderPairSemantics(points: QualifiedSpeedPoint[]) {
+  const sorted = [...points].sort(
+    (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
+  );
+  const pairIndex = sorted.findIndex(
+    (p, i) =>
+      i > 0 &&
+      p.providerTimestamp === FIRST_STOP_PAIR_0_TS &&
+      sorted[i - 1]!.providerTimestamp === FIRST_STOP_PAIR_43_TS,
+  );
+  const fallbackIndex = sorted.findIndex(
+    (p, i) => i > 0 && sorted[i - 1]!.speedKmh >= 40 && p.speedKmh <= 2,
+  );
+  const idx = pairIndex >= 0 ? pairIndex : fallbackIndex;
+  const continuity = idx >= 0 ? assessPairContextContinuity(sorted, idx) : null;
+  const derivedAccelMs2 =
+    continuity?.localPairDtSeconds != null && continuity.localPairDtSeconds > 0
+      ? ((0 - 43) / 3.6) / continuity.localPairDtSeconds
+      : null;
+
+  return {
+    PAIR_LOCAL_DT_QUALIFIED: continuity?.localPairDtSeconds === 1 ? 'YES' : 'PARTIAL',
+    PAIR_PHYSICAL_CONTINUITY_VALIDATED: 'NO' as const,
+    PAIR_VIDEO_CONSISTENCY: 'CONTRADICTED_OR_UNRESOLVED' as const,
+    PAIR_43_TO_0_LOCAL_DT_SECONDS: continuity?.localPairDtSeconds ?? FIRST_STOP_PAIR_LOCAL_DT_SECONDS,
+    PAIR_43_TO_0_UPSTREAM_GAP_SECONDS:
+      continuity?.previousGapSeconds ?? FIRST_STOP_PAIR_UPSTREAM_GAP_SECONDS,
+    derivedAccelerationMs2: derivedAccelMs2,
+    provider43Timestamp: FIRST_STOP_PAIR_43_TS,
+    provider0Timestamp: FIRST_STOP_PAIR_0_TS,
+    contextContinuity: continuity?.contextContinuity ?? 'GAP_ADJACENT',
+    physicalDerivativeConfidence: continuity?.physicalDerivativeConfidence ?? 'LOW',
+    videoConsistencyNote:
+      'Video shows calm decel to 0 at t≈621.8; HF 43→0 in 1 s after ~28.7 s gap is not validated physical stop transition',
+  };
+}
+
 export function assessLaunchTransition(points: QualifiedSpeedPoint[]) {
   const sorted = [...points].sort(
     (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
   );
-  const searchStartMs =
-    parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN))! - 30_000;
-  const searchEndMs =
-    parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX))! + 120_000;
 
-  let launchTransition: QualifiedSpeedPoint | null = null;
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1]!;
-    const cur = sorted[i]!;
-    const t = parseMs(cur.providerTimestamp)!;
-    if (t < searchStartMs) continue;
-    if (t > searchEndMs) break;
-    if (prev.speedKmh <= 3 && cur.speedKmh >= 8) {
-      launchTransition = cur;
+  let launchPositiveIdx = -1;
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i]!.providerTimestamp === FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END) {
+      launchPositiveIdx = i;
       break;
     }
   }
+  if (launchPositiveIdx < 0) {
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = sorted[i - 1]!;
+      const cur = sorted[i]!;
+      const t = parseMs(cur.providerTimestamp)!;
+      if (t < parseMs(FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START)!) continue;
+      if (prev.speedKmh <= 3 && cur.speedKmh >= 8) {
+        launchPositiveIdx = i;
+        break;
+      }
+    }
+  }
 
-  const displacementRange =
-    launchTransition != null
+  const launchPositive = launchPositiveIdx >= 0 ? sorted[launchPositiveIdx]! : null;
+  const immediatePredecessor =
+    launchPositiveIdx > 0 ? sorted[launchPositiveIdx - 1]! : null;
+
+  const localGapBeforeSeconds =
+    launchPositive && immediatePredecessor
+      ? (parseMs(launchPositive.providerTimestamp)! -
+          parseMs(immediatePredecessor.providerTimestamp)!) /
+        1000
+      : null;
+
+  const providerOffsetCompatibilityInterval =
+    launchPositive != null
       ? {
           minSeconds:
-            providerVideoRelativeSeconds(launchTransition.providerTimestamp) -
-            FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+            (parseMs(FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START)! -
+              parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX))!) /
+            1000,
           maxSeconds:
-            providerVideoRelativeSeconds(launchTransition.providerTimestamp) -
-            FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+            (parseMs(FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END)! -
+              parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN))!) /
+            1000,
         }
       : null;
 
-  const prev = launchTransition
-    ? sorted.find((p) => p.providerTimestamp < launchTransition!.providerTimestamp)
-    : null;
-
   return {
+    TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR: 'YES' as const,
     FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
     FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
     FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY:
       FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY,
     FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MIN: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN),
     FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MAX: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX),
-    FIRST_LAUNCH_PROVIDER_TRANSITION: launchTransition?.providerTimestamp ?? null,
-    FIRST_LAUNCH_PROVIDER_SPEED_KMH: launchTransition?.speedKmh ?? null,
-    FIRST_LAUNCH_PROVIDER_PREVIOUS_SPEED_KMH: prev?.speedKmh ?? null,
-    FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE: displacementRange,
-    localGapBeforeSeconds:
-      launchTransition && prev
-        ? (parseMs(launchTransition.providerTimestamp)! - parseMs(prev.providerTimestamp)!) / 1000
-        : null,
-    note: 'Bounded video window — midpoint is diagnostic only, not frame-exact event time',
+    FIRST_LAUNCH_PROVIDER_TRANSITION_EXACT: 'NO' as const,
+    FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START,
+    FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END,
+    FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS:
+      FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS,
+    FIRST_LAUNCH_TRANSITION_STATUS: 'INTERVAL_CENSORED_BY_SPARSE_SAMPLING' as const,
+    FIRST_LAUNCH_PROVIDER_POSITIVE_OBSERVATION: launchPositive?.providerTimestamp ?? null,
+    FIRST_LAUNCH_PROVIDER_POSITIVE_SPEED_KMH: launchPositive?.speedKmh ?? null,
+    FIRST_LAUNCH_PROVIDER_PREVIOUS_OBSERVATION: immediatePredecessor?.providerTimestamp ?? null,
+    FIRST_LAUNCH_PROVIDER_PREVIOUS_SPEED_KMH: immediatePredecessor?.speedKmh ?? null,
+    FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE: 'NO' as const,
+    FIRST_LAUNCH_CLOCK_REJECTION_REASON: 'PROVIDER_TRANSITION_INTERVAL_TOO_WIDE',
+    FIRST_LAUNCH_VIDEO_PROVIDER_OFFSET_COMPATIBILITY_INTERVAL: providerOffsetCompatibilityInterval,
+    localGapBeforeSeconds,
+    note:
+      'Provider observes 0 then 20 with 35.102 s gap — launch transition interval-censored; 20 km/h timestamp is NOT exact launch event',
   };
 }
 
-export function reassessClockModelB2(
+export function buildTransitionIntervalCensoring(
+  firstStop: ReturnType<typeof assessCorrectedFirstStopDisplacement>,
+  launch: ReturnType<typeof assessLaunchTransition>,
+  firstStopPair: ReturnType<typeof assessFirstStopProviderPairSemantics>,
+) {
+  return {
+    B_T01_FIRST_STOP: {
+      videoTransition: {
+        tSeconds: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+        utc: firstStop.FIRST_STOP_TRANSITION_VIDEO_UTC,
+        confidence: 'FRAME_VERIFIED',
+      },
+      providerResolution: {
+        status: firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS,
+        sparseObservationDisplacementSeconds:
+          firstStop.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS,
+        clockAuthority: 'NO',
+        pairSemantics: firstStopPair,
+      },
+    },
+    B_T02_FIRST_LAUNCH: {
+      videoTransition: {
+        tMin: FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+        tMax: FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+        confidence: 'BOUNDED_WINDOW',
+      },
+      providerResolution: {
+        status: launch.FIRST_LAUNCH_TRANSITION_STATUS,
+        observationWindowStart: launch.FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START,
+        observationWindowEnd: launch.FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END,
+        observationWindowSeconds: launch.FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS,
+        clockFitEligible: launch.FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE,
+        rejectionReason: launch.FIRST_LAUNCH_CLOCK_REJECTION_REASON,
+        offsetCompatibilityInterval: launch.FIRST_LAUNCH_VIDEO_PROVIDER_OFFSET_COMPATIBILITY_INTERVAL,
+      },
+    },
+  };
+}
+
+export function reassessClockModelB3(
   points: QualifiedSpeedPoint[],
   split: ReturnType<typeof splitCalibrationHoldoutSets>,
 ) {
   const firstStop = assessCorrectedFirstStopDisplacement(points);
   const launch = assessLaunchTransition(points);
-
-  const offsetCandidates: Array<{ landmarkId: string; offsetSeconds: number; confidence: string }> =
-    [];
-  if (
-    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null &&
-    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS === 'TRANSITION_MATCH'
-  ) {
-    offsetCandidates.push({
-      landmarkId: 'B-T01',
-      offsetSeconds: firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS,
-      confidence: 'TRANSITION_MATCH',
-    });
-  }
-  if (launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE) {
-    const mid =
-      (launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE.minSeconds +
-        launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE.maxSeconds) /
-      2;
-    offsetCandidates.push({
-      landmarkId: 'B-T02',
-      offsetSeconds: mid,
-      confidence: 'BOUNDED_TRANSITION_WINDOW',
-    });
-  }
-
-  const offsets = offsetCandidates.map((c) => c.offsetSeconds);
-  const spread = offsets.length >= 2 ? Math.max(...offsets) - Math.min(...offsets) : null;
-  const offsetMad = offsets.length ? mad(offsets) : null;
-
-  let offsetValidated: 'YES' | 'NO' = 'NO';
-  let videoOffset: number | null = null;
-  let alignmentClass = 'INSUFFICIENT_EVIDENCE';
-  let supportiveRange: { minSeconds: number; maxSeconds: number } | null = null;
-
-  if (offsets.length >= 2 && spread != null && spread <= 8) {
-    supportiveRange = { minSeconds: Math.min(...offsets), maxSeconds: Math.max(...offsets) };
-    alignmentClass = 'OFFSET_CANDIDATE_SUPPORTIVE_RANGE';
-  } else if (firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null) {
-    const d = firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS;
-    supportiveRange = { minSeconds: d - 2, maxSeconds: d + 2 };
-    alignmentClass =
-      spread != null && spread > 10
-        ? 'INCONSISTENT_TRANSITION_LANDMARKS'
-        : 'APPROX_22S_DISPLACEMENT_SUPPORTIVE_ONLY';
-  }
-
-  if (
-    offsets.length >= 3 &&
-    spread != null &&
-    spread <= 12 &&
-    (offsetMad ?? Infinity) <= 8
-  ) {
-    offsetValidated = 'YES';
-    videoOffset = sortedPercentile(offsets, 50);
-    alignmentClass = 'STABLE_OFFSET';
-  }
+  const firstStopPair = assessFirstStopProviderPairSemantics(points);
+  const transitionIntervalCensoring = buildTransitionIntervalCensoring(
+    firstStop,
+    launch,
+    firstStopPair,
+  );
 
   const approx22Repeat =
-    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null &&
-    Math.abs(firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS - SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS) <=
-      2.5;
+    firstStop.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS != null &&
+    Math.abs(
+      firstStop.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS -
+        SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS,
+    ) <= 2.5;
 
   return {
     VIDEO_ABSOLUTE_TIME_ANCHORED: 'YES' as const,
     VIDEO_MASTER_T0_UTC_ESTIMATE,
-    PROVIDER_TIMESTAMP_OFFSET_VALIDATED: offsetValidated,
-    VIDEO_TO_PROVIDER_OFFSET_SECONDS: offsetValidated === 'YES' ? videoOffset : null,
-    OFFSET_CANDIDATE_RANGE_SUPPORTIVE: supportiveRange,
-    OFFSET_CANDIDATE_SUPPORTIVE_ONLY: offsetValidated === 'NO' && supportiveRange != null ? 'YES' : 'NO',
+    PROVIDER_TIMESTAMP_OFFSET_VALIDATED: 'NO' as 'YES' | 'NO',
+    VIDEO_TO_PROVIDER_OFFSET_SECONDS: null,
+    DRIFT_VALIDATED: 'NO' as const,
+    CLOCK_FIT_PROVIDER_MATCH_COUNT: 0,
+    OFFSET_CANDIDATE_RANGE_SUPPORTIVE: null,
+    OFFSET_CANDIDATE_SUPPORTIVE_ONLY: 'NO' as const,
     OFFSET_CANDIDATE_AROUND_14_SECONDS: 'SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT',
     B1_SUPPORTIVE_OFFSET_AROUND_14_SECONDS: 'INVALIDATED_BY_WRONG_STOP_LANDMARK',
-    supportiveOffsetSeconds: offsetValidated === 'YES' ? videoOffset : null,
-    CLOCK_FIT_ELIGIBLE_LANDMARKS: SEGMENT_B_VIDEO_TRANSITION_LANDMARKS
-      .filter((lm) => lm.CLOCK_FIT_ELIGIBLE === 'YES')
-      .map((lm) => lm.id),
+    supportiveOffsetSeconds: null,
+    FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS:
+      firstStop.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS,
+    FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY: 'NO' as const,
+    SEGMENT_A_EXPLORATORY_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS:
+      SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS,
+    SEGMENT_A_EXPLORATORY_DISPLACEMENT_CLOCK_AUTHORITY: 'NO' as const,
+    CLOCK_FIT_ELIGIBLE_LANDMARKS: [] as string[],
+    VIDEO_TRANSITION_LANDMARKS_DOCUMENTED: ['B-T01', 'B-T02'],
     transitionLandmarkAssessment: {
       firstStop,
+      firstStopPair,
       launch,
-      offsetCandidates,
+      transitionIntervalCensoring,
+      offsetCandidates: [],
     },
     A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED: approx22Repeat ? 'YES' : 'NO',
-    A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED: 'NO',
+    A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED: 'NO' as const,
     A_B_SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS: SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS,
     SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET: 'YES' as const,
+    EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR: 'YES' as const,
+    NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS: 'YES' as const,
     CLOCK_CALIBRATION_HOLDOUT_SEPARATED: split.CLOCK_CALIBRATION_HOLDOUT_SEPARATED,
     CLOCK_CALIBRATION_ANCHOR_COUNT: split.CLOCK_CALIBRATION_ANCHOR_COUNT,
     CLOCK_HOLDOUT_ANCHOR_COUNT: split.CLOCK_HOLDOUT_ANCHOR_COUNT,
-    VIDEO_PROVIDER_ALIGNMENT_CLASS: alignmentClass,
-    OFFSET_MAD_SECONDS: offsetMad,
-    spreadSeconds: spread,
+    VIDEO_PROVIDER_ALIGNMENT_CLASS: 'NO_PROVIDER_CLOCK_LANDMARK_RESOLVED',
+    OFFSET_MAD_SECONDS: null,
+    spreadSeconds: null,
     OLD_T630_STOP_TRANSITION_INVALIDATED: 'YES' as const,
     T630_CLASSIFICATION: 'SUSTAINED_STOP_STATE',
     SECOND_STOP_VIDEO_OBSERVED: 'YES' as const,
@@ -1198,6 +1349,14 @@ export function reassessClockModelB2(
     CIRCULAR_LANDMARK_ALIGNMENT_REMOVED: 'YES' as const,
     SPEED_BASED_SAMPLE_SELECTION_REMOVED_FROM_CLOCK_AND_ACCURACY: 'YES' as const,
   };
+}
+
+/** @deprecated B.2 — superseded by reassessClockModelB3 */
+export function reassessClockModelB2(
+  points: QualifiedSpeedPoint[],
+  split: ReturnType<typeof splitCalibrationHoldoutSets>,
+) {
+  return reassessClockModelB3(points, split);
 }
 
 export function classifyAnchorKinematicState(
@@ -1550,6 +1709,12 @@ function isClockFitEligible(
   return true;
 }
 
+const LEGACY_EXPLORATORY_CLOCK_INELIGIBLE_REASONS: Partial<Record<string, string>> = {
+  'CLK-B2': 'SUPERSEDED_WRONG_VIDEO_TRANSITION',
+  'CLK-B5': 'STATE_SNAPSHOT_ONLY',
+  'CLK-B7': 'REVERSE_WITHOUT_DIRECTION_TELEMETRY',
+};
+
 export function matchClockLandmarks(
   landmarks: readonly SegmentBClockLandmark[],
   anchorMatches: AnchorMatchResult[],
@@ -1559,14 +1724,13 @@ export function matchClockLandmarks(
       .filter((m) => m.status === 'MATCHED')
       .map((m) => [m.videoRelativeSeconds, m]),
   );
-  const usedEpisodeIds = new Set<string>();
-  const usedProviderTimestamps = new Set<string>();
   const results: Array<Record<string, unknown>> = [];
 
   for (const lm of landmarks) {
     const match =
       anchorByVideoT.get(lm.videoRelativeSeconds) ??
       anchorMatches.find((m) => Math.abs(m.videoRelativeSeconds - lm.videoRelativeSeconds) < 1);
+    const historicalReason = LEGACY_EXPLORATORY_CLOCK_INELIGIBLE_REASONS[lm.id];
     if (!match || match.status !== 'MATCHED') {
       results.push({
         landmarkId: lm.id,
@@ -1574,19 +1738,17 @@ export function matchClockLandmarks(
         episodeId: lm.episodeId,
         status: 'NOT_FOUND_IN_TELEMETRY',
         CLOCK_FIT_ELIGIBLE: 'NO',
+        CLOCK_FIT_REJECTION_REASON: historicalReason ?? 'LEGACY_EXPLORATORY_NOT_CANONICAL',
         candidateOffsetSeconds: null,
       });
       continue;
     }
 
-    const duplicateTelemetry =
-      match.providerTimestamp != null && usedProviderTimestamps.has(match.providerTimestamp);
-    const clockFit =
-      !duplicateTelemetry && isClockFitEligible(lm, match, usedEpisodeIds);
-    if (clockFit) {
-      usedEpisodeIds.add(lm.episodeId);
-      if (match.providerTimestamp) usedProviderTimestamps.add(match.providerTimestamp);
-    }
+    const rejectionReason =
+      historicalReason ??
+      (lm.videoTimingAuthority === 'APPROXIMATE'
+        ? 'APPROXIMATE_LANDMARK_CANNOT_DEFINE_CLOCK'
+        : 'LEGACY_EXPLORATORY_SUPERSEDED_BY_B3_TRANSITION_CENSORING');
 
     results.push({
       landmarkId: lm.id,
@@ -1598,15 +1760,12 @@ export function matchClockLandmarks(
       telemetryVideoRelativeProvisional: match.telemetryVideoRelativeSeconds,
       candidateProviderTimestamp: match.providerTimestamp,
       telemetryMatchConfidence: match.matchConfidence,
-      CLOCK_FIT_ELIGIBLE: clockFit ? 'YES' : 'NO',
-      candidateOffsetSeconds: clockFit ? match.candidateOffsetSeconds : null,
+      CLOCK_FIT_ELIGIBLE: 'NO',
+      CLOCK_FIT_REJECTION_REASON: rejectionReason,
+      candidateOffsetSeconds: null,
+      rawExploratoryOffsetSeconds: match.candidateOffsetSeconds,
       speedErrorKmh: match.speedErrorKmh,
-      note:
-        duplicateTelemetry
-          ? 'SAME_TELEMETRY_SAMPLE_CANNOT_COUNT_AS_MULTIPLE_CLOCK_LANDMARKS'
-          : !clockFit && usedEpisodeIds.has(lm.episodeId)
-            ? 'ONE_TELEMETRY_EPISODE_CANNOT_COUNT_AS_MULTIPLE_INDEPENDENT_CLOCK_LANDMARKS'
-            : undefined,
+      note: 'Legacy exploratory landmark — B.3 forbids CLOCK_FIT_ELIGIBLE=YES in generated artifacts',
     });
   }
 
@@ -1764,90 +1923,53 @@ export function computeSpeedAccuracy(
 
 export function analyzeStopTiming(
   points: QualifiedSpeedPoint[],
-  validatedOffsetSeconds: number | null,
-  supportiveOffsetSeconds: number | null = null,
+  firstStopAssessment: ReturnType<typeof assessCorrectedFirstStopDisplacement>,
 ) {
-  const offsetForAnalysis = validatedOffsetSeconds ?? supportiveOffsetSeconds;
-  const usedSupportiveOnly =
-    validatedOffsetSeconds == null && supportiveOffsetSeconds != null;
-  const correctedPoints = points.map((p) => ({
-    ...p,
-    videoRelativeSecondsCorrected:
-      offsetForAnalysis != null
-        ? providerVideoRelativeSeconds(p.providerTimestamp) - offsetForAnalysis
-        : providerVideoRelativeSeconds(p.providerTimestamp),
-  }));
+  const sorted = [...points].sort(
+    (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
+  );
+  const windowStartMs = parseMs(firstStopAssessment.FIRST_STOP_TRANSITION_VIDEO_UTC)! - 60_000;
+  const windowEndMs = parseMs(firstStopAssessment.FIRST_STOP_TRANSITION_VIDEO_UTC)! + 120_000;
+  const window = sorted.filter((p) => {
+    const t = parseMs(p.providerTimestamp)!;
+    return t >= windowStartMs && t <= windowEndMs;
+  });
 
-  const analyzeWindow = (
-    label: string,
-    startT: number,
-    endT: number,
-    videoStopT: number,
-  ) => {
-    const window = correctedPoints.filter(
-      (p) =>
-        p.videoRelativeSecondsCorrected >= startT &&
-        p.videoRelativeSecondsCorrected <= endT,
-    );
-    const firstDecel = window.find((p, i) => {
-      if (i === 0) return false;
-      const prev = window[i - 1]!;
-      return prev.speedKmh - p.speedKmh >= 8;
-    });
-    const firstZero = window.find((p) => p.speedKmh <= 1);
-    const zeros = window.filter((p) => p.speedKmh <= 1);
-    const stopDuration =
-      zeros.length >= 2
-        ? zeros.at(-1)!.videoRelativeSecondsCorrected - zeros[0]!.videoRelativeSecondsCorrected
-        : null;
-    const hfStopT = firstZero?.videoRelativeSecondsCorrected ?? null;
-    return {
-      label,
-      videoStopVideoRelativeSeconds: videoStopT,
-      hfFirstDecelVideoRelativeSeconds: firstDecel?.videoRelativeSecondsCorrected ?? null,
-      hfFirstZeroVideoRelativeSeconds: hfStopT,
-      hfStopDurationSeconds: stopDuration,
-      timeErrorSeconds: hfStopT != null ? hfStopT - videoStopT : null,
-      sampleCount: window.length,
-      timelineUsed:
-        validatedOffsetSeconds != null
-          ? 'VIDEO_CLOCK_VALIDATED_OFFSET'
-          : usedSupportiveOnly
-            ? 'VIDEO_CLOCK_SUPPORTIVE_OFFSET_ONLY'
-            : 'MASTER_T0_VIDEO_RELATIVE',
-    };
-  };
-
-  const windows = [
-    analyzeWindow(
-      'B-E4_LONG_DECEL_TO_STOP',
-      520,
-      680,
-      FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
-    ),
-    analyzeWindow('B-E5_SECOND_STOP_CONTEXT', 700, 770, 724),
-  ];
+  const firstZero = window.find((p) => p.speedKmh <= 1);
+  const providerZeroVideoT =
+    firstZero != null ? providerVideoRelativeSeconds(firstZero.providerTimestamp) : null;
 
   return {
     STOP_TIMING_VALIDATED: 'NO' as const,
-    STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET: usedSupportiveOnly ? 'YES' : 'NO',
-    STOP_TIMING_CLOCK_CORRECTED: validatedOffsetSeconds != null ? 'YES' : 'NO',
+    STOP_TIMING_ERROR_SECONDS: null,
+    STOP_TIMING_CLOCK_CORRECTED: 'NO' as const,
+    STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET: 'NO' as const,
     STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE,
+    EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR: 'YES' as const,
     OLD_T630_STOP_REFERENCE_INVALIDATED: 'YES' as const,
     FIRST_STOP_FRAME_VERIFIED_VIDEO_T: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
-    DECELERATION_TO_STOP_VALIDATED: windows[0]!.hfFirstDecelVideoRelativeSeconds != null
-      ? 'PARTIAL'
-      : 'NO',
-    STOP_LAUNCH_VALIDATED: windows[0]!.hfFirstZeroVideoRelativeSeconds != null ? 'PARTIAL' : 'NO',
-    validatedOffsetSecondsApplied: validatedOffsetSeconds,
-    supportiveOffsetSecondsApplied: supportiveOffsetSeconds,
-    windows,
+    FIRST_STOP_RAW_OBSERVATION_DISPLACEMENT_SECONDS:
+      firstStopAssessment.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS,
+    FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY: 'NO' as const,
+    FIRST_STOP_PROVIDER_ZERO_TIMESTAMP: firstZero?.providerTimestamp ?? null,
+    FIRST_STOP_PROVIDER_ZERO_VIDEO_T_PROVISIONAL: providerZeroVideoT,
+    DECELERATION_TO_STOP_VALIDATED: 'NO' as const,
+    STOP_LAUNCH_VALIDATED: 'NO' as const,
+    validatedOffsetSecondsApplied: null,
+    supportiveOffsetSecondsApplied: null,
+    windows: [
+      {
+        label: 'B-E4_LONG_DECEL_TO_STOP',
+        videoStopVideoRelativeSeconds: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+        hfFirstZeroProviderTimestamp: firstZero?.providerTimestamp ?? null,
+        hfFirstZeroVideoRelativeSecondsProvisional: providerZeroVideoT,
+        timeErrorSeconds: null,
+        sampleCount: window.length,
+        timelineUsed: 'MASTER_T0_VIDEO_RELATIVE_NO_CLOCK_CORRECTION',
+      },
+    ],
     note:
-      validatedOffsetSeconds != null
-        ? 'Stop timing exploratory only — offset not validated in B.2'
-        : usedSupportiveOnly
-          ? 'Supportive offset applied for exploratory stop timing — not validated clock authority'
-          : 'No validated clock model — stop timing not validated',
+      'B.3: event-derived sparse displacement cannot align the same event and report zero timing error — no independent clock model',
   };
 }
 
@@ -2147,6 +2269,11 @@ export function compareSegmentACadence(segmentBHfCadence: ReturnType<typeof anal
 export type Rd004SegmentBAnalysisInput = {
   observations: Rd004ObservationRow[];
   legacySidecar: LegacyPreprocessedSpeedRow[];
+  /** Full-session rows for HF capture provenance audit (optional; defaults to observations). */
+  fullSessionObservations?: Rd004ObservationRow[];
+  /** Fresh DIMO speed timestamps from read-only diagnostic requery (optional). */
+  diagnosticRequerySpeedTimestamps?: string[] | null;
+  diagnosticRequeryError?: string | null;
 };
 
 export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
@@ -2174,7 +2301,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   const anchorMatches = matchAllVideoSpeedAnchors(SEGMENT_B_VIDEO_SPEED_ANCHORS, qualifiedSpeed);
   const videoMasterTimeline = buildVideoMasterTimeline();
   const split = splitCalibrationHoldoutSets();
-  const clock = reassessClockModelB2(qualifiedSpeed, split);
+  const clock = reassessClockModelB3(qualifiedSpeed, split);
   const legacyGlobalSearch = searchGlobalClockOffset(SEGMENT_B_CLOCK_LANDMARKS, qualifiedSpeed);
   const drift = estimateSegmentBDriftFromB1Clock(
     legacyGlobalSearch.calibrationEvidence,
@@ -2183,12 +2310,6 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   const previousBiased = computePreviousBiasedExploratoryResults(anchorMatches);
   const rawDisplacement = computeRawAnchorDisplacementDiagnostic(anchorMatches);
   const frozenOffsetForHoldout = clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS;
-  const supportiveOffsetMid =
-    clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE != null
-      ? (clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE.minSeconds +
-          clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE.maxSeconds) /
-        2
-      : null;
   const holdoutOffsetSource =
     clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS != null ? 'VALIDATED' : 'NONE';
   const holdoutCanonical = computeHoldoutSpeedAccuracy(
@@ -2198,21 +2319,10 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     frozenOffsetForHoldout,
     clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED === 'YES',
   );
-  const holdoutDiagnostic =
-    supportiveOffsetMid != null
-      ? computeHoldoutSpeedAccuracy(
-          split.SPEED_ACCURACY_HOLDOUT_SET,
-          SEGMENT_B_VIDEO_SPEED_ANCHORS,
-          qualifiedSpeed,
-          supportiveOffsetMid,
-          false,
-        )
-      : null;
   const speedAccuracy = {
     ...holdoutCanonical,
-    diagnosticHoldoutFromSupportiveOffset: holdoutDiagnostic,
-    diagnosticHoldoutMaeKmhWhenOffsetNotValidated:
-      holdoutDiagnostic?.diagnosticHoldoutMaeKmhWhenOffsetNotValidated ?? null,
+    diagnosticHoldoutFromSupportiveOffset: null,
+    diagnosticHoldoutMaeKmhWhenOffsetNotValidated: null,
     EXACT_OR_HIGH_CONFIDENCE_VIDEO_SPEED_ANCHORS_ACCEPTED: split.SPEED_ACCURACY_HOLDOUT_SET.filter(
       (a) => a.videoAnchorConfidence === 'HIGH',
     ).length,
@@ -2223,7 +2333,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     PREPROCESSING_DISTORTION_VS_TELEMETRY_RAW: 'YES',
     HOLDOUT_FROZEN_OFFSET_SECONDS: frozenOffsetForHoldout,
     HOLDOUT_OFFSET_SOURCE: holdoutOffsetSource,
-    B1_DIAGNOSTIC_HOLDOUT_OFFSET_SECONDS: supportiveOffsetMid,
+    B1_DIAGNOSTIC_HOLDOUT_OFFSET_SECONDS: null,
   };
 
   const acceleration = computeQualifiedAccelerationPairs(
@@ -2232,11 +2342,23 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   );
   const accelerationGapSensitivity = computeAccelerationGapSensitivity(qualifiedSpeed);
   const episodes = findSpeedEpisodes(qualifiedSpeed);
-  const stopTiming = analyzeStopTiming(
-    qualifiedSpeed,
-    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS,
-    supportiveOffsetMid,
-  );
+  const firstStopAssessment = clock.transitionLandmarkAssessment.firstStop;
+  const launchAssessment = clock.transitionLandmarkAssessment.launch;
+  const firstStopPairAssessment = clock.transitionLandmarkAssessment.firstStopPair;
+  const transitionIntervalCensoring = clock.transitionLandmarkAssessment.transitionIntervalCensoring;
+  const stopTiming = analyzeStopTiming(qualifiedSpeed, firstStopAssessment);
+
+  const fullSessionRows = input.fullSessionObservations ?? input.observations;
+  const hfCaptureCompleteness = buildHfCaptureCompletenessDiagnostic({
+    allRows: fullSessionRows,
+    envelopeRows: envelope,
+    queryEnvelope: {
+      startUtc: SEGMENT_B_CONSTANTS.queryEnvelopeStartUtc,
+      endUtc: SEGMENT_B_CONSTANTS.queryEnvelopeEndUtc,
+    },
+    requeryTimestamps: input.diagnosticRequerySpeedTimestamps,
+    liveRequeryError: input.diagnosticRequeryError,
+  });
 
   const legacySidecarFiltered = input.legacySidecar;
   const preprocessing = comparePreprocessingResponse(qualifiedSpeed, legacySidecarFiltered);
@@ -2259,16 +2381,19 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
 
   const readyForCloseout =
     clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED === 'YES' &&
-    speedAccuracy.ABSOLUTE_SPEED_ACCURACY_VALIDATED === 'YES'
+    speedAccuracy.ABSOLUTE_SPEED_ACCURACY_VALIDATED === 'YES' &&
+    hfCaptureCompleteness.HF_CAPTURE_COMPLETENESS_VALIDATED === 'YES'
       ? 'YES'
       : 'NO';
 
-  const firstStopAssessment = clock.transitionLandmarkAssessment.firstStop;
-  const launchAssessment = clock.transitionLandmarkAssessment.launch;
+  const requeryComparison = hfCaptureCompleteness.requery.comparison;
 
   const flags = {
     RD004_PHASE: RD004_B_PHASE,
     RAW_SOURCE_OBSERVATIONS_CHANGED: 'NO',
+    TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR,
+    EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR,
+    NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS,
     VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED: videoMasterTimeline.VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED,
     VIDEO_MASTER_DURATION_SECONDS: videoMasterTimeline.VIDEO_MASTER_DURATION_SECONDS,
     VIDEO_CLIP_TOTAL_OVERLAP_SECONDS: videoMasterTimeline.VIDEO_CLIP_TOTAL_OVERLAP_SECONDS,
@@ -2277,10 +2402,23 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T: VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T,
     FIRST_STOP_TRANSITION_VIDEO_T_SECONDS: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
     FIRST_STOP_TRANSITION_VIDEO_UTC: firstStopAssessment.FIRST_STOP_TRANSITION_VIDEO_UTC,
+    FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS:
+      firstStopAssessment.FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS,
+    FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY: 'NO',
+    FIRST_STOP_RAW_OBSERVATION_DISPLACEMENT_SECONDS:
+      stopTiming.FIRST_STOP_RAW_OBSERVATION_DISPLACEMENT_SECONDS,
     OLD_T630_STOP_TRANSITION_INVALIDATED: 'YES',
     T630_CLASSIFICATION: 'SUSTAINED_STOP_STATE',
     FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN: FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
     FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX: FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+    FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS:
+      launchAssessment.FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS,
+    FIRST_LAUNCH_TRANSITION_STATUS: launchAssessment.FIRST_LAUNCH_TRANSITION_STATUS,
+    FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE: launchAssessment.FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE,
+    PAIR_43_TO_0_LOCAL_DT_SECONDS: firstStopPairAssessment.PAIR_43_TO_0_LOCAL_DT_SECONDS,
+    PAIR_43_TO_0_UPSTREAM_GAP_SECONDS: firstStopPairAssessment.PAIR_43_TO_0_UPSTREAM_GAP_SECONDS,
+    PAIR_43_TO_0_PHYSICAL_CONTINUITY_VALIDATED:
+      firstStopPairAssessment.PAIR_PHYSICAL_CONTINUITY_VALIDATED,
     SECOND_STOP_VIDEO_OBSERVED: clock.SECOND_STOP_VIDEO_OBSERVED,
     SECOND_STOP_TRANSITION_FRAME_EXACT: clock.SECOND_STOP_TRANSITION_FRAME_EXACT,
     CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS:
@@ -2298,6 +2436,13 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     HF_SPEED_MEDIAN_PHYSICAL_CADENCE_SECONDS: hfSpeedCadence.NEW_PHYSICAL_SAMPLE_CADENCE_MEDIAN_SECONDS,
     HF_SPEED_P90_PHYSICAL_CADENCE_SECONDS: hfSpeedCadence.NEW_PHYSICAL_SAMPLE_CADENCE_P90_SECONDS,
     HF_SPEED_MAX_GAP_SECONDS: hfSpeedCadence.NEW_PHYSICAL_SAMPLE_CADENCE_MAX_GAP_SECONDS,
+    HF_CAPTURE_COMPLETENESS_VALIDATED: hfCaptureCompleteness.HF_CAPTURE_COMPLETENESS_VALIDATED,
+    HF_SPARSE_CADENCE_ORIGIN: hfCaptureCompleteness.HF_SPARSE_CADENCE_ORIGIN,
+    SEALED_HF_SPEED_COUNT: requeryComparison?.SEALED_HF_SPEED_COUNT ?? hfCaptureCompleteness.sealedAudit.uniquePhysicalSampleCount,
+    DIAGNOSTIC_REQUERY_HF_SPEED_COUNT: requeryComparison?.DIAGNOSTIC_REQUERY_HF_SPEED_COUNT ?? null,
+    MISSING_FROM_SEALED_COUNT: requeryComparison?.MISSING_FROM_SEALED_COUNT ?? null,
+    EXTRA_IN_SEALED_COUNT: requeryComparison?.EXTRA_IN_SEALED_COUNT ?? null,
+    RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: hfCaptureCompleteness.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
     DUPLICATE_SPEED_SAMPLES: staleDupes.size,
     OUT_OF_ORDER_SPEED_SAMPLES: detectOutOfOrderByAcquisitionOrder(hfSpeedRows),
     EXACT_OR_HIGH_CONFIDENCE_VIDEO_SPEED_ANCHORS_ACCEPTED:
@@ -2307,6 +2452,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     CLOCK_CALIBRATION_HOLDOUT_SEPARATED: split.CLOCK_CALIBRATION_HOLDOUT_SEPARATED,
     CLOCK_CALIBRATION_ANCHOR_COUNT: split.CLOCK_CALIBRATION_ANCHOR_COUNT,
     CLOCK_HOLDOUT_ANCHOR_COUNT: split.CLOCK_HOLDOUT_ANCHOR_COUNT,
+    CLOCK_FIT_PROVIDER_MATCH_COUNT: clock.CLOCK_FIT_PROVIDER_MATCH_COUNT,
     PROVIDER_TIMESTAMP_OFFSET_VALIDATED: clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED,
     VIDEO_TO_PROVIDER_OFFSET_SECONDS: clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS,
     OFFSET_CANDIDATE_SUPPORTIVE_ONLY: clock.OFFSET_CANDIDATE_SUPPORTIVE_ONLY,
@@ -2339,6 +2485,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     STABLE_STATE_SPEED_ACCURACY: speedAccuracy.STABLE_STATE_SPEED_ACCURACY,
     DYNAMIC_STATE_SPEED_ACCURACY: speedAccuracy.DYNAMIC_STATE_SPEED_ACCURACY,
     STOP_TIMING_VALIDATED: stopTiming.STOP_TIMING_VALIDATED,
+    STOP_TIMING_ERROR_SECONDS: stopTiming.STOP_TIMING_ERROR_SECONDS,
     STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET: stopTiming.STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET,
     STOP_TIMING_CLOCK_CORRECTED: stopTiming.STOP_TIMING_CLOCK_CORRECTED,
     DECELERATION_TO_STOP_VALIDATED: stopTiming.DECELERATION_TO_STOP_VALIDATED,
@@ -2407,11 +2554,14 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       clock,
       drift,
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
+      transitionIntervalCensoring,
       note:
-        'B.2: frame-verified transition landmarks (B-T01/B-T02) reassess clock; B.1 global search retained as legacy diagnostic only',
+        'B.3: transition interval censoring + HF capture completeness; no provider clock landmark resolved; legacy global search retained as diagnostic only',
     },
     speedAccuracy,
     stopTiming,
+    transitionIntervalCensoring,
+    hfCaptureCompleteness,
     qualifiedSpeedSeries: qualifiedSpeed,
     kinematicReconstruction: {
       ...acceleration,
