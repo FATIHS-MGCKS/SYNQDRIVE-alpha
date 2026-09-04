@@ -1,0 +1,62 @@
+{
+  "evidenceId": "DI-EV-0035B.6",
+  "mode": "HF_RUNTIME_FIX_IMPLEMENTATION_CONTRACT",
+  "status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "RAW_SOURCE_OBSERVATIONS_CHANGED": "NO",
+  "REFERENCE_CAPTURE_RUNTIME_CHANGED": "NO",
+  "PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED": "NO",
+  "targetModule": "reference-capture-acquisition.service.ts",
+  "relatedModules": [
+    "reference-capture-hf-watermark-policy.ts",
+    "reference-capture-query-builder.ts",
+    "reference-capture-physical-sample-identity.util.ts"
+  ],
+  "configurableParameters": {
+    "HF_SETTLEMENT_DELAY_MS": {
+      "provisionalDefault": 8000,
+      "validated": false,
+      "tunableWithoutCodeChange": "REQUIRED"
+    },
+    "HF_RECOVERY_OVERLAP_MS": {
+      "provisionalDefault": 6000,
+      "validated": false,
+      "tunableWithoutCodeChange": "REQUIRED"
+    }
+  },
+  "expectedChanges": {
+    "resolveHfActualQueryTo": "safeQueryTo = requestStartedAt - settlementDelayMs (configurable, provisional default only).",
+    "computeHfQueryFrom": "recoveryOverlapMs configurable at call site — do not hardcode validated 8/6.",
+    "hfQueryCoverageByField": "Advance to safeQueryTo; QUERY COVERAGE watermark separate from DATA watermark.",
+    "watermarkAdvancement": "DATA watermark (hfWatermarkByField) on durable persist; QUERY COVERAGE tracks safeQueryTo; RECOVERY cursor for sweep.",
+    "periodicRecoverySweep": "Required for robust eventual completeness — idempotent replay of closed intervals behind recovery cursor.",
+    "idempotency": "physicalSampleFingerprint + revision semantics unchanged."
+  },
+  "requiredRuntimeMetrics": [
+    "hf_query_from",
+    "hf_query_to",
+    "settlement_delay_ms",
+    "overlap_ms",
+    "provider_bucket_count",
+    "new_bucket_count",
+    "duplicate_bucket_count",
+    "revision_bucket_count",
+    "latest_bucket_age_ms",
+    "recovered_late_bucket_count",
+    "recovery_sweep_count",
+    "hf_first_availability_delay_ms"
+  ],
+  "provisionalParameters": {
+    "PROVISIONAL_SETTLEMENT_DELAY_SECONDS": 8,
+    "PROVISIONAL_RECOVERY_OVERLAP_SECONDS": 6,
+    "PARAMETERS_VALIDATED": "NO"
+  },
+  "validationPlan": {
+    "unitTests": "Settlement deferral vs availability separation; overlap watermark classification.",
+    "deterministicReplayTests": "RD004 counterfactual grid regression.",
+    "liveAvailabilityCalibration": "Execute buildLiveAvailabilityCalibrationContract experiment in staging.",
+    "controlledLiveCapture": "Short reference capture with provisional config + observability.",
+    "densityComparison": "Provider replay density vs sealed capture after fix.",
+    "videoTelemetryGate": "RD004 absolute speed/clock/acceleration ONLY after dense fresh capture — not incomplete sealed series."
+  },
+  "implementationPrerequisite": "Separate production PR: configurable architecture + provisional defaults + calibration follow-up."
+}

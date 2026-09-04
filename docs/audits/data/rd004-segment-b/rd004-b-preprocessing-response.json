@@ -1,0 +1,355 @@
+{
+  "comparedPairs": 66,
+  "PREPROCESSING_LOCAL_EVENT_METHOD": "SAME_WINDOW_INDEPENDENT_RAW_AND_SMOOTHED_PEAKS",
+  "PREPROCESSING_TIMING_VALIDATED": "PARTIAL",
+  "MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH": 21,
+  "TRUE_LOCAL_PEAK_ATTENUATION_KMH": 8.666666666666668,
+  "TRUE_LOCAL_PEAK_EVENT_COUNT": 9,
+  "LOCAL_PEAK_TIME_SHIFT_AVAILABLE": "YES",
+  "LOCAL_PEAK_TIME_SHIFT_SECONDS_MEDIAN": 4.9080000000000155,
+  "TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY": "YES",
+  "trueLocalPeakEvents": [
+    {
+      "eventWindowCenterVideoRelativeSeconds": 113.08,
+      "rawLocalPeakValueKmh": 55,
+      "rawLocalPeakTimeSeconds": 113.08,
+      "smoothedLocalPeakValueKmh": 50,
+      "smoothedLocalPeakTimeSeconds": 113.08,
+      "localPeakAttenuationKmh": 5,
+      "localPeakAttenuationAbsKmh": 5,
+      "localPeakTimeShiftSeconds": 0
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 376.722,
+      "rawLocalPeakValueKmh": 111,
+      "rawLocalPeakTimeSeconds": 376.722,
+      "smoothedLocalPeakValueKmh": 105.33333333333333,
+      "smoothedLocalPeakTimeSeconds": 389.613,
+      "localPeakAttenuationKmh": 5.666666666666671,
+      "localPeakAttenuationAbsKmh": 5.666666666666671,
+      "localPeakTimeShiftSeconds": 12.89100000000002
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 446.413,
+      "rawLocalPeakValueKmh": 111,
+      "rawLocalPeakTimeSeconds": 446.413,
+      "smoothedLocalPeakValueKmh": 111.33333333333333,
+      "smoothedLocalPeakTimeSeconds": 453.031,
+      "localPeakAttenuationKmh": -0.3333333333333286,
+      "localPeakAttenuationAbsKmh": 0.3333333333333286,
+      "localPeakTimeShiftSeconds": 6.617999999999995
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 597.621,
+      "rawLocalPeakValueKmh": 112,
+      "rawLocalPeakTimeSeconds": 597.621,
+      "smoothedLocalPeakValueKmh": 114,
+      "smoothedLocalPeakTimeSeconds": 592.713,
+      "localPeakAttenuationKmh": -2,
+      "localPeakAttenuationAbsKmh": 2,
+      "localPeakTimeShiftSeconds": -4.9080000000000155
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 605.291,
+      "rawLocalPeakValueKmh": 112,
+      "rawLocalPeakTimeSeconds": 597.621,
+      "smoothedLocalPeakValueKmh": 114,
+      "smoothedLocalPeakTimeSeconds": 592.713,
+      "localPeakAttenuationKmh": -2,
+      "localPeakAttenuationAbsKmh": 2,
+      "localPeakTimeShiftSeconds": -4.9080000000000155
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 608.76,
+      "rawLocalPeakValueKmh": 112,
+      "rawLocalPeakTimeSeconds": 597.621,
+      "smoothedLocalPeakValueKmh": 114,
+      "smoothedLocalPeakTimeSeconds": 592.713,
+      "localPeakAttenuationKmh": -2,
+      "localPeakAttenuationAbsKmh": 2,
+      "localPeakTimeShiftSeconds": -4.9080000000000155
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 702.498,
+      "rawLocalPeakValueKmh": 35,
+      "rawLocalPeakTimeSeconds": 702.498,
+      "smoothedLocalPeakValueKmh": 26.333333333333332,
+      "smoothedLocalPeakTimeSeconds": 702.498,
+      "localPeakAttenuationKmh": 8.666666666666668,
+      "localPeakAttenuationAbsKmh": 8.666666666666668,
+      "localPeakTimeShiftSeconds": 0
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 903.687,
+      "rawLocalPeakValueKmh": 77,
+      "rawLocalPeakTimeSeconds": 903.687,
+      "smoothedLocalPeakValueKmh": 70.66666666666667,
+      "smoothedLocalPeakTimeSeconds": 899.785,
+      "localPeakAttenuationKmh": 6.333333333333329,
+      "localPeakAttenuationAbsKmh": 6.333333333333329,
+      "localPeakTimeShiftSeconds": -3.9020000000000437
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 920.997,
+      "rawLocalPeakValueKmh": 77,
+      "rawLocalPeakTimeSeconds": 903.687,
+      "smoothedLocalPeakValueKmh": 69,
+      "smoothedLocalPeakTimeSeconds": 903.687,
+      "localPeakAttenuationKmh": 8,
+      "localPeakAttenuationAbsKmh": 8,
+      "localPeakTimeShiftSeconds": 0
+    }
+  ],
+  "PREPROCESSING_START_SHIFT_SECONDS_MEDIAN": 0,
+  "PREPROCESSING_END_SHIFT_SECONDS_MEDIAN": 0,
+  "PREPROCESSING_FALSE_EVENT_CREATION": "NOT_MEASURED_SPARSE_CADENCE",
+  "PREPROCESSING_FALSE_EVENT_SUPPRESSION": "NOT_MEASURED_SPARSE_CADENCE",
+  "localEventTimings": [
+    {
+      "providerTimestamp": "2026-09-04T03:48:55.296Z",
+      "videoRelativeSeconds": 113.08,
+      "rawOnsetSeconds": 95.949,
+      "rawPeakSeconds": 113.08,
+      "rawEndSeconds": 115.08,
+      "smoothedOnsetSeconds": 95.949,
+      "smoothedPeakSeconds": 113.08,
+      "smoothedEndSeconds": 115.08,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": 0,
+      "endShiftSeconds": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:50:12.276Z",
+      "videoRelativeSeconds": 190.06,
+      "rawOnsetSeconds": null,
+      "rawPeakSeconds": null,
+      "rawEndSeconds": null,
+      "smoothedOnsetSeconds": null,
+      "smoothedPeakSeconds": null,
+      "smoothedEndSeconds": null,
+      "onsetShiftSeconds": null,
+      "peakShiftSeconds": null,
+      "endShiftSeconds": null
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:50:53.168Z",
+      "videoRelativeSeconds": 230.952,
+      "rawOnsetSeconds": null,
+      "rawPeakSeconds": null,
+      "rawEndSeconds": null,
+      "smoothedOnsetSeconds": null,
+      "smoothedPeakSeconds": null,
+      "smoothedEndSeconds": null,
+      "onsetShiftSeconds": null,
+      "peakShiftSeconds": null,
+      "endShiftSeconds": null
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:53:18.938Z",
+      "videoRelativeSeconds": 376.722,
+      "rawOnsetSeconds": 368.919,
+      "rawPeakSeconds": 376.722,
+      "rawEndSeconds": 395.34,
+      "smoothedOnsetSeconds": 368.919,
+      "smoothedPeakSeconds": 389.613,
+      "smoothedEndSeconds": 395.34,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": 12.89100000000002,
+      "endShiftSeconds": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:54:28.629Z",
+      "videoRelativeSeconds": 446.413,
+      "rawOnsetSeconds": 433.117,
+      "rawPeakSeconds": 446.413,
+      "rawEndSeconds": 453.031,
+      "smoothedOnsetSeconds": 433.117,
+      "smoothedPeakSeconds": 453.031,
+      "smoothedEndSeconds": 453.031,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": 6.617999999999995,
+      "endShiftSeconds": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:55:09.623Z",
+      "videoRelativeSeconds": 487.407,
+      "rawOnsetSeconds": null,
+      "rawPeakSeconds": null,
+      "rawEndSeconds": null,
+      "smoothedOnsetSeconds": null,
+      "smoothedPeakSeconds": null,
+      "smoothedEndSeconds": null,
+      "onsetShiftSeconds": null,
+      "peakShiftSeconds": null,
+      "endShiftSeconds": null
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:56:59.837Z",
+      "videoRelativeSeconds": 597.621,
+      "rawOnsetSeconds": 592.713,
+      "rawPeakSeconds": 597.621,
+      "rawEndSeconds": 597.621,
+      "smoothedOnsetSeconds": 592.713,
+      "smoothedPeakSeconds": 592.713,
+      "smoothedEndSeconds": 604.291,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": -4.9080000000000155,
+      "endShiftSeconds": 6.670000000000073
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:57:07.507Z",
+      "videoRelativeSeconds": 605.291,
+      "rawOnsetSeconds": 592.713,
+      "rawPeakSeconds": 597.621,
+      "rawEndSeconds": 597.621,
+      "smoothedOnsetSeconds": 592.713,
+      "smoothedPeakSeconds": 592.713,
+      "smoothedEndSeconds": 604.291,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": -4.9080000000000155,
+      "endShiftSeconds": 6.670000000000073
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:57:10.976Z",
+      "videoRelativeSeconds": 608.76,
+      "rawOnsetSeconds": 592.713,
+      "rawPeakSeconds": 597.621,
+      "rawEndSeconds": 597.621,
+      "smoothedOnsetSeconds": 592.713,
+      "smoothedPeakSeconds": 592.713,
+      "smoothedEndSeconds": 604.291,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": -4.9080000000000155,
+      "endShiftSeconds": 6.670000000000073
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:57:44.685Z",
+      "videoRelativeSeconds": 642.469,
+      "rawOnsetSeconds": null,
+      "rawPeakSeconds": null,
+      "rawEndSeconds": null,
+      "smoothedOnsetSeconds": null,
+      "smoothedPeakSeconds": null,
+      "smoothedEndSeconds": null,
+      "onsetShiftSeconds": null,
+      "peakShiftSeconds": null,
+      "endShiftSeconds": null
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:58:44.714Z",
+      "videoRelativeSeconds": 702.498,
+      "rawOnsetSeconds": 683.189,
+      "rawPeakSeconds": 702.498,
+      "rawEndSeconds": 712.153,
+      "smoothedOnsetSeconds": 683.189,
+      "smoothedPeakSeconds": 702.498,
+      "smoothedEndSeconds": 712.153,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": 0,
+      "endShiftSeconds": 0
+    },
+    {
+      "providerTimestamp": "2026-09-04T04:00:24.323Z",
+      "videoRelativeSeconds": 802.107,
+      "rawOnsetSeconds": null,
+      "rawPeakSeconds": null,
+      "rawEndSeconds": null,
+      "smoothedOnsetSeconds": null,
+      "smoothedPeakSeconds": null,
+      "smoothedEndSeconds": null,
+      "onsetShiftSeconds": null,
+      "peakShiftSeconds": null,
+      "endShiftSeconds": null
+    },
+    {
+      "providerTimestamp": "2026-09-04T04:02:05.903Z",
+      "videoRelativeSeconds": 903.687,
+      "rawOnsetSeconds": 897.785,
+      "rawPeakSeconds": 903.687,
+      "rawEndSeconds": 909.639,
+      "smoothedOnsetSeconds": 897.785,
+      "smoothedPeakSeconds": 899.785,
+      "smoothedEndSeconds": 908.687,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": -3.9020000000000437,
+      "endShiftSeconds": -0.9519999999999982
+    },
+    {
+      "providerTimestamp": "2026-09-04T04:02:23.213Z",
+      "videoRelativeSeconds": 920.997,
+      "rawOnsetSeconds": 903.687,
+      "rawPeakSeconds": 903.687,
+      "rawEndSeconds": 909.639,
+      "smoothedOnsetSeconds": 903.687,
+      "smoothedPeakSeconds": 903.687,
+      "smoothedEndSeconds": 909.639,
+      "onsetShiftSeconds": 0,
+      "peakShiftSeconds": 0,
+      "endShiftSeconds": 0
+    }
+  ],
+  "note": "Preprocessing metrics are telemetry-internal raw-vs-smoothed distortion — not physical ground-truth error",
+  "samplePairs": [
+    {
+      "providerTimestamp": "2026-09-04T03:47:51.768Z",
+      "rawKmh": 0,
+      "legacyKmh": 20,
+      "deltaKmh": -20
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:47:52.768Z",
+      "rawKmh": 40,
+      "legacyKmh": 27,
+      "deltaKmh": 13
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:48:09.167Z",
+      "rawKmh": 41,
+      "legacyKmh": 42,
+      "deltaKmh": -1
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:48:38.165Z",
+      "rawKmh": 45,
+      "legacyKmh": 47,
+      "deltaKmh": -2
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:48:55.296Z",
+      "rawKmh": 55,
+      "legacyKmh": 50,
+      "deltaKmh": 5
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:48:57.296Z",
+      "rawKmh": 50,
+      "legacyKmh": 48,
+      "deltaKmh": 2
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:49:24.176Z",
+      "rawKmh": 39,
+      "legacyKmh": 41.666666666666664,
+      "deltaKmh": -2.6666666666666643
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:49:31.124Z",
+      "rawKmh": 36,
+      "legacyKmh": 41,
+      "deltaKmh": -5
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:49:53.619Z",
+      "rawKmh": 48,
+      "legacyKmh": 49.333333333333336,
+      "deltaKmh": -1.3333333333333357
+    },
+    {
+      "providerTimestamp": "2026-09-04T03:50:12.276Z",
+      "rawKmh": 64,
+      "legacyKmh": 54.666666666666664,
+      "deltaKmh": 9.333333333333336
+    }
+  ],
+  "PREPROCESSING_DISTORTION_VS_TELEMETRY_RAW": "YES"
+}
