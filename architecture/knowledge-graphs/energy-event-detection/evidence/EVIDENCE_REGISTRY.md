@@ -28,6 +28,7 @@ Stable IDs: `EED-EV-####`. Each item: source, path, what it proves, what it does
 | EED-EV-0022 | ARCHITECTURE_DOC | Battery V2 parallel path | `battery-v2/lifecycle/hv-charge-sessions.md` | HvChargeSession separate ingest | Auto-link to VehicleEnergyEvent | INFERENCE | 2026-09-01 |
 | EED-EV-0023 | ARCHITECTURE_DOC | Discovery | `ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md` | Initial 52-component inventory | Verified without code re-check | INFERENCE | 2026-09-01 |
 | EED-EV-0024 | TEST | Fuel rise spec | `refuel-fuel-rise.spec.ts` | KS MX sample band derivation | All vehicles' rise accuracy | PROVEN_BY_TEST | 2026-09-01 |
+| EED-EV-0026 | TEST | Sept04 forensic replay | `refuel-sibling-reconciliation.sept04-2026.spec.ts` | Duplicate REFUEL arrival-order failure | HF dwell reconstruction | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0025 | PRODUCTION | P1.3-S6 deploy | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | KS MX reprocess: 4818s, 330s rise, 685s deleted | Fleet-wide generalization | PROVEN_IN_PRODUCTION | 2026-09-01 |
 
 ## Negative results (first-class)

@@ -678,11 +678,12 @@ nodes:
   # --- Gaps / hypotheses / failures ---
   - id: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
     type: gap
-    title: No natural post-cutover REFUEL E2E observed in production
+    title: Natural post-cutover REFUEL positive match path not production-validated
     epistemic_status: CONFIRMED
     summary: >
-      Architecture deployed; zero enrichment rows; zero post-cutover REFUEL at last production snapshot.
-      Full match → persist → API → UI path not production-validated on real event.
+      First natural post-cutover REFUEL observed 2026-09-04 (KS MX 2024) exercised detection,
+      persistence, enrichment, resolver, and NOT_FOUND API/UI — but NOT MATCHED/trusted station path.
+      See FST-EVID-INCIDENT-REFUEL-2026-09-04-001.
 
   - id: FST-GAP-GERMANY-SCOPE-001
     type: gap
@@ -698,9 +699,11 @@ nodes:
 
   - id: FST-GAP-SINGLE-COORD-POLICY-001
     type: gap
-    title: Single start-coordinate policy / future multi-coordinate evidence
-    epistemic_status: UNKNOWN
-    summary: V1 uses energy_event_start only; multi-point or end-coordinate policy undecided.
+    title: Single start-coordinate policy insufficient for physical stop
+    epistemic_status: CONFIRMED
+    summary: >
+      V1 energy_event_start failed 2026-09-04 incident (721–1038m from true Esso station).
+      Physical-stop coordinate authority V2 design required. See FST-GAP-PHYSICAL-STOP-COORD-001.
 
   - id: FST-GAP-OSM-DATA-QUALITY-001
     type: gap
@@ -716,9 +719,12 @@ nodes:
 
   - id: FST-GAP-UPSTREAM-COORD-CONTRACT-001
     type: gap
-    title: Explicit upstream coordinate/timestamp contract with Energy Events
-    epistemic_status: INFERRED
-    summary: startLatitude/startLongitude assumed from detection; formal cross-domain contract not documented.
+    title: Upstream physical-stop coordinate contract with Energy Events
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO segment start coordinates are provider envelope anchors, not physical refuel stop.
+      Cross-domain contract must define physical-stop authority and fuel-signal latency semantics.
+      Proven by FST-EVID-INCIDENT-REFUEL-2026-09-04-001.
 
   - id: FST-GAP-PRE-PHASE-B-DISCOVERY-001
     type: gap
@@ -728,9 +734,31 @@ nodes:
 
   - id: FST-HYP-GPS-OFFSET-001
     type: hypothesis
-    title: Production GPS offset may differ from calibration probes
-    epistemic_status: UNKNOWN
-    summary: Real refuel coordinates may show wider offset distribution than calibration set.
+    title: Production refuel coordinate offset exceeds calibration when using segment start
+    epistemic_status: CONFIRMED
+    summary: >
+      2026-09-04 incident segment starts 721–1038m from owner-confirmed Esso station;
+      midpoint 163m still NOT_FOUND at score 8. Offset is policy/anchor issue, not OSM absence.
+
+  - id: FST-GAP-PHYSICAL-STOP-COORD-001
+    type: gap
+    title: Physical refuel stop coordinate authority not implemented
+    epistemic_status: CONFIRMED
+    summary: >
+      V2 design requires dwell/stationary cluster before delayed fuel rise; coordinatePolicyVersion
+      bump and enrichment fingerprint extension. Design in refuel forensics 2026-09-04 audit.
+
+  - id: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    type: evidence
+    title: KS MX 2024 natural post-cutover REFUEL incident forensics
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Two REFUEL rows, both enrichment NOT_FOUND, Esso ground truth, segment-start coords wrong.
+      Partial E2E validated; positive match path not validated.
+    source_paths:
+      - architecture/tankstellenerkennung/evidence/INCIDENT_REFUEL_KS_MX_2026-09-04.md
+      - docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md
 
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis

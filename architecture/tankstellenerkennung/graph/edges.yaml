@@ -261,3 +261,20 @@ edges:
   - from: FST-DEC-EXTEND-TIMELINE-UI-001
     relation: does_not_solve
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+
+  # 2026-09-04 incident forensics
+  - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    relation: validates
+    to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
+  - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    relation: validates
+    to: FST-HYP-GPS-OFFSET-001
+  - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    relation: supports
+    to: FST-GAP-SINGLE-COORD-POLICY-001
+  - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    relation: supports
+    to: FST-GAP-UPSTREAM-COORD-CONTRACT-001
+  - from: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    relation: supports
+    to: FST-GAP-PHYSICAL-STOP-COORD-001

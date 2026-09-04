@@ -20,6 +20,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-CODE-LIFECYCLE-001 | CURRENT_TEST | lifecycle.policy.spec.ts | Terminal skip semantics |
 | FST-EVID-CODE-API-READ-001 | CURRENT_TEST | list-station-enrichment.spec.ts | Include without N+1 |
 | FST-TEST-UI-REGRESSION-001 | CURRENT_TEST | trips-fuel-station-enrichment-ui.test.tsx | Presentation matrix |
+| FST-EVID-INCIDENT-REFUEL-2026-09-04-001 | PRODUCTION_OBSERVATION | evidence/INCIDENT_REFUEL_KS_MX_2026-09-04.md | First natural post-cutover REFUEL; duplicate rows; NOT_FOUND enrichment |
 
 ## Phase memos (supporting, not graph authority)
 

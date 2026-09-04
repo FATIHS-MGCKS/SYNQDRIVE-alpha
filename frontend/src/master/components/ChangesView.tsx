@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-physical-event-forensics-2026-09-04',
+    version: '4.9.1047',
+    title: 'REFUEL physical event + fuel-station coordinate forensics (2026-09-04)',
+    summary: [
+      'First natural post-cutover REFUEL (KS MX 2024) forensically reconstructed: two persisted REFUEL rows for one Esso fill.',
+      'Root cause A: DIMO overlapping segments + coalesce thresholds + duration-biased sibling reconcile + 20% fuel-% guard.',
+      'Root cause B: V1 enrichment uses segment-start GPS (721–1038m from Esso); resolver NOT_FOUND despite OSM presence.',
+      'Design: PHYSICAL_REFUEL_IDENTITY fingerprint + physical-stop coordinate authority V2; enrichment after reconcile.',
+      'Production rows preserved; IMPLEMENTATION_READY=NO pending HF dwell telemetry confirmation.',
+    ],
+    reason: 'Forensic + design phase for duplicate REFUEL and wrong station coordinate defects.',
+    previousBehavior: 'Assumed segment start = refuel location; sibling reconcile handled KS MX Aug28 only.',
+    details:
+      'docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md; FST-EVID-INCIDENT-REFUEL-2026-09-04-001; EED-EV-0026.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
     version: '4.9.1046',
     title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',

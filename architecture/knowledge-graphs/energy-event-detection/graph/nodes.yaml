@@ -1064,3 +1064,28 @@ nodes:
       - backend/src/modules/vehicle-intelligence/energy-events/refuel-fuel-rise.spec.ts
     summary: KS MX sample fixture yields derived rise in expected band.
     verified_at: "2026-09-01"
+
+  - id: EED-EV-0026
+    type: evidence
+    title: KS MX 2024-09-04 duplicate REFUEL forensic replay
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/refuel-sibling-reconciliation.sept04-2026.spec.ts
+      - backend/src/modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture.ts
+      - docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md
+    summary: >
+      Proves arrival-order-independent failure of current sibling reconcile and coalesce
+      for overlapping DIMO segments (7→28 and 21→28 suffix transitions).
+    verified_at: "2026-09-04"
+
+  - id: EED-OQ-013
+    type: open_question
+    title: Physical refuel identity decoupled from dimoSegmentId
+    epistemic_status: UNKNOWN
+    summary: >
+      One physical fill produced two VehicleEnergyEvent REFUEL rows when DIMO emitted overlapping
+      segments with incompatible percent deltas. Duration-first sibling reconcile insufficient.
+      Design in refuel forensics 2026-09-04 audit.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0026]

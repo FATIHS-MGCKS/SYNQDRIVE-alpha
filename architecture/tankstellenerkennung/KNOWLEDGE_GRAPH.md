@@ -78,7 +78,8 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 
 | ID | Gap |
 |----|-----|
-| FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | No natural post-cutover REFUEL E2E in production |
+| FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | Natural post-cutover REFUEL observed; positive match path not validated |
+| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 not implemented |
 | FST-GAP-GERMANY-SCOPE-001 | Germany-only scope / international expansion |
 | FST-GAP-MANUAL-FAILED-REPAIR-001 | Manual repair for terminal FAILED rows |
 | FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy |
@@ -91,9 +92,9 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 
 **FST-DEC-REAL-REFUEL-E2E-001** — natural production evidence required; no synthetic mutation (`FST-REJECT-SYNTHETIC-PROD-REFUEL-001`).
 
-**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — evidence gap: no real eligible post-cutover REFUEL observed yet.
+**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — first natural post-cutover REFUEL observed 2026-09-04; partial pipeline validated; **MATCHED path not validated**.
 
-**NATURAL POSITIVE REFUEL E2E STILL NOT PRODUCTION-VALIDATED.**
+**NATURAL POSITIVE REFUEL MATCH E2E STILL NOT PRODUCTION_VALIDATED.**
 
 ## Epistemic legend
 

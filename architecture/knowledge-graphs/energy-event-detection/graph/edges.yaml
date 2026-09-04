@@ -360,3 +360,11 @@ edges:
   - from: EED-OQ-012
     relation: REFERENCES
     to: EED-OBS-001
+
+  - from: EED-EV-0026
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0026
+    relation: REFERENCES
+    to: EED-COMP-004

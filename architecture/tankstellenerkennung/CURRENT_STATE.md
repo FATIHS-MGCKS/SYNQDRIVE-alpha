@@ -32,7 +32,7 @@ Phase E exposes persisted enrichment on the existing Energy Event / trips-timeli
 
 **ARCHITECTURE DEPLOYED ≠ NATURAL POSITIVE PATH PRODUCTION-VALIDATED.**
 
-As of the latest production deployment evidence (Phase E+F, 2026-09-01), there was still **no real post-cutover REFUEL** with persisted enrichment. See `FST-GAP-REAL-POST-CUTOVER-REFUEL-001`.
+As of the 2026-09-04 KS MX natural post-cutover REFUEL incident (`FST-EVID-INCIDENT-REFUEL-2026-09-04-001`), production has exercised detection → persistence → enrichment → resolver → NOT_FOUND API/UI. **Positive MATCHED/trusted station path remains NOT production-validated.** See `FST-GAP-REAL-POST-CUTOVER-REFUEL-001`.
 
 ## Upstream dependency (out of domain)
 
