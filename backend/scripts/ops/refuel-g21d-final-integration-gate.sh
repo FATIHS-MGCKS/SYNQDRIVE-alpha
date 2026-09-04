@@ -73,10 +73,10 @@ export PHYSICAL_REFUEL_TEST_QUEUE_PREFIX="refuel-gate-${GATE_ID}"
 cd "${ROOT}"
 
 echo "==> prisma validate"
-npx prisma validate
+DATABASE_URL="${DATABASE_URL:-postgresql://u:p@localhost:5432/db}" npx --yes prisma validate
 
 echo "==> prisma migrate deploy (isolated)"
-npx prisma migrate deploy
+npx --yes prisma migrate deploy
 
 echo "==> Postgres integration"
 PHYSICAL_REFUEL_RECONCILIATION_POSTGRES_INTEGRATION=1 npm test -- \
