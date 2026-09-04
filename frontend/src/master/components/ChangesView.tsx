@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b2-rd004-segment-b-video-timeline-clock-reassessment-2026-09-04',
+    version: '4.9.1052',
+    title: 'DI-EV-0035B.2 — RD004-B Frame-Accurate Master Video Timeline + Transition Clock Reassessment',
+    summary: [
+      'Audio-correlated 9-clip master timeline (5→3→1→9→8→7→4→2→6); overlap 16.775 s; duration 1000.498365 s.',
+      'Improved Time.is T0: 2026-09-04T03:47:02.216667Z from frame-level second boundary.',
+      'First stop transition corrected to t≈621.8 s (B-T01); t=630 reclassified SUSTAINED_STOP_STATE only.',
+      'Launch bounded window [673.0, 673.5] s (B-T02); second stop not frame-exact.',
+      'Corrected stop displacement ~+21.7 s (SPARSE_STATE_SAMPLE); launch ~+5.3 s — inconsistent; offset NOT validated.',
+      'A/B ~22 s displacement repeat observed but not cross-validated; B.1 holdout/time-only preserved.',
+      '36 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Independent frame-level video review found t=630 was a zero-speed state snapshot, not the physical stop transition; master clip stitching required audio-correlated evidence.',
+    previousBehavior:
+      'B.1 used t=630 as stop context and supportive ~+13.5 s offset candidate; rounded 1000 s video timeline.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.2; new `rd004-b-video-master-timeline.json`; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b1-rd004-segment-b-calibration-closeout-2026-09-04',
     version: '4.9.1051',
     title: 'DI-EV-0035B.1 — RD004-B Independent Clock Calibration + Holdout Speed Accuracy Closeout',

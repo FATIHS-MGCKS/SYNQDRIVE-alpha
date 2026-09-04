@@ -10,12 +10,24 @@ import {
 } from './reference-capture-rd004-a-segment-a';
 import {
   CLOCK_CALIBRATION_LANDMARK_IDS,
+  FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+  FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+  FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+  OLD_T630_STOP_TRANSITION_INVALIDATED,
   RD004_B_EVIDENCE_ID,
   SEGMENT_B_CLOCK_LANDMARKS,
   SEGMENT_B_CONSTANTS,
+  SEGMENT_B_VIDEO_CLIP_ORDER,
   SEGMENT_B_VIDEO_SPEED_ANCHORS,
+  SEGMENT_B_VIDEO_TRANSITION_LANDMARKS,
+  SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET,
   SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS,
+  VIDEO_CLIP_TOTAL_OVERLAP_SECONDS,
+  VIDEO_MASTER_DURATION_SECONDS,
+  ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION,
+  assessCorrectedFirstStopDisplacement,
   buildClockCalibrationEvidence,
+  buildVideoMasterTimeline,
   classifyAnchorKinematicState,
   computeHoldoutSpeedAccuracy,
   computePreviousBiasedExploratoryResults,
@@ -24,6 +36,7 @@ import {
   expectedProviderMsFromVideo,
   matchClockLandmarks,
   matchVideoSpeedAnchor,
+  reassessClockModelB2,
   runRd004SegmentBAnalysis,
   selectNearestTelemetryByTimeOnly,
   splitCalibrationHoldoutSets,
@@ -108,7 +121,13 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
     expect(split.CLOCK_CALIBRATION_HOLDOUT_SEPARATED).toBe('YES');
     const holdoutTimes = new Set(split.SPEED_ACCURACY_HOLDOUT_SET.map((a) => a.videoRelativeSeconds));
     for (const lm of split.CLOCK_CALIBRATION_SET) {
-      expect(holdoutTimes.has(lm.videoRelativeSeconds)).toBe(false);
+      const times: number[] = [];
+      if (lm.videoRelativeSeconds != null) times.push(lm.videoRelativeSeconds);
+      if (lm.videoRelativeSecondsMin != null) times.push(lm.videoRelativeSecondsMin);
+      if (lm.videoRelativeSecondsMax != null) times.push(lm.videoRelativeSecondsMax);
+      for (const t of times) {
+        expect(holdoutTimes.has(t)).toBe(false);
+      }
     }
     expect(CLOCK_CALIBRATION_LANDMARK_IDS.length).toBeGreaterThan(0);
     expect(SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS.length).toBeGreaterThan(0);
@@ -130,7 +149,14 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
   });
 
   it('6) zero-speed snapshot cannot automatically become stop-transition clock landmark', () => {
-    const stop = SEGMENT_B_CLOCK_LANDMARKS.find((l) => l.id === 'CLK-B2')!;
+    const b15 = SEGMENT_B_VIDEO_SPEED_ANCHORS.find((a) => a.id === 'B15')!;
+    expect(b15.videoRelativeSeconds).toBe(630);
+    expect(b15.note).toContain('SUSTAINED_STOP_STATE');
+    const firstZero = SEGMENT_B_VIDEO_TRANSITION_LANDMARKS.find((lm) => lm.id === 'B-T01')!;
+    expect(firstZero.videoRelativeSeconds).toBeCloseTo(621.8, 1);
+    expect(firstZero.CLOCK_FIT_ELIGIBLE).toBe('YES');
+    const invalidatedClk = SEGMENT_B_CLOCK_LANDMARKS.find((l) => l.id === 'CLK-B2')!;
+    expect(invalidatedClk.label).toContain('INVALIDATED');
     const flatPoints: QualifiedSpeedPoint[] = [
       {
         acquisitionOrdinal: 1,
@@ -147,13 +173,15 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
         flags: [],
       },
     ];
-    const evidence = buildClockCalibrationEvidence([stop], flatPoints, 14);
-    expect(evidence[0]!.observationKind).toBe('STATE_OBSERVATION');
-    expect(evidence[0]!.CLOCK_FIT_ELIGIBLE).toBe('NO');
+    const evidence = buildClockCalibrationEvidence([invalidatedClk], flatPoints, 14);
+    expect(evidence).toHaveLength(0);
   });
 
   it('7) 5 km/h telemetry point cannot be treated as exact stop boundary without event-shape evidence', () => {
     const secondStop = SEGMENT_B_CLOCK_LANDMARKS.find((l) => l.id === 'CLK-B5')!;
+    expect(secondStop.landmarkKind).toBe('SECOND_STOP');
+    const secondStopLandmark = SEGMENT_B_VIDEO_TRANSITION_LANDMARKS.find((lm) => lm.id === 'B-T03')!;
+    expect(secondStopLandmark.CLOCK_FIT_ELIGIBLE).toBe('NO');
     const points: QualifiedSpeedPoint[] = [
       {
         acquisitionOrdinal: 1,
@@ -171,7 +199,7 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
       },
     ];
     const evidence = buildClockCalibrationEvidence([secondStop], points, 14);
-    expect(evidence[0]!.CLOCK_FIT_ELIGIBLE).toBe('NO');
+    expect(evidence).toHaveLength(0);
   });
 
   it('8) holdout speed accuracy uses time-only nearest samples', () => {
@@ -210,7 +238,7 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
     );
   });
 
-  it('11) stop timing applies validated/supportive offset', () => {
+  it('11) stop timing uses supportive offset only when validated offset absent', () => {
     if (!hasSourceData) return;
     const observations = loadRd004Jsonl(fs.readFileSync(SOURCE_OBS, 'utf8'));
     const legacySidecar = fs
@@ -219,7 +247,13 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
       .filter(Boolean)
       .map((line) => JSON.parse(line));
     const result = runRd004SegmentBAnalysis({ observations, legacySidecar });
-    expect(result.stopTiming.STOP_TIMING_CLOCK_CORRECTED).toBe('YES');
+    expect(result.stopTiming.STOP_TIMING_VALIDATED).toBe('NO');
+    expect(result.stopTiming.STOP_TIMING_CLOCK_CORRECTED).toBe('NO');
+    expect(result.stopTiming.OLD_T630_STOP_REFERENCE_INVALIDATED).toBe('YES');
+    expect(result.stopTiming.FIRST_STOP_FRAME_VERIFIED_VIDEO_T).toBeCloseTo(621.8, 1);
+    if (result.flags.OFFSET_CANDIDATE_RANGE_SUPPORTIVE != null) {
+      expect(result.stopTiming.STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET).toBe('YES');
+    }
   });
 
   it('12) stop timing remains unvalidated when clock model is unavailable', () => {
@@ -381,7 +415,7 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
     expect(TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY).toBe('YES');
   });
 
-  (hasSourceData ? it : it.skip)('21) sealed Segment B B.1 analysis on committed envelope data', () => {
+  (hasSourceData ? it : it.skip)('21) sealed Segment B B.2 analysis on committed envelope data', () => {
     const observations = loadRd004Jsonl(fs.readFileSync(SOURCE_OBS, 'utf8'));
     const legacySidecar = fs
       .readFileSync(SOURCE_SIDECAR, 'utf8')
@@ -394,9 +428,17 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
     expect(result.flags.PROVIDER_TIMESTAMP_OFFSET_VALIDATED).toBe('NO');
     expect(result.flags.ABSOLUTE_SPEED_ACCURACY_VALIDATED).toBe('NO');
     expect(result.flags.SPEED_SAMPLE_SELECTION_TIME_ONLY).toBe('YES');
+    expect(result.flags.HOLDOUT_SPEED_SELECTION_TIME_ONLY).toBe('YES');
     expect(result.flags.HF_SPEED_ROWS).toBeGreaterThan(50);
-    expect(result.flags.OFFSET_CANDIDATE_AROUND_14_SECONDS).toBe('SUPPORTIVE_ONLY');
+    expect(result.flags.VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED).toBe('YES');
+    expect(result.flags.VIDEO_MASTER_DURATION_SECONDS).toBeCloseTo(1000.498365, 3);
+    expect(result.flags.OLD_T630_STOP_TRANSITION_INVALIDATED).toBe('YES');
+    expect(result.flags.FIRST_STOP_TRANSITION_VIDEO_T_SECONDS).toBeCloseTo(621.8, 1);
+    expect(result.flags.OFFSET_CANDIDATE_AROUND_14_SECONDS).toBe(
+      'SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT',
+    );
     expect(result.speedAccuracy.diagnosticHoldoutMaeKmhWhenOffsetNotValidated).not.toBeNull();
+    expect(result.videoMasterTimeline.VIDEO_CLIP_TOTAL_OVERLAP_SECONDS).toBeCloseTo(16.775, 3);
   });
 
   (hasSourceData ? it : it.skip)('22) legacy clock spread guard still invalidates offset when spread too large', () => {
@@ -407,5 +449,123 @@ describe('DI-EV-0035B.1 RD004-B Segment B independent calibration closeout', () 
     ]);
     expect(clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED).toBe('NO');
     expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+  });
+});
+
+describe('DI-EV-0035B.2 RD004-B frame-accurate master timeline + transition clock reassessment', () => {
+  it('1) master duration uses overlap-corrected timeline', () => {
+    const timeline = buildVideoMasterTimeline();
+    expect(timeline.VIDEO_MASTER_DURATION_SECONDS).toBe(VIDEO_MASTER_DURATION_SECONDS);
+    expect(timeline.VIDEO_RAW_CLIP_DURATION_SUM_SECONDS - timeline.VIDEO_CLIP_TOTAL_OVERLAP_SECONDS).toBeCloseTo(
+      VIDEO_MASTER_DURATION_SECONDS,
+      3,
+    );
+  });
+
+  it('2) clip order is canonical 5→3→1→9→8→7→4→2→6', () => {
+    expect([...SEGMENT_B_VIDEO_CLIP_ORDER]).toEqual([5, 3, 1, 9, 8, 7, 4, 2, 6]);
+    expect(buildVideoMasterTimeline().canonicalClipOrder).toEqual([5, 3, 1, 9, 8, 7, 4, 2, 6]);
+  });
+
+  it('3) total overlap equals ~16.775 s', () => {
+    expect(VIDEO_CLIP_TOTAL_OVERLAP_SECONDS).toBeCloseTo(16.775, 3);
+    expect(buildVideoMasterTimeline().VIDEO_CLIP_TOTAL_OVERLAP_SECONDS).toBeCloseTo(16.775, 3);
+  });
+
+  it('4) old t=630 stop snapshot cannot be classified as stop-transition', () => {
+    expect(OLD_T630_STOP_TRANSITION_INVALIDATED).toBe('YES');
+    expect(
+      ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION,
+    ).toBe('YES');
+    const b15 = SEGMENT_B_VIDEO_SPEED_ANCHORS.find((a) => a.id === 'B15')!;
+    expect(b15.anchorSemantic).toBe('VIDEO_STATE_ANCHOR');
+    expect(b15.note).toContain('SUSTAINED_STOP_STATE');
+  });
+
+  it('5) frame-verified first zero is approximately t=621.8', () => {
+    expect(FIRST_STOP_TRANSITION_VIDEO_T_SECONDS).toBeCloseTo(621.8, 1);
+    const landmark = SEGMENT_B_VIDEO_TRANSITION_LANDMARKS.find((lm) => lm.id === 'B-T01')!;
+    expect(landmark.videoRelativeSeconds).toBeCloseTo(621.8, 1);
+    expect(landmark.landmarkKind).toBe('FIRST_ZERO_AFTER_LONG_DECEL');
+  });
+
+  it('6) launch event is bounded [673.0,673.5] without invented exact midpoint event time', () => {
+    const launch = SEGMENT_B_VIDEO_TRANSITION_LANDMARKS.find((lm) => lm.id === 'B-T02')!;
+    expect(launch.videoRelativeSeconds).toBeNull();
+    expect(launch.videoRelativeSecondsMin).toBe(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN);
+    expect(launch.videoRelativeSecondsMax).toBe(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX);
+    expect(launch.observationKind).toBe('BOUNDED_TRANSITION_WINDOW');
+  });
+
+  it('7) sparse first provider zero cannot automatically define clock offset', () => {
+    if (!hasSourceData) return;
+    const observations = loadRd004Jsonl(fs.readFileSync(SOURCE_OBS, 'utf8'));
+    const qualified = buildQualifiedHfSpeedSeries(
+      observations.filter((r) => r.providerField === 'speed' && r.acquisitionSurface === 'HF_HISTORICAL'),
+      SEGMENT_B_CONSTANTS.videoStartUtc,
+    );
+    const assessment = assessCorrectedFirstStopDisplacement(qualified);
+    expect(assessment.CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS).toBe('SPARSE_STATE_SAMPLE');
+    expect(assessment.SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET).toBe('YES');
+  });
+
+  it('8) sampling delay and clock offset are separate concepts', () => {
+    expect(SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET).toBe('YES');
+    const clock = reassessClockModelB2([], splitCalibrationHoldoutSets());
+    expect(clock.SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET).toBe('YES');
+  });
+
+  it('9) one corrected stop displacement cannot validate global clock offset', () => {
+    if (!hasSourceData) return;
+    const observations = loadRd004Jsonl(fs.readFileSync(SOURCE_OBS, 'utf8'));
+    const legacySidecar = fs
+      .readFileSync(SOURCE_SIDECAR, 'utf8')
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+    const result = runRd004SegmentBAnalysis({ observations, legacySidecar });
+    expect(result.flags.PROVIDER_TIMESTAMP_OFFSET_VALIDATED).toBe('NO');
+    expect(result.flags.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+    expect(result.flags.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS).not.toBeNull();
+  });
+
+  it('10) reverse remains excluded from clock fit without direction telemetry', () => {
+    expect(CLOCK_CALIBRATION_LANDMARK_IDS).not.toContain('CLK-B7');
+    expect(CLOCK_CALIBRATION_LANDMARK_IDS).toEqual(['B-T01', 'B-T02']);
+  });
+
+  it('11) holdout speed selection remains time-only', () => {
+    const points = samplePoints();
+    const holdout = SEGMENT_B_VIDEO_SPEED_ANCHORS.filter((a) => a.id === 'B02');
+    const result = computeHoldoutSpeedAccuracy(holdout, SEGMENT_B_VIDEO_SPEED_ANCHORS, points, 21, false);
+    expect(result.SPEED_SAMPLE_SELECTION_TIME_ONLY).toBe('YES');
+    expect(result.HOLDOUT_SPEED_SELECTION_TIME_ONLY).toBe('YES');
+  });
+
+  it('12) unvalidated offset cannot produce canonical absolute Speed MAE', () => {
+    const result = computeHoldoutSpeedAccuracy(
+      SEGMENT_B_VIDEO_SPEED_ANCHORS.filter((a) => a.id === 'B02'),
+      SEGMENT_B_VIDEO_SPEED_ANCHORS,
+      samplePoints(),
+      null,
+      false,
+    );
+    expect(result.ABSOLUTE_SPEED_ACCURACY_VALIDATED).toBe('NO');
+    expect(result.SPEED_MAE_KMH).toBeNull();
+  });
+
+  it('13) raw source evidence bytes remain unchanged', () => {
+    if (!hasSourceData || !fs.existsSync(SOURCE_MANIFEST)) return;
+    const manifest = JSON.parse(fs.readFileSync(SOURCE_MANIFEST, 'utf8'));
+    const obsSha = crypto.createHash('sha256').update(fs.readFileSync(SOURCE_OBS)).digest('hex');
+    expect(manifest.files['source-observations.jsonl'].sha256).toBe(obsSha);
+  });
+
+  it('14) no production runtime changes', () => {
+    const result = runRd004SegmentBAnalysis({ observations: [], legacySidecar: [] });
+    expect(result.flags.PRODUCTION_SCORE_CHANGED).toBe('NO');
+    expect(result.flags.PRODUCTION_DETECTORS_CHANGED).toBe('NO');
+    expect(result.flags.REFERENCE_CAPTURE_RUNTIME_CHANGED).toBe('NO');
+    expect(result.flags.DEPLOYED).toBe('NO');
   });
 });

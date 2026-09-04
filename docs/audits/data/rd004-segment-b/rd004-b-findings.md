@@ -1,7 +1,7 @@
-# RD004-B.1 — Segment B Independent Clock Calibration + Holdout Speed Accuracy Closeout
+# RD004-B.2 — Frame-Accurate Master Video Timeline + Transition Clock Reassessment
 
-**Evidence ID:** DI-EV-0035B.1
-**Phase:** RD004-B.1 (post-refuel ~16:40)
+**Evidence ID:** DI-EV-0035B.2
+**Phase:** RD004-B.2 (post-refuel ~16:40.498)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
 **Mode:** Read-only offline analysis — **no production changes**
@@ -10,129 +10,181 @@
 
 ## Einfache Zusammenfassung (Deutsch)
 
-### 1. Was war an der ersten B-Auswertung methodisch gekoppelt?
+### 1. Wie genau konnten die 9 Videoteile zusammengesetzt werden?
 
-DI-EV-0035B hat für jeden Videoanker zuerst per **Speed-Ähnlichkeit + Zeit** den besten HF-Sample gewählt (`score = -Δspeed - 0.25·Δtime`). Derselbe Sample wurde danach für **Offset-Schätzung** und **Speed-MAE** wiederverwendet. Das ist **Selection Bias / Double Dipping**: Ein Punkt wird nicht unabhängig gewählt, nur weil er zeitlich passt, sondern weil seine Geschwindigkeit dem Tacho ähnelt — und genau dieser Sample „beweist“ dann die Genauigkeit.
+Die neun Drive-Clips gehören zu **einer** kontinuierlichen Aufnahme. Die chronologische Reihenfolge wurde **nicht** aus Drive-Zeitstempeln abgeleitet, sondern durch **Audio-Kreuzkorrelation** benachbarter Clips verifiziert:
 
-### 2. Bleibt ~14 s ein plausibler Kandidat?
+**5 → 3 → 1 → 9 → 8 → 7 → 4 → 2 → 6**
 
-**Ja, als unterstützender Kandidat.** Die globale Kalibrierungssuche (−60…+60 s, nur Zeit-Matching auf Kalibrierungs-Landmarks) ergibt **~+13,5 s** (`OFFSET_CANDIDATE_AROUND_14_SECONDS = SUPPORTIVE_ONLY`). Das liegt nahe am explorativen DI-EV-0035B-Wert **~+14,299 s**, der als **nicht-kanonisch** erhalten bleibt.
+Jede Kante hat gemessene Überlappung und Korrelationskoeffizient (~0,999–1,000), dokumentiert in `rd004-b-video-master-timeline.json`. Damit ist das Stitching reproduzierbar und unabhängig von Metadaten.
 
-### 3. Ist ~14 s jetzt wirklich validiert oder nicht?
-
-**Nein.** `PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO`, `VIDEO_TO_PROVIDER_OFFSET_SECONDS = null`. Nur **ein** event-shape-qualifizierter Kalibrierungs-Landmark (CLK-B2 Stop-Transition) ist clock-fit-eligible; das reicht nicht für die Validierungskriterien (≥3 unabhängige Transition-Landmarks, Spread/MAD-Gates). Wissenschaftlich korrekt: lieber **unvalidiert** als scheinbar beweisen.
-
-### 4. Ist die alte MAE ~2,3 km/h belastbar?
-
-**Nein.** `PREVIOUS_SPEED_ACCURACY_METHOD_SELECTION_BIASED = YES`. Die ~2,263 km/h (`EXPLORATORY_PREVIOUS_SPEED_MAE_KMH`) bleiben als **explorativer, nicht-kanonischer** Referenzwert dokumentiert (`NOT_CANONICAL_VALIDATION_RESULT = YES`), dürfen aber **nicht** als absolute Ground-Truth-Genauigkeit gelten.
-
-### 5. Wie hoch ist Speed-MAE nach unabhängiger Holdout-Auswertung?
-
-Bei eingefrorenem Kalibrierungs-Offset **~+13,5 s** (supportive only), **zeit-only** Matching auf 17 Holdout-Anker:
+### 2. Wie lang ist Segment B tatsächlich?
 
 | Kennzahl | Wert |
 |----------|------|
-| Holdout-Anker gesamt | 17 |
-| Zeitlich vergleichbar (headline-tauglich) | **5** |
-| Abgelehnt (Zeitresidual zu groß) | **12** |
-| Diagnostische Holdout-MAE (nicht kanonisch, Offset nicht validiert) | **~13,8 km/h** |
-| Kanonische `SPEED_MAE_KMH` | **null** (`ABSOLUTE_SPEED_ACCURACY_VALIDATED = NO`) |
+| Rohsumme Clip-Dauern | 1017,273365 s |
+| Summe Audio-Überlappungen | 16,775 s |
+| **Master-Dauer (overlap-korrigiert)** | **1000,498365 s** (= 16 min 40,498 s) |
 
-Die diagnostische MAE betrifft vor allem **dynamische** Zustände (strengeres ≤2 s-Fenster); stabile Cruise-Anker scheitern meist am HF-Abstand.
+Die frühere gerundete 1000-s-Timeline wird dort ersetzt, wo Präzision zählt.
 
-### 6. Wie viele Videoanker haben überhaupt einen zeitlich nahen HF-Sample?
+### 3. Wie genau ist der Time.is-Start jetzt?
 
-Bei supportive Offset **~13,5 s** (zeit-only):
+Frame-Review am Anfang von Link 5:
 
-| Temporal-Residual | Anker |
-|-------------------|-------|
-| ≤ 1 s | 2 |
-| ≤ 2 s | 5 |
-| ≤ 5 s | 7 |
-| > 5 s | 10 |
+- t=0,766667 s: Time.is zeigt noch **05:47:02**
+- t=0,800000 s: Time.is zeigt **05:47:03**
 
-Nur **5** Anker erfüllen die strengeren Holdout-Kriterien für headline-taugliche Vergleiche.
+Sekundengrenze zwischen diesen Frames → Mittelpunkt **t≈0,783333 s**.
 
-### 7. Wie stark begrenzt die 10,6-s Median-Cadence unsere Speed-Genauigkeit?
+| Feld | Wert |
+|------|------|
+| `VIDEO_MASTER_T0_UTC_ESTIMATE` | `2026-09-04T03:47:02.216667Z` |
+| Time.is Unsicherheit (sichtbar) | ca. ±0,108 s |
+| `VIDEO_ABSOLUTE_TIME_ANCHORED` | **YES** |
 
-**Stark.** Median **~10,559 s** zwischen physischen HF-Samples (P90 **~34,7 s**, max Gap **~105,3 s**). Bei dynamischen Fahrzuständen (107→96→59→0) kann der zeitlich nächste HF-Punkt **mehrere Sekunden** vom Video-Snapshot entfernt sein — dann wird er korrekt als `REJECTED_TIME_DISTANCE` oder `NO_COMPARABLE_PHYSICAL_SAMPLE` klassifiziert statt eine irreführende MAE zu erzeugen.
+Keine Millisekunden-Ground-Truth — Frameintervall plus Time.is-Anzeigeunsicherheit sind explizit modelliert.
 
-### 8. Was wissen wir sicher über Gear/Reverse?
+### 4. Warum war t=630 als Stop-Landmark falsch?
+
+t=630 s zeigt **0 km/h im anhaltenden Stillstand** — ein **Zustands-Snapshot** (`SUSTAINED_STOP_STATE`), nicht den physischen Übergang in den Halt.
+
+Der tatsächliche erste Übergang auf angezeigte 0 km/h liegt **~8 s früher**. t=630 darf nur noch als Zustandsanker (B15) dienen, nicht als Clock-Landmark.
+
+`OLD_T630_STOP_TRANSITION_INVALIDATED = YES`
+
+### 5. Wann erreicht das Fahrzeug laut Video tatsächlich 0 km/h?
+
+Frame-verifizierte Deceleration:
+
+| Video-t | Anzeige |
+|---------|---------|
+| 620,0 s | 13 km/h |
+| 621,0 s | 5 km/h |
+| ≈621,4 s | ~2 km/h |
+| ≈621,7 s | ~1 km/h |
+| **≈621,8 s** | **erstes klares 0 km/h** |
+
+`FIRST_STOP_TRANSITION_VIDEO_T_SECONDS = 621.8`
+≈ `2026-09-04T03:57:24.017Z` (mit T0-Unsicherheit)
+
+Landmark **B-T01_FIRST_ZERO**.
+
+### 6. Wann beginnt der anschließende Launch?
+
+Nach prolonged zero-speed:
+
+| Video-t | Anzeige |
+|---------|---------|
+| 670,0–672,5 s | 0 km/h |
+| 673,0 s | 0 km/h |
+| 673,5 s | 2 km/h |
+| 674,0+ s | Beschleunigung |
+
+**Bounded window:** `FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN = 673.0`, `MAX = 673.5`
+Landmark **B-T02_FIRST_LAUNCH** — kein exakter Mittelpunkt als Event-Zeit.
+
+### 7. Was passiert mit dem bisherigen ~13,5–14 s Offset?
+
+B.1 hat **korrekt** `PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO` gesetzt und Selection Bias entfernt.
+
+B.2 zeigt: Der frühere Vergleich gegen **t=630** war methodisch falsch (falscher Video-Landmark). Der explorative ~14,3-s-Wert aus DI-EV-0035B bleibt **nicht-kanonisch** erhalten; der frühere „supportive ~14 s“-Kandidat wird durch die korrigierte Transition-Reassessment **ersetzt** (`OFFSET_CANDIDATE_AROUND_14_SECONDS = SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT`).
+
+### 8. Entsteht durch die korrigierte Stopzeit eher ein ~22-s-Abstand?
+
+**Ja, diagnostisch.** Gegen korrigierten Video-Stop (621,8 s) und HF-Zero-Sample `2026-09-04T03:57:45.685Z`:
+
+`CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS ≈ +21,67 s`
+
+Das liegt nahe am Segment-A-explorativen H-Landmark (~22,205 s), aber **ohne** gemeinsame Clock-Validierung.
+
+### 9. Ist dieser ~22-s-Abstand Clock Offset oder möglicherweise nur sparse sampling delay?
+
+**Kritische Unterscheidung — beides kann gemischt sein.**
+
+| Status | Bedeutung |
+|--------|-----------|
+| `CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS` | **SPARSE_STATE_SAMPLE** |
+| `SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET` | **YES** |
+
+Zwischen HF-Samples vor dem Zero-Punkt liegt eine **~29 s Lücke** (27 km/h → später 43→0 in 1 s). Das erste Provider-Zero ist sehr wahrscheinlich **kein** frame-genauer Stop-Transition-Match, sondern ein **spärlicher Zustands-Sample** nach der physischen Transition.
+
+**+21,7 s allein beweist keinen globalen +21,7 s Clock Offset.**
+
+### 10. Wiederholt sich das ~22-s-Muster aus Segment A?
+
+| Flag | Wert |
+|------|------|
+| `A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED` | **YES** (~21,7 vs ~22,2 s) |
+| `A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED` | **NO** |
+
+Ähnlichkeit ist **unterstützende** Evidenz, kein Beweis. Segment-A-Evidence bleibt unverändert.
+
+### 11. Ist ein Provider-Clock-Offset jetzt validiert?
+
+**Nein.**
+
+| Flag | Wert |
+|------|------|
+| `PROVIDER_TIMESTAMP_OFFSET_VALIDATED` | **NO** |
+| `VIDEO_TO_PROVIDER_OFFSET_SECONDS` | **null** |
+| `OFFSET_CANDIDATE_RANGE_SUPPORTIVE` | ca. **+19,7 … +23,7 s** (nur Stop-Landmark) |
+| Launch-Landmark Displacement | ca. **+5,1 … +5,6 s** (inkonsistent) |
+| `VIDEO_PROVIDER_ALIGNMENT_CLASS` | `APPROX_22S_DISPLACEMENT_SUPPORTIVE_ONLY` |
+
+Zwei Transition-Landmarks liefern **widersprüchliche** Offsets → keine globale Validierung (<3 konsistente Landmarks).
+
+### 12. Ist absolute Speed Accuracy jetzt validiert?
+
+**Nein.**
+
+| Flag | Wert |
+|------|------|
+| `ABSOLUTE_SPEED_ACCURACY_VALIDATED` | **NO** |
+| `SPEED_MAE_KMH` | **null** |
+| `HOLDOUT_SPEED_SELECTION_TIME_ONLY` | **YES** |
+| Diagnostische Holdout-MAE (supportive ~21,7 s, nicht kanonisch) | **~19,3 km/h** |
+
+Ohne validierten Offset keine kanonische MAE. B.1-Holdout-Methodik (zeit-only) bleibt erhalten.
+
+### 13. Was verhindert die ~10,6-s HF-Cadence weiterhin?
+
+| Kennzahl | Wert |
+|----------|------|
+| HF unique physical samples | 66 |
+| Median-Cadence | **~10,559 s** |
+| P90 | **~34,706 s** |
+| Max Gap | **~105,306 s** |
+
+Bei dynamischen Zuständen (Decel/Stop/Launch) fehlen oft HF-Samples **am** Transition-Zeitpunkt. Der zeitlich nächste Sample kann Sekunden daneben liegen → korrekte Klassifikation als nicht vergleichbar statt irreführender Genauigkeit.
+
+---
+
+## Weitere B.2 Invarianten
 
 | Thema | Status |
 |-------|--------|
-| Video-Gangbeobachtung | Stark (Gänge 2–7, R bei t≈990 s) |
-| `GEAR_STATE_OBSERVED` | **NO** (kein HF-Gear/Ratio in Segment B) |
-| `REVERSE_VIDEO_OBSERVED` | **YES** |
-| `REVERSE_TELEMETRY_SUPPORTED` | **NO** (unsigned speed, keine Richtung) |
-| CLK-B7 Reverse als Clock-Landmark | **Ausgeschlossen** — ohne Richtungstelemetrie kein Clock-Offset |
-
-### 9. Was wissen wir sicher über Legacy Detector?
-
-| Kennzahl | Wert |
-|----------|------|
 | Legacy Hard/Extreme Events | **0** |
-| Likely False Positives | **0** |
-| `VIDEO_OR_KINEMATIC_DYNAMIC_EPISODES_WITHOUT_LEGACY_EVENT` | **3** |
 | `LEGACY_FALSE_NEGATIVE_VALIDATED` | **NO** |
-
-Die 3 Episoden sind **Telemetrie-Kinematik ohne Legacy-Alarm** — das beweist **keinen** Detector-False-Negative ohne unabhängigen Ground-Truth-Event-Klassen-Nachweis.
-
-### 10. Welche RD004-Fragen sind jetzt wirklich abgeschlossen?
-
-**Abgeschlossen / belastbar:**
-
-- HF-Cadence Segment B (66 Samples, sparser als A)
-- Preprocessing-Distortion raw-vs-smoothed (telemetry-intern, nicht Ground Truth)
-- Legacy-Detector-Audit auf vorhandenen HF-Daten (0 harsh)
-- Video-Absolutzeit (Time.is) verankert
-- Methodische Entkopplung Kalibrierung/Holdout implementiert und getestet
-- RPM/TPS event-correlated; Throttle nicht event-correlated
-
-**Nicht abgeschlossen / offen:**
-
-- Provider-Offset **validiert** (nur supportive ~14 s Kandidat)
-- Absolute Speed-Genauigkeit **validiert** (Holdout zu dünn, MAE headline = null)
-- Drift über Segment
-- Stop-Timing headline-validiert (nur PARTIAL mit supportive Offset)
-- Gear/Reverse telemetrisch
-
-`READY_FOR_RD004_FINAL_CLOSEOUT = NO`
+| RPM / TPS Segment B | **EVENT_CORRELATED** |
+| Throttle | **NOT_EVENT_CORRELATED** |
+| Gear HF | **NOT_OBSERVED** |
+| Reverse Video / Telemetry | **YES / NO** |
+| `SECOND_STOP_VIDEO_OBSERVED` | **YES** |
+| `SECOND_STOP_TRANSITION_FRAME_EXACT` | **NO** |
+| `STOP_TIMING_VALIDATED` | **NO** |
+| `STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET` | **YES** (explorativ) |
+| Raw source bytes changed | **NO** |
+| Production / deploy | **NO** |
+| `READY_FOR_RD004_FINAL_CLOSEOUT` | **NO** |
 
 ---
 
-## Methodik B.1 (Kurz)
+## Artefakte
 
-1. **CLOCK_CALIBRATION_SET** (CLK-B1, B2, B5, B6) vs **SPEED_ACCURACY_HOLDOUT_SET** (17 Cruise-Anker) — deterministisch getrennt.
-2. Clock: Event-Shape / Transition-Matching, globale Offset-Suche, **kein** Speed-Matching.
-3. Holdout: `expectedProviderTimestamp = videoUtc + frozenOffset`, **nur** zeitlich nächster Sample.
-4. Explorative DI-EV-0035B-Werte (~14,3 s / ~2,3 km/h) als `NOT_CANONICAL` erhalten.
-5. Raw-Bytes unverändert (`RAW_SOURCE_OBSERVATIONS_CHANGED = NO`).
+- `rd004-b-video-master-timeline.json` — audio-korrelierte Stitching-Evidence
+- `rd004-b-video-anchor-table.json` — B01–B25 + B-T01/B-T02 Landmarks
+- `rd004-b-video-clock-alignment.json` — B.2 Transition-Clock-Reassessment
+- `rd004-b-stop-timing.json`, `rd004-b-speed-accuracy.json`, `rd004-b-session-summary.json`
 
----
-
-## Schlüssel-Flags
-
-```
-RD004_PHASE = B.1
-RAW_SOURCE_OBSERVATIONS_CHANGED = NO
-HF_SPEED_ROWS = 66
-HF_SPEED_UNIQUE_PHYSICAL_SAMPLES = 66
-HF_SPEED_MEDIAN_PHYSICAL_CADENCE_SECONDS ≈ 10.559
-HF_SPEED_P90_PHYSICAL_CADENCE_SECONDS ≈ 34.706
-HF_SPEED_MAX_GAP_SECONDS ≈ 105.306
-PREVIOUS_OFFSET_METHOD_SELECTION_BIASED = YES
-PREVIOUS_SPEED_ACCURACY_METHOD_SELECTION_BIASED = YES
-CLOCK_CALIBRATION_HOLDOUT_SEPARATED = YES
-PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO
-VIDEO_TO_PROVIDER_OFFSET_SECONDS = null
-OFFSET_CANDIDATE_SUPPORTIVE_ONLY = YES
-HOLDOUT_FROZEN_OFFSET_SECONDS ≈ 13.5
-HOLDOUT_COMPARABLE_SAMPLE_COUNT = 5
-ABSOLUTE_SPEED_ACCURACY_VALIDATED = NO
-SPEED_MAE_KMH = null
-diagnosticHoldoutMaeKmh ≈ 13.8 (non-canonical)
-PRODUCTION_SCORE_CHANGED = NO
-DEPLOYED = NO
-READY_FOR_RD004_FINAL_CLOSEOUT = NO
-```
+**Changes / Architektur:** aktualisiert (DI-EV-0035B.2).

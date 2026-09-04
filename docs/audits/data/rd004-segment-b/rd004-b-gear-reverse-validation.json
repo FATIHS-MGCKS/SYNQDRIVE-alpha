@@ -15,10 +15,10 @@
     "videoAnchorConfidence": "HIGH",
     "providerTimestamp": "2026-09-04T04:03:46.299Z",
     "providerSpeedKmh": 0,
-    "telemetryVideoRelativeSeconds": 1004.299,
-    "rawTimeDisplacementSeconds": 14.298999999999978,
+    "telemetryVideoRelativeSeconds": 1004.083,
+    "rawTimeDisplacementSeconds": 14.08299999999997,
     "speedErrorKmh": 0,
-    "candidateOffsetSeconds": 14.298999999999978,
+    "candidateOffsetSeconds": 14.08299999999997,
     "matchConfidence": "HIGH",
     "localShapeAgreement": "GOOD",
     "cadenceContextSeconds": 35.436

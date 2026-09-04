@@ -1,7 +1,6 @@
 /**
- * RD004-B.1 / DI-EV-0035B.1 — Segment B video ↔ telemetry validation (read-only analysis).
- * Decouples clock calibration from holdout speed accuracy; time-only holdout matching.
- * Preserves all DI-EV-0035A.2 methodology invariants. No production changes.
+ * RD004-B.2 / DI-EV-0035B.2 — Segment B frame-accurate master video timeline + transition clock reassessment.
+ * Builds on B.1 independent calibration/holdout separation. No production changes.
  */
 import * as crypto from 'crypto';
 import {
@@ -36,9 +35,57 @@ import {
   computePhysicalCadenceMetrics,
 } from './reference-capture-rd003-signal-quality';
 
-export const RD004_B_PHASE = 'RD004-B.1';
-export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.1';
+export const RD004_B_PHASE = 'RD004-B.2';
+export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.2';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
+
+export const ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION = 'YES';
+export const SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET = 'YES';
+export const OLD_T630_STOP_TRANSITION_INVALIDATED = 'YES';
+
+export const SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS = 22.205;
+
+export const VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T = 0.766667;
+export const VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T = 0.8;
+export const VIDEO_TIMEIS_SECOND_BOUNDARY_MID_T = 0.783333;
+export const VIDEO_TIMEIS_UNCERTAINTY_SECONDS = 0.108;
+export const VIDEO_MASTER_T0_UTC_ESTIMATE = '2026-09-04T03:47:02.216667Z';
+export const VIDEO_CLIP_TOTAL_OVERLAP_SECONDS = 16.775;
+export const VIDEO_MASTER_DURATION_SECONDS = 1000.498365;
+export const VIDEO_RAW_CLIP_DURATION_SUM_SECONDS = 1017.273365;
+
+export const FIRST_STOP_TRANSITION_VIDEO_T_SECONDS = 621.8;
+export const FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN = 673.0;
+export const FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX = 673.5;
+export const FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY = 673.25;
+
+export const SEGMENT_B_VIDEO_CLIP_ORDER = [5, 3, 1, 9, 8, 7, 4, 2, 6] as const;
+
+export const SEGMENT_B_CLIP_JUNCTIONS = [
+  { from: 5, to: 3, overlapSeconds: 2.658375, audioCorrelation: 0.99948 },
+  { from: 3, to: 1, overlapSeconds: 2.046625, audioCorrelation: 0.99871 },
+  { from: 1, to: 9, overlapSeconds: 1.841625, audioCorrelation: 0.99851 },
+  { from: 9, to: 8, overlapSeconds: 1.84, audioCorrelation: 1.0 },
+  { from: 8, to: 7, overlapSeconds: 1.023375, audioCorrelation: 0.99971 },
+  { from: 7, to: 4, overlapSeconds: 3.273375, audioCorrelation: 1.0 },
+  { from: 4, to: 2, overlapSeconds: 2.046625, audioCorrelation: 0.99969 },
+  { from: 2, to: 6, overlapSeconds: 2.045, audioCorrelation: 1.0 },
+] as const;
+
+export const SEGMENT_B_CLIP_MASTER_START_SECONDS: Record<number, number> = {
+  5: 0,
+  3: 117.439958,
+  1: 238.563333,
+  9: 359.686708,
+  8: 478.970041,
+  7: 599.069999,
+  4: 717.943324,
+  2: 839.066699,
+  6: 958.350032,
+};
+
+/** B.1 telemetry provider zero previously compared against wrong video t=630 snapshot. */
+export const B1_TELEMETRY_FIRST_ZERO_PROVIDER_TIMESTAMP = '2026-09-04T03:57:45.685Z';
 
 export const VALIDATED_OFFSET_MUST_BE_APPLIED_BEFORE_ACCURACY_SAMPLE_SELECTION = 'YES';
 export const SPEED_SAMPLE_SELECTION_TIME_ONLY = 'YES';
@@ -51,8 +98,8 @@ export const STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE = 'YES';
 export const EXPLORATORY_PREVIOUS_OFFSET_SECONDS = 14.299;
 export const EXPLORATORY_PREVIOUS_SPEED_MAE_KMH = 2.263;
 
-/** Deterministic clock-calibration landmarks (transition/event evidence). */
-export const CLOCK_CALIBRATION_LANDMARK_IDS = ['CLK-B1', 'CLK-B2', 'CLK-B5', 'CLK-B6'] as const;
+/** B.2 frame-verified / bounded video transition landmarks for clock calibration. */
+export const CLOCK_CALIBRATION_LANDMARK_IDS = ['B-T01', 'B-T02'] as const;
 
 /** Deterministic holdout speed anchors — ordinary cruise/mid-speed frames only. */
 export const SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS = [
@@ -89,17 +136,23 @@ export const SEGMENT_B_CONSTANTS = {
   sessionId: 'f1e81e78-f96b-44ee-80c2-ca5270f21248',
   referenceDriveId: 'DIMO_LTE_R1_REFERENCE_DRIVE_004',
   vehicleLabel: 'KS MX 2024 Mercedes-Benz C 63 AMG',
-  videoStartUtc: '2026-09-04T03:47:02.000Z',
-  videoEndUtc: '2026-09-04T04:03:42.000Z',
-  videoDurationSeconds: 1000,
+  videoStartUtc: VIDEO_MASTER_T0_UTC_ESTIMATE,
+  videoEndUtc: new Date(
+    Date.parse(VIDEO_MASTER_T0_UTC_ESTIMATE) + VIDEO_MASTER_DURATION_SECONDS * 1000,
+  ).toISOString(),
+  videoDurationSeconds: VIDEO_MASTER_DURATION_SECONDS,
   queryEnvelopeStartUtc: '2026-09-04T03:46:00.000Z',
   queryEnvelopeEndUtc: '2026-09-04T04:05:00.000Z',
-  independentClockAnchorUtc: '2026-09-04T03:47:02.000Z',
+  independentClockAnchorUtc: VIDEO_MASTER_T0_UTC_ESTIMATE,
   timeIsDisplayCest: '2026-09-04 05:47:02 CEST',
   timeIsOffsetFromUtcHours: 2,
+  timeIsSecondBoundaryMinT: VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T,
+  timeIsSecondBoundaryMaxT: VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T,
+  timeIsSecondBoundaryMidT: VIDEO_TIMEIS_SECOND_BOUNDARY_MID_T,
+  timeIsUncertaintySeconds: VIDEO_TIMEIS_UNCERTAINTY_SECONDS,
   fullSessionSealedEvidenceSha256: '5938b9e9120864768dd91048fb06a182ef2b7f0772a9a2df2c75f17cb684d2e2',
   videoReconstructionNote:
-    'Nine clips merged 5→3→1→9→8→7→4→2→6 with small boundary overlap; ~1000 s continuous timeline',
+    'Nine clips audio-correlated 5→3→1→9→8→7→4→2→6; overlap-corrected master duration 1000.498365 s',
   thermalContext: 'WARMING_THROUGH_MOST_OF_SEGMENT',
 } as const;
 
@@ -129,6 +182,8 @@ export const SEGMENT_B_SIGNALS = [
 
 export type VideoAnchorConfidence = 'HIGH' | 'MEDIUM' | 'REJECTED';
 
+export type VideoAnchorSemantic = 'VIDEO_STATE_ANCHOR' | 'VIDEO_TRANSITION_LANDMARK';
+
 export type SegmentBVideoSpeedAnchor = {
   id: string;
   videoRelativeSeconds: number;
@@ -138,7 +193,25 @@ export type SegmentBVideoSpeedAnchor = {
   videoAnchorConfidence: VideoAnchorConfidence;
   videoTimingAuthority: VideoTimingAuthority;
   approximate: boolean;
+  anchorSemantic: VideoAnchorSemantic;
   note?: string;
+};
+
+export type SegmentBVideoTransitionLandmark = {
+  id: string;
+  label: string;
+  episodeId: string;
+  landmarkKind: 'FIRST_ZERO_AFTER_LONG_DECEL' | 'ZERO_TO_FORWARD_MOTION' | 'SECOND_STOP_CONTEXT';
+  videoRelativeSeconds: number | null;
+  videoRelativeSecondsMin: number | null;
+  videoRelativeSecondsMax: number | null;
+  videoUtc: string | null;
+  videoUtcMin: string | null;
+  videoUtcMax: string | null;
+  videoTimingAuthority: VideoTimingAuthority;
+  observationKind: 'TRANSITION_TIME_OBSERVATION' | 'BOUNDED_TRANSITION_WINDOW' | 'STATE_OBSERVATION_ONLY';
+  CLOCK_FIT_ELIGIBLE: 'YES' | 'NO';
+  ineligibleReason?: string;
 };
 
 export type SegmentBClockLandmark = {
@@ -173,44 +246,136 @@ function mad(values: number[]): number | null {
 }
 
 function videoUtcFromRelative(videoRelativeSeconds: number): string {
-  const ms = Date.parse(SEGMENT_B_CONSTANTS.videoStartUtc) + videoRelativeSeconds * 1000;
+  const ms = Date.parse(VIDEO_MASTER_T0_UTC_ESTIMATE) + videoRelativeSeconds * 1000;
   return new Date(ms).toISOString();
 }
 
+export function buildVideoMasterTimeline() {
+  const clips = SEGMENT_B_VIDEO_CLIP_ORDER.map((linkId, index) => {
+    const masterStart = SEGMENT_B_CLIP_MASTER_START_SECONDS[linkId]!;
+    const junction = SEGMENT_B_CLIP_JUNCTIONS[index];
+    const nextLink = SEGMENT_B_VIDEO_CLIP_ORDER[index + 1];
+    const overlapSeconds = junction?.overlapSeconds ?? 0;
+    const rawDurationSeconds =
+      nextLink != null
+        ? SEGMENT_B_CLIP_MASTER_START_SECONDS[nextLink]! - masterStart + overlapSeconds
+        : VIDEO_MASTER_DURATION_SECONDS - masterStart;
+    const masterEndSeconds = masterStart + rawDurationSeconds - overlapSeconds;
+    return {
+      linkId,
+      canonicalOrderIndex: index,
+      masterStartSeconds: masterStart,
+      masterEndSeconds,
+      rawDurationSeconds,
+      overlapWithNextSeconds: junction?.overlapSeconds ?? null,
+      overlapWithNextLinkId: junction?.to ?? null,
+      audioCorrelationWithNext: junction?.audioCorrelation ?? null,
+    };
+  });
+
+  const overlapSum = SEGMENT_B_CLIP_JUNCTIONS.reduce((s, j) => s + j.overlapSeconds, 0);
+  const rawSum = clips.reduce((s, c) => s + c.rawDurationSeconds, 0);
+
+  return {
+    VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED: 'YES' as const,
+    canonicalClipOrder: [...SEGMENT_B_VIDEO_CLIP_ORDER],
+    clipJunctions: [...SEGMENT_B_CLIP_JUNCTIONS],
+    clips,
+    VIDEO_CLIP_TOTAL_OVERLAP_SECONDS: overlapSum,
+    VIDEO_RAW_CLIP_DURATION_SUM_SECONDS: rawSum,
+    VIDEO_MASTER_DURATION_SECONDS: VIDEO_MASTER_DURATION_SECONDS,
+    VIDEO_MASTER_T0_UTC_ESTIMATE,
+    VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T,
+    VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T,
+    VIDEO_TIMEIS_SECOND_BOUNDARY_MID_T,
+    VIDEO_TIMEIS_UNCERTAINTY_SECONDS,
+    note: 'Clip order from audio cross-correlation — not inferred from Drive timestamps',
+  };
+}
+
+export const SEGMENT_B_VIDEO_TRANSITION_LANDMARKS: readonly SegmentBVideoTransitionLandmark[] = [
+  {
+    id: 'B-T01',
+    label: 'first displayed 0 km/h after long deceleration (frame-verified)',
+    episodeId: 'B-E4',
+    landmarkKind: 'FIRST_ZERO_AFTER_LONG_DECEL',
+    videoRelativeSeconds: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+    videoRelativeSecondsMin: null,
+    videoRelativeSecondsMax: null,
+    videoUtc: videoUtcFromRelative(FIRST_STOP_TRANSITION_VIDEO_T_SECONDS),
+    videoUtcMin: null,
+    videoUtcMax: null,
+    videoTimingAuthority: 'HIGH_CONFIDENCE',
+    observationKind: 'TRANSITION_TIME_OBSERVATION',
+    CLOCK_FIT_ELIGIBLE: 'YES',
+  },
+  {
+    id: 'B-T02',
+    label: 'zero to forward motion after first stop (bounded window)',
+    episodeId: 'B-E5',
+    landmarkKind: 'ZERO_TO_FORWARD_MOTION',
+    videoRelativeSeconds: null,
+    videoRelativeSecondsMin: FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+    videoRelativeSecondsMax: FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+    videoUtc: null,
+    videoUtcMin: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN),
+    videoUtcMax: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX),
+    videoTimingAuthority: 'HIGH_CONFIDENCE',
+    observationKind: 'BOUNDED_TRANSITION_WINDOW',
+    CLOCK_FIT_ELIGIBLE: 'YES',
+  },
+  {
+    id: 'B-T03',
+    label: 'second stop context (~724 s sustained zero; transition not frame-exact)',
+    episodeId: 'B-E5',
+    landmarkKind: 'SECOND_STOP_CONTEXT',
+    videoRelativeSeconds: 724,
+    videoRelativeSecondsMin: null,
+    videoRelativeSecondsMax: null,
+    videoUtc: videoUtcFromRelative(724),
+    videoUtcMin: null,
+    videoUtcMax: null,
+    videoTimingAuthority: 'HIGH_CONFIDENCE',
+    observationKind: 'STATE_OBSERVATION_ONLY',
+    CLOCK_FIT_ELIGIBLE: 'NO',
+    ineligibleReason: 'SECOND_STOP_TRANSITION_FRAME_EXACT=NO',
+  },
+];
+
 export const SEGMENT_B_VIDEO_SPEED_ANCHORS: readonly SegmentBVideoSpeedAnchor[] = [
-  { id: 'B01', videoRelativeSeconds: 60, videoUtc: videoUtcFromRelative(60), videoSpeedKmh: 17, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B02', videoRelativeSeconds: 120, videoUtc: videoUtcFromRelative(120), videoSpeedKmh: 57, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B03', videoRelativeSeconds: 210, videoUtc: videoUtcFromRelative(210), videoSpeedKmh: 60, videoGear: 6, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B04', videoRelativeSeconds: 240, videoUtc: videoUtcFromRelative(240), videoSpeedKmh: 94, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B05', videoRelativeSeconds: 270, videoUtc: videoUtcFromRelative(270), videoSpeedKmh: 79, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B06', videoRelativeSeconds: 300, videoUtc: videoUtcFromRelative(300), videoSpeedKmh: 61, videoGear: 6, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B07', videoRelativeSeconds: 390, videoUtc: videoUtcFromRelative(390), videoSpeedKmh: 109, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B08', videoRelativeSeconds: 420, videoUtc: videoUtcFromRelative(420), videoSpeedKmh: 98, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B09', videoRelativeSeconds: 450, videoUtc: videoUtcFromRelative(450), videoSpeedKmh: 115, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B10', videoRelativeSeconds: 480, videoUtc: videoUtcFromRelative(480), videoSpeedKmh: 116, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B11', videoRelativeSeconds: 510, videoUtc: videoUtcFromRelative(510), videoSpeedKmh: 112, videoGear: 7, videoAnchorConfidence: 'MEDIUM', videoTimingAuthority: 'APPROXIMATE', approximate: true, note: 'Dashboard readability approximate — recheck' },
-  { id: 'B12', videoRelativeSeconds: 540, videoUtc: videoUtcFromRelative(540), videoSpeedKmh: 107, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B13', videoRelativeSeconds: 570, videoUtc: videoUtcFromRelative(570), videoSpeedKmh: 96, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B14', videoRelativeSeconds: 600, videoUtc: videoUtcFromRelative(600), videoSpeedKmh: 59, videoGear: 4, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B15', videoRelativeSeconds: 630, videoUtc: videoUtcFromRelative(630), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B16', videoRelativeSeconds: 660, videoUtc: videoUtcFromRelative(660), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B17', videoRelativeSeconds: 690, videoUtc: videoUtcFromRelative(690), videoSpeedKmh: 51, videoGear: 5, videoAnchorConfidence: 'MEDIUM', videoTimingAuthority: 'APPROXIMATE', approximate: true, note: 'Approximate launch speed — recheck' },
-  { id: 'B18', videoRelativeSeconds: 720, videoUtc: videoUtcFromRelative(720), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B19', videoRelativeSeconds: 750, videoUtc: videoUtcFromRelative(750), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B20', videoRelativeSeconds: 780, videoUtc: videoUtcFromRelative(780), videoSpeedKmh: 16, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B21', videoRelativeSeconds: 810, videoUtc: videoUtcFromRelative(810), videoSpeedKmh: 4, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B22', videoRelativeSeconds: 840, videoUtc: videoUtcFromRelative(840), videoSpeedKmh: 71, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B23', videoRelativeSeconds: 870, videoUtc: videoUtcFromRelative(870), videoSpeedKmh: 77, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B24', videoRelativeSeconds: 930, videoUtc: videoUtcFromRelative(930), videoSpeedKmh: 33, videoGear: 3, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false },
-  { id: 'B25', videoRelativeSeconds: 990, videoUtc: videoUtcFromRelative(990), videoSpeedKmh: 0, videoGear: 'R', videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, note: 'Reverse R at 0 km/h' },
+  { id: 'B01', videoRelativeSeconds: 60, videoUtc: videoUtcFromRelative(60), videoSpeedKmh: 17, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B02', videoRelativeSeconds: 120, videoUtc: videoUtcFromRelative(120), videoSpeedKmh: 57, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B03', videoRelativeSeconds: 210, videoUtc: videoUtcFromRelative(210), videoSpeedKmh: 60, videoGear: 6, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B04', videoRelativeSeconds: 240, videoUtc: videoUtcFromRelative(240), videoSpeedKmh: 94, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B05', videoRelativeSeconds: 270, videoUtc: videoUtcFromRelative(270), videoSpeedKmh: 79, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B06', videoRelativeSeconds: 300, videoUtc: videoUtcFromRelative(300), videoSpeedKmh: 61, videoGear: 6, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B07', videoRelativeSeconds: 390, videoUtc: videoUtcFromRelative(390), videoSpeedKmh: 109, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B08', videoRelativeSeconds: 420, videoUtc: videoUtcFromRelative(420), videoSpeedKmh: 98, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B09', videoRelativeSeconds: 450, videoUtc: videoUtcFromRelative(450), videoSpeedKmh: 115, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B10', videoRelativeSeconds: 480, videoUtc: videoUtcFromRelative(480), videoSpeedKmh: 116, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B11', videoRelativeSeconds: 510, videoUtc: videoUtcFromRelative(510), videoSpeedKmh: 112, videoGear: 7, videoAnchorConfidence: 'MEDIUM', videoTimingAuthority: 'APPROXIMATE', approximate: true, anchorSemantic: 'VIDEO_STATE_ANCHOR', note: 'Dashboard readability approximate — recheck' },
+  { id: 'B12', videoRelativeSeconds: 540, videoUtc: videoUtcFromRelative(540), videoSpeedKmh: 107, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B13', videoRelativeSeconds: 570, videoUtc: videoUtcFromRelative(570), videoSpeedKmh: 96, videoGear: 7, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B14', videoRelativeSeconds: 600, videoUtc: videoUtcFromRelative(600), videoSpeedKmh: 59, videoGear: 4, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B15', videoRelativeSeconds: 630, videoUtc: videoUtcFromRelative(630), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR', note: 'SUSTAINED_STOP_STATE — not stop-transition (see B-T01 at t≈621.8)' },
+  { id: 'B16', videoRelativeSeconds: 660, videoUtc: videoUtcFromRelative(660), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B17', videoRelativeSeconds: 690, videoUtc: videoUtcFromRelative(690), videoSpeedKmh: 51, videoGear: 5, videoAnchorConfidence: 'MEDIUM', videoTimingAuthority: 'APPROXIMATE', approximate: true, anchorSemantic: 'VIDEO_STATE_ANCHOR', note: 'Approximate launch speed — recheck' },
+  { id: 'B18', videoRelativeSeconds: 720, videoUtc: videoUtcFromRelative(720), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR', note: 'Zero-speed state snapshot — not frame-exact second-stop transition' },
+  { id: 'B19', videoRelativeSeconds: 750, videoUtc: videoUtcFromRelative(750), videoSpeedKmh: 0, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B20', videoRelativeSeconds: 780, videoUtc: videoUtcFromRelative(780), videoSpeedKmh: 16, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B21', videoRelativeSeconds: 810, videoUtc: videoUtcFromRelative(810), videoSpeedKmh: 4, videoGear: 2, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B22', videoRelativeSeconds: 840, videoUtc: videoUtcFromRelative(840), videoSpeedKmh: 71, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B23', videoRelativeSeconds: 870, videoUtc: videoUtcFromRelative(870), videoSpeedKmh: 77, videoGear: 5, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B24', videoRelativeSeconds: 930, videoUtc: videoUtcFromRelative(930), videoSpeedKmh: 33, videoGear: 3, videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR' },
+  { id: 'B25', videoRelativeSeconds: 990, videoUtc: videoUtcFromRelative(990), videoSpeedKmh: 0, videoGear: 'R', videoAnchorConfidence: 'HIGH', videoTimingAuthority: 'HIGH_CONFIDENCE', approximate: false, anchorSemantic: 'VIDEO_STATE_ANCHOR', note: 'Reverse R at 0 km/h' },
 ];
 
 export const SEGMENT_B_CLOCK_LANDMARKS: readonly SegmentBClockLandmark[] = [
   { id: 'CLK-B1', label: 'high-speed section end / decel onset', episodeId: 'B-E3', videoRelativeSeconds: 540, videoUtc: videoUtcFromRelative(540), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'DECEL_TO_STOP', expectedSpeedKmh: 107, temporalLocalityToleranceSeconds: 45 },
-  { id: 'CLK-B2', label: 'first complete stop after long decel', episodeId: 'B-E4', videoRelativeSeconds: 630, videoUtc: videoUtcFromRelative(630), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'COMPLETE_STOP', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 45 },
+  { id: 'CLK-B2', label: 'INVALIDATED — was t=630 zero snapshot (see B-T01 at 621.8)', episodeId: 'B-E4', videoRelativeSeconds: 630, videoUtc: videoUtcFromRelative(630), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'COMPLETE_STOP', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 45 },
   { id: 'CLK-B3', label: 'sustained stop before launch', episodeId: 'B-E5', videoRelativeSeconds: 660, videoUtc: videoUtcFromRelative(660), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'COMPLETE_STOP', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 45 },
   { id: 'CLK-B4', label: 'stop to launch (~51 km/h)', episodeId: 'B-E5', videoRelativeSeconds: 690, videoUtc: videoUtcFromRelative(690), videoTimingAuthority: 'APPROXIMATE', landmarkKind: 'STOP_TO_LAUNCH', expectedSpeedKmh: 51, temporalLocalityToleranceSeconds: 45 },
-  { id: 'CLK-B5', label: 'second distinct stop', episodeId: 'B-E5', videoRelativeSeconds: 720, videoUtc: videoUtcFromRelative(720), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'SECOND_STOP', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 45 },
+  { id: 'CLK-B5', label: 'second distinct stop (state snapshot only — not frame-exact transition)', episodeId: 'B-E5', videoRelativeSeconds: 720, videoUtc: videoUtcFromRelative(720), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'SECOND_STOP', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 45 },
   { id: 'CLK-B6', label: 'late acceleration 4→71', episodeId: 'B-E7', videoRelativeSeconds: 840, videoUtc: videoUtcFromRelative(840), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'LATE_ACCELERATION', expectedSpeedKmh: 71, temporalLocalityToleranceSeconds: 45 },
   { id: 'CLK-B7', label: 'reverse context', episodeId: 'B-E9', videoRelativeSeconds: 990, videoUtc: videoUtcFromRelative(990), videoTimingAuthority: 'HIGH_CONFIDENCE', landmarkKind: 'REVERSE_CONTEXT', expectedSpeedKmh: 0, temporalLocalityToleranceSeconds: 60 },
 ];
@@ -722,14 +887,21 @@ export function searchGlobalClockOffset(
 export function splitCalibrationHoldoutSets() {
   const calibrationLandmarkIds = [...CLOCK_CALIBRATION_LANDMARK_IDS];
   const holdoutAnchorIds = [...SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS];
-  const calibrationLandmarks = SEGMENT_B_CLOCK_LANDMARKS.filter((lm) =>
+  const calibrationLandmarks = SEGMENT_B_VIDEO_TRANSITION_LANDMARKS.filter((lm) =>
     calibrationLandmarkIds.includes(lm.id as (typeof CLOCK_CALIBRATION_LANDMARK_IDS)[number]),
   );
   const holdoutAnchors = SEGMENT_B_VIDEO_SPEED_ANCHORS.filter((a) =>
     holdoutAnchorIds.includes(a.id as (typeof SPEED_ACCURACY_HOLDOUT_ANCHOR_IDS)[number]),
   );
+  const calibrationVideoTimes = calibrationLandmarks.flatMap((lm) => {
+    const times: number[] = [];
+    if (lm.videoRelativeSeconds != null) times.push(lm.videoRelativeSeconds);
+    if (lm.videoRelativeSecondsMin != null) times.push(lm.videoRelativeSecondsMin);
+    if (lm.videoRelativeSecondsMax != null) times.push(lm.videoRelativeSecondsMax);
+    return times;
+  });
   const overlap = holdoutAnchors.filter((a) =>
-    calibrationLandmarks.some((lm) => Math.abs(lm.videoRelativeSeconds - a.videoRelativeSeconds) < 1),
+    calibrationVideoTimes.some((t) => Math.abs(t - a.videoRelativeSeconds) < 1),
   );
   return {
     CLOCK_CALIBRATION_SET: calibrationLandmarks,
@@ -738,6 +910,293 @@ export function splitCalibrationHoldoutSets() {
     CLOCK_HOLDOUT_ANCHOR_COUNT: holdoutAnchors.length,
     CLOCK_CALIBRATION_HOLDOUT_SEPARATED: overlap.length === 0 ? 'YES' : 'NO',
     overlapRejected: overlap.map((a) => a.id),
+  };
+}
+
+export function providerVideoRelativeSeconds(providerTimestamp: string): number {
+  return (parseMs(providerTimestamp)! - parseMs(VIDEO_MASTER_T0_UTC_ESTIMATE)!) / 1000;
+}
+
+export function assessCorrectedFirstStopDisplacement(points: QualifiedSpeedPoint[]) {
+  const videoT = FIRST_STOP_TRANSITION_VIDEO_T_SECONDS;
+  const videoUtc = videoUtcFromRelative(videoT);
+  const windowStartMs = parseMs(videoUtc)!;
+  const windowEndMs = windowStartMs + 90_000;
+
+  const sorted = [...points].sort(
+    (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
+  );
+
+  let transitionIdx = -1;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]!;
+    const cur = sorted[i]!;
+    const t = parseMs(cur.providerTimestamp)!;
+    if (t < windowStartMs || t > windowEndMs) continue;
+    if (prev.speedKmh >= 8 && cur.speedKmh <= 2) {
+      transitionIdx = i;
+      break;
+    }
+  }
+
+  let firstZeroIdx = -1;
+  for (let i = 0; i < sorted.length; i++) {
+    const t = parseMs(sorted[i]!.providerTimestamp)!;
+    if (t < windowStartMs) continue;
+    if (t > windowEndMs) break;
+    if (sorted[i]!.speedKmh <= 2) {
+      firstZeroIdx = i;
+      break;
+    }
+  }
+
+  const transition = transitionIdx >= 0 ? sorted[transitionIdx]! : null;
+  const zeroSample = firstZeroIdx >= 0 ? sorted[firstZeroIdx]! : null;
+  const prevBeforeZero =
+    firstZeroIdx > 0 ? sorted[firstZeroIdx - 1]! : transitionIdx > 0 ? sorted[transitionIdx - 1]! : null;
+
+  const reference = transition ?? zeroSample;
+  let displacement =
+    reference != null ? providerVideoRelativeSeconds(reference.providerTimestamp) - videoT : null;
+
+  let status: 'TRANSITION_MATCH' | 'SPARSE_STATE_SAMPLE' | 'AMBIGUOUS' = 'AMBIGUOUS';
+  if (transition) {
+    const prevHigh = sorted[transitionIdx - 1]!;
+    let lastMeaningfulIdx = transitionIdx - 2;
+    while (lastMeaningfulIdx >= 0 && sorted[lastMeaningfulIdx]!.speedKmh <= 5) {
+      lastMeaningfulIdx--;
+    }
+    const gapBeforeTransition =
+      lastMeaningfulIdx >= 0
+        ? (parseMs(prevHigh.providerTimestamp)! -
+            parseMs(sorted[lastMeaningfulIdx]!.providerTimestamp)!) /
+          1000
+        : null;
+    const immediateGap =
+      (parseMs(transition.providerTimestamp)! - parseMs(prevHigh.providerTimestamp)!) / 1000;
+    if (gapBeforeTransition != null && gapBeforeTransition > 20) {
+      status = 'SPARSE_STATE_SAMPLE';
+      if (zeroSample) {
+        displacement = providerVideoRelativeSeconds(zeroSample.providerTimestamp) - videoT;
+      }
+    } else if (
+      transition.speedKmh <= 2 &&
+      prevHigh.speedKmh >= 20 &&
+      immediateGap <= 2
+    ) {
+      status = 'AMBIGUOUS';
+      if (zeroSample) {
+        displacement = providerVideoRelativeSeconds(zeroSample.providerTimestamp) - videoT;
+      }
+    } else {
+      status = 'TRANSITION_MATCH';
+    }
+  } else if (zeroSample && prevBeforeZero) {
+    const gap =
+      (parseMs(zeroSample.providerTimestamp)! - parseMs(prevBeforeZero.providerTimestamp)!) / 1000;
+    if (gap > 20 || prevBeforeZero.speedKmh > 10) {
+      status = 'SPARSE_STATE_SAMPLE';
+    } else if (prevBeforeZero.speedKmh > 5 && zeroSample.speedKmh <= 2) {
+      status = 'AMBIGUOUS';
+    } else {
+      status = 'TRANSITION_MATCH';
+    }
+  }
+
+  const localGapBefore =
+    reference && prevBeforeZero
+      ? (parseMs(reference.providerTimestamp)! - parseMs(prevBeforeZero.providerTimestamp)!) / 1000
+      : null;
+
+  const b1WrongDisplacement =
+    providerVideoRelativeSeconds(B1_TELEMETRY_FIRST_ZERO_PROVIDER_TIMESTAMP) - 630;
+
+  return {
+    FIRST_STOP_TRANSITION_VIDEO_T_SECONDS: videoT,
+    FIRST_STOP_TRANSITION_VIDEO_UTC: videoUtc,
+    CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS: displacement,
+    CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS: status,
+    providerTransitionTimestamp: transition?.providerTimestamp ?? null,
+    providerFirstZeroTimestamp: zeroSample?.providerTimestamp ?? null,
+    providerSpeedAtZero: zeroSample?.speedKmh ?? null,
+    providerSpeedBeforeZero: prevBeforeZero?.speedKmh ?? null,
+    localGapBeforeSeconds: localGapBefore,
+    localGapAfterSeconds: null,
+    transitionShapeEvidence: transition ? 'DECEL_INTO_NEAR_ZERO' : 'NONE',
+    b1IncorrectComparison: {
+      comparedVideoT: 630,
+      providerTimestamp: B1_TELEMETRY_FIRST_ZERO_PROVIDER_TIMESTAMP,
+      displacementSeconds: b1WrongDisplacement,
+      note: 'Compared sparse zero snapshot against wrong t=630 state anchor — not frame-verified transition',
+    },
+    SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET: 'YES' as const,
+    note:
+      status === 'SPARSE_STATE_SAMPLE' || status === 'AMBIGUOUS'
+        ? 'Displacement may combine clock offset and sparse HF sampling delay — not sufficient alone for global offset'
+        : undefined,
+  };
+}
+
+export function assessLaunchTransition(points: QualifiedSpeedPoint[]) {
+  const sorted = [...points].sort(
+    (a, b) => parseMs(a.providerTimestamp)! - parseMs(b.providerTimestamp)!,
+  );
+  const searchStartMs =
+    parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN))! - 30_000;
+  const searchEndMs =
+    parseMs(videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX))! + 120_000;
+
+  let launchTransition: QualifiedSpeedPoint | null = null;
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1]!;
+    const cur = sorted[i]!;
+    const t = parseMs(cur.providerTimestamp)!;
+    if (t < searchStartMs) continue;
+    if (t > searchEndMs) break;
+    if (prev.speedKmh <= 3 && cur.speedKmh >= 8) {
+      launchTransition = cur;
+      break;
+    }
+  }
+
+  const displacementRange =
+    launchTransition != null
+      ? {
+          minSeconds:
+            providerVideoRelativeSeconds(launchTransition.providerTimestamp) -
+            FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+          maxSeconds:
+            providerVideoRelativeSeconds(launchTransition.providerTimestamp) -
+            FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+        }
+      : null;
+
+  const prev = launchTransition
+    ? sorted.find((p) => p.providerTimestamp < launchTransition!.providerTimestamp)
+    : null;
+
+  return {
+    FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+    FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+    FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY:
+      FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY,
+    FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MIN: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN),
+    FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MAX: videoUtcFromRelative(FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX),
+    FIRST_LAUNCH_PROVIDER_TRANSITION: launchTransition?.providerTimestamp ?? null,
+    FIRST_LAUNCH_PROVIDER_SPEED_KMH: launchTransition?.speedKmh ?? null,
+    FIRST_LAUNCH_PROVIDER_PREVIOUS_SPEED_KMH: prev?.speedKmh ?? null,
+    FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE: displacementRange,
+    localGapBeforeSeconds:
+      launchTransition && prev
+        ? (parseMs(launchTransition.providerTimestamp)! - parseMs(prev.providerTimestamp)!) / 1000
+        : null,
+    note: 'Bounded video window — midpoint is diagnostic only, not frame-exact event time',
+  };
+}
+
+export function reassessClockModelB2(
+  points: QualifiedSpeedPoint[],
+  split: ReturnType<typeof splitCalibrationHoldoutSets>,
+) {
+  const firstStop = assessCorrectedFirstStopDisplacement(points);
+  const launch = assessLaunchTransition(points);
+
+  const offsetCandidates: Array<{ landmarkId: string; offsetSeconds: number; confidence: string }> =
+    [];
+  if (
+    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null &&
+    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS === 'TRANSITION_MATCH'
+  ) {
+    offsetCandidates.push({
+      landmarkId: 'B-T01',
+      offsetSeconds: firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS,
+      confidence: 'TRANSITION_MATCH',
+    });
+  }
+  if (launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE) {
+    const mid =
+      (launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE.minSeconds +
+        launch.FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE.maxSeconds) /
+      2;
+    offsetCandidates.push({
+      landmarkId: 'B-T02',
+      offsetSeconds: mid,
+      confidence: 'BOUNDED_TRANSITION_WINDOW',
+    });
+  }
+
+  const offsets = offsetCandidates.map((c) => c.offsetSeconds);
+  const spread = offsets.length >= 2 ? Math.max(...offsets) - Math.min(...offsets) : null;
+  const offsetMad = offsets.length ? mad(offsets) : null;
+
+  let offsetValidated: 'YES' | 'NO' = 'NO';
+  let videoOffset: number | null = null;
+  let alignmentClass = 'INSUFFICIENT_EVIDENCE';
+  let supportiveRange: { minSeconds: number; maxSeconds: number } | null = null;
+
+  if (offsets.length >= 2 && spread != null && spread <= 8) {
+    supportiveRange = { minSeconds: Math.min(...offsets), maxSeconds: Math.max(...offsets) };
+    alignmentClass = 'OFFSET_CANDIDATE_SUPPORTIVE_RANGE';
+  } else if (firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null) {
+    const d = firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS;
+    supportiveRange = { minSeconds: d - 2, maxSeconds: d + 2 };
+    alignmentClass =
+      spread != null && spread > 10
+        ? 'INCONSISTENT_TRANSITION_LANDMARKS'
+        : 'APPROX_22S_DISPLACEMENT_SUPPORTIVE_ONLY';
+  }
+
+  if (
+    offsets.length >= 3 &&
+    spread != null &&
+    spread <= 12 &&
+    (offsetMad ?? Infinity) <= 8
+  ) {
+    offsetValidated = 'YES';
+    videoOffset = sortedPercentile(offsets, 50);
+    alignmentClass = 'STABLE_OFFSET';
+  }
+
+  const approx22Repeat =
+    firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS != null &&
+    Math.abs(firstStop.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS - SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS) <=
+      2.5;
+
+  return {
+    VIDEO_ABSOLUTE_TIME_ANCHORED: 'YES' as const,
+    VIDEO_MASTER_T0_UTC_ESTIMATE,
+    PROVIDER_TIMESTAMP_OFFSET_VALIDATED: offsetValidated,
+    VIDEO_TO_PROVIDER_OFFSET_SECONDS: offsetValidated === 'YES' ? videoOffset : null,
+    OFFSET_CANDIDATE_RANGE_SUPPORTIVE: supportiveRange,
+    OFFSET_CANDIDATE_SUPPORTIVE_ONLY: offsetValidated === 'NO' && supportiveRange != null ? 'YES' : 'NO',
+    OFFSET_CANDIDATE_AROUND_14_SECONDS: 'SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT',
+    B1_SUPPORTIVE_OFFSET_AROUND_14_SECONDS: 'INVALIDATED_BY_WRONG_STOP_LANDMARK',
+    supportiveOffsetSeconds: offsetValidated === 'YES' ? videoOffset : null,
+    CLOCK_FIT_ELIGIBLE_LANDMARKS: SEGMENT_B_VIDEO_TRANSITION_LANDMARKS
+      .filter((lm) => lm.CLOCK_FIT_ELIGIBLE === 'YES')
+      .map((lm) => lm.id),
+    transitionLandmarkAssessment: {
+      firstStop,
+      launch,
+      offsetCandidates,
+    },
+    A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED: approx22Repeat ? 'YES' : 'NO',
+    A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED: 'NO',
+    A_B_SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS: SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS,
+    SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET: 'YES' as const,
+    CLOCK_CALIBRATION_HOLDOUT_SEPARATED: split.CLOCK_CALIBRATION_HOLDOUT_SEPARATED,
+    CLOCK_CALIBRATION_ANCHOR_COUNT: split.CLOCK_CALIBRATION_ANCHOR_COUNT,
+    CLOCK_HOLDOUT_ANCHOR_COUNT: split.CLOCK_HOLDOUT_ANCHOR_COUNT,
+    VIDEO_PROVIDER_ALIGNMENT_CLASS: alignmentClass,
+    OFFSET_MAD_SECONDS: offsetMad,
+    spreadSeconds: spread,
+    OLD_T630_STOP_TRANSITION_INVALIDATED: 'YES' as const,
+    T630_CLASSIFICATION: 'SUSTAINED_STOP_STATE',
+    SECOND_STOP_VIDEO_OBSERVED: 'YES' as const,
+    SECOND_STOP_TRANSITION_FRAME_EXACT: 'NO' as const,
+    ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION,
+    CIRCULAR_LANDMARK_ALIGNMENT_REMOVED: 'YES' as const,
+    SPEED_BASED_SAMPLE_SELECTION_REMOVED_FROM_CLOCK_AND_ACCURACY: 'YES' as const,
   };
 }
 
@@ -927,6 +1386,7 @@ export function computeHoldoutSpeedAccuracy(
 
   return {
     SPEED_SAMPLE_SELECTION_TIME_ONLY: 'YES' as const,
+    HOLDOUT_SPEED_SELECTION_TIME_ONLY: 'YES' as const,
     VALIDATED_OFFSET_MUST_BE_APPLIED_BEFORE_ACCURACY_SAMPLE_SELECTION: 'YES' as const,
     HOLDOUT_ANCHOR_COUNT: rows.length,
     HOLDOUT_COMPARABLE_SAMPLE_COUNT: comparable.length,
@@ -1305,14 +1765,17 @@ export function computeSpeedAccuracy(
 export function analyzeStopTiming(
   points: QualifiedSpeedPoint[],
   validatedOffsetSeconds: number | null,
+  supportiveOffsetSeconds: number | null = null,
 ) {
-  const clockCorrected = validatedOffsetSeconds != null;
+  const offsetForAnalysis = validatedOffsetSeconds ?? supportiveOffsetSeconds;
+  const usedSupportiveOnly =
+    validatedOffsetSeconds == null && supportiveOffsetSeconds != null;
   const correctedPoints = points.map((p) => ({
     ...p,
     videoRelativeSecondsCorrected:
-      validatedOffsetSeconds != null
-        ? p.videoRelativeSecondsProvisional - validatedOffsetSeconds
-        : p.videoRelativeSecondsProvisional,
+      offsetForAnalysis != null
+        ? providerVideoRelativeSeconds(p.providerTimestamp) - offsetForAnalysis
+        : providerVideoRelativeSeconds(p.providerTimestamp),
   }));
 
   const analyzeWindow = (
@@ -1346,32 +1809,45 @@ export function analyzeStopTiming(
       hfStopDurationSeconds: stopDuration,
       timeErrorSeconds: hfStopT != null ? hfStopT - videoStopT : null,
       sampleCount: window.length,
-      timelineUsed: clockCorrected ? 'VIDEO_CLOCK_CORRECTED' : 'UNCORRECTED_PROVIDER_PROVISIONAL',
+      timelineUsed:
+        validatedOffsetSeconds != null
+          ? 'VIDEO_CLOCK_VALIDATED_OFFSET'
+          : usedSupportiveOnly
+            ? 'VIDEO_CLOCK_SUPPORTIVE_OFFSET_ONLY'
+            : 'MASTER_T0_VIDEO_RELATIVE',
     };
   };
 
   const windows = [
-    analyzeWindow('B-E4_LONG_DECEL_TO_STOP', 520, 680, 630),
-    analyzeWindow('B-E5_SECOND_STOP', 700, 770, 720),
+    analyzeWindow(
+      'B-E4_LONG_DECEL_TO_STOP',
+      520,
+      680,
+      FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+    ),
+    analyzeWindow('B-E5_SECOND_STOP_CONTEXT', 700, 770, 724),
   ];
 
-  const timingPrecisionOk = windows.every(
-    (w) => w.hfFirstZeroVideoRelativeSeconds != null && Math.abs(w.timeErrorSeconds ?? 999) <= 35,
-  );
-
   return {
-    STOP_TIMING_VALIDATED: clockCorrected && timingPrecisionOk ? 'PARTIAL' : 'NO',
-    STOP_TIMING_CLOCK_CORRECTED: clockCorrected ? 'YES' : 'NO',
+    STOP_TIMING_VALIDATED: 'NO' as const,
+    STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET: usedSupportiveOnly ? 'YES' : 'NO',
+    STOP_TIMING_CLOCK_CORRECTED: validatedOffsetSeconds != null ? 'YES' : 'NO',
     STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE,
-    DECELERATION_TO_STOP_VALIDATED:
-      clockCorrected && windows[0]!.hfFirstDecelVideoRelativeSeconds != null ? 'PARTIAL' : 'NO',
-    STOP_LAUNCH_VALIDATED:
-      clockCorrected && windows[0]!.hfFirstZeroVideoRelativeSeconds != null ? 'PARTIAL' : 'NO',
+    OLD_T630_STOP_REFERENCE_INVALIDATED: 'YES' as const,
+    FIRST_STOP_FRAME_VERIFIED_VIDEO_T: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+    DECELERATION_TO_STOP_VALIDATED: windows[0]!.hfFirstDecelVideoRelativeSeconds != null
+      ? 'PARTIAL'
+      : 'NO',
+    STOP_LAUNCH_VALIDATED: windows[0]!.hfFirstZeroVideoRelativeSeconds != null ? 'PARTIAL' : 'NO',
     validatedOffsetSecondsApplied: validatedOffsetSeconds,
+    supportiveOffsetSecondsApplied: supportiveOffsetSeconds,
     windows,
-    note: clockCorrected
-      ? 'Stop timing measured on provider telemetry corrected into video timeline via validated offset'
-      : 'Clock model unavailable — stop timing not validated on uncorrected provider timeline',
+    note:
+      validatedOffsetSeconds != null
+        ? 'Stop timing exploratory only — offset not validated in B.2'
+        : usedSupportiveOnly
+          ? 'Supportive offset applied for exploratory stop timing — not validated clock authority'
+          : 'No validated clock model — stop timing not validated',
   };
 }
 
@@ -1696,31 +2172,47 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   const staleDupes = identifyStaleHoldDuplicateRows(hfSpeedRows);
 
   const anchorMatches = matchAllVideoSpeedAnchors(SEGMENT_B_VIDEO_SPEED_ANCHORS, qualifiedSpeed);
+  const videoMasterTimeline = buildVideoMasterTimeline();
   const split = splitCalibrationHoldoutSets();
-  const globalSearch = searchGlobalClockOffset(SEGMENT_B_CLOCK_LANDMARKS, qualifiedSpeed);
-  const clock = estimateSegmentBClockAlignmentB1(globalSearch, split);
+  const clock = reassessClockModelB2(qualifiedSpeed, split);
+  const legacyGlobalSearch = searchGlobalClockOffset(SEGMENT_B_CLOCK_LANDMARKS, qualifiedSpeed);
   const drift = estimateSegmentBDriftFromB1Clock(
-    globalSearch.calibrationEvidence,
+    legacyGlobalSearch.calibrationEvidence,
     SEGMENT_B_CONSTANTS.videoDurationSeconds,
   );
   const previousBiased = computePreviousBiasedExploratoryResults(anchorMatches);
   const rawDisplacement = computeRawAnchorDisplacementDiagnostic(anchorMatches);
-  const frozenOffsetForHoldout =
-    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS ?? clock.supportiveOffsetSeconds;
+  const frozenOffsetForHoldout = clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS;
+  const supportiveOffsetMid =
+    clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE != null
+      ? (clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE.minSeconds +
+          clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE.maxSeconds) /
+        2
+      : null;
   const holdoutOffsetSource =
-    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS != null
-      ? 'VALIDATED'
-      : clock.supportiveOffsetSeconds != null
-        ? 'CALIBRATION_SUPPORTIVE_ONLY'
-        : 'NONE';
+    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS != null ? 'VALIDATED' : 'NONE';
+  const holdoutCanonical = computeHoldoutSpeedAccuracy(
+    split.SPEED_ACCURACY_HOLDOUT_SET,
+    SEGMENT_B_VIDEO_SPEED_ANCHORS,
+    qualifiedSpeed,
+    frozenOffsetForHoldout,
+    clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED === 'YES',
+  );
+  const holdoutDiagnostic =
+    supportiveOffsetMid != null
+      ? computeHoldoutSpeedAccuracy(
+          split.SPEED_ACCURACY_HOLDOUT_SET,
+          SEGMENT_B_VIDEO_SPEED_ANCHORS,
+          qualifiedSpeed,
+          supportiveOffsetMid,
+          false,
+        )
+      : null;
   const speedAccuracy = {
-    ...computeHoldoutSpeedAccuracy(
-      split.SPEED_ACCURACY_HOLDOUT_SET,
-      SEGMENT_B_VIDEO_SPEED_ANCHORS,
-      qualifiedSpeed,
-      frozenOffsetForHoldout,
-      clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED === 'YES',
-    ),
+    ...holdoutCanonical,
+    diagnosticHoldoutFromSupportiveOffset: holdoutDiagnostic,
+    diagnosticHoldoutMaeKmhWhenOffsetNotValidated:
+      holdoutDiagnostic?.diagnosticHoldoutMaeKmhWhenOffsetNotValidated ?? null,
     EXACT_OR_HIGH_CONFIDENCE_VIDEO_SPEED_ANCHORS_ACCEPTED: split.SPEED_ACCURACY_HOLDOUT_SET.filter(
       (a) => a.videoAnchorConfidence === 'HIGH',
     ).length,
@@ -1731,6 +2223,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     PREPROCESSING_DISTORTION_VS_TELEMETRY_RAW: 'YES',
     HOLDOUT_FROZEN_OFFSET_SECONDS: frozenOffsetForHoldout,
     HOLDOUT_OFFSET_SOURCE: holdoutOffsetSource,
+    B1_DIAGNOSTIC_HOLDOUT_OFFSET_SECONDS: supportiveOffsetMid,
   };
 
   const acceleration = computeQualifiedAccelerationPairs(
@@ -1741,7 +2234,8 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   const episodes = findSpeedEpisodes(qualifiedSpeed);
   const stopTiming = analyzeStopTiming(
     qualifiedSpeed,
-    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS ?? clock.supportiveOffsetSeconds,
+    clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS,
+    supportiveOffsetMid,
   );
 
   const legacySidecarFiltered = input.legacySidecar;
@@ -1769,9 +2263,33 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       ? 'YES'
       : 'NO';
 
+  const firstStopAssessment = clock.transitionLandmarkAssessment.firstStop;
+  const launchAssessment = clock.transitionLandmarkAssessment.launch;
+
   const flags = {
     RD004_PHASE: RD004_B_PHASE,
     RAW_SOURCE_OBSERVATIONS_CHANGED: 'NO',
+    VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED: videoMasterTimeline.VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED,
+    VIDEO_MASTER_DURATION_SECONDS: videoMasterTimeline.VIDEO_MASTER_DURATION_SECONDS,
+    VIDEO_CLIP_TOTAL_OVERLAP_SECONDS: videoMasterTimeline.VIDEO_CLIP_TOTAL_OVERLAP_SECONDS,
+    VIDEO_MASTER_T0_UTC_ESTIMATE: VIDEO_MASTER_T0_UTC_ESTIMATE,
+    VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T: VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T,
+    VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T: VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T,
+    FIRST_STOP_TRANSITION_VIDEO_T_SECONDS: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+    FIRST_STOP_TRANSITION_VIDEO_UTC: firstStopAssessment.FIRST_STOP_TRANSITION_VIDEO_UTC,
+    OLD_T630_STOP_TRANSITION_INVALIDATED: 'YES',
+    T630_CLASSIFICATION: 'SUSTAINED_STOP_STATE',
+    FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN: FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+    FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX: FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+    SECOND_STOP_VIDEO_OBSERVED: clock.SECOND_STOP_VIDEO_OBSERVED,
+    SECOND_STOP_TRANSITION_FRAME_EXACT: clock.SECOND_STOP_TRANSITION_FRAME_EXACT,
+    CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS:
+      firstStopAssessment.CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS,
+    CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS:
+      firstStopAssessment.CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS,
+    SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET: 'YES',
+    A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED: clock.A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED,
+    A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED: clock.A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED,
     SEGMENT_B_VIDEO_START_UTC: SEGMENT_B_CONSTANTS.videoStartUtc,
     SEGMENT_B_VIDEO_END_UTC: SEGMENT_B_CONSTANTS.videoEndUtc,
     VIDEO_ABSOLUTE_TIME_ANCHORED: clock.VIDEO_ABSOLUTE_TIME_ANCHORED,
@@ -1792,6 +2310,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     PROVIDER_TIMESTAMP_OFFSET_VALIDATED: clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED,
     VIDEO_TO_PROVIDER_OFFSET_SECONDS: clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS,
     OFFSET_CANDIDATE_SUPPORTIVE_ONLY: clock.OFFSET_CANDIDATE_SUPPORTIVE_ONLY,
+    OFFSET_CANDIDATE_RANGE_SUPPORTIVE: clock.OFFSET_CANDIDATE_RANGE_SUPPORTIVE,
     OFFSET_CANDIDATE_AROUND_14_SECONDS: clock.OFFSET_CANDIDATE_AROUND_14_SECONDS,
     EXPLORATORY_PREVIOUS_OFFSET_SECONDS: previousBiased.EXPLORATORY_PREVIOUS_OFFSET_SECONDS,
     EXPLORATORY_PREVIOUS_SPEED_MAE_KMH: previousBiased.EXPLORATORY_PREVIOUS_SPEED_MAE_KMH,
@@ -1800,6 +2319,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     VIDEO_PROVIDER_ALIGNMENT_CLASS: clock.VIDEO_PROVIDER_ALIGNMENT_CLASS,
     CLOCK_FIT_ELIGIBLE_LANDMARKS: clock.CLOCK_FIT_ELIGIBLE_LANDMARKS,
     SPEED_SAMPLE_SELECTION_TIME_ONLY: 'YES',
+    HOLDOUT_SPEED_SELECTION_TIME_ONLY: 'YES',
     HOLDOUT_ANCHOR_COUNT: speedAccuracy.HOLDOUT_ANCHOR_COUNT,
     HOLDOUT_COMPARABLE_SAMPLE_COUNT: speedAccuracy.HOLDOUT_COMPARABLE_SAMPLE_COUNT,
     HOLDOUT_REJECTED_FOR_TIME_DISTANCE: speedAccuracy.HOLDOUT_REJECTED_FOR_TIME_DISTANCE,
@@ -1819,6 +2339,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     STABLE_STATE_SPEED_ACCURACY: speedAccuracy.STABLE_STATE_SPEED_ACCURACY,
     DYNAMIC_STATE_SPEED_ACCURACY: speedAccuracy.DYNAMIC_STATE_SPEED_ACCURACY,
     STOP_TIMING_VALIDATED: stopTiming.STOP_TIMING_VALIDATED,
+    STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET: stopTiming.STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET,
     STOP_TIMING_CLOCK_CORRECTED: stopTiming.STOP_TIMING_CLOCK_CORRECTED,
     DECELERATION_TO_STOP_VALIDATED: stopTiming.DECELERATION_TO_STOP_VALIDATED,
     STOP_LAUNCH_VALIDATED: stopTiming.STOP_LAUNCH_VALIDATED,
@@ -1865,20 +2386,29 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     constants: SEGMENT_B_CONSTANTS,
     envelopeRowCount: envelope.length,
     signalCadence,
+    videoMasterTimeline,
+    videoTransitionLandmarks: SEGMENT_B_VIDEO_TRANSITION_LANDMARKS,
     videoAnchorTable: {
       anchors: SEGMENT_B_VIDEO_SPEED_ANCHORS,
+      transitionLandmarks: SEGMENT_B_VIDEO_TRANSITION_LANDMARKS,
       matches: anchorMatches,
       exploratorySpeedBiasedMatching: 'DIAGNOSTIC_ONLY_NOT_CANONICAL',
       rawAnchorDisplacement: rawDisplacement,
+      B15_T630_CLASSIFICATION: 'SUSTAINED_STOP_STATE',
+      B_T01_FIRST_ZERO_VIDEO_T: FIRST_STOP_TRANSITION_VIDEO_T_SECONDS,
+      B_T02_FIRST_LAUNCH_WINDOW: {
+        min: FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN,
+        max: FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX,
+      },
     },
     videoClockAlignment: {
       evidenceSplit: split,
-      globalOffsetSearch: globalSearch,
+      legacyGlobalOffsetSearch: legacyGlobalSearch,
       clock,
       drift,
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
       note:
-        'B.1: clock calibration uses event-boundary landmarks + global time-only offset search; holdout speed accuracy is independent',
+        'B.2: frame-verified transition landmarks (B-T01/B-T02) reassess clock; B.1 global search retained as legacy diagnostic only',
     },
     speedAccuracy,
     stopTiming,

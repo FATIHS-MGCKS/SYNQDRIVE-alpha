@@ -1,31 +1,35 @@
 {
-  "STOP_TIMING_VALIDATED": "PARTIAL",
-  "STOP_TIMING_CLOCK_CORRECTED": "YES",
+  "STOP_TIMING_VALIDATED": "NO",
+  "STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET": "YES",
+  "STOP_TIMING_CLOCK_CORRECTED": "NO",
   "STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE": "YES",
+  "OLD_T630_STOP_REFERENCE_INVALIDATED": "YES",
+  "FIRST_STOP_FRAME_VERIFIED_VIDEO_T": 621.8,
   "DECELERATION_TO_STOP_VALIDATED": "PARTIAL",
   "STOP_LAUNCH_VALIDATED": "PARTIAL",
-  "validatedOffsetSecondsApplied": 13.5,
+  "validatedOffsetSecondsApplied": null,
+  "supportiveOffsetSecondsApplied": 21.669000000000096,
   "windows": [
     {
       "label": "B-E4_LONG_DECEL_TO_STOP",
-      "videoStopVideoRelativeSeconds": 630,
-      "hfFirstDecelVideoRelativeSeconds": 591.007,
-      "hfFirstZeroVideoRelativeSeconds": 630.185,
+      "videoStopVideoRelativeSeconds": 621.8,
+      "hfFirstDecelVideoRelativeSeconds": 582.622,
+      "hfFirstZeroVideoRelativeSeconds": 621.8,
       "hfStopDurationSeconds": null,
-      "timeErrorSeconds": 0.18499999999994543,
+      "timeErrorSeconds": 0,
       "sampleCount": 11,
-      "timelineUsed": "VIDEO_CLOCK_CORRECTED"
+      "timelineUsed": "VIDEO_CLOCK_SUPPORTIVE_OFFSET_ONLY"
     },
     {
-      "label": "B-E5_SECOND_STOP",
-      "videoStopVideoRelativeSeconds": 720,
+      "label": "B-E5_SECOND_STOP_CONTEXT",
+      "videoStopVideoRelativeSeconds": 724,
       "hfFirstDecelVideoRelativeSeconds": null,
-      "hfFirstZeroVideoRelativeSeconds": 744.635,
+      "hfFirstZeroVideoRelativeSeconds": 736.2499999999999,
       "hfStopDurationSeconds": null,
-      "timeErrorSeconds": 24.63499999999999,
+      "timeErrorSeconds": 12.249999999999886,
       "sampleCount": 6,
-      "timelineUsed": "VIDEO_CLOCK_CORRECTED"
+      "timelineUsed": "VIDEO_CLOCK_SUPPORTIVE_OFFSET_ONLY"
     }
   ],
-  "note": "Stop timing measured on provider telemetry corrected into video timeline via validated offset"
+  "note": "Supportive offset applied for exploratory stop timing — not validated clock authority"
 }

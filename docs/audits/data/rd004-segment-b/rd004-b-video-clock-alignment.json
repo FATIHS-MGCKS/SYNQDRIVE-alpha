@@ -2,294 +2,235 @@
   "evidenceSplit": {
     "CLOCK_CALIBRATION_SET": [
       {
-        "id": "CLK-B1",
-        "label": "high-speed section end / decel onset",
-        "episodeId": "B-E3",
-        "videoRelativeSeconds": 540,
-        "videoUtc": "2026-09-04T03:56:02.000Z",
-        "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "landmarkKind": "DECEL_TO_STOP",
-        "expectedSpeedKmh": 107,
-        "temporalLocalityToleranceSeconds": 45
-      },
-      {
-        "id": "CLK-B2",
-        "label": "first complete stop after long decel",
+        "id": "B-T01",
+        "label": "first displayed 0 km/h after long deceleration (frame-verified)",
         "episodeId": "B-E4",
-        "videoRelativeSeconds": 630,
-        "videoUtc": "2026-09-04T03:57:32.000Z",
+        "landmarkKind": "FIRST_ZERO_AFTER_LONG_DECEL",
+        "videoRelativeSeconds": 621.8,
+        "videoRelativeSecondsMin": null,
+        "videoRelativeSecondsMax": null,
+        "videoUtc": "2026-09-04T03:57:24.016Z",
+        "videoUtcMin": null,
+        "videoUtcMax": null,
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "landmarkKind": "COMPLETE_STOP",
-        "expectedSpeedKmh": 0,
-        "temporalLocalityToleranceSeconds": 45
+        "observationKind": "TRANSITION_TIME_OBSERVATION",
+        "CLOCK_FIT_ELIGIBLE": "YES"
       },
       {
-        "id": "CLK-B5",
-        "label": "second distinct stop",
+        "id": "B-T02",
+        "label": "zero to forward motion after first stop (bounded window)",
         "episodeId": "B-E5",
-        "videoRelativeSeconds": 720,
-        "videoUtc": "2026-09-04T03:59:02.000Z",
+        "landmarkKind": "ZERO_TO_FORWARD_MOTION",
+        "videoRelativeSeconds": null,
+        "videoRelativeSecondsMin": 673,
+        "videoRelativeSecondsMax": 673.5,
+        "videoUtc": null,
+        "videoUtcMin": "2026-09-04T03:58:15.216Z",
+        "videoUtcMax": "2026-09-04T03:58:15.716Z",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "landmarkKind": "SECOND_STOP",
-        "expectedSpeedKmh": 0,
-        "temporalLocalityToleranceSeconds": 45
-      },
-      {
-        "id": "CLK-B6",
-        "label": "late acceleration 4→71",
-        "episodeId": "B-E7",
-        "videoRelativeSeconds": 840,
-        "videoUtc": "2026-09-04T04:01:02.000Z",
-        "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "landmarkKind": "LATE_ACCELERATION",
-        "expectedSpeedKmh": 71,
-        "temporalLocalityToleranceSeconds": 45
+        "observationKind": "BOUNDED_TRANSITION_WINDOW",
+        "CLOCK_FIT_ELIGIBLE": "YES"
       }
     ],
     "SPEED_ACCURACY_HOLDOUT_SET": [
       {
         "id": "B01",
         "videoRelativeSeconds": 60,
-        "videoUtc": "2026-09-04T03:48:02.000Z",
+        "videoUtc": "2026-09-04T03:48:02.216Z",
         "videoSpeedKmh": 17,
         "videoGear": 2,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B02",
         "videoRelativeSeconds": 120,
-        "videoUtc": "2026-09-04T03:49:02.000Z",
+        "videoUtc": "2026-09-04T03:49:02.216Z",
         "videoSpeedKmh": 57,
         "videoGear": 5,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B03",
         "videoRelativeSeconds": 210,
-        "videoUtc": "2026-09-04T03:50:32.000Z",
+        "videoUtc": "2026-09-04T03:50:32.216Z",
         "videoSpeedKmh": 60,
         "videoGear": 6,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B04",
         "videoRelativeSeconds": 240,
-        "videoUtc": "2026-09-04T03:51:02.000Z",
+        "videoUtc": "2026-09-04T03:51:02.216Z",
         "videoSpeedKmh": 94,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B05",
         "videoRelativeSeconds": 270,
-        "videoUtc": "2026-09-04T03:51:32.000Z",
+        "videoUtc": "2026-09-04T03:51:32.216Z",
         "videoSpeedKmh": 79,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B06",
         "videoRelativeSeconds": 300,
-        "videoUtc": "2026-09-04T03:52:02.000Z",
+        "videoUtc": "2026-09-04T03:52:02.216Z",
         "videoSpeedKmh": 61,
         "videoGear": 6,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B07",
         "videoRelativeSeconds": 390,
-        "videoUtc": "2026-09-04T03:53:32.000Z",
+        "videoUtc": "2026-09-04T03:53:32.216Z",
         "videoSpeedKmh": 109,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B08",
         "videoRelativeSeconds": 420,
-        "videoUtc": "2026-09-04T03:54:02.000Z",
+        "videoUtc": "2026-09-04T03:54:02.216Z",
         "videoSpeedKmh": 98,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B09",
         "videoRelativeSeconds": 450,
-        "videoUtc": "2026-09-04T03:54:32.000Z",
+        "videoUtc": "2026-09-04T03:54:32.216Z",
         "videoSpeedKmh": 115,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B10",
         "videoRelativeSeconds": 480,
-        "videoUtc": "2026-09-04T03:55:02.000Z",
+        "videoUtc": "2026-09-04T03:55:02.216Z",
         "videoSpeedKmh": 116,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B11",
         "videoRelativeSeconds": 510,
-        "videoUtc": "2026-09-04T03:55:32.000Z",
+        "videoUtc": "2026-09-04T03:55:32.216Z",
         "videoSpeedKmh": 112,
         "videoGear": 7,
         "videoAnchorConfidence": "MEDIUM",
         "videoTimingAuthority": "APPROXIMATE",
         "approximate": true,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR",
         "note": "Dashboard readability approximate — recheck"
       },
       {
         "id": "B13",
         "videoRelativeSeconds": 570,
-        "videoUtc": "2026-09-04T03:56:32.000Z",
+        "videoUtc": "2026-09-04T03:56:32.216Z",
         "videoSpeedKmh": 96,
         "videoGear": 7,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B14",
         "videoRelativeSeconds": 600,
-        "videoUtc": "2026-09-04T03:57:02.000Z",
+        "videoUtc": "2026-09-04T03:57:02.216Z",
         "videoSpeedKmh": 59,
         "videoGear": 4,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B20",
         "videoRelativeSeconds": 780,
-        "videoUtc": "2026-09-04T04:00:02.000Z",
+        "videoUtc": "2026-09-04T04:00:02.216Z",
         "videoSpeedKmh": 16,
         "videoGear": 2,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B21",
         "videoRelativeSeconds": 810,
-        "videoUtc": "2026-09-04T04:00:32.000Z",
+        "videoUtc": "2026-09-04T04:00:32.216Z",
         "videoSpeedKmh": 4,
         "videoGear": 2,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B23",
         "videoRelativeSeconds": 870,
-        "videoUtc": "2026-09-04T04:01:32.000Z",
+        "videoUtc": "2026-09-04T04:01:32.216Z",
         "videoSpeedKmh": 77,
         "videoGear": 5,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       },
       {
         "id": "B24",
         "videoRelativeSeconds": 930,
-        "videoUtc": "2026-09-04T04:02:32.000Z",
+        "videoUtc": "2026-09-04T04:02:32.216Z",
         "videoSpeedKmh": 33,
         "videoGear": 3,
         "videoAnchorConfidence": "HIGH",
         "videoTimingAuthority": "HIGH_CONFIDENCE",
-        "approximate": false
+        "approximate": false,
+        "anchorSemantic": "VIDEO_STATE_ANCHOR"
       }
     ],
-    "CLOCK_CALIBRATION_ANCHOR_COUNT": 4,
+    "CLOCK_CALIBRATION_ANCHOR_COUNT": 2,
     "CLOCK_HOLDOUT_ANCHOR_COUNT": 17,
     "CLOCK_CALIBRATION_HOLDOUT_SEPARATED": "YES",
     "overlapRejected": []
   },
-  "globalOffsetSearch": {
-    "bestOffsetSeconds": 13.5,
-    "bestScore": 0.1850000000000005,
-    "calibrationEvidence": [
-      {
-        "landmarkId": "CLK-B1",
-        "label": "high-speed section end / decel onset",
-        "landmarkKind": "DECEL_TO_STOP",
-        "videoRelativeSeconds": 540,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "expectedProviderTimestamp": "2026-09-04T03:56:15.500Z",
-        "nearestProviderTimestamp": "2026-09-04T03:56:54.929Z",
-        "temporalResidualSeconds": 39.429,
-        "impliedOffsetSeconds": 52.929,
-        "telemetrySpeedKmh": 111,
-        "videoSpeedKmh": 107,
-        "eventShapeQualified": false
-      },
-      {
-        "landmarkId": "CLK-B2",
-        "label": "first complete stop after long decel",
-        "landmarkKind": "COMPLETE_STOP",
-        "videoRelativeSeconds": 630,
-        "observationKind": "TRANSITION_TIME_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "YES",
-        "expectedProviderTimestamp": "2026-09-04T03:57:45.500Z",
-        "nearestProviderTimestamp": "2026-09-04T03:57:45.685Z",
-        "temporalResidualSeconds": 0.185,
-        "impliedOffsetSeconds": 13.685,
-        "telemetrySpeedKmh": 0,
-        "videoSpeedKmh": 0,
-        "eventShapeQualified": true
-      },
-      {
-        "landmarkId": "CLK-B5",
-        "label": "second distinct stop",
-        "landmarkKind": "SECOND_STOP",
-        "videoRelativeSeconds": 720,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "ineligibleReason": "ZERO_SPEED_SNAPSHOT_CANNOT_AUTOMATICALLY_DEFINE_STOP_TRANSITION",
-        "expectedProviderTimestamp": "2026-09-04T03:59:15.500Z",
-        "nearestProviderTimestamp": null,
-        "temporalResidualSeconds": null,
-        "impliedOffsetSeconds": null,
-        "telemetrySpeedKmh": null,
-        "videoSpeedKmh": 0,
-        "eventShapeQualified": false
-      },
-      {
-        "landmarkId": "CLK-B6",
-        "label": "late acceleration 4→71",
-        "landmarkKind": "LATE_ACCELERATION",
-        "videoRelativeSeconds": 840,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "expectedProviderTimestamp": "2026-09-04T04:01:15.500Z",
-        "nearestProviderTimestamp": "2026-09-04T04:01:07.874Z",
-        "temporalResidualSeconds": -7.626,
-        "impliedOffsetSeconds": 5.874,
-        "telemetrySpeedKmh": 43,
-        "videoSpeedKmh": 71,
-        "eventShapeQualified": false
-      }
-    ],
+  "legacyGlobalOffsetSearch": {
+    "bestOffsetSeconds": null,
+    "bestScore": null,
+    "calibrationEvidence": [],
     "searchRange": {
       "min": -60,
       "max": 60,
@@ -298,1323 +239,1296 @@
     "candidateScores": [
       {
         "offsetSeconds": -60,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -59.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -59,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -58.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -58,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -57.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -57,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -56.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -56,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -55.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -55,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -54.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -54,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -53.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -53,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -52.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -52,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -51.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -51,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -50.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -50,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -49.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -49,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -48.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -48,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -47.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -47,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -46.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -46,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -45.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -45,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -44.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -44,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -43.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -43,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -42.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -42,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -41.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -41,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -40.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -40,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -39.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -39,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -38.5,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -38,
-        "score": 19.319,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -37.5,
-        "score": 19.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -37,
-        "score": 19.996,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -36.5,
-        "score": 20.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -36,
-        "score": 20.996,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -35.5,
-        "score": 21.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -35,
-        "score": 21.996,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -34.5,
-        "score": 22.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -34,
-        "score": 22.996,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -33.5,
-        "score": 23.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -33,
-        "score": 23.996,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -32.5,
-        "score": 24.496,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -32,
-        "score": 5.677,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -31.5,
-        "score": 6.177,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -31,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -30.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -30,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -29.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -29,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -28.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -28,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -27.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -27,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -26.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -26,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -25.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -25,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -24.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -24,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -23.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -23,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -22.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -22,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -21.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -21,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -20.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -20,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -19.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -19,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -18.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -18,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -17.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -17,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -16.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -16,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -15.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -15,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -14.5,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -14,
-        "score": 25.681,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -13.5,
-        "score": 27.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -13,
-        "score": 26.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -12.5,
-        "score": 26.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -12,
-        "score": 25.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -11.5,
-        "score": 25.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -11,
-        "score": 24.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -10.5,
-        "score": 24.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -10,
-        "score": 23.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -9.5,
-        "score": 23.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -9,
-        "score": 22.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -8.5,
-        "score": 22.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -8,
-        "score": 21.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -7.5,
-        "score": 21.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -7,
-        "score": 20.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -6.5,
-        "score": 20.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -6,
-        "score": 19.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -5.5,
-        "score": 19.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -5,
-        "score": 18.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -4.5,
-        "score": 18.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -4,
-        "score": 17.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -3.5,
-        "score": 17.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -3,
-        "score": 16.685000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -2.5,
-        "score": 16.185000000000002,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -2,
-        "score": 15.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -1.5,
-        "score": 15.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -1,
-        "score": 14.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": -0.5,
-        "score": 14.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 0,
-        "score": 13.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 0.5,
-        "score": 13.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 1,
-        "score": 12.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 1.5,
-        "score": 12.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 2,
-        "score": 11.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 2.5,
-        "score": 11.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 3,
-        "score": 10.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 3.5,
-        "score": 10.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 4,
-        "score": 9.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 4.5,
-        "score": 9.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 5,
-        "score": 8.685,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 5.5,
-        "score": 8.185,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 6,
-        "score": 7.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 6.5,
-        "score": 7.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 7,
-        "score": 6.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 7.5,
-        "score": 6.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 8,
-        "score": 5.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 8.5,
-        "score": 5.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 9,
-        "score": 4.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 9.5,
-        "score": 4.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 10,
-        "score": 3.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 10.5,
-        "score": 3.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 11,
-        "score": 2.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 11.5,
-        "score": 2.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 12,
-        "score": 1.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 12.5,
-        "score": 1.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 13,
-        "score": 0.6850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 13.5,
-        "score": 0.1850000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 14,
-        "score": 0.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 14.5,
-        "score": 0.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 15,
-        "score": 1.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 15.5,
-        "score": 1.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 16,
-        "score": 2.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 16.5,
-        "score": 2.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 17,
-        "score": 3.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 17.5,
-        "score": 3.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 18,
-        "score": 4.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 18.5,
-        "score": 4.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 19,
-        "score": 5.3149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 19.5,
-        "score": 5.8149999999999995,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 20,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 20.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 21,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 21.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 22,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 22.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 23,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 23.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 24,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 24.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 25,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 25.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 26,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 26.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 27,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 27.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 28,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 28.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 29,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 29.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 30,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 30.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 31,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 31.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 32,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 32.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 33,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 33.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 34,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 34.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 35,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 35.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 36,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 36.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 37,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 37.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 38,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 38.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 39,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 39.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 40,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 40.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 41,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 41.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 42,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 42.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 43,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 43.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 44,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 44.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 45,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 45.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 46,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 46.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 47,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 47.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 48,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 48.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 49,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 49.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 50,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 50.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 51,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 51.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 52,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 52.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 53,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 53.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 54,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 54.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 55,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 55.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 56,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 56.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 57,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 57.5,
-        "score": 25.411,
-        "fitCount": 2
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 58,
-        "score": 6.507000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 58.5,
-        "score": 6.007000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 59,
-        "score": 5.507000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 59.5,
-        "score": 5.007000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       },
       {
         "offsetSeconds": 60,
-        "score": 4.507000000000005,
-        "fitCount": 1
+        "score": null,
+        "fitCount": 0
       }
     ]
   },
   "clock": {
     "VIDEO_ABSOLUTE_TIME_ANCHORED": "YES",
+    "VIDEO_MASTER_T0_UTC_ESTIMATE": "2026-09-04T03:47:02.216667Z",
     "PROVIDER_TIMESTAMP_OFFSET_VALIDATED": "NO",
     "VIDEO_TO_PROVIDER_OFFSET_SECONDS": null,
+    "OFFSET_CANDIDATE_RANGE_SUPPORTIVE": {
+      "minSeconds": 19.669000000000096,
+      "maxSeconds": 23.669000000000096
+    },
     "OFFSET_CANDIDATE_SUPPORTIVE_ONLY": "YES",
-    "OFFSET_CANDIDATE_AROUND_14_SECONDS": "SUPPORTIVE_ONLY",
-    "supportiveOffsetSeconds": 13.5,
-    "APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET": "YES",
+    "OFFSET_CANDIDATE_AROUND_14_SECONDS": "SUPERSEDED_BY_B2_FRAME_VERIFIED_REASSESSMENT",
+    "B1_SUPPORTIVE_OFFSET_AROUND_14_SECONDS": "INVALIDATED_BY_WRONG_STOP_LANDMARK",
+    "supportiveOffsetSeconds": null,
     "CLOCK_FIT_ELIGIBLE_LANDMARKS": [
-      "CLK-B2"
+      "B-T01",
+      "B-T02"
     ],
-    "CLOCK_FIT_REJECTED_LANDMARKS": [
-      {
-        "landmarkId": "CLK-B1",
-        "reason": "STATE_OBSERVATION"
+    "transitionLandmarkAssessment": {
+      "firstStop": {
+        "FIRST_STOP_TRANSITION_VIDEO_T_SECONDS": 621.8,
+        "FIRST_STOP_TRANSITION_VIDEO_UTC": "2026-09-04T03:57:24.016Z",
+        "CORRECTED_FIRST_STOP_DISPLACEMENT_SECONDS": 21.669000000000096,
+        "CORRECTED_FIRST_STOP_DISPLACEMENT_STATUS": "SPARSE_STATE_SAMPLE",
+        "providerTransitionTimestamp": "2026-09-04T03:57:45.685Z",
+        "providerFirstZeroTimestamp": "2026-09-04T03:57:45.685Z",
+        "providerSpeedAtZero": 0,
+        "providerSpeedBeforeZero": 43,
+        "localGapBeforeSeconds": 1,
+        "localGapAfterSeconds": null,
+        "transitionShapeEvidence": "DECEL_INTO_NEAR_ZERO",
+        "b1IncorrectComparison": {
+          "comparedVideoT": 630,
+          "providerTimestamp": "2026-09-04T03:57:45.685Z",
+          "displacementSeconds": 13.469000000000051,
+          "note": "Compared sparse zero snapshot against wrong t=630 state anchor — not frame-verified transition"
+        },
+        "SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET": "YES",
+        "note": "Displacement may combine clock offset and sparse HF sampling delay — not sufficient alone for global offset"
       },
-      {
-        "landmarkId": "CLK-B5",
-        "reason": "ZERO_SPEED_SNAPSHOT_CANNOT_AUTOMATICALLY_DEFINE_STOP_TRANSITION"
+      "launch": {
+        "FIRST_LAUNCH_TRANSITION_VIDEO_T_MIN": 673,
+        "FIRST_LAUNCH_TRANSITION_VIDEO_T_MAX": 673.5,
+        "FIRST_LAUNCH_TRANSITION_VIDEO_T_MID_DIAGNOSTIC_ONLY": 673.25,
+        "FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MIN": "2026-09-04T03:58:15.216Z",
+        "FIRST_LAUNCH_TRANSITION_VIDEO_UTC_MAX": "2026-09-04T03:58:15.716Z",
+        "FIRST_LAUNCH_PROVIDER_TRANSITION": "2026-09-04T03:58:20.787Z",
+        "FIRST_LAUNCH_PROVIDER_SPEED_KMH": 20,
+        "FIRST_LAUNCH_PROVIDER_PREVIOUS_SPEED_KMH": 0,
+        "FIRST_LAUNCH_VIDEO_PROVIDER_DISPLACEMENT_RANGE": {
+          "minSeconds": 5.071000000000026,
+          "maxSeconds": 5.571000000000026
+        },
+        "localGapBeforeSeconds": 629.019,
+        "note": "Bounded video window — midpoint is diagnostic only, not frame-exact event time"
       },
-      {
-        "landmarkId": "CLK-B6",
-        "reason": "STATE_OBSERVATION"
-      }
-    ],
+      "offsetCandidates": [
+        {
+          "landmarkId": "B-T02",
+          "offsetSeconds": 5.321000000000026,
+          "confidence": "BOUNDED_TRANSITION_WINDOW"
+        }
+      ]
+    },
+    "A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED": "YES",
+    "A_B_22S_DISPLACEMENT_COMMON_CLOCK_VALIDATED": "NO",
+    "A_B_SEGMENT_A_EXPLORATORY_H_DISPLACEMENT_SECONDS": 22.205,
+    "SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET": "YES",
     "CLOCK_CALIBRATION_HOLDOUT_SEPARATED": "YES",
-    "CLOCK_CALIBRATION_ANCHOR_COUNT": 4,
+    "CLOCK_CALIBRATION_ANCHOR_COUNT": 2,
     "CLOCK_HOLDOUT_ANCHOR_COUNT": 17,
-    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "OFFSET_CANDIDATE_SUPPORTIVE_ONLY",
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "APPROX_22S_DISPLACEMENT_SUPPORTIVE_ONLY",
     "OFFSET_MAD_SECONDS": 0,
     "spreadSeconds": null,
-    "globalOffsetSearch": {
-      "bestOffsetSeconds": 13.5,
-      "bestScore": 0.1850000000000005,
-      "searchRange": {
-        "min": -60,
-        "max": 60,
-        "step": 0.5
-      }
-    },
-    "calibrationEvidence": [
-      {
-        "landmarkId": "CLK-B1",
-        "label": "high-speed section end / decel onset",
-        "landmarkKind": "DECEL_TO_STOP",
-        "videoRelativeSeconds": 540,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "expectedProviderTimestamp": "2026-09-04T03:56:15.500Z",
-        "nearestProviderTimestamp": "2026-09-04T03:56:54.929Z",
-        "temporalResidualSeconds": 39.429,
-        "impliedOffsetSeconds": 52.929,
-        "telemetrySpeedKmh": 111,
-        "videoSpeedKmh": 107,
-        "eventShapeQualified": false
-      },
-      {
-        "landmarkId": "CLK-B2",
-        "label": "first complete stop after long decel",
-        "landmarkKind": "COMPLETE_STOP",
-        "videoRelativeSeconds": 630,
-        "observationKind": "TRANSITION_TIME_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "YES",
-        "expectedProviderTimestamp": "2026-09-04T03:57:45.500Z",
-        "nearestProviderTimestamp": "2026-09-04T03:57:45.685Z",
-        "temporalResidualSeconds": 0.185,
-        "impliedOffsetSeconds": 13.685,
-        "telemetrySpeedKmh": 0,
-        "videoSpeedKmh": 0,
-        "eventShapeQualified": true
-      },
-      {
-        "landmarkId": "CLK-B5",
-        "label": "second distinct stop",
-        "landmarkKind": "SECOND_STOP",
-        "videoRelativeSeconds": 720,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "ineligibleReason": "ZERO_SPEED_SNAPSHOT_CANNOT_AUTOMATICALLY_DEFINE_STOP_TRANSITION",
-        "expectedProviderTimestamp": "2026-09-04T03:59:15.500Z",
-        "nearestProviderTimestamp": null,
-        "temporalResidualSeconds": null,
-        "impliedOffsetSeconds": null,
-        "telemetrySpeedKmh": null,
-        "videoSpeedKmh": 0,
-        "eventShapeQualified": false
-      },
-      {
-        "landmarkId": "CLK-B6",
-        "label": "late acceleration 4→71",
-        "landmarkKind": "LATE_ACCELERATION",
-        "videoRelativeSeconds": 840,
-        "observationKind": "STATE_OBSERVATION",
-        "CLOCK_FIT_ELIGIBLE": "NO",
-        "expectedProviderTimestamp": "2026-09-04T04:01:15.500Z",
-        "nearestProviderTimestamp": "2026-09-04T04:01:07.874Z",
-        "temporalResidualSeconds": -7.626,
-        "impliedOffsetSeconds": 5.874,
-        "telemetrySpeedKmh": 43,
-        "videoSpeedKmh": 71,
-        "eventShapeQualified": false
-      }
-    ],
+    "OLD_T630_STOP_TRANSITION_INVALIDATED": "YES",
+    "T630_CLASSIFICATION": "SUSTAINED_STOP_STATE",
+    "SECOND_STOP_VIDEO_OBSERVED": "YES",
+    "SECOND_STOP_TRANSITION_FRAME_EXACT": "NO",
+    "ZERO_SPEED_STATE_SNAPSHOT_CANNOT_REPLACE_EARLIER_FRAME_VERIFIED_STOP_TRANSITION": "YES",
     "CIRCULAR_LANDMARK_ALIGNMENT_REMOVED": "YES",
     "SPEED_BASED_SAMPLE_SELECTION_REMOVED_FROM_CLOCK_AND_ACCURACY": "YES"
   },
   "drift": {
     "DRIFT_VALIDATED": "NO",
     "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": null,
-    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [
-      "CLK-B2"
-    ],
+    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [],
     "note": "Requires >=3 independent clock landmarks spread across substantial Segment B duration"
   },
   "legacyExploratoryClockLandmarkMatches": [
@@ -1628,16 +1542,16 @@
     },
     {
       "landmarkId": "CLK-B2",
-      "label": "first complete stop after long decel",
+      "label": "INVALIDATED — was t=630 zero snapshot (see B-T01 at 621.8)",
       "episodeId": "B-E4",
       "landmarkKind": "COMPLETE_STOP",
       "videoRelativeSecondsObserved": 630,
       "videoTimingAuthority": "HIGH_CONFIDENCE",
-      "telemetryVideoRelativeProvisional": 643.685,
+      "telemetryVideoRelativeProvisional": 643.469,
       "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 13.684999999999945,
+      "candidateOffsetSeconds": 13.469000000000051,
       "speedErrorKmh": 0
     },
     {
@@ -1647,7 +1561,7 @@
       "landmarkKind": "COMPLETE_STOP",
       "videoRelativeSecondsObserved": 660,
       "videoTimingAuthority": "HIGH_CONFIDENCE",
-      "telemetryVideoRelativeProvisional": 643.685,
+      "telemetryVideoRelativeProvisional": 643.469,
       "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "NO",
@@ -1665,16 +1579,16 @@
     },
     {
       "landmarkId": "CLK-B5",
-      "label": "second distinct stop",
+      "label": "second distinct stop (state snapshot only — not frame-exact transition)",
       "episodeId": "B-E5",
       "landmarkKind": "SECOND_STOP",
       "videoRelativeSecondsObserved": 720,
       "videoTimingAuthority": "HIGH_CONFIDENCE",
-      "telemetryVideoRelativeProvisional": 735.382,
+      "telemetryVideoRelativeProvisional": 735.166,
       "candidateProviderTimestamp": "2026-09-04T03:59:17.382Z",
       "telemetryMatchConfidence": "MEDIUM",
       "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 15.381999999999948,
+      "candidateOffsetSeconds": 15.166000000000054,
       "speedErrorKmh": 5
     },
     {
@@ -1692,13 +1606,13 @@
       "landmarkKind": "REVERSE_CONTEXT",
       "videoRelativeSecondsObserved": 990,
       "videoTimingAuthority": "HIGH_CONFIDENCE",
-      "telemetryVideoRelativeProvisional": 1004.299,
+      "telemetryVideoRelativeProvisional": 1004.083,
       "candidateProviderTimestamp": "2026-09-04T04:03:46.299Z",
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 14.298999999999978,
+      "candidateOffsetSeconds": 14.08299999999997,
       "speedErrorKmh": 0
     }
   ],
-  "note": "B.1: clock calibration uses event-boundary landmarks + global time-only offset search; holdout speed accuracy is independent"
+  "note": "B.2: frame-verified transition landmarks (B-T01/B-T02) reassess clock; B.1 global search retained as legacy diagnostic only"
 }

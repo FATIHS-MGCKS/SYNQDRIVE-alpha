@@ -1,0 +1,165 @@
+{
+  "VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED": "YES",
+  "canonicalClipOrder": [
+    5,
+    3,
+    1,
+    9,
+    8,
+    7,
+    4,
+    2,
+    6
+  ],
+  "clipJunctions": [
+    {
+      "from": 5,
+      "to": 3,
+      "overlapSeconds": 2.658375,
+      "audioCorrelation": 0.99948
+    },
+    {
+      "from": 3,
+      "to": 1,
+      "overlapSeconds": 2.046625,
+      "audioCorrelation": 0.99871
+    },
+    {
+      "from": 1,
+      "to": 9,
+      "overlapSeconds": 1.841625,
+      "audioCorrelation": 0.99851
+    },
+    {
+      "from": 9,
+      "to": 8,
+      "overlapSeconds": 1.84,
+      "audioCorrelation": 1
+    },
+    {
+      "from": 8,
+      "to": 7,
+      "overlapSeconds": 1.023375,
+      "audioCorrelation": 0.99971
+    },
+    {
+      "from": 7,
+      "to": 4,
+      "overlapSeconds": 3.273375,
+      "audioCorrelation": 1
+    },
+    {
+      "from": 4,
+      "to": 2,
+      "overlapSeconds": 2.046625,
+      "audioCorrelation": 0.99969
+    },
+    {
+      "from": 2,
+      "to": 6,
+      "overlapSeconds": 2.045,
+      "audioCorrelation": 1
+    }
+  ],
+  "clips": [
+    {
+      "linkId": 5,
+      "canonicalOrderIndex": 0,
+      "masterStartSeconds": 0,
+      "masterEndSeconds": 117.439958,
+      "rawDurationSeconds": 120.09833300000001,
+      "overlapWithNextSeconds": 2.658375,
+      "overlapWithNextLinkId": 3,
+      "audioCorrelationWithNext": 0.99948
+    },
+    {
+      "linkId": 3,
+      "canonicalOrderIndex": 1,
+      "masterStartSeconds": 117.439958,
+      "masterEndSeconds": 238.563333,
+      "rawDurationSeconds": 123.17,
+      "overlapWithNextSeconds": 2.046625,
+      "overlapWithNextLinkId": 1,
+      "audioCorrelationWithNext": 0.99871
+    },
+    {
+      "linkId": 1,
+      "canonicalOrderIndex": 2,
+      "masterStartSeconds": 238.563333,
+      "masterEndSeconds": 359.68670799999995,
+      "rawDurationSeconds": 122.965,
+      "overlapWithNextSeconds": 1.841625,
+      "overlapWithNextLinkId": 9,
+      "audioCorrelationWithNext": 0.99851
+    },
+    {
+      "linkId": 9,
+      "canonicalOrderIndex": 3,
+      "masterStartSeconds": 359.686708,
+      "masterEndSeconds": 478.970041,
+      "rawDurationSeconds": 121.12333299999997,
+      "overlapWithNextSeconds": 1.84,
+      "overlapWithNextLinkId": 8,
+      "audioCorrelationWithNext": 1
+    },
+    {
+      "linkId": 8,
+      "canonicalOrderIndex": 4,
+      "masterStartSeconds": 478.970041,
+      "masterEndSeconds": 599.069999,
+      "rawDurationSeconds": 121.12333300000007,
+      "overlapWithNextSeconds": 1.023375,
+      "overlapWithNextLinkId": 7,
+      "audioCorrelationWithNext": 0.99971
+    },
+    {
+      "linkId": 7,
+      "canonicalOrderIndex": 5,
+      "masterStartSeconds": 599.069999,
+      "masterEndSeconds": 717.943324,
+      "rawDurationSeconds": 122.14669999999991,
+      "overlapWithNextSeconds": 3.273375,
+      "overlapWithNextLinkId": 4,
+      "audioCorrelationWithNext": 1
+    },
+    {
+      "linkId": 4,
+      "canonicalOrderIndex": 6,
+      "masterStartSeconds": 717.943324,
+      "masterEndSeconds": 839.066699,
+      "rawDurationSeconds": 123.17000000000002,
+      "overlapWithNextSeconds": 2.046625,
+      "overlapWithNextLinkId": 2,
+      "audioCorrelationWithNext": 0.99969
+    },
+    {
+      "linkId": 2,
+      "canonicalOrderIndex": 7,
+      "masterStartSeconds": 839.066699,
+      "masterEndSeconds": 958.350032,
+      "rawDurationSeconds": 121.32833300000009,
+      "overlapWithNextSeconds": 2.045,
+      "overlapWithNextLinkId": 6,
+      "audioCorrelationWithNext": 1
+    },
+    {
+      "linkId": 6,
+      "canonicalOrderIndex": 8,
+      "masterStartSeconds": 958.350032,
+      "masterEndSeconds": 1000.498365,
+      "rawDurationSeconds": 42.14833299999998,
+      "overlapWithNextSeconds": null,
+      "overlapWithNextLinkId": null,
+      "audioCorrelationWithNext": null
+    }
+  ],
+  "VIDEO_CLIP_TOTAL_OVERLAP_SECONDS": 16.775,
+  "VIDEO_RAW_CLIP_DURATION_SUM_SECONDS": 1017.273365,
+  "VIDEO_MASTER_DURATION_SECONDS": 1000.498365,
+  "VIDEO_MASTER_T0_UTC_ESTIMATE": "2026-09-04T03:47:02.216667Z",
+  "VIDEO_TIMEIS_SECOND_BOUNDARY_MIN_T": 0.766667,
+  "VIDEO_TIMEIS_SECOND_BOUNDARY_MAX_T": 0.8,
+  "VIDEO_TIMEIS_SECOND_BOUNDARY_MID_T": 0.783333,
+  "VIDEO_TIMEIS_UNCERTAINTY_SECONDS": 0.108,
+  "note": "Clip order from audio cross-correlation — not inferred from Drive timestamps"
+}

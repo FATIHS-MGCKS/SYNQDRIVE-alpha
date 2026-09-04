@@ -70,6 +70,7 @@ function main(): void {
 
   const paths = {
     sessionSummary: path.join(outDir, 'rd004-b-session-summary.json'),
+    videoMasterTimeline: path.join(outDir, 'rd004-b-video-master-timeline.json'),
     videoAnchorTable: path.join(outDir, 'rd004-b-video-anchor-table.json'),
     signalCadence: path.join(outDir, 'rd004-b-signal-cadence.json'),
     videoClockAlignment: path.join(outDir, 'rd004-b-video-clock-alignment.json'),
@@ -116,6 +117,8 @@ function main(): void {
       durationSeconds: SEGMENT_B_CONSTANTS.videoDurationSeconds,
       independentClockAnchorUtc: SEGMENT_B_CONSTANTS.independentClockAnchorUtc,
       timeIsDisplayCest: SEGMENT_B_CONSTANTS.timeIsDisplayCest,
+      masterTimelineAudioCorrelated: result.videoMasterTimeline.VIDEO_MASTER_TIMELINE_AUDIO_CORRELATED,
+      clipTotalOverlapSeconds: result.videoMasterTimeline.VIDEO_CLIP_TOTAL_OVERLAP_SECONDS,
     },
     envelopeRowCount: result.envelopeRowCount,
     flags: result.flags,
@@ -131,6 +134,7 @@ function main(): void {
   }
 
   fs.writeFileSync(paths.sessionSummary, stableStringify(sessionSummary));
+  fs.writeFileSync(paths.videoMasterTimeline, stableStringify(result.videoMasterTimeline));
   fs.writeFileSync(paths.videoAnchorTable, stableStringify(result.videoAnchorTable));
   fs.writeFileSync(paths.signalCadence, stableStringify(result.signalCadence));
   fs.writeFileSync(paths.videoClockAlignment, stableStringify(result.videoClockAlignment));
