@@ -1079,13 +1079,32 @@ nodes:
       for overlapping DIMO segments (7→28 and 21→28 suffix transitions).
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0027
+    type: evidence
+    title: G1.1 physical refuel identity matcher dry-run
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity.matcher.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity.matcher.spec.ts
+    summary: Two-stage semantic sibling matcher; incident A+B merge; separate refuels rejected.
+    verified_at: "2026-09-04"
+
+  - id: EED-DEC-PHYSICAL-REFUEL-IDENTITY-001
+    type: decision
+    title: Two-stage physical refuel identity (scope lock + semantic matcher)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Advisory xact lock on coarse scope; semantic matcher for suffix-compatible supersets.
+      Canonical = most complete consistent transition superset, not duration-first.
+    evidence: [EED-EV-0027]
+
   - id: EED-OQ-013
     type: open_question
-    title: Physical refuel identity decoupled from dimoSegmentId
+    title: Physical refuel identity implementation rollout
     epistemic_status: UNKNOWN
     summary: >
-      One physical fill produced two VehicleEnergyEvent REFUEL rows when DIMO emitted overlapping
-      segments with incompatible percent deltas. Duration-first sibling reconcile insufficient.
-      Design in refuel forensics 2026-09-04 audit.
+      G1.1 design ready (EED-DEC-PHYSICAL-REFUEL-IDENTITY-001); implementation pending G2.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026]
+    evidence: [EED-EV-0026, EED-EV-0027]

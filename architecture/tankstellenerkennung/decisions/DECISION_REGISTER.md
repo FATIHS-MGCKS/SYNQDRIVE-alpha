@@ -253,3 +253,21 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **TRADEOFFS** | Validation latency for full E2E path |
 | **REMAINING_GAPS** | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 — natural positive production REFUEL not observed |
 | **EVIDENCE** | FST-EVID-GOV-REAL-REFUEL-E2E-001 |
+
+---
+
+## FST-DEC-COORD-FORECOURT-DWELL-V2-001 — Physical refuel forecourt dwell medoid coordinate authority V2
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | V1 `energy_event_start` uses DIMO segment-start GPS (721–1038m from Esso on 2026-09-04 incident) |
+| **WHY** | Segment-start anchor ≠ physical refuel stop; resolver NOT_FOUND despite OSM station presence |
+| **CHANGE** | Derive enrichment coordinate from forecourt low-speed dwell cluster medoid adjacent to fuel-rise onset |
+| **EXPECTED_EFFECT** | Resolver MATCHED at Esso when physical stop is within ~20m forecourt cluster |
+| **VALIDATION** | G1.1 VPS read-only probe: forecourt medoid 11m from Esso, score 78 MATCHED vs NOT_FOUND at segment starts |
+| **OBSERVED_EFFECT** | Design validated on single incident; implementation pending G2 |
+| **NON_EFFECTS** | Does not change REFUEL detection or duplicate identity semantics by itself |
+| **TRADEOFFS** | Requires HF/route speed+GPS; CH HF mirror may lack GPS for some vehicles |
+| **REMAINING_GAPS** | G2 implementation; fleet-wide offset calibration; CH GPS mirror completeness |
+| **EVIDENCE** | FST-EVID-G11-HF-CLOSURE-2026-09-04-001 |

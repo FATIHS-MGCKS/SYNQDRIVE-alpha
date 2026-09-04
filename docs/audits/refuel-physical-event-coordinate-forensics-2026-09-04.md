@@ -27,8 +27,8 @@
 | Production Postgres (`vehicle_energy_event_fuel_station_enrichments`) | **SUCCESS** | COMPLETED / NOT_FOUND for both |
 | Production PostGIS (`osm.fuel_stations`) | **SUCCESS** | Esso + nearby Aral probes |
 | Production PM2 / env flags | **SUCCESS** (prior pass) | N=2 replicas; `SCHEDULER_LEADER_ELECTION_ENABLED=null` |
-| ClickHouse `telemetry_hf_points` | **NOT RETRIEVED** | SSH to VPS failed (`Permission denied publickey`) in this agent session; correct schema identified as `recorded_at` + per-signal rows (`003_high_frequency_telemetry.sql`) |
-| DIMO segment API (live replay) | **NOT RUN** | Forensic phase used persisted rows + code audit only |
+| ClickHouse `telemetry_hf_points` | **SUCCESS (partial)** | 274 speed/OBD rows; **no GPS/fuel** in CH for this vehicle/window. See G1.1 closure. |
+| DIMO route `signals(7s)` + fuel `signals(30s)` | **SUCCESS** | 207 GPS points; 41 fuel samples. Forecourt dwell confirmed. |
 
 **Authoritative ClickHouse access path (for implementation phase):** `CLICKHOUSE_URL` + `CLICKHOUSE_USER` + `CLICKHOUSE_PASSWORD` + `CLICKHOUSE_DATABASE` via `@clickhouse/client` (`clickhouse.service.ts`). Table: `synqdrive.telemetry_hf_points` (not legacy `high_frequency_telemetry` / `telemetry_hf_points` with `ts` column assumed by draft extract scripts).
 
@@ -50,30 +50,39 @@ All local times CEST (UTC+2). Owner times are approximate human recollection.
 | H. Stabilization | — | 03:55:10 | Both events `endTime` | Plateau 28 L / 43.14 %; same odometer 187740 |
 | I. Persistence B | — | 04:33:44 | Event B `createdAt` | ~45 min after A — scheduled reconciliation cadence |
 
-### Latency estimates (INFERRED without HF samples)
+### Latency estimates (G1.1 — measured, do not collapse)
 
-| Metric | Estimate | Basis |
-|--------|----------|-------|
-| Fuel-signal rise lag vs physical fueling | **~5–6 min** | Owner departure ~05:47 vs rise start 05:47:45–05:49:13 |
-| Provider segment B delay vs A | **478 s** | Segment start timestamps |
-| Enrichment lag | **Seconds–minutes** | Resolver logs ~52–125 ms; rows COMPLETED same pass |
-| B persistence delay | **~45 min** | `createdAt` delta — ~15 min reconciliation schedule |
+| Dimension | Offset | Notes |
+|-----------|--------|-------|
+| Owner departure (~05:47) → Event A rise **start** | **+45 s** | Not “5–6 min lag” |
+| Owner departure → Event B rise start | **+2 m 13 s** | |
+| Owner departure → rise **end** | **+5 m 45 s** | Stabilization tail |
+| Owner arrival (~05:43) → A rise start | **+4 m 45 s** | |
+| Physical stop at Esso (05:44:07) → A rise start | **+3 m 38 s** | Sensor + 30s sampling |
+| Fuel flat 7 L at Esso → first absolute rise | **~4 m** (05:44→05:48) | **SENSOR** |
+| CH `recorded_at` → `ingested_at` (speed) | **~2 h 11 m** | **INGRESS** batch mirror |
+| Provider segment B vs A start | **478 s** | **PROVIDER_AGGREGATION** |
+
+**FUEL_TIMING_CAUSE = MIXED** (sensor damping, 30s provider sampling, detector window semantics, CH ingress batch lag).
+
+Full tables: `refuel-g11-hf-evidence-closure-2026-09-04.md`.
 
 ---
 
-## 4. Physical stop coordinate (best current estimate)
+## 4. Physical stop coordinate (G1.1 confirmed)
 
-**Without HF dwell cluster, confidence is MEDIUM (inferred).**
+**PHYSICAL_ESSO_DWELL_CONFIRMED = YES** via DIMO 7s route telemetry.
 
-| Candidate | Coordinates | Distance to Esso | Assessment |
-|-----------|-------------|------------------|------------|
-| Event A segment start | 51.3305883, 9.5126383 | 1,038 m | **Reject** — far from station |
-| Event B segment start | 51.3150216, 9.5170483 | 721 m | **Reject** |
-| A/B midpoint | 51.3228, 9.5148 | 163 m | Closer; resolver score 8 → NOT_FOUND |
-| Esso OSM centroid | 51.32133585, 9.51465858 | 0 m (definition) | MATCHED HIGH at probe |
-| **Recommended V2 anchor (design)** | Pre-rise stationary cluster / dwell medoid within ~03:40–03:48 UTC | **TBD** — requires HF GPS + speed | Best production candidate |
+| Candidate | Coordinates | Distance to Esso | Resolver |
+|-----------|-------------|------------------|----------|
+| Event A segment start | 51.3305883, 9.5126383 | 1,038 m | NOT_FOUND |
+| Event B segment start | 51.3150216, 9.5170483 | 721 m | NOT_FOUND |
+| Rise-start GPS | 51.3194166, 9.5152783 | 218 m | NOT_FOUND (score 8) |
+| Rise-window medoid | 51.3063400, 9.5140433 | 1,668 m | NOT_FOUND |
+| Global pre-rise dwell (wrong) | 51.3353366, 9.506155 | 1,665 m | NOT_FOUND |
+| **Forecourt dwell medoid (V2)** | **51.321263, 9.514558** | **~11 m** | **MATCHED (score 78)** |
 
-**Core answer:** Segment start coordinate does **not** represent physical refueling location for this incident. Fuel-rise-window GPS is also suspect due to delayed fuel signal (vehicle may have departed).
+Stationary interval: **05:44:07 → 05:47:37** local at 10–14 m from Esso.
 
 ---
 
@@ -177,11 +186,11 @@ Two REFUEL rows are **physical siblings** iff:
 3. Same `endTime` (±60 s) AND `odometerEndKm` (±1 km)
 4. Windows overlap OR fuel-rise windows overlap OR fuel transitions are **suffix-compatible** (e.g. 7→28 and 21→28)
 
-**Canonical selection** (not duration-first):
+**Canonical selection** (not duration-first, not global max-delta):
 
-- Prefer row with **maximum fuel delta liters** (21 > 7)
-- Tie-break: earlier `fuelLevelRiseStart`, then longer rise duration, then higher detection confidence
-- Merge metadata: union `dimoSegmentId`s in `rawDetectionMeta.physicalSiblings`
+- Prefer **most complete consistent transition superset** (A: 7→28 contains B: 21→28)
+- Fail closed if no clear superset
+- Two-stage design: coarse advisory lock scope + semantic matcher (`physical-refuel-identity.matcher.ts`)
 
 ### False-merge protection (negative fixtures required)
 
@@ -269,11 +278,11 @@ Two REFUEL rows are **physical siblings** iff:
 
 ## 15. IMPLEMENTATION_READY
 
-**NO**
+**YES** (G1.1 closure 2026-09-04)
 
-**Justification:** Design is specification-complete for both defects, but implementation should wait for HF telemetry confirmation of dwell cluster (quantify lag, validate policy E/F on real samples). SSH/ClickHouse retrieval blocked in this session. Production rows intentionally preserved for future repair decision.
+HF/route evidence confirms Esso forecourt dwell; V2 coordinate policy `physical_refuel_forecourt_dwell_medoid_v2` resolves MATCHED at score 78; timing semantics corrected; two-stage physical-refuel identity design validated by dry-run tests.
 
-**Ready after:** One successful read-only HF extract + offline policy replay matching Esso within MATCHED threshold.
+See: `refuel-g11-hf-evidence-closure-2026-09-04.md`
 
 ---
 
@@ -295,11 +304,11 @@ node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph
 
 ## 18. Remaining uncertainties
 
-1. Exact HF GPS dwell cluster coordinates and duration
-2. Whether segment **end** coordinates are closer to Esso than starts
-3. DIMO segment start anchor semantics (first signal in envelope vs physical stop)
-4. Optimal quantization tolerances fleet-wide (only one incident measured)
-5. Production `SCHEDULER_LEADER_ELECTION_ENABLED` remediation timeline
+1. Fleet-wide quantization tolerances for physical-refuel identity (single incident measured)
+2. ClickHouse HF mirror GPS/fuel completeness for all vehicles (this vehicle: speed-only in CH)
+3. DIMO segment start anchor semantics vs physical stop (documented; V2 policy mitigates for enrichment)
+4. Production `SCHEDULER_LEADER_ELECTION_ENABLED` remediation timeline (separate from duplicate root cause)
+5. G2 implementation: reconcile-before-enqueue ordering and advisory lock scope
 
 ---
 

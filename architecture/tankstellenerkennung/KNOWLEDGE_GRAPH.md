@@ -71,6 +71,7 @@ Full scientific record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_RE
 | FST-DEC-EXTEND-TIMELINE-UI-001 | Extend TripTimelineEnergyCard | VALIDATED |
 | FST-DEC-RECHARGE-UNTOUCHED-001 | RECHARGE unchanged | VALIDATED |
 | FST-DEC-REAL-REFUEL-E2E-001 | Require natural post-cutover REFUEL for E2E validation | VALIDATED |
+| FST-DEC-COORD-FORECOURT-DWELL-V2-001 | Forecourt dwell medoid coordinate authority V2 | PROPOSED |
 
 Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scope in `DECISION_REGISTER.md` and `FST-EVID-PROD-DEPLOY-001`.
 
@@ -79,7 +80,7 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 | ID | Gap |
 |----|-----|
 | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | Natural post-cutover REFUEL observed; positive match path not validated |
-| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 not implemented |
+| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 designed (G1.1); implementation pending G2 |
 | FST-GAP-GERMANY-SCOPE-001 | Germany-only scope / international expansion |
 | FST-GAP-MANUAL-FAILED-REPAIR-001 | Manual repair for terminal FAILED rows |
 | FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy |

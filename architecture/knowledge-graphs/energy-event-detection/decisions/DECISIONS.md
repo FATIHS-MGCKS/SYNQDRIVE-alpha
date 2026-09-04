@@ -1,6 +1,6 @@
 # KG-EED Decision History
 
-Canonical decision nodes: `graph/nodes.yaml` (`EED-DEC-001` … `EED-DEC-012`).  
+Canonical decision nodes: `graph/nodes.yaml` (`EED-DEC-001` … `EED-DEC-012`, `EED-DEC-PHYSICAL-REFUEL-IDENTITY-001`).  
 Detail below follows governance: decision, rationale, alternatives, consequences, evidence, status.
 
 ---
@@ -242,3 +242,23 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Would invalidate** | Reintroduction of blocking combined fetch |
 | **Related nodes** | EED-SVC-002 |
 | **Related invariants** | EED-INV-011 |
+
+---
+
+## EED-DEC-PHYSICAL-REFUEL-IDENTITY-001 — Two-stage physical refuel identity
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-PHYSICAL-REFUEL-IDENTITY-001 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-04 |
+| **Question** | How to dedupe overlapping provider REFUEL segments for one physical fill without `dimoSegmentId` equality? |
+| **Decision** | Stage 1: coarse deterministic scope / advisory xact lock key. Stage 2: semantic sibling matcher (terminal fuel/odometer/end-time, nested windows, suffix-compatible transitions). Canonical = most complete consistent transition superset. |
+| **Why** | KS MX 2026-09-04: A (7→28 L) and B (21→28 L) are same physical refuel; duration-first reconcile + 20% fuel-% guard failed. |
+| **Alternatives** | Single rounded hash (rejected — bucket boundary splits); global max fuelDelta (rejected — insufficient evidence); UI dedupe (rejected) |
+| **Evidence** | EED-EV-0027 |
+| **Consequences** | G2 must reconcile before enrichment enqueue; one physical refuel → one authoritative row → one enrichment |
+| **Known limitations** | Tolerances calibrated on single incident + limited historical dry-run corpus |
+| **Would invalidate** | Counterexample where semantic matcher false-merges distinct refuels at fleet scale |
+| **Related nodes** | EED-OQ-013, EED-EV-0026 |
+| **Related invariants** | — |

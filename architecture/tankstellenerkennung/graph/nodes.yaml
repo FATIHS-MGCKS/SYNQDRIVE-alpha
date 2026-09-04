@@ -755,10 +755,33 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     summary: >
       Two REFUEL rows, both enrichment NOT_FOUND, Esso ground truth, segment-start coords wrong.
-      Partial E2E validated; positive match path not validated.
+      Partial E2E validated; G1.1 confirms forecourt dwell and V2 coordinate policy.
     source_paths:
       - architecture/tankstellenerkennung/evidence/INCIDENT_REFUEL_KS_MX_2026-09-04.md
       - docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md
+
+  - id: FST-EVID-G11-HF-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.1 HF + DIMO route closure for KS MX 2026-09-04 refuel
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      DIMO 7s route confirms Esso forecourt dwell (10m, 0km/h 05:44-05:47 local).
+      Forecourt medoid resolves MATCHED score 78. CH HF has speed only (no GPS/fuel).
+    source_paths:
+      - architecture/tankstellenerkennung/evidence/G11_HF_CLOSURE_KS_MX_2026-09-04.json
+      - docs/audits/refuel-g11-hf-evidence-closure-2026-09-04.md
+
+  - id: FST-DEC-COORD-FORECOURT-DWELL-V2-001
+    type: decision
+    title: Physical refuel forecourt dwell medoid coordinate authority V2
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Replace energy_event_start with forecourt low-speed dwell medoid before fuel-rise onset.
+      Proven on 2026-09-04 incident: 11m from Esso, resolver score 78 vs NOT_FOUND at segment starts.
+    evidence:
+      - FST-EVID-G11-HF-CLOSURE-2026-09-04-001
 
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis

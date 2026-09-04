@@ -1,0 +1,54 @@
+{
+  "artifact_id": "FST-EVID-G11-HF-CLOSURE-2026-09-04-001",
+  "vehicle_id": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+  "incident_date": "2026-09-04",
+  "extracted_at": "2026-09-04T09:45:00Z",
+  "sources": {
+    "clickhouse_hf": {
+      "signals": ["speed", "obdEngineLoad", "obdThrottlePosition", "powertrainCombustionEngineSpeed", "powertrainCombustionEngineECT"],
+      "gps_present": false,
+      "speed_sample_count": 274,
+      "ingress_lag_sample_sec": 7861
+    },
+    "dimo_route_7s": { "point_count": 207, "http_status": 200 },
+    "dimo_fuel_30s": { "sample_count": 41, "http_status": 200 }
+  },
+  "physical_esso_dwell": {
+    "confirmed": true,
+    "nearest_point": {
+      "utc": "2026-09-04T03:44:07Z",
+      "local_cest": "2026-09-04 05:44:07",
+      "lat": 51.321265,
+      "lon": 9.5145616,
+      "speed_kmh": 0,
+      "dist_esso_m": 10
+    },
+    "forecourt_cluster_median": {
+      "lat": 51.3212641,
+      "lon": 9.5145425,
+      "sample_count": 10,
+      "window_local": "2026-09-04 05:43:25 → 05:47:37"
+    },
+    "points_within_80m_esso": 11
+  },
+  "resolver_probes": {
+    "forecourt_dwell_medoid": { "lat": 51.321263, "lon": 9.514558, "top_score": 78, "status": "MATCHED" },
+    "event_a_segment_start": { "lat": 51.3305883, "lon": 9.5126383, "status": "NOT_FOUND" },
+    "event_b_segment_start": { "lat": 51.3150216, "lon": 9.5170483, "status": "NOT_FOUND" },
+    "rise_start_gps": { "lat": 51.3194166, "lon": 9.5152783, "top_score": 8, "status": "NOT_FOUND" }
+  },
+  "fuel_timing": {
+    "stationary_at_esso_until_local": "05:47:37",
+    "fuel_liters_flat_7L_until_local": "05:44:00",
+    "first_absolute_rise_local": "05:48:00",
+    "first_rise_sample_local": "05:48:30",
+    "plateau_28L_local": "05:51:30",
+    "offsets_vs_owner_departure_0547_sec": {
+      "A_rise_start": 45,
+      "B_rise_start": 133,
+      "rise_end": 345,
+      "first_dimo_fuel_rise": 90
+    }
+  },
+  "leader_election_flag": null
+}

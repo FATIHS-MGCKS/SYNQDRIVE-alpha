@@ -361,7 +361,11 @@ edges:
     relation: REFERENCES
     to: EED-OBS-001
 
-  - from: EED-EV-0026
+  - from: EED-EV-0027
+    relation: REFERENCES
+    to: EED-DEC-PHYSICAL-REFUEL-IDENTITY-001
+
+  - from: EED-EV-0027
     relation: REFERENCES
     to: EED-OQ-013
 

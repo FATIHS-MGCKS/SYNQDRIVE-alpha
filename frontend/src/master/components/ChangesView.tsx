@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g11-hf-evidence-closure-2026-09-04',
+    version: '4.9.1048',
+    title: 'G1.1 HF evidence closure — KS MX REFUEL physical stop (2026-09-04)',
+    summary: [
+      'Production HF/route telemetry retrieved read-only: CH speed-only (274 rows); DIMO 7s route (207 GPS) + 30s fuel (41 samples).',
+      'Physical Esso forecourt dwell confirmed: 0 km/h cluster 05:44–05:47 local, ~11 m from Esso Ysenburgstraße 22.',
+      'Timing corrected: rise start +45s/+2m13s vs owner departure ~05:47; not a single “5–6 min lag”. FUEL_TIMING_CAUSE=MIXED.',
+      'V2 coordinate policy selected: forecourt dwell medoid → resolver MATCHED score 78 (vs NOT_FOUND at segment starts).',
+      'Two-stage physical-refuel identity design + matcher dry-run PASS; enrichment must run after reconcile (G2).',
+      'IMPLEMENTATION_READY=YES; leader election gap remains separate.',
+    ],
+    reason: 'Close evidentiary blocker for duplicate REFUEL + wrong coordinate incident before G2 implementation.',
+    previousBehavior: 'IMPLEMENTATION_READY=NO pending HF dwell confirmation; imprecise fuel-signal lag language.',
+    details:
+      'docs/audits/refuel-g11-hf-evidence-closure-2026-09-04.md; FST-EVID-G11-HF-CLOSURE-2026-09-04-001; EED-EV-0027; EED-DEC-PHYSICAL-REFUEL-IDENTITY-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T12:00:00.000Z',
+  },
+  {
     id: 'refuel-physical-event-forensics-2026-09-04',
     version: '4.9.1047',
     title: 'REFUEL physical event + fuel-station coordinate forensics (2026-09-04)',
