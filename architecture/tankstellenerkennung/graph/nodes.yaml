@@ -974,6 +974,21 @@ nodes:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.redis.integration.spec.ts
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
 
+  - id: FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001
+    type: evidence
+    title: G2.2 physical-refuel V2 direct production cutover
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      G2.1d final integration gate PASS on isolated VPS PG16+Redis7; PR #1531 merged;
+      production migration+deploy with flag OFF; direct activation (no shadow).
+      DEPLOYED_TO_PRODUCTION — PROVEN_IN_PRODUCTION only per observed REFUEL.
+    source_paths:
+      - docs/audits/refuel-g22-production-cutover-2026-09-04.md
+      - backend/scripts/ops/vps-enable-physical-refuel-v2-production.sh
+      - backend/scripts/ops/physical-refuel-v2-production-preflight.sh
+      - backend/src/config/physical-refuel-reconciliation.config.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

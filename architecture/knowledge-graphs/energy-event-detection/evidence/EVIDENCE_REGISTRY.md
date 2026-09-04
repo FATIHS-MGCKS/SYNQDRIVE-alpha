@@ -35,7 +35,8 @@ Stable IDs: `EED-EV-####`. Each item: source, path, what it proves, what it does
 | EED-EV-0034 | TEST | G2.1b cross-cutover + recovery | `physical-refuel-g21b-*.spec.ts`, PG integration | V2-only candidates; observation enqueue; coordinate retry; PG lock proof | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0035 | TEST | G2.1c final recovery semantics | `physical-refuel-g21c-final-recovery-semantics.spec.ts` | Queue-independent recovery; route epistemics; fingerprint invalidation; V2 stale enrichment | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0036 | TEST | G2.1d final recovery execution | `physical-refuel-g21d-final-recovery-execution-closure.spec.ts` | Stale enrichment E2E; Redis-independent scheduler; route stabilization; BullMQ failed-job recovery | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
-| EED-EV-0037 | TEST | G2.1d final pre-shadow integration | `physical-refuel-*integration.spec.ts` | Isolated Postgres+Redis; PG locks; BullMQ real recovery; multi-replica E2E | G2.2 shadow rollout | PROVEN_BY_INTEGRATION_TEST | 2026-09-04 |
+| EED-EV-0037 | TEST | G2.1d final pre-shadow integration | `physical-refuel-*integration.spec.ts` | Isolated Postgres+Redis; PG locks; BullMQ real recovery; multi-replica E2E | G2.2 production cutover | PROVEN_BY_INTEGRATION_TEST | 2026-09-04 |
+| EED-EV-0038 | TEST | G2.2 direct production cutover | `vps-enable-physical-refuel-v2-production.sh` | Integration gate PASS; merged deploy; direct V2 activation (no shadow) | Per-REFUEL production proof | DEPLOYED_TO_PRODUCTION | 2026-09-04 |
 | EED-EV-0025 | PRODUCTION | P1.3-S6 deploy | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | KS MX reprocess: 4818s, 330s rise, 685s deleted | Fleet-wide generalization | PROVEN_IN_PRODUCTION | 2026-09-01 |
 
 ## Negative results (first-class)

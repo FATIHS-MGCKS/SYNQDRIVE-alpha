@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g22-production-cutover-2026-09-04',
+    version: '4.9.1061',
+    title: 'G2.2 physical-refuel V2 direct production cutover',
+    summary: [
+      'G2.1d final integration gate PASS on isolated VPS PG16+Redis7 (13 integration tests, 0 skip).',
+      'PR #1531 merged; production migration + deploy with PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=false.',
+      'Direct production activation (no shadow): V2 flag + cutover timestamp via rolling multi-replica restart.',
+      'Kill switch: PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=false. No mass historical reprocess.',
+      'PROVEN_IN_PRODUCTION pending natural post-cutover REFUEL observation (KS MX 2024 watch).',
+    ],
+    reason: 'G2.1d-FINAL integration gate authorized direct G2.2 production cutover (no shadow mode).',
+    previousBehavior:
+      'V2 reconciliation code deployed but disabled; integration gate blocked on harness DB name mismatch.',
+    details:
+      'docs/audits/refuel-g22-production-cutover-2026-09-04.md; FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001; EED-EV-0038.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:35:00.000Z',
+  },
+  {
     id: 'refuel-g21d-final-pre-shadow-integration-2026-09-04',
     version: '4.9.1060',
     title: 'G2.1d physical-refuel final pre-shadow integration gate',
