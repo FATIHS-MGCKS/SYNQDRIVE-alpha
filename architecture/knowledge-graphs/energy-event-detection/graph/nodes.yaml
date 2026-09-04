@@ -1217,6 +1217,20 @@ nodes:
       post-commit enrichment gate, V2 coordinate. Default OFF; production activation pending.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0033
+    type: evidence
+    title: G2.1a runtime safety + liveness closure
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
+      - docs/audits/refuel-g21a-runtime-safety-liveness-closure-2026-09-04.md
+    summary: >
+      Closes legacy recovery bypass, durable settlement/orphan/lost-enqueue recovery,
+      matrix scope fix, V2 coordinate fail-closed, pre-G2 bridge. G2.2 shadow authorized.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt

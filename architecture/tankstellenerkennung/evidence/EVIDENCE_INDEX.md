@@ -27,6 +27,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md | G1.2c SETTLING, observation time, fail-closed components; 64 tests |
 | FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md | G1.2d late-sibling conflict gates enrichment for singleton/external components |
 | FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21-runtime-wiring-2026-09-04.md | G2.1 runtime wiring behind disabled feature flag; migration not production-applied |
+| FST-EVID-G21A-RUNTIME-SAFETY-LIVENESS-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21a-runtime-safety-liveness-closure-2026-09-04.md | G2.1a safety/liveness closure; legacy bypass closed; durable recovery; G2.2 shadow authorized |
 
 ## Phase memos (supporting, not graph authority)
 
