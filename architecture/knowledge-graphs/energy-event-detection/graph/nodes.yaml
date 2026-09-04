@@ -1275,6 +1275,21 @@ nodes:
       single increment, route evidence stabilization, BullMQ failed-job recovery, error isolation.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0037
+    type: evidence
+    title: G2.1d final pre-shadow integration gate
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.postgres.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.redis.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
+      - docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md
+    summary: >
+      Post-main-sync isolated Postgres+Redis integration: PG locks, real BullMQ recovery/dedupe,
+      full same-vehicle multi-replica recovery E2E. PROVEN_BY_INTEGRATION_TEST.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt

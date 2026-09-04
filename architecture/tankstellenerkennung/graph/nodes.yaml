@@ -959,6 +959,21 @@ nodes:
       - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
       - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
 
+  - id: FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001
+    type: evidence
+    title: G2.1d final pre-shadow integration gate
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Post-main-sync isolated Postgres+Redis integration: PG advisory locks, real BullMQ
+      failed-job recovery and dedupe, full same-vehicle multi-replica recovery E2E.
+      PROVEN_BY_INTEGRATION_TEST — not production.
+    source_paths:
+      - docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.postgres.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.redis.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

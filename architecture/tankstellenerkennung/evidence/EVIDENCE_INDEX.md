@@ -31,6 +31,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md | G2.1b cross-cutover ownership, observation-time enqueue, coordinate retry, PG lock proof |
 | FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md | G2.1c queue-independent recovery, route epistemics, evidence fingerprint, V2 stale enrichment |
 | FST-EVID-G21D-FINAL-RECOVERY-EXECUTION-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21d-final-recovery-execution-closure-2026-09-04.md | G2.1d stale enrichment E2E, Redis-independent scheduler, route stabilization, BullMQ failed-job recovery |
+| FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md | G2.1d-FINAL isolated Postgres+Redis integration, multi-replica E2E, pre-G2.2 gate |
 
 ## Phase memos (supporting, not graph authority)
 

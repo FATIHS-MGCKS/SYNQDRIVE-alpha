@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g21d-final-pre-shadow-integration-2026-09-04',
+    version: '4.9.1060',
+    title: 'G2.1d physical-refuel final pre-shadow integration gate',
+    summary: [
+      'Synced PR #1531 with main; preserved RD004-B + physical-refuel Changes/Architecture entries.',
+      'Isolated Postgres migration chain (334 migrations) including G2.1a–G2.1d schema.',
+      'Real PG advisory-lock integration: same-vehicle serialization + multi-replica SR4.',
+      'Real Redis/BullMQ integration: waiting/delayed/crash-window dedupe, failed-job recovery, terminal guards.',
+      'Full same-vehicle multi-replica recovery E2E: one logical BullMQ job, PG lock serializes.',
+      'Post-sync regression 206/206 unit tests pass; build + Prisma + FST/EED validators pass.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF; PR stays DRAFT.',
+    ],
+    reason: 'G2.1d-FINAL integration + evidence gate before G2.2 shadow authorization.',
+    previousBehavior:
+      'PR behind main and conflicting; BullMQ/Postgres integration only unit-mocked; no multi-replica E2E on final SHA.',
+    details:
+      'docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md; FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001; EED-EV-0037.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:30:00.000Z',
+  },
+  {
     id: 'refuel-g21d-final-recovery-execution-closure-2026-09-04',
     version: '4.9.1058',
     title: 'G2.1d physical-refuel final recovery execution closure',
