@@ -8,6 +8,7 @@ export { default as retentionConfig } from './retention.config';
 export { default as storageConfig } from './storage.config';
 export { default as documentExtractionConfig } from './document-extraction.config';
 export { default as fuelStationEnrichmentConfig } from './fuel-station-enrichment.config';
+export { default as physicalRefuelReconciliationConfig } from './physical-refuel-reconciliation.config';
 export { default as documentsConfig } from './documents.config';
 export { default as whatsappConfig } from './whatsapp.config';
 export { default as diditConfig, DIDIT_WORKFLOWS } from './didit.config';

@@ -33,6 +33,9 @@ export interface EnqueueFuelStationEnrichmentInput {
   eventStartTime: Date;
   startLatitude: number | null;
   startLongitude: number | null;
+  /** G2.1 V2 coordinate source when physical-refuel reconciliation supplied coordinates. */
+  coordinateSource?: string | null;
+  physicalRefuelReconciliationV2?: boolean;
 }
 
 @Injectable()

@@ -189,6 +189,8 @@ import { ReferenceCaptureFastGoService } from './reference-capture/reference-cap
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
+import { PhysicalRefuelCoordinateRuntimeService } from './energy-events/physical-refuel-coordinate-runtime.service';
+import { PhysicalRefuelReconciliationRuntimeService } from './energy-events/physical-refuel-reconciliation-runtime.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
 import { MisuseCasesModule } from './misuse-cases/misuse-cases.module';
@@ -400,6 +402,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     FuelStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    PhysicalRefuelCoordinateRuntimeService,
+    PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,
@@ -608,6 +612,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     FuelStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    PhysicalRefuelCoordinateRuntimeService,
+    PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
     BatteryCapabilityPreflightRepository,

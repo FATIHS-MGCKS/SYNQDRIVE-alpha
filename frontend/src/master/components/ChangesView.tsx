@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g21-runtime-wiring-2026-09-04',
+    version: '4.9.1054',
+    title: 'G2.1 physical-refuel runtime wiring (feature-flagged, default OFF)',
+    summary: [
+      'Runtime wiring implemented behind PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED (default false).',
+      'REFUEL persist → vehicle-scoped advisory lock → bounded candidate load → G1 reconcile → persist finality → post-commit enrichment gate.',
+      'Enrichment only after COMMIT when FINAL_CANONICAL or FINAL_DISTINCT; V2 forecourt coordinate wired at enqueue.',
+      'Schema: VehicleEnergyEventRefuelReconciliation + migration (not run in production).',
+      'Production activation pending G2.2 shadow rollout.',
+    ],
+    reason: 'G2_IMPLEMENTATION_AUTHORIZED after G1.2d PASS; wire proven G1 design into runtime without production activation.',
+    previousBehavior: 'Immediate post-persist enrichment enqueue; legacy sibling row deletion.',
+    details:
+      'docs/audits/refuel-g21-runtime-wiring-2026-09-04.md; FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001; EED-EV-0032.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T22:00:00.000Z',
+  },
+  {
     id: 'refuel-g12d-late-sibling-hardening-2026-09-04',
     version: '4.9.1053',
     title: 'G1.2d late-sibling finalization hardening (2026-09-04)',

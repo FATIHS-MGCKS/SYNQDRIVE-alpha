@@ -11,6 +11,7 @@ import { FuelStationLocationResolverService } from '../fuel-station-location-res
 import { FUEL_STATION_RESOLVER_VERSION } from '../fuel-station-location.types';
 import type { FuelStationResolveResult } from '../fuel-station-location.types';
 import { deriveCanonicalFuelStationCoordinate } from './fuel-station-enrichment-coordinate.util';
+import { PHYSICAL_REFUEL_COORDINATE_SOURCE_V2 } from '../../energy-events/physical-refuel-coordinate-runtime.service';
 import { buildFuelStationEnrichmentInputFingerprint } from './fuel-station-enrichment-fingerprint.util';
 import { isRetryableFuelStationResolutionStatus } from './fuel-station-enrichment-trust.policy';
 import { shouldSkipAutomaticFuelStationEnrichment } from './fuel-station-enrichment-lifecycle.policy';
@@ -37,7 +38,10 @@ export class FuelStationEnrichmentOrchestratorService {
     const started = Date.now();
     const event = await this.prisma.vehicleEnergyEvent.findUnique({
       where: { id: energyEventId },
-      include: { fuelStationEnrichment: true },
+      include: {
+        fuelStationEnrichment: true,
+        refuelReconciliation: true,
+      },
     });
 
     if (!event) {
@@ -50,7 +54,19 @@ export class FuelStationEnrichmentOrchestratorService {
       return { skipped: true, reason: FUEL_STATION_ENRICHMENT_ERROR_CODE.NOT_REFUEL };
     }
 
-    const coordinate = deriveCanonicalFuelStationCoordinate(event);
+    const v2Reconciliation = event.refuelReconciliation;
+    const coordinate =
+      v2Reconciliation?.coordinateLatitude != null &&
+      v2Reconciliation?.coordinateLongitude != null &&
+      Number.isFinite(v2Reconciliation.coordinateLatitude) &&
+      Number.isFinite(v2Reconciliation.coordinateLongitude)
+        ? {
+            latitude: v2Reconciliation.coordinateLatitude,
+            longitude: v2Reconciliation.coordinateLongitude,
+            source:
+              v2Reconciliation.coordinateSource ?? PHYSICAL_REFUEL_COORDINATE_SOURCE_V2,
+          }
+        : deriveCanonicalFuelStationCoordinate(event);
     if (!coordinate) {
       const noCoordinateFingerprint = buildFuelStationEnrichmentInputFingerprint({
         energyEventId: event.id,

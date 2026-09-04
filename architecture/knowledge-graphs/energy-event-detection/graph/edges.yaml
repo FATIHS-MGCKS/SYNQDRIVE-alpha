@@ -424,6 +424,13 @@ edges:
     relation: REFERENCES
     to: EED-OQ-013
 
+  - from: EED-EV-0032
+    relation: REFERENCES
+    to: EED-EV-0031
+  - from: EED-EV-0032
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
   - from: EED-EV-0027
     relation: REFERENCES
     to: EED-OQ-013

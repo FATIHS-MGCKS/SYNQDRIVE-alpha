@@ -1204,6 +1204,19 @@ nodes:
       enrichment for singleton/external components, not only same-component membership.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0032
+    type: evidence
+    title: G2.1 physical-refuel runtime wiring
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - docs/audits/refuel-g21-runtime-wiring-2026-09-04.md
+    summary: >
+      Feature-flagged runtime: advisory lock, bounded candidates, persisted finality,
+      post-commit enrichment gate, V2 coordinate. Default OFF; production activation pending.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt
