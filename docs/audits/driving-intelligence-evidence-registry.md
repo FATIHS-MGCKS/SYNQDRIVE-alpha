@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-04 (DI-EV-0035B.6 RD004-B HF recovery policy lower-bound semantics correction)
+**Last updated:** 2026-09-04 (DI-EV-0035C HF recovery runtime implementation on reference capture)
 
 ---
 
@@ -68,6 +68,7 @@
 | DI-EV-0035A.1 | RD004-A.1 | C — Video ↔ telemetry alignment (methodology closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (semantics) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V2 | DI-EV-0035A (method) | DI-EV-0035A.2 | Corrected landmark/clock/drift/preprocessing/percentile/path/bundle methodology; H offset semantics too strong in A.1 |
 | DI-EV-0035A.2 | RD004-A.2 | C — Video ↔ telemetry alignment (semantics closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT (Segment A) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V3 | DI-EV-0035A.1 (semantics) | — | H displacement NOT provider offset; CLOCK_FIT_ELIGIBLE=[]; true local peak attenuation independent maxima; 38 HF samples preserved |
 | DI-EV-0035B.6 | RD004-B | C — HF recovery policy lower-bound semantics correction | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · token `187336` · Segment B | SEGMENT_B_VALIDATION | DI-EV-0035B.5 (parameter authority) | — | Correct B.5 lower-bound semantics; invalidate 8s/50-50 protection claim; provisional 8/6 + live calibration contract; RD004 analysis closeout |
+| DI-EV-0035C | RD004-B | D — HF recovery runtime implementation | `docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md` + `architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | Reference capture (canary: KS MX 2024 token via config) | PRODUCTION_RUNTIME_FIX | DI-EV-0035B.6 (design contract) | — | V2 gated HF recovery on reference-capture path; provisional 8s/6s; separate watermarks; sweep + observability + calibration foundation; production DI HF unchanged; NOT deployed |
 | DI-EV-0035B.5 | RD004-B | C — HF recovery policy design + counterfactual simulation | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | SUPERSEDED (parameter authority) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · token `187336` · Segment B | SEGMENT_B_VALIDATION | DI-EV-0035B.4 | DI-EV-0035B.6 | Settlement×overlap grid; architecture class valid; exact 8/6 parameter claims superseded by B.6 |
 | DI-EV-0035B.4 | RD004-B | C — Exact-window HF replay + watermark recovery audit | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | CURRENT (HF evidence) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · token `187336` · Segment B | SEGMENT_B_VALIDATION | DI-EV-0035B.3 (HF loss proof) | DI-EV-0035B.6 (policy) | 75 exact-window replays; 53 late-arrival; 26 watermark-excluded; ROOT_CAUSE=PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP |
 | DI-EV-0035B.3 | RD004-B | C — Transition evidence correctness + HF capture audit | `docs/audits/data/rd004-segment-b/` + `architecture/RD004_WHOLE_DRIVE_VIDEO_TELEMETRY_VALIDATION_2026-09-04.md` | 2026-09-04 | SUPERSEDED (HF loss proof) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · token `187336` · Segment B | SEGMENT_B_VALIDATION | — | DI-EV-0035B.4 | Launch gap 35.102 s; +5 s clock evidence removed; CLOCK_FIT=0; stop ~21.7 s observation only; B.3 108 vs 66 cross-origin proof superseded by B.4 |
@@ -77,7 +78,7 @@
 
 ## Entry count
 
-**48** registry entries through DI-EV-0035B.6 (Segment B B.6 lower-bound semantics correction added 2026-09-04).
+**49** registry entries through DI-EV-0035C (HF recovery runtime implementation added 2026-09-04).
 
 ---
 

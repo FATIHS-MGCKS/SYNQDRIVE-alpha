@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c-hf-recovery-runtime-2026-09-04',
+    version: '4.9.1062',
+    title: 'DI-EV-0035C — Production HF Historical Recovery Runtime (Reference Capture)',
+    summary: [
+      'Feature-gated HF Recovery V2 on reference-capture HF_HISTORICAL path (default OFF).',
+      'Settled horizon (provisional 8s settlement) + configurable recovery overlap (provisional 6s) — PARAMETERS_VALIDATED=NO.',
+      'Separate DATA / QUERY COVERAGE / RECOVERY cursor watermarks; coverage advances only after durable flush.',
+      'Zero-result HF query provenance ring (max 500) for exact-window replay.',
+      'Periodic deep recovery sweep (default OFF) + structured hf_acquisition_cycle observability.',
+      'Canary token allowlist via HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS (no hardcoded 187336).',
+      'Live availability calibration foundation (OFF by default). Production DI HF path unchanged.',
+    ],
+    reason:
+      'RD004-B proved provider late arrival + 2s overlap insufficient; implement approved runtime architecture for reference capture before live calibration.',
+    previousBehavior:
+      'Legacy 2s overlap; queryTo at requestStartedAt; no durable zero-result provenance; no recovery sweep; single overlap constant.',
+    details:
+      'docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md; architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md; reference-capture-hf-recovery-v2.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T19:55:00.000Z',
+  },
+  {
     id: 'refuel-g22-production-cutover-2026-09-04',
     version: '4.9.1061',
     title: 'G2.2 physical-refuel V2 direct production cutover',
