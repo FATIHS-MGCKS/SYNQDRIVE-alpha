@@ -13,8 +13,9 @@ import {
   describeFuelStationEnrichmentCutoverMisconfiguration,
   hasValidFuelStationEnrichmentCutover,
 } from '@modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-cutover.util';
+import { FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS } from '@modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-stale.util';
 
-const STALE_PROCESSING_MS = 15 * 60_000;
+const STALE_PROCESSING_MS = FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS;
 
 /**
  * Bounded recovery for LEGACY-OWNED REFUEL events whose startTime is after cutover and whose

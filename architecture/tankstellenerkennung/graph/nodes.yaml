@@ -928,6 +928,21 @@ nodes:
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
 
+  - id: FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G2.1c final recovery semantics closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Queue-independent semantic recovery, route provider vs true NO_DWELL distinction,
+      coordinate retry backoff fix, terminal hold anti-hot-loop, evidence fingerprint
+      invalidation, unified V2 cutover authority, V2 stale enrichment recovery.
+    source_paths:
+      - docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
+      - backend/src/modules/dimo/dimo-segments.service.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

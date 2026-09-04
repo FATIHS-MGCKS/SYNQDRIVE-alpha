@@ -1245,6 +1245,21 @@ nodes:
       bounded orphan scan, coordinate retry backoff, PG lock proof.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0035
+    type: evidence
+    title: G2.1c final recovery semantics closure
+    epistemic_status: CONFIRMED
+    source_type: TEST
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-g21c-final-recovery-semantics.spec.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md
+    summary: >
+      Queue-independent semantic recovery, provider vs NO_DWELL epistemics, coordinate
+      retry lifecycle, evidence fingerprint invalidation, unified V2 cutover, stale enrichment.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt

@@ -42,9 +42,35 @@ describe('physical-refuel-coordinate-retry.policy', () => {
   });
 
   it('applies exponential backoff for next retry', () => {
-    const first = computeNextCoordinateRetryAt(0, asOf);
-    const second = computeNextCoordinateRetryAt(1, asOf);
-    expect(first.getTime() - asOf).toBe(60_000);
-    expect(second.getTime() - asOf).toBe(120_000);
+    const first = computeNextCoordinateRetryAt(1, asOf);
+    const second = computeNextCoordinateRetryAt(2, asOf);
+    expect(first.getTime() - asOf).toBe(120_000);
+    expect(second.getTime() - asOf).toBe(240_000);
+  });
+
+  it('null coordinate status allows initial attempt', () => {
+    expect(
+      shouldAttemptCoordinateResolution({
+        coordinateLatitude: null,
+        coordinateLongitude: null,
+        coordinateSource: null,
+        coordinateSelectionStatus: null,
+        nextCoordinateRetryAt: null,
+        asOfMs: asOf,
+      }),
+    ).toBe(true);
+  });
+
+  it('terminal coordinate status does not retry', () => {
+    expect(
+      shouldAttemptCoordinateResolution({
+        coordinateLatitude: null,
+        coordinateLongitude: null,
+        coordinateSource: null,
+        coordinateSelectionStatus: 'NO_DWELL_FOUND',
+        nextCoordinateRetryAt: null,
+        asOfMs: asOf,
+      }),
+    ).toBe(false);
   });
 });

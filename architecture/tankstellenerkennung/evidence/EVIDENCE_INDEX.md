@@ -29,6 +29,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21-runtime-wiring-2026-09-04.md | G2.1 runtime wiring behind disabled feature flag; migration not production-applied |
 | FST-EVID-G21A-RUNTIME-SAFETY-LIVENESS-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21a-runtime-safety-liveness-closure-2026-09-04.md | G2.1a safety/liveness closure; legacy bypass closed; durable recovery; G2.2 shadow authorized |
 | FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md | G2.1b cross-cutover ownership, observation-time enqueue, coordinate retry, PG lock proof |
+| FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md | G2.1c queue-independent recovery, route epistemics, evidence fingerprint, V2 stale enrichment |
 
 ## Phase memos (supporting, not graph authority)
 

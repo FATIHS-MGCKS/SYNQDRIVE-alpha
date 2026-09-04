@@ -3,7 +3,6 @@ import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import physicalRefuelReconciliationConfig from '@config/physical-refuel-reconciliation.config';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
-import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { PhysicalRefuelReconciliationRuntimeService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service';
 
 /**
@@ -52,7 +51,6 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
   async runRecoveryTick(): Promise<number> {
     if (!this.config.enabled || !this.config.recoveryEnabled) return 0;
     if (!this.leaderGuard.shouldRun('physical_refuel_reconciliation_recovery')) return 0;
-    if (!canEnqueueQueue(this.logger, 'physical-refuel-reconciliation-recovery')) return 0;
     if (this.inProgress) return 0;
 
     this.inProgress = true;

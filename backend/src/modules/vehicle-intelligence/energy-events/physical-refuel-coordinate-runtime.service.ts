@@ -6,6 +6,10 @@ import {
   PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
   PHYSICAL_REFUEL_FORECOURT_DWELL_MEDOID_V2,
 } from '../fuel-stations/enrichment/physical-refuel-coordinate.selector';
+import {
+  COORDINATE_PROVIDER_ERROR,
+  COORDINATE_ROUTE_UNAVAILABLE,
+} from './physical-refuel-coordinate-retry.policy';
 
 export const PHYSICAL_REFUEL_COORDINATE_SOURCE_V2 = 'physical_refuel_forecourt_dwell_v2';
 
@@ -30,27 +34,43 @@ export class PhysicalRefuelCoordinateRuntimeService {
   ): Promise<PhysicalRefuelCoordinateRuntimeResult> {
     const fuelRiseOnsetAt = event.fuelLevelRiseStart?.toISOString();
     if (!fuelRiseOnsetAt) {
-      return {
-        latitude: null,
-        longitude: null,
-        source: null,
-        selectorVersion: PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
-        status: 'MISSING_FUEL_RISE_ONSET',
-      };
+      return unavailableResult('MISSING_FUEL_RISE_ONSET');
     }
 
     const lookbackStart = new Date(event.fuelLevelRiseStart!);
     lookbackStart.setMinutes(lookbackStart.getMinutes() - 35);
     const routeEnd = new Date(event.endTime);
-    const routePoints = await this.dimoSegments.fetchRouteEnrichment(
+    const routeOutcome = await this.dimoSegments.fetchRouteEnrichmentOutcome(
       tokenId,
       lookbackStart,
       routeEnd,
       requestContext,
     );
 
+    if (routeOutcome.status === 'UNAVAILABLE') {
+      this.logger.debug(
+        JSON.stringify({
+          event: 'physical_refuel_route_unavailable',
+          energyEventId: event.id,
+          reason: routeOutcome.reason ?? 'unavailable',
+        }),
+      );
+      return unavailableResult(COORDINATE_ROUTE_UNAVAILABLE);
+    }
+
+    if (routeOutcome.status === 'FAILED') {
+      this.logger.debug(
+        JSON.stringify({
+          event: 'physical_refuel_route_provider_error',
+          energyEventId: event.id,
+          reason: routeOutcome.reason ?? 'provider_error',
+        }),
+      );
+      return unavailableResult(COORDINATE_PROVIDER_ERROR);
+    }
+
     const result = derivePhysicalRefuelCoordinate({
-      routeSamples: routePoints.map((p) => ({
+      routeSamples: routeOutcome.points.map((p) => ({
         timestamp: p.timestamp,
         latitude: p.latitude,
         longitude: p.longitude,
@@ -70,13 +90,7 @@ export class PhysicalRefuelCoordinateRuntimeService {
           rejectionReasons: result.provenance.rejectionReasons,
         }),
       );
-      return {
-        latitude: null,
-        longitude: null,
-        source: null,
-        selectorVersion: PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
-        status: result.status,
-      };
+      return unavailableResult(result.status);
     }
 
     return {
@@ -87,4 +101,14 @@ export class PhysicalRefuelCoordinateRuntimeService {
       status: result.status,
     };
   }
+}
+
+function unavailableResult(status: string): PhysicalRefuelCoordinateRuntimeResult {
+  return {
+    latitude: null,
+    longitude: null,
+    source: null,
+    selectorVersion: PHYSICAL_REFUEL_COORDINATE_SELECTOR_VERSION,
+    status,
+  };
 }

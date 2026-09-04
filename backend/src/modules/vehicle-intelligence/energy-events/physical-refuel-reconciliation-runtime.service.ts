@@ -37,6 +37,11 @@ import {
   shouldAttemptCoordinateResolution,
 } from './physical-refuel-coordinate-retry.policy';
 import {
+  computeCoordinateEvidenceFingerprint,
+  hasCoordinateEvidenceChanged,
+} from './physical-refuel-coordinate-evidence.util';
+import { FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS } from '../fuel-stations/enrichment/fuel-station-enrichment-stale.util';
+import {
   countPhysicalRefuelRecoveryBacklog,
   findPhysicalRefuelRecoveryWork,
 } from './physical-refuel-recovery.repository';
@@ -352,6 +357,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
                 coordinateLongitude: existing.coordinateLongitude,
                 coordinateSource: existing.coordinateSource,
                 coordinateSelectorVersion: existing.coordinateSelectorVersion,
+                coordinateEvidenceFingerprint: existing.coordinateEvidenceFingerprint,
               },
             });
           } else {
@@ -418,7 +424,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
       });
       if (enqueueResult === 'enqueued') enqueuedEventIds.push(plan.event.id);
       if (enqueueResult === 'deduped') dedupedEventIds.push(plan.event.id);
-      if (enqueueResult === 'held') heldEventIds.push(plan.event.id);
+      if (enqueueResult === 'held' || enqueueResult === 'deferred') heldEventIds.push(plan.event.id);
     }
 
     return {
@@ -435,14 +441,21 @@ export class PhysicalRefuelReconciliationRuntimeService {
     organizationId?: string;
     tokenId?: number | null;
     asOfMs?: number;
-  }): Promise<'enqueued' | 'deduped' | 'skipped' | 'held'> {
+  }): Promise<'enqueued' | 'deduped' | 'skipped' | 'held' | 'deferred'> {
     const { event, decision } = params;
     const asOfMs = params.asOfMs ?? Date.now();
+    const v2Cutover = this.resolveV2OwnershipCutoverAt();
     if (!this.fuelStationEnrichmentProducer) return 'skipped';
 
     const reconciliation = await this.prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
       where: { energyEventId: event.id },
-      include: { energyEvent: { include: { fuelStationEnrichment: true } } },
+      include: {
+        energyEvent: {
+          include: {
+            fuelStationEnrichment: true,
+          },
+        },
+      },
     });
 
     if (!reconciliation) return 'skipped';
@@ -453,22 +466,58 @@ export class PhysicalRefuelReconciliationRuntimeService {
       return 'skipped';
     }
     if (!reconciliation.enrichmentEligible) return 'skipped';
-    if (reconciliation.energyEvent.fuelStationEnrichment) return 'deduped';
-    if (reconciliation.enrichmentEnqueuedAt) return 'deduped';
+
+    const enrichment = reconciliation.energyEvent.fuelStationEnrichment;
+    const isStaleEnrichment =
+      enrichment &&
+      (enrichment.processingStatus === 'PENDING' ||
+        (enrichment.processingStatus === 'PROCESSING' &&
+          enrichment.lastAttemptAt != null &&
+          enrichment.lastAttemptAt.getTime() <
+            asOfMs - FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS));
+
+    if (enrichment && !isStaleEnrichment) return 'deduped';
+    if (reconciliation.enrichmentEnqueuedAt && !isStaleEnrichment) return 'deduped';
+
+    const evidenceFingerprint = computeCoordinateEvidenceFingerprint(event);
+    const evidenceInvalidated = hasCoordinateEvidenceChanged(
+      reconciliation.coordinateEvidenceFingerprint,
+      evidenceFingerprint,
+    );
 
     let coordinateLatitude: number | null = reconciliation.coordinateLatitude;
     let coordinateLongitude: number | null = reconciliation.coordinateLongitude;
     let coordinateSource: string | null = reconciliation.coordinateSource;
-    let coordinateSelectionStatus: string | null = reconciliation.coordinateSelectionStatus;
-    let coordinateRetryCount = reconciliation.coordinateRetryCount ?? 0;
+    let coordinateSelectionStatus: string | null = evidenceInvalidated
+      ? null
+      : reconciliation.coordinateSelectionStatus;
+    let coordinateRetryCount = evidenceInvalidated ? 0 : reconciliation.coordinateRetryCount ?? 0;
+    let nextCoordinateRetryAt = evidenceInvalidated ? null : reconciliation.nextCoordinateRetryAt;
+
+    if (evidenceInvalidated) {
+      await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: event.id },
+        data: {
+          coordinateSelectionStatus: null,
+          coordinateLatitude: null,
+          coordinateLongitude: null,
+          coordinateSource: null,
+          coordinateSelectorVersion: null,
+          coordinateRetryCount: 0,
+          nextCoordinateRetryAt: null,
+          coordinateEvidenceFingerprint: evidenceFingerprint,
+        },
+      });
+    }
 
     const needsCoordinateAttempt = shouldAttemptCoordinateResolution({
       coordinateLatitude,
       coordinateLongitude,
       coordinateSource,
       coordinateSelectionStatus,
-      nextCoordinateRetryAt: reconciliation.nextCoordinateRetryAt,
+      nextCoordinateRetryAt,
       asOfMs,
+      evidenceInvalidated,
     });
 
     if (needsCoordinateAttempt) {
@@ -479,6 +528,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
           status: coordinateSelectionStatus,
           retryCount: coordinateRetryCount,
           asOfMs,
+          evidenceFingerprint,
         });
         this.logger.debug(
           JSON.stringify({
@@ -506,8 +556,10 @@ export class PhysicalRefuelReconciliationRuntimeService {
         coordinateLongitude = coord.longitude;
         coordinateSource = coord.source;
         coordinateSelectionStatus = coord.status;
-
         coordinateRetryCount += 1;
+
+        const terminal = isCoordinateStatusTerminal(coord.status);
+        const retryable = isCoordinateStatusRetryable(coord.status);
         await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
           where: { energyEventId: event.id },
           data: {
@@ -517,10 +569,12 @@ export class PhysicalRefuelReconciliationRuntimeService {
             coordinateSelectorVersion: coord.selectorVersion,
             coordinateSelectionStatus: coord.status,
             coordinateRetryCount,
+            coordinateEvidenceFingerprint: evidenceFingerprint,
             lastCoordinateAttemptAt: new Date(asOfMs),
-            nextCoordinateRetryAt: isCoordinateStatusRetryable(coord.status)
-              ? computeNextCoordinateRetryAt(coordinateRetryCount, asOfMs)
-              : null,
+            nextCoordinateRetryAt:
+              retryable && !terminal
+                ? computeNextCoordinateRetryAt(coordinateRetryCount, asOfMs)
+                : null,
           },
         });
       }
@@ -533,12 +587,21 @@ export class PhysicalRefuelReconciliationRuntimeService {
         source: coordinateSource,
       })
     ) {
-      if (needsCoordinateAttempt || isCoordinateStatusRetryable(coordinateSelectionStatus)) {
+      if (needsCoordinateAttempt && isCoordinateStatusRetryable(coordinateSelectionStatus)) {
         await this.persistCoordinateHold({
           energyEventId: event.id,
           status: coordinateSelectionStatus,
           retryCount: coordinateRetryCount,
           asOfMs,
+          evidenceFingerprint,
+        });
+      } else if (isCoordinateStatusTerminal(coordinateSelectionStatus)) {
+        await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
+          where: { energyEventId: event.id },
+          data: {
+            coordinateEvidenceFingerprint: evidenceFingerprint,
+            coordinateSelectionStatus,
+          },
         });
       }
       this.logger.debug(
@@ -553,35 +616,55 @@ export class PhysicalRefuelReconciliationRuntimeService {
       return 'held';
     }
 
-    const jobId = await this.fuelStationEnrichmentProducer.enqueueAfterPersist({
+    if (!v2Cutover) {
+      return 'skipped';
+    }
+
+    const outcome = await this.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome({
       energyEventId: event.id,
       eventStartTime: event.startTime,
       eventObservedAt: event.createdAt,
+      v2OwnershipCutoverAt: v2Cutover,
       startLatitude: coordinateLatitude,
       startLongitude: coordinateLongitude,
       coordinateSource: coordinateSource,
       physicalRefuelReconciliationV2: true,
     });
 
-    if (jobId) {
+    if (outcome.status === 'deferred_queue_unavailable') {
+      this.logger.debug(
+        JSON.stringify({
+          event: 'physical_refuel_enqueue_deferred',
+          vehicleId: event.vehicleId,
+          energyEventId: event.id,
+        }),
+      );
+      return 'deferred';
+    }
+
+    if (outcome.status === 'deduped' || outcome.status === 'enqueued') {
       await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
         where: { energyEventId: event.id },
         data: {
           enrichmentEnqueuedAt: new Date(asOfMs),
           nextCoordinateRetryAt: null,
+          coordinateEvidenceFingerprint: evidenceFingerprint,
         },
       });
-      this.logger.log(
-        JSON.stringify({
-          event: 'physical_refuel_enrichment_eligible',
-          vehicleId: event.vehicleId,
-          energyEventId: event.id,
-          finalityState: decision.finalityState,
-          canonicalEventId: decision.canonicalEventId,
-          jobId,
-        }),
-      );
-      return 'enqueued';
+      if (outcome.status === 'enqueued') {
+        this.logger.log(
+          JSON.stringify({
+            event: 'physical_refuel_enrichment_eligible',
+            vehicleId: event.vehicleId,
+            energyEventId: event.id,
+            finalityState: decision.finalityState,
+            canonicalEventId: decision.canonicalEventId,
+            jobId: outcome.jobId,
+          }),
+        );
+        return 'enqueued';
+      }
+      return 'deduped';
     }
 
     return 'skipped';
@@ -592,17 +675,21 @@ export class PhysicalRefuelReconciliationRuntimeService {
     status: string | null;
     retryCount: number;
     asOfMs: number;
+    evidenceFingerprint: string;
   }): Promise<void> {
     const terminal = isCoordinateStatusTerminal(params.status);
+    const retryable = isCoordinateStatusRetryable(params.status);
+    const nextRetryCount = retryable && !terminal ? params.retryCount + 1 : params.retryCount;
     await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
       where: { energyEventId: params.energyEventId },
       data: {
         coordinateSelectionStatus: params.status,
-        coordinateRetryCount: params.retryCount,
+        coordinateRetryCount: nextRetryCount,
+        coordinateEvidenceFingerprint: params.evidenceFingerprint,
         lastCoordinateAttemptAt: new Date(params.asOfMs),
         nextCoordinateRetryAt:
-          !terminal && isCoordinateStatusRetryable(params.status)
-            ? computeNextCoordinateRetryAt(params.retryCount, params.asOfMs)
+          retryable && !terminal
+            ? computeNextCoordinateRetryAt(nextRetryCount, params.asOfMs)
             : null,
       },
     });

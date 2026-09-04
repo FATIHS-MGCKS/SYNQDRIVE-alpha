@@ -729,19 +729,30 @@ export class DimoSegmentsService {
     to: Date,
     requestContext?: DimoProviderRequestContext,
   ): Promise<RoutePoint[]> {
+    const outcome = await this.fetchRouteEnrichmentOutcome(tokenId, from, to, requestContext);
+    return outcome.points;
+  }
+
+  async fetchRouteEnrichmentOutcome(
+    tokenId: number,
+    from: Date,
+    to: Date,
+    requestContext?: DimoProviderRequestContext,
+  ): Promise<import('./route-enrichment-outcome.types').RouteEnrichmentFetchOutcome> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
-    if (!jwt) return [];
+    if (!jwt) {
+      return { status: 'UNAVAILABLE', points: [], reason: 'missing_jwt' };
+    }
 
     const query = buildRouteEnrichmentQuery(tokenId, from, to);
     try {
       const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       const signals: any[] = result?.data?.signals ?? [];
-      return this.parseRoutePoints(signals);
-    } catch (err: any) {
-      this.logger.warn(
-        `Route enrichment fetch failed for tokenId=${tokenId}: ${err.message}`,
-      );
-      return [];
+      return { status: 'SUCCESS', points: this.parseRoutePoints(signals) };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Route enrichment fetch failed for tokenId=${tokenId}: ${message}`);
+      return { status: 'FAILED', points: [], reason: 'provider_error' };
     }
   }
 

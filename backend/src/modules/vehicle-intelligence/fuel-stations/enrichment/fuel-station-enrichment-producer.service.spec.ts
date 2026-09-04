@@ -29,6 +29,8 @@ describe('FuelStationEnrichmentProducerService', () => {
 
   let service: FuelStationEnrichmentProducerService;
 
+  const v2Cutover = new Date('2026-09-01T00:00:00.000Z');
+
   const postCutoverInput = {
     energyEventId: 'evt-1',
     eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
@@ -80,6 +82,7 @@ describe('FuelStationEnrichmentProducerService', () => {
       energyEventId: 'evt-v2',
       eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
       eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
       startLatitude: 51.3,
       startLongitude: 9.5,
       coordinateSource: 'physical_refuel_forecourt_dwell_v2',
@@ -100,11 +103,27 @@ describe('FuelStationEnrichmentProducerService', () => {
     expect(queue.add).not.toHaveBeenCalled();
   });
 
+  it('C3 rejects V2 enqueue when eventObservedAt is missing', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
   it('K3 rejects V2 enqueue when observation is before cutover', async () => {
     const result = await service.enqueueAfterPersist({
       energyEventId: 'evt-v2',
       eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
       eventObservedAt: new Date('2026-08-20T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
       startLatitude: 51.3,
       startLongitude: 9.5,
       coordinateSource: 'physical_refuel_forecourt_dwell_v2',
@@ -119,6 +138,7 @@ describe('FuelStationEnrichmentProducerService', () => {
     const first = await service.enqueueAfterPersist({
       ...postCutoverInput,
       eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
       coordinateSource: 'physical_refuel_forecourt_dwell_v2',
       physicalRefuelReconciliationV2: true,
     });
@@ -132,6 +152,7 @@ describe('FuelStationEnrichmentProducerService', () => {
     const second = await service.enqueueAfterPersist({
       ...postCutoverInput,
       eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
       coordinateSource: 'physical_refuel_forecourt_dwell_v2',
       physicalRefuelReconciliationV2: true,
     });
@@ -250,6 +271,55 @@ describe('FuelStationEnrichmentProducerService', () => {
     const second = await service.enqueueAfterPersist(postCutoverInput);
 
     expect(first).toBe(second);
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('C1 uses explicit v2OwnershipCutoverAt when later than legacy fuel cutover', async () => {
+    const lateV2Cutover = new Date('2026-09-03T00:00:00.000Z');
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2-late',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-09-02T12:00:00.000Z'),
+      v2OwnershipCutoverAt: lateV2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('C2 uses explicit v2OwnershipCutoverAt when earlier than legacy fuel cutover', async () => {
+    const earlyV2Cutover = new Date('2026-08-15T00:00:00.000Z');
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2-early',
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-08-25T00:00:00.000Z'),
+      v2OwnershipCutoverAt: earlyV2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('S3 returns deferred_queue_unavailable when workers are disabled', async () => {
+    jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(false);
+
+    const outcome = await service.enqueueAfterPersistOutcome({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(outcome).toEqual({ status: 'deferred_queue_unavailable', jobId: null });
     expect(queue.add).not.toHaveBeenCalled();
   });
 });

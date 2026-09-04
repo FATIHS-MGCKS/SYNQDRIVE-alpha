@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g21c-final-recovery-semantics-closure-2026-09-04',
+    version: '4.9.1057',
+    title: 'G2.1c physical-refuel final recovery semantics closure',
+    summary: [
+      'Semantic recovery no longer gated on Redis/workers — settlement, orphan, and finality progress DB-only.',
+      'Route fetch preserves SUCCESS/UNAVAILABLE/FAILED — provider failures are retryable, not false NO_DWELL.',
+      'Coordinate retry: exponential backoff on missing token; terminal holds excluded from hot-loop.',
+      'Evidence fingerprint invalidation reopens terminal coordinate holds when fuel-rise/route inputs change.',
+      'Unified V2 cutover authority via runtime → producer v2OwnershipCutoverAt; eventObservedAt required.',
+      'V2 stale PENDING/PROCESSING enrichment recovery under physical-refuel recovery scheduler.',
+      'Typed enqueue outcomes: enqueued | deduped | deferred_queue_unavailable | terminal_skip.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1b independent review recovery/retry/authority gaps before G2.2 shadow rollout.',
+    previousBehavior: 'Recovery skipped when Redis unavailable; provider errors collapsed to NO_DWELL; terminal holds reselected every tick; V2 stale enrichment not recovered.',
+    details:
+      'docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md; FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001; EED-EV-0035.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
     id: 'refuel-g21b-cross-cutover-recovery-hardening-2026-09-04',
     version: '4.9.1056',
     title: 'G2.1b physical-refuel cross-cutover + recovery hardening',

@@ -330,6 +330,9 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
 
     const fuelStationEnrichmentProducer = {
       enqueueAfterPersist: jest.fn().mockResolvedValue('job-1'),
+      enqueueAfterPersistOutcome: jest
+        .fn()
+        .mockResolvedValue({ status: 'enqueued', jobId: 'job-1' }),
     };
 
     const coordinateRuntime = {
@@ -410,7 +413,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
       heldEventIds: [],
     });
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).not.toHaveBeenCalled();
   });
 
   it('R2 — non-REFUEL trigger short-circuits inside transaction', async () => {
@@ -423,7 +426,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
 
     expect(result.decisions).toEqual([]);
     expect(harness.reconciliations.size).toBe(0);
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).not.toHaveBeenCalled();
   });
 
   it('R3 — singleton inside horizon → PROVISIONAL persisted, no enqueue', async () => {
@@ -493,7 +496,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         include: { energyEvent: { include: { fuelStationEnrichment: true } } },
       }),
     );
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).toHaveBeenCalledWith(
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).toHaveBeenCalledWith(
       expect.objectContaining({
         energyEventId: incidentA.id,
         physicalRefuelReconciliationV2: true,
@@ -603,6 +606,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         coordinateRetryCount: 0,
         nextCoordinateRetryAt: null,
         lastCoordinateAttemptAt: null,
+        coordinateEvidenceFingerprint: null,
         nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(t0),
         reconciledAt: new Date(t0),
@@ -661,7 +665,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     expect(harness.reconciliations.get(incidentA.id)?.finalityState).toBe(
       PhysicalRefuelFinalityState.FINAL_DISTINCT,
     );
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).toHaveBeenCalledTimes(1);
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).toHaveBeenCalledTimes(1);
   });
 
   it('R13 — transaction failure returns empty and performs no post-tx enqueue', async () => {
@@ -679,7 +683,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
       dedupedEventIds: [],
       heldEventIds: [],
     });
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).not.toHaveBeenCalled();
   });
 
   it('R14 — unrelated same-vehicle refuels remain FINAL_DISTINCT with enrichment', async () => {
@@ -721,7 +725,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
 
     expect(result.enqueuedEventIds).toEqual([]);
     expect(result.heldEventIds).toContain(event.id);
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).not.toHaveBeenCalled();
   });
 
   it('T1 — settlement progresses without DIMO token and holds coordinate', async () => {
@@ -742,7 +746,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     expect(result.decisions[0]?.finalityState).toBe('FINAL_DISTINCT');
     expect(result.enqueuedEventIds).toEqual([]);
     expect(result.heldEventIds).toContain(event.id);
-    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersistOutcome).not.toHaveBeenCalled();
     const row = harness.reconciliations.get(event.id);
     expect(row?.coordinateSelectionStatus).toBe('COORDINATE_HOLD_MISSING_DIMO_TOKEN');
     expect(row?.nextCoordinateRetryAt).not.toBeNull();
