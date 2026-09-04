@@ -288,7 +288,7 @@
       "endShiftSeconds": 0
     }
   ],
-  "note": "MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH and TRUE_LOCAL_PEAK_ATTENUATION_KMH are distinct metrics. True peak attenuation compares independently located raw vs smoothed maxima inside the same local event window.",
+  "note": "Preprocessing metrics are telemetry-internal raw-vs-smoothed distortion — not physical ground-truth error",
   "samplePairs": [
     {
       "providerTimestamp": "2026-09-04T03:47:51.768Z",
@@ -350,5 +350,6 @@
       "legacyKmh": 54.666666666666664,
       "deltaKmh": 9.333333333333336
     }
-  ]
+  ],
+  "PREPROCESSING_DISTORTION_VS_TELEMETRY_RAW": "YES"
 }

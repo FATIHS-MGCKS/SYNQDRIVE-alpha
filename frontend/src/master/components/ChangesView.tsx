@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b1-rd004-segment-b-calibration-closeout-2026-09-04',
+    version: '4.9.1051',
+    title: 'DI-EV-0035B.1 — RD004-B Independent Clock Calibration + Holdout Speed Accuracy Closeout',
+    summary: [
+      'Invalidates DI-EV-0035B canonical offset (~14.3 s) and MAE (~2.3 km/h) as selection-biased; preserves as exploratory non-canonical.',
+      'Separates CLOCK_CALIBRATION_SET (4 transition landmarks) from SPEED_ACCURACY_HOLDOUT_SET (17 cruise anchors).',
+      'Holdout speed accuracy: time-only nearest HF sample after frozen offset; video speed never influences selection.',
+      'Supportive offset candidate ~+13.5 s; PROVIDER_TIMESTAMP_OFFSET_VALIDATED=NO (insufficient transition landmarks).',
+      'Holdout: 5 comparable anchors, diagnostic MAE ~13.8 km/h; headline SPEED_MAE_KMH=null.',
+      '22 focused tests; raw Segment A/B bytes unchanged; no production changes.',
+    ],
+    reason: 'Human review found speed-selected samples were reused for both clock offset and speed accuracy (double dipping).',
+    previousBehavior: 'DI-EV-0035B reported PROVIDER_TIMESTAMP_OFFSET_VALIDATED=YES and ABSOLUTE_SPEED_ACCURACY_VALIDATED=YES with MAE ~2.3 km/h.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.1 pipeline; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T16:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b-rd004-segment-b-validation-2026-09-04',
     version: '4.9.1050',
     title: 'DI-EV-0035B — RD004-B Segment B Video ↔ Telemetry Validation',

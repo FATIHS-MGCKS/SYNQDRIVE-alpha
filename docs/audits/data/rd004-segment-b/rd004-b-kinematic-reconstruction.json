@@ -1023,5 +1023,7 @@
       "videoRelativeEnd": 1004.299,
       "episodeId": "low_speed:2026-09-04T04:03:46.299Z"
     }
-  ]
+  ],
+  "VIDEO_OR_KINEMATIC_DYNAMIC_EPISODES_WITHOUT_LEGACY_EVENT": 3,
+  "LEGACY_FALSE_NEGATIVE_VALIDATED": "NO"
 }

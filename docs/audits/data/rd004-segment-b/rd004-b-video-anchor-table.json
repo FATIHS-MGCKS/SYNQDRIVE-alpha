@@ -655,5 +655,110 @@
       "localShapeAgreement": "GOOD",
       "cadenceContextSeconds": 35.436
     }
-  ]
+  ],
+  "exploratorySpeedBiasedMatching": "DIAGNOSTIC_ONLY_NOT_CANONICAL",
+  "rawAnchorDisplacement": {
+    "RAW_ANCHOR_DISPLACEMENT_MEDIAN": -3.370999999999981,
+    "RAW_ANCHOR_DISPLACEMENT_MAD": 11.066000000000031,
+    "RAW_ANCHOR_DISPLACEMENT_MIN": -24.37700000000001,
+    "RAW_ANCHOR_DISPLACEMENT_MAX": 33.90300000000002,
+    "perAnchorDisplacements": [
+      {
+        "anchorId": "B02",
+        "rawTimeDisplacementSeconds": -6.7039999999999935,
+        "speedErrorKmh": -2
+      },
+      {
+        "anchorId": "B03",
+        "rawTimeDisplacementSeconds": -19.72399999999999,
+        "speedErrorKmh": 4
+      },
+      {
+        "anchorId": "B04",
+        "rawTimeDisplacementSeconds": -8.831999999999994,
+        "speedErrorKmh": -7
+      },
+      {
+        "anchorId": "B05",
+        "rawTimeDisplacementSeconds": 12.475999999999999,
+        "speedErrorKmh": 6
+      },
+      {
+        "anchorId": "B06",
+        "rawTimeDisplacementSeconds": -6.8799999999999955,
+        "speedErrorKmh": 4
+      },
+      {
+        "anchorId": "B07",
+        "rawTimeDisplacementSeconds": -13.062000000000012,
+        "speedErrorKmh": 2
+      },
+      {
+        "anchorId": "B08",
+        "rawTimeDisplacementSeconds": -12.706999999999994,
+        "speedErrorKmh": 1
+      },
+      {
+        "anchorId": "B09",
+        "rawTimeDisplacementSeconds": -3.370999999999981,
+        "speedErrorKmh": -4
+      },
+      {
+        "anchorId": "B10",
+        "rawTimeDisplacementSeconds": 5.6229999999999905,
+        "speedErrorKmh": -3
+      },
+      {
+        "anchorId": "B11",
+        "rawTimeDisplacementSeconds": -24.37700000000001,
+        "speedErrorKmh": 1
+      },
+      {
+        "anchorId": "B14",
+        "rawTimeDisplacementSeconds": 4.506999999999948,
+        "speedErrorKmh": 2
+      },
+      {
+        "anchorId": "B15",
+        "rawTimeDisplacementSeconds": 13.684999999999945,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B16",
+        "rawTimeDisplacementSeconds": -16.315000000000055,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B18",
+        "rawTimeDisplacementSeconds": 15.381999999999948,
+        "speedErrorKmh": 5
+      },
+      {
+        "anchorId": "B19",
+        "rawTimeDisplacementSeconds": 8.134999999999991,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B20",
+        "rawTimeDisplacementSeconds": 1.2709999999999582,
+        "speedErrorKmh": -2
+      },
+      {
+        "anchorId": "B23",
+        "rawTimeDisplacementSeconds": 33.90300000000002,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B24",
+        "rawTimeDisplacementSeconds": -14.437000000000012,
+        "speedErrorKmh": 0
+      },
+      {
+        "anchorId": "B25",
+        "rawTimeDisplacementSeconds": 14.298999999999978,
+        "speedErrorKmh": 0
+      }
+    ],
+    "explanation": "Raw per-anchor displacements from speed-biased matching are diagnostic only — NOT clock authority because sample selection used video speed"
+  }
 }

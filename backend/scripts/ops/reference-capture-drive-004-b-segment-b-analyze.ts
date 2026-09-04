@@ -10,6 +10,7 @@ import { assertSafeOutputPath } from '../../src/modules/vehicle-intelligence/ref
 import {
   RD004_B_EVIDENCE_ID,
   RD004_B_MODE,
+  RD004_B_PHASE,
   RD004_B_SOURCE_FILES,
   assertNoEnvironmentSpecificPathsInObject,
   computeRd004SourceBundleSha256,
@@ -91,7 +92,7 @@ function main(): void {
   const sessionSummary = {
     evidenceId: RD004_B_EVIDENCE_ID,
     mode: RD004_B_MODE,
-    phase: RD004_B_MODE,
+    phase: RD004_B_PHASE,
     vehicle: SEGMENT_B_CONSTANTS.vehicleLabel,
     vehicleId: SEGMENT_B_CONSTANTS.vehicleId,
     tokenId: SEGMENT_B_CONSTANTS.tokenId,

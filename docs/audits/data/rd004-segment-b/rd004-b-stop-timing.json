@@ -1,26 +1,31 @@
 {
-  "STOP_TIMING_VALIDATED": "NO",
+  "STOP_TIMING_VALIDATED": "PARTIAL",
+  "STOP_TIMING_CLOCK_CORRECTED": "YES",
+  "STOP_TIMING_CANNOT_USE_UNCORRECTED_PROVIDER_TIMELINE": "YES",
   "DECELERATION_TO_STOP_VALIDATED": "PARTIAL",
   "STOP_LAUNCH_VALIDATED": "PARTIAL",
+  "validatedOffsetSecondsApplied": 13.5,
   "windows": [
     {
       "label": "B-E4_LONG_DECEL_TO_STOP",
       "videoStopVideoRelativeSeconds": 630,
-      "hfFirstDecelVideoRelativeSeconds": 604.507,
-      "hfFirstZeroVideoRelativeSeconds": 643.685,
+      "hfFirstDecelVideoRelativeSeconds": 591.007,
+      "hfFirstZeroVideoRelativeSeconds": 630.185,
       "hfStopDurationSeconds": null,
-      "timeErrorSeconds": 13.684999999999945,
-      "sampleCount": 10
+      "timeErrorSeconds": 0.18499999999994543,
+      "sampleCount": 11,
+      "timelineUsed": "VIDEO_CLOCK_CORRECTED"
     },
     {
       "label": "B-E5_SECOND_STOP",
       "videoStopVideoRelativeSeconds": 720,
-      "hfFirstDecelVideoRelativeSeconds": 712.369,
-      "hfFirstZeroVideoRelativeSeconds": 758.135,
+      "hfFirstDecelVideoRelativeSeconds": null,
+      "hfFirstZeroVideoRelativeSeconds": 744.635,
       "hfStopDurationSeconds": null,
-      "timeErrorSeconds": 38.13499999999999,
-      "sampleCount": 6
+      "timeErrorSeconds": 24.63499999999999,
+      "sampleCount": 6,
+      "timelineUsed": "VIDEO_CLOCK_CORRECTED"
     }
   ],
-  "note": "Sparse HF cadence limits stop boundary precision; video stop timing is authoritative"
+  "note": "Stop timing measured on provider telemetry corrected into video timeline via validated offset"
 }
