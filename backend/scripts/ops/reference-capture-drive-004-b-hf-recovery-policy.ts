@@ -1,5 +1,5 @@
 /**
- * DI-EV-0035B.5 — RD004-B HF recovery policy counterfactual simulation CLI.
+ * DI-EV-0035B.6 — RD004-B HF recovery policy lower-bound semantics correction CLI.
  * READ-ONLY: uses B.4 late-arrival + exact-window artifacts; no production changes.
  */
 import * as fs from 'fs';
@@ -8,7 +8,7 @@ import { stableStringify } from '../../src/modules/vehicle-intelligence/referenc
 import { assertSafeOutputPath } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd003-video-gt-export';
 import type { HfLateArrivalDifferentialRow } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-aggregate-bucket-analysis';
 import {
-  buildB5Flags,
+  buildRecoveryPolicyFlags,
   buildHfRuntimeFixContract,
   buildRecoveryPolicyDesign,
   buildRecoveryPolicySimulation,
@@ -63,7 +63,7 @@ function main(): void {
     b4Watermark: watermarkArtifact,
   });
   const contract = buildHfRuntimeFixContract(design);
-  const flags = buildB5Flags({ design, b4Watermark: watermarkArtifact });
+  const flags = buildRecoveryPolicyFlags({ design, b4Watermark: watermarkArtifact });
 
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(simulationOut, stableStringify(simulation));

@@ -43,8 +43,8 @@ import {
   type HfCaptureRootCause,
 } from './reference-capture-rd004-b-hf-exact-window-replay';
 
-export const RD004_B_PHASE = 'RD004-B.5';
-export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.5';
+export const RD004_B_PHASE = 'RD004-B.6';
+export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.6';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
 
 export const TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR = 'YES';
@@ -2295,12 +2295,17 @@ export type Rd004SegmentBAnalysisInput = {
     ORIGINAL_HF_QUERY_WINDOWS?: unknown[];
     ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE?: string;
   } | null;
-  /** B.5 HF recovery policy design artifact (optional). */
+  /** B.6 HF recovery policy design artifact (optional). */
   recoveryPolicyDesign?: {
     RECOMMENDED_HF_RECOVERY_ARCHITECTURE?: string;
-    RECOMMENDED_SETTLEMENT_DELAY_SECONDS?: number | null;
-    RECOMMENDED_RECOVERY_OVERLAP_SECONDS?: number | null;
-    PERIODIC_DEEP_RECOVERY_RECOMMENDED?: string;
+    RECOMMENDED_POLICY_PARAMETERS?: string;
+    PROVISIONAL_SETTLEMENT_DELAY_SECONDS?: number | null;
+    PROVISIONAL_RECOVERY_OVERLAP_SECONDS?: number | null;
+    PARAMETERS_VALIDATED?: string;
+    PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED?: string;
+    PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS?: string;
+    B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID?: string;
+    LIVE_AVAILABILITY_CALIBRATION_CONTRACT_CREATED?: string;
     HF_RUNTIME_FIX_CONTRACT_CREATED?: string;
     RD004_HF_RECOVERY_POLICY_DESIGNED?: string;
     rd004Status?: Record<string, string>;
@@ -2482,12 +2487,25 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     COMBINED_POLICY_SIMULATED: recoveryDesign ? 'YES' : null,
     RECOMMENDED_HF_RECOVERY_ARCHITECTURE:
       recoveryDesign?.RECOMMENDED_HF_RECOVERY_ARCHITECTURE ?? null,
-    RECOMMENDED_SETTLEMENT_DELAY_SECONDS:
-      recoveryDesign?.RECOMMENDED_SETTLEMENT_DELAY_SECONDS ?? null,
-    RECOMMENDED_RECOVERY_OVERLAP_SECONDS:
-      recoveryDesign?.RECOMMENDED_RECOVERY_OVERLAP_SECONDS ?? null,
-    PERIODIC_DEEP_RECOVERY_RECOMMENDED:
-      recoveryDesign?.PERIODIC_DEEP_RECOVERY_RECOMMENDED ?? null,
+    RECOMMENDED_POLICY_PARAMETERS: recoveryDesign?.RECOMMENDED_POLICY_PARAMETERS ?? null,
+    PROVISIONAL_SETTLEMENT_DELAY_SECONDS:
+      recoveryDesign?.PROVISIONAL_SETTLEMENT_DELAY_SECONDS ?? null,
+    PROVISIONAL_RECOVERY_OVERLAP_SECONDS:
+      recoveryDesign?.PROVISIONAL_RECOVERY_OVERLAP_SECONDS ?? null,
+    PARAMETERS_VALIDATED: recoveryDesign?.PARAMETERS_VALIDATED ?? null,
+    PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED:
+      recoveryDesign?.PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED ??
+      recoveryDesign?.rd004Status?.PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED ??
+      null,
+    B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID:
+      recoveryDesign?.B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID ?? null,
+    AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY: recoveryDesign ? 'YES' : null,
+    AVAILABILITY_DELAY_UPPER_BOUND_KNOWN: recoveryDesign ? 'NO' : null,
+    ACTUAL_FIRST_PROVIDER_AVAILABILITY_KNOWN: recoveryDesign ? 'NO' : null,
+    PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS:
+      recoveryDesign?.PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS ?? null,
+    LIVE_AVAILABILITY_CALIBRATION_CONTRACT_CREATED:
+      recoveryDesign?.LIVE_AVAILABILITY_CALIBRATION_CONTRACT_CREATED ?? null,
     HF_RUNTIME_FIX_CONTRACT_CREATED: recoveryDesign?.HF_RUNTIME_FIX_CONTRACT_CREATED ?? null,
     RD004_VIDEO_TIMELINE_COMPLETE: recoveryDesign?.rd004Status?.RD004_VIDEO_TIMELINE_COMPLETE ?? null,
     RD004_HF_CAPTURE_DEFECT_CHARACTERIZED:
@@ -2674,7 +2692,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
       transitionIntervalCensoring,
       note:
-        'B.5: HF recovery policy design + counterfactual simulation; B.4 exact-window replay preserved; no provider clock landmark resolved',
+        'B.6: HF recovery policy lower-bound semantics correction; B.5 parameter authority superseded; B.4 exact-window replay preserved; no provider clock landmark resolved',
     },
     speedAccuracy,
     stopTiming,

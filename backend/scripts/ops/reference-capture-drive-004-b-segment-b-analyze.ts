@@ -147,9 +147,14 @@ function main(): void {
   if (fs.existsSync(recoveryDesignPath)) {
     const design = JSON.parse(fs.readFileSync(recoveryDesignPath, 'utf8')) as {
       RECOMMENDED_HF_RECOVERY_ARCHITECTURE?: string;
-      RECOMMENDED_SETTLEMENT_DELAY_SECONDS?: number | null;
-      RECOMMENDED_RECOVERY_OVERLAP_SECONDS?: number | null;
-      PERIODIC_DEEP_RECOVERY_RECOMMENDED?: string;
+      RECOMMENDED_POLICY_PARAMETERS?: string;
+      PROVISIONAL_SETTLEMENT_DELAY_SECONDS?: number | null;
+      PROVISIONAL_RECOVERY_OVERLAP_SECONDS?: number | null;
+      PARAMETERS_VALIDATED?: string;
+      PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED?: string;
+      PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS?: string;
+      B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID?: string;
+      LIVE_AVAILABILITY_CALIBRATION_CONTRACT_CREATED?: string;
       HF_RUNTIME_FIX_CONTRACT_CREATED?: string;
       RD004_HF_RECOVERY_POLICY_DESIGNED?: string;
       rd004Status?: Record<string, string>;

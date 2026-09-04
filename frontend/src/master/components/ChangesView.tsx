@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b6-rd004-hf-recovery-lower-bound-correction-2026-09-04',
+    version: '4.9.1056',
+    title: 'DI-EV-0035B.6 — RD004-B HF Recovery Policy Lower-Bound Semantics Correction',
+    summary: [
+      'B.5 superseded: availabilityLagLowerBoundSeconds is LOWER_BOUND only — does not prove provider availability.',
+      'Invalidated "8s protects 50/50" (B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID=NO).',
+      'Separated SETTLEMENT_HORIZON_DEFERRAL from PROVIDER_AVAILABILITY_RECOVERY.',
+      'Architecture remains SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP; provisional 8s/6s (PARAMETERS_VALIDATED=NO).',
+      'Live availability calibration contract + configurable runtime fix contract; 80+ focused tests; no production changes.',
+    ],
+    reason:
+      'Human/code review found B.5 treated lower-bound lag ≤ settlement delay as availability proof — statistically invalid before analysis merge.',
+    previousBehavior:
+      'B.5 derived productionSettlementTarget = ceil(maxLagLowerBound)+2 and claimed 8s settlement protects 50/50 closed late buckets.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts` (B.6 semantics); regenerated artifacts with corrected deferral vs availability separation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b5-rd004-hf-recovery-policy-design-2026-09-04',
     version: '4.9.1055',
     title: 'DI-EV-0035B.5 — RD004-B HF Recovery Policy Design + Counterfactual Simulation',

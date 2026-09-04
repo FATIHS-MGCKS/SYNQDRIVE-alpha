@@ -1,7 +1,7 @@
 # RD004 — Whole-Drive Video ↔ Telemetry Validation (Segments A + B)
 
 **Date:** 2026-09-04
-**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.5 (Segment B)
+**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.6 (Segment B)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
 **Reference drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_004`
@@ -12,7 +12,7 @@
 |---------|-------------------|----------|-------------|------------------|
 | A (pre-refuel) | 03:37:46 – 03:43:56 | ~6:11 | DI-EV-0035A.2 | **NO** |
 | Refuel stop | — | — | — | — |
-| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.5 | **NO** |
+| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.6 | **NO** |
 
 ## Cross-segment conclusions
 
@@ -67,16 +67,29 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 
 ### Production
 
-**No changes.** Analysis-only. B.5 closes RD004-B **analysis/design** (`RD004_HF_RECOVERY_POLICY_DESIGNED = YES`); runtime fix and absolute validation remain future work (`READY_FOR_RD004_FINAL_CLOSEOUT = NO`).
+**No changes.** Analysis-only. B.6 closes RD004-B **analysis/design** with corrected lower-bound semantics (`B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID = NO`); runtime fix and absolute validation remain future work (`READY_FOR_RD004_FINAL_CLOSEOUT = NO`).
 
-## B.5 methodology (DI-EV-0035B.5)
+## B.6 methodology (DI-EV-0035B.6)
+
+1. Corrected B.5 statistical semantics: `availabilityLagLowerBoundSeconds` is LOWER_BOUND only — does not prove provider availability by candidate settlement delay
+2. Separated `SETTLEMENT_HORIZON_DEFERRAL` from `PROVIDER_AVAILABILITY_RECOVERY`
+3. Three times distinguished: `bucketEnd` (known), `originalRequestCompletedAt` (known), `actualProviderFirstAvailabilityAt` (UNKNOWN for RD004 historical evidence)
+4. Invalidated "8s protects 50/50" — `B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID = NO`
+5. Architecture remains: **SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP** with **provisional** 8s/6s (`PARAMETERS_VALIDATED = NO`)
+6. `PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS = YES` — sweep essential when first-availability distribution unknown
+7. Live availability calibration experiment contract defined (staging/reference capture)
+8. Runtime fix contract updated: configurable `HF_SETTLEMENT_DELAY_MS`, `HF_RECOVERY_OVERLAP_MS`, metric `hf_first_availability_delay_ms`
+9. `CURRENT_2S_OVERLAP_SUFFICIENT = NO` preserved (26 definitely excluded — proven)
+10. `READY_FOR_RD004_ANALYSIS_MERGE = YES`; `READY_FOR_PRODUCTION_HF_RECOVERY_PR = YES`; `PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED = NO`
+
+## B.5 methodology (DI-EV-0035B.5, parameter authority superseded by B.6)
 
 1. Preserved B.4 exact-window evidence and root cause classification
 2. Counterfactual simulation: settlement delay (0–10 s) × recovery overlap (2–20 s) grid
 3. Independent settlement vs overlap analysis — not overlap-only
 4. `OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND = YES` (zero-result windows not reconstructible)
 5. Aggregate bucket observations ≠ unique ECU measurements (explicit in artifacts)
-6. Recommended policy: **8 s settlement + 6 s overlap + periodic deep recovery sweep** (design only)
+6. Recommended policy architecture: **SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP** with provisional 8s/6s (B.6: not validated until live calibration)
 7. Implementation contract for separate production PR (`rd004-b-hf-runtime-fix-contract.json`)
 8. Driving Intelligence: lower reconstruction confidence until capture fix; no gap interpolation
 
@@ -116,5 +129,5 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 ## Artifacts
 
 - Segment A: `docs/audits/data/rd004-segment-a/`
-- Segment B: `docs/audits/data/rd004-segment-b/` (incl. B.5 `rd004-b-hf-recovery-policy-*.json`, `rd004-b-hf-runtime-fix-contract.json`)
+- Segment B: `docs/audits/data/rd004-segment-b/` (incl. B.6 `rd004-b-hf-recovery-policy-*.json`, `rd004-b-hf-runtime-fix-contract.json`)
 - Architecture: `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` (A.2) + this document

@@ -1,92 +1,141 @@
 {
-  "evidenceId": "DI-EV-0035B.5",
+  "evidenceId": "DI-EV-0035B.6",
   "mode": "HF_RECOVERY_POLICY_DESIGN",
   "RAW_SOURCE_OBSERVATIONS_CHANGED": "NO",
   "REFERENCE_CAPTURE_RUNTIME_CHANGED": "NO",
   "HF_CAPTURE_DEFECT_CHARACTERIZED": "YES",
   "PROVIDER_LATE_ARRIVAL_CONFIRMED": "YES",
   "HF_RUNTIME_FIX_CONTRACT_CREATED": "YES",
+  "LIVE_AVAILABILITY_CALIBRATION_CONTRACT_CREATED": "YES",
+  "AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY": "YES",
+  "AVAILABILITY_DELAY_UPPER_BOUND_KNOWN": "NO",
+  "ACTUAL_FIRST_PROVIDER_AVAILABILITY_KNOWN": "NO",
+  "B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID": "NO",
+  "B5_EXACT_SETTLEMENT_PARAMETER_VALIDATED": "NO",
   "RECOMMENDED_HF_RECOVERY_ARCHITECTURE": "SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP",
-  "RECOMMENDED_SETTLEMENT_DELAY_SECONDS": 8,
-  "RECOMMENDED_RECOVERY_OVERLAP_SECONDS": 6,
-  "RECOMMENDED_POLICY_PARAMETERS": "SPECIFIED",
-  "PERIODIC_DEEP_RECOVERY_RECOMMENDED": "YES",
-  "PRODUCTION_SAFETY_MARGIN_SECONDS": 2,
+  "RECOMMENDED_POLICY_PARAMETERS": "REQUIRES_LIVE_AVAILABILITY_VALIDATION",
+  "PROVISIONAL_SETTLEMENT_DELAY_SECONDS": 8,
+  "PROVISIONAL_RECOVERY_OVERLAP_SECONDS": 6,
+  "PARAMETERS_VALIDATED": "NO",
+  "PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED": "NO",
+  "PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS": "YES",
+  "MINIMUM_OBSERVED_TEMPORAL_RECOVERY_NEED_GT_2S": "YES",
   "OBSERVED_MAX_LAG_LOWER_BOUND_SECONDS": 5.181,
-  "marginRationale": "Observed closed-bucket availability lag lower-bound max 5.181s (n=50, not P99) + 2s engineering margin → settlement target ≥8s.",
-  "justification": "B.4 evidence: 53 exact-origin aggregate bucket observations appeared later; 26/53 definitely excluded at 2s overlap. Counterfactual at settlement=8s + overlap=6s: LOWER_BOUND recoverable ~53/53, missed ~0. Overlap-only (0s delay, 6s overlap) temporal recovery LOWER_BOUND ~53 but queries live edge without settlement — duplicate pressure HIGH and unsettled-horizon risk remain. Periodic deep recovery sweep recommended because OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND=YES and zero-result windows not reconstructible.",
+  "b5SupersededNote": "B.5 claim \"8s protects 50/50\" invalidated — lower bound ≤ delay does not prove availability (B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID=NO).",
+  "justification": "B.4: 53 late aggregate bucket observations; 26 definitely excluded at 2s overlap (PROVEN insufficient). Availability delay lower-bound max 5.181s is NOT an upper bound — actual delay may be greater. Architecture SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP justified; provisional start values 8s/6s require live calibration before validation.",
   "policyArchitectureOptions": [
     {
       "policyId": "POLICY_A",
       "label": "0s settlement delay + larger overlap only",
-      "settlementDelaySeconds": 0,
-      "recoveryOverlapSeconds": 15,
+      "provisionalSettlementDelaySeconds": 0,
+      "provisionalRecoveryOverlapSeconds": 15,
       "periodicDeepRecovery": false,
-      "dataCompleteness": "Improves temporal re-query of prior windows but still queries live edge — late buckets near horizon remain exposed.",
+      "dataCompleteness": "Still queries live edge; overlap-only does not address unsettled horizon.",
       "latency": "Minimal additional latency.",
-      "queryCost": "High duplicate fraction (~15s / ~7.8s window ≈ VERY_HIGH pressure).",
+      "queryCost": "VERY_HIGH duplicate pressure.",
       "duplicateVolume": "VERY_HIGH",
-      "providerLoad": "Elevated — wide overlap on every cycle.",
-      "complexity": "Low — overlap constant change only.",
-      "failureRecovery": "Weak for buckets excluded before overlap reaches them.",
-      "drivingIntelligenceSuitability": "Poor alone — does not address unsettled aggregate horizon."
+      "providerLoad": "Elevated.",
+      "complexity": "Low.",
+      "failureRecovery": "Weak — no eventual sweep for >overlap late arrivals.",
+      "drivingIntelligenceSuitability": "Poor alone."
     },
     {
       "policyId": "POLICY_B",
-      "label": "Provider settlement delay + moderate overlap",
-      "settlementDelaySeconds": 8,
-      "recoveryOverlapSeconds": 6,
+      "label": "Settled horizon + moderate overlap (provisional parameters)",
+      "provisionalSettlementDelaySeconds": 8,
+      "provisionalRecoveryOverlapSeconds": 6,
       "periodicDeepRecovery": false,
-      "dataCompleteness": "Addresses both unsettled live-edge buckets and watermark recovery gap (B.4 root cause).",
-      "latency": "~8s behind real time for HF historical surface.",
-      "queryCost": "Moderate overlap (6s) on ~7.8s median window.",
+      "dataCompleteness": "Defers hot-edge queries; overlap addresses watermark gap — parameters unvalidated.",
+      "latency": "~8s HF historical latency (provisional).",
+      "queryCost": "~6s overlap on ~7.8s window.",
       "duplicateVolume": "HIGH",
-      "providerLoad": "Moderate — fewer live-edge misses than today.",
-      "complexity": "Moderate — extend resolveHfActualQueryTo with settlement horizon.",
-      "failureRecovery": "Good for observed 50 closed late buckets; residual misses need sweep.",
-      "drivingIntelligenceSuitability": "Recommended baseline for episode reconstruction confidence."
+      "providerLoad": "Moderate.",
+      "complexity": "Moderate.",
+      "failureRecovery": "Incomplete without sweep when actual delay > provisional settlement.",
+      "drivingIntelligenceSuitability": "Baseline candidate pending calibration."
     },
     {
       "policyId": "POLICY_C",
-      "label": "Settlement delay + overlap + periodic deep recovery sweep",
-      "settlementDelaySeconds": 8,
-      "recoveryOverlapSeconds": 6,
+      "label": "Settled horizon + overlap + periodic deep recovery sweep (recommended)",
+      "provisionalSettlementDelaySeconds": 8,
+      "provisionalRecoveryOverlapSeconds": 6,
       "periodicDeepRecovery": true,
-      "dataCompleteness": "Best LOWER_BOUND coverage — fast loop for freshness + idempotent sweep for missed closed buckets.",
-      "latency": "Fast loop ~8s behind; sweep replays older closed intervals asynchronously.",
-      "queryCost": "Fast loop moderate; sweep adds bounded extra queries (not every cycle).",
-      "duplicateVolume": "Moderate fast loop + controlled sweep duplicates (fingerprint-idempotent).",
-      "providerLoad": "Spread over time — preferable to huge continuous overlap.",
-      "complexity": "Higher — second recovery scheduler + metrics.",
-      "failureRecovery": "Strongest — addresses OBSERVED_MISSED_BUCKET_COUNT lower bound.",
-      "drivingIntelligenceSuitability": "Best fit for RD004 / DI episode confidence requirements."
+      "dataCompleteness": "Eventual completeness robust even when late bucket > provisional settlement or fast-loop overlap.",
+      "latency": "Fast loop ~8s behind; async sweep for closed intervals.",
+      "queryCost": "Moderate fast loop + bounded sweep load.",
+      "duplicateVolume": "Moderate — fingerprint-idempotent.",
+      "providerLoad": "Spread over time.",
+      "complexity": "Higher.",
+      "failureRecovery": "Required for robust eventual completeness when first-availability unknown.",
+      "drivingIntelligenceSuitability": "Recommended architecture class."
     },
     {
       "policyId": "POLICY_D",
-      "label": "Dual-watermark (data watermark vs query coverage + recovery cursor)",
-      "settlementDelaySeconds": 8,
-      "recoveryOverlapSeconds": 6,
+      "label": "DATA watermark + QUERY COVERAGE watermark + RECOVERY cursor",
+      "provisionalSettlementDelaySeconds": 8,
+      "provisionalRecoveryOverlapSeconds": 6,
       "periodicDeepRecovery": true,
-      "dataCompleteness": "Separates persisted DATA watermark from QUERY COVERAGE and optional RECOVERY cursor (extends 3A.3.2 model).",
-      "latency": "Same as Policy C with clearer observability.",
-      "queryCost": "Similar to C with better dedupe targeting.",
-      "duplicateVolume": "Moderate — idempotent physical fingerprint absorbs revisions.",
+      "dataCompleteness": "Triple-cursor model extends 3A.3.2 with explicit recovery cursor.",
+      "latency": "Same as Policy C.",
+      "queryCost": "Similar to C with better observability.",
+      "duplicateVolume": "Moderate.",
       "providerLoad": "Moderate.",
-      "complexity": "Highest — explicit triple cursor semantics.",
-      "failureRecovery": "Excellent auditability for late revisions and sweeps.",
-      "drivingIntelligenceSuitability": "Preferred long-term architecture if implementation cost acceptable."
+      "complexity": "Highest.",
+      "failureRecovery": "Best auditability for late revisions and sweeps.",
+      "drivingIntelligenceSuitability": "Preferred long-term if implementation cost acceptable."
     }
   ],
+  "liveAvailabilityCalibration": {
+    "evidenceId": "DI-EV-0035B.6",
+    "mode": "HF_LIVE_AVAILABILITY_CALIBRATION_EXPERIMENT",
+    "status": "DESIGN_ONLY_NOT_EXECUTED",
+    "purpose": "Determine actual provider first-availability delay distribution — required before validating settlement/overlap seconds.",
+    "methodology": {
+      "approach": "For each newly closed 1s historical bucket, re-query SAME query origin at controlled delays after bucketEnd.",
+      "suggestedDelayOffsetsSeconds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        10,
+        15,
+        20,
+        30
+      ],
+      "rateLimit": "Bounded, rate-conscious — no high-frequency abusive provider queries; staging/reference capture only.",
+      "perAttemptRecord": [
+        "bucketEnd",
+        "queryOrigin",
+        "queryAttemptAt",
+        "bucketPresent",
+        "value",
+        "firstObservedPresentAt"
+      ],
+      "derivedMetrics": [
+        "actualAvailabilityDelaySeconds",
+        "availability P50",
+        "availability P90",
+        "availability P95",
+        "max observed"
+      ]
+    },
+    "constraints": {
+      "doNotUseReplayTimestampAsUpperBound": "YES",
+      "sameQueryOriginRequired": "YES",
+      "productionNotRequiredForExperiment": "Staging or short reference capture sufficient"
+    },
+    "outcomeEnables": [
+      "PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED=YES",
+      "Validated HF_SETTLEMENT_DELAY_MS",
+      "Validated HF_RECOVERY_OVERLAP_MS"
+    ]
+  },
   "drivingIntelligenceImpact": {
-    "rule": "Until recovery policy is fixed, missing HF evidence must lower reconstruction confidence — no interpolation across giant gaps.",
-    "accelerationReconstruction": "Large gaps inflate inferred acceleration between sparse points; confidence must be LOW/INTERVAL_CENSORED.",
-    "decelerationReconstruction": "Stop/decel episodes lose intermediate samples — peak severity and duration uncertain.",
-    "stopLaunchBoundaries": "B.3/B.4 show interval-censored transitions; incomplete HF worsens boundary placement.",
-    "peakSeverity": "True local peaks may be absent from sealed capture — attenuation metrics biased.",
-    "episodeDuration": "Duration confidence degrades when cadence median ~10.6s vs provider ~1-2s capability.",
-    "smoothing": "Preprocessing cannot invent missing provider buckets; smoothing masks gaps without fixing evidence.",
-    "falseNegatives": "Legacy detectors may miss dynamics between sparse samples — not validated FN without denser HF.",
-    "episodeConfidence": "Episode confidence scores must incorporate HF completeness / gap penalties."
+    "rule": "Missing HF lowers reconstruction confidence — no interpolation across giant gaps. RD004 sealed series must not calibrate production thresholds.",
+    "physicalValidationBlocked": "RD004_ABSOLUTE_SPEED_VALIDATION_COMPLETE=NO until fresh dense capture after recovery fix."
   },
   "rd004Status": {
     "RD004_VIDEO_TIMELINE_COMPLETE": "YES",
@@ -96,39 +145,12 @@
     "RD004_ABSOLUTE_SPEED_VALIDATION_COMPLETE": "NO",
     "RD004_CLOCK_VALIDATION_COMPLETE": "NO",
     "READY_FOR_RD004_ANALYSIS_MERGE": "YES",
-    "READY_FOR_PRODUCTION_HF_RECOVERY_PR": "YES"
+    "READY_FOR_PRODUCTION_HF_RECOVERY_PR": "YES",
+    "PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED": "NO"
   },
   "periodicDeepRecoveryDesign": {
-    "fastHfLoop": {
-      "settlementDelaySeconds": 8,
-      "recoveryOverlapSeconds": 6,
-      "purpose": "Near-real-time HF with settled horizon + bounded overlap."
-    },
-    "periodicRecoverySweep": {
-      "recommended": "YES",
-      "purpose": "Idempotent replay of older closed intervals to recover buckets missed by watermark race (lower-bound residual).",
-      "idempotency": "physicalSampleFingerprint + provider revision semantics — duplicates absorbed, revisions recorded separately.",
-      "cadence": "NOT_SPECIFIED — requires staging validation (design only)."
-    },
-    "advantages": [
-      "Avoids continuous VERY_HIGH overlap duplicate pressure.",
-      "Targets residual definitely-missed buckets from B.4 lower bound.",
-      "Spreads provider load over time."
-    ],
-    "disadvantages": [
-      "Additional scheduler complexity.",
-      "Sweep window selection must avoid query-origin confusion in analytics.",
-      "Residual zero-result windows still not reconstructible from sealed export alone."
-    ]
-  },
-  "uniqueInformationCoverage": {
-    "AGGREGATE_BUCKET_OBSERVATIONS": 53,
-    "TEMPORAL_INFORMATION_COVERAGE_UNIQUE_BUCKET_STARTS": 53,
-    "explicitDistinction": "Late replay-new rows are aggregate bucket observations, not claimed unique ECU physical samples."
-  },
-  "safetyMarginAnalysis": {
-    "OBSERVED_MAX_LAG_LOWER_BOUND_SECONDS": 5.181,
-    "PRODUCTION_SAFETY_MARGIN_SECONDS": 2,
-    "note": "No statistically validated P99 from 50 closed samples — margin is engineering judgment, not provider SLA."
+    "PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS": "YES",
+    "rationale": "Unknown first-availability distribution — sweep recovers buckets when actual delay > provisional settlement or fast-loop overlap.",
+    "cadence": "NOT_SPECIFIED — design only"
   }
 }

@@ -1,14 +1,99 @@
-# RD004-B.5 — HF Historical Recovery Policy Design + Counterfactual Simulation
+# RD004-B.6 — HF Recovery Policy Lower-Bound Semantics Correction
 
-**Evidence ID:** DI-EV-0035B.5
-**Phase:** RD004-B.5
+**Evidence ID:** DI-EV-0035B.6
+**Phase:** RD004-B.6
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
-**Mode:** Read-only policy design + counterfactual simulation — **no production changes**
+**Mode:** Read-only semantics correction + policy authority closeout — **no production changes**
+
+**Supersedes:** B.5 parameter authority (`B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID = NO`)
 
 ---
 
-## Einfache Zusammenfassung (Deutsch) — B.5 (10 Fragen)
+## Einfache Zusammenfassung (Deutsch) — B.6 (10 Fragen)
+
+### 1. Was war an „8 s schützen 50/50“ falsch?
+
+B.5 behandelte `availabilityLagLowerBoundSeconds ≤ 8 s` fälschlich als Beweis, dass DIMO den Bucket **nach 8 s verfügbar** hätte. Eine **untere Schranke** von 5,181 s bedeutet nur: die echte Verfügbarkeit war **> 5,181 s** — sie kann 9 s, 15 s oder 30 s sein. „Konsistent mit Kandidat“ ≠ „geschützt“.
+
+### 2. Was wissen wir über die echte DIMO-Verfügbarkeit sicher?
+
+Nur: für 53 Late-Buckets war `actualProviderFirstAvailabilityAt > originalRequestCompletedAt`. Die **obere Schranke ist unbekannt**. Replay-Zeitpunkt darf **nicht** als obere Schranke verwendet werden.
+
+### 3. Was bedeutet die 5,181-s-Zahl wirklich?
+
+`AVAILABILITY_DELAY_LOWER_BOUND = originalRequestCompletedAt − bucketEnd`. Das ist die **minimale** beobachtete Verzögerung — nicht die tatsächliche Provider-Verfügbarkeit.
+
+### 4. Wissen wir, ob 8 s reichen?
+
+**NEIN.** 8 s ist ein **PROVISIONAL_ENGINEERING_CANDIDATE** für Settlement-Horizon-Deferral (Hot-Edge-Abfrage verschieben), **nicht** ein validierter Provider-Verfügbarkeitsbeweis.
+
+### 5. Wissen wir, dass 2 s nicht reichen?
+
+**JA.** 26 geschlossene Late-Buckets waren **definitiv** außerhalb des nächsten 2-s-Overlap-Fensters (`CURRENT_2S_OVERLAP_SUFFICIENT = NO`).
+
+### 6. Ist 6 s Overlap sicher ausreichend?
+
+**Noch nicht bewiesen.** 6 s ist **PROVISIONAL_COVERAGE_CANDIDATE** — geänderte Query-Origins und unbekannte First-Availability verhindern Vollständigkeitsgarantie.
+
+### 7. Welche Architektur empfehlen wir trotzdem?
+
+`SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP` — Fast HF Loop + settled horizon + bounded overlap + **periodischer Deep-Recovery-Sweep** (für Robustheit bei unbekannter Verfügbarkeitsverteilung).
+
+### 8. Können wir den Produktions-Fix trotzdem bauen?
+
+**JA** — als **parametrisierbare Architektur** mit provisorischen Startwerten (`HF_SETTLEMENT_DELAY_MS`, `HF_RECOVERY_OVERLAP_MS`) und Observability. `PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED = NO` bis Live-Kalibrierung.
+
+### 9. Wie bestimmen wir danach die optimalen Sekunden?
+
+Live-Availability-Kalibrierungsexperiment (siehe `buildLiveAvailabilityCalibrationContract`): für jeden geschlossenen 1-s-Bucket kontrollierte Re-Queries bei +1…+30 s, Aufzeichnung von `firstObservedPresentAt` → P50/P90/P95/max `actualAvailabilityDelaySeconds`.
+
+### 10. Was muss vor erneuter Speed/Clock-Validierung passieren?
+
+HF-Recovery-Runtime-Fix + **frische dichte Reference-Capture**. RD004 sealed series ist acquisition-incomplete — `RD004_ABSOLUTE_SPEED_VALIDATION_COMPLETE = NO`, `RD004_CLOCK_VALIDATION_COMPLETE = NO`.
+
+---
+
+## Finale Flags (B.6)
+
+| Flag | Wert |
+|------|------|
+| `RD004_PHASE` | **B.6** |
+| `B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID` | **NO** |
+| `AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY` | **YES** |
+| `ACTUAL_FIRST_PROVIDER_AVAILABILITY_KNOWN` | **NO** |
+| `CURRENT_2S_OVERLAP_SUFFICIENT` | **NO** |
+| `RECOMMENDED_HF_RECOVERY_ARCHITECTURE` | **SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP** |
+| `RECOMMENDED_POLICY_PARAMETERS` | **REQUIRES_LIVE_AVAILABILITY_VALIDATION** |
+| `PROVISIONAL_SETTLEMENT_DELAY_SECONDS` | **8** (provisional) |
+| `PROVISIONAL_RECOVERY_OVERLAP_SECONDS` | **6** (provisional) |
+| `PARAMETERS_VALIDATED` | **NO** |
+| `PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED` | **NO** |
+| `PERIODIC_DEEP_RECOVERY_REQUIRED_FOR_ROBUST_EVENTUAL_COMPLETENESS` | **YES** |
+| `READY_FOR_RD004_ANALYSIS_MERGE` | **YES** |
+| `READY_FOR_PRODUCTION_HF_RECOVERY_PR` | **YES** |
+| `RAW_SOURCE_OBSERVATIONS_CHANGED` | **NO** |
+
+---
+
+## B.6 Artefakte
+
+- `rd004-b-hf-recovery-policy-simulation.json` — settlement deferral vs availability separation
+- `rd004-b-hf-recovery-policy-design.json` — corrected recommendation + live calibration contract
+- `rd004-b-hf-runtime-fix-contract.json` — configurable `HF_SETTLEMENT_DELAY_MS` / `HF_RECOVERY_OVERLAP_MS`
+
+---
+
+# RD004-B.5 — HF Historical Recovery Policy Design (superseded parameter authority)
+
+**Evidence ID:** DI-EV-0035B.5 (historical — parameter claims superseded by B.6)
+**Phase:** RD004-B.5
+
+> **B.6 correction:** Claims that "8 s settlement protects 50/50 closed late buckets" and that 8/6 are validated production parameters are **invalid**. Architecture class remains valid; exact seconds require live calibration.
+
+---
+
+## Einfache Zusammenfassung (Deutsch) — B.5 (10 Fragen, historical)
 
 ### 1. Was ist jetzt genau das Problem im HF-Capture?
 
@@ -28,59 +113,48 @@ Drei Schichten: (1) Abfrage zu nah an der Live-Kante → unsettled/late Buckets,
 
 ### 5. Hilft es, einige Sekunden hinter Echtzeit zu bleiben?
 
-**Ja — zentral.** Settlement Delay `safeQueryTo = requestStartedAt - delay` hält die Abfrage aus der unsettled Zone. Bei **8 s** Delay: **50/50** geschlossene Late-Buckets LOWER_BOUND durch Settlement geschützt (Lag-Lower-Bound ≤ Delay oder Horizon-Deferral).
+**Ja — zentral für Horizon-Deferral.** Settlement Delay `safeQueryTo = requestStartedAt - delay` hält die Abfrage aus der unsettled Zone. **B.6 correction:** Bei **8 s** würden alle 50 beobachteten geschlossenen Late-Buckets ausreichend weit von der ursprünglichen Live-Kante verschoben — RD004 beweist **NICHT**, dass sie nach 8 s bereits provider-seitig verfügbar wären.
 
 ### 6. Welche Kombination ist am sinnvollsten?
 
 **Empfohlen (Design only):** `SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP`
-- **Settlement: 8 s** (ceil(max Lag 5,181 s) + 2 s Engineering-Margin)
-- **Overlap: 6 s** (≥ P95-Lower-Bound + Margin; HIGH statt VERY_HIGH Duplicate-Druck)
-- **Periodischer Recovery-Sweep** für Residual-Lücken (zero-result-Fenster nicht rekonstruierbar)
+- **Provisional settlement: 8 s** (engineering candidate — **not validated**)
+- **Provisional overlap: 6 s** (coverage candidate — **not completeness guarantee**)
+- **Periodischer Recovery-Sweep** für Robustheit bei unbekannter First-Availability
 
 ### 7. Wie viel zusätzliche Abfragelast?
 
-Median HF-Fenster **~7,8 s**; **6 s Overlap ≈ 77 %** wiederholte Abdeckung pro Zyklus (HIGH pressure). Settlement **8 s** reduziert „neue“ Live-Kante pro Fenster auf ~0 s am Rand — akzeptabler Trade-off vs. 15–20 s Overlap-only. Sweep-Last **zeitlich verteilt**, idempotent per Fingerprint.
+Median HF-Fenster **~7,8 s**; **6 s Overlap ≈ 77 %** wiederholte Abdeckung pro Zyklus (HIGH pressure). Settlement **8 s** reduziert „neue“ Live-Kante pro Fenster. Sweep-Last **zeitlich verteilt**, idempotent per Fingerprint.
 
 ### 8. Verlieren wir Near-Real-Time-Fähigkeit?
 
-**~8 s HF-Historical-Latenz** für settled horizon — für Driving Intelligence Episode-Reconstruction **akzeptabel**; LATEST_LIVE bleibt für Echtzeit-Signale. Kein Anspruch auf sub-Sekunden-HF-Historical am Live-Rand ohne Late-Arrival-Risiko.
+**~8 s HF-Historical-Latenz** für settled horizon (provisional) — für Driving Intelligence Episode-Reconstruction **akzeptabel**; LATEST_LIVE bleibt für Echtzeit-Signale.
 
 ### 9. Was bedeutet das für Driving Intelligence?
 
-Bis Fix: **Reconstruction-Confidence senken** bei großen HF-Lücken — **keine Interpolation** über 10–105 s Gaps. Acceleration/Deceleration, Stop/Launch-Grenzen, Peak-Severity und Episoden-Dauer bleiben **interval-censored / LOW confidence**. Erst nach Capture-Fix: RD004 Speed/Clock/Acceleration erneut validieren.
+Bis Fix: **Reconstruction-Confidence senken** bei großen HF-Lücken — **keine Interpolation** über 10–105 s Gaps. Erst nach Capture-Fix + frischer Capture: RD004 Speed/Clock/Acceleration erneut validieren.
 
 ### 10. Was muss im nächsten Produktions-PR geändert werden?
 
-Siehe `rd004-b-hf-runtime-fix-contract.json`: `resolveHfActualQueryTo()` + Settlement, parametrisierbares Overlap in `computeHfQueryFrom()`, Recovery-Sweep-Scheduler, Observability-Metriken (`hf_query_from/to`, `settlement_delay_ms`, `recovered_late_bucket_count`, …). **Nicht in B.5** — separates Implementierungs-PR nach Staging-Validierung.
+Siehe `rd004-b-hf-runtime-fix-contract.json`: parametrisierbare Settlement/Overlap, Recovery-Sweep-Scheduler, Observability inkl. `hf_first_availability_delay_ms`. **Nicht in B.6** — separates Implementierungs-PR.
 
 ---
 
-## Finale Flags (B.5)
+## Finale Flags (B.5, superseded)
 
-| Flag | Wert |
-|------|------|
-| `RD004_PHASE` | **B.5** |
-| `HF_CAPTURE_DEFECT_CHARACTERIZED` | **YES** |
-| `PROVIDER_LATE_ARRIVAL_CONFIRMED` | **YES** |
-| `CURRENT_2S_OVERLAP_SUFFICIENT` | **NO** |
-| `OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND` | **YES** |
-| `RECOMMENDED_SETTLEMENT_DELAY_SECONDS` | **8** |
-| `RECOMMENDED_RECOVERY_OVERLAP_SECONDS` | **6** |
-| `RECOMMENDED_HF_RECOVERY_ARCHITECTURE` | **SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP** |
-| `PERIODIC_DEEP_RECOVERY_RECOMMENDED` | **YES** |
-| `RD004_HF_RECOVERY_POLICY_DESIGNED` | **YES** |
-| `RD004_HF_RECOVERY_RUNTIME_FIXED` | **NO** |
-| `READY_FOR_RD004_ANALYSIS_MERGE` | **YES** |
-| `READY_FOR_PRODUCTION_HF_RECOVERY_PR` | **YES** |
-| `RAW_SOURCE_OBSERVATIONS_CHANGED` | **NO** |
+| Flag | Wert (B.5) | B.6 correction |
+|------|------------|----------------|
+| `RD004_PHASE` | B.5 | → **B.6** |
+| `RECOMMENDED_SETTLEMENT_DELAY_SECONDS` | 8 | → `PROVISIONAL_SETTLEMENT_DELAY_SECONDS` (not validated) |
+| `B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID` | (implicit yes) | → **NO** |
 
 ---
 
-## B.5 Artefakte
+## B.5 Artefakte (regenerated under B.6 semantics)
 
-- `rd004-b-hf-recovery-policy-simulation.json` — 7×7 settlement×overlap counterfactual grid
-- `rd004-b-hf-recovery-policy-design.json` — policy options A–D + DI impact + recommendation
-- `rd004-b-hf-runtime-fix-contract.json` — next PR implementation contract (design only)
+- `rd004-b-hf-recovery-policy-simulation.json`
+- `rd004-b-hf-recovery-policy-design.json`
+- `rd004-b-hf-runtime-fix-contract.json`
 
 ---
 
