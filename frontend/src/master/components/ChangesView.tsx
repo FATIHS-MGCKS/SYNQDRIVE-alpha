@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035a2-rd004-segment-a-semantics-closeout-2026-09-04',
+    version: '4.9.1049',
+    title: 'DI-EV-0035A.2 — RD004-A Semantics Closeout (H displacement + true peak attenuation)',
+    summary: [
+      'Landmark H ~+22.2 s stored as PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS only (NOT_A_CLOCK_OFFSET_ESTIMATE).',
+      'VIDEO_TO_PROVIDER_OFFSET_SECONDS=null; CLOCK_FIT_ELIGIBLE_LANDMARKS=[]; VIDEO_PROVIDER_ALIGNMENT_CLASS=INSUFFICIENT_EVIDENCE.',
+      'VIDEO_ABSOLUTE_TIME_ANCHORED=YES preserved (Time.is); provider offset and drift remain unknown.',
+      'TRUE_LOCAL_PEAK_ATTENUATION_KMH from independent raw/smoothed maxima (~10 km/h, 6 events); separate from same-timestamp delta (~18.33 km/h).',
+      'Preserves all valid A.1 evidence: 38 HF samples, 0 legacy harsh events, raw bytes unchanged.',
+    ],
+    reason: 'A.1 still exposed approximate landmark H as provider offset and conflated same-timestamp delta with true peak attenuation.',
+    previousBehavior: 'DI-EV-0035A.1 set VIDEO_TO_PROVIDER_OFFSET_SECONDS≈+22.2 s from H; TRUE_LOCAL_PEAK_ATTENUATION used same-timestamp proxy.',
+    details:
+      '31 tests; invariants APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET and TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T12:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035a1-rd004-segment-a-methodology-closeout-2026-09-04',
     version: '4.9.1048',
     title: 'DI-EV-0035A.1 — RD004-A Methodology Correctness Closeout',

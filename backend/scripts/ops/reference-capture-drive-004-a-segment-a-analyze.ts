@@ -1,5 +1,5 @@
 /**
- * DI-EV-0035A.1 — RD004-A Segment A video ↔ telemetry alignment CLI.
+ * DI-EV-0035A.2 — RD004-A Segment A video ↔ telemetry alignment CLI.
  * SAFETY: read-only; no DB, Prisma, API, production runtime, or detector mutation.
  */
 import * as crypto from 'crypto';
@@ -104,7 +104,7 @@ function main(): void {
   const sessionSummary = {
     evidenceId: RD004_A_EVIDENCE_ID,
     mode: RD004_A_MODE,
-    phase: 'RD004-A.1',
+    phase: 'RD004-A.2',
     vehicle: SEGMENT_A_CONSTANTS.vehicleLabel,
     vehicleId: SEGMENT_A_CONSTANTS.vehicleId,
     tokenId: SEGMENT_A_CONSTANTS.tokenId,

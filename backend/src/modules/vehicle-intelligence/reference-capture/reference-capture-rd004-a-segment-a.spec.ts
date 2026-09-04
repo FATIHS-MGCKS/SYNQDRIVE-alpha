@@ -8,9 +8,11 @@ import {
   computeAccelerationGapSensitivity,
   computeQualifiedAccelerationPairs,
   computeRd004SourceBundleSha256,
+  computeTrueLocalPeakEvents,
   detectOutOfOrderByAcquisitionOrder,
   estimateClockAlignment,
   estimateDrift,
+  extractProvisionalLandmarkHDisplacement,
   filterRowsByProviderTimestampEnvelope,
   findSpeedEpisodes,
   loadRd004Jsonl,
@@ -23,6 +25,8 @@ import {
   sortedPercentile,
   toRepoRelativePath,
   VIDEO_LANDMARKS,
+  APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET,
+  TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY,
   type QualifiedSpeedPoint,
   type SpeedEpisode,
 } from './reference-capture-rd004-a-segment-a';
@@ -207,7 +211,7 @@ describe('DI-EV-0035A.1 RD004-A methodology correctness', () => {
       legacy3PointSmoothedSpeedKmh: p.speedKmh * 0.8,
     }));
     const result = comparePreprocessingResponse(points, sidecar);
-    expect(result.PREPROCESSING_LOCAL_EVENT_METHOD).toBe('SAME_WINDOW_RAW_VS_SMOOTHED_BOUNDARIES');
+    expect(result.PREPROCESSING_LOCAL_EVENT_METHOD).toBe('SAME_WINDOW_INDEPENDENT_RAW_AND_SMOOTHED_PEAKS');
     const shifts = result.localEventTimings
       .map((t) => t.onsetShiftSeconds)
       .filter((v): v is number => v != null);
@@ -333,16 +337,30 @@ describe('DI-EV-0035A.1 RD004-A methodology correctness', () => {
     expect(matches[0]!.telemetryMatchConfidence).toBe('INSUFFICIENT');
   });
 
-  it('20) clock alignment uses only CLOCK_FIT_ELIGIBLE landmarks', () => {
+  it('20) approximate landmark H cannot populate VIDEO_TO_PROVIDER_OFFSET_SECONDS', () => {
     const landmarkMatches = [
-      { landmarkId: 'B', CLOCK_FIT_ELIGIBLE: 'NO', candidateOffsetSeconds: 0 },
-      { landmarkId: 'H', CLOCK_FIT_ELIGIBLE: 'YES', candidateOffsetSeconds: 8 },
+      {
+        landmarkId: 'H',
+        CLOCK_FIT_ELIGIBLE: 'NO',
+        candidateOffsetSeconds: null,
+        exploratoryDisplacementSeconds: 22.205,
+        exploratoryDisplacementClassification: 'NOT_A_CLOCK_OFFSET_ESTIMATE',
+        videoTimingAuthority: 'APPROXIMATE',
+      },
+      {
+        landmarkId: 'B',
+        CLOCK_FIT_ELIGIBLE: 'YES',
+        candidateOffsetSeconds: 8,
+      },
     ];
     const clock = estimateClockAlignment(landmarkMatches);
-    expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBe(8);
-    expect(clock.VIDEO_PROVIDER_ALIGNMENT_CLASS).toBe('PROVISIONAL_SINGLE_ANCHOR');
+    expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
     expect(clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED).toBe('NO');
-    expect(clock.CLOCK_FIT_ELIGIBLE_LANDMARKS).toEqual(['H']);
+    expect(clock.VIDEO_PROVIDER_ALIGNMENT_CLASS).toBe('INSUFFICIENT_EVIDENCE');
+    expect(clock.CLOCK_FIT_ELIGIBLE_LANDMARKS).toEqual(['B']);
+    expect(clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS).toBe(22.205);
+    expect(clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED).toBe('NO');
+    expect(clock.APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET).toBe('YES');
   });
 
   it('21) acceleration gap sensitivity reports multiple candidate thresholds', () => {
@@ -378,9 +396,153 @@ describe('DI-EV-0035A.1 RD004-A methodology correctness', () => {
     expect(result.flags.ACCELERATION_PERCENTILE_BUG_FIXED).toBe('YES');
     expect(result.flags.GEAR_STATE_OBSERVED).toBe('NO');
     expect(result.flags.VIDEO_SEVERITY_CONFIRMATION).toBe('NOT_VALIDATED');
+    expect(result.flags.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+    expect(result.flags.PROVIDER_TIMESTAMP_OFFSET_VALIDATED).toBe('NO');
+    expect(result.flags.CLOCK_FIT_ELIGIBLE_LANDMARKS).toEqual([]);
+    expect(result.flags.VIDEO_PROVIDER_ALIGNMENT_CLASS).toBe('INSUFFICIENT_EVIDENCE');
+    expect(result.flags.PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED).toBe('NO');
+    expect(result.flags.APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET).toBe('YES');
+    expect(result.flags.TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY).toBe('YES');
     expect(result.flags.CALM_BASELINE_FALSE_POSITIVE_CHECK).toBe(
       'NO_FALSE_POSITIVES_OBSERVED_ON_AVAILABLE_DATA',
     );
+  });
+});
+
+describe('DI-EV-0035A.2 RD004-A semantics closeout', () => {
+  it('24) approximate non-unique H cannot populate VIDEO_TO_PROVIDER_OFFSET_SECONDS', () => {
+    const landmarkMatches = [
+      {
+        landmarkId: 'H',
+        CLOCK_FIT_ELIGIBLE: 'NO',
+        exploratoryDisplacementSeconds: 22.205,
+        exploratoryDisplacementClassification: 'NOT_A_CLOCK_OFFSET_ESTIMATE',
+      },
+    ];
+    const clock = estimateClockAlignment(landmarkMatches);
+    expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+    expect(clock.CLOCK_FIT_ELIGIBLE_LANDMARKS).toEqual([]);
+    expect(extractProvisionalLandmarkHDisplacement(landmarkMatches)).toBe(22.205);
+    expect(APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET).toBe('YES');
+  });
+
+  it('25) Segment A provider offset remains null with no authoritative clock-fit landmarks', () => {
+    const episodes = [
+      makeEpisode({
+        type: 'low_speed',
+        startTimestamp: '2026-09-04T03:43:48.205Z',
+        startSpeedKmh: 15,
+        videoRelativeStart: 362.205,
+      }),
+    ];
+    const matches = matchVideoLandmarks(VIDEO_LANDMARKS, episodes);
+    const clock = estimateClockAlignment(matches);
+    expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+    expect(clock.CLOCK_FIT_ELIGIBLE_LANDMARKS).toEqual([]);
+    expect(clock.VIDEO_PROVIDER_ALIGNMENT_CLASS).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('26) exploratory H displacement is preserved separately from provider offset', () => {
+    const landmarkMatches = [
+      {
+        landmarkId: 'H',
+        CLOCK_FIT_ELIGIBLE: 'NO',
+        exploratoryDisplacementSeconds: 22.205,
+        exploratoryDisplacementClassification: 'NOT_A_CLOCK_OFFSET_ESTIMATE',
+      },
+    ];
+    const clock = estimateClockAlignment(landmarkMatches);
+    expect(clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS).toBe(22.205);
+    expect(clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED).toBe('NO');
+    expect(clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_NOTE).toBe('NOT_A_CLOCK_OFFSET_ESTIMATE');
+    expect(clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS).toBeNull();
+  });
+
+  it('27) true local peak attenuation compares independent maxima in same local window', () => {
+    const points: QualifiedSpeedPoint[] = [
+      { acquisitionOrdinal: 1, providerTimestamp: '2026-09-04T03:37:46.000Z', speedKmh: 10, videoRelativeSecondsProvisional: 0, flags: [] },
+      { acquisitionOrdinal: 2, providerTimestamp: '2026-09-04T03:38:00.000Z', speedKmh: 30, videoRelativeSecondsProvisional: 14, flags: [] },
+      { acquisitionOrdinal: 3, providerTimestamp: '2026-09-04T03:38:02.000Z', speedKmh: 50, videoRelativeSecondsProvisional: 16, flags: [] },
+      { acquisitionOrdinal: 4, providerTimestamp: '2026-09-04T03:38:04.000Z', speedKmh: 30, videoRelativeSecondsProvisional: 18, flags: [] },
+      { acquisitionOrdinal: 5, providerTimestamp: '2026-09-04T03:38:06.000Z', speedKmh: 10, videoRelativeSecondsProvisional: 20, flags: [] },
+    ];
+    const sidecar = points.map((p) => ({
+      providerTimestamp: p.providerTimestamp,
+      qualifiedRawHfSpeedKmh: p.speedKmh,
+      legacy3PointSmoothedSpeedKmh:
+        p.videoRelativeSecondsProvisional === 16 ? 35 : p.speedKmh * 0.9,
+    }));
+    const result = comparePreprocessingResponse(points, sidecar);
+    expect(result.TRUE_LOCAL_PEAK_EVENT_COUNT).toBeGreaterThan(0);
+    expect(result.TRUE_LOCAL_PEAK_ATTENUATION_KMH).toBe(15);
+    expect(result.MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH).toBe(15);
+    expect(result.TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY).toBe('YES');
+    expect(TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY).toBe('YES');
+  });
+
+  it('28) shifted smoothed peak is handled correctly', () => {
+    const points: QualifiedSpeedPoint[] = [
+      { acquisitionOrdinal: 1, providerTimestamp: '2026-09-04T03:37:46.000Z', speedKmh: 10, videoRelativeSecondsProvisional: 0, flags: [] },
+      { acquisitionOrdinal: 2, providerTimestamp: '2026-09-04T03:38:00.000Z', speedKmh: 30, videoRelativeSecondsProvisional: 14, flags: [] },
+      { acquisitionOrdinal: 3, providerTimestamp: '2026-09-04T03:38:02.000Z', speedKmh: 50, videoRelativeSecondsProvisional: 16, flags: [] },
+      { acquisitionOrdinal: 4, providerTimestamp: '2026-09-04T03:38:04.000Z', speedKmh: 45, videoRelativeSecondsProvisional: 18, flags: [] },
+      { acquisitionOrdinal: 5, providerTimestamp: '2026-09-04T03:38:06.000Z', speedKmh: 30, videoRelativeSecondsProvisional: 20, flags: [] },
+    ];
+    const sidecar = points.map((p) => ({
+      providerTimestamp: p.providerTimestamp,
+      qualifiedRawHfSpeedKmh: p.speedKmh,
+      legacy3PointSmoothedSpeedKmh:
+        p.videoRelativeSecondsProvisional === 18 ? 48 : p.speedKmh * 0.8,
+    }));
+    const legacyByTs = new Map(sidecar.map((r) => [r.providerTimestamp, r]));
+    const events = computeTrueLocalPeakEvents(points, legacyByTs);
+    expect(events.length).toBeGreaterThan(0);
+    const event = events.find((e) => e.rawLocalPeakValueKmh === 50)!;
+    expect(event.smoothedLocalPeakTimeSeconds).toBe(18);
+    expect(event.rawLocalPeakTimeSeconds).toBe(16);
+    expect(event.localPeakTimeShiftSeconds).toBe(2);
+    expect(event.localPeakAttenuationKmh).toBe(2);
+    const result = comparePreprocessingResponse(points, sidecar);
+    expect(result.MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH).toBe(10);
+    expect(result.TRUE_LOCAL_PEAK_ATTENUATION_KMH).toBe(2);
+    expect(result.LOCAL_PEAK_TIME_SHIFT_AVAILABLE).toBe('YES');
+  });
+
+  it('29) same-timestamp delta remains separate from true local peak attenuation', () => {
+    const points: QualifiedSpeedPoint[] = [
+      { acquisitionOrdinal: 1, providerTimestamp: '2026-09-04T03:37:46.000Z', speedKmh: 10, videoRelativeSecondsProvisional: 0, flags: [] },
+      { acquisitionOrdinal: 2, providerTimestamp: '2026-09-04T03:38:00.000Z', speedKmh: 40, videoRelativeSecondsProvisional: 14, flags: [] },
+      { acquisitionOrdinal: 3, providerTimestamp: '2026-09-04T03:38:02.000Z', speedKmh: 50, videoRelativeSecondsProvisional: 16, flags: [] },
+      { acquisitionOrdinal: 4, providerTimestamp: '2026-09-04T03:38:04.000Z', speedKmh: 40, videoRelativeSecondsProvisional: 18, flags: [] },
+    ];
+    const sidecar = points.map((p) => ({
+      providerTimestamp: p.providerTimestamp,
+      qualifiedRawHfSpeedKmh: p.speedKmh,
+      legacy3PointSmoothedSpeedKmh:
+        p.videoRelativeSecondsProvisional === 16
+          ? 45
+          : p.videoRelativeSecondsProvisional === 18
+            ? 47
+            : p.speedKmh,
+    }));
+    const result = comparePreprocessingResponse(points, sidecar);
+    expect(result.MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH).toBe(7);
+    expect(result.TRUE_LOCAL_PEAK_ATTENUATION_KMH).toBe(3);
+  });
+
+  (hasSourceData ? it : it.skip)('30) sealed source observations SHA unchanged', () => {
+    const content = fs.readFileSync(SOURCE_OBS, 'utf8');
+    const sha = crypto.createHash('sha256').update(content).digest('hex');
+    expect(sha).toBe(SEGMENT_A_CONSTANTS.sealedEvidenceSha256);
+  });
+
+  it('31) production runtime unchanged flags', () => {
+    const result = runRd004SegmentAAnalysis({ observations: [], legacySidecar: [] });
+    expect(result.flags.PRODUCTION_SCORE_CHANGED).toBe('NO');
+    expect(result.flags.PRODUCTION_DETECTORS_CHANGED).toBe('NO');
+    expect(result.flags.TIRE_RUNTIME_CHANGED).toBe('NO');
+    expect(result.flags.BRAKE_RUNTIME_CHANGED).toBe('NO');
+    expect(result.flags.DEPLOYED).toBe('NO');
   });
 });
 

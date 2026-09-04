@@ -6,7 +6,7 @@
 
 **Scope:** Driving Intelligence Reconstruction phases and major artifacts only. Does not index every unrelated repository audit.
 
-**Last updated:** 2026-09-04 (DI-EV-0035A.1 RD004-A methodology correctness closeout)
+**Last updated:** 2026-09-04 (DI-EV-0035A.2 RD004-A semantics closeout)
 
 ---
 
@@ -65,13 +65,14 @@
 | DI-EV-0034E | Phase 3A.3 | E — Signal quality + foundation | `docs/audits/data/rd003-signal-quality/` + `docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` | SIGNAL_QUALITY_INTERPRETATION | DI-EV-0034D.2 (alignment) | — | Per-signal usability matrix; Tier A/B/C evidence; no Driving Score changes; GROUND_TRUTH_VALIDATED=NO |
 | DI-EV-0034F | Phase 3A.3 | F — Architecture design | `docs/audits/data/driving-intelligence-v2-design/` + `docs/audits/driving-intelligence-v2-canonical-design-2026-09.md` | 2026-09-03 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | `DIMO_LTE_R1_REFERENCE_DRIVE_003` (RD003 authority) | ARCHITECTURE_DESIGN + DRIVING_INTELLIGENCE_V2_FOUNDATION | DI-EV-0034E | — | Episode reconstruction + trip features; F.1 orthogonal states/confidence; F.2 kinetic energy semantics, artifact integrity; production unchanged; READY_FOR_RD004=YES |
 | DI-EV-0035A | RD004-A | C — Video ↔ telemetry alignment | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (methodology) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · `DIMO_LTE_R1_REFERENCE_DRIVE_004` Segment A | SEGMENT_A_ALIGNMENT | — | DI-EV-0035A.1 | First RD004 comparison; circular clock offset + drift defects corrected in DI-EV-0035A.1 |
-| DI-EV-0035A.1 | RD004-A.1 | C — Video ↔ telemetry alignment (methodology closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V2 | DI-EV-0035A (method) | — | Corrected landmark/clock/drift/preprocessing/percentile/path/bundle methodology; 38 HF samples preserved; offset NOT validated; drift NOT validated; SEGMENT_B_PENDING=YES |
+| DI-EV-0035A.1 | RD004-A.1 | C — Video ↔ telemetry alignment (methodology closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | SUPERSEDED (semantics) | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V2 | DI-EV-0035A (method) | DI-EV-0035A.2 | Corrected landmark/clock/drift/preprocessing/percentile/path/bundle methodology; H offset semantics too strong in A.1 |
+| DI-EV-0035A.2 | RD004-A.2 | C — Video ↔ telemetry alignment (semantics closeout) | `docs/audits/data/rd004-segment-a/` + `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` | 2026-09-04 | CURRENT | DIMO | DIMO_LTE_R1 | ICE_GASOLINE | KS MX 2024 `a60c0749-…` · session `f1e81e78-…` · Segment A | SEGMENT_A_ALIGNMENT_V3 | DI-EV-0035A.1 (semantics) | — | H displacement NOT provider offset; CLOCK_FIT_ELIGIBLE=[]; true local peak attenuation independent maxima; 38 HF samples preserved; SEGMENT_B_PENDING=YES |
 
 ---
 
 ## Entry count
 
-**42** registry entries through DI-EV-0035A.1 (methodology closeout added 2026-09-04).
+**43** registry entries through DI-EV-0035A.2 (semantics closeout added 2026-09-04).
 
 ---
 

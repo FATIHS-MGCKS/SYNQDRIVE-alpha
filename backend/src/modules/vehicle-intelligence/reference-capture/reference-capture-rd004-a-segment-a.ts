@@ -1,5 +1,5 @@
 /**
- * RD004-A / DI-EV-0035A.1 — Segment A video ↔ telemetry alignment (read-only analysis).
+ * RD004-A / DI-EV-0035A.2 — Segment A video ↔ telemetry alignment (read-only analysis).
  * Does NOT modify production score, detectors, tire/brake runtime, or RD003 evidence.
  */
 import * as crypto from 'crypto';
@@ -28,8 +28,8 @@ import { detectAccelerationEvents } from '../trips/hf-acceleration';
 import { detectBrakingEvents } from '../trips/hf-braking';
 import { detectAbuseEvents } from '../trips/hf-abuse';
 
-export const RD004_A_PHASE = 'RD004-A.1';
-export const RD004_A_EVIDENCE_ID = 'DI-EV-0035A.1';
+export const RD004_A_PHASE = 'RD004-A.2';
+export const RD004_A_EVIDENCE_ID = 'DI-EV-0035A.2';
 export const RD004_A_MODE = 'RD004_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT';
 
 export const SEGMENT_A_CONSTANTS = {
@@ -70,6 +70,8 @@ export const ACCELERATION_GAP_CANDIDATES_SECONDS = [2, 3, 5] as const;
 export const TEMPORAL_LOCALITY_DEFAULT_TOLERANCE_SECONDS = 60;
 
 export const ONE_TELEMETRY_EPISODE_CANNOT_COUNT_AS_MULTIPLE_INDEPENDENT_CLOCK_LANDMARKS = 'YES';
+export const APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET = 'YES';
+export const TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY = 'YES';
 
 export type VideoTimingAuthority = 'EXACT' | 'HIGH_CONFIDENCE' | 'APPROXIMATE' | 'UNKNOWN';
 export type TelemetryMatchConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
@@ -663,9 +665,12 @@ function isClockFitEligible(
   episode: SpeedEpisode,
   matchConfidence: TelemetryMatchConfidence,
 ): boolean {
-  if (lm.videoTimingAuthority === 'UNKNOWN' || lm.videoRelativeSecondsObserved == null) return false;
+  if (lm.videoTimingAuthority !== 'EXACT' && lm.videoTimingAuthority !== 'HIGH_CONFIDENCE') {
+    return false;
+  }
+  if (lm.videoRelativeSecondsObserved == null) return false;
   if (matchConfidence === 'LOW' || matchConfidence === 'INSUFFICIENT') return false;
-  if (lm.id === 'A') return false;
+  if (lm.id === 'A' || lm.id === 'H') return false;
   if (lm.temporalLocalityRequired && lm.videoRelativeSecondsObserved != null) {
     const dist = Math.abs(episode.videoRelativeStart - lm.videoRelativeSecondsObserved);
     if (dist > lm.temporalLocalityToleranceSeconds) return false;
@@ -729,6 +734,11 @@ export function matchVideoLandmarks(
         ? best.videoRelativeStart - lm.videoRelativeSecondsObserved!
         : null;
 
+    const exploratoryDisplacementSeconds =
+      hasIndependentVideoTime && !clockFitEligible
+        ? best.videoRelativeStart - lm.videoRelativeSecondsObserved!
+        : null;
+
     if (clockFitEligible) {
       usedEpisodeIds.add(best.episodeId);
     }
@@ -753,6 +763,9 @@ export function matchVideoLandmarks(
       telemetryMatchConfidence: matchConfidence,
       CLOCK_FIT_ELIGIBLE: clockFitEligible ? 'YES' : 'NO',
       candidateOffsetSeconds,
+      exploratoryDisplacementSeconds,
+      exploratoryDisplacementClassification:
+        exploratoryDisplacementSeconds != null ? 'NOT_A_CLOCK_OFFSET_ESTIMATE' : null,
       speedShapeAgreement:
         matchConfidence === 'HIGH'
           ? 'GOOD'
@@ -762,11 +775,23 @@ export function matchVideoLandmarks(
       note:
         lm.id === 'A'
           ? '0 km/h unsigned speed is not evidence for observed ~2 km/h reverse'
-          : undefined,
+          : lm.id === 'H' && exploratoryDisplacementSeconds != null
+            ? 'Exploratory displacement only — NOT_A_CLOCK_OFFSET_ESTIMATE'
+            : undefined,
     });
   }
 
   return matches;
+}
+
+export function extractProvisionalLandmarkHDisplacement(
+  landmarkMatches: Array<Record<string, unknown>>,
+): number | null {
+  const h = landmarkMatches.find((m) => m.landmarkId === 'H');
+  if (!h) return null;
+  const exploratory = h.exploratoryDisplacementSeconds;
+  if (typeof exploratory === 'number' && Number.isFinite(exploratory)) return exploratory;
+  return null;
 }
 
 export function estimateClockAlignment(landmarkMatches: Array<Record<string, unknown>>) {
@@ -783,31 +808,44 @@ export function estimateClockAlignment(landmarkMatches: Array<Record<string, unk
       reason:
         m.status === 'NOT_FOUND_IN_TELEMETRY'
           ? 'NOT_FOUND'
-          : m.CLOCK_FIT_ELIGIBLE === 'NO'
-            ? 'INELIGIBLE_OR_INSUFFICIENT'
-            : 'UNKNOWN',
+          : m.videoTimingAuthority === 'APPROXIMATE'
+            ? 'APPROXIMATE_NON_UNIQUE_LANDMARK'
+            : m.CLOCK_FIT_ELIGIBLE === 'NO'
+              ? 'INELIGIBLE_OR_INSUFFICIENT'
+              : 'UNKNOWN',
     }));
+
+  const provisionalH = extractProvisionalLandmarkHDisplacement(landmarkMatches);
+
+  const base = {
+    VIDEO_ABSOLUTE_TIME_ANCHORED: 'YES' as const,
+    PROVIDER_TIMESTAMP_OFFSET_VALIDATED: 'NO' as const,
+    VIDEO_TO_PROVIDER_OFFSET_SECONDS: null as number | null,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS: provisionalH,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED: 'NO' as const,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_NOTE: provisionalH != null
+      ? 'NOT_A_CLOCK_OFFSET_ESTIMATE'
+      : null,
+    APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET: 'YES' as const,
+    CLOCK_FIT_ELIGIBLE_LANDMARKS: clockFitEligibleLandmarks,
+    CLOCK_FIT_REJECTED_LANDMARKS: clockFitRejectedLandmarks,
+    CIRCULAR_LANDMARK_ALIGNMENT_REMOVED: 'YES' as const,
+  };
 
   if (!offsets.length) {
     return {
-      VIDEO_ABSOLUTE_TIME_ANCHORED: 'YES',
-      PROVIDER_TIMESTAMP_OFFSET_VALIDATED: 'NO',
+      ...base,
       VIDEO_PROVIDER_ALIGNMENT_CLASS: 'INSUFFICIENT_EVIDENCE',
-      VIDEO_TO_PROVIDER_OFFSET_SECONDS: null,
       OFFSET_MAD_SECONDS: null,
-      CLOCK_FIT_ELIGIBLE_LANDMARKS: clockFitEligibleLandmarks,
-      CLOCK_FIT_REJECTED_LANDMARKS: clockFitRejectedLandmarks,
       candidateOffsetsPerEvent: [],
       medianOffsetSeconds: null,
       meanOffsetSeconds: null,
       minOffsetSeconds: null,
       maxOffsetSeconds: null,
       spreadSeconds: null,
-      CIRCULAR_LANDMARK_ALIGNMENT_REMOVED: 'YES',
     };
   }
 
-  const sorted = [...offsets].sort((a, b) => a - b);
   const median = sortedPercentile(offsets, 50);
   const mean = offsets.reduce((a, b) => a + b, 0) / offsets.length;
   const offsetMad = mad(offsets);
@@ -815,27 +853,21 @@ export function estimateClockAlignment(landmarkMatches: Array<Record<string, unk
 
   let alignmentClass: string;
   let offsetValidated: 'YES' | 'NO' = 'NO';
-  if (offsets.length === 1) {
-    alignmentClass = 'PROVISIONAL_SINGLE_ANCHOR';
-  } else if (offsets.length < 2) {
-    alignmentClass = 'INSUFFICIENT_EVIDENCE';
-  } else if (spread <= 8) {
+  if (offsets.length >= 2 && spread <= 8) {
     alignmentClass = 'STABLE_OFFSET';
     offsetValidated = 'YES';
-  } else if (spread <= 25) {
+  } else if (offsets.length >= 2 && spread <= 25) {
     alignmentClass = 'AMBIGUOUS_ALIGNMENT';
   } else {
     alignmentClass = 'INSUFFICIENT_EVIDENCE';
   }
 
   return {
-    VIDEO_ABSOLUTE_TIME_ANCHORED: 'YES',
+    ...base,
     PROVIDER_TIMESTAMP_OFFSET_VALIDATED: offsetValidated,
     VIDEO_PROVIDER_ALIGNMENT_CLASS: alignmentClass,
-    VIDEO_TO_PROVIDER_OFFSET_SECONDS: median,
+    VIDEO_TO_PROVIDER_OFFSET_SECONDS: offsetValidated === 'YES' ? median : null,
     OFFSET_MAD_SECONDS: offsetMad,
-    CLOCK_FIT_ELIGIBLE_LANDMARKS: clockFitEligibleLandmarks,
-    CLOCK_FIT_REJECTED_LANDMARKS: clockFitRejectedLandmarks,
     candidateOffsetsPerEvent: eligible.map((m) => ({
       landmarkId: m.landmarkId,
       offsetSeconds: m.candidateOffsetSeconds,
@@ -845,7 +877,6 @@ export function estimateClockAlignment(landmarkMatches: Array<Record<string, unk
     minOffsetSeconds: Math.min(...offsets),
     maxOffsetSeconds: Math.max(...offsets),
     spreadSeconds: spread,
-    CIRCULAR_LANDMARK_ALIGNMENT_REMOVED: 'YES',
   };
 }
 
@@ -1049,6 +1080,94 @@ type LocalEventTiming = {
   endShiftSeconds: number | null;
 };
 
+export type TrueLocalPeakEvent = {
+  eventWindowCenterVideoRelativeSeconds: number;
+  rawLocalPeakValueKmh: number;
+  rawLocalPeakTimeSeconds: number;
+  smoothedLocalPeakValueKmh: number;
+  smoothedLocalPeakTimeSeconds: number;
+  localPeakAttenuationKmh: number;
+  localPeakAttenuationAbsKmh: number;
+  localPeakTimeShiftSeconds: number;
+};
+
+export type LocalPeakInWindow = {
+  valueKmh: number;
+  timeSeconds: number;
+};
+
+export function findLocalPeakInEventWindow(
+  windowPoints: QualifiedSpeedPoint[],
+  legacyByTs: Map<string, LegacyPreprocessedSpeedRow>,
+  field: 'raw' | 'smoothed',
+): LocalPeakInWindow | null {
+  if (windowPoints.length < 3) return null;
+
+  let peakIdx = -1;
+  let peakVal = -Infinity;
+  for (let i = 0; i < windowPoints.length; i++) {
+    const point = windowPoints[i]!;
+    const value =
+      field === 'raw'
+        ? point.speedKmh
+        : legacyByTs.get(point.providerTimestamp)?.legacy3PointSmoothedSpeedKmh ?? null;
+    if (value == null || !Number.isFinite(value)) continue;
+    if (value > peakVal) {
+      peakVal = value;
+      peakIdx = i;
+    }
+  }
+
+  if (peakIdx < 0) return null;
+
+  const validCount =
+    field === 'raw'
+      ? windowPoints.length
+      : windowPoints.filter((p) => legacyByTs.has(p.providerTimestamp)).length;
+  if (validCount < 3) return null;
+
+  const peakPoint = windowPoints[peakIdx]!;
+  return {
+    valueKmh: peakVal,
+    timeSeconds: peakPoint.videoRelativeSecondsProvisional,
+  };
+}
+
+export function computeTrueLocalPeakEvents(
+  qualifiedSpeed: QualifiedSpeedPoint[],
+  legacyByTs: Map<string, LegacyPreprocessedSpeedRow>,
+  windowHalfSeconds = 20,
+): TrueLocalPeakEvent[] {
+  const events: TrueLocalPeakEvent[] = [];
+  const rawPeaks = findLocalPeaks(qualifiedSpeed);
+
+  for (const peak of rawPeaks) {
+    const center = qualifiedSpeed[peak.index]!;
+    const centerT = center.videoRelativeSecondsProvisional;
+    const windowPoints = qualifiedSpeed.filter(
+      (p) => Math.abs(p.videoRelativeSecondsProvisional - centerT) <= windowHalfSeconds,
+    );
+
+    const rawPeak = findLocalPeakInEventWindow(windowPoints, legacyByTs, 'raw');
+    const smoothedPeak = findLocalPeakInEventWindow(windowPoints, legacyByTs, 'smoothed');
+    if (!rawPeak || !smoothedPeak) continue;
+
+    const localPeakAttenuationKmh = rawPeak.valueKmh - smoothedPeak.valueKmh;
+    events.push({
+      eventWindowCenterVideoRelativeSeconds: centerT,
+      rawLocalPeakValueKmh: rawPeak.valueKmh,
+      rawLocalPeakTimeSeconds: rawPeak.timeSeconds,
+      smoothedLocalPeakValueKmh: smoothedPeak.valueKmh,
+      smoothedLocalPeakTimeSeconds: smoothedPeak.timeSeconds,
+      localPeakAttenuationKmh,
+      localPeakAttenuationAbsKmh: Math.abs(localPeakAttenuationKmh),
+      localPeakTimeShiftSeconds: smoothedPeak.timeSeconds - rawPeak.timeSeconds,
+    });
+  }
+
+  return events;
+}
+
 function findLocalPeaks(points: QualifiedSpeedPoint[]): Array<{ index: number; speedKmh: number }> {
   const peaks: Array<{ index: number; speedKmh: number }> = [];
   for (let i = 1; i < points.length - 1; i++) {
@@ -1188,23 +1307,33 @@ export function comparePreprocessingResponse(
     .map((t) => t.endShiftSeconds)
     .filter((v): v is number => v != null);
 
-  const trueLocalPeakAttenuations = rawPeaks.map((peak) => {
-    const p = qualifiedSpeed[peak.index]!;
-    const leg = legacyByTs.get(p.providerTimestamp);
-    return leg ? Math.abs(p.speedKmh - leg.legacy3PointSmoothedSpeedKmh) : null;
-  }).filter((v): v is number => v != null);
+  const trueLocalPeakEvents = computeTrueLocalPeakEvents(
+    qualifiedSpeed,
+    legacyByTs,
+    windowHalfSeconds,
+  );
+  const trueLocalPeakAttenuations = trueLocalPeakEvents.map((e) => e.localPeakAttenuationAbsKmh);
+  const trueLocalPeakTimeShifts = trueLocalPeakEvents.map((e) => e.localPeakTimeShiftSeconds);
 
   const timingValidated =
     onsetShifts.length >= 2 || peakShifts.length >= 2 ? 'PARTIAL' : 'NO';
 
   return {
     comparedPairs: sameTimestampPairs.length,
-    PREPROCESSING_LOCAL_EVENT_METHOD: 'SAME_WINDOW_RAW_VS_SMOOTHED_BOUNDARIES',
+    PREPROCESSING_LOCAL_EVENT_METHOD: 'SAME_WINDOW_INDEPENDENT_RAW_AND_SMOOTHED_PEAKS',
     PREPROCESSING_TIMING_VALIDATED: timingValidated,
     MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH: maxSameTimestampDelta,
     TRUE_LOCAL_PEAK_ATTENUATION_KMH: trueLocalPeakAttenuations.length
       ? Math.max(...trueLocalPeakAttenuations)
       : null,
+    TRUE_LOCAL_PEAK_EVENT_COUNT: trueLocalPeakEvents.length,
+    LOCAL_PEAK_TIME_SHIFT_AVAILABLE: trueLocalPeakTimeShifts.length ? 'YES' : 'NO',
+    LOCAL_PEAK_TIME_SHIFT_SECONDS_MEDIAN: trueLocalPeakTimeShifts.length
+      ? sortedPercentile(trueLocalPeakTimeShifts.map(Math.abs), 50)
+      : null,
+    TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY:
+      TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY,
+    trueLocalPeakEvents,
     PREPROCESSING_START_SHIFT_SECONDS_MEDIAN: onsetShifts.length
       ? sortedPercentile(onsetShifts.map(Math.abs), 50)
       : null,
@@ -1215,7 +1344,7 @@ export function comparePreprocessingResponse(
     PREPROCESSING_FALSE_EVENT_SUPPRESSION: 'NOT_MEASURED_SPARSE_CADENCE',
     localEventTimings: localTimings,
     note:
-      'Same-timestamp delta (A) is not equivalent to local peak attenuation (B). Timing shifts only within local event windows.',
+      'MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH and TRUE_LOCAL_PEAK_ATTENUATION_KMH are distinct metrics. True peak attenuation compares independently located raw vs smoothed maxima inside the same local event window.',
     samplePairs: sameTimestampPairs.slice(0, 10),
   };
 }
@@ -1402,6 +1531,11 @@ export function runRd004SegmentAAnalysis(input: Rd004SegmentAAnalysisInput) {
     PROVIDER_TIMESTAMP_OFFSET_VALIDATED: clock.PROVIDER_TIMESTAMP_OFFSET_VALIDATED,
     VIDEO_PROVIDER_ALIGNMENT_CLASS: clock.VIDEO_PROVIDER_ALIGNMENT_CLASS,
     VIDEO_TO_PROVIDER_OFFSET_SECONDS: clock.VIDEO_TO_PROVIDER_OFFSET_SECONDS,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS: clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED: clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED,
+    PROVISIONAL_LANDMARK_H_DISPLACEMENT_NOTE: clock.PROVISIONAL_LANDMARK_H_DISPLACEMENT_NOTE,
+    APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET:
+      clock.APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET,
     OFFSET_MAD_SECONDS: clock.OFFSET_MAD_SECONDS,
     CLOCK_FIT_ELIGIBLE_LANDMARKS: clock.CLOCK_FIT_ELIGIBLE_LANDMARKS,
     CLOCK_FIT_REJECTED_LANDMARKS: clock.CLOCK_FIT_REJECTED_LANDMARKS,
@@ -1428,6 +1562,10 @@ export function runRd004SegmentAAnalysis(input: Rd004SegmentAAnalysisInput) {
     PREPROCESSING_TIMING_VALIDATED: preprocessing.PREPROCESSING_TIMING_VALIDATED,
     MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH: preprocessing.MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH,
     TRUE_LOCAL_PEAK_ATTENUATION_KMH: preprocessing.TRUE_LOCAL_PEAK_ATTENUATION_KMH,
+    TRUE_LOCAL_PEAK_EVENT_COUNT: preprocessing.TRUE_LOCAL_PEAK_EVENT_COUNT,
+    LOCAL_PEAK_TIME_SHIFT_AVAILABLE: preprocessing.LOCAL_PEAK_TIME_SHIFT_AVAILABLE,
+    TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY:
+      preprocessing.TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY,
     PREPROCESSING_START_SHIFT: preprocessing.PREPROCESSING_START_SHIFT_SECONDS_MEDIAN,
     PREPROCESSING_END_SHIFT: preprocessing.PREPROCESSING_END_SHIFT_SECONDS_MEDIAN,
     RPM_SEGMENT_A_VALIDATION: supporting.RPM_SEGMENT_A_VALIDATION,

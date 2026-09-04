@@ -1,9 +1,75 @@
 {
   "comparedPairs": 38,
-  "PREPROCESSING_LOCAL_EVENT_METHOD": "SAME_WINDOW_RAW_VS_SMOOTHED_BOUNDARIES",
+  "PREPROCESSING_LOCAL_EVENT_METHOD": "SAME_WINDOW_INDEPENDENT_RAW_AND_SMOOTHED_PEAKS",
   "PREPROCESSING_TIMING_VALIDATED": "PARTIAL",
   "MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH": 18.333333333333332,
-  "TRUE_LOCAL_PEAK_ATTENUATION_KMH": 18.333333333333332,
+  "TRUE_LOCAL_PEAK_ATTENUATION_KMH": 10,
+  "TRUE_LOCAL_PEAK_EVENT_COUNT": 6,
+  "LOCAL_PEAK_TIME_SHIFT_AVAILABLE": "YES",
+  "LOCAL_PEAK_TIME_SHIFT_SECONDS_MEDIAN": 0,
+  "TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY": "YES",
+  "trueLocalPeakEvents": [
+    {
+      "eventWindowCenterVideoRelativeSeconds": 104.62,
+      "rawLocalPeakValueKmh": 24,
+      "rawLocalPeakTimeSeconds": 104.62,
+      "smoothedLocalPeakValueKmh": 20.333333333333332,
+      "smoothedLocalPeakTimeSeconds": 106.62,
+      "localPeakAttenuationKmh": 3.666666666666668,
+      "localPeakAttenuationAbsKmh": 3.666666666666668,
+      "localPeakTimeShiftSeconds": 2
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 111.352,
+      "rawLocalPeakValueKmh": 24,
+      "rawLocalPeakTimeSeconds": 104.62,
+      "smoothedLocalPeakValueKmh": 20.333333333333332,
+      "smoothedLocalPeakTimeSeconds": 106.62,
+      "localPeakAttenuationKmh": 3.666666666666668,
+      "localPeakAttenuationAbsKmh": 3.666666666666668,
+      "localPeakTimeShiftSeconds": 2
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 173.908,
+      "rawLocalPeakValueKmh": 31,
+      "rawLocalPeakTimeSeconds": 173.908,
+      "smoothedLocalPeakValueKmh": 21,
+      "smoothedLocalPeakTimeSeconds": 173.908,
+      "localPeakAttenuationKmh": 10,
+      "localPeakAttenuationAbsKmh": 10,
+      "localPeakTimeShiftSeconds": 0
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 311.694,
+      "rawLocalPeakValueKmh": 44,
+      "rawLocalPeakTimeSeconds": 311.694,
+      "smoothedLocalPeakValueKmh": 35.666666666666664,
+      "smoothedLocalPeakTimeSeconds": 320.682,
+      "localPeakAttenuationKmh": 8.333333333333336,
+      "localPeakAttenuationAbsKmh": 8.333333333333336,
+      "localPeakTimeShiftSeconds": 8.988
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 337.051,
+      "rawLocalPeakValueKmh": 33,
+      "rawLocalPeakTimeSeconds": 320.682,
+      "smoothedLocalPeakValueKmh": 35.666666666666664,
+      "smoothedLocalPeakTimeSeconds": 320.682,
+      "localPeakAttenuationKmh": -2.6666666666666643,
+      "localPeakAttenuationAbsKmh": 2.6666666666666643,
+      "localPeakTimeShiftSeconds": 0
+    },
+    {
+      "eventWindowCenterVideoRelativeSeconds": 365.898,
+      "rawLocalPeakValueKmh": 23,
+      "rawLocalPeakTimeSeconds": 348.723,
+      "smoothedLocalPeakValueKmh": 23,
+      "smoothedLocalPeakTimeSeconds": 348.723,
+      "localPeakAttenuationKmh": 0,
+      "localPeakAttenuationAbsKmh": 0,
+      "localPeakTimeShiftSeconds": 0
+    }
+  ],
   "PREPROCESSING_START_SHIFT_SECONDS_MEDIAN": 0,
   "PREPROCESSING_END_SHIFT_SECONDS_MEDIAN": 0,
   "PREPROCESSING_FALSE_EVENT_CREATION": "NOT_MEASURED_SPARSE_CADENCE",
@@ -101,7 +167,7 @@
       "endShiftSeconds": 0
     }
   ],
-  "note": "Same-timestamp delta (A) is not equivalent to local peak attenuation (B). Timing shifts only within local event windows.",
+  "note": "MAX_SAME_TIMESTAMP_RAW_SMOOTHED_DELTA_KMH and TRUE_LOCAL_PEAK_ATTENUATION_KMH are distinct metrics. True peak attenuation compares independently located raw vs smoothed maxima inside the same local event window.",
   "samplePairs": [
     {
       "providerTimestamp": "2026-09-04T03:37:44.122Z",

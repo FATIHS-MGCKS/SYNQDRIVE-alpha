@@ -22,6 +22,8 @@
       "telemetryMatchConfidence": "INSUFFICIENT",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": -1.7069999999999999,
+      "exploratoryDisplacementClassification": "NOT_A_CLOCK_OFFSET_ESTIMATE",
       "speedShapeAgreement": "WEAK",
       "note": "0 km/h unsigned speed is not evidence for observed ~2 km/h reverse"
     },
@@ -45,6 +47,8 @@
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": null,
+      "exploratoryDisplacementClassification": null,
       "speedShapeAgreement": "GOOD"
     },
     {
@@ -67,6 +71,8 @@
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": null,
+      "exploratoryDisplacementClassification": null,
       "speedShapeAgreement": "GOOD"
     },
     {
@@ -89,6 +95,8 @@
       "telemetryMatchConfidence": "MEDIUM",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": null,
+      "exploratoryDisplacementClassification": null,
       "speedShapeAgreement": "PARTIAL"
     },
     {
@@ -123,6 +131,8 @@
       "telemetryMatchConfidence": "MEDIUM",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": null,
+      "exploratoryDisplacementClassification": null,
       "speedShapeAgreement": "PARTIAL"
     },
     {
@@ -145,6 +155,8 @@
       "telemetryMatchConfidence": "HIGH",
       "CLOCK_FIT_ELIGIBLE": "NO",
       "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": null,
+      "exploratoryDisplacementClassification": null,
       "speedShapeAgreement": "GOOD"
     },
     {
@@ -165,24 +177,27 @@
         "episodeType": "low_speed"
       },
       "telemetryMatchConfidence": "HIGH",
-      "CLOCK_FIT_ELIGIBLE": "YES",
-      "candidateOffsetSeconds": 22.204999999999984,
-      "speedShapeAgreement": "GOOD"
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "exploratoryDisplacementSeconds": 22.204999999999984,
+      "exploratoryDisplacementClassification": "NOT_A_CLOCK_OFFSET_ESTIMATE",
+      "speedShapeAgreement": "GOOD",
+      "note": "Exploratory displacement only — NOT_A_CLOCK_OFFSET_ESTIMATE"
     }
   ],
   "clock": {
     "VIDEO_ABSOLUTE_TIME_ANCHORED": "YES",
     "PROVIDER_TIMESTAMP_OFFSET_VALIDATED": "NO",
-    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "PROVISIONAL_SINGLE_ANCHOR",
-    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": 22.204999999999984,
-    "OFFSET_MAD_SECONDS": 0,
-    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [
-      "H"
-    ],
+    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": null,
+    "PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS": 22.204999999999984,
+    "PROVISIONAL_LANDMARK_H_DISPLACEMENT_VALIDATED": "NO",
+    "PROVISIONAL_LANDMARK_H_DISPLACEMENT_NOTE": "NOT_A_CLOCK_OFFSET_ESTIMATE",
+    "APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET": "YES",
+    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [],
     "CLOCK_FIT_REJECTED_LANDMARKS": [
       {
         "landmarkId": "A",
-        "reason": "INELIGIBLE_OR_INSUFFICIENT"
+        "reason": "APPROXIMATE_NON_UNIQUE_LANDMARK"
       },
       {
         "landmarkId": "B",
@@ -207,27 +222,26 @@
       {
         "landmarkId": "G",
         "reason": "INELIGIBLE_OR_INSUFFICIENT"
-      }
-    ],
-    "candidateOffsetsPerEvent": [
+      },
       {
         "landmarkId": "H",
-        "offsetSeconds": 22.204999999999984
+        "reason": "APPROXIMATE_NON_UNIQUE_LANDMARK"
       }
     ],
-    "medianOffsetSeconds": 22.204999999999984,
-    "meanOffsetSeconds": 22.204999999999984,
-    "minOffsetSeconds": 22.204999999999984,
-    "maxOffsetSeconds": 22.204999999999984,
-    "spreadSeconds": 0,
-    "CIRCULAR_LANDMARK_ALIGNMENT_REMOVED": "YES"
+    "CIRCULAR_LANDMARK_ALIGNMENT_REMOVED": "YES",
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "INSUFFICIENT_EVIDENCE",
+    "OFFSET_MAD_SECONDS": null,
+    "candidateOffsetsPerEvent": [],
+    "medianOffsetSeconds": null,
+    "meanOffsetSeconds": null,
+    "minOffsetSeconds": null,
+    "maxOffsetSeconds": null,
+    "spreadSeconds": null
   },
   "drift": {
     "DRIFT_VALIDATED": "NO",
     "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": null,
-    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [
-      "H"
-    ],
+    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [],
     "DRIFT_FIT_REJECTED_LANDMARKS": [
       {
         "landmarkId": "A",
@@ -255,6 +269,10 @@
       },
       {
         "landmarkId": "G",
+        "reason": "NOT_DRIFT_FIT_ELIGIBLE"
+      },
+      {
+        "landmarkId": "H",
         "reason": "NOT_DRIFT_FIT_ELIGIBLE"
       }
     ],
