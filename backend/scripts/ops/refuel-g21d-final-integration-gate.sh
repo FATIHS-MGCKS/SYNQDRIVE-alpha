@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 GATE_ID="refuel-g21d-$(date +%s)"
+DOCKER_CMD="${DOCKER_CMD:-docker}"
 PG_PORT="${TEST_POSTGRES_PORT:-55432}"
 REDIS_PORT="${TEST_REDIS_PORT:-56379}"
 PG_DB="refuel_gate_${GATE_ID//-/_}"
@@ -27,13 +28,13 @@ echo "TEST_POSTGRES_IS_PRODUCTION=NO"
 echo "TEST_REDIS_IS_PRODUCTION=NO"
 
 cleanup() {
-  docker rm -f "${PG_CONTAINER}" "${REDIS_CONTAINER}" 2>/dev/null || true
-  docker volume rm "refuel-gate-pg-vol-${GATE_ID}" 2>/dev/null || true
+  ${DOCKER_CMD} rm -f "${PG_CONTAINER}" "${REDIS_CONTAINER}" 2>/dev/null || true
+  ${DOCKER_CMD} volume rm "refuel-gate-pg-vol-${GATE_ID}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 echo "==> Starting isolated PostgreSQL 16 on localhost:${PG_PORT}"
-docker run -d --name "${PG_CONTAINER}" \
+${DOCKER_CMD} run -d --name "${PG_CONTAINER}" \
   -e POSTGRES_USER="${PG_USER}" \
   -e POSTGRES_PASSWORD="${PG_PASS}" \
   -e POSTGRES_DB="${PG_DB}" \
@@ -42,22 +43,22 @@ docker run -d --name "${PG_CONTAINER}" \
   postgres:16
 
 echo "==> Starting isolated Redis 7 on localhost:${REDIS_PORT}"
-docker run -d --name "${REDIS_CONTAINER}" \
+${DOCKER_CMD} run -d --name "${REDIS_CONTAINER}" \
   -p "127.0.0.1:${REDIS_PORT}:6379" \
   redis:7
 
 echo "==> Waiting for PostgreSQL readiness"
 for i in $(seq 1 60); do
-  if docker exec "${PG_CONTAINER}" pg_isready -U "${PG_USER}" -d "${PG_DB}" >/dev/null 2>&1; then
+  if ${DOCKER_CMD} exec "${PG_CONTAINER}" pg_isready -U "${PG_USER}" -d "${PG_DB}" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
-docker exec "${PG_CONTAINER}" pg_isready -U "${PG_USER}" -d "${PG_DB}"
+${DOCKER_CMD} exec "${PG_CONTAINER}" pg_isready -U "${PG_USER}" -d "${PG_DB}"
 
 echo "==> Waiting for Redis readiness"
 for i in $(seq 1 30); do
-  if docker exec "${REDIS_CONTAINER}" redis-cli ping 2>/dev/null | grep -q PONG; then
+  if ${DOCKER_CMD} exec "${REDIS_CONTAINER}" redis-cli ping 2>/dev/null | grep -q PONG; then
     break
   fi
   sleep 1
