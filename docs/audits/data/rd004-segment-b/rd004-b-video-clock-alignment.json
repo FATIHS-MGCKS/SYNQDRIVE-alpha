@@ -1730,5 +1730,5 @@
       }
     }
   },
-  "note": "B.4: exact-window HF replay + B.3 transition semantics; no provider clock landmark resolved"
+  "note": "B.5: HF recovery policy design + counterfactual simulation; B.4 exact-window replay preserved; no provider clock landmark resolved"
 }

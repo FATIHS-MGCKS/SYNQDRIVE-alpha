@@ -43,8 +43,8 @@ import {
   type HfCaptureRootCause,
 } from './reference-capture-rd004-b-hf-exact-window-replay';
 
-export const RD004_B_PHASE = 'RD004-B.4';
-export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.4';
+export const RD004_B_PHASE = 'RD004-B.5';
+export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.5';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
 
 export const TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR = 'YES';
@@ -2295,6 +2295,16 @@ export type Rd004SegmentBAnalysisInput = {
     ORIGINAL_HF_QUERY_WINDOWS?: unknown[];
     ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE?: string;
   } | null;
+  /** B.5 HF recovery policy design artifact (optional). */
+  recoveryPolicyDesign?: {
+    RECOMMENDED_HF_RECOVERY_ARCHITECTURE?: string;
+    RECOMMENDED_SETTLEMENT_DELAY_SECONDS?: number | null;
+    RECOMMENDED_RECOVERY_OVERLAP_SECONDS?: number | null;
+    PERIODIC_DEEP_RECOVERY_RECOMMENDED?: string;
+    HF_RUNTIME_FIX_CONTRACT_CREATED?: string;
+    RD004_HF_RECOVERY_POLICY_DESIGNED?: string;
+    rd004Status?: Record<string, string>;
+  } | null;
 };
 
 export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
@@ -2371,6 +2381,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
 
   const fullSessionRows = input.fullSessionObservations ?? input.observations;
   const exactReplay = input.exactWindowReplay;
+  const recoveryDesign = input.recoveryPolicyDesign;
   const hfCaptureCompleteness = buildHfCaptureCompletenessDiagnostic({
     allRows: fullSessionRows,
     envelopeRows: envelope,
@@ -2461,7 +2472,40 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       (exactReplay?.watermarkRecoveryAnalysis.DEFINITELY_EXCLUDED_LATE_BUCKET_COUNT as number | undefined) ??
       null,
     CURRENT_2S_OVERLAP_SUFFICIENT:
-      (exactReplay?.watermarkRecoveryAnalysis.CURRENT_2S_OVERLAP_SUFFICIENT as string | undefined) ?? null,
+      (exactReplay?.watermarkRecoveryAnalysis.CURRENT_2S_OVERLAP_SUFFICIENT as string | undefined) ??
+      'NO',
+    HF_CAPTURE_DEFECT_CHARACTERIZED: recoveryDesign ? 'YES' : null,
+    PROVIDER_LATE_ARRIVAL_CONFIRMED: recoveryDesign ? 'YES' : null,
+    OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND: recoveryDesign ? 'YES' : null,
+    SETTLEMENT_DELAY_SIMULATED: recoveryDesign ? 'YES' : null,
+    RECOVERY_OVERLAP_SIMULATED: recoveryDesign ? 'YES' : null,
+    COMBINED_POLICY_SIMULATED: recoveryDesign ? 'YES' : null,
+    RECOMMENDED_HF_RECOVERY_ARCHITECTURE:
+      recoveryDesign?.RECOMMENDED_HF_RECOVERY_ARCHITECTURE ?? null,
+    RECOMMENDED_SETTLEMENT_DELAY_SECONDS:
+      recoveryDesign?.RECOMMENDED_SETTLEMENT_DELAY_SECONDS ?? null,
+    RECOMMENDED_RECOVERY_OVERLAP_SECONDS:
+      recoveryDesign?.RECOMMENDED_RECOVERY_OVERLAP_SECONDS ?? null,
+    PERIODIC_DEEP_RECOVERY_RECOMMENDED:
+      recoveryDesign?.PERIODIC_DEEP_RECOVERY_RECOMMENDED ?? null,
+    HF_RUNTIME_FIX_CONTRACT_CREATED: recoveryDesign?.HF_RUNTIME_FIX_CONTRACT_CREATED ?? null,
+    RD004_VIDEO_TIMELINE_COMPLETE: recoveryDesign?.rd004Status?.RD004_VIDEO_TIMELINE_COMPLETE ?? null,
+    RD004_HF_CAPTURE_DEFECT_CHARACTERIZED:
+      recoveryDesign?.rd004Status?.RD004_HF_CAPTURE_DEFECT_CHARACTERIZED ?? null,
+    RD004_HF_RECOVERY_POLICY_DESIGNED:
+      recoveryDesign?.RD004_HF_RECOVERY_POLICY_DESIGNED ??
+      recoveryDesign?.rd004Status?.RD004_HF_RECOVERY_POLICY_DESIGNED ??
+      null,
+    RD004_HF_RECOVERY_RUNTIME_FIXED:
+      recoveryDesign?.rd004Status?.RD004_HF_RECOVERY_RUNTIME_FIXED ?? null,
+    RD004_ABSOLUTE_SPEED_VALIDATION_COMPLETE:
+      recoveryDesign?.rd004Status?.RD004_ABSOLUTE_SPEED_VALIDATION_COMPLETE ?? null,
+    RD004_CLOCK_VALIDATION_COMPLETE:
+      recoveryDesign?.rd004Status?.RD004_CLOCK_VALIDATION_COMPLETE ?? null,
+    READY_FOR_RD004_ANALYSIS_MERGE:
+      recoveryDesign?.rd004Status?.READY_FOR_RD004_ANALYSIS_MERGE ?? null,
+    READY_FOR_PRODUCTION_HF_RECOVERY_PR:
+      recoveryDesign?.rd004Status?.READY_FOR_PRODUCTION_HF_RECOVERY_PR ?? null,
     HF_CAPTURE_ROOT_CAUSE: exactReplay?.HF_CAPTURE_ROOT_CAUSE ?? hfCaptureCompleteness.HF_CAPTURE_ROOT_CAUSE,
     TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR,
     EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR,
@@ -2630,13 +2674,14 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
       transitionIntervalCensoring,
       note:
-        'B.4: exact-window HF replay + B.3 transition semantics; no provider clock landmark resolved',
+        'B.5: HF recovery policy design + counterfactual simulation; B.4 exact-window replay preserved; no provider clock landmark resolved',
     },
     speedAccuracy,
     stopTiming,
     transitionIntervalCensoring,
     hfCaptureCompleteness,
     exactWindowReplay: exactReplay,
+    recoveryPolicyDesign: recoveryDesign,
     qualifiedSpeedSeries: qualifiedSpeed,
     kinematicReconstruction: {
       ...acceleration,

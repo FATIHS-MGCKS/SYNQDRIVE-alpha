@@ -1,7 +1,92 @@
-# RD004-B.4 — Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof
+# RD004-B.5 — HF Historical Recovery Policy Design + Counterfactual Simulation
+
+**Evidence ID:** DI-EV-0035B.5
+**Phase:** RD004-B.5
+**Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)
+**Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
+**Mode:** Read-only policy design + counterfactual simulation — **no production changes**
+
+---
+
+## Einfache Zusammenfassung (Deutsch) — B.5 (10 Fragen)
+
+### 1. Was ist jetzt genau das Problem im HF-Capture?
+
+SynqDrive fragt HF-Historical **direkt an der Live-Kante** ab (`QUERY_TO ≈ requestStartedAt`). DIMO-Aggregat-Buckets sind aber oft **später verfügbar** (B.4: 53 exact-origin Aggregate-Bucket-Beobachtungen kamen beim Replay nach). Gleichzeitig rückt das Watermark mit nur **2 s Overlap** vor — **26** geschlossene Late-Buckets waren danach **nicht mehr erreichbar**. Das ist **kein** internes Row-Drop, sondern **Provider-Late-Arrival + Watermark-Recovery-Gap**.
+
+### 2. Kommen DIMO-Daten wirklich ungefähr im 1–2-s-Raster?
+
+**Ja, auf Provider-Ebene plausibel** (RD003 ~2 s; B.4 exact-origin Replay **157** 1-s-Buckets vs. **104** sealed). Die sealed ~10,6 s Median-Cadence ist **Akquisitions-Vollständigkeit**, nicht das physische Provider-Raster.
+
+### 3. Warum landen trotzdem große Lücken in SynqDrive?
+
+Drei Schichten: (1) Abfrage zu nah an der Live-Kante → unsettled/late Buckets, (2) **2 s Overlap** reicht nicht (P50-Lag-Lower-Bound **2,129 s**, P95 **4,114 s**), (3) zero-result Capture-Zyklen sind aus sealed Export **nicht rekonstruierbar** → beobachtete Lücken sind **LOWER_BOUND**.
+
+### 4. Reicht nur mehr Overlap?
+
+**Nein allein.** Counterfactual: Overlap ≥6 s reklassifiziert temporale Recovery (LOWER_BOUND), aber **ohne Settlement** bleibt die Live-Kante unsettled. Overlap-only mit 15 s erzeugt **VERY_HIGH** Duplicate-Druck (~15 s / ~7,8 s Fenster). Settlement + moderates Overlap ist effizienter.
+
+### 5. Hilft es, einige Sekunden hinter Echtzeit zu bleiben?
+
+**Ja — zentral.** Settlement Delay `safeQueryTo = requestStartedAt - delay` hält die Abfrage aus der unsettled Zone. Bei **8 s** Delay: **50/50** geschlossene Late-Buckets LOWER_BOUND durch Settlement geschützt (Lag-Lower-Bound ≤ Delay oder Horizon-Deferral).
+
+### 6. Welche Kombination ist am sinnvollsten?
+
+**Empfohlen (Design only):** `SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP`
+- **Settlement: 8 s** (ceil(max Lag 5,181 s) + 2 s Engineering-Margin)
+- **Overlap: 6 s** (≥ P95-Lower-Bound + Margin; HIGH statt VERY_HIGH Duplicate-Druck)
+- **Periodischer Recovery-Sweep** für Residual-Lücken (zero-result-Fenster nicht rekonstruierbar)
+
+### 7. Wie viel zusätzliche Abfragelast?
+
+Median HF-Fenster **~7,8 s**; **6 s Overlap ≈ 77 %** wiederholte Abdeckung pro Zyklus (HIGH pressure). Settlement **8 s** reduziert „neue“ Live-Kante pro Fenster auf ~0 s am Rand — akzeptabler Trade-off vs. 15–20 s Overlap-only. Sweep-Last **zeitlich verteilt**, idempotent per Fingerprint.
+
+### 8. Verlieren wir Near-Real-Time-Fähigkeit?
+
+**~8 s HF-Historical-Latenz** für settled horizon — für Driving Intelligence Episode-Reconstruction **akzeptabel**; LATEST_LIVE bleibt für Echtzeit-Signale. Kein Anspruch auf sub-Sekunden-HF-Historical am Live-Rand ohne Late-Arrival-Risiko.
+
+### 9. Was bedeutet das für Driving Intelligence?
+
+Bis Fix: **Reconstruction-Confidence senken** bei großen HF-Lücken — **keine Interpolation** über 10–105 s Gaps. Acceleration/Deceleration, Stop/Launch-Grenzen, Peak-Severity und Episoden-Dauer bleiben **interval-censored / LOW confidence**. Erst nach Capture-Fix: RD004 Speed/Clock/Acceleration erneut validieren.
+
+### 10. Was muss im nächsten Produktions-PR geändert werden?
+
+Siehe `rd004-b-hf-runtime-fix-contract.json`: `resolveHfActualQueryTo()` + Settlement, parametrisierbares Overlap in `computeHfQueryFrom()`, Recovery-Sweep-Scheduler, Observability-Metriken (`hf_query_from/to`, `settlement_delay_ms`, `recovered_late_bucket_count`, …). **Nicht in B.5** — separates Implementierungs-PR nach Staging-Validierung.
+
+---
+
+## Finale Flags (B.5)
+
+| Flag | Wert |
+|------|------|
+| `RD004_PHASE` | **B.5** |
+| `HF_CAPTURE_DEFECT_CHARACTERIZED` | **YES** |
+| `PROVIDER_LATE_ARRIVAL_CONFIRMED` | **YES** |
+| `CURRENT_2S_OVERLAP_SUFFICIENT` | **NO** |
+| `OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND` | **YES** |
+| `RECOMMENDED_SETTLEMENT_DELAY_SECONDS` | **8** |
+| `RECOMMENDED_RECOVERY_OVERLAP_SECONDS` | **6** |
+| `RECOMMENDED_HF_RECOVERY_ARCHITECTURE` | **SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP** |
+| `PERIODIC_DEEP_RECOVERY_RECOMMENDED` | **YES** |
+| `RD004_HF_RECOVERY_POLICY_DESIGNED` | **YES** |
+| `RD004_HF_RECOVERY_RUNTIME_FIXED` | **NO** |
+| `READY_FOR_RD004_ANALYSIS_MERGE` | **YES** |
+| `READY_FOR_PRODUCTION_HF_RECOVERY_PR` | **YES** |
+| `RAW_SOURCE_OBSERVATIONS_CHANGED` | **NO** |
+
+---
+
+## B.5 Artefakte
+
+- `rd004-b-hf-recovery-policy-simulation.json` — 7×7 settlement×overlap counterfactual grid
+- `rd004-b-hf-recovery-policy-design.json` — policy options A–D + DI impact + recommendation
+- `rd004-b-hf-runtime-fix-contract.json` — next PR implementation contract (design only)
+
+---
+
+# RD004-B.4 — Exact-Window HF Replay (canonical evidence, preserved)
 
 **Evidence ID:** DI-EV-0035B.4
-**Phase:** RD004-B.4 (post-refuel ~16:40.498)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
 **Mode:** Read-only offline analysis + read-only DIMO exact-window replay — **no production changes**

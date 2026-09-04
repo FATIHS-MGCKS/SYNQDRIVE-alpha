@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b5-rd004-hf-recovery-policy-design-2026-09-04',
+    version: '4.9.1055',
+    title: 'DI-EV-0035B.5 — RD004-B HF Recovery Policy Design + Counterfactual Simulation',
+    summary: [
+      'B.4 evidence preserved: PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'Counterfactual 7×7 grid: settlement delay (0–10s) × recovery overlap (2–20s).',
+      'Recommended design: 8s settled horizon + 6s overlap + periodic deep recovery sweep.',
+      'OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND=YES; aggregate buckets ≠ unique ECU samples.',
+      'Runtime fix contract for next PR; 75 focused tests; no production changes.',
+    ],
+    reason:
+      'B.4 proved 2s overlap insufficient and characterized the defect; B.5 must close RD004 acquisition design without implementing production fix.',
+    previousBehavior:
+      'Production HF capture queries live edge with 2s overlap only; no settlement horizon or recovery sweep.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts`; artifacts `rd004-b-hf-recovery-policy-simulation.json`, `rd004-b-hf-recovery-policy-design.json`, `rd004-b-hf-runtime-fix-contract.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b4-rd004-exact-window-hf-replay-watermark-audit-2026-09-04',
     version: '4.9.1054',
     title: 'DI-EV-0035B.4 — RD004-B Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof',

@@ -46,6 +46,10 @@ const DEFAULT_EXACT_REPLAY = path.join(
   REPO_ROOT,
   'docs/audits/data/rd004-segment-b/rd004-b-hf-exact-window-replay.json',
 );
+const DEFAULT_RECOVERY_DESIGN = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-b/rd004-b-hf-recovery-policy-design.json',
+);
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -65,6 +69,7 @@ function main(): void {
   const fullSessionPath = parseArg('--full-session-observations') ?? DEFAULT_FULL_SESSION;
   const hfDiagnosticPath = parseArg('--hf-diagnostic') ?? DEFAULT_HF_DIAGNOSTIC;
   const exactReplayPath = parseArg('--exact-replay') ?? DEFAULT_EXACT_REPLAY;
+  const recoveryDesignPath = parseArg('--recovery-design') ?? DEFAULT_RECOVERY_DESIGN;
   const outDir = parseArg('--out-dir') ?? DEFAULT_OUT_DIR;
 
   assertSafeOutputPath(outDir);
@@ -138,6 +143,20 @@ function main(): void {
     };
   }
 
+  let recoveryPolicyDesign: ReturnType<typeof runRd004SegmentBAnalysis>['recoveryPolicyDesign'] = null;
+  if (fs.existsSync(recoveryDesignPath)) {
+    const design = JSON.parse(fs.readFileSync(recoveryDesignPath, 'utf8')) as {
+      RECOMMENDED_HF_RECOVERY_ARCHITECTURE?: string;
+      RECOMMENDED_SETTLEMENT_DELAY_SECONDS?: number | null;
+      RECOMMENDED_RECOVERY_OVERLAP_SECONDS?: number | null;
+      PERIODIC_DEEP_RECOVERY_RECOMMENDED?: string;
+      HF_RUNTIME_FIX_CONTRACT_CREATED?: string;
+      RD004_HF_RECOVERY_POLICY_DESIGNED?: string;
+      rd004Status?: Record<string, string>;
+    };
+    recoveryPolicyDesign = design;
+  }
+
   const result = runRd004SegmentBAnalysis({
     observations,
     legacySidecar,
@@ -145,6 +164,7 @@ function main(): void {
     diagnosticRequerySpeedTimestamps,
     diagnosticRequeryError,
     exactWindowReplay,
+    recoveryPolicyDesign,
   });
 
   const paths = {

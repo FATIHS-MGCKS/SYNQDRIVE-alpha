@@ -1,7 +1,7 @@
 # RD004 — Whole-Drive Video ↔ Telemetry Validation (Segments A + B)
 
 **Date:** 2026-09-04
-**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.4 (Segment B)
+**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.5 (Segment B)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
 **Reference drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_004`
@@ -12,7 +12,7 @@
 |---------|-------------------|----------|-------------|------------------|
 | A (pre-refuel) | 03:37:46 – 03:43:56 | ~6:11 | DI-EV-0035A.2 | **NO** |
 | Refuel stop | — | — | — | — |
-| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.4 | **NO** |
+| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.5 | **NO** |
 
 ## Cross-segment conclusions
 
@@ -67,7 +67,18 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 
 ### Production
 
-**No changes.** Analysis-only. `READY_FOR_RD004_FINAL_CLOSEOUT = NO` until offset and absolute speed accuracy can be independently validated with sufficient holdout evidence.
+**No changes.** Analysis-only. B.5 closes RD004-B **analysis/design** (`RD004_HF_RECOVERY_POLICY_DESIGNED = YES`); runtime fix and absolute validation remain future work (`READY_FOR_RD004_FINAL_CLOSEOUT = NO`).
+
+## B.5 methodology (DI-EV-0035B.5)
+
+1. Preserved B.4 exact-window evidence and root cause classification
+2. Counterfactual simulation: settlement delay (0–10 s) × recovery overlap (2–20 s) grid
+3. Independent settlement vs overlap analysis — not overlap-only
+4. `OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND = YES` (zero-result windows not reconstructible)
+5. Aggregate bucket observations ≠ unique ECU measurements (explicit in artifacts)
+6. Recommended policy: **8 s settlement + 6 s overlap + periodic deep recovery sweep** (design only)
+7. Implementation contract for separate production PR (`rd004-b-hf-runtime-fix-contract.json`)
+8. Driving Intelligence: lower reconstruction confidence until capture fix; no gap interpolation
 
 ## B.4 methodology changes (DI-EV-0035B.4)
 
@@ -105,5 +116,5 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 ## Artifacts
 
 - Segment A: `docs/audits/data/rd004-segment-a/`
-- Segment B: `docs/audits/data/rd004-segment-b/` (incl. `rd004-b-hf-exact-window-replay.json`, `rd004-b-hf-late-arrival-analysis.json`, `rd004-b-hf-watermark-recovery-analysis.json`)
+- Segment B: `docs/audits/data/rd004-segment-b/` (incl. B.5 `rd004-b-hf-recovery-policy-*.json`, `rd004-b-hf-runtime-fix-contract.json`)
 - Architecture: `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` (A.2) + this document

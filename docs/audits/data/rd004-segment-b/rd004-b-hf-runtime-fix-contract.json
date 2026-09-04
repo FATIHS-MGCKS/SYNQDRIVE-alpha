@@ -1,0 +1,53 @@
+{
+  "evidenceId": "DI-EV-0035B.5",
+  "mode": "HF_RUNTIME_FIX_IMPLEMENTATION_CONTRACT",
+  "status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "RAW_SOURCE_OBSERVATIONS_CHANGED": "NO",
+  "REFERENCE_CAPTURE_RUNTIME_CHANGED": "NO",
+  "targetModule": "reference-capture-acquisition.service.ts",
+  "relatedModules": [
+    "reference-capture-hf-watermark-policy.ts",
+    "reference-capture-query-builder.ts",
+    "reference-capture-physical-sample-identity.util.ts"
+  ],
+  "expectedChanges": {
+    "resolveHfActualQueryTo": "Apply settlementDelayMs: safeQueryTo = requestStartedAt - settlementDelayMs (not live edge).",
+    "computeHfQueryFrom": "Use configurable recoveryOverlapMs instead of fixed HF_QUERY_OVERLAP_MS constant at call site.",
+    "hfQueryCoverageByField": "Advance to safeQueryTo after successful query; preserve per-field coverage semantics.",
+    "watermarkAdvancement": "DATA watermark (hfWatermarkByField) advances on durable persist only; QUERY COVERAGE tracks safeQueryTo.",
+    "overlap": "Parameterize recoveryOverlapMs per manifest/policy — do not change global constant in evidence PR.",
+    "settlementDelay": "New policy parameter settlementDelayMs derived from RECOMMENDED_SETTLEMENT_DELAY_SECONDS after validation drive.",
+    "lateBucketRevisions": "Preserve IMMUTABLE_FIRST_SEEN + revision side-channel per 3A.3.2; sweeps must remain idempotent.",
+    "idempotency": "physicalSampleFingerprint + aggregate bucket identity V2 unchanged; sweeps dedupe via existing durable idempotency.",
+    "observability": "Emit runtime metrics listed below; log safeQueryTo vs requestStartedAt each cycle.",
+    "periodicRecoverySweep": "Optional job: replay [recoveryCursor, dataWatermark - margin] with same interval/aggregation; advance recoveryCursor idempotently."
+  },
+  "requiredRuntimeMetrics": [
+    "hf_query_from",
+    "hf_query_to",
+    "settlement_delay_ms",
+    "overlap_ms",
+    "provider_bucket_count",
+    "new_bucket_count",
+    "duplicate_bucket_count",
+    "revision_bucket_count",
+    "latest_bucket_age_ms",
+    "recovery_sweep_count",
+    "recovered_late_bucket_count"
+  ],
+  "recommendedParameters": {
+    "RECOMMENDED_SETTLEMENT_DELAY_SECONDS": 8,
+    "RECOMMENDED_RECOVERY_OVERLAP_SECONDS": 6,
+    "RECOMMENDED_HF_RECOVERY_ARCHITECTURE": "SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP",
+    "PERIODIC_DEEP_RECOVERY_RECOMMENDED": "YES"
+  },
+  "validationPlan": {
+    "unitTests": "Watermark + settlement + overlap pure functions; idempotent sweep dedupe.",
+    "deterministicReplayTests": "Replay RD004 sealed windows with candidate policies; compare recoverable bucket counts to B.5 simulation.",
+    "controlledLiveCapture": "One short reference capture (RD005-style) with policy enabled in staging only.",
+    "densityComparison": "Provider exact-window replay density vs sealed capture density — target gap closure.",
+    "gapAudit": "Prove no large acquisition-created gaps vs provider replay envelope.",
+    "videoTelemetryGate": "Only after capture completeness validated: repeat RD004 absolute speed/clock/acceleration validation."
+  },
+  "implementationPrerequisite": "Separate production PR after B.5 analysis merge; not part of DI-EV-0035B.5."
+}
