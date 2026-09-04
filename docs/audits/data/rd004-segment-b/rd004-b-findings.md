@@ -1,139 +1,134 @@
-# RD004-B.3 — Transition Evidence Correctness + HF Capture Completeness Audit
+# RD004-B.4 — Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof
 
-**Evidence ID:** DI-EV-0035B.3
-**Phase:** RD004-B.3 (post-refuel ~16:40.498)
+**Evidence ID:** DI-EV-0035B.4
+**Phase:** RD004-B.4 (post-refuel ~16:40.498)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`, DIMO token `187336`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
-**Mode:** Read-only offline analysis + read-only DIMO diagnostic requery — **no production changes**
+**Mode:** Read-only offline analysis + read-only DIMO exact-window replay — **no production changes**
 
 ---
 
-## Einfache Zusammenfassung (Deutsch)
+## B.3 superseded (methodological correction)
 
-### 1. Was war am Launch-Vorgänger-Bug falsch?
+B.3 concluded `HF_SPARSE_CADENCE_ORIGIN = CAPTURE_PIPELINE_SAMPLE_LOSS` from a **cross-origin** broad requery (108 vs 66 buckets, intersection 11). That comparison used global 1-second UTC flooring across queries with **different `from` origins** — invalid for DIMO **query-from-anchored** bucket identity.
 
-`assessLaunchTransition()` nutzte effektiv `Array.find()` für den **ersten** früheren Sample statt des **unmittelbar vorherigen** physischen Nachbarn im sortierten HF-Series. Dadurch entstand fälschlich `localGapBeforeSeconds ≈ 629 s` statt der echten Lücke **35,102 s** zwischen `03:57:45.685Z` (0 km/h) und `03:58:20.787Z` (20 km/h).
+| Flag | B.3 (superseded) | B.4 (canonical) |
+|------|------------------|-----------------|
+| `CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID` | (implicit yes) | **NO** |
+| `B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID` | (implicit yes) | **NO** |
+| `B3_108_VS_66_RESULT` | used as proof | **DENSITY_DIAGNOSTIC_ONLY_NOT_BUCKET_IDENTITY_PROOF** |
+| `HF_SPARSE_CADENCE_ORIGIN` | CAPTURE_PIPELINE_SAMPLE_LOSS | **NOT_DETERMINABLE** (acquisition completeness gap proven separately) |
 
-**Fix:** `previousPhysicalSample = sorted[i - 1]` — Invariante `TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR = YES`.
+B.3 transition corrections (launch 35.102 s, stop ~21.7 s observation-only, `CLOCK_FIT=0`, etc.) remain **unchanged**.
 
-### 2. Wie groß ist die echte HF-Lücke um den Launch?
+---
 
-| Feld | Wert |
-|------|------|
-| `FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_START` | `2026-09-04T03:57:45.685Z` (0 km/h) |
-| `FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_END` | `2026-09-04T03:58:20.787Z` (20 km/h) |
-| `FIRST_LAUNCH_PROVIDER_OBSERVATION_WINDOW_SECONDS` | **35,102 s** |
-| `localGapBeforeSeconds` (korrigiert) | **35,102 s** |
+## Einfache Zusammenfassung (Deutsch) — 10 Fragen
 
-### 3. Kann +5 s noch als Clock-Evidence gelten?
+### 1. Warum war der 108-vs-66-Vergleich methodisch nicht sauber?
 
-**Nein.** Der +5,1…+5,6-s-Wert aus B.2 setzte fälschlich den 20-km/h-Sample-Zeitstempel als exakten Launch-Event. Die Provider-Transition ist über **[03:57:45.685, 03:58:20.787]** zensiert; das Video-Fenster **[03:58:15.217, 03:58:15.717]** ergibt nur ein breites Kompatibilitätsintervall (~−30…+5,6 s) — **zu breit für Clock-Kalibrierung**.
+DIMO liefert **query-from-anchored** 1-Sekunden-Aggregat-Buckets: Die Bucket-Gitter hängen vom **`from`-Parameter** der jeweiligen Abfrage ab. B.3 verglich sealed Segment-B-Samples (Fenster ab z. B. `03:47:50.768Z`) mit einer **breiten** 5-Minuten-Requery ab `03:46:00.000Z` und normalisierte beide Seiten per globalem UTC-Sekunden-Floor. Das erzeugt **verschiedene Bucket-Identitäten** für dieselbe physische Zeit — der Schnitt von 11/97/66 beweist **keinen** Sample-Verlust, nur eine Dichte-Diagnose über inkompatible Ursprünge.
 
-| Flag | Wert |
-|------|------|
-| `FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE` | **NO** |
-| `FIRST_LAUNCH_CLOCK_REJECTION_REASON` | `PROVIDER_TRANSITION_INTERVAL_TOO_WIDE` |
-| `OFFSET_CANDIDATE_RANGE_SUPPORTIVE` | **null** |
+### 2. Was bedeutet „query-from-anchored bucket“?
 
-### 4. Was bedeutet 43→0 in 1 s nach einer 28,7-s-Lücke?
+Jeder historische DIMO-Aggregat-Bucket ist an das **exakte `from` der Originalabfrage** verankert (`aggArgs.FromTS → selectInterval(..., origin)`). Bucket-Timestamp = **Intervallstart**. Zwei Abfragen mit unterschiedlichem `from` erzeugen **unterschiedliche 1-s-Raster** — auch wenn man Timestamps auf ganze UTC-Sekunden rundet. Vergleichbar sind Buckets nur bei **identischem tokenId, Feld, `from`, Intervall und Aggregation**.
 
-Lokal sieht das Paar wie eine scharfe Transition aus (`PAIR_LOCAL_DT_QUALIFIED = YES`, Δv ≈ −11,9 m/s²), aber **nach einer 28,745-s-Upstream-Lücke** ohne kontinuierlichen Kontext. Das Video zeigt hingegen eine ruhige Deceleration bis t≈621,8 s.
+### 3. Was ergibt der Replay mit exakt denselben ursprünglichen Query-Fenstern?
 
-| Flag | Wert |
-|------|------|
-| `PAIR_43_TO_0_LOCAL_DT_SECONDS` | **1,0** |
-| `PAIR_43_TO_0_UPSTREAM_GAP_SECONDS` | **28,745** |
-| `PAIR_PHYSICAL_CONTINUITY_VALIDATED` | **NO** |
-| `PAIR_VIDEO_CONSISTENCY` | **CONTRADICTED_OR_UNRESOLVED** |
-| `contextContinuity` | **ISOLATED_BURST** (nicht `CONTINUOUS_CONTEXT`) |
-
-### 5. Ist ~22 s ein Clock-Offset oder nur ein Beobachtungsabstand?
-
-**Nur ein spärlicher Beobachtungsabstand — kein Clock-Offset.**
-
-| Flag | Wert |
-|------|------|
-| `FIRST_STOP_SPARSE_OBSERVATION_DISPLACEMENT_SECONDS` | **≈ +21,67 s** |
-| `FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY` | **NO** |
-| Segment A | `EXPLORATORY_SPARSE_OBSERVATION_DISPLACEMENT` (~22,205 s), ebenfalls **keine** Clock-Autorität |
-
-Die ~22-s-Wiederholung A/B bleibt diagnostisch interessant, beweist aber **keinen** validierten Provider-Clock.
-
-### 6. Haben wir aktuell überhaupt einen echten Provider-Clock-Landmark?
-
-**Nein.**
-
-| Flag | Wert |
-|------|------|
-| `CLOCK_FIT_PROVIDER_MATCH_COUNT` | **0** |
-| `CLOCK_FIT_ELIGIBLE_LANDMARKS` | **[]** |
-| `PROVIDER_TIMESTAMP_OFFSET_VALIDATED` | **NO** |
-| `VIDEO_TO_PROVIDER_OFFSET_SECONDS` | **null** |
-
-B-T01/B-T02 haben hohe Video-Autorität, aber die zugehörigen Provider-Transitions sind nicht zuverlässig aufgelöst (sparse/censored). Legacy CLK-B* Landmarks sind explizit `CLOCK_FIT_ELIGIBLE = NO`.
-
-### 7. Warum kann die Speed Accuracy weiterhin nicht final berechnet werden?
-
-Ohne unabhängig validierten `VIDEO_TO_PROVIDER_OFFSET_SECONDS` kann Holdout-Speed-Accuracy nicht kanonisch werden. Zusätzlich verhindert die ~10,6-s-HF-Cadence (und größere Lücken) verlässliche Vergleiche an dynamischen Transitionen.
-
-| Flag | Wert |
-|------|------|
-| `ABSOLUTE_SPEED_ACCURACY_VALIDATED` | **NO** |
-| `SPEED_MAE_KMH` | **null** |
-| `HOLDOUT_SPEED_SELECTION_TIME_ONLY` | **YES** |
-
-### 8. Sind die 10–105-s-HF-Lücken wirklich von DIMO oder verlieren wir Samples in unserem Capture-Weg?
-
-**Read-only DIMO-Requery (token 187336, Envelope 03:46–04:05 UTC) vs. sealed Segment B:**
+**75** rekonstruierte Original-HF-Fenster (volle Session), jeweils mit **identischem `hfWindowFrom` / `hfActualQueryTo`**, Intervall `1s`, Feld `speed`, Token `187336`:
 
 | Kennzahl | Wert |
 |----------|------|
-| Sealed unique HF speed buckets | **66** |
-| Live requery unique buckets | **108** |
-| Intersection (1s-normalisiert) | **11** |
-| Missing from sealed | **97** |
-| `HF_SPARSE_CADENCE_ORIGIN` | **CAPTURE_PIPELINE_SAMPLE_LOSS** |
-| `HF_CAPTURE_COMPLETENESS_VALIDATED` | **PARTIAL** |
+| Original speed buckets (exakt-origin) | **104** |
+| Replay speed buckets | **157** |
+| Exakte Schnittmenge | **104** (alle Original-Buckets im Replay vorhanden) |
+| Neu im Replay | **53** |
+| Jetzt fehlend | **0** |
+| Geänderte Werte | **0** |
 
-Die Pipeline-Trace zeigt **keine Pagination** in `captureHistoricalSurface`, aber **Watermark-advancing HF-Fenster** (~50 unique request windows). Die Live-Requery liefert **deutlich mehr** 1s-Buckets als die sealed Capture — starke Evidenz für **verlorene/nicht persistierte Samples** im Capture-Weg, nicht allein „natürliche DIMO-Sparsity“. Provider-Upstream-Sparsity bleibt zusätzlich plausibel (Median sealed ~10,6 s).
+Die sealed Capture hat **keine** Original-Buckets verloren, die heute fehlen — aber **53 zusätzliche** Provider-Buckets erscheinen beim Replay.
 
-### 9. Ist die ursprüngliche ~2-s-RD003-Cadence mit RD004 technisch vereinbar?
+### 4. Sind später zusätzliche DIMO-Buckets aufgetaucht?
 
-**Ja, technisch vereinbar** — RD003 (~2 s median) und RD004 sealed (~4,7 s Segment A, ~10,6 s Segment B) können koexistieren, wenn Capture-Watermarking, Fahrzeug/Session-Kontext und Provider-Bucket-Verfügbarkeit unterschiedlich sind. RD004 ist **nicht** automatisch „DIMO ist immer so sparse“; B.3 zeigt zumindest teilweise **Capture-Pipeline-Verlust**.
+**Ja — 53** speed-Buckets waren beim ursprünglichen Request **nicht** in der sealed Antwort, sind aber beim exakt-origin Replay heute vorhanden (`NEW_REPLAY_BUCKET_COUNT = 53`). Das ist **Provider-Late-Arrival** (oder verzögerte Bucket-Verfügbarkeit), nicht SynqDrive-internes Löschen empfangener Zeilen.
 
-### 10. Was ist jetzt die belastbare RD004-Gesamterkenntnis?
+### 5. Waren diese Buckets beim ursprünglichen Request bereits geschlossen?
 
-1. **Video-Timeline B.2 bleibt kanonisch:** audio-korreliert, 1000,498365 s, T0 `03:47:02.217Z`, Stop **621,8 s**, Launch **[673,0; 673,5] s**.
-2. **Clock/Offset:** **nicht validiert** — keine supportive Range, kein +5-s-Launch-Offset als Evidence.
-3. **Transition-Semantik:** Launch interval-censored (35,1 s); Stop-Displacement nur sparse observation; Stop-Timing **nicht** tautologisch (kein event-derived zero error).
-4. **HF:** Sealed sparsity + Live-Requery deutet auf **Capture-Sample-Loss** hin → `READY_FOR_RD004_FINAL_CLOSEOUT = NO` bis Completeness geklärt/quantifiziert.
-5. **Production:** unverändert.
+Von 53 Late-Arrival-Buckets waren **50 bereits geschlossen** (`CLOSED_LATE_ARRIVAL_BUCKET_COUNT = 50`) zum Zeitpunkt `requestCompletedAt` — d. h. das Intervall war vor Response-Ende beendet, der Bucket aber noch nicht (oder nicht mehr) in der Original-Antwort enthalten. **3** waren noch offen.
+
+Verfügbarkeits-Lag (untere Schranke, geschlossene Buckets):
+
+| Statistik | Sekunden |
+|-----------|----------|
+| Min | **0,074** |
+| P50 | **2,129** |
+| P95 | **4,114** |
+| Max | **5,181** |
+
+### 6. Hätte unser 2-s-Overlap sie später noch abholen können?
+
+**Für 26 Buckets: nein** — `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK`. Das nächste Capture-Fenster beginnt **nach** dem Bucket-Intervall; der 2-s-Watermark-Overlap (`HF_QUERY_OVERLAP_MS = 2000`) reicht nicht, weil P50-Lag **~2,1 s** und P95 **~4,1 s** über dem Overlap liegt.
+
+| Klassifikation | Anzahl |
+|----------------|--------|
+| `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` | **26** |
+| `PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW` | **11** |
+| `POTENTIALLY_REQUERYABLE` | **16** |
+
+`CURRENT_2S_OVERLAP_SUFFICIENT = **NO**` (Audit only — Produktionspolicy in B.4 **nicht** geändert).
+
+### 7. Verlieren wir Daten innerhalb SynqDrive oder kommen Provider-Daten zu spät und unser Watermark läuft daran vorbei?
+
+**Primär: Provider zu spät + Watermark-Recovery-Gap** — nicht internes Persistenz-Drop empfangener Rows.
+
+| Root Cause | Klassifikation |
+|------------|----------------|
+| `HF_CAPTURE_ROOT_CAUSE` | **PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP** |
+
+Semantik: DIMO stellte Aggregate **nach** dem Original-Request bereit; SynqDrive hat sie beim ersten Mal nicht erhalten; das nächste Fenster mit nur 2 s Overlap holt **26** geschlossene Late-Buckets **nicht** mehr ab. Kein Beweis für `INTERNAL_PERSISTENCE_LOSS` oder `INTERNAL_DEDUP_LOSS`.
+
+### 8. Ist die RD003-~2-s-Cadence damit erklärt?
+
+**Ja, vereinbar und nicht widersprüchlich.** RD003 beobachtete ~1–2 s Provider-Aggregat-Auflösung. RD004 sealed Segment B median ~10,6 s entsteht durch **Akquisitions-Vollständigkeit** (späte Provider-Buckets + 2 s Watermark), nicht weil DIMO physisch nur alle ~10 s misst. Exact-origin Replay zeigt **157** 1-s-Buckets vs. **104** sealed über dieselben Fenster.
+
+`RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED = YES` (acquisition-layer explanation).
+
+### 9. Was ist jetzt die echte erreichbare HF-Dichte?
+
+- **Provider-Layer (exact-origin replay):** deutlich dichter — **157** speed-Buckets über 75 Fenster (vs. **104** sealed full-session, **66** Segment-B-Envelope).
+- **Sealed Capture-Layer:** median ~10,6 s zwischen physischen Samples im Segment-B-Envelope; große Lücken bis ~105 s bleiben.
+- `HF_SPARSE_CADENCE_ORIGIN = **NOT_DETERMINABLE**` als einzelne Ursache — die Sparsity ist **gemischt**: Provider-Late-Arrival + Watermark-Policy, nicht ein monolithischer „DIMO ist immer sparse“-Befund.
+
+### 10. Braucht die Produktions-Capture-Architektur später eine Änderung?
+
+**Wahrscheinlich ja** — aber **nicht in B.4 implementiert**. Evidenz: P95 Late-Arrival-Lag **> 2 s** Overlap; **26** definitiv ausgeschlossene Buckets. Spätere Optionen (nicht Teil dieses PR): längeres Overlap, gezieltes Late-Bucket-Recovery, oder provider-seitige Verfügbarkeitsfenster berücksichtigen. `REFERENCE_CAPTURE_RUNTIME_CHANGED = NO`, `DEPLOYED = NO`.
 
 ---
 
-## Weitere B.3 Invarianten
+## Finale Flags (B.4)
 
-| Thema | Status |
-|-------|--------|
-| `TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR` | **YES** |
-| `EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR` | **YES** |
-| `NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS` | **YES** |
-| `STOP_TIMING_ERROR_SECONDS` | **null** |
-| `STOP_TIMING_ANALYSIS_USED_SUPPORTIVE_OFFSET` | **NO** |
-| Legacy `CLOCK_FIT_ELIGIBLE` in exploratory matches | **alle NO** |
-| Raw source bytes changed | **NO** |
-| Production / deploy | **NO** |
+| Flag | Wert |
+|------|------|
+| `RD004_PHASE` | **B.4** |
+| `DIMO_BUCKET_SEMANTICS` | QUERY_FROM_ANCHORED |
+| `ORIGINAL_HF_QUERY_WINDOWS_RECONSTRUCTED` | **75** |
+| `ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE` | **NO** |
+| `EXACT_WINDOW_REPLAY_ATTEMPTED` | **YES** |
+| `EXACT_WINDOW_REPLAY_SUCCEEDED` | **YES** |
+| `HF_CAPTURE_COMPLETENESS_VALIDATED` | **PARTIAL** |
+| `HF_SPARSE_CADENCE_ORIGIN` | **NOT_DETERMINABLE** |
+| `PROVIDER_TIMESTAMP_OFFSET_VALIDATED` | **NO** |
+| `ABSOLUTE_SPEED_ACCURACY_VALIDATED` | **NO** |
+| `RAW_SOURCE_OBSERVATIONS_CHANGED` | **NO** |
 | `READY_FOR_RD004_FINAL_CLOSEOUT` | **NO** |
-| `READY_FOR_MERGE` | **NO** |
 
 ---
 
 ## Artefakte
 
-- `rd004-b-transition-interval-censoring.json` — B-T01/B-T02 interval semantics
-- `rd004-b-hf-capture-completeness-diagnostic.json` — pipeline trace + live requery comparison
-- `rd004-b-stop-timing.json` — no circular alignment
-- `rd004-b-video-clock-alignment.json` — B.3 clock model (0 fit landmarks)
+- `rd004-b-hf-exact-window-replay.json` — per-window exact-origin comparison
+- `rd004-b-hf-late-arrival-analysis.json` — late-arrival differential rows
+- `rd004-b-hf-watermark-recovery-analysis.json` — overlap audit vs measured lag
+- `rd004-b-hf-capture-completeness-diagnostic.json` — B.3 broad requery marked diagnostic-only + B.4 summary
 - `rd004-b-session-summary.json` — consolidated flags
-
-**Changes / Architektur:** aktualisiert (DI-EV-0035B.3).
+- B.3 artifacts preserved: `rd004-b-transition-interval-censoring.json`, etc.

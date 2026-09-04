@@ -1,6 +1,14 @@
 /**
- * RD004-B.3 — HF_HISTORICAL capture completeness audit (read-only, no production changes).
+ * RD004-B.4 — HF_HISTORICAL capture completeness audit (read-only, no production changes).
  */
+import {
+  B3_108_VS_66_RESULT,
+  B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
+  CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+  DIMO_BUCKET_SEMANTICS,
+  type HfCaptureRootCause,
+} from './reference-capture-rd004-b-hf-exact-window-replay';
+import { DIMO_PROVIDER_SOURCE_AUTHORITY } from './reference-capture-hf-aggregate-bucket-analysis';
 import {
   computePhysicalCadenceMetrics,
   identifyStaleHoldDuplicateRows,
@@ -36,7 +44,7 @@ function parseMs(iso: string | null | undefined): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** Normalize HF 1s aggregate bucket timestamps for sealed vs live requery comparison. */
+/** @deprecated B.3 only — invalid for cross-origin bucket identity proof (see B.4). */
 export function normalizeHfSpeedBucketTimestamp(iso: string): string {
   const ms = parseMs(iso);
   if (ms == null) return iso;
@@ -67,6 +75,11 @@ export function compareHfSpeedTimestampSets(sealed: string[], requery: string[])
   const extraInSealed = sealedNormalized.filter((t) => !requerySet.has(t));
 
   return {
+    CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+    B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
+    B3_108_VS_66_RESULT,
+    comparisonMethodInvalidReason:
+      'DIMO buckets are QUERY-FROM-ANCHORED; flooring timestamps across different query origins does not establish bucket identity equivalence',
     SEALED_HF_SPEED_COUNT: sealed.length,
     DIAGNOSTIC_REQUERY_HF_SPEED_COUNT: requery.length,
     SEALED_HF_SPEED_UNIQUE_BUCKET_COUNT: sealedSet.size,
@@ -77,7 +90,7 @@ export function compareHfSpeedTimestampSets(sealed: string[], requery: string[])
     intersectionTimestamps: [...new Set(intersection)].sort(),
     missingFromSealedTimestamps: [...new Set(missingFromSealed)].sort(),
     extraInSealedTimestamps: [...new Set(extraInSealed)].sort(),
-    comparisonNormalization: 'HF_1S_BUCKET_FLOOR_ISO',
+    comparisonNormalization: 'DEPRECATED_GLOBAL_1S_FLOOR_NOT_VALID_CROSS_ORIGIN',
   };
 }
 
@@ -197,75 +210,58 @@ export function classifyHfSparsityOrigin(args: {
   requeryComparison: ReturnType<typeof compareHfSpeedTimestampSets> | null;
   liveRequeryAttempted: boolean;
   liveRequerySucceeded: boolean;
+  exactWindowReplay?: {
+    HF_SPARSE_CADENCE_ORIGIN: string;
+    HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+    RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+    HF_CAPTURE_ROOT_CAUSE: HfCaptureRootCause;
+  } | null;
 }): {
   HF_SPARSE_CADENCE_ORIGIN: HfSparsityOrigin;
   HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+  HF_CAPTURE_ROOT_CAUSE: HfCaptureRootCause;
   RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
 } {
-  const { sealedAudit, requeryComparison, liveRequeryAttempted, liveRequerySucceeded } = args;
-  const median = sealedAudit.medianPhysicalCadenceSeconds ?? 0;
-  const rd003 = RD003_HF_SPEED_MEDIAN_CADENCE_REFERENCE_SECONDS;
-
-  if (requeryComparison && liveRequerySucceeded) {
-    const missing = requeryComparison.MISSING_FROM_SEALED_COUNT;
-    const extra = requeryComparison.EXTRA_IN_SEALED_COUNT;
-    const sealedCount = requeryComparison.SEALED_HF_SPEED_UNIQUE_BUCKET_COUNT;
-    const requeryCount = requeryComparison.DIAGNOSTIC_REQUERY_HF_SPEED_UNIQUE_BUCKET_COUNT;
-    const intersection = requeryComparison.INTERSECTION_COUNT;
-
-    if (intersection >= Math.max(1, sealedCount * 0.9) && missing <= Math.max(3, sealedCount * 0.05)) {
-      return {
-        HF_SPARSE_CADENCE_ORIGIN:
-          median > rd003 * 3 ? 'PROVIDER_OR_UPSTREAM_CONFIRMED' : 'PROVIDER_OR_UPSTREAM_CONFIRMED',
-        HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES',
-        RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-          'Sealed bucket timestamps align with fresh DIMO historical requery after 1s normalization; RD004 sparsity is upstream/provider-side not capture loss',
-      };
-    }
-    if (missing > Math.max(5, sealedCount * 0.1)) {
-      return {
-        HF_SPARSE_CADENCE_ORIGIN: 'CAPTURE_PIPELINE_SAMPLE_LOSS',
-        HF_CAPTURE_COMPLETENESS_VALIDATED: 'PARTIAL',
-        RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-          'Live requery returned materially more speed buckets than sealed capture — pipeline/watermark loss suspected',
-      };
-    }
-    if (requeryCount > sealedCount * 1.5 && median > rd003 * 3) {
-      return {
-        HF_SPARSE_CADENCE_ORIGIN: 'HISTORICAL_ENDPOINT_DOWNSAMPLING',
-        HF_CAPTURE_COMPLETENESS_VALIDATED: 'PARTIAL',
-        RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-          'Provider returns sparse aggregate buckets; sealed capture matches live requery density',
-      };
-    }
-    if (missing <= 2 && extra <= 2 && median > rd003 * 3) {
-      return {
-        HF_SPARSE_CADENCE_ORIGIN: 'PROVIDER_OR_UPSTREAM_CONFIRMED',
-        HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES',
-        RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-          'Sealed timestamps align with fresh DIMO historical requery; RD004 sparsity is upstream/provider-side not capture loss',
-      };
-    }
+  if (args.exactWindowReplay) {
+    const origin =
+      args.exactWindowReplay.HF_SPARSE_CADENCE_ORIGIN === 'PROVIDER_OR_UPSTREAM_CONFIRMED'
+        ? 'PROVIDER_OR_UPSTREAM_CONFIRMED'
+        : 'NOT_DETERMINABLE';
     return {
-      HF_SPARSE_CADENCE_ORIGIN: 'MIXED_CAUSES',
-      HF_CAPTURE_COMPLETENESS_VALIDATED: 'PARTIAL',
+      HF_SPARSE_CADENCE_ORIGIN: origin,
+      HF_CAPTURE_COMPLETENESS_VALIDATED: args.exactWindowReplay.HF_CAPTURE_COMPLETENESS_VALIDATED,
+      HF_CAPTURE_ROOT_CAUSE: args.exactWindowReplay.HF_CAPTURE_ROOT_CAUSE,
       RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-        'Partial overlap between sealed and requery — mixed watermark/provider effects',
+        args.exactWindowReplay.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
+    };
+  }
+
+  const { liveRequeryAttempted, liveRequerySucceeded } = args;
+
+  if (args.requeryComparison && liveRequerySucceeded) {
+    return {
+      HF_SPARSE_CADENCE_ORIGIN: 'NOT_DETERMINABLE',
+      HF_CAPTURE_COMPLETENESS_VALIDATED: 'PARTIAL',
+      HF_CAPTURE_ROOT_CAUSE: 'QUERY_ORIGIN_MISMATCH',
+      RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
+        'B.3 broad requery density (e.g. 108 vs 66) is diagnostic only — cross-origin bucket identity comparison invalid until exact-window replay (B.4)',
     };
   }
 
   if (!liveRequeryAttempted) {
     return {
-      HF_SPARSE_CADENCE_ORIGIN: median > rd003 * 3 ? 'NOT_DETERMINABLE' : 'NOT_DETERMINABLE',
+      HF_SPARSE_CADENCE_ORIGIN: 'NOT_DETERMINABLE',
       HF_CAPTURE_COMPLETENESS_VALIDATED: 'PARTIAL',
+      HF_CAPTURE_ROOT_CAUSE: 'NOT_DETERMINABLE',
       RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
-        'Sealed-only audit — live requery not performed; cannot fully exclude capture loss',
+        'Sealed-only audit — exact-window replay not performed',
     };
   }
 
   return {
     HF_SPARSE_CADENCE_ORIGIN: 'NOT_DETERMINABLE',
     HF_CAPTURE_COMPLETENESS_VALIDATED: 'NO',
+    HF_CAPTURE_ROOT_CAUSE: 'NOT_DETERMINABLE',
     RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED:
       'Live requery failed or unavailable — completeness not validated',
   };
@@ -277,6 +273,14 @@ export function buildHfCaptureCompletenessDiagnostic(args: {
   queryEnvelope: { startUtc: string; endUtc: string };
   requeryTimestamps?: string[] | null;
   liveRequeryError?: string | null;
+  exactWindowReplay?: {
+    HF_SPARSE_CADENCE_ORIGIN: string;
+    HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+    RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+    HF_CAPTURE_ROOT_CAUSE: HfCaptureRootCause;
+    aggregate?: Record<string, number>;
+    watermarkRecoveryAnalysis?: Record<string, unknown>;
+  } | null;
 }) {
   const sealedAudit = auditSealedHfCaptureProvenance(
     args.allRows,
@@ -296,22 +300,36 @@ export function buildHfCaptureCompletenessDiagnostic(args: {
     requeryComparison,
     liveRequeryAttempted,
     liveRequerySucceeded,
+    exactWindowReplay: args.exactWindowReplay,
   });
 
   return {
-    evidenceId: 'DI-EV-0035B.3',
+    evidenceId: 'DI-EV-0035B.4',
     mode: 'HF_CAPTURE_COMPLETENESS_DIAGNOSTIC',
     RAW_SOURCE_OBSERVATIONS_CHANGED: 'NO',
+    DIMO_BUCKET_SEMANTICS,
+    dimoProviderSourceAuthority: DIMO_PROVIDER_SOURCE_AUTHORITY,
+    CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+    B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
+    B3_108_VS_66_RESULT,
+    b3BroadRequerySuperseded: 'YES',
     sealedAudit,
-    requery: {
+    broadRequery: {
       attempted: liveRequeryAttempted,
       succeeded: liveRequerySucceeded,
       error: args.liveRequeryError ?? null,
       requeryTimestamps: liveRequerySucceeded ? args.requeryTimestamps ?? [] : null,
       comparison: requeryComparison,
+      note: 'Density diagnostic only — NOT canonical bucket-identity proof (B.4 exact-window replay required)',
     },
+    exactWindowReplaySummary: args.exactWindowReplay
+      ? {
+          aggregate: args.exactWindowReplay.aggregate ?? null,
+          watermarkRecoveryAnalysis: args.exactWindowReplay.watermarkRecoveryAnalysis ?? null,
+        }
+      : null,
     ...classification,
     note:
-      'Diagnostic artifact only — does not modify sealed Segment A/B source bytes',
+      'Diagnostic artifact only — does not modify sealed Segment A/B source bytes. B.3 CAPTURE_PIPELINE_SAMPLE_LOSS from broad requery superseded by B.4.',
   };
 }

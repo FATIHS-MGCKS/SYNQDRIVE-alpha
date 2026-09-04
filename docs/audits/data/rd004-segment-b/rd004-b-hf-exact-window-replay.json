@@ -1,0 +1,4314 @@
+{
+  "evidenceId": "DI-EV-0035B.4",
+  "mode": "HF_EXACT_WINDOW_AGGREGATE_BUCKET_REPLAY",
+  "RAW_SOURCE_OBSERVATIONS_CHANGED": "NO",
+  "DIMO_BUCKET_SEMANTICS": "QUERY_FROM_ANCHORED",
+  "dimoProviderSourceAuthority": {
+    "primaryPublicRepo": "DIMO-Network/telemetry-api",
+    "primaryCommitSha": "98d88534857fec95a507a61331d5e357b86cfcc6",
+    "primaryFiles": [
+      "internal/service/ch/ch.go",
+      "internal/service/ch/queries.go"
+    ],
+    "bucketSemantics": "QUERY-FROM-ANCHORED AGGREGATION BUCKETS",
+    "bucketTimestampMeaning": "timestamp = start of interval",
+    "bucketOriginParameter": "aggArgs.FromTS passed to selectInterval(..., origin)",
+    "successorNote": "DIMO-Network/dq may proxy/serve production queries; telemetry-api ch/queries.go is the verified public ClickHouse aggregation implementation cited here."
+  },
+  "CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID": "NO",
+  "B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID": "NO",
+  "B3_108_VS_66_RESULT": "DENSITY_DIAGNOSTIC_ONLY_NOT_BUCKET_IDENTITY_PROOF",
+  "EXACT_WINDOW_REPLAY_ATTEMPTED": "YES",
+  "EXACT_WINDOW_REPLAY_SUCCEEDED": "YES",
+  "EXACT_WINDOW_REPLAY_WINDOW_COUNT": 75,
+  "ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE": "NO",
+  "replayError": null,
+  "ORIGINAL_HF_QUERY_WINDOWS": [
+    {
+      "windowId": "2026-09-04T03:37:39.122Z|2026-09-04T03:37:47.647Z|2026-09-04T03:37:47.647Z",
+      "hfWindowFrom": "2026-09-04T03:37:39.122Z",
+      "hfWindowTo": "2026-09-04T03:37:47.647Z",
+      "hfActualQueryTo": "2026-09-04T03:37:47.647Z",
+      "requestStartedAt": "2026-09-04T03:37:47.647Z",
+      "requestCompletedAt": "2026-09-04T03:37:47.820Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:37:45.647Z|2026-09-04T03:37:53.293Z|2026-09-04T03:37:53.293Z",
+      "hfWindowFrom": "2026-09-04T03:37:45.647Z",
+      "hfWindowTo": "2026-09-04T03:37:53.293Z",
+      "hfActualQueryTo": "2026-09-04T03:37:53.293Z",
+      "requestStartedAt": "2026-09-04T03:37:53.293Z",
+      "requestCompletedAt": "2026-09-04T03:37:53.721Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:37:51.293Z|2026-09-04T03:37:59.416Z|2026-09-04T03:37:59.416Z",
+      "hfWindowFrom": "2026-09-04T03:37:51.293Z",
+      "hfWindowTo": "2026-09-04T03:37:59.416Z",
+      "hfActualQueryTo": "2026-09-04T03:37:59.416Z",
+      "requestStartedAt": "2026-09-04T03:37:59.416Z",
+      "requestCompletedAt": "2026-09-04T03:37:59.608Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:37:57.416Z|2026-09-04T03:38:05.110Z|2026-09-04T03:38:05.110Z",
+      "hfWindowFrom": "2026-09-04T03:37:57.416Z",
+      "hfWindowTo": "2026-09-04T03:38:05.110Z",
+      "hfActualQueryTo": "2026-09-04T03:38:05.110Z",
+      "requestStartedAt": "2026-09-04T03:38:05.110Z",
+      "requestCompletedAt": "2026-09-04T03:38:05.308Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:38:03.110Z|2026-09-04T03:38:10.904Z|2026-09-04T03:38:10.904Z",
+      "hfWindowFrom": "2026-09-04T03:38:03.110Z",
+      "hfWindowTo": "2026-09-04T03:38:10.904Z",
+      "hfActualQueryTo": "2026-09-04T03:38:10.904Z",
+      "requestStartedAt": "2026-09-04T03:38:10.904Z",
+      "requestCompletedAt": "2026-09-04T03:38:11.224Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:38:08.904Z|2026-09-04T03:38:16.723Z|2026-09-04T03:38:16.723Z",
+      "hfWindowFrom": "2026-09-04T03:38:08.904Z",
+      "hfWindowTo": "2026-09-04T03:38:16.723Z",
+      "hfActualQueryTo": "2026-09-04T03:38:16.723Z",
+      "requestStartedAt": "2026-09-04T03:38:16.723Z",
+      "requestCompletedAt": "2026-09-04T03:38:17.130Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:38:14.723Z|2026-09-04T03:38:23.081Z|2026-09-04T03:38:23.081Z",
+      "hfWindowFrom": "2026-09-04T03:38:14.723Z",
+      "hfWindowTo": "2026-09-04T03:38:23.081Z",
+      "hfActualQueryTo": "2026-09-04T03:38:23.081Z",
+      "requestStartedAt": "2026-09-04T03:38:23.081Z",
+      "requestCompletedAt": "2026-09-04T03:38:23.281Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:38:32.640Z|2026-09-04T03:38:40.359Z|2026-09-04T03:38:40.359Z",
+      "hfWindowFrom": "2026-09-04T03:38:32.640Z",
+      "hfWindowTo": "2026-09-04T03:38:40.359Z",
+      "hfActualQueryTo": "2026-09-04T03:38:40.359Z",
+      "requestStartedAt": "2026-09-04T03:38:40.359Z",
+      "requestCompletedAt": "2026-09-04T03:38:40.544Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:38:44.395Z|2026-09-04T03:38:52.265Z|2026-09-04T03:38:52.265Z",
+      "hfWindowFrom": "2026-09-04T03:38:44.395Z",
+      "hfWindowTo": "2026-09-04T03:38:52.265Z",
+      "hfActualQueryTo": "2026-09-04T03:38:52.265Z",
+      "requestStartedAt": "2026-09-04T03:38:52.265Z",
+      "requestCompletedAt": "2026-09-04T03:38:52.576Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:39:18.966Z|2026-09-04T03:39:26.686Z|2026-09-04T03:39:26.686Z",
+      "hfWindowFrom": "2026-09-04T03:39:18.966Z",
+      "hfWindowTo": "2026-09-04T03:39:26.686Z",
+      "hfActualQueryTo": "2026-09-04T03:39:26.686Z",
+      "requestStartedAt": "2026-09-04T03:39:26.686Z",
+      "requestCompletedAt": "2026-09-04T03:39:26.886Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:39:30.620Z|2026-09-04T03:39:38.352Z|2026-09-04T03:39:38.352Z",
+      "hfWindowFrom": "2026-09-04T03:39:30.620Z",
+      "hfWindowTo": "2026-09-04T03:39:38.352Z",
+      "hfActualQueryTo": "2026-09-04T03:39:38.352Z",
+      "requestStartedAt": "2026-09-04T03:39:38.352Z",
+      "requestCompletedAt": "2026-09-04T03:39:38.531Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:39:36.352Z|2026-09-04T03:39:43.937Z|2026-09-04T03:39:43.937Z",
+      "hfWindowFrom": "2026-09-04T03:39:36.352Z",
+      "hfWindowTo": "2026-09-04T03:39:43.937Z",
+      "hfActualQueryTo": "2026-09-04T03:39:43.937Z",
+      "requestStartedAt": "2026-09-04T03:39:43.937Z",
+      "requestCompletedAt": "2026-09-04T03:39:44.121Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:39:41.937Z|2026-09-04T03:39:49.625Z|2026-09-04T03:39:49.625Z",
+      "hfWindowFrom": "2026-09-04T03:39:41.937Z",
+      "hfWindowTo": "2026-09-04T03:39:49.625Z",
+      "hfActualQueryTo": "2026-09-04T03:39:49.625Z",
+      "requestStartedAt": "2026-09-04T03:39:49.625Z",
+      "requestCompletedAt": "2026-09-04T03:39:49.810Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:39:47.625Z|2026-09-04T03:39:55.340Z|2026-09-04T03:39:55.340Z",
+      "hfWindowFrom": "2026-09-04T03:39:47.625Z",
+      "hfWindowTo": "2026-09-04T03:39:55.340Z",
+      "hfActualQueryTo": "2026-09-04T03:39:55.340Z",
+      "requestStartedAt": "2026-09-04T03:39:55.340Z",
+      "requestCompletedAt": "2026-09-04T03:39:55.580Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:40:39.908Z|2026-09-04T03:40:48.124Z|2026-09-04T03:40:48.124Z",
+      "hfWindowFrom": "2026-09-04T03:40:39.908Z",
+      "hfWindowTo": "2026-09-04T03:40:48.124Z",
+      "hfActualQueryTo": "2026-09-04T03:40:48.124Z",
+      "requestStartedAt": "2026-09-04T03:40:48.124Z",
+      "requestCompletedAt": "2026-09-04T03:40:48.318Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:40:51.884Z|2026-09-04T03:40:59.796Z|2026-09-04T03:40:59.796Z",
+      "hfWindowFrom": "2026-09-04T03:40:51.884Z",
+      "hfWindowTo": "2026-09-04T03:40:59.796Z",
+      "hfActualQueryTo": "2026-09-04T03:40:59.796Z",
+      "requestStartedAt": "2026-09-04T03:40:59.796Z",
+      "requestCompletedAt": "2026-09-04T03:40:59.996Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:41:26.544Z|2026-09-04T03:41:34.597Z|2026-09-04T03:41:34.597Z",
+      "hfWindowFrom": "2026-09-04T03:41:26.544Z",
+      "hfWindowTo": "2026-09-04T03:41:34.597Z",
+      "hfActualQueryTo": "2026-09-04T03:41:34.597Z",
+      "requestStartedAt": "2026-09-04T03:41:34.597Z",
+      "requestCompletedAt": "2026-09-04T03:41:34.782Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:42:07.311Z|2026-09-04T03:42:15.233Z|2026-09-04T03:42:15.233Z",
+      "hfWindowFrom": "2026-09-04T03:42:07.311Z",
+      "hfWindowTo": "2026-09-04T03:42:15.233Z",
+      "hfActualQueryTo": "2026-09-04T03:42:15.233Z",
+      "requestStartedAt": "2026-09-04T03:42:15.233Z",
+      "requestCompletedAt": "2026-09-04T03:42:15.425Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:42:25.018Z|2026-09-04T03:42:32.704Z|2026-09-04T03:42:32.704Z",
+      "hfWindowFrom": "2026-09-04T03:42:25.018Z",
+      "hfWindowTo": "2026-09-04T03:42:32.704Z",
+      "hfActualQueryTo": "2026-09-04T03:42:32.704Z",
+      "requestStartedAt": "2026-09-04T03:42:32.704Z",
+      "requestCompletedAt": "2026-09-04T03:42:32.911Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:42:53.694Z|2026-09-04T03:43:01.611Z|2026-09-04T03:43:01.611Z",
+      "hfWindowFrom": "2026-09-04T03:42:53.694Z",
+      "hfWindowTo": "2026-09-04T03:43:01.611Z",
+      "hfActualQueryTo": "2026-09-04T03:43:01.611Z",
+      "requestStartedAt": "2026-09-04T03:43:01.611Z",
+      "requestCompletedAt": "2026-09-04T03:43:01.794Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:43:05.682Z|2026-09-04T03:43:13.591Z|2026-09-04T03:43:13.591Z",
+      "hfWindowFrom": "2026-09-04T03:43:05.682Z",
+      "hfWindowTo": "2026-09-04T03:43:13.591Z",
+      "hfActualQueryTo": "2026-09-04T03:43:13.591Z",
+      "requestStartedAt": "2026-09-04T03:43:13.591Z",
+      "requestCompletedAt": "2026-09-04T03:43:13.792Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:43:23.051Z|2026-09-04T03:43:30.818Z|2026-09-04T03:43:30.818Z",
+      "hfWindowFrom": "2026-09-04T03:43:23.051Z",
+      "hfWindowTo": "2026-09-04T03:43:30.818Z",
+      "hfActualQueryTo": "2026-09-04T03:43:30.818Z",
+      "requestStartedAt": "2026-09-04T03:43:30.818Z",
+      "requestCompletedAt": "2026-09-04T03:43:31.018Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:43:34.723Z|2026-09-04T03:43:42.444Z|2026-09-04T03:43:42.444Z",
+      "hfWindowFrom": "2026-09-04T03:43:34.723Z",
+      "hfWindowTo": "2026-09-04T03:43:42.444Z",
+      "hfActualQueryTo": "2026-09-04T03:43:42.444Z",
+      "requestStartedAt": "2026-09-04T03:43:42.444Z",
+      "requestCompletedAt": "2026-09-04T03:43:42.647Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:43:46.205Z|2026-09-04T03:43:53.898Z|2026-09-04T03:43:53.898Z",
+      "hfWindowFrom": "2026-09-04T03:43:46.205Z",
+      "hfWindowTo": "2026-09-04T03:43:53.898Z",
+      "hfActualQueryTo": "2026-09-04T03:43:53.898Z",
+      "requestStartedAt": "2026-09-04T03:43:53.898Z",
+      "requestCompletedAt": "2026-09-04T03:43:54.085Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:43:51.898Z|2026-09-04T03:43:59.631Z|2026-09-04T03:43:59.631Z",
+      "hfWindowFrom": "2026-09-04T03:43:51.898Z",
+      "hfWindowTo": "2026-09-04T03:43:59.631Z",
+      "hfActualQueryTo": "2026-09-04T03:43:59.631Z",
+      "requestStartedAt": "2026-09-04T03:43:59.631Z",
+      "requestCompletedAt": "2026-09-04T03:43:59.816Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:47:50.768Z|2026-09-04T03:47:58.691Z|2026-09-04T03:47:58.691Z",
+      "hfWindowFrom": "2026-09-04T03:47:50.768Z",
+      "hfWindowTo": "2026-09-04T03:47:58.691Z",
+      "hfActualQueryTo": "2026-09-04T03:47:58.691Z",
+      "requestStartedAt": "2026-09-04T03:47:58.691Z",
+      "requestCompletedAt": "2026-09-04T03:47:58.929Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:48:08.167Z|2026-09-04T03:48:16.005Z|2026-09-04T03:48:16.005Z",
+      "hfWindowFrom": "2026-09-04T03:48:08.167Z",
+      "hfWindowTo": "2026-09-04T03:48:16.005Z",
+      "hfActualQueryTo": "2026-09-04T03:48:16.005Z",
+      "requestStartedAt": "2026-09-04T03:48:16.005Z",
+      "requestCompletedAt": "2026-09-04T03:48:16.215Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:48:37.165Z|2026-09-04T03:48:44.785Z|2026-09-04T03:48:44.785Z",
+      "hfWindowFrom": "2026-09-04T03:48:37.165Z",
+      "hfWindowTo": "2026-09-04T03:48:44.785Z",
+      "hfActualQueryTo": "2026-09-04T03:48:44.785Z",
+      "requestStartedAt": "2026-09-04T03:48:44.785Z",
+      "requestCompletedAt": "2026-09-04T03:48:44.974Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:48:54.296Z|2026-09-04T03:49:01.977Z|2026-09-04T03:49:01.977Z",
+      "hfWindowFrom": "2026-09-04T03:48:54.296Z",
+      "hfWindowTo": "2026-09-04T03:49:01.977Z",
+      "hfActualQueryTo": "2026-09-04T03:49:01.977Z",
+      "requestStartedAt": "2026-09-04T03:49:01.977Z",
+      "requestCompletedAt": "2026-09-04T03:49:02.205Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:49:23.176Z|2026-09-04T03:49:31.124Z|2026-09-04T03:49:31.124Z",
+      "hfWindowFrom": "2026-09-04T03:49:23.176Z",
+      "hfWindowTo": "2026-09-04T03:49:31.124Z",
+      "hfActualQueryTo": "2026-09-04T03:49:31.124Z",
+      "requestStartedAt": "2026-09-04T03:49:31.124Z",
+      "requestCompletedAt": "2026-09-04T03:49:31.317Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:49:29.124Z|2026-09-04T03:49:36.975Z|2026-09-04T03:49:36.975Z",
+      "hfWindowFrom": "2026-09-04T03:49:29.124Z",
+      "hfWindowTo": "2026-09-04T03:49:36.975Z",
+      "hfActualQueryTo": "2026-09-04T03:49:36.975Z",
+      "requestStartedAt": "2026-09-04T03:49:36.975Z",
+      "requestCompletedAt": "2026-09-04T03:49:37.406Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:49:52.619Z|2026-09-04T03:50:00.873Z|2026-09-04T03:50:00.873Z",
+      "hfWindowFrom": "2026-09-04T03:49:52.619Z",
+      "hfWindowTo": "2026-09-04T03:50:00.873Z",
+      "hfActualQueryTo": "2026-09-04T03:50:00.873Z",
+      "requestStartedAt": "2026-09-04T03:50:00.873Z",
+      "requestCompletedAt": "2026-09-04T03:50:01.078Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:50:10.276Z|2026-09-04T03:50:17.963Z|2026-09-04T03:50:17.964Z",
+      "hfWindowFrom": "2026-09-04T03:50:10.276Z",
+      "hfWindowTo": "2026-09-04T03:50:17.963Z",
+      "hfActualQueryTo": "2026-09-04T03:50:17.963Z",
+      "requestStartedAt": "2026-09-04T03:50:17.964Z",
+      "requestCompletedAt": "2026-09-04T03:50:18.161Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:50:39.293Z|2026-09-04T03:50:47.440Z|2026-09-04T03:50:47.440Z",
+      "hfWindowFrom": "2026-09-04T03:50:39.293Z",
+      "hfWindowTo": "2026-09-04T03:50:47.440Z",
+      "hfActualQueryTo": "2026-09-04T03:50:47.440Z",
+      "requestStartedAt": "2026-09-04T03:50:47.440Z",
+      "requestCompletedAt": "2026-09-04T03:50:47.615Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:50:51.168Z|2026-09-04T03:50:58.934Z|2026-09-04T03:50:58.934Z",
+      "hfWindowFrom": "2026-09-04T03:50:51.168Z",
+      "hfWindowTo": "2026-09-04T03:50:58.934Z",
+      "hfActualQueryTo": "2026-09-04T03:50:58.934Z",
+      "requestStartedAt": "2026-09-04T03:50:58.934Z",
+      "requestCompletedAt": "2026-09-04T03:50:59.136Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:51:43.476Z|2026-09-04T03:51:51.396Z|2026-09-04T03:51:51.396Z",
+      "hfWindowFrom": "2026-09-04T03:51:43.476Z",
+      "hfWindowTo": "2026-09-04T03:51:51.396Z",
+      "hfActualQueryTo": "2026-09-04T03:51:51.396Z",
+      "requestStartedAt": "2026-09-04T03:51:51.396Z",
+      "requestCompletedAt": "2026-09-04T03:51:51.582Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:51:55.120Z|2026-09-04T03:52:02.934Z|2026-09-04T03:52:02.934Z",
+      "hfWindowFrom": "2026-09-04T03:51:55.120Z",
+      "hfWindowTo": "2026-09-04T03:52:02.934Z",
+      "hfActualQueryTo": "2026-09-04T03:52:02.934Z",
+      "requestStartedAt": "2026-09-04T03:52:02.934Z",
+      "requestCompletedAt": "2026-09-04T03:52:03.130Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:52:35.429Z|2026-09-04T03:52:43.154Z|2026-09-04T03:52:43.154Z",
+      "hfWindowFrom": "2026-09-04T03:52:35.429Z",
+      "hfWindowTo": "2026-09-04T03:52:43.154Z",
+      "hfActualQueryTo": "2026-09-04T03:52:43.154Z",
+      "requestStartedAt": "2026-09-04T03:52:43.154Z",
+      "requestCompletedAt": "2026-09-04T03:52:43.365Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:53:11.135Z|2026-09-04T03:53:18.938Z|2026-09-04T03:53:18.938Z",
+      "hfWindowFrom": "2026-09-04T03:53:11.135Z",
+      "hfWindowTo": "2026-09-04T03:53:18.938Z",
+      "hfActualQueryTo": "2026-09-04T03:53:18.938Z",
+      "requestStartedAt": "2026-09-04T03:53:18.938Z",
+      "requestCompletedAt": "2026-09-04T03:53:19.124Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:53:16.938Z|2026-09-04T03:53:24.603Z|2026-09-04T03:53:24.603Z",
+      "hfWindowFrom": "2026-09-04T03:53:16.938Z",
+      "hfWindowTo": "2026-09-04T03:53:24.603Z",
+      "hfActualQueryTo": "2026-09-04T03:53:24.603Z",
+      "requestStartedAt": "2026-09-04T03:53:24.603Z",
+      "requestCompletedAt": "2026-09-04T03:53:24.789Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:53:28.829Z|2026-09-04T03:53:36.556Z|2026-09-04T03:53:36.556Z",
+      "hfWindowFrom": "2026-09-04T03:53:28.829Z",
+      "hfWindowTo": "2026-09-04T03:53:36.556Z",
+      "hfActualQueryTo": "2026-09-04T03:53:36.556Z",
+      "requestStartedAt": "2026-09-04T03:53:36.556Z",
+      "requestCompletedAt": "2026-09-04T03:53:36.759Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:53:34.556Z|2026-09-04T03:53:42.296Z|2026-09-04T03:53:42.296Z",
+      "hfWindowFrom": "2026-09-04T03:53:34.556Z",
+      "hfWindowTo": "2026-09-04T03:53:42.296Z",
+      "hfActualQueryTo": "2026-09-04T03:53:42.296Z",
+      "requestStartedAt": "2026-09-04T03:53:42.296Z",
+      "requestCompletedAt": "2026-09-04T03:53:42.478Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:53:46.293Z|2026-09-04T03:53:53.924Z|2026-09-04T03:53:53.924Z",
+      "hfWindowFrom": "2026-09-04T03:53:46.293Z",
+      "hfWindowTo": "2026-09-04T03:53:53.924Z",
+      "hfActualQueryTo": "2026-09-04T03:53:53.924Z",
+      "requestStartedAt": "2026-09-04T03:53:53.924Z",
+      "requestCompletedAt": "2026-09-04T03:53:54.136Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:54:15.333Z|2026-09-04T03:54:22.981Z|2026-09-04T03:54:22.981Z",
+      "hfWindowFrom": "2026-09-04T03:54:15.333Z",
+      "hfWindowTo": "2026-09-04T03:54:22.981Z",
+      "hfActualQueryTo": "2026-09-04T03:54:22.981Z",
+      "requestStartedAt": "2026-09-04T03:54:22.981Z",
+      "requestCompletedAt": "2026-09-04T03:54:23.153Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:54:26.629Z|2026-09-04T03:54:34.247Z|2026-09-04T03:54:34.247Z",
+      "hfWindowFrom": "2026-09-04T03:54:26.629Z",
+      "hfWindowTo": "2026-09-04T03:54:34.247Z",
+      "hfActualQueryTo": "2026-09-04T03:54:34.247Z",
+      "requestStartedAt": "2026-09-04T03:54:34.247Z",
+      "requestCompletedAt": "2026-09-04T03:54:34.655Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:54:32.247Z|2026-09-04T03:54:40.323Z|2026-09-04T03:54:40.323Z",
+      "hfWindowFrom": "2026-09-04T03:54:32.247Z",
+      "hfWindowTo": "2026-09-04T03:54:40.323Z",
+      "hfActualQueryTo": "2026-09-04T03:54:40.323Z",
+      "requestStartedAt": "2026-09-04T03:54:40.323Z",
+      "requestCompletedAt": "2026-09-04T03:54:40.505Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:55:07.623Z|2026-09-04T03:55:15.754Z|2026-09-04T03:55:15.754Z",
+      "hfWindowFrom": "2026-09-04T03:55:07.623Z",
+      "hfWindowTo": "2026-09-04T03:55:15.754Z",
+      "hfActualQueryTo": "2026-09-04T03:55:15.754Z",
+      "requestStartedAt": "2026-09-04T03:55:15.754Z",
+      "requestCompletedAt": "2026-09-04T03:55:15.952Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:56:51.929Z|2026-09-04T03:56:59.837Z|2026-09-04T03:56:59.837Z",
+      "hfWindowFrom": "2026-09-04T03:56:51.929Z",
+      "hfWindowTo": "2026-09-04T03:56:59.837Z",
+      "hfActualQueryTo": "2026-09-04T03:56:59.837Z",
+      "requestStartedAt": "2026-09-04T03:56:59.837Z",
+      "requestCompletedAt": "2026-09-04T03:57:00.011Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:56:57.837Z|2026-09-04T03:57:05.507Z|2026-09-04T03:57:05.507Z",
+      "hfWindowFrom": "2026-09-04T03:56:57.837Z",
+      "hfWindowTo": "2026-09-04T03:57:05.507Z",
+      "hfActualQueryTo": "2026-09-04T03:57:05.507Z",
+      "requestStartedAt": "2026-09-04T03:57:05.507Z",
+      "requestCompletedAt": "2026-09-04T03:57:05.683Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:57:03.507Z|2026-09-04T03:57:11.976Z|2026-09-04T03:57:11.976Z",
+      "hfWindowFrom": "2026-09-04T03:57:03.507Z",
+      "hfWindowTo": "2026-09-04T03:57:11.976Z",
+      "hfActualQueryTo": "2026-09-04T03:57:11.976Z",
+      "requestStartedAt": "2026-09-04T03:57:11.976Z",
+      "requestCompletedAt": "2026-09-04T03:57:12.423Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:57:09.976Z|2026-09-04T03:57:17.940Z|2026-09-04T03:57:17.940Z",
+      "hfWindowFrom": "2026-09-04T03:57:09.976Z",
+      "hfWindowTo": "2026-09-04T03:57:17.940Z",
+      "hfActualQueryTo": "2026-09-04T03:57:17.940Z",
+      "requestStartedAt": "2026-09-04T03:57:17.940Z",
+      "requestCompletedAt": "2026-09-04T03:57:18.122Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:57:15.940Z|2026-09-04T03:57:23.568Z|2026-09-04T03:57:23.568Z",
+      "hfWindowFrom": "2026-09-04T03:57:15.940Z",
+      "hfWindowTo": "2026-09-04T03:57:23.568Z",
+      "hfActualQueryTo": "2026-09-04T03:57:23.568Z",
+      "requestStartedAt": "2026-09-04T03:57:23.568Z",
+      "requestCompletedAt": "2026-09-04T03:57:23.762Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:57:44.685Z|2026-09-04T03:57:52.326Z|2026-09-04T03:57:52.327Z",
+      "hfWindowFrom": "2026-09-04T03:57:44.685Z",
+      "hfWindowTo": "2026-09-04T03:57:52.326Z",
+      "hfActualQueryTo": "2026-09-04T03:57:52.326Z",
+      "requestStartedAt": "2026-09-04T03:57:52.327Z",
+      "requestCompletedAt": "2026-09-04T03:57:52.513Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:58:18.787Z|2026-09-04T03:58:26.405Z|2026-09-04T03:58:26.406Z",
+      "hfWindowFrom": "2026-09-04T03:58:18.787Z",
+      "hfWindowTo": "2026-09-04T03:58:26.405Z",
+      "hfActualQueryTo": "2026-09-04T03:58:26.405Z",
+      "requestStartedAt": "2026-09-04T03:58:26.406Z",
+      "requestCompletedAt": "2026-09-04T03:58:26.591Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:58:24.405Z|2026-09-04T03:58:32.230Z|2026-09-04T03:58:32.230Z",
+      "hfWindowFrom": "2026-09-04T03:58:24.405Z",
+      "hfWindowTo": "2026-09-04T03:58:32.230Z",
+      "hfActualQueryTo": "2026-09-04T03:58:32.230Z",
+      "requestStartedAt": "2026-09-04T03:58:32.230Z",
+      "requestCompletedAt": "2026-09-04T03:58:32.424Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:58:41.714Z|2026-09-04T03:58:49.691Z|2026-09-04T03:58:49.691Z",
+      "hfWindowFrom": "2026-09-04T03:58:41.714Z",
+      "hfWindowTo": "2026-09-04T03:58:49.691Z",
+      "hfActualQueryTo": "2026-09-04T03:58:49.691Z",
+      "requestStartedAt": "2026-09-04T03:58:49.691Z",
+      "requestCompletedAt": "2026-09-04T03:58:49.867Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:58:53.369Z|2026-09-04T03:59:01.053Z|2026-09-04T03:59:01.053Z",
+      "hfWindowFrom": "2026-09-04T03:58:53.369Z",
+      "hfWindowTo": "2026-09-04T03:59:01.053Z",
+      "hfActualQueryTo": "2026-09-04T03:59:01.053Z",
+      "requestStartedAt": "2026-09-04T03:59:01.053Z",
+      "requestCompletedAt": "2026-09-04T03:59:01.277Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:59:04.823Z|2026-09-04T03:59:12.469Z|2026-09-04T03:59:12.469Z",
+      "hfWindowFrom": "2026-09-04T03:59:04.823Z",
+      "hfWindowTo": "2026-09-04T03:59:12.469Z",
+      "hfActualQueryTo": "2026-09-04T03:59:12.469Z",
+      "requestStartedAt": "2026-09-04T03:59:12.469Z",
+      "requestCompletedAt": "2026-09-04T03:59:12.653Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:59:16.382Z|2026-09-04T03:59:24.035Z|2026-09-04T03:59:24.035Z",
+      "hfWindowFrom": "2026-09-04T03:59:16.382Z",
+      "hfWindowTo": "2026-09-04T03:59:24.035Z",
+      "hfActualQueryTo": "2026-09-04T03:59:24.035Z",
+      "requestStartedAt": "2026-09-04T03:59:24.035Z",
+      "requestCompletedAt": "2026-09-04T03:59:24.230Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:59:39.135Z|2026-09-04T03:59:46.830Z|2026-09-04T03:59:46.830Z",
+      "hfWindowFrom": "2026-09-04T03:59:39.135Z",
+      "hfWindowTo": "2026-09-04T03:59:46.830Z",
+      "hfActualQueryTo": "2026-09-04T03:59:46.830Z",
+      "requestStartedAt": "2026-09-04T03:59:46.830Z",
+      "requestCompletedAt": "2026-09-04T03:59:47.117Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T03:59:56.419Z|2026-09-04T04:00:04.271Z|2026-09-04T04:00:04.271Z",
+      "hfWindowFrom": "2026-09-04T03:59:56.419Z",
+      "hfWindowTo": "2026-09-04T04:00:04.271Z",
+      "hfActualQueryTo": "2026-09-04T04:00:04.271Z",
+      "requestStartedAt": "2026-09-04T04:00:04.271Z",
+      "requestCompletedAt": "2026-09-04T04:00:04.669Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:00:02.271Z|2026-09-04T04:00:10.728Z|2026-09-04T04:00:10.728Z",
+      "hfWindowFrom": "2026-09-04T04:00:02.271Z",
+      "hfWindowTo": "2026-09-04T04:00:10.728Z",
+      "hfActualQueryTo": "2026-09-04T04:00:10.728Z",
+      "requestStartedAt": "2026-09-04T04:00:10.728Z",
+      "requestCompletedAt": "2026-09-04T04:00:10.919Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:00:20.323Z|2026-09-04T04:00:28.692Z|2026-09-04T04:00:28.692Z",
+      "hfWindowFrom": "2026-09-04T04:00:20.323Z",
+      "hfWindowTo": "2026-09-04T04:00:28.692Z",
+      "hfActualQueryTo": "2026-09-04T04:00:28.692Z",
+      "requestStartedAt": "2026-09-04T04:00:28.692Z",
+      "requestCompletedAt": "2026-09-04T04:00:28.989Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:00:44.415Z|2026-09-04T04:00:52.345Z|2026-09-04T04:00:52.345Z",
+      "hfWindowFrom": "2026-09-04T04:00:44.415Z",
+      "hfWindowTo": "2026-09-04T04:00:52.345Z",
+      "hfActualQueryTo": "2026-09-04T04:00:52.345Z",
+      "requestStartedAt": "2026-09-04T04:00:52.345Z",
+      "requestCompletedAt": "2026-09-04T04:00:52.544Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:01:07.874Z|2026-09-04T04:01:15.565Z|2026-09-04T04:01:15.566Z",
+      "hfWindowFrom": "2026-09-04T04:01:07.874Z",
+      "hfWindowTo": "2026-09-04T04:01:15.565Z",
+      "hfActualQueryTo": "2026-09-04T04:01:15.565Z",
+      "requestStartedAt": "2026-09-04T04:01:15.566Z",
+      "requestCompletedAt": "2026-09-04T04:01:15.757Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:00.001Z|2026-09-04T04:02:07.903Z|2026-09-04T04:02:07.903Z",
+      "hfWindowFrom": "2026-09-04T04:02:00.001Z",
+      "hfWindowTo": "2026-09-04T04:02:07.903Z",
+      "hfActualQueryTo": "2026-09-04T04:02:07.903Z",
+      "requestStartedAt": "2026-09-04T04:02:07.903Z",
+      "requestCompletedAt": "2026-09-04T04:02:08.095Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:05.903Z|2026-09-04T04:02:13.855Z|2026-09-04T04:02:13.855Z",
+      "hfWindowFrom": "2026-09-04T04:02:05.903Z",
+      "hfWindowTo": "2026-09-04T04:02:13.855Z",
+      "hfActualQueryTo": "2026-09-04T04:02:13.855Z",
+      "requestStartedAt": "2026-09-04T04:02:13.855Z",
+      "requestCompletedAt": "2026-09-04T04:02:14.035Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:11.855Z|2026-09-04T04:02:19.563Z|2026-09-04T04:02:19.563Z",
+      "hfWindowFrom": "2026-09-04T04:02:11.855Z",
+      "hfWindowTo": "2026-09-04T04:02:19.563Z",
+      "hfActualQueryTo": "2026-09-04T04:02:19.563Z",
+      "requestStartedAt": "2026-09-04T04:02:19.563Z",
+      "requestCompletedAt": "2026-09-04T04:02:19.737Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:17.563Z|2026-09-04T04:02:25.213Z|2026-09-04T04:02:25.213Z",
+      "hfWindowFrom": "2026-09-04T04:02:17.563Z",
+      "hfWindowTo": "2026-09-04T04:02:25.213Z",
+      "hfActualQueryTo": "2026-09-04T04:02:25.213Z",
+      "requestStartedAt": "2026-09-04T04:02:25.213Z",
+      "requestCompletedAt": "2026-09-04T04:02:25.614Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:23.213Z|2026-09-04T04:02:31.145Z|2026-09-04T04:02:31.145Z",
+      "hfWindowFrom": "2026-09-04T04:02:23.213Z",
+      "hfWindowTo": "2026-09-04T04:02:31.145Z",
+      "hfActualQueryTo": "2026-09-04T04:02:31.145Z",
+      "requestStartedAt": "2026-09-04T04:02:31.145Z",
+      "requestCompletedAt": "2026-09-04T04:02:31.368Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:35.070Z|2026-09-04T04:02:43.081Z|2026-09-04T04:02:43.081Z",
+      "hfWindowFrom": "2026-09-04T04:02:35.070Z",
+      "hfWindowTo": "2026-09-04T04:02:43.081Z",
+      "hfActualQueryTo": "2026-09-04T04:02:43.081Z",
+      "requestStartedAt": "2026-09-04T04:02:43.081Z",
+      "requestCompletedAt": "2026-09-04T04:02:43.268Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:46.922Z|2026-09-04T04:02:54.623Z|2026-09-04T04:02:54.624Z",
+      "hfWindowFrom": "2026-09-04T04:02:46.922Z",
+      "hfWindowTo": "2026-09-04T04:02:54.623Z",
+      "hfActualQueryTo": "2026-09-04T04:02:54.623Z",
+      "requestStartedAt": "2026-09-04T04:02:54.624Z",
+      "requestCompletedAt": "2026-09-04T04:02:54.813Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:02:52.623Z|2026-09-04T04:03:00.466Z|2026-09-04T04:03:00.466Z",
+      "hfWindowFrom": "2026-09-04T04:02:52.623Z",
+      "hfWindowTo": "2026-09-04T04:03:00.466Z",
+      "hfActualQueryTo": "2026-09-04T04:03:00.466Z",
+      "requestStartedAt": "2026-09-04T04:03:00.466Z",
+      "requestCompletedAt": "2026-09-04T04:03:00.646Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:03:09.863Z|2026-09-04T04:03:17.558Z|2026-09-04T04:03:17.558Z",
+      "hfWindowFrom": "2026-09-04T04:03:09.863Z",
+      "hfWindowTo": "2026-09-04T04:03:17.558Z",
+      "hfActualQueryTo": "2026-09-04T04:03:17.558Z",
+      "requestStartedAt": "2026-09-04T04:03:17.558Z",
+      "requestCompletedAt": "2026-09-04T04:03:17.816Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "powertrainCombustionEngineTPS",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    },
+    {
+      "windowId": "2026-09-04T04:03:45.299Z|2026-09-04T04:03:52.952Z|2026-09-04T04:03:52.952Z",
+      "hfWindowFrom": "2026-09-04T04:03:45.299Z",
+      "hfWindowTo": "2026-09-04T04:03:52.952Z",
+      "hfActualQueryTo": "2026-09-04T04:03:52.952Z",
+      "requestStartedAt": "2026-09-04T04:03:52.952Z",
+      "requestCompletedAt": "2026-09-04T04:03:53.146Z",
+      "requestedInterval": "1s",
+      "requestedAggregation": "AVG",
+      "providerFieldsObserved": [
+        "obdEngineLoad",
+        "obdThrottlePosition",
+        "powertrainCombustionEngineSpeed",
+        "speed"
+      ],
+      "hasSpeedBucket": true,
+      "captureCycleId": null,
+      "requestCorrelationId": null
+    }
+  ],
+  "perWindowReplay": [
+    {
+      "windowId": "2026-09-04T03:37:39.122Z|2026-09-04T03:37:47.647Z|2026-09-04T03:37:47.647Z",
+      "hfWindowFrom": "2026-09-04T03:37:39.122Z",
+      "hfWindowTo": "2026-09-04T03:37:47.647Z",
+      "hfActualQueryTo": "2026-09-04T03:37:47.647Z",
+      "requestStartedAt": "2026-09-04T03:37:47.647Z",
+      "requestCompletedAt": "2026-09-04T03:37:47.820Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:37:44.122Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:37:44.122Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:37:45.647Z|2026-09-04T03:37:53.293Z|2026-09-04T03:37:53.293Z",
+      "hfWindowFrom": "2026-09-04T03:37:45.647Z",
+      "hfWindowTo": "2026-09-04T03:37:53.293Z",
+      "hfActualQueryTo": "2026-09-04T03:37:53.293Z",
+      "requestStartedAt": "2026-09-04T03:37:53.293Z",
+      "requestCompletedAt": "2026-09-04T03:37:53.721Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:37:48.647Z",
+        "2026-09-04T03:37:49.647Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:37:48.647Z",
+        "2026-09-04T03:37:49.647Z",
+        "2026-09-04T03:37:51.647Z",
+        "2026-09-04T03:37:52.647Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:37:51.647Z",
+        "2026-09-04T03:37:52.647Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:37:51.293Z|2026-09-04T03:37:59.416Z|2026-09-04T03:37:59.416Z",
+      "hfWindowFrom": "2026-09-04T03:37:51.293Z",
+      "hfWindowTo": "2026-09-04T03:37:59.416Z",
+      "hfActualQueryTo": "2026-09-04T03:37:59.416Z",
+      "requestStartedAt": "2026-09-04T03:37:59.416Z",
+      "requestCompletedAt": "2026-09-04T03:37:59.608Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:37:51.293Z",
+        "2026-09-04T03:37:52.293Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:37:51.293Z",
+        "2026-09-04T03:37:52.293Z",
+        "2026-09-04T03:37:56.293Z",
+        "2026-09-04T03:37:58.293Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:37:56.293Z",
+        "2026-09-04T03:37:58.293Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:37:57.416Z|2026-09-04T03:38:05.110Z|2026-09-04T03:38:05.110Z",
+      "hfWindowFrom": "2026-09-04T03:37:57.416Z",
+      "hfWindowTo": "2026-09-04T03:38:05.110Z",
+      "hfActualQueryTo": "2026-09-04T03:38:05.110Z",
+      "requestStartedAt": "2026-09-04T03:38:05.110Z",
+      "requestCompletedAt": "2026-09-04T03:38:05.308Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:37:58.416Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:37:58.416Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:38:03.110Z|2026-09-04T03:38:10.904Z|2026-09-04T03:38:10.904Z",
+      "hfWindowFrom": "2026-09-04T03:38:03.110Z",
+      "hfWindowTo": "2026-09-04T03:38:10.904Z",
+      "hfActualQueryTo": "2026-09-04T03:38:10.904Z",
+      "requestStartedAt": "2026-09-04T03:38:10.904Z",
+      "requestCompletedAt": "2026-09-04T03:38:11.224Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:38:05.110Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:38:05.110Z",
+        "2026-09-04T03:38:06.110Z",
+        "2026-09-04T03:38:09.110Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:38:06.110Z",
+        "2026-09-04T03:38:09.110Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:38:08.904Z|2026-09-04T03:38:16.723Z|2026-09-04T03:38:16.723Z",
+      "hfWindowFrom": "2026-09-04T03:38:08.904Z",
+      "hfWindowTo": "2026-09-04T03:38:16.723Z",
+      "hfActualQueryTo": "2026-09-04T03:38:16.723Z",
+      "requestStartedAt": "2026-09-04T03:38:16.723Z",
+      "requestCompletedAt": "2026-09-04T03:38:17.130Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:38:09.904Z",
+        "2026-09-04T03:38:11.904Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:38:09.904Z",
+        "2026-09-04T03:38:11.904Z",
+        "2026-09-04T03:38:13.904Z",
+        "2026-09-04T03:38:15.904Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:38:13.904Z",
+        "2026-09-04T03:38:15.904Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:38:14.723Z|2026-09-04T03:38:23.081Z|2026-09-04T03:38:23.081Z",
+      "hfWindowFrom": "2026-09-04T03:38:14.723Z",
+      "hfWindowTo": "2026-09-04T03:38:23.081Z",
+      "hfActualQueryTo": "2026-09-04T03:38:23.081Z",
+      "requestStartedAt": "2026-09-04T03:38:23.081Z",
+      "requestCompletedAt": "2026-09-04T03:38:23.281Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:38:15.723Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:38:15.723Z",
+        "2026-09-04T03:38:19.723Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:38:19.723Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:38:32.640Z|2026-09-04T03:38:40.359Z|2026-09-04T03:38:40.359Z",
+      "hfWindowFrom": "2026-09-04T03:38:32.640Z",
+      "hfWindowTo": "2026-09-04T03:38:40.359Z",
+      "hfActualQueryTo": "2026-09-04T03:38:40.359Z",
+      "requestStartedAt": "2026-09-04T03:38:40.359Z",
+      "requestCompletedAt": "2026-09-04T03:38:40.544Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:38:34.640Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:38:34.640Z",
+        "2026-09-04T03:38:37.640Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:38:37.640Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:38:44.395Z|2026-09-04T03:38:52.265Z|2026-09-04T03:38:52.265Z",
+      "hfWindowFrom": "2026-09-04T03:38:44.395Z",
+      "hfWindowTo": "2026-09-04T03:38:52.265Z",
+      "hfActualQueryTo": "2026-09-04T03:38:52.265Z",
+      "requestStartedAt": "2026-09-04T03:38:52.265Z",
+      "requestCompletedAt": "2026-09-04T03:38:52.576Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:38:44.395Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:38:44.395Z",
+        "2026-09-04T03:38:46.395Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:38:46.395Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:39:18.966Z|2026-09-04T03:39:26.686Z|2026-09-04T03:39:26.686Z",
+      "hfWindowFrom": "2026-09-04T03:39:18.966Z",
+      "hfWindowTo": "2026-09-04T03:39:26.686Z",
+      "hfActualQueryTo": "2026-09-04T03:39:26.686Z",
+      "requestStartedAt": "2026-09-04T03:39:26.686Z",
+      "requestCompletedAt": "2026-09-04T03:39:26.886Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:39:19.966Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:39:19.966Z",
+        "2026-09-04T03:39:22.966Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:39:22.966Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:39:30.620Z|2026-09-04T03:39:38.352Z|2026-09-04T03:39:38.352Z",
+      "hfWindowFrom": "2026-09-04T03:39:30.620Z",
+      "hfWindowTo": "2026-09-04T03:39:38.352Z",
+      "hfActualQueryTo": "2026-09-04T03:39:38.352Z",
+      "requestStartedAt": "2026-09-04T03:39:38.352Z",
+      "requestCompletedAt": "2026-09-04T03:39:38.531Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:39:30.620Z",
+        "2026-09-04T03:39:32.620Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:39:30.620Z",
+        "2026-09-04T03:39:32.620Z",
+        "2026-09-04T03:39:35.620Z",
+        "2026-09-04T03:39:37.620Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:39:35.620Z",
+        "2026-09-04T03:39:37.620Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:39:36.352Z|2026-09-04T03:39:43.937Z|2026-09-04T03:39:43.937Z",
+      "hfWindowFrom": "2026-09-04T03:39:36.352Z",
+      "hfWindowTo": "2026-09-04T03:39:43.937Z",
+      "hfActualQueryTo": "2026-09-04T03:39:43.937Z",
+      "requestStartedAt": "2026-09-04T03:39:43.937Z",
+      "requestCompletedAt": "2026-09-04T03:39:44.121Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:39:37.352Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:39:37.352Z",
+        "2026-09-04T03:39:39.352Z",
+        "2026-09-04T03:39:40.352Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:39:39.352Z",
+        "2026-09-04T03:39:40.352Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:39:41.937Z|2026-09-04T03:39:49.625Z|2026-09-04T03:39:49.625Z",
+      "hfWindowFrom": "2026-09-04T03:39:41.937Z",
+      "hfWindowTo": "2026-09-04T03:39:49.625Z",
+      "hfActualQueryTo": "2026-09-04T03:39:49.625Z",
+      "requestStartedAt": "2026-09-04T03:39:49.625Z",
+      "requestCompletedAt": "2026-09-04T03:39:49.810Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:39:43.937Z",
+        "2026-09-04T03:39:44.937Z",
+        "2026-09-04T03:39:45.937Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:39:43.937Z",
+        "2026-09-04T03:39:44.937Z",
+        "2026-09-04T03:39:45.937Z",
+        "2026-09-04T03:39:47.937Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:39:47.937Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:39:47.625Z|2026-09-04T03:39:55.340Z|2026-09-04T03:39:55.340Z",
+      "hfWindowFrom": "2026-09-04T03:39:47.625Z",
+      "hfWindowTo": "2026-09-04T03:39:55.340Z",
+      "hfActualQueryTo": "2026-09-04T03:39:55.340Z",
+      "requestStartedAt": "2026-09-04T03:39:55.340Z",
+      "requestCompletedAt": "2026-09-04T03:39:55.580Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:39:47.625Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:39:47.625Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:40:39.908Z|2026-09-04T03:40:48.124Z|2026-09-04T03:40:48.124Z",
+      "hfWindowFrom": "2026-09-04T03:40:39.908Z",
+      "hfWindowTo": "2026-09-04T03:40:48.124Z",
+      "hfActualQueryTo": "2026-09-04T03:40:48.124Z",
+      "requestStartedAt": "2026-09-04T03:40:48.124Z",
+      "requestCompletedAt": "2026-09-04T03:40:48.318Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:40:39.908Z",
+        "2026-09-04T03:40:41.908Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:40:39.908Z",
+        "2026-09-04T03:40:41.908Z",
+        "2026-09-04T03:40:44.908Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:40:44.908Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:40:51.884Z|2026-09-04T03:40:59.796Z|2026-09-04T03:40:59.796Z",
+      "hfWindowFrom": "2026-09-04T03:40:51.884Z",
+      "hfWindowTo": "2026-09-04T03:40:59.796Z",
+      "hfActualQueryTo": "2026-09-04T03:40:59.796Z",
+      "requestStartedAt": "2026-09-04T03:40:59.796Z",
+      "requestCompletedAt": "2026-09-04T03:40:59.996Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:40:54.884Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:40:54.884Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:41:26.544Z|2026-09-04T03:41:34.597Z|2026-09-04T03:41:34.597Z",
+      "hfWindowFrom": "2026-09-04T03:41:26.544Z",
+      "hfWindowTo": "2026-09-04T03:41:34.597Z",
+      "hfActualQueryTo": "2026-09-04T03:41:34.597Z",
+      "requestStartedAt": "2026-09-04T03:41:34.597Z",
+      "requestCompletedAt": "2026-09-04T03:41:34.782Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:41:27.544Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:41:27.544Z",
+        "2026-09-04T03:41:30.544Z",
+        "2026-09-04T03:41:31.544Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:41:30.544Z",
+        "2026-09-04T03:41:31.544Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:42:07.311Z|2026-09-04T03:42:15.233Z|2026-09-04T03:42:15.233Z",
+      "hfWindowFrom": "2026-09-04T03:42:07.311Z",
+      "hfWindowTo": "2026-09-04T03:42:15.233Z",
+      "hfActualQueryTo": "2026-09-04T03:42:15.233Z",
+      "requestStartedAt": "2026-09-04T03:42:15.233Z",
+      "requestCompletedAt": "2026-09-04T03:42:15.425Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:42:09.311Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:42:09.311Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:42:25.018Z|2026-09-04T03:42:32.704Z|2026-09-04T03:42:32.704Z",
+      "hfWindowFrom": "2026-09-04T03:42:25.018Z",
+      "hfWindowTo": "2026-09-04T03:42:32.704Z",
+      "hfActualQueryTo": "2026-09-04T03:42:32.704Z",
+      "requestStartedAt": "2026-09-04T03:42:32.704Z",
+      "requestCompletedAt": "2026-09-04T03:42:32.911Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:42:27.018Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:42:27.018Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:42:53.694Z|2026-09-04T03:43:01.611Z|2026-09-04T03:43:01.611Z",
+      "hfWindowFrom": "2026-09-04T03:42:53.694Z",
+      "hfWindowTo": "2026-09-04T03:43:01.611Z",
+      "hfActualQueryTo": "2026-09-04T03:43:01.611Z",
+      "requestStartedAt": "2026-09-04T03:43:01.611Z",
+      "requestCompletedAt": "2026-09-04T03:43:01.794Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:42:57.694Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:42:57.694Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:43:05.682Z|2026-09-04T03:43:13.591Z|2026-09-04T03:43:13.591Z",
+      "hfWindowFrom": "2026-09-04T03:43:05.682Z",
+      "hfWindowTo": "2026-09-04T03:43:13.591Z",
+      "hfActualQueryTo": "2026-09-04T03:43:13.591Z",
+      "requestStartedAt": "2026-09-04T03:43:13.591Z",
+      "requestCompletedAt": "2026-09-04T03:43:13.792Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:43:06.682Z",
+        "2026-09-04T03:43:08.682Z",
+        "2026-09-04T03:43:09.682Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:43:06.682Z",
+        "2026-09-04T03:43:08.682Z",
+        "2026-09-04T03:43:09.682Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:43:23.051Z|2026-09-04T03:43:30.818Z|2026-09-04T03:43:30.818Z",
+      "hfWindowFrom": "2026-09-04T03:43:23.051Z",
+      "hfWindowTo": "2026-09-04T03:43:30.818Z",
+      "hfActualQueryTo": "2026-09-04T03:43:30.818Z",
+      "requestStartedAt": "2026-09-04T03:43:30.818Z",
+      "requestCompletedAt": "2026-09-04T03:43:31.018Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:43:23.051Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:43:23.051Z",
+        "2026-09-04T03:43:27.051Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:43:27.051Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:43:34.723Z|2026-09-04T03:43:42.444Z|2026-09-04T03:43:42.444Z",
+      "hfWindowFrom": "2026-09-04T03:43:34.723Z",
+      "hfWindowTo": "2026-09-04T03:43:42.444Z",
+      "hfActualQueryTo": "2026-09-04T03:43:42.444Z",
+      "requestStartedAt": "2026-09-04T03:43:42.444Z",
+      "requestCompletedAt": "2026-09-04T03:43:42.647Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:43:34.723Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:43:34.723Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:43:46.205Z|2026-09-04T03:43:53.898Z|2026-09-04T03:43:53.898Z",
+      "hfWindowFrom": "2026-09-04T03:43:46.205Z",
+      "hfWindowTo": "2026-09-04T03:43:53.898Z",
+      "hfActualQueryTo": "2026-09-04T03:43:53.898Z",
+      "requestStartedAt": "2026-09-04T03:43:53.898Z",
+      "requestCompletedAt": "2026-09-04T03:43:54.085Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 5,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:43:48.205Z",
+        "2026-09-04T03:43:49.205Z",
+        "2026-09-04T03:43:50.205Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:43:48.205Z",
+        "2026-09-04T03:43:49.205Z",
+        "2026-09-04T03:43:50.205Z",
+        "2026-09-04T03:43:51.205Z",
+        "2026-09-04T03:43:52.205Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:43:51.205Z",
+        "2026-09-04T03:43:52.205Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:43:51.898Z|2026-09-04T03:43:59.631Z|2026-09-04T03:43:59.631Z",
+      "hfWindowFrom": "2026-09-04T03:43:51.898Z",
+      "hfWindowTo": "2026-09-04T03:43:59.631Z",
+      "hfActualQueryTo": "2026-09-04T03:43:59.631Z",
+      "requestStartedAt": "2026-09-04T03:43:59.631Z",
+      "requestCompletedAt": "2026-09-04T03:43:59.816Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:43:51.898Z",
+        "2026-09-04T03:43:52.898Z",
+        "2026-09-04T03:43:53.898Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:43:51.898Z",
+        "2026-09-04T03:43:52.898Z",
+        "2026-09-04T03:43:53.898Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:47:50.768Z|2026-09-04T03:47:58.691Z|2026-09-04T03:47:58.691Z",
+      "hfWindowFrom": "2026-09-04T03:47:50.768Z",
+      "hfWindowTo": "2026-09-04T03:47:58.691Z",
+      "hfActualQueryTo": "2026-09-04T03:47:58.691Z",
+      "requestStartedAt": "2026-09-04T03:47:58.691Z",
+      "requestCompletedAt": "2026-09-04T03:47:58.929Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:47:51.768Z",
+        "2026-09-04T03:47:52.768Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:47:51.768Z",
+        "2026-09-04T03:47:52.768Z",
+        "2026-09-04T03:47:55.768Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:47:55.768Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:48:08.167Z|2026-09-04T03:48:16.005Z|2026-09-04T03:48:16.005Z",
+      "hfWindowFrom": "2026-09-04T03:48:08.167Z",
+      "hfWindowTo": "2026-09-04T03:48:16.005Z",
+      "hfActualQueryTo": "2026-09-04T03:48:16.005Z",
+      "requestStartedAt": "2026-09-04T03:48:16.005Z",
+      "requestCompletedAt": "2026-09-04T03:48:16.215Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:48:09.167Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:48:09.167Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:48:37.165Z|2026-09-04T03:48:44.785Z|2026-09-04T03:48:44.785Z",
+      "hfWindowFrom": "2026-09-04T03:48:37.165Z",
+      "hfWindowTo": "2026-09-04T03:48:44.785Z",
+      "hfActualQueryTo": "2026-09-04T03:48:44.785Z",
+      "requestStartedAt": "2026-09-04T03:48:44.785Z",
+      "requestCompletedAt": "2026-09-04T03:48:44.974Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:48:38.165Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:48:38.165Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:48:54.296Z|2026-09-04T03:49:01.977Z|2026-09-04T03:49:01.977Z",
+      "hfWindowFrom": "2026-09-04T03:48:54.296Z",
+      "hfWindowTo": "2026-09-04T03:49:01.977Z",
+      "hfActualQueryTo": "2026-09-04T03:49:01.977Z",
+      "requestStartedAt": "2026-09-04T03:49:01.977Z",
+      "requestCompletedAt": "2026-09-04T03:49:02.205Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:48:55.296Z",
+        "2026-09-04T03:48:57.296Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:48:55.296Z",
+        "2026-09-04T03:48:57.296Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:49:23.176Z|2026-09-04T03:49:31.124Z|2026-09-04T03:49:31.124Z",
+      "hfWindowFrom": "2026-09-04T03:49:23.176Z",
+      "hfWindowTo": "2026-09-04T03:49:31.124Z",
+      "hfActualQueryTo": "2026-09-04T03:49:31.124Z",
+      "requestStartedAt": "2026-09-04T03:49:31.124Z",
+      "requestCompletedAt": "2026-09-04T03:49:31.317Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:49:24.176Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:49:24.176Z",
+        "2026-09-04T03:49:28.176Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:49:28.176Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:49:29.124Z|2026-09-04T03:49:36.975Z|2026-09-04T03:49:36.975Z",
+      "hfWindowFrom": "2026-09-04T03:49:29.124Z",
+      "hfWindowTo": "2026-09-04T03:49:36.975Z",
+      "hfActualQueryTo": "2026-09-04T03:49:36.975Z",
+      "requestStartedAt": "2026-09-04T03:49:36.975Z",
+      "requestCompletedAt": "2026-09-04T03:49:37.406Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:49:31.124Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:49:31.124Z",
+        "2026-09-04T03:49:33.124Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:49:33.124Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:49:52.619Z|2026-09-04T03:50:00.873Z|2026-09-04T03:50:00.873Z",
+      "hfWindowFrom": "2026-09-04T03:49:52.619Z",
+      "hfWindowTo": "2026-09-04T03:50:00.873Z",
+      "hfActualQueryTo": "2026-09-04T03:50:00.873Z",
+      "requestStartedAt": "2026-09-04T03:50:00.873Z",
+      "requestCompletedAt": "2026-09-04T03:50:01.078Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:49:53.619Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:49:53.619Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:50:10.276Z|2026-09-04T03:50:17.963Z|2026-09-04T03:50:17.964Z",
+      "hfWindowFrom": "2026-09-04T03:50:10.276Z",
+      "hfWindowTo": "2026-09-04T03:50:17.963Z",
+      "hfActualQueryTo": "2026-09-04T03:50:17.963Z",
+      "requestStartedAt": "2026-09-04T03:50:17.964Z",
+      "requestCompletedAt": "2026-09-04T03:50:18.161Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:50:12.276Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:50:12.276Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:50:39.293Z|2026-09-04T03:50:47.440Z|2026-09-04T03:50:47.440Z",
+      "hfWindowFrom": "2026-09-04T03:50:39.293Z",
+      "hfWindowTo": "2026-09-04T03:50:47.440Z",
+      "hfActualQueryTo": "2026-09-04T03:50:47.440Z",
+      "requestStartedAt": "2026-09-04T03:50:47.440Z",
+      "requestCompletedAt": "2026-09-04T03:50:47.615Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:50:41.293Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:50:41.293Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:50:51.168Z|2026-09-04T03:50:58.934Z|2026-09-04T03:50:58.934Z",
+      "hfWindowFrom": "2026-09-04T03:50:51.168Z",
+      "hfWindowTo": "2026-09-04T03:50:58.934Z",
+      "hfActualQueryTo": "2026-09-04T03:50:58.934Z",
+      "requestStartedAt": "2026-09-04T03:50:58.934Z",
+      "requestCompletedAt": "2026-09-04T03:50:59.136Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:50:53.168Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:50:53.168Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:51:43.476Z|2026-09-04T03:51:51.396Z|2026-09-04T03:51:51.396Z",
+      "hfWindowFrom": "2026-09-04T03:51:43.476Z",
+      "hfWindowTo": "2026-09-04T03:51:51.396Z",
+      "hfActualQueryTo": "2026-09-04T03:51:51.396Z",
+      "requestStartedAt": "2026-09-04T03:51:51.396Z",
+      "requestCompletedAt": "2026-09-04T03:51:51.582Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:51:44.476Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:51:44.476Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:51:55.120Z|2026-09-04T03:52:02.934Z|2026-09-04T03:52:02.934Z",
+      "hfWindowFrom": "2026-09-04T03:51:55.120Z",
+      "hfWindowTo": "2026-09-04T03:52:02.934Z",
+      "hfActualQueryTo": "2026-09-04T03:52:02.934Z",
+      "requestStartedAt": "2026-09-04T03:52:02.934Z",
+      "requestCompletedAt": "2026-09-04T03:52:03.130Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:51:55.120Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:51:55.120Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:52:35.429Z|2026-09-04T03:52:43.154Z|2026-09-04T03:52:43.154Z",
+      "hfWindowFrom": "2026-09-04T03:52:35.429Z",
+      "hfWindowTo": "2026-09-04T03:52:43.154Z",
+      "hfActualQueryTo": "2026-09-04T03:52:43.154Z",
+      "requestStartedAt": "2026-09-04T03:52:43.154Z",
+      "requestCompletedAt": "2026-09-04T03:52:43.365Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:52:36.429Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:52:36.429Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:53:11.135Z|2026-09-04T03:53:18.938Z|2026-09-04T03:53:18.938Z",
+      "hfWindowFrom": "2026-09-04T03:53:11.135Z",
+      "hfWindowTo": "2026-09-04T03:53:18.938Z",
+      "hfActualQueryTo": "2026-09-04T03:53:18.938Z",
+      "requestStartedAt": "2026-09-04T03:53:18.938Z",
+      "requestCompletedAt": "2026-09-04T03:53:19.124Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:53:11.135Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:53:11.135Z",
+        "2026-09-04T03:53:13.135Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:53:13.135Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:53:16.938Z|2026-09-04T03:53:24.603Z|2026-09-04T03:53:24.603Z",
+      "hfWindowFrom": "2026-09-04T03:53:16.938Z",
+      "hfWindowTo": "2026-09-04T03:53:24.603Z",
+      "hfActualQueryTo": "2026-09-04T03:53:24.603Z",
+      "requestStartedAt": "2026-09-04T03:53:24.603Z",
+      "requestCompletedAt": "2026-09-04T03:53:24.789Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:53:18.938Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:53:18.938Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:53:28.829Z|2026-09-04T03:53:36.556Z|2026-09-04T03:53:36.556Z",
+      "hfWindowFrom": "2026-09-04T03:53:28.829Z",
+      "hfWindowTo": "2026-09-04T03:53:36.556Z",
+      "hfActualQueryTo": "2026-09-04T03:53:36.556Z",
+      "requestStartedAt": "2026-09-04T03:53:36.556Z",
+      "requestCompletedAt": "2026-09-04T03:53:36.759Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:53:31.829Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:53:31.829Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:53:34.556Z|2026-09-04T03:53:42.296Z|2026-09-04T03:53:42.296Z",
+      "hfWindowFrom": "2026-09-04T03:53:34.556Z",
+      "hfWindowTo": "2026-09-04T03:53:42.296Z",
+      "hfActualQueryTo": "2026-09-04T03:53:42.296Z",
+      "requestStartedAt": "2026-09-04T03:53:42.296Z",
+      "requestCompletedAt": "2026-09-04T03:53:42.478Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:53:37.556Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:53:37.556Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:53:46.293Z|2026-09-04T03:53:53.924Z|2026-09-04T03:53:53.924Z",
+      "hfWindowFrom": "2026-09-04T03:53:46.293Z",
+      "hfWindowTo": "2026-09-04T03:53:53.924Z",
+      "hfActualQueryTo": "2026-09-04T03:53:53.924Z",
+      "requestStartedAt": "2026-09-04T03:53:53.924Z",
+      "requestCompletedAt": "2026-09-04T03:53:54.136Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:53:49.293Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:53:49.293Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:54:15.333Z|2026-09-04T03:54:22.981Z|2026-09-04T03:54:22.981Z",
+      "hfWindowFrom": "2026-09-04T03:54:15.333Z",
+      "hfWindowTo": "2026-09-04T03:54:22.981Z",
+      "hfActualQueryTo": "2026-09-04T03:54:22.981Z",
+      "requestStartedAt": "2026-09-04T03:54:22.981Z",
+      "requestCompletedAt": "2026-09-04T03:54:23.153Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:54:15.333Z",
+        "2026-09-04T03:54:16.333Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:54:15.333Z",
+        "2026-09-04T03:54:16.333Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:54:26.629Z|2026-09-04T03:54:34.247Z|2026-09-04T03:54:34.247Z",
+      "hfWindowFrom": "2026-09-04T03:54:26.629Z",
+      "hfWindowTo": "2026-09-04T03:54:34.247Z",
+      "hfActualQueryTo": "2026-09-04T03:54:34.247Z",
+      "requestStartedAt": "2026-09-04T03:54:34.247Z",
+      "requestCompletedAt": "2026-09-04T03:54:34.655Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:54:28.629Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:54:28.629Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:54:32.247Z|2026-09-04T03:54:40.323Z|2026-09-04T03:54:40.323Z",
+      "hfWindowFrom": "2026-09-04T03:54:32.247Z",
+      "hfWindowTo": "2026-09-04T03:54:40.323Z",
+      "hfActualQueryTo": "2026-09-04T03:54:40.323Z",
+      "requestStartedAt": "2026-09-04T03:54:40.323Z",
+      "requestCompletedAt": "2026-09-04T03:54:40.505Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:54:35.247Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:54:35.247Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:55:07.623Z|2026-09-04T03:55:15.754Z|2026-09-04T03:55:15.754Z",
+      "hfWindowFrom": "2026-09-04T03:55:07.623Z",
+      "hfWindowTo": "2026-09-04T03:55:15.754Z",
+      "hfActualQueryTo": "2026-09-04T03:55:15.754Z",
+      "requestStartedAt": "2026-09-04T03:55:15.754Z",
+      "requestCompletedAt": "2026-09-04T03:55:15.952Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:55:07.623Z",
+        "2026-09-04T03:55:09.623Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:55:07.623Z",
+        "2026-09-04T03:55:09.623Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:56:51.929Z|2026-09-04T03:56:59.837Z|2026-09-04T03:56:59.837Z",
+      "hfWindowFrom": "2026-09-04T03:56:51.929Z",
+      "hfWindowTo": "2026-09-04T03:56:59.837Z",
+      "hfActualQueryTo": "2026-09-04T03:56:59.837Z",
+      "requestStartedAt": "2026-09-04T03:56:59.837Z",
+      "requestCompletedAt": "2026-09-04T03:57:00.011Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:56:54.929Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:56:54.929Z",
+        "2026-09-04T03:56:56.929Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:56:56.929Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:56:57.837Z|2026-09-04T03:57:05.507Z|2026-09-04T03:57:05.507Z",
+      "hfWindowFrom": "2026-09-04T03:56:57.837Z",
+      "hfWindowTo": "2026-09-04T03:57:05.507Z",
+      "hfActualQueryTo": "2026-09-04T03:57:05.507Z",
+      "requestStartedAt": "2026-09-04T03:57:05.507Z",
+      "requestCompletedAt": "2026-09-04T03:57:05.683Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:56:59.837Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:56:59.837Z",
+        "2026-09-04T03:57:01.837Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:57:01.837Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:57:03.507Z|2026-09-04T03:57:11.976Z|2026-09-04T03:57:11.976Z",
+      "hfWindowFrom": "2026-09-04T03:57:03.507Z",
+      "hfWindowTo": "2026-09-04T03:57:11.976Z",
+      "hfActualQueryTo": "2026-09-04T03:57:11.976Z",
+      "requestStartedAt": "2026-09-04T03:57:11.976Z",
+      "requestCompletedAt": "2026-09-04T03:57:12.423Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:57:06.507Z",
+        "2026-09-04T03:57:07.507Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:57:06.507Z",
+        "2026-09-04T03:57:07.507Z",
+        "2026-09-04T03:57:09.507Z",
+        "2026-09-04T03:57:10.507Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:57:09.507Z",
+        "2026-09-04T03:57:10.507Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:57:09.976Z|2026-09-04T03:57:17.940Z|2026-09-04T03:57:17.940Z",
+      "hfWindowFrom": "2026-09-04T03:57:09.976Z",
+      "hfWindowTo": "2026-09-04T03:57:17.940Z",
+      "hfActualQueryTo": "2026-09-04T03:57:17.940Z",
+      "requestStartedAt": "2026-09-04T03:57:17.940Z",
+      "requestCompletedAt": "2026-09-04T03:57:18.122Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:57:09.976Z",
+        "2026-09-04T03:57:10.976Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:57:09.976Z",
+        "2026-09-04T03:57:10.976Z",
+        "2026-09-04T03:57:13.976Z",
+        "2026-09-04T03:57:15.976Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:57:13.976Z",
+        "2026-09-04T03:57:15.976Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:57:15.940Z|2026-09-04T03:57:23.568Z|2026-09-04T03:57:23.568Z",
+      "hfWindowFrom": "2026-09-04T03:57:15.940Z",
+      "hfWindowTo": "2026-09-04T03:57:23.568Z",
+      "hfActualQueryTo": "2026-09-04T03:57:23.568Z",
+      "requestStartedAt": "2026-09-04T03:57:23.568Z",
+      "requestCompletedAt": "2026-09-04T03:57:23.762Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:57:15.940Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:57:15.940Z",
+        "2026-09-04T03:57:19.940Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:57:19.940Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:57:44.685Z|2026-09-04T03:57:52.326Z|2026-09-04T03:57:52.327Z",
+      "hfWindowFrom": "2026-09-04T03:57:44.685Z",
+      "hfWindowTo": "2026-09-04T03:57:52.326Z",
+      "hfActualQueryTo": "2026-09-04T03:57:52.326Z",
+      "requestStartedAt": "2026-09-04T03:57:52.327Z",
+      "requestCompletedAt": "2026-09-04T03:57:52.513Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:57:44.685Z",
+        "2026-09-04T03:57:45.685Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:57:44.685Z",
+        "2026-09-04T03:57:45.685Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:58:18.787Z|2026-09-04T03:58:26.405Z|2026-09-04T03:58:26.406Z",
+      "hfWindowFrom": "2026-09-04T03:58:18.787Z",
+      "hfWindowTo": "2026-09-04T03:58:26.405Z",
+      "hfActualQueryTo": "2026-09-04T03:58:26.405Z",
+      "requestStartedAt": "2026-09-04T03:58:26.406Z",
+      "requestCompletedAt": "2026-09-04T03:58:26.591Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 3,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:58:20.787Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:58:20.787Z",
+        "2026-09-04T03:58:22.787Z",
+        "2026-09-04T03:58:23.787Z",
+        "2026-09-04T03:58:25.787Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:58:22.787Z",
+        "2026-09-04T03:58:23.787Z",
+        "2026-09-04T03:58:25.787Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:58:24.405Z|2026-09-04T03:58:32.230Z|2026-09-04T03:58:32.230Z",
+      "hfWindowFrom": "2026-09-04T03:58:24.405Z",
+      "hfWindowTo": "2026-09-04T03:58:32.230Z",
+      "hfActualQueryTo": "2026-09-04T03:58:32.230Z",
+      "requestStartedAt": "2026-09-04T03:58:32.230Z",
+      "requestCompletedAt": "2026-09-04T03:58:32.424Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:58:25.405Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:58:25.405Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:58:41.714Z|2026-09-04T03:58:49.691Z|2026-09-04T03:58:49.691Z",
+      "hfWindowFrom": "2026-09-04T03:58:41.714Z",
+      "hfWindowTo": "2026-09-04T03:58:49.691Z",
+      "hfActualQueryTo": "2026-09-04T03:58:49.691Z",
+      "requestStartedAt": "2026-09-04T03:58:49.691Z",
+      "requestCompletedAt": "2026-09-04T03:58:49.867Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:58:44.714Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:58:44.714Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:58:53.369Z|2026-09-04T03:59:01.053Z|2026-09-04T03:59:01.053Z",
+      "hfWindowFrom": "2026-09-04T03:58:53.369Z",
+      "hfWindowTo": "2026-09-04T03:59:01.053Z",
+      "hfActualQueryTo": "2026-09-04T03:59:01.053Z",
+      "requestStartedAt": "2026-09-04T03:59:01.053Z",
+      "requestCompletedAt": "2026-09-04T03:59:01.277Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:58:54.369Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:58:54.369Z",
+        "2026-09-04T03:58:58.369Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:58:58.369Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:59:04.823Z|2026-09-04T03:59:12.469Z|2026-09-04T03:59:12.469Z",
+      "hfWindowFrom": "2026-09-04T03:59:04.823Z",
+      "hfWindowTo": "2026-09-04T03:59:12.469Z",
+      "hfActualQueryTo": "2026-09-04T03:59:12.469Z",
+      "requestStartedAt": "2026-09-04T03:59:12.469Z",
+      "requestCompletedAt": "2026-09-04T03:59:12.653Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:59:05.823Z",
+        "2026-09-04T03:59:06.823Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:59:05.823Z",
+        "2026-09-04T03:59:06.823Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:59:16.382Z|2026-09-04T03:59:24.035Z|2026-09-04T03:59:24.035Z",
+      "hfWindowFrom": "2026-09-04T03:59:16.382Z",
+      "hfWindowTo": "2026-09-04T03:59:24.035Z",
+      "hfActualQueryTo": "2026-09-04T03:59:24.035Z",
+      "requestStartedAt": "2026-09-04T03:59:24.035Z",
+      "requestCompletedAt": "2026-09-04T03:59:24.230Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:59:17.382Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:59:17.382Z",
+        "2026-09-04T03:59:21.382Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T03:59:21.382Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:59:39.135Z|2026-09-04T03:59:46.830Z|2026-09-04T03:59:46.830Z",
+      "hfWindowFrom": "2026-09-04T03:59:39.135Z",
+      "hfWindowTo": "2026-09-04T03:59:46.830Z",
+      "hfActualQueryTo": "2026-09-04T03:59:46.830Z",
+      "requestStartedAt": "2026-09-04T03:59:46.830Z",
+      "requestCompletedAt": "2026-09-04T03:59:47.117Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:59:40.135Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:59:40.135Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T03:59:56.419Z|2026-09-04T04:00:04.271Z|2026-09-04T04:00:04.271Z",
+      "hfWindowFrom": "2026-09-04T03:59:56.419Z",
+      "hfWindowTo": "2026-09-04T04:00:04.271Z",
+      "hfActualQueryTo": "2026-09-04T04:00:04.271Z",
+      "requestStartedAt": "2026-09-04T04:00:04.271Z",
+      "requestCompletedAt": "2026-09-04T04:00:04.669Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 2,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T03:59:59.419Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T03:59:59.419Z",
+        "2026-09-04T04:00:01.419Z",
+        "2026-09-04T04:00:03.419Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:00:01.419Z",
+        "2026-09-04T04:00:03.419Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:00:02.271Z|2026-09-04T04:00:10.728Z|2026-09-04T04:00:10.728Z",
+      "hfWindowFrom": "2026-09-04T04:00:02.271Z",
+      "hfWindowTo": "2026-09-04T04:00:10.728Z",
+      "hfActualQueryTo": "2026-09-04T04:00:10.728Z",
+      "requestStartedAt": "2026-09-04T04:00:10.728Z",
+      "requestCompletedAt": "2026-09-04T04:00:10.919Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:00:03.271Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:00:03.271Z",
+        "2026-09-04T04:00:06.271Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:00:06.271Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:00:20.323Z|2026-09-04T04:00:28.692Z|2026-09-04T04:00:28.692Z",
+      "hfWindowFrom": "2026-09-04T04:00:20.323Z",
+      "hfWindowTo": "2026-09-04T04:00:28.692Z",
+      "hfActualQueryTo": "2026-09-04T04:00:28.692Z",
+      "requestStartedAt": "2026-09-04T04:00:28.692Z",
+      "requestCompletedAt": "2026-09-04T04:00:28.989Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:00:24.323Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:00:24.323Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:00:44.415Z|2026-09-04T04:00:52.345Z|2026-09-04T04:00:52.345Z",
+      "hfWindowFrom": "2026-09-04T04:00:44.415Z",
+      "hfWindowTo": "2026-09-04T04:00:52.345Z",
+      "hfActualQueryTo": "2026-09-04T04:00:52.345Z",
+      "requestStartedAt": "2026-09-04T04:00:52.345Z",
+      "requestCompletedAt": "2026-09-04T04:00:52.544Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:00:44.415Z",
+        "2026-09-04T04:00:47.415Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:00:44.415Z",
+        "2026-09-04T04:00:47.415Z",
+        "2026-09-04T04:00:49.415Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:00:49.415Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:01:07.874Z|2026-09-04T04:01:15.565Z|2026-09-04T04:01:15.566Z",
+      "hfWindowFrom": "2026-09-04T04:01:07.874Z",
+      "hfWindowTo": "2026-09-04T04:01:15.565Z",
+      "hfActualQueryTo": "2026-09-04T04:01:15.565Z",
+      "requestStartedAt": "2026-09-04T04:01:15.566Z",
+      "requestCompletedAt": "2026-09-04T04:01:15.757Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:01:07.874Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:01:07.874Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:00.001Z|2026-09-04T04:02:07.903Z|2026-09-04T04:02:07.903Z",
+      "hfWindowFrom": "2026-09-04T04:02:00.001Z",
+      "hfWindowTo": "2026-09-04T04:02:07.903Z",
+      "hfActualQueryTo": "2026-09-04T04:02:07.903Z",
+      "requestStartedAt": "2026-09-04T04:02:07.903Z",
+      "requestCompletedAt": "2026-09-04T04:02:08.095Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 3,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:00.001Z",
+        "2026-09-04T04:02:02.001Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:00.001Z",
+        "2026-09-04T04:02:02.001Z",
+        "2026-09-04T04:02:05.001Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:05.001Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:05.903Z|2026-09-04T04:02:13.855Z|2026-09-04T04:02:13.855Z",
+      "hfWindowFrom": "2026-09-04T04:02:05.903Z",
+      "hfWindowTo": "2026-09-04T04:02:13.855Z",
+      "hfActualQueryTo": "2026-09-04T04:02:13.855Z",
+      "requestStartedAt": "2026-09-04T04:02:13.855Z",
+      "requestCompletedAt": "2026-09-04T04:02:14.035Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 4,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:05.903Z",
+        "2026-09-04T04:02:07.903Z",
+        "2026-09-04T04:02:10.903Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:05.903Z",
+        "2026-09-04T04:02:07.903Z",
+        "2026-09-04T04:02:10.903Z",
+        "2026-09-04T04:02:11.903Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:11.903Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:11.855Z|2026-09-04T04:02:19.563Z|2026-09-04T04:02:19.563Z",
+      "hfWindowFrom": "2026-09-04T04:02:11.855Z",
+      "hfWindowTo": "2026-09-04T04:02:19.563Z",
+      "hfActualQueryTo": "2026-09-04T04:02:19.563Z",
+      "requestStartedAt": "2026-09-04T04:02:19.563Z",
+      "requestCompletedAt": "2026-09-04T04:02:19.737Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 5,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 3,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:11.855Z",
+        "2026-09-04T04:02:14.855Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:11.855Z",
+        "2026-09-04T04:02:14.855Z",
+        "2026-09-04T04:02:15.855Z",
+        "2026-09-04T04:02:17.855Z",
+        "2026-09-04T04:02:18.855Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:15.855Z",
+        "2026-09-04T04:02:17.855Z",
+        "2026-09-04T04:02:18.855Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:17.563Z|2026-09-04T04:02:25.213Z|2026-09-04T04:02:25.213Z",
+      "hfWindowFrom": "2026-09-04T04:02:17.563Z",
+      "hfWindowTo": "2026-09-04T04:02:25.213Z",
+      "hfActualQueryTo": "2026-09-04T04:02:25.213Z",
+      "requestStartedAt": "2026-09-04T04:02:25.213Z",
+      "requestCompletedAt": "2026-09-04T04:02:25.614Z",
+      "originalSpeedBucketCount": 3,
+      "replaySpeedBucketCount": 6,
+      "unchangedBucketCount": 3,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 3,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 3,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:17.563Z",
+        "2026-09-04T04:02:18.563Z",
+        "2026-09-04T04:02:19.563Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:17.563Z",
+        "2026-09-04T04:02:18.563Z",
+        "2026-09-04T04:02:19.563Z",
+        "2026-09-04T04:02:21.563Z",
+        "2026-09-04T04:02:22.563Z",
+        "2026-09-04T04:02:23.563Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:21.563Z",
+        "2026-09-04T04:02:22.563Z",
+        "2026-09-04T04:02:23.563Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:23.213Z|2026-09-04T04:02:31.145Z|2026-09-04T04:02:31.145Z",
+      "hfWindowFrom": "2026-09-04T04:02:23.213Z",
+      "hfWindowTo": "2026-09-04T04:02:31.145Z",
+      "hfActualQueryTo": "2026-09-04T04:02:31.145Z",
+      "requestStartedAt": "2026-09-04T04:02:31.145Z",
+      "requestCompletedAt": "2026-09-04T04:02:31.368Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:23.213Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:23.213Z",
+        "2026-09-04T04:02:28.213Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:28.213Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:35.070Z|2026-09-04T04:02:43.081Z|2026-09-04T04:02:43.081Z",
+      "hfWindowFrom": "2026-09-04T04:02:35.070Z",
+      "hfWindowTo": "2026-09-04T04:02:43.081Z",
+      "hfActualQueryTo": "2026-09-04T04:02:43.081Z",
+      "requestStartedAt": "2026-09-04T04:02:43.081Z",
+      "requestCompletedAt": "2026-09-04T04:02:43.268Z",
+      "originalSpeedBucketCount": 2,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 2,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 2,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:35.070Z",
+        "2026-09-04T04:02:36.070Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:35.070Z",
+        "2026-09-04T04:02:36.070Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:46.922Z|2026-09-04T04:02:54.623Z|2026-09-04T04:02:54.624Z",
+      "hfWindowFrom": "2026-09-04T04:02:46.922Z",
+      "hfWindowTo": "2026-09-04T04:02:54.623Z",
+      "hfActualQueryTo": "2026-09-04T04:02:54.623Z",
+      "requestStartedAt": "2026-09-04T04:02:54.624Z",
+      "requestCompletedAt": "2026-09-04T04:02:54.813Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 2,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 1,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:46.922Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:46.922Z",
+        "2026-09-04T04:02:51.922Z"
+      ],
+      "newReplayBucketTimestamps": [
+        "2026-09-04T04:02:51.922Z"
+      ],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:02:52.623Z|2026-09-04T04:03:00.466Z|2026-09-04T04:03:00.466Z",
+      "hfWindowFrom": "2026-09-04T04:02:52.623Z",
+      "hfWindowTo": "2026-09-04T04:03:00.466Z",
+      "hfActualQueryTo": "2026-09-04T04:03:00.466Z",
+      "requestStartedAt": "2026-09-04T04:03:00.466Z",
+      "requestCompletedAt": "2026-09-04T04:03:00.646Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:02:54.623Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:02:54.623Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:03:09.863Z|2026-09-04T04:03:17.558Z|2026-09-04T04:03:17.558Z",
+      "hfWindowFrom": "2026-09-04T04:03:09.863Z",
+      "hfWindowTo": "2026-09-04T04:03:17.558Z",
+      "hfActualQueryTo": "2026-09-04T04:03:17.558Z",
+      "requestStartedAt": "2026-09-04T04:03:17.558Z",
+      "requestCompletedAt": "2026-09-04T04:03:17.816Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:03:10.863Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:03:10.863Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    },
+    {
+      "windowId": "2026-09-04T04:03:45.299Z|2026-09-04T04:03:52.952Z|2026-09-04T04:03:52.952Z",
+      "hfWindowFrom": "2026-09-04T04:03:45.299Z",
+      "hfWindowTo": "2026-09-04T04:03:52.952Z",
+      "hfActualQueryTo": "2026-09-04T04:03:52.952Z",
+      "requestStartedAt": "2026-09-04T04:03:52.952Z",
+      "requestCompletedAt": "2026-09-04T04:03:53.146Z",
+      "originalSpeedBucketCount": 1,
+      "replaySpeedBucketCount": 1,
+      "unchangedBucketCount": 1,
+      "changedValueBucketCount": 0,
+      "newReplayBucketCount": 0,
+      "missingNowBucketCount": 0,
+      "exactIntersectionCount": 1,
+      "originalBucketTimestamps": [
+        "2026-09-04T04:03:46.299Z"
+      ],
+      "replayBucketTimestamps": [
+        "2026-09-04T04:03:46.299Z"
+      ],
+      "newReplayBucketTimestamps": [],
+      "missingNowBucketTimestamps": []
+    }
+  ],
+  "aggregate": {
+    "ORIGINAL_EXACT_WINDOW_SPEED_BUCKET_COUNT": 104,
+    "REPLAY_EXACT_WINDOW_SPEED_BUCKET_COUNT": 157,
+    "EXACT_BUCKET_INTERSECTION_COUNT": 104,
+    "NEW_REPLAY_BUCKET_COUNT": 53,
+    "MISSING_NOW_BUCKET_COUNT": 0,
+    "CHANGED_VALUE_BUCKET_COUNT": 0
+  },
+  "lateArrivalAnalysis": {
+    "differentialRowCount": 53,
+    "rows": [
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:37:51.647Z",
+        "bucketEnd": "2026-09-04T03:37:52.647Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:37:45.647Z",
+        "originalHfWindowTo": "2026-09-04T03:37:53.293Z",
+        "originalRequestStartedAt": "2026-09-04T03:37:53.293Z",
+        "originalRequestCompletedAt": "2026-09-04T03:37:53.721Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:37:51.293Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.074,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:37:52.647Z",
+        "bucketEnd": "2026-09-04T03:37:53.647Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:37:45.647Z",
+        "originalHfWindowTo": "2026-09-04T03:37:53.293Z",
+        "originalRequestStartedAt": "2026-09-04T03:37:53.293Z",
+        "originalRequestCompletedAt": "2026-09-04T03:37:53.721Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:37:51.293Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.074,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:37:56.293Z",
+        "bucketEnd": "2026-09-04T03:37:57.293Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:37:51.293Z",
+        "originalHfWindowTo": "2026-09-04T03:37:59.416Z",
+        "originalRequestStartedAt": "2026-09-04T03:37:59.416Z",
+        "originalRequestCompletedAt": "2026-09-04T03:37:59.608Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:37:57.416Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.315,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:37:58.293Z",
+        "bucketEnd": "2026-09-04T03:37:59.293Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:37:51.293Z",
+        "originalHfWindowTo": "2026-09-04T03:37:59.416Z",
+        "originalRequestStartedAt": "2026-09-04T03:37:59.416Z",
+        "originalRequestCompletedAt": "2026-09-04T03:37:59.608Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:37:57.416Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.315,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:06.110Z",
+        "bucketEnd": "2026-09-04T03:38:07.110Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:03.110Z",
+        "originalHfWindowTo": "2026-09-04T03:38:10.904Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:10.904Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:11.224Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:08.904Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 4.114,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:09.110Z",
+        "bucketEnd": "2026-09-04T03:38:10.110Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:03.110Z",
+        "originalHfWindowTo": "2026-09-04T03:38:10.904Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:10.904Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:11.224Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:08.904Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.114,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:13.904Z",
+        "bucketEnd": "2026-09-04T03:38:14.904Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:08.904Z",
+        "originalHfWindowTo": "2026-09-04T03:38:16.723Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:16.723Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:17.130Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:14.723Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.226,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:15.904Z",
+        "bucketEnd": "2026-09-04T03:38:16.904Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:08.904Z",
+        "originalHfWindowTo": "2026-09-04T03:38:16.723Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:16.723Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:17.130Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:14.723Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.226,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:19.723Z",
+        "bucketEnd": "2026-09-04T03:38:20.723Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:14.723Z",
+        "originalHfWindowTo": "2026-09-04T03:38:23.081Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:23.081Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:23.281Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:32.640Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.558,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:37.640Z",
+        "bucketEnd": "2026-09-04T03:38:38.640Z",
+        "avgValue": 3,
+        "originalHfWindowFrom": "2026-09-04T03:38:32.640Z",
+        "originalHfWindowTo": "2026-09-04T03:38:40.359Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:40.359Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:40.544Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:38:44.395Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.904,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:38:46.395Z",
+        "bucketEnd": "2026-09-04T03:38:47.395Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:38:44.395Z",
+        "originalHfWindowTo": "2026-09-04T03:38:52.265Z",
+        "originalRequestStartedAt": "2026-09-04T03:38:52.265Z",
+        "originalRequestCompletedAt": "2026-09-04T03:38:52.576Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:18.966Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 5.181,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:22.966Z",
+        "bucketEnd": "2026-09-04T03:39:23.966Z",
+        "avgValue": 22,
+        "originalHfWindowFrom": "2026-09-04T03:39:18.966Z",
+        "originalHfWindowTo": "2026-09-04T03:39:26.686Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:26.686Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:26.886Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:30.620Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.92,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:35.620Z",
+        "bucketEnd": "2026-09-04T03:39:36.620Z",
+        "avgValue": 13,
+        "originalHfWindowFrom": "2026-09-04T03:39:30.620Z",
+        "originalHfWindowTo": "2026-09-04T03:39:38.352Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:38.352Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:38.531Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:36.352Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.911,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:37.620Z",
+        "bucketEnd": "2026-09-04T03:39:38.620Z",
+        "avgValue": 20,
+        "originalHfWindowFrom": "2026-09-04T03:39:30.620Z",
+        "originalHfWindowTo": "2026-09-04T03:39:38.352Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:38.352Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:38.531Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:36.352Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "OPEN",
+        "availabilityLagLowerBoundSeconds": null,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:39.352Z",
+        "bucketEnd": "2026-09-04T03:39:40.352Z",
+        "avgValue": 38,
+        "originalHfWindowFrom": "2026-09-04T03:39:36.352Z",
+        "originalHfWindowTo": "2026-09-04T03:39:43.937Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:43.937Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:44.121Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:41.937Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.769,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:40.352Z",
+        "bucketEnd": "2026-09-04T03:39:41.352Z",
+        "avgValue": 39,
+        "originalHfWindowFrom": "2026-09-04T03:39:36.352Z",
+        "originalHfWindowTo": "2026-09-04T03:39:43.937Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:43.937Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:44.121Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:41.937Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.769,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:39:47.937Z",
+        "bucketEnd": "2026-09-04T03:39:48.937Z",
+        "avgValue": 21,
+        "originalHfWindowFrom": "2026-09-04T03:39:41.937Z",
+        "originalHfWindowTo": "2026-09-04T03:39:49.625Z",
+        "originalRequestStartedAt": "2026-09-04T03:39:49.625Z",
+        "originalRequestCompletedAt": "2026-09-04T03:39:49.810Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:39:47.625Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.873,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:40:44.908Z",
+        "bucketEnd": "2026-09-04T03:40:45.908Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:40:39.908Z",
+        "originalHfWindowTo": "2026-09-04T03:40:48.124Z",
+        "originalRequestStartedAt": "2026-09-04T03:40:48.124Z",
+        "originalRequestCompletedAt": "2026-09-04T03:40:48.318Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:40:51.884Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.41,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:41:30.544Z",
+        "bucketEnd": "2026-09-04T03:41:31.544Z",
+        "avgValue": 21,
+        "originalHfWindowFrom": "2026-09-04T03:41:26.544Z",
+        "originalHfWindowTo": "2026-09-04T03:41:34.597Z",
+        "originalRequestStartedAt": "2026-09-04T03:41:34.597Z",
+        "originalRequestCompletedAt": "2026-09-04T03:41:34.782Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:42:07.311Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.238,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:41:31.544Z",
+        "bucketEnd": "2026-09-04T03:41:32.544Z",
+        "avgValue": 51,
+        "originalHfWindowFrom": "2026-09-04T03:41:26.544Z",
+        "originalHfWindowTo": "2026-09-04T03:41:34.597Z",
+        "originalRequestStartedAt": "2026-09-04T03:41:34.597Z",
+        "originalRequestCompletedAt": "2026-09-04T03:41:34.782Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:42:07.311Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.238,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:43:27.051Z",
+        "bucketEnd": "2026-09-04T03:43:28.051Z",
+        "avgValue": 25,
+        "originalHfWindowFrom": "2026-09-04T03:43:23.051Z",
+        "originalHfWindowTo": "2026-09-04T03:43:30.818Z",
+        "originalRequestStartedAt": "2026-09-04T03:43:30.818Z",
+        "originalRequestCompletedAt": "2026-09-04T03:43:31.018Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:43:34.723Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.967,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:43:51.205Z",
+        "bucketEnd": "2026-09-04T03:43:52.205Z",
+        "avgValue": 9,
+        "originalHfWindowFrom": "2026-09-04T03:43:46.205Z",
+        "originalHfWindowTo": "2026-09-04T03:43:53.898Z",
+        "originalRequestStartedAt": "2026-09-04T03:43:53.898Z",
+        "originalRequestCompletedAt": "2026-09-04T03:43:54.085Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:43:51.898Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.88,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:43:52.205Z",
+        "bucketEnd": "2026-09-04T03:43:53.205Z",
+        "avgValue": 8,
+        "originalHfWindowFrom": "2026-09-04T03:43:46.205Z",
+        "originalHfWindowTo": "2026-09-04T03:43:53.898Z",
+        "originalRequestStartedAt": "2026-09-04T03:43:53.898Z",
+        "originalRequestCompletedAt": "2026-09-04T03:43:54.085Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:43:51.898Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.88,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:47:55.768Z",
+        "bucketEnd": "2026-09-04T03:47:56.768Z",
+        "avgValue": 40,
+        "originalHfWindowFrom": "2026-09-04T03:47:50.768Z",
+        "originalHfWindowTo": "2026-09-04T03:47:58.691Z",
+        "originalRequestStartedAt": "2026-09-04T03:47:58.691Z",
+        "originalRequestCompletedAt": "2026-09-04T03:47:58.929Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:48:08.167Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.161,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:49:28.176Z",
+        "bucketEnd": "2026-09-04T03:49:29.176Z",
+        "avgValue": 35,
+        "originalHfWindowFrom": "2026-09-04T03:49:23.176Z",
+        "originalHfWindowTo": "2026-09-04T03:49:31.124Z",
+        "originalRequestStartedAt": "2026-09-04T03:49:31.124Z",
+        "originalRequestCompletedAt": "2026-09-04T03:49:31.317Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:49:29.124Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.141,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:49:33.124Z",
+        "bucketEnd": "2026-09-04T03:49:34.124Z",
+        "avgValue": 35,
+        "originalHfWindowFrom": "2026-09-04T03:49:29.124Z",
+        "originalHfWindowTo": "2026-09-04T03:49:36.975Z",
+        "originalRequestStartedAt": "2026-09-04T03:49:36.975Z",
+        "originalRequestCompletedAt": "2026-09-04T03:49:37.406Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:49:52.619Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.282,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:53:13.135Z",
+        "bucketEnd": "2026-09-04T03:53:14.135Z",
+        "avgValue": 97,
+        "originalHfWindowFrom": "2026-09-04T03:53:11.135Z",
+        "originalHfWindowTo": "2026-09-04T03:53:18.938Z",
+        "originalRequestStartedAt": "2026-09-04T03:53:18.938Z",
+        "originalRequestCompletedAt": "2026-09-04T03:53:19.124Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:53:16.938Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 4.989,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:56:56.929Z",
+        "bucketEnd": "2026-09-04T03:56:57.929Z",
+        "avgValue": 105,
+        "originalHfWindowFrom": "2026-09-04T03:56:51.929Z",
+        "originalHfWindowTo": "2026-09-04T03:56:59.837Z",
+        "originalRequestStartedAt": "2026-09-04T03:56:59.837Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:00.011Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:56:57.837Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.082,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:01.837Z",
+        "bucketEnd": "2026-09-04T03:57:02.837Z",
+        "avgValue": 82,
+        "originalHfWindowFrom": "2026-09-04T03:56:57.837Z",
+        "originalHfWindowTo": "2026-09-04T03:57:05.507Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:05.507Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:05.683Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:03.507Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.846,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:09.507Z",
+        "bucketEnd": "2026-09-04T03:57:10.507Z",
+        "avgValue": 57,
+        "originalHfWindowFrom": "2026-09-04T03:57:03.507Z",
+        "originalHfWindowTo": "2026-09-04T03:57:11.976Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:11.976Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:12.423Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:09.976Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.916,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:10.507Z",
+        "bucketEnd": "2026-09-04T03:57:11.507Z",
+        "avgValue": 58,
+        "originalHfWindowFrom": "2026-09-04T03:57:03.507Z",
+        "originalHfWindowTo": "2026-09-04T03:57:11.976Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:11.976Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:12.423Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:09.976Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.916,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:13.976Z",
+        "bucketEnd": "2026-09-04T03:57:14.976Z",
+        "avgValue": 24,
+        "originalHfWindowFrom": "2026-09-04T03:57:09.976Z",
+        "originalHfWindowTo": "2026-09-04T03:57:17.940Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:17.940Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:18.122Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:15.940Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.146,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:15.976Z",
+        "bucketEnd": "2026-09-04T03:57:16.976Z",
+        "avgValue": 27,
+        "originalHfWindowFrom": "2026-09-04T03:57:09.976Z",
+        "originalHfWindowTo": "2026-09-04T03:57:17.940Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:17.940Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:18.122Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:15.940Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.146,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:57:19.940Z",
+        "bucketEnd": "2026-09-04T03:57:20.940Z",
+        "avgValue": 39,
+        "originalHfWindowFrom": "2026-09-04T03:57:15.940Z",
+        "originalHfWindowTo": "2026-09-04T03:57:23.568Z",
+        "originalRequestStartedAt": "2026-09-04T03:57:23.568Z",
+        "originalRequestCompletedAt": "2026-09-04T03:57:23.762Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:57:44.685Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.822,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:58:22.787Z",
+        "bucketEnd": "2026-09-04T03:58:23.787Z",
+        "avgValue": 24,
+        "originalHfWindowFrom": "2026-09-04T03:58:18.787Z",
+        "originalHfWindowTo": "2026-09-04T03:58:26.405Z",
+        "originalRequestStartedAt": "2026-09-04T03:58:26.406Z",
+        "originalRequestCompletedAt": "2026-09-04T03:58:26.591Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:58:24.405Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.804,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:58:23.787Z",
+        "bucketEnd": "2026-09-04T03:58:24.787Z",
+        "avgValue": 21,
+        "originalHfWindowFrom": "2026-09-04T03:58:18.787Z",
+        "originalHfWindowTo": "2026-09-04T03:58:26.405Z",
+        "originalRequestStartedAt": "2026-09-04T03:58:26.406Z",
+        "originalRequestCompletedAt": "2026-09-04T03:58:26.591Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:58:24.405Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.804,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:58:25.787Z",
+        "bucketEnd": "2026-09-04T03:58:26.787Z",
+        "avgValue": 23,
+        "originalHfWindowFrom": "2026-09-04T03:58:18.787Z",
+        "originalHfWindowTo": "2026-09-04T03:58:26.405Z",
+        "originalRequestStartedAt": "2026-09-04T03:58:26.406Z",
+        "originalRequestCompletedAt": "2026-09-04T03:58:26.591Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:58:24.405Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "OPEN",
+        "availabilityLagLowerBoundSeconds": null,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:58:58.369Z",
+        "bucketEnd": "2026-09-04T03:58:59.369Z",
+        "avgValue": 20,
+        "originalHfWindowFrom": "2026-09-04T03:58:53.369Z",
+        "originalHfWindowTo": "2026-09-04T03:59:01.053Z",
+        "originalRequestStartedAt": "2026-09-04T03:59:01.053Z",
+        "originalRequestCompletedAt": "2026-09-04T03:59:01.277Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:59:04.823Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.908,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T03:59:21.382Z",
+        "bucketEnd": "2026-09-04T03:59:22.382Z",
+        "avgValue": 0,
+        "originalHfWindowFrom": "2026-09-04T03:59:16.382Z",
+        "originalHfWindowTo": "2026-09-04T03:59:24.035Z",
+        "originalRequestStartedAt": "2026-09-04T03:59:24.035Z",
+        "originalRequestCompletedAt": "2026-09-04T03:59:24.230Z",
+        "nextKnownHfWindowFrom": "2026-09-04T03:59:39.135Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.848,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:00:01.419Z",
+        "bucketEnd": "2026-09-04T04:00:02.419Z",
+        "avgValue": 16,
+        "originalHfWindowFrom": "2026-09-04T03:59:56.419Z",
+        "originalHfWindowTo": "2026-09-04T04:00:04.271Z",
+        "originalRequestStartedAt": "2026-09-04T04:00:04.271Z",
+        "originalRequestCompletedAt": "2026-09-04T04:00:04.669Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:00:02.271Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.25,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:00:03.419Z",
+        "bucketEnd": "2026-09-04T04:00:04.419Z",
+        "avgValue": 14,
+        "originalHfWindowFrom": "2026-09-04T03:59:56.419Z",
+        "originalHfWindowTo": "2026-09-04T04:00:04.271Z",
+        "originalRequestStartedAt": "2026-09-04T04:00:04.271Z",
+        "originalRequestCompletedAt": "2026-09-04T04:00:04.669Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:00:02.271Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.25,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:00:06.271Z",
+        "bucketEnd": "2026-09-04T04:00:07.271Z",
+        "avgValue": 14,
+        "originalHfWindowFrom": "2026-09-04T04:00:02.271Z",
+        "originalHfWindowTo": "2026-09-04T04:00:10.728Z",
+        "originalRequestStartedAt": "2026-09-04T04:00:10.728Z",
+        "originalRequestCompletedAt": "2026-09-04T04:00:10.919Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:00:20.323Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.648,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:00:49.415Z",
+        "bucketEnd": "2026-09-04T04:00:50.415Z",
+        "avgValue": 22,
+        "originalHfWindowFrom": "2026-09-04T04:00:44.415Z",
+        "originalHfWindowTo": "2026-09-04T04:00:52.345Z",
+        "originalRequestStartedAt": "2026-09-04T04:00:52.345Z",
+        "originalRequestCompletedAt": "2026-09-04T04:00:52.544Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:01:07.874Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.129,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:05.001Z",
+        "bucketEnd": "2026-09-04T04:02:06.001Z",
+        "avgValue": 77,
+        "originalHfWindowFrom": "2026-09-04T04:02:00.001Z",
+        "originalHfWindowTo": "2026-09-04T04:02:07.903Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:07.903Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:08.095Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:05.903Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.094,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:11.903Z",
+        "bucketEnd": "2026-09-04T04:02:12.903Z",
+        "avgValue": 47,
+        "originalHfWindowFrom": "2026-09-04T04:02:05.903Z",
+        "originalHfWindowTo": "2026-09-04T04:02:13.855Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:13.855Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:14.035Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:11.855Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.132,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:15.855Z",
+        "bucketEnd": "2026-09-04T04:02:16.855Z",
+        "avgValue": 33,
+        "originalHfWindowFrom": "2026-09-04T04:02:11.855Z",
+        "originalHfWindowTo": "2026-09-04T04:02:19.563Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:19.563Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:19.737Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.882,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:17.855Z",
+        "bucketEnd": "2026-09-04T04:02:18.855Z",
+        "avgValue": 33,
+        "originalHfWindowFrom": "2026-09-04T04:02:11.855Z",
+        "originalHfWindowTo": "2026-09-04T04:02:19.563Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:19.563Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:19.737Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 0.882,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:18.855Z",
+        "bucketEnd": "2026-09-04T04:02:19.855Z",
+        "avgValue": 38,
+        "originalHfWindowFrom": "2026-09-04T04:02:11.855Z",
+        "originalHfWindowTo": "2026-09-04T04:02:19.563Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:19.563Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:19.737Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "OPEN",
+        "availabilityLagLowerBoundSeconds": null,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:21.563Z",
+        "bucketEnd": "2026-09-04T04:02:22.563Z",
+        "avgValue": 43,
+        "originalHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "originalHfWindowTo": "2026-09-04T04:02:25.213Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:25.213Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:25.614Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:23.213Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 3.051,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:22.563Z",
+        "bucketEnd": "2026-09-04T04:02:23.563Z",
+        "avgValue": 43,
+        "originalHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "originalHfWindowTo": "2026-09-04T04:02:25.213Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:25.213Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:25.614Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:23.213Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.051,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:23.563Z",
+        "bucketEnd": "2026-09-04T04:02:24.563Z",
+        "avgValue": 43,
+        "originalHfWindowFrom": "2026-09-04T04:02:17.563Z",
+        "originalHfWindowTo": "2026-09-04T04:02:25.213Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:25.213Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:25.614Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:23.213Z",
+        "watermarkClassification": "POTENTIALLY_REQUERYABLE",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.051,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:28.213Z",
+        "bucketEnd": "2026-09-04T04:02:29.213Z",
+        "avgValue": 47,
+        "originalHfWindowFrom": "2026-09-04T04:02:23.213Z",
+        "originalHfWindowTo": "2026-09-04T04:02:31.145Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:31.145Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:31.368Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:35.070Z",
+        "watermarkClassification": "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 2.155,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      },
+      {
+        "observationType": "HF_AGGREGATE_BUCKET_OBSERVATION",
+        "providerField": "speed",
+        "bucketStart": "2026-09-04T04:02:51.922Z",
+        "bucketEnd": "2026-09-04T04:02:52.922Z",
+        "avgValue": 13,
+        "originalHfWindowFrom": "2026-09-04T04:02:46.922Z",
+        "originalHfWindowTo": "2026-09-04T04:02:54.623Z",
+        "originalRequestStartedAt": "2026-09-04T04:02:54.624Z",
+        "originalRequestCompletedAt": "2026-09-04T04:02:54.813Z",
+        "nextKnownHfWindowFrom": "2026-09-04T04:02:52.623Z",
+        "watermarkClassification": "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW",
+        "bucketClosureAtOriginalResponse": "CLOSED",
+        "availabilityLagLowerBoundSeconds": 1.891,
+        "replayExperimentGeneratedAt": "2026-09-04T14:58:53.667Z"
+      }
+    ]
+  },
+  "watermarkRecoveryAnalysis": {
+    "LATE_ARRIVAL_BUCKET_COUNT": 53,
+    "CLOSED_LATE_ARRIVAL_BUCKET_COUNT": 50,
+    "LATE_ARRIVAL_LAG_MIN_SECONDS": 0.074,
+    "LATE_ARRIVAL_LAG_P50_SECONDS": 2.129,
+    "LATE_ARRIVAL_LAG_P95_SECONDS": 4.114,
+    "LATE_ARRIVAL_LAG_MAX_SECONDS": 5.181,
+    "DEFINITELY_EXCLUDED_LATE_BUCKET_COUNT": 26,
+    "CURRENT_2S_OVERLAP_SUFFICIENT": "NO",
+    "HF_QUERY_OVERLAP_MS": 2000,
+    "watermarkClassificationCounts": {
+      "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 26,
+      "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 11,
+      "POTENTIALLY_REQUERYABLE": 16,
+      "NO_NEXT_WINDOW_EVIDENCE": 0
+    }
+  },
+  "HF_CAPTURE_ROOT_CAUSE": "PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP",
+  "HF_SPARSE_CADENCE_ORIGIN": "NOT_DETERMINABLE",
+  "HF_CAPTURE_COMPLETENESS_VALIDATED": "PARTIAL",
+  "RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED": "Provider can supply ~1s aggregate buckets that arrive after original window close; SynqDrive 2s watermark overlap may fail to recover them — sealed ~10.6s cadence is acquisition completeness not necessarily true provider cadence",
+  "generatedAt": "2026-09-04T14:58:53.667Z"
+}

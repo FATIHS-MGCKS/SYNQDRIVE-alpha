@@ -1,7 +1,7 @@
 # RD004 — Whole-Drive Video ↔ Telemetry Validation (Segments A + B)
 
 **Date:** 2026-09-04
-**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.3 (Segment B)
+**Evidence IDs:** DI-EV-0035A.2 (Segment A) + DI-EV-0035B.4 (Segment B)
 **Vehicle:** KS MX 2024 Mercedes-Benz C 63 AMG (`a60c0749-a7cd-494e-b5b9-dea3c6b97d63`)
 **Session:** `f1e81e78-f96b-44ee-80c2-ca5270f21248`
 **Reference drive:** `DIMO_LTE_R1_REFERENCE_DRIVE_004`
@@ -12,7 +12,7 @@
 |---------|-------------------|----------|-------------|------------------|
 | A (pre-refuel) | 03:37:46 – 03:43:56 | ~6:11 | DI-EV-0035A.2 | **NO** |
 | Refuel stop | — | — | — | — |
-| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.3 | **NO** |
+| B (post-refuel) | 03:47:02.217 – 04:03:42.715 | **1000.498365 s** | DI-EV-0035B.4 | **NO** |
 
 ## Cross-segment conclusions
 
@@ -36,7 +36,8 @@ Time.is anchor at master t≈0.783333 s → `VIDEO_MASTER_T0_UTC_ESTIMATE = 2026
   - `CLOCK_FIT_PROVIDER_MATCH_COUNT = 0`; `OFFSET_CANDIDATE_RANGE_SUPPORTIVE = null`
   - 43→0 in 1 s after ~28.7 s gap: **not** validated physical dynamics (`PAIR_PHYSICAL_CONTINUITY_VALIDATED = NO`)
   - Stop timing: **no** event-derived offset aligning same event (`STOP_TIMING_ERROR_SECONDS = null`)
-  - HF capture completeness: live DIMO requery (108 buckets) vs sealed (66) → **`HF_SPARSE_CADENCE_ORIGIN = CAPTURE_PIPELINE_SAMPLE_LOSS`** (partial validation)
+  - HF capture completeness (B.4): **exact-window** DIMO replay (75 windows, same `from`/`to`) — **104** original vs **157** replay buckets; **53** late-arrival; **26** definitely excluded by 2 s watermark → **`HF_CAPTURE_ROOT_CAUSE = PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP`**
+  - B.3 broad requery 108 vs 66: **superseded** — cross-origin bucket identity comparison **invalid** (`CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID = NO`)
   - `A_B_APPROX_22S_DISPLACEMENT_REPEAT_OBSERVED = YES` but **not** cross-validated
   - `SPARSE_SAMPLE_DELAY_SEPARATED_FROM_CLOCK_OFFSET = YES`
   - **`PROVIDER_TIMESTAMP_OFFSET_VALIDATED = NO`**, `VIDEO_TO_PROVIDER_OFFSET_SECONDS = null`
@@ -48,7 +49,7 @@ Time.is anchor at master t≈0.783333 s → `VIDEO_MASTER_T0_UTC_ESTIMATE = 2026
 - B.1/B.2 holdout: time-only matching; **no validated offset** → `SPEED_MAE_KMH = null`
 - Diagnostic holdout MAE with unsupported offset: **removed in B.3** (no supportive offset range)
 - Sparse HF cadence + dynamic states limit comparable samples
-- HF capture audit (B.3): sealed median ~10.6 s; live requery denser → suspect **capture pipeline sample loss**
+- HF capture audit (B.4): exact-origin replay denser than sealed; late-arrival lag P50 ~2.1 s > 2 s overlap; **not** internal persistence loss
 
 ### Stop timing
 
@@ -68,6 +69,18 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 
 **No changes.** Analysis-only. `READY_FOR_RD004_FINAL_CLOSEOUT = NO` until offset and absolute speed accuracy can be independently validated with sufficient holdout evidence.
 
+## B.4 methodology changes (DI-EV-0035B.4)
+
+1. Invalidated B.3 cross-origin 108-vs-66 bucket identity comparison (`QUERY_FROM_ANCHORED` semantics)
+2. Reconstructed **75** original HF query windows from full-session `HF_HISTORICAL` provenance
+3. Read-only DIMO **exact-window replay** (identical `hfWindowFrom` / `hfActualQueryTo`, interval `1s`)
+4. Same-origin bucket comparison by exact provider field + bucket timestamp (no global floor)
+5. Late-arrival differential: closure at `requestCompletedAt`, availability lag lower bound
+6. Watermark recovery audit: `DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK` vs `HF_QUERY_OVERLAP_MS = 2000`
+7. Root cause: **`PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP`** — not SynqDrive row drop
+8. `HF_SPARSE_CADENCE_ORIGIN = NOT_DETERMINABLE`; RD003 ~2 s vs RD004 sealed sparsity **reconciled** at acquisition layer
+9. Production capture policy **unchanged** (`CURRENT_2S_OVERLAP_SUFFICIENT = NO` audit finding only)
+
 ## B.3 methodology changes (DI-EV-0035B.3)
 
 1. Launch transition uses **immediate predecessor** (`sorted[i-1]`), not first earlier sample
@@ -77,7 +90,7 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 5. Stop displacement reclassified as **sparse observation only** (`FIRST_STOP_DISPLACEMENT_CLOCK_AUTHORITY = NO`)
 6. Stop timing: **no** event-derived offset → zero error tautology removed
 7. Legacy exploratory clock landmarks forced `CLOCK_FIT_ELIGIBLE = NO` with explicit historical reasons
-8. HF capture completeness audit: pipeline trace + read-only DIMO requery diagnostic artifact
+8. HF capture completeness audit: pipeline trace + read-only DIMO requery diagnostic artifact (**B.4 supersedes cross-origin loss conclusion**)
 
 ## B.2 methodology changes (DI-EV-0035B.2)
 
@@ -92,5 +105,5 @@ Video provides strong gear and reverse ground truth in Segment B. HF telemetry d
 ## Artifacts
 
 - Segment A: `docs/audits/data/rd004-segment-a/`
-- Segment B: `docs/audits/data/rd004-segment-b/` (incl. `rd004-b-video-master-timeline.json`)
+- Segment B: `docs/audits/data/rd004-segment-b/` (incl. `rd004-b-hf-exact-window-replay.json`, `rd004-b-hf-late-arrival-analysis.json`, `rd004-b-hf-watermark-recovery-analysis.json`)
 - Architecture: `architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md` (A.2) + this document

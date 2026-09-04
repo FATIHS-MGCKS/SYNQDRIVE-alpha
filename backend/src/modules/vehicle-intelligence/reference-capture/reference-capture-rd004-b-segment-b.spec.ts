@@ -727,7 +727,7 @@ describe('DI-EV-0035B.3 RD004-B transition semantics + HF capture completeness',
     expect(diagnostic.sealedAudit.pipelineTrace.productionRuntimeChanged).toBe('NO');
   });
 
-  it('13) pagination/dedupe invariants documented in pipeline trace', () => {
+  it('13) B.3 cross-origin timestamp floor comparison is deprecated — not bucket-identity proof', () => {
     if (!hasSourceData) return;
     const observations = loadRd004Jsonl(fs.readFileSync(SOURCE_OBS, 'utf8'));
     const audit = auditSealedHfCaptureProvenance(observations, observations, {
@@ -740,9 +740,9 @@ describe('DI-EV-0035B.3 RD004-B transition semantics + HF capture completeness',
       ['2026-09-04T03:57:45.685Z', '2026-09-04T03:58:20.787Z'],
       ['2026-09-04T03:57:45.000Z', '2026-09-04T03:58:20.000Z'],
     );
-    expect(cmp.INTERSECTION_COUNT).toBe(2);
-    expect(cmp.MISSING_FROM_SEALED_COUNT).toBe(0);
-    expect(cmp.EXTRA_IN_SEALED_COUNT).toBe(0);
+    expect(cmp.CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID).toBe('NO');
+    expect(cmp.B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID).toBe('NO');
+    expect(cmp.comparisonNormalization).toBe('DEPRECATED_GLOBAL_1S_FLOOR_NOT_VALID_CROSS_ORIGIN');
   });
 
   it('14) no production runtime change flags', () => {

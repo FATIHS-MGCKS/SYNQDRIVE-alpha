@@ -42,6 +42,10 @@ const DEFAULT_HF_DIAGNOSTIC = path.join(
   REPO_ROOT,
   'docs/audits/data/rd004-segment-b/rd004-b-hf-capture-completeness-diagnostic.json',
 );
+const DEFAULT_EXACT_REPLAY = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-b/rd004-b-hf-exact-window-replay.json',
+);
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -60,6 +64,7 @@ function main(): void {
   const legacySidecarPath = parseArg('--legacy-sidecar') ?? DEFAULT_LEGACY_SIDECAR;
   const fullSessionPath = parseArg('--full-session-observations') ?? DEFAULT_FULL_SESSION;
   const hfDiagnosticPath = parseArg('--hf-diagnostic') ?? DEFAULT_HF_DIAGNOSTIC;
+  const exactReplayPath = parseArg('--exact-replay') ?? DEFAULT_EXACT_REPLAY;
   const outDir = parseArg('--out-dir') ?? DEFAULT_OUT_DIR;
 
   assertSafeOutputPath(outDir);
@@ -84,17 +89,53 @@ function main(): void {
   let diagnosticRequeryError: string | null = null;
   if (fs.existsSync(hfDiagnosticPath)) {
     const hfDiag = JSON.parse(fs.readFileSync(hfDiagnosticPath, 'utf8')) as {
+      broadRequery?: {
+        requeryTimestamps?: string[] | null;
+        error?: string | null;
+        succeeded?: boolean;
+      };
       requery?: {
         requeryTimestamps?: string[] | null;
         error?: string | null;
         succeeded?: boolean;
       };
     };
-    if (hfDiag.requery?.succeeded && hfDiag.requery.requeryTimestamps?.length) {
-      diagnosticRequerySpeedTimestamps = hfDiag.requery.requeryTimestamps;
-    } else if (hfDiag.requery?.error) {
-      diagnosticRequeryError = hfDiag.requery.error;
+    const broad = hfDiag.broadRequery ?? hfDiag.requery;
+    if (broad?.succeeded && broad.requeryTimestamps?.length) {
+      diagnosticRequerySpeedTimestamps = broad.requeryTimestamps;
+    } else if (broad?.error) {
+      diagnosticRequeryError = broad.error;
     }
+  }
+
+  let exactWindowReplay: ReturnType<typeof runRd004SegmentBAnalysis>['exactWindowReplay'] = null;
+  if (fs.existsSync(exactReplayPath)) {
+    const replay = JSON.parse(fs.readFileSync(exactReplayPath, 'utf8')) as {
+      EXACT_WINDOW_REPLAY_ATTEMPTED: string;
+      EXACT_WINDOW_REPLAY_SUCCEEDED: string;
+      EXACT_WINDOW_REPLAY_WINDOW_COUNT: number;
+      aggregate: Record<string, number>;
+      watermarkRecoveryAnalysis: Record<string, unknown>;
+      HF_SPARSE_CADENCE_ORIGIN: string;
+      HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+      HF_CAPTURE_ROOT_CAUSE: string;
+      RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+      ORIGINAL_HF_QUERY_WINDOWS?: unknown[];
+      ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE?: string;
+    };
+    exactWindowReplay = {
+      EXACT_WINDOW_REPLAY_ATTEMPTED: replay.EXACT_WINDOW_REPLAY_ATTEMPTED,
+      EXACT_WINDOW_REPLAY_SUCCEEDED: replay.EXACT_WINDOW_REPLAY_SUCCEEDED,
+      EXACT_WINDOW_REPLAY_WINDOW_COUNT: replay.EXACT_WINDOW_REPLAY_WINDOW_COUNT,
+      aggregate: replay.aggregate,
+      watermarkRecoveryAnalysis: replay.watermarkRecoveryAnalysis,
+      HF_SPARSE_CADENCE_ORIGIN: replay.HF_SPARSE_CADENCE_ORIGIN,
+      HF_CAPTURE_COMPLETENESS_VALIDATED: replay.HF_CAPTURE_COMPLETENESS_VALIDATED,
+      HF_CAPTURE_ROOT_CAUSE: replay.HF_CAPTURE_ROOT_CAUSE as never,
+      RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: replay.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
+      ORIGINAL_HF_QUERY_WINDOWS: replay.ORIGINAL_HF_QUERY_WINDOWS,
+      ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE: replay.ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE,
+    };
   }
 
   const result = runRd004SegmentBAnalysis({
@@ -103,6 +144,7 @@ function main(): void {
     fullSessionObservations,
     diagnosticRequerySpeedTimestamps,
     diagnosticRequeryError,
+    exactWindowReplay,
   });
 
   const paths = {

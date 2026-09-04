@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b4-rd004-exact-window-hf-replay-watermark-audit-2026-09-04',
+    version: '4.9.1054',
+    title: 'DI-EV-0035B.4 — RD004-B Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof',
+    summary: [
+      'Invalidate B.3 cross-origin 108-vs-66 bucket identity comparison (QUERY_FROM_ANCHORED semantics).',
+      'Reconstruct 75 original HF query windows; exact-origin DIMO replay (same from/to, 1s speed).',
+      '104 original vs 157 replay buckets; 53 late-arrival; 0 missing-now; 0 value revisions.',
+      '26 late buckets DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK; P50 lag 2.129 s > 2 s overlap.',
+      'HF_CAPTURE_ROOT_CAUSE=PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'B.3 transition corrections preserved; 70 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human review found B.3 broad requery compared incompatible query-origin bucket grids — exact-window replay required for canonical late-arrival and watermark recovery proof.',
+    previousBehavior:
+      'B.3 concluded CAPTURE_PIPELINE_SAMPLE_LOSS from 108 vs 66 cross-origin timestamp floor comparison (intersection 11).',
+    details:
+      'Modules `reference-capture-rd004-b-hf-exact-window-replay.ts`, updated `reference-capture-rd004-b-hf-capture-completeness.ts`; artifacts `rd004-b-hf-exact-window-replay.json`, `rd004-b-hf-late-arrival-analysis.json`, `rd004-b-hf-watermark-recovery-analysis.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T22:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b3-rd004-segment-b-evidence-correctness-hf-audit-2026-09-04',
     version: '4.9.1053',
     title: 'DI-EV-0035B.3 — RD004-B Transition Evidence Correctness + HF Capture Completeness Audit',
@@ -45,7 +67,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '43→0 in 1 s after 28.7 s gap: PAIR_PHYSICAL_CONTINUITY_VALIDATED=NO; context ISOLATED_BURST.',
       'Stop displacement ~+21.7 s reclassified sparse observation only; STOP_TIMING_ERROR_SECONDS=null.',
       'Legacy CLK landmarks forced CLOCK_FIT_ELIGIBLE=NO; CLOCK_FIT_PROVIDER_MATCH_COUNT=0.',
-      'HF live requery 108 vs sealed 66 buckets → CAPTURE_PIPELINE_SAMPLE_LOSS (PARTIAL validation).',
+      'HF live requery 108 vs sealed 66 buckets — B.4 supersedes cross-origin loss proof (diagnostic only).',
       '50 focused tests; raw bytes unchanged; no production changes.',
     ],
     reason:

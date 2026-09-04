@@ -1,6 +1,6 @@
 /**
- * DI-EV-0035B.3 — RD004-B HF_HISTORICAL capture completeness diagnostic.
- * READ-ONLY: fresh DIMO historical requery vs sealed Segment B envelope.
+ * DI-EV-0035B.4 — RD004-B HF_HISTORICAL capture completeness diagnostic.
+ * READ-ONLY: broad DIMO density requery (diagnostic only) + optional exact-window replay summary.
  * Does NOT modify sealed Segment A/B source bytes.
  */
 import * as fs from 'fs';
@@ -186,6 +186,9 @@ async function main(): Promise<void> {
   const outPath =
     parseArg('--out') ??
     path.join(REPO_ROOT, 'docs/audits/data/rd004-segment-b/rd004-b-hf-capture-completeness-diagnostic.json');
+  const exactReplayPath =
+    parseArg('--exact-replay') ??
+    path.join(REPO_ROOT, 'docs/audits/data/rd004-segment-b/rd004-b-hf-exact-window-replay.json');
   const skipLive = process.argv.includes('--skip-live-requery');
 
   assertSafeOutputPath(outPath);
@@ -222,12 +225,40 @@ async function main(): Promise<void> {
     }
   }
 
+  let exactWindowReplay: {
+    HF_SPARSE_CADENCE_ORIGIN: string;
+    HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+    RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+    HF_CAPTURE_ROOT_CAUSE: import('../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd004-b-hf-exact-window-replay').HfCaptureRootCause;
+    aggregate?: Record<string, number>;
+    watermarkRecoveryAnalysis?: Record<string, unknown>;
+  } | null = null;
+  if (fs.existsSync(exactReplayPath)) {
+    const replay = JSON.parse(fs.readFileSync(exactReplayPath, 'utf8')) as {
+      HF_SPARSE_CADENCE_ORIGIN: string;
+      HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+      RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+      HF_CAPTURE_ROOT_CAUSE: import('../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd004-b-hf-exact-window-replay').HfCaptureRootCause;
+      aggregate: Record<string, number>;
+      watermarkRecoveryAnalysis: Record<string, unknown>;
+    };
+    exactWindowReplay = {
+      HF_SPARSE_CADENCE_ORIGIN: replay.HF_SPARSE_CADENCE_ORIGIN,
+      HF_CAPTURE_COMPLETENESS_VALIDATED: replay.HF_CAPTURE_COMPLETENESS_VALIDATED,
+      RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: replay.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
+      HF_CAPTURE_ROOT_CAUSE: replay.HF_CAPTURE_ROOT_CAUSE,
+      aggregate: replay.aggregate,
+      watermarkRecoveryAnalysis: replay.watermarkRecoveryAnalysis,
+    };
+  }
+
   const diagnostic = buildHfCaptureCompletenessDiagnostic({
     allRows: fullSessionRows,
     envelopeRows,
     queryEnvelope: { startUtc: WINDOW_FROM, endUtc: WINDOW_TO },
     requeryTimestamps,
     liveRequeryError,
+    exactWindowReplay,
   });
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -240,12 +271,15 @@ async function main(): Promise<void> {
         out: toRepoRelativePath(outPath, REPO_ROOT),
         HF_SPARSE_CADENCE_ORIGIN: diagnostic.HF_SPARSE_CADENCE_ORIGIN,
         HF_CAPTURE_COMPLETENESS_VALIDATED: diagnostic.HF_CAPTURE_COMPLETENESS_VALIDATED,
-        SEALED_HF_SPEED_COUNT: diagnostic.requery.comparison?.SEALED_HF_SPEED_COUNT ??
+        SEALED_HF_SPEED_COUNT: diagnostic.broadRequery.comparison?.SEALED_HF_SPEED_COUNT ??
           extractSealedHfSpeedPhysicalTimestamps(envelopeRows).length,
-        DIAGNOSTIC_REQUERY_HF_SPEED_COUNT: diagnostic.requery.comparison?.DIAGNOSTIC_REQUERY_HF_SPEED_COUNT ?? null,
-        liveRequeryAttempted: diagnostic.requery.attempted,
-        liveRequerySucceeded: diagnostic.requery.succeeded,
-        liveRequeryError: diagnostic.requery.error,
+        DIAGNOSTIC_REQUERY_HF_SPEED_COUNT:
+          diagnostic.broadRequery.comparison?.DIAGNOSTIC_REQUERY_HF_SPEED_COUNT ?? null,
+        liveRequeryAttempted: diagnostic.broadRequery.attempted,
+        liveRequerySucceeded: diagnostic.broadRequery.succeeded,
+        liveRequeryError: diagnostic.broadRequery.error,
+        CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID: diagnostic.CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+        B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID: diagnostic.B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
       },
       null,
       2,

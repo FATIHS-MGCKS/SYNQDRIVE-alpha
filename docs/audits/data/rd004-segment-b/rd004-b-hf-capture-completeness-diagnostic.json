@@ -1,7 +1,24 @@
 {
-  "evidenceId": "DI-EV-0035B.3",
+  "evidenceId": "DI-EV-0035B.4",
   "mode": "HF_CAPTURE_COMPLETENESS_DIAGNOSTIC",
   "RAW_SOURCE_OBSERVATIONS_CHANGED": "NO",
+  "DIMO_BUCKET_SEMANTICS": "QUERY_FROM_ANCHORED",
+  "dimoProviderSourceAuthority": {
+    "primaryPublicRepo": "DIMO-Network/telemetry-api",
+    "primaryCommitSha": "98d88534857fec95a507a61331d5e357b86cfcc6",
+    "primaryFiles": [
+      "internal/service/ch/ch.go",
+      "internal/service/ch/queries.go"
+    ],
+    "bucketSemantics": "QUERY-FROM-ANCHORED AGGREGATION BUCKETS",
+    "bucketTimestampMeaning": "timestamp = start of interval",
+    "bucketOriginParameter": "aggArgs.FromTS passed to selectInterval(..., origin)",
+    "successorNote": "DIMO-Network/dq may proxy/serve production queries; telemetry-api ch/queries.go is the verified public ClickHouse aggregation implementation cited here."
+  },
+  "CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID": "NO",
+  "B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID": "NO",
+  "B3_108_VS_66_RESULT": "DENSITY_DIAGNOSTIC_ONLY_NOT_BUCKET_IDENTITY_PROOF",
+  "b3BroadRequerySuperseded": "YES",
   "sealedAudit": {
     "pipelineTrace": {
       "provider": "DIMO GraphQL signals(tokenId, from, to, interval)",
@@ -246,7 +263,7 @@
       "coverageRatioVs2sContinuous": 0.13836477987421383
     }
   },
-  "requery": {
+  "broadRequery": {
     "attempted": true,
     "succeeded": true,
     "error": null,
@@ -361,6 +378,10 @@
       "2026-09-04T04:03:47Z"
     ],
     "comparison": {
+      "CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID": "NO",
+      "B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID": "NO",
+      "B3_108_VS_66_RESULT": "DENSITY_DIAGNOSTIC_ONLY_NOT_BUCKET_IDENTITY_PROOF",
+      "comparisonMethodInvalidReason": "DIMO buckets are QUERY-FROM-ANCHORED; flooring timestamps across different query origins does not establish bucket identity equivalence",
       "SEALED_HF_SPEED_COUNT": 66,
       "DIAGNOSTIC_REQUERY_HF_SPEED_COUNT": 108,
       "SEALED_HF_SPEED_UNIQUE_BUCKET_COUNT": 66,
@@ -537,11 +558,40 @@
         "2026-09-04T04:03:10.000Z",
         "2026-09-04T04:03:46.000Z"
       ],
-      "comparisonNormalization": "HF_1S_BUCKET_FLOOR_ISO"
+      "comparisonNormalization": "DEPRECATED_GLOBAL_1S_FLOOR_NOT_VALID_CROSS_ORIGIN"
+    },
+    "note": "Density diagnostic only — NOT canonical bucket-identity proof (B.4 exact-window replay required)"
+  },
+  "exactWindowReplaySummary": {
+    "aggregate": {
+      "ORIGINAL_EXACT_WINDOW_SPEED_BUCKET_COUNT": 104,
+      "REPLAY_EXACT_WINDOW_SPEED_BUCKET_COUNT": 157,
+      "EXACT_BUCKET_INTERSECTION_COUNT": 104,
+      "NEW_REPLAY_BUCKET_COUNT": 53,
+      "MISSING_NOW_BUCKET_COUNT": 0,
+      "CHANGED_VALUE_BUCKET_COUNT": 0
+    },
+    "watermarkRecoveryAnalysis": {
+      "LATE_ARRIVAL_BUCKET_COUNT": 53,
+      "CLOSED_LATE_ARRIVAL_BUCKET_COUNT": 50,
+      "LATE_ARRIVAL_LAG_MIN_SECONDS": 0.074,
+      "LATE_ARRIVAL_LAG_P50_SECONDS": 2.129,
+      "LATE_ARRIVAL_LAG_P95_SECONDS": 4.114,
+      "LATE_ARRIVAL_LAG_MAX_SECONDS": 5.181,
+      "DEFINITELY_EXCLUDED_LATE_BUCKET_COUNT": 26,
+      "CURRENT_2S_OVERLAP_SUFFICIENT": "NO",
+      "HF_QUERY_OVERLAP_MS": 2000,
+      "watermarkClassificationCounts": {
+        "DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK": 26,
+        "PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW": 11,
+        "POTENTIALLY_REQUERYABLE": 16,
+        "NO_NEXT_WINDOW_EVIDENCE": 0
+      }
     }
   },
-  "HF_SPARSE_CADENCE_ORIGIN": "CAPTURE_PIPELINE_SAMPLE_LOSS",
+  "HF_SPARSE_CADENCE_ORIGIN": "NOT_DETERMINABLE",
   "HF_CAPTURE_COMPLETENESS_VALIDATED": "PARTIAL",
-  "RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED": "Live requery returned materially more speed buckets than sealed capture — pipeline/watermark loss suspected",
-  "note": "Diagnostic artifact only — does not modify sealed Segment A/B source bytes"
+  "HF_CAPTURE_ROOT_CAUSE": "PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP",
+  "RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED": "Provider can supply ~1s aggregate buckets that arrive after original window close; SynqDrive 2s watermark overlap may fail to recover them — sealed ~10.6s cadence is acquisition completeness not necessarily true provider cadence",
+  "note": "Diagnostic artifact only — does not modify sealed Segment A/B source bytes. B.3 CAPTURE_PIPELINE_SAMPLE_LOSS from broad requery superseded by B.4."
 }

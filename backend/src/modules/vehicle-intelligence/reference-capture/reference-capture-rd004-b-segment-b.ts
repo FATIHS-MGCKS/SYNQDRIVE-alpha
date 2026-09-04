@@ -35,9 +35,16 @@ import {
   computePhysicalCadenceMetrics,
 } from './reference-capture-rd003-signal-quality';
 import { buildHfCaptureCompletenessDiagnostic } from './reference-capture-rd004-b-hf-capture-completeness';
+import {
+  B3_108_VS_66_RESULT,
+  B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
+  CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+  DIMO_BUCKET_SEMANTICS,
+  type HfCaptureRootCause,
+} from './reference-capture-rd004-b-hf-exact-window-replay';
 
-export const RD004_B_PHASE = 'RD004-B.3';
-export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.3';
+export const RD004_B_PHASE = 'RD004-B.4';
+export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.4';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
 
 export const TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR = 'YES';
@@ -2271,9 +2278,23 @@ export type Rd004SegmentBAnalysisInput = {
   legacySidecar: LegacyPreprocessedSpeedRow[];
   /** Full-session rows for HF capture provenance audit (optional; defaults to observations). */
   fullSessionObservations?: Rd004ObservationRow[];
-  /** Fresh DIMO speed timestamps from read-only diagnostic requery (optional). */
+  /** Fresh DIMO speed timestamps from read-only broad requery (B.3 diagnostic only). */
   diagnosticRequerySpeedTimestamps?: string[] | null;
   diagnosticRequeryError?: string | null;
+  /** B.4 exact-window replay analysis artifact payload (optional). */
+  exactWindowReplay?: {
+    EXACT_WINDOW_REPLAY_ATTEMPTED: string;
+    EXACT_WINDOW_REPLAY_SUCCEEDED: string;
+    EXACT_WINDOW_REPLAY_WINDOW_COUNT: number;
+    aggregate: Record<string, number>;
+    watermarkRecoveryAnalysis: Record<string, unknown>;
+    HF_SPARSE_CADENCE_ORIGIN: string;
+    HF_CAPTURE_COMPLETENESS_VALIDATED: 'YES' | 'NO' | 'PARTIAL';
+    HF_CAPTURE_ROOT_CAUSE: HfCaptureRootCause;
+    RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: string;
+    ORIGINAL_HF_QUERY_WINDOWS?: unknown[];
+    ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE?: string;
+  } | null;
 };
 
 export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
@@ -2349,6 +2370,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
   const stopTiming = analyzeStopTiming(qualifiedSpeed, firstStopAssessment);
 
   const fullSessionRows = input.fullSessionObservations ?? input.observations;
+  const exactReplay = input.exactWindowReplay;
   const hfCaptureCompleteness = buildHfCaptureCompletenessDiagnostic({
     allRows: fullSessionRows,
     envelopeRows: envelope,
@@ -2358,6 +2380,16 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     },
     requeryTimestamps: input.diagnosticRequerySpeedTimestamps,
     liveRequeryError: input.diagnosticRequeryError,
+    exactWindowReplay: exactReplay
+      ? {
+          HF_SPARSE_CADENCE_ORIGIN: exactReplay.HF_SPARSE_CADENCE_ORIGIN,
+          HF_CAPTURE_COMPLETENESS_VALIDATED: exactReplay.HF_CAPTURE_COMPLETENESS_VALIDATED,
+          RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: exactReplay.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
+          HF_CAPTURE_ROOT_CAUSE: exactReplay.HF_CAPTURE_ROOT_CAUSE,
+          aggregate: exactReplay.aggregate,
+          watermarkRecoveryAnalysis: exactReplay.watermarkRecoveryAnalysis,
+        }
+      : null,
   });
 
   const legacySidecarFiltered = input.legacySidecar;
@@ -2386,11 +2418,51 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       ? 'YES'
       : 'NO';
 
-  const requeryComparison = hfCaptureCompleteness.requery.comparison;
+  const broadRequeryComparison = hfCaptureCompleteness.broadRequery.comparison;
+  const exactAgg = exactReplay?.aggregate;
 
   const flags = {
     RD004_PHASE: RD004_B_PHASE,
     RAW_SOURCE_OBSERVATIONS_CHANGED: 'NO',
+    DIMO_BUCKET_SEMANTICS,
+    CROSS_ORIGIN_BUCKET_IDENTITY_COMPARISON_VALID,
+    B3_BROAD_REQUERY_SAMPLE_LOSS_PROOF_VALID,
+    B3_108_VS_66_RESULT,
+    ORIGINAL_HF_QUERY_WINDOWS_RECONSTRUCTED: exactReplay?.ORIGINAL_HF_QUERY_WINDOWS?.length ?? null,
+    ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE:
+      exactReplay?.ORIGINAL_ZERO_RESULT_WINDOWS_RECONSTRUCTIBLE ?? null,
+    EXACT_WINDOW_REPLAY_ATTEMPTED: exactReplay?.EXACT_WINDOW_REPLAY_ATTEMPTED ?? 'NO',
+    EXACT_WINDOW_REPLAY_SUCCEEDED: exactReplay?.EXACT_WINDOW_REPLAY_SUCCEEDED ?? 'NO',
+    EXACT_WINDOW_REPLAY_WINDOW_COUNT: exactReplay?.EXACT_WINDOW_REPLAY_WINDOW_COUNT ?? null,
+    ORIGINAL_EXACT_WINDOW_SPEED_BUCKET_COUNT: exactAgg?.ORIGINAL_EXACT_WINDOW_SPEED_BUCKET_COUNT ?? null,
+    REPLAY_EXACT_WINDOW_SPEED_BUCKET_COUNT: exactAgg?.REPLAY_EXACT_WINDOW_SPEED_BUCKET_COUNT ?? null,
+    EXACT_BUCKET_INTERSECTION_COUNT: exactAgg?.EXACT_BUCKET_INTERSECTION_COUNT ?? null,
+    NEW_REPLAY_BUCKET_COUNT: exactAgg?.NEW_REPLAY_BUCKET_COUNT ?? null,
+    MISSING_NOW_BUCKET_COUNT: exactAgg?.MISSING_NOW_BUCKET_COUNT ?? null,
+    CHANGED_VALUE_BUCKET_COUNT: exactAgg?.CHANGED_VALUE_BUCKET_COUNT ?? null,
+    LATE_ARRIVAL_BUCKET_COUNT:
+      (exactReplay?.watermarkRecoveryAnalysis.LATE_ARRIVAL_BUCKET_COUNT as number | undefined) ?? null,
+    CLOSED_LATE_ARRIVAL_BUCKET_COUNT:
+      (exactReplay?.watermarkRecoveryAnalysis.CLOSED_LATE_ARRIVAL_BUCKET_COUNT as number | undefined) ??
+      null,
+    LATE_ARRIVAL_LAG_MIN_SECONDS:
+      (exactReplay?.watermarkRecoveryAnalysis.LATE_ARRIVAL_LAG_MIN_SECONDS as number | null | undefined) ??
+      null,
+    LATE_ARRIVAL_LAG_P50_SECONDS:
+      (exactReplay?.watermarkRecoveryAnalysis.LATE_ARRIVAL_LAG_P50_SECONDS as number | null | undefined) ??
+      null,
+    LATE_ARRIVAL_LAG_P95_SECONDS:
+      (exactReplay?.watermarkRecoveryAnalysis.LATE_ARRIVAL_LAG_P95_SECONDS as number | null | undefined) ??
+      null,
+    LATE_ARRIVAL_LAG_MAX_SECONDS:
+      (exactReplay?.watermarkRecoveryAnalysis.LATE_ARRIVAL_LAG_MAX_SECONDS as number | null | undefined) ??
+      null,
+    DEFINITELY_EXCLUDED_LATE_BUCKET_COUNT:
+      (exactReplay?.watermarkRecoveryAnalysis.DEFINITELY_EXCLUDED_LATE_BUCKET_COUNT as number | undefined) ??
+      null,
+    CURRENT_2S_OVERLAP_SUFFICIENT:
+      (exactReplay?.watermarkRecoveryAnalysis.CURRENT_2S_OVERLAP_SUFFICIENT as string | undefined) ?? null,
+    HF_CAPTURE_ROOT_CAUSE: exactReplay?.HF_CAPTURE_ROOT_CAUSE ?? hfCaptureCompleteness.HF_CAPTURE_ROOT_CAUSE,
     TRANSITION_PREVIOUS_SAMPLE_IS_IMMEDIATE_PREDECESSOR,
     EVENT_CANNOT_VALIDATE_ITS_OWN_ALIGNMENT_ERROR,
     NO_STALE_CLOCK_ELIGIBILITY_IN_LEGACY_ARTIFACTS,
@@ -2438,10 +2510,12 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
     HF_SPEED_MAX_GAP_SECONDS: hfSpeedCadence.NEW_PHYSICAL_SAMPLE_CADENCE_MAX_GAP_SECONDS,
     HF_CAPTURE_COMPLETENESS_VALIDATED: hfCaptureCompleteness.HF_CAPTURE_COMPLETENESS_VALIDATED,
     HF_SPARSE_CADENCE_ORIGIN: hfCaptureCompleteness.HF_SPARSE_CADENCE_ORIGIN,
-    SEALED_HF_SPEED_COUNT: requeryComparison?.SEALED_HF_SPEED_COUNT ?? hfCaptureCompleteness.sealedAudit.uniquePhysicalSampleCount,
-    DIAGNOSTIC_REQUERY_HF_SPEED_COUNT: requeryComparison?.DIAGNOSTIC_REQUERY_HF_SPEED_COUNT ?? null,
-    MISSING_FROM_SEALED_COUNT: requeryComparison?.MISSING_FROM_SEALED_COUNT ?? null,
-    EXTRA_IN_SEALED_COUNT: requeryComparison?.EXTRA_IN_SEALED_COUNT ?? null,
+    SEALED_HF_SPEED_COUNT:
+      broadRequeryComparison?.SEALED_HF_SPEED_COUNT ??
+      hfCaptureCompleteness.sealedAudit.uniquePhysicalSampleCount,
+    DIAGNOSTIC_REQUERY_HF_SPEED_COUNT: broadRequeryComparison?.DIAGNOSTIC_REQUERY_HF_SPEED_COUNT ?? null,
+    MISSING_FROM_SEALED_COUNT: broadRequeryComparison?.MISSING_FROM_SEALED_COUNT ?? null,
+    EXTRA_IN_SEALED_COUNT: broadRequeryComparison?.EXTRA_IN_SEALED_COUNT ?? null,
     RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED: hfCaptureCompleteness.RD003_APPROX_2S_VS_RD004_SPARSE_EXPLAINED,
     DUPLICATE_SPEED_SAMPLES: staleDupes.size,
     OUT_OF_ORDER_SPEED_SAMPLES: detectOutOfOrderByAcquisitionOrder(hfSpeedRows),
@@ -2556,12 +2630,13 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
       transitionIntervalCensoring,
       note:
-        'B.3: transition interval censoring + HF capture completeness; no provider clock landmark resolved; legacy global search retained as diagnostic only',
+        'B.4: exact-window HF replay + B.3 transition semantics; no provider clock landmark resolved',
     },
     speedAccuracy,
     stopTiming,
     transitionIntervalCensoring,
     hfCaptureCompleteness,
+    exactWindowReplay: exactReplay,
     qualifiedSpeedSeries: qualifiedSpeed,
     kinematicReconstruction: {
       ...acceleration,
