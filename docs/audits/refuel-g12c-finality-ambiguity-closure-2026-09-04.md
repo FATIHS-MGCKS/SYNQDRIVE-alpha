@@ -5,7 +5,7 @@
 **PR:** #1531 (DRAFT)  
 **origin/main:** `57ec14eabed06df0bf32e7a7a69e9ebe0c53fc88`  
 **G1.2b head (before G1.2c):** `f469e5c9b16d7f85ddf6c41250196250c27e79e4`  
-**G1.2c head:** _(recorded at commit)_
+**G1.2c head:** `021e50864`
 
 ## Problem statement
 
