@@ -1,5 +1,9 @@
 import { ReferenceCaptureObservationKind } from '@prisma/client';
-import { ReferenceCaptureAcquisitionService, ReferenceCaptureLegacySessionIdentityError } from './reference-capture-acquisition.service';
+import {
+  ReferenceCaptureAcquisitionService,
+  ReferenceCaptureLegacySessionIdentityError,
+} from './reference-capture-acquisition.service';
+import { createLegacyHfRecoveryConfigMock } from './reference-capture-hf-recovery-v2.test-util';
 import { REFERENCE_CAPTURE_ENVELOPE_VERSION } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
 import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
@@ -132,6 +136,7 @@ describe('reference-capture HF auto-flush watermark accounting', () => {
       observationWriter,
       observationRepository as never,
       sessionRepo as never,
+      createLegacyHfRecoveryConfigMock() as never,
     );
 
     return { service, stateStore, dbRows, observationWriter };

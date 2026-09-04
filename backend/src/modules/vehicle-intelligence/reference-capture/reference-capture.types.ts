@@ -137,6 +137,12 @@ export type ReferenceCaptureAcquisitionState = {
   seenEventFingerprints: string[];
   /** In-memory HF dedup cache only — DATABASE is idempotency authority. */
   seenPhysicalSampleFingerprints?: string[];
+  /** DI-EV-0035C — bounded ring of HF query provenance (incl. zero-result windows). */
+  hfQueryProvenanceRing?: Array<Record<string, unknown>>;
+  /** DI-EV-0035C — per-field recovery sweep cursor (separate from DATA/QUERY watermarks). */
+  hfRecoveryCursorByField?: Record<string, string>;
+  lastRecoverySweepAt?: string | null;
+  recoverySweepCount?: number;
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;
   quarantinedProviderFields?: string[];

@@ -1,5 +1,6 @@
 import { ReferenceCaptureObservationKind } from '@prisma/client';
 import { ReferenceCaptureAcquisitionService } from './reference-capture-acquisition.service';
+import { createLegacyHfRecoveryConfigMock } from './reference-capture-hf-recovery-v2.test-util';
 import { REFERENCE_CAPTURE_ENVELOPE_VERSION } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
 import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
@@ -173,6 +174,7 @@ describe('reference-capture HF durable idempotency', () => {
       observationWriter as never,
       observationRepository as never,
       sessionRepo as never,
+      createLegacyHfRecoveryConfigMock() as never,
     );
 
     const fp = buildPhysicalSampleFingerprint({
@@ -397,6 +399,7 @@ describe('reference-capture HF durable idempotency', () => {
       observationWriter as never,
       observationRepository as never,
       sessionRepo as never,
+      createLegacyHfRecoveryConfigMock() as never,
     );
 
     const input = {
