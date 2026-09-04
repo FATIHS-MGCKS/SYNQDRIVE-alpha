@@ -37,9 +37,15 @@ export interface PhysicalRefuelSettlementInput {
   /** SYNQDRIVE system observation/ingress time per candidate — REQUIRED, no eventTime fallback. */
   firstObservedAtById: Record<string, number>;
   config?: PhysicalRefuelSettlementConfig;
-  /** When true, a prior singleton already reached FINAL_DISTINCT and was enriched. */
+  /**
+   * When true, a late sibling conflict exists vs any prior FINAL_DISTINCT enrichment.
+   * G1.2d: may apply to singleton or external late components — not only same-component rows.
+   */
   priorDistinctFinalization?: boolean;
-  /** When true, a late sibling arrived after a prior FINAL_CANONICAL enrichment. */
+  /**
+   * When true, a late sibling conflict exists vs any prior FINAL_CANONICAL enrichment.
+   * G1.2d: may apply to singleton or external late components — not only same-component rows.
+   */
   priorCanonicalFinalization?: boolean;
   ambiguityReasonCodes?: IdentityAmbiguityReasonCode[];
 }

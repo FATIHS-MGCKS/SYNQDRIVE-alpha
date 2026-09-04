@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g12d-late-sibling-hardening-2026-09-04',
+    version: '4.9.1053',
+    title: 'G1.2d late-sibling finalization hardening (2026-09-04)',
+    summary: [
+      'Fixes G12C-LATE-SIBLING-INSUFFICIENT-SINGLETON-FINALIZE: late sibling conflict now actively gates enrichment.',
+      'Singleton/external late INSUFFICIENT or SAME rows vs prior FINAL_* cannot reach FINAL_DISTINCT with enrichment.',
+      'Six-case test matrix; G1.2c invariants preserved; EED-EV-0026 title clarified.',
+      'G2 design-ready; no production wiring.',
+    ],
+    reason: 'Corrective turn after independent Pre-G2 review blocker.',
+    previousBehavior: 'lateSiblingConflict was informational only unless prior-finalized id shared same component.',
+    details:
+      'docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md; FST-EVID-G12D-*; EED-EV-0031.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:00:00.000Z',
+  },
+  {
     id: 'refuel-g12c-finality-ambiguity-closure-2026-09-04',
     version: '4.9.1052',
     title: 'G1.2c finality + ambiguity closure — SETTLING, observation time (2026-09-04)',

@@ -293,49 +293,135 @@ describe('physical refuel reconciliation design (G1.2c)', () => {
     });
   });
 
-  describe('late sibling after finalization', () => {
-    it('15. A FINAL_DISTINCT then B SAME → B not enrichment eligible', () => {
-      const obsA = t0;
-      const obsB = t0 + horizon + 60_000;
-      const batch = reconcilePhysicalRefuelBatch(
-        [incidentA, incidentB],
-        {
-          asOfMs: obsB,
-          firstObservedAtById: { [incidentA.id]: obsA, [incidentB.id]: obsB },
-          priorDistinctFinalizationIds: new Set([incidentA.id]),
-        },
-      );
-      expect(batch[0].enrichmentEligibleId).toBeNull();
-      expect(batch[0].reasonCodes).toContain('late_sibling_after_finalization');
-    });
-
-    it('16. A FINAL_DISTINCT then B INSUFFICIENT → fail closed', () => {
-      const sparseB: RefuelRowForMatcher = {
-        id: 'sparse-b',
+  describe('late sibling after finalization (G1.2d)', () => {
+    function sparseLateRow(id: string): RefuelRowForMatcher {
+      return {
+        id,
         vehicleId,
         kind: 'REFUEL',
         startTime: incidentB.startTime,
         endTime,
-        dimoSegmentId: 'sparse-seg',
+        dimoSegmentId: `sparse-seg-${id}`,
       };
+    }
+
+    function mockInsufficientVsA(lateId: string) {
       jest.spyOn(identityMatcher, 'classifyPhysicalRefuelSibling').mockImplementation((a, b) => {
-        if (a.id === incidentA.id && b.id === sparseB.id) {
+        const pair = pairKey(a.id, b.id);
+        if (pair === pairKey(incidentA.id, lateId)) {
           return { classification: 'INSUFFICIENT_EVIDENCE', reason: 'sparse' };
         }
         return classifyPhysicalRefuelSibling(a, b);
       });
+    }
 
-      const batch = reconcilePhysicalRefuelBatch(
-        [incidentA, sparseB],
-        {
-          asOfMs: t0 + horizon + 60_000,
-          firstObservedAtById: { [incidentA.id]: t0, [sparseB.id]: t0 + horizon + 60_000 },
-          priorDistinctFinalizationIds: new Set([incidentA.id]),
-        },
-      );
-      const sparseDecision = batch.find((d) => d.siblingEventIds.includes(sparseB.id));
-      expect(sparseDecision?.enrichmentEligibleId).toBeNull();
+    it('CASE 1 — A FINAL_DISTINCT then late B SAME: fail closed, no enrichment', () => {
+      const obsA = t0;
+      const obsB = t0 + horizon + 60_000;
+      const asOfClosed = obsB + horizon + 1;
+      const batch = reconcilePhysicalRefuelBatch([incidentA, incidentB], {
+        asOfMs: asOfClosed,
+        firstObservedAtById: { [incidentA.id]: obsA, [incidentB.id]: obsB },
+        priorDistinctFinalizationIds: new Set([incidentA.id]),
+      });
+      expect(batch).toHaveLength(1);
+      expect(batch[0].finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(batch[0].enrichmentEligibleId).toBeNull();
+      expect(batch[0].reasonCodes).toContain('late_sibling_after_finalization');
+    });
+
+    it('CASE 2 — A FINAL_DISTINCT then late B INSUFFICIENT singleton, B window closed: fail closed', () => {
+      const sparseB = sparseLateRow('sparse-b');
+      mockInsufficientVsA(sparseB.id);
+      const obsB = t0 + horizon + 60_000;
+      const asOfClosed = obsB + horizon + 1;
+
+      const batch = reconcilePhysicalRefuelBatch([incidentA, sparseB], {
+        asOfMs: asOfClosed,
+        firstObservedAtById: { [incidentA.id]: t0, [sparseB.id]: obsB },
+        priorDistinctFinalizationIds: new Set([incidentA.id]),
+      });
+
+      const sparseDecision = batch.find((d) => d.siblingEventIds.includes(sparseB.id))!;
+      expect(sparseDecision.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(sparseDecision.enrichmentEligibleId).toBeNull();
+      expect(sparseDecision.reasonCodes).toContain('late_sibling_after_finalization');
       jest.restoreAllMocks();
+    });
+
+    it('CASE 3 — A FINAL_DISTINCT then late external C INSUFFICIENT: C not enrichment-eligible', () => {
+      const lateC = sparseLateRow('late-c');
+      mockInsufficientVsA(lateC.id);
+      const obsC = t0 + horizon + 120_000;
+      const asOfClosed = obsC + horizon + 1;
+
+      const batch = reconcilePhysicalRefuelBatch([incidentA, lateC], {
+        asOfMs: asOfClosed,
+        firstObservedAtById: { [incidentA.id]: t0, [lateC.id]: obsC },
+        priorDistinctFinalizationIds: new Set([incidentA.id]),
+      });
+
+      const lateDecision = batch.find((d) => d.siblingEventIds.includes(lateC.id))!;
+      expect(lateDecision.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(lateDecision.enrichmentEligibleId).toBeNull();
+      expect(lateDecision.reasonCodes).toContain('late_sibling_after_finalization');
+      jest.restoreAllMocks();
+    });
+
+    it('CASE 4 — unrelated same-vehicle refuels: both FINAL_DISTINCT with enrichment', () => {
+      const sep = HISTORICAL_REFUEL_CALIBRATION_ROWS[4];
+      const other = HISTORICAL_REFUEL_CALIBRATION_ROWS[5];
+      const batch = reconcilePhysicalRefuelBatch(
+        [sep, other],
+        closedContext([sep, other], { [sep.id]: t0, [other.id]: t0 }, t0 + horizon + 1),
+      );
+      expect(batch).toHaveLength(2);
+      for (const decision of batch) {
+        expect(decision.finalityState).toBe('FINAL_DISTINCT');
+        expect(decision.enrichmentEligibleId).not.toBeNull();
+        expect(decision.reasonCodes).not.toContain('late_sibling_after_finalization');
+      }
+    });
+
+    it('CASE 5 — same-component late SAME sibling while window open stays fail closed', () => {
+      const obsA = t0;
+      const obsB = t0 + horizon + 60_000;
+      const batch = reconcilePhysicalRefuelBatch([incidentA, incidentB], {
+        asOfMs: obsB,
+        firstObservedAtById: { [incidentA.id]: obsA, [incidentB.id]: obsB },
+        priorDistinctFinalizationIds: new Set([incidentA.id]),
+      });
+      expect(batch[0].enrichmentEligibleId).toBeNull();
+      expect(batch[0].reasonCodes).toContain('late_sibling_after_finalization');
+      expect(batch[0].finalityState).toBe('INSUFFICIENT_EVIDENCE');
+    });
+
+    it('CASE 6 — late-sibling fix preserves arrival-order invariance for Sept04 triple', () => {
+      const c = row('c-race', 15, 28, '2026-09-04T03:46:00.000Z', {
+        fuelStartPercent: 34.51,
+        fuelEndPercent: 43.14,
+        odometerEndKm: 187740,
+      });
+      const all = [incidentA, incidentB, c];
+      const observed = {
+        [incidentA.id]: t0,
+        [incidentB.id]: t0 + 20 * 60 * 1000,
+        [c.id]: t0 + 40 * 60 * 1000,
+      };
+      const finalAsOf = t0 + 40 * 60 * 1000 + horizon + 1;
+      const orders = [
+        [incidentA, incidentB, c],
+        [incidentB, c, incidentA],
+        [c, incidentA, incidentB],
+      ];
+      const closedOutcomes = orders.map((order) =>
+        reconcilePhysicalRefuelBatch(all, closedContext(all, observed, finalAsOf)),
+      );
+      for (const outcome of closedOutcomes) {
+        expect(outcome).toEqual(closedOutcomes[0]);
+        expect(outcome[0].finalityState).toBe('FINAL_CANONICAL');
+        expect(outcome[0].enrichmentEligibleId).toBe(incidentA.id);
+      }
     });
   });
 

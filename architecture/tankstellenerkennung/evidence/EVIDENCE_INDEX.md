@@ -25,6 +25,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md | G1.2 selector + identity matcher; 31 tests |
 | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md | G1.2b boundary hardening; 51 tests; settlement/finality/lock/grouping |
 | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md | G1.2c SETTLING, observation time, fail-closed components; 64 tests |
+| FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md | G1.2d late-sibling conflict gates enrichment for singleton/external components |
 
 ## Phase memos (supporting, not graph authority)
 

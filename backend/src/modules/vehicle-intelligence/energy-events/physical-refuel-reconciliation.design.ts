@@ -175,8 +175,6 @@ function decisionFromComponent(
 
   const isSiblingGroup = component.members.length > 1;
   const canonical = isSiblingGroup ? chooseCanonicalFromGroup(component.members) : component.members[0];
-  const priorDistinctHit = component.memberIds.some((id) => priorDistinct.has(id));
-  const priorCanonicalHit = component.memberIds.some((id) => priorCanonical.has(id));
   const lateSiblingConflict = hasLateSiblingFinalizationConflict(
     component,
     matrix,
@@ -191,8 +189,9 @@ function decisionFromComponent(
     asOfMs,
     firstObservedAtById,
     config: context?.settlementConfig,
-    priorDistinctFinalization: lateSiblingConflict && priorDistinctHit,
-    priorCanonicalFinalization: lateSiblingConflict && priorCanonicalHit,
+    // G1.2d: conflict is pairwise vs any prior-finalized id — not gated on same component membership.
+    priorDistinctFinalization: lateSiblingConflict,
+    priorCanonicalFinalization: lateSiblingConflict,
     ambiguityReasonCodes: lateSiblingConflict
       ? [...component.reasonCodes, 'late_sibling_after_finalization']
       : component.reasonCodes,

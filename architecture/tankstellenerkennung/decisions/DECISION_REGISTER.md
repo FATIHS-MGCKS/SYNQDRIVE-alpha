@@ -390,8 +390,8 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | Field | Value |
 |-------|-------|
 | **STATUS** | PROPOSED |
-| **BEFORE** | Partial late-sibling handling without INSUFFICIENT case |
-| **WHY** | Duplicate enrichment risk after FINAL_DISTINCT |
-| **CHANGE** | SAME or INSUFFICIENT late sibling after finalization → fail closed; G2 recovery |
-| **VALIDATION** | G1.2c late sibling tests |
-| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+| **BEFORE** | `lateSiblingConflict` gated settlement only when prior-finalized id was in same component |
+| **WHY** | Singleton/external late INSUFFICIENT siblings could reach FINAL_DISTINCT with enrichment |
+| **CHANGE** | Any late SAME or INSUFFICIENT vs prior FINAL_* → fail closed; G2 recovery |
+| **VALIDATION** | G1.2d six-case late-sibling matrix |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001, FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001 |

@@ -56,7 +56,7 @@ function segmentFromFixture(
   };
 }
 
-describe('KS MX 2024-09-04 post-cutover duplicate REFUEL forensic replay', () => {
+describe('KS MX 2024 — 2026-09-04 post-cutover duplicate REFUEL forensic replay', () => {
   const eventA = windowFromFixture(KS_MX_2024_SEPT04_EVENT_A);
   const eventB = windowFromFixture(KS_MX_2024_SEPT04_EVENT_B);
 

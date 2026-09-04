@@ -876,6 +876,18 @@ nodes:
       - docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity-component.design.ts
 
+  - id: FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001
+    type: evidence
+    title: G1.2d late-sibling finalization hardening
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Fixes singleton/external late INSUFFICIENT sibling incorrectly reaching FINAL_DISTINCT;
+      lateSiblingConflict now actively gates enrichment eligibility.
+    source_paths:
+      - docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time
@@ -911,12 +923,13 @@ nodes:
     type: decision
     title: Late sibling after finalization is a recovery conflict
     decision_status: PROPOSED
-    epistemic_status: INFERRED
+    epistemic_status: CONFIRMED
     summary: >
-      SAME or INSUFFICIENT late sibling after FINAL_DISTINCT/FINAL_CANONICAL blocks enrichment;
-      G2 operational recovery required.
+      Late SAME or INSUFFICIENT sibling vs any prior FINAL_* blocks enrichment for the late
+      component (singleton or external). G2 operational recovery required.
     evidence:
       - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+      - FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001
 
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis
