@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-04T09:17Z (P1.8.3.6 INC-07 natural warm-tier retrospective)  
-**Verifier:** P1.8.3.6 INC-07 retrospective audit agent
+**Last verified:** 2026-09-04T09:47Z (P1.8.3.6.1 INC-07 evidence extension)  
+**Verifier:** P1.8.3.6.1 INC-07 extension audit agent
 
 > `MAIN_SHA_AT_LAST_AUTHORITY_SYNC` is a snapshot at authority sync — not a live pointer to `origin/main`.
 
@@ -72,12 +72,14 @@ INC_07_APPLIED_TERMINALITY_LOCAL = PASS
 INC_07_PRODUCTION_DEPLOYED = YES
 INC_07_PRODUCTION_VALIDATED = NO
 INC07_VALIDATION_START_UTC = 2026-09-03T21:19:07Z
-INC07_RETROSPECTIVE_AUDIT_UTC = 2026-09-04T09:17:20Z
-NATURAL_WARM_TIER_CYCLES_OBSERVED = 2
-INC07_PRODUCTION_EVIDENCE_STRENGTH = WEAK
-CURRENT_FULL_N2_SEGMENT_START = 2026-09-03T21:18:36Z
-CURRENT_FULL_N2_SEGMENT_SECONDS = 43103
-OQ28_EARLIEST_24H_CHECKPOINT_UTC = 2026-09-04T21:18:36Z
+INC07_RETROSPECTIVE_AUDIT_UTC = 2026-09-04T09:47:08Z
+NATURAL_WARM_TIER_CYCLES_OBSERVED = 3
+INC07_PRODUCTION_EVIDENCE_STRENGTH = MODERATE
+DEPLOYMENT_BOUNDARY_COUNT_IN_AUDIT_WINDOW = 0
+PRE_T0_DEPLOYMENT_BOUNDARY_COUNT = 1
+CURRENT_FULL_N2_SEGMENT_START = 2026-09-03T21:18:52Z
+CURRENT_FULL_N2_SEGMENT_SECONDS = 44896
+OQ28_EARLIEST_24H_CHECKPOINT_UTC = 2026-09-04T21:18:52Z
 PRE_EXISTING_P3 = 1
 INC_06 = CLOSED
 INC_07 = FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS
@@ -146,8 +148,8 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_NATURAL_INC07_PRODUCTION_OBSERVATION
 
 ## TYPE: INCIDENT — INC-07 (fix deployed; production validation in progress)
 
-**STATUS:** **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P2) — remediation PR #1525 deployed to production `5b788a223` on 2026-09-03; validation start `2026-09-03T21:19:07Z`. Historical duplicates frozen (2 groups / 4 rows). **Not closed** until ≥2 natural warm-tier cycles with STRONG or MODERATE evidence.  
-**EVIDENCE:** P1.8.3.3 forensic closure; P1.8.3.4 remediation + local regression PASS; `FAILURE_AND_RECOVERY_MODEL.md`
+**STATUS:** **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P2) — remediation PR #1525 deployed to production `5b788a223` on 2026-09-03; validation start `2026-09-03T21:19:07Z`. P1.8.3.6.1 extension: 3 warm cycles, 1 post-T0 gap-split APPLIED, evidence MODERATE. Historical duplicates frozen (2 groups / 4 rows). **Not closed** — replay/IDEMPOTENT_SKIP pending.  
+**EVIDENCE:** P1.8.3.3 forensic closure; P1.8.3.4 remediation + local regression PASS; P1.8.3.6 + P1.8.3.6.1 retrospective; `FAILURE_AND_RECOVERY_MODEL.md`
 
 ---
 

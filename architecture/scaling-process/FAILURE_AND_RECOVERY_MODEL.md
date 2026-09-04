@@ -118,7 +118,7 @@
 | **SYMPTOM** | 2 duplicate `vehicle_id+start_time` groups (4 REPAIRED rows); 0 pre-N2 duplicate groups in 1947 trips |
 | **ROOT_CAUSE** | Warm-tier `repairIntraTripGapSplits` re-applies split on same parent trip/window; `INTRA_TRIP_GAP_SPLIT` `trip_repairs` lack deterministic idempotency key (unlike `MISSING_TRIP`) |
 | **SCALING_CAUSALITY** | APPLICATION_IDEMPOTENCY_DEFECT — not multi-replica concurrent race (4h scheduler cadence) |
-| **STATUS** | **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.5 deploy `5b788a223`; validation start `2026-09-03T21:19:07Z`; P1.8.3.6 retrospective WEAK — 2 warm cycles, 0 gap-split replay) |
+| **STATUS** | **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.5 deploy `5b788a223`; validation start `2026-09-03T21:19:07Z`; P1.8.3.6.1 extension MODERATE — 3 warm cycles, 1 gap-split APPLIED, 0 replay/IDEMPOTENT_SKIP) |
 | **REMEDIATION** | Single PostgreSQL transaction: `pg_advisory_xact_lock64` + legacy lookup + `splitTripAtGap(tx)` + `finalizeRepairedTrip(tx)` + `APPLIED`. Session advisory locks removed. Downstream enqueue after commit. |
 | **EVIDENCE** | `architecture/P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md`; `architecture/P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md`; `architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md`; `architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md` |
 
