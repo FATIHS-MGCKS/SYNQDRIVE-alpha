@@ -43,7 +43,7 @@ import {
   type HfCaptureRootCause,
 } from './reference-capture-rd004-b-hf-exact-window-replay';
 
-export const RD004_B_PHASE = 'RD004-B.6';
+export const RD004_B_PHASE = 'RD004-B.6.1';
 export const RD004_B_EVIDENCE_ID = 'DI-EV-0035B.6';
 export const RD004_B_MODE = 'RD004_SEGMENT_B_VIDEO_TELEMETRY_VALIDATION';
 
@@ -2499,6 +2499,10 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       null,
     B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID:
       recoveryDesign?.B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID ?? null,
+    MISLEADING_SETTLEMENT_PROTECTION_API_REMOVED: recoveryDesign ? 'YES' : null,
+    LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY: recoveryDesign ? 'NO' : null,
+    TEMPORAL_QUERY_COVERAGE_SEPARATED_FROM_PROVIDER_AVAILABILITY: recoveryDesign ? 'YES' : null,
+    PROVIDER_AVAILABILITY_AT_NEXT_QUERY_PROVEN: recoveryDesign ? 'NO' : null,
     AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY: recoveryDesign ? 'YES' : null,
     AVAILABILITY_DELAY_UPPER_BOUND_KNOWN: recoveryDesign ? 'NO' : null,
     ACTUAL_FIRST_PROVIDER_AVAILABILITY_KNOWN: recoveryDesign ? 'NO' : null,
@@ -2692,7 +2696,7 @@ export function runRd004SegmentBAnalysis(input: Rd004SegmentBAnalysisInput) {
       legacyExploratoryClockLandmarkMatches: matchClockLandmarks(SEGMENT_B_CLOCK_LANDMARKS, anchorMatches),
       transitionIntervalCensoring,
       note:
-        'B.6: HF recovery policy lower-bound semantics correction; B.5 parameter authority superseded; B.4 exact-window replay preserved; no provider clock landmark resolved',
+        'B.6.1: semantic hygiene closeout — misleading protection/recoverable naming removed; B.6 lower-bound semantics preserved; B.4 exact-window replay preserved',
     },
     speedAccuracy,
     stopTiming,

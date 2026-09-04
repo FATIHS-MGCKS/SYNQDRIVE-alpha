@@ -1,5 +1,5 @@
 /**
- * RD004-B.6 / DI-EV-0035B.6 — HF recovery policy lower-bound semantics correction.
+ * RD004-B.6.1 / DI-EV-0035B.6 — HF recovery policy lower-bound semantics correction.
  * Read-only analysis; does NOT modify production runtime or constants.
  *
  * B.5 superseded: availabilityLagLowerBoundSeconds is a LOWER BOUND only —
@@ -23,6 +23,10 @@ export const RD004_B6_EVIDENCE_ID = 'DI-EV-0035B.6';
 export const RD004_B5_EVIDENCE_ID = RD004_B6_EVIDENCE_ID;
 
 export const LOWER_BOUND_LEQ_SETTLEMENT_DOES_NOT_PROVE_AVAILABILITY = 'YES';
+export const LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY = 'NO';
+export const MISLEADING_SETTLEMENT_PROTECTION_API_REMOVED = 'YES';
+export const TEMPORAL_QUERY_COVERAGE_SEPARATED_FROM_PROVIDER_AVAILABILITY = 'YES';
+export const PROVIDER_AVAILABILITY_AT_NEXT_QUERY_PROVEN = 'NO';
 export const B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID = 'NO';
 export const B5_EXACT_SETTLEMENT_PARAMETER_VALIDATED = 'NO';
 
@@ -60,14 +64,16 @@ export type SettlementCoverageResult = {
 
 export type OverlapRecoveryResult = {
   recoveryOverlapSeconds: number;
-  observedDefinitelyExcludedCount: number;
-  observedPotentiallyRecoverableCount: number;
-  observedPartiallyOverlappedCount: number;
-  estimatedRecoverableLateBucketCount: number;
-  estimatedDefinitelyMissedBucketCount: number;
+  temporallyExcludedCount: number;
+  temporallyReachableCandidateCount: number;
+  temporallyPartiallyCoveredCount: number;
+  temporalCoverageCandidateCount: number;
+  temporalCoverageExcludedCount: number;
   overlapCompletenessGuaranteed: 'NO';
   overlapClassification: 'PROVISIONAL_COVERAGE_CANDIDATE';
-  interpretation: 'COVERAGE_TEMPORAL_RECOVERY_LOWER_BOUND' | 'NOT_DETERMINABLE';
+  interpretation: 'TEMPORAL_QUERY_COVERAGE_ONLY' | 'NOT_DETERMINABLE';
+  providerAvailabilityAtNextQueryProven: 'NO';
+  actualRecoveryCount: null;
   note: string;
 };
 
@@ -76,13 +82,15 @@ export type CombinedPolicySimulationRow = {
   candidateRecoveryOverlapSeconds: number;
   bucketCountDeferredFromHotEdge: number;
   bucketCountWithLowerBoundBelowDelay: number;
-  lateBucketsStillRequiringOverlapRecovery: number;
-  estimatedRecoverableByOverlapLowerBound: number;
-  estimatedDefinitelyMissedByOverlapLowerBound: number;
+  temporalCoverageCandidateCount: number;
+  temporalCoverageExcludedCount: number;
   queryWindowExpansionSeconds: number;
   estimatedRepeatedQueryCoverageFraction: number;
   expectedDuplicateRetrievalPressure: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
+  interpretation: 'TEMPORAL_QUERY_COVERAGE_ONLY';
   providerAvailabilityProven: 'NO';
+  providerAvailabilityAtNextQueryProven: 'NO';
+  actualRecoveryCount: null;
   confidence: 'LOWER_BOUND' | 'NOT_DETERMINABLE';
 };
 
@@ -137,17 +145,6 @@ export function analyzeLateBucketTiming(row: HfLateArrivalDifferentialRow): Late
   };
 }
 
-/**
- * Lag lower bound <= candidate delay is CONSISTENCY only — NOT availability proof.
- * @deprecated B.5 unsafe name — use isLowerBoundConsistentWithCandidateDelay
- */
-export function closedLateBucketProtectedBySettlementDelay(
-  row: HfLateArrivalDifferentialRow,
-  settlementDelaySeconds: number,
-): boolean {
-  return isLowerBoundConsistentWithCandidateDelay(row, settlementDelaySeconds);
-}
-
 export function isLowerBoundConsistentWithCandidateDelay(
   row: HfLateArrivalDifferentialRow,
   settlementDelaySeconds: number,
@@ -172,21 +169,6 @@ export function isDeferredFromHotEdgeBySettlementHorizon(
   if (requestMs == null || bucketEndMs == null) return false;
   const safeQueryToMs = requestMs - settlementDelaySeconds * 1000;
   return bucketEndMs > safeQueryToMs;
-}
-
-/** @deprecated Use isDeferredFromHotEdgeBySettlementHorizon */
-export function closedLateBucketDeferredBySettlementHorizon(
-  row: HfLateArrivalDifferentialRow,
-  settlementDelaySeconds: number,
-): boolean {
-  return isDeferredFromHotEdgeBySettlementHorizon(row, settlementDelaySeconds);
-}
-
-export function lowerBoundDoesNotProveAvailabilityBySettlement(
-  lowerBoundSeconds: number,
-  candidateSettlementDelaySeconds: number,
-): boolean {
-  return lowerBoundSeconds <= candidateSettlementDelaySeconds;
 }
 
 export function simulateOverlapRecoveryClassification(
@@ -239,27 +221,28 @@ export function simulateOverlapRecovery(
   const definitelyExcluded = classifications.filter(
     (c) => c === 'DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK',
   ).length;
-  const potentiallyRecoverable = classifications.filter(
+  const reachableCandidates = classifications.filter(
     (c) => c === 'POTENTIALLY_REQUERYABLE',
   ).length;
-  const partiallyOverlapped = classifications.filter(
+  const partiallyCovered = classifications.filter(
     (c) => c === 'PARTIALLY_OVERLAPPED_BY_NEXT_WINDOW',
   ).length;
-  const recoverable = lateRows.length - definitelyExcluded;
+  const coverageCandidates = lateRows.length - definitelyExcluded;
 
   return {
     recoveryOverlapSeconds,
-    observedDefinitelyExcludedCount: definitelyExcluded,
-    observedPotentiallyRecoverableCount: potentiallyRecoverable,
-    observedPartiallyOverlappedCount: partiallyOverlapped,
-    estimatedRecoverableLateBucketCount: recoverable,
-    estimatedDefinitelyMissedBucketCount: definitelyExcluded,
+    temporallyExcludedCount: definitelyExcluded,
+    temporallyReachableCandidateCount: reachableCandidates,
+    temporallyPartiallyCoveredCount: partiallyCovered,
+    temporalCoverageCandidateCount: coverageCandidates,
+    temporalCoverageExcludedCount: definitelyExcluded,
     overlapCompletenessGuaranteed: 'NO',
-    overlapClassification:
-      recoveryOverlapSeconds >= 6 ? 'PROVISIONAL_COVERAGE_CANDIDATE' : 'PROVISIONAL_COVERAGE_CANDIDATE',
-    interpretation: 'COVERAGE_TEMPORAL_RECOVERY_LOWER_BOUND',
+    overlapClassification: 'PROVISIONAL_COVERAGE_CANDIDATE',
+    interpretation: 'TEMPORAL_QUERY_COVERAGE_ONLY',
+    providerAvailabilityAtNextQueryProven: 'NO',
+    actualRecoveryCount: null,
     note:
-      'Temporal coverage candidate only — changed query origins and unknown first-availability time prevent completeness guarantee.',
+      'TEMPORAL_QUERY_COVERAGE_ONLY — next query window may include bucket time range; actualProviderFirstAvailabilityAt UNKNOWN.',
   };
 }
 
@@ -284,12 +267,12 @@ export function simulateCombinedPolicy(
   const settlement = simulateSettlementCoverage(lateRows, settlementDelaySeconds);
   const overlap = simulateOverlapRecovery(lateRows, recoveryOverlapSeconds);
 
-  const stillRequiringOverlap = lateRows.filter((row) => {
+  const excluded = lateRows.filter((row) => {
     const cls = simulateOverlapRecoveryClassification(row, recoveryOverlapSeconds);
     return cls === 'DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK';
   }).length;
 
-  const recoverableByOverlap = lateRows.length - stillRequiringOverlap;
+  const coverageCandidates = lateRows.length - excluded;
   const repeatedFraction =
     medianWindowDurationSeconds > 0
       ? Math.min(1, recoveryOverlapSeconds / medianWindowDurationSeconds)
@@ -300,16 +283,18 @@ export function simulateCombinedPolicy(
     candidateRecoveryOverlapSeconds: recoveryOverlapSeconds,
     bucketCountDeferredFromHotEdge: settlement.bucketCountDeferredFromHotEdge,
     bucketCountWithLowerBoundBelowDelay: settlement.bucketCountWithLowerBoundBelowDelay,
-    lateBucketsStillRequiringOverlapRecovery: stillRequiringOverlap,
-    estimatedRecoverableByOverlapLowerBound: recoverableByOverlap,
-    estimatedDefinitelyMissedByOverlapLowerBound: stillRequiringOverlap,
+    temporalCoverageCandidateCount: coverageCandidates,
+    temporalCoverageExcludedCount: excluded,
     queryWindowExpansionSeconds: settlementDelaySeconds,
     estimatedRepeatedQueryCoverageFraction: repeatedFraction,
     expectedDuplicateRetrievalPressure: estimateDuplicatePressure(
       recoveryOverlapSeconds,
       medianWindowDurationSeconds,
     ),
+    interpretation: 'TEMPORAL_QUERY_COVERAGE_ONLY',
     providerAvailabilityProven: 'NO',
+    providerAvailabilityAtNextQueryProven: 'NO',
+    actualRecoveryCount: null,
     confidence: lateRows.length > 0 ? 'LOWER_BOUND' : 'NOT_DETERMINABLE',
   };
 }
@@ -601,6 +586,12 @@ export function buildRecoveryPolicySimulation(args: {
       correction:
         'Lower-bound lag ≤ settlement delay does NOT prove provider availability by that delay.',
     },
+    semanticHygiene: {
+      MISLEADING_SETTLEMENT_PROTECTION_API_REMOVED: 'YES',
+      LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY: 'NO',
+      TEMPORAL_QUERY_COVERAGE_SEPARATED_FROM_PROVIDER_AVAILABILITY: 'YES',
+      PROVIDER_AVAILABILITY_AT_NEXT_QUERY_PROVEN: 'NO',
+    },
     availabilitySemantics: {
       AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY: 'YES',
       AVAILABILITY_DELAY_UPPER_BOUND_KNOWN: 'NO',
@@ -722,7 +713,11 @@ export function buildRecoveryPolicyFlags(args: {
   b4Watermark: B4WatermarkEvidence;
 }) {
   return {
-    RD004_PHASE: 'RD004-B.6',
+    RD004_PHASE: 'RD004-B.6.1',
+    MISLEADING_SETTLEMENT_PROTECTION_API_REMOVED: 'YES',
+    LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY: 'NO',
+    TEMPORAL_QUERY_COVERAGE_SEPARATED_FROM_PROVIDER_AVAILABILITY: 'YES',
+    PROVIDER_AVAILABILITY_AT_NEXT_QUERY_PROVEN: 'NO',
     PROVIDER_LATE_ARRIVAL_CONFIRMED: 'YES',
     AVAILABILITY_DELAY_IS_LOWER_BOUND_ONLY: 'YES',
     AVAILABILITY_DELAY_UPPER_BOUND_KNOWN: 'NO',

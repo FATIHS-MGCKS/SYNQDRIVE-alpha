@@ -1730,5 +1730,5 @@
       }
     }
   },
-  "note": "B.6: HF recovery policy lower-bound semantics correction; B.5 parameter authority superseded; B.4 exact-window replay preserved; no provider clock landmark resolved"
+  "note": "B.6.1: semantic hygiene closeout — misleading protection/recoverable naming removed; B.6 lower-bound semantics preserved; B.4 exact-window replay preserved"
 }

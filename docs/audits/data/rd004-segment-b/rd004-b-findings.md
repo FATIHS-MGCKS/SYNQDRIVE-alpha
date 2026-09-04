@@ -1,3 +1,28 @@
+# RD004-B.6.1 — HF Recovery Policy Semantic Hygiene Closeout
+
+**Evidence ID:** DI-EV-0035B.6 (B.6.1 hygiene closeout)
+**Phase:** RD004-B.6.1
+**Mode:** Read-only naming/API hygiene — **no production changes**
+
+## Kurz (Deutsch) — 5 Fragen
+
+1. **Wurde noch irgendein „geschützt/verfügbar“-Claim aus Lower Bounds abgeleitet?**
+   **Nein.** `closedLateBucketProtectedBySettlementDelay()` entfernt. Keine kanonische API mit „ProtectedBySettlement“.
+
+2. **Bedeutet Overlap jetzt nur noch zeitliche Wiederabdeckung?**
+   **Ja.** Felder heißen `temporalCoverageCandidateCount` / `temporallyExcludedCount`; Interpretation `TEMPORAL_QUERY_COVERAGE_ONLY`.
+
+3. **Wissen wir die tatsächliche DIMO-Verfügbarkeit weiterhin nicht?**
+   **Ja.** `actualProviderFirstAvailabilityAt = UNKNOWN`; `actualRecoveryCount = null`.
+
+4. **Bleiben 8 s / 6 s provisorisch?**
+   **Ja.** `PARAMETERS_VALIDATED = NO`, `PRODUCTION_HF_POLICY_PARAMETERS_VALIDATED = NO`.
+
+5. **Ist #1532 danach wirklich bereit für Analyse-Merge?**
+   **Ja.** `READY_FOR_RD004_ANALYSIS_MERGE = YES`, `READY_FOR_PRODUCTION_HF_RECOVERY_PR = YES`.
+
+---
+
 # RD004-B.6 — HF Recovery Policy Lower-Bound Semantics Correction
 
 **Evidence ID:** DI-EV-0035B.6

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    title: 'DI-EV-0035B.6.1 — RD004-B HF Recovery Policy Semantic Hygiene Closeout',
+    summary: [
+      'Removed misleading closedLateBucketProtectedBySettlementDelay() API entirely.',
+      'Renamed recoverable overlap counts to temporalCoverageCandidateCount / temporallyExcludedCount.',
+      'LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY=NO (epistemic invariant, not numeric predicate).',
+      'Combined grid: TEMPORAL_QUERY_COVERAGE_ONLY; actualRecoveryCount=null.',
+      '83 focused RD004-B tests; B.6 conclusions preserved; no production changes.',
+    ],
+    reason:
+      'B.6 fixed lower-bound semantics; B.6.1 removes remaining misleading API/naming so future agents cannot reinterpret temporal coverage as proven availability.',
+    previousBehavior:
+      'Deprecated closedLateBucketProtectedBySettlementDelay still returned isLowerBoundConsistentWithCandidateDelay; overlap fields used estimatedRecoverable* naming.',
+    details:
+      'Module reference-capture-rd004-b-hf-recovery-policy.ts; regenerated simulation/design/contract artifacts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035b6-rd004-hf-recovery-lower-bound-correction-2026-09-04',
     version: '4.9.1056',
     title: 'DI-EV-0035B.6 — RD004-B HF Recovery Policy Lower-Bound Semantics Correction',
