@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c1b-flight-recorder-canary-contract-2026-09-04',
+    version: '4.9.1065',
+    title: 'DI-EV-0035C.1b — Dynamic Flight Recorder Canary Vehicle Selection Contract',
+    summary: [
+      'Verified Reference Capture HF V2 runtime is vehicle-agnostic (no hardcoded plate/token).',
+      'Replaced fixed “KS MX 2024 canary” wording with Flight Recorder dynamic selection contract.',
+      'Documented operator pre-run procedure: select available vehicle, resolve tokenId, set allowlist.',
+      'Same vehicle preferred across 10/20/30/60s phases; cross-vehicle changes must be recorded.',
+      'KS MX 2024 / tokenId 187336 preserved as NON_CANONICAL_EXAMPLE only.',
+      'C.1a fail-closed canary semantics preserved; no production HF path changes.',
+    ],
+    reason:
+      'C.1 documentation incorrectly implied KS MX 2024 is the permanent Reference Capture canary; actual procedure is operator-selected vehicle per experiment.',
+    previousBehavior:
+      'Evidence named KS MX 2024 / 187336 as the canary experiment vehicle contract.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §8 + §C.1b; driving-intelligence-hf-recovery-runtime-implementation-2026-09.md.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:55:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1a-hf-pre-canary-hardening-2026-09-04',
     version: '4.9.1064',
     title: 'DI-EV-0035C.1a — HF Block Polling Pre-Canary Correctness Hardening',
@@ -48,7 +70,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Production HF path, score, detectors, tire/brake models unchanged.',
     ],
     reason:
-      'Forensic review of DI-EV-0035C.1 found pre-canary correctness defects that could mis-scope V2 or corrupt observability before KS MX 2024 calibration.',
+      'Forensic review of DI-EV-0035C.1 found pre-canary correctness defects that could mis-scope V2 or corrupt observability before live Reference Capture calibration.',
     previousBehavior:
       'Empty canary allowlist could enable global V2; bucket ages reversed; stagger offset unused in deadline primitive.',
     details:
@@ -67,7 +89,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Preserves 1s DIMO historical aggregation; slower API polling only.',
       'Block-density observability: buckets/request, temporal density, requests/vehicle/hour.',
       'Deterministic fleet request-load model + tokenId-based stagger design (planning only).',
-      'KS MX 2024 canary experiment contract for 10/20/30/60s calibration phases.',
+      'Flight Recorder dynamic canary experiment contract for 10/20/30/60s calibration phases.',
       'Production HF path (dimo-segments → trip-behavior-enrichment) unchanged.',
     ],
     reason:

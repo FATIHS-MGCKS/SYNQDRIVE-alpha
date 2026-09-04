@@ -106,28 +106,72 @@ Reference Capture single-session path uses simple interval gate; stagger primiti
 
 ---
 
-## 8. KS MX 2024 canary experiment contract
+## 8. Flight Recorder / Dynamic Reference Capture Canary Experiment Contract
 
-**Vehicle:** KS MX 2024 via config `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS=187336` (not hardcoded).
+**Canonical name:** Flight Recorder Canary Experiment Contract (also: Dynamic Reference Capture Canary Experiment Contract).
 
-**Duration:** ≥20–30 min continuous drive per cadence phase.
+**Authority:** Operator-selected vehicle at experiment time — **not** a fixed plate, vehicleId, or DIMO tokenId in architecture or code.
 
-**Phases:** separate labeled sessions or intervals for 10s / 20s / 30s / 60s:
+### Selection model
+
+1. Immediately before a live calibration / reference drive, determine which connected vehicle is actually available.
+2. Select that vehicle as the temporary Flight Recorder / Reference Capture canary.
+3. Resolve its DIMO `tokenId` at runtime/configuration time.
+4. Put **only** the selected `tokenId`(s) into `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS`.
+5. Run the controlled reference experiment.
+6. After the experiment, disable V2 / clear the canary selection or replace with the next explicitly selected vehicle.
+
+Eligible vehicles include any connected SynqDrive vehicle (e.g. KS MX 2024, KS MS 661, or future fleet vehicles) depending on operational availability.
+
+**Runtime selection authority:** `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS` (env / `referenceCapture.hfRecoveryPolicyV2CanaryTokenIds`). No plate or token is hardcoded in Reference Capture HF Recovery V2 or block-polling runtime.
+
+**C.1a fail-closed preserved:** `V2_ENABLED=true` + `CANARY_ONLY=true` + empty/missing/invalid allowlist ⇒ LEGACY for all tokens.
+
+### Example only (NON_CANONICAL_EXAMPLE = YES)
+
+Historical design-time candidate while authoring C.1 — **not** architectural authority:
+
+| Field | Value |
+|-------|-------|
+| Vehicle | KS MX 2024 |
+| tokenId | 187336 |
 
 ```bash
 HF_RECOVERY_POLICY_V2_ENABLED=true
 HF_RECOVERY_POLICY_V2_CANARY_ONLY=true
-HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS=187336
-HF_HISTORICAL_POLL_INTERVAL_MS=30000   # vary per phase
+HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS=187336   # replace with selected vehicle token at experiment time
+HF_HISTORICAL_POLL_INTERVAL_MS=30000             # vary per phase
 HF_SETTLEMENT_DELAY_MS=8000
 HF_RECOVERY_OVERLAP_MS=6000
+```
+
+### Calibration phase matrix
+
+**Duration:** ≥20–30 min continuous drive per cadence phase.
+
+**Phases:** separate labeled sessions or intervals for **10s / 20s / 30s / 60s** with otherwise identical HF policy parameters where possible.
+
+**Comparability:** For one 10/20/30/60s series, prefer the **same** selected vehicle across all cadence phases so poll cadence is the primary changed variable.
+
+If operational availability forces a vehicle change between phases:
+
+- Record `vehicleId` / `tokenId` per phase in experiment metadata.
+- Do **not** blindly compare phases as if vehicle identity were constant.
+- Mark the vehicle change explicitly in evidence.
+- Stratify results by vehicle or repeat missing phases on the same vehicle later.
+
+```
+SAME_VEHICLE_PREFERRED_WITHIN_CALIBRATION_SERIES = YES
+CROSS_VEHICLE_PHASE_CHANGE_MUST_BE_RECORDED = YES
 ```
 
 **Per phase collect:** provider request count, aggregate bucket count, unique temporal starts, median/P90 cadence, max gap, zero-results, late/recovered buckets, duplicates, revisions, errors, latency.
 
 **Post-session:** exact-window provider replay (same-origin) vs captured coverage — per RD004 query-from-anchored rules.
 
-`KS_MX_2024_CANARY_EXPERIMENT_DEFINED = YES`
+`FLIGHT_RECORDER_CANARY_EXPERIMENT_DEFINED = YES`
+
+*(Prior C.1 wording `KS_MX_2024_CANARY_EXPERIMENT_DEFINED` was example-specific; superseded by this contract in DI-EV-0035C.1b.)*
 
 ---
 
@@ -266,4 +310,81 @@ STAGGER_DEADLINE_DEFECT_FOUND = YES
 STAGGER_DEADLINE_DEFECT_FIXED = YES
 READY_FOR_REFERENCE_CAPTURE_CANARY = YES (after merge; V2 flags + non-empty canary allowlist)
 READY_FOR_MERGE = YES (correctness findings closed; calibration NOT validated)
+```
+
+---
+
+## DI-EV-0035C.1b — Dynamic Flight Recorder canary vehicle selection contract (2026-09-04)
+
+**Evidence ID:** DI-EV-0035C.1b  
+**Parent:** DI-EV-0035C.1 / C.1a  
+**Status:** DOCUMENTATION + VERIFICATION; **NOT DEPLOYED**
+
+### A. Runtime vehicle-agnostic verification
+
+Forensic audit of Reference Capture HF Recovery V2 + block-polling runtime:
+
+- No hardcoded KS MX 2024, registration plate, or tokenId `187336` in production logic.
+- Canary authority remains `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS` via env / `ReferenceCaptureConfig`.
+- C.1a fail-closed semantics unchanged.
+
+```
+REFERENCE_CAPTURE_CANARY_RUNTIME_CONFIGURABLE = YES
+REFERENCE_CAPTURE_CANARY_VEHICLE_HARDCODED = NO
+CANARY_FAIL_CLOSED_SEMANTICS_PRESERVED = YES
+```
+
+### B. Canonical experiment contract correction
+
+Section 8 renamed/amended to **Flight Recorder / Dynamic Reference Capture Canary Experiment Contract**. KS MX 2024 / token `187336` retained only as `NON_CANONICAL_EXAMPLE = YES`.
+
+```
+KS_MX_2024_TOKEN_187336_CANONICAL_CANARY = NO
+KS_MX_2024_TOKEN_187336_EXAMPLE_ONLY = YES
+```
+
+### C. Experimental comparability rule
+
+Documented in §8: same vehicle preferred within a 10/20/30/60s series; cross-vehicle phase changes must be recorded and stratified.
+
+### D. Flight Recorder pre-run selection contract
+
+Before every live Reference Capture calibration, operator must:
+
+1. Choose available connected vehicle (not auto-activated).
+2. Resolve `vehicleId` + DIMO `tokenId`.
+3. Verify vehicle connectivity / telemetry availability.
+4. Set selected `tokenId` in `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS`.
+5. Verify `HF_RECOVERY_POLICY_V2_CANARY_ONLY=true`.
+6. Verify exactly intended token(s) resolve to V2; all others LEGACY.
+7. Select `HF_HISTORICAL_POLL_INTERVAL_MS` for current phase (10/20/30/60s).
+8. Start Reference Capture / Flight Recorder session.
+9. Record experiment metadata: `vehicleId`, display identifier (if appropriate), `tokenId`, phase poll interval, V2 parameters, `sessionId`, start/end timestamps.
+10. After experiment: disable V2 or clear/replace canary selection.
+
+```
+FLIGHT_RECORDER_PRE_RUN_SELECTION_CONTRACT_DOCUMENTED = YES
+```
+
+### E. Safety boundary (unchanged)
+
+```
+PRODUCTION_HF_PATH_CHANGED = NO
+PRODUCTION_SCORE_CHANGED = NO
+PRODUCTION_DETECTORS_CHANGED = NO
+PRODUCTION_TIRE_BRAKE_MODELS_CHANGED = NO
+PRODUCTION_FLEET_STAGGERING_ENABLED = NO
+HF_30S_BLOCK_POLLING_VALIDATED = NO
+DEPLOYED = NO
+```
+
+### C.1b final flags
+
+```
+DI_EV = DI-EV-0035C.1b
+FIXED_KS_MX_2024_CANARY_DEPENDENCY_FOUND = YES (documentation only; runtime already agnostic)
+FIXED_KS_MX_2024_CANARY_DEPENDENCY_REMOVED = YES
+REFERENCE_CAPTURE_CANARY_VEHICLE_RUNTIME_SELECTABLE = YES
+READY_FOR_REFERENCE_CAPTURE_CANARY = YES (after merge; operator selects vehicle + sets allowlist per pre-run contract)
+READY_FOR_MERGE = YES (documentation contract corrected; no production path changes)
 ```

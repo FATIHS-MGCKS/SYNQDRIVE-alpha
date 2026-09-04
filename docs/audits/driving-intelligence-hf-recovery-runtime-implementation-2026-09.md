@@ -97,17 +97,20 @@ DIMO HF buckets are **query-from-anchored**. Recovery sweep uses **explicit cano
 | `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS` | *(empty)* | Comma-separated DIMO tokenIds |
 | `HF_AVAILABILITY_CALIBRATION_ENABLED` | `false` | Live calibration foundation |
 
-### Canary example (KS MX 2024)
+### Canary configuration example (NON_CANONICAL_EXAMPLE = YES)
+
+Historical design-time candidate only — replace `tokenId` with the operator-selected vehicle at experiment time:
 
 ```bash
 HF_RECOVERY_POLICY_V2_ENABLED=true
 HF_RECOVERY_POLICY_V2_CANARY_ONLY=true
+# Example only: KS MX 2024 tokenId 187336 — NOT architectural authority
 HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS=187336
 # Optional sweep after V2 stable:
 # HF_RECOVERY_SWEEP_ENABLED=true
 ```
 
-No tokenId is hardcoded in production logic.
+No tokenId, plate, or vehicle label is hardcoded in production logic. See `docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md` §8 + DI-EV-0035C.1b Flight Recorder pre-run contract.
 
 ---
 
@@ -141,7 +144,7 @@ Zero-result windows stored in session `hfQueryProvenanceRing` (max 500 records).
 
 1. Merge PR (draft → review)
 2. Deploy with **V2 disabled** globally
-3. Enable canary token allowlist for KS MX 2024
+3. Operator selects available vehicle; set `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS` to resolved DIMO tokenId (see Flight Recorder pre-run contract, DI-EV-0035C.1b)
 4. Observe `hf_acquisition_cycle` logs + provenance ring
 5. Run availability calibration experiment (staging/canary)
 6. Tune `HF_SETTLEMENT_DELAY_MS` / `HF_RECOVERY_OVERLAP_MS` from measured P50/P90/P95

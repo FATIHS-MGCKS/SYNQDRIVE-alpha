@@ -304,4 +304,28 @@ describe('reference-capture-hf-recovery-v2.policy', () => {
     expect(window).not.toBeNull();
     expect(window!.queryFrom.getTime()).toBeLessThan(window!.queryTo.getTime());
   });
+
+  describe('DI-EV-0035C.1b dynamic canary vehicle selection', () => {
+    it('any tokenId supplied via config can independently become the sole V2 canary', () => {
+      for (const selectedToken of [42_001, 186_946]) {
+        const base = parseHfRecoveryPolicyV2ConfigFromEnv({
+          HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+          HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+          HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: String(selectedToken),
+        });
+        expect(resolveHfRecoveryPolicyForToken(base, selectedToken).mode).toBe('V2');
+        expect(resolveHfRecoveryPolicyForToken(base, selectedToken + 1).mode).toBe('LEGACY');
+      }
+    });
+
+    it('empty allowlist still fails closed after dynamic selection contract', () => {
+      const base = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+      });
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(base)).toBe(true);
+      expect(resolveHfRecoveryPolicyForToken(base, 42_001).mode).toBe('LEGACY');
+      expect(resolveHfRecoveryPolicyForToken(base, 186_946).mode).toBe('LEGACY');
+    });
+  });
 });
