@@ -143,6 +143,8 @@ export type ReferenceCaptureAcquisitionState = {
   hfRecoveryCursorByField?: Record<string, string>;
   lastRecoverySweepAt?: string | null;
   recoverySweepCount?: number;
+  /** DI-EV-0035C.1 — last successful HF_HISTORICAL provider poll (V2 block cadence). */
+  lastHfHistoricalPollAt?: string | null;
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;
   quarantinedProviderFields?: string[];

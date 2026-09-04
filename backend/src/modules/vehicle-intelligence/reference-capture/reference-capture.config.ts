@@ -5,6 +5,7 @@ import {
   parseHfRecoveryPolicyV2ConfigFromEnv,
   PROVISIONAL_RECOVERY_OVERLAP_MS,
   PROVISIONAL_SETTLEMENT_DELAY_MS,
+  PROVISIONAL_HF_POLL_INTERVAL_MS,
   resolveHfRecoveryPolicyForToken,
   type HfRecoveryPolicyV2Config,
 } from './reference-capture-hf-recovery-v2.policy';
@@ -89,6 +90,10 @@ export class ReferenceCaptureConfig {
       HF_RECOVERY_OVERLAP_MS: String(
         this.configService.get<number>('referenceCapture.hfRecoveryOverlapMs') ??
           PROVISIONAL_RECOVERY_OVERLAP_MS,
+      ),
+      HF_HISTORICAL_POLL_INTERVAL_MS: String(
+        this.configService.get<number>('referenceCapture.hfHistoricalPollIntervalMs') ??
+          PROVISIONAL_HF_POLL_INTERVAL_MS,
       ),
       HF_RECOVERY_SWEEP_ENABLED: this.configService.get<boolean>('referenceCapture.hfRecoverySweepEnabled')
         ? 'true'

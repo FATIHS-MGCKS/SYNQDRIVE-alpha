@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c1-hf-block-polling-scalability-2026-09-04',
+    version: '4.9.1063',
+    title: 'DI-EV-0035C.1 — HF Historical Block Polling Scalability Testbed',
+    summary: [
+      'Audited Reference Capture HF request cadence: runner 5s, HF provider request every cycle (legacy).',
+      'Added HF_HISTORICAL_POLL_INTERVAL_MS (V2-only, default provisional 30000ms, NOT validated).',
+      'Preserves 1s DIMO historical aggregation; slower API polling only.',
+      'Block-density observability: buckets/request, temporal density, requests/vehicle/hour.',
+      'Deterministic fleet request-load model + tokenId-based stagger design (planning only).',
+      'KS MX 2024 canary experiment contract for 10/20/30/60s calibration phases.',
+      'Production HF path (dimo-segments → trip-behavior-enrichment) unchanged.',
+    ],
+    reason:
+      'Before designing production HF architecture, use Reference Capture to test whether block polling (e.g. 30s) preserves ~1s bucket density with far fewer DIMO requests.',
+    previousBehavior:
+      'HF_HISTORICAL fired every runner cycle (~5s); no separate poll cadence; no block-density metrics.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:15:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c-hf-recovery-runtime-2026-09-04',
     version: '4.9.1062',
     title: 'DI-EV-0035C — Production HF Historical Recovery Runtime (Reference Capture)',

@@ -43,6 +43,11 @@ import {
   type HfQueryProvenanceRecord,
   type HfRecoveryPolicyV2Config,
 } from './reference-capture-hf-recovery-v2.policy';
+import {
+  buildHfBlockDensityObservability,
+  countUniqueTemporalBucketStarts,
+  isHfHistoricalPollDue,
+} from './reference-capture-hf-block-polling.policy';
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
 import { resolveCanonicalKeyForProviderField } from './reference-capture-manifest.loader';
@@ -207,6 +212,7 @@ export class ReferenceCaptureAcquisitionService {
       lastRecoverySweepAt: state.lastRecoverySweepAt ?? null,
       recoverySweepCount: state.recoverySweepCount ?? 0,
     });
+    let lastHfHistoricalPollAt = state.lastHfHistoricalPollAt ?? null;
     let hfBucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
 
     const fieldLookup = new Map(
@@ -254,6 +260,16 @@ export class ReferenceCaptureAcquisitionService {
       }
 
       if (surfacePlan.surface === 'HF_HISTORICAL') {
+        const pollDue = isHfHistoricalPollDue({
+          nowMs: Date.now(),
+          lastHfHistoricalPollAt,
+          pollIntervalMs: hfPolicy.hfHistoricalPollIntervalMs,
+          policyMode: hfPolicy.mode,
+        });
+        if (!pollDue) {
+          continue;
+        }
+
         const hfResult = await this.captureHistoricalSurface({
           input,
           surfacePlan,
@@ -278,6 +294,9 @@ export class ReferenceCaptureAcquisitionService {
         hfActualQueryTo = hfResult.actualQueryTo;
         hfCoverageAdvanceEligible = hfResult.coverageAdvanceEligible;
         hfBucketByFingerprint = hfResult.bucketByFingerprint;
+        if (hfResult.coverageAdvanceEligible) {
+          lastHfHistoricalPollAt = new Date().toISOString();
+        }
         if (hfResult.queryProvenanceRecord) {
           hfQueryProvenanceRing = appendQueryProvenanceRecord(
             hfQueryProvenanceRing as HfQueryProvenanceRecord[],
@@ -399,6 +418,7 @@ export class ReferenceCaptureAcquisitionService {
       hfRecoveryCursorByField: hfRecoveryCursor.hfRecoveryCursorByField,
       lastRecoverySweepAt: hfRecoveryCursor.lastRecoverySweepAt,
       recoverySweepCount: hfRecoveryCursor.recoverySweepCount,
+      lastHfHistoricalPollAt,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
       seenPhysicalSampleFingerprints: [
@@ -911,20 +931,41 @@ export class ReferenceCaptureAcquisitionService {
       requestCorrelationId,
     };
 
-    const observabilitySnapshot = buildHfObservabilitySnapshot({
-      window: queryWindow,
-      config: args.hfPolicy,
-      providerBucketCount: candidates.length,
-      newBucketCount: newPhysicalSampleFingerprints.length,
-      duplicateBucketCount: duplicateSkipped,
-      revisionBucketCount: providerRevisionObservations,
-      recoveredLateBucketCount: args.queryOrigin === 'RECOVERY_SWEEP' ? newPhysicalSampleFingerprints.length : 0,
-      queryDurationMs: Date.now() - queryStartedMs,
-      querySuccess: providerQuerySucceeded,
-      queryZeroResult: rows.length === 0,
-      watermarkState: args.hfWatermarkState,
-      recoveryCursor: normalizeHfRecoveryCursorState({}),
-    });
+    const bucketTimestamps = candidates.map((c) => c.providerTimestampIso);
+    const uniqueTemporalBucketStartCount = countUniqueTemporalBucketStarts(bucketTimestamps);
+
+    const observabilitySnapshot = {
+      ...buildHfObservabilitySnapshot({
+        window: queryWindow,
+        config: args.hfPolicy,
+        providerBucketCount: candidates.length,
+        newBucketCount: newPhysicalSampleFingerprints.length,
+        duplicateBucketCount: duplicateSkipped,
+        revisionBucketCount: providerRevisionObservations,
+        recoveredLateBucketCount:
+          args.queryOrigin === 'RECOVERY_SWEEP' ? newPhysicalSampleFingerprints.length : 0,
+        queryDurationMs: Date.now() - queryStartedMs,
+        querySuccess: providerQuerySucceeded,
+        queryZeroResult: rows.length === 0,
+        watermarkState: args.hfWatermarkState,
+        recoveryCursor: normalizeHfRecoveryCursorState({}),
+      }),
+      ...buildHfBlockDensityObservability({
+        window: queryWindow,
+        pollIntervalMs: args.hfPolicy.hfHistoricalPollIntervalMs,
+        policyMode: args.hfPolicy.mode,
+        providerBucketCount: candidates.length,
+        newBucketCount: newPhysicalSampleFingerprints.length,
+        duplicateBucketCount: duplicateSkipped,
+        revisionBucketCount: providerRevisionObservations,
+        uniqueTemporalBucketStartCount,
+        bucketTimestamps,
+        queryDurationMs: Date.now() - queryStartedMs,
+        querySuccess: providerQuerySucceeded,
+        queryZeroResult: rows.length === 0,
+        providerError: false,
+      }),
+    };
 
     return {
       points,

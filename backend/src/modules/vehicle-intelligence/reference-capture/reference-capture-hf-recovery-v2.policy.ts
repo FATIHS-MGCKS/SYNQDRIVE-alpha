@@ -31,12 +31,19 @@ export const HF_RECOVERY_SWEEP_INTERVAL_MS_DEFAULT = 300_000;
 export const HF_RECOVERY_SWEEP_LOOKBACK_MS_DEFAULT = 30 * 60 * 1000;
 export const HF_QUERY_PROVENANCE_RING_MAX = 500;
 
+/** DI-EV-0035C.1 — provisional block poll cadence (NOT validated). */
+export const PROVISIONAL_HF_POLL_INTERVAL_MS = 30_000;
+export const HF_HISTORICAL_POLL_INTERVAL_MS_MIN = 5_000;
+export const HF_HISTORICAL_POLL_INTERVAL_MS_MAX = 120_000;
+
 export type HfRecoveryPolicyMode = 'LEGACY' | 'V2';
 
 export type HfRecoveryPolicyV2Config = {
   mode: HfRecoveryPolicyMode;
   settlementDelayMs: number;
   recoveryOverlapMs: number;
+  /** V2-only HF_HISTORICAL provider request cadence (ms). LEGACY ignores — polls every runner cycle. */
+  hfHistoricalPollIntervalMs: number;
   recoverySweepEnabled: boolean;
   recoverySweepIntervalMs: number;
   recoverySweepLookbackMs: number;
@@ -124,6 +131,12 @@ export function parseHfRecoveryPolicyV2ConfigFromEnv(env: NodeJS.ProcessEnv = pr
       PROVISIONAL_RECOVERY_OVERLAP_MS,
       HF_RECOVERY_OVERLAP_MS_MIN,
       HF_RECOVERY_OVERLAP_MS_MAX,
+    ),
+    hfHistoricalPollIntervalMs: clampIntEnv(
+      env.HF_HISTORICAL_POLL_INTERVAL_MS,
+      PROVISIONAL_HF_POLL_INTERVAL_MS,
+      HF_HISTORICAL_POLL_INTERVAL_MS_MIN,
+      HF_HISTORICAL_POLL_INTERVAL_MS_MAX,
     ),
     recoverySweepEnabled: parseBooleanEnv(env.HF_RECOVERY_SWEEP_ENABLED, false),
     recoverySweepIntervalMs: clampIntEnv(
