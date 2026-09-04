@@ -1,0 +1,517 @@
+{
+  "pairs": [
+    {
+      "fromTimestamp": "2026-09-04T03:37:44.122Z",
+      "toTimestamp": "2026-09-04T03:37:48.647Z",
+      "dtSeconds": 4.525,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:48.647Z",
+      "toTimestamp": "2026-09-04T03:37:49.647Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:49.647Z",
+      "toTimestamp": "2026-09-04T03:37:51.293Z",
+      "dtSeconds": 1.646,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:51.293Z",
+      "toTimestamp": "2026-09-04T03:37:52.293Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:52.293Z",
+      "toTimestamp": "2026-09-04T03:37:58.416Z",
+      "dtSeconds": 6.123,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:58.416Z",
+      "toTimestamp": "2026-09-04T03:38:05.110Z",
+      "dtSeconds": 6.694,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:05.110Z",
+      "toTimestamp": "2026-09-04T03:38:09.904Z",
+      "dtSeconds": 4.794,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:09.904Z",
+      "toTimestamp": "2026-09-04T03:38:11.904Z",
+      "dtSeconds": 2,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:11.904Z",
+      "toTimestamp": "2026-09-04T03:38:15.723Z",
+      "dtSeconds": 3.819,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:15.723Z",
+      "toTimestamp": "2026-09-04T03:38:34.640Z",
+      "dtSeconds": 18.917,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:34.640Z",
+      "toTimestamp": "2026-09-04T03:38:44.395Z",
+      "dtSeconds": 9.755,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:44.395Z",
+      "toTimestamp": "2026-09-04T03:39:19.966Z",
+      "dtSeconds": 35.571,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:19.966Z",
+      "toTimestamp": "2026-09-04T03:39:30.620Z",
+      "dtSeconds": 10.654,
+      "accelMs2": 0.6257430698955009,
+      "deltaKmh": 24,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:30.620Z",
+      "toTimestamp": "2026-09-04T03:39:32.620Z",
+      "dtSeconds": 2,
+      "accelMs2": -0.9722222222222222,
+      "deltaKmh": -7,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:32.620Z",
+      "toTimestamp": "2026-09-04T03:39:37.352Z",
+      "dtSeconds": 4.732,
+      "accelMs2": 0.17610594533671453,
+      "deltaKmh": 3,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:37.352Z",
+      "toTimestamp": "2026-09-04T03:39:43.937Z",
+      "dtSeconds": 6.585,
+      "accelMs2": -0.2952838943727326,
+      "deltaKmh": -7,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:43.937Z",
+      "toTimestamp": "2026-09-04T03:39:44.937Z",
+      "dtSeconds": 1,
+      "accelMs2": -2.2222222222222223,
+      "deltaKmh": -8,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:44.937Z",
+      "toTimestamp": "2026-09-04T03:39:45.937Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:45.937Z",
+      "toTimestamp": "2026-09-04T03:39:47.625Z",
+      "dtSeconds": 1.688,
+      "accelMs2": 2.6329647182727753,
+      "deltaKmh": 16,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:47.625Z",
+      "toTimestamp": "2026-09-04T03:40:39.908Z",
+      "dtSeconds": 52.283,
+      "accelMs2": 0.053129655486061966,
+      "deltaKmh": 10,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:40:39.908Z",
+      "toTimestamp": "2026-09-04T03:40:41.908Z",
+      "dtSeconds": 2,
+      "accelMs2": -2.7777777777777777,
+      "deltaKmh": -20,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:40:41.908Z",
+      "toTimestamp": "2026-09-04T03:40:54.884Z",
+      "dtSeconds": 12.976,
+      "accelMs2": -0.17125633648444993,
+      "deltaKmh": -8,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:40:54.884Z",
+      "toTimestamp": "2026-09-04T03:41:27.544Z",
+      "dtSeconds": 32.66,
+      "accelMs2": 0.15309246785058175,
+      "deltaKmh": 18,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:41:27.544Z",
+      "toTimestamp": "2026-09-04T03:42:09.311Z",
+      "dtSeconds": 41.767,
+      "accelMs2": -0.1396636898348776,
+      "deltaKmh": -21,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:42:09.311Z",
+      "toTimestamp": "2026-09-04T03:42:27.018Z",
+      "dtSeconds": 17.707,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:42:27.018Z",
+      "toTimestamp": "2026-09-04T03:42:57.694Z",
+      "dtSeconds": 30.676,
+      "accelMs2": 0.39842946349661695,
+      "deltaKmh": 44,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:42:57.694Z",
+      "toTimestamp": "2026-09-04T03:43:06.682Z",
+      "dtSeconds": 8.988,
+      "accelMs2": -0.3399594521089848,
+      "deltaKmh": -11,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:06.682Z",
+      "toTimestamp": "2026-09-04T03:43:08.682Z",
+      "dtSeconds": 2,
+      "accelMs2": -0.41666666666666663,
+      "deltaKmh": -3,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:08.682Z",
+      "toTimestamp": "2026-09-04T03:43:09.682Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:09.682Z",
+      "toTimestamp": "2026-09-04T03:43:23.051Z",
+      "dtSeconds": 13.369,
+      "accelMs2": 0.020777752844474365,
+      "deltaKmh": 1,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:23.051Z",
+      "toTimestamp": "2026-09-04T03:43:34.723Z",
+      "dtSeconds": 11.672,
+      "accelMs2": -0.1903891554337065,
+      "deltaKmh": -8,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:34.723Z",
+      "toTimestamp": "2026-09-04T03:43:48.205Z",
+      "dtSeconds": 13.482,
+      "accelMs2": -0.16482882526496234,
+      "deltaKmh": -8,
+      "qualified": false,
+      "rejectionReason": "UNQUALIFIED_GAP"
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:48.205Z",
+      "toTimestamp": "2026-09-04T03:43:49.205Z",
+      "dtSeconds": 1,
+      "accelMs2": -1.1111111111111112,
+      "deltaKmh": -4,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:49.205Z",
+      "toTimestamp": "2026-09-04T03:43:50.205Z",
+      "dtSeconds": 1,
+      "accelMs2": -1.9444444444444444,
+      "deltaKmh": -7,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:50.205Z",
+      "toTimestamp": "2026-09-04T03:43:51.898Z",
+      "dtSeconds": 1.693,
+      "accelMs2": 0.8203714641989892,
+      "deltaKmh": 5,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:51.898Z",
+      "toTimestamp": "2026-09-04T03:43:52.898Z",
+      "dtSeconds": 1,
+      "accelMs2": -0.2777777777777778,
+      "deltaKmh": -1,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:52.898Z",
+      "toTimestamp": "2026-09-04T03:43:53.898Z",
+      "dtSeconds": 1,
+      "accelMs2": -0.8333333333333333,
+      "deltaKmh": -3,
+      "qualified": true,
+      "rejectionReason": null
+    }
+  ],
+  "qualifiedPairCount": 16,
+  "qualifiedPairFraction": 0.43243243243243246,
+  "qualifiedPairs": [
+    {
+      "fromTimestamp": "2026-09-04T03:37:48.647Z",
+      "toTimestamp": "2026-09-04T03:37:49.647Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:49.647Z",
+      "toTimestamp": "2026-09-04T03:37:51.293Z",
+      "dtSeconds": 1.646,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:37:51.293Z",
+      "toTimestamp": "2026-09-04T03:37:52.293Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:38:09.904Z",
+      "toTimestamp": "2026-09-04T03:38:11.904Z",
+      "dtSeconds": 2,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:30.620Z",
+      "toTimestamp": "2026-09-04T03:39:32.620Z",
+      "dtSeconds": 2,
+      "accelMs2": -0.9722222222222222,
+      "deltaKmh": -7,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:43.937Z",
+      "toTimestamp": "2026-09-04T03:39:44.937Z",
+      "dtSeconds": 1,
+      "accelMs2": -2.2222222222222223,
+      "deltaKmh": -8,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:44.937Z",
+      "toTimestamp": "2026-09-04T03:39:45.937Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:39:45.937Z",
+      "toTimestamp": "2026-09-04T03:39:47.625Z",
+      "dtSeconds": 1.688,
+      "accelMs2": 2.6329647182727753,
+      "deltaKmh": 16,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:40:39.908Z",
+      "toTimestamp": "2026-09-04T03:40:41.908Z",
+      "dtSeconds": 2,
+      "accelMs2": -2.7777777777777777,
+      "deltaKmh": -20,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:06.682Z",
+      "toTimestamp": "2026-09-04T03:43:08.682Z",
+      "dtSeconds": 2,
+      "accelMs2": -0.41666666666666663,
+      "deltaKmh": -3,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:08.682Z",
+      "toTimestamp": "2026-09-04T03:43:09.682Z",
+      "dtSeconds": 1,
+      "accelMs2": 0,
+      "deltaKmh": 0,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:48.205Z",
+      "toTimestamp": "2026-09-04T03:43:49.205Z",
+      "dtSeconds": 1,
+      "accelMs2": -1.1111111111111112,
+      "deltaKmh": -4,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:49.205Z",
+      "toTimestamp": "2026-09-04T03:43:50.205Z",
+      "dtSeconds": 1,
+      "accelMs2": -1.9444444444444444,
+      "deltaKmh": -7,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:50.205Z",
+      "toTimestamp": "2026-09-04T03:43:51.898Z",
+      "dtSeconds": 1.693,
+      "accelMs2": 0.8203714641989892,
+      "deltaKmh": 5,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:51.898Z",
+      "toTimestamp": "2026-09-04T03:43:52.898Z",
+      "dtSeconds": 1,
+      "accelMs2": -0.2777777777777778,
+      "deltaKmh": -1,
+      "qualified": true,
+      "rejectionReason": null
+    },
+    {
+      "fromTimestamp": "2026-09-04T03:43:52.898Z",
+      "toTimestamp": "2026-09-04T03:43:53.898Z",
+      "dtSeconds": 1,
+      "accelMs2": -0.8333333333333333,
+      "deltaKmh": -3,
+      "qualified": true,
+      "rejectionReason": null
+    }
+  ],
+  "distribution": {
+    "maxPositiveMs2": 2.6329647182727753,
+    "maxNegativeMs2": -2.7777777777777777,
+    "medianMs2": -0.2777777777777778,
+    "p10Ms2": -2.2222222222222223,
+    "p90Ms2": 0.8203714641989892
+  },
+  "gapSensitivity": [
+    {
+      "gapSeconds": 2,
+      "qualifiedPairCount": 16,
+      "qualifiedPairFraction": 0.43243243243243246,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    },
+    {
+      "gapSeconds": 3,
+      "qualifiedPairCount": 16,
+      "qualifiedPairFraction": 0.43243243243243246,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    },
+    {
+      "gapSeconds": 5,
+      "qualifiedPairCount": 20,
+      "qualifiedPairFraction": 0.5405405405405406,
+      "maxPositiveMs2": 2.6329647182727753,
+      "maxNegativeMs2": -2.7777777777777777
+    }
+  ],
+  "VIDEO_SEVERITY_CONFIRMATION": "NOT_VALIDATED",
+  "note": "Qualified kinematic derivatives from sparse HF — not validated against video severity"
+}

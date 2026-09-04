@@ -36,6 +36,65 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035a2-rd004-segment-a-semantics-closeout-2026-09-04',
+    version: '4.9.1049',
+    title: 'DI-EV-0035A.2 — RD004-A Semantics Closeout (H displacement + true peak attenuation)',
+    summary: [
+      'Landmark H ~+22.2 s stored as PROVISIONAL_LANDMARK_H_DISPLACEMENT_SECONDS only (NOT_A_CLOCK_OFFSET_ESTIMATE).',
+      'VIDEO_TO_PROVIDER_OFFSET_SECONDS=null; CLOCK_FIT_ELIGIBLE_LANDMARKS=[]; VIDEO_PROVIDER_ALIGNMENT_CLASS=INSUFFICIENT_EVIDENCE.',
+      'VIDEO_ABSOLUTE_TIME_ANCHORED=YES preserved (Time.is); provider offset and drift remain unknown.',
+      'TRUE_LOCAL_PEAK_ATTENUATION_KMH from independent raw/smoothed maxima (~10 km/h, 6 events); separate from same-timestamp delta (~18.33 km/h).',
+      'Preserves all valid A.1 evidence: 38 HF samples, 0 legacy harsh events, raw bytes unchanged.',
+    ],
+    reason: 'A.1 still exposed approximate landmark H as provider offset and conflated same-timestamp delta with true peak attenuation.',
+    previousBehavior: 'DI-EV-0035A.1 set VIDEO_TO_PROVIDER_OFFSET_SECONDS≈+22.2 s from H; TRUE_LOCAL_PEAK_ATTENUATION used same-timestamp proxy.',
+    details:
+      '31 tests; invariants APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET and TRUE_LOCAL_PEAK_ATTENUATION_DOES_NOT_USE_SAME_TIMESTAMP_PROXY; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035a1-rd004-segment-a-methodology-closeout-2026-09-04',
+    version: '4.9.1048',
+    title: 'DI-EV-0035A.1 — RD004-A Methodology Correctness Closeout',
+    summary: [
+      'Fixes circular landmark clock-alignment (telemetry-derived expectedVideoT → artificial 0 s offset).',
+      'Invalidates −128.6 s drift estimate; DRIFT_VALIDATED=NO with null numeric output.',
+      'Removes invalid 127.6 s preprocessing timing; uses same local event window only.',
+      'Fixes unsorted percentile bug (acceleration median now ~−0.28 m/s², not max).',
+      'Gear NOT_OBSERVED (0 HF samples); reverse telemetry NO; bundle SHA canonical multi-file.',
+      'Preserves valid evidence: 38 HF speed samples, ~4.7 s median cadence, 0 legacy harsh events.',
+    ],
+    reason: 'Human review found methodology bugs in DI-EV-0035A before PR #1529 becomes canonical evidence.',
+    previousBehavior: 'DI-EV-0035A reported STABLE 0 s offset, −128.6 s drift, GEAR PARTIAL, invalid preprocessing shift.',
+    details:
+      '23 methodology tests; repo-relative paths; CLOCK_FIT_ELIGIBLE only from independent video times; Segment B pending.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T09:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035a-rd004-segment-a-alignment-2026-09-04',
+    version: '4.9.1047',
+    title: 'DI-EV-0035A — RD004-A Segment A Video ↔ Telemetry Alignment',
+    summary: [
+      'First evidence-grade RD004 comparison: video Segment A (~6:11) vs sealed HF telemetry for KS MX 2024 C63.',
+      '38 HF_HISTORICAL speed samples (median cadence ~4.7 s); providerTimestamp authority; surfaces not merged.',
+      'Provisional zero-offset projection: mid-segment landmarks align ~0 s; absolute speed NOT validated (no frame OCR).',
+      'Offline legacy detector audit on calm baseline: 0 hard/extreme accel/brake/launch events.',
+      'Reverse video observed but NOT supported in HF gear/ratio for early window.',
+      'SEGMENT_B_PENDING=YES; RD004_WHOLE_DRIVE_COMPLETE=NO; production unchanged.',
+    ],
+    reason: 'RD004 controlled validation drive Segment A requires measured video ↔ telemetry alignment before Segment B and any calibration.',
+    previousBehavior: 'RD004 capture sealed (DI-EV-0034F) but no Segment-A alignment artifacts.',
+    details:
+      'Module `reference-capture-rd004-a-segment-a.ts`; CLI `reference-capture-drive-004-a-segment-a-analyze.ts`; artifacts under `docs/audits/data/rd004-segment-a/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T08:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0034f2-integrity-closeout-2026-09-03',
     version: '4.9.1046',
     title: 'DI-EV-0034F.2 — Final Semantic + Artifact Integrity Closeout',
