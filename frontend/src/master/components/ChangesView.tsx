@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g21b-cross-cutover-recovery-hardening-2026-09-04',
+    version: '4.9.1056',
+    title: 'G2.1b physical-refuel cross-cutover + recovery hardening',
+    summary: [
+      'V2 candidate set restricted to post-cutover observations; legacy rows bridge-only as prior-final evidence.',
+      'Semantic reconciliation no longer requires DIMO token; coordinate phase holds with COORDINATE_HOLD_MISSING_DIMO_TOKEN.',
+      'V2 enqueue uses observation-time cutover (createdAt), not provider startTime — fixes clock-domain deadlock.',
+      'Orphan recovery bounded: max(cutover, lookback) .. asOf.',
+      'Coordinate retry backoff via nextCoordinateRetryAt; fair recovery quotas prevent fleet starvation.',
+      'PostgreSQL advisory-lock concurrency proven on isolated test database.',
+      'PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED remains default OFF.',
+    ],
+    reason: 'Close G2.1a independent review cross-boundary defects before G2.2 shadow rollout.',
+    previousBehavior: 'Legacy events could enter V2 candidate set; token required for semantic reconcile; orphan query lost upper bound; coordinate holds hot-looped.',
+    details:
+      'docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md; FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001; EED-EV-0034.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T00:00:00.000Z',
+  },
+  {
     id: 'refuel-g21a-runtime-safety-liveness-closure-2026-09-04',
     version: '4.9.1055',
     title: 'G2.1a physical-refuel runtime safety + liveness closure',

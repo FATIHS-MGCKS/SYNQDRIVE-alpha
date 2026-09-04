@@ -31,6 +31,8 @@ import { getFuelStationEnrichmentAutomaticSkipReason } from './fuel-station-enri
 export interface EnqueueFuelStationEnrichmentInput {
   energyEventId: string;
   eventStartTime: Date;
+  /** G2.1b observation-time authority for V2-owned enqueue eligibility. */
+  eventObservedAt?: Date;
   startLatitude: number | null;
   startLongitude: number | null;
   /** G2.1 V2 coordinate source when physical-refuel reconciliation supplied coordinates. */
@@ -67,7 +69,22 @@ export class FuelStationEnrichmentProducerService {
       return null;
     }
 
-    if (!this.isEventEligibleForEnrichment(input.eventStartTime)) {
+    if (!input.physicalRefuelReconciliationV2 && !this.isEventEligibleForEnrichment(input.eventStartTime)) {
+      return null;
+    }
+
+    if (
+      input.physicalRefuelReconciliationV2 &&
+      input.eventObservedAt &&
+      !this.isV2OwnedObservationEligible(input.eventObservedAt)
+    ) {
+      this.logger.debug(
+        JSON.stringify({
+          event: 'fuel_station_enrichment_enqueue_skipped',
+          reason: 'v2_observation_before_cutover',
+          energyEventId: input.energyEventId,
+        }),
+      );
       return null;
     }
 
@@ -185,5 +202,9 @@ export class FuelStationEnrichmentProducerService {
 
   isEventEligibleForEnrichment(eventStartTime: Date): boolean {
     return isFuelStationEnrichmentEventAfterCutover(eventStartTime, this.config.cutoverAt);
+  }
+
+  isV2OwnedObservationEligible(eventObservedAt: Date): boolean {
+    return isFuelStationEnrichmentEventAfterCutover(eventObservedAt, this.config.cutoverAt);
   }
 }

@@ -32,6 +32,7 @@ Stable IDs: `EED-EV-####`. Each item: source, path, what it proves, what it does
 | EED-EV-0031 | TEST | G1.2d late-sibling hardening | `physical-refuel-reconciliation.design.spec.ts` | Singleton late INSUFFICIENT sibling duplicate enrichment | G2 recovery path | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0032 | TEST | G2.1 runtime wiring | `physical-refuel-reconciliation-runtime.service.spec.ts` | Feature-flagged reconcile + finality-gated enqueue | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0033 | TEST | G2.1a runtime safety + liveness | `physical-refuel-reconciliation-runtime.service.spec.ts`, recovery scheduler | Legacy bypass closed; durable recovery; V2 fail-closed coords | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
+| EED-EV-0034 | TEST | G2.1b cross-cutover + recovery | `physical-refuel-g21b-*.spec.ts`, PG integration | V2-only candidates; observation enqueue; coordinate retry; PG lock proof | G2.2 shadow rollout | PROVEN_BY_TEST | 2026-09-04 |
 | EED-EV-0025 | PRODUCTION | P1.3-S6 deploy | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | KS MX reprocess: 4818s, 330s rise, 685s deleted | Fleet-wide generalization | PROVEN_IN_PRODUCTION | 2026-09-01 |
 
 ## Negative results (first-class)

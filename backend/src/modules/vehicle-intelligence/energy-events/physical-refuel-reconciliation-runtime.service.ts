@@ -23,12 +23,19 @@ import {
   computeRefuelCandidateWindow,
   sortRefuelCandidates,
 } from './physical-refuel-candidate.loader';
-import { mapDecisionToPersistPayload } from './physical-refuel-reconciliation.repository';
+import { mapDecisionToPersistPayload, isV2OwnedRefuelEvent } from './physical-refuel-reconciliation.repository';
 import { loadPriorFinalizationBridgeContext } from './physical-refuel-prior-ownership.util';
 import {
   describeCoordinateHoldReason,
   isV2CoordinateEligibleForEnrichment,
 } from './physical-refuel-coordinate.policy';
+import {
+  COORDINATE_HOLD_MISSING_DIMO_TOKEN,
+  computeNextCoordinateRetryAt,
+  isCoordinateStatusRetryable,
+  isCoordinateStatusTerminal,
+  shouldAttemptCoordinateResolution,
+} from './physical-refuel-coordinate-retry.policy';
 import {
   countPhysicalRefuelRecoveryBacklog,
   findPhysicalRefuelRecoveryWork,
@@ -39,8 +46,8 @@ import { PhysicalRefuelCoordinateRuntimeService } from './physical-refuel-coordi
 export interface ReconcileAfterPersistParams {
   vehicleId: string;
   triggerEventId: string;
-  organizationId: string;
-  tokenId: number;
+  organizationId?: string;
+  tokenId?: number | null;
 }
 
 export interface ReconcileAfterPersistResult {
@@ -129,14 +136,26 @@ export class PhysicalRefuelReconciliationRuntimeService {
 
     for (const item of work) {
       recoveredReasons[item.reason] = (recoveredReasons[item.reason] ?? 0) + 1;
-      const context = await this.resolveVehicleContext(item.vehicleId);
-      if (!context) continue;
+      const organizationId = await this.resolveOrganizationId(item.vehicleId);
+      const tokenId = await this.resolveVehicleTokenId(item.vehicleId);
+
+      if (!organizationId) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'physical_refuel_recovery_context_hold',
+            vehicleId: item.vehicleId,
+            triggerEventId: item.triggerEventId,
+            recoveryReason: item.reason,
+            reason: 'organization_missing',
+          }),
+        );
+      }
 
       const result = await this.reconcileVehicle({
         vehicleId: item.vehicleId,
         triggerEventId: item.triggerEventId,
-        organizationId: context.organizationId,
-        tokenId: context.tokenId,
+        organizationId: organizationId ?? undefined,
+        tokenId: tokenId ?? null,
         asOfMs,
         source: 'recovery',
         recoveryReason: item.reason,
@@ -182,21 +201,20 @@ export class PhysicalRefuelReconciliationRuntimeService {
     );
   }
 
-  private async resolveVehicleContext(
-    vehicleId: string,
-  ): Promise<{ organizationId: string; tokenId: number } | null> {
+  private async resolveOrganizationId(vehicleId: string): Promise<string | null> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: {
-        organizationId: true,
-        dimoVehicle: { select: { tokenId: true } },
-      },
+      select: { organizationId: true },
     });
-    if (!vehicle?.dimoVehicle?.tokenId) return null;
-    return {
-      organizationId: vehicle.organizationId,
-      tokenId: vehicle.dimoVehicle.tokenId,
-    };
+    return vehicle?.organizationId ?? null;
+  }
+
+  private async resolveVehicleTokenId(vehicleId: string): Promise<number | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { dimoVehicle: { select: { tokenId: true } } },
+    });
+    return vehicle?.dimoVehicle?.tokenId ?? null;
   }
 
   private async reconcileVehicle(
@@ -247,20 +265,25 @@ export class PhysicalRefuelReconciliationRuntimeService {
 
         const candidates = sortRefuelCandidates(
           await tx.vehicleEnergyEvent.findMany({
-            where: buildRefuelCandidateWhere(params.vehicleId, window),
+            where: buildRefuelCandidateWhere(params.vehicleId, window, cutover),
           }),
         );
+
+        const v2Candidates = cutover
+          ? candidates.filter((candidate) => isV2OwnedRefuelEvent(candidate, cutover))
+          : candidates;
 
         this.logger.debug(
           JSON.stringify({
             event: 'physical_refuel_candidate_count',
             vehicleId: params.vehicleId,
-            candidateCount: candidates.length,
+            candidateCount: v2Candidates.length,
+            legacyBridgeExcluded: candidates.length - v2Candidates.length,
             source: params.source ?? 'persist',
           }),
         );
 
-        const currentCandidateIds = new Set(candidates.map((c) => c.id));
+        const currentCandidateIds = new Set(v2Candidates.map((c) => c.id));
         const bridgeFrom = window.from;
         const bridgeTo = new Date(
           Math.max(window.to.getTime(), trigger.createdAt.getTime()),
@@ -273,9 +296,9 @@ export class PhysicalRefuelReconciliationRuntimeService {
           currentCandidateIds,
         });
 
-        const firstObservedAtById = buildFirstObservedAtById(candidates);
+        const firstObservedAtById = buildFirstObservedAtById(v2Candidates);
         const decisions = reconcilePhysicalRefuelBatch(
-          candidates.map(vehicleEnergyEventToRefuelRow),
+          v2Candidates.map(vehicleEnergyEventToRefuelRow),
           {
             asOfMs,
             firstObservedAtById,
@@ -289,7 +312,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
         const decisionByMember = new Map<string, PhysicalRefuelReconciliationDecision>();
         for (const decision of decisions) {
           if (decision.siblingEventIds.length === 0 && decision.reasonCodes.length > 0) {
-            for (const event of candidates) {
+            for (const event of v2Candidates) {
               decisionByMember.set(event.id, decision);
             }
             continue;
@@ -299,7 +322,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
           }
         }
 
-        for (const event of candidates) {
+        for (const event of v2Candidates) {
           const decision = decisionByMember.get(event.id);
           if (!decision) continue;
 
@@ -335,7 +358,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
             await tx.vehicleEnergyEventRefuelReconciliation.create({ data: payload });
           }
 
-          this.logDecision(event.id, decision, candidates.length, Date.now() - started);
+          this.logDecision(event.id, decision, v2Candidates.length, Date.now() - started);
         }
 
         const enqueuePlans: Array<{
@@ -343,7 +366,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
           decision: PhysicalRefuelReconciliationDecision;
         }> = [];
 
-        for (const event of candidates) {
+        for (const event of v2Candidates) {
           const decision = decisionByMember.get(event.id);
           if (!decision) continue;
           if (decision.enrichmentEligibleId !== event.id) continue;
@@ -390,7 +413,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
         event: plan.event,
         decision: plan.decision,
         organizationId: params.organizationId,
-        tokenId: params.tokenId,
+        tokenId: params.tokenId ?? null,
+        asOfMs,
       });
       if (enqueueResult === 'enqueued') enqueuedEventIds.push(plan.event.id);
       if (enqueueResult === 'deduped') dedupedEventIds.push(plan.event.id);
@@ -408,10 +432,12 @@ export class PhysicalRefuelReconciliationRuntimeService {
   private async enqueueEligibleRefuel(params: {
     event: VehicleEnergyEvent;
     decision: PhysicalRefuelReconciliationDecision;
-    organizationId: string;
-    tokenId: number;
+    organizationId?: string;
+    tokenId?: number | null;
+    asOfMs?: number;
   }): Promise<'enqueued' | 'deduped' | 'skipped' | 'held'> {
     const { event, decision } = params;
+    const asOfMs = params.asOfMs ?? Date.now();
     if (!this.fuelStationEnrichmentProducer) return 'skipped';
 
     const reconciliation = await this.prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
@@ -434,32 +460,70 @@ export class PhysicalRefuelReconciliationRuntimeService {
     let coordinateLongitude: number | null = reconciliation.coordinateLongitude;
     let coordinateSource: string | null = reconciliation.coordinateSource;
     let coordinateSelectionStatus: string | null = reconciliation.coordinateSelectionStatus;
+    let coordinateRetryCount = reconciliation.coordinateRetryCount ?? 0;
 
-    if (this.coordinateRuntime) {
-      const coord = await this.coordinateRuntime.resolveCoordinateForEvent(
-        event,
-        params.tokenId,
-        {
-          organizationId: params.organizationId,
-          vehicleId: event.vehicleId,
-          tokenId: params.tokenId,
-        },
-      );
-      coordinateLatitude = coord.latitude;
-      coordinateLongitude = coord.longitude;
-      coordinateSource = coord.source;
-      coordinateSelectionStatus = coord.status;
+    const needsCoordinateAttempt = shouldAttemptCoordinateResolution({
+      coordinateLatitude,
+      coordinateLongitude,
+      coordinateSource,
+      coordinateSelectionStatus,
+      nextCoordinateRetryAt: reconciliation.nextCoordinateRetryAt,
+      asOfMs,
+    });
 
-      await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
-        where: { energyEventId: event.id },
-        data: {
-          coordinateLatitude: coord.latitude,
-          coordinateLongitude: coord.longitude,
-          coordinateSource: coord.source,
-          coordinateSelectorVersion: coord.selectorVersion,
-          coordinateSelectionStatus: coord.status,
-        },
-      });
+    if (needsCoordinateAttempt) {
+      if (!params.tokenId || !params.organizationId) {
+        coordinateSelectionStatus = COORDINATE_HOLD_MISSING_DIMO_TOKEN;
+        await this.persistCoordinateHold({
+          energyEventId: event.id,
+          status: coordinateSelectionStatus,
+          retryCount: coordinateRetryCount,
+          asOfMs,
+        });
+        this.logger.debug(
+          JSON.stringify({
+            event: 'physical_refuel_coordinate_hold',
+            vehicleId: event.vehicleId,
+            energyEventId: event.id,
+            finalityState: decision.finalityState,
+            coordinateSelectionStatus,
+          }),
+        );
+        return 'held';
+      }
+
+      if (this.coordinateRuntime) {
+        const coord = await this.coordinateRuntime.resolveCoordinateForEvent(
+          event,
+          params.tokenId,
+          {
+            organizationId: params.organizationId,
+            vehicleId: event.vehicleId,
+            tokenId: params.tokenId,
+          },
+        );
+        coordinateLatitude = coord.latitude;
+        coordinateLongitude = coord.longitude;
+        coordinateSource = coord.source;
+        coordinateSelectionStatus = coord.status;
+
+        coordinateRetryCount += 1;
+        await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
+          where: { energyEventId: event.id },
+          data: {
+            coordinateLatitude: coord.latitude,
+            coordinateLongitude: coord.longitude,
+            coordinateSource: coord.source,
+            coordinateSelectorVersion: coord.selectorVersion,
+            coordinateSelectionStatus: coord.status,
+            coordinateRetryCount,
+            lastCoordinateAttemptAt: new Date(asOfMs),
+            nextCoordinateRetryAt: isCoordinateStatusRetryable(coord.status)
+              ? computeNextCoordinateRetryAt(coordinateRetryCount, asOfMs)
+              : null,
+          },
+        });
+      }
     }
 
     if (
@@ -469,6 +533,14 @@ export class PhysicalRefuelReconciliationRuntimeService {
         source: coordinateSource,
       })
     ) {
+      if (needsCoordinateAttempt || isCoordinateStatusRetryable(coordinateSelectionStatus)) {
+        await this.persistCoordinateHold({
+          energyEventId: event.id,
+          status: coordinateSelectionStatus,
+          retryCount: coordinateRetryCount,
+          asOfMs,
+        });
+      }
       this.logger.debug(
         JSON.stringify({
           event: 'physical_refuel_coordinate_hold',
@@ -484,6 +556,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
     const jobId = await this.fuelStationEnrichmentProducer.enqueueAfterPersist({
       energyEventId: event.id,
       eventStartTime: event.startTime,
+      eventObservedAt: event.createdAt,
       startLatitude: coordinateLatitude,
       startLongitude: coordinateLongitude,
       coordinateSource: coordinateSource,
@@ -493,7 +566,10 @@ export class PhysicalRefuelReconciliationRuntimeService {
     if (jobId) {
       await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
         where: { energyEventId: event.id },
-        data: { enrichmentEnqueuedAt: new Date() },
+        data: {
+          enrichmentEnqueuedAt: new Date(asOfMs),
+          nextCoordinateRetryAt: null,
+        },
       });
       this.logger.log(
         JSON.stringify({
@@ -509,6 +585,27 @@ export class PhysicalRefuelReconciliationRuntimeService {
     }
 
     return 'skipped';
+  }
+
+  private async persistCoordinateHold(params: {
+    energyEventId: string;
+    status: string | null;
+    retryCount: number;
+    asOfMs: number;
+  }): Promise<void> {
+    const terminal = isCoordinateStatusTerminal(params.status);
+    await this.prisma.vehicleEnergyEventRefuelReconciliation.update({
+      where: { energyEventId: params.energyEventId },
+      data: {
+        coordinateSelectionStatus: params.status,
+        coordinateRetryCount: params.retryCount,
+        lastCoordinateAttemptAt: new Date(params.asOfMs),
+        nextCoordinateRetryAt:
+          !terminal && isCoordinateStatusRetryable(params.status)
+            ? computeNextCoordinateRetryAt(params.retryCount, params.asOfMs)
+            : null,
+      },
+    });
   }
 
   private logDecision(

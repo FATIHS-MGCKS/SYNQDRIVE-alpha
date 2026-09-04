@@ -9876,6 +9876,9 @@ model VehicleEnergyEventRefuelReconciliation {
   coordinateSource          String?                     @map("coordinate_source")
   coordinateSelectorVersion String?                     @map("coordinate_selector_version")
   coordinateSelectionStatus String?                   @map("coordinate_selection_status")
+  coordinateRetryCount      Int                         @default(0) @map("coordinate_retry_count")
+  nextCoordinateRetryAt     DateTime?                   @map("next_coordinate_retry_at")
+  lastCoordinateAttemptAt   DateTime?                   @map("last_coordinate_attempt_at")
   enrichmentEnqueuedAt      DateTime?                   @map("enrichment_enqueued_at")
   nextReconciliationAt      DateTime?                   @map("next_reconciliation_at")
   reconciledAt              DateTime                    @default(now()) @map("reconciled_at")
@@ -9887,6 +9890,7 @@ model VehicleEnergyEventRefuelReconciliation {
   @@index([vehicleId, finalityState])
   @@index([finalityState, nextReconciliationAt])
   @@index([enrichmentEligible, enrichmentEnqueuedAt])
+  @@index([nextCoordinateRetryAt])
   @@index([reconciliationGroupId])
   @@map("vehicle_energy_event_refuel_reconciliations")
 }

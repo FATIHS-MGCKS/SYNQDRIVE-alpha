@@ -600,6 +600,9 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         coordinateSource: null,
         coordinateSelectorVersion: null,
         coordinateSelectionStatus: null,
+        coordinateRetryCount: 0,
+        nextCoordinateRetryAt: null,
+        lastCoordinateAttemptAt: null,
         nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(t0),
         reconciledAt: new Date(t0),
@@ -719,6 +722,30 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     expect(result.enqueuedEventIds).toEqual([]);
     expect(result.heldEventIds).toContain(event.id);
     expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+  });
+
+  it('T1 — settlement progresses without DIMO token and holds coordinate', async () => {
+    const harness = createHarness();
+    harness.prisma.vehicle.findUnique.mockResolvedValue({
+      organizationId,
+      dimoVehicle: null,
+    });
+    const event = toEnergyEvent(incidentA, t0);
+    harness.seedEvents([event]);
+    mockAsOf(t0 + horizon + 1);
+
+    const result = await harness.service.reconcileAndEnqueueAfterPersist({
+      vehicleId,
+      triggerEventId: event.id,
+    });
+
+    expect(result.decisions[0]?.finalityState).toBe('FINAL_DISTINCT');
+    expect(result.enqueuedEventIds).toEqual([]);
+    expect(result.heldEventIds).toContain(event.id);
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+    const row = harness.reconciliations.get(event.id);
+    expect(row?.coordinateSelectionStatus).toBe('COORDINATE_HOLD_MISSING_DIMO_TOKEN');
+    expect(row?.nextCoordinateRetryAt).not.toBeNull();
   });
 
   it('R16 — recovery batch processes settlement-due vehicle work', async () => {

@@ -1,0 +1,50 @@
+import {
+  COORDINATE_HOLD_MISSING_DIMO_TOKEN,
+  computeNextCoordinateRetryAt,
+  isCoordinateStatusRetryable,
+  isCoordinateStatusTerminal,
+  shouldAttemptCoordinateResolution,
+} from './physical-refuel-coordinate-retry.policy';
+
+describe('physical-refuel-coordinate-retry.policy', () => {
+  const asOf = Date.parse('2026-09-04T12:00:00.000Z');
+
+  it('classifies terminal coordinate statuses', () => {
+    expect(isCoordinateStatusTerminal('MISSING_FUEL_RISE_ONSET')).toBe(true);
+    expect(isCoordinateStatusTerminal('NO_DWELL_FOUND')).toBe(true);
+    expect(isCoordinateStatusRetryable(COORDINATE_HOLD_MISSING_DIMO_TOKEN)).toBe(true);
+  });
+
+  it('R1 does not attempt coordinate before next retry due', () => {
+    expect(
+      shouldAttemptCoordinateResolution({
+        coordinateLatitude: null,
+        coordinateLongitude: null,
+        coordinateSource: null,
+        coordinateSelectionStatus: COORDINATE_HOLD_MISSING_DIMO_TOKEN,
+        nextCoordinateRetryAt: new Date(asOf + 60_000),
+        asOfMs: asOf,
+      }),
+    ).toBe(false);
+  });
+
+  it('R2 attempts coordinate when retry becomes due', () => {
+    expect(
+      shouldAttemptCoordinateResolution({
+        coordinateLatitude: null,
+        coordinateLongitude: null,
+        coordinateSource: null,
+        coordinateSelectionStatus: COORDINATE_HOLD_MISSING_DIMO_TOKEN,
+        nextCoordinateRetryAt: new Date(asOf - 1),
+        asOfMs: asOf,
+      }),
+    ).toBe(true);
+  });
+
+  it('applies exponential backoff for next retry', () => {
+    const first = computeNextCoordinateRetryAt(0, asOf);
+    const second = computeNextCoordinateRetryAt(1, asOf);
+    expect(first.getTime() - asOf).toBe(60_000);
+    expect(second.getTime() - asOf).toBe(120_000);
+  });
+});

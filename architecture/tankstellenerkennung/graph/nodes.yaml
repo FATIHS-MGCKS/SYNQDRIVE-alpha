@@ -914,6 +914,20 @@ nodes:
       - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
       - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
 
+  - id: FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001
+    type: evidence
+    title: G2.1b cross-cutover + recovery hardening
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      V2-only candidate ownership, observation-time enqueue authority, token-independent
+      semantic reconciliation, bounded orphan scan, coordinate retry backoff, fair recovery,
+      PostgreSQL advisory-lock proof on isolated DB.
+    source_paths:
+      - docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

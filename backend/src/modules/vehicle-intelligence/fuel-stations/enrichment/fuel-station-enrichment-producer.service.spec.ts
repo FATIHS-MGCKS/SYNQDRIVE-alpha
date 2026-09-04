@@ -75,6 +75,71 @@ describe('FuelStationEnrichmentProducerService', () => {
     expect(queue.add).not.toHaveBeenCalled();
   });
 
+  it('K1 allows V2 enqueue when startTime is pre-cutover but observation is post-cutover', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('K2 keeps legacy startTime cutover behavior for non-V2 enqueue', async () => {
+    const result = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('K3 rejects V2 enqueue when observation is before cutover', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-08-20T00:00:00.000Z'),
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('B8 deduplicates logical enqueue after queue.add succeeds before enrichmentEnqueuedAt update', async () => {
+    const first = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+    expect(first).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('waiting'),
+    });
+
+    const second = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(second).toBe(first);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
   it('does not enqueue pre-cutover events by startTime', async () => {
     const result = await service.enqueueAfterPersist({
       ...postCutoverInput,

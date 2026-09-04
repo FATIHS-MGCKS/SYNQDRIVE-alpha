@@ -24,12 +24,18 @@ export function computeRefuelCandidateWindow(
 export function buildRefuelCandidateWhere(
   vehicleId: string,
   window: { from: Date; to: Date },
+  v2OwnershipCutoverAt?: Date | null,
 ): Prisma.VehicleEnergyEventWhereInput {
+  const effectiveFrom =
+    v2OwnershipCutoverAt != null
+      ? new Date(Math.max(window.from.getTime(), v2OwnershipCutoverAt.getTime()))
+      : window.from;
+
   return {
     vehicleId,
     kind: EnergyEventKind.REFUEL,
     createdAt: {
-      gte: window.from,
+      gte: effectiveFrom,
       lte: window.to,
     },
   };
