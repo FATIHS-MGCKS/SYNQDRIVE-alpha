@@ -48,6 +48,8 @@ export type HfRecoveryPolicyV2Config = {
   recoverySweepIntervalMs: number;
   recoverySweepLookbackMs: number;
   availabilityCalibrationEnabled: boolean;
+  /** When true, V2 applies only to canaryTokenIds; empty list fails closed (LEGACY for all). */
+  canaryOnly: boolean;
   canaryTokenIds: number[];
 };
 
@@ -79,6 +81,16 @@ export type HfQueryProvenanceRecord = {
   resultBucketCount: number;
   status: 'SUCCESS' | 'ZERO_RESULT' | 'PROVIDER_ERROR' | 'PERSISTENCE_FAILURE';
   requestCorrelationId: string;
+  /** DI-EV-0035C.1a — canary phase reconstruction fields */
+  pollIntervalMs?: number | null;
+  uniqueTemporalBucketStartCount?: number;
+  duplicateBucketCount?: number;
+  revisionBucketCount?: number;
+  recoveredLateBucketCount?: number;
+  queryDurationMs?: number;
+  minBucketTimestamp?: string | null;
+  maxBucketTimestamp?: string | null;
+  maxIntraResponseTemporalGapMs?: number | null;
 };
 
 export type HfQueryWindow = {
@@ -152,7 +164,8 @@ export function parseHfRecoveryPolicyV2ConfigFromEnv(env: NodeJS.ProcessEnv = pr
       24 * 60 * 60 * 1000,
     ),
     availabilityCalibrationEnabled: parseBooleanEnv(env.HF_AVAILABILITY_CALIBRATION_ENABLED, false),
-    canaryTokenIds: globalCanaryOnly ? canaryTokenIds : [],
+    canaryOnly: globalCanaryOnly,
+    canaryTokenIds,
   };
 }
 
@@ -171,13 +184,21 @@ export function resolveHfRecoveryPolicyForToken(
   if (config.mode !== 'V2') {
     return { ...config, mode: 'LEGACY' };
   }
-  if (config.canaryTokenIds.length === 0) {
+  if (config.canaryOnly) {
+    if (config.canaryTokenIds.length === 0) {
+      return { ...config, mode: 'LEGACY' };
+    }
+    if (!config.canaryTokenIds.includes(tokenId)) {
+      return { ...config, mode: 'LEGACY' };
+    }
     return config;
   }
-  if (!config.canaryTokenIds.includes(tokenId)) {
-    return { ...config, mode: 'LEGACY' };
-  }
   return config;
+}
+
+/** True when V2 is enabled with canary-only mode but an empty/missing allowlist (fail-closed). */
+export function isHfV2CanaryEmptyAllowlistFailClosed(config: HfRecoveryPolicyV2Config): boolean {
+  return config.mode === 'V2' && config.canaryOnly && config.canaryTokenIds.length === 0;
 }
 
 export function getEffectiveOverlapMs(config: HfRecoveryPolicyV2Config): number {

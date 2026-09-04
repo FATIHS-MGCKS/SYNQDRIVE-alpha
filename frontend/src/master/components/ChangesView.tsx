@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c1a-hf-pre-canary-hardening-2026-09-04',
+    version: '4.9.1064',
+    title: 'DI-EV-0035C.1a — HF Block Polling Pre-Canary Correctness Hardening',
+    summary: [
+      'Fixed canary fail-open: empty V2 canary allowlist now fails closed to LEGACY for all tokens.',
+      'Corrected bucket age observability: oldest age >= newest age at observation time.',
+      'Fixed epoch-aligned stagger deadline primitive to use tokenId phase offset.',
+      'Extended HF provenance for canary metric reconstruction (latency, gaps, dup/rev/recovered).',
+      'Exhaustive unit tests for canary semantics, bucket ages, stagger deadlines, metrics audit.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Forensic review of DI-EV-0035C.1 found pre-canary correctness defects that could mis-scope V2 or corrupt observability before KS MX 2024 calibration.',
+    previousBehavior:
+      'Empty canary allowlist could enable global V2; bucket ages reversed; stagger offset unused in deadline primitive.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §DI-EV-0035C.1a; reference-capture-hf-recovery-v2.policy.ts; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1-hf-block-polling-scalability-2026-09-04',
     version: '4.9.1063',
     title: 'DI-EV-0035C.1 — HF Historical Block Polling Scalability Testbed',

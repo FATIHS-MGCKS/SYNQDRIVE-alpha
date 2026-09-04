@@ -185,3 +185,85 @@ DEPLOYED = NO
 READY_FOR_REFERENCE_CAPTURE_CANARY = YES (after merge + deploy with V2 flags)
 READY_FOR_MERGE = NO
 ```
+
+---
+
+## DI-EV-0035C.1a — Pre-canary correctness hardening (2026-09-04)
+
+**Evidence ID:** DI-EV-0035C.1a  
+**Parent:** DI-EV-0035C.1  
+**Status:** IMPLEMENTED (hardening); **NOT DEPLOYED**; **30s hypothesis NOT_VALIDATED**
+
+### A. Canary fail-closed correction
+
+**Defect:** `V2_ENABLED=true` + `CANARY_ONLY=true` + empty/missing `CANARY_TOKEN_IDS` could behave like global V2.
+
+**Fix:** `resolveHfRecoveryPolicyForToken()` now fails closed — empty allowlist ⇒ LEGACY for every token. `canaryOnly` is explicit policy authority; global V2 requires `CANARY_ONLY=false`.
+
+```
+HF_V2_CANARY_EMPTY_ALLOWLIST_FAILS_CLOSED = YES
+```
+
+### B. Bucket age observability semantics
+
+**Defect:** `computeBucketTemporalSpanMs()` reversed oldest/newest age assignment.
+
+**Fix:** `oldestReturnedBucketAgeMs = observationTime - min(ts)`; `newestReturnedBucketAgeMs = observationTime - max(ts)`. Injectable `observationTimeMs` for deterministic tests.
+
+```
+HF_BUCKET_AGE_OBSERVABILITY_SEMANTICS_CORRECT = YES
+```
+
+### C. Stagger deadline primitive
+
+**Defect:** `computeStaggeredPollDeadlineMs()` computed offset but did not apply it.
+
+**Fix:** Epoch-aligned schedule `epochMs + tokenOffset + n * pollIntervalMs`. Added `listEpochAlignedPollDeadlinesInWindow()`. Reference Capture runtime still uses simple interval gate; production scheduler unchanged.
+
+```
+FLEET_STAGGER_OFFSET_USED_BY_DEADLINE_PRIMITIVE = YES
+PRODUCTION_FLEET_STAGGERING_ENABLED = NO
+```
+
+### D. Canary measurement sufficiency audit
+
+Extended `HfQueryProvenanceRecord` + block-density observability with fields needed for post-phase reconstruction (poll interval, unique starts, dup/rev/recovered counts, latency, min/max timestamps, max intra-response gap).
+
+```
+CANARY_METRICS_RECONSTRUCTIBLE = YES
+MISSING_CANARY_METRICS = (none)
+```
+
+Median/P90 temporal cadence derivable post-phase from persisted provenance timestamps + observation ring (not pre-aggregated).
+
+### E. Regression / safety
+
+```
+PRODUCTION_HF_PATH_CHANGED = NO
+PRODUCTION_SCORE_CHANGED = NO
+PRODUCTION_DETECTORS_CHANGED = NO
+PRODUCTION_TIRE_BRAKE_MODELS_CHANGED = NO
+REFERENCE_CAPTURE_LEGACY_BEHAVIOR_PRESERVED_WHEN_V2_OFF = YES
+HF_30S_BLOCK_POLLING_VALIDATED = NO
+DEPLOYED = NO
+```
+
+### F. Remaining unknowns
+
+- Live 10/20/30/60s calibration phases not yet executed.
+- Provisional 30s block-polling hypothesis remains NOT_VALIDATED.
+- Production fleet staggering design only — not wired.
+
+### C.1a final flags
+
+```
+DI_EV = DI-EV-0035C.1a
+CANARY_FAIL_OPEN_DEFECT_FOUND = YES
+CANARY_FAIL_OPEN_DEFECT_FIXED = YES
+BUCKET_AGE_SEMANTIC_DEFECT_FOUND = YES
+BUCKET_AGE_SEMANTIC_DEFECT_FIXED = YES
+STAGGER_DEADLINE_DEFECT_FOUND = YES
+STAGGER_DEADLINE_DEFECT_FIXED = YES
+READY_FOR_REFERENCE_CAPTURE_CANARY = YES (after merge; V2 flags + non-empty canary allowlist)
+READY_FOR_MERGE = YES (correctness findings closed; calibration NOT validated)
+```

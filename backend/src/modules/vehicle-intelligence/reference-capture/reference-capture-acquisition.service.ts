@@ -35,6 +35,7 @@ import {
   appendQueryProvenanceRecord,
   buildHfObservabilitySnapshot,
   buildHfQueryWindow,
+  isHfV2CanaryEmptyAllowlistFailClosed,
   isValidHfQueryWindow,
   normalizeHfRecoveryCursorState,
   planRecoverySweepWindow,
@@ -46,6 +47,7 @@ import {
 import {
   buildHfBlockDensityObservability,
   countUniqueTemporalBucketStarts,
+  computeMaxIntraResponseTemporalGapMs,
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
 import { ReferenceCaptureConfig } from './reference-capture.config';
@@ -220,6 +222,13 @@ export class ReferenceCaptureAcquisitionService {
     );
 
     const hfPolicy = this.referenceCaptureConfig.resolveHfRecoveryPolicyForToken(tokenId);
+    const hfPolicyBase = this.referenceCaptureConfig.getHfRecoveryPolicyConfig();
+    const canaryEmptyAllowlistFailClosed = isHfV2CanaryEmptyAllowlistFailClosed(hfPolicyBase);
+    if (canaryEmptyAllowlistFailClosed) {
+      this.logger.warn(
+        'HF V2 canary-only mode with empty/missing HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS — fail-closed to LEGACY for all tokens',
+      );
+    }
 
     for (const surfacePlan of cyclePlan.surfaces) {
       if (surfacePlan.surface === 'NATIVE_EVENT_INCREMENTAL') {
@@ -629,28 +638,37 @@ export class ReferenceCaptureAcquisitionService {
       );
       providerQuerySucceeded = true;
     } catch (error) {
-      const provenanceRecord: HfQueryProvenanceRecord = {
-        recordedAt: new Date().toISOString(),
-        policyVersion: 'HF_RECOVERY_V2_2026-09-04',
-        policyMode: args.hfPolicy.mode,
-        tokenId: args.tokenId,
-        vehicleId: args.input.vehicleId,
-        sessionId: args.input.sessionId,
-        captureCycleId: args.captureCycleId,
-        queryOrigin: args.queryOrigin,
-        providerFields: args.surfacePlan.providerFields,
-        queryFrom: from.toISOString(),
-        queryTo: actualQueryToAt.toISOString(),
-        requestedInterval,
-        aggregation,
-        requestStartedAt: requestStartedAt.toISOString(),
-        requestCompletedAt: new Date().toISOString(),
-        settlementDelayMs: queryWindow.settlementDelayMs,
-        recoveryOverlapMs: queryWindow.recoveryOverlapMs,
-        resultBucketCount: 0,
-        status: 'PROVIDER_ERROR',
-        requestCorrelationId,
-      };
+    const provenanceRecord: HfQueryProvenanceRecord = {
+      recordedAt: new Date().toISOString(),
+      policyVersion: 'HF_RECOVERY_V2_2026-09-04',
+      policyMode: args.hfPolicy.mode,
+      tokenId: args.tokenId,
+      vehicleId: args.input.vehicleId,
+      sessionId: args.input.sessionId,
+      captureCycleId: args.captureCycleId,
+      queryOrigin: args.queryOrigin,
+      providerFields: args.surfacePlan.providerFields,
+      queryFrom: from.toISOString(),
+      queryTo: actualQueryToAt.toISOString(),
+      requestedInterval,
+      aggregation,
+      requestStartedAt: requestStartedAt.toISOString(),
+      requestCompletedAt: new Date().toISOString(),
+      settlementDelayMs: queryWindow.settlementDelayMs,
+      recoveryOverlapMs: queryWindow.recoveryOverlapMs,
+      resultBucketCount: 0,
+      status: 'PROVIDER_ERROR',
+      requestCorrelationId,
+      pollIntervalMs: args.hfPolicy.mode === 'V2' ? args.hfPolicy.hfHistoricalPollIntervalMs : null,
+      uniqueTemporalBucketStartCount: 0,
+      duplicateBucketCount: 0,
+      revisionBucketCount: 0,
+      recoveredLateBucketCount: 0,
+      queryDurationMs: Date.now() - queryStartedMs,
+      minBucketTimestamp: null,
+      maxBucketTimestamp: null,
+      maxIntraResponseTemporalGapMs: null,
+    };
       this.logger.warn(
         `HF provider query failed session=${args.input.sessionId} origin=${args.queryOrigin}: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -908,6 +926,18 @@ export class ReferenceCaptureAcquisitionService {
       );
     }
 
+    const bucketTimestamps = candidates.map((c) => c.providerTimestampIso);
+    const uniqueTemporalBucketStartCount = countUniqueTemporalBucketStarts(bucketTimestamps);
+    const parsedTs = bucketTimestamps.map((t) => Date.parse(t)).filter(Number.isFinite);
+    const minBucketTimestamp =
+      parsedTs.length > 0 ? new Date(Math.min(...parsedTs)).toISOString() : null;
+    const maxBucketTimestamp =
+      parsedTs.length > 0 ? new Date(Math.max(...parsedTs)).toISOString() : null;
+    const maxIntraGap = computeMaxIntraResponseTemporalGapMs(bucketTimestamps);
+    const queryDurationMs = Date.now() - queryStartedMs;
+    const recoveredLateCount =
+      args.queryOrigin === 'RECOVERY_SWEEP' ? newPhysicalSampleFingerprints.length : 0;
+
     const provenanceRecord: HfQueryProvenanceRecord = {
       recordedAt: new Date().toISOString(),
       policyVersion: 'HF_RECOVERY_V2_2026-09-04',
@@ -929,10 +959,16 @@ export class ReferenceCaptureAcquisitionService {
       resultBucketCount: rows.length,
       status: rows.length === 0 ? 'ZERO_RESULT' : 'SUCCESS',
       requestCorrelationId,
+      pollIntervalMs: args.hfPolicy.mode === 'V2' ? args.hfPolicy.hfHistoricalPollIntervalMs : null,
+      uniqueTemporalBucketStartCount,
+      duplicateBucketCount: duplicateSkipped,
+      revisionBucketCount: providerRevisionObservations,
+      recoveredLateBucketCount: recoveredLateCount,
+      queryDurationMs,
+      minBucketTimestamp,
+      maxBucketTimestamp,
+      maxIntraResponseTemporalGapMs: maxIntraGap,
     };
-
-    const bucketTimestamps = candidates.map((c) => c.providerTimestampIso);
-    const uniqueTemporalBucketStartCount = countUniqueTemporalBucketStarts(bucketTimestamps);
 
     const observabilitySnapshot = {
       ...buildHfObservabilitySnapshot({
@@ -942,9 +978,8 @@ export class ReferenceCaptureAcquisitionService {
         newBucketCount: newPhysicalSampleFingerprints.length,
         duplicateBucketCount: duplicateSkipped,
         revisionBucketCount: providerRevisionObservations,
-        recoveredLateBucketCount:
-          args.queryOrigin === 'RECOVERY_SWEEP' ? newPhysicalSampleFingerprints.length : 0,
-        queryDurationMs: Date.now() - queryStartedMs,
+        recoveredLateBucketCount: recoveredLateCount,
+        queryDurationMs,
         querySuccess: providerQuerySucceeded,
         queryZeroResult: rows.length === 0,
         watermarkState: args.hfWatermarkState,
@@ -960,7 +995,7 @@ export class ReferenceCaptureAcquisitionService {
         revisionBucketCount: providerRevisionObservations,
         uniqueTemporalBucketStartCount,
         bucketTimestamps,
-        queryDurationMs: Date.now() - queryStartedMs,
+        queryDurationMs,
         querySuccess: providerQuerySucceeded,
         queryZeroResult: rows.length === 0,
         providerError: false,

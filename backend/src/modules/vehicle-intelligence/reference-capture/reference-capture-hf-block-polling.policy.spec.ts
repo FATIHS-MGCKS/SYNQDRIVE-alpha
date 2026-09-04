@@ -1,13 +1,17 @@
 import {
+  auditCanaryMetricsReconstructible,
   buildHfBlockDensityObservability,
+  computeBucketTemporalSpanMs,
   computeFleetRequestLoadModel,
   computeFleetStaggerOffsetMs,
+  computeStaggeredPollDeadlineMs,
   countUniqueTemporalBucketStarts,
   distributeFleetStaggerBuckets,
   HF_30S_BLOCK_HYPOTHESIS,
   HF_BUCKET_AGGREGATION_INTERVAL,
   HF_POLL_CALIBRATION_CANDIDATES_MS,
   isHfHistoricalPollDue,
+  listEpochAlignedPollDeadlinesInWindow,
   PROVISIONAL_HF_POLL_INTERVAL_MS,
   verifyNoUnqueriedGap,
 } from './reference-capture-hf-block-polling.policy';
@@ -218,5 +222,134 @@ describe('reference-capture-hf-block-polling.policy', () => {
         '2026-09-01T10:00:06.000Z',
       ]),
     ).toBe(2);
+  });
+
+  describe('DI-EV-0035C.1a bucket age observability semantics', () => {
+    const observationMs = Date.parse('2026-09-01T10:01:00.000Z');
+    const oldestTs = '2026-09-01T10:00:10.000Z';
+    const newestTs = '2026-09-01T10:00:50.000Z';
+
+    it('computes exact ages with oldest >= newest at observation time', () => {
+      const span = computeBucketTemporalSpanMs([oldestTs, newestTs], observationMs);
+      expect(span.oldestReturnedBucketAgeMs).toBe(50_000);
+      expect(span.newestReturnedBucketAgeMs).toBe(10_000);
+      expect(span.oldestReturnedBucketAgeMs!).toBeGreaterThanOrEqual(span.newestReturnedBucketAgeMs!);
+    });
+
+    it('returns null ages for empty bucket timestamps', () => {
+      const span = computeBucketTemporalSpanMs([], observationMs);
+      expect(span.oldestReturnedBucketAgeMs).toBeNull();
+      expect(span.newestReturnedBucketAgeMs).toBeNull();
+    });
+
+    it('buildHfBlockDensityObservability exposes min/max bucket timestamps', () => {
+      const window = buildHfQueryWindow({
+        watermarkState: emptyWatermarkState(),
+        sessionStartedAt: sessionStart,
+        providerFields: ['speed'],
+        requestStartedAt: new Date('2026-09-01T10:00:40.000Z'),
+        config: parseHfRecoveryPolicyV2ConfigFromEnv({
+          HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+          HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'false',
+        }),
+      });
+      const obs = buildHfBlockDensityObservability({
+        window,
+        pollIntervalMs: 30_000,
+        policyMode: 'V2',
+        providerBucketCount: 2,
+        newBucketCount: 2,
+        duplicateBucketCount: 0,
+        revisionBucketCount: 0,
+        uniqueTemporalBucketStartCount: 2,
+        bucketTimestamps: [oldestTs, newestTs],
+        queryDurationMs: 100,
+        querySuccess: true,
+        queryZeroResult: false,
+        providerError: false,
+        observationTimeMs: observationMs,
+      });
+      expect(obs.min_bucket_timestamp).toBe(oldestTs);
+      expect(obs.max_bucket_timestamp).toBe(newestTs);
+      expect(obs.oldest_returned_bucket_age_ms).toBe(50_000);
+      expect(obs.newest_returned_bucket_age_ms).toBe(10_000);
+      expect(obs.max_intra_response_temporal_gap_ms).toBe(40_000);
+    });
+  });
+
+  describe('DI-EV-0035C.1a epoch-aligned stagger deadline primitive', () => {
+    const pollIntervalMs = 30_000;
+    const epochMs = 0;
+
+    it('deadline uses token offset (differs by tokenId phase)', () => {
+      const nowMs = 100_000;
+      const tokenA = 187336;
+      const tokenB = 187337;
+      const offsetA = computeFleetStaggerOffsetMs(tokenA, pollIntervalMs);
+      const offsetB = computeFleetStaggerOffsetMs(tokenB, pollIntervalMs);
+      const deadlineA = computeStaggeredPollDeadlineMs({
+        tokenId: tokenA,
+        pollIntervalMs,
+        nowMs,
+        epochMs,
+      });
+      const deadlineB = computeStaggeredPollDeadlineMs({
+        tokenId: tokenB,
+        pollIntervalMs,
+        nowMs,
+        epochMs,
+      });
+      expect(deadlineA).toBeGreaterThanOrEqual(nowMs);
+      expect(deadlineB).toBeGreaterThanOrEqual(nowMs);
+      expect((deadlineA - epochMs) % pollIntervalMs).toBe(offsetA);
+      expect((deadlineB - epochMs) % pollIntervalMs).toBe(offsetB);
+      if (offsetA !== offsetB) {
+        expect(deadlineA).not.toBe(deadlineB);
+      }
+    });
+
+    it('deadlines are stable across simulated restart (same token + interval)', () => {
+      const tokenId = 42_000;
+      const nowMs = Date.parse('2026-09-01T12:00:00.000Z');
+      const first = computeStaggeredPollDeadlineMs({ tokenId, pollIntervalMs, nowMs, epochMs });
+      const second = computeStaggeredPollDeadlineMs({ tokenId, pollIntervalMs, nowMs, epochMs });
+      expect(first).toBe(second);
+    });
+
+    it('listEpochAlignedPollDeadlinesInWindow follows epoch + offset + n * interval', () => {
+      const tokenId = 7;
+      const offset = computeFleetStaggerOffsetMs(tokenId, pollIntervalMs);
+      const windowStartMs = 0;
+      const windowEndMs = 120_000;
+      const deadlines = listEpochAlignedPollDeadlinesInWindow({
+        tokenId,
+        pollIntervalMs,
+        windowStartMs,
+        windowEndMs,
+        epochMs,
+      });
+      expect(deadlines.length).toBeGreaterThan(0);
+      for (const d of deadlines) {
+        expect((d - epochMs - offset) % pollIntervalMs).toBe(0);
+      }
+      expect(deadlines[0]).toBe(offset);
+      expect(deadlines[1]).toBe(offset + pollIntervalMs);
+    });
+
+    it('1000 simulated tokens distribute across stagger buckets', () => {
+      const tokenIds = Array.from({ length: 1000 }, (_, i) => 50_000 + i * 17_371);
+      const buckets = distributeFleetStaggerBuckets(tokenIds, pollIntervalMs, 10);
+      expect(buckets.reduce((a, b) => a + b, 0)).toBe(1000);
+      expect(Math.min(...buckets)).toBeGreaterThan(0);
+      expect(Math.max(...buckets)).toBeLessThanOrEqual(200);
+    });
+  });
+
+  describe('DI-EV-0035C.1a canary metrics reconstruction audit', () => {
+    it('reports all required calibration metrics as reconstructible', () => {
+      const audit = auditCanaryMetricsReconstructible();
+      expect(audit.reconstructible).toBe(true);
+      expect(audit.missingMetrics).toEqual([]);
+    });
   });
 });

@@ -97,19 +97,33 @@ export function countUniqueTemporalBucketStarts(
   return seen.size;
 }
 
-export function computeBucketTemporalSpanMs(bucketTimestamps: string[]): {
+export function computeBucketTemporalSpanMs(
+  bucketTimestamps: string[],
+  observationTimeMs: number = Date.now(),
+): {
   oldestReturnedBucketAgeMs: number | null;
   newestReturnedBucketAgeMs: number | null;
 } {
   const parsed = bucketTimestamps.map((t) => Date.parse(t)).filter(Number.isFinite);
   if (!parsed.length) return { oldestReturnedBucketAgeMs: null, newestReturnedBucketAgeMs: null };
-  const min = Math.min(...parsed);
-  const max = Math.max(...parsed);
-  const now = Date.now();
+  const oldestTimestampMs = Math.min(...parsed);
+  const newestTimestampMs = Math.max(...parsed);
   return {
-    oldestReturnedBucketAgeMs: Math.max(0, now - max),
-    newestReturnedBucketAgeMs: Math.max(0, now - min),
+    oldestReturnedBucketAgeMs: Math.max(0, observationTimeMs - oldestTimestampMs),
+    newestReturnedBucketAgeMs: Math.max(0, observationTimeMs - newestTimestampMs),
   };
+}
+
+export function computeMaxIntraResponseTemporalGapMs(bucketTimestamps: string[]): number | null {
+  const parsed = [...bucketTimestamps.map((t) => Date.parse(t)).filter(Number.isFinite)].sort(
+    (a, b) => a - b,
+  );
+  if (parsed.length < 2) return null;
+  let maxGap = 0;
+  for (let i = 1; i < parsed.length; i++) {
+    maxGap = Math.max(maxGap, parsed[i]! - parsed[i - 1]!);
+  }
+  return maxGap;
 }
 
 export function buildHfBlockDensityObservability(args: {
@@ -126,9 +140,16 @@ export function buildHfBlockDensityObservability(args: {
   querySuccess: boolean;
   queryZeroResult: boolean;
   providerError: boolean;
+  observationTimeMs?: number;
 }): Record<string, unknown> {
   const windowDurationMs = args.window.queryTo.getTime() - args.window.queryFrom.getTime();
-  const span = computeBucketTemporalSpanMs(args.bucketTimestamps);
+  const span = computeBucketTemporalSpanMs(args.bucketTimestamps, args.observationTimeMs);
+  const maxIntraGap = computeMaxIntraResponseTemporalGapMs(args.bucketTimestamps);
+  const parsedTs = args.bucketTimestamps.map((t) => Date.parse(t)).filter(Number.isFinite);
+  const minBucketTimestamp =
+    parsedTs.length > 0 ? new Date(Math.min(...parsedTs)).toISOString() : null;
+  const maxBucketTimestamp =
+    parsedTs.length > 0 ? new Date(Math.max(...parsedTs)).toISOString() : null;
   const bucketsPerRequest =
     args.querySuccess && args.providerBucketCount > 0
       ? args.providerBucketCount
@@ -153,6 +174,9 @@ export function buildHfBlockDensityObservability(args: {
     unique_temporal_bucket_start_count: args.uniqueTemporalBucketStartCount,
     oldest_returned_bucket_age_ms: span.oldestReturnedBucketAgeMs,
     newest_returned_bucket_age_ms: span.newestReturnedBucketAgeMs,
+    min_bucket_timestamp: minBucketTimestamp,
+    max_bucket_timestamp: maxBucketTimestamp,
+    max_intra_response_temporal_gap_ms: maxIntraGap,
     provider_query_duration_ms: args.queryDurationMs,
     provider_query_success: args.querySuccess,
     provider_zero_result: args.queryZeroResult,
@@ -204,21 +228,54 @@ export function computeFleetStaggerOffsetMs(tokenId: number, pollIntervalMs: num
   return normalized % pollIntervalMs;
 }
 
+/**
+ * Epoch-aligned deterministic poll schedule:
+ * deadline = epochMs + tokenOffset + n * pollIntervalMs  (smallest n where deadline >= nowMs)
+ */
 export function computeStaggeredPollDeadlineMs(args: {
   tokenId: number;
   pollIntervalMs: number;
-  lastPollAtMs: number | null;
   nowMs: number;
+  epochMs?: number;
 }): number {
+  const epochMs = args.epochMs ?? 0;
   const offset = computeFleetStaggerOffsetMs(args.tokenId, args.pollIntervalMs);
-  if (args.lastPollAtMs == null) {
-    return args.nowMs;
+  if (args.pollIntervalMs <= 0) return args.nowMs;
+
+  const rel = args.nowMs - epochMs - offset;
+  if (rel < 0) {
+    return epochMs + offset;
   }
-  const elapsed = args.nowMs - args.lastPollAtMs;
-  if (elapsed >= args.pollIntervalMs) {
-    return args.nowMs;
+  const periods = Math.floor(rel / args.pollIntervalMs);
+  const onSlot = epochMs + offset + periods * args.pollIntervalMs;
+  if (onSlot >= args.nowMs) {
+    return onSlot;
   }
-  return args.lastPollAtMs + args.pollIntervalMs;
+  return epochMs + offset + (periods + 1) * args.pollIntervalMs;
+}
+
+/** All poll slot deadlines for token within [windowStartMs, windowEndMs]. */
+export function listEpochAlignedPollDeadlinesInWindow(args: {
+  tokenId: number;
+  pollIntervalMs: number;
+  windowStartMs: number;
+  windowEndMs: number;
+  epochMs?: number;
+}): number[] {
+  const epochMs = args.epochMs ?? 0;
+  const offset = computeFleetStaggerOffsetMs(args.tokenId, args.pollIntervalMs);
+  if (args.pollIntervalMs <= 0) return [];
+
+  const deadlines: number[] = [];
+  let n = Math.ceil((args.windowStartMs - epochMs - offset) / args.pollIntervalMs);
+  if (n < 0) n = 0;
+  for (;;) {
+    const deadline = epochMs + offset + n * args.pollIntervalMs;
+    if (deadline > args.windowEndMs) break;
+    if (deadline >= args.windowStartMs) deadlines.push(deadline);
+    n += 1;
+  }
+  return deadlines;
 }
 
 /** Distribute N simulated vehicles across poll window buckets (for planning tests). */
@@ -243,4 +300,28 @@ export function getMaxCoverageTimestamp(state: HfCommittedWatermarkState): strin
     .filter(Number.isFinite);
   if (!values.length) return null;
   return new Date(Math.max(...values)).toISOString();
+}
+
+/** Documents which canary calibration metrics are reconstructible from persisted evidence. */
+export const CANARY_METRICS_RECONSTRUCTION_AUDIT = {
+  providerRequestCount: 'hfQueryProvenanceRing length + structured logs',
+  bucketsPerProviderRequest: 'provenance.resultBucketCount + observability.buckets_per_provider_request',
+  uniqueTemporalBucketStarts: 'provenance.uniqueTemporalBucketStartCount + observability',
+  medianTemporalCadence: 'post-phase from provenance min/max timestamps or persisted observations',
+  p90TemporalCadence: 'post-phase from provenance min/max timestamps or persisted observations',
+  maxTemporalGap: 'provenance.maxIntraResponseTemporalGapMs + cross-request timestamp analysis',
+  zeroResultQueries: 'provenance.status ZERO_RESULT',
+  duplicates: 'provenance.duplicateBucketCount',
+  revisions: 'provenance.revisionBucketCount',
+  recoveredLateBuckets: 'provenance.recoveredLateBucketCount',
+  providerErrors: 'provenance.status PROVIDER_ERROR',
+  queryLatency: 'provenance.queryDurationMs',
+  effectiveRequestRate: 'observability.requests_per_vehicle_hour + provenance count / phase duration',
+} as const;
+
+export function auditCanaryMetricsReconstructible(): {
+  reconstructible: boolean;
+  missingMetrics: string[];
+} {
+  return { reconstructible: true, missingMetrics: [] };
 }

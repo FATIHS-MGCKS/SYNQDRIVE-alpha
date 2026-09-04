@@ -4,7 +4,9 @@ import {
   appendQueryProvenanceRecord,
   buildHfQueryWindow,
   emptyWatermarkState,
+  isHfV2CanaryEmptyAllowlistFailClosed,
   LEGACY_HF_RECOVERY_OVERLAP_MS,
+  parseCanaryTokenIdList,
   parseHfRecoveryPolicyV2ConfigFromEnv,
   planRecoverySweepWindow,
   PROVISIONAL_RECOVERY_OVERLAP_MS,
@@ -79,6 +81,74 @@ describe('reference-capture-hf-recovery-v2.policy', () => {
     });
     expect(resolveHfRecoveryPolicyForToken(base, 187336).mode).toBe('V2');
     expect(resolveHfRecoveryPolicyForToken(base, 999).mode).toBe('LEGACY');
+  });
+
+  describe('DI-EV-0035C.1a canary fail-closed semantics', () => {
+    it('case 1: V2_ENABLED=false => LEGACY for every token', () => {
+      const config = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'false',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: '187336',
+      });
+      expect(config.mode).toBe('LEGACY');
+      expect(resolveHfRecoveryPolicyForToken(config, 187336).mode).toBe('LEGACY');
+      expect(resolveHfRecoveryPolicyForToken(config, 999).mode).toBe('LEGACY');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(config)).toBe(false);
+    });
+
+    it('case 2: V2 + canaryOnly + TOKEN_IDS=[187336] => V2 only for 187336', () => {
+      const base = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: '187336',
+      });
+      expect(base.mode).toBe('V2');
+      expect(base.canaryOnly).toBe(true);
+      expect(resolveHfRecoveryPolicyForToken(base, 187336).mode).toBe('V2');
+      expect(resolveHfRecoveryPolicyForToken(base, 999).mode).toBe('LEGACY');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(base)).toBe(false);
+    });
+
+    it('case 3: V2 + canaryOnly + empty/missing/invalid allowlist => LEGACY for all (fail-closed)', () => {
+      const missing = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+      });
+      expect(missing.canaryTokenIds).toEqual([]);
+      expect(resolveHfRecoveryPolicyForToken(missing, 187336).mode).toBe('LEGACY');
+      expect(resolveHfRecoveryPolicyForToken(missing, 1).mode).toBe('LEGACY');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(missing)).toBe(true);
+
+      const empty = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: '',
+      });
+      expect(resolveHfRecoveryPolicyForToken(empty, 187336).mode).toBe('LEGACY');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(empty)).toBe(true);
+
+      const invalidOnly = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: 'abc, -1, 0',
+      });
+      expect(parseCanaryTokenIdList('abc, -1, 0')).toEqual([]);
+      expect(resolveHfRecoveryPolicyForToken(invalidOnly, 187336).mode).toBe('LEGACY');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(invalidOnly)).toBe(true);
+    });
+
+    it('case 4: V2 + canaryOnly=false => explicitly authorized global V2', () => {
+      const global = parseHfRecoveryPolicyV2ConfigFromEnv({
+        HF_RECOVERY_POLICY_V2_ENABLED: 'true',
+        HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'false',
+        HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS: '',
+      });
+      expect(global.mode).toBe('V2');
+      expect(global.canaryOnly).toBe(false);
+      expect(resolveHfRecoveryPolicyForToken(global, 187336).mode).toBe('V2');
+      expect(resolveHfRecoveryPolicyForToken(global, 999).mode).toBe('V2');
+      expect(isHfV2CanaryEmptyAllowlistFailClosed(global)).toBe(false);
+    });
   });
 
   it('DATA and QUERY COVERAGE watermarks remain separate authorities', () => {
