@@ -989,6 +989,19 @@ nodes:
       - backend/scripts/ops/physical-refuel-v2-production-preflight.sh
       - backend/src/config/physical-refuel-reconciliation.config.ts
 
+  - id: FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001
+    type: evidence
+    title: G2.2 physical-refuel V2 production post-cutover T+60 independent audit
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Read-only production audit ~T+122m after cutover. Both replicas on deploy SHA
+      43c9ae6c; V2 flags true; zero post-cutover REFUELs; zero reconciliation/enrichment
+      anomalies; zero physical-refuel errors; recovery backlog scans healthy on both
+      replicas. DEPLOYED_TO_PRODUCTION — PROVEN_IN_PRODUCTION still pending natural REFUEL.
+    source_paths:
+      - docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

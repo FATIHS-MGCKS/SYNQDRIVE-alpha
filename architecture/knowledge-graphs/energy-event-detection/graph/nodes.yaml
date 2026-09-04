@@ -1305,6 +1305,19 @@ nodes:
       DEPLOYED_TO_PRODUCTION — per-REFUEL PROVEN_IN_PRODUCTION pending natural observation.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0039
+    type: evidence
+    title: G2.2 physical-refuel V2 production post-cutover T+60 independent audit
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md
+    summary: >
+      Read-only VPS production audit ~T+122m after cutover. Both replicas healthy on SHA
+      43c9ae6c; V2 enabled; zero post-cutover REFUELs; zero errors/storms/bypasses.
+      Runtime stability PASS; per-REFUEL PROVEN_IN_PRODUCTION still pending.
+    verified_at: "2026-09-04"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt

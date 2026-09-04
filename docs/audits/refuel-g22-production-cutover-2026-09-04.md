@@ -133,3 +133,5 @@ Do not mass-delete reconciliation rows or rewrite production events. Preserve fo
 
 - **FST:** `FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001`
 - **EED:** `EED-EV-0038`
+
+**Follow-up (2026-09-04 ~T+122m):** `docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md` — `FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001`, `EED-EV-0039`.
