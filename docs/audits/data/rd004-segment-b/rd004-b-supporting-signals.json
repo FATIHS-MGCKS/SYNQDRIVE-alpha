@@ -1,0 +1,61 @@
+{
+  "RPM_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "RPM_SEGMENT_B_VALIDATION": "PARTIAL",
+  "THROTTLE_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "THROTTLE_SEGMENT_B_VALIDATION": "PARTIAL",
+  "TPS_GLOBAL_AUTHORITY": "USEFUL_WITH_GATING",
+  "TPS_SEGMENT_B_VALIDATION": "PARTIAL",
+  "GEAR_STATE_OBSERVED": "NO",
+  "GEAR_STATE_USEFUL_FOR_SEGMENT_B": "NOT_OBSERVED",
+  "perField": {
+    "powertrainCombustionEngineSpeed": {
+      "observed": true,
+      "sampleCount": 65,
+      "uniquePhysical": 65,
+      "dynamicRange": 1355.5,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "obdThrottlePosition": {
+      "observed": true,
+      "sampleCount": 65,
+      "uniquePhysical": 65,
+      "dynamicRange": 16.47058823529411,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainCombustionEngineTPS": {
+      "observed": true,
+      "sampleCount": 65,
+      "uniquePhysical": 65,
+      "dynamicRange": 36.86274509803921,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "obdEngineLoad": {
+      "observed": true,
+      "sampleCount": 66,
+      "uniquePhysical": 66,
+      "dynamicRange": 58.43137254901961,
+      "segmentValidation": "PARTIAL",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainTransmissionActualGear": {
+      "observed": false,
+      "sampleCount": 0,
+      "uniquePhysical": 0,
+      "dynamicRange": null,
+      "segmentValidation": "NOT_OBSERVED",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    },
+    "powertrainTransmissionActualGearRatio": {
+      "observed": false,
+      "sampleCount": 0,
+      "uniquePhysical": 0,
+      "dynamicRange": null,
+      "segmentValidation": "NOT_OBSERVED",
+      "globalAuthority": "USEFUL_WITH_GATING"
+    }
+  },
+  "thermalWarmupNote": "Powertrain warming continues through Segment B (~52/41°C early → ~88/73°C late); do not compare RPM/load without thermal context"
+}

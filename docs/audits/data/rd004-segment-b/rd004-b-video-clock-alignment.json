@@ -1,0 +1,145 @@
+{
+  "clockLandmarkMatches": [
+    {
+      "landmarkId": "CLK-B1",
+      "label": "high-speed section end / decel onset",
+      "episodeId": "B-E3",
+      "status": "NOT_FOUND_IN_TELEMETRY",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null
+    },
+    {
+      "landmarkId": "CLK-B2",
+      "label": "first complete stop after long decel",
+      "episodeId": "B-E4",
+      "landmarkKind": "COMPLETE_STOP",
+      "videoRelativeSecondsObserved": 630,
+      "videoTimingAuthority": "HIGH_CONFIDENCE",
+      "telemetryVideoRelativeProvisional": 643.685,
+      "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "YES",
+      "candidateOffsetSeconds": 13.684999999999945,
+      "speedErrorKmh": 0
+    },
+    {
+      "landmarkId": "CLK-B3",
+      "label": "sustained stop before launch",
+      "episodeId": "B-E5",
+      "landmarkKind": "COMPLETE_STOP",
+      "videoRelativeSecondsObserved": 660,
+      "videoTimingAuthority": "HIGH_CONFIDENCE",
+      "telemetryVideoRelativeProvisional": 643.685,
+      "candidateProviderTimestamp": "2026-09-04T03:57:45.685Z",
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null,
+      "speedErrorKmh": 0,
+      "note": "SAME_TELEMETRY_SAMPLE_CANNOT_COUNT_AS_MULTIPLE_CLOCK_LANDMARKS"
+    },
+    {
+      "landmarkId": "CLK-B4",
+      "label": "stop to launch (~51 km/h)",
+      "episodeId": "B-E5",
+      "status": "NOT_FOUND_IN_TELEMETRY",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null
+    },
+    {
+      "landmarkId": "CLK-B5",
+      "label": "second distinct stop",
+      "episodeId": "B-E5",
+      "landmarkKind": "SECOND_STOP",
+      "videoRelativeSecondsObserved": 720,
+      "videoTimingAuthority": "HIGH_CONFIDENCE",
+      "telemetryVideoRelativeProvisional": 735.382,
+      "candidateProviderTimestamp": "2026-09-04T03:59:17.382Z",
+      "telemetryMatchConfidence": "MEDIUM",
+      "CLOCK_FIT_ELIGIBLE": "YES",
+      "candidateOffsetSeconds": 15.381999999999948,
+      "speedErrorKmh": 5
+    },
+    {
+      "landmarkId": "CLK-B6",
+      "label": "late acceleration 4→71",
+      "episodeId": "B-E7",
+      "status": "NOT_FOUND_IN_TELEMETRY",
+      "CLOCK_FIT_ELIGIBLE": "NO",
+      "candidateOffsetSeconds": null
+    },
+    {
+      "landmarkId": "CLK-B7",
+      "label": "reverse context",
+      "episodeId": "B-E9",
+      "landmarkKind": "REVERSE_CONTEXT",
+      "videoRelativeSecondsObserved": 990,
+      "videoTimingAuthority": "HIGH_CONFIDENCE",
+      "telemetryVideoRelativeProvisional": 1004.299,
+      "candidateProviderTimestamp": "2026-09-04T04:03:46.299Z",
+      "telemetryMatchConfidence": "HIGH",
+      "CLOCK_FIT_ELIGIBLE": "YES",
+      "candidateOffsetSeconds": 14.298999999999978,
+      "speedErrorKmh": 0
+    }
+  ],
+  "clock": {
+    "VIDEO_ABSOLUTE_TIME_ANCHORED": "YES",
+    "PROVIDER_TIMESTAMP_OFFSET_VALIDATED": "YES",
+    "VIDEO_TO_PROVIDER_OFFSET_SECONDS": 14.298999999999978,
+    "APPROXIMATE_NON_UNIQUE_LANDMARK_CANNOT_DEFINE_PROVIDER_CLOCK_OFFSET": "YES",
+    "CLOCK_FIT_ELIGIBLE_LANDMARKS": [
+      "CLK-B2",
+      "CLK-B5",
+      "CLK-B7"
+    ],
+    "CLOCK_FIT_REJECTED_LANDMARKS": [
+      {
+        "landmarkId": "CLK-B1",
+        "reason": "NOT_FOUND_IN_TELEMETRY"
+      },
+      {
+        "landmarkId": "CLK-B3",
+        "reason": "INELIGIBLE"
+      },
+      {
+        "landmarkId": "CLK-B4",
+        "reason": "NOT_FOUND_IN_TELEMETRY"
+      },
+      {
+        "landmarkId": "CLK-B6",
+        "reason": "NOT_FOUND_IN_TELEMETRY"
+      }
+    ],
+    "CIRCULAR_LANDMARK_ALIGNMENT_REMOVED": "YES",
+    "VIDEO_PROVIDER_ALIGNMENT_CLASS": "STABLE_OFFSET",
+    "OFFSET_MAD_SECONDS": 0.6140000000000327,
+    "medianOffsetSeconds": 14.298999999999978,
+    "spreadSeconds": 1.6970000000000027,
+    "videoSpreadSeconds": 360,
+    "candidateOffsetsPerLandmark": [
+      {
+        "landmarkId": "CLK-B2",
+        "offsetSeconds": 13.684999999999945
+      },
+      {
+        "landmarkId": "CLK-B5",
+        "offsetSeconds": 15.381999999999948
+      },
+      {
+        "landmarkId": "CLK-B7",
+        "offsetSeconds": 14.298999999999978
+      }
+    ]
+  },
+  "drift": {
+    "DRIFT_VALIDATED": "NO",
+    "ESTIMATED_DRIFT_SECONDS_OVER_SEGMENT": null,
+    "DRIFT_FIT_ELIGIBLE_LANDMARKS": [
+      "CLK-B2",
+      "CLK-B5",
+      "CLK-B7"
+    ],
+    "note": "Requires >=3 independent clock landmarks spread across substantial Segment B duration"
+  },
+  "note": "VIDEO_ABSOLUTE_TIME_ANCHORED != PROVIDER_TIMESTAMP_OFFSET_VALIDATED"
+}

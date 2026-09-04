@@ -1,0 +1,169 @@
+{
+  "EXACT_OR_HIGH_CONFIDENCE_VIDEO_SPEED_ANCHORS_ACCEPTED": 18,
+  "anchorMatchCount": 19,
+  "ABSOLUTE_SPEED_ACCURACY_VALIDATED": "YES",
+  "SPEED_MAE_KMH": 2.263157894736842,
+  "SPEED_MEDIAN_ABS_ERROR_KMH": 2,
+  "SPEED_P90_ABS_ERROR_KMH": 6,
+  "SPEED_BIAS_KMH": 0.3684210526315789,
+  "SPEED_MAX_ABS_ERROR_KMH": 7,
+  "LOW_SPEED_MAE_KMH": 1.1666666666666667,
+  "MEDIUM_SPEED_MAE_KMH": 2.5714285714285716,
+  "HIGH_SPEED_MAE_KMH": 3,
+  "perAnchorErrors": [
+    {
+      "anchorId": "B02",
+      "videoSpeedKmh": 57,
+      "providerSpeedKmh": 55,
+      "speedErrorKmh": -2,
+      "absErrorKmh": 2,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B03",
+      "videoSpeedKmh": 60,
+      "providerSpeedKmh": 64,
+      "speedErrorKmh": 4,
+      "absErrorKmh": 4,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B04",
+      "videoSpeedKmh": 94,
+      "providerSpeedKmh": 87,
+      "speedErrorKmh": -7,
+      "absErrorKmh": 7,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B05",
+      "videoSpeedKmh": 79,
+      "providerSpeedKmh": 85,
+      "speedErrorKmh": 6,
+      "absErrorKmh": 6,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B06",
+      "videoSpeedKmh": 61,
+      "providerSpeedKmh": 65,
+      "speedErrorKmh": 4,
+      "absErrorKmh": 4,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B07",
+      "videoSpeedKmh": 109,
+      "providerSpeedKmh": 111,
+      "speedErrorKmh": 2,
+      "absErrorKmh": 2,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B08",
+      "videoSpeedKmh": 98,
+      "providerSpeedKmh": 99,
+      "speedErrorKmh": 1,
+      "absErrorKmh": 1,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B09",
+      "videoSpeedKmh": 115,
+      "providerSpeedKmh": 111,
+      "speedErrorKmh": -4,
+      "absErrorKmh": 4,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B10",
+      "videoSpeedKmh": 116,
+      "providerSpeedKmh": 113,
+      "speedErrorKmh": -3,
+      "absErrorKmh": 3,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B11",
+      "videoSpeedKmh": 112,
+      "providerSpeedKmh": 113,
+      "speedErrorKmh": 1,
+      "absErrorKmh": 1,
+      "regime": "HIGH"
+    },
+    {
+      "anchorId": "B14",
+      "videoSpeedKmh": 59,
+      "providerSpeedKmh": 61,
+      "speedErrorKmh": 2,
+      "absErrorKmh": 2,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B15",
+      "videoSpeedKmh": 0,
+      "providerSpeedKmh": 0,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B16",
+      "videoSpeedKmh": 0,
+      "providerSpeedKmh": 0,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B18",
+      "videoSpeedKmh": 0,
+      "providerSpeedKmh": 5,
+      "speedErrorKmh": 5,
+      "absErrorKmh": 5,
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B19",
+      "videoSpeedKmh": 0,
+      "providerSpeedKmh": 0,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B20",
+      "videoSpeedKmh": 16,
+      "providerSpeedKmh": 14,
+      "speedErrorKmh": -2,
+      "absErrorKmh": 2,
+      "regime": "LOW"
+    },
+    {
+      "anchorId": "B23",
+      "videoSpeedKmh": 77,
+      "providerSpeedKmh": 77,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B24",
+      "videoSpeedKmh": 33,
+      "providerSpeedKmh": 33,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "MEDIUM"
+    },
+    {
+      "anchorId": "B25",
+      "videoSpeedKmh": 0,
+      "providerSpeedKmh": 0,
+      "speedErrorKmh": 0,
+      "absErrorKmh": 0,
+      "regime": "LOW"
+    }
+  ],
+  "provisionalOffsetUsedForReporting": 14.298999999999978,
+  "note": "Speed accuracy computed with validated provider offset"
+}

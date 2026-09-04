@@ -1,0 +1,176 @@
+/**
+ * DI-EV-0035B — RD004-B Segment B video ↔ telemetry validation CLI.
+ * SAFETY: read-only; no DB, Prisma, API, production runtime, or detector mutation.
+ */
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
+import { stableStringify } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd003-video-gt-alignment';
+import { assertSafeOutputPath } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd003-video-gt-export';
+import {
+  RD004_B_EVIDENCE_ID,
+  RD004_B_MODE,
+  RD004_B_SOURCE_FILES,
+  assertNoEnvironmentSpecificPathsInObject,
+  computeRd004SourceBundleSha256,
+  loadRd004Jsonl,
+  rd004SegmentBOutputSha256,
+  runRd004SegmentBAnalysis,
+  SEGMENT_B_CONSTANTS,
+  toRepoRelativePath,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd004-b-segment-b';
+import type { LegacyPreprocessedSpeedRow } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-rd004-a-segment-a';
+
+const REPO_ROOT = path.resolve(__dirname, '../../..');
+const DEFAULT_OBSERVATIONS = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-b',
+  RD004_B_SOURCE_FILES.observations,
+);
+const DEFAULT_LEGACY_SIDECAR = path.join(
+  REPO_ROOT,
+  'docs/audits/data/rd004-segment-b',
+  RD004_B_SOURCE_FILES.legacySidecar,
+);
+const DEFAULT_OUT_DIR = path.join(REPO_ROOT, 'docs/audits/data/rd004-segment-b');
+
+function parseArg(prefix: string): string | undefined {
+  const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
+  return arg?.split('=').slice(1).join('=').trim() || undefined;
+}
+
+function loadLegacySidecar(content: string): LegacyPreprocessedSpeedRow[] {
+  return content
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as LegacyPreprocessedSpeedRow);
+}
+
+function main(): void {
+  const observationsPath = parseArg('--observations') ?? DEFAULT_OBSERVATIONS;
+  const legacySidecarPath = parseArg('--legacy-sidecar') ?? DEFAULT_LEGACY_SIDECAR;
+  const outDir = parseArg('--out-dir') ?? DEFAULT_OUT_DIR;
+
+  assertSafeOutputPath(outDir);
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const observationsContent = fs.readFileSync(observationsPath, 'utf8');
+  const legacySidecarContent = fs.readFileSync(legacySidecarPath, 'utf8');
+  const observationsSha256 = crypto.createHash('sha256').update(observationsContent).digest('hex');
+  const legacySidecarSha256 = crypto.createHash('sha256').update(legacySidecarContent).digest('hex');
+  const { bundleSha256 } = computeRd004SourceBundleSha256({
+    [RD004_B_SOURCE_FILES.observations]: observationsSha256,
+    [RD004_B_SOURCE_FILES.legacySidecar]: legacySidecarSha256,
+  });
+
+  const observations = loadRd004Jsonl(observationsContent);
+  const legacySidecar = loadLegacySidecar(legacySidecarContent);
+  const result = runRd004SegmentBAnalysis({ observations, legacySidecar });
+
+  const paths = {
+    sessionSummary: path.join(outDir, 'rd004-b-session-summary.json'),
+    videoAnchorTable: path.join(outDir, 'rd004-b-video-anchor-table.json'),
+    signalCadence: path.join(outDir, 'rd004-b-signal-cadence.json'),
+    videoClockAlignment: path.join(outDir, 'rd004-b-video-clock-alignment.json'),
+    speedAccuracy: path.join(outDir, 'rd004-b-speed-accuracy.json'),
+    stopTiming: path.join(outDir, 'rd004-b-stop-timing.json'),
+    kinematicReconstruction: path.join(outDir, 'rd004-b-kinematic-reconstruction.json'),
+    preprocessingResponse: path.join(outDir, 'rd004-b-preprocessing-response.json'),
+    legacyDetectorAudit: path.join(outDir, 'rd004-b-legacy-detector-audit.json'),
+    supportingSignals: path.join(outDir, 'rd004-b-supporting-signals.json'),
+    gearReverseValidation: path.join(outDir, 'rd004-b-gear-reverse-validation.json'),
+    segmentAComparison: path.join(outDir, 'rd004-b-segment-a-comparison.json'),
+    sourceManifest: path.join(outDir, RD004_B_SOURCE_FILES.manifest),
+  };
+
+  for (const p of Object.values(paths)) assertSafeOutputPath(p);
+
+  const sourceObservationsRel = toRepoRelativePath(observationsPath, REPO_ROOT);
+  const sourceLegacyRel = toRepoRelativePath(legacySidecarPath, REPO_ROOT);
+
+  const sessionSummary = {
+    evidenceId: RD004_B_EVIDENCE_ID,
+    mode: RD004_B_MODE,
+    phase: RD004_B_MODE,
+    vehicle: SEGMENT_B_CONSTANTS.vehicleLabel,
+    vehicleId: SEGMENT_B_CONSTANTS.vehicleId,
+    tokenId: SEGMENT_B_CONSTANTS.tokenId,
+    sessionId: SEGMENT_B_CONSTANTS.sessionId,
+    referenceDriveId: SEGMENT_B_CONSTANTS.referenceDriveId,
+    sourceObservationsPath: sourceObservationsRel,
+    sourceObservationsSha256: observationsSha256,
+    sourceLegacySidecarPath: sourceLegacyRel,
+    sourceLegacySidecarSha256: legacySidecarSha256,
+    sourceBundleSha256: bundleSha256,
+    derivedFromFullSessionSha256: SEGMENT_B_CONSTANTS.fullSessionSealedEvidenceSha256,
+    BUNDLE_SHA256_METHOD: 'CANONICAL_MEMBER_HASH_MANIFEST',
+    CANONICAL_PATHS_REPO_RELATIVE: 'YES',
+    queryEnvelope: {
+      startUtc: SEGMENT_B_CONSTANTS.queryEnvelopeStartUtc,
+      endUtc: SEGMENT_B_CONSTANTS.queryEnvelopeEndUtc,
+    },
+    videoWindow: {
+      startUtc: SEGMENT_B_CONSTANTS.videoStartUtc,
+      endUtc: SEGMENT_B_CONSTANTS.videoEndUtc,
+      durationSeconds: SEGMENT_B_CONSTANTS.videoDurationSeconds,
+      independentClockAnchorUtc: SEGMENT_B_CONSTANTS.independentClockAnchorUtc,
+      timeIsDisplayCest: SEGMENT_B_CONSTANTS.timeIsDisplayCest,
+    },
+    envelopeRowCount: result.envelopeRowCount,
+    flags: result.flags,
+    SEGMENT_A_EVIDENCE_UNCHANGED: 'YES',
+    PRODUCTION_SCORE_CHANGED: 'NO',
+    PRODUCTION_DETECTORS_CHANGED: 'NO',
+    DEPLOYED: 'NO',
+  };
+
+  const pathViolations = assertNoEnvironmentSpecificPathsInObject(sessionSummary);
+  if (pathViolations.length) {
+    throw new Error(`Environment-specific paths in session summary: ${pathViolations.join(', ')}`);
+  }
+
+  fs.writeFileSync(paths.sessionSummary, stableStringify(sessionSummary));
+  fs.writeFileSync(paths.videoAnchorTable, stableStringify(result.videoAnchorTable));
+  fs.writeFileSync(paths.signalCadence, stableStringify(result.signalCadence));
+  fs.writeFileSync(paths.videoClockAlignment, stableStringify(result.videoClockAlignment));
+  fs.writeFileSync(paths.speedAccuracy, stableStringify(result.speedAccuracy));
+  fs.writeFileSync(paths.stopTiming, stableStringify(result.stopTiming));
+  fs.writeFileSync(paths.kinematicReconstruction, stableStringify(result.kinematicReconstruction));
+  fs.writeFileSync(
+    paths.legacyDetectorAudit,
+    stableStringify({
+      events: result.legacyDetectorAudit.events,
+      counts: result.legacyDetectorAudit.counts,
+      cleanPointCount: result.legacyDetectorAudit.cleanPointCount,
+      mode: 'OFFLINE_READ_ONLY',
+    }),
+  );
+  fs.writeFileSync(paths.preprocessingResponse, stableStringify(result.preprocessingResponse));
+  fs.writeFileSync(paths.supportingSignals, stableStringify(result.supportingSignals));
+  fs.writeFileSync(paths.gearReverseValidation, stableStringify(result.gearReverseValidation));
+  fs.writeFileSync(paths.segmentAComparison, stableStringify(result.segmentAComparison));
+
+  const outputSha256 = rd004SegmentBOutputSha256({
+    sessionSummary,
+    flags: result.flags,
+    envelopeRowCount: result.envelopeRowCount,
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        evidenceId: RD004_B_EVIDENCE_ID,
+        analysisMode: RD004_B_MODE,
+        outDir: toRepoRelativePath(outDir, REPO_ROOT),
+        sourceBundleSha256: bundleSha256,
+        outputSha256,
+        flags: result.flags,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+main();

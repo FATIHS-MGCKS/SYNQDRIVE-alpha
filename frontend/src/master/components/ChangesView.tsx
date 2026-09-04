@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035b-rd004-segment-b-validation-2026-09-04',
+    version: '4.9.1050',
+    title: 'DI-EV-0035B — RD004-B Segment B Video ↔ Telemetry Validation',
+    summary: [
+      'Segment B (~16:40 post-refuel): 66 HF speed samples, median cadence ~10.6 s (sparser than Segment A).',
+      '25 independent dashboard video anchors (B01–B25); 18 HIGH-confidence accepted.',
+      'First validated provider offset in RD004: ~+14.3 s (3 independent clock landmarks, MAD ~0.6 s).',
+      'Absolute speed accuracy validated: MAE ~2.3 km/h (stratified low/medium/high reported).',
+      'Drift NOT validated; gear/reverse telemetry NOT observed; 0 legacy harsh events.',
+      'Preserves all DI-EV-0035A.2 methodology invariants; Segment A evidence unchanged.',
+    ],
+    reason: 'RD004 Segment B provides high-confidence video anchors needed to validate offset and speed accuracy after Segment A closeout.',
+    previousBehavior: 'Only Segment A analyzed; provider offset null; no absolute speed validation.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts`; seal + analyze CLIs; artifacts under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T14:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035a2-rd004-segment-a-semantics-closeout-2026-09-04',
     version: '4.9.1049',
     title: 'DI-EV-0035A.2 — RD004-A Semantics Closeout (H displacement + true peak attenuation)',
