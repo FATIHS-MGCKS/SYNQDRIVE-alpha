@@ -1,11 +1,13 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import fuelStationEnrichmentConfig from '@config/fuel-station-enrichment.config';
+import physicalRefuelReconciliationConfig from '@config/physical-refuel-reconciliation.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { FuelStationEnrichmentProducerService } from '@modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service';
+import { PhysicalRefuelReconciliationRuntimeService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service';
 import { EnergyEventKind } from '@prisma/client';
 import {
   describeFuelStationEnrichmentCutoverMisconfiguration,
@@ -15,9 +17,9 @@ import {
 const STALE_PROCESSING_MS = 15 * 60_000;
 
 /**
- * Bounded recovery for REFUEL events whose startTime is after cutover and whose
- * enrichment is missing or stuck. Does NOT sweep historical pre-cutover events.
- * FAILED rows are terminal and never automatically requeued.
+ * Bounded recovery for LEGACY-OWNED REFUEL events whose startTime is after cutover and whose
+ * enrichment is missing or stuck. When physical-refuel V2 is enabled, V2-owned refuels are
+ * excluded — they must pass through PhysicalRefuelReconciliationRecoveryScheduler.
  */
 @Injectable()
 export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnModuleDestroy {
@@ -28,9 +30,13 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
   constructor(
     @Inject(fuelStationEnrichmentConfig.KEY)
     private readonly config: ConfigType<typeof fuelStationEnrichmentConfig>,
+    @Inject(physicalRefuelReconciliationConfig.KEY)
+    private readonly physicalRefuelConfig: ConfigType<typeof physicalRefuelReconciliationConfig>,
     private readonly prisma: PrismaService,
     private readonly producer: FuelStationEnrichmentProducerService,
     private readonly leaderGuard: SchedulerLeaderGuardService,
+    @Optional()
+    private readonly physicalRefuelRuntime?: PhysicalRefuelReconciliationRuntimeService,
   ) {}
 
   shouldStartRecoveryTimer(): boolean {
@@ -90,6 +96,12 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
     }
 
     const cutoverAt = this.config.cutoverAt as Date;
+    const v2Cutover =
+      this.physicalRefuelRuntime?.resolveV2OwnershipCutoverAt() ??
+      this.physicalRefuelConfig.v2OwnershipCutoverAt ??
+      cutoverAt;
+    const physicalRefuelV2Enabled = this.physicalRefuelRuntime?.isEnabled() ?? false;
+
     this.inProgress = true;
     let recovered = 0;
     try {
@@ -97,6 +109,12 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
         where: {
           kind: EnergyEventKind.REFUEL,
           startTime: { gte: cutoverAt },
+          ...(physicalRefuelV2Enabled && v2Cutover
+            ? {
+                createdAt: { lt: v2Cutover },
+                refuelReconciliation: { is: null },
+              }
+            : {}),
           OR: [
             { fuelStationEnrichment: { is: null } },
             {
@@ -119,6 +137,21 @@ export class FuelStationEnrichmentRecoveryScheduler implements OnModuleInit, OnM
       });
 
       for (const event of candidates) {
+        if (physicalRefuelV2Enabled) {
+          const reconciliation = await this.prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
+            where: { energyEventId: event.id },
+          });
+          if (reconciliation) {
+            this.logger.debug(
+              JSON.stringify({
+                event: 'fuel_station_enrichment_recovery_skipped_v2_owned',
+                energyEventId: event.id,
+                finalityState: reconciliation.finalityState,
+              }),
+            );
+            continue;
+          }
+        }
         const jobId = await this.producer.enqueueAfterPersistFromEvent(event);
         if (jobId) recovered += 1;
       }

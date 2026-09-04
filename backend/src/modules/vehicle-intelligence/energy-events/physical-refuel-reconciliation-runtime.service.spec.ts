@@ -33,6 +33,16 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     candidateLookbackMs: 6 * 60 * 60 * 1000,
     candidateLookaheadMs: 60 * 60 * 1000,
     settlementHorizonMs: horizon,
+    recoveryEnabled: true,
+    recoveryIntervalMs: 60_000,
+    recoveryBatchSize: 25,
+    v2OwnershipCutoverAt: null as Date | null,
+    recoveryOrphanLookbackMs: 7 * 24 * 60 * 60 * 1000,
+  };
+
+  const fuelEnrichmentConfig = {
+    cutoverAt: new Date(0),
+    cutoverState: 'valid' as const,
   };
 
   function row(
@@ -148,6 +158,8 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
               vehicleId: string;
               kind?: EnergyEventKind;
               createdAt?: { gte?: Date; lte?: Date };
+              refuelReconciliation?: { is: null };
+              fuelStationEnrichment?: unknown;
             };
           }) =>
             [...energyEvents.values()].filter((event) => {
@@ -155,6 +167,9 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
               if (where.kind && event.kind !== where.kind) return false;
               if (where.createdAt?.gte && event.createdAt < where.createdAt.gte) return false;
               if (where.createdAt?.lte && event.createdAt > where.createdAt.lte) return false;
+              if (where.refuelReconciliation?.is === null && reconciliations.has(event.id)) {
+                return false;
+              }
               return true;
             }),
         ),
@@ -163,29 +178,54 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         findMany: jest.fn(
           async ({
             where,
+            include,
           }: {
             where: {
               vehicleId: string;
               finalityState?: { in: PhysicalRefuelFinalityState[] };
               enrichmentEligible?: boolean;
+              energyEvent?: { createdAt?: { gte?: Date; lte?: Date } };
             };
+            include?: { energyEvent?: boolean };
           }) =>
-            [...reconciliations.values()].filter((rec) => {
-              if (rec.vehicleId !== where.vehicleId) return false;
-              if (
-                where.finalityState?.in &&
-                !where.finalityState.in.includes(rec.finalityState)
-              ) {
-                return false;
-              }
-              if (
-                where.enrichmentEligible != null &&
-                rec.enrichmentEligible !== where.enrichmentEligible
-              ) {
-                return false;
-              }
-              return true;
-            }),
+            [...reconciliations.values()]
+              .filter((rec) => {
+                if (rec.vehicleId !== where.vehicleId) return false;
+                if (
+                  where.finalityState?.in &&
+                  !where.finalityState.in.includes(rec.finalityState)
+                ) {
+                  return false;
+                }
+                if (
+                  where.enrichmentEligible != null &&
+                  rec.enrichmentEligible !== where.enrichmentEligible
+                ) {
+                  return false;
+                }
+                if (where.energyEvent?.createdAt) {
+                  const event = energyEvents.get(rec.energyEventId);
+                  if (!event) return false;
+                  if (
+                    where.energyEvent.createdAt.gte &&
+                    event.createdAt < where.energyEvent.createdAt.gte
+                  ) {
+                    return false;
+                  }
+                  if (
+                    where.energyEvent.createdAt.lte &&
+                    event.createdAt > where.energyEvent.createdAt.lte
+                  ) {
+                    return false;
+                  }
+                }
+                return true;
+              })
+              .map((rec) =>
+                include?.energyEvent
+                  ? { ...rec, energyEvent: energyEvents.get(rec.energyEventId) }
+                  : rec,
+              ),
         ),
         findUnique: jest.fn(
           async ({
@@ -248,7 +288,19 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         }
         return fn(tx);
       }),
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue({
+          organizationId,
+          dimoVehicle: { tokenId },
+        }),
+      },
+      vehicleEnergyEvent: {
+        findMany: tx.vehicleEnergyEvent.findMany,
+        count: jest.fn().mockResolvedValue(0),
+      },
       vehicleEnergyEventRefuelReconciliation: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
         findUnique: jest.fn(
           async ({
             where,
@@ -293,6 +345,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     const service = new PhysicalRefuelReconciliationRuntimeService(
       prisma as never,
       { ...config, enabled: options?.enabled ?? config.enabled },
+      fuelEnrichmentConfig as never,
       fuelStationEnrichmentProducer as never,
       coordinateRuntime as never,
     );
@@ -354,6 +407,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
       decisions: [],
       enqueuedEventIds: [],
       dedupedEventIds: [],
+      heldEventIds: [],
     });
     expect(harness.prisma.$transaction).not.toHaveBeenCalled();
     expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
@@ -522,10 +576,11 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     );
   });
 
-  it('R11 — late sibling after FINAL_DISTINCT finalization fails closed with no enqueue', async () => {
+  it('R11 — prior FINAL outside candidate window does not crash or false-block new refuel', async () => {
     const harness = createHarness();
-    const eventA = toEnergyEvent(incidentA, t0);
-    const eventB = toEnergyEvent(incidentB, t0 + horizon + 60_000);
+    const eventA = toEnergyEvent(incidentA, t0 - 8 * 60 * 60 * 1000);
+    const eventB = toEnergyEvent(incidentB, t0);
+    harness.seedEvents([eventA, eventB]);
     harness.seedReconciliations([
       {
         id: 'prior-a',
@@ -544,18 +599,20 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         coordinateLongitude: null,
         coordinateSource: null,
         coordinateSelectorVersion: null,
+        coordinateSelectionStatus: null,
+        nextReconciliationAt: null,
         enrichmentEnqueuedAt: new Date(t0),
         reconciledAt: new Date(t0),
         updatedAt: new Date(t0),
       },
     ]);
-    mockAsOf(t0 + horizon + 120_000);
+    mockAsOf(t0 + horizon + 1);
 
-    const result = await reconcile(harness, eventB.id, [eventA, eventB]);
+    const result = await reconcile(harness, eventB.id, [eventB]);
 
-    expect(result.decisions[0]?.finalityState).toBe('INSUFFICIENT_EVIDENCE');
-    expect(result.decisions[0]?.reasonCodes).toContain('late_sibling_after_finalization');
-    expect(result.enqueuedEventIds).toEqual([]);
+    expect(result.decisions[0]?.finalityState).toBe('FINAL_DISTINCT');
+    expect(result.decisions[0]?.reasonCodes).not.toContain('late_sibling_after_finalization');
+    expect(result.enqueuedEventIds).toContain(eventB.id);
   });
 
   it('R12 — concurrent reconcile calls serialize on advisory lock and converge', async () => {
@@ -617,6 +674,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
       decisions: [],
       enqueuedEventIds: [],
       dedupedEventIds: [],
+      heldEventIds: [],
     });
     expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
   });
@@ -642,5 +700,50 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
     expect(
       result.decisions.every((d) => !d.reasonCodes.includes('late_sibling_after_finalization')),
     ).toBe(true);
+  });
+
+  it('R15 — V2 coordinate unavailable holds enrichment (no segment-start fallback)', async () => {
+    const harness = createHarness();
+    const event = toEnergyEvent(incidentA, t0);
+    mockAsOf(t0 + horizon + 1);
+    harness.coordinateRuntime.resolveCoordinateForEvent.mockResolvedValue({
+      latitude: null,
+      longitude: null,
+      source: null,
+      selectorVersion: 'v2',
+      status: 'MISSING_FUEL_RISE_ONSET',
+    });
+
+    const result = await reconcile(harness, event.id, [event]);
+
+    expect(result.enqueuedEventIds).toEqual([]);
+    expect(result.heldEventIds).toContain(event.id);
+    expect(harness.fuelStationEnrichmentProducer.enqueueAfterPersist).not.toHaveBeenCalled();
+  });
+
+  it('R16 — recovery batch processes settlement-due vehicle work', async () => {
+    const harness = createHarness();
+    const event = toEnergyEvent(incidentA, t0);
+    harness.seedEvents([event]);
+    mockAsOf(t0);
+    await reconcile(harness, event.id, [event]);
+
+    const dueAt = new Date(t0 + horizon + 1);
+    harness.prisma.vehicleEnergyEventRefuelReconciliation.findMany = jest
+      .fn()
+      .mockImplementation(async ({ where }: { where: Record<string, unknown> }) => {
+        if (where.nextReconciliationAt) {
+          return [{ vehicleId, energyEventId: event.id }];
+        }
+        return [];
+      });
+    harness.prisma.vehicleEnergyEvent.findMany = jest.fn().mockResolvedValue([]);
+
+    mockAsOf(t0 + horizon + 1);
+    const recovered = await harness.service.runRecoveryBatch(t0 + horizon + 1);
+    expect(recovered.processedVehicles).toBe(1);
+    expect(harness.reconciliations.get(event.id)?.finalityState).toBe(
+      PhysicalRefuelFinalityState.FINAL_DISTINCT,
+    );
   });
 });

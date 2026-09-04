@@ -36,6 +36,7 @@ import { BookingDocumentGenerationProcessor } from './processors/booking-documen
 import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-retry.processor';
 import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-enrichment.processor';
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
+import { PhysicalRefuelReconciliationRecoveryScheduler } from './schedulers/physical-refuel-reconciliation-recovery.scheduler';
 import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 
@@ -144,6 +145,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
     FuelStationEnrichmentRecoveryScheduler,
+    PhysicalRefuelReconciliationRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
   ],
 })

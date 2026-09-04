@@ -55,18 +55,22 @@ export class FuelStationEnrichmentOrchestratorService {
     }
 
     const v2Reconciliation = event.refuelReconciliation;
+    const hasV2ReconciliationRow = v2Reconciliation != null;
     const coordinate =
       v2Reconciliation?.coordinateLatitude != null &&
       v2Reconciliation?.coordinateLongitude != null &&
       Number.isFinite(v2Reconciliation.coordinateLatitude) &&
-      Number.isFinite(v2Reconciliation.coordinateLongitude)
+      Number.isFinite(v2Reconciliation.coordinateLongitude) &&
+      v2Reconciliation.coordinateSource
         ? {
             latitude: v2Reconciliation.coordinateLatitude,
             longitude: v2Reconciliation.coordinateLongitude,
             source:
               v2Reconciliation.coordinateSource ?? PHYSICAL_REFUEL_COORDINATE_SOURCE_V2,
           }
-        : deriveCanonicalFuelStationCoordinate(event);
+        : hasV2ReconciliationRow
+          ? null
+          : deriveCanonicalFuelStationCoordinate(event);
     if (!coordinate) {
       const noCoordinateFingerprint = buildFuelStationEnrichmentInputFingerprint({
         energyEventId: event.id,

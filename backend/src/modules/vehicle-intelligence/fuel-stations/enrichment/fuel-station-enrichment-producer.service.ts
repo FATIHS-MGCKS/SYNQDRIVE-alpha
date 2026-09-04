@@ -71,6 +71,24 @@ export class FuelStationEnrichmentProducerService {
       return null;
     }
 
+    if (input.physicalRefuelReconciliationV2) {
+      const coordinate = deriveCanonicalFuelStationCoordinate({
+        startLatitude: input.startLatitude,
+        startLongitude: input.startLongitude,
+      });
+      if (!coordinate) {
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_enqueue_skipped',
+            reason: 'v2_coordinate_missing',
+            energyEventId: input.energyEventId,
+            coordinateSource: input.coordinateSource ?? null,
+          }),
+        );
+        return null;
+      }
+    }
+
     if (!canEnqueueQueue(this.logger, 'fuel-station-enrichment')) {
       return null;
     }

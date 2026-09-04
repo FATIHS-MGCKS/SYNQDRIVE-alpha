@@ -4,6 +4,7 @@
  */
 import {
   chooseCanonicalRefuel,
+  classifyPhysicalRefuelSibling,
   type RefuelRowForMatcher,
 } from './physical-refuel-identity.matcher';
 import {
@@ -44,6 +45,11 @@ export interface PhysicalRefuelReconciliationContext {
   priorDistinctFinalizationIds?: Set<string>;
   /** IDs that were in a FINAL_CANONICAL group that was already enriched. */
   priorCanonicalFinalizationIds?: Set<string>;
+  /**
+   * Bounded prior-final rows loaded for pairwise comparison when not present in the
+   * current candidate matrix (G2.1a matrix/history scope fix).
+   */
+  priorFinalRowsById?: Record<string, RefuelRowForMatcher>;
   /** @deprecated use priorDistinctFinalizationIds */
   priorDistinctSettlementIds?: Set<string>;
 }
@@ -111,6 +117,7 @@ function hasLateSiblingFinalizationConflict(
   matrix: PhysicalRefuelIdentityMatrix,
   priorDistinct: Set<string>,
   priorCanonical: Set<string>,
+  priorFinalRowsById?: Record<string, RefuelRowForMatcher>,
 ): boolean {
   const finalizedIds = new Set([...priorDistinct, ...priorCanonical]);
   if (!finalizedIds.size) return false;
@@ -119,9 +126,26 @@ function hasLateSiblingFinalizationConflict(
     for (const finalizedId of finalizedIds) {
       if (member.id === finalizedId) continue;
       const cell = getPairCell(matrix, member.id, finalizedId);
+      if (cell) {
+        if (
+          cell.classification === 'SAME_PHYSICAL_REFUEL' ||
+          cell.classification === 'INSUFFICIENT_EVIDENCE'
+        ) {
+          return true;
+        }
+        continue;
+      }
+
+      const priorRow = priorFinalRowsById?.[finalizedId];
+      if (!priorRow) {
+        // Historical final outside bounded comparison bridge — unrelated, not a late sibling.
+        continue;
+      }
+
+      const pairResult = classifyPhysicalRefuelSibling(member, priorRow);
       if (
-        cell.classification === 'SAME_PHYSICAL_REFUEL' ||
-        cell.classification === 'INSUFFICIENT_EVIDENCE'
+        pairResult.classification === 'SAME_PHYSICAL_REFUEL' ||
+        pairResult.classification === 'INSUFFICIENT_EVIDENCE'
       ) {
         return true;
       }
@@ -180,6 +204,7 @@ function decisionFromComponent(
     matrix,
     priorDistinct,
     priorCanonical,
+    context?.priorFinalRowsById,
   );
 
   const settlement = determinePhysicalRefuelSettlement({

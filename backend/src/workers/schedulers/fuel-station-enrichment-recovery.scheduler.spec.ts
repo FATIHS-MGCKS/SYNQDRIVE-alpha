@@ -29,9 +29,11 @@ describe('FuelStationEnrichmentRecoveryScheduler', () => {
   const createScheduler = (overrides: Record<string, unknown> = {}) =>
     new FuelStationEnrichmentRecoveryScheduler(
       { ...config, ...overrides } as never,
+      { v2OwnershipCutoverAt: config.cutoverAt } as never,
       prisma as never,
       producer as never,
       leaderGuard as never,
+      undefined,
     );
 
   let scheduler: FuelStationEnrichmentRecoveryScheduler;

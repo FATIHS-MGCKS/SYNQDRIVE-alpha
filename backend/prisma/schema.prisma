@@ -9844,6 +9844,7 @@ model VehicleEnergyEvent {
   @@index([vehicleId])
   @@index([vehicleId, startTime])
   @@index([vehicleId, kind, startTime])
+  @@index([vehicleId, kind, createdAt])
   @@index([kind])
   @@map("vehicle_energy_events")
 }
@@ -9874,7 +9875,9 @@ model VehicleEnergyEventRefuelReconciliation {
   coordinateLongitude       Float?                      @map("coordinate_longitude")
   coordinateSource          String?                     @map("coordinate_source")
   coordinateSelectorVersion String?                     @map("coordinate_selector_version")
+  coordinateSelectionStatus String?                   @map("coordinate_selection_status")
   enrichmentEnqueuedAt      DateTime?                   @map("enrichment_enqueued_at")
+  nextReconciliationAt      DateTime?                   @map("next_reconciliation_at")
   reconciledAt              DateTime                    @default(now()) @map("reconciled_at")
   updatedAt                 DateTime                    @updatedAt @map("updated_at")
 
@@ -9882,6 +9885,8 @@ model VehicleEnergyEventRefuelReconciliation {
 
   @@index([vehicleId, reconciledAt])
   @@index([vehicleId, finalityState])
+  @@index([finalityState, nextReconciliationAt])
+  @@index([enrichmentEligible, enrichmentEnqueuedAt])
   @@index([reconciliationGroupId])
   @@map("vehicle_energy_event_refuel_reconciliations")
 }
