@@ -678,11 +678,12 @@ nodes:
   # --- Gaps / hypotheses / failures ---
   - id: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
     type: gap
-    title: No natural post-cutover REFUEL E2E observed in production
+    title: Natural post-cutover REFUEL positive match path not production-validated
     epistemic_status: CONFIRMED
     summary: >
-      Architecture deployed; zero enrichment rows; zero post-cutover REFUEL at last production snapshot.
-      Full match → persist → API → UI path not production-validated on real event.
+      First natural post-cutover REFUEL observed 2026-09-04 (KS MX 2024) exercised detection,
+      persistence, enrichment, resolver, and NOT_FOUND API/UI — but NOT MATCHED/trusted station path.
+      See FST-EVID-INCIDENT-REFUEL-2026-09-04-001.
 
   - id: FST-GAP-GERMANY-SCOPE-001
     type: gap
@@ -698,9 +699,11 @@ nodes:
 
   - id: FST-GAP-SINGLE-COORD-POLICY-001
     type: gap
-    title: Single start-coordinate policy / future multi-coordinate evidence
-    epistemic_status: UNKNOWN
-    summary: V1 uses energy_event_start only; multi-point or end-coordinate policy undecided.
+    title: Single start-coordinate policy insufficient for physical stop
+    epistemic_status: CONFIRMED
+    summary: >
+      V1 energy_event_start failed 2026-09-04 incident (721–1038m from true Esso station).
+      Physical-stop coordinate authority V2 design required. See FST-GAP-PHYSICAL-STOP-COORD-001.
 
   - id: FST-GAP-OSM-DATA-QUALITY-001
     type: gap
@@ -716,9 +719,12 @@ nodes:
 
   - id: FST-GAP-UPSTREAM-COORD-CONTRACT-001
     type: gap
-    title: Explicit upstream coordinate/timestamp contract with Energy Events
-    epistemic_status: INFERRED
-    summary: startLatitude/startLongitude assumed from detection; formal cross-domain contract not documented.
+    title: Upstream physical-stop coordinate contract with Energy Events
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO segment start coordinates are provider envelope anchors, not physical refuel stop.
+      Cross-domain contract must define physical-stop authority and fuel-signal latency semantics.
+      Proven by FST-EVID-INCIDENT-REFUEL-2026-09-04-001.
 
   - id: FST-GAP-PRE-PHASE-B-DISCOVERY-001
     type: gap
@@ -728,9 +734,303 @@ nodes:
 
   - id: FST-HYP-GPS-OFFSET-001
     type: hypothesis
-    title: Production GPS offset may differ from calibration probes
-    epistemic_status: UNKNOWN
-    summary: Real refuel coordinates may show wider offset distribution than calibration set.
+    title: Production refuel coordinate offset exceeds calibration when using segment start
+    epistemic_status: CONFIRMED
+    summary: >
+      2026-09-04 incident segment starts 721–1038m from owner-confirmed Esso station;
+      midpoint 163m still NOT_FOUND at score 8. Offset is policy/anchor issue, not OSM absence.
+
+  - id: FST-GAP-PHYSICAL-STOP-COORD-001
+    type: gap
+    title: Physical refuel stop coordinate authority not implemented
+    epistemic_status: CONFIRMED
+    summary: >
+      V2 design requires dwell/stationary cluster before delayed fuel rise; coordinatePolicyVersion
+      bump and enrichment fingerprint extension. Design in refuel forensics 2026-09-04 audit.
+
+  - id: FST-EVID-INCIDENT-REFUEL-2026-09-04-001
+    type: evidence
+    title: KS MX 2024 natural post-cutover REFUEL incident forensics
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Two REFUEL rows, both enrichment NOT_FOUND, Esso ground truth, segment-start coords wrong.
+      Partial E2E validated; G1.1 confirms forecourt dwell and V2 coordinate policy.
+    source_paths:
+      - architecture/tankstellenerkennung/evidence/INCIDENT_REFUEL_KS_MX_2026-09-04.md
+      - docs/audits/refuel-physical-event-coordinate-forensics-2026-09-04.md
+
+  - id: FST-EVID-G11-HF-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.1 HF + DIMO route closure for KS MX 2026-09-04 refuel
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      DIMO 7s route confirms Esso forecourt dwell (10m, 0km/h 05:44-05:47 local).
+      Forecourt medoid resolves MATCHED score 78. CH HF has speed only (no GPS/fuel).
+    source_paths:
+      - architecture/tankstellenerkennung/evidence/G11_HF_CLOSURE_KS_MX_2026-09-04.json
+      - docs/audits/refuel-g11-hf-evidence-closure-2026-09-04.md
+
+  - id: FST-DEC-COORD-FORECOURT-DWELL-V2-001
+    type: decision
+    title: Physical refuel forecourt dwell medoid coordinate authority V2
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Replace energy_event_start with forecourt low-speed dwell medoid before fuel-rise onset.
+      Proven on 2026-09-04 incident: 11m from Esso, resolver score 78 vs NOT_FOUND at segment starts.
+    evidence:
+      - FST-EVID-G11-HF-CLOSURE-2026-09-04-001
+      - FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001
+
+  - id: FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.2 coordinate selector + identity matcher algorithmic closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Pure derivePhysicalRefuelCoordinate selects forecourt dwell without station input;
+      tri-state symmetric identity matcher; 31 tests; ALGORITHMIC_CLOSURE=YES.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/physical-refuel-coordinate.selector.ts
+      - docs/audits/refuel-g12-algorithmic-closure-2026-09-04.md
+
+  - id: FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+    type: evidence
+    title: G1.2b runtime boundary hardening — lookback, finality, lock, comparator, grouping
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Provider-independent lookback; settlement/finality model; vehicle-scoped lock;
+      dimensionally-safe canonical comparator; fail-closed clique grouping; 51 tests PASS.
+    source_paths:
+      - docs/audits/refuel-g12b-runtime-boundary-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-settlement.design.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+
+  - id: FST-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001
+    type: decision
+    title: Physical refuel coordinate lookback anchored on fuel-rise onset only
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      eventStartAt is provenance/diagnostics only; must not clip pre-rise dwell evidence.
+      Required because Sept04 physical stop precedes Event B provider segment start.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-REFUEL-SETTLEMENT-FINALITY-001
+    type: decision
+    title: Physical refuel settlement/finality before enrichment eligibility
+    decision_status: PROPOSED
+    epistemic_status: INFERRED
+    summary: >
+      Distinguish PROVISIONAL singleton from FINAL_CANONICAL/FINAL_DISTINCT safe-to-enrich.
+      Settlement horizon default 60m (OPEN calibration); prevents duplicate enrichment on staggered siblings.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-REFUEL-COARSE-LOCK-001
+    type: decision
+    title: Vehicle-scoped coarse refuel reconciliation lock (Stage 1)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Lock scope vehicleId+REFUEL domain; broader than semantic matching.
+      Replaces bucketed end-minute/fuel/odo keys that risk boundary races.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001
+    type: decision
+    title: Dimensionally-safe canonical refuel comparator
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Ordered precedence: suffix superset, liter transition, percent corroboration only when liters absent.
+      Never mix liters and percentages in one scalar score.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001
+    type: decision
+    title: Fail-closed clique-consistent multi-sibling grouping
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Row joins group only if SAME with every member; non-transitive A~B,B~C,A!~C cannot false-merge.
+      Input-order and arrival-order independent.
+    evidence:
+      - FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001
+
+  - id: FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G1.2c finality + ambiguity closure — SETTLING, observation time, fail-closed components
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      SETTLING until settlement window closes on latest firstObservedAt; non-transitive components
+      fail closed; no eventTime fallback; 64 targeted tests PASS.
+    source_paths:
+      - docs/audits/refuel-g12c-finality-ambiguity-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity-component.design.ts
+
+  - id: FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001
+    type: evidence
+    title: G1.2d late-sibling finalization hardening
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Fixes singleton/external late INSUFFICIENT sibling incorrectly reaching FINAL_DISTINCT;
+      lateSiblingConflict now actively gates enrichment eligibility.
+    source_paths:
+      - docs/audits/refuel-g12d-late-sibling-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+
+  - id: FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001
+    type: evidence
+    title: G2.1 physical-refuel runtime wiring (feature-flagged)
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Runtime reconciliation persistence, vehicle-scoped advisory lock, finality-gated
+      post-commit enrichment, V2 coordinate at enqueue. Flag default OFF; not production-activated.
+    source_paths:
+      - docs/audits/refuel-g21-runtime-wiring-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+
+  - id: FST-EVID-G21A-RUNTIME-SAFETY-LIVENESS-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G2.1a runtime safety + liveness closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Closes legacy recovery bypass, durable settlement/orphan/lost-enqueue recovery,
+      matrix/history scope fix, V2 coordinate fail-closed, pre-G2 ownership bridge,
+      createdAt index alignment. Flag default OFF; G2.2 shadow authorized.
+    source_paths:
+      - docs/audits/refuel-g21a-runtime-safety-liveness-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
+
+  - id: FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001
+    type: evidence
+    title: G2.1b cross-cutover + recovery hardening
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      V2-only candidate ownership, observation-time enqueue authority, token-independent
+      semantic reconciliation, bounded orphan scan, coordinate retry backoff, fair recovery,
+      PostgreSQL advisory-lock proof on isolated DB.
+    source_paths:
+      - docs/audits/refuel-g21b-cross-cutover-recovery-hardening-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
+
+  - id: FST-EVID-G21C-FINAL-RECOVERY-SEMANTICS-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G2.1c final recovery semantics closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Queue-independent semantic recovery, route provider vs true NO_DWELL distinction,
+      coordinate retry backoff fix, terminal hold anti-hot-loop, evidence fingerprint
+      invalidation, unified V2 cutover authority, V2 stale enrichment recovery.
+    source_paths:
+      - docs/audits/refuel-g21c-final-recovery-semantics-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-recovery.repository.ts
+      - backend/src/modules/dimo/dimo-segments.service.ts
+
+  - id: FST-EVID-G21D-FINAL-RECOVERY-EXECUTION-CLOSURE-2026-09-04-001
+    type: evidence
+    title: G2.1d final recovery execution closure
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Stale enrichment end-to-end execution, Redis-independent multi-replica recovery scan,
+      single coordinate retry increment, bounded route evidence stabilization, BullMQ failed-job
+      recovery, per-vehicle error isolation.
+    source_paths:
+      - docs/audits/refuel-g21d-final-recovery-execution-closure-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-enqueue-plan.util.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.service.ts
+      - backend/src/workers/schedulers/physical-refuel-reconciliation-recovery.scheduler.ts
+
+  - id: FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001
+    type: evidence
+    title: G2.1d final pre-shadow integration gate
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Post-main-sync isolated Postgres+Redis integration: PG advisory locks, real BullMQ
+      failed-job recovery and dedupe, full same-vehicle multi-replica recovery E2E.
+      PROVEN_BY_INTEGRATION_TEST — not production.
+    source_paths:
+      - docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.postgres.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/fuel-stations/enrichment/fuel-station-enrichment-producer.redis.integration.spec.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
+
+  - id: FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001
+    type: evidence
+    title: G2.2 physical-refuel V2 direct production cutover
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      G2.1d final integration gate PASS on isolated VPS PG16+Redis7; PR #1531 merged;
+      production migration+deploy with flag OFF; direct activation (no shadow).
+      DEPLOYED_TO_PRODUCTION — PROVEN_IN_PRODUCTION only per observed REFUEL.
+    source_paths:
+      - docs/audits/refuel-g22-production-cutover-2026-09-04.md
+      - backend/scripts/ops/vps-enable-physical-refuel-v2-production.sh
+      - backend/scripts/ops/physical-refuel-v2-production-preflight.sh
+      - backend/src/config/physical-refuel-reconciliation.config.ts
+
+  - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
+    type: decision
+    title: Settlement clock uses SYNQDRIVE system observation time
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      firstObservedAt required; provider endTime/startTime must not substitute.
+      Window closes at max(firstObservedAt in group) + horizon.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-SETTLING-MULTIROW-FINALITY-001
+    type: decision
+    title: Multi-row SAME groups remain SETTLING until settlement window closes
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      group.length > 1 alone does not imply FINAL_CANONICAL; closes 2→3+ sibling race.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-NON-TRANSITIVE-FAIL-CLOSED-001
+    type: decision
+    title: Non-transitive identity components fail closed
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Pairwise matrix + complete-clique validation; UUID order never decides physical identity.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+
+  - id: FST-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+    type: decision
+    title: Late sibling after finalization is a recovery conflict
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Late SAME or INSUFFICIENT sibling vs any prior FINAL_* blocks enrichment for the late
+      component (singleton or external). G2 operational recovery required.
+    evidence:
+      - FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001
+      - FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001
 
   - id: FST-HYP-OSM-REFRESH-001
     type: hypothesis

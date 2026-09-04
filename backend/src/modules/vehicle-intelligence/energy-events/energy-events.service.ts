@@ -25,6 +25,7 @@ import {
   resolveSupersededRefuelSiblingIds,
   type RefuelEventWindow,
 } from './refuel-sibling-reconciliation';
+import { PhysicalRefuelReconciliationRuntimeService } from './physical-refuel-reconciliation-runtime.service';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -56,6 +57,8 @@ export class EnergyEventsService {
     @Optional() private readonly energyMetrics?: EnergyEventsMetricsService,
     @Optional()
     private readonly fuelStationEnrichmentProducer?: FuelStationEnrichmentProducerService,
+    @Optional()
+    private readonly physicalRefuelReconciliationRuntime?: PhysicalRefuelReconciliationRuntimeService,
   ) {}
 
   async listEnergyEvents(
@@ -171,12 +174,14 @@ export class EnergyEventsService {
       coalesced,
     );
 
-    const reconciledRefuelSiblings = await this.reconcileSupersededRefuelSiblings(
-      vehicleId,
-      persistedRows.filter((row) => row.kind === EnergyEventKind.REFUEL),
-      options.from,
-      options.to,
-    );
+    const reconciledRefuelSiblings = this.physicalRefuelReconciliationRuntime?.isEnabled()
+      ? 0
+      : await this.reconcileSupersededRefuelSiblings(
+          vehicleId,
+          persistedRows.filter((row) => row.kind === EnergyEventKind.REFUEL),
+          options.from,
+          options.to,
+        );
 
     const persistableByMechanism: Record<string, number> = {};
     for (const segment of persistableSegments) {
@@ -308,15 +313,32 @@ export class EnergyEventsService {
     }
 
     if (segment.mechanism === 'refuel') {
-      void this.fuelStationEnrichmentProducer
-        ?.enqueueAfterPersistFromEvent(row)
-        .catch((error: unknown) => {
-          this.logger.warn(
-            `Fuel station enrichment enqueue failed for energyEventId=${row.id}: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-        });
+      if (this.physicalRefuelReconciliationRuntime?.isEnabled()) {
+        void this.physicalRefuelReconciliationRuntime
+          .reconcileAndEnqueueAfterPersist({
+            vehicleId,
+            triggerEventId: row.id,
+            organizationId: requestContext.organizationId,
+            tokenId,
+          })
+          .catch((error: unknown) => {
+            this.logger.warn(
+              `Physical refuel reconciliation failed for energyEventId=${row.id}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          });
+      } else {
+        void this.fuelStationEnrichmentProducer
+          ?.enqueueAfterPersistFromEvent(row)
+          .catch((error: unknown) => {
+            this.logger.warn(
+              `Fuel station enrichment enqueue failed for energyEventId=${row.id}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          });
+      }
 
       this.energyMetrics?.recordRefuelDetected();
       this.energyMetrics?.recordRefuelFuelRiseObservation({

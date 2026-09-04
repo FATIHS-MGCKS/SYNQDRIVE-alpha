@@ -20,12 +20,13 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-004 | Link RECHARGE to HvChargeSession? | **OUT_OF_SCOPE** | Battery V2 owns HV sessions; INFERRED orthogonality | NO | NO |
 | EED-OQ-005 | detectorVersion DB column? | **OPEN** | Version in logs/meta only | NO | LOW |
 | EED-OQ-006 | Plausibility flags on production rows? | **PARTIALLY_RESOLVED** | Recovery tooling only today | NO | LOW |
-| EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Runtime guard works; ~3 pairs inventory | NO | LOW |
+| EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Sept04 incident proves gap; design in forensics audit | NO | HIGH |
 | EED-OQ-008 | Should UI call POST detect? | **OPEN** | API exists; UI does not expose | NO | LOW |
 | EED-OQ-009 | Fuel station enrichment vs EED semantics? | **OPEN** | Separate module; EED consumes projection | NO | LOW |
 | EED-OQ-010 | ClickHouse fuel sample mirror? | **OUT_OF_SCOPE** | Analytics authority | NO | NO |
 | EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
+| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **OPEN** | Sept04 incident; terminal-state fingerprint design | NO | HIGH |
 
 ## Deferred (reference only)
 
@@ -41,7 +42,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | Total discovery questions | 12 |
 | RESOLVED (policy) | 1 (OQ-002) |
 | PARTIALLY_RESOLVED | 1 (OQ-006) |
-| OPEN | 8 |
+| OPEN | 9 |
 | OUT_OF_SCOPE | 2 |
 | Current-state facts extracted | 3 (scheduler coupling — not counted as open) |
 

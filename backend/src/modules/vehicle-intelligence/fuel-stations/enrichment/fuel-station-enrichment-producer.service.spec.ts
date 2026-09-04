@@ -29,6 +29,8 @@ describe('FuelStationEnrichmentProducerService', () => {
 
   let service: FuelStationEnrichmentProducerService;
 
+  const v2Cutover = new Date('2026-09-01T00:00:00.000Z');
+
   const postCutoverInput = {
     energyEventId: 'evt-1',
     eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
@@ -73,6 +75,90 @@ describe('FuelStationEnrichmentProducerService', () => {
     const result = await noCutover.enqueueAfterPersist(postCutoverInput);
     expect(result).toBeNull();
     expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('K1 allows V2 enqueue when startTime is pre-cutover but observation is post-cutover', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('K2 keeps legacy startTime cutover behavior for non-V2 enqueue', async () => {
+    const result = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('C3 rejects V2 enqueue when eventObservedAt is missing', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('K3 rejects V2 enqueue when observation is before cutover', async () => {
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-08-20T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('B8 deduplicates logical enqueue after queue.add succeeds before enrichmentEnqueuedAt update', async () => {
+    const first = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+    expect(first).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('waiting'),
+    });
+
+    const second = await service.enqueueAfterPersist({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(second).toBe(first);
+    expect(queue.add).toHaveBeenCalledTimes(1);
   });
 
   it('does not enqueue pre-cutover events by startTime', async () => {
@@ -186,5 +272,105 @@ describe('FuelStationEnrichmentProducerService', () => {
 
     expect(first).toBe(second);
     expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('C1 uses explicit v2OwnershipCutoverAt when later than legacy fuel cutover', async () => {
+    const lateV2Cutover = new Date('2026-09-03T00:00:00.000Z');
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2-late',
+      eventStartTime: new Date('2026-09-02T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-09-02T12:00:00.000Z'),
+      v2OwnershipCutoverAt: lateV2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toBeNull();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('C2 uses explicit v2OwnershipCutoverAt when earlier than legacy fuel cutover', async () => {
+    const earlyV2Cutover = new Date('2026-08-15T00:00:00.000Z');
+    const result = await service.enqueueAfterPersist({
+      energyEventId: 'evt-v2-early',
+      eventStartTime: new Date('2026-08-20T00:00:00.000Z'),
+      eventObservedAt: new Date('2026-08-25T00:00:00.000Z'),
+      v2OwnershipCutoverAt: earlyV2Cutover,
+      startLatitude: 51.3,
+      startLongitude: 9.5,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(result).toMatch(/^refuel-station_/);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('S3 returns deferred_queue_unavailable when workers are disabled', async () => {
+    jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(false);
+
+    const outcome = await service.enqueueAfterPersistOutcome({
+      ...postCutoverInput,
+      eventObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      v2OwnershipCutoverAt: v2Cutover,
+      coordinateSource: 'physical_refuel_forecourt_dwell_v2',
+      physicalRefuelReconciliationV2: true,
+    });
+
+    expect(outcome).toEqual({ status: 'deferred_queue_unavailable', jobId: null });
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('BQ1 dedupes existing WAITING job', async () => {
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('waiting'),
+    });
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('deduped');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('BQ3 removes failed BullMQ job and re-enqueues when DB allows retry', async () => {
+    const remove = jest.fn().mockResolvedValue(undefined);
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('failed'),
+      remove,
+    });
+    prisma.vehicleEnergyEventFuelStationEnrichment.findUnique.mockResolvedValue({
+      processingStatus: 'PROCESSING',
+      lastAttemptAt: new Date('2026-09-01T00:00:00.000Z'),
+      inputFingerprint: fingerprint,
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
+
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    expect(outcome.status).toBe('enqueued');
+  });
+
+  it('BQ4 does not retry failed BullMQ job when DB enrichment is terminal FAILED', async () => {
+    queue.getJob.mockResolvedValue({
+      getState: jest.fn().mockResolvedValue('failed'),
+      remove: jest.fn(),
+    });
+    prisma.vehicleEnergyEventFuelStationEnrichment.findUnique.mockResolvedValue({
+      processingStatus: 'FAILED',
+      inputFingerprint: fingerprint,
+      resolverVersion: FUEL_STATION_RESOLVER_VERSION,
+    });
+
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('terminal_skip');
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('BQ6 adds deterministic job when BullMQ job is missing', async () => {
+    queue.getJob.mockResolvedValue(null);
+    const outcome = await service.enqueueAfterPersistOutcome(postCutoverInput);
+    expect(outcome.status).toBe('enqueued');
+    expect(queue.add).toHaveBeenCalledTimes(1);
   });
 });

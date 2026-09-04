@@ -360,3 +360,116 @@ edges:
   - from: EED-OQ-012
     relation: REFERENCES
     to: EED-OBS-001
+
+  - from: EED-EV-0027
+    relation: REFERENCES
+    to: EED-DEC-PHYSICAL-REFUEL-IDENTITY-001
+
+  - from: EED-EV-0028
+    relation: REFERENCES
+    to: EED-DEC-PHYSICAL-REFUEL-IDENTITY-001
+
+  - from: EED-EV-0028
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-EV-0028
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-DEC-REFUEL-SETTLEMENT-FINALITY-001
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-DEC-REFUEL-COARSE-LOCK-001
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001
+  - from: EED-EV-0029
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-EV-0029
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-SETTLING-MULTIROW-FINALITY-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-NON-TRANSITIVE-FAIL-CLOSED-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+  - from: EED-EV-0030
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0031
+    relation: REFERENCES
+    to: EED-EV-0030
+  - from: EED-EV-0031
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+  - from: EED-EV-0031
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0032
+    relation: REFERENCES
+    to: EED-EV-0031
+  - from: EED-EV-0032
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0033
+    relation: REFERENCES
+    to: EED-EV-0032
+  - from: EED-EV-0033
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0034
+    relation: REFERENCES
+    to: EED-EV-0033
+  - from: EED-EV-0034
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0035
+    relation: REFERENCES
+    to: EED-EV-0034
+  - from: EED-EV-0035
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0036
+    relation: REFERENCES
+    to: EED-EV-0035
+  - from: EED-EV-0036
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0037
+    relation: REFERENCES
+    to: EED-EV-0036
+  - from: EED-EV-0037
+    relation: REFERENCES
+    to: EED-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001
+
+  - from: EED-EV-0027
+    relation: REFERENCES
+    to: EED-OQ-013
+
+  - from: EED-EV-0026
+    relation: REFERENCES
+    to: EED-COMP-004

@@ -253,3 +253,145 @@ Scientific record for canonical decisions. Graph nodes: `FST-DEC-*`. Full fields
 | **TRADEOFFS** | Validation latency for full E2E path |
 | **REMAINING_GAPS** | FST-GAP-REAL-POST-CUTOVER-REFUEL-001 — natural positive production REFUEL not observed |
 | **EVIDENCE** | FST-EVID-GOV-REAL-REFUEL-E2E-001 |
+
+---
+
+## FST-DEC-COORD-FORECOURT-DWELL-V2-001 — Physical refuel forecourt dwell medoid coordinate authority V2
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | V1 `energy_event_start` uses DIMO segment-start GPS (721–1038m from Esso on 2026-09-04 incident) |
+| **WHY** | Segment-start anchor ≠ physical refuel stop; resolver NOT_FOUND despite OSM station presence |
+| **CHANGE** | Derive enrichment coordinate from forecourt low-speed dwell cluster medoid adjacent to fuel-rise onset |
+| **EXPECTED_EFFECT** | Resolver MATCHED at Esso when physical stop is within ~20m forecourt cluster |
+| **VALIDATION** | G1.1 VPS read-only probe: forecourt medoid 11m from Esso, score 78 MATCHED vs NOT_FOUND at segment starts |
+| **OBSERVED_EFFECT** | Design validated on single incident; implementation pending G2 |
+| **NON_EFFECTS** | Does not change REFUEL detection or duplicate identity semantics by itself |
+| **TRADEOFFS** | Requires HF/route speed+GPS; CH HF mirror may lack GPS for some vehicles |
+| **REMAINING_GAPS** | G2 implementation; fleet-wide offset calibration; CH GPS mirror completeness |
+| **EVIDENCE** | FST-EVID-G12-ALGORITHMIC-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-LOOKBACK-PROVIDER-INDEPENDENT-001 — Fuel-rise anchored lookback (no provider segment cutoff)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `derivePhysicalRefuelCoordinate` used `max(eventStartAt, riseOnset - lookback)` clipping valid pre-rise dwell |
+| **WHY** | Sept04 physical stop precedes Event B DIMO segment start; independent Event B processing would lose forecourt cluster |
+| **CHANGE** | `lookbackStart = fuelRiseOnsetAt - physicalLookbackMax`; `eventStartAt` diagnostic only |
+| **EXPECTED_EFFECT** | Event A and Event B alone both select same forecourt region |
+| **VALIDATION** | G1.2b selector tests A/B/regression; 51 tests PASS |
+| **REMAINING_GAPS** | G2 runtime wiring; fleet calibration |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-REFUEL-SETTLEMENT-FINALITY-001 — Settlement before enrichment
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Singleton rows immediately `enrichmentEligibleId = self`; staggered sibling arrival risks duplicate enrichment |
+| **WHY** | G1.2 proved grouping but not incremental enrichment safety |
+| **CHANGE** | PROVISIONAL / SETTLING / FINAL_CANONICAL / FINAL_DISTINCT / INSUFFICIENT_EVIDENCE model |
+| **EXPECTED_EFFECT** | ONE_PHYSICAL_REFUEL → AT MOST ONE enrichment-eligible event |
+| **VALIDATION** | Settlement design tests; horizon default 60m INFERRED from Sept04 ~45m stagger (OPEN calibration) |
+| **REMAINING_GAPS** | Production horizon calibration; G2 BullMQ wiring |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-REFUEL-COARSE-LOCK-001 — Vehicle-scoped reconciliation lock
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Bucketed scope key (end-minute, rounded fuel, rounded odometer) allowed boundary races |
+| **WHY** | Semantic siblings at minute/fuel/odo bucket boundaries could acquire unrelated locks |
+| **CHANGE** | Stage 1: `refuel_reconciliation:{vehicleId}`; Stage 2: semantic matcher under transaction |
+| **EXPECTED_EFFECT** | Plausible SAME siblings always share concurrency domain |
+| **VALIDATION** | Boundary rollover tests in G1.2b reconciliation spec |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-CANONICAL-COMPARATOR-DIMENSION-SAFE-001 — Liter/percent-safe canonical choice
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `transitionCompletenessScore` mixed liters, delta liters, and percent span via `Math.max` |
+| **WHY** | Dimensionally invalid; could prefer wrong canonical when percent numerically larger |
+| **CHANGE** | Ordered `compareCanonicalRefuelCandidates` precedence; symmetric deterministic |
+| **EXPECTED_EFFECT** | Sept04 canonical remains Event A |
+| **VALIDATION** | G1.2b matcher comparator tests |
+| **EVIDENCE** | FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001 |
+
+---
+
+## FST-DEC-MULTI-SIBLING-CLIQUE-GROUPING-001 — Fail-closed clique grouping
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Star comparison from first row; naive transitive merge risk for 3+ segments |
+| **WHY** | SAME_PHYSICAL_REFUEL is not guaranteed transitive |
+| **CHANGE** | Clique-consistent partition; non-transitive triples stay separate |
+| **EXPECTED_EFFECT** | Input-order and arrival-order independent grouping |
+| **VALIDATION** | Permutation tests + fail-closed ambiguous component (G1.2c) |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-SETTLEMENT-OBSERVATION-TIME-001 — System observation time settlement authority
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Missing firstObservedAt could fall back to provider endTime |
+| **WHY** | Old event time would incorrectly consume settlement horizon |
+| **CHANGE** | `firstObservedAtById` required; window closes at max(observation)+horizon |
+| **VALIDATION** | G1.2c observation-time tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-SETTLING-MULTIROW-FINALITY-001 — SETTLING until window closes
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `group.length > 1` → immediate FINAL_CANONICAL |
+| **WHY** | 2→3+ sibling race: third row could arrive with stronger evidence |
+| **CHANGE** | Multi-row SAME → SETTLING while window open; FINAL_CANONICAL only after close |
+| **VALIDATION** | G1.2c 2→3 race tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-NON-TRANSITIVE-FAIL-CLOSED-001 — Ambiguous components fail closed
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Greedy partition could yield [A,B]+[C] for A~B,B~C,A!~C |
+| **WHY** | UUID order must not decide physical identity |
+| **CHANGE** | Pairwise matrix + complete-clique validation; non-transitive → INSUFFICIENT |
+| **VALIDATION** | Six permutation tests |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001 |
+
+---
+
+## FST-DEC-LATE-SIBLING-RECOVERY-CONFLICT-001 — Late sibling recovery conflict
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `lateSiblingConflict` gated settlement only when prior-finalized id was in same component |
+| **WHY** | Singleton/external late INSUFFICIENT siblings could reach FINAL_DISTINCT with enrichment |
+| **CHANGE** | Any late SAME or INSUFFICIENT vs prior FINAL_* → fail closed; G2 recovery |
+| **VALIDATION** | G1.2d six-case late-sibling matrix |
+| **EVIDENCE** | FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001, FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001 |

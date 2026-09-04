@@ -26,6 +26,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'document_intake_action_recovery',
   'document_extraction_recovery',
   'fuel_station_enrichment_recovery',
+  'physical_refuel_reconciliation_recovery',
   'device_connection_webhook_inbox',
   'communication_retention',
   'legal_document_retention',

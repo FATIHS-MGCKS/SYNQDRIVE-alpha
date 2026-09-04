@@ -27,12 +27,19 @@ import {
   isFuelStationEnrichmentEventAfterCutover,
 } from './fuel-station-enrichment-cutover.util';
 import { getFuelStationEnrichmentAutomaticSkipReason } from './fuel-station-enrichment-lifecycle.policy';
+import type { FuelStationEnrichmentEnqueueOutcome } from './fuel-station-enrichment-producer.outcome';
 
 export interface EnqueueFuelStationEnrichmentInput {
   energyEventId: string;
   eventStartTime: Date;
+  /** Required for V2-owned enqueue authority (observation time). */
+  eventObservedAt?: Date;
+  /** Required for V2-owned enqueue — must match runtime ownership cutover. */
+  v2OwnershipCutoverAt?: Date;
   startLatitude: number | null;
   startLongitude: number | null;
+  coordinateSource?: string | null;
+  physicalRefuelReconciliationV2?: boolean;
 }
 
 @Injectable()
@@ -48,8 +55,15 @@ export class FuelStationEnrichmentProducerService {
   ) {}
 
   async enqueueAfterPersist(input: EnqueueFuelStationEnrichmentInput): Promise<string | null> {
+    const outcome = await this.enqueueAfterPersistOutcome(input);
+    return outcome.jobId;
+  }
+
+  async enqueueAfterPersistOutcome(
+    input: EnqueueFuelStationEnrichmentInput,
+  ): Promise<FuelStationEnrichmentEnqueueOutcome> {
     if (!this.config.enabled) {
-      return null;
+      return { status: 'skipped', jobId: null, reason: 'feature_disabled' };
     }
 
     if (!hasValidFuelStationEnrichmentCutover(this.config)) {
@@ -61,15 +75,60 @@ export class FuelStationEnrichmentProducerService {
           energyEventId: input.energyEventId,
         }),
       );
-      return null;
+      return { status: 'skipped', jobId: null, reason: 'cutover_not_configured' };
     }
 
-    if (!this.isEventEligibleForEnrichment(input.eventStartTime)) {
-      return null;
+    if (input.physicalRefuelReconciliationV2) {
+      if (!input.eventObservedAt) {
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_enqueue_skipped',
+            reason: 'v2_event_observed_at_missing',
+            energyEventId: input.energyEventId,
+          }),
+        );
+        return { status: 'skipped', jobId: null, reason: 'v2_event_observed_at_missing' };
+      }
+      if (!input.v2OwnershipCutoverAt) {
+        return { status: 'skipped', jobId: null, reason: 'v2_ownership_cutover_missing' };
+      }
+      if (
+        !isFuelStationEnrichmentEventAfterCutover(
+          input.eventObservedAt,
+          input.v2OwnershipCutoverAt,
+        )
+      ) {
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_enqueue_skipped',
+            reason: 'v2_observation_before_cutover',
+            energyEventId: input.energyEventId,
+          }),
+        );
+        return { status: 'skipped', jobId: null, reason: 'v2_observation_before_cutover' };
+      }
+
+      const coordinate = deriveCanonicalFuelStationCoordinate({
+        startLatitude: input.startLatitude,
+        startLongitude: input.startLongitude,
+      });
+      if (!coordinate) {
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_enqueue_skipped',
+            reason: 'v2_coordinate_missing',
+            energyEventId: input.energyEventId,
+            coordinateSource: input.coordinateSource ?? null,
+          }),
+        );
+        return { status: 'skipped', jobId: null, reason: 'v2_coordinate_missing' };
+      }
+    } else if (!this.isEventEligibleForEnrichment(input.eventStartTime)) {
+      return { status: 'skipped', jobId: null, reason: 'legacy_before_cutover' };
     }
 
     if (!canEnqueueQueue(this.logger, 'fuel-station-enrichment')) {
-      return null;
+      return { status: 'deferred_queue_unavailable', jobId: null };
     }
 
     const coordinate = deriveCanonicalFuelStationCoordinate({
@@ -105,7 +164,7 @@ export class FuelStationEnrichmentProducerService {
           inputFingerprint: fingerprint,
         }),
       );
-      return null;
+      return { status: 'terminal_skip', jobId: null, reason: terminalSkipReason };
     }
 
     const idempotencyKey = buildFuelStationEnrichmentJobIdempotencyKey({
@@ -120,7 +179,12 @@ export class FuelStationEnrichmentProducerService {
     const existingJob = await this.queue.getJob(jobId);
     if (existingJob) {
       const state = await existingJob.getState();
-      if (state === 'waiting' || state === 'delayed' || state === 'active' || state === 'prioritized') {
+      if (
+        state === 'waiting' ||
+        state === 'delayed' ||
+        state === 'active' ||
+        state === 'prioritized'
+      ) {
         this.logger.debug(
           `Fuel station enrichment duplicate suppressed ${formatBullMqJobIdLogContext({
             namespace: 'refuel-station',
@@ -128,7 +192,22 @@ export class FuelStationEnrichmentProducerService {
             jobId,
           })}`,
         );
-        return jobId;
+        return { status: 'deduped', jobId };
+      }
+      if (state === 'failed') {
+        if (terminalSkipReason) {
+          return { status: 'terminal_skip', jobId: null, reason: terminalSkipReason };
+        }
+        await existingJob.remove();
+        this.logger.debug(
+          JSON.stringify({
+            event: 'fuel_station_enrichment_failed_job_removed',
+            energyEventId: input.energyEventId,
+            jobId,
+          }),
+        );
+      } else if (state === 'completed') {
+        return { status: 'deduped', jobId };
       }
     }
 
@@ -150,7 +229,7 @@ export class FuelStationEnrichmentProducerService {
       )}`,
     );
 
-    return jobId;
+    return { status: 'enqueued', jobId };
   }
 
   enqueueAfterPersistFromEvent(event: VehicleEnergyEvent): Promise<string | null> {

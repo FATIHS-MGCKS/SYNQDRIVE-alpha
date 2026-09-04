@@ -24,7 +24,7 @@ const VEHICLE_ID = 'clveh1234567890123456789012';
 const FROM = new Date('2026-08-22T00:00:00.000Z');
 const TO = new Date('2026-08-24T00:00:00.000Z');
 
-function buildRefuelSegment(
+export function buildRefuelSegment(
   overrides: Partial<DimoEnergyEventSegment> = {},
 ): DimoEnergyEventSegment {
   return {

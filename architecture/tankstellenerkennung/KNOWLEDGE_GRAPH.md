@@ -71,6 +71,7 @@ Full scientific record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_RE
 | FST-DEC-EXTEND-TIMELINE-UI-001 | Extend TripTimelineEnergyCard | VALIDATED |
 | FST-DEC-RECHARGE-UNTOUCHED-001 | RECHARGE unchanged | VALIDATED |
 | FST-DEC-REAL-REFUEL-E2E-001 | Require natural post-cutover REFUEL for E2E validation | VALIDATED |
+| FST-DEC-COORD-FORECOURT-DWELL-V2-001 | Forecourt dwell medoid coordinate authority V2 | PROPOSED |
 
 Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scope in `DECISION_REGISTER.md` and `FST-EVID-PROD-DEPLOY-001`.
 
@@ -78,7 +79,12 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 
 | ID | Gap |
 |----|-----|
-| FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | No natural post-cutover REFUEL E2E in production |
+| FST-GAP-REAL-POST-CUTOVER-REFUEL-001 | Natural post-cutover REFUEL observed; positive match path not validated |
+| FST-GAP-PHYSICAL-STOP-COORD-001 | Physical-stop coordinate authority V2 designed (G1.1); G1.2b lookback hardening; implementation pending G2 |
+
+## G1.2b boundary hardening (2026-09-04)
+
+`FST-EVID-G12B-RUNTIME-BOUNDARY-HARDENING-2026-09-04-001` closes five G1.2 review defects: provider-independent lookback, settlement/finality before enrichment, vehicle-scoped reconciliation lock, dimensionally-safe canonical comparator, fail-closed clique multi-sibling grouping. **G1.2c** (`FST-EVID-G12C-FINALITY-AMBIGUITY-CLOSURE-2026-09-04-001`) closes SETTLING semantics, observation-time settlement authority, non-transitive fail-closed components, and 2→3+ sibling race. **G1.2d** (`FST-EVID-G12D-LATE-SIBLING-HARDENING-2026-09-04-001`) closes singleton/external late-sibling duplicate-enrichment path. **G2.1** (`FST-EVID-G21-RUNTIME-WIRING-2026-09-04-001`) wires runtime reconciliation behind `PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED` (default OFF). **G2.1a** (`FST-EVID-G21A-RUNTIME-SAFETY-LIVENESS-CLOSURE-2026-09-04-001`) closes legacy recovery bypass, durable recovery, matrix scope, V2 fail-closed coords. **G2.1b** (`FST-EVID-G21B-CROSS-CUTOVER-RECOVERY-HARDENING-2026-09-04-001`) closes cross-cutover ownership, observation-time enqueue, coordinate retry backoff, fair recovery, PG lock proof. **152+ targeted tests PASS.** G2.2 shadow rollout authorized.
 | FST-GAP-GERMANY-SCOPE-001 | Germany-only scope / international expansion |
 | FST-GAP-MANUAL-FAILED-REPAIR-001 | Manual repair for terminal FAILED rows |
 | FST-GAP-SINGLE-COORD-POLICY-001 | Single start-coordinate policy |
@@ -91,9 +97,9 @@ Scoped `PRODUCTION_VALIDATED` decisions cite explicit production-validation scop
 
 **FST-DEC-REAL-REFUEL-E2E-001** — natural production evidence required; no synthetic mutation (`FST-REJECT-SYNTHETIC-PROD-REFUEL-001`).
 
-**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — evidence gap: no real eligible post-cutover REFUEL observed yet.
+**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — first natural post-cutover REFUEL observed 2026-09-04; partial pipeline validated; **MATCHED path not validated**.
 
-**NATURAL POSITIVE REFUEL E2E STILL NOT PRODUCTION-VALIDATED.**
+**NATURAL POSITIVE REFUEL MATCH E2E STILL NOT PRODUCTION_VALIDATED.**
 
 ## Epistemic legend
 
