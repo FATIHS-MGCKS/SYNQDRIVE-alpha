@@ -44,41 +44,46 @@ Harness fix: `TEST_POSTGRES_DATABASE` env accepted by `physical-refuel-g21d-fina
 
 | Field | Value |
 |-------|-------|
-| PR_1531_MERGED | _pending_ |
-| MERGE_SHA | _pending_ |
-| POST_MERGE_MAIN_SHA | _pending_ |
+| PR_1531_MERGED | YES |
+| MERGE_SHA | `43c9ae6c546d01226c5ae113edd1d0f89f858e7e` |
+| POST_MERGE_MAIN_SHA | `43c9ae6c546d01226c5ae113edd1d0f89f858e7e` |
 
 ## 3. Production migration (feature OFF)
 
 | Field | Value |
 |-------|-------|
-| PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED (pre-migration) | false |
-| PRODUCTION_MIGRATION_EXECUTED | _pending_ |
-| PRODUCTION_MIGRATION_PASS | _pending_ |
+| PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED (pre-migration) | false (unset → default) |
+| PRODUCTION_MIGRATION_EXECUTED | YES |
+| PRODUCTION_MIGRATION_PASS | YES |
 
-Migrations applied via `prisma migrate deploy` in standard deploy lifecycle:
+Migrations applied via `prisma migrate deploy` in deploy release `20260904183349_v4994`:
 
-- `20260904120000_vehicle_energy_event_refuel_reconciliation`
-- `20260904140000_physical_refuel_g21a_recovery`
-- `20260904160000_physical_refuel_g21b_coordinate_retry`
-- `20260904180000_physical_refuel_g21c_evidence_fingerprint`
-- `20260904193000_physical_refuel_g21d_route_evidence_stabilization`
+- `20260904120000_vehicle_energy_event_refuel_reconciliation` — APPLIED
+- `20260904140000_physical_refuel_g21a_recovery` — APPLIED
+- `20260904160000_physical_refuel_g21b_coordinate_retry` — APPLIED
+- `20260904180000_physical_refuel_g21c_evidence_fingerprint` — APPLIED
+- `20260904193000_physical_refuel_g21d_route_evidence_stabilization` — APPLIED
 
 ## 4. Production deployment (feature OFF)
 
 | Field | Value |
 |-------|-------|
-| PRODUCTION_DEPLOYED | _pending_ |
-| PRODUCTION_DEPLOY_SHA | _pending_ |
-| PRODUCTION_DEPLOY_FLAG_OFF | _pending_ |
+| PRODUCTION_DEPLOYED | YES |
+| PRODUCTION_DEPLOY_SHA | `43c9ae6c546d01226c5ae113edd1d0f89f858e7e` |
+| PRODUCTION_DEPLOY_FLAG_OFF | PASS |
+| REPLICA_COUNT | 2 (synqdrive:3001, synqdrive-b:3002) |
+| SCHEDULER_LEADER | 1 (LEADER/FOLLOWER converged) |
 
 ## 5. Direct production activation (no shadow)
 
 | Field | Value |
 |-------|-------|
-| PHYSICAL_REFUEL_V2_PRODUCTION_ENABLED | _pending_ |
-| PHYSICAL_REFUEL_V2_CUTOVER_AT | _pending_ |
-| PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT | _pending_ |
+| PHYSICAL_REFUEL_V2_PRODUCTION_ENABLED | YES |
+| PHYSICAL_REFUEL_V2_CUTOVER_AT | `2026-09-04T18:40:13.000Z` |
+| PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT | `2026-09-04T18:40:13.000Z` |
+| PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED | true |
+| PHYSICAL_REFUEL_RECONCILIATION_RECOVERY_ENABLED | true |
+| ENV_BACKUP | `/opt/synqdrive/shared/backend.env.bak-physical-refuel-v2-20260904184013` |
 | Activation mechanism | `vps-enable-physical-refuel-v2-production.sh` |
 
 Post-cutover: new REFUEL observations at/after cutover instant are V2-owned. Legacy pre-cutover events remain legacy-owned. No mass historical reprocess authorized.
@@ -87,19 +92,28 @@ Post-cutover: new REFUEL observations at/after cutover instant are V2-owned. Leg
 
 | Field | Value |
 |-------|-------|
-| PRODUCTION_HEALTH_GATE | _pending_ |
+| PRODUCTION_HEALTH_GATE | PASS |
 | PRODUCTION_ROLLBACK_TRIGGERED | NO |
+| EXTERNAL_HEALTH | PASS |
+| POSTGRES_READINESS | ok (both replicas) |
+| REDIS_READINESS | ok (both replicas) |
+| CRASH_LOOP | NO |
+| PHYSICAL_REFUEL_ERRORS_IN_LOGS | NO (first 2 min) |
+| SCHEDULER_STORM | NO |
 
-### Baseline metrics (post-activation)
+### Baseline metrics (T+2 min post-activation)
 
-_pending observation window_
+| Metric | Value |
+|--------|-------|
+| post_cutover_v2_refuels | 0 (no natural REFUEL yet) |
+| reconciliation_rows | 0 (table empty at cutover) |
 
 ## 7. Production REFUEL validation
 
 | Field | Value |
 |-------|-------|
-| PRODUCTION_REFUEL_V2_OBSERVED | _pending_ |
-| PRODUCTION_REFUEL_V2_VALIDATED | _pending_ |
+| PRODUCTION_REFUEL_V2_OBSERVED | NO |
+| PRODUCTION_REFUEL_V2_VALIDATED | NO |
 
 Watch vehicle: **KS MX 2024** on next natural refuel.
 
