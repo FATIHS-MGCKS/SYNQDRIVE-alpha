@@ -36,6 +36,175 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    title: 'DI-EV-0035B.6.1 — RD004-B HF Recovery Policy Semantic Hygiene Closeout',
+    summary: [
+      'Removed misleading closedLateBucketProtectedBySettlementDelay() API entirely.',
+      'Renamed recoverable overlap counts to temporalCoverageCandidateCount / temporallyExcludedCount.',
+      'LOWER_BOUND_ALONE_CAN_PROVE_AVAILABILITY_BY_CANDIDATE_DELAY=NO (epistemic invariant, not numeric predicate).',
+      'Combined grid: TEMPORAL_QUERY_COVERAGE_ONLY; actualRecoveryCount=null.',
+      '83 focused RD004-B tests; B.6 conclusions preserved; no production changes.',
+    ],
+    reason:
+      'B.6 fixed lower-bound semantics; B.6.1 removes remaining misleading API/naming so future agents cannot reinterpret temporal coverage as proven availability.',
+    previousBehavior:
+      'Deprecated closedLateBucketProtectedBySettlementDelay still returned isLowerBoundConsistentWithCandidateDelay; overlap fields used estimatedRecoverable* naming.',
+    details:
+      'Module reference-capture-rd004-b-hf-recovery-policy.ts; regenerated simulation/design/contract artifacts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b6-rd004-hf-recovery-lower-bound-correction-2026-09-04',
+    version: '4.9.1056',
+    title: 'DI-EV-0035B.6 — RD004-B HF Recovery Policy Lower-Bound Semantics Correction',
+    summary: [
+      'B.5 superseded: availabilityLagLowerBoundSeconds is LOWER_BOUND only — does not prove provider availability.',
+      'Invalidated "8s protects 50/50" (B5_8S_SETTLEMENT_50_OF_50_PROTECTION_CLAIM_VALID=NO).',
+      'Separated SETTLEMENT_HORIZON_DEFERRAL from PROVIDER_AVAILABILITY_RECOVERY.',
+      'Architecture remains SETTLED_HORIZON_PLUS_OVERLAP_PLUS_PERIODIC_SWEEP; provisional 8s/6s (PARAMETERS_VALIDATED=NO).',
+      'Live availability calibration contract + configurable runtime fix contract; 80+ focused tests; no production changes.',
+    ],
+    reason:
+      'Human/code review found B.5 treated lower-bound lag ≤ settlement delay as availability proof — statistically invalid before analysis merge.',
+    previousBehavior:
+      'B.5 derived productionSettlementTarget = ceil(maxLagLowerBound)+2 and claimed 8s settlement protects 50/50 closed late buckets.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts` (B.6 semantics); regenerated artifacts with corrected deferral vs availability separation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b5-rd004-hf-recovery-policy-design-2026-09-04',
+    version: '4.9.1055',
+    title: 'DI-EV-0035B.5 — RD004-B HF Recovery Policy Design + Counterfactual Simulation',
+    summary: [
+      'B.4 evidence preserved: PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'Counterfactual 7×7 grid: settlement delay (0–10s) × recovery overlap (2–20s).',
+      'Recommended design: 8s settled horizon + 6s overlap + periodic deep recovery sweep.',
+      'OBSERVED_MISSED_BUCKET_COUNT_IS_LOWER_BOUND=YES; aggregate buckets ≠ unique ECU samples.',
+      'Runtime fix contract for next PR; 75 focused tests; no production changes.',
+    ],
+    reason:
+      'B.4 proved 2s overlap insufficient and characterized the defect; B.5 must close RD004 acquisition design without implementing production fix.',
+    previousBehavior:
+      'Production HF capture queries live edge with 2s overlap only; no settlement horizon or recovery sweep.',
+    details:
+      'Module `reference-capture-rd004-b-hf-recovery-policy.ts`; artifacts `rd004-b-hf-recovery-policy-simulation.json`, `rd004-b-hf-recovery-policy-design.json`, `rd004-b-hf-runtime-fix-contract.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b4-rd004-exact-window-hf-replay-watermark-audit-2026-09-04',
+    version: '4.9.1054',
+    title: 'DI-EV-0035B.4 — RD004-B Exact-Window HF Replay + Late-Arrival / Watermark Loss Proof',
+    summary: [
+      'Invalidate B.3 cross-origin 108-vs-66 bucket identity comparison (QUERY_FROM_ANCHORED semantics).',
+      'Reconstruct 75 original HF query windows; exact-origin DIMO replay (same from/to, 1s speed).',
+      '104 original vs 157 replay buckets; 53 late-arrival; 0 missing-now; 0 value revisions.',
+      '26 late buckets DEFINITELY_EXCLUDED_BY_NEXT_WATERMARK; P50 lag 2.129 s > 2 s overlap.',
+      'HF_CAPTURE_ROOT_CAUSE=PROVIDER_LATE_ARRIVAL_PLUS_CAPTURE_WATERMARK_RECOVERY_GAP.',
+      'B.3 transition corrections preserved; 70 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human review found B.3 broad requery compared incompatible query-origin bucket grids — exact-window replay required for canonical late-arrival and watermark recovery proof.',
+    previousBehavior:
+      'B.3 concluded CAPTURE_PIPELINE_SAMPLE_LOSS from 108 vs 66 cross-origin timestamp floor comparison (intersection 11).',
+    details:
+      'Modules `reference-capture-rd004-b-hf-exact-window-replay.ts`, updated `reference-capture-rd004-b-hf-capture-completeness.ts`; artifacts `rd004-b-hf-exact-window-replay.json`, `rd004-b-hf-late-arrival-analysis.json`, `rd004-b-hf-watermark-recovery-analysis.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T22:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b3-rd004-segment-b-evidence-correctness-hf-audit-2026-09-04',
+    version: '4.9.1053',
+    title: 'DI-EV-0035B.3 — RD004-B Transition Evidence Correctness + HF Capture Completeness Audit',
+    summary: [
+      'Fix launch predecessor bug: immediate sorted[i-1] neighbor; true gap 35.102 s (not ~629 s).',
+      'Launch interval-censored; +5.x s removed as clock evidence; FIRST_LAUNCH_CLOCK_FIT_ELIGIBLE=NO.',
+      '43→0 in 1 s after 28.7 s gap: PAIR_PHYSICAL_CONTINUITY_VALIDATED=NO; context ISOLATED_BURST.',
+      'Stop displacement ~+21.7 s reclassified sparse observation only; STOP_TIMING_ERROR_SECONDS=null.',
+      'Legacy CLK landmarks forced CLOCK_FIT_ELIGIBLE=NO; CLOCK_FIT_PROVIDER_MATCH_COUNT=0.',
+      'HF live requery 108 vs sealed 66 buckets — B.4 supersedes cross-origin loss proof (diagnostic only).',
+      '50 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Human/code review found remaining transition/clock semantics errors and required proof whether RD004 HF sparsity is upstream or capture-pipeline sample loss.',
+    previousBehavior:
+      'B.2 reported +5.x s launch clock displacement, supportive offset range, and stop timing with event-derived offset (timeErrorSeconds=0).',
+    details:
+      'Modules `reference-capture-rd004-b-segment-b.ts`, `reference-capture-rd004-b-hf-capture-completeness.ts`; new `rd004-b-hf-capture-completeness-diagnostic.json`, `rd004-b-transition-interval-censoring.json`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b2-rd004-segment-b-video-timeline-clock-reassessment-2026-09-04',
+    version: '4.9.1052',
+    title: 'DI-EV-0035B.2 — RD004-B Frame-Accurate Master Video Timeline + Transition Clock Reassessment',
+    summary: [
+      'Audio-correlated 9-clip master timeline (5→3→1→9→8→7→4→2→6); overlap 16.775 s; duration 1000.498365 s.',
+      'Improved Time.is T0: 2026-09-04T03:47:02.216667Z from frame-level second boundary.',
+      'First stop transition corrected to t≈621.8 s (B-T01); t=630 reclassified SUSTAINED_STOP_STATE only.',
+      'Launch bounded window [673.0, 673.5] s (B-T02); second stop not frame-exact.',
+      'Corrected stop displacement ~+21.7 s (SPARSE_STATE_SAMPLE); launch ~+5.3 s — inconsistent; offset NOT validated.',
+      'A/B ~22 s displacement repeat observed but not cross-validated; B.1 holdout/time-only preserved.',
+      '36 focused tests; raw bytes unchanged; no production changes.',
+    ],
+    reason:
+      'Independent frame-level video review found t=630 was a zero-speed state snapshot, not the physical stop transition; master clip stitching required audio-correlated evidence.',
+    previousBehavior:
+      'B.1 used t=630 as stop context and supportive ~+13.5 s offset candidate; rounded 1000 s video timeline.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.2; new `rd004-b-video-master-timeline.json`; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T18:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b1-rd004-segment-b-calibration-closeout-2026-09-04',
+    version: '4.9.1051',
+    title: 'DI-EV-0035B.1 — RD004-B Independent Clock Calibration + Holdout Speed Accuracy Closeout',
+    summary: [
+      'Invalidates DI-EV-0035B canonical offset (~14.3 s) and MAE (~2.3 km/h) as selection-biased; preserves as exploratory non-canonical.',
+      'Separates CLOCK_CALIBRATION_SET (4 transition landmarks) from SPEED_ACCURACY_HOLDOUT_SET (17 cruise anchors).',
+      'Holdout speed accuracy: time-only nearest HF sample after frozen offset; video speed never influences selection.',
+      'Supportive offset candidate ~+13.5 s; PROVIDER_TIMESTAMP_OFFSET_VALIDATED=NO (insufficient transition landmarks).',
+      'Holdout: 5 comparable anchors, diagnostic MAE ~13.8 km/h; headline SPEED_MAE_KMH=null.',
+      '22 focused tests; raw Segment A/B bytes unchanged; no production changes.',
+    ],
+    reason: 'Human review found speed-selected samples were reused for both clock offset and speed accuracy (double dipping).',
+    previousBehavior: 'DI-EV-0035B reported PROVIDER_TIMESTAMP_OFFSET_VALIDATED=YES and ABSOLUTE_SPEED_ACCURACY_VALIDATED=YES with MAE ~2.3 km/h.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts` B.1 pipeline; artifacts regenerated under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T16:00:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035b-rd004-segment-b-validation-2026-09-04',
+    version: '4.9.1050',
+    title: 'DI-EV-0035B — RD004-B Segment B Video ↔ Telemetry Validation',
+    summary: [
+      'Segment B (~16:40 post-refuel): 66 HF speed samples, median cadence ~10.6 s (sparser than Segment A).',
+      '25 independent dashboard video anchors (B01–B25); 18 HIGH-confidence accepted.',
+      'First validated provider offset in RD004: ~+14.3 s (3 independent clock landmarks, MAD ~0.6 s).',
+      'Absolute speed accuracy validated: MAE ~2.3 km/h (stratified low/medium/high reported).',
+      'Drift NOT validated; gear/reverse telemetry NOT observed; 0 legacy harsh events.',
+      'Preserves all DI-EV-0035A.2 methodology invariants; Segment A evidence unchanged.',
+    ],
+    reason: 'RD004 Segment B provides high-confidence video anchors needed to validate offset and speed accuracy after Segment A closeout.',
+    previousBehavior: 'Only Segment A analyzed; provider offset null; no absolute speed validation.',
+    details:
+      'Module `reference-capture-rd004-b-segment-b.ts`; seal + analyze CLIs; artifacts under `docs/audits/data/rd004-segment-b/`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T14:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035a2-rd004-segment-a-semantics-closeout-2026-09-04',
     version: '4.9.1049',
     title: 'DI-EV-0035A.2 — RD004-A Semantics Closeout (H displacement + true peak attenuation)',
