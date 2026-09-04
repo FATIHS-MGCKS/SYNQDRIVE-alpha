@@ -14,12 +14,22 @@ import { FUEL_STATION_RESOLVER_VERSION } from '../../fuel-stations/fuel-station-
 import { PHYSICAL_REFUEL_COORDINATE_SELECTED } from '../physical-refuel-coordinate.policy';
 import { PhysicalRefuelReconciliationRuntimeService } from '../physical-refuel-reconciliation-runtime.service';
 
-export const G21D_FINAL_POSTGRES_HOST = '127.0.0.1';
-export const G21D_FINAL_POSTGRES_PORT = 5432;
-export const G21D_FINAL_POSTGRES_DATABASE = 'synqdrive_g21d_final_test';
-export const G21D_FINAL_REDIS_HOST = '127.0.0.1';
-export const G21D_FINAL_REDIS_PORT = 56379;
-export const G21D_FINAL_REDIS_DB = 14;
+export const G21D_FINAL_POSTGRES_HOST = process.env.TEST_POSTGRES_HOST ?? '127.0.0.1';
+export const G21D_FINAL_POSTGRES_PORT = Number.parseInt(
+  process.env.TEST_POSTGRES_PORT ?? '5432',
+  10,
+);
+export const G21D_FINAL_POSTGRES_DATABASE =
+  process.env.TEST_POSTGRES_DATABASE ?? 'synqdrive_g21d_final_test';
+export const G21D_FINAL_REDIS_HOST = process.env.TEST_REDIS_HOST ?? '127.0.0.1';
+export const G21D_FINAL_REDIS_PORT = Number.parseInt(
+  process.env.TEST_REDIS_PORT ?? '56379',
+  10,
+);
+export const G21D_FINAL_REDIS_DB = Number.parseInt(
+  process.env.G21D_FINAL_REDIS_DB ?? '14',
+  10,
+);
 export const G21D_FINAL_V2_CUTOVER_ISO = '2026-09-01T00:00:00.000Z';
 
 export function buildG21dFinalDatabaseUrl(): string {
@@ -66,7 +76,8 @@ export function proveIsolatedNonProductionInfra(): {
   if (exactDbMatch?.[1] === 'synqdrive') {
     throw new Error('Refusing non-isolated DATABASE_URL database: synqdrive');
   }
-  if (!lowerUrl.includes(G21D_FINAL_POSTGRES_DATABASE)) {
+  const expectedDb = G21D_FINAL_POSTGRES_DATABASE.toLowerCase();
+  if (!lowerUrl.includes(`/${expectedDb}`) && !lowerUrl.includes(`/${expectedDb}?`)) {
     throw new Error(`DATABASE_URL must target ${G21D_FINAL_POSTGRES_DATABASE}`);
   }
 
