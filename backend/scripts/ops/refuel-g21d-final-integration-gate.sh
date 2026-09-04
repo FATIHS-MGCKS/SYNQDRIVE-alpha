@@ -2,7 +2,7 @@
 # DI-EV G2.1d-FINAL — isolated Postgres + Redis integration gate (non-production).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GATE_ID="refuel-g21d-$(date +%s)"
 DOCKER_CMD="${DOCKER_CMD:-docker}"
 PG_PORT="${TEST_POSTGRES_PORT:-55432}"
@@ -74,18 +74,15 @@ export G21D_FINAL_POSTGRES_USER="${PG_USER}"
 export G21D_FINAL_POSTGRES_PASSWORD="${PG_PASS}"
 export PHYSICAL_REFUEL_TEST_QUEUE_PREFIX="refuel-gate-${GATE_ID}"
 
-cd "${ROOT}"
+cd "${BACKEND_ROOT}"
+
+PRISMA_BIN="${BACKEND_ROOT}/node_modules/.bin/prisma"
 
 echo "==> prisma validate"
-DATABASE_URL="${DATABASE_URL:-postgresql://u:p@localhost:5432/db}" npx --yes prisma validate
+"${PRISMA_BIN}" validate
 
-<<<<<<< HEAD
 echo "==> prisma migrate deploy (isolated, resilient)"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
-=======
-echo "==> prisma migrate deploy (isolated)"
-npx --yes prisma migrate deploy
->>>>>>> 8b8156d93dc70b27c6356f3ce2cc54b032ab9710
 
 echo "==> Postgres integration"
 PHYSICAL_REFUEL_RECONCILIATION_POSTGRES_INTEGRATION=1 npm test -- \
