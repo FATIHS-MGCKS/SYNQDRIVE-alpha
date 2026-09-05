@@ -20,6 +20,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-05 — M3.1 corrected Stage-2 production activation (immediate smoke PASS)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Production `REST_SHADOW=false`, `PUBLICATION=true`, `RECONCILIATION=true`; `M3_1_STATUS=BLOCKED_BY_CUTOVER_CONTRACT`; 24 PKG-01 ENQUEUED (0 VALID). |
+| **CHANGE** | Executed canonical operator path `vps-enable-battery-v2-stage2-production.sh` with preflight ACK; env → Stage-2 contract; rolling restart both replicas; scheduler convergence; `BATTERY_V2_STAGE2_T0=2026-09-05T23:36:12Z`. |
+| **WHY** | Correct invalid M3.1 activation; enable canonical REST pipeline with publication gate per Stage-2 cutover policy. |
+| **VALIDATION** | JIT preflight PASS; activation exit 0; 2 reconciliation ticks; 0 assess/publication since T0; immediate smoke PASS. |
+| **OBSERVED_EFFECT** | 19/24 PKG-01 ENQUEUED terminalized in-window (POLICY_SKIPPED); 5 remain (>7d reconciliation lookback); canonical pipeline ON; legacy OFF. |
+| **NON_EFFECTS** | No natural REST_60M/REST_6H/assessment/publication E2E yet; `PRODUCTION_VALIDATED` remains pending. |
+| **REMAINING_GAPS** | T+30m validation from new T0; ≥6h validation; optional stale >7d ENQUEUED metadata follow-up. |
+| **DECISION_STATUS** | `M3_1_STATUS=STAGE2_ACTIVATED_PENDING_PRODUCTION_VALIDATION`; `PRODUCTION_VALIDATED=PENDING_CORRECTED_ACTIVATION_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`; release `20260905231643_v4994` SHA `a4377f3a200c`. |
+
 ## CL-2026-09-03 — M3.1 Stage-2 cutover atomicity hardening (PR #1527)
 
 | Field | Content |
