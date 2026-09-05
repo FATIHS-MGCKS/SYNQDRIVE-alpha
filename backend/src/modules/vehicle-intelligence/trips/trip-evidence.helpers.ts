@@ -7,6 +7,7 @@ import { VehicleDetectionProfile } from '@prisma/client';
 import { START_DETECTION_MODES, END_DETECTION_MODES } from './trip-detection.types';
 import type { SnapshotEvidenceSignals, StartDetectionMode } from './trip-detection.types';
 import type { DetectorFinding } from './detectors/detector.interfaces';
+import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
 
 // ═══════════════════════════════════════════════════════════════
 //  INTERFACES
@@ -1499,4 +1500,95 @@ function findClosestRoutePoint(
   }
 
   return closest;
+}
+
+/**
+ * Latest provider-timestamped movement evidence used for lastMeaningfulMovementAt.
+ * Returns null when continuity is ACTIVE only via ClickHouse guard without an
+ * explicit event timestamp — caller must preserve the previous anchor.
+ */
+export function resolveLatestMeaningfulMovementEventAt(params: {
+  recentPoints: TripCoreDataPoint[];
+  profile: string;
+  continuitySummary?: Record<string, unknown> | null;
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+    windowEndAt?: string | Date | null;
+  } | null;
+  workerNow?: Date;
+}): Date | null {
+  const workerNow = params.workerNow ?? new Date();
+  const t = getProfileThresholds(params.profile);
+  const summary = params.continuitySummary ?? {};
+  const motionCount = (summary.motionCount as number) ?? 0;
+  const odometerDelta = (summary.odometerDelta as number) ?? null;
+  const ch = params.clickhouseGuardSummary;
+
+  const hasCoreMotion = motionCount > 0;
+  const hasOdometerProgress =
+    odometerDelta != null && odometerDelta > t.odometerMinDeltaKm;
+  const hasChMotion =
+    (ch?.maxSpeedKmh ?? 0) > 5 || (ch?.odometerDeltaKm ?? 0) > 0.05;
+
+  if (!hasCoreMotion && !hasOdometerProgress && !hasChMotion) {
+    return null;
+  }
+
+  let latest: Date | null = null;
+
+  for (const pt of params.recentPoints) {
+    const ts = new Date(pt.timestamp);
+    if (!isValidProviderEventTimestamp(ts, workerNow)) continue;
+    const speedMotion = pt.speed != null && pt.speed > t.speedMotionKmh;
+    const speedActive = pt.speed != null && pt.speed > t.speedActiveKmh;
+    if (speedMotion || speedActive) {
+      if (!latest || ts.getTime() > latest.getTime()) latest = ts;
+    }
+  }
+
+  if (hasOdometerProgress && params.recentPoints.length >= 2) {
+    const odoPoints = params.recentPoints.filter(
+      (p) => p.travelledDistance != null,
+    );
+    if (odoPoints.length >= 2) {
+      const lastPt = odoPoints[odoPoints.length - 1];
+      const ts = new Date(lastPt.timestamp);
+      if (isValidProviderEventTimestamp(ts, workerNow)) {
+        if (!latest || ts.getTime() > latest.getTime()) latest = ts;
+      }
+    }
+  }
+
+  if (hasChMotion && !latest && ch?.windowEndAt) {
+    const chTs =
+      ch.windowEndAt instanceof Date
+        ? ch.windowEndAt
+        : new Date(ch.windowEndAt);
+    if (isValidProviderEventTimestamp(chTs, workerNow)) {
+      latest = chTs;
+    }
+  }
+
+  return latest;
+}
+
+/** Whether ACTIVE continuity implies meaningful movement for anchor advancement. */
+export function continuityImpliesMeaningfulMovement(
+  continuitySummary?: Record<string, unknown> | null,
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+  } | null,
+): boolean {
+  const summary = continuitySummary ?? {};
+  const motionCount = (summary.motionCount as number) ?? 0;
+  const odometerDelta = (summary.odometerDelta as number) ?? 0;
+  const ch = clickhouseGuardSummary;
+  return (
+    motionCount > 0 ||
+    odometerDelta > 0 ||
+    (ch?.maxSpeedKmh ?? 0) > 5 ||
+    (ch?.odometerDeltaKm ?? 0) > 0.05
+  );
 }

@@ -143,12 +143,12 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
       // ── Stuck in POSSIBLE_END > 30 min → trigger onStuckTrip ─────────────
       if (
         s.state === TripDetectionState.POSSIBLE_END &&
-        s.possibleEndAt &&
-        now.getTime() - s.possibleEndAt.getTime() > STUCK_POSSIBLE_END_THRESHOLD_MS &&
+        s.possibleEndEnteredAt &&
+        now.getTime() - s.possibleEndEnteredAt.getTime() > STUCK_POSSIBLE_END_THRESHOLD_MS &&
         s.activeTripId
       ) {
         this.logger.warn(
-          `Event trigger: POSSIBLE_END stuck for ${Math.round((now.getTime() - s.possibleEndAt.getTime()) / 60_000)}min — vehicle=${s.vehicleId} trip=${s.activeTripId}`,
+          `Event trigger: POSSIBLE_END stuck for ${Math.round((now.getTime() - s.possibleEndEnteredAt.getTime()) / 60_000)}min — vehicle=${s.vehicleId} trip=${s.activeTripId}`,
         );
         this.reconciliation
           .onStuckTrip(s.vehicleId, s.activeTripId)

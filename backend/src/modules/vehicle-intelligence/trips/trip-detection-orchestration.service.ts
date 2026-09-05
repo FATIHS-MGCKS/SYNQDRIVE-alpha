@@ -49,6 +49,8 @@ import {
   resolveDetectionProfile,
   isCurrentTelemetryInactive,
   extractLatestSegmentEnd,
+  resolveLatestMeaningfulMovementEventAt,
+  continuityImpliesMeaningfulMovement,
 } from './trip-evidence.helpers';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
@@ -66,6 +68,15 @@ import {
   computeStartBoundaryWindowFrom,
   selectConfirmedStartSegment,
 } from './start-boundary-window.util';
+import {
+  clearPossibleEndClockFields,
+  clearPossibleStartClockFields,
+  resolvePossibleEndBoundaryAnchor,
+  resolvePossibleEndBoundaryCandidate,
+  resolvePossibleEndFsmDwellAnchor,
+  resolvePossibleStartConfirmationAnchor,
+  resolveStartCandidateClock,
+} from './trip-fsm-clock-contract';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -536,12 +547,11 @@ export class TripDetectionOrchestrationService {
       phase: DETECTION_PHASES.LIVE_START,
       profile,
       dataQuality: this.policyResolver.assessDataQuality({
-        // Snapshot freshness not available in SnapshotEvidenceSignals type;
-        // previousTelemetry.updatedAt is the best proxy we have here.
-        // TODO(Phase 2 completion): pass snapshot timestamp from caller context.
-        snapshotFreshMs: previousTelemetry?.updatedAt
-          ? Date.now() - previousTelemetry.updatedAt.getTime()
-          : null,
+        snapshotFreshMs: current.sourceTimestamp
+          ? Date.now() - current.sourceTimestamp.getTime()
+          : previousTelemetry?.updatedAt
+            ? Date.now() - previousTelemetry.updatedAt.getTime()
+            : null,
         ignitionAvailable: current.isIgnitionOn != null,
         speedAvailable: current.speedKmh != null,
         odometerAvailable: current.odometerKm != null,
@@ -587,6 +597,10 @@ export class TripDetectionOrchestrationService {
     const ev = evidenceFinding?.evidence ?? {};
 
     const now = new Date();
+    const startClock = resolveStartCandidateClock({
+      providerSourceTimestamp: current.sourceTimestamp,
+      workerNow: now,
+    });
     const confEnum =
       startDecision.confidence === 'HIGH'
         ? DetectionConfidence.HIGH
@@ -598,8 +612,10 @@ export class TripDetectionOrchestrationService {
       vehicleId,
       TripDetectionState.POSSIBLE_START,
       {
-        possibleStartAt: now,
-        lastSnapshotEvidenceAt: now,
+        possibleStartAt: startClock.candidateEventAt,
+        possibleStartEnteredAt: startClock.enteredAt,
+        lastSnapshotEvidenceAt: startClock.candidateEventAt,
+        // WORKER_TIME — operational evaluation timestamp, not physical movement.
         lastActivityAt: now,
         startOdometerKm: current.odometerKm,
         startFuelLevel: current.fuelLevelAbsolute,
@@ -613,6 +629,9 @@ export class TripDetectionOrchestrationService {
           reasons: ev.reasons,
           profile: profileStr,
           detectorPolicy: policy.detectors,
+          startCandidateClockSource: startClock.clockSource,
+          startCandidateObservedAt: startClock.candidateEventAt.toISOString(),
+          startCandidateEnteredAt: startClock.enteredAt.toISOString(),
         },
       },
     );
@@ -667,7 +686,8 @@ export class TripDetectionOrchestrationService {
       const profileStr = String(profile);
       const now = new Date();
       const startAt = det.possibleStartAt ?? now;
-      const elapsed = now.getTime() - startAt.getTime();
+      const confirmationAnchor = resolvePossibleStartConfirmationAnchor(det, now);
+      const elapsed = now.getTime() - confirmationAnchor.getTime();
 
       // Expire stale start candidates before they can be confirmed from old data.
       if (elapsed > this.CONFIRM_MAX_WAIT_MS) {
@@ -676,7 +696,7 @@ export class TripDetectionOrchestrationService {
           vehicleId,
           TripDetectionState.RESTING,
           {
-            possibleStartAt: null,
+            ...clearPossibleStartClockFields(),
             startOdometerKm: null,
             startFuelLevel: null,
             startEvSoc: null,
@@ -774,6 +794,7 @@ export class TripDetectionOrchestrationService {
                 odometerKm: telemetry.odometerKm,
                 fuelLevelAbsolute: telemetry.fuelLevelAbsolute,
                 evSoc: telemetry.evSoc,
+                sourceTimestamp: telemetry.sourceTimestamp ?? null,
               }
             : undefined,
           anomalyContext: {
@@ -882,6 +903,7 @@ export class TripDetectionOrchestrationService {
             {
               activeTripId: previousTrip.id,
               possibleStartAt: effectiveStartAt,
+              possibleStartEnteredAt: null,
               lastCoreProcessedAt: now,
               lastRouteProcessedAt: null,
               lastDrivingProcessedAt: null,
@@ -923,6 +945,7 @@ export class TripDetectionOrchestrationService {
             {
               activeTripId: trip.id,
               possibleStartAt: effectiveStartAt,
+              possibleStartEnteredAt: null,
               lastCoreProcessedAt: now,
               lastRouteProcessedAt: null,
               lastDrivingProcessedAt: null,
@@ -984,7 +1007,7 @@ export class TripDetectionOrchestrationService {
             vehicleId,
             TripDetectionState.RESTING,
             {
-              possibleStartAt: null,
+              ...clearPossibleStartClockFields(),
               startOdometerKm: null,
               startFuelLevel: null,
               startEvSoc: null,
@@ -1154,24 +1177,36 @@ export class TripDetectionOrchestrationService {
         // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
         const anchorAt =
           (det as any).lastMeaningfulMovementAt ??
-          det.lastActivityAt ??
           det.possibleStartAt ??
           now;
         const inactiveMs = now.getTime() - anchorAt.getTime();
         if (inactiveMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS) {
+          const endBoundary = resolvePossibleEndBoundaryCandidate({
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+            lastActivityAt: det.lastActivityAt,
+            workerNow: now,
+          });
           resultState = TripDetectionState.POSSIBLE_END;
           await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
-            possibleEndAt: anchorAt,
+            possibleEndAt: endBoundary.boundaryAt,
+            possibleEndEnteredAt: now,
             endValidationAttempts: 0,
             cusumValidatedAt: null,
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
+            lastEvidenceSummary: {
+              ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ??
+                {})),
+              endCandidateClockSource: endBoundary.clockSource,
+              noCoreStream: true,
+            },
           });
           this.logTripEndTimeline('possible_end_entered', {
             vehicleId,
             tripId,
-            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? anchorAt,
-            possibleEndAt: anchorAt,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? endBoundary.boundaryAt,
+            possibleEndAt: endBoundary.boundaryAt,
+            possibleEndEnteredAt: now,
           });
           await this.schedulePossibleEndCheck(
             vehicleId,
@@ -1309,7 +1344,8 @@ export class TripDetectionOrchestrationService {
                 {
                   activeTripId: splitResult.secondTripId,
                   possibleStartAt: midGap.secondStartAt,
-                  possibleEndAt: null,
+                  possibleStartEnteredAt: null,
+                  ...clearPossibleEndClockFields(),
                   endValidationAttempts: 0,
                   endDetectionMode: null,
                   endConfidence: null,
@@ -1531,6 +1567,7 @@ export class TripDetectionOrchestrationService {
       await this.prisma.vehicleTrip.update({
         where: { id: tripId },
         data: {
+          // ONGOING endTime is provisional/worker-anchored — not canonical physical boundary (R1/P5-F01).
           endTime: now,
           ...(endCoord && {
             endLatitude: endCoord.latitude,
@@ -1736,12 +1773,22 @@ export class TripDetectionOrchestrationService {
         lastDrivingProcessedAt: now,
       };
 
-      // Track the last moment meaningful movement was observed
-      const hadMeaningfulMovement =
-        effectiveContinuityDecision.verdict === 'ACTIVE' &&
-        (((effectiveContinuitySummary as any)?.motionCount ?? 0) > 0 ||
-          ((effectiveContinuitySummary as any)?.clickhouseGuard?.maxSpeedKmh ?? 0) > 5 ||
-          ((effectiveContinuitySummary as any)?.clickhouseGuard?.odometerDeltaKm ?? 0) > 0.05);
+      // Track the last moment meaningful movement was observed (EVENT_TIME only).
+      const chGuardSummary = (effectiveContinuitySummary as any)?.clickhouseGuard;
+      const impliesMovement = continuityImpliesMeaningfulMovement(
+        effectiveContinuitySummary,
+        chGuardSummary,
+      );
+      const movementEventAt =
+        effectiveContinuityDecision.verdict === 'ACTIVE' && impliesMovement
+          ? resolveLatestMeaningfulMovementEventAt({
+              recentPoints: evalCore,
+              profile,
+              continuitySummary: effectiveContinuitySummary,
+              clickhouseGuardSummary: chGuardSummary,
+              workerNow: now,
+            })
+          : null;
 
       switch (effectiveContinuityDecision.verdict) {
         case 'ACTIVE':
@@ -1752,7 +1799,7 @@ export class TripDetectionOrchestrationService {
             {
               ...stateUpdateBase,
               lastActivityAt: now,
-              ...(hadMeaningfulMovement && { lastMeaningfulMovementAt: now }),
+              ...(movementEventAt && { lastMeaningfulMovementAt: movementEventAt }),
             },
           );
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
@@ -1771,16 +1818,19 @@ export class TripDetectionOrchestrationService {
         case 'POSSIBLE_END':
           resultState = TripDetectionState.POSSIBLE_END;
           {
-            const possibleEndAt =
-              det.lastMeaningfulMovementAt ??
-              det.lastActivityAt ??
-              now;
+            const enteredAt = now;
+            const endBoundary = resolvePossibleEndBoundaryCandidate({
+              lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+              lastActivityAt: det.lastActivityAt,
+              workerNow: now,
+            });
             await this.transitionState(
               vehicleId,
               TripDetectionState.POSSIBLE_END,
               {
                 ...stateUpdateBase,
-                possibleEndAt,
+                possibleEndAt: endBoundary.boundaryAt,
+                possibleEndEnteredAt: enteredAt,
                 endValidationAttempts: 0,
                 endDetectionMode:
                   effectiveContinuityDecision.endMode ?? END_DETECTION_MODES.COMPOSITE_INACTIVITY,
@@ -1790,13 +1840,19 @@ export class TripDetectionOrchestrationService {
                     : effectiveContinuityDecision.endConfidence === 'MEDIUM'
                       ? DetectionConfidence.MEDIUM
                       : DetectionConfidence.LOW,
+                lastEvidenceSummary: {
+                  ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ??
+                    {})),
+                  endCandidateClockSource: endBoundary.clockSource,
+                },
               },
             );
             this.logTripEndTimeline('possible_end_entered', {
               vehicleId,
               tripId,
               lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
-              possibleEndAt,
+              possibleEndAt: endBoundary.boundaryAt,
+              possibleEndEnteredAt: enteredAt,
             });
           }
           await this.schedulePossibleEndCheck(
@@ -1865,8 +1921,10 @@ export class TripDetectionOrchestrationService {
 
       const profile = String(det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN);
       const now = new Date();
-      const endCandidateAt = det.possibleEndAt ?? now;
-      const elapsedMs = now.getTime() - endCandidateAt.getTime();
+      const endBoundaryAt = resolvePossibleEndBoundaryAnchor(det, now);
+      const fsmEnteredAt = resolvePossibleEndFsmDwellAnchor(det, now);
+      const fsmDwellMs = now.getTime() - fsmEnteredAt.getTime();
+      const physicalInactivityMs = now.getTime() - endBoundaryAt.getTime();
 
       // ── Step 1: Check if activity has resumed ──
       // PHASE 2 SEAM: EndContinuityDetector wraps hasActivityResumed via registry.
@@ -1892,8 +1950,13 @@ export class TripDetectionOrchestrationService {
           this.logger.log(
             `Activity resumed for ${vehicleId} [${profile}], cancelling POSSIBLE_END`,
           );
+          const resumedMovementAt = resolveLatestMeaningfulMovementEventAt({
+            recentPoints,
+            profile,
+            workerNow: now,
+          });
           await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-            possibleEndAt: null,
+            ...clearPossibleEndClockFields(),
             endDetectionMode: null,
             endConfidence: null,
             endValidationAttempts: 0,
@@ -1901,7 +1964,9 @@ export class TripDetectionOrchestrationService {
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
             lastActivityAt: now,
-            lastMeaningfulMovementAt: now,
+            ...(resumedMovementAt && {
+              lastMeaningfulMovementAt: resumedMovementAt,
+            }),
             lastCoreProcessedAt: now,
           });
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
@@ -1923,10 +1988,10 @@ export class TripDetectionOrchestrationService {
         // Fetch failure → keep waiting, do not finalize prematurely
       }
 
-      // ── Step 2: Hard timeout fallback (last resort only) ──
-      if (elapsedMs >= this.TRIP_END_TIMEOUT_MS) {
+      // ── Step 2: Hard timeout fallback (FSM dwell — last resort only) ──
+      if (fsmDwellMs >= this.TRIP_END_TIMEOUT_MS) {
         this.logger.warn(
-          `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(elapsedMs / 60000)} min), forcing finalize`,
+          `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(fsmDwellMs / 60000)} min), forcing finalize`,
         );
         resultState = TripDetectionState.RESTING;
         await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
@@ -1936,24 +2001,26 @@ export class TripDetectionOrchestrationService {
           stateAtRun: TripDetectionState.POSSIBLE_END,
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultState,
-          resultSummary: { reason: 'hard_timeout_fallback', elapsedMs, profile },
+          resultSummary: {
+            reason: 'hard_timeout_fallback',
+            fsmDwellMs,
+            physicalInactivityMs,
+            profile,
+          },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Step 3: Stability window — wait before triggering CUSUM ──
-      // Also enforces TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS: CUSUM must not run
-      // until both the stability window AND the min-inactivity guard have elapsed.
-      const cusumGateMs =
-        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST
-          ? this.TRIP_END_CH_ASSIST_STABILITY_MS
-          : Math.max(
-              this.TRIP_END_STABILITY_WINDOW_MS,
-              this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-            );
-      if (elapsedMs < cusumGateMs) {
-        // Still within stability/inactivity window — keep watching, reschedule
+      // ── Step 3: Stability / inactivity gates before CUSUM ──
+      const chEndAssist =
+        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST;
+      const stabilitySatisfied = chEndAssist
+        ? fsmDwellMs >= this.TRIP_END_CH_ASSIST_STABILITY_MS
+        : fsmDwellMs >= this.TRIP_END_STABILITY_WINDOW_MS &&
+          physicalInactivityMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS;
+
+      if (!stabilitySatisfied) {
         await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId);
         await this.logTrackingRun({
           vehicleId, organizationId,
@@ -1962,10 +2029,12 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultSummary: {
             reason: 'stability_window_waiting',
-            elapsedMs,
+            fsmDwellMs,
+            physicalInactivityMs,
             stabilityWindowMs: this.TRIP_END_STABILITY_WINDOW_MS,
             minInactivityMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-            cusumGateMs,
+            chAssistStabilityMs: this.TRIP_END_CH_ASSIST_STABILITY_MS,
+            chEndAssist,
           },
           durationMs: Date.now() - startedMs,
         });
@@ -2004,7 +2073,8 @@ export class TripDetectionOrchestrationService {
             reason: 'triggering_cusum_validation',
             attempt: attempts + 1,
             maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
-            elapsedMs,
+            fsmDwellMs,
+            physicalInactivityMs,
           },
           durationMs: Date.now() - startedMs,
         });
@@ -2029,7 +2099,10 @@ export class TripDetectionOrchestrationService {
         resultState,
         resultSummary: {
           reason: 'max_cusum_attempts_finalize',
-          attempts, elapsedMs, profile,
+          attempts,
+          fsmDwellMs,
+          physicalInactivityMs,
+          profile,
         },
         durationMs: Date.now() - startedMs,
       });
@@ -2061,7 +2134,7 @@ export class TripDetectionOrchestrationService {
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
       const now = new Date();
-      const endCandidateAt = det.possibleEndAt ?? now;
+      const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
 
       // ── CH end assist (MEDIUM): segment end already validated — skip CUSUM ──
       if (
@@ -2155,7 +2228,7 @@ export class TripDetectionOrchestrationService {
         const lastMovementAt = lastMovementStr ? new Date(lastMovementStr) : undefined;
 
         await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-          possibleEndAt: null,
+          ...clearPossibleEndClockFields(),
           endValidationAttempts: 0,
           cusumValidatedAt: null,
           cusumSegmentStart: null,
@@ -2478,8 +2551,8 @@ export class TripDetectionOrchestrationService {
 
       await this.transitionState(vehicleId, TripDetectionState.RESTING, {
         activeTripId: null,
-        possibleStartAt: null,
-        possibleEndAt: null,
+        ...clearPossibleStartClockFields(),
+        ...clearPossibleEndClockFields(),
         lastActivityAt: restWindowAnchorAt,
         lastMeaningfulMovementAt: null,
         lastCoreProcessedAt: null,
@@ -2597,7 +2670,7 @@ export class TripDetectionOrchestrationService {
     now: Date;
   }): Promise<void> {
     await this.transitionState(params.vehicleId, TripDetectionState.ACTIVE_TRIP, {
-      possibleEndAt: null,
+      ...clearPossibleEndClockFields(),
       endDetectionMode: null,
       endConfidence: null,
       endValidationAttempts: 0,
@@ -2605,7 +2678,6 @@ export class TripDetectionOrchestrationService {
       cusumSegmentStart: null,
       cusumSegmentEnd: null,
       lastActivityAt: params.now,
-      lastMeaningfulMovementAt: params.now,
       lastCoreProcessedAt: params.now,
     });
     await this.scheduleActiveTick(
@@ -2842,6 +2914,7 @@ export class TripDetectionOrchestrationService {
 
     await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
       possibleEndAt: detectedEndAt,
+      possibleEndEnteredAt: params.now,
       endValidationAttempts: 0,
       cusumValidatedAt: null,
       cusumSegmentStart: params.tripStartAt,
@@ -3231,6 +3304,7 @@ export class TripDetectionOrchestrationService {
       tripId?: string | null;
       lastMeaningfulMovementAt?: Date | null;
       possibleEndAt?: Date | null;
+      possibleEndEnteredAt?: Date | null;
       endValidationStartedAt?: Date | null;
       finalizedAt?: Date | null;
       endSource?: string;
@@ -3251,6 +3325,7 @@ export class TripDetectionOrchestrationService {
         (input.tripId ? ` trip=${input.tripId}` : '') +
         ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
         ` possibleEndAt=${fmt(input.possibleEndAt)}` +
+        ` possibleEndEnteredAt=${fmt(input.possibleEndEnteredAt)}` +
         ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
         ` finalizedAt=${fmt(input.finalizedAt)}` +
         (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +

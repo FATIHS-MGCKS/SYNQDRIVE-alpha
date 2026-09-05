@@ -13603,7 +13603,9 @@ model VehicleTripDetectionState {
 
   activeTripId           String?   @map("active_trip_id")
   possibleStartAt        DateTime? @map("possible_start_at")
+  possibleStartEnteredAt DateTime? @map("possible_start_entered_at")
   possibleEndAt          DateTime? @map("possible_end_at")
+  possibleEndEnteredAt   DateTime? @map("possible_end_entered_at")
   lastActivityAt         DateTime? @map("last_activity_at")
   lastSnapshotEvidenceAt DateTime? @map("last_snapshot_evidence_at")
 
