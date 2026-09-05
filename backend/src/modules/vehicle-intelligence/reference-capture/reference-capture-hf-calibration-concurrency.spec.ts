@@ -8,6 +8,7 @@ import {
   requestHfCalibrationPhase,
   resolveEffectiveHfPollIntervalMs,
   switchHfCalibrationPhase,
+  HfCalibrationPhaseChangePendingError,
 } from './reference-capture-hf-calibration-phase.policy';
 import {
   isHfHistoricalPollDue,
@@ -208,7 +209,7 @@ describe('reference-capture-hf-calibration-concurrency (DI-EV-0035C.1d)', () => 
     expect(released.activePhase?.effectivePollIntervalMs).toBe(20_000);
   });
 
-  it('4) two rapid different phase requests — latest pending wins deterministically', () => {
+  it('4) different pending phase request is rejected with conflict (not superseded)', () => {
     const phase10 = switchHfCalibrationPhase({
       existing: null,
       vehicleId,
@@ -225,18 +226,17 @@ describe('reference-capture-hf-calibration-concurrency (DI-EV-0035C.1d)', () => 
       nowMs: t0 + 1_000,
       idFactory,
     }).series;
-    const latest = requestHfCalibrationPhase({
-      existing: after20,
-      vehicleId,
-      tokenId,
-      effectivePollIntervalMs: 30_000,
-      nowMs: t0 + 1_100,
-      idFactory,
-    }).series;
-    expect(latest.pendingPhaseRequest?.effectivePollIntervalMs).toBe(30_000);
-
-    const released = activateAtBoundary(latest, 30_000, null, t0 + 10_000);
-    expect(released.activePhase?.effectivePollIntervalMs).toBe(30_000);
+    expect(() =>
+      requestHfCalibrationPhase({
+        existing: after20,
+        vehicleId,
+        tokenId,
+        effectivePollIntervalMs: 30_000,
+        nowMs: t0 + 1_100,
+        idFactory,
+      }),
+    ).toThrow(HfCalibrationPhaseChangePendingError);
+    expect(after20.pendingPhaseRequest?.effectivePollIntervalMs).toBe(20_000);
   });
 
   it('5) LEGACY token cannot activate calibration phase', () => {
@@ -445,16 +445,23 @@ describe('reference-capture-hf-calibration-concurrency (DI-EV-0035C.1d)', () => 
     const counters = accumulatePhaseQueryMetrics(
       null,
       {
-        status: 'SUCCESS',
-        resultBucketCount: 4,
-        duplicateBucketCount: 1,
-        revisionBucketCount: 0,
-        recoveredLateBucketCount: 0,
-        uniqueTemporalBucketStartCount: 4,
-        maxIntraResponseTemporalGapMs: 1000,
-        windowClassification: 'PHASE_NATIVE',
+        record: {
+          status: 'SUCCESS',
+          resultBucketCount: 4,
+          duplicateBucketCount: 1,
+          revisionBucketCount: 0,
+          recoveredLateBucketCount: 0,
+          maxIntraResponseTemporalGapMs: 1000,
+          windowClassification: 'PHASE_NATIVE',
+          queryOrigin: 'FAST_LOOP',
+        },
+        newBucketCount: 3,
+        temporalBucketStartTimestamps: [
+          '2026-09-01T10:00:01.000Z',
+          '2026-09-01T10:00:02.000Z',
+          '2026-09-01T10:00:03.000Z',
+        ],
       },
-      3,
       phaseId,
     );
     const pending20 = requestHfCalibrationPhase({
@@ -471,6 +478,7 @@ describe('reference-capture-hf-calibration-concurrency (DI-EV-0035C.1d)', () => 
     expect(summary.providerRequestCount).toBe(1);
     expect(summary.providerBucketCount).toBe(4);
     expect(summary.newBucketCount).toBe(3);
+    expect(summary.nativeUniqueTemporalBucketStartCount).toBe(3);
     expect(summary.effectiveConfig.policyMode).toBe('V2');
     expect(summary.phaseEndedAt).toBe(new Date(t0 + 10_000).toISOString());
   });

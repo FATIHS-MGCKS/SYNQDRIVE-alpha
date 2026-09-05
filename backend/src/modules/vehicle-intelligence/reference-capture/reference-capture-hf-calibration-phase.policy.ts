@@ -40,6 +40,7 @@ export type HfCalibrationPhaseSummary = {
   phaseEndedAt: string;
   durationMs: number;
   effectiveConfig: HfCalibrationEffectiveConfigSnapshot;
+  /** Primary FAST_LOOP + PHASE_NATIVE comparison metrics */
   providerRequestCount: number;
   providerSuccessCount: number;
   providerZeroResultCount: number;
@@ -49,25 +50,44 @@ export type HfCalibrationPhaseSummary = {
   duplicateBucketCount: number;
   revisionBucketCount: number;
   recoveredLateBucketCount: number;
-  transitionWindowCount: number;
-  uniqueTemporalBucketStartCount: number;
+  nativeUniqueTemporalBucketStartCount: number;
+  nativeMaxTemporalGapMs: number | null;
+  nativeMedianTemporalCadenceMs: number | null;
+  nativeP90TemporalCadenceMs: number | null;
   maxIntraResponseTemporalGapMs: number | null;
+  /** Diagnostic stratification */
+  allRequestCount: number;
+  transitionWindowCount: number;
+  transitionProviderBucketCount: number;
+  recoverySweepRequestCount: number;
+  /** @deprecated use nativeUniqueTemporalBucketStartCount */
+  uniqueTemporalBucketStartCount: number;
 };
 
 export type HfCalibrationPhaseRuntimeCounters = {
   calibrationPhaseId: string;
-  providerRequestCount: number;
-  providerSuccessCount: number;
-  providerZeroResultCount: number;
-  providerErrorCount: number;
-  providerBucketCount: number;
-  newBucketCount: number;
-  duplicateBucketCount: number;
-  revisionBucketCount: number;
+  allRequestCount: number;
+  nativeFastLoopRequestCount: number;
+  nativeFastLoopProviderSuccessCount: number;
+  nativeFastLoopProviderZeroResultCount: number;
+  nativeFastLoopProviderErrorCount: number;
+  nativeFastLoopProviderBucketCount: number;
+  nativeFastLoopNewBucketCount: number;
+  nativeFastLoopDuplicateBucketCount: number;
+  nativeFastLoopRevisionBucketCount: number;
+  transitionRequestCount: number;
+  transitionProviderBucketCount: number;
+  recoverySweepRequestCount: number;
   recoveredLateBucketCount: number;
   transitionWindowCount: number;
-  uniqueTemporalBucketStarts: string[];
-  maxIntraResponseTemporalGapMs: number | null;
+  nativeUniqueTemporalBucketStarts: string[];
+  nativeMaxIntraResponseTemporalGapMs: number | null;
+};
+
+export type HfCalibrationCancelledPhaseRequest = HfCalibrationPendingPhaseRequest & {
+  cancelledAt: string;
+  cancelReason: string;
+  neverEffective: true;
 };
 
 export type HfCalibrationPendingPhaseRequest = {
@@ -94,6 +114,8 @@ export type HfCalibrationSeriesState = {
   completedPhases: HfCalibrationPhaseRecord[];
   completedPhaseSummaries: HfCalibrationPhaseSummary[];
   pendingPhaseRequest: HfCalibrationPendingPhaseRequest | null;
+  cancelledPhaseRequests?: HfCalibrationCancelledPhaseRequest[];
+  terminalFinalizationAt: string | null;
   lastPhaseBoundaryAt: string | null;
   seriesStartedAt: string;
   controlPlaneRevision: number;
@@ -111,6 +133,14 @@ export type HfCalibrationPhaseContext = {
 
 export type HfCalibrationPhaseActivationStatus = 'REQUESTED' | 'EFFECTIVE';
 
+export type HfCalibrationPhaseRequestResult = {
+  series: HfCalibrationSeriesState;
+  request: HfCalibrationPendingPhaseRequest;
+  deduplicated: boolean;
+  activationStatus: HfCalibrationPhaseActivationStatus;
+  controlPlaneRevision: number;
+};
+
 export function normalizeHfCalibrationSeriesState(
   raw: Partial<HfCalibrationSeriesState> | null | undefined,
 ): HfCalibrationSeriesState | null {
@@ -126,6 +156,8 @@ export function normalizeHfCalibrationSeriesState(
     completedPhases: (raw.completedPhases ?? []).map((p) => ({ ...p })),
     completedPhaseSummaries: (raw.completedPhaseSummaries ?? []).map((s) => ({ ...s })),
     pendingPhaseRequest: raw.pendingPhaseRequest ? { ...raw.pendingPhaseRequest } : null,
+    cancelledPhaseRequests: (raw.cancelledPhaseRequests ?? []).map((c) => ({ ...c })),
+    terminalFinalizationAt: raw.terminalFinalizationAt ?? null,
     lastPhaseBoundaryAt: raw.lastPhaseBoundaryAt ?? null,
     seriesStartedAt: raw.seriesStartedAt,
     controlPlaneRevision: raw.controlPlaneRevision ?? 0,
@@ -141,6 +173,20 @@ export function assertHfCalibrationPhaseActivationAllowed(
   }
   if (hfPolicyBase.mode === 'V2' && hfPolicyBase.canaryOnly && hfPolicyBase.canaryTokenIds.length === 0) {
     throw new Error('HF calibration blocked: canary-only mode with empty allowlist (fail-closed)');
+  }
+}
+
+export class HfCalibrationPhaseChangePendingError extends Error {
+  readonly code = 'CALIBRATION_PHASE_CHANGE_PENDING';
+
+  constructor(
+    public readonly pendingIntervalMs: number,
+    public readonly requestedIntervalMs: number,
+  ) {
+    super(
+      `Calibration phase change already pending (${pendingIntervalMs}ms); cannot request ${requestedIntervalMs}ms`,
+    );
+    this.name = 'HfCalibrationPhaseChangePendingError';
   }
 }
 
@@ -179,6 +225,13 @@ export function requestHfCalibrationPhase(args: {
     };
   }
 
+  if (args.existing?.pendingPhaseRequest) {
+    throw new HfCalibrationPhaseChangePendingError(
+      args.existing.pendingPhaseRequest.effectivePollIntervalMs,
+      intervalMs,
+    );
+  }
+
   const base: HfCalibrationSeriesState = args.existing ?? {
     calibrationSeriesId: newId(),
     vehicleId: args.vehicleId,
@@ -188,6 +241,8 @@ export function requestHfCalibrationPhase(args: {
     completedPhases: [],
     completedPhaseSummaries: [],
     pendingPhaseRequest: null,
+    cancelledPhaseRequests: [],
+    terminalFinalizationAt: null,
     lastPhaseBoundaryAt: null,
     seriesStartedAt: requestedAt,
     controlPlaneRevision: 0,
@@ -228,18 +283,63 @@ export function buildEffectiveConfigSnapshot(args: {
 function emptyPhaseCounters(phaseId: string): HfCalibrationPhaseRuntimeCounters {
   return {
     calibrationPhaseId: phaseId,
-    providerRequestCount: 0,
-    providerSuccessCount: 0,
-    providerZeroResultCount: 0,
-    providerErrorCount: 0,
-    providerBucketCount: 0,
-    newBucketCount: 0,
-    duplicateBucketCount: 0,
-    revisionBucketCount: 0,
+    allRequestCount: 0,
+    nativeFastLoopRequestCount: 0,
+    nativeFastLoopProviderSuccessCount: 0,
+    nativeFastLoopProviderZeroResultCount: 0,
+    nativeFastLoopProviderErrorCount: 0,
+    nativeFastLoopProviderBucketCount: 0,
+    nativeFastLoopNewBucketCount: 0,
+    nativeFastLoopDuplicateBucketCount: 0,
+    nativeFastLoopRevisionBucketCount: 0,
+    transitionRequestCount: 0,
+    transitionProviderBucketCount: 0,
+    recoverySweepRequestCount: 0,
     recoveredLateBucketCount: 0,
     transitionWindowCount: 0,
-    uniqueTemporalBucketStarts: [],
-    maxIntraResponseTemporalGapMs: null,
+    nativeUniqueTemporalBucketStarts: [],
+    nativeMaxIntraResponseTemporalGapMs: null,
+  };
+}
+
+export function computeNativeTemporalCadenceStats(timestamps: string[]): {
+  nativeUniqueTemporalBucketStartCount: number;
+  nativeMaxTemporalGapMs: number | null;
+  nativeMedianTemporalCadenceMs: number | null;
+  nativeP90TemporalCadenceMs: number | null;
+} {
+  const sorted = [...new Set(timestamps)]
+    .map((t) => Date.parse(t))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) {
+    return {
+      nativeUniqueTemporalBucketStartCount: 0,
+      nativeMaxTemporalGapMs: null,
+      nativeMedianTemporalCadenceMs: null,
+      nativeP90TemporalCadenceMs: null,
+    };
+  }
+  if (sorted.length === 1) {
+    return {
+      nativeUniqueTemporalBucketStartCount: 1,
+      nativeMaxTemporalGapMs: null,
+      nativeMedianTemporalCadenceMs: null,
+      nativeP90TemporalCadenceMs: null,
+    };
+  }
+  const gaps: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    gaps.push(sorted[i] - sorted[i - 1]);
+  }
+  const sortedGaps = [...gaps].sort((a, b) => a - b);
+  const median = sortedGaps[Math.floor(sortedGaps.length / 2)];
+  const p90Idx = Math.min(sortedGaps.length - 1, Math.ceil(sortedGaps.length * 0.9) - 1);
+  return {
+    nativeUniqueTemporalBucketStartCount: sorted.length,
+    nativeMaxTemporalGapMs: Math.max(...gaps),
+    nativeMedianTemporalCadenceMs: median,
+    nativeP90TemporalCadenceMs: sortedGaps[p90Idx],
   };
 }
 
@@ -250,7 +350,7 @@ export function finalizePhaseSummary(args: {
 }): HfCalibrationPhaseSummary {
   const startedMs = Date.parse(args.phase.phaseStartedAt);
   const endedMs = args.phaseEndedAtMs;
-  const uniqueStarts = new Set(args.counters.uniqueTemporalBucketStarts);
+  const temporal = computeNativeTemporalCadenceStats(args.counters.nativeUniqueTemporalBucketStarts);
   return {
     calibrationPhaseId: args.phase.calibrationPhaseId,
     phaseSequence: args.phase.phaseSequence,
@@ -259,18 +359,25 @@ export function finalizePhaseSummary(args: {
     phaseEndedAt: new Date(endedMs).toISOString(),
     durationMs: Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0,
     effectiveConfig: args.phase.effectiveConfig!,
-    providerRequestCount: args.counters.providerRequestCount,
-    providerSuccessCount: args.counters.providerSuccessCount,
-    providerZeroResultCount: args.counters.providerZeroResultCount,
-    providerErrorCount: args.counters.providerErrorCount,
-    providerBucketCount: args.counters.providerBucketCount,
-    newBucketCount: args.counters.newBucketCount,
-    duplicateBucketCount: args.counters.duplicateBucketCount,
-    revisionBucketCount: args.counters.revisionBucketCount,
+    providerRequestCount: args.counters.nativeFastLoopRequestCount,
+    providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+    providerZeroResultCount: args.counters.nativeFastLoopProviderZeroResultCount,
+    providerErrorCount: args.counters.nativeFastLoopProviderErrorCount,
+    providerBucketCount: args.counters.nativeFastLoopProviderBucketCount,
+    newBucketCount: args.counters.nativeFastLoopNewBucketCount,
+    duplicateBucketCount: args.counters.nativeFastLoopDuplicateBucketCount,
+    revisionBucketCount: args.counters.nativeFastLoopRevisionBucketCount,
     recoveredLateBucketCount: args.counters.recoveredLateBucketCount,
+    nativeUniqueTemporalBucketStartCount: temporal.nativeUniqueTemporalBucketStartCount,
+    nativeMaxTemporalGapMs: temporal.nativeMaxTemporalGapMs,
+    nativeMedianTemporalCadenceMs: temporal.nativeMedianTemporalCadenceMs,
+    nativeP90TemporalCadenceMs: temporal.nativeP90TemporalCadenceMs,
+    maxIntraResponseTemporalGapMs: args.counters.nativeMaxIntraResponseTemporalGapMs,
+    allRequestCount: args.counters.allRequestCount,
     transitionWindowCount: args.counters.transitionWindowCount,
-    uniqueTemporalBucketStartCount: uniqueStarts.size,
-    maxIntraResponseTemporalGapMs: args.counters.maxIntraResponseTemporalGapMs,
+    transitionProviderBucketCount: args.counters.transitionProviderBucketCount,
+    recoverySweepRequestCount: args.counters.recoverySweepRequestCount,
+    uniqueTemporalBucketStartCount: temporal.nativeUniqueTemporalBucketStartCount,
   };
 }
 
@@ -360,6 +467,8 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
     completedPhases: [],
     completedPhaseSummaries: [],
     pendingPhaseRequest: null,
+    cancelledPhaseRequests: [],
+    terminalFinalizationAt: null,
     lastPhaseBoundaryAt: null,
     seriesStartedAt: effectiveAtIso,
     controlPlaneRevision: 0,
@@ -496,45 +605,188 @@ export function mergeCycleReleaseAcquisitionState(args: {
 
 export function accumulatePhaseQueryMetrics(
   counters: HfCalibrationPhaseRuntimeCounters | null,
-  record: Pick<
-    HfQueryProvenanceRecord,
-    | 'status'
-    | 'resultBucketCount'
-    | 'duplicateBucketCount'
-    | 'revisionBucketCount'
-    | 'recoveredLateBucketCount'
-    | 'uniqueTemporalBucketStartCount'
-    | 'maxIntraResponseTemporalGapMs'
-    | 'windowClassification'
-  >,
-  newBucketCount: number,
+  input: {
+    record: Pick<
+      HfQueryProvenanceRecord,
+      | 'status'
+      | 'resultBucketCount'
+      | 'duplicateBucketCount'
+      | 'revisionBucketCount'
+      | 'recoveredLateBucketCount'
+      | 'maxIntraResponseTemporalGapMs'
+      | 'windowClassification'
+      | 'queryOrigin'
+    >;
+    newBucketCount: number;
+    temporalBucketStartTimestamps: string[];
+  },
   phaseId: string,
 ): HfCalibrationPhaseRuntimeCounters {
   const base = counters?.calibrationPhaseId === phaseId ? counters : emptyPhaseCounters(phaseId);
-  const uniqueStarts = new Set(base.uniqueTemporalBucketStarts);
-  if (record.uniqueTemporalBucketStartCount != null && record.uniqueTemporalBucketStartCount > 0) {
-    uniqueStarts.add(`${record.uniqueTemporalBucketStartCount}:${base.providerRequestCount}`);
+  const isTransition = input.record.windowClassification === 'TRANSITION_WINDOW';
+  const isRecoverySweep = input.record.queryOrigin === 'RECOVERY_SWEEP';
+  const isNativeFastLoop = !isTransition && !isRecoverySweep;
+
+  const nativeStarts = new Set(base.nativeUniqueTemporalBucketStarts);
+  if (isNativeFastLoop) {
+    for (const ts of input.temporalBucketStartTimestamps) {
+      if (ts) nativeStarts.add(ts);
+    }
   }
-  const maxGap =
-    record.maxIntraResponseTemporalGapMs != null
-      ? Math.max(base.maxIntraResponseTemporalGapMs ?? 0, record.maxIntraResponseTemporalGapMs)
-      : base.maxIntraResponseTemporalGapMs;
+
+  const maxIntra =
+    isNativeFastLoop && input.record.maxIntraResponseTemporalGapMs != null
+      ? Math.max(
+          base.nativeMaxIntraResponseTemporalGapMs ?? 0,
+          input.record.maxIntraResponseTemporalGapMs,
+        )
+      : base.nativeMaxIntraResponseTemporalGapMs;
 
   return {
     ...base,
-    providerRequestCount: base.providerRequestCount + 1,
-    providerSuccessCount: base.providerSuccessCount + (record.status === 'SUCCESS' ? 1 : 0),
-    providerZeroResultCount: base.providerZeroResultCount + (record.status === 'ZERO_RESULT' ? 1 : 0),
-    providerErrorCount: base.providerErrorCount + (record.status === 'PROVIDER_ERROR' ? 1 : 0),
-    providerBucketCount: base.providerBucketCount + record.resultBucketCount,
-    newBucketCount: base.newBucketCount + newBucketCount,
-    duplicateBucketCount: base.duplicateBucketCount + (record.duplicateBucketCount ?? 0),
-    revisionBucketCount: base.revisionBucketCount + (record.revisionBucketCount ?? 0),
-    recoveredLateBucketCount: base.recoveredLateBucketCount + (record.recoveredLateBucketCount ?? 0),
-    transitionWindowCount:
-      base.transitionWindowCount + (record.windowClassification === 'TRANSITION_WINDOW' ? 1 : 0),
-    uniqueTemporalBucketStarts: [...uniqueStarts],
-    maxIntraResponseTemporalGapMs: maxGap,
+    allRequestCount: base.allRequestCount + 1,
+    nativeFastLoopRequestCount:
+      base.nativeFastLoopRequestCount + (isNativeFastLoop ? 1 : 0),
+    nativeFastLoopProviderSuccessCount:
+      base.nativeFastLoopProviderSuccessCount +
+      (isNativeFastLoop && input.record.status === 'SUCCESS' ? 1 : 0),
+    nativeFastLoopProviderZeroResultCount:
+      base.nativeFastLoopProviderZeroResultCount +
+      (isNativeFastLoop && input.record.status === 'ZERO_RESULT' ? 1 : 0),
+    nativeFastLoopProviderErrorCount:
+      base.nativeFastLoopProviderErrorCount +
+      (isNativeFastLoop && input.record.status === 'PROVIDER_ERROR' ? 1 : 0),
+    nativeFastLoopProviderBucketCount:
+      base.nativeFastLoopProviderBucketCount +
+      (isNativeFastLoop ? input.record.resultBucketCount : 0),
+    nativeFastLoopNewBucketCount:
+      base.nativeFastLoopNewBucketCount + (isNativeFastLoop ? input.newBucketCount : 0),
+    nativeFastLoopDuplicateBucketCount:
+      base.nativeFastLoopDuplicateBucketCount +
+      (isNativeFastLoop ? (input.record.duplicateBucketCount ?? 0) : 0),
+    nativeFastLoopRevisionBucketCount:
+      base.nativeFastLoopRevisionBucketCount +
+      (isNativeFastLoop ? (input.record.revisionBucketCount ?? 0) : 0),
+    transitionRequestCount: base.transitionRequestCount + (isTransition ? 1 : 0),
+    transitionProviderBucketCount:
+      base.transitionProviderBucketCount + (isTransition ? input.record.resultBucketCount : 0),
+    recoverySweepRequestCount: base.recoverySweepRequestCount + (isRecoverySweep ? 1 : 0),
+    recoveredLateBucketCount:
+      base.recoveredLateBucketCount + (input.record.recoveredLateBucketCount ?? 0),
+    transitionWindowCount: base.transitionWindowCount + (isTransition ? 1 : 0),
+    nativeUniqueTemporalBucketStarts: [...nativeStarts],
+    nativeMaxIntraResponseTemporalGapMs: maxIntra,
+  };
+}
+
+export type TerminalCalibrationFinalizationReason =
+  | 'STOP'
+  | 'ABORT'
+  | 'FAILURE'
+  | 'MAX_DURATION';
+
+export function finalizeTerminalCalibrationSeries(args: {
+  series: HfCalibrationSeriesState | null;
+  counters: HfCalibrationPhaseRuntimeCounters | null;
+  terminalAtMs: number;
+  reason: TerminalCalibrationFinalizationReason;
+}): {
+  series: HfCalibrationSeriesState | null;
+  applied: boolean;
+  terminalSummary: HfCalibrationPhaseSummary | null;
+} {
+  if (!args.series) {
+    return { series: null, applied: false, terminalSummary: null };
+  }
+
+  if (args.series.terminalFinalizationAt) {
+    return { series: args.series, applied: false, terminalSummary: null };
+  }
+
+  const terminalAtIso = new Date(args.terminalAtMs).toISOString();
+  let cancelledPhaseRequests = [...(args.series.cancelledPhaseRequests ?? [])];
+  let pendingPhaseRequest = args.series.pendingPhaseRequest;
+
+  if (pendingPhaseRequest) {
+    cancelledPhaseRequests.push({
+      ...pendingPhaseRequest,
+      cancelledAt: terminalAtIso,
+      cancelReason: args.reason,
+      neverEffective: true,
+    });
+    pendingPhaseRequest = null;
+  }
+
+  if (!args.series.activePhase) {
+    if (cancelledPhaseRequests.length === (args.series.cancelledPhaseRequests ?? []).length) {
+      return { series: args.series, applied: false, terminalSummary: null };
+    }
+    return {
+      series: {
+        ...args.series,
+        pendingPhaseRequest: null,
+        cancelledPhaseRequests,
+        terminalFinalizationAt: terminalAtIso,
+        controlPlaneRevision: args.series.controlPlaneRevision + 1,
+      },
+      applied: true,
+      terminalSummary: null,
+    };
+  }
+
+  const alreadySummarized = args.series.completedPhaseSummaries.some(
+    (s) => s.calibrationPhaseId === args.series!.activePhase!.calibrationPhaseId,
+  );
+  if (alreadySummarized) {
+    return {
+      series: {
+        ...args.series,
+        activePhase: null,
+        pendingPhaseRequest: null,
+        cancelledPhaseRequests,
+        terminalFinalizationAt: terminalAtIso,
+        controlPlaneRevision: args.series.controlPlaneRevision + 1,
+      },
+      applied: false,
+      terminalSummary: null,
+    };
+  }
+
+  const countersToUse =
+    args.counters?.calibrationPhaseId === args.series.activePhase.calibrationPhaseId
+      ? args.counters
+      : emptyPhaseCounters(args.series.activePhase.calibrationPhaseId);
+
+  const closedPhase: HfCalibrationPhaseRecord = {
+    ...args.series.activePhase,
+    phaseEndedAt: terminalAtIso,
+  };
+  const completedPhases = [...args.series.completedPhases, closedPhase];
+  const terminalSummary = closedPhase.effectiveConfig
+    ? finalizePhaseSummary({
+        phase: closedPhase,
+        counters: countersToUse,
+        phaseEndedAtMs: args.terminalAtMs,
+      })
+    : null;
+  const completedPhaseSummaries = terminalSummary
+    ? [...args.series.completedPhaseSummaries, terminalSummary]
+    : args.series.completedPhaseSummaries;
+
+  return {
+    series: {
+      ...args.series,
+      activePhase: null,
+      completedPhases,
+      completedPhaseSummaries,
+      pendingPhaseRequest: null,
+      cancelledPhaseRequests,
+      terminalFinalizationAt: terminalAtIso,
+      lastPhaseBoundaryAt: terminalAtIso,
+      controlPlaneRevision: args.series.controlPlaneRevision + 1,
+    },
+    applied: true,
+    terminalSummary,
   };
 }
 

@@ -170,6 +170,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-04T19:55:00.000Z',
   },
   {
+    id: 'refuel-g22-production-post-cutover-t60-2026-09-04',
+    version: '4.9.1062b',
+    title: 'G2.2 physical-refuel V2 production post-cutover T+60 audit',
+    summary: [
+      'Independent read-only production audit ~T+122m after G2.2 cutover (no mutation, no synthetic REFUEL).',
+      'Both replicas healthy on deploy SHA 43c9ae6c; V2 + recovery flags true; cutover timestamp matches.',
+      'Zero post-cutover REFUEL events, reconciliation rows, and physical-refuel errors since activation.',
+      'Recovery backlog scans healthy on both replicas; BullMQ queue clean (failed=0); no legacy bypass or segment-start authority.',
+      'PRODUCTION_RUNTIME_STABILITY=PASS; PRODUCTION_REFUEL_V2_OBSERVED=NO — business path pending natural REFUEL.',
+    ],
+    reason: 'Mandatory G2.2 post-cutover operational evidence gate without replay or synthetic production events.',
+    previousBehavior:
+      'Cutover audit at T+0 confirmed deploy and flag activation; no independent T+60 stability verification yet.',
+    details:
+      'docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md; FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001; EED-EV-0039.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T20:45:00.000Z',
+  },
+  {
     id: 'refuel-g22-production-cutover-2026-09-04',
     version: '4.9.1061',
     title: 'G2.2 physical-refuel V2 direct production cutover',

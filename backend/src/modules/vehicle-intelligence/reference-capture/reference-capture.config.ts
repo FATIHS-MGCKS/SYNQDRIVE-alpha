@@ -68,6 +68,15 @@ export class ReferenceCaptureConfig {
     );
   }
 
+  /** Bounded wait for active acquisition cycle before terminal calibration finalization. */
+  getStopQuiescenceTimeoutMs(): number {
+    return this.configService.get<number>('referenceCapture.stopQuiescenceTimeoutMs') ?? 120_000;
+  }
+
+  getStopQuiescencePollIntervalMs(): number {
+    return this.configService.get<number>('referenceCapture.stopQuiescencePollIntervalMs') ?? 250;
+  }
+
   /** Hard invariant: reference capture must never affect live trip FSM. */
   isTripDetectionAffected(): boolean {
     return false;

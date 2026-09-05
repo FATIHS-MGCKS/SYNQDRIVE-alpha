@@ -355,8 +355,11 @@ export class ReferenceCaptureAcquisitionService {
           if (hfCalibrationSeries?.activePhase) {
             hfCalibrationActiveCounters = accumulatePhaseQueryMetrics(
               hfCalibrationActiveCounters,
-              hfResult.queryProvenanceRecord,
-              hfResult.newPhysicalSampleFingerprints.length,
+              {
+                record: hfResult.queryProvenanceRecord,
+                newBucketCount: hfResult.newPhysicalSampleFingerprints.length,
+                temporalBucketStartTimestamps: hfResult.temporalBucketStartTimestamps,
+              },
               hfCalibrationSeries.activePhase.calibrationPhaseId,
             );
           }
@@ -426,8 +429,11 @@ export class ReferenceCaptureAcquisitionService {
               if (hfCalibrationSeries?.activePhase) {
                 hfCalibrationActiveCounters = accumulatePhaseQueryMetrics(
                   hfCalibrationActiveCounters,
-                  sweepResult.queryProvenanceRecord,
-                  sweepResult.newPhysicalSampleFingerprints.length,
+                  {
+                    record: sweepResult.queryProvenanceRecord,
+                    newBucketCount: sweepResult.newPhysicalSampleFingerprints.length,
+                    temporalBucketStartTimestamps: sweepResult.temporalBucketStartTimestamps,
+                  },
                   hfCalibrationSeries.activePhase.calibrationPhaseId,
                 );
               }
@@ -640,6 +646,7 @@ export class ReferenceCaptureAcquisitionService {
     coverageAdvanceEligible: boolean;
     queryProvenanceRecord: HfQueryProvenanceRecord | null;
     observabilitySnapshot: Record<string, unknown> | null;
+    temporalBucketStartTimestamps: string[];
   }> {
     const requestStartedAt = new Date();
     const queryWindow =
@@ -683,6 +690,7 @@ export class ReferenceCaptureAcquisitionService {
       coverageAdvanceEligible: false,
       queryProvenanceRecord: null,
       observabilitySnapshot: null,
+      temporalBucketStartTimestamps: [] as string[],
     };
     if (!isValidHfQueryWindow(queryWindow)) return emptyResult;
     if (!query) return emptyResult;
@@ -1112,6 +1120,7 @@ export class ReferenceCaptureAcquisitionService {
       coverageAdvanceEligible: providerQuerySucceeded,
       queryProvenanceRecord: provenanceRecord,
       observabilitySnapshot,
+      temporalBucketStartTimestamps: bucketTimestamps,
     };
   }
 

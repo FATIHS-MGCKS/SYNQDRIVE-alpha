@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -24,9 +25,10 @@ import { ReferenceCaptureReadinessService } from './reference-capture-readiness.
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
 import {
   assertHfCalibrationPhaseActivationAllowed,
+  HfCalibrationPhaseChangePendingError,
   isRecognizedCalibrationPollIntervalMs,
-  requestHfCalibrationPhase,
 } from './reference-capture-hf-calibration-phase.policy';
+import type { TerminalCalibrationFinalizationReason } from './reference-capture-hf-calibration-phase.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
   CreateReferenceCaptureSessionInput,
@@ -348,10 +350,13 @@ export class ReferenceCaptureSessionService {
     await this.runnerService.cancelPendingCycleJob(organizationId, sessionId);
     await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
 
+    await this.awaitCycleQuiescenceAndFinalizeCalibration(organizationId, sessionId, 'STOP');
+
     try {
       await this.observationWriter.flush(sessionId);
     } catch (error) {
       if (error instanceof ReferenceCapturePersistenceError) {
+        await this.finalizeTerminalCalibrationOnFailure(organizationId, sessionId, 'FAILURE');
         const failed = await this.sessionRepository.updateStatus(
           organizationId,
           sessionId,
@@ -406,6 +411,13 @@ export class ReferenceCaptureSessionService {
     await this.runnerService.cancelPendingCycleJob(organizationId, sessionId);
     await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
 
+    if (
+      session.status === ReferenceCaptureSessionStatus.RECORDING ||
+      session.status === ReferenceCaptureSessionStatus.STOPPING
+    ) {
+      await this.awaitCycleQuiescenceAndFinalizeCalibration(organizationId, sessionId, 'ABORT');
+    }
+
     try {
       await this.observationWriter.flush(sessionId);
     } catch {
@@ -459,12 +471,6 @@ export class ReferenceCaptureSessionService {
     body: { effectivePollIntervalMs: number },
   ) {
     this.assertEnabled();
-    const session = await this.requireSession(organizationId, sessionId);
-    if (session.status !== ReferenceCaptureSessionStatus.RECORDING) {
-      throw new BadRequestException(
-        `HF calibration phase switch requires RECORDING status (current: ${session.status})`,
-      );
-    }
     const intervalMs = body.effectivePollIntervalMs;
     if (!Number.isFinite(intervalMs)) {
       throw new BadRequestException('effectivePollIntervalMs must be a finite number');
@@ -475,6 +481,7 @@ export class ReferenceCaptureSessionService {
       );
     }
 
+    const session = await this.requireSession(organizationId, sessionId);
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: session.vehicleId, organizationId },
       select: { dimoVehicle: { select: { tokenId: true } } },
@@ -494,52 +501,87 @@ export class ReferenceCaptureSessionService {
       );
     }
 
-    const state = parseAcquisitionState(session.acquisitionStateJson);
-    let transition: ReturnType<typeof requestHfCalibrationPhase>;
     try {
-      transition = requestHfCalibrationPhase({
-        existing: state.hfCalibrationSeries ?? null,
+      const atomic = await this.sessionRepository.requestHfCalibrationPhaseAtomic({
+        organizationId,
+        sessionId,
         vehicleId: session.vehicleId,
         tokenId,
         effectivePollIntervalMs: intervalMs,
         nowMs: Date.now(),
       });
-    } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error ? error.message : 'Invalid calibration phase request',
-      );
-    }
+      if (!atomic) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
 
-    const updated = await this.sessionRepository.mergeAcquisitionState(
+      const { result } = atomic;
+      const effectiveActive = result.series.activePhase;
+      return {
+        activationStatus: result.activationStatus,
+        calibrationSeriesId: result.series.calibrationSeriesId,
+        requestedEffectivePollIntervalMs: intervalMs,
+        effectivePollIntervalMs: effectiveActive?.effectivePollIntervalMs ?? null,
+        calibrationPhaseId: effectiveActive?.calibrationPhaseId ?? null,
+        phaseSequence: effectiveActive?.phaseSequence ?? null,
+        phaseOrder: result.series.phaseOrder,
+        phaseStartedAt: effectiveActive?.phaseStartedAt ?? null,
+        pendingPhaseRequest: result.series.pendingPhaseRequest,
+        requestId: result.request.requestId,
+        deduplicated: result.deduplicated,
+        controlPlaneRevision: result.controlPlaneRevision,
+        vehicleId: session.vehicleId,
+        tokenId,
+        referenceCaptureSessionId: sessionId,
+        lastPhaseBoundaryAt: result.series.lastPhaseBoundaryAt,
+        policyMode: hfPolicy.mode,
+        policyVersion: effectiveActive?.effectiveConfig?.policyVersion ?? null,
+      };
+    } catch (error) {
+      if (error instanceof HfCalibrationPhaseChangePendingError) {
+        throw new ConflictException(error.message);
+      }
+      if (error instanceof Error && error.message.includes('RECORDING status')) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private async awaitCycleQuiescenceAndFinalizeCalibration(
+    organizationId: string,
+    sessionId: string,
+    reason: TerminalCalibrationFinalizationReason,
+  ): Promise<void> {
+    const quiescence = await this.sessionRepository.waitForAcquisitionCycleQuiescence(
       organizationId,
       sessionId,
-      (current) => ({
-        ...current,
-        hfCalibrationSeries: transition.series,
-      }),
+      {
+        timeoutMs: this.config.getStopQuiescenceTimeoutMs(),
+        pollIntervalMs: this.config.getStopQuiescencePollIntervalMs(),
+      },
     );
-    if (!updated) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
+    if (!quiescence.quiesced) {
+      throw new ConflictException(
+        'Timed out waiting for active acquisition cycle to complete before terminal calibration finalization',
+      );
+    }
+    await this.sessionRepository.finalizeTerminalCalibrationAtomic(organizationId, sessionId, {
+      terminalAtMs: Date.now(),
+      reason,
+    });
+  }
 
-    const effectiveActive = transition.series.activePhase;
-    const requestedMatchesEffective = effectiveActive?.effectivePollIntervalMs === intervalMs;
-    return {
-      activationStatus: requestedMatchesEffective ? 'EFFECTIVE' : 'REQUESTED',
-      calibrationSeriesId: transition.series.calibrationSeriesId,
-      requestedEffectivePollIntervalMs: intervalMs,
-      effectivePollIntervalMs: effectiveActive?.effectivePollIntervalMs ?? null,
-      calibrationPhaseId: effectiveActive?.calibrationPhaseId ?? null,
-      phaseSequence: effectiveActive?.phaseSequence ?? null,
-      phaseOrder: transition.series.phaseOrder,
-      phaseStartedAt: effectiveActive?.phaseStartedAt ?? null,
-      pendingPhaseRequest: transition.series.pendingPhaseRequest,
-      deduplicated: transition.deduplicated,
-      vehicleId: session.vehicleId,
-      tokenId,
-      referenceCaptureSessionId: sessionId,
-      lastPhaseBoundaryAt: transition.series.lastPhaseBoundaryAt,
-      policyMode: hfPolicy.mode,
-      policyVersion: effectiveActive?.effectiveConfig?.policyVersion ?? null,
-    };
+  private async finalizeTerminalCalibrationOnFailure(
+    organizationId: string,
+    sessionId: string,
+    reason: TerminalCalibrationFinalizationReason,
+  ): Promise<void> {
+    await this.sessionRepository.waitForAcquisitionCycleQuiescence(organizationId, sessionId, {
+      timeoutMs: this.config.getStopQuiescenceTimeoutMs(),
+      pollIntervalMs: this.config.getStopQuiescencePollIntervalMs(),
+    });
+    await this.sessionRepository.finalizeTerminalCalibrationAtomic(organizationId, sessionId, {
+      terminalAtMs: Date.now(),
+      reason,
+    });
   }
 
   private async requireSession(organizationId: string, sessionId: string) {

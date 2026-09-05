@@ -609,3 +609,90 @@ READY_FOR_MERGE = YES (hardening complete; live calibration not yet executed)
 ```
 
 **Remaining unknowns before live calibration:** real multi-worker Reference Capture runner concurrency under production PM2 topology; operator timing discipline for phase duration; empirical 30s block-polling hypothesis still unvalidated.
+
+---
+
+## DI-EV-0035C.1e — Pre-live-canary closure (2026-09-05)
+
+**Evidence ID:** DI-EV-0035C.1e  
+**Parent:** DI-EV-0035C.1d  
+**Status:** IMPLEMENTED (Reference Capture only); **NOT DEPLOYED**
+
+### A. Stale precompute race (C.1d residual)
+
+C.1d fixed cycle-release overwrite, but `switchHfCalibrationPhase()` still computed `requestHfCalibrationPhase()` from a pre-lock session snapshot.
+
+```
+STALE_PHASE_REQUEST_PRECOMPUTE_RACE_EXISTS = YES (pre-C.1e)
+LOCKED_WRITE_USES_STALE_PRECOMPUTED_SERIES = YES (pre-C.1e)
+STALE_OPERATOR_SNAPSHOT_CAN_REVERT_EFFECTIVE_PHASE = YES (pre-C.1e)
+DEFECT_FIXED = YES (C.1e)
+```
+
+**Fix:** `requestHfCalibrationPhaseAtomic()` — lock row → re-read RECORDING session → compute from current state → persist.
+
+```
+PHASE_REQUEST_COMPUTED_FROM_LOCKED_CURRENT_STATE = YES
+PHASE_REQUEST_STATUS_CHECK_ATOMIC_WITH_WRITE = YES
+NON_RECORDING_SESSION_CAN_ACCEPT_PHASE_REQUEST = NO
+```
+
+### B. Pending request conflict semantics
+
+Different pending request while one is already acknowledged → HTTP 409 `CALIBRATION_PHASE_CHANGE_PENDING`. Identical pending → idempotent same `requestId`.
+
+```
+DIFFERENT_PENDING_PHASE_REQUEST_SILENTLY_SUPERSEDED = NO
+IDENTICAL_PENDING_REQUEST_IDEMPOTENT = YES
+ACKNOWLEDGED_PHASE_REQUEST_HAS_DETERMINISTIC_OUTCOME = YES
+```
+
+### C. Terminal phase finalization
+
+`finalizeTerminalCalibrationSeries()` idempotently closes active phase, freezes `completedPhaseSummaries`, cancels never-effective pending into `cancelledPhaseRequests`, sets `terminalFinalizationAt`.
+
+Stop barrier: STOPPING → cancel delayed job → `waitForAcquisitionCycleQuiescence` (bounded) → finalize → flush → COMPLETE.
+
+```
+FINAL_ACTIVE_PHASE_CURRENTLY_FINALIZED_ON_STOP = YES (C.1e)
+FINAL_ACTIVE_PHASE_CURRENTLY_FINALIZED_ON_ABORT = YES (C.1e)
+FINAL_ACTIVE_PHASE_CURRENTLY_FINALIZED_ON_FAILURE = YES (C.1e)
+FINAL_ACTIVE_PHASE_SUMMARY_DURABLE = YES
+FINAL_PHASE_LOST_WITHOUT_NEXT_PHASE_SWITCH = NO
+TERMINAL_PHASE_FINALIZATION_IDEMPOTENT = YES
+PENDING_REQUEST_ACTIVATED_DURING_TERMINAL_STOP = NO
+TERMINAL_FINALIZATION_WAITS_FOR_ACTIVE_CYCLE = YES
+NEW_CYCLE_CAN_START_AFTER_STOPPING = NO
+FINAL_COUNTERS_INCLUDE_LAST_COMMITTED_CYCLE = YES
+STOP_QUIESCENCE_BOUNDED = YES
+```
+
+### D. Temporal metric integrity
+
+Real ISO bucket-start timestamps in `nativeUniqueTemporalBucketStarts`; phase-wide median/P90/max gap from sorted unique native timestamps. TRANSITION_WINDOW and RECOVERY_SWEEP excluded from primary FAST_LOOP+PHASE_NATIVE comparison stats.
+
+```
+PHASE_UNIQUE_TEMPORAL_BUCKET_COUNT_MATHEMATICALLY_CORRECT = YES
+SYNTHETIC_REQUEST_COUNT_USED_AS_TEMPORAL_IDENTITY = NO
+PHASE_WIDE_CROSS_REQUEST_GAPS_MEASURABLE = YES
+MEDIAN_TEMPORAL_CADENCE_PHASE_WIDE = YES
+P90_TEMPORAL_CADENCE_PHASE_WIDE = YES
+TRANSITION_WINDOWS_EXCLUDED_FROM_PRIMARY_CADENCE_STATS = YES
+RECOVERY_SWEEPS_EXCLUDED_FROM_PRIMARY_POLL_EFFICIENCY = YES
+QUERY_ORIGIN_STRATIFIED = YES
+PHASE_SUMMARY_READY_FOR_10_20_30_60_COMPARISON = YES
+MISSING_PHASE_COMPARISON_METRICS = none
+```
+
+### E. Main sync
+
+PR #1533 branch merged with `origin/main`; `ChangesView` conflict resolved preserving refuel G2.2 T+60 evidence.
+
+### C.1e final flags
+
+```
+DI_EV = DI-EV-0035C.1e
+PR_MERGE_CONFLICTS_RESOLVED = YES
+READY_FOR_LIVE_CANARY = YES
+READY_FOR_MERGE = YES (not merged per instruction)
+```

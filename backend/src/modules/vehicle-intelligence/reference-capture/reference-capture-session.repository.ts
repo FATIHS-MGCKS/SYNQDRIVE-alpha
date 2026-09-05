@@ -5,7 +5,11 @@ import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sampl
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
 import {
   buildCycleReleaseAcquisitionState,
+  finalizeTerminalCalibrationSeries,
   normalizeHfCalibrationSeriesState,
+  requestHfCalibrationPhase,
+  type HfCalibrationPhaseRequestResult,
+  type TerminalCalibrationFinalizationReason,
 } from './reference-capture-hf-calibration-phase.policy';
 import type { HfRecoveryPolicyV2Config } from './reference-capture-hf-recovery-v2.policy';
 
@@ -362,6 +366,120 @@ export class ReferenceCaptureSessionRepository {
       return tx.referenceCaptureSession.update({
         where: { id: sessionId, organizationId },
         data: { acquisitionStateJson: merged as object },
+      });
+    });
+  }
+
+  async waitForAcquisitionCycleQuiescence(
+    organizationId: string,
+    sessionId: string,
+    options: { timeoutMs: number; pollIntervalMs: number },
+  ): Promise<{ quiesced: boolean; timedOut: boolean }> {
+    const deadline = Date.now() + options.timeoutMs;
+    while (Date.now() < deadline) {
+      const session = await this.findById(organizationId, sessionId);
+      if (!session) return { quiesced: false, timedOut: false };
+      const state = parseAcquisitionState(session.acquisitionStateJson);
+      if (!state.activeCycleJobId) return { quiesced: true, timedOut: false };
+      await new Promise((resolve) => setTimeout(resolve, options.pollIntervalMs));
+    }
+    return { quiesced: false, timedOut: true };
+  }
+
+  async requestHfCalibrationPhaseAtomic(input: {
+    organizationId: string;
+    sessionId: string;
+    vehicleId: string;
+    tokenId: number;
+    effectivePollIntervalMs: number;
+    nowMs: number;
+  }): Promise<{
+    session: ReferenceCaptureSession;
+    result: HfCalibrationPhaseRequestResult;
+  } | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+      if (session.status !== 'RECORDING') {
+        throw new Error(
+          `HF calibration phase switch requires RECORDING status (current: ${session.status})`,
+        );
+      }
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const transition = requestHfCalibrationPhase({
+        existing: current.hfCalibrationSeries ?? null,
+        vehicleId: input.vehicleId,
+        tokenId: input.tokenId,
+        effectivePollIntervalMs: input.effectivePollIntervalMs,
+        nowMs: input.nowMs,
+      });
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationSeries: transition.series,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
+
+      const updated = await tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: { acquisitionStateJson: nextState as object },
+      });
+
+      const effectiveActive = transition.series.activePhase;
+      const requestedMatchesEffective =
+        effectiveActive?.effectivePollIntervalMs === input.effectivePollIntervalMs;
+
+      return {
+        session: updated,
+        result: {
+          ...transition,
+          activationStatus: requestedMatchesEffective ? 'EFFECTIVE' : 'REQUESTED',
+          controlPlaneRevision: transition.series.controlPlaneRevision,
+        },
+      };
+    });
+  }
+
+  async finalizeTerminalCalibrationAtomic(
+    organizationId: string,
+    sessionId: string,
+    args: { terminalAtMs: number; reason: TerminalCalibrationFinalizationReason },
+  ): Promise<ReferenceCaptureSession | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, organizationId, sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: sessionId, organizationId },
+      });
+      if (!session) return null;
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const finalized = finalizeTerminalCalibrationSeries({
+        series: current.hfCalibrationSeries ?? null,
+        counters: current.hfCalibrationActiveCounters ?? null,
+        terminalAtMs: args.terminalAtMs,
+        reason: args.reason,
+      });
+
+      if (!finalized.applied && finalized.series === current.hfCalibrationSeries) {
+        return session;
+      }
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationSeries: finalized.series,
+        hfCalibrationActiveCounters: finalized.applied ? null : current.hfCalibrationActiveCounters,
+        acquisitionStateVersion: finalized.applied
+          ? (current.acquisitionStateVersion ?? 0) + 1
+          : current.acquisitionStateVersion,
+      };
+
+      return tx.referenceCaptureSession.update({
+        where: { id: sessionId, organizationId },
+        data: { acquisitionStateJson: nextState as object },
       });
     });
   }
