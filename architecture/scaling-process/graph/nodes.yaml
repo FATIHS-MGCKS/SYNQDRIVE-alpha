@@ -205,14 +205,16 @@ nodes:
   - id: INC_07
     type: INCIDENT
     status: FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
-    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows — fix deployed P1.8.3.5; production validation in progress
+    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows — fix deployed P1.8.3.5; P1.8.3.6.1 extension MODERATE (3 warm cycles, 1 gap-split APPLIED, no replay)
     related_incidents: [INC_07]
     introduced_by: "P1.8.3.3 forensic closure"
     remediated_by: "P1.8.3.4 deterministic repair identity + claim-before-mutate"
     validated_by:
       - P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md
       - P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md
-    last_verified_at: "2026-09-03T14:40:00Z"
+      - P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md
+      - P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md
+    last_verified_at: "2026-09-04T09:47:08Z"
     confidence: HIGH
 
   - id: DEPLOY_LEADER_CONVERGENCE_GATE

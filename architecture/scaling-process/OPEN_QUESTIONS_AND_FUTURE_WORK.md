@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.5: fix deployed production `5b788a223`; validation start `2026-09-03T21:19:07Z`; natural warm-tier evidence pending; INC-07 closes only after STRONG/MODERATE replay evidence |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.6.1 extension: 3 post-fix warm cycles, 1 gap-split APPLIED (deterministic ID verified), 0 replay/IDEMPOTENT_SKIP; INC-07 remains open (MODERATE evidence); closure requires STRONG or sufficient MODERATE replay proof |
 
 ---
 
