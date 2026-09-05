@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c1c-single-drive-multi-cadence-calibration-2026-09-04',
+    version: '4.9.1066',
+    title: 'DI-EV-0035C.1c — Single-Drive Multi-Cadence Flight Recorder Calibration',
+    summary: [
+      'Forensic audit: HF_HISTORICAL_POLL_INTERVAL_MS was process-config only pre-C.1c.',
+      'Session-scoped hfCalibrationSeries override: switch 10/20/30/60s phases without restart.',
+      'POST hf-calibration/phases API for in-session cadence changes (Reference Capture only).',
+      'Durable phase identity in provenance: seriesId, phaseId, sequence, transition windows.',
+      'Phase transitions preserve HF watermarks; TRANSITION_WINDOW classification for boundary queries.',
+      'Superseded rigid ≥20–30 min per phase duration; one physical drive may contain all phases.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Canonical calibration model: one physical trip may contain multiple HF poll-cadence phases inside one Reference Capture session — not one trip per cadence.',
+    previousBehavior:
+      'Poll cadence only from process env; implied separate long drives per phase; no session phase identity.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1c; reference-capture-hf-calibration-phase.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:10:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1b-flight-recorder-canary-contract-2026-09-04',
     version: '4.9.1065',
     title: 'DI-EV-0035C.1b — Dynamic Flight Recorder Canary Vehicle Selection Contract',

@@ -1,4 +1,5 @@
 import type { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
+import type { HfCalibrationSeriesState } from './reference-capture-hf-calibration-phase.policy';
 
 export type ReferenceCaptureTemporalClass =
   | 'WAVEFORM_DYNAMICS'
@@ -145,6 +146,8 @@ export type ReferenceCaptureAcquisitionState = {
   recoverySweepCount?: number;
   /** DI-EV-0035C.1 — last successful HF_HISTORICAL provider poll (V2 block cadence). */
   lastHfHistoricalPollAt?: string | null;
+  /** DI-EV-0035C.1c — in-session multi-cadence calibration series (Reference Capture only). */
+  hfCalibrationSeries?: HfCalibrationSeriesState | null;
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;
   quarantinedProviderFields?: string[];

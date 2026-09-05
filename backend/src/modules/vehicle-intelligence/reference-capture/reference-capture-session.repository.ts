@@ -3,6 +3,7 @@ import type { ReferenceCaptureSession, ReferenceCaptureSessionStatus } from '@pr
 import { PrismaService } from '@shared/database/prisma.service';
 import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sample-identity.util';
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
+import { normalizeHfCalibrationSeriesState } from './reference-capture-hf-calibration-phase.policy';
 
 function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
   const base = (raw ?? {}) as Partial<ReferenceCaptureAcquisitionState>;
@@ -32,6 +33,17 @@ function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
       hfPhysicalIdentityVersion === HF_PHYSICAL_IDENTITY_VERSION.LEGACY_VALUE_V1
         ? [...seenPhysical]
         : [],
+    hfQueryProvenanceRing: Array.isArray(base.hfQueryProvenanceRing)
+      ? [...base.hfQueryProvenanceRing]
+      : [],
+    hfRecoveryCursorByField:
+      base.hfRecoveryCursorByField && typeof base.hfRecoveryCursorByField === 'object'
+        ? { ...base.hfRecoveryCursorByField }
+        : {},
+    lastRecoverySweepAt: base.lastRecoverySweepAt ?? null,
+    recoverySweepCount: base.recoverySweepCount ?? 0,
+    lastHfHistoricalPollAt: base.lastHfHistoricalPollAt ?? null,
+    hfCalibrationSeries: normalizeHfCalibrationSeriesState(base.hfCalibrationSeries),
     lastSequenceNumber: base.lastSequenceNumber ?? 0,
     activeCycleJobId: base.activeCycleJobId ?? null,
     quarantinedProviderFields: base.quarantinedProviderFields ?? [],
@@ -267,6 +279,25 @@ export class ReferenceCaptureSessionRepository {
           ? { eventWatermarkAt: patch.eventWatermarkAt }
           : {}),
       },
+    });
+  }
+
+  async mergeAcquisitionState(
+    organizationId: string,
+    sessionId: string,
+    merge: (current: ReferenceCaptureAcquisitionState) => ReferenceCaptureAcquisitionState,
+  ): Promise<ReferenceCaptureSession | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: sessionId, organizationId },
+      });
+      if (!session) return null;
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const next = merge(current);
+      return tx.referenceCaptureSession.update({
+        where: { id: sessionId, organizationId },
+        data: { acquisitionStateJson: next as object },
+      });
     });
   }
 

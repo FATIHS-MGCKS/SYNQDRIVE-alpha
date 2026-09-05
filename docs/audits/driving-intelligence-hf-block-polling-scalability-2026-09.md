@@ -145,11 +145,44 @@ HF_SETTLEMENT_DELAY_MS=8000
 HF_RECOVERY_OVERLAP_MS=6000
 ```
 
+### Single physical drive, multiple calibration phases (DI-EV-0035C.1c)
+
+```
+PHYSICAL_TRIP != CALIBRATION_PHASE
+ONE_PHYSICAL_DRIVE_ONE_VEHICLE = YES
+MULTIPLE_CADENCE_PHASES_PER_PHYSICAL_DRIVE = YES
+```
+
+One continuous real-world trip for one selected vehicle may contain multiple bounded HF calibration phases inside a **single** Reference Capture session:
+
+```
+Physical drive
+  └── Reference Capture session
+        ├── Phase A: 10s
+        ├── Phase B: 20s
+        ├── Phase C: 30s
+        └── Phase D: 60s
+```
+
+Phase order may vary per drive (e.g. `10→20→30→60` or `60→30→20→10`) and must be recorded. A new physical SynqDrive trip is **not** required when poll cadence changes.
+
+**In-session phase switch (Reference Capture only):**
+
+`POST .../reference-capture/sessions/:sessionId/hf-calibration/phases`
+
+```json
+{ "effectivePollIntervalMs": 20000 }
+```
+
+Session-scoped override takes precedence over process `HF_HISTORICAL_POLL_INTERVAL_MS`. No backend/worker restart required between phases.
+
 ### Calibration phase matrix
 
-**Duration:** ≥20–30 min continuous drive per cadence phase.
+**Duration:** Phase duration is operator-defined / exploratory — **not** a rigid ≥20–30 min per phase requirement (superseded by C.1c). Collect sufficient provider requests and buckets per phase; evidence may span multiple physical drives.
 
-**Phases:** separate labeled sessions or intervals for **10s / 20s / 30s / 60s** with otherwise identical HF policy parameters where possible.
+**Provisional exploratory guidance only (`NOT_VALIDATED`):** aim for enough HF provider requests per phase to compare bucket density — judge sufficiency post-hoc from recorded `actual duration`, `provider request count`, and `bucket count`.
+
+**Phases:** **10s / 20s / 30s / 60s** within one session (preferred) or across drives with explicit metadata.
 
 **Comparability:** For one 10/20/30/60s series, prefer the **same** selected vehicle across all cadence phases so poll cadence is the primary changed variable.
 
@@ -357,10 +390,9 @@ Before every live Reference Capture calibration, operator must:
 4. Set selected `tokenId` in `HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS`.
 5. Verify `HF_RECOVERY_POLICY_V2_CANARY_ONLY=true`.
 6. Verify exactly intended token(s) resolve to V2; all others LEGACY.
-7. Select `HF_HISTORICAL_POLL_INTERVAL_MS` for current phase (10/20/30/60s).
-8. Start Reference Capture / Flight Recorder session.
-9. Record experiment metadata: `vehicleId`, display identifier (if appropriate), `tokenId`, phase poll interval, V2 parameters, `sessionId`, start/end timestamps.
-10. After experiment: disable V2 or clear/replace canary selection.
+7. Start Reference Capture / Flight Recorder session; switch phases in-session via `hf-calibration/phases` API (no restart between phases).
+8. Record experiment metadata per phase: `calibrationSeriesId`, `calibrationPhaseId`, `phaseSequence`, `effectivePollIntervalMs`, `vehicleId`, `tokenId`, `sessionId`, timestamps, actual request/bucket counts.
+9. After experiment: disable V2 or clear/replace canary selection.
 
 ```
 FLIGHT_RECORDER_PRE_RUN_SELECTION_CONTRACT_DOCUMENTED = YES
@@ -387,4 +419,86 @@ FIXED_KS_MX_2024_CANARY_DEPENDENCY_REMOVED = YES
 REFERENCE_CAPTURE_CANARY_VEHICLE_RUNTIME_SELECTABLE = YES
 READY_FOR_REFERENCE_CAPTURE_CANARY = YES (after merge; operator selects vehicle + sets allowlist per pre-run contract)
 READY_FOR_MERGE = YES (documentation contract corrected; no production path changes)
+```
+
+---
+
+## DI-EV-0035C.1c — Single-drive multi-cadence Flight Recorder calibration (2026-09-04)
+
+**Evidence ID:** DI-EV-0035C.1c  
+**Parent:** DI-EV-0035C.1b  
+**Status:** IMPLEMENTED (Reference Capture only); **NOT DEPLOYED**
+
+### A. Pre-C.1c runtime forensic audit
+
+| Question | Answer |
+|----------|--------|
+| Poll interval source | Process/application config (`HF_HISTORICAL_POLL_INTERVAL_MS` / `ReferenceCaptureConfig`) |
+| Mutable during active session (before C.1c) | **NO** — required env/worker config change |
+| Session-level override (before C.1c) | **NO** |
+| Process restart to change cadence (before C.1c) | **YES** |
+
+```
+CURRENT_HF_POLL_INTERVAL_RUNTIME_MUTABLE = NO (pre-C.1c); YES (with session override post-C.1c)
+CURRENT_PHASE_CHANGE_REQUIRES_PROCESS_RESTART = NO (post-C.1c)
+CURRENT_PHASE_CHANGE_REQUIRES_CAPTURE_RESTART = NO
+CURRENT_SESSION_SCOPED_POLL_OVERRIDE_EXISTS = YES (post-C.1c)
+```
+
+### B. Session-scoped calibration override (Reference Capture only)
+
+- `hfCalibrationSeries` persisted in `acquisitionStateJson`
+- `POST .../hf-calibration/phases` switches cadence without session restart
+- Authority: active calibration phase override → global `HF_HISTORICAL_POLL_INTERVAL_MS` fallback
+- `PRODUCTION_DYNAMIC_POLL_OVERRIDE_ENABLED = NO`
+
+### C. Durable phase identity
+
+Each HF provider request records (provenance + observability):
+
+- `calibrationSeriesId`, `calibrationPhaseId`, `phaseSequence`
+- `effectivePollIntervalMs`, `phaseStartedAt`, `phaseBoundaryAt`
+- `windowClassification`: `PHASE_NATIVE` | `TRANSITION_WINDOW`
+- `vehicleId`, `tokenId`, `sessionId`
+
+### D. Phase transition semantics
+
+- Does **not** reset DATA / QUERY COVERAGE watermarks or physical trip
+- Resets `lastHfHistoricalPollAt` on boundary so new cadence applies immediately
+- Transition windows spanning a phase boundary marked `TRANSITION_WINDOW` (conservative exclusion from pure per-phase stats)
+
+```
+PHASE_TRANSITION_CREATES_UNQUERIED_GAP = NO
+PHASE_TRANSITION_RESETS_TRIP = NO
+PHASE_TRANSITION_RESETS_HF_DATA_AUTHORITY = NO
+PHASE_BOUNDARY_CONTAMINATION_HANDLED = YES
+TRANSITION_WINDOWS_IDENTIFIABLE = YES
+```
+
+### E. Duration contract correction
+
+```
+FIXED_20_30_MIN_PER_PHASE_REQUIREMENT = NO
+PHASE_DURATION_RUNTIME_CONFIGURABLE_OR_OPERATOR_DEFINED = YES
+```
+
+### F. Operator workflow (target)
+
+1. Choose vehicle → resolve tokenId → verify telemetry  
+2. Enable V2 canary for selected token only  
+3. Start Flight Recorder → start physical drive  
+4. Phase 10s → switch 20s → 30s → 60s via API (same session)  
+5. Finish drive → finish recorder → analyze per phase  
+
+### C.1c final flags
+
+```
+DI_EV = DI-EV-0035C.1c
+SESSION_SCOPED_CALIBRATION_OVERRIDE_IMPLEMENTED = YES
+SINGLE_PHYSICAL_DRIVE_MULTI_PHASE_MODEL_DOCUMENTED = YES
+MULTI_PHASE_SINGLE_PHYSICAL_DRIVE_SUPPORTED = YES
+PHASE_IDENTITY_PERSISTED = YES
+PHASE_ORDER_RECORDED = YES
+READY_FOR_REFERENCE_CAPTURE_CANARY = YES
+READY_FOR_MERGE = YES (calibration mechanism ready; 30s hypothesis NOT validated)
 ```

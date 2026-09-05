@@ -22,6 +22,11 @@ import { ReferenceCaptureObservationRepository } from './reference-capture-obser
 import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './reference-capture-session.repository';
 import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
+import {
+  isRecognizedCalibrationPollIntervalMs,
+  switchHfCalibrationPhase,
+} from './reference-capture-hf-calibration-phase.policy';
+import { PrismaService } from '@shared/database/prisma.service';
 import type {
   CreateReferenceCaptureSessionInput,
   ReferenceCaptureOperationalSnapshot,
@@ -52,6 +57,7 @@ export class ReferenceCaptureSessionService {
     private readonly observationWriter: ReferenceCaptureObservationWriterService,
     private readonly readinessService: ReferenceCaptureReadinessService,
     private readonly runnerService: ReferenceCaptureRunnerService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private assertEnabled(): void {
@@ -444,6 +450,73 @@ export class ReferenceCaptureSessionService {
     this.assertEnabled();
     await this.requireSession(organizationId, sessionId);
     return this.observationRepository.findBySession(organizationId, sessionId, options);
+  }
+
+  async switchHfCalibrationPhase(
+    organizationId: string,
+    sessionId: string,
+    body: { effectivePollIntervalMs: number },
+  ) {
+    this.assertEnabled();
+    const session = await this.requireSession(organizationId, sessionId);
+    if (session.status !== ReferenceCaptureSessionStatus.RECORDING) {
+      throw new BadRequestException(
+        `HF calibration phase switch requires RECORDING status (current: ${session.status})`,
+      );
+    }
+    const intervalMs = body.effectivePollIntervalMs;
+    if (!Number.isFinite(intervalMs)) {
+      throw new BadRequestException('effectivePollIntervalMs must be a finite number');
+    }
+    if (!isRecognizedCalibrationPollIntervalMs(intervalMs)) {
+      throw new BadRequestException(
+        `effectivePollIntervalMs must be one of calibration candidates: 10000, 20000, 30000, 60000`,
+      );
+    }
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: session.vehicleId, organizationId },
+      select: { dimoVehicle: { select: { tokenId: true } } },
+    });
+    const tokenId = vehicle?.dimoVehicle?.tokenId;
+    if (!tokenId) {
+      throw new BadRequestException('Vehicle has no DIMO tokenId for calibration');
+    }
+
+    const state = parseAcquisitionState(session.acquisitionStateJson);
+    const transition = switchHfCalibrationPhase({
+      existing: state.hfCalibrationSeries ?? null,
+      vehicleId: session.vehicleId,
+      tokenId,
+      effectivePollIntervalMs: intervalMs,
+      nowMs: Date.now(),
+    });
+
+    const updated = await this.sessionRepository.mergeAcquisitionState(
+      organizationId,
+      sessionId,
+      (current) => ({
+        ...current,
+        hfCalibrationSeries: transition.series,
+        ...(transition.resetLastHfHistoricalPollAt ? { lastHfHistoricalPollAt: null } : {}),
+      }),
+    );
+    if (!updated) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
+
+    const active = transition.series.activePhase!;
+    return {
+      calibrationSeriesId: transition.series.calibrationSeriesId,
+      calibrationPhaseId: active.calibrationPhaseId,
+      phaseSequence: active.phaseSequence,
+      effectivePollIntervalMs: active.effectivePollIntervalMs,
+      phaseOrder: transition.series.phaseOrder,
+      phaseStartedAt: active.phaseStartedAt,
+      previousPhaseEndedAt: transition.previousPhaseEndedAt,
+      vehicleId: session.vehicleId,
+      tokenId,
+      referenceCaptureSessionId: sessionId,
+      lastPhaseBoundaryAt: transition.series.lastPhaseBoundaryAt,
+    };
   }
 
   private async requireSession(organizationId: string, sessionId: string) {

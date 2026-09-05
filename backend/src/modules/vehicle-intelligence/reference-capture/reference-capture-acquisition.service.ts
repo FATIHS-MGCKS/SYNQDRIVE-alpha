@@ -50,6 +50,11 @@ import {
   computeMaxIntraResponseTemporalGapMs,
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
+import {
+  applyHfPolicyWithSessionPollOverride,
+  buildCalibrationPhaseContext,
+  type HfCalibrationSeriesState,
+} from './reference-capture-hf-calibration-phase.policy';
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { ReferenceCaptureObservationRepository } from './reference-capture-observation.repository';
 import { resolveCanonicalKeyForProviderField } from './reference-capture-manifest.loader';
@@ -109,6 +114,35 @@ function dedupeBucketsByFieldTimestamp(
     unique.push(bucket);
   }
   return unique;
+}
+
+function enrichHfQueryProvenanceWithCalibration(
+  record: HfQueryProvenanceRecord,
+  args: {
+    calibration: HfCalibrationSeriesState | null | undefined;
+    queryFrom: Date;
+    queryTo: Date;
+    requestStartedAt: Date;
+  },
+): HfQueryProvenanceRecord {
+  if (!args.calibration?.activePhase) return record;
+  const ctx = buildCalibrationPhaseContext({
+    calibration: args.calibration,
+    queryFrom: args.queryFrom,
+    queryTo: args.queryTo,
+    requestStartedAt: args.requestStartedAt,
+  });
+  if (!ctx) return record;
+  return {
+    ...record,
+    pollIntervalMs: ctx.effectivePollIntervalMs,
+    calibrationSeriesId: ctx.calibrationSeriesId,
+    calibrationPhaseId: ctx.calibrationPhaseId,
+    phaseSequence: ctx.phaseSequence,
+    phaseStartedAt: ctx.phaseStartedAt,
+    phaseBoundaryAt: ctx.phaseBoundaryAt,
+    windowClassification: ctx.windowClassification,
+  };
 }
 
 export class ReferenceCaptureLegacySessionIdentityError extends Error {
@@ -215,6 +249,7 @@ export class ReferenceCaptureAcquisitionService {
       recoverySweepCount: state.recoverySweepCount ?? 0,
     });
     let lastHfHistoricalPollAt = state.lastHfHistoricalPollAt ?? null;
+    const hfCalibrationSeries: HfCalibrationSeriesState | null = state.hfCalibrationSeries ?? null;
     let hfBucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
 
     const fieldLookup = new Map(
@@ -222,6 +257,7 @@ export class ReferenceCaptureAcquisitionService {
     );
 
     const hfPolicy = this.referenceCaptureConfig.resolveHfRecoveryPolicyForToken(tokenId);
+    const hfPolicyEffective = applyHfPolicyWithSessionPollOverride(hfPolicy, hfCalibrationSeries);
     const hfPolicyBase = this.referenceCaptureConfig.getHfRecoveryPolicyConfig();
     const canaryEmptyAllowlistFailClosed = isHfV2CanaryEmptyAllowlistFailClosed(hfPolicyBase);
     if (canaryEmptyAllowlistFailClosed) {
@@ -272,8 +308,8 @@ export class ReferenceCaptureAcquisitionService {
         const pollDue = isHfHistoricalPollDue({
           nowMs: Date.now(),
           lastHfHistoricalPollAt,
-          pollIntervalMs: hfPolicy.hfHistoricalPollIntervalMs,
-          policyMode: hfPolicy.mode,
+          pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
+          policyMode: hfPolicyEffective.mode,
         });
         if (!pollDue) {
           continue;
@@ -292,7 +328,8 @@ export class ReferenceCaptureAcquisitionService {
           sessionStartedAt: session.startedAt ?? new Date(),
           sequenceStart: sequenceNumber,
           cycleSeenFingerprints: newPhysicalSampleFingerprints,
-          hfPolicy,
+          hfPolicy: hfPolicyEffective,
+          hfCalibrationSeries,
           queryOrigin: 'FAST_LOOP',
         });
         sequenceNumber = hfResult.nextSequenceNumber;
@@ -318,7 +355,7 @@ export class ReferenceCaptureAcquisitionService {
 
         if (
           shouldRunRecoverySweep({
-            config: hfPolicy,
+            config: hfPolicyEffective,
             nowMs: Date.now(),
             lastRecoverySweepAt: hfRecoveryCursor.lastRecoverySweepAt,
           })
@@ -329,7 +366,7 @@ export class ReferenceCaptureAcquisitionService {
             sessionStartedAt: session.startedAt ?? new Date(),
             providerFields: surfacePlan.providerFields,
             requestStartedAt: new Date(),
-            config: hfPolicy,
+            config: hfPolicyEffective,
             maxChunkMs: 60_000,
           });
           if (sweepWindow && isValidHfQueryWindow(sweepWindow)) {
@@ -346,7 +383,8 @@ export class ReferenceCaptureAcquisitionService {
               sessionStartedAt: session.startedAt ?? new Date(),
               sequenceStart: sequenceNumber,
               cycleSeenFingerprints: newPhysicalSampleFingerprints,
-              hfPolicy,
+              hfPolicy: hfPolicyEffective,
+              hfCalibrationSeries,
               queryOrigin: 'RECOVERY_SWEEP',
               explicitQueryFrom: sweepWindow.queryFrom,
               explicitQueryTo: sweepWindow.queryTo,
@@ -428,6 +466,7 @@ export class ReferenceCaptureAcquisitionService {
       lastRecoverySweepAt: hfRecoveryCursor.lastRecoverySweepAt,
       recoverySweepCount: hfRecoveryCursor.recoverySweepCount,
       lastHfHistoricalPollAt,
+      hfCalibrationSeries,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
       seenPhysicalSampleFingerprints: [
@@ -563,6 +602,7 @@ export class ReferenceCaptureAcquisitionService {
     sequenceStart: number;
     cycleSeenFingerprints: string[];
     hfPolicy: HfRecoveryPolicyV2Config;
+    hfCalibrationSeries?: HfCalibrationSeriesState | null;
     queryOrigin: HfQueryProvenanceRecord['queryOrigin'];
     explicitQueryFrom?: Date;
     explicitQueryTo?: Date;
@@ -638,7 +678,8 @@ export class ReferenceCaptureAcquisitionService {
       );
       providerQuerySucceeded = true;
     } catch (error) {
-    const provenanceRecord: HfQueryProvenanceRecord = {
+    const provenanceRecord: HfQueryProvenanceRecord = enrichHfQueryProvenanceWithCalibration(
+      {
       recordedAt: new Date().toISOString(),
       policyVersion: 'HF_RECOVERY_V2_2026-09-04',
       policyMode: args.hfPolicy.mode,
@@ -668,7 +709,14 @@ export class ReferenceCaptureAcquisitionService {
       minBucketTimestamp: null,
       maxBucketTimestamp: null,
       maxIntraResponseTemporalGapMs: null,
-    };
+      },
+      {
+        calibration: args.hfCalibrationSeries,
+        queryFrom: from,
+        queryTo: actualQueryToAt,
+        requestStartedAt,
+      },
+    );
       this.logger.warn(
         `HF provider query failed session=${args.input.sessionId} origin=${args.queryOrigin}: ${error instanceof Error ? error.message : String(error)}`,
       );
@@ -938,7 +986,8 @@ export class ReferenceCaptureAcquisitionService {
     const recoveredLateCount =
       args.queryOrigin === 'RECOVERY_SWEEP' ? newPhysicalSampleFingerprints.length : 0;
 
-    const provenanceRecord: HfQueryProvenanceRecord = {
+    const provenanceRecord: HfQueryProvenanceRecord = enrichHfQueryProvenanceWithCalibration(
+      {
       recordedAt: new Date().toISOString(),
       policyVersion: 'HF_RECOVERY_V2_2026-09-04',
       policyMode: args.hfPolicy.mode,
@@ -968,7 +1017,23 @@ export class ReferenceCaptureAcquisitionService {
       minBucketTimestamp,
       maxBucketTimestamp,
       maxIntraResponseTemporalGapMs: maxIntraGap,
-    };
+      },
+      {
+        calibration: args.hfCalibrationSeries,
+        queryFrom: from,
+        queryTo: actualQueryToAt,
+        requestStartedAt,
+      },
+    );
+
+    const calibrationCtx = args.hfCalibrationSeries?.activePhase
+      ? buildCalibrationPhaseContext({
+          calibration: args.hfCalibrationSeries,
+          queryFrom: from,
+          queryTo: actualQueryToAt,
+          requestStartedAt,
+        })
+      : null;
 
     const observabilitySnapshot = {
       ...buildHfObservabilitySnapshot({
@@ -1000,6 +1065,17 @@ export class ReferenceCaptureAcquisitionService {
         queryZeroResult: rows.length === 0,
         providerError: false,
       }),
+      ...(calibrationCtx
+        ? {
+            calibration_series_id: calibrationCtx.calibrationSeriesId,
+            calibration_phase_id: calibrationCtx.calibrationPhaseId,
+            phase_sequence: calibrationCtx.phaseSequence,
+            effective_poll_interval_ms: calibrationCtx.effectivePollIntervalMs,
+            phase_started_at: calibrationCtx.phaseStartedAt,
+            phase_boundary_at: calibrationCtx.phaseBoundaryAt,
+            window_classification: calibrationCtx.windowClassification,
+          }
+        : {}),
     };
 
     return {

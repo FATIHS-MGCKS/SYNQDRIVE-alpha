@@ -91,6 +91,13 @@ export type HfQueryProvenanceRecord = {
   minBucketTimestamp?: string | null;
   maxBucketTimestamp?: string | null;
   maxIntraResponseTemporalGapMs?: number | null;
+  /** DI-EV-0035C.1c — Flight Recorder calibration phase attribution */
+  calibrationSeriesId?: string | null;
+  calibrationPhaseId?: string | null;
+  phaseSequence?: number | null;
+  phaseStartedAt?: string | null;
+  phaseBoundaryAt?: string | null;
+  windowClassification?: 'PHASE_NATIVE' | 'TRANSITION_WINDOW' | null;
 };
 
 export type HfQueryWindow = {
