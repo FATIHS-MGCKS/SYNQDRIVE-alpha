@@ -1,5 +1,8 @@
 import type { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
-import type { HfCalibrationSeriesState } from './reference-capture-hf-calibration-phase.policy';
+import type {
+  HfCalibrationPhaseRuntimeCounters,
+  HfCalibrationSeriesState,
+} from './reference-capture-hf-calibration-phase.policy';
 
 export type ReferenceCaptureTemporalClass =
   | 'WAVEFORM_DYNAMICS'
@@ -148,6 +151,10 @@ export type ReferenceCaptureAcquisitionState = {
   lastHfHistoricalPollAt?: string | null;
   /** DI-EV-0035C.1c — in-session multi-cadence calibration series (Reference Capture only). */
   hfCalibrationSeries?: HfCalibrationSeriesState | null;
+  /** DI-EV-0035C.1d — per-active-phase runtime counters (merged into durable summary at boundary). */
+  hfCalibrationActiveCounters?: HfCalibrationPhaseRuntimeCounters | null;
+  /** DI-EV-0035C.1d — optimistic concurrency for acquisition-state writes. */
+  acquisitionStateVersion?: number;
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;
   quarantinedProviderFields?: string[];

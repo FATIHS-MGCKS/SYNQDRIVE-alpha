@@ -133,8 +133,12 @@ describe('reference-capture HF durable idempotency', () => {
         acquired: true,
         state: stateStore.acquisitionStateJson,
       })),
-      releaseCycleLockAndUpdateState: jest.fn(async (_org: string, _sid: string, _job: string, nextState: unknown) => {
-        stateStore.acquisitionStateJson = nextState as typeof stateStore.acquisitionStateJson;
+      releaseCycleLockAndUpdateState: jest.fn(async (_org: string, _sid: string, _job: string, release: { dataPlane: unknown }) => {
+        stateStore.acquisitionStateJson = {
+          ...(stateStore.acquisitionStateJson as object),
+          ...(release.dataPlane as object),
+          activeCycleJobId: null,
+        } as unknown as typeof stateStore.acquisitionStateJson;
         return true;
       }),
     };
@@ -363,8 +367,12 @@ describe('reference-capture HF durable idempotency', () => {
         acquired: true,
         state: stateStore.acquisitionStateJson,
       })),
-      releaseCycleLockAndUpdateState: jest.fn(async (_org: string, _sid: string, _job: string, nextState: unknown) => {
-        stateStore.acquisitionStateJson = nextState as typeof stateStore.acquisitionStateJson;
+      releaseCycleLockAndUpdateState: jest.fn(async (_org: string, _sid: string, _job: string, release: { dataPlane: unknown }) => {
+        stateStore.acquisitionStateJson = {
+          ...(stateStore.acquisitionStateJson as object),
+          ...(release.dataPlane as object),
+          activeCycleJobId: null,
+        } as unknown as typeof stateStore.acquisitionStateJson;
         return true;
       }),
     };

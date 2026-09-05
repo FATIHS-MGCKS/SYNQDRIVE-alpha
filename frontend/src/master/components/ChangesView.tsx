@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
+    version: '4.9.1067',
+    title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',
+    summary: [
+      'Forensic audit proved pre-C.1d lost-update race: cycle release could overwrite operator phase switch.',
+      'Control-plane vs data-plane split: pending phase at cycle boundary; FOR UPDATE + buildCycleReleaseAcquisitionState.',
+      'V2/canary fail-closed gate on phase API; REQUESTED vs EFFECTIVE activation semantics.',
+      'Durable completedPhaseSummaries frozen at boundary; effectiveConfig snapshot on activation.',
+      '12 concurrency tests; 103 reference-capture HF tests PASS. Production HF untouched.',
+    ],
+    reason:
+      'C.1c architecture correct but unsafe for live canary without atomic phase switching and authority verification.',
+    previousBehavior:
+      'Immediate phase switch via mergeAcquisitionState; releaseCycleLockAndUpdateState could overwrite newer calibration state.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1d; reference-capture-hf-calibration-phase.policy.ts; reference-capture-session.repository.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:30:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1c-single-drive-multi-cadence-calibration-2026-09-04',
     version: '4.9.1066',
     title: 'DI-EV-0035C.1c — Single-Drive Multi-Cadence Flight Recorder Calibration',

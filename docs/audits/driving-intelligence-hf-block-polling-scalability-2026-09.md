@@ -502,3 +502,110 @@ PHASE_ORDER_RECORDED = YES
 READY_FOR_REFERENCE_CAPTURE_CANARY = YES
 READY_FOR_MERGE = YES (calibration mechanism ready; 30s hypothesis NOT validated)
 ```
+
+---
+
+## DI-EV-0035C.1d — Phase transition atomicity + canary authority hardening (2026-09-05)
+
+**Evidence ID:** DI-EV-0035C.1d  
+**Parent:** DI-EV-0035C.1c  
+**Status:** IMPLEMENTED (Reference Capture only); **NOT DEPLOYED**
+
+### A. Forensic race audit (pre-C.1d)
+
+Reconstructed lost-update race between `tryAcquireCycleLock` / `captureTick` / `releaseCycleLockAndUpdateState` and `switchHfCalibrationPhase` / `mergeAcquisitionState`:
+
+| Step | Event |
+|------|-------|
+| T0 | Cycle acquires state with phase A |
+| T1 | Provider work in progress |
+| T2 | Operator POST switches to phase B |
+| T3 | Phase B persisted via `mergeAcquisitionState` |
+| T4 | Cycle completes |
+| T5 | `releaseCycleLockAndUpdateState` wrote `nextState` from T0 snapshot |
+
+```
+PHASE_SWITCH_LOST_UPDATE_RACE_EXISTS = YES (pre-C.1d)
+CONTROL_PLANE_STATE_CAN_BE_OVERWRITTEN_BY_CAPTURE_RELEASE = YES (pre-C.1d)
+LOST_UPDATE_DEFECT_FIXED = YES (C.1d)
+```
+
+### B. Control-plane vs data-plane ownership
+
+| Plane | Owned fields |
+|-------|----------------|
+| **DATA-PLANE** | watermarks, query coverage, recovery cursor, provenance ring, poll timestamps, cycle counters, `hfCalibrationActiveCounters` (in-cycle) |
+| **CONTROL-PLANE** | `hfCalibrationSeries` (series id, phases, pending request, summaries, boundary timestamps) |
+
+**Contract:** Cycle release re-reads persisted state under `SELECT … FOR UPDATE`, applies pending phase at boundary via `buildCycleReleaseAcquisitionState`, and never writes stale `hfCalibrationSeries` from the in-cycle snapshot. Operator `mergeAcquisitionState` updates control-plane only (pending request) without touching watermarks.
+
+```
+CONTROL_PLANE_DATA_PLANE_OWNERSHIP_DEFINED = YES
+PHASE_SWITCH_ATOMIC = YES (pending-at-boundary + row lock)
+```
+
+### C. Phase command vs effective phase
+
+- Operator `POST …/hf-calibration/phases` records **REQUESTED** pending phase (`pendingPhaseRequest`).
+- **EFFECTIVE** active phase changes only at acquisition-cycle release boundary (`applyPendingCalibrationPhaseAtBoundary`).
+- API returns `activationStatus: REQUESTED | EFFECTIVE` — never claims EFFECTIVE before boundary commit.
+
+```
+PHASE_SWITCH_ACKNOWLEDGED_BUT_LOST = NO
+PHASE_SWITCH_APPLIED_MORE_THAN_ONCE = NO
+PHASE_SEQUENCE_MONOTONIC = YES
+PHASE_BOUNDARY_TIMESTAMP_REPRESENTS_EFFECTIVE_RUNTIME_SWITCH = YES
+```
+
+### D. V2 / canary fail-closed precondition
+
+Before accepting a phase request: resolve `tokenId` → `resolveHfRecoveryPolicyForToken`. Require `policy.mode === V2`.
+
+```
+PHASE_ACTIVATION_REQUIRES_EFFECTIVE_V2_POLICY = YES
+LEGACY_TOKEN_CAN_ACCEPT_CALIBRATION_PHASE = NO
+EMPTY_CANARY_ALLOWLIST_CAN_ACCEPT_PHASE = NO
+NON_ALLOWLISTED_TOKEN_CAN_ACCEPT_PHASE = NO
+```
+
+### E. Effective config snapshot + durable phase summary
+
+On boundary activation, persist `effectiveConfig` snapshot (`calibrationSeriesId`, `calibrationPhaseId`, `phaseSequence`, `vehicleId`, `tokenId`, `effectivePollIntervalMs`, settlement/overlap, `policyVersion`, `policyMode`, `effectiveAt`).
+
+On phase close, freeze `completedPhaseSummaries[]` with provider/bucket/transition-window counters (not reliant on 500-record provenance ring).
+
+```
+EFFECTIVE_PHASE_CONFIG_SNAPSHOT_PERSISTED = YES
+PHASE_SUMMARY_DURABLE = YES
+PHASE_RESULT_DEPENDS_ONLY_ON_500_RECORD_RING = NO
+```
+
+### F. Cycle lock audit
+
+`tryAcquireCycleLock` uses transaction + `activeCycleJobId` null-check + `FOR UPDATE` row lock. Same-session double-acquire returns `acquired: false`.
+
+```
+EXISTING_CYCLE_LOCK_ATOMICITY_PROVEN = YES (transaction + activeCycleJobId gate + FOR UPDATE)
+EXISTING_CYCLE_LOCK_CONCURRENCY_DEFECT_FOUND = NO
+```
+
+### G. C.1d final flags
+
+```
+DI_EV = DI-EV-0035C.1d
+TRANSITION_WINDOWS_IDENTIFIABLE = YES
+WATERMARKS_PRESERVED_ACROSS_PHASE_SWITCH = YES
+PROVENANCE_PRESERVED_ACROSS_PHASE_SWITCH = YES
+PRODUCTION_HF_PATH_CHANGED = NO
+PRODUCTION_SCORE_CHANGED = NO
+PRODUCTION_DETECTORS_CHANGED = NO
+PRODUCTION_TIRE_BRAKE_MODELS_CHANGED = NO
+PRODUCTION_FLEET_STAGGERING_ENABLED = NO
+PRODUCTION_DYNAMIC_POLL_OVERRIDE_ENABLED = NO
+HF_30S_BLOCK_POLLING_VALIDATED = NO
+DEPLOYED = NO
+READY_FOR_LIVE_CANARY = YES (pending operator vehicle selection + allowlist per C.1b)
+READY_FOR_MERGE = YES (hardening complete; live calibration not yet executed)
+```
+
+**Remaining unknowns before live calibration:** real multi-worker Reference Capture runner concurrency under production PM2 topology; operator timing discipline for phase duration; empirical 30s block-polling hypothesis still unvalidated.

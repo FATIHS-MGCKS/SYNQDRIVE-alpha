@@ -3,7 +3,11 @@ import type { ReferenceCaptureSession, ReferenceCaptureSessionStatus } from '@pr
 import { PrismaService } from '@shared/database/prisma.service';
 import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sample-identity.util';
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
-import { normalizeHfCalibrationSeriesState } from './reference-capture-hf-calibration-phase.policy';
+import {
+  buildCycleReleaseAcquisitionState,
+  normalizeHfCalibrationSeriesState,
+} from './reference-capture-hf-calibration-phase.policy';
+import type { HfRecoveryPolicyV2Config } from './reference-capture-hf-recovery-v2.policy';
 
 function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
   const base = (raw ?? {}) as Partial<ReferenceCaptureAcquisitionState>;
@@ -44,6 +48,8 @@ function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
     recoverySweepCount: base.recoverySweepCount ?? 0,
     lastHfHistoricalPollAt: base.lastHfHistoricalPollAt ?? null,
     hfCalibrationSeries: normalizeHfCalibrationSeriesState(base.hfCalibrationSeries),
+    hfCalibrationActiveCounters: base.hfCalibrationActiveCounters ?? null,
+    acquisitionStateVersion: base.acquisitionStateVersion ?? 0,
     lastSequenceNumber: base.lastSequenceNumber ?? 0,
     activeCycleJobId: base.activeCycleJobId ?? null,
     quarantinedProviderFields: base.quarantinedProviderFields ?? [],
@@ -56,6 +62,18 @@ function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
 @Injectable()
 export class ReferenceCaptureSessionRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async lockSessionRow(
+    tx: Pick<PrismaService, '$executeRaw'>,
+    organizationId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await tx.$executeRaw`
+      SELECT id FROM "ReferenceCaptureSession"
+      WHERE id = ${sessionId} AND "organizationId" = ${organizationId}
+      FOR UPDATE
+    `;
+  }
 
   create(input: {
     organizationId: string;
@@ -207,6 +225,7 @@ export class ReferenceCaptureSessionRepository {
     activeCycleJobId: string,
   ): Promise<{ acquired: boolean; state: ReferenceCaptureAcquisitionState | null }> {
     return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, organizationId, sessionId);
       const session = await tx.referenceCaptureSession.findFirst({
         where: { id: sessionId, organizationId, status: 'RECORDING' },
       });
@@ -220,6 +239,7 @@ export class ReferenceCaptureSessionRepository {
       const nextState: ReferenceCaptureAcquisitionState = {
         ...state,
         activeCycleJobId,
+        acquisitionStateVersion: (state.acquisitionStateVersion ?? 0) + 1,
       };
 
       await tx.referenceCaptureSession.update({
@@ -235,10 +255,16 @@ export class ReferenceCaptureSessionRepository {
     organizationId: string,
     sessionId: string,
     activeCycleJobId: string,
-    nextState: ReferenceCaptureAcquisitionState,
+    release: {
+      dataPlane: ReferenceCaptureAcquisitionState;
+      hfPolicy: HfRecoveryPolicyV2Config;
+      effectiveAtMs?: number;
+    },
     eventWatermarkAt?: Date | null,
   ): Promise<boolean> {
+    const effectiveAtMs = release.effectiveAtMs ?? Date.now();
     return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, organizationId, sessionId);
       const session = await tx.referenceCaptureSession.findFirst({
         where: { id: sessionId, organizationId },
       });
@@ -247,10 +273,44 @@ export class ReferenceCaptureSessionRepository {
       const current = parseAcquisitionState(session.acquisitionStateJson);
       if (current.activeCycleJobId !== activeCycleJobId) return false;
 
-      const merged: ReferenceCaptureAcquisitionState = {
-        ...nextState,
-        activeCycleJobId: null,
-      };
+      const {
+        hfCalibrationSeries: _omitSeries,
+        hfCalibrationActiveCounters: releaseCounters,
+        acquisitionStateVersion: _omitVersion,
+        activeCycleJobId: _omitLock,
+        ...dataPlaneScalars
+      } = release.dataPlane as ReferenceCaptureAcquisitionState;
+
+      const merged = buildCycleReleaseAcquisitionState({
+        persisted: current,
+        dataPlane: {
+          cycleCount: dataPlaneScalars.cycleCount,
+          lastCycleAt: dataPlaneScalars.lastCycleAt ?? null,
+          hfWatermarkAt: dataPlaneScalars.hfWatermarkAt ?? null,
+          hfWatermarkByField: dataPlaneScalars.hfWatermarkByField ?? {},
+          hfQueryCoverageByField: dataPlaneScalars.hfQueryCoverageByField ?? {},
+          hfPhysicalIdentityVersion:
+            dataPlaneScalars.hfPhysicalIdentityVersion ??
+            HF_PHYSICAL_IDENTITY_VERSION.AGGREGATE_BUCKET_V2,
+          hfQueryProvenanceRing: dataPlaneScalars.hfQueryProvenanceRing ?? [],
+          hfRecoveryCursorByField: dataPlaneScalars.hfRecoveryCursorByField ?? {},
+          lastRecoverySweepAt: dataPlaneScalars.lastRecoverySweepAt ?? null,
+          recoverySweepCount: dataPlaneScalars.recoverySweepCount ?? 0,
+          lastHfHistoricalPollAt: dataPlaneScalars.lastHfHistoricalPollAt ?? null,
+          eventWatermarkAt: dataPlaneScalars.eventWatermarkAt ?? null,
+          seenEventFingerprints: dataPlaneScalars.seenEventFingerprints ?? [],
+          seenPhysicalSampleFingerprints: dataPlaneScalars.seenPhysicalSampleFingerprints ?? [],
+          lastSequenceNumber: dataPlaneScalars.lastSequenceNumber ?? 0,
+          quarantinedProviderFields: dataPlaneScalars.quarantinedProviderFields ?? [],
+          consecutiveTransientFailures: dataPlaneScalars.consecutiveTransientFailures ?? 0,
+          lastFailureClass: dataPlaneScalars.lastFailureClass ?? null,
+          lastFailureAt: dataPlaneScalars.lastFailureAt ?? null,
+          hfCalibrationActiveCounters:
+            releaseCounters ?? current.hfCalibrationActiveCounters ?? null,
+        },
+        hfPolicy: release.hfPolicy,
+        effectiveAtMs,
+      });
 
       await tx.referenceCaptureSession.update({
         where: { id: sessionId, organizationId },
@@ -288,15 +348,20 @@ export class ReferenceCaptureSessionRepository {
     merge: (current: ReferenceCaptureAcquisitionState) => ReferenceCaptureAcquisitionState,
   ): Promise<ReferenceCaptureSession | null> {
     return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, organizationId, sessionId);
       const session = await tx.referenceCaptureSession.findFirst({
         where: { id: sessionId, organizationId },
       });
       if (!session) return null;
       const current = parseAcquisitionState(session.acquisitionStateJson);
       const next = merge(current);
+      const merged: ReferenceCaptureAcquisitionState = {
+        ...next,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
       return tx.referenceCaptureSession.update({
         where: { id: sessionId, organizationId },
-        data: { acquisitionStateJson: next as object },
+        data: { acquisitionStateJson: merged as object },
       });
     });
   }

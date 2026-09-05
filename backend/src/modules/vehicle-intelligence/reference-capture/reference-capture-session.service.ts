@@ -23,8 +23,9 @@ import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './refe
 import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
 import {
+  assertHfCalibrationPhaseActivationAllowed,
   isRecognizedCalibrationPollIntervalMs,
-  switchHfCalibrationPhase,
+  requestHfCalibrationPhase,
 } from './reference-capture-hf-calibration-phase.policy';
 import { PrismaService } from '@shared/database/prisma.service';
 import type {
@@ -483,14 +484,31 @@ export class ReferenceCaptureSessionService {
       throw new BadRequestException('Vehicle has no DIMO tokenId for calibration');
     }
 
+    const hfPolicyBase = this.config.getHfRecoveryPolicyConfig();
+    const hfPolicy = this.config.resolveHfRecoveryPolicyForToken(tokenId);
+    try {
+      assertHfCalibrationPhaseActivationAllowed(hfPolicy, hfPolicyBase);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'HF calibration phase activation denied',
+      );
+    }
+
     const state = parseAcquisitionState(session.acquisitionStateJson);
-    const transition = switchHfCalibrationPhase({
-      existing: state.hfCalibrationSeries ?? null,
-      vehicleId: session.vehicleId,
-      tokenId,
-      effectivePollIntervalMs: intervalMs,
-      nowMs: Date.now(),
-    });
+    let transition: ReturnType<typeof requestHfCalibrationPhase>;
+    try {
+      transition = requestHfCalibrationPhase({
+        existing: state.hfCalibrationSeries ?? null,
+        vehicleId: session.vehicleId,
+        tokenId,
+        effectivePollIntervalMs: intervalMs,
+        nowMs: Date.now(),
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Invalid calibration phase request',
+      );
+    }
 
     const updated = await this.sessionRepository.mergeAcquisitionState(
       organizationId,
@@ -498,24 +516,29 @@ export class ReferenceCaptureSessionService {
       (current) => ({
         ...current,
         hfCalibrationSeries: transition.series,
-        ...(transition.resetLastHfHistoricalPollAt ? { lastHfHistoricalPollAt: null } : {}),
       }),
     );
     if (!updated) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
 
-    const active = transition.series.activePhase!;
+    const effectiveActive = transition.series.activePhase;
+    const requestedMatchesEffective = effectiveActive?.effectivePollIntervalMs === intervalMs;
     return {
+      activationStatus: requestedMatchesEffective ? 'EFFECTIVE' : 'REQUESTED',
       calibrationSeriesId: transition.series.calibrationSeriesId,
-      calibrationPhaseId: active.calibrationPhaseId,
-      phaseSequence: active.phaseSequence,
-      effectivePollIntervalMs: active.effectivePollIntervalMs,
+      requestedEffectivePollIntervalMs: intervalMs,
+      effectivePollIntervalMs: effectiveActive?.effectivePollIntervalMs ?? null,
+      calibrationPhaseId: effectiveActive?.calibrationPhaseId ?? null,
+      phaseSequence: effectiveActive?.phaseSequence ?? null,
       phaseOrder: transition.series.phaseOrder,
-      phaseStartedAt: active.phaseStartedAt,
-      previousPhaseEndedAt: transition.previousPhaseEndedAt,
+      phaseStartedAt: effectiveActive?.phaseStartedAt ?? null,
+      pendingPhaseRequest: transition.series.pendingPhaseRequest,
+      deduplicated: transition.deduplicated,
       vehicleId: session.vehicleId,
       tokenId,
       referenceCaptureSessionId: sessionId,
       lastPhaseBoundaryAt: transition.series.lastPhaseBoundaryAt,
+      policyMode: hfPolicy.mode,
+      policyVersion: effectiveActive?.effectiveConfig?.policyVersion ?? null,
     };
   }
 

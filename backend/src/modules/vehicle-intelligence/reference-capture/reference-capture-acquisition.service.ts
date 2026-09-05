@@ -51,8 +51,10 @@ import {
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
 import {
+  accumulatePhaseQueryMetrics,
   applyHfPolicyWithSessionPollOverride,
   buildCalibrationPhaseContext,
+  type HfCalibrationPhaseRuntimeCounters,
   type HfCalibrationSeriesState,
 } from './reference-capture-hf-calibration-phase.policy';
 import { ReferenceCaptureConfig } from './reference-capture.config';
@@ -250,6 +252,8 @@ export class ReferenceCaptureAcquisitionService {
     });
     let lastHfHistoricalPollAt = state.lastHfHistoricalPollAt ?? null;
     const hfCalibrationSeries: HfCalibrationSeriesState | null = state.hfCalibrationSeries ?? null;
+    let hfCalibrationActiveCounters: HfCalibrationPhaseRuntimeCounters | null =
+      state.hfCalibrationActiveCounters ?? null;
     let hfBucketByFingerprint = new Map<string, { providerField: string; providerTimestamp: string }>();
 
     const fieldLookup = new Map(
@@ -348,6 +352,14 @@ export class ReferenceCaptureAcquisitionService {
             hfQueryProvenanceRing as HfQueryProvenanceRecord[],
             hfResult.queryProvenanceRecord,
           ) as Array<Record<string, unknown>>;
+          if (hfCalibrationSeries?.activePhase) {
+            hfCalibrationActiveCounters = accumulatePhaseQueryMetrics(
+              hfCalibrationActiveCounters,
+              hfResult.queryProvenanceRecord,
+              hfResult.newPhysicalSampleFingerprints.length,
+              hfCalibrationSeries.activePhase.calibrationPhaseId,
+            );
+          }
         }
         if (hfResult.observabilitySnapshot) {
           this.logger.log(JSON.stringify(hfResult.observabilitySnapshot));
@@ -411,6 +423,14 @@ export class ReferenceCaptureAcquisitionService {
                 hfQueryProvenanceRing as HfQueryProvenanceRecord[],
                 sweepResult.queryProvenanceRecord,
               ) as Array<Record<string, unknown>>;
+              if (hfCalibrationSeries?.activePhase) {
+                hfCalibrationActiveCounters = accumulatePhaseQueryMetrics(
+                  hfCalibrationActiveCounters,
+                  sweepResult.queryProvenanceRecord,
+                  sweepResult.newPhysicalSampleFingerprints.length,
+                  hfCalibrationSeries.activePhase.calibrationPhaseId,
+                );
+              }
             }
             if (sweepResult.observabilitySnapshot) {
               this.logger.log(JSON.stringify(sweepResult.observabilitySnapshot));
@@ -454,7 +474,7 @@ export class ReferenceCaptureAcquisitionService {
       );
     }
 
-    const nextState: ReferenceCaptureAcquisitionState = {
+    const dataPlane = {
       cycleCount: cycleNumber,
       lastCycleAt: new Date().toISOString(),
       hfWatermarkAt: hfWatermarkState.hfWatermarkAt,
@@ -466,7 +486,6 @@ export class ReferenceCaptureAcquisitionService {
       lastRecoverySweepAt: hfRecoveryCursor.lastRecoverySweepAt,
       recoverySweepCount: hfRecoveryCursor.recoverySweepCount,
       lastHfHistoricalPollAt,
-      hfCalibrationSeries,
       eventWatermarkAt: state.eventWatermarkAt,
       seenEventFingerprints: state.seenEventFingerprints.slice(-5000),
       seenPhysicalSampleFingerprints: [
@@ -474,18 +493,22 @@ export class ReferenceCaptureAcquisitionService {
         ...newPhysicalSampleFingerprints,
       ].slice(-20_000),
       lastSequenceNumber: sequenceNumber,
-      activeCycleJobId: null,
       quarantinedProviderFields: state.quarantinedProviderFields ?? [],
       consecutiveTransientFailures: 0,
       lastFailureClass: null,
       lastFailureAt: null,
+      hfCalibrationActiveCounters,
     };
 
     await this.sessionRepository.releaseCycleLockAndUpdateState(
       input.organizationId,
       input.sessionId,
       input.cycleJobId,
-      nextState,
+      {
+        dataPlane,
+        hfPolicy,
+        effectiveAtMs: Date.now(),
+      },
       state.eventWatermarkAt ? new Date(state.eventWatermarkAt) : session.eventWatermarkAt,
     );
 

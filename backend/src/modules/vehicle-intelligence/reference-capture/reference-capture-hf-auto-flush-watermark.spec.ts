@@ -104,8 +104,12 @@ describe('reference-capture HF auto-flush watermark accounting', () => {
         acquired: true,
         state: stateStore.acquisitionStateJson,
       })),
-      releaseCycleLockAndUpdateState: jest.fn(async (_o: string, _s: string, _j: string, next: unknown) => {
-        stateStore.acquisitionStateJson = next as typeof stateStore.acquisitionStateJson;
+      releaseCycleLockAndUpdateState: jest.fn(async (_o: string, _s: string, _j: string, release: { dataPlane: unknown }) => {
+        stateStore.acquisitionStateJson = {
+          ...(stateStore.acquisitionStateJson as object),
+          ...(release.dataPlane as object),
+          activeCycleJobId: null,
+        } as unknown as typeof stateStore.acquisitionStateJson;
         return true;
       }),
     };
