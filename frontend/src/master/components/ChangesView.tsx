@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05',
+    version: '4.9.1068',
+    title: 'G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A)',
+    summary: [
+      'Read-only Stage A forensics for user-confirmed refuel ~2026-09-05T13:29Z (WOB L 7503).',
+      'Telemetry corroborates ~35s stationary dwell at Shell forecourt ~13:25–13:26Z (~85m); at 13:29Z vehicle was driving.',
+      'No VehicleEnergyEvent REFUEL row yet; fleet-wide zero REFUEL ingest on 2026-09-05; V2 reconciliation/enrichment chain not entered.',
+      'Likely blocked at DIMO native refuel segment ingestion / scheduling (warm pass pre-event; fast passes silent).',
+      'PRODUCTION_REFUEL_V2_VALIDATION_STATE=IN_PROGRESS; recheck read-only from ~14:30Z and warm ~17:05Z.',
+    ],
+    reason: 'First natural post-cutover REFUEL requires independent production forensics without mutation.',
+    previousBehavior:
+      'T+60 audit confirmed V2 runtime stability with zero natural REFUELs; no per-event production proof existed.',
+    details:
+      'docs/audits/refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md; FST-EVID-G22-FIRST-NATURAL-PRODUCTION-REFUEL-WOB-L-7503-2026-09-05-001; EED-EV-0040.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T14:15:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
     version: '4.9.1067',
     title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',

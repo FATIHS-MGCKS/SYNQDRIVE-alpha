@@ -470,6 +470,10 @@ edges:
     relation: REFERENCES
     to: EED-EV-0038
 
+  - from: EED-EV-0040
+    relation: REFERENCES
+    to: EED-EV-0039
+
   - from: EED-EV-0027
     relation: REFERENCES
     to: EED-OQ-013

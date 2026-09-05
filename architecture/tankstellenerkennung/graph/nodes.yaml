@@ -1003,6 +1003,18 @@ nodes:
     source_paths:
       - docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md
 
+  - id: FST-EVID-G22-FIRST-NATURAL-PRODUCTION-REFUEL-WOB-L-7503-2026-09-05-001
+    type: evidence
+    title: G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A)
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      User-confirmed refuel ~2026-09-05T13:29Z. Stage A read-only forensics: Shell forecourt
+      dwell ~13:25–13:26Z corroborated (~85m); no VehicleEnergyEvent REFUEL row yet; V2 chain
+      not entered. PRODUCTION_OBSERVATION_IN_PROGRESS — not PROVEN_IN_PRODUCTION.
+    source_paths:
+      - docs/audits/refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time
