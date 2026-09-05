@@ -1320,6 +1320,18 @@ nodes:
       source_type (time-bounded snapshot); does not downgrade factual confirmation.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0040
+    type: evidence
+    title: G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A + B1 + B1.5)
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - docs/audits/refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md
+    summary: >
+      B1.5 direct DIMO probe: 0 refuel segments; fuel decline not rise; provider/SynqDrive aligned.
+      UPSTREAM_PROVIDER_EVIDENCE_PENDING. Fast repair/detector execution INFERRED only.
+    verified_at: "2026-09-05"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt
