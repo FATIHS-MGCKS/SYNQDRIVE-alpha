@@ -38,13 +38,13 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05',
     version: '4.9.1068',
-    title: 'G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A)',
+    title: 'G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A + B1)',
     summary: [
       'Read-only Stage A forensics for user-confirmed refuel ~2026-09-05T13:29Z (WOB L 7503).',
       'Telemetry corroborates ~35s stationary dwell at Shell forecourt ~13:25–13:26Z (~85m); at 13:29Z vehicle was driving.',
-      'No VehicleEnergyEvent REFUEL row yet; fleet-wide zero REFUEL ingest on 2026-09-05; V2 reconciliation/enrichment chain not entered.',
-      'Likely blocked at DIMO native refuel segment ingestion / scheduling (warm pass pre-event; fast passes silent).',
-      'PRODUCTION_REFUEL_V2_VALIDATION_STATE=IN_PROGRESS; recheck read-only from ~14:30Z and warm ~17:05Z.',
+      'Stage B1 (~14:38Z): still no REFUEL row; fuel 14.9% unchanged; fast repair ran (silent no-op); detector inferred RUN_NO_EVIDENCE.',
+      'Route jump confirmed as 91s telemetry gap + late catch-up (15 km artifact); NOT_PROVEN causal to REFUEL miss.',
+      'POSSIBLE_END vs COMPLETED trip drift persists (P2); does not gate energy detection per code. Next recheck warm ~17:05Z.',
     ],
     reason: 'First natural post-cutover REFUEL requires independent production forensics without mutation.',
     previousBehavior:
