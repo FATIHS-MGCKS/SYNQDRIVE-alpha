@@ -422,6 +422,7 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
       {} as never,
       {} as never,
       { startRunner: jest.fn() } as never,
+      { vehicle: { findFirst: jest.fn() } } as never,
     );
 
     await expect(service.startRecording('org', 's1')).rejects.toThrow(
@@ -456,6 +457,7 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
       {} as never,
       {} as never,
       { startRunner: jest.fn() } as never,
+      { vehicle: { findFirst: jest.fn() } } as never,
     );
 
     await expect(service.startRecording('org', 's1')).rejects.toThrow(
