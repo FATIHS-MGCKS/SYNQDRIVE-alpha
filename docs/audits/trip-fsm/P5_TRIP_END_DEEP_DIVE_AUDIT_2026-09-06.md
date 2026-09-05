@@ -9,7 +9,8 @@
 
 | Field | Value |
 |-------|-------|
-| Audit date | 2026-09-06 |
+| Audit date | 2026-09-06 (P5A closure: 2026-09-06) |
+| Original P5 commit | `a76d4fb2ea03143fb7f6aa2148be84483a7e7897` |
 | Audited application SHA | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` |
 | Audit artifact HEAD (docs chain) | `a4377f3a200ca45a97b7ce422caf8d92faddabbe` (P4A closure) |
 | P4 closure commit | `a4377f3a200ca45a97b7ce422caf8d92faddabbe` |
@@ -92,9 +93,9 @@ TripTrackingProcessor
   └─ processFinalize             [POSSIBLE_END → RESTING]
        ├─ derive endTime priority chain
        ├─ checkTripQuality → discardTrip | finalizeTrip (COMPLETED)
-       ├─ await postFinalizeAnalysisProducer
+       ├─ await postFinalizeAnalysisProducer (failure-contained)
        ├─ enrichment (fire-and-forget)
-       ├─ transitionState(RESTING)
+       ├─ transitionState(RESTING)  ← crash/throw window vs trip row
        └─ batteryLvRestSessionProducer (local try/catch)
 ```
 
@@ -204,9 +205,9 @@ await this.prisma.vehicleTrip.update({
 | Why? | Rolling “latest observation” for live trip metrics/display while ONGOING |
 | Provisional? | **Yes** — canonical boundary only at `finalizeTrip` |
 | `tripStatus` | Remains **ONGOING** until finalize/discard/split |
-| Consumers | Any reader of `vehicleTrip.endTime` on ONGOING rows sees worker-time proxy, not canonical end |
+| Consumers | **Evidence-backed:** rental/operator UI trip timeline and map overlays treat ONGOING `endTime` as rolling “latest observation” (`frontend/src/rental/components/trips/timeline.utils.ts`, `TripMapSummaryOverlay.tsx`). **Start-side merge does NOT read ONGOING rows** — merge uses `tripStatus: COMPLETED` only (`processPossibleStart` ~859–863). |
 | Dual semantics? | **Yes** — ONGOING: latest tick time; COMPLETED: backdated boundary |
-| Risk class | **P1 architectural** — boundary/latency confusion for dashboards, APIs, merge logic (**P5-F01**) |
+| Risk class | **P1 architectural** — UI/display boundary confusion; not start-merge coupling (**P5-F01**) |
 
 ---
 
@@ -248,7 +249,7 @@ await this.prisma.vehicleTrip.update({
 |---|----------|--------|
 | Can ignition ON prevent end? | **During IDLE/perf-active stops — yes (IDLE).** Stale ignition alone **cannot** block POSSIBLE_END (explicit guard step 7). |
 | Stale ignition ON forever? | **No** — step 7 → POSSIBLE_END unless perf/energy/frequency says IDLE/ACTIVE. |
-| Ignition OFF alone → POSSIBLE_END? | **Yes**, with HIGH confidence when all stopped + no energy (step 5). |
+| Ignition OFF alone → POSSIBLE_END? | **No** — step 5 requires **allStopped AND allIgnitionOff AND noEnergyChange** together. Ignition OFF without full stop/no-energy is insufficient. |
 | speed=0 alone → POSSIBLE_END? | **Not immediately** — needs frequency drop, stale ignition path, or ambiguous fallback; traffic stop with perf → IDLE. |
 | EV without ignition? | **Yes** — motion/odo/frequency/energy paths; no ignition requirement for end. |
 
@@ -272,38 +273,57 @@ await this.prisma.vehicleTrip.update({
 
 ## P5.5 — lastMeaningfulMovementAt Authority
 
-### Writers
+### Writers — clock authority (VERIFIED P5A.4)
 
-| Writer | Condition |
-|--------|-----------|
-| ACTIVE tick | `hadMeaningfulMovement`: motionCount>0 OR CH guard maxSpeed>5 OR odoΔ>0.05 |
-| CH end assist | set to `detectedEndAt` |
-| Activity resumed (PEC) | set to `now` |
-| CUSUM confirm/reopen | may set from `cusumLastMovementAt` evidence |
-| IDLE / POSSIBLE_END entry | does not write (uses existing) |
-| RESTING transition | cleared to null |
+| Writer | Value written | Clock type |
+|--------|---------------|------------|
+| **A. ACTIVE continuity** | `lastMeaningfulMovementAt: now` when `hadMeaningfulMovement` | **Worker evaluation time** — `now` is tick clock, not provider point timestamp (~1755) |
+| **B. PEC activity-resumed** | `lastMeaningfulMovementAt: now` | **Worker time** (~1904) |
+| **C. CH end assist** | `lastMeaningfulMovementAt: detectedEndAt` | **CH segment event time** (~2851) |
+| **D. CUSUM confirm/reopen** | optional `lastMeaningfulMovementAt: cusumLastMovementAt` | **Provider core timestamp** from CUSUM window (~2164, ~2215) |
+| **E. Mid-gap split FSM repoint** | `lastMeaningfulMovementAt: midGap.secondStartAt` | **Gap-boundary event time** (~1323) |
+| IDLE / POSSIBLE_END entry | no write | uses prior value |
+| RESTING | cleared null | — |
+
+**CONFIRMED — P5-F14:** One DB field mixes **worker clock** and **provider/CH event clock** depending on writer path, yet feeds canonical end priority (#2) and `tripEndLatencyFromMovement`.
+
+### `hadMeaningfulMovement` vs odometer-only ACTIVE (P5A.5)
+
+`assessActiveContinuity` returns **ACTIVE** when `act.hasOdometerProgress` even if `motionCount === 0`.
+But `hadMeaningfulMovement` tests only:
+
+```typescript
+(summary.motionCount ?? 0) > 0
+|| (summary.clickhouseGuard?.maxSpeedKmh ?? 0) > 5
+|| (summary.clickhouseGuard?.odometerDeltaKm ?? 0) > 0.05
+```
+
+It does **not** read `summary.odometerDelta` from the continuity assessment.
+
+**CONFIRMED — P5-F15:** DIMO odometer-only ACTIVE (speed unavailable/0, odometer progressing) does **not** advance `lastMeaningfulMovementAt`.
 
 ### Readers
 
 `possibleEndAt` selection, no-core anchor, endTime priority #2, `tripEndLatencyFromMovement`, timeline logs.
 
-### Timestamp authority matrix
+### Timestamp authority matrix (Matrix D source)
 
-| Field | Authority | Typical meaning |
-|-------|-----------|-----------------|
-| `lastActivityAt` | Worker eval / tick time | Last FSM evaluation or trip row touch — **not purely physical** |
-| `lastMeaningfulMovementAt` | Physical motion proxy | Last speed/odo/CH motion evidence |
-| `possibleEndAt` | Candidate **boundary** | Often last movement, not state-entry time |
-| `cusumValidatedAt` | Worker time | When CUSUM/CH validation recorded |
-| `cusumSegmentStart/end` | Data window / segment end | CUSUM result **or** CH segment end stored in same field |
-| `trip.endTime` (ONGOING) | Worker `now` each tick | Provisional |
-| `trip.endTime` (COMPLETED) | Priority chain | Canonical boundary |
-| `trip.updatedAt` | DB | Last row mutation |
-| worker `now` | Clock | Gates, schedules, IDLE lastActivityAt |
+| Field | Primary clock | Notes |
+|-------|---------------|-------|
+| `lastActivityAt` | Worker eval | IDLE/ACTIVE tick writes `now` |
+| `lastMeaningfulMovementAt` | **Mixed** | Worker `now` (ACTIVE/resume) **or** provider/CH event time (CH/CUSUM/mid-gap) — **P5-F14** |
+| `possibleEndAt` | Mixed boundary | Often movement anchor or CH `detectedEndAt` |
+| `cusumValidatedAt` | Worker | validation recorded-at |
+| `cusumSegmentStart/end` | Provider window / segment | CH end stored in `cusumSegmentEnd` |
+| `trip.endTime` (ONGOING) | Worker `now` | provisional each tick |
+| `trip.endTime` (COMPLETED) | Priority chain | canonical backdated boundary |
+| worker `now` | Wall clock | gates, schedules, some anchor writes |
 
 ---
 
 ## P5.6 — No-Core-Data End Path
+
+**Prerequisite:** `Promise.all` fetch **succeeds** with `corePoints.length === 0`. This is distinct from provider **exceptions** (see below).
 
 When `corePoints.length === 0`:
 
@@ -312,17 +332,26 @@ When `corePoints.length === 0`:
 3. If `inactiveMs = now - anchorAt ≥ 120s` → **POSSIBLE_END** with `possibleEndAt = anchorAt`.
 4. Else reschedule ACTIVE_TICK (trip stays open).
 
+### Provider exception vs empty success (P5A.9)
+
+| Case | Runtime behavior |
+|------|------------------|
+| **A — `fetchRawTripCoreData` throws** | Outer `ACTIVE_TICK` catch (~1825): log, `scheduleActiveTick(+30s)`, **no** no-core branch, **no** POSSIBLE_END |
+| **B — fetch succeeds, `[]`** | Enters no-core branch above; may CH-assist or anchor-timeout → POSSIBLE_END |
+
+An operational “outage” may present as either depending on DIMO client behavior; **code semantics differ**.
+
 ### Anchor staleness scenarios
 
 | Scenario | Risk |
 |----------|------|
-| Normal park, DIMO sleeps | Intended — fast finalize |
-| Provider outage during drive | If anchors stale from last tick, may false-end (**P5-F13**) |
-| Tunnel / network loss | Same — depends on anchor age |
-| Repeated IDLE `lastActivityAt=now` | **Extends** inactivity clock incorrectly if used as anchor |
-| EV no ignition | Works via movement anchor / CH |
+| Normal park, DIMO sleeps (empty success) | Intended — fast finalize |
+| Silent empty stream while moving | Anchors age → false POSSIBLE_END after 120s (**P5-F13**) |
+| Fetch throw during outage | Trip stays open; AT retries — **no** immediate false-end |
+| Repeated IDLE `lastActivityAt=now` | Extends anchor if `lastMeaningfulMovementAt` stale (**P5-F02**) |
+| Odometer-only drive without movement anchor advance | Stale `lastMeaningfulMovementAt` (**P5-F15**) |
 
-**Can outage during real drive look like physical end?** **Yes (INFERRED)** — if core drops but vehicle moving, anchors age out → POSSIBLE_END unless CH guard or resume detects motion on return.
+**Can empty-core path false-end while vehicle still moving?** **Yes (INFERRED)** when provider returns **successful empty array** and movement anchors are stale — not when fetch **throws**.
 
 ---
 
@@ -368,15 +397,37 @@ return true;
 
 | Path | FSM writes | CUSUM | Finalize |
 |------|------------|-------|----------|
-| **HIGH** | POSSIBLE_END + `cusumSegmentEnd=detectedEndAt` | Skipped | Second resume check → `scheduleFinalize` direct |
-| **MEDIUM** | same | Skipped at EV if `endDetectionMode=CLICKHOUSE_END_ASSIST && cusumSegmentEnd` | PEC 30s gate → EV → finalize |
+| **HIGH** | POSSIBLE_END + `cusumSegmentEnd=detectedEndAt` | Skipped | Second resume check → `scheduleFinalize` direct (skips PEC 30s gate) |
+| **MEDIUM** | same | Skipped at EV if `endDetectionMode=CLICKHOUSE_END_ASSIST && cusumSegmentEnd` | PEC → EV → finalize |
 
-**Recognition latency (typical):**
+### Stationary gate math — VERIFIED (NOT additive)
 
-- **HIGH:** segment end + 45s stationary + 90s high stationary + processing ≈ **~2–3 min** after physical stop (INFERRED from gates).
-- **MEDIUM:** above + 30s stability + optional EV ≈ **+30–90s**.
+From `resolveAnalyticsAssistedEndDecision`:
 
-**CH can finalize without CUSUM:** **Yes** — HIGH path directly; MEDIUM skips CUSUM at EV.
+```typescript
+stationaryMs = now - segmentEnd.endAt
+if (stationaryMs < minStationaryAfterSegmentMs) reject   // 45s floor
+HIGH if segment HIGH && stationaryMs >= highStationaryMs  // 90s total since segment end
+MEDIUM if segment HIGH|MEDIUM && stationaryMs >= 45s
+```
+
+**45s and 90s are not summed.** HIGH requires **≥90s since CH segment end** (plus segment HIGH). MEDIUM requires **≥45s since segment end**.
+
+### CH MEDIUM stability gate — often a no-op
+
+MEDIUM path sets `possibleEndAt = detectedEndAt` (segment end). First PEC computes `elapsedMs = now - possibleEndAt`. Because MEDIUM already required `stationaryMs ≥ 45s`, **`elapsedMs` is typically already ≥45s**, always exceeding the 30s CH `cusumGateMs`. The 30s gate usually adds **no mandatory wall-clock delay** beyond queue/tick cadence.
+
+### Recognition latency (wall-clock, conservative)
+
+| Path | Minimum evidence elapsed before finalize scheduling | Typical extra delay |
+|------|-----------------------------------------------------|---------------------|
+| CH HIGH | ≥90s since segment end + VLS inactive gates | next FIN job + tick cadence |
+| CH MEDIUM | ≥45s since segment end | PEC/EV queue delay only (30s gate usually already satisfied) |
+| Normal PE + backdated anchor | anchor age ≥120s at first PEC | EV + queue |
+
+**Do not treat “45s + 90s” as ~135s.** Unsupported “2–3 min” estimates removed.
+
+**CH can finalize without CUSUM:** **Yes** — HIGH direct; MEDIUM skip at EV.
 
 ---
 
@@ -385,9 +436,9 @@ return true;
 **`possibleEndAt` meaning:** Candidate **physical end boundary**, not FSM state-entry timestamp.
 
 Sources:
-- Continuity path: `lastMeaningfulMovementAt ?? lastActivityAt ?? now`
+- Continuity path: `lastMeaningfulMovementAt ?? lastActivityAt ?? now` (anchors may be worker-time — **P5-F14**)
 - No-core: anchor chain (same priority)
-- CH assist: `detectedEndAt` (segment end)
+- CH assist: `detectedEndAt` (CH segment event time)
 
 **`elapsedMs = now - possibleEndAt`** drives stability, CUSUM gate, hard timeout.
 
@@ -434,7 +485,7 @@ cusumGateMs = endDetectionMode === CLICKHOUSE_END_ASSIST
 |------|-------------------------------|-------------------|
 | Stop 3 min ago, just entered PE | 180s | Immediate (180 ≥ 120) |
 | Stop 60s ago | 60s | Wait 60s more |
-| CH MEDIUM | segment+45s stationary | +30s after possibleEndAt |
+| CH MEDIUM | `possibleEndAt` already ≥45s old at entry | Usually immediate (45 >> 30) |
 
 ---
 
@@ -498,7 +549,7 @@ endTime =
   new Date();
 ```
 
-**Note:** `cusumSegmentEnd` holds **real CUSUM** and **CH segment end** (same field).
+**Note:** `cusumSegmentEnd` holds **real CUSUM** and **CH segment end** (same field). Priority #2 `lastMeaningfulMovementAt` may be worker `now`, CH event time, or CUSUM provider timestamp depending on path (**P5-F14**). Odometer-only ACTIVE may leave it stale (**P5-F15**).
 
 **Coordinates:** `processFinalize` does **not** pass `endLatitude`/`endLongitude` to `finalizeTrip`. Provisional coords from last ACTIVE_TICK route point may remain while `endTime` is backdated — **P5-F12**.
 
@@ -516,20 +567,30 @@ endTime =
 
 ---
 
-## P5.16 — Mid-Gap Split Failure Window — CONFIRMED
+## P5.16 — Mid-Gap Split Failure Window — CONFIRMED (reframed P5A.3)
 
-Order inside try block:
-1. `splitTripAtGap` (trip1 COMPLETED, trip2 ONGOING) — transaction
-2. `transitionState` → FSM `activeTripId = secondTripId`
-3. **`await postFinalizeAnalysisProducer`** (trip1)
-4. enrichment + `scheduleActiveTick` + return
+Post-commit order inside `try` (~1262–1394):
 
-On throw → catch logs “split failed” → **falls through** to normal ACTIVE_TICK processing with **original local `tripId`**.
+1. Optional seg1 waypoint `createMany` (pre-split trip id)
+2. **`splitTripAtGap` transaction** — trip1 **COMPLETED**, trip2 **ONGOING**, waypoint migration
+3. **`transitionState`** — FSM `activeTripId = secondTripId`
+4. **`await postFinalizeAnalysisProducer`** (trip1) — **failure-contained; does not throw on normal downstream errors** (P5A.1)
+5. enrichment (fire-and-forget, caught)
+6. **`await scheduleActiveTick`**
+7. metrics / `logTrackingRun` / `return`
 
-**Failure modes:**
-- Waypoints/metrics written to **completed trip1** while FSM tracks trip2
-- Continuity evaluated against wrong trip row
-- **P5-F04 (P0)**
+Catch (~1395): log “split failed” → **fall through**; local `tripId` variable **unchanged** (still pre-split id).
+
+### Scenario matrix
+
+| Scenario | trip1 | trip2 | FSM | Fallthrough `tripId` | Risk |
+|----------|-------|-------|-----|----------------------|------|
+| **A** split OK → `transitionState` throws | COMPLETED | ONGOING | may partial | stale trip1 | FSM/trip divergence |
+| **B** FSM OK → producer returns `queueErrors` | COMPLETED | ONGOING | trip2 ACTIVE | stale trip1 | **No** — producer does not throw; continues to AT |
+| **C** FSM OK → `scheduleActiveTick` throws | COMPLETED | ONGOING | trip2 ACTIVE | stale trip1 | Fallthrough writes to trip1 |
+| **D** unexpected throw after FSM repoint | COMPLETED | ONGOING | trip2 ACTIVE | stale trip1 | Waypoints/metrics on completed trip1 |
+
+**Normal postFinalize analysis/queue failures are NOT the typical trigger.** Real triggers: **DB/transition errors, schedule failures, unexpected exceptions** after split+FSM repoint (**P5-F04**).
 
 ---
 
@@ -566,25 +627,47 @@ On throw → catch logs “split failed” → **falls through** to normal ACTIV
 | 2 | `checkTripQuality` | pure |
 | 3 | `finalizeTrip` / `discardTrip` | single UPDATE — **durable** |
 | 4 | Prometheus metrics | side effect |
-| 5 | `await postFinalizeAnalysisProducer` | queue enqueue — **can throw** |
+| 5 | `await postFinalizeAnalysisProducer` | **Failure-contained** — returns `null` / `TripAnalysisInitResult` with `queueErrors`; catch converts init exceptions to result object; **does not reject on normal downstream failures** |
 | 6 | enrichment enqueue | fire-and-forget |
-| 7 | `transitionState(RESTING)` | single UPDATE |
+| 7 | `transitionState(RESTING)` | single UPDATE — **can throw** (DB) |
 | 8 | Battery LV rest | awaited, local catch |
 
 **No spanning transaction** across trip row + FSM + queue.
 
+**Remaining non-atomic window:** after `finalizeTrip` commits **COMPLETED**, a **process crash**, **`transitionState` DB failure**, or other **unexpected uncaught exception** before RESTING can leave FSM **POSSIBLE_END** with `activeTripId` set (**P5-F05**). This is distinct from normal analysis/queue degradation.
+
 ---
 
-## P5.19 — Post-Finalize Producer Liveness Coupling — CONFIRMED
+## P5.19 — Post-Finalize Producer Coupling (corrected P5A.1 / P5A.2)
 
 `await postFinalizeAnalysisProducer.produceAfterPersistedCompletion(...)` runs **before** `transitionState(RESTING)`.
 
-If producer throws after `finalizeTrip`:
-- `vehicleTrip.tripStatus = COMPLETED`
-- FSM remains **POSSIBLE_END** with `activeTripId` set
-- Outer catch swallows — no rethrow
+### Failure containment — VERIFIED
 
-**Recovery:** `@Interval(120s)` re-enqueues PEC/FINALIZE for stale states; **finalize is re-invokable** (updates COMPLETED again) — postFinalize may **double-enqueue** if not idempotent (**P5-F05**).
+| Failure mode | Propagates throw? | Evidence |
+|--------------|-------------------|----------|
+| Event association reconcile failure | **No** | `reconcileEventAssociations` try/catch (~94–104) |
+| Missing `organizationId` | **No** | returns `null` (~36–40) |
+| `initializeForCompletedTrip` exception | **No** | producer catch → `{ queueErrors: [message] }` (~74–85) |
+| `queueErrors` from stage enqueue | **No** | logged, returned in result (~51–56) |
+| Rental recompute enqueue failure | **No** | fire-and-forget `.catch` (~58–71) |
+| Test contract | **No** | `"returns queue errors without throwing so finalize path is not poisoned"` |
+
+**Normal downstream analysis failure does NOT block RESTING.**
+
+### Idempotency — VERIFIED
+
+`DrivingAnalysisInitService.initializeForCompletedTrip` documents idempotency via `DrivingAnalysisRunService.resolveOrBeginRun` fingerprint + job idempotency keys (`buildInitJobIdempotencyKey`). Repeated `produceAfterPersistedCompletion` for the same trip returns **deduplicated runs** (`runDeduplicated: true`) rather than duplicate durable work.
+
+Repeated **FINALIZE** may re-invoke producer/finalizeTrip, but durable analysis init is **designed idempotent** — distinguish **duplicate invocation** from **duplicate durable jobs**.
+
+### Real divergence case (P5-F05)
+
+If **`transitionState(RESTING)` throws** or the worker **crashes** after `finalizeTrip` but before RESTING commit:
+- `vehicleTrip.tripStatus = COMPLETED`
+- FSM remains **POSSIBLE_END** + `activeTripId`
+
+Recovery `@120s` can re-enqueue FINALIZE; `finalizeTrip` re-applies COMPLETED; producer re-runs idempotently.
 
 ---
 
@@ -611,22 +694,25 @@ Hard timeout and max-attempt paths call `processFinalize` with `restingReason = 
 |---------|----------------|--------------|-----------------|
 | Lost PEC job | ✓ re-enqueue | — | — |
 | Lost FINALIZE | ✓ (via stale PE) | partial | — |
-| postFinalize throw | ✓ re-enqueue | stuck until finalize completes | COMPLETED orphan |
+| Crash/throw before RESTING after COMPLETED | ✓ re-enqueue FINALIZE | stuck until RESTING commit | COMPLETED orphan (**P5-F05**) |
+| Normal postFinalize queueErrors | — | RESTING reached normally | analysis reconciliation |
 | FSM/trip mismatch after mid-gap | ✗ autonomous | ✗ | reconciliation only |
 
 ---
 
-## P5.23 — Observability / Metric Semantics
+## P5.23 — Observability / Metric Semantics (corrected P5A.8)
 
-| Metric / log | Observed quantity | Correct? |
-|--------------|-------------------|----------|
-| `synqdrive_trip_finalize_latency_seconds` | `endTime - startTime` (trip duration) | Help text says “start to finalization” — **not recognition latency** (**P5-F06**) |
-| `synqdrive_trip_end_latency_from_movement_seconds` | `endTime - movementAnchor` | Partial recognition signal |
-| `TRIP_END_TIMELINE finalizedAt=` | **Canonical end boundary** | Misleading label (**P5-F07**) |
-| `vehicle_trip_tracking_runs` | per-run summaries | useful |
-| `rawDetectionMeta.endTimeSource` | chosen source enum | persisted at finalize |
+| Metric / log | Formula (verified) | What it measures |
+|--------------|-------------------|------------------|
+| `synqdrive_trip_finalize_latency_seconds` | `(endTime - trip.startTime) / 1000` | **Trip duration** — help text: “Time from trip start to finalization” (**P5-F06**) |
+| `synqdrive_trip_end_latency_from_movement_seconds` | `(endTime - movementAnchor) / 1000` where anchor = `lastMeaningfulMovementAt ?? possibleEndAt` | **Boundary delta**, not recognition latency. When `endTime` resolves to same anchor (priority #1–2 match), value is **≈0 structurally** — does not capture worker finalize wall-clock (**P5-F07**) |
+| `TRIP_END_TIMELINE finalizedAt=` | passed `endTime` (canonical boundary) | **Not** worker completion timestamp |
 
-**Persisted recognition timestamps:** `endValidationStartedAt` in `lastEvidenceSummary` JSON only; no DB column for worker finalize completion time.
+**No persisted metric uses `Date.now() - canonicalEndTime` for recognition/finalization wall-clock latency.**
+
+Partial signals: `endValidationStartedAt` in `lastEvidenceSummary` JSON; timeline `latencyFromMovementSec` (boundary-based when anchors align).
+
+**SynqDrive currently has NO direct metric for actual Trip End recognition / finalization wall-clock latency.**
 
 ---
 
@@ -648,7 +734,7 @@ See **Matrix K** for full table. Highlights:
 - CH unavailable → DIMO-only slower
 - CUSUM inconclusive retries (+60s × attempts)
 - END_VALIDATION errors → retry loop
-- postFinalize throw → FSM stuck (**P5-F05**)
+- Crash/`transitionState` throw before RESTING → FSM stuck (**P5-F05**) — **not** normal analysis queue failure
 - Hard timeout 30 min last resort
 
 ---
@@ -657,7 +743,7 @@ See **Matrix K** for full table. Highlights:
 
 | Dimension | ICE | EV | HYBRID | UNKNOWN |
 |-----------|-----|-----|--------|---------|
-| End sensitivity | Ignition-off HIGH | Motion/frequency | Both | Conservative UNKNOWN thresholds |
+| End sensitivity | Ignition-off composite HIGH (stop+off+no energy) | Motion/frequency | Both | Conservative UNKNOWN thresholds |
 | Largest FP risk | CH idle assist | Frequency IDLE delay → late end; mid-gap | Mixed | CH motion path |
 | Largest FN risk | Stale ignition (mitigated) | Short stop frequency | Perf idle stops | Ambiguous fallback |
 | CH segment | Ignition required | Motion preferred | Motion preferred | Motion preferred |
@@ -675,10 +761,11 @@ See **Matrix K** for full table. Highlights:
 | CUSUM | **Covered** | same |
 | checkTripQuality | **Covered** | same |
 | CH continuity guard | **Covered** | same |
+| postFinalize producer failure | **Partial** | producer.spec — queueErrors no throw |
+| Analysis init idempotency | **Partial** | driving-analysis-run.repository.spec |
 | Mid-gap split live FSM failure fallthrough | **Missing** | — |
-| postFinalize throw before RESTING | **Missing** | — |
 | CUSUM reopen metadata leak | **Missing** | — |
-| finalize metric semantics | **Missing** | — |
+| Mixed-clock / odometer anchor | **Missing** | — |
 | Mid-gap reconciliation | **Partial** | `intra-trip-gap-split-repair.*.spec.ts` |
 | postFinalize producer idempotency | **Partial** | `trip-post-finalize-analysis.producer.spec.ts` |
 
@@ -703,17 +790,17 @@ See **Matrix K** for full table. Highlights:
 | EV robustness | ACCEPTABLE | Frequency IDLE; no ignition req |
 | HYBRID robustness | ACCEPTABLE | Dual signals |
 | Sparse telemetry | WEAK | Fallback to last 3 points |
-| No-core robustness | WEAK | 120s anchor finalize |
+| No-core robustness | WEAK | Empty success 120s anchor (**P5-F13**); throw path safe |
 | CH assist robustness | ACCEPTABLE | Gated; ICE ignition segment |
 | CUSUM robustness | ACCEPTABLE | Ongoing detection; sparse fails |
-| End boundary accuracy | WEAK | Dual endTime semantics; coord mismatch |
-| Recognition latency | WEAK | Metrics mislabel duration |
-| Mid-gap split safety | CRITICAL | drift null + failure fallthrough |
-| Crash safety | CRITICAL | postFinalize/FSM split |
-| Idempotency | WEAK | Re-finalize + double enqueue |
+| End boundary accuracy | WEAK | Mixed-clock `lastMeaningfulMovementAt` (**P5-F14**); odometer gap (**P5-F15**); provisional coords |
+| Recognition latency | CRITICAL | **No direct recognition metric**; existing histograms measure duration/boundary delta |
+| Mid-gap split safety | WEAK | drift null (**P5-F09**) + post-commit fallthrough (**P5-F04**) |
+| Crash safety | WEAK | COMPLETED→RESTING crash window (**P5-F05**); not normal analysis failure |
+| Idempotency | ACCEPTABLE | Analysis init dedup by fingerprint + job keys |
 | Recovery robustness | ACCEPTABLE | 120s scheduler + reconciliation |
-| Observability | WEAK | Timeline finalizedAt semantics |
-| Finalization atomicity | CRITICAL | Trip COMPLETED before RESTING |
+| Observability | CRITICAL | Mislabeled metrics + missing recognition latency (**P5-F06/F07**) |
+| Finalization atomicity | WEAK | Normal path reaches RESTING despite analysis queue errors; crash/DB throw window remains |
 
 ---
 
@@ -721,19 +808,21 @@ See **Matrix K** for full table. Highlights:
 
 | ID | Sev | Title | Evidence |
 |----|-----|-------|----------|
-| **P5-F01** | P1 | Provisional `endTime=now` on every ACTIVE_TICK while ONGOING | `processActiveTick` vehicleTrip.update ~1531 |
+| **P5-F01** | P1 | Provisional `endTime=now` on every ACTIVE_TICK while ONGOING | `processActiveTick` ~1531; UI timeline consumers |
 | **P5-F02** | P1 | IDLE writes `lastActivityAt=now` — worker time used as physical fallback | ~1763–1767 |
-| **P5-F03** | P1 | CUSUM reopen leaves stale `endDetectionMode`/`endConfidence` | EV path ~2157 vs PEC ~1895 |
-| **P5-F04** | P0 | Mid-gap split: postFinalize throw → fallthrough with stale `tripId` | try/catch ~1395–1400 |
-| **P5-F05** | P0 | postFinalize throw after COMPLETED → FSM stuck POSSIBLE_END | `processFinalize` ~2464–2535 |
+| **P5-F03** | P1 | CUSUM reopen leaves stale `endDetectionMode`/`endConfidence` | EV ~2157 vs PEC ~1895 |
+| **P5-F04** | P1 | Mid-gap post-commit fallthrough uses stale local `tripId` after split+FSM repoint | try/catch ~1395–1400; triggers: transition/schedule/unexpected throw — **not** normal producer queueErrors |
+| **P5-F05** | P1 | COMPLETED→RESTING non-atomic crash/DB window (not analysis failure) | `finalizeTrip` then `transitionState(RESTING)` ~2378–2501; producer failure-contained |
 | **P5-F06** | P2 | `tripFinalizeLatency` observes trip duration not recognition latency | ~2427–2429; metric help text |
-| **P5-F07** | P2 | `TRIP_END_TIMELINE finalizedAt` = canonical boundary not worker time | `logTripEndTimeline` ~3255 |
-| **P5-F08** | P2 | Timeout finalize sets `restingReason=complete` — dead timeout cooldown | ~2344; cross-ref P4-F07 |
+| **P5-F07** | P2 | `tripEndLatencyFromMovement` measures boundary delta; ≈0 when endTime==anchor; no recognition metric exists | ~2432–2443 |
+| **P5-F08** | P2 | Timeout finalize sets `restingReason=complete` — dead timeout cooldown | ~2344; P4-F07 |
 | **P5-F09** | P2 | Mid-gap allows split when GPS drift unknown (`drift==null`) | ~1258–1259, ~3020–3022 |
 | **P5-F10** | P2 | Max CUSUM attempts finalize without CUSUM confirmation | PEC step 5 ~2014–2023 |
 | **P5-F11** | P2 | Attempt counter incremented before EV success | PEC step 4 ~1981–1982 |
-| **P5-F12** | P3 | finalizeTrip omits end coords — backdated time vs provisional coords | finalize call ~2378 |
-| **P5-F13** | P3 | No-core 120s path can false-end on provider outage | ~1155–1161 |
+| **P5-F12** | P3 | finalizeTrip omits end coords — backdated time vs provisional coords | finalize ~2378 |
+| **P5-F13** | P3 | Successful empty-core stream (not fetch throw) can false-end via 120s anchor | ~1109–1206; distinct from exception path |
+| **P5-F14** | P1 | Mixed-clock `lastMeaningfulMovementAt` used as canonical end-boundary authority | writers A–E (P5.5) |
+| **P5-F15** | P2 | DIMO odometer-only ACTIVE does not advance `lastMeaningfulMovementAt` | `hadMeaningfulMovement` ~1740–1744 vs assessActiveContinuity odometer ACTIVE |
 
 ---
 
@@ -772,7 +861,7 @@ See **Matrix K** for full table. Highlights:
 
 | Signal | ICE | EV | HYBRID | UNKNOWN |
 |--------|-----|-----|--------|---------|
-| Ignition off | HIGH PE boost | optional | optional | optional |
+| Ignition off + stopped + no energy | HIGH PE (step 5) | n/a alone | same | same |
 | Speed motion | ACTIVE | ACTIVE | ACTIVE | ACTIVE |
 | Odometer Δ | ACTIVE | ACTIVE | ACTIVE | ACTIVE |
 | Perf RPM/load | IDLE | n/a typical | IDLE | IDLE |
@@ -783,18 +872,28 @@ See **Matrix K** for full table. Highlights:
 
 ## Matrix D — End Timestamp / Clock Authority Matrix
 
-(See P5.5 table — reproduced in audit body.)
+| Field | Clock authority | Mixed? |
+|-------|-----------------|--------|
+| `lastActivityAt` | Worker eval `now` | No |
+| `lastMeaningfulMovementAt` | Worker `now` **or** provider/CH event time | **Yes — P5-F14** |
+| `possibleEndAt` | Movement anchor / CH segment end / worker fallback | Partial |
+| `cusumSegmentEnd` | CUSUM change-point or CH segment (provider/CH) | — |
+| `trip.endTime` ONGOING | Worker `now` each tick | Provisional |
+| `trip.endTime` COMPLETED | Priority chain (often event-time anchors) | — |
+| Worker finalize wall-clock | **Not persisted as metric** | Observability gap |
 
 ## Matrix E — End Recognition Latency Matrix
 
-| Path | Candidate latency | Finalization latency | Boundary error |
-|------|-------------------|----------------------|----------------|
-| Ignition-off PE | 0–120s after stop | +120s gate + EV | Low |
-| CH HIGH | ~90s+ stationary | immediate finalize | Low (segment) |
-| CH MEDIUM | ~45s+ | +30s + EV skip | Low |
-| No-core | anchor age ≥120s | +gate + EV | Medium (anchor) |
-| Max attempts | same as PE | +~3–6 min retries | Medium |
-| Hard timeout | up to 30 min | immediate at trigger | High if anchor wrong |
+| Path | Evidence elapsed before scheduling | Typical queue/tick delay | Boundary vs recognition |
+|------|-----------------------------------|--------------------------|-------------------------|
+| Normal PE (backdated anchor) | anchor age ≥120s at first PEC | EV + 60s retries ×3 | Boundary backdated; **recognition wall-clock unmeasured** |
+| CH HIGH | ≥90s since segment end | FIN job | Same |
+| CH MEDIUM | ≥45s since segment end | PEC/EV (30s gate usually already met) | Same |
+| Empty-core anchor | anchor age ≥120s | +gate + EV | Anchor may be worker-time stale (**P5-F14/F15**) |
+| Max attempts | same as PE | ~3–6 min retries (INFERRED) | Forced finalize |
+| Hard timeout | up to 30 min from `possibleEndAt` | immediate FIN | High boundary error risk |
+
+**No metric captures `Date.now() - physicalStop` at finalize commit.**
 
 ## Matrix F — ClickHouse End-Assist Matrix
 
@@ -803,8 +902,8 @@ See **Matrix K** for full table. Highlights:
 | VLS inactive | speed≤0.5, load≤15 | skip assist |
 | Trip duration | ≥60s | inconclusive |
 | Segment end | ICE ignition / EV motion | inconclusive |
-| Post-segment stationary | ≥45s | inconclusive |
-| HIGH confidence | seg HIGH + stationary≥90s | direct finalize |
+| Post-segment stationary | ≥45s (reject if less) | inconclusive |
+| HIGH confidence | seg HIGH + stationary≥**90s total** since segment end | direct finalize |
 | Post-stop activity | speed/odo/points | inconclusive |
 | DIMO resume 90s | motion | cancel |
 
@@ -833,20 +932,21 @@ See **Matrix K** for full table. Highlights:
 
 | Failure point | Trip row | FSM | Self-heal |
 |---------------|----------|-----|-----------|
-| After finalizeTrip | COMPLETED | POSSIBLE_END | recovery re-FIN |
-| Mid-gap postFinalize throw | trip1 COMPLETED, trip2 ONGOING | ACTIVE trip2 | **partial / manual** |
-| EV throw | ONGOING | POSSIBLE_END | PEC retry |
-| Worker crash mid-AT | ONGOING provisional endTime | unchanged | recovery AT |
+| Crash/DB throw after `finalizeTrip`, before RESTING | COMPLETED | POSSIBLE_END | recovery re-FIN (**P5-F05**) |
+| Normal postFinalize queueErrors | COMPLETED | RESTING (normal path) | analysis reconciliation |
+| Mid-gap throw after split+FSM repoint | trip1 COMPLETED, trip2 ONGOING | ACTIVE trip2 | partial — fallthrough risk (**P5-F04**) |
+| Fetch throw in AT | ONGOING | unchanged | AT retry — no false no-core end |
+| Empty-core false end | ONGOING→PE | POSSIBLE_END | resume/CUSUM |
 | Redis restart | — | — | recovery @120s |
 
 ## Matrix J — Finalize Downstream Coupling Matrix
 
-| Consumer | Awaited? | Failure blocks RESTING? |
-|----------|----------|-------------------------|
-| finalizeTrip | yes | yes (no RESTING if throw before) |
-| postFinalizeAnalysisProducer | yes | **yes — P5-F05** |
+| Consumer | Awaited? | Normal failure blocks RESTING? |
+|----------|----------|----------------------------------|
+| finalizeTrip | yes | yes (if throws before COMPLETED) |
+| postFinalizeAnalysisProducer | yes | **No** — failure-contained; returns queueErrors |
 | behavior enrichment | no | no |
-| RESTING transition | yes | — |
+| transitionState(RESTING) | yes | **Yes if throws** — **P5-F05** crash window |
 | Battery LV rest | yes (caught) | no |
 
 ## Matrix K — False Premature / False Delayed End Matrix
@@ -856,10 +956,10 @@ See **Matrix K** for full table. Highlights:
 | Traffic light + perf | No (IDLE) | — | perf IDLE |
 | Queue stop | Possible PE | — | resume |
 | Remote HVAC low load | CH assist risk | — | activity window |
-| Provider outage driving | **Yes** | — | weak |
-| Tunnel no core | — | Yes | long open until anchor |
-| CUSUM sparse | — | Yes | retries/timeout |
-| postFinalize fail | — | Yes (FSM stuck) | recovery |
+| Provider fetch throw | No | — | AT retry |
+| Empty core success while moving | **Yes** | — | weak (**P5-F13**) |
+| postFinalize queue outage | No | — | RESTING reached; analysis self-heals |
+| Crash before RESTING | — | Yes (FSM stuck) | recovery re-FIN (**P5-F05**) |
 
 ## Matrix L — Test / Observability / Open Findings Matrix
 
@@ -868,26 +968,27 @@ See **Matrix K** for full table. Highlights:
 | Continuity | ✓ | tripEvidencePaths | — |
 | CH end | ✓ | tripEvidencePaths | — |
 | CUSUM | ✓ | tripEndLatencyFromMovement | P5-F11 |
-| Finalize coupling | ✗ | tripFinalizeLatency mislabel | P5-F05,F06 |
+| Finalize coupling | partial (producer spec) | no recognition metric | P5-F05 (crash only) |
 | Mid-gap live | ✗ | mid_gap_split counter | P5-F04,F09 |
 | Metadata leak | ✗ | — | P5-F03 |
+| Mixed-clock anchor | ✗ | tripEndLatencyFromMovement ≈0 case | P5-F14,F15 |
 | Cooldown timeout | ✗ | — | P5-F08 |
 
 ---
 
 # Mandatory Final Questions (1–24)
 
-1. **Earliest physical end signal:** Motion stop + inactivity in continuity window, or CH segment end, or core stream silence (whichever fires first on data path).
+1. **Earliest physical end signal:** Provider-timestamp motion stop in continuity/CH segment evidence. **Earliest persisted anchor** may still be worker `now` on ACTIVE tick (**P5-F14**) or stale if odometer-only (**P5-F15**).
 
 2. **ACTIVE_TRIP → IDLE_WITHIN_TRIP:** `evaluateContinuity` verdict **IDLE** (stopped + perf active, energy active, or EV/HYB active frequency).
 
-3. **→ POSSIBLE_END:** Continuity **POSSIBLE_END**; or CH assist; or no-core inactive≥120s; or `assessActiveContinuity` empty → PE in detector (overridden by no-core branch ordering).
+3. **→ POSSIBLE_END:** Continuity **POSSIBLE_END**; or CH assist; or no-core empty success with inactive≥120s; not fetch throw path.
 
-4. **DIMO core disappears:** CH assist attempt → else anchor inactivity POSSIBLE_END after 120s → else keep open.
+4. **DIMO core disappears (empty success):** CH assist attempt → else anchor inactivity POSSIBLE_END after 120s → else keep open. **Fetch throw:** retry AT, no immediate end.
 
-5. **Ignition OFF alone end?** **Yes** (HIGH confidence path when all stopped + no energy).
+5. **Ignition OFF alone end?** **No.** Requires **allStopped + allIgnitionOff + noEnergyChange** (step 5). Not ignition OFF in isolation.
 
-6. **speed=0 alone end?** **Not alone** — needs frequency drop, stale ignition, ambiguous fallback, or timed no-core path.
+6. **speed=0 alone end?** **Not alone** — needs frequency drop, stale ignition path, ambiguous fallback, or timed no-core path.
 
 7. **Stale ignition ON forever?** **No** — explicit POSSIBLE_END path (step 7).
 
@@ -899,31 +1000,86 @@ See **Matrix K** for full table. Highlights:
 
 11. **CUSUM mandatory for normal completion?** **No** — CH paths and max-attempt/timeout bypass.
 
-12. **Fastest valid recognition:** CH HIGH (~2–3 min after stop + gates) or immediate PEC if `possibleEndAt` already aged ≥120s.
+12. **Fastest valid recognition:** Backdated PE where `possibleEndAt` age already ≥120s at first PEC (immediate EV scheduling), or CH HIGH after ≥90s since segment end + gates + queue delay. **Not additive 45+90s.**
 
-13. **Slowest normal live path:** CUSUM inconclusive ×3 + retries approaching **~8–10 min**, or **30 min** hard timeout.
+13. **Slowest normal live path:** CUSUM inconclusive ×3 with 60s retries (~minutes, INFERRED) before max-attempt finalize; hard timeout **30 min** from `possibleEndAt` as last resort.
 
-14. **Max attempts before 30 min timeout?** **Yes** — typically **4–8 min** vs 30 min.
+14. **Max attempts before 30 min timeout?** **Yes** — max-attempt path typically fires well before 30 min.
 
-15. **Unsuccessful EV consume attempt budget?** **Indirectly** — each PEC cycle increments before EV; inconclusive reuses same count until max.
+15. **Unsuccessful EV consume attempt budget?** **Indirectly** — PEC increments before EV; inconclusive reuses same count until max.
 
-16. **Accurate boundary with late finalization?** **Yes** — `endTime` backdated via priority chain independent of finalize wall-clock.
+16. **Accurate boundary with late finalization?** **Partially** — `endTime` backdated via priority chain, but anchors may be worker-time or stale (**P5-F14/F15**). Late finalize wall-clock does not change committed boundary.
 
-17. **Wrong boundary from lastActivityAt worker time?** **Yes** — when used as `possibleEndAt` / anchor (**P5-F02**).
+17. **Wrong boundary from clock fields?** **Yes** — `lastActivityAt` and ACTIVE-path `lastMeaningfulMovementAt` use worker `now`; mixed with event-time writers (**P5-F02/F14**).
 
 18. **Mid-gap split outage without GPS?** **Yes** — `drift==null` allows split (**P5-F09**).
 
-19. **COMPLETED + FSM POSSIBLE_END?** **Yes** — postFinalize failure (**P5-F05**).
+19. **COMPLETED + FSM POSSIBLE_END?** **Yes** — if worker **crashes** or **`transitionState(RESTING)` throws** after `finalizeTrip` (**P5-F05**). **Not** from normal postFinalize queue/analysis degradation.
 
-20. **Analysis failure prevent RESTING?** **Yes** — awaited postFinalize before RESTING.
+20. **Analysis failure prevent RESTING?** **No** — producer is failure-contained; RESTING still reached. **Crash/DB throw before RESTING** can leave divergence (**P5-F05**).
 
 21. **Battery LV failure prevent completion?** **No** — after RESTING, caught.
 
 22. **Stale endDetectionMode after CUSUM reopen?** **Yes** — **P5-F03**.
 
-23. **End-latency metrics = recognition or duration?** `tripFinalizeLatency` = **trip duration**; `tripEndLatencyFromMovement` = partial recognition.
+23. **End-latency metrics = recognition or duration?** `tripFinalizeLatency` = **trip duration**. `tripEndLatencyFromMovement` = **boundary delta** (often ≈0). **No direct recognition wall-clock metric.**
 
-24. **Single highest-priority weakness:** **Finalize/FSM non-atomicity** — COMPLETED trip can persist while FSM remains POSSIBLE_END (`P5-F05`), compounded by mid-gap fallthrough (`P5-F04`).
+24. **Single highest-priority weakness:** **Mixed-clock `lastMeaningfulMovementAt` as canonical boundary authority (P5-F14)**, compounded by odometer-only gap (**P5-F15**) and mid-gap post-commit fallthrough (**P5-F04**).
+
+---
+
+## P5.31 — Audit Closure / Correction Pass
+
+| Item | Value |
+|------|-------|
+| Closure date | 2026-09-06 |
+| Audited application SHA | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` |
+| Original P5 commit | `a76d4fb2ea03143fb7f6aa2148be84483a7e7897` |
+| Production SHA status | **UNKNOWN** (SSH failed) |
+
+### Corrections verified (11)
+
+1. **P5-F05 reframed** — `TripPostFinalizeAnalysisProducer` failure-contained; normal analysis/queue errors do **not** block RESTING (producer.spec + implementation).
+2. **P5-F05 real window** — COMPLETED→RESTING crash/`transitionState` throw remains.
+3. **P5-F04 reframed** — fallthrough trigger is post-commit throw (transition/schedule/unexpected), not normal producer queueErrors.
+4. **Post-finalize idempotency** — `resolveOrBeginRun` fingerprint dedup; duplicate invocation ≠ duplicate durable work.
+5. **P5-F14 added** — mixed worker vs provider/CH clock in `lastMeaningfulMovementAt`.
+6. **P5-F15 added** — odometer-only ACTIVE does not advance movement anchor.
+7. **CH latency math** — 45s/90s not additive; removed unsupported 2–3 min estimates.
+8. **Ignition OFF alone** — corrected to require stop + no energy composite.
+9. **Observability** — no recognition wall-clock metric; `tripEndLatencyFromMovement` is boundary delta.
+10. **P5-F13 reframed** — empty-core success vs fetch throw semantics separated.
+11. **P5-F01 consumers** — merge logic uses COMPLETED trips only; UI timeline evidence retained.
+
+### Proposed corrections rejected (0)
+
+None — all independent review items confirmed or refined.
+
+### Findings removed/reclassified
+
+| ID | Change |
+|----|--------|
+| P5-F04 | P0 → **P1** (reframed trigger/impact) |
+| P5-F05 | P0 → **P1** (analysis failure decoupled from RESTING) |
+| P5-F13 | Rewritten (empty-core vs exception) |
+
+### Findings added
+
+| ID | Sev |
+|----|-----|
+| P5-F14 | P1 |
+| P5-F15 | P2 |
+
+### Final severity counts
+
+| Severity | Count |
+|----------|-------|
+| P0 | **0** |
+| P1 | **6** (F01, F02, F03, F04, F05, F14) |
+| P2 | **7** (F06–F11, F15) |
+| P3 | **2** (F12, F13) |
+
+**No application code was modified.** This artifact remains **AUDIT ARTIFACT — NON-CANONICAL**.
 
 ---
 
