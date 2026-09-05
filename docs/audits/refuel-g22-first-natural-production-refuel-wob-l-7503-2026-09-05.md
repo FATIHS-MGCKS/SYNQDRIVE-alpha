@@ -184,10 +184,10 @@ WHERE vehicle_id = '19fedd4b-c4e8-4de8-a125-dab293326e7e'
 
 | Metric | Value |
 |--------|-------|
-| FAST_REPAIR_RAN | **YES** (cohort eligible; post-14:30 ticks expected; no skip/fail logs) |
-| FAST_REPAIR_RESULT | **SILENT_NO_OP** — zero trip repairs logged; energy step completes without WARN (DEBUG-only fetch logs) |
+| FAST_REPAIR_RAN | **INFERRED** *(corrected in B1.5 — no vehicle-scoped execution proof)* |
+| FAST_REPAIR_RESULT | **SILENT_NO_OP** *(inferred)* — zero trip repairs logged; no vehicle-scoped reconcileWindow trace |
 
-Classification: **(A)** provider still returned no persistable REFUEL evidence — not (B) did-not-run, (C) wrong window, or (E) hard failure. **(D)** received-data-but-ignored is **not supported** — no fuel-rise segment visible in any persisted store.
+Classification at B1: provider delay still plausible — **superseded by B1.5 direct DIMO probe** (§10).
 
 ### 9.4 Fuel telemetry — second pass (13:15Z–14:15Z)
 
@@ -227,7 +227,7 @@ Classification: **(A)** provider still returned no persistable REFUEL evidence �
 | 13:29:26 | POSSIBLE_END_CHECK | ACTIVE_TRIP | `activity_resumed` |
 | 13:29:57 | ACTIVE_TRACKING | ACTIVE_TRIP | `route_points_count=59` batch ingest after resume |
 
-**Interpretation:** Regular ~7 s waypoint cadence until 13:26:22, then a **91 s DIMO route-stream gap** during stationary dwell. Position at 13:27:53 arrived via **late route-point catch-up** (batch of 59 points at 13:29:57), not continuous motion. `MID_GAP_SPLIT` logic in `TripDetectionOrchestrationService` rejects splits when inter-point drift exceeds stationary threshold — consistent with **signal dropout**, not a true 15 km jump.
+**Interpretation:** Regular ~7 s waypoint cadence until 13:26:22, then a **91 s DIMO route-stream gap** during stationary dwell. Jump waypoint `recorded_at=13:27:53.371Z` was **persisted later** at `vehicle_trip_tracking_runs.created_at=13:29:57.049Z` (`route_points_count=59`) — **124 s ingest lag** vs source timestamp. Batch ingest explains **when SynqDrive received** the point, not necessarily **why** the geographic offset exists (provider route stream carried the discontinuous sample). `MID_GAP_SPLIT` rejected drift > stationary threshold — consistent with **signal dropout**, not continuous motion.
 
 | Metric | Value |
 |--------|-------|
@@ -263,8 +263,8 @@ Direct DEBUG logs are not retained at production INFO level. Negative and positi
 
 | Metric | Value |
 |--------|-------|
-| REFUEL_DETECTOR_RAN | **YES** (inferred — Step 5 inside completed fast-repair passes) |
-| REFUEL_DETECTOR_DECISION | **RUN_NO_EVIDENCE** (no fetch failure; zero persistable segments; no fuel rise in stores) |
+| REFUEL_DETECTOR_RAN | **INFERRED** *(corrected in B1.5)* |
+| REFUEL_DETECTOR_DECISION | **RUN_NO_EVIDENCE** *(inferred at B1; confirmed by B1.5 provider parity)* |
 
 ### 9.8 V2 chain (not entered — Section 8 N/A)
 
@@ -301,7 +301,141 @@ No `VehicleEnergyEvent` REFUEL row → V2 ownership, reconciliation, settlement,
 
 If a REFUEL row appears before 17:05Z via fast repair, that becomes **Stage B2** immediately.
 
-## 10. Stage B2+ — automatic recheck (read-only)
+## 10. Stage B1.5 — direct DIMO provider evidence probe (read-only, ~15:20Z)
+
+**Audit timestamp:** `2026-09-05T15:20:42Z`  
+**Mode:** READ-ONLY direct provider query using production credentials and deployed query builders — no SynqDrive DB writes, no replay, no synthetic events.
+
+### 10.1 Production fetch path (SHA `3d5040b67…`)
+
+| Field | Value |
+|-------|-------|
+| PRODUCTION_FETCH_METHOD | `EnergyEventsService.detectEnergyEvents` → `DimoSegmentsService.fetchEnergyEventSegments` → `fetchEnergyEventSegmentsWithJwt` |
+| PRODUCTION_PROVIDER_OPERATION | GraphQL `segments(mechanism: refuel)` via `DimoTelemetryService.queryGraphQL` → `POST https://telemetry-api.dimo.zone/query` |
+| PRODUCTION_QUERY_WINDOW_RULE | Caller-supplied `[from, to]` ISO bounds; fast repair uses rolling 45 min; probe windows below |
+
+**Query builder:** `buildEnergyEventSegmentsQuery` (`energy-event-segments.query.ts`)  
+**Refuel detector config (production):** `{ minIncreasePercent: 5 }` (`DIMO_PRODUCTION_REFUEL_DETECTOR_CONFIG`)  
+**Auth:** developer JWT (web3 challenge) → vehicle JWT (`token-exchange-api.dimo.zone/v1/tokens/exchange`, privileges 1–6, NFT contract + `tokenId=192922`)  
+**Signal requests:** fuel absolute/relative MIN/MAX, odometer MIN/MAX, start/end lat/lon  
+**Pagination:** none (single GraphQL response)  
+**Persist gate (SynqDrive):** `isSegmentPersistable` requires `fuelDeltaLiters > 1.0` — moot when provider returns zero segments
+
+### 10.2 Direct provider refuel-segment query (token 192922)
+
+Executed on production release `20260905085841_v4994` using deployed TypeScript query builders.
+
+| Window | From | To | HTTP | Segments |
+|--------|------|-----|------|----------|
+| Wide | `2026-09-05T12:45:00Z` | `2026-09-05T15:20:42Z` | 200 | **0** |
+| Narrow | `2026-09-05T13:00:00Z` | `2026-09-05T14:00:00Z` | 200 | **0** |
+| Forensic (13:15–13:45) default config | `2026-09-05T13:15:00Z` | `2026-09-05T13:45:00Z` | 200 | **0** |
+| Forensic (13:15–13:45) prod config | same | same | 200 | **0** |
+
+GraphQL errors: **none**. Auth: **success**.
+
+| Metric | Value |
+|--------|-------|
+| **DIMO_NATIVE_REFUEL_SEGMENT_PRESENT** | **NO** |
+
+### 10.3 Raw fuel signal provider check
+
+**API:** existing production path `signals(tokenId, from, to, interval: "30s")` — same family as `DimoSegmentsService.fetchFuelSummary`.
+
+Window `2026-09-05T13:00:00Z` → `2026-09-05T14:15:00Z`:
+
+| Observation | Detail |
+|-------------|--------|
+| HTTP | 200 |
+| Buckets returned | 26 (all non-null) |
+| First relative sample in window | **18.82%** at `13:27:30Z` *(no buckets during dwell 13:25–13:26)* |
+| Peak relative | **18.82%** at `13:27:30Z` |
+| Trough relative | **14.90%** at `13:39:00Z` |
+| Trend | **Monotonic decline** 18.82% → 14.90% (consumption/drain pattern, not refuel rise) |
+| Absolute liters | 10 L plateau then 8 L from ~13:36Z |
+
+| Metric | Value |
+|--------|-------|
+| **DIMO_HISTORICAL_FUEL_RISE_PRESENT** | **NO** |
+
+No refuel-rise onset/end matching physical stop ~13:25–13:26Z. Provider fuel signal exists but does **not** show a refuel increase pattern that would satisfy native RefuelDetector semantics.
+
+### 10.4 Provider vs SynqDrive comparison
+
+| Layer | REFUEL native segment | Fuel evidence |
+|-------|----------------------|---------------|
+| DIMO provider (B1.5 probe) | **0 segments** | Decline 18.82%→14.90%; no dwell-window samples |
+| SynqDrive DB | **0 `VehicleEnergyEvent`** | `vehicle_latest_states` 14.9% @ `13:40:25Z` |
+
+| Metric | Value |
+|--------|-------|
+| REFUEL_EVENT_PRESENT_IN_SYNQDRIVE | **NO** |
+| PROVIDER_TO_SYNQDRIVE_GAP | **NO** — provider and SynqDrive agree: no native refuel segment |
+| Case classification | **CASE B — UPSTREAM_PROVIDER_EVIDENCE_PENDING** |
+
+Not CASE A (ingestion miss): provider itself returns zero refuel segments with production query semantics. Not CASE C: queries succeeded HTTP 200 with valid JWT.
+
+### 10.5 B1 execution-claim epistemic correction
+
+Searched production PM2 logs and DB run tables for vehicle-scoped fast-repair / reconcileWindow / detectEnergyEvents proof:
+
+| Evidence type | Result |
+|---------------|--------|
+| `Fast repair [19fedd4b…]` | Absent (expected when repairs=0) |
+| `Trip reconciliation skipped vehicle=19fedd4b` | Absent |
+| Vehicle-scoped reconcileWindow trace/span/metrics row | **Not found** |
+| Structured job row tying fast repair → energy detection for this vehicle | **Not found** |
+
+| Metric | Corrected value |
+|--------|---------------|
+| FAST_REPAIR_RAN | **INFERRED** |
+| REFUEL_DETECTOR_RAN | **INFERRED** |
+
+Absence of failure logs is **not** positive execution proof.
+
+### 10.6 Snapshot transport vs fuel freshness
+
+`dimo_poll_logs` SNAPSHOT rows: `status=SUCCESS` every ~60s (HTTP/job completion). `meta_json` empty on sampled rows — logs **transport success only**, not fuel freshness.
+
+Direct `signalsLatest(tokenId: 192922)` at probe time:
+
+| Field | Value |
+|-------|-------|
+| `lastSeen` | `2026-09-05T13:40:25Z` |
+| `powertrainFuelSystemRelativeLevel` | 14.90% @ `13:40:25Z` |
+| Probe time | `2026-09-05T15:20:42Z` |
+| Fuel age at probe | **~100 min stale** |
+
+Polls at 15:18–15:20Z still SUCCESS while `signalsLatest.lastSeen` frozen at 13:40:25Z.
+
+| Metric | Value |
+|--------|-------|
+| DIMO_SNAPSHOT_TRANSPORT_HEALTH | **PASS** |
+| DIMO_FUEL_SIGNAL_FRESHNESS | **STALE** |
+
+Successful snapshot poll transport **≠** fresh fuel evidence.
+
+### 10.7 Route discontinuity epistemic correction
+
+| Metric | Value |
+|--------|-------|
+| ROUTE_GAP_CONFIRMED | **YES** (91 s zero-waypoint gap) |
+| LATE_BATCH_INGEST_CONFIRMED | **YES** (`ACTIVE_TRACKING` at `13:29:57Z`, `route_points_count=59`) |
+| GEOGRAPHIC_JUMP_ROOT_CAUSE | **DIMO route-stream gap with late-arriving source-timestamped samples** — batch ingest timing documented; jump not proven caused by ingest alone |
+| ROUTE_DISCONTINUITY_CAUSAL_TO_REFUEL_MISS | **NOT_PROVEN** |
+
+### 10.8 Stage B1.5 decision
+
+| Field | Value |
+|-------|-------|
+| CURRENT_CLASSIFICATION | **UPSTREAM_PROVIDER_EVIDENCE_PENDING** |
+| KNOWN_P0_BLOCKERS | 0 |
+| KNOWN_P1_BLOCKERS | 0 |
+| NEXT_REQUIRED_RECHECK_AT | **`2026-09-05T17:05:00Z`** (warm reconciliation) |
+
+Do **not** wait for warm reconciliation to learn whether provider refuel segment **exists** — B1.5 proves it does **not** yet. Warm pass remains relevant for **later provider publication**, not for current existence diagnosis.
+
+## 11. Stage B2+ — automatic recheck (read-only)
 
 Do **not** mutate production.
 
@@ -320,9 +454,9 @@ WHERE vehicle_id = '19fedd4b-c4e8-4de8-a125-dab293326e7e'
 
 If a row appears, continue full G2.2 chain forensics (reconciliation → finality → coordinate → enrichment).
 
-## 11. Canonical evidence nodes
+## 12. Canonical evidence nodes
 
-- **FST:** `FST-EVID-G22-FIRST-NATURAL-PRODUCTION-REFUEL-WOB-L-7503-2026-09-05-001` (Stage A + B1)
-- **EED:** `EED-EV-0040` (Stage A + B1)
+- **FST:** `FST-EVID-G22-FIRST-NATURAL-PRODUCTION-REFUEL-WOB-L-7503-2026-09-05-001` (Stage A + B1 + B1.5)
+- **EED:** `EED-EV-0040` (Stage A + B1 + B1.5)
 
 Cross-reference: `FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001`, `EED-EV-0039`.

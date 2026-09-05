@@ -38,7 +38,7 @@ Stable IDs: `EED-EV-####`. Each item: source, path, what it proves, what it does
 | EED-EV-0037 | TEST | G2.1d final pre-shadow integration | `physical-refuel-*integration.spec.ts` | Isolated Postgres+Redis; PG locks; BullMQ real recovery; multi-replica E2E | G2.2 production cutover | PROVEN_BY_INTEGRATION_TEST | 2026-09-04 |
 | EED-EV-0038 | TEST | G2.2 direct production cutover | `vps-enable-physical-refuel-v2-production.sh` | Integration gate PASS; merged deploy; direct V2 activation (no shadow) | Per-REFUEL production proof | DEPLOYED_TO_PRODUCTION | 2026-09-04 |
 | EED-EV-0039 | PRODUCTION | G2.2 post-cutover T+60 audit | `refuel-g22-production-post-cutover-t60-2026-09-04.md` | Read-only VPS audit; runtime stability PASS; zero natural REFUEL | Per-REFUEL production proof | DEPLOYED_TO_PRODUCTION | 2026-09-04 |
-| EED-EV-0040 | PRODUCTION | G2.2 first natural REFUEL WOB L 7503 Stage A+B1 | `refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md` | B1: still no REFUEL; fuel rise absent; fast repair silent no-op | Per-REFUEL production proof | PRODUCTION_OBSERVATION_IN_PROGRESS | 2026-09-05 |
+| EED-EV-0040 | PRODUCTION | G2.2 first natural REFUEL WOB L 7503 Stage A+B1+B1.5 | `refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md` | B1.5: DIMO 0 refuel segments; fuel decline; provider/SynqDrive aligned | Per-REFUEL production proof | PRODUCTION_OBSERVATION_IN_PROGRESS | 2026-09-05 |
 | EED-EV-0025 | PRODUCTION | P1.3-S6 deploy | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | KS MX reprocess: 4818s, 330s rise, 685s deleted | Fleet-wide generalization | PROVEN_IN_PRODUCTION | 2026-09-01 |
 
 ## Negative results (first-class)

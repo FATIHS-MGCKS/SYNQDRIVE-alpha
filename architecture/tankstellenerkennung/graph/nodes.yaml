@@ -1005,13 +1005,13 @@ nodes:
 
   - id: FST-EVID-G22-FIRST-NATURAL-PRODUCTION-REFUEL-WOB-L-7503-2026-09-05-001
     type: evidence
-    title: G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A + B1)
+    title: G2.2 first natural production REFUEL forensics — WOB L 7503 (Stage A + B1 + B1.5)
     epistemic_status: CONFIRMED
     source_type: PRODUCTION_OBSERVATION
     summary: >
-      User-confirmed refuel ~2026-09-05T13:29Z. Stage A+B1 read-only: Shell dwell corroborated;
-      B1 (~14:38Z) still no REFUEL row; fuel rise not visible; fast repair silent no-op;
-      detector RUN_NO_EVIDENCE inferred. V2 chain not entered. PRODUCTION_OBSERVATION_IN_PROGRESS.
+      B1.5 direct DIMO probe (~15:20Z): 0 native refuel segments (production GraphQL semantics);
+      historical fuel shows decline not rise; provider/SynqDrive aligned. Snapshot transport PASS,
+      fuel STALE. UPSTREAM_PROVIDER_EVIDENCE_PENDING. Not PROVEN_IN_PRODUCTION.
     source_paths:
       - docs/audits/refuel-g22-first-natural-production-refuel-wob-l-7503-2026-09-05.md
 
