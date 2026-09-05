@@ -1,5 +1,22 @@
 import { registerAs } from '@nestjs/config';
 import { normalizeFastGoTimeoutMs } from '../modules/vehicle-intelligence/reference-capture/reference-capture-fast-go.policy';
+import {
+  clampIntEnv,
+  HF_RECOVERY_SWEEP_INTERVAL_MS_DEFAULT,
+  HF_RECOVERY_SWEEP_LOOKBACK_MS_DEFAULT,
+  HF_SETTLEMENT_DELAY_MS_MAX,
+  HF_SETTLEMENT_DELAY_MS_MIN,
+  HF_RECOVERY_OVERLAP_MS_MAX,
+  HF_RECOVERY_OVERLAP_MS_MIN,
+  HF_RECOVERY_SWEEP_INTERVAL_MS_MIN,
+  PROVISIONAL_RECOVERY_OVERLAP_MS,
+  PROVISIONAL_SETTLEMENT_DELAY_MS,
+  PROVISIONAL_HF_POLL_INTERVAL_MS,
+  HF_HISTORICAL_POLL_INTERVAL_MS_MIN,
+  HF_HISTORICAL_POLL_INTERVAL_MS_MAX,
+  parseBooleanEnv as parseHfBooleanEnv,
+  parseCanaryTokenIdList,
+} from '../modules/vehicle-intelligence/reference-capture/reference-capture-hf-recovery-v2.policy';
 
 function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value == null || value.trim() === '') return defaultValue;
@@ -27,6 +44,19 @@ export const REFERENCE_CAPTURE_RETENTION_SCHEDULER_ENABLED_ENV =
 export const REFERENCE_CAPTURE_PREARM_MAX_AGE_MS_ENV = 'REFERENCE_CAPTURE_PREARM_MAX_AGE_MS';
 export const REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS_ENV =
   'REFERENCE_CAPTURE_FAST_GO_FIRST_CYCLE_TIMEOUT_MS';
+
+/** DI-EV-0035C — HF recovery policy V2 (default OFF; provisional 8s/6s unvalidated). */
+export const HF_RECOVERY_POLICY_V2_ENABLED_ENV = 'HF_RECOVERY_POLICY_V2_ENABLED';
+export const HF_SETTLEMENT_DELAY_MS_ENV = 'HF_SETTLEMENT_DELAY_MS';
+export const HF_RECOVERY_OVERLAP_MS_ENV = 'HF_RECOVERY_OVERLAP_MS';
+export const HF_RECOVERY_SWEEP_ENABLED_ENV = 'HF_RECOVERY_SWEEP_ENABLED';
+export const HF_RECOVERY_SWEEP_INTERVAL_MS_ENV = 'HF_RECOVERY_SWEEP_INTERVAL_MS';
+export const HF_RECOVERY_SWEEP_LOOKBACK_MS_ENV = 'HF_RECOVERY_SWEEP_LOOKBACK_MS';
+export const HF_RECOVERY_POLICY_V2_CANARY_ONLY_ENV = 'HF_RECOVERY_POLICY_V2_CANARY_ONLY';
+export const HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS_ENV = 'HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS';
+export const HF_AVAILABILITY_CALIBRATION_ENABLED_ENV = 'HF_AVAILABILITY_CALIBRATION_ENABLED';
+/** DI-EV-0035C.1 — HF_HISTORICAL block poll cadence (V2 only; provisional 30s NOT validated). */
+export const HF_HISTORICAL_POLL_INTERVAL_MS_ENV = 'HF_HISTORICAL_POLL_INTERVAL_MS';
 
 const DEFAULT_PREARM_MAX_AGE_MS = 15 * 60 * 1000;
 const DEFAULT_FAST_GO_FIRST_CYCLE_TIMEOUT_MS = 15_000;
@@ -71,4 +101,48 @@ export default registerAs('referenceCapture', () => ({
   ),
   /** Estimated PostgreSQL storage multiplier over logical JSON envelope size. */
   postgresStorageMultiplier: 2.5,
+  /** HF recovery V2 — default OFF. Provisional 8s/6s NOT validated. */
+  hfRecoveryPolicyV2Enabled: parseHfBooleanEnv(process.env[HF_RECOVERY_POLICY_V2_ENABLED_ENV], false),
+  hfSettlementDelayMs: clampIntEnv(
+    process.env[HF_SETTLEMENT_DELAY_MS_ENV],
+    PROVISIONAL_SETTLEMENT_DELAY_MS,
+    HF_SETTLEMENT_DELAY_MS_MIN,
+    HF_SETTLEMENT_DELAY_MS_MAX,
+  ),
+  hfRecoveryOverlapMs: clampIntEnv(
+    process.env[HF_RECOVERY_OVERLAP_MS_ENV],
+    PROVISIONAL_RECOVERY_OVERLAP_MS,
+    HF_RECOVERY_OVERLAP_MS_MIN,
+    HF_RECOVERY_OVERLAP_MS_MAX,
+  ),
+  hfHistoricalPollIntervalMs: clampIntEnv(
+    process.env[HF_HISTORICAL_POLL_INTERVAL_MS_ENV],
+    PROVISIONAL_HF_POLL_INTERVAL_MS,
+    HF_HISTORICAL_POLL_INTERVAL_MS_MIN,
+    HF_HISTORICAL_POLL_INTERVAL_MS_MAX,
+  ),
+  hfRecoverySweepEnabled: parseHfBooleanEnv(process.env[HF_RECOVERY_SWEEP_ENABLED_ENV], false),
+  hfRecoverySweepIntervalMs: clampIntEnv(
+    process.env[HF_RECOVERY_SWEEP_INTERVAL_MS_ENV],
+    HF_RECOVERY_SWEEP_INTERVAL_MS_DEFAULT,
+    HF_RECOVERY_SWEEP_INTERVAL_MS_MIN,
+    24 * 60 * 60 * 1000,
+  ),
+  hfRecoverySweepLookbackMs: clampIntEnv(
+    process.env[HF_RECOVERY_SWEEP_LOOKBACK_MS_ENV],
+    HF_RECOVERY_SWEEP_LOOKBACK_MS_DEFAULT,
+    60_000,
+    24 * 60 * 60 * 1000,
+  ),
+  hfRecoveryPolicyV2CanaryOnly: parseHfBooleanEnv(
+    process.env[HF_RECOVERY_POLICY_V2_CANARY_ONLY_ENV],
+    true,
+  ),
+  hfRecoveryPolicyV2CanaryTokenIds: parseCanaryTokenIdList(
+    process.env[HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS_ENV],
+  ),
+  hfAvailabilityCalibrationEnabled: parseHfBooleanEnv(
+    process.env[HF_AVAILABILITY_CALIBRATION_ENABLED_ENV],
+    false,
+  ),
 }));

@@ -105,6 +105,16 @@ export class ReferenceCaptureController {
     });
   }
 
+  @Post('sessions/:sessionId/hf-calibration/phases')
+  @RequirePermission('fleet-condition', 'write')
+  switchHfCalibrationPhase(
+    @Param('orgId') orgId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() body: { effectivePollIntervalMs: number },
+  ) {
+    return this.sessionService.switchHfCalibrationPhase(orgId, sessionId, body);
+  }
+
   @Get('retention-policy')
   @RequirePermission('fleet-condition', 'read')
   getRetentionPolicy(@Query('broadFieldCount') broadFieldCount?: string) {

@@ -164,6 +164,14 @@ export class ReferenceCaptureProcessor extends WorkerHost {
     failureReason: string,
   ): Promise<void> {
     this.logger.error(`Reference capture session failed session=${sessionId}: ${failureReason}`);
+    await this.sessionRepository.waitForAcquisitionCycleQuiescence(organizationId, sessionId, {
+      timeoutMs: this.config.getStopQuiescenceTimeoutMs(),
+      pollIntervalMs: this.config.getStopQuiescencePollIntervalMs(),
+    });
+    await this.sessionRepository.finalizeTerminalCalibrationAtomic(organizationId, sessionId, {
+      terminalAtMs: Date.now(),
+      reason: failureReason.includes('max_recording_duration') ? 'MAX_DURATION' : 'FAILURE',
+    });
     await this.sessionRepository.updateStatus(
       organizationId,
       sessionId,

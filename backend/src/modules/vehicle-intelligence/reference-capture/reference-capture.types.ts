@@ -1,4 +1,8 @@
 import type { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
+import type {
+  HfCalibrationPhaseRuntimeCounters,
+  HfCalibrationSeriesState,
+} from './reference-capture-hf-calibration-phase.policy';
 
 export type ReferenceCaptureTemporalClass =
   | 'WAVEFORM_DYNAMICS'
@@ -137,6 +141,20 @@ export type ReferenceCaptureAcquisitionState = {
   seenEventFingerprints: string[];
   /** In-memory HF dedup cache only — DATABASE is idempotency authority. */
   seenPhysicalSampleFingerprints?: string[];
+  /** DI-EV-0035C — bounded ring of HF query provenance (incl. zero-result windows). */
+  hfQueryProvenanceRing?: Array<Record<string, unknown>>;
+  /** DI-EV-0035C — per-field recovery sweep cursor (separate from DATA/QUERY watermarks). */
+  hfRecoveryCursorByField?: Record<string, string>;
+  lastRecoverySweepAt?: string | null;
+  recoverySweepCount?: number;
+  /** DI-EV-0035C.1 — last successful HF_HISTORICAL provider poll (V2 block cadence). */
+  lastHfHistoricalPollAt?: string | null;
+  /** DI-EV-0035C.1c — in-session multi-cadence calibration series (Reference Capture only). */
+  hfCalibrationSeries?: HfCalibrationSeriesState | null;
+  /** DI-EV-0035C.1d — per-active-phase runtime counters (merged into durable summary at boundary). */
+  hfCalibrationActiveCounters?: HfCalibrationPhaseRuntimeCounters | null;
+  /** DI-EV-0035C.1d — optimistic concurrency for acquisition-state writes. */
+  acquisitionStateVersion?: number;
   lastSequenceNumber?: number;
   activeCycleJobId?: string | null;
   quarantinedProviderFields?: string[];

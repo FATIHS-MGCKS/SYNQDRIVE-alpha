@@ -36,8 +36,142 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'refuel-g22-production-post-cutover-t60-2026-09-04',
+    id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
+    version: '4.9.1067',
+    title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',
+    summary: [
+      'Forensic audit proved pre-C.1d lost-update race: cycle release could overwrite operator phase switch.',
+      'Control-plane vs data-plane split: pending phase at cycle boundary; FOR UPDATE + buildCycleReleaseAcquisitionState.',
+      'V2/canary fail-closed gate on phase API; REQUESTED vs EFFECTIVE activation semantics.',
+      'Durable completedPhaseSummaries frozen at boundary; effectiveConfig snapshot on activation.',
+      '12 concurrency tests; 103 reference-capture HF tests PASS. Production HF untouched.',
+    ],
+    reason:
+      'C.1c architecture correct but unsafe for live canary without atomic phase switching and authority verification.',
+    previousBehavior:
+      'Immediate phase switch via mergeAcquisitionState; releaseCycleLockAndUpdateState could overwrite newer calibration state.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1d; reference-capture-hf-calibration-phase.policy.ts; reference-capture-session.repository.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:30:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1c-single-drive-multi-cadence-calibration-2026-09-04',
+    version: '4.9.1066',
+    title: 'DI-EV-0035C.1c — Single-Drive Multi-Cadence Flight Recorder Calibration',
+    summary: [
+      'Forensic audit: HF_HISTORICAL_POLL_INTERVAL_MS was process-config only pre-C.1c.',
+      'Session-scoped hfCalibrationSeries override: switch 10/20/30/60s phases without restart.',
+      'POST hf-calibration/phases API for in-session cadence changes (Reference Capture only).',
+      'Durable phase identity in provenance: seriesId, phaseId, sequence, transition windows.',
+      'Phase transitions preserve HF watermarks; TRANSITION_WINDOW classification for boundary queries.',
+      'Superseded rigid ≥20–30 min per phase duration; one physical drive may contain all phases.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Canonical calibration model: one physical trip may contain multiple HF poll-cadence phases inside one Reference Capture session — not one trip per cadence.',
+    previousBehavior:
+      'Poll cadence only from process env; implied separate long drives per phase; no session phase identity.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §C.1c; reference-capture-hf-calibration-phase.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-05T00:10:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1b-flight-recorder-canary-contract-2026-09-04',
+    version: '4.9.1065',
+    title: 'DI-EV-0035C.1b — Dynamic Flight Recorder Canary Vehicle Selection Contract',
+    summary: [
+      'Verified Reference Capture HF V2 runtime is vehicle-agnostic (no hardcoded plate/token).',
+      'Replaced fixed “KS MX 2024 canary” wording with Flight Recorder dynamic selection contract.',
+      'Documented operator pre-run procedure: select available vehicle, resolve tokenId, set allowlist.',
+      'Same vehicle preferred across 10/20/30/60s phases; cross-vehicle changes must be recorded.',
+      'KS MX 2024 / tokenId 187336 preserved as NON_CANONICAL_EXAMPLE only.',
+      'C.1a fail-closed canary semantics preserved; no production HF path changes.',
+    ],
+    reason:
+      'C.1 documentation incorrectly implied KS MX 2024 is the permanent Reference Capture canary; actual procedure is operator-selected vehicle per experiment.',
+    previousBehavior:
+      'Evidence named KS MX 2024 / 187336 as the canary experiment vehicle contract.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §8 + §C.1b; driving-intelligence-hf-recovery-runtime-implementation-2026-09.md.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:55:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1a-hf-pre-canary-hardening-2026-09-04',
+    version: '4.9.1064',
+    title: 'DI-EV-0035C.1a — HF Block Polling Pre-Canary Correctness Hardening',
+    summary: [
+      'Fixed canary fail-open: empty V2 canary allowlist now fails closed to LEGACY for all tokens.',
+      'Corrected bucket age observability: oldest age >= newest age at observation time.',
+      'Fixed epoch-aligned stagger deadline primitive to use tokenId phase offset.',
+      'Extended HF provenance for canary metric reconstruction (latency, gaps, dup/rev/recovered).',
+      'Exhaustive unit tests for canary semantics, bucket ages, stagger deadlines, metrics audit.',
+      'Production HF path, score, detectors, tire/brake models unchanged.',
+    ],
+    reason:
+      'Forensic review of DI-EV-0035C.1 found pre-canary correctness defects that could mis-scope V2 or corrupt observability before live Reference Capture calibration.',
+    previousBehavior:
+      'Empty canary allowlist could enable global V2; bucket ages reversed; stagger offset unused in deadline primitive.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md §DI-EV-0035C.1a; reference-capture-hf-recovery-v2.policy.ts; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:45:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c1-hf-block-polling-scalability-2026-09-04',
+    version: '4.9.1063',
+    title: 'DI-EV-0035C.1 — HF Historical Block Polling Scalability Testbed',
+    summary: [
+      'Audited Reference Capture HF request cadence: runner 5s, HF provider request every cycle (legacy).',
+      'Added HF_HISTORICAL_POLL_INTERVAL_MS (V2-only, default provisional 30000ms, NOT validated).',
+      'Preserves 1s DIMO historical aggregation; slower API polling only.',
+      'Block-density observability: buckets/request, temporal density, requests/vehicle/hour.',
+      'Deterministic fleet request-load model + tokenId-based stagger design (planning only).',
+      'Flight Recorder dynamic canary experiment contract for 10/20/30/60s calibration phases.',
+      'Production HF path (dimo-segments → trip-behavior-enrichment) unchanged.',
+    ],
+    reason:
+      'Before designing production HF architecture, use Reference Capture to test whether block polling (e.g. 30s) preserves ~1s bucket density with far fewer DIMO requests.',
+    previousBehavior:
+      'HF_HISTORICAL fired every runner cycle (~5s); no separate poll cadence; no block-density metrics.',
+    details:
+      'docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md; reference-capture-hf-block-polling.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T23:15:00.000Z',
+  },
+  {
+    id: 'dimo-di-ev-0035c-hf-recovery-runtime-2026-09-04',
     version: '4.9.1062',
+    title: 'DI-EV-0035C — Production HF Historical Recovery Runtime (Reference Capture)',
+    summary: [
+      'Feature-gated HF Recovery V2 on reference-capture HF_HISTORICAL path (default OFF).',
+      'Settled horizon (provisional 8s settlement) + configurable recovery overlap (provisional 6s) — PARAMETERS_VALIDATED=NO.',
+      'Separate DATA / QUERY COVERAGE / RECOVERY cursor watermarks; coverage advances only after durable flush.',
+      'Zero-result HF query provenance ring (max 500) for exact-window replay.',
+      'Periodic deep recovery sweep (default OFF) + structured hf_acquisition_cycle observability.',
+      'Canary token allowlist via HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS (no hardcoded 187336).',
+      'Live availability calibration foundation (OFF by default). Production DI HF path unchanged.',
+    ],
+    reason:
+      'RD004-B proved provider late arrival + 2s overlap insufficient; implement approved runtime architecture for reference capture before live calibration.',
+    previousBehavior:
+      'Legacy 2s overlap; queryTo at requestStartedAt; no durable zero-result provenance; no recovery sweep; single overlap constant.',
+    details:
+      'docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md; architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md; reference-capture-hf-recovery-v2.policy.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-04T19:55:00.000Z',
+  },
+  {
+    id: 'refuel-g22-production-post-cutover-t60-2026-09-04',
+    version: '4.9.1062b',
     title: 'G2.2 physical-refuel V2 production post-cutover T+60 audit',
     summary: [
       'Independent read-only production audit ~T+122m after G2.2 cutover (no mutation, no synthetic REFUEL).',

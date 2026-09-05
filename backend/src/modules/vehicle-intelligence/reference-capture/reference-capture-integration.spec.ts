@@ -1,5 +1,6 @@
 import { ReferenceCaptureObservationKind } from '@prisma/client';
 import { ReferenceCaptureAcquisitionService } from './reference-capture-acquisition.service';
+import { createLegacyHfRecoveryConfigMock } from './reference-capture-hf-recovery-v2.test-util';
 import {
   buildAcquisitionCyclePlan,
 } from './reference-capture-acquisition-planner';
@@ -115,6 +116,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         writer as never,
         observationRepository as never,
         sessionRepo as never,
+        createLegacyHfRecoveryConfigMock() as never,
       );
 
       const preflight: ReferenceCapturePreflightResult = {

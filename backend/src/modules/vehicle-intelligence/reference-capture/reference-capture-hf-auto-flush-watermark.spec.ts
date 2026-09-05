@@ -1,5 +1,9 @@
 import { ReferenceCaptureObservationKind } from '@prisma/client';
-import { ReferenceCaptureAcquisitionService, ReferenceCaptureLegacySessionIdentityError } from './reference-capture-acquisition.service';
+import {
+  ReferenceCaptureAcquisitionService,
+  ReferenceCaptureLegacySessionIdentityError,
+} from './reference-capture-acquisition.service';
+import { createLegacyHfRecoveryConfigMock } from './reference-capture-hf-recovery-v2.test-util';
 import { REFERENCE_CAPTURE_ENVELOPE_VERSION } from './reference-capture.constants';
 import { buildRawIdentity } from './reference-capture.contract';
 import { buildPhysicalSampleFingerprint } from './reference-capture-physical-sample-identity.util';
@@ -100,8 +104,12 @@ describe('reference-capture HF auto-flush watermark accounting', () => {
         acquired: true,
         state: stateStore.acquisitionStateJson,
       })),
-      releaseCycleLockAndUpdateState: jest.fn(async (_o: string, _s: string, _j: string, next: unknown) => {
-        stateStore.acquisitionStateJson = next as typeof stateStore.acquisitionStateJson;
+      releaseCycleLockAndUpdateState: jest.fn(async (_o: string, _s: string, _j: string, release: { dataPlane: unknown }) => {
+        stateStore.acquisitionStateJson = {
+          ...(stateStore.acquisitionStateJson as object),
+          ...(release.dataPlane as object),
+          activeCycleJobId: null,
+        } as unknown as typeof stateStore.acquisitionStateJson;
         return true;
       }),
     };
@@ -132,6 +140,7 @@ describe('reference-capture HF auto-flush watermark accounting', () => {
       observationWriter,
       observationRepository as never,
       sessionRepo as never,
+      createLegacyHfRecoveryConfigMock() as never,
     );
 
     return { service, stateStore, dbRows, observationWriter };

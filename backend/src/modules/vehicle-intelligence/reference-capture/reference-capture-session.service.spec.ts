@@ -1,6 +1,15 @@
 import { ReferenceCaptureSessionStatus } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureSessionService } from './reference-capture-session.service';
 import { ReferenceCaptureConfig } from './reference-capture.config';
+
+function makePrismaMock(): PrismaService {
+  return {
+    vehicle: {
+      findFirst: jest.fn(),
+    },
+  } as unknown as PrismaService;
+}
 
 describe('ReferenceCaptureSessionService lifecycle', () => {
   function makeService() {
@@ -10,6 +19,8 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       replacesProductionScheduler: () => false,
       getCycleIntervalMs: () => 5000,
       getSlowCycleEvery: () => 6,
+      getStopQuiescenceTimeoutMs: () => 120_000,
+      getStopQuiescencePollIntervalMs: () => 250,
     } as ReferenceCaptureConfig;
 
     const sessionRepo = {
@@ -19,6 +30,10 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       updateStatusIfCurrent: jest.fn(),
       updateReadiness: jest.fn().mockResolvedValue({}),
       updateRunnerJobId: jest.fn().mockResolvedValue({}),
+      waitForAcquisitionCycleQuiescence: jest
+        .fn()
+        .mockResolvedValue({ quiesced: true, timedOut: false }),
+      finalizeTerminalCalibrationAtomic: jest.fn().mockResolvedValue({}),
     };
     const observationRepo = { findBySession: jest.fn(), countBySession: jest.fn() };
     const massBinding = { resolveMassBinding: jest.fn().mockResolvedValue({ effectiveMassKg: 1500 }) };
@@ -56,6 +71,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       writer as never,
       readiness as never,
       runner as never,
+      makePrismaMock(),
     );
 
     return { service, sessionRepo, preflight, acquisition, writer, readiness, runner };
@@ -73,6 +89,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       {} as never,
       {} as never,
       {} as never,
+      makePrismaMock(),
     );
     await expect(
       service.createSession({ organizationId: 'org', vehicleId: 'veh' }),
