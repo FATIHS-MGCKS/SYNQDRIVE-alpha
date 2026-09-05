@@ -263,3 +263,34 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | OQ-30 | P1.8.3.6.1 | — | idempotency replay pending | PARTIAL | HIGH |
 | OQ-28 FULL_N=2 segment | P1.8.3.6.1 | — | SHA invariant `21:18:52Z` | `44896s` (<86400) | HIGH |
 
+---
+
+## P1.8.3.6.2 — INC-07 final ~2-day forensic audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~50h) | P1.8.3.6.2 | — | read-only SSH + SQL + logs | `180034s` | HIGH |
+| INC-07 fix on all post-T0 production SHAs | P1.8.3.6.2 | — | release dist markers | YES | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.2 | — | scheduler logs | 11 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.6.2 | — | `trip_repairs` SQL | 8 APPLIED | HIGH |
+| Known repair `2074c845…` replay | P1.8.3.6.2 | — | logs + DB | 0 re-encounter | HIGH |
+| IDEMPOTENT_SKIP observability | P1.8.3.6.2 | — | PM2 out logs (DEBUG-level in code) | 0 retained | MEDIUM |
+| Max mutations per repair ID | P1.8.3.6.2 | — | `vehicle_trips` correlation | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.6.2 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.6.2 | — | classification | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.2 | — | STRONG replay required | NOT CLOSED | HIGH |
+
+---
+
+## P1.8.3.7 — OQ-28 uninterrupted 24h FULL_N2 certification
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Calendar FULL_N2 elapsed | P1.8.3.7 | — | deploy boundaries | `180049s` (~50h) | HIGH |
+| Longest continuous FULL_N2 segment | P1.8.3.7 | — | segment reconstruction | `76832s` (<86400) | HIGH |
+| Qualifying 24h segment | P1.8.3.7 | — | OQ-28 rule | NOT_MET | HIGH |
+| Current segment start | P1.8.3.7 | — | Sep 5 deploy | `2026-09-05T09:05:28Z` | HIGH |
+| N2 health during longest segment | P1.8.3.7 | — | topology/queue/leader | no disqualifying defect | HIGH |
+| OQ-28 closure | P1.8.3.7 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.7 | — | explicit limits | N=2 topology only | HIGH |
+
