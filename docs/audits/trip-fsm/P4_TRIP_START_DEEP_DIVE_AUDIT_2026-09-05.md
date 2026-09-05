@@ -33,6 +33,10 @@ Key architectural tensions (evidence-backed, not remediated here):
 4. **Idle vehicles** can sit on **5–30 min** snapshot tiers before first movement is seen.
 5. **`createTrip()` then `transitionState(ACTIVE_TRIP)`** — non-atomic; recovery exists but crash windows remain.
 6. **`lastRestingReason: 'timeout'`** cooldown branch exists in code but **`timeout` is never written** (**CONFIRMED** grep); only `complete` and `discard` are set at finalize.
+7. **`speedMotionKmh` is not consumed at the snapshot candidate gate** — low-speed weak band uses `speedActiveKmh`; `speedMotionKmh` is authoritative in confirmation `isPointActive` only.
+8. **ICE/HYBRID ignition-only can enter `POSSIBLE_START`** (`strong >= 2` without movement); EV/UNKNOWN cannot on ignition alone.
+9. **`processPossibleStart` catch swallows exceptions** — no BullMQ retry; recovery @120s consumes confirmation budget (**P4-F11**).
+10. **Battery start-proxy `await` precedes `scheduleActiveTick`** — battery enqueue failure blocks primary active loop until recovery (**P4-F12**).
 
 ---
 
@@ -172,7 +176,7 @@ triggered = strong >= 2
 | Field | ICE | EV | HYBRID | UNKNOWN | Consumed at candidate? |
 |-------|-----|----|--------|---------|------------------------|
 | speedActiveKmh | 5 | 3 | 4 | 5 | **YES** — speed strong signal |
-| speedMotionKmh | 0.5 | 0.5 | 0.5 | 0.5 | **Indirect** — low-speed weak band |
+| speedMotionKmh | 0.5 | 0.5 | 0.5 | 0.5 | **NO at candidate** — used in confirmation `isPointActive` only |
 | odometerMinDeltaKm | 0.05 | 0.05 | 0.05 | 0.05 | **YES** — odometer delta |
 | activeFrequencyPerMin | 2 | 2 | 2 | 2 | **NO** |
 | restingFrequencyPerMin | 0.5 | 0.5 | 0.5 | 0.5 | **NO** |
@@ -197,7 +201,7 @@ Legend: **S+** = strong increment, **S++** = +2 strong, **W+** = weak increment,
 | GPS delta > 50 m | S+ (+movement) | same | same | same |
 | GPS delta 15–50 m | W+ (+movement) | same | same | same |
 | odometer delta > min | S+ (+movement) | same | same | same |
-| low speed 0–speedActive | W+ (+movement) | same | same | same |
+| low speed: `0 < speed ≤ speedActiveKmh` (not speedMotionKmh) | W+ (+movement) | same | same | same |
 | engineLoad 1–15 (non-EV) | W+ | — | W+ | W+ |
 | fuel delta > 0.2 | W+ | W+ | W+ | W+ |
 | SOC delta > 0.5 | W+ | S+ | S+ | W+ |
@@ -211,11 +215,28 @@ Legend: **S+** = strong increment, **S++** = +2 strong, **W+** = weak increment,
 ### P4 investigation answers
 
 1. **Actually consumed at candidate:** `speedActiveKmh`, `odometerMinDeltaKm`, profile-specific hard-coded increments for ignition/EV power/SOC.
-2. **Not consumed:** all five `*Weight` fields, frequency thresholds.
-3. **Different model from `validateTripStart`?** **YES — CONFIRMED.**
-4. **Intentional / documented?** Comment in `evaluateSnapshotEvidence` says "weighted by profile" but implementation uses fixed increments. **INFERRED:** historical simplification; not documented as intentional dual-model.
-5. **Can profiles with different configured weights behave identically at candidate?** **YES** — e.g. ICE vs UNKNOWN differ mainly in `speedActiveKmh` (5 vs 5 same) and ignition strong increment (+2 vs +1); EV differs on speed threshold (3) and traction power paths.
-6. **Runtime authority vs dead config:** At candidate stage, weight fields are **config-only/dead**. Speed/odo thresholds are **runtime authority**.
+2. **Not consumed at candidate:** all five `*Weight` fields, frequency thresholds, **`speedMotionKmh`**.
+3. **Minimum positive speed for weak + hasMovement:** any `speedKmh` where `0 < speedKmh ≤ speedActiveKmh` (e.g. 0.01 km/h qualifies if non-null).
+4. **Where `speedMotionKmh` becomes authoritative:** confirmation phase only — `isPointActive()` treats a point as active if `speed > speedActiveKmh` OR (`ignition ON` AND `speed > speedMotionKmh`); also used in `hasActivityResumed` and inactivity/stop thresholds, not in `evaluateSnapshotEvidence`.
+5. **Different model from `validateTripStart`?** **YES — CONFIRMED.**
+6. **Intentional / documented?** Comment in `evaluateSnapshotEvidence` says "weighted by profile" but implementation uses fixed increments. **INFERRED:** historical simplification; not documented as intentional dual-model.
+7. **Can profiles with different configured weights behave identically at candidate?** **YES** — e.g. ICE vs UNKNOWN differ mainly in `speedActiveKmh` (5 vs 5 same) and ignition strong increment (+2 vs +1); EV differs on speed threshold (3) and traction power paths.
+8. **Runtime authority vs dead config:** At candidate stage, weight fields and `speedMotionKmh` are **config-only/dead**. `speedActiveKmh` and odometer delta are **runtime authority**.
+
+### Ignition-only candidate semantics (verified)
+
+Snapshot with **ignition ON, speed = 0, no GPS/odometer/other evidence**:
+
+| Profile | strong | hasMovement | `triggered` | RESTING → POSSIBLE_START? |
+|---------|--------|-------------|-------------|---------------------------|
+| ICE | 2 | false | `strong >= 2` | **YES** |
+| HYBRID | 2 | false | `strong >= 2` | **YES** |
+| EV | 1 | false | none of OR arms | **NO** |
+| UNKNOWN | 1 | false | none of OR arms | **NO** |
+
+**Can ignition ON alone cause RESTING → POSSIBLE_START?** **YES for ICE and HYBRID; NO for EV and UNKNOWN** (under isolated ignition-only snapshot).
+
+**Can ignition ON alone create an ONGOING trip?** **NO** — confirmation requires sustained core activity and/or CH assist with `currentTelemetryActive`; ignition-only stationary snapshots do not satisfy `validateTripStart` or typical CH assist paths.
 
 ---
 
@@ -290,7 +311,7 @@ snapshotFreshMs: previousTelemetry?.updatedAt
 | Key-off/on within 30–120s | depends on prior finalize reason | often **YES** |
 | EV park/restart after normal complete | up to 120s | **YES** |
 
-**Worst-case start latency from cooldown + polling:** `cooldown (120s) + LONG_IDLE poll (1800s) + confirm wait (up to 180s)` ≈ **35+ minutes** before `ACTIVE_TRIP` if movement happens just after cooldown ends on slow tier — **INFERRED** upper bound.
+**Worst-case recognition latency from cooldown + polling + confirm:** candidate ~32 min + up to 180 s PS ≈ **35 min** to `ACTIVE_TRIP` under default tiers — **CONFIRMED** arithmetic. Live miss between polls is a separate **MISS** class (P4.5).
 
 ---
 
@@ -311,20 +332,17 @@ snapshotFreshMs: previousTelemetry?.updatedAt
 
 **DIMO signal cadence ≠ SynqDrive poll cadence** — core buckets are 20s when fetched, but snapshots may be 5–30 min apart on idle vehicles.
 
-### Latency equation
+### Latency terminology (three distinct concepts)
 
-| Stage | Symbol | Typical | Theoretical max (idle) |
-|-------|--------|---------|------------------------|
-| Physical start | `physicalStartAt` | T0 | T0 |
-| Provider observation | `providerObservationAt` | T0 + device latency | T0 + minutes |
-| Snapshot fetched | `snapshotFetchedAt` | +0–30min poll | +30min |
-| Candidate (`POSSIBLE_START`) | `candidateAt` | snapshot worker time | poll + processing |
-| Confirmation | `confirmationAt` | +0–180s PS retries | +180s |
-| Canonical start | `canonicalStartTime` | boundary refine | may backdate via DIMO segment |
+| Concept | Definition | Typical upper bound (defaults, vehicle stays observable) |
+|---------|------------|----------------------------------------------------------|
+| **candidateLatency** | physical start → `POSSIBLE_START` | ≈ **32 min** = 30 min max idle poll + 120 s complete cooldown (+ processing) |
+| **recognitionLatency** | physical start → `ACTIVE_TRIP` / ONGOING row | ≈ **35 min** = candidateLatency + up to 180 s PS confirmation window |
+| **canonicalStartBoundaryError** | physical/best-provider start → stored `trip.startTime` | independent — may be small if DIMO segment backdates despite late recognition |
 
-**Can trip be largely complete before first candidate poll?** **YES** — on LONG_IDLE tier a short trip could finish before first poll; live path would miss until reconciliation — **INFERRED** (scheduler backfill-on-resume mitigates host suspend only).
+**Live FSM miss case:** a short trip that starts and finishes entirely between two `LONG_IDLE` polls **without any qualifying snapshot reaching `evaluateSnapshotEvidence`** is **not recognized live** — latency is **MISS / NEVER (live path)**, not a finite delay. Reconciliation/repair is a separate path and must not be folded into live recognition latency.
 
-Default `tripStartBoundaryMaxLookbackMs` = max poll tier (30m) + confirm (180s) + buffer (120s) = **35 min** (`deriveDefaultTripStartBoundaryMaxLookbackMs`).
+**Lookback coupling:** default `tripStartBoundaryMaxLookbackMs` ≈ 35 min (= 30 min + 180 s + 120 s buffer). Stage stack `30m poll + 120s cooldown + up to 180s confirm + provider observation lag` can **consume or exceed** the historical boundary window, leaving segment/route/core refinement unable to recover the true prefix (`startedBeforeRange` rejection amplifies this).
 
 ---
 
@@ -373,17 +391,22 @@ Score adds full weight if: `hasIgnition`, `hasMotion`, `hasOdometerProgress`, `h
 
 `isPointActive`: speed > speedActiveKmh OR (ignition ON AND speed > speedMotionKmh).
 
+**Motion-only snapshot candidate (speed > speedActiveKmh, no ignition):** all profiles → strong=1, hasMovement=true → **triggered** via `(strong >= 1 && hasMovement)`.
+
+**Motion-only confirmation (sustained core motion, no ignition):** all profiles can confirm via `strongConsecutive`, `stableDuration`, or `compositeStrong` — ignition is **not** required. `combinedCurrent` is ignition-specific but is only one OR arm.
+
 ### Representative sequences (candidate vs confirm)
 
 | ID | Scenario | Candidate | Confirm | Trip |
 |----|----------|-----------|---------|------|
-| A | ICE ignition ON, parked, engine load high | Often YES (ignition + load) | Needs core consecutive/duration OR combinedCurrent with speed>0 | Unlikely without speed |
+| A | ICE ignition ON, parked, engine load >15 | **YES** (ignition +2, load +1 → strong≥2) | Needs core consecutive/duration OR CH assist | Unlikely without motion/core |
 | B | ICE ignition + 8 km/h | YES | YES (strongConsecutive likely) | YES |
-| C | ICE stale ignition ON, stationary | Maybe YES (ignition only weakly) | NO unless frequency/score | NO |
-| D | EV speed movement, no ignition | YES (speed) | YES (motion path) | YES |
+| C | ICE/HYBRID ignition ON only, stationary | **YES** (strong=2) | NO (no active core points) | NO |
+| C2 | EV/UNKNOWN ignition ON only, stationary | **NO** (strong=1) | NO | NO |
+| D | Any profile: speed > speedActiveKmh, no ignition | YES | YES if core sustained | YES |
 | E | EV SOC change charging, no motion | SOC strong on EV | NO motion | NO |
 | F | EV traction sparse core | YES if snapshot strong | CH assist may help | Maybe |
-| G | Hybrid engine toggle standstill | ignition swings | unlikely stableDuration | NO |
+| G | Hybrid engine toggle standstill | ignition may hit strong=2 alone | unlikely stableDuration | NO trip without motion/core |
 | H | GPS drift 15m | weak only | NO | NO |
 | H2 | GPS jump >50m | YES | needs core | Maybe |
 | I | Odometer jump only | YES if delta | YES if core confirms | YES |
@@ -443,15 +466,33 @@ OR (isIgnitionOn === true AND speedKmh > 0)
 
 Uses **current VLS row** at confirm time (not historical).
 
-### ICE/HYBRID assist
+### CH assist branches (verified order in `resolveAnalyticsAssistedStartDecision`)
 
-`currentTelemetryActive && strongActivityWindow && ignitionTriggered`
+After DIMO `StartConfirmationDetector` fails to TRIGGER, two independent assist arms are evaluated **in order**:
 
-`strongActivityWindow` = activity triggered AND (points≥3 OR speed>5 OR odoΔ>0.05)
+| Branch | Guard | Comment in code | Profiles affected |
+|--------|-------|-----------------|-------------------|
+| **A — ignition + activity** | `currentTelemetryActive && strongActivityWindow && ignitionTriggered` | Comment says "ICE / HYBRID" | **No profile guard in code** — any profile including ICE can match if CH ignition segment fires |
+| **B — EV-family motion/activity** | `isEvProfile && currentTelemetryActive && (motionTriggered \|\| strongActivityWindow)` | `isEvProfile = EV \|\| HYBRID \|\| UNKNOWN` | EV, HYBRID, UNKNOWN |
 
-### EV/HYBRID/UNKNOWN assist
+**HYBRID dual path:** HYBRID is in `isEvProfile`, so it can confirm via **branch A** (ignition segment + strong activity) **or branch B** (motion segment or strong activity). Do not describe HYBRID as ignition-only.
 
-`currentTelemetryActive && (motionTriggered || strongActivityWindow)`
+**ICE:** no `MotionSegmentDetector` in confirm policy (`trip-detection-policy.resolver.ts`); ICE CH assist is effectively **branch A only** (ignition segment path).
+
+**EV/UNKNOWN:** branch B primary; branch A available if ignition segment exists.
+
+### No-core confirmation (`StartConfirmationDetector` INCONCLUSIVE)
+
+When `corePoints.length === 0`, `StartConfirmationDetector` returns **INCONCLUSIVE** (not TRIGGERED). `resolveAnalyticsAssistedStartDecision` may still return `confirmed=true` if CH assist arms pass (requires `clickhouseAvailable` and detectors ran):
+
+| Profile | CH-only confirm possible? | Required assist path |
+|---------|---------------------------|----------------------|
+| ICE | **YES** (if CH enabled) | Branch A: `ignitionTriggered` + `strongActivityWindow` + `currentTelemetryActive` |
+| EV | **YES** | Branch B: `motionTriggered` OR `strongActivityWindow` + `currentTelemetryActive` |
+| HYBRID | **YES** | Branch A **or** Branch B |
+| UNKNOWN | **YES** | Branch B (motion/activity); Branch A if ignition segment present |
+
+If CH unavailable or `currentTelemetryActive` false: **NO** confirm without core → PS self-reschedule every 30s until 180s expiry.
 
 ### Conflict cases
 
@@ -518,29 +559,59 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 
 ## P4.12 — New trip commit order / atomicity
 
-**Order:** `createTrip()` (COMMIT) → `transitionState(ACTIVE_TRIP)` → async temp/route/battery → `scheduleActiveTick`.
+### Exact post-confirmation order (new trip path)
 
-| Crash point | vehicle_trips | detection_state | BullMQ | Battery | tracking_runs |
-|-------------|---------------|-----------------|--------|---------|---------------|
-| A before create | none | POSSIBLE_START | PS may retry | — | logged |
-| B during create | maybe partial | POSSIBLE_START | retry | — | — |
-| C after create, before FSM | **ONGOING orphan** | POSSIBLE_START | retry | — | — |
-| D during FSM | ONGOING | maybe ACTIVE | — | — | — |
-| E after FSM, before battery | ONGOING | ACTIVE_TRIP | AT scheduled | maybe miss | — |
-| F after battery enqueue | ONGOING | ACTIVE_TRIP | AT | queued | — |
-| G after AT enqueue | ONGOING | ACTIVE_TRIP | AT | ok | logged |
+| Step | Call | Awaited? | Error handling |
+|------|------|----------|----------------|
+| 1 | `decisionEngine.createTrip(...)` | **await** | propagates to outer catch if throws |
+| 2 | `transitionState(ACTIVE_TRIP, ...)` | **await** | propagates |
+| 3 | `fetchAndStoreStartTemperature(...)` | fire-and-forget | local `.catch` log |
+| 4 | `fetchAndStoreInitialRoute(...)` | fire-and-forget | local `.catch` log |
+| 5 | `batteryTripStartProducer.enqueueStartProxy(...)` | **await** (if orgId) | propagates — **blocks step 6** |
+| 6 | `scheduleActiveTick(...)` | **await** | propagates |
+| 7 | metrics / logs | sync | — |
+| 8 | `logTrackingRun(...)` | **await** (end of try) | — |
 
-**Recovery:** `TripTrackingRecoveryScheduler` every 120s re-enqueues PS/AT for stale states with expired lock.
+**Merge/reopen path** skips steps 3–5; calls `scheduleActiveTick` immediately after FSM transition.
 
-**createTrip idempotency:** **NO** — each confirm creates new UUID; **`dimoSegmentId` @unique** may throw on duplicate synthetic id — partial guard.
+**P4-F12 verified:** battery start-proxy failure **prevents** `scheduleActiveTick` on the new-trip path until recovery re-enqueues.
+
+### `createTrip` atomicity (Postgres / Prisma)
+
+`prisma.vehicleTrip.create()` is a **single INSERT statement** — there is **no partial row mutation** inside one call. Outcomes:
+
+- **Success:** full row committed atomically.
+- **Failure before commit:** no row (or duplicate-key error on `dimoSegmentId` unique).
+- **Caller uncertainty:** if the DB connection drops after the server committed but before the client receives the response, the caller may retry — duplicate risk mitigated only by `dimoSegmentId @unique`, not idempotent create logic.
+
+Do **not** describe "maybe partial" VehicleTrip rows during create.
+
+### Crash / failure scenarios
+
+| Scenario | vehicle_trips | FSM | Battery proxy | ACTIVE_TICK queue | Recovery |
+|----------|---------------|-----|---------------|-------------------|----------|
+| A. Before createTrip | none | POSSIBLE_START | — | none | PS retry 30s or recovery @120s |
+| B. createTrip throws | none | POSSIBLE_START | — | none | same; no orphan row |
+| C. create committed, crash before FSM | **ONGOING orphan** | POSSIBLE_START | — | none | recovery PS; duplicate trip risk on retry |
+| D. FSM ACTIVE_TRIP, crash before battery | ONGOING | ACTIVE_TRIP | not enqueued | **not scheduled** | recovery AT/PS @120s |
+| E. Battery enqueue throws | ONGOING | ACTIVE_TRIP | failed | **not scheduled** | recovery @120s (**P4-F12**) |
+| F. Battery ok, crash before scheduleActiveTick | ONGOING | ACTIVE_TRIP | queued | not scheduled | recovery @120s |
+| G. scheduleActiveTick throws (caught by PS catch) | ONGOING | ACTIVE_TRIP | maybe queued | not scheduled | recovery @120s; **no BullMQ retry** |
+| H. ACTIVE_TICK enqueued, later AT failure | ONGOING | ACTIVE_TRIP | ok | job exists | AT self-reschedule / recovery |
+
+**Recovery:** `TripTrackingRecoveryScheduler` every 120s re-enqueues `trip-recovery-{vehicleId}` (not `trip-ps-{vehicleId}`) when lock expired.
+
+**createTrip idempotency:** **NO** — each confirm uses new UUID; **`dimoSegmentId` @unique** may throw on duplicate synthetic id.
 
 ---
 
 ## P4.13 — Job idempotency / concurrency
 
 - **Job ID:** `trip-ps-{vehicleId}` — dedupes concurrent PS schedules
+- **Recovery job ID:** `trip-recovery-{vehicleId}` — separate from PS id
 - **Worker lock:** 120s TTL, compare-and-set on `workerLockedUntil`
-- **Retries:** PS failure rethrows → BullMQ retry; unconfirmed schedules PS +30s
+- **BullMQ retry on PS exception:** **NO** — `processPossibleStart` **catch swallows** errors (no rethrow); `TripTrackingProcessor` records SUCCESS. Ordinary BullMQ retry applies only if the processor itself throws (outside orchestration catch).
+- **Unconfirmed (non-throwing) path:** PS self-reschedule every **30s** until 180s expiry
 - **Duplicate workers:** lock prevents parallel PS for same vehicle — **INFERRED** single flyer
 - **Duplicate ONGOING trips:** no DB unique on `(vehicleId, ONGOING)` — **two workers could create two trips if lock bypassed** — **INFERRED** low probability
 - **`dimoSegmentId` unique:** prevents duplicate segment ids
@@ -549,14 +620,32 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 
 ## P4.14 — Recovery of POSSIBLE_START
 
+### Exception propagation (**P4-F11**)
+
+`processPossibleStart` structure:
+
+```text
+try { ... confirm logic ... }
+catch (err) { log warn; logTrackingRun with errorMessage; NO rethrow }
+finally { releaseWorkerLock }
+```
+
+**BullMQ sees:** job **SUCCESS** (orchestration returned normally). **No** automatic BullMQ retry for PS exceptions.
+
+**After exception at T0:** no PS self-reschedule (that only runs in non-throwing `confirmed=false` branch); lock released; FSM stays **POSSIBLE_START**; `possibleStartAt` unchanged.
+
+**Recovery scheduler (@120s):** enqueues `trip-recovery-{vehicleId}` when lock expired. **Worst case:** error at T0 → recovery ~T0+120s → only **~60s** confirmation budget remains before 180s expiry at next successful PS run.
+
 | Condition | Self-healing? | Mechanism |
 |-----------|---------------|-----------|
 | Queue job missing | **Partial** | Recovery scheduler @120s |
 | Job delayed | **YES** | eventual run |
-| Worker crashed mid-job | **Partial** | lock expiry + recovery |
+| Worker crashed mid-job (uncaught in processor) | **Partial** | BullMQ retry + lock expiry + recovery |
+| **PS exception swallowed** | **Partial** | recovery @120s only; consumes confirm budget (**P4-F11**) |
 | Redis restarted | **Partial** | jobs may be lost; recovery rescans FSM |
 | Lock leaked until TTL | blocks | 120s |
-| No core data | retry 30s until 180s | then RESTING |
+| No core, CH cannot assist | PS retry 30s until 180s | then RESTING |
+| No core, CH **can** assist | **YES** | CH-only confirm same run |
 | Candidate >180s | **YES** | expiry → RESTING |
 | Trip exists from crash window | **NO** | manual/reconciliation |
 
@@ -566,8 +655,9 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 
 | Condition | Candidate? | Confirmed? | Trip? | Protection |
 |-----------|------------|------------|-------|------------|
-| Ignition parked | Often | Rare without speed | Rare | confirm gates |
-| Remote preconditioning | Maybe load/ignition | Unlikely | Unlikely | duration/consecutive |
+| ICE/HYBRID ignition parked (no motion) | **YES** (strong=2) | NO without core/CH | NO | confirm gates |
+| EV/UNKNOWN ignition parked | NO | NO | NO | strong=1 insufficient |
+| Remote preconditioning | Maybe load+ignition (ICE strong≥2) | Unlikely | Unlikely | duration/consecutive |
 | Charging SOC change | EV/HYBRID strong | Unlikely without motion | Unlikely | motion gates |
 | GPS drift 15m | weak only | No | No | weak<3 alone |
 | GPS jump >50m | Yes | Maybe | Maybe | core confirm |
@@ -587,8 +677,9 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 | RESTING cooldown | blind window | +120s |
 | EV no ignition | mitigated by EV CH path | varies |
 | Short trip <60s | may discard at end not start | N/A at start |
-| CH unavailable | lose assist path | DIMO-only confirm harder |
-| Core fetch fail | retry/timeout | 180s |
+| CH unavailable | lose assist; core-only confirm | DIMO-only harder |
+| Core fetch empty, CH assist passes | NO DIMO confirm | **YES** (CH-only) | profile-dependent |
+| PS exception mid-run | FSM stays PS | recovery only | budget consumed (**P4-F11**) |
 
 **Largest FN risk:** **idle tier polling + post-complete cooldown** — **CONFIRMED** architectural blind windows.
 
@@ -598,15 +689,16 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 
 | Column | ICE | EV | HYBRID | UNKNOWN |
 |--------|-----|----|--------|---------|
-| Candidate speed threshold | 5 | 3 | 4 | 5 |
-| Motion threshold | 0.5 | 0.5 | 0.5 | 0.5 |
+| Candidate speed threshold (`speedActiveKmh`) | 5 | 3 | 4 | 5 |
+| `speedMotionKmh` (confirm `isPointActive` only) | 0.5 | 0.5 | 0.5 | 0.5 |
 | Odo threshold | 0.05 | 0.05 | 0.05 | 0.05 |
-| Ignition candidate | +2 strong | +1 | +2 | +1 |
+| Ignition-only → POSSIBLE_START? | **YES** | **NO** | **YES** | **NO** |
+| Motion-only → POSSIBLE_START? | **YES** | **YES** | **YES** | **YES** |
 | Candidate score model | strong/weak counts | same | same | same |
 | Confirm weights (ign/speed/odo/en/freq) | 3/2/2/1/1 | 1/3/2/2/2 | 2/3/2/2/1 | 2/3/2/1/2 |
-| CH assist | ignition+activity | motion/activity | ignition path | EV-like path |
-| Weakest signal | ignition stuck | missing ignition | dual-mode gaps | defaults |
-| Likely FP mode | parked idle high load | SOC noise | engine toggle | GPS drift |
+| CH assist paths | branch A only | branch B (+ A if ignition seg) | **A and B** | branch B (+ A if ignition seg) |
+| Weakest signal | ignition-only PS noise | missing ignition | dual-path complexity | defaults |
+| Likely FP mode | **ignition-only PS (ICE/HYB)** | SOC noise | ignition-only PS | GPS drift |
 | Likely FN mode | slow poll+cooldown | slow poll | same | same |
 
 **Asymmetry:** Candidate and confirm both profile-aware but **via different mechanisms** — thresholds vs weights.
@@ -615,15 +707,24 @@ Only **time gap < 5 min** matters; zero distance/duration args bypass discard ru
 
 ## P4.18 — Start boundary accuracy model
 
-Definitions:
+Three **separate** latency/error concepts (do not conflate):
 
-- `candidateLatencyMs = possibleStartAt - physicalStartEstimate`
-- `canonicalStartErrorMs = trip.startTime - bestProviderStartEstimate`
-- `confirmationLatencyMs = tripCreatedAt - physicalStartEstimate`
+| Metric | Definition |
+|--------|------------|
+| **candidateLatency** | `possibleStartAt − physicalStartEstimate` |
+| **recognitionLatency** | `ACTIVE_TRIP commit − physicalStartEstimate` |
+| **canonicalStartBoundaryError** | `trip.startTime − bestProviderStartEstimate` |
 
-**Recognition latency** can be large (poll + cooldown + confirm). **Canonical boundary** can still be accurate if DIMO segment matches (`adjustedMs` negative) — decoupled dimensions (**MANDATORY distinction**).
+**Upper bounds (defaults, vehicle remains observable, live path succeeds):**
 
-Theoretical candidate latency upper bound ≈ cooldown + max poll interval ≈ **32 min** (INFERRED).
+- candidateLatency ≈ **32 min** (30 min max poll + 120 s cooldown)
+- recognitionLatency ≈ **35 min** (+ up to 180 s PS window)
+
+**Live miss:** trip completed between LONG_IDLE polls → **MISS / never recognized live** (not a finite latency).
+
+**Decoupling:** recognition can be late while `canonicalStartBoundaryError` is small if DIMO segment backdates start.
+
+**Lookback stress:** stage delays can exhaust `tripStartBoundaryMaxLookbackMs` (~35 min), forcing worker-time candidate fallback.
 
 ---
 
@@ -656,7 +757,7 @@ Theoretical candidate latency upper bound ≈ cooldown + max poll interval ≈ *
 | CH assist | resolveAnalyticsAssistedStartDecision tests | conflict matrix partial |
 | Boundary | refineTripStartBoundary, delayed-start-boundary.safety-gate | live orchestration integration |
 | Merge | checkTripQuality tests | reopen side effects |
-| Recovery | reference in p12 gate spec | limited PS recovery tests |
+| Recovery | reference in p12 gate spec | PS exception swallow (**P4-F11**); battery-before-AT (**P4-F12**) |
 | Timeout cooldown reason | none | **`timeout` reason never set** |
 
 ---
@@ -674,7 +775,7 @@ No fresh FSM distribution, latency, merge rate, or boundary adjustment stats col
 | Dimension | Rating | Evidence |
 |-----------|--------|----------|
 | Candidate sensitivity | **ACCEPTABLE** | low bar trigger formula |
-| Candidate specificity | **WEAK** | ignition/GPS jumps |
+| Candidate specificity | **WEAK** | ICE/HYB ignition-only PS; GPS/odometer jumps |
 | Confirmation sensitivity | **ACCEPTABLE** | multi-gate OR |
 | Confirmation specificity | **ACCEPTABLE** | consecutive + duration |
 | Boundary accuracy | **ACCEPTABLE** when segment matches | delayed-start tests |
@@ -682,11 +783,12 @@ No fresh FSM distribution, latency, merge rate, or boundary adjustment stats col
 | ICE robustness | **ACCEPTABLE** | ignition-weighted confirm |
 | EV robustness | **ACCEPTABLE** with CH | motion assist |
 | Hybrid robustness | **ACCEPTABLE** | mixed paths |
-| Sparse telemetry | **WEAK** | frequency/core dependency |
+| Sparse telemetry | **WEAK** | core/CH assist dependency; CH-only path exists |
 | Out-of-order data | **ACCEPTABLE** | VLS monotonic at snapshot |
-| Crash safety | **WEAK** | create before FSM |
-| Idempotency | **ACCEPTABLE** | jobId + lock |
-| Observability | **WEAK** | partial forensics |
+| Crash safety | **CRITICAL** | create-before-FSM orphan + swallowed PS errors (**P4-F11**) |
+| Idempotency | **WEAK** | jobId + lock; no ONGOING unique; swallowed errors mask failures |
+| Recovery robustness | **WEAK** | 120s recovery cadence vs 180s confirm budget; battery blocks AT (**P4-F12**) |
+| Observability | **WEAK** | partial forensics; PS errors logged but job marked SUCCESS |
 
 ---
 
@@ -704,6 +806,8 @@ No fresh FSM distribution, latency, merge rate, or boundary adjustment stats col
 | P4-F08 | P2 | CH assist cannot start trip without POSSIBLE_START | By design |
 | P4-F09 | P2 | Merge by time-only gap ≤5m may merge distinct stops | Open |
 | P4-F10 | P3 | No unique constraint preventing duplicate ONGOING trips | Open |
+| P4-F11 | P1 | `processPossibleStart` swallows exceptions; recovery @120s consumes 180s confirm budget; BullMQ sees SUCCESS | Open |
+| P4-F12 | P1 | Battery `enqueueStartProxy` awaited before `scheduleActiveTick` — failure blocks primary active loop | Open |
 
 ---
 
@@ -725,8 +829,9 @@ No fresh FSM distribution, latency, merge rate, or boundary adjustment stats col
 
 | Signal | Candidate authority | Confirm authority |
 |--------|--------------------|--------------------|
-| Speed | threshold + strong/weak | weight + consecutive |
-| Ignition | strong/weak increments | weight + combinedCurrent |
+| Speed (`speedActiveKmh`) | strong/weak + movement | weight + consecutive via `isPointActive` |
+| Speed (`speedMotionKmh`) | **none** | minimal-speed + ignition arm of `isPointActive` |
+| Ignition | strong/weak increments (+2 ICE/HYB) | weight + combinedCurrent |
 | Odometer | delta strong | weight + progress |
 | Energy/SOC | profile-specific strong/weak | energy weight |
 | Frequency | **none** | frequency weight |
@@ -742,12 +847,12 @@ See P4.7 — gates OR across consecutive, duration, composite, combinedCurrent.
 
 ### E. Start latency matrix
 
-| Component | Typical | Max (defaults) |
-|-----------|---------|----------------|
-| Cooldown | 0–120s | 120s |
-| Poll wait | 30s–5m | 30m |
-| PS retry | 0–180s | 180s |
-| Boundary backdate | 0 | 35m lookback |
+| Concept | Typical | Max (defaults, live path succeeds) |
+|---------|---------|-------------------------------------|
+| candidateLatency | seconds–minutes | **~32 min** (30m poll + 120s cooldown) |
+| recognitionLatency | +0–180s after candidate | **~35 min** (+ PS window) |
+| canonicalStartBoundaryError | independent | bounded by lookback ~35 min |
+| Live miss (trip between polls) | — | **MISS / never live** |
 
 ### F. Start boundary priority matrix
 
@@ -787,21 +892,59 @@ See P4.23.
 1. **Earliest indication:** DIMO snapshot scalar change evaluated in `evaluateSnapshotEvidence` while FSM=`RESTING` (after cooldown), or VLS row update — **not** persisted as trip until confirm.
 2. **POSSIBLE_START evidence:** `SnapshotEvidenceEvaluator` TRIGGERED per formula; FSM must be RESTING and cooldown elapsed.
 3. **ONGOING trip evidence:** `resolveAnalyticsAssistedStartDecision.confirmed` OR `StartConfirmationDetector` TRIGGERED (with optional CH assist rules).
-4. **Ignition ON alone create trip?** **NO** in normal confirm path — needs motion/consecutive/core; candidate may enter PS on ignition+weak signals but confirm usually fails without speed/core.
-5. **Motion alone?** **YES** for EV/HYBRID at candidate; confirm **YES** if core gates pass.
+4. **Ignition ON alone → POSSIBLE_START?** **YES for ICE/HYBRID** (strong=2); **NO for EV/UNKNOWN** (strong=1). **Ignition ON alone → ONGOING trip?** **NO** — confirmation requires core and/or CH assist with motion/activity telemetry.
+5. **Motion alone (speed > speedActiveKmh)?** **YES at candidate for all profiles**; **YES at confirm for all profiles** if sustained core satisfies `strongConsecutive` / `stableDuration` / `compositeStrong` (ignition not required).
 6. **CH without POSSIBLE_START?** **NO**.
-7. **Latest recognition:** **INFERRED** ~32+ min (30m poll + 120s cooldown + 180s confirm) in pathological idle case.
-8. **Canonical accuracy despite late recognition?** **YES** — DIMO segment/route/core can backdate startTime.
-9. **Largest FP risk:** candidate triggered on GPS/odometer noise with permissive confirm composite path.
-10. **Largest FN risk:** idle polling tier + post-trip cooldown.
+7. **Latest live recognition:** **~35 min** upper bound when vehicle stays observable (candidate ~32 min + up to 180 s confirm). **Separate case:** trip finished between LONG_IDLE polls → **live MISS** (reconciliation only).
+8. **Canonical accuracy despite late recognition?** **YES** — DIMO segment/route/core can backdate `startTime` unless lookback exhausted.
+9. **Largest FP risk:** **ICE/HYBRID ignition-only POSSIBLE_START** (strong≥2 without movement) plus permissive confirm/CH paths on noisy telemetry.
+10. **Largest FN risk:** idle polling tier + post-trip cooldown + PS exception/recovery budget consumption (**P4-F11**).
 11. **Profile-aware both stages?** **YES** but **different models** (thresholds/increments vs weights).
 12. **Candidate/confirm internally consistent?** **NO** — dual models (P4-F01).
-13. **Crash → ONGOING + POSSIBLE_START?** **YES** possible (crash point C).
+13. **Crash → ONGOING + POSSIBLE_START?** **YES** possible (create committed before FSM).
 14. **Duplicate workers duplicate trips?** **Unlikely** with lock; **possible** if lock bypassed — no ONGOING unique constraint.
 15. **Short stop merged incorrectly?** **YES** if gap <5m by design (P4-F09).
-16. **Self-healing after queue failure?** **Partial** — recovery scheduler @120s.
+16. **Self-healing after queue/worker failure?** **Partial** — recovery @120s; PS exceptions **not** BullMQ-retried (**P4-F11**); battery failure blocks AT (**P4-F12**).
 17. **Reconstruct why trip started?** **PARTIAL** forensics.
-18. **Highest priority fix after audit:** **Align candidate temporal model (`possibleStartAt`) and idle polling/cooldown with physical start evidence, and unify or explicitly document dual scoring models** — **INFERRED** synthesis of P4-F01/F02/F04/F05.
+18. **Highest priority fix after audit:** **P4-F11 + P4-F02 + P4-F01** — fix swallowed PS errors / confirm budget, anchor `possibleStartAt` to provider time, unify or document dual scoring; secondary: idle polling (**P4-F04**) and battery-before-AT ordering (**P4-F12**).
+
+---
+
+## P4.24 — Audit closure / correction pass
+
+| Item | Value |
+|------|-------|
+| Closure date | 2026-09-05 |
+| Application SHA verified | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` |
+| P4 original commit | `48aa425bd9922f42417d20d89a1f51bb9a158dae` |
+| Production evidence | **UNKNOWN** (SSH failed; not re-run this pass) |
+| Application code modified | **NO** |
+
+### Statements corrected (verified against code)
+
+| Topic | P4 original | Corrected behavior |
+|-------|-------------|-------------------|
+| P4A.1 `speedMotionKmh` at candidate | Indirectly used in low-speed weak band | **NOT used** in `evaluateSnapshotEvidence`; weak band is `0 < speed ≤ speedActiveKmh` |
+| P4A.2 Ignition-only → PS | Understated for ICE/HYB | **ICE/HYBRID YES** (strong=2); EV/UNKNOWN **NO** |
+| P4A.3 Motion-only start | Limited to EV/HYBRID | **All profiles** at candidate and confirm (via motion gates) |
+| P4A.4 HYBRID CH assist | "Ignition path" only | **Dual path** — branch A and B (`isEvProfile` includes HYBRID) |
+| P4A.5 No-core confirm | Implied always retry 30s | **CH-only confirm possible** when assist arms pass |
+| P4A.6 PS exceptions | Implied BullMQ retry | **Swallowed** — no rethrow; recovery @120s vs 180s budget (**P4-F11**) |
+| P4A.7 Post-create order | AT after FSM (battery unclear) | Battery **awaited before** `scheduleActiveTick` (**P4-F12**) |
+| P4A.8 createTrip crash | "maybe partial" row | **Single INSERT** — no partial row; caller uncertainty only |
+| P4A.9 Latency | Conflated stages | Separated candidate / recognition / boundary error + live MISS case |
+
+### Proposed corrections rejected (actual behavior differs or already correct)
+
+| Proposal | Outcome |
+|----------|---------|
+| Change branch A to ICE-only in code description | **Rejected** — code has **no profile guard** on branch A; doc corrected to match code, not suggested code shape |
+| BullMQ retries all PS failures | **Rejected** — only uncaught processor throws retry; orchestration catch prevents this |
+
+### New findings added
+
+- **P4-F11** — swallowed `processPossibleStart` exceptions / confirm budget
+- **P4-F12** — battery enqueue blocks `scheduleActiveTick`
 
 ---
 
@@ -811,4 +954,4 @@ This task modified **audit documentation only**. SynqDrive Code → Changes and 
 
 ---
 
-*End of P4 audit artifact.*
+*End of P4 audit artifact (including P4A closure pass).*
