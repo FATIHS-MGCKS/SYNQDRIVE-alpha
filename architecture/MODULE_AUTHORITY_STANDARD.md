@@ -674,9 +674,20 @@ For pre-existing authorities:
 
 ---
 
-## 8. Definition of done for a current-state audit
+## 8. Definition of done
 
-A current-state audit or substantive authority workstream is **not complete** until:
+Full bootstrap audit and ongoing maintenance are **different operations**. `AUTHORITY_ACTIVE` is maintained incrementally. An ordinary implementation change does **not** automatically trigger a full re-audit or registry-status transition.
+
+### Gate A — Current-state audit / bootstrap Definition of Done
+
+Applies to:
+
+- `NOT_STARTED` reconstruction
+- `AUDIT_IN_PROGRESS` completion
+- promotion evaluation to `AUTHORITY_ACTIVE`
+- an explicitly requested full re-audit
+
+Not complete until:
 
 - [ ] registry coverage status handled correctly (`NOT_STARTED` → `AUDIT_IN_PROGRESS` → promotion only via gate)
 - [ ] repository SHA captured
@@ -693,14 +704,23 @@ A current-state audit or substantive authority workstream is **not complete** un
 - [ ] module authority validators pass
 - [ ] central registry validator passes: `bash architecture/scripts/validate-module-registry.sh`
 - [ ] registry entry updated in [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](SYNQDRIVE_RENTAL_ARCHITECTURE.md) when registry facts changed
-- [ ] **registry review recorded** for every affected module:
-  - affected module name
-  - authority files updated
-  - registry fields reviewed
-  - registry result: `UPDATED` or `UNCHANGED`
-  - coverage status before and after
-  - reason for no registry change (when `UNCHANGED`)
-  - validator result
 - [ ] final response lists files created/updated, evidence sources, limitations, and status transition
+
+### Gate B — Ongoing substantive workstream Definition of Done
+
+Applies to ordinary work on an existing `AUTHORITY_ACTIVE` module.
+
+Not complete until:
+
+- [ ] relevant module-authority artifacts updated in the same PR
+- [ ] `CURRENT_STATE.md` and other current-state claims updated when changed
+- [ ] decisions, evidence, graph, gaps, and change ledger updated where applicable
+- [ ] **registry synchronization review** completed for every affected module (overview row always; detailed section for `AUTHORITY_ACTIVE`; partial material for `AUDIT_IN_PROGRESS`)
+- [ ] registry result recorded per module: `UPDATED` or `UNCHANGED` with before/after coverage status and reason
+- [ ] module authority validators run where applicable
+- [ ] central registry validator passes: `bash architecture/scripts/validate-module-registry.sh`
+- [ ] `ARCHITECTURE_GOVERNANCE` completion report included
+
+When a change invalidates an existing runtime or Production claim, perform **focused re-verification** and update evidence for that affected claim. Do **not** require a complete new repository/Production bootstrap audit unless Gate A applies.
 
 `UNCHANGED` is valid **only after an explicit review** — it must never mean the registry was skipped.

@@ -104,11 +104,12 @@ After substantive work, before declaring the task complete:
 
 1. Determine every **affected module** from the final diff.
 2. Update every affected **module authority** in the same PR when the change is substantive.
-3. Re-read each affected registry **overview row** and **active detail section** in [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) after the authority update.
-4. Update the central registry **only if** any listed metadata changed (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
-5. Explicitly report `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` for **every** affected module, with before/after registry coverage status.
-6. Run the central registry validator: `bash architecture/scripts/validate-module-registry.sh`
-7. A missing registry review result is **incomplete work**.
+3. Re-read each affected registry **overview row** after the authority update.
+4. For `AUTHORITY_ACTIVE` modules, also re-read the **mandatory detailed authority section**. For `AUDIT_IN_PROGRESS`, review partial detail/authority material when present. `NOT_STARTED` has no active detailed section. `SUPERSEDED` follows its historical section and successor pointer.
+5. Update the central registry **only if** any listed metadata changed (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
+6. Explicitly report `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` for **every** affected module, with before/after registry coverage status and reason.
+7. Run the central registry validator: `bash architecture/scripts/validate-module-registry.sh`
+8. A missing registry review result is **incomplete work**.
 
 **Important:**
 

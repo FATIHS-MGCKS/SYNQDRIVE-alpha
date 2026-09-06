@@ -15,7 +15,11 @@ alwaysApply: true
 - Update the affected **module authority** — only relevant artifacts (`CURRENT_STATE.md`, human/machine graphs, decisions/WHY, evidence, contradictions/gaps, open questions/hypotheses, append-only change ledger, validation records).
 - Never silently rewrite or delete historical decisions, contradictions, failed approaches, or evidence.
 - For **cross-module** changes: inspect and update **every owning authority**.
-- Re-read every affected module’s overview row and detailed section in `SYNQDRIVE_RENTAL_ARCHITECTURE.md`.
+- Re-read every affected module’s **overview row** in `SYNQDRIVE_RENTAL_ARCHITECTURE.md`.
+- For `AUTHORITY_ACTIVE`: also re-read the module’s **mandatory detailed authority section**.
+- For `AUDIT_IN_PROGRESS`: review partial detail/authority material when present.
+- For `NOT_STARTED`: no active detailed section is required.
+- For `SUPERSEDED`: follow the documented historical section and successor pointer when present.
 - Update the central registry **only when registry facts changed** (name, mini description, coverage status, authority-native status, path, scope, boundaries, entry documents, validation commands, successor, Last updated). Do not edit the registry merely to create a diff. Do not change coverage status merely because implementation code changed — transitions follow the standard.
 - Run `bash architecture/scripts/validate-module-registry.sh` before completion.
 
@@ -38,10 +42,11 @@ ARCHITECTURE_GOVERNANCE
 - affected_modules:
 - authority_updates:
 - registry_review:
-  - <module>: UPDATED | UNCHANGED
-  - registry_status_before:
-  - registry_status_after:
-  - reason:
+  - module: <module name>
+    result: UPDATED | UNCHANGED
+    registry_status_before: <status>
+    registry_status_after: <status>
+    reason: <specific reason>
 - cross_module_authorities_reviewed:
 - authority_validators:
 - central_registry_validator:
@@ -49,7 +54,7 @@ ARCHITECTURE_GOVERNANCE
 - SynqDrive Code → Architektur:
 ```
 
-Every affected module needs its own `UPDATED` or `UNCHANGED` registry result and reason.
+Repeat the `registry_review` object once per affected module.
 
 **Non-substantive task:**
 

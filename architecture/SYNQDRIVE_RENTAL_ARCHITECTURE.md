@@ -55,22 +55,36 @@ When modules are added in the separate inventory workstream:
 | Field | `NOT_STARTED` placeholder |
 |-------|---------------------------|
 | Registry coverage status | `NOT_STARTED` |
-| Authority-native status | `N/A — inventory only` |
-| Authority path | `—` |
+| Authority-native status | `N/A — inventory only` (exact) |
+| Authority path | `—` (exact) |
 | Transition on reconstruction | Set `AUDIT_IN_PROGRESS` as soon as authority reconstruction begins |
 
 Do not add undiscovered modules in governance-only PRs.
+
+### SUPERSEDED successor notation
+
+Record an explicit successor using the prefix `Successor:` in one or more of:
+
+- overview **Authority-native status** (for example `Successor: Battery V2`)
+- overview **Mini description** (only when necessary)
+- detail section **Successor** row (for example `Successor: [Battery V2](#battery-v2)` or `Successor: [architecture/battery-v2/](battery-v2/)`)
+
+The successor must name a registered module or provide a resolvable registry anchor / authority link. Broken or unnamed successors fail central validation.
 
 ### Registry synchronization protocol
 
 After **every substantive module workstream**:
 
-1. Re-read the overview row and detailed section for **each affected module**.
-2. Modify this registry **only when registry facts changed** (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
-3. `AUTHORITY_ACTIVE` does **not** change merely because implementation code changed.
-4. Report every affected module as `UPDATED` or `UNCHANGED` with before/after coverage status and reason. `UNCHANGED` requires an explicit review — never skip.
-5. Cross-module work requires **independent review** of all affected rows.
-6. Run `bash architecture/scripts/validate-module-registry.sh` before completion.
+1. Re-read the **overview row** for each affected module (always).
+2. For `AUTHORITY_ACTIVE`, also re-read the **mandatory detailed authority section**.
+3. For `AUDIT_IN_PROGRESS`, review partial detail/authority material when present.
+4. `NOT_STARTED` does not require an active detailed section.
+5. `SUPERSEDED` follows its documented historical section and successor pointer when present.
+6. Modify this registry **only when registry facts changed** (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
+7. `AUTHORITY_ACTIVE` does **not** change merely because implementation code changed.
+8. Report every affected module as `UPDATED` or `UNCHANGED` with before/after coverage status and reason. `UNCHANGED` requires an explicit review — never skip.
+9. Cross-module work requires **independent review** of all affected rows.
+10. Run `bash architecture/scripts/validate-module-registry.sh` before completion.
 
 ### Knowledge classification axes (authority artifacts)
 
@@ -264,7 +278,7 @@ A workstream is **not complete** until:
 - [ ] Open questions and contradictions updated — not silently deleted
 - [ ] Cross-module boundaries consulted; every owning authority updated for cross-cutting changes
 - [ ] Applicable module authority validators run (or limitation documented if validators require unavailable runtime deps)
-- [ ] **Registry synchronization** completed for every affected module (see [Registry synchronization protocol](#registry-synchronization-protocol))
+- [ ] **Registry synchronization** completed for every affected module (overview row always; detailed section for `AUTHORITY_ACTIVE`; partial material for `AUDIT_IN_PROGRESS`; no active detail for `NOT_STARTED`)
 - [ ] Registry metadata reviewed: module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated
 - [ ] Each affected module reported as `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` with before/after coverage status and reason
 - [ ] Central registry validator passes: `bash architecture/scripts/validate-module-registry.sh`
