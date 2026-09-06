@@ -2,6 +2,13 @@
 /**
  * Architecture-doc consistency validation for Driving Intelligence authority.
  * Counts and cross-checks are DERIVED from register contents — not hard-coded truth.
+ *
+ * Bounded scope (by design):
+ * - DI-EVID graph resolution: only IDs cited in decisions, graph nodes, and invariants
+ * - DI-EV chronology: EVIDENCE_INDEX DI-EV column tokens (numeric ranges expanded)
+ * - Stale terminology: all authority .md + graph YAML; forensic-audit sections exempt
+ * - Relative links: all authority markdown under architecture/drivingintelligence/
+ *
  * Usage: node architecture/drivingintelligence/scripts/validate-docs.mjs
  */
 import fs from 'fs';
