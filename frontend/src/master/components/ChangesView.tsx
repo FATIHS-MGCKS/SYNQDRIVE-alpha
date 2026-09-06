@@ -307,6 +307,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-di-def-019-lock-session-row-sql-2026-09-06',
+    version: '4.9.1068',
+    title: 'DI-DEF-019 — lockSessionRow PostgreSQL table name fix (live cal blocker)',
+    summary: [
+      'Live 10/20/30/60 HF calibration blocked on production: FOR UPDATE raw SQL used Prisma model name ReferenceCaptureSession.',
+      'Fix: reference_capture_sessions + organization_id snake_case columns.',
+      'Blocked attempt evidence: architecture/drivingintelligence/evidence/reference-capture/LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md',
+      'Production baseline restored after abort; no phase evidence captured.',
+    ],
+    reason:
+      'DI_HF_LIVE_BLOCK_POLLING_10_20_30_60 hit 42P01 on first switchHfCalibrationPhase; stop/abort finalization also affected.',
+    previousBehavior:
+      'lockSessionRow queried "ReferenceCaptureSession" — passes mocked tests, fails PostgreSQL.',
+    details:
+      'reference-capture-session.repository.ts lockSessionRow; research/DEFECT_LEDGER.md DI-DEF-019.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T19:45:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
     version: '4.9.1067',
     title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',
