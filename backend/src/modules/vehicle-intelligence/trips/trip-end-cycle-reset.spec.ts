@@ -2,9 +2,11 @@ import {
   TRIP_FSM_MAX_FUTURE_SKEW_MS,
 } from './trip-fsm-clock-contract';
 import {
+  buildEndValidationCompletionEvidence,
   buildPossibleEndToActiveReset,
-  END_CYCLE_TRANSIENT_EVIDENCE_KEYS,
-  stripEndCycleTransientEvidence,
+  END_CYCLE_REOPEN_STRIP_KEYS,
+  extractR5EndForensicsForPersistence,
+  stripEndCycleEvidenceForActiveReopen,
   validateCusumMovementEventTime,
 } from './trip-end-cycle-reset';
 
@@ -33,9 +35,71 @@ describe('trip-end-cycle-reset (R5)', () => {
     expect(reset.lastActivityAt).toEqual(WORKER_NOW);
     expect(reset.lastCoreProcessedAt).toEqual(WORKER_NOW);
     expect(reset.lastEvidenceSummary).toEqual({ startEvidence: 'preserve-me' });
-    for (const key of END_CYCLE_TRANSIENT_EVIDENCE_KEYS) {
+    for (const key of END_CYCLE_REOPEN_STRIP_KEYS) {
       expect((reset.lastEvidenceSummary as Record<string, unknown>)[key]).toBeUndefined();
     }
+  });
+
+  it('buildEndValidationCompletionEvidence uses distinct started/completed timestamps', () => {
+    const started = new Date('2026-09-06T12:00:00.000Z');
+    const completed = new Date('2026-09-06T12:00:05.000Z');
+    const evidence = buildEndValidationCompletionEvidence({
+      priorSummary: {},
+      validationStartedAt: started,
+      validationCompletedAt: completed,
+      completedAttempt: 1,
+    });
+    expect(evidence.endValidationStartedAt).toBe(started.toISOString());
+    expect(evidence.endValidationCompletedAt).toBe(completed.toISOString());
+    expect(completed.getTime()).toBeGreaterThanOrEqual(started.getTime());
+  });
+
+  it('buildEndValidationCompletionEvidence preserves same-episode provenance', () => {
+    const started = new Date('2026-09-06T12:00:00.000Z');
+    const completed = new Date('2026-09-06T12:00:05.000Z');
+    const evidence = buildEndValidationCompletionEvidence({
+      priorSummary: {
+        endCandidateClockSource: 'PROVIDER_EVENT_TIME',
+        noCoreEmptyCoreForensics: { decision: 'POSSIBLE_END' },
+        emptyCoreReason: 'empty_core_corroborated_inactivity',
+      },
+      validationStartedAt: started,
+      validationCompletedAt: completed,
+      completedAttempt: 2,
+      scheduledAt: '2026-09-06T11:59:50.000Z',
+    });
+    expect(evidence.endValidationStartedAt).toBe(started.toISOString());
+    expect(evidence.endValidationCompletedAt).toBe(completed.toISOString());
+    expect(evidence.endCandidateClockSource).toBe('PROVIDER_EVENT_TIME');
+    expect(evidence.noCoreEmptyCoreForensics).toEqual({ decision: 'POSSIBLE_END' });
+  });
+
+  it('extractR5EndForensicsForPersistence copies bounded end-cycle fields', () => {
+    const extracted = extractR5EndForensicsForPersistence({
+      endValidationScheduledAt: '2026-09-06T11:59:50.000Z',
+      endValidationStartedAt: '2026-09-06T12:00:00.000Z',
+      endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+      completedEndValidationAttempt: 2,
+      maxAttemptFallbackReason: 'max_completed_cusum_attempts',
+      completedAttemptCount: 3,
+      resumeCheckOutcome: 'NO_RESUME_EVIDENCE',
+      noCoreEmptyCoreForensics: {
+        noCoreStream: true,
+        operationalInactiveMs: 150000,
+        vlsEvidenceState: 'INACTIVE',
+        vlsProviderObservedAt: '2026-09-06T11:58:00.000Z',
+        vlsObservationAgeMs: 120000,
+        performanceActivity: false,
+        routeMotion: false,
+        decision: 'POSSIBLE_END',
+        reason: 'empty_core_corroborated_inactivity',
+      },
+    });
+    expect(extracted.endValidation.completedAttempt).toBe(2);
+    expect(extracted.endValidation.maxAttemptFallbackReason).toBe(
+      'max_completed_cusum_attempts',
+    );
+    expect(extracted.emptyCoreEndGate?.vlsEvidenceState).toBe('INACTIVE');
   });
 
   it('validateCusumMovementEventTime accepts valid provider timestamp', () => {
@@ -59,9 +123,9 @@ describe('trip-end-cycle-reset (R5)', () => {
     expect(validateCusumMovementEventTime(within, WORKER_NOW)).toEqual(within);
   });
 
-  it('stripEndCycleTransientEvidence removes known transient keys only', () => {
+  it('stripEndCycleEvidenceForActiveReopen removes known transient keys only', () => {
     expect(
-      stripEndCycleTransientEvidence({
+      stripEndCycleEvidenceForActiveReopen({
         endValidationScheduledAt: 'a',
         lifecycleNote: 'keep',
       }),

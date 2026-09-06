@@ -317,9 +317,15 @@ describe('R5 — processEndValidation', () => {
     expect(h.transitionState.mock.calls[1][2].lastMeaningfulMovementAt).toBeUndefined();
   });
 
-  it('8 — inconclusive CUSUM increments completed attempts exactly once', async () => {
+  it('8 — legitimate analytical INCONCLUSIVE increments completed attempts exactly once', async () => {
     const h = buildOrchestrationHarness({ endValidationAttempts: 1 });
-    h.runAll.mockResolvedValue([{ detectorName: 'ChangePointEndDetector', verdict: 'INCONCLUSIVE' }]);
+    h.runAll.mockResolvedValue([
+      {
+        detectorName: 'ChangePointEndDetector',
+        verdict: 'INCONCLUSIVE',
+        evidence: { reason: 'insufficient_points', pointCount: 2 },
+      },
+    ]);
     h.evaluateEndCandidate.mockReturnValue({
       shouldReopen: false,
       shouldEnd: false,
@@ -383,9 +389,16 @@ describe('R5 — processEndValidation', () => {
     expect(h.schedulePossibleEndCheck).toHaveBeenCalled();
   });
 
-  it('12 — detector throw leaves attempts unchanged', async () => {
+  it('12 — production-shaped detector error does not increment attempts', async () => {
     const h = buildOrchestrationHarness({ endValidationAttempts: 1 });
-    h.runAll.mockRejectedValue(new Error('detector boom'));
+    h.runAll.mockResolvedValue([
+      {
+        detectorName: 'ChangePointEndDetector',
+        verdict: 'INCONCLUSIVE',
+        confidence: 'LOW',
+        evidence: { error: 'Detector ChangePointEndDetector timed out' },
+      },
+    ]);
 
     await TripDetectionOrchestrationService.prototype.processEndValidation.call(
       h.svc,
@@ -393,10 +406,12 @@ describe('R5 — processEndValidation', () => {
     );
 
     expect(h.transitionState).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
+      VEHICLE,
+      TripDetectionState.POSSIBLE_END,
       expect.objectContaining({ endValidationAttempts: 2 }),
     );
+    expect(h.schedulePossibleEndCheck).toHaveBeenCalled();
+    expect(h.scheduleFinalize).not.toHaveBeenCalled();
   });
 
   it('13/25 — CH skip-CUSUM does not increment attempts', async () => {

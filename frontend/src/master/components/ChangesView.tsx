@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r5a-end-evidence-closure-2026-09-06',
+    version: '4.9.1073',
+    title: 'Trip FSM R5A — End Evidence Semantics Closure',
+    summary: [
+      'Production DetectorRegistry error sentinels (evidence.error) no longer consume endValidationAttempts — only completed CUSUM cycles count (P5-F11 closure).',
+      'Explicit ChangePointEndDetector outcome classifier: VALID_DECISION vs DETECTOR_EXECUTION_FAILURE vs DETECTOR_MISSING.',
+      'Empty-core VLS gate uses ACTIVE/INACTIVE/UNKNOWN tri-state with provider sourceTimestamp freshness (120s bound) — all-null or missing speed stays KEEP_OPEN (P5-F13 closure).',
+      'Distinct validationStartedAt vs validationCompletedAt clocks; no completedAt on fetch/detector failure.',
+      'Same-episode provenance preserved across retries; strip only on POSSIBLE_END→ACTIVE reopen.',
+      'R5 end-cycle forensics persisted into VehicleTrip.rawDetectionMeta on finalize before RESTING clears FSM evidence.',
+    ],
+    reason:
+      'R5A closure — production registry failure semantics, explicit VLS corroboration, truthful forensic persistence.',
+    previousBehavior:
+      'Registry INCONCLUSIVE+error consumed attempts; isCurrentTelemetryInactive coerced null speed to inactive; same now used for started/completedAt; strip on completion destroyed episode provenance; finalize dropped R5 forensics.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5A; trip-end-validation-classifier.ts + trip-empty-core-end-gate.ts updates.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:30:00.000Z',
+  },
+  {
     id: 'trip-fsm-r5-end-validation-semantics-2026-09-06',
     version: '4.9.1072',
     title: 'Trip FSM R5 — End Validation Semantics',

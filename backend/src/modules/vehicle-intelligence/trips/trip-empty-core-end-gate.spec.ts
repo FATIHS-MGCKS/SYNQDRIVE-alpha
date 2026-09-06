@@ -1,55 +1,212 @@
-import { assessSuccessfulEmptyCoreEndEligibility } from './trip-empty-core-end-gate';
+import { TRIP_FSM_MAX_FUTURE_SKEW_MS } from './trip-fsm-clock-contract';
+import {
+  classifyEmptyCoreVlsInactivity,
+  assessSuccessfulEmptyCoreEndEligibility,
+} from './trip-empty-core-end-gate';
 
+const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
 const MIN_INACTIVITY = 120_000;
 
-describe('trip-empty-core-end-gate (R5)', () => {
-  const inactiveTelemetry = {
-    isIgnitionOn: false,
-    speedKmh: 0,
-    engineLoad: 0,
-  };
+function freshTs(offsetMs = -30_000) {
+  return new Date(WORKER_NOW.getTime() + offsetMs);
+}
 
-  it('keeps open when VLS still active', () => {
+describe('classifyEmptyCoreVlsInactivity (R5A)', () => {
+  it('telemetry null → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: null,
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('UNKNOWN');
+  });
+
+  it('all-null telemetry fields → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: null,
+          speedKmh: null,
+          engineLoad: null,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).reason,
+    ).toBe('vls_speed_missing');
+  });
+
+  it('speed missing with ignition=false → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: null,
+          engineLoad: null,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('UNKNOWN');
+  });
+
+  it('fresh EV speed=0 ignition=null → INACTIVE', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: null,
+          speedKmh: 0,
+          engineLoad: null,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'EV',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('INACTIVE');
+  });
+
+  it('fresh ICE speed=0 → INACTIVE', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('INACTIVE');
+  });
+
+  it('speed above motion threshold → ACTIVE', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 10,
+          engineLoad: 0,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('ACTIVE');
+  });
+
+  it('engine load active → ACTIVE', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 20,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('ACTIVE');
+  });
+
+  it('sourceTimestamp missing → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: null,
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).reason,
+    ).toBe('vls_source_timestamp_missing');
+  });
+
+  it('stale sourceTimestamp → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: new Date(WORKER_NOW.getTime() - MIN_INACTIVITY - 1),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).reason,
+    ).toBe('vls_stale_provider_observation');
+  });
+
+  it('future-invalid sourceTimestamp → UNKNOWN', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: new Date(
+            WORKER_NOW.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS + 1,
+          ),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).reason,
+    ).toBe('vls_source_timestamp_invalid');
+  });
+
+  it('within-skew future sourceTimestamp → valid INACTIVE', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: null,
+          speedKmh: 0,
+          engineLoad: null,
+          sourceTimestamp: new Date(WORKER_NOW.getTime() + 30_000),
+        },
+        profile: 'EV',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }).state,
+    ).toBe('INACTIVE');
+  });
+});
+
+describe('assessSuccessfulEmptyCoreEndEligibility (R5A)', () => {
+  it('fully corroborated empty core → POSSIBLE_END', () => {
     const result = assessSuccessfulEmptyCoreEndEligibility({
       operationalInactiveMs: 150_000,
       minInactivityBeforeCusumMs: MIN_INACTIVITY,
-      telemetry: { isIgnitionOn: true, speedKmh: 5, engineLoad: 0 },
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 0,
+        sourceTimestamp: freshTs(),
+      },
       perfReadings: [],
-      routePoints: [],
+      routePoints: [{ latitude: 1, longitude: 2, speedKmh: 0, timestamp: 't' }],
       profile: 'ICE',
+      workerNow: WORKER_NOW,
     });
-    expect(result.eligible).toBe(false);
-    expect(result.forensics.decision).toBe('KEEP_OPEN');
-    expect(result.forensics.reason).toBe('vls_still_active');
+    expect(result.eligible).toBe(true);
+    expect(result.forensics.vlsEvidenceState).toBe('INACTIVE');
   });
 
-  it('keeps open when performance shows activity', () => {
-    const result = assessSuccessfulEmptyCoreEndEligibility({
-      operationalInactiveMs: 150_000,
-      minInactivityBeforeCusumMs: MIN_INACTIVITY,
-      telemetry: inactiveTelemetry,
-      perfReadings: [{ timestamp: 't', rpm: 800, throttlePosition: 0, engineLoad: 0, engineCoolantTempC: null }],
-      routePoints: [],
-      profile: 'ICE',
-    });
-    expect(result.eligible).toBe(false);
-    expect(result.forensics.reason).toBe('performance_still_active');
-  });
-
-  it('keeps open when route shows motion above speedMotionKmh', () => {
-    const result = assessSuccessfulEmptyCoreEndEligibility({
-      operationalInactiveMs: 150_000,
-      minInactivityBeforeCusumMs: MIN_INACTIVITY,
-      telemetry: inactiveTelemetry,
-      perfReadings: [],
-      routePoints: [{ latitude: 1, longitude: 2, speedKmh: 10, timestamp: 't' }],
-      profile: 'ICE',
-    });
-    expect(result.eligible).toBe(false);
-    expect(result.forensics.reason).toBe('route_motion_detected');
-  });
-
-  it('keeps open when VLS missing/ambiguous', () => {
+  it('UNKNOWN VLS keeps open even without perf/route activity', () => {
     const result = assessSuccessfulEmptyCoreEndEligibility({
       operationalInactiveMs: 150_000,
       minInactivityBeforeCusumMs: MIN_INACTIVITY,
@@ -57,23 +214,9 @@ describe('trip-empty-core-end-gate (R5)', () => {
       perfReadings: [],
       routePoints: [],
       profile: 'ICE',
+      workerNow: WORKER_NOW,
     });
     expect(result.eligible).toBe(false);
-    expect(result.forensics.vlsInactivity).toBe('unknown');
-    expect(result.forensics.reason).toBe('vls_missing_or_ambiguous');
-  });
-
-  it('allows POSSIBLE_END when all corroboration passes', () => {
-    const result = assessSuccessfulEmptyCoreEndEligibility({
-      operationalInactiveMs: 150_000,
-      minInactivityBeforeCusumMs: MIN_INACTIVITY,
-      telemetry: inactiveTelemetry,
-      perfReadings: [],
-      routePoints: [{ latitude: 1, longitude: 2, speedKmh: 0, timestamp: 't' }],
-      profile: 'ICE',
-    });
-    expect(result.eligible).toBe(true);
-    expect(result.forensics.decision).toBe('POSSIBLE_END');
-    expect(result.forensics.reason).toBe('empty_core_corroborated_inactivity');
+    expect(result.forensics.vlsEvidenceState).toBe('UNKNOWN');
   });
 });

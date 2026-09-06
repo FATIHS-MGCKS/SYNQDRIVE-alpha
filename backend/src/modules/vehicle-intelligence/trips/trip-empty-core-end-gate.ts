@@ -2,16 +2,32 @@ import type {
   PerformanceReading,
   RoutePoint,
 } from '../../dimo/dimo-segments.service';
-import {
-  evaluatePerformanceActivity,
-  isCurrentTelemetryInactive,
-} from './trip-evidence.helpers';
+import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
+import { evaluatePerformanceActivity } from './trip-evidence.helpers';
 import { getSharedSignalThresholds } from './trip-start-detection-policy';
+
+export type VlsInactivityEvidenceState = 'ACTIVE' | 'INACTIVE' | 'UNKNOWN';
+
+export type EmptyCoreVlsTelemetry = {
+  isIgnitionOn: boolean | null;
+  speedKmh: number | null;
+  engineLoad: number | null;
+  sourceTimestamp: Date | null;
+};
+
+export type EmptyCoreVlsEvidence = {
+  state: VlsInactivityEvidenceState;
+  providerObservedAt: Date | null;
+  observationAgeMs: number | null;
+  reason: string;
+};
 
 export type EmptyCoreForensics = {
   noCoreStream: true;
   operationalInactiveMs: number;
-  vlsInactivity: boolean | 'unknown';
+  vlsEvidenceState: VlsInactivityEvidenceState;
+  vlsProviderObservedAt: string | null;
+  vlsObservationAgeMs: number | null;
   performanceActivity: boolean;
   routeMotion: boolean;
   decision: 'KEEP_OPEN' | 'POSSIBLE_END';
@@ -29,25 +45,123 @@ export function hasRouteMotionAboveThreshold(
 }
 
 /**
+ * Stricter empty-core VLS classifier — tri-state ACTIVE / INACTIVE / UNKNOWN.
+ * Does NOT coerce null speed/engineLoad to zero (unlike isCurrentTelemetryInactive).
+ */
+export function classifyEmptyCoreVlsInactivity(params: {
+  telemetry: EmptyCoreVlsTelemetry | null;
+  profile: string;
+  workerNow: Date;
+  maxObservationAgeMs: number;
+}): EmptyCoreVlsEvidence {
+  if (!params.telemetry) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt: null,
+      observationAgeMs: null,
+      reason: 'vls_row_absent',
+    };
+  }
+
+  const { telemetry } = params;
+  const providerObservedAt = telemetry.sourceTimestamp;
+
+  if (!providerObservedAt) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt: null,
+      observationAgeMs: null,
+      reason: 'vls_source_timestamp_missing',
+    };
+  }
+
+  if (!isValidProviderEventTimestamp(providerObservedAt, params.workerNow)) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt,
+      observationAgeMs: null,
+      reason: 'vls_source_timestamp_invalid',
+    };
+  }
+
+  const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
+  const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
+  if (observationAgeMs > params.maxObservationAgeMs) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_stale_provider_observation',
+    };
+  }
+
+  if (telemetry.speedKmh == null) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_speed_missing',
+    };
+  }
+
+  const shared = getSharedSignalThresholds(params.profile);
+  const speed = telemetry.speedKmh;
+
+  if (speed > shared.speedMotionKmh) {
+    return {
+      state: 'ACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_speed_above_motion_threshold',
+    };
+  }
+
+  const engineLoad = telemetry.engineLoad;
+  if (engineLoad != null && engineLoad > 15) {
+    return {
+      state: 'ACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_engine_load_active',
+    };
+  }
+
+  if (telemetry.isIgnitionOn === true && speed > 0) {
+    return {
+      state: 'ACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_ignition_with_speed',
+    };
+  }
+
+  return {
+    state: 'INACTIVE',
+    providerObservedAt,
+    observationAgeMs,
+    reason: 'vls_explicit_stationary_sample',
+  };
+}
+
+/**
  * Successful empty core [] is absence of core stream — not proof of inactivity.
- * Requires corroborating VLS inactivity, no performance activity, no route motion.
+ * Requires explicit, fresh VLS INACTIVE + no performance/route contradiction.
  */
 export function assessSuccessfulEmptyCoreEndEligibility(params: {
   operationalInactiveMs: number;
   minInactivityBeforeCusumMs: number;
-  telemetry: {
-    isIgnitionOn: boolean | null;
-    speedKmh: number | null;
-    engineLoad: number | null;
-  } | null;
+  telemetry: EmptyCoreVlsTelemetry | null;
   perfReadings: PerformanceReading[];
   routePoints: RoutePoint[];
   profile: string;
+  workerNow: Date;
 }): { eligible: boolean; forensics: EmptyCoreForensics } {
-  const vlsInactivity: boolean | 'unknown' =
-    params.telemetry == null
-      ? 'unknown'
-      : isCurrentTelemetryInactive(params.telemetry);
+  const vlsEvidence = classifyEmptyCoreVlsInactivity({
+    telemetry: params.telemetry,
+    profile: params.profile,
+    workerNow: params.workerNow,
+    maxObservationAgeMs: params.minInactivityBeforeCusumMs,
+  });
   const performanceActivity = evaluatePerformanceActivity(params.perfReadings);
   const routeMotion = hasRouteMotionAboveThreshold(
     params.routePoints,
@@ -57,7 +171,9 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
   const baseForensics: Omit<EmptyCoreForensics, 'decision' | 'reason'> = {
     noCoreStream: true,
     operationalInactiveMs: params.operationalInactiveMs,
-    vlsInactivity,
+    vlsEvidenceState: vlsEvidence.state,
+    vlsProviderObservedAt: vlsEvidence.providerObservedAt?.toISOString() ?? null,
+    vlsObservationAgeMs: vlsEvidence.observationAgeMs,
     performanceActivity,
     routeMotion,
   };
@@ -72,23 +188,23 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
       },
     };
   }
-  if (vlsInactivity === 'unknown') {
+  if (vlsEvidence.state === 'UNKNOWN') {
     return {
       eligible: false,
       forensics: {
         ...baseForensics,
         decision: 'KEEP_OPEN',
-        reason: 'vls_missing_or_ambiguous',
+        reason: vlsEvidence.reason,
       },
     };
   }
-  if (vlsInactivity === false) {
+  if (vlsEvidence.state === 'ACTIVE') {
     return {
       eligible: false,
       forensics: {
         ...baseForensics,
         decision: 'KEEP_OPEN',
-        reason: 'vls_still_active',
+        reason: vlsEvidence.reason,
       },
     };
   }

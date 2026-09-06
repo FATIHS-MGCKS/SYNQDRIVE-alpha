@@ -212,3 +212,136 @@ Quality gate: **282 passed** (24 suites), build/typecheck PASS, Prisma validate 
 | Max fallback | ambiguous CUSUM-like finalize | LOW + explicit fallback reason |
 | Empty core | inactivity anchor alone | multi-signal corroboration required |
 | Resume fetch error at max | could fall through to finalize | reschedule PEC |
+
+---
+
+## R5A — Detector Failure, VLS Evidence & Forensic Persistence Closure
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-06 |
+| Parent commit | `7ffb63c20b55964b7d70a22cd35103ba986dc710` |
+| Scope | R5A.1–R5A.15 closure gaps |
+
+### R5A.1–R5A.2 — Production detector failure semantics
+
+Production `DetectorRegistry.runAll()` catches detector exceptions/timeouts and returns:
+
+```json
+{
+  "detectorName": "ChangePointEndDetector",
+  "verdict": "INCONCLUSIVE",
+  "confidence": "LOW",
+  "evidence": { "error": "<message>" }
+}
+```
+
+New module: `trip-end-validation-classifier.ts`
+
+| Outcome | Condition | Attempt counter |
+|---------|-----------|-----------------|
+| `VALID_DECISION` | TRIGGERED / NOT_TRIGGERED / analytical INCONCLUSIVE without `evidence.error` | may increment on completed cycle |
+| `DETECTOR_EXECUTION_FAILURE` | non-empty `finding.evidence.error` | unchanged |
+| `DETECTOR_MISSING` | no ChangePointEndDetector finding | unchanged |
+
+On failure/missing: reschedule PEC, no `completedAt`, explicit failure forensics.
+
+### R5A.3 — Completed CUSUM cycle definition (corrected)
+
+`endValidationAttempts` = **completed CUSUM validation cycles** only.
+
+Legitimate analytical INCONCLUSIVE (e.g. `reason: insufficient_points`, `threshold_not_crossed`) still counts as one completed cycle when bounded input was fetched and detector returned a valid analytical result.
+
+### R5A.4–R5A.7 — Explicit VLS inactivity tri-state (empty-core gate only)
+
+Module: `trip-empty-core-end-gate.ts` — `classifyEmptyCoreVlsInactivity()`
+
+| State | Meaning |
+|-------|---------|
+| `ACTIVE` | measured speed > `speedMotionKmh`, or contradictory active evidence (e.g. meaningful engine load) |
+| `INACTIVE` | measured speed ≤ `speedMotionKmh`, fresh provider observation, no contradictory active evidence |
+| `UNKNOWN` | missing row, missing speed, missing/invalid/stale `sourceTimestamp`, all-null telemetry |
+
+**Provider EVENT_TIME authority:** uses `VehicleLatestState.sourceTimestamp` validated via R1 `isValidProviderEventTimestamp()`. Does **not** use DB `updatedAt`.
+
+**Freshness bound:** `TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS` (120s) — reuses existing end-detection safety window.
+
+`isCurrentTelemetryInactive()` unchanged globally (CH end assist preserved).
+
+Successful empty core → POSSIBLE_END only when ALL true:
+
+1. operational inactivity ≥ 120s
+2. VLS evidence = INACTIVE
+3. VLS provider EVENT_TIME valid/current
+4. performance activity = false
+5. route motion above profile = false
+6. CH end assist did not already handle
+
+Any UNKNOWN VLS → KEEP_OPEN + schedule ACTIVE_TICK.
+
+### R5A.9 — Truthful validation clocks
+
+| Field | When written |
+|-------|--------------|
+| `endValidationStartedAt` | WORKER_TIME immediately before bounded CUSUM fetch/detector work |
+| `endValidationCompletedAt` | fresh WORKER_TIME only after valid analytical decision |
+
+Fetch failure or detector execution failure: `startedAt` may exist, `completedAt` MUST NOT.
+
+Valid INCONCLUSIVE/confirmed: `completedAt >= startedAt`.
+
+### R5A.10 — Same-episode provenance preservation
+
+`stripEndCycleTransientEvidence()` now only runs on POSSIBLE_END → ACTIVE reopen (`END_CYCLE_REOPEN_STRIP_KEYS`).
+
+Within same end episode, preserve: `endCandidateClockSource`, `noCoreEmptyCoreForensics`, `emptyCoreDecision`, `emptyCoreReason` while updating attempt timestamps.
+
+### R5A.11 — Durable finalized trip forensics
+
+`TripDecisionEngine.finalizeTrip` persists bounded R5 evidence into `VehicleTrip.rawDetectionMeta` before RESTING clears FSM `lastEvidenceSummary`:
+
+```typescript
+endValidation: {
+  endCandidateClockSource, scheduledAt, startedAt, completedAt,
+  completedAttempt, completedAttemptCount, maxAttemptFallbackReason, resumeCheckOutcome
+}
+emptyCoreEndGate: {
+  decision, reason, operationalInactiveMs, vlsEvidenceState,
+  vlsProviderObservedAt, vlsObservationAgeMs, performanceActivity, routeMotion
+}
+```
+
+### R5A.12 — Max-attempt fallback (unchanged semantics)
+
+`endValidationAttempts >= 3` completed cycles → fallback may finalize with `endDetectionMode: COMPOSITE_INACTIVITY`, `endConfidence: LOW`, `reason: max_completed_cusum_attempts`. Never `CUSUM_VALIDATED`.
+
+### R5A.13 — CH / hard timeout non-regression
+
+CH HIGH/MEDIUM gates, 30min hard timeout, CUSUM thresholds, retry intervals unchanged.
+
+### R5A files added/changed
+
+| File | Role |
+|------|------|
+| `trip-end-validation-classifier.ts` | END_VALIDATION outcome classification |
+| `trip-end-validation-classifier.spec.ts` | Classifier unit tests |
+| `detector.registry.end-validation.spec.ts` | Real registry throw → INCONCLUSIVE + error |
+| `trip-empty-core-end-gate.ts` | VLS tri-state + provider freshness |
+| `trip-end-cycle-reset.ts` | Clock/provenance/persistence helpers |
+| `trip-end-validation-r5a.spec.ts` | R5A orchestration closure tests |
+| `trip-detection-orchestration.service.ts` | Classifier wiring + finalize persistence |
+
+### R5A test matrix
+
+Quality gate: **305 passed** (24 suites), build PASS, Prisma validate PASS (schema).
+
+All 31 mandatory R5A scenarios covered across classifier, registry, gate, reset, and orchestration specs.
+
+### R5A finding status
+
+| ID | Status |
+|----|--------|
+| P5-F03 | RESOLVED_BY_R5 |
+| P5-F11 | RESOLVED_BY_R5 — production registry error sentinels no longer consume attempts |
+| P5-F13 | RESOLVED_BY_R5 — empty-core requires explicit provider-event-time-valid VLS inactivity |
+| P5-F10 | PARTIALLY_RESOLVED_BY_R5 — max-attempt fallback still exists without positive CUSUM confirmation |

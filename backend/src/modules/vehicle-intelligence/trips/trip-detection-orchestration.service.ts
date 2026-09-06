@@ -91,12 +91,18 @@ import {
 } from './trip-empty-core-end-gate';
 import {
   buildEndValidationCompletionEvidence,
+  buildEndValidationFailureEvidence,
+  buildEndValidationFetchFailureEvidence,
   buildEndValidationScheduledEvidence,
   buildMaxAttemptFallbackEvidence,
   buildPossibleEndToActiveReset,
+  extractR5EndForensicsForPersistence,
   type PecResumeCheckOutcome,
   validateCusumMovementEventTime,
 } from './trip-end-cycle-reset';
+import {
+  classifyChangePointEndFinding,
+} from './trip-end-validation-classifier';
 import {
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
@@ -1427,10 +1433,18 @@ export class TripDetectionOrchestrationService {
           operationalInactiveMs: inactiveMs,
           minInactivityBeforeCusumMs:
             this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-          telemetry: telemetryNoCore,
+          telemetry: telemetryNoCore
+            ? {
+                isIgnitionOn: telemetryNoCore.isIgnitionOn,
+                speedKmh: telemetryNoCore.speedKmh,
+                engineLoad: telemetryNoCore.engineLoad,
+                sourceTimestamp: telemetryNoCore.sourceTimestamp,
+              }
+            : null,
           perfReadings,
           routePoints,
           profile,
+          workerNow: now,
         });
 
         if (emptyCoreGate.eligible) {
@@ -2423,15 +2437,19 @@ export class TripDetectionOrchestrationService {
 
     const startedMs = Date.now();
     let resultState: TripDetectionState | undefined;
+    let det: Awaited<ReturnType<typeof this.getOrCreateDetectionState>> | undefined;
+    let validationStartedAt: Date | null = null;
+    let priorSummaryForFailure: Record<string, unknown> = {};
 
     try {
-      const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+      det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
       const now = new Date();
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
       const priorSummary =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      priorSummaryForFailure = priorSummary;
 
       // ── CH end assist (MEDIUM): segment end already validated — skip CUSUM ──
       if (
@@ -2480,10 +2498,11 @@ export class TripDetectionOrchestrationService {
         'endValidationScheduledAt',
       )?.toISOString() ?? null;
 
+      validationStartedAt = new Date();
       await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
         lastEvidenceSummary: {
           ...priorSummary,
-          endValidationStartedAt: now.toISOString(),
+          endValidationStartedAt: validationStartedAt.toISOString(),
         },
       });
 
@@ -2500,9 +2519,6 @@ export class TripDetectionOrchestrationService {
         `END_VALIDATION for ${vehicleId}: fetched ${corePoints.length} points around ${endCandidateAt.toISOString()}`,
       );
 
-      // ── PHASE 2 SEAM: ChangePointEndDetector + evaluateEndCandidate ──────────
-      // ChangePointEndDetector wraps detectTripEndChangePoint and sorts inputs.
-      // evaluateEndCandidate converts the finding into a typed EndDecision.
       const endFindings = await this.detectorRegistry.runAll(
         ['ChangePointEndDetector'],
         {
@@ -2516,8 +2532,51 @@ export class TripDetectionOrchestrationService {
         },
       );
 
-      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
       const endFinding = endFindings.find((f) => f.detectorName === 'ChangePointEndDetector');
+      const findingOutcome = classifyChangePointEndFinding(endFinding);
+
+      if (findingOutcome !== 'VALID_DECISION') {
+        const failureReason =
+          findingOutcome === 'DETECTOR_MISSING'
+            ? 'change_point_end_detector_missing'
+            : String(endFinding?.evidence?.error ?? 'detector_execution_failure');
+        this.logger.warn(
+          `END_VALIDATION detector failure for ${vehicleId}: ${failureReason}`,
+        );
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFailureEvidence({
+            priorSummary,
+            validationStartedAt,
+            failureReason,
+            failureOutcome: findingOutcome,
+          }),
+        });
+        await this.schedulePossibleEndCheck(
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          this.TRIP_END_VALIDATION_RETRY_MS,
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.END_VALIDATION,
+          corePointsCount: corePoints.length,
+          resultSummary: {
+            reason: 'detector_execution_failure',
+            failureOutcome: findingOutcome,
+            failureReason,
+            completedAttempts: det.endValidationAttempts ?? 0,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
+
+      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
+      const validationCompletedAt = new Date();
       const endConfEnum =
         endDecision.confidence === 'HIGH'
           ? DetectionConfidence.HIGH
@@ -2588,7 +2647,7 @@ export class TripDetectionOrchestrationService {
           tripId: det.activeTripId,
           lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
           possibleEndAt: det.possibleEndAt,
-          endValidationStartedAt: now,
+          endValidationStartedAt: validationStartedAt,
           finalizedAt: validatedEndTime,
           completedEndValidationAttempt: completedAttempt,
           latencyFromMovementMs:
@@ -2608,7 +2667,8 @@ export class TripDetectionOrchestrationService {
           ...(lastMovementAt && { lastMeaningfulMovementAt: lastMovementAt }),
           lastEvidenceSummary: buildEndValidationCompletionEvidence({
             priorSummary,
-            workerNow: now,
+            validationStartedAt,
+            validationCompletedAt,
             completedAttempt,
             scheduledAt,
           }),
@@ -2645,7 +2705,8 @@ export class TripDetectionOrchestrationService {
         endValidationAttempts: completedAttempt,
         lastEvidenceSummary: buildEndValidationCompletionEvidence({
           priorSummary,
-          workerNow: now,
+          validationStartedAt,
+          validationCompletedAt,
           completedAttempt,
           scheduledAt,
         }),
@@ -2670,7 +2731,16 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`END_VALIDATION error for ${vehicleId}: ${err}`);
-      // On error, fall back to rescheduling the basic check
+      const failureMsg = err instanceof Error ? err.message : String(err);
+      if (det?.state === TripDetectionState.POSSIBLE_END) {
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFetchFailureEvidence({
+            priorSummary: priorSummaryForFailure,
+            validationStartedAt,
+            failureReason: failureMsg,
+          }),
+        }).catch(() => {});
+      }
       await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId,
         this.TRIP_END_VALIDATION_RETRY_MS,
       ).catch(() => {});
@@ -2796,6 +2866,9 @@ export class TripDetectionOrchestrationService {
               anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
             });
           } else {
+            const r5EndForensics = extractR5EndForensicsForPersistence(
+              det.lastEvidenceSummary as Record<string, unknown> | null,
+            );
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
               endDetectionMode:
@@ -2838,6 +2911,7 @@ export class TripDetectionOrchestrationService {
                 startOdometerKm: det.startOdometerKm,
                 startFuelLevel: det.startFuelLevel,
                 startEvSoc: det.startEvSoc,
+                ...r5EndForensics,
               },
             });
             finalizedTripForRestWindow = { tripId, endTime };
