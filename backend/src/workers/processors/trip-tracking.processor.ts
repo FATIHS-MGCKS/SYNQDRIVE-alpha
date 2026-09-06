@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { DelayedError, Job } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -10,6 +10,7 @@ import {
   TRIP_TRACKING_TRIGGERS,
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TripTrackingHandoffLockContentionError } from '../../modules/vehicle-intelligence/trips/trip-tracking-lock-contention';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
@@ -96,6 +97,15 @@ export class TripTrackingProcessor extends WorkerHost {
         },
       });
     } catch (err) {
+      if (err instanceof TripTrackingHandoffLockContentionError) {
+        const token = job.token;
+        if (!token) {
+          throw err;
+        }
+        await job.moveToDelayed(Date.now() + err.delayMs, token);
+        throw new DelayedError(err.message);
+      }
+
       const finishedAt = new Date();
       const errorMessage =
         err instanceof Error ? err.message : String(err);

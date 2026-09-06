@@ -6,6 +6,7 @@ import {
   type TripTrackingTrigger,
 } from './trip-detection.types';
 import { POSSIBLE_START_TRIP_TRACKING_RETRY_POLICY } from './trip-tracking-retry.policy';
+import { buildHandoffSuccessorJobData } from './trip-tracking-lock-contention';
 
 const DEFAULT_TRIP_TRACKING_JOB_OPTIONS: JobsOptions = {
   removeOnComplete: true,
@@ -96,10 +97,12 @@ async function enqueueIntoStableSlot(params: {
   queue: TripTrackingQueueLike;
   jobName: string;
   jobId: string;
+  primaryJobId: string;
   data: TripTrackingJobData;
   trigger: TripTrackingTrigger;
   delayMs: number;
 }): Promise<'successor' | 'skipped'> {
+  const handoffData = buildHandoffSuccessorJobData(params.data, params.primaryJobId);
   const existing = await params.queue.getJob(params.jobId);
   if (existing) {
     const state = await existing.getState();
@@ -111,7 +114,7 @@ async function enqueueIntoStableSlot(params: {
   }
 
   try {
-    await params.queue.add(params.jobName, params.data, {
+    await params.queue.add(params.jobName, handoffData, {
       jobId: params.jobId,
       delay: params.delayMs,
       ...buildTripTrackingJobOptions(params.trigger),
@@ -150,6 +153,7 @@ export async function enqueueStableTripTrackingJob(params: {
         queue: params.queue,
         jobName: params.jobName,
         jobId: buildTripTrackingSuccessorJobId(params.jobId),
+        primaryJobId: params.jobId,
         data: params.data,
         trigger: params.trigger,
         delayMs,

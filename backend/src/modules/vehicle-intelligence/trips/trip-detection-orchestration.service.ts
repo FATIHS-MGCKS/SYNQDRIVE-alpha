@@ -87,6 +87,10 @@ import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
 import {
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
+import {
+  isTripTrackingHandoffJob,
+  TripTrackingHandoffLockContentionError,
+} from './trip-tracking-lock-contention';
 import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
@@ -789,6 +793,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_START ${vehicleId}`);
       return;
     }
@@ -1246,6 +1253,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for ACTIVE_TICK ${vehicleId}`);
       return;
     }
@@ -2086,6 +2096,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_END_CHECK ${vehicleId}`);
       return;
     }
@@ -2309,6 +2322,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for END_VALIDATION ${vehicleId}`);
       return;
     }
@@ -2538,6 +2554,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for FINALIZE ${vehicleId}`);
       return;
     }

@@ -97,6 +97,8 @@ describe('trip-tracking queue handoff — R3A', () => {
         buildTripTrackingSuccessorJobId('trip-ps-veh-1'),
       );
       expect(queue.add.mock.calls[0][2].delay).toBe(30_000);
+    expect(queue.add.mock.calls[0][1].handoffKind).toBe('stable_successor');
+    expect(queue.add.mock.calls[0][1].handoffPrimaryJobId).toBe('trip-ps-veh-1');
       expect(queue.states.get('trip-ps-veh-1')).toBe('active');
       expect(queue.states.has(buildTripTrackingSuccessorJobId('trip-ps-veh-1'))).toBe(
         true,

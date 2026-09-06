@@ -1,6 +1,8 @@
 import { DimoPollJobType, DimoPollStatus, TripDetectionState } from '@prisma/client';
+import { DelayedError } from 'bullmq';
 import { TripTrackingProcessor } from './trip-tracking.processor';
-import { TRIP_TRACKING_TRIGGERS } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TRIP_TRACKING_HANDOFF_KINDS, TRIP_TRACKING_TRIGGERS } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TripTrackingHandoffLockContentionError } from '../../modules/vehicle-intelligence/trips/trip-tracking-lock-contention';
 
 describe('TripTrackingProcessor — R3 start liveness visibility', () => {
   it('records DimoPollLog FAILURE when POSSIBLE_START throws', async () => {

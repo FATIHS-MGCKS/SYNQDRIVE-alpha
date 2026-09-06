@@ -216,3 +216,60 @@ P4-F11 resolution now includes: error propagation, bounded fast retry, durable N
 - Prisma validate: **PASS** (no schema change)
 - `git diff --check`: **PASS**
 - Deploy: **NOT PERFORMED**
+
+---
+
+## R3B — Premature Successor Consumption Closure
+
+| Field | Value |
+|-------|-------|
+| R3A base commit | `846f7e9033cfee6e6f5162725a5e56f8cd9508a3` |
+| Scope | handoff lock-contention deferral (BullMQ moveToDelayed skipAttempt) |
+| Deploy | **NOT PERFORMED** |
+
+### Temporal race
+
+R3A successor `${primaryJobId}__succ` delay starts while primary job A is still ACTIVE and holds the per-vehicle worker lock (TTL up to 120s). If A's post-validation work (`logTrackingRun`, DimoPollLog) exceeds the 30s successor delay, worker B runs the handoff job, fails `acquireWorkerLock()`, and pre-R3B code returned SUCCESS → `removeOnComplete` deleted B while FSM remained POSSIBLE_START.
+
+Worker concurrency >1 makes this race real.
+
+### Selected mechanism (BullMQ v5.12)
+
+1. Successor jobs carry explicit metadata: `handoffKind: stable_successor`, `handoffPrimaryJobId`
+2. Orchestration throws `TripTrackingHandoffLockContentionError` for handoff jobs when lock not acquired
+3. `TripTrackingProcessor` calls `job.moveToDelayed(now + 10s, token)` with BullMQ `skipAttempt: true`, then throws `DelayedError`
+4. Ordinary non-handoff lock misses still return SUCCESS no-op (duplicate/noise)
+
+Lock-contention deferral (10s, skipAttempt) is **separate** from infrastructure retry (4 attempts, exponential 5s base). The 10s deferral can repeat across the 120s lock TTL without consuming PS infrastructure attempts or resetting R1 clocks.
+
+### FSM obsolescence preserved
+
+Handoff successor executes when phase still relevant; RESTING/obsolete FSM → safe no-op after lock acquired. ACTIVE/IDLE + activeTripId → existing R3 ACTIVE_TICK replay unchanged.
+
+### R3B temporal test matrix
+
+| # | Scenario | Suite |
+|---|----------|-------|
+| 1–2 | PS >30s predecessor; successor due under lock deferred; executes after release | `trip-tracking-queue-handoff.r3b.spec.ts` |
+| 3–4 | Multi-worker contention + dedupe | same |
+| 5–6 | Clocks / confirmation budget unchanged | same + clock contract |
+| 7 | Infra error ≠ lock contention | `trip-tracking.processor.r3.spec.ts`, r3b |
+| 8–9 | RESTING obsolete / ACTIVE handoff replay | orchestration paths preserved |
+| 10 | ACTIVE_TICK handoff lock collision | r3b |
+| 11 | R3A recovery tombstone recycle | r3a suites |
+| 12 | R1/R2/R3/R3A regressions | 209 targeted tests |
+
+### Final finding status (post-R3B)
+
+| ID | Status |
+|----|--------|
+| P4-F11 | RESOLVED_BY_R3 |
+| P4-F12 | RESOLVED_BY_R3 |
+
+## Validation (post-R3B)
+
+- Targeted suites: **209 passed**
+- Backend build/typecheck: **PASS**
+- Prisma validate: **PASS** (no schema change)
+- `git diff --check`: **PASS**
+- Deploy: **NOT PERFORMED**
