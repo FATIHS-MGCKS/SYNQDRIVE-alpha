@@ -108,7 +108,7 @@ From `hf-acceleration.ts` / `hf-braking.ts`: hard/extreme acceleration and braki
 
 DIMO LTE_R1 `behavior.*` events via `dimo-native-driving-events/`; dedup `(organizationId, providerFingerprint)`
 
-**LTE_R1 authority split (CONFIRMED):** Whole-trip HF pass is **Trip Signal Summary** — sparse for LTE_R1 (median 3–6s). Short-event misuse authority is **native-event-anchored** + event-context enrichment, not HF point-pair alone.
+**LTE_R1 authority split (CONFIRMED):** Whole-trip HF pass is **Trip Signal Summary** — sparse and **variable** on LTE_R1 (see `evidence/signal-inventory/CADENCE_DENSITY.md`: RD002 sealed P50 **13.489s**; RD003 HF **~2.00s**; do not combine). Short-event misuse authority is **native-event-anchored** + event-context enrichment, not HF point-pair alone.
 
 ## Driving score / stress model (CONFIRMED V1)
 

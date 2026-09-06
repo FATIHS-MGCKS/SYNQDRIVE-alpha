@@ -24,6 +24,28 @@ QUERY INTERVAL ≠ PROVIDER POLL CADENCE ≠ OBSERVED BUCKET DENSITY ≠ PHYSICA
 
 `RD002_AND_RD003_CADENCE_METRICS_SEMANTICALLY_SEPARATED = YES`
 
+---
+
+## Forensic audit: legacy "median 3–6s on LTE_R1" claim
+
+`LTE_R1_3_6S_MEDIAN_CLAIM_AUDITED = YES`
+`LTE_R1_3_6S_METRIC_HAS_EXACT_POPULATION = NO`
+`LTE_R1_3_6S_CLAIM_REMOVED_IF_UNSUPPORTED = YES`
+`NATIVE_EVENT_POLICY_DEPENDS_ON_FALSE_COMBINED_MEDIAN = NO`
+
+| Question | Finding |
+|----------|---------|
+| **Origin** | Informal code-comment generalization (`trip-behavior-enrichment.service.ts`, `event-context.types.ts`: "median ~3–6 s, P95 ~21 s") copied into early authority drafts as "Phase 2B + RD002/003". **Phase 2B did not publish this statistic.** |
+| **Classification** | **C — old generalized interpretation, not defensible as one metric** |
+| **Why not A or B** | No sealed export, population, surface, or statistic definition supports a single LTE_R1-wide "median 3–6s". Established metrics disagree: RD003 HF_HISTORICAL **~2.00s**; RD002 sealed HF P50 **13.489s**; RD002 LATEST_LIVE poll P50 **~5.85s**; RD003 LATEST_LIVE **~6.0s**. Mixing these under one median violates DI-INV-CADENCE-FOUR-WAY-001. |
+| **P95 ~21s** | Not traced to a sealed reference-drive export in authority evidence; do not cite. |
+
+**Authority rule (unchanged):** HF whole-trip pass = Trip Signal Summary; native `DrivingEvent` = short-event policy authority when available. Rationale is **sparse/variable HF + point-pair weakness**, not a false combined median.
+
+**Do not reintroduce:** undefined combined RD002/RD003 cadence, or "median 3–6s" without a named metric row in the table above.
+
+---
+
 **Why RD002 P50 ≠ RD003 ~2s:** Different vehicles (C63 vs Tiguan), different sealed export populations, and different metric definitions (sealed aggregate-bucket row spacing vs RD003 signal-quality deduped physical-sample cadence). **Never merge into one median.**
 
 ---

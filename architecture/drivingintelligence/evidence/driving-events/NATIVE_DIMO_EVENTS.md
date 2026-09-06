@@ -1,6 +1,6 @@
 # Native DIMO Driving Events — Authority Path
 
-**Why separate from HF reconstruction:** LTE_R1 whole-trip HF is sparse (median 3–6s). Short-lived misuse (kickdown, harsh brake episodes) cannot be asserted reliably from HF point-pair alone.
+**Why separate from HF reconstruction:** LTE_R1 whole-trip HF is **sparse and variable** (canonical metrics in `evidence/signal-inventory/CADENCE_DENSITY.md` — e.g. RD003 HF ~2.00s, RD002 sealed P50 13.489s; **not** one combined median). Short-lived misuse (kickdown, harsh brake episodes) cannot be asserted reliably from HF point-pair alone.
 
 ---
 
@@ -49,7 +49,7 @@ HF does **not** redefine native event boundaries. HF may **enrich context** (spe
 |-------------|--------|
 | C63 RD002: native events NOT_OBSERVED | Vehicle/session specific — **does not reject policy** |
 | Tiguan RD003: richer HF set | Per-vehicle signal inventory |
-| Median HF 3–6s on LTE_R1 | Phase 2B + RD002/003 |
+| HF cadence variable by drive/surface/metric | `CADENCE_DENSITY.md` canonical table (RD002 sealed, RD003 HF, LATEST_LIVE poll) |
 
 ---
 

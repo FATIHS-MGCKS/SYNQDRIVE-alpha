@@ -158,7 +158,7 @@ invariants:
   - id: DI-INV-LTE-NATIVE-AUTHORITY-001
     kind: CONFIRMED_INVARIANT
     statement: For LTE_R1 vehicles, native DIMO behavior events are the primary short-event misuse authority; whole-trip HF is Trip Signal Summary only.
-    rationale: Sparse HF (median 3-6s) cannot assert short-lived misuse from point-pair alone.
+    rationale: Sparse/variable HF cadence (see CADENCE_DENSITY.md; do not combine RD002/RD003 medians) cannot assert short-lived misuse from point-pair alone.
     epistemic_status: CONFIRMED
     affected_nodes:
       - DI-SIG-NATIVE-001

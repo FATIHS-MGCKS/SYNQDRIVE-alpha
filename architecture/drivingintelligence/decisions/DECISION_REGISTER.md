@@ -282,7 +282,7 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **STATUS** | VALIDATED |
 | **PROBLEM** | Sparse HF cannot assert short-lived misuse from point-pair |
 | **DECISION** | HF pass = Trip Signal Summary; native events = misuse authority **by architecture** |
-| **RATIONALE** | Median HF 3–6s on LTE_R1; provider-classified short events when available |
+| **RATIONALE** | Sparse/variable HF on LTE_R1 (separated metrics in `CADENCE_DENSITY.md`); provider-classified short events when available |
 | **CONSEQUENCES** | event-context enrichment on native anchors; RD002 C63 had native events NOT_OBSERVED |
 | **GRAPH NODES** | DI-SIG-NATIVE-001 |
 | **EPISTEMIC** | CONFIRMED |

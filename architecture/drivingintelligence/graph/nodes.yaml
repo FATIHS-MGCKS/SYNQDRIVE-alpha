@@ -778,7 +778,7 @@ nodes:
     title: signals interval 1s yields ~1Hz detector data
     epistemic_status: CONTRADICTED
     decision_status: REJECTED
-    summary: RD002/003 proved 1s request ≠ 1Hz; RD003 ~2.00s; RD002 sealed P50 13.489s.
+    summary: RD002 and RD003 separately proved 1s request ≠ 1Hz; RD003 HF ~2.00s; RD002 sealed P50 13.489s.
     source_paths:
       - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
     evidence:
