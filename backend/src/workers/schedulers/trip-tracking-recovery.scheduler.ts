@@ -14,6 +14,7 @@ import { resolvePossibleEndFsmDwellAnchor, isPossibleEndRecoveryEligible } from 
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { TripLifecycleRecoveryService } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-recovery.service';
 import { resolveSchedulerStaleStateDisposition } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-scheduler-disposition';
+import { buildTripTrackingJobOptions } from '../../modules/vehicle-intelligence/trips/trip-tracking-queue.util';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
@@ -123,8 +124,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
         } satisfies TripTrackingJobData,
         {
           jobId: `trip-recovery-${s.vehicleId}`,
-          removeOnComplete: true,
-          removeOnFail: 5,
+          ...buildTripTrackingJobOptions(trigger),
         },
       );
       enqueuedCount += 1;

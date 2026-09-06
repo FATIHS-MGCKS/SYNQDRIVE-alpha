@@ -84,6 +84,7 @@ import {
 } from './trip-lifecycle-recovery.service';
 import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
 import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
@@ -560,8 +561,7 @@ export class TripDetectionOrchestrationService {
           {
             delay: delayMs,
             jobId,
-            removeOnComplete: true,
-            removeOnFail: 5,
+            ...buildTripTrackingJobOptions(trigger),
           },
         );
       } catch (err: unknown) {
@@ -843,7 +843,16 @@ export class TripDetectionOrchestrationService {
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
-      if (det.state !== TripDetectionState.POSSIBLE_START) return;
+      if (det.state !== TripDetectionState.POSSIBLE_START) {
+        if (
+          (det.state === TripDetectionState.ACTIVE_TRIP ||
+            det.state === TripDetectionState.IDLE_WITHIN_TRIP) &&
+          det.activeTripId
+        ) {
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+        }
+        return;
+      }
 
       const earlyRecovery = await this.maybeRecoverLifecycleInvariant({
         det,
@@ -1160,6 +1169,8 @@ export class TripDetectionOrchestrationService {
             },
           );
 
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+
           this.fetchAndStoreStartTemperature(
             dimoTokenId,
             trip.id,
@@ -1181,22 +1192,26 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
           const orgId = det.organizationId;
           if (orgId) {
-            await this.batteryTripStartProducer.enqueueStartProxy({
-              organizationId: orgId,
-              vehicleId,
-              tripId: trip.id,
-              tripStartedAt: effectiveStartAt,
-            });
+            try {
+              await this.batteryTripStartProducer.enqueueStartProxy({
+                organizationId: orgId,
+                vehicleId,
+                tripId: trip.id,
+                tripStartedAt: effectiveStartAt,
+              });
+            } catch (e) {
+              this.logger.warn(
+                `Battery start-proxy enqueue failed for trip ${trip.id}: ${e}`,
+              );
+            }
           } else {
             this.logger.warn(
               `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
             );
           }
 
-          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           this.logger.log(
             `ACTIVE_TRIP confirmed: vehicle=${vehicleId} trip=${trip.id} mode=${confirmMode}` +
               ` [${profileStr}] startSource=${resolvedStart.source}` +
@@ -1248,14 +1263,21 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`POSSIBLE_START error for ${vehicleId}: ${err}`);
-      await this.logTrackingRun({
-        vehicleId,
-        organizationId,
-        stateAtRun: TripDetectionState.POSSIBLE_START,
-        runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        durationMs: Date.now() - startedMs,
-      }).catch(() => {});
+      try {
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          stateAtRun: TripDetectionState.POSSIBLE_START,
+          runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          durationMs: Date.now() - startedMs,
+        });
+      } catch (logErr) {
+        this.logger.warn(
+          `POSSIBLE_START diagnostic log failed for ${vehicleId}: ${logErr}`,
+        );
+      }
+      throw err;
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
     }
