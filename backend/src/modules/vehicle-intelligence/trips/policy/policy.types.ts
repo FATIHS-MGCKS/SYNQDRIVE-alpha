@@ -4,6 +4,7 @@ import type {
   DataQualityAssessment,
   AnomalyContext,
 } from '../detectors/detector.interfaces';
+import type { LiveStartFreshnessState } from '../trip-start-detection-policy';
 
 // ═══════════════════════════════════════════════════════════════
 //  POLICY INPUT
@@ -14,6 +15,8 @@ export interface PolicyInput {
   profile: VehicleDetectionProfile;
   dataQuality: DataQualityAssessment;
   anomalyContext?: AnomalyContext;
+  /** Explicit LIVE_START freshness authority — avoids INVALID→STALE coercion. */
+  liveStartFreshnessState?: LiveStartFreshnessState;
 }
 
 // ═══════════════════════════════════════════════════════════════

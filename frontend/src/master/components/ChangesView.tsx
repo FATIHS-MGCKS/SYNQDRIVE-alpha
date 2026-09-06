@@ -47,6 +47,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'No DB updatedAt silent fallback for provider freshness truth; R1 future-skew validation reused.',
       'ClickHouse remains confirmation corroboration only — cannot start from RESTING (P4-F08 preserved).',
       'Forensic evidence summaries include candidate/confirmation phase, policy profile, freshness state.',
+      'R4A: R1 future-skew freshness age normalization; explicit INVALID skip reason; full candidate profile policy table; orchestration LIVE_START safety tests.',
       'R1 clocks, R2 recovery, R3 queue liveness, end detection, CUSUM, thresholds unchanged.',
     ],
     reason:

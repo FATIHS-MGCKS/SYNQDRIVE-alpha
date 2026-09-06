@@ -667,14 +667,6 @@ export class TripDetectionOrchestrationService {
       providerSourceTimestamp: current.sourceTimestamp,
       workerNow,
     });
-    const snapshotFreshnessForPolicy =
-      liveStartFreshness.state === 'FRESH'
-        ? 'FRESH'
-        : liveStartFreshness.state === 'STALE'
-          ? 'STALE'
-          : liveStartFreshness.state === 'MISSING'
-            ? 'MISSING'
-            : 'STALE';
 
     const dataQuality = this.policyResolver.assessDataQuality({
       snapshotFreshMs: liveStartFreshness.snapshotFreshMs,
@@ -685,12 +677,19 @@ export class TripDetectionOrchestrationService {
       hasRoutePoints: false,
       hasHighFrequency: false,
     });
-    dataQuality.snapshotFreshness = snapshotFreshnessForPolicy;
+    if (liveStartFreshness.state === 'FRESH') {
+      dataQuality.snapshotFreshness = 'FRESH';
+    } else if (liveStartFreshness.state === 'STALE') {
+      dataQuality.snapshotFreshness = 'STALE';
+    } else if (liveStartFreshness.state === 'MISSING') {
+      dataQuality.snapshotFreshness = 'MISSING';
+    }
 
     const policy = this.policyResolver.resolve({
       phase: DETECTION_PHASES.LIVE_START,
       profile,
       dataQuality,
+      liveStartFreshnessState: liveStartFreshness.state,
       anomalyContext: {},
     });
 

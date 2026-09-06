@@ -1,4 +1,7 @@
-import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
+import {
+  isValidProviderEventTimestamp,
+  TRIP_FSM_MAX_FUTURE_SKEW_MS,
+} from './trip-fsm-clock-contract';
 
 /**
  * R4 — explicit two-phase start detection contract.
@@ -36,12 +39,32 @@ export interface StartCandidateConfidenceContract {
   mediumMinStrong: number;
 }
 
-/** Declarative candidate signal increments — not confirmation weights. */
-export interface StartCandidateSignalPolicy {
+/** Universal traction/GPS/fuel scoring increments shared by profiles that enable them. */
+export interface StartCandidateCommonScoring {
+  tractionDrawStrong2Increment: number;
+  tractionDrawStrong1Increment: number;
+  tractionDrawWeakIncrement: number;
+  gpsStrongIncrement: number;
+  gpsWeakIncrement: number;
+  odometerStrongIncrement: number;
+  fuelDeltaWeakIncrement: number;
+}
+
+/** Profile-specific candidate enablement and strength — not confirmation weights. */
+export interface StartCandidateProfilePolicy {
   ignitionOnStrongIncrement: number;
-  engineLoadStrongThreshold: number;
   engineLoadStrongIncrement: number;
   engineLoadWeakIncrement: number;
+  socDeltaStrongForEvHybrid: boolean;
+  tractionBatteryEvidenceEnabled: boolean;
+  lowEngineLoadWeakEvidenceEnabled: boolean;
+  ignitionPrimaryModeEligible: boolean;
+  tractionBatteryPrimaryModeEligible: boolean;
+}
+
+/** Declarative candidate signal thresholds — not confirmation weights. */
+export interface StartCandidateSignalPolicy {
+  engineLoadStrongThreshold: number;
   tractionDrawStrong2Kw: number;
   tractionDrawStrong1Kw: number;
   tractionDrawWeakKw: number;
@@ -53,13 +76,14 @@ export interface StartCandidateSignalPolicy {
   gpsWeakMinM: number;
   fuelDeltaWeakMin: number;
   socDeltaStrongMin: number;
-  socDeltaStrongForEvHybrid: boolean;
 }
 
 export interface StartCandidatePolicy {
   phase: typeof START_DETECTION_PHASES.START_CANDIDATE_WAKE;
   profile: string;
   shared: SharedSignalThresholds;
+  commonScoring: StartCandidateCommonScoring;
+  profilePolicy: StartCandidateProfilePolicy;
   signals: StartCandidateSignalPolicy;
   trigger: StartCandidateTriggerContract;
   confidence: StartCandidateConfidenceContract;
@@ -111,78 +135,71 @@ const SHARED_SIGNAL_THRESHOLDS: Record<string, SharedSignalThresholds> = {
   },
 };
 
-const CANDIDATE_SIGNAL_POLICY: Record<string, StartCandidateSignalPolicy> = {
+const CANDIDATE_COMMON_SCORING: StartCandidateCommonScoring = {
+  tractionDrawStrong2Increment: 2,
+  tractionDrawStrong1Increment: 1,
+  tractionDrawWeakIncrement: 1,
+  gpsStrongIncrement: 1,
+  gpsWeakIncrement: 1,
+  odometerStrongIncrement: 1,
+  fuelDeltaWeakIncrement: 1,
+};
+
+const CANDIDATE_SIGNAL_THRESHOLDS: StartCandidateSignalPolicy = {
+  engineLoadStrongThreshold: 15,
+  tractionDrawStrong2Kw: -25,
+  tractionDrawStrong1Kw: -12,
+  tractionDrawWeakKw: -4,
+  tractionRegenWeakMinKw: 12,
+  tractionRegenWeakMinSpeedKmh: 8,
+  tractionChargeWeakMinKw: 5,
+  tractionChargeWeakMaxSpeedKmh: 2,
+  gpsStrongMinM: 50,
+  gpsWeakMinM: 15,
+  fuelDeltaWeakMin: 0.2,
+  socDeltaStrongMin: 0.5,
+};
+
+const CANDIDATE_PROFILE_POLICY: Record<string, StartCandidateProfilePolicy> = {
   ICE: {
     ignitionOnStrongIncrement: 2,
-    engineLoadStrongThreshold: 15,
     engineLoadStrongIncrement: 1,
     engineLoadWeakIncrement: 1,
-    tractionDrawStrong2Kw: -25,
-    tractionDrawStrong1Kw: -12,
-    tractionDrawWeakKw: -4,
-    tractionRegenWeakMinKw: 12,
-    tractionRegenWeakMinSpeedKmh: 8,
-    tractionChargeWeakMinKw: 5,
-    tractionChargeWeakMaxSpeedKmh: 2,
-    gpsStrongMinM: 50,
-    gpsWeakMinM: 15,
-    fuelDeltaWeakMin: 0.2,
-    socDeltaStrongMin: 0.5,
     socDeltaStrongForEvHybrid: false,
+    tractionBatteryEvidenceEnabled: false,
+    lowEngineLoadWeakEvidenceEnabled: true,
+    ignitionPrimaryModeEligible: true,
+    tractionBatteryPrimaryModeEligible: false,
   },
   EV: {
     ignitionOnStrongIncrement: 1,
-    engineLoadStrongThreshold: 15,
     engineLoadStrongIncrement: 0,
     engineLoadWeakIncrement: 1,
-    tractionDrawStrong2Kw: -25,
-    tractionDrawStrong1Kw: -12,
-    tractionDrawWeakKw: -4,
-    tractionRegenWeakMinKw: 12,
-    tractionRegenWeakMinSpeedKmh: 8,
-    tractionChargeWeakMinKw: 5,
-    tractionChargeWeakMaxSpeedKmh: 2,
-    gpsStrongMinM: 50,
-    gpsWeakMinM: 15,
-    fuelDeltaWeakMin: 0.2,
-    socDeltaStrongMin: 0.5,
     socDeltaStrongForEvHybrid: true,
+    tractionBatteryEvidenceEnabled: true,
+    lowEngineLoadWeakEvidenceEnabled: false,
+    ignitionPrimaryModeEligible: false,
+    tractionBatteryPrimaryModeEligible: true,
   },
   HYBRID: {
     ignitionOnStrongIncrement: 2,
-    engineLoadStrongThreshold: 15,
     engineLoadStrongIncrement: 1,
     engineLoadWeakIncrement: 1,
-    tractionDrawStrong2Kw: -25,
-    tractionDrawStrong1Kw: -12,
-    tractionDrawWeakKw: -4,
-    tractionRegenWeakMinKw: 12,
-    tractionRegenWeakMinSpeedKmh: 8,
-    tractionChargeWeakMinKw: 5,
-    tractionChargeWeakMaxSpeedKmh: 2,
-    gpsStrongMinM: 50,
-    gpsWeakMinM: 15,
-    fuelDeltaWeakMin: 0.2,
-    socDeltaStrongMin: 0.5,
     socDeltaStrongForEvHybrid: true,
+    tractionBatteryEvidenceEnabled: true,
+    lowEngineLoadWeakEvidenceEnabled: true,
+    ignitionPrimaryModeEligible: true,
+    tractionBatteryPrimaryModeEligible: true,
   },
   UNKNOWN: {
     ignitionOnStrongIncrement: 1,
-    engineLoadStrongThreshold: 15,
     engineLoadStrongIncrement: 1,
     engineLoadWeakIncrement: 1,
-    tractionDrawStrong2Kw: -25,
-    tractionDrawStrong1Kw: -12,
-    tractionDrawWeakKw: -4,
-    tractionRegenWeakMinKw: 12,
-    tractionRegenWeakMinSpeedKmh: 8,
-    tractionChargeWeakMinKw: 5,
-    tractionChargeWeakMaxSpeedKmh: 2,
-    gpsStrongMinM: 50,
-    gpsWeakMinM: 15,
-    fuelDeltaWeakMin: 0.2,
-    socDeltaStrongMin: 0.5,
     socDeltaStrongForEvHybrid: false,
+    tractionBatteryEvidenceEnabled: true,
+    lowEngineLoadWeakEvidenceEnabled: true,
+    ignitionPrimaryModeEligible: false,
+    tractionBatteryPrimaryModeEligible: false,
   },
 };
 
@@ -263,7 +280,9 @@ export function getStartCandidatePolicy(profile: string): StartCandidatePolicy {
     phase: START_DETECTION_PHASES.START_CANDIDATE_WAKE,
     profile: key,
     shared: SHARED_SIGNAL_THRESHOLDS[key],
-    signals: CANDIDATE_SIGNAL_POLICY[key],
+    commonScoring: CANDIDATE_COMMON_SCORING,
+    profilePolicy: CANDIDATE_PROFILE_POLICY[key],
+    signals: CANDIDATE_SIGNAL_THRESHOLDS,
     trigger: CANDIDATE_TRIGGER,
     confidence: CANDIDATE_CONFIDENCE,
   };
@@ -288,14 +307,17 @@ export function getLegacyProfileThresholds(profile: string) {
 
 /**
  * EVENT_TIME freshness for LIVE_START. DB updatedAt is never treated as provider truth.
+ * Future timestamps within R1 tolerated skew normalize freshness age to zero.
  */
 export function assessLiveStartSnapshotFreshness(params: {
   providerSourceTimestamp: Date | null | undefined;
   workerNow?: Date;
   staleThresholdMs?: number;
+  maxFutureSkewMs?: number;
 }): LiveStartFreshnessAssessment {
   const workerNow = params.workerNow ?? new Date();
   const staleThresholdMs = params.staleThresholdMs ?? LIVE_START_STALE_THRESHOLD_MS;
+  const maxFutureSkewMs = params.maxFutureSkewMs ?? TRIP_FSM_MAX_FUTURE_SKEW_MS;
   const providerSourceTimestamp = params.providerSourceTimestamp ?? null;
 
   if (!providerSourceTimestamp) {
@@ -307,7 +329,8 @@ export function assessLiveStartSnapshotFreshness(params: {
     };
   }
 
-  if (!isValidProviderEventTimestamp(providerSourceTimestamp, workerNow)) {
+  const ms = providerSourceTimestamp.getTime();
+  if (!Number.isFinite(ms)) {
     return {
       state: 'INVALID_TIMESTAMP',
       snapshotFreshMs: null,
@@ -316,8 +339,7 @@ export function assessLiveStartSnapshotFreshness(params: {
     };
   }
 
-  const snapshotFreshMs = workerNow.getTime() - providerSourceTimestamp.getTime();
-  if (snapshotFreshMs < 0) {
+  if (!isValidProviderEventTimestamp(providerSourceTimestamp, workerNow, maxFutureSkewMs)) {
     return {
       state: 'INVALID_TIMESTAMP',
       snapshotFreshMs: null,
@@ -325,13 +347,31 @@ export function assessLiveStartSnapshotFreshness(params: {
       providerSourceTimestamp,
     };
   }
+
+  const rawAgeMs = workerNow.getTime() - ms;
+  const freshnessAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
 
   return {
-    state: snapshotFreshMs < staleThresholdMs ? 'FRESH' : 'STALE',
-    snapshotFreshMs,
+    state: freshnessAgeMs < staleThresholdMs ? 'FRESH' : 'STALE',
+    snapshotFreshMs: freshnessAgeMs,
     timestampSource: 'PROVIDER_EVENT_TIME',
     providerSourceTimestamp,
   };
+}
+
+export function resolveLiveStartSkipReason(
+  state: LiveStartFreshnessState,
+): string {
+  switch (state) {
+    case 'STALE':
+      return 'live_start_stale_snapshot';
+    case 'MISSING':
+      return 'live_start_missing_provider_timestamp';
+    case 'INVALID_TIMESTAMP':
+      return 'live_start_invalid_provider_timestamp';
+    default:
+      return 'live_start_not_fresh';
+  }
 }
 
 export function isLiveStartCandidateEligible(

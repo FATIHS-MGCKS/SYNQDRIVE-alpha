@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DETECTION_PHASES } from '../detectors/detector.interfaces';
 import type { PolicyInput, DetectionPolicy } from './policy.types';
+import {
+  resolveLiveStartSkipReason,
+  type LiveStartFreshnessState,
+} from '../trip-start-detection-policy';
 
 /**
  * TripDetectionPolicyResolver
@@ -24,19 +28,25 @@ export class TripDetectionPolicyResolver {
     switch (phase) {
       // ── Live trip start candidate from a snapshot ──────────────────────────
       case DETECTION_PHASES.LIVE_START: {
-        const freshnessState = dataQuality.snapshotFreshness;
+        const freshnessState: LiveStartFreshnessState | undefined =
+          input.liveStartFreshnessState ??
+          (input.dataQuality.snapshotFreshness === 'FRESH'
+            ? 'FRESH'
+            : input.dataQuality.snapshotFreshness === 'STALE'
+              ? 'STALE'
+              : input.dataQuality.snapshotFreshness === 'MISSING'
+                ? 'MISSING'
+                : undefined);
+
         if (freshnessState !== 'FRESH') {
           return {
             detectors: [],
             requiredConfidence: 'HIGH',
             timeoutMs: 5_000,
             fallbackBehavior: 'SKIP',
-            skipReason:
-              freshnessState === 'STALE'
-                ? 'live_start_stale_snapshot'
-                : freshnessState === 'MISSING'
-                  ? 'live_start_missing_provider_timestamp'
-                  : 'live_start_not_fresh',
+            skipReason: resolveLiveStartSkipReason(
+              freshnessState ?? 'STALE',
+            ),
           };
         }
         return {

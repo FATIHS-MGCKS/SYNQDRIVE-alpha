@@ -9,7 +9,10 @@ import {
   getSharedSignalThresholds,
   getStartCandidatePolicy,
   getStartConfirmationPolicy,
+  resolveLiveStartSkipReason,
+  LIVE_START_STALE_THRESHOLD_MS,
 } from './trip-start-detection-policy';
+import { TRIP_FSM_MAX_FUTURE_SKEW_MS } from './trip-fsm-clock-contract';
 import {
   evaluateSnapshotEvidence,
   getProfileThresholds,
@@ -192,6 +195,29 @@ describe('R4 — candidate profile matrix', () => {
     expect(result.weak).toBeGreaterThanOrEqual(3);
     expect(result.triggered).toBe(true);
   });
+
+  it('ICE traction battery evidence disabled via profile policy', () => {
+    const policy = getStartCandidatePolicy('ICE');
+    expect(policy.profilePolicy.tractionBatteryEvidenceEnabled).toBe(false);
+    const result = evaluateSnapshotEvidence(
+      snap({ tractionBatteryPowerKw: -20, speedKmh: 0 }),
+      null,
+      'ICE',
+    );
+    expect(result.reasons.some((r) => r.includes('battery'))).toBe(false);
+  });
+
+  it('mode selection uses trigger.minStrong from policy contract', () => {
+    const policy = getStartCandidatePolicy('ICE');
+    const result = evaluateSnapshotEvidence(
+      snap({ isIgnitionOn: true, speedKmh: 6 }),
+      null,
+      'ICE',
+    );
+    expect(result.triggered).toBe(true);
+    expect(result.mode).toBeDefined();
+    expect(policy.trigger.minStrong).toBe(2);
+  });
 });
 
 describe('R4 — confirmation weighted contract preserved', () => {
@@ -300,6 +326,7 @@ describe('R4 — LIVE_START freshness authority', () => {
         routeCoverage: 'NONE',
         highFrequencyAvailable: false,
       },
+      liveStartFreshnessState: 'MISSING',
     });
     expect(policy.detectors).toEqual([]);
     expect(policy.skipReason).toBe('live_start_missing_provider_timestamp');
@@ -313,6 +340,73 @@ describe('R4 — LIVE_START freshness authority', () => {
     });
     expect(invalid.state).toBe('INVALID_TIMESTAMP');
     expect(invalid.snapshotFreshMs).toBeNull();
+  });
+
+  it('future timestamp within R1 skew is FRESH with normalized age zero', () => {
+    const now = new Date('2026-09-06T12:00:00.000Z');
+    const future = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date(now.getTime() + 30_000),
+      workerNow: now,
+    });
+    expect(future.state).toBe('FRESH');
+    expect(future.snapshotFreshMs).toBe(0);
+    expect(future.timestampSource).toBe('PROVIDER_EVENT_TIME');
+  });
+
+  it('future timestamp at exact R1 max skew boundary is valid', () => {
+    const now = new Date('2026-09-06T12:00:00.000Z');
+    const atBoundary = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date(now.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS),
+      workerNow: now,
+    });
+    expect(atBoundary.state).toBe('FRESH');
+    expect(atBoundary.snapshotFreshMs).toBe(0);
+  });
+
+  it('future timestamp beyond R1 max skew by 1ms is INVALID', () => {
+    const now = new Date('2026-09-06T12:00:00.000Z');
+    const beyond = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date(
+        now.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS + 1,
+      ),
+      workerNow: now,
+    });
+    expect(beyond.state).toBe('INVALID_TIMESTAMP');
+  });
+
+  it('invalid Date is INVALID_TIMESTAMP', () => {
+    const invalid = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date('not-a-date'),
+      workerNow: new Date('2026-09-06T12:00:00.000Z'),
+    });
+    expect(invalid.state).toBe('INVALID_TIMESTAMP');
+  });
+
+  it('provider timestamp 30s in past is FRESH', () => {
+    const now = new Date('2026-09-06T12:00:00.000Z');
+    const fresh = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date(now.getTime() - 30_000),
+      workerNow: now,
+    });
+    expect(fresh.state).toBe('FRESH');
+    expect(fresh.snapshotFreshMs).toBe(30_000);
+  });
+
+  it('provider timestamp at stale threshold boundary is STALE', () => {
+    const now = new Date('2026-09-06T12:00:00.000Z');
+    const stale = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: new Date(
+        now.getTime() - LIVE_START_STALE_THRESHOLD_MS,
+      ),
+      workerNow: now,
+    });
+    expect(stale.state).toBe('STALE');
+  });
+
+  it('INVALID_TIMESTAMP maps to explicit skip reason', () => {
+    expect(resolveLiveStartSkipReason('INVALID_TIMESTAMP')).toBe(
+      'live_start_invalid_provider_timestamp',
+    );
   });
 });
 

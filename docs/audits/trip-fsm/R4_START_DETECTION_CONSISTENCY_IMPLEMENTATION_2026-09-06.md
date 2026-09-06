@@ -235,3 +235,74 @@ Numeric thresholds (speedActiveKmh, 90s freshness, confirmation weights) **uncha
 - Prisma validate: **PASS** (no schema change)
 - `git diff --check`: **PASS**
 - Deploy: **NOT PERFORMED**
+
+---
+
+## R4A — Closure Corrections
+
+| Field | Value |
+|-------|-------|
+| R4 base commit | `2f5a03e1169401e27b192f4f93eb9c4506b03d70` |
+| Scope | R1 skew compatibility, explicit INVALID skip reason, full candidate profile authority, orchestration LIVE_START tests |
+
+### R4A.1 — R1 future-skew compatibility
+
+**Bug:** tolerated future provider timestamps (`workerNow + 30s`) were marked `INVALID_TIMESTAMP` because negative raw age was rejected.
+
+**Fix:** After `isValidProviderEventTimestamp()` passes, normalize freshness age:
+
+```
+rawAgeMs = workerNow - providerTimestamp
+freshnessAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs
+```
+
+Provider `sourceTimestamp` / `possibleStartAt` remain unchanged.
+
+### R4A.2 — Explicit INVALID skip reason
+
+`PolicyInput.liveStartFreshnessState` passed from orchestration — no INVALID→STALE coercion.
+
+| Freshness state | skipReason |
+|-----------------|------------|
+| FRESH | (detectors eligible) |
+| STALE | `live_start_stale_snapshot` |
+| MISSING | `live_start_missing_provider_timestamp` |
+| INVALID_TIMESTAMP | `live_start_invalid_provider_timestamp` |
+
+### R4A.3 — Complete candidate profile authority
+
+Policy structure (corrected wording):
+
+| Layer | Role |
+|-------|------|
+| `sharedSignalThresholds` | speedActiveKmh, speedMotionKmh, odometerMinDeltaKm, frequency |
+| `StartCandidateCommonScoring` | universal increment amounts (GPS, traction tiers, odometer, fuel) |
+| `StartCandidateProfilePolicy` | profile enablement/strength: ignition increment, traction enabled, low engine-load weak, SOC strength, mode eligibility |
+| `StartCandidateSignalPolicy` | universal signal thresholds (kW, GPS meters, engine-load %) |
+| `StartConfirmationPolicy` | confirmation evidence weights only |
+
+`evaluateSnapshotEvidence()` consumes resolved `candidatePolicy` only — no raw profile string scoring branches.
+
+### R4A.4 — Policy/literal drift removed
+
+Mode/trigger logic uses `trigger.minStrong`, `trigger.minStrongWithMovement`, `trigger.minWeak`, and `confidence.highMinStrong` / `mediumMinStrong` from policy contract.
+
+### R4A.5 — Orchestration LIVE_START tests
+
+`trip-detection-orchestration.live-start.r4a.spec.ts` covers FRESH/STALE/MISSING/INVALID/within-skew scenarios at `evaluateSnapshotForTripStart()` side-effect boundary.
+
+### Finding status (post-R4A)
+
+| ID | Status |
+|----|--------|
+| P4-F01 | RESOLVED_BY_R4 |
+| P4-F03 | RESOLVED_BY_R4 |
+| P4-F08 | PRESERVED_BY_DESIGN |
+
+## Validation (post-R4A)
+
+- Targeted suites: **264 passed** (20 suites)
+- Backend build/typecheck: **PASS**
+- Prisma validate: **PASS** (no schema change)
+- `git diff --check`: **PASS**
+- Deploy: **NOT PERFORMED**
