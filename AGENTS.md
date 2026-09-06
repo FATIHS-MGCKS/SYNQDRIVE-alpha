@@ -14,6 +14,8 @@
 
 Before inspecting or changing any SynqDrive module, every agent **must** follow this workflow.
 
+**Normative audit standard:** Every `NOT_STARTED` or `AUDIT_IN_PROGRESS` module audit must read and follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) **before** auditing or creating authority files. Detailed audit rules, mandatory file structure, Production read-only safety, and the `AUTHORITY_ACTIVE` promotion gate live in that standard — this section provides routing only.
+
 ### 1. Read the central registry first
 
 Read [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) before substantive module work.
@@ -25,8 +27,8 @@ Find the affected module in the registry overview table and read its **registry 
 | Registry status | Agent action |
 |-----------------|--------------|
 | **`AUTHORITY_ACTIVE`** | Read all mandatory authority entry documents before substantive work (see §3). |
-| **`NOT_STARTED`** | Module is inventoried only — treat as having no authority; run full audit/bootstrap before substantive work (see §4). |
-| **`AUDIT_IN_PROGRESS`** | Read existing partial audit artifacts; do not treat them as complete authority; continue reconstruction (see §5). |
+| **`NOT_STARTED`** | Module is inventoried only — treat as having no authority; read and execute [`MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) before substantive work (see §4). |
+| **`AUDIT_IN_PROGRESS`** | Read existing partial audit artifacts; continue under [`MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md); do not treat partial docs as complete authority (see §5). |
 | **`SUPERSEDED`** | Do not extend the superseded authority; follow the successor pointer (see §6). |
 
 Registry coverage status is separate from each authority’s native lifecycle, maturity, epistemic, and validation statuses.
@@ -43,23 +45,30 @@ The module is only inventoried and must be treated like a module with **no autho
 
 Before substantive implementation:
 
-1. Audit the complete relevant current state: code paths, component hierarchy, frontend/backend data flow, persistence, workers/jobs/schedulers, integrations and signal sources, API and UI consumers, tests, runtime/production evidence when available, neighboring ownership boundaries, and current gaps, contradictions, and unknowns.
-2. Create `architecture/<module-slug>/`.
-3. Use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural and scientific-quality reference.
-4. Establish required authority artifacts: `README.md`, `CURRENT_STATE.md`, `AGENT_CONTRACT.md` or named maintenance protocol, `KNOWLEDGE_GRAPH.md` or machine-readable graph entry point, decisions and rationale, evidence and validation, contradictions/gaps/unknowns/open questions, append-only history/change tracking.
-5. Classify knowledge on **three separate axes** (never merge into one field):
-   - **Registry coverage status** — whether a usable authority exists (`NOT_STARTED`, `AUDIT_IN_PROGRESS`, `AUTHORITY_ACTIVE`, `SUPERSEDED`)
-   - **Epistemic state** — what is known about a claim (for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`)
-   - **Decision / validation status** — maturity of a decision or change (for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`)
+1. Read and follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) completely.
+2. Set registry status to `AUDIT_IN_PROGRESS` when reconstruction begins.
+3. Perform the **repository current-state audit** and, for runtime-bearing modules, a **read-only Production-VPS audit** per the standard.
+4. Treat `origin/main` and deployed Production as **separate baselines**; record and reconcile drift.
+5. If Production access is unavailable, record the non-secret blocker in `AUDIT_MANIFEST.md` / `evidence/PRODUCTION_BASELINE.md` — do **not** invent runtime facts.
+6. Do **not** promote a deployed runtime-bearing module to `AUTHORITY_ACTIVE` without the required Production audit (`VERIFIED_READ_ONLY`, or justified `PRODUCTION_NOT_APPLICABLE` / `NOT_DEPLOYED`).
+7. Production audits are **read-only by default**. Never deploy, restart processes, modify flags, mutate data, reprocess events, enqueue jobs, run migrations, or modify Production during an audit without **separate, explicit user authorization**.
+8. Create authority artifacts per the standard’s mandatory directory structure; use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural reference.
+9. Classify knowledge on **three separate axes** (never merge into one field):
+   - **Registry coverage status** — `NOT_STARTED`, `AUDIT_IN_PROGRESS`, `AUTHORITY_ACTIVE`, `SUPERSEDED`
+   - **Epistemic state** — for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`
+   - **Decision / validation status** — for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`
    Follow the owning module authority’s exact schema where it defines equivalent vocabulary.
-6. Update the module’s registry row: replace `NOT_STARTED`, set the correct new registry status, add authority-native status and authority path.
-7. Add or update the detailed authority section in the **same workstream/PR**.
+10. Promote to `AUTHORITY_ACTIVE` only when the standard’s promotion gate is satisfied.
+11. Update the module’s registry row and detailed authority section in the **same workstream/PR**.
+
+Agents have repository access and are expected to have configured Production-VPS access. Verify with `bash .cursor/scripts/cloud-agent-verify-vps.sh` before Production inspection.
 
 ### 5. If registry status is `AUDIT_IN_PROGRESS`
 
+- Read and continue under [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md).
 - Read all existing partial audit artifacts.
 - Do **not** treat them as complete authority.
-- Continue and complete the reconstruction required for the task.
+- Complete missing repository and Production audit surfaces required for the task.
 - Explicitly preserve unresolved gaps and uncertainty.
 - Do **not** silently set `AUTHORITY_ACTIVE` merely because files exist.
 
@@ -72,7 +81,7 @@ Before substantive implementation:
 ### 7. If the module is entirely absent from the inventory
 
 - Add an inventory row with initial registry status `NOT_STARTED` (module name, mini description, registry status).
-- Then follow the same audit/bootstrap workflow in §4 when substantive work is requested.
+- Then read and execute [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) when substantive work is requested.
 
 ### 8. Supporting documents are evidence, not default authority
 

@@ -2,7 +2,9 @@
 
 **Purpose:** This is the **mandatory first routing point** for agents working on SynqDrive rental product and shared frontend/backend runtime domains — including frontend, backend, APIs, UI contracts, persistence, workers, schedulers, integrations, signals, and cross-module runtime flows. It is an index and governance authority — **not** a replacement for module-specific documentation.
 
-**Last updated:** 2026-09-06 (registry bootstrap + coverage-status model)
+**Normative audit standard:** [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md) — mandatory for current-state audits, module directory structure, repository/Production evidence requirements, Production read-only safety, and promotion from `AUDIT_IN_PROGRESS` to `AUTHORITY_ACTIVE`.
+
+**Last updated:** 2026-09-06 (registry bootstrap + coverage-status model + module authority standard)
 
 ---
 
@@ -34,6 +36,14 @@ Examples of **authority-native** statuses (not registry coverage): `CANONICAL`, 
 | **`AUDIT_IN_PROGRESS`** | Reconstruction and documentation have started but remain incomplete. Partial documentation must **not** be treated as complete authority. |
 | **`AUTHORITY_ACTIVE`** | A structured, usable, living module authority exists and **must** be consulted before substantive work. It may still contain explicit gaps or open questions. |
 | **`SUPERSEDED`** | This registry entry is no longer authoritative. Agents must follow the named successor authority. |
+
+### Status transitions (not automatic)
+
+```
+NOT_STARTED → AUDIT_IN_PROGRESS → AUTHORITY_ACTIVE → SUPERSEDED
+```
+
+Transition arrows are **not** automatic. Each transition requires the gates defined in [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). All future repository-wide inventory rows begin as `NOT_STARTED` unless a usable authority is verified. Finding flat `architecture/*.md` documents does **not** satisfy the standard.
 
 ### Knowledge classification axes (authority artifacts)
 
@@ -82,27 +92,31 @@ When code and registered authority disagree: **record the conflict**, investigat
 
 ```
 1. READ this registry (SYNQDRIVE_RENTAL_ARCHITECTURE.md)
-2. FIND module in inventory overview table
-3. BRANCH on registry coverage status:
+2. READ MODULE_AUTHORITY_STANDARD.md when status is NOT_STARTED or AUDIT_IN_PROGRESS
+3. FIND module in inventory overview table
+4. BRANCH on registry coverage status:
      AUTHORITY_ACTIVE:
        a. Read all mandatory entry documents (detailed sections below)
        b. Read cross-referenced owning authorities when boundaries overlap
        c. Check open questions / contradictions before assuming facts
      NOT_STARTED:
        a. Treat as NO authority — do not assume understanding from inventory row
-       b. Run full audit/bootstrap workflow (see §5)
-       c. Update registry row + detailed section in same workstream/PR
+       b. Read and execute MODULE_AUTHORITY_STANDARD.md (Phases 0–5)
+       c. Set AUDIT_IN_PROGRESS when reconstruction begins
+       d. Update registry row + detailed section in same workstream/PR
      AUDIT_IN_PROGRESS:
-       a. Read partial audit artifacts only
-       b. Continue reconstruction; preserve gaps; do not silently set AUTHORITY_ACTIVE
+       a. Continue under MODULE_AUTHORITY_STANDARD.md
+       b. Read partial audit artifacts only — not complete authority
+       c. Complete missing repository + Production audit surfaces
+       d. Promote to AUTHORITY_ACTIVE only via standard promotion gate
      SUPERSEDED:
        a. Follow successor pointer; do not extend superseded authority
      ABSENT from inventory:
        a. Add row as NOT_STARTED (name, mini description, registry status)
-       b. Then follow NOT_STARTED workflow when substantive work is requested
-4. IMPLEMENT with authority updates in same workstream/PR when substantive
-5. RUN applicable authority validators
-6. REPORT which authorities and change records were updated
+       b. Then execute MODULE_AUTHORITY_STANDARD.md when substantive work is requested
+5. IMPLEMENT with authority updates in same workstream/PR when substantive
+6. RUN applicable authority validators
+7. REPORT which authorities and change records were updated
 ```
 
 ---
@@ -182,20 +196,21 @@ Detailed sections for modules with usable living authorities. See [Module invent
 
 ---
 
-## 5. `NOT_STARTED` and absent-module bootstrap
+## 5. `NOT_STARTED`, `AUDIT_IN_PROGRESS`, and absent-module bootstrap
 
 When registry coverage status is `NOT_STARTED`, or a module is absent and added as `NOT_STARTED`, the module is **inventoried only** — equivalent to having no authority.
 
-Before substantive implementation:
+**Execute [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md)** — it defines:
 
-1. Audit complete relevant current state: code paths, component hierarchy, frontend/backend data flow, persistence, workers/jobs/schedulers, integrations and signal sources, API and UI consumers, tests, runtime/production evidence when available, neighboring ownership boundaries, and current gaps, contradictions, and unknowns.
-2. Create `architecture/<module-slug>/` using [`architecture/tankstellenerkennung/`](tankstellenerkennung/) as the structural reference.
-3. Establish minimum artifacts: `README.md`, `CURRENT_STATE.md`, `AGENT_CONTRACT.md` (or named maintenance protocol), `KNOWLEDGE_GRAPH.md` or machine-readable graph, `decisions/`, `evidence/`, `contradictions/` or gaps, append-only `history/`.
-4. Classify knowledge on the **three separate axes** defined in [Registry coverage status model](#registry-coverage-status-model).
-5. Update the module’s registry row: replace `NOT_STARTED`, set the correct new registry status, add authority-native status and authority path.
-6. Add or update the detailed authority section in the **same workstream/PR**.
+- mandatory repository and read-only Production-VPS audit phases
+- exact mandatory authority directory structure and file content
+- Production read-only safety rules
+- evidence and three-axis status requirements
+- the promotion gate to `AUTHORITY_ACTIVE`
 
-**Existing flat `architecture/*.md` documents** remain supporting evidence. They do **not** automatically become canonical authorities when a module is bootstrapped.
+Summary: set `AUDIT_IN_PROGRESS` when reconstruction begins; inspect repository truth and applicable Production truth separately; never promote a deployed runtime-bearing module while `PRODUCTION_ACCESS_UNAVAILABLE`; update the registry row and detailed authority section in the same workstream/PR when promotion criteria are met.
+
+**Existing flat `architecture/*.md` documents** remain supporting evidence. They do **not** automatically become canonical authorities and do **not** satisfy the standard.
 
 ---
 
