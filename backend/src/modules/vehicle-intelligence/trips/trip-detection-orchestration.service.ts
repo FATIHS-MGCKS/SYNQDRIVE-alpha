@@ -82,6 +82,7 @@ import {
   TripLifecycleRecoveryService,
   type ExecuteLifecycleRecoveryParams,
 } from './trip-lifecycle-recovery.service';
+import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
 import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
 import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
@@ -284,6 +285,18 @@ export class TripDetectionOrchestrationService {
     const resolveRecoveredPossibleStartAt = (
       trip: TripLifecycleTripFact,
     ): Date => {
+      if (classification === 'RECOVERABLE_MERGE_ORPHAN') {
+        const anchor = resolveMergeReopenPossibleStartAt({
+          rawDetectionMeta: trip.rawDetectionMeta,
+          detPossibleStartAt: det.possibleStartAt,
+        });
+        if (!anchor) {
+          throw new Error(
+            `Merge orphan recovery missing safe episode anchor for trip ${tripId}`,
+          );
+        }
+        return anchor;
+      }
       if (
         classification === 'RECOVERABLE_MISSING_POINTER' &&
         det.possibleStartAt

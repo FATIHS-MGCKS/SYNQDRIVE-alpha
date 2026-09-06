@@ -13,6 +13,7 @@ import {
 import { resolvePossibleEndFsmDwellAnchor, isPossibleEndRecoveryEligible } from '../../modules/vehicle-intelligence/trips/trip-fsm-clock-contract';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { TripLifecycleRecoveryService } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-recovery.service';
+import { resolveSchedulerStaleStateDisposition } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-scheduler-disposition';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
@@ -22,16 +23,10 @@ const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
 /** Threshold: an ACTIVE_TRIP older than this is considered suspiciously long */
 const SUSPICIOUS_LONG_OPEN_THRESHOLD_MS = 4 * 3600_000; // 4 hours
 
-const FAIL_CLOSED_CLASSIFICATIONS = new Set([
-  'CONFLICT_MULTIPLE_ONGOING',
-  'CONFLICT_MISMATCH',
-  'CONFLICT_AMBIGUOUS',
-]);
-
 /**
  * Recovery-only safety-net scheduler for the V2 Trip Detection pipeline.
  *
- * R2A: scheduler wakes workers only — lifecycle recovery runs under the
+ * R2A/R2B: scheduler wakes workers only — lifecycle recovery runs under the
  * existing worker lock inside TripDetectionOrchestrationService handlers.
  */
 @Injectable()
@@ -86,27 +81,28 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
 
     let enqueuedCount = 0;
     let blockedCount = 0;
+    let recoverableWakeCount = 0;
     const reconciliationCandidates: typeof staleStates = [];
 
     for (const s of staleStates) {
       const tokenId = s.vehicle?.latestState?.dimoTokenId;
       if (!tokenId) continue;
 
-      if (this.lifecycleRecovery) {
-        const classification = await this.lifecycleRecovery.classifyDetectionState({
-          vehicleId: s.vehicleId,
-        });
-        if (
-          classification &&
-          FAIL_CLOSED_CLASSIFICATIONS.has(classification.classification)
-        ) {
-          blockedCount += 1;
-          this.logger.error(
-            `Recovery scheduler blocked vehicle=${s.vehicleId} ` +
-              `classification=${classification.classification}`,
-          );
-          continue;
-        }
+      const classification = this.lifecycleRecovery
+        ? await this.lifecycleRecovery.classifyDetectionState({
+            vehicleId: s.vehicleId,
+          })
+        : null;
+
+      const disposition = resolveSchedulerStaleStateDisposition(classification);
+
+      if (disposition === 'block') {
+        blockedCount += 1;
+        this.logger.error(
+          `Recovery scheduler blocked vehicle=${s.vehicleId} ` +
+            `classification=${classification?.classification ?? 'unknown'}`,
+        );
+        continue;
       }
 
       const trigger =
@@ -132,12 +128,20 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
         },
       );
       enqueuedCount += 1;
+
+      if (disposition === 'enqueue_only') {
+        recoverableWakeCount += 1;
+        continue;
+      }
+
       reconciliationCandidates.push(s);
     }
 
     if (enqueuedCount > 0 || blockedCount > 0) {
       this.logger.warn(
-        `Recovery: enqueued ${enqueuedCount} stale trip tracking job(s); blocked ${blockedCount} fail-closed state(s)`,
+        `Recovery: enqueued ${enqueuedCount} stale trip tracking job(s); ` +
+          `blocked ${blockedCount} fail-closed state(s); ` +
+          `recoverable wake-only ${recoverableWakeCount}`,
       );
     }
 

@@ -92,6 +92,33 @@ export function readMergeReopenFromTrip(
   return merge;
 }
 
+function parseIsoDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+/**
+ * Resolve FSM possibleStartAt for RECOVERABLE_MERGE_ORPHAN.
+ * Never uses the reopened trip's original trip.startTime.
+ */
+export function resolveMergeReopenPossibleStartAt(params: {
+  rawDetectionMeta: unknown;
+  detPossibleStartAt?: Date | null;
+}): Date | null {
+  const merge = readMergeReopenFromTrip(params.rawDetectionMeta);
+  if (merge?.effectiveStartAt) {
+    return parseIsoDate(merge.effectiveStartAt);
+  }
+  if (merge?.candidateStartAt) {
+    return parseIsoDate(merge.candidateStartAt);
+  }
+  if (params.detPossibleStartAt) {
+    return params.detPossibleStartAt;
+  }
+  return null;
+}
+
 export function mergeLifecycleRecoveryMeta(
   existingMeta: unknown,
   patch: TripLifecycleRecoveryMetaRoot,

@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Pure lifecycle invariant planner separates healthy, recoverable, and fail-closed conflict states.',
       'R2A: durable startEpisode/mergeReopen fingerprints in rawDetectionMeta; refined-boundary orphan recovery from DB alone.',
-      'R2A: ADOPT_ONGOING preserves possibleStartAt (canonical trip.startTime); possibleStartEnteredAt cleared only.',
+      'R2A/R2B: ADOPT_ONGOING possibleStartAt by classification — start orphan uses trip.startTime; merge orphan uses mergeReopen.effectiveStartAt (never original trip start).',
+      'R2B: recoverable scheduler rows enqueue only — excluded from same-pass onStuckTrip/onAnomalyDetected; healthy stale retains reconciliation.',
       'Start orphan: adopt proven ONGOING trip before duplicate createTrip on POSSIBLE_START replay.',
       'Merge orphan: adopt reopened trip via durable mergeReopen meta (no in-memory mergeTargetTripId).',
       'End orphan: RESET_TO_RESTING when activeTripId is already COMPLETED/CANCELLED — no re-finalize.',

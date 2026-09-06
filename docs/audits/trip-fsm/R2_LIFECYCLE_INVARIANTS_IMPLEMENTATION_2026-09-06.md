@@ -170,17 +170,76 @@ Scheduler **only enqueues** tracking jobs. Lifecycle FSM recovery executes insid
 
 ### Start clock preservation
 
-`executeLifecycleRecoveryAction(ADOPT_ONGOING)` sets:
+`executeLifecycleRecoveryAction(ADOPT_ONGOING)` sets `possibleStartAt` by classification:
 
-- `possibleStartAt` = canonical recovered `trip.startTime` (or preserved FSM anchor for missing-pointer)
-- `possibleStartEnteredAt` = null
-- does **not** call `clearPossibleStartClockFields()`
+- **RECOVERABLE_START_ORPHAN:** canonical recovered `trip.startTime` (refined boundary)
+- **RECOVERABLE_MERGE_ORPHAN:** persisted `mergeReopen.effectiveStartAt` (fallback `candidateStartAt`, then FSM anchor — never original `trip.startTime`)
+- **RECOVERABLE_MISSING_POINTER:** preserve/reconstruct proven current FSM episode anchor (`det.possibleStartAt`)
+
+Always sets `possibleStartEnteredAt` = null and does **not** call `clearPossibleStartClockFields()`.
 
 ### Split recovery decision
 
 **Option A — EXACT_STATE_RECOVERY:** shared `buildMidGapSplitActiveFsmExtras()` used by live mid-gap split and `REPOINT_ACTIVE_TRIP` recovery.
 
 ### Final finding status (post-R2A)
+
+| ID | Status |
+|----|--------|
+| P4-F06 | RESOLVED_BY_R2 |
+| P4-F10 | PARTIALLY_RESOLVED |
+| P3-F06 | RESOLVED_BY_R2 |
+| P5-F05 | RESOLVED_BY_R2 |
+| P5-F04 | UNCHANGED |
+
+---
+
+## R2B — Final Closure
+
+| Field | Value |
+|-------|-------|
+| R2 base commit | `67a8f53dc2989c309a960957553ff258133a0e0d` |
+| R2A commit | `fc2ed0aab32ca5f0c5135cc1bf7da6b711303552` |
+| Previous PR head | `92c7a9e11611a5c53d706e5e1bf9cfd3c574d015` |
+| Scope | merge recovery FSM anchor + scheduler reconciliation exclusion |
+| Deploy | **NOT PERFORMED** |
+
+### R2B.1 — Merge recovery start anchor
+
+For `RECOVERABLE_MERGE_ORPHAN`, `executeLifecycleRecoveryAction(ADOPT_ONGOING)` resolves `possibleStartAt` via `resolveMergeReopenPossibleStartAt()`:
+
+1. `rawDetectionMeta.lifecycleRecovery.mergeReopen.effectiveStartAt`
+2. `mergeReopen.candidateStartAt`
+3. `det.possibleStartAt`
+4. fail closed if no safe merge episode anchor
+
+Never uses the reopened trip's original `trip.startTime` (e.g. 08:00) when the merge episode anchor is 09:59:43.
+
+`RECOVERABLE_START_ORPHAN` continues to use canonical `trip.startTime`. `RECOVERABLE_MISSING_POINTER` preserves R2A FSM anchor semantics.
+
+### R2B.2 — Real merge crash replay test
+
+`trip-lifecycle-recovery-r2b.spec.ts` exercises the actual `TripDecisionEngine.reopenTripForMerge()` seam with persisted `mergeReopen` metadata, simulates crash before ACTIVE FSM transition, and verifies recovery sets `possibleStartAt = effectiveStartAt` (not original trip start). Idempotent second recovery → HEALTHY.
+
+### R2B.3 — Scheduler recoverable reconciliation exclusion
+
+`resolveSchedulerStaleStateDisposition()` in `trip-lifecycle-scheduler-disposition.ts`:
+
+| Classification | Enqueue | Same-pass event reconciliation |
+|----------------|---------|--------------------------------|
+| CONFLICT (`NO_SAFE_REPAIR`) | no | no |
+| RECOVERABLE (any repair action) | yes | no |
+| HEALTHY stale (`NONE`) | yes | yes (existing onStuckTrip / onAnomalyDetected) |
+
+Recoverable orphans wake the worker under lock; they must not enter `triggerEventBasedReconciliation()` in the same scheduler pass.
+
+When `TripLifecycleRecoveryService` is unavailable, disposition falls back to `enqueue_and_reconcile` (preserved legacy behavior).
+
+### R2B.4 — Scheduler test matrix
+
+`trip-tracking-recovery.scheduler.r2b.spec.ts` covers cases A–G: recoverable exclusions (A–D), conflict block (E), healthy stale reconciliation retention (F–G).
+
+### Final finding status (post-R2B)
 
 | ID | Status |
 |----|--------|
