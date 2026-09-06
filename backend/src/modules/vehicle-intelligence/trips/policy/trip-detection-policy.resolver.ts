@@ -23,13 +23,29 @@ export class TripDetectionPolicyResolver {
 
     switch (phase) {
       // ── Live trip start candidate from a snapshot ──────────────────────────
-      case DETECTION_PHASES.LIVE_START:
+      case DETECTION_PHASES.LIVE_START: {
+        const freshnessState = dataQuality.snapshotFreshness;
+        if (freshnessState !== 'FRESH') {
+          return {
+            detectors: [],
+            requiredConfidence: 'HIGH',
+            timeoutMs: 5_000,
+            fallbackBehavior: 'SKIP',
+            skipReason:
+              freshnessState === 'STALE'
+                ? 'live_start_stale_snapshot'
+                : freshnessState === 'MISSING'
+                  ? 'live_start_missing_provider_timestamp'
+                  : 'live_start_not_fresh',
+          };
+        }
         return {
           detectors: ['SnapshotEvidenceEvaluator'],
-          requiredConfidence: 'LOW', // We want sensitivity; decision engine filters noise
+          requiredConfidence: 'LOW',
           timeoutMs: 5_000,
           fallbackBehavior: 'SKIP',
         };
+      }
 
       // ── Start confirmation from backfill window (POSSIBLE_START → ACTIVE) ─
       case DETECTION_PHASES.ACTIVE_TRIP:

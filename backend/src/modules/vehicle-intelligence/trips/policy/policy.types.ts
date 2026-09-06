@@ -29,4 +29,6 @@ export interface DetectionPolicy {
   timeoutMs: number;
   /** What to do when all detectors return INCONCLUSIVE or fail. */
   fallbackBehavior: 'SKIP' | 'RETRY' | 'ESCALATE';
+  /** Optional audit reason when detectors are intentionally skipped. */
+  skipReason?: string;
 }

@@ -7,7 +7,34 @@ import { VehicleDetectionProfile } from '@prisma/client';
 import { START_DETECTION_MODES, END_DETECTION_MODES } from './trip-detection.types';
 import type { SnapshotEvidenceSignals, StartDetectionMode } from './trip-detection.types';
 import type { DetectorFinding } from './detectors/detector.interfaces';
+import {
+  START_DETECTION_PHASES,
+  assessLiveStartSnapshotFreshness,
+  classifySpeedMotionBand,
+  getLegacyProfileThresholds,
+  getSharedSignalThresholds,
+  getStartCandidatePolicy,
+  getStartConfirmationPolicy,
+  type LiveStartFreshnessAssessment,
+  type StartCandidatePolicy,
+  type StartConfirmationPolicy,
+} from './trip-start-detection-policy';
 import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
+
+type ProfileThresholds = ReturnType<typeof getLegacyProfileThresholds>;
+
+export {
+  START_DETECTION_PHASES,
+  assessLiveStartSnapshotFreshness,
+  getSharedSignalThresholds,
+  getStartCandidatePolicy,
+  getStartConfirmationPolicy,
+  isLiveStartCandidateEligible,
+  type LiveStartFreshnessAssessment,
+  type LiveStartFreshnessState,
+  type StartCandidatePolicy,
+  type StartConfirmationPolicy,
+} from './trip-start-detection-policy';
 
 // ═══════════════════════════════════════════════════════════════
 //  INTERFACES
@@ -81,6 +108,12 @@ export interface SnapshotStartEvidence {
   reasons: string[];
   mode: StartDetectionMode;
   confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  candidatePhase: typeof START_DETECTION_PHASES.START_CANDIDATE_WAKE;
+  candidatePolicyProfile: string;
+  candidatePolicy: Pick<
+    StartCandidatePolicy,
+    'trigger' | 'confidence' | 'signals'
+  >;
 }
 
 export interface RefinedTripStartBoundary {
@@ -126,75 +159,11 @@ export interface ClickHouseContinuityGuard {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE THRESHOLDS
+//  PROFILE THRESHOLDS (legacy merged view — see trip-start-detection-policy.ts)
 // ═══════════════════════════════════════════════════════════════
 
-interface ProfileThresholds {
-  speedActiveKmh: number;
-  speedMotionKmh: number;
-  odometerMinDeltaKm: number;
-  activeFrequencyPerMin: number;
-  restingFrequencyPerMin: number;
-  ignitionWeight: number;
-  speedWeight: number;
-  odometerWeight: number;
-  energyWeight: number;
-  frequencyWeight: number;
-}
-
-const PROFILE_THRESHOLDS: Record<string, ProfileThresholds> = {
-  ICE: {
-    speedActiveKmh: 5,
-    speedMotionKmh: 0.5,
-    odometerMinDeltaKm: 0.05,
-    activeFrequencyPerMin: 2,
-    restingFrequencyPerMin: 0.5,
-    ignitionWeight: 3,
-    speedWeight: 2,
-    odometerWeight: 2,
-    energyWeight: 1,
-    frequencyWeight: 1,
-  },
-  EV: {
-    speedActiveKmh: 3,
-    speedMotionKmh: 0.5,
-    odometerMinDeltaKm: 0.05,
-    activeFrequencyPerMin: 2,
-    restingFrequencyPerMin: 0.5,
-    ignitionWeight: 1,
-    speedWeight: 3,
-    odometerWeight: 2,
-    energyWeight: 2,
-    frequencyWeight: 2,
-  },
-  HYBRID: {
-    speedActiveKmh: 4,
-    speedMotionKmh: 0.5,
-    odometerMinDeltaKm: 0.05,
-    activeFrequencyPerMin: 2,
-    restingFrequencyPerMin: 0.5,
-    ignitionWeight: 2,
-    speedWeight: 3,
-    odometerWeight: 2,
-    energyWeight: 2,
-    frequencyWeight: 1,
-  },
-  UNKNOWN: {
-    speedActiveKmh: 5,
-    speedMotionKmh: 0.5,
-    odometerMinDeltaKm: 0.05,
-    activeFrequencyPerMin: 2,
-    restingFrequencyPerMin: 0.5,
-    ignitionWeight: 2,
-    speedWeight: 3,
-    odometerWeight: 2,
-    energyWeight: 1,
-    frequencyWeight: 2,
-  },
-};
-
-export function getProfileThresholds(profile: string): ProfileThresholds {
-  return PROFILE_THRESHOLDS[profile] ?? PROFILE_THRESHOLDS.UNKNOWN;
+export function getProfileThresholds(profile: string) {
+  return getLegacyProfileThresholds(profile);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -230,60 +199,73 @@ export function evaluateSnapshotEvidence(
   } | null,
   profile: string,
 ): SnapshotStartEvidence {
-  const t = getProfileThresholds(profile);
+  const candidatePolicy = getStartCandidatePolicy(profile);
+  const { shared, signals, trigger, confidence: confContract } = candidatePolicy;
 
   let strong = 0;
   let weak = 0;
   let hasMovement = false;
   const reasons: string[] = [];
 
-  // ── STRONG signals (weighted by profile) ──
   if (current.isIgnitionOn === true) {
-    if (profile === 'ICE' || profile === 'HYBRID') {
-      strong += 2; // ignition is primary for combustion vehicles
-    } else {
-      strong++;
-    }
+    strong += signals.ignitionOnStrongIncrement;
     reasons.push('ignition ON');
   }
 
-  if (current.speedKmh != null && current.speedKmh > t.speedActiveKmh) {
-    strong++;
-    hasMovement = true;
-    reasons.push(`speed=${current.speedKmh}`);
+  if (current.speedKmh != null) {
+    const speedBand = classifySpeedMotionBand(current.speedKmh, shared);
+    if (speedBand === 'strong') {
+      strong++;
+      hasMovement = true;
+      reasons.push(`speed=${current.speedKmh}`);
+    } else if (speedBand === 'weak') {
+      weak++;
+      hasMovement = true;
+      reasons.push(`lowSpeed=${current.speedKmh}`);
+    }
   }
 
-  if (current.engineLoad != null && current.engineLoad > 15) {
-    if (profile === 'EV') {
-      weak++; // engine load less meaningful for EVs
-    } else {
+  if (
+    current.engineLoad != null &&
+    current.engineLoad > signals.engineLoadStrongThreshold
+  ) {
+    if (signals.engineLoadStrongIncrement > 0) {
       strong++;
+    } else {
+      weak += signals.engineLoadWeakIncrement;
     }
     reasons.push(`engineLoad=${current.engineLoad}%`);
   }
 
-  // EV / PHEV: traction battery power (kW). Negative = motoring, positive = into battery (regen/charge)
   const pKw = current.tractionBatteryPowerKw;
   if (
     pKw != null &&
     !Number.isNaN(pKw) &&
     (profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN')
   ) {
-    if (pKw <= -25) {
+    if (pKw <= signals.tractionDrawStrong2Kw) {
       strong += 2;
       reasons.push(`batteryOut=${pKw.toFixed(1)}kW`);
-    } else if (pKw <= -12) {
+    } else if (pKw <= signals.tractionDrawStrong1Kw) {
       strong++;
       reasons.push(`batteryOut=${pKw.toFixed(1)}kW`);
-    } else if (pKw <= -4) {
+    } else if (pKw <= signals.tractionDrawWeakKw) {
       weak++;
       reasons.push(`batteryDraw=${pKw.toFixed(1)}kW`);
     }
-    if (pKw >= 12 && current.speedKmh != null && current.speedKmh > 8) {
+    if (
+      pKw >= signals.tractionRegenWeakMinKw &&
+      current.speedKmh != null &&
+      current.speedKmh > signals.tractionRegenWeakMinSpeedKmh
+    ) {
       weak++;
       reasons.push(`regen=${pKw.toFixed(1)}kW`);
     }
-    if (pKw >= 5 && (current.speedKmh == null || current.speedKmh < 2)) {
+    if (
+      pKw >= signals.tractionChargeWeakMinKw &&
+      (current.speedKmh == null ||
+        current.speedKmh < signals.tractionChargeWeakMaxSpeedKmh)
+    ) {
       weak++;
       reasons.push('possibleCharging');
     }
@@ -301,11 +283,11 @@ export function evaluateSnapshotEvidence(
       current.latitude,
       current.longitude,
     );
-    if (dist > 50) {
+    if (dist > signals.gpsStrongMinM) {
       strong++;
       hasMovement = true;
       reasons.push(`GPS moved ${Math.round(dist)}m`);
-    } else if (dist > 15) {
+    } else if (dist > signals.gpsWeakMinM) {
       weak++;
       hasMovement = true;
       reasons.push(`GPS drift ${Math.round(dist)}m`);
@@ -315,37 +297,27 @@ export function evaluateSnapshotEvidence(
   if (
     previous?.odometerKm != null &&
     current.odometerKm != null &&
-    current.odometerKm > previous.odometerKm + t.odometerMinDeltaKm
+    current.odometerKm > previous.odometerKm + shared.odometerMinDeltaKm
   ) {
     strong++;
     hasMovement = true;
     reasons.push('odometer+');
   }
 
-  // ── WEAK signals ──
-  if (
-    current.speedKmh != null &&
-    current.speedKmh > 0 &&
-    current.speedKmh <= t.speedActiveKmh
-  ) {
-    weak++;
-    hasMovement = true;
-    reasons.push(`lowSpeed=${current.speedKmh}`);
-  }
-
   if (
     current.engineLoad != null &&
     current.engineLoad > 0 &&
-    current.engineLoad <= 15 &&
+    current.engineLoad <= signals.engineLoadStrongThreshold &&
     profile !== 'EV'
   ) {
-    weak++;
+    weak += signals.engineLoadWeakIncrement;
   }
 
   if (
     previous?.fuelLevelAbsolute != null &&
     current.fuelLevelAbsolute != null &&
-    Math.abs(current.fuelLevelAbsolute - previous.fuelLevelAbsolute) > 0.2
+    Math.abs(current.fuelLevelAbsolute - previous.fuelLevelAbsolute) >
+      signals.fuelDeltaWeakMin
   ) {
     weak++;
     reasons.push('fuel change');
@@ -354,10 +326,10 @@ export function evaluateSnapshotEvidence(
   if (
     previous?.evSoc != null &&
     current.evSoc != null &&
-    Math.abs(current.evSoc - previous.evSoc) > 0.5
+    Math.abs(current.evSoc - previous.evSoc) > signals.socDeltaStrongMin
   ) {
-    if (profile === 'EV' || profile === 'HYBRID') {
-      strong++; // energy change is primary for EVs
+    if (signals.socDeltaStrongForEvHybrid) {
+      strong++;
     } else {
       weak++;
     }
@@ -365,7 +337,9 @@ export function evaluateSnapshotEvidence(
   }
 
   const triggered =
-    strong >= 2 || (strong >= 1 && hasMovement) || weak >= 3;
+    strong >= trigger.minStrong ||
+    (strong >= trigger.minStrongWithMovement && hasMovement) ||
+    weak >= trigger.minWeak;
 
   let mode: StartDetectionMode;
   if (strong >= 2 && hasMovement) {
@@ -378,13 +352,13 @@ export function evaluateSnapshotEvidence(
   } else if (
     current.isIgnitionOn &&
     current.engineLoad != null &&
-    current.engineLoad > 15
+    current.engineLoad > signals.engineLoadStrongThreshold
   ) {
     mode = START_DETECTION_MODES.RPM_VALIDATED;
   } else if (
     (profile === 'EV' || profile === 'HYBRID') &&
     current.tractionBatteryPowerKw != null &&
-    current.tractionBatteryPowerKw <= -12
+    current.tractionBatteryPowerKw <= signals.tractionDrawStrong1Kw
   ) {
     mode = START_DETECTION_MODES.MOTION_PRIMARY;
   } else {
@@ -392,9 +366,28 @@ export function evaluateSnapshotEvidence(
   }
 
   const confidence: 'LOW' | 'MEDIUM' | 'HIGH' =
-    strong >= 3 ? 'HIGH' : strong >= 2 ? 'MEDIUM' : 'LOW';
+    strong >= confContract.highMinStrong
+      ? 'HIGH'
+      : strong >= confContract.mediumMinStrong
+        ? 'MEDIUM'
+        : 'LOW';
 
-  return { triggered, strong, weak, hasMovement, reasons, mode, confidence };
+  return {
+    triggered,
+    strong,
+    weak,
+    hasMovement,
+    reasons,
+    mode,
+    confidence,
+    candidatePhase: START_DETECTION_PHASES.START_CANDIDATE_WAKE,
+    candidatePolicyProfile: candidatePolicy.profile,
+    candidatePolicy: {
+      trigger,
+      confidence: confContract,
+      signals,
+    },
+  };
 }
 
 export function refineTripStartBoundary(
@@ -1085,7 +1078,9 @@ export function validateTripStart(
   } | null,
   profile: string = 'UNKNOWN',
 ): StartValidationResult {
-  const t = getProfileThresholds(profile);
+  const confirmationPolicy = getStartConfirmationPolicy(profile);
+  const t = confirmationPolicy.evidenceWeights;
+  const shared = confirmationPolicy.shared;
   const act = evaluateActivityWindow(corePoints, profile);
   const windowMs =
     corePoints.length >= 2
@@ -1154,6 +1149,8 @@ export function validateTripStart(
     mode,
     confidence,
     summary: {
+      confirmationPhase: START_DETECTION_PHASES.START_CONFIRMATION,
+      confirmationPolicyProfile: confirmationPolicy.profile,
       maxConsecutiveActive: act.maxConsecutiveActive,
       activeDurationMs: act.activeDurationMs,
       motionPointCount: act.motionPointCount,
@@ -1166,6 +1163,9 @@ export function validateTripStart(
       currentlyActive,
       profile,
       totalCorePoints: corePoints.length,
+      evidenceWeights: t,
+      speedMotionKmh: shared.speedMotionKmh,
+      speedActiveKmh: shared.speedActiveKmh,
     },
   };
 }
