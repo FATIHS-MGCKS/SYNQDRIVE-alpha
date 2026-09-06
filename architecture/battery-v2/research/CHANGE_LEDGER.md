@@ -20,6 +20,38 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+## CL-2026-09-06 — M3.1 Stage-2 REST session/target lifecycle forensic audit (PR #1541 precision gate)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | ≥6h audit reported ambiguous KS MS 661 08:49 anchor "without targets yet"; `VEHICLES_WITH_QUALIFYING_REST_OPPORTUNITY=2` misread as valid-rest evidence. |
+| **CHANGE** | Read-only lifecycle forensic audit at ≥6h boundary; per-session/target tables; LOCK_CONTENTION correlation; fleet/opportunity terminology precision. |
+| **WHY** | PR #1541 merge gate required proof that no due REST target was silently lost before accepting pending-natural-evidence verdict. |
+| **VALIDATION** | Code contract reconstructed from deployed SHA; production DB + PM2 logs; `LIFECYCLE_AUDIT=PASS`; `DUE_REST_TARGETS_PIPELINE_MISSING=0`; `validate-graph.sh` PASS. |
+| **OBSERVED_EFFECT** | KS MS 661 ~08:49 = result **A** (invalidated `charging_detected` before REST_60M due; never RESTING); HMÜ C 215 = `NO_REST_ARMING_OPPORTUNITY`; 8 LOCK_CONTENTION events unrelated to post-T0 natural sessions. |
+| **NON_EFFECTS** | Still 0 natural VALID REST / assess / pub — event-conditioned wait remains. |
+| **REMAINING_GAPS** | Await trip-end → rest-without-charging on observable ICE fleet. |
+| **DECISION_STATUS** | `LIFECYCLE_AUDIT=PASS`; `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE` unchanged. |
+| **EVIDENCE** | `M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md`; amended `M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`. |
+
+## CL-2026-09-06 — M3.1 corrected Stage-2 ≥6h production validation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `M3_1_STATUS=STAGE2_ACTIVE_30M_VALIDATED_PENDING_6H`; T+30m PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE. |
+| **CHANGE** | Read-only ≥6h audit at `2026-09-06T10:06:57Z` (10.51h elapsed from T0). |
+| **WHY** | Final M3.1 production-validation gate from corrected Stage-2 T0. |
+| **VALIDATION** | Stage-2 contract stable; 122 reconciliation ticks; control plane continuous; 0 unsafe pre-T0 work; 0 pipeline defects for due VALID targets. |
+| **OBSERVED_EFFECT** | 0 natural VALID REST; 0 assessments; 0 publications; 58 LIVE_VOLTAGE + 4 backfill REST; infrastructure healthy. |
+| **NON_EFFECTS** | No natural E2E chain — fleet active/driving; no qualifying completed rest windows in window. |
+| **REMAINING_GAPS** | Await natural VALID REST→assess→publication on qualifying vehicle rest opportunity. |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`; `M3_1_STATUS=STAGE2_ACTIVE_PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`. |
+
 ## CL-2026-09-06 — M3.1 T+30m evidence scope precision (PR #1537)
 
 | Field | Content |
