@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r5-end-validation-semantics-2026-09-06',
+    version: '4.9.1072',
+    title: 'Trip FSM R5 — End Validation Semantics',
+    summary: [
+      'Shared POSSIBLE_END → ACTIVE reset clears end-cycle metadata including endDetectionMode/confidence and CUSUM fields (P5-F03).',
+      'endValidationAttempts now counts completed CUSUM cycles only — scheduling/fetch/detector errors do not consume attempts (P5-F11).',
+      'Successful empty core requires VLS inactivity + no performance activity + no route motion corroboration — not inactivity anchor alone (P5-F13).',
+      'Max-attempt fallback uses LOW confidence + max_completed_cusum_attempts forensics — not CUSUM_VALIDATED (P5-F10 partial).',
+      'Resume fetch errors block max-attempt fallback; hard 30min timeout remains separate last-resort path.',
+      'Forensic timestamps: endValidationScheduledAt / StartedAt / CompletedAt with completedEndValidationAttempt.',
+    ],
+    reason:
+      'P6 remediation package R5 — INV-12 completed-cycle attempt accounting + INV-15 end-cycle forensic accuracy.',
+    previousBehavior:
+      'PEC incremented attempts when scheduling END_VALIDATION; CUSUM ongoing reopen left stale end metadata; empty core [] alone could enter POSSIBLE_END.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md; trip-end-cycle-reset.ts + trip-empty-core-end-gate.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T10:55:00.000Z',
+  },
+  {
     id: 'trip-fsm-r4-start-detection-consistency-2026-09-06',
     version: '4.9.1071',
     title: 'Trip FSM R4 — Start Detection Consistency',
