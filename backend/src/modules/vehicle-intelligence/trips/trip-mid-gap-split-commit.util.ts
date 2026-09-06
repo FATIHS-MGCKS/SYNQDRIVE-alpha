@@ -50,7 +50,13 @@ export function classifyDurableLiveSplitOutcome(params: {
   );
 
   if (originalTrip.tripStatus === TripStatus.ONGOING) {
-    if (linkedContinuations.length > 0) {
+    if (ongoingTrips.length !== 1) {
+      return 'AMBIGUOUS';
+    }
+    if (ongoingTrips[0].id !== originalTripId) {
+      return 'AMBIGUOUS';
+    }
+    if (linkedContinuations.length !== 0) {
       return 'AMBIGUOUS';
     }
     return 'NOT_COMMITTED';

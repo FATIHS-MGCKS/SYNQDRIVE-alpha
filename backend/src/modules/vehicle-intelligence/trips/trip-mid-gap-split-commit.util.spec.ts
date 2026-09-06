@@ -171,3 +171,98 @@ describe('trip-mid-gap-split-commit.util (R6A)', () => {
     expect(outcome).toBe('AMBIGUOUS');
   });
 });
+
+function ongoingTrip1() {
+  return {
+    id: TRIP1,
+    tripStatus: TripStatus.ONGOING,
+    startTime: new Date('2026-09-06T11:00:00.000Z'),
+  };
+}
+
+describe('trip-mid-gap-split-commit.util (R6B strict NOT_COMMITTED)', () => {
+  it('A — sole ONGOING trip1, no linked continuation → NOT_COMMITTED', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: ongoingTrip1(),
+        ongoingTrips: [ongoingTrip1()],
+      }),
+    ).toBe('NOT_COMMITTED');
+  });
+
+  it('B — trip1 ONGOING plus unrelated second ONGOING → AMBIGUOUS', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: ongoingTrip1(),
+        ongoingTrips: [
+          ongoingTrip1(),
+          {
+            id: 'trip-unrelated',
+            tripStatus: TripStatus.ONGOING,
+            startTime: new Date('2026-09-06T10:00:00.000Z'),
+          },
+        ],
+      }),
+    ).toBe('AMBIGUOUS');
+  });
+
+  it('C — trip1 ONGOING but ongoing set is only unrelated trip → AMBIGUOUS', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: ongoingTrip1(),
+        ongoingTrips: [
+          {
+            id: 'trip-unrelated',
+            tripStatus: TripStatus.ONGOING,
+            startTime: new Date('2026-09-06T10:00:00.000Z'),
+          },
+        ],
+      }),
+    ).toBe('AMBIGUOUS');
+  });
+
+  it('D — trip1 ONGOING but ongoing set empty → AMBIGUOUS', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: ongoingTrip1(),
+        ongoingTrips: [],
+      }),
+    ).toBe('AMBIGUOUS');
+  });
+
+  it('E — trip1 ONGOING with linked continuation present → AMBIGUOUS', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: ongoingTrip1(),
+        ongoingTrips: [ongoingTrip1(), continuationTrip2()],
+      }),
+    ).toBe('AMBIGUOUS');
+  });
+
+  it('F — COMMITTED_LINKED proof unchanged', () => {
+    expect(
+      classifyDurableLiveSplitOutcome({
+        originalTripId: TRIP1,
+        expectedFirstEndAt: FIRST_END,
+        expectedSecondStartAt: SECOND_START,
+        originalTrip: completedTrip1(),
+        ongoingTrips: [continuationTrip2()],
+      }),
+    ).toBe('COMMITTED_LINKED');
+  });
+});

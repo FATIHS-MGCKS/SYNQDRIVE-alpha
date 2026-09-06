@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r6b-strict-not-committed-proof-2026-09-06',
+    version: '4.9.1077',
+    title: 'Trip FSM R6B — Strict NOT_COMMITTED Proof Closure',
+    summary: [
+      'NOT_COMMITTED now requires trip1 ONGOING AND trip1 is the sole vehicle ONGOING row AND no linked continuation.',
+      'Unrelated second ONGOING trip or originalTrip missing from ongoing set → AMBIGUOUS fail-closed.',
+      'Prevents old-trip fallthrough when duplicate/unrelated ONGOING lifecycle rows exist.',
+      'COMMITTED_LINKED proof, DecisionEngine logger containment, drift/reconciliation unchanged.',
+    ],
+    reason:
+      'R6B closure — absence of splitFrom alone was insufficient; unrelated ONGOING rows must not grant rollback proof.',
+    previousBehavior:
+      'trip1 ONGOING + no splitFrom link returned NOT_COMMITTED even when another unrelated ONGOING trip existed for the vehicle.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6B; trip-mid-gap-split-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:30:00.000Z',
+  },
+  {
     id: 'trip-fsm-r6a-split-commit-ambiguity-2026-09-06',
     version: '4.9.1076',
     title: 'Trip FSM R6A — Live Split Commit-Ambiguity Closure',

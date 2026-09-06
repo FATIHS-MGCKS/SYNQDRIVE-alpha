@@ -490,3 +490,75 @@ describe('R6A — committed-but-rejected next tick R2 repoint', () => {
     expect(h.splitTripAtGap).not.toHaveBeenCalled();
   });
 });
+
+describe('R6B — strict NOT_COMMITTED orchestration', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: GAP_END });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('G — unrelated second ONGOING blocks old-trip fallthrough', async () => {
+    const h = buildActiveTickHarness(
+      {},
+      {
+        originalTrip: {
+          id: TRIP1,
+          tripStatus: TripStatus.ONGOING,
+          startTime: new Date(T0.getTime() - 120_000),
+          endTime: null,
+          rawDetectionMeta: {},
+        },
+        ongoingTrips: [
+          {
+            id: TRIP1,
+            tripStatus: TripStatus.ONGOING,
+            startTime: new Date(T0.getTime() - 120_000),
+            endTime: null,
+            rawDetectionMeta: {},
+          },
+          {
+            id: 'trip-unrelated',
+            tripStatus: TripStatus.ONGOING,
+            startTime: new Date(T0.getTime() - 60_000),
+            endTime: null,
+            rawDetectionMeta: {},
+          },
+        ],
+      },
+    );
+    h.splitTripAtGap.mockRejectedValue(new Error('split failed'));
+
+    await TripDetectionOrchestrationService.prototype.processActiveTick.call(
+      h.svc as unknown as TripDetectionOrchestrationService,
+      jobData(),
+    );
+
+    expect(h.vehicleTripUpdate).not.toHaveBeenCalled();
+    expect(h.scheduleActiveTick).toHaveBeenCalled();
+    const forensics = h.logTrackingRun.mock.calls.find(
+      (call) => call[0]?.resultSummary?.decision === 'SPLIT_COMMIT_AMBIGUITY',
+    );
+    expect(forensics?.[0]?.resultSummary?.durableOutcome).toBe('AMBIGUOUS');
+  });
+
+  it('H — sole ONGOING trip1 preserves safe fallthrough', async () => {
+    const h = buildActiveTickHarness();
+    h.splitTripAtGap.mockRejectedValue(new Error('split failed'));
+
+    await TripDetectionOrchestrationService.prototype.processActiveTick.call(
+      h.svc as unknown as TripDetectionOrchestrationService,
+      jobData(),
+    );
+
+    expect(h.vehicleTripUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TRIP1 } }),
+    );
+    const forensics = h.logTrackingRun.mock.calls.find(
+      (call) => call[0]?.resultSummary?.decision === 'SPLIT_COMMIT_AMBIGUITY',
+    );
+    expect(forensics).toBeUndefined();
+  });
+});

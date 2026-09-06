@@ -203,9 +203,9 @@ On `splitTripAtGap()` error while local phase is `PRE_COMMIT`, orchestration cal
 
 | Outcome | Durable proof | Behavior |
 |---------|---------------|----------|
-| `NOT_COMMITTED` | trip1 still `ONGOING`, no linked continuation (`splitFrom`) | safe pre-commit fallthrough on trip1 |
+| `NOT_COMMITTED` | trip1 `ONGOING`, trip1 is the sole vehicle `ONGOING` row, no linked continuation | safe pre-commit fallthrough on trip1 |
 | `COMMITTED_LINKED` | trip1 `COMPLETED` + matching `endTime`, exactly one vehicle `ONGOING` trip, `splitFrom === trip1.id`, `startTime === expectedSecondStartAt`, optional `LIVE_FSM` trigger meta | same as POST_COMMIT failure: no old-trip writes, schedule ACTIVE_TICK, return |
-| `AMBIGUOUS` | any other combination, DB read failure, multiple ONGOING, splitFrom/startTime mismatch | fail closed: no fallthrough, schedule recovery wake, return |
+| `AMBIGUOUS` | any other combination, DB read failure, multiple/unrelated `ONGOING` rows, originalTrip missing from ongoing set, splitFrom/startTime mismatch | fail closed: no fallthrough, schedule recovery wake, return |
 
 Reuses R2 invariant model (`RECOVERABLE_SPLIT_REPOINT` proof: terminal trip1 + exactly one ONGOING trip2 with `splitFrom`) extended with expected `secondStartAt` for live episode binding.
 
@@ -243,3 +243,44 @@ Only positive `NOT_COMMITTED` proof may preserve original-trip fallthrough. All 
 | `trip-detection-orchestration.service.ts` | PRE_COMMIT catch durable reread |
 | `trip-decision.engine.ts` | Non-poisoning post-commit logger |
 | `trip-decision.engine.split-r6a.spec.ts` | Logger failure regression |
+
+---
+
+## R6B — Strict NOT_COMMITTED Proof Closure
+
+| Field | Value |
+|-------|-------|
+| Scope | P5-F04 — positive rollback proof only when trip1 is sole ONGOING row |
+| Module | `trip-mid-gap-split-commit.util.ts` |
+
+### Defect closed
+
+R6A `NOT_COMMITTED` previously required only `trip1 ONGOING` + absence of `splitFrom` link. That incorrectly allowed old-trip fallthrough when another unrelated `ONGOING` trip existed for the same vehicle.
+
+### Strict NOT_COMMITTED proof (all required)
+
+1. `originalTrip` exists
+2. `originalTrip.tripStatus === ONGOING`
+3. no linked continuation (`splitFrom === originalTripId`)
+4. exactly one `ONGOING` trip for the vehicle
+5. that sole `ONGOING` trip id === `originalTripId`
+
+### AMBIGUOUS includes
+
+- multiple `ONGOING` trips (including unrelated second row)
+- `originalTrip` says `ONGOING` but missing from `ongoingTrips` set (empty or unrelated-only)
+- linked continuation present while trip1 still `ONGOING`
+- any durable read inconsistency
+
+### R2 invariant alignment
+
+Vehicle lifecycle target is ≤1 canonical `ONGOING` trip per vehicle. `NOT_COMMITTED` is positive proof only when the original trip is that sole row. Duplicate/unrelated `ONGOING` rows are conflicts — fail closed here; R2/recovery owns reconciliation.
+
+`COMMITTED_LINKED`, DecisionEngine logger containment, drift thresholds, reconciliation, and R1–R5 semantics unchanged.
+
+### Finding status (post-R6B)
+
+| ID | Status |
+|----|--------|
+| P5-F04 | **RESOLVED_BY_R6** — unrelated duplicate ONGOING rows cannot grant NOT_COMMITTED fallthrough |
+| P5-F09 | **RESOLVED_BY_R6** (unchanged) |
