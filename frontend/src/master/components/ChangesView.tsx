@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r1-event-time-authority-2026-09-06',
+    version: '4.9.1068',
+    title: 'Trip FSM R1 — Event-Time Authority & Boundary Field Contract',
+    summary: [
+      'Split FSM worker-entry clocks from event-time boundary fields: possibleStartEnteredAt / possibleEndEnteredAt.',
+      'POSSIBLE_START confirmation timeout uses worker entry time; boundary fetch uses possibleStartAt event time.',
+      'Snapshot lastSeenAt flows as SnapshotEvidenceSignals.sourceTimestamp into trip start candidate.',
+      'lastMeaningfulMovementAt written from provider core/odometer/CH event timestamps — not worker now.',
+      'POSSIBLE_END stability/dwell gates use possibleEndEnteredAt; CUSUM/inactivity windows use possibleEndAt.',
+      'Additive nullable migration only; legacy null enteredAt rows supported with deterministic fallback.',
+      'No threshold, polling, scoring, or deploy changes.',
+    ],
+    reason:
+      'P6 remediation package R1 — eliminate mixed worker/event-time semantics on physical trip boundary fields (P4-F02, P5-F02, P5-F14, P5-F15).',
+    previousBehavior:
+      'possibleStartAt/possibleEndAt and lastMeaningfulMovementAt often stored worker now; PE stability measured against physical boundary age.',
+    details:
+      'docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md; migration 20260906120000_trip_fsm_clock_split_entered_at.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
     id: 'dimo-di-ev-0035c1d-phase-atomicity-canary-hardening-2026-09-05',
     version: '4.9.1067',
     title: 'DI-EV-0035C.1d — Phase Transition Atomicity + Canary Authority Hardening',

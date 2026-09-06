@@ -193,4 +193,15 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       }),
     );
   });
+
+  it('G. passes snapshot lastSeenAt as sourceTimestamp to trip orchestration', async () => {
+    const h = buildHarness();
+    await h.processor.process(h.job);
+    expect(h.evaluateSnapshotForTripStart).toHaveBeenCalledWith(
+      vehicleId,
+      dimoTokenId,
+      null,
+      expect.objectContaining({ sourceTimestamp: expect.any(Date) }),
+    );
+  });
 });

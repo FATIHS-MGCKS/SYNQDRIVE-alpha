@@ -527,6 +527,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
           odometerKm: normalized.odometerKm,
           fuelLevelAbsolute: normalized.fuelLevelAbsolute,
           evSoc: normalized.evSoc,
+          sourceTimestamp: normalized.lastSeenAt,
         },
       );
     } catch (err) {

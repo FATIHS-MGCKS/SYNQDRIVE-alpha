@@ -74,6 +74,7 @@ const snapshot = (
   odometerKm,
   fuelLevelAbsolute: null,
   evSoc: null,
+  sourceTimestamp: null,
 });
 
 // ═══════════════════════════════════════════════════════════════

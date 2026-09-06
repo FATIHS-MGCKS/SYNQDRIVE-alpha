@@ -68,6 +68,8 @@ export interface SnapshotEvidenceSignals {
   odometerKm: number | null;
   fuelLevelAbsolute: number | null;
   evSoc: number | null;
+  /** Provider snapshot source timestamp (EVENT_TIME). Not VLS.updatedAt. */
+  sourceTimestamp: Date | null;
 }
 
 export interface TripStartEvaluation {

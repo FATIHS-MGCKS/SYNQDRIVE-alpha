@@ -7,6 +7,7 @@ import { VehicleDetectionProfile } from '@prisma/client';
 import { START_DETECTION_MODES, END_DETECTION_MODES } from './trip-detection.types';
 import type { SnapshotEvidenceSignals, StartDetectionMode } from './trip-detection.types';
 import type { DetectorFinding } from './detectors/detector.interfaces';
+import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
 
 // ═══════════════════════════════════════════════════════════════
 //  INTERFACES
@@ -1499,4 +1500,136 @@ function findClosestRoutePoint(
   }
 
   return closest;
+}
+
+/**
+ * Latest provider-timestamped movement evidence used for lastMeaningfulMovementAt.
+ * Returns null when continuity is ACTIVE only via ClickHouse guard without an
+ * explicit event timestamp — caller must preserve the previous anchor.
+ */
+export function resolveLatestMeaningfulMovementEventAt(params: {
+  recentPoints: TripCoreDataPoint[];
+  profile: string;
+  continuitySummary?: Record<string, unknown> | null;
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+    windowEndAt?: string | Date | null;
+  } | null;
+  workerNow?: Date;
+}): Date | null {
+  const workerNow = params.workerNow ?? new Date();
+  const t = getProfileThresholds(params.profile);
+  const summary = params.continuitySummary ?? {};
+  const motionCount = (summary.motionCount as number) ?? 0;
+  const odometerDelta = (summary.odometerDelta as number) ?? null;
+  const ch = params.clickhouseGuardSummary;
+
+  const hasCoreMotion = motionCount > 0;
+  const hasOdometerProgress =
+    odometerDelta != null && odometerDelta > t.odometerMinDeltaKm;
+  const hasChMotion =
+    (ch?.maxSpeedKmh ?? 0) > 5 || (ch?.odometerDeltaKm ?? 0) > 0.05;
+
+  if (!hasCoreMotion && !hasOdometerProgress && !hasChMotion) {
+    return null;
+  }
+
+  let latest: Date | null = null;
+
+  const chronological = [...params.recentPoints].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  for (const pt of chronological) {
+    const ts = new Date(pt.timestamp);
+    if (!isValidProviderEventTimestamp(ts, workerNow)) continue;
+    const speedMotion = pt.speed != null && pt.speed > t.speedMotionKmh;
+    const speedActive = pt.speed != null && pt.speed > t.speedActiveKmh;
+    if (speedMotion || speedActive) {
+      if (!latest || ts.getTime() > latest.getTime()) latest = ts;
+    }
+  }
+
+  if (hasOdometerProgress) {
+    const odometerAdvanceAt = resolveLatestOdometerAdvanceEventAt(
+      chronological,
+      workerNow,
+    );
+    if (
+      odometerAdvanceAt &&
+      (!latest || odometerAdvanceAt.getTime() > latest.getTime())
+    ) {
+      latest = odometerAdvanceAt;
+    }
+  }
+
+  if (hasChMotion && !latest && ch?.windowEndAt) {
+    const chTs =
+      ch.windowEndAt instanceof Date
+        ? ch.windowEndAt
+        : new Date(ch.windowEndAt);
+    if (isValidProviderEventTimestamp(chTs, workerNow)) {
+      latest = chTs;
+    }
+  }
+
+  return latest;
+}
+
+/**
+ * Latest provider timestamp at which odometer value actually increased.
+ * Ignores plateau/repeated samples after the last advance.
+ */
+export function resolveLatestOdometerAdvanceEventAt(
+  points: TripCoreDataPoint[],
+  workerNow: Date = new Date(),
+): Date | null {
+  const chronological = points
+    .map((p) => ({
+      ts: new Date(p.timestamp),
+      odo: p.travelledDistance,
+    }))
+    .filter(
+      (p): p is { ts: Date; odo: number } =>
+        p.odo != null && isValidProviderEventTimestamp(p.ts, workerNow),
+    )
+    .sort((a, b) => a.ts.getTime() - b.ts.getTime());
+
+  if (chronological.length < 2) return null;
+
+  let latestAdvance: Date | null = null;
+  let prevOdo = chronological[0].odo;
+
+  for (let i = 1; i < chronological.length; i++) {
+    const { ts, odo } = chronological[i];
+    if (odo > prevOdo) {
+      latestAdvance = ts;
+      prevOdo = odo;
+    } else if (odo < prevOdo) {
+      prevOdo = odo;
+    }
+  }
+
+  return latestAdvance;
+}
+
+/** Whether ACTIVE continuity implies meaningful movement for anchor advancement. */
+export function continuityImpliesMeaningfulMovement(
+  continuitySummary?: Record<string, unknown> | null,
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+  } | null,
+): boolean {
+  const summary = continuitySummary ?? {};
+  const motionCount = (summary.motionCount as number) ?? 0;
+  const odometerDelta = (summary.odometerDelta as number) ?? 0;
+  const ch = clickhouseGuardSummary;
+  return (
+    motionCount > 0 ||
+    odometerDelta > 0 ||
+    (ch?.maxSpeedKmh ?? 0) > 5 ||
+    (ch?.odometerDeltaKm ?? 0) > 0.05
+  );
 }
