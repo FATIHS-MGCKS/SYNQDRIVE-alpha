@@ -98,6 +98,28 @@ Root-level architecture phase/change documents (for example `architecture/P1_*`,
 - Run applicable authority validators.
 - The final report must state which architecture authorities and change records were updated.
 
+#### Registry synchronization gate
+
+After substantive work, before declaring the task complete:
+
+1. Determine every **affected module** from the final diff.
+2. Update every affected **module authority** in the same PR when the change is substantive.
+3. Re-read each affected registry **overview row** and **active detail section** in [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) after the authority update.
+4. Update the central registry **only if** any listed metadata changed (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
+5. Explicitly report `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` for **every** affected module, with before/after registry coverage status.
+6. Run the central registry validator: `bash architecture/scripts/validate-module-registry.sh`
+7. A missing registry review result is **incomplete work**.
+
+**Important:**
+
+- An ordinary change to an `AUTHORITY_ACTIVE` module normally leaves it `AUTHORITY_ACTIVE`.
+- Registry coverage status expresses documentation/authority coverage, **not** feature maturity.
+- Authority-native, epistemic, and decision/validation statuses remain **separate axes**.
+- Never promote or downgrade a module merely because files or implementation changes exist.
+- Cross-module changes require **one review result per affected module**.
+
+See [`.cursor/rules/Architectur-Updates.mdc`](.cursor/rules/Architectur-Updates.mdc) for the mandatory `ARCHITECTURE_GOVERNANCE` completion report contract.
+
 ## Local development (reference)
 
 ```bash

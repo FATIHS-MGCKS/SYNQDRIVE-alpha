@@ -1,0 +1,38 @@
+name: Module registry governance
+
+on:
+  pull_request:
+    paths:
+      - 'AGENTS.md'
+      - '.cursor/rules/Architectur-Updates.mdc'
+      - 'architecture/**'
+      - '.github/workflows/module-registry-governance.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'AGENTS.md'
+      - '.cursor/rules/Architectur-Updates.mdc'
+      - 'architecture/**'
+      - '.github/workflows/module-registry-governance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-module-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run central registry validator self-tests
+        run: node architecture/scripts/validate-module-registry.mjs --self-test
+
+      - name: Validate central module registry
+        run: bash architecture/scripts/validate-module-registry.sh

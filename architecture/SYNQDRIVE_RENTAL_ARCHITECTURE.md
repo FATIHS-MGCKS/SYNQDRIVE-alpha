@@ -4,7 +4,9 @@
 
 **Normative audit standard:** [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md) — mandatory for current-state audits, module directory structure, repository/Production evidence requirements, Production read-only safety, and promotion from `AUDIT_IN_PROGRESS` to `AUTHORITY_ACTIVE`.
 
-**Last updated:** 2026-09-06 (registry bootstrap + coverage-status model + module authority standard)
+**Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
+
+**Last updated:** 2026-09-06 (registry synchronization gate + central validator)
 
 ---
 
@@ -45,6 +47,30 @@ NOT_STARTED → AUDIT_IN_PROGRESS → AUTHORITY_ACTIVE → SUPERSEDED
 ```
 
 Transition arrows are **not** automatic. Each transition requires the gates defined in [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). All future repository-wide inventory rows begin as `NOT_STARTED` unless a usable authority is verified. Finding flat `architecture/*.md` documents does **not** satisfy the standard.
+
+### Inventory placeholder semantics (future repository-wide inventory)
+
+When modules are added in the separate inventory workstream:
+
+| Field | `NOT_STARTED` placeholder |
+|-------|---------------------------|
+| Registry coverage status | `NOT_STARTED` |
+| Authority-native status | `N/A — inventory only` |
+| Authority path | `—` |
+| Transition on reconstruction | Set `AUDIT_IN_PROGRESS` as soon as authority reconstruction begins |
+
+Do not add undiscovered modules in governance-only PRs.
+
+### Registry synchronization protocol
+
+After **every substantive module workstream**:
+
+1. Re-read the overview row and detailed section for **each affected module**.
+2. Modify this registry **only when registry facts changed** (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
+3. `AUTHORITY_ACTIVE` does **not** change merely because implementation code changed.
+4. Report every affected module as `UPDATED` or `UNCHANGED` with before/after coverage status and reason. `UNCHANGED` requires an explicit review — never skip.
+5. Cross-module work requires **independent review** of all affected rows.
+6. Run `bash architecture/scripts/validate-module-registry.sh` before completion.
 
 ### Knowledge classification axes (authority artifacts)
 
@@ -237,9 +263,13 @@ A workstream is **not complete** until:
 - [ ] BEFORE / WHY / CHANGE / alternatives / expected effect / validation / observed effect / non-effects / tradeoffs / gaps recorded where applicable
 - [ ] Open questions and contradictions updated — not silently deleted
 - [ ] Cross-module boundaries consulted; every owning authority updated for cross-cutting changes
-- [ ] Applicable authority validators run (or limitation documented if validators require unavailable runtime deps)
-- [ ] Final agent report states which authorities and change records were updated
-- [ ] This registry updated if registry coverage status, authority-native status, entry documents, validation commands, or boundaries changed
+- [ ] Applicable module authority validators run (or limitation documented if validators require unavailable runtime deps)
+- [ ] **Registry synchronization** completed for every affected module (see [Registry synchronization protocol](#registry-synchronization-protocol))
+- [ ] Registry metadata reviewed: module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated
+- [ ] Each affected module reported as `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` with before/after coverage status and reason
+- [ ] Central registry validator passes: `bash architecture/scripts/validate-module-registry.sh`
+- [ ] Final agent report includes `ARCHITECTURE_GOVERNANCE` completion block (see [`.cursor/rules/Architectur-Updates.mdc`](../.cursor/rules/Architectur-Updates.mdc))
+- [ ] This registry updated **only if** any reviewed metadata fact changed
 
 ---
 

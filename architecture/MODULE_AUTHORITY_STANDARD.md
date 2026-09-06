@@ -404,6 +404,10 @@ Must define:
 - mandatory read-first sequence
 - substantive-change definition
 - same-workstream/PR documentation duty
+- **module-authority maintenance duty**
+- **same-PR registry synchronization duty** (re-read overview row + detail section; update registry only when facts changed)
+- **mandatory final registry-review result** (`UPDATED` or `UNCHANGED` per affected module, with before/after coverage status and reason)
+- **cross-module registry review** (one result per affected module)
 - ownership boundaries
 - prohibited silent changes
 - evidence requirements
@@ -411,6 +415,7 @@ Must define:
 - stable-ID policy
 - Production mutation prohibition
 - validation commands
+- **central registry validator command:** `bash architecture/scripts/validate-module-registry.sh`
 - completion report requirements
 
 ### `KNOWLEDGE_GRAPH.md`
@@ -671,7 +676,7 @@ For pre-existing authorities:
 
 ## 8. Definition of done for a current-state audit
 
-A current-state audit is **not complete** until:
+A current-state audit or substantive authority workstream is **not complete** until:
 
 - [ ] registry coverage status handled correctly (`NOT_STARTED` → `AUDIT_IN_PROGRESS` → promotion only via gate)
 - [ ] repository SHA captured
@@ -685,6 +690,17 @@ A current-state audit is **not complete** until:
 - [ ] evidence indexed with correct source types
 - [ ] gaps, contradictions, and hypotheses separated
 - [ ] human and machine graphs aligned
-- [ ] validator and link checks passing
-- [ ] registry entry updated in [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](SYNQDRIVE_RENTAL_ARCHITECTURE.md)
+- [ ] module authority validators pass
+- [ ] central registry validator passes: `bash architecture/scripts/validate-module-registry.sh`
+- [ ] registry entry updated in [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](SYNQDRIVE_RENTAL_ARCHITECTURE.md) when registry facts changed
+- [ ] **registry review recorded** for every affected module:
+  - affected module name
+  - authority files updated
+  - registry fields reviewed
+  - registry result: `UPDATED` or `UNCHANGED`
+  - coverage status before and after
+  - reason for no registry change (when `UNCHANGED`)
+  - validator result
 - [ ] final response lists files created/updated, evidence sources, limitations, and status transition
+
+`UNCHANGED` is valid **only after an explicit review** — it must never mean the registry was skipped.
