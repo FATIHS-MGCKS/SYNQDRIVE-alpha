@@ -84,6 +84,13 @@ import {
 } from './trip-lifecycle-recovery.service';
 import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
 import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import {
+  enqueueStableTripTrackingJob,
+} from './trip-tracking-queue.util';
+import {
+  isTripTrackingHandoffJob,
+  TripTrackingHandoffLockContentionError,
+} from './trip-tracking-lock-contention';
 import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
@@ -482,10 +489,8 @@ export class TripDetectionOrchestrationService {
    * Enqueue a trip-tracking job with a stable per-vehicle/phase/trip jobId so
    * concurrent schedule calls do not pile up duplicate BullMQ jobs.
    *
-   * Completed jobs are removed (`removeOnComplete`) so legitimate follow-up
-   * ticks can reuse the same id after the previous run finishes. When the
-   * matching job is still active (self-reschedule from inside the worker),
-   * enqueue is deferred to the next event-loop turn.
+   * R3A: when the primary job is still ACTIVE (self-reschedule), a durable
+   * successor slot (`${jobId}__succ`) is used instead of one-shot setImmediate.
    */
   private async enqueueTripTrackingJob(
     phase: TripTrackingSchedulePhase,
@@ -496,7 +501,6 @@ export class TripDetectionOrchestrationService {
     opts?: {
       delayMs?: number;
       activeTripId?: string | null;
-      allowDeferIfActive?: boolean;
     },
   ): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
@@ -510,76 +514,31 @@ export class TripDetectionOrchestrationService {
 
     const jobId = this.tripTrackingJobId(phase, vehicleId, activeTripId);
     const delayMs = opts?.delayMs ?? 0;
-    const allowDeferIfActive = opts?.allowDeferIfActive !== false;
 
-    const attemptAdd = async (): Promise<void> => {
-      try {
-        const existing = await this.trackingQueue.getJob(jobId);
-        if (existing) {
-          const state = await existing.getState();
-          if (state === 'failed' || state === 'completed') {
-            await existing.remove();
-          } else if (state === 'waiting' || state === 'delayed') {
-            this.logger.debug(
-              `Trip tracking job not re-enqueued (already queued): jobId=${jobId} state=${state} trigger=${trigger}`,
-            );
-            return;
-          } else if (state === 'active') {
-            if (allowDeferIfActive) {
-              this.logger.debug(
-                `Trip tracking job deferred until active job completes: jobId=${jobId} trigger=${trigger}`,
-              );
-              setImmediate(() => {
-                void this.enqueueTripTrackingJob(
-                  phase,
-                  vehicleId,
-                  organizationId,
-                  dimoTokenId,
-                  trigger,
-                  { delayMs, activeTripId, allowDeferIfActive: false },
-                );
-              });
-              return;
-            }
-            this.logger.debug(
-              `Trip tracking job not re-enqueued (still active): jobId=${jobId} trigger=${trigger}`,
-            );
-            return;
-          }
-        }
+    const outcome = await enqueueStableTripTrackingJob({
+      queue: this.trackingQueue,
+      jobName: 'trip-tracking',
+      jobId,
+      data: {
+        vehicleId,
+        organizationId,
+        dimoTokenId,
+        trigger,
+        requestedAt: new Date().toISOString(),
+      },
+      trigger,
+      delayMs,
+    });
 
-        await this.trackingQueue.add(
-          'trip-tracking',
-          {
-            vehicleId,
-            organizationId,
-            dimoTokenId,
-            trigger,
-            requestedAt: new Date().toISOString(),
-          } satisfies TripTrackingJobData,
-          {
-            delay: delayMs,
-            jobId,
-            removeOnComplete: true,
-            removeOnFail: 5,
-          },
-        );
-      } catch (err: unknown) {
-        const msg = (err as Error).message ?? '';
-        if (
-          msg.toLowerCase().includes('duplicate') ||
-          msg.toLowerCase().includes('already exists')
-        ) {
-          this.logger.debug(
-            `Trip tracking job not re-enqueued (duplicate jobId): jobId=${jobId} trigger=${trigger}`,
-          );
-          return;
-        }
-        throw err;
-      }
-    };
-
-    await attemptAdd();
+    if (outcome === 'skipped') {
+      this.logger.debug(
+        `Trip tracking job not re-enqueued (already queued): jobId=${jobId} trigger=${trigger}`,
+      );
+    } else if (outcome === 'successor') {
+      this.logger.debug(
+        `Trip tracking successor scheduled: primary=${jobId} successor=${jobId}__succ trigger=${trigger} delayMs=${delayMs}`,
+      );
+    }
   }
 
   async schedulePossibleStart(
@@ -834,6 +793,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_START ${vehicleId}`);
       return;
     }
@@ -843,7 +805,16 @@ export class TripDetectionOrchestrationService {
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
-      if (det.state !== TripDetectionState.POSSIBLE_START) return;
+      if (det.state !== TripDetectionState.POSSIBLE_START) {
+        if (
+          (det.state === TripDetectionState.ACTIVE_TRIP ||
+            det.state === TripDetectionState.IDLE_WITHIN_TRIP) &&
+          det.activeTripId
+        ) {
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+        }
+        return;
+      }
 
       const earlyRecovery = await this.maybeRecoverLifecycleInvariant({
         det,
@@ -1160,6 +1131,8 @@ export class TripDetectionOrchestrationService {
             },
           );
 
+          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+
           this.fetchAndStoreStartTemperature(
             dimoTokenId,
             trip.id,
@@ -1181,22 +1154,26 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: delayed START_DIP_PROXY job (policy-gated in producer).
           const orgId = det.organizationId;
           if (orgId) {
-            await this.batteryTripStartProducer.enqueueStartProxy({
-              organizationId: orgId,
-              vehicleId,
-              tripId: trip.id,
-              tripStartedAt: effectiveStartAt,
-            });
+            try {
+              await this.batteryTripStartProducer.enqueueStartProxy({
+                organizationId: orgId,
+                vehicleId,
+                tripId: trip.id,
+                tripStartedAt: effectiveStartAt,
+              });
+            } catch (e) {
+              this.logger.warn(
+                `Battery start-proxy enqueue failed for trip ${trip.id}: ${e}`,
+              );
+            }
           } else {
             this.logger.warn(
               `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
             );
           }
 
-          await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           this.logger.log(
             `ACTIVE_TRIP confirmed: vehicle=${vehicleId} trip=${trip.id} mode=${confirmMode}` +
               ` [${profileStr}] startSource=${resolvedStart.source}` +
@@ -1248,14 +1225,21 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`POSSIBLE_START error for ${vehicleId}: ${err}`);
-      await this.logTrackingRun({
-        vehicleId,
-        organizationId,
-        stateAtRun: TripDetectionState.POSSIBLE_START,
-        runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        durationMs: Date.now() - startedMs,
-      }).catch(() => {});
+      try {
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          stateAtRun: TripDetectionState.POSSIBLE_START,
+          runType: TripTrackingRunType.POSSIBLE_START_VALIDATION,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          durationMs: Date.now() - startedMs,
+        });
+      } catch (logErr) {
+        this.logger.warn(
+          `POSSIBLE_START diagnostic log failed for ${vehicleId}: ${logErr}`,
+        );
+      }
+      throw err;
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
     }
@@ -1269,6 +1253,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for ACTIVE_TICK ${vehicleId}`);
       return;
     }
@@ -2109,6 +2096,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for POSSIBLE_END_CHECK ${vehicleId}`);
       return;
     }
@@ -2332,6 +2322,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for END_VALIDATION ${vehicleId}`);
       return;
     }
@@ -2561,6 +2554,9 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
+      if (isTripTrackingHandoffJob(data)) {
+        throw new TripTrackingHandoffLockContentionError();
+      }
       this.logger.debug(`Lock not acquired for FINALIZE ${vehicleId}`);
       return;
     }

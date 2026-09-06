@@ -9,12 +9,22 @@ export const TRIP_TRACKING_TRIGGERS = {
 export type TripTrackingTrigger =
   (typeof TRIP_TRACKING_TRIGGERS)[keyof typeof TRIP_TRACKING_TRIGGERS];
 
+export const TRIP_TRACKING_HANDOFF_KINDS = {
+  STABLE_SUCCESSOR: 'stable_successor',
+} as const;
+
+export type TripTrackingHandoffKind =
+  (typeof TRIP_TRACKING_HANDOFF_KINDS)[keyof typeof TRIP_TRACKING_HANDOFF_KINDS];
+
 export interface TripTrackingJobData {
   vehicleId: string;
   organizationId: string | null;
   dimoTokenId: number;
   trigger: TripTrackingTrigger;
   requestedAt: string;
+  /** R3B: explicit durable successor scheduled while primary jobId is ACTIVE. */
+  handoffKind?: TripTrackingHandoffKind;
+  handoffPrimaryJobId?: string;
 }
 
 export const START_DETECTION_MODES = {

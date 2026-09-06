@@ -36,6 +36,32 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r3-start-liveness-ordering-2026-09-06',
+    version: '4.9.1070',
+    title: 'Trip FSM R3 — Start Liveness Ordering',
+    summary: [
+      'POSSIBLE_START execution failures rethrow to BullMQ — no more silent SUCCESS on infrastructure errors.',
+      'Bounded fast retry for POSSIBLE_START only: 4 attempts, exponential 5s backoff (orchestration + recovery scheduler).',
+      'R1 confirmation clocks preserved across retries — possibleStartEnteredAt not reset on failure.',
+      'Primary ACTIVE_TICK scheduled before Battery start proxy; Battery failure contained after liveness established.',
+      'ACTIVE-state POSSIBLE_START replay ensures missing ACTIVE_TICK handoff without lifecycle mutation.',
+      'R3A: durable __succ successor slot for ACTIVE self-reschedule (30s NOT_CONFIRMED follow-up); recovery FAILED jobId recycled for later 120s wakes.',
+      'R3B: handoff successors defer via BullMQ moveToDelayed + DelayedError when predecessor worker lock still held — no silent consumption.',
+      'R3C: handoff successors also defer until predecessor BullMQ job settles (ACTIVE/WAITING/DELAYED/etc.) — preserves two-slot generation ping-pong.',
+      'R2 early lifecycle recovery preserved at processPossibleStart entry.',
+      'No threshold, polling, CUSUM, end policy, mid-gap, or R1/R2 semantic changes.',
+    ],
+    reason:
+      'P6 remediation package R3 — P4-F11 execution failure visibility + fast retry; P4-F12 primary tracking liveness before Battery ancillary.',
+    previousBehavior:
+      'processPossibleStart caught exceptions and returned normally (BullMQ SUCCESS); Battery proxy awaited before ACTIVE_TICK.',
+    details:
+      'docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md; trip-tracking-queue.util.ts + processPossibleStart ordering.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T20:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r2-lifecycle-invariants-2026-09-06',
     version: '4.9.1069',
     title: 'Trip FSM R2 — Lifecycle Commit & Orphan Recovery Invariants',
