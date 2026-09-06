@@ -6,9 +6,120 @@
 |------|------|
 | `backend/` | NestJS modular monolith, Prisma, workers, DIMO/HM integrations |
 | `frontend/` | Vite + React SPA (rental, master, operator surfaces) |
-| `architecture/` | In-repo architecture change records |
+| `architecture/` | Canonical module authorities, knowledge graphs, and supporting change records |
 | `.cursor/rules/` | Project engineering rules (always apply) |
 | `.cursor/scripts/` | Cloud Agent bootstrap + VPS deploy helpers |
+
+## Mandatory architecture-first workflow
+
+Before inspecting or changing any SynqDrive module, every agent **must** follow this workflow.
+
+**Normative audit standard:** Every `NOT_STARTED` or `AUDIT_IN_PROGRESS` module audit must read and follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) **before** auditing or creating authority files. Detailed audit rules, mandatory file structure, Production read-only safety, and the `AUTHORITY_ACTIVE` promotion gate live in that standard — this section provides routing only.
+
+### 1. Read the central registry first
+
+Read [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) before substantive module work.
+
+### 2. Find the module and check registry coverage status
+
+Find the affected module in the registry overview table and read its **registry coverage status**. Listing alone does not mean a usable authority exists.
+
+| Registry status | Agent action |
+|-----------------|--------------|
+| **`AUTHORITY_ACTIVE`** | Read all mandatory authority entry documents before substantive work (see §3). |
+| **`NOT_STARTED`** | Module is inventoried only — treat as having no authority; read and execute [`MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) before substantive work (see §4). |
+| **`AUDIT_IN_PROGRESS`** | Read existing partial audit artifacts; continue under [`MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md); do not treat partial docs as complete authority (see §5). |
+| **`SUPERSEDED`** | Do not extend the superseded authority; follow the successor pointer (see §6). |
+
+Registry coverage status is separate from each authority’s native lifecycle, maturity, epistemic, and validation statuses.
+
+### 3. If registry status is `AUTHORITY_ACTIVE`
+
+- Read all mandatory authority entry documents listed in the registry.
+- Inspect scope boundaries, current state, invariants, decisions, evidence, contradictions, open questions, and validation commands.
+- Update the authority in the **same workstream/PR** when the change is substantive.
+
+### 4. If registry status is `NOT_STARTED`
+
+The module is only inventoried and must be treated like a module with **no authority**. A listed `NOT_STARTED` module must **never** be treated as already understood, documented, audited, or safe to change based only on its registry entry.
+
+Before substantive implementation:
+
+1. Read and follow [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) completely.
+2. Set registry status to `AUDIT_IN_PROGRESS` when reconstruction begins.
+3. Perform the **repository current-state audit** and, for runtime-bearing modules, a **read-only Production-VPS audit** per the standard.
+4. Treat `origin/main` and deployed Production as **separate baselines**; record and reconcile drift.
+5. If Production access is unavailable, record the non-secret blocker in `AUDIT_MANIFEST.md` / `evidence/PRODUCTION_BASELINE.md` — do **not** invent runtime facts.
+6. Do **not** promote a deployed runtime-bearing module to `AUTHORITY_ACTIVE` without the required Production audit (`VERIFIED_READ_ONLY`, or justified `PRODUCTION_NOT_APPLICABLE` / `NOT_DEPLOYED`).
+7. Production audits are **read-only by default**. Never deploy, restart processes, modify flags, mutate data, reprocess events, enqueue jobs, run migrations, or modify Production during an audit without **separate, explicit user authorization**.
+8. Create authority artifacts per the standard’s mandatory directory structure; use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural reference.
+9. Classify knowledge on **three separate axes** (never merge into one field):
+   - **Registry coverage status** — `NOT_STARTED`, `AUDIT_IN_PROGRESS`, `AUTHORITY_ACTIVE`, `SUPERSEDED`
+   - **Epistemic state** — for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`
+   - **Decision / validation status** — for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`
+   Follow the owning module authority’s exact schema where it defines equivalent vocabulary.
+10. Promote to `AUTHORITY_ACTIVE` only when the standard’s promotion gate is satisfied.
+11. Update the module’s registry row and detailed authority section in the **same workstream/PR**.
+
+Agents have repository access and are expected to have configured Production-VPS access. Verify with `bash .cursor/scripts/cloud-agent-verify-vps.sh` before Production inspection.
+
+### 5. If registry status is `AUDIT_IN_PROGRESS`
+
+- Read and continue under [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md).
+- Read all existing partial audit artifacts.
+- Do **not** treat them as complete authority.
+- Complete missing repository and Production audit surfaces required for the task.
+- Explicitly preserve unresolved gaps and uncertainty.
+- Do **not** silently set `AUTHORITY_ACTIVE` merely because files exist.
+
+### 6. If registry status is `SUPERSEDED`
+
+- Do **not** extend the superseded authority.
+- Follow the successor pointer in the registry.
+- Preserve the superseded entry for historical navigation.
+
+### 7. If the module is entirely absent from the inventory
+
+- Add an inventory row with initial registry status `NOT_STARTED` (module name, mini description, registry status).
+- Then read and execute [`architecture/MODULE_AUTHORITY_STANDARD.md`](architecture/MODULE_AUTHORITY_STANDARD.md) when substantive work is requested.
+
+### 8. Supporting documents are evidence, not default authority
+
+Root-level architecture phase/change documents (for example `architecture/P1_*`, `architecture/BATTERY_V2_*`, `architecture/FUEL_STATION_*`) are **supporting evidence** unless a registered authority explicitly designates them as current authority. Do not infer that a module is documented merely because flat `architecture/*.md` files mention it.
+
+### 9. During and after work
+
+- **Code and verified runtime evidence** remain the source of truth for current behavior.
+- The **registered authority** is the canonical architectural memory and navigation layer.
+- Conflicts between code and documentation must be **recorded and resolved** — never silently overwritten.
+- Cross-module changes require consultation and updates of **every owning authority**.
+- Substantive behavior/architecture/signal/lifecycle/calculation/queue/worker/integration/persistence/API/UI-contract changes must update the affected authority in the **same workstream/PR**.
+- Preserve **BEFORE**, **WHY**, **CHANGE**, alternatives, expected effect, validation, observed effect, non-effects, tradeoffs, remaining gaps, and evidence where applicable.
+- Run applicable authority validators.
+- The final report must state which architecture authorities and change records were updated.
+
+#### Registry synchronization gate
+
+After substantive work, before declaring the task complete:
+
+1. Determine every **affected module** from the final diff.
+2. Update every affected **module authority** in the same PR when the change is substantive.
+3. Re-read each affected registry **overview row** after the authority update.
+4. For `AUTHORITY_ACTIVE` modules, also re-read the **mandatory detailed authority section**. For `AUDIT_IN_PROGRESS`, review partial detail/authority material when present. `NOT_STARTED` has no active detailed section. `SUPERSEDED` follows its historical section and successor pointer.
+5. Update the central registry **only if** any listed metadata changed (module name, mini description, registry coverage status, authority-native status, authority path, scope, boundaries, mandatory entry documents, validation commands, successor, Last updated).
+6. Explicitly report `REGISTRY_REVIEWED: UPDATED` or `REGISTRY_REVIEWED: UNCHANGED` for **every** affected module, with before/after registry coverage status and reason.
+7. Run the central registry validator: `bash architecture/scripts/validate-module-registry.sh`
+8. A missing registry review result is **incomplete work**.
+
+**Important:**
+
+- An ordinary change to an `AUTHORITY_ACTIVE` module normally leaves it `AUTHORITY_ACTIVE`.
+- Registry coverage status expresses documentation/authority coverage, **not** feature maturity.
+- Authority-native, epistemic, and decision/validation statuses remain **separate axes**.
+- Never promote or downgrade a module merely because files or implementation changes exist.
+- Cross-module changes require **one review result per affected module**.
+
+See [`.cursor/rules/Architectur-Updates.mdc`](.cursor/rules/Architectur-Updates.mdc) for the mandatory `ARCHITECTURE_GOVERNANCE` completion report contract.
 
 ## Local development (reference)
 
