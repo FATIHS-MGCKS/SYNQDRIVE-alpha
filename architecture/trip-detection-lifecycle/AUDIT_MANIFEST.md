@@ -13,7 +13,7 @@
 | Baseline | SHA / identifier | Notes |
 |----------|------------------|-------|
 | **Repository audited** | `06095af91ce6f58366734a182ac5962830e858db` | `origin/main` at audit start (2026-09-07) |
-| **Audit branch** | `a36db67a3` on `docs/trip-detection-lifecycle-authority-bootstrap-64c8` | Documentation-only |
+| **Audit branch** | `5f2185ba2` on `cursor/trip-detection-lifecycle-authority-bootstrap-64c8` | Documentation-only |
 | **Production release** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` | Release dir `20260906213654_v4994`; PR #1550 merge |
 | **Production symlink** | `/opt/synqdrive/current` → `/opt/synqdrive/releases/20260906213654_v4994` | Observed 2026-09-07 UTC |
 
