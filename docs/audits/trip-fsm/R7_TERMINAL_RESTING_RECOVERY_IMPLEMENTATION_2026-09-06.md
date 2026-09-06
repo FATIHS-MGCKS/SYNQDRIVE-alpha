@@ -144,3 +144,58 @@ Historical: before R2 P5-F05 was OPEN; after R2 recovery path present at schedul
 | `trip-terminal-resting-recovery-r7.spec.ts` | Crash matrix + R2 contract tests |
 
 Future canonical target: `architecture/trip-fsm/` (not created in R7).
+
+---
+
+## R7A — Terminal Mutation Commit-Ambiguity Closure
+
+| Field | Value |
+|-------|-------|
+| Scope | P5-F05 / INV-08 — promise rejection != terminal rollback proof |
+| Module | `trip-terminal-lifecycle-commit.util.ts` |
+
+### Terminal intent vs terminal commit
+
+| Field | Values | Set when |
+|-------|--------|----------|
+| `terminalLifecycleIntent` | `NONE` \| `COMPLETE` \| `CANCEL` | immediately before `finalizeTrip()` / `discardTrip()` |
+| `terminalLifecycleCommit` | `NONE` \| `COMPLETED` \| `CANCELLED` | only after lifecycle mutation promise resolves |
+
+### Durable terminal outcome classifier
+
+On catch when `terminalLifecycleCommit === NONE` and `terminalLifecycleIntent !== NONE`, orchestration performs a fresh PostgreSQL read (not the stale pre-mutation trip object).
+
+| Outcome | Proof | Recovery wake |
+|---------|-------|---------------|
+| `NOT_TERMINAL` | attempted mutation but trip still `ONGOING` | none required |
+| `TERMINAL_EXPECTED` | `COMPLETE`→`COMPLETED` or `CANCEL`→`CANCELLED` | immediate `scheduleFinalize` |
+| `AMBIGUOUS` | missing row, read failure, contradictory status | fail-closed `scheduleFinalize` |
+
+Recovery FINALIZE still begins with `maybeRecoverLifecycleInvariant()` → `RECOVERABLE_END_ORPHAN` → `RESET_TO_RESTING`. No second terminal mutation in the same invocation.
+
+### DecisionEngine post-write logger containment
+
+`finalizeTrip()` and `discardTrip()` wrap post-`vehicleTrip.update` logging in try/catch (R6A pattern). DB write failures still propagate.
+
+### Stable FINALIZE successor (R7A.16)
+
+Recovery wake reuses `scheduleFinalize()` → `enqueueStableTripTrackingJob`. While primary `trip-fin-{vehicleId}-{tripId}` is ACTIVE, repeated wakes use successor `__succ` with `handoffKind=stable_successor`.
+
+### Finding status (post-R7A)
+
+| ID | Status |
+|----|--------|
+| P5-F05 | **RESOLVED_BY_R2_R7** |
+| INV-08 | **CLOSED** — COMPLETED and CANCELLED committed-but-rejected ambiguity tests pass |
+
+### Files added/changed (R7A)
+
+| File | Role |
+|------|------|
+| `trip-terminal-lifecycle-commit.util.ts` | Durable terminal classifier + recovery wake resolver |
+| `trip-detection.types.ts` | `TerminalLifecycleIntent` |
+| `trip-detection-orchestration.service.ts` | Intent tracking + durable reread in catch |
+| `trip-decision.engine.ts` | Non-poisoning finalize/discard loggers |
+| `trip-terminal-resting-recovery-r7a.spec.ts` | COMPLETED/CANCELLED ambiguity orchestration |
+| `trip-decision.engine.terminal-r7a.spec.ts` | Logger containment tests |
+| `trip-terminal-resting-recovery-r7a-queue.spec.ts` | Stable FINALIZE successor integration |

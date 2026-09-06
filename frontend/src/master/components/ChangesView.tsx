@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r7a-terminal-commit-ambiguity-2026-09-06',
+    version: '4.9.1079',
+    title: 'Trip FSM R7A — Terminal Mutation Commit-Ambiguity Closure',
+    summary: [
+      'TerminalLifecycleIntent NONE/COMPLETE/CANCEL tracked before finalizeTrip/discardTrip; commit only after promise resolves.',
+      'Rejected terminal mutation promise triggers durable PostgreSQL reread — NOT_TERMINAL / TERMINAL_EXPECTED / AMBIGUOUS.',
+      'TERMINAL_EXPECTED and AMBIGUOUS schedule immediate scheduleFinalize recovery; NOT_TERMINAL preserves pre-commit semantics.',
+      'finalizeTrip/discardTrip post-write logger non-poisoning (R6A pattern).',
+      'Stable FINALIZE successor proof while primary ACTIVE (trip-fin-{vehicle}-{trip}__succ).',
+    ],
+    reason:
+      'R7A closure — terminal DB write may commit before logger/promise rejection; promise rejection != rollback proof.',
+    previousBehavior:
+      'Rejected finalizeTrip/discardTrip left terminalLifecycleCommit NONE and skipped immediate recovery even when trip was already COMPLETED/CANCELLED.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md § R7A; trip-terminal-lifecycle-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T15:30:00.000Z',
+  },
+  {
     id: 'trip-fsm-r7-terminal-resting-recovery-2026-09-06',
     version: '4.9.1078',
     title: 'Trip FSM R7 — Terminal RESTING Recovery Hardening',

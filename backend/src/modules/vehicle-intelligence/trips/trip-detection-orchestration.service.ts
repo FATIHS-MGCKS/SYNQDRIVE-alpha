@@ -36,6 +36,7 @@ import {
   type WorkerLockResult,
   type StartDetectionMode,
   type TerminalLifecycleCommit,
+  type TerminalLifecycleIntent,
 } from './trip-detection.types';
 import {
   // evaluateSnapshotEvidence → SnapshotEvidenceEvaluator (Phase 2 seam, done)
@@ -101,6 +102,10 @@ import {
   readDurableLiveSplitOutcome,
   type DurableLiveSplitOutcome,
 } from './trip-mid-gap-split-commit.util';
+import {
+  readDurableTerminalOutcome,
+  resolveTerminalRestingRecoveryWake,
+} from './trip-terminal-lifecycle-commit.util';
 import {
   assessSuccessfulEmptyCoreEndEligibility,
 } from './trip-empty-core-end-gate';
@@ -2855,6 +2860,7 @@ export class TripDetectionOrchestrationService {
     let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
       null;
     let terminalLifecycleCommit: TerminalLifecycleCommit = 'NONE';
+    let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
     let terminalTripId: string | null = null;
     let restingTransitionSucceeded = false;
 
@@ -2938,12 +2944,13 @@ export class TripDetectionOrchestrationService {
           const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
 
           if (qualityCheck.shouldDiscard) {
+            terminalLifecycleIntent = 'CANCEL';
+            terminalTripId = tripId;
             await this.decisionEngine.discardTrip(
               tripId,
               qualityCheck.reason ?? 'quality_check_failed',
             );
             terminalLifecycleCommit = 'CANCELLED';
-            terminalTripId = tripId;
             // Smart cooldown: discard → short 30s cooldown
             restingReason = 'discard';
             this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
@@ -2956,6 +2963,8 @@ export class TripDetectionOrchestrationService {
               det.lastEvidenceSummary as Record<string, unknown> | null,
               det.endValidationAttempts ?? 0,
             );
+            terminalLifecycleIntent = 'COMPLETE';
+            terminalTripId = tripId;
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
               endDetectionMode:
@@ -3118,25 +3127,47 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`FINALIZE error for ${vehicleId}: ${err}`);
+
+      let durableTerminalOutcome = null;
       if (
-        terminalLifecycleCommit !== 'NONE' &&
-        !restingTransitionSucceeded &&
+        terminalLifecycleCommit === 'NONE' &&
+        terminalLifecycleIntent !== 'NONE' &&
         terminalTripId
       ) {
+        durableTerminalOutcome = await readDurableTerminalOutcome(this.prisma, {
+          intent: terminalLifecycleIntent,
+          tripId: terminalTripId,
+        });
+      }
+
+      const recovery = resolveTerminalRestingRecoveryWake({
+        restingTransitionSucceeded,
+        terminalTripId,
+        terminalLifecycleCommit,
+        terminalLifecycleIntent,
+        durableOutcome: durableTerminalOutcome,
+      });
+
+      if (recovery.shouldWake && terminalTripId) {
         try {
           await this.scheduleFinalize(
             vehicleId,
             organizationId,
             data.dimoTokenId,
           );
+          const commitLabel =
+            recovery.effectiveCommit !== 'NONE'
+              ? recovery.effectiveCommit
+              : `AMBIGUOUS(${terminalLifecycleIntent})`;
           this.logger.warn(
             `FINALIZE terminal orphan recovery wake scheduled vehicle=${vehicleId} ` +
-              `trip=${terminalTripId} commit=${terminalLifecycleCommit}`,
+              `trip=${terminalTripId} commit=${commitLabel}` +
+              (durableTerminalOutcome ? ` durable=${durableTerminalOutcome}` : ''),
           );
         } catch (enqueueErr) {
           this.logger.warn(
             `FINALIZE terminal orphan recovery enqueue failed vehicle=${vehicleId} ` +
-              `trip=${terminalTripId} commit=${terminalLifecycleCommit}: ${enqueueErr}`,
+              `trip=${terminalTripId}: ${enqueueErr}`,
           );
         }
       }
