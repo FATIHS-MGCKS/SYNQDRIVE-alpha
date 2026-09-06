@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +33,8 @@ const REQUIRED_COLUMNS = [
 ];
 
 const OVERVIEW_HEADING = '## Module inventory overview';
-const NOT_STARTED_NATIVE_CANONICAL = 'n/a - inventory only';
+const NOT_STARTED_NATIVE_EXACT = 'N/A — inventory only';
+const NOT_STARTED_PATH_EXACT = '—';
 
 function findRepoRoot(startDir) {
   let dir = path.resolve(startDir);
@@ -63,21 +65,12 @@ function normalizeWhitespace(s) {
   return s.replace(/\s+/g, ' ').trim();
 }
 
-function normalizeDashVariants(s) {
-  return normalizeWhitespace(s).replace(/[–—]/g, '-');
+function isExactNotStartedNativeStatus(s) {
+  return normalizeWhitespace(s) === NOT_STARTED_NATIVE_EXACT;
 }
 
-function normalizeNativeInventoryStatus(s) {
-  return normalizeDashVariants(s).toLowerCase();
-}
-
-function isNotStartedNativeStatus(s) {
-  return normalizeNativeInventoryStatus(s) === NOT_STARTED_NATIVE_CANONICAL;
-}
-
-function isPathPlaceholderCell(s) {
-  const t = normalizeWhitespace(s);
-  return t === '—' || t === '–' || t === '-';
+function isExactNotStartedPathPlaceholder(cell) {
+  return normalizeWhitespace(cell) === NOT_STARTED_PATH_EXACT;
 }
 
 function extractBacktickStatus(cell) {
@@ -154,11 +147,11 @@ function parseMarkdownTableAfterHeading(content, heading, errors, label = 'overv
 
 function extractAuthorityPathRaw(cell) {
   const trimmed = cell.trim();
-  if (!trimmed || isPathPlaceholderCell(trimmed)) return null;
+  if (!trimmed || isExactNotStartedPathPlaceholder(trimmed)) return null;
   if (/^https?:\/\//i.test(trimmed)) return { raw: trimmed, isUrl: true };
   const link = trimmed.match(/\]\(([^)]+)\)/);
   const target = link ? link[1].split('#')[0].trim() : trimmed.replace(/^`+|`+$/g, '');
-  if (!target || isPathPlaceholderCell(target)) return null;
+  if (!target || isExactNotStartedPathPlaceholder(target)) return null;
   return { raw: target, isUrl: /^https?:\/\//i.test(target) };
 }
 
@@ -170,7 +163,27 @@ function normalizeAuthorityRelPath(p) {
   return `${s}/`;
 }
 
-function resolveAuthorityPath(repoRoot, registryDir, raw, moduleName, errors, context) {
+function getRealPaths(repoRoot) {
+  const repoRootReal = fs.realpathSync(repoRoot);
+  const archRootReal = fs.realpathSync(path.join(repoRoot, 'architecture'));
+  return { repoRootReal, archRootReal };
+}
+
+function assertRealpathContained(realPath, repoRootReal, archRootReal, moduleName, errors, context) {
+  const relRepo = path.relative(repoRootReal, realPath);
+  if (relRepo.startsWith('..') || path.isAbsolute(relRepo)) {
+    errors.push(`${context} "${moduleName}": resolved authority path escapes repository (realpath)`);
+    return false;
+  }
+  const relArch = path.relative(archRootReal, realPath);
+  if (relArch.startsWith('..') || path.isAbsolute(relArch)) {
+    errors.push(`${context} "${moduleName}": resolved authority path must remain beneath architecture/ (realpath)`);
+    return false;
+  }
+  return true;
+}
+
+function resolveAuthorityPath(repoRoot, registryDir, raw, moduleName, errors, context, realPaths = null) {
   if (/^https?:\/\//i.test(raw)) {
     errors.push(`${context} "${moduleName}": authority path must not be an external URL -> ${raw}`);
     return null;
@@ -195,9 +208,27 @@ function resolveAuthorityPath(repoRoot, registryDir, raw, moduleName, errors, co
     errors.push(`${context} "${moduleName}": authority path must be a directory -> ${raw}`);
     return null;
   }
+
+  const { repoRootReal, archRootReal } = realPaths ?? getRealPaths(repoRoot);
+  let resolvedReal;
+  try {
+    resolvedReal = fs.realpathSync(resolved);
+  } catch {
+    errors.push(`${context} "${moduleName}": authority path could not be resolved -> ${raw}`);
+    return null;
+  }
+  if (!assertRealpathContained(resolvedReal, repoRootReal, archRootReal, moduleName, errors, context)) {
+    return null;
+  }
+  if (!fs.statSync(resolvedReal).isDirectory()) {
+    errors.push(`${context} "${moduleName}": resolved authority path must be a directory -> ${raw}`);
+    return null;
+  }
+
   return {
     raw,
     resolved,
+    resolvedReal,
     normalized: normalizeAuthorityRelPath(raw),
   };
 }
@@ -216,11 +247,50 @@ function parseDetailSections(content) {
   return sections;
 }
 
-function findDetailSectionForModule(moduleName, sections) {
-  const base = moduleName.replace(/\s*\([^)]*\)\s*$/, '').trim();
-  return sections.find(
-    (s) => s.title === moduleName || s.title.startsWith(moduleName) || s.title.startsWith(base),
-  );
+function detailTitleMatchesModule(moduleName, detailTitle) {
+  const mod = normalizeWhitespace(moduleName);
+  const det = normalizeWhitespace(detailTitle);
+  if (mod === det) return true;
+  if (det.startsWith(`${mod} — `)) return true;
+  if (det.startsWith(`${mod} (`)) return true;
+  return false;
+}
+
+function buildDetailSectionIndex(moduleNames, sections, errors) {
+  const index = new Map();
+  const sectionOwners = new Map();
+
+  for (const moduleName of moduleNames) {
+    const matches = sections.filter((s) => detailTitleMatchesModule(moduleName, s.title));
+    if (matches.length > 1) {
+      errors.push(
+        `Ambiguous detail sections for "${moduleName}": ${matches.map((m) => `"${m.title}"`).join(', ')}`,
+      );
+      continue;
+    }
+    if (matches.length === 1) {
+      const section = matches[0];
+      if (index.has(moduleName)) {
+        errors.push(`Duplicate detail section mapping for "${moduleName}"`);
+      } else {
+        index.set(moduleName, section);
+      }
+      const owner = sectionOwners.get(section.title);
+      if (owner && owner !== moduleName) {
+        errors.push(
+          `Detail section "${section.title}" matches multiple modules: "${owner}" and "${moduleName}"`,
+        );
+      } else {
+        sectionOwners.set(section.title, moduleName);
+      }
+    }
+  }
+
+  return index;
+}
+
+function findDetailSectionForModule(moduleName, detailIndex) {
+  return detailIndex.get(moduleName) ?? null;
 }
 
 function extractDetailField(body, fieldName) {
@@ -241,15 +311,82 @@ function extractMandatoryEntryLinks(body) {
   return links;
 }
 
-function resolveRegistryLinks(content, registryDir, errors, label) {
+function slugifyHeading(text) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function buildRegistryAnchorIndex(detailSections, tableRows) {
+  const anchorToModule = new Map();
+  for (const row of tableRows) {
+    const moduleName = row.Module?.trim();
+    if (!moduleName) continue;
+    const section = detailSections.find((s) => detailTitleMatchesModule(moduleName, s.title));
+    if (section) {
+      const slug = slugifyHeading(section.title);
+      anchorToModule.set(slug, moduleName);
+      anchorToModule.set(slugifyHeading(moduleName), moduleName);
+    }
+  }
+  return anchorToModule;
+}
+
+function buildModuleLookup(tableRows) {
+  const byLower = new Map();
+  const byName = new Map();
+  for (const row of tableRows) {
+    const name = row.Module?.trim();
+    if (!name) continue;
+    byLower.set(name.toLowerCase(), name);
+    byName.set(name, row);
+  }
+  return { byLower, byName };
+}
+
+function resolveRegistryLinkTarget(registryDir, repoRoot, target, realPaths) {
+  const resolved = path.resolve(registryDir, target);
+  const rel = path.relative(repoRoot, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return { ok: false, reason: 'escapes repository' };
+  }
+  if (!fs.existsSync(resolved)) {
+    return { ok: false, reason: 'missing' };
+  }
+  const { repoRootReal, archRootReal } = realPaths;
+  let resolvedReal;
+  try {
+    resolvedReal = fs.realpathSync(resolved);
+  } catch {
+    return { ok: false, reason: 'unresolvable' };
+  }
+  const relRepo = path.relative(repoRootReal, resolvedReal);
+  if (relRepo.startsWith('..') || path.isAbsolute(relRepo)) {
+    return { ok: false, reason: 'realpath escapes repository' };
+  }
+  const relPosix = rel.replace(/\\/g, '/');
+  if (relPosix.startsWith('architecture/')) {
+    const relArch = path.relative(archRootReal, resolvedReal);
+    if (relArch.startsWith('..') || path.isAbsolute(relArch)) {
+      return { ok: false, reason: 'realpath escapes architecture/' };
+    }
+  }
+  return { ok: true, resolved, resolvedReal };
+}
+
+function resolveRegistryLinks(content, registryDir, repoRoot, errors, label, realPaths) {
   const re = /\[[^\]]*\]\(([^)]+)\)/g;
   let m;
   while ((m = re.exec(content)) !== null) {
-    const target = m[1].split('#')[0].trim();
+    const full = m[1].trim();
+    const target = full.split('#')[0].trim();
     if (!target || target.startsWith('http')) continue;
-    const resolved = path.resolve(registryDir, target);
-    if (!fs.existsSync(resolved)) {
-      errors.push(`${label}: broken relative link -> ${target}`);
+    const result = resolveRegistryLinkTarget(registryDir, repoRoot, target, realPaths);
+    if (!result.ok) {
+      errors.push(`${label}: broken relative link -> ${target} (${result.reason})`);
     }
   }
 }
@@ -304,7 +441,21 @@ function extractSuccessorInfo(text) {
   return m[1].split('|')[0].trim();
 }
 
-function validateSuccessorPointer(moduleName, row, detail, tableRows, registryDir, repoRoot, errors) {
+function getRowAuthorityPathInfo(row, repoRoot, registryDir, realPaths, errors, context) {
+  const pathRaw = extractAuthorityPathRaw(row['Authority path'] ?? '');
+  if (!pathRaw || pathRaw.isUrl) return null;
+  return resolveAuthorityPath(
+    repoRoot,
+    registryDir,
+    pathRaw.raw,
+    row.Module?.trim() ?? '(unknown)',
+    errors,
+    context,
+    realPaths,
+  );
+}
+
+function validateSuccessorPointer(moduleName, row, detail, tableRows, registryDir, repoRoot, realPaths, errors) {
   const corpus = [
     row.Module ?? '',
     row['Mini description'] ?? '',
@@ -315,48 +466,131 @@ function validateSuccessorPointer(moduleName, row, detail, tableRows, registryDi
 
   const successorText = extractSuccessorInfo(corpus);
   if (!successorText) {
-    errors.push(`SUPERSEDED row "${moduleName}" missing explicit successor (expected "Successor: <Module Name>" notation)`);
+    errors.push(
+      `SUPERSEDED row "${moduleName}" missing explicit successor (expected "Successor: <Module Name>" notation)`,
+    );
     return;
   }
 
-  const cleanSuccessor = successorText.replace(/[`[\]]/g, '').split('|')[0].trim();
+  const moduleLookup = buildModuleLookup(tableRows);
+  const anchorIndex = buildRegistryAnchorIndex(parseDetailSections(readUtf8(path.join(repoRoot, 'architecture', 'SYNQDRIVE_RENTAL_ARCHITECTURE.md'))), tableRows);
 
-  const linkInText = successorText.match(/\[([^\]]+)\]\(([^)]+)\)/);
-  if (linkInText) {
-    const target = linkInText[2].split('#')[0].trim();
-    if (target.startsWith('http')) {
-      errors.push(`SUPERSEDED row "${moduleName}" successor link must be a registry anchor or authority path, not external URL`);
+  const linkMatch = successorText.match(/\[([^\]]+)\]\(([^)]+)\)/);
+  if (linkMatch) {
+    const linkLabel = linkMatch[1].trim();
+    const linkTarget = linkMatch[2].trim();
+    if (/^https?:\/\//i.test(linkTarget)) {
+      errors.push(
+        `SUPERSEDED row "${moduleName}" successor link must be a registry anchor or authority path, not external URL`,
+      );
       return;
     }
-    if (target.startsWith('#')) return;
-    const resolved = path.resolve(registryDir, target);
-    if (!fs.existsSync(resolved)) {
-      errors.push(`SUPERSEDED row "${moduleName}" successor link does not resolve -> ${target}`);
+
+    const [pathPart, anchorPart] = linkTarget.includes('#')
+      ? [linkTarget.split('#')[0].trim(), linkTarget.split('#').slice(1).join('#').trim()]
+      : [linkTarget, ''];
+
+    let successorModule = null;
+
+    if (anchorPart) {
+      const slug = anchorPart.toLowerCase();
+      successorModule = anchorIndex.get(slug) ?? null;
+      if (!successorModule) {
+        errors.push(
+          `SUPERSEDED row "${moduleName}" successor anchor "#${anchorPart}" does not match a registered module heading`,
+        );
+        return;
+      }
+    }
+
+    if (pathPart) {
+      const pathInfo = resolveAuthorityPath(
+        repoRoot,
+        registryDir,
+        pathPart,
+        moduleName,
+        errors,
+        'SUPERSEDED successor',
+        realPaths,
+      );
+      if (!pathInfo) return;
+
+      const namedFromLabel = moduleLookup.byLower.get(linkLabel.toLowerCase()) ?? moduleLookup.byLower.get(path.basename(pathPart).toLowerCase());
+      const candidate = successorModule ?? namedFromLabel ?? moduleLookup.byLower.get(normalizeWhitespace(linkLabel).toLowerCase());
+
+      if (!candidate) {
+        errors.push(
+          `SUPERSEDED row "${moduleName}" successor path "${pathPart}" does not correspond to a registered module authority path`,
+        );
+        return;
+      }
+
+      const successorRow = moduleLookup.byName.get(candidate);
+      const successorPathInfo = getRowAuthorityPathInfo(successorRow, repoRoot, registryDir, realPaths, errors, 'Successor row');
+      if (!successorPathInfo) {
+        errors.push(`SUPERSEDED row "${moduleName}" registered successor "${candidate}" has no valid authority path`);
+        return;
+      }
+      if (successorPathInfo.normalized !== pathInfo.normalized) {
+        errors.push(
+          `SUPERSEDED row "${moduleName}" successor path "${pathPart}" does not match registered successor "${candidate}" authority path ${successorPathInfo.normalized}`,
+        );
+        return;
+      }
+      successorModule = candidate;
+    } else if (successorModule) {
+      // anchor-only link validated above
+    } else {
+      successorModule = moduleLookup.byLower.get(linkLabel.toLowerCase());
+      if (!successorModule) {
+        errors.push(`SUPERSEDED row "${moduleName}" successor link label "${linkLabel}" is not a registered module`);
+        return;
+      }
+    }
+
+    if (successorModule && successorModule.toLowerCase() === moduleName.toLowerCase()) {
+      errors.push(`SUPERSEDED row "${moduleName}" successor cannot point to itself`);
     }
     return;
   }
 
-  const named = cleanSuccessor;
-  const found = tableRows.some((r) => normalizeWhitespace(r.Module) === normalizeWhitespace(named));
-  if (!found) {
+  const named = successorText.replace(/[`[\]]/g, '').split('|')[0].trim();
+  const successorModule = moduleLookup.byLower.get(named.toLowerCase());
+  if (!successorModule) {
     errors.push(`SUPERSEDED row "${moduleName}" successor "${named}" is not a registered module name`);
+    return;
+  }
+  if (successorModule.toLowerCase() === moduleName.toLowerCase()) {
+    errors.push(`SUPERSEDED row "${moduleName}" successor cannot point to itself`);
   }
 }
 
-function parseFrontmatterBlocks(content) {
+function parseLeadingFrontmatter(content) {
   const lines = content.split('\n');
-  const delimiterLines = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim() === '---') delimiterLines.push(i);
+  if (lines[0]?.trim() !== '---') {
+    return { hasFrontmatter: false, body: '', rest: content };
   }
-  if (delimiterLines.length < 2) {
-    return { blockCount: 0, body: '', delimiterLines };
+  let closeIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      closeIdx = i;
+      break;
+    }
   }
-  const firstOpen = delimiterLines[0];
-  const firstClose = delimiterLines[1];
-  const body = lines.slice(firstOpen + 1, firstClose).join('\n');
-  const extraDelimiters = delimiterLines.slice(2);
-  return { blockCount: 1 + (extraDelimiters.length > 0 ? 1 : 0), body, delimiterLines, extraDelimiters };
+  if (closeIdx === -1) {
+    return { hasFrontmatter: false, body: '', rest: content };
+  }
+  const body = lines.slice(1, closeIdx).join('\n');
+  const rest = lines.slice(closeIdx + 1).join('\n');
+  return { hasFrontmatter: true, body, rest };
+}
+
+function hasSecondYamlFrontmatter(rest) {
+  const re = /^---\r?\n([\s\S]*?)\r?\n---/m;
+  const m = rest.match(re);
+  if (!m) return false;
+  const inner = m[1];
+  return /^\s*[\w.-]+\s*:/m.test(inner);
 }
 
 function validateMdcRule(rulePath, errors, label = '.cursor/rules/Architectur-Updates.mdc') {
@@ -365,18 +599,14 @@ function validateMdcRule(rulePath, errors, label = '.cursor/rules/Architectur-Up
     return;
   }
   const rule = readUtf8(rulePath);
-  const lines = rule.split('\n');
-  if (lines[0]?.trim() !== '---') {
+  const { hasFrontmatter, body, rest } = parseLeadingFrontmatter(rule);
+
+  if (!hasFrontmatter) {
     errors.push(`${label}: file must begin with one frontmatter block`);
     return;
   }
 
-  const { body, delimiterLines, extraDelimiters } = parseFrontmatterBlocks(rule);
-  if (delimiterLines.length < 2) {
-    errors.push(`${label}: frontmatter block is not closed`);
-    return;
-  }
-  if (extraDelimiters.length > 0) {
+  if (hasSecondYamlFrontmatter(rest)) {
     errors.push(`${label}: duplicate frontmatter delimiter blocks detected`);
     return;
   }
@@ -411,6 +641,7 @@ function validateRegistryAt(repoRoot, options = {}) {
   const registryPath = path.join(repoRoot, 'architecture', 'SYNQDRIVE_RENTAL_ARCHITECTURE.md');
   const registryDir = path.dirname(registryPath);
   const content = readUtf8(registryPath);
+  const realPaths = getRealPaths(repoRoot);
 
   if (!content.includes(OVERVIEW_HEADING)) {
     errors.push(`Missing heading: ${OVERVIEW_HEADING}`);
@@ -460,6 +691,16 @@ function validateRegistryAt(repoRoot, options = {}) {
       }
       moduleNames.push(moduleName);
     }
+  }
+
+  const detailIndex = buildDetailSectionIndex(moduleNames, detailSections, errors);
+
+  for (const row of table.rows) {
+    const moduleName = row.Module?.trim();
+    const mini = row['Mini description']?.trim();
+    const status = extractBacktickStatus(row['Registry status'] ?? '');
+    const nativeStatus = row['Authority-native status']?.trim() ?? '';
+    const pathCell = row['Authority path'] ?? '';
 
     const pathRaw = extractAuthorityPathRaw(pathCell);
     let pathInfo = null;
@@ -467,7 +708,15 @@ function validateRegistryAt(repoRoot, options = {}) {
       if (pathRaw.isUrl) {
         errors.push(`Overview row "${moduleName}": authority path must not be an external URL`);
       } else {
-        pathInfo = resolveAuthorityPath(repoRoot, registryDir, pathRaw.raw, moduleName, errors, 'Overview row');
+        pathInfo = resolveAuthorityPath(
+          repoRoot,
+          registryDir,
+          pathRaw.raw,
+          moduleName,
+          errors,
+          'Overview row',
+          realPaths,
+        );
         if (pathInfo) {
           const norm = pathInfo.normalized;
           if (pathsSeen.has(norm) && pathsSeen.get(norm) !== moduleName) {
@@ -478,16 +727,16 @@ function validateRegistryAt(repoRoot, options = {}) {
       }
     }
 
-    const detail = moduleName ? findDetailSectionForModule(moduleName, detailSections) : null;
+    const detail = moduleName ? findDetailSectionForModule(moduleName, detailIndex) : null;
 
     if (status === 'NOT_STARTED') {
-      if (!isNotStartedNativeStatus(nativeStatus)) {
+      if (!isExactNotStartedNativeStatus(nativeStatus)) {
         errors.push(
-          `NOT_STARTED row "${moduleName}": authority-native status must be "N/A — inventory only", got "${nativeStatus}"`,
+          `NOT_STARTED row "${moduleName}": authority-native status must be exactly "N/A — inventory only", got "${nativeStatus}"`,
         );
       }
-      if (!isPathPlaceholderCell(pathCell)) {
-        errors.push(`NOT_STARTED row "${moduleName}": authority path must be "—"`);
+      if (!isExactNotStartedPathPlaceholder(pathCell)) {
+        errors.push(`NOT_STARTED row "${moduleName}": authority path must be exactly "—"`);
       }
       if (pathInfo) {
         errors.push(`NOT_STARTED row "${moduleName}": must not declare a usable authority path`);
@@ -504,7 +753,7 @@ function validateRegistryAt(repoRoot, options = {}) {
       if (!pathInfo) {
         errors.push(`AUDIT_IN_PROGRESS row "${moduleName}" missing declared authority path`);
       }
-      if (!nativeStatus || isNotStartedNativeStatus(nativeStatus)) {
+      if (!nativeStatus || isExactNotStartedNativeStatus(nativeStatus)) {
         errors.push(
           `AUDIT_IN_PROGRESS row "${moduleName}": authority-native status must be non-empty and not "N/A — inventory only"`,
         );
@@ -513,7 +762,7 @@ function validateRegistryAt(repoRoot, options = {}) {
 
     if (status === 'AUTHORITY_ACTIVE') {
       if (!pathInfo) errors.push(`AUTHORITY_ACTIVE row "${moduleName}" missing valid authority path`);
-      if (!nativeStatus || isPathPlaceholderCell(nativeStatus)) {
+      if (!nativeStatus || isExactNotStartedPathPlaceholder(nativeStatus)) {
         errors.push(`AUTHORITY_ACTIVE row "${moduleName}" missing authority-native status`);
       }
       if (!detail) {
@@ -542,8 +791,8 @@ function validateRegistryAt(repoRoot, options = {}) {
           errors.push(`AUTHORITY_ACTIVE row "${moduleName}" has no mandatory entry document links in detail section`);
         }
         for (const link of entryLinks) {
-          const resolved = path.resolve(registryDir, link);
-          if (!fs.existsSync(resolved)) {
+          const result = resolveRegistryLinkTarget(registryDir, repoRoot, link, realPaths);
+          if (!result.ok) {
             errors.push(`AUTHORITY_ACTIVE row "${moduleName}": mandatory entry link missing -> ${link}`);
           }
         }
@@ -551,7 +800,7 @@ function validateRegistryAt(repoRoot, options = {}) {
     }
 
     if (status === 'SUPERSEDED') {
-      validateSuccessorPointer(moduleName, row, detail, table.rows, registryDir, repoRoot, errors);
+      validateSuccessorPointer(moduleName, row, detail, table.rows, registryDir, repoRoot, realPaths, errors);
     }
   }
 
@@ -560,7 +809,7 @@ function validateRegistryAt(repoRoot, options = {}) {
     errors.push(`Overview modules not alphabetically sorted. Expected: ${sorted.join(', ')}; got: ${moduleNames.join(', ')}`);
   }
 
-  resolveRegistryLinks(content, registryDir, errors, 'SYNQDRIVE_RENTAL_ARCHITECTURE.md');
+  resolveRegistryLinks(content, registryDir, repoRoot, errors, 'SYNQDRIVE_RENTAL_ARCHITECTURE.md', realPaths);
 
   const discovered = discoverAuthorityRoots(repoRoot);
   const registeredPaths = new Set(
@@ -606,7 +855,10 @@ function validateRegistryAt(repoRoot, options = {}) {
 function writeFixture(dir, registryBody, ruleBody = null) {
   const arch = path.join(dir, 'architecture');
   fs.mkdirSync(arch, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'AGENTS.md'), '# AGENTS\narchitecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md\narchitecture/MODULE_AUTHORITY_STANDARD.md\n');
+  fs.writeFileSync(
+    path.join(dir, 'AGENTS.md'),
+    '# AGENTS\narchitecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md\narchitecture/MODULE_AUTHORITY_STANDARD.md\n',
+  );
   fs.writeFileSync(path.join(arch, 'SYNQDRIVE_RENTAL_ARCHITECTURE.md'), registryBody);
   fs.mkdirSync(path.join(dir, '.cursor', 'rules'), { recursive: true });
   fs.writeFileSync(
@@ -622,20 +874,44 @@ function overviewTable(rows) {
   return `${OVERVIEW_HEADING}\n\n${header}\n${rows}\n`;
 }
 
-function expectError(name, fn, snippet) {
-  return { name, fn: () => {
-    const errors = fn();
-    if (!errors.some((e) => e.includes(snippet))) {
-      throw new Error(`Expected error containing "${snippet}", got: ${errors.join('; ') || '(none)'}`);
-    }
-  }};
+function expectError(name, fn, snippet, { forbid = [], maxErrors = null } = {}) {
+  return {
+    name,
+    fn: () => {
+      const errors = fn();
+      const matching = errors.filter((e) => e.includes(snippet));
+      if (matching.length === 0) {
+        throw new Error(`Expected error containing "${snippet}", got: ${errors.join('; ') || '(none)'}`);
+      }
+      for (const bad of forbid) {
+        if (errors.some((e) => e.includes(bad))) {
+          throw new Error(`Unexpected error containing "${bad}" while testing "${snippet}"`);
+        }
+      }
+      if (maxErrors !== null && errors.length > maxErrors) {
+        throw new Error(
+          `Expected at most ${maxErrors} error(s) for isolated test "${snippet}", got ${errors.length}: ${errors.join('; ')}`,
+        );
+      }
+    },
+  };
 }
 
 function expectSuccess(name, fn) {
-  return { name, fn: () => {
-    const errors = fn();
-    if (errors.length) throw new Error(errors.join('\n'));
-  }};
+  return {
+    name,
+    fn: () => {
+      const errors = fn();
+      if (errors.length) throw new Error(errors.join('\n'));
+    },
+  };
+}
+
+function mkAuthorityDir(dir, relPath) {
+  const full = path.join(dir, 'architecture', relPath);
+  fs.mkdirSync(full, { recursive: true });
+  fs.writeFileSync(path.join(full, 'README.md'), '# Living Architecture Authority\n');
+  return full;
 }
 
 function runSelfTests() {
@@ -644,329 +920,725 @@ function runSelfTests() {
 
   cases.push(expectSuccess('valid registry (repository)', () => validateRegistryAt(repoRoot)));
 
-  cases.push(expectError('missing mini description', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha |  | `NOT_STARTED` | N/A — inventory only | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'missing mini description'));
+  cases.push(
+    expectError(
+      'missing mini description',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha |  | `NOT_STARTED` | N/A — inventory only | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'missing mini description',
+      { maxErrors: 1 },
+    ),
+  );
 
-  cases.push(expectError('NOT_STARTED incorrect native status', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | CANONICAL | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'authority-native status must be "N/A — inventory only"'));
+  cases.push(
+    expectError(
+      'NOT_STARTED incorrect native status',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | CANONICAL | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'authority-native status must be exactly "N/A — inventory only"',
+    ),
+  );
 
-  cases.push(expectError('NOT_STARTED incorrect authority path placeholder', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | N/A — inventory only | N/A |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'authority path must be "—"'));
+  for (const [label, native] of [
+    ['NOT_STARTED native ASCII hyphen', 'N/A - inventory only'],
+    ['NOT_STARTED native en dash variant', 'N/A – inventory only'],
+  ]) {
+    cases.push(
+      expectError(
+        label,
+        () => {
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+          try {
+            writeFixture(dir, overviewTable(`| Alpha | Desc | \`NOT_STARTED\` | ${native} | — |`));
+            return validateRegistryAt(dir, { skipMdc: true });
+          } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+          }
+        },
+        'authority-native status must be exactly "N/A — inventory only"',
+      ),
+    );
+  }
 
-  cases.push(expectError('NOT_STARTED existing authority path', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      const arch = path.join(dir, 'architecture', 'alpha');
-      fs.mkdirSync(arch, { recursive: true });
-      fs.writeFileSync(path.join(arch, 'README.md'), '# Living Architecture Authority\n');
-      writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | N/A — inventory only | [alpha/](alpha/) |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'must not declare a usable authority path'));
+  for (const [label, pathCell] of [
+    ['NOT_STARTED path ASCII hyphen', '-'],
+    ['NOT_STARTED path en dash variant', '–'],
+    ['NOT_STARTED path N/A placeholder', 'N/A'],
+  ]) {
+    cases.push(
+      expectError(
+        label,
+        () => {
+          const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+          try {
+            writeFixture(dir, overviewTable(`| Alpha | Desc | \`NOT_STARTED\` | N/A — inventory only | ${pathCell} |`));
+            return validateRegistryAt(dir, { skipMdc: true });
+          } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+          }
+        },
+        'authority path must be exactly "—"',
+      ),
+    );
+  }
 
-  cases.push(expectError('invalid status', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | Desc | `BOGUS` | N/A — inventory only | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'invalid registry status'));
+  cases.push(
+    expectError(
+      'NOT_STARTED incorrect authority path placeholder',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | N/A — inventory only | N/A |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'authority path must be exactly "—"',
+    ),
+  );
 
-  cases.push(expectError('duplicate module', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        overviewTable(
-          '| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | B | `NOT_STARTED` | N/A — inventory only | — |',
-        ),
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'Duplicate module name'));
+  cases.push(
+    expectError(
+      'NOT_STARTED existing authority path',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          mkAuthorityDir(dir, 'alpha');
+          writeFixture(dir, overviewTable('| Alpha | Desc | `NOT_STARTED` | N/A — inventory only | [alpha/](alpha/) |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'must not declare a usable authority path',
+    ),
+  );
 
-  cases.push(expectError('case-insensitive duplicate module', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        overviewTable(
-          '| alpha | A | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | B | `NOT_STARTED` | N/A — inventory only | — |',
-        ),
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'case-insensitive'));
+  cases.push(
+    expectError(
+      'invalid status',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | Desc | `BOGUS` | N/A — inventory only | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'invalid registry status',
+    ),
+  );
 
-  cases.push(expectError('unsorted modules', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        overviewTable(
-          '| Zulu | Z | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |',
-        ),
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'not alphabetically sorted'));
+  cases.push(
+    expectError(
+      'duplicate module',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            overviewTable(
+              '| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | B | `NOT_STARTED` | N/A — inventory only | — |',
+            ),
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'Duplicate module name',
+    ),
+  );
 
-  cases.push(expectSuccess('escaped pipe in mini description', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | Pipe \\| test | `NOT_STARTED` | N/A — inventory only | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }));
+  cases.push(
+    expectError(
+      'case-insensitive duplicate module',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            overviewTable(
+              '| alpha | A | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | B | `NOT_STARTED` | N/A — inventory only | — |',
+            ),
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'case-insensitive',
+    ),
+  );
 
-  cases.push(expectError('malformed cell count', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        `${OVERVIEW_HEADING}\n\n| Module | Mini description | Registry status | Authority-native status | Authority path |\n|--------|------------------|-----------------|-------------------------|----------------|\n| Alpha | only three | cells |\n`,
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'has 3 cells, expected 5'));
+  cases.push(
+    expectError(
+      'unsorted modules',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            overviewTable(
+              '| Zulu | Z | `NOT_STARTED` | N/A — inventory only | — |\n| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |',
+            ),
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'not alphabetically sorted',
+    ),
+  );
 
-  cases.push(expectError('missing active authority path', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        `${overviewTable('| Alpha | A | `AUTHORITY_ACTIVE` | Native | — |')}\n### Alpha\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Mandatory entry documents** | [README.md](alpha/README.md) |\n`,
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'missing valid authority path'));
+  cases.push(
+    expectSuccess('escaped pipe in mini description', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        writeFixture(dir, overviewTable('| Alpha | Pipe \\| test | `NOT_STARTED` | N/A — inventory only | — |'));
+        return validateRegistryAt(dir, { skipMdc: true });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
 
-  cases.push(expectError('active row/detail status mismatch', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      const mod = path.join(dir, 'architecture', 'alpha');
-      fs.mkdirSync(mod, { recursive: true });
-      fs.writeFileSync(path.join(mod, 'README.md'), '# Living Architecture Authority\n');
-      fs.writeFileSync(path.join(mod, 'AGENT_CONTRACT.md'), '# contract\n');
-      writeFixture(
-        dir,
-        `${overviewTable('| Alpha | A | `AUTHORITY_ACTIVE` | Native | [alpha/](alpha/) |')}\n### Alpha\n\n| Field | Value |\n| **Registry coverage status** | \`AUDIT_IN_PROGRESS\` |\n| **Authority directory** | [alpha/](alpha/) |\n| **Mandatory entry documents** | [README.md](alpha/README.md) |\n`,
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'Status mismatch'));
+  cases.push(
+    expectError(
+      'malformed cell count',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            `${OVERVIEW_HEADING}\n\n| Module | Mini description | Registry status | Authority-native status | Authority path |\n|--------|------------------|-----------------|-------------------------|----------------|\n| Alpha | only three | cells |\n`,
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'has 3 cells, expected 5',
+    ),
+  );
 
-  cases.push(expectError('AUDIT_IN_PROGRESS missing path', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'missing declared authority path'));
+  cases.push(
+    expectSuccess('detail matching Trip vs Trip Detection vs Trip Enrichment', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        mkAuthorityDir(dir, 'trip');
+        mkAuthorityDir(dir, 'trip-detection');
+        mkAuthorityDir(dir, 'trip-enrichment');
+        writeFixture(
+          dir,
+          `${overviewTable('| Trip | T | `AUTHORITY_ACTIVE` | Native | [trip/](trip/) |\n| Trip Detection | TD | `AUTHORITY_ACTIVE` | Native | [trip-detection/](trip-detection/) |\n| Trip Enrichment | TE | `AUTHORITY_ACTIVE` | Native | [trip-enrichment/](trip-enrichment/) |')}\n### Trip Detection\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Authority directory** | [trip-detection/](trip-detection/) |\n| **Mandatory entry documents** | [README.md](trip-detection/README.md) |\n\n### Trip Enrichment\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Authority directory** | [trip-enrichment/](trip-enrichment/) |\n| **Mandatory entry documents** | [README.md](trip-enrichment/README.md) |\n\n### Trip\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Authority directory** | [trip/](trip/) |\n| **Mandatory entry documents** | [README.md](trip/README.md) |\n`,
+        );
+        const errors = validateRegistryAt(dir, { skipMdc: true });
+        if (errors.some((e) => e.includes('Ambiguous detail sections'))) {
+          throw new Error(`Prefix modules must not be ambiguous: ${errors.join('; ')}`);
+        }
+        return errors;
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
 
-  cases.push(expectError('AUDIT_IN_PROGRESS nonexistent path', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [missing/](missing/) |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'authority path does not exist'));
+  cases.push(
+    expectError(
+      'duplicate detail section for same module',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          mkAuthorityDir(dir, 'alpha');
+          writeFixture(
+            dir,
+            `${overviewTable('| Alpha | A | `AUTHORITY_ACTIVE` | Native | [alpha/](alpha/) |')}\n### Alpha\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Authority directory** | [alpha/](alpha/) |\n| **Mandatory entry documents** | [README.md](alpha/README.md) |\n\n### Alpha — duplicate\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n`,
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'Ambiguous detail sections for "Alpha"',
+    ),
+  );
 
-  cases.push(expectError('AUDIT_IN_PROGRESS path is file', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      const arch = path.join(dir, 'architecture');
-      fs.mkdirSync(arch, { recursive: true });
-      fs.writeFileSync(path.join(arch, 'alpha.txt'), 'x');
-      writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [alpha.txt](alpha.txt) |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'authority path must be a directory'));
+  cases.push(
+    expectError(
+      'missing active authority path',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            `${overviewTable('| Alpha | A | `AUTHORITY_ACTIVE` | Native | — |')}\n### Alpha\n\n| Field | Value |\n| **Registry coverage status** | \`AUTHORITY_ACTIVE\` |\n| **Mandatory entry documents** | [README.md](alpha/README.md) |\n`,
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'missing valid authority path',
+    ),
+  );
 
-  cases.push(expectError('AUDIT_IN_PROGRESS path outside architecture', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      fs.mkdirSync(path.join(dir, 'outside'), { recursive: true });
-      writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [../outside/](../outside/) |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'must be beneath architecture/'));
+  cases.push(
+    expectError(
+      'active row/detail status mismatch',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          mkAuthorityDir(dir, 'alpha');
+          writeFixture(
+            dir,
+            `${overviewTable('| Alpha | A | `AUTHORITY_ACTIVE` | Native | [alpha/](alpha/) |')}\n### Alpha\n\n| Field | Value |\n| **Registry coverage status** | \`AUDIT_IN_PROGRESS\` |\n| **Authority directory** | [alpha/](alpha/) |\n| **Mandatory entry documents** | [README.md](alpha/README.md) |\n`,
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'Status mismatch',
+    ),
+  );
 
-  cases.push(expectError('missing successor for SUPERSEDED', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Old | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'missing explicit successor'));
+  cases.push(
+    expectError(
+      'AUDIT_IN_PROGRESS missing path',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'missing declared authority path',
+    ),
+  );
 
-  cases.push(expectSuccess('SUPERSEDED successor in authority-native status', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        overviewTable('| Alpha | A | `SUPERSEDED` | Successor: Beta | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |\n') +
-          '\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
-      );
-      const beta = path.join(dir, 'architecture', 'beta');
-      fs.mkdirSync(beta, { recursive: true });
-      fs.writeFileSync(path.join(beta, 'README.md'), '# Living Architecture Authority\n');
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }));
+  cases.push(
+    expectError(
+      'AUDIT_IN_PROGRESS nonexistent path',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [missing/](missing/) |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'authority path does not exist',
+    ),
+  );
 
-  cases.push(expectSuccess('SUPERSEDED successor in detail section', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      const beta = path.join(dir, 'architecture', 'beta');
-      fs.mkdirSync(beta, { recursive: true });
-      fs.writeFileSync(path.join(beta, 'README.md'), '# Living Architecture Authority\n');
-      writeFixture(
-        dir,
-        overviewTable('| Alpha | A | `SUPERSEDED` | Historical | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |') +
-          '\n### Alpha\n\n| Field | Value |\n| **Successor** | Successor: Beta |\n\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
-      );
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }));
+  cases.push(
+    expectError(
+      'AUDIT_IN_PROGRESS path is file',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          const arch = path.join(dir, 'architecture');
+          fs.mkdirSync(arch, { recursive: true });
+          fs.writeFileSync(path.join(arch, 'alpha.txt'), 'x');
+          writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [alpha.txt](alpha.txt) |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'authority path must be a directory',
+    ),
+  );
 
-  cases.push(expectError('SUPERSEDED broken successor link', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Successor: [Beta](missing/) | — |'));
-      return validateRegistryAt(dir, { skipMdc: true });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'successor link does not resolve'));
+  cases.push(
+    expectError(
+      'AUDIT_IN_PROGRESS path outside architecture',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          fs.mkdirSync(path.join(dir, 'outside'), { recursive: true });
+          writeFixture(dir, overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Reconstruction started | [../outside/](../outside/) |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'must be beneath architecture/',
+    ),
+  );
 
-  cases.push(expectSuccess('MDC valid single frontmatter', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'));
-      const errors = [];
-      validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
-      return errors;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }));
+  cases.push(
+    expectError(
+      'authority symlink escapes repository',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-out-'));
+        try {
+          const arch = path.join(dir, 'architecture');
+          fs.mkdirSync(arch, { recursive: true });
+          fs.mkdirSync(outside, { recursive: true });
+          fs.writeFileSync(path.join(outside, 'README.md'), '# Living Architecture Authority\n');
+          try {
+            fs.symlinkSync(outside, path.join(arch, 'escape-link'), 'dir');
+          } catch (err) {
+            return [`SYMLINK_TEST_SKIPPED: ${err.message}`];
+          }
+          writeFixture(
+            dir,
+            overviewTable('| Alpha | A | `AUDIT_IN_PROGRESS` | Started | [escape-link/](escape-link/) |'),
+          );
+          const errors = validateRegistryAt(dir, { skipMdc: true });
+          if (errors.some((e) => e.includes('SYMLINK_TEST_SKIPPED'))) {
+            console.log('  NOTE authority symlink escapes repository: skipped (symlink creation unavailable)');
+            return [];
+          }
+          return errors;
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+          fs.rmSync(outside, { recursive: true, force: true });
+        }
+      },
+      'escapes repository (realpath)',
+    ),
+  );
 
-  cases.push(expectError('MDC missing frontmatter', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'), 'no frontmatter\n');
-      const errors = [];
-      validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
-      return errors;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'must begin with one frontmatter block'));
+  cases.push(
+    expectError(
+      'missing successor for SUPERSEDED',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Old | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'missing explicit successor',
+    ),
+  );
 
-  cases.push(expectError('MDC alwaysApply false', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'), '---\nalwaysApply: false\n---\n');
-      const errors = [];
-      validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
-      return errors;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'alwaysApply must not be false'));
+  cases.push(
+    expectSuccess('SUPERSEDED valid named successor', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        mkAuthorityDir(dir, 'beta');
+        writeFixture(
+          dir,
+          overviewTable(
+            '| Alpha | A | `SUPERSEDED` | Successor: Beta | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |',
+          ) +
+            '\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
+        );
+        return validateRegistryAt(dir, { skipMdc: true });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
 
-  cases.push(expectError('MDC commented alwaysApply', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'), '---\n# alwaysApply: true\n---\nSYNQDRIVE_RENTAL_ARCHITECTURE.md\n');
-      const errors = [];
-      validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
-      return errors;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'alwaysApply: true'));
+  cases.push(
+    expectSuccess('SUPERSEDED valid registered-module anchor', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        mkAuthorityDir(dir, 'beta');
+        writeFixture(
+          dir,
+          overviewTable(
+            '| Alpha | A | `SUPERSEDED` | Successor: [Beta](#beta) | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |',
+          ) +
+            '\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
+        );
+        return validateRegistryAt(dir, { skipMdc: true });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
 
-  cases.push(expectError('MDC duplicate frontmatter blocks', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
-    try {
-      writeFixture(
-        dir,
-        overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'),
-        '---\nalwaysApply: true\n---\nbody\n---\nextra\n---\n',
-      );
-      const errors = [];
-      validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
-      return errors;
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  }, 'duplicate frontmatter delimiter blocks'));
+  cases.push(
+    expectSuccess('SUPERSEDED successor in detail section', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        mkAuthorityDir(dir, 'beta');
+        writeFixture(
+          dir,
+          overviewTable('| Alpha | A | `SUPERSEDED` | Historical | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |') +
+            '\n### Alpha\n\n| Field | Value |\n| **Successor** | Successor: Beta |\n\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
+        );
+        return validateRegistryAt(dir, { skipMdc: true });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
 
-  cases.push(expectSuccess('wrapper from /tmp via absolute script path', () => {
-    const scriptPath = path.join(repoRoot, 'architecture', 'scripts', 'validate-module-registry.mjs');
-    const errors = validateRegistryAt(repoRoot);
-    if (!fs.existsSync(scriptPath)) throw new Error('script missing');
-    if (process.cwd() === repoRoot) {
-      // simulate /tmp cwd by validating with explicit repo root (same code path as wrapper)
-      return validateRegistryAt(repoRoot);
-    }
-    return errors;
-  }));
+  cases.push(
+    expectError(
+      'SUPERSEDED nonexistent anchor',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Successor: [Beta](#missing-anchor) | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'successor anchor "#missing-anchor" does not match a registered module heading',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'SUPERSEDED self-successor',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Successor: Alpha | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'successor cannot point to itself',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'SUPERSEDED arbitrary existing path',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          mkAuthorityDir(dir, 'beta');
+          mkAuthorityDir(dir, 'gamma');
+          writeFixture(
+            dir,
+            overviewTable(
+              '| Alpha | A | `SUPERSEDED` | Successor: [gamma/](gamma/) | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |',
+            ) +
+              '\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
+          );
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'does not correspond to a registered module authority path',
+    ),
+  );
+
+  cases.push(
+    expectSuccess('SUPERSEDED valid registered successor authority path', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        mkAuthorityDir(dir, 'beta');
+        writeFixture(
+          dir,
+          overviewTable(
+            '| Alpha | A | `SUPERSEDED` | Successor: [Beta](beta/) | — |\n| Beta | B | `AUTHORITY_ACTIVE` | Native | [beta/](beta/) |',
+          ) +
+            '\n### Beta\n\n| Field | Value |\n| **Registry coverage status** | `AUTHORITY_ACTIVE` |\n| **Authority directory** | [beta/](beta/) |\n| **Mandatory entry documents** | [README.md](beta/README.md) |\n',
+        );
+        return validateRegistryAt(dir, { skipMdc: true });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
+
+  cases.push(
+    expectError(
+      'SUPERSEDED successor link escaping repository',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          fs.mkdirSync(path.join(dir, 'outside'), { recursive: true });
+          writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Successor: [Outside](../outside/) | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'must be beneath architecture/',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'SUPERSEDED broken successor link',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `SUPERSEDED` | Successor: [Beta](missing/) | — |'));
+          return validateRegistryAt(dir, { skipMdc: true });
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'authority path does not exist',
+    ),
+  );
+
+  cases.push(
+    expectSuccess('MDC valid single frontmatter', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'));
+        const errors = [];
+        validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+        return errors;
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
+
+  cases.push(
+    expectSuccess('MDC horizontal rule allowed in body', () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+      try {
+        writeFixture(
+          dir,
+          overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'),
+          '---\nalwaysApply: true\n---\n\n## Section\n\n---\n\nSYNQDRIVE_RENTAL_ARCHITECTURE.md UPDATED UNCHANGED validate-module-registry\n',
+        );
+        const errors = [];
+        validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+        return errors;
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }),
+  );
+
+  cases.push(
+    expectError(
+      'MDC missing frontmatter',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'), 'no frontmatter\n');
+          const errors = [];
+          validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+          return errors;
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'must begin with one frontmatter block',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'MDC alwaysApply false',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(dir, overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'), '---\nalwaysApply: false\n---\n');
+          const errors = [];
+          validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+          return errors;
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'alwaysApply must not be false',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'MDC commented alwaysApply',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'),
+            '---\n# alwaysApply: true\n---\nSYNQDRIVE_RENTAL_ARCHITECTURE.md\n',
+          );
+          const errors = [];
+          validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+          return errors;
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'frontmatter must contain exact active property alwaysApply: true',
+    ),
+  );
+
+  cases.push(
+    expectError(
+      'MDC duplicate frontmatter blocks',
+      () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'regval-'));
+        try {
+          writeFixture(
+            dir,
+            overviewTable('| Alpha | A | `NOT_STARTED` | N/A — inventory only | — |'),
+            '---\nalwaysApply: true\n---\nbody\n---\nalwaysApply: false\n---\n',
+          );
+          const errors = [];
+          validateMdcRule(path.join(dir, '.cursor', 'rules', 'Architectur-Updates.mdc'), errors);
+          return errors;
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+      'duplicate frontmatter delimiter blocks',
+    ),
+  );
+
+  cases.push({
+    name: 'wrapper subprocess from external cwd',
+    fn: () => {
+      const scriptPath = path.join(repoRoot, 'architecture', 'scripts', 'validate-module-registry.sh');
+      const result = spawnSync('bash', [scriptPath], {
+        cwd: os.tmpdir(),
+        encoding: 'utf8',
+        env: process.env,
+      });
+      if (result.error) throw result.error;
+      if (result.status !== 0) {
+        throw new Error(`wrapper exited ${result.status}: ${result.stderr || result.stdout}`);
+      }
+      const out = `${result.stdout}${result.stderr}`;
+      if (!out.includes('Central module registry validation passed.')) {
+        throw new Error(`missing success marker in wrapper output: ${out}`);
+      }
+      if (!out.includes('AUTHORITY_ACTIVE: 6')) {
+        throw new Error(`missing expected module counts in wrapper output: ${out}`);
+      }
+      if (!out.includes('modules inventoried: 6')) {
+        throw new Error(`missing inventoried count in wrapper output: ${out}`);
+      }
+    },
+  });
 
   let passed = 0;
   let failed = 0;
