@@ -21,8 +21,8 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-015 | 2026-09-04–05 | C.1a–e correctness hardening | — | Concurrency specs | 113 RC HF tests PASS | PR #1533 merge | DI-EV-0035C.1e |
 | EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration (KS MX 2024) | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Fix + GATE 1 PG tests | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
 | EXP-017 | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | — | Isolated PG 16 | 10 integration + 33 regression PASS | FIXED_CODE_TESTED | `DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
-| EXP-018 | — | GATE 2 stationary dress rehearsal | KS MX 2024 | Production | **PENDING** (post merge+deploy) | — | — |
+| EXP-018 | 2026-09-06 | GATE 2 stationary dress rehearsal | KS MX 2024 · token 187336 | Production runtime | **PASS** — 10→60 lifecycle + STOP + ABORT; V2 canary restored to LEGACY | FIXED_PRODUCTION_VALIDATED (DI-DEF-019) | `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
 
 **EXPERIMENT_ENTRIES_TOTAL:** 18  
-**EXPERIMENTS_EXECUTED:** 17  
-**EXPERIMENTS_PENDING:** 1 (EXP-018 GATE 2 dress rehearsal)
+**EXPERIMENTS_EXECUTED:** 18  
+**EXPERIMENTS_PENDING:** 0

@@ -140,5 +140,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Live cal blocked | KS MX 2024 — `42P01` on first `switchHfCalibrationPhase(10000)` |
 | Fix | `lockSessionRow` → `reference_capture_sessions` + `organization_id` (text IDs) |
 | GATE 1 | Real PostgreSQL integration suite — 10 tests PASS |
-| Status | `FIXED_CODE_TESTED` — awaiting merge + GATE 2 production dress rehearsal |
+| Status | `FIXED_CODE_TESTED` after GATE 1; promoted to `FIXED_PRODUCTION_VALIDATED` after GATE 2 |
 | Evidence | `evidence/reference-capture/DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
+
+## DI-DEF-019 GATE 2 (2026-09-06)
+
+| Event | Detail |
+|-------|--------|
+| Deploy | PR #1550 merged; production SHA `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` |
+| Vehicle | KS MX 2024 · token 187336 · stationary |
+| Session 1 | `a0498b4a-…` — 10→20→30→60 EFFECTIVE + STOP → COMPLETED |
+| Session 2 | `3d388fcd-…` — 10s EFFECTIVE + ABORT → ABORTED |
+| SQL (Gate 2 window) | No 42P01/42703/42883/deadlock |
+| Baseline | V2 canary disabled; PRODUCTION_HF_AUTHORITY=LEGACY restored |
+| Status | `FIXED_PRODUCTION_VALIDATED` — **not** scientific cadence proof |
+| Evidence | `evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |

@@ -112,6 +112,8 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 |----|------|-----|-------------|----------|-------|----------|----------|------------------|
 | DI-EVID-PR-1533-001 | PR_COMMIT | 2026-09-05 | C.1e merge + safe deploy | PR #1533 `3d5040b67` | 0035C–C.1e | CONFIRMED | CODE_DEPLOYED=YES | FEATURE_ENABLED=YES |
 | DI-EVID-DEPLOY-STATE-001 | PRODUCTION_RUNTIME | 2026-09-05 | Post-merge flag state | `evidence/production/DEPLOYMENT_STATE.md` | C.1e | CONFIRMED | V2 OFF; empty canary; LEGACY authority | Live calibration executed |
+| DI-EVID-DEF019-GATE2-001 | PRODUCTION_RUNTIME | 2026-09-06 | DI-DEF-019 GATE 2 dress rehearsal | `evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` | 0035C.1e | CONFIRMED | Prod phase lifecycle STOP/ABORT; lockSessionRow fix | Scientific 10/20/30/60 cadence proof |
+| DI-EVID-DEF019-GATE1-001 | TEST | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | `evidence/reference-capture/DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` | 0035C.1e | CONFIRMED | Real PG lock + phase paths | Production runtime |
 | DI-EVID-API-UI-001 | UI/API | 2026-09-06 | Semantic mismatch audit | `evidence/production/API_UI_SEMANTICS.md` | 0002 | CONFIRMED | Naming risks | Backend formula errors |
 
 ---

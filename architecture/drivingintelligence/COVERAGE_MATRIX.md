@@ -24,8 +24,8 @@ Workstream topic completion status. Uses **IMPLEMENTATION** vs **REFERENCE_VALID
 | High-timeframe analytics | ✓ | ✓ | Partial | — | Partial | ✓ | PARTIAL | — | Partial | Daily/weekly trends |
 | HF Recovery V2 | ✓ | ✓ | ✓ | RD004-B replay | CODE only | ✓ | COMPLETE | PARTIAL | **OFF** | Live validation |
 | Block polling | ✓ | ✓ | Designed | — | NO | ✓ | COMPLETE | **NOT STARTED** | NO | 10/20/30/60 live |
-| 10/20/30/60 calibration | ✓ | ✓ | — | — | NO | ✓ | COMPLETE (machinery) | NOT STARTED | NO | Operator run |
-| Multi-replica safety | Partial | ✓ | Tests only | — | UNKNOWN | ✓ | PARTIAL | — | **NOT VALIDATED** | Live cal N=2 |
+| 10/20/30/60 calibration | ✓ | ✓ | ✓ | — | Partial | ✓ | COMPLETE (machinery) | NOT STARTED (science) | **LIFECYCLE** (GATE 2 stationary) | Physical drive |
+| Multi-replica safety | Partial | ✓ | Tests + GATE 2 | — | Partial | ✓ | PARTIAL | — | **PARTIAL** (GATE 2 obs) | Live cal N=2 motion |
 | Production rollout | ✓ | ✓ | ✓ | — | Partial | ✓ | CODE_DEPLOYED | — | RC infra ON | HF V2 OFF |
 | API semantics | ✓ | ✓ | — | — | Partial | ✓ | PARTIAL | — | Partial | Field naming |
 | UI semantics | Partial | ✓ | — | — | Partial | ✓ | PARTIAL | — | Partial | Stress vs driver |

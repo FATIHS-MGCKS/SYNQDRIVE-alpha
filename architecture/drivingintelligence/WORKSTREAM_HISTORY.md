@@ -182,8 +182,9 @@ Infrastructure ready for operator-selected Flight Recorder calibration run.
 - **Production scoring:** Impact V1 (`drivingStressScore` = vehicle load)
 - **Production HF:** Whole-trip `fetchHighFrequency`; no recovery overlap
 - **Reference Capture infrastructure:** `REFERENCE_CAPTURE_ENABLED=true` on production (3A.2+)
-- **HF experimental features:** `HF_RECOVERY_POLICY_V2_ENABLED=false`; sweep/calibration OFF; zero active canaries
-- **Next scientific experiment:** Live 10/20/30/60s calibration on operator-selected vehicle
+- **HF experimental features:** `HF_RECOVERY_POLICY_V2_ENABLED=false`; sweep/calibration OFF; zero active canaries (post GATE 2 restore)
+- **DI-DEF-019:** FIXED_PRODUCTION_VALIDATED (GATE 2 stationary dress rehearsal 2026-09-06)
+- **Next scientific experiment:** Physical 10/20/30/60 live calibration on KS MX 2024 (EXP-016 retry)
 
 ---
 
@@ -210,6 +211,6 @@ Infrastructure ready for operator-selected Flight Recorder calibration run.
 | 17 | High-timeframe intelligence | PARTIAL (30d rolling only) |
 | 18 | Replay/calibration | COMPLETED (tooling); live PENDING |
 | 19 | Scalability | PARTIALLY COMPLETED (hypothesis untested) |
-| 20 | Multi-replica/concurrency | PARTIALLY COMPLETED (tests); **DI-DEF-019 real PG suite adds row-lock proof** |
+| 20 | Multi-replica/concurrency | PARTIALLY COMPLETED (tests + GATE 2 prod observation) |
 | 21 | Production cutover governance | COMPLETED (safe deploy) |
 | 22 | API/UI semantic correctness | PARTIALLY COMPLETED |

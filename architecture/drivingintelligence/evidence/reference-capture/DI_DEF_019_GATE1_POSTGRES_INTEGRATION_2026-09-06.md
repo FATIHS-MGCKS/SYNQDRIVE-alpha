@@ -55,4 +55,4 @@ Env gate: `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`
 
 ## Next gate
 
-Human merge PR #1550 → deploy → GATE 2 stationary production dress rehearsal (KS MX 2024).
+**GATE 2 PASS (2026-09-06):** `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` — stationary production dress rehearsal on KS MX 2024; DI-DEF-019 → `FIXED_PRODUCTION_VALIDATED`.
