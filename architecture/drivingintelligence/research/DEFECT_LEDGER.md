@@ -3,7 +3,7 @@
 Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.  
 **Rejected hypotheses are NOT defects** — see `HYPOTHESIS_REGISTER.md`.
 
-**Summary:** TOTAL=**18** | FIXED=**15** (DI-DEF-003–017) | OPEN=**3** (DI-DEF-001, 002, 018)
+**Summary:** TOTAL=**19** | FIXED=**15** (DI-DEF-003–017) | OPEN=**4** (DI-DEF-001, 002, 018, 019)
 
 | ID | Phase | Symptom | Cause | Risk | Fix | Tests | Status |
 |----|-------|---------|-------|------|-----|-------|--------|
@@ -25,3 +25,4 @@ Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.
 | DI-DEF-016 | C.1e audit | Transition windows contaminated primary stats | Inclusion in cadence comparison | Invalid 10/20/30/60 comparison | Exclude TRANSITION + RECOVERY_SWEEP | Phase summary tests | FIXED |
 | DI-DEF-017 | C.1e CI | Constructor dependency mismatch | Test-only DI wiring | CI failure | Test-only fix in PR #1533 | 113 RC HF tests | FIXED |
 | DI-DEF-018 | Production detectors | ~1 Hz assumption in HF window producer | Code predates RD003/RD002 cadence evidence | Detector timing on sparse HF | **Not fixed** — documented as semantic debt | — | OPEN |
+| DI-DEF-019 | Live cal 2026-09-06 | `switchHfCalibrationPhase` fails in production | `lockSessionRow` raw SQL uses `"ReferenceCaptureSession"` model name instead of `reference_capture_sessions` | **Live HF calibration blocked**; stop/abort finalization also affected | Fix table/column names + PG integration test | Pending | OPEN |
