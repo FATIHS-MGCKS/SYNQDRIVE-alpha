@@ -94,6 +94,7 @@ import {
   buildEndValidationFailureEvidence,
   buildEndValidationFetchFailureEvidence,
   buildEndValidationScheduledEvidence,
+  buildEndValidationStartedEvidence,
   buildMaxAttemptFallbackEvidence,
   buildPossibleEndToActiveReset,
   extractR5EndForensicsForPersistence,
@@ -2500,10 +2501,10 @@ export class TripDetectionOrchestrationService {
 
       validationStartedAt = new Date();
       await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
-        lastEvidenceSummary: {
-          ...priorSummary,
-          endValidationStartedAt: validationStartedAt.toISOString(),
-        },
+        lastEvidenceSummary: buildEndValidationStartedEvidence({
+          priorSummary,
+          validationStartedAt,
+        }),
       });
 
       // Fetch a bounded window of data centred on the POSSIBLE_END candidate
@@ -2868,6 +2869,7 @@ export class TripDetectionOrchestrationService {
           } else {
             const r5EndForensics = extractR5EndForensicsForPersistence(
               det.lastEvidenceSummary as Record<string, unknown> | null,
+              det.endValidationAttempts ?? 0,
             );
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,

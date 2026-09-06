@@ -28,6 +28,43 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
   'completedAttemptCount',
 ] as const;
 
+/** Attempt-local runtime fields cleared between validation attempts within the same end episode. */
+export const END_VALIDATION_ATTEMPT_LOCAL_KEYS = [
+  'endValidationScheduledAt',
+  'endValidationStartedAt',
+  'endValidationCompletedAt',
+  'endValidationFailureReason',
+  'endValidationFailureOutcome',
+  'endValidationFetchFailureReason',
+  'completedEndValidationAttempt',
+] as const;
+
+export function clearEndValidationAttemptLocalEvidence(
+  summary: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const base = { ...(summary ?? {}) };
+  for (const key of END_VALIDATION_ATTEMPT_LOCAL_KEYS) {
+    delete base[key];
+  }
+  return base;
+}
+
+function withClearedAttemptLocalState(
+  summary: Record<string, unknown> | null | undefined,
+  options?: { preserveScheduledAt?: boolean },
+): Record<string, unknown> {
+  const scheduledAt =
+    options?.preserveScheduledAt &&
+    typeof summary?.endValidationScheduledAt === 'string'
+      ? summary.endValidationScheduledAt
+      : undefined;
+  const cleared = clearEndValidationAttemptLocalEvidence(summary);
+  if (scheduledAt) {
+    cleared.endValidationScheduledAt = scheduledAt;
+  }
+  return cleared;
+}
+
 /** @deprecated use END_CYCLE_REOPEN_STRIP_KEYS */
 export const END_CYCLE_TRANSIENT_EVIDENCE_KEYS = END_CYCLE_REOPEN_STRIP_KEYS;
 
@@ -88,8 +125,18 @@ export function buildEndValidationScheduledEvidence(params: {
   workerNow: Date;
 }): Record<string, unknown> {
   return {
-    ...(params.priorSummary ?? {}),
+    ...clearEndValidationAttemptLocalEvidence(params.priorSummary),
     endValidationScheduledAt: params.workerNow.toISOString(),
+  };
+}
+
+export function buildEndValidationStartedEvidence(params: {
+  priorSummary?: Record<string, unknown> | null;
+  validationStartedAt: Date;
+}): Record<string, unknown> {
+  return {
+    ...withClearedAttemptLocalState(params.priorSummary, { preserveScheduledAt: true }),
+    endValidationStartedAt: params.validationStartedAt.toISOString(),
   };
 }
 
@@ -101,7 +148,7 @@ export function buildEndValidationCompletionEvidence(params: {
   scheduledAt?: string | null;
 }): Record<string, unknown> {
   return {
-    ...(params.priorSummary ?? {}),
+    ...withClearedAttemptLocalState(params.priorSummary, { preserveScheduledAt: true }),
     ...(params.scheduledAt ? { endValidationScheduledAt: params.scheduledAt } : {}),
     endValidationStartedAt: params.validationStartedAt.toISOString(),
     endValidationCompletedAt: params.validationCompletedAt.toISOString(),
@@ -116,7 +163,7 @@ export function buildEndValidationFailureEvidence(params: {
   failureOutcome: 'DETECTOR_EXECUTION_FAILURE' | 'DETECTOR_MISSING';
 }): Record<string, unknown> {
   return {
-    ...(params.priorSummary ?? {}),
+    ...withClearedAttemptLocalState(params.priorSummary, { preserveScheduledAt: true }),
     ...(params.validationStartedAt
       ? { endValidationStartedAt: params.validationStartedAt.toISOString() }
       : {}),
@@ -131,7 +178,7 @@ export function buildEndValidationFetchFailureEvidence(params: {
   failureReason: string;
 }): Record<string, unknown> {
   return {
-    ...(params.priorSummary ?? {}),
+    ...withClearedAttemptLocalState(params.priorSummary, { preserveScheduledAt: true }),
     ...(params.validationStartedAt
       ? { endValidationStartedAt: params.validationStartedAt.toISOString() }
       : {}),
@@ -154,6 +201,7 @@ export function buildMaxAttemptFallbackEvidence(params: {
 
 export function extractR5EndForensicsForPersistence(
   summary: Record<string, unknown> | null | undefined,
+  completedAttemptCount?: number,
 ): {
   endValidation: Record<string, unknown>;
   emptyCoreEndGate?: Record<string, unknown>;
@@ -177,8 +225,19 @@ export function extractR5EndForensicsForPersistence(
   if (typeof s.completedEndValidationAttempt === 'number') {
     endValidation.completedAttempt = s.completedEndValidationAttempt;
   }
-  if (typeof s.completedAttemptCount === 'number') {
+  if (typeof completedAttemptCount === 'number') {
+    endValidation.completedAttemptCount = completedAttemptCount;
+  } else if (typeof s.completedAttemptCount === 'number') {
     endValidation.completedAttemptCount = s.completedAttemptCount;
+  }
+  if (typeof s.endValidationFailureOutcome === 'string') {
+    endValidation.failureOutcome = s.endValidationFailureOutcome;
+  }
+  if (typeof s.endValidationFailureReason === 'string') {
+    endValidation.failureReason = s.endValidationFailureReason;
+  }
+  if (typeof s.endValidationFetchFailureReason === 'string') {
+    endValidation.fetchFailureReason = s.endValidationFetchFailureReason;
   }
   if (typeof s.maxAttemptFallbackReason === 'string') {
     endValidation.maxAttemptFallbackReason = s.maxAttemptFallbackReason;

@@ -345,3 +345,67 @@ All 31 mandatory R5A scenarios covered across classifier, registry, gate, reset,
 | P5-F11 | RESOLVED_BY_R5 — production registry error sentinels no longer consume attempts |
 | P5-F13 | RESOLVED_BY_R5 — empty-core requires explicit provider-event-time-valid VLS inactivity |
 | P5-F10 | PARTIALLY_RESOLVED_BY_R5 — max-attempt fallback still exists without positive CUSUM confirmation |
+
+---
+
+## R5B — Validation Attempt Forensic Isolation Closure
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-09-06 |
+| Parent commit | `80f222ec26b9eb5f84cae6e169ee1aa273c1db07` |
+| Scope | R5B.1–R5B.14 attempt-local forensic isolation |
+
+### Same end episode vs validation attempt
+
+**End-episode provenance** (survives retries within POSSIBLE_END):
+
+- `endCandidateClockSource`, `noCoreEmptyCoreForensics`, `emptyCoreDecision`, `emptyCoreReason`
+- start/lifecycle evidence unrelated to end validation
+
+**Attempt-local fields** (cleared between validation attempts):
+
+- `endValidationScheduledAt`, `endValidationStartedAt`, `endValidationCompletedAt`
+- `endValidationFailureReason`, `endValidationFailureOutcome`, `endValidationFetchFailureReason`
+- `completedEndValidationAttempt`
+
+Helper: `clearEndValidationAttemptLocalEvidence()` — dedicated to attempt isolation; NOT used for ACTIVE reopen (broader `stripEndCycleEvidenceForActiveReopen()` unchanged).
+
+### Scheduling / start / failure / success contracts
+
+| Phase | Behavior |
+|-------|----------|
+| PEC schedules EV | clear attempt-local → write new `endValidationScheduledAt`; `endValidationAttempts` unchanged |
+| EV starts | clear stale attempt-local (preserve current scheduledAt) → write fresh `endValidationStartedAt`; no completedAt/failure/completedAttempt |
+| Detector/fetch failure | clear stale attempt-local → write failure fields; no completedAt/completedAttempt |
+| Valid analytical decision | clear stale failure fields → write started/completed/completedAttempt consistently |
+
+### Authoritative completed-cycle count
+
+`VehicleTripDetectionState.endValidationAttempts` is authoritative for total completed CUSUM cycles.
+
+`extractR5EndForensicsForPersistence(summary, completedAttemptCount)` persists:
+
+- `completedAttemptCount` from detection state (not stale JSON)
+- latest attempt fields (scheduled/started/completed/failure) from summary only when present
+
+Example: 2 completed cycles + latest detector failure → `completedAttemptCount: 2`, `failureOutcome` present, `completedAt` absent.
+
+### Temporal regression (Attempt1 success → Attempt2 failure)
+
+Attempt 1 INCONCLUSIVE writes startedAt1 + completedAt1 + `completedEndValidationAttempt: 1`.
+
+Attempt 2 PEC schedule clears attempt 1 runtime timestamps; EV2 failure writes startedAt2 without completedAt.
+
+Invariant: failed attempt never inherits prior `completedAt`.
+
+### R5B finding status
+
+| ID | Status |
+|----|--------|
+| P5-F03 | RESOLVED_BY_R5 |
+| P5-F11 | RESOLVED_BY_R5 |
+| P5-F13 | RESOLVED_BY_R5 |
+| P5-F10 | PARTIALLY_RESOLVED_BY_R5 |
+
+Quality gate: **316 passed** (25 suites), build PASS, Prisma validate PASS.

@@ -3,8 +3,14 @@ import {
 } from './trip-fsm-clock-contract';
 import {
   buildEndValidationCompletionEvidence,
+  buildEndValidationFailureEvidence,
+  buildEndValidationFetchFailureEvidence,
+  buildEndValidationScheduledEvidence,
+  buildEndValidationStartedEvidence,
   buildPossibleEndToActiveReset,
+  clearEndValidationAttemptLocalEvidence,
   END_CYCLE_REOPEN_STRIP_KEYS,
+  END_VALIDATION_ATTEMPT_LOCAL_KEYS,
   extractR5EndForensicsForPersistence,
   stripEndCycleEvidenceForActiveReopen,
   validateCusumMovementEventTime,
@@ -75,31 +81,118 @@ describe('trip-end-cycle-reset (R5)', () => {
   });
 
   it('extractR5EndForensicsForPersistence copies bounded end-cycle fields', () => {
-    const extracted = extractR5EndForensicsForPersistence({
-      endValidationScheduledAt: '2026-09-06T11:59:50.000Z',
-      endValidationStartedAt: '2026-09-06T12:00:00.000Z',
-      endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
-      completedEndValidationAttempt: 2,
-      maxAttemptFallbackReason: 'max_completed_cusum_attempts',
-      completedAttemptCount: 3,
-      resumeCheckOutcome: 'NO_RESUME_EVIDENCE',
-      noCoreEmptyCoreForensics: {
-        noCoreStream: true,
-        operationalInactiveMs: 150000,
-        vlsEvidenceState: 'INACTIVE',
-        vlsProviderObservedAt: '2026-09-06T11:58:00.000Z',
-        vlsObservationAgeMs: 120000,
-        performanceActivity: false,
-        routeMotion: false,
-        decision: 'POSSIBLE_END',
-        reason: 'empty_core_corroborated_inactivity',
+    const extracted = extractR5EndForensicsForPersistence(
+      {
+        endValidationScheduledAt: '2026-09-06T11:59:50.000Z',
+        endValidationStartedAt: '2026-09-06T12:00:00.000Z',
+        endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+        completedEndValidationAttempt: 2,
+        maxAttemptFallbackReason: 'max_completed_cusum_attempts',
+        completedAttemptCount: 3,
+        resumeCheckOutcome: 'NO_RESUME_EVIDENCE',
+        noCoreEmptyCoreForensics: {
+          noCoreStream: true,
+          operationalInactiveMs: 150000,
+          vlsEvidenceState: 'INACTIVE',
+          vlsProviderObservedAt: '2026-09-06T11:58:00.000Z',
+          vlsObservationAgeMs: 120000,
+          performanceActivity: false,
+          routeMotion: false,
+          decision: 'POSSIBLE_END',
+          reason: 'empty_core_corroborated_inactivity',
+        },
       },
-    });
+      3,
+    );
     expect(extracted.endValidation.completedAttempt).toBe(2);
+    expect(extracted.endValidation.completedAttemptCount).toBe(3);
     expect(extracted.endValidation.maxAttemptFallbackReason).toBe(
       'max_completed_cusum_attempts',
     );
     expect(extracted.emptyCoreEndGate?.vlsEvidenceState).toBe('INACTIVE');
+  });
+
+  it('clearEndValidationAttemptLocalEvidence removes attempt-local keys only', () => {
+    const cleared = clearEndValidationAttemptLocalEvidence({
+      endValidationScheduledAt: 'a',
+      endValidationStartedAt: 'b',
+      endValidationCompletedAt: 'c',
+      completedEndValidationAttempt: 1,
+      endValidationFailureReason: 'x',
+      endCandidateClockSource: 'keep',
+      emptyCoreReason: 'keep',
+    });
+    for (const key of END_VALIDATION_ATTEMPT_LOCAL_KEYS) {
+      expect(cleared[key]).toBeUndefined();
+    }
+    expect(cleared.endCandidateClockSource).toBe('keep');
+    expect(cleared.emptyCoreReason).toBe('keep');
+  });
+
+  it('buildEndValidationFailureEvidence clears stale completedAt from prior attempt', () => {
+    const evidence = buildEndValidationFailureEvidence({
+      priorSummary: {
+        endValidationScheduledAt: '2026-09-06T12:00:55.000Z',
+        endValidationStartedAt: '2026-09-06T12:01:00.000Z',
+        endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+        completedEndValidationAttempt: 1,
+        endCandidateClockSource: 'PROVIDER_EVENT_TIME',
+      },
+      validationStartedAt: new Date('2026-09-06T12:01:00.000Z'),
+      failureReason: 'detector boom',
+      failureOutcome: 'DETECTOR_EXECUTION_FAILURE',
+    });
+    expect(evidence.endValidationStartedAt).toBe('2026-09-06T12:01:00.000Z');
+    expect(evidence.endValidationCompletedAt).toBeUndefined();
+    expect(evidence.completedEndValidationAttempt).toBeUndefined();
+    expect(evidence.endValidationFailureOutcome).toBe('DETECTOR_EXECUTION_FAILURE');
+    expect(evidence.endCandidateClockSource).toBe('PROVIDER_EVENT_TIME');
+  });
+
+  it('buildEndValidationStartedEvidence clears stale completedAt before start', () => {
+    const evidence = buildEndValidationStartedEvidence({
+      priorSummary: {
+        endValidationScheduledAt: '2026-09-06T12:00:55.000Z',
+        endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+        completedEndValidationAttempt: 1,
+      },
+      validationStartedAt: new Date('2026-09-06T12:01:00.000Z'),
+    });
+    expect(evidence.endValidationScheduledAt).toBe('2026-09-06T12:00:55.000Z');
+    expect(evidence.endValidationStartedAt).toBe('2026-09-06T12:01:00.000Z');
+    expect(evidence.endValidationCompletedAt).toBeUndefined();
+    expect(evidence.completedEndValidationAttempt).toBeUndefined();
+  });
+
+  it('buildEndValidationScheduledEvidence clears prior attempt-local runtime state', () => {
+    const evidence = buildEndValidationScheduledEvidence({
+      priorSummary: {
+        endValidationScheduledAt: '2026-09-06T11:59:50.000Z',
+        endValidationStartedAt: '2026-09-06T12:00:00.000Z',
+        endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+        completedEndValidationAttempt: 1,
+        endCandidateClockSource: 'PROVIDER_EVENT_TIME',
+      },
+      workerNow: new Date('2026-09-06T12:01:00.000Z'),
+    });
+    expect(evidence.endValidationScheduledAt).toBe('2026-09-06T12:01:00.000Z');
+    expect(evidence.endValidationStartedAt).toBeUndefined();
+    expect(evidence.endValidationCompletedAt).toBeUndefined();
+    expect(evidence.endCandidateClockSource).toBe('PROVIDER_EVENT_TIME');
+  });
+
+  it('buildEndValidationFetchFailureEvidence clears stale completedAt', () => {
+    const evidence = buildEndValidationFetchFailureEvidence({
+      priorSummary: {
+        endValidationScheduledAt: '2026-09-06T12:00:55.000Z',
+        endValidationCompletedAt: '2026-09-06T12:00:05.000Z',
+        completedEndValidationAttempt: 1,
+      },
+      validationStartedAt: new Date('2026-09-06T12:01:00.000Z'),
+      failureReason: 'fetch failed',
+    });
+    expect(evidence.endValidationCompletedAt).toBeUndefined();
+    expect(evidence.endValidationFetchFailureReason).toBe('fetch failed');
   });
 
   it('validateCusumMovementEventTime accepts valid provider timestamp', () => {

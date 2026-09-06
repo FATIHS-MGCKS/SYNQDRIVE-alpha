@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r5b-validation-attempt-isolation-2026-09-06',
+    version: '4.9.1074',
+    title: 'Trip FSM R5B — Validation Attempt Forensic Isolation',
+    summary: [
+      'Separates same-end-episode provenance from attempt-local validation runtime state.',
+      'clearEndValidationAttemptLocalEvidence() clears scheduled/started/completed/failure fields between attempts without ACTIVE reopen.',
+      'Failed attempts no longer inherit stale completedAt or completedEndValidationAttempt from prior successful cycles.',
+      'extractR5EndForensicsForPersistence uses authoritative endValidationAttempts for completedAttemptCount.',
+      'Temporal regression: Attempt1 INCONCLUSIVE → Attempt2 detector failure keeps completedAt absent.',
+    ],
+    reason:
+      'R5B closure — impossible forensic combinations when retrying END_VALIDATION within the same POSSIBLE_END episode.',
+    previousBehavior:
+      'buildEndValidationFailureEvidence spread priorSummary including stale completedAt from previous attempt.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5B; trip-end-cycle-reset.ts + trip-end-validation-r5b.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:40:00.000Z',
+  },
+  {
     id: 'trip-fsm-r5a-end-evidence-closure-2026-09-06',
     version: '4.9.1073',
     title: 'Trip FSM R5A — End Evidence Semantics Closure',
