@@ -37,19 +37,30 @@ Post-activation scheduler: 0 zero-leader mentions, 0 multi-leader mentions in PM
 
 ## Step 2 — Full-fleet eligibility matrix (6 connected DIMO vehicles)
 
+**Eligibility scopes (see lifecycle audit for definitions):**
+
+| Scope | Count |
+|-------|-------|
+| `CONNECTED_FLEET_SIZE` | 6 |
+| `LV_REST_STRUCTURALLY_CAPABLE_FLEET_SIZE` | 5 (excludes EV) |
+| `LV_REST_CURRENTLY_OBSERVABLE_FLEET_SIZE` | 5 (excludes offline `WOB L 9755`) |
+| `LV_REST_CURRENTLY_ELIGIBLE_FLEET_SIZE` | 4 |
+| `OFFLINE_OR_INELIGIBLE_FLEET_SIZE` | 1 |
+| `EV_NO_LV_REST_PATH_COUNT` | 1 |
+
 | Plate | Fuel | Telemetry | Post-T0 meas | Natural VALID REST | Assess | Pub | Sessions | Verdict |
 |-------|------|-----------|--------------|-------------------|--------|-----|----------|---------|
-| WOB L 7503 | GASOLINE | active LV 14.2V | 2 REST backfill | 0 | 0 | 0 | 1 | **ELIGIBLE_NO_QUALIFYING_REST_OPPORTUNITY** (backfill contaminated only) |
+| WOB L 7503 | GASOLINE | active LV 14.2V | 2 REST backfill | 0 | 0 | 0 | 1 | **SESSION_EXISTS_BACKFILL_ONLY** (targets evaluated contaminated) |
 | KS FH 660E | ELECTRIC | active SOC 92% | 0 | 0 | 0 | 0 | 0 | **EV_NO_LV_REST_PATH** |
-| HMÜ C 215 | GASOLINE | active LV 12.7V | 1 LIVE_VOLTAGE | 0 | 0 | 0 | 0 | **ELIGIBLE_REST_PENDING** (telemetry active; no rest session armed post-T0) |
-| KS MX 2024 | GASOLINE | active LV 12.2V | 0 | 0 | 0 | 0 | 0 | **ELIGIBLE_NO_QUALIFYING_REST_OPPORTUNITY** |
-| KS MS 661 | GASOLINE | active LV 13.6V | 59 LIVE_VOLTAGE + 2 REST backfill | 0 | 0 | 0 | 3 | **ELIGIBLE_REST_PENDING** (active/driving; new anchors at 08:49/10:05 without targets yet) |
+| HMÜ C 215 | GASOLINE | LV 12.7V; source ~5h stale | 1 LIVE_VOLTAGE | 0 | 0 | 0 | 0 | **NO_REST_ARMING_OPPORTUNITY** (no post-T0 trip completion) |
+| KS MX 2024 | GASOLINE | active LV 12.2V; long-rest | 0 | 0 | 0 | 0 | 0 | **NO_REST_ARMING_OPPORTUNITY** (no post-T0 trip) |
+| KS MS 661 | GASOLINE | active LV 13.6V | 59 LIVE_VOLTAGE + 2 REST backfill | 0 | 0 | 0 | 3 | **SESSION_EXISTS_NO_VALID_REST** (natural sessions invalidated by `charging_detected` before target due) |
 | WOB L 9755 | GASOLINE | stale Aug 26 | 0 | 0 | 0 | 0 | 0 | **OFFLINE_OR_INELIGIBLE** |
 
 `FULL_FLEET_ELIGIBILITY_EXPLAINED=YES`  
 `UNEXPLAINED_STUCK_ELIGIBLE_VEHICLES=0`
 
-No vehicle with a due VALID REST target silently failed to progress.
+No vehicle with a due VALID REST target silently failed to progress. Per-session lifecycle proof: `M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md`.
 
 ---
 
@@ -142,12 +153,14 @@ No VALID REST measurement → no canonical assessment handoff possible.
 | Classification | Count |
 |----------------|-------|
 | `DUE_REST_TARGETS_TOTAL` | 4 (backfill evaluations at first ticks) |
+| `DUE_REST_TARGETS_EVALUATED` | 4 |
 | `DUE_REST_TARGETS_SUCCESSFUL` | 0 (none VALID) |
 | `DUE_REST_TARGETS_EXPECTED_REJECTION` | 4 (all contaminated/missed quality) |
+| `DUE_REST_TARGETS_INVALIDATED_BEFORE_DUE` | 2 (KS MS 661 natural sessions — policy-compliant) |
 | `DUE_REST_TARGETS_PIPELINE_MISSING` | **0** |
 | `DUE_REST_TARGETS_UNRESOLVED` | 0 |
 
-No eligible vehicle had a due VALID REST opportunity that silently disappeared.
+No eligible vehicle had a due VALID REST opportunity that silently disappeared. Lifecycle forensic audit (`LIFECYCLE_AUDIT=PASS`) confirms KS MS 661 ~08:49 anchor had **no missing REST_60M** — session invalidated by `charging_detected` at `09:29:02Z` before hypothetical due `09:33:42Z`.
 
 ---
 
@@ -240,14 +253,14 @@ Partial activity documented:
 | # | Challenge | Resolution |
 |---|-----------|------------|
 | 1 | Publications from pre-T0/backfill? | **Disproved** — 0 publications post-T0 |
-| 2 | Vehicle stuck while aggregate healthy? | **No defect** — KS MS 661 active/driving; REST anchors pending/not yet due |
+| 2 | Vehicle stuck while aggregate healthy? | **No defect** — KS MS 661 natural sessions invalidated by `charging_detected` before target due; not stuck pending targets |
 | 3 | Reconciliation rescuing all broken handoffs? | **No** — 0 assessments; reconciliation not masking primary-path success |
 | 4 | Duplicate work via different PKs? | **Disproved** — dup counts 0 |
 | 5 | Scheduler instability hidden? | **Disproved** — stable 1 leader entire window |
 | 6 | Failed queue cleanup hiding failures? | **Disproved** — FAILED_JOBS_POST_T0=0 |
 | 7 | Wrong REST window in assess selection? | **N/A** — no assessments created |
 | 8 | Repeated EWMA/hysteresis? | **Disproved** — 0 publications |
-| 9 | Due REST silently missed? | **Disproved** — backfill targets evaluated; 0 pipeline-missing |
+| 9 | Due REST silently missed? | **Disproved** — backfill targets evaluated; natural sessions policy-invalidated pre-due; lifecycle audit PASS; 0 pipeline-missing |
 | 10 | One lucky vehicle masks another failure? | **N/A** — no E2E success on any vehicle |
 
 ---
@@ -278,6 +291,8 @@ Partial activity documented:
 
 ```
 BATTERY_V2_M3_1_STAGE2_6H_AUDIT=COMPLETE
+BATTERY_V2_M3_1_REST_LIFECYCLE_AUDIT=COMPLETE
+LIFECYCLE_AUDIT=PASS
 NEW_STAGE2_T0=2026-09-05T23:36:12Z
 CURRENT_UTC=2026-09-06T10:06:57Z
 ELAPSED_SINCE_STAGE2_T0=10.51h
@@ -286,8 +301,18 @@ STAGE2_RUNTIME_CONTRACT=PASS
 CANONICAL_CONTROL_PLANE_CONTINUOUS=YES
 
 CONNECTED_FLEET_SIZE=6
-LV_REST_ELIGIBLE_FLEET_SIZE=5
-VEHICLES_WITH_QUALIFYING_REST_OPPORTUNITY=2
+LV_REST_STRUCTURALLY_CAPABLE_FLEET_SIZE=5
+LV_REST_CURRENTLY_OBSERVABLE_FLEET_SIZE=5
+LV_REST_CURRENTLY_ELIGIBLE_FLEET_SIZE=4
+OFFLINE_OR_INELIGIBLE_FLEET_SIZE=1
+EV_NO_LV_REST_PATH_COUNT=1
+
+VEHICLES_WITH_REST_SESSIONS=2
+VEHICLES_WITH_TARGETS_SCHEDULED=2
+VEHICLES_WITH_TARGETS_DUE=2
+VEHICLES_WITH_COMPLETED_REST_WINDOW=0
+VEHICLES_WITH_VALID_REST_OPPORTUNITY=0
+VEHICLES_WITH_VALID_REST_MEASUREMENT=0
 VEHICLES_WITH_NATURAL_VALID_REST=0
 VEHICLES_WITH_NATURAL_ASSESSMENT=0
 VEHICLES_WITH_NATURAL_PUBLICATION=0
@@ -306,10 +331,19 @@ NATURAL_PUBLICATION_EVIDENCE_PROVEN=NO
 NATURAL_END_TO_END_CHAIN_PROVEN=NO
 
 DUE_REST_TARGETS_TOTAL=4
+DUE_REST_TARGETS_EVALUATED=4
 DUE_REST_TARGETS_SUCCESSFUL=0
 DUE_REST_TARGETS_EXPECTED_REJECTION=4
+DUE_REST_TARGETS_INVALIDATED_BEFORE_DUE=2
 DUE_REST_TARGETS_PIPELINE_MISSING=0
 DUE_REST_TARGETS_UNRESOLVED=0
+
+LOCK_CONTENTION_CAUSED_LOST_REST_WORK=NO
+KS_MS_661_0849_SESSION_RESULT=A
+HMU_C215_REST_ARMING_RESULT=NO_REST_ARMING_OPPORTUNITY
+
+NEXT_NATURAL_EVIDENCE_CANDIDATE=NONE
+NEXT_MEANINGFUL_VALIDATION_AT=EVENT_CONDITIONED
 
 PRE_T0_ASSESSMENTS_CREATED_SINCE_STAGE2_T0=0
 PRE_T0_PUBLICATION_HANDOFFS_CREATED_SINCE_STAGE2_T0=0

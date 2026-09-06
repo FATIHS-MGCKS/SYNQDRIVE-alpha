@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-06 (M3.1 corrected Stage-2 — ≥6h validation complete)  
+**Snapshot date:** 2026-09-06 (M3.1 corrected Stage-2 — ≥6h validation + lifecycle audit complete)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -16,14 +16,16 @@
 | Immediate smoke | **PASS** — see `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md` |
 | 30m status | **PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE** — see `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md` |
 | 6h status | **PENDING_NATURAL_E2E_EVIDENCE** — see `research/M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md` |
+| Lifecycle audit | **PASS** (`LIFECYCLE_AUDIT=PASS`) — see `research/M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md` |
 | `M3_1_STATUS` | **STAGE2_ACTIVE_PENDING_NATURAL_E2E_EVIDENCE** |
 | `PRODUCTION_VALIDATED` | **PENDING_NATURAL_E2E_EVIDENCE** |
 | `CANONICAL_REST_PIPELINE` | **ON** (Stage-2 contract) |
 | `LEGACY_REST_CAPTURE` | **OFF** |
-| ≥6h audit (10.51h elapsed) | Control plane continuous (122 ticks); 0 natural VALID REST; 0 assess/pub; infrastructure PASS |
+| ≥6h audit (10.51h elapsed) | Control plane continuous (122 ticks); 0 natural VALID REST; 0 assess/pub; infrastructure PASS; lifecycle audit PASS (0 pipeline-missing) |
 | PKG-01 | original cohort 19+5=24; 5 stale inert; 0 pre-T0 unsafe work since T0 |
+| Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
-See `research/M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`.
+See `research/M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md`, `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`.
 
 ## Historical M3.1 invalid activation (superseded — do not use for validation T0)
 
