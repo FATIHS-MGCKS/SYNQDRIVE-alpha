@@ -6,7 +6,7 @@ export const TRIP_TRACKING_HANDOFF_LOCK_DEFERRAL_MS = 10_000;
 
 /**
  * Thrown when a durable handoff successor cannot acquire the vehicle worker lock.
- * TripTrackingProcessor converts this to BullMQ moveToDelayed(skipAttempt) + DelayedError.
+ * TripTrackingProcessor converts this to job.moveToDelayed(timestamp, token) + DelayedError.
  */
 export class TripTrackingHandoffLockContentionError extends Error {
   readonly delayMs: number;

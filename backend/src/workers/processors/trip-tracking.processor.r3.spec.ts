@@ -5,6 +5,8 @@ import { TRIP_TRACKING_HANDOFF_KINDS, TRIP_TRACKING_TRIGGERS } from '../../modul
 import { TripTrackingHandoffLockContentionError } from '../../modules/vehicle-intelligence/trips/trip-tracking-lock-contention';
 
 describe('TripTrackingProcessor — R3 start liveness visibility', () => {
+  const trackingQueue = { getJob: jest.fn() } as any;
+
   it('records DimoPollLog FAILURE when POSSIBLE_START throws', async () => {
     const dimoPollLog = { create: jest.fn().mockResolvedValue({}) };
     const orchestration = {
@@ -13,6 +15,7 @@ describe('TripTrackingProcessor — R3 start liveness visibility', () => {
     const processor = new TripTrackingProcessor(
       { dimoPollLog } as any,
       orchestration as any,
+      trackingQueue,
     );
 
     await expect(
@@ -47,6 +50,7 @@ describe('TripTrackingProcessor — R3 start liveness visibility', () => {
     const processor = new TripTrackingProcessor(
       { dimoPollLog } as any,
       orchestration as any,
+      trackingQueue,
     );
 
     await processor.process({

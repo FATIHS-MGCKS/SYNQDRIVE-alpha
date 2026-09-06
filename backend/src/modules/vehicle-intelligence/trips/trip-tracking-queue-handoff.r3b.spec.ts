@@ -270,9 +270,13 @@ describe('TripTrackingProcessor — R3B handoff lock deferral', () => {
         .fn()
         .mockRejectedValue(new TripTrackingHandoffLockContentionError(10_000)),
     };
+    const trackingQueue = {
+      getJob: jest.fn(async () => undefined),
+    } as any;
     const processor = new TripTrackingProcessor(
       { dimoPollLog } as any,
       orchestration as any,
+      trackingQueue,
     );
 
     await expect(
@@ -300,9 +304,11 @@ describe('TripTrackingProcessor — R3B handoff lock deferral', () => {
     const orchestration = {
       processPossibleStart: jest.fn().mockRejectedValue(new Error('provider down')),
     };
+    const trackingQueue = { getJob: jest.fn() } as any;
     const processor = new TripTrackingProcessor(
       { dimoPollLog } as any,
       orchestration as any,
+      trackingQueue,
     );
 
     await expect(

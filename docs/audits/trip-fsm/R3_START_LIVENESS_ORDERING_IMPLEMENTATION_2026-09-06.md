@@ -224,7 +224,7 @@ P4-F11 resolution now includes: error propagation, bounded fast retry, durable N
 | Field | Value |
 |-------|-------|
 | R3A base commit | `846f7e9033cfee6e6f5162725a5e56f8cd9508a3` |
-| Scope | handoff lock-contention deferral (BullMQ moveToDelayed skipAttempt) |
+| Scope | handoff lock-contention deferral (BullMQ moveToDelayed + DelayedError) |
 | Deploy | **NOT PERFORMED** |
 
 ### Temporal race
@@ -237,10 +237,10 @@ Worker concurrency >1 makes this race real.
 
 1. Successor jobs carry explicit metadata: `handoffKind: stable_successor`, `handoffPrimaryJobId`
 2. Orchestration throws `TripTrackingHandoffLockContentionError` for handoff jobs when lock not acquired
-3. `TripTrackingProcessor` calls `job.moveToDelayed(now + 10s, token)` with BullMQ `skipAttempt: true`, then throws `DelayedError`
+3. `TripTrackingProcessor` calls `job.moveToDelayed(now + 10s, token)` then throws `DelayedError`
 4. Ordinary non-handoff lock misses still return SUCCESS no-op (duplicate/noise)
 
-Lock-contention deferral (10s, skipAttempt) is **separate** from infrastructure retry (4 attempts, exponential 5s base). The 10s deferral can repeat across the 120s lock TTL without consuming PS infrastructure attempts or resetting R1 clocks.
+Lock-contention deferral (10s, moveToDelayed + DelayedError) is **separate** from infrastructure retry (4 attempts, exponential 5s base). Manual deferral prevents normal complete/fail handling and therefore does not consume the infrastructure failure retry path. The 10s deferral can repeat across the 120s lock TTL without consuming PS infrastructure attempts or resetting R1 clocks.
 
 ### FSM obsolescence preserved
 
@@ -269,6 +269,93 @@ Handoff successor executes when phase still relevant; RESTING/obsolete FSM → s
 ## Validation (post-R3B)
 
 - Targeted suites: **209 passed**
+- Backend build/typecheck: **PASS**
+- Prisma validate: **PASS** (no schema change)
+- `git diff --check`: **PASS**
+- Deploy: **NOT PERFORMED**
+
+---
+
+## R3C — Handoff Predecessor Settlement Closure
+
+| Field | Value |
+|-------|-------|
+| R3B base commit | `e98f941d96ef01029df284ad83d6bef8c05b3adc` |
+| Scope | predecessor BullMQ settlement gate before successor generation |
+| Deploy | **NOT PERFORMED** |
+
+### Temporal race (DB lock free, predecessor BullMQ ACTIVE)
+
+R3B closes the per-vehicle worker-lock window. A second window remains:
+
+1. Primary job A releases the vehicle FSM worker lock after orchestration
+2. `TripTrackingProcessor` still runs DimoPollLog / completion work
+3. BullMQ job A remains **ACTIVE**
+4. Successor S (`${primaryJobId}__succ`) wakes, acquires the vehicle lock, runs `processPossibleStart`, returns NOT_CONFIRMED, calls `schedulePossibleStart(30s)`
+5. `enqueueStableTripTrackingJob` sees primary A still ACTIVE → tries successor slot `${primary}__succ` = **S itself** (ACTIVE) → **SKIPPED**
+6. S completes, A completes → no next PS validation survives → 120s recovery dependency
+
+### Two-slot generation invariant
+
+Deterministic slots: `primary` and `${primary}__succ`. Safe only when successor does not execute as the new generation while the old primary still occupies the primary slot.
+
+### Selected mechanism
+
+Shared helper: `assertHandoffPredecessorSettled()` in `trip-tracking-handoff-settlement.ts`.
+
+1. `TripTrackingProcessor` runs settlement check **before** orchestration for `handoffKind: stable_successor`
+2. Inspect `handoffPrimaryJobId` in the same trip-tracking queue
+3. If predecessor is unsettled → `TripTrackingHandoffPredecessorNotSettledError` → `moveToDelayed(+10s, token)` + `DelayedError`
+4. Orchestration retains R3B vehicle-lock contention after settlement passes
+
+### Predecessor settlement matrix
+
+| Predecessor BullMQ state | Successor behavior |
+|--------------------------|-------------------|
+| ACTIVE | defer (+10s) |
+| WAITING | defer |
+| DELAYED | defer |
+| PRIORITIZED | defer |
+| WAITING-CHILDREN | defer |
+| COMPLETED | proceed |
+| FAILED | proceed |
+| ABSENT | proceed |
+
+Terminal retained predecessors need not be physically removed — terminal state is sufficient.
+
+### BullMQ v5.12 deferral semantics (corrected)
+
+Caller API: `job.moveToDelayed(timestamp, token?)` then `throw new DelayedError()`.
+
+There is **no** explicit `skipAttempt` argument in this code path. Manual deferral + `DelayedError` prevents normal complete/fail handling and therefore does not consume the infrastructure failure retry path (`attemptsMade` unchanged).
+
+Handoff deferrals (settlement + lock contention) remain separate from PS infrastructure retry (4 attempts, exponential 5s base).
+
+### R3C temporal test matrix
+
+| # | Scenario | Suite |
+|---|----------|-------|
+| 1 | Pre-R3C race: predecessor ACTIVE → successor enqueue SKIPPED | `trip-tracking-queue-handoff.r3c.spec.ts` |
+| 2 | End-to-end: lock free + predecessor ACTIVE → defer → settle → new primary | same |
+| 3 | Predecessor state matrix (unsettled vs terminal/absent) | same |
+| 4 | PS / ACTIVE_TICK / PEC phase coverage | same |
+| 5 | Processor settlement deferral (no FAILURE log, no orchestration) | same |
+| 6 | Infra retry separation preserved | same + r3/r3b |
+| 7 | R3B lock contention unchanged | r3b suites |
+| 8 | R3A/R1/R2/R3 regressions | full targeted matrix |
+
+### Final finding status (post-R3C)
+
+| ID | Status |
+|----|--------|
+| P4-F11 | RESOLVED_BY_R3 |
+| P4-F12 | RESOLVED_BY_R3 |
+
+P4-F11 resolution requires: error propagation, bounded fast retry, durable NOT_CONFIRMED successor, predecessor settlement cannot consume successor generation, vehicle-lock contention cannot consume successor, recovery tombstone recycling, confirmation clocks unchanged.
+
+## Validation (post-R3C)
+
+- Targeted suites: **224 passed** (18 suites)
 - Backend build/typecheck: **PASS**
 - Prisma validate: **PASS** (no schema change)
 - `git diff --check`: **PASS**

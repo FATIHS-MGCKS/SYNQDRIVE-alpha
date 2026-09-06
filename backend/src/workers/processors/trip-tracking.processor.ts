@@ -1,6 +1,6 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { DelayedError, Job } from 'bullmq';
+import { DelayedError, Job, Queue } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -11,6 +11,11 @@ import {
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
 import { TripTrackingHandoffLockContentionError } from '../../modules/vehicle-intelligence/trips/trip-tracking-lock-contention';
+import {
+  TripTrackingHandoffPredecessorNotSettledError,
+  assertHandoffPredecessorSettled,
+} from '../../modules/vehicle-intelligence/trips/trip-tracking-handoff-settlement';
+import type { TripTrackingQueueLike } from '../../modules/vehicle-intelligence/trips/trip-tracking-queue.util';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
@@ -27,6 +32,8 @@ export class TripTrackingProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orchestration: TripDetectionOrchestrationService,
+    @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
+    private readonly trackingQueue: Queue<TripTrackingJobData>,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     super();
@@ -52,6 +59,11 @@ export class TripTrackingProcessor extends WorkerHost {
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_TRACKING, job);
 
     try {
+      await assertHandoffPredecessorSettled(
+        job.data,
+        this.trackingQueue as TripTrackingQueueLike,
+      );
+
       switch (trigger) {
         case TRIP_TRACKING_TRIGGERS.POSSIBLE_START:
           await this.orchestration.processPossibleStart(job.data);
@@ -97,7 +109,10 @@ export class TripTrackingProcessor extends WorkerHost {
         },
       });
     } catch (err) {
-      if (err instanceof TripTrackingHandoffLockContentionError) {
+      if (
+        err instanceof TripTrackingHandoffLockContentionError ||
+        err instanceof TripTrackingHandoffPredecessorNotSettledError
+      ) {
         const token = job.token;
         if (!token) {
           throw err;
