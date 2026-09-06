@@ -578,6 +578,105 @@ nodes:
     evidence:
       - DI-EVID-0034F-DESIGN-001
 
+  - id: DI-DEC-PROD-DET-UNCHANGED-001
+    type: decision
+    title: Production detectors unchanged after RD003
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Defer detector change until GT-validated replacement or Episode V2.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-DEC-PROVIDER-TS-001
+    type: decision
+    title: providerTimestamp is physical time authority
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Reject synqReceivedAt for physical event timing.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-DEC-CANARY-FAIL-CLOSED-001
+    type: decision
+    title: HF V2 canary fails closed
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Empty allowlist forces LEGACY policy.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-OPERATOR-CANARY-001
+    type: decision
+    title: Operator selects canary vehicle at runtime
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No hardcoded KS MX 2024 production canary.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-PHASE-BOUNDARY-001
+    type: decision
+    title: Phase changes at safe cycle boundaries
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: REQUESTED vs EFFECTIVE; boundary activation.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-TRANSITION-EXCLUDE-001
+    type: decision
+    title: Exclude transition windows from cadence stats
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: TRANSITION and RECOVERY_SWEEP excluded from primary comparison.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-DEPLOY-DISABLED-001
+    type: decision
+    title: Deploy recovery code with features disabled
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: PR 1533 CODE_DEPLOYED YES FEATURE_ENABLED NO.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-PR-1533-001
+
+  - id: DI-DEC-NATIVE-LTE-001
+    type: decision
+    title: Native events authoritative for LTE_R1 misuse
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: HF pass is Trip Signal Summary only.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
+
+  - id: DI-DEC-ALIGN-HARD-BOUNDS-001
+    type: decision
+    title: Reject implausible alignments despite low MAE
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Hard temporal bounds gate GT claims.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD004-A-001
+
   # --- Gaps ---
   - id: DI-GAP-HF-CADENCE-001
     type: gap
@@ -672,7 +771,158 @@ nodes:
       - docs/architecture/driving-intelligence-v2.md
       - docs/audits/driving-intelligence-v2-canonical-design-2026-09.md
 
-  # --- Hypothesis ---
+  - id: DI-HYP-001
+    type: hypothesis
+    title: signals interval 1s yields ~1Hz detector data
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: RD002/003 proved median ~2s bucket spacing.
+    source_paths:
+      - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-HYP-002
+    type: hypothesis
+    title: Point-pair detectors valid under sparse cadence
+    epistemic_status: INFERRED
+    decision_status: EXPERIMENTAL
+    summary: Partially supported as trip summary; not short-event authority for LTE_R1.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/DETECTOR_AUDIT.md
+
+  - id: DI-HYP-003
+    type: hypothesis
+    title: Low MAE video alignment is physically valid
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Rejected when violating hard temporal bounds.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
+
+  - id: DI-HYP-004
+    type: hypothesis
+    title: 2s overlap alone recovers late buckets
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: RD004-B 26 watermark-excluded buckets.
+    source_paths:
+      - docs/audits/data/rd004-segment-b/rd004-b-findings.md
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+
+  - id: DI-HYP-005
+    type: hypothesis
+    title: 8s settlement and 6s overlap are optimal
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Provisional; live calibration not executed.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/HF_RECOVERY_EVOLUTION.md
+
+  - id: DI-HYP-006
+    type: hypothesis
+    title: 30s block poll preserves dense historical buckets
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Same as DI-HYP-BLOCK-POLL-30S-001; not live validated.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-HYP-007
+    type: hypothesis
+    title: One physical drive compares 10/20/30/60s poll phases
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: C.1c machinery ready; live run not executed.
+    source_paths:
+      - architecture/drivingintelligence/research/hf-request-cadence/C1_INDIVIDUAL_RETROSPECTIVE.md
+
+  - id: DI-HYP-008
+    type: hypothesis
+    title: KS MX 2024 token 187336 is canonical canary vehicle
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Operator selects vehicle at runtime per C.1b.
+    source_paths:
+      - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
+
+  - id: DI-HYP-009
+    type: hypothesis
+    title: synqReceivedAt suitable for event timing
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS=0 on RD003.
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-HYP-010
+    type: hypothesis
+    title: LATEST_LIVE fresher than HF for reconstruction
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Stale holds; median ~6s; insufficient for offline GT.
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+
+  - id: DI-HYP-011
+    type: hypothesis
+    title: Engine load approximates vehicle mass road load
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: CONTEXT_ONLY demand proxy per RD003 signal quality.
+    source_paths:
+      - architecture/drivingintelligence/research/scoring-models/SCORING_RETROSPECTIVE.md
+
+  - id: DI-HYP-012
+    type: hypothesis
+    title: Episode V2 replaces point-pair counting in production
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Design only; not implemented.
+    source_paths:
+      - architecture/drivingintelligence/research/scoring-models/EPISODE_V2_DESIGN.md
+    evidence:
+      - DI-EVID-0034F-DESIGN-001
+
+  - id: DI-HYP-013
+    type: hypothesis
+    title: Native DIMO events authoritative for LTE_R1 short events
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: HF is Trip Signal Summary only for LTE_R1 misuse.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/NATIVE_DIMO_EVENTS.md
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
+
+  - id: DI-HYP-014
+    type: hypothesis
+    title: Reference capture safe with V2 OFF on main after deploy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: PR 1533 CODE_DEPLOYED YES FEATURE_ENABLED NO.
+    source_paths:
+      - architecture/drivingintelligence/evidence/production/DEPLOYMENT_STATE.md
+    evidence:
+      - DI-EVID-PR-1533-001
+
+  - id: DI-HYP-015
+    type: hypothesis
+    title: Phase switch at cycle boundary prevents races
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: C.1d/C.1e concurrency tests; live multi-replica not validated.
+    source_paths:
+      - architecture/drivingintelligence/research/hf-request-cadence/C1_INDIVIDUAL_RETROSPECTIVE.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  # --- Hypothesis (legacy id) ---
   - id: DI-HYP-BLOCK-POLL-30S-001
     type: hypothesis
     title: 30s block poll preserves HF bucket density
@@ -803,3 +1053,33 @@ nodes:
     summary: Poll due semantics, gap verification, calibration phases.
     source_paths:
       - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-block-polling.policy.spec.ts
+
+  - id: DI-EVID-NATIVE-EVENTS-001
+    type: evidence
+    title: Native DIMO event authority path
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: LTE_R1 native events primary for short misuse; HF is trip summary.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/NATIVE_DIMO_EVENTS.md
+      - backend/src/modules/vehicle-intelligence/dimo-native-driving-events/
+
+  - id: DI-EVID-PR-1533-001
+    type: evidence
+    title: PR 1533 merge and safe production deploy
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: CODE_DEPLOYED=YES; HF_RECOVERY_POLICY_V2_ENABLED=false; LEGACY authority.
+    source_paths:
+      - architecture/drivingintelligence/evidence/production/DEPLOYMENT_STATE.md
+      - architecture/drivingintelligence/research/PR_TIMELINE.md
+
+  - id: DI-EVID-RD004-A-001
+    type: evidence
+    title: RD004 Segment A alignment closeout
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: H displacement not provider offset; hard bounds rejection methodology.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
+      - architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md

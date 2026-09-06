@@ -163,5 +163,24 @@ invariants:
     affected_nodes:
       - DI-SIG-NATIVE-001
       - DI-SVC-BEHAVIOR-ENRICH-001
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+
+  - id: DI-INV-CADENCE-FOUR-WAY-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      QUERY_INTERVAL != PROVIDER_POLL_CADENCE != OBSERVED_BUCKET_DENSITY != PHYSICAL_SENSOR_SAMPLING_FREQUENCY.
+      These four concepts must never be conflated.
+    rationale: RD002/003/004 and C.1 block-polling audit proved distinct layers.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SIG-HF-001
+      - DI-POL-HF-BLOCK-POLL-001
+      - DI-ACQ-HF-POST-TRIP-001
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-0035C1-BLOCK-001
+    source_paths:
+      - architecture/drivingintelligence/evidence/signal-inventory/CADENCE_DENSITY.md

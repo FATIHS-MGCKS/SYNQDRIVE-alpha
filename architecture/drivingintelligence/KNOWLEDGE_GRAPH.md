@@ -1,6 +1,32 @@
 # Driving Intelligence — Knowledge Graph Overview
 
-Human-readable map of the machine graph in `graph/`. Validate with `scripts/validate-graph.sh`.
+Human-readable map of the machine graph in `graph/`. Validate with `scripts/validate-graph.sh` and `scripts/validate-docs.sh`.
+
+## Workstream evolution graph
+
+```mermaid
+flowchart TD
+  A[Production assumptions: post-trip HF ~1Hz] --> B[Phase 1 forensic audit DI-EV-0002]
+  B --> C[Phase 2 DIMO signal surface 0003-0010]
+  C --> D[Flight Recorder 0011-0014]
+  D --> E[RD001 late buckets no video 0016-0019]
+  E --> F[Watermark fix 0020-0021]
+  F --> G[RD002 motion: 1s not equal 1Hz 0023-0026]
+  G --> H[RD003 video GT + signal quality 0027-0034E]
+  H --> I[Episode V2 design proposal 0034F]
+  H --> J[RD004 alignment + late bucket proof 0035A-B.6]
+  J --> K[HF Recovery V2 implementation 0035C]
+  K --> L[Block polling hypothesis C.1]
+  L --> M[C.1a canary fail-closed]
+  M --> N[C.1b operator vehicle selection]
+  N --> O[C.1c multi-cadence 10-20-30-60]
+  O --> P[C.1d phase atomicity]
+  P --> Q[C.1e pre-live closure PR 1533]
+  Q --> R[CODE_DEPLOYED YES FEATURE_ENABLED NO]
+  R --> S[PENDING live calibration canary]
+```
+
+**Current terminal state:** LEGACY production HF authority; reference-capture infrastructure on binary with V2 disabled.
 
 ## Subsystem context
 
@@ -200,6 +226,15 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 | DI-DEC-HF-RECOVERY-V2-001 | HF recovery V2 for reference capture | EXPERIMENTAL |
 | DI-DEC-BLOCK-POLL-30S-001 | 30s block polling scalability hypothesis | PROPOSED |
 | DI-DEC-EPISODE-V2-001 | Episode-based future scoring | PROPOSED |
+| DI-DEC-PROD-DET-UNCHANGED-001 | Prod detectors unchanged after RD003 | VALIDATED |
+| DI-DEC-PROVIDER-TS-001 | providerTimestamp time authority | VALIDATED |
+| DI-DEC-CANARY-FAIL-CLOSED-001 | Canary fails closed | VALIDATED |
+| DI-DEC-OPERATOR-CANARY-001 | Operator selects canary vehicle | VALIDATED |
+| DI-DEC-PHASE-BOUNDARY-001 | Phase changes at safe boundaries | VALIDATED |
+| DI-DEC-TRANSITION-EXCLUDE-001 | Exclude transitions from cadence stats | VALIDATED |
+| DI-DEC-DEPLOY-DISABLED-001 | Deploy code with features off | VALIDATED |
+| DI-DEC-NATIVE-LTE-001 | Native events LTE_R1 misuse authority | VALIDATED |
+| DI-DEC-ALIGN-HARD-BOUNDS-001 | Reject implausible alignments | VALIDATED |
 
 ## Open gaps (canonical)
 

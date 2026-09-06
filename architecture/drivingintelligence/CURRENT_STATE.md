@@ -5,9 +5,21 @@
 
 ## Executive summary
 
-SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment system** anchored on **DIMO Segment-backed `VehicleTrip` rows**. Production scoring uses **Driving Impact Engine V1** (`drivingStressScore` = vehicle operational load 0–100). A **V2 durable pipeline** exists behind `DRIVING_INTELLIGENCE_V2_ENABLED` (default **false**). **Reference Capture** provides an isolated HF recovery / block-polling laboratory (default **off**, not deployed).
+SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment system** anchored on **DIMO Segment-backed `VehicleTrip` rows**. Production scoring uses **Driving Impact Engine V1** (`drivingStressScore` = vehicle operational load 0–100). A **V2 durable pipeline** exists behind `DRIVING_INTELLIGENCE_V2_ENABLED` (default **false**). **Reference Capture** provides an isolated HF recovery / block-polling laboratory.
 
 **ARCHITECTURE IMPLEMENTED ≠ HF SCALABILITY HYPOTHESIS VALIDATED.**
+
+### Production deployment semantics (post PR #1533, 2026-09-05)
+
+| Term | Value |
+|------|-------|
+| **CODE_DEPLOYED** | **YES** — HF Recovery V2 + C.1a–e on `main` / production binary |
+| **FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false`; empty canary allowlist |
+| **LIVE_CANARY_EXECUTED** | **NO** — zero post-deploy calibration sessions |
+| **HF_30S_BLOCK_POLLING_VALIDATED** | **NO** |
+| **Production HF authority** | **LEGACY** — whole-trip `fetchHighFrequency`; Recovery V2 **not active** |
+
+Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature disabled**. Detail: `evidence/production/DEPLOYMENT_STATE.md`.
 
 ## System boundary (confirmed)
 
@@ -140,14 +152,15 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 | `CustomerDrivingTab`, `BookingUsageMisuseTab` | Rental driving context |
 | Grafana `synqdrive-driving-intelligence-v2.json` | Ops metrics |
 
-## HF / reference capture status (DI-EV-0035C)
+## HF / reference capture status (DI-EV-0035C → C.1e)
 
 | Item | Status |
 |------|--------|
-| V2 recovery policy (8s settlement, 6s overlap) | IMPLEMENTED in reference-capture; default OFF |
-| Block polling 30s (C.1) | IMPLEMENTED testbed; `HF_30S_BLOCK_POLLING_VALIDATED = NO` |
-| Multi-cadence calibration (C.1c–e) | IMPLEMENTED; live canary not executed |
-| Production post-trip HF | **UNCHANGED** — still whole-trip `fetchHighFrequency` |
+| V2 recovery policy (8s settlement, 6s overlap) | CODE on prod binary; **FEATURE OFF** |
+| Block polling 30s (C.1) | CODE on prod binary; **NOT VALIDATED** live |
+| Multi-cadence calibration (C.1c–e) | CODE on prod binary; **LIVE_CANARY_EXECUTED = NO** |
+| Production post-trip HF | **LEGACY UNCHANGED** — whole-trip `fetchHighFrequency` |
+| Operator-selected calibration | Infrastructure ready; runbook incomplete |
 
 ## Multi-tenancy (CONFIRMED)
 

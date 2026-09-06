@@ -338,3 +338,24 @@ edges:
     from: DI-POL-HF-BLOCK-POLL-001
     relation: tested_by
     to: DI-TEST-BLOCK-POLL-001
+
+  - id: DI-EDGE-123
+    from: DI-DEC-DEPLOY-DISABLED-001
+    relation: governs
+    to: DI-FLAG-HF-RECOVERY-V2-001
+    notes: PR 1533 deploy with feature off
+
+  - id: DI-EDGE-124
+    from: DI-DEC-NATIVE-LTE-001
+    relation: governs
+    to: DI-SIG-NATIVE-001
+
+  - id: DI-EDGE-125
+    from: DI-HYP-001
+    relation: contradicts
+    to: DI-CONTRA-HF-1HZ-001
+
+  - id: DI-EDGE-126
+    from: DI-DEC-PROD-DET-UNCHANGED-001
+    relation: governs
+    to: DI-ALGO-HF-ACCEL-001

@@ -1,7 +1,7 @@
 # Driving Intelligence — Living Architecture Authority
 
-**Status:** Bootstrap V1 (2026-09-06)  
-**Maturity:** SUBSTANTIAL reconstruction from code + audits; live HF calibration partially unvalidated  
+**Status:** Retrospective expansion V2 (2026-09-06)  
+**Maturity:** SUBSTANTIAL reconstruction — full workstream 2026-08-30 → present  
 **Runtime impact:** None (documentation and knowledge graph only)
 
 ## What this is
@@ -100,13 +100,22 @@ ReferenceCapture runner (5s) → HF recovery V2 / block polling testbed
 
 | File | Purpose |
 |------|---------|
-| [CURRENT_STATE.md](./CURRENT_STATE.md) | How Driving Intelligence works **right now** |
-| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph + Mermaid diagrams |
+| [CURRENT_STATE.md](./CURRENT_STATE.md) | How Driving Intelligence works **right now** (incl. deploy semantics) |
+| [WORKSTREAM_HISTORY.md](./WORKSTREAM_HISTORY.md) | Chronological technical narrative of the workstream |
+| [COVERAGE_MATRIX.md](./COVERAGE_MATRIX.md) | Topic completion matrix |
+| [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph + evolution diagram |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
-| [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) | Decision register |
-| [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Scientific evolution ledger |
+| [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) | Decision register (18 decisions) |
+| [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Granular evolution ledger |
+| [research/DI_EV_CHRONOLOGY.md](./research/DI_EV_CHRONOLOGY.md) | Complete DI-EV sequence |
+| [research/HYPOTHESIS_REGISTER.md](./research/HYPOTHESIS_REGISTER.md) | Hypotheses tested/rejected |
+| [research/EXPERIMENT_REGISTER.md](./research/EXPERIMENT_REGISTER.md) | Experiments and reference drives |
+| [research/DEFECT_LEDGER.md](./research/DEFECT_LEDGER.md) | Proven defects discovered |
+| [research/LESSONS_LEARNED.md](./research/LESSONS_LEARNED.md) | Evidence-backed lessons |
+| [research/PR_TIMELINE.md](./research/PR_TIMELINE.md) | Workstream PR timeline |
 | [research/OPEN_QUESTIONS.md](./research/OPEN_QUESTIONS.md) | Explicit unknowns |
 | [contradictions/CONTRADICTION_REGISTER.md](./contradictions/CONTRADICTION_REGISTER.md) | Unresolved disagreements |
+| [evidence/EVIDENCE_INDEX.md](./evidence/EVIDENCE_INDEX.md) | Canonical evidence catalog |
 | [graph/nodes.yaml](./graph/nodes.yaml) | Machine-readable node catalog |
 | [graph/edges.yaml](./graph/edges.yaml) | Machine-readable relationships |
 | [graph/invariants.yaml](./graph/invariants.yaml) | Architectural invariants |
@@ -121,6 +130,7 @@ See [AGENT_CONTRACT.md](./AGENT_CONTRACT.md).
 
 ```bash
 bash architecture/drivingintelligence/scripts/validate-graph.sh
+bash architecture/drivingintelligence/scripts/validate-docs.sh
 # or: node architecture/drivingintelligence/scripts/validate-graph.mjs
 ```
 

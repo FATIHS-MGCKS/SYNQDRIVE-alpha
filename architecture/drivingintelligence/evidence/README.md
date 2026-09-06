@@ -1,4 +1,6 @@
-# Driving Intelligence — Evidence Index
+# Driving Intelligence — Evidence
+
+**Canonical catalog:** [EVIDENCE_INDEX.md](./EVIDENCE_INDEX.md)
 
 Evidence contract for the canonical authority. Graph nodes use `DI-EVID-*` and `DI-TEST-*` IDs.
 
