@@ -61,6 +61,11 @@ export class TripDecisionEngine {
   //  EVALUATION METHODS (pure business logic, no DB writes)
   // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * PHASE A — START_CANDIDATE_WAKE only.
+   * Converts SnapshotEvidenceEvaluator findings into a RESTING → POSSIBLE_START decision.
+   * Start confirmation (PHASE B) uses validateTripStart / resolveAnalyticsAssistedStartDecision.
+   */
   evaluateStartCandidate(
     findings: DetectorFinding[],
     _context?: Record<string, unknown>,
@@ -68,11 +73,7 @@ export class TripDecisionEngine {
     const evidenceFinding = findings.find(
       (f) => f.detectorName === 'SnapshotEvidenceEvaluator',
     );
-    const confirmFinding = findings.find(
-      (f) => f.detectorName === 'StartConfirmationDetector',
-    );
 
-    // Snapshot evidence is mandatory for live start
     if (!evidenceFinding || evidenceFinding.verdict !== 'TRIGGERED') {
       return {
         shouldStart: false,
@@ -83,25 +84,14 @@ export class TripDecisionEngine {
       };
     }
 
-    // If confirmation finding exists, it must also be triggered
-    if (confirmFinding && confirmFinding.verdict !== 'TRIGGERED') {
-      return {
-        shouldStart: false,
-        confidence: 'LOW',
-        mode: (evidenceFinding.evidence?.mode as string) ?? 'composite',
-        reason: 'Start confirmation failed',
-        findings,
-      };
-    }
-
-    const confidence = confirmFinding?.confidence ?? evidenceFinding.confidence;
+    const confidence = evidenceFinding.confidence;
     const mode = (evidenceFinding.evidence?.mode as string) ?? 'composite';
 
     return {
       shouldStart: true,
       confidence,
       mode,
-      reason: `Evidence confirmed: ${(evidenceFinding.evidence?.reasons as string[])?.join(', ')}`,
+      reason: `Candidate evidence: ${(evidenceFinding.evidence?.reasons as string[])?.join(', ')}`,
       findings,
     };
   }

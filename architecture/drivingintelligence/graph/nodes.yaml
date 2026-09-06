@@ -1,0 +1,1098 @@
+# Driving Intelligence Knowledge Graph — Nodes (bootstrap V1)
+# Validate: bash architecture/drivingintelligence/scripts/validate-graph.sh
+
+nodes:
+  # --- Domain ---
+  - id: DI-DOM-DRIVING-INTELLIGENCE-001
+    type: domain
+    title: Driving Intelligence domain boundary
+    epistemic_status: CONFIRMED
+    summary: >
+      Post-trip behavioral analysis, operational load scoring, event persistence,
+      V2 orchestration, and API projection. Does not own trip boundaries or energy events.
+    source_paths:
+      - architecture/drivingintelligence/README.md
+    evidence:
+      - DI-EVID-CODE-BOUNDARY-001
+
+  # --- External ---
+  - id: DI-EXT-DIMO-001
+    type: external_provider
+    title: DIMO telemetry and segments API
+    epistemic_status: CONFIRMED
+    summary: Source for segments (trip boundaries), HF signals, native behavior events, snapshots.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+
+  # --- Trip boundary (adjacent) ---
+  - id: DI-TRIP-SEGMENTS-001
+    type: trip_boundary
+    title: DIMO Segments canonical trip boundaries
+    epistemic_status: CONFIRMED
+    summary: VehicleTrip rows anchored on DIMO segment start/end. DI consumes COMPLETED trips only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  - id: DI-ADJ-TRIP-FSM-001
+    type: adjacent_system
+    title: Trip detection FSM
+    epistemic_status: CONFIRMED
+    summary: Live trip tracking; finalizes trips and triggers enrichment producers. Not owned by DI.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  - id: DI-ADJ-ATE-001
+    type: adjacent_system
+    title: Automatic Trip Enrichment
+    epistemic_status: CONFIRMED
+    summary: Parallel trip enrichment concerns; boundary documented in ATE knowledge graph.
+    source_paths:
+      - architecture/knowledge-graphs/automatic-trip-enrichment/README.md
+
+  - id: DI-ADJ-EED-001
+    type: adjacent_system
+    title: Energy Event Detection
+    epistemic_status: CONFIRMED
+    summary: REFUEL/RECHARGE detection; timeline adjacent only.
+    source_paths:
+      - architecture/knowledge-graphs/discovery/ENERGY_EVENT_DETECTION_DISCOVERY_2026-09-01.md
+
+  - id: DI-ADJ-BRAKE-HEALTH-001
+    type: adjacent_system
+    title: Brake health V2
+    epistemic_status: CONFIRMED
+    summary: Consumes brakingLoad and thermal proxies from DI impact publish stage.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/brakes/
+
+  - id: DI-ADJ-TIRE-HEALTH-001
+    type: adjacent_system
+    title: Tire health V2
+    epistemic_status: CONFIRMED
+    summary: Consumes tireLoad proxy from DI impact publish stage.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tires/
+
+  # --- Signals ---
+  - id: DI-SIG-HF-001
+    type: signal
+    title: DIMO high-frequency signals
+    epistemic_status: CONFIRMED
+    summary: >
+      Queried with interval 1s. RD003 HF median ~2.00s new physical samples;
+      RD002 sealed aggregate-bucket Δt P50 13.489s — separate metrics.
+      Speed, RPM, throttle, coolant, longitudinal accel, etc.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-RD002-SEALED-CADENCE-001
+
+  - id: DI-SIG-NATIVE-001
+    type: signal
+    title: DIMO native behavior events
+    epistemic_status: CONFIRMED
+    summary: LTE_R1 provider-classified behavior.* events; primary short-event authority for LTE_R1.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/dimo-native-driving-events/
+
+  # --- Legacy pipeline ---
+  - id: DI-SVC-ENRICH-ORCH-001
+    type: service
+    title: TripEnrichmentOrchestratorService
+    epistemic_status: CONFIRMED
+    summary: Canonical legacy post-trip chain; enqueues behavior enrichment then impact compute.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+
+  - id: DI-QUEUE-BEHAVIOR-001
+    type: queue
+    title: trip.behavior.enrichment
+    epistemic_status: CONFIRMED
+    summary: BullMQ queue for post-trip HF behavior enrichment.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: DI-WORK-BEHAVIOR-001
+    type: worker
+    title: TripBehaviorEnrichmentProcessor
+    epistemic_status: CONFIRMED
+    summary: Worker invoking TripBehaviorEnrichmentService per trip.
+    source_paths:
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+
+  - id: DI-SVC-BEHAVIOR-ENRICH-001
+    type: service
+    title: TripBehaviorEnrichmentService
+    epistemic_status: CONFIRMED
+    summary: >
+      Whole-trip HF pass: fetchHighFrequency, preprocess, accel/brake/abuse detectors,
+      TripBehaviorEvent persistence. Trip Signal Summary for LTE_R1 (sparse HF).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+
+  - id: DI-ACQ-HF-POST-TRIP-001
+    type: acquisition
+    title: Post-trip fetchHighFrequency
+    epistemic_status: CONFIRMED
+    summary: Single whole-trip DIMO HF query per enrichment run. No recovery overlap in production.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+
+  - id: DI-ALGO-HF-ACCEL-001
+    type: algorithm
+    title: HF acceleration detector
+    epistemic_status: CONFIRMED
+    summary: Point-pair delta-v/delta-t harsh acceleration classification.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/hf-acceleration.ts
+
+  - id: DI-ALGO-HF-BRAKE-001
+    type: algorithm
+    title: HF braking detector
+    epistemic_status: CONFIRMED
+    summary: Point-pair deceleration classification including EXTREME >= 7.0 m/s².
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/hf-braking.ts
+
+  - id: DI-ALGO-HF-ABUSE-001
+    type: algorithm
+    title: HF abuse detector
+    epistemic_status: CONFIRMED
+    summary: >
+      Whole-trip abuse episodes: kickdown, launch-like, full braking >= 7.5 m/s²,
+      possible impact >= 12.0 m/s², cold engine, long idle, etc.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/hf-abuse.ts
+
+  - id: DI-QUEUE-IMPACT-001
+    type: queue
+    title: trip.driving-impact.compute
+    epistemic_status: CONFIRMED
+    summary: Legacy impact compute queue; also used by V2 DRIVING_IMPACT_COMPUTE handler path.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: DI-WORK-IMPACT-001
+    type: worker
+    title: DrivingImpactProcessor
+    epistemic_status: CONFIRMED
+    summary: Legacy worker calling DrivingImpactService.computeForTrip.
+    source_paths:
+      - backend/src/workers/processors/driving-impact.processor.ts
+
+  - id: DI-SVC-IMPACT-001
+    type: service
+    title: DrivingImpactService
+    epistemic_status: CONFIRMED
+    summary: Per-trip stress scoring, load components, rolling aggregate. Model v1.2.0.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact.service.ts
+
+  - id: DI-ALGO-IMPACT-SCORER-001
+    type: algorithm
+    title: DrivingImpactScorer
+    epistemic_status: CONFIRMED
+    summary: Pure functions capLinear normalization; longitudinal, braking, stop-go, thermal, composite.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-scorer.ts
+
+  - id: DI-MET-STRESS-001
+    type: derived_metric
+    title: drivingStressScore
+    epistemic_status: CONFIRMED
+    summary: Composite vehicle operational load 0-100. NOT driver quality.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-scorer.ts
+
+  - id: DI-MET-TIRE-LOAD-001
+    type: derived_metric
+    title: tireLoad proxy
+    epistemic_status: CONFIRMED
+    summary: >
+      Operational load proxy 0.35*braking + 0.35*stopGo + 0.30*longitudinal.
+      NOT measured tread wear.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-load-components.ts
+
+  - id: DI-MET-BRAKE-LOAD-001
+    type: derived_metric
+    title: brakingLoad proxy
+    epistemic_status: CONFIRMED
+    summary: Derived from brakingStressScore and provenance. NOT measured pad wear.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-load-components.ts
+
+  - id: DI-SVC-DRIVER-SCORE-001
+    type: service
+    title: DriverScoreService
+    epistemic_status: CONFIRMED
+    summary: >
+      Distance-weighted aggregation of drivingStressScore per subject.
+      Misnamed — aggregates vehicle stress not driver quality.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts
+
+  # --- V2 pipeline ---
+  - id: DI-FLAG-V2-MASTER-001
+    type: feature_flag
+    title: DRIVING_INTELLIGENCE_V2_ENABLED
+    epistemic_status: CONFIRMED
+    summary: Master V2 post-trip pipeline gate. Default false.
+    source_paths:
+      - backend/src/config/driving-intelligence-v2.config.ts
+
+  - id: DI-SVC-POST-FINALIZE-001
+    type: service
+    title: TripPostFinalizeAnalysisProducer
+    epistemic_status: CONFIRMED
+    summary: Trip-end hook; initializes V2 analysis and rental recompute when master flag on.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/trip-post-finalize-analysis.producer.ts
+
+  - id: DI-SVC-ANALYSIS-INIT-001
+    type: service
+    title: DrivingAnalysisInitService
+    epistemic_status: CONFIRMED
+    summary: Creates DrivingAnalysisRun, stages, enqueues ready jobs, runs shadow detectors.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/driving-analysis-init.service.ts
+
+  - id: DI-QUEUE-DI-JOBS-001
+    type: queue
+    title: driving.intelligence.jobs
+    epistemic_status: CONFIRMED
+    summary: V2 typed persistent job envelope queue.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: DI-WORK-DI-JOBS-001
+    type: worker
+    title: DrivingIntelligenceJobProcessor
+    epistemic_status: CONFIRMED
+    summary: Loads DrivingIntelligenceJob by persistentJobId; concurrency 2; lock 120s.
+    source_paths:
+      - backend/src/workers/processors/driving-intelligence-job.processor.ts
+
+  - id: DI-SVC-STAGE-ORCH-001
+    type: service
+    title: DrivingAnalysisStageOrchestrator
+    epistemic_status: CONFIRMED
+    summary: Stage DAG enqueue, completion chaining, run status sync.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-stage/driving-analysis-stage.orchestrator.service.ts
+
+  - id: DI-SVC-JOB-DISPATCH-001
+    type: service
+    title: DrivingIntelligenceJobsDispatcher
+    epistemic_status: CONFIRMED
+    summary: Persist job row + BullMQ enqueue with idempotency key.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service.ts
+
+  - id: DI-SCHED-RECONCILE-001
+    type: scheduler
+    title: DrivingAnalysisReconciliationScheduler
+    epistemic_status: CONFIRMED
+    summary: 10-minute leader-gated scan for missing runs, stuck jobs, impact desync.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/
+
+  # --- Reference capture ---
+  - id: DI-FLAG-RC-001
+    type: feature_flag
+    title: REFERENCE_CAPTURE_ENABLED
+    epistemic_status: CONFIRMED
+    summary: Reference capture subsystem gate. Default false. Isolated from production HF.
+    source_paths:
+      - backend/src/config/reference-capture.config.ts
+
+  - id: DI-FLAG-HF-RECOVERY-V2-001
+    type: feature_flag
+    title: HF_RECOVERY_POLICY_V2_ENABLED
+    epistemic_status: CONFIRMED
+    summary: HF recovery V2 in reference capture only. Default false.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-recovery-v2.policy.ts
+
+  - id: DI-QUEUE-RC-001
+    type: queue
+    title: reference.capture.recording
+    epistemic_status: CONFIRMED
+    summary: Reference capture autonomous runner queue.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: DI-SVC-RC-RUNNER-001
+    type: service
+    title: ReferenceCaptureRunnerService
+    epistemic_status: CONFIRMED
+    summary: 5s default cycle; HF historical acquisition with optional V2 recovery and block polling.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-runner.service.ts
+
+  - id: DI-POL-HF-BLOCK-POLL-001
+    type: policy
+    title: HF block polling policy
+    epistemic_status: INFERRED
+    summary: >
+      Provisional 30s HF_HISTORICAL poll interval in V2 mode.
+      Hypothesis NOT_VALIDATED. Calibration phases 10/20/30/60s.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-block-polling.policy.ts
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-POL-HF-RECOVERY-V2-001
+    type: policy
+    title: HF recovery V2 policy
+    epistemic_status: CONFIRMED
+    summary: >
+      Settlement delay 8s provisional, recovery overlap 6s provisional,
+      separate DATA/QUERY COVERAGE/RECOVERY watermarks. Reference capture only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-recovery-v2.policy.ts
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+
+  # --- Persistence tables ---
+  - id: DI-TBL-TRIP-001
+    type: table
+    title: VehicleTrip
+    epistemic_status: CONFIRMED
+    summary: Trip anchor; behavior counters, enrichment status. Scoped via vehicle.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-TBE-001
+    type: table
+    title: TripBehaviorEvent
+    epistemic_status: CONFIRMED
+    summary: HF-derived behavior episodes per trip.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-DE-001
+    type: table
+    title: DrivingEvent
+    epistemic_status: CONFIRMED
+    summary: Canonical driving events; native and derived sources.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-TDI-001
+    type: table
+    title: TripDrivingImpact
+    epistemic_status: CONFIRMED
+    summary: Per-trip stress scores and loadComponentsJson. One row per trip.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-VDI-001
+    type: table
+    title: VehicleDrivingImpactCurrent
+    epistemic_status: CONFIRMED
+    summary: Rolling 30-day vehicle aggregate.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-RUN-001
+    type: table
+    title: DrivingAnalysisRun
+    epistemic_status: CONFIRMED
+    summary: V2 analysis run provenance envelope per trip.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-JOB-001
+    type: table
+    title: DrivingIntelligenceJob
+    epistemic_status: CONFIRMED
+    summary: Durable V2 job state; idempotency (organizationId, idempotencyKey).
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-ASSESS-001
+    type: table
+    title: TripAssessability
+    epistemic_status: CONFIRMED
+    summary: Per-dimension assessability materialization for V2.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-TBL-RENTAL-001
+    type: table
+    title: RentalDrivingAnalysis
+    epistemic_status: CONFIRMED
+    summary: Booking-period driving analysis snapshot.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-DB-PG-001
+    type: database
+    title: PostgreSQL canonical store
+    epistemic_status: CONFIRMED
+    summary: All canonical DI entities. Prisma access.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: DI-DB-CH-001
+    type: database
+    title: ClickHouse analytics mirror
+    epistemic_status: CONFIRMED
+    summary: Optional HF/snapshot/waypoint mirror. Not canonical. HF_MIRROR_ENABLED gate.
+    source_paths:
+      - backend/src/modules/clickhouse/clickhouse-table-registry.ts
+
+  - id: DI-CACHE-REDIS-001
+    type: cache
+    title: Redis BullMQ backend
+    epistemic_status: CONFIRMED
+    summary: Queue transport; durable job state in Postgres for V2.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  # --- API / UI ---
+  - id: DI-API-VI-001
+    type: api
+    title: Vehicle intelligence API
+    epistemic_status: CONFIRMED
+    summary: Trips, impact, events, assessability, driver scores.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts
+
+  - id: DI-API-RENTAL-001
+    type: api
+    title: Rental driving analysis API
+    epistemic_status: CONFIRMED
+    summary: Booking-period analysis reads.
+    source_paths:
+      - backend/src/modules/rental-driving-analysis/rental-driving-analysis.controller.ts
+
+  - id: DI-UI-STRESS-001
+    type: ui
+    title: Rental stress UI components
+    epistemic_status: CONFIRMED
+    summary: RentalStressAnalysisCard, VehicleStressPanel stress display.
+    source_paths:
+      - frontend/src/rental/components/RentalStressAnalysisCard.tsx
+      - frontend/src/rental/components/VehicleStressPanel.tsx
+
+  # --- Decisions ---
+  - id: DI-DEC-SEGMENTS-CANONICAL-001
+    type: decision
+    title: DIMO Segments are canonical trip boundaries
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: DI does not derive canonical trips from ad-hoc HF segmentation.
+    source_paths:
+      - .cursor/rules/projektregel.mdc
+    evidence:
+      - DI-EVID-CODE-BOUNDARY-001
+
+  - id: DI-DEC-POST-TRIP-HF-001
+    type: decision
+    title: Post-trip HF enrichment architecture
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Behavior detection runs after trip completion via BullMQ, not live trip FSM.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+    evidence:
+      - DI-EVID-CODE-ENRICH-001
+
+  - id: DI-DEC-STRESS-NOT-DRIVER-001
+    type: decision
+    title: drivingStressScore is vehicle operational load
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Score measures vehicle load; DriverScoreService name is legacy misnomer.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts
+    evidence:
+      - DI-EVID-CODE-SCORE-001
+
+  - id: DI-DEC-LOAD-PROXY-001
+    type: decision
+    title: tire/brake load are operational proxies
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: loadComponentsJson explicitly separates proxy from measured wear.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-load-components.ts
+    evidence:
+      - DI-EVID-CODE-LOAD-001
+
+  - id: DI-DEC-V2-FLAG-001
+    type: decision
+    title: V2 pipeline behind master flag default off
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: DRIVING_INTELLIGENCE_V2_ENABLED default false; trip FSM unaffected.
+    source_paths:
+      - backend/src/config/driving-intelligence-v2.config.ts
+    evidence:
+      - DI-EVID-CODE-V2-FLAG-001
+
+  - id: DI-DEC-RC-SEPARATE-001
+    type: decision
+    title: Reference capture isolated from production HF
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: HF recovery V2 and block polling apply to reference capture only until cutover.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+
+  - id: DI-DEC-HF-RECOVERY-V2-001
+    type: decision
+    title: HF recovery V2 for late-arriving buckets
+    epistemic_status: CONFIRMED
+    decision_status: EXPERIMENTAL
+    summary: 8s settlement, 6s overlap, triple watermarks. RD004-B motivated. Not production HF.
+    source_paths:
+      - architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+
+  - id: DI-DEC-BLOCK-POLL-30S-001
+    type: decision
+    title: 30s HF block polling scalability hypothesis
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: One request per 30s may preserve 1s/2s bucket density. NOT_VALIDATED.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-EPISODE-V2-001
+    type: decision
+    title: Episode-based future driving score
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: DI-EV-0034F canonical design. DEPLOYED NO. Supersedes point-pair counting when cut over.
+    source_paths:
+      - docs/audits/driving-intelligence-v2-canonical-design-2026-09.md
+    evidence:
+      - DI-EVID-0034F-DESIGN-001
+
+  - id: DI-DEC-PROD-DET-UNCHANGED-001
+    type: decision
+    title: Production detectors unchanged after RD003
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Defer detector change until GT-validated replacement or Episode V2.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-DEC-PROVIDER-TS-001
+    type: decision
+    title: providerTimestamp is physical time authority
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Reject synqReceivedAt for physical event timing.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-DEC-CANARY-FAIL-CLOSED-001
+    type: decision
+    title: HF V2 canary fails closed
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Empty allowlist forces LEGACY policy.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-OPERATOR-CANARY-001
+    type: decision
+    title: Operator selects canary vehicle at runtime
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No hardcoded KS MX 2024 production canary.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-PHASE-BOUNDARY-001
+    type: decision
+    title: Phase changes at safe cycle boundaries
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: REQUESTED vs EFFECTIVE; boundary activation.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-TRANSITION-EXCLUDE-001
+    type: decision
+    title: Exclude transition windows from cadence stats
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: TRANSITION and RECOVERY_SWEEP excluded from primary comparison.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-DEC-DEPLOY-DISABLED-001
+    type: decision
+    title: Deploy recovery code with features disabled
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: PR 1533 CODE_DEPLOYED YES FEATURE_ENABLED NO.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-PR-1533-001
+
+  - id: DI-DEC-NATIVE-LTE-001
+    type: decision
+    title: Native DIMO events policy authority for LTE_R1 misuse
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Architectural policy; RD002 C63 had native events NOT_OBSERVED at runtime.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
+
+  - id: DI-DEC-ALIGN-HARD-BOUNDS-001
+    type: decision
+    title: Reject implausible alignments despite low MAE
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Hard temporal bounds gate GT claims.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-RD004-A-001
+
+  # --- Gaps ---
+  - id: DI-GAP-HF-CADENCE-001
+    type: gap
+    title: Production HF cadence assumption mismatch
+    epistemic_status: CONFIRMED
+    summary: Code assumes ~1Hz; RD003 ~2.00s median; RD002 sealed P50 13.489s.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/hf-abuse.ts
+      - docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md
+
+  - id: DI-GAP-BLOCK-POLL-VALIDATION-001
+    type: gap
+    title: 30s block polling not live-validated
+    epistemic_status: CONFIRMED
+    summary: HF_30S_BLOCK_POLLING_VALIDATED = NO. Calibration machinery ready; live canary pending.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+
+  - id: DI-GAP-V2-PROD-E2E-001
+    type: gap
+    title: V2 pipeline not production-validated at fleet scale
+    epistemic_status: CONFIRMED
+    summary: Code complete behind flag; production E2E and SLO unknown.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/
+
+  - id: DI-GAP-FLEET-COST-001
+    type: gap
+    title: Fleet HF request cost not benchmarked
+    epistemic_status: UNKNOWN
+    summary: Per-vehicle request rate and provider cost at fleet scale unknown.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+
+  - id: DI-GAP-DRIVER-SCORE-NAMING-001
+    type: gap
+    title: DriverScoreService naming defect
+    epistemic_status: CONFIRMED
+    summary: Service aggregates vehicle stress; name implies driver quality.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts
+
+  - id: DI-GAP-RAW-HF-REPLAY-001
+    type: gap
+    title: No Postgres raw HF replay store
+    epistemic_status: CONFIRMED
+    summary: Re-enrichment re-fetches DIMO; optional CH mirror only.
+    source_paths:
+      - docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md
+
+  # --- Contradictions ---
+  - id: DI-CONTRA-HF-1HZ-001
+    type: contradiction
+    title: HF 1Hz assumption vs observed sparse cadence
+    epistemic_status: CONTRADICTED
+    summary: Code assumes 1Hz; RD003 ~2.00s; RD002 sealed P50 13.489s — do not merge.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+
+  - id: DI-CONTRA-DRIVER-SCORE-NAME-001
+    type: contradiction
+    title: DriverScoreService name vs vehicle stress semantics
+    epistemic_status: CONTRADICTED
+    summary: Class name implies driver quality; implementation aggregates vehicle operational load.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts
+
+  - id: DI-CONTRA-RD003-RD004-MEDIAN-001
+    type: contradiction
+    title: Apparent RD003 vs RD004 median spacing disagreement
+    epistemic_status: CONTRADICTED
+    summary: Resolved as compatible — RD004 reflects capture gaps not DIMO physics. Recorded for lineage.
+    source_paths:
+      - docs/audits/data/rd004-segment-b/rd004-b-findings.md
+
+  - id: DI-CONTRA-EVIDENCE-REGISTRY-LAG-001
+    type: contradiction
+    title: Evidence registry lag vs block-polling doc
+    epistemic_status: CONTRADICTED
+    summary: Registry ends at C.1c; C.1d and C.1e exist in block-polling audit only.
+    source_paths:
+      - docs/audits/driving-intelligence-evidence-registry.md
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+
+  - id: DI-CONTRA-V2-DOCS-001
+    type: contradiction
+    title: Two V2 architecture document scopes
+    epistemic_status: CONTRADICTED
+    summary: July UX/API contract vs Sep episode reconstruction design — layered not conflicting.
+    source_paths:
+      - docs/architecture/driving-intelligence-v2.md
+      - docs/audits/driving-intelligence-v2-canonical-design-2026-09.md
+
+  - id: DI-HYP-001
+    type: hypothesis
+    title: signals interval 1s yields ~1Hz detector data
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: RD002 and RD003 separately proved 1s request ≠ 1Hz; RD003 HF ~2.00s; RD002 sealed P50 13.489s.
+    source_paths:
+      - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-RD002-SEALED-CADENCE-001
+
+  - id: DI-HYP-002
+    type: hypothesis
+    title: Point-pair detectors valid under sparse cadence
+    epistemic_status: INFERRED
+    decision_status: EXPERIMENTAL
+    summary: Partially supported as trip summary; not short-event authority for LTE_R1.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/DETECTOR_AUDIT.md
+
+  - id: DI-HYP-003
+    type: hypothesis
+    title: Low MAE video alignment is physically valid
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Rejected when violating hard temporal bounds.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
+
+  - id: DI-HYP-004
+    type: hypothesis
+    title: 2s overlap alone recovers late buckets
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: RD004-B 26 watermark-excluded buckets.
+    source_paths:
+      - docs/audits/data/rd004-segment-b/rd004-b-findings.md
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+
+  - id: DI-HYP-005
+    type: hypothesis
+    title: 8s settlement and 6s overlap are optimal
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Provisional; live calibration not executed.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/HF_RECOVERY_EVOLUTION.md
+
+  - id: DI-HYP-006
+    type: hypothesis
+    title: 30s block poll preserves dense historical buckets
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Same as DI-HYP-BLOCK-POLL-30S-001; not live validated.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  - id: DI-HYP-007
+    type: hypothesis
+    title: One physical drive compares 10/20/30/60s poll phases
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: C.1c machinery ready; live run not executed.
+    source_paths:
+      - architecture/drivingintelligence/research/hf-request-cadence/C1_INDIVIDUAL_RETROSPECTIVE.md
+
+  - id: DI-HYP-008
+    type: hypothesis
+    title: KS MX 2024 token 187336 is canonical canary vehicle
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Operator selects vehicle at runtime per C.1b.
+    source_paths:
+      - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
+
+  - id: DI-HYP-009
+    type: hypothesis
+    title: synqReceivedAt suitable for event timing
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS=0 on RD003.
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+
+  - id: DI-HYP-010
+    type: hypothesis
+    title: LATEST_LIVE fresher than HF for reconstruction
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: Stale holds; median ~6s; insufficient for offline GT.
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+
+  - id: DI-HYP-011
+    type: hypothesis
+    title: Engine load approximates vehicle mass road load
+    epistemic_status: CONTRADICTED
+    decision_status: REJECTED
+    summary: CONTEXT_ONLY demand proxy per RD003 signal quality.
+    source_paths:
+      - architecture/drivingintelligence/research/scoring-models/SCORING_RETROSPECTIVE.md
+
+  - id: DI-HYP-012
+    type: hypothesis
+    title: Episode V2 replaces point-pair counting in production
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Design only; not implemented.
+    source_paths:
+      - architecture/drivingintelligence/research/scoring-models/EPISODE_V2_DESIGN.md
+    evidence:
+      - DI-EVID-0034F-DESIGN-001
+
+  - id: DI-HYP-013
+    type: hypothesis
+    title: Native DIMO events authoritative for LTE_R1 short events (policy)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Policy CONFIRMED in architecture; NOT_OBSERVED on RD002 C63 at runtime.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/NATIVE_DIMO_EVENTS.md
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
+
+  - id: DI-HYP-014
+    type: hypothesis
+    title: Reference capture safe with V2 OFF on main after deploy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: PR 1533 CODE_DEPLOYED YES FEATURE_ENABLED NO.
+    source_paths:
+      - architecture/drivingintelligence/evidence/production/DEPLOYMENT_STATE.md
+    evidence:
+      - DI-EVID-PR-1533-001
+
+  - id: DI-HYP-015
+    type: hypothesis
+    title: Phase switch at cycle boundary prevents races
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: C.1d/C.1e concurrency tests; live multi-replica not validated.
+    source_paths:
+      - architecture/drivingintelligence/research/hf-request-cadence/C1_INDIVIDUAL_RETROSPECTIVE.md
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  # --- Hypothesis (legacy id) ---
+  - id: DI-HYP-BLOCK-POLL-30S-001
+    type: hypothesis
+    title: 30s block poll preserves HF bucket density
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: One HF_HISTORICAL request per 30s returns ~1s/2s buckets at lower API cost.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-block-polling.policy.ts
+    evidence:
+      - DI-EVID-0035C1-BLOCK-001
+
+  # --- Evidence ---
+  - id: DI-EVID-CODE-BOUNDARY-001
+    type: evidence
+    title: DI domain boundary code audit
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: vehicle-intelligence module scope; trip FSM adjacent.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts
+
+  - id: DI-EVID-CODE-ENRICH-001
+    type: evidence
+    title: Post-trip enrichment orchestrator
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: TripEnrichmentOrchestrator chains behavior then impact queues.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+
+  - id: DI-EVID-CODE-SCORE-001
+    type: evidence
+    title: Impact scorer and stress semantics
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: driving-impact-scorer v1.2.0 formulas; vehicle load not driver quality.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-scorer.ts
+
+  - id: DI-EVID-CODE-LOAD-001
+    type: evidence
+    title: Load components proxy semantics
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: tireLoad and brakingLoad with assessability and sourceQuality fields.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-load-components.ts
+
+  - id: DI-EVID-CODE-V2-FLAG-001
+    type: evidence
+    title: V2 config default off
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: driving-intelligence-v2.config.ts masterEnabled default false.
+    source_paths:
+      - backend/src/config/driving-intelligence-v2.config.ts
+
+  - id: DI-EVID-RD003-CADENCE-001
+    type: evidence
+    title: RD003 signal quality 1s not equal 1Hz
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: RD003 HF median ~2.00s new physical samples; not RD002 sealed P50 13.489s.
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+      - docs/audits/data/rd003-signal-quality/signal-quality-summary.json
+
+  - id: DI-EVID-0035C-RECOVERY-001
+    type: evidence
+    title: DI-EV-0035C HF recovery V2 implementation
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: Reference capture recovery policy; production path unchanged.
+    source_paths:
+      - architecture/DI_EV_0035C_HF_RECOVERY_RUNTIME_IMPLEMENTATION_2026-09-04.md
+      - docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md
+
+  - id: DI-EVID-0035C1-BLOCK-001
+    type: evidence
+    title: DI-EV-0035C.1 block polling testbed
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: 30s poll hypothesis; calibration phases; NOT_VALIDATED.
+    source_paths:
+      - docs/audits/driving-intelligence-hf-block-polling-scalability-2026-09.md
+
+  - id: DI-EVID-0034F-DESIGN-001
+    type: evidence
+    title: V2 canonical episode design
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: Future episode taxonomy and confidence layers. Not deployed.
+    source_paths:
+      - docs/audits/driving-intelligence-v2-canonical-design-2026-09.md
+
+  - id: DI-EVID-PHASE1-001
+    type: evidence
+    title: Phase 1 forensic audit baseline
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: DI-EV-0002 production dependency matrix and storage truth.
+    source_paths:
+      - docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md
+
+  - id: DI-TEST-IMPACT-SCORER-001
+    type: test_evidence
+    title: Driving impact scorer unit tests
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Formula regression coverage for impact scorer.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact.service.spec.ts
+
+  - id: DI-TEST-HF-RECOVERY-001
+    type: test_evidence
+    title: HF recovery V2 policy tests
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Recovery overlap, settlement, watermark tests.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-recovery-v2.policy.spec.ts
+
+  - id: DI-TEST-BLOCK-POLL-001
+    type: test_evidence
+    title: HF block polling policy tests
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Poll due semantics, gap verification, calibration phases.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-block-polling.policy.spec.ts
+
+  - id: DI-EVID-NATIVE-EVENTS-001
+    type: evidence
+    title: Native DIMO event authority path
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: LTE_R1 native events primary for short misuse; HF is trip summary.
+    source_paths:
+      - architecture/drivingintelligence/evidence/driving-events/NATIVE_DIMO_EVENTS.md
+      - backend/src/modules/vehicle-intelligence/dimo-native-driving-events/
+
+  - id: DI-EVID-PR-1533-001
+    type: evidence
+    title: PR 1533 merge and safe production deploy
+    epistemic_status: CONFIRMED
+    source_type: PR_HISTORY
+    summary: CODE_DEPLOYED=YES; RC infrastructure ENABLED; HF_RECOVERY_POLICY_V2_ENABLED=false.
+    source_paths:
+      - architecture/drivingintelligence/evidence/production/DEPLOYMENT_STATE.md
+      - architecture/drivingintelligence/research/PR_TIMELINE.md
+
+  - id: DI-EVID-RD002-SEALED-CADENCE-001
+    type: evidence
+    title: RD002 sealed HF aggregate-bucket spacing
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: Sealed HF_HISTORICAL Δt P50 13.489s P95 84.024s MAX 249.647s; 71 rows; not ~2s.
+    source_paths:
+      - docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md
+      - docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json
+
+  - id: DI-EVID-RD004-A-001
+    type: evidence
+    title: RD004 Segment A alignment closeout
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: H displacement not provider offset; hard bounds rejection methodology.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
+      - architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md

@@ -51,7 +51,9 @@ import {
   extractLatestSegmentEnd,
   resolveLatestMeaningfulMovementEventAt,
   continuityImpliesMeaningfulMovement,
+  assessLiveStartSnapshotFreshness,
 } from './trip-evidence.helpers';
+import { START_DETECTION_PHASES } from './trip-start-detection-policy';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
@@ -84,6 +86,24 @@ import {
 } from './trip-lifecycle-recovery.service';
 import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
 import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import {
+  assessSuccessfulEmptyCoreEndEligibility,
+} from './trip-empty-core-end-gate';
+import {
+  buildEndValidationCompletionEvidence,
+  buildEndValidationFailureEvidence,
+  buildEndValidationFetchFailureEvidence,
+  buildEndValidationScheduledEvidence,
+  buildEndValidationStartedEvidence,
+  buildMaxAttemptFallbackEvidence,
+  buildPossibleEndToActiveReset,
+  extractR5EndForensicsForPersistence,
+  type PecResumeCheckOutcome,
+  validateCusumMovementEventTime,
+} from './trip-end-cycle-reset';
+import {
+  classifyChangePointEndFinding,
+} from './trip-end-validation-classifier';
 import {
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
@@ -660,29 +680,44 @@ export class TripDetectionOrchestrationService {
 
     const profile = detState.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
     const profileStr = String(profile);
+    const workerNow = new Date();
+    const liveStartFreshness = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: current.sourceTimestamp,
+      workerNow,
+    });
 
-    // ── PHASE 2 SEAM: policy → detector → decision ───────────────────────────
-    // The policy resolver decides which detectors to run for the live_start phase.
-    // Detectors return findings; the decision engine converts findings to a decision.
-    // No truth is committed here — this method only decides whether to enter POSSIBLE_START.
+    const dataQuality = this.policyResolver.assessDataQuality({
+      snapshotFreshMs: liveStartFreshness.snapshotFreshMs,
+      ignitionAvailable: current.isIgnitionOn != null,
+      speedAvailable: current.speedKmh != null,
+      odometerAvailable: current.odometerKm != null,
+      corePointCount: 1,
+      hasRoutePoints: false,
+      hasHighFrequency: false,
+    });
+    if (liveStartFreshness.state === 'FRESH') {
+      dataQuality.snapshotFreshness = 'FRESH';
+    } else if (liveStartFreshness.state === 'STALE') {
+      dataQuality.snapshotFreshness = 'STALE';
+    } else if (liveStartFreshness.state === 'MISSING') {
+      dataQuality.snapshotFreshness = 'MISSING';
+    }
+
     const policy = this.policyResolver.resolve({
       phase: DETECTION_PHASES.LIVE_START,
       profile,
-      dataQuality: this.policyResolver.assessDataQuality({
-        snapshotFreshMs: current.sourceTimestamp
-          ? Date.now() - current.sourceTimestamp.getTime()
-          : previousTelemetry?.updatedAt
-            ? Date.now() - previousTelemetry.updatedAt.getTime()
-            : null,
-        ignitionAvailable: current.isIgnitionOn != null,
-        speedAvailable: current.speedKmh != null,
-        odometerAvailable: current.odometerKm != null,
-        corePointCount: 1, // Single snapshot context
-        hasRoutePoints: false,
-        hasHighFrequency: false,
-      }),
+      dataQuality,
+      liveStartFreshnessState: liveStartFreshness.state,
       anomalyContext: {},
     });
+
+    if (policy.detectors.length === 0) {
+      this.logger.debug(
+        `LIVE_START skipped ${vehicleId} freshness=${liveStartFreshness.state}` +
+          (policy.skipReason ? ` reason=${policy.skipReason}` : ''),
+      );
+      return { shouldStartTracking: false };
+    }
 
     const findings = await this.detectorRegistry.runAll(
       policy.detectors,
@@ -718,7 +753,7 @@ export class TripDetectionOrchestrationService {
     const evidenceFinding = findings.find((f) => f.detectorName === 'SnapshotEvidenceEvaluator');
     const ev = evidenceFinding?.evidence ?? {};
 
-    const now = new Date();
+    const now = workerNow;
     const startClock = resolveStartCandidateClock({
       providerSourceTimestamp: current.sourceTimestamp,
       workerNow: now,
@@ -745,12 +780,18 @@ export class TripDetectionOrchestrationService {
         startDetectionMode: startDecision.mode as StartDetectionMode | undefined,
         startConfidence: confEnum,
         lastEvidenceSummary: {
+          candidatePhase: START_DETECTION_PHASES.START_CANDIDATE_WAKE,
+          candidatePolicyProfile: profileStr,
           strong: ev.strong,
           weak: ev.weak,
           hasMovement: ev.hasMovement,
           reasons: ev.reasons,
           profile: profileStr,
           detectorPolicy: policy.detectors,
+          candidateFreshnessState: liveStartFreshness.state,
+          candidateTimestampSource: liveStartFreshness.timestampSource,
+          candidateProviderObservedAt:
+            liveStartFreshness.providerSourceTimestamp?.toISOString() ?? null,
           startCandidateClockSource: startClock.clockSource,
           startCandidateObservedAt: startClock.candidateEventAt.toISOString(),
           startCandidateEnteredAt: startClock.enteredAt.toISOString(),
@@ -1389,7 +1430,25 @@ export class TripDetectionOrchestrationService {
           workerNow: now,
         });
         const inactiveMs = now.getTime() - operationalAnchor.getTime();
-        if (inactiveMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS) {
+        const emptyCoreGate = assessSuccessfulEmptyCoreEndEligibility({
+          operationalInactiveMs: inactiveMs,
+          minInactivityBeforeCusumMs:
+            this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+          telemetry: telemetryNoCore
+            ? {
+                isIgnitionOn: telemetryNoCore.isIgnitionOn,
+                speedKmh: telemetryNoCore.speedKmh,
+                engineLoad: telemetryNoCore.engineLoad,
+                sourceTimestamp: telemetryNoCore.sourceTimestamp,
+              }
+            : null,
+          perfReadings,
+          routePoints,
+          profile,
+          workerNow: now,
+        });
+
+        if (emptyCoreGate.eligible) {
           const endBoundary = resolvePossibleEndBoundaryCandidate({
             lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
             lastActivityAt: det.lastActivityAt,
@@ -1407,7 +1466,9 @@ export class TripDetectionOrchestrationService {
               ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ??
                 {})),
               endCandidateClockSource: endBoundary.clockSource,
-              noCoreStream: true,
+              noCoreEmptyCoreForensics: emptyCoreGate.forensics,
+              emptyCoreDecision: emptyCoreGate.forensics.decision,
+              emptyCoreReason: emptyCoreGate.forensics.reason,
             },
           });
           this.logTripEndTimeline('possible_end_entered', {
@@ -1424,7 +1485,7 @@ export class TripDetectionOrchestrationService {
             0,
           );
           this.logger.log(
-            `ACTIVE_TICK: no core data for ${vehicleId}, last movement ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
+            `ACTIVE_TICK: no core data for ${vehicleId}, corroborated inactivity ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
           );
           await this.logTrackingRun({
             vehicleId,
@@ -1439,11 +1500,9 @@ export class TripDetectionOrchestrationService {
             drivingPointsCount: perfReadings.length,
             resultState,
             resultSummary: {
-              reason: 'no_core_data_inactivity_to_possible_end',
-              inactiveMs,
+              ...emptyCoreGate.forensics,
+              reason: 'no_core_data_corroborated_to_possible_end',
               operationalAnchorAt: operationalAnchor.toISOString(),
-              routePointsCount: routePoints.length,
-              drivingPointsCount: perfReadings.length,
             },
             durationMs: Date.now() - startedMs,
           });
@@ -1465,10 +1524,9 @@ export class TripDetectionOrchestrationService {
           drivingPointsCount: perfReadings.length,
           resultState,
           resultSummary: {
+            ...emptyCoreGate.forensics,
             reason: 'no_core_data_keep_open',
-            inactiveMs,
-            routePointsCount: routePoints.length,
-            drivingPointsCount: perfReadings.length,
+            operationalAnchorAt: operationalAnchor.toISOString(),
           },
           durationMs: Date.now() - startedMs,
         });
@@ -2125,9 +2183,11 @@ export class TripDetectionOrchestrationService {
       const fsmEnteredAt = resolvePossibleEndFsmDwellAnchor(det, now);
       const fsmDwellMs = now.getTime() - fsmEnteredAt.getTime();
       const physicalInactivityMs = now.getTime() - endBoundaryAt.getTime();
+      const priorSummary =
+        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      let resumeCheckOutcome: PecResumeCheckOutcome = 'NO_RESUME_EVIDENCE';
 
       // ── Step 1: Check if activity has resumed ──
-      // PHASE 2 SEAM: EndContinuityDetector wraps hasActivityResumed via registry.
       try {
         const recentFrom = new Date(now.getTime() - 90_000);
         const recentPoints = await this.segments.fetchRawTripCoreData(
@@ -2146,6 +2206,7 @@ export class TripDetectionOrchestrationService {
         });
 
         if (activityResumed) {
+          resumeCheckOutcome = 'RESUMED';
           resultState = TripDetectionState.ACTIVE_TRIP;
           this.logger.log(
             `Activity resumed for ${vehicleId} [${profile}], cancelling POSSIBLE_END`,
@@ -2156,18 +2217,11 @@ export class TripDetectionOrchestrationService {
             workerNow: now,
           });
           await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-            ...clearPossibleEndClockFields(),
-            endDetectionMode: null,
-            endConfidence: null,
-            endValidationAttempts: 0,
-            cusumValidatedAt: null,
-            cusumSegmentStart: null,
-            cusumSegmentEnd: null,
-            lastActivityAt: now,
-            ...(resumedMovementAt && {
+            ...buildPossibleEndToActiveReset({
+              workerNow: now,
               lastMeaningfulMovementAt: resumedMovementAt,
+              priorSummary,
             }),
-            lastCoreProcessedAt: now,
           });
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
@@ -2179,13 +2233,59 @@ export class TripDetectionOrchestrationService {
             requestedFrom: recentFrom, requestedTo: now,
             corePointsCount: recentPoints.length,
             resultState,
-            resultSummary: { reason: 'activity_resumed', profile },
+            resultSummary: {
+              reason: 'activity_resumed',
+              resumeCheckOutcome,
+              profile,
+            },
             durationMs: Date.now() - startedMs,
           });
           return;
         }
       } catch {
-        // Fetch failure → keep waiting, do not finalize prematurely
+        resumeCheckOutcome = 'FETCH_ERROR';
+      }
+
+      if (resumeCheckOutcome === 'FETCH_ERROR') {
+        if (fsmDwellMs >= this.TRIP_END_TIMEOUT_MS) {
+          this.logger.warn(
+            `POSSIBLE_END timeout reached for ${vehicleId} (${Math.round(fsmDwellMs / 60000)} min), forcing finalize`,
+          );
+          resultState = TripDetectionState.RESTING;
+          await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+          await this.logTrackingRun({
+            vehicleId, organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.POSSIBLE_END_CHECK,
+            resultState,
+            resultSummary: {
+              reason: 'hard_timeout_fallback',
+              resumeCheckOutcome,
+              fsmDwellMs,
+              physicalInactivityMs,
+              profile,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId);
+        await this.logTrackingRun({
+          vehicleId, organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.POSSIBLE_END_CHECK,
+          resultSummary: {
+            reason: 'resume_check_fetch_error_reschedule',
+            resumeCheckOutcome,
+            fsmDwellMs,
+            physicalInactivityMs,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
       }
 
       // ── Step 2: Hard timeout fallback (FSM dwell — last resort only) ──
@@ -2241,26 +2341,22 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
-      // ── Step 4: Gate elapsed — trigger CUSUM end validation ──
+      // ── Step 4: Gate elapsed — schedule CUSUM end validation (attempt unchanged) ──
       const attempts = det.endValidationAttempts ?? 0;
       if (attempts < this.TRIP_END_VALIDATION_MAX_ATTEMPTS) {
-        const validationStartedAt = now;
-        const priorSummary =
-          (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
-          endValidationAttempts: attempts + 1,
-          lastEvidenceSummary: {
-            ...priorSummary,
-            endValidationStartedAt: validationStartedAt.toISOString(),
-          },
+          lastEvidenceSummary: buildEndValidationScheduledEvidence({
+            priorSummary,
+            workerNow: now,
+          }),
         });
-        this.logTripEndTimeline('end_validation_started', {
+        this.logTripEndTimeline('end_validation_scheduled', {
           vehicleId,
           tripId: det.activeTripId,
           lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
           possibleEndAt: det.possibleEndAt,
-          endValidationStartedAt: validationStartedAt,
-          attempt: attempts + 1,
+          endValidationScheduledAt: now,
+          completedAttempts: attempts,
           maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
         });
         await this.scheduleEndValidation(vehicleId, organizationId, dimoTokenId);
@@ -2271,24 +2367,34 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.POSSIBLE_END_CHECK,
           resultSummary: {
             reason: 'triggering_cusum_validation',
-            attempt: attempts + 1,
+            completedAttempts: attempts,
             maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
             fsmDwellMs,
             physicalInactivityMs,
+            resumeCheckOutcome,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Step 5: Max CUSUM attempts exhausted — finalize with best available data ──
+      // ── Step 5: Max completed CUSUM cycles — fallback finalize with explicit forensics ──
       this.tripMetrics?.possibleEndStuck.set(
         { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
         1,
       );
       this.logger.log(
-        `CUSUM max attempts (${attempts}) for ${vehicleId}, finalizing`,
+        `CUSUM max completed attempts (${attempts}) for ${vehicleId}, fallback finalize`,
       );
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        endDetectionMode: END_DETECTION_MODES.COMPOSITE_INACTIVITY,
+        endConfidence: DetectionConfidence.LOW,
+        lastEvidenceSummary: buildMaxAttemptFallbackEvidence({
+          priorSummary,
+          completedAttemptCount: attempts,
+          resumeCheckOutcome,
+        }),
+      });
       resultState = TripDetectionState.RESTING;
       await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
       await this.logTrackingRun({
@@ -2298,8 +2404,9 @@ export class TripDetectionOrchestrationService {
         runType: TripTrackingRunType.POSSIBLE_END_CHECK,
         resultState,
         resultSummary: {
-          reason: 'max_cusum_attempts_finalize',
-          attempts,
+          reason: 'max_completed_cusum_attempts_fallback',
+          completedAttempts: attempts,
+          resumeCheckOutcome,
           fsmDwellMs,
           physicalInactivityMs,
           profile,
@@ -2331,13 +2438,19 @@ export class TripDetectionOrchestrationService {
 
     const startedMs = Date.now();
     let resultState: TripDetectionState | undefined;
+    let det: Awaited<ReturnType<typeof this.getOrCreateDetectionState>> | undefined;
+    let validationStartedAt: Date | null = null;
+    let priorSummaryForFailure: Record<string, unknown> = {};
 
     try {
-      const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+      det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
       const now = new Date();
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
+      const priorSummary =
+        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      priorSummaryForFailure = priorSummary;
 
       // ── CH end assist (MEDIUM): segment end already validated — skip CUSUM ──
       if (
@@ -2381,6 +2494,19 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
+      const scheduledAt = this.parseEvidenceTimestamp(
+        priorSummary,
+        'endValidationScheduledAt',
+      )?.toISOString() ?? null;
+
+      validationStartedAt = new Date();
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        lastEvidenceSummary: buildEndValidationStartedEvidence({
+          priorSummary,
+          validationStartedAt,
+        }),
+      });
+
       // Fetch a bounded window of data centred on the POSSIBLE_END candidate
       const corePoints = await this.segments.fetchEndValidationWindow(
         dimoTokenId,
@@ -2394,9 +2520,6 @@ export class TripDetectionOrchestrationService {
         `END_VALIDATION for ${vehicleId}: fetched ${corePoints.length} points around ${endCandidateAt.toISOString()}`,
       );
 
-      // ── PHASE 2 SEAM: ChangePointEndDetector + evaluateEndCandidate ──────────
-      // ChangePointEndDetector wraps detectTripEndChangePoint and sorts inputs.
-      // evaluateEndCandidate converts the finding into a typed EndDecision.
       const endFindings = await this.detectorRegistry.runAll(
         ['ChangePointEndDetector'],
         {
@@ -2410,35 +2533,80 @@ export class TripDetectionOrchestrationService {
         },
       );
 
-      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
       const endFinding = endFindings.find((f) => f.detectorName === 'ChangePointEndDetector');
+      const findingOutcome = classifyChangePointEndFinding(endFinding);
+
+      if (findingOutcome !== 'VALID_DECISION') {
+        const failureReason =
+          findingOutcome === 'DETECTOR_MISSING'
+            ? 'change_point_end_detector_missing'
+            : String(endFinding?.evidence?.error ?? 'detector_execution_failure');
+        this.logger.warn(
+          `END_VALIDATION detector failure for ${vehicleId}: ${failureReason}`,
+        );
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFailureEvidence({
+            priorSummary,
+            validationStartedAt,
+            failureReason,
+            failureOutcome: findingOutcome,
+          }),
+        });
+        await this.schedulePossibleEndCheck(
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          this.TRIP_END_VALIDATION_RETRY_MS,
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.END_VALIDATION,
+          corePointsCount: corePoints.length,
+          resultSummary: {
+            reason: 'detector_execution_failure',
+            failureOutcome: findingOutcome,
+            failureReason,
+            completedAttempts: det.endValidationAttempts ?? 0,
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
+
+      const endDecision = this.decisionEngine.evaluateEndCandidate(endFindings);
+      const validationCompletedAt = new Date();
       const endConfEnum =
         endDecision.confidence === 'HIGH'
           ? DetectionConfidence.HIGH
           : endDecision.confidence === 'MEDIUM'
             ? DetectionConfidence.MEDIUM
             : DetectionConfidence.LOW;
+      const completedAttempt = (det.endValidationAttempts ?? 0) + 1;
 
-      // ── Still ongoing? → back to ACTIVE_TRIP ──
+      // ── Still ongoing? → back to ACTIVE_TRIP (cycle completed; counter reset) ──
       if (endDecision.shouldReopen && endDecision.endMode !== 'CUSUM_VALIDATED') {
         resultState = TripDetectionState.ACTIVE_TRIP;
         this.logger.log(
-          `CUSUM: trip ${vehicleId} still appears ongoing — returning to ACTIVE_TRIP`,
+          `CUSUM: trip ${vehicleId} still appears ongoing — returning to ACTIVE_TRIP (completedAttempt=${completedAttempt})`,
         );
 
-        // Extract lastMovementAt from evidence if available
-        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as string | undefined;
-        const lastMovementAt = lastMovementStr ? new Date(lastMovementStr) : undefined;
+        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as
+          | string
+          | undefined;
+        const lastMovementAt = validateCusumMovementEventTime(
+          lastMovementStr,
+          now,
+        );
 
         await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
-          ...clearPossibleEndClockFields(),
-          endValidationAttempts: 0,
-          cusumValidatedAt: null,
-          cusumSegmentStart: null,
-          cusumSegmentEnd: null,
-          lastActivityAt: now,
-          ...(lastMovementAt && { lastMeaningfulMovementAt: lastMovementAt }),
-          lastCoreProcessedAt: now,
+          ...buildPossibleEndToActiveReset({
+            workerNow: now,
+            lastMeaningfulMovementAt: lastMovementAt,
+            priorSummary,
+          }),
         });
         await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
@@ -2449,7 +2617,12 @@ export class TripDetectionOrchestrationService {
           runType: TripTrackingRunType.END_VALIDATION,
           corePointsCount: corePoints.length,
           resultState,
-          resultSummary: { reason: 'cusum_still_ongoing', endDecisionReason: endDecision.reason },
+          resultSummary: {
+            reason: 'cusum_still_ongoing',
+            endDecisionReason: endDecision.reason,
+            completedAttempt,
+            persistedAttemptsAfterReset: 0,
+          },
           durationMs: Date.now() - startedMs,
         });
         return;
@@ -2458,11 +2631,16 @@ export class TripDetectionOrchestrationService {
       // ── Clear change-point detected → finalize ──
       if (endDecision.shouldEnd && endDecision.detectedEndAt) {
         const validatedEndTime = endDecision.detectedEndAt;
-        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as string | undefined;
-        const lastMovementAt = lastMovementStr ? new Date(lastMovementStr) : undefined;
+        const lastMovementStr = endFinding?.evidence?.cusumLastMovementAt as
+          | string
+          | undefined;
+        const lastMovementAt = validateCusumMovementEventTime(
+          lastMovementStr,
+          now,
+        );
 
         this.logger.log(
-          `CUSUM: change-point detected for ${vehicleId} at ${validatedEndTime.toISOString()} [${endDecision.confidence}]`,
+          `CUSUM: change-point detected for ${vehicleId} at ${validatedEndTime.toISOString()} [${endDecision.confidence}] (completedAttempt=${completedAttempt})`,
         );
 
         this.logTripEndTimeline('cusum_confirmed', {
@@ -2470,11 +2648,9 @@ export class TripDetectionOrchestrationService {
           tripId: det.activeTripId,
           lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
           possibleEndAt: det.possibleEndAt,
-          endValidationStartedAt: this.parseEvidenceTimestamp(
-            det.lastEvidenceSummary,
-            'endValidationStartedAt',
-          ),
+          endValidationStartedAt: validationStartedAt,
           finalizedAt: validatedEndTime,
+          completedEndValidationAttempt: completedAttempt,
           latencyFromMovementMs:
             det.lastMeaningfulMovementAt != null
               ? validatedEndTime.getTime() - det.lastMeaningfulMovementAt.getTime()
@@ -2483,12 +2659,20 @@ export class TripDetectionOrchestrationService {
         });
 
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          endValidationAttempts: completedAttempt,
           cusumValidatedAt: now,
           cusumSegmentStart: corePoints.length > 0 ? new Date(corePoints[0].timestamp) : null,
           cusumSegmentEnd: validatedEndTime,
           endDetectionMode: END_DETECTION_MODES.CUSUM_VALIDATED,
           endConfidence: endConfEnum,
           ...(lastMovementAt && { lastMeaningfulMovementAt: lastMovementAt }),
+          lastEvidenceSummary: buildEndValidationCompletionEvidence({
+            priorSummary,
+            validationStartedAt,
+            validationCompletedAt,
+            completedAttempt,
+            scheduledAt,
+          }),
         });
 
         resultState = TripDetectionState.RESTING;
@@ -2507,16 +2691,27 @@ export class TripDetectionOrchestrationService {
             confidence: endDecision.confidence,
             endDecisionReason: endDecision.reason,
             lastMovementAt: lastMovementAt?.toISOString(),
+            completedAttempt,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
       }
 
-      // ── Inconclusive: reschedule another attempt ──
+      // ── Inconclusive: persist completed attempt and reschedule PEC ──
       this.logger.debug(
-        `CUSUM inconclusive for ${vehicleId}: ${endDecision.reason} — rescheduling`,
+        `CUSUM inconclusive for ${vehicleId}: ${endDecision.reason} — rescheduling (completedAttempt=${completedAttempt})`,
       );
+      await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+        endValidationAttempts: completedAttempt,
+        lastEvidenceSummary: buildEndValidationCompletionEvidence({
+          priorSummary,
+          validationStartedAt,
+          validationCompletedAt,
+          completedAttempt,
+          scheduledAt,
+        }),
+      });
       await this.schedulePossibleEndCheck(
         vehicleId, organizationId, dimoTokenId,
         this.TRIP_END_VALIDATION_RETRY_MS,
@@ -2531,13 +2726,22 @@ export class TripDetectionOrchestrationService {
         resultSummary: {
           reason: 'cusum_inconclusive',
           endDecisionReason: endDecision.reason,
-          attempts: det.endValidationAttempts,
+          completedAttempt,
         },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
       this.logger.warn(`END_VALIDATION error for ${vehicleId}: ${err}`);
-      // On error, fall back to rescheduling the basic check
+      const failureMsg = err instanceof Error ? err.message : String(err);
+      if (det?.state === TripDetectionState.POSSIBLE_END) {
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          lastEvidenceSummary: buildEndValidationFetchFailureEvidence({
+            priorSummary: priorSummaryForFailure,
+            validationStartedAt,
+            failureReason: failureMsg,
+          }),
+        }).catch(() => {});
+      }
       await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId,
         this.TRIP_END_VALIDATION_RETRY_MS,
       ).catch(() => {});
@@ -2663,6 +2867,10 @@ export class TripDetectionOrchestrationService {
               anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
             });
           } else {
+            const r5EndForensics = extractR5EndForensicsForPersistence(
+              det.lastEvidenceSummary as Record<string, unknown> | null,
+              det.endValidationAttempts ?? 0,
+            );
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
               endDetectionMode:
@@ -2705,6 +2913,7 @@ export class TripDetectionOrchestrationService {
                 startOdometerKm: det.startOdometerKm,
                 startFuelLevel: det.startFuelLevel,
                 startEvSoc: det.startEvSoc,
+                ...r5EndForensics,
               },
             });
             finalizedTripForRestWindow = { tripId, endTime };
@@ -2883,17 +3092,13 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null;
     dimoTokenId: number;
     now: Date;
+    priorSummary?: Record<string, unknown> | null;
   }): Promise<void> {
     await this.transitionState(params.vehicleId, TripDetectionState.ACTIVE_TRIP, {
-      ...clearPossibleEndClockFields(),
-      endDetectionMode: null,
-      endConfidence: null,
-      endValidationAttempts: 0,
-      cusumValidatedAt: null,
-      cusumSegmentStart: null,
-      cusumSegmentEnd: null,
-      lastActivityAt: params.now,
-      lastCoreProcessedAt: params.now,
+      ...buildPossibleEndToActiveReset({
+        workerNow: params.now,
+        priorSummary: params.priorSummary,
+      }),
     });
     await this.scheduleActiveTick(
       params.vehicleId,
@@ -3509,6 +3714,7 @@ export class TripDetectionOrchestrationService {
   private logTripEndTimeline(
     phase:
       | 'possible_end_entered'
+      | 'end_validation_scheduled'
       | 'end_validation_started'
       | 'clickhouse_end_assist'
       | 'clickhouse_end_assist_confirmed'
@@ -3521,11 +3727,14 @@ export class TripDetectionOrchestrationService {
       possibleEndAt?: Date | null;
       possibleEndEnteredAt?: Date | null;
       endValidationStartedAt?: Date | null;
+      endValidationScheduledAt?: Date | null;
       finalizedAt?: Date | null;
       endSource?: string;
       confidence?: string;
       latencyFromMovementMs?: number | null;
       attempt?: number;
+      completedAttempts?: number;
+      completedEndValidationAttempt?: number;
       maxAttempts?: number;
     },
   ): void {
