@@ -16,11 +16,12 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 |--------|------------------|-----------------|-------------------------|----------------|
 | Automatic Trip Enrichment (ATE) | Orchestrates post-finalize trip behavior enrichment, hardware routing, and reconciliation-driven enrichment chains. | `AUTHORITY_ACTIVE` | `CANONICAL` (per [GRAPH.yaml](knowledge-graphs/automatic-trip-enrichment/GRAPH.yaml)) | [`architecture/knowledge-graphs/automatic-trip-enrichment/`](knowledge-graphs/automatic-trip-enrichment/) |
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
+| Driving Intelligence | Transforms vehicle telemetry and completed trip boundaries into driving-behavior events, operational-load scoring, durable post-trip analysis, misuse signals, and API/UI projections. | `AUTHORITY_ACTIVE` | Retrospective expansion V2 (2026-09-06) · SUBSTANTIAL reconstruction | [`architecture/drivingintelligence/`](drivingintelligence/) |
 | Energy Event Detection (EED) | Owns REFUEL/RECHARGE detection semantics, persistence, coalescing, and energy-event API/UI contracts. | `AUTHORITY_ACTIVE` | `APPROVED_FOR_CANONICAL_MERGE` — PR #1486 merged on `main` (`182731fe48cd25578668f102ed847f4791fbaabd`); authority metadata not yet promoted to `CANONICAL` (see [EED section](#energy-event-detection-eed--kg-eed)) | [`architecture/knowledge-graphs/energy-event-detection/`](knowledge-graphs/energy-event-detection/) |
 | Scaling Process | Documents horizontal scaling, multi-replica coordination, scheduler leader election, and production scale gates. | `AUTHORITY_ACTIVE` | Bootstrap established · living architecture authority | [`architecture/scaling-process/`](scaling-process/) |
 | Tankstellenerkennung | Identifies physical fuel stations after a REFUEL `VehicleEnergyEvent` has been persisted. | `AUTHORITY_ACTIVE` | Bootstrap V1 · incremental/open scientific workstream | [`architecture/tankstellenerkennung/`](tankstellenerkennung/) |
 
-**Next workstream boundary:** This registry currently inventories only the five structured authorities above. A repository-wide module inventory (adding all discoverable SynqDrive modules with name, mini description, and initial registry status — normally `NOT_STARTED`) is a **separate follow-up workstream**. Do not infer documentation from flat `architecture/*.md` mentions alone.
+**Next workstream boundary:** This registry currently inventories only the six structured authorities above. A repository-wide module inventory (adding all discoverable SynqDrive modules with name, mini description, and initial registry status — normally `NOT_STARTED`) is a **separate follow-up workstream**. Do not infer documentation from flat `architecture/*.md` mentions alone.
 
 ---
 
@@ -153,6 +154,20 @@ Detailed sections for modules with usable living authorities. See [Module invent
 
 ---
 
+### Driving Intelligence
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUTHORITY_ACTIVE` |
+| **Scope** | DIMO telemetry acquisition (live + post-trip HF), trip-window association, HF reconstruction and behavior event detection, native DIMO driving events, driving impact/stress scoring (V1 production), tire and brake operational load proxies, V2 durable post-trip pipeline (stage orchestrator, assessability, evidence), reference capture/HF recovery testbed, rental and driver-subject aggregation, health module inputs, API and fleet/rental UI projection. **Consumes** completed trips and enriches them. |
+| **Authority directory** | [`architecture/drivingintelligence/`](drivingintelligence/) |
+| **Authority-native status** | **Retrospective expansion V2** (2026-09-06) · **SUBSTANTIAL reconstruction** — full workstream 2026-08-30 → present · Runtime impact: documentation and knowledge graph only |
+| **Ownership boundary** | **Does NOT own canonical trip boundaries** — Trip Detection / DIMO Segments own trip start/end and live trip FSM. **Does NOT own** REFUEL/RECHARGE energy events (→ KG-EED). **Does NOT own** fuel-station identification (→ Tankstellenerkennung). Three confidence domains must never be conflated: assessability dimension status (A), event provenance native vs HF-reconstructed (B), driving stress score as operational load not driver quality (C). |
+| **Mandatory entry documents** | [README.md](drivingintelligence/README.md) · [CURRENT_STATE.md](drivingintelligence/CURRENT_STATE.md) · [KNOWLEDGE_GRAPH.md](drivingintelligence/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](drivingintelligence/AGENT_CONTRACT.md) · [COVERAGE_MATRIX.md](drivingintelligence/COVERAGE_MATRIX.md) · [decisions/DECISION_REGISTER.md](drivingintelligence/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](drivingintelligence/evidence/EVIDENCE_INDEX.md) · [contradictions/CONTRADICTION_REGISTER.md](drivingintelligence/contradictions/CONTRADICTION_REGISTER.md) · [research/OPEN_QUESTIONS.md](drivingintelligence/research/OPEN_QUESTIONS.md) |
+| **Validation** | `bash architecture/drivingintelligence/scripts/validate-graph.sh` · `bash architecture/drivingintelligence/scripts/validate-docs.sh` |
+
+---
+
 ### Scaling Process
 
 | Field | Value |
@@ -250,6 +265,7 @@ Update this file when:
 REFUEL detected?     → KG-EED
 Station identified?  → Tankstellenerkennung (after REFUEL event exists)
 Trip enrichment?     → KG-ATE
+Driving behavior & impact? → Driving Intelligence (consumes trip boundaries; does not own Trip Detection/DIMO Segments, EED, or Tankstellenerkennung)
 Battery health?      → Battery V2
 Multi-replica/scale? → Scaling Process
 ```

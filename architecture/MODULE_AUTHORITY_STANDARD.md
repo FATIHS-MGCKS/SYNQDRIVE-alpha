@@ -219,7 +219,7 @@ This audit is **read-only** unless the user separately gives explicit, task-spec
 
 **If Production access is unavailable:**
 
-- record `PRODUCTION_ACCESS = UNAVAILABLE`
+- record `PRODUCTION_ACCESS = PRODUCTION_ACCESS_UNAVAILABLE`
 - record the exact non-secret blocker
 - do **not** guess Production state
 - keep a runtime-bearing module `AUDIT_IN_PROGRESS`
@@ -644,15 +644,16 @@ Open product or research gaps do **not** automatically block `AUTHORITY_ACTIVE` 
 
 ## 7. Existing-authority transition rule
 
-The five existing authorities must **not** be downgraded or broadly rewritten solely because Standard 1.0 exists:
+The six existing authorities must **not** be downgraded or broadly rewritten solely because Standard 1.0 exists:
 
 - Tankstellenerkennung
 - Battery V2
+- Driving Intelligence
 - Scaling Process
 - ATE (KG-ATE)
 - EED (KG-EED)
 
-They predate Standard 1.0 and remain `AUTHORITY_ACTIVE`.
+They predate Standard 1.0 (or, for Driving Intelligence, were established as a structured authority on `main` before this standard merges) and remain `AUTHORITY_ACTIVE`. Driving Intelligence’s 51 authority files must **not** be broadly rewritten for Standard 1.0 conformance in a governance-only pass; semantic equivalents for differently named standard artifacts (for example `CONTRADICTION_REGISTER.md` vs `OPEN_CONTRADICTIONS.md`) are permitted.
 
 For pre-existing authorities:
 
