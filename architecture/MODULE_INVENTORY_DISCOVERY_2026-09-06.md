@@ -36,7 +36,7 @@ This workstream did **not**:
 |-------|-------|
 | Base branch | `main` after merged PR #1545 |
 | Merge commit cited | `06f647c7903443e343410806a73742ab5797667a` |
-| Inventory correction HEAD | `140ebdd33` (base) → PR #1548 correction commit |
+| Inventory correction HEAD | PR #1548 manifest semantic correction commit (see git log) |
 
 ---
 
@@ -671,9 +671,10 @@ See the canonical overview table in [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](SYNQDRI
 Every relevant discovered structural candidate below has **exactly one** classification:
 
 - `REGISTERED_MODULE` — maps to a canonical registry row
-- `ALIAS_OF_REGISTERED_MODULE` — code/worker/UI alias of a registered module or authority
+- `ALIAS_OF_REGISTERED_MODULE` — alternative NestJS import or code name for the same registered capability
 - `SUBCOMPONENT_OF_MODULE` — owned by a registered module or authority; not separately inventoried
 - `SHARED_INFRASTRUCTURE` — platform/runtime infrastructure excluded from product module registry
+- `AGGREGATE_CONTAINER` — UI or code aggregate grouping multiple module boundaries
 - `INSUFFICIENT_EVIDENCE` — no defensible standalone product module from current evidence
 - `UNRESOLVED_BOUNDARY` — evidence exists but ownership boundary not safely decidable in inventory-only pass
 
@@ -681,202 +682,354 @@ Every relevant discovered structural candidate below has **exactly one** classif
 
 | Path / identifier | Classification | Canonical module | Reason | Evidence |
 |---|---|---|---|---|
-| backend/src/modules/account/ | R | E | G | I |
-| backend/src/modules/activity-log/ | R | E | G | I |
-| backend/src/modules/ai/ | R | E | G | I |
-| backend/src/modules/auth/ | R | E | G | I |
-| backend/src/modules/billing/ | R | E | G | I |
-| backend/src/modules/bookings/ | R | E | G | I |
-| backend/src/modules/business-audit/ | R | E | G | I |
-| backend/src/modules/business-insights/ | R | E | G | I |
-| backend/src/modules/clickhouse/ | S | H | A | R |
-| backend/src/modules/communication/ | R | E | G | I |
-| backend/src/modules/customer-verification/ | R | E | G | I |
-| backend/src/modules/customers/ | R | E | G | I |
-| backend/src/modules/dashboard-utilization/ | R | E | G | I |
-| backend/src/modules/data-analyse/ | R | E | G | I |
-| backend/src/modules/data-authorizations/ | R | E | G | I |
-| backend/src/modules/deposit/ | S | U | B | C |
-| backend/src/modules/dimo/ | R | E | G | I |
-| backend/src/modules/document-extraction/ | R | E | G | I |
-| backend/src/modules/documents/ | R | E | G | I |
-| backend/src/modules/energy-events-observability/ | S | U | B | C |
-| backend/src/modules/evaluations-analytics/ | R | E | G | I |
-| backend/src/modules/evaluations-finance/ | R | E | G | I |
-| backend/src/modules/evaluations-metrics/ | S | U | B | C |
-| backend/src/modules/evaluations-observability/ | S | H | A | R |
-| backend/src/modules/fines/ | R | E | G | I |
-| backend/src/modules/fleet-health-observability/ | S | H | A | R |
-| backend/src/modules/health/ | S | H | A | R |
-| backend/src/modules/high-mobility/ | R | E | G | I |
-| backend/src/modules/iam-data-retention/ | R | E | G | I |
-| backend/src/modules/iam-mfa/ | R | E | G | I |
-| backend/src/modules/iam-observability/ | S | H | A | R |
-| backend/src/modules/insurances/ | R | E | G | I |
-| backend/src/modules/integrations/ | R | E | G | I |
-| backend/src/modules/invoices/ | R | E | G | I |
-| backend/src/modules/master-admin-smoke-lifecycle/ | S | U | B | C |
-| backend/src/modules/notifications/ | R | E | G | I |
-| backend/src/modules/observability/ | S | H | A | R |
-| backend/src/modules/organizations/ | R | E | G | I |
-| backend/src/modules/outbound-email/ | R | E | G | I |
-| backend/src/modules/parts-accessories/ | R | E | G | I |
-| backend/src/modules/payments/ | R | E | G | I |
-| backend/src/modules/platform-admin/ | R | E | G | I |
-| backend/src/modules/pricing/ | R | E | G | I |
-| backend/src/modules/products/ | R | E | G | I |
-| backend/src/modules/prospects/ | R | E | G | I |
-| backend/src/modules/rental-driving-analysis/ | R | E | G | I |
-| backend/src/modules/rental-health/ | R | E | G | I |
-| backend/src/modules/rental-rules/ | R | E | G | I |
-| backend/src/modules/service-cases/ | R | E | G | I |
-| backend/src/modules/sms/ | R | E | G | I |
-| backend/src/modules/stations/ | R | E | G | I |
-| backend/src/modules/support/ | R | E | G | I |
-| backend/src/modules/tasks/ | R | E | G | I |
-| backend/src/modules/technical-observations/ | R | E | G | I |
-| backend/src/modules/twilio/ | S | U | B | C |
-| backend/src/modules/users/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/ | A | L | I | A |
-| backend/src/modules/vehicle-warning-gdpr/ | S | U | B | C |
-| backend/src/modules/vehicles/ | R | E | G | I |
-| backend/src/modules/vendors/ | R | E | G | I |
-| backend/src/modules/voice-assistant/ | A | L | I | A |
-| backend/src/modules/voice-billing/ | A | L | I | A |
-| backend/src/modules/voice-call-orchestration/ | A | L | I | A |
-| backend/src/modules/voice-mcp-gateway/ | A | L | I | A |
-| backend/src/modules/voice-protection/ | A | L | I | A |
-| backend/src/modules/voice-webhook-ingestion/ | A | L | I | A |
-| backend/src/modules/whatsapp/ | R | E | G | I |
-| backend/src/modules/workflows/ | R | E | G | I |
+| backend/src/modules/account/ | REGISTERED_MODULE | Account & Self-Service | Dedicated account and self-service NestJS module with controllers for user preferences | backend/src/modules/account/account.module.ts; backend/src/app.module.ts AccountModule import |
+| backend/src/modules/activity-log/ | REGISTERED_MODULE | Activity Log & HTTP Audit | HTTP mutation audit persistence and activity-log API | backend/src/modules/activity-log/activity-log.module.ts; model ActivityLog in backend/prisma/schema.prisma |
+| backend/src/modules/ai/ | REGISTERED_MODULE | AI Platform (Fleet Chat & Tools) | Org-scoped fleet AI chat gateway and tool routing | backend/src/modules/ai/ai.module.ts; models OrganizationChatAgent, ChatMessage, AiRequestAuditLog |
+| backend/src/modules/auth/ | REGISTERED_MODULE | Auth API | Tenant authentication API including refresh-token endpoints | backend/src/modules/auth/auth.module.ts; model RefreshToken |
+| backend/src/modules/billing/ | REGISTERED_MODULE | Billing (SynqDrive SaaS) | Stripe SaaS subscription billing and usage metering | backend/src/modules/billing/billing.module.ts; models BillingSubscription, BillingInvoice |
+| backend/src/modules/bookings/ | REGISTERED_MODULE | Bookings | Rental booking lifecycle, handover protocols, and eligibility gates | backend/src/modules/bookings/bookings.module.ts; model Booking, BookingHandoverProtocol |
+| backend/src/modules/business-audit/ | REGISTERED_MODULE | Business Audit | Business-event audit outbox processor and persistence | backend/src/modules/business-audit/business-audit.module.ts; model BusinessAuditOutbox |
+| backend/src/modules/business-insights/ | REGISTERED_MODULE | Business Insights | Detector-based dashboard insight signal pipeline | backend/src/modules/business-insights/business-insights.module.ts; models DashboardInsight, DashboardInsightRun |
+| backend/src/modules/clickhouse/ | SHARED_INFRASTRUCTURE | N/A | ClickHouse telemetry mirror client infrastructure, not a product module | backend/src/modules/clickhouse/clickhouse.module.ts; QUEUE CLICKHOUSE_MIRROR_RETRY in backend/src/workers/queues/queue-names.ts |
+| backend/src/modules/communication/ | REGISTERED_MODULE | Communication Center | Canonical omnichannel conversation store and inbox API | backend/src/modules/communication/communication.module.ts; models CommunicationConversation, CommunicationEvent |
+| backend/src/modules/customer-verification/ | REGISTERED_MODULE | Customer Verification (Didit) | Didit identity verification workflows and webhook handling | backend/src/modules/customer-verification/customer-verification.module.ts; model CustomerVerificationCheck, DiditWebhookEvent |
+| backend/src/modules/customers/ | REGISTERED_MODULE | Customers | Org-scoped rental customer records and management APIs | backend/src/modules/customers/customers.module.ts; model Customer |
+| backend/src/modules/dashboard-utilization/ | REGISTERED_MODULE | Dashboard Utilization | Fleet utilization metrics API for rental dashboard | backend/src/modules/dashboard-utilization/dashboard-utilization.module.ts |
+| backend/src/modules/data-analyse/ | REGISTERED_MODULE | Data Analyse | Org-wide permission-gated driving analysis and misuse views | backend/src/modules/data-analyse/data-analyse.module.ts |
+| backend/src/modules/data-authorizations/ | REGISTERED_MODULE | Data Authorizations | Tenant data-access consent enforcement for AI and sensitive APIs | backend/src/modules/data-authorizations/data-authorizations.module.ts; model OrgDataAuthorization |
+| backend/src/modules/deposit/ | SUBCOMPONENT_OF_MODULE | Pricing & Deposits | Deposit resolution submodule owned by pricing domain | backend/src/modules/deposit/deposit.module.ts imported by backend/src/modules/pricing/pricing.module.ts |
+| backend/src/modules/dimo/ | REGISTERED_MODULE | DIMO Integration | DIMO auth, telemetry, segments, triggers, and webhook gateway | backend/src/modules/dimo/dimo.module.ts; models DimoVehicle, DimoPollLog |
+| backend/src/modules/document-extraction/ | REGISTERED_MODULE | Document Extraction (AI Upload) | Shared upload-extract-review-apply document intake pipeline | backend/src/modules/document-extraction/document-extraction.module.ts; QUEUE DOCUMENT_EXTRACTION |
+| backend/src/modules/documents/ | REGISTERED_MODULE | Documents | Document storage, legal texts, booking bundles, and retention | backend/src/modules/documents/documents.module.ts; models GeneratedDocument, OrganizationLegalDocument |
+| backend/src/modules/energy-events-observability/ | SHARED_INFRASTRUCTURE | N/A | EED metrics and observability adjunct, not standalone product module | backend/src/modules/energy-events-observability/energy-events-observability.module.ts |
+| backend/src/modules/evaluations-analytics/ | REGISTERED_MODULE | Evaluations Analytics | Entity-scoped evaluation insights, quality, and recommendations APIs | backend/src/modules/evaluations-analytics/evaluations-analytics.module.ts; model EvaluationsEntityReference |
+| backend/src/modules/evaluations-finance/ | REGISTERED_MODULE | Evaluations Finance | Dedicated financial evaluation analytics controller and module | backend/src/modules/evaluations-finance/evaluations-finance.module.ts |
+| backend/src/modules/evaluations-metrics/ | SUBCOMPONENT_OF_MODULE | Evaluations Analytics | Metrics sub-layer controllers within evaluations analytics domain | backend/src/modules/evaluations-metrics/evaluations-metric.module.ts; EvaluationsMetricsModule in backend/src/app.module.ts |
+| backend/src/modules/evaluations-observability/ | SHARED_INFRASTRUCTURE | N/A | Evaluations API interceptor observability adjunct | backend/src/modules/evaluations-observability/evaluations-observability.module.ts; EvaluationsApiObservabilityInterceptor |
+| backend/src/modules/fines/ | REGISTERED_MODULE | Fines | Traffic and parking fine record management | backend/src/modules/fines/fines.module.ts; model Fine |
+| backend/src/modules/fleet-health-observability/ | SHARED_INFRASTRUCTURE | N/A | Fleet health pipeline observability metrics host | backend/src/modules/fleet-health-observability/fleet-health-observability.module.ts |
+| backend/src/modules/health/ | SHARED_INFRASTRUCTURE | N/A | Liveness and readiness HTTP probes only | backend/src/modules/health/health.module.ts; HealthModule in backend/src/app.module.ts |
+| backend/src/modules/high-mobility/ | REGISTERED_MODULE | High Mobility Integration | HM telemetry ingestion, vehicle registration, and webhooks | backend/src/modules/high-mobility/high-mobility.module.ts; model HighMobilityVehicle |
+| backend/src/modules/iam-data-retention/ | REGISTERED_MODULE | IAM Data Retention | GDPR deletion, IAM retention policies, and purge schedulers | backend/src/modules/iam-data-retention/iam-data-retention.module.ts; models IamRetentionPolicyOverride, IamLegalHold |
+| backend/src/modules/iam-mfa/ | REGISTERED_MODULE | IAM MFA | MFA enrollment, step-up grants, and recovery codes | backend/src/modules/iam-mfa/iam-mfa.module.ts; models UserMfaFactor, UserMfaStepUpGrant |
+| backend/src/modules/iam-observability/ | SHARED_INFRASTRUCTURE | N/A | IAM metrics and observability adjunct | backend/src/modules/iam-observability/iam-observability.module.ts |
+| backend/src/modules/insurances/ | REGISTERED_MODULE | Insurances | Vehicle insurance records and partner channel adapters | backend/src/modules/insurances/insurances.module.ts; models InsurancePartner, VehicleInsuranceRecord |
+| backend/src/modules/integrations/ | REGISTERED_MODULE | Integrations Hub | Tenant integrations configuration and connection management | backend/src/modules/integrations/integrations.module.ts; models Integration, OrganizationIntegration |
+| backend/src/modules/invoices/ | REGISTERED_MODULE | Invoices | Operational invoice records and accounts-receivable flows | backend/src/modules/invoices/invoices.module.ts; model OrgInvoice |
+| backend/src/modules/master-admin-smoke-lifecycle/ | SUBCOMPONENT_OF_MODULE | Platform Admin | Ephemeral master-admin smoke-test helper, not standalone product module | backend/src/modules/master-admin-smoke-lifecycle/master-admin-smoke-lifecycle.module.ts |
+| backend/src/modules/notifications/ | REGISTERED_MODULE | Notifications | Notification evaluation, delivery outbox, and in-app consumption | backend/src/modules/notifications/notifications.module.ts; models Notification, NotificationDeliveryOutbox |
+| backend/src/modules/observability/ | SHARED_INFRASTRUCTURE | N/A | Prometheus metrics and runtime status registry host | backend/src/modules/observability/observability.module.ts; RuntimeStatusRegistry in backend/src/app.module.ts |
+| backend/src/modules/organizations/ | REGISTERED_MODULE | Organizations & Tenancy | Multi-tenant organization profiles and tenant configuration | backend/src/modules/organizations/organizations.module.ts; model Organization |
+| backend/src/modules/outbound-email/ | REGISTERED_MODULE | Outbound Email | Resend-based outbound email for org and platform delivery | backend/src/modules/outbound-email/outbound-email.module.ts; model OutboundEmail |
+| backend/src/modules/parts-accessories/ | REGISTERED_MODULE | Parts & Accessories | Parts procurement integrations and marketplace adapters | backend/src/modules/parts-accessories/parts-accessories.module.ts; models PartsProvider, PartsSearchRequest |
+| backend/src/modules/payments/ | REGISTERED_MODULE | Payments (Rental Collections) | Stripe Connect payment collection for booking payment requests | backend/src/modules/payments/payments.module.ts; models BookingPaymentRequest, PaymentTransaction |
+| backend/src/modules/platform-admin/ | REGISTERED_MODULE | Platform Admin | Master-admin cross-tenant operations and security governance | backend/src/modules/platform-admin/platform-admin.module.ts |
+| backend/src/modules/pricing/ | REGISTERED_MODULE | Pricing & Deposits | Rental tariff pricing rules, publish flow, and deposit coupling | backend/src/modules/pricing/pricing.module.ts; models PriceBook, PriceTariffGroup, BookingDeposit |
+| backend/src/modules/products/ | REGISTERED_MODULE | Products (Rental Catalog) | Rental product catalog and org product assignments | backend/src/modules/products/products.module.ts; models Product, OrganizationProduct |
+| backend/src/modules/prospects/ | REGISTERED_MODULE | Prospects | Pre-customer prospect records for master-admin sales pipeline | backend/src/modules/prospects/prospects.module.ts; model Prospect |
+| backend/src/modules/rental-driving-analysis/ | REGISTERED_MODULE | Rental Driving Analysis | Booking-scoped driving analysis aggregation APIs | backend/src/modules/rental-driving-analysis/rental-driving-analysis.module.ts; model RentalDrivingAnalysis |
+| backend/src/modules/rental-health/ | REGISTERED_MODULE | Rental Health | Fleet-level health aggregation consuming source health modules | backend/src/modules/rental-health/rental-health.module.ts |
+| backend/src/modules/rental-rules/ | REGISTERED_MODULE | Rental Rules | Org-level rental policy and rules configuration | backend/src/modules/rental-rules/rental-rules.module.ts; model OrganizationRentalRules |
+| backend/src/modules/service-cases/ | REGISTERED_MODULE | Service Cases | Operational service-case tracking for maintenance and vendors | backend/src/modules/service-cases/service-cases.module.ts; model ServiceCase |
+| backend/src/modules/sms/ | REGISTERED_MODULE | SMS & Twilio Messaging | SMS conversation persistence module (SmsPersistenceModule) | backend/src/modules/sms/sms-persistence.module.ts; models SmsConversation, SmsMessage |
+| backend/src/modules/stations/ | REGISTERED_MODULE | Stations | Rental station locations, geofencing, and transfers | backend/src/modules/stations/stations.module.ts; model Station |
+| backend/src/modules/support/ | REGISTERED_MODULE | Support | Support ticket APIs and messaging | backend/src/modules/support/support.module.ts; models SupportTicket, SupportTicketMessage |
+| backend/src/modules/tasks/ | REGISTERED_MODULE | Tasks & Work Orders | Work orders, task domain V2, and automation outbox | backend/src/modules/tasks/tasks.module.ts; models OrgTask, TaskAutomationOutbox |
+| backend/src/modules/technical-observations/ | REGISTERED_MODULE | Technical Observations | Operator technical observation records feeding notifications | backend/src/modules/technical-observations/technical-observations.module.ts |
+| backend/src/modules/twilio/ | SUBCOMPONENT_OF_MODULE | SMS & Twilio Messaging | Twilio provider adapter submodule for SMS and voice webhooks | backend/src/modules/twilio/twilio.module.ts imported by sms and voice modules |
+| backend/src/modules/users/ | REGISTERED_MODULE | Users & Invites | Org user management, custom roles, and invite flows | backend/src/modules/users/users.module.ts; models OrganizationUserInvite, OrganizationRole |
+| backend/src/modules/vehicle-intelligence/ | AGGREGATE_CONTAINER | N/A | NestJS aggregate hosting vehicle health, trips, driving, and energy subdomains | backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts; VehicleIntelligenceModule in backend/src/app.module.ts |
+| backend/src/modules/vehicle-warning-gdpr/ | SUBCOMPONENT_OF_MODULE | IAM Data Retention | Vehicle warning GDPR purge helper consumed by retention workers | backend/src/modules/vehicle-warning-gdpr/vehicle-warning-gdpr.module.ts; VehicleWarningGdprModule in backend/src/workers/workers.module.ts |
+| backend/src/modules/vehicles/ | REGISTERED_MODULE | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, and operational projections | backend/src/modules/vehicles/vehicles.module.ts; model Vehicle |
+| backend/src/modules/vendors/ | REGISTERED_MODULE | Vendors | Third-party vendor and workshop directory | backend/src/modules/vendors/vendors.module.ts; model Vendor |
+| backend/src/modules/voice-assistant/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Voice agent control-plane API and deployment management | backend/src/modules/voice-assistant/voice-assistant.module.ts; model VoiceAssistant |
+| backend/src/modules/voice-billing/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Voice usage metering and billing period management | backend/src/modules/voice-billing/voice-billing.module.ts; models VoiceBillingPeriod, VoiceUsageEvent |
+| backend/src/modules/voice-call-orchestration/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Call lifecycle orchestration for voice conversations | backend/src/modules/voice-call-orchestration/voice-call-orchestration.module.ts; model VoiceConversation |
+| backend/src/modules/voice-mcp-gateway/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | MCP tool gateway for voice agent tool execution | backend/src/modules/voice-mcp-gateway/voice-mcp-gateway.module.ts; model VoiceToolExecution |
+| backend/src/modules/voice-protection/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Budget protection and override policies for voice usage | backend/src/modules/voice-protection/voice-protection.module.ts; models VoiceBudgetPolicy, VoiceProtectionOverride |
+| backend/src/modules/voice-webhook-ingestion/ | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Twilio voice webhook ingestion and async processing entry | backend/src/modules/voice-webhook-ingestion/voice-webhook-ingestion.module.ts; QUEUE VOICE_WEBHOOK_PROCESS |
+| backend/src/modules/whatsapp/ | REGISTERED_MODULE | WhatsApp Business | Meta WhatsApp Business API integration and webhooks | backend/src/modules/whatsapp/whatsapp.module.ts; models WhatsAppConversation, WhatsAppMessage |
+| backend/src/modules/workflows/ | REGISTERED_MODULE | Workflows | Configurable workflow engine with maker-checker and rollout gates | backend/src/modules/workflows/workflows.module.ts; models OrgWorkflow, OrgWorkflowRun |
 
 
 ### 8.2 First-level `vehicle-intelligence/` domains (46)
 
 | Path / identifier | Classification | Canonical module | Reason | Evidence |
 |---|---|---|---|---|
-| backend/src/modules/vehicle-intelligence/battery/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/battery-health/ | A | L | I | A |
-| backend/src/modules/vehicle-intelligence/battery-policy-profile/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/brakes/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/damage-incidents/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/damages/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/dashboard-warning-lights/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/dimo-native-driving-events/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/dimo-trip-segment-validation/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/drive-profile/ | U | N | R | E |
-| backend/src/modules/vehicle-intelligence/driver-attribution/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-analysis-init/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-analysis-run/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-analysis-stage/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-capability/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-decisions/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-detector-capability/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-events/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-evidence/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-impact/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-impact-model-profile/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-impact-rolling/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-intelligence-v2/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-metric-normalization/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/driving-signals/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/dtc/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/dtc-knowledge/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/energy-events/ | A | L | I | A |
-| backend/src/modules/vehicle-intelligence/enrichment-jobs/ | A | L | I | A |
-| backend/src/modules/vehicle-intelligence/event-context/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/findings/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/fuel-stations/ | A | L | I | A |
-| backend/src/modules/vehicle-intelligence/health-summary/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/lv-battery-chemistry/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/misuse-cases/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/reference-capture/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/service-compliance/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/service-events/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/shadow-detector/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/tenant/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/tires/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/trip-assessability/ | S | U | B | C |
-| backend/src/modules/vehicle-intelligence/trips/ | R | E | G | I |
-| backend/src/modules/vehicle-intelligence/vehicle-file/ | S | U | B | C |
+| backend/src/modules/vehicle-intelligence/battery/ | SUBCOMPONENT_OF_MODULE | Battery V2 | Legacy battery path superseded by Battery V2 authority implementation | backend/src/modules/vehicle-intelligence/battery/; Battery V2 authority architecture/battery-v2/ |
+| backend/src/modules/vehicle-intelligence/battery-health/ | SUBCOMPONENT_OF_MODULE | Battery V2 | Battery V2 health jobs, processors, and HV reconcile pipeline | backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module.ts; QUEUE BATTERY_V2 |
+| backend/src/modules/vehicle-intelligence/battery-policy-profile/ | SUBCOMPONENT_OF_MODULE | Battery V2 | Battery policy profile configuration within Battery V2 domain | backend/src/modules/vehicle-intelligence/battery-policy-profile/ |
+| backend/src/modules/vehicle-intelligence/brakes/ | REGISTERED_MODULE | Brakes Health | Brake wear evidence, recalculation, and health APIs | backend/src/modules/vehicle-intelligence/brakes/brakes.module.ts; models BrakeHealthCurrent, BrakeHealthSnapshot |
+| backend/src/modules/vehicle-intelligence/damage-incidents/ | SUBCOMPONENT_OF_MODULE | Damages | Damage incident linkage helpers within damages domain | backend/src/modules/vehicle-intelligence/damage-incidents/ |
+| backend/src/modules/vehicle-intelligence/damages/ | REGISTERED_MODULE | Damages | Structured vehicle damage records with image semantics | backend/src/modules/vehicle-intelligence/damages/damages.module.ts; model VehicleDamage |
+| backend/src/modules/vehicle-intelligence/dashboard-warning-lights/ | SUBCOMPONENT_OF_MODULE | Vehicle Health Summary | Dashboard warning-lights projection for vehicle health summary | backend/src/modules/vehicle-intelligence/dashboard-warning-lights/ |
+| backend/src/modules/vehicle-intelligence/dimo-native-driving-events/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Native DIMO driving event intake within DI pipeline | backend/src/modules/vehicle-intelligence/dimo-native-driving-events/ |
+| backend/src/modules/vehicle-intelligence/dimo-trip-segment-validation/ | SUBCOMPONENT_OF_MODULE | Trip Detection & Lifecycle | DIMO segment validation against canonical trip boundaries | backend/src/modules/vehicle-intelligence/dimo-trip-segment-validation/ |
+| backend/src/modules/vehicle-intelligence/drive-profile/ | UNRESOLVED_BOUNDARY | N/A | Drive-profile pipeline could belong to Trip Detection or Driving Intelligence; ownership not safely decidable in inventory-only pass | backend/src/modules/vehicle-intelligence/drive-profile/; §13.3 unresolved boundary |
+| backend/src/modules/vehicle-intelligence/driver-attribution/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driver attribution evidence within DI V2 pipeline | backend/src/modules/vehicle-intelligence/driver-attribution/; model DriverAttribution |
+| backend/src/modules/vehicle-intelligence/driving-analysis-init/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving analysis initialization stage within DI orchestration | backend/src/modules/vehicle-intelligence/driving-analysis-init/ |
+| backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving analysis reconciliation scheduler and repair logic | backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/; DrivingAnalysisReconciliationScheduler in backend/src/workers/workers.module.ts |
+| backend/src/modules/vehicle-intelligence/driving-analysis-run/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving analysis run persistence and stage tracking | backend/src/modules/vehicle-intelligence/driving-analysis-run/; model DrivingAnalysisRun |
+| backend/src/modules/vehicle-intelligence/driving-analysis-stage/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Stage orchestrator for durable post-trip DI pipeline | backend/src/modules/vehicle-intelligence/driving-analysis-stage/; model DrivingAnalysisStage |
+| backend/src/modules/vehicle-intelligence/driving-capability/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Per-vehicle driving capability signals for DI assessability | backend/src/modules/vehicle-intelligence/driving-capability/; model VehicleDrivingCapability |
+| backend/src/modules/vehicle-intelligence/driving-decisions/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving decision audit records within DI evidence chain | backend/src/modules/vehicle-intelligence/driving-decisions/; model DrivingDecisionAudit |
+| backend/src/modules/vehicle-intelligence/driving-detector-capability/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Detector capability configuration for driving event detection | backend/src/modules/vehicle-intelligence/driving-detector-capability/ |
+| backend/src/modules/vehicle-intelligence/driving-events/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving event storage and projection within DI domain | backend/src/modules/vehicle-intelligence/driving-events/; model DrivingEvent |
+| backend/src/modules/vehicle-intelligence/driving-evidence/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving evidence artifacts for DI V2 pipeline | backend/src/modules/vehicle-intelligence/driving-evidence/; model DrivingEvidence |
+| backend/src/modules/vehicle-intelligence/driving-impact/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving impact scoring engine (V1 operational load) | backend/src/modules/vehicle-intelligence/driving-impact/; model TripDrivingImpact |
+| backend/src/modules/vehicle-intelligence/driving-impact-model-profile/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Impact model profile configuration for driving stress scoring | backend/src/modules/vehicle-intelligence/driving-impact-model-profile/ |
+| backend/src/modules/vehicle-intelligence/driving-impact-rolling/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Rolling impact aggregation within DI impact engine | backend/src/modules/vehicle-intelligence/driving-impact-rolling/; model VehicleDrivingImpactCurrent |
+| backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Typed persistent job envelope for DI V2 async processing | backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/; QUEUE DRIVING_INTELLIGENCE |
+| backend/src/modules/vehicle-intelligence/driving-intelligence-v2/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | DI V2 orchestration core consumed by driving-intelligence authority | backend/src/modules/vehicle-intelligence/driving-intelligence-v2/; DrivingIntelligenceJobProcessor |
+| backend/src/modules/vehicle-intelligence/driving-metric-normalization/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Metric normalization layer for cross-vehicle driving comparisons | backend/src/modules/vehicle-intelligence/driving-metric-normalization/ |
+| backend/src/modules/vehicle-intelligence/driving-signals/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving signal ingestion and normalization within DI | backend/src/modules/vehicle-intelligence/driving-signals/ |
+| backend/src/modules/vehicle-intelligence/dtc/ | REGISTERED_MODULE | DTC / Error Codes | DTC event storage, alerts, and error-code health APIs | backend/src/modules/vehicle-intelligence/dtc/dtc.module.ts; model VehicleDtcEvent |
+| backend/src/modules/vehicle-intelligence/dtc-knowledge/ | SUBCOMPONENT_OF_MODULE | DTC / Error Codes | DTC knowledge enrichment jobs and AI structuring | backend/src/modules/vehicle-intelligence/dtc-knowledge/; QUEUE DTC_KNOWLEDGE_ENRICHMENT |
+| backend/src/modules/vehicle-intelligence/energy-events/ | SUBCOMPONENT_OF_MODULE | Energy Event Detection (EED) | REFUEL/RECHARGE detection implementation owned by EED authority | backend/src/modules/vehicle-intelligence/energy-events/; model VehicleEnergyEvent |
+| backend/src/modules/vehicle-intelligence/enrichment-jobs/ | SUBCOMPONENT_OF_MODULE | Automatic Trip Enrichment (ATE) | Post-finalize behavior enrichment job orchestration | backend/src/modules/vehicle-intelligence/enrichment-jobs/; TripBehaviorEnrichmentProcessor in backend/src/workers/workers.module.ts |
+| backend/src/modules/vehicle-intelligence/event-context/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Event context assembly for driving analysis stages | backend/src/modules/vehicle-intelligence/event-context/ |
+| backend/src/modules/vehicle-intelligence/findings/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Operational findings surfaced from driving intelligence pipeline | backend/src/modules/vehicle-intelligence/findings/; model VehicleFinding |
+| backend/src/modules/vehicle-intelligence/fuel-stations/ | SUBCOMPONENT_OF_MODULE | Tankstellenerkennung | Fuel station enrichment after persisted REFUEL events | backend/src/modules/vehicle-intelligence/fuel-stations/; QUEUE ENERGY_REFUEL_STATION_ENRICH |
+| backend/src/modules/vehicle-intelligence/health-summary/ | REGISTERED_MODULE | Vehicle Health Summary | Aggregated vehicle health summary and AI health-care projection | backend/src/modules/vehicle-intelligence/health-summary/health-summary.module.ts |
+| backend/src/modules/vehicle-intelligence/lv-battery-chemistry/ | SUBCOMPONENT_OF_MODULE | Battery V2 | LV battery chemistry profile data within Battery V2 | backend/src/modules/vehicle-intelligence/lv-battery-chemistry/ |
+| backend/src/modules/vehicle-intelligence/misuse-cases/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Misuse case detection and evidence within DI authority scope | backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.module.ts; model MisuseCase |
+| backend/src/modules/vehicle-intelligence/reference-capture/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | HF reference capture testbed and autonomous recording runner | backend/src/modules/vehicle-intelligence/reference-capture/; QUEUE REFERENCE_CAPTURE |
+| backend/src/modules/vehicle-intelligence/service-compliance/ | REGISTERED_MODULE | Service Events & Compliance | Oil change, TÜV, and service interval compliance materialization | backend/src/modules/vehicle-intelligence/service-compliance/service-compliance.module.ts |
+| backend/src/modules/vehicle-intelligence/service-events/ | SUBCOMPONENT_OF_MODULE | Service Events & Compliance | Service event persistence submodule within compliance domain | backend/src/modules/vehicle-intelligence/service-events/; model VehicleServiceEvent |
+| backend/src/modules/vehicle-intelligence/shadow-detector/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Shadow detector experimentation within DI pipeline | backend/src/modules/vehicle-intelligence/shadow-detector/ |
+| backend/src/modules/vehicle-intelligence/tenant/ | SUBCOMPONENT_OF_MODULE | Business Insights | Tenant insight policy configuration within VI aggregate | backend/src/modules/vehicle-intelligence/tenant/; model TenantInsightPolicy |
+| backend/src/modules/vehicle-intelligence/tires/ | REGISTERED_MODULE | Tires Health | Tire wear modeling, measurements, and health alerts | backend/src/modules/vehicle-intelligence/tires/tires.module.ts; models Tire, TireHealthSnapshot |
+| backend/src/modules/vehicle-intelligence/trip-assessability/ | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Trip assessability dimension status for DI V2 pipeline | backend/src/modules/vehicle-intelligence/trip-assessability/; model TripAssessability |
+| backend/src/modules/vehicle-intelligence/trips/ | REGISTERED_MODULE | Trip Detection & Lifecycle | Trip FSM, tracking, reconciliation, and route artifacts | backend/src/modules/vehicle-intelligence/trips/trips.module.ts; models VehicleTrip, VehicleTripDetectionState |
+| backend/src/modules/vehicle-intelligence/vehicle-file/ | SUBCOMPONENT_OF_MODULE | Vehicle Health Summary | Vehicle dossier file summary projection within health summary | backend/src/modules/vehicle-intelligence/vehicle-file/ |
 
 
-### 8.3 Additional `app.module.ts` infrastructure / submodule imports
-
-| Path / identifier | Classification | Canonical module | Reason | Evidence |
-|---|---|---|---|---|
-| AuthApiModule | R | E | G | I |
-| MisuseCasesModule | S | U | B | C |
-| EvaluationsInsightsModule | S | U | B | C |
-| EvaluationsQualityModule | S | U | B | C |
-| EvaluationsRecommendationsModule | S | U | B | C |
-| SchedulerLeaderElectionModule | A | L | I | A |
-| ReconciliationExecutionMutexModule | A | L | I | A |
-| VehicleDetailObservabilityModule | S | H | A | R |
-| WorkersModule | S | H | A | R |
-| PrismaModule | S | H | A | R |
-| RedisModule | S | H | A | R |
-| StorageModule | S | H | A | R |
-| SharedGuardsModule | S | H | A | R |
-| StripeEnvironmentModule | S | H | A | R |
-
-
-### 8.4 `workers.module.ts` imports and queue groups
+### 8.3 Additional `app.module.ts` infrastructure / submodule imports (14)
 
 | Path / identifier | Classification | Canonical module | Reason | Evidence |
 |---|---|---|---|---|
-| DimoModule | R | E | G | I |
-| VehicleIntelligenceModule | A | L | I | A |
-| BatteryV2JobsModule | A | L | I | A |
-| BookingDocumentGenerationModule | S | U | B | C |
-| TaskAutomationOutboxModule | S | U | B | C |
+| AuthApiModule | ALIAS_OF_REGISTERED_MODULE | Auth API | AuthApiModule re-exports auth module API surface under alternate NestJS import name | backend/src/modules/auth/auth.module.ts exported as AuthApiModule in backend/src/app.module.ts line 87 |
+| MisuseCasesModule | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Misuse cases imported at app root but owned by DI authority subdomain | backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.module.ts; MisuseCasesModule in backend/src/app.module.ts |
+| EvaluationsInsightsModule | SUBCOMPONENT_OF_MODULE | Evaluations Analytics | E4 insights sub-layer within evaluations analytics | backend/src/modules/evaluations-analytics/e4/evaluations-insights.module.ts |
+| EvaluationsQualityModule | SUBCOMPONENT_OF_MODULE | Evaluations Analytics | E5 quality sub-layer within evaluations analytics | backend/src/modules/evaluations-analytics/e5/evaluations-quality.module.ts |
+| EvaluationsRecommendationsModule | SUBCOMPONENT_OF_MODULE | Evaluations Analytics | E7 recommendations sub-layer within evaluations analytics | backend/src/modules/evaluations-analytics/e7/evaluations-recommendations.module.ts |
+| SchedulerLeaderElectionModule | SUBCOMPONENT_OF_MODULE | Scaling Process | Multi-replica scheduler leader election per Scaling Process authority | backend/src/shared/scheduler-leader/scheduler-leader-election.module.ts; architecture/scaling-process/ |
+| ReconciliationExecutionMutexModule | SUBCOMPONENT_OF_MODULE | Scaling Process | Reconciliation execution mutex per Scaling Process authority | backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.module.ts |
+| VehicleDetailObservabilityModule | SHARED_INFRASTRUCTURE | N/A | Vehicle detail page observability metrics adjunct | backend/src/modules/vehicles/observability/vehicle-detail-observability.module.ts |
+| WorkersModule | SHARED_INFRASTRUCTURE | N/A | BullMQ job runtime host; scaling topology documented under Scaling Process authority | backend/src/workers/workers.module.ts; architecture/scaling-process/SYSTEM_TOPOLOGY.md |
+| PrismaModule | SHARED_INFRASTRUCTURE | N/A | Shared database access layer for all modules | backend/src/shared/database/prisma.module.ts |
+| RedisModule | SHARED_INFRASTRUCTURE | N/A | Shared Redis client for cache, locks, and BullMQ | backend/src/shared/redis/redis.module.ts |
+| StorageModule | SHARED_INFRASTRUCTURE | N/A | Shared object storage adapter for documents and images | backend/src/shared/storage/storage.module.ts |
+| SharedGuardsModule | SHARED_INFRASTRUCTURE | N/A | Shared Clerk auth guards and permission decorators | backend/src/shared/auth/shared-guards.module.ts |
+| StripeEnvironmentModule | SHARED_INFRASTRUCTURE | N/A | Stripe environment key resolution shared across billing and payments | backend/src/shared/stripe/stripe-environment.module.ts |
+
+
+### 8.4 `workers.module.ts` imports and queue groups (35)
+
+| Path / identifier | Classification | Canonical module | Reason | Evidence |
+|---|---|---|---|---|
+| workers:DimoModule | REGISTERED_MODULE | DIMO Integration | DIMO worker processors import DIMO integration module | backend/src/workers/workers.module.ts DimoModule import |
+| workers:VehicleIntelligenceModule | SUBCOMPONENT_OF_MODULE | N/A | Workers import VI aggregate root to register domain processors | backend/src/workers/workers.module.ts VehicleIntelligenceModule import |
+| workers:BatteryV2JobsModule | SUBCOMPONENT_OF_MODULE | Battery V2 | Battery V2 async job producers and processors | backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module.ts |
+| workers:BookingDocumentGenerationModule | SUBCOMPONENT_OF_MODULE | Documents | Booking PDF generation submodule invoked by workers | backend/src/modules/documents/booking-document-generation/booking-document-generation.module.ts |
+| workers:TaskAutomationOutboxModule | SUBCOMPONENT_OF_MODULE | Tasks & Work Orders | Task automation outbox processor module | backend/src/modules/tasks/outbox/task-automation-outbox.module.ts |
+| workers:HighMobilityModule | REGISTERED_MODULE | High Mobility Integration | HM health polling scheduler imports HM module | backend/src/workers/workers.module.ts HighMobilityModule import |
+| workers:NotificationsModule | REGISTERED_MODULE | Notifications | Notification evaluation and delivery processors | backend/src/workers/workers.module.ts NotificationsModule import |
+| workers:PaymentsModule | REGISTERED_MODULE | Payments (Rental Collections) | Payment email processor imports payments module | backend/src/workers/workers.module.ts PaymentsModule import |
+| workers:BillingModule | REGISTERED_MODULE | Billing (SynqDrive SaaS) | Billing reconciliation scheduler imports billing module | backend/src/workers/workers.module.ts BillingModule import |
+| workers:VoiceWebhookIngestionModule | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Voice webhook async processing entry in workers host | backend/src/workers/workers.module.ts VoiceWebhookIngestionModule import |
+| workers:VoiceAssistantModule | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Voice assistant module imported for worker-side voice jobs | backend/src/workers/workers.module.ts VoiceAssistantModule import |
+| workers:IamDataRetentionModule | REGISTERED_MODULE | IAM Data Retention | IAM data retention purge scheduler module | backend/src/workers/workers.module.ts IamDataRetentionModule import |
+| workers:VehicleWarningGdprModule | SUBCOMPONENT_OF_MODULE | IAM Data Retention | Vehicle warning GDPR purge helper for retention workers | backend/src/workers/workers.module.ts VehicleWarningGdprModule import |
 
 
 | Path / identifier | Classification | Canonical module | Reason | Evidence |
 |---|---|---|---|---|
-| QUEUE DIMO_SNAPSHOT | A | L | I | A |
-| QUEUE TRIP_TRACKING | R | E | G | I |
-| QUEUE TRIP_BEHAVIOR_ENRICHMENT | A | L | I | A |
-| QUEUE DRIVING_INTELLIGENCE | A | L | I | A |
-| QUEUE BATTERY_V2 | A | L | I | A |
-| QUEUE ENERGY_REFUEL_STATION_ENRICH | A | L | I | A |
-| QUEUE DOCUMENT_EXTRACTION | R | E | G | I |
-| QUEUE BOOKING_DOCUMENT_GENERATION | S | U | B | C |
-| QUEUE NOTIFICATION_EVALUATION | S | U | B | C |
-| QUEUE NOTIFICATION_DELIVERY | S | U | B | C |
-| QUEUE VOICE_WEBHOOK_PROCESS | A | L | I | A |
-| QUEUE CLICKHOUSE_MIRROR_RETRY | S | H | A | R |
+| QUEUE DIMO_SNAPSHOT | SUBCOMPONENT_OF_MODULE | DIMO Integration | Scheduled DIMO snapshot polling job entry point | backend/src/workers/queues/queue-names.ts DIMO_SNAPSHOT; DimoSnapshotProcessor |
+| QUEUE DIMO_VEHICLE_SYNC | SUBCOMPONENT_OF_MODULE | DIMO Integration | DIMO vehicle sync reconciliation queue | backend/src/workers/queues/queue-names.ts DIMO_VEHICLE_SYNC; DimoVehicleSyncProcessor |
+| QUEUE DTC_POLL | SUBCOMPONENT_OF_MODULE | DIMO Integration | DIMO DTC polling queue for diagnostic codes | backend/src/workers/queues/queue-names.ts DTC_POLL; DimoDtcProcessor |
+| QUEUE TIRE_RECALCULATION | SUBCOMPONENT_OF_MODULE | Tires Health | Tire wear recalculation async job entry | backend/src/workers/queues/queue-names.ts TIRE_RECALCULATION; TireRecalculationProcessor |
+| QUEUE BRAKE_RECALCULATION | SUBCOMPONENT_OF_MODULE | Brakes Health | Brake wear recalculation async job entry | backend/src/workers/queues/queue-names.ts BRAKE_RECALCULATION; BrakeRecalculationProcessor |
+| QUEUE TRIP_TRACKING | SUBCOMPONENT_OF_MODULE | Trip Detection & Lifecycle | Live trip tracking and FSM async processing entry | backend/src/workers/queues/queue-names.ts TRIP_TRACKING; TripTrackingProcessor |
+| QUEUE TRIP_BEHAVIOR_ENRICHMENT | SUBCOMPONENT_OF_MODULE | Automatic Trip Enrichment (ATE) | Post-finalize behavior enrichment queue per ATE authority | backend/src/workers/queues/queue-names.ts TRIP_BEHAVIOR_ENRICHMENT; TripBehaviorEnrichmentProcessor |
+| QUEUE DRIVING_IMPACT_COMPUTE | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Driving impact compute stage after HF enrichment | backend/src/workers/queues/queue-names.ts DRIVING_IMPACT_COMPUTE; DrivingImpactProcessor |
+| QUEUE DRIVING_INTELLIGENCE | SUBCOMPONENT_OF_MODULE | Driving Intelligence | DI V2 typed persistent job envelope queue | backend/src/workers/queues/queue-names.ts DRIVING_INTELLIGENCE; DrivingIntelligenceJobProcessor |
+| QUEUE DOCUMENT_EXTRACTION | REGISTERED_MODULE | Document Extraction (AI Upload) | AI document upload async extraction queue | backend/src/workers/queues/queue-names.ts DOCUMENT_EXTRACTION |
+| QUEUE BOOKING_DOCUMENT_GENERATION | SUBCOMPONENT_OF_MODULE | Documents | Booking PDF generation durable workflow queue | backend/src/workers/queues/queue-names.ts BOOKING_DOCUMENT_GENERATION; BookingDocumentGenerationProcessor |
+| QUEUE DTC_KNOWLEDGE_ENRICHMENT | SUBCOMPONENT_OF_MODULE | DTC / Error Codes | DTC knowledge base AI enrichment queue | backend/src/workers/queues/queue-names.ts DTC_KNOWLEDGE_ENRICHMENT; DtcKnowledgeProcessor |
+| QUEUE NOTIFICATION_EVALUATION | SUBCOMPONENT_OF_MODULE | Notifications | Org-scoped notification evaluation producer queue | backend/src/workers/queues/queue-names.ts NOTIFICATION_EVALUATION; NotificationEvaluationProcessor |
+| QUEUE NOTIFICATION_DELIVERY | SUBCOMPONENT_OF_MODULE | Notifications | Notification delivery outbox dispatch queue | backend/src/workers/queues/queue-names.ts NOTIFICATION_DELIVERY; NotificationDeliveryProcessor |
+| QUEUE PAYMENT_EMAIL | SUBCOMPONENT_OF_MODULE | Payments (Rental Collections) | Payment-related email dispatch queue | backend/src/workers/queues/queue-names.ts PAYMENT_EMAIL; PaymentEmailProcessor |
+| QUEUE TASK_AUTOMATION | SUBCOMPONENT_OF_MODULE | Tasks & Work Orders | Task automation outbox processing queue | backend/src/workers/queues/queue-names.ts TASK_AUTOMATION; TaskAutomationOutboxProcessor |
+| QUEUE BATTERY_V2 | SUBCOMPONENT_OF_MODULE | Battery V2 | Battery V2 typed async jobs queue per Battery V2 authority | backend/src/workers/queues/queue-names.ts BATTERY_V2; BatteryV2Processor |
+| QUEUE VOICE_WEBHOOK_PROCESS | SUBCOMPONENT_OF_MODULE | Voice Assistant Platform | Voice provider webhook async lifecycle correlation queue | backend/src/workers/queues/queue-names.ts VOICE_WEBHOOK_PROCESS; VoiceWebhookProcessor |
+| QUEUE CONNECTIVITY_WEBHOOK_PROCESS | SUBCOMPONENT_OF_MODULE | DIMO Integration | Device connection webhook inbox async processing queue | backend/src/workers/queues/queue-names.ts CONNECTIVITY_WEBHOOK_PROCESS; DeviceConnectionWebhookProcessor |
+| QUEUE CLICKHOUSE_MIRROR_RETRY | SHARED_INFRASTRUCTURE | N/A | ClickHouse telemetry mirror write retry infrastructure queue | backend/src/workers/queues/queue-names.ts CLICKHOUSE_MIRROR_RETRY; ClickHouseMirrorRetryProcessor |
+| QUEUE ENERGY_REFUEL_STATION_ENRICH | SUBCOMPONENT_OF_MODULE | Tankstellenerkennung | REFUEL station location enrichment queue per Tankstellenerkennung authority | backend/src/workers/queues/queue-names.ts ENERGY_REFUEL_STATION_ENRICH; RefuelStationEnrichmentProcessor |
+| QUEUE REFERENCE_CAPTURE | SUBCOMPONENT_OF_MODULE | Driving Intelligence | DIMO LTE_R1 reference capture autonomous runner queue | backend/src/workers/queues/queue-names.ts REFERENCE_CAPTURE; ReferenceCaptureProcessor |
 
 
-### 8.5 Major frontend navigation / product surfaces
-
-| Path / identifier | Classification | Canonical module | Reason | Evidence |
-|---|---|---|---|---|
-| frontend /rental dashboard | R | E | G | I |
-| frontend /rental communication-center | R | E | G | I |
-| frontend /rental workflow-automation | R | E | G | I |
-| frontend /master platform-ops | A | L | I | A |
-| frontend /operator handover | S | U | B | C |
-| frontend /operator ai-upload | S | U | B | C |
-| frontend DRIVER portal | I | N | S | U |
-
-
-### 8.6 Prisma domain / model clusters (representative)
+### 8.5 Frontend navigation and product surfaces (72)
 
 | Path / identifier | Classification | Canonical module | Reason | Evidence |
 |---|---|---|---|---|
-| Prisma Booking* models | R | E | G | I |
-| Prisma Vehicle* operational models | R | E | G | I |
-| Prisma Tire* / Brake* models | R | E | G | I |
-| Prisma Billing* subscription models | R | E | G | I |
-| Prisma Notification* models | R | E | G | I |
-| Prisma Workflow* models | R | E | G | I |
-| Prisma EvaluationsEntityReference | R | E | G | I |
+| master-nav:dashboard | REGISTERED_MODULE | Dashboard Utilization; Business Insights | Master dashboard aggregates utilization metrics and insight signals | frontend/src/master/navigation/master-nav.config.ts id=dashboard |
+| master-nav:organizations | REGISTERED_MODULE | Organizations & Tenancy | Master-admin organization management surface | frontend/src/master/navigation/master-nav.config.ts id=organizations |
+| master-nav:prospects | REGISTERED_MODULE | Prospects | Master-admin prospect pipeline surface | frontend/src/master/navigation/master-nav.config.ts id=prospects |
+| master-nav:security-access | REGISTERED_MODULE | Platform Admin; IAM MFA; Users & Invites | Master security and access governance aggregate surface | frontend/src/master/navigation/master-nav.config.ts id=security-access |
+| master-nav:vehicles | REGISTERED_MODULE | Vehicles (Fleet Operations); DIMO Integration | Master fleet connectivity and vehicle registry surface | frontend/src/master/navigation/master-nav.config.ts id=vehicles |
+| master-nav:vehicle-logbook | REGISTERED_MODULE | Trip Detection & Lifecycle | Master vehicle logbook and trip history surface | frontend/src/master/navigation/master-nav.config.ts id=vehicle-logbook; model VehicleLogbookConfig |
+| master-nav:billing | REGISTERED_MODULE | Billing (SynqDrive SaaS) | Master SaaS billing and subscription management | frontend/src/master/navigation/master-nav.config.ts id=billing |
+| master-nav:platform-integrations | REGISTERED_MODULE | Integrations Hub; Platform Admin | Master platform integrations configuration surface | frontend/src/master/navigation/master-nav.config.ts id=platform-integrations |
+| master-nav:high-mobility | REGISTERED_MODULE | High Mobility Integration | Master HM integration monitoring surface | frontend/src/master/navigation/master-nav.config.ts id=high-mobility |
+| master-nav:parts-accessories | REGISTERED_MODULE | Parts & Accessories | Master parts provider administration | frontend/src/master/navigation/master-nav.config.ts id=parts-accessories |
+| master-nav:insurances | REGISTERED_MODULE | Insurances | Master insurance partner administration | frontend/src/master/navigation/master-nav.config.ts id=insurances |
+| master-nav:voice-assistant | REGISTERED_MODULE | Voice Assistant Platform | Master voice assistant control plane surface | frontend/src/master/navigation/master-nav.config.ts id=voice-assistant |
+| master-nav:platform-ops | AGGREGATE_CONTAINER | Platform Admin; Observability (infra) | Master platform operations aggregate: health, smoke, runtime status | frontend/src/master/navigation/master-nav.config.ts id=platform-ops |
+| master-nav:support | REGISTERED_MODULE | Support | Master support ticket administration | frontend/src/master/navigation/master-nav.config.ts id=support |
+| master-nav:architektur | SHARED_INFRASTRUCTURE | N/A | Engineering architecture browser; not a product runtime module | frontend/src/master/navigation/master-nav.config.ts id=architektur; frontend/src/master/components/ArchitekturView.tsx |
+| master-nav:changes | SHARED_INFRASTRUCTURE | N/A | Engineering changelog browser; not a product runtime module | frontend/src/master/navigation/master-nav.config.ts id=changes; frontend/src/master/components/ChangesView.tsx |
+| rental-view:dashboard | AGGREGATE_CONTAINER | Dashboard Utilization; Business Insights; Rental Health | Rental operations dashboard aggregating fleet KPIs and insights | frontend/src/rental/components/Sidebar.tsx handleViewChange(dashboard); frontend/src/rental/App.tsx currentView===dashboard |
+| rental-view:bookings | REGISTERED_MODULE | Bookings | Rental booking list and wizard entry | frontend/src/rental/components/Sidebar.tsx handleViewChange(bookings) |
+| rental-view:customers | REGISTERED_MODULE | Customers | Rental customer list surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(customers) |
+| rental-view:customer-detail | SUBCOMPONENT_OF_MODULE | Customers | Customer detail drill-down within customers module surface | frontend/src/rental/App.tsx currentView===customer-detail |
+| rental-view:stations | REGISTERED_MODULE | Stations | Rental station list and configuration | frontend/src/rental/components/Sidebar.tsx handleViewChange(stations) |
+| rental-view:station-detail | SUBCOMPONENT_OF_MODULE | Stations | Station detail drill-down within stations module | frontend/src/rental/App.tsx currentView===station-detail |
+| rental-view:tasks | REGISTERED_MODULE | Tasks & Work Orders | Org task and work-order management surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(tasks) |
+| rental-view:communication-center | REGISTERED_MODULE | Communication Center | Omnichannel operator inbox surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(communication-center) |
+| rental-view:fleet | AGGREGATE_CONTAINER | Rental Health; Vehicles (Fleet Operations) | Fleet health hub with status, condition, and vendor sub-tabs | frontend/src/rental/components/Sidebar.tsx onFleetTabChange; frontend/src/rental/App.tsx currentView===fleet |
+| rental-view:fleet-condition-detail | SUBCOMPONENT_OF_MODULE | Rental Health | Fleet condition detail drill-down within fleet aggregate | frontend/src/rental/App.tsx currentView===fleet-condition-detail |
+| rental-view:vendor-detail | SUBCOMPONENT_OF_MODULE | Vendors | Vendor detail drill-down from fleet surface | frontend/src/rental/App.tsx currentView===vendor-detail |
+| rental-view:financial-insights | REGISTERED_MODULE | Evaluations Finance | Financial evaluation analytics rental surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(financial-insights) |
+| rental-view:invoices | REGISTERED_MODULE | Invoices | Operational invoice management surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(invoices) |
+| rental-view:customer-payments | REGISTERED_MODULE | Payments (Rental Collections) | Customer payment collection surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(customer-payments) |
+| rental-view:price-tariffs | REGISTERED_MODULE | Pricing & Deposits | Tariff and pricing configuration surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(price-tariffs) |
+| rental-view:workflow-automation | REGISTERED_MODULE | Workflows | Workflow configuration and runtime management surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(workflow-automation) |
+| rental-view:insurances | REGISTERED_MODULE | Insurances | Tenant insurance management surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(insurances) |
+| rental-view:parts-accessories | REGISTERED_MODULE | Parts & Accessories | Parts procurement surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(parts-accessories) |
+| rental-view:settings/account | REGISTERED_MODULE | Account & Self-Service | Settings account tab for self-service profile | frontend/src/rental/components/Sidebar.tsx settingsTab=account |
+| rental-view:settings/company | REGISTERED_MODULE | Organizations & Tenancy | Settings company profile tab | frontend/src/rental/components/Sidebar.tsx settingsTab=company |
+| rental-view:settings/users | REGISTERED_MODULE | Users & Invites | Settings users and roles tab | frontend/src/rental/components/Sidebar.tsx settingsTab=users |
+| rental-view:settings/data-authorization | REGISTERED_MODULE | Data Authorizations | Settings data authorization consent tab | frontend/src/rental/components/Sidebar.tsx settingsTab=data-authorization |
+| rental-view:settings/email-versand | REGISTERED_MODULE | Outbound Email | Settings outbound email configuration tab | frontend/src/rental/components/Sidebar.tsx settingsTab=email-versand |
+| rental-view:settings/rental-rules | REGISTERED_MODULE | Rental Rules | Settings rental rules configuration tab | frontend/src/rental/components/Sidebar.tsx settingsTab=rental-rules |
+| rental-view:settings/billing | REGISTERED_MODULE | Billing (SynqDrive SaaS) | Settings tenant SaaS billing tab | frontend/src/rental/components/Sidebar.tsx settingsTab=billing |
+| rental-view:support | REGISTERED_MODULE | Support | In-app support ticket surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(support) |
+| rental-view:help-center | SHARED_INFRASTRUCTURE | N/A | Static help content surface without dedicated backend module | frontend/src/rental/components/Sidebar.tsx handleViewChange(help-center) |
+| rental-view:data-analyse | REGISTERED_MODULE | Data Analyse | Advanced org analytics surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(data-analyse) |
+| rental-view:document-upload | REGISTERED_MODULE | Document Extraction (AI Upload) | AI Upload document intake surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(document-upload) |
+| rental-view:ai-assistant | REGISTERED_MODULE | AI Platform (Fleet Chat & Tools) | Fleet AI chat assistant surface | frontend/src/rental/components/Sidebar.tsx handleViewChange(ai-assistant) |
+| rental-view:fines | REGISTERED_MODULE | Fines | Fine management surface routed in App.tsx | frontend/src/rental/App.tsx currentView===fines |
+| rental-view:new-booking | SUBCOMPONENT_OF_MODULE | Bookings | New booking wizard entry route within bookings module | frontend/src/rental/App.tsx currentView===new-booking |
+| rental-vehicle-tab:overview | AGGREGATE_CONTAINER | Vehicles (Fleet Operations); Vehicle Health Summary | Vehicle overview hub aggregating location, health cards, and quick navigation | frontend/src/rental/lib/vehicle-overview-navigation.ts VEHICLE_DETAIL_TAB_KEYS overview |
+| rental-vehicle-tab:connectivity | REGISTERED_MODULE | DIMO Integration; High Mobility Integration | Vehicle connectivity and telematics consent surface | frontend/src/rental/lib/vehicle-overview-navigation.ts connectivity tab |
+| rental-vehicle-tab:trips | REGISTERED_MODULE | Trip Detection & Lifecycle | Vehicle trip list and route detail surface | frontend/src/rental/lib/vehicle-overview-navigation.ts trips tab; model VehicleTrip |
+| rental-vehicle-tab:health-errors | AGGREGATE_CONTAINER | Vehicle Health Summary; DTC / Error Codes; Brakes Health; Tires Health; Battery V2 | Vehicle health and error-code aggregate detail surface | frontend/src/rental/lib/vehicle-overview-navigation.ts health-errors tab |
+| rental-vehicle-tab:damages | REGISTERED_MODULE | Damages | Vehicle damage pin and image management surface | frontend/src/rental/lib/vehicle-overview-navigation.ts damages tab |
+| rental-vehicle-tab:documents | REGISTERED_MODULE | Documents | Vehicle document list and legal text surface | frontend/src/rental/lib/vehicle-overview-navigation.ts documents tab |
+| rental-vehicle-tab:vehicle-bookings | REGISTERED_MODULE | Bookings | Vehicle-scoped booking history surface | frontend/src/rental/lib/vehicle-overview-navigation.ts vehicle-bookings tab |
+| rental-vehicle-tab:vehicle-tasks | REGISTERED_MODULE | Tasks & Work Orders | Vehicle-scoped task list surface | frontend/src/rental/lib/vehicle-overview-navigation.ts vehicle-tasks tab |
+| rental-vehicle-tab:vehicle-requirements | REGISTERED_MODULE | Rental Rules; Service Events & Compliance | Vehicle rental requirement and compliance checklist surface | frontend/src/rental/lib/vehicle-overview-navigation.ts vehicle-requirements tab |
+| operator-tab:today | AGGREGATE_CONTAINER | Bookings; Tasks & Work Orders | Operator today feed aggregating bookings and tasks for field ops | frontend/src/operator/components/OperatorBottomNav.tsx id=today |
+| operator-tab:scan | SUBCOMPONENT_OF_MODULE | Vehicles (Fleet Operations) | Vehicle scan/search entry within operator shell | frontend/src/operator/components/OperatorBottomNav.tsx id=scan; frontend/src/operator/lib/operatorRoutes.ts tab=scan |
+| operator-tab:vehicles | REGISTERED_MODULE | Vehicles (Fleet Operations) | Operator vehicle list and detail routes | frontend/src/operator/components/OperatorBottomNav.tsx id=vehicles; frontend/src/operator/OperatorApp.tsx vehicles/:vehicleId |
+| operator-tab:tasks | REGISTERED_MODULE | Tasks & Work Orders | Operator task list and detail surface | frontend/src/operator/components/OperatorBottomNav.tsx id=tasks |
+| operator-tab:more | SHARED_INFRASTRUCTURE | N/A | Operator settings and cross-app navigation shell, not a product module | frontend/src/operator/views/OperatorMoreView.tsx |
+| operator-sheet:booking-create | SUBCOMPONENT_OF_MODULE | Bookings | Operator mobile booking creation sheet | frontend/src/operator/views/OperatorMoreView.tsx openSheet booking-create; frontend/src/operator/lib/operatorTypes.ts |
+| operator-sheet:ai-upload | SUBCOMPONENT_OF_MODULE | Document Extraction (AI Upload) | Operator mobile AI Upload sheet reusing canonical extraction flow | frontend/src/operator/components/OperatorAiUploadSheet.tsx; frontend/src/operator/lib/operatorTypes.ts type=ai-upload |
+| operator-sheet:tire-measure | SUBCOMPONENT_OF_MODULE | Tires Health | Operator manual tire tread measurement capture flow | frontend/src/operator/tire-measure/OperatorTireMeasureFlow.tsx; frontend/src/operator/lib/operatorTypes.ts type=tire-measure |
+| operator-sheet:handover-pickup | SUBCOMPONENT_OF_MODULE | Bookings | Operator pickup handover protocol flow | frontend/src/operator/handover/; frontend/src/operator/tasks/useOperatorTaskCardController.ts open-handover-pickup |
+| operator-sheet:handover-return | SUBCOMPONENT_OF_MODULE | Bookings | Operator return handover protocol flow | frontend/src/operator/handover/; frontend/src/operator/tasks/useOperatorTaskCardController.ts open-handover-return |
+| operator-route:bookings/:bookingId | SUBCOMPONENT_OF_MODULE | Bookings | Operator deep-link to booking detail | frontend/src/operator/OperatorApp.tsx Route bookings/:bookingId |
+| operator-sheet:task-create | SUBCOMPONENT_OF_MODULE | Tasks & Work Orders | Operator task creation sheet | frontend/src/operator/lib/operatorTypes.ts type=task-create |
+| operator-sheet:task-detail | SUBCOMPONENT_OF_MODULE | Tasks & Work Orders | Operator task detail sheet | frontend/src/operator/lib/operatorTypes.ts type=task-detail |
+| operator-sheet:pickup-verification | SUBCOMPONENT_OF_MODULE | Bookings | Operator pickup verification gate sheet | frontend/src/operator/lib/operatorTypes.ts type=pickup-verification |
+| driver-portal | INSUFFICIENT_EVIDENCE | N/A | DRIVER role exists in backend permissions but no dedicated frontend product surface found | backend permission DRIVER referenced in architecture; no frontend/src/driver/ route tree |
 
 
-**Manifest totals:** 159 classified rows; **0 unclassified** relevant structural candidates in scoped areas above.
+### 8.6 Prisma domain / model clusters (50)
+
+| Path / identifier | Classification | Canonical module | Reason | Evidence |
+|---|---|---|---|---|
+| Prisma Organization & tenancy | REGISTERED_MODULE | Organizations & Tenancy | Core tenant organization and membership persistence | models Organization, OrganizationMembership, OrganizationRole* in backend/prisma/schema.prisma |
+| Prisma Users & IAM auth | REGISTERED_MODULE | Users & Invites; Auth API; IAM MFA | User identity, invites, MFA, and session revocation models | models User, RefreshToken, UserMfaFactor, OrganizationUserInvite, IamSessionRevocationIntent |
+| Prisma IAM audit & retention | REGISTERED_MODULE | IAM Data Retention; Activity Log & HTTP Audit; Business Audit | IAM and business audit outbox plus retention purge logs | models IamAuditOutbox, BusinessAuditOutbox, IamRetentionRunLog, ActivityLog |
+| Prisma Stations & products | REGISTERED_MODULE | Stations; Products (Rental Catalog) | Station locations and rental product catalog persistence | models Station, Product, OrganizationProduct, VehicleStationTransfer |
+| Prisma Vehicles fleet | REGISTERED_MODULE | Vehicles (Fleet Operations) | Core vehicle operational entity and latest state | models Vehicle, VehicleLatestState, VehiclePositionUpdate, VehicleComplaint |
+| Prisma DIMO connectivity | REGISTERED_MODULE | DIMO Integration | DIMO vehicle linkage, poll logs, and device connection episodes | models DimoVehicle, DimoPollLog, DeviceConnectionEpisode, DeviceConnectionWebhookInbox |
+| Prisma High Mobility | REGISTERED_MODULE | High Mobility Integration | HM vehicle registration and telemetry sync state | models HighMobilityVehicle, HmLatestHealthState, HmLatestTelemetryState |
+| Prisma Tires health | REGISTERED_MODULE | Tires Health | Tire lifecycle, measurements, wear ledger, and health alerts | models Tire, TireHealthSnapshot, TireTripUsageLedger, TireHealthAlert |
+| Prisma Brakes health | REGISTERED_MODULE | Brakes Health | Brake installations, service applications, and health snapshots | models BrakeComponentInstallation, BrakeHealthCurrent, BrakeHealthSnapshot |
+| Prisma Battery V2 | REGISTERED_MODULE | Battery V2 | Battery V2 measurements, assessments, HV health, and job DLQ | models BatteryMeasurement, BatteryAssessment, HvBatteryHealthCurrent, BatteryV2JobDeadLetter |
+| Prisma Service & compliance | REGISTERED_MODULE | Service Events & Compliance | Service events and rental health review overrides | models VehicleServiceEvent, TireRentalHealthReviewOverride, BrakeRentalHealthReviewOverride |
+| Prisma Damages | REGISTERED_MODULE | Damages | Vehicle damage records and image attachments | models VehicleDamage, VehicleDamageImage, VehicleExteriorImage |
+| Prisma DTC / error codes | REGISTERED_MODULE | DTC / Error Codes | DTC events and knowledge enrichment persistence | models VehicleDtcEvent, DtcKnowledge, DtcVehicleKnowledge |
+| Prisma Trips & tracking | REGISTERED_MODULE | Trip Detection & Lifecycle | Trip entities, waypoints, route artifacts, and detection state | models VehicleTrip, VehicleTripWaypoint, VehicleTripDetectionState, TripRepair |
+| Prisma Driving intelligence | REGISTERED_MODULE | Driving Intelligence | Driving analysis runs, evidence, misuse cases, and impact | models DrivingAnalysisRun, DrivingEvidence, MisuseCase, TripDrivingImpact, VehicleDrivingImpactCurrent |
+| Prisma Energy events | REGISTERED_MODULE | Energy Event Detection (EED) | REFUEL/RECHARGE energy event persistence and reconciliation | models VehicleEnergyEvent, VehicleEnergyEventRefuelReconciliation |
+| Prisma Tankstellenerkennung enrichment | REGISTERED_MODULE | Tankstellenerkennung | Fuel station enrichment records downstream of REFUEL events | model VehicleEnergyEventFuelStationEnrichment in backend/prisma/schema.prisma |
+| Prisma ATE enrichment | REGISTERED_MODULE | Automatic Trip Enrichment (ATE) | Trip behavior events and enrichment job tracking | models TripBehaviorEvent, VehicleEnrichmentJob |
+| Prisma Reference capture | SUBCOMPONENT_OF_MODULE | Driving Intelligence | Reference capture sessions for HF recovery testbed | models ReferenceCaptureSession, ReferenceCaptureObservation |
+| Prisma Customers & prospects | REGISTERED_MODULE | Customers; Prospects | Customer profiles and master-admin prospect records | models Customer, Prospect, CustomerTimelineEvent |
+| Prisma Customer verification | REGISTERED_MODULE | Customer Verification (Didit) | Didit verification checks and webhook events | models CustomerVerificationCheck, DiditWebhookEvent |
+| Prisma Rental rules | REGISTERED_MODULE | Rental Rules | Org rental policy and vehicle requirement overrides | models OrganizationRentalRules, RentalRuleRevision, VehicleRentalRequirementOverride |
+| Prisma Bookings & handover | REGISTERED_MODULE | Bookings | Booking lifecycle, handover protocols, and eligibility | models Booking, BookingHandoverProtocol, BookingEligibilityDecision, RentalContract |
+| Prisma Pricing & deposits | REGISTERED_MODULE | Pricing & Deposits | Tariff books, price snapshots, and booking deposits | models PriceBook, PriceTariffGroup, BookingPriceSnapshot, BookingDeposit |
+| Prisma Rental driving analysis | REGISTERED_MODULE | Rental Driving Analysis | Booking-scoped driving analysis aggregation persistence | model RentalDrivingAnalysis |
+| Prisma Payments & invoices | REGISTERED_MODULE | Payments (Rental Collections); Invoices | Stripe Connect payments and operational invoices | models BookingPaymentRequest, PaymentTransaction, OrgInvoice |
+| Prisma Billing SaaS | REGISTERED_MODULE | Billing (SynqDrive SaaS) | Tenant SaaS subscription billing and Stripe catalog | models BillingSubscription, BillingInvoice, BillingCatalogProduct |
+| Prisma Documents & extraction | REGISTERED_MODULE | Documents; Document Extraction (AI Upload) | Legal documents, extraction archives, and booking document jobs | models GeneratedDocument, VehicleDocumentExtraction, BookingDocumentGenerationJob |
+| Prisma Fines | REGISTERED_MODULE | Fines | Traffic and parking fine records | model Fine |
+| Prisma Tasks & automation | REGISTERED_MODULE | Tasks & Work Orders | Org tasks, checklist items, and automation outbox | models OrgTask, TaskChecklistItem, TaskAutomationOutbox |
+| Prisma Service cases | REGISTERED_MODULE | Service Cases | Service case tracking with comments and attachments | models ServiceCase, ServiceCaseComment |
+| Prisma Technical observations | REGISTERED_MODULE | Technical Observations | Operator technical observation records (via handover payload) | frontend/src/operator/handover/operatorHandoverTechnicalObservations.ts |
+| Prisma Notifications | REGISTERED_MODULE | Notifications | Notification entities, delivery outbox, and receipts | models Notification, NotificationDeliveryOutbox, NotificationReceipt |
+| Prisma Workflows | REGISTERED_MODULE | Workflows | Org workflow definitions, runs, approvals, and shadow mode | models OrgWorkflow, OrgWorkflowRun, OrgWorkflowApproval |
+| Prisma Communication hub | REGISTERED_MODULE | Communication Center | Canonical communication conversation and message store | models CommunicationConversation, CommunicationMessageContent, CommunicationEvent |
+| Prisma WhatsApp | REGISTERED_MODULE | WhatsApp Business | WhatsApp tenant config, conversations, and webhook events | models OrgWhatsAppConfig, WhatsAppConversation, WhatsAppWebhookEvent |
+| Prisma SMS | REGISTERED_MODULE | SMS & Twilio Messaging | SMS tenant config, conversations, and messages | models OrgSmsConfig, SmsConversation, SmsMessage |
+| Prisma Voice | REGISTERED_MODULE | Voice Assistant Platform | Voice assistants, conversations, billing, and tool execution | models VoiceAssistant, VoiceConversation, VoiceBillingPeriod, VoiceToolExecution |
+| Prisma Outbound email | REGISTERED_MODULE | Outbound Email | Outbound email queue and delivery events | models OutboundEmail, OutboundEmailEvent, OrgEmailSettings |
+| Prisma Parts & accessories | REGISTERED_MODULE | Parts & Accessories | Parts provider access and search requests | models PartsProvider, PartsSearchRequest, PartsAuthorizationLog |
+| Prisma Insurances | REGISTERED_MODULE | Insurances | Insurance partners, inquiries, and vehicle insurance records | models InsurancePartner, InsuranceInquiry, VehicleInsuranceRecord |
+| Prisma Vendors | REGISTERED_MODULE | Vendors | Vendor directory and vehicle linkage | models Vendor, VendorVehicle |
+| Prisma Integrations | REGISTERED_MODULE | Integrations Hub | Integration definitions and org connection records | models Integration, OrganizationIntegration |
+| Prisma Data authorizations | REGISTERED_MODULE | Data Authorizations | Org data-access consent records | model OrgDataAuthorization |
+| Prisma AI platform | REGISTERED_MODULE | AI Platform (Fleet Chat & Tools) | Fleet chat agents, messages, and AI audit logs | models OrganizationChatAgent, ChatMessage, AiRequestAuditLog |
+| Prisma Evaluations | REGISTERED_MODULE | Evaluations Analytics | Entity-scoped evaluation references and dashboard insights | models EvaluationsEntityReference, DashboardInsight, TenantInsightPolicy |
+| Prisma Evaluations finance | REGISTERED_MODULE | Evaluations Finance | Finance evaluation persistence consumed by evaluations-finance APIs | backend/src/modules/evaluations-finance/ (no separate Prisma prefix; uses shared analytics cache) |
+| Prisma Support | REGISTERED_MODULE | Support | Support tickets and messages | models SupportTicket, SupportTicketMessage |
+| Prisma Analytics cache | SHARED_INFRASTRUCTURE | N/A | Shared analytics cache table used across evaluation modules | model AnalyticsCache in backend/prisma/schema.prisma |
+| Prisma Platform changelog | SHARED_INFRASTRUCTURE | N/A | Engineering changelog persistence for master Changes view | model PlatformChangelog in backend/prisma/schema.prisma |
+
+
+**Manifest totals (§8):**
+
+| Source surface | Rows |
+|---|---:|
+| §8.1 Backend top-level modules | 68 |
+| §8.2 Vehicle-intelligence domains | 46 |
+| §8.3 App module infrastructure imports | 14 |
+| §8.4 Workers imports + queues | 35 |
+| §8.5 Frontend navigation surfaces | 72 |
+| §8.6 Prisma model clusters | 50 |
+| **Total manifest rows** | **285** |
+
+**Classification counts (manifest manifestations):**
+
+| Classification | Count |
+|---|---:|
+| REGISTERED_MODULE | 156 |
+| ALIAS_OF_REGISTERED_MODULE | 1 |
+| SUBCOMPONENT_OF_MODULE | 98 |
+| SHARED_INFRASTRUCTURE | 21 |
+| AGGREGATE_CONTAINER | 7 |
+| INSUFFICIENT_EVIDENCE | 1 |
+| UNRESOLVED_BOUNDARY | 1 |
+
+**Unique registry modules referenced:** 63 (6 `AUTHORITY_ACTIVE` + 57 `NOT_STARTED`) — manifest rows are structural manifestations, not registry row count.
+
+**Unclassified rows:** 0 (every row above uses a complete allowed classification token with non-empty canonical module, reason, and evidence).
 
 ## 9. Module granularity re-evaluation (retained separate modules)
 
@@ -1008,7 +1161,7 @@ No modules were added, removed, renamed, or merged in this correction pass. The 
 | Frontend vs backend | Operator, rental, and master surfaces covered. Driver/customer portal insufficiently evidenced. |
 | Prisma clusters | Booking, vehicle, tire, brake, billing, notification, workflow, communication, voice, and evaluation model groups align with registered modules. |
 | Workers/queues | All domain queues classified in manifest §8.4. |
-| Coverage manifest | 0 unclassified relevant structural candidates in scoped areas. |
+| Coverage manifest | 285 classified rows in §8; 0 rows with missing or abbreviated classification tokens. |
 | Duplicate names | Aliases reconciled; no duplicate registry rows for existing authorities. |
 | Over-promotion check | DTOs, hooks, processors, and test suites not registered as modules. |
 
@@ -1045,7 +1198,20 @@ Future work must follow [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDA
 | Alias mapping rows (§10) | 15 |
 | Subcomponent exclusions (§11) | 15 |
 | Shared infrastructure exclusions (§12) | 11 |
-| Coverage manifest classified rows (§8) | 159 |
+| Coverage manifest rows — §8.1 backend modules | 68 |
+| Coverage manifest rows — §8.2 VI domains | 46 |
+| Coverage manifest rows — §8.3 app imports | 14 |
+| Coverage manifest rows — §8.4 workers + queues | 35 |
+| Coverage manifest rows — §8.5 frontend surfaces | 72 |
+| Coverage manifest rows — §8.6 Prisma clusters | 50 |
+| **Total coverage manifest rows (§8)** | **285** |
+| Manifest REGISTERED_MODULE count | 156 |
+| Manifest SUBCOMPONENT_OF_MODULE count | 98 |
+| Manifest SHARED_INFRASTRUCTURE count | 21 |
+| Manifest AGGREGATE_CONTAINER count | 7 |
+| Manifest ALIAS_OF_REGISTERED_MODULE count | 1 |
+| Manifest UNRESOLVED_BOUNDARY count | 1 |
+| Manifest INSUFFICIENT_EVIDENCE count | 1 |
 | Resolved alias/subcomponent decisions (§13.1) | 6 |
 | Resolved separate-module decisions — deferred audit (§13.2) | 4 |
 | Genuinely unresolved boundaries (§13.3) | 2 |
