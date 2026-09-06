@@ -20,6 +20,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-06 — M3.1 corrected Stage-2 T+30m production validation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `M3_1_STATUS=STAGE2_ACTIVATED_PENDING_PRODUCTION_VALIDATION`; immediate smoke PASS at T0. |
+| **CHANGE** | Read-only T+30m audit at `2026-09-06T00:06:41Z`; merged activation evidence PR #1536 (`4a30d006e`). |
+| **WHY** | Canonical 30-minute gate from corrected T0 before ≥6h soak. |
+| **VALIDATION** | Stage-2 contract stable; control plane active (reconciliation, rest sessions, target evaluations); 0 unsafe pre-T0 work; 0 new failure classes. |
+| **OBSERVED_EFFECT** | 3 post-T0 REST measurements (all non-VALID backfill); 0 assess/publications; PKG-01 22 POLICY_SKIPPED / 5 stale inert. |
+| **NON_EFFECTS** | No VALID natural REST→assess→publication E2E yet. |
+| **REMAINING_GAPS** | ≥6h validation from T0 after `2026-09-06T05:36:12Z`; 5 stale PKG-01 metadata rows (>7d lookback). |
+| **DECISION_STATUS** | `T30_VALIDATION=PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE`; `M3_1_STATUS=STAGE2_ACTIVE_30M_VALIDATED_PENDING_6H`. |
+| **EVIDENCE** | `M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md`. |
+
 ## CL-2026-09-05 — M3.1 corrected Stage-2 production activation (immediate smoke PASS)
 
 | Field | Content |
