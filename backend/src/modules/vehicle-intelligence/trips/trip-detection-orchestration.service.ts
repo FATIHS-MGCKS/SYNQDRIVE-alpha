@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
@@ -78,6 +78,13 @@ import {
   resolveOperationalNoCoreInactivityAnchor,
   resolveStartCandidateClock,
 } from './trip-fsm-clock-contract';
+import {
+  TripLifecycleRecoveryService,
+  type ExecuteLifecycleRecoveryParams,
+} from './trip-lifecycle-recovery.service';
+import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
+import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -161,6 +168,8 @@ export class TripDetectionOrchestrationService {
     private readonly decisionEngine: TripDecisionEngine,
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
+    @Inject(forwardRef(() => TripLifecycleRecoveryService))
+    private readonly lifecycleRecovery: TripLifecycleRecoveryService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -251,6 +260,159 @@ export class TripDetectionOrchestrationService {
       where: { vehicleId },
       data: { state: newState, ...extras } as any,
     });
+  }
+
+  /**
+   * R2 — apply a lifecycle invariant recovery action (FSM authority only).
+   * Canonical trip rows are never mutated here.
+   */
+  async executeLifecycleRecoveryAction(
+    params: ExecuteLifecycleRecoveryParams,
+  ): Promise<void> {
+    const now = new Date();
+    const {
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      det,
+      action,
+      tripId,
+      classification,
+      referencedTrip,
+      recoveredTrip,
+    } = params;
+
+    const resolveRecoveredPossibleStartAt = (
+      trip: TripLifecycleTripFact,
+    ): Date => {
+      if (classification === 'RECOVERABLE_MERGE_ORPHAN') {
+        const anchor = resolveMergeReopenPossibleStartAt({
+          rawDetectionMeta: trip.rawDetectionMeta,
+          detPossibleStartAt: det.possibleStartAt,
+        });
+        if (!anchor) {
+          throw new Error(
+            `Merge orphan recovery missing safe episode anchor for trip ${tripId}`,
+          );
+        }
+        return anchor;
+      }
+      if (
+        classification === 'RECOVERABLE_MISSING_POINTER' &&
+        det.possibleStartAt
+      ) {
+        return det.possibleStartAt;
+      }
+      return trip.startTime;
+    };
+
+    if (action === 'ADOPT_ONGOING') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle recovery missing recovered trip ${tripId}`);
+      }
+      const possibleStartAt = resolveRecoveredPossibleStartAt(trip);
+      await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
+        activeTripId: tripId,
+        possibleStartAt,
+        possibleStartEnteredAt: null,
+        lastActivityAt: now,
+        lastEvidenceSummary: {
+          ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          lifecycleRecoveryTripId: tripId,
+        },
+      });
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'REPOINT_ACTIVE_TRIP') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle split repoint missing recovered trip ${tripId}`);
+      }
+      await this.transitionState(
+        vehicleId,
+        TripDetectionState.ACTIVE_TRIP,
+        {
+          ...buildMidGapSplitActiveFsmExtras({
+            secondTripId: tripId,
+            secondStartAt: trip.startTime,
+          }),
+          lastEvidenceSummary: {
+            ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+            lifecycleRecovery: classification,
+            lifecycleRecoveryAt: now.toISOString(),
+            lifecycleRecoveryTripId: tripId,
+          },
+        },
+      );
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'RESET_TO_RESTING') {
+      const restingReason =
+        referencedTrip?.tripStatus === TripStatus.CANCELLED
+          ? 'discard'
+          : 'complete';
+      const restAnchor =
+        referencedTrip?.tripStatus === TripStatus.COMPLETED &&
+        referencedTrip.endTime
+          ? referencedTrip.endTime
+          : now;
+
+      await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+        activeTripId: null,
+        ...clearPossibleStartClockFields(),
+        ...clearPossibleEndClockFields(),
+        lastActivityAt: restAnchor,
+        lastMeaningfulMovementAt: null,
+        lastCoreProcessedAt: null,
+        lastRouteProcessedAt: null,
+        lastDrivingProcessedAt: null,
+        startOdometerKm: null,
+        startFuelLevel: null,
+        startEvSoc: null,
+        startDetectionMode: null,
+        startConfidence: null,
+        endDetectionMode: null,
+        endConfidence: null,
+        endValidationAttempts: 0,
+        cusumValidatedAt: null,
+        cusumSegmentStart: null,
+        cusumSegmentEnd: null,
+        lastEvidenceSummary: {
+          lastRestingReason: restingReason,
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          recoveredFromTripId: tripId,
+        },
+      });
+    }
+  }
+
+  private async maybeRecoverLifecycleInvariant(params: {
+    det: DetState;
+    organizationId: string | null;
+    dimoTokenId: number;
+    context?: {
+      expectedStartAt?: Date | null;
+      expectedDimoSegmentId?: string | null;
+      mergeTargetTripId?: string | null;
+    };
+  }): Promise<'recovered' | 'blocked' | 'continue'> {
+    const outcome = await this.lifecycleRecovery.attemptRecovery({
+      det: params.det,
+      organizationId: params.organizationId,
+      dimoTokenId: params.dimoTokenId,
+      context: params.context,
+    });
+    if (outcome.recovered) return 'recovered';
+    if (outcome.blocked) return 'blocked';
+    return 'continue';
   }
 
   // ══════════════════════════════════════════════════════════
@@ -683,6 +845,15 @@ export class TripDetectionOrchestrationService {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_START) return;
 
+      const earlyRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (earlyRecovery !== 'continue') {
+        return;
+      }
+
       const profile = det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
       const profileStr = String(profile);
       const now = new Date();
@@ -892,10 +1063,35 @@ export class TripDetectionOrchestrationService {
           effectiveStartAt,
         );
 
+        const recoveryPreflight = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
+          context: {
+            expectedStartAt: effectiveStartAt,
+            expectedDimoSegmentId:
+              resolvedStart.dimoSegmentId ??
+              `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            mergeTargetTripId:
+              mergeCheck.shouldMergeWithPrevious && previousTrip?.id
+                ? previousTrip.id
+                : null,
+          },
+        });
+        if (recoveryPreflight !== 'continue') {
+          return;
+        }
+
         if (mergeCheck.shouldMergeWithPrevious && previousTrip?.id) {
           // Reopen the previous trip instead of creating a new one
           // DecisionEngine is the sole writer of tripStatus changes
-          await this.decisionEngine.reopenTripForMerge(previousTrip.id);
+          await this.decisionEngine.reopenTripForMerge({
+            targetTripId: previousTrip.id,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+            },
+          });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
           await this.transitionState(
@@ -937,6 +1133,13 @@ export class TripDetectionOrchestrationService {
             detectionProfile: profileStr,
             startDetectionMode: confirmMode,
             startConfidence: confirmConfidence,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+              dimoSegmentId:
+                resolvedStart.dimoSegmentId ??
+                `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            },
           });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
@@ -1082,12 +1285,28 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
+      const activeRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (activeRecovery !== 'continue') {
+        return;
+      }
+
       const tripId = det.activeTripId;
       if (!tripId) {
         this.logger.warn(`ACTIVE_TICK but no activeTripId for ${vehicleId}`);
-        await this.transitionState(vehicleId, TripDetectionState.RESTING, {
-          activeTripId: null,
+        const missingPointerRecovery = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
         });
+        if (missingPointerRecovery === 'continue') {
+          await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+            activeTripId: null,
+          });
+        }
         return;
       }
 
@@ -1344,31 +1563,10 @@ export class TripDetectionOrchestrationService {
               await this.transitionState(
                 vehicleId,
                 TripDetectionState.ACTIVE_TRIP,
-                {
-                  activeTripId: splitResult.secondTripId,
-                  possibleStartAt: midGap.secondStartAt,
-                  possibleStartEnteredAt: null,
-                  ...clearPossibleEndClockFields(),
-                  endValidationAttempts: 0,
-                  endDetectionMode: null,
-                  endConfidence: null,
-                  cusumValidatedAt: null,
-                  cusumSegmentStart: null,
-                  cusumSegmentEnd: null,
-                  startDetectionMode:
-                    'MID_TRIP_GAP_SPLIT' as unknown as StartDetectionMode,
-                  startConfidence: 'MEDIUM' as DetectionConfidence,
-                  lastActivityAt: midGap.secondStartAt,
-                  lastMeaningfulMovementAt: midGap.secondStartAt,
-                  // Next fetch windows start at the gap boundary so we do not
-                  // re-process segment 1 on the next tick.
-                  lastRouteProcessedAt: midGap.secondStartAt,
-                  lastDrivingProcessedAt: midGap.secondStartAt,
-                  lastCoreProcessedAt: midGap.secondStartAt,
-                  startOdometerKm: null,
-                  startFuelLevel: null,
-                  startEvSoc: null,
-                },
+                buildMidGapSplitActiveFsmExtras({
+                  secondTripId: splitResult.secondTripId,
+                  secondStartAt: midGap.secondStartAt,
+                }),
               );
 
               // Durable V2 analysis init (awaited) + legacy enrichment (unchanged).
@@ -1922,6 +2120,15 @@ export class TripDetectionOrchestrationService {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
+      const peRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (peRecovery !== 'continue') {
+        return;
+      }
+
       const profile = String(det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN);
       const now = new Date();
       const endBoundaryAt = resolvePossibleEndBoundaryAnchor(det, now);
@@ -2371,6 +2578,15 @@ export class TripDetectionOrchestrationService {
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       const tripId = det.activeTripId;
+
+      const endRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId: data.dimoTokenId,
+      });
+      if (endRecovery !== 'continue') {
+        return;
+      }
 
       if (tripId) {
         const trip = await this.prisma.vehicleTrip.findUnique({

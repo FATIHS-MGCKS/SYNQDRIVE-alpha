@@ -35,6 +35,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripStartsConfirmed: Counter<string>;
   readonly tripFinalized: Counter<string>;
   readonly tripDiscarded: Counter<string>;
+  readonly ongoingFsmDivergence: Counter<string>;
+  readonly completedFsmDivergence: Counter<string>;
+  readonly tripLifecycleInvariantRecovery: Counter<string>;
+  readonly tripLifecycleInvariantConflict: Counter<string>;
   readonly enrichmentFailed: Counter<string>;
   readonly repairActions: Counter<string>;
   /** Trip reconciliation durable repair claims — low-cardinality repair_type only. */
@@ -297,6 +301,32 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_trip_discarded_total',
       help: 'Total trips discarded/cancelled',
       labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.ongoingFsmDivergence = new Counter({
+      name: 'synqdrive_ongoing_fsm_divergence_total',
+      help: 'Detected ONGOING trip vs FSM start divergence episodes',
+      registers: [this.registry],
+    });
+
+    this.completedFsmDivergence = new Counter({
+      name: 'synqdrive_completed_fsm_divergence_total',
+      help: 'Detected COMPLETED/CANCELLED trip vs active FSM divergence episodes',
+      registers: [this.registry],
+    });
+
+    this.tripLifecycleInvariantRecovery = new Counter({
+      name: 'synqdrive_trip_lifecycle_invariant_recovery_total',
+      help: 'Successful lifecycle invariant recoveries',
+      labelNames: ['type'],
+      registers: [this.registry],
+    });
+
+    this.tripLifecycleInvariantConflict = new Counter({
+      name: 'synqdrive_trip_lifecycle_invariant_conflict_total',
+      help: 'Lifecycle invariant conflicts requiring manual review',
+      labelNames: ['type'],
       registers: [this.registry],
     });
 
