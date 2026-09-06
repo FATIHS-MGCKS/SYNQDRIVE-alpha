@@ -78,6 +78,8 @@
     "test:fuel-stations:unit": "jest --testPathPattern='fuel-station-' --testPathIgnorePatterns='postgres.integration'",
     "test:fuel-stations:enrichment": "jest --testPathPattern='fuel-station-enrichment|refuel-station-enrichment|energy-events-fuel-station-enrichment.firewall'",
     "test:fuel-stations:postgres": "FUEL_STATION_POSTGRES_INTEGRATION=1 jest fuel-station-location-resolver.postgres.integration --runInBand",
+    "test:reference-capture:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-lock-session.postgres.integration --runInBand",
+    "test:reference-capture:def019-gate": "bash scripts/ops/reference-capture-di-def-019-integration-gate.sh",
     "fuel-station:resolve": "ts-node -r tsconfig-paths/register scripts/ops/fuel-station-resolve-probe.ts",
     "fuel-station:calibrate": "ts-node -r tsconfig-paths/register scripts/ops/fuel-station-calibration-gate.ts",
     "test:dimo-provider-limiter:redis": "DIMO_PROVIDER_LIMITER_REDIS_INTEGRATION=1 jest dimo-provider-limiter.redis.integration --runInBand --forceExit",

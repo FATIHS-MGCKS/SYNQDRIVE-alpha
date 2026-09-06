@@ -312,16 +312,17 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'DI-DEF-019 — lockSessionRow PostgreSQL table name fix (live cal blocker)',
     summary: [
       'Live 10/20/30/60 HF calibration blocked on production: FOR UPDATE raw SQL used Prisma model name ReferenceCaptureSession.',
-      'Fix: reference_capture_sessions + organization_id snake_case columns.',
+      'Fix: reference_capture_sessions + organization_id snake_case columns (text IDs, no ::uuid cast).',
+      'GATE 1: real PostgreSQL integration suite (10 tests) — lockSessionRow, FOR UPDATE blocking, 10→60 phases, STOP/ABORT, rollback, two-replica.',
       'Blocked attempt evidence: architecture/drivingintelligence/evidence/reference-capture/LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md',
-      'Production baseline restored after abort; no phase evidence captured.',
+      'Status: FIXED_CODE_TESTED — awaiting human merge + GATE 2 production dress rehearsal.',
     ],
     reason:
       'DI_HF_LIVE_BLOCK_POLLING_10_20_30_60 hit 42P01 on first switchHfCalibrationPhase; stop/abort finalization also affected.',
     previousBehavior:
       'lockSessionRow queried "ReferenceCaptureSession" — passes mocked tests, fails PostgreSQL.',
     details:
-      'reference-capture-session.repository.ts lockSessionRow; research/DEFECT_LEDGER.md DI-DEF-019.',
+      'reference-capture-session.repository.ts lockSessionRow; reference-capture-lock-session.postgres.integration.spec.ts; research/DEFECT_LEDGER.md DI-DEF-019 FIXED_CODE_TESTED.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-06T19:45:00.000Z',

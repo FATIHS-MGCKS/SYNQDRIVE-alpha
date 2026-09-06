@@ -89,6 +89,6 @@ READY_FOR_HUMAN_CANARY_ANALYSIS = NO (blocked on DI-DEF-019 fix + redeploy)
 
 ## Required follow-up
 
-1. Merge SQL lock fix (`reference_capture_sessions` + snake_case columns)
-2. Add PostgreSQL integration test for `lockSessionRow` / phase atomic path
-3. Re-attempt live calibration after deploy + preflight
+1. ~~Merge SQL lock fix (`reference_capture_sessions` + snake_case columns)~~ — **code fixed on PR #1550**
+2. ~~Add PostgreSQL integration test for `lockSessionRow` / phase atomic path~~ — **GATE 1 PASS (2026-09-06):** `reference-capture-lock-session.postgres.integration.spec.ts` + `reference-capture-di-def-019-integration-gate.sh`
+3. Human merge PR #1550 → deploy → GATE 2 stationary dress rehearsal → re-attempt live calibration

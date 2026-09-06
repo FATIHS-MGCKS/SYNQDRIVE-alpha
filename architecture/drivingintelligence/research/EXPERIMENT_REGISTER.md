@@ -19,8 +19,10 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-013 | 2026-09-04 | RD004-B recovery policy simulation | KS MX Segment B | Counterfactual grid | 8/6 provisional | DI-EV-0035C impl | DI-EV-0035B.6 |
 | EXP-014 | 2026-09-04 | HF Recovery V2 unit/policy tests | — | Synthetic + fixtures | Implementation validated | C.1 testbed | DI-EV-0035C |
 | EXP-015 | 2026-09-04–05 | C.1a–e correctness hardening | — | Concurrency specs | 113 RC HF tests PASS | PR #1533 merge | DI-EV-0035C.1e |
-| EXP-016 | — | Live 10/20/30/60s calibration | Operator-selected | Reference capture | **NOT EXECUTED** | Pending | — |
+| EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration (KS MX 2024) | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Fix + GATE 1 PG tests | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
+| EXP-017 | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | — | Isolated PG 16 | 10 integration + 33 regression PASS | FIXED_CODE_TESTED | `DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
+| EXP-018 | — | GATE 2 stationary dress rehearsal | KS MX 2024 | Production | **PENDING** (post merge+deploy) | — | — |
 
-**EXPERIMENT_ENTRIES_TOTAL:** 16  
-**EXPERIMENTS_EXECUTED:** 15  
-**EXPERIMENTS_PENDING:** 1 (EXP-016 live 10/20/30/60 — **NOT EXECUTED**)
+**EXPERIMENT_ENTRIES_TOTAL:** 18  
+**EXPERIMENTS_EXECUTED:** 17  
+**EXPERIMENTS_PENDING:** 1 (EXP-018 GATE 2 dress rehearsal)

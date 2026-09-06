@@ -74,7 +74,7 @@ export class ReferenceCaptureSessionRepository {
   ): Promise<void> {
     await tx.$executeRaw`
       SELECT id FROM reference_capture_sessions
-      WHERE id = ${sessionId}::uuid AND organization_id = ${organizationId}::uuid
+      WHERE id = ${sessionId} AND organization_id = ${organizationId}
       FOR UPDATE
     `;
   }

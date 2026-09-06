@@ -132,3 +132,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | PR #1544 | `architecture/drivingintelligence/` canonical authority |
 | Scope | Documentation only; runtime unchanged |
+
+## DI-DEF-019 GATE 1 (2026-09-06)
+
+| Event | Detail |
+|-------|--------|
+| Live cal blocked | KS MX 2024 — `42P01` on first `switchHfCalibrationPhase(10000)` |
+| Fix | `lockSessionRow` → `reference_capture_sessions` + `organization_id` (text IDs) |
+| GATE 1 | Real PostgreSQL integration suite — 10 tests PASS |
+| Status | `FIXED_CODE_TESTED` — awaiting merge + GATE 2 production dress rehearsal |
+| Evidence | `evidence/reference-capture/DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
