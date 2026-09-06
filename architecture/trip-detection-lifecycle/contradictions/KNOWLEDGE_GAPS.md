@@ -1,4 +1,4 @@
-# Trip Detection & Lifecycle — Knowledge Gaps (Phase 0–2)
+# Trip Detection & Lifecycle — Knowledge Gaps
 
 Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 

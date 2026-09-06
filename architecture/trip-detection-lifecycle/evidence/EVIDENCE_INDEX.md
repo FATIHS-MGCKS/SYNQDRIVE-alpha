@@ -1,187 +1,92 @@
 # Trip Detection & Lifecycle — Evidence Index
 
-Historical FSM audit corpus under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/). **Supporting evidence only** — not the canonical authority.
+**Repository re-audit baseline:** `origin/main` @ `06095af91ce6f58366734a182ac5962830e858db`
 
-**Repository re-audit baseline:** `origin/main` @ `06095af91ce6f58366734a182ac5962830e858db` (2026-09-07)
+Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/) — **supporting evidence only**, not canonical authority.
 
-## P1 — ownership invariants (no Markdown artifact)
+## Schema
 
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P1-001** | [`backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts`](../../backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts) | P1 ownership rules: sole creator (`TripDecisionEngine`), sole lifecycle writer, detector read-only, repair routes through decision engine | Present on `06095af91…` | **CURRENT_SUPPORTING_EVIDENCE** |
+| Column | Meaning |
+|--------|---------|
+| **Evidence ID** | Stable identifier — never reuse |
+| **Source type** | Standard-1.0 evidence class (`CODE`, `HISTORICAL_RECORD`, `PRODUCTION_OBSERVATION`, …) |
+| **Source path / method** | Repository path or sanitized observation method |
+| **Timestamp** | ISO-8601 UTC when applicable |
+| **Audited SHA / environment** | Repo SHA or Production release context |
+| **Supported claim** | What this evidence supports |
+| **Currentness / maturity** | Separate from source type |
+| **Limitations** | Residual uncertainty |
 
-**Note:** No separate `P1_*.md` exists in `docs/audits/trip-fsm/`. P1 conclusions were captured in code comments and cross-referenced by P2–P3.
+### Source types used
 
-**Still supported on `main`:** Rules 1–5 match live code — `TripDecisionEngine` remains sole `tripStatus` writer; detectors return findings only.
+`CODE` · `HISTORICAL_RECORD` · `PRODUCTION_OBSERVATION`
 
----
-
-## P2 — state machine & execution phases
-
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P2-001** | [`docs/audits/trip-fsm/P2_STATE_MACHINE_EXECUTION_PHASE_AUDIT_2026-09-05.md`](../../docs/audits/trip-fsm/P2_STATE_MACHINE_EXECUTION_PHASE_AUDIT_2026-09-05.md) | Persistent FSM vs BullMQ execution phases; `ENDED` dead enum; finalize → RESTING | `3d5040b67…` | **PARTIALLY_CURRENT** |
-
-| Claim | Status on `06095af91…` |
-|-------|------------------------|
-| Six Prisma FSM states; five reachable | **CONFIRMED** — zero `TripDetectionState.ENDED` references in `trips/` |
-| Execution triggers: PS/AT/PEC/EV/FINALIZE not persisted as state | **CONFIRMED** — `trip-detection.types.ts` |
-| Production SQL in P2 | **HISTORICAL** — stale; superseded by [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) |
-
-| Superseded / limited |
-|---------------------|
-| P2 Production SSH failure | Superseded — SSH gate passed 2026-09-07 |
-| Exact line numbers in orchestration | May drift — re-verify before citing |
-
----
-
-## P3 — signal authority & timestamp ordering
-
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P3-001** | [`docs/audits/trip-fsm/P3_SIGNAL_AUTHORITY_TIMESTAMP_ORDERING_AUDIT_2026-09-05.md`](../../docs/audits/trip-fsm/P3_SIGNAL_AUTHORITY_TIMESTAMP_ORDERING_AUDIT_2026-09-05.md) | EVENT_TIME vs WORKER_TIME separation; boundary field contract | `3d5040b67…` (logic); HEAD `c52d0c76…` | **PARTIALLY_CURRENT** |
-
-| Claim | Status on `06095af91…` |
-|-------|------------------------|
-| Physical boundaries use event-time fields (`possibleStartAt`, `possibleEndAt`, movement anchors) | **CONFIRMED** — reinforced by R1 on `main` |
-| FSM dwell clocks use worker entry timestamps | **CONFIRMED** |
-| Production verification | **UNKNOWN** in P3 — now partially addressed in PRODUCTION_BASELINE |
-
----
-
-## P4 — trip start deep dive
-
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P4-001** | [`docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md`](../../docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md) | Start detectors, policies, failure windows, liveness gaps | HEAD `b62c4c44…` | **PARTIALLY_CURRENT** |
-
-| Claim | Status on `06095af91…` |
-|-------|------------------------|
-| Start policy resolver + composite detectors exist | **CONFIRMED** |
-| P4-F11/F12 start liveness issues | **ADDRESSED on main** via R3 (verify in code) |
-| P4-F01/F03 start consistency issues | **ADDRESSED on main** via R4 |
-
----
-
-## P5 — trip end deep dive
-
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P5-001** | [`docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md`](../../docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md) | End modes, CUSUM, PEC/EV/CH paths, finalize semantics | P5 closure 2026-09-06 | **PARTIALLY_CURRENT** |
-
-| Claim | Status on `06095af91…` |
-|-------|------------------------|
-| End validation classifier + CUSUM path | **CONFIRMED** |
-| P5-F03/F11/F13 end metadata issues | **ADDRESSED on main** via R5 |
-| P5-F04/F09 mid-gap split control flow | **ADDRESSED on main** via R6 |
-| P5-F05 terminal RESTING recovery | **ADDRESSED on main** via R7 |
-
----
-
-## P6 — target architecture & remediation plan
-
-| Evidence ID | Path | Purpose | Audited SHA | Classification |
-|-------------|------|---------|-------------|----------------|
-| **TDL-EV-P6-001** | [`docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md`](../../docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md) | R1–R8 dependency graph; target architecture synthesis | `3d5040b67…` design baseline | **PARTIALLY_CURRENT** |
-
-| Claim | Status on `06095af91…` |
-|-------|------------------------|
-| Ordered R1→R8 remediation program | **CONFIRMED merged on main** through R8 (#1549) |
-| P6 as canonical architecture | **SUPERSEDED** by this authority bootstrap — P6 deferred canonical docs explicitly |
-| Pre-R1 gap inventory | **HISTORICAL** for closed R-items; still useful for decision reconstruction |
-
----
-
-## R1 — event-time authority implementation
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R1-001** | [`docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | EVENT_TIME boundary field contract vs worker dwell clocks | `3d5040b67…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
-**Still supported:** Separates event-time physical boundaries from worker-time FSM clocks without changing thresholds (per artifact). Code paths cited in artifact exist on `main`.
-
-**Limitation:** Deploy status NOT PERFORMED at R1 time — Production may lag until post-`01541c2ab…` deploy.
-
----
-
-## R2 — lifecycle invariants
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R2-001** | [`docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md) | Lifecycle commit + orphan recovery invariants | `8ddf73e56…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
-**Still supported:** Terminal lifecycle commit utilities and orphan recovery specs present (`trip-terminal-lifecycle-commit.util.ts`, R2 specs).
-
----
-
-## R3 — start liveness ordering
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R3-001** | [`docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md) | Queue handoff settlement; start execution liveness | `ff95395d6…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
-**Still supported:** `trip-tracking-handoff-settlement.ts`, `trip-tracking-queue.util.ts`, R3 specs on `main`.
-
----
-
-## R4 — start detection consistency
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R4-001** | [`docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md) | Dual scoring clarity; LIVE_START freshness | `12a5fdac9…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
----
-
-## R5 — end validation semantics
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R5-001** | [`docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md) | End anchor, metadata reset, attempt accounting | `eb51d8f80…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
----
-
-## R6 — mid-gap split safety
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R6-001** | [`docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | Mid-trip gap split control flow safety | `4cd02d7f8…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
----
-
-## R7 — terminal RESTING recovery
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R7-001** | [`docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | Terminal lifecycle → RESTING hardening (INV-08) | `de402f7c9…` | **CURRENT_SUPPORTING_EVIDENCE** |
-
----
-
-## R8 — observability & forensics
-
-| Evidence ID | Path | Purpose | Baseline SHA | Classification |
-|-------------|------|---------|--------------|----------------|
-| **TDL-EV-R8-001** | [`docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md`](../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | Forensic metadata contract; metric/timeline corrections | `140ebdd33…` branch baseline | **CURRENT_SUPPORTING_EVIDENCE** (repo) / **NOT DEPLOYED** (Production `01541c2ab…`) |
-
-| Claim | Status |
-|-------|--------|
-| R8 merged on `main` (#1549) | **CONFIRMED** at `06095af91…` |
-| R8 on Production | **CONTRADICTED vs deployed** — Production SHA predates R8 |
-| Legacy metric mislabeling fixed in R8 | **UNKNOWN on Production** until deploy |
-
----
-
-## Classification legend
+### Currentness / maturity legend
 
 | Label | Meaning |
 |-------|---------|
-| **CURRENT_SUPPORTING_EVIDENCE** | Artifact claims reconfirmed on `origin/main` @ audit SHA |
-| **PARTIALLY_CURRENT** | Core model still valid; Production refs, line numbers, or pre-R fixes stale |
-| **HISTORICAL** | Described pre-remediation state; superseded by R1–R8 merges |
-| **SUPERSEDED** | Explicitly replaced (e.g., P6 deferral of canonical docs) |
-| **CONTRADICTED** | Conflicts with re-audited code or fresh Production evidence |
+| **CONFIRMED_ON_MAIN** | Reconfirmed on `06095af91…` |
+| **PARTIALLY_CURRENT** | Core claim valid; Production refs, line numbers, or pre-R context stale |
+| **HISTORICAL** | Pre-remediation or superseded runtime context |
+| **NOT_ON_PRODUCTION** | On `main` but not on observed Production SHA |
 | **UNKNOWN** | Not re-verified this phase |
+
+---
+
+## P1 — ownership invariants (no Markdown artifact)
+
+| Field | Value |
+|-------|-------|
+| **Evidence ID** | TDL-EV-P1-001 |
+| **Source type** | CODE |
+| **Source path** | [`backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts`](../../../backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts) |
+| **Timestamp** | `2026-09-06T23:09:32Z` (reconfirmed during bootstrap) |
+| **Audited SHA** | `06095af91ce6f58366734a182ac5962830e858db` |
+| **Supported claim** | P1 ownership: sole creator/lifecycle writer (`TripDecisionEngine`); detectors read-only; repair routes through decision engine |
+| **Currentness** | CONFIRMED_ON_MAIN |
+| **Limitations** | No separate P1 Markdown in `docs/audits/trip-fsm/` |
+
+---
+
+## Historical audit and implementation records (P2–R8)
+
+| Evidence ID | Source type | Source path | Timestamp | Audited SHA | Supported claim | Currentness | Limitations |
+|-------------|-------------|-------------|-----------|-------------|-----------------|-------------|-------------|
+| TDL-EV-P2-001 | HISTORICAL_RECORD | [`P2_STATE_MACHINE…`](../../../docs/audits/trip-fsm/P2_STATE_MACHINE_EXECUTION_PHASE_AUDIT_2026-09-05.md) | 2026-09-05 | `3d5040b67…` | FSM vs execution phases; `ENDED` dead; finalize→RESTING | PARTIALLY_CURRENT | P2 Production SSH/SQL stale; line numbers may drift |
+| TDL-EV-P3-001 | HISTORICAL_RECORD | [`P3_SIGNAL…`](../../../docs/audits/trip-fsm/P3_SIGNAL_AUTHORITY_TIMESTAMP_ORDERING_AUDIT_2026-09-05.md) | 2026-09-05 | `3d5040b67…` | EVENT_TIME vs WORKER_TIME separation | PARTIALLY_CURRENT | Production unverified in P3; partially addressed by PROD baseline |
+| TDL-EV-P4-001 | HISTORICAL_RECORD | [`P4_TRIP_START…`](../../../docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md) | 2026-09-05 | `b62c4c44…` | Start detectors, policies, failure windows | PARTIALLY_CURRENT | P4-F11/F12 addressed on main via R3 |
+| TDL-EV-P5-001 | HISTORICAL_RECORD | [`P5_TRIP_END…`](../../../docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md) | 2026-09-06 | P5 closure | End modes, CUSUM, finalize semantics | PARTIALLY_CURRENT | Several P5 findings addressed via R5–R7 |
+| TDL-EV-P6-001 | HISTORICAL_RECORD | [`P6_TARGET…`](../../../docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md) | 2026-09-06 | `3d5040b67…` | R1–R8 remediation dependency graph | PARTIALLY_CURRENT | P6 explicitly deferred canonical docs to this authority |
+| TDL-EV-R1-001 | HISTORICAL_RECORD | [`R1_EVENT_TIME…`](../../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `3d5040b67…` | EVENT_TIME boundary field contract | CONFIRMED_ON_MAIN | Not deployed to Production `01541c2ab…` at observation time |
+| TDL-EV-R2-001 | HISTORICAL_RECORD | [`R2_LIFECYCLE…`](../../../docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `8ddf73e56…` | Lifecycle commit + orphan recovery | CONFIRMED_ON_MAIN | Deploy evidence separate |
+| TDL-EV-R3-001 | HISTORICAL_RECORD | [`R3_START_LIVENESS…`](../../../docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `ff95395d6…` | Queue handoff settlement / start liveness | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R4-001 | HISTORICAL_RECORD | [`R4_START_DETECTION…`](../../../docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `12a5fdac9…` | Start detection consistency | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R5-001 | HISTORICAL_RECORD | [`R5_END_VALIDATION…`](../../../docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `eb51d8f80…` | End validation semantics | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R6-001 | HISTORICAL_RECORD | [`R6_MID_GAP…`](../../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `4cd02d7f8…` | Mid-gap split safety | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R7-001 | HISTORICAL_RECORD | [`R7_TERMINAL…`](../../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `de402f7c9…` | Terminal→RESTING recovery | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8_OBSERVABILITY…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `140ebdd33…` branch | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN / **NOT_ON_PRODUCTION** | Merged #1549 on `main`; absent on Production `01541c2ab…` |
+
+---
+
+## Production observations (read-only)
+
+| Evidence ID | Source type | Method / path | Timestamp | Environment | Supported claim | Currentness | Limitations |
+|-------------|-------------|---------------|-----------|-------------|-----------------|-------------|-------------|
+| TDL-EV-PROD-001 | PRODUCTION_OBSERVATION | SSH: `readlink` + `git rev-parse` on `/opt/synqdrive/current` | Revalidation `2026-09-06T23:24:20Z` | Release `01541c2ab…` @ `/opt/synqdrive/releases/20260906213654_v4994` | Active release path and deployed SHA | CONFIRMED_ON_MAIN drift noted | Original bootstrap exact time not recovered |
+| TDL-EV-PROD-002 | PRODUCTION_OBSERVATION | HTTPS `GET /api/v1/health` | Bootstrap + revalidation window 2026-09-06 UTC evening | Production | API health reachable (HTTP 200) | CONFIRMED | Liveness only |
+| TDL-EV-PROD-003 | PRODUCTION_OBSERVATION | SSH: `sudo pm2 jlist`, `pgrep -af backend/dist/src/main.js` | `2026-09-06T23:24:20Z` | Production VPS | Two PM2 apps (`synqdrive`, `synqdrive-b`) each `instances=1`; matching Node processes observed | CONFIRMED | **Not** proven as two replicas of one app; trip worker roles not fully mapped |
+| TDL-EV-PROD-004 | PRODUCTION_OBSERVATION | SSH: `redis-cli --scan --pattern 'bull:…'` | Bootstrap session | Production Redis | Bull key-prefix counts for snapshot + trip-tracking queues | CONFIRMED | Prefix counts ≠ job queue depth by state |
+| TDL-EV-PROD-005 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trip_detection_states`: 6× RESTING | CONFIRMED | Small cohort; not full fleet |
+| TDL-EV-PROD-006 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trips`: 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | CONFIRMED | Aggregate only |
+| TDL-EV-PROD-007 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trip_route_artifacts`: 94 rows | CONFIRMED | Coverage vs completed trips ~4.7% |
+| TDL-EV-PROD-008 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `trip_repairs` status/type distributions | CONFIRMED | High PROPOSED volume not root-caused |
+| TDL-EV-PROD-009 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate (7-day window) | Bootstrap session | Production PostgreSQL | `vehicle_trip_tracking_runs` by `run_type` | CONFIRMED | Natural activity evidence; not per-vehicle |
+
+Detail and reproducibility templates: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
+
+---
 
 ## Explicit non-artifacts
 
-- **R9** adaptive polling wake — out of scope for this bootstrap PR; not indexed here
+- **R9** adaptive polling wake — out of scope for bootstrap PR #1554
 - **Competing authority paths** — must not be created under `architecture/trip-fsm/` or `docs/architecture/trip-fsm/`

@@ -1,89 +1,70 @@
 # Trip Detection & Lifecycle — Audit Manifest
 
-| Field | Value |
-|-------|-------|
+Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
+
+## Fixed metadata
+
+| Key | Value |
+|-----|-------|
+| **MODULE** | Trip Detection & Lifecycle |
+| **MODULE_SLUG** | `trip-detection-lifecycle` |
+| **AUDIT_STARTED_AT** | `2026-09-06T23:09:32Z` |
+| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` |
+| **REGISTRY_STATUS_AT_START** | `NOT_STARTED` |
+| **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
+| **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
+| **REPO_BASE_BRANCH** | `main` |
+| **ORIGIN_MAIN_SHA** | `06095af91ce6f58366734a182ac5962830e858db` |
+| **AUDIT_BRANCH_SHA** | `a36db67a3fb418ac7521d260461adf631256582c` |
+| **PRODUCTION_AUDITED_AT** | `2026-09-06T23:24:20Z` |
+| **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
+| **PRODUCTION_RELEASE_SHA** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` |
+| **PRODUCTION_RELEASE_PATH** | `/opt/synqdrive/releases/20260906213654_v4994` |
+| **REPO_PRODUCTION_DRIFT** | Production release is an **ancestor** of `origin/main` @ `06095af91…`. **`main` is 3 commits ahead**, including Trip FSM **R8 #1549** not present on the observed Production release. |
+| **RUNTIME_FOOTPRINT** | Backend NestJS module `vehicle-intelligence/trips/`; BullMQ queues `dimo.snapshot.poll`, `dimo.trip-tracking`; schedulers (snapshot poll, trip-tracking recovery, trip reconciliation); PostgreSQL models `vehicle_trips`, `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`, `trip_repairs`, `vehicle_trip_route_artifacts`; rental trip UI under `frontend/src/rental/components/trips/`; DIMO snapshot ingress and reconciliation workers on Production VPS. |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **Standard** | [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0 |
-| **Registry coverage (start)** | `NOT_STARTED` |
-| **Registry coverage (this PR)** | `AUDIT_IN_PROGRESS` |
-| **Promotion** | **Not requested** — partial Phases 0–2 only |
+| **VALIDATION_STATUS** | `PASS` — `git diff --check origin/main...HEAD`; `bash architecture/scripts/validate-module-registry.sh` (see correction commit) |
+| **REMAINING_LIMITATIONS** | Phase 1 repository audit is an **initial consolidated baseline** only — dead/legacy path inventory, full feature-flag matrix, Mapbox/FMM failure taxonomy, and Driving Intelligence handoff remain incomplete. Phase 3 reconciliation/classification, Phase 4 authority construction (graphs/decisions), and Phase 5 promotion gate **pending**. Original bootstrap Production SQL session had no recovered exact ISO timestamp; aggregates preserved from that session and **revalidated** at `PRODUCTION_AUDITED_AT`. PM2 application roles verified read-only (`synqdrive`, `synqdrive-b`); replica topology for trip workers not fully mapped. External PostgreSQL `:5432` unreachable from agent network; DB access via SSH-local `psql` only. No ClickHouse trip-assist query. No PII/per-vehicle traces exported. |
 
-## Baselines
+**`AUDIT_BRANCH_SHA` note:** `a36db67a3…` is the stable Phase-0-to-2 **authority-content snapshot** commit. Later correction commits on the same branch do not change this audited content baseline and are not recursively chased in manifest metadata.
 
-| Baseline | SHA / identifier | Notes |
-|----------|------------------|-------|
-| **Repository audited** | `06095af91ce6f58366734a182ac5962830e858db` | `origin/main` at audit start (2026-09-07) |
-| **Audit branch** | `5f2185ba2` on `cursor/trip-detection-lifecycle-authority-bootstrap-64c8` | Documentation-only |
-| **Production release** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` | Release dir `20260906213654_v4994`; PR #1550 merge |
-| **Production symlink** | `/opt/synqdrive/current` → `/opt/synqdrive/releases/20260906213654_v4994` | Observed 2026-09-07 UTC |
+**Timestamp note:** `AUDIT_STARTED_AT` is the ISO timestamp of commit `a36db67a3…`. `PRODUCTION_AUDITED_AT` is from read-only re-observation (`date -u`) during PR #1554 correction; the earlier bootstrap SQL session occurred in the same UTC evening without a recovered exact timestamp.
 
-## Audit timestamps
+## Lifecycle phase status (Standard 1.0)
 
-| Event | UTC |
-|-------|-----|
-| Pre-audit connectivity gate | 2026-09-06 ~22:44 |
-| Phase 0–2 reconstruction | 2026-09-07 |
-| Production SSH + SQL baseline | 2026-09-07 ~22:12–23:05 (host local) |
-
-## Production access
-
-| Check | Result |
+| Phase | Status |
 |-------|--------|
-| SSH host | `srv1374778.hstgr.cloud` (from `CLOUD_AGENT_VPS_HOST`) |
-| SSH user | `synqdrive-admin` (from `CLOUD_AGENT_SSH_USER`) |
-| SSH authentication | **Success** (`cloud-agent-verify-vps.sh` + manual session) |
-| External PostgreSQL `:5432` | **Not reachable** from agent network |
-| Production DB via SSH + local `psql` | **Success** (sudo + `DATABASE_URL` with query string stripped) |
-| Tailscale / alternate DB path | **Not configured** (intentionally not attempted) |
+| **0 — Entry and scope** | **Complete** — registry transition, scope, neighbor boundaries, manifest |
+| **1 — Repository current-state audit** | **Initial consolidated baseline established** — core entry points, FSM, queues, persistence, API/UI documented; further reconstruction **in progress** (dead/legacy inventory, flags, handoff, route failure taxonomy incomplete) |
+| **2 — Production read-only audit** | **Verified baseline established** — SSH, release SHA/path, bounded SQL/Redis/health/PM2 observations; documented limitations |
+| **3 — Reconciliation and classification** | **Pending / in progress** — evidence index started; full classification ongoing |
+| **4 — Authority construction** | **Pending** — graphs, decision registers, validators not created |
+| **5 — Validation and promotion gate** | **Pending** — not `AUTHORITY_ACTIVE` |
 
-**Classification:** `VERIFIED_READ_ONLY` for SSH + bounded SQL aggregates.
+## Audit-coverage matrix
 
-## Repository vs Production drift
+### Repository (`origin/main` @ `06095af91…`)
 
-Production release `01541c2ab…` is an **ancestor** of `origin/main` `06095af91…`.
-
-**On `main` but not deployed to observed Production release:**
-
-| Commit | Summary |
-|--------|---------|
-| `06095af91` | docs(di): DI-DEF-019 GATE 2 evidence (#1552) |
-| `6ea951243` | Trip FSM R8 observability & forensics (#1549) |
-| `dcad81c75` | docs(architecture): module inventory (#1548) |
-
-**Implication:** Repository trip-FSM code on `main` includes **R8** (and inventory docs) not present on Production `01541c2ab…`. Behavioral drift for trip detection must assume Production **lags** `main` until next deploy.
-
-## Inspected surfaces
-
-### Repository (`origin/main`)
-
-- `backend/src/modules/vehicle-intelligence/trips/` (orchestration, decision engine, detectors, reconciliation, route artifacts)
-- `backend/src/workers/processors/dimo-snapshot.processor.ts`, `trip-tracking.processor.ts`
-- `backend/src/workers/schedulers/dimo-snapshot.scheduler.ts`, `trip-tracking-recovery.scheduler.ts`, `trip-reconciliation.scheduler.ts`
-- `backend/prisma/schema.prisma` (trip models)
-- `backend/src/config/worker.config.ts`, `.env.example`
-- `backend/src/modules/observability/trip-metrics.service.ts`
-- `frontend/src/rental/components/trips/`, vehicle-intelligence trip API routes
-- Historical audits `docs/audits/trip-fsm/*`
+| Surface | Evidence | Result | Limitation |
+|---------|----------|--------|------------|
+| `backend/src/modules/vehicle-intelligence/trips/` | Code inspection | Orchestration, decision engine, detectors, reconciliation, route-artifact present | Not every file read line-by-line |
+| Worker processors/schedulers | Code inspection | Snapshot + trip-tracking + recovery + reconciliation wired | R9 wake path out of bootstrap scope |
+| `backend/prisma/schema.prisma` | Code inspection | Trip models/enums confirmed | Migration history not fully narrated |
+| Trip API + rental UI | Code inspection | Controller routes + trip components located | Full UI contract matrix incomplete |
+| Historical `docs/audits/trip-fsm/*` | Index only | P1–P8 artifacts linked | Files not moved or rewritten |
 
 ### Production (read-only)
 
-- Release path and detached HEAD SHA
-- `https://app.synqdrive.eu/api/v1/health` → HTTP 200
-- Running `node …/backend/dist/src/main.js` process count (multi-replica)
-- Bounded Redis BullMQ key counts (`bull:dimo.snapshot.poll:*`, `bull:dimo.trip-tracking:*`)
-- Non-secret trip-related env keys in `/opt/synqdrive/shared/backend.env` (values redacted in evidence)
-- Bounded SQL aggregates (see [PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md))
+| Surface | Evidence ID / method | Result | Limitation |
+|---------|---------------------|--------|------------|
+| Release path + SHA | TDL-EV-PROD-001 | Symlink + detached HEAD match `01541c2ab…` | — |
+| Health endpoint | TDL-EV-PROD-002 | HTTP 200 | Liveness only |
+| Node / PM2 processes | TDL-EV-PROD-003 | PM2 apps `synqdrive`, `synqdrive-b` (each `instances=1`); matching Node processes observed via `pgrep` | Not proven as two replicas of one app |
+| Redis BullMQ prefixes | TDL-EV-PROD-004 | Key-prefix counts recorded | Not job-state cardinality |
+| SQL aggregates | TDL-EV-PROD-005 … PROD-009 | Bounded aggregates only | 6 FSM rows — cohort implication |
+| Env flags | Name-only grep | Trip-adjacent keys sampled | Values redacted; matrix incomplete |
 
-## Uninspected / limited surfaces
-
-| Surface | Limitation |
-|---------|------------|
-| Full Production log forensics | No sustained log mining; bounded grep only |
-| Per-vehicle trip traces | Excluded (PII / operational sensitivity) |
-| ClickHouse trip mirror contents | Not queried this phase |
-| DIMO provider live trigger subscription state | No provider admin API calls |
-| Complete env flag inventory | Only trip-adjacent keys sampled |
-| `vehicle_trip_detection_states` full fleet coverage | Only 6 rows observed — cohort size implication recorded in PRODUCTION_BASELINE |
+Detail and reproducibility templates: [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md). Full evidence registry: [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md).
 
 ## Mutations performed
 

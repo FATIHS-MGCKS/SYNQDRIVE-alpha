@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-07 (Trip Detection & Lifecycle authority bootstrap Phases 0–2)
+**Last updated:** 2026-09-06 (Trip Detection & Lifecycle authority bootstrap correction)
 
 ---
 
@@ -244,9 +244,9 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` — partial reconstruction **in progress**; **not** a complete usable authority |
 | **Scope** | Live trip FSM (`VehicleTripDetectionState`), snapshot-triggered start evaluation, BullMQ `dimo.trip-tracking` execution loop, start/end detection policies and detectors, `TripDecisionEngine` lifecycle mutations, terminal recovery, reconciliation/repair (`TripRepair`), route artifacts (Route V2), trip API read models and rental UI trip surfaces. |
 | **Authority directory** | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
-| **Authority-native status** | **Bootstrap audit · Phase 0–2 evidence collection** (2026-09-07) · Repository + read-only Production baseline established · R1–R8 on `main` indexed; **not** promoted |
-| **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts. **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth (→ DIMO Integration, `NOT_STARTED`). Historical FSM audits under [`docs/audits/trip-fsm/`](../docs/audits/trip-fsm/) are **supporting evidence only**. |
-| **Reconstruction status** | Phases **0–2** complete in bootstrap PR: registry entry, repository reconciliation @ `06095af91…`, Production SSH baseline. Phases **3–6** outstanding: decision reconstruction, machine graphs, validators, consistency validation, promotion gate. |
+| **Authority-native status** | **Bootstrap audit · Phase 0–2 evidence collection** (2026-09-06) · Repository initial baseline + read-only Production baseline established · R1–R8 on `main` indexed; **not** promoted |
+| **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts. **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth (→ DIMO Integration, `NOT_STARTED`). Historical FSM audits under `docs/audits/trip-fsm/` are **supporting evidence only**. |
+| **Reconstruction status** | Phase **0** complete; Phase **1** initial consolidated baseline established (further reconstruction in progress); Phase **2** verified read-only Production baseline established; Phases **3–5** pending/in progress. |
 | **Mandatory entry documents (partial)** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · module graph validators **not yet created** |
 
