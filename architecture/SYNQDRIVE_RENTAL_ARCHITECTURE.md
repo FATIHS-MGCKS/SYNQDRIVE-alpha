@@ -1,6 +1,6 @@
 # SynqDrive Rental Architecture — Canonical Module Registry
 
-**Purpose:** This is the **mandatory first routing point** for agents working on SynqDrive rental and shared backend surfaces. It is an index and governance authority — **not** a replacement for module-specific documentation.
+**Purpose:** This is the **mandatory first routing point** for agents working on SynqDrive rental product and shared frontend/backend runtime domains — including frontend, backend, API, UI, workers, integrations, persistence, and cross-module runtime contracts. It is an index and governance authority — **not** a replacement for module-specific documentation.
 
 **Last updated:** 2026-09-06 (registry bootstrap)
 
@@ -114,7 +114,7 @@ When code and registered authority disagree: **record the conflict**, investigat
 |-------|-------|
 | **Scope** | REFUEL and RECHARGE detection, parsing, coalescing, persistence; `durationSeconds` vs `fuelLevelRiseDurationSeconds` semantics; sibling reconciliation; `VehicleEnergyEvent` and API DTO semantics; trip timeline energy card UI semantics. |
 | **Authority directory** | [`architecture/knowledge-graphs/energy-event-detection/`](knowledge-graphs/energy-event-detection/) |
-| **Status / maturity** | **`APPROVED_FOR_CANONICAL_MERGE`** (pre-merge PR #1486) — **not** `CANONICAL` until post-merge `main` follow-up sets it per [GRAPH.yaml](knowledge-graphs/energy-event-detection/GRAPH.yaml) and [README.md](knowledge-graphs/energy-event-detection/README.md) · Authority state: `APPROVED_FOR_CANONICAL_MERGE` |
+| **Status / maturity** | **`APPROVED_FOR_CANONICAL_MERGE`** per [GRAPH.yaml](knowledge-graphs/energy-event-detection/GRAPH.yaml) (`status` and `authority_state`; `main_sha_at_canonicalization: null`) and [README.md](knowledge-graphs/energy-event-detection/README.md). PR #1486 is **already merged** on `main` (merge commit `182731fe48cd25578668f102ed847f4791fbaabd`), but EED’s own lifecycle metadata has **not** been promoted to `CANONICAL`. That post-merge promotion gap is an explicit lifecycle/documentation inconsistency requiring a **separate EED-authority follow-up**. Until that follow-up occurs, agents must **not** infer or silently assign `CANONICAL` status. |
 | **Ownership boundary** | **OWNS** all REFUEL/RECHARGE detection semantics, coalescing, persist gates, fuel-rise derivation, sibling reconciliation, energy API/UI contracts. **KG-ATE** may trigger `detectEnergyEvents` only — EED owns meaning. Fuel station enrichment trust detail is downstream (Tankstellenerkennung consumes persisted REFUEL events). See [governance/AUTHORITY_BOUNDARIES.md](knowledge-graphs/energy-event-detection/governance/AUTHORITY_BOUNDARIES.md). |
 | **Mandatory entry documents** | [README.md](knowledge-graphs/energy-event-detection/README.md) · [GRAPH.yaml](knowledge-graphs/energy-event-detection/GRAPH.yaml) · [governance/AGENT_PROTOCOL.md](knowledge-graphs/energy-event-detection/governance/AGENT_PROTOCOL.md) · [governance/AUTHORITY_BOUNDARIES.md](knowledge-graphs/energy-event-detection/governance/AUTHORITY_BOUNDARIES.md) · [graph/nodes.yaml](knowledge-graphs/energy-event-detection/graph/nodes.yaml) · [graph/edges.yaml](knowledge-graphs/energy-event-detection/graph/edges.yaml) · [graph/invariants.yaml](knowledge-graphs/energy-event-detection/graph/invariants.yaml) · [open-questions/OPEN_QUESTIONS.md](knowledge-graphs/energy-event-detection/open-questions/OPEN_QUESTIONS.md) |
 | **Validation** | `node architecture/knowledge-graphs/energy-event-detection/scripts/validate-graph.mjs` |
@@ -128,7 +128,10 @@ When code and registered authority disagree: **record the conflict**, investigat
 1. Audit complete relevant current state (code, data flow, persistence, workers, integrations, consumers, tests, runtime evidence, neighbor boundaries).
 2. Create `architecture/<module-slug>/` using [`architecture/tankstellenerkennung/`](tankstellenerkennung/) as the structural reference.
 3. Minimum artifacts: `README.md`, `CURRENT_STATE.md`, `AGENT_CONTRACT.md` (or named maintenance protocol), `KNOWLEDGE_GRAPH.md` or machine-readable graph, `decisions/`, `evidence/`, `contradictions/` or gaps, append-only `history/`.
-4. Classify knowledge: confirmed, inferred, historical, unknown, contradicted, production-validated.
+4. Classify knowledge on **two separate axes** (do not merge them):
+   - **Epistemic state** — what is known about a claim (for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`)
+   - **Decision / validation status** — maturity of a decision or change (for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`)
+   Each module authority’s own schema is authoritative; use its equivalent vocabulary when it differs from these examples.
 5. Add a registry entry in this file in the **same workstream/PR**.
 
 **Existing flat `architecture/*.md` documents** remain supporting evidence. They do **not** automatically become canonical authorities when a module is bootstrapped.

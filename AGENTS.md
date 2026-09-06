@@ -43,7 +43,10 @@ If the module is **not** registered in the central registry:
   - `evidence/` validation
   - `contradictions/` gaps / open questions
   - append-only `history/` or change tracking
-- Explicitly classify confirmed, inferred, historical, unknown, contradicted, and production-validated knowledge.
+- Classify knowledge on **two separate axes** (do not merge them):
+  - **Epistemic state** — what is known about a claim (for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`)
+  - **Decision / validation status** — maturity of a decision or change (for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`)
+- Each module authority’s own schema is authoritative; use its equivalent vocabulary when it differs from these examples.
 - Register the module in the central registry in the **same workstream/PR**.
 
 ### 5. During and after work
