@@ -27,6 +27,14 @@ jobs:
       AUTHORITY_LABEL: i18n-governance-authority-change
       HAS_AUTHORITY_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'i18n-governance-authority-change') }}
     steps:
+      - name: Load trusted invalidation helpers
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          sparse-checkout: |
+            .github/scripts/i18n-authority-protection-invalidation.lib.sh
+          sparse-checkout-cone-mode: false
+
       - name: Evaluate trusted governance authority protection
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,6 +74,12 @@ jobs:
           PRODUCT_PATHS_REPORT=""
           CLASSIFIED_PATH_COUNT=0
           ENUMERATED_FILE_COUNT=0
+          LABEL_INVALIDATION_API_RESULT=""
+          LABEL_INVALIDATION_API_EXIT_CODE=""
+          LABEL_INVALIDATION_API_DIAGNOSTIC=""
+
+          # shellcheck source=/dev/null
+          source "${GITHUB_WORKSPACE}/.github/scripts/i18n-authority-protection-invalidation.lib.sh"
 
           is_authority_path() {
             local path="$1"
@@ -157,16 +171,7 @@ jobs:
             if [ -n "$PRODUCT_PATHS_REPORT" ]; then
               echo "PRODUCT_OR_PRESENTATION_PATHS=${PRODUCT_PATHS_REPORT}"
             fi
-          }
-
-          invalidate_authority_label() {
-            if gh api --method DELETE \
-              "repos/${REPO}/issues/${PR_NUMBER}/labels/${AUTHORITY_LABEL}" \
-              >/dev/null 2>&1; then
-              AUTHORITY_LABEL_PRESENT=false
-              return 0
-            fi
-            return 1
+            emit_label_invalidation_diagnostics
           }
 
           if [ "${EVENT_CHANGED_FILES}" -ge 3000 ]; then
@@ -221,6 +226,8 @@ jobs:
             if [ "${EVENT_SENDER_LOGIN}" != "${TRUSTED_AUTHORITY_ACTOR}" ]; then
               if invalidate_authority_label; then
                 fail_authority_gate "UNTRUSTED_AUTHORITY_APPROVAL_ACTOR"
+              elif [ "${LABEL_INVALIDATION_API_RESULT}" = "POSTCONDITION_FAIL" ] || [ "${LABEL_INVALIDATION_API_RESULT}" = "POSTCONDITION_VERIFY_FAILED" ]; then
+                fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED"
               else
                 fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_FAILED"
               fi
@@ -232,6 +239,8 @@ jobs:
           if [ "${EVENT_ACTION}" = "synchronize" ] && [ "$AUTHORITY_CHANGED" = true ] && [ "$AUTHORITY_LABEL_PRESENT" = true ]; then
             if invalidate_authority_label; then
               fail_authority_gate "AUTHORITY_REAPPROVAL_REQUIRED_AFTER_HEAD_CHANGE"
+            elif [ "${LABEL_INVALIDATION_API_RESULT}" = "POSTCONDITION_FAIL" ] || [ "${LABEL_INVALIDATION_API_RESULT}" = "POSTCONDITION_VERIFY_FAILED" ]; then
+              fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED"
             else
               fail_authority_gate "AUTHORITY_LABEL_INVALIDATION_FAILED"
             fi
