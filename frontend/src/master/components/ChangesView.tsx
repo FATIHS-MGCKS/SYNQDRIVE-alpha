@@ -36,6 +36,69 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r6b-strict-not-committed-proof-2026-09-06',
+    version: '4.9.1077',
+    title: 'Trip FSM R6B — Strict NOT_COMMITTED Proof Closure',
+    summary: [
+      'NOT_COMMITTED now requires trip1 ONGOING AND trip1 is the sole vehicle ONGOING row AND no linked continuation.',
+      'Unrelated second ONGOING trip or originalTrip missing from ongoing set → AMBIGUOUS fail-closed.',
+      'Prevents old-trip fallthrough when duplicate/unrelated ONGOING lifecycle rows exist.',
+      'COMMITTED_LINKED proof, DecisionEngine logger containment, drift/reconciliation unchanged.',
+    ],
+    reason:
+      'R6B closure — absence of splitFrom alone was insufficient; unrelated ONGOING rows must not grant rollback proof.',
+    previousBehavior:
+      'trip1 ONGOING + no splitFrom link returned NOT_COMMITTED even when another unrelated ONGOING trip existed for the vehicle.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6B; trip-mid-gap-split-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r6a-split-commit-ambiguity-2026-09-06',
+    version: '4.9.1076',
+    title: 'Trip FSM R6A — Live Split Commit-Ambiguity Closure',
+    summary: [
+      'Durable live split classifier: NOT_COMMITTED / COMMITTED_LINKED / AMBIGUOUS — promise rejection no longer proves rollback.',
+      'PRE_COMMIT splitTripAtGap() catch re-reads PostgreSQL before old-trip fallthrough; only proven NOT_COMMITTED may continue on trip1.',
+      'COMMITTED_LINKED and AMBIGUOUS fail closed: no vehicleTrip.update on trip1, schedule ACTIVE_TICK recovery wake.',
+      'Reuses R2 RECOVERABLE_SPLIT_REPOINT proof (+ expected secondStartAt) for committed-but-rejected split promises.',
+      'TripDecisionEngine post-transaction logger wrapped so diagnostic failure cannot poison committed split result.',
+    ],
+    reason:
+      'R6A closure — splitTripAtGap() may commit then reject; local PRE_COMMIT phase must not fall through to stale trip1 ACTIVE_TICK writes.',
+    previousBehavior:
+      'Rejected splitTripAtGap() with local PRE_COMMIT assumed rollback and fell through to normal ACTIVE_TICK on trip1 even when DB already had trip1 COMPLETED + trip2 ONGOING.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6A; trip-mid-gap-split-commit.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r6-mid-gap-split-safety-2026-09-06',
+    version: '4.9.1075',
+    title: 'Trip FSM R6 — Mid-Gap Split Safety',
+    summary: [
+      'Live mid-gap drift contract: WITHIN_THRESHOLD / EXCEEDS_THRESHOLD / UNKNOWN — null/missing GPS no longer allows split (P5-F09).',
+      'UNKNOWN drift fail-closed; reconciliation remains later safety net with persisted waypoint evidence.',
+      'MidGapSplitCommitPhase PRE_COMMIT vs POST_COMMIT boundary after splitTripAtGap().',
+      'Post-commit failures abort ACTIVE_TICK without old-trip fallthrough; schedule successor tick for R2 recovery (P5-F04).',
+      'RECOVERABLE_SPLIT_REPOINT / splitFrom proof preserved for FSM repoint after split commit.',
+      'Rejected/applied split forensics in ACTIVE_TICK resultSummary; splitDriftM persisted on live trip1 rawDetectionMeta.',
+    ],
+    reason:
+      'P6 remediation package R6 — INV-09 mid-gap split must fail safe without position evidence and never continue old-trip processing after lifecycle split commit.',
+    previousBehavior:
+      'drift == null allowed live split; any split-block exception fell through to remaining ACTIVE_TICK using completed trip1 local tripId.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md; trip-mid-gap-split.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r5b-validation-attempt-isolation-2026-09-06',
     version: '4.9.1074',
     title: 'Trip FSM R5B — Validation Attempt Forensic Isolation',
