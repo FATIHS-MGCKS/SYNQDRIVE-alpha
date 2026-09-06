@@ -12,6 +12,7 @@ import {
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
 import { resolvePossibleEndFsmDwellAnchor, isPossibleEndRecoveryEligible } from '../../modules/vehicle-intelligence/trips/trip-fsm-clock-contract';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+import { TripLifecycleRecoveryService } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-recovery.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
@@ -44,6 +45,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly leaderGuard: SchedulerLeaderGuardService,
     @Optional() private readonly reconciliation?: TripReconciliationService,
+    @Optional() private readonly lifecycleRecovery?: TripLifecycleRecoveryService,
   ) {}
 
   async onModuleInit() {
@@ -91,6 +93,18 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     for (const s of staleStates) {
       const tokenId = s.vehicle?.latestState?.dimoTokenId;
       if (!tokenId) continue;
+
+      if (this.lifecycleRecovery) {
+        const recoveryOutcome =
+          await this.lifecycleRecovery.attemptRecoveryForDetectionState({
+            vehicleId: s.vehicleId,
+            organizationId: s.organizationId,
+            dimoTokenId: tokenId,
+          });
+        if (recoveryOutcome?.recovered || recoveryOutcome?.blocked) {
+          continue;
+        }
+      }
 
       const trigger =
         s.state === TripDetectionState.POSSIBLE_START

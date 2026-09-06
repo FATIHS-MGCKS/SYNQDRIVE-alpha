@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
@@ -78,6 +78,10 @@ import {
   resolveOperationalNoCoreInactivityAnchor,
   resolveStartCandidateClock,
 } from './trip-fsm-clock-contract';
+import {
+  TripLifecycleRecoveryService,
+  type ExecuteLifecycleRecoveryParams,
+} from './trip-lifecycle-recovery.service';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -161,6 +165,8 @@ export class TripDetectionOrchestrationService {
     private readonly decisionEngine: TripDecisionEngine,
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
+    @Inject(forwardRef(() => TripLifecycleRecoveryService))
+    private readonly lifecycleRecovery: TripLifecycleRecoveryService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -251,6 +257,104 @@ export class TripDetectionOrchestrationService {
       where: { vehicleId },
       data: { state: newState, ...extras } as any,
     });
+  }
+
+  /**
+   * R2 — apply a lifecycle invariant recovery action (FSM authority only).
+   * Canonical trip rows are never mutated here.
+   */
+  async executeLifecycleRecoveryAction(
+    params: ExecuteLifecycleRecoveryParams,
+  ): Promise<void> {
+    const now = new Date();
+    const {
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      det,
+      action,
+      tripId,
+      classification,
+      referencedTrip,
+    } = params;
+
+    if (action === 'ADOPT_ONGOING' || action === 'REPOINT_ACTIVE_TRIP') {
+      await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
+        activeTripId: tripId,
+        possibleStartEnteredAt: null,
+        ...(action === 'ADOPT_ONGOING' ? clearPossibleStartClockFields() : {}),
+        lastActivityAt: now,
+        lastEvidenceSummary: {
+          ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          lifecycleRecoveryTripId: tripId,
+        },
+      });
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'RESET_TO_RESTING') {
+      const restingReason =
+        referencedTrip?.tripStatus === TripStatus.CANCELLED
+          ? 'discard'
+          : 'complete';
+      const restAnchor =
+        referencedTrip?.tripStatus === TripStatus.COMPLETED &&
+        referencedTrip.endTime
+          ? referencedTrip.endTime
+          : now;
+
+      await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+        activeTripId: null,
+        ...clearPossibleStartClockFields(),
+        ...clearPossibleEndClockFields(),
+        lastActivityAt: restAnchor,
+        lastMeaningfulMovementAt: null,
+        lastCoreProcessedAt: null,
+        lastRouteProcessedAt: null,
+        lastDrivingProcessedAt: null,
+        startOdometerKm: null,
+        startFuelLevel: null,
+        startEvSoc: null,
+        startDetectionMode: null,
+        startConfidence: null,
+        endDetectionMode: null,
+        endConfidence: null,
+        endValidationAttempts: 0,
+        cusumValidatedAt: null,
+        cusumSegmentStart: null,
+        cusumSegmentEnd: null,
+        lastEvidenceSummary: {
+          lastRestingReason: restingReason,
+          lifecycleRecovery: classification,
+          lifecycleRecoveryAt: now.toISOString(),
+          recoveredFromTripId: tripId,
+        },
+      });
+    }
+  }
+
+  private async maybeRecoverLifecycleInvariant(params: {
+    det: DetState;
+    organizationId: string | null;
+    dimoTokenId: number;
+    context?: {
+      expectedStartAt?: Date | null;
+      expectedDimoSegmentId?: string | null;
+      mergeTargetTripId?: string | null;
+    };
+  }): Promise<'recovered' | 'blocked' | 'continue'> {
+    const outcome = await this.lifecycleRecovery.attemptRecovery({
+      det: params.det,
+      organizationId: params.organizationId,
+      dimoTokenId: params.dimoTokenId,
+      context: params.context,
+    });
+    if (outcome.recovered) return 'recovered';
+    if (outcome.blocked) return 'blocked';
+    return 'continue';
   }
 
   // ══════════════════════════════════════════════════════════
@@ -892,6 +996,25 @@ export class TripDetectionOrchestrationService {
           effectiveStartAt,
         );
 
+        const recoveryPreflight = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
+          context: {
+            expectedStartAt: effectiveStartAt,
+            expectedDimoSegmentId:
+              resolvedStart.dimoSegmentId ??
+              `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            mergeTargetTripId:
+              mergeCheck.shouldMergeWithPrevious && previousTrip?.id
+                ? previousTrip.id
+                : null,
+          },
+        });
+        if (recoveryPreflight !== 'continue') {
+          return;
+        }
+
         if (mergeCheck.shouldMergeWithPrevious && previousTrip?.id) {
           // Reopen the previous trip instead of creating a new one
           // DecisionEngine is the sole writer of tripStatus changes
@@ -1082,12 +1205,28 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
+      const activeRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (activeRecovery !== 'continue') {
+        return;
+      }
+
       const tripId = det.activeTripId;
       if (!tripId) {
         this.logger.warn(`ACTIVE_TICK but no activeTripId for ${vehicleId}`);
-        await this.transitionState(vehicleId, TripDetectionState.RESTING, {
-          activeTripId: null,
+        const missingPointerRecovery = await this.maybeRecoverLifecycleInvariant({
+          det,
+          organizationId,
+          dimoTokenId,
         });
+        if (missingPointerRecovery === 'continue') {
+          await this.transitionState(vehicleId, TripDetectionState.RESTING, {
+            activeTripId: null,
+          });
+        }
         return;
       }
 
@@ -1922,6 +2061,15 @@ export class TripDetectionOrchestrationService {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
+      const peRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (peRecovery !== 'continue') {
+        return;
+      }
+
       const profile = String(det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN);
       const now = new Date();
       const endBoundaryAt = resolvePossibleEndBoundaryAnchor(det, now);
@@ -2371,6 +2519,15 @@ export class TripDetectionOrchestrationService {
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       const tripId = det.activeTripId;
+
+      const endRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId: data.dimoTokenId,
+      });
+      if (endRecovery !== 'continue') {
+        return;
+      }
 
       if (tripId) {
         const trip = await this.prisma.vehicleTrip.findUnique({

@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r2-lifecycle-invariants-2026-09-06',
+    version: '4.9.1069',
+    title: 'Trip FSM R2 — Lifecycle Commit & Orphan Recovery Invariants',
+    summary: [
+      'Pure lifecycle invariant planner separates healthy, recoverable, and fail-closed conflict states.',
+      'Start orphan: adopt proven ONGOING trip before duplicate createTrip on POSSIBLE_START replay.',
+      'Merge orphan: adopt reopened trip when mergeTargetTripId matches committed ONGOING row.',
+      'End orphan: RESET_TO_RESTING when activeTripId is already COMPLETED/CANCELLED — no re-finalize.',
+      'Split repoint: REPOINT_ACTIVE_TRIP when continuation trip rawDetectionMeta.splitFrom proves link.',
+      'Recovery scheduler runs invariant preflight before stale re-enqueue; conflicts fail closed.',
+      'Metrics: ongoing_fsm_divergence_total, completed_fsm_divergence_total, lifecycle recovery/conflict counters.',
+      'No threshold, polling, R1 clock, CUSUM, mid-gap policy, or deploy changes.',
+    ],
+    reason:
+      'P6 remediation package R2 — detect/repair canonical trip lifecycle vs FSM divergence (P4-F06, P3-F06, P5-F05; P4-F10 partially via app enforcement).',
+    previousBehavior:
+      'createTrip/finalizeTrip and FSM transitionState committed separately; crash between steps left orphans and recovery could duplicate lifecycle writes.',
+    details:
+      'docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md; trip-lifecycle-invariant.ts + trip-lifecycle-recovery.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T18:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r1-event-time-authority-2026-09-06',
     version: '4.9.1068',
     title: 'Trip FSM R1 — Event-Time Authority & Boundary Field Contract',
