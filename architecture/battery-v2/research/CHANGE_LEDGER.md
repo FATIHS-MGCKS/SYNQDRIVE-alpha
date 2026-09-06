@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-06 — M3.1 KS MX 2024 REST_6H pre-maturity + telemetry availability probe
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | REST_60M COMPLETED contaminated; REST_6H ENQUEUED due `2026-09-07T02:00:44Z`; KS MX LV silent since trip end `20:00:44`. |
+| **CHANGE** | Read-only probe @ `2026-09-06T22:14:14Z` — pre-due eligibility gate; telemetry timeline + fleet DIMO sleep pattern forensic. |
+| **WHY** | Determine whether REST_6H can mature and whether DIMO wake-only LV during sleep systematically blocks natural REST validation. |
+| **VALIDATION** | Production DB + VLS + fleet post-T0 session LV counts; graph validator PASS. |
+| **OBSERVED_EFFECT** | REST_6H still ENQUEUED (not due). 0 LV in REST_60M window; 1 anchor LV at trip end then silence ~2h13m+. Fleet: 0 post-T0 VALID REST; all resting sessions 0 in-window LV. `REST_LV_SIGNAL_BEHAVIOR=WAKE_ONLY`. |
+| **NON_EFFECTS** | REST_6H measurement/E2E not yet evaluable; `PRODUCTION_VALIDATED` unchanged. |
+| **REMAINING_GAPS** | Re-probe REST_6H after `2026-09-07T03:30:44Z`; architecture review of E2E gate vs DIMO signal observability. |
+| **DECISION_STATUS** | `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`; `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`. |
+
 ## CL-2026-09-06 — M3.1 KS MX 2024 REST_60M maturity probe (PR #1551 finalization)
 
 | Field | Content |
