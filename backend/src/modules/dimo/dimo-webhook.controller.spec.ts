@@ -8,6 +8,7 @@ function makeController(overrides?: {
   deviceConnection?: Partial<DeviceConnectionMock>;
   deviceConnectionInbox?: Partial<DeviceConnectionInboxMock>;
   rpmWebhookCandidate?: Partial<RpmWebhookMock>;
+  snapshotWakeIntake?: Partial<SnapshotWakeIntakeMock>;
   verificationToken?: string;
 }) {
   const prisma: PrismaServiceMock = {
@@ -36,6 +37,10 @@ function makeController(overrides?: {
     }),
     ...overrides?.rpmWebhookCandidate,
   };
+  const snapshotWakeIntake: SnapshotWakeIntakeMock = {
+    handleProviderWake: jest.fn().mockResolvedValue({ outcome: 'ENQUEUED' }),
+    ...overrides?.snapshotWakeIntake,
+  };
   const dtcService = { upsertDtc: jest.fn() };
   const dimoConf = {
     webhookVerificationToken: overrides?.verificationToken ?? process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
@@ -47,8 +52,9 @@ function makeController(overrides?: {
     deviceConnection as never,
     deviceConnectionInbox as never,
     rpmWebhookCandidate as never,
+    snapshotWakeIntake as never,
   );
-  return { controller, prisma, deviceConnection, deviceConnectionInbox, rpmWebhookCandidate, dtcService };
+  return { controller, prisma, deviceConnection, deviceConnectionInbox, rpmWebhookCandidate, snapshotWakeIntake, dtcService };
 }
 
 type PrismaServiceMock = {
@@ -66,6 +72,10 @@ type DeviceConnectionInboxMock = {
 
 type RpmWebhookMock = {
   ingestRpmThresholdEvent: jest.Mock;
+};
+
+type SnapshotWakeIntakeMock = {
+  handleProviderWake: jest.Mock;
 };
 
 const mockRes = { type: jest.fn().mockReturnThis() } as never;

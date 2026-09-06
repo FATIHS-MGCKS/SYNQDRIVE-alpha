@@ -15,6 +15,8 @@ import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/vo
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { BookingDocumentGenerationModule } from '@modules/documents/booking-document-generation/booking-document-generation.module';
 
+import { SnapshotWakeModule } from './snapshot-wake/snapshot-wake.module';
+
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
 import { DimoDtcProcessor } from './processors/dimo-dtc.processor';
@@ -87,6 +89,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
     ),
     DimoModule,
+    SnapshotWakeModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
     NotificationsModule,

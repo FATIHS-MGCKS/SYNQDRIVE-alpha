@@ -32,6 +32,7 @@ import {
 import { createHmac, timingSafeEqual } from 'crypto';
 import dimoConfig from '@config/dimo.config';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
+import { SnapshotWakeIntakeService } from '@workers/snapshot-wake/snapshot-wake-intake.service';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
@@ -47,6 +48,7 @@ export class DimoWebhookController {
     private readonly deviceConnection: DeviceConnectionWebhookService,
     private readonly deviceConnectionInbox: DeviceConnectionWebhookInboxService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
+    private readonly snapshotWakeIntake: SnapshotWakeIntakeService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
@@ -234,13 +236,35 @@ export class DimoWebhookController {
     }
 
     if (signalName === 'speed' && value != null) {
-      this.logger.debug(`Speed event for vehicle ${vehicle.id}: ${value} km/h`);
-      return { status: 'processed', type: 'speed' };
+      const receivedAt = new Date();
+      const wake = await this.snapshotWakeIntake.handleProviderWake({
+        tokenId,
+        signalName,
+        value,
+        timestamp,
+        receivedAt,
+      });
+      return {
+        status: 'processed',
+        type: 'speed',
+        wakeOutcome: wake.outcome,
+      };
     }
 
     if (signalName === 'isIgnitionOn') {
-      this.logger.debug(`Ignition event for vehicle ${vehicle.id}: ${value}`);
-      return { status: 'processed', type: 'ignition' };
+      const receivedAt = new Date();
+      const wake = await this.snapshotWakeIntake.handleProviderWake({
+        tokenId,
+        signalName,
+        value,
+        timestamp,
+        receivedAt,
+      });
+      return {
+        status: 'processed',
+        type: 'ignition',
+        wakeOutcome: wake.outcome,
+      };
     }
 
     return { status: 'acknowledged' };

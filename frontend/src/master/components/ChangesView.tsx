@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r9-adaptive-polling-wake-2026-09-07',
+    version: '4.9.1081',
+    title: 'Trip FSM R9 — Adaptive Snapshot Wake / Provider Trigger Path',
+    summary: [
+      'DIMO speed/ignition Vehicle Triggers wake RESTING vehicles into canonical snapshot fetch without waiting for LONG_IDLE tier.',
+      'SnapshotWakeCoordinatorService shares enqueue/coalescing between scheduler and webhook; single jobId snapshot-{vehicleId}.',
+      'Trusted post-complete provider wake can bypass 120s complete cooldown when wake EVENT_TIME and full snapshot catch up.',
+      'Bounded WAKE_PROBE (max generation 1) uses RECENTLY_ACTIVE tier delay when snapshot lags wake or monotonic guard skips.',
+      'Wake metrics + tier occupancy gauges; startWake forensics on POSSIBLE_START evidence.',
+    ],
+    reason:
+      'R9 P6 remediation — close P4-F04 idle-tier discovery latency and P4-F05 post-complete cooldown blind spot without retuning tier cadence.',
+    previousBehavior:
+      'Speed/ignition webhooks ACK-only; LONG_IDLE 30m polling primary discovery path; 120s complete cooldown blocked all scheduled start scoring.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T00:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r8-observability-forensics-2026-09-06',
     version: '4.9.1080',
     title: 'Trip FSM R8 — Observability & Forensic Metadata Contract',
