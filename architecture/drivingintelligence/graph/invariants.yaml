@@ -1,0 +1,186 @@
+# Driving Intelligence Knowledge Graph — Invariants (bootstrap V1)
+
+invariants:
+  - id: DI-INV-SEGMENTS-001
+    kind: CONFIRMED_INVARIANT
+    statement: DIMO Segments define canonical trip boundaries; Driving Intelligence does not redefine them from HF segmentation.
+    rationale: Product architecture rule; trip FSM owns boundaries.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-TRIP-SEGMENTS-001
+      - DI-DEC-SEGMENTS-CANONICAL-001
+    evidence:
+      - DI-EVID-CODE-BOUNDARY-001
+    source_paths:
+      - .cursor/rules/projektregel.mdc
+
+  - id: DI-INV-RC-SEPARATION-001
+    kind: CONFIRMED_INVARIANT
+    statement: Reference capture HF recovery and block polling policies do not alter production post-trip HF enrichment without an explicit cutover decision.
+    rationale: DI-EV-0035C scope isolation; prevents accidental production behavior change.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SVC-RC-RUNNER-001
+      - DI-SVC-BEHAVIOR-ENRICH-001
+      - DI-DEC-RC-SEPARATE-001
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+    source_paths:
+      - docs/audits/driving-intelligence-hf-recovery-runtime-implementation-2026-09.md
+
+  - id: DI-INV-POLL-NOT-GEN-001
+    kind: CONFIRMED_INVARIANT
+    statement: Provider API request cadence is not equal to telemetry signal generation cadence.
+    rationale: RD003 proved interval 1s query returns ~2.00s median physical samples; RD002 sealed P50 13.489s is a separate population.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SIG-HF-001
+      - DI-POL-HF-BLOCK-POLL-001
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+    source_paths:
+      - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
+
+  - id: DI-INV-GAP-NOT-IDLE-001
+    kind: CONFIRMED_INVARIANT
+    statement: A telemetry gap in HF data does not prove vehicle inactivity.
+    rationale: Provider settlement delay, sparse buckets, and watermark gaps create apparent gaps.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-ACQ-HF-POST-TRIP-001
+      - DI-POL-HF-RECOVERY-V2-001
+    evidence:
+      - DI-EVID-0035C-RECOVERY-001
+    source_paths:
+      - docs/audits/data/rd004-segment-b/rd004-b-findings.md
+
+  - id: DI-INV-STRESS-NOT-DRIVER-001
+    kind: CONFIRMED_INVARIANT
+    statement: drivingStressScore measures vehicle operational load, not driver quality or skill.
+    rationale: Explicit in DriverScoreService and impact scorer documentation.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-MET-STRESS-001
+      - DI-SVC-DRIVER-SCORE-001
+      - DI-DEC-STRESS-NOT-DRIVER-001
+    evidence:
+      - DI-EVID-CODE-SCORE-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts
+
+  - id: DI-INV-LOAD-NOT-WEAR-001
+    kind: CONFIRMED_INVARIANT
+    statement: tireLoad and brakingLoad are operational load proxies, not measurements of physical tread or pad wear.
+    rationale: loadComponentsJson uses sourceQuality and assessability to distinguish proxy from measured.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-MET-TIRE-LOAD-001
+      - DI-MET-BRAKE-LOAD-001
+      - DI-DEC-LOAD-PROXY-001
+    evidence:
+      - DI-EVID-CODE-LOAD-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-impact/driving-impact-load-components.ts
+
+  - id: DI-INV-IDEMPOTENT-001
+    kind: CONFIRMED_INVARIANT
+    statement: V2 job enqueue and impact compute must be idempotent under retry and multi-replica execution.
+    rationale: idempotencyKey on DrivingIntelligenceJob; sourceFingerprint on TripDrivingImpact.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-TBL-JOB-001
+      - DI-TBL-TDI-001
+      - DI-SVC-JOB-DISPATCH-001
+    evidence:
+      - DI-EVID-CODE-V2-FLAG-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-jobs/driving-intelligence-jobs.repository.ts
+
+  - id: DI-INV-ORG-SCOPE-001
+    kind: CONFIRMED_INVARIANT
+    statement: All Driving Intelligence queries and writes must respect organization tenancy.
+    rationale: Multi-tenant SaaS; repositories assert vehicle.organizationId.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-API-VI-001
+      - DI-TBL-JOB-001
+      - DI-TBL-RUN-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/tenant/vehicle-intelligence-tenant.scope.ts
+
+  - id: DI-INV-SOURCE-TS-001
+    kind: CONFIRMED_INVARIANT
+    statement: Provider source timestamps must be preserved through enrichment and event persistence.
+    rationale: Temporal reconstruction and trip association depend on provider time authority.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-TBL-DE-001
+      - DI-TBL-TBE-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/dimo-native-driving-events/
+
+  - id: DI-INV-MULTI-REPLICA-001
+    kind: CONDITIONAL_INVARIANT
+    statement: DI reconciliation schedulers execute as singleton only when SCHEDULER_LEADER_ELECTION_ENABLED is true and election functions.
+    rationale: Same pattern as Tankstellenerkennung recovery; disabled election allows duplicate sweeps.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SCHED-RECONCILE-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/
+
+  - id: DI-INV-V2-NO-FSM-001
+    kind: CONFIRMED_INVARIANT
+    statement: Enabling DRIVING_INTELLIGENCE_V2_ENABLED does not affect live trip detection FSM.
+    rationale: isTripDetectionAffected() hardcoded false in V2 config design.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-FLAG-V2-MASTER-001
+      - DI-ADJ-TRIP-FSM-001
+    evidence:
+      - DI-EVID-CODE-V2-FLAG-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence-v2/driving-intelligence-v2.config.ts
+
+  - id: DI-INV-NO-RAW-HF-PG-001
+    kind: CONFIRMED_INVARIANT
+    statement: Raw HF time series are not persisted in PostgreSQL; only derived events and optional ClickHouse mirror.
+    rationale: Phase 1 audit storage truth; re-enrichment re-fetches DIMO.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-DB-PG-001
+      - DI-DB-CH-001
+    evidence:
+      - DI-EVID-PHASE1-001
+    source_paths:
+      - docs/audits/driving-intelligence-phase-1-current-state-forensic-audit-2026-08-30.md
+
+  - id: DI-INV-LTE-NATIVE-AUTHORITY-001
+    kind: CONFIRMED_INVARIANT
+    statement: For LTE_R1 vehicles, native DIMO behavior events are the primary short-event misuse authority; whole-trip HF is Trip Signal Summary only.
+    rationale: Sparse/variable HF cadence (see CADENCE_DENSITY.md; do not combine RD002/RD003 medians) cannot assert short-lived misuse from point-pair alone.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SIG-NATIVE-001
+      - DI-SVC-BEHAVIOR-ENRICH-001
+    evidence:
+      - DI-EVID-NATIVE-EVENTS-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+
+  - id: DI-INV-CADENCE-FOUR-WAY-001
+    kind: CONFIRMED_INVARIANT
+    statement: >
+      QUERY_INTERVAL != PROVIDER_POLL_CADENCE != OBSERVED_BUCKET_DENSITY != PHYSICAL_SENSOR_SAMPLING_FREQUENCY.
+      These four concepts must never be conflated.
+    rationale: RD002/003/004 and C.1 block-polling audit proved distinct layers.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-SIG-HF-001
+      - DI-POL-HF-BLOCK-POLL-001
+      - DI-ACQ-HF-POST-TRIP-001
+    evidence:
+      - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-0035C1-BLOCK-001
+    source_paths:
+      - architecture/drivingintelligence/evidence/signal-inventory/CADENCE_DENSITY.md

@@ -1,0 +1,361 @@
+# Driving Intelligence Knowledge Graph — Edges (bootstrap V1)
+
+edges:
+  # External → DI
+  - id: DI-EDGE-001
+    from: DI-EXT-DIMO-001
+    relation: provides
+    to: DI-SIG-HF-001
+    notes: DIMO signals API
+
+  - id: DI-EDGE-002
+    from: DI-EXT-DIMO-001
+    relation: provides
+    to: DI-SIG-NATIVE-001
+    notes: DIMO behavior events
+
+  - id: DI-EDGE-003
+    from: DI-TRIP-SEGMENTS-001
+    relation: triggers
+    to: DI-SVC-ENRICH-ORCH-001
+    notes: COMPLETED trip triggers legacy enrichment
+
+  - id: DI-EDGE-004
+    from: DI-ADJ-TRIP-FSM-001
+    relation: upstream_of
+    to: DI-SVC-POST-FINALIZE-001
+    notes: Trip finalize hook
+
+  # Legacy pipeline
+  - id: DI-EDGE-010
+    from: DI-SVC-ENRICH-ORCH-001
+    relation: enqueues
+    to: DI-QUEUE-BEHAVIOR-001
+
+  - id: DI-EDGE-011
+    from: DI-QUEUE-BEHAVIOR-001
+    relation: processes
+    to: DI-WORK-BEHAVIOR-001
+
+  - id: DI-EDGE-012
+    from: DI-WORK-BEHAVIOR-001
+    relation: invokes
+    to: DI-SVC-BEHAVIOR-ENRICH-001
+
+  - id: DI-EDGE-013
+    from: DI-SVC-BEHAVIOR-ENRICH-001
+    relation: consumes
+    to: DI-ACQ-HF-POST-TRIP-001
+
+  - id: DI-EDGE-014
+    from: DI-ACQ-HF-POST-TRIP-001
+    relation: consumes
+    to: DI-SIG-HF-001
+
+  - id: DI-EDGE-015
+    from: DI-SVC-BEHAVIOR-ENRICH-001
+    relation: derives
+    to: DI-ALGO-HF-ACCEL-001
+
+  - id: DI-EDGE-016
+    from: DI-SVC-BEHAVIOR-ENRICH-001
+    relation: derives
+    to: DI-ALGO-HF-BRAKE-001
+
+  - id: DI-EDGE-017
+    from: DI-SVC-BEHAVIOR-ENRICH-001
+    relation: derives
+    to: DI-ALGO-HF-ABUSE-001
+
+  - id: DI-EDGE-018
+    from: DI-SVC-BEHAVIOR-ENRICH-001
+    relation: writes
+    to: DI-TBL-TBE-001
+
+  - id: DI-EDGE-019
+    from: DI-SVC-ENRICH-ORCH-001
+    relation: enqueues
+    to: DI-QUEUE-IMPACT-001
+
+  - id: DI-EDGE-020
+    from: DI-QUEUE-IMPACT-001
+    relation: processes
+    to: DI-WORK-IMPACT-001
+
+  - id: DI-EDGE-021
+    from: DI-WORK-IMPACT-001
+    relation: invokes
+    to: DI-SVC-IMPACT-001
+
+  - id: DI-EDGE-022
+    from: DI-SVC-IMPACT-001
+    relation: derives
+    to: DI-ALGO-IMPACT-SCORER-001
+
+  - id: DI-EDGE-023
+    from: DI-ALGO-IMPACT-SCORER-001
+    relation: derives
+    to: DI-MET-STRESS-001
+
+  - id: DI-EDGE-024
+    from: DI-SVC-IMPACT-001
+    relation: derives
+    to: DI-MET-TIRE-LOAD-001
+
+  - id: DI-EDGE-025
+    from: DI-SVC-IMPACT-001
+    relation: derives
+    to: DI-MET-BRAKE-LOAD-001
+
+  - id: DI-EDGE-026
+    from: DI-SVC-IMPACT-001
+    relation: writes
+    to: DI-TBL-TDI-001
+
+  - id: DI-EDGE-027
+    from: DI-SVC-IMPACT-001
+    relation: writes
+    to: DI-TBL-VDI-001
+
+  - id: DI-EDGE-028
+    from: DI-SVC-DRIVER-SCORE-001
+    relation: reads
+    to: DI-TBL-TDI-001
+    notes: Aggregates drivingStressScore
+
+  - id: DI-EDGE-029
+    from: DI-SVC-DRIVER-SCORE-001
+    relation: aggregates
+    to: DI-MET-STRESS-001
+
+  # V2 pipeline
+  - id: DI-EDGE-040
+    from: DI-FLAG-V2-MASTER-001
+    relation: gates
+    to: DI-SVC-POST-FINALIZE-001
+
+  - id: DI-EDGE-041
+    from: DI-SVC-POST-FINALIZE-001
+    relation: triggers
+    to: DI-SVC-ANALYSIS-INIT-001
+
+  - id: DI-EDGE-042
+    from: DI-SVC-ANALYSIS-INIT-001
+    relation: writes
+    to: DI-TBL-RUN-001
+
+  - id: DI-EDGE-043
+    from: DI-SVC-JOB-DISPATCH-001
+    relation: enqueues
+    to: DI-QUEUE-DI-JOBS-001
+
+  - id: DI-EDGE-044
+    from: DI-SVC-JOB-DISPATCH-001
+    relation: writes
+    to: DI-TBL-JOB-001
+
+  - id: DI-EDGE-045
+    from: DI-QUEUE-DI-JOBS-001
+    relation: processes
+    to: DI-WORK-DI-JOBS-001
+
+  - id: DI-EDGE-046
+    from: DI-SVC-STAGE-ORCH-001
+    relation: depends_on
+    to: DI-SVC-JOB-DISPATCH-001
+
+  - id: DI-EDGE-047
+    from: DI-SCHED-RECONCILE-001
+    relation: recovers
+    to: DI-QUEUE-DI-JOBS-001
+
+  - id: DI-EDGE-048
+    from: DI-WORK-DI-JOBS-001
+    relation: invokes
+    to: DI-SVC-IMPACT-001
+    notes: DRIVING_IMPACT_COMPUTE handler
+
+  - id: DI-EDGE-049
+    from: DI-SVC-ANALYSIS-INIT-001
+    relation: writes
+    to: DI-TBL-ASSESS-001
+
+  # Reference capture
+  - id: DI-EDGE-060
+    from: DI-FLAG-RC-001
+    relation: gates
+    to: DI-SVC-RC-RUNNER-001
+
+  - id: DI-EDGE-061
+    from: DI-FLAG-HF-RECOVERY-V2-001
+    relation: gates
+    to: DI-POL-HF-RECOVERY-V2-001
+
+  - id: DI-EDGE-062
+    from: DI-SVC-RC-RUNNER-001
+    relation: enqueues
+    to: DI-QUEUE-RC-001
+
+  - id: DI-EDGE-063
+    from: DI-SVC-RC-RUNNER-001
+    relation: uses
+    to: DI-POL-HF-RECOVERY-V2-001
+
+  - id: DI-EDGE-064
+    from: DI-SVC-RC-RUNNER-001
+    relation: uses
+    to: DI-POL-HF-BLOCK-POLL-001
+
+  - id: DI-EDGE-065
+    from: DI-POL-HF-BLOCK-POLL-001
+    relation: validates
+    to: DI-HYP-BLOCK-POLL-30S-001
+
+  # Persistence
+  - id: DI-EDGE-070
+    from: DI-TBL-TDI-001
+    relation: associates_with
+    to: DI-TBL-TRIP-001
+
+  - id: DI-EDGE-071
+    from: DI-TBL-TBE-001
+    relation: associates_with
+    to: DI-TBL-TRIP-001
+
+  - id: DI-EDGE-072
+    from: DI-TBL-DE-001
+    relation: associates_with
+    to: DI-TBL-TRIP-001
+
+  - id: DI-EDGE-073
+    from: DI-TBL-RUN-001
+    relation: associates_with
+    to: DI-TBL-TRIP-001
+
+  - id: DI-EDGE-074
+    from: DI-DB-PG-001
+    relation: persists
+    to: DI-TBL-TDI-001
+
+  - id: DI-EDGE-075
+    from: DI-DB-CH-001
+    relation: reads
+    to: DI-SIG-HF-001
+    notes: Optional mirror read for assessability
+
+  # API / UI
+  - id: DI-EDGE-080
+    from: DI-API-VI-001
+    relation: reads
+    to: DI-TBL-TDI-001
+
+  - id: DI-EDGE-081
+    from: DI-API-VI-001
+    relation: reads
+    to: DI-TBL-DE-001
+
+  - id: DI-EDGE-082
+    from: DI-API-RENTAL-001
+    relation: reads
+    to: DI-TBL-RENTAL-001
+
+  - id: DI-EDGE-083
+    from: DI-API-VI-001
+    relation: exposes
+    to: DI-UI-STRESS-001
+
+  # Health downstream
+  - id: DI-EDGE-090
+    from: DI-MET-BRAKE-LOAD-001
+    relation: downstream_of
+    to: DI-ADJ-BRAKE-HEALTH-001
+
+  - id: DI-EDGE-091
+    from: DI-MET-TIRE-LOAD-001
+    relation: downstream_of
+    to: DI-ADJ-TIRE-HEALTH-001
+
+  # Decisions govern
+  - id: DI-EDGE-100
+    from: DI-DEC-SEGMENTS-CANONICAL-001
+    relation: governs
+    to: DI-TRIP-SEGMENTS-001
+
+  - id: DI-EDGE-101
+    from: DI-DEC-RC-SEPARATE-001
+    relation: governs
+    to: DI-POL-HF-RECOVERY-V2-001
+
+  - id: DI-EDGE-102
+    from: DI-DEC-LOAD-PROXY-001
+    relation: governs
+    to: DI-MET-TIRE-LOAD-001
+
+  - id: DI-EDGE-103
+    from: DI-DEC-LOAD-PROXY-001
+    relation: governs
+    to: DI-MET-BRAKE-LOAD-001
+
+  - id: DI-EDGE-104
+    from: DI-DEC-V2-FLAG-001
+    relation: governs
+    to: DI-FLAG-V2-MASTER-001
+
+  # Evidence supports
+  - id: DI-EDGE-110
+    from: DI-EVID-RD003-CADENCE-001
+    relation: supports
+    to: DI-GAP-HF-CADENCE-001
+
+  - id: DI-EDGE-111
+    from: DI-EVID-0035C1-BLOCK-001
+    relation: supports
+    to: DI-GAP-BLOCK-POLL-VALIDATION-001
+
+  - id: DI-EDGE-112
+    from: DI-EVID-RD003-CADENCE-001
+    relation: contradicts
+    to: DI-ALGO-HF-ABUSE-001
+    notes: 1Hz assumption vs 2s observed
+
+  - id: DI-EDGE-113
+    from: DI-CONTRA-HF-1HZ-001
+    relation: supports
+    to: DI-GAP-HF-CADENCE-001
+
+  # Tests
+  - id: DI-EDGE-120
+    from: DI-ALGO-IMPACT-SCORER-001
+    relation: tested_by
+    to: DI-TEST-IMPACT-SCORER-001
+
+  - id: DI-EDGE-121
+    from: DI-POL-HF-RECOVERY-V2-001
+    relation: tested_by
+    to: DI-TEST-HF-RECOVERY-001
+
+  - id: DI-EDGE-122
+    from: DI-POL-HF-BLOCK-POLL-001
+    relation: tested_by
+    to: DI-TEST-BLOCK-POLL-001
+
+  - id: DI-EDGE-123
+    from: DI-DEC-DEPLOY-DISABLED-001
+    relation: governs
+    to: DI-FLAG-HF-RECOVERY-V2-001
+    notes: PR 1533 deploy with feature off
+
+  - id: DI-EDGE-124
+    from: DI-DEC-NATIVE-LTE-001
+    relation: governs
+    to: DI-SIG-NATIVE-001
+
+  - id: DI-EDGE-125
+    from: DI-HYP-001
+    relation: contradicts
+    to: DI-CONTRA-HF-1HZ-001
+
+  - id: DI-EDGE-126
+    from: DI-DEC-PROD-DET-UNCHANGED-001
+    relation: governs
+    to: DI-ALGO-HF-ACCEL-001
