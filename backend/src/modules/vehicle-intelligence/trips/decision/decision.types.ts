@@ -58,6 +58,20 @@ export interface CreateTripParams {
   startDetectionMode?: string;
   startConfidence?: 'LOW' | 'MEDIUM' | 'HIGH';
   tripSource?: TripSource;
+  /** R2A durable start-episode fingerprint for orphan recovery. */
+  lifecycleRecovery?: {
+    candidateStartAt: Date;
+    effectiveStartAt: Date;
+    dimoSegmentId?: string | null;
+  };
+}
+
+export interface ReopenTripForMergeParams {
+  targetTripId: string;
+  lifecycleRecovery?: {
+    candidateStartAt: Date;
+    effectiveStartAt?: Date | null;
+  };
 }
 
 export interface FinalizeMeta {

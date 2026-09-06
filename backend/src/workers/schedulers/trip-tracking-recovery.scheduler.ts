@@ -22,18 +22,17 @@ const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
 /** Threshold: an ACTIVE_TRIP older than this is considered suspiciously long */
 const SUSPICIOUS_LONG_OPEN_THRESHOLD_MS = 4 * 3600_000; // 4 hours
 
+const FAIL_CLOSED_CLASSIFICATIONS = new Set([
+  'CONFLICT_MULTIPLE_ONGOING',
+  'CONFLICT_MISMATCH',
+  'CONFLICT_AMBIGUOUS',
+]);
+
 /**
  * Recovery-only safety-net scheduler for the V2 Trip Detection pipeline.
  *
- * This is NOT a primary tracking path. The primary flow is:
- *   Snapshot Worker → POSSIBLE_START → self-retriggering ACTIVE_TICK loop
- *
- * This scheduler exists solely to recover vehicles that are stuck in active
- * detection states (POSSIBLE_START, ACTIVE_TRIP, IDLE_WITHIN_TRIP, POSSIBLE_END)
- * without an active queued tick — e.g. after a crash, deploy, or stalled job.
- *
- * It runs every 2 minutes and re-enqueues the appropriate trigger for any
- * vehicle whose worker lock has expired (no active processing in flight).
+ * R2A: scheduler wakes workers only — lifecycle recovery runs under the
+ * existing worker lock inside TripDetectionOrchestrationService handlers.
  */
 @Injectable()
 export class TripTrackingRecoveryScheduler implements OnModuleInit {
@@ -54,11 +53,6 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     );
   }
 
-  /**
-   * Periodic recovery scan: find vehicles in active trip detection states
-   * whose worker lock has expired (stalled processing) and re-enqueue
-   * the appropriate tracking trigger so the self-retriggering loop resumes.
-   */
   @Interval(120_000)
   async recoverStaleTripStates(): Promise<void> {
     if (!this.leaderGuard.shouldRun('trip_tracking_recovery')) return;
@@ -90,18 +84,27 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
         },
       });
 
+    let enqueuedCount = 0;
+    let blockedCount = 0;
+    const reconciliationCandidates: typeof staleStates = [];
+
     for (const s of staleStates) {
       const tokenId = s.vehicle?.latestState?.dimoTokenId;
       if (!tokenId) continue;
 
       if (this.lifecycleRecovery) {
-        const recoveryOutcome =
-          await this.lifecycleRecovery.attemptRecoveryForDetectionState({
-            vehicleId: s.vehicleId,
-            organizationId: s.organizationId,
-            dimoTokenId: tokenId,
-          });
-        if (recoveryOutcome?.recovered || recoveryOutcome?.blocked) {
+        const classification = await this.lifecycleRecovery.classifyDetectionState({
+          vehicleId: s.vehicleId,
+        });
+        if (
+          classification &&
+          FAIL_CLOSED_CLASSIFICATIONS.has(classification.classification)
+        ) {
+          blockedCount += 1;
+          this.logger.error(
+            `Recovery scheduler blocked vehicle=${s.vehicleId} ` +
+              `classification=${classification.classification}`,
+          );
           continue;
         }
       }
@@ -128,26 +131,19 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
           removeOnFail: 5,
         },
       );
+      enqueuedCount += 1;
+      reconciliationCandidates.push(s);
     }
 
-    if (staleStates.length > 0) {
+    if (enqueuedCount > 0 || blockedCount > 0) {
       this.logger.warn(
-        `Recovery: re-enqueued ${staleStates.length} stale trip tracking job(s)`,
+        `Recovery: enqueued ${enqueuedCount} stale trip tracking job(s); blocked ${blockedCount} fail-closed state(s)`,
       );
     }
 
-    // ── Event-triggered reconciliation for anomalous states ─────────────────
-    await this.triggerEventBasedReconciliation(now, staleStates);
+    await this.triggerEventBasedReconciliation(now, reconciliationCandidates);
   }
 
-  /**
-   * Event-triggered reconciliation pass: fires for vehicles that are stuck
-   * in pathological states beyond normal recovery thresholds.
-   *
-   * Cases handled:
-   *   - POSSIBLE_END stuck > 30 min: force-end via reconciliation
-   *   - ACTIVE_TRIP stuck > 4 hours: suspicious long-open trip
-   */
   private async triggerEventBasedReconciliation(
     now: Date,
     staleStates: Awaited<ReturnType<PrismaService['vehicleTripDetectionState']['findMany']>>,
@@ -155,7 +151,6 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     if (!this.reconciliation) return;
 
     for (const s of staleStates) {
-      // ── Stuck in POSSIBLE_END > 30 min → trigger onStuckTrip ─────────────
       if (
         s.state === TripDetectionState.POSSIBLE_END &&
         isPossibleEndRecoveryEligible(s, now, STUCK_POSSIBLE_END_THRESHOLD_MS)
@@ -172,7 +167,6 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
           );
       }
 
-      // ── ACTIVE_TRIP open > 4 hours → trigger anomaly reconciliation ───────
       if (
         s.state === TripDetectionState.ACTIVE_TRIP &&
         s.possibleStartAt &&

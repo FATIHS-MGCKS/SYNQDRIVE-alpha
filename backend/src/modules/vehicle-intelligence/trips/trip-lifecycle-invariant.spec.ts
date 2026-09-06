@@ -106,6 +106,30 @@ describe('R2 — trip lifecycle invariant planner', () => {
       expect(result.action).toBe('ADOPT_ONGOING');
     });
 
+    it('RECOVERABLE-MERGE-ORPHAN from durable mergeReopen meta without mergeTargetTripId', () => {
+      const trip = ongoing('trip-merge', T0, {
+        rawDetectionMeta: {
+          lifecycleRecovery: {
+            mergeReopen: {
+              version: 'r2a-v1',
+              type: 'merge_reopen',
+              candidateStartAt: T0.toISOString(),
+              effectiveStartAt: T0.toISOString(),
+              reopenedAt: T0.toISOString(),
+            },
+          },
+        },
+      });
+      const result = evaluateTripLifecycleInvariant(
+        baseInput({
+          fsmState: TripDetectionState.POSSIBLE_START,
+          possibleStartAt: T0,
+          ongoingTrips: [trip],
+        }),
+      );
+      expect(result.classification).toBe('RECOVERABLE_MERGE_ORPHAN');
+    });
+
     it('negative: unrelated ONGOING trip must not be adopted for new candidate', () => {
       const unrelated = ongoing('trip-a', T0);
       const result = evaluateTripLifecycleInvariant(

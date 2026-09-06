@@ -140,6 +140,23 @@ export class TripLifecycleRecoveryService {
       return { evaluated, recovered: false, blocked: true };
     }
 
+    const recoveredTrip =
+      input.ongoingTrips.find((t) => t.id === evaluated.tripId) ??
+      (evaluated.tripId
+        ? await this.prisma.vehicleTrip.findUnique({
+            where: { id: evaluated.tripId },
+            select: {
+              id: true,
+              tripStatus: true,
+              startTime: true,
+              endTime: true,
+              dimoSegmentId: true,
+              tripSource: true,
+              rawDetectionMeta: true,
+            },
+          })
+        : null);
+
     await this.orchestration.executeLifecycleRecoveryAction({
       vehicleId: params.det.vehicleId,
       organizationId: params.organizationId,
@@ -149,6 +166,7 @@ export class TripLifecycleRecoveryService {
       tripId: evaluated.tripId!,
       classification: evaluated.classification,
       referencedTrip: input.referencedTrip ?? null,
+      recoveredTrip: recoveredTrip ?? null,
     });
 
     this.logger.warn(
@@ -160,23 +178,17 @@ export class TripLifecycleRecoveryService {
     return { evaluated, recovered: true, blocked: false };
   }
 
-  /** Idempotent recovery entry for scheduler/orchestration preflight. */
-  async attemptRecoveryForDetectionState(params: {
+  /** Read-only planner entry for scheduler classification (no FSM mutation). */
+  async classifyDetectionState(params: {
     vehicleId: string;
-    organizationId: string | null;
-    dimoTokenId: number;
     context?: LifecycleRecoveryContext;
-  }): Promise<LifecycleRecoveryOutcome | null> {
+  }): Promise<TripLifecycleInvariantResult | null> {
     const det = await this.prisma.vehicleTripDetectionState.findUnique({
       where: { vehicleId: params.vehicleId },
     });
     if (!det) return null;
-    return this.attemptRecovery({
-      det,
-      organizationId: params.organizationId,
-      dimoTokenId: params.dimoTokenId,
-      context: params.context,
-    });
+    const input = await this.buildInvariantInput(det, params.context);
+    return this.evaluate(input);
   }
 }
 
@@ -189,4 +201,5 @@ export type ExecuteLifecycleRecoveryParams = {
   tripId: string;
   classification: TripLifecycleInvariantResult['classification'];
   referencedTrip: TripLifecycleInvariantInput['referencedTrip'];
+  recoveredTrip?: TripLifecycleInvariantInput['referencedTrip'];
 };

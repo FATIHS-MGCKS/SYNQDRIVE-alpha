@@ -11,6 +11,7 @@ import type {
   RepairDecision,
   CreateTripParams,
   FinalizeMeta,
+  ReopenTripForMergeParams,
   SplitTripAtGapParams,
   SplitTripAtGapResult,
   RepairTripBoundariesParams,
@@ -26,6 +27,11 @@ import {
 } from '../boundary-repair.state.util';
 import { BOUNDARY_REFRESH_STATE, REPAIR_STATUS } from '../reconciliation/reconciliation.types';
 import { END_DETECTION_MODES, START_DETECTION_MODES } from '../trip-detection.types';
+import {
+  buildStartEpisodeRecoveryMeta,
+  buildMergeReopenRecoveryMeta,
+  mergeLifecycleRecoveryMeta,
+} from '../trip-lifecycle-recovery-meta';
 
 /**
  * TripDecisionEngine
@@ -254,6 +260,18 @@ export class TripDecisionEngine {
    * for lifecycle purposes.
    */
   async createTrip(params: CreateTripParams): Promise<VehicleTrip> {
+    const lifecycleRecoveryMeta = params.lifecycleRecovery
+      ? {
+          startEpisode: buildStartEpisodeRecoveryMeta({
+            vehicleId: params.vehicleId,
+            candidateStartAt: params.lifecycleRecovery.candidateStartAt,
+            effectiveStartAt: params.lifecycleRecovery.effectiveStartAt,
+            dimoSegmentId:
+              params.lifecycleRecovery.dimoSegmentId ?? params.dimoSegmentId ?? null,
+          }),
+        }
+      : undefined;
+
     const trip = await this.prisma.vehicleTrip.create({
       data: {
         vehicleId: params.vehicleId,
@@ -269,6 +287,11 @@ export class TripDecisionEngine {
         qualityStatus: 'VERIFIED',
         behaviorSummaryStatus: 'PENDING',
         drivingImpactStatus: 'PENDING',
+        ...(lifecycleRecoveryMeta
+          ? {
+              rawDetectionMeta: mergeLifecycleRecoveryMeta(null, lifecycleRecoveryMeta) as any,
+            }
+          : {}),
       },
     });
 
@@ -343,7 +366,29 @@ export class TripDecisionEngine {
    * Reopens a previous COMPLETED trip by resetting its status to ONGOING.
    * Used for the short-gap merge case.
    */
-  async reopenTripForMerge(targetTripId: string): Promise<VehicleTrip> {
+  async reopenTripForMerge(
+    params: ReopenTripForMergeParams | string,
+  ): Promise<VehicleTrip> {
+    const targetTripId = typeof params === 'string' ? params : params.targetTripId;
+    const recoveryContext =
+      typeof params === 'string' ? undefined : params.lifecycleRecovery;
+
+    const existing = await this.prisma.vehicleTrip.findUnique({
+      where: { id: targetTripId },
+      select: { rawDetectionMeta: true },
+    });
+
+    const reopenedAt = new Date();
+    const lifecyclePatch = recoveryContext
+      ? {
+          mergeReopen: buildMergeReopenRecoveryMeta({
+            candidateStartAt: recoveryContext.candidateStartAt,
+            effectiveStartAt: recoveryContext.effectiveStartAt ?? null,
+            reopenedAt,
+          }),
+        }
+      : undefined;
+
     const trip = await this.prisma.vehicleTrip.update({
       where: { id: targetTripId },
       data: {
@@ -351,6 +396,14 @@ export class TripDecisionEngine {
         endTime: null,
         endLatitude: null,
         endLongitude: null,
+        ...(lifecyclePatch
+          ? {
+              rawDetectionMeta: mergeLifecycleRecoveryMeta(
+                existing?.rawDetectionMeta,
+                lifecyclePatch,
+              ) as any,
+            }
+          : {}),
       },
     });
 

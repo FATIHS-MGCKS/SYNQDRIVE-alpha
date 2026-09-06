@@ -82,6 +82,8 @@ import {
   TripLifecycleRecoveryService,
   type ExecuteLifecycleRecoveryParams,
 } from './trip-lifecycle-recovery.service';
+import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
+import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -276,13 +278,31 @@ export class TripDetectionOrchestrationService {
       tripId,
       classification,
       referencedTrip,
+      recoveredTrip,
     } = params;
 
-    if (action === 'ADOPT_ONGOING' || action === 'REPOINT_ACTIVE_TRIP') {
+    const resolveRecoveredPossibleStartAt = (
+      trip: TripLifecycleTripFact,
+    ): Date => {
+      if (
+        classification === 'RECOVERABLE_MISSING_POINTER' &&
+        det.possibleStartAt
+      ) {
+        return det.possibleStartAt;
+      }
+      return trip.startTime;
+    };
+
+    if (action === 'ADOPT_ONGOING') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle recovery missing recovered trip ${tripId}`);
+      }
+      const possibleStartAt = resolveRecoveredPossibleStartAt(trip);
       await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
         activeTripId: tripId,
+        possibleStartAt,
         possibleStartEnteredAt: null,
-        ...(action === 'ADOPT_ONGOING' ? clearPossibleStartClockFields() : {}),
         lastActivityAt: now,
         lastEvidenceSummary: {
           ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
@@ -291,6 +311,31 @@ export class TripDetectionOrchestrationService {
           lifecycleRecoveryTripId: tripId,
         },
       });
+      await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+      return;
+    }
+
+    if (action === 'REPOINT_ACTIVE_TRIP') {
+      const trip = recoveredTrip;
+      if (!trip) {
+        throw new Error(`Lifecycle split repoint missing recovered trip ${tripId}`);
+      }
+      await this.transitionState(
+        vehicleId,
+        TripDetectionState.ACTIVE_TRIP,
+        {
+          ...buildMidGapSplitActiveFsmExtras({
+            secondTripId: tripId,
+            secondStartAt: trip.startTime,
+          }),
+          lastEvidenceSummary: {
+            ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
+            lifecycleRecovery: classification,
+            lifecycleRecoveryAt: now.toISOString(),
+            lifecycleRecoveryTripId: tripId,
+          },
+        },
+      );
       await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
       return;
     }
@@ -787,6 +832,15 @@ export class TripDetectionOrchestrationService {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_START) return;
 
+      const earlyRecovery = await this.maybeRecoverLifecycleInvariant({
+        det,
+        organizationId,
+        dimoTokenId,
+      });
+      if (earlyRecovery !== 'continue') {
+        return;
+      }
+
       const profile = det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
       const profileStr = String(profile);
       const now = new Date();
@@ -1018,7 +1072,13 @@ export class TripDetectionOrchestrationService {
         if (mergeCheck.shouldMergeWithPrevious && previousTrip?.id) {
           // Reopen the previous trip instead of creating a new one
           // DecisionEngine is the sole writer of tripStatus changes
-          await this.decisionEngine.reopenTripForMerge(previousTrip.id);
+          await this.decisionEngine.reopenTripForMerge({
+            targetTripId: previousTrip.id,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+            },
+          });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
           await this.transitionState(
@@ -1060,6 +1120,13 @@ export class TripDetectionOrchestrationService {
             detectionProfile: profileStr,
             startDetectionMode: confirmMode,
             startConfidence: confirmConfidence,
+            lifecycleRecovery: {
+              candidateStartAt: startAt,
+              effectiveStartAt,
+              dimoSegmentId:
+                resolvedStart.dimoSegmentId ??
+                `v2-${vehicleId}-${effectiveStartAt.getTime()}`,
+            },
           });
 
           resultState = TripDetectionState.ACTIVE_TRIP;
@@ -1483,31 +1550,10 @@ export class TripDetectionOrchestrationService {
               await this.transitionState(
                 vehicleId,
                 TripDetectionState.ACTIVE_TRIP,
-                {
-                  activeTripId: splitResult.secondTripId,
-                  possibleStartAt: midGap.secondStartAt,
-                  possibleStartEnteredAt: null,
-                  ...clearPossibleEndClockFields(),
-                  endValidationAttempts: 0,
-                  endDetectionMode: null,
-                  endConfidence: null,
-                  cusumValidatedAt: null,
-                  cusumSegmentStart: null,
-                  cusumSegmentEnd: null,
-                  startDetectionMode:
-                    'MID_TRIP_GAP_SPLIT' as unknown as StartDetectionMode,
-                  startConfidence: 'MEDIUM' as DetectionConfidence,
-                  lastActivityAt: midGap.secondStartAt,
-                  lastMeaningfulMovementAt: midGap.secondStartAt,
-                  // Next fetch windows start at the gap boundary so we do not
-                  // re-process segment 1 on the next tick.
-                  lastRouteProcessedAt: midGap.secondStartAt,
-                  lastDrivingProcessedAt: midGap.secondStartAt,
-                  lastCoreProcessedAt: midGap.secondStartAt,
-                  startOdometerKm: null,
-                  startFuelLevel: null,
-                  startEvSoc: null,
-                },
+                buildMidGapSplitActiveFsmExtras({
+                  secondTripId: splitResult.secondTripId,
+                  secondStartAt: midGap.secondStartAt,
+                }),
               );
 
               // Durable V2 analysis init (awaited) + legacy enrichment (unchanged).

@@ -1,4 +1,8 @@
 import { TripDetectionState, TripStatus } from '@prisma/client';
+import {
+  readMergeReopenFromTrip,
+  readStartEpisodeFromTrip,
+} from './trip-lifecycle-recovery-meta';
 
 /** Durable trip facts needed for lifecycle invariant evaluation. */
 export interface TripLifecycleTripFact {
@@ -73,6 +77,21 @@ function readSplitFrom(meta: unknown): string | null {
   return typeof splitFrom === 'string' ? splitFrom : null;
 }
 
+function isoMatches(date: Date | null | undefined, iso: string | null | undefined): boolean {
+  if (!date || !iso) return false;
+  return date.toISOString() === iso;
+}
+
+/** Durable merge-reopen proof from persisted trip metadata. */
+export function provesMergeEpisodeRelationship(
+  ongoing: TripLifecycleTripFact,
+  possibleStartAt?: Date | null,
+): boolean {
+  const merge = readMergeReopenFromTrip(ongoing.rawDetectionMeta);
+  if (!merge || !possibleStartAt) return false;
+  return isoMatches(possibleStartAt, merge.candidateStartAt);
+}
+
 /** Strong durable proof that an ONGOING row belongs to the current start episode. */
 export function provesStartEpisodeRelationship(
   ongoing: TripLifecycleTripFact,
@@ -86,6 +105,33 @@ export function provesStartEpisodeRelationship(
   >,
 ): boolean {
   if (input.mergeTargetTripId && ongoing.id === input.mergeTargetTripId) {
+    return true;
+  }
+
+  const startEpisode = readStartEpisodeFromTrip(ongoing.rawDetectionMeta);
+  if (startEpisode) {
+    if (
+      input.possibleStartAt &&
+      isoMatches(input.possibleStartAt, startEpisode.candidateStartAt)
+    ) {
+      return true;
+    }
+    if (
+      input.expectedStartAt &&
+      isoMatches(input.expectedStartAt, startEpisode.effectiveStartAt)
+    ) {
+      return true;
+    }
+    if (
+      input.expectedDimoSegmentId &&
+      startEpisode.dimoSegmentId &&
+      startEpisode.dimoSegmentId === input.expectedDimoSegmentId
+    ) {
+      return true;
+    }
+  }
+
+  if (provesMergeEpisodeRelationship(ongoing, input.possibleStartAt)) {
     return true;
   }
 
@@ -230,10 +276,25 @@ export function evaluateTripLifecycleInvariant(
       );
     }
 
+    if (soleOngoing && provesMergeEpisodeRelationship(soleOngoing, input.possibleStartAt)) {
+      return recoverable(
+        'RECOVERABLE_MERGE_ORPHAN',
+        'ADOPT_ONGOING',
+        soleOngoing.id,
+        'Reopened merge trip matches durable POSSIBLE_START episode fingerprint',
+        TripDetectionState.ACTIVE_TRIP,
+        {
+          ...baseEvidence,
+          proof: 'merge_reopen_meta',
+        },
+      );
+    }
+
     if (soleOngoing && provesStartEpisodeRelationship(soleOngoing, input)) {
-      const classification = input.mergeTargetTripId
-        ? 'RECOVERABLE_MERGE_ORPHAN'
-        : 'RECOVERABLE_START_ORPHAN';
+      const classification =
+        input.mergeTargetTripId && soleOngoing.id === input.mergeTargetTripId
+          ? 'RECOVERABLE_MERGE_ORPHAN'
+          : 'RECOVERABLE_START_ORPHAN';
       return recoverable(
         classification,
         'ADOPT_ONGOING',

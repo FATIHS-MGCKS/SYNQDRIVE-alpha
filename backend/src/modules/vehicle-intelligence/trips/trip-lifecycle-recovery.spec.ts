@@ -89,6 +89,7 @@ describe('R2 — lifecycle recovery crash injection', () => {
       expect.objectContaining({
         action: 'ADOPT_ONGOING',
         tripId,
+        recoveredTrip: expect.objectContaining({ id: tripId }),
       }),
     );
   });

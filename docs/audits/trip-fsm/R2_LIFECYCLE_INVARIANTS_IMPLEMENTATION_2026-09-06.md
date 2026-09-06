@@ -132,3 +132,60 @@ Covered in `trip-lifecycle-recovery.spec.ts` and `trip-lifecycle-invariant.spec.
 - Prisma validate: **PASS** (no schema change)
 - `git diff --check`: **PASS**
 - Deploy: **NOT PERFORMED**
+
+---
+
+## R2A — Closure Corrections
+
+| Field | Value |
+|-------|-------|
+| R2 base commit | `67a8f53dc2989c309a960957553ff258133a0e0d` |
+| Scope | lifecycle recovery durability + scheduler safety |
+| Deploy | **NOT PERFORMED** |
+
+### Durable start episode identity
+
+`VehicleTrip.rawDetectionMeta.lifecycleRecovery.startEpisode` persisted atomically in `createTrip()`:
+
+- `candidateStartAt` — FSM POSSIBLE_START episode anchor (may differ from canonical boundary)
+- `effectiveStartAt` — canonical `trip.startTime` after boundary refinement
+- `episodeId` — `${vehicleId}:${candidateStartAtMs}`
+- `dimoSegmentId` — optional secondary fingerprint
+
+Recovery proof matches on **candidate episode identity**, not broad time tolerance.
+
+### Merge replay identity
+
+`reopenTripForMerge()` persists `lifecycleRecovery.mergeReopen` with `candidateStartAt` (+ optional `effectiveStartAt`, `reopenedAt`). Merge orphan recovery no longer requires in-memory `mergeTargetTripId`.
+
+### Worker-lock model
+
+Scheduler **only enqueues** tracking jobs. Lifecycle FSM recovery executes inside orchestration handlers **after** `acquireWorkerLock()`. No scheduler-side FSM mutation.
+
+### Scheduler residual-state filtering
+
+- Fail-closed classifications (`CONFLICT_*`) skip enqueue **and** event reconciliation for that vehicle
+- Recoverable orphans enqueue normal triggers (POSSIBLE_START / ACTIVE_TICK / PEC)
+- Logging reports actual enqueued vs blocked counts
+
+### Start clock preservation
+
+`executeLifecycleRecoveryAction(ADOPT_ONGOING)` sets:
+
+- `possibleStartAt` = canonical recovered `trip.startTime` (or preserved FSM anchor for missing-pointer)
+- `possibleStartEnteredAt` = null
+- does **not** call `clearPossibleStartClockFields()`
+
+### Split recovery decision
+
+**Option A — EXACT_STATE_RECOVERY:** shared `buildMidGapSplitActiveFsmExtras()` used by live mid-gap split and `REPOINT_ACTIVE_TRIP` recovery.
+
+### Final finding status (post-R2A)
+
+| ID | Status |
+|----|--------|
+| P4-F06 | RESOLVED_BY_R2 |
+| P4-F10 | PARTIALLY_RESOLVED |
+| P3-F06 | RESOLVED_BY_R2 |
+| P5-F05 | RESOLVED_BY_R2 |
+| P5-F04 | UNCHANGED |
