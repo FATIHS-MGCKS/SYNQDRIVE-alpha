@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-06 — M3.1 KS MX 2024 REST_60M maturity probe (PR #1551 finalization)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Event probe @ `21:39:25Z`: KS MX REST_60M ENQUEUED; labeled `REST_PENDING_NOT_YET_DUE` (incorrect — target past due_at `21:00:44Z`). |
+| **CHANGE** | Read-only maturity probe @ `2026-09-06T21:53:34Z` on session `82324f65`; timing contract reconstructed from deployed code; prior terminology corrected in PR #1551 docs. |
+| **WHY** | Narrow follow-up after retry grace (`21:45:44Z`) to determine whether first post-T0 natural REST_60M → assess → publication chain matured. |
+| **VALIDATION** | Production DB + PM2; evaluation attempt trace since due_at; graph validator PASS. |
+| **OBSERVED_EFFECT** | REST_60M target **COMPLETED** @ `21:53:29Z`; measurement `701b077f…` **NATURAL_CONTAMINATED** (`CONTAMINATED_BY_WAKE`); zero `LIVE_VOLTAGE` in quality window `[20:45:44, 21:15:44]`; 0 assess/pub. Vehicle still RESTING; no wake. |
+| **NON_EFFECTS** | No natural VALID REST; no E2E closure; `PRODUCTION_VALIDATED` unchanged. |
+| **REMAINING_GAPS** | Natural VALID REST → assess → publication E2E still pending; next candidate REST_6H due `2026-09-07T02:00:44Z`. |
+| **DECISION_STATUS** | `PREVIOUS_NOT_YET_DUE_CLASSIFICATION_CORRECT=NO`; `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`; `M3_1_STATUS=STAGE2_ACTIVE_PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`; amended `M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`. |
+
 ## CL-2026-09-06 — M3.1 event-conditioned natural E2E probe (evening trips)
 
 | Field | Content |

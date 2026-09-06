@@ -15,7 +15,9 @@
 | `NATURAL_END_TO_END_CHAIN_PROVEN` | **NO** |
 | `TODAY_DUE_TARGETS_PIPELINE_MISSING` | **0** |
 
-Two real evening trip completions produced canonical REST session activity, including the **first post-T0 RESTING promotion on KS MX 2024**, but **no natural VALID REST measurement, assessment, or publication** has matured yet at probe time. WOB L 7503 evening REST_60M evaluated **CONTAMINATED_BY_ACTIVE_TRIP** (vehicle resumed driving). KS MX 2024 REST_60M is **due and ENQUEUED** — lifecycle correct, E2E chain pending evaluation outcome.
+Two real evening trip completions produced canonical REST session activity, including the **first post-T0 RESTING promotion on KS MX 2024**, but **no natural VALID REST measurement, assessment, or publication** has matured yet at probe time. WOB L 7503 evening REST_60M evaluated **CONTAMINATED_BY_ACTIVE_TRIP** (vehicle resumed driving). KS MX 2024 REST_60M was **past due and ENQUEUED within retry grace** — lifecycle correct, E2E chain pending evaluation outcome (see maturity follow-up below).
+
+> **Terminology correction:** At `21:39:25Z`, KS MX REST_60M was **not** `NOT_YET_DUE` (due_at `21:00:44Z` had passed). Correct target-phase labels: **`TARGET_DUE` + `RETRY_PENDING` / `EXPECTED_WAIT_FOR_TELEMETRY`**. The prior label `REST_PENDING_NOT_YET_DUE` conflated E2E chain immaturity with target due state. Maturity probe: `M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`.
 
 ---
 
@@ -85,7 +87,7 @@ Two real evening trip completions produced canonical REST session activity, incl
 
 | Target | Expected | due_at | Quality window | Status @ probe | Classification |
 |--------|----------|--------|----------------|----------------|----------------|
-| REST_60M | YES | `21:00:44Z` | anchor ± policy window | ENQUEUED; `lastAttemptAt=21:32:29Z` | **PENDING** |
+| REST_60M | YES | `21:00:44Z` | `[20:45:44Z, 21:15:44Z]` | ENQUEUED; `lastAttemptAt=21:32:29Z` | **TARGET_DUE + RETRY_PENDING** |
 | REST_6H | YES | `2026-09-07T02:00:44Z` | — | ENQUEUED | **NOT_YET_DUE** |
 
 No `PIPELINE_MISSING` or `UNRESOLVED` targets on either probe vehicle.
@@ -136,7 +138,7 @@ NATURAL_END_TO_END_CHAIN_PROVEN=NO
 | Vehicle | Result | Rationale |
 |---------|--------|-----------|
 | **WOB L 7503** | **QUALITY_REJECTED_EXPECTED** | CANDIDATE never RESTING; REST_60M evaluated contaminated; vehicle driving again |
-| **KS MX 2024** | **REST_PENDING_NOT_YET_DUE** (E2E) | RESTING + targets scheduled; REST_60M due, evaluation ENQUEUED — chain not yet mature |
+| **KS MX 2024** | **TARGET_DUE + RETRY_PENDING** (E2E pending) | RESTING + targets scheduled; REST_60M past due (`21:00:44Z`), quality window closed (`21:15:44Z`), retry grace active until `21:45:44Z`; ENQUEUED — chain not yet mature |
 
 No due target silently lost on either vehicle.
 
@@ -218,6 +220,23 @@ Event-conditioned: re-probe when KS MX REST_60M metadata → COMPLETED and measu
 
 ---
 
+## Maturity follow-up — KS MX REST_60M (`21:53:34Z`)
+
+Read-only maturity probe completed after retry grace. Full report: `M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`.
+
+| Field | Value |
+|-------|-------|
+| `PREVIOUS_NOT_YET_DUE_CLASSIFICATION_CORRECT` | **NO** |
+| `TARGET_STATE` | **COMPLETED** @ `21:53:29Z` |
+| `MEASUREMENT_RESULT` | **NATURAL_CONTAMINATED** (`CONTAMINATED_BY_WAKE`; no in-window telemetry) |
+| `NATURAL_VALID_REST_60M_FOUND` | **NO** |
+| `NATURAL_END_TO_END_CHAIN_PROVEN` | **NO** |
+| KS MX classification | **QUALITY_REJECTED_EXPECTED** (policy-correct; not pipeline defect) |
+| `PRODUCTION_VALIDATED` | **PENDING_NATURAL_E2E_EVIDENCE** (unchanged) |
+| Next candidate | REST_6H due `2026-09-07T02:00:44Z` on same session |
+
+---
+
 ## Final machine-readable block
 
 ```
@@ -237,13 +256,18 @@ VEHICLE_1_ASSESSMENT=NO
 VEHICLE_1_PUBLICATION=NO
 
 VEHICLE_2=KS MX 2024
-VEHICLE_2_RESULT=REST_PENDING_NOT_YET_DUE
+VEHICLE_2_RESULT_AT_EVENT_PROBE=TARGET_DUE_RETRY_PENDING
+VEHICLE_2_RESULT_AT_MATURITY_PROBE=QUALITY_REJECTED_EXPECTED
 VEHICLE_2_TRIP_END_AT=2026-09-06T20:00:44.000Z
 VEHICLE_2_RESTING_PROMOTED=YES
 VEHICLE_2_REST_60M_DUE_AT=2026-09-06T21:00:44.000Z
 VEHICLE_2_VALID_REST=NO
 VEHICLE_2_ASSESSMENT=NO
 VEHICLE_2_PUBLICATION=NO
+PREVIOUS_NOT_YET_DUE_CLASSIFICATION_CORRECT=NO
+MATURITY_PROBE=2026-09-06T21:53:34Z
+MATURITY_TARGET_STATE=COMPLETED
+MATURITY_MEASUREMENT_RESULT=NATURAL_CONTAMINATED
 
 NATURAL_VALID_REST_60M_FOUND=NO
 NATURAL_VALID_REST_6H_FOUND=NO
