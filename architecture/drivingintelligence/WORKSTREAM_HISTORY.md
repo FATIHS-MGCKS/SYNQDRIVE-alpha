@@ -210,6 +210,6 @@ Infrastructure ready for operator-selected Flight Recorder calibration run.
 | 17 | High-timeframe intelligence | PARTIAL (30d rolling only) |
 | 18 | Replay/calibration | COMPLETED (tooling); live PENDING |
 | 19 | Scalability | PARTIALLY COMPLETED (hypothesis untested) |
-| 20 | Multi-replica/concurrency | PARTIALLY COMPLETED (tests) |
+| 20 | Multi-replica/concurrency | PARTIALLY COMPLETED (tests); **DI-DEF-019 real PG suite adds row-lock proof** |
 | 21 | Production cutover governance | COMPLETED (safe deploy) |
 | 22 | API/UI semantic correctness | PARTIALLY COMPLETED |
