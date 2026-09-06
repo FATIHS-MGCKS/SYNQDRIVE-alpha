@@ -862,7 +862,12 @@ export class TripDetectionOrchestrationService {
       `POSSIBLE_START ${vehicleId} [${profileStr}] via ${policy.detectors.join('+')}` +
         `: ${reasons.join(', ')} (conf=${startDecision.confidence})`,
     );
-    this.tripMetrics?.tripStartCandidates.inc({ profile: profileStr, detector: policy.detectors[0] ?? 'none' });
+    runTripObservabilitySafely(this.logger, 'start_candidate_counter', () => {
+      this.tripMetrics?.tripStartCandidates.inc({
+        profile: profileStr,
+        detector: policy.detectors[0] ?? 'none',
+      });
+    });
     runTripObservabilitySafely(this.logger,'start_candidate_latency', () => {
       observeStartCandidateLatency(this.tripMetrics, {
         profile: profileStr,
@@ -1126,9 +1131,11 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
-        this.tripMetrics?.tripEvidencePaths.inc({
-          phase: 'start_confirmation',
-          path: analyticsStartDecision.evidencePath,
+        runTripObservabilitySafely(this.logger, 'start_confirmation_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'start_confirmation',
+            path: analyticsStartDecision.evidencePath,
+          });
         });
 
         // Check for merge with recent previous trip
@@ -1325,8 +1332,11 @@ export class TripDetectionOrchestrationService {
               ` [${profileStr}] startSource=${resolvedStart.source}` +
               ` evidencePath=${analyticsStartDecision.evidencePath} adjustedMs=${resolvedStart.adjustedMs}`,
           );
-          this.tripMetrics?.tripStartsConfirmed.inc({ profile: profileStr, mode: confirmMode });
-          runTripObservabilitySafely(this.logger,'start_recognition_create', () => {
+          runTripObservabilitySafely(this.logger, 'start_recognition_create', () => {
+            this.tripMetrics?.tripStartsConfirmed.inc({
+              profile: profileStr,
+              mode: confirmMode,
+            });
             observeStartRecognitionLatency(this.tripMetrics, {
               profile: profileStr,
               mode: confirmMode,
@@ -1810,9 +1820,11 @@ export class TripDetectionOrchestrationService {
                   `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'}`,
               );
 
-              this.tripMetrics?.tripEvidencePaths.inc({
-                phase: 'mid_gap_split',
-                path: 'live_fsm',
+              runTripObservabilitySafely(this.logger, 'mid_gap_split_evidence', () => {
+                this.tripMetrics?.tripEvidencePaths.inc({
+                  phase: 'mid_gap_split',
+                  path: 'live_fsm',
+                });
               });
 
               await this.logTrackingRun({
@@ -2202,6 +2214,13 @@ export class TripDetectionOrchestrationService {
           activityWindowFinding,
         );
 
+        runTripObservabilitySafely(this.logger, 'active_continuity_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'active_continuity',
+            path: clickhouseGuard.evidencePath,
+          });
+        });
+
         if (clickhouseGuard.keepTripOpen) {
           effectiveContinuityDecision = {
             verdict: 'ACTIVE',
@@ -2212,15 +2231,6 @@ export class TripDetectionOrchestrationService {
             ...(effectiveContinuitySummary ?? {}),
             clickhouseGuard: clickhouseGuard.summary,
           };
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
-        } else {
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
         }
       }
 
@@ -2604,10 +2614,12 @@ export class TripDetectionOrchestrationService {
       }
 
       // ── Step 5: Max completed CUSUM cycles — fallback finalize with explicit forensics ──
-      this.tripMetrics?.possibleEndStuck.set(
-        { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
-        1,
-      );
+      runTripObservabilitySafely(this.logger, 'possible_end_stuck_gauge', () => {
+        this.tripMetrics?.possibleEndStuck.set(
+          { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
+          1,
+        );
+      });
       this.logger.log(
         `CUSUM max completed attempts (${attempts}) for ${vehicleId}, fallback finalize`,
       );

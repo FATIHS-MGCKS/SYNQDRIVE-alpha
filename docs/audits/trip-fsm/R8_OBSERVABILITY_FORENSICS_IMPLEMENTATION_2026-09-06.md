@@ -207,9 +207,11 @@ Recovery preserves existing candidate evidence when present; otherwise candidate
 
 Prometheus `synqdrive_trip_timing_sample_rejected_total{reason="invalid_timestamp"}` is emitted for invalid samples.
 
-### R8A.9–R8A.10 — Observability failure containment
+### R8A.9–R8A.10 — Observability failure containment (partial — completed in R8C)
 
-`runTripObservabilitySafely()` wraps ancillary metrics and timeline logging. Critical successors (`schedulePossibleStart`, `scheduleActiveTick`, `schedulePossibleEndCheck`, `scheduleEndValidation`, `scheduleFinalize`, RESTING transition) are scheduled **before** or independently of R8 observability; metric/logger throws cannot block FSM liveness or trigger spurious R7 recovery.
+`runTripObservabilitySafely()` wraps many ancillary metrics and timeline logging. R8A closed EMPTY_CORE / CONTINUITY end-candidate / terminal post-commit paths. R8A did **not** yet contain three **pre-lifecycle/pre-switch** calls (`start_confirmation`, `active_continuity`, `possibleEndStuck`) — corrected in R8C.
+
+Critical successors (`schedulePossibleStart`, `scheduleActiveTick`, `schedulePossibleEndCheck`, `scheduleEndValidation`, `scheduleFinalize`, RESTING transition) are scheduled **before** or independently of R8 observability; metric/logger throws cannot block FSM liveness or trigger spurious R7 recovery once fully contained.
 
 ### R8A.13–R8A.15 — FINALIZE and forensic builder hardening
 
@@ -316,6 +318,52 @@ Individual injected failures for COMPLETED (tripFinalized, logger, legacy latenc
 | INV-15 | CLOSED_BY_R5_R8 |
 
 **Future canonical destination:** `architecture/trip-fsm/`
+
+**Deploy:** NOT PERFORMED
+**R9:** NOT STARTED
+
+---
+
+## R8C — Pre-Lifecycle Observability Liveness Closure
+
+**Date:** 2026-09-06
+**Commit:** `fix(trip-fsm): isolate remaining R8 observability`
+**Parent R8B head:** `c3661eb59251c2239dd77544a1ebf891f0626f73`
+
+### R8C.1 — Start confirmation evidence metric
+
+`tripEvidencePaths.inc({ phase: 'start_confirmation' })` previously ran **before** merge lookup, lifecycle preflight, `createTrip` / `reopenTripForMerge`, ACTIVE_TRIP transition, and `scheduleActiveTick`. Now wrapped in `runTripObservabilitySafely('start_confirmation_evidence', …)`.
+
+### R8C.4 — Active continuity evidence metric
+
+Both `active_continuity` evidence-path observations (keep-open and end paths) now share one safe wrapper **before** the continuity switch executes. ClickHouse guard semantics unchanged.
+
+### R8C.7 — Max-CUSUM fallback gauge
+
+`possibleEndStuck.set(...)` wrapped in `runTripObservabilitySafely('possible_end_stuck_gauge', …)` before max-attempt fallback `transitionState` + `scheduleFinalize`. Fallback semantics, thresholds, and R5 evidence contract unchanged.
+
+### R8C.9–R8C.10 — Bounded audit + post-critical hardening
+
+| Call site | Classification | Action |
+|-----------|----------------|--------|
+| `start_confirmation` evidence path | PRE_CRITICAL | Wrapped (R8C.1) |
+| `active_continuity` evidence path | PRE_CRITICAL | Wrapped (R8C.4) |
+| `possibleEndStuck.set` | PRE_CRITICAL | Wrapped (R8C.7) |
+| `tripStartCandidates.inc` | POST_CRITICAL (after `schedulePossibleStart`) | Wrapped for worker isolation |
+| `tripStartsConfirmed.inc` | POST_CRITICAL (after `scheduleActiveTick`) | Moved into existing safe create block |
+| `mid_gap_split` evidence path | POST_CRITICAL (after split + `scheduleActiveTick`) | Wrapped to prevent false R6 recovery |
+| Terminal COMPLETED/CANCELLED block | POST_CRITICAL | Already safe (R8B) |
+| EMPTY_CORE / CONTINUITY end-candidate / CH end assist | POST_CRITICAL or already safe | Unchanged (R8A) |
+
+No metric names, labels, buckets, thresholds, or decision semantics changed.
+
+### R8C.15 — Failure matrix
+
+Injected failures verified: start_confirmation on CREATE/MERGE, active_continuity keep-open/POSSIBLE_END, max-attempt gauge, mid_gap_split post-commit, tripStartCandidates, tripStartsConfirmed — all preserve required FSM successors without spurious recovery.
+
+### R8 observability liveness contract
+
+**CLOSED** — observability failure ≠ FSM failure ≠ lifecycle failure ≠ successor scheduling failure.
 
 **Deploy:** NOT PERFORMED
 **R9:** NOT STARTED
