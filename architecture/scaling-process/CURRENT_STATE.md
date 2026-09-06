@@ -27,7 +27,8 @@ N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND = NO_PROVEN
 N2_SEGMENTED_HORIZON_SECONDS = 158877
 N2_FULL_N2_RUNTIME_SECONDS = 158815
 N2_EXCLUDED_TRANSITION_SECONDS = 62
-N2_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 72054
+N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 76832
+OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS = 72054
 N2_CURRENT_CONTINUOUS_SEGMENT_SECONDS = 2546
 N2_AUDIT_WINDOW_CLASS = SEGMENTED_POST_DEPLOY
 ATE_MULTI_REPLICA_CERTIFICATION = UNEXERCISED
@@ -78,9 +79,10 @@ NATURAL_WARM_TIER_CYCLES_OBSERVED = 16
 INC07_PRODUCTION_EVIDENCE_STRENGTH = STRONG_BY_COMBINED_REACHABILITY_PROOF
 PRODUCTION_BOUNDARY_COUNT_AFTER_T0 = 5
 CURRENT_FULL_N2_SEGMENT_START = 2026-09-06T22:12:34Z
-CURRENT_FULL_N2_SEGMENT_SECONDS = 2546
-LONGEST_FULL_N2_SEGMENT_SECONDS = 72054
 OQ28_EARLIEST_24H_CHECKPOINT_UTC = 2026-09-07T22:12:34Z
+INC07_CLOSURE_CASE = B_STRUCTURAL_NON_REACHABILITY_PLUS_COMBINED_PRODUCTION_EVIDENCE
+OPEN_APPLICATION_DEFECT_FOUND = NO
+OPEN_SCALING_READINESS_DEFECT_FOUND = NO
 PRE_EXISTING_P3 = 1
 INC_06 = CLOSED
 INC_07 = CLOSED
@@ -148,10 +150,28 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FR
 
 ---
 
-## TYPE: INCIDENT — INC-07 (fix deployed; production validation in progress)
+## TYPE: INCIDENT — INC-07 (CLOSED — P1.8.3.8)
 
-**STATUS:** **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P2) — P1.8.3.6.2 final audit (~50h): 11 warm cycles, 8 post-T0 gap-split APPLIED repairs, 0 replay/IDEMPOTENT_SKIP for known repair `2074c845…`, evidence MODERATE. Historical duplicates frozen (2 groups / 4 rows). **Not closed.**  
-**EVIDENCE:** P1.8.3.6 + P1.8.3.6.2 retrospective; `FAILURE_AND_RECOVERY_MODEL.md`
+**STATUS:** **CLOSED** — production validated **YES** (P1.8.3.8 final audit `2026-09-06T22:55:00Z`)
+
+**Closure case:** **B** — structural non-reachability after successful split + combined production evidence
+
+**Evidence strength:** `STRONG_BY_COMBINED_REACHABILITY_PROOF`
+
+**Rationale (current authority):**
+- Successful gap split makes natural same-gap replay structurally unreachable (`NATURAL_REPLAY_STRUCTURALLY_REACHABLE = NO`)
+- First segment becomes `MID_TRIP_GAP_SPLIT` and is excluded from future warm-tier candidate discovery
+- Original waypoint gap no longer exists on one trip row after reparenting
+- 16 natural warm-tier cycles; 13 post-T0 `INTRA_TRIP_GAP_SPLIT` APPLIED repairs (deterministic IDs)
+- Max 1 committed mutation per repair ID; 0 new INC-07-equivalent duplicate groups
+- 0 APPLIED downgrades; 0 transaction/idempotency failures
+- P1.8.3.4 local/PostgreSQL concurrency/crash suite PASS
+
+**OQ-30:** **CLOSED** (idempotency acceptance criteria met with INC-07 closure)
+
+**HISTORICAL (superseded by P1.8.3.8):** P1.8.3.6.2 recorded `FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS`, evidence MODERATE, not closed — retained in retrospective artifact chronology only.
+
+**EVIDENCE:** `architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md` (P1.8.3.8 extension); `FAILURE_AND_RECOVERY_MODEL.md`; DEC-018
 
 ---
 
@@ -177,5 +197,6 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FR
 | Two-replica production invariant | **PASS** |
 | Deploy path preserves 2 replicas | **YES** |
 | Exact-SHA deploy invariant (routine) | **NEEDS_PRECISION_REVIEW** |
-| Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL) |
-| Scale-readiness blockers | **INC-07** fix implemented; production validation pending |
+| Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL — certification gap, not an open runtime defect) |
+| Open application/scaling-readiness defects | **NONE** (`OPEN_APPLICATION_DEFECT_FOUND=NO`, `OPEN_SCALING_READINESS_DEFECT_FOUND=NO`; INC-07 CLOSED) |
+| N=2 production certification | **EARLY** (OQ-28 uninterrupted 24h segment not yet proven) |

@@ -140,7 +140,7 @@ nodes:
   - id: SCALING_ENVELOPE_N2
     type: ENVELOPE
     status: EARLY_PRODUCTION_VALIDATION
-    description: Real N=2 production proven; P1.8.3.8 longest continuous FULL_N2 segment 72054s (<86400); INC-07 CLOSED; OQ-28 PARTIAL — N2 not fully certified
+    description: Real N=2 production proven; P1.8.3.8 all-time longest FULL_N2 76832s; OQ-28 candidate-window longest 72054s (<86400); INC-07 CLOSED; OQ-28 PARTIAL — N2 not fully certified
     validated_by: ["#1471", "P1.8.3 2026-09-01", "P1.8.3.3 segmented retrospective"]
     related_incidents: [INC_07]
     confidence: MEDIUM
@@ -204,17 +204,18 @@ nodes:
 
   - id: INC_07
     type: INCIDENT
-    status: FIX_IMPLEMENTED_PENDING_PRODUCTION_VALIDATION
-    description: INTRA_TRIP_GAP_SPLIT reconciliation re-run creates duplicate REPAIRED trip rows — fix deployed P1.8.3.5; P1.8.3.6.2 final MODERATE (11 warm cycles, 8 repairs, no known-repair replay)
+    status: CLOSED
+    description: INTRA_TRIP_GAP_SPLIT reconciliation duplicate REPAIRED trip rows — P1.8.3.8 CASE B closure (structural non-reachability after successful split + 16 warm cycles + 13 post-T0 APPLIED repairs + 0 new duplicates + max 1 mutation per repair)
     related_incidents: [INC_07]
     introduced_by: "P1.8.3.3 forensic closure"
     remediated_by: "P1.8.3.4 deterministic repair identity + claim-before-mutate"
+    closed_by: "P1.8.3.8 combined reachability proof production validation"
     validated_by:
       - P1_8_3_3_N2_24H_PLUS_SEGMENTED_RETROSPECTIVE_AUDIT_2026-09-03.md
       - P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md
       - P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md
       - P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md
-    last_verified_at: "2026-09-05T23:19:52Z"
+    last_verified_at: "2026-09-06T22:55:00Z"
     confidence: HIGH
 
   - id: DEPLOY_LEADER_CONVERGENCE_GATE

@@ -1227,6 +1227,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-8-1-authority-reconciliation-2026-09-06',
+    version: '4.9.1030',
+    title: 'P1.8.3.8.1 — Scaling authority reconciliation pass',
+    summary: [
+      'Authority-only pass: reconcile CURRENT_STATE, graph/nodes.yaml, and knowledge graph with P1.8.3.8 final verdict.',
+      'INC-07 narrative updated CLOSED (CASE B); graph INC_07 node CLOSED; removed contradictory current INC-07 lines.',
+      'Scoped FULL_N2 metrics: N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS=76832; OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS=72054.',
+      'No production forensics re-run. INC-07/OQ-28/OQ-30 technical conclusions unchanged.',
+    ],
+    reason: 'P1.8.3.8.1 final authority reconciliation — eliminate stale P1.8.3.6.2 current-state contradictions.',
+    previousBehavior: 'Machine block CLOSED but narrative/graph still showed FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS / MODERATE.',
+    details:
+      'architecture/scaling-process/CURRENT_STATE.md; architecture/scaling-process/graph/nodes.yaml; architecture/scaling-process/SCALING_PROCESS_KNOWLEDGE_GRAPH.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T23:50:00.000Z',
+  },
+  {
     id: 'p1-8-3-8-final-scaling-closure-audit-2026-09-06',
     version: '4.9.1029',
     title: 'P1.8.3.8 — Final scaling closure audit (INC-07 replay reachability + OQ-28)',
