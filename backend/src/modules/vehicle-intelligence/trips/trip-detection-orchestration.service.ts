@@ -132,6 +132,26 @@ import {
   TripTrackingHandoffLockContentionError,
 } from './trip-tracking-lock-contention';
 import type { TripLifecycleTripFact } from './trip-lifecycle-invariant';
+import {
+  buildEndTimelineFields,
+  buildStartTimelineFields,
+  buildTripFsmForensicsR8V1,
+  mergeFinalizeRawDetectionMeta,
+  parseStrictEvidenceTimestamp,
+  readPersistedEndRecognizedAt,
+  resolveBoundaryConsistentEndCoordinate,
+  resolveStartForensicProvenance,
+} from './trip-fsm-forensics.util';
+import { runTripObservabilitySafely } from './trip-fsm-observability-safe.util';
+import {
+  observeEndBoundaryAdjustment,
+  observeEndCandidateLatency,
+  observeEndRecognitionLatency,
+  observeStartBoundaryAdjustment,
+  observeStartCandidateLatency,
+  observeStartRecognitionLatency,
+  observeTripDuration,
+} from './trip-fsm-timing-observability.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -359,6 +379,7 @@ export class TripDetectionOrchestrationService {
         throw new Error(`Lifecycle recovery missing recovered trip ${tripId}`);
       }
       const possibleStartAt = resolveRecoveredPossibleStartAt(trip);
+      const startRecognizedAt = new Date();
       await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
         activeTripId: tripId,
         possibleStartAt,
@@ -369,7 +390,18 @@ export class TripDetectionOrchestrationService {
           lifecycleRecovery: classification,
           lifecycleRecoveryAt: now.toISOString(),
           lifecycleRecoveryTripId: tripId,
+          startRecognizedAt: startRecognizedAt.toISOString(),
         },
+      });
+      const profileStr = String(det.detectionProfile ?? 'UNKNOWN');
+      runTripObservabilitySafely(this.logger,'start_recognition_recovery', () => {
+        observeStartRecognitionLatency(this.tripMetrics, {
+          profile: profileStr,
+          mode: 'recovery',
+          outcome: 'recovery',
+          recognizedAt: startRecognizedAt,
+          canonicalStartAt: trip.startTime,
+        });
       });
       await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
       return;
@@ -830,7 +862,20 @@ export class TripDetectionOrchestrationService {
       `POSSIBLE_START ${vehicleId} [${profileStr}] via ${policy.detectors.join('+')}` +
         `: ${reasons.join(', ')} (conf=${startDecision.confidence})`,
     );
-    this.tripMetrics?.tripStartCandidates.inc({ profile: profileStr, detector: policy.detectors[0] ?? 'none' });
+    runTripObservabilitySafely(this.logger, 'start_candidate_counter', () => {
+      this.tripMetrics?.tripStartCandidates.inc({
+        profile: profileStr,
+        detector: policy.detectors[0] ?? 'none',
+      });
+    });
+    runTripObservabilitySafely(this.logger,'start_candidate_latency', () => {
+      observeStartCandidateLatency(this.tripMetrics, {
+        profile: profileStr,
+        clockSource: startClock.clockSource,
+        candidateAt: startClock.candidateEventAt,
+        enteredAt: startClock.enteredAt,
+      });
+    });
 
     return {
       shouldStartTracking: true,
@@ -1068,6 +1113,17 @@ export class TripDetectionOrchestrationService {
         const startEvidenceSummary = {
           ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
           startCandidateAt: startAt.toISOString(),
+          startCandidateObservedAt:
+            typeof (det.lastEvidenceSummary as Record<string, unknown> | null)
+              ?.startCandidateObservedAt === 'string'
+              ? (det.lastEvidenceSummary as Record<string, unknown>).startCandidateObservedAt
+              : startAt.toISOString(),
+          startCandidateEnteredAt:
+            det.possibleStartEnteredAt?.toISOString() ??
+            (typeof (det.lastEvidenceSummary as Record<string, unknown> | null)
+              ?.startCandidateEnteredAt === 'string'
+              ? (det.lastEvidenceSummary as Record<string, unknown>).startCandidateEnteredAt
+              : null),
           confirmedStartAt: effectiveStartAt.toISOString(),
           confirmedStartSource: resolvedStart.source,
           startBoundaryAdjustedMs: resolvedStart.adjustedMs,
@@ -1075,9 +1131,11 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
-        this.tripMetrics?.tripEvidencePaths.inc({
-          phase: 'start_confirmation',
-          path: analyticsStartDecision.evidencePath,
+        runTripObservabilitySafely(this.logger, 'start_confirmation_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'start_confirmation',
+            path: analyticsStartDecision.evidencePath,
+          });
         });
 
         // Check for merge with recent previous trip
@@ -1115,6 +1173,7 @@ export class TripDetectionOrchestrationService {
         }
 
         if (mergeCheck.shouldMergeWithPrevious && previousTrip?.id) {
+          const startRecognizedAt = new Date();
           // Reopen the previous trip instead of creating a new one
           // DecisionEngine is the sole writer of tripStatus changes
           await this.decisionEngine.reopenTripForMerge({
@@ -1139,17 +1198,47 @@ export class TripDetectionOrchestrationService {
               lastActivityAt: now,
               startDetectionMode: confirmMode as StartDetectionMode,
               startConfidence: confEnum,
-              lastEvidenceSummary: startEvidenceSummary,
+              lastEvidenceSummary: {
+                ...startEvidenceSummary,
+                startRecognizedAt: startRecognizedAt.toISOString(),
+              },
             },
           );
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+          runTripObservabilitySafely(this.logger,'start_recognition_merge', () => {
+            observeStartRecognitionLatency(this.tripMetrics, {
+              profile: profileStr,
+              mode: confirmMode,
+              outcome: 'merge',
+              recognizedAt: startRecognizedAt,
+              canonicalStartAt: effectiveStartAt,
+            });
+            observeStartBoundaryAdjustment(this.tripMetrics, {
+              profile: profileStr,
+              source: resolvedStart.source,
+              outcome: 'merge',
+              initialCandidateAt: startAt,
+              effectiveStartAt,
+            });
+            this.logTripStartTimeline('active_trip_confirmed', {
+              vehicleId,
+              tripId: previousTrip.id,
+              startCandidateAt: startAt,
+              startCandidateEnteredAt: det.possibleStartEnteredAt,
+              canonicalStartAt: effectiveStartAt,
+              startRecognizedAt,
+              boundarySource: resolvedStart.source,
+              evidencePath: analyticsStartDecision.evidencePath,
+            });
+          });
           this.logger.log(
             `ACTIVE_TRIP merged with previous: vehicle=${vehicleId} trip=${previousTrip.id}` +
               ` startSource=${resolvedStart.source} evidencePath=${analyticsStartDecision.evidencePath}` +
               ` adjustedMs=${resolvedStart.adjustedMs}`,
           );
         } else {
+          const startRecognizedAt = new Date();
           // DecisionEngine.createTrip is the SOLE canonical trip creator
           const trip = await this.decisionEngine.createTrip({
             vehicleId,
@@ -1188,7 +1277,10 @@ export class TripDetectionOrchestrationService {
               lastActivityAt: now,
               startDetectionMode: confirmMode as StartDetectionMode,
               startConfidence: confEnum,
-              lastEvidenceSummary: startEvidenceSummary,
+              lastEvidenceSummary: {
+                ...startEvidenceSummary,
+                startRecognizedAt: startRecognizedAt.toISOString(),
+              },
             },
           );
 
@@ -1240,7 +1332,36 @@ export class TripDetectionOrchestrationService {
               ` [${profileStr}] startSource=${resolvedStart.source}` +
               ` evidencePath=${analyticsStartDecision.evidencePath} adjustedMs=${resolvedStart.adjustedMs}`,
           );
-          this.tripMetrics?.tripStartsConfirmed.inc({ profile: profileStr, mode: confirmMode });
+          runTripObservabilitySafely(this.logger, 'start_recognition_create', () => {
+            this.tripMetrics?.tripStartsConfirmed.inc({
+              profile: profileStr,
+              mode: confirmMode,
+            });
+            observeStartRecognitionLatency(this.tripMetrics, {
+              profile: profileStr,
+              mode: confirmMode,
+              outcome: 'create',
+              recognizedAt: startRecognizedAt,
+              canonicalStartAt: effectiveStartAt,
+            });
+            observeStartBoundaryAdjustment(this.tripMetrics, {
+              profile: profileStr,
+              source: resolvedStart.source,
+              outcome: 'create',
+              initialCandidateAt: startAt,
+              effectiveStartAt,
+            });
+            this.logTripStartTimeline('active_trip_confirmed', {
+              vehicleId,
+              tripId: trip.id,
+              startCandidateAt: startAt,
+              startCandidateEnteredAt: det.possibleStartEnteredAt,
+              canonicalStartAt: effectiveStartAt,
+              startRecognizedAt,
+              boundarySource: resolvedStart.source,
+              evidencePath: analyticsStartDecision.evidencePath,
+            });
+          });
         }
       } else {
         if (elapsed > this.CONFIRM_MAX_WAIT_MS) {
@@ -1491,19 +1612,34 @@ export class TripDetectionOrchestrationService {
               emptyCoreReason: emptyCoreGate.forensics.reason,
             },
           });
-          this.logTripEndTimeline('possible_end_entered', {
-            vehicleId,
-            tripId,
-            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? endBoundary.boundaryAt,
-            possibleEndAt: endBoundary.boundaryAt,
-            possibleEndEnteredAt: now,
-          });
           await this.schedulePossibleEndCheck(
             vehicleId,
             organizationId,
             dimoTokenId,
             0,
           );
+          runTripObservabilitySafely(this.logger,'empty_core_end_candidate', () => {
+            this.observePossibleEndCandidateLatency({
+              priorState: det.state,
+              profile: String(profile),
+              evidencePath: 'EMPTY_CORE_GATE',
+              clockSource: endBoundary.clockSource,
+              candidateAt: endBoundary.boundaryAt,
+              enteredAt: now,
+            });
+            this.tripMetrics?.tripEvidencePaths?.inc({
+              phase: 'end_candidate',
+              path: 'EMPTY_CORE_GATE',
+            });
+            this.logTripEndTimeline('possible_end_entered', {
+              vehicleId,
+              tripId,
+              lastMeaningfulMovementAt:
+                (det as any).lastMeaningfulMovementAt ?? endBoundary.boundaryAt,
+              possibleEndAt: endBoundary.boundaryAt,
+              possibleEndEnteredAt: now,
+            });
+          });
           this.logger.log(
             `ACTIVE_TICK: no core data for ${vehicleId}, corroborated inactivity ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
           );
@@ -1684,9 +1820,11 @@ export class TripDetectionOrchestrationService {
                   `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'}`,
               );
 
-              this.tripMetrics?.tripEvidencePaths.inc({
-                phase: 'mid_gap_split',
-                path: 'live_fsm',
+              runTripObservabilitySafely(this.logger, 'mid_gap_split_evidence', () => {
+                this.tripMetrics?.tripEvidencePaths.inc({
+                  phase: 'mid_gap_split',
+                  path: 'live_fsm',
+                });
               });
 
               await this.logTrackingRun({
@@ -2076,6 +2214,13 @@ export class TripDetectionOrchestrationService {
           activityWindowFinding,
         );
 
+        runTripObservabilitySafely(this.logger, 'active_continuity_evidence', () => {
+          this.tripMetrics?.tripEvidencePaths.inc({
+            phase: 'active_continuity',
+            path: clickhouseGuard.evidencePath,
+          });
+        });
+
         if (clickhouseGuard.keepTripOpen) {
           effectiveContinuityDecision = {
             verdict: 'ACTIVE',
@@ -2086,15 +2231,6 @@ export class TripDetectionOrchestrationService {
             ...(effectiveContinuitySummary ?? {}),
             clickhouseGuard: clickhouseGuard.summary,
           };
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
-        } else {
-          this.tripMetrics?.tripEvidencePaths.inc({
-            phase: 'active_continuity',
-            path: clickhouseGuard.evidencePath,
-          });
         }
       }
 
@@ -2178,19 +2314,33 @@ export class TripDetectionOrchestrationService {
                 },
               },
             );
-            this.logTripEndTimeline('possible_end_entered', {
+            await this.schedulePossibleEndCheck(
               vehicleId,
-              tripId,
-              lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
-              possibleEndAt: endBoundary.boundaryAt,
-              possibleEndEnteredAt: enteredAt,
+              organizationId,
+              dimoTokenId,
+            );
+            runTripObservabilitySafely(this.logger,'continuity_end_candidate', () => {
+              this.observePossibleEndCandidateLatency({
+                priorState: det.state,
+                profile: String(det.detectionProfile ?? profile),
+                evidencePath: 'CONTINUITY',
+                clockSource: endBoundary.clockSource,
+                candidateAt: endBoundary.boundaryAt,
+                enteredAt,
+              });
+              this.tripMetrics?.tripEvidencePaths?.inc({
+                phase: 'end_candidate',
+                path: 'CONTINUITY',
+              });
+              this.logTripEndTimeline('possible_end_entered', {
+                vehicleId,
+                tripId,
+                lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                possibleEndAt: endBoundary.boundaryAt,
+                possibleEndEnteredAt: enteredAt,
+              });
             });
           }
-          await this.schedulePossibleEndCheck(
-            vehicleId,
-            organizationId,
-            dimoTokenId,
-          );
           break;
       }
 
@@ -2464,10 +2614,12 @@ export class TripDetectionOrchestrationService {
       }
 
       // ── Step 5: Max completed CUSUM cycles — fallback finalize with explicit forensics ──
-      this.tripMetrics?.possibleEndStuck.set(
-        { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
-        1,
-      );
+      runTripObservabilitySafely(this.logger, 'possible_end_stuck_gauge', () => {
+        this.tripMetrics?.possibleEndStuck.set(
+          { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
+          1,
+        );
+      });
       this.logger.log(
         `CUSUM max completed attempts (${attempts}) for ${vehicleId}, fallback finalize`,
       );
@@ -2863,9 +3015,11 @@ export class TripDetectionOrchestrationService {
     let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
     let terminalTripId: string | null = null;
     let restingTransitionSucceeded = false;
+    let detectionProfileLabel = 'UNKNOWN';
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+      detectionProfileLabel = String(det.detectionProfile ?? 'UNKNOWN');
       const tripId = det.activeTripId;
 
       const endRecovery = await this.maybeRecoverLifecycleInvariant({
@@ -2883,7 +3037,7 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const [lastWaypoint, waypointCount] = await Promise.all([
+          const [latestWaypoint, waypointCount] = await Promise.all([
             this.prisma.vehicleTripWaypoint.findFirst({
               where: { tripId },
               orderBy: { recordedAt: 'desc' },
@@ -2900,7 +3054,7 @@ export class TripDetectionOrchestrationService {
           const endTime =
             (det as any).cusumSegmentEnd ??
             (det as any).lastMeaningfulMovementAt ??
-            lastWaypoint?.recordedAt ??
+            latestWaypoint?.recordedAt ??
             det.possibleEndAt ??
             new Date();
 
@@ -2912,11 +3066,23 @@ export class TripDetectionOrchestrationService {
               ? 'cusum_segment_end'
               : (det as any).lastMeaningfulMovementAt
                 ? 'last_meaningful_movement'
-                : lastWaypoint?.recordedAt
+                : latestWaypoint?.recordedAt
                   ? 'last_waypoint'
                   : det.possibleEndAt
                     ? 'possible_end_at'
                     : 'fallback_now';
+
+          const boundaryWaypoint =
+            latestWaypoint &&
+            latestWaypoint.recordedAt.getTime() <= endTime.getTime()
+              ? latestWaypoint
+              : await this.prisma.vehicleTripWaypoint.findFirst({
+                  where: {
+                    tripId,
+                    recordedAt: { lte: endTime },
+                  },
+                  orderBy: { recordedAt: 'desc' },
+                });
 
           const durationMs = endTime.getTime() - trip.startTime.getTime();
           // Keep the latest known trip end as rest-window anchor for Battery V2.
@@ -2953,104 +3119,194 @@ export class TripDetectionOrchestrationService {
             terminalLifecycleCommit = 'CANCELLED';
             // Smart cooldown: discard → short 30s cooldown
             restingReason = 'discard';
-            this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
-            this.tripMetrics?.tripDiscarded.inc({ reason: qualityCheck.reason ?? 'quality_check_failed' });
-            this.tripMetrics?.tripQualityAnomalies.inc({
-              anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
-            });
+            runTripObservabilitySafely(
+              this.logger,
+              'discard_post_commit_observability',
+              () => {
+                this.logger.log(
+                  `Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`,
+                );
+                this.tripMetrics?.tripDiscarded.inc({
+                  reason: qualityCheck.reason ?? 'quality_check_failed',
+                });
+                this.tripMetrics?.tripQualityAnomalies.inc({
+                  anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
+                });
+              },
+            );
           } else {
             const r5EndForensics = extractR5EndForensicsForPersistence(
               det.lastEvidenceSummary as Record<string, unknown> | null,
               det.endValidationAttempts ?? 0,
             );
+            const endRecognizedAt = new Date();
+            const endCoords = resolveBoundaryConsistentEndCoordinate({
+              canonicalEndAt: endTime,
+              waypointAtOrBefore: boundaryWaypoint,
+            });
+            const evidenceSummary =
+              (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+            const startForensics = resolveStartForensicProvenance({
+              evidenceSummary,
+              detPossibleStartAt: det.possibleStartAt,
+              detPossibleStartEnteredAt: det.possibleStartEnteredAt,
+              tripCanonicalStartAt: trip.startTime,
+              priorRawDetectionMeta: trip.rawDetectionMeta,
+            });
+            const tripFsmForensics = buildTripFsmForensicsR8V1({
+              startCandidateAt: startForensics.startCandidateAt,
+              startCandidateClockSource: startForensics.startCandidateClockSource,
+              startCandidateEnteredAt: startForensics.startCandidateEnteredAt,
+              startRecognizedAt: startForensics.startRecognizedAt,
+              canonicalStartAt: startForensics.startEpisodeCanonicalAt,
+              tripCanonicalStartAt: trip.startTime,
+              startBoundarySource: startForensics.startBoundarySource,
+              startEvidencePath: startForensics.startEvidencePath,
+              startBoundaryAdjustedMs: startForensics.startBoundaryAdjustedMs,
+              endCandidateAt: det.possibleEndAt,
+              endCandidateClockSource:
+                typeof evidenceSummary.endCandidateClockSource === 'string'
+                  ? evidenceSummary.endCandidateClockSource
+                  : null,
+              endCandidateEnteredAt: det.possibleEndEnteredAt,
+              endRecognizedAt,
+              canonicalEndAt: endTime,
+              endBoundarySource: chosenEndSource,
+              endDetectionMode: det.endDetectionMode ?? null,
+              endConfidence: det.endConfidence ?? null,
+            });
+            const finalizeLayer = {
+              detectionProfile: det.detectionProfile,
+              startDetectionMode: det.startDetectionMode,
+              startBoundarySource: startForensics.startBoundarySource,
+              startCandidateAt:
+                startForensics.flatStartCandidateAt ??
+                (typeof evidenceSummary.startCandidateAt === 'string'
+                  ? evidenceSummary.startCandidateAt
+                  : null),
+              startBoundaryAdjustedMs: startForensics.startBoundaryAdjustedMs,
+              startEvidencePath: startForensics.startEvidencePath,
+              endDetectionMode: det.endDetectionMode,
+              startConfidence: det.startConfidence,
+              endConfidence: det.endConfidence,
+              endTimeSource: chosenEndSource,
+              possibleStartAt: det.possibleStartAt?.toISOString(),
+              possibleEndAt: det.possibleEndAt?.toISOString(),
+              lastActivityAt: det.lastActivityAt?.toISOString(),
+              lastMeaningfulMovementAt:
+                (det as any).lastMeaningfulMovementAt?.toISOString() ?? null,
+              cusumValidatedAt: (det as any).cusumValidatedAt?.toISOString() ?? null,
+              cusumSegmentStart: (det as any).cusumSegmentStart?.toISOString() ?? null,
+              cusumSegmentEnd: (det as any).cusumSegmentEnd?.toISOString() ?? null,
+              endValidationAttempts: (det as any).endValidationAttempts ?? 0,
+              startOdometerKm: det.startOdometerKm,
+              startFuelLevel: det.startFuelLevel,
+              startEvSoc: det.startEvSoc,
+              endRecognizedAt: endRecognizedAt.toISOString(),
+              endCoordinateSource: endCoords.endCoordinateSource,
+              endCoordinateObservedAt: endCoords.endCoordinateObservedAt,
+              tripFsmForensics,
+              ...r5EndForensics,
+            };
             terminalLifecycleIntent = 'COMPLETE';
             terminalTripId = tripId;
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
+              endLatitude: endCoords.endLatitude,
+              endLongitude: endCoords.endLongitude,
               endDetectionMode:
                 det.endDetectionMode ?? END_DETECTION_MODES.NO_ACTIVITY_TIMEOUT,
-              endConfidence: (det.endConfidence as 'LOW' | 'MEDIUM' | 'HIGH' | null) ?? undefined,
+              endConfidence:
+                (det.endConfidence as 'LOW' | 'MEDIUM' | 'HIGH' | null) ?? undefined,
               cusumSegmentStart: (det as any).cusumSegmentStart ?? null,
               cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
               durationMs,
-              rawDetectionMeta: {
-                detectionProfile: det.detectionProfile,
-                startDetectionMode: det.startDetectionMode,
-                startBoundarySource:
-                  typeof (det.lastEvidenceSummary as any)?.confirmedStartSource === 'string'
-                    ? (det.lastEvidenceSummary as any).confirmedStartSource
-                    : null,
-                startCandidateAt:
-                  typeof (det.lastEvidenceSummary as any)?.startCandidateAt === 'string'
-                    ? (det.lastEvidenceSummary as any).startCandidateAt
-                    : null,
-                startBoundaryAdjustedMs:
-                  typeof (det.lastEvidenceSummary as any)?.startBoundaryAdjustedMs === 'number'
-                    ? (det.lastEvidenceSummary as any).startBoundaryAdjustedMs
-                    : null,
-                startEvidencePath:
-                  typeof (det.lastEvidenceSummary as any)?.startEvidencePath === 'string'
-                    ? (det.lastEvidenceSummary as any).startEvidencePath
-                    : null,
-                endDetectionMode: det.endDetectionMode,
-                startConfidence: det.startConfidence,
-                endConfidence: det.endConfidence,
-                endTimeSource: chosenEndSource,
-                possibleStartAt: det.possibleStartAt?.toISOString(),
-                possibleEndAt: det.possibleEndAt?.toISOString(),
-                lastActivityAt: det.lastActivityAt?.toISOString(),
-                lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt?.toISOString() ?? null,
-                cusumValidatedAt: (det as any).cusumValidatedAt?.toISOString() ?? null,
-                cusumSegmentStart: (det as any).cusumSegmentStart?.toISOString() ?? null,
-                cusumSegmentEnd: (det as any).cusumSegmentEnd?.toISOString() ?? null,
-                endValidationAttempts: (det as any).endValidationAttempts ?? 0,
-                startOdometerKm: det.startOdometerKm,
-                startFuelLevel: det.startFuelLevel,
-                startEvSoc: det.startEvSoc,
-                ...r5EndForensics,
-              },
+              rawDetectionMeta: mergeFinalizeRawDetectionMeta({
+                priorRaw: trip.rawDetectionMeta,
+                finalizeLayer,
+              }),
             });
             terminalLifecycleCommit = 'COMPLETED';
             terminalTripId = tripId;
             finalizedTripForRestWindow = { tripId, endTime };
-            this.logger.log(
-              `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
-            );
-            this.tripMetrics?.tripFinalized.inc({ profile: profileLabel, quality: 'ok', source: 'v2_live' });
-            this.tripMetrics?.tripFinalizeLatency.observe(
-              { profile: profileLabel },
-              durationMs / 1000,
-            );
-
-            const movementAnchor =
-              (det as any).lastMeaningfulMovementAt ??
-              det.possibleEndAt ??
-              null;
-            if (movementAnchor) {
-              const latencyFromMovementMs = endTime.getTime() - movementAnchor.getTime();
-              if (latencyFromMovementMs >= 0) {
-                this.tripMetrics?.tripEndLatencyFromMovement.observe(
-                  { profile: profileLabel, end_source: chosenEndSource },
-                  latencyFromMovementMs / 1000,
-                );
+            runTripObservabilitySafely(
+              this.logger,
+              'finalize_post_commit_observability',
+              () => {
+              this.logger.log(
+                `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
+              );
+              this.tripMetrics?.tripFinalized.inc({
+                profile: profileLabel,
+                quality: 'ok',
+                source: 'v2_live',
+              });
+              this.tripMetrics?.tripEvidencePaths?.inc({
+                phase: 'end_finalization',
+                path: chosenEndSource.toUpperCase(),
+              });
+              observeTripDuration(this.tripMetrics, {
+                profile: profileLabel,
+                startAt: trip.startTime,
+                endAt: endTime,
+              });
+              observeEndRecognitionLatency(this.tripMetrics, {
+                profile: profileLabel,
+                commitConfirmation: 'direct',
+                recognizedAt: endRecognizedAt,
+                canonicalEndAt: endTime,
+              });
+              observeEndBoundaryAdjustment(this.tripMetrics, {
+                profile: profileLabel,
+                endSource: chosenEndSource,
+                candidateAt: det.possibleEndAt,
+                canonicalEndAt: endTime,
+              });
+              this.tripMetrics?.tripFinalizeLatency?.observe(
+                { profile: profileLabel },
+                durationMs / 1000,
+              );
+              const movementAnchor =
+                (det as any).lastMeaningfulMovementAt ??
+                det.possibleEndAt ??
+                null;
+              if (movementAnchor) {
+                const latencyFromMovementMs =
+                  endTime.getTime() - movementAnchor.getTime();
+                if (latencyFromMovementMs >= 0) {
+                  this.tripMetrics?.tripEndLatencyFromMovement?.observe(
+                    { profile: profileLabel, end_source: chosenEndSource },
+                    latencyFromMovementMs / 1000,
+                  );
+                }
               }
-            }
-
-            this.logTripEndTimeline('trip_finalized', {
-              vehicleId,
-              tripId,
-              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
-              possibleEndAt: det.possibleEndAt,
-              endValidationStartedAt: this.parseEvidenceTimestamp(
-                det.lastEvidenceSummary,
-                'endValidationStartedAt',
-              ),
-              finalizedAt: endTime,
-              endSource: chosenEndSource,
-              latencyFromMovementMs:
-                movementAnchor != null
-                  ? endTime.getTime() - movementAnchor.getTime()
-                  : null,
+              const endTimelineFields = buildEndTimelineFields({
+                possibleEndAt: det.possibleEndAt,
+                possibleEndEnteredAt: det.possibleEndEnteredAt,
+                canonicalEndAt: endTime,
+                endRecognizedAt,
+              });
+              this.logTripEndTimeline('trip_finalized', {
+                vehicleId,
+                tripId,
+                lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+                possibleEndAt: det.possibleEndAt,
+                possibleEndEnteredAt: det.possibleEndEnteredAt,
+                endValidationStartedAt: this.parseEvidenceTimestamp(
+                  det.lastEvidenceSummary,
+                  'endValidationStartedAt',
+                ),
+                canonicalEndAt: endTime,
+                endRecognizedAt,
+                endSource: chosenEndSource,
+                candidateLatencySec: endTimelineFields.candidateLatencySec,
+                recognitionLatencySec: endTimelineFields.recognitionLatencySec,
+                boundaryAdjustmentSec: endTimelineFields.boundaryAdjustmentSec,
+                latencyFromMovementMs:
+                  movementAnchor != null
+                    ? endTime.getTime() - movementAnchor.getTime()
+                    : null,
+              });
             });
 
             // Durable V2 analysis init (awaited) after persisted finalize.
@@ -3164,6 +3420,44 @@ export class TripDetectionOrchestrationService {
               `trip=${terminalTripId} commit=${commitLabel}` +
               (durableTerminalOutcome ? ` durable=${durableTerminalOutcome}` : ''),
           );
+          if (
+            durableTerminalOutcome === 'TERMINAL_EXPECTED' &&
+            terminalLifecycleIntent === 'COMPLETE' &&
+            recovery.effectiveCommit !== 'NONE'
+          ) {
+            try {
+              const durableTrip = await this.prisma.vehicleTrip.findUnique({
+                where: { id: terminalTripId },
+                select: {
+                  tripStatus: true,
+                  endTime: true,
+                  rawDetectionMeta: true,
+                  startTime: true,
+                },
+              });
+              const recognizedAt = readPersistedEndRecognizedAt(
+                durableTrip?.rawDetectionMeta,
+              );
+              if (
+                durableTrip?.tripStatus === TripStatus.COMPLETED &&
+                durableTrip.endTime &&
+                recognizedAt
+              ) {
+                runTripObservabilitySafely(this.logger,'finalize_durable_recognition_metric', () => {
+                  observeEndRecognitionLatency(this.tripMetrics, {
+                    profile: detectionProfileLabel,
+                    commitConfirmation: 'durable',
+                    recognizedAt,
+                    canonicalEndAt: durableTrip.endTime!,
+                  });
+                });
+              }
+            } catch (metricErr) {
+              this.logger.warn(
+                `FINALIZE durable recognition metric skipped trip=${terminalTripId}: ${metricErr}`,
+              );
+            }
+          }
         } catch (enqueueErr) {
           this.logger.warn(
             `FINALIZE terminal orphan recovery enqueue failed vehicle=${vehicleId} ` +
@@ -3453,24 +3747,24 @@ export class TripDetectionOrchestrationService {
 
     const detectedEndAt = endDecision.detectedEndAt;
 
-    this.tripMetrics?.tripEvidencePaths.inc({
-      phase: 'end_assist',
-      path: endDecision.evidencePath,
-    });
-
-    this.logger.log(
-      `CH end assist for ${params.vehicleId}: end at ${detectedEndAt.toISOString()} ` +
-        `[${endDecision.confidence}] path=${endDecision.evidencePath}`,
-    );
-
-    this.logTripEndTimeline('clickhouse_end_assist', {
-      vehicleId: params.vehicleId,
-      tripId: params.tripId,
-      lastMeaningfulMovementAt: (params.det as any).lastMeaningfulMovementAt,
-      possibleEndAt: detectedEndAt,
-      finalizedAt: detectedEndAt,
-      endSource: 'clickhouse_segment_end',
-      confidence: endDecision.confidence,
+    runTripObservabilitySafely(this.logger,'ch_end_assist_pre', () => {
+      this.tripMetrics?.tripEvidencePaths?.inc({
+        phase: 'end_assist',
+        path: endDecision.evidencePath,
+      });
+      this.logger.log(
+        `CH end assist for ${params.vehicleId}: end at ${detectedEndAt.toISOString()} ` +
+          `[${endDecision.confidence}] path=${endDecision.evidencePath}`,
+      );
+      this.logTripEndTimeline('clickhouse_end_assist', {
+        vehicleId: params.vehicleId,
+        tripId: params.tripId,
+        lastMeaningfulMovementAt: (params.det as any).lastMeaningfulMovementAt,
+        possibleEndAt: detectedEndAt,
+        finalizedAt: detectedEndAt,
+        endSource: 'clickhouse_segment_end',
+        confidence: endDecision.confidence,
+      });
     });
 
     await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
@@ -3488,6 +3782,7 @@ export class TripDetectionOrchestrationService {
         clickhouseEndEvidencePath: endDecision.evidencePath,
         dimoContinuityCorroborated:
           endDecision.evidencePath === 'DIMO_PLUS_CLICKHOUSE',
+        endCandidateClockSource: 'PROVIDER_EVENT_TIME',
       },
     });
 
@@ -3529,6 +3824,21 @@ export class TripDetectionOrchestrationService {
         0,
       );
     }
+
+    runTripObservabilitySafely(this.logger,'ch_end_candidate', () => {
+      this.observePossibleEndCandidateLatency({
+        priorState: params.det.state,
+        profile: String(params.profile),
+        evidencePath: endDecision.evidencePath,
+        clockSource: 'PROVIDER_EVENT_TIME',
+        candidateAt: detectedEndAt,
+        enteredAt: params.now,
+      });
+      this.tripMetrics?.tripEvidencePaths?.inc({
+        phase: 'end_candidate',
+        path: endDecision.evidencePath,
+      });
+    });
 
     return true;
   }
@@ -3867,9 +4177,60 @@ export class TripDetectionOrchestrationService {
   ): Date | null {
     if (!summary || typeof summary !== 'object') return null;
     const raw = (summary as Record<string, unknown>)[key];
-    if (typeof raw !== 'string') return null;
-    const parsed = new Date(raw);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return parseStrictEvidenceTimestamp(raw);
+  }
+
+  private observePossibleEndCandidateLatency(params: {
+    priorState: TripDetectionState;
+    profile: string;
+    evidencePath: string;
+    clockSource: string;
+    candidateAt: Date;
+    enteredAt: Date;
+  }): void {
+    if (params.priorState === TripDetectionState.POSSIBLE_END) {
+      return;
+    }
+    observeEndCandidateLatency(this.tripMetrics, params);
+  }
+
+  private logTripStartTimeline(
+    phase: 'active_trip_confirmed',
+    input: {
+      vehicleId: string;
+      tripId?: string | null;
+      startCandidateAt?: Date | null;
+      startCandidateEnteredAt?: Date | null;
+      canonicalStartAt?: Date | null;
+      startRecognizedAt?: Date | null;
+      boundarySource?: string | null;
+      evidencePath?: string | null;
+    },
+  ): void {
+    runTripObservabilitySafely(this.logger,'trip_start_timeline', () => {
+      const fmt = (d?: Date | null) =>
+        d && Number.isFinite(d.getTime()) ? d.toISOString() : '—';
+      const fields = buildStartTimelineFields(input);
+      this.logger.log(
+        `TRIP_START_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
+          (input.tripId ? ` trip=${input.tripId}` : '') +
+          ` startCandidateAt=${fmt(input.startCandidateAt)}` +
+          ` startCandidateEnteredAt=${fmt(input.startCandidateEnteredAt)}` +
+          ` canonicalStartAt=${fmt(input.canonicalStartAt)}` +
+          ` startRecognizedAt=${fmt(input.startRecognizedAt)}` +
+          (input.boundarySource ? ` boundarySource=${input.boundarySource}` : '') +
+          (input.evidencePath ? ` evidencePath=${input.evidencePath}` : '') +
+          (fields.candidateLatencySec != null
+            ? ` candidateLatencySec=${Math.round(fields.candidateLatencySec)}`
+            : '') +
+          (fields.recognitionLatencySec != null
+            ? ` recognitionLatencySec=${Math.round(fields.recognitionLatencySec)}`
+            : '') +
+          (fields.boundaryAdjustmentSec != null
+            ? ` boundaryAdjustmentSec=${Math.round(fields.boundaryAdjustmentSec)}`
+            : ''),
+      );
+    });
   }
 
   private logTripEndTimeline(
@@ -3889,7 +4250,13 @@ export class TripDetectionOrchestrationService {
       possibleEndEnteredAt?: Date | null;
       endValidationStartedAt?: Date | null;
       endValidationScheduledAt?: Date | null;
+      /** @deprecated Use canonicalEndAt — boundary time, not worker recognition. */
       finalizedAt?: Date | null;
+      canonicalEndAt?: Date | null;
+      endRecognizedAt?: Date | null;
+      candidateLatencySec?: number | null;
+      recognitionLatencySec?: number | null;
+      boundaryAdjustmentSec?: number | null;
       endSource?: string;
       confidence?: string;
       latencyFromMovementMs?: number | null;
@@ -3899,27 +4266,44 @@ export class TripDetectionOrchestrationService {
       maxAttempts?: number;
     },
   ): void {
-    const fmt = (d?: Date | null) => (d ? d.toISOString() : '—');
-    const latencySec =
-      input.latencyFromMovementMs != null
-        ? Math.round(input.latencyFromMovementMs / 1000)
-        : null;
+    runTripObservabilitySafely(this.logger,'trip_end_timeline', () => {
+      const fmt = (d?: Date | null) =>
+        d && Number.isFinite(d.getTime()) ? d.toISOString() : '—';
+      const latencySec =
+        input.latencyFromMovementMs != null
+          ? Math.round(input.latencyFromMovementMs / 1000)
+          : null;
+      const canonicalEndAt = input.canonicalEndAt ?? input.finalizedAt ?? null;
 
-    this.logger.log(
-      `TRIP_END_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
-        (input.tripId ? ` trip=${input.tripId}` : '') +
-        ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
-        ` possibleEndAt=${fmt(input.possibleEndAt)}` +
-        ` possibleEndEnteredAt=${fmt(input.possibleEndEnteredAt)}` +
-        ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
-        ` finalizedAt=${fmt(input.finalizedAt)}` +
-        (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
-        (input.endSource ? ` endSource=${input.endSource}` : '') +
-        (input.confidence ? ` confidence=${input.confidence}` : '') +
-        (input.attempt != null
-          ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
-          : ''),
-    );
+      this.logger.log(
+        `TRIP_END_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
+          (input.tripId ? ` trip=${input.tripId}` : '') +
+          ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
+          ` possibleEndAt=${fmt(input.possibleEndAt)}` +
+          ` possibleEndEnteredAt=${fmt(input.possibleEndEnteredAt)}` +
+          ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
+          ` canonicalEndAt=${fmt(canonicalEndAt)}` +
+          ` endRecognizedAt=${fmt(input.endRecognizedAt)}` +
+          (input.finalizedAt
+            ? ` finalizedAt=${fmt(input.finalizedAt)}`
+            : '') +
+          (input.candidateLatencySec != null
+            ? ` candidateLatencySec=${Math.round(input.candidateLatencySec)}`
+            : '') +
+          (input.recognitionLatencySec != null
+            ? ` recognitionLatencySec=${Math.round(input.recognitionLatencySec)}`
+            : '') +
+          (input.boundaryAdjustmentSec != null
+            ? ` boundaryAdjustmentSec=${Math.round(input.boundaryAdjustmentSec)}`
+            : '') +
+          (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
+          (input.endSource ? ` endSource=${input.endSource}` : '') +
+          (input.confidence ? ` confidence=${input.confidence}` : '') +
+          (input.attempt != null
+            ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
+            : ''),
+      );
+    });
   }
 
   async logTrackingRun(input: {
@@ -3951,7 +4335,7 @@ export class TripDetectionOrchestrationService {
           corePointsCount: input.corePointsCount ?? null,
           routePointsCount: input.routePointsCount ?? null,
           drivingPointsCount: input.drivingPointsCount ?? null,
-          resultState: input.resultState ?? null,
+          resultState: input.resultState ?? input.stateAtRun,
           resultSummary: (input.resultSummary as any) ?? null,
           errorMessage: input.errorMessage ?? null,
           durationMs: input.durationMs ?? null,

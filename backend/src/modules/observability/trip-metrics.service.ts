@@ -259,9 +259,18 @@ export class TripMetricsService implements OnModuleInit {
   //  HISTOGRAMS
   // ═══════════════════════════════════════════════════════════════
 
+  /** @deprecated Mislabeled trip duration — use tripDuration. Kept for backward compatibility. */
   readonly tripFinalizeLatency: Histogram<string>;
-  /** Seconds from last meaningful movement to trip finalization. */
+  /** @deprecated Boundary delta, often ~0 — use tripEndRecognitionLatency. Kept for compatibility. */
   readonly tripEndLatencyFromMovement: Histogram<string>;
+  readonly tripStartCandidateLatency: Histogram<string>;
+  readonly tripStartRecognitionLatency: Histogram<string>;
+  readonly tripStartBoundaryAdjustment: Histogram<string>;
+  readonly tripEndCandidateLatency: Histogram<string>;
+  readonly tripEndRecognitionLatency: Histogram<string>;
+  readonly tripEndBoundaryAdjustment: Histogram<string>;
+  readonly tripDuration: Histogram<string>;
+  readonly tripTimingSampleRejected: Counter<string>;
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
   readonly clickHouseQueryDuration: Histogram<string>;
@@ -760,7 +769,8 @@ export class TripMetricsService implements OnModuleInit {
 
     this.tripFinalizeLatency = new Histogram({
       name: 'synqdrive_trip_finalize_latency_seconds',
-      help: 'Time from trip start to finalization in seconds',
+      help:
+        'DEPRECATED: trip duration (startTime→endTime), not worker recognition latency. Use synqdrive_trip_duration_seconds.',
       buckets: [60, 300, 900, 1800, 3600, 7200, 18000],
       labelNames: ['profile'],
       registers: [this.registry],
@@ -768,9 +778,79 @@ export class TripMetricsService implements OnModuleInit {
 
     this.tripEndLatencyFromMovement = new Histogram({
       name: 'synqdrive_trip_end_latency_from_movement_seconds',
-      help: 'Time from last meaningful movement to trip finalization in seconds',
+      help:
+        'DEPRECATED: canonical end boundary delta vs movement anchor, not worker recognition latency. Use synqdrive_trip_end_recognition_latency_seconds.',
       buckets: [30, 60, 120, 180, 300, 600, 900, 1800],
       labelNames: ['profile', 'end_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartCandidateLatency = new Histogram({
+      name: 'synqdrive_trip_start_candidate_latency_seconds',
+      help:
+        'Seconds from start candidate EVENT_TIME to POSSIBLE_START worker recognition (enteredAt−candidateAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'clock_source'],
+      registers: [this.registry],
+    });
+
+    this.tripStartRecognitionLatency = new Histogram({
+      name: 'synqdrive_trip_start_recognition_latency_seconds',
+      help:
+        'Seconds from canonical start EVENT_TIME to ACTIVE_TRIP worker recognition (recognizedAt−effectiveStartAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'mode', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.tripStartBoundaryAdjustment = new Histogram({
+      name: 'synqdrive_trip_start_boundary_adjustment_seconds',
+      help:
+        'Absolute seconds between initial start candidate and confirmed canonical start boundary.',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['profile', 'source', 'direction', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.tripEndCandidateLatency = new Histogram({
+      name: 'synqdrive_trip_end_candidate_latency_seconds',
+      help:
+        'Seconds from end candidate EVENT_TIME to POSSIBLE_END worker recognition (enteredAt−candidateAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'evidence_path', 'clock_source'],
+      registers: [this.registry],
+    });
+
+    this.tripEndRecognitionLatency = new Histogram({
+      name: 'synqdrive_trip_end_recognition_latency_seconds',
+      help:
+        'Seconds from canonical end EVENT_TIME to COMPLETED worker recognition (recognizedAt−canonicalEndAt).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600],
+      labelNames: ['profile', 'commit_confirmation'],
+      registers: [this.registry],
+    });
+
+    this.tripEndBoundaryAdjustment = new Histogram({
+      name: 'synqdrive_trip_end_boundary_adjustment_seconds',
+      help:
+        'Absolute seconds between end candidate and canonical end boundary (boundary accuracy, not recognition).',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600, 900, 1800],
+      labelNames: ['profile', 'end_source', 'direction'],
+      registers: [this.registry],
+    });
+
+    this.tripDuration = new Histogram({
+      name: 'synqdrive_trip_duration_seconds',
+      help: 'Canonical trip duration from startTime to endTime in seconds.',
+      buckets: [60, 300, 900, 1800, 3600, 7200, 18000, 43200],
+      labelNames: ['profile'],
+      registers: [this.registry],
+    });
+
+    this.tripTimingSampleRejected = new Counter({
+      name: 'synqdrive_trip_timing_sample_rejected_total',
+      help: 'Rejected trip timing histogram samples (invalid anchor, negative delta, invalid timestamp).',
+      labelNames: ['metric', 'reason'],
       registers: [this.registry],
     });
 

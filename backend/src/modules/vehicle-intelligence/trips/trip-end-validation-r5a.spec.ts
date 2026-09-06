@@ -253,16 +253,24 @@ describe('R5A — processFinalize rawDetectionMeta persistence', () => {
         tripFinalized: { inc: jest.fn() },
         tripFinalizeLatency: { observe: jest.fn() },
         tripEndLatencyFromMovement: { observe: jest.fn() },
+        tripDuration: { observe: jest.fn() },
+        tripEndRecognitionLatency: { observe: jest.fn() },
+        tripEndBoundaryAdjustment: { observe: jest.fn() },
+        tripEvidencePaths: { inc: jest.fn() },
         tripDiscarded: { inc: jest.fn() },
         tripQualityAnomalies: { inc: jest.fn() },
       },
       logTripEndTimeline: jest.fn(),
+      logTripStartTimeline: jest.fn(),
+      parseEvidenceTimestamp: jest.fn().mockReturnValue(null),
       logTrackingRun: jest.fn().mockResolvedValue(undefined),
       transitionState: jest.fn().mockResolvedValue(undefined),
       scheduleActiveTick: jest.fn(),
       postFinalizeAnalysisProducer: { produceAfterPersistedCompletion: jest.fn() },
       enrichmentOrchestrator: { enqueueBehaviorEnrichment: jest.fn().mockResolvedValue(undefined) },
-      batteryV2LvRestSessionProducer: { produceAfterTripFinalized: jest.fn() },
+      batteryLvRestSessionProducer: {
+        enqueueSessionOpenForFinalizedTrip: jest.fn().mockResolvedValue(undefined),
+      },
     };
 
     await TripDetectionOrchestrationService.prototype.processFinalize.call(
