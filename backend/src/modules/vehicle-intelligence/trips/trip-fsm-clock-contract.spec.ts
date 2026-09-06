@@ -1,7 +1,9 @@
 import {
   clearPossibleEndClockFields,
   clearPossibleStartClockFields,
+  isPossibleEndRecoveryEligible,
   isValidProviderEventTimestamp,
+  resolveOperationalNoCoreInactivityAnchor,
   resolvePossibleEndBoundaryAnchor,
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
@@ -13,6 +15,7 @@ import {
   assessActiveContinuity,
   continuityImpliesMeaningfulMovement,
   resolveLatestMeaningfulMovementEventAt,
+  resolveLatestOdometerAdvanceEventAt,
 } from './trip-evidence.helpers';
 import type { TripCoreDataPoint } from '../../dimo/dimo-segments.service';
 
@@ -85,15 +88,27 @@ describe('R1 — trip FSM clock contract', () => {
       expect(det.possibleStartAt).toEqual(T0);
     });
 
-    it('legacy null possibleStartEnteredAt falls back deterministically', () => {
+    it('legacy null possibleStartEnteredAt prefers possibleStartAt over updatedAt', () => {
       const legacy = {
         possibleStartAt: T0,
         possibleStartEnteredAt: null,
         updatedAt: T0_PLUS_10M,
       };
       expect(resolvePossibleStartConfirmationAnchor(legacy, T0_PLUS_10M_5S)).toEqual(
-        T0_PLUS_10M,
+        T0,
       );
+    });
+
+    it('legacy confirmation age ignores worker-lock refreshed updatedAt', () => {
+      const legacy = {
+        possibleStartAt: T0,
+        possibleStartEnteredAt: null,
+        updatedAt: T0_PLUS_10M,
+      };
+      const elapsed =
+        T0_PLUS_10M.getTime() -
+        resolvePossibleStartConfirmationAnchor(legacy, T0_PLUS_10M).getTime();
+      expect(elapsed).toBe(10 * 60_000);
     });
   });
 
@@ -152,6 +167,47 @@ describe('R1 — trip FSM clock contract', () => {
         possibleStartEnteredAt: null,
       });
     });
+
+    it('legacy PE dwell prefers possibleEndAt over lock-mutated updatedAt', () => {
+      const T0_31m = new Date(T0.getTime() + 31 * 60_000);
+      const legacy = {
+        possibleEndAt: T0,
+        possibleEndEnteredAt: null,
+        updatedAt: T0_31m,
+      };
+      expect(resolvePossibleEndFsmDwellAnchor(legacy, T0_31m)).toEqual(T0);
+    });
+
+    it('legacy POSSIBLE_END recovery eligible when dwell age exceeds 30 min', () => {
+      const T0_31m = new Date(T0.getTime() + 31 * 60_000);
+      expect(
+        isPossibleEndRecoveryEligible(
+          {
+            possibleEndAt: T0,
+            possibleEndEnteredAt: null,
+            updatedAt: T0_31m,
+            activeTripId: 'trip-1',
+          },
+          T0_31m,
+          30 * 60_000,
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe('operational no-core inactivity gate', () => {
+    it('uses lastActivityAt before historical possibleStartAt', () => {
+      const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+        lastMeaningfulMovementAt: null,
+        lastActivityAt: T0_PLUS_10M,
+        possibleStartAt: T0,
+        workerNow: T0_PLUS_10M_5S,
+      });
+      expect(operationalAnchor).toEqual(T0_PLUS_10M);
+      const inactiveMs = T0_PLUS_10M_5S.getTime() - operationalAnchor.getTime();
+      expect(inactiveMs).toBe(5_000);
+      expect(inactiveMs).toBeLessThan(120_000);
+    });
   });
 
   describe('lastMeaningfulMovementAt event-time propagation', () => {
@@ -167,7 +223,7 @@ describe('R1 — trip FSM clock contract', () => {
       expect(at?.toISOString()).toBe(points[1].timestamp);
     });
 
-    it('odometer-only ACTIVE advances event-time movement anchor', () => {
+    it('odometer-only ACTIVE advances event-time at actual progression', () => {
       const workerNow = new Date();
       const points = [ptAgo(30, 0, 5000), ptAgo(10, 0, 5000.15)];
       const continuity = assessActiveContinuity(points, false, 'ICE');
@@ -180,6 +236,56 @@ describe('R1 — trip FSM clock contract', () => {
         workerNow,
       });
       expect(at?.toISOString()).toBe(points[1].timestamp);
+    });
+
+    it('odometer plateau uses last advance timestamp not trailing repeat', () => {
+      const workerNow = new Date('2026-09-06T12:00:00.000Z');
+      const mk = (iso: string, odo: number): TripCoreDataPoint => ({
+        timestamp: iso,
+        isIgnitionOn: false,
+        speed: 0,
+        travelledDistance: odo,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      });
+      const advanceAt = '2026-09-06T11:59:40.000Z';
+      const points = [
+        mk('2026-09-06T11:59:00.000Z', 1000.0),
+        mk(advanceAt, 1000.2),
+        mk('2026-09-06T11:59:50.000Z', 1000.2),
+        mk('2026-09-06T12:00:00.000Z', 1000.2),
+      ];
+      expect(
+        resolveLatestOdometerAdvanceEventAt(points, workerNow)?.toISOString(),
+      ).toBe(advanceAt);
+      expect(
+        resolveLatestMeaningfulMovementEventAt({
+          recentPoints: points,
+          profile: 'ICE',
+          continuitySummary: { odometerDelta: 0.2 },
+          workerNow,
+        })?.toISOString(),
+      ).toBe(advanceAt);
+    });
+
+    it('multiple odometer increments pick latest advance', () => {
+      const workerNow = new Date('2026-09-06T12:00:00.000Z');
+      const mk = (iso: string, odo: number): TripCoreDataPoint => ({
+        timestamp: iso,
+        isIgnitionOn: false,
+        speed: 0,
+        travelledDistance: odo,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      });
+      const points = [
+        mk('2026-09-06T11:58:00.000Z', 1000),
+        mk('2026-09-06T11:59:00.000Z', 1000.2),
+        mk('2026-09-06T11:59:30.000Z', 1000.35),
+      ];
+      expect(
+        resolveLatestOdometerAdvanceEventAt(points, workerNow)?.toISOString(),
+      ).toBe('2026-09-06T11:59:30.000Z');
     });
 
     it('IDLE does not imply meaningful movement', () => {
@@ -207,6 +313,78 @@ describe('R1 — trip FSM clock contract', () => {
           },
         }),
       ).toBeNull();
+    });
+  });
+
+  describe('core timestamp safety', () => {
+    const workerNow = new Date('2026-09-06T12:00:00.000Z');
+
+    const motionPoint = (
+      iso: string,
+      speed: number,
+    ): TripCoreDataPoint => ({
+      timestamp: iso,
+      isIgnitionOn: true,
+      speed,
+      travelledDistance: null,
+      fuelAbsoluteLevel: null,
+      batteryEnergy: null,
+    });
+
+    it('rejects future-dated core movement beyond allowed skew', () => {
+      const futureIso = new Date(
+        workerNow.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS + 5_000,
+      ).toISOString();
+      expect(
+        resolveLatestMeaningfulMovementEventAt({
+          recentPoints: [motionPoint(futureIso, 40)],
+          profile: 'ICE',
+          continuitySummary: { motionCount: 1 },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('accepts core movement within configured future skew', () => {
+      const nearFutureIso = new Date(
+        workerNow.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS - 1_000,
+      ).toISOString();
+      expect(
+        resolveLatestMeaningfulMovementEventAt({
+          recentPoints: [motionPoint(nearFutureIso, 40)],
+          profile: 'ICE',
+          continuitySummary: { motionCount: 1 },
+          workerNow,
+        })?.toISOString(),
+      ).toBe(nearFutureIso);
+    });
+
+    it('out-of-order core points resolve to latest valid motion timestamp', () => {
+      const earlier = '2026-09-06T11:58:00.000Z';
+      const later = '2026-09-06T11:59:00.000Z';
+      expect(
+        resolveLatestMeaningfulMovementEventAt({
+          recentPoints: [
+            motionPoint(later, 40),
+            motionPoint(earlier, 30),
+          ],
+          profile: 'ICE',
+          continuitySummary: { motionCount: 2 },
+          workerNow,
+        })?.toISOString(),
+      ).toBe(later);
+    });
+
+    it('duplicate timestamps stay deterministic without fabricating later time', () => {
+      const ts = '2026-09-06T11:00:00.000Z';
+      expect(
+        resolveLatestMeaningfulMovementEventAt({
+          recentPoints: [motionPoint(ts, 35), motionPoint(ts, 42)],
+          profile: 'ICE',
+          continuitySummary: { motionCount: 2 },
+          workerNow,
+        })?.toISOString(),
+      ).toBe(ts);
     });
   });
 

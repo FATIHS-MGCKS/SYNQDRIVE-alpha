@@ -75,6 +75,7 @@ import {
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
   resolvePossibleStartConfirmationAnchor,
+  resolveOperationalNoCoreInactivityAnchor,
   resolveStartCandidateClock,
 } from './trip-fsm-clock-contract';
 
@@ -1175,11 +1176,13 @@ export class TripDetectionOrchestrationService {
         // inactivity threshold, hand off to POSSIBLE_END and let the
         // POSSIBLE_END_CHECK → END_VALIDATION chain finalize the trip with
         // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
-        const anchorAt =
-          (det as any).lastMeaningfulMovementAt ??
-          det.possibleStartAt ??
-          now;
-        const inactiveMs = now.getTime() - anchorAt.getTime();
+        const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+          lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+          lastActivityAt: det.lastActivityAt,
+          possibleStartAt: det.possibleStartAt,
+          workerNow: now,
+        });
+        const inactiveMs = now.getTime() - operationalAnchor.getTime();
         if (inactiveMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS) {
           const endBoundary = resolvePossibleEndBoundaryCandidate({
             lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
@@ -1232,7 +1235,7 @@ export class TripDetectionOrchestrationService {
             resultSummary: {
               reason: 'no_core_data_inactivity_to_possible_end',
               inactiveMs,
-              anchorAt: anchorAt.toISOString(),
+              operationalAnchorAt: operationalAnchor.toISOString(),
               routePointsCount: routePoints.length,
               drivingPointsCount: perfReadings.length,
             },

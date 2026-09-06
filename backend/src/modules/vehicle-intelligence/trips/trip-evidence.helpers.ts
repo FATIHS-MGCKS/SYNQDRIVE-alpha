@@ -1537,7 +1537,11 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
 
   let latest: Date | null = null;
 
-  for (const pt of params.recentPoints) {
+  const chronological = [...params.recentPoints].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  for (const pt of chronological) {
     const ts = new Date(pt.timestamp);
     if (!isValidProviderEventTimestamp(ts, workerNow)) continue;
     const speedMotion = pt.speed != null && pt.speed > t.speedMotionKmh;
@@ -1547,16 +1551,16 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
     }
   }
 
-  if (hasOdometerProgress && params.recentPoints.length >= 2) {
-    const odoPoints = params.recentPoints.filter(
-      (p) => p.travelledDistance != null,
+  if (hasOdometerProgress) {
+    const odometerAdvanceAt = resolveLatestOdometerAdvanceEventAt(
+      chronological,
+      workerNow,
     );
-    if (odoPoints.length >= 2) {
-      const lastPt = odoPoints[odoPoints.length - 1];
-      const ts = new Date(lastPt.timestamp);
-      if (isValidProviderEventTimestamp(ts, workerNow)) {
-        if (!latest || ts.getTime() > latest.getTime()) latest = ts;
-      }
+    if (
+      odometerAdvanceAt &&
+      (!latest || odometerAdvanceAt.getTime() > latest.getTime())
+    ) {
+      latest = odometerAdvanceAt;
     }
   }
 
@@ -1571,6 +1575,43 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
   }
 
   return latest;
+}
+
+/**
+ * Latest provider timestamp at which odometer value actually increased.
+ * Ignores plateau/repeated samples after the last advance.
+ */
+export function resolveLatestOdometerAdvanceEventAt(
+  points: TripCoreDataPoint[],
+  workerNow: Date = new Date(),
+): Date | null {
+  const chronological = points
+    .map((p) => ({
+      ts: new Date(p.timestamp),
+      odo: p.travelledDistance,
+    }))
+    .filter(
+      (p): p is { ts: Date; odo: number } =>
+        p.odo != null && isValidProviderEventTimestamp(p.ts, workerNow),
+    )
+    .sort((a, b) => a.ts.getTime() - b.ts.getTime());
+
+  if (chronological.length < 2) return null;
+
+  let latestAdvance: Date | null = null;
+  let prevOdo = chronological[0].odo;
+
+  for (let i = 1; i < chronological.length; i++) {
+    const { ts, odo } = chronological[i];
+    if (odo > prevOdo) {
+      latestAdvance = ts;
+      prevOdo = odo;
+    } else if (odo < prevOdo) {
+      prevOdo = odo;
+    }
+  }
+
+  return latestAdvance;
 }
 
 /** Whether ACTIVE continuity implies meaningful movement for anchor advancement. */

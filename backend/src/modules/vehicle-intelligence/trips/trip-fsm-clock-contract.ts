@@ -66,8 +66,11 @@ export function resolvePossibleStartConfirmationAnchor(
   workerNow: Date,
 ): Date {
   if (det.possibleStartEnteredAt) return det.possibleStartEnteredAt;
+  // Pre-R1 rows used possibleStartAt as the confirmation clock; prefer it over
+  // mutable worker-lock bookkeeping on updatedAt.
+  if (det.possibleStartAt) return det.possibleStartAt;
   if (det.updatedAt) return det.updatedAt;
-  return det.possibleStartAt ?? workerNow;
+  return workerNow;
 }
 
 /** FSM stability / dwell / hard-timeout anchor for POSSIBLE_END. */
@@ -80,8 +83,42 @@ export function resolvePossibleEndFsmDwellAnchor(
   workerNow: Date,
 ): Date {
   if (det.possibleEndEnteredAt) return det.possibleEndEnteredAt;
+  // Pre-R1 rows used possibleEndAt as the dwell clock; prefer it over updatedAt.
+  if (det.possibleEndAt) return det.possibleEndAt;
   if (det.updatedAt) return det.updatedAt;
-  return det.possibleEndAt ?? workerNow;
+  return workerNow;
+}
+
+/**
+ * Operational no-core inactivity gate (worker/evaluation semantics).
+ * Separate from physical end-boundary candidate resolution.
+ */
+export function resolveOperationalNoCoreInactivityAnchor(params: {
+  lastMeaningfulMovementAt?: Date | null;
+  lastActivityAt?: Date | null;
+  possibleStartAt?: Date | null;
+  workerNow: Date;
+}): Date {
+  if (params.lastMeaningfulMovementAt) return params.lastMeaningfulMovementAt;
+  if (params.lastActivityAt) return params.lastActivityAt;
+  if (params.possibleStartAt) return params.possibleStartAt;
+  return params.workerNow;
+}
+
+/** Event-based recovery: POSSIBLE_END stuck longer than threshold. */
+export function isPossibleEndRecoveryEligible(
+  det: {
+    possibleEndEnteredAt?: Date | null;
+    possibleEndAt?: Date | null;
+    updatedAt?: Date | null;
+    activeTripId?: string | null;
+  },
+  now: Date,
+  thresholdMs: number,
+): boolean {
+  if (!det.activeTripId) return false;
+  const recoveryAgeAnchor = resolvePossibleEndFsmDwellAnchor(det, now);
+  return now.getTime() - recoveryAgeAnchor.getTime() > thresholdMs;
 }
 
 /** Physical end-boundary anchor for CUSUM windows and finalize priority. */

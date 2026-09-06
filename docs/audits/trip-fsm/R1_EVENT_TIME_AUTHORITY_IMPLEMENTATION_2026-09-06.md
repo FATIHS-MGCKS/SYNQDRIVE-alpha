@@ -79,21 +79,28 @@ Helpers: `backend/src/modules/vehicle-intelligence/trips/trip-fsm-clock-contract
 
 | Reader intent | Clock |
 |---------------|-------|
-| POSSIBLE_START confirmation expiry | `possibleStartEnteredAt` (legacy: `updatedAt` → `possibleStartAt`) |
-| POSSIBLE_END hard timeout | `possibleEndEnteredAt` |
-| PE stability / CH assist 30s dwell | `possibleEndEnteredAt` |
+| POSSIBLE_START confirmation expiry | `possibleStartEnteredAt` (legacy: `possibleStartAt` → `updatedAt`) |
+| POSSIBLE_END hard timeout | `possibleEndEnteredAt` (legacy: `possibleEndAt` → `updatedAt`) |
+| PE stability / CH assist 30s dwell | `possibleEndEnteredAt` (legacy: `possibleEndAt` → `updatedAt`) |
 | PE min inactivity before CUSUM | `possibleEndAt` (physical) |
 | CUSUM fetch window | `possibleEndAt` |
-| Recovery stuck PE (>30 min) | `possibleEndEnteredAt` |
+| No-core operational inactivity gate | `resolveOperationalNoCoreInactivityAnchor()` (worker hierarchy) |
+| Recovery stuck PE (>30 min) | `possibleEndEnteredAt` (legacy: `possibleEndAt` → `updatedAt`) |
 | Suspicious long ACTIVE trip | `possibleStartAt` (trip start boundary) |
 
 ## Backward compatibility
 
-Legacy rows with null `*EnteredAt` use deterministic fallback (`updatedAt`, then legacy boundary field). No production backfill required.
+Legacy rows with null `*EnteredAt` use deterministic fallback (**R1A corrected**):
+
+- confirmation / FSM dwell: legacy `possible*At` before mutable `updatedAt`
+- `updatedAt` only when no boundary exists (never ahead of legacy boundary clocks)
+
+Worker-lock mutations on `updatedAt` must not reset age for pre-migration rows. No production backfill required.
 
 ## Tests
 
-- `trip-fsm-clock-contract.spec.ts` — clock split, delayed snapshot, movement anchors, profiles, future skew
+- `trip-fsm-clock-contract.spec.ts` — clock split, delayed snapshot, legacy fallback, no-core gate, odometer plateau, timestamp safety
+- `trip-tracking-recovery.scheduler.spec.ts` — legacy POSSIBLE_END recovery age
 - `trip-detection.spec.ts` — regression suite (unchanged assertions)
 - `dimo-snapshot.trip-start-isolation.spec.ts` — `sourceTimestamp` plumbing
 
@@ -102,9 +109,9 @@ Legacy rows with null `*EnteredAt` use deterministic fallback (`updatedAt`, then
 | ID | Status |
 |----|--------|
 | P4-F02 | **RESOLVED_BY_R1** — snapshot `lastSeenAt` → `sourceTimestamp` → `possibleStartAt` |
-| P5-F02 | **RESOLVED_BY_R1** — PE stability/dwell uses `possibleEndEnteredAt` |
+| P5-F02 | **RESOLVED_BY_R1** — PE stability/dwell uses `possibleEndEnteredAt` (+ R1A legacy fallback) |
 | P5-F14 | **RESOLVED_BY_R1** — `lastMeaningfulMovementAt` from provider events |
-| P5-F15 | **RESOLVED_BY_R1** — odometer-only ACTIVE advances movement anchor |
+| P5-F15 | **RESOLVED_BY_R1** — odometer-only ACTIVE advances at actual progression timestamp (R1A plateau fix) |
 | P5-F01 | **PARTIALLY_RESOLVED** — ONGOING `vehicleTrip.endTime` remains provisional worker time by design |
 
 ## Known remaining issues
@@ -126,5 +133,57 @@ Legacy rows with null `*EnteredAt` use deterministic fallback (`updatedAt`, then
 - `backend/src/workers/processors/dimo-snapshot.processor.ts`
 - `backend/src/workers/processors/dimo-snapshot.trip-start-isolation.spec.ts`
 - `backend/src/workers/schedulers/trip-tracking-recovery.scheduler.ts`
+- `backend/src/workers/schedulers/trip-tracking-recovery.scheduler.spec.ts`
 - `frontend/src/master/components/ChangesView.tsx`
 - `frontend/src/master/components/ArchitekturView.tsx`
+
+---
+
+## R1A — Closure Corrections
+
+| Field | Value |
+|-------|-------|
+| R1 base commit | `3740029a6578b2ebead63bcaadf4d9789ae80cf3` |
+| Closure scope | compatibility / semantic edge cases only |
+| Deploy | **NOT PERFORMED** |
+
+### Legacy lock / updatedAt issue
+
+Initial R1 legacy fallback used `updatedAt` before legacy boundary clocks. `acquireWorkerLock()` mutates the same `VehicleTripDetectionState` row (`workerLockedUntil`, `workerRunToken`), advancing `@updatedAt` before FSM handlers read state. Pre-migration rows with null `*EnteredAt` could therefore reset confirmation/dwell age on every attempt.
+
+**Corrected hierarchy:**
+
+| Anchor | Fallback order |
+|--------|----------------|
+| POSSIBLE_START confirmation | `possibleStartEnteredAt` → `possibleStartAt` → `updatedAt` → `workerNow` |
+| POSSIBLE_END FSM dwell / recovery | `possibleEndEnteredAt` → `possibleEndAt` → `updatedAt` → `workerNow` |
+
+### Recovery scheduler legacy behavior
+
+`TripTrackingRecoveryScheduler` stuck POSSIBLE_END reconciliation now uses `isPossibleEndRecoveryEligible()` / `resolvePossibleEndFsmDwellAnchor()` so legacy rows with `possibleEndEnteredAt = null` remain eligible when `possibleEndAt` age exceeds 30 minutes.
+
+### No-core operational vs boundary separation
+
+Successful empty-core inactivity gate restored pre-R1 operational hierarchy via `resolveOperationalNoCoreInactivityAnchor()`:
+
+`lastMeaningfulMovementAt` → `lastActivityAt` → `possibleStartAt` → `workerNow`
+
+Physical `possibleEndAt` on entry still uses R1 boundary contract (`resolvePossibleEndBoundaryCandidate`).
+
+### Odometer plateau correction
+
+`resolveLatestOdometerAdvanceEventAt()` timestamps the latest provider instant odometer **increased**, not the last repeated plateau sample.
+
+### Timestamp edge tests added
+
+Future skew rejection/acceptance, out-of-order core points, duplicate timestamps, odometer plateau/multi-increment cases.
+
+### Final finding status (post-R1A)
+
+| ID | Status |
+|----|--------|
+| P4-F02 | RESOLVED_BY_R1 |
+| P5-F02 | RESOLVED_BY_R1 |
+| P5-F14 | RESOLVED_BY_R1 |
+| P5-F15 | RESOLVED_BY_R1 |
+| P5-F01 | PARTIALLY_RESOLVED |

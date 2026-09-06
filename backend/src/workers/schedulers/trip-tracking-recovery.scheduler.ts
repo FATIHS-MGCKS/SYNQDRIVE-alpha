@@ -10,6 +10,7 @@ import {
   TRIP_TRACKING_TRIGGERS,
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { resolvePossibleEndFsmDwellAnchor, isPossibleEndRecoveryEligible } from '../../modules/vehicle-intelligence/trips/trip-fsm-clock-contract';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
@@ -143,15 +144,15 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
       // ── Stuck in POSSIBLE_END > 30 min → trigger onStuckTrip ─────────────
       if (
         s.state === TripDetectionState.POSSIBLE_END &&
-        s.possibleEndEnteredAt &&
-        now.getTime() - s.possibleEndEnteredAt.getTime() > STUCK_POSSIBLE_END_THRESHOLD_MS &&
-        s.activeTripId
+        isPossibleEndRecoveryEligible(s, now, STUCK_POSSIBLE_END_THRESHOLD_MS)
       ) {
+        const recoveryAgeAnchor = resolvePossibleEndFsmDwellAnchor(s, now);
+        const tripId = s.activeTripId!;
         this.logger.warn(
-          `Event trigger: POSSIBLE_END stuck for ${Math.round((now.getTime() - s.possibleEndEnteredAt.getTime()) / 60_000)}min — vehicle=${s.vehicleId} trip=${s.activeTripId}`,
+          `Event trigger: POSSIBLE_END stuck for ${Math.round((now.getTime() - recoveryAgeAnchor.getTime()) / 60_000)}min — vehicle=${s.vehicleId} trip=${tripId}`,
         );
         this.reconciliation
-          .onStuckTrip(s.vehicleId, s.activeTripId)
+          .onStuckTrip(s.vehicleId, tripId)
           .catch((err: unknown) =>
             this.logger.warn(`onStuckTrip failed for ${s.vehicleId}: ${(err as Error).message}`),
           );
