@@ -8,8 +8,14 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
 }));
 
 describe('TripTrackingRecoveryScheduler — R3 POSSIBLE_START retry policy', () => {
+  function createQueue() {
+    const getJob = jest.fn().mockResolvedValue(undefined);
+    const add = jest.fn().mockResolvedValue(undefined);
+    return { getJob, add };
+  }
+
   it('applies bounded fast retry to recovery-scheduler POSSIBLE_START wake jobs', async () => {
-    const trackingQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    const trackingQueue = createQueue();
     const lifecycleRecovery = {
       classifyDetectionState: jest.fn().mockResolvedValue({
         classification: 'HEALTHY_POSSIBLE_START',
@@ -52,7 +58,7 @@ describe('TripTrackingRecoveryScheduler — R3 POSSIBLE_START retry policy', () 
   });
 
   it('does not apply POSSIBLE_START retry policy to ACTIVE_TICK recovery jobs', async () => {
-    const trackingQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    const trackingQueue = createQueue();
     const lifecycleRecovery = {
       classifyDetectionState: jest.fn().mockResolvedValue({
         classification: 'HEALTHY',

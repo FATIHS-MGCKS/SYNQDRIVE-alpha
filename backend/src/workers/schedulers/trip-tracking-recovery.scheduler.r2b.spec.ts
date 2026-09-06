@@ -15,7 +15,10 @@ function makeSchedulerHarness(classification: {
   classification: string;
   action: string;
 }) {
-  const trackingQueue = { add: jest.fn().mockResolvedValue(undefined) };
+  const trackingQueue = {
+    add: jest.fn().mockResolvedValue(undefined),
+    getJob: jest.fn().mockResolvedValue(undefined),
+  };
   const reconciliation = {
     onStuckTrip: jest.fn().mockResolvedValue(undefined),
     onAnomalyDetected: jest.fn().mockResolvedValue(undefined),

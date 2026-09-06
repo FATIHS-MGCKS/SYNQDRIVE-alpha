@@ -45,6 +45,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'R1 confirmation clocks preserved across retries — possibleStartEnteredAt not reset on failure.',
       'Primary ACTIVE_TICK scheduled before Battery start proxy; Battery failure contained after liveness established.',
       'ACTIVE-state POSSIBLE_START replay ensures missing ACTIVE_TICK handoff without lifecycle mutation.',
+      'R3A: durable __succ successor slot for ACTIVE self-reschedule (30s NOT_CONFIRMED follow-up); recovery FAILED jobId recycled for later 120s wakes.',
       'R2 early lifecycle recovery preserved at processPossibleStart entry.',
       'No threshold, polling, CUSUM, end policy, mid-gap, or R1/R2 semantic changes.',
     ],

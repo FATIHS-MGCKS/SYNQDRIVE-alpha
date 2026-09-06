@@ -5,9 +5,16 @@ jest.mock('@shared/queue/queue-producer.util', () => ({
   canEnqueueQueue: () => true,
 }));
 
+function createTrackingQueueMock() {
+  return {
+    add: jest.fn().mockResolvedValue(undefined),
+    getJob: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('TripTrackingRecoveryScheduler — R2A fail-closed filtering', () => {
   it('does not enqueue or reconcile blocked conflict states', async () => {
-    const trackingQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    const trackingQueue = createTrackingQueueMock();
     const reconciliation = {
       onStuckTrip: jest.fn().mockResolvedValue(undefined),
       onAnomalyDetected: jest.fn().mockResolvedValue(undefined),
@@ -63,7 +70,7 @@ describe('TripTrackingRecoveryScheduler — R2A fail-closed filtering', () => {
   });
 
   it('enqueues POSSIBLE_START for recoverable refined-start orphan classification', async () => {
-    const trackingQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    const trackingQueue = createTrackingQueueMock();
     const lifecycleRecovery = {
       classifyDetectionState: jest.fn().mockResolvedValue({
         classification: 'RECOVERABLE_START_ORPHAN',

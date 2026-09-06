@@ -14,7 +14,7 @@ import { resolvePossibleEndFsmDwellAnchor, isPossibleEndRecoveryEligible } from 
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
 import { TripLifecycleRecoveryService } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-recovery.service';
 import { resolveSchedulerStaleStateDisposition } from '../../modules/vehicle-intelligence/trips/trip-lifecycle-scheduler-disposition';
-import { buildTripTrackingJobOptions } from '../../modules/vehicle-intelligence/trips/trip-tracking-queue.util';
+import { enqueueRecoveryTripTrackingJob } from '../../modules/vehicle-intelligence/trips/trip-tracking-queue.util';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 
@@ -113,21 +113,22 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
             ? TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK
             : TRIP_TRACKING_TRIGGERS.ACTIVE_TICK;
 
-      await this.trackingQueue.add(
-        'trip-recovery',
-        {
+      const enqueued = await enqueueRecoveryTripTrackingJob({
+        queue: this.trackingQueue,
+        vehicleId: s.vehicleId,
+        jobName: 'trip-recovery',
+        data: {
           vehicleId: s.vehicleId,
           organizationId: s.organizationId,
           dimoTokenId: tokenId,
           trigger,
           requestedAt: now.toISOString(),
-        } satisfies TripTrackingJobData,
-        {
-          jobId: `trip-recovery-${s.vehicleId}`,
-          ...buildTripTrackingJobOptions(trigger),
         },
-      );
-      enqueuedCount += 1;
+        trigger,
+      });
+      if (enqueued === 'enqueued') {
+        enqueuedCount += 1;
+      }
 
       if (disposition === 'enqueue_only') {
         recoverableWakeCount += 1;

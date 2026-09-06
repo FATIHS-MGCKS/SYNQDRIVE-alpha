@@ -139,7 +139,80 @@ Recovery scheduler remains last-resort safety net (120s). R3 fast retry reduces 
 
 ## Validation
 
-- Targeted suites: **182 passed**
+- Targeted suites: **182 passed** (pre-R3A baseline)
 - Backend build/typecheck: run in CI gate
 - Prisma validate: no schema change expected
+- Deploy: **NOT PERFORMED**
+
+---
+
+## R3A — Queue Handoff Closure
+
+| Field | Value |
+|-------|-------|
+| R3 base commit | `065cc23c324f82eee7d6565eebf531bea6385ffe` |
+| Scope | durable self-reschedule successor + recovery failed-job recycling |
+| Deploy | **NOT PERFORMED** |
+
+### Self-reschedule race (pre-R3A)
+
+When `enqueueTripTrackingJob()` saw primary jobId still `active`, it used one-shot `setImmediate()` → retry with `allowDeferIfActive=false`. Because the processor completes only after `logTrackingRun` + DimoPollLog, the primary job often remained ACTIVE on the deferred turn → **no successor created**.
+
+Regression: `simulateLegacyActiveSelfReschedule()` + harness proves one deferral is insufficient.
+
+### Durable successor design
+
+Canonical helper: `enqueueStableTripTrackingJob()` in `trip-tracking-queue.util.ts`.
+
+When primary stable jobId is ACTIVE:
+
+- enqueue into deterministic successor slot `${primaryJobId}__succ`
+- successor inherits same trigger, delay, and retry policy
+- WAITING/DELAYED/ACTIVE successor → skip (dedupe)
+- FAILED/COMPLETED successor → remove + recreate
+
+Applies generically to all trip-tracking phases (PS, AT, PEC, EV, FIN).
+
+### Recovery failed-job recycling
+
+`enqueueRecoveryTripTrackingJob()` inspects `trip-recovery-${vehicleId}` before add:
+
+| State | Action |
+|-------|--------|
+| FAILED / COMPLETED | remove → fresh wake |
+| WAITING / DELAYED / ACTIVE | skip duplicate |
+| absent | enqueue |
+
+Prevents `removeOnFail=5` retention from tombstoning future 120s recovery passes.
+
+### Fast retry → slow recovery contract
+
+1. PS infrastructure error → BullMQ native retry (~5s / ~10s / ~20s), 4 attempts
+2. Exhausted failure → job FAILED (retained up to 5 for diagnostics)
+3. Later 120s scheduler → recycles FAILED tombstone → fresh recovery wake with same PS retry policy
+4. Successful NOT_CONFIRMED → durable 30s successor via `__succ` slot (no scheduler dependency)
+
+### R3A test additions
+
+| Area | Suite |
+|------|-------|
+| Legacy race proof + successor/dedupe/retry | `trip-tracking-queue-handoff.r3a.spec.ts` |
+| Recovery FAILED recycle + dedupe matrix | `trip-tracking-queue-handoff.r3a.spec.ts`, `trip-tracking-recovery.scheduler.r3a.spec.ts` |
+| R3/R2 regressions preserved | existing 202 targeted tests |
+
+### Final finding status (post-R3A)
+
+| ID | Status |
+|----|--------|
+| P4-F11 | RESOLVED_BY_R3 |
+| P4-F12 | RESOLVED_BY_R3 |
+
+P4-F11 resolution now includes: error propagation, bounded fast retry, durable NOT_CONFIRMED successor, and recovery tombstone recycling — confirmation clocks unchanged.
+
+## Validation (post-R3A)
+
+- Targeted suites: **202 passed**
+- Backend build/typecheck: **PASS**
+- Prisma validate: **PASS** (no schema change)
+- `git diff --check`: **PASS**
 - Deploy: **NOT PERFORMED**
