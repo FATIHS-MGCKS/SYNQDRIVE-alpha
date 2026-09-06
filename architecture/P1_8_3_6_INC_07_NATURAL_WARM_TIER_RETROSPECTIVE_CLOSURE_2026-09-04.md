@@ -596,3 +596,150 @@ Evidence upgraded through P1.8.3.6.1 (WEAK → MODERATE) and sustained at MODERA
 ### OQ-28 cross-reference
 
 See `architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md`. Longest uninterrupted FULL_N2 segment `76832s` (< `86400`). OQ-28 remains **PARTIAL**.
+
+---
+
+## P1.8.3.8 — Final scaling closure extension (2026-09-06)
+
+**Previous cutoff:** `2026-09-05T23:19:52Z`  
+**Final audit end:** `2026-09-06T22:55:00Z`  
+**Total INC-07 window:** `264953s` (~`73.6h`)
+
+### Final machine-readable verdict block (P1.8.3.8)
+
+```
+P1_8_3_8_FINAL_VERDICT = INC_07_CLOSED_BY_COMBINED_REACHABILITY_PROOF_OQ28_PARTIAL
+
+FINAL_AUDIT_END = 2026-09-06T22:55:00Z
+TOTAL_INC07_WINDOW_SECONDS = 264953
+TOTAL_INC07_WINDOW_HOURS = 73.60
+
+LATEST_MAIN_SHA = 06095af91ce6f58366734a182ac5962830e858db
+CURRENT_PRODUCTION_SHA = 01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac
+CURRENT_RELEASE = 20260906213654_v4994
+MAIN_AHEAD_OF_PRODUCTION = YES
+
+TOTAL_NATURAL_WARM_TIER_CYCLES_AFTER_T0 = 16
+WARM_TIER_EXECUTION_TIMESTAMPS = 2026-09-04T01:18:43Z,2026-09-04T05:18:43Z,2026-09-04T09:18:43Z,2026-09-04T13:18:43Z,2026-09-04T17:18:43Z,2026-09-04T22:40:18Z,2026-09-05T02:40:18Z,2026-09-05T06:40:18Z,2026-09-05T13:05:26Z,2026-09-05T17:05:26Z,2026-09-05T21:05:26Z,2026-09-06T03:35:42Z,2026-09-06T07:35:42Z,2026-09-06T11:35:42Z,2026-09-06T15:35:42Z,2026-09-06T19:35:42Z
+
+POST_T0_DETERMINISTIC_REPAIR_COUNT = 13
+POST_T0_APPLIED = 13
+POST_T0_PROPOSED = 0
+POST_T0_REJECTED = 0
+
+MAX_COMMITTED_MUTATIONS_PER_REPAIR_ID = 1
+REPAIR_IDS_WITH_MULTIPLE_MUTATIONS = 0
+
+HISTORICAL_DUPLICATE_GROUP_COUNT_NOW = 2
+HISTORICAL_DUPLICATE_ROW_COUNT_NOW = 4
+HISTORICAL_DUPLICATE_ROWS_MUTATED = NO
+NEW_DUPLICATE_GROUP_COUNT_AFTER_T0 = 0
+NEW_INC07_EQUIVALENT_DUPLICATE_GROUP_COUNT = 0
+
+KNOWN_REPAIR_REENCOUNTER_COUNT = 0
+KNOWN_REPAIR_IDEMPOTENT_SKIP_COUNT = 0
+KNOWN_REPAIR_SECOND_MUTATION_COUNT = 0
+TOTAL_REPAIR_REENCOUNTER_COUNT = 0
+TOTAL_IDEMPOTENT_SKIP_COUNT = 0
+TOTAL_REENCOUNTER_SECOND_MUTATION_COUNT = 0
+
+NATURAL_REPLAY_STRUCTURALLY_REACHABLE = NO
+REPAIRS_STRUCTURALLY_REPLAYABLE = 0
+REPAIRS_STRUCTURALLY_NON_REPLAYABLE = 13
+REPAIRS_REPLAYABILITY_UNKNOWN = 0
+
+APPLIED_DOWNGRADE_SIGNAL_FOUND = NO
+APPLIED_TO_REJECTED_COUNT = 0
+APPLIED_TO_PROPOSED_COUNT = 0
+INC07_TRANSACTION_FAILURE_COUNT = 0
+INC07_TX_TIMEOUT_COUNT = 0
+INC07_DEADLOCK_COUNT = 0
+INC07_ADVISORY_LOCK_FAILURE_COUNT = 0
+COMMIT_STATE_ALREADY_APPLIED_COUNT = 0
+
+DUPLICATE_ROUTE_SIDE_EFFECT_SIGNAL = NO
+DUPLICATE_ATE_SIDE_EFFECT_SIGNAL = NO
+DUPLICATE_DI_SIDE_EFFECT_SIGNAL = NO
+POST_COMMIT_ENQUEUE_LOSS_SIGNAL = NO
+
+INC07_PRODUCTION_EVIDENCE_STRENGTH = STRONG_BY_COMBINED_REACHABILITY_PROOF
+
+INC_07_STATUS = CLOSED
+INC_07_PRODUCTION_VALIDATED = YES
+INC_07_CLOSURE_UTC = 2026-09-06T22:55:00Z
+INC_07_CLOSURE_CASE = B_STRUCTURAL_NON_REACHABILITY_PLUS_COMBINED_PRODUCTION_EVIDENCE
+
+OQ_30_STATUS = CLOSED
+
+OQ_28_STATUS = PARTIAL
+N2_PRODUCTION_CERTIFICATION = EARLY
+N2_CERTIFICATION_SCOPE = N2_PRODUCTION_TOPOLOGY_ONLY_NOT_N1000_NOT_PROVIDER_CEILING
+
+PRODUCTION_MUTATION_EXECUTED = NO
+PRODUCTION_DEPLOY_EXECUTED = NO
+MANUAL_RECONCILIATION_EXECUTED = NO
+ARTIFICIAL_REPAIR_TRIGGERED = NO
+
+NEXT_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FROM_CURRENT_SEGMENT
+```
+
+### Evidence strength chronology
+
+| Stage | Strength | Outcome |
+|-------|----------|---------|
+| P1.8.3.6 | WEAK | Open |
+| P1.8.3.6.1 | MODERATE | Open |
+| P1.8.3.6.2 | MODERATE | Open (no natural replay) |
+| **P1.8.3.8** | **STRONG_BY_COMBINED_REACHABILITY_PROOF** | **CLOSED (CASE B)** |
+
+### Replay reachability analysis (Phase 12–14)
+
+**Code path:** `TripReconciliationScheduler.warmRepair()` → `repairIntraTripGapSplits()` → `splitCompletedTripRecursively()` → `findWaypointGapForSplit()` → `buildIntraTripGapSplitRepairAuditId()` → `applyIntraTripGapSplitRepairAtomically()`.
+
+After a successful committed split:
+
+1. First segment receives `endDetectionMode = MID_TRIP_GAP_SPLIT` and is **excluded** from warm-tier candidate query (`NOT: { endDetectionMode: 'MID_TRIP_GAP_SPLIT' }` in `trip-reconciliation.service.ts`).
+2. Second segment receives reparented waypoints; the original consecutive waypoint gap **no longer exists** on a single trip row.
+3. Therefore the exact semantic gap `G(firstEndAt, secondStartAt)` cannot be rediscovered by normal warm-tier reconciliation after success.
+
+**`NATURAL_REPLAY_STRUCTURALLY_REACHABLE = NO`** for all 13 post-T0 APPLIED repairs. Natural `IDEMPOTENT_SKIP` log lines are emitted at **DEBUG** level only and are not retained in PM2 out logs — this explains zero log evidence despite structural non-reachability.
+
+### INC-07 closure decision (CASE B)
+
+| Criterion | Result |
+|-----------|--------|
+| Natural replay observed | **NO** |
+| Structural replay after successful split | **NO** (code-derived) |
+| Post-T0 production repair volume | **13 APPLIED** (73.6h window) |
+| Deterministic repair IDs valid | **YES** |
+| Max mutation count per repair ID | **1** |
+| New INC-07-equivalent duplicates | **0** |
+| APPLIED downgrades | **0** |
+| Idempotency / transaction failures | **0** |
+| Local + PostgreSQL concurrent test suite | **PASS** (P1.8.3.4) |
+
+**INC-07 CLOSED** under CASE B: combined reachability proof + sustained production evidence. Not dependent on obtaining natural `IDEMPOTENT_SKIP` logs post-success (structurally unreachable in normal operation).
+
+### Post-T0 deterministic repairs (complete enumeration)
+
+| REPAIR_ID | VEHICLE | WINDOW_FROM | WINDOW_TO | STATUS | CREATED_AT |
+|-----------|---------|-------------|-----------|--------|------------|
+| `2074c845-ca32-a9f7-bef7-b2444b7a8c45` | `a60c0749…` | 2026-09-04 03:44:03 | 2026-09-04 03:47:19 | APPLIED | 2026-09-04T09:18:44Z |
+| `af28b6a7-002f-b523-133e-74b143991a01` | `8c850ff1…` | 2026-09-04 16:39:47 | 2026-09-04 16:59:09 | APPLIED | 2026-09-04T22:40:21Z |
+| `3169a606-3a7f-51c3-510d-e50ec103098b` | `8c850ff1…` | 2026-09-05 08:48:02 | 2026-09-05 10:26:23 | APPLIED | 2026-09-05T12:43:27Z |
+| `8636115f-0ad3-677e-8764-9ea745bcd91f` | `8c850ff1…` | 2026-09-05 10:53:19 | 2026-09-05 12:23:17 | APPLIED | 2026-09-05T12:43:27Z |
+| `f0e237b9-ff65-df65-27ae-59e9f1fe1f36` | `8c850ff1…` | 2026-09-05 12:33:17 | 2026-09-05 12:40:20 | APPLIED | 2026-09-05T12:43:28Z |
+| `17ae2832-9543-9377-9380-5e9fdf363f6b` | `19fedd4b…` | 2026-09-05 10:07:36 | 2026-09-05 11:33:42 | APPLIED | 2026-09-05T13:05:27Z |
+| `20555085-fab1-ca45-5054-9a403b068713` | `c10351f8…` | 2026-09-05 09:57:33 | 2026-09-05 10:16:06 | APPLIED | 2026-09-05T13:05:32Z |
+| `3d7cd216-b74f-4cba-0c87-33acfab13517` | `8c850ff1…` | 2026-09-05 15:51:02 | 2026-09-05 17:35:25 | APPLIED | 2026-09-05T21:05:26Z |
+| `fee3f92d-5687-de28-e6ca-6f18d9d7703c` | `8c850ff1…` | 2026-09-05 15:51:02 | 2026-09-05 17:35:27 | APPLIED | 2026-09-06T03:00:05Z |
+| `795c0500-be58-6359-9f2b-26406757cbd8` | `c10351f8…` | 2026-09-06 07:43:30 | 2026-09-06 08:15:14 | APPLIED | 2026-09-06T11:35:43Z |
+| `a04fd124-400c-08da-7520-36cb8935c783` | `c10351f8…` | 2026-09-06 09:35:00 | 2026-09-06 09:38:51 | APPLIED | 2026-09-06T11:35:43Z |
+| `452bad92-1f83-9cf4-062f-8b2c9c43d5b1` | `8c850ff1…` | 2026-09-06 15:42:16 | 2026-09-06 15:49:30 | APPLIED | 2026-09-06T19:35:45Z |
+| `862d77a7-f77e-5a19-6ce4-02d8ac4e7e97` | `8c850ff1…` | 2026-09-06 15:58:36 | 2026-09-06 16:01:45 | APPLIED | 2026-09-06T19:35:45Z |
+
+All 13: `SAME_GAP_CAN_BE_REDISCOVERED = NO` (post-split topology + candidate exclusion).
+
+### OQ-28 cross-reference
+
+See updated `architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md`. P1.8.3.8 corrects a missed Sep 5 `23:24Z` deploy boundary. Longest segment from OQ-28 candidate start (`2026-09-05T09:05:28Z`) is **72054s** (< `86400`). OQ-28 remains **PARTIAL**.

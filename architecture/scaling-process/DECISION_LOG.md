@@ -227,5 +227,20 @@ Format: Decision ID | Date/Phase | Status
 | **LOCKING** | `pg_advisory_xact_lock64` only inside the transaction (64-bit key). Session-scoped `pg_advisory_lock` across separate Prisma calls is **prohibited** |
 | **DOWNSTREAM** | Route/ATE/enrichment enqueue occurs **after** transaction commit only |
 | **LEGACY** | Pre-fix random-UUID `APPLIED` rows matched by `(vehicleId, repairType, windowFrom, windowTo)` lookup |
-| **STATUS** | **IMPLEMENTED** — local regression PASS; production validation pending |
-| **EVIDENCE** | `P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md` |
+| **STATUS** | **PRODUCTION_VALIDATED** — P1.8.3.8: INC-07 CLOSED (CASE B); 13 post-T0 APPLIED repairs; structural non-reachability proof; 0 new duplicates; max 1 mutation/repair |
+| **EVIDENCE** | `P1_8_3_4_INC_07_TRIP_RECONCILIATION_IDEMPOTENCY_REMEDIATION_2026-09-03.md`; `P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md` (P1.8.3.8 extension) |
+
+---
+
+## DEC-018: INC-07 production closure by combined reachability proof (P1.8.3.8)
+
+| Field | Value |
+|-------|-------|
+| **DATE** | 2026-09-06 |
+| **PROBLEM** | INC-07 required production idempotency validation; natural `IDEMPOTENT_SKIP` replay logs unobtainable post-success because gap-split topology excludes re-discovery |
+| **DECISION** | Close INC-07 under **CASE B**: structural non-reachability after successful split + combined production evidence (13 repairs, 16 warm cycles, 73.6h window, 0 duplicates, 0 downgrades, 0 tx failures) + local/PostgreSQL test suite |
+| **INC_07_STATUS** | **CLOSED** |
+| **OQ_30_STATUS** | **CLOSED** (idempotency acceptance criteria met) |
+| **OQ_28_STATUS** | **PARTIAL** (longest segment 72054s < 86400) |
+| **N2_PRODUCTION_CERTIFICATION** | **EARLY** (OQ-28 not closed) |
+| **EVIDENCE** | `P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md`; `P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md` |

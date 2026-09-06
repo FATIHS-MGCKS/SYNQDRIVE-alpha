@@ -67,7 +67,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.7: calendar ~50h since candidate start; longest continuous FULL_N2 segment **76832s** (<86400); 2 rolling deploys segmented runtime; current segment ~51257s from 2026-09-05T09:05:28Z |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.8: longest continuous FULL_N2 segment from candidate start **72054s** (<86400); Sep 5 `23:24Z` deploy boundary corrected; current segment from `2026-09-06T22:12:34Z`; next 24h checkpoint `2026-09-07T22:12:34Z` |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---
@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.6.2 final: 11 warm cycles, 8 post-T0 APPLIED repairs (deterministic IDs), 0 known-repair replay/IDEMPOTENT_SKIP; INC-07 remains open (MODERATE); idempotent skip logged at DEBUG (not retained in PM2 out logs) |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **CLOSED** | P1.8.3.8: INC-07 CLOSED (CASE B — structural non-reachability + 13 post-T0 APPLIED repairs, max 1 mutation/repair, 0 new duplicates); OQ-30 acceptance criteria met |
 
 ---
 

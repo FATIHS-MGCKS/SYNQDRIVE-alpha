@@ -291,6 +291,26 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Qualifying 24h segment | P1.8.3.7 | — | OQ-28 rule | NOT_MET | HIGH |
 | Current segment start | P1.8.3.7 | — | Sep 5 deploy | `2026-09-05T09:05:28Z` | HIGH |
 | N2 health during longest segment | P1.8.3.7 | — | topology/queue/leader | no disqualifying defect | HIGH |
-| OQ-28 closure | P1.8.3.7 | — | >=86400s rule | PARTIAL | HIGH |
-| N2 certification scope | P1.8.3.7 | — | explicit limits | N=2 topology only | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.8 | — | explicit limits | N=2 topology only | HIGH |
+
+---
+
+## P1.8.3.8 — Final scaling closure audit (INC-07 + OQ-28)
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~73.6h) | P1.8.3.8 | — | read-only SSH + SQL + logs | `264953s` | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.8 | — | scheduler logs | 16 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.8 | — | `trip_repairs` SQL | 13 APPLIED | HIGH |
+| Natural replay structurally reachable | P1.8.3.8 | — | code path analysis | NO | HIGH |
+| Repairs structurally non-replayable | P1.8.3.8 | — | topology + code | 13/13 | HIGH |
+| Max mutations per repair ID | P1.8.3.8 | — | `trip_repairs` SQL | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.8 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.8 | — | CASE B classification | STRONG_BY_COMBINED_REACHABILITY_PROOF | HIGH |
+| INC-07 closure | P1.8.3.8 | — | CASE B criteria | CLOSED | HIGH |
+| OQ-30 closure | P1.8.3.8 | — | idempotency criteria | CLOSED | HIGH |
+| Sep 5 23:24Z deploy boundary | P1.8.3.8 | — | PM2 Nest start logs | CONFIRMED (missed in P1.8.3.6.2) | HIGH |
+| Longest FULL_N2 segment (OQ-28 window) | P1.8.3.8 | — | segment reconstruction | `72054s` (<86400) | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
 

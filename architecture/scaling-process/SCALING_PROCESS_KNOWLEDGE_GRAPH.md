@@ -45,7 +45,9 @@ Scaling Process
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
-│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.7 longest FULL_N2 segment 76832s; current segment from 2026-09-05T09:05:28Z)
+│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.8 longest FULL_N2 segment 72054s from candidate start; current segment from 2026-09-06T22:12:34Z)
+│   ├── INC-07 trip reconciliation idempotency → CLOSED (P1.8.3.8 CASE B combined reachability proof)
+│   ├── OQ-30 INTRA_TRIP_GAP_SPLIT idempotency → CLOSED (P1.8.3.8)
 │   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.6.2 final MODERATE: 11 warm cycles, 8 repairs, 0 replay)
 │   └── nginx dual-upstream with dead backend
 │
