@@ -35,6 +35,8 @@ import {
   type SnapshotEvidenceSignals,
   type WorkerLockResult,
   type StartDetectionMode,
+  type TerminalLifecycleCommit,
+  type TerminalLifecycleIntent,
 } from './trip-detection.types';
 import {
   // evaluateSnapshotEvidence → SnapshotEvidenceEvaluator (Phase 2 seam, done)
@@ -100,6 +102,10 @@ import {
   readDurableLiveSplitOutcome,
   type DurableLiveSplitOutcome,
 } from './trip-mid-gap-split-commit.util';
+import {
+  readDurableTerminalOutcome,
+  resolveTerminalRestingRecoveryWake,
+} from './trip-terminal-lifecycle-commit.util';
 import {
   assessSuccessfulEmptyCoreEndEligibility,
 } from './trip-empty-core-end-gate';
@@ -2853,6 +2859,10 @@ export class TripDetectionOrchestrationService {
     // opens without requiring another provider observation.
     let finalizedTripForRestWindow: { tripId: string; endTime: Date } | null =
       null;
+    let terminalLifecycleCommit: TerminalLifecycleCommit = 'NONE';
+    let terminalLifecycleIntent: TerminalLifecycleIntent = 'NONE';
+    let terminalTripId: string | null = null;
+    let restingTransitionSucceeded = false;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -2934,10 +2944,13 @@ export class TripDetectionOrchestrationService {
           const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
 
           if (qualityCheck.shouldDiscard) {
+            terminalLifecycleIntent = 'CANCEL';
+            terminalTripId = tripId;
             await this.decisionEngine.discardTrip(
               tripId,
               qualityCheck.reason ?? 'quality_check_failed',
             );
+            terminalLifecycleCommit = 'CANCELLED';
             // Smart cooldown: discard → short 30s cooldown
             restingReason = 'discard';
             this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
@@ -2950,6 +2963,8 @@ export class TripDetectionOrchestrationService {
               det.lastEvidenceSummary as Record<string, unknown> | null,
               det.endValidationAttempts ?? 0,
             );
+            terminalLifecycleIntent = 'COMPLETE';
+            terminalTripId = tripId;
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
               endDetectionMode:
@@ -2995,6 +3010,8 @@ export class TripDetectionOrchestrationService {
                 ...r5EndForensics,
               },
             });
+            terminalLifecycleCommit = 'COMPLETED';
+            terminalTripId = tripId;
             finalizedTripForRestWindow = { tripId, endTime };
             this.logger.log(
               `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
@@ -3075,6 +3092,7 @@ export class TripDetectionOrchestrationService {
         // Store resting reason for smart cooldown selection on next snapshot
         lastEvidenceSummary: { lastRestingReason: restingReason },
       });
+      restingTransitionSucceeded = true;
 
       // ── Battery V2 LV rest window (observation-independent primary path) ──
       // Enqueued only after both the COMPLETED trip and the RESTING transition
@@ -3109,6 +3127,50 @@ export class TripDetectionOrchestrationService {
       });
     } catch (err) {
       this.logger.warn(`FINALIZE error for ${vehicleId}: ${err}`);
+
+      let durableTerminalOutcome = null;
+      if (
+        terminalLifecycleCommit === 'NONE' &&
+        terminalLifecycleIntent !== 'NONE' &&
+        terminalTripId
+      ) {
+        durableTerminalOutcome = await readDurableTerminalOutcome(this.prisma, {
+          intent: terminalLifecycleIntent,
+          tripId: terminalTripId,
+        });
+      }
+
+      const recovery = resolveTerminalRestingRecoveryWake({
+        restingTransitionSucceeded,
+        terminalTripId,
+        terminalLifecycleCommit,
+        terminalLifecycleIntent,
+        durableOutcome: durableTerminalOutcome,
+      });
+
+      if (recovery.shouldWake && terminalTripId) {
+        try {
+          await this.scheduleFinalize(
+            vehicleId,
+            organizationId,
+            data.dimoTokenId,
+          );
+          const commitLabel =
+            recovery.effectiveCommit !== 'NONE'
+              ? recovery.effectiveCommit
+              : `AMBIGUOUS(${terminalLifecycleIntent})`;
+          this.logger.warn(
+            `FINALIZE terminal orphan recovery wake scheduled vehicle=${vehicleId} ` +
+              `trip=${terminalTripId} commit=${commitLabel}` +
+              (durableTerminalOutcome ? ` durable=${durableTerminalOutcome}` : ''),
+          );
+        } catch (enqueueErr) {
+          this.logger.warn(
+            `FINALIZE terminal orphan recovery enqueue failed vehicle=${vehicleId} ` +
+              `trip=${terminalTripId}: ${enqueueErr}`,
+          );
+        }
+      }
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
     }

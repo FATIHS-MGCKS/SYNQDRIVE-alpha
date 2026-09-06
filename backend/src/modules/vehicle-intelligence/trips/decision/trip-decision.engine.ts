@@ -322,10 +322,14 @@ export class TripDecisionEngine {
       },
     });
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip FINALIZED — id=${tripId} ` +
-        `end=${meta.endTime.toISOString()} mode=${meta.endDetectionMode}`,
-    );
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip FINALIZED — id=${tripId} ` +
+          `end=${meta.endTime.toISOString()} mode=${meta.endDetectionMode}`,
+      );
+    } catch {
+      // Post-write diagnostics must not poison a successfully committed finalize.
+    }
 
     return trip;
   }
@@ -347,9 +351,13 @@ export class TripDecisionEngine {
       },
     });
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip DISCARDED — id=${tripId} reason=${reason}`,
-    );
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip DISCARDED — id=${tripId} reason=${reason}`,
+      );
+    } catch {
+      // Post-write diagnostics must not poison a successfully committed discard.
+    }
   }
 
   /**

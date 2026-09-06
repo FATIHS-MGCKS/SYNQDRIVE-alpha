@@ -36,6 +36,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r7a-terminal-commit-ambiguity-2026-09-06',
+    version: '4.9.1079',
+    title: 'Trip FSM R7A — Terminal Mutation Commit-Ambiguity Closure',
+    summary: [
+      'TerminalLifecycleIntent NONE/COMPLETE/CANCEL tracked before finalizeTrip/discardTrip; commit only after promise resolves.',
+      'Rejected terminal mutation promise triggers durable PostgreSQL reread — NOT_TERMINAL / TERMINAL_EXPECTED / AMBIGUOUS.',
+      'TERMINAL_EXPECTED and AMBIGUOUS schedule immediate scheduleFinalize recovery; NOT_TERMINAL preserves pre-commit semantics.',
+      'finalizeTrip/discardTrip post-write logger non-poisoning (R6A pattern).',
+      'Stable FINALIZE successor proof while primary ACTIVE (trip-fin-{vehicle}-{trip}__succ).',
+    ],
+    reason:
+      'R7A closure — terminal DB write may commit before logger/promise rejection; promise rejection != rollback proof.',
+    previousBehavior:
+      'Rejected finalizeTrip/discardTrip left terminalLifecycleCommit NONE and skipped immediate recovery even when trip was already COMPLETED/CANCELLED.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md § R7A; trip-terminal-lifecycle-commit.util.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T15:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r7-terminal-resting-recovery-2026-09-06',
+    version: '4.9.1078',
+    title: 'Trip FSM R7 — Terminal RESTING Recovery Hardening',
+    summary: [
+      'TerminalLifecycleCommit NONE/COMPLETED/CANCELLED tracks durable finalize/discard success before RESTING.',
+      'Any post-terminal pre-RESTING failure schedules immediate scheduleFinalize recovery wake (stable FINALIZE queue).',
+      'Post-RESTING ancillary failures do not enqueue unnecessary terminal recovery.',
+      'Recovery FINALIZE short-circuits via existing R2 RECOVERABLE_END_ORPHAN → RESET_TO_RESTING; no second finalizeTrip.',
+      '120s TripTrackingRecoveryScheduler remains second-line fallback (P5-F05 / INV-08).',
+    ],
+    reason:
+      'R7 P6 remediation — COMPLETED/CANCELLED terminal commit without RESTING must not leave FSM stranded until periodic scheduler.',
+    previousBehavior:
+      'FINALIZE catch logged error only; terminal orphan relied on 120s scheduler for RECOVERABLE_END_ORPHAN recovery.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T14:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r6b-strict-not-committed-proof-2026-09-06',
     version: '4.9.1077',
     title: 'Trip FSM R6B — Strict NOT_COMMITTED Proof Closure',

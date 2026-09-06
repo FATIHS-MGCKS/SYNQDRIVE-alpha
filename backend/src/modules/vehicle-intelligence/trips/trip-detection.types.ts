@@ -16,6 +16,12 @@ export const TRIP_TRACKING_HANDOFF_KINDS = {
 export type TripTrackingHandoffKind =
   (typeof TRIP_TRACKING_HANDOFF_KINDS)[keyof typeof TRIP_TRACKING_HANDOFF_KINDS];
 
+/** R7 — local FINALIZE terminal lifecycle commit tracking (no schema). */
+export type TerminalLifecycleCommit = 'NONE' | 'COMPLETED' | 'CANCELLED';
+
+/** R7A — mutation intent immediately before finalizeTrip/discardTrip call. */
+export type TerminalLifecycleIntent = 'NONE' | 'COMPLETE' | 'CANCEL';
+
 export interface TripTrackingJobData {
   vehicleId: string;
   organizationId: string | null;
