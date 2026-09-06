@@ -885,7 +885,7 @@ Every relevant discovered structural candidate below has **exactly one** classif
 | master-nav:parts-accessories | REGISTERED_MODULE | Parts & Accessories | Master parts provider administration | frontend/src/master/navigation/master-nav.config.ts id=parts-accessories |
 | master-nav:insurances | REGISTERED_MODULE | Insurances | Master insurance partner administration | frontend/src/master/navigation/master-nav.config.ts id=insurances |
 | master-nav:voice-assistant | REGISTERED_MODULE | Voice Assistant Platform | Master voice assistant control plane surface | frontend/src/master/navigation/master-nav.config.ts id=voice-assistant |
-| master-nav:platform-ops | AGGREGATE_CONTAINER | Platform Admin; Observability (infra) | Master platform operations aggregate: health, smoke, runtime status | frontend/src/master/navigation/master-nav.config.ts id=platform-ops |
+| master-nav:platform-ops | AGGREGATE_CONTAINER | Platform Admin | Master platform operations aggregate spanning health probes, smoke lifecycle, and runtime status; observability modules are supporting shared infrastructure, not separate registry modules | frontend/src/master/navigation/master-nav.config.ts id=platform-ops; backend/src/modules/observability/observability.module.ts; backend/src/modules/health/health.module.ts |
 | master-nav:support | REGISTERED_MODULE | Support | Master support ticket administration | frontend/src/master/navigation/master-nav.config.ts id=support |
 | master-nav:architektur | SHARED_INFRASTRUCTURE | N/A | Engineering architecture browser; not a product runtime module | frontend/src/master/navigation/master-nav.config.ts id=architektur; frontend/src/master/components/ArchitekturView.tsx |
 | master-nav:changes | SHARED_INFRASTRUCTURE | N/A | Engineering changelog browser; not a product runtime module | frontend/src/master/navigation/master-nav.config.ts id=changes; frontend/src/master/components/ChangesView.tsx |
@@ -982,7 +982,7 @@ Every relevant discovered structural candidate below has **exactly one** classif
 | Prisma Fines | REGISTERED_MODULE | Fines | Traffic and parking fine records | model Fine |
 | Prisma Tasks & automation | REGISTERED_MODULE | Tasks & Work Orders | Org tasks, checklist items, and automation outbox | models OrgTask, TaskChecklistItem, TaskAutomationOutbox |
 | Prisma Service cases | REGISTERED_MODULE | Service Cases | Service case tracking with comments and attachments | models ServiceCase, ServiceCaseComment |
-| Prisma Technical observations | REGISTERED_MODULE | Technical Observations | Operator technical observation records (via handover payload) | frontend/src/operator/handover/operatorHandoverTechnicalObservations.ts |
+| Prisma Technical observations | REGISTERED_MODULE | Technical Observations | Operator technical observation records persist via the VehicleComplaint model (no separate TechnicalObservation Prisma model); service and mapper translate complaint rows to observation DTOs | model VehicleComplaint in backend/prisma/schema.prisma; backend/src/modules/technical-observations/technical-observations.service.ts; backend/src/modules/technical-observations/technical-observations.mapper.ts |
 | Prisma Notifications | REGISTERED_MODULE | Notifications | Notification entities, delivery outbox, and receipts | models Notification, NotificationDeliveryOutbox, NotificationReceipt |
 | Prisma Workflows | REGISTERED_MODULE | Workflows | Org workflow definitions, runs, approvals, and shadow mode | models OrgWorkflow, OrgWorkflowRun, OrgWorkflowApproval |
 | Prisma Communication hub | REGISTERED_MODULE | Communication Center | Canonical communication conversation and message store | models CommunicationConversation, CommunicationMessageContent, CommunicationEvent |
@@ -997,7 +997,7 @@ Every relevant discovered structural candidate below has **exactly one** classif
 | Prisma Data authorizations | REGISTERED_MODULE | Data Authorizations | Org data-access consent records | model OrgDataAuthorization |
 | Prisma AI platform | REGISTERED_MODULE | AI Platform (Fleet Chat & Tools) | Fleet chat agents, messages, and AI audit logs | models OrganizationChatAgent, ChatMessage, AiRequestAuditLog |
 | Prisma Evaluations | REGISTERED_MODULE | Evaluations Analytics | Entity-scoped evaluation references and dashboard insights | models EvaluationsEntityReference, DashboardInsight, TenantInsightPolicy |
-| Prisma Evaluations finance | REGISTERED_MODULE | Evaluations Finance | Finance evaluation persistence consumed by evaluations-finance APIs | backend/src/modules/evaluations-finance/ (no separate Prisma prefix; uses shared analytics cache) |
+| Prisma Evaluations finance | REGISTERED_MODULE | Evaluations Finance | Financial evaluation analytics reads org invoice, payment, and payment-account persistence directly via evaluations-finance repository | backend/src/modules/evaluations-finance/evaluations-finance.repository.ts; models OrgInvoice, OrgInvoicePayment, OrganizationPaymentAccount in backend/prisma/schema.prisma |
 | Prisma Support | REGISTERED_MODULE | Support | Support tickets and messages | models SupportTicket, SupportTicketMessage |
 | Prisma Analytics cache | SHARED_INFRASTRUCTURE | N/A | Shared analytics cache table used across evaluation modules | model AnalyticsCache in backend/prisma/schema.prisma |
 | Prisma Platform changelog | SHARED_INFRASTRUCTURE | N/A | Engineering changelog persistence for master Changes view | model PlatformChangelog in backend/prisma/schema.prisma |
@@ -1144,6 +1144,8 @@ No modules were added, removed, renamed, or merged in this correction pass. The 
 |-----------|-------------------|
 | Trip Detection vs Driving Intelligence completion handoff | Shared trip completion signals; FSM vs post-trip analysis ownership not fully decidable without audit |
 | `vehicle-intelligence/drive-profile/` ownership | Could belong to Trip Detection or Driving Intelligence pipelines |
+
+Only `vehicle-intelligence/drive-profile/` appears as a structural manifest row with `UNRESOLVED_BOUNDARY` (§8.2); the Trip Detection vs Driving Intelligence completion handoff is a cross-module conceptual boundary documented here but not represented as a separate manifest candidate.
 
 ### 13.4 Insufficiently evidenced candidates (1)
 
