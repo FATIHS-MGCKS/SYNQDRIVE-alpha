@@ -18,38 +18,67 @@ Before inspecting or changing any SynqDrive module, every agent **must** follow 
 
 Read [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) before substantive module work.
 
-### 2. Route through the registered authority
+### 2. Find the module and check registry coverage status
 
-Find the affected module in that registry and read **all mandatory entry documents** listed there before proposing or implementing substantive changes.
+Find the affected module in the registry overview table and read its **registry coverage status**. Listing alone does not mean a usable authority exists.
 
-### 3. Supporting documents are evidence, not default authority
+| Registry status | Agent action |
+|-----------------|--------------|
+| **`AUTHORITY_ACTIVE`** | Read all mandatory authority entry documents before substantive work (see §3). |
+| **`NOT_STARTED`** | Module is inventoried only — treat as having no authority; run full audit/bootstrap before substantive work (see §4). |
+| **`AUDIT_IN_PROGRESS`** | Read existing partial audit artifacts; do not treat them as complete authority; continue reconstruction (see §5). |
+| **`SUPERSEDED`** | Do not extend the superseded authority; follow the successor pointer (see §6). |
 
-Root-level architecture phase/change documents (for example `architecture/P1_*`, `architecture/BATTERY_V2_*`, `architecture/FUEL_STATION_*`) are **supporting evidence** unless a registered authority explicitly designates them as current authority.
+Registry coverage status is separate from each authority’s native lifecycle, maturity, epistemic, and validation statuses.
 
-### 4. Unregistered modules
+### 3. If registry status is `AUTHORITY_ACTIVE`
 
-If the module is **not** registered in the central registry:
+- Read all mandatory authority entry documents listed in the registry.
+- Inspect scope boundaries, current state, invariants, decisions, evidence, contradictions, open questions, and validation commands.
+- Update the authority in the **same workstream/PR** when the change is substantive.
 
-- Do **not** silently reconstruct it only for the current task.
-- Audit its complete relevant current state first: code paths, data flow, persistence, workers/jobs, integrations, API/UI consumers, tests, runtime evidence where available, and neighboring authority boundaries.
-- Create `architecture/<module-slug>/`.
-- Use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural and scientific-quality reference.
-- At minimum create:
-  - `README.md`
-  - `CURRENT_STATE.md`
-  - `AGENT_CONTRACT.md` or an explicitly named maintenance protocol
-  - `KNOWLEDGE_GRAPH.md` or a machine-readable graph entry point
-  - `decisions/` rationale
-  - `evidence/` validation
-  - `contradictions/` gaps / open questions
-  - append-only `history/` or change tracking
-- Classify knowledge on **two separate axes** (do not merge them):
-  - **Epistemic state** — what is known about a claim (for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`)
-  - **Decision / validation status** — maturity of a decision or change (for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`)
-- Each module authority’s own schema is authoritative; use its equivalent vocabulary when it differs from these examples.
-- Register the module in the central registry in the **same workstream/PR**.
+### 4. If registry status is `NOT_STARTED`
 
-### 5. During and after work
+The module is only inventoried and must be treated like a module with **no authority**. A listed `NOT_STARTED` module must **never** be treated as already understood, documented, audited, or safe to change based only on its registry entry.
+
+Before substantive implementation:
+
+1. Audit the complete relevant current state: code paths, component hierarchy, frontend/backend data flow, persistence, workers/jobs/schedulers, integrations and signal sources, API and UI consumers, tests, runtime/production evidence when available, neighboring ownership boundaries, and current gaps, contradictions, and unknowns.
+2. Create `architecture/<module-slug>/`.
+3. Use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural and scientific-quality reference.
+4. Establish required authority artifacts: `README.md`, `CURRENT_STATE.md`, `AGENT_CONTRACT.md` or named maintenance protocol, `KNOWLEDGE_GRAPH.md` or machine-readable graph entry point, decisions and rationale, evidence and validation, contradictions/gaps/unknowns/open questions, append-only history/change tracking.
+5. Classify knowledge on **three separate axes** (never merge into one field):
+   - **Registry coverage status** — whether a usable authority exists (`NOT_STARTED`, `AUDIT_IN_PROGRESS`, `AUTHORITY_ACTIVE`, `SUPERSEDED`)
+   - **Epistemic state** — what is known about a claim (for example `CONFIRMED`, `INFERRED`, `HISTORICAL`, `UNKNOWN`, `CONTRADICTED`)
+   - **Decision / validation status** — maturity of a decision or change (for example `PROPOSED`, `EXPERIMENTAL`, `VALIDATED`, `PRODUCTION_VALIDATED`, `REJECTED`, `SUPERSEDED`)
+   Follow the owning module authority’s exact schema where it defines equivalent vocabulary.
+6. Update the module’s registry row: replace `NOT_STARTED`, set the correct new registry status, add authority-native status and authority path.
+7. Add or update the detailed authority section in the **same workstream/PR**.
+
+### 5. If registry status is `AUDIT_IN_PROGRESS`
+
+- Read all existing partial audit artifacts.
+- Do **not** treat them as complete authority.
+- Continue and complete the reconstruction required for the task.
+- Explicitly preserve unresolved gaps and uncertainty.
+- Do **not** silently set `AUTHORITY_ACTIVE` merely because files exist.
+
+### 6. If registry status is `SUPERSEDED`
+
+- Do **not** extend the superseded authority.
+- Follow the successor pointer in the registry.
+- Preserve the superseded entry for historical navigation.
+
+### 7. If the module is entirely absent from the inventory
+
+- Add an inventory row with initial registry status `NOT_STARTED` (module name, mini description, registry status).
+- Then follow the same audit/bootstrap workflow in §4 when substantive work is requested.
+
+### 8. Supporting documents are evidence, not default authority
+
+Root-level architecture phase/change documents (for example `architecture/P1_*`, `architecture/BATTERY_V2_*`, `architecture/FUEL_STATION_*`) are **supporting evidence** unless a registered authority explicitly designates them as current authority. Do not infer that a module is documented merely because flat `architecture/*.md` files mention it.
+
+### 9. During and after work
 
 - **Code and verified runtime evidence** remain the source of truth for current behavior.
 - The **registered authority** is the canonical architectural memory and navigation layer.
