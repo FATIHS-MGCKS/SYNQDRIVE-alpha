@@ -5,6 +5,90 @@ import {
   isValidTimingTimestamp,
 } from './trip-fsm-timing.util';
 
+export function parseStrictEvidenceTimestamp(value: unknown): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : null;
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+  return null;
+}
+
+export function safeForensicIsoString(value: Date | null | undefined): string | null {
+  if (!value || !Number.isFinite(value.getTime())) return null;
+  return value.toISOString();
+}
+
+export interface ResolvedStartForensicProvenance {
+  startCandidateAt: Date | null;
+  startCandidateEnteredAt: Date | null;
+  startRecognizedAt: Date | null;
+  startCandidateClockSource: string | null;
+  startBoundarySource: string | null;
+  startEvidencePath: string | null;
+  startBoundaryAdjustedMs: number | null;
+  flatStartCandidateAt: string | null;
+}
+
+export function resolveStartForensicProvenance(params: {
+  evidenceSummary: Record<string, unknown> | null;
+  detPossibleStartAt?: Date | null;
+  detPossibleStartEnteredAt?: Date | null;
+  canonicalStartAt: Date;
+}): ResolvedStartForensicProvenance {
+  const evidence = params.evidenceSummary ?? {};
+  const hasPreservedCandidateField =
+    evidence.startCandidateAt != null || evidence.startCandidateObservedAt != null;
+
+  const startCandidateAt =
+    parseStrictEvidenceTimestamp(evidence.startCandidateAt) ??
+    parseStrictEvidenceTimestamp(evidence.startCandidateObservedAt) ??
+    (hasPreservedCandidateField
+      ? null
+      : params.detPossibleStartEnteredAt != null
+        ? parseStrictEvidenceTimestamp(params.detPossibleStartAt)
+        : params.detPossibleStartAt &&
+            params.detPossibleStartAt.getTime() !== params.canonicalStartAt.getTime()
+          ? parseStrictEvidenceTimestamp(params.detPossibleStartAt)
+          : null);
+
+  const startCandidateEnteredAt =
+    parseStrictEvidenceTimestamp(evidence.startCandidateEnteredAt) ??
+    (params.detPossibleStartEnteredAt != null
+      ? parseStrictEvidenceTimestamp(params.detPossibleStartEnteredAt)
+      : null);
+
+  const startRecognizedAt = parseStrictEvidenceTimestamp(evidence.startRecognizedAt);
+
+  const startBoundaryAdjustedMs =
+    typeof evidence.startBoundaryAdjustedMs === 'number'
+      ? evidence.startBoundaryAdjustedMs
+      : startCandidateAt && isValidTimingTimestamp(params.canonicalStartAt)
+        ? params.canonicalStartAt.getTime() - startCandidateAt.getTime()
+        : null;
+
+  return {
+    startCandidateAt,
+    startCandidateEnteredAt,
+    startRecognizedAt,
+    startCandidateClockSource:
+      typeof evidence.startCandidateClockSource === 'string'
+        ? evidence.startCandidateClockSource
+        : null,
+    startBoundarySource:
+      typeof evidence.confirmedStartSource === 'string'
+        ? evidence.confirmedStartSource
+        : null,
+    startEvidencePath:
+      typeof evidence.startEvidencePath === 'string' ? evidence.startEvidencePath : null,
+    startBoundaryAdjustedMs,
+    flatStartCandidateAt: safeForensicIsoString(startCandidateAt),
+  };
+}
+
 export const TRIP_FSM_FORENSICS_VERSION = 'R8_V1';
 
 export type EndCoordinateSource =
@@ -77,28 +161,28 @@ export function buildTripFsmForensicsR8V1(
   return {
     version: TRIP_FSM_FORENSICS_VERSION,
     start: {
-      candidateAt: input.startCandidateAt?.toISOString() ?? null,
+      candidateAt: safeForensicIsoString(input.startCandidateAt),
       candidateClock: 'EVENT_TIME',
       candidateClockSource: input.startCandidateClockSource ?? null,
-      candidateEnteredAt: input.startCandidateEnteredAt?.toISOString() ?? null,
+      candidateEnteredAt: safeForensicIsoString(input.startCandidateEnteredAt),
       candidateEnteredClock: 'WORKER_TIME',
-      recognizedAt: input.startRecognizedAt?.toISOString() ?? null,
+      recognizedAt: safeForensicIsoString(input.startRecognizedAt),
       recognizedClock: 'WORKER_TIME',
-      canonicalBoundaryAt: input.canonicalStartAt?.toISOString() ?? null,
+      canonicalBoundaryAt: safeForensicIsoString(input.canonicalStartAt),
       canonicalBoundaryClock: 'EVENT_TIME',
       boundarySource: input.startBoundarySource ?? null,
       evidencePath: input.startEvidencePath ?? null,
       boundaryAdjustmentMs: startAdjustment.signedAdjustmentMs,
     },
     end: {
-      candidateAt: input.endCandidateAt?.toISOString() ?? null,
+      candidateAt: safeForensicIsoString(input.endCandidateAt),
       candidateClock: 'EVENT_TIME',
       candidateClockSource: input.endCandidateClockSource ?? null,
-      candidateEnteredAt: input.endCandidateEnteredAt?.toISOString() ?? null,
+      candidateEnteredAt: safeForensicIsoString(input.endCandidateEnteredAt),
       candidateEnteredClock: 'WORKER_TIME',
-      recognizedAt: input.endRecognizedAt?.toISOString() ?? null,
+      recognizedAt: safeForensicIsoString(input.endRecognizedAt),
       recognizedClock: 'WORKER_TIME',
-      canonicalBoundaryAt: input.canonicalEndAt?.toISOString() ?? null,
+      canonicalBoundaryAt: safeForensicIsoString(input.canonicalEndAt),
       canonicalBoundaryClock: 'EVENT_TIME',
       boundarySource: input.endBoundarySource ?? null,
       boundaryAdjustmentMs: endAdjustment.signedAdjustmentMs,
@@ -163,18 +247,14 @@ export function readPersistedEndRecognizedAt(raw: unknown): Date | null {
   const meta = readRawDetectionMeta(raw);
   const flat = meta.endRecognizedAt;
   if (typeof flat === 'string') {
-    const parsed = new Date(flat);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return parseStrictEvidenceTimestamp(flat);
   }
   const block = meta.tripFsmForensics;
   if (block != null && typeof block === 'object' && !Array.isArray(block)) {
     const end = (block as Record<string, unknown>).end;
     if (end != null && typeof end === 'object' && !Array.isArray(end)) {
       const recognizedAt = (end as Record<string, unknown>).recognizedAt;
-      if (typeof recognizedAt === 'string') {
-        const parsed = new Date(recognizedAt);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-      }
+      return parseStrictEvidenceTimestamp(recognizedAt);
     }
   }
   return null;

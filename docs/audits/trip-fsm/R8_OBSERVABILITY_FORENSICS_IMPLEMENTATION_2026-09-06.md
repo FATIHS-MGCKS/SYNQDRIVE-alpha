@@ -164,3 +164,72 @@ Three independent values — boundary refinement does not zero-out recognition l
 **Frontend:** `trips.types.ts`, `trips-map.types.ts`, `trip-end-time-display.util.ts`, `TripMetricRow.tsx`, `TripMapSummaryOverlay.tsx`, `TripEvidencePanel.tsx`, `tripRentalContext.ts`.
 
 **Future canonical destination:** `architecture/trip-fsm/` (not `docs/architecture/trip-fsm/`).
+
+---
+
+## R8A — Forensic Provenance & Observability Liveness Closure
+
+**Date:** 2026-09-06
+**Commit:** `fix(trip-fsm): close R8 forensic observability contract`
+**Parent R8 head:** `97100e28b1492db2d0e6fcfaab4dc2bcc0459f02`
+
+### R8A.1 — Start candidate evidence survives ACTIVE transition
+
+On start confirmation, `lastEvidenceSummary` preserves the original start candidate episode (`startCandidateAt`, `startCandidateObservedAt`, `startCandidateEnteredAt`) while FSM fields rewrite `possibleStartAt` to the effective canonical start and clear `possibleStartEnteredAt`.
+
+### R8A.2–R8A.3 — Structured R8_V1 uses preserved candidate, not rewritten FSM field
+
+`resolveStartForensicProvenance()` reads preserved evidence first. At FINALIZE, `tripFsmForensics.start.candidateAt` / flat `startCandidateAt` reflect the original candidate EVENT_TIME, not post-confirmation `det.possibleStartAt`.
+
+Fixed-clock refined-start regression:
+
+| Field | Value |
+|-------|-------|
+| `candidateAt` | 14:00:00 |
+| `candidateEnteredAt` | 14:00:20 |
+| `recognizedAt` | 14:00:35 |
+| `canonicalBoundaryAt` | 13:59:50 |
+| `boundaryAdjustmentMs` | -10000 |
+
+### R8A.4–R8A.5 — Merge/reopen and recovery forensics
+
+Merge/reopen episodes persist the **new** start recognition candidate, not the reopened trip’s historical `startTime`. Recovery preserves existing candidate evidence when present; otherwise candidate fields remain null (no fabrication from rewritten FSM clocks or DB `updatedAt`).
+
+### R8A.6–R8A.8 — `missing_anchor` vs `invalid_timestamp`
+
+`classifyTimingTimestamp()` distinguishes:
+
+- `null` / `undefined` → `missing_anchor`
+- non-finite `Date` → `invalid_timestamp`
+- valid negative deltas → `negative_delta` (never clamped)
+
+Prometheus `synqdrive_trip_timing_sample_rejected_total{reason="invalid_timestamp"}` is emitted for invalid samples.
+
+### R8A.9–R8A.10 — Observability failure containment
+
+`runTripObservabilitySafely()` wraps ancillary metrics and timeline logging. Critical successors (`schedulePossibleStart`, `scheduleActiveTick`, `schedulePossibleEndCheck`, `scheduleEndValidation`, `scheduleFinalize`, RESTING transition) are scheduled **before** or independently of R8 observability; metric/logger throws cannot block FSM liveness or trigger spurious R7 recovery.
+
+### R8A.13–R8A.15 — FINALIZE and forensic builder hardening
+
+Post-commit finalize metrics/timeline failures do not prevent RESTING. Durable R7A recognition metric failures do not suppress recovery wake scheduling. `buildTripFsmForensicsR8V1()` and `safeForensicIsoString()` null-safe invalid optional dates without throwing.
+
+### Final finding / invariant status (unchanged from R8)
+
+| Finding | Status |
+|---------|--------|
+| P5-F06 | RESOLVED_BY_R8 |
+| P5-F07 | RESOLVED_BY_R8 |
+| P5-F12 | RESOLVED_BY_R8 |
+| P3-F05 | RESOLVED_BY_R8 |
+| P3-F04 | RESOLVED_BY_R8 |
+| P5-F01 | RESOLVED_BY_R1_R8 |
+| P5-F10 | PARTIALLY_RESOLVED_BY_R5 |
+
+| Invariant | Status |
+|-----------|--------|
+| INV-10 | CLOSED |
+| INV-13 | CLOSED |
+| INV-15 | CLOSED_BY_R5_R8 |
+
+**Deploy:** NOT PERFORMED
+**R9:** NOT STARTED

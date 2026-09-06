@@ -58,6 +58,20 @@ describe('trip-metrics R8 registry', () => {
     expect(serialized).not.toContain('organizationId');
   });
 
+  it('records rejected timing samples for invalid timestamps', async () => {
+    observeEndCandidateLatency(metrics, {
+      profile: 'ICE',
+      evidencePath: 'CONTINUITY',
+      clockSource: 'PROVIDER_EVENT_TIME',
+      candidateAt: new Date(Number.NaN),
+      enteredAt: new Date('2026-09-06T12:00:00.000Z'),
+    });
+    const serialized = await metrics.registry.metrics();
+    expect(serialized).toContain(
+      'synqdrive_trip_timing_sample_rejected_total{metric="end_candidate_latency",reason="invalid_timestamp"} 1',
+    );
+  });
+
   it('records rejected timing samples for negative end candidate latency', async () => {
     observeEndCandidateLatency(metrics, {
       profile: 'ICE',

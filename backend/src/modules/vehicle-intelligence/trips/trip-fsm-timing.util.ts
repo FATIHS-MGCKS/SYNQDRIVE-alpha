@@ -33,12 +33,35 @@ export const TRIP_FSM_DURATION_BUCKETS = [
   60, 300, 900, 1800, 3600, 7200, 18000, 43200,
 ];
 
+export type TimingTimestampClass = 'MISSING' | 'INVALID' | 'VALID';
+
+export function classifyTimingTimestamp(
+  value: Date | null | undefined,
+): TimingTimestampClass {
+  if (value == null) return 'MISSING';
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+    return 'INVALID';
+  }
+  return 'VALID';
+}
+
 export function isValidTimingTimestamp(
   value: Date | null | undefined,
 ): value is Date {
-  if (!value) return false;
-  const ms = value.getTime();
-  return Number.isFinite(ms);
+  return classifyTimingTimestamp(value) === 'VALID';
+}
+
+function rejectReasonForTimingInputs(
+  laterClass: TimingTimestampClass,
+  earlierClass: TimingTimestampClass,
+): TripTimingSampleRejectReason {
+  if (laterClass === 'MISSING' || earlierClass === 'MISSING') {
+    return 'missing_anchor';
+  }
+  if (laterClass === 'INVALID' || earlierClass === 'INVALID') {
+    return 'invalid_timestamp';
+  }
+  return 'invalid_timestamp';
 }
 
 export function computeSignedLatencySeconds(
@@ -95,11 +118,14 @@ export function evaluateCandidateLatencyObservation(params: {
   enteredAt: Date | null | undefined;
   candidateAt: Date | null | undefined;
 }): TripTimingObservationResult {
-  if (!isValidTimingTimestamp(params.enteredAt)) {
-    return { observed: false, latencySec: null, rejectReason: 'missing_anchor' };
-  }
-  if (!isValidTimingTimestamp(params.candidateAt)) {
-    return { observed: false, latencySec: null, rejectReason: 'missing_anchor' };
+  const enteredClass = classifyTimingTimestamp(params.enteredAt);
+  const candidateClass = classifyTimingTimestamp(params.candidateAt);
+  if (enteredClass !== 'VALID' || candidateClass !== 'VALID') {
+    return {
+      observed: false,
+      latencySec: null,
+      rejectReason: rejectReasonForTimingInputs(enteredClass, candidateClass),
+    };
   }
   const latencySec = computeSignedLatencySeconds(params.enteredAt, params.candidateAt);
   if (latencySec == null) {
@@ -128,18 +154,17 @@ export function evaluateBoundaryAdjustmentObservation(params: {
   direction: BoundaryAdjustmentDirection;
   signedAdjustmentMs: number | null;
 } {
+  const initialClass = classifyTimingTimestamp(params.initialBoundaryAt);
+  const finalClass = classifyTimingTimestamp(params.finalBoundaryAt);
   const classified = classifyBoundaryAdjustment(
     params.initialBoundaryAt,
     params.finalBoundaryAt,
   );
-  if (
-    !isValidTimingTimestamp(params.initialBoundaryAt) ||
-    !isValidTimingTimestamp(params.finalBoundaryAt)
-  ) {
+  if (initialClass !== 'VALID' || finalClass !== 'VALID') {
     return {
       observed: false,
       latencySec: null,
-      rejectReason: 'missing_anchor',
+      rejectReason: rejectReasonForTimingInputs(finalClass, initialClass),
       direction: classified.direction,
       signedAdjustmentMs: classified.signedAdjustmentMs,
     };
@@ -165,8 +190,14 @@ export function evaluateDurationObservation(params: {
   startAt: Date | null | undefined;
   endAt: Date | null | undefined;
 }): TripTimingObservationResult {
-  if (!isValidTimingTimestamp(params.startAt) || !isValidTimingTimestamp(params.endAt)) {
-    return { observed: false, latencySec: null, rejectReason: 'missing_anchor' };
+  const startClass = classifyTimingTimestamp(params.startAt);
+  const endClass = classifyTimingTimestamp(params.endAt);
+  if (startClass !== 'VALID' || endClass !== 'VALID') {
+    return {
+      observed: false,
+      latencySec: null,
+      rejectReason: rejectReasonForTimingInputs(endClass, startClass),
+    };
   }
   const latencySec = computeSignedLatencySeconds(params.endAt, params.startAt);
   if (latencySec == null) {
