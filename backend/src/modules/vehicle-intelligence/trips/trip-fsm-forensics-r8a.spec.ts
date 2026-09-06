@@ -25,7 +25,7 @@ describe('R8A — start forensic provenance', () => {
       evidenceSummary,
       detPossibleStartAt: canonicalStartAt,
       detPossibleStartEnteredAt: null,
-      canonicalStartAt,
+      tripCanonicalStartAt: canonicalStartAt,
     });
 
     expect(provenance.startCandidateAt?.toISOString()).toBe(candidateAt.toISOString());
@@ -41,9 +41,11 @@ describe('R8A — start forensic provenance', () => {
       startCandidateAt: provenance.startCandidateAt,
       startCandidateEnteredAt: provenance.startCandidateEnteredAt,
       startRecognizedAt: provenance.startRecognizedAt,
-      canonicalStartAt,
+      canonicalStartAt: provenance.startEpisodeCanonicalAt,
+      tripCanonicalStartAt: canonicalStartAt,
       startBoundarySource: provenance.startBoundarySource,
       startEvidencePath: provenance.startEvidencePath,
+      startBoundaryAdjustedMs: provenance.startBoundaryAdjustedMs,
     });
 
     expect(block.start.candidateAt).toBe(candidateAt.toISOString());
@@ -65,19 +67,38 @@ describe('R8A — start forensic provenance', () => {
         startCandidateAt: mergeCandidateAt.toISOString(),
         startCandidateEnteredAt: mergeEnteredAt.toISOString(),
         startRecognizedAt: new Date('2026-09-06T16:10:40.000Z').toISOString(),
+        confirmedStartAt: effectiveStartAt.toISOString(),
         confirmedStartSource: 'merge_reopen',
         startBoundaryAdjustedMs: -5_000,
       },
       detPossibleStartAt: effectiveStartAt,
       detPossibleStartEnteredAt: null,
-      canonicalStartAt: oldTripStartTime,
+      tripCanonicalStartAt: oldTripStartTime,
     });
 
     expect(provenance.startCandidateAt?.toISOString()).toBe(mergeCandidateAt.toISOString());
     expect(provenance.startCandidateEnteredAt?.toISOString()).toBe(
       mergeEnteredAt.toISOString(),
     );
+    expect(provenance.startEpisodeCanonicalAt.toISOString()).toBe(
+      effectiveStartAt.toISOString(),
+    );
+    expect(provenance.tripCanonicalStartAt.toISOString()).toBe(
+      oldTripStartTime.toISOString(),
+    );
     expect(provenance.startBoundaryAdjustedMs).toBe(-5_000);
+
+    const block = buildTripFsmForensicsR8V1({
+      startCandidateAt: provenance.startCandidateAt,
+      startCandidateEnteredAt: provenance.startCandidateEnteredAt,
+      startRecognizedAt: provenance.startRecognizedAt,
+      canonicalStartAt: provenance.startEpisodeCanonicalAt,
+      tripCanonicalStartAt: oldTripStartTime,
+      startBoundaryAdjustedMs: provenance.startBoundaryAdjustedMs,
+    });
+    expect(block.start.canonicalBoundaryAt).toBe(effectiveStartAt.toISOString());
+    expect(block.start.tripCanonicalStartAt).toBe(oldTripStartTime.toISOString());
+    expect(block.start.boundaryAdjustmentMs).toBe(-5_000);
   });
 
   it('R8A.5 — recovery path preserves evidence when present, null otherwise', () => {
@@ -89,7 +110,7 @@ describe('R8A — start forensic provenance', () => {
       },
       detPossibleStartAt: canonicalStartAt,
       detPossibleStartEnteredAt: null,
-      canonicalStartAt,
+      tripCanonicalStartAt: canonicalStartAt,
     });
     expect(withEvidence.startCandidateAt).toEqual(candidateAt);
     expect(withEvidence.startCandidateEnteredAt).toEqual(candidateEnteredAt);
@@ -101,7 +122,7 @@ describe('R8A — start forensic provenance', () => {
       },
       detPossibleStartAt: canonicalStartAt,
       detPossibleStartEnteredAt: null,
-      canonicalStartAt,
+      tripCanonicalStartAt: canonicalStartAt,
     });
     expect(withoutEvidence.startCandidateAt).toBeNull();
     expect(withoutEvidence.startCandidateEnteredAt).toBeNull();
@@ -117,7 +138,7 @@ describe('R8A — start forensic provenance', () => {
       },
       detPossibleStartAt: canonicalStartAt,
       detPossibleStartEnteredAt: null,
-      canonicalStartAt,
+      tripCanonicalStartAt: canonicalStartAt,
     });
     expect(provenance.startCandidateAt).toEqual(observedAt);
   });

@@ -1,5 +1,9 @@
 import { readRawDetectionMeta } from './boundary-repair.state.util';
 import {
+  readMergeReopenFromTrip,
+  readStartEpisodeFromTrip,
+} from './trip-lifecycle-recovery-meta';
+import {
   classifyBoundaryAdjustment,
   computeSignedLatencySeconds,
   isValidTimingTimestamp,
@@ -26,6 +30,8 @@ export interface ResolvedStartForensicProvenance {
   startCandidateAt: Date | null;
   startCandidateEnteredAt: Date | null;
   startRecognizedAt: Date | null;
+  startEpisodeCanonicalAt: Date;
+  tripCanonicalStartAt: Date;
   startCandidateClockSource: string | null;
   startBoundarySource: string | null;
   startEvidencePath: string | null;
@@ -33,13 +39,81 @@ export interface ResolvedStartForensicProvenance {
   flatStartCandidateAt: string | null;
 }
 
+export function normalizeFiniteAdjustmentMs(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  return value;
+}
+
+export function resolveStartEpisodeCanonicalAt(params: {
+  evidenceSummary: Record<string, unknown>;
+  priorRawDetectionMeta?: unknown;
+  tripCanonicalStartAt: Date;
+}): Date {
+  const confirmedStartAt = parseStrictEvidenceTimestamp(
+    params.evidenceSummary.confirmedStartAt,
+  );
+  if (confirmedStartAt) {
+    return confirmedStartAt;
+  }
+
+  const mergeReopen = readMergeReopenFromTrip(params.priorRawDetectionMeta);
+  const mergeEffective = parseStrictEvidenceTimestamp(
+    mergeReopen?.effectiveStartAt,
+  );
+  if (mergeEffective) {
+    return mergeEffective;
+  }
+
+  const startEpisode = readStartEpisodeFromTrip(params.priorRawDetectionMeta);
+  const episodeEffective = parseStrictEvidenceTimestamp(
+    startEpisode?.effectiveStartAt,
+  );
+  if (episodeEffective) {
+    return episodeEffective;
+  }
+
+  return params.tripCanonicalStartAt;
+}
+
+function resolveStartBoundaryAdjustedMs(params: {
+  evidenceSummary: Record<string, unknown>;
+  startCandidateAt: Date | null;
+  startEpisodeCanonicalAt: Date;
+}): number | null {
+  const persisted = normalizeFiniteAdjustmentMs(
+    params.evidenceSummary.startBoundaryAdjustedMs,
+  );
+  if (persisted != null) {
+    return persisted;
+  }
+  if (
+    params.startCandidateAt &&
+    isValidTimingTimestamp(params.startEpisodeCanonicalAt)
+  ) {
+    return (
+      params.startEpisodeCanonicalAt.getTime() -
+      params.startCandidateAt.getTime()
+    );
+  }
+  return null;
+}
+
 export function resolveStartForensicProvenance(params: {
   evidenceSummary: Record<string, unknown> | null;
   detPossibleStartAt?: Date | null;
   detPossibleStartEnteredAt?: Date | null;
-  canonicalStartAt: Date;
+  tripCanonicalStartAt: Date;
+  priorRawDetectionMeta?: unknown;
 }): ResolvedStartForensicProvenance {
   const evidence = params.evidenceSummary ?? {};
+  const tripCanonicalStartAt = params.tripCanonicalStartAt;
+  const startEpisodeCanonicalAt = resolveStartEpisodeCanonicalAt({
+    evidenceSummary: evidence,
+    priorRawDetectionMeta: params.priorRawDetectionMeta,
+    tripCanonicalStartAt,
+  });
   const hasPreservedCandidateField =
     evidence.startCandidateAt != null || evidence.startCandidateObservedAt != null;
 
@@ -51,7 +125,7 @@ export function resolveStartForensicProvenance(params: {
       : params.detPossibleStartEnteredAt != null
         ? parseStrictEvidenceTimestamp(params.detPossibleStartAt)
         : params.detPossibleStartAt &&
-            params.detPossibleStartAt.getTime() !== params.canonicalStartAt.getTime()
+            params.detPossibleStartAt.getTime() !== startEpisodeCanonicalAt.getTime()
           ? parseStrictEvidenceTimestamp(params.detPossibleStartAt)
           : null);
 
@@ -63,17 +137,18 @@ export function resolveStartForensicProvenance(params: {
 
   const startRecognizedAt = parseStrictEvidenceTimestamp(evidence.startRecognizedAt);
 
-  const startBoundaryAdjustedMs =
-    typeof evidence.startBoundaryAdjustedMs === 'number'
-      ? evidence.startBoundaryAdjustedMs
-      : startCandidateAt && isValidTimingTimestamp(params.canonicalStartAt)
-        ? params.canonicalStartAt.getTime() - startCandidateAt.getTime()
-        : null;
+  const startBoundaryAdjustedMs = resolveStartBoundaryAdjustedMs({
+    evidenceSummary: evidence,
+    startCandidateAt,
+    startEpisodeCanonicalAt,
+  });
 
   return {
     startCandidateAt,
     startCandidateEnteredAt,
     startRecognizedAt,
+    startEpisodeCanonicalAt,
+    tripCanonicalStartAt,
     startCandidateClockSource:
       typeof evidence.startCandidateClockSource === 'string'
         ? evidence.startCandidateClockSource
@@ -107,6 +182,7 @@ export interface TripFsmForensicsR8V1 {
     recognizedClock: 'WORKER_TIME';
     canonicalBoundaryAt: string | null;
     canonicalBoundaryClock: 'EVENT_TIME';
+    tripCanonicalStartAt: string | null;
     boundarySource: string | null;
     evidencePath: string | null;
     boundaryAdjustmentMs: number | null;
@@ -134,8 +210,10 @@ export interface BuildTripFsmForensicsInput {
   startCandidateEnteredAt?: Date | null;
   startRecognizedAt?: Date | null;
   canonicalStartAt?: Date | null;
+  tripCanonicalStartAt?: Date | null;
   startBoundarySource?: string | null;
   startEvidencePath?: string | null;
+  startBoundaryAdjustedMs?: number | null;
   endCandidateAt?: Date | null;
   endCandidateClockSource?: string | null;
   endCandidateEnteredAt?: Date | null;
@@ -153,6 +231,9 @@ export function buildTripFsmForensicsR8V1(
     input.startCandidateAt,
     input.canonicalStartAt,
   );
+  const startBoundaryAdjustedMs =
+    normalizeFiniteAdjustmentMs(input.startBoundaryAdjustedMs) ??
+    startAdjustment.signedAdjustmentMs;
   const endAdjustment = classifyBoundaryAdjustment(
     input.endCandidateAt,
     input.canonicalEndAt,
@@ -170,9 +251,15 @@ export function buildTripFsmForensicsR8V1(
       recognizedClock: 'WORKER_TIME',
       canonicalBoundaryAt: safeForensicIsoString(input.canonicalStartAt),
       canonicalBoundaryClock: 'EVENT_TIME',
+      tripCanonicalStartAt:
+        input.tripCanonicalStartAt &&
+        input.canonicalStartAt &&
+        input.tripCanonicalStartAt.getTime() !== input.canonicalStartAt.getTime()
+          ? safeForensicIsoString(input.tripCanonicalStartAt)
+          : null,
       boundarySource: input.startBoundarySource ?? null,
       evidencePath: input.startEvidencePath ?? null,
-      boundaryAdjustmentMs: startAdjustment.signedAdjustmentMs,
+      boundaryAdjustmentMs: startBoundaryAdjustedMs,
     },
     end: {
       candidateAt: safeForensicIsoString(input.endCandidateAt),

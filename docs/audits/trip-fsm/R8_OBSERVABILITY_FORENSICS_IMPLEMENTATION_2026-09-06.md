@@ -191,9 +191,11 @@ Fixed-clock refined-start regression:
 | `canonicalBoundaryAt` | 13:59:50 |
 | `boundaryAdjustmentMs` | -10000 |
 
-### R8A.4–R8A.5 — Merge/reopen and recovery forensics
+### R8A.4–R8A.5 — Merge/reopen and recovery forensics (superseded by R8B for episode canonical boundary)
 
-Merge/reopen episodes persist the **new** start recognition candidate, not the reopened trip’s historical `startTime`. Recovery preserves existing candidate evidence when present; otherwise candidate fields remain null (no fabrication from rewritten FSM clocks or DB `updatedAt`).
+R8A preserved merge/reopen **candidate** timestamps and prevented fabrication from rewritten FSM clocks. R8A still incorrectly used historical `VehicleTrip.startTime` as `tripFsmForensics.start.canonicalBoundaryAt` at FINALIZE for merge/reopen cases — corrected in R8B.
+
+Recovery preserves existing candidate evidence when present; otherwise candidate fields remain null (no fabrication from rewritten FSM clocks or DB `updatedAt`).
 
 ### R8A.6–R8A.8 — `missing_anchor` vs `invalid_timestamp`
 
@@ -230,6 +232,90 @@ Post-commit finalize metrics/timeline failures do not prevent RESTING. Durable R
 | INV-10 | CLOSED |
 | INV-13 | CLOSED |
 | INV-15 | CLOSED_BY_R5_R8 |
+
+**Deploy:** NOT PERFORMED
+**R9:** NOT STARTED
+
+---
+
+## R8B — Merge Start-Episode & Terminal Observability Closure
+
+**Date:** 2026-09-06
+**Commit:** `fix(trip-fsm): close R8 merge forensic consistency`
+**Parent R8A head:** `b678e1b5b755939b39493f9c06989404b02e644e`
+
+### R8B.1–R8B.4 — Start episode vs trip-level canonical start
+
+Two distinct boundaries:
+
+| Field | Meaning |
+|-------|---------|
+| `VehicleTrip.startTime` | Trip-level canonical historical boundary of the persisted trip record |
+| `tripFsmForensics.start.canonicalBoundaryAt` | Canonical boundary of the **start recognition episode** being forensically described |
+
+For normal create they are equal. For merge/reopen they may differ by hours — the reopened trip retains its original `startTime` while the start episode boundary is the new `effectiveStartAt` / `confirmedStartAt`.
+
+Optional structured field `tripFsmForensics.start.tripCanonicalStartAt` is populated when episode canonical differs from trip historical start.
+
+### R8B.2 — Episode canonical resolution order
+
+`resolveStartEpisodeCanonicalAt()` / `resolveStartForensicProvenance()` resolve in order:
+
+1. `evidenceSummary.confirmedStartAt`
+2. durable `lifecycleRecovery.mergeReopen.effectiveStartAt`
+3. `lifecycleRecovery.startEpisode.effectiveStartAt`
+4. `VehicleTrip.startTime` (normal create / legacy fallback)
+
+Strict timestamp parsing only — no DB `updatedAt`, no worker-time fabrication.
+
+### R8B.5–R8B.9 — Structured / flat consistency and finite adjustment
+
+`boundaryAdjustmentMs` compares `startCandidateAt` → `startEpisodeCanonicalAt` (not historical reopened `startTime`). Flat `startBoundaryAdjustedMs` and structured `tripFsmForensics.start.boundaryAdjustmentMs` must agree for newly generated R8 data. `normalizeFiniteAdjustmentMs()` rejects NaN/Infinity; recomputes from valid candidate + episode canonical when possible.
+
+Merge/reopen fixed-clock regression (via `processFinalize`):
+
+| Field | Value |
+|-------|-------|
+| Historical `VehicleTrip.startTime` | 10:00:00 |
+| `candidateAt` | 16:10:00 |
+| `candidateEnteredAt` | 16:10:15 |
+| `recognizedAt` | 16:10:40 |
+| `canonicalBoundaryAt` | 16:09:55 |
+| `boundaryAdjustmentMs` | -5000 |
+
+### R8B.10–R8B.12 — Terminal observability containment
+
+After `finalizeTrip` / `discardTrip` commit and before RESTING, all ancillary observability is wrapped in `runTripObservabilitySafely()`:
+
+**COMPLETED:** informational logger, `tripFinalized.inc`, evidence paths, duration, end recognition/boundary metrics, legacy finalize latency/movement delta, TRIP_END_TIMELINE.
+
+**CANCELLED:** informational logger, `tripDiscarded.inc`, `tripQualityAnomalies.inc`.
+
+Lifecycle mutations (`finalizeTrip`, `discardTrip`, `transitionState`, critical queue scheduling) remain outside safe wrappers — real lifecycle failures still trigger R7/R7A recovery.
+
+### R8B.13–R8B.15 — Regression matrix
+
+Individual injected failures for COMPLETED (tripFinalized, logger, legacy latency, recognition metric, timeline) and CANCELLED (tripDiscarded, quality metric, logger) all reach RESTING without spurious R7 orphan recovery. R7A durable-commit ambiguity recovery preserved.
+
+### Final finding / invariant status
+
+| Finding | Status |
+|---------|--------|
+| P5-F06 | RESOLVED_BY_R8 |
+| P5-F07 | RESOLVED_BY_R8 |
+| P5-F12 | RESOLVED_BY_R8 |
+| P3-F05 | RESOLVED_BY_R8 |
+| P3-F04 | RESOLVED_BY_R8 |
+| P5-F01 | RESOLVED_BY_R1_R8 |
+| P5-F10 | PARTIALLY_RESOLVED_BY_R5 |
+
+| Invariant | Status |
+|-----------|--------|
+| INV-10 | CLOSED |
+| INV-13 | CLOSED |
+| INV-15 | CLOSED_BY_R5_R8 |
+
+**Future canonical destination:** `architecture/trip-fsm/`
 
 **Deploy:** NOT PERFORMED
 **R9:** NOT STARTED

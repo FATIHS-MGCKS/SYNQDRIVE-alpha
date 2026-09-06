@@ -3107,11 +3107,21 @@ export class TripDetectionOrchestrationService {
             terminalLifecycleCommit = 'CANCELLED';
             // Smart cooldown: discard → short 30s cooldown
             restingReason = 'discard';
-            this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
-            this.tripMetrics?.tripDiscarded.inc({ reason: qualityCheck.reason ?? 'quality_check_failed' });
-            this.tripMetrics?.tripQualityAnomalies.inc({
-              anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
-            });
+            runTripObservabilitySafely(
+              this.logger,
+              'discard_post_commit_observability',
+              () => {
+                this.logger.log(
+                  `Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`,
+                );
+                this.tripMetrics?.tripDiscarded.inc({
+                  reason: qualityCheck.reason ?? 'quality_check_failed',
+                });
+                this.tripMetrics?.tripQualityAnomalies.inc({
+                  anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
+                });
+              },
+            );
           } else {
             const r5EndForensics = extractR5EndForensicsForPersistence(
               det.lastEvidenceSummary as Record<string, unknown> | null,
@@ -3128,16 +3138,19 @@ export class TripDetectionOrchestrationService {
               evidenceSummary,
               detPossibleStartAt: det.possibleStartAt,
               detPossibleStartEnteredAt: det.possibleStartEnteredAt,
-              canonicalStartAt: trip.startTime,
+              tripCanonicalStartAt: trip.startTime,
+              priorRawDetectionMeta: trip.rawDetectionMeta,
             });
             const tripFsmForensics = buildTripFsmForensicsR8V1({
               startCandidateAt: startForensics.startCandidateAt,
               startCandidateClockSource: startForensics.startCandidateClockSource,
               startCandidateEnteredAt: startForensics.startCandidateEnteredAt,
               startRecognizedAt: startForensics.startRecognizedAt,
-              canonicalStartAt: trip.startTime,
+              canonicalStartAt: startForensics.startEpisodeCanonicalAt,
+              tripCanonicalStartAt: trip.startTime,
               startBoundarySource: startForensics.startBoundarySource,
               startEvidencePath: startForensics.startEvidencePath,
+              startBoundaryAdjustedMs: startForensics.startBoundaryAdjustedMs,
               endCandidateAt: det.possibleEndAt,
               endCandidateClockSource:
                 typeof evidenceSummary.endCandidateClockSource === 'string'
@@ -3204,15 +3217,18 @@ export class TripDetectionOrchestrationService {
             terminalLifecycleCommit = 'COMPLETED';
             terminalTripId = tripId;
             finalizedTripForRestWindow = { tripId, endTime };
-            this.logger.log(
-              `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
-            );
-            this.tripMetrics?.tripFinalized.inc({
-              profile: profileLabel,
-              quality: 'ok',
-              source: 'v2_live',
-            });
-            runTripObservabilitySafely(this.logger,'finalize_post_commit_metrics', () => {
+            runTripObservabilitySafely(
+              this.logger,
+              'finalize_post_commit_observability',
+              () => {
+              this.logger.log(
+                `Trip ${tripId} finalized for ${vehicleId} [endSource=${chosenEndSource} mode=${det.endDetectionMode}]`,
+              );
+              this.tripMetrics?.tripFinalized.inc({
+                profile: profileLabel,
+                quality: 'ok',
+                source: 'v2_live',
+              });
               this.tripMetrics?.tripEvidencePaths?.inc({
                 phase: 'end_finalization',
                 path: chosenEndSource.toUpperCase(),
