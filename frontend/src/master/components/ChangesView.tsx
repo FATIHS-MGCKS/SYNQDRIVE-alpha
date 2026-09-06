@@ -36,6 +36,71 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r5b-validation-attempt-isolation-2026-09-06',
+    version: '4.9.1074',
+    title: 'Trip FSM R5B — Validation Attempt Forensic Isolation',
+    summary: [
+      'Separates same-end-episode provenance from attempt-local validation runtime state.',
+      'clearEndValidationAttemptLocalEvidence() clears scheduled/started/completed/failure fields between attempts without ACTIVE reopen.',
+      'Failed attempts no longer inherit stale completedAt or completedEndValidationAttempt from prior successful cycles.',
+      'extractR5EndForensicsForPersistence uses authoritative endValidationAttempts for completedAttemptCount.',
+      'Temporal regression: Attempt1 INCONCLUSIVE → Attempt2 detector failure keeps completedAt absent.',
+    ],
+    reason:
+      'R5B closure — impossible forensic combinations when retrying END_VALIDATION within the same POSSIBLE_END episode.',
+    previousBehavior:
+      'buildEndValidationFailureEvidence spread priorSummary including stale completedAt from previous attempt.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5B; trip-end-cycle-reset.ts + trip-end-validation-r5b.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:40:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r5a-end-evidence-closure-2026-09-06',
+    version: '4.9.1073',
+    title: 'Trip FSM R5A — End Evidence Semantics Closure',
+    summary: [
+      'Production DetectorRegistry error sentinels (evidence.error) no longer consume endValidationAttempts — only completed CUSUM cycles count (P5-F11 closure).',
+      'Explicit ChangePointEndDetector outcome classifier: VALID_DECISION vs DETECTOR_EXECUTION_FAILURE vs DETECTOR_MISSING.',
+      'Empty-core VLS gate uses ACTIVE/INACTIVE/UNKNOWN tri-state with provider sourceTimestamp freshness (120s bound) — all-null or missing speed stays KEEP_OPEN (P5-F13 closure).',
+      'Distinct validationStartedAt vs validationCompletedAt clocks; no completedAt on fetch/detector failure.',
+      'Same-episode provenance preserved across retries; strip only on POSSIBLE_END→ACTIVE reopen.',
+      'R5 end-cycle forensics persisted into VehicleTrip.rawDetectionMeta on finalize before RESTING clears FSM evidence.',
+    ],
+    reason:
+      'R5A closure — production registry failure semantics, explicit VLS corroboration, truthful forensic persistence.',
+    previousBehavior:
+      'Registry INCONCLUSIVE+error consumed attempts; isCurrentTelemetryInactive coerced null speed to inactive; same now used for started/completedAt; strip on completion destroyed episode provenance; finalize dropped R5 forensics.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md § R5A; trip-end-validation-classifier.ts + trip-empty-core-end-gate.ts updates.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T11:30:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r5-end-validation-semantics-2026-09-06',
+    version: '4.9.1072',
+    title: 'Trip FSM R5 — End Validation Semantics',
+    summary: [
+      'Shared POSSIBLE_END → ACTIVE reset clears end-cycle metadata including endDetectionMode/confidence and CUSUM fields (P5-F03).',
+      'endValidationAttempts now counts completed CUSUM cycles only — scheduling/fetch/detector errors do not consume attempts (P5-F11).',
+      'Successful empty core requires VLS inactivity + no performance activity + no route motion corroboration — not inactivity anchor alone (P5-F13).',
+      'Max-attempt fallback uses LOW confidence + max_completed_cusum_attempts forensics — not CUSUM_VALIDATED (P5-F10 partial).',
+      'Resume fetch errors block max-attempt fallback; hard 30min timeout remains separate last-resort path.',
+      'Forensic timestamps: endValidationScheduledAt / StartedAt / CompletedAt with completedEndValidationAttempt.',
+    ],
+    reason:
+      'P6 remediation package R5 — INV-12 completed-cycle attempt accounting + INV-15 end-cycle forensic accuracy.',
+    previousBehavior:
+      'PEC incremented attempts when scheduling END_VALIDATION; CUSUM ongoing reopen left stale end metadata; empty core [] alone could enter POSSIBLE_END.',
+    details:
+      'docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md; trip-end-cycle-reset.ts + trip-empty-core-end-gate.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T10:55:00.000Z',
+  },
+  {
     id: 'trip-fsm-r4-start-detection-consistency-2026-09-06',
     version: '4.9.1071',
     title: 'Trip FSM R4 — Start Detection Consistency',
