@@ -1,7 +1,7 @@
 # P2.3.4A.1 — Authority Label Invalidation Runtime Defect
 
-**Date:** 2026-09-06  
-**Phase:** P2.3.4A.1 forensic diagnosis + minimal fail-closed correction  
+**Date:** 2026-09-06
+**Phase:** P2.3.4A.1 forensic diagnosis + minimal fail-closed correction
 **Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha
 
 ---
@@ -95,28 +95,55 @@ This confirms approval lifecycle worked up to synchronize invalidation.
 
 ## 5. Correction (P2.3.4A.1)
 
-### Changed surfaces
+### Architecture (self-contained trust anchor)
+
+| Field | Value |
+|-------|-------|
+| `SELF_CONTAINED_TRUSTED_WORKFLOW` | **YES** |
+| `CHECKOUT_COUNT` | **0** |
+| `RUNTIME_REPO_SOURCE_COUNT` | **0** |
+| `NEW_RUNTIME_AUTHORITY_DEPENDENCIES` | **0** |
+| `CAMPAIGN_TARGET_COMPATIBILITY` | **PRESERVED** |
+| `PR_HEAD_REPOSITORY_CODE_EXECUTED` | **0** |
+| `BASE_REPOSITORY_CODE_EXECUTED` | **0** |
+
+The trusted workflow YAML is the **entire** executable policy. Invalidation helpers are **inlined** in `.github/workflows/i18n-authority-protection.yml`. No `actions/checkout`, no `source` of repository files, no `.github/scripts` runtime helper, no composite action or workflow_call dependency.
+
+Campaign-target PRs (`base.ref=p239-p238-merge-baseline-3c10`) require **no file** from the campaign branch — the guard bootstraps entirely from runner-native tools (`bash`, `gh`, `jq`, `python3`).
+
+### Changed surfaces (final correction)
 
 | Path | Change |
 |------|--------|
-| `.github/workflows/i18n-authority-protection.yml` | Source shared invalidation lib; emit safe diagnostics; distinct postcondition failure |
-| `.github/scripts/i18n-authority-protection-invalidation.lib.sh` | Fail-closed DELETE + sanitized diagnostics + label-absence postcondition |
-| `.cursor/scripts/i18n-authority-protection-invalidation.harness.sh` | Adversarial harness (10 cases) |
+| `.github/workflows/i18n-authority-protection.yml` | Inline invalidation helpers; emit safe diagnostics; distinct postcondition failure |
+| `.cursor/scripts/i18n-authority-protection-invalidation.harness.sh` | Adversarial harness with isolated function copies (15 tests) |
+| `docs/audits/i18n-p2-3-4a1-authority-label-invalidation-defect-2026-09-06.md` | This document |
+
+**Removed from final diff:** `.github/scripts/i18n-authority-protection-invalidation.invalidation.lib.sh` (intermediate regression — external runtime helper + base-ref checkout).
 
 ### Invalidation contract (post-correction)
 
-1. Execute DELETE with URL-encoded label name; capture stdout/stderr + exit code.
-2. On nonzero exit: fail closed; emit `LABEL_INVALIDATION_API_RESULT=FAIL`, exit code, sanitized diagnostic (no tokens).
-3. On zero exit: GET current PR labels; verify authority label absent.
-4. Only then set `AUTHORITY_LABEL_PRESENT=false`.
-5. If label still present: `AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED`.
-6. If label verification fails: `AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED` via `POSTCONDITION_VERIFY_FAILED` path.
+1. URL-encode label name.
+2. Execute DELETE; capture stdout/stderr + exit code.
+3. On nonzero exit: fail closed; emit `LABEL_INVALIDATION_API_RESULT=FAIL`, exit code, sanitized diagnostic (no tokens).
+4. On zero exit: GET current PR labels; verify authority label absent.
+5. Only then set `AUTHORITY_LABEL_PRESENT=false`.
+6. If label still present: `AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED` via `POSTCONDITION_FAIL`.
+7. If label verification fails: `AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED` via `POSTCONDITION_VERIFY_FAILED`.
+
+### Distinct failure reasons
+
+| Path | Reason |
+|------|--------|
+| DELETE/API failure | `AUTHORITY_LABEL_INVALIDATION_FAILED` |
+| DELETE succeeded but postcondition failed/unverifiable | `AUTHORITY_LABEL_INVALIDATION_POSTCONDITION_FAILED` |
+| Successful invalidation on synchronize | `AUTHORITY_REAPPROVAL_REQUIRED_AFTER_HEAD_CHANGE` |
+
+All synchronize invalidation paths remain `AUTHORITY_APPROVED=NO`, `I18N_AUTHORITY_PROTECTION=FAIL`.
 
 ### Permissions decision
 
 **No `pull-requests: write` expansion** in this correction. Issues write was already present at failure time; actual API error must be observed on next live run before broadening permissions.
-
-Checkout added only for **base ref** helper script (trusted anchor), not PR head.
 
 ---
 
@@ -135,15 +162,16 @@ Checkout added only for **base ref** helper script (trusted anchor), not PR head
 
 ## 7. Next steps (post-merge)
 
-1. Owner reviews and approves correction PR with `i18n-governance-authority-change`.
-2. Merge correction to `main`.
-3. Re-trigger #1496 synchronize (or fresh push) to capture **observable** API diagnostic if DELETE still fails.
-4. Only then decide whether `pull-requests: write` is required.
+1. Independent security audit of correction PR #1555.
+2. Owner reviews and approves correction PR with `i18n-governance-authority-change`.
+3. Merge correction to `main`.
+4. Re-trigger #1496 synchronize (or fresh push) to capture **observable** API diagnostic if DELETE still fails.
+5. Only then decide whether `pull-requests: write` is required.
 
 ---
 
 ## 8. Verdict
 
-**P2.3.4A.1 CORRECTION READY — OWNER AUTHORITY APPROVAL REQUIRED**
+**P2.3.4A.1 SELF-CONTAINED CORRECTION READY — INDEPENDENT AUDIT REQUIRED**
 
-The live synchronize canary exposed a real invalidation defect with suppressed API evidence. Correction restores observability and verified postconditions while remaining fail-closed.
+The live synchronize canary exposed a real invalidation defect with suppressed API evidence. Correction restores observability and verified postconditions while preserving the original self-contained trust-anchor architecture.
