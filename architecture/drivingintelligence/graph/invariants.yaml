@@ -31,7 +31,7 @@ invariants:
   - id: DI-INV-POLL-NOT-GEN-001
     kind: CONFIRMED_INVARIANT
     statement: Provider API request cadence is not equal to telemetry signal generation cadence.
-    rationale: RD003 proved interval 1s query returns ~2s median buckets.
+    rationale: RD003 proved interval 1s query returns ~2.00s median physical samples; RD002 sealed P50 13.489s is a separate population.
     epistemic_status: CONFIRMED
     affected_nodes:
       - DI-SIG-HF-001

@@ -33,7 +33,7 @@ Chronological implementation stages from ground-truth need → production-safe d
 
 | | |
 |--|--|
-| **Finding** | `interval:"1s"` → ~2s median buckets; video GT partial |
+| **Finding** | `interval:"1s"` → RD003 ~2.00s median physical samples; video GT partial |
 | **Impact** | Production detectors **not changed** (DI-DEC-PROD-DET-UNCHANGED-001) |
 | **Next** | Episode V2 design; RD004 validation |
 

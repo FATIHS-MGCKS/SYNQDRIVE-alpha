@@ -64,14 +64,16 @@ VehicleTrip COMPLETED → trip.behavior.enrichment → fetchHighFrequency(interv
 - Led to FAST PRE-ARM/GO (0020) and watermark remediation (0021)
 
 ### RD002 (DI-EV-0023) — KS MX 2024 C63, motion
-- 351 cycles; HF Recovery V2 exercised
-- **Critical finding:** `REQUESTED_INTERVAL_1S ≠ OBSERVED_1HZ` — median bucket ~2s
-- Native behavior events NOT_OBSERVED on C63
+- 351 cycles; **355 HF_HISTORICAL** rows with **AGGREGATE_BUCKET_V2** identity (DI-EV-0021 watermark remediation — **not** DI-EV-0035C HF Recovery policy)
+- **Sealed HF Δt (providerTimestamp):** P50 **13.489s**, P95 **84.024s**, MAX **249.647s** (71 rows)
+- **Critical finding:** `REQUESTED_INTERVAL_1S ≠ OBSERVED_1HZ` — sparse sealed buckets (P50 13.489s); separate from RD003 ~2.00s metric
+- Native behavior events **NOT_OBSERVED** on C63 (does not disprove architectural native-event policy)
 
 ### RD003 (DI-EV-0027) — Tiguan WOB L 7503, segmented video
 - Session `0fa040aa-6105-4879-b2c-f8ad477009b8`
 - 9 video clips; 198 sparse GT observations
-- Confirmed 1s≠1Hz; idempotency runtime NOT_EXERCISED
+- **HF_HISTORICAL median new physical sample cadence ~2.00s** (RD003 signal quality — separate metric from RD002 sealed P50)
+- Idempotency runtime NOT_EXERCISED
 
 ---
 
@@ -90,7 +92,7 @@ See `evidence/reference-capture/RD003_RETROSPECTIVE.md` for granular detail.
 
 ## 7. Episode V2 reasoning (DI-EV-0034F)
 
-**Why:** Point-pair detectors brittle under ~2s median cadence and gaps.
+**Why:** Point-pair detectors brittle under sparse cadence (RD003 ~2s; RD002 sealed P50 13.489s) and gaps.
 
 **Proposal:** Driving Episodes with reconstruction vs attribution confidence; 2.0s provisional max-gap for kinematic pairs.
 
@@ -164,8 +166,10 @@ Configurable `HF_HISTORICAL_POLL_INTERVAL_MS`; runner still 5s; V2 skips HF unti
 | Flag | Value |
 |------|-------|
 | **CODE_DEPLOYED** | YES — merge `3d5040b67` 2026-09-05 |
-| **FEATURE_ENABLED** | NO — `HF_RECOVERY_POLICY_V2_ENABLED=false`; empty canary allowlist |
-| **LIVE_CANARY_EXECUTED** | NO — zero calibration sessions |
+| **REFERENCE_CAPTURE_INFRASTRUCTURE_ENABLED** | YES (`REFERENCE_CAPTURE_ENABLED=true`) |
+| **HF_RECOVERY_V2_FEATURE_ENABLED** | NO |
+| **ACTIVE_HF_V2_CANARIES** | 0 |
+| **ACTIVE_CALIBRATION_SESSIONS** | 0 |
 | **PRODUCTION_HF_AUTHORITY** | LEGACY post-trip path |
 | **HF_30S_BLOCK_POLLING_VALIDATED** | NO |
 
@@ -177,7 +181,8 @@ Infrastructure ready for operator-selected Flight Recorder calibration run.
 
 - **Production scoring:** Impact V1 (`drivingStressScore` = vehicle load)
 - **Production HF:** Whole-trip `fetchHighFrequency`; no recovery overlap
-- **Reference Capture:** Code on main; all experimental gates OFF
+- **Reference Capture infrastructure:** `REFERENCE_CAPTURE_ENABLED=true` on production (3A.2+)
+- **HF experimental features:** `HF_RECOVERY_POLICY_V2_ENABLED=false`; sweep/calibration OFF; zero active canaries
 - **Next scientific experiment:** Live 10/20/30/60s calibration on operator-selected vehicle
 
 ---

@@ -109,10 +109,10 @@ ReferenceCapture runner (5s) → HF recovery V2 / block polling testbed
 | [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Granular evolution ledger |
 | [research/DI_EV_CHRONOLOGY.md](./research/DI_EV_CHRONOLOGY.md) | Complete DI-EV sequence |
 | [research/HYPOTHESIS_REGISTER.md](./research/HYPOTHESIS_REGISTER.md) | Hypotheses tested/rejected |
-| [research/EXPERIMENT_REGISTER.md](./research/EXPERIMENT_REGISTER.md) | Experiments and reference drives |
-| [research/DEFECT_LEDGER.md](./research/DEFECT_LEDGER.md) | Proven defects discovered |
+| [research/EXPERIMENT_REGISTER.md](./research/EXPERIMENT_REGISTER.md) | Experiments (**16 entries: 15 executed, 1 pending**) |
+| [research/DEFECT_LEDGER.md](./research/DEFECT_LEDGER.md) | Proven defects discovered (**18 total: 15 fixed, 3 open**) |
 | [research/LESSONS_LEARNED.md](./research/LESSONS_LEARNED.md) | Evidence-backed lessons |
-| [research/PR_TIMELINE.md](./research/PR_TIMELINE.md) | Workstream PR timeline |
+| [research/PR_TIMELINE.md](./research/PR_TIMELINE.md) | Workstream PR timeline (**27 merged**) |
 | [research/OPEN_QUESTIONS.md](./research/OPEN_QUESTIONS.md) | Explicit unknowns |
 | [contradictions/CONTRADICTION_REGISTER.md](./contradictions/CONTRADICTION_REGISTER.md) | Unresolved disagreements |
 | [evidence/EVIDENCE_INDEX.md](./evidence/EVIDENCE_INDEX.md) | Canonical evidence catalog |
@@ -128,10 +128,11 @@ See [AGENT_CONTRACT.md](./AGENT_CONTRACT.md).
 
 ## Validation
 
+This PR changes **51 files** under `architecture/drivingintelligence/` only (vs merge-base with `main`).
+
 ```bash
 bash architecture/drivingintelligence/scripts/validate-graph.sh
 bash architecture/drivingintelligence/scripts/validate-docs.sh
-# or: node architecture/drivingintelligence/scripts/validate-graph.mjs
 ```
 
 ## Related legacy documents (evidence, not unquestionable authority)

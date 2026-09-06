@@ -10,26 +10,33 @@
 
 | Term | Value | Meaning |
 |------|-------|---------|
-| CODE_DEPLOYED | **YES** | C.1a–e + Recovery V2 code on `main` / production VPS |
-| FEATURE_ENABLED | **NO** | `HF_RECOVERY_POLICY_V2_ENABLED=false`; V2 canary gates off |
-| LIVE_CANARY_EXECUTED | **NO** | Zero active V2 canaries; zero calibration sessions run post-deploy |
-| HF_30S_BLOCK_POLLING_VALIDATED | **NO** | No live 10/20/30/60 phase evidence |
-| Production HF authority | **LEGACY** | `trip-behavior-enrichment` whole-trip `fetchHighFrequency` |
+| CODE_DEPLOYED | **YES** | C.1a–e + HF Recovery **policy code** on `main` / production VPS |
+| REFERENCE_CAPTURE_INFRASTRUCTURE_ENABLED | **YES** | `REFERENCE_CAPTURE_ENABLED=true` on production (since 3A.2 canary era) |
+| HF_RECOVERY_V2_FEATURE_ENABLED | **NO** | `HF_RECOVERY_POLICY_V2_ENABLED=false` |
+| HF_RECOVERY_SWEEP_ENABLED | **NO** | Sweep feature off |
+| HF_CALIBRATION_ENABLED | **NO** | `HF_AVAILABILITY_CALIBRATION_ENABLED=false` |
+| ACTIVE_HF_V2_CANARIES | **0** | Empty canary allowlist → LEGACY fail-closed |
+| ACTIVE_CALIBRATION_SESSIONS | **0** | No post-#1533 calibration runs |
+| LIVE_CANARY_EXECUTED | **NO** | No live 10/20/30/60 phase evidence |
+| HF_30S_BLOCK_POLLING_VALIDATED | **NO** | Hypothesis not tested live |
+| PRODUCTION_HF_AUTHORITY | **LEGACY** | `trip-behavior-enrichment` whole-trip `fetchHighFrequency` |
 
-**Inaccuracy to avoid:** "HF Recovery V2 not deployed" — code **is** deployed; features **disabled**.
+**Inaccuracy to avoid:** Saying "all experimental gates OFF" — Reference Capture **infrastructure is enabled**; HF Recovery V2 **feature flags** are disabled.
+
+**Inaccuracy to avoid:** "HF Recovery V2 not deployed" — policy **code is deployed**; **feature is disabled**.
 
 ---
 
 ## Flag inventory (reference capture)
 
-| Flag / config | Default post-deploy |
-|---------------|---------------------|
-| `REFERENCE_CAPTURE_ENABLED` | false (typical prod) |
-| `HF_RECOVERY_POLICY_V2_ENABLED` | false |
-| HF recovery canary allowlist | empty → LEGACY fail-closed |
-| `HF_HISTORICAL_POLL_INTERVAL_MS` | 30000 (provisional; inactive without V2) |
-| `HF_SETTLEMENT_DELAY_MS` | 8000 (provisional) |
-| `HF_RECOVERY_OVERLAP_MS` | 6000 (provisional) |
+| Flag / config | Production state (post #1533 evidence) |
+|---------------|----------------------------------------|
+| `REFERENCE_CAPTURE_ENABLED` | **true** (infrastructure active) |
+| `HF_RECOVERY_POLICY_V2_ENABLED` | **false** |
+| `HF_RECOVERY_SWEEP_ENABLED` | **false** |
+| `HF_AVAILABILITY_CALIBRATION_ENABLED` | **false** |
+| HF recovery canary allowlist | **empty** → LEGACY fail-closed |
+| `HF_HISTORICAL_POLL_INTERVAL_MS` | 30000 (provisional; inactive without V2 feature) |
 
 ---
 
@@ -38,31 +45,10 @@
 ```
 VehicleTrip COMPLETED
   → trip.behavior.enrichment (LEGACY)
-  → fetchHighFrequency (whole trip, no Recovery V2)
+  → fetchHighFrequency (whole trip, no Recovery V2 policy active)
   → detectors (point-pair, ~1Hz assumption)
   → trip.driving-impact.compute
 ```
-
----
-
-## Infrastructure readiness
-
-| Capability | State |
-|------------|-------|
-| Recovery V2 policy code | On production binary |
-| Block polling policy code | On production binary |
-| Multi-cadence calibration API | On production binary |
-| Operator runbook for live calibration | **INCOMPLETE** (`DI-OQ-PROD-002`) |
-| Evidence from live run | **NONE** |
-
----
-
-## Transition timeline
-
-1. PR #1533 merged → code on main
-2. VPS deploy (standard release pipeline) → binary includes RC hardening
-3. Flags remain OFF → zero behavior change on production HF
-4. **Next scientific step:** operator-selected Flight Recorder calibration drive
 
 ---
 

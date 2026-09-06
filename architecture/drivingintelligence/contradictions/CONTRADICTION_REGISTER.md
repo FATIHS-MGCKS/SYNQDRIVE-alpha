@@ -2,14 +2,16 @@
 
 Record disagreements between sources. **Do not resolve by guessing.**
 
-## DI-CONTRA-HF-1HZ-001 — HF 1 Hz assumption vs observed ~2s cadence
+## DI-CONTRA-HF-1HZ-001 — HF 1 Hz assumption vs observed sparse cadence
 
 | Side | Claim | Source |
 |------|-------|--------|
 | A | HF is ~1 Hz; `HF_WINDOW_EXPECTED_INTERVAL_MS = 1000` | `hf-window-producer.ts`, detector comments |
-| B | Median bucket spacing ~2s; `1s ≠ 1Hz` | RD002/003 reference drives, `signal-quality-summary.json` |
+| B (RD003) | HF_HISTORICAL median new physical samples **~2.00s** | RD003 signal quality (`signal-quality-summary.json`) |
+| B (RD002) | Sealed HF_HISTORICAL aggregate-bucket Δt P50 **13.489s** | RD002 capture report (DI-EV-0023–0025) |
 | **Status** | Active semantic debt | Production path unchanged by intent |
-| **Mitigation** | V2 canonical design proposes 2.0s max-gap anchor; assessability reports sparse HF |
+| **Mitigation** | V2 canonical design proposes 2.0s max-gap anchor (RD003 only); assessability reports sparse HF |
+| **Note** | **Do not merge RD002 and RD003 into one median** | See `CADENCE_DENSITY.md` |
 | **Graph** | DI-CONTRA-HF-1HZ-001, DI-GAP-HF-CADENCE-001 |
 
 ## DI-CONTRA-DRIVER-SCORE-NAME-001 — DriverScore vs vehicle stress semantics

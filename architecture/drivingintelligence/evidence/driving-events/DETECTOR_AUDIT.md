@@ -13,7 +13,7 @@
 | Window producer | `hf-window-producer.ts` | `HF_WINDOW_EXPECTED_INTERVAL_MS = 1000` (**semantic debt**) |
 | Gap threshold | `hf-window-producer.ts` | `HF_WINDOW_GAP_THRESHOLD_MS = 3000` |
 
-**Cadence sensitivity:** Detectors assume ~1 Hz in window density calculations; RD002/003 proved ~2s median observed buckets (`DI-CONTRA-HF-1HZ-001`).
+**Cadence sensitivity:** Detectors assume ~1 Hz; RD003 HF median ~2.00s; RD002 sealed P50 13.489s (`DI-CONTRA-HF-1HZ-001`).
 
 ---
 
@@ -70,7 +70,7 @@ See `NATIVE_DIMO_EVENTS.md` — authoritative for LTE_R1 short misuse events.
 
 | Aspect | Design intent (DI-EV-0034F) |
 |--------|----------------------------|
-| Problem | Point-pair counting brittle under ~2s cadence + gaps |
+| Problem | Point-pair counting brittle under sparse cadence (RD003 ~2.00s) + gaps |
 | Model | Episodes with start/continue/end; reconstruction vs attribution confidence |
 | Gap policy | Provisional 2.0s max-gap anchor from RD003 |
 | Cutover | Requires validation contract + RD004-class evidence |

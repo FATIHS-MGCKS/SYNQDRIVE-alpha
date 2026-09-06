@@ -10,7 +10,8 @@
 
 | Evidence | Finding |
 |----------|---------|
-| RD002/003 | `interval:"1s"` → ~2s median observed buckets |
+| RD003 | `interval:"1s"` → ~2.00s median physical samples (HF_HISTORICAL) |
+| RD002 | Sealed HF aggregate-bucket Δt P50 **13.489s** (separate metric) |
 | RD003 signal quality | Derived jerk WEAK; accel USEFUL_WITH_GATING |
 | RD004-B | Late buckets + watermark gaps lose events permanently |
 | Production code | `HF_WINDOW_EXPECTED_INTERVAL_MS = 1000` contradicts runtime |

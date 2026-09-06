@@ -6,20 +6,36 @@
 QUERY INTERVAL ≠ PROVIDER POLL CADENCE ≠ OBSERVED BUCKET DENSITY ≠ PHYSICAL SENSOR SAMPLING
 ```
 
+**Rule:** Do **not** combine different temporal distributions under one "observed HF median" label.
+
 ---
 
-## Requested vs observed
+## Canonical cadence metrics (separated)
 
-| Surface | Requested | Observed (evidence) | Source |
-|---------|-----------|---------------------|--------|
-| HF historical | `interval:"1s"` | Median ~2s bucket spacing | RD002, RD003 |
-| HF sealed capture (RD004-B) | 1s buckets | Median ~10.6s spacing | Capture/watermark gaps |
-| LATEST_LIVE | "live" | Median ~6s; stale holds | RD003 |
-| Snapshot | ~30s poll | ~30s | Architecture |
-| RC runner | 5s cycle | 5s tick (not HF poll in V2 mode) | C.1 |
-| Block poll (hypothesis) | 30s | **NOT VALIDATED** | C.1 |
+| Metric ID | Value | Population | Surface | Drive | Source |
+|-----------|-------|------------|---------|-------|--------|
+| `RD002_SEALED_DT_P50_SECONDS` | **13.489** | Sealed HF_HISTORICAL aggregate buckets (71 rows, 5 fields identical) | HF_HISTORICAL | RD002 | DI-EV-0023–0025 |
+| `RD002_SEALED_DT_P95_SECONDS` | **84.024** | Same | HF_HISTORICAL | RD002 | Sealed export |
+| `RD002_SEALED_DT_MAX_SECONDS` | **249.647** | Same | HF_HISTORICAL | RD002 | Sealed export |
+| `RD003_RELEVANT_MEDIAN_SECONDS` | **~2.00** | HF_HISTORICAL new physical sample cadence (deduped providerTimestamp) | HF_HISTORICAL | RD003 | DI-EV-0034E |
+| `RD002_LATEST_LIVE_POLL_P50_SECONDS` | **~5.85** | Recorder retrieval Δt (`requestStartedAt`) | LATEST_LIVE | RD002 | DI-EV-0026 |
+| `RD002_LATEST_LIVE_PROVIDER_UPDATE_P50_SECONDS` | **~15** | Unique providerTimestamp updates | LATEST_LIVE | RD002 | DI-EV-0026 |
+| `RD004_SEALED_MEDIAN_SPACING_SECONDS` | **~10.6** | Sealed capture completeness artifact | HF_HISTORICAL | RD004-B | DI-EV-0035B.4 |
 
-**Reconciliation:** RD003 ~1–2s provider resolution and RD004 ~10.6s sealed median are **compatible** — latter reflects capture/watermark incompleteness, not DIMO physics.
+`RD002_AND_RD003_CADENCE_METRICS_SEMANTICALLY_SEPARATED = YES`
+
+**Why RD002 P50 ≠ RD003 ~2s:** Different vehicles (C63 vs Tiguan), different sealed export populations, and different metric definitions (sealed aggregate-bucket row spacing vs RD003 signal-quality deduped physical-sample cadence). **Never merge into one median.**
+
+---
+
+## Requested vs observed (by drive)
+
+| Surface | Requested | RD002 sealed HF | RD003 HF | RD004-B sealed |
+|---------|-----------|-----------------|----------|----------------|
+| HF historical | `interval:"1s"` | P50 **13.489s** (71 rows) | median **~2.00s** physical samples | ~10.6s (capture gaps) |
+| LATEST_LIVE | live poll | poll P50 ~5.85s; provider update ~15s | median ~6s; stale holds | — |
+
+**Reconciliation:** RD003 ~2s and RD004 ~10.6s are **compatible** — RD004 reflects capture/watermark incompleteness, not DIMO physics alone. RD002 sealed P50 13.489s reflects sparse aggregate-bucket spacing on C63 motion session (also `1s ≠ 1Hz`, but **not** ~2s).
 
 Exact-window replay (RD004-B): 157 1s-buckets vs 104 sealed over same windows.
 
@@ -29,10 +45,10 @@ Exact-window replay (RD004-B): 157 1s-buckets vs 104 sealed over same windows.
 
 | Phenomenon | Evidence | Mitigation |
 |------------|----------|------------|
-| Late-arriving buckets | RD001, RD004-B (53 late) | Recovery V2 settlement+overlap |
+| Late-arriving buckets | RD001, RD004-B (53 late) | DI-EV-0035C recovery policy (reference capture) |
 | Settlement delay | RD004-B simulation | 8s provisional |
 | Watermark gaps | 26 excluded in B.4 | 6s recovery overlap |
-| Duplicate buckets | RD002: 0 duplicate fingerprints | V2 aggregate identity |
+| Duplicate buckets | RD002: 0 duplicate fingerprints | AGGREGATE_BUCKET_V2 identity (DI-EV-0021) |
 | Provider data gaps | RD001: 151s gap | Documented; not vehicle idle proof |
 
 ---
@@ -41,7 +57,7 @@ Exact-window replay (RD004-B): 157 1s-buckets vs 104 sealed over same windows.
 
 **UNKNOWN** — DIMO aggregate buckets do not prove underlying ECU sampling rate.
 
-`REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ = NO` (master plan flag)
+`REQUESTED_INTERVAL_1S_EQUALS_OBSERVED_1HZ = NO` (RD002, RD003)
 
 ---
 
@@ -49,9 +65,9 @@ Exact-window replay (RD004-B): 157 1s-buckets vs 104 sealed over same windows.
 
 | Assumption | Current code | Evidence |
 |------------|--------------|----------|
-| ~1 Hz HF | `HF_WINDOW_EXPECTED_INTERVAL_MS=1000` | CONTRADICTED by RD002/003 |
+| ~1 Hz HF | `HF_WINDOW_EXPECTED_INTERVAL_MS=1000` | CONTRADICTED (RD003 ~2s; RD002 sealed P50 13.489s) |
 | Point-pair Δv/Δt | hf-acceleration, hf-braking | Valid as summary; weak for sparse LTE_R1 events |
-| 2.0s max-gap (V2 design) | Not in production | Provisional from RD003 |
+| 2.0s max-gap (V2 design) | Not in production | Provisional from RD003 only |
 
 ---
 

@@ -277,13 +277,13 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 
 | Field | Value |
 |-------|-------|
-| **TITLE** | Native DIMO events authoritative for LTE_R1 short misuse |
+| **TITLE** | Native DIMO events policy authority for LTE_R1 short misuse |
 | **ERA** | Phase 2 + RD002/003 + code reframing |
 | **STATUS** | VALIDATED |
 | **PROBLEM** | Sparse HF cannot assert short-lived misuse from point-pair |
-| **DECISION** | HF pass = Trip Signal Summary; native events = misuse authority |
-| **RATIONALE** | Median HF 3–6s on LTE_R1 |
-| **CONSEQUENCES** | event-context enrichment on native anchors |
+| **DECISION** | HF pass = Trip Signal Summary; native events = misuse authority **by architecture** |
+| **RATIONALE** | Median HF 3–6s on LTE_R1; provider-classified short events when available |
+| **CONSEQUENCES** | event-context enrichment on native anchors; RD002 C63 had native events NOT_OBSERVED |
 | **GRAPH NODES** | DI-SIG-NATIVE-001 |
 | **EPISTEMIC** | CONFIRMED |
 | **EVIDENCE** | DI-EVID-NATIVE-EVENTS-001 |

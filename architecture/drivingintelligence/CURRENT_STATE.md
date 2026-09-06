@@ -13,9 +13,10 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 
 | Term | Value |
 |------|-------|
-| **CODE_DEPLOYED** | **YES** — HF Recovery V2 + C.1a–e on `main` / production binary |
-| **FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false`; empty canary allowlist |
-| **LIVE_CANARY_EXECUTED** | **NO** — zero post-deploy calibration sessions |
+| **CODE_DEPLOYED** | **YES** — HF Recovery policy + C.1a–e on `main` / production binary |
+| **REFERENCE_CAPTURE_INFRASTRUCTURE** | **ENABLED** on production (`REFERENCE_CAPTURE_ENABLED=true` post 3A.2) |
+| **HF_RECOVERY_V2_FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false` |
+| **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero calibration sessions |
 | **HF_30S_BLOCK_POLLING_VALIDATED** | **NO** |
 | **Production HF authority** | **LEGACY** — whole-trip `fetchHighFrequency`; Recovery V2 **not active** |
 
@@ -86,7 +87,8 @@ When enabled: `DrivingAnalysisInitService` creates `DrivingAnalysisRun` + stages
 | Concept | Value | Notes |
 |---------|-------|-------|
 | DIMO query aggregation | `interval:"1s"` | Requested, not observed 1 Hz |
-| Observed HF bucket median | **~2s** (RD002/003) | `1s ≠ 1Hz` |
+| Observed HF bucket spacing (RD003) | **~2.00s** median new physical samples | `1s ≠ 1Hz`; RD003 signal quality |
+| Observed HF bucket spacing (RD002 sealed) | **P50 13.489s** (P95 84.024s; MAX 249.647s) | Sealed 71-row HF_HISTORICAL export — **not** ~2s |
 | RD004 sealed median spacing | **~10.6s** | Capture/watermark gaps, not physics |
 | Active-trip live poll | ~30s | `ACTIVE_TICK` |
 | Reference capture runner | 5s default | `REFERENCE_CAPTURE_CYCLE_INTERVAL_MS` |
@@ -171,7 +173,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## Known limitations
 
-1. HF assumed ~1 Hz in production detectors; runtime ~2s median
+1. HF assumed ~1 Hz in production detectors; RD003 ~2s median; RD002 sealed P50 13.489s
 2. No Postgres raw HF replay — re-enrichment re-fetches DIMO
 3. V2 pipeline not production-validated at fleet scale
 4. `DriverScoreService` naming contradicts vehicle-stress semantics

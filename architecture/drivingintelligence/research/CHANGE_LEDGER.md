@@ -49,7 +49,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | DI-EV | Change | Key finding | Production impact |
 |-------|--------|-------------|-------------------|
 | 0022 | Production cutover smoke | Deploy `f00a49394` PASS | RC on prod |
-| 0023–0026 | **RD002** C63 | **1s ≠ 1Hz**; median ~2s; 351 cycles | Detectors unchanged |
+| 0023–0026 | **RD002** C63 | **1s ≠ 1Hz**; sealed HF Δt P50 **13.489s**; AGGREGATE_BUCKET_V2 | Detectors unchanged |
 | 0026 | C63 differential | Native events NOT_OBSERVED | Per-vehicle |
 
 ---
@@ -64,7 +64,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | 0034B | Sparse video GT | 9 clips, 198 obs | GROUND_TRUTH_VALIDATED |
 | 0034C | Discovery v1 | SUPERSEDED methodology | — |
 | 0034D/D.1/D.2 | Discovery v2 | Joint DP; geometry fix | Global chronology |
-| 0034E/E.1 | Signal quality | providerTimestamp authority; ~2s cadence | Physical 1 Hz ECU |
+| 0034E/E.1 | Signal quality | providerTimestamp authority; RD003 HF **~2.00s** median | Physical 1 Hz ECU |
 | 0034F | Episode V2 design | Confidence layers; DEPLOYED=NO | Production scoring |
 
 ---
@@ -109,7 +109,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Event | State |
 |-------|-------|
 | PR #1533 merge | CODE_DEPLOYED=YES |
-| Flags | FEATURE_ENABLED=NO |
+| REFERENCE_CAPTURE_INFRASTRUCTURE_ENABLED=YES; HF_RECOVERY_V2_FEATURE_ENABLED=NO |
 | Live calibration | NOT EXECUTED |
 | Authority | LEGACY post-trip HF |
 

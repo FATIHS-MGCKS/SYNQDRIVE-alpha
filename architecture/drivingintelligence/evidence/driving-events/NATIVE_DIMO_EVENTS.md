@@ -17,12 +17,12 @@ Dedup: `(organizationId, providerFingerprint)`
 
 ---
 
-## Authority rules
+## Authority rules (architectural policy — not per-vehicle observation proof)
 
 | Context | Authority |
 |---------|-----------|
 | Whole-trip signal summary | HF_HISTORICAL pass (`trip-behavior-enrichment`) |
-| Short-event misuse (LTE_R1) | **Native `DrivingEvent`** + event-context enrichment |
+| Short-event misuse (LTE_R1) | **Native `DrivingEvent`** + event-context enrichment **when observed** |
 | HF-derived `TripBehaviorEvent` | Supplementary; assessability-gated |
 | Duplicate native + HF same phenomenon | Reconciliation in V2 `MISUSE_RECONCILE` stage (flag-gated) |
 
@@ -47,7 +47,7 @@ HF does **not** redefine native event boundaries. HF may **enrich context** (spe
 
 | Observation | Source |
 |-------------|--------|
-| C63 RD002: native events NOT_OBSERVED | Vehicle/session specific |
+| C63 RD002: native events NOT_OBSERVED | Vehicle/session specific — **does not reject policy** |
 | Tiguan RD003: richer HF set | Per-vehicle signal inventory |
 | Median HF 3–6s on LTE_R1 | Phase 2B + RD002/003 |
 

@@ -91,7 +91,8 @@ Cutover + redeploy `f00a49394`; post-deploy smoke PASS.
 |-------|-------|
 | **Vehicle** | KS MX 2024 (C63) `a60c0749-…` · token context |
 | **Session** | `e095d273-…` |
-| **Finding** | **HF 1s ≠ 1Hz** — median bucket ~2s; 351 cycles; 355 HF_HISTORICAL V2 |
+| **Finding** | **1s ≠ 1Hz** — sealed HF Δt P50 **13.489s** (P95 84.024s; MAX 249.647s); 351 cycles; 355 HF_HISTORICAL rows with **AGGREGATE_BUCKET_V2** identity |
+| **Not** | DI-EV-0035C HF Recovery policy (that came later from RD004-B) |
 | **Native events** | NOT_OBSERVED on C63 |
 | **Next** | RD003 with segmented video GT |
 
@@ -125,7 +126,7 @@ Joint DP intervals; static-minute geometry correction; GROUND_TRUTH_VALIDATED=NO
 ### DI-EV-0034E / DI-EV-0034E.1 — Signal quality interpretation
 | Field | Value |
 |-------|-------|
-| **Key proof** | ~2s median HF cadence; providerTimestamp authority; synqReceivedAt NOT reliable |
+| **Key proof** | RD003 ~2.00s median HF cadence; providerTimestamp authority; synqReceivedAt NOT reliable |
 | **Key negative** | IN_SAMPLE_ALIGNMENT_FIT ≠ independent accuracy; LATEST_LIVE insufficient for GT |
 | **Production** | DRIVING_SCORE_CHANGED=NO |
 | **Next** | Episode V2 design (0034F); RD004 validation |

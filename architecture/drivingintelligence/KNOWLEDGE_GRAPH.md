@@ -240,7 +240,7 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 
 | ID | Gap |
 |----|-----|
-| DI-GAP-HF-CADENCE-001 | Production detectors assume ~1Hz; runtime ~2s |
+| DI-GAP-HF-CADENCE-001 | Production detectors assume ~1Hz; RD003 ~2.00s; RD002 sealed P50 13.489s |
 | DI-GAP-BLOCK-POLL-VALIDATION-001 | 30s block poll not live-validated |
 | DI-GAP-V2-PROD-E2E-001 | V2 pipeline not production-validated at scale |
 | DI-GAP-FLEET-COST-001 | Fleet HF request cost not benchmarked |

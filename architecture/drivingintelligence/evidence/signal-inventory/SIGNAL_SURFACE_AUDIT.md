@@ -8,7 +8,7 @@
 | Concept | Definition | Example |
 |---------|------------|---------|
 | **AVAILABLE SIGNAL** | Field exists in provider schema + vehicle capability | `powertrainCombustionEngineSpeed` on Tiguan |
-| **OBSERVED UPDATE FREQUENCY** | Median spacing of new physical samples | ~2s HF on RD003 |
+| **OBSERVED UPDATE FREQUENCY** | Median spacing of new physical samples | RD003 HF ~2.00s; RD002 sealed P50 13.489s |
 | **REQUEST FREQUENCY** | How often SynqDrive queries DIMO | 5s RC runner; 30s block poll hypothesis |
 | **HISTORICAL AGGREGATION INTERVAL** | DIMO query parameter | `interval:"1s"` |
 
@@ -38,7 +38,8 @@
 | Purpose | Post-trip behavior; reference capture incremental |
 | Production | Whole-trip single fetch per enrichment |
 | Reference capture | Incremental with watermarks + recovery V2 |
-| Observed density | Median ~2s buckets (NOT 1 Hz) |
+| Observed density (RD003) | Median **~2.00s** new physical samples (HF_HISTORICAL) | NOT 1 Hz |
+| Observed density (RD002 sealed) | P50 **13.489s** aggregate-bucket spacing | NOT ~2s |
 | Persistence | Derived events in PG; optional CH mirror |
 
 ### NATIVE DRIVING EVENTS

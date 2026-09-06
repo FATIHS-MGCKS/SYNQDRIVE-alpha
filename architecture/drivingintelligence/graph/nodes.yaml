@@ -79,13 +79,15 @@ nodes:
     title: DIMO high-frequency signals
     epistemic_status: CONFIRMED
     summary: >
-      Queried with interval 1s; observed median bucket spacing ~2s on reference drives.
+      Queried with interval 1s. RD003 HF median ~2.00s new physical samples;
+      RD002 sealed aggregate-bucket Δt P50 13.489s — separate metrics.
       Speed, RPM, throttle, coolant, longitudinal accel, etc.
     source_paths:
       - backend/src/modules/dimo/dimo-segments.service.ts
       - docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md
     evidence:
       - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-RD002-SEALED-CADENCE-001
 
   - id: DI-SIG-NATIVE-001
     type: signal
@@ -657,10 +659,10 @@ nodes:
 
   - id: DI-DEC-NATIVE-LTE-001
     type: decision
-    title: Native events authoritative for LTE_R1 misuse
+    title: Native DIMO events policy authority for LTE_R1 misuse
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
-    summary: HF pass is Trip Signal Summary only.
+    summary: Architectural policy; RD002 C63 had native events NOT_OBSERVED at runtime.
     source_paths:
       - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
     evidence:
@@ -682,7 +684,7 @@ nodes:
     type: gap
     title: Production HF cadence assumption mismatch
     epistemic_status: CONFIRMED
-    summary: Detectors assume ~1Hz; reference drives show ~2s median bucket spacing.
+    summary: Code assumes ~1Hz; RD003 ~2.00s median; RD002 sealed P50 13.489s.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/hf-abuse.ts
       - docs/audits/dimo-lte-r1-reference-drive-002-c63-signal-differential-2026-09-02.md
@@ -730,9 +732,9 @@ nodes:
   # --- Contradictions ---
   - id: DI-CONTRA-HF-1HZ-001
     type: contradiction
-    title: HF 1Hz assumption vs ~2s observed cadence
+    title: HF 1Hz assumption vs observed sparse cadence
     epistemic_status: CONTRADICTED
-    summary: Code comments and window producer assume 1Hz; RD003/RD004 show ~2s median.
+    summary: Code assumes 1Hz; RD003 ~2.00s; RD002 sealed P50 13.489s — do not merge.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
       - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
@@ -776,11 +778,12 @@ nodes:
     title: signals interval 1s yields ~1Hz detector data
     epistemic_status: CONTRADICTED
     decision_status: REJECTED
-    summary: RD002/003 proved median ~2s bucket spacing.
+    summary: RD002/003 proved 1s request ≠ 1Hz; RD003 ~2.00s; RD002 sealed P50 13.489s.
     source_paths:
       - architecture/drivingintelligence/research/HYPOTHESIS_REGISTER.md
     evidence:
       - DI-EVID-RD003-CADENCE-001
+      - DI-EVID-RD002-SEALED-CADENCE-001
 
   - id: DI-HYP-002
     type: hypothesis
@@ -891,10 +894,10 @@ nodes:
 
   - id: DI-HYP-013
     type: hypothesis
-    title: Native DIMO events authoritative for LTE_R1 short events
+    title: Native DIMO events authoritative for LTE_R1 short events (policy)
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
-    summary: HF is Trip Signal Summary only for LTE_R1 misuse.
+    summary: Policy CONFIRMED in architecture; NOT_OBSERVED on RD002 C63 at runtime.
     source_paths:
       - architecture/drivingintelligence/evidence/driving-events/NATIVE_DIMO_EVENTS.md
     evidence:
@@ -985,7 +988,7 @@ nodes:
     title: RD003 signal quality 1s not equal 1Hz
     epistemic_status: CONFIRMED
     source_type: REFERENCE_DRIVE
-    summary: Median bucket spacing ~2s on LTE_R1 reference drives.
+    summary: RD003 HF median ~2.00s new physical samples; not RD002 sealed P50 13.489s.
     source_paths:
       - docs/audits/driving-intelligence-rd003-signal-quality-interpretation-2026-09.md
       - docs/audits/data/rd003-signal-quality/signal-quality-summary.json
@@ -1069,10 +1072,20 @@ nodes:
     title: PR 1533 merge and safe production deploy
     epistemic_status: CONFIRMED
     source_type: PR_HISTORY
-    summary: CODE_DEPLOYED=YES; HF_RECOVERY_POLICY_V2_ENABLED=false; LEGACY authority.
+    summary: CODE_DEPLOYED=YES; RC infrastructure ENABLED; HF_RECOVERY_POLICY_V2_ENABLED=false.
     source_paths:
       - architecture/drivingintelligence/evidence/production/DEPLOYMENT_STATE.md
       - architecture/drivingintelligence/research/PR_TIMELINE.md
+
+  - id: DI-EVID-RD002-SEALED-CADENCE-001
+    type: evidence
+    title: RD002 sealed HF aggregate-bucket spacing
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: Sealed HF_HISTORICAL Δt P50 13.489s P95 84.024s MAX 249.647s; 71 rows; not ~2s.
+    source_paths:
+      - docs/audits/dimo-lte-r1-reference-drive-002-capture-report-2026-09-02.md
+      - docs/audits/data/dimo-lte-r1-reference-drive-002-signal-quality-metrics.json
 
   - id: DI-EVID-RD004-A-001
     type: evidence

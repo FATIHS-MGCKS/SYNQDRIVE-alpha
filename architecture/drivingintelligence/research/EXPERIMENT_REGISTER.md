@@ -9,7 +9,7 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-003 | 2026-08-31 | Four-vehicle capability matrix | Tiguan, C63, A4, Arteon | DIMO live | Union 33 signals | Capability-first design | DI-EV-0004 |
 | EXP-004 | 2026-08-31 | Stationary production canary | Tiguan | Reference capture | 52 obs; REFERENCE_DRIVE_READY | 3A.3 proceed | DI-EV-0013 |
 | EXP-005 | 2026-09-01 | RD001 real-motion STOP | Tiguan `19fedd4b` | DIMO HF | Late arrival differential; no video | FAST GO + watermark work | DI-EV-0016 |
-| EXP-006 | 2026-09-02 | RD002 motion HF canary | KS MX 2024 C63 | DIMO HF V2 | **1s≠1Hz**; 351 cycles | RD003 + video GT | DI-EV-0023 |
+| EXP-006 | 2026-09-02 | RD002 motion HF canary | KS MX 2024 C63 | DIMO HF + AGGREGATE_BUCKET_V2 | **1s≠1Hz**; sealed P50 13.489s; 351 cycles | RD003 + video GT | DI-EV-0023 |
 | EXP-007 | 2026-09-02 | RD003 segmented video GT | Tiguan WOB L 7503 · `0fa040aa` | DIMO + 9 video clips | HF cadence confirmed; GT partial | Alignment workbench | DI-EV-0027 |
 | EXP-008 | 2026-09-03 | RD003 global fingerprint discovery v1 | Tiguan RD003 | Video + HF | Method superseded | 0034D V2 | DI-EV-0034C |
 | EXP-009 | 2026-09-03 | RD003 global fingerprint discovery v2 | Tiguan RD003 | Video + HF | Joint DP; GROUND_TRUTH_VALIDATED=NO | Signal quality phase | DI-EV-0034D |
@@ -21,4 +21,6 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-015 | 2026-09-04–05 | C.1a–e correctness hardening | — | Concurrency specs | 113 RC HF tests PASS | PR #1533 merge | DI-EV-0035C.1e |
 | EXP-016 | — | Live 10/20/30/60s calibration | Operator-selected | Reference capture | **NOT EXECUTED** | Pending | — |
 
-**Total experiments catalogued:** 16 (15 performed + 1 pending live calibration)
+**EXPERIMENT_ENTRIES_TOTAL:** 16  
+**EXPERIMENTS_EXECUTED:** 15  
+**EXPERIMENTS_PENDING:** 1 (EXP-016 live 10/20/30/60 — **NOT EXECUTED**)
