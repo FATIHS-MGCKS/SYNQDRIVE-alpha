@@ -544,15 +544,19 @@ export class TripDecisionEngine {
       ? await runSplit(tx)
       : await this.prisma.$transaction(runSplit);
 
-    this.logger.log(
-      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
-        `firstId=${result.firstTripId} secondId=${result.secondTripId} ` +
-        `firstEnd=${params.firstEndAt.toISOString()} ` +
-        `secondStart=${params.secondStartAt.toISOString()} ` +
-        `gap=${Math.round(params.gapMs / 1000)}s moved=${result.movedWaypoints} ` +
-        `trigger=${params.triggeredBy} reason=${params.reason} ` +
-        `vehicleId=${originalTrip.vehicleId} orgId=${vehicleRow?.organizationId ?? '—'}`,
-    );
+    try {
+      this.logger.log(
+        `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
+          `firstId=${result.firstTripId} secondId=${result.secondTripId} ` +
+          `firstEnd=${params.firstEndAt.toISOString()} ` +
+          `secondStart=${params.secondStartAt.toISOString()} ` +
+          `gap=${Math.round(params.gapMs / 1000)}s moved=${result.movedWaypoints} ` +
+          `trigger=${params.triggeredBy} reason=${params.reason} ` +
+          `vehicleId=${originalTrip.vehicleId} orgId=${vehicleRow?.organizationId ?? '—'}`,
+      );
+    } catch {
+      // Post-commit diagnostics must not poison a successfully committed split.
+    }
 
     return result;
   }

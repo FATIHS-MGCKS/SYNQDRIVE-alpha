@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r6a-split-commit-ambiguity-2026-09-06',
+    version: '4.9.1076',
+    title: 'Trip FSM R6A — Live Split Commit-Ambiguity Closure',
+    summary: [
+      'Durable live split classifier: NOT_COMMITTED / COMMITTED_LINKED / AMBIGUOUS — promise rejection no longer proves rollback.',
+      'PRE_COMMIT splitTripAtGap() catch re-reads PostgreSQL before old-trip fallthrough; only proven NOT_COMMITTED may continue on trip1.',
+      'COMMITTED_LINKED and AMBIGUOUS fail closed: no vehicleTrip.update on trip1, schedule ACTIVE_TICK recovery wake.',
+      'Reuses R2 RECOVERABLE_SPLIT_REPOINT proof (+ expected secondStartAt) for committed-but-rejected split promises.',
+      'TripDecisionEngine post-transaction logger wrapped so diagnostic failure cannot poison committed split result.',
+    ],
+    reason:
+      'R6A closure — splitTripAtGap() may commit then reject; local PRE_COMMIT phase must not fall through to stale trip1 ACTIVE_TICK writes.',
+    previousBehavior:
+      'Rejected splitTripAtGap() with local PRE_COMMIT assumed rollback and fell through to normal ACTIVE_TICK on trip1 even when DB already had trip1 COMPLETED + trip2 ONGOING.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md § R6A; trip-mid-gap-split-commit.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T13:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r6-mid-gap-split-safety-2026-09-06',
     version: '4.9.1075',
     title: 'Trip FSM R6 — Mid-Gap Split Safety',

@@ -97,6 +97,22 @@ function buildActiveTickHarness(overrides: Record<string, unknown> = {}) {
     },
     vehicleTrip: {
       update: vehicleTripUpdate,
+      findUnique: jest.fn().mockResolvedValue({
+        id: TRIP1,
+        tripStatus: TripStatus.ONGOING,
+        startTime: new Date(T0.getTime() - 120_000),
+        endTime: null,
+        rawDetectionMeta: {},
+      }),
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: TRIP1,
+          tripStatus: TripStatus.ONGOING,
+          startTime: new Date(T0.getTime() - 120_000),
+          endTime: null,
+          rawDetectionMeta: {},
+        },
+      ]),
     },
     vehicleLatestState: {
       findUnique: jest.fn().mockResolvedValue(null),

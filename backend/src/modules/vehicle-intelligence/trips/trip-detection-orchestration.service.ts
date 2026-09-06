@@ -96,6 +96,11 @@ import {
   type MidGapSplitCommitPhase,
 } from './trip-mid-gap-split.util';
 import {
+  buildMidGapCommitAmbiguityForensics,
+  readDurableLiveSplitOutcome,
+  type DurableLiveSplitOutcome,
+} from './trip-mid-gap-split-commit.util';
+import {
   assessSuccessfulEmptyCoreEndEligibility,
 } from './trip-empty-core-end-gate';
 import {
@@ -1714,8 +1719,49 @@ export class TripDetectionOrchestrationService {
                 ).catch(() => {});
                 return;
               }
+
+              const failureMsg = err instanceof Error ? err.message : String(err);
+              const durableOutcome = await readDurableLiveSplitOutcome(this.prisma, {
+                vehicleId,
+                originalTripId: tripId,
+                expectedFirstEndAt: midGap.firstEndAt,
+                expectedSecondStartAt: midGap.secondStartAt,
+              });
+
+              if (durableOutcome !== 'NOT_COMMITTED') {
+                this.logger.warn(
+                  `MID_GAP_SPLIT: split promise failed with durableOutcome=${durableOutcome} for ${vehicleId}: ${err}`,
+                );
+                await this.logTrackingRun({
+                  vehicleId,
+                  organizationId,
+                  tripId,
+                  stateAtRun: det.state,
+                  runType: TripTrackingRunType.ACTIVE_TRACKING,
+                  requestedFrom: coreFrom,
+                  requestedTo: now,
+                  corePointsCount: corePoints.length,
+                  routePointsCount: routePoints.length,
+                  drivingPointsCount: perfReadings.length,
+                  resultSummary: buildMidGapCommitAmbiguityForensics({
+                    durableOutcome,
+                    originalTripId: tripId,
+                    expectedFirstEndAt: midGap.firstEndAt,
+                    expectedSecondStartAt: midGap.secondStartAt,
+                    errorMessage: failureMsg,
+                  }),
+                  durationMs: Date.now() - startedMs,
+                }).catch(() => {});
+                await this.scheduleActiveTick(
+                  vehicleId,
+                  organizationId,
+                  dimoTokenId,
+                ).catch(() => {});
+                return;
+              }
+
               this.logger.warn(
-                `MID_GAP_SPLIT: pre-commit split failed for ${vehicleId}: ${err}`,
+                `MID_GAP_SPLIT: pre-commit split failed (durable NOT_COMMITTED) for ${vehicleId}: ${err}`,
               );
             }
           }
