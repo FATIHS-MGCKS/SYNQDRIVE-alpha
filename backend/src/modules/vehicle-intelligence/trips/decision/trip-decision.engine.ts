@@ -491,6 +491,9 @@ export class TripDecisionEngine {
             splitGapMs: params.gapMs,
             splitFirstEndAt: params.firstEndAt.toISOString(),
             splitSecondStartAt: params.secondStartAt.toISOString(),
+            ...(params.splitDriftM != null
+              ? { splitDriftM: params.splitDriftM }
+              : {}),
           } as any,
         },
       });

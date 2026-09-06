@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r6-mid-gap-split-safety-2026-09-06',
+    version: '4.9.1075',
+    title: 'Trip FSM R6 — Mid-Gap Split Safety',
+    summary: [
+      'Live mid-gap drift contract: WITHIN_THRESHOLD / EXCEEDS_THRESHOLD / UNKNOWN — null/missing GPS no longer allows split (P5-F09).',
+      'UNKNOWN drift fail-closed; reconciliation remains later safety net with persisted waypoint evidence.',
+      'MidGapSplitCommitPhase PRE_COMMIT vs POST_COMMIT boundary after splitTripAtGap().',
+      'Post-commit failures abort ACTIVE_TICK without old-trip fallthrough; schedule successor tick for R2 recovery (P5-F04).',
+      'RECOVERABLE_SPLIT_REPOINT / splitFrom proof preserved for FSM repoint after split commit.',
+      'Rejected/applied split forensics in ACTIVE_TICK resultSummary; splitDriftM persisted on live trip1 rawDetectionMeta.',
+    ],
+    reason:
+      'P6 remediation package R6 — INV-09 mid-gap split must fail safe without position evidence and never continue old-trip processing after lifecycle split commit.',
+    previousBehavior:
+      'drift == null allowed live split; any split-block exception fell through to remaining ACTIVE_TICK using completed trip1 local tripId.',
+    details:
+      'docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md; trip-mid-gap-split.util.ts + trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r5b-validation-attempt-isolation-2026-09-06',
     version: '4.9.1074',
     title: 'Trip FSM R5B — Validation Attempt Forensic Isolation',

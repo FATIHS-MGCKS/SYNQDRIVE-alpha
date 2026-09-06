@@ -87,6 +87,15 @@ import {
 import { resolveMergeReopenPossibleStartAt } from './trip-lifecycle-recovery-meta';
 import { buildMidGapSplitActiveFsmExtras } from './trip-mid-gap-fsm.util';
 import {
+  buildMidGapAppliedForensics,
+  buildMidGapRejectedForensics,
+  classifyLiveMidGapDriftDecision,
+  computeMidGapDriftEvidence,
+  selectRoutePointAtOrAfter,
+  selectRoutePointAtOrBefore,
+  type MidGapSplitCommitPhase,
+} from './trip-mid-gap-split.util';
+import {
   assessSuccessfulEmptyCoreEndEligibility,
 } from './trip-empty-core-end-gate';
 import {
@@ -1547,24 +1556,48 @@ export class TripDetectionOrchestrationService {
         const tripAge =
           new Date().getTime() - det.possibleStartAt!.getTime();
         if (tripAge >= this.TRIP_MID_GAP_MIN_PRE_DURATION_MS) {
-          // Validate with GPS drift between the last pre-gap waypoint and
-          // the first post-gap waypoint (both still on this trip). If the
-          // vehicle drifted more than the stationary threshold, the gap is
-          // likely a signal dropout during actual driving (tunnel, rural
-          // area) and MUST NOT be split.
-          const drift = await this.computeMidGapPositionDrift(
+          const driftEvidence = await this.resolveLiveMidGapDriftEvidence(
             tripId,
             midGap.firstEndAt,
             midGap.secondStartAt,
+            routePoints,
           );
-          const driftOk =
-            drift == null || drift <= this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M;
+          const driftDecision = classifyLiveMidGapDriftDecision(
+            driftEvidence,
+            this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+          );
 
-          if (driftOk) {
+          if (driftDecision.decision === 'REJECTED') {
+            this.logger.debug(
+              `MID_GAP_SPLIT: rejected for ${vehicleId} — reason=${driftDecision.reason} ` +
+                `driftState=${driftEvidence.state} ` +
+                `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'} ` +
+                `max=${this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M}m`,
+            );
+            await this.logTrackingRun({
+              vehicleId,
+              organizationId,
+              tripId,
+              stateAtRun: det.state,
+              runType: TripTrackingRunType.ACTIVE_TRACKING,
+              requestedFrom: coreFrom,
+              requestedTo: now,
+              corePointsCount: corePoints.length,
+              routePointsCount: routePoints.length,
+              drivingPointsCount: perfReadings.length,
+              resultState: det.state,
+              resultSummary: buildMidGapRejectedForensics({
+                gapMs: midGap.gapMs,
+                firstEndAt: midGap.firstEndAt,
+                secondStartAt: midGap.secondStartAt,
+                driftDecision,
+                maxAllowedDriftM: this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+              }),
+              durationMs: Date.now() - startedMs,
+            }).catch(() => {});
+          } else {
+            let splitCommitPhase: MidGapSplitCommitPhase = 'PRE_COMMIT';
             try {
-              // Persist waypoints that belong to segment 1 (<= firstEndAt)
-              // before the split so route rendering stays intact. Anything
-              // after the gap will arrive via the next tick on the new trip.
               const seg1Cutoff = det.lastRouteProcessedAt
                 ? det.lastRouteProcessedAt.getTime() - 5000
                 : 0;
@@ -1600,11 +1633,10 @@ export class TripDetectionOrchestrationService {
                 ),
                 reason: 'live_mid_trip_gap_split',
                 triggeredBy: 'LIVE_FSM',
+                splitDriftM: driftEvidence.driftM,
               });
+              splitCommitPhase = 'POST_COMMIT';
 
-              // Re-point the FSM at the continuation trip and reset
-              // lifecycle-scoped fields so the next tick processes segment 2
-              // from a clean slate.
               await this.transitionState(
                 vehicleId,
                 TripDetectionState.ACTIVE_TRIP,
@@ -1614,7 +1646,6 @@ export class TripDetectionOrchestrationService {
                 }),
               );
 
-              // Durable V2 analysis init (awaited) + legacy enrichment (unchanged).
               await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
                 tripId: splitResult.firstTripId,
                 vehicleId,
@@ -1633,15 +1664,13 @@ export class TripDetectionOrchestrationService {
                   ),
                 );
 
-              // Schedule the next ACTIVE_TICK so the new trip picks up its
-              // own data immediately.
               await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
               this.logger.log(
                 `MID_GAP_SPLIT: vehicle=${vehicleId} firstTrip=${splitResult.firstTripId} ` +
                   `→ secondTrip=${splitResult.secondTripId} gap=${Math.round(midGap.gapMs / 1000)}s ` +
                   `firstEnd=${midGap.firstEndAt.toISOString()} secondStart=${midGap.secondStartAt.toISOString()} ` +
-                  `drift=${drift != null ? `${Math.round(drift)}m` : 'unknown'}`,
+                  `drift=${driftEvidence.driftM != null ? `${Math.round(driftEvidence.driftM)}m` : 'unknown'}`,
               );
 
               this.tripMetrics?.tripEvidencePaths.inc({
@@ -1661,30 +1690,34 @@ export class TripDetectionOrchestrationService {
                 routePointsCount: routePoints.length,
                 drivingPointsCount: perfReadings.length,
                 resultState: TripDetectionState.ACTIVE_TRIP,
-                resultSummary: {
-                  reason: 'live_mid_trip_gap_split_applied',
+                resultSummary: buildMidGapAppliedForensics({
+                  gapMs: midGap.gapMs,
+                  firstEndAt: midGap.firstEndAt,
+                  secondStartAt: midGap.secondStartAt,
+                  driftM: driftEvidence.driftM,
                   firstTripId: splitResult.firstTripId,
                   secondTripId: splitResult.secondTripId,
-                  firstEndAt: midGap.firstEndAt.toISOString(),
-                  secondStartAt: midGap.secondStartAt.toISOString(),
-                  gapMs: midGap.gapMs,
-                  driftM: drift,
-                },
+                }),
                 durationMs: Date.now() - startedMs,
               });
 
               return;
             } catch (err) {
+              if (splitCommitPhase === 'POST_COMMIT') {
+                this.logger.warn(
+                  `MID_GAP_SPLIT: post-commit failure for ${vehicleId} (split committed, aborting tick): ${err}`,
+                );
+                await this.scheduleActiveTick(
+                  vehicleId,
+                  organizationId,
+                  dimoTokenId,
+                ).catch(() => {});
+                return;
+              }
               this.logger.warn(
-                `MID_GAP_SPLIT: split failed for ${vehicleId}: ${err}`,
+                `MID_GAP_SPLIT: pre-commit split failed for ${vehicleId}: ${err}`,
               );
-              // Fall through and continue the tick as normal.
             }
-          } else {
-            this.logger.debug(
-              `MID_GAP_SPLIT: rejected for ${vehicleId} — drift=${Math.round(drift!)}m ` +
-                `exceeds ${this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M}m (likely signal dropout, not park)`,
-            );
           }
         }
       }
@@ -3508,36 +3541,56 @@ export class TripDetectionOrchestrationService {
   }
 
   /**
-   * Returns the GPS drift in metres between the last pre-gap waypoint and
-   * the first post-gap waypoint for the given trip. If either waypoint is
-   * missing (e.g., route enrichment lagged), returns `null` — callers should
-   * treat that as "cannot validate, allow split" to avoid blocking the fix
-   * on missing route data for live detections.
+   * Resolves GPS drift evidence for a live mid-gap split candidate.
+   * Uses persisted waypoints first; falls back to the current route batch
+   * only when timestamp-bounded pre/post coordinates are unambiguous.
    */
-  private async computeMidGapPositionDrift(
+  private async resolveLiveMidGapDriftEvidence(
     tripId: string,
     firstEndAt: Date,
     secondStartAt: Date,
-  ): Promise<number | null> {
-    const [pre, post] = await Promise.all([
+    routePoints: Array<{
+      timestamp: string;
+      latitude: number;
+      longitude: number;
+    }>,
+  ) {
+    const [preDb, postDb] = await Promise.all([
       this.prisma.vehicleTripWaypoint.findFirst({
         where: { tripId, recordedAt: { lte: firstEndAt } },
         orderBy: { recordedAt: 'desc' },
-        select: { latitude: true, longitude: true, recordedAt: true },
+        select: { latitude: true, longitude: true },
       }),
       this.prisma.vehicleTripWaypoint.findFirst({
         where: { tripId, recordedAt: { gte: secondStartAt } },
         orderBy: { recordedAt: 'asc' },
-        select: { latitude: true, longitude: true, recordedAt: true },
+        select: { latitude: true, longitude: true },
       }),
     ]);
-    if (!pre || !post) return null;
-    return this.haversineMeters(
-      pre.latitude,
-      pre.longitude,
-      post.latitude,
-      post.longitude,
-    );
+
+    const preFromRoute = selectRoutePointAtOrBefore(routePoints, firstEndAt);
+    const postFromRoute = selectRoutePointAtOrAfter(routePoints, secondStartAt);
+
+    return computeMidGapDriftEvidence({
+      pre: preDb
+        ? { latitude: preDb.latitude, longitude: preDb.longitude }
+        : preFromRoute
+          ? {
+              latitude: preFromRoute.latitude,
+              longitude: preFromRoute.longitude,
+            }
+          : null,
+      post: postDb
+        ? { latitude: postDb.latitude, longitude: postDb.longitude }
+        : postFromRoute
+          ? {
+              latitude: postFromRoute.latitude,
+              longitude: postFromRoute.longitude,
+            }
+          : null,
+      maxAllowedDriftM: this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M,
+      haversineMeters: this.haversineMeters.bind(this),
+    });
   }
 
   private haversineMeters(

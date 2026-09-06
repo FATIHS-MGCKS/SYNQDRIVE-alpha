@@ -111,6 +111,8 @@ export interface SplitTripAtGapParams {
   detectionProfile?: string;
   reason: string;
   triggeredBy: 'LIVE_FSM' | 'RECONCILIATION';
+  /** GPS drift metres between pre/post gap positions when known. */
+  splitDriftM?: number | null;
 }
 
 export interface SplitTripAtGapResult {
