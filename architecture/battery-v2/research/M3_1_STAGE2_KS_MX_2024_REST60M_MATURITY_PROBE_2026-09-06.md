@@ -160,6 +160,8 @@ No natural VALID REST_60M → no E2E closure. Retain **PENDING_NATURAL_E2E_EVIDE
 
 **Next candidate:** REST_6H target due `2026-09-07T02:00:44Z` on same session (if session remains RESTING and telemetry arrives in that window).
 
+> **REST_6H pre-maturity probe (`22:14Z`):** ENQUEUED; DIMO wake-only LV during sleep; `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`. See `M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`.
+
 ---
 
 ## Machine-readable block
