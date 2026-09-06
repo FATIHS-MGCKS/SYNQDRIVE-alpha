@@ -196,6 +196,11 @@ describe('R1 — trip FSM clock contract', () => {
   });
 
   describe('operational no-core inactivity gate', () => {
+    const T0_PLUS_5M = new Date(T0.getTime() + 5 * 60_000);
+    const T0_PLUS_5M_30S = new Date(T0.getTime() + 5 * 60_000 + 30_000);
+    const T0_PLUS_7M = new Date(T0.getTime() + 7 * 60_000);
+    const NO_CORE_THRESHOLD_MS = 120_000;
+
     it('uses lastActivityAt before historical possibleStartAt', () => {
       const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
         lastMeaningfulMovementAt: null,
@@ -206,7 +211,62 @@ describe('R1 — trip FSM clock contract', () => {
       expect(operationalAnchor).toEqual(T0_PLUS_10M);
       const inactiveMs = T0_PLUS_10M_5S.getTime() - operationalAnchor.getTime();
       expect(inactiveMs).toBe(5_000);
-      expect(inactiveMs).toBeLessThan(120_000);
+      expect(inactiveMs).toBeLessThan(NO_CORE_THRESHOLD_MS);
+    });
+
+    it('R1B: delayed provider observation does not inflate operational inactivity from event time', () => {
+      const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+        lastMeaningfulMovementAt: T0,
+        lastActivityAt: T0_PLUS_5M,
+        possibleStartAt: T0,
+        workerNow: T0_PLUS_5M_30S,
+      });
+      expect(operationalAnchor).toEqual(T0_PLUS_5M);
+      const inactiveMs = T0_PLUS_5M_30S.getTime() - operationalAnchor.getTime();
+      expect(inactiveMs).toBe(30_000);
+      expect(inactiveMs).toBeLessThan(NO_CORE_THRESHOLD_MS);
+    });
+
+    it('R1B: qualifies after 120s operational inactivity from last worker activity', () => {
+      const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+        lastMeaningfulMovementAt: T0,
+        lastActivityAt: T0_PLUS_5M,
+        possibleStartAt: T0,
+        workerNow: T0_PLUS_7M,
+      });
+      expect(operationalAnchor).toEqual(T0_PLUS_5M);
+      const inactiveMs = T0_PLUS_7M.getTime() - operationalAnchor.getTime();
+      expect(inactiveMs).toBe(2 * 60_000);
+      expect(inactiveMs).toBeGreaterThanOrEqual(NO_CORE_THRESHOLD_MS);
+    });
+
+    it('R1B: falls back to lastMeaningfulMovementAt when lastActivityAt is null', () => {
+      const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+        lastMeaningfulMovementAt: T0,
+        lastActivityAt: null,
+        possibleStartAt: T0,
+        workerNow: T0_PLUS_10M,
+      });
+      expect(operationalAnchor).toEqual(T0);
+    });
+
+    it('R1B: operational gate and physical boundary remain distinct', () => {
+      const workerNow = T0_PLUS_5M_30S;
+      const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
+        lastMeaningfulMovementAt: T0,
+        lastActivityAt: T0_PLUS_5M,
+        possibleStartAt: T0,
+        workerNow,
+      });
+      expect(operationalAnchor).toEqual(T0_PLUS_5M);
+
+      const boundary = resolvePossibleEndBoundaryCandidate({
+        lastMeaningfulMovementAt: T0,
+        lastActivityAt: T0_PLUS_5M,
+        workerNow,
+      });
+      expect(boundary.boundaryAt).toEqual(T0);
+      expect(boundary.clockSource).toBe('PROVIDER_EVENT_TIME');
     });
   });
 

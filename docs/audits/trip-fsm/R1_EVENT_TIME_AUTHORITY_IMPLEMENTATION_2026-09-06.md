@@ -187,3 +187,63 @@ Future skew rejection/acceptance, out-of-order core points, duplicate timestamps
 | P5-F14 | RESOLVED_BY_R1 |
 | P5-F15 | RESOLVED_BY_R1 |
 | P5-F01 | PARTIALLY_RESOLVED |
+
+---
+
+## R1B — Final No-Core Clock Semantics Closure
+
+| Field | Value |
+|-------|-------|
+| R1A base commit | `6782eac83169ade3d785b3c55347c1c40c3c67b3` |
+| Scope | successful-empty-core operational inactivity anchor only |
+| Deploy | **NOT PERFORMED** |
+
+### Why pre-R1 field hierarchy became semantically wrong after R1
+
+R1 reclassified `lastMeaningfulMovementAt` as **EVENT_TIME** (provider physical evidence) and retained `lastActivityAt` as **WORKER_TIME** (FSM evaluation activity). R1A restored an operational no-core helper but ordered `lastMeaningfulMovementAt` before `lastActivityAt`, mirroring pre-R1 storage overlap when both fields often held worker `now`.
+
+After R1, ACTIVE ticks write:
+
+- `lastActivityAt` = worker evaluation instant
+- `lastMeaningfulMovementAt` = provider event timestamp when qualifying movement exists
+
+A delayed provider observation therefore yields `lastMeaningfulMovementAt = T0` and `lastActivityAt = T0 + 5min`. The pre-R1B helper measured operational inactivity from T0, immediately exceeding the 120s no-core threshold even though the FSM had just evaluated ACTIVE 30s earlier.
+
+### Operational gate hierarchy (corrected)
+
+Successful empty-core inactivity uses `resolveOperationalNoCoreInactivityAnchor()`:
+
+`lastActivityAt` → `lastMeaningfulMovementAt` → `possibleStartAt` → `workerNow`
+
+This answers: *when did the FSM last successfully record operational activity?*
+
+### Physical boundary hierarchy (unchanged)
+
+`resolvePossibleEndBoundaryCandidate()` remains EVENT_TIME first:
+
+`lastMeaningfulMovementAt` (provider event) → `lastActivityAt` (WORKER_FALLBACK) → `workerNow`
+
+This answers: *when did physical movement last occur?*
+
+### Regression scenario
+
+| Step | Time | State |
+|------|------|-------|
+| Provider movement | T0 | `lastMeaningfulMovementAt = T0` |
+| Worker ACTIVE evaluation | T0 + 5min | `lastActivityAt = T0 + 5min` |
+| Successful empty-core tick | T0 + 5min + 30s | operational anchor = T0 + 5min, inactiveMs = 30s → **below** 120s |
+| No later activity | T0 + 7min+ | inactiveMs ≥ 120s from `lastActivityAt` → gate may qualify |
+
+When the gate qualifies, `possibleEndAt` is still resolved separately via `resolvePossibleEndBoundaryCandidate()` and remains **T0 EVENT_TIME** in the delayed-observation case.
+
+Compatibility fallback: when `lastActivityAt` is null, `lastMeaningfulMovementAt` may still serve as the operational anchor.
+
+### Final finding status (post-R1B)
+
+| ID | Status |
+|----|--------|
+| P4-F02 | RESOLVED_BY_R1 |
+| P5-F02 | RESOLVED_BY_R1 |
+| P5-F14 | RESOLVED_BY_R1 |
+| P5-F15 | RESOLVED_BY_R1 |
+| P5-F01 | PARTIALLY_RESOLVED |

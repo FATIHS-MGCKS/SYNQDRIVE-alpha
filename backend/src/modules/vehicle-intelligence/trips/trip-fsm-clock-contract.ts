@@ -92,6 +92,9 @@ export function resolvePossibleEndFsmDwellAnchor(
 /**
  * Operational no-core inactivity gate (worker/evaluation semantics).
  * Separate from physical end-boundary candidate resolution.
+ *
+ * Prefers worker operational activity over provider event-time movement so
+ * delayed evaluations do not inflate inactivity from backdated physical evidence.
  */
 export function resolveOperationalNoCoreInactivityAnchor(params: {
   lastMeaningfulMovementAt?: Date | null;
@@ -99,8 +102,8 @@ export function resolveOperationalNoCoreInactivityAnchor(params: {
   possibleStartAt?: Date | null;
   workerNow: Date;
 }): Date {
-  if (params.lastMeaningfulMovementAt) return params.lastMeaningfulMovementAt;
   if (params.lastActivityAt) return params.lastActivityAt;
+  if (params.lastMeaningfulMovementAt) return params.lastMeaningfulMovementAt;
   if (params.possibleStartAt) return params.possibleStartAt;
   return params.workerNow;
 }
