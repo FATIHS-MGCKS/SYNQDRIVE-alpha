@@ -6,9 +6,56 @@
 |------|------|
 | `backend/` | NestJS modular monolith, Prisma, workers, DIMO/HM integrations |
 | `frontend/` | Vite + React SPA (rental, master, operator surfaces) |
-| `architecture/` | In-repo architecture change records |
+| `architecture/` | Canonical module authorities, knowledge graphs, and supporting change records |
 | `.cursor/rules/` | Project engineering rules (always apply) |
 | `.cursor/scripts/` | Cloud Agent bootstrap + VPS deploy helpers |
+
+## Mandatory architecture-first workflow
+
+Before inspecting or changing any SynqDrive module, every agent **must** follow this workflow.
+
+### 1. Read the central registry first
+
+Read [`architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`](architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md) before substantive module work.
+
+### 2. Route through the registered authority
+
+Find the affected module in that registry and read **all mandatory entry documents** listed there before proposing or implementing substantive changes.
+
+### 3. Supporting documents are evidence, not default authority
+
+Root-level architecture phase/change documents (for example `architecture/P1_*`, `architecture/BATTERY_V2_*`, `architecture/FUEL_STATION_*`) are **supporting evidence** unless a registered authority explicitly designates them as current authority.
+
+### 4. Unregistered modules
+
+If the module is **not** registered in the central registry:
+
+- Do **not** silently reconstruct it only for the current task.
+- Audit its complete relevant current state first: code paths, data flow, persistence, workers/jobs, integrations, API/UI consumers, tests, runtime evidence where available, and neighboring authority boundaries.
+- Create `architecture/<module-slug>/`.
+- Use [`architecture/tankstellenerkennung/`](architecture/tankstellenerkennung/) as the structural and scientific-quality reference.
+- At minimum create:
+  - `README.md`
+  - `CURRENT_STATE.md`
+  - `AGENT_CONTRACT.md` or an explicitly named maintenance protocol
+  - `KNOWLEDGE_GRAPH.md` or a machine-readable graph entry point
+  - `decisions/` rationale
+  - `evidence/` validation
+  - `contradictions/` gaps / open questions
+  - append-only `history/` or change tracking
+- Explicitly classify confirmed, inferred, historical, unknown, contradicted, and production-validated knowledge.
+- Register the module in the central registry in the **same workstream/PR**.
+
+### 5. During and after work
+
+- **Code and verified runtime evidence** remain the source of truth for current behavior.
+- The **registered authority** is the canonical architectural memory and navigation layer.
+- Conflicts between code and documentation must be **recorded and resolved** — never silently overwritten.
+- Cross-module changes require consultation and updates of **every owning authority**.
+- Substantive behavior/architecture/signal/lifecycle/calculation/queue/worker/integration/persistence/API/UI-contract changes must update the affected authority in the **same workstream/PR**.
+- Preserve **BEFORE**, **WHY**, **CHANGE**, alternatives, expected effect, validation, observed effect, non-effects, tradeoffs, remaining gaps, and evidence where applicable.
+- Run applicable authority validators.
+- The final report must state which architecture authorities and change records were updated.
 
 ## Local development (reference)
 
