@@ -14,13 +14,13 @@
 | `BATTERY_V2_RECONCILIATION_ENABLED` | true |
 | Deployed SHA | `a4377f3a200c` (release `20260905231643_v4994`; PR #1527 guard) |
 | Immediate smoke | **PASS** — see `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md` |
-| 30m status | **PENDING** (run from new T0) |
-| 6h status | **PENDING** (after 30m PASS) |
-| `M3_1_STATUS` | **STAGE2_ACTIVATED_PENDING_PRODUCTION_VALIDATION** |
+| 30m status | **PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE** — see `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md` |
+| 6h status | **PENDING** (eligible after `2026-09-06T05:36:12Z`) |
+| `M3_1_STATUS` | **STAGE2_ACTIVE_30M_VALIDATED_PENDING_6H** |
 | `PRODUCTION_VALIDATED` | **PENDING_CORRECTED_ACTIVATION_EVIDENCE** |
 | `CANONICAL_REST_PIPELINE` | **ON** (Stage-2 contract) |
 | `LEGACY_REST_CAPTURE` | **OFF** |
-| PKG-01 smoke | 19/24 in-lookback terminalized; 0 assess/publication since T0; 5 stale ENQUEUED (>7d lookback) |
+| PKG-01 T+30m | original cohort 19 terminalized + 5 stale ENQUEUED (=24); +3 post-T0 backfill POLICY_SKIPPED; global 22 |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
 See `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`, prior forensic docs `M3_1_CUTOVER_CONTRACT_AUDIT.md`, `M3_1_PRE_CUTOVER_SAFETY_GATE.md`.
