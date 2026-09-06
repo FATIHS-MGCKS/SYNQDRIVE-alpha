@@ -16,7 +16,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `06095af91ce6f58366734a182ac5962830e858db` |
 | **AUDIT_BRANCH_SHA** | `a36db67a3fb418ac7521d260461adf631256582c` |
-| **PRODUCTION_AUDITED_AT** | `2026-09-06T23:24:20Z` |
+| **PRODUCTION_AUDITED_AT** | `2026-09-06T23:47:41Z` |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` |
 | **PRODUCTION_RELEASE_PATH** | `/opt/synqdrive/releases/20260906213654_v4994` |
@@ -24,11 +24,11 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **RUNTIME_FOOTPRINT** | Backend NestJS module `vehicle-intelligence/trips/`; BullMQ queues `dimo.snapshot.poll`, `dimo.trip-tracking`; schedulers (snapshot poll, trip-tracking recovery, trip reconciliation); PostgreSQL models `vehicle_trips`, `vehicle_trip_detection_states`, `vehicle_trip_tracking_runs`, `trip_repairs`, `vehicle_trip_route_artifacts`; rental trip UI under `frontend/src/rental/components/trips/`; DIMO snapshot ingress and reconciliation workers on Production VPS. |
 | **AUDIT_MODE** | `READ_ONLY` |
 | **VALIDATION_STATUS** | `PASS` — `git diff --check origin/main...HEAD`; `bash architecture/scripts/validate-module-registry.sh` (see correction commit) |
-| **REMAINING_LIMITATIONS** | Phase 1 repository audit is an **initial consolidated baseline** only — dead/legacy path inventory, full feature-flag matrix, Mapbox/FMM failure taxonomy, and Driving Intelligence handoff remain incomplete. Phase 3 reconciliation/classification, Phase 4 authority construction (graphs/decisions), and Phase 5 promotion gate **pending**. Original bootstrap Production SQL session had no recovered exact ISO timestamp; aggregates preserved from that session and **revalidated** at `PRODUCTION_AUDITED_AT`. PM2 application roles verified read-only (`synqdrive`, `synqdrive-b`); replica topology for trip workers not fully mapped. External PostgreSQL `:5432` unreachable from agent network; DB access via SSH-local `psql` only. No ClickHouse trip-assist query. No PII/per-vehicle traces exported. |
+| **REMAINING_LIMITATIONS** | Phase 1 repository audit is an **initial consolidated baseline** only — dead/legacy path inventory, full feature-flag matrix, Mapbox/FMM failure taxonomy, and Driving Intelligence handoff remain incomplete. Phase 3 reconciliation/classification, Phase 4 authority construction (graphs/decisions), and Phase 5 promotion gate **pending**. PM2 apps `synqdrive` and `synqdrive-b` correlated to two Node PIDs at `PRODUCTION_AUDITED_AT`; **not** described as replicas of one application; trip-worker role split not verified. External PostgreSQL `:5432` unreachable from agent network; DB access via SSH-local `psql` only. No ClickHouse trip-assist query. No PII/per-vehicle traces exported. |
 
 **`AUDIT_BRANCH_SHA` note:** `a36db67a3…` is the stable Phase-0-to-2 **authority-content snapshot** commit. Later correction commits on the same branch do not change this audited content baseline and are not recursively chased in manifest metadata.
 
-**Timestamp note:** `AUDIT_STARTED_AT` is the ISO timestamp of commit `a36db67a3…`. `PRODUCTION_AUDITED_AT` is from read-only re-observation (`date -u`) during PR #1554 correction; the earlier bootstrap SQL session occurred in the same UTC evening without a recovered exact timestamp.
+**Timestamp note:** `AUDIT_STARTED_AT` is the ISO timestamp of commit `a36db67a3…`. `PRODUCTION_AUDITED_AT` is a single read-only session (`date -u` at session start) during which release path/SHA, health, PM2/PID correlation, Redis prefix counts, and bounded SQL aggregates were observed together.
 
 ## Lifecycle phase status (Standard 1.0)
 
@@ -59,7 +59,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 |---------|---------------------|--------|------------|
 | Release path + SHA | TDL-EV-PROD-001 | Symlink + detached HEAD match `01541c2ab…` | — |
 | Health endpoint | TDL-EV-PROD-002 | HTTP 200 | Liveness only |
-| Node / PM2 processes | TDL-EV-PROD-003 | PM2 apps `synqdrive`, `synqdrive-b` (each `instances=1`); matching Node processes observed via `pgrep` | Not proven as two replicas of one app |
+| Node / PM2 processes | TDL-EV-PROD-003 | Two Node PIDs (`3789590`, `3789796`) correlate 1:1 with PM2 apps `synqdrive` and `synqdrive-b` (each `instances=1`, `fork_mode`) | Not replicas of one app; trip roles not verified |
 | Redis BullMQ prefixes | TDL-EV-PROD-004 | Key-prefix counts recorded | Not job-state cardinality |
 | SQL aggregates | TDL-EV-PROD-005 … PROD-009 | Bounded aggregates only | 6 FSM rows — cohort implication |
 | Env flags | Name-only grep | Trip-adjacent keys sampled | Values redacted; matrix incomplete |

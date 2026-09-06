@@ -4,7 +4,7 @@
 |-------|-------|
 | **Repository baseline** | `origin/main` @ `06095af91ce6f58366734a182ac5962830e858db` |
 | **Production baseline** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Last verified Production evidence** | Revalidation `2026-09-06T23:24:20Z` (see TDL-EV-PROD-*) |
+| **Last verified Production evidence** | `2026-09-06T23:47:41Z` (single session; see TDL-EV-PROD-*) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -104,14 +104,14 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 |-------------|-------|-------------|
 | Deployed SHA / path | `01541c2ab…` @ `20260906213654_v4994` | TDL-EV-PROD-001 |
 | Health | HTTP 200 | TDL-EV-PROD-002 |
-| PM2 / Node processes | PM2 apps `synqdrive` + `synqdrive-b` (each `instances=1`); `pgrep` observed matching Node processes | TDL-EV-PROD-003 |
+| PM2 / Node processes | Two Node PIDs (`3789590`, `3789796`) each running `node …/backend/dist/src/main.js`; 1:1 with PM2 apps `synqdrive` (pid 3789590) and `synqdrive-b` (pid 3789796), each `instances=1` | TDL-EV-PROD-003 |
 | FSM states | 6 × RESTING | TDL-EV-PROD-005 |
 | Trips | 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | TDL-EV-PROD-006 |
 | Route artifacts | 94 | TDL-EV-PROD-007 |
-| Tracking runs (7d) | 7012 PS validation, 3753 PEC, 1842 active | TDL-EV-PROD-009 |
-| Redis key prefixes | snapshot 6, trip-tracking 7 | TDL-EV-PROD-004 |
+| Tracking runs (7d) | 6964 PS validation, 3753 PEC, 1842 active, 53 finalize, 2 end validation | TDL-EV-PROD-009 |
+| Redis key prefixes | snapshot 5, trip-tracking 7 | TDL-EV-PROD-004 |
 
-**Topology wording:** Two matching backend Node processes were observed; PM2 shows **two distinct application names** (`synqdrive`, `synqdrive-b`), each `instances=1`. **This does not prove two replicas of a single PM2 application**; trip-worker replica roles were not fully verified.
+**Topology wording:** `pgrep -f '/opt/synqdrive/.+/backend/dist/src/main\.js'` returned **two** PIDs at `2026-09-06T23:47:41Z`, each matching one of two **distinct** PM2 application names (`synqdrive`, `synqdrive-b`), each configured with `instances=1`. **Not** described as replicas of a single PM2 application; trip-worker role split was **not** verified beyond PID correlation.
 
 ---
 
@@ -148,8 +148,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 
 | Claim | Conflict |
 |-------|----------|
-| "R8 observability live on Production" | Production SHA predates #1549 (TDL-EV-R8-001) |
-| "Two backend replicas" without PM2 evidence | Contradicts TDL-EV-PROD-003 precision |
+| "Two backend replicas" without role proof | Contradicts TDL-EV-PROD-003 precision | **RESOLVED** — wording corrected; not called replicas |
 
 See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md).
 

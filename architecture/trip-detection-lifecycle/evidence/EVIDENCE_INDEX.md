@@ -2,6 +2,8 @@
 
 **Repository re-audit baseline:** `origin/main` @ `06095af91ce6f58366734a182ac5962830e858db`
 
+**Production release baseline:** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac`
+
 Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/) — **supporting evidence only**, not canonical authority.
 
 ## Schema
@@ -9,27 +11,29 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | Column | Meaning |
 |--------|---------|
 | **Evidence ID** | Stable identifier — never reuse |
-| **Source type** | Standard-1.0 evidence class (`CODE`, `HISTORICAL_RECORD`, `PRODUCTION_OBSERVATION`, …) |
+| **Source type** | Standard-1.0 evidence class |
 | **Source path / method** | Repository path or sanitized observation method |
 | **Timestamp** | ISO-8601 UTC when applicable |
-| **Audited SHA / environment** | Repo SHA or Production release context |
+| **Audited SHA** | Full document-commit SHA and/or full application-baseline SHA cited in artifact (`doc=` / `app=`) |
 | **Supported claim** | What this evidence supports |
-| **Currentness / maturity** | Separate from source type |
+| **Currentness** | Separate from source type — see legend |
 | **Limitations** | Residual uncertainty |
 
 ### Source types used
 
 `CODE` · `HISTORICAL_RECORD` · `PRODUCTION_OBSERVATION`
 
-### Currentness / maturity legend
+### Currentness legend
 
 | Label | Meaning |
 |-------|---------|
-| **CONFIRMED_ON_MAIN** | Reconfirmed on `06095af91…` |
-| **PARTIALLY_CURRENT** | Core claim valid; Production refs, line numbers, or pre-R context stale |
-| **HISTORICAL** | Pre-remediation or superseded runtime context |
-| **NOT_ON_PRODUCTION** | On `main` but not on observed Production SHA |
-| **UNKNOWN** | Not re-verified this phase |
+| **CONFIRMED_ON_MAIN** | Repository claim reconfirmed on `origin/main` @ `06095af91ce6f58366734a182ac5962830e858db` |
+| **CONFIRMED_AT_PRODUCTION_RELEASE** | Observation confirmed against Production release `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` at stated UTC timestamp |
+| **PARTIALLY_CURRENT** | Core claim valid; stale Production refs, line numbers, or pre-R context in artifact |
+| **HISTORICAL** | Pre-remediation or superseded runtime context inside artifact |
+| **NOT_ON_PRODUCTION** | Present on `main` but absent on observed Production release |
+| **UNKNOWN** | Not re-verified in this authority pass |
+| **UNKNOWN_NOT_RECOVERED** | Exact SHA not recoverable from repository history |
 
 ---
 
@@ -40,7 +44,7 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | **Evidence ID** | TDL-EV-P1-001 |
 | **Source type** | CODE |
 | **Source path** | [`backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts`](../../../backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts) |
-| **Timestamp** | `2026-09-06T23:09:32Z` (reconfirmed during bootstrap) |
+| **Timestamp** | `2026-09-06T23:09:32Z` |
 | **Audited SHA** | `06095af91ce6f58366734a182ac5962830e858db` |
 | **Supported claim** | P1 ownership: sole creator/lifecycle writer (`TripDecisionEngine`); detectors read-only; repair routes through decision engine |
 | **Currentness** | CONFIRMED_ON_MAIN |
@@ -50,43 +54,45 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 
 ## Historical audit and implementation records (P2–R8)
 
-| Evidence ID | Source type | Source path | Timestamp | Audited SHA | Supported claim | Currentness | Limitations |
-|-------------|-------------|-------------|-----------|-------------|-----------------|-------------|-------------|
-| TDL-EV-P2-001 | HISTORICAL_RECORD | [`P2_STATE_MACHINE…`](../../../docs/audits/trip-fsm/P2_STATE_MACHINE_EXECUTION_PHASE_AUDIT_2026-09-05.md) | 2026-09-05 | `3d5040b67…` | FSM vs execution phases; `ENDED` dead; finalize→RESTING | PARTIALLY_CURRENT | P2 Production SSH/SQL stale; line numbers may drift |
-| TDL-EV-P3-001 | HISTORICAL_RECORD | [`P3_SIGNAL…`](../../../docs/audits/trip-fsm/P3_SIGNAL_AUTHORITY_TIMESTAMP_ORDERING_AUDIT_2026-09-05.md) | 2026-09-05 | `3d5040b67…` | EVENT_TIME vs WORKER_TIME separation | PARTIALLY_CURRENT | Production unverified in P3; partially addressed by PROD baseline |
-| TDL-EV-P4-001 | HISTORICAL_RECORD | [`P4_TRIP_START…`](../../../docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md) | 2026-09-05 | `b62c4c44…` | Start detectors, policies, failure windows | PARTIALLY_CURRENT | P4-F11/F12 addressed on main via R3 |
-| TDL-EV-P5-001 | HISTORICAL_RECORD | [`P5_TRIP_END…`](../../../docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md) | 2026-09-06 | P5 closure | End modes, CUSUM, finalize semantics | PARTIALLY_CURRENT | Several P5 findings addressed via R5–R7 |
-| TDL-EV-P6-001 | HISTORICAL_RECORD | [`P6_TARGET…`](../../../docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md) | 2026-09-06 | `3d5040b67…` | R1–R8 remediation dependency graph | PARTIALLY_CURRENT | P6 explicitly deferred canonical docs to this authority |
-| TDL-EV-R1-001 | HISTORICAL_RECORD | [`R1_EVENT_TIME…`](../../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `3d5040b67…` | EVENT_TIME boundary field contract | CONFIRMED_ON_MAIN | Not deployed to Production `01541c2ab…` at observation time |
-| TDL-EV-R2-001 | HISTORICAL_RECORD | [`R2_LIFECYCLE…`](../../../docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `8ddf73e56…` | Lifecycle commit + orphan recovery | CONFIRMED_ON_MAIN | Deploy evidence separate |
-| TDL-EV-R3-001 | HISTORICAL_RECORD | [`R3_START_LIVENESS…`](../../../docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `ff95395d6…` | Queue handoff settlement / start liveness | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R4-001 | HISTORICAL_RECORD | [`R4_START_DETECTION…`](../../../docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `12a5fdac9…` | Start detection consistency | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R5-001 | HISTORICAL_RECORD | [`R5_END_VALIDATION…`](../../../docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `eb51d8f80…` | End validation semantics | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R6-001 | HISTORICAL_RECORD | [`R6_MID_GAP…`](../../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `4cd02d7f8…` | Mid-gap split safety | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R7-001 | HISTORICAL_RECORD | [`R7_TERMINAL…`](../../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `de402f7c9…` | Terminal→RESTING recovery | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8_OBSERVABILITY…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | 2026-09-06 | `140ebdd33…` branch | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN / **NOT_ON_PRODUCTION** | Merged #1549 on `main`; absent on Production `01541c2ab…` |
+| Evidence ID | Source type | Source path | Document commit (`doc=`) | Application baseline in artifact (`app=`) | Doc timestamp (UTC) | Supported claim | Currentness | Limitations |
+|-------------|-------------|-------------|--------------------------|-------------------------------------------|---------------------|-----------------|-------------|-------------|
+| TDL-EV-P2-001 | HISTORICAL_RECORD | [`P2…`](../../../docs/audits/trip-fsm/P2_STATE_MACHINE_EXECUTION_PHASE_AUDIT_2026-09-05.md) | `c52d0c7654a41043496311478888821268dcefae` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T18:45:16Z` | FSM vs execution phases; `ENDED` dead; finalize→RESTING | PARTIALLY_CURRENT | P2 Production SSH/SQL stale vs current baseline |
+| TDL-EV-P3-001 | HISTORICAL_RECORD | [`P3…`](../../../docs/audits/trip-fsm/P3_SIGNAL_AUTHORITY_TIMESTAMP_ORDERING_AUDIT_2026-09-05.md) | `b62c4c445e6f1294fe4e38b25904737d157465f6` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T19:24:05Z` | EVENT_TIME vs WORKER_TIME separation | PARTIALLY_CURRENT | P3 Production access failed at audit time |
+| TDL-EV-P4-001 | HISTORICAL_RECORD | [`P4…`](../../../docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md) | `a4377f3a200ca45a97b7ce422caf8d92faddabbe` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:15:35Z` | Start detectors, policies, failure windows | PARTIALLY_CURRENT | P4-F11/F12 addressed on main via R3 |
+| TDL-EV-P5-001 | HISTORICAL_RECORD | [`P5…`](../../../docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md) | `70249e1966a37cc127149f3792b07c3dd2a4c9b0` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:33:42Z` | End modes, CUSUM, finalize semantics | PARTIALLY_CURRENT | Several P5 findings addressed via R5–R7 on main |
+| TDL-EV-P6-001 | HISTORICAL_RECORD | [`P6…`](../../../docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md) | `64de2333f0475e1eadb7f0c4f386d441f9979cb7` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:41:43Z` | R1–R8 remediation dependency graph | PARTIALLY_CURRENT | P6 deferred canonical docs to this authority |
+| TDL-EV-R1-001 | HISTORICAL_RECORD | [`R1…`](../../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | `8ddf73e562cc5fbe2e88056836bfd0b7ca493411` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-06T06:51:15Z` | EVENT_TIME boundary field contract | CONFIRMED_ON_MAIN | NOT_ON_PRODUCTION at observed release |
+| TDL-EV-R2-001 | HISTORICAL_RECORD | [`R2…`](../../../docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md) | `ff95395d61706556643fe0d83c0e0e85c8f7ef63` | `8ddf73e562cc5fbe2e88056836bfd0b7ca493411` | `2026-09-06T07:47:23Z` | Lifecycle commit + orphan recovery | CONFIRMED_ON_MAIN | Artifact cites post-R1 main baseline |
+| TDL-EV-R3-001 | HISTORICAL_RECORD | [`R3…`](../../../docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md) | `12a5fdac9e034aa445825e5c9f4318444a9612b3` | `ff95395d61706556643fe0d83c0e0e85c8f7ef63` | `2026-09-06T10:03:40Z` | Queue handoff settlement / start liveness | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R4-001 | HISTORICAL_RECORD | [`R4…`](../../../docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md) | `eb51d8f807347514e7499dec5986b745ec1dc134` | `12a5fdac9e034aa445825e5c9f4318444a9612b3` | `2026-09-06T10:50:59Z` | Start detection consistency | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R5-001 | HISTORICAL_RECORD | [`R5…`](../../../docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md) | `4cd02d7f8b2814c1c5dc773d206f295f94169cf4` | `eb51d8f807347514e7499dec5986b745ec1dc134` | `2026-09-06T11:52:19Z` | End validation semantics | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R6-001 | HISTORICAL_RECORD | [`R6…`](../../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `4cd02d7f8b2814c1c5dc773d206f295f94169cf4` | `2026-09-06T15:52:20Z` | Mid-gap split safety | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R7-001 | HISTORICAL_RECORD | [`R7…`](../../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `2026-09-06T19:11:29Z` | Terminal→RESTING recovery | CONFIRMED_ON_MAIN | — |
+| TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | `6ea95124343e15e971220cb0c672239ac4b077d6` | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `2026-09-06T22:26:34Z` | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN; **NOT_ON_PRODUCTION** | Merged #1549 on `main`; absent on Production `01541c2ab…` |
+
+Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Application baseline SHAs taken from each artifact's stated baseline (full 40-char where present in artifact).
 
 ---
 
-## Production observations (read-only)
+## Production observations (read-only) — session `2026-09-06T23:47:41Z`
 
-| Evidence ID | Source type | Method / path | Timestamp | Environment | Supported claim | Currentness | Limitations |
-|-------------|-------------|---------------|-----------|-------------|-----------------|-------------|-------------|
-| TDL-EV-PROD-001 | PRODUCTION_OBSERVATION | SSH: `readlink` + `git rev-parse` on `/opt/synqdrive/current` | Revalidation `2026-09-06T23:24:20Z` | Release `01541c2ab…` @ `/opt/synqdrive/releases/20260906213654_v4994` | Active release path and deployed SHA | CONFIRMED_ON_MAIN drift noted | Original bootstrap exact time not recovered |
-| TDL-EV-PROD-002 | PRODUCTION_OBSERVATION | HTTPS `GET /api/v1/health` | Bootstrap + revalidation window 2026-09-06 UTC evening | Production | API health reachable (HTTP 200) | CONFIRMED | Liveness only |
-| TDL-EV-PROD-003 | PRODUCTION_OBSERVATION | SSH: `sudo pm2 jlist`, `pgrep -af backend/dist/src/main.js` | `2026-09-06T23:24:20Z` | Production VPS | Two PM2 apps (`synqdrive`, `synqdrive-b`) each `instances=1`; matching Node processes observed | CONFIRMED | **Not** proven as two replicas of one app; trip worker roles not fully mapped |
-| TDL-EV-PROD-004 | PRODUCTION_OBSERVATION | SSH: `redis-cli --scan --pattern 'bull:…'` | Bootstrap session | Production Redis | Bull key-prefix counts for snapshot + trip-tracking queues | CONFIRMED | Prefix counts ≠ job queue depth by state |
-| TDL-EV-PROD-005 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trip_detection_states`: 6× RESTING | CONFIRMED | Small cohort; not full fleet |
-| TDL-EV-PROD-006 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trips`: 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | CONFIRMED | Aggregate only |
-| TDL-EV-PROD-007 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `vehicle_trip_route_artifacts`: 94 rows | CONFIRMED | Coverage vs completed trips ~4.7% |
-| TDL-EV-PROD-008 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | Bootstrap session | Production PostgreSQL | `trip_repairs` status/type distributions | CONFIRMED | High PROPOSED volume not root-caused |
-| TDL-EV-PROD-009 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate (7-day window) | Bootstrap session | Production PostgreSQL | `vehicle_trip_tracking_runs` by `run_type` | CONFIRMED | Natural activity evidence; not per-vehicle |
+| Evidence ID | Source type | Method | Timestamp (UTC) | Environment | Supported claim | Currentness | Limitations |
+|-------------|-------------|--------|-----------------|-------------|-----------------|-------------|-------------|
+| TDL-EV-PROD-001 | PRODUCTION_OBSERVATION | SSH: `readlink` + release `.git/HEAD` ref file | `2026-09-06T23:47:41Z` | `01541c2ab…` @ `20260906213654_v4994` | Active release path and SHA | CONFIRMED_AT_PRODUCTION_RELEASE | No `git config` on Production |
+| TDL-EV-PROD-002 | PRODUCTION_OBSERVATION | HTTPS `GET /api/v1/health` | `2026-09-06T23:47:41Z` | Production edge | API health HTTP 200 | CONFIRMED_AT_PRODUCTION_RELEASE | Liveness only |
+| TDL-EV-PROD-003 | PRODUCTION_OBSERVATION | SSH: `pgrep -f '/opt/synqdrive/.+/backend/dist/src/main\.js'` + `sudo pm2 jlist` | `2026-09-06T23:47:41Z` | Production VPS | **Two** Node PIDs (`3789590`, `3789796`) correlate 1:1 with PM2 apps `synqdrive` and `synqdrive-b` (each `instances=1`) | CONFIRMED_AT_PRODUCTION_RELEASE | Not replicas of one app; trip roles not verified |
+| TDL-EV-PROD-004 | PRODUCTION_OBSERVATION | SSH: `redis-cli --scan` prefix counts | `2026-09-06T23:47:41Z` | Production Redis | snapshot.poll=**5**; trip-tracking=**7** | CONFIRMED_AT_PRODUCTION_RELEASE | Prefix counts ≠ queue depth |
+| TDL-EV-PROD-005 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | `2026-09-06T23:47:41Z` | Production PostgreSQL | FSM: 6× RESTING | CONFIRMED_AT_PRODUCTION_RELEASE | Small cohort |
+| TDL-EV-PROD-006 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | `2026-09-06T23:47:41Z` | Production PostgreSQL | Trips: 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | CONFIRMED_AT_PRODUCTION_RELEASE | Aggregate only |
+| TDL-EV-PROD-007 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregate | `2026-09-06T23:47:41Z` | Production PostgreSQL | Route artifacts: 94 | CONFIRMED_AT_PRODUCTION_RELEASE | ~4.7% of completed trips |
+| TDL-EV-PROD-008 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only aggregates | `2026-09-06T23:47:41Z` | Production PostgreSQL | Repair status/type distributions (see baseline) | CONFIRMED_AT_PRODUCTION_RELEASE | PROPOSED volume not root-caused |
+| TDL-EV-PROD-009 | PRODUCTION_OBSERVATION | SSH-local `psql` read-only 7-day aggregate | `2026-09-06T23:47:41Z` | Production PostgreSQL | Tracking runs by `run_type` (PSV=6964, PEC=3753, …) | CONFIRMED_AT_PRODUCTION_RELEASE | Rolling 7-day window |
 
-Detail and reproducibility templates: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
+Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 ---
 
 ## Explicit non-artifacts
 
-- **R9** adaptive polling wake — out of scope for bootstrap PR #1554
+- **R9** adaptive polling wake — out of scope for PR #1554
 - **Competing authority paths** — must not be created under `architecture/trip-fsm/` or `docs/architecture/trip-fsm/`

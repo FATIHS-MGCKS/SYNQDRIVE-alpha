@@ -18,3 +18,4 @@ Contradictions remain **open** until resolved by code + evidence in a later phas
 | P1 sole lifecycle writer | Reconfirmed via `TRIP_OWNERSHIP.ts` + `TripDecisionEngine` |
 | Five reachable FSM states | Reconfirmed — `ENDED` unused |
 | Production SSH access | Gate passed — contradicts P2/P3 "SSH failed" session notes |
+| Process count vs PM2 (two vs three PIDs) | **RESOLVED** at `2026-09-06T23:47:41Z` — `pgrep` with path-specific pattern returned **two** PIDs, each 1:1 with PM2 `synqdrive` / `synqdrive-b` (TDL-EV-PROD-003) |
