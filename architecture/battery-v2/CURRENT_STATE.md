@@ -20,7 +20,7 @@
 | `PRODUCTION_VALIDATED` | **PENDING_CORRECTED_ACTIVATION_EVIDENCE** |
 | `CANONICAL_REST_PIPELINE` | **ON** (Stage-2 contract) |
 | `LEGACY_REST_CAPTURE` | **OFF** |
-| PKG-01 smoke | 19/24 in-lookback terminalized; 0 assess/publication since T0; 5 stale ENQUEUED (>7d lookback) |
+| PKG-01 T+30m | original cohort 19 terminalized + 5 stale ENQUEUED (=24); +3 post-T0 backfill POLICY_SKIPPED; global 22 |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
 See `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`, prior forensic docs `M3_1_CUTOVER_CONTRACT_AUDIT.md`, `M3_1_PRE_CUTOVER_SAFETY_GATE.md`.

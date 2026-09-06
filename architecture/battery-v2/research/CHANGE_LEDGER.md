@@ -20,6 +20,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-06 — M3.1 T+30m evidence scope precision (PR #1537)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Scoped PKG-01, REST session, and measurement counters in T+30m evidence doc; reconciled 22+5≠24 ambiguity. |
+| **WHY** | Global SQL totals and original pre-T0 cohort counts were conflated in prose. |
+| **VALIDATION** | Cohort arithmetic 19+5=24; global 19+3=22 from captured audit only; graph validator PASS. |
+| **DECISION_STATUS** | Verdict unchanged: `T30_VALIDATION=PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md` (precision pass). |
+
 ## CL-2026-09-06 — M3.1 corrected Stage-2 T+30m production validation
 
 | Field | Content |
@@ -28,7 +38,7 @@ Append-only scientific record. Newest entries first.
 | **CHANGE** | Read-only T+30m audit at `2026-09-06T00:06:41Z`; merged activation evidence PR #1536 (`4a30d006e`). |
 | **WHY** | Canonical 30-minute gate from corrected T0 before ≥6h soak. |
 | **VALIDATION** | Stage-2 contract stable; control plane active (reconciliation, rest sessions, target evaluations); 0 unsafe pre-T0 work; 0 new failure classes. |
-| **OBSERVED_EFFECT** | 3 post-T0 REST measurements (all non-VALID backfill); 0 assess/publications; PKG-01 22 POLICY_SKIPPED / 5 stale inert. |
+| **OBSERVED_EFFECT** | 3 post-T0 backfill REST rows (non-VALID); 0 assess/publications; PKG-01 original cohort 19+5=24; global POLICY_SKIPPED 22 (=19+3 backfill). |
 | **NON_EFFECTS** | No VALID natural REST→assess→publication E2E yet. |
 | **REMAINING_GAPS** | ≥6h validation from T0 after `2026-09-06T05:36:12Z`; 5 stale PKG-01 metadata rows (>7d lookback). |
 | **DECISION_STATUS** | `T30_VALIDATION=PASS_WITH_PENDING_NATURAL_E2E_EVIDENCE`; `M3_1_STATUS=STAGE2_ACTIVE_30M_VALIDATED_PENDING_6H`. |
