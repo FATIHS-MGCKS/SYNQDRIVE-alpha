@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-06 — M3.1 event-conditioned natural E2E probe (evening trips)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`; no post-T0 RESTING promotion on KS MX 2024. |
+| **CHANGE** | Read-only probe at `2026-09-06T21:39:25Z` after WOB L 7503 + KS MX 2024 evening trip completions. |
+| **WHY** | Event-conditioned validation gate — real fleet movement should produce or explain absent natural E2E chain. |
+| **VALIDATION** | Production DB + PM2 logs; both probe vehicles traced; graph validator PASS. |
+| **OBSERVED_EFFECT** | KS MX: first post-T0 RESTING promotion; REST_60M due ENQUEUED. WOB: CANDIDATE only; REST_60M CONTAMINATED_BY_ACTIVE_TRIP. 0 VALID REST / assess / pub. |
+| **NON_EFFECTS** | E2E chain not yet closed — KS MX evaluation pending at probe time. |
+| **REMAINING_GAPS** | Re-probe KS MX REST_60M evaluation outcome + assessment/publication handoff. |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE` unchanged. |
+| **EVIDENCE** | `M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`. |
+
 ## CL-2026-09-06 — M3.1 Stage-2 REST session/target lifecycle forensic audit (PR #1541 precision gate)
 
 | Field | Content |
