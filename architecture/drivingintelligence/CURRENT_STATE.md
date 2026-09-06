@@ -16,7 +16,8 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 | **CODE_DEPLOYED** | **YES** — HF Recovery policy + C.1a–e on `main` / production binary |
 | **REFERENCE_CAPTURE_INFRASTRUCTURE** | **ENABLED** on production (`REFERENCE_CAPTURE_ENABLED=true` post 3A.2) |
 | **HF_RECOVERY_V2_FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false` |
-| **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero calibration sessions |
+| **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero active calibration sessions (post GATE 2 baseline restored) |
+| **DI-DEF-019** | **FIXED_PRODUCTION_VALIDATED** — GATE 1 PG integration + GATE 2 stationary dress rehearsal (2026-09-06) |
 | **HF_30S_BLOCK_POLLING_VALIDATED** | **NO** |
 | **Production HF authority** | **LEGACY** — whole-trip `fetchHighFrequency`; Recovery V2 **not active** |
 
@@ -160,9 +161,9 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 |------|--------|
 | V2 recovery policy (8s settlement, 6s overlap) | CODE on prod binary; **FEATURE OFF** |
 | Block polling 30s (C.1) | CODE on prod binary; **NOT VALIDATED** live |
-| Multi-cadence calibration (C.1c–e) | CODE on prod binary; **LIVE_CANARY_EXECUTED = NO** |
+| Multi-cadence calibration (C.1c–e) | CODE on prod binary; **GATE 2 lifecycle validated** (stationary); scientific live cal **NOT EXECUTED** |
 | Production post-trip HF | **LEGACY UNCHANGED** — whole-trip `fetchHighFrequency` |
-| Operator-selected calibration | Infrastructure ready; runbook incomplete |
+| Operator-selected calibration | Infrastructure ready; **DI-DEF-019 unblocked** — physical 10/20/30/60 drive authorized as separate experiment |
 
 ## Multi-tenancy (CONFIRMED)
 
@@ -182,7 +183,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## Unresolved validation items
 
-- Live 10/20/30/60s HF calibration phases on operator-selected vehicle
+- Live 10/20/30/60s HF calibration phases on operator-selected vehicle (physical drive — EXP-016 retry)
 - `HF_RECOVERY_POLICY_V2_ENABLED` production canary
 - V2 full stage DAG under production load
 - Natural fleet-scale block polling density proof

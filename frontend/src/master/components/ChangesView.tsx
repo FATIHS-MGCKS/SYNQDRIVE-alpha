@@ -307,6 +307,28 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-di-def-019-gate2-production-dress-rehearsal-2026-09-06',
+    version: '4.9.1069',
+    title: 'DI-DEF-019 GATE 2 — production stationary dress rehearsal PASS',
+    summary: [
+      'Post PR #1550 deploy (SHA 01541c2ab): stationary production rehearsal on KS MX 2024 / token 187336.',
+      'Session 1: 10→20→30→60 REQUESTED→EFFECTIVE via real runner + STOP → COMPLETED.',
+      'Session 2: 10s EFFECTIVE + canonical abortSession → ABORTED.',
+      'Temporary single-token V2 canary; baseline restored — PRODUCTION_HF_AUTHORITY=LEGACY.',
+      'NOT scientific cadence proof — HF_30S_BLOCK_POLLING_VALIDATED=NO.',
+      'DI-DEF-019 → FIXED_PRODUCTION_VALIDATED.',
+    ],
+    reason:
+      'Gate 2 proves DI-DEF-019 lockSessionRow fix on real production runtime before physical 10/20/30/60 drive.',
+    previousBehavior:
+      'DI-DEF-019 FIXED_CODE_TESTED only; production STOP/ABORT paths not re-validated after merge.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md; EXP-018 executed.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T22:15:00.000Z',
+  },
+  {
     id: 'dimo-di-def-019-lock-session-row-sql-2026-09-06',
     version: '4.9.1068',
     title: 'DI-DEF-019 — lockSessionRow PostgreSQL table name fix (live cal blocker)',
@@ -314,15 +336,16 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Live 10/20/30/60 HF calibration blocked on production: FOR UPDATE raw SQL used Prisma model name ReferenceCaptureSession.',
       'Fix: reference_capture_sessions + organization_id snake_case columns (text IDs, no ::uuid cast).',
       'GATE 1: real PostgreSQL integration suite (10 tests) — lockSessionRow, FOR UPDATE blocking, 10→60 phases, STOP/ABORT, rollback, two-replica.',
+      'GATE 2: production stationary dress rehearsal PASS — STOP + ABORT on KS MX 2024.',
       'Blocked attempt evidence: architecture/drivingintelligence/evidence/reference-capture/LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md',
-      'Status: FIXED_CODE_TESTED — awaiting human merge + GATE 2 production dress rehearsal.',
+      'Status: FIXED_PRODUCTION_VALIDATED.',
     ],
     reason:
       'DI_HF_LIVE_BLOCK_POLLING_10_20_30_60 hit 42P01 on first switchHfCalibrationPhase; stop/abort finalization also affected.',
     previousBehavior:
       'lockSessionRow queried "ReferenceCaptureSession" — passes mocked tests, fails PostgreSQL.',
     details:
-      'reference-capture-session.repository.ts lockSessionRow; reference-capture-lock-session.postgres.integration.spec.ts; research/DEFECT_LEDGER.md DI-DEF-019 FIXED_CODE_TESTED.',
+      'reference-capture-session.repository.ts lockSessionRow; reference-capture-lock-session.postgres.integration.spec.ts; research/DEFECT_LEDGER.md DI-DEF-019 FIXED_PRODUCTION_VALIDATED.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-06T19:45:00.000Z',

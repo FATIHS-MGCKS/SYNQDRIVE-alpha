@@ -52,12 +52,12 @@ function parseSummaryInt(text, key) {
 
 function parseDefectLedger(text) {
   const rows = [];
-  const rowRe = /\| (DI-DEF-\d+) \|(?:[^|]+\|){6} (FIXED_CODE_TESTED|FIXED|OPEN) \|/g;
+  const rowRe = /\| (DI-DEF-\d+) \|(?:[^|]+\|){6} (FIXED_PRODUCTION_VALIDATED|FIXED_CODE_TESTED|FIXED|OPEN) \|/g;
   for (const m of text.matchAll(rowRe)) {
     rows.push({ id: m[1], status: m[2] });
   }
   const total = rows.length;
-  const fixed = rows.filter((r) => r.status === 'FIXED' || r.status === 'FIXED_CODE_TESTED').length;
+  const fixed = rows.filter((r) => r.status === 'FIXED' || r.status === 'FIXED_CODE_TESTED' || r.status === 'FIXED_PRODUCTION_VALIDATED').length;
   const open = rows.filter((r) => r.status === 'OPEN').length;
   const summaryTotal = parseSummaryInt(text, 'TOTAL');
   const summaryFixed = parseSummaryInt(text, 'FIXED');
