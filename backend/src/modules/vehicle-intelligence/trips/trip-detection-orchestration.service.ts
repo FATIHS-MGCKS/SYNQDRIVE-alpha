@@ -51,7 +51,9 @@ import {
   extractLatestSegmentEnd,
   resolveLatestMeaningfulMovementEventAt,
   continuityImpliesMeaningfulMovement,
+  assessLiveStartSnapshotFreshness,
 } from './trip-evidence.helpers';
+import { START_DETECTION_PHASES } from './trip-start-detection-policy';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
@@ -660,29 +662,44 @@ export class TripDetectionOrchestrationService {
 
     const profile = detState.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
     const profileStr = String(profile);
+    const workerNow = new Date();
+    const liveStartFreshness = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: current.sourceTimestamp,
+      workerNow,
+    });
 
-    // ── PHASE 2 SEAM: policy → detector → decision ───────────────────────────
-    // The policy resolver decides which detectors to run for the live_start phase.
-    // Detectors return findings; the decision engine converts findings to a decision.
-    // No truth is committed here — this method only decides whether to enter POSSIBLE_START.
+    const dataQuality = this.policyResolver.assessDataQuality({
+      snapshotFreshMs: liveStartFreshness.snapshotFreshMs,
+      ignitionAvailable: current.isIgnitionOn != null,
+      speedAvailable: current.speedKmh != null,
+      odometerAvailable: current.odometerKm != null,
+      corePointCount: 1,
+      hasRoutePoints: false,
+      hasHighFrequency: false,
+    });
+    if (liveStartFreshness.state === 'FRESH') {
+      dataQuality.snapshotFreshness = 'FRESH';
+    } else if (liveStartFreshness.state === 'STALE') {
+      dataQuality.snapshotFreshness = 'STALE';
+    } else if (liveStartFreshness.state === 'MISSING') {
+      dataQuality.snapshotFreshness = 'MISSING';
+    }
+
     const policy = this.policyResolver.resolve({
       phase: DETECTION_PHASES.LIVE_START,
       profile,
-      dataQuality: this.policyResolver.assessDataQuality({
-        snapshotFreshMs: current.sourceTimestamp
-          ? Date.now() - current.sourceTimestamp.getTime()
-          : previousTelemetry?.updatedAt
-            ? Date.now() - previousTelemetry.updatedAt.getTime()
-            : null,
-        ignitionAvailable: current.isIgnitionOn != null,
-        speedAvailable: current.speedKmh != null,
-        odometerAvailable: current.odometerKm != null,
-        corePointCount: 1, // Single snapshot context
-        hasRoutePoints: false,
-        hasHighFrequency: false,
-      }),
+      dataQuality,
+      liveStartFreshnessState: liveStartFreshness.state,
       anomalyContext: {},
     });
+
+    if (policy.detectors.length === 0) {
+      this.logger.debug(
+        `LIVE_START skipped ${vehicleId} freshness=${liveStartFreshness.state}` +
+          (policy.skipReason ? ` reason=${policy.skipReason}` : ''),
+      );
+      return { shouldStartTracking: false };
+    }
 
     const findings = await this.detectorRegistry.runAll(
       policy.detectors,
@@ -718,7 +735,7 @@ export class TripDetectionOrchestrationService {
     const evidenceFinding = findings.find((f) => f.detectorName === 'SnapshotEvidenceEvaluator');
     const ev = evidenceFinding?.evidence ?? {};
 
-    const now = new Date();
+    const now = workerNow;
     const startClock = resolveStartCandidateClock({
       providerSourceTimestamp: current.sourceTimestamp,
       workerNow: now,
@@ -745,12 +762,18 @@ export class TripDetectionOrchestrationService {
         startDetectionMode: startDecision.mode as StartDetectionMode | undefined,
         startConfidence: confEnum,
         lastEvidenceSummary: {
+          candidatePhase: START_DETECTION_PHASES.START_CANDIDATE_WAKE,
+          candidatePolicyProfile: profileStr,
           strong: ev.strong,
           weak: ev.weak,
           hasMovement: ev.hasMovement,
           reasons: ev.reasons,
           profile: profileStr,
           detectorPolicy: policy.detectors,
+          candidateFreshnessState: liveStartFreshness.state,
+          candidateTimestampSource: liveStartFreshness.timestampSource,
+          candidateProviderObservedAt:
+            liveStartFreshness.providerSourceTimestamp?.toISOString() ?? null,
           startCandidateClockSource: startClock.clockSource,
           startCandidateObservedAt: startClock.candidateEventAt.toISOString(),
           startCandidateEnteredAt: startClock.enteredAt.toISOString(),

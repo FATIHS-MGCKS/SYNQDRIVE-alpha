@@ -143,6 +143,14 @@ async function runPossibleStart(h: Harness) {
 }
 
 describe('R3 — start liveness ordering', () => {
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2026-09-06T10:00:30.000Z') });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('rethrows provider/runtime exceptions after diagnostic logging', async () => {
     const h = buildPossibleStartHarness();
     (h.svc as any).segments.fetchRawTripCoreData.mockRejectedValue(

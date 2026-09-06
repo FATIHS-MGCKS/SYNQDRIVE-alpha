@@ -36,6 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r4-start-detection-consistency-2026-09-06',
+    version: '4.9.1071',
+    title: 'Trip FSM R4 — Start Detection Consistency',
+    summary: [
+      'Explicit two-phase start contract: START_CANDIDATE_WAKE vs START_CONFIRMATION with split policy modules.',
+      'Shared signal thresholds separated from candidate increments and confirmation evidence weights (P4-F01).',
+      'Candidate motion bands aligned to speedMotionKmh floor — sub-0.5 km/h speed alone no longer sets movement.',
+      'LIVE_START policy materially consumes provider EVENT_TIME freshness — STALE/MISSING/INVALID block POSSIBLE_START (P4-F03).',
+      'No DB updatedAt silent fallback for provider freshness truth; R1 future-skew validation reused.',
+      'ClickHouse remains confirmation corroboration only — cannot start from RESTING (P4-F08 preserved).',
+      'Forensic evidence summaries include candidate/confirmation phase, policy profile, freshness state.',
+      'R4A: R1 future-skew freshness age normalization; explicit INVALID skip reason; full candidate profile policy table; orchestration LIVE_START safety tests.',
+      'R1 clocks, R2 recovery, R3 queue liveness, end detection, CUSUM, thresholds unchanged.',
+    ],
+    reason:
+      'P6 remediation package R4 — INV-11 profile explainability + freshness-gated live start candidates.',
+    previousBehavior:
+      'PROFILE_THRESHOLDS mixed confirmation weights with candidate scoring; LIVE_START ignored freshness; candidate weak speed used 0 < speed ≤ speedActive.',
+    details:
+      'docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md; trip-start-detection-policy.ts + trip-evidence.helpers.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T22:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r3-start-liveness-ordering-2026-09-06',
     version: '4.9.1070',
     title: 'Trip FSM R3 — Start Liveness Ordering',
