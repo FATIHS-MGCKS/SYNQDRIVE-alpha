@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-06 (registry synchronization gate + central validator)
+**Last updated:** 2026-09-06 (repository-wide module inventory)
 
 ---
 
@@ -16,14 +16,71 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 
 | Module | Mini description | Registry status | Authority-native status | Authority path |
 |--------|------------------|-----------------|-------------------------|----------------|
+| Account & Self-Service | End-user account profile, preferences, and self-service account operations for authenticated users. | `NOT_STARTED` | N/A — inventory only | — |
+| Activity Log & HTTP Audit | Captures HTTP mutation audit trails and exposes activity-log APIs for org and master-admin review. | `NOT_STARTED` | N/A — inventory only | — |
+| AI Platform (Fleet Chat & Tools) | Org-scoped fleet AI chat, LLM gateway, document and vehicle AI tools, limits, and routing. | `NOT_STARTED` | N/A — inventory only | — |
+| Auth API | Tenant authentication API surface including token refresh and auth endpoints backing Clerk integration. | `NOT_STARTED` | N/A — inventory only | — |
 | Automatic Trip Enrichment (ATE) | Orchestrates post-finalize trip behavior enrichment, hardware routing, and reconciliation-driven enrichment chains. | `AUTHORITY_ACTIVE` | `CANONICAL` (per [GRAPH.yaml](knowledge-graphs/automatic-trip-enrichment/GRAPH.yaml)) | [`architecture/knowledge-graphs/automatic-trip-enrichment/`](knowledge-graphs/automatic-trip-enrichment/) |
 | Battery V2 | Documents Battery V2 health model, signal authority, lifecycle, execution, persistence, and consumer contracts. | `AUTHORITY_ACTIVE` | Phase 4 resolution planning · gaps remain open | [`architecture/battery-v2/`](battery-v2/) |
+| Billing (SynqDrive SaaS) | Tenant subscription billing, Stripe SaaS catalog, usage metering, and master billing reconciliation. | `NOT_STARTED` | N/A — inventory only | — |
+| Bookings | Rental booking lifecycle from wizard through handover, eligibility gates, pickup gate, and payment coupling. | `NOT_STARTED` | N/A — inventory only | — |
+| Brakes Health | Brake component lifecycle, wear evidence, recalculation jobs, and brake health APIs for vehicle detail views. | `NOT_STARTED` | N/A — inventory only | — |
+| Business Audit | Durable business-event audit outbox with scheduled processing for operational audit records. | `NOT_STARTED` | N/A — inventory only | — |
+| Business Insights | Detector-based dashboard insight signals such as utilization, shortages, and fleet operational patterns. | `NOT_STARTED` | N/A — inventory only | — |
+| Communication Center | Omnichannel conversation persistence and operator inbox across WhatsApp, SMS, and voice projections. | `NOT_STARTED` | N/A — inventory only | — |
+| Customer Verification (Didit) | Identity verification workflows and Didit webhook handling for rental eligibility. | `NOT_STARTED` | N/A — inventory only | — |
+| Customers | Org-scoped rental customer records, profiles, and customer management APIs. | `NOT_STARTED` | N/A — inventory only | — |
+| Damages | Structured vehicle damage records with pin and image semantics and org-facing damage management. | `NOT_STARTED` | N/A — inventory only | — |
+| Dashboard Utilization | Fleet utilization metrics and dashboard aggregates for rental operations. | `NOT_STARTED` | N/A — inventory only | — |
+| Data Analyse | Advanced org analytics including driving analyses and misuse-case views for permitted roles. | `NOT_STARTED` | N/A — inventory only | — |
+| Data Authorizations | Tenant data-access consent and authorization enforcement for AI and sensitive APIs. | `NOT_STARTED` | N/A — inventory only | — |
+| DIMO Integration | DIMO auth, telemetry, segments, triggers, webhooks, device-connection episodes, and provider gateway. | `NOT_STARTED` | N/A — inventory only | — |
+| Document Extraction (AI Upload) | Shared upload-to-extraction-to-review-to-apply flow for operational document intake. | `NOT_STARTED` | N/A — inventory only | — |
+| Documents | Document storage, legal texts, rental contracts, booking document bundles, retention, and integrity controls. | `NOT_STARTED` | N/A — inventory only | — |
 | Driving Intelligence | Transforms vehicle telemetry and completed trip boundaries into driving-behavior events, operational-load scoring, durable post-trip analysis, misuse signals, and API/UI projections. | `AUTHORITY_ACTIVE` | Retrospective expansion V2 (2026-09-06) · SUBSTANTIAL reconstruction | [`architecture/drivingintelligence/`](drivingintelligence/) |
+| DTC / Error Codes | Diagnostic trouble code storage, knowledge enrichment, alerts, and error-code health surfaces. | `NOT_STARTED` | N/A — inventory only | — |
 | Energy Event Detection (EED) | Owns REFUEL/RECHARGE detection semantics, persistence, coalescing, and energy-event API/UI contracts. | `AUTHORITY_ACTIVE` | `APPROVED_FOR_CANONICAL_MERGE` — PR #1486 merged on `main` (`182731fe48cd25578668f102ed847f4791fbaabd`); authority metadata not yet promoted to `CANONICAL` (see [EED section](#energy-event-detection-eed--kg-eed)) | [`architecture/knowledge-graphs/energy-event-detection/`](knowledge-graphs/energy-event-detection/) |
+| Evaluations Analytics | Entity-scoped evaluation analytics including insights, quality, and recommendation layers. | `NOT_STARTED` | N/A — inventory only | — |
+| Evaluations Finance | Financial evaluation analytics APIs for rental operational finance views. | `NOT_STARTED` | N/A — inventory only | — |
+| Fines | Traffic and parking fine record management for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
+| High Mobility Integration | HM telemetry ingestion, vehicle registration, compatibility intelligence, and webhooks. | `NOT_STARTED` | N/A — inventory only | — |
+| IAM Data Retention | GDPR user deletion, IAM retention policies, and master-admin deletion workflows. | `NOT_STARTED` | N/A — inventory only | — |
+| IAM MFA | Multi-factor authentication enrollment, step-up grants, and MFA administration. | `NOT_STARTED` | N/A — inventory only | — |
+| Insurances | Vehicle insurance policy management and insurance partner channel adapters. | `NOT_STARTED` | N/A — inventory only | — |
+| Integrations Hub | Tenant integrations configuration and connection management surface. | `NOT_STARTED` | N/A — inventory only | — |
+| Invoices | Operational invoice records, issue and send flows, and accounts-receivable management for rentals. | `NOT_STARTED` | N/A — inventory only | — |
+| Notifications | Multi-channel notification evaluation, preferences, delivery outbox, and in-app notification consumption. | `NOT_STARTED` | N/A — inventory only | — |
+| Organizations & Tenancy | Multi-tenant organization profiles, operational settings, and tenant-scoped configuration. | `NOT_STARTED` | N/A — inventory only | — |
+| Outbound Email | Resend-based outbound email for org, platform, and booking-document delivery. | `NOT_STARTED` | N/A — inventory only | — |
+| Parts & Accessories | Parts procurement integrations including Alzura and eBay marketplace adapters. | `NOT_STARTED` | N/A — inventory only | — |
+| Payments (Rental Collections) | Stripe Connect payment collection for booking and organization payment requests. | `NOT_STARTED` | N/A — inventory only | — |
+| Platform Admin | Master-admin operations dashboard, security governance, and cross-tenant platform controls. | `NOT_STARTED` | N/A — inventory only | — |
+| Pricing & Deposits | Rental tariff pricing rules, publish flow, and deposit resolution for checkout. | `NOT_STARTED` | N/A — inventory only | — |
+| Products (Rental Catalog) | Rental product catalog definitions and org product assignments. | `NOT_STARTED` | N/A — inventory only | — |
+| Prospects | Pre-customer prospect and lead records for master-admin sales pipeline. | `NOT_STARTED` | N/A — inventory only | — |
+| Rental Driving Analysis | Rental-period driving analysis aggregation for bookings and drivers consuming trip intelligence. | `NOT_STARTED` | N/A — inventory only | — |
+| Rental Health | Fleet-level health aggregation consuming source vehicle health modules without recalculating. | `NOT_STARTED` | N/A — inventory only | — |
+| Rental Rules | Org-level rental policy and rules configuration governing bookings and operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Scaling Process | Documents horizontal scaling, multi-replica coordination, scheduler leader election, and production scale gates. | `AUTHORITY_ACTIVE` | Bootstrap established · living architecture authority | [`architecture/scaling-process/`](scaling-process/) |
+| Service Cases | Operational service-case tracking linked to fleet maintenance and vendor work. | `NOT_STARTED` | N/A — inventory only | — |
+| Service Events & Compliance | Oil change, TÜV, service intervals, and compliance task materialization for vehicles. | `NOT_STARTED` | N/A — inventory only | — |
+| SMS & Twilio Messaging | SMS conversation persistence and Twilio provider provisioning for messaging channels. | `NOT_STARTED` | N/A — inventory only | — |
+| Stations | Rental station locations, geofencing, booking rules, transfers, and Stations V2 configuration. | `NOT_STARTED` | N/A — inventory only | — |
+| Support | Customer and operator support ticket APIs and in-app support surfaces. | `NOT_STARTED` | N/A — inventory only | — |
 | Tankstellenerkennung | Identifies physical fuel stations after a REFUEL `VehicleEnergyEvent` has been persisted. | `AUTHORITY_ACTIVE` | Bootstrap V1 · incremental/open scientific workstream | [`architecture/tankstellenerkennung/`](tankstellenerkennung/) |
+| Tasks & Work Orders | Work orders, task domain V2, and task automation outbox processing. | `NOT_STARTED` | N/A — inventory only | — |
+| Technical Observations | Operator technical observation records feeding notifications and workflow triggers. | `NOT_STARTED` | N/A — inventory only | — |
+| Tires Health | Tire wear modeling, lifecycle, measurements, health alerts, and tire trip-usage ledger. | `NOT_STARTED` | N/A — inventory only | — |
+| Trip Detection & Lifecycle | Live trip finite-state machine, start and end detection, DIMO segment reconciliation, and route artifacts. | `NOT_STARTED` | N/A — inventory only | — |
+| Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
+| Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
+| Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
+| Vendors | Third-party vendor and workshop directory including geocoding helpers for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
+| Voice Assistant Platform | Voice agent control plane, webhook ingestion, call orchestration, MCP gateway, billing, and protection. | `NOT_STARTED` | N/A — inventory only | — |
+| WhatsApp Business | Meta WhatsApp Business API integration, webhooks, and tenant WhatsApp configuration. | `NOT_STARTED` | N/A — inventory only | — |
+| Workflows | Configurable workflow engine with maker-checker, shadow mode, rollout gates, and audit trails. | `NOT_STARTED` | N/A — inventory only | — |
 
-**Next workstream boundary:** This registry currently inventories only the six structured authorities above. A repository-wide module inventory (adding all discoverable SynqDrive modules with name, mini description, and initial registry status — normally `NOT_STARTED`) is a **separate follow-up workstream**. Do not infer documentation from flat `architecture/*.md` mentions alone.
+**Inventory boundary:** The overview table above is the canonical complete module inventory as of 2026-09-06. Rows with `NOT_STARTED` are inventoried only — they are not audited, Production-verified, or safe for substantive work without following [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). Discovery evidence: [`MODULE_INVENTORY_DISCOVERY_2026-09-06.md`](MODULE_INVENTORY_DISCOVERY_2026-09-06.md). Do not infer module understanding from flat `architecture/*.md` mentions alone.
 
 ---
 
