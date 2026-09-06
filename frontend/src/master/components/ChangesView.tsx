@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r8-observability-forensics-2026-09-06',
+    version: '4.9.1080',
+    title: 'Trip FSM R8 — Observability & Forensic Metadata Contract',
+    summary: [
+      'New recognition/candidate/boundary timing histograms separate worker recognition from EVENT_TIME boundaries.',
+      'synqdrive_trip_duration_seconds replaces mislabeled finalize latency semantics; legacy metrics deprecated in HELP.',
+      'tripFsmForensics R8_V1 durable block; mergeFinalize preserves lifecycleRecovery/R5/R6 metadata on FINALIZE.',
+      'End coordinates resolved at/before canonical endTime; stale provisional coords cleared when no boundary waypoint.',
+      'TrackingRun resultState defaults to stateAtRun; API exposes canonicalEndTime/provisionalLastObservedAt/endTimeSemantics.',
+    ],
+    reason:
+      'R8 P6 remediation — close INV-10/13/15; truthful recognition latency for R9 adaptive polling calibration.',
+    previousBehavior:
+      'Finalize latency measured trip duration; movement latency measured boundary delta; ONGOING endTime ambiguous; NULL tracking run result states.',
+    details:
+      'docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T19:45:00.000Z',
+  },
+  {
     id: 'trip-fsm-r7a-terminal-commit-ambiguity-2026-09-06',
     version: '4.9.1079',
     title: 'Trip FSM R7A — Terminal Mutation Commit-Ambiguity Closure',

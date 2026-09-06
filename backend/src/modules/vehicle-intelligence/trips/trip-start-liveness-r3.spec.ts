@@ -110,6 +110,7 @@ function buildPossibleStartHarness(overrides: Record<string, unknown> = {}) {
       tripEvidencePaths: { inc: jest.fn() },
       tripStartsConfirmed: { inc: jest.fn() },
     },
+    logTripStartTimeline: jest.fn(),
     dimoProviderContext: jest.fn().mockReturnValue({}),
     ...overrides,
   };

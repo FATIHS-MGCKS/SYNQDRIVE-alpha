@@ -18,6 +18,12 @@ export interface TripMapTripData {
   tripStatus: 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   startTime: string;
   endTime?: string | null;
+  canonicalEndTime?: string | null;
+  provisionalLastObservedAt?: string | null;
+  endTimeSemantics?:
+    | 'CANONICAL_EVENT_BOUNDARY'
+    | 'PROVISIONAL_WORKER_OBSERVATION'
+    | 'CANCELLED';
   startLatitude?: number;
   startLongitude?: number;
   endLatitude?: number;
