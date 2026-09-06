@@ -1,0 +1,68 @@
+---
+description: Driving Intelligence canonical authority — read and update architecture/drivingintelligence/
+alwaysApply: true
+---
+
+# DRIVING INTELLIGENCE CANONICAL AUTHORITY
+
+For any task that touches SynqDrive Driving Intelligence, including:
+
+- driving behavior / driving events
+- Driving Impact / drivingStressScore
+- driver/vehicle operational load
+- tire or brake load derived from driving
+- HF telemetry / signal cadence
+- Reference Capture / Flight Recorder
+- HF recovery / block polling
+- Driving Intelligence V2
+- assessability / misuse analysis
+- rental driving analysis
+- DI-related API/UI semantics
+
+the canonical architecture authority is:
+
+`architecture/drivingintelligence/`
+
+## BEFORE making substantive changes
+
+1. Read `architecture/drivingintelligence/README.md`
+2. Read `CURRENT_STATE.md`
+3. Read `AGENT_CONTRACT.md`
+4. Read `COVERAGE_MATRIX.md`
+5. Read the relevant graph/evidence/decision/research documents.
+
+## AFTER every substantive Driving Intelligence change
+
+Update the canonical authority in the **same PR/workstream**.
+
+At minimum assess whether the change requires updates to:
+
+- `CURRENT_STATE.md`
+- `KNOWLEDGE_GRAPH.md` / `graph/*`
+- `WORKSTREAM_HISTORY.md`
+- `COVERAGE_MATRIX.md`
+- `decisions/DECISION_REGISTER.md`
+- `research/CHANGE_LEDGER.md`
+- `research/HYPOTHESIS_REGISTER.md`
+- `research/EXPERIMENT_REGISTER.md`
+- `research/DEFECT_LEDGER.md`
+- `research/OPEN_QUESTIONS.md`
+- `evidence/EVIDENCE_INDEX.md`
+- relevant domain evidence
+
+Do **not** mechanically modify every file. Update only the artifacts whose architectural or epistemic truth changed.
+
+A substantive implementation must never leave `architecture/drivingintelligence/` stale.
+
+## Before completion
+
+```bash
+bash architecture/drivingintelligence/scripts/validate-graph.sh
+bash architecture/drivingintelligence/scripts/validate-docs.sh
+```
+
+Explicitly report:
+
+`DRIVING_INTELLIGENCE_AUTHORITY_UPDATED = YES/NO/N_A`
+
+and explain why.
