@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r7-terminal-resting-recovery-2026-09-06',
+    version: '4.9.1078',
+    title: 'Trip FSM R7 — Terminal RESTING Recovery Hardening',
+    summary: [
+      'TerminalLifecycleCommit NONE/COMPLETED/CANCELLED tracks durable finalize/discard success before RESTING.',
+      'Any post-terminal pre-RESTING failure schedules immediate scheduleFinalize recovery wake (stable FINALIZE queue).',
+      'Post-RESTING ancillary failures do not enqueue unnecessary terminal recovery.',
+      'Recovery FINALIZE short-circuits via existing R2 RECOVERABLE_END_ORPHAN → RESET_TO_RESTING; no second finalizeTrip.',
+      '120s TripTrackingRecoveryScheduler remains second-line fallback (P5-F05 / INV-08).',
+    ],
+    reason:
+      'R7 P6 remediation — COMPLETED/CANCELLED terminal commit without RESTING must not leave FSM stranded until periodic scheduler.',
+    previousBehavior:
+      'FINALIZE catch logged error only; terminal orphan relied on 120s scheduler for RECOVERABLE_END_ORPHAN recovery.',
+    details:
+      'docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-06T14:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r6b-strict-not-committed-proof-2026-09-06',
     version: '4.9.1077',
     title: 'Trip FSM R6B — Strict NOT_COMMITTED Proof Closure',
