@@ -1176,6 +1176,15 @@ nodes:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md
       - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
 
+  - id: DI-EVID-EXP021-TOOLING-001
+    type: evidence
+    title: EXP-021A settlement shadow tooling implementation
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: Persisted BullMQ shadow scheduler; immutable Prisma observations; VehicleTrip end authority; default OFF; dry-run PASS.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
   - id: DI-HYP-018
     type: hypothesis
     title: HF bucket observability limited by settlement age not query window size

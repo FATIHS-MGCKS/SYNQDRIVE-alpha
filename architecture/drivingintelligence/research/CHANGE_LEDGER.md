@@ -183,6 +183,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021A — Settlement shadow tooling (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Status | **IMPLEMENTED_NOT_PHYSICALLY_VALIDATED** |
+| Flag | `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED` default **false** |
+| Scheduler | BullMQ `reference.capture.settlement-shadow` + persisted Prisma schedules + recovery scanner |
+| Storage | `reference_capture_settlement_shadow_*` tables (immutable observations) |
+| Trip authority | Whole-trip shadow ages from **VehicleTrip.endTime** (not session completion) |
+| Bucket identity | `FIELD_PIPE_CANONICAL_ISO_MS` |
+| Tests | 11 focused unit tests PASS; dry-run lifecycle PASS |
+| Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
+
 ## EXP-021 — Settlement shadow experiment design (2026-09-07)
 
 | Event | Detail |

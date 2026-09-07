@@ -1,9 +1,16 @@
 # EXP-021 — Settlement Age Shadow Experiment Design + Preflight Audit
 
-**Date:** 2026-09-07  
-**Status:** DESIGN + PREFLIGHT AUDIT — **no physical drive started**  
-**Vehicle (planned):** KS MX 2024 · token `187336`  
+**Date:** 2026-09-07
+**Status:** IMPLEMENTED_NOT_PHYSICALLY_VALIDATED — tooling + dry-run gate; **no physical drive started**
+**Vehicle (planned example if available):** operator-selected connected vehicle — **not hardcoded**
 **Prior drives:** EXP-019 (10→20→30→60 ascending), EXP-020 (settled geometry matrix)
+
+```
+EXP021_VEHICLE_RUNTIME_CONFIGURABLE = YES
+EXP021_VEHICLE_HARDCODED = NO
+KS_MX_2024_REQUIRED = NO
+PLANNED_EXAMPLE_IF_AVAILABLE = KS MX 2024 (EXP-019/020 only)
+```
 
 > Settlement timing is the primary unresolved variable after EXP-020. This document designs the **next** physical drive and audits implementation readiness. **No production behavior changes.**
 
@@ -239,7 +246,17 @@ DELAY_60_COMPLETENESS_P50 / P95
 
 ## J. Post-trip finalization simulation (CHANNEL 2 extension)
 
-After `stopRecording`, schedule isolated whole-trip queries at:
+After canonical **VehicleTrip** end (not Reference Capture session completion):
+
+```
+POST_TRIP_SHADOW_AGE_AUTHORITY = VEHICLE_TRIP_END
+SESSION_COMPLETION_USED_AS_TRIP_END_PROXY = NO
+```
+
+Query exact same:
+
+- `trip.startTime`
+- `trip.endTime`
 
 ```
 TripEnd + {30, 60, 120, 180, 300, 600}s
@@ -313,16 +330,14 @@ Trip FSM finalize → VehicleTrip COMPLETED persisted
 | `CURRENT_PROD_POST_TRIP_QUERY_STRATEGY` | `SINGLE_WHOLE_TRIP_1S` |
 | `CURRENT_PROD_QUERY_WINDOW_GEOMETRY` | One request `[startTime, endTime]` |
 | `CURRENT_PROD_POST_TRIP_SETTLEMENT_DELAY` | **NONE explicit** — query at worker execution time |
-| `CURRENT_PRODUCTION_POST_TRIP_QUERY_AGE_MS` | **VARIABLE** = `tripCompletedAt → enrichmentWorkerStart`; typically queue latency (seconds–minutes), **not instrumented** |
+| `CURRENT_PRODUCTION_POST_TRIP_QUERY_AGE_MS` | **VARIABLE** = `tripCompletedAt → enrichmentWorkerStart`; **not instrumented** |
+| `CURRENT_PRODUCTION_POST_TRIP_QUERY_AGE_DISTRIBUTION` | **UNKNOWN_UNMEASURED** |
 
-### Representative timing buckets (inferred — not measured in prod DB this task)
+No production DB timing reconstruction was performed in this task. Do not infer query-age buckets without measured evidence.
 
-| Bucket | Likelihood |
-|--------|------------|
-| `<30s` after trip end | Possible under low queue load |
-| `30–60s` | Common |
-| `60–120s` | Possible under load |
-| `>120s` | Possible backlog / retry |
+```
+UNSUPPORTED_PRODUCTION_QUERY_AGE_CLAIMS_REMOVED = YES
+```
 
 **EXP-021 post-trip shadow** will empirically bracket what production *should* wait for.
 
@@ -428,10 +443,17 @@ Bounded vs EXP-019 session (~59 cadence + reads). If unsafe, **reduce probe coun
 | Property | Value |
 |----------|-------|
 | Feature flag | `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED` default **false** |
-| Storage | `/tmp/exp-021/` or session-scoped forensic dir — **not** RC observation watermark |
-| Scheduler | In-process timer queue; survives phase transitions |
+| Storage | PostgreSQL `reference_capture_settlement_shadow_*` tables — **not** RC observation watermark |
+| Scheduler | BullMQ delayed jobs + persisted schedule rows + recovery scanner |
 | Auth | Reuse DIMO JWT path; **read-only** GraphQL |
 | Failure | catch-all; never throw into RC acquisition loop |
+
+```
+SHADOW_SCHEDULE_PERSISTED = YES
+SHADOW_SCHEDULE_RESTART_RECOVERABLE = YES
+IN_MEMORY_TIMER_SOLE_AUTHORITY = NO
+CANONICAL_EXP021_BUCKET_IDENTITY = FIELD_PIPE_CANONICAL_ISO_MS
+```
 
 ### Scheduler pseudocode
 
@@ -443,7 +465,7 @@ onIntervalClosed(probe):
       appendImmutable(snapshot)
 ```
 
-Post-trip shadow: separate scheduler triggered at `sessionCompletedAt`.
+Post-trip shadow: scheduler triggered at **VehicleTrip.endTime** (canonical trip end).
 
 ### Implementation audit
 
@@ -451,13 +473,13 @@ Post-trip shadow: separate scheduler triggered at `sessionCompletedAt`.
 |------------|---------------|
 | RC phase machinery | **YES** |
 | HF Recovery V2 window builder | **YES** (cadence only) |
-| Settlement shadow scheduler | **NO** |
-| Isolated shadow JSONL store | **NO** |
-| Post-trip delayed query scheduler | **NO** |
+| Settlement shadow scheduler | **YES** (EXP-021A) |
+| Isolated shadow persistence | **YES** (Prisma tables) |
+| Post-trip delayed query scheduler | **YES** (VehicleTrip end authority) |
 
 ```
-READY_FOR_EXP021_IMPLEMENTATION_REVIEW = YES (design)
-TOOLING_IMPLEMENTATION_STATUS = NOT_STARTED
+READY_FOR_EXP021_IMPLEMENTATION_REVIEW = YES
+TOOLING_IMPLEMENTATION_STATUS = IMPLEMENTED_NOT_PHYSICALLY_VALIDATED
 ```
 
 **Do not deploy until separate implementation review.**

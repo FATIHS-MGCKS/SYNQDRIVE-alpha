@@ -34,4 +34,6 @@ export const QUEUE_NAMES = {
   ENERGY_REFUEL_STATION_ENRICH: 'energy.refuel.station.enrich',
   /** DIMO LTE_R1 reference capture autonomous runner (Phase 3A.1). */
   REFERENCE_CAPTURE: 'reference.capture.recording',
+  /** EXP-021 settlement shadow — forensic experiment-only delayed observations. */
+  REFERENCE_CAPTURE_SETTLEMENT_SHADOW: 'reference.capture.settlement-shadow',
 } as const;

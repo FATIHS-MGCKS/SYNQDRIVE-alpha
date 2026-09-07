@@ -19,6 +19,7 @@ import {
   ReferenceCaptureSessionRepository,
 } from '../../modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import type { ReferenceCapturePreflightResult } from '../../modules/vehicle-intelligence/reference-capture/reference-capture.types';
+import { ReferenceCaptureSettlementShadowService } from '../../modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
 
 @Processor(QUEUE_NAMES.REFERENCE_CAPTURE, { concurrency: 1 })
 @Injectable()
@@ -31,6 +32,7 @@ export class ReferenceCaptureProcessor extends WorkerHost {
     private readonly acquisitionService: ReferenceCaptureAcquisitionService,
     private readonly runnerService: ReferenceCaptureRunnerService,
     private readonly observationWriter: ReferenceCaptureObservationWriterService,
+    private readonly settlementShadowService: ReferenceCaptureSettlementShadowService,
   ) {
     super();
   }
@@ -102,6 +104,17 @@ export class ReferenceCaptureProcessor extends WorkerHost {
       }
 
       const state = parseAcquisitionState(refreshed.acquisitionStateJson);
+      const tokenId = state.hfCalibrationSeries?.tokenId;
+      if (tokenId) {
+        await this.settlementShadowService.syncCompletedPhasesFromSession({
+          sessionId,
+          organizationId,
+          vehicleId,
+          tokenId,
+          acquisitionStateJson: refreshed.acquisitionStateJson,
+        });
+      }
+
       await this.runnerService.scheduleNextCycle({
         ...job.data,
         cycleNumber: result.cycleNumber,
