@@ -93,30 +93,67 @@
 
 ---
 
-## B. Settlement replay (second observation layer)
+## B. Settlement replay (second observation layer — preserved, not overwritten)
 
 **Method:** READ-ONLY exact-window DIMO replay of all FAST_LOOP + PHASE_NATIVE provenance windows per phase, using identical `queryFrom`/`queryTo` as live capture.  
-**Observed at:** `2026-09-07T05:25:00.745Z` (T+30 eligible: `2026-09-07T05:30:20.016Z`).  
+**Session completed:** `2026-09-07T05:00:20.016Z`  
+**T+30 eligibility:** `2026-09-07T05:30:20.016Z`  
 **Live observations:** NOT rewritten.
 
-| Phase | windows replayed | live unique buckets | settled unique buckets | late buckets | live completeness | live max gap (ms) | settled max gap (ms) | settled P90 (ms) | settled P95 (ms) |
-|-------|------------------|---------------------|------------------------|--------------|-------------------|-------------------|---------------------|------------------|------------------|
-| 10s | 27 | 52 | 102 | 50 | **0.510** | 22766 | 22766 | 3000 | 3000 |
-| 20s | 12 | 160 | 160 | 0 | **1.000** | 168621 | **168621** | 11000 | 18000 |
-| 30s | 10 | 75 | 120 | 45 | **0.625** | 117312 | **117312** | 20741 | 79624 |
-| 60s | 10 | 234 | 234 | 0 | **1.000** | 146879 | **146879** | 20000 | 20000 |
+### B.1 SETTLEMENT_OBSERVATION_T_PLUS_25
+
+**Observed at:** `2026-09-07T05:25:00.745Z` (**T+24m40.729s** — pre-eligibility; preserved as provisional layer)  
+**Artifact:** `/tmp/exp-019-settlement/settlement-closeout-t-plus-25.json`
+
+| Phase | windows | live buckets | T+25 settled buckets | T+25 late vs live | live completeness | T+25 max gap (ms) | T+25 P90 | T+25 P95 |
+|-------|---------|--------------|----------------------|-------------------|-------------------|-------------------|----------|----------|
+| 10s | 27 | 52 | 102 | 50 | 0.510 | 22766 | 3000 | 3000 |
+| 20s | 12 | 160 | 160 | 0 | 1.000 | 168621 | 11000 | 18000 |
+| 30s | 10 | 75 | 120 | 45 | 0.625 | 117312 | 20741 | 79624 |
+| 60s | 10 | 234 | 234 | 0 | 1.000 | 146879 | 20000 | 20000 |
+
+### B.2 SETTLEMENT_OBSERVATION_T_PLUS_30 (true T+30)
+
+**T30_REPLAY_EXECUTED_AT:** `2026-09-07T05:31:57.371Z`  
+**T30_ELIGIBILITY_SATISFIED:** **YES** (executed 5m37s after eligibility)  
+**Artifact:** `/tmp/exp-019-settlement/settlement-closeout-t-plus-30.json`
+
+| Metric | 10s | 20s | 30s | 60s |
+|--------|-----|-----|-----|-----|
+| T+25 settled buckets | 102 | 160 | 120 | 234 |
+| T+30 settled buckets | 102 | 160 | 120 | 234 |
+| **delta T+25→T+30** | **0** | **0** | **0** | **0** |
+| T+25 max gap (ms) | 22766 | 168621 | 117312 | 146879 |
+| T+30 max gap (ms) | 22766 | 168621 | 117312 | 146879 |
+| T+25 P90 (ms) | 3000 | 11000 | 20741 | 20000 |
+| T+30 P90 (ms) | 3000 | 11000 | 20741 | 20000 |
+| T+25 P95 (ms) | 3000 | 18000 | 79624 | 20000 |
+| T+30 P95 (ms) | 3000 | 18000 | 79624 | 20000 |
+
+**T+30 results are identical to T+25** across all phases — settled unique bucket counts, max gaps, P90, and P95 unchanged.
+
+```
+ADDITIONAL_LATE_BUCKETS_AFTER_T25_10 = 0
+ADDITIONAL_LATE_BUCKETS_AFTER_T25_20 = 0
+ADDITIONAL_LATE_BUCKETS_AFTER_T25_30 = 0
+ADDITIONAL_LATE_BUCKETS_AFTER_T25_60 = 0
+
+MAX_GAP_20_PERSISTED_AT_TRUE_T30 = YES
+MAX_GAP_30_PERSISTED_AT_TRUE_T30 = YES
+MAX_GAP_60_PERSISTED_AT_TRUE_T30 = YES
+```
 
 Bucket identity: `providerField|canonicalBucketTimestamp` (all manifest HF fields).
 
-### Max-gap persistence after settlement
+### Max-gap persistence after true T+30 settlement
 
-| Phase | MAX_GAP_PERSISTED_AFTER_SETTLEMENT | Interpretation |
-|-------|-----------------------------------|----------------|
-| 20s | **YES** (168,621 ms unchanged) | **Persistent coverage loss** — not a late-settlement artifact |
-| 30s | **YES** (117,312 ms unchanged) | **Persistent coverage loss** |
-| 60s | **YES** (146,879 ms unchanged) | **Persistent coverage loss** |
+| Phase | MAX_GAP_PERSISTED_AT_TRUE_T30 | Interpretation |
+|-------|------------------------------|----------------|
+| 20s | **YES** (168,621 ms — identical T+25 and T+30) | **Persistent coverage loss** — not a late-settlement artifact |
+| 30s | **YES** (117,312 ms — identical T+25 and T+30) | **Persistent coverage loss** |
+| 60s | **YES** (146,879 ms — identical T+25 and T+30) | **Persistent coverage loss** |
 
-The large live max gaps at 20s/30s/60s **do not shrink** after T+30 settlement replay. They reflect real provider temporal sparsity within phase windows, not merely buckets that arrived late after live capture.
+No additional buckets arrived between T+25 and true T+30. Max gaps unchanged — provider temporal sparsity is stable at and beyond T+30.
 
 ### Zero-result interpretation
 
@@ -173,7 +210,7 @@ Latitude/longitude: **zero SIGNAL_POINT observations** in all phases.
 
 1. **Request-rate reduction is material** when normalized per minute: 55% (20s), 71% (30s), 84% (60s) vs 10s.
 2. **10s overpolls relative to settlement:** 81.5% zero-result ratio; live completeness only 51% after replay — many buckets arrived late on SUCCESS windows, not on zero-result windows.
-3. **Large max gaps at 20s/30s/60s persist after settlement** — these are **not** primarily late-settlement artifacts; they indicate real temporal sparsity risk under slower polling cadence.
+3. **Large max gaps at 20s/30s/60s persist after true T+30 settlement** — T+25 and T+30 replays are **identical**; max gaps unchanged; **not** late-settlement artifacts.
 4. **20s had the worst settled max gap** (168.6s) despite 100% bucket identity match at replay — the gap is in provider data distribution, not capture loss.
 5. **60s** achieved 100% live completeness at replay with lowest request rate (0.83/min) but still exhibits 146.9s max gap.
 6. **Ascending phase order (10→20→30→60)** confounds cadence with route/traffic/time — counterbalanced design recommended.
@@ -210,9 +247,11 @@ Counterbalanced phase order to reduce confounding:
 | Live orchestrator log | `/tmp/exp-016-retry-run.log` (VPS) |
 | Live JSONL | `/tmp/exp-016-retry.jsonl` (VPS) |
 | Live report JSON | `/tmp/exp-016-retry-report.json` (VPS) |
-| Settlement closeout JSON | `/tmp/exp-019-settlement/settlement-closeout.json` (VPS) |
+| Settlement T+25 (provisional) | `/tmp/exp-019-settlement/settlement-closeout-t-plus-25.json` (VPS) |
+| Settlement T+30 (true) | `/tmp/exp-019-settlement/settlement-closeout-t-plus-30.json` (VPS) |
+| T+25 vs T+30 comparison | Identical — see section B.2 |
 | Sealed observations export | `/tmp/exp-019-settlement/observations.jsonl` (VPS) |
 | Provenance ring export | `/tmp/exp-019-settlement/provenance-ring.json` (VPS) |
 | Video anchor | `/tmp/exp-016-video-anchor.txt` (VPS) |
 
-Ephemeral forensic replay executed on VPS at T+25 min; no production runtime code changed.
+Ephemeral forensic replay on VPS; no production runtime code changed. T+25 at `05:25Z` (pre-eligibility); true T+30 at `05:31:57Z`.
