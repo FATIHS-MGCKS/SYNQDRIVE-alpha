@@ -16,10 +16,10 @@
 | DIM-EV-PROD-005 | PRODUCTION_OBSERVATION | Deployed build grep | **R9 SnapshotWakeIntakeService absent** | NOT_ON_PRODUCTION | — |
 | DIM-EV-PROD-006 | PRODUCTION_OBSERVATION | Redis scan `bull:dimo.snapshot*` | Prefix count 5 | CONFIRMED_AT_PRODUCTION_RELEASE | Not queue depth |
 | DIM-EV-PROD-007 | PRODUCTION_OBSERVATION | Redis scan `bull:snapshot.wake*` | Count **0** | NOT_ON_PRODUCTION | Superseded post-R9 deploy — re-verify |
-| DIM-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized scoped provider bootstrap + GET audit | R9 trigger bootstrap **ROLLED_BACK**; legacy OBD/RPM unchanged; 0/6 coverage | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
-| DIM-EV-R9-PERM-001 | PRODUCTION_OBSERVATION | Read-only permission root-cause audit (Identity privileged + DB + GET webhooks) | tokenId **190497** = `FORMER_FLEET_VEHICLE` / excluded; stale SynqDrive mirrors; re-grant remediation **rejected** | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
-| DIM-EV-R9-CANARY-001 | PRODUCTION_OBSERVATION | Authorized five-vehicle R9 canary provider mutation + GET audit | R9 speed/ignition triggers **PASS** — 5/5 active cohort; stableIds `9eeb7158afee`, `5d611d470eab`; 190497 excluded | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
+| DIM-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized scoped provider bootstrap + GET audit | R9 trigger bootstrap **ROLLED_BACK**; legacy OBD/RPM unchanged; 0/6 coverage | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
+| DIM-EV-R9-PERM-001 | PRODUCTION_OBSERVATION | Read-only permission root-cause audit (Identity privileged + DB + GET webhooks) | tokenId **190497** = `FORMER_FLEET_VEHICLE` / excluded; stale SynqDrive mirrors; re-grant remediation **rejected** | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
+| DIM-EV-R9-CANARY-001 | PRODUCTION_OBSERVATION | Authorized five-vehicle R9 canary provider mutation + GET audit | R9 speed/ignition triggers **PASS** — 5/5 active cohort; stableIds `9eeb7158afee`, `5d611d470eab`; 190497 excluded | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 
 ## Cross-reference
 
-Trip Detection indexes R9 wake from branch state: [../trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md](../trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*
+Trip Detection indexes R9 wake from branch state: [../../trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md](../../trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*
