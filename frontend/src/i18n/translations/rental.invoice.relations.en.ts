@@ -1,0 +1,15 @@
+export const rentalInvoiceRelationsEn = {
+  'rental.invoice.relations.section.title': 'Assignment',
+  'rental.invoice.relations.label.template': 'Template',
+  'rental.invoice.relations.fallback.archived': 'Relation archived',
+  'rental.invoice.relations.fallback.deleted': 'Relation deleted',
+  'rental.invoice.relations.fallback.unavailable': 'Data unavailable',
+  'rental.invoice.relations.permission.customer': 'No permission to view customer details',
+  'rental.invoice.relations.permission.booking': 'No permission to view booking details',
+  'rental.invoice.relations.permission.vehicle': 'No permission to view vehicle details',
+  'rental.invoice.relations.permission.generic': 'No permission',
+  'rental.invoice.relations.period.unknown': 'Period unknown',
+  'rental.invoice.relations.period.until': 'until {date}',
+  'rental.invoice.relations.period.from': 'from {date}',
+  'rental.invoice.relations.period.range': '{start} – {end}',
+} as const;

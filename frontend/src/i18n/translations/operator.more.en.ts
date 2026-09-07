@@ -1,0 +1,21 @@
+export const operatorMoreEn = {
+  'operator.more.section.actions': 'Actions',
+  'operator.more.action.createBooking.subtitle': 'Create a new rental booking',
+  'operator.more.action.aiUpload.title': 'AI Upload',
+  'operator.more.action.aiUpload.subtitle': 'Capture documents at the vehicle',
+  'operator.more.action.tireMeasure.title': 'Measure tire tread',
+  'operator.more.action.tireMeasure.subtitle': 'Record tread depth manually',
+  'operator.more.vehiclePicker.title': 'Select vehicle',
+  'operator.more.vehiclePicker.searchInVehicles': 'Search in Vehicles →',
+  'operator.more.section.navigation': 'Navigation',
+  'operator.more.nav.scan': 'Search vehicle / Scan',
+  'operator.more.section.appearance': 'Appearance',
+  'operator.more.appearance.design': 'Theme',
+  'operator.more.theme.system': 'Theme: System default',
+  'operator.more.theme.light': 'Theme: Light',
+  'operator.more.theme.dark': 'Theme: Dark',
+  'operator.more.section.synqdrive': 'SynqDrive',
+  'operator.more.link.webApp': 'Open web app',
+  'operator.more.info.body':
+    'Operator is optimized for mobile devices and tablets. Status and tasks come from the canonical SynqDrive APIs — no separate calculations.',
+} as const;

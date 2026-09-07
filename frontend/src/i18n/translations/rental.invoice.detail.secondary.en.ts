@@ -1,0 +1,33 @@
+export const rentalInvoiceDetailSecondaryEn = {
+  'rental.invoice.detail.secondary.moreInfo.heading': 'More information',
+  'rental.invoice.detail.secondary.description.heading': 'Invoice description',
+  'rental.invoice.detail.secondary.description.hint':
+    'May be visible to the customer on the invoice.',
+  'rental.invoice.detail.secondary.tasks.heading': 'Tasks',
+  'rental.invoice.detail.secondary.tasks.openCount': '({count} open)',
+  'rental.invoice.detail.secondary.tasks.listAria': 'Linked tasks',
+  'rental.invoice.detail.secondary.tasks.doneCount': '{count} completed',
+  'rental.invoice.detail.secondary.audit.heading': 'Origin & audit',
+  'rental.invoice.detail.secondary.provenance.createdBy': 'Created by',
+  'rental.invoice.detail.secondary.provenance.createdVia': 'Created via',
+  'rental.invoice.detail.secondary.provenance.source': 'Source',
+  'rental.invoice.detail.secondary.copyInternalId.aria': 'Copy internal invoice ID to clipboard',
+  'rental.invoice.detail.secondary.copyInternalId.label': 'Copy internal ID',
+  'rental.invoice.detail.secondary.copyInternalId.hint':
+    'Technical identifier — not for customer communication.',
+  'rental.invoice.detail.secondary.notes.heading': 'Internal notes',
+  'rental.invoice.detail.secondary.notes.hint': 'Internal only — not shown on the customer invoice.',
+  'rental.invoice.detail.secondary.notes.readOnly': 'Read-only',
+  'rental.invoice.detail.secondary.notes.placeholder': 'Internal notes about this invoice…',
+  'rental.invoice.detail.secondary.notes.aria': 'Internal notes',
+  'rental.invoice.detail.secondary.notes.empty': 'No internal notes yet.',
+  'rental.invoice.detail.secondary.timeline.heading': 'Timeline',
+  'rental.invoice.detail.secondary.timeline.legacyReducedTitle':
+    'Reduced timeline for older invoices',
+  'rental.invoice.detail.secondary.timeline.legacyReducedBadge': 'Basic timeline',
+  'rental.invoice.detail.secondary.timeline.loading': 'Loading timeline…',
+  'rental.invoice.detail.secondary.timeline.empty': 'No events for this invoice yet.',
+  'rental.invoice.detail.secondary.timeline.listAria': 'Invoice timeline',
+  'rental.invoice.detail.secondary.timeline.sortNewestFirst': 'Newest events first',
+  'rental.invoice.detail.secondary.task.defaultTitle': 'Task',
+} as const;
