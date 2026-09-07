@@ -38,7 +38,11 @@
 | subscribed_both | 0 |
 | missing_both | 6 |
 
-Detail: [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md)
+Detail: [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md), [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md)
+
+**Permission blocker:** tokenId **190497** (VW Golf 2026) — missing DIMO Identity developer-license privilege; SynqDrive consent ACTIVE but provider subscribe returns 403.
+
+**NEXT_GATE:** `DIMO_VEHICLE_PERMISSION_RESOLUTION`
 
 ## Mutations
 

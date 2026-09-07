@@ -84,6 +84,6 @@ PR #1553 adds cross-module webhook contract:
 
 ## Explicit non-claims
 
-- R9 wake behavior **PRODUCTION_VALIDATED** — runtime deployed; **provider trigger coverage NOT validated** (bootstrap ROLLED_BACK @ tokenId=190497 permission)
+- R9 wake behavior **PRODUCTION_VALIDATED** — runtime deployed; **provider trigger coverage NOT validated** (bootstrap ROLLED_BACK; root cause: tokenId **190497** missing DIMO developer-license privilege — see DIM-EV-R9-PERM-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete provider gateway graph

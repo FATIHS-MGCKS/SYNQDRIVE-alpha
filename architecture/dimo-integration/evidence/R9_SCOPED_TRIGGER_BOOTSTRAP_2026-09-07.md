@@ -89,7 +89,15 @@ Production PM2 logs (read-only): multiple `DimoWebhookController` **URL verifica
 
 ## Remaining gap
 
-**NATURAL_R9_WAKE_OBSERVATION** — no R9 speed/ignition triggers remain subscribed; R9 wake ingress on Production (post-#1553) cannot be validated until provider subscribe permission is restored for **all six** cohort vehicles and bootstrap is re-executed to completion.
+**DIMO_VEHICLE_PERMISSION_RESOLUTION** — tokenId **190497** lacks DIMO Identity developer-license privilege (`vehicles(filterBy: { privileged: clientId })` absent). SynqDrive consent mirrors show ACTIVE but provider subscribe API returns `403 Insufficient vehicle permissions`. See [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md).
+
+Until privilege is restored for all six cohort vehicles, **natural R9 wake observation is impossible** and scoped bootstrap must not be retried.
+
+## Bootstrap state reminder
+
+- Result: **ROLLED_BACK**
+- Ephemeral R9 webhook stableIds: **deleted, not active**
+- Coverage: **0/6**
 
 ## Ops script (not committed — Production VPS only)
 
