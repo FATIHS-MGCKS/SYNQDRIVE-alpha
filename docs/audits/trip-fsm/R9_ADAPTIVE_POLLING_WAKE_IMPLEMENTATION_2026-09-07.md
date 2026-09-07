@@ -517,10 +517,14 @@ Prior section **R9 PRE-MERGE GOVERNANCE ALIGNMENT** recorded two conclusions tha
 
 ### Validators (governance correction package)
 
-- `bash architecture/scripts/validate-module-registry.sh`
-- `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`
-- `bash architecture/dimo-integration/scripts/validate-graph.sh`
-- `git diff --check` against pre-correction head `5383391c27c8265c2bff12c068a6f8d527a1102e` — **no backend/frontend runtime changes**
+| Validator | Result |
+|-----------|--------|
+| Trip Detection graph validator (`bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`) | **PASS** |
+| DIMO graph validator (`bash architecture/dimo-integration/scripts/validate-graph.sh`) | **PASS** |
+| Registry validator (`bash architecture/scripts/validate-module-registry.sh`) | **PASS** |
+| `git diff --check` | **PASS** |
+
+Governance-only diff against pre-correction head `5383391c27c8265c2bff12c068a6f8d527a1102e` — **no backend/frontend runtime changes**.
 
 ### Superseded alignment text
 

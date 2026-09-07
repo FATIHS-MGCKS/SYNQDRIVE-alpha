@@ -15,8 +15,9 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` (**does not contain R9**) |
-| **R9_RUNTIME_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` (post-rebase R9 code audited on PR #1553 branch) |
-| **GOVERNANCE_HEAD_SHA** | branch head at governance correction commit time |
+| **AUDIT_BRANCH** | `trip-fsm/r9-adaptive-polling-wake` |
+| **AUDIT_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — post-rebase R9 runtime/code state audited on PR #1553 branch |
+| **PRE_CORRECTION_GOVERNANCE_HEAD** | `5383391c27c8265c2bff12c068a6f8d527a1102e` |
 | **PRODUCTION_AUDITED_AT** | `2026-09-07T02:55:00Z` (read-only SSH session) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` |
@@ -24,7 +25,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPO_PRODUCTION_DRIFT (origin/main)** | Production release is an **ancestor** of `origin/main` @ `a47255148…`. R8 #1549 on `main` is **NOT_ON_PRODUCTION**. |
 | **REPO_PRODUCTION_DRIFT (R9 branch)** | R9 runtime @ `1186e9d23…` includes webhook wake wiring + snapshot-wake module — **NOT_ON_PRODUCTION** at observed release (`SnapshotWakeIntakeService` absent from deployed `dimo-webhook.controller.js`; zero `bull:snapshot.wake*` Redis keys). |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **VALIDATION_STATUS** | Pending post-correction validators |
+| **VALIDATION_STATUS** | `PASS` — `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/dimo-integration/scripts/validate-graph.sh`; `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`; `git diff --check` (final merge metadata seal, 2026-09-07) |
 
 ## Lifecycle phase status
 
