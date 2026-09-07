@@ -2,7 +2,7 @@
 
 **origin/main baseline:** `a4725514866a03099e7a1e485ccf0b7ea37d6fec`
 **R9 audit branch:** `1186e9d23a9b07e24da17b06a72f2614038db77a`
-**Production release:** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac`
+**Production release:** `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994`
 
 | Evidence ID | Source type | Source path | Supported claim | Currentness | Limitations |
 |-------------|-------------|-------------|-----------------|-------------|-------------|
@@ -15,7 +15,8 @@
 | DIM-EV-PROD-004 | PRODUCTION_OBSERVATION | Deployed `dimo-webhook.controller.js` grep | Webhook route present | CONFIRMED_AT_PRODUCTION_RELEASE | — |
 | DIM-EV-PROD-005 | PRODUCTION_OBSERVATION | Deployed build grep | **R9 SnapshotWakeIntakeService absent** | NOT_ON_PRODUCTION | — |
 | DIM-EV-PROD-006 | PRODUCTION_OBSERVATION | Redis scan `bull:dimo.snapshot*` | Prefix count 5 | CONFIRMED_AT_PRODUCTION_RELEASE | Not queue depth |
-| DIM-EV-PROD-007 | PRODUCTION_OBSERVATION | Redis scan `bull:snapshot.wake*` | Count **0** | NOT_ON_PRODUCTION | R9 handoff queue absent |
+| DIM-EV-PROD-007 | PRODUCTION_OBSERVATION | Redis scan `bull:snapshot.wake*` | Count **0** | NOT_ON_PRODUCTION | Superseded post-R9 deploy — re-verify |
+| DIM-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized scoped provider bootstrap + GET audit | R9 trigger bootstrap **ROLLED_BACK**; legacy OBD/RPM unchanged; tokenId **190497** subscribe `403 Insufficient vehicle permissions` | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | [evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 
 ## Cross-reference
 

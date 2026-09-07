@@ -12,7 +12,7 @@ Append-only record for this authority directory.
 | 2026-09-06 | PR #1554 correction pass (manifest, links, phases, evidence schema) | Same | This commit |
 | 2026-09-07 | Post-R9 branch rebased onto `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec` | R9 main integration | Branch `cursor/r9-post-integration-governance-14ea` |
 | 2026-09-07 | Governance correction: separate `origin/main` vs R9 branch vs Production baselines; DIMO Integration bootstrap | R9 pre-merge governance correction | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [dimo-integration/](../dimo-integration/) |
-| 2026-09-07 | Non-destructive merge of `origin/main` @ `feaf1f13559ba906f28bdd8641393227a90880a3`; prior integrated main @ `dc34c9a28d6b4fb2181ed214c81265f38bd45770` preserved as historical | R9 pre-merge main integration | PR #1553 branch `trip-fsm/r9-adaptive-polling-wake` |
+| 2026-09-07 | R9 scoped DIMO trigger bootstrap cross-reference — **ROLLED_BACK**; provider coverage gap recorded | Provider mutation session | [evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 
 **No runtime code changes** in this workstream.
 
