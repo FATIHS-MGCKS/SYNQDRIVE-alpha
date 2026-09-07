@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-07 (M3.1/M3.2/M3.2A canonical evidence seal — PR #1551)  
+**Snapshot date:** 2026-09-07 (M3.2B shadow shutdown evidence acquisition — draft PR)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -24,7 +24,9 @@
 | `M3_1_VALIDATION_BLOCKER` | **SIGNAL_OBSERVABILITY** (DIMO wake-only LV during sleep; 0 post-T0 VALID REST fleet-wide) |
 | M3.2 signal audit (`03:55Z`) | **REST_EVIDENCE_OBSERVABILITY_DEADLOCK=YES**; hybrid evidence model recommended; see `research/M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md` |
 | M3.2A shutdown anchor feasibility (`04:30Z`) | **IMPLEMENTATION_READY=NO**; `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`; **0/13 confirmed**; see `research/M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md` |
-| Canonical seal (`05:30Z`, PR #1551) | **RUNTIME_DIFF=NONE**; `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`; `NEXT_PHASE=M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_OBSERVABILITY`; see `research/M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md` |
+| Canonical seal (`05:30Z`, PR #1551) | **RUNTIME_DIFF=NONE**; `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`; see `research/M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md` |
+| M3.2B shadow shutdown evidence (`2026-09-07`) | **SHADOW_ONLY**; `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED=false` (default); per-field provenance + pessimistic classification; **no authoritative battery impact**; see `research/M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` |
+| `NEXT_PHASE` | **M3.2B rollout** (merge flag-off → deploy → enable shadow → collect natural evidence → decide M3.2C); `M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO` |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

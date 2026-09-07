@@ -26,6 +26,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.2B shadow shutdown evidence acquisition & per-field provenance observability
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2A proved non-atomic LV context binding and 0/13 confirmed post-engine-off pre-sleep samples; no shadow layer to measure per-field timestamp skew or state completeness at natural trip shutdown. |
+| **CHANGE** | Shadow-only module `shutdown-evidence/` — `BatteryShutdownEvidenceObservation` + `BatteryTripShutdownContext` tables; pessimistic evidence/confidence classification; capture window T−10m…T+15m; hooks on LIVE_VOLTAGE classify + trip finalize; flag `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` (default false). |
+| **WHY** | Acquire natural shutdown evidence with explicit per-field provenance before deciding whether M3.2C hybrid model is justified. |
+| **VALIDATION** | Unit tests (classification, idempotency, capture, trip context, authority isolation); graph validator; flag-off = zero writes. |
+| **OBSERVED_EFFECT** | When flag enabled: shadow rows capture `relativeToTripEndMs`, `stateTimestampSkewMs`, `ageMsAtTripEnd`, `evidenceClass`, `confidenceClass`; trip context records `atomicClaim: false`. |
+| **NON_EFFECTS** | `SHADOW_EVIDENCE_CAN_AFFECT_AUTHORITATIVE_BATTERY_STATE=NO`; REST_60M/REST_6H, assessment, publication, health score unchanged; `PRODUCTION_VALIDATED` unchanged; no backfill. |
+| **REMAINING_GAPS** | Natural shadow evidence collection on production (flag enable); forensic evaluation for M3.2C decision. |
+| **DECISION_STATUS** | `M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO`; rollout phases A–F documented; not deployed automatically. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.1/M3.2/M3.2A canonical evidence seal (PR #1551)
 
 | Field | Content |

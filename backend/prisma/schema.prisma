@@ -1736,6 +1736,8 @@ model Organization {
   batteryMeasurements                    BatteryMeasurement[]
   batteryAssessments                     BatteryAssessment[]
   batteryPublications                    BatteryPublication[]
+  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContexts            BatteryTripShutdownContext[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -2943,6 +2945,8 @@ model Vehicle {
   batteryMeasurements                    BatteryMeasurement[]
   batteryAssessments                     BatteryAssessment[]
   batteryPublications                    BatteryPublication[]
+  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContexts            BatteryTripShutdownContext[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -8507,6 +8511,123 @@ model BatteryPublication {
   @@map("battery_publications")
 }
 
+// ── Battery Health V2 M3.2B — shadow shutdown evidence acquisition (observability only) ──
+
+enum BatteryShutdownEvidenceClass {
+  ACTIVE_ALTERNATOR
+  ACTIVE_NON_CHARGING
+  SHUTDOWN_TRANSITION
+  POST_ENGINE_OFF_PRE_SLEEP
+  UNKNOWN_STATE
+  STALE_OR_SKEWED_STATE
+}
+
+enum BatteryShutdownEvidenceConfidenceClass {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+enum BatteryShutdownStateAlignmentClass {
+  ALIGNED
+  PARTIAL
+  SKEWED
+  UNKNOWN
+}
+
+enum BatteryShutdownStateCompleteness {
+  COMPLETE
+  PARTIAL
+  MISSING
+}
+
+/// Shadow-only per-observation shutdown evidence around trip end (M3.2B).
+/// Never feeds assessment, publication, or health scores.
+model BatteryShutdownEvidenceObservation {
+  id                          String                             @id @default(uuid())
+  organizationId              String                             @map("organization_id")
+  vehicleId                   String                             @map("vehicle_id")
+  tripId                      String?                            @map("trip_id")
+  provider                    String                             @default("DIMO")
+  providerObservationAt       DateTime                           @map("provider_observation_at")
+  providerResponseAt          DateTime                           @map("provider_response_at")
+  ingestedAt                  DateTime                           @map("ingested_at")
+  voltage                     Float?                             @map("voltage")
+  voltageObservedAt           DateTime?                          @map("voltage_observed_at")
+  speedKmh                    Float?                             @map("speed_kmh")
+  speedObservedAt             DateTime?                          @map("speed_observed_at")
+  speedTimestampSource        String?                            @map("speed_timestamp_source")
+  ignitionOn                  Boolean?                           @map("ignition_on")
+  ignitionObservedAt          DateTime?                          @map("ignition_observed_at")
+  ignitionTimestampSource     String?                            @map("ignition_timestamp_source")
+  engineRunning               Boolean?                           @map("engine_running")
+  engineRunningObservedAt     DateTime?                          @map("engine_running_observed_at")
+  engineRunningTimestampSource String?                           @map("engine_running_timestamp_source")
+  isLvCharging                Boolean?                           @map("is_lv_charging")
+  isHvCharging                Boolean?                           @map("is_hv_charging")
+  chargingContextObservedAt   DateTime?                          @map("charging_context_observed_at")
+  chargingContextTimestampSource String?                         @map("charging_context_timestamp_source")
+  activeTrip                  Boolean?                           @map("active_trip")
+  activeTripObservedAt        DateTime?                          @map("active_trip_observed_at")
+  activeTripTimestampSource   String?                            @map("active_trip_timestamp_source")
+  tripStartedAt               DateTime?                          @map("trip_started_at")
+  tripEndedAt                 DateTime?                          @map("trip_ended_at")
+  relativeToTripEndMs         Int?                               @map("relative_to_trip_end_ms")
+  vehicleOnline               Boolean?                           @map("vehicle_online")
+  vehicleOnlineObservedAt     DateTime?                          @map("vehicle_online_observed_at")
+  providerLastSeenAt          DateTime?                          @map("provider_last_seen_at")
+  sourceObservationId         String?                            @map("source_observation_id")
+  sourceSnapshotId            String?                            @map("source_snapshot_id")
+  sourceKind                  String                             @default("LIVE_VOLTAGE_CLASSIFY") @map("source_kind")
+  stateTimestampSkewMs        Int?                               @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs     Int?                               @map("max_field_timestamp_skew_ms")
+  stateCompleteness           BatteryShutdownStateCompleteness   @map("state_completeness")
+  stateAlignmentClass         BatteryShutdownStateAlignmentClass @map("state_alignment_class")
+  evidenceClass               BatteryShutdownEvidenceClass       @map("evidence_class")
+  confidenceClass             BatteryShutdownEvidenceConfidenceClass @map("confidence_class")
+  fieldProvenance             Json?                              @map("field_provenance")
+  idempotencyKey              String                             @map("idempotency_key")
+  createdAt                   DateTime                           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_shutdown_evidence_obs_idempotency")
+  @@index([vehicleId, providerObservationAt(sort: Desc)])
+  @@index([tripId, providerObservationAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([evidenceClass])
+  @@map("battery_shutdown_evidence_observations")
+}
+
+/// Immutable shadow snapshot at trip finalization (M3.2B).
+model BatteryTripShutdownContext {
+  id                              String                             @id @default(uuid())
+  organizationId                  String                             @map("organization_id")
+  vehicleId                       String                             @map("vehicle_id")
+  tripId                          String                             @unique @map("trip_id")
+  tripEndedAt                     DateTime                           @map("trip_ended_at")
+  snapshot                        Json                               @map("snapshot")
+  stateTimestampSkewMs            Int?                               @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs         Int?                               @map("max_field_timestamp_skew_ms")
+  stateCompleteness               BatteryShutdownStateCompleteness   @map("state_completeness")
+  stateAlignmentClass             BatteryShutdownStateAlignmentClass @map("state_alignment_class")
+  providerSilenceAfterTripEnd     Boolean                            @default(false) @map("provider_silence_after_trip_end")
+  firstObservationAfterTripEndAt  DateTime?                          @map("first_observation_after_trip_end_at")
+  idempotencyKey                  String                             @map("idempotency_key")
+  createdAt                       DateTime                           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_trip_shutdown_ctx_idempotency")
+  @@index([vehicleId, tripEndedAt(sort: Desc)])
+  @@map("battery_trip_shutdown_contexts")
+}
+
 /// Preflight capability state per provider signal / measurement kind.
 model VehicleBatteryCapability {
   id                   String                  @id @default(uuid())
@@ -9711,6 +9832,8 @@ model VehicleTrip {
   repairs                    TripRepair[]
   rpmWebhookCandidates       RpmWebhookCandidate[]
   batteryMeasurementSessions BatteryMeasurementSession[]
+  batteryShutdownEvidenceObservations BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContext BatteryTripShutdownContext?
   dimoBrakingEventIntakes    DimoBrakingEventIntake[]
   brakingEventLedgerEntries  BrakingEventLedger[]
   routeArtifact              VehicleTripRouteArtifact?

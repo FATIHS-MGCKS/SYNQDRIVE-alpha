@@ -12,6 +12,7 @@ import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provid
 import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
 import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
 import { BatteryV2LvRestSessionProducer } from '../battery-health/jobs/battery-v2-lv-rest-session.producer';
+import { ShutdownEvidenceTripContextService } from '../battery-health/shutdown-evidence/shutdown-evidence-trip-context.service';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import {
@@ -237,6 +238,8 @@ export class TripDetectionOrchestrationService {
     private readonly detectorRegistry: DetectorRegistry,
     @Inject(forwardRef(() => TripLifecycleRecoveryService))
     private readonly lifecycleRecovery: TripLifecycleRecoveryService,
+    @Optional()
+    private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -3368,6 +3371,19 @@ export class TripDetectionOrchestrationService {
         } catch (e) {
           this.logger.warn(
             `V2 finalize: LV rest session open enqueue failed for trip ${finalizedTripId}: ${e}`,
+          );
+        }
+
+        try {
+          await this.shutdownEvidenceTripContext?.captureAtTripFinalization({
+            organizationId,
+            vehicleId,
+            tripId: finalizedTripId,
+            tripEndedAt: finalizedEndTime,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `V2 finalize: shutdown evidence trip context capture failed for trip ${finalizedTripId}: ${e}`,
           );
         }
       }

@@ -7,7 +7,9 @@ import { BatteryV2JobObservabilityService } from './battery-v2-job-observability
 import { BatteryV2AssessDispatchReservationService } from './battery-v2-assess-dispatch-reservation.service';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
+import { BatteryShutdownEvidenceModule } from '../shutdown-evidence/shutdown-evidence.module';
 import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
+import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
 import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
@@ -49,6 +51,7 @@ const BATTERY_V2_JOB_HANDLERS = [
 @Module({
   imports: [
     BatteryV2JobsProducerModule,
+    BatteryShutdownEvidenceModule,
     forwardRef(() => DimoModule),
     forwardRef(() => VehicleIntelligenceModule),
   ],

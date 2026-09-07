@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isBatteryV2HvFallbackChargeSessionEnabled, isBatteryV2HvRechargeSessionEnabled, isBatteryV2LegacyRestCaptureEnabled } from '@config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
@@ -15,6 +15,7 @@ import { BatteryV2ProviderError } from './battery-v2-job.errors';
 import { buildAssessmentJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
+import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
 
 function parseIso(value: string | null | undefined): Date | undefined {
   if (!value) return undefined;
@@ -59,6 +60,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly lvLiveVoltage: LvLiveVoltageIngestionService,
     private readonly lvRestBridge: LvRestWindowIngestionBridgeService,
+    @Optional()
+    private readonly shutdownEvidenceCapture?: ShutdownEvidenceCaptureService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -81,6 +84,14 @@ export class BatteryV2SnapshotIngestionService {
         `LIVE_VOLTAGE persistence failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
       );
     });
+
+    await this.shutdownEvidenceCapture
+      ?.captureFromObservationClassify(payload)
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `Shutdown evidence shadow capture failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+        );
+      });
 
     await this.lvRestBridge.processObservationCycle(
       payload.organizationId,
