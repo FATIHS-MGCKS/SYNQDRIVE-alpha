@@ -184,7 +184,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## Unresolved validation items
 
-- Live 10/20/30/60s HF calibration — **EXP-019 + EXP-020 complete** (N=1); EXP-021 shadow settlement + counterbalanced drive recommended
+- Live 10/20/30/60s HF calibration — **EXP-019 + EXP-020 complete**; **EXP-021 designed** (settlement shadow + counterbalanced 60→10); physical drive not started
 - `HF_RECOVERY_POLICY_V2_ENABLED` production canary
 - V2 full stage DAG under production load
 - Natural fleet-scale block polling density proof

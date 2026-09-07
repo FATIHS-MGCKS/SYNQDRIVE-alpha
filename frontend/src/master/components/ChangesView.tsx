@@ -339,6 +339,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'NO cadence conclusion (N=1); HF_30S_BLOCK_POLLING_VALIDATED=NO; VIDEO_GT_VERIFIED=YES (5 gap + 8 control windows).',
       'Bias-control pass: gap-conditioned GT vs video-first controls — CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn.',
       'EXP-020 window geometry: W060–W300 identical union; P1 whole-trip optimal; P50 first-obs age ~27s vs 8s live delay.',
+      'EXP-021 design: settlement shadow (8×60s probes × 6 ages) + counterbalanced 60→10 cadence; 446 union PARTIAL; idempotence IDENTICAL; tooling NOT implemented.',
       'HF_SOLE_HIGH_FIDELITY_AUTHORITY=NO in gaps; HF_USEFUL_AS_PARTIAL_AUTHORITY=YES.',
       'Production HF authority restored to LEGACY post-run.',
     ],

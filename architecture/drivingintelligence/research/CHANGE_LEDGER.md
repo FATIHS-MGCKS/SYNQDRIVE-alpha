@@ -182,7 +182,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Hypotheses | H1/H2 NOT_SUPPORTED; H3 SUPPORTED; H4 CONTRADICTED (sole cause); H5 SUPPORTED (video fidelity) |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
-| Replay | **T+25** `05:25Z` (provisional) + **true T+30** `05:31:57Z` — **identical**; max gaps persist |
-| Rate metrics | Normalized per-minute: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min |
-| Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |
-| Evidence | `evidence/reference-capture/LIVE_HF_CALIBRATION_KS_MX_2024_10_20_30_60_2026-09-07.md` |
+
+## EXP-021 — Settlement shadow experiment design (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DESIGNED** — preflight audit only; **no physical drive** |
+| Channels | CADENCE 60→30→20→10 (counterbalanced) + SETTLEMENT_SHADOW (isolated) |
+| Probes | 8 fixed 60s intervals × ages +30/+60/+120/+180/+300/+600s |
+| Post-trip shadow | TripEnd + {30,60,120,180,300,600}s whole-trip queries |
+| 446 union audit | **PARTIAL** — ms-key artifact; 165+140+141 disjoint keys; ~36 floor-second overlap |
+| Idempotence | Q1/Q2/Q3 **IDENTICAL** on settled EXP-019 interval |
+| Tooling | Shadow scheduler **NOT implemented** — design spec only |
+| Load | ~113 total requests (59 cadence + 48 shadow + 6 post-trip) |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO; shadow tooling NOT deployed |
+| Evidence | `EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md`; `EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md` |

@@ -1156,3 +1156,34 @@ nodes:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md
     evidence:
       - DI-EVID-EXP020-WINDOW-001
+
+  - id: DI-EVID-EXP021-DESIGN-001
+    type: evidence
+    title: EXP-021 settlement shadow experiment design
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Dual isolated channels (60→10 cadence + fixed-interval settlement shadow); 8 probes × 6 ages; post-trip shadow; ~113 requests; tooling not implemented.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
+  - id: DI-EVID-EXP021-PREFLIGHT-001
+    type: evidence
+    title: EXP-021 preflight — 446 union audit + provider idempotence
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: 446 reference union PARTIAL (ms-key disjoint components); identical settled queries Q1/Q2/Q3 Jaccard 1.0.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
+  - id: DI-HYP-018
+    type: hypothesis
+    title: HF bucket observability limited by settlement age not query window size
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: EXP-020 P50 first-obs ~27s vs 8s live delay; EXP-021 prospective shadow probes will test directly.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP020-WINDOW-001
+      - DI-EVID-EXP021-DESIGN-001
