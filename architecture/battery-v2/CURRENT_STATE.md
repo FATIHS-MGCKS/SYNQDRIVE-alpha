@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-07 (M3.2B shadow shutdown evidence acquisition — draft PR)  
+**Snapshot date:** 2026-09-07 (M3.2B Phase B deployed flag-off; evidence semantics hardened PR #1562)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -25,8 +25,8 @@
 | M3.2 signal audit (`03:55Z`) | **REST_EVIDENCE_OBSERVABILITY_DEADLOCK=YES**; hybrid evidence model recommended; see `research/M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md` |
 | M3.2A shutdown anchor feasibility (`04:30Z`) | **IMPLEMENTATION_READY=NO**; `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`; **0/13 confirmed**; see `research/M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md` |
 | Canonical seal (`05:30Z`, PR #1551) | **RUNTIME_DIFF=NONE**; `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`; see `research/M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md` |
-| M3.2B shadow shutdown evidence (`2026-09-07`, PR #1560) | **SHADOW_ONLY** + **provenance hardened**; `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED=false`; no fabricated provider timestamps; no future silence claims at trip finalize; see `research/M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` |
-| `NEXT_PHASE` | **M3.2B rollout** (merge flag-off → deploy → enable shadow → collect natural evidence → decide M3.2C); `M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO` |
+| M3.2B shadow shutdown evidence (`2026-09-07`, PR #1560) | **DEPLOYED flag-off** @ `0ba96e03` release `20260907204434_v4994`; Phase B **PASS** (`M3_2B_PHASE_B=PASS`); schema live; 0 shadow writes; shadow flag absent (effective false); **no observed authoritative regression** in observation window; **event-conditioned authoritative equivalence NOT proven** (REST/assess/pub paths not exercised post-deploy); see `research/M3_2B_PHASE_B_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-07.md` |
+| `NEXT_PHASE` | **Phase C** (enable shadow flag → collect natural evidence → decide M3.2C); `PHASE_C_ALLOWED=YES`; `M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO` |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
