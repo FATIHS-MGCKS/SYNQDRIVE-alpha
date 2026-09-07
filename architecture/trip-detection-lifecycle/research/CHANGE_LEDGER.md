@@ -14,7 +14,8 @@ Append-only record for this authority directory.
 | 2026-09-07 | Governance correction: separate `origin/main` vs R9 branch vs Production baselines; DIMO Integration bootstrap | R9 pre-merge governance correction | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [dimo-integration/](../dimo-integration/) |
 | 2026-09-07 | Non-destructive merge of `origin/main` @ `feaf1f13559ba906f28bdd8641393227a90880a3`; prior integrated main @ `dc34c9a28d6b4fb2181ed214c81265f38bd45770` preserved as historical | R9 pre-merge main integration | PR #1553 branch `trip-fsm/r9-adaptive-polling-wake` |
 | 2026-09-07 | R9 scoped DIMO trigger bootstrap cross-reference — **ROLLED_BACK**; provider coverage gap recorded | Provider mutation session | [evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
-| 2026-09-07 | R9 permission root-cause audit — tokenId **190497** Identity privileged gap | Read-only provider audit | [evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
+| 2026-09-07 | R9 permission root-cause audit — tokenId **190497** classified `FORMER_FLEET_VEHICLE`; re-grant rejected | Read-only provider audit | [evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
+| 2026-09-07 | R9 five-vehicle canary provider mutation — **PASS** (5/5 speed+ignition; 190497 excluded) | Provider mutation session | [evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 
 **No runtime code changes** in this workstream.
 

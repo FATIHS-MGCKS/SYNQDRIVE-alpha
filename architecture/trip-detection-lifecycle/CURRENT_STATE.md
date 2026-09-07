@@ -192,8 +192,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 ## Explicit non-claims
 
 - Production validation of R1–R8 (separate from repo/test evidence)
-- Production validation of R9 adaptive polling wake — **runtime deployed** @ `0ba96e03…`; **provider speed/ignition trigger coverage absent** (bootstrap ROLLED_BACK; 0/6)
-- Natural R9 wake delivery — **impossible** until `DIMO_VEHICLE_PERMISSION_RESOLUTION` (tokenId **190497** privilege gap)
+- Production validation of R9 adaptive polling wake — **runtime deployed** @ `0ba96e03…`; **provider speed/ignition trigger wiring validated** for five-vehicle active cohort (5/5; see TDL-EV-R9-CANARY-001)
+- Natural R9 wake delivery — **NOT validated** until actual drive/ignition provider events observed (`NATURAL_R9_WAKE_OBSERVATION`)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)

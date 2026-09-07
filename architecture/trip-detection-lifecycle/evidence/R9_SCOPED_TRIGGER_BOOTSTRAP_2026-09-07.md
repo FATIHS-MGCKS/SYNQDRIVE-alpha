@@ -5,10 +5,12 @@ Canonical provider mutation record: [DIMO Integration `R9_SCOPED_TRIGGER_BOOTSTR
 | Field | Value |
 |-------|-------|
 | **Outcome** | **ROLLED_BACK** |
-| **Blocker** | DIMO `POST …/subscribe/{assetDID}` → `403 Insufficient vehicle permissions` for **tokenId=190497** |
-| **Production R9 wake runtime** | Deployed @ `0ba96e03…` includes R9 code path; **provider trigger coverage still absent** |
-| **Coverage after rollback** | subscribed_speed=0, subscribed_ignition=0, subscribed_both=0, missing_both=6 |
+| **Blocker (historical six-vehicle attempt)** | tokenId **190497** — former fleet vehicle; excluded from active cohort |
+| **Active R9 cohort** | 5 tokenIds — see [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../../dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
+| **Production R9 wake runtime** | Deployed; **five-vehicle provider trigger coverage PASS** @ stableIds `9eeb7158afee`, `5d611d470eab` |
+| **Coverage (active cohort)** | subscribed_speed=5, subscribed_ignition=5, subscribed_both=5, missing_both=0 |
+| **NEXT_GATE** | `NATURAL_R9_WAKE_OBSERVATION` |
 
-Trip Detection cannot claim R9 provider-wake latency benefit until DIMO Integration completes **DIMO_VEHICLE_PERMISSION_RESOLUTION** for tokenId **190497**, then a successful scoped bootstrap.
+Trip Detection cannot claim natural R9 wake validation until an actual drive/ignition event occurs on the five-vehicle canary cohort.
 
-**NEXT_GATE:** `DIMO_VEHICLE_PERMISSION_RESOLUTION` (not natural observation until 6/6 subscribable + bootstrap PASS)
+**NEXT_GATE:** `NATURAL_R9_WAKE_OBSERVATION`

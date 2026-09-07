@@ -89,15 +89,15 @@ Production PM2 logs (read-only): multiple `DimoWebhookController` **URL verifica
 
 ## Remaining gap
 
-**DIMO_VEHICLE_PERMISSION_RESOLUTION** — tokenId **190497** lacks DIMO Identity developer-license privilege (`vehicles(filterBy: { privileged: clientId })` absent). SynqDrive consent mirrors show ACTIVE but provider subscribe API returns `403 Insufficient vehicle permissions`. See [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md).
+**NATURAL_R9_WAKE_OBSERVATION** — five-vehicle canary provider wiring **PASS** (stableIds `9eeb7158afee`, `5d611d470eab`); natural delivery not yet observed. See [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md).
 
-Until privilege is restored for all six cohort vehicles, **natural R9 wake observation is impossible** and scoped bootstrap must not be retried.
+**Stale internal data gap (OPEN):** tokenId **190497** — `FORMER_FLEET_VEHICLE`; SynqDrive mirrors stale; excluded from cohort; not cleaned up in this task.
 
-## Bootstrap state reminder
+## Bootstrap state (six-vehicle attempt — historical)
 
 - Result: **ROLLED_BACK**
-- Ephemeral R9 webhook stableIds: **deleted, not active**
-- Coverage: **0/6**
+- Ephemeral R9 webhook stableIds from that attempt: **deleted, not active**
+- Coverage after six-vehicle attempt: **0/6**
 
 ## Ops script (not committed — Production VPS only)
 

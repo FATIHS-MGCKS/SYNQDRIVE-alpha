@@ -175,8 +175,20 @@ GROUP BY run_type ORDER BY count(*) DESC;
 - Sustained application log forensics
 - ClickHouse trip-assist mirror contents
 - Per-vehicle traces, coordinates, VINs, driver identities
-- DIMO provider subscription / webhook registration state
 - Full env flag inventory beyond trip-adjacent sample
+
+## R9 provider trigger coverage (cross-ref @ `2026-09-07T22:35:00Z`)
+
+Canonical detail: [DIMO Integration PRODUCTION_BASELINE.md](../../dimo-integration/evidence/PRODUCTION_BASELINE.md), [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md)
+
+| Metric | Value |
+|--------|---------|
+| Active R9 cohort | **5** |
+| subscribed_both | **5** |
+| missing_both | **0** |
+| tokenId 190497 R9 subscribed | **NO** |
+| Natural R9 wake validated | **NO** |
+| **NEXT_GATE** | `NATURAL_R9_WAKE_OBSERVATION` |
 
 ## Sanitization note
 

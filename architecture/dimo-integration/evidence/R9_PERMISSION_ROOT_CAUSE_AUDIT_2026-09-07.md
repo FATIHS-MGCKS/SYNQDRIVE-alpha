@@ -9,13 +9,19 @@
 | **SynqDrive vehicle ref** | `c43c3b45…` — Volkswagen Golf 2026 (`vehicleRef` prefix only; plate/customer data omitted) |
 | **Organization ref** | `faa710c9…` (same org as cohort) |
 
-## Executive summary
+## Executive summary (corrected 2026-09-07)
 
-The R9 bootstrap **ROLLED_BACK** because **tokenId=190497** is **not privileged for the SynqDrive developer license** in DIMO Identity, while the other five cohort vehicles are. SynqDrive internal `VehicleProviderConsent` rows show **ACTIVE** for all six, but DIMO's Vehicle Triggers subscribe API enforces **developer-license vehicle privilege**, not SynqDrive DB consent alone.
+Initial audit interpreted tokenId **190497** as requiring DIMO developer-license re-grant. **Owner clarification supersedes that remediation:** tokenId **190497** is a **FORMER_FLEET_VEHICLE** — no longer a current connected fleet vehicle and **must not** be reauthorized, reconnected, or included in R9 coverage.
 
-**Current R9 coverage:** **0/6**. **Natural R9 observation is impossible** until privilege is restored for tokenId=190497 (or cohort policy changes).
+The prior subscribe **403** for tokenId=190497 is **expected** for a former vehicle with stale SynqDrive mirrors (AVAILABLE, CONNECTED, active consent, active data-source link). That drift is a **separate data-integrity cleanup gap** — not an R9 blocker.
 
-**NEXT_GATE:** `DIMO_VEHICLE_PERMISSION_RESOLUTION`
+**Active R9 cohort (authorized):** exactly five Identity-privileged tokenIds — 186946, 187336, 187361, 187784, 192922.
+
+**Rejected remediation:** re-grant developer-license privilege for tokenId=190497.
+
+**NEXT_GATE:** `NATURAL_R9_WAKE_OBSERVATION` — five-vehicle canary **PASS**; see [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md)
+
+## Historical comparison matrix (sanitized, pre-correction context)
 
 ## Comparison matrix (sanitized)
 
@@ -25,7 +31,7 @@ The R9 bootstrap **ROLLED_BACK** because **tokenId=190497** is **not privileged 
 | 187336 | Mercedes C 63 2018 | **YES** | ACTIVE | ACTIVE | 3 | allowed |
 | 187361 | Audi A4 2016 | **YES** | ACTIVE | ACTIVE | 3 | allowed |
 | 187784 | VW Arteon 2020 | **YES** | ACTIVE | ACTIVE | 3 | allowed |
-| **190497** | **VW Golf 2026** | **NO** | ACTIVE | ACTIVE | 3 (historical) | **403** |
+| **190497** | **VW Golf 2026** | **NO** (former fleet — excluded) | ACTIVE *(stale mirror)* | ACTIVE | 3 (historical) | **403 expected** |
 | 192922 | VW Tiguan 2026 | **YES** | ACTIVE | ACTIVE | 2 | allowed |
 
 ### Permission difference (190497 vs subscribable five)
@@ -41,33 +47,28 @@ The R9 bootstrap **ROLLED_BACK** because **tokenId=190497** is **not privileged 
 | DIMO owner in `raw_json` (sanitized) | `0x…405511` | `0x…405511` (same on-chain owner) |
 | New webhook subscribe via API | **403 Insufficient vehicle permissions** | allowed (historical links; re-subscribe returns `400 Already subscribed` on RPM probe) |
 
-**Conclusion:** SynqDrive consent/org-auth mirrors are **insufficient** for Vehicle Triggers subscribe. The decisive gap is **missing developer-license privilege** for tokenId=190497 at DIMO Identity. Historical webhook links (June–July 2026) remain visible but **new** subscribe calls fail — consistent with privilege revoked or never granted for this token after a vehicle lifecycle change.
+**Conclusion (corrected):** tokenId **190497** lacks Identity developer-license privilege because it is a **former fleet vehicle**, not because R9 configuration failed. SynqDrive DB mirrors for 190497 are **stale** and must not define the active R9 cohort. The five privileged vehicles are the authoritative Production R9 canary cohort.
 
-## Root cause
+## Root cause (corrected business interpretation)
 
-**DIMO developer-license vehicle privilege not granted (or no longer active) for tokenId=190497**, while SynqDrive operational consent records were not reconciled to this provider-side grant state.
+| Layer | Finding |
+|-------|---------|
+| **Provider (DIMO Identity)** | tokenId **190497** absent from `privileged` list — **expected** for former fleet vehicle |
+| **SynqDrive DB (stale)** | 190497 still shows AVAILABLE + CONNECTED + active consent + active link — **data-integrity drift** |
+| **R9 bootstrap failure (six-vehicle attempt)** | Fail-closed on 190497 subscribe 403 — **correct** under obsolete six-vehicle cohort assumption |
 
 This is **not** an R9 signal/callback/configuration defect.
 
-## Required remediation
+## Required remediation (superseded — do not execute)
 
-1. **Primary:** Vehicle owner (DIMO account holding privilege grant) must **re-grant developer-license privilege** to SynqDrive's `DIMO_CLIENT_ID` for tokenId **190497** via DIMO owner flow / Developer Console vehicle sharing (Identity `privileged` grant).
-2. **Verify:** Re-run Identity GraphQL `vehicles(filterBy: { privileged: clientId })` — tokenId **190497** must appear before any bootstrap retry.
-3. **Then:** Re-execute authorized scoped R9 trigger bootstrap (separate task) only after all six tokens are API-subscribable.
-4. **Optional SynqDrive hygiene:** Reconcile `VehicleProviderConsent` / provider-link projection with Identity privileged state so future drift is visible before bootstrap (documentation gap only in this PR).
+~~Re-grant developer-license privilege for tokenId=190497~~ — **REJECTED** per owner clarification (former fleet vehicle).
 
-| Remediation class | Required |
-|-------------------|----------|
-| User / vehicle-owner action in DIMO | **YES** |
-| DIMO-side privilege mutation (owner grant) | **YES** |
-| SynqDrive DB mutation | **NO** (for permission fix itself) |
-| Credential refresh alone | **NO** (developer JWT auth succeeded) |
-| Application entitlement correction | **NO evidence** |
-| Ownership correction | **NO** (same sanitized owner hash as cohort) |
-
-## Safe five-vehicle canary
-
-**YES** — tokens 186946, 187336, 187361, 187784, 192922 are Identity-privileged and API-subscribable. A **partial** canary would violate the authorized six-vehicle bootstrap contract; documented here for operational awareness only.
+| Remediation class | Required for R9 canary |
+|-------------------|------------------------|
+| Exclude 190497 from R9 cohort | **YES** (policy) |
+| Five-vehicle scoped bootstrap | **YES** (authorized separate task) |
+| SynqDrive stale vehicle record cleanup | **Separate gap** — not in R9 canary task |
+| Re-authorize 190497 in DIMO | **NO — rejected** |
 
 ## Bootstrap state (unchanged)
 
