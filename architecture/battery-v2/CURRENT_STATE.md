@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-06 (M3.1 corrected Stage-2 — ≥6h validation + lifecycle audit + KS MX REST_60M maturity probe complete)  
+**Snapshot date:** 2026-09-07 (M3.2A shutdown anchor feasibility audit complete)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -23,6 +23,7 @@
 | `M3_1_STATUS` | **STAGE2_ACTIVE_PENDING_NATURAL_E2E_EVIDENCE** |
 | `M3_1_VALIDATION_BLOCKER` | **SIGNAL_OBSERVABILITY** (DIMO wake-only LV during sleep; 0 post-T0 VALID REST fleet-wide) |
 | M3.2 signal audit (`03:55Z`) | **REST_EVIDENCE_OBSERVABILITY_DEADLOCK=YES**; hybrid evidence model recommended; see `research/M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md` |
+| M3.2A shutdown anchor feasibility (`04:30Z`) | **IMPLEMENTATION_READY=NO**; `POST_ENGINE_OFF_PRE_SLEEP=PARTIAL` (0/13 confirmed); trip-end not PRIMARY until state-verifiable; `IMPLEMENTATION_DECISION=HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA`; see `research/M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md` |
 | `PRODUCTION_VALIDATED` | **PENDING_NATURAL_E2E_EVIDENCE** |
 | `CANONICAL_REST_PIPELINE` | **ON** (Stage-2 contract) |
 | `LEGACY_REST_CAPTURE` | **OFF** |
@@ -30,7 +31,7 @@
 | PKG-01 | original cohort 19+5=24; 5 stale inert; 0 pre-T0 unsafe work since T0 |
 | Connected fleet | 6 DIMO vehicles (full fleet, no subset) |
 
-See `research/M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md`, `research/M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`, `research/M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md`, `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`.
+See `research/M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md`, `research/M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md`, `research/M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`, `research/M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`, `research/M3_1_STAGE2_6H_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_REST_LIFECYCLE_FORENSIC_AUDIT_2026-09-06.md`, `research/M3_1_STAGE2_T30_PRODUCTION_VALIDATION_2026-09-06.md`, `research/M3_1_STAGE2_CORRECTED_ACTIVATION_EVIDENCE_2026-09-05.md`.
 
 ## Historical M3.1 invalid activation (superseded — do not use for validation T0)
 

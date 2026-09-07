@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.2A shutdown anchor semantics & hybrid evidence feasibility audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2 recommended hybrid model with trip-end shutdown anchor as PRIMARY; machine-readable `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES`; KS MX trip-end 12.15V classified ambiguously. |
+| **CHANGE** | Read-only feasibility audit @ `2026-09-07T04:30:00Z` — 13 post-T0 ICE trips (4 vehicles), timestamp semantics trace, per-trip shutdown classification, confidence contract, revised evidence hierarchy. |
+| **WHY** | M3.2 primary evidence not implementation-ready; resolve contradiction between YES flag and KS MX `engineRunning=true` / `hasActiveTrip=true` at trip end. |
+| **VALIDATION** | Production DB read-only forensics + `buildRestTargetContext()` code trace; graph validator PASS. |
+| **OBSERVED_EFFECT** | **0/13** trips meet confirmed post-engine-off pre-sleep (trip finalized + eng/ign off). HMÜ: 4 partial shutdown-transition candidates. KS MX: eng=true at trip end. Context fields not atomic with LV (`SNAPSHOT_FIELDS_ATOMIC=NO`). Trip-end **not** suitable as PRIMARY. |
+| **NON_EFFECTS** | No runtime/flag/PM2/DB mutation; M3.1 blocker unchanged; PR #1551 remains draft. |
+| **REMAINING_GAPS** | Trip-finalized shutdown samples; state timestamp metadata on measurements; multi-vehicle confirmed cohort; in-window REST during sleep (fleet 0 VALID). |
+| **DECISION_STATUS** | `IMPLEMENTATION_DECISION=HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA`; `IMPLEMENTATION_READY=NO`; M3.2 errata: `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL`, `CONFIRMED=NO`. |
+| **EVIDENCE** | `M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.2 REST signal observability & evidence acquisition architecture audit
 
 | Field | Content |
