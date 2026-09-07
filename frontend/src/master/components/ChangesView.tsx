@@ -36,6 +36,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-2b-shutdown-evidence-shadow-2026-09-07',
+    version: '4.9.1090',
+    title: 'Battery V2 M3.2B — Shadow shutdown evidence acquisition & per-field provenance',
+    summary: [
+      'Shadow-only `BatteryShutdownEvidenceObservation` + `BatteryTripShutdownContext` tables capture per-field timestamps, skew, and pessimistic evidence classes around natural ICE trip shutdown.',
+      'Feature flag `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` defaults false — zero production writes when off; no assessment, publication, REST quality, or health score impact.',
+      'Hooks: LIVE_VOLTAGE classify observation capture (T−10m…T+15m window) + immutable trip-finalized context snapshot with explicit `atomicClaim: false`.',
+      'Evidence classes: ACTIVE_ALTERNATOR, ACTIVE_NON_CHARGING, SHUTDOWN_TRANSITION, POST_ENGINE_OFF_PRE_SLEEP, UNKNOWN_STATE, STALE_OR_SKEWED_STATE; confidence HIGH/MEDIUM/LOW/INSUFFICIENT only.',
+      'Idempotent keys suppress duplicate rows across pollers/reconciliation/replay. Prometheus counters for observation/context creation and post-engine-off candidates.',
+      'Provenance hardening: no fabricated provider LV timestamps; null speed cannot qualify POST_ENGINE_OFF; alignment excludes ingest/unknown clocks; time-local post-trip observation fields only.',
+      'M3.2C hybrid implementation blocked until natural shadow evidence collected (`M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO`).',
+    ],
+    reason:
+      'M3.2A proved LV context fields are not atomic and 0/13 confirmed post-engine-off pre-sleep samples — need measurable shadow provenance before hybrid model decision.',
+    previousBehavior:
+      'No shadow layer for shutdown timestamp skew or per-field age at trip end; REST context binding unchanged and non-atomic.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/shutdown-evidence/*, prisma migration 20260907153000_battery_shutdown_evidence_shadow, battery-v2-snapshot-ingestion.service.ts, trip-detection-orchestration.service.ts. architecture/battery-v2/research/M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T06:00:00.000Z',
+  },
+  {
     id: 'trip-fsm-r9h-handoff-orphan-recovery-2026-09-07',
     version: '4.9.1089',
     title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',

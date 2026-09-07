@@ -181,6 +181,12 @@ export class TripMetricsService implements OnModuleInit {
   readonly hvCapacitySessionsQualifiedTotal: Counter<string>;
   readonly batteryAssessmentsTotal: Counter<string>;
   readonly batteryPublicationsTotal: Counter<string>;
+  readonly batteryShutdownEvidenceObservationCreatedTotal: Counter<string>;
+  readonly batteryShutdownEvidenceDuplicateSuppressedTotal: Counter<string>;
+  readonly batteryShutdownContextCreatedTotal: Counter<string>;
+  readonly batteryShutdownContextMissingStateTotal: Counter<string>;
+  readonly batteryShutdownPostEngineOffCandidateTotal: Counter<string>;
+  readonly batteryShutdownPostEngineOffConfirmedTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
@@ -1557,6 +1563,44 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_battery_publications_total',
       help: 'Battery publication update outcomes',
       labelNames: ['maturity', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownEvidenceObservationCreatedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_evidence_observation_created_total',
+      help: 'M3.2B shadow shutdown evidence observations persisted',
+      labelNames: ['evidence_class', 'confidence_class', 'state_alignment_class'],
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownEvidenceDuplicateSuppressedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_evidence_duplicate_suppressed_total',
+      help: 'M3.2B shadow shutdown evidence idempotent duplicates suppressed',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownContextCreatedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_context_created_total',
+      help: 'M3.2B trip shutdown context snapshots persisted',
+      labelNames: ['state_alignment_class', 'state_completeness'],
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownContextMissingStateTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_context_missing_state_total',
+      help: 'M3.2B trip shutdown context captured with missing VLS state',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownPostEngineOffCandidateTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_post_engine_off_candidate_total',
+      help: 'M3.2B shadow observations classified as shutdown-transition candidates near trip end',
+      registers: [this.registry],
+    });
+
+    this.batteryShutdownPostEngineOffConfirmedTotal = new Counter({
+      name: 'synqdrive_battery_shutdown_post_engine_off_confirmed_total',
+      help: 'M3.2B shadow observations meeting strict post-engine-off pre-sleep contract',
       registers: [this.registry],
     });
 
