@@ -29,11 +29,18 @@ export interface DimoSnapshotJobData {
 
 export type SnapshotWakeOutcome =
   | 'ENQUEUED'
+  | 'RECOVERED_TERMINAL'
   | 'COALESCED'
   | 'ALREADY_COVERED'
   | 'IGNORED_FSM_ACTIVE'
   | 'IGNORED_INELIGIBLE'
   | 'INVALID_SIGNAL'
+  | 'QUEUE_FAILED'
+  | 'PERSIST_FAILED';
+
+export type CoalescedWakeConsumerOutcome =
+  | 'CONSUMER_READY'
+  | 'PERSIST_FAILED'
   | 'QUEUE_FAILED';
 
 export interface RequestSnapshotInput {

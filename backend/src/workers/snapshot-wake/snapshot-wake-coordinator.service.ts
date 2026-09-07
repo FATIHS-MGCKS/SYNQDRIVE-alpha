@@ -59,6 +59,7 @@ import type {
   RequestSnapshotInput,
   SnapshotWakeContext,
   SnapshotWakeOutcome,
+  CoalescedWakeConsumerOutcome,
   SuccessorHandoffPersistResult,
   SuccessorSnapshotWakeRecord,
 } from './snapshot-wake.types';
@@ -143,18 +144,33 @@ export class SnapshotWakeCoordinatorService {
         coalesceNeedsPostTerminalSuccessor(enqueueOutcome) &&
         input.wakeContext
       ) {
-        await this.ensureCoalescedWakeConsumer({
+        const consumerOutcome = await this.ensureCoalescedWakeConsumer({
           vehicleId: input.vehicleId,
           dimoTokenId: input.dimoTokenId,
           origin: input.origin,
           wakeContext: input.wakeContext,
           pendingVersion: pendingVersion,
         });
+        if (consumerOutcome === 'PERSIST_FAILED') {
+          this.recordWakeMetric(input.wakeContext, 'PERSIST_FAILED');
+          return 'PERSIST_FAILED';
+        }
+        if (consumerOutcome === 'QUEUE_FAILED') {
+          this.recordWakeMetric(input.wakeContext, 'QUEUE_FAILED');
+          return 'QUEUE_FAILED';
+        }
         this.recordWakeMetric(input.wakeContext, 'COALESCED');
         return 'COALESCED';
       }
 
-      if (enqueueOutcome === 'ENQUEUED' || enqueueOutcome === 'RECOVERED_TERMINAL') {
+      if (enqueueOutcome === 'RECOVERED_TERMINAL') {
+        if (input.wakeContext) {
+          this.recordWakeMetric(input.wakeContext, 'RECOVERED_TERMINAL');
+        }
+        return 'RECOVERED_TERMINAL';
+      }
+
+      if (enqueueOutcome === 'ENQUEUED') {
         if (input.wakeContext) {
           this.recordWakeMetric(input.wakeContext, 'ENQUEUED');
         }
@@ -364,7 +380,10 @@ export class SnapshotWakeCoordinatorService {
 
       if (handoffOutcome === 'HANDOFF_SCHEDULED') {
         await this.tryAckClaimedPendingWake(params);
-      } else if (handoffOutcome === 'QUEUE_FAILED') {
+      } else if (
+        handoffOutcome === 'PERSIST_FAILED' ||
+        handoffOutcome === 'QUEUE_FAILED'
+      ) {
         await this.reconcileOutstandingPendingWake(params.vehicleId);
       }
 
@@ -374,7 +393,9 @@ export class SnapshotWakeCoordinatorService {
           outcome:
             handoffOutcome === 'HANDOFF_SCHEDULED'
               ? 'SCHEDULED'
-              : 'QUEUE_FAILED',
+              : handoffOutcome === 'PERSIST_FAILED'
+                ? 'PERSIST_FAILED'
+                : 'QUEUE_FAILED',
         });
       });
       return;
@@ -529,26 +550,44 @@ export class SnapshotWakeCoordinatorService {
     origin: DimoSnapshotJobData['origin'];
     wakeContext: SnapshotWakeContext;
     pendingVersion?: number;
-  }): Promise<void> {
+  }): Promise<CoalescedWakeConsumerOutcome> {
     const continuation = await this.resolveWakeContinuation(params.vehicleId);
     if (mayScheduleWakeSuccessor(continuation.continuation)) {
-      await this.scheduleDurableSuccessor({
+      const handoffOutcome = await this.scheduleDurableSuccessor({
         vehicleId: params.vehicleId,
         dimoTokenId: params.dimoTokenId,
         origin: params.origin ?? 'PROVIDER_WAKE',
         wakeContext: params.wakeContext,
         associatedPendingVersion: params.pendingVersion,
       });
-      return;
+      if (
+        handoffOutcome === 'HANDOFF_SCHEDULED' ||
+        handoffOutcome === 'UNKNOWN_RETRY_SCHEDULED'
+      ) {
+        return 'CONSUMER_READY';
+      }
+      if (handoffOutcome === 'PERSIST_FAILED') {
+        return 'PERSIST_FAILED';
+      }
+      if (handoffOutcome === 'QUEUE_FAILED') {
+        return 'QUEUE_FAILED';
+      }
+      return 'CONSUMER_READY';
     }
     if (continuation.continuation === 'UNKNOWN') {
-      await this.scheduleUnknownContinuationRetryHandoff({
+      const retryOutcome = await this.scheduleUnknownContinuationRetryHandoff({
         vehicleId: params.vehicleId,
         dimoTokenId: params.dimoTokenId,
         origin: params.origin ?? 'PROVIDER_WAKE',
         wakeContext: params.wakeContext,
       });
-      return;
+      if (retryOutcome === 'HANDOFF_SCHEDULED') {
+        return 'CONSUMER_READY';
+      }
+      if (retryOutcome === 'PERSIST_FAILED') {
+        return 'PERSIST_FAILED';
+      }
+      return 'QUEUE_FAILED';
     }
     if (shouldRetireObsoleteWake(continuation.continuation)) {
       await this.retireExactPendingWakeBounded(
@@ -557,6 +596,7 @@ export class SnapshotWakeCoordinatorService {
         continuation.continuation,
       );
     }
+    return 'CONSUMER_READY';
   }
 
   async scheduleUnknownContinuationRetryHandoff(params: {
@@ -905,7 +945,7 @@ export class SnapshotWakeCoordinatorService {
       notBeforeMs,
     });
     if (!persist.ok || persist.notBeforeMs == null) {
-      return 'QUEUE_FAILED';
+      return 'PERSIST_FAILED';
     }
     try {
       await this.enqueueHandoffJob(params.vehicleId, persist.notBeforeMs);
@@ -1125,7 +1165,11 @@ export class SnapshotWakeCoordinatorService {
       throw new SnapshotWakeHandoffDeferError(5000, 'enqueue_failed');
     }
 
-    if (outcome === 'ENQUEUED' || outcome === 'COALESCED') {
+    if (
+      outcome === 'ENQUEUED' ||
+      outcome === 'COALESCED' ||
+      outcome === 'RECOVERED_TERMINAL'
+    ) {
       const acked = await this.acknowledgeSuccessorHandoff(
         vehicleId,
         loadedVersion,

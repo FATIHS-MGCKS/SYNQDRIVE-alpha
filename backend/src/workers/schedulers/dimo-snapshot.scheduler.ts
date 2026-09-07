@@ -320,7 +320,7 @@ export class DimoSnapshotScheduler {
     let enqueued = 0;
     let recovered = 0;
     let skipped = 0;
-    let notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
+    const notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
     const enqueuedByTier = new Map<SnapshotPollingTier, number>();
 
     for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
@@ -336,9 +336,16 @@ export class DimoSnapshotScheduler {
             effectiveTier,
             (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
           );
+        } else if (outcome === 'RECOVERED_TERMINAL') {
+          recovered += 1;
+          enqueued += 1;
+          enqueuedByTier.set(
+            effectiveTier,
+            (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
+          );
         } else if (outcome === 'COALESCED') {
           skipped += 1;
-        } else if (outcome === 'QUEUE_FAILED') {
+        } else if (outcome === 'QUEUE_FAILED' || outcome === 'PERSIST_FAILED') {
           this.logger.warn(`Failed to enqueue snapshot for ${v.id}`);
         }
       } catch (err: unknown) {

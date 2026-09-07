@@ -36,6 +36,90 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r9g-coalesce-delivery-seal-2026-09-07',
+    version: '4.9.1088',
+    title: 'Trip FSM R9G — Coalesce Delivery + Scheduler Recovery Seal',
+    summary: [
+      'ACTIVE/UNKNOWN coalesce no longer returns COALESCED when successor/handoff consumer scheduling fails — propagates PERSIST_FAILED/QUEUE_FAILED with wake metrics.',
+      'scheduleDurableSuccessor persist failures return PERSIST_FAILED (not QUEUE_FAILED).',
+      'RECOVERED_TERMINAL propagated through requestSnapshot; scheduler recovered counter wired.',
+    ],
+    reason:
+      'Pre-merge seal — generation-0 provider wakes must always have a bounded executable consumer, not a stranded Redis mailbox.',
+    previousBehavior:
+      'ensureCoalescedWakeConsumer failures still returned COALESCED; scheduleDurableSuccessor mapped persist failures to QUEUE_FAILED; scheduler recovered telemetry stayed zero.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T04:10:30.000Z',
+  },
+  {
+    id: 'trip-fsm-r9f-unknown-retry-completeness-2026-09-07',
+    version: '4.9.1087',
+    title: 'Trip FSM R9F — UNKNOWN Continuation Retry Completeness',
+    summary: [
+      'UNKNOWN continuation schedules bounded retry handoff on all surfaces (afterSnapshot, reconcile, scheduleDurableSuccessor, gen-1 stale ACK).',
+      'Explicit HANDOFF_SCHEDULED / QUEUE_FAILED / PERSIST_FAILED outcomes for retry scheduling.',
+    ],
+    reason: 'R9F seal — UNKNOWN wakes outside dispatchSuccessorHandoff had no bounded execution path.',
+    previousBehavior: 'UNKNOWN pending preserved without scheduling retry handoff.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9f--unknown-continuation-retry-completeness-seal-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9e-continuation-unknown-cas-2026-09-07',
+    version: '4.9.1086',
+    title: 'Trip FSM R9E — UNKNOWN Defer + Obsolete CAS Retirement',
+    summary: [
+      'UNKNOWN handoff dispatch defers via DelayedError without false completion.',
+      'Exact-version bounded pending/successor retirement with reload/reclassify on CAS miss.',
+    ],
+    reason: 'R9E seal — stale obsolete classification could delete newer valid wakes.',
+    previousBehavior: 'ACK latest pending/successor under stale obsolete classification.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9d-wake-delivery-liveness-2026-09-07',
+    version: '4.9.1085',
+    title: 'Trip FSM R9D — Wake Delivery Liveness + BullMQ Integration Gate',
+    summary: [
+      'ACTIVE coalesce guarantees durable successor consumer; continuation authority RESTING+eligible.',
+      'Strict durable Redis reads; real BullMQ+Redis integration test gate (4/4).',
+    ],
+    reason: 'R9D seal — coalesce against ACTIVE could strand wakes; missing integration evidence.',
+    previousBehavior: 'Coalesce could return success without post-terminal consumer; READ_ERROR conflated with missing.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9c-bullmq-delay-gen1-terminal-2026-09-07',
+    version: '4.9.1084',
+    title: 'Trip FSM R9C — BullMQ DelayedError + Generation-1 Terminal',
+    summary: [
+      'Handoff processor throws DelayedError after moveToDelayed (BullMQ 5.x completion protocol).',
+      'Generation-1 probe terminal bound; fresh-no-candidate probe ordering fix.',
+      'Stale successor ACK rearm; waiting vs delayed changeDelay separation.',
+    ],
+    reason: 'R9C seal — handoff false completion and generation-1 requeue loops.',
+    previousBehavior: 'Handoff returned normally after moveToDelayed; gen-1 could repeat provider polls.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
     id: 'trip-fsm-r9b-atomic-wake-mailbox-2026-09-07',
     version: '4.9.1083',
     title: 'Trip FSM R9B — Atomic Wake Mailbox / Handoff Rearm',
@@ -53,7 +137,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9b--atomic-wake-mailbox--handoff-rearm-closure-2026-09-07',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
-    createdAt: '2026-09-07T12:45:00.000Z',
+    createdAt: '2026-09-07T02:37:37.000Z',
   },
   {
     id: 'trip-fsm-r9a-durable-wake-handoff-2026-09-07',
@@ -73,7 +157,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9a--durable-wake-handoff--bounded-probe-closure-2026-09-07',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
-    createdAt: '2026-09-07T12:15:00.000Z',
+    createdAt: '2026-09-07T02:37:37.000Z',
   },
   {
     id: 'trip-fsm-r9-adaptive-polling-wake-2026-09-07',
@@ -94,7 +178,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
-    createdAt: '2026-09-07T00:00:00.000Z',
+    createdAt: '2026-09-07T02:37:37.000Z',
   },
   {
     id: 'trip-fsm-r8-observability-forensics-2026-09-06',
