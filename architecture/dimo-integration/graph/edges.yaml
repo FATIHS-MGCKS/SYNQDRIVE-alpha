@@ -1,0 +1,16 @@
+edges:
+  - from: DIM-API-WEBHOOK-001
+    relation: downstream_of
+    to: DIM-PIPE-WAKE-DELEGATE-001
+  - from: DIM-PIPE-WAKE-DELEGATE-001
+    relation: downstream_of
+    to: DIM-ORCH-TRIP-WAKE-001
+  - from: DIM-EVID-R9-AUDIT-001
+    relation: supports
+    to: DIM-PIPE-WAKE-DELEGATE-001
+  - from: DIM-EVID-CODE-WEBHOOK-001
+    relation: supports
+    to: DIM-API-WEBHOOK-001
+  - from: DIM-EVID-PROD-005
+    relation: supports
+    to: DIM-PIPE-WAKE-DELEGATE-001

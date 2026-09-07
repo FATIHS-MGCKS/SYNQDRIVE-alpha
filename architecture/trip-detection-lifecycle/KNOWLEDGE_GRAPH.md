@@ -57,4 +57,4 @@ Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 
 - COMPLETED → Driving Intelligence handoff (TDL-GAP-001)
 - `drive-profile/` ownership (TDL-GAP-002)
-- DIMO Integration `NOT_STARTED` vs segment claims (TDL-CX-006)
+- DIMO Integration `AUDIT_IN_PROGRESS` — segment/trigger ownership gaps remain (TDL-CX-006 partially superseded)

@@ -473,3 +473,55 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 ### Remaining dependency
 
 - **R11** — Production/canary validation after deploy (blocks `AUTHORITY_ACTIVE`, not PR merge governance)
+
+## R9 PRE-MERGE GOVERNANCE CORRECTION — DIMO + BASELINE EPISTEMICS (2026-09-07)
+
+### Independent review rejection
+
+Prior section **R9 PRE-MERGE GOVERNANCE ALIGNMENT** recorded two conclusions that independent review **rejected**:
+
+1. **DIMO Integration remained `NOT_STARTED`** despite substantive changes to `dimo-webhook.controller.ts`, `dimo-webhook.controller.spec.ts`, and `dimo.module.ts` on PR #1553. Root AGENTS.md requires every affected module authority update for cross-module substantive integration work.
+
+2. **Trip Detection authority incorrectly attributed branch-only R9 state to `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec`**. That SHA is the integrated `main` baseline **without R9** until #1553 merges.
+
+### Corrected baselines
+
+| Baseline | SHA | Notes |
+|----------|-----|-------|
+| **origin/main** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` | Does **not** contain R9 |
+| **R9 runtime audit branch** | `1186e9d23a9b07e24da17b06a72f2614038db77a` | Post-rebase R9 code state |
+| **Phase 0–2 authority snapshot (historical)** | `a36db67a3fb418ac7521d260461adf631256582c` | Preserved under `PHASE_0_2_AUTHORITY_SNAPSHOT_SHA` |
+| **Production release** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `2026-09-06T23:47:41Z` (Trip); fresh DIMO read-only `2026-09-07` | R9 **NOT_ON_PRODUCTION** |
+
+### Corrected registry / authority state
+
+| Module | Before | After |
+|--------|--------|-------|
+| Trip Detection & Lifecycle | `AUDIT_IN_PROGRESS` | `AUDIT_IN_PROGRESS` (baseline epistemics corrected) |
+| DIMO Integration | `NOT_STARTED` | **`AUDIT_IN_PROGRESS`** @ [`architecture/dimo-integration/`](../../architecture/dimo-integration/) |
+
+### Cross-module boundary (recorded on both authorities)
+
+- **DIMO Integration owns:** provider webhook endpoint, auth/verification/envelope, provider signal ingestion contract, trigger/provider gateway semantics, transport/auth, telemetry acquisition boundary.
+- **Trip Detection owns:** wake evidence, RESTING/eligibility, pending/successor mailboxes, coalesce, handoff queue, adaptive trip-start snapshot cadence, gen-1 probe, Trip FSM / `TripDecisionEngine`.
+- **Contract:** `DimoWebhookController` speed/ignition → `SnapshotWakeIntakeService.handleProviderWake()` → `wakeOutcome` in webhook response.
+- **Decisions:** DIM-DEC-R9-001, TDL-DEC-R9-CX-001.
+
+### DIMO Production read-only audit (2026-09-07)
+
+- VPS gate: `bash .cursor/scripts/cloud-agent-verify-vps.sh` — PASS
+- Deployed release unchanged: `01541c2ab…`; `SnapshotWakeIntakeService` **absent** from deployed `dimo-webhook.controller.js`
+- Redis: `bull:dimo.snapshot*` = 5; `bull:snapshot.wake*` = 0
+- Provider subscription state: **UNKNOWN** (no safe read-only verification)
+- **No Production or DIMO provider mutations**
+
+### Validators (governance correction package)
+
+- `bash architecture/scripts/validate-module-registry.sh`
+- `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`
+- `bash architecture/dimo-integration/scripts/validate-graph.sh`
+- `git diff --check` against pre-correction head `5383391c27c8265c2bff12c068a6f8d527a1102e` — **no backend/frontend runtime changes**
+
+### Superseded alignment text
+
+The **DIMO governance determination** and **Registry status** tables in **R9 PRE-MERGE GOVERNANCE ALIGNMENT** above are **superseded** by this correction section. Supporting R9A–R9F implementation narrative remains verbatim.

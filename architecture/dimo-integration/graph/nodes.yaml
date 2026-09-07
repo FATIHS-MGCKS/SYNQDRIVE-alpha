@@ -1,0 +1,140 @@
+# DIMO Integration — Knowledge Graph Nodes (bootstrap)
+
+nodes:
+  - id: DIM-DOM-INTEGRATION-001
+    type: domain
+    title: DIMO Integration domain
+    epistemic_status: CONFIRMED
+    summary: Provider auth, telemetry, segments, triggers, webhooks, device-connection, gateway.
+    source_paths:
+      - architecture/dimo-integration/README.md
+
+  - id: DIM-API-WEBHOOK-001
+    type: api
+    title: DIMO webhook endpoint
+    epistemic_status: CONFIRMED
+    summary: POST /webhooks/dimo — verification token, optional HMAC, trigger payload normalization.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-CODE-WEBHOOK-001
+
+  - id: DIM-AUTH-GATEWAY-001
+    type: authority
+    title: Provider gateway and admission
+    epistemic_status: CONFIRMED
+    summary: DimoProviderGateway, admission, limiter, budget consumption.
+    source_paths:
+      - backend/src/modules/dimo/provider/dimo-provider-gateway.service.ts
+
+  - id: DIM-PIPE-WAKE-DELEGATE-001
+    type: pipeline
+    title: R9 speed/ignition wake delegation
+    epistemic_status: CONFIRMED
+    summary: Webhook delegates to SnapshotWakeIntakeService; DIMO does not own trip FSM.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-R9-AUDIT-001
+
+  - id: DIM-ORCH-TRIP-WAKE-001
+    type: orchestrator
+    title: SnapshotWakeIntakeService (neighbor)
+    epistemic_status: CONFIRMED
+    summary: Trip Detection owned wake intake — cross-module contract target.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts
+
+  - id: DIM-EVID-CODE-WEBHOOK-001
+    type: evidence
+    title: Webhook controller source
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: DIMO webhook implementation including R9 delegation on audit branch.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+
+  - id: DIM-EVID-R9-AUDIT-001
+    type: evidence
+    title: R9 implementation audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Supporting evidence for cross-module wake contract.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: DIM-EVID-PROD-005
+    type: evidence
+    title: R9 absent from Production build
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: SnapshotWakeIntakeService not in deployed webhook controller JS.
+    source_paths:
+      - architecture/dimo-integration/evidence/PRODUCTION_BASELINE.md
+
+  - id: DIM-DEC-R9-001
+    type: decision
+    title: Provider webhook to Trip wake delegation
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DIM-R9-001 cross-module boundary.
+    source_paths:
+      - architecture/dimo-integration/decisions/DECISION_REGISTER.md
+    evidence:
+      - DIM-EVID-R9-AUDIT-001
+
+  - id: DIM-GAP-001
+    type: gap
+    title: Segment reconciliation ownership
+    epistemic_status: UNKNOWN
+    summary: Partial split with Trip Detection.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-002
+    type: gap
+    title: Provider trigger subscription inventory
+    epistemic_status: UNKNOWN
+    summary: Not verified read-only.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-003
+    type: gap
+    title: DIMO env flag matrix
+    epistemic_status: UNKNOWN
+    summary: Production env not sampled.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-004
+    type: gap
+    title: Full provider gateway graph
+    epistemic_status: UNKNOWN
+    summary: Phase 4 partial.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-CX-001
+    type: contradiction
+    title: DI boundary vs DIMO authority bootstrap delay
+    epistemic_status: CONFIRMED
+    summary: Mitigated by DIMO AUDIT_IN_PROGRESS bootstrap; segment gap remains.
+    source_paths:
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: DIM-HYP-001
+    type: hypothesis
+    title: Production receives speed/ignition webhooks
+    epistemic_status: INFERRED
+    summary: Webhook deployed; subscriptions UNKNOWN.
+    source_paths:
+      - architecture/dimo-integration/research/OPEN_HYPOTHESES.md
+
+  - id: DIM-FAIL-GOV-001
+    type: failed_approach
+    title: Defer DIMO authority for R9 webhook changes
+    epistemic_status: HISTORICAL
+    summary: Rejected by governance correction.
+    source_paths:
+      - architecture/dimo-integration/research/FAILED_APPROACHES.md

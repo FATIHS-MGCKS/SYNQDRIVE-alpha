@@ -1,6 +1,8 @@
 # Trip Detection & Lifecycle — Evidence Index
 
-**Repository re-audit baseline:** Post-R9 branch integrates `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec`
+**origin/main baseline:** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges
+
+**R9 audit branch baseline:** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
 
 **Production release baseline:** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac`
 
@@ -27,7 +29,8 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 
 | Label | Meaning |
 |-------|---------|
-| **CONFIRMED_ON_MAIN** | Repository claim reconfirmed on post-R9 branch integrating `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec` |
+| **CONFIRMED_ON_MAIN** | Repository claim reconfirmed on `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec` |
+| **CONFIRMED_ON_R9_AUDIT_BRANCH** | Present on R9 audit branch @ `1186e9d23a9b07e24da17b06a72f2614038db77a`; **not on `origin/main`** until #1553 merges |
 | **CONFIRMED_AT_PRODUCTION_RELEASE** | Observation confirmed against Production release `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` at stated UTC timestamp |
 | **PARTIALLY_CURRENT** | Core claim valid; stale Production refs, line numbers, or pre-R context in artifact |
 | **HISTORICAL** | Pre-remediation or superseded runtime context inside artifact |
@@ -69,8 +72,8 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | TDL-EV-R6-001 | HISTORICAL_RECORD | [`R6…`](../../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `4cd02d7f8b2814c1c5dc773d206f295f94169cf4` | `2026-09-06T15:52:20Z` | Mid-gap split safety | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R7-001 | HISTORICAL_RECORD | [`R7…`](../../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `2026-09-06T19:11:29Z` | Terminal→RESTING recovery | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | `6ea95124343e15e971220cb0c672239ac4b077d6` | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `2026-09-06T22:26:34Z` | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN; **NOT_ON_PRODUCTION** | Merged #1549 on `main`; absent on Production `01541c2ab…` |
-| TDL-EV-R9-001 | HISTORICAL_RECORD | [`R9…`](../../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md) | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` | `2026-09-07T00:00:00Z` | R9 adaptive polling wake: durable mailboxes, handoff queue, RESTING continuation, UNKNOWN bounded retry | CONFIRMED_ON_MAIN; **NOT_ON_PRODUCTION** | Post-integration branch; absent on Production `01541c2ab…` |
-| TDL-EV-R9-CODE-001 | CODE | [`snapshot-wake-coordinator.service.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts) | — | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` | `2026-09-07T00:00:00Z` | R9 wake coordinator: pending/successor mailboxes, coalesce QUEUED/ACTIVE, handoff dispatch, continuation, UNKNOWN retry, gen-1 terminal | CONFIRMED_ON_MAIN; **NOT_ON_PRODUCTION** | Implementation evidence; Production release predates R9 |
+| TDL-EV-R9-001 | HISTORICAL_RECORD | [`R9…`](../../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md) | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `2026-09-07T00:00:00Z` | R9 adaptive polling wake: durable mailboxes, handoff queue, RESTING continuation, UNKNOWN bounded retry | CONFIRMED_ON_R9_AUDIT_BRANCH; **NOT_ON_MAIN**; **NOT_ON_PRODUCTION** | Branch-only until #1553 merges; absent on Production `01541c2ab…` |
+| TDL-EV-R9-CODE-001 | CODE | [`snapshot-wake-coordinator.service.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts) | — | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `2026-09-07T00:00:00Z` | R9 wake coordinator: pending/successor mailboxes, coalesce QUEUED/ACTIVE, handoff dispatch, continuation, UNKNOWN retry, gen-1 terminal | CONFIRMED_ON_R9_AUDIT_BRANCH; **NOT_ON_MAIN**; **NOT_ON_PRODUCTION** | Implementation evidence @ R9 branch SHA |
 
 Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Application baseline SHAs taken from each artifact's stated baseline (full 40-char where present in artifact).
 

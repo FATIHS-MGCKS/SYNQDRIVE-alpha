@@ -91,7 +91,7 @@ Never merge these axes:
 | KG-EED | REFUEL/RECHARGE — may associate to trips but **not** trip start/end |
 | Scaling Process | Leader election, DIMO budget, generic reconciliation mutex |
 | Battery V2 | Battery health; may consume trip lifecycle hooks |
-| DIMO Integration (`NOT_STARTED`) | Provider auth, telemetry, segments, webhooks — inspect code; no active authority |
+| DIMO Integration (`AUDIT_IN_PROGRESS`) | Provider auth, telemetry, segments, webhooks, triggers — canonical authority at [`architecture/dimo-integration/`](../dimo-integration/); R9 cross-module contract DIM-DEC-R9-001 / TDL-DEC-R9-CX-001 |
 
 **Open:** exact COMPLETED → Driving Intelligence handoff; ownership of `drive-profile/`.
 

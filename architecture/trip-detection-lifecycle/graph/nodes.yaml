@@ -224,6 +224,18 @@ nodes:
     evidence:
       - TDL-TEST-R9-001
 
+  - id: TDL-DEC-R9-CX-001
+    type: decision
+    title: DIMO webhook to Trip wake delegation boundary
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DIMO owns provider webhook gateway; Trip Detection owns wake evidence and lifecycle semantics.
+    source_paths:
+      - architecture/dimo-integration/decisions/DECISION_REGISTER.md
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
   - id: TDL-FAIL-R9A-001
     type: failed_approach
     title: Same stable jobId successor self-coalescing
@@ -284,15 +296,15 @@ nodes:
     type: gap
     title: DIMO segment reconciliation vs live FSM
     epistemic_status: UNKNOWN
-    summary: Segment authority split with DIMO Integration NOT_STARTED.
+    summary: Segment authority split; DIMO Integration bootstrapped AUDIT_IN_PROGRESS 2026-09-07; reconciliation ownership still incomplete.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
   - id: TDL-GAP-009
     type: gap
-    title: R8 and R9 not on Production
+    title: R8 on main and R9 on audit branch not on Production
     epistemic_status: CONFIRMED
-    summary: Repo includes R8/R9; observed Production release predates them.
+    summary: origin/main includes R8; R9 is branch-only @ 1186e9d23…; observed Production release predates both R8 deploy and R9 merge.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md
 
@@ -370,9 +382,9 @@ nodes:
 
   - id: TDL-CX-006
     type: contradiction
-    title: DIMO Integration NOT_STARTED vs segment boundary claims
+    title: DIMO Integration segment boundary vs DI registry claim
     epistemic_status: CONFIRMED
-    summary: DI registry cites Trip Detection/DIMO segments; DIMO Integration has no authority yet.
+    summary: DI registry cites Trip Detection/DIMO segments; DIMO authority AUDIT_IN_PROGRESS; segment split gaps remain.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
 

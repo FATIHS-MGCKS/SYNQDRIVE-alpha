@@ -2,7 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Repository baseline** | Post-R9 branch integrates `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec` |
+| **origin/main baseline** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges |
+| **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake` |
 | **Production baseline** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
 | **Last verified Production evidence** | `2026-09-06T23:47:41Z` (single session; see TDL-EV-PROD-*) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
@@ -13,7 +14,7 @@ Phase **1** documents an **initial consolidated baseline** — not a claim that 
 
 ---
 
-## CONFIRMED — repository state (`a47255148…`)
+## CONFIRMED — origin/main baseline @ `a47255148…`
 
 ### Module entry points
 
@@ -35,27 +36,6 @@ Phase **1** documents an **initial consolidated baseline** — not a claim that 
 | Trip API | `backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts` (`GET trips*`) |
 | Rental UI | `frontend/src/rental/components/trips/`, `frontend/src/rental/components/TripsView.tsx` |
 | Metrics | `backend/src/modules/observability/trip-metrics.service.ts` (+ R8 forensic utils on `main`) |
-
-### R9 wake subsystem entry points
-
-| Surface | Path / symbol |
-|---------|----------------|
-| Wake intake | `backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts` (`SnapshotWakeIntakeService`) |
-| Wake coordinator | `backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts` (`SnapshotWakeCoordinatorService`) |
-| Nest wiring | `backend/src/workers/snapshot-wake/snapshot-wake.module.ts` |
-| Handoff processor | `backend/src/workers/processors/snapshot-wake-handoff.processor.ts` |
-| Redis scripts | `backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts` |
-| DIMO webhook wiring | `backend/src/modules/dimo/dimo-webhook.controller.ts` (delegates eligible wakes to intake) |
-
-**R9 architecture (repo-confirmed):**
-
-- Durable **pending** and **successor** Redis mailboxes (`synqdrive:snapshot-wake:pending:{vehicleId}`, `synqdrive:snapshot-wake:successor:{vehicleId}`) with monotonic version merge
-- Coalesce while canonical `snapshot-{vehicleId}` job is **QUEUED** or **ACTIVE** — no parallel provider fetch per vehicle
-- **Handoff never provider-fetches** — `snapshot.wake.handoff` queue dispatches canonical `dimo.snapshot.poll` enqueue only after terminal/active-safe window
-- **Continuation** when FSM is **RESTING** and vehicle is wake-eligible (AVAILABLE/RENTED, DIMO CONNECTED)
-- **UNKNOWN** wake classification → bounded retry (`UNKNOWN_CONTINUATION_RETRY_MS`) before retirement
-- **Gen-1 terminal** semantics for wake retirement / mailbox drain
-- **Effective-tier metrics** for wake vs scheduler polling observability
 
 ~249 TypeScript files under `backend/src/modules/vehicle-intelligence/trips/`.
 
@@ -113,7 +93,36 @@ Related downstream (not owned): `trip.behavior.enrichment`, `trip.driving-impact
 
 ### Remediation on `main`
 
-R1–R8 merged through #1549; R9 adaptive polling wake documented on post-integration branch (see [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*).
+R1–R8 merged through #1549 on `origin/main`. R9 is **branch-only** until #1553 merges (see R9 section below).
+
+---
+
+## CONFIRMED — R9 audit branch runtime state @ `1186e9d23…`
+
+**Epistemic note:** This section describes code present on branch `trip-fsm/r9-adaptive-polling-wake` @ `1186e9d23…`. It is **not** on `origin/main` @ `a47255148…` and **NOT_ON_PRODUCTION** at observed release `01541c2ab…`.
+
+### R9 wake subsystem entry points
+
+| Surface | Path / symbol |
+|---------|----------------|
+| Wake intake | `backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts` (`SnapshotWakeIntakeService`) |
+| Wake coordinator | `backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts` (`SnapshotWakeCoordinatorService`) |
+| Nest wiring | `backend/src/workers/snapshot-wake/snapshot-wake.module.ts` |
+| Handoff processor | `backend/src/workers/processors/snapshot-wake-handoff.processor.ts` |
+| Redis scripts | `backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts` |
+| DIMO webhook wiring | `backend/src/modules/dimo/dimo-webhook.controller.ts` (delegates eligible wakes to intake; provider gateway owned by [DIMO Integration](../dimo-integration/)) |
+
+**R9 architecture (branch-confirmed @ `1186e9d23…`):**
+
+- Durable **pending** and **successor** Redis mailboxes with monotonic version merge
+- Coalesce while canonical `snapshot-{vehicleId}` job is **QUEUED** or **ACTIVE**
+- **Handoff never provider-fetches** — `snapshot.wake.handoff` dispatches canonical `dimo.snapshot.poll` enqueue only
+- **Continuation** when FSM is **RESTING** and vehicle is wake-eligible (AVAILABLE/RENTED, DIMO CONNECTED)
+- **UNKNOWN** wake classification → bounded retry before retirement
+- **Gen-1 terminal** semantics for wake retirement / mailbox drain
+- Cross-module contract: DIMO webhook → Trip wake intake; DIMO does **not** own Trip FSM (see TDL-DEC-R9-CX-001, [DIMO Integration](../dimo-integration/decisions/DECISION_REGISTER.md) DIM-DEC-R9-001)
+
+See [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*.
 
 ---
 
@@ -181,7 +190,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Production validation of R9 adaptive polling wake (repo/test validated on branch; **NOT_ON_PRODUCTION** at observed release `01541c2ab…`)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
-- Resolved DIMO Integration vs trip reconciliation ownership
+- Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)
 
 ---
 
@@ -195,6 +204,6 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 | **KG-EED** | REFUEL/RECHARGE |
 | **Scaling Process** | Leader election, DIMO budget, generic mutex |
 | **Battery V2** | Downstream trip hooks |
-| **DIMO Integration** | Provider layer (`NOT_STARTED`) |
+| **DIMO Integration** | Provider transport/auth/webhook gateway ([`architecture/dimo-integration/`](../dimo-integration/), `AUDIT_IN_PROGRESS`) — R9 webhook wiring documented on both authorities |
 
 **Open:** COMPLETED handoff to DI; `drive-profile/` ownership.
