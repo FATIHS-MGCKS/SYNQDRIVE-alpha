@@ -26,6 +26,86 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+---
+
+## CL-2026-09-07 — M3.2B Phase B evidence epistemic semantics hardening (PR #1562)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase B evidence used `REST_*_BEHAVIOR_CHANGED=NO` without distinguishing non-exercise from event-conditioned equivalence proof. |
+| **CHANGE** | Hardened semantics: `POST_DEPLOY_EXERCISED=NO` for REST/assess/pub paths; `AUTHORITATIVE_REGRESSION_OBSERVED=NO`; `AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B`; explicit epistemic axis section in Phase B evidence doc. |
+| **WHY** | Fail-closed evidence — Phase B deploy gate must not be read as natural-event authoritative equivalence proof when no paths executed. |
+| **VALIDATION** | Documentation-only; graph + registry validators PASS; `PHASE_B_VERDICT_CHANGED=NO`. |
+| **OBSERVED_EFFECT** | `M3_2B_PHASE_B=PASS` unchanged; `PHASE_C_ALLOWED=YES` unchanged. |
+| **NON_EFFECTS** | No production deploy/restart/env change; shadow flag still off. |
+| **EVIDENCE** | `M3_2B_PHASE_B_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-07.md` § Epistemic semantics. |
+
+## CL-2026-09-07 — M3.2B Phase B flag-off production deploy
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2B merged (#1560) but not deployed; shadow tables absent; production on `ccc2324db`. |
+| **CHANGE** | Controlled production deploy @ `0ba96e03` with `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` absent (effective false); migration `20260907153000_battery_shutdown_evidence_shadow` applied once; rolling 2-replica restart; scheduler converged to 1 leader. |
+| **WHY** | Phase B gate — ship schema + inert shadow module without authoritative impact or shadow writes. |
+| **VALIDATION** | DB backup OK; schema TEXT FK + TIMESTAMP(3); PM2 both replicas same SHA; health 200; 0 shadow rows before/after ~2m smoke; 0 new REST/assess/pub rows (paths not exercised); no M3.2B/R9 failure delta; `AUTHORITATIVE_REGRESSION_OBSERVED=NO`; equivalence under natural event not proven in Phase B. |
+| **OBSERVED_EFFECT** | `M3_2B_PHASE_B=PASS`; `PHASE_C_ALLOWED=YES`; shadow flag still off. |
+| **NON_EFFECTS** | M3.1 status unchanged; `PRODUCTION_VALIDATED` still pending natural E2E; authoritative Stage-2 flags unchanged. |
+| **DECISION_STATUS** | Phase C (enable shadow) allowed but not executed. |
+| **EVIDENCE** | `M3_2B_PHASE_B_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-07.md`. |
+
+## CL-2026-09-07 — M3.2B migration FK type fix (PR #1560 CI)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Migration `20260907153000_battery_shutdown_evidence_shadow` used PostgreSQL `UUID` for `organization_id` / `vehicle_id` / `trip_id`, incompatible with SynqDrive `TEXT` PK/FK columns — CI migration deploy failed (42804). |
+| **CHANGE** | Corrected migration SQL to `TEXT` IDs and `TIMESTAMP(3)` datetimes to match Prisma schema and existing battery/reference-capture migrations. |
+| **WHY** | Empty-database migration tests must apply cleanly before merge. |
+| **VALIDATION** | Prisma validate PASS; shutdown-evidence unit tests PASS; CI migration + integration jobs pending re-run. |
+| **NON_EFFECTS** | Prisma schema unchanged (already String/DateTime); shadow semantics unchanged. |
+
+## CL-2026-09-07 — M3.2B main integration gate (origin/main R9 #1553 + PR #1560)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1560 branch behind `origin/main`; `ChangesView.tsx` conflict with R9H→R9 changelog stack. |
+| **CHANGE** | Merged `origin/main` (`ccc2324db`); resolved `ChangesView.tsx` (M3.2B v4.9.1090 + R9 stack); preserved `@Optional()` M3.2B shadow hooks alongside R9 wake orchestration. |
+| **WHY** | Pre-merge gate — integrate R9 adaptive polling wake without altering M3.2B shadow semantics or authority isolation. |
+| **VALIDATION** | shutdown-evidence + R9: 22 suites / 144 tests PASS; snapshot-ingestion: 6 PASS; tsc PASS; prisma validate PASS; graph validator PASS; `PR_MERGEABLE=YES`. |
+| **NON_EFFECTS** | R9 behavior unchanged by M3.2B; shadow flag default false; no deploy; M3.2C still blocked. |
+| **DECISION_STATUS** | `READY_TO_MERGE=YES`; CI pending at push time. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` § Main integration gate. |
+
+## CL-2026-09-07 — M3.2B provenance semantic hardening (PR #1560)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Initial M3.2B shadow module could fabricate provider LV timestamps from ingest wall-clock, treat null speed as rest, store permanent `providerSilenceAfterTripEnd` at trip finalization, and label shared VLS snapshot timestamps as independent provider field timestamps. |
+| **CHANGE** | Fail-closed provenance hardening — separate `providerObservationAt` / `effectiveCaptureReferenceAt`; explicit timestamp source taxonomy; alignment excludes ingest/unknown clocks; strict POST_ENGINE_OFF requires known speed + provider field LV timestamp; trip context uses time-local post-trip observation fields only. |
+| **WHY** | Shadow evidence must not appear stronger than source data supports; immutable context cannot claim future provider silence. |
+| **VALIDATION** | 7 shutdown-evidence test suites / 28 tests PASS; authority isolation unchanged; graph validator PASS; typecheck PASS. |
+| **OBSERVED_EFFECT** | All semantic invariants in machine-readable block satisfied; migration updated in-place (not yet applied to production). |
+| **NON_EFFECTS** | Authoritative Battery V2 unchanged; shadow flag still default false; no deploy. |
+| **DECISION_STATUS** | `READY_TO_MERGE=YES` (technical); PR remains draft for human review; `PRODUCTION_CHANGED=NO`. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` § Provenance semantic hardening. |
+
+## CL-2026-09-07 — M3.2B shadow shutdown evidence acquisition & per-field provenance observability
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2A proved non-atomic LV context binding and 0/13 confirmed post-engine-off pre-sleep samples; no shadow layer to measure per-field timestamp skew or state completeness at natural trip shutdown. |
+| **CHANGE** | Shadow-only module `shutdown-evidence/` — `BatteryShutdownEvidenceObservation` + `BatteryTripShutdownContext` tables; pessimistic evidence/confidence classification; capture window T−10m…T+15m; hooks on LIVE_VOLTAGE classify + trip finalize; flag `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` (default false). |
+| **WHY** | Acquire natural shutdown evidence with explicit per-field provenance before deciding whether M3.2C hybrid model is justified. |
+| **VALIDATION** | Unit tests (classification, idempotency, capture, trip context, authority isolation); graph validator; flag-off = zero writes. |
+| **OBSERVED_EFFECT** | When flag enabled: shadow rows capture `relativeToTripEndMs`, `stateTimestampSkewMs`, `ageMsAtTripEnd`, `evidenceClass`, `confidenceClass`; trip context records `atomicClaim: false`. |
+| **NON_EFFECTS** | `SHADOW_EVIDENCE_CAN_AFFECT_AUTHORITATIVE_BATTERY_STATE=NO`; REST_60M/REST_6H, assessment, publication, health score unchanged; `PRODUCTION_VALIDATED` unchanged; no backfill. |
+| **REMAINING_GAPS** | Natural shadow evidence collection on production (flag enable); forensic evaluation for M3.2C decision. |
+| **DECISION_STATUS** | `M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO`; rollout phases A–F documented; not deployed automatically. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.1/M3.2/M3.2A canonical evidence seal (PR #1551)
 
 | Field | Content |

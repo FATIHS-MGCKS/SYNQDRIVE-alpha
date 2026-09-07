@@ -1,5 +1,7 @@
 export const QUEUE_NAMES = {
   DIMO_SNAPSHOT: 'dimo.snapshot.poll',
+  /** Lightweight post-terminal wake successor dispatch — no provider fetch. */
+  SNAPSHOT_WAKE_HANDOFF: 'snapshot.wake.handoff',
   DIMO_VEHICLE_SYNC: 'dimo.vehicle.sync',
   DTC_POLL: 'dimo.dtc.poll',
   TIRE_RECALCULATION: 'dimo.tire.recalculation',
@@ -34,4 +36,6 @@ export const QUEUE_NAMES = {
   ENERGY_REFUEL_STATION_ENRICH: 'energy.refuel.station.enrich',
   /** DIMO LTE_R1 reference capture autonomous runner (Phase 3A.1). */
   REFERENCE_CAPTURE: 'reference.capture.recording',
+  /** EXP-021 settlement shadow — forensic experiment-only delayed observations. */
+  REFERENCE_CAPTURE_SETTLEMENT_SHADOW: 'reference.capture.settlement-shadow',
 } as const;

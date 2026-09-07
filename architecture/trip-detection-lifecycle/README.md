@@ -6,7 +6,7 @@
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/trip-detection-lifecycle/` |
 | **Canonical target** | This directory — **not** `docs/architecture/trip-fsm/` or `architecture/trip-fsm/` |
-| **Last updated** | 2026-09-06 |
+| **Last updated** | 2026-09-07 |
 
 ## Status banner
 
@@ -20,7 +20,7 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | **1 — Repository current-state audit** | **Initial consolidated baseline established** — further reconstruction **in progress** |
 | **2 — Production read-only audit** | **Verified baseline established** (with documented limitations) |
 | **3 — Reconciliation and classification** | **Pending / in progress** |
-| **4 — Authority construction** | **Pending** |
+| **4 — Authority construction** | **Partial** — R9 wake subgraph, decision register entries, and `validate-graph.sh` created; full FSM graph incomplete |
 | **5 — Validation and promotion gate** | **Pending** |
 
 Phase 1 is **not** fully complete while dead/legacy inventory, the full feature-flag matrix, Mapbox/FMM failure taxonomy, and the Driving Intelligence handoff remain unresolved.
@@ -34,8 +34,10 @@ Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm
 | 1 | [AUDIT_MANIFEST.md](AUDIT_MANIFEST.md) | Fixed metadata, phase status, coverage matrix |
 | 2 | [CURRENT_STATE.md](CURRENT_STATE.md) | Separated repo / Production / inferred / historical claims |
 | 3 | [AGENT_CONTRACT.md](AGENT_CONTRACT.md) | Agent rules during audit |
-| 4 | [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) | Evidence registry (P1 + P2–R8 + Production) |
+| 4 | [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) | Evidence registry (P1 + P2–R9 + Production) |
 | 5 | [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) | Read-only Production observations |
+| 6 | [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md) | Human-readable graph index (Phase 4 partial) |
+| 7 | [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md) | Decision register (Phase 4 partial) |
 
 ## Preliminary scope
 
@@ -47,6 +49,7 @@ Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm
 - `TripDecisionEngine` lifecycle mutations on `VehicleTrip`
 - Terminal recovery, lifecycle invariant recovery, mid-gap split safety
 - Tiered snapshot polling ingress (DIMO snapshot processor path)
+- **R9 adaptive provider-wake start-liveness ingress** (`SnapshotWakeIntakeService`, `SnapshotWakeCoordinatorService`, durable Redis mailboxes, `snapshot.wake.handoff` queue, DIMO webhook wiring)
 - Trip reconciliation / repair audit trail (`TripRepair`)
 - Canonical route artifacts (Route V2 materialization)
 - Trip API read models and rental UI trip surfaces
@@ -71,12 +74,13 @@ Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm
 
 ```bash
 bash architecture/scripts/validate-module-registry.sh
+bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
 git diff --check
 ```
 
-Module-specific graph validators: **not yet created** (Phase 4).
+Module-specific graph validator: `validate-graph.sh` (Phase 4 partial).
 
 ## Related historical evidence (non-canonical)
 
-- [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) — P2–P6 audits and R1–R8 implementation artifacts
+- [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) — P2–P6 audits and R1–R9 implementation artifacts
 - [`backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts`](../../backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts) — P1 ownership invariants (no separate P1 Markdown)

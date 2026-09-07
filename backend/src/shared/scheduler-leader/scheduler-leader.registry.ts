@@ -9,6 +9,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'trip_reconciliation_warm',
   'trip_reconciliation_cold',
   'trip_tracking_recovery',
+  'snapshot_wake_handoff_recovery',
   'trip_analysis_recovery',
   'tire_recalculation',
   'brake_recalculation',
@@ -48,6 +49,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'billing_domain_event_outbox',
   'billing_domain_event_email',
   'reference_capture_retention',
+  'reference_capture_settlement_shadow_recovery',
 ] as const;
 
 export type SingletonGlobalSchedulerName =

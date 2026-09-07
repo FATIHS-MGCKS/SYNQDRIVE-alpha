@@ -34,14 +34,14 @@ import {
   hashProviderDeviceId,
 } from '../../modules/dimo/device-connection-episode.service';
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
-
-export interface DimoSnapshotJobData {
-  vehicleId: string;
-  dimoTokenId: number;
-}
+import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
+import type { DimoSnapshotJobData } from '../snapshot-wake/snapshot-wake.types';
+import { TripDetectionState } from '@prisma/client';
 
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
+
+export type { DimoSnapshotJobData };
 
 /**
  * BullMQ worker options:
@@ -74,6 +74,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly episodeService?: DeviceConnectionEpisodeService,
     @Optional()
     private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
+    @Optional()
+    private readonly snapshotWakeCoordinator?: SnapshotWakeCoordinatorService,
   ) {
     super();
   }
@@ -89,6 +91,26 @@ export class DimoSnapshotProcessor extends WorkerHost {
     const { vehicleId, dimoTokenId } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
+
+    const pendingWake = this.snapshotWakeCoordinator
+      ? await this.snapshotWakeCoordinator.claimPendingWakeForRun(vehicleId)
+      : null;
+    const effectiveWake = this.snapshotWakeCoordinator?.resolveEffectiveWakeContext(
+      job.data,
+      pendingWake?.record ?? null,
+    );
+    const jobDataWithWake: DimoSnapshotJobData = effectiveWake
+      ? { ...job.data, wakeContext: effectiveWake }
+      : job.data;
+
+    const afterCtx = {
+      staleMonotonicSkipped: false,
+      tripStartEvalError: false,
+      possibleStartCreated: false,
+      snapshotSourceTimestamp: null as Date | null,
+      providerFetchFailed: false,
+      fsmState: null as TripDetectionState | null,
+    };
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -109,10 +131,86 @@ export class DimoSnapshotProcessor extends WorkerHost {
     }
 
     try {
-      const previousState =
-        await this.prisma.vehicleLatestState.findUnique({
-          where: { vehicleId },
+      await this.runSnapshotPipeline(
+        job,
+        jobDataWithWake,
+        vehicle,
+        startedAt,
+        afterCtx,
+      );
+    } catch (err) {
+      afterCtx.providerFetchFailed = true;
+      if (afterCtx.fsmState == null) {
+        try {
+          const det = await this.prisma.vehicleTripDetectionState.findUnique({
+            where: { vehicleId },
+            select: { state: true },
+          });
+          afterCtx.fsmState = det?.state ?? null;
+        } catch {
+          // fail closed — probe logic preserves mailbox when FSM unknown
+        }
+      }
+      const finishedAt = new Date();
+      const durationMs = finishedAt.getTime() - startedAt.getTime();
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      await this.prisma.dimoPollLog.create({
+        data: {
+          vehicleId,
+          jobType: DimoPollJobType.SNAPSHOT,
+          status: DimoPollStatus.FAILURE,
+          startedAt,
+          finishedAt,
+          durationMs,
+          errorMessage,
+        },
+      });
+
+      this.logger.warn(
+        `Snapshot failed for vehicle ${vehicleId}: ${errorMessage}`,
+      );
+      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'failure' });
+      throw err;
+    } finally {
+      if (this.snapshotWakeCoordinator) {
+        await this.snapshotWakeCoordinator.afterSnapshotJob({
+          vehicleId,
+          dimoTokenId,
+          jobData: jobDataWithWake,
+          claimedPendingWake: pendingWake,
+          effectiveWakeContext: effectiveWake,
+          ...afterCtx,
         });
+      }
+    }
+  }
+
+  private async runSnapshotPipeline(
+    job: Job<DimoSnapshotJobData>,
+    jobDataWithWake: DimoSnapshotJobData,
+    vehicle: {
+      organizationId: string;
+      hardwareType: string;
+      dimoVehicle: { connectionStatus: string } | null;
+      dataSourceLinks: Array<{ id: string; sourceSubtype: string | null }>;
+    },
+    startedAt: Date,
+    afterCtx: {
+      staleMonotonicSkipped: boolean;
+      tripStartEvalError: boolean;
+      possibleStartCreated: boolean;
+      snapshotSourceTimestamp: Date | null;
+      providerFetchFailed: boolean;
+      fsmState: TripDetectionState | null;
+    },
+  ): Promise<void> {
+    const { vehicleId, dimoTokenId } = jobDataWithWake;
+
+    const previousState =
+      await this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+      });
 
       const vehicleJwt = await this.dimoAuth.getVehicleJwt(dimoTokenId);
       const raw = await this.dimoTelemetry.fetchLatestVehicleSnapshot(
@@ -135,12 +233,24 @@ export class DimoSnapshotProcessor extends WorkerHost {
       const batteryMap = mapDimoBatterySignals(signals);
       const lvBatteryObservedAt = resolveLvBatteryObservedAt(batteryMap);
       const fetchedAt = new Date();
+      this.snapshotWakeCoordinator?.observeWakeToFetchSeconds(
+        jobDataWithWake.wakeContext,
+        fetchedAt,
+      );
 
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
       if (
         previousState &&
         !shouldApplyVlsTelemetryUpdate(normalized.lastSeenAt, previousState.sourceTimestamp)
       ) {
+        afterCtx.staleMonotonicSkipped = true;
+        afterCtx.snapshotSourceTimestamp = previousState.sourceTimestamp;
+        const det = await this.prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId },
+          select: { state: true },
+        });
+        afterCtx.fsmState = det?.state ?? null;
+
         await this.prisma.vehicleLatestState.update({
           where: { vehicleId },
           data: {
@@ -154,6 +264,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
         );
         return;
       }
+
+      afterCtx.snapshotSourceTimestamp = normalized.lastSeenAt ?? null;
 
       // Track stale snapshots (data age > 5 min indicates vehicle is not actively sending)
       const STALE_THRESHOLD_MS = 5 * 60_000;
@@ -333,13 +445,22 @@ export class DimoSnapshotProcessor extends WorkerHost {
         );
       }
 
-      // V2 Trip Detection: evaluate snapshot for possible trip start
-      await this.evaluateTripStart(
+      const detBeforeEval = await this.prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId },
+        select: { state: true },
+      });
+      afterCtx.fsmState = detBeforeEval?.state ?? null;
+
+      const tripEval = await this.evaluateTripStart(
         vehicleId,
         dimoTokenId,
         previousState,
         normalized,
+        jobDataWithWake.wakeContext,
+        fetchedAt,
       );
+      afterCtx.tripStartEvalError = tripEval.error;
+      afterCtx.possibleStartCreated = tripEval.shouldStartTracking;
 
       const finishedAt = new Date();
       const durationMs = finishedAt.getTime() - startedAt.getTime();
@@ -366,29 +487,6 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
-    } catch (err) {
-      const finishedAt = new Date();
-      const durationMs = finishedAt.getTime() - startedAt.getTime();
-      const errorMessage = err instanceof Error ? err.message : String(err);
-
-      await this.prisma.dimoPollLog.create({
-        data: {
-          vehicleId,
-          jobType: DimoPollJobType.SNAPSHOT,
-          status: DimoPollStatus.FAILURE,
-          startedAt,
-          finishedAt,
-          durationMs,
-          errorMessage,
-        },
-      });
-
-      this.logger.warn(
-        `Snapshot failed for vehicle ${vehicleId}: ${errorMessage}`,
-      );
-      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'failure' });
-      throw err;
-    }
   }
 
   private async tryResolveOpenEpisodeFromSnapshot(input: {
@@ -511,9 +609,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
       ReturnType<PrismaService['vehicleLatestState']['findUnique']>
     >,
     normalized: ReturnType<DimoSnapshotProcessor['normalizeSnapshot']>,
-  ): Promise<void> {
+    wakeContext?: DimoSnapshotJobData['wakeContext'],
+    snapshotFetchedAt?: Date,
+  ): Promise<{ shouldStartTracking: boolean; error: boolean }> {
     try {
-      await this.tripOrchestration.evaluateSnapshotForTripStart(
+      const evaluation = await this.tripOrchestration.evaluateSnapshotForTripStart(
         vehicleId,
         dimoTokenId,
         previousState,
@@ -529,11 +629,20 @@ export class DimoSnapshotProcessor extends WorkerHost {
           evSoc: normalized.evSoc,
           sourceTimestamp: normalized.lastSeenAt,
         },
+        {
+          wakeContext,
+          snapshotFetchedAt: snapshotFetchedAt ?? null,
+        },
       );
+      return {
+        shouldStartTracking: evaluation.shouldStartTracking,
+        error: false,
+      };
     } catch (err) {
       this.logger.warn(
         `Trip start eval error for ${vehicleId}: ${err instanceof Error ? err.message : err}`,
       );
+      return { shouldStartTracking: false, error: true };
     }
   }
 

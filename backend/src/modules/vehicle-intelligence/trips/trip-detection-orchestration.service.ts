@@ -12,6 +12,7 @@ import { buildDimoProviderRequestContext } from '../../dimo/provider/dimo-provid
 import type { DimoProviderRequestContext } from '../../dimo/provider/dimo-provider-gateway.types';
 import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
 import { BatteryV2LvRestSessionProducer } from '../battery-health/jobs/battery-v2-lv-rest-session.producer';
+import { ShutdownEvidenceTripContextService } from '../battery-health/shutdown-evidence/shutdown-evidence-trip-context.service';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import {
@@ -56,6 +57,11 @@ import {
   assessLiveStartSnapshotFreshness,
 } from './trip-evidence.helpers';
 import { START_DETECTION_PHASES } from './trip-start-detection-policy';
+import {
+  evaluateTrustedCompleteCooldownBypass,
+  buildSnapshotWakeForensics,
+} from '../../../workers/snapshot-wake/snapshot-wake.util';
+import type { EvaluateSnapshotForTripStartWakeOptions } from '../../../workers/snapshot-wake/snapshot-wake.types';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
@@ -237,6 +243,8 @@ export class TripDetectionOrchestrationService {
     private readonly detectorRegistry: DetectorRegistry,
     @Inject(forwardRef(() => TripLifecycleRecoveryService))
     private readonly lifecycleRecovery: TripLifecycleRecoveryService,
+    @Optional()
+    private readonly shutdownEvidenceTripContext?: ShutdownEvidenceTripContextService,
     @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -701,6 +709,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     previousTelemetry: VehicleLatestState | null,
     current: SnapshotEvidenceSignals,
+    wakeOptions?: EvaluateSnapshotForTripStartWakeOptions,
   ): Promise<TripStartEvaluation> {
     const detState = await this.getOrCreateDetectionState(vehicleId);
 
@@ -708,13 +717,26 @@ export class TripDetectionOrchestrationService {
       return { shouldStartTracking: false };
     }
 
+    const workerNow = new Date();
+    const wakeContext = wakeOptions?.wakeContext ?? null;
+    const snapshotFetchedAt = wakeOptions?.snapshotFetchedAt ?? workerNow;
+    const restAnchorAt = detState.lastActivityAt ?? null;
+    const lastMeta = detState.lastEvidenceSummary as Record<string, unknown> | null;
+    const lastReason = lastMeta?.lastRestingReason as string | undefined;
+
+    const cooldownBypass = evaluateTrustedCompleteCooldownBypass({
+      lastRestingReason: lastReason,
+      restAnchorAt,
+      wakeContext,
+      snapshotSourceTimestamp: current.sourceTimestamp,
+      workerNow,
+    });
+
     // ── Smart cooldown (replaces blunt 5-min flat cooldown) ──────────────────
     // Cooldown duration depends on WHY we entered RESTING, not just time elapsed.
     // This prevents false-zero blind spots after discarded micro-trips.
-    if (detState.updatedAt) {
-      const sinceLast = Date.now() - detState.updatedAt.getTime();
-      const lastMeta = detState.lastEvidenceSummary as any;
-      const lastReason = lastMeta?.lastRestingReason as string | undefined;
+    if (detState.updatedAt && !cooldownBypass.bypass) {
+      const sinceLast = workerNow.getTime() - detState.updatedAt.getTime();
 
       let cooldownMs: number;
       if (lastReason === 'discard') {
@@ -732,7 +754,6 @@ export class TripDetectionOrchestrationService {
 
     const profile = detState.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
     const profileStr = String(profile);
-    const workerNow = new Date();
     const liveStartFreshness = assessLiveStartSnapshotFreshness({
       providerSourceTimestamp: current.sourceTimestamp,
       workerNow,
@@ -847,6 +868,15 @@ export class TripDetectionOrchestrationService {
           startCandidateClockSource: startClock.clockSource,
           startCandidateObservedAt: startClock.candidateEventAt.toISOString(),
           startCandidateEnteredAt: startClock.enteredAt.toISOString(),
+          ...(wakeContext
+            ? {
+                startWake: buildSnapshotWakeForensics({
+                  wakeContext,
+                  snapshotFetchedAt,
+                  cooldownBypassUsed: cooldownBypass.cooldownBypassUsed,
+                }),
+              }
+            : {}),
         },
       },
     );
@@ -3368,6 +3398,19 @@ export class TripDetectionOrchestrationService {
         } catch (e) {
           this.logger.warn(
             `V2 finalize: LV rest session open enqueue failed for trip ${finalizedTripId}: ${e}`,
+          );
+        }
+
+        try {
+          await this.shutdownEvidenceTripContext?.captureAtTripFinalization({
+            organizationId,
+            vehicleId,
+            tripId: finalizedTripId,
+            tripEndedAt: finalizedEndTime,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `V2 finalize: shutdown evidence trip context capture failed for trip ${finalizedTripId}: ${e}`,
           );
         }
       }

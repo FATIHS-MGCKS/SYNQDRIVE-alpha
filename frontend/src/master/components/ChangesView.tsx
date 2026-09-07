@@ -36,6 +36,194 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-2b-shutdown-evidence-shadow-2026-09-07',
+    version: '4.9.1090',
+    title: 'Battery V2 M3.2B — Shadow shutdown evidence acquisition & per-field provenance',
+    summary: [
+      'Shadow-only `BatteryShutdownEvidenceObservation` + `BatteryTripShutdownContext` tables capture per-field timestamps, skew, and pessimistic evidence classes around natural ICE trip shutdown.',
+      'Feature flag `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` defaults false — zero production writes when off; no assessment, publication, REST quality, or health score impact.',
+      'Hooks: LIVE_VOLTAGE classify observation capture (T−10m…T+15m window) + immutable trip-finalized context snapshot with explicit `atomicClaim: false`.',
+      'Evidence classes: ACTIVE_ALTERNATOR, ACTIVE_NON_CHARGING, SHUTDOWN_TRANSITION, POST_ENGINE_OFF_PRE_SLEEP, UNKNOWN_STATE, STALE_OR_SKEWED_STATE; confidence HIGH/MEDIUM/LOW/INSUFFICIENT only.',
+      'Idempotent keys suppress duplicate rows across pollers/reconciliation/replay. Prometheus counters for observation/context creation and post-engine-off candidates.',
+      'Provenance hardening: no fabricated provider LV timestamps; null speed cannot qualify POST_ENGINE_OFF; alignment excludes ingest/unknown clocks; time-local post-trip observation fields only.',
+      'M3.2C hybrid implementation blocked until natural shadow evidence collected (`M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO`).',
+    ],
+    reason:
+      'M3.2A proved LV context fields are not atomic and 0/13 confirmed post-engine-off pre-sleep samples — need measurable shadow provenance before hybrid model decision.',
+    previousBehavior:
+      'No shadow layer for shutdown timestamp skew or per-field age at trip end; REST context binding unchanged and non-atomic.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/shutdown-evidence/*, prisma migration 20260907153000_battery_shutdown_evidence_shadow, battery-v2-snapshot-ingestion.service.ts, trip-detection-orchestration.service.ts. architecture/battery-v2/research/M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T06:00:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r9h-handoff-orphan-recovery-2026-09-07',
+    version: '4.9.1089',
+    title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',
+    summary: [
+      'Leader-gated SnapshotWakeHandoffRecoveryScheduler SCANs durable successor Redis keys and re-arms missing BullMQ handoff jobs.',
+      'At most one SCAN per tick; scanCursor assigned to Redis nextCursor on fetch; pendingBatchKeys carries batch tail (no starvation or cursor replay).',
+      'Bounded 50 keys/tick; per-key error isolation; stable wake-handoff-{vehicleId} jobId; idempotent enqueueHandoffJob; no provider fetch.',
+      'Pending wake persist failure in requestSnapshot returns PERSIST_FAILED (not QUEUE_FAILED) with metric label.',
+    ],
+    reason:
+      'R9G QUEUE_FAILED after successor persist left durable mailboxes without executable consumers — recovery closes the delivery/liveness gap without LONG_IDLE dependency.',
+    previousBehavior:
+      'Successor Redis persisted but handoffQueue.add failure returned QUEUE_FAILED with no automatic consumer re-arm.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9h--successor-handoff-orphan-recovery-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T05:20:00.000Z',
+  },
+  {
+    id: 'trip-fsm-r9g-coalesce-delivery-seal-2026-09-07',
+    version: '4.9.1088',
+    title: 'Trip FSM R9G — Coalesce Delivery + Scheduler Recovery Seal',
+    summary: [
+      'ACTIVE/UNKNOWN coalesce no longer returns COALESCED when successor/handoff consumer scheduling fails — propagates PERSIST_FAILED/QUEUE_FAILED with wake metrics.',
+      'scheduleDurableSuccessor persist failures return PERSIST_FAILED (not QUEUE_FAILED).',
+      'RECOVERED_TERMINAL propagated through requestSnapshot; scheduler recovered counter wired.',
+    ],
+    reason:
+      'Pre-merge seal — coalesce consumer scheduling failures must surface PERSIST_FAILED/QUEUE_FAILED; bounded handoff recovery (R9H) re-arms orphaned successors.',
+    previousBehavior:
+      'ensureCoalescedWakeConsumer failures still returned COALESCED; scheduleDurableSuccessor mapped persist failures to QUEUE_FAILED; scheduler recovered telemetry stayed zero.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T04:10:30.000Z',
+  },
+  {
+    id: 'trip-fsm-r9f-unknown-retry-completeness-2026-09-07',
+    version: '4.9.1087',
+    title: 'Trip FSM R9F — UNKNOWN Continuation Retry Completeness',
+    summary: [
+      'UNKNOWN continuation schedules bounded retry handoff on all surfaces (afterSnapshot, reconcile, scheduleDurableSuccessor, gen-1 stale ACK).',
+      'Explicit HANDOFF_SCHEDULED / QUEUE_FAILED / PERSIST_FAILED outcomes for retry scheduling.',
+    ],
+    reason: 'R9F seal — UNKNOWN wakes outside dispatchSuccessorHandoff had no bounded execution path.',
+    previousBehavior: 'UNKNOWN pending preserved without scheduling retry handoff.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9f--unknown-continuation-retry-completeness-seal-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9e-continuation-unknown-cas-2026-09-07',
+    version: '4.9.1086',
+    title: 'Trip FSM R9E — UNKNOWN Defer + Obsolete CAS Retirement',
+    summary: [
+      'UNKNOWN handoff dispatch defers via DelayedError without false completion.',
+      'Exact-version bounded pending/successor retirement with reload/reclassify on CAS miss.',
+    ],
+    reason: 'R9E seal — stale obsolete classification could delete newer valid wakes.',
+    previousBehavior: 'ACK latest pending/successor under stale obsolete classification.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9d-wake-delivery-liveness-2026-09-07',
+    version: '4.9.1085',
+    title: 'Trip FSM R9D — Wake Delivery Liveness + BullMQ Integration Gate',
+    summary: [
+      'ACTIVE coalesce schedules durable successor consumer when handoff enqueue succeeds; R9H recovery re-arms orphaned successors; continuation authority RESTING+eligible.',
+      'Strict durable Redis reads; real BullMQ+Redis integration test gate (4/4).',
+    ],
+    reason: 'R9D seal — coalesce against ACTIVE could strand wakes; missing integration evidence.',
+    previousBehavior: 'Coalesce could return success without post-terminal consumer; READ_ERROR conflated with missing.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9c-bullmq-delay-gen1-terminal-2026-09-07',
+    version: '4.9.1084',
+    title: 'Trip FSM R9C — BullMQ DelayedError + Generation-1 Terminal',
+    summary: [
+      'Handoff processor throws DelayedError after moveToDelayed (BullMQ 5.x completion protocol).',
+      'Generation-1 probe terminal bound; fresh-no-candidate probe ordering fix.',
+      'Stale successor ACK rearm; waiting vs delayed changeDelay separation.',
+    ],
+    reason: 'R9C seal — handoff false completion and generation-1 requeue loops.',
+    previousBehavior: 'Handoff returned normally after moveToDelayed; gen-1 could repeat provider polls.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9b-atomic-wake-mailbox-2026-09-07',
+    version: '4.9.1083',
+    title: 'Trip FSM R9B — Atomic Wake Mailbox / Handoff Rearm',
+    summary: [
+      'Fix handoff queue self-coalescing: defer via moveToDelayed instead of enqueue while current wake-handoff job is ACTIVE.',
+      'Durable-first provider wake: atomic Redis pending merge before canonical coalesce/enqueue.',
+      'Versioned successor mailbox with compare-and-clear; reconcileOutstandingPendingWake for newer mid-run wakes.',
+      'Fresh trusted provider wake with no POSSIBLE_START schedules exactly one generation-1 probe.',
+    ],
+    reason:
+      'R9B intermediate closure — R9A liveness/atomicity races (handoff self-coalesce, post-coalesce race, write/write mailbox, successor stale-delete, fresh no-candidate probe gap).',
+    previousBehavior:
+      'Handoff worker completed without re-arm when canonical snapshot still active; pending wake persisted after coalesce attempt.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9b--atomic-wake-mailbox--handoff-rearm-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9a-durable-wake-handoff-2026-09-07',
+    version: '4.9.1082',
+    title: 'Trip FSM R9A — Durable Wake Handoff / Bounded Probe Closure',
+    summary: [
+      'Fix same-job-id successor self-coalescing: post-terminal Redis successor mailbox + lightweight handoff queue dispatches canonical snapshot after ACTIVE job completes.',
+      'Replace destructive pending-wake GET→DEL with versioned durable mailbox and compare-and-ACK semantics.',
+      'Introduce effectiveWakeOrigin so SCHEDULED jobs merged with provider wakes use provider-wake probe semantics.',
+      'Provider fetch failure probes only when FSM is RESTING; scheduler tier occupancy metrics use effectiveTier with zero-cohort reset.',
+    ],
+    reason:
+      'R9A technical closure — wake-liveness races blocked R9 merge; harden durability/idempotency without changing tier cadence, thresholds, or CUSUM semantics.',
+    previousBehavior:
+      'afterSnapshotJob requestSnapshot coalesced with self while ACTIVE; pending wake deleted before work; tier gauges counted rawTier.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9a--durable-wake-handoff--bounded-probe-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
+    id: 'trip-fsm-r9-adaptive-polling-wake-2026-09-07',
+    version: '4.9.1081',
+    title: 'Trip FSM R9 — Adaptive Snapshot Wake / Provider Trigger Path',
+    summary: [
+      'DIMO speed/ignition Vehicle Triggers wake RESTING vehicles into canonical snapshot fetch without waiting for LONG_IDLE tier.',
+      'SnapshotWakeCoordinatorService shares enqueue/coalescing between scheduler and webhook; single jobId snapshot-{vehicleId}.',
+      'Trusted post-complete provider wake can bypass 120s complete cooldown when wake EVENT_TIME and full snapshot catch up.',
+      'Bounded WAKE_PROBE (max generation 1) uses RECENTLY_ACTIVE tier delay when snapshot lags wake or monotonic guard skips.',
+      'Wake metrics + tier occupancy gauges; startWake forensics on POSSIBLE_START evidence.',
+    ],
+    reason:
+      'R9 P6 remediation — close P4-F04 idle-tier discovery latency and P4-F05 post-complete cooldown blind spot without retuning tier cadence.',
+    previousBehavior:
+      'Speed/ignition webhooks ACK-only; LONG_IDLE 30m polling primary discovery path; 120s complete cooldown blocked all scheduled start scoring.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T02:37:37.000Z',
+  },
+  {
     id: 'trip-fsm-r8-observability-forensics-2026-09-06',
     version: '4.9.1080',
     title: 'Trip FSM R8 — Observability & Forensic Metadata Contract',
@@ -326,6 +514,29 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-06T12:00:00.000Z',
+  },
+  {
+    id: 'dimo-exp-019-live-hf-calibration-ks-mx-2024-2026-09-07',
+    version: '4.9.1070',
+    title: 'EXP-019 — Live HF block-polling calibration (KS MX 2024)',
+    summary: [
+      'First scientific live multi-cadence Reference Capture run: 10→20→30→60 in one session.',
+      'sessionId 2508b697-f101-4155-a0d3-8436e46bb779; all phases SUFFICIENT; COMPLETED via stopRecording.',
+      'Settlement replay: T+25 (05:25Z provisional) + true T+30 (05:31:57Z) — identical; max gaps persist at 20s/30s/60s.',
+      'Rate-normalized: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min (55–84% reduction vs 10s).',
+      'NO cadence conclusion (N=1); HF_30S_BLOCK_POLLING_VALIDATED=NO; VIDEO_GT_VERIFIED=YES (5 gap + 8 control windows).',
+      'Bias-control pass: gap-conditioned GT vs video-first controls — CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn.',
+      'EXP-020 window geometry: W060–W300 identical union; P1 whole-trip optimal; P50 first-obs age ~27s vs 8s live delay.',
+      'EXP-021 design + EXP-021A tooling: settlement shadow (8×60s probes × 6 ages) + counterbalanced 60→10; BullMQ persisted scheduler; VehicleTrip end authority; default OFF.',
+      'HF_SOLE_HIGH_FIDELITY_AUTHORITY=NO in gaps; HF_USEFUL_AS_PARTIAL_AUTHORITY=YES.',
+      'Production HF authority restored to LEGACY post-run.',
+    ],
+    reason: 'EXP-016 RETRY after DI-DEF-019 Gate 2 unblocked live calibration path.',
+    previousBehavior: 'Live calibration blocked (EXP-016); only Gate 2 stationary lifecycle validated.',
+    details: 'architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md; EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T05:05:00.000Z',
   },
   {
     id: 'dimo-di-def-019-gate2-production-dress-rehearsal-2026-09-06',

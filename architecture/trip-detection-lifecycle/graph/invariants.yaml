@@ -1,0 +1,62 @@
+# Trip Detection & Lifecycle — Graph Invariants (post-R9)
+
+invariants:
+  - id: TDL-INV-R9-DURABLE-FIRST-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Durable-first wake persistence
+    statement: Provider wake signals persist to Redis pending mailbox before destructive ACK.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-INV-R9-SERIALIZATION-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Same-vehicle canonical snapshot serialization
+    statement: At most one active/queued canonical snapshot job per vehicle via stable jobId.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-queue.util.ts
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-INV-R9-NO-PARALLEL-FETCH-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: No parallel DIMO provider fetch
+    statement: Handoff worker never provider-fetches; only enqueues canonical snapshot path.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-INV-R9-UNKNOWN-RETRY-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: UNKNOWN continuation bounded retry
+    statement: UNKNOWN preserves pending/successor and schedules bounded retry handoff without provider fetch.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-INV-R9-GEN1-TERMINAL-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Generation-1 probe terminal bound
+    statement: Max one generation-1 wake probe per episode; gen-1 never receives UNKNOWN retry handoff.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-INV-LIFECYCLE-AUTHORITY-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: TripDecisionEngine sole lifecycle writer
+    statement: Only TripDecisionEngine mutates vehicleTrip.tripStatus.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+    evidence:
+      - TDL-EVID-CODE-OWNERSHIP-001

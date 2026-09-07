@@ -261,6 +261,7 @@ describe('Reference Capture integration (Phase 3A.1 correction)', () => {
         acquisition as never,
         runner as never,
         writer as never,
+        { isEnabled: () => false, syncCompletedPhasesFromSession: jest.fn() } as never,
       );
 
       await processor.process({

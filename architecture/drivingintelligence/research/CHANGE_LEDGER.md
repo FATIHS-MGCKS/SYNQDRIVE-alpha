@@ -155,3 +155,59 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Baseline | V2 canary disabled; PRODUCTION_HF_AUTHORITY=LEGACY restored |
 | Status | `FIXED_PRODUCTION_VALIDATED` — **not** scientific cadence proof |
 | Evidence | `evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
+
+## EXP-019 — Live HF calibration retry (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Experiment | EXP-016 RETRY — one drive, one session, 10→20→30→60 on KS MX 2024 |
+| sessionId | `2508b697-f101-4155-a0d3-8436e46bb779` |
+| Result | All phases SUFFICIENT; SESSION COMPLETED; settlement replay T+25; **NO cadence conclusion** |
+| Video GT | **Verified** — event register `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` (5 windows) |
+| Video alignment | `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md` + VPS `/tmp/exp-019-video-alignment/` |
+| Video GT correlation | `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` |
+| Video GT event register | `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` + `video-gt-event-register.json` |
+| Bias-control pass | `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md` — 8 video-first control windows; cadence CRITICAL labels withdrawn; `ARCHITECTURAL_DECISION_READINESS=READY_FOR_EXPERIMENT_DESIGN_DECISION` |
+
+## EXP-020 — Retrospective window geometry (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Experiment | Settled HF query-window matrix on EXP-019 drive (read-only DIMO) |
+| Reference | `EXP020_SETTLED_REFERENCE_UNION` — 446 speed buckets (obs + full-trip + full-session) |
+| Window matrix | W060–W300 non-overlap: **identical 141-bucket union** — larger windows do not help when tiling |
+| Post-trip | P1 whole-trip (1 req) ≈ best settled union; chunks add requests without new buckets |
+| Gap expansion | EXACT/+300: 0 interior; FULL_PHASE: 0–2 sparse interior buckets per GT gap |
+| First-obs age | P50 **~27s** (vs 8s live settlement delay) — settlement-timing co-factor |
+| Hypotheses | H1/H2 NOT_SUPPORTED; H3 SUPPORTED; H4 CONTRADICTED (sole cause); H5 SUPPORTED (video fidelity) |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
+| Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
+
+## EXP-021A — Settlement shadow tooling (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Status | **IMPLEMENTED_NOT_PHYSICALLY_VALIDATED** |
+| Flag | `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED` default **false** |
+| Scheduler | BullMQ `reference.capture.settlement-shadow` + persisted Prisma schedules + recovery scanner |
+| Storage | `reference_capture_settlement_shadow_*` tables (immutable observations) |
+| Trip authority | Whole-trip shadow ages from **VehicleTrip.endTime** (not session completion) |
+| Bucket identity | `FIELD_PIPE_CANONICAL_ISO_MS` |
+| Tests | 11 focused unit tests PASS; dry-run lifecycle PASS |
+| Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
+
+## EXP-021 — Settlement shadow experiment design (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DESIGNED** — preflight audit only; **no physical drive** |
+| Channels | CADENCE 60→30→20→10 (counterbalanced) + SETTLEMENT_SHADOW (isolated) |
+| Probes | 8 fixed 60s intervals × ages +30/+60/+120/+180/+300/+600s |
+| Post-trip shadow | TripEnd + {30,60,120,180,300,600}s whole-trip queries |
+| 446 union audit | **PARTIAL** — ms-key artifact; 165+140+141 disjoint keys; ~36 floor-second overlap |
+| Idempotence | Q1/Q2/Q3 **IDENTICAL** on settled EXP-019 interval |
+| Tooling | Shadow scheduler **NOT implemented** — design spec only |
+| Load | ~113 total requests (59 cadence + 48 shadow + 6 post-trip) |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO; shadow tooling NOT deployed |
+| Evidence | `EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md`; `EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md` |

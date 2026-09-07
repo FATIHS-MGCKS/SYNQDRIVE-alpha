@@ -1736,6 +1736,8 @@ model Organization {
   batteryMeasurements                    BatteryMeasurement[]
   batteryAssessments                     BatteryAssessment[]
   batteryPublications                    BatteryPublication[]
+  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContexts            BatteryTripShutdownContext[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -2943,6 +2945,8 @@ model Vehicle {
   batteryMeasurements                    BatteryMeasurement[]
   batteryAssessments                     BatteryAssessment[]
   batteryPublications                    BatteryPublication[]
+  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContexts            BatteryTripShutdownContext[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -8507,6 +8511,124 @@ model BatteryPublication {
   @@map("battery_publications")
 }
 
+// ── Battery Health V2 M3.2B — shadow shutdown evidence acquisition (observability only) ──
+
+enum BatteryShutdownEvidenceClass {
+  ACTIVE_ALTERNATOR
+  ACTIVE_NON_CHARGING
+  SHUTDOWN_TRANSITION
+  POST_ENGINE_OFF_PRE_SLEEP
+  UNKNOWN_STATE
+  STALE_OR_SKEWED_STATE
+}
+
+enum BatteryShutdownEvidenceConfidenceClass {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+enum BatteryShutdownStateAlignmentClass {
+  ALIGNED
+  PARTIAL
+  SKEWED
+  UNKNOWN
+}
+
+enum BatteryShutdownStateCompleteness {
+  COMPLETE
+  PARTIAL
+  MISSING
+}
+
+/// Shadow-only per-observation shutdown evidence around trip end (M3.2B).
+/// Never feeds assessment, publication, or health scores.
+model BatteryShutdownEvidenceObservation {
+  id                          String                             @id @default(uuid())
+  organizationId              String                             @map("organization_id")
+  vehicleId                   String                             @map("vehicle_id")
+  tripId                      String?                            @map("trip_id")
+  provider                    String                             @default("DIMO")
+  providerObservationAt       DateTime?                          @map("provider_observation_at")
+  effectiveCaptureReferenceAt DateTime                           @map("effective_capture_reference_at")
+  providerResponseAt          DateTime                           @map("provider_response_at")
+  ingestedAt                  DateTime                           @map("ingested_at")
+  voltage                     Float?                             @map("voltage")
+  voltageObservedAt           DateTime?                          @map("voltage_observed_at")
+  speedKmh                    Float?                             @map("speed_kmh")
+  speedObservedAt             DateTime?                          @map("speed_observed_at")
+  speedTimestampSource        String?                            @map("speed_timestamp_source")
+  ignitionOn                  Boolean?                           @map("ignition_on")
+  ignitionObservedAt          DateTime?                          @map("ignition_observed_at")
+  ignitionTimestampSource     String?                            @map("ignition_timestamp_source")
+  engineRunning               Boolean?                           @map("engine_running")
+  engineRunningObservedAt     DateTime?                          @map("engine_running_observed_at")
+  engineRunningTimestampSource String?                           @map("engine_running_timestamp_source")
+  isLvCharging                Boolean?                           @map("is_lv_charging")
+  isHvCharging                Boolean?                           @map("is_hv_charging")
+  chargingContextObservedAt   DateTime?                          @map("charging_context_observed_at")
+  chargingContextTimestampSource String?                         @map("charging_context_timestamp_source")
+  activeTrip                  Boolean?                           @map("active_trip")
+  activeTripObservedAt        DateTime?                          @map("active_trip_observed_at")
+  activeTripTimestampSource   String?                            @map("active_trip_timestamp_source")
+  tripStartedAt               DateTime?                          @map("trip_started_at")
+  tripEndedAt                 DateTime?                          @map("trip_ended_at")
+  relativeToTripEndMs         Int?                               @map("relative_to_trip_end_ms")
+  vehicleOnline               Boolean?                           @map("vehicle_online")
+  vehicleOnlineObservedAt     DateTime?                          @map("vehicle_online_observed_at")
+  providerLastSeenAt          DateTime?                          @map("provider_last_seen_at")
+  sourceObservationId         String?                            @map("source_observation_id")
+  sourceSnapshotId            String?                            @map("source_snapshot_id")
+  sourceKind                  String                             @default("LIVE_VOLTAGE_CLASSIFY") @map("source_kind")
+  stateTimestampSkewMs        Int?                               @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs     Int?                               @map("max_field_timestamp_skew_ms")
+  stateCompleteness           BatteryShutdownStateCompleteness   @map("state_completeness")
+  stateAlignmentClass         BatteryShutdownStateAlignmentClass @map("state_alignment_class")
+  evidenceClass               BatteryShutdownEvidenceClass       @map("evidence_class")
+  confidenceClass             BatteryShutdownEvidenceConfidenceClass @map("confidence_class")
+  fieldProvenance             Json?                              @map("field_provenance")
+  idempotencyKey              String                             @map("idempotency_key")
+  createdAt                   DateTime                           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_shutdown_evidence_obs_idempotency")
+  @@index([vehicleId, effectiveCaptureReferenceAt(sort: Desc)])
+  @@index([tripId, effectiveCaptureReferenceAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([evidenceClass])
+  @@map("battery_shutdown_evidence_observations")
+}
+
+/// Immutable shadow snapshot at trip finalization (M3.2B).
+model BatteryTripShutdownContext {
+  id                              String                             @id @default(uuid())
+  organizationId                  String                             @map("organization_id")
+  vehicleId                       String                             @map("vehicle_id")
+  tripId                          String                             @unique @map("trip_id")
+  tripEndedAt                     DateTime                           @map("trip_ended_at")
+  snapshot                        Json                               @map("snapshot")
+  stateTimestampSkewMs            Int?                               @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs         Int?                               @map("max_field_timestamp_skew_ms")
+  stateCompleteness                       BatteryShutdownStateCompleteness   @map("state_completeness")
+  stateAlignmentClass                     BatteryShutdownStateAlignmentClass @map("state_alignment_class")
+  postTripObservationPresentAtCapture     Boolean                            @default(false) @map("post_trip_observation_present_at_capture")
+  firstObservationAfterTripEndAtAtCapture DateTime?                          @map("first_observation_after_trip_end_at_at_capture")
+  idempotencyKey                          String                             @map("idempotency_key")
+  createdAt                       DateTime                           @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_trip_shutdown_ctx_idempotency")
+  @@index([vehicleId, tripEndedAt(sort: Desc)])
+  @@map("battery_trip_shutdown_contexts")
+}
+
 /// Preflight capability state per provider signal / measurement kind.
 model VehicleBatteryCapability {
   id                   String                  @id @default(uuid())
@@ -9711,6 +9833,8 @@ model VehicleTrip {
   repairs                    TripRepair[]
   rpmWebhookCandidates       RpmWebhookCandidate[]
   batteryMeasurementSessions BatteryMeasurementSession[]
+  batteryShutdownEvidenceObservations BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContext BatteryTripShutdownContext?
   dimoBrakingEventIntakes    DimoBrakingEventIntake[]
   brakingEventLedgerEntries  BrakingEventLedger[]
   routeArtifact              VehicleTripRouteArtifact?
@@ -10324,6 +10448,7 @@ model ReferenceCaptureSession {
   organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   observations ReferenceCaptureObservation[]
+  settlementShadowExperiments ReferenceCaptureSettlementShadowExperiment[]
 
   @@index([organizationId, vehicleId, status])
   @@index([vehicleId, createdAt])
@@ -10375,6 +10500,112 @@ model ReferenceCaptureObservation {
   @@index([organizationId, vehicleId])
   @@index([createdAt])
   @@map("reference_capture_observations")
+}
+
+enum ReferenceCaptureSettlementShadowScheduleStatus {
+  PENDING
+  EXECUTING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum ReferenceCaptureSettlementShadowProbeType {
+  FIXED_INTERVAL
+  WHOLE_TRIP
+}
+
+model ReferenceCaptureSettlementShadowExperiment {
+  id                  String   @id @default(uuid())
+  experimentId        String   @unique @map("experiment_id")
+  sessionId           String   @unique @map("session_id")
+  organizationId      String   @map("organization_id")
+  vehicleId           String   @map("vehicle_id")
+  tokenId             Int      @map("token_id")
+  calibrationSeriesId String?  @map("calibration_series_id")
+  vehicleTripId       String?  @map("vehicle_trip_id")
+  tripStartTime       DateTime? @map("trip_start_time")
+  tripEndTime         DateTime? @map("trip_end_time")
+  status              String
+  lastSyncedPhaseCount Int     @default(0) @map("last_synced_phase_count")
+  metadataJson        Json?    @map("metadata_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  session   ReferenceCaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  schedules ReferenceCaptureSettlementShadowSchedule[]
+
+  @@index([organizationId, vehicleId])
+  @@map("reference_capture_settlement_shadow_experiments")
+}
+
+model ReferenceCaptureSettlementShadowSchedule {
+  id                   String                                       @id @default(uuid())
+  experimentId         String                                       @map("experiment_id")
+  sessionId            String                                       @map("session_id")
+  organizationId       String                                       @map("organization_id")
+  vehicleId            String                                       @map("vehicle_id")
+  tokenId              Int                                          @map("token_id")
+  probeId              String                                       @map("probe_id")
+  probeType            ReferenceCaptureSettlementShadowProbeType    @map("probe_type")
+  phase                String?
+  sourceIntervalStart  DateTime                                     @map("source_interval_start")
+  sourceIntervalEnd    DateTime                                     @map("source_interval_end")
+  queryFrom            DateTime                                     @map("query_from")
+  queryTo              DateTime                                     @map("query_to")
+  aggregationInterval  String                                       @default("1s") @map("aggregation_interval")
+  scheduledAgeMs       Int                                          @map("scheduled_age_ms")
+  scheduledAt          DateTime                                     @map("scheduled_at")
+  status               ReferenceCaptureSettlementShadowScheduleStatus @default(PENDING)
+  attemptCount         Int                                          @default(0) @map("attempt_count")
+  executedAt           DateTime?                                    @map("executed_at")
+  bullJobId            String?                                      @map("bull_job_id")
+  idempotencyKey       String                                       @unique @map("idempotency_key")
+  lastError            String?                                      @map("last_error")
+  createdAt            DateTime                                     @default(now()) @map("created_at")
+  updatedAt            DateTime                                     @updatedAt @map("updated_at")
+
+  experiment  ReferenceCaptureSettlementShadowExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  observation ReferenceCaptureSettlementShadowObservation?
+
+  @@index([status, scheduledAt])
+  @@index([experimentId])
+  @@index([sessionId])
+  @@map("reference_capture_settlement_shadow_schedules")
+}
+
+model ReferenceCaptureSettlementShadowObservation {
+  id                   String                                    @id @default(uuid())
+  scheduleId           String                                    @unique @map("schedule_id")
+  experimentId         String                                    @map("experiment_id")
+  sessionId            String                                    @map("session_id")
+  organizationId       String                                    @map("organization_id")
+  vehicleId            String                                    @map("vehicle_id")
+  tokenId              Int                                       @map("token_id")
+  probeId              String                                    @map("probe_id")
+  probeType            ReferenceCaptureSettlementShadowProbeType @map("probe_type")
+  phase                String?
+  sourceIntervalStart  DateTime                                  @map("source_interval_start")
+  sourceIntervalEnd    DateTime                                  @map("source_interval_end")
+  scheduledAgeMs       Int                                       @map("scheduled_age_ms")
+  actualAgeMs          Int                                       @map("actual_age_ms")
+  scheduleDriftMs      Int                                       @map("schedule_drift_ms")
+  requestStartedAt     DateTime                                  @map("request_started_at")
+  requestCompletedAt   DateTime                                  @map("request_completed_at")
+  queryFrom            DateTime                                  @map("query_from")
+  queryTo              DateTime                                  @map("query_to")
+  aggregationInterval  String                                    @map("aggregation_interval")
+  providerRequestStatus String                                   @map("provider_request_status")
+  providerError        String?                                   @map("provider_error")
+  rawRowCount          Int                                       @map("raw_row_count")
+  responseHash         String                                    @map("response_hash")
+  observationJson      Json                                      @map("observation_json")
+  createdAt            DateTime                                  @default(now()) @map("created_at")
+
+  schedule ReferenceCaptureSettlementShadowSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId])
+  @@map("reference_capture_settlement_shadow_observations")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

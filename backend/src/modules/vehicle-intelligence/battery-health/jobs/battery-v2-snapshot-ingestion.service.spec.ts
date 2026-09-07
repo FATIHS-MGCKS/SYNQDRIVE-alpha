@@ -38,6 +38,9 @@ describe('BatteryV2SnapshotIngestionService', () => {
     const lvRestBridge = {
       processObservationCycle: jest.fn().mockResolvedValue(undefined),
     };
+    const shutdownEvidenceCapture = {
+      captureFromObservationClassify: jest.fn().mockResolvedValue('skipped_flag_off'),
+    };
 
     const service = new BatteryV2SnapshotIngestionService(
       prisma as any,
@@ -50,6 +53,7 @@ describe('BatteryV2SnapshotIngestionService', () => {
       deadLetters as any,
       lvLiveVoltage as any,
       lvRestBridge as any,
+      shutdownEvidenceCapture as any,
     );
 
     return {

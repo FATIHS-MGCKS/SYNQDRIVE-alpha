@@ -48,6 +48,7 @@ Cross-module changes require the same review result for **every owning/neighbor 
 - `TripDecisionEngine` lifecycle mutations or ownership violations
 - BullMQ queue handoff, retries, locks, idempotency on `dimo.trip-tracking`
 - Snapshot ingress cadence affecting trip start evaluation
+- **R9 adaptive provider-wake ingress** (`SnapshotWakeIntakeService`, `SnapshotWakeCoordinatorService`, durable Redis mailboxes, `snapshot.wake.handoff` queue, DIMO webhook wiring, coalesce QUEUED/ACTIVE, continuation RESTING+eligible, UNKNOWN bounded retry)
 - Reconciliation / repair (`TripRepair`, partial-boundary repair, intra-gap split)
 - Route artifact materialization (Mapbox/FMM/Route V2)
 - Prisma trip detection models or migrations
@@ -90,7 +91,7 @@ Never merge these axes:
 | KG-EED | REFUEL/RECHARGE — may associate to trips but **not** trip start/end |
 | Scaling Process | Leader election, DIMO budget, generic reconciliation mutex |
 | Battery V2 | Battery health; may consume trip lifecycle hooks |
-| DIMO Integration (`NOT_STARTED`) | Provider auth, telemetry, segments, webhooks — inspect code; no active authority |
+| DIMO Integration (`AUDIT_IN_PROGRESS`) | Provider auth, telemetry, segments, webhooks, triggers — canonical authority at [`architecture/dimo-integration/`](../dimo-integration/); R9 cross-module contract DIM-DEC-R9-001 / TDL-DEC-R9-CX-001 |
 
 **Open:** exact COMPLETED → Driving Intelligence handoff; ownership of `drive-profile/`.
 
@@ -102,10 +103,11 @@ Unless **separately authorized**: no deploy, PM2 mutation, migrations, queue mut
 
 ```bash
 bash architecture/scripts/validate-module-registry.sh
+bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
 git diff --check
 ```
 
-Module graph validators: **not yet created** (Phase 4).
+Module graph validator: `validate-graph.sh` (Phase 4 partial).
 
 ## Required final `ARCHITECTURE_GOVERNANCE` report
 
