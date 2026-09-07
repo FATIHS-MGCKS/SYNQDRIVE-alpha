@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
+    version: '4.9.1091',
+    title: 'Battery V2 M3.2B Phase C — Production shadow flag ON (controlled activation)',
+    summary: [
+      'Production env only: `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED=true` with controlled rolling restart on unchanged SHA `0ba96e03` — no code redeploy.',
+      'Established immutable `M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z` for natural shadow evidence evaluation boundary.',
+      'Both replicas bootstrap-equivalent flag effective true; scheduler converged to 1 leader; PM2/health/R9 PASS.',
+      '0 shadow rows immediately post-activation (expected — no natural shutdown yet); authoritative Battery V2 paths unchanged.',
+      'M3.2C remains forbidden until natural post-T0 shutdown evidence is captured and forensically reviewed.',
+    ],
+    reason:
+      'Phase B proved flag-off deploy safety; Phase C activates the shadow acquisition layer for natural event-conditioned evidence without changing authoritative Battery V2 semantics.',
+    previousBehavior:
+      'Shadow flag absent in production env (effective false); zero shadow table writes.',
+    details:
+      'architecture/battery-v2/research/M3_2B_PHASE_C_SHADOW_ACTIVATION_2026-09-08.md, CURRENT_STATE.md, CHANGE_LEDGER.md. Production mutation: /opt/synqdrive/shared/backend.env only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T00:00:00.000Z',
+  },
+  {
     id: 'r9-five-vehicle-dimo-canary-2026-09-07',
     version: '4.9.1091',
     title: 'R9 Five-Vehicle DIMO Provider Canary — Speed + Ignition Wake Triggers',

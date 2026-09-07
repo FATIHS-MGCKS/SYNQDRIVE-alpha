@@ -70,12 +70,14 @@ This is **not** an R9 signal/callback/configuration defect.
 | SynqDrive stale vehicle record cleanup | **Separate gap** — not in R9 canary task |
 | Re-authorize 190497 in DIMO | **NO — rejected** |
 
-## Bootstrap state (unchanged)
+## Bootstrap state (historical six-vehicle attempt — superseded)
 
-- Bootstrap result: **ROLLED_BACK**
-- Ephemeral R9 webhook IDs: **deleted, not active**
+- Six-vehicle bootstrap result: **ROLLED_BACK** (historical)
+- Ephemeral R9 webhook IDs from that attempt: **deleted, not active**
 - Legacy OBD/RPM: **unchanged**
-- Coverage: **0/6**
+- Coverage after six-vehicle attempt: **0/6** (obsolete cohort)
+
+**Current state (five-vehicle canary):** **PASS** — 5/5 speed+ignition; see [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md)
 
 ## Methods (read-only)
 
