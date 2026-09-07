@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.2 REST signal observability & evidence acquisition architecture audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1 blocked by SIGNAL_OBSERVABILITY; KS MX natural REST lifecycle complete but 0 VALID; wake-only DIMO LV proven. |
+| **CHANGE** | Read-only architecture audit @ `2026-09-07T03:55:00Z` — full LV path trace, signal inventory, parked-LV disappearance layers, multi-trip forensic, deadlock analysis, evidence model options. |
+| **WHY** | `NEXT_ACTION=BATTERY_V2_SIGNAL_OBSERVABILITY_ARCHITECTURE_REVIEW` from M3.1 final maturity — determine what Battery V2 can observe and what evidence model should replace passive REST-only assumption. |
+| **VALIDATION** | Code path reconstruction + production read-only forensics (KS MX/HMÜ/KS MS/WOB); graph validator PASS. |
+| **OBSERVED_EFFECT** | Deadlock confirmed: in-window VALID REST requires sleeping LV; DIMO emits LV only during activity; wake samples quality-ineligible. Polling continues but dedup suppresses stale replays. Historical fallback semantically misleading. |
+| **NON_EFFECTS** | No production/runtime changes; M3.1 not validated YES. |
+| **REMAINING_GAPS** | M3.2 implementation: hybrid tiered evidence model, quality taxonomy, validation gate revision. |
+| **DECISION_STATUS** | `REST_EVIDENCE_OBSERVABILITY_DEADLOCK=YES`; `RECOMMENDED_ARCHITECTURE=HYBRID_TIERED_EVIDENCE_WITH_CONFIDENCE_BANDS`; `NEXT_IMPLEMENTATION_PHASE=M3.2_SIGNAL_OBSERVABILITY_EVIDENCE_MODEL`. |
+| **EVIDENCE** | `M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.1 KS MX 2024 REST_6H final maturity + signal observability verdict
 
 | Field | Content |
