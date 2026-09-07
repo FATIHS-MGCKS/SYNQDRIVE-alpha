@@ -32,6 +32,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-08 — M3.2B Phase C controlled production shadow activation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase B PASS with shadow flag absent (effective false); Phase C authorized but not executed; 0 shadow rows. |
+| **CHANGE** | Set `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED=true` in `/opt/synqdrive/shared/backend.env`; controlled rolling restart both replicas on unchanged SHA `0ba96e03`; established `M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z`. No code redeploy; no other Battery V2 flags changed. |
+| **WHY** | Phase C gate — activate inert shadow acquisition layer in production while preserving authoritative Battery V2 isolation pending natural shutdown evidence. |
+| **VALIDATION** | Preflight PASS; rollback ready (atomic rollback lib exercised on false-negative verification attempt); bootstrap-equivalent flag effective true on both replicas; PM2/scheduler/health PASS; 0 shadow rows post-activation (expected); 0 new authoritative rows since T0; no M3.2B/R9/trip-FSM failure delta. |
+| **OBSERVED_EFFECT** | `BATTERY_V2_M3_2B_PHASE_C_ACTIVATION=PASS`; `SHADOW_FLAG_EFFECTIVE=true`; `NATURAL_SHADOW_EVIDENCE_AVAILABLE=NO`. |
+| **NON_EFFECTS** | M3.1 Stage-2 T0 unchanged; REST_SHADOW/PUBLICATION/RECONCILIATION unchanged; M3.2C not authorized; no synthetic events/backfill. |
+| **DECISION_STATUS** | Await natural post-T0 trip shutdown for forensic shadow evidence review. |
+| **EVIDENCE** | `M3_2B_PHASE_C_SHADOW_ACTIVATION_2026-09-08.md`. |
+
 ## CL-2026-09-07 — M3.2B Phase B evidence epistemic semantics hardening (PR #1562)
 
 | Field | Content |
