@@ -30,6 +30,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-07 — M3.2B Phase B flag-off production deploy
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2B merged (#1560) but not deployed; shadow tables absent; production on `ccc2324db`. |
+| **CHANGE** | Controlled production deploy @ `0ba96e03` with `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` absent (effective false); migration `20260907153000_battery_shutdown_evidence_shadow` applied once; rolling 2-replica restart; scheduler converged to 1 leader. |
+| **WHY** | Phase B gate — ship schema + inert shadow module without authoritative impact or shadow writes. |
+| **VALIDATION** | DB backup OK; schema TEXT FK + TIMESTAMP(3); PM2 both replicas same SHA; health 200; 0 shadow rows before/after ~2m smoke; 0 new REST/assess/pub since deploy; no M3.2B/R9 failure delta. |
+| **OBSERVED_EFFECT** | `M3_2B_PHASE_B=PASS`; `PHASE_C_ALLOWED=YES`; shadow flag still off. |
+| **NON_EFFECTS** | M3.1 status unchanged; `PRODUCTION_VALIDATED` still pending natural E2E; authoritative Stage-2 flags unchanged. |
+| **DECISION_STATUS** | Phase C (enable shadow) allowed but not executed. |
+| **EVIDENCE** | `M3_2B_PHASE_B_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.2B migration FK type fix (PR #1560 CI)
 
 | Field | Content |
