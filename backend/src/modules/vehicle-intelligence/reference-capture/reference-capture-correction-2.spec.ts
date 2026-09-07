@@ -165,6 +165,8 @@ describe('Reference Capture correction 2', () => {
         getSlowCycleEvery: () => 6,
         getMaxTransientRetries: () => 2,
         getTransientRetryBaseDelayMs: () => 10,
+        getStopQuiescenceTimeoutMs: () => 120_000,
+        getStopQuiescencePollIntervalMs: () => 250,
       };
       const sessionRepo = {
         findById: jest.fn().mockResolvedValue({
@@ -174,6 +176,10 @@ describe('Reference Capture correction 2', () => {
           acquisitionStateJson: { cycleCount: 1 },
         }),
         updateStatus: jest.fn().mockResolvedValue({}),
+        waitForAcquisitionCycleQuiescence: jest
+          .fn()
+          .mockResolvedValue({ quiesced: true, timedOut: false }),
+        finalizeTerminalCalibrationAtomic: jest.fn().mockResolvedValue({}),
       };
       const acquisition = {
         executeAcquisitionCycle: jest.fn().mockRejectedValue(new Error('ETIMEDOUT calling DIMO')),
