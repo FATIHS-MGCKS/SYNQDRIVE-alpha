@@ -45,13 +45,15 @@ Scaling Process
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
-│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.3 longest FULL_N2 segment 81024s)
-│   ├── Trip reconciliation duplicate rows → INC-07 (P1.8.3.3 forensic) — **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P1.8.3.5)
+│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.8 candidate-window longest 72054s; all-time longest 76832s; current segment from 2026-09-06T22:12:34Z)
+│   ├── INC-07 trip reconciliation idempotency → **CLOSED** (P1.8.3.8 CASE B combined reachability proof)
+│   ├── OQ-30 INTRA_TRIP_GAP_SPLIT idempotency → **CLOSED** (P1.8.3.8)
+│   ├── Trip reconciliation duplicate rows → INC-07 — **CLOSED** (P1.8.3.8; HISTORICAL P1.8.3.6.2 MODERATE / FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS superseded)
 │   └── nginx dual-upstream with dead backend
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.3: calendar >24h; continuous FULL_N2 soak NOT_MET; INC-07 fix implemented pending prod validation)
+│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.8: INC-07 CLOSED; OQ-28 PARTIAL; continuous FULL_N2 soak NOT_MET)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work
@@ -118,11 +120,12 @@ MUST_PRESERVE → exactly one scheduler leader
 MUST_PRESERVE → both replicas registered when REPLICA_COUNT=2
 MUST_PRESERVE → nginx upstream matches live processes
 CONVERGENCE_GATE → leaderCount=0 transient retry; >1 immediate FAIL_SPLIT_BRAIN; 2 stable obs of 1
-PROVENANCE → SYNQDRIVE_REQUESTED_DEPLOY_SHA end-to-end (DEC-016)
-BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 **LIKELY_PRODUCTION_VERIFIED**; DEC-016 precision review)
+PROVENANCE → SYNQDRIVE_REQUESTED_DEPLOY_SHA end-to-end (DEC-016 **FULLY_PRODUCTION_VALIDATED** / VERIFIED_PRODUCTION)
+BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 **CLOSED** — P1.8.3.5 six-link invariant)
 SUPERSEDES → single `pm2 restart synqdrive` only model
 SUPERSEDES → immediate single-snapshot leader check (INC-06)
-EVIDENCE → P1.8.3.1 production validation attempt 3; DEC-015; DEC-016 unit tests
+HISTORICAL → P1.8.3.3 recorded OQ-18 LIKELY_PRODUCTION_VERIFIED and DEC-016 precision review — superseded by P1.8.3.5
+EVIDENCE → P1.8.3.1 production validation attempt 3; P1.8.3.5 INC-07 deploy; DEC-015; DEC-016 unit tests
 ```
 
 ### Snapshot Polling (P1.2)

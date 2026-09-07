@@ -151,7 +151,11 @@ SYNQDRIVE_REQUESTED_DEPLOY_SHA (set by cloud-agent-deploy.sh)
   → replica SHA invariant after rolling restart
 ```
 
-**OQ-18:** Stale-`current` bootstrap **LIKELY_PRODUCTION_VERIFIED** (P1.8.3.3 auth.log TMP pattern). Full DEC-016 invariant: **NEEDS_PRECISION_REVIEW** (replica SHA RELEASE_INFERRED).
+**OQ-18:** **CLOSED** — canonical TMP exact-SHA bootstrap verified in production (P1.8.3.5 INC-07 deploy).
+
+**DEC-016:** **FULLY_PRODUCTION_VALIDATED** — six-link invariant **VERIFIED_PRODUCTION** (`5b788a223…` at all identity points; direct deploy-log proof, not RELEASE_INFERRED).
+
+**HISTORICAL:** P1.8.3.3 recorded `LIKELY_PRODUCTION_VERIFIED` / `NEEDS_PRECISION_REVIEW` — superseded by P1.8.3.5 full invariant proof.
 
 ---
 

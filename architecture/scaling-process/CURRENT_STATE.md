@@ -1,7 +1,7 @@
 # SCALING PROCESS — Current State
 
-**Last verified:** 2026-09-03T21:19Z (P1.8.3.5 INC-07 production deploy + validation baseline)  
-**Verifier:** P1.8.3.5 INC-07 production validation agent
+**Last verified:** 2026-09-06T22:55Z (P1.8.3.8 final scaling closure audit)  
+**Verifier:** P1.8.3.8 final audit agent
 
 > `MAIN_SHA_AT_LAST_AUTHORITY_SYNC` is a snapshot at authority sync — not a live pointer to `origin/main`.
 
@@ -12,22 +12,24 @@
 ```
 WORKSTREAM = SCALING_PROCESS
 AUTHORITY_STATUS = ACTIVE_VERIFIED
-MAIN_SHA_AT_LAST_AUTHORITY_SYNC = 5b788a223d0461f29b96b142e51388c9831366a2
-CURRENT_PRODUCTION_SHA = 5b788a223d0461f29b96b142e51388c9831366a2
-MAIN_AHEAD_OF_PRODUCTION = NO
+MAIN_SHA_AT_LAST_AUTHORITY_SYNC = 06095af91ce6f58366734a182ac5962830e858db
+CURRENT_PRODUCTION_SHA = 01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac
+MAIN_AHEAD_OF_PRODUCTION = YES
 N2_RETROSPECTIVE_AUDIT_VERDICT = EARLY_PASS
 P1_8_3_3_EVIDENCE_PRECISION = FORENSIC_AUTHORITY_CLOSURE_V4
 P1_8_3_3_OPERATIONAL_24H_PLUS = PASS_WITH_FINDINGS
 P1_8_3_3_CONTINUOUS_24H_SOAK = NOT_MET
 N2_PRODUCTION_CERTIFICATION = EARLY
 RUNTIME_N2_SIGNAL = HEALTHY_EARLY
-APPLICATION_DEFECT_FOUND = YES
-SCALING_READINESS_DEFECT_FOUND = YES
+APPLICATION_DEFECT_FOUND = NO
+SCALING_READINESS_DEFECT_FOUND = NO
 N2_MULTI_REPLICA_CAUSED_DEFECT_FOUND = NO_PROVEN
 N2_SEGMENTED_HORIZON_SECONDS = 158877
 N2_FULL_N2_RUNTIME_SECONDS = 158815
 N2_EXCLUDED_TRANSITION_SECONDS = 62
-N2_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 81024
+N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 76832
+OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS = 72054
+N2_CURRENT_CONTINUOUS_SEGMENT_SECONDS = 2546
 N2_AUDIT_WINDOW_CLASS = SEGMENTED_POST_DEPLOY
 ATE_MULTI_REPLICA_CERTIFICATION = UNEXERCISED
 BATTERY_V2_FAILED_BASELINE = 64
@@ -64,23 +66,33 @@ PROVIDER_CEILING_VERIFIED = NO
 N1000_CERTIFICATION = CONDITIONAL (software only)
 OPEN_P0 = 0
 OPEN_P1 = 0
-OPEN_P2 = 1
+OPEN_P2 = 0
 INC_07_FIX_IMPLEMENTED = YES
 INC_07_LOCAL_VALIDATION = PASS
 INC_07_CRASH_SAFETY_LOCAL = PASS
 INC_07_APPLIED_TERMINALITY_LOCAL = PASS
 INC_07_PRODUCTION_DEPLOYED = YES
-INC_07_PRODUCTION_VALIDATED = NO
+INC_07_PRODUCTION_VALIDATED = YES
 INC07_VALIDATION_START_UTC = 2026-09-03T21:19:07Z
+INC07_RETROSPECTIVE_AUDIT_UTC = 2026-09-06T22:55:00Z
+NATURAL_WARM_TIER_CYCLES_OBSERVED = 16
+INC07_PRODUCTION_EVIDENCE_STRENGTH = STRONG_BY_COMBINED_REACHABILITY_PROOF
+PRODUCTION_BOUNDARY_COUNT_AFTER_T0 = 5
+CURRENT_FULL_N2_SEGMENT_START = 2026-09-06T22:12:34Z
+OQ28_EARLIEST_24H_CHECKPOINT_UTC = 2026-09-07T22:12:34Z
+INC07_CLOSURE_CASE = B_STRUCTURAL_NON_REACHABILITY_PLUS_COMBINED_PRODUCTION_EVIDENCE
+OPEN_APPLICATION_DEFECT_FOUND = NO
+OPEN_SCALING_READINESS_DEFECT_FOUND = NO
 PRE_EXISTING_P3 = 1
 INC_06 = CLOSED
-INC_07 = FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS
+INC_07 = CLOSED
 OQ_17 = CLOSED
 OQ_18 = CLOSED
 OQ_28 = PARTIAL
-OQ_30 = PARTIAL
-P1_8_3_3_MERGE_RECOMMENDATION = EXTERNAL_GITHUB_GATE
-NEXT_ARCHITECTURE_STAGE = RETROSPECTIVE_INC_07_NATURAL_WARM_TIER_VALIDATION_AFTER_AT_LEAST_TWO_CYCLES
+OQ_30 = CLOSED
+DEPLOYMENT_BOUNDARY_COUNT_IN_AUDIT_WINDOW = 4
+PRE_T0_DEPLOYMENT_BOUNDARY_COUNT = 1
+NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FROM_CURRENT_SEGMENT
 ```
 
 ---
@@ -131,17 +143,44 @@ NEXT_ARCHITECTURE_STAGE = RETROSPECTIVE_INC_07_NATURAL_WARM_TIER_VALIDATION_AFTE
 
 ---
 
-## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (2026-09-03)
+## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (P1.8.3.5 production proof)
 
-**STATUS:** **PARTIALLY_PRODUCTION_VALIDATED** — stale-current fix likely verified; full six-link invariant **NEEDS_PRECISION_REVIEW**  
-**EVIDENCE:** `/var/log/auth.log` TMP bootstrap entries 2026-09-02/03; release SHA match (replica SHA RELEASE_INFERRED)
+**STATUS:** **FULLY_PRODUCTION_VALIDATED** / **VERIFIED_PRODUCTION**
+
+**Invariant (six-link chain):** `REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA`
+
+**Production proof:** P1.8.3.5 INC-07 deploy (`2026-09-03T21:19:07Z`) — all six identity points directly verified equal `5b788a223d0461f29b96b142e51388c9831366a2` via TMP exact-SHA bootstrap (`CANONICAL_EXACT_SHA_PATH`), not stale `current`.
+
+**OQ-18:** **CLOSED** (stale-`current` bootstrap superseded by canonical exact-SHA bootstrap; full invariant verified)
+
+**EVIDENCE:** `architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md`; DEC-016 in `DECISION_LOG.md`
+
+**HISTORICAL (superseded by P1.8.3.5):** P1.8.3.3 recorded `PARTIALLY_PRODUCTION_VALIDATED` / `NEEDS_PRECISION_REVIEW` and `LIKELY_PRODUCTION_VERIFIED` for OQ-18 — retained in P1.8.3.3 retrospective chronology only.
 
 ---
 
-## TYPE: INCIDENT — INC-07 (fix deployed; production validation in progress)
+## TYPE: INCIDENT — INC-07 (CLOSED — P1.8.3.8)
 
-**STATUS:** **FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS** (P2) — remediation PR #1525 deployed to production `5b788a223` on 2026-09-03; validation start `2026-09-03T21:19:07Z`. Historical duplicates frozen (2 groups / 4 rows). **Not closed** until ≥2 natural warm-tier cycles with STRONG or MODERATE evidence.  
-**EVIDENCE:** P1.8.3.3 forensic closure; P1.8.3.4 remediation + local regression PASS; `FAILURE_AND_RECOVERY_MODEL.md`
+**STATUS:** **CLOSED** — production validated **YES** (P1.8.3.8 final audit `2026-09-06T22:55:00Z`)
+
+**Closure case:** **B** — structural non-reachability after successful split + combined production evidence
+
+**Evidence strength:** `STRONG_BY_COMBINED_REACHABILITY_PROOF`
+
+**Rationale (current authority):**
+- Successful gap split makes natural same-gap replay structurally unreachable (`NATURAL_REPLAY_STRUCTURALLY_REACHABLE = NO`)
+- First segment becomes `MID_TRIP_GAP_SPLIT` and is excluded from future warm-tier candidate discovery
+- Original waypoint gap no longer exists on one trip row after reparenting
+- 16 natural warm-tier cycles; 13 post-T0 `INTRA_TRIP_GAP_SPLIT` APPLIED repairs (deterministic IDs)
+- Max 1 committed mutation per repair ID; 0 new INC-07-equivalent duplicate groups
+- 0 APPLIED downgrades; 0 transaction/idempotency failures
+- P1.8.3.4 local/PostgreSQL concurrency/crash suite PASS
+
+**OQ-30:** **CLOSED** (idempotency acceptance criteria met with INC-07 closure)
+
+**HISTORICAL (superseded by P1.8.3.8):** P1.8.3.6.2 recorded `FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS`, evidence MODERATE, not closed — retained in retrospective artifact chronology only.
+
+**EVIDENCE:** `architecture/P1_8_3_6_INC_07_NATURAL_WARM_TIER_RETROSPECTIVE_CLOSURE_2026-09-04.md` (P1.8.3.8 extension); `FAILURE_AND_RECOVERY_MODEL.md`; DEC-018
 
 ---
 
@@ -154,7 +193,7 @@ NEXT_ARCHITECTURE_STAGE = RETROSPECTIVE_INC_07_NATURAL_WARM_TIER_VALIDATION_AFTE
 | Reconciliation mutex (P1.4) | ACTIVE | #1435 |
 | Multi-replica deploy hardening (P1.8.2.1) | **MERGED** #1472 | rolling deploy |
 | Deploy leader convergence gate (P1.8.3.1) | **VERIFIED** | #1487 + prod validation |
-| Exact-SHA deploy provenance (DEC-016) | **NEEDS_PRECISION_REVIEW** | P1.8.3.3 audit |
+| Exact-SHA deploy provenance (DEC-016) | **VERIFIED_PRODUCTION** | P1.8.3.5 six-link invariant |
 
 ---
 
@@ -166,6 +205,7 @@ NEXT_ARCHITECTURE_STAGE = RETROSPECTIVE_INC_07_NATURAL_WARM_TIER_VALIDATION_AFTE
 | Single scheduler leader | PASS |
 | Two-replica production invariant | **PASS** |
 | Deploy path preserves 2 replicas | **YES** |
-| Exact-SHA deploy invariant (routine) | **NEEDS_PRECISION_REVIEW** |
-| Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL) |
-| Scale-readiness blockers | **INC-07** fix implemented; production validation pending |
+| Exact-SHA deploy invariant (routine) | **VERIFIED_PRODUCTION** |
+| Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL — certification gap, not an open runtime defect) |
+| Open application/scaling-readiness defects | **NONE** (`OPEN_APPLICATION_DEFECT_FOUND=NO`, `OPEN_SCALING_READINESS_DEFECT_FOUND=NO`; INC-07 CLOSED) |
+| N=2 production certification | **EARLY** (OQ-28 uninterrupted 24h segment not yet proven) |

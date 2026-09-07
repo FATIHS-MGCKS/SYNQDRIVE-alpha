@@ -67,7 +67,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.2 EARLY_PASS (~2h39m); P1.8.3.3 calendar ~44h but longest continuous segment 81024s (<86400); 3 deploys segmented runtime |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.8: longest continuous FULL_N2 segment from candidate start **72054s** (<86400); Sep 5 `23:24Z` deploy boundary corrected; current segment from `2026-09-06T22:12:34Z`; next 24h checkpoint `2026-09-07T22:12:34Z` |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---
@@ -76,7 +76,7 @@ Do **not** treat items here as current production architecture.
 
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
-| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **PARTIAL** | P1.8.3.5: fix deployed production `5b788a223`; validation start `2026-09-03T21:19:07Z`; natural warm-tier evidence pending; INC-07 closes only after STRONG/MODERATE replay evidence |
+| OQ-30 | `INTRA_TRIP_GAP_SPLIT` reconciliation idempotency | **CLOSED** | P1.8.3.8: INC-07 CLOSED (CASE B — structural non-reachability + 13 post-T0 APPLIED repairs, max 1 mutation/repair, 0 new duplicates); OQ-30 acceptance criteria met |
 
 ---
 

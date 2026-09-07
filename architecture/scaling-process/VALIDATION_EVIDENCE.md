@@ -241,3 +241,76 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Validation start timestamp | P1.8.3.5 | — | `INC07_VALIDATION_START_UTC` | `2026-09-03T21:19:07Z` | HIGH |
 | Natural warm-tier validation | P1.8.3.5 | — | — | IN_PROGRESS (0 cycles) | HIGH |
 
+---
+
+## P1.8.3.6 — INC-07 natural warm-tier retrospective
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Post-T0 audit window (~12.5h) | P1.8.3.6 / .6.1 | — | read-only SSH + SQL + logs | `44881s` | HIGH |
+| INC-07 fix present entire window | P1.8.3.6 | — | single pre-T0 deploy `5b788a223`, dist markers | YES | HIGH |
+| Deployment boundary in audit window | P1.8.3.6.1 | — | deploy `21:11:38Z` pre-T0 | 0 in-window / 1 pre-T0 | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.1 | — | scheduler logs `01:18Z`, `05:18Z`, `09:18Z` | 3 cycles | HIGH |
+| Post-T0 INTRA_TRIP_GAP_SPLIT rows | P1.8.3.6.1 | — | `trip_repairs` SQL | 1 APPLIED | HIGH |
+| Post-T0 deterministic repair IDs | P1.8.3.6.1 | — | workspace detector | 1 verified | HIGH |
+| Natural same-repair replay / IDEMPOTENT_SKIP | P1.8.3.6.1 | — | logs + DB | 0 | HIGH |
+| New INC-07-equivalent duplicate groups | P1.8.3.6.1 | — | duplicate SQL | 0 | HIGH |
+| Historical duplicate baseline | P1.8.3.6 | — | duplicate SQL | 2 groups / 4 rows unchanged | HIGH |
+| APPLIED terminality regression | P1.8.3.6.1 | — | `trip_repairs` SQL | none | HIGH |
+| Max committed mutations per repair ID | P1.8.3.6.1 | — | trip mutation count | 1 (≤1 invariant) | HIGH |
+| INC-07 production evidence strength | P1.8.3.6.1 | — | classification matrix | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.1 | — | Phase 17 rule | NOT CLOSED (replay pending) | HIGH |
+| OQ-30 | P1.8.3.6.1 | — | idempotency replay pending | PARTIAL | HIGH |
+| OQ-28 FULL_N=2 segment | P1.8.3.6.1 | — | SHA invariant `21:18:52Z` | `44896s` (<86400) | HIGH |
+
+---
+
+## P1.8.3.6.2 — INC-07 final ~2-day forensic audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~50h) | P1.8.3.6.2 | — | read-only SSH + SQL + logs | `180034s` | HIGH |
+| INC-07 fix on all post-T0 production SHAs | P1.8.3.6.2 | — | release dist markers | YES | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.6.2 | — | scheduler logs | 11 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.6.2 | — | `trip_repairs` SQL | 8 APPLIED | HIGH |
+| Known repair `2074c845…` replay | P1.8.3.6.2 | — | logs + DB | 0 re-encounter | HIGH |
+| IDEMPOTENT_SKIP observability | P1.8.3.6.2 | — | PM2 out logs (DEBUG-level in code) | 0 retained | MEDIUM |
+| Max mutations per repair ID | P1.8.3.6.2 | — | `vehicle_trips` correlation | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.6.2 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.6.2 | — | classification | MODERATE | HIGH |
+| INC-07 closure | P1.8.3.6.2 | — | STRONG replay required | NOT CLOSED | HIGH |
+
+---
+
+## P1.8.3.7 — OQ-28 uninterrupted 24h FULL_N2 certification
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Calendar FULL_N2 elapsed | P1.8.3.7 | — | deploy boundaries | `180049s` (~50h) | HIGH |
+| Longest continuous FULL_N2 segment | P1.8.3.7 | — | segment reconstruction | `76832s` (<86400) | HIGH |
+| Qualifying 24h segment | P1.8.3.7 | — | OQ-28 rule | NOT_MET | HIGH |
+| Current segment start | P1.8.3.7 | — | Sep 5 deploy | `2026-09-05T09:05:28Z` | HIGH |
+| N2 health during longest segment | P1.8.3.7 | — | topology/queue/leader | no disqualifying defect | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.8 | — | explicit limits | N=2 topology only | HIGH |
+
+---
+
+## P1.8.3.8 — Final scaling closure audit (INC-07 + OQ-28)
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Total INC-07 audit window (~73.6h) | P1.8.3.8 | — | read-only SSH + SQL + logs | `264953s` | HIGH |
+| Natural warm-tier cycles after T0 | P1.8.3.8 | — | scheduler logs | 16 cycles | HIGH |
+| Post-T0 deterministic repairs | P1.8.3.8 | — | `trip_repairs` SQL | 13 APPLIED | HIGH |
+| Natural replay structurally reachable | P1.8.3.8 | — | code path analysis | NO | HIGH |
+| Repairs structurally non-replayable | P1.8.3.8 | — | topology + code | 13/13 | HIGH |
+| Max mutations per repair ID | P1.8.3.8 | — | `trip_repairs` SQL | 1 (≤1) | HIGH |
+| New INC-07-equivalent duplicates | P1.8.3.8 | — | duplicate SQL | 0 | HIGH |
+| INC-07 evidence strength | P1.8.3.8 | — | CASE B classification | STRONG_BY_COMBINED_REACHABILITY_PROOF | HIGH |
+| INC-07 closure | P1.8.3.8 | — | CASE B criteria | CLOSED | HIGH |
+| OQ-30 closure | P1.8.3.8 | — | idempotency criteria | CLOSED | HIGH |
+| Sep 5 23:24Z deploy boundary | P1.8.3.8 | — | PM2 Nest start logs | CONFIRMED (missed in P1.8.3.6.2) | HIGH |
+| Longest FULL_N2 segment (OQ-28 window) | P1.8.3.8 | — | segment reconstruction | `72054s` (<86400) | HIGH |
+| OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
+
