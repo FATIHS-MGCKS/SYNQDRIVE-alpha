@@ -7,7 +7,7 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | ID | Question | Why it matters |
 |----|----------|----------------|
 | DI-OQ-HF-001 | What is fleet-wide DIMO HF request cost at current enrichment rate? | Scalability planning |
-| DI-OQ-HF-002 | Does 30s block polling preserve bucket density on all vehicle types? | DI-DEC-BLOCK-POLL-30S-001 validation |
+| DI-OQ-HF-002 | Does 30s block polling preserve bucket density on all vehicle types? | **Partial data** — EXP-019 N=1 on KS MX 2024; 30s max gap 117s; **not validated** |
 | DI-OQ-HF-003 | Optimal settlement delay and recovery overlap for production? | Currently 8s/6s provisional |
 | DI-OQ-HF-004 | Cross-provider cadence variance beyond LTE_R1 reference drives? | Generalization risk |
 

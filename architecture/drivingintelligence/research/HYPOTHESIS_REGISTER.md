@@ -10,8 +10,8 @@ Independent record of hypotheses tested during the workstream.
 | DI-HYP-003 | Video/telemetry alignment with low MAE is physically valid | Numeric fit looks good | RD003/RD004 alignment audits | **REJECTED** when violates hard bounds | Hard temporal/physical constraints required |
 | DI-HYP-004 | 2s overlap alone recovers late DIMO buckets | Simple watermark extension | RD004-B exact-window replay | **REJECTED** | 26 watermark-excluded; recovery V2 needed |
 | DI-HYP-005 | 8s settlement + 6s overlap are optimal production values | Grid simulation B.5 | RD004-B counterfactual | **NOT_YET_TESTED** live | Provisional; live calibration required |
-| DI-HYP-006 | 30s block poll preserves ~1s/2s bucket density | Provider returns historical blocks | C.1 testbed + calibration design | **NOT_YET_TESTED** | `HF_30S_BLOCK_POLLING_VALIDATED=NO` |
-| DI-HYP-007 | One physical drive can compare 10/20/30/60s poll phases | Same vehicle, same route | C.1c multi-cadence design | **NOT_YET_TESTED** live | Machinery ready; no live run |
+| DI-HYP-006 | 30s block poll preserves ~1s/2s bucket density | Provider returns historical blocks | EXP-019 live calibration (KS MX 2024) | **PARTIALLY_SUPPORTED** (density) / **REJECTED** (continuity) | Median Δt ~1s preserved; max gaps up to ~117s; `HF_30S_BLOCK_POLLING_VALIDATED=NO` |
+| DI-HYP-007 | One physical drive can compare 10/20/30/60s poll phases | Same vehicle, same route | EXP-019 live calibration | **CONFIRMED** (machinery) / **INCONCLUSIVE** (cadence winner) | Four phases SUFFICIENT in one session; NO cadence conclusion (N=1) |
 | DI-HYP-008 | KS MX 2024 / token 187336 is canonical canary vehicle | Prior RD004-B evidence | C.1b review | **REJECTED** as runtime assumption | Operator selects vehicle at runtime |
 | DI-HYP-009 | `synqReceivedAt` suitable for event timing | Ingress timestamp available | RD003 ingress alignment | **REJECTED** | `INGRESS_TIME_DIAGNOSTIC_SUPPORTED_CLIPS=0` |
 | DI-HYP-010 | LATEST_LIVE fresher than HF for reconstruction | Surface name implies recency | RD003 LATEST_LIVE analysis | **REJECTED** for offline reconstruction | Stale holds; median ~6s |
@@ -22,6 +22,6 @@ Independent record of hypotheses tested during the workstream.
 | DI-HYP-015 | Phase switch at cycle boundary prevents races | Concurrency review | C.1d/C.1e hardening | **CONFIRMED** in tests | Live multi-replica NOT validated |
 
 **Rejected count:** 7  
-**Not yet tested:** 4  
-**Confirmed:** 3  
-**Partially supported:** 1
+**Not yet tested:** 2  
+**Confirmed:** 4  
+**Partially supported:** 2

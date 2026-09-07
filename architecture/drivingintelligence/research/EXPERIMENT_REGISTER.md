@@ -19,10 +19,11 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-013 | 2026-09-04 | RD004-B recovery policy simulation | KS MX Segment B | Counterfactual grid | 8/6 provisional | DI-EV-0035C impl | DI-EV-0035B.6 |
 | EXP-014 | 2026-09-04 | HF Recovery V2 unit/policy tests | — | Synthetic + fixtures | Implementation validated | C.1 testbed | DI-EV-0035C |
 | EXP-015 | 2026-09-04–05 | C.1a–e correctness hardening | — | Concurrency specs | 113 RC HF tests PASS | PR #1533 merge | DI-EV-0035C.1e |
-| EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration (KS MX 2024) | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Fix + GATE 1 PG tests | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
+| EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration attempt #1 | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Superseded by EXP-019 | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
 | EXP-017 | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | — | Isolated PG 16 | 10 integration + 33 regression PASS | FIXED_CODE_TESTED | `DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
-| EXP-018 | 2026-09-06 | GATE 2 stationary dress rehearsal | KS MX 2024 · token 187336 | Production runtime | **PASS** — 10→60 lifecycle + STOP + ABORT; V2 canary restored to LEGACY | FIXED_PRODUCTION_VALIDATED (DI-DEF-019) | `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
+| EXP-018 | 2026-09-06 | GATE 2 stationary dress rehearsal | KS MX 2024 · token 187336 | Production runtime | **PASS** — 10→60 lifecycle + STOP + ABORT | FIXED_PRODUCTION_VALIDATED (DI-DEF-019) | `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
+| EXP-019 | 2026-09-07 | **EXP-016 RETRY** live 10/20/30/60 calibration | KS MX 2024 · token 187336 | Reference capture prod | **EXECUTED** — 4 phases SUFFICIENT; NO cadence conclusion (N=1) | MORE_DATA_REQUIRED | `LIVE_HF_CALIBRATION_KS_MX_2024_10_20_30_60_2026-09-07.md` |
 
-**EXPERIMENT_ENTRIES_TOTAL:** 18  
-**EXPERIMENTS_EXECUTED:** 18  
+**EXPERIMENT_ENTRIES_TOTAL:** 19  
+**EXPERIMENTS_EXECUTED:** 19  
 **EXPERIMENTS_PENDING:** 0

@@ -155,3 +155,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Baseline | V2 canary disabled; PRODUCTION_HF_AUTHORITY=LEGACY restored |
 | Status | `FIXED_PRODUCTION_VALIDATED` — **not** scientific cadence proof |
 | Evidence | `evidence/reference-capture/DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
+
+## EXP-019 — Live HF calibration retry (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Experiment | EXP-016 RETRY — one drive, one session, 10→20→30→60 on KS MX 2024 |
+| sessionId | `2508b697-f101-4155-a0d3-8436e46bb779` |
+| Result | All phases SUFFICIENT; SESSION COMPLETED; **NO cadence conclusion** |
+| Video GT | Anchor `2026-09-07T04:30:14Z`; analysis deferred |
+| Replay | Not executed (tooling gap) |
+| Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |
+| Evidence | `evidence/reference-capture/LIVE_HF_CALIBRATION_KS_MX_2024_10_20_30_60_2026-09-07.md` |
