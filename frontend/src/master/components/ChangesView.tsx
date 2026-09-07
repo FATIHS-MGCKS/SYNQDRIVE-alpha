@@ -334,8 +334,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'First scientific live multi-cadence Reference Capture run: 10→20→30→60 in one session.',
       'sessionId 2508b697-f101-4155-a0d3-8436e46bb779; all phases SUFFICIENT; COMPLETED via stopRecording.',
-      'Provider request count drops ~56–63% at slower cadences; observed signal Δt ~1s median persists.',
-      'NO cadence conclusion (N=1); HF_30S_BLOCK_POLLING_VALIDATED=NO; video GT analysis deferred.',
+      'Settlement replay T+25: max gaps at 20s/30s/60s persist post-settlement (not late-arrival artifacts).',
+      'Rate-normalized: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min (55–84% reduction vs 10s).',
+      'NO cadence conclusion (N=1); HF_30S_BLOCK_POLLING_VALIDATED=NO; video GT reported but unverified.',
       'Production HF authority restored to LEGACY post-run.',
     ],
     reason: 'EXP-016 RETRY after DI-DEF-019 Gate 2 unblocked live calibration path.',

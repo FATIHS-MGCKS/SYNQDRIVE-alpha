@@ -162,8 +162,9 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | Experiment | EXP-016 RETRY — one drive, one session, 10→20→30→60 on KS MX 2024 |
 | sessionId | `2508b697-f101-4155-a0d3-8436e46bb779` |
-| Result | All phases SUFFICIENT; SESSION COMPLETED; **NO cadence conclusion** |
-| Video GT | Anchor `2026-09-07T04:30:14Z`; analysis deferred |
-| Replay | Not executed (tooling gap) |
+| Result | All phases SUFFICIENT; SESSION COMPLETED; settlement replay T+25; **NO cadence conclusion** |
+| Video GT | Driver reports complete timestamped video; **not verified** (upload pending) |
+| Replay | **EXECUTED** `2026-09-07T05:25Z` — exact-window; max gaps persisted at 20s/30s/60s |
+| Rate metrics | Normalized per-minute: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min |
 | Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |
 | Evidence | `evidence/reference-capture/LIVE_HF_CALIBRATION_KS_MX_2024_10_20_30_60_2026-09-07.md` |

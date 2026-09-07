@@ -22,4 +22,5 @@ Evidence-backed lessons future agents must not rediscover.
 | LL-016 | **LTE_R1 sparse HF cannot assert short-lived misuse** — native DIMO events are primary authority. | RD003, trip-behavior-enrichment comments | DI-INV-LTE-NATIVE-AUTHORITY-001 |
 | LL-017 | **Canary vehicle must be operator-selected at runtime** — no hardcoded production token. | C.1b | — |
 | LL-018 | **Empty canary allowlist must fail-closed to LEGACY**, not activate V2 broadly. | C.1a, DI-DEF-008 | — |
-| LL-019 | **First live multi-cadence run (EXP-019):** slower poll intervals reduce provider request count but do not guarantee proportional bucket density; high zero-result rate and large native max gaps possible — **no cadence winner from N=1**. | EXP-019 | DI-INV-CADENCE-FOUR-WAY-001 |
+| LL-019 | **First live multi-cadence run (EXP-019):** slower poll intervals reduce provider **request rate** (~55–84% vs 10s when normalized/min) but large native max gaps **persist after settlement** — not late-settlement artifacts. 10s had 81.5% zero-results; zero-result windows stayed empty on replay. **NO cadence winner (N=1).** | EXP-019 | DI-INV-CADENCE-FOUR-WAY-001 |
+| LL-020 | **Absolute request counts across unequal phase durations are misleading** — use `providerRequestsPerMinute` for scalability comparison. | EXP-019 closeout | DI-INV-CADENCE-FOUR-WAY-001 |

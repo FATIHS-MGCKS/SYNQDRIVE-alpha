@@ -184,7 +184,7 @@ Infrastructure ready for operator-selected Flight Recorder calibration run.
 - **Reference Capture infrastructure:** `REFERENCE_CAPTURE_ENABLED=true` on production (3A.2+)
 - **HF experimental features:** `HF_RECOVERY_POLICY_V2_ENABLED=false`; sweep/calibration OFF; zero active canaries (post GATE 2 restore)
 - **DI-DEF-019:** FIXED_PRODUCTION_VALIDATED (GATE 2 stationary dress rehearsal 2026-09-06)
-- **Next scientific experiment:** Additional live calibration drives + settlement replay + video GT alignment (EXP-019 follow-up)
+- **Next scientific experiment:** Counterbalanced live calibration (60→30→20→10) + video GT alignment (EXP-019 follow-up)
 
 ---
 

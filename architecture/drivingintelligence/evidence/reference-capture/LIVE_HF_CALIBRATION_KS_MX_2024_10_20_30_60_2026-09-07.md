@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-07  
 **Experiment:** `DI_HF_LIVE_BLOCK_POLLING_10_20_30_60`  
-**Status:** EXECUTED — first scientific live multi-cadence run  
+**Status:** EXECUTED — first scientific live multi-cadence run + settlement closeout  
 **Production SHA:** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac`
 
 > Single physical drive, single Reference Capture session, four sequential phases (10s→20s→30s→60s).  
@@ -26,52 +26,114 @@
 | Field | Value |
 |-------|-------|
 | VIDEO_EXPECTED | YES |
+| VIDEO_TIMESTAMP_REPORTED_BY_DRIVER | YES |
+| VIDEO_TIMESTAMP_GROUND_TRUTH_VERIFIED | **NO** (file not uploaded / not inspected) |
+| VIDEO_CONTINUITY_VERIFIED | **NO** |
 | VIDEO_ANCHOR_SERVER_UTC_AT | `2026-09-07T04:30:14.000Z` |
 | VIDEO_TIMESTAMP_FORMAT | ISO-8601 UTC (driver-requested overlay) |
 | VIDEO_TIMESTAMP_TIMEZONE | UTC |
 | VIDEO_TIMESTAMP_RESOLUTION | milliseconds (preferred; human-confirmed at drive time) |
-| VIDEO_CONTINUOUS | pending human upload / confirmation |
-| Detailed video analysis | **NOT performed during live run** |
+| Detailed video analysis | **Deferred** — separate alignment pass when file uploaded |
 
-## Phase lifecycle
+## Phase lifecycle (exact timestamps)
 
-| Phase | requestedAt | effectiveAt | duration | native requests | sufficiency |
-|-------|-------------|-------------|----------|-----------------|-------------|
-| 10s | `04:31:35.354Z` | `04:31:37.372Z` | ~5.1 min | 26 | SUFFICIENT |
-| 20s | `04:36:37.461Z` | `04:36:43.500Z` | ~5.0 min | 11 | SUFFICIENT |
-| 30s | `04:41:43.578Z` | `04:41:45.619Z` | ~6.5 min | 10 | SUFFICIENT |
-| 60s | `04:48:15.731Z` | `04:48:19.769Z` | ~12.0 min | 10 | SUFFICIENT |
+| Phase | phaseStartedAt | phaseEndedAt | durationMs | duration (min) | native requests | sufficiency |
+|-------|----------------|--------------|------------|----------------|-----------------|-------------|
+| 10s | `04:31:36.025Z` | `04:36:42.969Z` | 306,944 | 5.116 | 27 | SUFFICIENT |
+| 20s | `04:36:42.969Z` | `04:41:45.392Z` | 302,423 | 5.040 | 12 | SUFFICIENT |
+| 30s | `04:41:45.392Z` | `04:48:17.964Z` | 392,572 | 6.543 | 10 | SUFFICIENT |
+| 60s | `04:48:17.964Z` | `05:00:20.016Z` | 722,052 | 12.034 | 10 | SUFFICIENT |
 
 `DRIVE_START_AUTHORIZED=YES` at `2026-09-07T04:31:37.372Z` (10s EFFECTIVE).  
 `SESSION_STATUS=COMPLETED` at `2026-09-07T05:00:20.016Z` (canonical `stopRecording`).
 
-## Primary comparison table (FAST_LOOP + PHASE_NATIVE)
+---
+
+## A. Live evidence (immutable — preserved as captured)
+
+### RAW COUNT TABLE (FAST_LOOP + PHASE_NATIVE)
 
 | METRIC | 10s | 20s | 30s | 60s |
 |--------|-----|-----|-----|-----|
-| wall duration (min) | 5.1 | 5.0 | 6.5 | 12.0 |
+| wall duration (min, rounded) | 5.12 | 5.04 | 6.54 | 12.03 |
 | clean native requests | 27 | 12 | 10 | 10 |
 | provider successes | 5 | 6 | 7 | 7 |
 | zero-results | 22 | 6 | 3 | 3 |
+| zero-result ratio | **81.5%** | **50.0%** | **30.0%** | **30.0%** |
 | errors | 0 | 0 | 0 | 0 |
 | provider buckets (native) | 29 | 32 | 24 | 47 |
 | new buckets | 102 | 160 | 120 | 234 |
 | unique temporal starts | 29 | 32 | 24 | 47 |
 | median cadence (ms) | 1000 | 2000 | 3000 | 3000 |
 | P90 cadence (ms) | 3000 | 11000 | 20741 | 20000 |
-| max gap (ms) | 22766 | 168621 | 117312 | 146879 |
+| **live max gap (ms)** | 22766 | **168621** | **117312** | **146879** |
 | recovery sweep requests | 0 | 0 | 0 | 0 |
 | transition windows | 0 | 2 | 2 | 2 |
 
-### Relative request reduction (vs 10s baseline)
+> **Note:** Absolute request-count ratios across phases are **not** the canonical scalability metric because phase durations differ (especially 60s at ~12 min).
 
-| Transition | Request ratio | Approx reduction |
-|------------|---------------|------------------|
-| 10→20 | 12/27 | 56% |
-| 10→30 | 10/27 | 63% |
-| 10→60 | 10/27 | 63% |
+### RATE-NORMALIZED TABLE (per minute, exact phase durationMs)
 
-## Signal-level temporal density (speed exemplar)
+| METRIC / MIN | 10s | 20s | 30s | 60s |
+|--------------|-----|-----|-----|-----|
+| provider requests | **5.278** | **2.381** | **1.528** | **0.831** |
+| provider successes | 0.977 | 1.190 | 1.070 | 0.582 |
+| zero results | 4.300 | 1.190 | 0.459 | 0.249 |
+| provider buckets | 5.669 | 6.349 | 3.668 | 3.906 |
+| new buckets | 19.938 | 31.744 | 18.341 | 19.445 |
+| unique temporal starts | 5.669 | 6.349 | 3.668 | 3.906 |
+
+### Request-rate reduction vs 10s (canonical scalability metric)
+
+| Transition | Rate reduction |
+|------------|----------------|
+| 10→20 | **54.9%** |
+| 10→30 | **71.1%** |
+| 10→60 | **84.3%** |
+
+---
+
+## B. Settlement replay (second observation layer)
+
+**Method:** READ-ONLY exact-window DIMO replay of all FAST_LOOP + PHASE_NATIVE provenance windows per phase, using identical `queryFrom`/`queryTo` as live capture.  
+**Observed at:** `2026-09-07T05:25:00.745Z` (T+30 eligible: `2026-09-07T05:30:20.016Z`).  
+**Live observations:** NOT rewritten.
+
+| Phase | windows replayed | live unique buckets | settled unique buckets | late buckets | live completeness | live max gap (ms) | settled max gap (ms) | settled P90 (ms) | settled P95 (ms) |
+|-------|------------------|---------------------|------------------------|--------------|-------------------|-------------------|---------------------|------------------|------------------|
+| 10s | 27 | 52 | 102 | 50 | **0.510** | 22766 | 22766 | 3000 | 3000 |
+| 20s | 12 | 160 | 160 | 0 | **1.000** | 168621 | **168621** | 11000 | 18000 |
+| 30s | 10 | 75 | 120 | 45 | **0.625** | 117312 | **117312** | 20741 | 79624 |
+| 60s | 10 | 234 | 234 | 0 | **1.000** | 146879 | **146879** | 20000 | 20000 |
+
+Bucket identity: `providerField|canonicalBucketTimestamp` (all manifest HF fields).
+
+### Max-gap persistence after settlement
+
+| Phase | MAX_GAP_PERSISTED_AFTER_SETTLEMENT | Interpretation |
+|-------|-----------------------------------|----------------|
+| 20s | **YES** (168,621 ms unchanged) | **Persistent coverage loss** — not a late-settlement artifact |
+| 30s | **YES** (117,312 ms unchanged) | **Persistent coverage loss** |
+| 60s | **YES** (146,879 ms unchanged) | **Persistent coverage loss** |
+
+The large live max gaps at 20s/30s/60s **do not shrink** after T+30 settlement replay. They reflect real provider temporal sparsity within phase windows, not merely buckets that arrived late after live capture.
+
+### Zero-result interpretation
+
+| Phase | zero-result ratio | zero-result windows | late buckets in zero-result windows |
+|-------|-------------------|---------------------|-------------------------------------|
+| 10s | 81.5% (22/27) | 22 | **0** |
+| 20s | 50.0% (6/12) | 6 | **0** |
+| 30s | 30.0% (3/10) | 3 | **0** |
+| 60s | 30.0% (3/10) | 3 | **0** |
+
+**Finding:** Zero-result windows did **not** gain buckets on exact-window replay. Zero-results are **not** explained by "poll before settlement" alone for these windows — the exact query windows remained empty at replay time.
+
+However, **10s and 30s SUCCESS windows** did show late-arriving buckets (50 and 45 respectively), indicating live under-capture on some successful queries. **10s live completeness = 51%** suggests aggressive polling with settlement lag on non-zero windows.
+
+---
+
+## C. Signal-level temporal density (speed, live layer)
 
 | Phase | unique timestamps | median Δt (s) | P90 Δt (s) | max gap (s) |
 |-------|-------------------|---------------|------------|-------------|
@@ -80,67 +142,77 @@
 | 30s | 46 | 1.0 | 19.74 | 117.1 |
 | 60s | 99 | 1.0 | 19.42 | 146.7 |
 
-Latitude/longitude: **zero SIGNAL_POINT observations** in all phases (manifest gap for this vehicle/session).
+Latitude/longitude: **zero SIGNAL_POINT observations** in all phases.
 
-RPM/TPS/throttle/load: present with similar cadence patterns to speed.
+---
 
-## Invariants preserved
+## D. Invariants preserved
 
 | Check | Result |
 |-------|--------|
 | ONE_PHYSICAL_DRIVE_ONE_VEHICLE | YES |
 | ONE_SESSION_FOUR_CADENCE_PHASES | YES |
-| WATERMARK_CONTINUITY_PRESERVED | YES (single series, no reset) |
+| WATERMARK_CONTINUITY_PRESERVED | YES |
 | TRANSITION_WINDOWS_IDENTIFIABLE | YES |
 | FOUR_PHASE_SUMMARIES_PRESENT | YES |
 | recoverySweepRequestCount=0 | YES (all phases) |
 
-## Runtime / SQL
+## E. Runtime / SQL
 
 | Check | Result |
 |-------|--------|
 | PRODUCTION_SQL_ERRORS (experiment window) | NO |
 | STUCK_RUNNERS | NO |
-| MULTI_REPLICA_RUNTIME_STATE_CONSISTENT | YES (observed; no duplicate phase activation) |
+| MULTI_REPLICA_RUNTIME_STATE_CONSISTENT | YES |
 
-## Post-run settlement replay
+---
 
-| Check | Result |
-|-------|--------|
-| POST_RUN_REPLAY_EXECUTED | NO — no generic session replay tooling wired for this run |
-| LATE_BUCKETS_OBSERVED | UNKNOWN (replay deferred) |
+## F. Scientific interpretation (post-replay)
 
-Schedule: T+10 min / T+30 min settlement comparison recommended as follow-up.
+**Confirmed (N=1, with settlement replay):**
 
-## Preliminary interpretation (NOT production-validated)
-
-**Observed (this single drive):**
-
-- Provider **request count** drops materially at 20s/30s/60s vs 10s (~56–63% fewer FAST_LOOP native requests).
-- **Observed bucket / signal Δt** remains ~1s median across phases — poll cadence ≠ observed physical bucket cadence (canonical invariant holds).
-- **10s phase** had very high zero-result rate (22/27) — provider settlement / query-window sparsity dominates early phase.
-- **Slower phases** show **large native max temporal gaps** (up to ~169s at 20s, ~147s at 60s) — temporal continuity risk under slower polling.
-- **60s** collected the most native unique temporal starts (47) in phase summaries but over longest wall duration and with sparse provider requests.
+1. **Request-rate reduction is material** when normalized per minute: 55% (20s), 71% (30s), 84% (60s) vs 10s.
+2. **10s overpolls relative to settlement:** 81.5% zero-result ratio; live completeness only 51% after replay — many buckets arrived late on SUCCESS windows, not on zero-result windows.
+3. **Large max gaps at 20s/30s/60s persist after settlement** — these are **not** primarily late-settlement artifacts; they indicate real temporal sparsity risk under slower polling cadence.
+4. **20s had the worst settled max gap** (168.6s) despite 100% bucket identity match at replay — the gap is in provider data distribution, not capture loss.
+5. **60s** achieved 100% live completeness at replay with lowest request rate (0.83/min) but still exhibits 146.9s max gap.
+6. **Ascending phase order (10→20→30→60)** confounds cadence with route/traffic/time — counterbalanced design recommended.
 
 **Decision posture:**
 
 | Field | Value |
 |-------|-------|
-| BEST_SUPPORTED_CADENCE | **NO CADENCE CONCLUSION** |
-| BEST_SUPPORTED_CADENCE_CONFIDENCE | LOW (N=1 drive; no replay; video GT pending) |
+| BEST_SUPPORTED_CADENCE | **NO_CADENCE_CONCLUSION** |
+| CONFIDENCE | **LOW** (N=1; ascending order confound; video GT unverified) |
 | HF_30S_BLOCK_POLLING_VALIDATED | **NO** |
 | MORE_REFERENCE_DATA_REQUIRED | **YES** |
 | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED | **NO** |
+| VIDEO_GT_VERIFIED | **NO** |
+| READY_FOR_VIDEO_ALIGNMENT | **YES** (when driver uploads) |
+| READY_FOR_HUMAN_SCIENTIFIC_REVIEW | **YES** |
 
-Do **not** select 30s (or any cadence) for production from this single run alone.
+Do **not** select any cadence for production from this single run.
 
-## Artifacts
+### Recommended next experiment (if more evidence needed)
 
-| Artifact | Path (VPS) |
-|----------|------------|
-| Orchestrator log | `/tmp/exp-016-retry-run.log` |
-| Structured JSONL | `/tmp/exp-016-retry.jsonl` |
-| Report JSON | `/tmp/exp-016-retry-report.json` |
-| Video anchor | `/tmp/exp-016-video-anchor.txt` |
+Counterbalanced phase order to reduce confounding:
 
-Ephemeral orchestrator: `/opt/synqdrive/current/backend/scripts/ops/exp-016-retry-orchestrator.ts` (not committed during experiment).
+**60 → 30 → 20 → 10**
+
+(same vehicle/session invariants; separate drive; recovery sweep OFF; same sufficiency policy).
+
+---
+
+## G. Artifacts
+
+| Artifact | Path |
+|----------|------|
+| Live orchestrator log | `/tmp/exp-016-retry-run.log` (VPS) |
+| Live JSONL | `/tmp/exp-016-retry.jsonl` (VPS) |
+| Live report JSON | `/tmp/exp-016-retry-report.json` (VPS) |
+| Settlement closeout JSON | `/tmp/exp-019-settlement/settlement-closeout.json` (VPS) |
+| Sealed observations export | `/tmp/exp-019-settlement/observations.jsonl` (VPS) |
+| Provenance ring export | `/tmp/exp-019-settlement/provenance-ring.json` (VPS) |
+| Video anchor | `/tmp/exp-016-video-anchor.txt` (VPS) |
+
+Ephemeral forensic replay executed on VPS at T+25 min; no production runtime code changed.
