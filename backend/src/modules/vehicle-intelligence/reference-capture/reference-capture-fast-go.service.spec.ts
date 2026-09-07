@@ -422,6 +422,7 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
       {} as never,
       {} as never,
       { startRunner: jest.fn() } as never,
+      { isEnabled: () => false } as never,
       { vehicle: { findFirst: jest.fn() } } as never,
     );
 
@@ -457,6 +458,7 @@ describe('ReferenceCaptureSessionService concurrent start (CAS authority)', () =
       {} as never,
       {} as never,
       { startRunner: jest.fn() } as never,
+      { isEnabled: () => false } as never,
       { vehicle: { findFirst: jest.fn() } } as never,
     );
 

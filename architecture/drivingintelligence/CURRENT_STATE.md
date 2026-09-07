@@ -1,6 +1,6 @@
 # Driving Intelligence — Current State
 
-**Reconstruction maturity:** SUBSTANTIAL (code + audits; HF live calibration incomplete)  
+**Reconstruction maturity:** SUBSTANTIAL (code + audits; first live multi-cadence calibration executed — cadence conclusion open)  
 **Audited code baseline:** workspace `main` at authority bootstrap (2026-09-06)
 
 ## Executive summary
@@ -18,6 +18,7 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 | **HF_RECOVERY_V2_FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false` |
 | **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero active calibration sessions (post GATE 2 baseline restored) |
 | **DI-DEF-019** | **FIXED_PRODUCTION_VALIDATED** — GATE 1 PG integration + GATE 2 stationary dress rehearsal (2026-09-06) |
+| **LIVE_MULTI_CADENCE_CALIBRATION** | **EXP-019 + EXP-020 (2026-09-07)** — video GT + bias-control; **window geometry matrix**: W060–W300 identical union; P50 first-obs ~27s; post-trip P1 optimal; **NO cadence winner** |
 | **HF_30S_BLOCK_POLLING_VALIDATED** | **NO** |
 | **Production HF authority** | **LEGACY** — whole-trip `fetchHighFrequency`; Recovery V2 **not active** |
 
@@ -183,7 +184,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## Unresolved validation items
 
-- Live 10/20/30/60s HF calibration phases on operator-selected vehicle (physical drive — EXP-016 retry)
+- Live 10/20/30/60s HF calibration — **EXP-019 + EXP-020 complete**; **EXP-021 tooling implemented** (settlement shadow, default OFF); physical drive not started
 - `HF_RECOVERY_POLICY_V2_ENABLED` production canary
 - V2 full stage DAG under production load
 - Natural fleet-scale block polling density proof

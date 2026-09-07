@@ -925,6 +925,19 @@ nodes:
     evidence:
       - DI-EVID-0035C1-BLOCK-001
 
+  - id: DI-HYP-016
+    type: hypothesis
+    title: HF_HISTORICAL alone sufficient as sole high-resolution DI authority
+    epistemic_status: INFERRED
+    decision_status: REJECTED
+    summary: EXP-019 video-GT + bias-control rejects sole HF high-fidelity authority in gap windows; controls show partial HF utility (N=1).
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP019-VIDEO-GT-002
+      - DI-EVID-EXP019-VIDEO-GT-004
+
   # --- Hypothesis (legacy id) ---
   - id: DI-HYP-BLOCK-POLL-30S-001
     type: hypothesis
@@ -1096,3 +1109,90 @@ nodes:
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
       - architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-002
+    type: evidence
+    title: EXP-019 video GT vs telemetry correlation
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Five human-verified GT windows; 0 HF interior samples in gaps; native/detector/score fallback absent (N=1).
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-003
+    type: evidence
+    title: EXP-019 video GT event register
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Revised human video GT; multi-authority correlation; boundary-only HF; interior void at all gaps.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-004
+    type: evidence
+    title: EXP-019 bias-control and decision readiness
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Eight video-first control windows; gap vs control CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn; READY_FOR_EXPERIMENT_DESIGN_DECISION.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md
+
+  - id: DI-EVID-EXP020-WINDOW-001
+    type: evidence
+    title: EXP-020 retrospective window geometry matrix
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Settled W060-W300 identical union; post-trip P1 optimal; P50 first-obs age ~27s; gaps sparse at video GT fidelity.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md
+
+  - id: DI-HYP-017
+    type: hypothesis
+    title: Larger HF query windows improve settled bucket recovery
+    epistemic_status: INFERRED
+    decision_status: REJECTED
+    summary: EXP-020 rejects window-size hypothesis for non-overlap tiling; production post-trip already uses whole-trip maximal window.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP020-WINDOW-001
+
+  - id: DI-EVID-EXP021-DESIGN-001
+    type: evidence
+    title: EXP-021 settlement shadow experiment design
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Dual isolated channels (60→10 cadence + fixed-interval settlement shadow); 8 probes × 6 ages; post-trip shadow; ~113 requests; tooling not implemented.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
+  - id: DI-EVID-EXP021-PREFLIGHT-001
+    type: evidence
+    title: EXP-021 preflight — 446 union audit + provider idempotence
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: 446 reference union PARTIAL (ms-key disjoint components); identical settled queries Q1/Q2/Q3 Jaccard 1.0.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
+  - id: DI-EVID-EXP021-TOOLING-001
+    type: evidence
+    title: EXP-021A settlement shadow tooling implementation
+    epistemic_status: CONFIRMED
+    source_type: REFERENCE_DRIVE
+    summary: Persisted BullMQ shadow scheduler; immutable Prisma observations; VehicleTrip end authority; default OFF; dry-run PASS.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+
+  - id: DI-HYP-018
+    type: hypothesis
+    title: HF bucket observability limited by settlement age not query window size
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: EXP-020 P50 first-obs ~27s vs 8s live delay; EXP-021 prospective shadow probes will test directly.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP020-WINDOW-001
+      - DI-EVID-EXP021-DESIGN-001

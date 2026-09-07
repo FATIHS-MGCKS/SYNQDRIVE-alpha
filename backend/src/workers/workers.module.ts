@@ -41,7 +41,9 @@ import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-en
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
 import { PhysicalRefuelReconciliationRecoveryScheduler } from './schedulers/physical-refuel-reconciliation-recovery.scheduler';
 import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
+import { ReferenceCaptureSettlementShadowProcessor } from './processors/reference-capture-settlement-shadow.processor';
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
+import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/reference-capture-settlement-shadow-recovery.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
@@ -90,6 +92,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.CLICKHOUSE_MIRROR_RETRY },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
     ),
     DimoModule,
     SnapshotWakeModule,
@@ -131,6 +134,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     ClickHouseMirrorRetryProcessor,
     RefuelStationEnrichmentProcessor,
     ReferenceCaptureProcessor,
+    ReferenceCaptureSettlementShadowProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -155,6 +159,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     FuelStationEnrichmentRecoveryScheduler,
     PhysicalRefuelReconciliationRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
+    ReferenceCaptureSettlementShadowRecoveryScheduler,
   ],
 })
 export class WorkersModule {}

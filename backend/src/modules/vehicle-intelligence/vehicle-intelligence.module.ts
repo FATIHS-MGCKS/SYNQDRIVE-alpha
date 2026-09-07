@@ -187,6 +187,9 @@ import { ReferenceCaptureReadinessService } from './reference-capture/reference-
 import { ReferenceCaptureRunnerService } from './reference-capture/reference-capture-runner.service';
 import { ReferenceCaptureRuntimeHealthService } from './reference-capture/reference-capture-runtime-health.service';
 import { ReferenceCaptureFastGoService } from './reference-capture/reference-capture-fast-go.service';
+import { ReferenceCaptureSettlementShadowRepository } from './reference-capture/reference-capture-settlement-shadow.repository';
+import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture/reference-capture-settlement-shadow-runner.service';
+import { ReferenceCaptureSettlementShadowService } from './reference-capture/reference-capture-settlement-shadow.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -279,6 +282,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
@@ -458,6 +462,9 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureRunnerService,
     ReferenceCaptureRuntimeHealthService,
     ReferenceCaptureFastGoService,
+    ReferenceCaptureSettlementShadowRepository,
+    ReferenceCaptureSettlementShadowRunnerService,
+    ReferenceCaptureSettlementShadowService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
@@ -656,6 +663,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureObservationWriterService,
     ReferenceCaptureRunnerService,
     ReferenceCaptureRetentionService,
+    ReferenceCaptureSettlementShadowService,
+    ReferenceCaptureSettlementShadowRunnerService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,

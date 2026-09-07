@@ -23,6 +23,7 @@ import { ReferenceCaptureObservationRepository } from './reference-capture-obser
 import { ReferenceCaptureSessionRepository, parseAcquisitionState } from './reference-capture-session.repository';
 import { ReferenceCaptureReadinessService } from './reference-capture-readiness.service';
 import { ReferenceCaptureRunnerService } from './reference-capture-runner.service';
+import { ReferenceCaptureSettlementShadowService } from './reference-capture-settlement-shadow.service';
 import {
   assertHfCalibrationPhaseActivationAllowed,
   HfCalibrationPhaseChangePendingError,
@@ -60,6 +61,7 @@ export class ReferenceCaptureSessionService {
     private readonly observationWriter: ReferenceCaptureObservationWriterService,
     private readonly readinessService: ReferenceCaptureReadinessService,
     private readonly runnerService: ReferenceCaptureRunnerService,
+    private readonly settlementShadowService: ReferenceCaptureSettlementShadowService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -381,6 +383,15 @@ export class ReferenceCaptureSessionService {
       { completedAt: new Date() },
     );
 
+    await this.syncSettlementShadowAfterCaptureStop({
+      organizationId,
+      sessionId,
+      vehicleId: session.vehicleId,
+      sessionStartedAt: session.startedAt,
+      sessionStoppedAt: completed.stoppedAt ?? new Date(),
+      acquisitionStateJson: completed.acquisitionStateJson,
+    });
+
     this.observationWriter.clearSession(sessionId);
 
     return this.toView(
@@ -663,5 +674,40 @@ export class ReferenceCaptureSessionService {
       updatedAt: session.updatedAt,
       operational,
     };
+  }
+
+  private async syncSettlementShadowAfterCaptureStop(args: {
+    organizationId: string;
+    sessionId: string;
+    vehicleId: string;
+    sessionStartedAt: Date | null;
+    sessionStoppedAt: Date;
+    acquisitionStateJson: unknown;
+  }): Promise<void> {
+    if (!this.settlementShadowService.isEnabled()) return;
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: args.vehicleId, organizationId: args.organizationId },
+      select: { dimoVehicle: { select: { tokenId: true } } },
+    });
+    const tokenId = vehicle?.dimoVehicle?.tokenId;
+    if (!tokenId) return;
+
+    await this.settlementShadowService.syncCompletedPhasesFromSession({
+      sessionId: args.sessionId,
+      organizationId: args.organizationId,
+      vehicleId: args.vehicleId,
+      tokenId,
+      acquisitionStateJson: args.acquisitionStateJson,
+    });
+
+    await this.settlementShadowService.scheduleWholeTripShadowFromVehicleTrip({
+      sessionId: args.sessionId,
+      organizationId: args.organizationId,
+      vehicleId: args.vehicleId,
+      tokenId,
+      sessionStartedAt: args.sessionStartedAt,
+      sessionStoppedAt: args.sessionStoppedAt,
+    });
   }
 }

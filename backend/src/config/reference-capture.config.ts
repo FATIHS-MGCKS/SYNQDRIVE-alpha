@@ -55,6 +55,9 @@ export const HF_RECOVERY_SWEEP_LOOKBACK_MS_ENV = 'HF_RECOVERY_SWEEP_LOOKBACK_MS'
 export const HF_RECOVERY_POLICY_V2_CANARY_ONLY_ENV = 'HF_RECOVERY_POLICY_V2_CANARY_ONLY';
 export const HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS_ENV = 'HF_RECOVERY_POLICY_V2_CANARY_TOKEN_IDS';
 export const HF_AVAILABILITY_CALIBRATION_ENABLED_ENV = 'HF_AVAILABILITY_CALIBRATION_ENABLED';
+/** EXP-021 — settlement shadow experiment (forensic-only, default OFF). */
+export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV =
+  'REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED';
 /** DI-EV-0035C.1 — HF_HISTORICAL block poll cadence (V2 only; provisional 30s NOT validated). */
 export const HF_HISTORICAL_POLL_INTERVAL_MS_ENV = 'HF_HISTORICAL_POLL_INTERVAL_MS';
 
@@ -143,6 +146,10 @@ export default registerAs('referenceCapture', () => ({
   ),
   hfAvailabilityCalibrationEnabled: parseHfBooleanEnv(
     process.env[HF_AVAILABILITY_CALIBRATION_ENABLED_ENV],
+    false,
+  ),
+  settlementShadowEnabled: parseBooleanEnv(
+    process.env[REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV],
     false,
   ),
 }));

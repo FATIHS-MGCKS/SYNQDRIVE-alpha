@@ -132,4 +132,11 @@ export class ReferenceCaptureConfig {
   resolveHfRecoveryPolicyForToken(tokenId: number): HfRecoveryPolicyV2Config {
     return resolveHfRecoveryPolicyForToken(this.getHfRecoveryPolicyConfig(), tokenId);
   }
+
+  isSettlementShadowEnabled(): boolean {
+    return (
+      this.isEnabled() &&
+      this.configService.get<boolean>('referenceCapture.settlementShadowEnabled') === true
+    );
+  }
 }
