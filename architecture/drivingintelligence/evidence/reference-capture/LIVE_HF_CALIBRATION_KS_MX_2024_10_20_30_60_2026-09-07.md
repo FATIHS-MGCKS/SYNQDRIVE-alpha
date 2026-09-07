@@ -33,7 +33,7 @@
 | VIDEO_TIMESTAMP_FORMAT | ISO-8601 UTC (driver-requested overlay) |
 | VIDEO_TIMESTAMP_TIMEZONE | UTC |
 | VIDEO_TIMESTAMP_RESOLUTION | milliseconds (preferred; human-confirmed at drive time) |
-| Detailed video analysis | **Deferred** — separate alignment pass when file uploaded |
+| Detailed video analysis | **Alignment windows prepared** — see `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md` |
 
 ## Phase lifecycle (exact timestamps)
 
@@ -225,7 +225,7 @@ Latitude/longitude: **zero SIGNAL_POINT observations** in all phases.
 | MORE_REFERENCE_DATA_REQUIRED | **YES** |
 | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED | **NO** |
 | VIDEO_GT_VERIFIED | **NO** |
-| READY_FOR_VIDEO_ALIGNMENT | **YES** (when driver uploads) |
+| READY_FOR_VIDEO_ALIGNMENT | **YES** (windows exported; upload/analysis pending) |
 | READY_FOR_HUMAN_SCIENTIFIC_REVIEW | **YES** |
 
 Do **not** select any cadence for production from this single run.
@@ -249,6 +249,7 @@ Counterbalanced phase order to reduce confounding:
 | Live report JSON | `/tmp/exp-016-retry-report.json` (VPS) |
 | Settlement T+25 (provisional) | `/tmp/exp-019-settlement/settlement-closeout-t-plus-25.json` (VPS) |
 | Settlement T+30 (true) | `/tmp/exp-019-settlement/settlement-closeout-t-plus-30.json` (VPS) |
+| Video GT alignment export | `/tmp/exp-019-video-alignment/` (VPS) · `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md` |
 | T+25 vs T+30 comparison | Identical — see section B.2 |
 | Sealed observations export | `/tmp/exp-019-settlement/observations.jsonl` (VPS) |
 | Provenance ring export | `/tmp/exp-019-settlement/provenance-ring.json` (VPS) |
