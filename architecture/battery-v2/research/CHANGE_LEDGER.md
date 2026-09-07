@@ -28,6 +28,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-07 — M3.2B main integration gate (origin/main R9 #1553 + PR #1560)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1560 branch behind `origin/main`; `ChangesView.tsx` conflict with R9H→R9 changelog stack. |
+| **CHANGE** | Merged `origin/main` (`ccc2324db`); resolved `ChangesView.tsx` (M3.2B v4.9.1090 + R9 stack); preserved `@Optional()` M3.2B shadow hooks alongside R9 wake orchestration. |
+| **WHY** | Pre-merge gate — integrate R9 adaptive polling wake without altering M3.2B shadow semantics or authority isolation. |
+| **VALIDATION** | shutdown-evidence + R9: 22 suites / 144 tests PASS; snapshot-ingestion: 6 PASS; tsc PASS; prisma validate PASS; graph validator PASS; `PR_MERGEABLE=YES`. |
+| **NON_EFFECTS** | R9 behavior unchanged by M3.2B; shadow flag default false; no deploy; M3.2C still blocked. |
+| **DECISION_STATUS** | `READY_TO_MERGE=YES`; CI pending at push time. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` § Main integration gate. |
+
 ## CL-2026-09-07 — M3.2B provenance semantic hardening (PR #1560)
 
 | Field | Content |
