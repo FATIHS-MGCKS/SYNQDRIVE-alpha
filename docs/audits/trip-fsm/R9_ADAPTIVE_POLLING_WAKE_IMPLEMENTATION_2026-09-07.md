@@ -416,3 +416,60 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 - No polling/tier/scoring/Trip End/CUSUM/merge changes
 - All verified R9D behavior preserved
 - No Production or DIMO provider mutations
+## R9 PRE-MERGE GOVERNANCE ALIGNMENT (2026-09-07)
+
+### Integration
+
+| Field | Value |
+|-------|-------|
+| **PRE_ALIGNMENT_HEAD** | `5db173db86b15ecb8bfb44df3ad5c773505fead0` |
+| **INTEGRATED_ORIGIN_MAIN** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` |
+| **POST_REBASE_HEAD** | `1186e9d23a9b07e24da17b06a72f2614038db77a` |
+| **Method** | Clean rebase onto `origin/main` (includes #1554 canonical authority) |
+
+### #1554 authority reconciliation
+
+- Canonical authority path: `architecture/trip-detection-lifecycle/` (not recreated)
+- Audit evidence preserved verbatim: `docs/audits/trip-fsm/` (this file)
+- Phase 4 partial graph/decisions/validators added under canonical authority
+
+### Canonical authority files updated
+
+`README.md`, `CURRENT_STATE.md`, `AUDIT_MANIFEST.md`, `AGENT_CONTRACT.md`, `KNOWLEDGE_GRAPH.md`, `graph/*`, `decisions/DECISION_REGISTER.md`, `evidence/EVIDENCE_INDEX.md`, `contradictions/KNOWLEDGE_GAPS.md`, `research/CHANGE_LEDGER.md`, `research/FAILED_APPROACHES.md`, `research/OPEN_HYPOTHESES.md`, `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`
+
+### DIMO governance determination
+
+**Decision:** PR #1553 does **not** require DIMO Integration `NOT_STARTED` → `AUDIT_IN_PROGRESS` bootstrap before merge.
+
+**Rule/evidence:** [`MODULE_INVENTORY_DISCOVERY_2026-09-06.md`](../../architecture/MODULE_INVENTORY_DISCOVERY_2026-09-06.md) retains separate modules — Trip Detection owns FSM/snapshot-start path; DIMO Integration owns provider gateway. R9 changes to `dimo-webhook.controller.ts` / `dimo.module.ts` are **Trip Detection start-liveness ingress wiring** on an existing webhook surface (delegate to `SnapshotWakeIntakeService`), not a new provider auth/telemetry/segment/trigger-registration architecture. Cross-module obligation satisfied by documenting affected paths in Trip Detection authority + `TDL-CX-006`. Dedicated DIMO Integration audit remains deferred until a DIMO-specific workstream.
+
+### Registry status
+
+| Module | Before | After |
+|--------|--------|-------|
+| Trip Detection & Lifecycle | `AUDIT_IN_PROGRESS` | `AUDIT_IN_PROGRESS` |
+| DIMO Integration | `NOT_STARTED` | `NOT_STARTED` |
+
+### Validators run
+
+- `bash architecture/scripts/validate-module-registry.sh` — PASS
+- `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh` — PASS
+- `git diff --check` — PASS
+
+### Technical regressions (post-main integration)
+
+- R9 focused tests — PASS
+- R1–R8 relevant regressions — PASS
+- `npm run test:snapshot-wake:bullmq-integration` — 4/4 PASS
+- `npx tsc --noEmit`, `npm run build`, `npx prisma validate` — PASS
+
+### Production status
+
+- **No fresh Production audit** in this package
+- Prior baseline: `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `2026-09-06T23:47:41Z`
+- R8/R9 **NOT_ON_PRODUCTION** at observed release
+- **No Production or DIMO provider mutations**
+
+### Remaining dependency
+
+- **R11** — Production/canary validation after deploy (blocks `AUTHORITY_ACTIVE`, not PR merge governance)
