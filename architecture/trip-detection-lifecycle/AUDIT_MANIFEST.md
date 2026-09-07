@@ -15,7 +15,8 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **`origin/main` at R9 rebase; does not contain R9** until PR #1553 merges |
-| **CURRENT_ORIGIN_MAIN_SHA** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — current `origin/main` after branch merge (#1557 i18n gate); R9 still branch-only until #1553 merges |
+| **CURRENT_ORIGIN_MAIN_SHA** | `feaf1f13559ba906f28bdd8641393227a90880a3` — current `origin/main` after non-destructive merge into PR #1553 branch (Battery V2 M3 evidence); R9 still branch-only until #1553 merges |
+| **PRIOR_ORIGIN_MAIN_SHA** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — prior integrated `main` baseline (#1557 i18n gate) |
 | **R9_RUNTIME_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — post-rebase R9 runtime/code state audited on branch `trip-fsm/r9-adaptive-polling-wake` |
 | **PHASE_0_2_AUTHORITY_SNAPSHOT_SHA** | `a36db67a3fb418ac7521d260461adf631256582c` — stable Phase-0-to-2 authority-content snapshot (historical) |
 | **AUDIT_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — refers to the audited R9 runtime branch state, not the Phase-0-to-2 snapshot |

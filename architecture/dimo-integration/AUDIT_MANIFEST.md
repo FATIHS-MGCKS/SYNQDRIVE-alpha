@@ -15,7 +15,8 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` (**historical** integrated baseline at R9 rebase; **does not contain R9**) |
-| **CURRENT_ORIGIN_MAIN_SHA** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` (branch merged with current `origin/main`; R9 still branch-only until #1553 merges) |
+| **CURRENT_ORIGIN_MAIN_SHA** | `feaf1f13559ba906f28bdd8641393227a90880a3` (branch merged with current `origin/main` via non-destructive merge; R9 still branch-only until #1553 merges) |
+| **PRIOR_ORIGIN_MAIN_SHA** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` (prior integrated `main` baseline) |
 | **AUDIT_BRANCH** | `trip-fsm/r9-adaptive-polling-wake` |
 | **AUDIT_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — post-rebase R9 runtime/code state audited on PR #1553 branch |
 | **PRE_CORRECTION_GOVERNANCE_HEAD** | `5383391c27c8265c2bff12c068a6f8d527a1102e` |

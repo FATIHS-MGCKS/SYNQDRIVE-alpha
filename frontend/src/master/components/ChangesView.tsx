@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',
     summary: [
       'Leader-gated SnapshotWakeHandoffRecoveryScheduler SCANs durable successor Redis keys and re-arms missing BullMQ handoff jobs.',
-      'At most one SCAN per tick; unprocessed SCAN batch tail preserved in pendingBatchKeys across ticks (no tail starvation).',
+      'At most one SCAN per tick; scanCursor assigned to Redis nextCursor on fetch; pendingBatchKeys carries batch tail (no starvation or cursor replay).',
       'Bounded 50 keys/tick; per-key error isolation; stable wake-handoff-{vehicleId} jobId; idempotent enqueueHandoffJob; no provider fetch.',
       'Pending wake persist failure in requestSnapshot returns PERSIST_FAILED (not QUEUE_FAILED) with metric label.',
     ],

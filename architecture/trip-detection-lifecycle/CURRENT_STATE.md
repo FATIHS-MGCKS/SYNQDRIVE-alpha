@@ -3,7 +3,8 @@
 | Field | Value |
 |-------|-------|
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges |
-| **current origin/main** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — branch merged with current `main`; R9 still branch-only until merge |
+| **origin/main (historical @ prior branch merge)** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — integrated before Battery V2 M3 evidence landing |
+| **current origin/main** | `feaf1f13559ba906f28bdd8641393227a90880a3` — branch merged with current `main` via non-destructive merge; R9 still branch-only until #1553 merges |
 | **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake` |
 | **Production baseline** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
 | **Last verified Production evidence** | `2026-09-06T23:47:41Z` (single session; see TDL-EV-PROD-*) |
@@ -122,7 +123,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 is **branch-only** until #1553
 - **UNKNOWN** wake classification → bounded retry before retirement
 - **Coalesce delivery contract:** ACTIVE/UNKNOWN coalesce returns `PERSIST_FAILED` / `QUEUE_FAILED` when successor/handoff consumer cannot be scheduled — never false `COALESCED`
 - **scheduleDurableSuccessor:** persist failures → `PERSIST_FAILED`; enqueue failures → `QUEUE_FAILED`
-- **Successor handoff orphan recovery (R9H):** `SnapshotWakeHandoffRecoveryScheduler` leader-gated `@Interval(60s)` — at most one Redis SCAN/tick, `pendingBatchKeys` carries unprocessed SCAN tail across ticks (cursor advances only after batch drained), max 50 keys/tick, per-key error isolation, idempotent `enqueueHandoffJob()`; no provider fetch; no LONG_IDLE dependency
+- **Successor handoff orphan recovery (R9H):** `SnapshotWakeHandoffRecoveryScheduler` leader-gated `@Interval(60s)` — at most one Redis SCAN/tick; `scanCursor` assigned to Redis `nextCursor` on fetch; `pendingBatchKeys` carries unprocessed SCAN tail across ticks; max 50 keys/tick, per-key error isolation, idempotent `enqueueHandoffJob()`; no provider fetch; no LONG_IDLE dependency
 - **Generation-0 bounded consumer:** after R9H, accepted generation-0 wakes with successful successor persist eventually gain a runnable handoff consumer via initial enqueue or recovery re-arm (latency bounded by recovery tick + SCAN cursor, not instantaneous on `QUEUE_FAILED`)
 - Cross-module contract: DIMO webhook → Trip wake intake; DIMO does **not** own Trip FSM (see TDL-DEC-R9-CX-001, [DIMO Integration](../dimo-integration/decisions/DECISION_REGISTER.md) DIM-DEC-R9-001)
 
