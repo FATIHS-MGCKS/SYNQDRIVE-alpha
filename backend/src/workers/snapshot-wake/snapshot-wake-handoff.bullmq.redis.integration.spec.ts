@@ -20,7 +20,7 @@ const VEHICLE_ID = 'veh-bullmq-int';
 const TOKEN_ID = 99;
 
 function createPrismaMock() {
-  return {
+  const mock = {
     vehicle: {
       findUnique: jest.fn().mockResolvedValue({
         status: VehicleStatus.AVAILABLE,
@@ -31,6 +31,7 @@ function createPrismaMock() {
       findUnique: jest.fn().mockResolvedValue({ state: TripDetectionState.RESTING }),
     },
   };
+  return mock;
 }
 
 (LIVE ? describe : describe.skip)(
@@ -47,6 +48,7 @@ function createPrismaMock() {
     let worker: Worker;
     let coordinator: SnapshotWakeCoordinatorService;
     let processor: SnapshotWakeHandoffProcessor;
+    let prismaMock: ReturnType<typeof createPrismaMock>;
 
     beforeAll(async () => {
       memoryServer = new RedisMemoryServer();
@@ -80,11 +82,12 @@ function createPrismaMock() {
         }),
       };
 
+      prismaMock = createPrismaMock();
       coordinator = new SnapshotWakeCoordinatorService(
         snapshotQueue as never,
         null as never,
         redis,
-        createPrismaMock() as never,
+        prismaMock as never,
         undefined,
       );
 
@@ -223,5 +226,69 @@ function createPrismaMock() {
       await coordinator.dispatchSuccessorHandoff(VEHICLE_ID);
       expect(snapshotQueueAdd).toHaveBeenCalledTimes(1);
     });
+
+    it('UNKNOWN continuation defers handoff then dispatches after DB recovers', async () => {
+      let fsmFailOnce = true;
+      prismaMock.vehicleTripDetectionState.findUnique.mockImplementation(async () => {
+        if (fsmFailOnce) {
+          fsmFailOnce = false;
+          throw new Error('db down');
+        }
+        return { state: TripDetectionState.RESTING };
+      });
+
+      await coordinator.persistSuccessorHandoffAtomic({
+        vehicleId: VEHICLE_ID,
+        dimoTokenId: TOKEN_ID,
+        origin: 'WAKE_PROBE',
+        wakeContext: buildSnapshotWakeContext({
+          reason: 'IGNITION_ON',
+          signalName: 'isIgnitionOn',
+          providerObservedAt: new Date('2026-09-07T14:00:20.000Z'),
+          receivedAt: new Date('2026-09-07T14:00:21.000Z'),
+          probeGeneration: 1,
+        }),
+        notBeforeMs: Date.now() - 1,
+      });
+      await coordinator.enqueueHandoffJob(VEHICLE_ID, Date.now() - 1);
+
+      const jobId = snapshotWakeHandoffJobId(VEHICLE_ID);
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('UNKNOWN continuation never deferred handoff')),
+          15_000,
+        );
+        queueEvents.on('delayed', ({ jobId: id }) => {
+          if (id === jobId) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      });
+
+      const job = await handoffQueue.getJob(jobId);
+      expect(await job!.getState()).toBe('delayed');
+      expect(snapshotQueueAdd).not.toHaveBeenCalled();
+      expect(await redis.get(successorWakeRedisKey(VEHICLE_ID))).not.toBeNull();
+
+      canonicalState = 'completed';
+      await job!.promote();
+
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('handoff never completed after UNKNOWN recovery')),
+          15_000,
+        );
+        queueEvents.on('completed', ({ jobId: id }) => {
+          if (id === jobId) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      });
+
+      expect(snapshotQueueAdd).toHaveBeenCalledTimes(1);
+      expect(await redis.get(successorWakeRedisKey(VEHICLE_ID))).toBeNull();
+    }, 45_000);
   },
 );

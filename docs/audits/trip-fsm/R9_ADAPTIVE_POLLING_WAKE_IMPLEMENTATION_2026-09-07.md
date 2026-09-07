@@ -338,3 +338,42 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 
 - **Pre-merge governance alignment** on PR #1553: integrate latest `origin/main`, update `architecture/trip-detection-lifecycle/`, DIMO governance treatment, registry validators
 - Live multi-replica PM2 wake latency + DIMO trigger subscription coverage — **R11 / governance gate** (not performed in R9D)
+
+---
+
+## R9E — Continuation Unknown & Obsolete CAS Final Seal (2026-09-07)
+
+**Supersedes R9D “technical closure” claim for continuation UNKNOWN and obsolete CAS liveness.** R9D correctly landed ACTIVE coalesce delivery, continuation classifier, strict durable reads, and real BullMQ integration — but independent review found four remaining narrow races. R9E closes them on commit atop R9D `febad3e246262e97276466f8381d956591428b69`.
+
+### BEFORE (R9D residual defects)
+
+| ID | Defect |
+|----|--------|
+| R9E-A | `dispatchSuccessorHandoff()` returned **success** on `continuation=UNKNOWN` while successor Redis remained — handoff job completed with no bounded dispatcher |
+| R9E-B | `ensureCoalescedWakeConsumer()` on ACTIVE coalesce + UNKNOWN left pending wake without lightweight retry handoff |
+| R9E-C | Obsolete successor retirement ignored stale ACK — newer successor version could strand after handoff completion |
+| R9E-D | `scheduleDurableSuccessor()` / `handleNonEligibleWakeContinuation()` could ACK **latest** pending under **stale** obsolete classification |
+| R9E-E | Unbounded recursive pending retirement when CAS ACK repeatedly failed |
+
+### CHANGE
+
+| Area | R9E implementation |
+|------|-------------------|
+| UNKNOWN dispatch | `continuation_unknown` → `SnapshotWakeHandoffDeferError` + BullMQ DelayedError rearm; successor preserved |
+| UNKNOWN ACTIVE coalesce | `scheduleUnknownContinuationRetryHandoff()` persists successor + stable handoff without provider fetch |
+| Obsolete successor CAS | `retireExactSuccessorWakeBounded()` — ACK exact version, reload/reclassify on CAS miss, rearm on eligible newer |
+| Exact pending retirement | `retireExactPendingWakeBounded()` — max 3 iterations, reclassify before each ACK, never apply stale classification to newer version |
+| Centralized outcomes | `DurableRetirementOutcome` helper semantics shared by pending/successor retirement paths |
+
+### VALIDATION
+
+- R9E matrix A–H regressions (UNKNOWN defer, ACTIVE coalesce retry, obsolete stale ACK, newer wake preservation, bounded ACK failure, READ_ERROR rearm)
+- Extended BullMQ integration: UNKNOWN continuation → DELAYED → DB recovery → dispatch + ACK clear
+- All prior R9–R9D focused suites + R1–R8 regressions remain green
+- **Production validation:** NOT PERFORMED
+
+### NON_EFFECTS
+
+- No polling/tier/scoring/Trip End/CUSUM/merge changes
+- All verified R9D behavior preserved
+- No Production or DIMO provider mutations

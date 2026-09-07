@@ -38,6 +38,11 @@ import {
   type WakeContinuationClass,
 } from './snapshot-wake-continuation.util';
 import type { DurableReadResult } from './snapshot-wake-durable-read.types';
+import {
+  MAX_RETIREMENT_RECONCILE_ITERATIONS,
+  UNKNOWN_CONTINUATION_RETRY_MS,
+  type DurableRetirementOutcome,
+} from './snapshot-wake-retirement.util';
 import { SnapshotWakeHandoffDeferError } from './snapshot-wake-handoff-defer.error';
 import {
   ACK_PENDING_WAKE_SCRIPT,
@@ -348,6 +353,7 @@ export class SnapshotWakeCoordinatorService {
         origin: 'WAKE_PROBE',
         wakeContext: probeContext,
         delayMs: wakeProbeDelayMs(this.tierConfig),
+        associatedPendingVersion: params.claimedPendingWake?.version,
       });
 
       if (handoffOutcome === 'HANDOFF_SCHEDULED') {
@@ -397,6 +403,7 @@ export class SnapshotWakeCoordinatorService {
         dimoTokenId: pending.dimoTokenId,
         origin: 'PROVIDER_WAKE',
         wakeContext: pending.wakeContext,
+        associatedPendingVersion: params.claimedPendingWake.version,
       });
       if (handoffOutcome === 'HANDOFF_SCHEDULED') {
         await this.tryAckClaimedPendingWake(params);
@@ -437,6 +444,7 @@ export class SnapshotWakeCoordinatorService {
               dimoTokenId: latestRead.value.dimoTokenId,
               origin: 'PROVIDER_WAKE',
               wakeContext: latestRead.value.wakeContext,
+              associatedPendingVersion: latestRead.value.version,
             });
           } else {
             await this.handleNonEligibleWakeContinuation(
@@ -490,6 +498,7 @@ export class SnapshotWakeCoordinatorService {
       dimoTokenId: latest.dimoTokenId,
       origin: 'PROVIDER_WAKE',
       wakeContext: latest.wakeContext,
+      associatedPendingVersion: latest.version,
     });
   }
 
@@ -507,16 +516,201 @@ export class SnapshotWakeCoordinatorService {
         dimoTokenId: params.dimoTokenId,
         origin: params.origin ?? 'PROVIDER_WAKE',
         wakeContext: params.wakeContext,
+        associatedPendingVersion: params.pendingVersion,
+      });
+      return;
+    }
+    if (continuation.continuation === 'UNKNOWN') {
+      await this.scheduleUnknownContinuationRetryHandoff({
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        origin: params.origin ?? 'PROVIDER_WAKE',
+        wakeContext: params.wakeContext,
       });
       return;
     }
     if (shouldRetireObsoleteWake(continuation.continuation)) {
-      await this.handleNonEligibleWakeContinuation(
+      await this.retireExactPendingWakeBounded(
         params.vehicleId,
         params.pendingVersion,
         continuation.continuation,
       );
     }
+  }
+
+  async scheduleUnknownContinuationRetryHandoff(params: {
+    vehicleId: string;
+    dimoTokenId: number;
+    origin: NonNullable<DimoSnapshotJobData['origin']>;
+    wakeContext: SnapshotWakeContext;
+  }): Promise<void> {
+    const notBeforeMs = Date.now() + UNKNOWN_CONTINUATION_RETRY_MS;
+    const persist = await this.persistSuccessorHandoffAtomic({
+      vehicleId: params.vehicleId,
+      dimoTokenId: params.dimoTokenId,
+      origin: params.origin,
+      wakeContext: params.wakeContext,
+      notBeforeMs,
+    });
+    if (!persist.ok || persist.notBeforeMs == null) {
+      return;
+    }
+    try {
+      await this.enqueueHandoffJob(params.vehicleId, persist.notBeforeMs);
+    } catch (err) {
+      this.logger.warn(
+        `Unknown continuation handoff enqueue failed for ${params.vehicleId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private async retireExactPendingWakeBounded(
+    vehicleId: string,
+    expectedVersion: number | undefined,
+    initialContinuation?: WakeContinuationClass,
+  ): Promise<DurableRetirementOutcome> {
+    let targetVersion = expectedVersion;
+
+    for (
+      let attempt = 0;
+      attempt < MAX_RETIREMENT_RECONCILE_ITERATIONS;
+      attempt += 1
+    ) {
+      if (targetVersion == null) {
+        const read = await this.loadPendingWakeStrict(vehicleId);
+        if (read.status === 'READ_ERROR') {
+          return 'READ_ERROR';
+        }
+        if (read.status === 'MISSING') {
+          return 'MISSING';
+        }
+        targetVersion = read.value.version;
+      }
+
+      const continuation =
+        attempt === 0 && initialContinuation != null
+          ? initialContinuation
+          : (await this.resolveWakeContinuation(vehicleId)).continuation;
+
+      if (continuation === 'UNKNOWN') {
+        return 'UNKNOWN_RETRY';
+      }
+      if (mayScheduleWakeSuccessor(continuation)) {
+        return 'NEWER_FOUND';
+      }
+      if (!shouldRetireObsoleteWake(continuation)) {
+        return 'NEWER_FOUND';
+      }
+
+      const acked = await this.acknowledgePendingWake(vehicleId, targetVersion);
+      if (acked) {
+        return 'RETIRED';
+      }
+
+      const reload = await this.loadPendingWakeStrict(vehicleId);
+      if (reload.status === 'READ_ERROR') {
+        return 'READ_ERROR';
+      }
+      if (reload.status === 'MISSING') {
+        return 'MISSING';
+      }
+      targetVersion = reload.value.version;
+    }
+
+    return 'ACK_ERROR';
+  }
+
+  private async retireExactSuccessorWakeBounded(
+    vehicleId: string,
+    expectedVersion: number,
+  ): Promise<DurableRetirementOutcome> {
+    let targetVersion = expectedVersion;
+
+    for (
+      let attempt = 0;
+      attempt < MAX_RETIREMENT_RECONCILE_ITERATIONS;
+      attempt += 1
+    ) {
+      const read = await this.loadSuccessorHandoffStrict(vehicleId);
+      if (read.status === 'READ_ERROR') {
+        return 'READ_ERROR';
+      }
+      if (read.status === 'MISSING') {
+        return 'MISSING';
+      }
+      if (read.value.version !== targetVersion) {
+        targetVersion = read.value.version;
+      }
+
+      const { continuation } = await this.resolveWakeContinuation(vehicleId);
+      if (continuation === 'UNKNOWN') {
+        return 'UNKNOWN_RETRY';
+      }
+      if (mayScheduleWakeSuccessor(continuation)) {
+        return 'NEWER_FOUND';
+      }
+      if (!shouldRetireObsoleteWake(continuation)) {
+        return 'NEWER_FOUND';
+      }
+
+      const acked = await this.acknowledgeSuccessorHandoff(
+        vehicleId,
+        targetVersion,
+      );
+      if (acked) {
+        return 'RETIRED';
+      }
+
+      const reload = await this.loadSuccessorHandoffStrict(vehicleId);
+      if (reload.status === 'READ_ERROR') {
+        return 'READ_ERROR';
+      }
+      if (reload.status === 'MISSING') {
+        return 'MISSING';
+      }
+      targetVersion = reload.value.version;
+    }
+
+    return 'ACK_ERROR';
+  }
+
+  private async throwHandoffRetirementDefer(
+    outcome: DurableRetirementOutcome,
+    vehicleId: string,
+  ): Promise<never> {
+    if (outcome === 'READ_ERROR') {
+      throw new SnapshotWakeHandoffDeferError(2000, 'redis_read_error');
+    }
+    if (outcome === 'UNKNOWN_RETRY' || outcome === 'ACK_ERROR') {
+      throw new SnapshotWakeHandoffDeferError(
+        UNKNOWN_CONTINUATION_RETRY_MS,
+        'continuation_unknown',
+      );
+    }
+    if (outcome === 'NEWER_FOUND') {
+      throw await this.buildSuccessorRearmDefer(vehicleId);
+    }
+    throw new SnapshotWakeHandoffDeferError(
+      UNKNOWN_CONTINUATION_RETRY_MS,
+      'continuation_unknown',
+    );
+  }
+
+  private async buildSuccessorRearmDefer(
+    vehicleId: string,
+  ): Promise<SnapshotWakeHandoffDeferError> {
+    const latestRead = await this.loadSuccessorHandoffStrict(vehicleId);
+    if (latestRead.status === 'READ_ERROR') {
+      return new SnapshotWakeHandoffDeferError(2000, 'redis_read_error');
+    }
+    if (latestRead.status === 'MISSING') {
+      return new SnapshotWakeHandoffDeferError(2000, 'continuation_unknown');
+    }
+    const retryDelayMs = Math.max(
+      1,
+      latestRead.value.notBeforeMs - Date.now(),
+    );
+    return new SnapshotWakeHandoffDeferError(retryDelayMs, 'not_before');
   }
 
   async resolveWakeContinuation(vehicleId: string): Promise<{
@@ -565,29 +759,14 @@ export class SnapshotWakeCoordinatorService {
     pendingVersion: number | undefined,
     continuation: WakeContinuationClass,
   ): Promise<void> {
-    if (!shouldRetireObsoleteWake(continuation)) {
+    if (continuation === 'UNKNOWN') {
       return;
     }
-    if (pendingVersion != null) {
-      const acked = await this.acknowledgePendingWake(vehicleId, pendingVersion);
-      if (!acked) {
-        const latestRead = await this.loadPendingWakeStrict(vehicleId);
-        if (latestRead.status === 'FOUND') {
-          await this.handleNonEligibleWakeContinuation(
-            vehicleId,
-            latestRead.value.version,
-            (
-              await this.resolveWakeContinuation(vehicleId)
-            ).continuation,
-          );
-        }
-      }
-      return;
-    }
-    const pendingRead = await this.loadPendingWakeStrict(vehicleId);
-    if (pendingRead.status === 'FOUND') {
-      await this.acknowledgePendingWake(vehicleId, pendingRead.value.version);
-    }
+    await this.retireExactPendingWakeBounded(
+      vehicleId,
+      pendingVersion,
+      continuation,
+    );
   }
 
   async scheduleDurableSuccessor(params: {
@@ -596,17 +775,19 @@ export class SnapshotWakeCoordinatorService {
     origin: DimoSnapshotJobData['origin'];
     wakeContext: SnapshotWakeContext;
     delayMs?: number;
+    associatedPendingVersion?: number;
   }): Promise<'HANDOFF_SCHEDULED' | 'CONTINUATION_BLOCKED' | 'QUEUE_FAILED'> {
     const { continuation } = await this.resolveWakeContinuation(params.vehicleId);
     if (!mayScheduleWakeSuccessor(continuation)) {
+      if (continuation === 'UNKNOWN') {
+        return 'CONTINUATION_BLOCKED';
+      }
       if (shouldRetireObsoleteWake(continuation)) {
-        const pendingRead = await this.loadPendingWakeStrict(params.vehicleId);
-        if (pendingRead.status === 'FOUND') {
-          await this.acknowledgePendingWake(
-            params.vehicleId,
-            pendingRead.value.version,
-          );
-        }
+        await this.retireExactPendingWakeBounded(
+          params.vehicleId,
+          params.associatedPendingVersion,
+          continuation,
+        );
       }
       return 'CONTINUATION_BLOCKED';
     }
@@ -783,8 +964,21 @@ export class SnapshotWakeCoordinatorService {
 
     const continuation = await this.resolveWakeContinuation(vehicleId);
     if (!mayScheduleWakeSuccessor(continuation.continuation)) {
+      if (continuation.continuation === 'UNKNOWN') {
+        throw new SnapshotWakeHandoffDeferError(
+          UNKNOWN_CONTINUATION_RETRY_MS,
+          'continuation_unknown',
+        );
+      }
       if (shouldRetireObsoleteWake(continuation.continuation)) {
-        await this.acknowledgeSuccessorHandoff(vehicleId, successor.version);
+        const retireResult = await this.retireExactSuccessorWakeBounded(
+          vehicleId,
+          successor.version,
+        );
+        if (retireResult === 'RETIRED' || retireResult === 'MISSING') {
+          return;
+        }
+        await this.throwHandoffRetirementDefer(retireResult, vehicleId);
       }
       return;
     }

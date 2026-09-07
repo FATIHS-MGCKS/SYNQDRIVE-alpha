@@ -14,7 +14,8 @@ export class SnapshotWakeHandoffDeferError extends Error {
       | 'canonical_active'
       | 'queue_failed'
       | 'enqueue_failed'
-      | 'redis_read_error',
+      | 'redis_read_error'
+      | 'continuation_unknown',
   ) {
     super(`snapshot_wake_handoff_defer:${reason}:${retryAfterMs}`);
   }
