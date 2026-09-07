@@ -210,8 +210,10 @@ describe('SnapshotWakeCoordinatorService — R9D wake delivery seal', () => {
 
       await h.coordinator.reconcileOutstandingPendingWake(VEHICLE_ID);
 
-      expect(h.handoffAdd).not.toHaveBeenCalled();
+      expect(h.handoffAdd).toHaveBeenCalledTimes(1);
+      expect(h.queueAdd).not.toHaveBeenCalled();
       expect(h.redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
+      expect(h.redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(true);
     });
 
     it('older pending CAS cannot delete newer concurrent wake', async () => {

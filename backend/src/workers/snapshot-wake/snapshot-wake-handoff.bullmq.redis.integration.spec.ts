@@ -12,6 +12,7 @@ import {
   snapshotJobId,
   snapshotWakeHandoffJobId,
   successorWakeRedisKey,
+  pendingWakeRedisKey,
 } from '../snapshot-wake/snapshot-wake.util';
 import { QUEUE_NAMES } from '../queues/queue-names';
 
@@ -289,6 +290,67 @@ function createPrismaMock() {
 
       expect(snapshotQueueAdd).toHaveBeenCalledTimes(1);
       expect(await redis.get(successorWakeRedisKey(VEHICLE_ID))).toBeNull();
+    }, 45_000);
+
+    it('reconcile UNKNOWN pending schedules retry handoff then dispatches after DB recovers', async () => {
+      let fsmFailOnce = true;
+      prismaMock.vehicleTripDetectionState.findUnique.mockImplementation(async () => {
+        if (fsmFailOnce) {
+          fsmFailOnce = false;
+          throw new Error('db down');
+        }
+        return { state: TripDetectionState.RESTING };
+      });
+
+      await coordinator.persistPendingWakeAtomic(
+        VEHICLE_ID,
+        TOKEN_ID,
+        buildSnapshotWakeContext({
+          reason: 'IGNITION_ON',
+          signalName: 'isIgnitionOn',
+          providerObservedAt: new Date('2026-09-07T14:00:20.000Z'),
+          receivedAt: new Date('2026-09-07T14:00:21.000Z'),
+          probeGeneration: 0,
+        }),
+      );
+
+      await coordinator.reconcileOutstandingPendingWake(VEHICLE_ID);
+
+      const jobId = snapshotWakeHandoffJobId(VEHICLE_ID);
+      const job = await handoffQueue.getJob(jobId);
+      expect(job).not.toBeNull();
+
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('reconcile UNKNOWN never deferred handoff')),
+          15_000,
+        );
+        queueEvents.on('delayed', ({ jobId: id }) => {
+          if (id === jobId) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      });
+
+      canonicalState = 'completed';
+      await job!.promote();
+
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error('reconcile UNKNOWN never completed after recovery')),
+          15_000,
+        );
+        queueEvents.on('completed', ({ jobId: id }) => {
+          if (id === jobId) {
+            clearTimeout(timer);
+            resolve();
+          }
+        });
+      });
+
+      expect(snapshotQueueAdd).toHaveBeenCalledTimes(1);
+      expect(await redis.get(pendingWakeRedisKey(VEHICLE_ID))).toBeNull();
     }, 45_000);
   },
 );

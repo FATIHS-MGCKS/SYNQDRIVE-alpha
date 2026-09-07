@@ -341,6 +341,45 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 
 ---
 
+## R9F — Unknown Continuation Retry Completeness Seal (2026-09-07)
+
+**Supersedes R9E “technical closure” for UNKNOWN paths outside active handoff dispatch.** R9E correctly sealed UNKNOWN defer in `dispatchSuccessorHandoff()`, ACTIVE coalesce UNKNOWN retry, obsolete successor CAS, and bounded pending retirement — but independent review found UNKNOWN continuation in `afterSnapshotJob()`, `reconcileOutstandingPendingWake()`, and `scheduleDurableSuccessor()` still preserved pending without always establishing a bounded retry handoff.
+
+### BEFORE
+
+| Gap | Behavior |
+|-----|----------|
+| R9F-A | `handleNonEligibleWakeContinuation(UNKNOWN)` returned without scheduling retry handoff |
+| R9F-B | `scheduleDurableSuccessor(UNKNOWN)` returned `CONTINUATION_BLOCKED` with no execution path |
+| R9F-C | `scheduleUnknownContinuationRetryHandoff()` swallowed enqueue failures as silent success |
+| R9F-D | Stale obsolete classification could target latest pending version instead of exact episode version |
+
+### CHANGE
+
+| Area | R9F implementation |
+|------|-------------------|
+| UNKNOWN policy | Generation-0 wakes preserve pending/successor and schedule `scheduleUnknownContinuationRetryHandoff()` consistently across afterSnapshot/reconcile/scheduleDurable/gen1-stale-ACK paths |
+| Explicit outcomes | `HANDOFF_SCHEDULED` / `QUEUE_FAILED` / `PERSIST_FAILED`; `scheduleDurableSuccessor` returns `UNKNOWN_RETRY_SCHEDULED` without pending ACK |
+| Exact-version association | `resolveGenerationZeroRetryWake()` + bounded `retireExactPendingWakeBounded()` preserve R9E CAS semantics |
+| Integration | Extended BullMQ test: reconcile UNKNOWN → delayed handoff → DB recovery → canonical dispatch |
+
+### VALIDATION
+
+- R9F matrix A–H + all prior R9–R9E suites remain green
+- BullMQ integration **4/4 PASS**
+- **Production validation:** NOT PERFORMED
+
+### NON_EFFECTS
+
+- No polling/scoring/Trip End changes; all verified R9E behavior preserved
+- No Production or DIMO provider mutations
+
+### REMAINING PRODUCTION DEPENDENCIES
+
+- Pre-merge governance alignment on PR #1553 (integrate `origin/main`, update canonical authority)
+
+---
+
 ## R9E — Continuation Unknown & Obsolete CAS Final Seal (2026-09-07)
 
 **Supersedes R9D “technical closure” claim for continuation UNKNOWN and obsolete CAS liveness.** R9D correctly landed ACTIVE coalesce delivery, continuation classifier, strict durable reads, and real BullMQ integration — but independent review found four remaining narrow races. R9E closes them on commit atop R9D `febad3e246262e97276466f8381d956591428b69`.

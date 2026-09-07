@@ -42,6 +42,7 @@ import {
   MAX_RETIREMENT_RECONCILE_ITERATIONS,
   UNKNOWN_CONTINUATION_RETRY_MS,
   type DurableRetirementOutcome,
+  type UnknownContinuationRetryOutcome,
 } from './snapshot-wake-retirement.util';
 import { SnapshotWakeHandoffDeferError } from './snapshot-wake-handoff-defer.error';
 import {
@@ -333,6 +334,11 @@ export class SnapshotWakeCoordinatorService {
           params.vehicleId,
           params.claimedPendingWake?.version,
           continuation.continuation,
+          {
+            dimoTokenId: params.dimoTokenId,
+            origin: 'PROVIDER_WAKE',
+            wakeContext: effectiveWake,
+          },
         );
         return;
       }
@@ -387,17 +393,22 @@ export class SnapshotWakeCoordinatorService {
       params.claimedPendingWake.record.wakeContext.probeGeneration === 0 &&
       !isCovered
     ) {
+      const pending = params.claimedPendingWake.record;
       const continuation = await this.resolveWakeContinuation(params.vehicleId);
       if (!mayScheduleWakeSuccessor(continuation.continuation)) {
         await this.handleNonEligibleWakeContinuation(
           params.vehicleId,
           params.claimedPendingWake.version,
           continuation.continuation,
+          {
+            dimoTokenId: pending.dimoTokenId,
+            origin: 'PROVIDER_WAKE',
+            wakeContext: pending.wakeContext,
+          },
         );
         return;
       }
 
-      const pending = params.claimedPendingWake.record;
       const handoffOutcome = await this.scheduleDurableSuccessor({
         vehicleId: params.vehicleId,
         dimoTokenId: pending.dimoTokenId,
@@ -451,6 +462,11 @@ export class SnapshotWakeCoordinatorService {
               params.vehicleId,
               latestRead.value.version,
               continuation.continuation,
+              {
+                dimoTokenId: latestRead.value.dimoTokenId,
+                origin: 'PROVIDER_WAKE',
+                wakeContext: latestRead.value.wakeContext,
+              },
             );
           }
         }
@@ -490,6 +506,11 @@ export class SnapshotWakeCoordinatorService {
         vehicleId,
         latest.version,
         continuation.continuation,
+        {
+          dimoTokenId: latest.dimoTokenId,
+          origin: 'PROVIDER_WAKE',
+          wakeContext: latest.wakeContext,
+        },
       );
       return;
     }
@@ -543,7 +564,10 @@ export class SnapshotWakeCoordinatorService {
     dimoTokenId: number;
     origin: NonNullable<DimoSnapshotJobData['origin']>;
     wakeContext: SnapshotWakeContext;
-  }): Promise<void> {
+  }): Promise<UnknownContinuationRetryOutcome> {
+    if (params.wakeContext.probeGeneration === 1) {
+      return 'PERSIST_FAILED';
+    }
     const notBeforeMs = Date.now() + UNKNOWN_CONTINUATION_RETRY_MS;
     const persist = await this.persistSuccessorHandoffAtomic({
       vehicleId: params.vehicleId,
@@ -553,15 +577,57 @@ export class SnapshotWakeCoordinatorService {
       notBeforeMs,
     });
     if (!persist.ok || persist.notBeforeMs == null) {
-      return;
+      return 'PERSIST_FAILED';
     }
     try {
       await this.enqueueHandoffJob(params.vehicleId, persist.notBeforeMs);
+      return 'HANDOFF_SCHEDULED';
     } catch (err) {
       this.logger.warn(
         `Unknown continuation handoff enqueue failed for ${params.vehicleId}: ${(err as Error).message}`,
       );
+      return 'QUEUE_FAILED';
     }
+  }
+
+  private async resolveGenerationZeroRetryWake(
+    vehicleId: string,
+    pendingVersion: number | undefined,
+    override?: {
+      dimoTokenId: number;
+      origin: NonNullable<DimoSnapshotJobData['origin']>;
+      wakeContext: SnapshotWakeContext;
+    },
+  ): Promise<{
+    dimoTokenId: number;
+    origin: NonNullable<DimoSnapshotJobData['origin']>;
+    wakeContext: SnapshotWakeContext;
+  } | null> {
+    if (override?.wakeContext.probeGeneration === 0) {
+      return override;
+    }
+    const pendingRead = await this.loadPendingWakeStrict(vehicleId);
+    if (pendingRead.status !== 'FOUND') {
+      return null;
+    }
+    if (pendingRead.value.wakeContext.probeGeneration === 1) {
+      return null;
+    }
+    if (pendingVersion != null && pendingRead.value.version !== pendingVersion) {
+      const { continuation } = await this.resolveWakeContinuation(vehicleId);
+      if (continuation === 'UNKNOWN') {
+        return {
+          dimoTokenId: pendingRead.value.dimoTokenId,
+          origin: 'PROVIDER_WAKE',
+          wakeContext: pendingRead.value.wakeContext,
+        };
+      }
+    }
+    return {
+      dimoTokenId: pendingRead.value.dimoTokenId,
+      origin: 'PROVIDER_WAKE',
+      wakeContext: pendingRead.value.wakeContext,
+    };
   }
 
   private async retireExactPendingWakeBounded(
@@ -758,8 +824,25 @@ export class SnapshotWakeCoordinatorService {
     vehicleId: string,
     pendingVersion: number | undefined,
     continuation: WakeContinuationClass,
+    retryWakeOverride?: {
+      dimoTokenId: number;
+      origin: NonNullable<DimoSnapshotJobData['origin']>;
+      wakeContext: SnapshotWakeContext;
+    },
   ): Promise<void> {
     if (continuation === 'UNKNOWN') {
+      const retryWake = await this.resolveGenerationZeroRetryWake(
+        vehicleId,
+        pendingVersion,
+        retryWakeOverride,
+      );
+      if (!retryWake) {
+        return;
+      }
+      await this.scheduleUnknownContinuationRetryHandoff({
+        vehicleId,
+        ...retryWake,
+      });
       return;
     }
     await this.retireExactPendingWakeBounded(
@@ -776,11 +859,32 @@ export class SnapshotWakeCoordinatorService {
     wakeContext: SnapshotWakeContext;
     delayMs?: number;
     associatedPendingVersion?: number;
-  }): Promise<'HANDOFF_SCHEDULED' | 'CONTINUATION_BLOCKED' | 'QUEUE_FAILED'> {
+  }): Promise<
+    | 'HANDOFF_SCHEDULED'
+    | 'UNKNOWN_RETRY_SCHEDULED'
+    | 'CONTINUATION_BLOCKED'
+    | 'QUEUE_FAILED'
+    | 'PERSIST_FAILED'
+  > {
     const { continuation } = await this.resolveWakeContinuation(params.vehicleId);
     if (!mayScheduleWakeSuccessor(continuation)) {
       if (continuation === 'UNKNOWN') {
-        return 'CONTINUATION_BLOCKED';
+        if (params.wakeContext.probeGeneration === 1) {
+          return 'CONTINUATION_BLOCKED';
+        }
+        const retryOutcome = await this.scheduleUnknownContinuationRetryHandoff({
+          vehicleId: params.vehicleId,
+          dimoTokenId: params.dimoTokenId,
+          origin: params.origin ?? 'PROVIDER_WAKE',
+          wakeContext: params.wakeContext,
+        });
+        if (retryOutcome === 'HANDOFF_SCHEDULED') {
+          return 'UNKNOWN_RETRY_SCHEDULED';
+        }
+        if (retryOutcome === 'PERSIST_FAILED') {
+          return 'PERSIST_FAILED';
+        }
+        return 'QUEUE_FAILED';
       }
       if (shouldRetireObsoleteWake(continuation)) {
         await this.retireExactPendingWakeBounded(
@@ -976,6 +1080,11 @@ export class SnapshotWakeCoordinatorService {
           successor.version,
         );
         if (retireResult === 'RETIRED' || retireResult === 'MISSING') {
+          await this.retireExactPendingWakeBounded(
+            vehicleId,
+            undefined,
+            continuation.continuation,
+          );
           return;
         }
         await this.throwHandoffRetirementDefer(retireResult, vehicleId);
@@ -1035,10 +1144,44 @@ export class SnapshotWakeCoordinatorService {
           'not_before',
         );
       }
+      await this.ackPendingWakeConsumedBySuccessorDispatch(
+        vehicleId,
+        successor.wakeContext,
+      );
       return;
     }
 
     throw new SnapshotWakeHandoffDeferError(5000, 'queue_failed');
+  }
+
+  private async ackPendingWakeConsumedBySuccessorDispatch(
+    vehicleId: string,
+    dispatchedWake: SnapshotWakeContext,
+  ): Promise<void> {
+    if (dispatchedWake.probeGeneration !== 0) {
+      return;
+    }
+    const pendingRead = await this.loadPendingWakeStrict(vehicleId);
+    if (pendingRead.status !== 'FOUND') {
+      return;
+    }
+    if (pendingRead.value.wakeContext.probeGeneration !== 0) {
+      return;
+    }
+    const pendingObserved = pendingRead.value.wakeContext.providerObservedAt
+      ? new Date(pendingRead.value.wakeContext.providerObservedAt).getTime()
+      : null;
+    const dispatchedObserved = dispatchedWake.providerObservedAt
+      ? new Date(dispatchedWake.providerObservedAt).getTime()
+      : null;
+    if (
+      pendingObserved != null &&
+      dispatchedObserved != null &&
+      pendingObserved > dispatchedObserved
+    ) {
+      return;
+    }
+    await this.acknowledgePendingWake(vehicleId, pendingRead.value.version);
   }
 
   async isVehicleSnapshotEligible(vehicleId: string): Promise<boolean> {
