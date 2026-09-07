@@ -24,6 +24,106 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-07 — M3.1/M3.2/M3.2A canonical evidence seal (PR #1551)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1551 accumulated M3.1–M3.2A read-only evidence; M3.2 overstrong POST_ENGINE_OFF claim; ambiguous-end-state metric undefined; PR title reflected early M3.1 probe only. |
+| **CHANGE** | Final semantic/documentation seal @ `2026-09-07T05:30:00Z` — scope verification, M3.2 erratum contract, ambiguous-end-state metric definition, M3.2B next phase, PR metadata update. |
+| **WHY** | Canonical evidence must not remain indefinitely open/experimental; seal before human merge review. |
+| **VALIDATION** | `RUNTIME_DIFF=NONE` (8 doc files under `architecture/battery-v2/`); graph validator PASS. |
+| **OBSERVED_EFFECT** | Preferred contract: `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`, `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO`. `TRIPS_UNCLASSIFIED_DUE_TO_END_STATE_AMBIGUITY=0` (forensic unclassified only). `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`. |
+| **NON_EFFECTS** | No production/runtime/flag/schema changes; `PRODUCTION_VALIDATED` unchanged; hybrid model not implemented. |
+| **REMAINING_GAPS** | M3.2B evidence acquisition observability; quality taxonomy runtime split. |
+| **DECISION_STATUS** | `IMPLEMENTATION_READY=NO`; `NEXT_PHASE=M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_OBSERVABILITY`; PR ready for human review — not auto-merged. |
+| **EVIDENCE** | `M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md`. |
+
+## CL-2026-09-07 — M3.2A shutdown anchor semantics & hybrid evidence feasibility audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.2 recommended hybrid model with trip-end shutdown anchor as PRIMARY; machine-readable `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES`; KS MX trip-end 12.15V classified ambiguously. |
+| **CHANGE** | Read-only feasibility audit @ `2026-09-07T04:30:00Z` — 13 post-T0 ICE trips (4 vehicles), timestamp semantics trace, per-trip shutdown classification, confidence contract, revised evidence hierarchy. |
+| **WHY** | M3.2 primary evidence not implementation-ready; resolve contradiction between YES flag and KS MX `engineRunning=true` / `hasActiveTrip=true` at trip end. |
+| **VALIDATION** | Production DB read-only forensics + `buildRestTargetContext()` code trace; graph validator PASS. |
+| **OBSERVED_EFFECT** | **0/13** trips meet confirmed post-engine-off pre-sleep (trip finalized + eng/ign off). HMÜ: 4 partial shutdown-transition candidates. KS MX: eng=true at trip end. Context fields not atomic with LV (`SNAPSHOT_FIELDS_ATOMIC=NO`). Trip-end **not** suitable as PRIMARY. |
+| **NON_EFFECTS** | No runtime/flag/PM2/DB mutation; M3.1 blocker unchanged; PR #1551 remains draft. |
+| **REMAINING_GAPS** | Trip-finalized shutdown samples; state timestamp metadata on measurements; multi-vehicle confirmed cohort; in-window REST during sleep (fleet 0 VALID). |
+| **DECISION_STATUS** | `IMPLEMENTATION_DECISION=HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA`; `IMPLEMENTATION_READY=NO`; M3.2 errata: `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL`, `CONFIRMED=NO`. |
+| **EVIDENCE** | `M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md`. |
+
+## CL-2026-09-07 — M3.2 REST signal observability & evidence acquisition architecture audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1 blocked by SIGNAL_OBSERVABILITY; KS MX natural REST lifecycle complete but 0 VALID; wake-only DIMO LV proven. |
+| **CHANGE** | Read-only architecture audit @ `2026-09-07T03:55:00Z` — full LV path trace, signal inventory, parked-LV disappearance layers, multi-trip forensic, deadlock analysis, evidence model options. |
+| **WHY** | `NEXT_ACTION=BATTERY_V2_SIGNAL_OBSERVABILITY_ARCHITECTURE_REVIEW` from M3.1 final maturity — determine what Battery V2 can observe and what evidence model should replace passive REST-only assumption. |
+| **VALIDATION** | Code path reconstruction + production read-only forensics (KS MX/HMÜ/KS MS/WOB); graph validator PASS. |
+| **OBSERVED_EFFECT** | Deadlock confirmed: in-window VALID REST requires sleeping LV; DIMO emits LV only during activity; wake samples quality-ineligible. Polling continues but dedup suppresses stale replays. Historical fallback semantically misleading. |
+| **NON_EFFECTS** | No production/runtime changes; M3.1 not validated YES. |
+| **REMAINING_GAPS** | M3.2 implementation: hybrid tiered evidence model, quality taxonomy, validation gate revision. |
+| **DECISION_STATUS** | `REST_EVIDENCE_OBSERVABILITY_DEADLOCK=YES`; `RECOMMENDED_ARCHITECTURE=HYBRID_TIERED_EVIDENCE_WITH_CONFIDENCE_BANDS`; `NEXT_IMPLEMENTATION_PHASE=M3.2_SIGNAL_OBSERVABILITY_EVIDENCE_MODEL`. |
+| **EVIDENCE** | `M3_2_REST_SIGNAL_OBSERVABILITY_ARCHITECTURE_AUDIT_2026-09-07.md`. |
+
+## CL-2026-09-07 — M3.1 KS MX 2024 REST_6H final maturity + signal observability verdict
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | REST_6H ENQUEUED; pre-maturity probe predicted wake-only DIMO LV + signal observability blocker. |
+| **CHANGE** | Final read-only probe @ `2026-09-07T03:47:28Z` after retry grace `03:30:44Z`. |
+| **WHY** | Close KS MX natural REST lifecycle; confirm or refute M3.1 E2E gate observability with current DIMO signal. |
+| **VALIDATION** | Production DB; REST_6H COMPLETED @ `03:17:34Z`; 0 LV in REST_6H window; fleet 0 VALID REST post-T0. |
+| **OBSERVED_EFFECT** | REST_6H **NATURAL_CONTAMINATED** (historical pre-anchor alternator obs); session still RESTING; no wake/new trip. `CONTAMINATED_BY_WAKE` = observation contamination, not session wake (terminology debt). |
+| **NON_EFFECTS** | No natural E2E; `PRODUCTION_VALIDATED` remains pending — not pipeline defect. |
+| **REMAINING_GAPS** | Architecture review: E2E gate vs DIMO wake-only LV (`NEXT_ACTION=BATTERY_V2_SIGNAL_OBSERVABILITY_ARCHITECTURE_REVIEW`). |
+| **DECISION_STATUS** | `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`; Case B — operationally healthy, validation blocked by signal. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`. |
+
+## CL-2026-09-06 — M3.1 KS MX 2024 REST_6H pre-maturity + telemetry availability probe
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | REST_60M COMPLETED contaminated; REST_6H ENQUEUED due `2026-09-07T02:00:44Z`; KS MX LV silent since trip end `20:00:44`. |
+| **CHANGE** | Read-only probe @ `2026-09-06T22:14:14Z` — pre-due eligibility gate; telemetry timeline + fleet DIMO sleep pattern forensic. |
+| **WHY** | Determine whether REST_6H can mature and whether DIMO wake-only LV during sleep systematically blocks natural REST validation. |
+| **VALIDATION** | Production DB + VLS + fleet post-T0 session LV counts; graph validator PASS. |
+| **OBSERVED_EFFECT** | REST_6H still ENQUEUED (not due). 0 LV in REST_60M window; 1 anchor LV at trip end then silence ~2h13m+. Fleet: 0 post-T0 VALID REST; all resting sessions 0 in-window LV. `REST_LV_SIGNAL_BEHAVIOR=WAKE_ONLY`. |
+| **NON_EFFECTS** | REST_6H measurement/E2E not yet evaluable; `PRODUCTION_VALIDATED` unchanged. |
+| **REMAINING_GAPS** | Re-probe REST_6H after `2026-09-07T03:30:44Z`; architecture review of E2E gate vs DIMO signal observability. |
+| **DECISION_STATUS** | `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`; `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`. |
+
+## CL-2026-09-06 — M3.1 KS MX 2024 REST_60M maturity probe (PR #1551 finalization)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Event probe @ `21:39:25Z`: KS MX REST_60M ENQUEUED; labeled `REST_PENDING_NOT_YET_DUE` (incorrect — target past due_at `21:00:44Z`). |
+| **CHANGE** | Read-only maturity probe @ `2026-09-06T21:53:34Z` on session `82324f65`; timing contract reconstructed from deployed code; prior terminology corrected in PR #1551 docs. |
+| **WHY** | Narrow follow-up after retry grace (`21:45:44Z`) to determine whether first post-T0 natural REST_60M → assess → publication chain matured. |
+| **VALIDATION** | Production DB + PM2; evaluation attempt trace since due_at; graph validator PASS. |
+| **OBSERVED_EFFECT** | REST_60M target **COMPLETED** @ `21:53:29Z`; measurement `701b077f…` **NATURAL_CONTAMINATED** (`CONTAMINATED_BY_WAKE`); zero `LIVE_VOLTAGE` in quality window `[20:45:44, 21:15:44]`; 0 assess/pub. Vehicle still RESTING; no wake. |
+| **NON_EFFECTS** | No natural VALID REST; no E2E closure; `PRODUCTION_VALIDATED` unchanged. |
+| **REMAINING_GAPS** | Natural VALID REST → assess → publication E2E still pending; next candidate REST_6H due `2026-09-07T02:00:44Z`. |
+| **DECISION_STATUS** | `PREVIOUS_NOT_YET_DUE_CLASSIFICATION_CORRECT=NO`; `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`; `M3_1_STATUS=STAGE2_ACTIVE_PENDING_NATURAL_E2E_EVIDENCE`. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST60M_MATURITY_PROBE_2026-09-06.md`; amended `M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`. |
+
+## CL-2026-09-06 — M3.1 event-conditioned natural E2E probe (evening trips)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`; no post-T0 RESTING promotion on KS MX 2024. |
+| **CHANGE** | Read-only probe at `2026-09-06T21:39:25Z` after WOB L 7503 + KS MX 2024 evening trip completions. |
+| **WHY** | Event-conditioned validation gate — real fleet movement should produce or explain absent natural E2E chain. |
+| **VALIDATION** | Production DB + PM2 logs; both probe vehicles traced; graph validator PASS. |
+| **OBSERVED_EFFECT** | KS MX: first post-T0 RESTING promotion; REST_60M due ENQUEUED. WOB: CANDIDATE only; REST_60M CONTAMINATED_BY_ACTIVE_TRIP. 0 VALID REST / assess / pub. |
+| **NON_EFFECTS** | E2E chain not yet closed — KS MX evaluation pending at probe time. |
+| **REMAINING_GAPS** | Re-probe KS MX REST_60M evaluation outcome + assessment/publication handoff. |
+| **DECISION_STATUS** | `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE` unchanged. |
+| **EVIDENCE** | `M3_1_STAGE2_EVENT_CONDITIONED_E2E_PROBE_2026-09-06.md`. |
+
 ## CL-2026-09-06 — M3.1 Stage-2 REST session/target lifecycle forensic audit (PR #1541 precision gate)
 
 | Field | Content |
