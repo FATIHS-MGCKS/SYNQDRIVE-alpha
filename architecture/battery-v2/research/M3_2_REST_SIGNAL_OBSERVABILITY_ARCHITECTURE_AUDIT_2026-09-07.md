@@ -5,7 +5,7 @@
 **Production changed:** NO  
 **M3.1 status:** unchanged — `PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE`, blocker `SIGNAL_OBSERVABILITY`
 
-> **Errata (M3.2A, `2026-09-07T04:30:00Z`):** Machine-readable `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES` is **overstrong**. Production forensics (13 post-T0 ICE trips) found **0 confirmed** post-engine-off pre-sleep samples (trip finalized + eng/ign off). HMÜ C 215 provides **partial** shutdown-transition candidates (`hasActiveTrip=true` at all trip-end samples). KS MX 2024 trip-end sample has `engineRunning=true`. See `M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md`. Superseded flag: `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL`, `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP=NO`.
+> **Errata (M3.2A + seal, `2026-09-07T05:30:00Z`):** Machine-readable `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES` is **overstrong** and **superseded**. Production forensics (13 post-T0 ICE trips) found **0 confirmed** post-engine-off pre-sleep samples. **Canonical contract:** `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`, `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO`. `POST_ENGINE_OFF_PRE_SLEEP_CLAIM_SUPPORTED=PARTIAL` means *partial structural/pattern support only; zero confirmed samples* — **do not interpret PARTIAL as confirmed evidence**. See `M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md`, `M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md`. Deprecated alias: `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL`.
 
 **Canonical M3.1 evidence:** KS MX session `82324f65` — REST_60M/REST_6H both `NATURAL_CONTAMINATED`, vehicle genuinely resting, ~7h17m LV silence. See `M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`.
 
@@ -215,7 +215,8 @@ Last LV before end: `19:35:43` @ 14.253V still driving. **No** LV at/after trip 
 
 | Question | Answer |
 |----------|--------|
-| `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS` | **PARTIAL** — HMÜ trip-end eng/ign off but `hasActiveTrip=true`; KS MX eng=true at trip end; **0 confirmed** trip-finalized pre-sleep (M3.2A) |
+| `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT` | **PARTIAL** — HMÜ shutdown-transition pattern only; **0 confirmed** trip-finalized pre-sleep (M3.2A seal) |
+| `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS` | **NO** |
 | `PRE_ENGINE_START_WAKE_SAMPLE_EXISTS` | **NO** — KS MS next trip starts at alternator voltage + speed; no isolated pre-crank rest sample |
 | `SAMPLE_CADENCE_SUFFICIENT` | **NO** for passive REST windows during sleep |
 | `OBSERVED_PATTERN` | **WAKE_ONLY emission** — LV bursts during activity; silence after trip end until next trip |
@@ -403,8 +404,11 @@ PARKED_LV_TIMESTAMP_ADVANCES=NO
 PARKED_LV_PERSISTED=NO_AFTER_INITIAL_TRIP_END_SAMPLE
 PARKED_LV_BATTERY_VISIBLE=NO_IN_REST_QUALITY_WINDOWS
 
+POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL
+CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO
+POST_ENGINE_OFF_PRE_SLEEP_CLAIM_SUPPORTED=PARTIAL
+M3_2_OVERSTRONG_CLAIM_SUPERSEDED=YES
 POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL
-CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP=NO
 PRE_ENGINE_START_WAKE_SAMPLE_EXISTS=NO
 TRIP_END_LV_SAMPLE_SEMANTICS=MIXED_PLAUSIBLE_VOLTAGE_WITH_RESIDUAL_ENGINE_CONTEXT
 TRIP_END_LV_REPEATABLE=YES

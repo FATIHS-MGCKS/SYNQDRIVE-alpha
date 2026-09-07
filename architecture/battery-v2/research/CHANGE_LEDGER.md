@@ -24,6 +24,22 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-07 — M3.1/M3.2/M3.2A canonical evidence seal (PR #1551)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | PR #1551 accumulated M3.1–M3.2A read-only evidence; M3.2 overstrong POST_ENGINE_OFF claim; ambiguous-end-state metric undefined; PR title reflected early M3.1 probe only. |
+| **CHANGE** | Final semantic/documentation seal @ `2026-09-07T05:30:00Z` — scope verification, M3.2 erratum contract, ambiguous-end-state metric definition, M3.2B next phase, PR metadata update. |
+| **WHY** | Canonical evidence must not remain indefinitely open/experimental; seal before human merge review. |
+| **VALIDATION** | `RUNTIME_DIFF=NONE` (8 doc files under `architecture/battery-v2/`); graph validator PASS. |
+| **OBSERVED_EFFECT** | Preferred contract: `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`, `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO`. `TRIPS_UNCLASSIFIED_DUE_TO_END_STATE_AMBIGUITY=0` (forensic unclassified only). `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`. |
+| **NON_EFFECTS** | No production/runtime/flag/schema changes; `PRODUCTION_VALIDATED` unchanged; hybrid model not implemented. |
+| **REMAINING_GAPS** | M3.2B evidence acquisition observability; quality taxonomy runtime split. |
+| **DECISION_STATUS** | `IMPLEMENTATION_READY=NO`; `NEXT_PHASE=M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_OBSERVABILITY`; PR ready for human review — not auto-merged. |
+| **EVIDENCE** | `M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md`. |
+
 ## CL-2026-09-07 — M3.2A shutdown anchor semantics & hybrid evidence feasibility audit
 
 | Field | Content |

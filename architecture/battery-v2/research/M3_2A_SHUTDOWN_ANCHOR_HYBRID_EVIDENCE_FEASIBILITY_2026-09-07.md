@@ -58,13 +58,18 @@ This is **explicitly NOT clean post-engine-off** under any strict contract.
 
 ```
 POST_ENGINE_OFF_PRE_SLEEP_CLAIM_SUPPORTED=PARTIAL
-SUPPORTING_VEHICLES=HMÜ C 215 (4 trip-end candidates); KS MX 2024 (plausible voltage only, engine context contaminated)
+POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL
+CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO
+SUPPORTING_VEHICLES=HMÜ C 215 (4 trip-end shutdown-transition candidates); KS MX 2024 (plausible voltage only, engine context contaminated)
 SUPPORTING_OBSERVATIONS=HMÜ: 12.424V@11:07:11, 12.340V@15:42:16, 12.192V@15:58:38, 12.868V@16:09:59 — all speed=0 ign=false eng=false hasActiveTrip=true; KS MX: 12.15V@20:00:44 eng=true hasActiveTrip=true
 CONTRADICTIONS=KS MX trip-end contradicts strict post-engine-off; all HMÜ candidates contradict trip-finalized contract (hasActiveTrip=true); M3.2 YES flag overstates mid-trip idle + trip-end mixed semantics
 M3_2_DOCUMENTATION_CORRECTION_REQUIRED=YES
+M3_2_OVERSTRONG_CLAIM_SUPERSEDED=YES
 ```
 
-**Correction:** Replace `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES` with `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL` and distinguish `SHUTDOWN_TRANSITION_CANDIDATE_EXISTS=YES` from `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP=NO`.
+**Definition:** `POST_ENGINE_OFF_PRE_SLEEP_CLAIM_SUPPORTED=PARTIAL` means *partial structural/pattern support only; zero confirmed samples* meeting trip-finalized post-engine-off pre-sleep contract. **Do not interpret PARTIAL as confirmed evidence.**
+
+**Preferred contract:** `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`, `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO`. Deprecated alias: `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=PARTIAL`.
 
 ---
 
@@ -200,6 +205,7 @@ TRIPS_WITH_LV_AT_EXACT_END=7
 TRIPS_WITH_PLAUSIBLE_SHUTDOWN_TRANSITION=4
 TRIPS_WITH_CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP=0
 TRIPS_WITH_ONLY_ALTERNATOR_CONTAMINATED_END=2
+TRIPS_UNCLASSIFIED_DUE_TO_END_STATE_AMBIGUITY=0
 TRIPS_WITH_AMBIGUOUS_END_STATE=0
 ```
 
@@ -208,6 +214,7 @@ TRIPS_WITH_AMBIGUOUS_END_STATE=0
 - `CONFIRMED` requires trip finalized (`hasActiveTrip=false` or explicit post-trip relation) — **0** trips meet this.
 - `PLAUSIBLE_SHUTDOWN_TRANSITION` = HMÜ only (eng/ign off, speed 0, V ≤ 13.5, within ±10m).
 - KS MS/WOB counted under alternator/non-charging contamination, not ambiguous — nearest sample class is explicit.
+- **`TRIPS_WITH_AMBIGUOUS_END_STATE` / `TRIPS_UNCLASSIFIED_DUE_TO_END_STATE_AMBIGUITY`:** trips whose nearest ±10m sample could **not** be assigned any Step 4 forensic class. Value **0** is correct. This is **not** the same as architectural timestamp skew (`SNAPSHOT_FIELDS_ATOMIC=NO`) — all 13 trips received an explicit class despite non-atomic context binding.
 
 ### Descriptive stats — HMÜ partial shutdown cohort (n=4)
 
@@ -329,13 +336,15 @@ Existing `LvAssessmentConfidenceLevel` (`HIGH|MEDIUM|LOW|INSUFFICIENT`) can map 
 
 M3.2 proposed PRIMARY = shutdown anchor + longitudinal trend. **M3.2A revises** — shutdown anchor cannot be Tier 1/2 PRIMARY until contract fixed.
 
-| Tier | Evidence | Required | Excluded | Confidence | Assessment | Publication | Health score | Warning |
-|------|----------|----------|----------|------------|------------|-------------|--------------|---------|
-| **1** | True in-window REST LIVE_VOLTAGE | Natural LV in REST_60M/6H window, full rest context | Wake, charging, active trip | HIGH | YES | YES (if policy) | YES | YES |
-| **2** | Confirmed post-engine-off pre-sleep | Tier 1 + trip finalized + state timestamps aligned | eng on, trip active, skew > 5m | HIGH | YES | YES | YES | YES |
-| **3** | State-qualified shutdown-transition + longitudinal baseline | HMÜ-like eng/ign off at boundary + ≥3 comparable samples/vehicle | Alternator era, single sample | MEDIUM | YES (trend/anomaly) | LIMITED | **NO absolute SOH** | SUSPECTED only |
-| **4** | Corroborating DTC / charging / connectivity | Supports tiers 1–3 | Must not alone verdict | LOW | NO alone | NO alone | NO | CORROBORATE |
-| **NONE** | Insufficient | — | — | INSUFFICIENT | NO | NO | NO | NO |
+**Rule:** No tier below proven direct evidence may silently produce an absolute battery SOH.
+
+| Tier | Evidence | Observable today? |
+|------|----------|-------------------|
+| **1** | Natural in-window REST LIVE_VOLTAGE | Opportunistic — fleet-rare post-T0 |
+| **2** | Confirmed post-engine-off pre-sleep | **NOT PROVEN OBSERVABLE** (0/13 confirmed) |
+| **3** | State-qualified shutdown transition + longitudinal baseline | **WEAK / RESEARCH ONLY** |
+| **4** | Corroborating DTC / charging / connectivity | Supporting only |
+| **NONE** | Explicit UNKNOWN / INSUFFICIENT_EVIDENCE | Default when tiers 1–2 absent |
 
 ```
 RECOMMENDED_TIER_1=IN_WINDOW_REST_WHEN_NATURALLY_AVAILABLE
@@ -402,7 +411,10 @@ LONGITUDINAL_ANOMALY_EVIDENCE_SUPPORTED=WEAK (HMÜ cohort insufficient)
 
 ```
 QUALITY_TAXONOMY_CHANGE_REQUIRED=YES
+QUALITY_TAXONOMY_RUNTIME_CHANGED=NO
 ```
+
+**Runtime unchanged on this PR** — pending M3.2B implementation.
 
 ---
 
@@ -414,7 +426,14 @@ Not A: no proven, repeatable, state-verifiable primary acquisition contract.
 Not C: alternate source not required yet — HMÜ pattern shows signal exists but state binding broken.  
 Not D: data supports **partial** shutdown-transition detection — not total insufficiency.
 
-### Missing evidence (specific)
+```
+PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO
+NEXT_PHASE=M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_OBSERVABILITY
+```
+
+**Precision:** Passive trip accumulation with current non-atomic context binding does **not** satisfy the blocker. M3.2B requires improved evidence acquisition / observability (see missing evidence list).
+
+### Missing evidence (specific — not solved by passive waiting)
 
 1. **Trip-finalized shutdown samples** — `hasActiveTrip=false` at/post trip end with LV (0/13 trips).
 2. **State timestamp metadata** on persisted measurements (code gap, not natural data).
@@ -458,7 +477,7 @@ IMPLEMENTATION_READY=NO
 ## Step 15 — Documentation actions
 
 - Created this document.
-- M3.2 errata: supersede `POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=YES` → `PARTIAL` / `CONFIRMED=NO`.
+- M3.2 errata sealed — see `M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md`.
 - Updated `CURRENT_STATE.md`, `CHANGE_LEDGER.md`.
 
 ---
@@ -468,6 +487,9 @@ IMPLEMENTATION_READY=NO
 ```
 BATTERY_V2_M3_2A_FEASIBILITY_AUDIT=COMPLETE
 
+M3_2_OVERSTRONG_CLAIM_SUPERSEDED=YES
+POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL
+CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO
 POST_ENGINE_OFF_PRE_SLEEP_CLAIM_SUPPORTED=PARTIAL
 M3_2_DOCUMENTATION_CORRECTION_REQUIRED=YES
 
@@ -477,7 +499,12 @@ VEHICLES_ANALYZED=4
 TRIPS_WITH_LV_NEAR_END=13
 TRIPS_WITH_PLAUSIBLE_SHUTDOWN_TRANSITION=4
 TRIPS_WITH_CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP=0
+TRIPS_UNCLASSIFIED_DUE_TO_END_STATE_AMBIGUITY=0
 TRIPS_WITH_AMBIGUOUS_END_STATE=0
+
+AMBIGUOUS_END_STATE_METRIC_CORRECT=YES
+AMBIGUOUS_END_STATE_METRIC_DEFINITION=TRIPS WHOSE NEAREST ±10M TRIP-END LV SAMPLE COULD NOT BE ASSIGNED ANY STEP-4 FORENSIC CLASS
+AMBIGUOUS_END_STATE_METRIC_FINAL_VALUE=0
 
 SNAPSHOT_FIELDS_ATOMIC=NO
 CROSS_SIGNAL_TIMESTAMP_SKEW_PRESENT=YES
@@ -501,13 +528,16 @@ RECOMMENDED_TIER_4=CORROBORATING_DTC_CHARGING_CONNECTIVITY
 INSUFFICIENT_EVIDENCE_BEHAVIOR=EXPLICIT_UNKNOWN_NO_CONTAMINATED_PROXY_HEALTH_VERDICT
 
 QUALITY_TAXONOMY_CHANGE_REQUIRED=YES
+QUALITY_TAXONOMY_RUNTIME_CHANGED=NO
 
 IMPLEMENTATION_DECISION=HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA
 IMPLEMENTATION_READY=NO
+PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO
+NEXT_PHASE=M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_OBSERVABILITY
 
 PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE
 M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY
 
-PR_1551_STATUS=DRAFT
+PR_1551_STATUS=READY_FOR_HUMAN_REVIEW
 PRODUCTION_CHANGED=NO
 ```
