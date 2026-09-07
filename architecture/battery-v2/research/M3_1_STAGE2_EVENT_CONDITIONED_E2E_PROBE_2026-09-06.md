@@ -235,7 +235,7 @@ Read-only maturity probe completed after retry grace. Full report: `M3_1_STAGE2_
 | `PRODUCTION_VALIDATED` | **PENDING_NATURAL_E2E_EVIDENCE** (unchanged) |
 | Next candidate | REST_6H due `2026-09-07T02:00:44Z` on same session |
 
-> **REST_6H follow-up (`22:14Z`):** Pre-due probe — ENQUEUED; DIMO wake-only LV proven; `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`. Full report: `M3_1_STAGE2_KS_MX_2024_REST6H_MATURITY_PROBE_2026-09-06.md`. Re-probe after `2026-09-07T03:30:44Z`.
+> **REST_6H final (`03:47Z`):** COMPLETED **NATURAL_CONTAMINATED**; signal observability blocker confirmed; `NEXT_ACTION=BATTERY_V2_SIGNAL_OBSERVABILITY_ARCHITECTURE_REVIEW`. See `M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`.
 
 ---
 

@@ -202,6 +202,8 @@ M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY
 
 Re-probe REST_6H outcome after **`2026-09-07T03:30:44Z`**.
 
+> **Final maturity (`2026-09-07T03:47:28Z`):** REST_6H **COMPLETED** @ `03:17:34Z` with **NATURAL_CONTAMINATED**; 0 LV in window; Case B signal observability blocker confirmed. See `M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`.
+
 ---
 
 ## Machine-readable block
