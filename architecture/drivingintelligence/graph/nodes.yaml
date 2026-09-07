@@ -930,11 +930,13 @@ nodes:
     title: HF_HISTORICAL alone sufficient as sole high-resolution DI authority
     epistemic_status: INFERRED
     decision_status: REJECTED
-    summary: EXP-019 video-GT correlation rejects sole HF authority direction; 0/5 gap interiors; native fallback absent at windows (N=1).
+    summary: EXP-019 video-GT + bias-control rejects sole HF high-fidelity authority in gap windows; controls show partial HF utility (N=1).
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md
     evidence:
       - DI-EVID-EXP019-VIDEO-GT-002
+      - DI-EVID-EXP019-VIDEO-GT-004
 
   # --- Hypothesis (legacy id) ---
   - id: DI-HYP-BLOCK-POLL-30S-001
@@ -1125,3 +1127,12 @@ nodes:
     summary: Revised human video GT; multi-authority correlation; boundary-only HF; interior void at all gaps.
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-004
+    type: evidence
+    title: EXP-019 bias-control and decision readiness
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Eight video-first control windows; gap vs control CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn; READY_FOR_EXPERIMENT_DESIGN_DECISION.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md

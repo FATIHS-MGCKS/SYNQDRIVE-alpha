@@ -1,6 +1,6 @@
 # EXP-019 — Video Ground-Truth vs DIMO / Detector Correlation
 
-> **Note:** Superseded for human GT text by `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` (revised GT-10-P0: deceleration not acceleration). Retained for first-pass methodology.
+> **Note:** Superseded for human GT text by `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` (revised GT-10-P0: deceleration not acceleration). Cadence-wide CRITICAL labels superseded by `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md`. Retained for first-pass methodology.
 
 **Date:** 2026-09-07  
 **Session:** `2508b697-f101-4155-a0d3-8436e46bb779`  

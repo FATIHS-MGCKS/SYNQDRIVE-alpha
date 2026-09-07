@@ -24,7 +24,7 @@ Workstream topic completion status. Uses **IMPLEMENTATION** vs **REFERENCE_VALID
 | High-timeframe analytics | ✓ | ✓ | Partial | — | Partial | ✓ | PARTIAL | — | Partial | Daily/weekly trends |
 | HF Recovery V2 | ✓ | ✓ | ✓ | RD004-B replay | CODE only | ✓ | COMPLETE | PARTIAL | **OFF** | Live validation |
 | Block polling | ✓ | ✓ | Designed | — | NO | ✓ | COMPLETE | **NOT STARTED** | NO | 10/20/30/60 live |
-| 10/20/30/60 calibration | ✓ | ✓ | ✓ | EXP-019 video GT (5 windows) | Partial | ✓ | COMPLETE (machinery) | **PARTIAL** (EXP-019 N=1 + replay + video GT) | **INCOMPLETE** | Counterbalanced multi-authority drive |
+| 10/20/30/60 calibration | ✓ | ✓ | ✓ | EXP-019 video GT (5 gap + 8 control) | Partial | ✓ | COMPLETE (machinery) | **PARTIAL** (EXP-019 N=1 + bias-control) | **INCOMPLETE** | EXP-020 counterbalanced drive |
 | Multi-replica safety | Partial | ✓ | Tests + GATE 2 | — | Partial | ✓ | PARTIAL | — | **PARTIAL** (GATE 2 obs) | Live cal N=2 motion |
 | Production rollout | ✓ | ✓ | ✓ | — | Partial | ✓ | CODE_DEPLOYED | — | RC infra ON | HF V2 OFF |
 | API semantics | ✓ | ✓ | — | — | Partial | ✓ | PARTIAL | — | Partial | Field naming |

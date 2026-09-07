@@ -58,7 +58,8 @@ Settled DIMO gap boundaries align to video UTC within ≤1s (sub-second settleme
 | DI_DERIVED_EVENT_PRESENT | NO |
 | DRIVING_IMPACT_CHANGED | UNKNOWN |
 | Gap impact on DI | **MAJOR_DYNAMIC_LOSS** — decel trajectory absent; flat zero boundaries |
-| SCORE_INPUT_LOSS | YES |
+| SCORE_INPUT_LOSS | **POTENTIAL** |
+| PRODUCTION_SCORE_MATERIALLY_AFFECTED | **UNKNOWN** |
 | **Recovery** | **PARTIALLY_OBSERVED_BY_HF** (end anchor only; interior void) |
 
 **Speed trajectory (boundary anchors)**
@@ -97,7 +98,8 @@ Settled DIMO gap boundaries align to video UTC within ≤1s (sub-second settleme
 | HF_SPEED interior | **NONE** |
 | HF_SPEED boundaries | **PARTIAL** — start **matches video ~54**; end **misses** (~111 video vs 36 HF) |
 | Gap impact | **TOTAL_DYNAMIC_LOSS** — 168.6s void; interior multi-state absent |
-| SCORE_INPUT_LOSS | YES |
+| SCORE_INPUT_LOSS | **POTENTIAL** |
+| PRODUCTION_SCORE_MATERIALLY_AFFECTED | **UNKNOWN** |
 | **Recovery** | **PARTIALLY_OBSERVED_BY_HF** (start boundary only) |
 
 **Boundary comparison**
@@ -209,26 +211,35 @@ Settled DIMO gap boundaries align to video UTC within ≤1s (sub-second settleme
 
 ---
 
-## Cadence reassessment (H)
+## Cadence reassessment (revised — bias-control pass)
 
-| Cadence | Events in gaps | Fully recovered | Partially recovered | Missed | Native mitigation | DI risk |
-|---------|----------------|-----------------|---------------------|--------|---------------------|---------|
-| **10s** | 1 | 0 | 1 | 0 | 0 | **CRITICAL** |
-| **20s** | 1 | 0 | 1 | 0 | 0 | **CRITICAL** |
-| **30s** | 2 | 0 | 1 | 0 | 0 | **CRITICAL** |
-| **60s** | 1 | 0 | 1 | 0 | 0 | **CRITICAL** |
+> Prior cadence-wide **CRITICAL** labels are **withdrawn**. See `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md`.
+
+| Cadence | Gap GT windows | Local gap failure severity | Cadence-wide reconstruction confidence |
+|---------|----------------|----------------------------|--------------------------------------|
+| **10s** | 1 | **HIGH** | **LOW** (only 7.4% of phase in ≥10s gaps) |
+| **20s** | 1 | **CRITICAL** (168.6s max gap) | **UNKNOWN** |
+| **30s** | 2 | **HIGH** | **UNKNOWN** |
+| **60s** | 1 | **HIGH** | **UNKNOWN** |
+
+```
+GT_WINDOW_SELECTION = GAP_CONDITIONED
+CADENCE_WIDE_CRITICAL_RISK_SUPPORTED = NO
+```
 
 ---
 
-## Architecture hypothesis (I)
+## Architecture hypothesis (scoped)
 
 ```
-HF_SOLE_AUTHORITY_SUFFICIENT = NO
-NATIVE_EVENTS_MITIGATE_HF_GAPS = NO
-OTHER_AUTHORITY_MITIGATES_HF_GAPS = NO
+HF_USEFUL_AS_PARTIAL_AUTHORITY = YES
+HF_SOLE_HIGH_FIDELITY_AUTHORITY = NO
+HF_SOLE_AUTHORITY_SUFFICIENT_FOR_HIGH_FIDELITY_RECONSTRUCTION = NO (gap windows)
+NATIVE_EVENTS_MITIGATE_OBSERVED_GT_GAPS = NO
+OTHER_AUTHORITY_MITIGATES_OBSERVED_GT_GAPS = NO
 ```
 
-Video-confirmed dynamics occur inside persistent HF gaps at **all** cadences including 10s. No native or DI detector recovery at GT windows (N=1).
+Video-confirmed dynamics occur inside persistent HF gaps at all cadences including 10s. No native or DI detector recovery at gap GT windows (N=5, gap-conditioned). **Control windows (N=8)** show FULL/PARTIAL HF outside gaps — HF remains useful as partial authority.
 
 ---
 
@@ -249,5 +260,6 @@ Video-confirmed dynamics occur inside persistent HF gaps at **all** cadences inc
 ## Cross-links
 
 - Alignment windows: `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md`
-- Prior correlation pass: `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` (superseded GT-10 classification — now decel not accel)
+- Bias-control + decision readiness: `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md`
+- Prior correlation pass: `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` (superseded GT-10 classification — now decel not accel; cadence CRITICAL labels superseded)
 - Script: `exp-019-video-gt-event-register-export.cjs`

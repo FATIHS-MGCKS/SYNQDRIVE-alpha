@@ -167,6 +167,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Video alignment | `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md` + VPS `/tmp/exp-019-video-alignment/` |
 | Video GT correlation | `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` |
 | Video GT event register | `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` + `video-gt-event-register.json` |
+| Bias-control pass | `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md` — 8 video-first control windows; cadence CRITICAL labels withdrawn; `ARCHITECTURAL_DECISION_READINESS=READY_FOR_EXPERIMENT_DESIGN_DECISION` |
 | Replay | **T+25** `05:25Z` (provisional) + **true T+30** `05:31:57Z` — **identical**; max gaps persist |
 | Rate metrics | Normalized per-minute: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min |
 | Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |

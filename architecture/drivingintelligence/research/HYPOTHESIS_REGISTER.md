@@ -20,7 +20,7 @@ Independent record of hypotheses tested during the workstream.
 | DI-HYP-013 | Native DIMO events authoritative for LTE_R1 short events (policy) | Provider-classified behavior; code architecture | RD002/003 + code reframing | **CONFIRMED** (policy) | HF = Trip Signal Summary; **RD002: native events NOT_OBSERVED on C63** |
 | DI-HYP-014 | Reference capture can run safely with V2 OFF on main | Feature flags default false | PR #1533 merge + deploy discipline | **CONFIRMED** | CODE_DEPLOYED=YES, FEATURE_ENABLED=NO |
 | DI-HYP-015 | Phase switch at cycle boundary prevents races | Concurrency review | C.1d/C.1e hardening | **CONFIRMED** in tests | Live multi-replica NOT validated |
-| DI-HYP-016 | HF_HISTORICAL alone sufficient as sole high-resolution DI authority | Sparse gaps may be filled by native events | EXP-019 video-GT correlation (5 windows) | **PARTIALLY_SUPPORTED** (rejection direction) | 0/5 gap interiors in HF; 0/5 native at windows; layered authority hypothesis strengthened — not implemented |
+| DI-HYP-016 | HF_HISTORICAL alone sufficient as sole high-resolution DI authority | Sparse gaps may be filled by native events | EXP-019 video-GT + bias-control (5 gap + 8 control windows) | **PARTIALLY_SUPPORTED** (rejection direction) | Gap interiors: 0/5 HF; controls: FULL/PARTIAL HF outside gaps; `HF_SOLE_HIGH_FIDELITY_AUTHORITY=NO`; `HF_USEFUL_AS_PARTIAL_AUTHORITY=YES` |
 
 **Rejected count:** 7  
 **Not yet tested:** 2  

@@ -137,4 +137,8 @@ Full per-window correlation against all DI authorities:
 
 **`EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md`**
 
+Bias-control pass (8 control windows, claim scope correction):
+
+**`EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md`**
+
 Machine-readable: `/tmp/exp-019-video-alignment/video-gt-event-register.json`
