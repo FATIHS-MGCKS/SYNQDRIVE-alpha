@@ -87,11 +87,11 @@ jobs:
 
           authority_label_uri_encoded() {
             AUTHORITY_LABEL="${AUTHORITY_LABEL}" python3 - <<'PY'
-import os
-import urllib.parse
+          import os
+          import urllib.parse
 
-print(urllib.parse.quote(os.environ["AUTHORITY_LABEL"], safe=""))
-PY
+          print(urllib.parse.quote(os.environ["AUTHORITY_LABEL"], safe=""))
+          PY
           }
 
           authority_label_present_on_pr() {
@@ -100,15 +100,15 @@ PY
               return 2
             fi
             if AUTHORITY_LABEL="${AUTHORITY_LABEL}" LABELS_JSON="${labels_json}" python3 - <<'PY'
-import json
-import os
-import sys
+          import json
+          import os
+          import sys
 
-label = os.environ["AUTHORITY_LABEL"]
-with open(os.environ["LABELS_JSON"], encoding="utf-8") as handle:
-    names = [entry.get("name") for entry in json.load(handle)]
-sys.exit(0 if label in names else 1)
-PY
+          label = os.environ["AUTHORITY_LABEL"]
+          with open(os.environ["LABELS_JSON"], encoding="utf-8") as handle:
+              names = [entry.get("name") for entry in json.load(handle)]
+          sys.exit(0 if label in names else 1)
+          PY
             then
               return 0
             fi
