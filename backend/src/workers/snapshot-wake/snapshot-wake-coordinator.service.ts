@@ -26,10 +26,18 @@ import {
 } from './snapshot-wake.util';
 import {
   enqueueStableSnapshotJob,
+  coalesceNeedsPostTerminalSuccessor,
+  isQueuedCoalesce,
   isActiveQueueState,
   isQueuedQueueState,
-  snapshotQueueNeedsPendingWake,
 } from './snapshot-wake-queue.util';
+import {
+  classifyWakeContinuation,
+  mayScheduleWakeSuccessor,
+  shouldRetireObsoleteWake,
+  type WakeContinuationClass,
+} from './snapshot-wake-continuation.util';
+import type { DurableReadResult } from './snapshot-wake-durable-read.types';
 import { SnapshotWakeHandoffDeferError } from './snapshot-wake-handoff-defer.error';
 import {
   ACK_PENDING_WAKE_SCRIPT,
@@ -89,6 +97,7 @@ export class SnapshotWakeCoordinatorService {
   ) {}
 
   async requestSnapshot(input: RequestSnapshotInput): Promise<SnapshotWakeOutcome> {
+    let pendingVersion: number | undefined;
     if (input.wakeContext) {
       const persist = await this.persistPendingWakeAtomic(
         input.vehicleId,
@@ -99,6 +108,7 @@ export class SnapshotWakeCoordinatorService {
         this.recordWakeMetric(input.wakeContext, 'QUEUE_FAILED');
         return 'QUEUE_FAILED';
       }
+      pendingVersion = persist.version;
     }
 
     const jobId = snapshotJobId(input.vehicleId);
@@ -118,10 +128,22 @@ export class SnapshotWakeCoordinatorService {
         delayMs: input.delayMs,
       });
 
+      if (isQueuedCoalesce(enqueueOutcome) && input.wakeContext) {
+        this.recordWakeMetric(input.wakeContext, 'COALESCED');
+        return 'COALESCED';
+      }
+
       if (
-        snapshotQueueNeedsPendingWake(enqueueOutcome) &&
+        coalesceNeedsPostTerminalSuccessor(enqueueOutcome) &&
         input.wakeContext
       ) {
+        await this.ensureCoalescedWakeConsumer({
+          vehicleId: input.vehicleId,
+          dimoTokenId: input.dimoTokenId,
+          origin: input.origin,
+          wakeContext: input.wakeContext,
+          pendingVersion: pendingVersion,
+        });
         this.recordWakeMetric(input.wakeContext, 'COALESCED');
         return 'COALESCED';
       }
@@ -161,6 +183,27 @@ export class SnapshotWakeCoordinatorService {
         `Pending wake read failed for ${vehicleId}: ${(err as Error).message}`,
       );
       return null;
+    }
+  }
+
+  async loadPendingWakeStrict(
+    vehicleId: string,
+  ): Promise<DurableReadResult<PendingSnapshotWakeRecord>> {
+    try {
+      const raw = await this.redis.get(pendingWakeRedisKey(vehicleId));
+      if (!raw) {
+        return { status: 'MISSING' };
+      }
+      const parsed = JSON.parse(raw) as PendingSnapshotWakeRecord;
+      if (typeof parsed.version !== 'number') {
+        parsed.version = 1;
+      }
+      return { status: 'FOUND', value: parsed };
+    } catch (err) {
+      return {
+        status: 'READ_ERROR',
+        error: (err as Error).message,
+      };
     }
   }
 
@@ -279,9 +322,13 @@ export class SnapshotWakeCoordinatorService {
     });
 
     if (probeEligible && effectiveWake) {
-      const eligible = await this.isVehicleSnapshotEligible(params.vehicleId);
-      if (!eligible) {
-        await this.reconcileOutstandingPendingWake(params.vehicleId);
+      const continuation = await this.resolveWakeContinuation(params.vehicleId);
+      if (!mayScheduleWakeSuccessor(continuation.continuation)) {
+        await this.handleNonEligibleWakeContinuation(
+          params.vehicleId,
+          params.claimedPendingWake?.version,
+          continuation.continuation,
+        );
         return;
       }
 
@@ -303,9 +350,9 @@ export class SnapshotWakeCoordinatorService {
         delayMs: wakeProbeDelayMs(this.tierConfig),
       });
 
-      if (handoffOutcome !== 'QUEUE_FAILED') {
+      if (handoffOutcome === 'HANDOFF_SCHEDULED') {
         await this.tryAckClaimedPendingWake(params);
-      } else {
+      } else if (handoffOutcome === 'QUEUE_FAILED') {
         await this.reconcileOutstandingPendingWake(params.vehicleId);
       }
 
@@ -334,6 +381,16 @@ export class SnapshotWakeCoordinatorService {
       params.claimedPendingWake.record.wakeContext.probeGeneration === 0 &&
       !isCovered
     ) {
+      const continuation = await this.resolveWakeContinuation(params.vehicleId);
+      if (!mayScheduleWakeSuccessor(continuation.continuation)) {
+        await this.handleNonEligibleWakeContinuation(
+          params.vehicleId,
+          params.claimedPendingWake.version,
+          continuation.continuation,
+        );
+        return;
+      }
+
       const pending = params.claimedPendingWake.record;
       const handoffOutcome = await this.scheduleDurableSuccessor({
         vehicleId: params.vehicleId,
@@ -341,7 +398,7 @@ export class SnapshotWakeCoordinatorService {
         origin: 'PROVIDER_WAKE',
         wakeContext: pending.wakeContext,
       });
-      if (handoffOutcome !== 'QUEUE_FAILED') {
+      if (handoffOutcome === 'HANDOFF_SCHEDULED') {
         await this.tryAckClaimedPendingWake(params);
       }
       return;
@@ -365,14 +422,29 @@ export class SnapshotWakeCoordinatorService {
         params.claimedPendingWake.version,
       );
       if (!acked) {
-        const latest = await this.loadPendingWake(params.vehicleId);
-        if (latest?.wakeContext.probeGeneration === 0) {
-          await this.scheduleDurableSuccessor({
-            vehicleId: params.vehicleId,
-            dimoTokenId: latest.dimoTokenId,
-            origin: 'PROVIDER_WAKE',
-            wakeContext: latest.wakeContext,
-          });
+        const latestRead = await this.loadPendingWakeStrict(params.vehicleId);
+        if (latestRead.status === 'READ_ERROR') {
+          return;
+        }
+        if (
+          latestRead.status === 'FOUND' &&
+          latestRead.value.wakeContext.probeGeneration === 0
+        ) {
+          const continuation = await this.resolveWakeContinuation(params.vehicleId);
+          if (mayScheduleWakeSuccessor(continuation.continuation)) {
+            await this.scheduleDurableSuccessor({
+              vehicleId: params.vehicleId,
+              dimoTokenId: latestRead.value.dimoTokenId,
+              origin: 'PROVIDER_WAKE',
+              wakeContext: latestRead.value.wakeContext,
+            });
+          } else {
+            await this.handleNonEligibleWakeContinuation(
+              params.vehicleId,
+              latestRead.value.version,
+              continuation.continuation,
+            );
+          }
         }
       }
       return;
@@ -396,8 +468,21 @@ export class SnapshotWakeCoordinatorService {
   }
 
   async reconcileOutstandingPendingWake(vehicleId: string): Promise<void> {
-    const latest = await this.loadPendingWake(vehicleId);
-    if (!latest || latest.wakeContext.probeGeneration === 1) {
+    const pendingRead = await this.loadPendingWakeStrict(vehicleId);
+    if (pendingRead.status === 'READ_ERROR' || pendingRead.status === 'MISSING') {
+      return;
+    }
+    const latest = pendingRead.value;
+    if (latest.wakeContext.probeGeneration === 1) {
+      return;
+    }
+    const continuation = await this.resolveWakeContinuation(vehicleId);
+    if (!mayScheduleWakeSuccessor(continuation.continuation)) {
+      await this.handleNonEligibleWakeContinuation(
+        vehicleId,
+        latest.version,
+        continuation.continuation,
+      );
       return;
     }
     await this.scheduleDurableSuccessor({
@@ -408,13 +493,124 @@ export class SnapshotWakeCoordinatorService {
     });
   }
 
+  async ensureCoalescedWakeConsumer(params: {
+    vehicleId: string;
+    dimoTokenId: number;
+    origin: DimoSnapshotJobData['origin'];
+    wakeContext: SnapshotWakeContext;
+    pendingVersion?: number;
+  }): Promise<void> {
+    const continuation = await this.resolveWakeContinuation(params.vehicleId);
+    if (mayScheduleWakeSuccessor(continuation.continuation)) {
+      await this.scheduleDurableSuccessor({
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        origin: params.origin ?? 'PROVIDER_WAKE',
+        wakeContext: params.wakeContext,
+      });
+      return;
+    }
+    if (shouldRetireObsoleteWake(continuation.continuation)) {
+      await this.handleNonEligibleWakeContinuation(
+        params.vehicleId,
+        params.pendingVersion,
+        continuation.continuation,
+      );
+    }
+  }
+
+  async resolveWakeContinuation(vehicleId: string): Promise<{
+    continuation: WakeContinuationClass;
+    fsmState: TripDetectionState | null;
+  }> {
+    let fsmState: TripDetectionState | null = null;
+    let fsmReadError = false;
+    try {
+      const det = await this.prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId },
+        select: { state: true },
+      });
+      fsmState = det?.state ?? TripDetectionState.RESTING;
+    } catch (err) {
+      fsmReadError = true;
+      this.logger.debug(
+        `FSM read failed for ${vehicleId}: ${(err as Error).message}`,
+      );
+    }
+
+    let vehicleEligible: boolean | null = null;
+    let eligibilityReadError = false;
+    try {
+      vehicleEligible = await this.isVehicleSnapshotEligible(vehicleId);
+    } catch (err) {
+      eligibilityReadError = true;
+      this.logger.debug(
+        `Eligibility read failed for ${vehicleId}: ${(err as Error).message}`,
+      );
+    }
+
+    return {
+      fsmState,
+      continuation: classifyWakeContinuation({
+        fsmState,
+        vehicleEligible,
+        fsmReadError,
+        eligibilityReadError,
+      }),
+    };
+  }
+
+  private async handleNonEligibleWakeContinuation(
+    vehicleId: string,
+    pendingVersion: number | undefined,
+    continuation: WakeContinuationClass,
+  ): Promise<void> {
+    if (!shouldRetireObsoleteWake(continuation)) {
+      return;
+    }
+    if (pendingVersion != null) {
+      const acked = await this.acknowledgePendingWake(vehicleId, pendingVersion);
+      if (!acked) {
+        const latestRead = await this.loadPendingWakeStrict(vehicleId);
+        if (latestRead.status === 'FOUND') {
+          await this.handleNonEligibleWakeContinuation(
+            vehicleId,
+            latestRead.value.version,
+            (
+              await this.resolveWakeContinuation(vehicleId)
+            ).continuation,
+          );
+        }
+      }
+      return;
+    }
+    const pendingRead = await this.loadPendingWakeStrict(vehicleId);
+    if (pendingRead.status === 'FOUND') {
+      await this.acknowledgePendingWake(vehicleId, pendingRead.value.version);
+    }
+  }
+
   async scheduleDurableSuccessor(params: {
     vehicleId: string;
     dimoTokenId: number;
     origin: DimoSnapshotJobData['origin'];
     wakeContext: SnapshotWakeContext;
     delayMs?: number;
-  }): Promise<'HANDOFF_SCHEDULED' | 'QUEUE_FAILED'> {
+  }): Promise<'HANDOFF_SCHEDULED' | 'CONTINUATION_BLOCKED' | 'QUEUE_FAILED'> {
+    const { continuation } = await this.resolveWakeContinuation(params.vehicleId);
+    if (!mayScheduleWakeSuccessor(continuation)) {
+      if (shouldRetireObsoleteWake(continuation)) {
+        const pendingRead = await this.loadPendingWakeStrict(params.vehicleId);
+        if (pendingRead.status === 'FOUND') {
+          await this.acknowledgePendingWake(
+            params.vehicleId,
+            pendingRead.value.version,
+          );
+        }
+      }
+      return 'CONTINUATION_BLOCKED';
+    }
+
     const notBeforeMs = Date.now() + (params.delayMs ?? 0);
     const persist = await this.persistSuccessorHandoffAtomic({
       vehicleId: params.vehicleId,
@@ -483,20 +679,35 @@ export class SnapshotWakeCoordinatorService {
     }
   }
 
-  async loadSuccessorHandoff(
+  async loadSuccessorHandoffStrict(
     vehicleId: string,
-  ): Promise<SuccessorSnapshotWakeRecord | null> {
+  ): Promise<DurableReadResult<SuccessorSnapshotWakeRecord>> {
     try {
       const raw = await this.redis.get(successorWakeRedisKey(vehicleId));
-      if (!raw) return null;
+      if (!raw) {
+        return { status: 'MISSING' };
+      }
       const parsed = JSON.parse(raw) as SuccessorSnapshotWakeRecord;
       if (typeof parsed.version !== 'number') {
         parsed.version = 1;
       }
-      return parsed;
-    } catch {
-      return null;
+      return { status: 'FOUND', value: parsed };
+    } catch (err) {
+      return {
+        status: 'READ_ERROR',
+        error: (err as Error).message,
+      };
     }
+  }
+
+  async loadSuccessorHandoff(
+    vehicleId: string,
+  ): Promise<SuccessorSnapshotWakeRecord | null> {
+    const read = await this.loadSuccessorHandoffStrict(vehicleId);
+    if (read.status === 'FOUND') {
+      return read.value;
+    }
+    return null;
   }
 
   async acknowledgeSuccessorHandoff(
@@ -561,8 +772,20 @@ export class SnapshotWakeCoordinatorService {
    * handoff job instead of self-coalescing duplicate stable jobIds.
    */
   async dispatchSuccessorHandoff(vehicleId: string): Promise<void> {
-    const successor = await this.loadSuccessorHandoff(vehicleId);
-    if (!successor) {
+    const successorRead = await this.loadSuccessorHandoffStrict(vehicleId);
+    if (successorRead.status === 'READ_ERROR') {
+      throw new SnapshotWakeHandoffDeferError(2000, 'redis_read_error');
+    }
+    if (successorRead.status === 'MISSING') {
+      return;
+    }
+    const successor = successorRead.value;
+
+    const continuation = await this.resolveWakeContinuation(vehicleId);
+    if (!mayScheduleWakeSuccessor(continuation.continuation)) {
+      if (shouldRetireObsoleteWake(continuation.continuation)) {
+        await this.acknowledgeSuccessorHandoff(vehicleId, successor.version);
+      }
       return;
     }
 
@@ -605,11 +828,14 @@ export class SnapshotWakeCoordinatorService {
         loadedVersion,
       );
       if (!acked) {
-        const latest = await this.loadSuccessorHandoff(vehicleId);
-        if (!latest) {
+        const latestRead = await this.loadSuccessorHandoffStrict(vehicleId);
+        if (latestRead.status === 'READ_ERROR') {
+          throw new SnapshotWakeHandoffDeferError(2000, 'redis_read_error');
+        }
+        if (latestRead.status === 'MISSING') {
           return;
         }
-        const retryDelayMs = Math.max(1, latest.notBeforeMs - Date.now());
+        const retryDelayMs = Math.max(1, latestRead.value.notBeforeMs - Date.now());
         throw new SnapshotWakeHandoffDeferError(
           retryDelayMs,
           'not_before',

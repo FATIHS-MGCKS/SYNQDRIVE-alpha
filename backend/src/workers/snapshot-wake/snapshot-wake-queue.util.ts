@@ -25,8 +25,10 @@ const DEFAULT_SNAPSHOT_JOB_OPTIONS: JobsOptions = {
 
 export type SnapshotStableEnqueueOutcome =
   | 'ENQUEUED'
-  | 'COALESCED'
-  | 'RECOVERED_TERMINAL';
+  | 'RECOVERED_TERMINAL'
+  | 'COALESCED_QUEUED'
+  | 'COALESCED_ACTIVE'
+  | 'COALESCED_UNKNOWN';
 
 function isDuplicateJobIdError(err: unknown): boolean {
   const msg = (err as Error).message ?? '';
@@ -70,8 +72,10 @@ export async function enqueueStableSnapshotJob(params: {
     if (isTerminalQueueState(state)) {
       await existing.remove();
       recoveredTerminal = true;
-    } else if (isQueuedQueueState(state) || isActiveQueueState(state)) {
-      return 'COALESCED';
+    } else if (isQueuedQueueState(state)) {
+      return 'COALESCED_QUEUED';
+    } else if (isActiveQueueState(state)) {
+      return 'COALESCED_ACTIVE';
     }
   }
 
@@ -84,12 +88,25 @@ export async function enqueueStableSnapshotJob(params: {
     return recoveredTerminal ? 'RECOVERED_TERMINAL' : 'ENQUEUED';
   } catch (err: unknown) {
     if (isDuplicateJobIdError(err)) {
-      return 'COALESCED';
+      return 'COALESCED_UNKNOWN';
     }
     throw err;
   }
 }
 
+/** Queued/delayed canonical job can claim the durable pending mailbox at worker start. */
+export function isQueuedCoalesce(outcome: SnapshotStableEnqueueOutcome): boolean {
+  return outcome === 'COALESCED_QUEUED';
+}
+
+/** Active/unknown coalesce requires a post-terminal successor/handoff consumer. */
+export function coalesceNeedsPostTerminalSuccessor(
+  outcome: SnapshotStableEnqueueOutcome,
+): boolean {
+  return outcome === 'COALESCED_ACTIVE' || outcome === 'COALESCED_UNKNOWN';
+}
+
+/** @deprecated Use coalesceNeedsPostTerminalSuccessor / isQueuedCoalesce */
 export function snapshotQueueNeedsPendingWake(outcome: SnapshotStableEnqueueOutcome): boolean {
-  return outcome === 'COALESCED';
+  return coalesceNeedsPostTerminalSuccessor(outcome);
 }

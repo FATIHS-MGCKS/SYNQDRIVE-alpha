@@ -60,7 +60,7 @@ describe('R9 — snapshot queue same-vehicle serialization', () => {
       data: { ...data, origin: 'PROVIDER_WAKE' },
     });
 
-    expect(wakeOutcome).toBe('COALESCED');
+    expect(wakeOutcome).toBe('COALESCED_ACTIVE');
     expect(queue.add).not.toHaveBeenCalled();
     expect(queue.activeFetchCount.get('veh-1') ?? 0).toBe(0);
   });
@@ -76,7 +76,7 @@ describe('R9 — snapshot queue same-vehicle serialization', () => {
           jobId,
           data: { ...data, origin: 'PROVIDER_WAKE' },
         }),
-      ).toBe('COALESCED');
+      ).toBe('COALESCED_ACTIVE');
     }
 
     expect(queue.add).not.toHaveBeenCalled();
@@ -95,6 +95,20 @@ describe('R9 — snapshot queue same-vehicle serialization', () => {
       }),
     ).toBe('ENQUEUED');
     expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces against waiting canonical job without post-terminal successor need', async () => {
+    const queue = createQueueHarness({ [jobId]: 'waiting' });
+
+    expect(
+      await enqueueStableSnapshotJob({
+        queue,
+        jobName: 'snapshot',
+        jobId,
+        data: { ...data, origin: 'PROVIDER_WAKE' },
+      }),
+    ).toBe('COALESCED_QUEUED');
+    expect(queue.add).not.toHaveBeenCalled();
   });
 
   it('recycles terminal failed job before enqueue', async () => {

@@ -287,3 +287,54 @@ Post-terminal wake handoff must obey BullMQ processor contracts, enforce **one p
 
 - **Pre-merge governance alignment** on PR #1553: integrate latest `origin/main`, update `architecture/trip-detection-lifecycle/` authority, DIMO governance treatment
 - Optional gated BullMQ+Redis integration test (`RUN_BULLMQ_WAKE_INTEGRATION=1`) — unit DelayedError + coordinator regressions sufficient for R9C technical closure
+
+---
+
+## R9D — Final Wake Delivery & Continuation Authority Seal (2026-09-07)
+
+**Supersedes R9C “technical closure” claim for delivery liveness.** R9C correctly landed BullMQ `DelayedError` protocol, generation-1 terminal guard, fresh covered no-candidate probe ordering, stale successor ACK rearm, waiting/changeDelay separation, and successor receivedAt tie-break — but independent review found three remaining delivery defects. R9D closes them on commit atop R9C `700133e8f89a820ccc033fe2a3f094d6f2e92ee5`.
+
+### BEFORE (R9C residual defects)
+
+| ID | Defect |
+|----|--------|
+| R9D-A | **ACTIVE post-finalize coalesce tail race:** `requestSnapshot()` persisted pending wake then returned `COALESCED` against ACTIVE canonical job with **no** durable successor/handoff — wake stranded until LONG_IDLE |
+| R9D-B | **Continuation bypass:** `reconcileOutstandingPendingWake()`, uncovered generation-0 successor, and dispatch paths could schedule provider fetches without current RESTING/eligibility re-check |
+| R9D-C | **Redis READ_ERROR → null:** `loadSuccessorHandoff()` collapsed read failures into missing; handoff job could complete while successor still existed in Redis |
+| R9D-D | **Missing real BullMQ+Redis integration evidence:** R9C referenced gated integration but did not ship runnable proof |
+
+### WHY
+
+Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must still have a **provable future consumer**. Continuation authority must gate all start-wake successor execution. Liveness-critical Redis reads must never be treated as absent on transient failure.
+
+### CHANGE
+
+| Area | R9D implementation |
+|------|-------------------|
+| Coalesce delivery contract | `enqueueStableSnapshotJob()` classifies `COALESCED_QUEUED` vs `COALESCED_ACTIVE` vs `COALESCED_UNKNOWN`; ACTIVE/UNKNOWN coalesce schedules durable successor + stable handoff via `ensureCoalescedWakeConsumer()` |
+| Continuation authority | `classifyWakeContinuation()` + `resolveWakeContinuation()` gate `scheduleDurableSuccessor()`, `reconcileOutstandingPendingWake()`, `dispatchSuccessorHandoff()`, probe scheduling, active-coalesce consumer |
+| CAS-safe retirement | Obsolete start wakes retired via exact-version pending ACK only; failed CAS inspects newer record |
+| Strict durable reads | `loadPendingWakeStrict()` / `loadSuccessorHandoffStrict()` return `FOUND \| MISSING \| READ_ERROR`; handoff defers on `READ_ERROR` |
+| Integration gate | `RUN_BULLMQ_WAKE_INTEGRATION=1` + `npm run test:snapshot-wake:bullmq-integration` using `redis-memory-server` + real BullMQ worker |
+
+### VALIDATION
+
+- Focused R9/R9A/R9B/R9C/R9D suites + R1–R8 regression pattern runs
+- Tail-race barrier test (empty finalize → ACTIVE coalesce → durable successor → post-terminal dispatch)
+- Continuation matrix + Redis READ_ERROR matrix + duplicate wake cardinality
+- Real BullMQ integration: `moveToDelayed` + `DelayedError` → DELAYED (not COMPLETED) → terminal → dispatch + exact ACK clear
+- Gates: `npx tsc --noEmit`, `npm run build`, `npx prisma validate`, `git diff --check`
+- **Production validation:** NOT PERFORMED
+
+### NON_EFFECTS
+
+- Polling tier intervals, movement threshold, cooldown durations unchanged
+- Trip Start scoring, R4 freshness policy, Trip End, CUSUM/CH/merge rules unchanged
+- R1–R8 behavior preserved (R9C passes preserved)
+- No Production or DIMO provider mutations
+- Canonical Trip Detection authority not updated on this stale-base technical commit
+
+### REMAINING PRODUCTION DEPENDENCIES
+
+- **Pre-merge governance alignment** on PR #1553: integrate latest `origin/main`, update `architecture/trip-detection-lifecycle/`, DIMO governance treatment, registry validators
+- Live multi-replica PM2 wake latency + DIMO trigger subscription coverage — **R11 / governance gate** (not performed in R9D)

@@ -9,7 +9,12 @@ export class SnapshotWakeHandoffDeferError extends Error {
 
   constructor(
     readonly retryAfterMs: number,
-    readonly reason: 'not_before' | 'canonical_active' | 'queue_failed' | 'enqueue_failed',
+    readonly reason:
+      | 'not_before'
+      | 'canonical_active'
+      | 'queue_failed'
+      | 'enqueue_failed'
+      | 'redis_read_error',
   ) {
     super(`snapshot_wake_handoff_defer:${reason}:${retryAfterMs}`);
   }
