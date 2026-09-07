@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-06 (repository-wide module inventory)
+**Last updated:** 2026-09-06 (Trip Detection & Lifecycle authority bootstrap correction)
 
 ---
 
@@ -71,7 +71,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Tasks & Work Orders | Work orders, task domain V2, and task automation outbox processing. | `NOT_STARTED` | N/A — inventory only | — |
 | Technical Observations | Operator technical observation records feeding notifications and workflow triggers. | `NOT_STARTED` | N/A — inventory only | — |
 | Tires Health | Tire wear modeling, lifecycle, measurements, health alerts, and tire trip-usage ledger. | `NOT_STARTED` | N/A — inventory only | — |
-| Trip Detection & Lifecycle | Live trip finite-state machine, start and end detection, DIMO segment reconciliation, and route artifacts. | `NOT_STARTED` | N/A — inventory only | — |
+| Trip Detection & Lifecycle | Live trip finite-state machine, start and end detection, DIMO segment reconciliation, and route artifacts. | `AUDIT_IN_PROGRESS` | Bootstrap audit · Phase 0–2 evidence collection | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
 | Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
@@ -234,6 +234,21 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Ownership boundary** | **Does NOT decide whether refueling happened.** REFUEL detection belongs to **KG-EED**. Three confidence domains must never be conflated: event confidence (A), station match confidence (B), presentation trust (C). |
 | **Mandatory entry documents** | [README.md](tankstellenerkennung/README.md) · [CURRENT_STATE.md](tankstellenerkennung/CURRENT_STATE.md) · [KNOWLEDGE_GRAPH.md](tankstellenerkennung/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](tankstellenerkennung/AGENT_CONTRACT.md) · [decisions/DECISION_REGISTER.md](tankstellenerkennung/decisions/DECISION_REGISTER.md) · [research/CHANGE_LEDGER.md](tankstellenerkennung/research/CHANGE_LEDGER.md) |
 | **Validation** | `bash architecture/tankstellenerkennung/scripts/validate-graph.sh` (or `node architecture/tankstellenerkennung/scripts/validate-graph.mjs`) |
+
+---
+
+### Trip Detection & Lifecycle
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — partial reconstruction **in progress**; **not** a complete usable authority |
+| **Scope** | Live trip FSM (`VehicleTripDetectionState`), snapshot-triggered start evaluation, BullMQ `dimo.trip-tracking` execution loop, start/end detection policies and detectors, `TripDecisionEngine` lifecycle mutations, terminal recovery, reconciliation/repair (`TripRepair`), route artifacts (Route V2), trip API read models and rental UI trip surfaces. |
+| **Authority directory** | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
+| **Authority-native status** | **Bootstrap audit · Phase 0–2 evidence collection** (2026-09-06) · Repository initial baseline + read-only Production baseline established · R1–R8 on `main` indexed; **not** promoted |
+| **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts. **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth (→ DIMO Integration, `NOT_STARTED`). Historical FSM audits under `docs/audits/trip-fsm/` are **supporting evidence only**. |
+| **Reconstruction status** | Phase **0** complete; Phase **1** initial consolidated baseline established (further reconstruction in progress); Phase **2** verified read-only Production baseline established; Phases **3–5** pending/in progress. |
+| **Mandatory entry documents (partial)** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · module graph validators **not yet created** |
 
 ---
 
