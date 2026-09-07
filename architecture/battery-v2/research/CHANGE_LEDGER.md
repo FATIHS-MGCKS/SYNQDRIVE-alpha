@@ -24,6 +24,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.1 KS MX 2024 REST_6H final maturity + signal observability verdict
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | REST_6H ENQUEUED; pre-maturity probe predicted wake-only DIMO LV + signal observability blocker. |
+| **CHANGE** | Final read-only probe @ `2026-09-07T03:47:28Z` after retry grace `03:30:44Z`. |
+| **WHY** | Close KS MX natural REST lifecycle; confirm or refute M3.1 E2E gate observability with current DIMO signal. |
+| **VALIDATION** | Production DB; REST_6H COMPLETED @ `03:17:34Z`; 0 LV in REST_6H window; fleet 0 VALID REST post-T0. |
+| **OBSERVED_EFFECT** | REST_6H **NATURAL_CONTAMINATED** (historical pre-anchor alternator obs); session still RESTING; no wake/new trip. `CONTAMINATED_BY_WAKE` = observation contamination, not session wake (terminology debt). |
+| **NON_EFFECTS** | No natural E2E; `PRODUCTION_VALIDATED` remains pending — not pipeline defect. |
+| **REMAINING_GAPS** | Architecture review: E2E gate vs DIMO wake-only LV (`NEXT_ACTION=BATTERY_V2_SIGNAL_OBSERVABILITY_ARCHITECTURE_REVIEW`). |
+| **DECISION_STATUS** | `M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY`; Case B — operationally healthy, validation blocked by signal. |
+| **EVIDENCE** | `M3_1_STAGE2_KS_MX_2024_REST6H_FINAL_MATURITY_2026-09-07.md`. |
+
 ## CL-2026-09-06 — M3.1 KS MX 2024 REST_6H pre-maturity + telemetry availability probe
 
 | Field | Content |
