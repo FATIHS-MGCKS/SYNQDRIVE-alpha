@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Job } from 'bullmq';
+import { DelayedError, Job } from 'bullmq';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
@@ -28,7 +28,9 @@ export class SnapshotWakeHandoffProcessor extends WorkerHost {
       if (isSnapshotWakeHandoffDeferError(err)) {
         const delayMs = Math.max(1, err.retryAfterMs);
         await job.moveToDelayed(Date.now() + delayMs, job.token);
-        return;
+        throw new DelayedError(
+          `snapshot wake handoff deferred (${err.reason}) for ${delayMs}ms`,
+        );
       }
       throw err;
     }

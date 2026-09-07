@@ -217,7 +217,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     expect(redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(false);
   });
 
-  it('covered wake ACKs pending mailbox without successor', async () => {
+  it('covered wake with POSSIBLE_START ACKs pending mailbox without probe successor', async () => {
     const wake = makeWake();
     await coordinator.savePendingWake(VEHICLE_ID, TOKEN_ID, wake);
     const claimed = await coordinator.claimPendingWakeForRun(VEHICLE_ID);
@@ -231,7 +231,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
       snapshotSourceTimestamp: new Date('2026-09-07T14:00:25.000Z'),
       staleMonotonicSkipped: false,
       tripStartEvalError: false,
-      possibleStartCreated: false,
+      possibleStartCreated: true,
       providerFetchFailed: false,
       fsmState: TripDetectionState.RESTING,
     });

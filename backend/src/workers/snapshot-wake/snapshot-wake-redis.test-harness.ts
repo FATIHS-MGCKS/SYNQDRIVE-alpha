@@ -109,9 +109,19 @@ export function createSnapshotWakeRedisTestHarness() {
               };
               const exObs = existing.wakeContext.providerObservedAt;
               const inObs = incoming.wakeContext.providerObservedAt;
-              if (
+              const exRecv = existing.wakeContext.receivedAt ?? '';
+              const inRecv = incoming.wakeContext.receivedAt ?? '';
+              if (inObs != null && exObs != null && inObs === exObs) {
+                if (inRecv >= exRecv) {
+                  merged.wakeContext = incoming.wakeContext;
+                  merged.origin = incoming.origin;
+                } else {
+                  merged.wakeContext = existing.wakeContext;
+                  merged.origin = existing.origin;
+                }
+              } else if (
                 inObs != null &&
-                (exObs == null || inObs >= exObs)
+                (exObs == null || inObs > exObs)
               ) {
                 merged.wakeContext = incoming.wakeContext;
                 merged.origin = incoming.origin;

@@ -104,6 +104,19 @@ if existing ~= nil then
   if in_obs == nil or (ex_obs ~= nil and in_obs < ex_obs) then
     merged.wakeContext = ex_wake
     merged.origin = existing.origin
+  elseif in_obs ~= nil and ex_obs ~= nil and in_obs == ex_obs then
+    local ex_recv = ex_wake.receivedAt or ''
+    local in_recv = in_wake.receivedAt or ''
+    if in_recv >= ex_recv then
+      merged.wakeContext = in_wake
+      merged.origin = incoming.origin
+    else
+      merged.wakeContext = ex_wake
+      merged.origin = existing.origin
+    end
+  else
+    merged.wakeContext = in_wake
+    merged.origin = incoming.origin
   end
 end
 merged.version = version + 1

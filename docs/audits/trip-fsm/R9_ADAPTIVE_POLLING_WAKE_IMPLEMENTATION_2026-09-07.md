@@ -236,3 +236,54 @@ Wake path must be **durable-first** and **multi-replica safe**. Coalesce is an o
 ### Governance note (2026-09-07)
 
 `origin/main` includes merged PR #1554: Trip Detection & Lifecycle registry status is **`AUDIT_IN_PROGRESS`** (not `NOT_STARTED`). R9B did not modify canonical authority files on this stale-base branch by policy.
+
+---
+
+## R9C — BullMQ Delay & Single-Probe Liveness Closure (2026-09-07)
+
+**Supersedes R9B “closed” claim for BullMQ completion protocol, generation-1 requeue, fresh-no-candidate ordering, successor execution liveness, and waiting/changeDelay semantics.** R9B correctly landed durable-first pending persistence, atomic Redis merges, monotonic versions, versioned successor CAS, logical wake origin, provider-fetch failure handling, and effective-tier metrics — but independent review found four remaining runtime defects. R9C closes them on commit atop R9B `208852d945cc8d5aad263caa28fadb186d8cab37`.
+
+### BEFORE (R9B residual defects)
+
+| ID | Defect |
+|----|--------|
+| R9C-1 | Handoff processor called `job.moveToDelayed()` then **returned normally** — BullMQ 5.x requires `throw new DelayedError()` or worker may mark job completed/failed |
+| R9C-2 | Generation-1 runs could still hit generic `claimedPendingWake && !probeEligible` successor branch → repeated generation-1 provider polls |
+| R9C-3 | `afterSnapshotJob()` checked `wakeAlreadyCoveredBySnapshot()` **before** probe eligibility → fresh covered generation-0 + no POSSIBLE_START never received bounded 60s probe |
+| R9C-4 | `dispatchSuccessorHandoff()` ignored `acknowledgeSuccessorHandoff(version) === false` after successful canonical enqueue → newer successor Redis could strand without dispatcher execution |
+| R9C-5 | `enqueueHandoffJob()` called `changeDelay()` on **waiting** jobs — BullMQ API valid only for delayed jobs |
+
+### WHY
+
+Post-terminal wake handoff must obey BullMQ processor contracts, enforce **one probe per wake episode**, separate coverage from start-evidence decisions, and guarantee **execution liveness** for newer successor versions — not only CAS data preservation.
+
+### CHANGE
+
+| Area | R9C implementation |
+|------|-------------------|
+| BullMQ defer protocol | `SnapshotWakeHandoffProcessor`: `moveToDelayed(..., token)` then `throw new DelayedError()` |
+| Generation-1 terminal guard | `finalizeGenerationOneEpisode()` runs **before** probe/coverage/successor branches; generation 1 never schedules another probe |
+| Fresh no-candidate ordering | `shouldRequestWakeProbe()` evaluated before coverage short-circuit; covered + no candidate schedules exactly one generation-1 probe |
+| Stale successor ACK rearm | `dispatchSuccessorHandoff()`: if exact-version ACK fails, reload latest successor + throw `SnapshotWakeHandoffDeferError` to re-arm current handoff job |
+| Waiting vs delayed enqueue | `waiting` → return (already runnable); `delayed` → `changeDelay(remainingMs from notBeforeMs)` only |
+| Successor merge tie-break | Equal `providerObservedAt` → newer `receivedAt` wins (aligned with pending mailbox Lua) |
+
+### VALIDATION
+
+- Focused R9/R9A/R9B/R9C suites + R1–R8 regression pattern runs
+- New regressions: DelayedError protocol, generation-1 terminal matrix, fresh covered no-candidate `afterSnapshotJob`, null-timestamp probe bound, stale successor ACK rearm race, waiting/changeDelay semantics, successor receivedAt tie-break
+- Gates: `npx tsc --noEmit`, `npm run build`, `npx prisma validate`, `git diff --check`
+- **Production validation:** NOT PERFORMED
+
+### NON_EFFECTS
+
+- Polling tier intervals, movement threshold, cooldown durations unchanged
+- Trip Start scoring, R4 freshness policy, Trip End, CUSUM/CH/merge rules unchanged
+- R1–R8 behavior preserved
+- No Production or DIMO provider mutations
+- Canonical Trip Detection authority not updated on this stale-base technical commit
+
+### REMAINING GAPS
+
+- **Pre-merge governance alignment** on PR #1553: integrate latest `origin/main`, update `architecture/trip-detection-lifecycle/` authority, DIMO governance treatment
+- Optional gated BullMQ+Redis integration test (`RUN_BULLMQ_WAKE_INTEGRATION=1`) — unit DelayedError + coordinator regressions sufficient for R9C technical closure

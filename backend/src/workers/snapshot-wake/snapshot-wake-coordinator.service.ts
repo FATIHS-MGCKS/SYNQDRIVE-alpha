@@ -254,26 +254,15 @@ export class SnapshotWakeCoordinatorService {
       params.jobData.origin,
       effectiveWake,
     );
-
-    if (
-      effectiveWake &&
+    const isCovered =
+      !!effectiveWake &&
       wakeAlreadyCoveredBySnapshot({
         wakeContext: effectiveWake,
         snapshotSourceTimestamp: params.snapshotSourceTimestamp,
-      })
-    ) {
-      if (params.claimedPendingWake) {
-        const acked = await this.acknowledgePendingWake(
-          params.vehicleId,
-          params.claimedPendingWake.version,
-        );
-        if (!acked) {
-          await this.reconcileOutstandingPendingWake(params.vehicleId);
-        }
-        this.recordWakeMetric(effectiveWake, 'ALREADY_COVERED');
-      } else {
-        await this.reconcileOutstandingPendingWake(params.vehicleId);
-      }
+      });
+
+    if (effectiveWake?.probeGeneration === 1) {
+      await this.finalizeGenerationOneEpisode(params);
       return;
     }
 
@@ -289,7 +278,62 @@ export class SnapshotWakeCoordinatorService {
       fsmState: params.fsmState,
     });
 
-    if (params.claimedPendingWake && !probeEligible) {
+    if (probeEligible && effectiveWake) {
+      const eligible = await this.isVehicleSnapshotEligible(params.vehicleId);
+      if (!eligible) {
+        await this.reconcileOutstandingPendingWake(params.vehicleId);
+        return;
+      }
+
+      const probeContext = buildSnapshotWakeContext({
+        reason: effectiveWake.reason,
+        signalName: effectiveWake.signalName,
+        providerObservedAt: effectiveWake.providerObservedAt
+          ? new Date(effectiveWake.providerObservedAt)
+          : null,
+        receivedAt: new Date(effectiveWake.receivedAt),
+        probeGeneration: 1,
+      });
+
+      const handoffOutcome = await this.scheduleDurableSuccessor({
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        origin: 'WAKE_PROBE',
+        wakeContext: probeContext,
+        delayMs: wakeProbeDelayMs(this.tierConfig),
+      });
+
+      if (handoffOutcome !== 'QUEUE_FAILED') {
+        await this.tryAckClaimedPendingWake(params);
+      } else {
+        await this.reconcileOutstandingPendingWake(params.vehicleId);
+      }
+
+      runTripObservabilitySafely(this.logger, 'wake_probe_schedule', () => {
+        this.tripMetrics?.snapshotWakeProbeTotal.inc({
+          reason: effectiveWake.reason,
+          outcome:
+            handoffOutcome === 'HANDOFF_SCHEDULED'
+              ? 'SCHEDULED'
+              : 'QUEUE_FAILED',
+        });
+      });
+      return;
+    }
+
+    if (isCovered && params.possibleStartCreated && effectiveWake) {
+      await this.tryAckClaimedPendingWake(params);
+      if (params.claimedPendingWake) {
+        this.recordWakeMetric(effectiveWake, 'ALREADY_COVERED');
+      }
+      return;
+    }
+
+    if (
+      params.claimedPendingWake &&
+      params.claimedPendingWake.record.wakeContext.probeGeneration === 0 &&
+      !isCovered
+    ) {
       const pending = params.claimedPendingWake.record;
       const handoffOutcome = await this.scheduleDurableSuccessor({
         vehicleId: params.vehicleId,
@@ -298,89 +342,62 @@ export class SnapshotWakeCoordinatorService {
         wakeContext: pending.wakeContext,
       });
       if (handoffOutcome !== 'QUEUE_FAILED') {
-        const acked = await this.acknowledgePendingWake(
-          params.vehicleId,
-          params.claimedPendingWake.version,
-        );
-        if (!acked) {
-          await this.reconcileOutstandingPendingWake(params.vehicleId);
-        }
+        await this.tryAckClaimedPendingWake(params);
       }
       return;
     }
 
-    if (!probeEligible) {
-      await this.reconcileOutstandingPendingWake(params.vehicleId);
+    if (isCovered && effectiveWake && params.claimedPendingWake) {
+      await this.tryAckClaimedPendingWake(params);
+      this.recordWakeMetric(effectiveWake, 'ALREADY_COVERED');
       return;
     }
 
-    if (!effectiveWake || effectiveWake.probeGeneration === 1) {
-      if (params.claimedPendingWake) {
-        const acked = await this.acknowledgePendingWake(
-          params.vehicleId,
-          params.claimedPendingWake.version,
-        );
-        if (!acked) {
-          await this.reconcileOutstandingPendingWake(params.vehicleId);
-        }
-      } else {
-        await this.reconcileOutstandingPendingWake(params.vehicleId);
-      }
-      return;
-    }
+    await this.reconcileOutstandingPendingWake(params.vehicleId);
+  }
 
-    const eligible = await this.isVehicleSnapshotEligible(params.vehicleId);
-    if (!eligible) {
-      await this.reconcileOutstandingPendingWake(params.vehicleId);
-      return;
-    }
-
-    const probeContext = buildSnapshotWakeContext({
-      reason: effectiveWake.reason,
-      signalName: effectiveWake.signalName,
-      providerObservedAt: effectiveWake.providerObservedAt
-        ? new Date(effectiveWake.providerObservedAt)
-        : null,
-      receivedAt: new Date(effectiveWake.receivedAt),
-      probeGeneration: 1,
-    });
-
-    const handoffOutcome = await this.scheduleDurableSuccessor({
-      vehicleId: params.vehicleId,
-      dimoTokenId: params.dimoTokenId,
-      origin: 'WAKE_PROBE',
-      wakeContext: probeContext,
-      delayMs: wakeProbeDelayMs(this.tierConfig),
-    });
-
-    if (params.claimedPendingWake && handoffOutcome !== 'QUEUE_FAILED') {
+  private async finalizeGenerationOneEpisode(
+    params: AfterSnapshotJobParams,
+  ): Promise<void> {
+    if (params.claimedPendingWake) {
       const acked = await this.acknowledgePendingWake(
         params.vehicleId,
         params.claimedPendingWake.version,
       );
       if (!acked) {
-        await this.reconcileOutstandingPendingWake(params.vehicleId);
+        const latest = await this.loadPendingWake(params.vehicleId);
+        if (latest?.wakeContext.probeGeneration === 0) {
+          await this.scheduleDurableSuccessor({
+            vehicleId: params.vehicleId,
+            dimoTokenId: latest.dimoTokenId,
+            origin: 'PROVIDER_WAKE',
+            wakeContext: latest.wakeContext,
+          });
+        }
       }
-    } else if (handoffOutcome === 'QUEUE_FAILED') {
+      return;
+    }
+    await this.reconcileOutstandingPendingWake(params.vehicleId);
+  }
+
+  private async tryAckClaimedPendingWake(
+    params: AfterSnapshotJobParams,
+  ): Promise<void> {
+    if (!params.claimedPendingWake) {
+      return;
+    }
+    const acked = await this.acknowledgePendingWake(
+      params.vehicleId,
+      params.claimedPendingWake.version,
+    );
+    if (!acked) {
       await this.reconcileOutstandingPendingWake(params.vehicleId);
     }
-
-    runTripObservabilitySafely(this.logger, 'wake_probe_schedule', () => {
-      this.tripMetrics?.snapshotWakeProbeTotal.inc({
-        reason: effectiveWake.reason,
-        outcome:
-          handoffOutcome === 'HANDOFF_SCHEDULED'
-            ? 'SCHEDULED'
-            : handoffOutcome === 'QUEUE_FAILED'
-              ? 'QUEUE_FAILED'
-              : 'COALESCED',
-      });
-    });
   }
 
   async reconcileOutstandingPendingWake(vehicleId: string): Promise<void> {
     const latest = await this.loadPendingWake(vehicleId);
-    if (!latest) {
+    if (!latest || latest.wakeContext.probeGeneration === 1) {
       return;
     }
     await this.scheduleDurableSuccessor({
@@ -512,11 +529,12 @@ export class SnapshotWakeCoordinatorService {
       if (state === 'active') {
         return;
       }
-      if (state === 'waiting' || state === 'delayed') {
-        const existingDelay = existing.opts.delay ?? 0;
-        if (delayMs < existingDelay) {
-          await existing.changeDelay(delayMs);
-        }
+      if (state === 'waiting') {
+        return;
+      }
+      if (state === 'delayed') {
+        const remainingMs = Math.max(0, notBeforeMs - Date.now());
+        await existing.changeDelay(remainingMs);
         return;
       }
       if (state === 'completed' || state === 'failed') {
@@ -582,7 +600,21 @@ export class SnapshotWakeCoordinatorService {
     }
 
     if (outcome === 'ENQUEUED' || outcome === 'COALESCED') {
-      await this.acknowledgeSuccessorHandoff(vehicleId, loadedVersion);
+      const acked = await this.acknowledgeSuccessorHandoff(
+        vehicleId,
+        loadedVersion,
+      );
+      if (!acked) {
+        const latest = await this.loadSuccessorHandoff(vehicleId);
+        if (!latest) {
+          return;
+        }
+        const retryDelayMs = Math.max(1, latest.notBeforeMs - Date.now());
+        throw new SnapshotWakeHandoffDeferError(
+          retryDelayMs,
+          'not_before',
+        );
+      }
       return;
     }
 
