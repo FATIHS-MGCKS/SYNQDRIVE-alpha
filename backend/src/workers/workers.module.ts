@@ -44,6 +44,7 @@ import { ReferenceCaptureProcessor } from './processors/reference-capture.proces
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
+import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
 import { DimoVehicleSyncScheduler } from './schedulers/dimo-vehicle-sync.scheduler';
 import { TireRecalculationScheduler } from './schedulers/tire-recalculation.scheduler';
@@ -133,6 +134,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
 
     // Schedulers
     DimoSnapshotScheduler,
+    SnapshotWakeHandoffRecoveryScheduler,
     DimoDtcScheduler,
     DimoVehicleSyncScheduler,
     TireRecalculationScheduler,

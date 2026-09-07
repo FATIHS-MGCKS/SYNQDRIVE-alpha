@@ -43,6 +43,17 @@ export function createSnapshotWakeRedisTestHarness() {
       store.delete(key);
       return 1;
     }),
+    scan: jest.fn(
+      async (cursor: string | number, ...args: string[]): Promise<[string, string[]]> => {
+        const matchIdx = args.indexOf('MATCH');
+        const pattern = matchIdx >= 0 ? args[matchIdx + 1] : '*';
+        const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
+        const keys = [...store.keys()].filter((k) =>
+          pattern.includes('*') ? k.startsWith(prefix) : k === pattern,
+        );
+        return ['0', keys];
+      },
+    ),
     eval: jest.fn(
       async (script: string, _numKeys: number, key: string, ...args: string[]) => {
         return withKeyLock(key, async () => {

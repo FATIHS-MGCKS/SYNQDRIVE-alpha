@@ -2,9 +2,9 @@
 
 # Trip FSM R9 — Adaptive Polling / Provider Wake Model
 
-**Date:** 2026-09-07  
-**Branch:** `trip-fsm/r9-adaptive-polling-wake`  
-**Baseline SHA:** `06095af91ce6f58366734a182ac5962830e858db`  
+**Date:** 2026-09-07
+**Branch:** `trip-fsm/r9-adaptive-polling-wake`
+**Baseline SHA:** `06095af91ce6f58366734a182ac5962830e858db`
 **R8 prerequisite merge SHA:** `6ea95124343e15e971220cb0c672239ac4b077d6` (verified ancestor)
 
 ## Mission
@@ -31,7 +31,7 @@ Close P4-F04 and P4-F05 by making DIMO Vehicle Trigger speed/ignition events the
 | RESTING_STANDBY | 5m |
 | LONG_IDLE | 30m |
 
-**Movement promotion threshold:** `WORKER_SNAPSHOT_MOVEMENT_SPEED_KMH` default 3 km/h  
+**Movement promotion threshold:** `WORKER_SNAPSHOT_MOVEMENT_SPEED_KMH` default 3 km/h
 **Active demotion hold:** 90s
 
 ### Root cause P4-F04
@@ -377,6 +377,52 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 ### REMAINING PRODUCTION DEPENDENCIES
 
 - Pre-merge governance alignment on PR #1553 (integrate `origin/main`, update canonical authority)
+
+---
+
+## R9G — Coalesce Delivery + Scheduler Recovery Seal (2026-09-07)
+
+**Closes false-success coalesce paths and scheduler telemetry for terminal recovery.**
+
+| Area | R9G implementation |
+|------|-------------------|
+| Coalesce delivery | `ensureCoalescedWakeConsumer()` returns explicit outcomes; ACTIVE/UNKNOWN coalesce propagates `PERSIST_FAILED` / `QUEUE_FAILED` — never false `COALESCED` |
+| Persist vs queue | `scheduleDurableSuccessor()` persist failure → `PERSIST_FAILED`; `requestSnapshot()` pending persist failure → `PERSIST_FAILED` |
+| Scheduler telemetry | `RECOVERED_TERMINAL` propagated through `requestSnapshot()`; `DimoSnapshotScheduler` recovered counter wired |
+
+**Limitation (pre-R9H):** `QUEUE_FAILED` after successful successor Redis persist left a durable mailbox without a runnable BullMQ handoff consumer until R9H recovery.
+
+---
+
+## R9H — Successor Handoff Orphan Recovery (2026-09-07)
+
+**Closes the R9G residual: persist OK + `handoffQueue.add()` failure stranded durable successors without executable consumers.**
+
+### Mechanism
+
+| Field | Value |
+|-------|-------|
+| **Owner** | `SnapshotWakeHandoffRecoveryScheduler` (leader key `snapshot_wake_handoff_recovery`) |
+| **Tick** | `@Interval(60s)`; leader-gated via `SchedulerLeaderGuardService` |
+| **Discovery** | Redis `SCAN` on `synqdrive:snapshot-wake:successor:*` with cursor across ticks |
+| **Bounded work** | Max **50** successor keys examined per tick (`MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK`) |
+| **Re-arm** | `tryRecoverSuccessorHandoff()` → idempotent `enqueueHandoffJob()` with stable `wake-handoff-{vehicleId}` jobId |
+| **Idempotency** | Safe across replicas: existing waiting/delayed/active jobs are no-ops; terminal jobs removed then re-added |
+| **CAS/version** | Does **not** mutate successor Redis record — only re-creates BullMQ consumer |
+| **Provider fetch** | **None** in handoff layer (unchanged R9 invariant) |
+| **LONG_IDLE dependency** | **None** — recovery does not wait for scheduler tier polling |
+
+### Remaining limitations
+
+- Recovery latency bounded by scheduler tick (60s) plus SCAN cursor wrap when many successors exist
+- Per-tick cap may defer re-arm until a later tick when >50 orphaned successors exist simultaneously
+- Does not repair missing Redis mailboxes — only re-arms consumers for persisted successors
+
+### VALIDATION
+
+- `snapshot-wake-handoff-recovery.spec.ts`: persist OK → add fails → recovery re-arms → canonical snapshot dispatched exactly once
+- Pending persist classification regression: `PERSIST_FAILED` outcome + metric label
+- Prior R9G coalesce delivery suite remains green
 
 ---
 

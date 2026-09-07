@@ -27,6 +27,15 @@ export function successorWakeRedisKey(vehicleId: string): string {
   return `synqdrive:snapshot-wake:successor:${vehicleId}`;
 }
 
+export function parseVehicleIdFromSuccessorRedisKey(key: string): string | null {
+  const prefix = 'synqdrive:snapshot-wake:successor:';
+  if (!key.startsWith(prefix)) {
+    return null;
+  }
+  const vehicleId = key.slice(prefix.length);
+  return vehicleId.length > 0 ? vehicleId : null;
+}
+
 export function snapshotWakeHandoffJobId(vehicleId: string): string {
   return `wake-handoff-${vehicleId}`;
 }

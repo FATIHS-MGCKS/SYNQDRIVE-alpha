@@ -15,6 +15,7 @@ import {
 import {
   buildSnapshotWakeContext,
   mergePendingWakeContext,
+  parseVehicleIdFromSuccessorRedisKey,
   pendingWakeRedisKey,
   resolveEffectiveWakeOrigin,
   snapshotJobId,
@@ -24,6 +25,13 @@ import {
   wakeProbeDelayMs,
   shouldRequestWakeProbe,
 } from './snapshot-wake.util';
+import {
+  MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK,
+  SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
+  SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT,
+  type SuccessorHandoffRecoveryOutcome,
+  type SuccessorHandoffRecoveryTickResult,
+} from './snapshot-wake-recovery.util';
 import {
   enqueueStableSnapshotJob,
   coalesceNeedsPostTerminalSuccessor,
@@ -112,8 +120,10 @@ export class SnapshotWakeCoordinatorService {
         input.wakeContext,
       );
       if (!persist.ok) {
-        this.recordWakeMetric(input.wakeContext, 'QUEUE_FAILED');
-        return 'QUEUE_FAILED';
+        if (input.wakeContext) {
+          this.recordWakeMetric(input.wakeContext, 'PERSIST_FAILED');
+        }
+        return 'PERSIST_FAILED';
       }
       pendingVersion = persist.version;
     }
@@ -1053,6 +1063,104 @@ export class SnapshotWakeCoordinatorService {
       );
       return false;
     }
+  }
+
+  /**
+   * Returns true when a durable successor mailbox exists but no runnable BullMQ
+   * handoff consumer is present (missing or terminal job state).
+   */
+  async successorHandoffJobNeedsRearm(vehicleId: string): Promise<boolean> {
+    const successorRead = await this.loadSuccessorHandoffStrict(vehicleId);
+    if (successorRead.status !== 'FOUND') {
+      return false;
+    }
+    const jobId = snapshotWakeHandoffJobId(vehicleId);
+    const existing = await this.handoffQueue.getJob(jobId);
+    if (!existing) {
+      return true;
+    }
+    const state = await existing.getState();
+    if (state === 'waiting' || state === 'delayed' || state === 'active') {
+      return false;
+    }
+    return state === 'completed' || state === 'failed';
+  }
+
+  /**
+   * Idempotent per-vehicle re-arm: reuses stable jobId + enqueueHandoffJob CAS
+   * semantics without mutating the successor Redis record.
+   */
+  async tryRecoverSuccessorHandoff(
+    vehicleId: string,
+  ): Promise<SuccessorHandoffRecoveryOutcome> {
+    const successorRead = await this.loadSuccessorHandoffStrict(vehicleId);
+    if (successorRead.status === 'READ_ERROR') {
+      return 'READ_ERROR';
+    }
+    if (successorRead.status === 'MISSING') {
+      return 'MISSING';
+    }
+    const needsRearm = await this.successorHandoffJobNeedsRearm(vehicleId);
+    if (!needsRearm) {
+      return 'OK';
+    }
+    try {
+      await this.enqueueHandoffJob(
+        vehicleId,
+        successorRead.value.notBeforeMs,
+      );
+      return 'REARMED';
+    } catch (err) {
+      this.logger.warn(
+        `Successor handoff recovery re-arm failed for ${vehicleId}: ${(err as Error).message}`,
+      );
+      return 'QUEUE_FAILED';
+    }
+  }
+
+  /**
+   * Bounded SCAN sweep for persisted successors lacking a runnable handoff job.
+   * Cursor wraps at Redis SCAN completion; safe across replicas when combined
+   * with stable jobId idempotent enqueueHandoffJob().
+   */
+  async recoverOrphanedSuccessorHandoffs(
+    startCursor = '0',
+  ): Promise<SuccessorHandoffRecoveryTickResult> {
+    let cursor = startCursor;
+    let scanned = 0;
+    let rearmed = 0;
+    let errors = 0;
+
+    do {
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor,
+        'MATCH',
+        SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
+        'COUNT',
+        String(SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT),
+      );
+
+      for (const key of keys) {
+        if (scanned >= MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK) {
+          return { scanned, rearmed, errors, nextCursor: cursor };
+        }
+        scanned += 1;
+        const vehicleId = parseVehicleIdFromSuccessorRedisKey(key);
+        if (!vehicleId) {
+          continue;
+        }
+        const outcome = await this.tryRecoverSuccessorHandoff(vehicleId);
+        if (outcome === 'REARMED') {
+          rearmed += 1;
+        } else if (outcome === 'READ_ERROR' || outcome === 'QUEUE_FAILED') {
+          errors += 1;
+        }
+      }
+
+      cursor = nextCursor;
+    } while (cursor !== '0' && scanned < MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK);
+
+    return { scanned, rearmed, errors, nextCursor: cursor };
   }
 
   async enqueueHandoffJob(vehicleId: string, notBeforeMs: number): Promise<void> {

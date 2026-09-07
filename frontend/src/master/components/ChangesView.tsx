@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r9h-handoff-orphan-recovery-2026-09-07',
+    version: '4.9.1089',
+    title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',
+    summary: [
+      'Leader-gated SnapshotWakeHandoffRecoveryScheduler SCANs durable successor Redis keys and re-arms missing BullMQ handoff jobs.',
+      'Bounded 50 keys/tick; stable wake-handoff-{vehicleId} jobId; idempotent enqueueHandoffJob; no provider fetch.',
+      'Pending wake persist failure in requestSnapshot returns PERSIST_FAILED (not QUEUE_FAILED) with metric label.',
+    ],
+    reason:
+      'R9G QUEUE_FAILED after successor persist left durable mailboxes without executable consumers — recovery closes the delivery/liveness gap without LONG_IDLE dependency.',
+    previousBehavior:
+      'Successor Redis persisted but handoffQueue.add failure returned QUEUE_FAILED with no automatic consumer re-arm.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9h--successor-handoff-orphan-recovery-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T05:20:00.000Z',
+  },
+  {
     id: 'trip-fsm-r9g-coalesce-delivery-seal-2026-09-07',
     version: '4.9.1088',
     title: 'Trip FSM R9G — Coalesce Delivery + Scheduler Recovery Seal',
@@ -45,7 +64,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'RECOVERED_TERMINAL propagated through requestSnapshot; scheduler recovered counter wired.',
     ],
     reason:
-      'Pre-merge seal — generation-0 provider wakes must always have a bounded executable consumer, not a stranded Redis mailbox.',
+      'Pre-merge seal — coalesce consumer scheduling failures must surface PERSIST_FAILED/QUEUE_FAILED; bounded handoff recovery (R9H) re-arms orphaned successors.',
     previousBehavior:
       'ensureCoalescedWakeConsumer failures still returned COALESCED; scheduleDurableSuccessor mapped persist failures to QUEUE_FAILED; scheduler recovered telemetry stayed zero.',
     details:
@@ -91,7 +110,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1085',
     title: 'Trip FSM R9D — Wake Delivery Liveness + BullMQ Integration Gate',
     summary: [
-      'ACTIVE coalesce guarantees durable successor consumer; continuation authority RESTING+eligible.',
+      'ACTIVE coalesce schedules durable successor consumer when handoff enqueue succeeds; R9H recovery re-arms orphaned successors; continuation authority RESTING+eligible.',
       'Strict durable Redis reads; real BullMQ+Redis integration test gate (4/4).',
     ],
     reason: 'R9D seal — coalesce against ACTIVE could strand wakes; missing integration evidence.',
