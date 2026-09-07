@@ -15,6 +15,7 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 |------|-------|
 | **CODE_DEPLOYED** | **YES** — HF Recovery policy + C.1a–e on `main` / production binary |
 | **REFERENCE_CAPTURE_INFRASTRUCTURE** | **ENABLED** on production (`REFERENCE_CAPTURE_ENABLED=true` post 3A.2) |
+| **REFERENCE_CAPTURE_SETTLEMENT_SHADOW** | **ENABLED** on production post EXP-021D (`REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED=true`, 2026-09-07) — forensic experiment channel only; no auto-start |
 | **HF_RECOVERY_V2_FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false` |
 | **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero active calibration sessions (post GATE 2 baseline restored) |
 | **DI-DEF-019** | **FIXED_PRODUCTION_VALIDATED** — GATE 1 PG integration + GATE 2 stationary dress rehearsal (2026-09-06) |

@@ -183,6 +183,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021D — Stale session cleanup + go gate (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PRODUCTION_READY** — preflight PASS; **no physical drive** |
+| Stale session | `66f09794-…` pre-EXP-019 orphan → canonical **ABORTED**; 4459 obs preserved |
+| Telemetry | Live DIMO `signalsLatest` fresh (15s provider age); DB latestState still stale — qualify via DIMO not CONNECTED |
+| Shadow flag | `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED=true` after clean-state gates; rolling 2-replica restart |
+| Preflight | `EXP021_PREFLIGHT_PASS=YES`; sequence **60→30→20→10** |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
+| Evidence | `EXP_021D_STALE_SESSION_CLEANUP_AND_PREFLIGHT_2026-09-07.md` |
+
 ## EXP-021A — Settlement shadow tooling (2026-09-07)
 
 | Event | Detail |
