@@ -13,6 +13,8 @@
 | **Base SHA (origin/main at branch creation)** | `1676222bb66720d47a27764d7259adae66a07f7b` |
 | **PR #1559 merge commit** | `1676222bb66720d47a27764d7259adae66a07f7b` (verified) |
 | **Branch** | `cursor/i18n-integration-1b-governance-3c10` |
+| **Final HEAD SHA** | `c59e2d0a60d42061275d61500d9f141fe8481bc8` |
+| **Draft PR** | #1565 |
 | **Recovery reference — governance implementation** | `aa949f641fde24924725b383eb0d2ccc027f583a` |
 | **Recovery reference — preceding tests/manifests** | `2242cd198af5f9c4701a8daa91ceb2acee8b076f` |
 | **Cherry-pick policy** | **None** — files restored individually and adapted |
