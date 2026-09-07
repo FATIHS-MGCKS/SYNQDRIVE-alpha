@@ -1,5 +1,7 @@
 # EXP-019 — Video Ground-Truth vs DIMO / Detector Correlation
 
+> **Note:** Superseded for human GT text by `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` (revised GT-10-P0: deceleration not acceleration). Retained for first-pass methodology.
+
 **Date:** 2026-09-07  
 **Session:** `2508b697-f101-4155-a0d3-8436e46bb779`  
 **Vehicle:** KS MX 2024 · `a60c0749-a7cd-494e-b5b9-dea3c6b97d63` · token `187336`  

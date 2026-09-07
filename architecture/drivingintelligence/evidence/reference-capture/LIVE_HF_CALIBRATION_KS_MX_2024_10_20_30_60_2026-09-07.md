@@ -224,8 +224,9 @@ Latitude/longitude: **zero SIGNAL_POINT observations** in all phases.
 | HF_30S_BLOCK_POLLING_VALIDATED | **NO** |
 | MORE_REFERENCE_DATA_REQUIRED | **YES** |
 | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED | **NO** |
-| VIDEO_GT_VERIFIED | **YES** (5 human-verified windows — see `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md`) |
-| READY_FOR_VIDEO_ALIGNMENT | **COMPLETE** (correlation pass done) |
+| VIDEO_GT_VERIFIED | **YES** (5 windows — see `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md`) |
+| READY_FOR_VIDEO_ALIGNMENT | **COMPLETE** |
+| READY_FOR_ARCHITECTURAL_DECISION_PASS | **YES** |
 | READY_FOR_HUMAN_SCIENTIFIC_REVIEW | **YES** |
 
 Do **not** select any cadence for production from this single run.

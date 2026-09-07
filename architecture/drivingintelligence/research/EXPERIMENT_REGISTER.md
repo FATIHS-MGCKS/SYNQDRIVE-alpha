@@ -22,7 +22,7 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration attempt #1 | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Superseded by EXP-019 | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
 | EXP-017 | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | — | Isolated PG 16 | 10 integration + 33 regression PASS | FIXED_CODE_TESTED | `DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
 | EXP-018 | 2026-09-06 | GATE 2 stationary dress rehearsal | KS MX 2024 · token 187336 | Production runtime | **PASS** — 10→60 lifecycle + STOP + ABORT | FIXED_PRODUCTION_VALIDATED (DI-DEF-019) | `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
-| EXP-019 | 2026-09-07 | **EXP-016 RETRY** live 10/20/30/60 calibration | KS MX 2024 · token 187336 | Reference capture prod | **EXECUTED** — settlement T+25/T+30 identical; **video GT verified (5 windows)**; HF gaps lose interior dynamics; NO cadence conclusion (N=1) | Counterbalanced multi-authority drive (EXP-020 proposal) | `LIVE_HF_CALIBRATION_*` · `EXP_019_VIDEO_GT_*` |
+| EXP-019 | 2026-09-07 | **EXP-016 RETRY** live 10/20/30/60 calibration | KS MX 2024 · token 187336 | Reference capture prod | **EXECUTED** — video GT event register (5 windows); HF interior void; NO cadence conclusion (N=1) | Counterbalanced multi-authority drive | `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` + alignment/correlation artifacts |
 
 **EXPERIMENT_ENTRIES_TOTAL:** 19  
 **EXPERIMENTS_EXECUTED:** 19  

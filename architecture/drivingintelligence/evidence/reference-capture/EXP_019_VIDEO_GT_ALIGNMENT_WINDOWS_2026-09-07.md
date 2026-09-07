@@ -128,3 +128,13 @@ Coordinates: **no settled buckets** in this session (consistent with live captur
 Human/video analyst: for each P0 window, inspect overlay timestamp video between `reviewStartUtc` and `reviewEndUtc` and record what occurred during the telemetry gap interval (`gapStartUtc` → `gapEndUtc`).
 
 Do **not** use clip duration stitching — use absolute overlay timestamps across manual cuts.
+
+---
+
+## Video GT event register (human-verified)
+
+Full per-window correlation against all DI authorities:
+
+**`EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md`**
+
+Machine-readable: `/tmp/exp-019-video-alignment/video-gt-event-register.json`

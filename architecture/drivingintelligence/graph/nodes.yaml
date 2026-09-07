@@ -1116,3 +1116,12 @@ nodes:
     summary: Five human-verified GT windows; 0 HF interior samples in gaps; native/detector/score fallback absent (N=1).
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-003
+    type: evidence
+    title: EXP-019 video GT event register
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Revised human video GT; multi-authority correlation; boundary-only HF; interior void at all gaps.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md

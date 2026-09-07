@@ -163,9 +163,10 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Experiment | EXP-016 RETRY — one drive, one session, 10→20→30→60 on KS MX 2024 |
 | sessionId | `2508b697-f101-4155-a0d3-8436e46bb779` |
 | Result | All phases SUFFICIENT; SESSION COMPLETED; settlement replay T+25; **NO cadence conclusion** |
-| Video GT | Driver reports complete timestamped video; alignment windows exported; **not verified** |
+| Video GT | **Verified** — event register `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` (5 windows) |
 | Video alignment | `EXP_019_VIDEO_GT_ALIGNMENT_WINDOWS_2026-09-07.md` + VPS `/tmp/exp-019-video-alignment/` |
-| Video GT correlation | `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` — 5 human-verified windows; HF interior loss at all cadences; native fallback absent |
+| Video GT correlation | `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` |
+| Video GT event register | `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` + `video-gt-event-register.json` |
 | Replay | **T+25** `05:25Z` (provisional) + **true T+30** `05:31:57Z` — **identical**; max gaps persist |
 | Rate metrics | Normalized per-minute: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min |
 | Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |
