@@ -404,8 +404,10 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 |-------|-------|
 | **Owner** | `SnapshotWakeHandoffRecoveryScheduler` (leader key `snapshot_wake_handoff_recovery`) |
 | **Tick** | `@Interval(60s)`; leader-gated via `SchedulerLeaderGuardService` |
-| **Discovery** | Redis `SCAN` on `synqdrive:snapshot-wake:successor:*` with cursor across ticks |
+| **Discovery** | Redis `SCAN` on `synqdrive:snapshot-wake:successor:*` — at most **one SCAN per tick** |
+| **Batch continuation** | Unprocessed SCAN tail preserved in `pendingBatchKeys`; Redis cursor advances only after the full batch is drained |
 | **Bounded work** | Max **50** successor keys examined per tick (`MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK`) |
+| **Per-key isolation** | Job inspection / re-arm failures increment `errors` and do not abort later keys in the same tick |
 | **Re-arm** | `tryRecoverSuccessorHandoff()` → idempotent `enqueueHandoffJob()` with stable `wake-handoff-{vehicleId}` jobId |
 | **Idempotency** | Safe across replicas: existing waiting/delayed/active jobs are no-ops; terminal jobs removed then re-added |
 | **CAS/version** | Does **not** mutate successor Redis record — only re-creates BullMQ consumer |
@@ -415,12 +417,15 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 ### Remaining limitations
 
 - Recovery latency bounded by scheduler tick (60s) plus SCAN cursor wrap when many successors exist
-- Per-tick cap may defer re-arm until a later tick when >50 orphaned successors exist simultaneously
+- Per-tick cap splits large SCAN batches across ticks via `pendingBatchKeys` carry (no tail starvation)
+- Leader/process restart drops carried batch state — safe restart from cursor `0` (may delay tail until next full SCAN)
 - Does not repair missing Redis mailboxes — only re-arms consumers for persisted successors
 
 ### VALIDATION
 
 - `snapshot-wake-handoff-recovery.spec.ts`: persist OK → add fails → recovery re-arms → canonical snapshot dispatched exactly once
+- 75-key batch: tick1 ≤50, tick2 drains tail without starvation or duplicate dispatch
+- Per-key inspection failure isolation; waiting/delayed/active jobs remain no-ops
 - Pending persist classification regression: `PERSIST_FAILED` outcome + metric label
 - Prior R9G coalesce delivery suite remains green
 

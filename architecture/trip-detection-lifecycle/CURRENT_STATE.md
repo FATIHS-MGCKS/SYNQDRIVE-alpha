@@ -122,7 +122,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 is **branch-only** until #1553
 - **UNKNOWN** wake classification → bounded retry before retirement
 - **Coalesce delivery contract:** ACTIVE/UNKNOWN coalesce returns `PERSIST_FAILED` / `QUEUE_FAILED` when successor/handoff consumer cannot be scheduled — never false `COALESCED`
 - **scheduleDurableSuccessor:** persist failures → `PERSIST_FAILED`; enqueue failures → `QUEUE_FAILED`
-- **Successor handoff orphan recovery (R9H):** `SnapshotWakeHandoffRecoveryScheduler` leader-gated `@Interval(60s)` SCAN + bounded re-arm (`MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK=50`) for persisted successors lacking runnable `wake-handoff-{vehicleId}` jobs; idempotent `enqueueHandoffJob()`; no provider fetch; no LONG_IDLE dependency
+- **Successor handoff orphan recovery (R9H):** `SnapshotWakeHandoffRecoveryScheduler` leader-gated `@Interval(60s)` — at most one Redis SCAN/tick, `pendingBatchKeys` carries unprocessed SCAN tail across ticks (cursor advances only after batch drained), max 50 keys/tick, per-key error isolation, idempotent `enqueueHandoffJob()`; no provider fetch; no LONG_IDLE dependency
 - **Generation-0 bounded consumer:** after R9H, accepted generation-0 wakes with successful successor persist eventually gain a runnable handoff consumer via initial enqueue or recovery re-arm (latency bounded by recovery tick + SCAN cursor, not instantaneous on `QUEUE_FAILED`)
 - Cross-module contract: DIMO webhook → Trip wake intake; DIMO does **not** own Trip FSM (see TDL-DEC-R9-CX-001, [DIMO Integration](../dimo-integration/decisions/DECISION_REGISTER.md) DIM-DEC-R9-001)
 

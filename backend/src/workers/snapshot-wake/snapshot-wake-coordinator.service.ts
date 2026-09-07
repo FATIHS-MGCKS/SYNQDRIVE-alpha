@@ -30,7 +30,9 @@ import {
   SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
   SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT,
   type SuccessorHandoffRecoveryOutcome,
+  type SuccessorHandoffRecoveryContinuation,
   type SuccessorHandoffRecoveryTickResult,
+  INITIAL_SUCCESSOR_HANDOFF_RECOVERY_CONTINUATION,
 } from './snapshot-wake-recovery.util';
 import {
   enqueueStableSnapshotJob,
@@ -1100,7 +1102,15 @@ export class SnapshotWakeCoordinatorService {
     if (successorRead.status === 'MISSING') {
       return 'MISSING';
     }
-    const needsRearm = await this.successorHandoffJobNeedsRearm(vehicleId);
+    let needsRearm: boolean;
+    try {
+      needsRearm = await this.successorHandoffJobNeedsRearm(vehicleId);
+    } catch (err) {
+      this.logger.warn(
+        `Successor handoff job inspection failed for ${vehicleId}: ${(err as Error).message}`,
+      );
+      return 'QUEUE_FAILED';
+    }
     if (!needsRearm) {
       return 'OK';
     }
@@ -1120,35 +1130,56 @@ export class SnapshotWakeCoordinatorService {
 
   /**
    * Bounded SCAN sweep for persisted successors lacking a runnable handoff job.
-   * Cursor wraps at Redis SCAN completion; safe across replicas when combined
-   * with stable jobId idempotent enqueueHandoffJob().
+   * Preserves unprocessed SCAN batch tails across ticks; at most one SCAN per tick;
+   * Redis cursor advances only after the full batch is drained.
    */
   async recoverOrphanedSuccessorHandoffs(
-    startCursor = '0',
+    continuation: SuccessorHandoffRecoveryContinuation = INITIAL_SUCCESSOR_HANDOFF_RECOVERY_CONTINUATION,
   ): Promise<SuccessorHandoffRecoveryTickResult> {
-    let cursor = startCursor;
+    let { scanCursor, pendingBatchKeys } = {
+      scanCursor: continuation.scanCursor,
+      pendingBatchKeys: [...continuation.pendingBatchKeys],
+    };
     let scanned = 0;
     let rearmed = 0;
     let errors = 0;
+    let batchNextCursor = scanCursor;
+    let scanFetchedThisTick = pendingBatchKeys.length > 0;
 
-    do {
-      const [nextCursor, keys] = await this.redis.scan(
-        cursor,
-        'MATCH',
-        SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
-        'COUNT',
-        String(SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT),
-      );
-
-      for (const key of keys) {
-        if (scanned >= MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK) {
-          return { scanned, rearmed, errors, nextCursor: cursor };
+    while (scanned < MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK) {
+      if (pendingBatchKeys.length === 0) {
+        if (scanFetchedThisTick) {
+          break;
         }
-        scanned += 1;
-        const vehicleId = parseVehicleIdFromSuccessorRedisKey(key);
-        if (!vehicleId) {
+        const scanInputCursor = scanCursor;
+        const [nextCursor, keys] = await this.redis.scan(
+          scanInputCursor,
+          'MATCH',
+          SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
+          'COUNT',
+          String(SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT),
+        );
+        batchNextCursor = nextCursor;
+        pendingBatchKeys = keys;
+        scanFetchedThisTick = true;
+
+        if (keys.length === 0) {
+          scanCursor = nextCursor;
+          if (scanCursor === '0') {
+            break;
+          }
           continue;
         }
+      }
+
+      const key = pendingBatchKeys.shift();
+      if (!key) {
+        break;
+      }
+
+      scanned += 1;
+      const vehicleId = parseVehicleIdFromSuccessorRedisKey(key);
+      if (vehicleId) {
         const outcome = await this.tryRecoverSuccessorHandoff(vehicleId);
         if (outcome === 'REARMED') {
           rearmed += 1;
@@ -1157,10 +1188,17 @@ export class SnapshotWakeCoordinatorService {
         }
       }
 
-      cursor = nextCursor;
-    } while (cursor !== '0' && scanned < MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK);
+      if (pendingBatchKeys.length === 0) {
+        scanCursor = batchNextCursor;
+      }
+    }
 
-    return { scanned, rearmed, errors, nextCursor: cursor };
+    return {
+      scanned,
+      rearmed,
+      errors,
+      continuation: { scanCursor, pendingBatchKeys },
+    };
   }
 
   async enqueueHandoffJob(vehicleId: string, notBeforeMs: number): Promise<void> {

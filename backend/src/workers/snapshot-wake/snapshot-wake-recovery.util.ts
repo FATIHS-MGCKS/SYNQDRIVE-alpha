@@ -15,9 +15,23 @@ export type SuccessorHandoffRecoveryOutcome =
   | 'READ_ERROR'
   | 'QUEUE_FAILED';
 
+/** Scheduler/carrier state preserved across ticks when a SCAN batch is partially processed. */
+export type SuccessorHandoffRecoveryContinuation = {
+  /** Cursor passed to the next Redis SCAN once `pendingBatchKeys` is drained. */
+  scanCursor: string;
+  /** Unprocessed tail of the current SCAN response (must not be discarded). */
+  pendingBatchKeys: string[];
+};
+
+export const INITIAL_SUCCESSOR_HANDOFF_RECOVERY_CONTINUATION: SuccessorHandoffRecoveryContinuation =
+  {
+    scanCursor: '0',
+    pendingBatchKeys: [],
+  };
+
 export type SuccessorHandoffRecoveryTickResult = {
   scanned: number;
   rearmed: number;
   errors: number;
-  nextCursor: string;
+  continuation: SuccessorHandoffRecoveryContinuation;
 };

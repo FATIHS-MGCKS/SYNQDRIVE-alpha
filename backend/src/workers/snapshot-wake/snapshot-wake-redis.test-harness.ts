@@ -48,9 +48,11 @@ export function createSnapshotWakeRedisTestHarness() {
         const matchIdx = args.indexOf('MATCH');
         const pattern = matchIdx >= 0 ? args[matchIdx + 1] : '*';
         const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
-        const keys = [...store.keys()].filter((k) =>
-          pattern.includes('*') ? k.startsWith(prefix) : k === pattern,
-        );
+        const keys = [...store.keys()]
+          .filter((k) =>
+            pattern.includes('*') ? k.startsWith(prefix) : k === pattern,
+          )
+          .sort();
         return ['0', keys];
       },
     ),
