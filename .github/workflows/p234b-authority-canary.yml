@@ -7,4 +7,4 @@ jobs:
   noop:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "P2.3.4B authority canary synchronize probe"
+      - run: echo "P2.3.4A.3 post-merge authority invalidation probe"
