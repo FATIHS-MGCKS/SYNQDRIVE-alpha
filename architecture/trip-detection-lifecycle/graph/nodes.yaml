@@ -1,0 +1,421 @@
+# Trip Detection & Lifecycle — Knowledge Graph Nodes (Phase 4 partial, post-R9)
+# Validate: bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
+
+nodes:
+  - id: TDL-DOM-TRIP-LIFECYCLE-001
+    type: domain
+    title: Trip Detection & Lifecycle domain
+    epistemic_status: CONFIRMED
+    summary: >
+      Owns live trip FSM, start/end detection, tracking queue, boundary persistence,
+      recovery/reconciliation, route artifacts. Does not own post-trip DI scoring or DIMO provider gateway.
+    source_paths:
+      - architecture/trip-detection-lifecycle/README.md
+    evidence:
+      - TDL-EVID-CODE-OWNERSHIP-001
+
+  - id: TDL-AUTH-LIFECYCLE-001
+    type: authority
+    title: TripDecisionEngine lifecycle authority
+    epistemic_status: CONFIRMED
+    summary: Sole writer of vehicleTrip.tripStatus and terminal lifecycle commits.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+      - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+    evidence:
+      - TDL-EVID-CODE-OWNERSHIP-001
+
+  - id: TDL-AUTH-FSM-PERSIST-001
+    type: authority
+    title: TripDetectionOrchestrationService persisted FSM authority
+    epistemic_status: CONFIRMED
+    summary: Owns VehicleTripDetectionState transitions and orchestration entry points.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  - id: TDL-ORCH-TRIP-DETECTION-001
+    type: orchestrator
+    title: TripDetectionOrchestrationService
+    epistemic_status: CONFIRMED
+    summary: Canonical trip lifecycle orchestration from snapshot and tracking triggers.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  - id: TDL-PIPE-WAKE-INTAKE-001
+    type: pipeline
+    title: SnapshotWakeIntakeService
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO provider trigger ingress (speed/ignition) → durable Redis pending mailbox →
+      canonical snapshot job request. Does not fetch DIMO directly on handoff path.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-intake.service.ts
+
+  - id: TDL-ORCH-WAKE-COORD-001
+    type: orchestrator
+    title: SnapshotWakeCoordinatorService
+    epistemic_status: CONFIRMED
+    summary: >
+      R9 wake coordinator: pending/successor mailboxes, coalesce semantics, continuation
+      authority, bounded UNKNOWN retry, post-terminal handoff dispatch.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+      - TDL-TEST-R9-001
+
+  - id: TDL-WORK-SNAPSHOT-001
+    type: worker
+    title: DimoSnapshotProcessor
+    epistemic_status: CONFIRMED
+    summary: Canonical serialized snapshot fetch per vehicle; invokes afterSnapshotJob wake hooks.
+    source_paths:
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+
+  - id: TDL-WORK-HANDOFF-001
+    type: worker
+    title: SnapshotWakeHandoffProcessor
+    epistemic_status: CONFIRMED
+    summary: Lightweight BullMQ handoff worker; never provider-fetches; dispatches canonical snapshot path.
+    source_paths:
+      - backend/src/workers/processors/snapshot-wake-handoff.processor.ts
+
+  - id: TDL-QUEUE-SNAPSHOT-POLL-001
+    type: queue
+    title: dimo.snapshot.poll
+    epistemic_status: CONFIRMED
+    summary: Stable canonical snapshot job per vehicle (same jobId serialization).
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: TDL-QUEUE-WAKE-HANDOFF-001
+    type: queue
+    title: snapshot-wake-handoff
+    epistemic_status: CONFIRMED
+    summary: Post-terminal successor / UNKNOWN retry handoff queue with DelayedError rearm.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+
+  - id: TDL-PERSIST-PENDING-MAILBOX-001
+    type: persist
+    title: Redis pending wake mailbox
+    epistemic_status: CONFIRMED
+    summary: Atomic merge, monotonic providerObservedAt, versioned CAS ACK.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts
+
+  - id: TDL-PERSIST-SUCCESSOR-MAILBOX-001
+    type: persist
+    title: Redis successor handoff mailbox
+    epistemic_status: CONFIRMED
+    summary: Versioned successor record with notBeforeMs and exact-version retirement.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts
+
+  - id: TDL-AUTH-CONTINUATION-001
+    type: authority
+    title: Wake continuation classifier
+    epistemic_status: CONFIRMED
+    summary: ELIGIBLE_RESTING requires FSM RESTING + vehicle eligible; UNKNOWN on read errors; fail-closed.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-continuation.util.ts
+
+  - id: TDL-EVID-CODE-OWNERSHIP-001
+    type: evidence
+    title: P1 trip ownership invariants
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: TripDecisionEngine sole lifecycle writer; detectors read-only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+
+  - id: TDL-EVID-R9-AUDIT-001
+    type: evidence
+    title: R9 adaptive polling wake implementation audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Supporting evidence R9A–R9F; not canonical routing authority.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: TDL-TEST-R9-001
+    type: test_evidence
+    title: R9F unknown retry completeness tests
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Matrix A–H + BullMQ integration gate for UNKNOWN retry liveness.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-r9f.spec.ts
+
+  - id: TDL-DEC-R9-001
+    type: decision
+    title: R9 adaptive polling wake subsystem
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Start-liveness ingress around canonical snapshot path; not a second lifecycle authority.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-DEC-R9A-001
+    type: decision
+    title: Durable-first wake mailboxes
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Replace destructive consume with atomic pending/successor persistence and logical wake origin.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-DEC-R9B-001
+    type: decision
+    title: Handoff rearm without self-coalescing stable jobId
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: BullMQ handoff uses DelayedError/moveToDelayed; same stable jobId must not self-coalesce successor dispatch.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-DEC-R9C-001
+    type: decision
+    title: Generation-1 probe terminal bound
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Max one generation-1 wake probe; gen-1 never schedules gen-2 successor or UNKNOWN retry handoff.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-DEC-R9D-001
+    type: decision
+    title: Continuation RESTING + eligibility authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Successor scheduling requires ELIGIBLE_RESTING; Redis READ_ERROR distinct from MISSING.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-continuation.util.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-DEC-R9E-001
+    type: decision
+    title: UNKNOWN handoff defer and obsolete CAS retirement
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: UNKNOWN defers via SnapshotWakeHandoffDeferError; exact-version bounded retirement without unbounded recursion.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-DEC-R9F-001
+    type: decision
+    title: UNKNOWN bounded retry outside handoff dispatch
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: All UNKNOWN continuation surfaces schedule bounded retry handoff with explicit enqueue outcomes.
+    source_paths:
+      - backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts
+    evidence:
+      - TDL-TEST-R9-001
+
+  - id: TDL-DEC-R9-CX-001
+    type: decision
+    title: DIMO webhook to Trip wake delegation boundary
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DIMO owns provider webhook gateway; Trip Detection owns wake evidence and lifecycle semantics.
+    source_paths:
+      - architecture/dimo-integration/decisions/DECISION_REGISTER.md
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - TDL-EVID-R9-AUDIT-001
+
+  - id: TDL-FAIL-R9A-001
+    type: failed_approach
+    title: Same stable jobId successor self-coalescing
+    epistemic_status: HISTORICAL
+    summary: Early R9 reused canonical snapshot jobId for successor dispatch causing silent coalesce loss.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: TDL-FAIL-R9E-001
+    type: failed_approach
+    title: UNKNOWN handoff false success return
+    epistemic_status: HISTORICAL
+    summary: dispatchSuccessorHandoff returned success while successor Redis remained on UNKNOWN.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: TDL-GAP-001
+    type: gap
+    title: COMPLETED to Driving Intelligence handoff
+    epistemic_status: UNKNOWN
+    summary: Exact durable handoff contract to DI V2 not reconstructed.
+    source_paths:
+      - architecture/trip-detection-lifecycle/research/OPEN_QUESTIONS.md
+
+  - id: TDL-GAP-002
+    type: gap
+    title: drive-profile ownership
+    epistemic_status: UNKNOWN
+    summary: Adjacent module ownership unresolved.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-003
+    type: gap
+    title: Full fleet FSM row coverage
+    epistemic_status: INFERRED
+    summary: Production shows 6 detection states vs ~2000 trips.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-004
+    type: gap
+    title: Route artifact coverage
+    epistemic_status: CONFIRMED
+    summary: ~4.7% completed trips have route artifacts; root cause unknown.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-005
+    type: gap
+    title: ClickHouse trip-assist runtime
+    epistemic_status: UNKNOWN
+    summary: Flag present on Production; contents not queried.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-006
+    type: gap
+    title: DIMO segment reconciliation vs live FSM
+    epistemic_status: UNKNOWN
+    summary: Segment authority split; DIMO Integration bootstrapped AUDIT_IN_PROGRESS 2026-09-07; reconciliation ownership still incomplete.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-009
+    type: gap
+    title: R8 on main and R9 on audit branch not on Production
+    epistemic_status: CONFIRMED
+    summary: origin/main includes R8; R9 is branch-only @ 1186e9d23…; observed Production release predates both R8 deploy and R9 merge.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md
+
+  - id: TDL-GAP-007
+    type: gap
+    title: Complete feature-flag matrix
+    epistemic_status: UNKNOWN
+    summary: Only trip-adjacent env keys sampled on Production.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-008
+    type: gap
+    title: Mapbox/FMM failure recovery paths
+    epistemic_status: UNKNOWN
+    summary: Route V2 failure taxonomy not reconstructed.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-010
+    type: gap
+    title: Machine-readable FSM graph completeness
+    epistemic_status: INFERRED
+    summary: Initial graph created post-R9; full FSM node coverage incomplete.
+    source_paths:
+      - architecture/trip-detection-lifecycle/KNOWLEDGE_GRAPH.md
+
+  - id: TDL-GAP-011
+    type: gap
+    title: Decision register completeness beyond R9
+    epistemic_status: INFERRED
+    summary: R9 decisions indexed; R1-R8 WHY reconstruction ongoing Phase 3.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+
+  - id: TDL-GAP-012
+    type: gap
+    title: Legacy duplicate trip paths
+    epistemic_status: INFERRED
+    summary: Reconciliation-heavy repair counts suggest historical gaps.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-HYP-001
+    type: hypothesis
+    title: Small telematics cohort drives FSM rows
+    epistemic_status: INFERRED
+    summary: Hypothesis for 6 FSM rows vs ~2000 trips.
+    source_paths:
+      - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
+
+  - id: TDL-HYP-002
+    type: hypothesis
+    title: Route artifact gap correlates with Mapbox/FMM failures
+    epistemic_status: UNKNOWN
+    summary: Unconfirmed root cause hypothesis.
+    source_paths:
+      - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
+
+  - id: TDL-HYP-003
+    type: hypothesis
+    title: R9 wake reduces start validation latency post-deploy
+    epistemic_status: UNKNOWN
+    summary: Repo/test only; not Production-validated.
+    source_paths:
+      - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
+
+  - id: TDL-CX-001
+    type: contradiction
+    title: Repo vs Production FSM version drift
+    epistemic_status: CONFIRMED
+    summary: main ahead of Production release for R8/R9.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-CX-006
+    type: contradiction
+    title: DIMO Integration segment boundary vs DI registry claim
+    epistemic_status: CONFIRMED
+    summary: DI registry cites Trip Detection/DIMO segments; DIMO authority AUDIT_IN_PROGRESS; segment split gaps remain.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-CX-002
+    type: contradiction
+    title: P2 Production SQL vs 2026-09-06 baseline
+    epistemic_status: HISTORICAL
+    summary: Resolved for audit — P2 Production claims marked HISTORICAL.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-CX-003
+    type: contradiction
+    title: ENDED enum vs live engine
+    epistemic_status: CONFIRMED
+    summary: Schema includes ENDED; zero runtime writers.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-CX-004
+    type: contradiction
+    title: Historical audit SHA vs current main
+    epistemic_status: CONFIRMED
+    summary: P2-P5 audited pre-R1 baseline; mitigated by PARTIALLY_CURRENT labels.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-CX-005
+    type: contradiction
+    title: Repair PROPOSED volume vs zero ONGOING trips
+    epistemic_status: CONFIRMED
+    summary: Large proposed repair backlog; not root-caused.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md

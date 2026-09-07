@@ -10448,6 +10448,7 @@ model ReferenceCaptureSession {
   organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   observations ReferenceCaptureObservation[]
+  settlementShadowExperiments ReferenceCaptureSettlementShadowExperiment[]
 
   @@index([organizationId, vehicleId, status])
   @@index([vehicleId, createdAt])
@@ -10499,6 +10500,112 @@ model ReferenceCaptureObservation {
   @@index([organizationId, vehicleId])
   @@index([createdAt])
   @@map("reference_capture_observations")
+}
+
+enum ReferenceCaptureSettlementShadowScheduleStatus {
+  PENDING
+  EXECUTING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum ReferenceCaptureSettlementShadowProbeType {
+  FIXED_INTERVAL
+  WHOLE_TRIP
+}
+
+model ReferenceCaptureSettlementShadowExperiment {
+  id                  String   @id @default(uuid())
+  experimentId        String   @unique @map("experiment_id")
+  sessionId           String   @unique @map("session_id")
+  organizationId      String   @map("organization_id")
+  vehicleId           String   @map("vehicle_id")
+  tokenId             Int      @map("token_id")
+  calibrationSeriesId String?  @map("calibration_series_id")
+  vehicleTripId       String?  @map("vehicle_trip_id")
+  tripStartTime       DateTime? @map("trip_start_time")
+  tripEndTime         DateTime? @map("trip_end_time")
+  status              String
+  lastSyncedPhaseCount Int     @default(0) @map("last_synced_phase_count")
+  metadataJson        Json?    @map("metadata_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  session   ReferenceCaptureSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  schedules ReferenceCaptureSettlementShadowSchedule[]
+
+  @@index([organizationId, vehicleId])
+  @@map("reference_capture_settlement_shadow_experiments")
+}
+
+model ReferenceCaptureSettlementShadowSchedule {
+  id                   String                                       @id @default(uuid())
+  experimentId         String                                       @map("experiment_id")
+  sessionId            String                                       @map("session_id")
+  organizationId       String                                       @map("organization_id")
+  vehicleId            String                                       @map("vehicle_id")
+  tokenId              Int                                          @map("token_id")
+  probeId              String                                       @map("probe_id")
+  probeType            ReferenceCaptureSettlementShadowProbeType    @map("probe_type")
+  phase                String?
+  sourceIntervalStart  DateTime                                     @map("source_interval_start")
+  sourceIntervalEnd    DateTime                                     @map("source_interval_end")
+  queryFrom            DateTime                                     @map("query_from")
+  queryTo              DateTime                                     @map("query_to")
+  aggregationInterval  String                                       @default("1s") @map("aggregation_interval")
+  scheduledAgeMs       Int                                          @map("scheduled_age_ms")
+  scheduledAt          DateTime                                     @map("scheduled_at")
+  status               ReferenceCaptureSettlementShadowScheduleStatus @default(PENDING)
+  attemptCount         Int                                          @default(0) @map("attempt_count")
+  executedAt           DateTime?                                    @map("executed_at")
+  bullJobId            String?                                      @map("bull_job_id")
+  idempotencyKey       String                                       @unique @map("idempotency_key")
+  lastError            String?                                      @map("last_error")
+  createdAt            DateTime                                     @default(now()) @map("created_at")
+  updatedAt            DateTime                                     @updatedAt @map("updated_at")
+
+  experiment  ReferenceCaptureSettlementShadowExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  observation ReferenceCaptureSettlementShadowObservation?
+
+  @@index([status, scheduledAt])
+  @@index([experimentId])
+  @@index([sessionId])
+  @@map("reference_capture_settlement_shadow_schedules")
+}
+
+model ReferenceCaptureSettlementShadowObservation {
+  id                   String                                    @id @default(uuid())
+  scheduleId           String                                    @unique @map("schedule_id")
+  experimentId         String                                    @map("experiment_id")
+  sessionId            String                                    @map("session_id")
+  organizationId       String                                    @map("organization_id")
+  vehicleId            String                                    @map("vehicle_id")
+  tokenId              Int                                       @map("token_id")
+  probeId              String                                    @map("probe_id")
+  probeType            ReferenceCaptureSettlementShadowProbeType @map("probe_type")
+  phase                String?
+  sourceIntervalStart  DateTime                                  @map("source_interval_start")
+  sourceIntervalEnd    DateTime                                  @map("source_interval_end")
+  scheduledAgeMs       Int                                       @map("scheduled_age_ms")
+  actualAgeMs          Int                                       @map("actual_age_ms")
+  scheduleDriftMs      Int                                       @map("schedule_drift_ms")
+  requestStartedAt     DateTime                                  @map("request_started_at")
+  requestCompletedAt   DateTime                                  @map("request_completed_at")
+  queryFrom            DateTime                                  @map("query_from")
+  queryTo              DateTime                                  @map("query_to")
+  aggregationInterval  String                                    @map("aggregation_interval")
+  providerRequestStatus String                                   @map("provider_request_status")
+  providerError        String?                                   @map("provider_error")
+  rawRowCount          Int                                       @map("raw_row_count")
+  responseHash         String                                    @map("response_hash")
+  observationJson      Json                                      @map("observation_json")
+  createdAt            DateTime                                  @default(now()) @map("created_at")
+
+  schedule ReferenceCaptureSettlementShadowSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId])
+  @@map("reference_capture_settlement_shadow_observations")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

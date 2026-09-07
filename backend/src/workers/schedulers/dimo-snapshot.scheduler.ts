@@ -28,6 +28,8 @@ import { evaluateFleetEnvelope } from './snapshot-polling/current-prod-fleet-env
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 import { DimoQueueBackpressureService } from '@modules/dimo/provider-budget/dimo-queue-backpressure.service';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
+import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -121,6 +123,8 @@ export class DimoSnapshotScheduler {
     private readonly prisma: PrismaService,
     private readonly reconciliation: TripReconciliationService,
     private readonly leaderGuard: SchedulerLeaderGuardService,
+    private readonly snapshotCoordinator: SnapshotWakeCoordinatorService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly queueBackpressure?: DimoQueueBackpressureService,
   ) {}
@@ -250,8 +254,6 @@ export class DimoSnapshotScheduler {
         this.tierConfig,
       );
 
-      tierCounts.set(rawTier, (tierCounts.get(rawTier) ?? 0) + 1);
-
       const memory = this.vehiclePollingMemory.get(v.id);
       const effectiveTier = useActivityTiers
         ? applySnapshotPollingHysteresis(
@@ -267,6 +269,11 @@ export class DimoSnapshotScheduler {
             this.tierConfig,
           )
         : SnapshotPollingTier.ACTIVE_DRIVING;
+
+      tierCounts.set(
+        effectiveTier,
+        (tierCounts.get(effectiveTier) ?? 0) + 1,
+      );
 
       this.vehiclePollingMemory.set(v.id, {
         effectiveTier,
@@ -313,49 +320,38 @@ export class DimoSnapshotScheduler {
     let enqueued = 0;
     let recovered = 0;
     let skipped = 0;
-    let notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
+    const notDue = useActivityTiers ? vehicles.length - ordered.length : 0;
     const enqueuedByTier = new Map<SnapshotPollingTier, number>();
 
     for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
-      const jobId = `snapshot-${v.id}`;
-
       try {
-        const existing = await this.queue.getJob(jobId);
-        if (existing) {
-          const state = await existing.getState();
-          if (state === 'failed' || state === 'completed') {
-            await existing.remove();
-            recovered += 1;
-          }
-        }
-      } catch (err) {
-        this.logger.debug(
-          `getJob/remove for ${jobId} ignored: ${(err as Error).message}`,
-        );
-      }
-
-      try {
-        await this.queue.add(
-          'snapshot',
-          { vehicleId: v.id, dimoTokenId: tokenId },
-          {
-            jobId,
-            removeOnComplete: true,
-            removeOnFail: { count: 50, age: 3600 },
-          },
-        );
-        enqueued += 1;
-        enqueuedByTier.set(
-          effectiveTier,
-          (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
-        );
-      } catch (err: unknown) {
-        const msg = (err as Error).message ?? '';
-        if (msg.toLowerCase().includes('duplicate')) {
+        const outcome = await this.snapshotCoordinator.requestSnapshot({
+          vehicleId: v.id,
+          dimoTokenId: tokenId,
+          origin: 'SCHEDULED',
+        });
+        if (outcome === 'ENQUEUED') {
+          enqueued += 1;
+          enqueuedByTier.set(
+            effectiveTier,
+            (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
+          );
+        } else if (outcome === 'RECOVERED_TERMINAL') {
+          recovered += 1;
+          enqueued += 1;
+          enqueuedByTier.set(
+            effectiveTier,
+            (enqueuedByTier.get(effectiveTier) ?? 0) + 1,
+          );
+        } else if (outcome === 'COALESCED') {
           skipped += 1;
-        } else {
-          this.logger.warn(`Failed to enqueue snapshot for ${v.id}: ${msg}`);
+        } else if (outcome === 'QUEUE_FAILED' || outcome === 'PERSIST_FAILED') {
+          this.logger.warn(`Failed to enqueue snapshot for ${v.id}`);
         }
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Failed to enqueue snapshot for ${v.id}: ${(err as Error).message}`,
+        );
       }
     }
 
@@ -382,6 +378,10 @@ export class DimoSnapshotScheduler {
           `Snapshot scheduler recovered ${recovered} vehicle(s) from stuck terminal-state jobs`,
         );
       }
+
+      this.tripMetrics?.setSnapshotPollingTierOccupancy(tierCounts);
+    } else {
+      this.tripMetrics?.setSnapshotPollingTierOccupancy(new Map());
     }
 
     this.lastTickAt = new Date();

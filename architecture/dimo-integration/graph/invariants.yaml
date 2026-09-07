@@ -1,0 +1,20 @@
+invariants:
+  - id: DIM-INV-WEBHOOK-AUTH-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Webhook verification before trigger processing
+    statement: Real trigger payloads require verification token (or dev unsigned mode); verification handshake separate path.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-CODE-WEBHOOK-001
+
+  - id: DIM-INV-R9-DELEGATE-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: R9 wake delegation does not provider-fetch in webhook
+    statement: speed/isIgnitionOn paths call SnapshotWakeIntakeService only; no direct DIMO telemetry fetch in controller.
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+    evidence:
+      - DIM-EVID-R9-AUDIT-001

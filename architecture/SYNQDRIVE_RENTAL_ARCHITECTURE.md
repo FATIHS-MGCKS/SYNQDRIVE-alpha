@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-06 (Trip Detection & Lifecycle authority bootstrap correction)
+**Last updated:** 2026-09-07 (DIMO Integration bootstrap + Trip Detection baseline epistemic correction)
 
 ---
 
@@ -34,7 +34,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Dashboard Utilization | Fleet utilization metrics and dashboard aggregates for rental operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Data Analyse | Advanced org analytics including driving analyses and misuse-case views for permitted roles. | `NOT_STARTED` | N/A — inventory only | — |
 | Data Authorizations | Tenant data-access consent and authorization enforcement for AI and sensitive APIs. | `NOT_STARTED` | N/A — inventory only | — |
-| DIMO Integration | DIMO auth, telemetry, segments, triggers, webhooks, device-connection episodes, and provider gateway. | `NOT_STARTED` | N/A — inventory only | — |
+| DIMO Integration | DIMO auth, telemetry, segments, triggers, webhooks, device-connection episodes, and provider gateway. | `AUDIT_IN_PROGRESS` | Bootstrap audit · R9 webhook cross-module trigger (2026-09-07) | [`architecture/dimo-integration/`](dimo-integration/) |
 | Document Extraction (AI Upload) | Shared upload-to-extraction-to-review-to-apply flow for operational document intake. | `NOT_STARTED` | N/A — inventory only | — |
 | Documents | Document storage, legal texts, rental contracts, booking document bundles, retention, and integrity controls. | `NOT_STARTED` | N/A — inventory only | — |
 | Driving Intelligence | Transforms vehicle telemetry and completed trip boundaries into driving-behavior events, operational-load scoring, durable post-trip analysis, misuse signals, and API/UI projections. | `AUTHORITY_ACTIVE` | Retrospective expansion V2 (2026-09-06) · SUBSTANTIAL reconstruction | [`architecture/drivingintelligence/`](drivingintelligence/) |
@@ -242,13 +242,28 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | Field | Value |
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` — partial reconstruction **in progress**; **not** a complete usable authority |
-| **Scope** | Live trip FSM (`VehicleTripDetectionState`), snapshot-triggered start evaluation, BullMQ `dimo.trip-tracking` execution loop, start/end detection policies and detectors, `TripDecisionEngine` lifecycle mutations, terminal recovery, reconciliation/repair (`TripRepair`), route artifacts (Route V2), trip API read models and rental UI trip surfaces. |
+| **Scope** | Live trip FSM (`VehicleTripDetectionState`), snapshot-triggered start evaluation, **R9 adaptive provider-wake start-liveness ingress** (`SnapshotWakeIntakeService`, `SnapshotWakeCoordinatorService`, durable Redis mailboxes, handoff queue), BullMQ `dimo.trip-tracking` execution loop, start/end detection policies and detectors, `TripDecisionEngine` lifecycle mutations, terminal recovery, reconciliation/repair (`TripRepair`), route artifacts (Route V2), trip API read models and rental UI trip surfaces. |
 | **Authority directory** | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
-| **Authority-native status** | **Bootstrap audit · Phase 0–2 evidence collection** (2026-09-06) · Repository initial baseline + read-only Production baseline established · R1–R8 on `main` indexed; **not** promoted |
-| **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts. **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth (→ DIMO Integration, `NOT_STARTED`). Historical FSM audits under `docs/audits/trip-fsm/` are **supporting evidence only**. |
-| **Reconstruction status** | Phase **0** complete; Phase **1** initial consolidated baseline established (further reconstruction in progress); Phase **2** verified read-only Production baseline established; Phases **3–5** pending/in progress. |
-| **Mandatory entry documents (partial)** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
-| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · module graph validators **not yet created** |
+| **Authority-native status** | **Bootstrap audit · Phase 0–2 evidence + Phase 4 partial (R9 graph/decisions)** (2026-09-06 bootstrap, 2026-09-07 R9 alignment) · R1–R9 on branch `trip-fsm/r9-adaptive-polling-wake` indexed; **not** promoted |
+| **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts, **R9 wake ingress/handoff subsystem (R9 audit branch @ `1186e9d23…`; not on `origin/main` until #1553 merges)**. **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth/webhook gateway (→ [DIMO Integration](dimo-integration/), `AUDIT_IN_PROGRESS`). Historical FSM audits under `docs/audits/trip-fsm/` are **supporting evidence only**. |
+| **Reconstruction status** | Phase **0** complete; Phase **1** initial consolidated baseline + R9 repository surface documented; Phase **2** verified read-only Production baseline established (**no fresh R9 Production audit**); Phase **3** in progress; Phase **4** partial (R9 graph/decisions/validators); Phase **5** pending. |
+| **Mandatory entry documents (partial)** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](trip-detection-lifecycle/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](trip-detection-lifecycle/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh` |
+
+---
+
+### DIMO Integration
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap reconstruction **in progress**; **not** a complete usable authority |
+| **Scope** | DIMO auth/token/JWT paths, telemetry provider clients, snapshot fetching, segments, triggers, webhooks (`DimoWebhookController`), device-connection episodes, provider gateway/budget/rate limiting, vehicle/data-source binding, scheduler/worker wiring. |
+| **Authority directory** | [`architecture/dimo-integration/`](dimo-integration/) |
+| **Authority-native status** | **Bootstrap audit · R9 webhook cross-module trigger** (2026-09-07) · repository + read-only Production baseline started; **not** promoted |
+| **Ownership boundary** | **Owns** provider-facing DIMO webhook endpoint, webhook authentication/verification/envelope handling, provider signal ingestion contract, DIMO trigger/provider gateway semantics, provider transport/authentication, DIMO telemetry acquisition boundary. **Does NOT own** Trip FSM / wake eligibility / mailboxes / handoff cadence (→ [Trip Detection & Lifecycle](trip-detection-lifecycle/)). R9 contract: webhook → `SnapshotWakeIntakeService` → `wakeOutcome` response. |
+| **Reconstruction status** | Phase **0** complete; Phase **1** initial consolidated repository audit; Phase **2** read-only Production baseline (2026-09-07); Phase **3–5** pending. |
+| **Mandatory entry documents (partial)** | [README.md](dimo-integration/README.md) · [AUDIT_MANIFEST.md](dimo-integration/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](dimo-integration/CURRENT_STATE.md) · [AGENT_CONTRACT.md](dimo-integration/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](dimo-integration/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](dimo-integration/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](dimo-integration/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](dimo-integration/evidence/PRODUCTION_BASELINE.md) |
+| **Validation** | `bash architecture/dimo-integration/scripts/validate-graph.sh` |
 
 ---
 

@@ -189,3 +189,29 @@ READY_TO_MERGE=YES
 
 PRODUCTION_CHANGED=NO
 ```
+
+---
+
+## Main integration gate (origin/main @ `ccc2324db`, R9 #1553)
+
+Merged `origin/main` into PR #1560 branch on `2026-09-07`.
+
+| Check | Result |
+|-------|--------|
+| Merge conflict resolution | `ChangesView.tsx` — M3.2B v4.9.1090 + full R9H→R9 stack preserved |
+| Auto-merged files | `trip-detection-orchestration.service.ts`, `trip-metrics.service.ts`, `ArchitekturView.tsx`, `schema.prisma` |
+| Conflict markers | NONE |
+| `npx prisma generate` | PASS |
+| shutdown-evidence + R9 tests | PASS (22 suites / 144 tests, 4 skipped) |
+| `npx tsc --noEmit` | PASS |
+| `prisma validate` | PASS |
+| `validate-graph.sh` | PASS |
+| `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` default | `false` |
+| R9 behavior changed by M3.2B | NO (`@Optional()` shadow hook only) |
+
+```
+R9_BEHAVIOR_CHANGED_BY_M3_2B=NO
+SHADOW_FEATURE_DEFAULT=false
+PR_MERGEABLE=PENDING_PUSH
+READY_TO_MERGE=PENDING_GITHUB
+```

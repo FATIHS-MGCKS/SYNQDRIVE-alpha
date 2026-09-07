@@ -1,0 +1,39 @@
+# Trip Detection & Lifecycle — Knowledge Graph Edges
+
+edges:
+  - from: TDL-PIPE-WAKE-INTAKE-001
+    relation: downstream_of
+    to: TDL-PERSIST-PENDING-MAILBOX-001
+  - from: TDL-PIPE-WAKE-INTAKE-001
+    relation: enqueues
+    to: TDL-QUEUE-SNAPSHOT-POLL-001
+  - from: TDL-ORCH-WAKE-COORD-001
+    relation: uses
+    to: TDL-AUTH-CONTINUATION-001
+  - from: TDL-ORCH-WAKE-COORD-001
+    relation: persists
+    to: TDL-PERSIST-SUCCESSOR-MAILBOX-001
+  - from: TDL-ORCH-WAKE-COORD-001
+    relation: downstream_of
+    to: TDL-QUEUE-WAKE-HANDOFF-001
+  - from: TDL-QUEUE-WAKE-HANDOFF-001
+    relation: consumed_by
+    to: TDL-WORK-HANDOFF-001
+  - from: TDL-QUEUE-SNAPSHOT-POLL-001
+    relation: consumed_by
+    to: TDL-WORK-SNAPSHOT-001
+  - from: TDL-WORK-SNAPSHOT-001
+    relation: downstream_of
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: uses
+    to: TDL-AUTH-FSM-PERSIST-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: uses
+    to: TDL-AUTH-LIFECYCLE-001
+  - from: TDL-EVID-R9-AUDIT-001
+    relation: supports
+    to: TDL-ORCH-WAKE-COORD-001
+  - from: TDL-TEST-R9-001
+    relation: supports
+    to: TDL-ORCH-WAKE-COORD-001

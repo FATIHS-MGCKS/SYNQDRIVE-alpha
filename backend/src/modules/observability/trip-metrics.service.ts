@@ -63,6 +63,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
   readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly snapshotWakeTotal: Counter<string>;
+  readonly snapshotWakeProbeTotal: Counter<string>;
+  readonly snapshotPollingTierVehicles: Gauge<string>;
+  readonly snapshotFastTierRatio: Gauge<string>;
   readonly hvSnapshotDuplicatesDiscarded: Counter<string>;
   readonly metricsEndpointRequests: Counter<string>;
 
@@ -271,6 +275,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripEndLatencyFromMovement: Histogram<string>;
   readonly tripStartCandidateLatency: Histogram<string>;
   readonly tripStartRecognitionLatency: Histogram<string>;
+  readonly snapshotWakeToFetchSeconds: Histogram<string>;
   readonly tripStartBoundaryAdjustment: Histogram<string>;
   readonly tripEndCandidateLatency: Histogram<string>;
   readonly tripEndRecognitionLatency: Histogram<string>;
@@ -498,6 +503,42 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_dimo_snapshot_poll_total',
       help: 'Total DIMO snapshot poll worker outcomes',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeTotal = new Counter({
+      name: 'synqdrive_trip_snapshot_wake_total',
+      help: 'DIMO provider snapshot wake intake outcomes',
+      labelNames: ['source', 'reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeProbeTotal = new Counter({
+      name: 'synqdrive_trip_snapshot_wake_probe_total',
+      help: 'Bounded wake probe scheduling outcomes',
+      labelNames: ['reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.snapshotWakeToFetchSeconds = new Histogram({
+      name: 'synqdrive_trip_snapshot_wake_to_fetch_seconds',
+      help:
+        'Seconds from provider wake EVENT_TIME to canonical snapshot providerFetchedAt WORKER_TIME',
+      buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600],
+      registers: [this.registry],
+    });
+
+    this.snapshotPollingTierVehicles = new Gauge({
+      name: 'synqdrive_snapshot_polling_tier_vehicles',
+      help: 'Connected snapshot-eligible vehicles by effective polling tier',
+      labelNames: ['tier'],
+      registers: [this.registry],
+    });
+
+    this.snapshotFastTierRatio = new Gauge({
+      name: 'synqdrive_snapshot_fast_tier_ratio',
+      help:
+        'Share of connected snapshot cohort in ACTIVE_DRIVING + RECENTLY_ACTIVE tiers',
       registers: [this.registry],
     });
 
@@ -1878,6 +1919,38 @@ export class TripMetricsService implements OnModuleInit {
   }
 
   /** Returns the Prometheus metrics text for the /metrics endpoint. */
+  setSnapshotPollingTierOccupancy(
+    tierCounts: Map<string, number>,
+  ): void {
+    try {
+      const allTiers = [
+        'ACTIVE_DRIVING',
+        'RECENTLY_ACTIVE',
+        'RESTING_STANDBY',
+        'LONG_IDLE',
+        'OFFLINE',
+        'HARD_OFFLINE',
+      ];
+      let total = 0;
+      let fast = 0;
+      for (const tier of allTiers) {
+        const count = tierCounts.get(tier) ?? 0;
+        this.snapshotPollingTierVehicles.set({ tier }, count);
+        total += count;
+        if (tier === 'ACTIVE_DRIVING' || tier === 'RECENTLY_ACTIVE') {
+          fast += count;
+        }
+      }
+      if (total > 0) {
+        this.snapshotFastTierRatio.set(fast / total);
+      } else {
+        this.snapshotFastTierRatio.set(0);
+      }
+    } catch {
+      // non-blocking observability
+    }
+  }
+
   async getMetrics(): Promise<string> {
     return this.registry.metrics();
   }
