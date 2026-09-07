@@ -13,20 +13,20 @@ function baseFields(overrides: Partial<ShutdownEvidenceFieldBundle> = {}): Shutd
   return {
     voltage: 12.2,
     voltageObservedAt: at,
-    voltageTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SIGNAL_TIMESTAMP,
+    voltageTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_FIELD_TIMESTAMP,
     speedKmh: 0,
     speedObservedAt: at,
-    speedTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP,
+    speedTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP,
     ignitionOn: false,
     ignitionObservedAt: at,
-    ignitionTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP,
+    ignitionTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP,
     engineRunning: false,
     engineRunningObservedAt: at,
-    engineRunningTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP,
+    engineRunningTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP,
     isLvCharging: false,
     isHvCharging: false,
     chargingContextObservedAt: at,
-    chargingContextTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP,
+    chargingContextTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP,
     activeTrip: false,
     activeTripObservedAt: at,
     activeTripTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.INGEST_WALL_CLOCK,
@@ -115,6 +115,24 @@ describe('classifyShutdownEvidence', () => {
     expect(result.evidenceClass).toBe(BatteryShutdownEvidenceClass.UNKNOWN_STATE);
     expect(result.confidenceClass).toBe(
       BatteryShutdownEvidenceConfidenceClass.INSUFFICIENT,
+    );
+  });
+
+  it('does not classify null speed as POST_ENGINE_OFF_PRE_SLEEP', () => {
+    const result = classifyShutdownEvidence({
+      fields: baseFields({
+        activeTrip: false,
+        speedKmh: null,
+        speedObservedAt: null,
+        speedTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN,
+      }),
+      tripEndedAt,
+      tripStartedAt: new Date('2026-09-06T19:30:00.000Z'),
+      relativeToTripEndMs: 0,
+      referenceAt: tripEndedAt,
+    });
+    expect(result.evidenceClass).not.toBe(
+      BatteryShutdownEvidenceClass.POST_ENGINE_OFF_PRE_SLEEP,
     );
   });
 

@@ -26,6 +26,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-07 — M3.2B provenance semantic hardening (PR #1560)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Initial M3.2B shadow module could fabricate provider LV timestamps from ingest wall-clock, treat null speed as rest, store permanent `providerSilenceAfterTripEnd` at trip finalization, and label shared VLS snapshot timestamps as independent provider field timestamps. |
+| **CHANGE** | Fail-closed provenance hardening — separate `providerObservationAt` / `effectiveCaptureReferenceAt`; explicit timestamp source taxonomy; alignment excludes ingest/unknown clocks; strict POST_ENGINE_OFF requires known speed + provider field LV timestamp; trip context uses time-local post-trip observation fields only. |
+| **WHY** | Shadow evidence must not appear stronger than source data supports; immutable context cannot claim future provider silence. |
+| **VALIDATION** | 7 shutdown-evidence test suites / 28 tests PASS; authority isolation unchanged; graph validator PASS; typecheck PASS. |
+| **OBSERVED_EFFECT** | All semantic invariants in machine-readable block satisfied; migration updated in-place (not yet applied to production). |
+| **NON_EFFECTS** | Authoritative Battery V2 unchanged; shadow flag still default false; no deploy. |
+| **DECISION_STATUS** | `READY_TO_MERGE=YES` (technical); PR remains draft for human review; `PRODUCTION_CHANGED=NO`. |
+| **EVIDENCE** | `M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION_IMPLEMENTATION_2026-09-07.md` § Provenance semantic hardening. |
+
 ## CL-2026-09-07 — M3.2B shadow shutdown evidence acquisition & per-field provenance observability
 
 | Field | Content |

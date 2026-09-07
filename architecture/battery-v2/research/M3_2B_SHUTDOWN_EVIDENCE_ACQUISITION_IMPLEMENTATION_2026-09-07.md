@@ -95,6 +95,24 @@ Both gated by `isBatteryV2ShutdownEvidenceShadowEnabled()`.
 
 ---
 
+## Provenance semantic hardening (PR #1560 review pass)
+
+Fail-closed corrections applied before merge:
+
+| Invariant | Fix |
+|-----------|-----|
+| `MISSING_PROVIDER_LV_TIMESTAMP_FABRICATED=NO` | `lvBatteryObservedAt` absent → `voltageObservedAt=null`, `voltageTimestampSource=UNKNOWN`; window lookup uses separate `effectiveCaptureReferenceAt` |
+| `PROVIDER_SIGNAL_TIMESTAMP_ONLY_WHEN_PROVIDER_SUPPLIED=YES` | Renamed to `PROVIDER_FIELD_TIMESTAMP`; only set when provider LV timestamp exists |
+| `NULL_SPEED_CAN_QUALIFY_POST_ENGINE_OFF_PRE_SLEEP=NO` | Strict rest requires `speedKmh != null && speedKmh <= threshold` |
+| `IMMUTABLE_CONTEXT_CONTAINS_FUTURE_SILENCE_CLAIM=NO` | Removed `providerSilenceAfterTripEnd`; replaced with time-local `postTripObservationPresentAtCapture` + `firstObservationAfterTripEndAtAtCapture` |
+| `PER_FIELD_PROVENANCE_SEMANTICALLY_ACCURATE=YES` | VLS `sourceTimestamp` = shared `PROVIDER_SNAPSHOT_TIMESTAMP` (DIMO lastSeenAt); motion fields share one timestamp; `vlsSharedSnapshotTimestamp` metadata preserved |
+| `INGEST_FALLBACK_CAN_CREATE_FALSE_ALIGNMENT=NO` | `resolveStateAlignment()` excludes `INGEST_WALL_CLOCK` and `UNKNOWN` sources |
+| `TRIP_CONTEXT_VOLTAGE_TIMESTAMP_PROVENANCE_ACCURATE=YES` | Trip-finalize voltage uses shared snapshot provenance, not fabricated provider field timestamp |
+
+Provider timestamps are never synthesized. Unknown timing degrades confidence. Shared snapshot timestamps are not claimed as independent per-field provider timestamps.
+
+---
+
 ## Rollout plan
 
 | Phase | Action |
@@ -116,6 +134,7 @@ M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO
 
 ```
 BATTERY_V2_M3_2B_SHUTDOWN_EVIDENCE_ACQUISITION=COMPLETE
+BATTERY_V2_M3_2B_PROVENANCE_HARDENING=COMPLETE
 
 CURRENT_CONTEXT_FIELDS_ATOMIC=NO
 
@@ -124,6 +143,15 @@ TRIP_SHUTDOWN_CONTEXT_CREATED=YES
 
 PER_FIELD_TIMESTAMP_PROVENANCE=YES
 STATE_TIMESTAMP_SKEW_MEASURED=YES
+
+MISSING_PROVIDER_LV_TIMESTAMP_FABRICATED=NO
+PROVIDER_SIGNAL_TIMESTAMP_ONLY_WHEN_PROVIDER_SUPPLIED=YES
+NULL_SPEED_CAN_QUALIFY_POST_ENGINE_OFF_PRE_SLEEP=NO
+IMMUTABLE_CONTEXT_CONTAINS_FUTURE_SILENCE_CLAIM=NO
+PER_FIELD_PROVENANCE_SEMANTICALLY_ACCURATE=YES
+INDEPENDENT_FIELD_TIMESTAMP_CLAIMED_WHEN_NOT_AVAILABLE=NO
+INGEST_FALLBACK_CAN_CREATE_FALSE_ALIGNMENT=NO
+TRIP_CONTEXT_VOLTAGE_TIMESTAMP_PROVENANCE_ACCURATE=YES
 
 EVIDENCE_CLASSES_IMPLEMENTED=YES
 CONFIDENCE_CLASSES_IMPLEMENTED=YES
@@ -145,14 +173,19 @@ HEALTH_SCORE_BEHAVIOR_CHANGED=NO
 MIGRATION_ADDITIVE=YES
 BACKFILL_PERFORMED=NO
 
-TESTS=PASS (6 suites / 17 tests shutdown-evidence)
+TESTS=PASS (7 suites / 28 tests shutdown-evidence)
 GRAPH_VALIDATOR=PASS
 TYPECHECK=PASS
+PRISMA_VALIDATE=PASS_WITH_ENV_NOTE
 
 PRODUCTION_VALIDATED=PENDING_NATURAL_E2E_EVIDENCE
 M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY
 
 M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO
+
+PR=1560
+PR_DRAFT=YES
+READY_TO_MERGE=YES
 
 PRODUCTION_CHANGED=NO
 ```

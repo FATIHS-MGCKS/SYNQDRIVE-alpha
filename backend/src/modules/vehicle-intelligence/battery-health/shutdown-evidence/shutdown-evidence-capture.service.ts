@@ -9,6 +9,7 @@ import {
   SHUTDOWN_CAPTURE_POST_WINDOW_MS,
   SHUTDOWN_CAPTURE_PRE_WINDOW_MS,
   SHUTDOWN_EVIDENCE_SOURCE_KINDS,
+  SHUTDOWN_VLS_SHARED_SNAPSHOT_FIELDS,
 } from './shutdown-evidence.constants';
 import { classifyShutdownEvidence } from './shutdown-evidence-classification.policy';
 import { buildShutdownEvidenceObservationIdempotencyKey } from './shutdown-evidence-idempotency.policy';
@@ -56,8 +57,6 @@ export class ShutdownEvidenceCaptureService {
     }
 
     const ingestedAt = parseIso(ctx.providerFetchedAt) ?? new Date();
-    const providerObservationAt =
-      parseIso(ctx.lvBatteryObservedAt) ?? ingestedAt;
 
     const vehicleRow = await this.prisma.vehicle.findUnique({
       where: { id: payload.vehicleId },
@@ -82,9 +81,18 @@ export class ShutdownEvidenceCaptureService {
       },
     });
 
+    const bundleResult = buildShutdownFieldBundleFromSnapshotIngest({
+      snapshotContext: ctx,
+      vls: vehicleRow?.latestState ?? null,
+      tripDetection: vehicleRow?.tripDetectionState ?? null,
+      ingestedAt,
+    });
+    const { fields, sourceSnapshotId, providerLv, vlsSharedSnapshot } = bundleResult;
+    const effectiveCaptureReferenceAt = providerLv.effectiveCaptureReferenceAt;
+
     const trip = await this.repository.findLatestCompletedIceTripInCaptureWindow({
       vehicleId: payload.vehicleId,
-      observationAt: providerObservationAt,
+      observationAt: effectiveCaptureReferenceAt,
       preWindowMs: SHUTDOWN_CAPTURE_PRE_WINDOW_MS,
       postWindowMs: SHUTDOWN_CAPTURE_POST_WINDOW_MS,
     });
@@ -94,7 +102,7 @@ export class ShutdownEvidenceCaptureService {
     }
 
     const relativeToTripEndMs =
-      providerObservationAt.getTime() - trip.endTime.getTime();
+      effectiveCaptureReferenceAt.getTime() - trip.endTime.getTime();
     if (
       relativeToTripEndMs < -SHUTDOWN_CAPTURE_PRE_WINDOW_MS ||
       relativeToTripEndMs > SHUTDOWN_CAPTURE_POST_WINDOW_MS
@@ -102,25 +110,18 @@ export class ShutdownEvidenceCaptureService {
       return 'skipped_outside_window';
     }
 
-    const { fields, sourceSnapshotId } = buildShutdownFieldBundleFromSnapshotIngest({
-      snapshotContext: ctx,
-      vls: vehicleRow?.latestState ?? null,
-      tripDetection: vehicleRow?.tripDetectionState ?? null,
-      ingestedAt,
-    });
-
     const classification = classifyShutdownEvidence({
       fields,
       tripEndedAt: trip.endTime,
       tripStartedAt: trip.startTime,
       relativeToTripEndMs,
-      referenceAt: providerObservationAt,
+      referenceAt: effectiveCaptureReferenceAt,
     });
 
     const idempotencyKey = buildShutdownEvidenceObservationIdempotencyKey({
       vehicleId: payload.vehicleId,
       provider: 'DIMO',
-      providerObservationAtMs: providerObservationAt.getTime(),
+      providerObservationAtMs: effectiveCaptureReferenceAt.getTime(),
       sourceKind: SHUTDOWN_EVIDENCE_SOURCE_KINDS.LIVE_VOLTAGE_CLASSIFY,
       sourceObservationId: payload.idempotencyKey,
       voltage: fields.voltage,
@@ -131,7 +132,8 @@ export class ShutdownEvidenceCaptureService {
       vehicleId: payload.vehicleId,
       tripId: trip.id,
       provider: 'DIMO',
-      providerObservationAt,
+      providerObservationAt: providerLv.providerObservationAt,
+      effectiveCaptureReferenceAt,
       providerResponseAt: ingestedAt,
       ingestedAt,
       voltage: fields.voltage,
@@ -174,6 +176,11 @@ export class ShutdownEvidenceCaptureService {
         engineRunningTimestampSource: fields.engineRunningTimestampSource,
         chargingContextTimestampSource: fields.chargingContextTimestampSource,
         activeTripTimestampSource: fields.activeTripTimestampSource,
+        vlsSharedSnapshotTimestamp: {
+          observedAt: vlsSharedSnapshot.observedAt?.toISOString() ?? null,
+          timestampSource: vlsSharedSnapshot.source,
+          sharedFields: [...SHUTDOWN_VLS_SHARED_SNAPSHOT_FIELDS],
+        },
       },
       idempotencyKey,
     });

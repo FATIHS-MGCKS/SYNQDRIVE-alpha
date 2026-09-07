@@ -13,7 +13,8 @@ export interface CreateShutdownEvidenceObservationInput {
   vehicleId: string;
   tripId: string | null;
   provider: string;
-  providerObservationAt: Date;
+  providerObservationAt: Date | null;
+  effectiveCaptureReferenceAt: Date;
   providerResponseAt: Date;
   ingestedAt: Date;
   voltage: number | null;
@@ -63,8 +64,8 @@ export interface CreateTripShutdownContextInput {
   maxFieldTimestampSkewMs: number | null;
   stateCompleteness: BatteryShutdownStateCompleteness;
   stateAlignmentClass: BatteryShutdownStateAlignmentClass;
-  providerSilenceAfterTripEnd: boolean;
-  firstObservationAfterTripEndAt: Date | null;
+  postTripObservationPresentAtCapture: boolean;
+  firstObservationAfterTripEndAtAtCapture: Date | null;
   idempotencyKey: string;
 }
 
@@ -136,18 +137,22 @@ export class ShutdownEvidenceRepository {
     });
   }
 
-  async findFirstLvObservationAfterTripEnd(input: {
+  async findFirstObservationAfterTripEndAtCapture(input: {
     vehicleId: string;
     tripEndedAt: Date;
+    capturedAt: Date;
   }): Promise<Date | null> {
     const row = await this.prisma.batteryShutdownEvidenceObservation.findFirst({
       where: {
         vehicleId: input.vehicleId,
-        providerObservationAt: { gt: input.tripEndedAt },
+        effectiveCaptureReferenceAt: {
+          gt: input.tripEndedAt,
+          lte: input.capturedAt,
+        },
       },
-      orderBy: { providerObservationAt: 'asc' },
-      select: { providerObservationAt: true },
+      orderBy: { effectiveCaptureReferenceAt: 'asc' },
+      select: { effectiveCaptureReferenceAt: true },
     });
-    return row?.providerObservationAt ?? null;
+    return row?.effectiveCaptureReferenceAt ?? null;
   }
 }

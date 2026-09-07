@@ -89,10 +89,7 @@ export class ShutdownEvidenceTripContextService {
       snapshotContext: {
         providerFetchedAt: capturedAt.toISOString(),
         lvBatteryVoltage: vehicleRow?.latestState?.lvBatteryVoltage ?? null,
-        lvBatteryObservedAt:
-          vehicleRow?.latestState?.sourceTimestamp?.toISOString() ??
-          vehicleRow?.latestState?.providerFetchedAt?.toISOString() ??
-          null,
+        lvBatteryObservedAt: null,
       },
       vls: vehicleRow?.latestState ?? null,
       tripDetection: vehicleRow?.tripDetectionState ?? null,
@@ -102,10 +99,12 @@ export class ShutdownEvidenceTripContextService {
     const stateCompleteness = resolveStateCompleteness(bundle);
     const alignment = resolveStateAlignment(bundle, capturedAt);
 
-    const firstAfter = await this.repository.findFirstLvObservationAfterTripEnd({
-      vehicleId: input.vehicleId,
-      tripEndedAt: input.tripEndedAt,
-    });
+    const firstAfterAtCapture =
+      await this.repository.findFirstObservationAfterTripEndAtCapture({
+        vehicleId: input.vehicleId,
+        tripEndedAt: input.tripEndedAt,
+        capturedAt,
+      });
 
     const idempotencyKey = buildTripShutdownContextIdempotencyKey({
       vehicleId: input.vehicleId,
@@ -122,8 +121,8 @@ export class ShutdownEvidenceTripContextService {
       maxFieldTimestampSkewMs: alignment.maxFieldTimestampSkewMs,
       stateCompleteness,
       stateAlignmentClass: alignment.stateAlignmentClass,
-      providerSilenceAfterTripEnd: firstAfter == null,
-      firstObservationAfterTripEndAt: firstAfter,
+      postTripObservationPresentAtCapture: firstAfterAtCapture != null,
+      firstObservationAfterTripEndAtAtCapture: firstAfterAtCapture,
       idempotencyKey,
     });
 

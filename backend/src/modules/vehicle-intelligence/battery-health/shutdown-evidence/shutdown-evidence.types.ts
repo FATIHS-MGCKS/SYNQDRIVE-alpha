@@ -74,6 +74,11 @@ export interface TripShutdownContextSnapshot {
   vehicleId: string;
   tripEndedAt: string;
   capturedAt: string;
+  vlsSharedSnapshotTimestamp: {
+    observedAt: string | null;
+    timestampSource: ShutdownTimestampSource;
+    sharedFields: string[];
+  };
   fields: {
     voltage: TripShutdownContextSnapshotField;
     speedKmh: TripShutdownContextSnapshotField;

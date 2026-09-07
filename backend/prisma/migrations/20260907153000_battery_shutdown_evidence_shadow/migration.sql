@@ -35,7 +35,8 @@ CREATE TABLE "battery_shutdown_evidence_observations" (
   "vehicle_id" UUID NOT NULL,
   "trip_id" UUID,
   "provider" TEXT NOT NULL DEFAULT 'DIMO',
-  "provider_observation_at" TIMESTAMPTZ NOT NULL,
+  "provider_observation_at" TIMESTAMPTZ,
+  "effective_capture_reference_at" TIMESTAMPTZ NOT NULL,
   "provider_response_at" TIMESTAMPTZ NOT NULL,
   "ingested_at" TIMESTAMPTZ NOT NULL,
   "voltage" DOUBLE PRECISION,
@@ -89,8 +90,8 @@ CREATE TABLE "battery_trip_shutdown_contexts" (
   "max_field_timestamp_skew_ms" INTEGER,
   "state_completeness" "BatteryShutdownStateCompleteness" NOT NULL,
   "state_alignment_class" "BatteryShutdownStateAlignmentClass" NOT NULL,
-  "provider_silence_after_trip_end" BOOLEAN NOT NULL DEFAULT false,
-  "first_observation_after_trip_end_at" TIMESTAMPTZ,
+  "post_trip_observation_present_at_capture" BOOLEAN NOT NULL DEFAULT false,
+  "first_observation_after_trip_end_at_at_capture" TIMESTAMPTZ,
   "idempotency_key" TEXT NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -100,11 +101,11 @@ CREATE TABLE "battery_trip_shutdown_contexts" (
 CREATE UNIQUE INDEX "battery_shutdown_evidence_obs_idempotency"
   ON "battery_shutdown_evidence_observations" ("organization_id", "vehicle_id", "idempotency_key");
 
-CREATE INDEX "battery_shutdown_evidence_obs_vehicle_obs_at_idx"
-  ON "battery_shutdown_evidence_observations" ("vehicle_id", "provider_observation_at" DESC);
+CREATE INDEX "battery_shutdown_evidence_obs_vehicle_eff_capture_idx"
+  ON "battery_shutdown_evidence_observations" ("vehicle_id", "effective_capture_reference_at" DESC);
 
-CREATE INDEX "battery_shutdown_evidence_obs_trip_obs_at_idx"
-  ON "battery_shutdown_evidence_observations" ("trip_id", "provider_observation_at" DESC);
+CREATE INDEX "battery_shutdown_evidence_obs_trip_eff_capture_idx"
+  ON "battery_shutdown_evidence_observations" ("trip_id", "effective_capture_reference_at" DESC);
 
 CREATE INDEX "battery_shutdown_evidence_obs_org_created_idx"
   ON "battery_shutdown_evidence_observations" ("organization_id", "created_at" DESC);

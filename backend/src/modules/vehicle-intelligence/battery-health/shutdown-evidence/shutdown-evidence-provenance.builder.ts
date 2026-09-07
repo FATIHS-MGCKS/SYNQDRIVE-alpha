@@ -6,21 +6,47 @@ import {
 import type { BatteryObservationSnapshotContext } from '../jobs/battery-v2-snapshot-context.types';
 import {
   SHUTDOWN_TIMESTAMP_SOURCES,
+  SHUTDOWN_VLS_SHARED_SNAPSHOT_FIELDS,
   type ShutdownTimestampSource,
 } from './shutdown-evidence.constants';
-import {
-  deriveEngineRunningFromLoad,
-} from './shutdown-evidence-classification.policy';
+import { deriveEngineRunningFromLoad } from './shutdown-evidence-classification.policy';
 import type { ShutdownEvidenceFieldBundle } from './shutdown-evidence.types';
 
-function resolveVlsFieldTimestamp(
-  vls: Pick<VehicleLatestState, 'sourceTimestamp' | 'providerFetchedAt'>,
-  ingestedAt: Date,
-): { observedAt: Date; source: ShutdownTimestampSource } {
+export interface ResolvedProviderLvTimestamp {
+  providerObservationAt: Date | null;
+  effectiveCaptureReferenceAt: Date;
+  voltageObservedAt: Date | null;
+  voltageTimestampSource: ShutdownTimestampSource;
+}
+
+export interface ResolvedVlsSharedSnapshotTimestamp {
+  observedAt: Date | null;
+  source: ShutdownTimestampSource;
+}
+
+function parseIso(value: string | null | undefined): Date | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+/**
+ * DIMO VLS sourceTimestamp is the shared snapshot lastSeenAt — not an independent
+ * per-field provider timestamp. See dimo-snapshot.processor (sourceTimestamp = lastSeenAt).
+ */
+export function resolveVlsSharedSnapshotTimestamp(
+  vls: Pick<VehicleLatestState, 'sourceTimestamp' | 'providerFetchedAt'> | null,
+): ResolvedVlsSharedSnapshotTimestamp {
+  if (!vls) {
+    return {
+      observedAt: null,
+      source: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN,
+    };
+  }
   if (vls.sourceTimestamp && !Number.isNaN(vls.sourceTimestamp.getTime())) {
     return {
       observedAt: vls.sourceTimestamp,
-      source: SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP,
+      source: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP,
     };
   }
   if (vls.providerFetchedAt && !Number.isNaN(vls.providerFetchedAt.getTime())) {
@@ -30,8 +56,32 @@ function resolveVlsFieldTimestamp(
     };
   }
   return {
-    observedAt: ingestedAt,
-    source: SHUTDOWN_TIMESTAMP_SOURCES.INGEST_WALL_CLOCK,
+    observedAt: null,
+    source: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN,
+  };
+}
+
+export function resolveProviderLvTimestamp(input: {
+  lvBatteryObservedAt: string | null | undefined;
+  ingestedAt: Date;
+}): ResolvedProviderLvTimestamp {
+  const providerObservationAt = parseIso(input.lvBatteryObservedAt) ?? null;
+  const effectiveCaptureReferenceAt = providerObservationAt ?? input.ingestedAt;
+
+  if (providerObservationAt) {
+    return {
+      providerObservationAt,
+      effectiveCaptureReferenceAt,
+      voltageObservedAt: providerObservationAt,
+      voltageTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_FIELD_TIMESTAMP,
+    };
+  }
+
+  return {
+    providerObservationAt: null,
+    effectiveCaptureReferenceAt,
+    voltageObservedAt: null,
+    voltageTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN,
   };
 }
 
@@ -55,12 +105,18 @@ export function buildShutdownFieldBundleFromSnapshotIngest(input: {
     'activeTripId' | 'lastActivityAt'
   > | null;
   ingestedAt: Date;
-}): { fields: ShutdownEvidenceFieldBundle; sourceSnapshotId: string | null } {
+}): {
+  fields: ShutdownEvidenceFieldBundle;
+  sourceSnapshotId: string | null;
+  providerLv: ResolvedProviderLvTimestamp;
+  vlsSharedSnapshot: ResolvedVlsSharedSnapshotTimestamp;
+} {
   const ctx = input.snapshotContext;
-  const voltageObservedAt = parseIso(ctx.lvBatteryObservedAt) ?? input.ingestedAt;
-  const vlsBundle = input.vls
-    ? resolveVlsFieldTimestamp(input.vls, input.ingestedAt)
-    : { observedAt: input.ingestedAt, source: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN as ShutdownTimestampSource };
+  const providerLv = resolveProviderLvTimestamp({
+    lvBatteryObservedAt: ctx.lvBatteryObservedAt,
+    ingestedAt: input.ingestedAt,
+  });
+  const vlsSharedSnapshot = resolveVlsSharedSnapshotTimestamp(input.vls);
 
   const voltage = ctx.lvBatteryVoltage ?? null;
   const engineRunning = deriveEngineRunningFromLoad(input.vls?.engineLoad ?? null);
@@ -68,8 +124,8 @@ export function buildShutdownFieldBundleFromSnapshotIngest(input: {
     input.vls?.tractionBatteryIsCharging === true ||
     (input.vls?.tractionBatteryChargingPowerKw ?? 0) > 0;
   const signalLike = {
-    observedAt: voltageObservedAt,
-    providerObservedAt: voltageObservedAt,
+    observedAt: providerLv.voltageObservedAt ?? providerLv.effectiveCaptureReferenceAt,
+    providerObservedAt: providerLv.voltageObservedAt,
     providerError: false,
     speedKmh: input.vls?.speedKmh ?? null,
     ignitionOn: input.vls?.isIgnitionOn ?? null,
@@ -86,45 +142,44 @@ export function buildShutdownFieldBundleFromSnapshotIngest(input: {
     signalLike.isLvCharging = true;
   }
 
+  const sharedObservedAt = vlsSharedSnapshot.observedAt;
+  const sharedSource = vlsSharedSnapshot.source;
+
   return {
     sourceSnapshotId: input.vls?.syncJobRef ?? null,
+    providerLv,
+    vlsSharedSnapshot,
     fields: {
       voltage,
-      voltageObservedAt,
-      voltageTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SIGNAL_TIMESTAMP,
+      voltageObservedAt: providerLv.voltageObservedAt,
+      voltageTimestampSource: providerLv.voltageTimestampSource,
 
       speedKmh: signalLike.speedKmh,
-      speedObservedAt: vlsBundle.observedAt,
-      speedTimestampSource: vlsBundle.source,
+      speedObservedAt: sharedObservedAt,
+      speedTimestampSource: sharedSource,
 
       ignitionOn: signalLike.ignitionOn,
-      ignitionObservedAt: vlsBundle.observedAt,
-      ignitionTimestampSource: vlsBundle.source,
+      ignitionObservedAt: sharedObservedAt,
+      ignitionTimestampSource: sharedSource,
 
       engineRunning: signalLike.engineRunning,
-      engineRunningObservedAt: vlsBundle.observedAt,
-      engineRunningTimestampSource: vlsBundle.source,
+      engineRunningObservedAt: sharedObservedAt,
+      engineRunningTimestampSource: sharedSource,
 
       isLvCharging: signalLike.isLvCharging,
       isHvCharging: signalLike.isHvCharging,
-      chargingContextObservedAt: vlsBundle.observedAt,
-      chargingContextTimestampSource: vlsBundle.source,
+      chargingContextObservedAt: sharedObservedAt,
+      chargingContextTimestampSource: sharedSource,
 
       activeTrip: signalLike.hasActiveTrip,
       activeTripObservedAt: input.ingestedAt,
       activeTripTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.INGEST_WALL_CLOCK,
 
       vehicleOnline: input.vls?.online ?? null,
-      vehicleOnlineObservedAt: input.vls?.lastSeenAt ?? vlsBundle.observedAt,
+      vehicleOnlineObservedAt: input.vls?.lastSeenAt ?? sharedObservedAt,
       providerLastSeenAt: input.vls?.lastSeenAt ?? null,
     },
   };
-}
-
-function parseIso(value: string | null | undefined): Date | undefined {
-  if (!value) return undefined;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 export function buildTripShutdownContextSnapshotFields(input: {
@@ -147,16 +202,11 @@ export function buildTripShutdownContextSnapshotFields(input: {
   > | null;
   tripDetection: Pick<VehicleTripDetectionState, 'activeTripId'> | null;
 }) {
-  const vlsTs = input.vls
-    ? resolveVlsFieldTimestamp(input.vls, input.capturedAt)
-    : { observedAt: input.capturedAt, source: SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN as ShutdownTimestampSource };
-
+  const vlsSharedSnapshot = resolveVlsSharedSnapshotTimestamp(input.vls);
   const tripEndMs = input.tripEndedAt.getTime();
   const age = (at: Date | null | undefined) =>
     at != null && !Number.isNaN(at.getTime()) ? tripEndMs - at.getTime() : null;
 
-  const voltageObservedAt =
-    input.vls?.sourceTimestamp ?? input.vls?.providerFetchedAt ?? null;
   const engineRunning = deriveEngineRunningFromLoad(input.vls?.engineLoad ?? null);
   const isHvCharging =
     input.vls?.tractionBatteryIsCharging === true ||
@@ -165,28 +215,58 @@ export function buildTripShutdownContextSnapshotFields(input: {
   const isLvCharging =
     lvVoltage != null && lvVoltage >= DEFAULT_LV_CHARGING_VOLTAGE_THRESHOLD_V;
 
+  const sharedObservedAt = vlsSharedSnapshot.observedAt;
+  const sharedSource = vlsSharedSnapshot.source;
+
   return {
     tripId: input.tripId,
     vehicleId: input.vehicleId,
     tripEndedAt: input.tripEndedAt.toISOString(),
     capturedAt: input.capturedAt.toISOString(),
     atomicClaim: false as const,
+    vlsSharedSnapshotTimestamp: {
+      observedAt: sharedObservedAt?.toISOString() ?? null,
+      timestampSource: sharedSource,
+      sharedFields: [...SHUTDOWN_VLS_SHARED_SNAPSHOT_FIELDS, 'voltage'],
+    },
     fields: {
-      voltage: fieldSnapshot(lvVoltage, voltageObservedAt, SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SIGNAL_TIMESTAMP, age(voltageObservedAt)),
-      speedKmh: fieldSnapshot(input.vls?.speedKmh ?? null, vlsTs.observedAt, vlsTs.source, age(vlsTs.observedAt)),
-      ignitionOn: fieldSnapshot(input.vls?.isIgnitionOn ?? null, vlsTs.observedAt, vlsTs.source, age(vlsTs.observedAt)),
-      engineRunning: fieldSnapshot(engineRunning, vlsTs.observedAt, vlsTs.source, age(vlsTs.observedAt)),
+      voltage: fieldSnapshot(
+        lvVoltage,
+        sharedObservedAt,
+        sharedSource,
+        age(sharedObservedAt),
+      ),
+      speedKmh: fieldSnapshot(
+        input.vls?.speedKmh ?? null,
+        sharedObservedAt,
+        sharedSource,
+        age(sharedObservedAt),
+      ),
+      ignitionOn: fieldSnapshot(
+        input.vls?.isIgnitionOn ?? null,
+        sharedObservedAt,
+        sharedSource,
+        age(sharedObservedAt),
+      ),
+      engineRunning: fieldSnapshot(
+        engineRunning,
+        sharedObservedAt,
+        sharedSource,
+        age(sharedObservedAt),
+      ),
       chargingContext: fieldSnapshot(
         { isLvCharging, isHvCharging },
-        vlsTs.observedAt,
-        vlsTs.source,
-        age(vlsTs.observedAt),
+        sharedObservedAt,
+        sharedSource,
+        age(sharedObservedAt),
       ),
       vehicleOnline: fieldSnapshot(
         input.vls?.online ?? null,
-        input.vls?.lastSeenAt ?? vlsTs.observedAt,
-        input.vls?.lastSeenAt ? SHUTDOWN_TIMESTAMP_SOURCES.VLS_SOURCE_TIMESTAMP : vlsTs.source,
-        age(input.vls?.lastSeenAt ?? vlsTs.observedAt),
+        input.vls?.lastSeenAt ?? sharedObservedAt,
+        input.vls?.lastSeenAt
+          ? SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_SNAPSHOT_TIMESTAMP
+          : sharedSource,
+        age(input.vls?.lastSeenAt ?? sharedObservedAt),
       ),
     },
   };

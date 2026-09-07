@@ -4,11 +4,14 @@ import {
   BatteryShutdownStateAlignmentClass,
   BatteryShutdownStateCompleteness,
 } from '@prisma/client';
+import { SHUTDOWN_TIMESTAMP_SOURCES } from './shutdown-evidence.constants';
+import type { ShutdownEvidenceFieldBundle } from './shutdown-evidence.types';
 
 export interface ShutdownConfidenceInput {
   evidenceClass: BatteryShutdownEvidenceClass;
   stateCompleteness: BatteryShutdownStateCompleteness;
   stateAlignmentClass: BatteryShutdownStateAlignmentClass;
+  fields: ShutdownEvidenceFieldBundle;
 }
 
 /**
@@ -29,20 +32,33 @@ export function resolveShutdownEvidenceConfidence(
   }
 
   if (input.evidenceClass === BatteryShutdownEvidenceClass.POST_ENGINE_OFF_PRE_SLEEP) {
+    const hasProviderLvTimestamp =
+      input.fields.voltageObservedAt != null &&
+      input.fields.voltageTimestampSource ===
+        SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_FIELD_TIMESTAMP;
+
     if (
       input.stateCompleteness === BatteryShutdownStateCompleteness.COMPLETE &&
-      input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.ALIGNED
+      input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.ALIGNED &&
+      hasProviderLvTimestamp &&
+      input.fields.speedKmh != null
     ) {
       return BatteryShutdownEvidenceConfidenceClass.HIGH;
     }
-    if (input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.PARTIAL) {
+    if (
+      hasProviderLvTimestamp &&
+      input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.PARTIAL
+    ) {
       return BatteryShutdownEvidenceConfidenceClass.MEDIUM;
     }
     return BatteryShutdownEvidenceConfidenceClass.LOW;
   }
 
   if (input.evidenceClass === BatteryShutdownEvidenceClass.SHUTDOWN_TRANSITION) {
-    if (input.stateCompleteness === BatteryShutdownStateCompleteness.COMPLETE) {
+    if (
+      input.stateCompleteness === BatteryShutdownStateCompleteness.COMPLETE &&
+      input.fields.speedKmh != null
+    ) {
       return BatteryShutdownEvidenceConfidenceClass.MEDIUM;
     }
     return BatteryShutdownEvidenceConfidenceClass.LOW;

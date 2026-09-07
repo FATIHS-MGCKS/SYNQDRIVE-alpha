@@ -17,7 +17,7 @@ describe('ShutdownEvidenceTripContextService', () => {
     process.env.BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED = 'false';
     const repository = {
       createTripContextIdempotent: jest.fn(),
-      findFirstLvObservationAfterTripEnd: jest.fn(),
+      findFirstObservationAfterTripEndAtCapture: jest.fn(),
     } as unknown as ShutdownEvidenceRepository;
     const prisma = { vehicle: { findUnique: jest.fn() } } as any;
     const batteryPolicy = { resolveForVehicle: jest.fn() } as any;
@@ -44,7 +44,7 @@ describe('ShutdownEvidenceTripContextService', () => {
     const tripEnd = new Date('2026-09-06T20:00:44.000Z');
     const createTripContextIdempotent = jest.fn().mockResolvedValue('created');
     const repository = {
-      findFirstLvObservationAfterTripEnd: jest.fn().mockResolvedValue(null),
+      findFirstObservationAfterTripEndAtCapture: jest.fn().mockResolvedValue(null),
       createTripContextIdempotent,
     } as unknown as ShutdownEvidenceRepository;
     const batteryPolicy = {
@@ -90,14 +90,70 @@ describe('ShutdownEvidenceTripContextService', () => {
     expect(createTripContextIdempotent).toHaveBeenCalledTimes(1);
     const payload = createTripContextIdempotent.mock.calls[0][0];
     expect(payload.snapshot.atomicClaim).toBe(false);
+    expect(payload.postTripObservationPresentAtCapture).toBe(false);
+    expect(payload.firstObservationAfterTripEndAtAtCapture).toBeNull();
+    expect(payload.providerSilenceAfterTripEnd).toBeUndefined();
     expect(payload.idempotencyKey).toBe('shutdown-ctx:veh:trip-1');
+  });
+
+  it('records time-local post-trip observation presence without silence claim', async () => {
+    process.env.BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED = 'true';
+    const tripEnd = new Date('2026-09-06T20:00:44.000Z');
+    const firstAfter = new Date('2026-09-06T20:02:00.000Z');
+    const createTripContextIdempotent = jest.fn().mockResolvedValue('created');
+    const repository = {
+      findFirstObservationAfterTripEndAtCapture: jest.fn().mockResolvedValue(firstAfter),
+      createTripContextIdempotent,
+    } as unknown as ShutdownEvidenceRepository;
+    const batteryPolicy = {
+      resolveForVehicle: jest.fn().mockResolvedValue({
+        driveProfile: BatteryDriveProfile.ICE,
+      }),
+    } as any;
+    const prisma = {
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue({
+          latestState: {
+            lvBatteryVoltage: 12.15,
+            speedKmh: 0,
+            isIgnitionOn: false,
+            engineLoad: 0,
+            tractionBatteryIsCharging: false,
+            tractionBatteryChargingPowerKw: 0,
+            online: true,
+            lastSeenAt: tripEnd,
+            sourceTimestamp: tripEnd,
+            providerFetchedAt: tripEnd,
+            syncJobRef: 'poll-1',
+          },
+          tripDetectionState: { activeTripId: null, lastActivityAt: tripEnd },
+        }),
+      },
+    } as any;
+
+    const service = new ShutdownEvidenceTripContextService(
+      prisma,
+      repository,
+      batteryPolicy,
+    );
+
+    await service.captureAtTripFinalization({
+      organizationId: 'org',
+      vehicleId: 'veh',
+      tripId: 'trip-1',
+      tripEndedAt: tripEnd,
+    });
+
+    const payload = createTripContextIdempotent.mock.calls[0][0];
+    expect(payload.postTripObservationPresentAtCapture).toBe(true);
+    expect(payload.firstObservationAfterTripEndAtAtCapture).toEqual(firstAfter);
   });
 
   it('suppresses duplicate trip context on replay', async () => {
     process.env.BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED = 'true';
     const tripEnd = new Date('2026-09-06T20:00:44.000Z');
     const repository = {
-      findFirstLvObservationAfterTripEnd: jest.fn().mockResolvedValue(null),
+      findFirstObservationAfterTripEndAtCapture: jest.fn().mockResolvedValue(null),
       createTripContextIdempotent: jest.fn().mockResolvedValue('duplicate'),
     } as unknown as ShutdownEvidenceRepository;
     const batteryPolicy = {
