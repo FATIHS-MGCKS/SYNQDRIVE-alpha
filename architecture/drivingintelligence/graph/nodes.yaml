@@ -925,6 +925,17 @@ nodes:
     evidence:
       - DI-EVID-0035C1-BLOCK-001
 
+  - id: DI-HYP-016
+    type: hypothesis
+    title: HF_HISTORICAL alone sufficient as sole high-resolution DI authority
+    epistemic_status: INFERRED
+    decision_status: REJECTED
+    summary: EXP-019 video-GT correlation rejects sole HF authority direction; 0/5 gap interiors; native fallback absent at windows (N=1).
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP019-VIDEO-GT-002
+
   # --- Hypothesis (legacy id) ---
   - id: DI-HYP-BLOCK-POLL-30S-001
     type: hypothesis
@@ -1096,3 +1107,12 @@ nodes:
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/RD004_RETROSPECTIVE.md
       - architecture/RD004_A_SEGMENT_A_VIDEO_TELEMETRY_ALIGNMENT_2026-09-04.md
+
+  - id: DI-EVID-EXP019-VIDEO-GT-002
+    type: evidence
+    title: EXP-019 video GT vs telemetry correlation
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Five human-verified GT windows; 0 HF interior samples in gaps; native/detector/score fallback absent (N=1).
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md

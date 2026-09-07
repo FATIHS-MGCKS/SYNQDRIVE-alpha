@@ -7,8 +7,9 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | ID | Question | Why it matters |
 |----|----------|----------------|
 | DI-OQ-HF-001 | What is fleet-wide DIMO HF request cost at current enrichment rate? | Scalability planning |
-| DI-OQ-HF-002 | Does 30s block polling preserve bucket density on all vehicle types? | **Partial data** — EXP-019 N=1; settlement replay shows max gap 117s **persisted**; live completeness 62.5%; **not validated** |
-| DI-OQ-HF-003 | Does ascending 10→60 phase order confound cadence vs route/time? | EXP-019 used ascending order | **OPEN** — counterbalanced 60→10 recommended |
+| DI-OQ-HF-002 | Does 30s block polling preserve bucket density on all vehicle types? | **Partial data** — EXP-019 N=1; settlement replay shows max gap 117s **persisted**; **video GT: gap interiors empty at all cadences incl. 10s**; **not validated** |
+| DI-OQ-HF-003 | Does ascending 10→60 phase order confound cadence vs route/time? | EXP-019 used ascending order; video GT confirms dynamics inside gaps regardless of cadence | **OPEN** — counterbalanced 60→10 recommended |
+| DI-OQ-HF-004 | Can native DIMO events backfill HF gap interiors on KS MX 2024? | EXP-019: 1 native event in session; **0/5** at GT windows | **OPEN** — multi-authority capture proposed |
 | DI-OQ-HF-003 | Optimal settlement delay and recovery overlap for production? | Currently 8s/6s provisional |
 | DI-OQ-HF-004 | Cross-provider cadence variance beyond LTE_R1 reference drives? | Generalization risk |
 

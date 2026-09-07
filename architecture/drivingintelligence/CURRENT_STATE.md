@@ -18,7 +18,7 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 | **HF_RECOVERY_V2_FEATURE_ENABLED** | **NO** — `HF_RECOVERY_POLICY_V2_ENABLED=false` |
 | **LIVE_CANARY_EXECUTED** | **NO** — empty canary allowlist; zero active calibration sessions (post GATE 2 baseline restored) |
 | **DI-DEF-019** | **FIXED_PRODUCTION_VALIDATED** — GATE 1 PG integration + GATE 2 stationary dress rehearsal (2026-09-06) |
-| **LIVE_MULTI_CADENCE_CALIBRATION** | **EXP-019 EXECUTED + SETTLEMENT CLOSEOUT (2026-09-07)** — rate-normalized analysis; max gaps persist; **NO cadence winner** |
+| **LIVE_MULTI_CADENCE_CALIBRATION** | **EXP-019 EXECUTED + SETTLEMENT + VIDEO-GT CORRELATION (2026-09-07)** — rate-normalized analysis; max gaps persist; **5 human GT windows: 0 HF interior samples**; **NO cadence winner** |
 | **HF_30S_BLOCK_POLLING_VALIDATED** | **NO** |
 | **Production HF authority** | **LEGACY** — whole-trip `fetchHighFrequency`; Recovery V2 **not active** |
 

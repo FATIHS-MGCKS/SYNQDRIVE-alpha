@@ -220,12 +220,12 @@ Latitude/longitude: **zero SIGNAL_POINT observations** in all phases.
 | Field | Value |
 |-------|-------|
 | BEST_SUPPORTED_CADENCE | **NO_CADENCE_CONCLUSION** |
-| CONFIDENCE | **LOW** (N=1; ascending order confound; video GT unverified) |
+| CONFIDENCE | **LOW** (N=1; ascending order confound; **video GT verified for 5 windows**) |
 | HF_30S_BLOCK_POLLING_VALIDATED | **NO** |
 | MORE_REFERENCE_DATA_REQUIRED | **YES** |
 | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED | **NO** |
-| VIDEO_GT_VERIFIED | **NO** |
-| READY_FOR_VIDEO_ALIGNMENT | **YES** (windows exported; upload/analysis pending) |
+| VIDEO_GT_VERIFIED | **YES** (5 human-verified windows — see `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md`) |
+| READY_FOR_VIDEO_ALIGNMENT | **COMPLETE** (correlation pass done) |
 | READY_FOR_HUMAN_SCIENTIFIC_REVIEW | **YES** |
 
 Do **not** select any cadence for production from this single run.
