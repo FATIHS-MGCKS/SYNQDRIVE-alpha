@@ -1,13 +1,14 @@
-import { TripDetectionState, VehicleStatus } from '@prisma/client';
+import { TripDetectionState } from '@prisma/client';
 
 import { SnapshotWakeCoordinatorService } from './snapshot-wake-coordinator.service';
+import { createSnapshotWakeRedisTestHarness } from './snapshot-wake-redis.test-harness';
+import { SnapshotWakeHandoffDeferError } from './snapshot-wake-handoff-defer.error';
 import {
   buildSnapshotWakeContext,
   pendingWakeRedisKey,
   snapshotJobId,
   successorWakeRedisKey,
 } from './snapshot-wake.util';
-import type { PendingSnapshotWakeRecord } from './snapshot-wake.types';
 
 const VEHICLE_ID = 'veh-1';
 const TOKEN_ID = 42;
@@ -24,51 +25,32 @@ function makeWake(probeGeneration: 0 | 1 = 0) {
 
 describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () => {
   let coordinator: SnapshotWakeCoordinatorService;
-  let redisStore: Map<string, string>;
+  let redis: ReturnType<typeof createSnapshotWakeRedisTestHarness>;
   let queueAdd: jest.Mock;
   let queueGetJob: jest.Mock;
   let handoffAdd: jest.Mock;
   let handoffGetJob: jest.Mock;
-  let prismaFindUnique: jest.Mock;
 
   beforeEach(() => {
-    redisStore = new Map();
+    redis = createSnapshotWakeRedisTestHarness();
     queueAdd = jest.fn().mockResolvedValue(undefined);
     queueGetJob = jest.fn().mockResolvedValue(null);
     handoffAdd = jest.fn().mockResolvedValue(undefined);
     handoffGetJob = jest.fn().mockResolvedValue(null);
-    prismaFindUnique = jest.fn().mockResolvedValue({
-      status: VehicleStatus.AVAILABLE,
-      dimoVehicle: { connectionStatus: 'CONNECTED', tokenId: TOKEN_ID },
-    });
-
-    const redis = {
-      get: jest.fn(async (key: string) => redisStore.get(key) ?? null),
-      set: jest.fn(async (key: string, value: string) => {
-        redisStore.set(key, value);
-        return 'OK';
-      }),
-      del: jest.fn(async (key: string) => {
-        redisStore.delete(key);
-        return 1;
-      }),
-      eval: jest.fn(async (_script: string, _numKeys: number, key: string, version: string) => {
-        const raw = redisStore.get(key);
-        if (!raw) return 0;
-        const record = JSON.parse(raw) as PendingSnapshotWakeRecord;
-        if (record.version === Number(version)) {
-          redisStore.delete(key);
-          return 1;
-        }
-        return 0;
-      }),
-    };
 
     coordinator = new SnapshotWakeCoordinatorService(
       { add: queueAdd, getJob: queueGetJob } as never,
       { add: handoffAdd, getJob: handoffGetJob } as never,
       redis as never,
-      { vehicle: { findUnique: prismaFindUnique }, vehicleTripDetectionState: { findUnique: jest.fn() } } as never,
+      {
+        vehicle: {
+          findUnique: jest.fn().mockResolvedValue({
+            status: 'AVAILABLE',
+            dimoVehicle: { connectionStatus: 'CONNECTED', tokenId: TOKEN_ID },
+          }),
+        },
+        vehicleTripDetectionState: { findUnique: jest.fn() },
+      } as never,
       undefined,
     );
   });
@@ -87,7 +69,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     });
 
     expect(outcome).toBe('COALESCED');
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
   });
 
   it('does not destructively consume pending wake at claim time', async () => {
@@ -96,7 +78,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
 
     const claimed = await coordinator.claimPendingWakeForRun(VEHICLE_ID);
     expect(claimed?.record.wakeContext.reason).toBe('SPEED_MOVEMENT');
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
   });
 
   it('ACK deletes only the exact pending wake version', async () => {
@@ -107,7 +89,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
 
     const acked = await coordinator.acknowledgePendingWake(VEHICLE_ID, claimed!.version);
     expect(acked).toBe(true);
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(false);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(false);
   });
 
   it('older ACK does not delete newer pending wake', async () => {
@@ -121,7 +103,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
 
     const acked = await coordinator.acknowledgePendingWake(VEHICLE_ID, oldClaim!.version);
     expect(acked).toBe(false);
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
   });
 
   it('queue enqueue failure retains durable pending wake', async () => {
@@ -136,7 +118,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     });
 
     expect(outcome).toBe('QUEUE_FAILED');
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(true);
   });
 
   it('afterSnapshotJob schedules durable successor handoff instead of self-coalescing', async () => {
@@ -160,14 +142,14 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     });
 
     expect(queueAdd).not.toHaveBeenCalled();
-    expect(redisStore.has(successorWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(true);
     expect(handoffAdd).toHaveBeenCalled();
   });
 
   it('dispatchSuccessorHandoff enqueues canonical snapshot after terminal job', async () => {
     queueGetJob.mockResolvedValue(null);
     const probe = makeWake(1);
-    await coordinator.persistSuccessorHandoff({
+    await coordinator.persistSuccessorHandoffAtomic({
       vehicleId: VEHICLE_ID,
       dimoTokenId: TOKEN_ID,
       origin: 'WAKE_PROBE',
@@ -185,15 +167,15 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
       }),
       expect.objectContaining({ jobId: snapshotJobId(VEHICLE_ID) }),
     );
-    expect(redisStore.has(successorWakeRedisKey(VEHICLE_ID))).toBe(false);
+    expect(redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(false);
   });
 
-  it('dispatchSuccessorHandoff waits while canonical snapshot job is active', async () => {
+  it('dispatchSuccessorHandoff defers while canonical snapshot job is active', async () => {
     queueGetJob.mockResolvedValue({
       getState: jest.fn().mockResolvedValue('active'),
     });
     const wake = makeWake(1);
-    await coordinator.persistSuccessorHandoff({
+    await coordinator.persistSuccessorHandoffAtomic({
       vehicleId: VEHICLE_ID,
       dimoTokenId: TOKEN_ID,
       origin: 'WAKE_PROBE',
@@ -201,11 +183,13 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
       notBeforeMs: Date.now() - 1,
     });
 
-    await coordinator.dispatchSuccessorHandoff(VEHICLE_ID);
+    await expect(coordinator.dispatchSuccessorHandoff(VEHICLE_ID)).rejects.toBeInstanceOf(
+      SnapshotWakeHandoffDeferError,
+    );
 
     expect(queueAdd).not.toHaveBeenCalled();
-    expect(handoffAdd).toHaveBeenCalled();
-    expect(redisStore.has(successorWakeRedisKey(VEHICLE_ID))).toBe(true);
+    expect(handoffAdd).not.toHaveBeenCalled();
+    expect(redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(true);
   });
 
   it('generation 1 probe never schedules generation 2 successor', async () => {
@@ -230,7 +214,7 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     });
 
     expect(handoffAdd).not.toHaveBeenCalled();
-    expect(redisStore.has(successorWakeRedisKey(VEHICLE_ID))).toBe(false);
+    expect(redis.store.has(successorWakeRedisKey(VEHICLE_ID))).toBe(false);
   });
 
   it('covered wake ACKs pending mailbox without successor', async () => {
@@ -253,6 +237,6 @@ describe('SnapshotWakeCoordinatorService — R9A durable mailbox/handoff', () =>
     });
 
     expect(handoffAdd).not.toHaveBeenCalled();
-    expect(redisStore.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(false);
+    expect(redis.store.has(pendingWakeRedisKey(VEHICLE_ID))).toBe(false);
   });
 });

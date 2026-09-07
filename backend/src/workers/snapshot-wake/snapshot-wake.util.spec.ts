@@ -249,6 +249,29 @@ describe('snapshot-wake.util', () => {
       ).toBe(false);
     });
 
+    it('fresh trusted provider wake with no POSSIBLE_START schedules generation-1 probe', () => {
+      jest.useFakeTimers().setSystemTime(WORKER_NOW);
+      const wake = buildSnapshotWakeContext({
+        reason: 'IGNITION_ON',
+        signalName: 'isIgnitionOn',
+        providerObservedAt: new Date('2026-09-07T14:00:20.000Z'),
+        receivedAt: WORKER_NOW,
+      });
+      expect(
+        shouldRequestWakeProbe({
+          origin: 'PROVIDER_WAKE',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
+          wakeContext: wake,
+          snapshotSourceTimestamp: new Date('2026-09-07T14:00:21.000Z'),
+          staleMonotonicSkipped: false,
+          tripStartEvalError: false,
+          possibleStartCreated: false,
+          fsmState: TripDetectionState.RESTING,
+        }),
+      ).toBe(true);
+      jest.useRealTimers();
+    });
+
     it('does not schedule generation 2', () => {
       expect(
         shouldRequestWakeProbe({

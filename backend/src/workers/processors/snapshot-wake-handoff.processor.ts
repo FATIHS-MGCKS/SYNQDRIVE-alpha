@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
+import { isSnapshotWakeHandoffDeferError } from '../snapshot-wake/snapshot-wake-handoff-defer.error';
 
 export interface SnapshotWakeHandoffJobData {
   vehicleId: string;
@@ -21,6 +22,15 @@ export class SnapshotWakeHandoffProcessor extends WorkerHost {
   }
 
   async process(job: Job<SnapshotWakeHandoffJobData>): Promise<void> {
-    await this.snapshotWakeCoordinator.dispatchSuccessorHandoff(job.data.vehicleId);
+    try {
+      await this.snapshotWakeCoordinator.dispatchSuccessorHandoff(job.data.vehicleId);
+    } catch (err) {
+      if (isSnapshotWakeHandoffDeferError(err)) {
+        const delayMs = Math.max(1, err.retryAfterMs);
+        await job.moveToDelayed(Date.now() + delayMs, job.token);
+        return;
+      }
+      throw err;
+    }
   }
 }

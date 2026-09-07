@@ -293,11 +293,25 @@ export function shouldRequestWakeProbe(params: {
     !params.possibleStartCreated &&
     params.wakeContext.providerObservedAt != null
   ) {
-    const freshness = assessLiveStartSnapshotFreshness({
+    const wakeAt = new Date(params.wakeContext.providerObservedAt);
+    const wakeFreshness = assessLiveStartSnapshotFreshness({
+      providerSourceTimestamp: wakeAt,
+      workerNow: new Date(),
+    });
+    if (wakeFreshness.state !== 'FRESH') {
+      return false;
+    }
+    const snapshotFreshness = assessLiveStartSnapshotFreshness({
       providerSourceTimestamp: params.snapshotSourceTimestamp,
       workerNow: new Date(),
     });
-    if (freshness.state !== 'FRESH') {
+    if (snapshotFreshness.state !== 'FRESH') {
+      return true;
+    }
+    if (
+      params.snapshotSourceTimestamp &&
+      params.snapshotSourceTimestamp.getTime() >= wakeAt.getTime()
+    ) {
       return true;
     }
   }

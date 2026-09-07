@@ -181,3 +181,58 @@ Gates: `npx tsc --noEmit` PASS, `npm run build` PASS, `npx prisma validate` PASS
 ### Remaining dependency
 
 - Production validation of wake latency, handoff dispatch under multi-replica PM2, and DIMO trigger subscription coverage — **R11 / pre-merge authority alignment gate** (not performed in R9A).
+
+---
+
+## R9B — Atomic Wake Mailbox & Handoff Rearm Closure (2026-09-07)
+
+**Supersedes R9A “closed” claim for liveness/atomicity.** R9A correctly landed logical wake origin, early-fetch FSM resolution, effective-tier metrics, zero-cohort reset, cooldown bypass integration, and webhook regressions — but independent review found five remaining race classes. R9B closes them on commit atop R9A `5c6da72ac65dece509e318fdd7eea060f886dda1`.
+
+### BEFORE (R9A residual defects)
+
+| ID | Defect |
+|----|--------|
+| R9B-1 | Handoff queue self-coalescing: `dispatchSuccessorHandoff()` called `enqueueHandoffJob()` while **current** `wake-handoff-{vehicleId}` was ACTIVE → no-op → job completed with `removeOnComplete` → stranded successor Redis |
+| R9B-2 | Post-coalesce persistence race: `requestSnapshot()` persisted pending wake **after** coalesce detection → wake could be stranded between snapshot terminal and mailbox write |
+| R9B-3 | Pending mailbox GET/merge/SET in Node — write/write race under concurrent DIMO wakes |
+| R9B-4 | Stale ACK preserved newer Redis value but did not guarantee near-term consumer for version N+1 |
+| R9B-5 | Successor mailbox SET/DEL without version — stale dispatcher could delete newer successor |
+| R9B-6 | Fresh trusted provider wake + caught-up FRESH snapshot + no POSSIBLE_START did not schedule bounded generation-1 probe |
+
+### WHY
+
+Wake path must be **durable-first** and **multi-replica safe**. Coalesce is an optimization, not persistence. Handoff deferral must re-arm the **current** Bull job (via `moveToDelayed` / typed defer), never duplicate stable jobIds while ACTIVE.
+
+### CHANGE
+
+| Area | R9B implementation |
+|------|-------------------|
+| Handoff rearm | `SnapshotWakeHandoffDeferError` + processor `moveToDelayed()`; no recursive `enqueueHandoffJob()` while ACTIVE |
+| Durable-first | `persistPendingWakeAtomic()` **before** canonical enqueue when `wakeContext` present |
+| Atomic pending merge | Redis Lua `ATOMIC_PENDING_WAKE_MERGE_SCRIPT` — monotonic version, latest providerObservedAt, receivedAt tie-break |
+| Newer wake consumer | `reconcileOutstandingPendingWake()` after stale ACK / mid-run wake |
+| Successor CAS | Versioned successor + Lua merge (earliest `notBeforeMs`, newest wake) + `acknowledgeSuccessorHandoff(version)` |
+| Fresh no-candidate probe | `shouldRequestWakeProbe()` returns true for FRESH caught-up provider wake with no POSSIBLE_START |
+| Handoff failure audit | All defer/failure paths retain successor + pending; success clears exact version only |
+
+### VALIDATION
+
+- Focused R9/R9A/R9B suites: **271 tests PASS** (`snapshot-wake*`, `dimo-snapshot*`, `dimo-webhook*`, handoff processor, orchestration cooldown)
+- Race regressions: active handoff self-rearm, durable-first ordering, concurrent pending merge, stale ACK → successor, successor CAS, urgent notBefore, fresh no-candidate probe
+- Gates: `npx tsc --noEmit` PASS, `npm run build` PASS, `npx prisma validate` PASS, `git diff --check` PASS
+
+### NON_EFFECTS
+
+- Polling tier intervals, movement threshold, cooldown durations unchanged
+- Trip Start scoring, R4 freshness policy, Trip End, CUSUM/CH/merge rules unchanged
+- R1–R8 behavior preserved
+- No Production or DIMO provider mutations
+
+### REMAINING GAPS
+
+- Production validation under multi-replica PM2 and live DIMO trigger coverage — **pre-merge governance alignment** on PR #1553 after integrating latest `origin/main` (`architecture/trip-detection-lifecycle/` AUDIT_IN_PROGRESS)
+- Optional: local BullMQ+Redis integration test (not required for R9B unit closure; deferred)
+
+### Governance note (2026-09-07)
+
+`origin/main` includes merged PR #1554: Trip Detection & Lifecycle registry status is **`AUDIT_IN_PROGRESS`** (not `NOT_STARTED`). R9B did not modify canonical authority files on this stale-base branch by policy.

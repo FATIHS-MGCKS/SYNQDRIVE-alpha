@@ -57,6 +57,20 @@ export interface SuccessorSnapshotWakeRecord {
   wakeContext: SnapshotWakeContext;
   notBeforeMs: number;
   updatedAtMs: number;
+  version: number;
+}
+
+export interface PendingWakePersistResult {
+  ok: boolean;
+  version?: number;
+  error?: string;
+}
+
+export interface SuccessorHandoffPersistResult {
+  ok: boolean;
+  version?: number;
+  notBeforeMs?: number;
+  error?: string;
 }
 
 export interface ClaimedPendingSnapshotWake {

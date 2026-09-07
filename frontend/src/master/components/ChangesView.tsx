@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r9b-atomic-wake-mailbox-2026-09-07',
+    version: '4.9.1083',
+    title: 'Trip FSM R9B — Atomic Wake Mailbox / Handoff Rearm',
+    summary: [
+      'Fix handoff queue self-coalescing: defer via moveToDelayed instead of enqueue while current wake-handoff job is ACTIVE.',
+      'Durable-first provider wake: atomic Redis pending merge before canonical coalesce/enqueue.',
+      'Versioned successor mailbox with compare-and-clear; reconcileOutstandingPendingWake for newer mid-run wakes.',
+      'Fresh trusted provider wake with no POSSIBLE_START schedules exactly one generation-1 probe.',
+    ],
+    reason:
+      'R9B intermediate closure — R9A liveness/atomicity races (handoff self-coalesce, post-coalesce race, write/write mailbox, successor stale-delete, fresh no-candidate probe gap).',
+    previousBehavior:
+      'Handoff worker completed without re-arm when canonical snapshot still active; pending wake persisted after coalesce attempt.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9b--atomic-wake-mailbox--handoff-rearm-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T12:45:00.000Z',
+  },
+  {
     id: 'trip-fsm-r9a-durable-wake-handoff-2026-09-07',
     version: '4.9.1082',
     title: 'Trip FSM R9A — Durable Wake Handoff / Bounded Probe Closure',
