@@ -15,8 +15,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  issues: write
+  pull-requests: write
 
 jobs:
   i18n-authority-protection:
