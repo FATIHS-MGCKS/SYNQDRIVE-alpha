@@ -115,6 +115,14 @@ nodes:
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: DIM-GAP-005
+    type: gap
+    title: Stale SynqDrive mirror for former fleet tokenId 190497
+    epistemic_status: CONFIRMED
+    summary: DB shows AVAILABLE/CONNECTED with active consent/link; Identity privileged absent; excluded from R9 cohort; cleanup deferred.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
   - id: DIM-CX-001
     type: contradiction
     title: DI boundary vs DIMO authority bootstrap delay

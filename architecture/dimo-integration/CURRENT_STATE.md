@@ -4,8 +4,8 @@
 |-------|-------|
 | **origin/main baseline** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **no R9 webhook wake wiring** |
 | **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` (PR #1553 post-rebase) |
-| **Production baseline** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Last verified Production evidence** | `2026-09-07T02:55:00Z` (DIMO-focused read-only session; see DIM-EV-PROD-*) |
+| **Production baseline** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **Last verified Production evidence** | `2026-09-07T22:35:00Z` (R9 five-vehicle canary PASS; see DIM-EV-R9-CANARY-001) |
 
 ---
 
@@ -67,15 +67,16 @@ PR #1553 adds cross-module webhook contract:
 | Health | HTTP 200 | DIM-EV-PROD-002 |
 | PM2 apps | `synqdrive`, `synqdrive-b` (+ logrotate) | DIM-EV-PROD-003 |
 | Webhook route in build | present (`webhooks/dimo`) | DIM-EV-PROD-004 |
-| R9 wake in deployed build | **absent** | DIM-EV-PROD-005 |
+| R9 wake in deployed build | **present** (post-deploy @ `0ba96e03…`) | DIM-EV-PROD-005 superseded by release upgrade — see DIM-EV-R9-BOOTSTRAP-001 |
+| R9 speed/ignition trigger coverage | **5/5 active cohort** (stableIds `9eeb7158afee`, `5d611d470eab`; tokenId **190497** excluded — former fleet) | DIM-EV-R9-CANARY-001 |
 | Redis `bull:dimo.snapshot*` keys | 5 (prefix scan) | DIM-EV-PROD-006 |
-| Redis `bull:snapshot.wake*` keys | **0** | DIM-EV-PROD-007 |
+| Redis `bull:snapshot.wake*` keys | present post-R9 deploy | re-verify on next session |
 
 ---
 
 ## UNKNOWN
 
-- Full provider trigger subscription inventory on Production
+- Full provider trigger subscription inventory on Production — **partially verified** (R9 five-vehicle canary 5/5; legacy OBD/RPM unchanged; see DIM-EV-R9-CANARY-001)
 - Complete DIMO env flag matrix (shared `backend.env` not readable from audit SSH user)
 - Segment reconciliation ownership vs Trip Detection (partial — see DIM-GAP-001)
 
@@ -83,6 +84,7 @@ PR #1553 adds cross-module webhook contract:
 
 ## Explicit non-claims
 
-- R9 wake behavior **PRODUCTION_VALIDATED** — NOT_ON_PRODUCTION
+- R9 wake behavior **PRODUCTION_VALIDATED** — runtime deployed; **provider trigger wiring validated** for five-vehicle active cohort (see DIM-EV-R9-CANARY-001); **natural wake delivery NOT validated** until drive/ignition events observed
+- tokenId **190497** reauthorization — **rejected** (`FORMER_FLEET_VEHICLE` / `EXCLUDED_FROM_ACTIVE_R9_COHORT`; stale SynqDrive mirrors are separate data-integrity gap — see DIM-EV-R9-PERM-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete provider gateway graph

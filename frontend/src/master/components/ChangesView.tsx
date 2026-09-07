@@ -57,6 +57,28 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-08T00:00:00.000Z',
   },
   {
+    id: 'r9-five-vehicle-dimo-canary-2026-09-07',
+    version: '4.9.1091',
+    title: 'R9 Five-Vehicle DIMO Provider Canary — Speed + Ignition Wake Triggers',
+    summary: [
+      'Authorized Production provider mutation for exactly five privileged vehicles (186946, 187336, 187361, 187784, 192922).',
+      'Created SynqDrive R9 Speed Wake (vss.speed > 3, 30s cooldown, stableId 9eeb7158afee) and SynqDrive R9 Ignition Wake (vss.isIgnitionOn == 1, 30s cooldown, stableId 5d611d470eab).',
+      'Post-GET verification: subscribed_speed=5, subscribed_ignition=5, subscribed_both=5, missing_both=0 within active cohort.',
+      'tokenId 190497 excluded — FORMER_FLEET_VEHICLE; prior 403 expected; re-grant remediation rejected. Stale SynqDrive mirrors (AVAILABLE/CONNECTED/consent/link) remain an OPEN data-integrity gap.',
+      'Legacy OBD/RPM webhooks unchanged. DIMO_TRIGGER_BOOTSTRAP_ENABLED NOT enabled. No Production DB/Redis/runtime mutations.',
+      'Natural R9 wake delivery NOT claimed — NEXT_GATE NATURAL_R9_WAKE_OBSERVATION.',
+    ],
+    reason:
+      'Six-vehicle bootstrap ROLLED_BACK on obsolete cohort assumption; owner clarified active privileged cohort is five vehicles only.',
+    previousBehavior:
+      'Zero R9 speed/ignition trigger definitions; 0/6 provider subscription coverage after ROLLED_BACK six-vehicle attempt.',
+    details:
+      'architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md, architecture/trip-detection-lifecycle/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md, backend/scripts/ops/r9-five-vehicle-canary-bootstrap.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T22:35:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-2b-shutdown-evidence-shadow-2026-09-07',
     version: '4.9.1090',
     title: 'Battery V2 M3.2B — Shadow shutdown evidence acquisition & per-field provenance',

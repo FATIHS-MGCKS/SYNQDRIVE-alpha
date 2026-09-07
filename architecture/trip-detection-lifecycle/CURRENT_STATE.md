@@ -4,10 +4,10 @@
 |-------|-------|
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges |
 | **origin/main (historical @ prior branch merge)** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — integrated before Battery V2 M3 evidence landing |
-| **current origin/main** | `feaf1f13559ba906f28bdd8641393227a90880a3` — branch merged with current `main` via non-destructive merge; R9 still branch-only until #1553 merges |
-| **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake` |
-| **Production baseline** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Last verified Production evidence** | `2026-09-06T23:47:41Z` (single session; see TDL-EV-PROD-*) |
+| **current origin/main** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` |
+| **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake` (merged via #1553) |
+| **Production baseline** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **Last verified Production evidence** | `2026-09-07T22:10:00Z` (R9 scoped trigger bootstrap; see TDL-EV-R9-BOOTSTRAP-001) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -192,7 +192,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 ## Explicit non-claims
 
 - Production validation of R1–R8 (separate from repo/test evidence)
-- Production validation of R9 adaptive polling wake (repo/test validated on branch; **NOT_ON_PRODUCTION** at observed release `01541c2ab…`)
+- Production validation of R9 adaptive polling wake — **runtime deployed** @ `0ba96e03…`; **provider speed/ignition trigger wiring validated** for five-vehicle active cohort (5/5; see TDL-EV-R9-CANARY-001)
+- Natural R9 wake delivery — **NOT validated** until actual drive/ignition provider events observed (`NATURAL_R9_WAKE_OBSERVATION`)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)
