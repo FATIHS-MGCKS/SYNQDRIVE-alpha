@@ -18,6 +18,7 @@ import { BookingDocumentGenerationModule } from '@modules/documents/booking-docu
 import { SnapshotWakeModule } from './snapshot-wake/snapshot-wake.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
+import { SnapshotWakeHandoffProcessor } from './processors/snapshot-wake-handoff.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
 import { DimoDtcProcessor } from './processors/dimo-dtc.processor';
 import { TireRecalculationProcessor } from './processors/tire-recalculation.processor';
@@ -67,6 +68,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
   imports: [
     BullModule.registerQueue(
       { name: QUEUE_NAMES.DIMO_SNAPSHOT },
+      { name: QUEUE_NAMES.SNAPSHOT_WAKE_HANDOFF },
       { name: QUEUE_NAMES.DIMO_VEHICLE_SYNC },
       { name: QUEUE_NAMES.DTC_POLL },
       { name: QUEUE_NAMES.TIRE_RECALCULATION },
@@ -107,6 +109,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
   providers: [
     // Processors
     DimoSnapshotProcessor,
+    SnapshotWakeHandoffProcessor,
     DimoVehicleSyncProcessor,
     DimoDtcProcessor,
     TireRecalculationProcessor,

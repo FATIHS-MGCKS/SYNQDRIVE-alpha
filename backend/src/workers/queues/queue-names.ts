@@ -1,5 +1,7 @@
 export const QUEUE_NAMES = {
   DIMO_SNAPSHOT: 'dimo.snapshot.poll',
+  /** Lightweight post-terminal wake successor dispatch — no provider fetch. */
+  SNAPSHOT_WAKE_HANDOFF: 'snapshot.wake.handoff',
   DIMO_VEHICLE_SYNC: 'dimo.vehicle.sync',
   DTC_POLL: 'dimo.dtc.poll',
   TIRE_RECALCULATION: 'dimo.tire.recalculation',

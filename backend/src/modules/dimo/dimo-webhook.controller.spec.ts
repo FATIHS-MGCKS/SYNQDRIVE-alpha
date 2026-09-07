@@ -123,6 +123,138 @@ describe('DimoWebhookController — verification handshake', () => {
   });
 });
 
+describe('DimoWebhookController — snapshot wake intake', () => {
+  const originalSecret = process.env.DIMO_WEBHOOK_SECRET;
+  const originalVerificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    process.env.DIMO_WEBHOOK_SECRET = originalSecret;
+    process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN = originalVerificationToken;
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.DIMO_WEBHOOK_SECRET;
+  });
+
+  it('forwards speed wake to intake and surfaces wakeOutcome', async () => {
+    const handleProviderWake = jest.fn().mockResolvedValue({ outcome: 'ENQUEUED' });
+    const { controller } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'veh-1',
+            organizationId: 'org-1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        signal: { name: 'speed', value: 12, timestamp: '2026-09-07T14:00:20.000Z' },
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenId: 777,
+        signalName: 'speed',
+        value: 12,
+        timestamp: '2026-09-07T14:00:20.000Z',
+      }),
+    );
+    expect(result).toMatchObject({ status: 'processed', type: 'speed', wakeOutcome: 'ENQUEUED' });
+  });
+
+  it('forwards ignition ON wake to intake', async () => {
+    const handleProviderWake = jest.fn().mockResolvedValue({ outcome: 'COALESCED' });
+    const { controller } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'veh-1',
+            organizationId: 'org-1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        signal: { name: 'isIgnitionOn', value: true, timestamp: '2026-09-07T14:00:20.000Z' },
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).toHaveBeenCalledWith(
+      expect.objectContaining({ tokenId: 777, signalName: 'isIgnitionOn', value: true }),
+    );
+    expect(result).toMatchObject({ type: 'ignition', wakeOutcome: 'COALESCED' });
+  });
+
+  it('does not call snapshot wake intake for unrelated signals', async () => {
+    const handleProviderWake = jest.fn();
+    const { controller, rpmWebhookCandidate } = makeController({
+      snapshotWakeIntake: { handleProviderWake },
+      prisma: {
+        vehicle: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'v1',
+            organizationId: 'o1',
+            hardwareType: 'LTE_R1',
+            fuelType: 'PETROL',
+          }),
+        },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        metricName: 'vss.powertrainCombustionEngineSpeed',
+        signal: { name: 'powertrainCombustionEngineSpeed', value: 5200 },
+      },
+    };
+
+    await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(handleProviderWake).not.toHaveBeenCalled();
+    expect(rpmWebhookCandidate.ingestRpmThresholdEvent).toHaveBeenCalled();
+  });
+});
+
 describe('DimoWebhookController — device connection CloudEvent', () => {
   const originalSecret = process.env.DIMO_WEBHOOK_SECRET;
   const originalVerificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;

@@ -93,11 +93,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
 
     const pendingWake = this.snapshotWakeCoordinator
-      ? await this.snapshotWakeCoordinator.consumePendingWake(vehicleId)
+      ? await this.snapshotWakeCoordinator.claimPendingWakeForRun(vehicleId)
       : null;
     const effectiveWake = this.snapshotWakeCoordinator?.resolveEffectiveWakeContext(
       job.data,
-      pendingWake,
+      pendingWake?.record ?? null,
     );
     const jobDataWithWake: DimoSnapshotJobData = effectiveWake
       ? { ...job.data, wakeContext: effectiveWake }
@@ -140,6 +140,17 @@ export class DimoSnapshotProcessor extends WorkerHost {
       );
     } catch (err) {
       afterCtx.providerFetchFailed = true;
+      if (afterCtx.fsmState == null) {
+        try {
+          const det = await this.prisma.vehicleTripDetectionState.findUnique({
+            where: { vehicleId },
+            select: { state: true },
+          });
+          afterCtx.fsmState = det?.state ?? null;
+        } catch {
+          // fail closed — probe logic preserves mailbox when FSM unknown
+        }
+      }
       const finishedAt = new Date();
       const durationMs = finishedAt.getTime() - startedAt.getTime();
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -167,6 +178,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
           vehicleId,
           dimoTokenId,
           jobData: jobDataWithWake,
+          claimedPendingWake: pendingWake,
+          effectiveWakeContext: effectiveWake,
           ...afterCtx,
         });
       }

@@ -48,6 +48,20 @@ export interface PendingSnapshotWakeRecord {
   dimoTokenId: number;
   wakeContext: SnapshotWakeContext;
   updatedAtMs: number;
+  version: number;
+}
+
+export interface SuccessorSnapshotWakeRecord {
+  dimoTokenId: number;
+  origin: SnapshotJobOrigin;
+  wakeContext: SnapshotWakeContext;
+  notBeforeMs: number;
+  updatedAtMs: number;
+}
+
+export interface ClaimedPendingSnapshotWake {
+  record: PendingSnapshotWakeRecord;
+  version: number;
 }
 
 export interface SnapshotWakeForensics {

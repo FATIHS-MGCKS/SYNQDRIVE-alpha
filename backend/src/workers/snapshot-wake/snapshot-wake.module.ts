@@ -6,7 +6,12 @@ import { SnapshotWakeCoordinatorService } from './snapshot-wake-coordinator.serv
 import { SnapshotWakeIntakeService } from './snapshot-wake-intake.service';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.DIMO_SNAPSHOT })],
+  imports: [
+    BullModule.registerQueue(
+      { name: QUEUE_NAMES.DIMO_SNAPSHOT },
+      { name: QUEUE_NAMES.SNAPSHOT_WAKE_HANDOFF },
+    ),
+  ],
   providers: [SnapshotWakeCoordinatorService, SnapshotWakeIntakeService],
   exports: [SnapshotWakeCoordinatorService, SnapshotWakeIntakeService],
 })

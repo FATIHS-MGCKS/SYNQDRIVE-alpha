@@ -8,6 +8,7 @@ import { TRIP_FSM_MAX_FUTURE_SKEW_MS } from '../../modules/vehicle-intelligence/
 import type { SnapshotPollingTierConfig } from '../schedulers/snapshot-polling/snapshot-polling-tier.config';
 import type {
   ProviderWakeTimestampClass,
+  SnapshotJobOrigin,
   SnapshotWakeContext,
   SnapshotWakeForensics,
   SnapshotWakeReason,
@@ -20,6 +21,35 @@ export function snapshotJobId(vehicleId: string): string {
 
 export function pendingWakeRedisKey(vehicleId: string): string {
   return `synqdrive:snapshot-wake:pending:${vehicleId}`;
+}
+
+export function successorWakeRedisKey(vehicleId: string): string {
+  return `synqdrive:snapshot-wake:successor:${vehicleId}`;
+}
+
+export function snapshotWakeHandoffJobId(vehicleId: string): string {
+  return `wake-handoff-${vehicleId}`;
+}
+
+/**
+ * Physical Bull job origin vs logical wake semantics for probe/coverage decisions.
+ * A SCHEDULED job that merged a generation-0 DIMO provider wake must still use
+ * provider-wake probe rules without falsifying queue provenance.
+ */
+export function resolveEffectiveWakeOrigin(
+  jobOrigin: SnapshotJobOrigin | undefined,
+  wakeContext: SnapshotWakeContext | null | undefined,
+): SnapshotJobOrigin | undefined {
+  if (!wakeContext) {
+    return jobOrigin;
+  }
+  if (wakeContext.probeGeneration === 1) {
+    return 'WAKE_PROBE';
+  }
+  if (wakeContext.source === 'DIMO_TRIGGER' && wakeContext.probeGeneration === 0) {
+    return 'PROVIDER_WAKE';
+  }
+  return jobOrigin;
 }
 
 export function parseProviderWakeTimestamp(
@@ -202,7 +232,8 @@ export function evaluateTrustedCompleteCooldownBypass(params: {
 }
 
 export function shouldRequestWakeProbe(params: {
-  origin: string | undefined;
+  origin?: SnapshotJobOrigin;
+  effectiveWakeOrigin?: SnapshotJobOrigin;
   wakeContext: SnapshotWakeContext | null | undefined;
   snapshotSourceTimestamp: Date | null;
   staleMonotonicSkipped: boolean;
@@ -214,24 +245,34 @@ export function shouldRequestWakeProbe(params: {
   if (params.wakeContext?.probeGeneration === 1) {
     return false;
   }
-  if (params.origin !== 'PROVIDER_WAKE' && params.origin !== 'WAKE_PROBE') {
-    return false;
-  }
   if (!params.wakeContext) {
     return false;
   }
+
+  const effectiveOrigin =
+    params.effectiveWakeOrigin ??
+    resolveEffectiveWakeOrigin(params.origin, params.wakeContext);
+
+  if (effectiveOrigin !== 'PROVIDER_WAKE' && effectiveOrigin !== 'WAKE_PROBE') {
+    return false;
+  }
+
+  if (params.providerFetchFailed) {
+    return params.fsmState === TripDetectionState.RESTING;
+  }
+
   if (
     params.fsmState != null &&
     params.fsmState !== TripDetectionState.RESTING &&
-    params.origin === 'WAKE_PROBE'
+    effectiveOrigin === 'WAKE_PROBE'
   ) {
     return false;
   }
-  if (!isRestingPrimaryWakeFsm(params.fsmState) && params.origin === 'PROVIDER_WAKE') {
+  if (
+    !isRestingPrimaryWakeFsm(params.fsmState) &&
+    effectiveOrigin === 'PROVIDER_WAKE'
+  ) {
     return false;
-  }
-  if (params.providerFetchFailed) {
-    return true;
   }
   if (params.staleMonotonicSkipped) {
     return true;
@@ -248,7 +289,7 @@ export function shouldRequestWakeProbe(params: {
     return true;
   }
   if (
-    params.origin === 'PROVIDER_WAKE' &&
+    effectiveOrigin === 'PROVIDER_WAKE' &&
     !params.possibleStartCreated &&
     params.wakeContext.providerObservedAt != null
   ) {

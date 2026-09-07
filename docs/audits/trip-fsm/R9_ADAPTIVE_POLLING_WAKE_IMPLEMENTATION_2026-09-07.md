@@ -125,3 +125,59 @@ R8 recognition metrics unchanged; wake provenance persisted in `startWake` on PO
 - **DIMO provider mutations:** NONE
 - **Schema migration:** NONE
 - **DIMO_TRIGGER_BOOTSTRAP:** unchanged disabled-by-default
+
+---
+
+## R9A — Durable Wake Handoff / Bounded Probe Closure (2026-09-07)
+
+Technical closure hardening on branch `trip-fsm/r9-adaptive-polling-wake` atop R9 commit `e2516573298cfa6f0431118e62dcec46add3f2a7`.
+
+### Original defects closed
+
+| ID | Defect | R9A fix |
+|----|--------|---------|
+| A | `afterSnapshotJob()` called `requestSnapshot()` while canonical `snapshot-{vehicleId}` job still **ACTIVE** → successor self-coalesced and never durably scheduled | Post-terminal **successor mailbox** (`synqdrive:snapshot-wake:successor:{vehicleId}`) + lightweight `snapshot.wake.handoff` queue job (`wake-handoff-{vehicleId}`) dispatches canonical enqueue only after terminal/active-safe window |
+| B | `consumePendingWake()` GET→DEL before snapshot work → coalesced wake lost on race | **Durable pending mailbox** with versioned records; `claimPendingWakeForRun()` is read-only; `acknowledgePendingWake(version)` CAS-delete |
+| C | SCHEDULED Bull job retained physical `origin` while logically processing provider wake → probe semantics refused | `resolveEffectiveWakeOrigin()` separates physical queue provenance from logical wake origin; `shouldRequestWakeProbe()` uses effective origin |
+| D | Early provider fetch failure left `fsmState=null`; probe branch unreachable for PROVIDER_WAKE | Resolve FSM on fetch failure path; probe only when FSM **RESTING**; null FSM fail-closed |
+| Obs | Scheduler tier occupancy counted `rawTier` before hysteresis | Occupancy + fast-tier ratio use **effectiveTier**; zero cohort resets all gauges to 0 |
+
+### Durable mailbox ACK semantics
+
+- Pending key: `synqdrive:snapshot-wake:pending:{vehicleId}` with monotonic `version`.
+- Claim: read-only at snapshot start — no destructive pre-work ACK.
+- ACK: Redis Lua compare-and-delete on exact `version` only.
+- Newer wake during run bumps version → stale ACK no-ops (preserves newer wake).
+- Queue enqueue failure retains pending wake for scheduler/recovery.
+
+### Successor scheduling semantics
+
+- Successor record stores `{ origin, wakeContext, notBeforeMs }` with TTL.
+- `afterSnapshotJob()` never enqueues canonical snapshot directly (always handoff while current job still active in `finally`).
+- Handoff processor waits until canonical job not active/queued, respects `notBeforeMs`, then calls `requestSnapshot()` (serialized canonical path only — **no provider fetch in handoff**).
+- Generation bound preserved: probeGeneration 0 → max one generation-1 successor; generation 1 never schedules generation 2.
+- Probe delay unchanged: `RECENTLY_ACTIVE` interval (default 60s).
+
+### Crash / retry / multi-replica reasoning
+
+- All wake/successor authority in Redis keys with TTL — survives worker crash.
+- Handoff jobs use stable `wake-handoff-{vehicleId}` id with terminal recycle.
+- CAS ACK prevents cross-replica stale deletion.
+- COALESCED external wakes persist pending mailbox before returning.
+
+### Tests (R9A matrix)
+
+Focused suites under `snapshot-wake*`, `dimo-snapshot*`, `dimo-webhook*`, `snapshot-wake-r9a-orchestration`, scheduler metrics — **258 tests PASS** in targeted pattern run.
+
+Gates: `npx tsc --noEmit` PASS, `npm run build` PASS, `npx prisma validate` PASS (with DATABASE_URL), `git diff --check` PASS.
+
+### Finding status (R9A)
+
+| Finding | Status |
+|---------|--------|
+| P4-F04 | **RESOLVED_BY_R9_ARCHITECTURE** (durable low-latency wake path — production trigger coverage remains R11) |
+| P4-F05 | **RESOLVED_BY_R9** (orchestration-level trusted complete-cooldown bypass regression added) |
+
+### Remaining dependency
+
+- Production validation of wake latency, handoff dispatch under multi-replica PM2, and DIMO trigger subscription coverage — **R11 / pre-merge authority alignment gate** (not performed in R9A).

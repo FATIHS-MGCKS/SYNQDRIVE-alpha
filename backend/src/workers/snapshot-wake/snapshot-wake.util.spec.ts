@@ -3,6 +3,7 @@ import { TripDetectionState } from '@prisma/client';
 import {
   classifyDimoStartWakeSignal,
   evaluateTrustedCompleteCooldownBypass,
+  resolveEffectiveWakeOrigin,
   shouldRequestWakeProbe,
   wakeAlreadyCoveredBySnapshot,
 } from './snapshot-wake.util';
@@ -153,6 +154,18 @@ describe('snapshot-wake.util', () => {
     });
   });
 
+  describe('resolveEffectiveWakeOrigin', () => {
+    it('uses provider-wake semantics for SCHEDULED job with generation-0 DIMO wake', () => {
+      const wake = buildSnapshotWakeContext({
+        reason: 'SPEED_MOVEMENT',
+        signalName: 'speed',
+        providerObservedAt: new Date('2026-09-07T14:00:20.000Z'),
+        receivedAt: WORKER_NOW,
+      });
+      expect(resolveEffectiveWakeOrigin('SCHEDULED', wake)).toBe('PROVIDER_WAKE');
+    });
+  });
+
   describe('shouldRequestWakeProbe', () => {
     const wake = buildSnapshotWakeContext({
       reason: 'SPEED_MOVEMENT',
@@ -165,6 +178,7 @@ describe('snapshot-wake.util', () => {
       expect(
         shouldRequestWakeProbe({
           origin: 'PROVIDER_WAKE',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
           wakeContext: wake,
           snapshotSourceTimestamp: null,
           staleMonotonicSkipped: true,
@@ -173,6 +187,66 @@ describe('snapshot-wake.util', () => {
           fsmState: TripDetectionState.RESTING,
         }),
       ).toBe(true);
+    });
+
+    it('uses provider-wake semantics for SCHEDULED physical origin', () => {
+      expect(
+        shouldRequestWakeProbe({
+          origin: 'SCHEDULED',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
+          wakeContext: wake,
+          snapshotSourceTimestamp: new Date('2026-09-07T14:00:10.000Z'),
+          staleMonotonicSkipped: false,
+          tripStartEvalError: false,
+          possibleStartCreated: false,
+          fsmState: TripDetectionState.RESTING,
+        }),
+      ).toBe(true);
+    });
+
+    it('provider fetch failure probes only when FSM is RESTING', () => {
+      expect(
+        shouldRequestWakeProbe({
+          origin: 'PROVIDER_WAKE',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
+          wakeContext: wake,
+          snapshotSourceTimestamp: null,
+          staleMonotonicSkipped: false,
+          tripStartEvalError: false,
+          possibleStartCreated: false,
+          providerFetchFailed: true,
+          fsmState: TripDetectionState.RESTING,
+        }),
+      ).toBe(true);
+      expect(
+        shouldRequestWakeProbe({
+          origin: 'PROVIDER_WAKE',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
+          wakeContext: wake,
+          snapshotSourceTimestamp: null,
+          staleMonotonicSkipped: false,
+          tripStartEvalError: false,
+          possibleStartCreated: false,
+          providerFetchFailed: true,
+          fsmState: TripDetectionState.ACTIVE_TRIP,
+        }),
+      ).toBe(false);
+    });
+
+    it('fail-closed when provider fetch fails and FSM is unknown', () => {
+      expect(
+        shouldRequestWakeProbe({
+          origin: 'PROVIDER_WAKE',
+          effectiveWakeOrigin: 'PROVIDER_WAKE',
+          wakeContext: wake,
+          snapshotSourceTimestamp: null,
+          staleMonotonicSkipped: false,
+          tripStartEvalError: false,
+          possibleStartCreated: false,
+          providerFetchFailed: true,
+          fsmState: null,
+        }),
+      ).toBe(false);
     });
 
     it('does not schedule generation 2', () => {

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-fsm-r9a-durable-wake-handoff-2026-09-07',
+    version: '4.9.1082',
+    title: 'Trip FSM R9A — Durable Wake Handoff / Bounded Probe Closure',
+    summary: [
+      'Fix same-job-id successor self-coalescing: post-terminal Redis successor mailbox + lightweight handoff queue dispatches canonical snapshot after ACTIVE job completes.',
+      'Replace destructive pending-wake GET→DEL with versioned durable mailbox and compare-and-ACK semantics.',
+      'Introduce effectiveWakeOrigin so SCHEDULED jobs merged with provider wakes use provider-wake probe semantics.',
+      'Provider fetch failure probes only when FSM is RESTING; scheduler tier occupancy metrics use effectiveTier with zero-cohort reset.',
+    ],
+    reason:
+      'R9A technical closure — wake-liveness races blocked R9 merge; harden durability/idempotency without changing tier cadence, thresholds, or CUSUM semantics.',
+    previousBehavior:
+      'afterSnapshotJob requestSnapshot coalesced with self while ACTIVE; pending wake deleted before work; tier gauges counted rawTier.',
+    details:
+      'docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md#r9a--durable-wake-handoff--bounded-probe-closure-2026-09-07',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T12:15:00.000Z',
+  },
+  {
     id: 'trip-fsm-r9-adaptive-polling-wake-2026-09-07',
     version: '4.9.1081',
     title: 'Trip FSM R9 — Adaptive Snapshot Wake / Provider Trigger Path',

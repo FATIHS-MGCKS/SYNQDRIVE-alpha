@@ -48,6 +48,8 @@ function isActiveQueueState(state: SnapshotQueueJobState): boolean {
   return state === 'active' || state === 'waiting-children';
 }
 
+export { isActiveQueueState, isQueuedQueueState };
+
 /**
  * Single jobId snapshot enqueue with terminal recycling and bounded coalesce
  * when a same-vehicle job is already queued or active.

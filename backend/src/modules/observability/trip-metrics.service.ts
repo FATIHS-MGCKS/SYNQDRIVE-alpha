@@ -1879,9 +1879,18 @@ export class TripMetricsService implements OnModuleInit {
     tierCounts: Map<string, number>,
   ): void {
     try {
+      const allTiers = [
+        'ACTIVE_DRIVING',
+        'RECENTLY_ACTIVE',
+        'RESTING_STANDBY',
+        'LONG_IDLE',
+        'OFFLINE',
+        'HARD_OFFLINE',
+      ];
       let total = 0;
       let fast = 0;
-      for (const [tier, count] of tierCounts.entries()) {
+      for (const tier of allTiers) {
+        const count = tierCounts.get(tier) ?? 0;
         this.snapshotPollingTierVehicles.set({ tier }, count);
         total += count;
         if (tier === 'ACTIVE_DRIVING' || tier === 'RECENTLY_ACTIVE') {
@@ -1890,6 +1899,8 @@ export class TripMetricsService implements OnModuleInit {
       }
       if (total > 0) {
         this.snapshotFastTierRatio.set(fast / total);
+      } else {
+        this.snapshotFastTierRatio.set(0);
       }
     } catch {
       // non-blocking observability

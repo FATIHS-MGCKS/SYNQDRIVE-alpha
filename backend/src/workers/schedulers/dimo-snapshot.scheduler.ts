@@ -254,8 +254,6 @@ export class DimoSnapshotScheduler {
         this.tierConfig,
       );
 
-      tierCounts.set(rawTier, (tierCounts.get(rawTier) ?? 0) + 1);
-
       const memory = this.vehiclePollingMemory.get(v.id);
       const effectiveTier = useActivityTiers
         ? applySnapshotPollingHysteresis(
@@ -271,6 +269,11 @@ export class DimoSnapshotScheduler {
             this.tierConfig,
           )
         : SnapshotPollingTier.ACTIVE_DRIVING;
+
+      tierCounts.set(
+        effectiveTier,
+        (tierCounts.get(effectiveTier) ?? 0) + 1,
+      );
 
       this.vehiclePollingMemory.set(v.id, {
         effectiveTier,
@@ -370,6 +373,8 @@ export class DimoSnapshotScheduler {
       }
 
       this.tripMetrics?.setSnapshotPollingTierOccupancy(tierCounts);
+    } else {
+      this.tripMetrics?.setSnapshotPollingTierOccupancy(new Map());
     }
 
     this.lastTickAt = new Date();
