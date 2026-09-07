@@ -233,6 +233,101 @@ function createMultiVehicleHarness(options?: {
   };
 }
 
+function seedSuccessorKeysInStore(
+  redis: ReturnType<typeof createSnapshotWakeRedisTestHarness>,
+  redisKeys: string[],
+) {
+  const vehicleIds: string[] = [];
+  for (const key of redisKeys) {
+    const vehicleId = key.slice('synqdrive:snapshot-wake:successor:'.length);
+    vehicleIds.push(vehicleId);
+    redis.store.set(
+      key,
+      JSON.stringify({
+        dimoTokenId: TOKEN_ID,
+        origin: 'PROVIDER_WAKE',
+        wakeContext: makeWake(),
+        notBeforeMs: Date.now() - 1,
+        version: 1,
+        updatedAtMs: Date.now(),
+      }),
+    );
+  }
+  return vehicleIds;
+}
+
+function createPaginatedScanHarness(pages: Array<{
+  inputCursor: string;
+  nextCursor: string;
+  keys: string[];
+}>) {
+  const redis = createSnapshotWakeRedisTestHarness();
+  const allKeys = pages.flatMap((page) => page.keys);
+  const vehicleIds = seedSuccessorKeysInStore(redis, allKeys);
+  const scanCalls: string[] = [];
+
+  redis.scan.mockImplementation(
+    async (cursor: string | number): Promise<[string, string[]]> => {
+      const input = String(cursor);
+      scanCalls.push(input);
+      const page = pages.find((entry) => entry.inputCursor === input);
+      if (!page) {
+        return ['0', []];
+      }
+      return [page.nextCursor, page.keys];
+    },
+  );
+
+  const handoffJobStates = new Map<string, HandoffJobState | 'none'>();
+  for (const id of vehicleIds) {
+    handoffJobStates.set(id, 'none');
+  }
+
+  const handoffAdd = jest.fn().mockImplementation(async (_name, _data, opts: { jobId: string }) => {
+    const vehicleId = vehicleIdFromHandoffJobId(opts.jobId);
+    if (vehicleId) {
+      handoffJobStates.set(vehicleId, 'waiting');
+    }
+  });
+
+  const handoffGetJob = jest.fn(async (jobId: string) => {
+    const vehicleId = vehicleIdFromHandoffJobId(jobId);
+    if (!vehicleId) return null;
+    const state = handoffJobStates.get(vehicleId) ?? 'none';
+    if (state === 'none') return null;
+    return {
+      getState: async () => state,
+      remove: async () => {
+        handoffJobStates.set(vehicleId, 'none');
+      },
+      changeDelay: async () => undefined,
+    };
+  });
+
+  const queueAdd = jest.fn().mockResolvedValue(undefined);
+  const prisma = {
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({
+        status: VehicleStatus.AVAILABLE,
+        dimoVehicle: { connectionStatus: 'CONNECTED', tokenId: TOKEN_ID },
+      }),
+    },
+    vehicleTripDetectionState: {
+      findUnique: jest.fn().mockResolvedValue({ state: TripDetectionState.RESTING }),
+    },
+  };
+
+  const coordinator = new SnapshotWakeCoordinatorService(
+    { add: queueAdd, getJob: jest.fn().mockResolvedValue(null) } as never,
+    { add: handoffAdd, getJob: handoffGetJob } as never,
+    redis as never,
+    prisma as never,
+    undefined,
+  );
+
+  return { coordinator, vehicleIds, handoffAdd, queueAdd, scanCalls };
+}
+
 describe('SnapshotWakeCoordinatorService — successor handoff recovery (R9H)', () => {
   it('re-arms orphaned successor after persist OK + initial handoffQueue.add failure', async () => {
     const h = createHarness({ failHandoffAdd: true, canonicalState: 'active' });
@@ -340,6 +435,56 @@ describe('SnapshotWakeCoordinatorService — successor handoff recovery (R9H)', 
     const tick3 = await h.coordinator.recoverOrphanedSuccessorHandoffs(tick2.continuation);
     expect(tick3.rearmed).toBe(0);
     expect(h.handoffAdd).toHaveBeenCalledTimes(75);
+  });
+
+  it('multi-page SCAN: preserves non-zero nextCursor across partial batch drain', async () => {
+    const page1Keys = Array.from({ length: 75 }, (_, index) =>
+      successorWakeRedisKey(`veh-orphan-${String(index).padStart(3, '0')}`),
+    );
+    const page2Keys = Array.from({ length: 10 }, (_, index) =>
+      successorWakeRedisKey(`veh-orphan-${String(index + 75).padStart(3, '0')}`),
+    );
+
+    const h = createPaginatedScanHarness([
+      { inputCursor: '0', nextCursor: '17', keys: page1Keys },
+      { inputCursor: '17', nextCursor: '0', keys: page2Keys },
+    ]);
+
+    const tick1 = await h.coordinator.recoverOrphanedSuccessorHandoffs(
+      INITIAL_SUCCESSOR_HANDOFF_RECOVERY_CONTINUATION,
+    );
+
+    expect(tick1.scanned).toBe(50);
+    expect(tick1.rearmed).toBe(50);
+    expect(tick1.continuation.scanCursor).toBe('17');
+    expect(tick1.continuation.pendingBatchKeys).toHaveLength(25);
+    expect(h.scanCalls).toEqual(['0']);
+
+    const tick2 = await h.coordinator.recoverOrphanedSuccessorHandoffs(tick1.continuation);
+
+    expect(tick2.scanned).toBe(25);
+    expect(tick2.rearmed).toBe(25);
+    expect(tick2.continuation.scanCursor).toBe('17');
+    expect(tick2.continuation.pendingBatchKeys).toHaveLength(0);
+    expect(h.scanCalls).toEqual(['0']);
+
+    const tick3 = await h.coordinator.recoverOrphanedSuccessorHandoffs(tick2.continuation);
+
+    expect(tick3.scanned).toBe(10);
+    expect(tick3.rearmed).toBe(10);
+    expect(tick3.continuation.scanCursor).toBe('0');
+    expect(h.scanCalls).toEqual(['0', '17']);
+    expect(h.handoffAdd).toHaveBeenCalledTimes(85);
+
+    h.queueAdd.mockClear();
+    for (const vehicleId of h.vehicleIds) {
+      await h.coordinator.dispatchSuccessorHandoff(vehicleId);
+    }
+    expect(h.queueAdd).toHaveBeenCalledTimes(85);
+
+    const tick4 = await h.coordinator.recoverOrphanedSuccessorHandoffs(tick3.continuation);
+    expect(tick4.rearmed).toBe(0);
+    expect(h.handoffAdd).toHaveBeenCalledTimes(85);
   });
 
   it('isolates per-key inspection failures and continues processing later keys', async () => {

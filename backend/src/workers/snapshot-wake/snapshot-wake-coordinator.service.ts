@@ -1130,8 +1130,9 @@ export class SnapshotWakeCoordinatorService {
 
   /**
    * Bounded SCAN sweep for persisted successors lacking a runnable handoff job.
-   * Preserves unprocessed SCAN batch tails across ticks; at most one SCAN per tick;
-   * Redis cursor advances only after the full batch is drained.
+   * Preserves unprocessed SCAN batch tails across ticks; at most one SCAN per tick.
+   * `scanCursor` is set to Redis `nextCursor` immediately when a batch is fetched;
+   * while `pendingBatchKeys` is non-empty no further SCAN is issued.
    */
   async recoverOrphanedSuccessorHandoffs(
     continuation: SuccessorHandoffRecoveryContinuation = INITIAL_SUCCESSOR_HANDOFF_RECOVERY_CONTINUATION,
@@ -1143,7 +1144,6 @@ export class SnapshotWakeCoordinatorService {
     let scanned = 0;
     let rearmed = 0;
     let errors = 0;
-    let batchNextCursor = scanCursor;
     let scanFetchedThisTick = pendingBatchKeys.length > 0;
 
     while (scanned < MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK) {
@@ -1151,20 +1151,18 @@ export class SnapshotWakeCoordinatorService {
         if (scanFetchedThisTick) {
           break;
         }
-        const scanInputCursor = scanCursor;
         const [nextCursor, keys] = await this.redis.scan(
-          scanInputCursor,
+          scanCursor,
           'MATCH',
           SUCCESSOR_HANDOFF_RECOVERY_KEY_PATTERN,
           'COUNT',
           String(SUCCESSOR_HANDOFF_RECOVERY_SCAN_COUNT),
         );
-        batchNextCursor = nextCursor;
+        scanCursor = nextCursor;
         pendingBatchKeys = keys;
         scanFetchedThisTick = true;
 
         if (keys.length === 0) {
-          scanCursor = nextCursor;
           if (scanCursor === '0') {
             break;
           }
@@ -1186,10 +1184,6 @@ export class SnapshotWakeCoordinatorService {
         } else if (outcome === 'READ_ERROR' || outcome === 'QUEUE_FAILED') {
           errors += 1;
         }
-      }
-
-      if (pendingBatchKeys.length === 0) {
-        scanCursor = batchNextCursor;
       }
     }
 

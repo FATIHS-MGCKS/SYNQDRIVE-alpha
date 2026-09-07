@@ -17,7 +17,7 @@ export type SuccessorHandoffRecoveryOutcome =
 
 /** Scheduler/carrier state preserved across ticks when a SCAN batch is partially processed. */
 export type SuccessorHandoffRecoveryContinuation = {
-  /** Cursor passed to the next Redis SCAN once `pendingBatchKeys` is drained. */
+  /** Next Redis SCAN cursor — assigned to Redis `nextCursor` when a batch is fetched. */
   scanCursor: string;
   /** Unprocessed tail of the current SCAN response (must not be discarded). */
   pendingBatchKeys: string[];

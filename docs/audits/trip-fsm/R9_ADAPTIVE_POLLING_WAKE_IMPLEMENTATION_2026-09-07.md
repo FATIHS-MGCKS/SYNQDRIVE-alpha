@@ -405,7 +405,7 @@ Every accepted `wakeContext` coalesced against an ACTIVE canonical worker must s
 | **Owner** | `SnapshotWakeHandoffRecoveryScheduler` (leader key `snapshot_wake_handoff_recovery`) |
 | **Tick** | `@Interval(60s)`; leader-gated via `SchedulerLeaderGuardService` |
 | **Discovery** | Redis `SCAN` on `synqdrive:snapshot-wake:successor:*` — at most **one SCAN per tick** |
-| **Batch continuation** | Unprocessed SCAN tail preserved in `pendingBatchKeys`; Redis cursor advances only after the full batch is drained |
+| **Batch continuation** | Unprocessed SCAN tail in `pendingBatchKeys`; `scanCursor` set to Redis `nextCursor` immediately on fetch |
 | **Bounded work** | Max **50** successor keys examined per tick (`MAX_SUCCESSOR_HANDOFF_RECOVERY_PER_TICK`) |
 | **Per-key isolation** | Job inspection / re-arm failures increment `errors` and do not abort later keys in the same tick |
 | **Re-arm** | `tryRecoverSuccessorHandoff()` → idempotent `enqueueHandoffJob()` with stable `wake-handoff-{vehicleId}` jobId |
