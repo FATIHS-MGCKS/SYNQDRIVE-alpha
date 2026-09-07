@@ -9,7 +9,7 @@ Contradictions remain **open** until resolved by code + evidence in a later phas
 | **TDL-CX-003** | **`ENDED` enum vs live engine** — schema includes `ENDED`; zero runtime writers | Re-audit: no `TripDetectionState.ENDED` in `trips/` | **OPEN (schema debt)** — not a runtime contradiction but schema/code mismatch |
 | **TDL-CX-004** | **Historical audit SHA vs current `main`** — P2–P5 audited pre-R1 baseline `3d5040b67…` | EVIDENCE_INDEX classifications | **OPEN as documentation drift** — mitigated by PARTIALLY_CURRENT labels |
 | **TDL-CX-005** | **Repair PROPOSED volume (8472) vs 0 ONGOING trips** — large proposed repair backlog with no live ONGOING | TDL-EV-PROD-008, TDL-EV-PROD-006 | **OPEN** — reconciliation cadence vs live FSM cohort mismatch; not root-caused |
-| **TDL-CX-006** | **Neighbor registry: "Trip Detection / DIMO Segments own boundaries"** (Driving Intelligence) vs DIMO Integration `NOT_STARTED` | SYNQDRIVE_RENTAL_ARCHITECTURE.md DI boundary | **OPEN** — segment ownership split between trip reconciliation code and not-yet-bootstrapped DIMO authority |
+| **TDL-CX-006** | **Neighbor registry: segment boundary split** — Driving Intelligence cites "Trip Detection / DIMO Segments own boundaries"; DIMO Integration was `NOT_STARTED` during prior alignment | SYNQDRIVE_RENTAL_ARCHITECTURE.md DI boundary; [DIMO Integration](../dimo-integration/) now `AUDIT_IN_PROGRESS` | **PARTIALLY SUPERSEDED** — DIMO authority bootstrapped 2026-09-07; segment reconciliation vs live FSM split remains **OPEN** (DIM-GAP-001, TDL-GAP-006) |
 
 ## Non-contradictions (explicitly closed this phase)
 

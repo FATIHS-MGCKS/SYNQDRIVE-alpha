@@ -1,0 +1,188 @@
+# Trip Detection & Lifecycle Knowledge Graph — Schema
+
+version: "1.1"
+description: >
+  Schema for Trip Detection & Lifecycle living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - data
+  - index
+  - pipeline
+  - orchestrator
+  - query
+  - resolver
+  - score
+  - ambiguity
+  - confidence
+  - dedupe
+  - event
+  - state
+  - policy
+  - queue
+  - worker
+  - recovery
+  - authority
+  - persist
+  - api
+  - dto
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - CALIBRATION_RUN
+
+# Node evidence: arrays may reference only these types (see validate-graph.mjs)
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - queries
+  - scores
+  - dedupes
+  - decides
+  - invokes
+  - uses
+  - input_to
+  - returns_to
+  - persists
+  - enqueues
+  - processes
+  - recovers
+  - governs
+  - projects_to
+  - presents
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - protected_by
+  - does_not_solve
+  - gates
+  - validates
+  - derives_from
+  - enables
+
+relation_semantics_doc: architecture/trip-detection-lifecycle/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: TDL-DOM-
+  data: TDL-DATA-
+  index: TDL-IDX-
+  pipeline: TDL-PIPE-
+  orchestrator: TDL-ORCH-
+  query: TDL-QUERY-
+  resolver: TDL-RES-
+  score: TDL-SCORE-
+  ambiguity: TDL-AMB-
+  confidence: TDL-CONF-
+  dedupe: TDL-DEDUPE-
+  event: TDL-EVT-
+  state: TDL-STATE-
+  policy: TDL-POL-
+  queue: TDL-QUEUE-
+  worker: TDL-WORK-
+  recovery: TDL-REC-
+  authority: TDL-AUTH-
+  persist: TDL-PERSIST-
+  api: TDL-API-
+  dto: TDL-DTO-
+  consumer: TDL-CONS-
+  decision: TDL-DEC-
+  evidence: TDL-EVID-
+  test_evidence: TDL-TEST-
+  hypothesis: TDL-HYP-
+  invariant: TDL-INV-
+  gap: TDL-GAP-
+  contradiction: TDL-CX-
+  failed_approach: TDL-FAIL-
+  rejected_approach: TDL-REJECT-
+  superseded_approach: TDL-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes

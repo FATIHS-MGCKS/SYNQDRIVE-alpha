@@ -46,6 +46,7 @@ import { EventTripAssociationModule } from '../vehicle-intelligence/trips/event-
 import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle-di.module';
 import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
 import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget.module';
+import { SnapshotWakeModule } from '@workers/snapshot-wake/snapshot-wake.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
     DimoProviderBudgetModule,
+    SnapshotWakeModule,
     DimoConnectivityLifecycleDiModule,
     EventTripAssociationModule,
     ActivityLogModule,

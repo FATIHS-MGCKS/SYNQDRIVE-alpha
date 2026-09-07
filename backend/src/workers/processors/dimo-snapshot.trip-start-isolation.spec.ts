@@ -47,6 +47,9 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       dimoPollLog: {
         create: jest.fn().mockResolvedValue({ id: 'poll-1' }),
       },
+      vehicleTripDetectionState: {
+        findUnique: jest.fn().mockResolvedValue({ state: 'RESTING' }),
+      },
     };
 
     const dimoAuth = { getVehicleJwt: jest.fn().mockResolvedValue('jwt') };
@@ -79,6 +82,7 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       undefined, // episodeResolution
       undefined, // episodeService
       resolutionOutboxProcessor as never,
+      undefined, // snapshotWakeCoordinator
     );
 
     const job = {
@@ -202,6 +206,7 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       dimoTokenId,
       null,
       expect.objectContaining({ sourceTimestamp: expect.any(Date) }),
+      expect.objectContaining({ snapshotFetchedAt: expect.any(Date) }),
     );
   });
 });
