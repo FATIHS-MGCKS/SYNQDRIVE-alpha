@@ -1,10 +1,43 @@
-# M3.2B Phase B — Flag-Off Production Deploy & Runtime Equivalence Verification
+# M3.2B Phase B — Flag-Off Production Deploy & Observation-Window Verification
 
 **Date:** `2026-09-07T20:44–20:58Z` (UTC)  
 **Merged PR:** #1560  
 **Deploy SHA:** `0ba96e03fc2f1551db79d2dae151c928a9fd936a`  
 **Release:** `/opt/synqdrive/releases/20260907204434_v4994`  
 **Shadow flag:** `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` **not set** (effective **false**)
+
+---
+
+## Epistemic semantics (read before interpreting Step 9)
+
+Phase B distinguishes three separate claims:
+
+| Axis | Meaning in Phase B |
+|------|-------------------|
+| **No observed regression during observation window** | No new authoritative rows, errors, or failure classes attributable to M3.2B in the ~2 min post-deploy smoke window and immediate post-deploy checks. |
+| **Path naturally exercised and empirically compared** | A natural production event ran the path after deploy and was compared to pre-deploy behavior. **Not claimed** for REST/assessment/publication in Phase B. |
+| **Path not exercised during observation window** | No natural event triggered the path after deploy; absence of new rows is **non-exercise**, not proof of unchanged behavior under event load. |
+
+Phase B **proves** (flag-off deploy gate):
+
+- Requested/deployed SHA provenance
+- Successful migration and schema readiness
+- Healthy two-replica runtime + scheduler convergence
+- Shadow feature effective false + zero shadow writes
+- No new M3.2B-related runtime failure class
+- No observed authoritative regression during the observation window
+
+Phase B **does not prove**:
+
+- Event-conditioned authoritative equivalence for REST_60M, REST_6H, assessment, publication, or health-score paths that did not execute naturally after deploy
+
+```
+AUTHORITATIVE_REGRESSION_OBSERVED=NO
+AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B
+PHASE_B_VERDICT_CHANGED=NO
+```
+
+Absence of natural Battery events during the smoke window **does not downgrade** Phase B.
 
 ---
 
@@ -160,26 +193,39 @@ FLAG_OFF_RUNTIME_EQUIVALENCE=PASS
 
 ---
 
-## Step 9 — Authoritative Battery V2 delta (since deploy `2026-09-07T20:54:00Z`)
+## Step 9 — Authoritative Battery V2 observation window (since deploy `2026-09-07T20:54:00Z`)
 
-| Path | New rows since deploy |
-|------|----------------------|
-| `battery_measurement_sessions` | 0 |
-| `battery_measurements` REST_60M | 0 |
-| `battery_measurements` REST_6H | 0 |
-| `battery_assessments` | 0 |
-| `battery_publications` | 0 |
+**Observation window:** immediate post-deploy through ~2 min natural production activity. No manufactured trips or telemetry.
+
+### Row counts (non-exercise evidence)
+
+| Path | New rows since deploy | Path exercised? |
+|------|----------------------|-----------------|
+| `battery_measurement_sessions` | 0 | NO |
+| `battery_measurements` REST_60M | 0 | NO |
+| `battery_measurements` REST_6H | 0 | NO |
+| `battery_assessments` | 0 | NO |
+| `battery_publications` | 0 | NO |
+
+Zero new rows means these paths were **not naturally exercised** during the window — not that each path was empirically compared and found unchanged under load.
+
+### Authoritative semantics (Phase B)
 
 ```
-REST_60M_BEHAVIOR_CHANGED=NO
-REST_6H_BEHAVIOR_CHANGED=NO
-ASSESSMENT_BEHAVIOR_CHANGED=NO
-PUBLICATION_BEHAVIOR_CHANGED=NO
-HEALTH_SCORE_BEHAVIOR_CHANGED=NO
+REST_60M_POST_DEPLOY_EXERCISED=NO
+REST_6H_POST_DEPLOY_EXERCISED=NO
+ASSESSMENT_POST_DEPLOY_EXERCISED=NO
+PUBLICATION_POST_DEPLOY_EXERCISED=NO
+HEALTH_SCORE_POST_DEPLOY_EXERCISED=UNKNOWN
+
+AUTHORITATIVE_REGRESSION_OBSERVED=NO
+AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B
 SHADOW_EVIDENCE_CAN_AFFECT_AUTHORITATIVE_BATTERY_STATE=NO
 ```
 
-Stage-2 authoritative flags unchanged: `REST_SHADOW=true`, `PUBLICATION=true`, `RECONCILIATION=true`.
+**Legacy shorthand (do not over-read):** `REST_*_BEHAVIOR_CHANGED=NO` in earlier drafts meant *no observed regression during the observation window*, not *path exercised and unchanged*. Prefer the `POST_DEPLOY_EXERCISED` / `AUTHORITATIVE_*` fields above.
+
+Stage-2 authoritative **flags** unchanged: `REST_SHADOW=true`, `PUBLICATION=true`, `RECONCILIATION=true`.
 
 ---
 
@@ -232,7 +278,7 @@ All required gates satisfied:
 - R9 healthy ✓
 - Shadow flag effective false on both ✓
 - Zero shadow writes ✓
-- No authoritative Battery V2 behavior change ✓
+- No observed authoritative regression during observation window ✓
 - No new M3.2B failure class ✓
 - Rollback ready ✓
 
@@ -274,11 +320,15 @@ SHADOW_CONTEXTS_BEFORE=0
 SHADOW_CONTEXTS_AFTER=0
 SHADOW_WRITES_WITH_FLAG_OFF=0
 
-REST_60M_BEHAVIOR_CHANGED=NO
-REST_6H_BEHAVIOR_CHANGED=NO
-ASSESSMENT_BEHAVIOR_CHANGED=NO
-PUBLICATION_BEHAVIOR_CHANGED=NO
-HEALTH_SCORE_BEHAVIOR_CHANGED=NO
+REST_60M_POST_DEPLOY_EXERCISED=NO
+REST_6H_POST_DEPLOY_EXERCISED=NO
+ASSESSMENT_POST_DEPLOY_EXERCISED=NO
+PUBLICATION_POST_DEPLOY_EXERCISED=NO
+HEALTH_SCORE_POST_DEPLOY_EXERCISED=UNKNOWN
+
+AUTHORITATIVE_REGRESSION_OBSERVED=NO
+AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B
+SHADOW_EVIDENCE_CAN_AFFECT_AUTHORITATIVE_BATTERY_STATE=NO
 
 NEW_FAILURE_CLASSES=NONE_M3_2B_RELATED
 NEW_BULLMQ_FAILURES=0
@@ -297,4 +347,23 @@ M3_1_VALIDATION_BLOCKER=SIGNAL_OBSERVABILITY
 
 PRODUCTION_CHANGED=YES
 SHADOW_FLAG_ENABLED=NO
+M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO
+```
+
+---
+
+## Evidence hardening block (PR #1562 semantics pass)
+
+```
+M3_2B_PHASE_B_EVIDENCE_HARDENING=PASS
+PHASE_B_VERDICT_CHANGED=NO
+M3_2B_PHASE_B=PASS
+AUTHORITATIVE_REGRESSION_OBSERVED=NO
+AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B
+SHADOW_FLAG_EFFECTIVE=false
+SHADOW_WRITES_WITH_FLAG_OFF=0
+PHASE_C_ALLOWED=YES
+M3_2C_ALLOWED_BEFORE_NATURAL_SHADOW_EVIDENCE=NO
+PRODUCTION_CHANGED=NO
+PR_1562_READY_TO_MERGE=PENDING_CI
 ```

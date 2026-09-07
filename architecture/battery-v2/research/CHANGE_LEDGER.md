@@ -32,6 +32,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.2B Phase B evidence epistemic semantics hardening (PR #1562)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase B evidence used `REST_*_BEHAVIOR_CHANGED=NO` without distinguishing non-exercise from event-conditioned equivalence proof. |
+| **CHANGE** | Hardened semantics: `POST_DEPLOY_EXERCISED=NO` for REST/assess/pub paths; `AUTHORITATIVE_REGRESSION_OBSERVED=NO`; `AUTHORITATIVE_EQUIVALENCE_UNDER_NATURAL_EVENT=NOT_PROVEN_IN_PHASE_B`; explicit epistemic axis section in Phase B evidence doc. |
+| **WHY** | Fail-closed evidence — Phase B deploy gate must not be read as natural-event authoritative equivalence proof when no paths executed. |
+| **VALIDATION** | Documentation-only; graph + registry validators PASS; `PHASE_B_VERDICT_CHANGED=NO`. |
+| **OBSERVED_EFFECT** | `M3_2B_PHASE_B=PASS` unchanged; `PHASE_C_ALLOWED=YES` unchanged. |
+| **NON_EFFECTS** | No production deploy/restart/env change; shadow flag still off. |
+| **EVIDENCE** | `M3_2B_PHASE_B_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-07.md` § Epistemic semantics. |
+
 ## CL-2026-09-07 — M3.2B Phase B flag-off production deploy
 
 | Field | Content |
@@ -39,7 +51,7 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | M3.2B merged (#1560) but not deployed; shadow tables absent; production on `ccc2324db`. |
 | **CHANGE** | Controlled production deploy @ `0ba96e03` with `BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED` absent (effective false); migration `20260907153000_battery_shutdown_evidence_shadow` applied once; rolling 2-replica restart; scheduler converged to 1 leader. |
 | **WHY** | Phase B gate — ship schema + inert shadow module without authoritative impact or shadow writes. |
-| **VALIDATION** | DB backup OK; schema TEXT FK + TIMESTAMP(3); PM2 both replicas same SHA; health 200; 0 shadow rows before/after ~2m smoke; 0 new REST/assess/pub since deploy; no M3.2B/R9 failure delta. |
+| **VALIDATION** | DB backup OK; schema TEXT FK + TIMESTAMP(3); PM2 both replicas same SHA; health 200; 0 shadow rows before/after ~2m smoke; 0 new REST/assess/pub rows (paths not exercised); no M3.2B/R9 failure delta; `AUTHORITATIVE_REGRESSION_OBSERVED=NO`; equivalence under natural event not proven in Phase B. |
 | **OBSERVED_EFFECT** | `M3_2B_PHASE_B=PASS`; `PHASE_C_ALLOWED=YES`; shadow flag still off. |
 | **NON_EFFECTS** | M3.1 status unchanged; `PRODUCTION_VALIDATED` still pending natural E2E; authoritative Stage-2 flags unchanged. |
 | **DECISION_STATUS** | Phase C (enable shadow) allowed but not executed. |
