@@ -1,0 +1,74 @@
+---
+description: SynqDrive internationalization and localization engineering rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+You are working inside the SynqDrive codebase.
+
+SynqDrive officially supports **exactly 9 product locales**:
+
+`de`, `en`, `pl`, `fr`, `cs`, `nl`, `es`, `tr`, `it`
+
+The canonical locale registry lives in `frontend/src/i18n/locales.ts`.
+
+## Non-negotiable localization principles
+
+1. **Official locale set** — SynqDrive supports exactly these 9 product locales: `de`, `en`, `pl`, `fr`, `cs`, `nl`, `es`, `tr`, `it`.
+
+2. **Localization-aware product copy** — Any new or changed user-facing product copy must be localization-aware.
+
+3. **No German/English-only localized features** — Agents must never intentionally implement a new feature only in German or English when that feature is part of the localized application.
+
+4. **Nine-locale key coverage** — New translation keys must ultimately exist for all 9 supported locales.
+
+5. **No hardcoded user-visible UI strings** — Do not introduce hardcoded user-visible strings in React UI where the localization architecture applies. This includes, where appropriate:
+   - titles, labels, buttons, menus, tabs, descriptions, tooltips, placeholders
+   - empty states, validation messages, toast messages, modal/dialog copy
+   - confirmation messages, error messages, status labels
+   - accessible labels / `aria-label` text intended for users
+   - table headings, notification copy
+
+6. **Developer-only values are exempt** — Internal identifiers, API paths, log messages not shown to users, telemetry field names, database enum values, and code comments do not require translation.
+
+7. **Semantic, stable translation keys** — Translation keys must be semantic and stable. Do not use entire English sentences as translation keys.
+
+8. **Single canonical i18n architecture** — Do not create competing i18n systems. Reuse and evolve the canonical SynqDrive localization architecture (`frontend/src/rental/i18n/*`, `frontend/src/i18n/locales.ts`).
+
+9. **No false completeness via English inheritance** — English fallback must never be used as a mechanism to falsely claim translation completeness. Do not solve missing language coverage by blindly spreading/inheriting the entire English dictionary into another language dictionary (`...en`).
+
+10. **Proper native Unicode spelling** — Use correct native orthography and diacritics:
+    - Polish: Polish diacritics
+    - Czech: Czech diacritics
+    - Spanish / French: required accents
+    - Turkish: distinguish `ı/i`, `ş`, `ğ`, `ç`, `ö`, `ü`
+    - German: proper German characters where appropriate
+    - Italian / Dutch: correct native spelling
+    Do not replace native characters with ASCII approximations for convenience.
+
+11. **No unsafe sentence concatenation** — Do not concatenate translated sentence fragments when grammar depends on word order. Prefer interpolation and proper pluralization.
+
+12. **Locale-aware formatting** — Dates, times, numbers, percentages, currencies, and relative time must eventually use locale-aware formatting rather than manually formatted language-specific strings.
+
+13. **Locale-specific pluralization** — Pluralization must account for locale-specific rules. Do not assume English/German singular-plural rules are valid for Polish, Czech, or other locales.
+
+14. **Legal text is special** — Never represent machine/generated translation of legally binding text as legally reviewed. Legal localization status must remain distinguishable from ordinary UI localization.
+
+15. **Agent completion reporting** — Whenever an agent changes user-facing product copy, its completion report must explicitly state:
+    - whether translation keys were added/changed
+    - which supported locales were updated
+    - whether any localization debt remains
+
+16. **Never silently remove a supported locale**
+
+17. **Italian is an official supported locale**
+
+18. **Turkish is an official supported locale**
+
+## Canonical references
+
+- Locale registry: `frontend/src/i18n/locales.ts`
+- Rental runtime provider: `frontend/src/rental/i18n/LanguageContext.tsx`
+- Structural guardrails: `npm run i18n:check` (frontend)
+- Baseline audit: `docs/audits/i18n-production-hardening-baseline-2026-08.md`
