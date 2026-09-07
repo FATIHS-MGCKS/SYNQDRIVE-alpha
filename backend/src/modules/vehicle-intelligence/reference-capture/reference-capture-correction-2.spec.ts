@@ -197,6 +197,7 @@ describe('Reference Capture correction 2', () => {
         acquisition as never,
         runner as never,
         writer as never,
+        { isEnabled: () => false, syncCompletedPhasesFromSession: jest.fn() } as never,
       );
 
       await processor.process({
@@ -270,6 +271,7 @@ describe('Reference Capture correction 2', () => {
         acquisition as never,
         runner as never,
         writer as never,
+        { isEnabled: () => false, syncCompletedPhasesFromSession: jest.fn() } as never,
       );
 
       await processor.process({
@@ -424,6 +426,7 @@ describe('Reference Capture correction 2', () => {
         acquisition as never,
         runner as never,
         writer as never,
+        { isEnabled: () => false, syncCompletedPhasesFromSession: jest.fn() } as never,
       );
 
       await processor.process({

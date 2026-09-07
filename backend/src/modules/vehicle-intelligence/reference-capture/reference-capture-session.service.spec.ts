@@ -60,6 +60,11 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       cancelPendingCycleJob: jest.fn().mockResolvedValue({ cancelled: true, jobId: 'pending' }),
       sessionRunnerKey: jest.fn().mockReturnValue('refcap-session-s1'),
     };
+    const settlementShadow = {
+      isEnabled: () => false,
+      syncCompletedPhasesFromSession: jest.fn(),
+      scheduleWholeTripShadowFromVehicleTrip: jest.fn(),
+    };
 
     const service = new ReferenceCaptureSessionService(
       config,
@@ -71,6 +76,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       writer as never,
       readiness as never,
       runner as never,
+      settlementShadow as never,
       makePrismaMock(),
     );
 
@@ -89,6 +95,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       {} as never,
       {} as never,
       {} as never,
+      { isEnabled: () => false } as never,
       makePrismaMock(),
     );
     await expect(
