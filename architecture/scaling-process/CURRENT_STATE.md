@@ -143,10 +143,19 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FR
 
 ---
 
-## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (2026-09-03)
+## TYPE: IMPLEMENTATION — DEC-016 exact-SHA deploy (P1.8.3.5 production proof)
 
-**STATUS:** **PARTIALLY_PRODUCTION_VALIDATED** — stale-current fix likely verified; full six-link invariant **NEEDS_PRECISION_REVIEW**  
-**EVIDENCE:** `/var/log/auth.log` TMP bootstrap entries 2026-09-02/03; release SHA match (replica SHA RELEASE_INFERRED)
+**STATUS:** **FULLY_PRODUCTION_VALIDATED** / **VERIFIED_PRODUCTION**
+
+**Invariant (six-link chain):** `REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA`
+
+**Production proof:** P1.8.3.5 INC-07 deploy (`2026-09-03T21:19:07Z`) — all six identity points directly verified equal `5b788a223d0461f29b96b142e51388c9831366a2` via TMP exact-SHA bootstrap (`CANONICAL_EXACT_SHA_PATH`), not stale `current`.
+
+**OQ-18:** **CLOSED** (stale-`current` bootstrap superseded by canonical exact-SHA bootstrap; full invariant verified)
+
+**EVIDENCE:** `architecture/P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md`; DEC-016 in `DECISION_LOG.md`
+
+**HISTORICAL (superseded by P1.8.3.5):** P1.8.3.3 recorded `PARTIALLY_PRODUCTION_VALIDATED` / `NEEDS_PRECISION_REVIEW` and `LIKELY_PRODUCTION_VERIFIED` for OQ-18 — retained in P1.8.3.3 retrospective chronology only.
 
 ---
 
@@ -184,7 +193,7 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FR
 | Reconciliation mutex (P1.4) | ACTIVE | #1435 |
 | Multi-replica deploy hardening (P1.8.2.1) | **MERGED** #1472 | rolling deploy |
 | Deploy leader convergence gate (P1.8.3.1) | **VERIFIED** | #1487 + prod validation |
-| Exact-SHA deploy provenance (DEC-016) | **NEEDS_PRECISION_REVIEW** | P1.8.3.3 audit |
+| Exact-SHA deploy provenance (DEC-016) | **VERIFIED_PRODUCTION** | P1.8.3.5 six-link invariant |
 
 ---
 
@@ -196,7 +205,7 @@ NEXT_ARCHITECTURE_STAGE = CONTINUE_OQ28_UNINTERRUPTED_24H_FULL_N2_OBSERVATION_FR
 | Single scheduler leader | PASS |
 | Two-replica production invariant | **PASS** |
 | Deploy path preserves 2 replicas | **YES** |
-| Exact-SHA deploy invariant (routine) | **NEEDS_PRECISION_REVIEW** |
+| Exact-SHA deploy invariant (routine) | **VERIFIED_PRODUCTION** |
 | Continuous 24h N=2 soak | **NOT_MET** (OQ-28 PARTIAL — certification gap, not an open runtime defect) |
 | Open application/scaling-readiness defects | **NONE** (`OPEN_APPLICATION_DEFECT_FOUND=NO`, `OPEN_SCALING_READINESS_DEFECT_FOUND=NO`; INC-07 CLOSED) |
 | N=2 production certification | **EARLY** (OQ-28 uninterrupted 24h segment not yet proven) |

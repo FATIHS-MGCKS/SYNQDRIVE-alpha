@@ -1227,6 +1227,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-8-2-dec016-oq18-authority-reconciliation-2026-09-07',
+    version: '4.9.1031',
+    title: 'P1.8.3.8.2 — DEC-016 / OQ-18 authority consistency reconciliation',
+    summary: [
+      'Authority-only pass: reconcile CURRENT_STATE narrative, graph EXACT_SHA_DEPLOY_PROVENANCE node, and knowledge graph with P1.8.3.5 production proof.',
+      'DEC-016 = FULLY_PRODUCTION_VALIDATED; six-link invariant = VERIFIED_PRODUCTION; OQ-18 = CLOSED.',
+      'Removed stale PARTIALLY_PRODUCTION_VALIDATED / NEEDS_PRECISION_REVIEW / LIKELY_PRODUCTION_VERIFIED from current authority.',
+      'Added validate-dec016-oq18-authority-consistency.mjs guardrail. No production or runtime changes.',
+    ],
+    reason: 'P1.8.3.8.2 final authority sync — eliminate stale P1.8.3.3 DEC-016/OQ-18 current-state contradictions.',
+    previousBehavior: 'Machine block VERIFIED_PRODUCTION but narrative/graph still showed NEEDS_PRECISION_REVIEW / PARTIALLY_PRODUCTION_VALIDATED.',
+    details:
+      'architecture/scaling-process/CURRENT_STATE.md; architecture/scaling-process/graph/nodes.yaml; architecture/scaling-process/SCALING_PROCESS_KNOWLEDGE_GRAPH.md; architecture/scaling-process/MULTI_REPLICA_DEPLOYMENT.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T01:15:00.000Z',
+  },
+  {
     id: 'p1-8-3-8-1-authority-reconciliation-2026-09-06',
     version: '4.9.1030',
     title: 'P1.8.3.8.1 — Scaling authority reconciliation pass',

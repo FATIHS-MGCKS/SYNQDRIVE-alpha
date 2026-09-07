@@ -233,15 +233,20 @@ nodes:
 
   - id: EXACT_SHA_DEPLOY_PROVENANCE
     type: DEPLOYMENT
-    status: PARTIALLY_PRODUCTION_VALIDATED
-    description: Pin SYNQDRIVE_REQUESTED_DEPLOY_SHA through bootstrap, release clone, and replica verify
+    status: FULLY_PRODUCTION_VALIDATED
+    description: SYNQDRIVE_REQUESTED_DEPLOY_SHA provenance verified end-to-end through six-link production invariant (REQUESTED == BOOTSTRAP == RELEASE_SOURCE == TARGET == REPLICA_A == REPLICA_B); P1.8.3.5 INC-07 deploy direct proof at 5b788a223
     depends_on: [MULTI_REPLICA_DEPLOYMENT]
     introduced_by: "DEC-016"
     related_incidents: [INC_06]
-    validated_by: ["assertDeployShaProvenance unit tests", "P1.8.3.3 auth.log TMP bootstrap"]
-    last_verified_sha: 7d53da51e3b4dfaad711af735e568f97813ddfeb
-    last_verified_at: "2026-09-03T09:30:00Z"
-    confidence: MEDIUM
+    closed_by: "P1.8.3.5 INC-07 production deploy six-link invariant verification"
+    validated_by:
+      - assertDeployShaProvenance unit tests
+      - P1_8_3_5_INC_07_PRODUCTION_VALIDATION_BASELINE_2026-09-03.md
+      - vps-deploy-release.sh
+      - cloud-agent-deploy.sh
+    last_verified_sha: 5b788a223d0461f29b96b142e51388c9831366a2
+    last_verified_at: "2026-09-03T21:19:07Z"
+    confidence: HIGH
 
   - id: EVIDENCE_N2_RETROSPECTIVE_STABILITY_2026_09_01
     type: EVIDENCE

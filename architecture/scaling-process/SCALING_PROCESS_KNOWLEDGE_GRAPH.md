@@ -120,11 +120,12 @@ MUST_PRESERVE → exactly one scheduler leader
 MUST_PRESERVE → both replicas registered when REPLICA_COUNT=2
 MUST_PRESERVE → nginx upstream matches live processes
 CONVERGENCE_GATE → leaderCount=0 transient retry; >1 immediate FAIL_SPLIT_BRAIN; 2 stable obs of 1
-PROVENANCE → SYNQDRIVE_REQUESTED_DEPLOY_SHA end-to-end (DEC-016)
-BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 **LIKELY_PRODUCTION_VERIFIED**; DEC-016 precision review)
+PROVENANCE → SYNQDRIVE_REQUESTED_DEPLOY_SHA end-to-end (DEC-016 **FULLY_PRODUCTION_VALIDATED** / VERIFIED_PRODUCTION)
+BOOTSTRAP → source libs from RELEASE_DIR (DEC-015); cloud-agent exact-SHA bootstrap (OQ-18 **CLOSED** — P1.8.3.5 six-link invariant)
 SUPERSEDES → single `pm2 restart synqdrive` only model
 SUPERSEDES → immediate single-snapshot leader check (INC-06)
-EVIDENCE → P1.8.3.1 production validation attempt 3; DEC-015; DEC-016 unit tests
+HISTORICAL → P1.8.3.3 recorded OQ-18 LIKELY_PRODUCTION_VERIFIED and DEC-016 precision review — superseded by P1.8.3.5
+EVIDENCE → P1.8.3.1 production validation attempt 3; P1.8.3.5 INC-07 deploy; DEC-015; DEC-016 unit tests
 ```
 
 ### Snapshot Polling (P1.2)
