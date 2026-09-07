@@ -30,6 +30,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-07 — M3.2B migration FK type fix (PR #1560 CI)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Migration `20260907153000_battery_shutdown_evidence_shadow` used PostgreSQL `UUID` for `organization_id` / `vehicle_id` / `trip_id`, incompatible with SynqDrive `TEXT` PK/FK columns — CI migration deploy failed (42804). |
+| **CHANGE** | Corrected migration SQL to `TEXT` IDs and `TIMESTAMP(3)` datetimes to match Prisma schema and existing battery/reference-capture migrations. |
+| **WHY** | Empty-database migration tests must apply cleanly before merge. |
+| **VALIDATION** | Prisma validate PASS; shutdown-evidence unit tests PASS; CI migration + integration jobs pending re-run. |
+| **NON_EFFECTS** | Prisma schema unchanged (already String/DateTime); shadow semantics unchanged. |
+
 ## CL-2026-09-07 — M3.2B main integration gate (origin/main R9 #1553 + PR #1560)
 
 | Field | Content |
