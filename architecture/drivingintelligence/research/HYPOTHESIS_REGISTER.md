@@ -21,8 +21,9 @@ Independent record of hypotheses tested during the workstream.
 | DI-HYP-014 | Reference capture can run safely with V2 OFF on main | Feature flags default false | PR #1533 merge + deploy discipline | **CONFIRMED** | CODE_DEPLOYED=YES, FEATURE_ENABLED=NO |
 | DI-HYP-015 | Phase switch at cycle boundary prevents races | Concurrency review | C.1d/C.1e hardening | **CONFIRMED** in tests | Live multi-replica NOT validated |
 | DI-HYP-016 | HF_HISTORICAL alone sufficient as sole high-resolution DI authority | Sparse gaps may be filled by native events | EXP-019 video-GT + bias-control (5 gap + 8 control windows) | **PARTIALLY_SUPPORTED** (rejection direction) | Gap interiors: 0/5 HF; controls: FULL/PARTIAL HF outside gaps; `HF_SOLE_HIGH_FIDELITY_AUTHORITY=NO`; `HF_USEFUL_AS_PARTIAL_AUTHORITY=YES` |
+| DI-HYP-017 | Larger HF query windows improve settled bucket recovery vs incremental tiling | Wider from/to may expose more provider buckets | EXP-020 settled matrix (EXP-019 drive) | **REJECTED** | W060–W300 identical 141-bucket union; P1 whole-trip (1 req) matches; production already uses maximal post-trip window |
 
-**Rejected count:** 7  
+**Rejected count:** 8  
 **Not yet tested:** 2  
 **Confirmed:** 4  
 **Partially supported:** 3

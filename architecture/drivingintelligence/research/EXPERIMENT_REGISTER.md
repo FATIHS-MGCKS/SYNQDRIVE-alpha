@@ -22,8 +22,9 @@ Catalog of audits, reference drives, replays, and calibration experiments.
 | EXP-016 | 2026-09-06 | Live 10/20/30/60s calibration attempt #1 | KS MX 2024 · token 187336 | Reference capture prod | **BLOCKED** — DI-DEF-019 SQL lock (42P01) | Superseded by EXP-019 | `LIVE_HF_CALIBRATION_2026-09-06_BLOCKED.md` |
 | EXP-017 | 2026-09-06 | DI-DEF-019 GATE 1 postgres integration | — | Isolated PG 16 | 10 integration + 33 regression PASS | FIXED_CODE_TESTED | `DI_DEF_019_GATE1_POSTGRES_INTEGRATION_2026-09-06.md` |
 | EXP-018 | 2026-09-06 | GATE 2 stationary dress rehearsal | KS MX 2024 · token 187336 | Production runtime | **PASS** — 10→60 lifecycle + STOP + ABORT | FIXED_PRODUCTION_VALIDATED (DI-DEF-019) | `DI_DEF_019_GATE2_PRODUCTION_DRESS_REHEARSAL_2026-09-06.md` |
-| EXP-019 | 2026-09-07 | **EXP-016 RETRY** live 10/20/30/60 calibration + bias-control | KS MX 2024 · token 187336 | Reference capture prod | **EXECUTED** — 5 gap GT + 8 control windows; HF void in gaps; FULL/PARTIAL HF in controls; NO cadence conclusion (N=1) | EXP-020 counterbalanced 60→30→20→10 | `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md` |
+| EXP-019 | 2026-09-07 | **EXP-016 RETRY** live 10/20/30/60 calibration + bias-control | KS MX 2024 · token 187336 | Reference capture prod | **EXECUTED** — 5 gap GT + 8 control windows; HF void in gaps; FULL/PARTIAL HF in controls; NO cadence conclusion (N=1) | EXP-020 window geometry + counterbalanced drive | `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md` |
+| EXP-020 | 2026-09-07 | Retrospective HF window geometry + post-trip matrix (EXP-019 drive) | KS MX 2024 · token 187336 | DIMO settled replay (read-only) | **EXECUTED** — W060–W300 identical union; P1 whole-trip optimal; P50 first-obs age ~27s; gaps remain sparse | EXP-021 shadow settlement test | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` |
 
-**EXPERIMENT_ENTRIES_TOTAL:** 19  
-**EXPERIMENTS_EXECUTED:** 19  
+**EXPERIMENT_ENTRIES_TOTAL:** 20  
+**EXPERIMENTS_EXECUTED:** 20  
 **EXPERIMENTS_PENDING:** 0

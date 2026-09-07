@@ -11,7 +11,9 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | DI-OQ-HF-003 | Does ascending 10→60 phase order confound cadence vs route/time? | EXP-019 used ascending order; video GT confirms dynamics inside gaps regardless of cadence | **OPEN** — counterbalanced 60→10 recommended |
 | DI-OQ-HF-004 | Can native DIMO events backfill HF gap interiors on KS MX 2024? | EXP-019 event register: 1 native event in session; **0/5** in GT windows | **OPEN** — multi-authority capture proposed |
 | DI-OQ-HF-005 | Can boundary-only HF speeds reconstruct video-confirmed trajectories? | EXP-019: start/end sometimes align; interior always void; end often mismatches (e.g. GT-20 111 vs 36) | **OPEN** |
-| DI-OQ-HF-006 | Does gap-conditioned HF void generalize to non-gap control windows? | EXP-019 bias-control: **CLEAR_DIFFERENCE** (5/5 gap NONE vs 0/8 control NONE); N=1 ascending drive | **PARTIALLY_ANSWERED** — counterbalanced EXP-020 required |
+| DI-OQ-HF-006 | Does gap-conditioned HF void generalize to non-gap control windows? | EXP-019 bias-control: **CLEAR_DIFFERENCE** (5/5 gap NONE vs 0/8 control NONE); N=1 ascending drive | **PARTIALLY_ANSWERED** — counterbalanced drive still required |
+| DI-OQ-HF-007 | Does larger HF query window geometry improve settled bucket recovery? | EXP-020: W060–W300 **identical union**; whole-trip P1 optimal | **ANSWERED (N=1)** — window size alone does not |
+| DI-OQ-HF-008 | What settlement delay before HF buckets are first observable? | EXP-020: P50 first-observation age **~27s** vs 8s live delay | **PARTIAL** — EXP-021 shadow settlement test required |
 | DI-OQ-HF-003 | Optimal settlement delay and recovery overlap for production? | Currently 8s/6s provisional |
 | DI-OQ-HF-004 | Cross-provider cadence variance beyond LTE_R1 reference drives? | Generalization risk |
 

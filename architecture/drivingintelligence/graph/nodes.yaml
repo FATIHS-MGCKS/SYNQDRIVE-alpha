@@ -1136,3 +1136,23 @@ nodes:
     summary: Eight video-first control windows; gap vs control CLEAR_DIFFERENCE; cadence CRITICAL labels withdrawn; READY_FOR_EXPERIMENT_DESIGN_DECISION.
     source_paths:
       - architecture/drivingintelligence/evidence/reference-capture/EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md
+
+  - id: DI-EVID-EXP020-WINDOW-001
+    type: evidence
+    title: EXP-020 retrospective window geometry matrix
+    epistemic_status: INFERRED
+    source_type: REFERENCE_DRIVE
+    summary: Settled W060-W300 identical union; post-trip P1 optimal; P50 first-obs age ~27s; gaps sparse at video GT fidelity.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md
+
+  - id: DI-HYP-017
+    type: hypothesis
+    title: Larger HF query windows improve settled bucket recovery
+    epistemic_status: INFERRED
+    decision_status: REJECTED
+    summary: EXP-020 rejects window-size hypothesis for non-overlap tiling; production post-trip already uses whole-trip maximal window.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md
+    evidence:
+      - DI-EVID-EXP020-WINDOW-001

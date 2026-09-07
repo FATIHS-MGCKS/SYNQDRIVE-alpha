@@ -168,6 +168,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Video GT correlation | `EXP_019_VIDEO_GT_VS_TELEMETRY_CORRELATION_2026-09-07.md` |
 | Video GT event register | `EXP_019_VIDEO_GT_EVENT_REGISTER_2026-09-07.md` + `video-gt-event-register.json` |
 | Bias-control pass | `EXP_019_BIAS_CONTROL_AND_DECISION_READINESS_2026-09-07.md` — 8 video-first control windows; cadence CRITICAL labels withdrawn; `ARCHITECTURAL_DECISION_READINESS=READY_FOR_EXPERIMENT_DESIGN_DECISION` |
+
+## EXP-020 — Retrospective window geometry (2026-09-07)
+
+| Event | Detail |
+|-------|--------|
+| Experiment | Settled HF query-window matrix on EXP-019 drive (read-only DIMO) |
+| Reference | `EXP020_SETTLED_REFERENCE_UNION` — 446 speed buckets (obs + full-trip + full-session) |
+| Window matrix | W060–W300 non-overlap: **identical 141-bucket union** — larger windows do not help when tiling |
+| Post-trip | P1 whole-trip (1 req) ≈ best settled union; chunks add requests without new buckets |
+| Gap expansion | EXACT/+300: 0 interior; FULL_PHASE: 0–2 sparse interior buckets per GT gap |
+| First-obs age | P50 **~27s** (vs 8s live settlement delay) — settlement-timing co-factor |
+| Hypotheses | H1/H2 NOT_SUPPORTED; H3 SUPPORTED; H4 CONTRADICTED (sole cause); H5 SUPPORTED (video fidelity) |
+| Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
+| Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 | Replay | **T+25** `05:25Z` (provisional) + **true T+30** `05:31:57Z` — **identical**; max gaps persist |
 | Rate metrics | Normalized per-minute: 10s=5.28 req/min; 20s=2.38; 30s=1.53; 60s=0.83 req/min |
 | Policy | PRODUCTION_HF_AUTHORITY restored to LEGACY post-run |
