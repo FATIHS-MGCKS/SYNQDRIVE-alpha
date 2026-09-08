@@ -16,6 +16,7 @@ import {
   validateCusumMovementEventTime,
   isEndCycleTokenStale,
   resolveEndCycleToken,
+  evaluateEndCycleJobAdmission,
 } from './trip-end-cycle-reset';
 
 const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
@@ -249,5 +250,66 @@ describe('trip-end-cycle-reset (R5)', () => {
         fsmState: 'ACTIVE_TRIP',
       }),
     ).toBe('stale_active_trip');
+  });
+
+  it('R10 legacy tokenless: cycle-A job rejected when cycle-B POSSIBLE_END', () => {
+    const cycleA = '2026-09-08T04:48:50.000Z';
+    const cycleB = '2026-09-08T05:02:20.000Z';
+    expect(
+      isEndCycleTokenStale({
+        jobToken: undefined,
+        expectedToken: cycleB,
+        fsmState: 'POSSIBLE_END',
+        jobRequestedAt: '2026-09-08T04:50:08.000Z',
+      }),
+    ).toBe('stale_legacy_requested_before_cycle');
+    expect(
+      evaluateEndCycleJobAdmission({
+        det: {
+          state: 'POSSIBLE_END',
+          possibleEndEnteredAt: new Date(cycleB),
+          lastEvidenceSummary: {
+            pendingFinalizeCycleToken: cycleB,
+            pendingFinalizeScheduledAt: '2026-09-08T05:17:36.000Z',
+          },
+        },
+        job: {
+          requestedAt: '2026-09-08T04:50:08.000Z',
+        },
+      }),
+    ).toBe('stale_legacy_requested_before_cycle');
+  });
+
+  it('R10 legacy tokenless: same-cycle job without token still admitted', () => {
+    const cycleA = '2026-09-08T04:48:50.000Z';
+    expect(
+      isEndCycleTokenStale({
+        jobToken: undefined,
+        expectedToken: cycleA,
+        fsmState: 'POSSIBLE_END',
+        jobRequestedAt: '2026-09-08T05:17:36.000Z',
+      }),
+    ).toBe('ok');
+  });
+
+  it('R10 legacy tokenless: missing requestedAt is ambiguous and rejected', () => {
+    expect(
+      isEndCycleTokenStale({
+        jobToken: undefined,
+        expectedToken: '2026-09-08T05:02:20.000Z',
+        fsmState: 'POSSIBLE_END',
+      }),
+    ).toBe('stale_legacy_missing_correlation');
+  });
+
+  it('pre-clock POSSIBLE_END without possibleEndEnteredAt still admits tokenless legacy job', () => {
+    expect(
+      isEndCycleTokenStale({
+        jobToken: undefined,
+        expectedToken: null,
+        fsmState: 'POSSIBLE_END',
+        jobRequestedAt: '2026-09-06T12:00:00.000Z',
+      }),
+    ).toBe('ok');
   });
 });

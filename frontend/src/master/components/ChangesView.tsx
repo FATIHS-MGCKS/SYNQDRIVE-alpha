@@ -107,16 +107,17 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Trip FSM R10 — Motor-off pause resume anchor + stale finalize guards',
     summary: [
       'hasActivityResumed / EndContinuityDetector anchor to possibleEndAt — pre-stop motion must not trigger activity_resumed.',
-      'endCycleToken (= possibleEndEnteredAt) on END_VALIDATION/FINALIZE jobs; stale jobs abort via isEndCycleTokenStale.',
+      'endCycleToken (= possibleEndEnteredAt) on END_VALIDATION/FINALIZE jobs; stale jobs abort via evaluateEndCycleJobAdmission.',
+      'Legacy tokenless FINALIZE: requestedAt vs possibleEndEnteredAt (never silent token assignment); pre-write admission before finalizeTrip.',
       'enqueueEndCycleTripTrackingJob recycles waiting finalize slot — fixes skipped re-enqueue after cycle A (Production-plausible root cause @ 05:17:36).',
-      'cancelPendingEndCycleJobs on resume; worker lock serializes finalize vs resume.',
+      'Postgres integration test (gated): scheduleFinalize → queue → consumer → persisted COMPLETED + RESTING.',
     ],
     reason:
       'KS MX 2026-09-08: false resume during motor-off gap; true end not persisted despite scheduleFinalize @ 05:17:36 (stale waiting job + missing end-boundary anchor).',
     previousBehavior:
       '90s fetch without resumeAfterAt; scheduleFinalize skipped when prior fin job waiting; no end-cycle token; incorrect movement-after-end guard would block legitimate finalize.',
     details:
-      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md, trip-fsm-motor-off-pause-r10.spec.ts',
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md, trip-fsm-motor-off-pause-r10.spec.ts, trip-finalize-end-cycle.postgres.integration.spec.ts',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-08T05:55:00.000Z',

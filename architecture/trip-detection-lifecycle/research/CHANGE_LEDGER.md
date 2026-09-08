@@ -19,6 +19,7 @@ Append-only record for this authority directory.
 | 2026-09-08 | Cross-authority semantic cleanup — R9 on main + deployed @ `0ba96e03…`; pre-R9/`01541c2ab…` claims reclassified HISTORICAL | Post-canary reconciliation | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
 | 2026-09-08 | R10 motor-off pause / false resume / stale finalize — KS MX reference case; code fix + regression tests (not deployed) | Trip FSM R10 | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](../evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) |
 | 2026-09-08 | R10 follow-up: end-cycle token + recycle enqueue; removed incorrect movement-after-end guard; expanded tests A–G | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 gap close: legacy tokenless FINALIZE safety (`requestedAt` vs episode clock); pre-write admission; postgres integration test (gated); tests H–J | Trip FSM R10 PR #1574 | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

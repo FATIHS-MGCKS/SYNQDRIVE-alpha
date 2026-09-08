@@ -110,8 +110,43 @@ Missing **`resumeAfterAt`** anchor on `hasActivityResumed` / `EndContinuityDetec
 |--------|---------|
 | Resume anchor (`resumeAfterAt`) | `trip-evidence.helpers.ts`, `end-continuity.detector.ts` |
 | End-cycle token + recycle enqueue | `trip-detection.types.ts`, `trip-end-cycle-reset.ts`, `trip-tracking-queue.util.ts`, orchestration |
-| Stale finalize guards (`isEndCycleTokenStale`) | `trip-detection-orchestration.service.ts` |
-| Regression tests A–G | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-end-cycle-reset.spec.ts` |
+| Stale finalize guards (`evaluateEndCycleJobAdmission`) | `trip-detection-orchestration.service.ts` |
+| Legacy tokenless job safety (`requestedAt` vs `possibleEndEnteredAt`; never assign current token) | `trip-end-cycle-reset.ts`, orchestration pre-write re-check |
+| `pendingFinalizeCycleToken` evidence stamp on `scheduleFinalize` | orchestration |
+| Regression tests A–J + postgres integration (gated) | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-end-cycle-reset.spec.ts`, `trip-finalize-end-cycle.postgres.integration.spec.ts` |
+
+### Legacy tokenless FINALIZE policy (R10 gap close)
+
+| Scenario | Admission |
+|----------|-------------|
+| Explicit `endCycleToken` matches `possibleEndEnteredAt` | OK |
+| Explicit token mismatch | Reject (`stale_finalize_aborted_end_cycle_mismatch`) |
+| Tokenless + `requestedAt` ≥ current `possibleEndEnteredAt` | OK (same episode) |
+| Tokenless + `requestedAt` < current `possibleEndEnteredAt` | Reject (`stale_finalize_aborted_legacy_before_cycle`) — **A→resume→B** |
+| Tokenless + no `requestedAt` + clocked episode | Reject (`stale_finalize_aborted_legacy_ambiguous`) |
+| Pre-clock `POSSIBLE_END` without `possibleEndEnteredAt` | Tokenless OK (backward compat) |
+| FSM `ACTIVE_TRIP` | Reject (all job shapes) |
+
+Pre-write re-validation immediately before `TripDecisionEngine.finalizeTrip` repeats admission under worker lock.
+
+### Deployment topology & compatibility limits
+
+| Layer | Topology | Limit |
+|-------|----------|-------|
+| PM2 | Two replicas (`synqdrive`, `synqdrive-b`) on single VPS | Rolling deploy can run old + new workers concurrently |
+| BullMQ | Shared Redis queue `dimo.trip-tracking` | Old workers **without** R10 guards can still execute stale jobs until all replicas upgraded |
+| Prerequisite | **All trip-tracking workers on R10+ before relying on legacy tokenless safety** | New-worker checks do **not** protect old code paths |
+| Post-deploy | Natural-drive validation still required | Not claimed by this PR |
+
+### Persisted completion integration test (gated)
+
+`TRIP_FINALIZE_POSTGRES_INTEGRATION=1 npm run test:trip-finalize:postgres`
+
+| Real | Substituted |
+|------|-------------|
+| Prisma, `TripDecisionEngine.finalizeTrip`, orchestration `processFinalize` / `scheduleFinalize`, worker lock, FSM `transitionState` | BullMQ (in-memory queue), post-finalize producers, DIMO/CH/metrics |
+
+Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLETED` + FSM `RESTING`; stale legacy rejection; cycle-B completion after A rejected; duplicate consumer no double-complete. **Does not** prove Production Redis/BullMQ archive or natural-drive behavior.
 
 ## Cross-module notes (out of scope)
 
@@ -124,6 +159,7 @@ Missing **`resumeAfterAt`** anchor on `hasActivityResumed` / `EndContinuityDetec
 ## Validation
 
 ```bash
-cd backend && npm test -- --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset" --no-coverage
+cd backend && npm test -- --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7" --no-coverage
+TRIP_FINALIZE_POSTGRES_INTEGRATION=1 npm run test:trip-finalize:postgres  # requires DATABASE_URL
 bash architecture/scripts/validate-module-registry.sh
 ```

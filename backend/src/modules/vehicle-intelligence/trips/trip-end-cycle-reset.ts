@@ -37,16 +37,115 @@ export function resolveEndCycleToken(det: {
   return det.possibleEndEnteredAt?.toISOString() ?? null;
 }
 
+export function resolvePendingFinalizeCycleToken(
+  summary: Record<string, unknown> | null | undefined,
+): string | null {
+  const token = summary?.pendingFinalizeCycleToken;
+  return typeof token === 'string' ? token : null;
+}
+
+export type EndCycleTokenStaleOutcome =
+  | 'ok'
+  | 'stale_active_trip'
+  | 'stale_token_mismatch'
+  | 'stale_cycle_cleared'
+  | 'stale_legacy_requested_before_cycle'
+  | 'stale_legacy_missing_correlation';
+
+export function evaluateEndCycleJobAdmission(params: {
+  det: {
+    state: string;
+    possibleEndEnteredAt?: Date | null;
+    lastEvidenceSummary?: unknown;
+  };
+  job: { endCycleToken?: string; requestedAt?: string };
+}): EndCycleTokenStaleOutcome {
+  const summary = params.det.lastEvidenceSummary as Record<string, unknown> | null;
+  return isEndCycleTokenStale({
+    jobToken: params.job.endCycleToken,
+    expectedToken: resolveEndCycleToken(params.det),
+    fsmState: params.det.state,
+    jobRequestedAt: params.job.requestedAt,
+    pendingFinalizeCycleToken: resolvePendingFinalizeCycleToken(summary),
+  });
+}
+
+export function buildPendingFinalizeScheduledEvidence(params: {
+  priorSummary?: Record<string, unknown> | null;
+  endCycleToken: string;
+  workerNow: Date;
+}): Record<string, unknown> {
+  return {
+    ...(params.priorSummary ?? {}),
+    pendingFinalizeCycleToken: params.endCycleToken,
+    pendingFinalizeScheduledAt: params.workerNow.toISOString(),
+  };
+}
+
+/**
+ * R10 legacy compatibility: tokenless FINALIZE jobs must not commit against a
+ * later POSSIBLE_END episode. Uses job.requestedAt vs possibleEndEnteredAt and
+ * optional pendingFinalizeCycleToken evidence — never assigns the current token
+ * to a tokenless job.
+ */
 export function isEndCycleTokenStale(params: {
-  jobToken?: string;
+  jobToken?: string | null;
   expectedToken: string | null;
   fsmState: string;
-}): 'ok' | 'stale_active_trip' | 'stale_token_mismatch' | 'stale_cycle_cleared' {
+  jobRequestedAt?: string | null;
+  pendingFinalizeCycleToken?: string | null;
+}): EndCycleTokenStaleOutcome {
   if (params.fsmState === 'ACTIVE_TRIP') return 'stale_active_trip';
-  if (!params.jobToken) return 'ok';
-  if (!params.expectedToken) return 'stale_cycle_cleared';
-  if (params.jobToken !== params.expectedToken) return 'stale_token_mismatch';
-  return 'ok';
+
+  if (params.jobToken) {
+    if (!params.expectedToken) return 'stale_cycle_cleared';
+    if (params.jobToken !== params.expectedToken) return 'stale_token_mismatch';
+    return 'ok';
+  }
+
+  if (!params.expectedToken) {
+    if (params.fsmState !== 'POSSIBLE_END') return 'stale_cycle_cleared';
+    return 'ok';
+  }
+
+  const expectedMs = Date.parse(params.expectedToken);
+  if (!Number.isFinite(expectedMs)) return 'stale_cycle_cleared';
+
+  if (
+    params.pendingFinalizeCycleToken != null &&
+    params.pendingFinalizeCycleToken !== params.expectedToken
+  ) {
+    return 'stale_token_mismatch';
+  }
+
+  if (params.jobRequestedAt) {
+    const requestedMs = Date.parse(params.jobRequestedAt);
+    if (Number.isFinite(requestedMs) && requestedMs < expectedMs) {
+      return 'stale_legacy_requested_before_cycle';
+    }
+    return 'ok';
+  }
+
+  return 'stale_legacy_missing_correlation';
+}
+
+export function mapEndCycleStaleFinalizeReason(
+  outcome: EndCycleTokenStaleOutcome,
+): string {
+  switch (outcome) {
+    case 'stale_active_trip':
+      return 'stale_finalize_aborted_active_trip';
+    case 'stale_token_mismatch':
+      return 'stale_finalize_aborted_end_cycle_mismatch';
+    case 'stale_cycle_cleared':
+      return 'stale_finalize_aborted_end_cycle_cleared';
+    case 'stale_legacy_requested_before_cycle':
+      return 'stale_finalize_aborted_legacy_before_cycle';
+    case 'stale_legacy_missing_correlation':
+      return 'stale_finalize_aborted_legacy_ambiguous';
+    default:
+      return 'stale_finalize_aborted_end_cycle_mismatch';
+  }
 }
 
 /** Attempt-local runtime fields cleared between validation attempts within the same end episode. */

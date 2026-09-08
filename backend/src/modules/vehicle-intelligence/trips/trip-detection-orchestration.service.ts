@@ -122,9 +122,11 @@ import {
   buildEndValidationScheduledEvidence,
   buildEndValidationStartedEvidence,
   buildMaxAttemptFallbackEvidence,
+  buildPendingFinalizeScheduledEvidence,
   buildPossibleEndToActiveReset,
+  evaluateEndCycleJobAdmission,
   extractR5EndForensicsForPersistence,
-  isEndCycleTokenStale,
+  mapEndCycleStaleFinalizeReason,
   resolveEndCycleToken,
   type PecResumeCheckOutcome,
   validateCusumMovementEventTime,
@@ -749,6 +751,14 @@ export class TripDetectionOrchestrationService {
       );
       return;
     }
+    const workerNow = new Date();
+    await this.transitionState(vehicleId, det.state, {
+      lastEvidenceSummary: buildPendingFinalizeScheduledEvidence({
+        priorSummary: det.lastEvidenceSummary as Record<string, unknown> | null,
+        endCycleToken,
+        workerNow,
+      }),
+    });
     await this.enqueueTripTrackingJob(
       'fin',
       vehicleId,
@@ -2780,11 +2790,7 @@ export class TripDetectionOrchestrationService {
       det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
-      const endCycleCheck = isEndCycleTokenStale({
-        jobToken: data.endCycleToken,
-        expectedToken: resolveEndCycleToken(det),
-        fsmState: det.state,
-      });
+      const endCycleCheck = evaluateEndCycleJobAdmission({ det, job: data });
       if (endCycleCheck !== 'ok') {
         this.logger.debug(
           `END_VALIDATION skipped for ${vehicleId}: ${endCycleCheck}`,
@@ -3141,21 +3147,13 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
-      const endCycleCheck = isEndCycleTokenStale({
-        jobToken: data.endCycleToken,
-        expectedToken: resolveEndCycleToken(det),
-        fsmState: det.state,
-      });
+      const endCycleCheck = evaluateEndCycleJobAdmission({ det, job: data });
       if (endCycleCheck !== 'ok') {
-        const reason =
-          endCycleCheck === 'stale_active_trip'
-            ? 'stale_finalize_aborted_active_trip'
-            : endCycleCheck === 'stale_token_mismatch'
-              ? 'stale_finalize_aborted_end_cycle_mismatch'
-              : 'stale_finalize_aborted_end_cycle_cleared';
+        const reason = mapEndCycleStaleFinalizeReason(endCycleCheck);
         this.logger.log(
           `FINALIZE skipped for ${vehicleId}: ${reason}` +
-            (data.endCycleToken ? ` jobToken=${data.endCycleToken}` : ''),
+            (data.endCycleToken ? ` jobToken=${data.endCycleToken}` : '') +
+            (data.requestedAt ? ` requestedAt=${data.requestedAt}` : ''),
         );
         await this.logTrackingRun({
           vehicleId,
@@ -3167,6 +3165,7 @@ export class TripDetectionOrchestrationService {
             reason,
             jobEndCycleToken: data.endCycleToken ?? null,
             expectedEndCycleToken: resolveEndCycleToken(det),
+            jobRequestedAt: data.requestedAt ?? null,
           },
           durationMs: Date.now() - startedMs,
         });
@@ -3352,6 +3351,37 @@ export class TripDetectionOrchestrationService {
             };
             terminalLifecycleIntent = 'COMPLETE';
             terminalTripId = tripId;
+
+            const preWriteDet = await this.getOrCreateDetectionState(
+              vehicleId,
+              organizationId,
+            );
+            const preWriteAdmission = evaluateEndCycleJobAdmission({
+              det: preWriteDet,
+              job: data,
+            });
+            if (preWriteAdmission !== 'ok') {
+              const reason = mapEndCycleStaleFinalizeReason(preWriteAdmission);
+              this.logger.log(
+                `FINALIZE pre-write admission blocked for ${vehicleId}: ${reason}`,
+              );
+              await this.logTrackingRun({
+                vehicleId,
+                organizationId,
+                tripId: preWriteDet.activeTripId,
+                stateAtRun: preWriteDet.state,
+                runType: TripTrackingRunType.FINALIZATION_CHECK,
+                resultSummary: {
+                  reason: `${reason}_pre_write`,
+                  jobEndCycleToken: data.endCycleToken ?? null,
+                  expectedEndCycleToken: resolveEndCycleToken(preWriteDet),
+                  jobRequestedAt: data.requestedAt ?? null,
+                },
+                durationMs: Date.now() - startedMs,
+              });
+              return;
+            }
+
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
               endLatitude: endCoords.endLatitude,

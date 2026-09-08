@@ -21,6 +21,7 @@ import { DETECTION_PHASES } from './detectors/detector.interfaces';
 import {
   isEndCycleTokenStale,
   resolveEndCycleToken,
+  evaluateEndCycleJobAdmission,
 } from './trip-end-cycle-reset';
 import {
   cancelPendingTripTrackingJobs,
@@ -266,6 +267,89 @@ describe('R10 processFinalize — consumer guards + true end completion', () => 
         }),
       }),
     );
+  });
+
+  it('H: legacy tokenless cycle-A job blocked on cycle-B POSSIBLE_END', async () => {
+    const h = buildFinalizeHarness({
+      possibleEndEnteredAt: new Date(CYCLE_B),
+      possibleEndAt: new Date('2026-09-08T05:02:15.000Z'),
+      cusumSegmentEnd: TRUE_END,
+      lastMeaningfulMovementAt: TRUE_END,
+      lastEvidenceSummary: {
+        pendingFinalizeCycleToken: CYCLE_B,
+        pendingFinalizeScheduledAt: '2026-09-08T05:17:36.000Z',
+      },
+    });
+    await TripDetectionOrchestrationService.prototype.processFinalize.call(
+      h.svc,
+      jobData(TRIP_TRACKING_TRIGGERS.FINALIZE, {
+        requestedAt: '2026-09-08T04:50:08.000Z',
+      }),
+    );
+    expect(h.finalizeTrip).not.toHaveBeenCalled();
+    expect(h.logTrackingRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultSummary: expect.objectContaining({
+          reason: 'stale_finalize_aborted_legacy_before_cycle',
+        }),
+      }),
+    );
+  });
+
+  it('I: legacy tokenless same-cycle job completes without token', async () => {
+    const h = buildFinalizeHarness({
+      possibleEndEnteredAt: new Date(CYCLE_B),
+      possibleEndAt: new Date('2026-09-08T05:02:15.000Z'),
+      cusumSegmentEnd: TRUE_END,
+      lastMeaningfulMovementAt: TRUE_END,
+    });
+    await TripDetectionOrchestrationService.prototype.processFinalize.call(
+      h.svc,
+      jobData(TRIP_TRACKING_TRIGGERS.FINALIZE, {
+        requestedAt: '2026-09-08T05:17:36.000Z',
+      }),
+    );
+    expect(h.finalizeTrip).toHaveBeenCalledTimes(1);
+    expect(h.transitionState).toHaveBeenCalledWith(
+      VEHICLE,
+      TripDetectionState.RESTING,
+      expect.objectContaining({ activeTripId: null }),
+    );
+  });
+
+  it('J: cycle-B completes after legacy cycle-A rejected (A→resume→B sequence)', async () => {
+    const staleHarness = buildFinalizeHarness({
+      possibleEndEnteredAt: new Date(CYCLE_B),
+      possibleEndAt: new Date('2026-09-08T05:02:15.000Z'),
+      cusumSegmentEnd: TRUE_END,
+      lastMeaningfulMovementAt: TRUE_END,
+      lastEvidenceSummary: {
+        pendingFinalizeCycleToken: CYCLE_B,
+        pendingFinalizeScheduledAt: '2026-09-08T05:17:36.000Z',
+      },
+    });
+    await TripDetectionOrchestrationService.prototype.processFinalize.call(
+      staleHarness.svc,
+      jobData(TRIP_TRACKING_TRIGGERS.FINALIZE, {
+        requestedAt: '2026-09-08T04:50:08.000Z',
+      }),
+    );
+    expect(staleHarness.finalizeTrip).not.toHaveBeenCalled();
+
+    const validHarness = buildFinalizeHarness({
+      possibleEndEnteredAt: new Date(CYCLE_B),
+      possibleEndAt: new Date('2026-09-08T05:02:15.000Z'),
+      cusumSegmentEnd: TRUE_END,
+      lastMeaningfulMovementAt: TRUE_END,
+    });
+    await TripDetectionOrchestrationService.prototype.processFinalize.call(
+      validHarness.svc,
+      jobData(TRIP_TRACKING_TRIGGERS.FINALIZE, {
+        endCycleToken: CYCLE_B,
+        requestedAt: '2026-09-08T05:17:36.000Z',
+      }),
+    );
+    expect(validHarness.finalizeTrip).toHaveBeenCalledTimes(1);
   });
 
   it('E: true end completes with lastMeaningfulMovementAt after possibleEndAt', async () => {
