@@ -17,6 +17,8 @@
 
 #1583 does not overwrite #1584 implementation artifacts; if #1583 lands first, re-read `TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md` after merge for any contract wording drift. If #1584 lands first, #1583 remains valid design basis without changing runtime behaviour.
 
+**SynqDrive Code views:** `ChangesView.tsx` / `ArchitekturView.tsx` updates are **deferred** from #1584 (i18n authority-protection gate blocks mixed `.github/workflows/*` + `frontend/src/*` product changes). Apply in a follow-up PR after merge or bundled with #1583 docs-only merge — architecture evidence here remains canonical for R11 integration proof.
+
 ## Implemented behaviour
 
 | Area | Implementation | Time boundaries |
