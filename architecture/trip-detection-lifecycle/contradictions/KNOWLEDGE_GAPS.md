@@ -14,7 +14,8 @@ Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 | **TDL-GAP-008** | Mapbox/FMM failure recovery paths | UNKNOWN | Route V2 pipeline referenced in code; failure taxonomy not reconstructed |
 | **TDL-GAP-009** | Pre-R9 deploy drift (R8/R9) | **HISTORICAL** | At `01541c2ab…` R8/R9 NOT_ON_PRODUCTION; resolved @ `0ba96e03…` |
 | **TDL-GAP-013** | Natural R9 webhook wake end-to-end delivery | **PARTIAL** | Start wake observed KS MS 661 @ `684950419…` (TDL-EVID-KS-MS-661-001); efficiency + payload archive gaps remain — cross-ref DIM-GAP-006 |
-| **TDL-GAP-014** | Empty-core `no_core_data_keep_open` end block on natural LTE drive | **OPEN** | KS MS 661 — PROPOSED fix TDL-DEC-R11-001; see TDL-EVID-KS-MS-661-REPRO-001 |
+| **TDL-GAP-014** | Empty-core `no_core_data_keep_open` end block on natural LTE drive | **OPEN** | KS MS 661 — PROPOSED fix TDL-DEC-R11-001 complete contract; temporal TDL-EVID-KS-MS-661-TEMPORAL-001 |
+| **TDL-GAP-015** | VLS single `sourceTimestamp` masks per-field freshness (engine load rejuvenation) | **OPEN** | PROPOSED phase-1 positive TTL decay; phase-2 per-field timestamps (PD-4) |
 | **TDL-GAP-010** | Machine-readable FSM graph | PARTIAL | Phase 4 partial — R9 wake subgraph in `graph/*.yaml` + [KNOWLEDGE_GRAPH.md](../KNOWLEDGE_GRAPH.md); full FSM graph incomplete |
 | **TDL-GAP-011** | Decision register / WHY reconstruction | PARTIAL | Phase 4 partial — [decisions/DECISION_REGISTER.md](../decisions/DECISION_REGISTER.md) includes R9 wake decisions; full Phase 3 reconstruction ongoing |
 | **TDL-GAP-012** | Legacy duplicate trip paths | INFERRED | Reconciliation-heavy repair counts suggest historical gaps; dead paths not fully catalogued |

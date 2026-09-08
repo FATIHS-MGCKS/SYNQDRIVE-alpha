@@ -195,7 +195,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…`; **natural start wake observed** on KS MS 661 drive (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **partially validated** (start wake on tokenId 187361); in-trip/end-path wake forensics and payload archive gaps remain
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…`; **NOT exercised** on KS MS 661 (FSM never reached `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
-- Empty-core end block on natural drive — **reproduced** (TDL-EVID-KS-MS-661-REPRO-001); **PROPOSED** fix TDL-DEC-R11-001 (not implemented)
+- Empty-core end block on natural drive — **reproduced** (TDL-EVID-KS-MS-661-REPRO-001); full temporal flow (TDL-EVID-KS-MS-661-TEMPORAL-001); **PROPOSED** complete contract TDL-DEC-R11-001 + scenario matrix (not implemented)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)

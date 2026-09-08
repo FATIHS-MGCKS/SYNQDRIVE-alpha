@@ -57,15 +57,16 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | Field | Value |
 |-------|-------|
 | **STATUS** | PROPOSED |
-| **BEFORE** | Single 120 s freshness for VLS positive + end corroboration; `lastActivityAt=workerNow` shrinks empty-core silence; stale-positive VLS/engine-load blocks indefinitely; inner gate reason overwritten in persistence |
-| **WHY** | KS MS 661 @ `684950419…`: empty-core gate never reached `POSSIBLE_END` — operational timer + fresh VLS ACTIVE (incl. engine load) then prolonged UNKNOWN safety without recovery |
-| **CHANGE** | Split **positive activity TTL** (default 45 s) vs **end corroboration TTL** (120 s); decay stale-positive to UNKNOWN-for-end; provider-time operational anchor; optional bounded unknown → LOW-confidence `POSSIBLE_END` (flag); persist `innerGateReason` |
-| **ALTERNATIVES REJECTED** | Global inactivity reduction; remove UNKNOWN safety; fleet polling increase; per-vehicle overrides; webhook-only motor-off finalize |
-| **EXPECTED EFFECT** | Running trips protected during gaps; corroborated stops can reach `POSSIBLE_END` → existing R10 finalize; pause taggable without mandatory split |
-| **VALIDATION** | Unit matrix AC-1–AC-8 in [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md); replay TDL-EVID-KS-MS-661-REPRO-001 |
+| **NUMBERING** | Trip Detection decision register R11 — **no collision** with R10 Production deploy / R9 canary tracks |
+| **BEFORE** | Single 120 s freshness for VLS positive + end corroboration; `lastActivityAt=workerNow` shrinks empty-core silence; stale-positive VLS/engine-load blocks indefinitely; inner gate reason overwritten in persistence; UNKNOWN conflated with end blocking without recovery path |
+| **WHY** | KS MS 661 @ `684950419…`: full temporal flow (TDL-EVID-KS-MS-661-TEMPORAL-001) — empty-core gate never reached `POSSIBLE_END`; dual block operational timer + fresh/stale VLS ACTIVE; post-IDLE prolonged UNKNOWN (`vls_row_absent`) |
+| **CHANGE** | Signal-age policy (positive 45 s **UNVALIDATED_CANDIDATE**, corroboration 120 s); UNKNOWN ≠ INACTIVE; provider-time operational anchor + `stopBoundaryAt` / active `resumeAfterStop` without circularity; pause vs end candidacy vs finalize separated; R10 handoff unchanged; optional flag-gated LOW UNKNOWN-timeout candidacy; scheduler backoff + coalesced corroboration wake; corrected deploy sequence (implement → deploy → natural validate) |
+| **ALTERNATIVES REJECTED** | Global inactivity reduction; UNKNOWN → auto-INACTIVE; fleet polling increase; per-vehicle overrides; webhook-only motor-off finalize; deploy blocked on pre-implementation natural validation |
+| **EXPECTED EFFECT** | Running trips protected during gaps; corroborated stops can reach `POSSIBLE_END` → existing R10 finalize; ~1 min pause taggable (not end) when signals present; bounded cost at 10k scale |
+| **VALIDATION** | Scenario matrix TDL-EVID-KS-MS-661-SCENARIOS-001; temporal table TDL-EVID-KS-MS-661-TEMPORAL-001; implementation SC-1–SC-6 in [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) |
 | **PRODUCTION STATUS** | **Not implemented** |
-| **NON_EFFECTS** | Does not replace R10; does not change R9 wake cadence; does not auto-split on short pause |
-| **EVIDENCE** | TDL-EVID-KS-MS-661-REPRO-001 |
+| **NON_EFFECTS** | Does not replace R10; does not change R9 wake cadence; does not auto-split on short pause; does not promote authority |
+| **EVIDENCE** | TDL-EVID-KS-MS-661-REPRO-001, TDL-EVID-KS-MS-661-TEMPORAL-001, TDL-EVID-KS-MS-661-SCENARIOS-001 |
 
 ---
 
