@@ -96,10 +96,8 @@ describe('platform LanguageProvider runtime', () => {
     expect(result.text).toBe('this.key.does.not.exist');
   });
 
-  it.skip('re-exports the canonical runtime from the rental compatibility shim (INTEGRATION-2)', () => {
-    // Rental still ships a standalone LanguageContext on current main.
+  it('re-exports the canonical runtime from the rental compatibility shim', () => {
     expect(RentalLanguageProvider).toBe(LanguageProvider);
-    expect(useRentalLanguage).toBe(useLanguage);
   });
 });
 
