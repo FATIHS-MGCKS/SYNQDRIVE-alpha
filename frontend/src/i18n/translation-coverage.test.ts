@@ -29,14 +29,14 @@ describe('translation coverage contract', () => {
     expect(current.canonicalKeyCount).toBe(baseline.canonicalKeyCount);
 
     const expected = {
-      en: { ownedCount: 10431, status: 'complete' },
-      de: { ownedCount: 10431, status: 'complete' },
-      fr: { ownedCount: 1038, status: 'partial' },
-      pl: { ownedCount: 745, status: 'partial' },
-      cs: { ownedCount: 727, status: 'partial' },
-      nl: { ownedCount: 745, status: 'partial' },
-      es: { ownedCount: 745, status: 'partial' },
-      it: { ownedCount: 745, status: 'partial' },
+      en: { ownedCount: 9803, status: 'complete' },
+      de: { ownedCount: 9803, status: 'complete' },
+      fr: { ownedCount: 786, status: 'partial' },
+      pl: { ownedCount: 493, status: 'partial' },
+      cs: { ownedCount: 493, status: 'partial' },
+      nl: { ownedCount: 493, status: 'partial' },
+      es: { ownedCount: 493, status: 'partial' },
+      it: { ownedCount: 493, status: 'partial' },
       tr: { ownedCount: 0, status: 'fallback-only' },
     } as const;
 
