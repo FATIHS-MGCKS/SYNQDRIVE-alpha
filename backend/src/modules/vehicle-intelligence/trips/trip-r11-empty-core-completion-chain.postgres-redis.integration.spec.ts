@@ -15,8 +15,10 @@ import {
   createTripR11ActiveTripFixture,
   drainTripTrackingQueue,
   probeTripR11Postgres,
+  restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
+  useTripR11FrozenClock,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
 import { resolveEndCycleToken } from './trip-end-cycle-reset';
@@ -66,6 +68,7 @@ if (REQUIRED) {
     });
 
     afterEach(async () => {
+      restoreTripR11Clock();
       if (!dbOk || !fixture) return;
       await cleanupTripR11Fixture(prisma, fixture);
     });
@@ -88,7 +91,7 @@ if (REQUIRED) {
       );
 
       const emptyCoreTickAt = new Date('2026-09-08T05:02:30.000Z');
-      jest.useFakeTimers({ now: emptyCoreTickAt });
+      useTripR11FrozenClock(emptyCoreTickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, emptyCoreTickAt));
 
@@ -137,7 +140,7 @@ if (REQUIRED) {
         expect(resolveEndCycleToken(det!)).toBeNull();
         expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
       } finally {
-        jest.useRealTimers();
+        restoreTripR11Clock();
       }
     }, 120_000);
   },

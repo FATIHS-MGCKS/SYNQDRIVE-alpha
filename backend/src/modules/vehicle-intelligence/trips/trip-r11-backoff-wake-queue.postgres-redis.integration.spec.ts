@@ -23,8 +23,10 @@ import {
   drainTripTrackingQueue,
   getActiveTickJobDelayMs,
   probeTripR11Postgres,
+  restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
+  useTripR11FrozenClock,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
 import { enqueueRecoveryTripTrackingJob } from './trip-tracking-queue.util';
@@ -69,6 +71,7 @@ if (REQUIRED && !LIVE) {
     });
 
     afterEach(async () => {
+      restoreTripR11Clock();
       if (!dbOk || !fixture) return;
       await cleanupTripR11Fixture(prisma, fixture);
     });
@@ -96,7 +99,7 @@ if (REQUIRED && !LIVE) {
     it('I-a — empty-core UNKNOWN schedules long backoff on BullMQ', async () => {
       const harness = await buildHarnessWithAbsentVls();
       const tickAt = new Date('2026-09-08T05:02:30.000Z');
-      jest.useFakeTimers({ now: tickAt });
+      useTripR11FrozenClock(tickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         const det = await prisma.vehicleTripDetectionState.findUnique({
@@ -118,14 +121,14 @@ if (REQUIRED && !LIVE) {
           }),
         );
       } finally {
-        jest.useRealTimers();
+        restoreTripR11Clock();
       }
     }, 60_000);
 
     it('I-b — wake preempts delayed backoff without losing follow-up work', async () => {
       const harness = await buildHarnessWithAbsentVls();
       const tickAt = new Date('2026-09-08T05:02:30.000Z');
-      jest.useFakeTimers({ now: tickAt });
+      useTripR11FrozenClock(tickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         const beforeDelay = await getActiveTickJobDelayMs(trackingQueue, fixture);
@@ -142,14 +145,14 @@ if (REQUIRED && !LIVE) {
         expect(afterDelay).toBe(0);
         expect(await countTripTrackingJobs(trackingQueue)).toBe(1);
       } finally {
-        jest.useRealTimers();
+        restoreTripR11Clock();
       }
     }, 60_000);
 
     it('I-c — duplicate wake enqueue does not create retry loop', async () => {
       const harness = await buildHarnessWithAbsentVls();
       const tickAt = new Date('2026-09-08T05:02:30.000Z');
-      jest.useFakeTimers({ now: tickAt });
+      useTripR11FrozenClock(tickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         await TripDetectionOrchestrationService.prototype.accelerateActiveTickAfterWake.call(
@@ -166,14 +169,14 @@ if (REQUIRED && !LIVE) {
         );
         expect(await countTripTrackingJobs(trackingQueue)).toBe(1);
       } finally {
-        jest.useRealTimers();
+        restoreTripR11Clock();
       }
     }, 60_000);
 
     it('I-d — end-cycle finalize job is not delayed by empty-core backoff slot', async () => {
       const harness = await buildHarnessWithAbsentVls();
       const tickAt = new Date('2026-09-08T05:02:30.000Z');
-      jest.useFakeTimers({ now: tickAt });
+      useTripR11FrozenClock(tickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         const atDelay = await getActiveTickJobDelayMs(trackingQueue, fixture);
@@ -202,7 +205,7 @@ if (REQUIRED && !LIVE) {
         expect(finJob!.delay ?? 0).toBe(0);
         expect(await getActiveTickJobDelayMs(trackingQueue, fixture)).toBe(atDelay);
       } finally {
-        jest.useRealTimers();
+        restoreTripR11Clock();
       }
     }, 60_000);
 
@@ -237,7 +240,7 @@ if (REQUIRED && !LIVE) {
 
       try {
         const tickAt = new Date('2026-09-08T05:02:30.000Z');
-        jest.useFakeTimers({ now: tickAt });
+        useTripR11FrozenClock(tickAt);
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         await TripDetectionOrchestrationService.prototype.accelerateActiveTickAfterWake.call(
           harness.orchestration,
@@ -245,7 +248,7 @@ if (REQUIRED && !LIVE) {
           fixture.org.id,
           fixture.vehicle.dimoTokenId,
         );
-        jest.useRealTimers();
+        restoreTripR11Clock();
 
         await new Promise((resolve) => setTimeout(resolve, 500));
         expect(await countTripTrackingJobs(trackingQueue)).toBeLessThanOrEqual(2);

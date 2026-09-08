@@ -59,6 +59,27 @@ export type TripR11RedisStack = {
   connectionOptions: ConnectionOptions;
 };
 
+/** Fake Date for orchestration while leaving BullMQ/ioredis timers real. */
+export function useTripR11FrozenClock(now: Date): void {
+  jest.useFakeTimers({
+    now,
+    doNotFake: [
+      'setTimeout',
+      'setInterval',
+      'nextTick',
+      'setImmediate',
+      'requestAnimationFrame',
+      'queueMicrotask',
+      'hrtime',
+      'performance',
+    ],
+  });
+}
+
+export function restoreTripR11Clock(): void {
+  jest.useRealTimers();
+}
+
 function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
