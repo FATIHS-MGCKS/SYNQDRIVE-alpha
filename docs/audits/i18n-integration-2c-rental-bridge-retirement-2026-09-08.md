@@ -139,6 +139,10 @@ frontend/src/rental/i18n/                    (directory removed)
 - Integration tests `runtime-integration-2a.test.tsx`, `runtime-integration-2b.test.tsx`, `LanguageContext.test.tsx` (shim references removed)
 - `translation-coverage-baseline.json` + `translation-coverage.test.ts` (mechanical sync to 10,431 canonical keys)
 
+**Deferred (protected — separate authority PR)**
+
+- `translation-coverage-baseline.json` + `translation-coverage.test.ts` — canonical key-count sync deferred to avoid mixed authority/product gate failure
+
 **Not changed (protected)**
 
 - `frontend/src/i18n/i18n-structural-check.test.ts` (INTEGRATION-2 skip remains)
@@ -161,7 +165,7 @@ frontend/src/rental/i18n/                    (directory removed)
 | Command | Result |
 |---------|--------|
 | `npx vitest run src/i18n/runtime-integration-2c.test.tsx` | **8/8 pass** |
-| `npx vitest run src/i18n/` | **242 pass**, 3 skipped (`i18n-structural-check` INTEGRATION-2 skip) |
+| `npx vitest run src/i18n/` | **239 pass**, 3 skipped; **3 fail** in `translation-coverage.test.ts` (baseline not updated — deferred to authority PR) |
 | `npx vitest run src/pages/login-localization.test.tsx` | **7/7 pass** |
 | `npx vitest run src/i18n/components/LanguageSelector.test.tsx` | **2/2 pass** |
 | Sample Rental i18n tests (legal-docs, communication-center, connectivity) | **399/399 pass** |
@@ -187,8 +191,8 @@ rg "from '.*/rental/i18n" frontend/src
 | Field | Value |
 |-------|-------|
 | Classification | `PRODUCT_RUNTIME_I18N_INTEGRATION` |
-| Protected-path count in diff | **2** (`translation-coverage-baseline.json`, `translation-coverage.test.ts`) — mechanical canonical key-count sync only; no scanner/policy/workflow edits |
-| Authority label | **None** (no governance manifest/scanner/pr-gate/structural-check edits) |
+| Protected-path count in diff | **0** (coverage baseline sync deferred) |
+| Authority label | **None** |
 | Remaining protected structural-test skip | `i18n-structural-check.test.ts` INTEGRATION-2 rental-shim test **still skipped** — activation deferred to authority-only PR |
 | `GOVERNANCE_AUTHORITY_CHANGED` (local pr-gate unit suite) | NO |
 
@@ -198,7 +202,8 @@ rg "from '.*/rental/i18n" frontend/src
 
 1. **Large catalog merge (+628 keys):** Low risk — values copied from proven rental dictionaries; registry reports de/en 100%.
 2. **Partial-locale nav keys:** Some rental-only nav keys remain English in partial locales (pre-existing rental behavior for unmigrated nav subset).
-3. **Protected structural test:** Shim deletion not yet asserted by CI until separate authority PR activates INTEGRATION-2 skip removal.
+3. **Coverage baseline drift:** `translation-coverage.test.ts` expects pre-migration key counts until a separate authority PR updates the protected baseline.
+4. **Protected structural test:** Shim deletion not yet asserted by CI until separate authority PR activates INTEGRATION-2 skip removal.
 4. **ArchitekturView prose:** Still mentions `frontend/rental/i18n/translations` in historical documentation text (non-functional).
 
 ---
