@@ -2,12 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges |
-| **origin/main (historical @ prior branch merge)** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` — integrated before Battery V2 M3 evidence landing |
-| **current origin/main** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` |
-| **R9 audit branch runtime** | `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake` (merged via #1553) |
-| **Production baseline** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
-| **Last verified Production evidence** | `2026-09-07T22:10:00Z` (R9 scoped trigger bootstrap; see TDL-EV-R9-BOOTSTRAP-001) |
+| **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
+| **origin/main (current)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…` |
+| **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
+| **Production baseline (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **Last verified Production evidence** | `2026-09-07T22:35:00Z` (R9 five-vehicle canary PASS; see TDL-EV-R9-CANARY-001) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -95,13 +94,13 @@ Related downstream (not owned): `trip.behavior.enrichment`, `trip.driving-impact
 
 ### Remediation on `main`
 
-R1–R8 merged through #1549 on `origin/main`. R9 is **branch-only** until #1553 merges (see R9 section below).
+R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463…` (see R9 section below).
 
 ---
 
-## CONFIRMED — R9 audit branch runtime state @ `1186e9d23…`
+## CONFIRMED — R9 runtime on main and Production @ `0ba96e03…`
 
-**Epistemic note:** This section describes code present on branch `trip-fsm/r9-adaptive-polling-wake` @ `1186e9d23…`. It is **not** on `origin/main` @ `a47255148…` and **NOT_ON_PRODUCTION** at observed release `01541c2ab…`.
+**Epistemic note:** R9 code merged to `origin/main` via #1553. Production runtime **deployed** @ `0ba96e03…`. Provider speed/ignition trigger wiring **validated** (5/5 active cohort — see TDL-EV-R9-CANARY-001). **Natural wake delivery not yet validated.**
 
 ### R9 wake subsystem entry points
 
@@ -114,7 +113,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 is **branch-only** until #1553
 | Redis scripts | `backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts` |
 | DIMO webhook wiring | `backend/src/modules/dimo/dimo-webhook.controller.ts` (delegates eligible wakes to intake; provider gateway owned by [DIMO Integration](../dimo-integration/)) |
 
-**R9 architecture (branch-confirmed @ `1186e9d23…`):**
+**R9 architecture (confirmed on main @ `4bef60463…`; deployed @ `0ba96e03…`):**
 
 - Durable **pending** and **successor** Redis mailboxes with monotonic version merge
 - Coalesce while canonical `snapshot-{vehicleId}` job is **QUEUED** or **ACTIVE**
@@ -137,7 +136,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 
 | Observation | Value | Evidence ID |
 |-------------|-------|-------------|
-| Deployed SHA / path | `01541c2ab…` @ `20260906213654_v4994` | TDL-EV-PROD-001 |
+| Deployed SHA / path | `0ba96e03…` @ `20260907204434_v4994` | TDL-EV-PROD-001 (updated); historical `01541c2ab…` @ `20260906213654_v4994` preserved in baseline doc |
 | Health | HTTP 200 | TDL-EV-PROD-002 |
 | PM2 / Node processes | Two Node PIDs (`3789590`, `3789796`) each running `node …/backend/dist/src/main.js`; 1:1 with PM2 apps `synqdrive` (pid 3789590) and `synqdrive-b` (pid 3789796), each `instances=1` | TDL-EV-PROD-003 |
 | FSM states | 6 × RESTING | TDL-EV-PROD-005 |

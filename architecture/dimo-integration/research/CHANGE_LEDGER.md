@@ -9,5 +9,6 @@
 | 2026-09-07 | Authorized R9 scoped DIMO trigger bootstrap — **ROLLED_BACK** (tokenId 190497 subscribe 403); evidence recorded | Provider mutation session | [../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 | 2026-09-07 | Read-only R9 permission root-cause audit — tokenId **190497** classified `FORMER_FLEET_VEHICLE`; re-grant remediation rejected | Provider permission audit | [../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | 2026-09-07 | Authorized R9 five-vehicle canary — **PASS** (5/5 speed+ignition; stableIds `9eeb7158afee`, `5d611d470eab`; 190497 excluded) | Provider mutation session | [../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
+| 2026-09-08 | Semantic authority cleanup — align current state with R9 deployed + five-vehicle canary PASS; preserve historical pre-R9 / rolled-back evidence | Post-canary reconciliation | This commit |
 
 No runtime code changes in governance correction commits.
