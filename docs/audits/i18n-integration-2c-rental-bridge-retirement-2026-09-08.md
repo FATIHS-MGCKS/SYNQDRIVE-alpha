@@ -20,12 +20,12 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 | Starting `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | PR #1575 merge commit present | Yes (`c7bb4df4022122c662f07fc23fafc427733263cf`) |
 | Product branch | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` |
-| Product HEAD | `b5350c368` |
+| Product HEAD | `3266a4eed` |
 | Product PR | **#1578** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1578 |
 | Product PR base (stacked) | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` (#1579) |
 | Authority prerequisite PR | **#1579** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1579 |
-| Authority prerequisite HEAD | `023648e8a` (`frontend/package.json` lint path substitution only) |
-| Post-product governance PR | **#1580** (planned) — `cursor/i18n-integration-2c-governance-closure-3c10` stacked on #1578 |
+| Authority prerequisite HEAD | `de487c4b1` (`frontend/package.json` lint path substitution only) |
+| Post-product governance PR | **#1581** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1581 (`cursor/i18n-integration-2c-governance-closure-3c10`) |
 
 ---
 
@@ -148,9 +148,9 @@ frontend/src/rental/i18n/                    (directory removed)
 | Path | Deferred to |
 |------|-------------|
 | `frontend/package.json` `lint:legal-documents` | **PR #1579** (authority prerequisite) |
-| `frontend/src/i18n/translation-coverage-baseline.json` | **PR #1580** (governance closure) |
-| `frontend/src/i18n/translation-coverage.test.ts` | **PR #1580** (expected owned-count sync) |
-| `frontend/src/i18n/i18n-structural-check.test.ts` | **PR #1580** (activate INTEGRATION-2C bridge-removal assertion) |
+| `frontend/src/i18n/translation-coverage-baseline.json` | **PR #1581** (governance closure) |
+| `frontend/src/i18n/translation-coverage.test.ts` | **PR #1581** (expected owned-count sync) |
+| `frontend/src/i18n/i18n-structural-check.test.ts` | **PR #1581** (activate INTEGRATION-2C bridge-removal assertion) |
 | `i18n-governance-scanner.test.ts`, `i18n-pr-gate.test.ts`, workflows, `AGENTS.md`, `.cursor/rules/i18n.mdc` | Out of scope |
 
 **Protected-path count in #1578 diff vs stacked base:** **0**
@@ -163,7 +163,7 @@ frontend/src/rental/i18n/                    (directory removed)
 |--------|--------|-------|
 | Production imports of `rental/i18n/**` | 376 + 8 explicit | **0** |
 | Rental shim files | 12 | **0** |
-| Remaining references | — | 2 non-production: `i18n-structural-check.test.ts` (protected skip until #1580), `ArchitekturView.tsx` (historical prose) |
+| Remaining references | — | 2 non-production: `i18n-structural-check.test.ts` (protected skip until #1581), `ArchitekturView.tsx` (historical prose) |
 
 ---
 
@@ -172,7 +172,7 @@ frontend/src/rental/i18n/                    (directory removed)
 | Command | Result |
 |---------|--------|
 | `npx vitest run src/i18n/runtime-integration-2c.test.tsx` | **8/8 pass** |
-| `npx vitest run src/i18n/` | **239 pass**, 3 skipped; **3 fail** in `translation-coverage.test.ts` (baseline not synced — fixed in #1580) |
+| `npx vitest run src/i18n/` | **239 pass**, 3 skipped; **3 fail** in `translation-coverage.test.ts` (baseline not synced — fixed in #1581) |
 | `npm run i18n:scanner:test` | **43 pass**, 2 skipped |
 | `npm run i18n:pr-gate:test` | **113/113 pass** |
 | `npm run i18n:check:ci` | **PASS** |
@@ -198,8 +198,8 @@ frontend/src/rental/i18n/                    (directory removed)
 2. Rebase **#1578** onto updated `main`.
 3. Retarget **#1578** base from `#1579` branch to `main`.
 4. Re-run and independently audit **#1578**; merge **#1578**.
-5. Rebase/retarget **#1580** governance-closure PR onto `main`.
-6. Re-run authority CI; merge **#1580**.
+5. Rebase/retarget **#1581** governance-closure PR onto `main`.
+6. Re-run authority CI; merge **#1581**.
 
 **Do not merge until each PR is independently audited.**
 
@@ -211,7 +211,7 @@ frontend/src/rental/i18n/                    (directory removed)
 |----|--------|------|-------|
 | #1579 | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` | Authority: `lint:legal-documents` path substitution | Draft, unmerged |
 | #1578 | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` | Product: bridge retirement | Draft, unmerged |
-| #1580 | `cursor/i18n-integration-2c-governance-closure-3c10` | Authority: coverage baseline + structural closure | Draft, unmerged |
+| #1581 | `cursor/i18n-integration-2c-governance-closure-3c10` | Authority: coverage baseline + structural closure | Draft, unmerged |
 
 ### CI remediation (Legal Documents Lint)
 
