@@ -5,8 +5,9 @@
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
 | **origin/main (current)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…` |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
-| **Production baseline (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
-| **Last verified Production evidence** | `2026-09-07T22:35:00Z` (R9 five-vehicle canary PASS; see TDL-EV-R9-CANARY-001) |
+| **Production baseline (current)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994` (R10 deploy 2026-09-08) |
+| **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
+| **Last verified Production evidence** | `2026-09-08T20:53:16Z` (KS MS 661 natural-drive addendum TDL-EV-KS-MS-661-001; R10 deploy TDL-EV-R10-PROD-DEPLOY-001) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -191,8 +192,9 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 ## Explicit non-claims
 
 - Production validation of R1–R8 (separate from repo/test evidence)
-- Production validation of R9 adaptive polling wake — **runtime deployed** @ `0ba96e03…`; **provider speed/ignition trigger wiring validated** for five-vehicle active cohort (5/5; see TDL-EV-R9-CANARY-001)
-- Natural R9 wake delivery — **NOT validated** until actual drive/ignition provider events observed (`NATURAL_R9_WAKE_OBSERVATION`)
+- Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…`; **natural start wake observed** on KS MS 661 drive (TDL-EV-KS-MS-661-001); efficiency vs polling-only **not proven**
+- Natural R9 wake delivery — **partially validated** (start wake on tokenId 187361); in-trip/end-path wake forensics and payload archive gaps remain
+- R10 motor-off pause / finalize guards — **deployed** @ `684950419…`; **NOT exercised** on KS MS 661 (FSM never reached `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)

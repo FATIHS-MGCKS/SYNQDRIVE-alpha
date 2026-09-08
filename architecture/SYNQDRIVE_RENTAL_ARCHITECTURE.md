@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-07 (DIMO Integration bootstrap + Trip Detection baseline epistemic correction)
+**Last updated:** 2026-09-08 (KS MS 661 natural-drive audit addendum — Trip Detection + DIMO Integration evidence)
 
 ---
 

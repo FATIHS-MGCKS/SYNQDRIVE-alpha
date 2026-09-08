@@ -24,6 +24,7 @@ Append-only record for this authority directory.
 | 2026-09-08 | R10 CI fix: harness import path + fixture-local `dimoTokenId` (Vehicle schema); CI green 4/4 postgres integration at `0f0b8bedc` | Trip FSM R10 PR #1574 | Same evidence doc |
 | 2026-09-08 | R10 graph: add TDL-DEC-R10-001/002, TDL-EVID-R10-KS-MX-001, TDL-TEST-R10-001 nodes + edges; align evidence IDs to TDL-EVID-* schema | Trip FSM R10 PR #1574 graph correction | [graph/nodes.yaml](../graph/nodes.yaml), [graph/edges.yaml](../graph/edges.yaml) |
 | 2026-09-08 | R10 production deploy @ `684950419…` release `20260908172927_v4994`; previous `7b9a7857…`; rolling restart both replicas; mixed-version window ~18s documented | R10 production deploy (authorized) | [R10_PRODUCTION_DEPLOY_2026-09-08.md](../evidence/R10_PRODUCTION_DEPLOY_2026-09-08.md) |
+| 2026-09-08 | KS MS 661 natural-drive audit addendum — R9 start wake + `no_core_data_keep_open` end block; corrected pause-phase counts; read-only Production/Redis/log forensics @ `684950419…` | Natural-drive audit addendum (read-only) | [KS_MS_661_NATURAL_DRIVE_2026-09-08.md](../evidence/KS_MS_661_NATURAL_DRIVE_2026-09-08.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

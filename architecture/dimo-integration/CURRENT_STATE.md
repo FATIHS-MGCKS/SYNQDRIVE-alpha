@@ -5,9 +5,9 @@
 | **origin/main (current)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
 | **R9 merge on main** | `4bef60463…` (PR #1553) |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline; superseded by main merge |
-| **Production baseline (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
-| **Pre-R9 Production (historical)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Last verified Production evidence** | `2026-09-07T22:35:00Z` (R9 five-vehicle canary PASS; see DIM-EV-R9-CANARY-001) |
+| **Production baseline (current)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994` (R10 deploy 2026-09-08) |
+| **Pre-R10 Production (historical)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **Last verified Production evidence** | `2026-09-08T20:53:16Z` (KS MS 661 R9 wake cross-ref DIM-EV-KS-MS-661-R9-001) |
 
 ---
 
@@ -88,7 +88,7 @@ Do not treat pre-R9 Production observations as current state.
 
 | Gap | Status |
 |-----|--------|
-| Natural R9 webhook wake end-to-end delivery | **NOT YET VALIDATED** — provider wiring PASS; no observed drive/ignition wake (DIM-GAP-006) |
+| Natural R9 webhook wake end-to-end delivery | **PARTIALLY VALIDATED** — first natural start wake on tokenId 187361 (DIM-EV-KS-MS-661-R9-001); payload archive + efficiency gaps remain (DIM-GAP-006) |
 | Full fleet-wide trigger inventory beyond active R9 cohort | **PARTIAL** — GET-based method established for audited cohort (DIM-GAP-002) |
 | Complete DIMO env flag matrix | **UNKNOWN** (DIM-GAP-003) |
 | Segment reconciliation ownership vs Trip Detection | **PARTIAL** (DIM-GAP-001) |
@@ -98,7 +98,7 @@ Do not treat pre-R9 Production observations as current state.
 
 ## Explicit non-claims
 
-- **Natural R9 wake delivery PRODUCTION_VALIDATED** — provider trigger wiring validated (5/5); end-to-end wake from real vehicle events **not observed**
+- **Natural R9 wake delivery PRODUCTION_VALIDATED** — **partial only**: start wake observed KS MS 661; not full efficiency/end-to-end closure
 - tokenId **190497** reauthorization — **rejected** (`FORMER_FLEET_VEHICLE` / `EXCLUDED_FROM_ACTIVE_R9_COHORT`; stale SynqDrive mirrors are separate data-integrity gap — see DIM-EV-R9-PERM-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete provider gateway graph

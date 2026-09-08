@@ -366,9 +366,19 @@ nodes:
   - id: TDL-GAP-013
     type: gap
     title: Natural R9 webhook wake end-to-end delivery
-    epistemic_status: UNKNOWN
-    summary: R9 runtime deployed and provider wiring 5/5; no observed Production drive/ignition wake.
+    epistemic_status: INFERRED
+    summary: Start wake observed KS MS 661 @ 684950419…; efficiency and payload archive gaps remain.
     source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MS_661_NATURAL_DRIVE_2026-09-08.md
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: TDL-GAP-014
+    type: gap
+    title: Empty-core no_core_data_keep_open end block on natural drive
+    epistemic_status: CONFIRMED
+    summary: KS MS 661 — stale VLS ACTIVE blocked POSSIBLE_END; trip ONGOING @ addendum; R10 guards NOT_EXERCISED.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MS_661_NATURAL_DRIVE_2026-09-08.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
   - id: TDL-GAP-007
