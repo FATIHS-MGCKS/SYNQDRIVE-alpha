@@ -93,44 +93,44 @@ Single key: `synqdrive.locale` with 9-locale validation.
 
 ---
 
-## 4. Changed paths
+## 4. Changed paths (final — P2.3.4B.2A.1 governance correction)
 
 | Path | Change |
 |------|--------|
-| `frontend/src/App.tsx` | Mount canonical `LanguageProvider` |
+| `frontend/src/App.tsx` | Mount canonical `LanguageProvider` (formatted JSX) |
 | `frontend/src/rental/App.tsx` | Remove nested Rental provider |
 | `frontend/src/rental/i18n/LanguageContext.tsx` | Compatibility bridge |
-| `frontend/src/i18n/runtime-integration-2a.test.tsx` | Active Integration 2A tests (10) |
+| `frontend/src/i18n/runtime-integration-2a.test.tsx` | Active Integration 2A runtime tests (14) |
 | `frontend/src/i18n/LanguageContext.test.tsx` | Unskip rental shim test |
-| `frontend/src/i18n/i18n-structural-check.test.ts` | Unskip rental shim structural test |
 | `frontend/src/rental/components/trips/trips-energy-timeline.test.tsx` | Add `tr` to locale fixture map (type alignment) |
 | `docs/audits/i18n-integration-2a-runtime-provider-2026-09-08.md` | This audit |
 
-**Authority-protected files changed:** **NONE**
+**Restored to `origin/main` (not in PR diff):**
+
+- `frontend/src/i18n/i18n-structural-check.test.ts` — protected governance test file; pre-existing `describe.skip` for rental shim remains unchanged on main
+
+**Authority-protected paths in final PR diff:** **NONE**
 
 ---
 
-## 5. Validation
+## 5. Validation (measured after P2.3.4B.2A.1 correction)
 
-| Command | Result |
-|---------|--------|
-| `runtime-integration-2a.test.tsx` | 10 passed |
-| `LanguageContext.test.tsx` | 7 passed |
-| `LanguageSelector.test.tsx` | 1 passed, 1 skipped |
-| `locales.test.ts` | passed |
-| `translation-registry.test.ts` | 11 passed |
-| `i18n-structural-check.test.ts` | 8 passed |
-| `npm run i18n:check:ci` | PASS |
-| `npm run i18n:scanner:test` | 43 passed, 2 skipped |
-| `npm run i18n:pr-gate:test` | 113 passed |
-| `npm run build` | PASS |
-| Authority harness | 15/15 |
+| Command | Passed | Skipped |
+|---------|-------:|--------:|
+| `runtime-integration-2a.test.tsx` | 14 | 0 |
+| All `src/i18n/` vitest | 229 | 4 |
+| `i18n-structural-check.test.ts` (origin/main, unchanged) | 8 | 1 |
+| `npm run i18n:check:ci` | PASS | — |
+| `npm run i18n:scanner:test` | 43 | 2 |
+| `npm run i18n:pr-gate:test` | 113 | 0 |
+| `npm run build` | PASS | — |
 
 ### Remaining skipped i18n tests
 
 | File | Skipped | Reason |
 |------|--------:|--------|
 | `i18n-governance-scanner.test.ts` | 2 | Legacy P2.3.1 compatibility block |
+| `i18n-structural-check.test.ts` | 1 | Pre-existing `INTEGRATION-2` shim skip on main (outside this runtime PR) |
 | `LanguageSelector.test.tsx` | 1 | Login/TopBar shared selector wiring — Login still local state |
 | `hardcoded-copy-guard.test.ts` | (suite inactive) | Integration 2+ enforce-clean deferral |
 

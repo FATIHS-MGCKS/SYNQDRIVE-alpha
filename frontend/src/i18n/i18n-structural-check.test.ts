@@ -83,7 +83,7 @@ describe('i18n structural invariants (P0/P1 guardrails)', () => {
     );
   });
 
-  it('keeps rental LanguageContext as a compatibility re-export shim', () => {
+  it.skip('keeps rental LanguageContext as a compatibility re-export shim (INTEGRATION-2)', () => {
     const shimSource = readFileSync(rentalShimPath, 'utf8');
     expect(shimSource).toContain("from '../../i18n/LanguageContext'");
     expect(shimSource).not.toContain('createContext');

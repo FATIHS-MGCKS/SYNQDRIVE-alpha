@@ -48,36 +48,36 @@ export default function App() {
     <AppThemeProvider>
       <LanguageProvider>
         <BrowserRouter>
-        <Routes>
-        <Route path="/login" element={<LoginRoute />} />
-        <Route path="/verification/done" element={<VerificationDonePage />} />
-        <Route
-          path="/master"
-          element={
-            <ProtectedRoute requiredRole="MASTER_ADMIN">
-              <MasterApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/rental"
-          element={
-            <ProtectedRoute>
-              <RentalApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/operator/*"
-          element={
-            <ProtectedRoute>
-              <OperatorApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<DefaultRedirect />} />
-        </Routes>
-      </BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginRoute />} />
+            <Route path="/verification/done" element={<VerificationDonePage />} />
+            <Route
+              path="/master"
+              element={
+                <ProtectedRoute requiredRole="MASTER_ADMIN">
+                  <MasterApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rental"
+              element={
+                <ProtectedRoute>
+                  <RentalApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operator/*"
+              element={
+                <ProtectedRoute>
+                  <OperatorApp />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<DefaultRedirect />} />
+          </Routes>
+        </BrowserRouter>
       </LanguageProvider>
     </AppThemeProvider>
   );

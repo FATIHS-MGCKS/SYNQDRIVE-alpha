@@ -338,4 +338,97 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('it');
     expect(trigger.textContent).toContain('IT');
   });
+
+  it('prefers canonical dictionary translations when the key exists in both runtimes', () => {
+    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    act(() => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(RentalProbe, {
+            onChange: (value) => {
+              rental.current = value;
+            },
+          }),
+        ),
+      );
+    });
+
+    act(() => rental.current?.setLocale('it'));
+    const canonicalItalian = translateKey('it', 'common.save');
+    expect(canonicalItalian.source).toBe('locale');
+    expect(rental.current?.t('common.save')).toBe(canonicalItalian.text);
+    expect(rental.current?.t('common.save')).toBe('Salva');
+  });
+
+  it('keeps canonical fallback behavior for Turkish without a locale dictionary', () => {
+    const canonicalTurkish = translateKey('tr', 'common.save');
+    expect(canonicalTurkish.source).toBe('fallback-en');
+
+    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    act(() => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(RentalProbe, {
+            onChange: (value) => {
+              rental.current = value;
+            },
+          }),
+        ),
+      );
+    });
+
+    act(() => rental.current?.setLocale('tr'));
+    expect(rental.current?.t('common.save')).toBe(canonicalTurkish.text);
+    expect(translateKey('tr', 'common.save').source).toBe('fallback-en');
+  });
+
+  it('falls back to legacy Rental dictionaries for unmigrated keys', () => {
+    const rentalOnlyKey = 'nav.communicationCenter' as Parameters<
+      ReturnType<typeof useRentalLanguage>['t']
+    >[0];
+    expect(translateKey('en', rentalOnlyKey as never).source).toBe('missing-key');
+
+    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    act(() => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(RentalProbe, {
+            onChange: (value) => {
+              rental.current = value;
+            },
+          }),
+        ),
+      );
+    });
+
+    expect(rental.current?.t(rentalOnlyKey)).toBe('Communication Center');
+  });
+
+  it('uses only synqdrive.locale for persistence without alternate locale keys', () => {
+    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    act(() => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement(RentalProbe, {
+            onChange: (value) => {
+              rental.current = value;
+            },
+          }),
+        ),
+      );
+    });
+
+    act(() => rental.current?.setLocale('es'));
+    const storageKeys = Object.keys(localStorage);
+    expect(storageKeys).toEqual([LOCALE_STORAGE_KEY]);
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('es');
+  });
 });
