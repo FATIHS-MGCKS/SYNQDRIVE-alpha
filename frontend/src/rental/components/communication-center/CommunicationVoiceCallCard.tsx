@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { UseCommunicationVoiceCallResult } from '../../../lib/communication/hooks/useCommunicationVoiceCall';
 
 interface CommunicationVoiceCallCardProps {

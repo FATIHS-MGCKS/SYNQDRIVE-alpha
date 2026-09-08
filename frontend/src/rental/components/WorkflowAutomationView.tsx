@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../lib/api';
 import type { WorkflowListItemDto } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { EmptyState } from '../../components/patterns';
 import { TaskAutomationRulesSection } from './workflow-automation/TaskAutomationRulesSection';
 import { WorkflowOverviewSection } from './workflow-automation/WorkflowOverviewSection';

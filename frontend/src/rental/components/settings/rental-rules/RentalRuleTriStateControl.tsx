@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { RentalRuleFieldScope } from './rental-rule-field-state.util';
 import { allowsInherit } from './rental-rule-field-state.util';
 

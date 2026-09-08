@@ -77,7 +77,7 @@ import {
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
 import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useHealthTabBatteryData } from '../hooks/useHealthTabBatteryData';
 import { invalidateRentalHealthForVehicle } from '../lib/rental-health-query';
 import type { HealthDetailTab } from '../lib/health-detail-utils';

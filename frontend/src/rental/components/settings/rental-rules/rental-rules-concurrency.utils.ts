@@ -1,7 +1,7 @@
 import type { OrganizationRentalRulesDto, RentalVehicleCategoryDto } from './rental-rules.types';
 import { RENTAL_RULES_INITIAL_EXPECTED_VERSION } from './rental-rules-concurrency.constants';
 import { summarizeRuleEntity } from './rental-rules.utils';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { RentalRulesMutationError } from './rental-rules-concurrency.errors';
 import type { RentalRulesConflictViewModel } from './RentalRulesConcurrencyDialog';
 

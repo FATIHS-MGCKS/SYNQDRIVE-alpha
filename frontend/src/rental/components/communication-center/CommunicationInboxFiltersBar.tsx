@@ -1,6 +1,6 @@
 import { Search, X } from 'lucide-react';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationApiStatus } from '../../../lib/communication/types';
 import { CommunicationChannelFilters } from './CommunicationChannelFilters';
 import type { CommunicationChannel } from './communication-center.types';

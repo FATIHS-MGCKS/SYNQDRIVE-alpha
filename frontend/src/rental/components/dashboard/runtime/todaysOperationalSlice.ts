@@ -1,6 +1,6 @@
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
-import { de } from '../../../i18n/translations/de';
-import { en, type TranslationKey } from '../../../i18n/translations/en';
+import { de } from '../../../../i18n/translations/de';
+import { en, type TranslationKey } from '../../../../i18n/translations/en';
 import type { VehicleRuntimeState } from './dashboardRuntimeTypes';
 
 /** Stable group ids inside the `active-rented` (Today's Operations) runtime slice. */

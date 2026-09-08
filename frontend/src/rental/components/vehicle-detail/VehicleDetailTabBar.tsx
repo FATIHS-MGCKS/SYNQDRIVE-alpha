@@ -11,7 +11,7 @@ import {
   VEHICLE_DETAIL_TAB_PANEL_ID,
   VEHICLE_DETAIL_TAB_TRANSLATION_KEYS,
 } from '../../lib/vehicle-detail-a11y';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { VEHICLE_DETAIL_TAB_TRIGGER_CLASS } from '../../lib/vehicle-detail-mobile-ui';
 import type { VehicleDetailTab } from '../../lib/vehicle-overview.types';
 

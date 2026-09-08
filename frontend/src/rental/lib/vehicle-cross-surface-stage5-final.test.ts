@@ -26,7 +26,7 @@ import {
 } from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { FleetOperatorRow } from '../components/fleet-operator/FleetOperatorRow';
 import { CompactFleetDrawerVehicleRow } from '../components/dashboard/CompactFleetDrawerVehicleRow';
-import { LanguageProvider } from '../i18n/LanguageContext';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { buildFleetVehicleContexts } from './fleet-operator-panel';
 import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';

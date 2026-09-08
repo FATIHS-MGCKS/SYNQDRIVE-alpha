@@ -48,9 +48,9 @@ import { resolveVehicleDetailConnectivityPresentation } from './vehicle-detail-o
 import { resolveFleetVehicleDisplayState } from './fleetVehicleDisplay';
 import { buildFleetVehicleUiProjection, type FleetProjectionVehicle } from './fleet-vehicle-ui-projection';
 import type { VehicleData } from '../data/vehicles';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 const NOW = new Date('2026-08-20T12:00:00.000Z').getTime();
 

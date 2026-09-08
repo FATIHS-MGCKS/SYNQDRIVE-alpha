@@ -1,5 +1,5 @@
 import type { StatusTone } from '../../components/patterns';
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { FleetReasonBadge } from './fleetVehicleDisplay';
 import {
   isOperationalAttentionReasonBadge,

@@ -3,7 +3,7 @@ import { Icon } from '../../ui/Icon';
 import { cn } from '../../../../components/ui/utils';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationDetailViewModel } from './notification-detail-view-model';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 import { NotificationActionsMenu } from './NotificationActionsMenu';
 
 export interface NotificationDetailPanelProps {

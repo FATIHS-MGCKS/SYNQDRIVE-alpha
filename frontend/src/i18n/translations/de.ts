@@ -54,6 +54,7 @@ import { rentalMicroChromeDe } from './rental.microChrome.de';
 import { rentalHostPresentationDe } from './rental.hostPresentation.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
+import { rentalLegacyGapDE } from './rental-legacy-gap.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -5844,4 +5845,5 @@ export const de: Record<TranslationKey, string> = {
   ...rentalHelpCenterDe,
   ...rentalMicroChromeDe,
   ...rentalHostPresentationDe,
+  ...rentalLegacyGapDE,
 } satisfies CompleteTranslationDictionary;

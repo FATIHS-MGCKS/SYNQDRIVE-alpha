@@ -15,7 +15,7 @@ import {
   utilizationHeatmapCellClass,
   utilizationHeatmapTone,
 } from './utilization/utilizationHeatmapTone';
-import { de } from '../../i18n/translations/de';
+import { de } from '../../../i18n/translations/de';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 

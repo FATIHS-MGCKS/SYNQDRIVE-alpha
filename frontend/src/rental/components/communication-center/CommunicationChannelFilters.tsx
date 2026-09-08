@@ -1,6 +1,6 @@
 import { Inbox, MessageSquare, Phone, MessagesSquare } from 'lucide-react';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CommunicationChannel } from './communication-center.types';
 
 const CHANNELS: CommunicationChannel[] = ['all', 'whatsapp', 'voice', 'sms'];

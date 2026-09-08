@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCommunicationInbox } from '../../../lib/communication/hooks/useCommunicationInbox';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { CommunicationInboxFiltersBar } from './CommunicationInboxFiltersBar';
 import { CommunicationInboxList } from './CommunicationInboxList';

@@ -1,7 +1,7 @@
 import { Shield } from 'lucide-react';
 import type { WorkflowExecutionPlanDto } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { workflowRiskLabel, workflowRiskTone } from './workflow-runtime.utils';
 import { sanitizeClientPreviewValue } from './workflow-simulate.utils';
 

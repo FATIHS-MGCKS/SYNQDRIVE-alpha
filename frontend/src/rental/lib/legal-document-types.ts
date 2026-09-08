@@ -4,7 +4,7 @@
  * UI copy is resolved via i18n keys — see legal-documents-i18n.ts.
  */
 
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export const LEGAL_DOCUMENT_TYPE = {
   TERMS_AND_CONDITIONS: 'TERMS_AND_CONDITIONS',

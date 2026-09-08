@@ -3,7 +3,7 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { Icon } from '../ui/Icon';
 import type { VoiceAssistantData, VoiceAssistantUpdatePayload } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VoiceToolPermissionsMap } from './voice-assistant-permissions.ops';
 import {
   VOICE_PERMISSION_GROUP_MODE_OPTIONS,

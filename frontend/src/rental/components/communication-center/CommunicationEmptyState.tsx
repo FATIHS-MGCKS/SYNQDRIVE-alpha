@@ -1,6 +1,6 @@
 import { MessageSquare } from 'lucide-react';
 import { EmptyState } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface CommunicationEmptyStateProps {
   compact?: boolean;

@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { LEGAL_DOCUMENT_TYPE, LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
 import type { LegalDocumentLifecycleAction } from './legal-document-lifecycle.types';
 
@@ -159,5 +159,5 @@ export function legalDocumentGroupTitle(
 export const LEGAL_DOCUMENTS_I18N_KEY_PREFIX = 'legalDocuments.' as const;
 
 /** Keys used by legal-documents.i18n.test.ts — keep in sync with legal-documents.en.ts */
-export { legalDocumentsEn } from '../i18n/translations/legal-documents.en';
-export type { LegalDocumentsTranslationKey } from '../i18n/translations/legal-documents.en';
+export { legalDocumentsEn } from '../../i18n/translations/legal-documents.en';
+export type { LegalDocumentsTranslationKey } from '../../i18n/translations/legal-documents.en';

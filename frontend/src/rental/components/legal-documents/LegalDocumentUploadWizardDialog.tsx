@@ -22,7 +22,7 @@ import {
   isScanStatusBlocking,
   scanStatusErrorMessage,
 } from '../../lib/legal-document-upload-wizard.utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   FormErrorSummary,
   LiveStatusMessage,

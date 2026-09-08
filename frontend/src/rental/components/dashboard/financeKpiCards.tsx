@@ -1,6 +1,6 @@
 import { Icon, type IconName } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   DASHBOARD_KPI_CURRENCY_CLASS,
   DASHBOARD_KPI_HINT_CLASS,

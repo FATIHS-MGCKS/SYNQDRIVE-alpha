@@ -10,9 +10,9 @@ import { getVehicleRowOperationalDisplay } from '../../lib/vehicle-row-operation
 import { resolveDashboardWarningLightsFromRentalHealth } from '../../lib/vehicle-row-health-consumer';
 import { resolveRowOperationalAttentionBadge } from '../../lib/vehicle-row-operational-attention';
 import { VehicleHealthFindingIcons } from '../health/VehicleHealthFindingIcons';
-import { de as deTranslations } from '../../i18n/translations/de';
-import { en as enTranslations } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de as deTranslations } from '../../../i18n/translations/de';
+import { en as enTranslations } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';

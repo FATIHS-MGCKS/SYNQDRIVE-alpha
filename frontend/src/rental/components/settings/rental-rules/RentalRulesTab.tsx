@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { api } from '../../../../lib/api';
 import { ErrorState } from '../../../../components/patterns';
 import { useRentalOrg } from '../../../RentalContext';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { RENTAL_RULES_PERMISSION_DENIED_MESSAGE } from '../../../lib/rental-rules-permissions';
 import { useRentalRulesPermissions } from '../../../hooks/useRentalRulesPermissions';
 import { CategoryDetailDrawer } from './CategoryDetailDrawer';

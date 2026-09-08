@@ -3,7 +3,7 @@ import { History } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { EmptyState, ErrorState, SectionHeader, SkeletonRows } from '../../../../components/patterns';
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { META_TEXT_CLASS, ROW_BODY_CLASS, ROW_TITLE_CLASS } from '../../dashboard/dashboardShell';
 import { formatRuleValue, labelRuleField } from './rental-rules.utils';
 import type { RentalRuleRevisionListItemDto } from './rental-rules.types';

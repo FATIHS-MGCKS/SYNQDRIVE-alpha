@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   buildInvoiceLineItemsPanel,
   formatInvoiceMoney,

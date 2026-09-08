@@ -4,8 +4,8 @@
  * upgrade. Empty states are qualified: an empty PARTIAL result never claims a full
  * "nothing found" verdict; only a fully AVAILABLE empty result uses strong wording.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type {
   EvaluationsStrengthSection,

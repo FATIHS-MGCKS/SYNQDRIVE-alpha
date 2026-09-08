@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapPL } from './rental-legacy-gap.pl';
 
 export const pl = {
   'dashboard.welcomeBack': 'Witaj ponownie, {name}',
@@ -52,5 +53,6 @@ export const pl = {
   'health.aiHealthCare': 'Zdrowie AI', 'health.poweredByAi': 'Napedzane przez AI', 'health.errorCodes': 'Kody bledow', 'health.noActiveErrors': 'Brak aktywnych kodow bledow', 'health.timeline': 'Os czasu', 'health.battery': 'Akumulator', 'health.voltage': 'Napiecie', 'health.lastCheck': 'Ostatnia kontrola', 'health.temperature': 'Temperatura', 'health.estimatedCapacity': 'Szacowana pojemnosc', 'health.serviceInfo': 'Info serwisowe', 'health.nextService': 'Nastepny serwis', 'health.serviceHistory': 'Historia serwisu', 'health.brakes': 'Hamulce', 'health.changeHistory': 'Historia wymian', 'health.tires': 'Opony', 'health.usageDistribution': 'Rozklad uzytkowania', 'health.city': 'Miasto', 'health.highway': 'Autostrada', 'health.countryRoad': 'Droga krajowa', 'health.engineOil': 'Olej silnikowy', 'health.lastChange': 'Ostatnia wymiana', 'health.oilChangeHistory': 'Historia wymian oleju', 'health.tireRotation': 'Rotacja opon', 'health.tireChange': 'Wymiana opon',
   'damages.totalDamages': 'Uszkodzenia lacznie', 'damages.activeDamages': 'Aktywne uszkodzenia', 'damages.vehicleDamageMap': 'Mapa uszkodzen pojazdu', 'damages.damageHistory': 'Historia uszkodzen',
   'documents.vehicleDocuments': 'Dokumenty pojazdu', 'documents.monthlyFixedCosts': 'Miesieczne koszty stale',
-  'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta', 'customerDetail.drivingScore': 'Wynik jazdy',
+  'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta',   'customerDetail.drivingScore': 'Wynik jazdy',
+  ...rentalLegacyGapPL,
 } satisfies PartialTranslationDictionary;

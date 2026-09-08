@@ -7,7 +7,7 @@ import {
   NOTIFICATION_DOMAIN_FILTERS,
   type NotificationDomainFilter,
 } from './notificationPanelTypes';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 
 const DOMAIN_LABEL_KEYS: Record<NotificationDomainFilter, string> = {
   operations: 'notification.domain.operations',

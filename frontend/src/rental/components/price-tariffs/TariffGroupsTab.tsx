@@ -2,7 +2,7 @@ import { CalendarClock, ChevronRight } from 'lucide-react';
 import type { PriceTariffCatalog, PriceTariffGroup } from '../../pricing/pricingTypes';
 import { buildTariffGroupRowView } from '../../pricing/tariff-catalog-metrics';
 import { STATUS_BADGE } from '../../pricing/pricingUtils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { cn } from '../../../components/ui/utils';
 
 interface TariffGroupsTabProps {

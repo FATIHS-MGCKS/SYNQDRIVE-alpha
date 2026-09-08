@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/utils';
-import type { Locale } from '../../i18n/LanguageContext';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { DashboardTrustHint } from './dataTrustBuilder';
 import { trustHintLabel } from './dataTrustBuilder';
 

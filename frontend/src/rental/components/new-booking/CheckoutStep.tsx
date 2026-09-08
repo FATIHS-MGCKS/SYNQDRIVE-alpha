@@ -1,7 +1,7 @@
 import { Banknote, CreditCard, FileText, Mail, Store } from 'lucide-react';
 import { formatMoneyCents } from '../../../lib/money';
-import type { TranslationKey } from '../../i18n/translations/en';
-import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { BookingStepCard } from './BookingStepCard';
 import { CheckoutDocumentsPanel } from './CheckoutDocumentsPanel';
 import { formatBookingAmount } from './format';

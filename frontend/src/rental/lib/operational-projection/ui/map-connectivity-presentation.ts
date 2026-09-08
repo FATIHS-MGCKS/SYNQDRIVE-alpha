@@ -43,7 +43,7 @@ function mapEnumField<T extends string>(
 }
 
 function telemetryLabel(state: import('../../../../lib/api').FleetTelemetryFreshness, t: OperationalTranslator): string {
-  const key = `fleetConnectivity.telemetryFreshness.${state}` as import('../../../i18n/translations/en').TranslationKey;
+  const key = `fleetConnectivity.telemetryFreshness.${state}` as import('../../../../i18n/translations/en').TranslationKey;
   const translated = t(key);
   if (translated !== key) return translated;
   return state;
@@ -121,7 +121,7 @@ export function mapAttentionUiPresentation(
 
   return {
     attention: mapEnumField(attentionField, (state) => {
-      const key = `fleetConnectivity.attention.${state}` as import('../../../i18n/translations/en').TranslationKey;
+      const key = `fleetConnectivity.attention.${state}` as import('../../../../i18n/translations/en').TranslationKey;
       const translated = options.t(key);
       return translated !== key ? translated : state;
     }, attentionTone),
@@ -147,7 +147,7 @@ export function mapOperatorUiPresentation(
     primaryReason: mapPrimaryReasonSlice(operator.primaryReason, options),
     recommendedAction: mapRecommendedActionField(operator.recommendedAction, options.t),
     attention: mapEnumField(operator.attention, (state) => {
-      const key = `fleetConnectivity.attention.${state}` as import('../../../i18n/translations/en').TranslationKey;
+      const key = `fleetConnectivity.attention.${state}` as import('../../../../i18n/translations/en').TranslationKey;
       const translated = options.t(key);
       return translated !== key ? translated : state;
     }, attentionTone),

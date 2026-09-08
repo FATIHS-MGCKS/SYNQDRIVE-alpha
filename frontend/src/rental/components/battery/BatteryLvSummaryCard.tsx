@@ -1,8 +1,8 @@
 import { Icon } from '../ui/Icon';
 import { BatteryConditionBars, RestingVoltageBadge } from '../BatteryConditionBars';
 import { BatteryDataQualityBadge } from '../BatteryDataQualityBadge';
-import type { TranslationKey } from '../../i18n/translations/en';
-import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BatteryLvSummaryVm } from '../../lib/battery-lv-view-model';
 import { formatVolts } from '../../lib/battery-ui-formatters';
 import { publicationStateI18nKey } from '../../lib/battery-ui-formatters';

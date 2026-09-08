@@ -6,9 +6,9 @@
  */
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../data/vehicles';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';
 import {
   OPERATIONAL_AVAILABILITY_STATE,

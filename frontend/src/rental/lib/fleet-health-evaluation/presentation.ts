@@ -1,5 +1,5 @@
 import type { StatusTone } from '../../../components/patterns';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   FLEET_HEALTH_CONDITION,
   HEALTH_EVALUABILITY_STATE,

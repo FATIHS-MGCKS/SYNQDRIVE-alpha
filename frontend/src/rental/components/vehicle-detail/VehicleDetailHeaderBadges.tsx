@@ -12,7 +12,7 @@ import {
   mapHealthSeverityDisplay,
 } from './vehicle-health-display.mapper';
 import type { FleetProjectionVehicle } from '../../lib/fleet-vehicle-ui-projection';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   resolveVehicleDetailConnectivityPresentation,
 } from '../../lib/vehicle-detail-operational-display';

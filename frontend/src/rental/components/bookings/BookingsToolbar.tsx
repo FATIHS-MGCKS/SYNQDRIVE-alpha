@@ -1,6 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingPlannerView, BookingFiltersState, BookingStatusFilter } from './bookingTypes';
 import type { VehicleData } from '../../data/vehicles';
 

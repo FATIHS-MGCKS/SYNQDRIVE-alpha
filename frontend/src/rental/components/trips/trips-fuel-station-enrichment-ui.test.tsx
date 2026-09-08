@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { TripTimelineEnergyCard } from './trip-timeline-shared';
 import type { EnergyEvent, EnergyEventStationEnrichment } from '../../../lib/api';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { VehicleData } from '../data/vehicles';
 import { dashboardTestVehicle } from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { buildVehicleRuntimeStates } from '../components/dashboard/runtime/vehicleRuntimeStateBuilder';

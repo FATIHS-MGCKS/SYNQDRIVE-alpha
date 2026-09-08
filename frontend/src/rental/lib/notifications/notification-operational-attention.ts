@@ -5,9 +5,9 @@
  * and P1.2 presentation — not client timestamp / onlineStatus heuristics.
  */
 import type { RentalHealthModule, VehicleConnectivityRuntimeState } from '../../../lib/api';
-import type { TranslationKey } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import type { VehicleData } from '../../data/vehicles';
 import { buildFleetVehicleUiProjection, type FleetProjectionVehicle } from '../fleet-vehicle-ui-projection';
 import {

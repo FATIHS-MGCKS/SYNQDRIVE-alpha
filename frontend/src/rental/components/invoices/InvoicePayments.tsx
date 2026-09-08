@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns/status-utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { Icon } from '../ui/Icon';
 import type { InvoiceActionGate } from './invoiceDetailTypes';
 import {

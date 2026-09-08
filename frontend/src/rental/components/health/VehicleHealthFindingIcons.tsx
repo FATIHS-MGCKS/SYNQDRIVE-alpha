@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/utils';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { Icon } from '../ui/Icon';
 import type { ActiveHealthFinding } from '../../lib/vehicle-row-operational-projection';
 import {

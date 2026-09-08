@@ -4,7 +4,7 @@ import type {
 } from './document-extraction.types';
 import type { FlowStatus } from '../components/documents/document-extraction.shared';
 import { mapServerToFlowStatus } from './document-extraction-lifecycle';
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 export function translateApplyErrorCode(
   code: string | null | undefined,

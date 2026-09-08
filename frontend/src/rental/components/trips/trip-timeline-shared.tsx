@@ -1,5 +1,5 @@
 import { Icon } from '../ui/Icon';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EnergyEvent } from './timeline.types';
 import {
   formatRechargeDurationMinutes,

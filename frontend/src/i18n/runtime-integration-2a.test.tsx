@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { act, createElement, useEffect, useState } from 'react';
+import { act, createElement, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -10,10 +10,6 @@ import {
   useLanguage,
   translateKey,
 } from './LanguageContext';
-import {
-  LanguageProvider as RentalLanguageProvider,
-  useLanguage as useRentalLanguage,
-} from '../rental/i18n/LanguageContext';
 import { LanguageSelector } from './components/LanguageSelector';
 import {
   LOCALE_STORAGE_KEY,
@@ -22,12 +18,27 @@ import {
   resolveInitialPlatformLocale,
   SUPPORTED_LOCALES,
 } from './locales';
+import { en } from './translations/en';
+import { de } from './translations/de';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '../..');
-const appSource = readFileSync(join(repoRoot, 'src/App.tsx'), 'utf8');
-const rentalAppSource = readFileSync(join(repoRoot, 'src/rental/App.tsx'), 'utf8');
-const rentalShimSource = readFileSync(join(repoRoot, 'src/rental/i18n/LanguageContext.tsx'), 'utf8');
+const srcRoot = join(repoRoot, 'src');
+const appSource = readFileSync(join(srcRoot, 'App.tsx'), 'utf8');
+const rentalAppSource = readFileSync(join(srcRoot, 'rental/App.tsx'), 'utf8');
+
+function walkProductionFiles(dir: string, files: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      if (entry === 'node_modules' || entry === '__tests__') continue;
+      walkProductionFiles(full, files);
+    } else if (/\.(ts|tsx)$/.test(entry) && !entry.endsWith('.test.ts') && !entry.endsWith('.test.tsx')) {
+      files.push(full);
+    }
+  }
+  return files;
+}
 
 function PlatformProbe({
   onChange,
@@ -39,49 +50,6 @@ function PlatformProbe({
     onChange(value);
   }, [onChange, value]);
   return null;
-}
-
-function RentalProbe({
-  onChange,
-}: {
-  onChange: (value: ReturnType<typeof useRentalLanguage>) => void;
-}) {
-  const value = useRentalLanguage();
-  useEffect(() => {
-    onChange(value);
-  }, [onChange, value]);
-  return null;
-}
-
-function NavigationShell({
-  onPlatform,
-  onRental,
-}: {
-  onPlatform: (value: ReturnType<typeof useLanguage>) => void;
-  onRental: (value: ReturnType<typeof useRentalLanguage>) => void;
-}) {
-  const [surface, setSurface] = useState<'rental' | 'operator'>('rental');
-  return (
-    <div>
-      <button type="button" data-testid="goto-operator" onClick={() => setSurface('operator')}>
-        operator
-      </button>
-      <button type="button" data-testid="goto-rental" onClick={() => setSurface('rental')}>
-        rental
-      </button>
-      {surface === 'rental' ? (
-        <div data-testid="rental-surface">
-          <PlatformProbe onChange={onPlatform} />
-          <RentalProbe onChange={onRental} />
-        </div>
-      ) : (
-        <div data-testid="operator-surface">
-          <PlatformProbe onChange={onPlatform} />
-          <RentalProbe onChange={onRental} />
-        </div>
-      )}
-    </div>
-  );
 }
 
 describe('Integration 2A — canonical runtime provider activation', () => {
@@ -110,30 +78,29 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     expect(rentalAppSource).not.toMatch(/import \{ LanguageProvider \}/);
   });
 
-  it('keeps the Rental module as a compatibility re-export without independent context state', () => {
-    expect(rentalShimSource).toContain("from '../../i18n/LanguageContext'");
-    expect(rentalShimSource).not.toContain('createContext');
-    expect(rentalShimSource).not.toContain('useState');
-    expect(RentalLanguageProvider).toBe(LanguageProvider);
-  });
-
-  it('shares the same active locale between canonical and Rental compatibility consumers', () => {
+  it('shares the same active locale between root and nested Rental consumers', () => {
     const platform: { current: ReturnType<typeof useLanguage> | null } = { current: null };
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
 
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(NavigationShell, {
-            onPlatform: (value) => {
-              platform.current = value;
-            },
-            onRental: (value) => {
-              rental.current = value;
-            },
-          }),
+          createElement(
+            'div',
+            null,
+            createElement(PlatformProbe, {
+              onChange: (value) => {
+                platform.current = value;
+              },
+            }),
+            createElement(PlatformProbe, {
+              onChange: (value) => {
+                rental.current = value;
+              },
+            }),
+          ),
         ),
       );
     });
@@ -146,42 +113,15 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     expect(rental.current?.locale).toBe('pl');
   });
 
-  it('propagates locale changes initiated through the Rental compatibility API', () => {
-    const platform: { current: ReturnType<typeof useLanguage> | null } = { current: null };
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
-
-    act(() => {
-      root.render(
-        createElement(
-          LanguageProvider,
-          null,
-          createElement(NavigationShell, {
-            onPlatform: (value) => {
-              platform.current = value;
-            },
-            onRental: (value) => {
-              rental.current = value;
-            },
-          }),
-        ),
-      );
-    });
-
-    act(() => rental.current?.setLocale('fr'));
-    expect(rental.current?.locale).toBe('fr');
-    expect(platform.current?.locale).toBe('fr');
-    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('fr');
-  });
-
   it('persists locale through the single canonical storage key', () => {
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
 
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },
@@ -197,14 +137,14 @@ describe('Integration 2A — canonical runtime provider activation', () => {
 
   it('keeps all nine supported locales selectable through the canonical runtime', () => {
     expect(SUPPORTED_LOCALES.map((entry) => entry.code)).toEqual([...OFFICIAL_PRODUCT_LOCALE_CODES]);
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
 
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },
@@ -220,7 +160,7 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     }
   });
 
-  it('preserves Italian dictionary-backed translations and Turkish fallback through the bridge', () => {
+  it('preserves Italian dictionary-backed translations and Turkish fallback', () => {
     const italian = translateKey('it', 'common.save');
     expect(italian.source).toBe('locale');
     expect(italian.text).toBe('Salva');
@@ -229,13 +169,13 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     expect(turkish.source).toBe('fallback-en');
     expect(turkish.text.length).toBeGreaterThan(0);
 
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },
@@ -257,13 +197,13 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     vi.stubGlobal('navigator', { languages: ['de-DE'] });
     expect(resolveInitialPlatformLocale(['de-DE'])).toBe('de');
 
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },
@@ -273,44 +213,6 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     });
 
     expect(rental.current?.locale).toBe('de');
-  });
-
-  it('does not reset locale when representative module navigation remounts child surfaces', () => {
-    const platform: { current: ReturnType<typeof useLanguage> | null } = { current: null };
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
-
-    act(() => {
-      root.render(
-        createElement(
-          LanguageProvider,
-          null,
-          createElement(NavigationShell, {
-            onPlatform: (value) => {
-              platform.current = value;
-            },
-            onRental: (value) => {
-              rental.current = value;
-            },
-          }),
-        ),
-      );
-    });
-
-    act(() => rental.current?.setLocale('nl'));
-    expect(platform.current?.locale).toBe('nl');
-
-    const operatorButton = container.querySelector('[data-testid="goto-operator"]') as HTMLButtonElement;
-    const rentalButton = container.querySelector('[data-testid="goto-rental"]') as HTMLButtonElement;
-
-    act(() => operatorButton.click());
-    expect(container.querySelector('[data-testid="operator-surface"]')).not.toBeNull();
-    expect(platform.current?.locale).toBe('nl');
-    expect(rental.current?.locale).toBe('nl');
-
-    act(() => rentalButton.click());
-    expect(container.querySelector('[data-testid="rental-surface"]')).not.toBeNull();
-    expect(platform.current?.locale).toBe('nl');
-    expect(rental.current?.locale).toBe('nl');
   });
 
   it('drives the shared LanguageSelector through canonical runtime state', () => {
@@ -339,66 +241,18 @@ describe('Integration 2A — canonical runtime provider activation', () => {
     expect(trigger.textContent).toContain('IT');
   });
 
-  it('prefers canonical dictionary translations when the key exists in both runtimes', () => {
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+  it('resolves migrated Rental keys from the canonical dictionary', () => {
+    const rentalOnlyKey = 'nav.communicationCenter';
+    expect(translateKey('en', rentalOnlyKey).source).toBe('locale');
+    expect(translateKey('en', rentalOnlyKey).text).toBe(en[rentalOnlyKey]);
+
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
-            onChange: (value) => {
-              rental.current = value;
-            },
-          }),
-        ),
-      );
-    });
-
-    act(() => rental.current?.setLocale('it'));
-    const canonicalItalian = translateKey('it', 'common.save');
-    expect(canonicalItalian.source).toBe('locale');
-    expect(rental.current?.t('common.save')).toBe(canonicalItalian.text);
-    expect(rental.current?.t('common.save')).toBe('Salva');
-  });
-
-  it('keeps canonical fallback behavior for Turkish without a locale dictionary', () => {
-    const canonicalTurkish = translateKey('tr', 'common.save');
-    expect(canonicalTurkish.source).toBe('fallback-en');
-
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
-    act(() => {
-      root.render(
-        createElement(
-          LanguageProvider,
-          null,
-          createElement(RentalProbe, {
-            onChange: (value) => {
-              rental.current = value;
-            },
-          }),
-        ),
-      );
-    });
-
-    act(() => rental.current?.setLocale('tr'));
-    expect(rental.current?.t('common.save')).toBe(canonicalTurkish.text);
-    expect(translateKey('tr', 'common.save').source).toBe('fallback-en');
-  });
-
-  it('falls back to legacy Rental dictionaries for unmigrated keys', () => {
-    const rentalOnlyKey = 'nav.communicationCenter' as Parameters<
-      ReturnType<typeof useRentalLanguage>['t']
-    >[0];
-    expect(translateKey('en', rentalOnlyKey as never).source).toBe('missing-key');
-
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
-    act(() => {
-      root.render(
-        createElement(
-          LanguageProvider,
-          null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },
@@ -411,13 +265,13 @@ describe('Integration 2A — canonical runtime provider activation', () => {
   });
 
   it('uses only synqdrive.locale for persistence without alternate locale keys', () => {
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
     act(() => {
       root.render(
         createElement(
           LanguageProvider,
           null,
-          createElement(RentalProbe, {
+          createElement(PlatformProbe, {
             onChange: (value) => {
               rental.current = value;
             },

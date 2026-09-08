@@ -14,7 +14,7 @@ import {
 } from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { CompactFleetDrawerVehicleRow } from '../components/dashboard/CompactFleetDrawerVehicleRow';
 import { FleetOperatorRow } from '../components/fleet-operator/FleetOperatorRow';
-import { LanguageProvider } from '../i18n/LanguageContext';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { buildFleetVehicleContexts } from './fleet-operator-panel';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
@@ -30,8 +30,8 @@ import {
   resolveRowOperationalAttentionBadge,
   shouldSuppressHealthReasonBadge,
 } from './vehicle-row-operational-attention';
-import { de as deTranslations } from '../i18n/translations/de';
-import { en as enTranslations } from '../i18n/translations/en';
+import { de as deTranslations } from '../../i18n/translations/de';
+import { en as enTranslations } from '../../i18n/translations/en';
 
 vi.mock('../../lib/useAddress', () => ({
   useAddress: () => ({ address: null, loading: false }),

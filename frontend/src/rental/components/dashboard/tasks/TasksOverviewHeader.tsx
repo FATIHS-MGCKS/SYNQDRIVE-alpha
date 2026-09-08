@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '../../../../components/ui/button';
 import { cn } from '../../../../components/ui/utils';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
 import type { DashboardTasksOverviewFilter } from '../dashboardTypes';
 

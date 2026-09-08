@@ -3,7 +3,7 @@ import { Icon } from '../../ui/Icon';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover';
 import { cn } from '../../../../components/ui/utils';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 import type { ApiNotificationAvailableAction } from '../../../lib/notifications/notification-api.types';
 
 export interface NotificationActionsMenuProps {

@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { CommunicationWorkspacePane } from './CommunicationWorkspacePane';
 import type { UseCommunicationConversationResult } from '../../../lib/communication/hooks/useCommunicationConversation';
 

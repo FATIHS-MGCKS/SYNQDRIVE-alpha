@@ -3,8 +3,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { FleetMapVehicleResponse, VehicleConnectivityRuntimeState } from '../../lib/api';
-import { de } from '../i18n/translations/de';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { mapFleetMapVehicleResponse } from './fleet-map-vehicle-mapper';
 import { buildFleetVehicleContexts } from './fleet-operator-panel';
 import { deriveFleetVisualState } from './fleetVisualState';

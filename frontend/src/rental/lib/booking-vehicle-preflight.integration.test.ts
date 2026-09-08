@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { BookingUiRow } from '../components/bookings/bookingTypes';
 import type { VehicleData } from '../data/vehicles';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   evaluateBookingVehicleEligibility,

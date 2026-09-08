@@ -17,9 +17,9 @@ import {
   type OperationalAvailabilityState,
 } from '../../../lib/operational-availability/types';
 import type { VehicleOperationalUiProjection } from '../../../lib/operational-projection';
-import { de } from '../../../i18n/translations/de';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { de } from '../../../../i18n/translations/de';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { createRuntimeReason } from './dashboardRuntimeReasons';
 import type { RuntimeReason, TelemetryConnectionState } from './dashboardRuntimeTypes';
 

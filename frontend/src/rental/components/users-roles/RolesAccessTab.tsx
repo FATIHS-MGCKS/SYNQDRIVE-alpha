@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../../components/patterns';
 import { api, type IamRoleListItemDto, type IamRoleDetailDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { CollapsiblePermissions } from './PermissionEditor';
 import { RiskBadge } from './IamBadges';
 import { formatDateTime } from './iam-team.utils';

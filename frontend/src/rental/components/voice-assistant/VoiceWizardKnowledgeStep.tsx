@@ -2,7 +2,7 @@ import { DataCard } from '../../../components/patterns/data-card';
 import { StatusChip } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { VoiceAssistantData } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { KnowledgeIntegrationHints } from './KnowledgeIntegrationHints';
 import { useVoiceKnowledgeLinks } from './useVoiceKnowledgeLinks';
 

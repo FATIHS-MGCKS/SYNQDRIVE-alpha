@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapES } from './rental-legacy-gap.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -52,5 +53,6 @@ export const es = {
   'health.aiHealthCare': 'Salud IA', 'health.poweredByAi': 'Impulsado por IA', 'health.errorCodes': 'Codigos de error', 'health.noActiveErrors': 'Sin codigos de error activos', 'health.timeline': 'Linea temporal', 'health.battery': 'Bateria', 'health.voltage': 'Voltaje', 'health.lastCheck': 'Ultima revision', 'health.temperature': 'Temperatura', 'health.estimatedCapacity': 'Capacidad estimada', 'health.serviceInfo': 'Info servicio', 'health.nextService': 'Proximo servicio', 'health.serviceHistory': 'Historial de servicio', 'health.brakes': 'Frenos', 'health.changeHistory': 'Historial de cambios', 'health.tires': 'Neumaticos', 'health.usageDistribution': 'Distribucion de uso', 'health.city': 'Ciudad', 'health.highway': 'Autopista', 'health.countryRoad': 'Carretera', 'health.engineOil': 'Aceite motor', 'health.lastChange': 'Ultimo cambio', 'health.oilChangeHistory': 'Historial cambios aceite', 'health.tireRotation': 'Rotacion neumaticos', 'health.tireChange': 'Cambio neumaticos',
   'damages.totalDamages': 'Total danos', 'damages.activeDamages': 'Danos activos', 'damages.vehicleDamageMap': 'Mapa de danos vehiculo', 'damages.damageHistory': 'Historial de danos',
   'documents.vehicleDocuments': 'Documentos del vehiculo', 'documents.monthlyFixedCosts': 'Costes fijos mensuales',
-  'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente', 'customerDetail.drivingScore': 'Puntuacion de conduccion',
+  'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente',   'customerDetail.drivingScore': 'Puntuacion de conduccion',
+  ...rentalLegacyGapES,
 } satisfies PartialTranslationDictionary;

@@ -9,7 +9,7 @@ import type {
   VoiceAssistantReadiness,
   VoiceRemainingMinutes,
 } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { answerRatePercent, operatorStatusLabel, resolveOperatorStatus } from './voice-assistant.ops';
 
 interface VoiceOperationsOverviewProps {

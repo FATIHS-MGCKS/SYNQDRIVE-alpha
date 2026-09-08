@@ -10,7 +10,6 @@ import {
   usesLocaleDictionary,
 } from './LanguageContext';
 import { LOCALE_STORAGE_KEY, readPersistedLocale, writePersistedLocale } from './locales';
-import { LanguageProvider as RentalLanguageProvider, useLanguage as useRentalLanguage } from '../rental/i18n/LanguageContext';
 
 function Probe({ onChange }: { onChange: (value: ReturnType<typeof useLanguage>) => void }) {
   const value = useLanguage();
@@ -96,9 +95,6 @@ describe('platform LanguageProvider runtime', () => {
     expect(result.text).toBe('this.key.does.not.exist');
   });
 
-  it('re-exports the canonical runtime from the rental compatibility shim', () => {
-    expect(RentalLanguageProvider).toBe(LanguageProvider);
-  });
 });
 
 describe('locale precedence', () => {

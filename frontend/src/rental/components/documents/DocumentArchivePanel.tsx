@@ -1,7 +1,7 @@
 import { Archive, Download, Eye, History, Link2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { useDocumentExtractionMetadata } from '../../hooks/useDocumentExtractionMetadata';
 import {
   EMPTY_ARCHIVE_FILTERS,

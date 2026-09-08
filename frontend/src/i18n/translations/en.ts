@@ -52,6 +52,7 @@ import { rentalMisuseStressEn } from './rental.misuseStress.en';
 import { rentalHelpCenterEn } from './rental.helpCenter.en';
 import { rentalMicroChromeEn } from './rental.microChrome.en';
 import { rentalHostPresentationEn } from './rental.hostPresentation.en';
+import { rentalLegacyGapEN } from './rental-legacy-gap.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5834,6 +5835,7 @@ export const en = {
   ...rentalHelpCenterEn,
   ...rentalMicroChromeEn,
   ...rentalHostPresentationEn,
+  ...rentalLegacyGapEN,
 } as const;
 
 export type TranslationKey = keyof typeof en;

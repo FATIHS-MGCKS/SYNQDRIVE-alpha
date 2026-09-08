@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FleetCommandPanel } from './FleetCommandPanel';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { buildFleetVehicleContexts } from '../../lib/fleet-operator-panel';
 import type { VehicleData } from '../../data/vehicles';
 import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';

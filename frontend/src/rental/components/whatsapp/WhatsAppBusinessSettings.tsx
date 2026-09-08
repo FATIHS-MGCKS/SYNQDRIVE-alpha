@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ErrorState } from '../../../components/patterns/states';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { WhatsAppSettingsPanel } from './WhatsAppSettingsPanel';
 import { WhatsAppSetupWizard } from './WhatsAppSetupWizard';
 import { isSandboxEnvironment } from './whatsapp.ops';

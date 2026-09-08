@@ -26,9 +26,9 @@ import {
   shouldEmitCanonicalConnectivityNotification,
 } from '../../lib/notifications/notification-operational-attention';
 import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
-import type { TranslationKey } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 
 function tFor(locale: 'de' | 'en'): (key: TranslationKey, params?: Record<string, string | number>) => string {
   const dict = locale === 'de' ? de : en;

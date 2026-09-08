@@ -3,7 +3,7 @@ import { ListTodo } from 'lucide-react';
 import { cn } from '../../../../components/ui/utils';
 import type { ApiTask } from '../../../../lib/api';
 import { deriveTaskIsOverdue } from '../../../lib/task-display.utils';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
 import { isTaskDueToday } from '../dashboardTasksOverview.utils';
 import {

@@ -10,7 +10,7 @@ import {
   type InsightType,
   type VehicleHealthAlert,
 } from '../DashboardInsightsContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { VehicleData } from '../data/vehicles';
 import { EmptyState } from '../../components/patterns';
 import type { DashboardNotificationItem } from './dashboard/dashboardNotificationTypes';

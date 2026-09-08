@@ -7,7 +7,7 @@ import {
 } from '../../rental/components/documents/document-extraction.shared';
 import { DocumentClassificationResultPanel } from '../../rental/components/documents/DocumentClassificationResultPanel';
 import { DocumentExtractionFlowStatus } from '../../rental/components/documents/DocumentExtractionFlowStatus';
-import { useLanguage } from '../../rental/i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import {

@@ -18,7 +18,7 @@ import type {
   PublicDocumentExtraction,
   PublicDocumentExtractionSummary,
 } from '../lib/document-extraction.types';
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import {
   batteryHealthQueryKeys,
   invalidateBatteryHealthQueries,

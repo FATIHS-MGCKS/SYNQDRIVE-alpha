@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '../../../../components/ui/button';
 import { EmptyState, SectionHeader } from '../../../../components/patterns';
 import { api } from '../../../../lib/api';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { RentalRulesOverviewDto } from './rental-rules.types';
 import { formatRuleValue, labelRuleField } from './rental-rules.utils';
 import { RentalRequirementsStatusBadge } from '../../shared/rental-requirements-ui';
