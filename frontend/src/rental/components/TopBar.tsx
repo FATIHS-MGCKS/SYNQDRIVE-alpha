@@ -7,7 +7,8 @@ import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { useLanguage, type Locale } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/LanguageContext';
+import { LanguageSelector } from '../../i18n/components/LanguageSelector';
 import { api } from '../../lib/api';
 import { unwrapTaskListPage } from '../../lib/tasks-pagination';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
@@ -15,18 +16,6 @@ import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
 import { useAppTheme } from '../../context/AppThemeContext';
 import type { SettingsTabInput } from './settings/settingsTypes';
-
-// V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
-const languages = [
-  { code: 'en' as Locale, name: 'English', short: 'EN' },
-  { code: 'de' as Locale, name: 'Deutsch', short: 'DE' },
-  { code: 'fr' as Locale, name: 'Français', short: 'FR' },
-  { code: 'nl' as Locale, name: 'Nederlands', short: 'NL' },
-  { code: 'es' as Locale, name: 'Español', short: 'ES' },
-  { code: 'it' as Locale, name: 'Italiano', short: 'IT' },
-  { code: 'pl' as Locale, name: 'Polski', short: 'PL' },
-  { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
-];
 
 interface TopBarProps {
   onViewChange?: (view: string) => void;
@@ -48,11 +37,9 @@ function formatLoggedInLabel(
 
 export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange }: TopBarProps) {
   const { preference, cycleThemePreference } = useAppTheme();
-  const { locale, setLocale, t } = useLanguage();
+  const { t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
-  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState(() => languages.find(l => l.code === locale) || languages[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -450,43 +437,7 @@ export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onF
 
         <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
 
-        {/* Language Selector — ISO-code pill (V4.6.86: anti-emoji) */}
-        <div className="relative hidden sm:block">
-          <button
-            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-            className="flex items-center justify-center h-8 min-w-[36px] px-2 rounded-md text-[10.5px] font-semibold tracking-[0.06em] font-mono tabular transition-all duration-200 ease-out text-muted-foreground hover:text-foreground hover:bg-muted sq-press"
-            aria-label={`Language: ${selectedLanguage.name}`}
-          >
-            {selectedLanguage.short}
-          </button>
-
-          {/* Language Dropdown */}
-          {isLanguageOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 sq-overlay overflow-hidden z-[9999] animate-fade-up">
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setSelectedLanguage(lang);
-                    setLocale(lang.code);
-                    setIsLanguageOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-[12.5px] hover:bg-muted ${
-                    selectedLanguage.code === lang.code ? 'bg-muted' : ''
-                  }`}
-                >
-                  <span className="inline-flex items-center justify-center h-5 min-w-[28px] px-1.5 rounded-sm text-[10px] font-semibold tracking-[0.06em] font-mono tabular bg-muted text-muted-foreground">
-                    {lang.short}
-                  </span>
-                  <span className="text-foreground">{lang.name}</span>
-                  {selectedLanguage.code === lang.code && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand" aria-hidden />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <LanguageSelector variant="topbar-pill" />
 
         {/* Divider */}
         <div className="hidden sm:block w-px h-5 mx-1 bg-border/60" />
