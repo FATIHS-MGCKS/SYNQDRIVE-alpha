@@ -559,6 +559,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021d-stale-session-cleanup-preflight-2026-09-07',
+    version: '4.9.1071',
+    title: 'EXP-021D — Stale RC session cleanup + settlement shadow go gate',
+    summary: [
+      'Aborted pre-EXP-019 orphan session 66f09794-… (RECORDING stuck on 10s only) via canonical releaseCycleLock + abortSession; 4459 observations preserved.',
+      'EXP-019 canonical session remains 2508b697-… COMPLETED — stale session is NOT EXP-019.',
+      'Live DIMO telemetry qualification PASS (provider age ~15s); DB VehicleLatestState still stale — do not qualify on CONNECTED alone.',
+      'REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED=true after clean-state gates; rolling 2-replica PM2 restart; queues empty; no experiment auto-started.',
+      'EXP021_PREFLIGHT_PASS=YES; NEXT_SEQUENCE=60→30→20→10; READY_FOR_EXP021_PHYSICAL_DRIVE=YES — operator must startRecording.',
+      'PRODUCTION_HF_PATH_CHANGED=NO; detectors/scoring/tire/brake unchanged.',
+    ],
+    reason: 'EXP-021C deployed shadow tooling with flag OFF; EXP-021D clears blocker orphan + enables shadow + final preflight before physical drive.',
+    previousBehavior: 'Stale RECORDING session blocked preflight; settlement shadow disabled; telemetry appeared stale via DB snapshot.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021D_STALE_SESSION_CLEANUP_AND_PREFLIGHT_2026-09-07.md; backend/scripts/ops/reference-capture-exp-021d-*.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-07T19:50:00.000Z',
+  },
+  {
     id: 'dimo-exp-019-live-hf-calibration-ks-mx-2024-2026-09-07',
     version: '4.9.1070',
     title: 'EXP-019 — Live HF block-polling calibration (KS MX 2024)',
