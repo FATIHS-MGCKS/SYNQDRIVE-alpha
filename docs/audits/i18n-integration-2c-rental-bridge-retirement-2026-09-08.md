@@ -17,15 +17,16 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 
 | Item | Value |
 |------|-------|
-| Starting `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
+| Current `origin/main` SHA | `020c89c34ab8e679233bc74c1e45f48ce28c4e3b` |
+| Integration 2C merge base (`main` ∩ #1578) | `020c89c34ab8e679233bc74c1e45f48ce28c4e3b` |
+| Starting pre-2C `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | PR #1575 merge commit present | Yes (`c7bb4df4022122c662f07fc23fafc427733263cf`) |
 | Product branch | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` |
-| Product HEAD | `3266a4eed` |
+| Product HEAD | `a4a204468` |
 | Product PR | **#1578** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1578 |
-| Product PR base (stacked) | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` (#1579) |
-| Authority prerequisite PR | **#1579** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1579 |
-| Authority prerequisite HEAD | `de487c4b1` (`frontend/package.json` lint path substitution only) |
-| Post-product governance PR | **#1581** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1581 (`cursor/i18n-integration-2c-governance-closure-3c10`) |
+| Product PR base | **`main`** (normalized 2026-09-08 after #1579 merge) |
+| Authority prerequisite PR | **#1579** — **MERGED** (`020c89c34` on `main`) |
+| Post-product governance PR | **#1581** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1581 (deferred; stacked above #1578, not in #1578 diff) |
 
 ---
 
