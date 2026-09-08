@@ -11,7 +11,7 @@ import {
   probeTripFinalizeDatabase,
   scheduleFinalizeThroughQueue,
   type TripFinalizePostgresFixture,
-} from '../testing/trip-finalize-end-cycle-postgres.integration.harness';
+} from './testing/trip-finalize-end-cycle-postgres.integration.harness';
 
 const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_FINALIZE_POSTGRES_REQUIRED === '1';

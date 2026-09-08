@@ -55,6 +55,8 @@ export async function createTripFinalizePostgresFixture(
   const endTime = options?.endTime ?? new Date('2026-09-08T05:02:45.000Z');
   const startTime = new Date('2026-09-08T04:33:00.000Z');
 
+  const dimoTokenId = 900000 + Math.floor(Math.random() * 1000);
+
   const org = await prisma.organization.create({
     data: {
       companyName: `Trip Finalize PG ${suffix}`,
@@ -74,9 +76,8 @@ export async function createTripFinalizePostgresFixture(
       year: 2024,
       fuelType: 'GASOLINE',
       status: 'AVAILABLE',
-      dimoTokenId: 900000 + Math.floor(Math.random() * 1000),
     },
-    select: { id: true, organizationId: true, dimoTokenId: true },
+    select: { id: true, organizationId: true },
   });
 
   const trip = await prisma.vehicleTrip.create({
@@ -121,7 +122,7 @@ export async function createTripFinalizePostgresFixture(
     vehicle: {
       id: vehicle.id,
       organizationId: vehicle.organizationId,
-      dimoTokenId: vehicle.dimoTokenId!,
+      dimoTokenId,
     },
     trip,
     cycleToken,
