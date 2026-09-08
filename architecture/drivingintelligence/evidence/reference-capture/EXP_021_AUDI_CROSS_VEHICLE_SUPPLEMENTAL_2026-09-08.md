@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-08 (evening UTC)  
 **Type:** Cross-vehicle supplemental settlement-shadow + cadence evidence  
-**Status:** **PRE-ARMED — NOT DRIVING** (telemetry stale; awaiting operator wake + `START EXP-021 NOW`)
+**Status:** **PHYSICAL DRIVE OUTSIDE REFERENCE CAPTURE** — `START EXP-021 NOW` never received; session canonically **ABORTED**
 
 ---
 
@@ -168,16 +168,84 @@ Settlement ages: **+30/+60/+120/+180/+300/+600** s
 
 ---
 
-## 10 — Human go gate
+## 10 — Human go gate (re-check after wake)
+
+Qualified at `2026-09-08T19:40:00Z` after operator wake:
+
+| Field | Value |
+|-------|-------|
+| `LIVE_TELEMETRY_READY` | **YES** |
+| `TELEMETRY_PROVIDER_AGE_SECONDS` | **184** |
+| `LATEST_PROVIDER_TIMESTAMP` | `2026-09-08T19:37:00Z` |
+| `AUDI_TRIP_FSM_RESTING` | **YES** |
+| `SESSION_READY` | **YES** |
 
 ```
-EXP021_AUDI_PREFLIGHT_PASS = NO
-READY_TO_DRIVE = NO
+EXP021_AUDI_PREFLIGHT_PASS = YES
+READY_TO_DRIVE = YES
 ```
 
-**Blocker:** `LIVE_TELEMETRY_READY = NO` (`VEHICLE_WAKE_REQUIRED = YES`)
+Operator banner issued: **READY TO DRIVE — EXP-021 AUDI**. Awaiting `START EXP-021 NOW`.
 
-**Before `START EXP-021 NOW`:** re-qualify live DIMO telemetry (<600s provider age), confirm Trip FSM still RESTING, confirm session READY.
+---
+
+## 11 — Post-drive state verification (2026-09-08T20:04 UTC)
+
+Operator reported physical Audi drive ended. Production authority check:
+
+| Field | Value |
+|-------|-------|
+| `START_COMMAND_RECEIVED` | **NO** — `START EXP-021 NOW` never received in operator channel |
+| `START_RECORDING_CALLED` | **NO** — `startedAt` remained null |
+| `SESSION_STATUS` | **READY** → **ABORTED** (post-cleanup) |
+| `SESSION_STARTED_AT` | **null** |
+| `CALIBRATION_SERIES_ID` | **null** |
+| `ANY_PHASE_ACTIVATED` | **NO** |
+| `ANY_REFERENCE_CAPTURE_OBSERVATIONS_RECORDED` | **YES** — **1** prearm `SESSION_METADATA` only (not drive telemetry) |
+| `SETTLEMENT_EXPERIMENT_CREATED` | **NO** |
+
+**Classification:**
+
+```
+EXP021_AUDI_PHYSICAL_RUN_EXECUTED = NO
+EXP021_AUDI_DRIVE_CAPTURED = NO
+```
+
+The physical drive occurred on the operational Trip FSM path **outside** Reference Capture.
+
+### Operational vehicle trip (non-RC)
+
+| Field | Value |
+|-------|-------|
+| `VEHICLE_TRIP_ID` | `e324ee8c-8e17-4cfc-ac16-294dacef5d01` |
+| `VEHICLE_TRIP_START` | `2026-09-08T19:36:00.000Z` |
+| `VEHICLE_TRIP_END` | `2026-09-08T19:59:55.895Z` |
+| `VEHICLE_TRIP_STATUS` | `ONGOING` (endTime set; async Trip FSM not yet terminalized to COMPLETED at verification time) |
+
+No whole-trip settlement shadow schedules apply — no RC session entered RECORDING.
+
+```
+WHOLE_TRIP_SHADOW_EXPECTED = 6
+WHOLE_TRIP_SHADOW_SCHEDULED = 0
+```
+
+---
+
+## 12 — Unused READY session cleanup
+
+Canonical abort via `reference-capture-exp-021d-stale-session-recover.ts` at `2026-09-08T20:06:12Z`:
+
+| Field | Value |
+|-------|-------|
+| `STALE_SESSION_TERMINALIZATION_METHOD` | canonical `abortSession` |
+| `STALE_SESSION_FINAL_STATUS` | **ABORTED** |
+| `failureReason` | `exp021_audi_physical_drive_before_start_command_unused_ready_session` |
+| `STALE_SESSION_EVIDENCE_PRESERVED` | **YES** — 1 `SESSION_METADATA` observation retained |
+| `orphanLockReleased` | **NO** (no active cycle lock) |
+
+**Reason:** operator completed physical drive before Reference Capture start command.
+
+No retrospective EXP-021 drive evidence fabricated. All preflight evidence preserved.
 
 ---
 

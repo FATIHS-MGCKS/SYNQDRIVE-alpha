@@ -601,6 +601,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-08T19:15:00.000Z',
   },
   {
+    id: 'dimo-exp-021-audi-post-drive-no-rc-capture-2026-09-08',
+    version: '4.9.1075',
+    title: 'EXP-021 Audi — physical drive outside Reference Capture',
+    summary: [
+      'START_COMMAND_RECEIVED=NO — START EXP-021 NOW never received; startRecording NOT called.',
+      'EXP021_AUDI_PHYSICAL_RUN_EXECUTED=NO; EXP021_AUDI_DRIVE_CAPTURED=NO.',
+      'Operational trip e324ee8c-… 19:36–19:59 UTC on Trip FSM; no settlement shadow experiment.',
+      'Unused READY session 619284b3-… canonically ABORTED; 1 SESSION_METADATA observation preserved.',
+      'No retrospective EXP-021 drive evidence fabricated; preflight evidence retained.',
+    ],
+    reason: 'Operator completed physical Audi drive before Reference Capture start command.',
+    previousBehavior: 'Session READY after post-wake go gate; awaiting START EXP-021 NOW.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md §11–12',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T20:10:00.000Z',
+  },
+  {
     id: 'dimo-exp-021-pre-drive-integrity-gate-2026-09-08',
     version: '4.9.1073',
     title: 'EXP-021 — Pre-drive integrity gate hardened (PR #1570)',

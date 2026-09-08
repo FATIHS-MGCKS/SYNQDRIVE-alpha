@@ -183,19 +183,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
-## EXP-021 — Audi cross-vehicle supplemental pre-arm (2026-09-08 evening)
+## EXP-021 — Audi cross-vehicle supplemental (2026-09-08 evening)
 
 | Event | Detail |
 |-------|--------|
-| Status | **PRE-ARMED — NOT DRIVING** |
+| Status | **PHYSICAL DRIVE OUTSIDE RC** — `START EXP-021 NOW` never received |
 | Vehicle | **KS MS 661** Audi A4 2016 (`c10351f8-…`, token **187361**) |
 | Classification | `EXP021_CROSS_VEHICLE_SUPPLEMENTAL=YES`; `VEHICLE_CONFOUND_PRESENT=YES` |
-| Cadence | **60→30→20→10** (not same-vehicle counterbalance vs EXP-019 KS MX) |
-| Session | `619284b3-5ef8-4635-ae31-56475694f655` READY; **startRecording NOT called** |
+| Cadence (planned) | **60→30→20→10** (not same-vehicle counterbalance vs EXP-019 KS MX) |
+| Session | `619284b3-…` pre-armed READY → **ABORTED** `2026-09-08T20:06:12Z`; **startRecording NOT called** |
+| Physical run | `EXP021_AUDI_PHYSICAL_RUN_EXECUTED=NO`; `EXP021_AUDI_DRIVE_CAPTURED=NO` |
+| Operational trip | `e324ee8c-…` 19:36–19:59 UTC (Trip FSM, not RC-bound) |
+| Settlement shadow | **NOT created** — no RECORDING session |
 | KS MX session | `fb553442-…` left READY unstarted (different vehicle) |
-| Fresh-trip gate | Audi RESTING; last trip COMPLETED |
-| Blocker | `LIVE_TELEMETRY_READY=NO` — provider age ~35264s; `VEHICLE_WAKE_REQUIRED=YES` |
-| Settlement integrity | Deployed PR #1570 hardened runtime PASS |
+| Go gate (post-wake) | `READY_TO_DRIVE=YES` at 19:40 UTC; operator did not send start command |
+| Settlement integrity | Deployed PR #1570 hardened runtime PASS (unused this run) |
 | Evidence | `EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md` |
 
 ## EXP-021 — Pre-drive integrity gate (2026-09-08)
