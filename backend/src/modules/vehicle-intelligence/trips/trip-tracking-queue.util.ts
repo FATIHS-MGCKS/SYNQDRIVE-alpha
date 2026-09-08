@@ -89,6 +89,60 @@ function isQueuedQueueState(state: TripTrackingQueueJobState): boolean {
   return state === 'waiting' || state === 'delayed' || state === 'prioritized';
 }
 
+/**
+ * Removes pending primary/successor trip-tracking jobs (waiting, delayed, active).
+ * Used when an end-cycle is cancelled (e.g. activity resumed) so stale FINALIZE
+ * jobs cannot close a trip that continued.
+ */
+export async function cancelPendingTripTrackingJobs(params: {
+  queue: TripTrackingQueueLike;
+  jobIds: string[];
+}): Promise<number> {
+  let removed = 0;
+  for (const primaryId of params.jobIds) {
+    for (const jobId of [primaryId, buildTripTrackingSuccessorJobId(primaryId)]) {
+      const job = await params.queue.getJob(jobId);
+      if (!job) continue;
+      const state = await job.getState();
+      if (
+        isTerminalQueueState(state) ||
+        isQueuedQueueState(state) ||
+        isActiveQueueState(state)
+      ) {
+        await job.remove();
+        removed += 1;
+      }
+    }
+  }
+  return removed;
+}
+
+/**
+ * R10: recycle any existing stable slot then enqueue a fresh end-cycle job.
+ * Prevents `skipped` re-enqueue when an older cycle left a waiting FINALIZE job.
+ */
+export async function enqueueEndCycleTripTrackingJob(params: {
+  queue: TripTrackingQueueLike;
+  jobName: string;
+  jobId: string;
+  data: TripTrackingJobData;
+  trigger: TripTrackingTrigger;
+  delayMs?: number;
+}): Promise<StableTripTrackingEnqueueOutcome> {
+  await cancelPendingTripTrackingJobs({
+    queue: params.queue,
+    jobIds: [params.jobId],
+  });
+  return enqueueStableTripTrackingJob({
+    queue: params.queue,
+    jobName: params.jobName,
+    jobId: params.jobId,
+    data: params.data,
+    trigger: params.trigger,
+    delayMs: params.delayMs,
+  });
+}
+
 function isActiveQueueState(state: TripTrackingQueueJobState): boolean {
   return state === 'active' || state === 'waiting-children';
 }

@@ -37,3 +37,15 @@ edges:
   - from: TDL-TEST-R9-001
     relation: supports
     to: TDL-ORCH-WAKE-COORD-001
+  - from: TDL-EVID-R10-KS-MX-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-TEST-R10-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-DEC-R10-001
+    relation: tested_by
+    to: TDL-TEST-R10-001
+  - from: TDL-DEC-R10-002
+    relation: tested_by
+    to: TDL-TEST-R10-001

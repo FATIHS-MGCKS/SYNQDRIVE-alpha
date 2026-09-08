@@ -262,6 +262,36 @@ describe('Fix C — ignition de-prioritized in end and resume detection', () => 
     expect(hasActivityResumed(points, 'ICE')).toBe(true);
   });
 
+  it('hasActivityResumed: pre-boundary motion does NOT resume when resumeAfterAt is set', () => {
+    const endBoundary = new Date(Date.now() - 30_000);
+    const points = [
+      {
+        ...pt(92, 38, true),
+        timestamp: new Date(endBoundary.getTime() - 60_000).toISOString(),
+      },
+      {
+        ...pt(30, 0, false),
+        timestamp: new Date(endBoundary.getTime() + 5_000).toISOString(),
+      },
+    ];
+    expect(hasActivityResumed(points, 'ICE', endBoundary)).toBe(false);
+  });
+
+  it('hasActivityResumed: post-boundary motion resumes when resumeAfterAt is set', () => {
+    const endBoundary = new Date(Date.now() - 120_000);
+    const points = [
+      {
+        ...pt(180, 38, true),
+        timestamp: new Date(endBoundary.getTime() - 30_000).toISOString(),
+      },
+      {
+        ...pt(30, 12, true),
+        timestamp: new Date(endBoundary.getTime() + 60_000).toISOString(),
+      },
+    ];
+    expect(hasActivityResumed(points, 'ICE', endBoundary)).toBe(true);
+  });
+
   it('hasActivityResumed: EV — speed alone is sufficient, no ignition required', () => {
     const points = [
       pt(60, 0, false),

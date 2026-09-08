@@ -2,7 +2,7 @@
 
 Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`
 
-**Maturity:** Phase 4 **partial** — post-R9 wake subsystem indexed; full FSM graph incomplete.
+**Maturity:** Phase 4 **partial** — post-R9 wake subsystem and R10 end-cycle finalize decisions indexed; full FSM graph incomplete.
 
 ## Production status (current)
 
@@ -57,7 +57,23 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-R9F-001 | UNKNOWN bounded retry completeness | VALIDATED |
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED |
 
+| TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED |
+| TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED |
+
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
+
+## R10 end-cycle finalize flow (branch only — not deployed)
+
+```
+POSSIBLE_END (possibleEndEnteredAt clocked)
+  → END_VALIDATION / FINALIZE jobs carry endCycleToken = possibleEndEnteredAt ISO
+  → scheduleFinalize recycles waiting stable jobId before enqueue
+  → resume (post-boundary motion only) cancels pending ev/fin jobs
+  → processFinalize admission: token match OR legacy tokenless requestedAt >= enteredAt
+  → TripDecisionEngine.finalizeTrip → tripStatus=COMPLETED + FSM RESTING + activeTripId=null
+```
+
+**Production observation:** KS MX reference case (TDL-EVID-R10-KS-MX-001). **Natural-drive post-deploy validation open.**
 
 ## Supporting evidence (non-canonical routing)
 

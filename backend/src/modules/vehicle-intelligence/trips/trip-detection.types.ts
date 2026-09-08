@@ -31,6 +31,11 @@ export interface TripTrackingJobData {
   /** R3B: explicit durable successor scheduled while primary jobId is ACTIVE. */
   handoffKind?: TripTrackingHandoffKind;
   handoffPrimaryJobId?: string;
+  /**
+   * R10: correlates END_VALIDATION / FINALIZE jobs to one POSSIBLE_END episode
+   * (`possibleEndEnteredAt` ISO). Cleared on resume; stale jobs must not commit.
+   */
+  endCycleToken?: string;
 }
 
 export const START_DETECTION_MODES = {
