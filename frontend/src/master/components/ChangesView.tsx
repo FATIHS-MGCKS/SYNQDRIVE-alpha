@@ -581,6 +581,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021-audi-cross-vehicle-supplemental-2026-09-08',
+    version: '4.9.1074',
+    title: 'EXP-021 — Audi KS MS 661 cross-vehicle supplemental pre-arm',
+    summary: [
+      'EXP021_CROSS_VEHICLE_SUPPLEMENTAL=YES — Audi A4 KS MS 661 (token 187361), cadence 60→30→20→10.',
+      'VEHICLE_CONFOUND_PRESENT=YES — not same-vehicle counterbalance vs EXP-019 KS MX 2024.',
+      'New RC session 619284b3-… READY; KS MX session fb553442-… left unstarted (different vehicle).',
+      'Fresh-trip gate PASS: Audi Trip FSM RESTING, last trip COMPLETED.',
+      'BLOCKER: LIVE_TELEMETRY_READY=NO — DIMO provider age ~9.8h; VEHICLE_WAKE_REQUIRED=YES.',
+      'startRecording NOT called — awaiting operator START EXP-021 NOW after wake + re-qualify.',
+    ],
+    reason: 'Cross-vehicle supplemental settlement-shadow run; scientific classification preserves vehicle confound.',
+    previousBehavior: 'Morning pre-arm targeted KS MX 2024; operator switched to Audi for tonight.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T19:15:00.000Z',
+  },
+  {
     id: 'dimo-exp-021-pre-drive-integrity-gate-2026-09-08',
     version: '4.9.1073',
     title: 'EXP-021 — Pre-drive integrity gate hardened (PR #1570)',

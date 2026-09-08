@@ -183,6 +183,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Audi cross-vehicle supplemental pre-arm (2026-09-08 evening)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PRE-ARMED — NOT DRIVING** |
+| Vehicle | **KS MS 661** Audi A4 2016 (`c10351f8-…`, token **187361**) |
+| Classification | `EXP021_CROSS_VEHICLE_SUPPLEMENTAL=YES`; `VEHICLE_CONFOUND_PRESENT=YES` |
+| Cadence | **60→30→20→10** (not same-vehicle counterbalance vs EXP-019 KS MX) |
+| Session | `619284b3-5ef8-4635-ae31-56475694f655` READY; **startRecording NOT called** |
+| KS MX session | `fb553442-…` left READY unstarted (different vehicle) |
+| Fresh-trip gate | Audi RESTING; last trip COMPLETED |
+| Blocker | `LIVE_TELEMETRY_READY=NO` — provider age ~35264s; `VEHICLE_WAKE_REQUIRED=YES` |
+| Settlement integrity | Deployed PR #1570 hardened runtime PASS |
+| Evidence | `EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md` |
+
 ## EXP-021 — Pre-drive integrity gate (2026-09-08)
 
 | Event | Detail |
