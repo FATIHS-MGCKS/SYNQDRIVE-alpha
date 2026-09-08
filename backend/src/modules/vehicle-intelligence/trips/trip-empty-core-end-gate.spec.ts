@@ -103,7 +103,7 @@ describe('classifyEmptyCoreVlsInactivity (R5A)', () => {
     ).toBe('ACTIVE');
   });
 
-  it('engine load active → ACTIVE', () => {
+  it('engine load at standstill without stop boundary → UNKNOWN (motor activity)', () => {
     expect(
       classifyEmptyCoreVlsInactivity({
         telemetry: {
@@ -116,7 +116,46 @@ describe('classifyEmptyCoreVlsInactivity (R5A)', () => {
         workerNow: WORKER_NOW,
         maxObservationAgeMs: MIN_INACTIVITY,
       }).state,
-    ).toBe('ACTIVE');
+    ).toBe('UNKNOWN');
+  });
+
+  it('engine load before stop boundary → INACTIVE (stale at stop)', () => {
+    const stopBoundary = new Date(WORKER_NOW.getTime() - 10_000);
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 42,
+          sourceTimestamp: freshTs(-60_000),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+        stopBoundaryAt: stopBoundary,
+      }),
+    ).toMatchObject({
+      state: 'INACTIVE',
+      reason: 'vls_stop_boundary_corroboration',
+    });
+  });
+
+  it('stale speed before stop boundary → INACTIVE not ACTIVE', () => {
+    const stopBoundary = new Date(WORKER_NOW.getTime() - 5_000);
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 10,
+          engineLoad: 0,
+          sourceTimestamp: freshTs(-30_000),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+        stopBoundaryAt: stopBoundary,
+      }).reason,
+    ).toBe('vls_stale_speed_before_stop_boundary');
   });
 
   it('sourceTimestamp missing → UNKNOWN', () => {
