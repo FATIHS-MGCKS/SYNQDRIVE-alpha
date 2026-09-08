@@ -116,6 +116,15 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 ---
 
+## R11 — empty-core evidence implementation (2026-09-08)
+
+| Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
+|-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
+| TDL-EVID-R11-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) | `2026-09-08T22:45:00Z` | Branch `cursor/trip-fsm-r11-empty-core-evidence-64c8` | Provider anchor, stop boundary, pause tag, inner forensics, backoff, fetch taxonomy; PD-2 off; no 45 s default | IMPLEMENTED_CI | Not deployed; KS MS 661 absent-VLS limit remains; design basis PR #1583 |
+| TDL-TEST-R11-001 | CURRENT_TEST | [trip-fsm-r11-empty-core-evidence.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r11-empty-core-evidence.spec.ts) | `2026-09-08T22:45:00Z` | same branch | Scenarios A–I unit matrix + R10 regression suites green | CONFIRMED_ON_BRANCH | Scenario C postgres integration NOT_RUN in default CI |
+
+---
+
 ## Explicit non-artifacts
 
 - **Competing authority paths** — must not be created under `architecture/trip-fsm/` or `docs/architecture/trip-fsm/`

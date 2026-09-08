@@ -49,3 +49,15 @@ edges:
   - from: TDL-DEC-R10-002
     relation: tested_by
     to: TDL-TEST-R10-001
+  - from: TDL-EVID-R11-IMPL-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-R11-IMPL-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-TEST-R11-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-DEC-R11-001
+    relation: tested_by
+    to: TDL-TEST-R11-001
