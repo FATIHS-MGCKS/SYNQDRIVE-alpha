@@ -22,11 +22,14 @@ import {
 import {
   evaluateGovernanceAuthorityPolicy,
   hasI18nRelevantChanges,
+  isGovernanceAuthorityPath,
   isI18nRelevantPath,
   partitionChangedPaths,
   EXIT_CODES,
   GOVERNANCE_AUTHORITY_PREFIXES,
   BOOTSTRAP_RELEVANT_PATH_CONTRACT,
+  PROTECTED_GOVERNANCE_EXACT_PATHS,
+  PROTECTED_GOVERNANCE_PREFIXES,
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
 import { gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
 
@@ -104,12 +107,51 @@ function classifyWorkflowInlineRelevance(repoDir: string, baseSha: string, headS
   return hasI18nRelevantChanges(gitChangedPaths(repoDir, baseSha, headSha));
 }
 
-function bootstrapRelevantFromPath(path: string) {
-  if (path.startsWith('frontend/src/')) return true;
-  if (path.startsWith('frontend/scripts/i18n-') && path.endsWith('.mjs')) return true;
-  if (path.startsWith('frontend/scripts/lib/i18n-governance/')) return true;
-  if (BOOTSTRAP_RELEVANT_PATH_CONTRACT.exact.includes(path)) return true;
+function extractWorkflowBootstrapCasePatterns() {
+  const workflowYaml = readFileSync(workflowPath, 'utf8');
+  const caseMatch = workflowYaml.match(/case "\$path" in\s*\n\s+([^\n]+)\)\s*\n/);
+  if (!caseMatch?.[1]) {
+    throw new Error('Workflow bootstrap relevance case statement not found');
+  }
+  return caseMatch[1].split('|').map((pattern) => pattern.trim());
+}
+
+function workflowBootstrapRelevant(path: string) {
+  const patterns = extractWorkflowBootstrapCasePatterns();
+  for (const pattern of patterns) {
+    if (pattern.endsWith('/*')) {
+      const prefix = pattern.slice(0, -1);
+      if (path.startsWith(prefix)) return true;
+      continue;
+    }
+    if (pattern.endsWith('*.mjs')) {
+      const prefix = pattern.slice(0, -5);
+      if (path.startsWith(prefix) && path.endsWith('.mjs')) return true;
+      continue;
+    }
+    if (path === pattern) return true;
+  }
   return false;
+}
+
+function bootstrapRelevantFromPath(path: string) {
+  return workflowBootstrapRelevant(path);
+}
+
+function defaultGateOptions(overrides: Record<string, unknown> = {}) {
+  return {
+    emitGithubAnnotations: false,
+    ...overrides,
+  };
+}
+
+function assertProtectedPathContract(path: string) {
+  expect(workflowBootstrapRelevant(path), `${path} workflow bootstrap`).toBe(true);
+  expect(isI18nRelevantPath(path), `${path} JS relevance`).toBe(true);
+  expect(isGovernanceAuthorityPath(path), `${path} governance authority`).toBe(true);
+  const partitions = partitionChangedPaths([path], isScannerEligibleRelativePath);
+  expect(partitions.governedProductionPaths, `${path} product classification`).toEqual([]);
+  expect(partitions.authorityPaths, `${path} authority classification`).toEqual([path]);
 }
 
 describe('P2.3.3 PR gate — parser and policy', () => {
@@ -562,6 +604,144 @@ function compareFixtureDelta(baseFixture, headFixture) {
   return compareSources(baseSource, headSource, rel);
 }
 
+describe('P2.3.3 PR gate — protected-path contract parity', () => {
+  const protectedPrefixSamples = [
+    'frontend/scripts/i18n-pr-gate.mjs',
+    'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs',
+  ];
+
+  it.each(PROTECTED_GOVERNANCE_EXACT_PATHS)(
+    'exact protected path %s is workflow-relevant, JS-relevant, and authority-only',
+    (path) => {
+      assertProtectedPathContract(path);
+    },
+  );
+
+  it.each(protectedPrefixSamples)(
+    'protected prefix sample %s is workflow-relevant, JS-relevant, and authority-only',
+    (path) => {
+      assertProtectedPathContract(path);
+    },
+  );
+
+  it('workflow bootstrap case patterns include every canonical exact protected path', () => {
+    const patterns = extractWorkflowBootstrapCasePatterns();
+    const patternLine = patterns.join('|');
+    for (const path of PROTECTED_GOVERNANCE_EXACT_PATHS) {
+      expect(patternLine, `missing workflow bootstrap path ${path}`).toContain(path);
+    }
+    expect(patternLine).toContain('frontend/src/*');
+    expect(patternLine).toContain('frontend/scripts/i18n-*.mjs');
+    expect(patternLine).toContain('frontend/scripts/lib/i18n-governance/*');
+  });
+
+  it('workflow bootstrap patterns stay aligned with canonical JS contract', () => {
+    const samples = [
+      ...PROTECTED_GOVERNANCE_EXACT_PATHS,
+      ...protectedPrefixSamples,
+      'frontend/src/rental/components/Foo.tsx',
+      'backend/src/modules/example/example.service.ts',
+      'docs/readme.md',
+    ];
+    for (const path of samples) {
+      expect(workflowBootstrapRelevant(path)).toBe(isI18nRelevantPath(path));
+    }
+  });
+
+  it('.cursor/rules/i18n.mdc only is never irrelevant', () => {
+    assertProtectedPathContract('.cursor/rules/i18n.mdc');
+    const policy = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: ['.cursor/rules/i18n.mdc'],
+      governedProductionPaths: [],
+      authorityApproved: false,
+    });
+    expect(policy.ok).toBe(false);
+    expect(policy.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+  });
+
+  it('AGENTS.md only is never irrelevant', () => {
+    assertProtectedPathContract('AGENTS.md');
+  });
+
+  it('workflow file only is never irrelevant', () => {
+    assertProtectedPathContract('.github/workflows/i18n-governance-new-debt.yml');
+  });
+
+  it('inventory only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/src/i18n/hardcoded-copy-inventory.json');
+  });
+
+  it('coverage baseline only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/src/i18n/translation-coverage-baseline.json');
+  });
+
+  it('coverage module only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/src/i18n/translation-coverage.ts');
+  });
+
+  it('coverage test only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/src/i18n/translation-coverage.test.ts');
+  });
+
+  it('debt manifest only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/src/i18n/i18n-debt-classifications.json');
+  });
+
+  it('governance script only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/scripts/i18n-pr-gate.mjs');
+  });
+
+  it('governance library only is authority without product classification', () => {
+    assertProtectedPathContract('frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs');
+  });
+
+  const namedGovernanceTests = [
+    'frontend/src/i18n/i18n-governance-scanner.test.ts',
+    'frontend/src/i18n/i18n-pr-gate.test.ts',
+    'frontend/src/i18n/i18n-structural-check.test.ts',
+    'frontend/src/i18n/locales.test.ts',
+    'frontend/src/i18n/translation-registry.test.ts',
+  ];
+
+  it.each(namedGovernanceTests)('named governance test %s is authority-only', (path) => {
+    assertProtectedPathContract(path);
+  });
+
+  const launderingAuthorityPaths = [
+    'frontend/src/i18n/hardcoded-copy-inventory.json',
+    'frontend/src/i18n/translation-coverage-baseline.json',
+    'frontend/src/i18n/translation-coverage.ts',
+    'frontend/src/i18n/i18n-debt-classifications.json',
+  ];
+
+  it.each(launderingAuthorityPaths)(
+    'product plus %s fails mixed laundering even when approved',
+    (authorityPath) => {
+      const result = evaluateGovernanceAuthorityPolicy({
+        authorityPaths: [authorityPath],
+        governedProductionPaths: ['frontend/src/rental/components/Foo.tsx'],
+        authorityApproved: true,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
+      expect(result.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
+    },
+  );
+
+  it.each(launderingAuthorityPaths)(
+    'product plus %s fails mixed laundering without approval',
+    (authorityPath) => {
+      const result = evaluateGovernanceAuthorityPolicy({
+        authorityPaths: [authorityPath],
+        governedProductionPaths: ['frontend/src/rental/components/Foo.tsx'],
+        authorityApproved: false,
+      });
+      expect(result.ok).toBe(false);
+      expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
+    },
+  );
+});
+
 describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { timeout: 60000 }, () => {
   it('bootstrap contract stays aligned with canonical JS relevance policy', () => {
     const samples = [
@@ -572,6 +752,8 @@ describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { tim
       'frontend/package.json',
       'frontend/package-lock.json',
       '.github/workflows/i18n-governance-new-debt.yml',
+      '.cursor/rules/i18n.mdc',
+      'AGENTS.md',
       'docs/readme.md',
     ];
     for (const path of samples) {
@@ -678,10 +860,17 @@ describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { tim
 
   it('expanded governance authority paths include package.json, i18n-check, and control-plane tests', () => {
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/package.json');
-    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/scripts/i18n-check.mjs');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('.cursor/rules/i18n.mdc');
+    expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('AGENTS.md');
+    expect(isGovernanceAuthorityPath('frontend/scripts/i18n-check.mjs')).toBe(true);
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/i18n-pr-gate.test.ts');
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/i18n-governance-scanner.test.ts');
     expect(GOVERNANCE_AUTHORITY_PREFIXES).toContain('frontend/src/i18n/translation-registry.test.ts');
+    expect(BOOTSTRAP_RELEVANT_PATH_CONTRACT.exact).toEqual(PROTECTED_GOVERNANCE_EXACT_PATHS);
+    expect(BOOTSTRAP_RELEVANT_PATH_CONTRACT.prefixes).toEqual([
+      'frontend/src/',
+      ...PROTECTED_GOVERNANCE_PREFIXES,
+    ]);
     expect(partitionChangedPaths(['frontend/package.json'], isScannerEligibleRelativePath).authorityPaths).toEqual([
       'frontend/package.json',
     ]);
@@ -724,13 +913,15 @@ describe('P2.3.3 PR gate — git source read fail-closed', () => {
     process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL = 'frontend/src/rental/components/Widget.tsx';
     try {
       expect(() =>
-        runGate({
-          baseSha,
-          headSha,
-          authorityApproved: false,
-          repoRoot: dir,
-          manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-        }),
+        runGate(
+          defaultGateOptions({
+            baseSha,
+            headSha,
+            authorityApproved: false,
+            repoRoot: dir,
+            manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+          }),
+        ),
       ).toThrow(GitSourceReadFailureError);
     } finally {
       if (previous === undefined) delete process.env.I18N_PR_GATE_TEST_FORCE_READ_FAIL;
@@ -795,13 +986,15 @@ describe('P2.3.3 PR gate — real git integration', { timeout: 60000 }, () => {
       `export function Widget() { return <button title="Speichern">Bitte speichern</button>; }`,
     );
     const headSha = commitAll(runGit, 'head');
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot: dir,
-      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-    });
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.newPrActionableHostDebt).toBe(1);
     expect(summary.pass).toBe(false);
     expect(summary.exitCode).toBe(EXIT_CODES.NEW_ACTIONABLE_HOST_DEBT);
@@ -820,13 +1013,15 @@ describe('P2.3.3 PR gate — real git integration', { timeout: 60000 }, () => {
       readFileSync(join(fixtureRoot, 'GoodTranslatedPresentation.tsx'), 'utf8'),
     );
     const headSha = commitAll(runGit, 'head');
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot: dir,
-      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-    });
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.newPrActionableHostDebt).toBe(0);
     expect(summary.pass).toBe(true);
   });
@@ -847,13 +1042,15 @@ describe('P2.3.3 PR gate — real git integration', { timeout: 60000 }, () => {
     const newPath = join(newDir, 'Foo Bar.tsx');
     runGit(['mv', oldPath, newPath]);
     const headSha = commitAll(runGit, 'rename');
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot: dir,
-      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-    });
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.newPrActionableHostDebt).toBe(0);
     expect(summary.pass).toBe(true);
   });
@@ -895,31 +1092,44 @@ export function FooBar() {
     );
     const diffEntries = parseNameStatusZGit(diffBuffer);
     expect(diffEntries.some((entry) => entry.status === 'R')).toBe(true);
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot: dir,
-      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-    });
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.newPrActionableHostDebt).toBe(1);
     expect(summary.pass).toBe(false);
     expect(summary.exitCode).toBe(EXIT_CODES.NEW_ACTIONABLE_HOST_DEBT);
   });
 });
 
-describe.skip('P2.3.3 PR gate — repository integration', { timeout: 60000 }, () => {
-  const baseSha = '021f6a22b66cc69b28291a15d7f4055e3977e33d';
-  const headSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+describe('P2.3.3 PR gate — repository integration', { timeout: 60000 }, () => {
+  function seedAuthorityOnlyRepo() {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    mkdirSync(join(dir, 'frontend/scripts'), { recursive: true });
+    writeFileSync(join(dir, 'frontend/scripts/i18n-check.mjs'), 'export const version = 1;\n');
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(join(dir, 'frontend/scripts/i18n-check.mjs'), 'export const version = 2;\n');
+    const headSha = commitAll(runGit, 'authority-only');
+    return { dir, baseSha, headSha };
+  }
 
-  it('69 self-test against campaign base passes with authority approval', () => {
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: true,
-      repoRoot,
-      manifestPath,
-    });
+  it('authority-only change with approval passes', () => {
+    const { dir, baseSha, headSha } = seedAuthorityOnlyRepo();
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: true,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.pass).toBe(true);
     expect(summary.newPrActionableHostDebt).toBe(0);
     expect(summary.reintroducedHistoricalDebt).toBe(0);
@@ -928,20 +1138,23 @@ describe.skip('P2.3.3 PR gate — repository integration', { timeout: 60000 }, (
     expect(summary.changedGovernedProductionFiles).toBe(0);
   });
 
-  it('69b self-test without authority approval fails policy exit 3', () => {
-    const summary = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot,
-      manifestPath,
-    });
+  it('authority-only change without approval fails with exit 3', () => {
+    const { dir, baseSha, headSha } = seedAuthorityOnlyRepo();
+    const summary = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(summary.pass).toBe(false);
     expect(summary.exitCode).toBe(EXIT_CODES.GOVERNANCE_AUTHORITY_POLICY_FAILURE);
     expect(summary.governanceAuthorityChanged).toBe('YES');
   });
 
-  it('69c backend-only diff no-ops only after authority precheck via workflow-inline contract', () => {
+  it('backend-only change produces the intended no-op', () => {
     const { dir, runGit } = createTempGitRepo();
     writeFileSync(join(dir, 'README.md'), 'seed\n');
     const baseSha = commitAll(runGit, 'base');
@@ -953,18 +1166,20 @@ describe.skip('P2.3.3 PR gate — repository integration', { timeout: 60000 }, (
     const headSha = commitAll(runGit, 'backend-only');
     expect(classifyWorkflowInlineRelevance(dir, baseSha, headSha)).toBe(false);
     seedGovernanceManifest(dir);
-    const noOp = runGate({
-      baseSha,
-      headSha,
-      authorityApproved: false,
-      repoRoot: dir,
-      manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
-    });
+    const noOp = runGate(
+      defaultGateOptions({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+      }),
+    );
     expect(noOp.pass).toBe(true);
     expect(noOp.noOp).toBe(true);
   });
 
-  it('70 controlled red synthetic host literal would fail', () => {
+  it('controlled new hardcoded host literal fails', () => {
     const relPath = 'rental/components/__pr_gate_red__.tsx';
     const result = compareSources(
       `export function Red() { return null; }`,
@@ -974,9 +1189,87 @@ describe.skip('P2.3.3 PR gate — repository integration', { timeout: 60000 }, (
     expectNewDebt(1, result);
   });
 
-  it('71 controlled green translated presentation passes', () => {
+  it('controlled translated presentation passes', () => {
     const result = compareFixtureDelta(null, 'GoodTranslatedPresentation.tsx');
     expectNewDebt(0, result);
+  });
+});
+
+describe('P2.3.3 PR gate — GitHub annotation emission', () => {
+  it('synthetic test execution emits no GitHub workflow annotation command', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(filePath, `export function Widget() { return <div>{t('common.ok')}</div>; }`);
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <button title="Speichern">Bitte speichern</button>; }`,
+    );
+    const headSha = commitAll(runGit, 'head');
+
+    const stderrChunks: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      stderrChunks.push(args.map(String).join(' '));
+      originalError(...args);
+    };
+    try {
+      runGate(
+        defaultGateOptions({
+          baseSha,
+          headSha,
+          authorityApproved: false,
+          repoRoot: dir,
+          manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+        }),
+      );
+    } finally {
+      console.error = originalError;
+    }
+
+    const stderr = stderrChunks.join('\n');
+    expect(stderr).not.toMatch(/^::error /m);
+    expect(stderr).not.toContain('::error file=frontend/src/rental/components/Widget.tsx');
+  });
+
+  it('production-mode execution can still emit a real annotation', () => {
+    const { dir, runGit } = createTempGitRepo();
+    seedGovernanceManifest(dir);
+    const relDir = join(dir, 'frontend/src/rental/components');
+    mkdirSync(relDir, { recursive: true });
+    const filePath = join(relDir, 'Widget.tsx');
+    writeFileSync(filePath, `export function Widget() { return <div>{t('common.ok')}</div>; }`);
+    const baseSha = commitAll(runGit, 'base');
+    writeFileSync(
+      filePath,
+      `export function Widget() { return <button title="Speichern">Bitte speichern</button>; }`,
+    );
+    const headSha = commitAll(runGit, 'head');
+
+    const stderrChunks: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      stderrChunks.push(args.map(String).join(' '));
+      originalError(...args);
+    };
+    try {
+      runGate({
+        baseSha,
+        headSha,
+        authorityApproved: false,
+        repoRoot: dir,
+        manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
+        emitGithubAnnotations: true,
+      });
+    } finally {
+      console.error = originalError;
+    }
+
+    const stderr = stderrChunks.join('\n');
+    expect(stderr).toContain('::error file=frontend/src/rental/components/Widget.tsx');
   });
 });
 

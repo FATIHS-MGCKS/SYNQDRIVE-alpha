@@ -173,6 +173,12 @@ function emitGithubAnnotation(diagnostic) {
   console.error(`::error file=${file},line=${line}::${message}`);
 }
 
+function shouldEmitGithubAnnotations(options) {
+  if (options.emitGithubAnnotations === false) return false;
+  if (process.env.I18N_PR_GATE_EMIT_ANNOTATIONS === '0') return false;
+  return true;
+}
+
 function writeStepSummary(summary, diagnostics) {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
   if (!summaryPath) return;
@@ -346,9 +352,12 @@ function runGate(options) {
   ];
 
   printSummary(summary);
+  const emitAnnotations = shouldEmitGithubAnnotations(options);
   for (const diagnostic of diagnostics.slice(0, MAX_CONSOLE_DIAGNOSTICS)) {
     console.error(JSON.stringify(diagnostic));
-    emitGithubAnnotation(diagnostic);
+    if (emitAnnotations) {
+      emitGithubAnnotation(diagnostic);
+    }
   }
   if (diagnostics.length > MAX_CONSOLE_DIAGNOSTICS) {
     console.error(`... ${diagnostics.length - MAX_CONSOLE_DIAGNOSTICS} additional diagnostics omitted`);

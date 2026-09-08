@@ -1,47 +1,45 @@
 import { normalizeRepoPath, toSrcRelativePath } from './git-diff.mjs';
 
-export const GOVERNANCE_AUTHORITY_PREFIXES = [
-  'frontend/scripts/i18n-hardcoded-scan.mjs',
-  'frontend/scripts/i18n-check.mjs',
-  'frontend/scripts/i18n-governance.mjs',
-  'frontend/scripts/i18n-pr-gate.mjs',
-  'frontend/scripts/i18n-shim-inventory.mjs',
-  'frontend/scripts/lib/i18n-governance/',
+/** Canonical protected governance paths — workflow bootstrap and JS gate must stay aligned. */
+export const PROTECTED_GOVERNANCE_EXACT_PATHS = [
+  '.cursor/rules/i18n.mdc',
+  'AGENTS.md',
+  '.github/workflows/i18n-governance-new-debt.yml',
   'frontend/package.json',
   'frontend/package-lock.json',
+  'frontend/src/i18n/hardcoded-copy-inventory.json',
+  'frontend/src/i18n/translation-coverage-baseline.json',
+  'frontend/src/i18n/translation-coverage.ts',
+  'frontend/src/i18n/translation-coverage.test.ts',
   'frontend/src/i18n/i18n-debt-classifications.json',
-  'frontend/src/i18n/i18n-pr-gate.test.ts',
   'frontend/src/i18n/i18n-governance-scanner.test.ts',
-  'frontend/src/i18n/translation-registry.test.ts',
-  'frontend/src/i18n/locales.test.ts',
+  'frontend/src/i18n/i18n-pr-gate.test.ts',
   'frontend/src/i18n/i18n-structural-check.test.ts',
-  '.github/workflows/i18n-governance-new-debt.yml',
-  '.cursor/rules/i18n.mdc',
+  'frontend/src/i18n/locales.test.ts',
+  'frontend/src/i18n/translation-registry.test.ts',
+];
+
+export const PROTECTED_GOVERNANCE_PREFIXES = [
+  'frontend/scripts/i18n-',
+  'frontend/scripts/lib/i18n-governance/',
+];
+
+export const GOVERNANCE_AUTHORITY_PREFIXES = [
+  ...PROTECTED_GOVERNANCE_EXACT_PATHS,
+  ...PROTECTED_GOVERNANCE_PREFIXES,
 ];
 
 /** Layer A bootstrap relevance contract — must stay aligned with workflow-inline Classify PR relevance step */
 export const BOOTSTRAP_RELEVANT_PATH_CONTRACT = {
-  prefixes: [
-    'frontend/src/',
-    'frontend/scripts/i18n-',
-    'frontend/scripts/lib/i18n-governance/',
-  ],
-  exact: [
-    'frontend/package.json',
-    'frontend/package-lock.json',
-    '.github/workflows/i18n-governance-new-debt.yml',
-  ],
+  prefixes: ['frontend/src/', ...PROTECTED_GOVERNANCE_PREFIXES],
+  exact: [...PROTECTED_GOVERNANCE_EXACT_PATHS],
   scriptSuffix: '.mjs',
 };
 
 export const GOVERNANCE_AUTHORITY_LABEL = 'i18n-governance-authority-change';
 
 /** Canonical i18n relevance surface for required-check preclassification. */
-export const I18N_RELEVANT_EXACT_PATHS = new Set([
-  'frontend/package.json',
-  'frontend/package-lock.json',
-  '.github/workflows/i18n-governance-new-debt.yml',
-]);
+export const I18N_RELEVANT_EXACT_PATHS = new Set(PROTECTED_GOVERNANCE_EXACT_PATHS);
 
 export const EXIT_CODES = Object.freeze({
   PASS: 0,
@@ -65,26 +63,28 @@ export function isIntentionallyExcludedFromGovernance(repoPath) {
   return false;
 }
 
-export function isI18nRelevantPath(repoPath) {
+export function isGovernanceAuthorityPath(repoPath) {
   const normalized = normalizeRepoPath(repoPath);
-  if (normalized.startsWith('frontend/src/')) return true;
-  if (normalized.startsWith('frontend/scripts/i18n-') && normalized.endsWith('.mjs')) {
+  if (I18N_RELEVANT_EXACT_PATHS.has(normalized)) return true;
+  for (const prefix of PROTECTED_GOVERNANCE_PREFIXES) {
+    if (!normalized.startsWith(prefix)) continue;
+    if (prefix === 'frontend/scripts/i18n-') {
+      return normalized.endsWith('.mjs');
+    }
     return true;
   }
-  if (normalized.startsWith('frontend/scripts/lib/i18n-governance/')) return true;
-  if (I18N_RELEVANT_EXACT_PATHS.has(normalized)) return true;
+  return false;
+}
+
+export function isI18nRelevantPath(repoPath) {
+  const normalized = normalizeRepoPath(repoPath);
+  if (isGovernanceAuthorityPath(repoPath)) return true;
+  if (normalized.startsWith('frontend/src/')) return true;
   return false;
 }
 
 export function hasI18nRelevantChanges(changedPaths) {
   return changedPaths.some((repoPath) => isI18nRelevantPath(repoPath));
-}
-
-export function isGovernanceAuthorityPath(repoPath) {
-  const normalized = normalizeRepoPath(repoPath);
-  return GOVERNANCE_AUTHORITY_PREFIXES.some(
-    (prefix) => normalized === prefix || normalized.startsWith(prefix),
-  );
 }
 
 export function isFrontendSrcPath(repoPath) {

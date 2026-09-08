@@ -2,7 +2,10 @@
 
 **Date:** 2026-09-08  
 **Repository:** FATIHS-MGCKS/SYNQDRIVE-alpha  
-**Base SHA (verified):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` (includes merged PR #1566)
+**Base SHA (verified):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` (includes merged PR #1566)  
+**Audited PR:** #1569 — `cursor/i18n-integration-1b1-governance-authority-3c10`  
+**Implementation HEAD (pre-1B.1A):** `a2e645fbc04dd3bb289adb5dc817eafbdd037a9f`  
+**1B.1A corrective commit:** applied in same PR after independent audit (see final report)
 
 ---
 
@@ -17,7 +20,7 @@ Integration **1B.1** restores governance authority only:
 - read-only CI workflow (`pull_request`, `contents: read`)
 - engineering rules (`.cursor/rules/i18n.mdc`, scoped `AGENTS.md` section)
 
-**Not in scope:** runtime/provider activation, product surface migration, dictionary edits, coverage baseline edits, inventory regeneration.
+**Not in scope:** runtime/provider activation, product surface migration, dictionary edits, coverage baseline edits, inventory regeneration. **Integration 2 not started.**
 
 ---
 
@@ -36,19 +39,40 @@ Integration **1B.1** restores governance authority only:
 
 ### Layer-0 (`i18n-authority-protection.yml`) — unchanged
 
-Classifies authority paths including workflow, scripts, package.json, debt manifest, and named governance tests.
+Classifies authority paths including workflow, scripts, package.json, debt manifest, and named governance tests. Layer-0 **does not** include every new Layer-1/2 protected path.
 
-### Layer-1/2 (new workflow + PR gate)
+### Layer-1/2 (new workflow + PR gate) — active after merge
 
-`pr-gate-policy.mjs` protects:
+Canonical protected-path contract (workflow-inline bootstrap **and** `pr-gate-policy.mjs`):
 
-- all `frontend/scripts/i18n-*.mjs` and `lib/i18n-governance/**`
-- debt manifest, governance tests, workflow
-- `.cursor/rules/i18n.mdc` (protected by new gate; **not** in Layer-0 list)
+**Exact paths (15):**
 
-**Parity gap documented:** Layer-0 does not classify `.cursor/rules/i18n.mdc` or `AGENTS.md` (neither authority nor product). The new PR gate adds `.cursor/rules/i18n.mdc` to authority prefixes. `AGENTS.md` remains outside both classifiers but is documentation-only in this PR.
+- `.cursor/rules/i18n.mdc`
+- `AGENTS.md`
+- `.github/workflows/i18n-governance-new-debt.yml`
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/src/i18n/hardcoded-copy-inventory.json`
+- `frontend/src/i18n/translation-coverage-baseline.json`
+- `frontend/src/i18n/translation-coverage.ts`
+- `frontend/src/i18n/translation-coverage.test.ts`
+- `frontend/src/i18n/i18n-debt-classifications.json`
+- `frontend/src/i18n/i18n-governance-scanner.test.ts`
+- `frontend/src/i18n/i18n-pr-gate.test.ts`
+- `frontend/src/i18n/i18n-structural-check.test.ts`
+- `frontend/src/i18n/locales.test.ts`
+- `frontend/src/i18n/translation-registry.test.ts`
 
-**Baseline laundering:** inventory and coverage files from #1566 are **not** modified. Debt manifest metadata updated (`capturedFromSha` → `1393095f5`).
+**Prefixes:** `frontend/scripts/i18n-*.mjs`, `frontend/scripts/lib/i18n-governance/*`, plus `frontend/src/*` for product relevance.
+
+**1B.1A corrections:**
+
+- `.cursor/rules/i18n.mdc` and `AGENTS.md` are protected by **both** workflow-inline bootstrap relevance and JavaScript `isI18nRelevantPath()` / `isGovernanceAuthorityPath()`. Rule-only or AGENTS-only PRs never take the irrelevant no-op route.
+- Inventory, coverage baseline/module/test, and debt manifest are governance-authority paths. Same-PR product + authority baseline changes fail as mixed laundering **even with** the authority label.
+- Workflow bootstrap relevance remains trusted inline shell (not PR-controlled JavaScript).
+- Parity tests read the committed workflow case statement and fail on contract drift.
+
+**Baseline laundering:** inventory and coverage files from #1566 are **not** modified in 1B.1/1B.1A. Debt manifest metadata updated (`capturedFromSha` → `1393095f5`).
 
 ---
 
@@ -62,23 +86,33 @@ Classifies authority paths including workflow, scripts, package.json, debt manif
 | Secrets | None |
 | Checkout | PR head SHA, `fetch-depth: 0`, `persist-credentials: false` |
 | Post-validation | worktree cleanliness asserted |
+| Test annotations | `emitGithubAnnotations: false` / `I18N_PR_GATE_EMIT_ANNOTATIONS=0` in tests; production gate unchanged |
 
 New-debt protection is **active only after this PR merges**.
 
 ---
 
-## 5. Skipped tests (not counted as passing protection)
+## 5. Test execution summary (post-1B.1A)
 
-| File | Skipped | Reason |
-|------|--------:|--------|
-| `i18n-governance-scanner.test.ts` | 2 | Legacy P2.3.1 count compatibility block |
-| `i18n-pr-gate.test.ts` | 5 | Repository integration self-test block (`describe.skip`) |
-| `translation-registry.test.ts` | 10 | Coverage print-only tests (deferred structural suite) |
-| `i18n-structural-check.test.ts` | 1 | Rental shim parity — Integration 2 |
-| `LanguageContext.test.tsx` | 1 | Integration 1A runtime (pre-existing) |
-| `LanguageSelector.test.tsx` | 1 | Integration 1A runtime (pre-existing) |
+| Command / suite | Passed | Skipped | Notes |
+|-----------------|-------:|--------:|-------|
+| `npm run i18n:scanner:test` | 43 | 2 | Legacy P2.3.1 block (`describe.skip`) — pre-existing |
+| `npm run i18n:pr-gate:test` | 113 | 0 | All five repository-integration tests **active** (temp git repos) |
+| Combined 9-suite vitest | 214 | 5 | See per-file skips below |
+| Authority invalidation harness | 15 | 0 | `.cursor/scripts/i18n-authority-protection-invalidation.harness.sh` |
+
+**Remaining skipped tests (not counted as passing protection):**
+
+| File | Skipped | Reason | Origin |
+|------|--------:|--------|--------|
+| `i18n-governance-scanner.test.ts` | 2 | Legacy P2.3.1 count compatibility block | Pre-existing |
+| `i18n-structural-check.test.ts` | 1 | Rental shim parity | Integration 2 |
+| `LanguageContext.test.tsx` | 1 | Runtime provider placement | Integration 1A / Integration 2 |
+| `LanguageSelector.test.tsx` | 1 | Shared selector wiring | Integration 1A / Integration 2 |
 
 **Not restored:** `hardcoded-copy-guard.test.ts` — entire enforce-clean suite is `describe.skip` (inactive until Integration 2).
+
+**Repository integration (formerly skipped):** authority-only pass/fail, backend-only no-op, controlled red/green — all active with isolated temp repositories (no fixed campaign SHA).
 
 ---
 
