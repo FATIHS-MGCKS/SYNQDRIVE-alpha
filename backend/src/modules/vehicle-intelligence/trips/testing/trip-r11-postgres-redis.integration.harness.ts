@@ -301,6 +301,9 @@ export function buildTripR11OrchestrationHarness(
     endMode: END_DETECTION_MODES.CUSUM_VALIDATED,
     reason: 'integration_cusum_end',
   });
+  jest
+    .spyOn(decisionEngine, 'evaluateEndCandidate')
+    .mockImplementation(evaluateEndCandidate);
 
   const logger = {
     log: () => undefined,
@@ -315,10 +318,7 @@ export function buildTripR11OrchestrationHarness(
 
   const orchestration = {
     prisma,
-    decisionEngine: {
-      ...decisionEngine,
-      evaluateEndCandidate,
-    },
+    decisionEngine,
     trackingQueue,
     logger,
     BACKFILL_MS: 60_000,
