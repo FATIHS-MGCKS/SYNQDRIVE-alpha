@@ -314,3 +314,18 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | Longest FULL_N2 segment (OQ-28 window) | P1.8.3.8 | — | segment reconstruction | `72054s` (<86400) | HIGH |
 | OQ-28 closure | P1.8.3.8 | — | >=86400s rule | PARTIAL | HIGH |
 
+---
+
+## P1.8.3.9 — OQ-28 final certification recheck
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Candidate calendar elapsed | P1.8.3.9 | — | wall clock | `101233s` (~28.1h) | HIGH |
+| First boundary after candidate start | P1.8.3.9 | — | PM2 bootstrap logs | `2026-09-07T04:19:48Z` | HIGH |
+| Longest FULL_N2 segment (OQ-28 window) | P1.8.3.9 | — | segment reconstruction | `48758s` (<86400) | HIGH |
+| Qualifying 24h segment | P1.8.3.9 | — | OQ-28 rule | NOT_MET | HIGH |
+| EXP-021D (`dce0ce75`) production impact | P1.8.3.9 | — | release SHA inventory | NONE | HIGH |
+| Current segment start | P1.8.3.9 | — | PM2 `created_at` | `2026-09-07T22:47:37Z` | HIGH |
+| OQ-28 closure | P1.8.3.9 | — | >=86400s rule | PARTIAL | HIGH |
+| N2 certification scope | P1.8.3.9 | — | explicit limits | N=2 topology only | HIGH |
+
