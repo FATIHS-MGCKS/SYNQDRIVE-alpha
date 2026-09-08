@@ -32,6 +32,23 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-08 — M3.2B post-probe trip finalization + temporal capture forensic
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase C ON; first natural probe @ `05:10:44Z` found post-T0 trips ONGOING; 0 shadow rows. |
+| **OBSERVATION** | Read-only audit @ `05:22:59Z`: still 0 shadow rows. KS MX: `END_VALIDATION` @ `05:17:36Z` (`clickhouse_end_assist_skip_cusum`) but trip ONGOING — no `FINALIZATION_CHECK`. KS MS: 29+ min inactivity, `ACTIVE_TRIP`, never `POSSIBLE_END`. Provider LV silence pre-finalize on both. |
+| **HYPOTHESIS** | COMPLETED-trip gate + live-classify-only path = temporal blind spot when finalize lags silence; trip FSM defects block M3.2B entirely. |
+| **CHANGE** | **None** (read-only). Evidence doc added. |
+| **WHY** | Mission: post-probe finalize state + blind-spot test without M3.2C/production mutation. |
+| **EXPECTED_EFFECT** | Clarify whether delayed finalize loses post-engine-off LV for shadow capture. |
+| **VALIDATION** | Production SQL, tracking runs, worker logs, code review. |
+| **OBSERVED_EFFECT** | `PRIMARY_RESULT=D`; `TEMPORAL_CAPTURE_BLIND_SPOT=PROVEN`; counterfactual shutdown classes NO (MX `engineRunning=true`; MS speed 1 km/h). |
+| **NON_EFFECTS** | No flag/backfill/FSM changes. |
+| **REMAINING_GAPS** | BullMQ FINALIZE job not fully inspectable; post-finalize shadow still unobserved. |
+| **DECISION_STATUS** | `ARCHITECTURE_CHANGE_REQUIRED=UNDETERMINED`; `M3_2C_ALLOWED=NO`. |
+| **EVIDENCE** | `M3_2B_POST_PROBE_TEMPORAL_CAPTURE_FORENSIC_2026-09-08.md`. |
+
 ## CL-2026-09-08 — M3.2B Phase C controlled production shadow activation
 
 | Field | Content |
