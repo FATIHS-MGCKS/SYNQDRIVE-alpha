@@ -145,6 +145,20 @@ function defaultGateOptions(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function captureConsoleError<T>(run: () => T): { result: T; messages: string[] } {
+  const messages: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    messages.push(args.map(String).join(' '));
+  };
+  try {
+    const result = run();
+    return { result, messages };
+  } finally {
+    console.error = originalError;
+  }
+}
+
 function assertProtectedPathContract(path: string) {
   expect(workflowBootstrapRelevant(path), `${path} workflow bootstrap`).toBe(true);
   expect(isI18nRelevantPath(path), `${path} JS relevance`).toBe(true);
@@ -1210,13 +1224,7 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
     );
     const headSha = commitAll(runGit, 'head');
 
-    const stderrChunks: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      stderrChunks.push(args.map(String).join(' '));
-      originalError(...args);
-    };
-    try {
+    const { messages } = captureConsoleError(() =>
       runGate(
         defaultGateOptions({
           baseSha,
@@ -1225,12 +1233,10 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
           repoRoot: dir,
           manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
         }),
-      );
-    } finally {
-      console.error = originalError;
-    }
+      ),
+    );
 
-    const stderr = stderrChunks.join('\n');
+    const stderr = messages.join('\n');
     expect(stderr).not.toMatch(/^::error /m);
     expect(stderr).not.toContain('::error file=frontend/src/rental/components/Widget.tsx');
   });
@@ -1249,13 +1255,7 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
     );
     const headSha = commitAll(runGit, 'head');
 
-    const stderrChunks: string[] = [];
-    const originalError = console.error;
-    console.error = (...args: unknown[]) => {
-      stderrChunks.push(args.map(String).join(' '));
-      originalError(...args);
-    };
-    try {
+    const { messages } = captureConsoleError(() =>
       runGate({
         baseSha,
         headSha,
@@ -1263,13 +1263,15 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
         repoRoot: dir,
         manifestPath: join(dir, 'frontend/src/i18n/i18n-debt-classifications.json'),
         emitGithubAnnotations: true,
-      });
-    } finally {
-      console.error = originalError;
-    }
+      }),
+    );
 
-    const stderr = stderrChunks.join('\n');
+    const stderr = messages.join('\n');
     expect(stderr).toContain('::error file=frontend/src/rental/components/Widget.tsx');
+
+    const gateSource = readFileSync(prGateCliPath, 'utf8');
+    expect(gateSource).toContain('function shouldEmitGithubAnnotations');
+    expect(gateSource).toMatch(/if \(emitAnnotations\) \{\s*\n\s*emitGithubAnnotation/);
   });
 });
 

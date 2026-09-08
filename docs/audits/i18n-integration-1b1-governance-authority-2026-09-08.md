@@ -86,7 +86,7 @@ Canonical protected-path contract (workflow-inline bootstrap **and** `pr-gate-po
 | Secrets | None |
 | Checkout | PR head SHA, `fetch-depth: 0`, `persist-credentials: false` |
 | Post-validation | worktree cleanliness asserted |
-| Test annotations | `emitGithubAnnotations: false` / `I18N_PR_GATE_EMIT_ANNOTATIONS=0` in tests; production gate unchanged |
+| Test annotations | Tests capture `console.error` in memory (no forward to process stderr); `emitGithubAnnotations: false` by default in `runGate()` test calls; production gate still emits `::error` when enabled |
 
 New-debt protection is **active only after this PR merges**.
 
