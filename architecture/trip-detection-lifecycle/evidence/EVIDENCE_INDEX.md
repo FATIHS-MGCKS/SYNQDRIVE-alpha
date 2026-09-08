@@ -1,10 +1,14 @@
 # Trip Detection & Lifecycle — Evidence Index
 
-**origin/main baseline:** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** until PR #1553 merges
+**origin/main (historical @ R9 rebase):** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9**
 
-**R9 audit branch baseline:** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
+**origin/main (current):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…`
 
-**Production release baseline:** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac`
+**R9 audit branch (historical):** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
+
+**Production release (current):** `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994`
+
+**Production release (historical):** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994`
 
 Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/) — **supporting evidence only**, not canonical authority.
 
@@ -29,12 +33,12 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 
 | Label | Meaning |
 |-------|---------|
-| **CONFIRMED_ON_MAIN** | Repository claim reconfirmed on `origin/main` @ `a4725514866a03099e7a1e485ccf0b7ea37d6fec` |
-| **CONFIRMED_ON_R9_AUDIT_BRANCH** | Present on R9 audit branch @ `1186e9d23a9b07e24da17b06a72f2614038db77a`; **not on `origin/main`** until #1553 merges |
-| **CONFIRMED_AT_PRODUCTION_RELEASE** | Observation confirmed against Production release `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` at stated UTC timestamp |
+| **CONFIRMED_ON_MAIN** | Repository claim reconfirmed on current `origin/main` (includes R9 @ `4bef60463…`) |
+| **CONFIRMED_ON_R9_AUDIT_BRANCH** | **Historical** — present on pre-merge audit branch @ `1186e9d23…`; superseded by main merge (#1553) |
+| **CONFIRMED_AT_PRODUCTION_RELEASE** | Observation confirmed against stated Production release SHA at stated UTC timestamp |
 | **PARTIALLY_CURRENT** | Core claim valid; stale Production refs, line numbers, or pre-R context in artifact |
-| **HISTORICAL** | Pre-remediation or superseded runtime context inside artifact |
-| **NOT_ON_PRODUCTION** | Present on `main` but absent on observed Production release |
+| **HISTORICAL** | Pre-remediation, pre-R9 deploy, or superseded runtime context |
+| **NOT_ON_PRODUCTION (historical)** | Present on `main` but absent on **historical** Production release `01541c2ab…` — not current state @ `0ba96e03…` |
 | **UNKNOWN** | Not re-verified in this authority pass |
 | **UNKNOWN_NOT_RECOVERED** | Exact SHA not recoverable from repository history |
 
@@ -64,18 +68,18 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | TDL-EV-P4-001 | HISTORICAL_RECORD | [`P4…`](../../../docs/audits/trip-fsm/P4_TRIP_START_DEEP_DIVE_AUDIT_2026-09-05.md) | `a4377f3a200ca45a97b7ce422caf8d92faddabbe` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:15:35Z` | Start detectors, policies, failure windows | PARTIALLY_CURRENT | P4-F11/F12 addressed on main via R3 |
 | TDL-EV-P5-001 | HISTORICAL_RECORD | [`P5…`](../../../docs/audits/trip-fsm/P5_TRIP_END_DEEP_DIVE_AUDIT_2026-09-06.md) | `70249e1966a37cc127149f3792b07c3dd2a4c9b0` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:33:42Z` | End modes, CUSUM, finalize semantics | PARTIALLY_CURRENT | Several P5 findings addressed via R5–R7 on main |
 | TDL-EV-P6-001 | HISTORICAL_RECORD | [`P6…`](../../../docs/audits/trip-fsm/P6_TARGET_ARCHITECTURE_REMEDIATION_PLAN_2026-09-06.md) | `64de2333f0475e1eadb7f0c4f386d441f9979cb7` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-05T23:41:43Z` | R1–R8 remediation dependency graph | PARTIALLY_CURRENT | P6 deferred canonical docs to this authority |
-| TDL-EV-R1-001 | HISTORICAL_RECORD | [`R1…`](../../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | `8ddf73e562cc5fbe2e88056836bfd0b7ca493411` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-06T06:51:15Z` | EVENT_TIME boundary field contract | CONFIRMED_ON_MAIN | NOT_ON_PRODUCTION at observed release |
+| TDL-EV-R1-001 | HISTORICAL_RECORD | [`R1…`](../../../docs/audits/trip-fsm/R1_EVENT_TIME_AUTHORITY_IMPLEMENTATION_2026-09-06.md) | `8ddf73e562cc5fbe2e88056836bfd0b7ca493411` | `3d5040b67abfdc7e95c1b507e13f45d1bc65af11` | `2026-09-06T06:51:15Z` | EVENT_TIME boundary field contract | CONFIRMED_ON_MAIN | **HISTORICAL:** NOT_ON_PRODUCTION at `01541c2ab…` session only |
 | TDL-EV-R2-001 | HISTORICAL_RECORD | [`R2…`](../../../docs/audits/trip-fsm/R2_LIFECYCLE_INVARIANTS_IMPLEMENTATION_2026-09-06.md) | `ff95395d61706556643fe0d83c0e0e85c8f7ef63` | `8ddf73e562cc5fbe2e88056836bfd0b7ca493411` | `2026-09-06T07:47:23Z` | Lifecycle commit + orphan recovery | CONFIRMED_ON_MAIN | Artifact cites post-R1 main baseline |
 | TDL-EV-R3-001 | HISTORICAL_RECORD | [`R3…`](../../../docs/audits/trip-fsm/R3_START_LIVENESS_ORDERING_IMPLEMENTATION_2026-09-06.md) | `12a5fdac9e034aa445825e5c9f4318444a9612b3` | `ff95395d61706556643fe0d83c0e0e85c8f7ef63` | `2026-09-06T10:03:40Z` | Queue handoff settlement / start liveness | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R4-001 | HISTORICAL_RECORD | [`R4…`](../../../docs/audits/trip-fsm/R4_START_DETECTION_CONSISTENCY_IMPLEMENTATION_2026-09-06.md) | `eb51d8f807347514e7499dec5986b745ec1dc134` | `12a5fdac9e034aa445825e5c9f4318444a9612b3` | `2026-09-06T10:50:59Z` | Start detection consistency | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R5-001 | HISTORICAL_RECORD | [`R5…`](../../../docs/audits/trip-fsm/R5_END_VALIDATION_SEMANTICS_IMPLEMENTATION_2026-09-06.md) | `4cd02d7f8b2814c1c5dc773d206f295f94169cf4` | `eb51d8f807347514e7499dec5986b745ec1dc134` | `2026-09-06T11:52:19Z` | End validation semantics | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R6-001 | HISTORICAL_RECORD | [`R6…`](../../../docs/audits/trip-fsm/R6_MID_GAP_SPLIT_SAFETY_IMPLEMENTATION_2026-09-06.md) | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `4cd02d7f8b2814c1c5dc773d206f295f94169cf4` | `2026-09-06T15:52:20Z` | Mid-gap split safety | CONFIRMED_ON_MAIN | — |
 | TDL-EV-R7-001 | HISTORICAL_RECORD | [`R7…`](../../../docs/audits/trip-fsm/R7_TERMINAL_RESTING_RECOVERY_IMPLEMENTATION_2026-09-06.md) | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `de402f7c9b2cccd4706ae30af70bd6347a8730a0` | `2026-09-06T19:11:29Z` | Terminal→RESTING recovery | CONFIRMED_ON_MAIN | — |
-| TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | `6ea95124343e15e971220cb0c672239ac4b077d6` | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `2026-09-06T22:26:34Z` | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN; **NOT_ON_PRODUCTION** | Merged #1549 on `main`; absent on Production `01541c2ab…` |
-| TDL-EV-R9-001 | HISTORICAL_RECORD | [`R9…`](../../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md) | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `2026-09-07T02:37:37Z` | R9 adaptive polling wake: durable mailboxes, handoff queue, RESTING continuation, UNKNOWN bounded retry | CONFIRMED_ON_R9_AUDIT_BRANCH; **NOT_ON_MAIN**; **NOT_ON_PRODUCTION** | Branch-only until #1553 merges; absent on Production `01541c2ab…`; doc timestamp = git commit `1186e9d23…` author date |
-| TDL-EV-R9-CODE-001 | CODE | [`snapshot-wake-coordinator.service.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts) | — | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `2026-09-07T02:37:37Z` | R9 wake coordinator: pending/successor mailboxes, coalesce QUEUED/ACTIVE, handoff dispatch, continuation, UNKNOWN retry, gen-1 terminal | CONFIRMED_ON_R9_AUDIT_BRANCH; **NOT_ON_MAIN**; **NOT_ON_PRODUCTION** | Implementation evidence @ R9 branch SHA; post-seal coalesce delivery + handoff orphan recovery on branch head |
-| TDL-EV-R9H-001 | CODE | [`snapshot-wake-handoff-recovery.spec.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-handoff-recovery.spec.ts), [`snapshot-wake-handoff-recovery.scheduler.ts`](../../../backend/src/workers/schedulers/snapshot-wake-handoff-recovery.scheduler.ts) | — | branch head | `2026-09-07T05:20:00Z` | R9H orphan recovery: SCAN + bounded re-arm, persist OK + queue fail → recovery → canonical dispatch once | CONFIRMED_ON_R9_AUDIT_BRANCH; **NOT_ON_MAIN**; **NOT_ON_PRODUCTION** | Regression proves delivery/liveness seal; latency bounded by 60s tick + SCAN cursor |
-| TDL-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized scoped DIMO trigger bootstrap + GET audit @ `0ba96e03…` | — | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` | `2026-09-07T22:10:00Z` | R9 provider trigger bootstrap **ROLLED_BACK**; 0/6 coverage | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
+| TDL-EV-R8-001 | HISTORICAL_RECORD | [`R8…`](../../../docs/audits/trip-fsm/R8_OBSERVABILITY_FORENSICS_IMPLEMENTATION_2026-09-06.md) | `6ea95124343e15e971220cb0c672239ac4b077d6` | `140ebdd33c9102bcacb969ce5bef01b144c4b64a` | `2026-09-06T22:26:34Z` | Forensic metadata / metric fixes | CONFIRMED_ON_MAIN | **HISTORICAL:** absent on Production `01541c2ab…`; deployed @ `0ba96e03…` not re-verified in this pass |
+| TDL-EV-R9-001 | HISTORICAL_RECORD | [`R9…`](../../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md) | `1186e9d23a9b07e24da17b06a72f2614038db77a` | `4bef60463…` (main merge) | `2026-09-07T02:37:37Z` | R9 adaptive polling wake: durable mailboxes, handoff queue, RESTING continuation, UNKNOWN bounded retry | CONFIRMED_ON_MAIN | Audit doc authored @ branch SHA; merged #1553 |
+| TDL-EV-R9-CODE-001 | CODE | [`snapshot-wake-coordinator.service.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-coordinator.service.ts) | — | `4bef60463…` | `2026-09-07T02:37:37Z` | R9 wake coordinator: pending/successor mailboxes, coalesce QUEUED/ACTIVE, handoff dispatch, continuation, UNKNOWN retry, gen-1 terminal | CONFIRMED_ON_MAIN | Deployed @ `0ba96e03…`; natural wake not observed |
+| TDL-EV-R9H-001 | CODE | [`snapshot-wake-handoff-recovery.spec.ts`](../../../backend/src/workers/snapshot-wake/snapshot-wake-handoff-recovery.spec.ts), [`snapshot-wake-handoff-recovery.scheduler.ts`](../../../backend/src/workers/schedulers/snapshot-wake-handoff-recovery.scheduler.ts) | — | `4bef60463…` | `2026-09-07T05:20:00Z` | R9H orphan recovery: SCAN + bounded re-arm, persist OK + queue fail → recovery → canonical dispatch once | CONFIRMED_ON_MAIN | Regression on main; Production behavior not separately observed |
+| TDL-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized six-vehicle scoped DIMO trigger bootstrap + GET audit @ `0ba96e03…` | — | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` | `2026-09-07T22:10:00Z` | R9 provider trigger bootstrap **ROLLED_BACK**; **0/6** coverage | **HISTORICAL** | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 | TDL-EV-R9-PERM-001 | PRODUCTION_OBSERVATION | Read-only DIMO permission root-cause audit | — | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` | `2026-09-07T22:20:00Z` | tokenId **190497** = `FORMER_FLEET_VEHICLE` / excluded; re-grant rejected | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | TDL-EV-R9-CANARY-001 | PRODUCTION_OBSERVATION | Authorized five-vehicle R9 canary provider mutation + GET audit | — | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` | `2026-09-07T22:35:00Z` | R9 provider wiring **PASS** — 5/5 speed+ignition; 190497 excluded | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 
@@ -83,7 +87,9 @@ Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Applicati
 
 ---
 
-## Production observations (read-only) — session `2026-09-06T23:47:41Z`
+## Production observations (read-only) — historical session `2026-09-06T23:47:41Z` @ `01541c2ab…`
+
+**Note:** These observations remain valid for the **historical** release. Current Production is `0ba96e03…` — see R9/canary evidence above.
 
 | Evidence ID | Source type | Method | Timestamp (UTC) | Environment | Supported claim | Currentness | Limitations |
 |-------------|-------------|--------|-----------------|-------------|-----------------|-------------|-------------|

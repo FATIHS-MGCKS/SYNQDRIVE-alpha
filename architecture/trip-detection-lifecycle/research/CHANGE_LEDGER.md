@@ -16,6 +16,7 @@ Append-only record for this authority directory.
 | 2026-09-07 | R9 scoped DIMO trigger bootstrap cross-reference — **ROLLED_BACK**; provider coverage gap recorded | Provider mutation session | [../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 | 2026-09-07 | R9 permission root-cause audit — tokenId **190497** classified `FORMER_FLEET_VEHICLE`; re-grant rejected | Read-only provider audit | [../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | 2026-09-07 | R9 five-vehicle canary provider mutation — **PASS** (5/5 speed+ignition; 190497 excluded) | Provider mutation session | [../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
+| 2026-09-08 | Cross-authority semantic cleanup — R9 on main + deployed @ `0ba96e03…`; pre-R9/`01541c2ab…` claims reclassified HISTORICAL | Post-canary reconciliation | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
 
 **No runtime code changes** in this workstream.
 

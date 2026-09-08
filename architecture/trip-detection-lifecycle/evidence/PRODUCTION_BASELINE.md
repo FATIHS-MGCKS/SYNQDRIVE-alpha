@@ -1,10 +1,26 @@
 # Production Baseline — Trip Detection & Lifecycle (Read-Only)
 
+## Current Production release (R9 + canary cross-ref)
+
+| Field | Value |
+|-------|-------|
+| **Evidence class** | `VERIFIED_READ_ONLY` |
+| **Observation timestamp (canary)** | `2026-09-07T22:35:00Z` |
+| **Production release (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **R9 runtime** | **Deployed** (cross-ref [DIMO Integration PRODUCTION_BASELINE.md](../../dimo-integration/evidence/PRODUCTION_BASELINE.md)) |
+| **R9 provider wiring** | **PASS** — 5/5 speed+ignition; tokenId **190497** excluded |
+| **Natural R9 wake** | **Not validated** — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION` |
+
+---
+
+## Historical Production session — `2026-09-06T23:47:41Z` @ `01541c2ab…`
+
 | Field | Value |
 |-------|-------|
 | **Evidence class** | `VERIFIED_READ_ONLY` |
 | **Observation timestamp** | `2026-09-06T23:47:41Z` (`date -u` at start of single read-only session) |
-| **Production release** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
+| **Production release (historical)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
+| **Note** | At this session R8/R9 were **NOT_ON_PRODUCTION** — superseded by current release above |
 | **Access path** | SSH to `srv1374778.hstgr.cloud` as `synqdrive-admin` |
 | **External PostgreSQL `:5432`** | Not reachable from agent network |
 | **DB access method** | SSH + `sudo` sourced `/opt/synqdrive/shared/backend.env`; `psql` with URI query string stripped |

@@ -155,7 +155,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 |-----------|-------|
 | Small telematics cohort drives live FSM rows | TDL-EV-PROD-005 vs PROD-009 |
 | Reconciliation scans broader history than live FSM | TDL-EV-PROD-008 vs PROD-006 |
-| Production trip FSM lacks R8 observability fixes | Repo/Production SHA drift |
+| Production trip FSM R8/R9 deploy | R8/R9 **deployed** @ `0ba96e03…`; historical NOT_ON_PRODUCTION only @ `01541c2ab…` |
 | Natural trip processing active | TDL-EV-PROD-009 |
 
 ---
