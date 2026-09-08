@@ -227,7 +227,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
   });
 
   describe('I — backoff scheduling', () => {
-    it('bounded exponential backoff with cap', () => {
+    it('bounded exponential backoff with cap (unit)', () => {
       expect(
         computeEmptyCoreBackoffMs({
           baseIntervalMs: 30_000,
