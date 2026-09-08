@@ -17,8 +17,14 @@ Append-only record for this authority directory.
 | 2026-09-07 | R9 permission root-cause audit — tokenId **190497** classified `FORMER_FLEET_VEHICLE`; re-grant rejected | Read-only provider audit | [../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | 2026-09-07 | R9 five-vehicle canary provider mutation — **PASS** (5/5 speed+ignition; 190497 excluded) | Provider mutation session | [../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 | 2026-09-08 | Cross-authority semantic cleanup — R9 on main + deployed @ `0ba96e03…`; pre-R9/`01541c2ab…` claims reclassified HISTORICAL | Post-canary reconciliation | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
+| 2026-09-08 | R10 motor-off pause / false resume / stale finalize — KS MX reference case; code fix + regression tests (not deployed) | Trip FSM R10 | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](../evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) |
+| 2026-09-08 | R10 follow-up: end-cycle token + recycle enqueue; removed incorrect movement-after-end guard; expanded tests A–G | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 gap close: legacy tokenless FINALIZE safety (`requestedAt` vs episode clock); pre-write admission; postgres integration test (gated); tests H–J | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 CI: trip-fsm-production-readiness workflow runs persisted postgres integration (fail-closed, cases A–D) on ephemeral PostgreSQL 16 | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 CI fix: harness import path + fixture-local `dimoTokenId` (Vehicle schema); CI green 4/4 postgres integration at `0f0b8bedc` | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 graph: add TDL-DEC-R10-001/002, TDL-EVID-R10-KS-MX-001, TDL-TEST-R10-001 nodes + edges; align evidence IDs to TDL-EVID-* schema | Trip FSM R10 PR #1574 graph correction | [graph/nodes.yaml](../graph/nodes.yaml), [graph/edges.yaml](../graph/edges.yaml) |
 
-**No runtime code changes** in this workstream.
+**Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
 ## Planned later phases (Standard 1.0)
 

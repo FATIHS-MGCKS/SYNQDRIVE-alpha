@@ -1,4 +1,4 @@
-# Trip Detection & Lifecycle — Knowledge Graph Nodes (Phase 4 partial, post-R9)
+# Trip Detection & Lifecycle — Knowledge Graph Nodes (Phase 4 partial, post-R9, R10 partial)
 # Validate: bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
 
 nodes:
@@ -146,6 +146,61 @@ nodes:
     summary: Matrix A–H + BullMQ integration gate for UNKNOWN retry liveness.
     source_paths:
       - backend/src/workers/snapshot-wake/snapshot-wake-r9f.spec.ts
+
+  - id: TDL-EVID-R10-KS-MX-001
+    type: evidence
+    title: KS MX motor-off pause false resume and stale finalize case
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Production KS MX 2024 reference case; false activity_resumed from pre-boundary motion;
+      stale waiting FINALIZE blocked re-enqueue; R10 resume anchor, end-cycle token, recycle enqueue,
+      and legacy tokenless guards (branch only — not deployed; natural-drive validation open).
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md
+
+  - id: TDL-TEST-R10-001
+    type: test_evidence
+    title: R10 motor-off pause and end-cycle finalize tests
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: >
+      Unit tests A–J (trip-fsm-motor-off-pause-r10, trip-end-cycle-reset); gated postgres integration
+      cases A–D prove COMPLETED + FSM RESTING + stale legacy rejection + idempotent duplicate finalize.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-motor-off-pause-r10.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-finalize-end-cycle.postgres.integration.spec.ts
+
+  - id: TDL-DEC-R10-001
+    type: decision
+    title: End-boundary-anchored activity resume + stale finalize guards
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Anchor resume to possibleEndAt; endCycleToken=possibleEndEnteredAt on ev/fin jobs; recycle waiting
+      finalize slot before enqueue; cancel pending end-cycle jobs on resume; abort stale jobs via
+      isEndCycleTokenStale. Not deployed.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-evidence.helpers.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/end-continuity.detector.ts
+    evidence:
+      - TDL-EVID-R10-KS-MX-001
+
+  - id: TDL-DEC-R10-002
+    type: decision
+    title: Legacy tokenless FINALIZE admission without silent token assignment
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Tokenless FINALIZE jobs require requestedAt >= possibleEndEnteredAt; pre-write admission re-check
+      before finalizeTrip; never assign current endCycleToken to tokenless jobs at consume time.
+      Not deployed.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-R10-KS-MX-001
 
   - id: TDL-DEC-R9-001
     type: decision
@@ -344,7 +399,7 @@ nodes:
     type: gap
     title: Decision register completeness beyond R9
     epistemic_status: INFERRED
-    summary: R9 decisions indexed; R1-R8 WHY reconstruction ongoing Phase 3.
+    summary: R9–R10 decisions indexed; R1-R8 WHY reconstruction ongoing Phase 3.
     source_paths:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
 

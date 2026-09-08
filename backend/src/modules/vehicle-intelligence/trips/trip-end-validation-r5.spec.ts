@@ -55,6 +55,7 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
   const schedulePossibleEndCheck = jest.fn().mockResolvedValue(undefined);
   const scheduleEndValidation = jest.fn().mockResolvedValue(undefined);
   const scheduleFinalize = jest.fn().mockResolvedValue(undefined);
+  const cancelPendingEndCycleJobs = jest.fn().mockResolvedValue(undefined);
   const logTrackingRun = jest.fn().mockResolvedValue(undefined);
   const fetchRawTripCoreData = jest.fn().mockResolvedValue([]);
   const fetchEndValidationWindow = jest.fn().mockResolvedValue([
@@ -82,6 +83,7 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
     schedulePossibleEndCheck,
     scheduleEndValidation,
     scheduleFinalize,
+    cancelPendingEndCycleJobs,
     logTrackingRun,
     logTripEndTimeline: jest.fn(),
     tripMetrics: { possibleEndStuck: { set: jest.fn() } },
@@ -104,6 +106,7 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
     schedulePossibleEndCheck,
     scheduleEndValidation,
     scheduleFinalize,
+    cancelPendingEndCycleJobs,
     fetchRawTripCoreData,
     fetchEndValidationWindow,
     runAll,
