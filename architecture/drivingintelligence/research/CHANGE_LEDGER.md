@@ -183,6 +183,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Pre-drive integrity gate (2026-09-08)
+
+| Event | Detail |
+|-------|--------|
+| Status | **HARDENED DRAFT** (PR #1570) — prospective probe A **and** B scheduling; whole-trip partial recovery |
+| Deployed baseline | Fixed-interval schedules at phase completion only; +30/+60 late for both probes |
+| First draft gap | Probe B still at completion — B+30 ~45s late, B+60 ~15s late |
+| Final fix | `buildProspectiveProbeBForPhase` using nominal 300s offset at phase EFFECTIVE; runtime hook proven via `ReferenceCaptureProcessor` |
+| Whole-trip | Partial schedule recovery (1–5 WHOLE_TRIP rows) now selected; idempotent fill to 6 ages |
+| Tests | 21 settlement-shadow focused tests PASS; runtime lifecycle timing PASS |
+| Physical drive | **NOT STARTED**; session **NOT CREATED** |
+| Evidence | `EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md` |
+
 ## EXP-021D — Stale session cleanup + go gate (2026-09-07)
 
 | Event | Detail |

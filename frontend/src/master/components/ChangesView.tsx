@@ -559,6 +559,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021-pre-drive-integrity-gate-2026-09-08',
+    version: '4.9.1073',
+    title: 'EXP-021 — Pre-drive integrity gate hardened (PR #1570)',
+    summary: [
+      'DEPLOYED_BASELINE_FAIL: fixed-interval schedules at phase COMPLETION only — probe A/B +30/+60 not on-time.',
+      'FIRST_DRAFT_FIX gap: probe A prospective only; probe B still ~45s/+15s late at +30/+60.',
+      'FINAL_PRE_MERGE_FIX: prospective probe B via nominal 300s offset at phase EFFECTIVE; both probes schedulable before deadlines.',
+      'Runtime hook proven: ReferenceCaptureProcessor.processCycle (~5s) invokes syncCompletedPhasesFromSession during RECORDING.',
+      'Whole-trip partial recovery: experiments with 1–5 WHOLE_TRIP schedules now idempotently recover to 6 ages.',
+      '21 settlement-shadow focused tests PASS; physical drive NOT started; READY_TO_DRIVE=NO.',
+    ],
+    reason: 'Scientific integrity requires all 48 fixed-interval observations (+30/+60 for both probes) schedulable before execution deadlines.',
+    previousBehavior: 'Settlement shadow schedules deferred until phase completion; probe B geometry unknown until phase end.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T04:40:00.000Z',
+  },
+  {
     id: 'dimo-exp-021d-stale-session-cleanup-preflight-2026-09-07',
     version: '4.9.1071',
     title: 'EXP-021D — Stale RC session cleanup + settlement shadow go gate',

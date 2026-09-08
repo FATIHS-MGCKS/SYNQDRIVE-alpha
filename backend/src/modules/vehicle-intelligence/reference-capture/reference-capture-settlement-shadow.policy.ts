@@ -5,6 +5,12 @@ import { randomUUID } from 'node:crypto';
 
 export const EXP021_PRIMARY_PROBE_DURATION_MS = 60_000;
 export const EXP021_PHASE_STABILIZATION_MS = 120_000;
+/** Nominal cadence phase wall-clock used for prospective probe-B offset only (not fabricated final duration). */
+export const EXP021_NOMINAL_PHASE_DURATION_MS = 300_000;
+/** floor(0.55 × EXP021_NOMINAL_PHASE_DURATION_MS) — immutable once probe B is scheduled. */
+export const EXP021_PROBE_B_START_OFFSET_MS = Math.floor(
+  0.55 * EXP021_NOMINAL_PHASE_DURATION_MS,
+);
 export const EXP021_MANDATORY_AGES_MS = [30_000, 60_000, 120_000, 180_000, 300_000, 600_000] as const;
 export const EXP021_CADENCE_PHASE_ORDER_MS = [60_000, 30_000, 20_000, 10_000] as const;
 export const EXP021_WHOLE_TRIP_AGES_MS = EXP021_MANDATORY_AGES_MS;
@@ -73,6 +79,134 @@ export function validatePhaseDurationForProbes(args: {
     insufficientPhaseDurationDetected: !sufficient,
     probeA: { fits: probeAFits, intervalStartMs: probeAStart, intervalEndMs: probeAEnd },
     probeB: { fits: probeBFits, intervalStartMs: probeBStart, intervalEndMs: probeBEnd },
+  };
+}
+
+export function buildProspectiveProbeAForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+}): SettlementShadowProbePlan | null {
+  const probeAStart = snapToSecondBoundaryMs(args.phaseStartedAtMs + EXP021_PHASE_STABILIZATION_MS);
+  const probeAEnd = probeAStart + EXP021_PRIMARY_PROBE_DURATION_MS;
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  return {
+    probeId: buildProbeId(args.phasePollIntervalMs, 'A'),
+    probeType: 'FIXED_INTERVAL',
+    phaseLabel,
+    phasePollIntervalMs: args.phasePollIntervalMs,
+    sourceIntervalStartMs: probeAStart,
+    sourceIntervalEndMs: probeAEnd,
+    queryFromMs: probeAStart,
+    queryToMs: probeAEnd,
+  };
+}
+
+/**
+ * Prospective probe B: deterministic second interval from phase start using nominal duration
+ * offset only. Source [from,to] is immutable once scheduled; actual phase duration is validated
+ * at completion, not used to retroactively move probe B.
+ */
+export function buildProspectiveProbeBForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+}): SettlementShadowProbePlan | null {
+  const probeBStart = snapToSecondBoundaryMs(
+    args.phaseStartedAtMs + EXP021_PROBE_B_START_OFFSET_MS,
+  );
+  const probeBEnd = probeBStart + EXP021_PRIMARY_PROBE_DURATION_MS;
+  const probeA = buildProspectiveProbeAForPhase(args);
+  if (!probeA || probeBStart === probeA.sourceIntervalStartMs) {
+    return null;
+  }
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  return {
+    probeId: buildProbeId(args.phasePollIntervalMs, 'B'),
+    probeType: 'FIXED_INTERVAL',
+    phaseLabel,
+    phasePollIntervalMs: args.phasePollIntervalMs,
+    sourceIntervalStartMs: probeBStart,
+    sourceIntervalEndMs: probeBEnd,
+    queryFromMs: probeBStart,
+    queryToMs: probeBEnd,
+  };
+}
+
+export function validateProspectiveProbeBAgainstCompletedPhase(args: {
+  phaseStartedAtMs: number;
+  phaseEndedAtMs: number;
+  prospectiveProbeB: SettlementShadowProbePlan;
+}): {
+  matchesCompletedGeometry: boolean;
+  completedProbeBStartMs: number;
+  completedProbeBEndMs: number;
+  startOffsetDeltaMs: number;
+} {
+  const duration = args.phaseEndedAtMs - args.phaseStartedAtMs;
+  const completedProbeBStartMs = snapToSecondBoundaryMs(
+    args.phaseStartedAtMs + Math.floor(duration * 0.55),
+  );
+  const completedProbeBEndMs = completedProbeBStartMs + EXP021_PRIMARY_PROBE_DURATION_MS;
+  const startOffsetDeltaMs =
+    completedProbeBStartMs - args.prospectiveProbeB.sourceIntervalStartMs;
+  return {
+    matchesCompletedGeometry:
+      completedProbeBStartMs === args.prospectiveProbeB.sourceIntervalStartMs &&
+      completedProbeBEndMs === args.prospectiveProbeB.sourceIntervalEndMs,
+    completedProbeBStartMs,
+    completedProbeBEndMs,
+    startOffsetDeltaMs,
+  };
+}
+
+export function buildProbeBForCompletedPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndedAtMs: number;
+}): { probe: SettlementShadowProbePlan | null; validation: PhaseDurationValidation } {
+  const validation = validatePhaseDurationForProbes({
+    phaseStartedAtMs: args.phaseStartedAtMs,
+    phaseEndedAtMs: args.phaseEndedAtMs,
+    probeDurationMs: EXP021_PRIMARY_PROBE_DURATION_MS,
+    stabilizationMs: EXP021_PHASE_STABILIZATION_MS,
+  });
+  if (!validation.probeB.fits) {
+    return { probe: null, validation };
+  }
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  return {
+    probe: {
+      probeId: buildProbeId(args.phasePollIntervalMs, 'B'),
+      probeType: 'FIXED_INTERVAL',
+      phaseLabel,
+      phasePollIntervalMs: args.phasePollIntervalMs,
+      sourceIntervalStartMs: validation.probeB.intervalStartMs,
+      sourceIntervalEndMs: validation.probeB.intervalEndMs,
+      queryFromMs: validation.probeB.intervalStartMs,
+      queryToMs: validation.probeB.intervalEndMs,
+    },
+    validation,
+  };
+}
+
+export function computeScheduleTimingProjection(args: {
+  sourceIntervalEndMs: number;
+  scheduledAgeMs: number;
+  scheduleCreatedAtMs: number;
+}): {
+  scheduledAtMs: number;
+  expectedActualAgeMsAtCreation: number;
+  expectedScheduleDriftMsAtCreation: number;
+  executableOnTime: boolean;
+} {
+  const scheduledAtMs = args.sourceIntervalEndMs + args.scheduledAgeMs;
+  const expectedActualAgeMsAtCreation = Math.max(0, args.scheduleCreatedAtMs - args.sourceIntervalEndMs);
+  const expectedScheduleDriftMsAtCreation = expectedActualAgeMsAtCreation - args.scheduledAgeMs;
+  const executableOnTime = args.scheduleCreatedAtMs <= scheduledAtMs;
+  return {
+    scheduledAtMs,
+    expectedActualAgeMsAtCreation,
+    expectedScheduleDriftMsAtCreation,
+    executableOnTime,
   };
 }
 

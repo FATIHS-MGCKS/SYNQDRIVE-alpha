@@ -229,4 +229,72 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
     const recovered = await runner.recoverDueSchedules();
     expect(recovered).toBeGreaterThan(0);
   });
+
+  it('schedules prospective probes A and B during active phase before completion', async () => {
+    const scheduleRows: Array<{ probeId: string; scheduledAgeMs: number; scheduledAt: Date }> = [];
+    const repository = {
+      findExperimentBySessionId: jest.fn().mockResolvedValue({
+        id: 'exp-db-1',
+        experimentId: 'exp-021-test',
+        sessionId: 'sess-1',
+        lastSyncedPhaseCount: 0,
+      }),
+      createExperiment: jest.fn(),
+      createSchedulesIfAbsent: jest.fn(async (rows: Array<{ probeId: string; scheduledAgeMs: number; scheduledAt: Date }>) => {
+        scheduleRows.push(...rows);
+        return { created: rows.length, skipped: 0 };
+      }),
+      updateLastSyncedPhaseCount: jest.fn(),
+    } as unknown as ReferenceCaptureSettlementShadowRepository;
+
+    const runner = {
+      enqueueSchedule: jest.fn(),
+    } as unknown as ReferenceCaptureSettlementShadowRunnerService;
+
+    const service = new ReferenceCaptureSettlementShadowService(
+      config,
+      repository,
+      runner,
+      { queryGraphQLWithIngressTiming: jest.fn() } as never,
+      { getVehicleJwt: jest.fn() } as never,
+      { referenceCaptureSettlementShadowSchedule: { findMany: jest.fn().mockResolvedValue([]) }, referenceCaptureSettlementShadowObservation: { findMany: jest.fn() }, vehicleTrip: { findMany: jest.fn() } } as never,
+    );
+
+    const phaseStart = '2026-09-07T10:00:00.000Z';
+    await service.syncCompletedPhasesFromSession({
+      sessionId: 'sess-1',
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tokenId: 187336,
+      acquisitionStateJson: {
+        hfCalibrationSeries: {
+          calibrationSeriesId: 'series-1',
+          vehicleId: 'veh-1',
+          tokenId: 187336,
+          seriesStartedAt: phaseStart,
+          phaseOrder: [60_000],
+          activePhase: {
+            phaseStartedAt: phaseStart,
+            effectivePollIntervalMs: 60_000,
+            calibrationPhaseId: 'phase-60',
+            phaseSequence: 1,
+            phaseEndedAt: null,
+          },
+          completedPhases: [],
+          completedPhaseSummaries: [],
+          pendingPhaseRequest: null,
+          terminalFinalizationAt: null,
+          lastPhaseBoundaryAt: phaseStart,
+          controlPlaneRevision: 1,
+        },
+      },
+    });
+
+    expect(scheduleRows.some((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000)).toBe(true);
+    expect(scheduleRows.some((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000)).toBe(true);
+    const plus30A = scheduleRows.find((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000);
+    const plus30B = scheduleRows.find((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000);
+    expect(plus30A?.scheduledAt.toISOString()).toBe('2026-09-07T10:03:30.000Z');
+    expect(plus30B?.scheduledAt.toISOString()).toBe('2026-09-07T10:04:15.000Z');
+  });
 });
