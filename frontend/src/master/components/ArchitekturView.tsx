@@ -1747,8 +1747,8 @@ function TripsSection() {
           <strong className="text-[color:var(--brand)]"> v2.3 additions:</strong> EV/HYBRID stops are now correctly classified
           as IDLE when signal frequency is still active (not just ICE engines). Continuity evaluation is
           time-based (last 120s) instead of fixed last-5-points. evaluateFrequency() uses profile thresholds
-          (resting = 0.5 pt/min, not the old hardcoded 1.0 pt/min). hasActivityResumed() requires real speed,
-          not stale ignition-ON alone.
+          (resting = 0.5 pt/min, not the old hardcoded 1.0 pt/min). hasActivityResumed() requires real speed
+          strictly after the end boundary (possibleEndAt), not pre-stop motion inside the 90s fetch window.
         </p>
         <div className="space-y-2">
           {[

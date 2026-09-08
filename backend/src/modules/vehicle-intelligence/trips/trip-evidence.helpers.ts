@@ -1360,12 +1360,20 @@ export function assessActiveContinuity(
 export function hasActivityResumed(
   recentPoints: TripCoreDataPoint[],
   profile: string = 'UNKNOWN',
+  resumeAfterAt?: Date | null,
 ): boolean {
   const t = getProfileThresholds(profile);
+  const anchorMs = resumeAfterAt?.getTime();
   // Speed must exceed the motion threshold — ignition alone is not enough.
-  return recentPoints.some(
-    (p) => p.speed != null && p.speed > t.speedMotionKmh,
-  );
+  // When resumeAfterAt is set, only points strictly AFTER the end boundary
+  // count — pre-stop motion inside the fetch window must not reopen the trip.
+  return recentPoints.some((p) => {
+    if (anchorMs != null) {
+      const pointMs = new Date(p.timestamp).getTime();
+      if (pointMs <= anchorMs) return false;
+    }
+    return p.speed != null && p.speed > t.speedMotionKmh;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1527,8 +1535,17 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
     windowEndAt?: string | Date | null;
   } | null;
   workerNow?: Date;
+  /** When set, only points strictly after this boundary are considered. */
+  resumeAfterAt?: Date | null;
 }): Date | null {
   const workerNow = params.workerNow ?? new Date();
+  const anchorMs = params.resumeAfterAt?.getTime();
+  const scopedPoints =
+    anchorMs != null
+      ? params.recentPoints.filter(
+          (p) => new Date(p.timestamp).getTime() > anchorMs,
+        )
+      : params.recentPoints;
   const t = getProfileThresholds(params.profile);
   const summary = params.continuitySummary ?? {};
   const motionCount = (summary.motionCount as number) ?? 0;
@@ -1542,12 +1559,13 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
     (ch?.maxSpeedKmh ?? 0) > 5 || (ch?.odometerDeltaKm ?? 0) > 0.05;
 
   if (!hasCoreMotion && !hasOdometerProgress && !hasChMotion) {
-    return null;
+    // When scoped to post-boundary points, infer motion from filtered points alone.
+    if (anchorMs == null) return null;
   }
 
   let latest: Date | null = null;
 
-  const chronological = [...params.recentPoints].sort(
+  const chronological = [...scopedPoints].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
   );
 
@@ -1561,15 +1579,18 @@ export function resolveLatestMeaningfulMovementEventAt(params: {
     }
   }
 
+  if (latest) return latest;
+
+  if (anchorMs != null) {
+    return null;
+  }
+
   if (hasOdometerProgress) {
     const odometerAdvanceAt = resolveLatestOdometerAdvanceEventAt(
       chronological,
       workerNow,
     );
-    if (
-      odometerAdvanceAt &&
-      (!latest || odometerAdvanceAt.getTime() > latest.getTime())
-    ) {
+    if (odometerAdvanceAt) {
       latest = odometerAdvanceAt;
     }
   }

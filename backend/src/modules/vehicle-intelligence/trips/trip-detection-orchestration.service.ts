@@ -131,6 +131,7 @@ import {
   classifyChangePointEndFinding,
 } from './trip-end-validation-classifier';
 import {
+  cancelPendingTripTrackingJobs,
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
 import {
@@ -563,6 +564,26 @@ export class TripDetectionOrchestrationService {
       select: { activeTripId: true },
     });
     return det?.activeTripId ?? null;
+  }
+
+  /** Drop queued successor/primary end-cycle jobs when POSSIBLE_END is cancelled. */
+  private async cancelPendingEndCycleJobs(
+    vehicleId: string,
+    activeTripId: string | null,
+  ): Promise<void> {
+    const phases: TripTrackingSchedulePhase[] = ['ev', 'fin'];
+    const jobIds = phases.map((phase) =>
+      this.tripTrackingJobId(phase, vehicleId, activeTripId),
+    );
+    const removed = await cancelPendingTripTrackingJobs({
+      queue: this.trackingQueue,
+      jobIds,
+    });
+    if (removed > 0) {
+      this.logger.debug(
+        `Cancelled ${removed} stale end-cycle job(s) for ${vehicleId} trip=${activeTripId ?? 'pending'}`,
+      );
+    }
   }
 
   /**
@@ -2468,6 +2489,7 @@ export class TripDetectionOrchestrationService {
           profile: det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN,
           now,
           corePoints: recentPoints,
+          resumeAfterAt: endBoundaryAt,
         });
 
         if (activityResumed) {
@@ -2480,6 +2502,7 @@ export class TripDetectionOrchestrationService {
             recentPoints,
             profile,
             workerNow: now,
+            resumeAfterAt: endBoundaryAt,
           });
           await this.transitionState(vehicleId, TripDetectionState.ACTIVE_TRIP, {
             ...buildPossibleEndToActiveReset({
@@ -2488,6 +2511,7 @@ export class TripDetectionOrchestrationService {
               priorSummary,
             }),
           });
+          await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
           await this.logTrackingRun({
@@ -2875,6 +2899,7 @@ export class TripDetectionOrchestrationService {
             priorSummary,
           }),
         });
+        await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
         await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
 
         await this.logTrackingRun({
@@ -3058,6 +3083,51 @@ export class TripDetectionOrchestrationService {
         dimoTokenId: data.dimoTokenId,
       });
       if (endRecovery !== 'continue') {
+        return;
+      }
+
+      if (det.state === TripDetectionState.ACTIVE_TRIP) {
+        this.logger.log(
+          `FINALIZE skipped for ${vehicleId}: FSM is ACTIVE_TRIP (stale end job after activity resumed)`,
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: det.state,
+          runType: TripTrackingRunType.FINALIZATION_CHECK,
+          resultSummary: { reason: 'stale_finalize_aborted_active_trip' },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
+
+      const endBoundary =
+        (det as { cusumSegmentEnd?: Date | null }).cusumSegmentEnd ??
+        det.possibleEndAt ??
+        null;
+      if (
+        endBoundary &&
+        det.lastMeaningfulMovementAt &&
+        det.lastMeaningfulMovementAt.getTime() > endBoundary.getTime()
+      ) {
+        this.logger.log(
+          `FINALIZE skipped for ${vehicleId}: movement after end boundary ` +
+            `(${det.lastMeaningfulMovementAt.toISOString()} > ${endBoundary.toISOString()})`,
+        );
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: det.state,
+          runType: TripTrackingRunType.FINALIZATION_CHECK,
+          resultSummary: {
+            reason: 'stale_finalize_aborted_movement_after_end',
+            endBoundary: endBoundary.toISOString(),
+            lastMeaningfulMovementAt: det.lastMeaningfulMovementAt.toISOString(),
+          },
+          durationMs: Date.now() - startedMs,
+        });
         return;
       }
 
@@ -3535,6 +3605,8 @@ export class TripDetectionOrchestrationService {
     profile: VehicleDetectionProfile;
     now: Date;
     corePoints?: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
+    /** Only points strictly after this boundary may reopen the trip. */
+    resumeAfterAt?: Date | null;
   }): Promise<boolean> {
     const recentFrom = new Date(params.now.getTime() - 90_000);
     const recentPoints =
@@ -3557,6 +3629,7 @@ export class TripDetectionOrchestrationService {
         profile: params.profile,
         phase: DETECTION_PHASES.POSSIBLE_END,
         coreDataPoints: recentPoints,
+        possibleEndAt: params.resumeAfterAt ?? null,
       },
     );
     return resumeFindings.some(
@@ -3570,6 +3643,7 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null;
     dimoTokenId: number;
     now: Date;
+    activeTripId?: string | null;
     priorSummary?: Record<string, unknown> | null;
   }): Promise<void> {
     await this.transitionState(params.vehicleId, TripDetectionState.ACTIVE_TRIP, {
@@ -3578,6 +3652,10 @@ export class TripDetectionOrchestrationService {
         priorSummary: params.priorSummary,
       }),
     });
+    await this.cancelPendingEndCycleJobs(
+      params.vehicleId,
+      params.activeTripId ?? null,
+    );
     await this.scheduleActiveTick(
       params.vehicleId,
       params.organizationId,
@@ -3776,6 +3854,7 @@ export class TripDetectionOrchestrationService {
         profile: profileEnum,
         now: params.now,
         corePoints: recentPoints,
+        resumeAfterAt: endDecision.detectedEndAt,
       })
     ) {
       return false;
@@ -3837,6 +3916,7 @@ export class TripDetectionOrchestrationService {
           profile: profileEnum,
           now: params.now,
           corePoints: recentPoints,
+          resumeAfterAt: detectedEndAt,
         })
       ) {
         this.logger.log(
@@ -3847,6 +3927,7 @@ export class TripDetectionOrchestrationService {
           organizationId: params.organizationId,
           dimoTokenId: params.dimoTokenId,
           now: params.now,
+          activeTripId: params.tripId,
         });
         return false;
       }

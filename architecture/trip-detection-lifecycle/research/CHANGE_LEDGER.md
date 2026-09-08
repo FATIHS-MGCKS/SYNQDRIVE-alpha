@@ -17,8 +17,9 @@ Append-only record for this authority directory.
 | 2026-09-07 | R9 permission root-cause audit — tokenId **190497** classified `FORMER_FLEET_VEHICLE`; re-grant rejected | Read-only provider audit | [../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](../evidence/R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | 2026-09-07 | R9 five-vehicle canary provider mutation — **PASS** (5/5 speed+ignition; 190497 excluded) | Provider mutation session | [../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 | 2026-09-08 | Cross-authority semantic cleanup — R9 on main + deployed @ `0ba96e03…`; pre-R9/`01541c2ab…` claims reclassified HISTORICAL | Post-canary reconciliation | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
+| 2026-09-08 | R10 motor-off pause / false resume / stale finalize — KS MX reference case; code fix + regression tests (not deployed) | Trip FSM R10 | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](../evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) |
 
-**No runtime code changes** in this workstream.
+**Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
 ## Planned later phases (Standard 1.0)
 

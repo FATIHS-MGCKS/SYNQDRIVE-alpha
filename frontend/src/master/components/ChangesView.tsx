@@ -102,6 +102,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-07T06:00:00.000Z',
   },
   {
+    id: 'trip-fsm-r10-motor-off-pause-finalize-2026-09-08',
+    version: '4.9.1090',
+    title: 'Trip FSM R10 — Motor-off pause resume anchor + stale finalize guards',
+    summary: [
+      'hasActivityResumed / EndContinuityDetector anchor to possibleEndAt — pre-stop motion in 90s window no longer false-triggers activity_resumed.',
+      'checkDimoActivityResumed passes resumeAfterAt from PEC end boundary and CH end assist.',
+      'cancelPendingEndCycleJobs removes queued END_VALIDATION + FINALIZE jobs when trip resumes.',
+      'processFinalize aborts stale jobs when FSM is ACTIVE_TRIP or movement anchor is after end boundary.',
+    ],
+    reason:
+      'KS MX 2024 reference case (2026-09-08): motor-off pause produced false resume @ 04:48:51 UTC and non-terminal end despite scheduleFinalize.',
+    previousBehavior:
+      '90s sliding resume window counted pre-boundary speed; pending finalize jobs survived resume; processFinalize had no ACTIVE_TRIP guard.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md, trip-fsm-motor-off-pause-r10.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T05:55:00.000Z',
+  },
+  {
     id: 'trip-fsm-r9h-handoff-orphan-recovery-2026-09-07',
     version: '4.9.1089',
     title: 'Trip FSM R9H — Successor Handoff Orphan Recovery',
