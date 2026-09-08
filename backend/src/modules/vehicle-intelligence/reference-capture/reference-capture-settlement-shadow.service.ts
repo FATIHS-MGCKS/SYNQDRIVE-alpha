@@ -11,6 +11,8 @@ import type { HfCalibrationPhaseRecord } from './reference-capture-hf-calibratio
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
+  buildProspectiveProbeAForPhase,
+  buildProbeBForCompletedPhase,
   buildScheduleIdempotencyKey,
   buildWholeTripProbeId,
   computeActualAgeMs,
@@ -18,6 +20,7 @@ import {
   EXP021_MANDATORY_AGES_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
   EXP021_WHOLE_TRIP_AGES_MS,
+  type SettlementShadowProbePlan,
 } from './reference-capture-settlement-shadow.policy';
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture-settlement-shadow-runner.service';
@@ -94,19 +97,23 @@ export class ReferenceCaptureSettlementShadowService {
       });
       if (!experiment) return;
 
+      await this.syncProspectiveProbeAForActivePhase({
+        experiment,
+        series,
+      });
+
       const completed: HfCalibrationPhaseRecord[] = series.completedPhases ?? [];
-      if (completed.length <= experiment.lastSyncedPhaseCount) return;
-
-      const newPhases = completed.slice(experiment.lastSyncedPhaseCount);
-      for (const phase of newPhases) {
-        if (!phase.phaseEndedAt) continue;
-        await this.scheduleFixedIntervalProbesForPhase({
-          experiment,
-          phase,
-        });
+      if (completed.length > experiment.lastSyncedPhaseCount) {
+        const newPhases = completed.slice(experiment.lastSyncedPhaseCount);
+        for (const phase of newPhases) {
+          if (!phase.phaseEndedAt) continue;
+          await this.scheduleProbeBForCompletedPhase({
+            experiment,
+            phase,
+          });
+        }
+        await this.repository.updateLastSyncedPhaseCount(experiment.id, completed.length);
       }
-
-      await this.repository.updateLastSyncedPhaseCount(experiment.id, completed.length);
     } catch (error) {
       this.logger.warn(
         `Settlement shadow phase sync failed session=${args.sessionId}: ${
@@ -116,6 +123,97 @@ export class ReferenceCaptureSettlementShadowService {
     }
   }
 
+  /**
+   * EXP-021 timing integrity: probe A interval is deterministic from phase start,
+   * so schedule +30/+60 observations before phase completion.
+   */
+  private async syncProspectiveProbeAForActivePhase(args: {
+    experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
+    series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
+  }): Promise<void> {
+    const active = args.series.activePhase;
+    if (!active?.phaseStartedAt) return;
+
+    const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
+    if (!Number.isFinite(phaseStartedAtMs)) return;
+
+    const probeA = buildProspectiveProbeAForPhase({
+      phasePollIntervalMs: active.effectivePollIntervalMs,
+      phaseStartedAtMs,
+    });
+    if (!probeA) return;
+
+    await this.scheduleProbeObservations({
+      experiment: args.experiment,
+      probe: probeA,
+    });
+  }
+
+  private async scheduleProbeBForCompletedPhase(args: {
+    experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
+    phase: HfCalibrationPhaseRecord;
+  }) {
+    const phaseStartedAtMs = Date.parse(args.phase.phaseStartedAt);
+    const phaseEndedAtMs = Date.parse(args.phase.phaseEndedAt ?? '');
+    if (!Number.isFinite(phaseStartedAtMs) || !Number.isFinite(phaseEndedAtMs)) return;
+
+    const { probe, validation } = buildProbeBForCompletedPhase({
+      phasePollIntervalMs: args.phase.effectivePollIntervalMs,
+      phaseStartedAtMs,
+      phaseEndedAtMs,
+    });
+
+    if (!validation.probeB.fits || !probe) {
+      this.logger.warn(
+        `Insufficient phase duration for settlement probe B phase=${args.phase.calibrationPhaseId} poll=${args.phase.effectivePollIntervalMs}`,
+      );
+      return;
+    }
+
+    await this.scheduleProbeObservations({
+      experiment: args.experiment,
+      probe,
+    });
+  }
+
+  private async scheduleProbeObservations(args: {
+    experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
+    probe: SettlementShadowProbePlan;
+  }) {
+    const scheduleRows = [];
+    for (const ageMs of EXP021_MANDATORY_AGES_MS) {
+      const sourceEnd = new Date(args.probe.sourceIntervalEndMs);
+      scheduleRows.push({
+        experimentId: args.experiment.id,
+        sessionId: args.experiment.sessionId,
+        organizationId: args.experiment.organizationId,
+        vehicleId: args.experiment.vehicleId,
+        tokenId: args.experiment.tokenId,
+        probeId: args.probe.probeId,
+        probeType: ReferenceCaptureSettlementShadowProbeType.FIXED_INTERVAL,
+        phase: args.probe.phaseLabel,
+        sourceIntervalStart: new Date(args.probe.sourceIntervalStartMs),
+        sourceIntervalEnd: sourceEnd,
+        queryFrom: new Date(args.probe.queryFromMs),
+        queryTo: new Date(args.probe.queryToMs),
+        aggregationInterval: SHADOW_AGGREGATION_INTERVAL,
+        scheduledAgeMs: ageMs,
+        scheduledAt: new Date(args.probe.sourceIntervalEndMs + ageMs),
+        idempotencyKey: buildScheduleIdempotencyKey({
+          experimentId: args.experiment.experimentId,
+          probeId: args.probe.probeId,
+          scheduledAgeMs: ageMs,
+        }),
+      });
+    }
+
+    const { created } = await this.repository.createSchedulesIfAbsent(scheduleRows);
+    if (created > 0) {
+      await this.enqueuePendingSchedules(args.experiment.id);
+    }
+  }
+
+  /** @deprecated retained for backward compatibility in tests — prefer split probe A/B scheduling */
   private async scheduleFixedIntervalProbesForPhase(args: {
     experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
     phase: HfCalibrationPhaseRecord;
@@ -137,38 +235,11 @@ export class ReferenceCaptureSettlementShadowService {
       return;
     }
 
-    const scheduleRows = [];
     for (const probe of probes) {
-      for (const ageMs of EXP021_MANDATORY_AGES_MS) {
-        const sourceEnd = new Date(probe.sourceIntervalEndMs);
-        scheduleRows.push({
-          experimentId: args.experiment.id,
-          sessionId: args.experiment.sessionId,
-          organizationId: args.experiment.organizationId,
-          vehicleId: args.experiment.vehicleId,
-          tokenId: args.experiment.tokenId,
-          probeId: probe.probeId,
-          probeType: ReferenceCaptureSettlementShadowProbeType.FIXED_INTERVAL,
-          phase: probe.phaseLabel,
-          sourceIntervalStart: new Date(probe.sourceIntervalStartMs),
-          sourceIntervalEnd: sourceEnd,
-          queryFrom: new Date(probe.queryFromMs),
-          queryTo: new Date(probe.queryToMs),
-          aggregationInterval: SHADOW_AGGREGATION_INTERVAL,
-          scheduledAgeMs: ageMs,
-          scheduledAt: new Date(probe.sourceIntervalEndMs + ageMs),
-          idempotencyKey: buildScheduleIdempotencyKey({
-            experimentId: args.experiment.experimentId,
-            probeId: probe.probeId,
-            scheduledAgeMs: ageMs,
-          }),
-        });
-      }
-    }
-
-    const { created } = await this.repository.createSchedulesIfAbsent(scheduleRows);
-    if (created > 0) {
-      await this.enqueuePendingSchedules(args.experiment.id);
+      await this.scheduleProbeObservations({
+        experiment: args.experiment,
+        probe,
+      });
     }
   }
 
@@ -198,8 +269,8 @@ export class ReferenceCaptureSettlementShadowService {
     tokenId: number;
     sessionStartedAt: Date | null;
     sessionStoppedAt: Date;
-  }): Promise<void> {
-    if (!this.isEnabled()) return;
+  }): Promise<boolean> {
+    if (!this.isEnabled()) return false;
 
     try {
       const trip = await this.resolveCanonicalVehicleTrip({
@@ -211,7 +282,7 @@ export class ReferenceCaptureSettlementShadowService {
         this.logger.warn(
           `Whole-trip shadow skipped — no canonical VehicleTrip end for vehicle=${args.vehicleId} session=${args.sessionId}`,
         );
-        return;
+        return false;
       }
 
       const experiment = await this.ensureExperiment({
@@ -220,7 +291,7 @@ export class ReferenceCaptureSettlementShadowService {
         vehicleId: args.vehicleId,
         tokenId: args.tokenId,
       });
-      if (!experiment) return;
+      if (!experiment) return false;
 
       await this.repository.updateExperimentTripBinding(experiment.id, {
         vehicleTripId: trip.id,
@@ -256,13 +327,44 @@ export class ReferenceCaptureSettlementShadowService {
       if (created > 0) {
         await this.enqueuePendingSchedules(experiment.id);
       }
+      return true;
     } catch (error) {
       this.logger.warn(
         `Whole-trip shadow scheduling failed session=${args.sessionId}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
+      return false;
     }
+  }
+
+  /**
+   * Recovery path when stopRecording runs before canonical VehicleTrip.endTime is persisted.
+   */
+  async recoverWholeTripShadowForPendingExperiments(now = new Date()): Promise<number> {
+    if (!this.isEnabled()) return 0;
+
+    const pending = await this.repository.findExperimentsMissingWholeTripShadow();
+    let recovered = 0;
+    for (const row of pending) {
+      if (!row.session) continue;
+      const wholeTripCount = row.schedules?.length ?? 0;
+      if (row.vehicleTripId && row.tripEndTime && wholeTripCount >= EXP021_WHOLE_TRIP_AGES_MS.length) {
+        continue;
+      }
+      const sessionStoppedAt =
+        row.session.stoppedAt ?? row.session.completedAt ?? row.session.startedAt ?? now;
+      const ok = await this.scheduleWholeTripShadowFromVehicleTrip({
+        sessionId: row.sessionId,
+        organizationId: row.organizationId,
+        vehicleId: row.vehicleId,
+        tokenId: row.tokenId,
+        sessionStartedAt: row.session.startedAt,
+        sessionStoppedAt,
+      });
+      if (ok) recovered += 1;
+    }
+    return recovered;
   }
 
   async executeScheduledObservation(scheduleId: string): Promise<void> {

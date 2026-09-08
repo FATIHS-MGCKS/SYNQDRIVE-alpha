@@ -1,9 +1,12 @@
 import {
   buildFixedIntervalProbesForPhase,
+  buildProspectiveProbeAForPhase,
   buildScheduleIdempotencyKey,
   computeActualAgeMs,
   computeScheduleDriftMs,
+  computeScheduleTimingProjection,
   EXP021_MANDATORY_AGES_MS,
+  EXP021_PHASE_STABILIZATION_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
   validatePhaseDurationForProbes,
 } from './reference-capture-settlement-shadow.policy';
@@ -77,5 +80,36 @@ describe('reference-capture-settlement-shadow.policy', () => {
     const actualAgeMs = computeActualAgeMs(requestStarted, sourceEnd);
     expect(actualAgeMs).toBe(67_400);
     expect(computeScheduleDriftMs(actualAgeMs, 60_000)).toBe(7_400);
+  });
+
+  it('prospective probe A is fixed at stabilization + 60s and schedulable before phase end', () => {
+    const phaseStart = Date.parse('2026-09-07T10:00:00.000Z');
+    const probeA = buildProspectiveProbeAForPhase({
+      phasePollIntervalMs: 60_000,
+      phaseStartedAtMs: phaseStart,
+    });
+    expect(probeA).not.toBeNull();
+    expect(probeA!.sourceIntervalEndMs - probeA!.sourceIntervalStartMs).toBe(
+      EXP021_PRIMARY_PROBE_DURATION_MS,
+    );
+    expect(probeA!.sourceIntervalEndMs).toBe(phaseStart + EXP021_PHASE_STABILIZATION_MS + EXP021_PRIMARY_PROBE_DURATION_MS);
+
+    const scheduleCreatedAt = phaseStart + 60_000;
+    const plus30 = computeScheduleTimingProjection({
+      sourceIntervalEndMs: probeA!.sourceIntervalEndMs,
+      scheduledAgeMs: 30_000,
+      scheduleCreatedAtMs: scheduleCreatedAt,
+    });
+    expect(plus30.executableOnTime).toBe(true);
+    expect(plus30.scheduledAtMs).toBe(probeA!.sourceIntervalEndMs + 30_000);
+
+    const legacyPhaseEnd = phaseStart + 300_000;
+    const legacyPlus30 = computeScheduleTimingProjection({
+      sourceIntervalEndMs: probeA!.sourceIntervalEndMs,
+      scheduledAgeMs: 30_000,
+      scheduleCreatedAtMs: legacyPhaseEnd,
+    });
+    expect(legacyPlus30.executableOnTime).toBe(false);
+    expect(legacyPlus30.expectedScheduleDriftMsAtCreation).toBe(90_000);
   });
 });

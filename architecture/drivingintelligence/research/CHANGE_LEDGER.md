@@ -183,6 +183,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Pre-drive integrity gate (2026-09-08)
+
+| Event | Detail |
+|-------|--------|
+| Status | **BLOCKED** — settlement shadow fixed-interval schedules created only at phase completion; +30/+60 not executable on deployed binary |
+| Whole-trip | No recovery when `VehicleTrip.endTime` missing at `stopRecording` |
+| Fix | Draft PR: prospective probe A scheduling + whole-trip recovery retry |
+| Physical drive | **NOT STARTED**; session **NOT CREATED** |
+| Evidence | `EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md` |
+
 ## EXP-021D — Stale session cleanup + go gate (2026-09-07)
 
 | Event | Detail |

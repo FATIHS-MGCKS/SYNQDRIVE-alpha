@@ -76,6 +76,77 @@ export function validatePhaseDurationForProbes(args: {
   };
 }
 
+export function buildProspectiveProbeAForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+}): SettlementShadowProbePlan | null {
+  const probeAStart = snapToSecondBoundaryMs(args.phaseStartedAtMs + EXP021_PHASE_STABILIZATION_MS);
+  const probeAEnd = probeAStart + EXP021_PRIMARY_PROBE_DURATION_MS;
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  return {
+    probeId: buildProbeId(args.phasePollIntervalMs, 'A'),
+    probeType: 'FIXED_INTERVAL',
+    phaseLabel,
+    phasePollIntervalMs: args.phasePollIntervalMs,
+    sourceIntervalStartMs: probeAStart,
+    sourceIntervalEndMs: probeAEnd,
+    queryFromMs: probeAStart,
+    queryToMs: probeAEnd,
+  };
+}
+
+export function buildProbeBForCompletedPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndedAtMs: number;
+}): { probe: SettlementShadowProbePlan | null; validation: PhaseDurationValidation } {
+  const validation = validatePhaseDurationForProbes({
+    phaseStartedAtMs: args.phaseStartedAtMs,
+    phaseEndedAtMs: args.phaseEndedAtMs,
+    probeDurationMs: EXP021_PRIMARY_PROBE_DURATION_MS,
+    stabilizationMs: EXP021_PHASE_STABILIZATION_MS,
+  });
+  if (!validation.probeB.fits) {
+    return { probe: null, validation };
+  }
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  return {
+    probe: {
+      probeId: buildProbeId(args.phasePollIntervalMs, 'B'),
+      probeType: 'FIXED_INTERVAL',
+      phaseLabel,
+      phasePollIntervalMs: args.phasePollIntervalMs,
+      sourceIntervalStartMs: validation.probeB.intervalStartMs,
+      sourceIntervalEndMs: validation.probeB.intervalEndMs,
+      queryFromMs: validation.probeB.intervalStartMs,
+      queryToMs: validation.probeB.intervalEndMs,
+    },
+    validation,
+  };
+}
+
+export function computeScheduleTimingProjection(args: {
+  sourceIntervalEndMs: number;
+  scheduledAgeMs: number;
+  scheduleCreatedAtMs: number;
+}): {
+  scheduledAtMs: number;
+  expectedActualAgeMsAtCreation: number;
+  expectedScheduleDriftMsAtCreation: number;
+  executableOnTime: boolean;
+} {
+  const scheduledAtMs = args.sourceIntervalEndMs + args.scheduledAgeMs;
+  const expectedActualAgeMsAtCreation = Math.max(0, args.scheduleCreatedAtMs - args.sourceIntervalEndMs);
+  const expectedScheduleDriftMsAtCreation = expectedActualAgeMsAtCreation - args.scheduledAgeMs;
+  const executableOnTime = args.scheduleCreatedAtMs <= scheduledAtMs;
+  return {
+    scheduledAtMs,
+    expectedActualAgeMsAtCreation,
+    expectedScheduleDriftMsAtCreation,
+    executableOnTime,
+  };
+}
+
 export function buildFixedIntervalProbesForPhase(args: {
   phasePollIntervalMs: number;
   phaseStartedAtMs: number;
