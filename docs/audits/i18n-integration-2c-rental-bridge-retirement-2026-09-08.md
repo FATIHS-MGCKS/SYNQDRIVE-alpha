@@ -20,8 +20,9 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 | Starting `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | PR #1575 merge commit present | Yes (`c7bb4df4022122c662f07fc23fafc427733263cf`) |
 | Branch | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` |
-| Commit SHA | `c14b88aab` (branch HEAD; feature commit `2133f3e78`) |
+| Commit SHA | `97afe980d` (stacked on authority base `70b9fe7e8`) |
 | PR | **#1578** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1578 |
+| Stacked authority PR | **#1579** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1579 (`frontend/package.json` lint script only) |
 
 ---
 
@@ -142,6 +143,7 @@ frontend/src/rental/i18n/                    (directory removed)
 **Deferred (protected — separate authority PR)**
 
 - `translation-coverage-baseline.json` + `translation-coverage.test.ts` — canonical key-count sync deferred to avoid mixed authority/product gate failure
+- `frontend/package.json` `lint:legal-documents` — **PR #1579** (authority-only); product PR #1578 is stacked on that branch so Legal Documents Lint passes without mixing governance paths
 
 **Not changed (protected)**
 
@@ -224,3 +226,15 @@ Redeploy frontend build from reverted branch. No backend/DB migration involved.
 ## 13. PR status
 
 **Draft PR — not merged.**
+
+### CI remediation (Legal Documents Lint)
+
+Deleting `frontend/src/rental/i18n/**` broke `npm run lint:legal-documents` because `frontend/package.json` still globbed the removed rental translation path. `frontend/package.json` is an i18n governance authority path; changing it in the same PR as ~400 product files triggers `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE` (the governance label does not waive mixed diffs).
+
+**Resolution:**
+
+1. **PR #1579** (authority-only): updates `lint:legal-documents` to canonical `src/i18n/translations/legal-documents*.ts` + `--no-error-on-unmatched-pattern`. Requires `i18n-governance-authority-change` label from trusted actor before merge.
+2. **PR #1578** (product): rebased onto #1579's branch; PR base set to `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` so the product diff excludes `package.json`.
+3. **After #1579 merges to `main`:** rebase #1578 onto `main` and retarget base to `main`.
+
+Local verification on stacked HEAD `97afe980d`: `npm run lint:legal-documents` PASS; `runtime-integration-2c.test.tsx` 8/8 PASS.
