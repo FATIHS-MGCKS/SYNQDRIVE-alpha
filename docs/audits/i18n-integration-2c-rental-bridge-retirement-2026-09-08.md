@@ -20,7 +20,7 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 | Starting `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | PR #1575 merge commit present | Yes (`c7bb4df4022122c662f07fc23fafc427733263cf`) |
 | Product branch | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` |
-| Product HEAD | `2d23c4744` (pending doc correction commit) |
+| Product HEAD | `b5350c368` |
 | Product PR | **#1578** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1578 |
 | Product PR base (stacked) | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` (#1579) |
 | Authority prerequisite PR | **#1579** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1579 |
