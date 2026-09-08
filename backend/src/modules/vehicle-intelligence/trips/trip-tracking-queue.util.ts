@@ -29,9 +29,29 @@ export interface TripTrackingQueueLike {
   ): Promise<unknown>;
 }
 
-export type StableTripTrackingEnqueueOutcome = 'primary' | 'successor' | 'skipped';
+export type StableTripTrackingEnqueueOutcome =
+  | 'primary'
+  | 'successor'
+  | 'skipped'
+  | 'preempted';
 
 export type RecoveryTripTrackingEnqueueOutcome = 'enqueued' | 'skipped';
+
+async function removeQueuedTripTrackingSlot(
+  queue: TripTrackingQueueLike,
+  jobId: string,
+): Promise<void> {
+  const existing = await queue.getJob(jobId);
+  if (!existing) return;
+  const state = await existing.getState();
+  if (
+    isTerminalQueueState(state) ||
+    isQueuedQueueState(state) ||
+    isActiveQueueState(state)
+  ) {
+    await existing.remove();
+  }
+}
 
 /**
  * Deterministic successor slot used while the primary stable jobId is ACTIVE.
@@ -174,6 +194,60 @@ async function enqueueIntoStableSlot(params: {
       ...buildTripTrackingJobOptions(params.trigger),
     });
     return 'successor';
+  } catch (err: unknown) {
+    if (isDuplicateJobIdError(err)) {
+      return 'skipped';
+    }
+    throw err;
+  }
+}
+
+/**
+ * R11: recycle a delayed/waiting stable slot when wake or urgent check must
+ * precede an empty-core backoff job. End-cycle jobs use enqueueEndCycleTripTrackingJob.
+ */
+export async function enqueuePreemptiveTripTrackingJob(params: {
+  queue: TripTrackingQueueLike;
+  jobName: string;
+  jobId: string;
+  data: TripTrackingJobData;
+  trigger: TripTrackingTrigger;
+  delayMs?: number;
+}): Promise<StableTripTrackingEnqueueOutcome> {
+  const delayMs = params.delayMs ?? 0;
+  const existingPrimary = await params.queue.getJob(params.jobId);
+
+  if (existingPrimary) {
+    const state = await existingPrimary.getState();
+    if (isTerminalQueueState(state)) {
+      await existingPrimary.remove();
+    } else if (isQueuedQueueState(state)) {
+      await removeQueuedTripTrackingSlot(params.queue, params.jobId);
+      await removeQueuedTripTrackingSlot(
+        params.queue,
+        buildTripTrackingSuccessorJobId(params.jobId),
+      );
+    } else if (isActiveQueueState(state)) {
+      const outcome = await enqueueIntoStableSlot({
+        queue: params.queue,
+        jobName: params.jobName,
+        jobId: buildTripTrackingSuccessorJobId(params.jobId),
+        primaryJobId: params.jobId,
+        data: params.data,
+        trigger: params.trigger,
+        delayMs,
+      });
+      return outcome;
+    }
+  }
+
+  try {
+    await params.queue.add(params.jobName, params.data, {
+      jobId: params.jobId,
+      delay: delayMs,
+      ...buildTripTrackingJobOptions(params.trigger),
+    });
+    return existingPrimary ? 'preempted' : 'primary';
   } catch (err: unknown) {
     if (isDuplicateJobIdError(err)) {
       return 'skipped';

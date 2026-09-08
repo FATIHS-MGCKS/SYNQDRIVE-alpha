@@ -157,6 +157,7 @@ import {
 import {
   cancelPendingTripTrackingJobs,
   enqueueEndCycleTripTrackingJob,
+  enqueuePreemptiveTripTrackingJob,
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
 import {
@@ -640,6 +641,8 @@ export class TripDetectionOrchestrationService {
       endCycleToken?: string | null;
       /** R10: recycle waiting end-cycle jobs before enqueue (FINALIZE / END_VALIDATION). */
       recycleEndCycleSlot?: boolean;
+      /** R11: replace delayed empty-core backoff with an urgent ACTIVE_TICK. */
+      preemptDelayed?: boolean;
     },
   ): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
@@ -671,14 +674,23 @@ export class TripDetectionOrchestrationService {
           trigger,
           delayMs,
         })
-      : await enqueueStableTripTrackingJob({
-          queue: this.trackingQueue,
-          jobName: 'trip-tracking',
-          jobId,
-          data,
-          trigger,
-          delayMs,
-        });
+      : opts?.preemptDelayed
+        ? await enqueuePreemptiveTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          })
+        : await enqueueStableTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          });
 
     if (outcome === 'skipped') {
       this.logger.debug(
@@ -712,6 +724,7 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
     delayMs?: number,
+    opts?: { preemptDelayed?: boolean },
   ): Promise<void> {
     await this.enqueueTripTrackingJob(
       'at',
@@ -719,8 +732,24 @@ export class TripDetectionOrchestrationService {
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.ACTIVE_TICK,
-      { delayMs: delayMs ?? this.TRACKING_INTERVAL_MS },
+      {
+        delayMs: delayMs ?? this.TRACKING_INTERVAL_MS,
+        preemptDelayed: opts?.preemptDelayed,
+      },
     );
+  }
+
+  /**
+   * R11: urgent provider wake during empty-core backoff — preempt delayed ACTIVE_TICK.
+   */
+  async accelerateActiveTickAfterWake(
+    vehicleId: string,
+    organizationId: string | null,
+    dimoTokenId: number,
+  ): Promise<void> {
+    await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId, 0, {
+      preemptDelayed: true,
+    });
   }
 
   async schedulePossibleEndCheck(
