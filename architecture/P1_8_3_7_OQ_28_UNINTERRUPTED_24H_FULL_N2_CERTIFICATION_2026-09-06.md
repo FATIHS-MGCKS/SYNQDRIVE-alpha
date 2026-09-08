@@ -182,3 +182,201 @@ Segment 2 would have qualified on duration alone if uninterrupted through `2026-
 `N2_PRODUCTION_CERTIFICATION` stays **EARLY** (requires both INC-07 closure **and** OQ-28 closure per P1.8.3.8 scaling certification scope).
 
 **Next checkpoint:** `2026-09-07T22:12:34Z` for current segment (seg 5) if no intervening deploy boundaries.
+
+---
+
+## P1.8.3.9 — FINAL CERTIFICATION RECHECK (PARTIAL — no qualifying segment)
+
+**Audit end:** `2026-09-08T02:19:47Z`  
+**Candidate start (canonical):** `2026-09-06T22:12:34Z`  
+**Verdict:** `OQ-28 REMAINS PARTIAL` — longest continuous FULL_N2 segment **48758s** (<86400)
+
+### Machine-readable verdict block (P1.8.3.9)
+
+```
+P1_8_3_9_OQ28_FINAL_VERDICT = PARTIAL_NO_QUALIFYING_24H_SEGMENT
+
+AUDIT_END_UTC = 2026-09-08T02:19:47Z
+CANDIDATE_START_UTC = 2026-09-06T22:12:34Z
+CANDIDATE_CALENDAR_SECONDS = 101233
+CANDIDATE_CALENDAR_HOURS = 28.12
+
+CURRENT_PRODUCTION_SHA = 0ba96e03fc2f1551db79d2dae151c928a9fd936a
+CURRENT_RELEASE = 20260907204434_v4994
+MAIN_AHEAD_OF_PRODUCTION = YES
+
+WAS_MAIN_DCE0CE75_DEPLOYED_TO_PRODUCTION = NO
+DID_EXP021D_CAUSE_APP_DEPLOY = NO
+DID_EXP021D_CAUSE_PM2_RESTART = NO
+DID_EXP021D_CAUSE_REPLICA_HEALTH_BREAK = NO
+DID_EXP021D_CAUSE_SHA_CHANGE = NO
+
+PRODUCTION_BOUNDARY_COUNT = 9
+
+FULL_N2_SEGMENT_COUNT = 9
+
+FULL_N2_SEGMENT_06_START = 2026-09-06T22:12:34Z
+FULL_N2_SEGMENT_06_END = 2026-09-07T04:19:48Z
+FULL_N2_SEGMENT_06_SECONDS = 22034
+FULL_N2_SEGMENT_06_BREAK_REASON = PM2_RESTART_A_CAUSE_UNAVAILABLE
+
+FULL_N2_SEGMENT_07_START = 2026-09-07T04:19:55Z
+FULL_N2_SEGMENT_07_END = 2026-09-07T05:01:40Z
+FULL_N2_SEGMENT_07_SECONDS = 2505
+FULL_N2_SEGMENT_07_BREAK_REASON = PM2_RESTART_A_CAUSE_UNAVAILABLE
+
+FULL_N2_SEGMENT_08_START = 2026-09-07T05:01:47Z
+FULL_N2_SEGMENT_08_END = 2026-09-07T18:34:25Z
+FULL_N2_SEGMENT_08_SECONDS = 48758
+FULL_N2_SEGMENT_08_BREAK_REASON = ROLLING_DEPLOY_4bef6046_A_RESTART
+
+FULL_N2_SEGMENT_09_START = 2026-09-07T18:34:34Z
+FULL_N2_SEGMENT_09_END = 2026-09-07T19:14:27Z
+FULL_N2_SEGMENT_09_SECONDS = 2393
+FULL_N2_SEGMENT_09_BREAK_REASON = ROLLING_DEPLOY_4bef6046_A_RESTART
+
+FULL_N2_SEGMENT_10_START = 2026-09-07T19:14:32Z
+FULL_N2_SEGMENT_10_END = 2026-09-07T19:47:45Z
+FULL_N2_SEGMENT_10_SECONDS = 1993
+FULL_N2_SEGMENT_10_BREAK_REASON = ROLLING_DEPLOY_ccc2324d_A_RESTART
+
+FULL_N2_SEGMENT_11_START = 2026-09-07T19:47:51Z
+FULL_N2_SEGMENT_11_END = 2026-09-07T20:54:23Z
+FULL_N2_SEGMENT_11_SECONDS = 3992
+FULL_N2_SEGMENT_11_BREAK_REASON = ROLLING_DEPLOY_ccc2324d_A_RESTART
+
+FULL_N2_SEGMENT_12_START = 2026-09-07T20:54:29Z
+FULL_N2_SEGMENT_12_END = 2026-09-07T22:45:43Z
+FULL_N2_SEGMENT_12_SECONDS = 6674
+FULL_N2_SEGMENT_12_BREAK_REASON = DEPLOY_ATTEMPT_0ba96e03_A_RESTART
+
+FULL_N2_SEGMENT_13_START = 2026-09-07T22:46:13Z
+FULL_N2_SEGMENT_13_END = 2026-09-07T22:47:31Z
+FULL_N2_SEGMENT_13_SECONDS = 78
+FULL_N2_SEGMENT_13_BREAK_REASON = PRODUCTION_DEPLOY_0ba96e03_A_RESTART
+
+FULL_N2_SEGMENT_14_START = 2026-09-07T22:47:37Z
+FULL_N2_SEGMENT_14_END = 2026-09-08T02:19:47Z
+FULL_N2_SEGMENT_14_SECONDS = 12730
+FULL_N2_SEGMENT_14_BREAK_REASON = AUDIT_END_IN_PROGRESS
+
+LONGEST_FULL_N2_SEGMENT_START = 2026-09-07T05:01:47Z
+LONGEST_FULL_N2_SEGMENT_END = 2026-09-07T18:34:25Z
+LONGEST_FULL_N2_SEGMENT_SECONDS = 48758
+QUALIFYING_24H_FULL_N2_SEGMENT = NO
+
+CURRENT_FULL_N2_SEGMENT_START = 2026-09-07T22:47:37Z
+CURRENT_FULL_N2_SEGMENT_SECONDS = 12730
+OQ28_EARLIEST_24H_CHECKPOINT_UTC = 2026-09-08T22:47:37Z
+OQ28_24H_CHECKPOINT_REACHED = NO
+
+REPLICA_COUNT = 2
+REPLICA_A_STATUS = online PORT=3001 SHA=0ba96e03
+REPLICA_B_STATUS = online PORT=3002 SHA=0ba96e03
+REPLICA_SHA_MATCH = YES
+NGINX_DUAL_UPSTREAM = YES
+DIRECT_HEALTH_A = 200
+DIRECT_HEALTH_B = 200
+EXTERNAL_HEALTH = 200
+SCHEDULER_LEADER_COUNT = 1
+MAX_PROVEN_LEADER_COUNT = 1
+SPLIT_BRAIN_SIGNAL = NO
+PERSISTENT_ZERO_LEADER_SIGNAL = NO
+REDIS_HEALTH = PONG
+
+OQ_28_STATUS = PARTIAL
+N2_PRODUCTION_CERTIFICATION = EARLY
+N2_CERTIFICATION_SCOPE = N2_PRODUCTION_TOPOLOGY_ONLY_NOT_N1000_NOT_PROVIDER_CEILING
+
+N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 76832
+OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS = 48758
+
+NEW_P0_COUNT = 0
+NEW_P1_COUNT = 0
+NEW_P2_COUNT = 0
+NEW_P3_COUNT = 0
+
+PRODUCTION_MUTATION_EXECUTED = NO
+PRODUCTION_DEPLOY_EXECUTED = NO
+PM2_RESTART_EXECUTED = NO
+```
+
+### Canonical FULL_N2 contract (unchanged from P1.8.3.3 / P1.8.3.8)
+
+| Requirement | Value |
+|-------------|-------|
+| `FULL_N2_REQUIRED_REPLICA_COUNT` | 2 simultaneously online |
+| `FULL_N2_REQUIRED_HEALTH` | Both replicas HTTP 200 on `/api/v1/health` |
+| `FULL_N2_REQUIRED_SHA_RELATION` | Both replicas on identical production SHA |
+| `FULL_N2_REQUIRED_NGINX_STATE` | Dual upstream `127.0.0.1:3001` + `127.0.0.1:3002` configured and effective |
+| `FULL_N2_REQUIRED_SCHEDULER_STATE` | Single-leader tracked separately; not a segment disqualifier per se |
+| `FULL_N2_REQUIRED_QUEUE_STATE` | No runaway/stalled/retry-amplification disqualifier observed |
+| `FULL_N2_OTHER_REQUIREMENTS` | Segments not summed; calendar elapsed informational only |
+
+### Boundary table (candidate window)
+
+| ID | Timestamp (UTC) | Type | Source | A state | B state | A SHA | B SHA | Breaks FULL_N2 | Reason |
+|----|-----------------|------|--------|---------|---------|-------|-------|----------------|--------|
+| — | `22:12:34` | Segment start | PM2 bootstrap | online | online | `01541c2a` | `01541c2a` | — | seg 6 begins |
+| 1 | `04:19:48` | PM2 restart A | `SynqDrive backend running on port 3001` log | restarting | online | `01541c2a` | `01541c2a` | **YES** | Cold Nest bootstrap PID 3881783; no deploy dir promotion; auth.log shows no deploy SSH at boundary |
+| 2 | `04:19:55` | PM2 restart B | bootstrap log | online | restarting→online | `01541c2a` | `01541c2a` | seg 7 begins | B PID 3882036 |
+| 3 | `05:01:40` | PM2 restart A | bootstrap log | restarting | online | `01541c2a` | `01541c2a` | **YES** | Second overnight restart; cause UNAVAILABLE |
+| 4 | `05:01:47` | Both online | bootstrap log | online | online | `01541c2a` | `01541c2a` | seg 8 begins | longest candidate segment starts |
+| 5 | `18:34:25` | Rolling deploy A | release `20260907182203` (`4bef6046`) | restarting | online | `4bef6046` | `01541c2a` | **YES** | pm2-pre-deploy `20260907183416` |
+| 6 | `19:14:27` | Rolling deploy A | release `20260907182410` | restarting | online | `4bef6046` | `4bef6046` | **YES** | pm2-pre-deploy `20260907191420` |
+| 7 | `19:47:45` | Rolling deploy A | release `20260907190357` (`ccc2324d`) | restarting | online | `ccc2324d` | `4bef6046` | **YES** | pm2-pre-deploy `20260907205417` (captured pre-promotion) |
+| 8 | `20:54:23` | Rolling deploy A | symlink → `20260907204434` pending | restarting | online | `0ba96e03` | `ccc2324d` | **YES** | last-deploy-state `CAPTURED_AT=20:54:18Z` |
+| 9 | `22:45:43`–`22:47:31` | Deploy attempts + production deploy | auth.log SSH cluster `22:45–22:47Z` | rolling | rolling | `0ba96e03` | `0ba96e03` | **YES** | Current PM2 `created_at` A `22:47:27Z` B `22:47:33Z` |
+
+**Forensic lesson confirmed:** Sep 7 `18:22–20:54Z` deploy activity restarted replicas **before** `current` symlink promotion to `20260907204434_v4994` at `20:54:18Z`. PM2 `created_at` and bootstrap logs are authoritative; symlink state alone is insufficient.
+
+### EXP-021D / `dce0ce75` check
+
+| Question | Answer | Evidence |
+|----------|--------|----------|
+| `dce0ce75` deployed to production? | **NO** | No release dir contains `dce0ce75`; production SHA `0ba96e03` (#1560) |
+| EXP-021D caused app deploy? | **NO** | Ops-script PR only; not in production release SHAs |
+| EXP-021D caused PM2 restart? | **NO** | No boundary correlates with `dce0ce75` |
+| EXP-021D caused replica health break? | **NO** | — |
+| EXP-021D caused SHA change? | **NO** | — |
+
+### Segment health audit (longest segment — seg 8, 48758s)
+
+| Check | Result |
+|-------|--------|
+| MIN_REPLICA_COUNT / MAX_REPLICA_COUNT | 2 / 2 (when both online) |
+| SHA_DIVERGENCE_SIGNAL | NO (`01541c2a` throughout) |
+| DEAD_UPSTREAM_SIGNAL | NO |
+| UNEXPECTED_PM2_RESTART_COUNT | 0 within segment (boundary restarts excluded) |
+| UNEXPECTED_PROCESS_EXIT_COUNT | 0 proven |
+| MAX_PROVEN_LEADER_COUNT | 1 |
+| SPLIT_BRAIN_SIGNAL | NO |
+| PERSISTENT_ZERO_LEADER_SIGNAL | NO |
+| REDIS_FAILURE_SIGNAL | NO |
+| MUTEX_DOUBLE_EXECUTION_SIGNAL | NO |
+| MUTEX_STALE_SIGNAL | NO |
+| MUTEX_RENEW_FAILURE_SIGNAL | NO |
+| DIMO_LIMIT_BREACH_COUNT | 0 |
+| DIMO_429_BURST_SIGNAL | NO (403 vehicle-token warnings observational) |
+| DIMO_TIMEOUT_BURST_SIGNAL | NO |
+| QUEUE_RUNAWAY_SIGNAL | NO |
+| QUEUE_STALLED_SIGNAL | NO |
+| QUEUE_RETRY_AMPLIFICATION_SIGNAL | NO |
+| QUEUE_DUPLICATE_PROCESSING_SIGNAL | NO |
+| TRIP_PROCESSING_REGRESSION | NO |
+| ROUTE_V2_REGRESSION | NO |
+| ATE_REGRESSION | NO |
+| ENERGY_REGRESSION | NO |
+
+### OQ-28 decision (P1.8.3.9)
+
+`LONGEST_FULL_N2_SEGMENT_SECONDS = 48758` < `86400` → **OQ-28 remains PARTIAL**.
+
+Calendar elapsed `101233s` (~28.1h) from candidate start does **not** certify continuity. First break at `2026-09-07T04:19:48Z` ended segment 6 at only **22034s** — before the `2026-09-07T22:12:34Z` checkpoint P1.8.3.8 had projected.
+
+`N2_PRODUCTION_CERTIFICATION` stays **EARLY**.
+
+**Next continuous candidate start:** `2026-09-07T22:47:37Z` (both replicas online on `0ba96e03`).  
+**Next 24h checkpoint:** `2026-09-08T22:47:37Z`.
+
+**Scope (unchanged):** N=2 production topology verified under observed real production workload when segments are healthy — **not** N≈1000 or provider-ceiling certification.

@@ -67,7 +67,7 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.8: longest continuous FULL_N2 segment from candidate start **72054s** (<86400); Sep 5 `23:24Z` deploy boundary corrected; current segment from `2026-09-06T22:12:34Z`; next 24h checkpoint `2026-09-07T22:12:34Z` |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.9: longest continuous FULL_N2 segment from candidate `2026-09-06T22:12:34Z` is **48758s** (<86400); first break `2026-09-07T04:19:48Z` PM2 restart; Sep 7 rolling deploys broke longest segment at 18:34Z; current segment from `2026-09-07T22:47:37Z`; next 24h checkpoint `2026-09-08T22:47:37Z` |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---

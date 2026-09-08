@@ -1501,6 +1501,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-9-oq28-final-certification-recheck-2026-09-08',
+    version: '4.9.1032',
+    title: 'P1.8.3.9 — OQ-28 continuity recheck (PARTIAL)',
+    summary: [
+      'Read-only production forensics from candidate 2026-09-06T22:12:34Z through 2026-09-08T02:19:47Z.',
+      'OQ-28 PARTIAL: longest continuous FULL_N2 segment 48758s (<86400). First break 2026-09-07T04:19:48Z PM2 restart.',
+      'Sep 7 rolling deploys (4bef6046, ccc2324d, 0ba96e03) produced 9 boundaries; EXP-021D (dce0ce75) NOT deployed.',
+      'Current segment from 2026-09-07T22:47:37Z on SHA 0ba96e03. N2=EARLY. No production mutations.',
+    ],
+    reason: 'P1.8.3.9 final OQ-28 certification recheck — determine whether uninterrupted >=86400s FULL_N2 segment completed.',
+    previousBehavior: 'P1.8.3.8: OQ-28 PARTIAL; current segment from 2026-09-06T22:12:34Z; checkpoint 2026-09-07T22:12:34Z not yet evaluated.',
+    details:
+      'architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md; architecture/scaling-process/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T02:30:00.000Z',
+  },
+  {
     id: 'p1-8-3-8-2-dec016-oq18-authority-reconciliation-2026-09-07',
     version: '4.9.1031',
     title: 'P1.8.3.8.2 — DEC-016 / OQ-18 authority consistency reconciliation',

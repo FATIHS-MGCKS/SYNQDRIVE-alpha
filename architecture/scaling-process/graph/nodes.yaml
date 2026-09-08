@@ -140,7 +140,7 @@ nodes:
   - id: SCALING_ENVELOPE_N2
     type: ENVELOPE
     status: EARLY_PRODUCTION_VALIDATION
-    description: Real N=2 production proven; P1.8.3.8 all-time longest FULL_N2 76832s; OQ-28 candidate-window longest 72054s (<86400); INC-07 CLOSED; OQ-28 PARTIAL — N2 not fully certified
+    description: Real N=2 production proven; P1.8.3.9 all-time longest FULL_N2 76832s; OQ-28 candidate-window longest 48758s (<86400); INC-07 CLOSED; OQ-28 PARTIAL — N2 not fully certified
     validated_by: ["#1471", "P1.8.3 2026-09-01", "P1.8.3.3 segmented retrospective"]
     related_incidents: [INC_07]
     confidence: MEDIUM
