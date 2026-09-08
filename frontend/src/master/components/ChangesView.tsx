@@ -102,6 +102,30 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-07T06:00:00.000Z',
   },
   {
+    id: 'trip-fsm-r11-empty-core-evidence-2026-09-08',
+    version: '4.9.1091',
+    title: 'Trip FSM R11 — Empty-core evidence (provider anchor, pause, backoff)',
+    summary: [
+      'Provider operational anchor (lastProviderActivityAt / lastMeaningfulMovementAt) replaces worker lastActivityAt for empty-core silence measurement.',
+      'stopBoundaryAt + pauseDetectedAt in lastEvidenceSummary; pre-boundary stationary VLS → vls_stop_boundary_corroboration; post-boundary motor load → UNKNOWN (not false ACTIVE).',
+      'resumeAfterStopAt on EndContinuityDetector + assessActiveContinuity — stale fetch-window motion cannot resume after pause.',
+      'Fetch taxonomy (trip-fetch-outcome.ts): SUCCESS_EMPTY vs FETCH_ERROR; auth/timeout/rate-limit not coerced to empty telemetry.',
+      'Bounded empty-core backoff 30s→600s with jitter (TRIP_EMPTY_CORE_BACKOFF_*); defers without forgetting open trips; R9 wake still preempts.',
+      'Inner gate reason preserved in forensics (outer no_core_data_keep_open no longer masks vls_stop_boundary_corroboration / fetch_error).',
+      'PD-2 (UNKNOWN-only end candidacy) NOT implemented; default 45s TTL NOT activated — 120s corroboration TTL retained.',
+      'Design basis draft PR #1583 (docs only); branch cursor/trip-fsm-r11-empty-core-evidence-64c8; not deployed; KS MS 661 absent-VLS limit may remain.',
+    ],
+    reason:
+      'KS MS 661 / empty-core contract: worker-time anchor shrink, stale motion resume, stale engine load after IDLE, missing-data coercion, and unbounded retry storms.',
+    previousBehavior:
+      'Empty-core silence measured from worker lastActivityAt; stale engine load could block end; fetch errors treated like empty streams; no pause/stop-boundary forensics split.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md (TDL-EVID-R11-IMPL-001), trip-fsm-r11-empty-core-evidence.spec.ts, trip-empty-core-end-gate.ts, trip-fsm-evidence-state.ts, trip-empty-core-backoff.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T22:45:00.000Z',
+  },
+  {
     id: 'trip-fsm-r10-motor-off-pause-finalize-2026-09-08',
     version: '4.9.1090',
     title: 'Trip FSM R10 — Motor-off pause resume anchor + stale finalize guards',
