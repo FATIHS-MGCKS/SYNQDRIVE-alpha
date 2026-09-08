@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   buildPaymentSummary,
   buildRecordPaymentPayload,

@@ -8,7 +8,7 @@ import type {
 import type { LegalDocumentDto } from '../../../lib/api';
 import { SectionHeader } from '../../../components/patterns';
 import { LegalDocumentTypeVersionHistory } from './LegalDocumentTypeVersionHistory';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
   orgId: string;

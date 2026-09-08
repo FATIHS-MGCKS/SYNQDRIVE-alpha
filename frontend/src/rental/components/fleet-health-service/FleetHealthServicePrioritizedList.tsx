@@ -2,7 +2,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { EmptyState, SkeletonCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { fhsActionLabelDe } from './fleet-health-service-labels';
 import { fhs } from './fleet-health-service-shell';
 import type { FleetHealthServiceOverviewRow } from './fleet-health-service.view-model';

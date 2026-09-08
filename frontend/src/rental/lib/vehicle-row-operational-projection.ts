@@ -10,9 +10,9 @@ import type {
   VehicleHealthResponse,
 } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
-import type { TranslationKey } from '../i18n/translations/en';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
 import type { VehicleData } from '../data/vehicles';
 import type { FleetProjectionVehicle } from './fleet-vehicle-ui-projection';
 import { buildFleetVehicleUiProjection } from './fleet-vehicle-ui-projection';

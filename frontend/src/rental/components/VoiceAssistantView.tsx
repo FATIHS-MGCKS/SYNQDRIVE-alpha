@@ -35,7 +35,7 @@ import {
   type VoiceAssistantUrlState,
   type VoiceSettingsSection,
 } from './voice-assistant/voice-assistant-navigation';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface Props {
   isDarkMode: boolean;

@@ -1,5 +1,5 @@
 import type { StatusTone } from '../../../components/patterns';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { OPERATIONAL_PRIMARY_REASON_LABEL_KEYS } from '../operational-projection/ui/primary-reason-presentation';
 import {
   normalizeOperationalAvailabilityState,

@@ -17,7 +17,7 @@ import { PageHeader } from '../../../components/patterns';
 import { EmptyState, ErrorState, SkeletonMetricGrid } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { computeTariffCatalogKpis } from '../../pricing/tariff-catalog-metrics';
 import { catalogCurrency } from '../../pricing/pricingUtils';
 import { TariffGroupsTab } from './TariffGroupsTab';

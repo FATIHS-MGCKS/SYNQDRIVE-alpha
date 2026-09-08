@@ -9,7 +9,7 @@ import {
 import { Button } from '../../../../components/ui/button';
 import { StatusChip, type StatusTone } from '../../../../components/patterns';
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { fhs } from '../../fleet-health-service/fleet-health-service-shell';
 import { RuleInheritanceSteps } from '../../shared/rental-requirements-ui';
 import type { RentalRulesKpiSnapshot, RentalRulesSectionId } from './rental-rules-matrix.utils';

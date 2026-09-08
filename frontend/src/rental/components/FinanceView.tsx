@@ -1,6 +1,6 @@
 
 import { PageHeader } from '../../components/patterns/page-header';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { CustomerPaymentsTab } from './billing/CustomerPaymentsTab';
 import { InvoicesPage } from './invoices/InvoicesPage';
 import { PriceTariffsView } from './PriceTariffsView';

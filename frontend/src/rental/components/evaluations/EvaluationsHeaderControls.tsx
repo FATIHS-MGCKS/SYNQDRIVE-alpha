@@ -4,8 +4,8 @@
  * canonical E1 period model. No client date arithmetic. Station scope is presented
  * read-only here (server is the scope authority); a richer station picker is E6D.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { EvaluationsPeriodType } from '../../lib/evaluations/evaluations-request';
 
 const EVALUATIONS_PERIOD_OPTIONS: readonly EvaluationsPeriodType[] = [

@@ -5,7 +5,7 @@ import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationSummaryViewModel } from './notification-summary-view-model';
 import type { NotificationSeverity } from '../notificationQueueModel';
 import { createNotificationTranslator } from '../notificationQueueEnricher';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 
 function severityBadgeTone(severity: NotificationSeverity, resolved: boolean): string {
   if (resolved || severity === 'success') {

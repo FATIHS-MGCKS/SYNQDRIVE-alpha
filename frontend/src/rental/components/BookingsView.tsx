@@ -23,7 +23,7 @@ import { bookingStatusLabel as plannerStatusLabel, bookingStatusTone as plannerS
 // confirmed-in-the-past bookings may still transition to CRITICAL between
 // creation and the actual pickup day.
 import { useVehicleHealth, useFleetHealthMap } from '../hooks/useVehicleHealth';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { isBookingVehicleHardBlocked, resolveBookingVehiclePreflight } from '../lib/booking-vehicle-preflight';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import {

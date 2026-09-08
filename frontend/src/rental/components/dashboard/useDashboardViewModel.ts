@@ -13,7 +13,7 @@ import {
   useDashboardInsights,
   useVehicleHealthAlerts,
 } from '../../DashboardInsightsContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';

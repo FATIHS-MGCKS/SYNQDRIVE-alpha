@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { EnergyEvent } from '../../../lib/api';
 
 export const TRIPS_ENERGY_I18N_KEYS = [

@@ -25,9 +25,9 @@ import {
 import { deriveVehicleHealthAlertsFromRentalHealth } from '../../DashboardInsightsContext';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import { buildNotificationQueueModel } from '../../components/dashboard/notificationQueueEnricher';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const NOW_ISO = '2026-08-26T12:00:00.000Z';
 

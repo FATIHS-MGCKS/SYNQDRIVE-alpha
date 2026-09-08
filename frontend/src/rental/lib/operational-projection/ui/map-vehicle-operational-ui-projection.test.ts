@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { FleetMapVehicleResponse } from '../../../lib/api';
-import { en } from '../../../i18n/translations/en';
-import { de } from '../../../i18n/translations/de';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import { de } from '../../../../i18n/translations/de';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { mapFleetMapToCanonicalVehicleOperationalView } from '../map-fleet-map-to-canonical';
 import { mapVehicleOperationalUiProjection } from './map-vehicle-operational-ui-projection';
 import { mapPrimaryReasonPresentation } from './primary-reason-presentation';

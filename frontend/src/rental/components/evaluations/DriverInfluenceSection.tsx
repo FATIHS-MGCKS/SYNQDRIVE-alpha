@@ -11,8 +11,8 @@
  * Transport: 403→UNAUTHORIZED, 404→NOT_FOUND (never FEATURE_DISABLED), else→ERROR.
  */
 import { useState } from 'react';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { useEvaluationsDriverInfluence } from '../../hooks/useEvaluationsCanonicalAnalytics';
 import type { EvaluationsAnalyticsRequest } from '../../lib/evaluations/evaluations-request';
 import type {

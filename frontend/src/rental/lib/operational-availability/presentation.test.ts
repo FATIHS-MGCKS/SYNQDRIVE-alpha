@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { en } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { en } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { mapOperationalAvailabilityPresentation } from './presentation';
 import { OPERATIONAL_AVAILABILITY_STATE } from './types';
 

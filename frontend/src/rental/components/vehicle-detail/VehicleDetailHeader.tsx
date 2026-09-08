@@ -13,7 +13,7 @@ import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { buildFleetVehicleUiProjection } from '../../lib/fleet-vehicle-ui-projection';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
 import {

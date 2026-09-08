@@ -29,9 +29,9 @@ import {
   type OperationalStatusBadgeDisplay,
 } from './vehicle-operational-booking-display';
 import type { VehicleOperationalDisplayLocale } from './vehicle-operational-state';
-import type { TranslationKey } from '../i18n/translations/en';
-import { en } from '../i18n/translations/en';
-import { de } from '../i18n/translations/de';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { en } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
 import { mapOperationalAvailabilityPresentation } from './operational-availability/presentation';
 import type { FleetOperationalAvailability } from './operational-availability/types';
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';

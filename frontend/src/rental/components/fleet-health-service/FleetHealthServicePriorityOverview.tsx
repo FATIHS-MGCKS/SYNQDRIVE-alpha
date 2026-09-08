@@ -16,8 +16,8 @@ import {
 import { EmptyState, ErrorState, SkeletonCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import {
   fhsVehicleRowDetailsId,
   fhsVehicleRowTriggerId,

@@ -10,7 +10,7 @@ import {
   LEGAL_UPLOAD_STATION_SCOPE_MODES,
 } from '../../lib/legal-document-upload-wizard.constants';
 import { LEGAL_DOCUMENT_TYPE } from '../../lib/legal-document-types';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { LegalUploadFieldError } from './legal-form-a11y';
 import { legalUploadInputA11y } from './legal-form-a11y.utils';
 

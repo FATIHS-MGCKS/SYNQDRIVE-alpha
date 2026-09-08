@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { EmptyState } from '../../../components/patterns/states';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { WhatsAppBusinessSettings } from '../whatsapp/WhatsAppBusinessSettings';
 import { VoiceAgentSettings } from '../voice-assistant/VoiceAgentSettings';

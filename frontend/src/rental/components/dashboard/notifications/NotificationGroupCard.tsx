@@ -6,7 +6,7 @@ import { NotificationSummaryRow } from './NotificationSummaryRow';
 import { buildNotificationDetailViewModel } from './notification-task-bridge';
 import { buildNotificationSummaryFromGroup } from './notification-summary-view-model';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 import type { ResolveNotificationItemLifecycleHandlers } from './notification-item-lifecycle';
 
 function groupSeveritySurface(severity: ActionQueueGroupItem['severity']): string {

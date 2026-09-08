@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Layers, Pencil, Play, Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, PageHeader, StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WorkflowListItemDto } from '../../../lib/api';
 import { WorkflowConfigDrawer } from './WorkflowConfigDrawer';
 import type { WorkflowRuntimeFilter } from './workflow-runtime.types';

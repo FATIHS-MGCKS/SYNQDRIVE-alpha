@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from '../../../components/ui/button';
 import { DetailDrawer, StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { WorkflowListItemDto } from '../../../lib/api';
 import {
   formatWorkflowRelativeTime,
@@ -140,7 +140,7 @@ export function WorkflowDetailDrawer({
               {actions.map((action, index) => {
                 const typed = action as { type?: string };
                 const type = typed.type ?? '';
-                const actionKey = `workflowAutomation.actionType.${type}` as import('../../i18n/translations/en').TranslationKey;
+                const actionKey = `workflowAutomation.actionType.${type}` as import('../../../i18n/translations/en').TranslationKey;
                 const label = t(actionKey);
                 const display = label !== actionKey ? label : type.replace(/_/g, ' ');
                 const supported = item.unavailableActionCount === 0 || display !== type;

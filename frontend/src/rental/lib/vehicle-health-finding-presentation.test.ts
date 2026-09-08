@@ -7,9 +7,9 @@ import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import vhBrakeIcon from '../../assets/icons/vehicle-health/brake.svg';
 import vhMotorFilterIcon from '../../assets/icons/vehicle-health/motor-filter.svg';
 import vhCarBatteryIcon from '../../assets/icons/vehicle-health/car-battery.svg';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { dashboardTestVehicle } from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
 import { VehicleHealthFindingIcons } from '../components/health/VehicleHealthFindingIcons';
 import {

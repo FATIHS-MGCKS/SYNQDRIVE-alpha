@@ -3,7 +3,7 @@ import {
   batteryDataQualityChipTone,
   batteryDataQualityShortLabel,
 } from '../lib/battery-data-quality.utils';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface BatteryDataQualityBadgeProps {
   status: BatteryDataQualityStatus | null | undefined;

@@ -4,9 +4,9 @@
  * Consumers must not independently translate raw business / availability / readiness states.
  */
 import type { StatusTone } from '../../components/patterns';
-import type { TranslationKey } from '../i18n/translations/en';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
 import type { BusinessOperationalState } from './operational-projection/types';
 import { OPERATIONAL_AVAILABILITY_STATE } from './operational-availability/types';
 import { HEALTH_EVALUABILITY_STATE } from './fleet-health-evaluation/types';

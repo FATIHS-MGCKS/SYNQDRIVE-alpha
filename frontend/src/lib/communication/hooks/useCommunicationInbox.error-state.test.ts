@@ -7,7 +7,7 @@ import { renderHook, waitForHook } from '../../../test/renderHook';
 import { useCommunicationInbox } from './useCommunicationInbox';
 import { CommunicationInboxList } from '../../../rental/components/communication-center/CommunicationInboxList';
 import { DEFAULT_COMMUNICATION_INBOX_FILTERS } from '../../../rental/components/communication-center/communication-inbox-state';
-import { LanguageProvider } from '../../../rental/i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import type {
   CommunicationConversationListItem,
   CommunicationConversationListResponse,

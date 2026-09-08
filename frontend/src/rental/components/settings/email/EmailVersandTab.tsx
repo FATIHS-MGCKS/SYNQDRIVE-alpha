@@ -17,7 +17,7 @@ import {
   type UpdateOrgEmailSettingsPayload,
 } from '../../../../lib/api';
 import { emailDomainStatusLabel, outboundEmailStatusLabel } from '../../../../lib/email-i18n';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 
 interface EmailVersandTabProps {

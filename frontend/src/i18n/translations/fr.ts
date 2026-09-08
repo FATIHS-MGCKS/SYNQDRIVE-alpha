@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapFR } from './rental-legacy-gap.fr';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -794,4 +795,5 @@ export const fr = {
   'support.you': 'Vous',
   'support.supportTeam': 'Support SYNQDRIVE',
   'support.replyPlaceholder': 'Tapez votre reponse...',
+  ...rentalLegacyGapFR,
 } satisfies PartialTranslationDictionary;

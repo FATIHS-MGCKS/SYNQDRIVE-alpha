@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type LegalDocumentDto } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   EMPTY_VERSION_HISTORY_FILTERS,
   type LegalDocumentVersionHistoryFilters,

@@ -1,6 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TripMapQualityFlags } from './trips-map.types';
 import {
   continuityStatusLabel,

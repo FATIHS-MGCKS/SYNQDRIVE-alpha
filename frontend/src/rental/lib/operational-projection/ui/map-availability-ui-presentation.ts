@@ -63,7 +63,7 @@ function mapAttentionSlice(
 ): UiPresentationSlice<EnumFieldPresentation<ConnectivityAttentionState>> {
   if (field.presence !== 'present' || field.value === undefined) return absentSlice();
   const state = field.value;
-  const key = `fleetConnectivity.attention.${state}` as import('../../../i18n/translations/en').TranslationKey;
+  const key = `fleetConnectivity.attention.${state}` as import('../../../../i18n/translations/en').TranslationKey;
   const translated = t(key);
   return presentSlice({
     state,

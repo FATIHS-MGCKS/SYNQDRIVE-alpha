@@ -12,8 +12,8 @@ import {
   sortFleetContexts,
   type ResolveFleetCommandRowSeverityOptions,
 } from '../../lib/fleet-operator-panel';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { FleetOperatorRow } from './FleetOperatorRow';
 import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
 

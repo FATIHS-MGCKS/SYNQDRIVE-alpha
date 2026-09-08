@@ -1,5 +1,5 @@
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { RentalRuleSource } from './rental-rules.types';
 import { formatRuleValue, labelRuleField, labelRuleSource } from './rental-rules.utils';
 import type { RentalRuleFieldKey, RentalRuleFieldScope } from './rental-rule-field-state.util';

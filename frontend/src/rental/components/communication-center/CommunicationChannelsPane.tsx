@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { EmptyState } from '../../../components/patterns/states';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { useAppTheme } from '../../../context/AppThemeContext';
 import { WhatsAppBusinessSettings } from '../whatsapp/WhatsAppBusinessSettings';

@@ -1,5 +1,5 @@
 import type { IamMfaState, IamRiskClassification } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { MFA_STATE_LABEL, RISK_LABEL } from './iam-team.utils';
 
 const MFA_TONE: Record<IamMfaState, string> = {

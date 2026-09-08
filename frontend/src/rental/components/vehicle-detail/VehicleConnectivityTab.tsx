@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ErrorState } from '../../../components/patterns';
 import { api, type FleetConnectivityDetail } from '../../../lib/api';
 import { FleetConnectivityDetailSections } from '../fleet-connectivity/FleetConnectivityDetailSections';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface VehicleConnectivityTabProps {
   orgId: string;

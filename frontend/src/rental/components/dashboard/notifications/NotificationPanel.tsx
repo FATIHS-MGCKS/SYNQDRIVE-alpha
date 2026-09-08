@@ -12,7 +12,7 @@ import { useRentalEntityNavigation } from '../../../context/RentalEntityNavigati
 import { toast } from 'sonner';
 import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
 import { ensureNotificationPanelQueueItems } from '../notificationQueueEnricher';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 import { ServiceTaskCreateModal } from '../../service-center/ServiceTaskCreateModal';
 import type { HealthTaskPrefill } from '../../../lib/health-task-bridge.utils';

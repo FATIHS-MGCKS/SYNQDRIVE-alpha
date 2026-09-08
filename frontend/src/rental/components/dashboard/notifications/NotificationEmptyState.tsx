@@ -1,7 +1,7 @@
 import { Icon } from '../../ui/Icon';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { NotificationEmptyVariant } from './notificationPanelTypes';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 
 const EMPTY_CONFIG: Record<
   NotificationEmptyVariant,

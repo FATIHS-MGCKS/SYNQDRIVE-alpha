@@ -8,7 +8,7 @@ import type {
   PhysicalDeviceState,
   ProviderLinkState,
 } from '../../../../lib/api';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { FleetHealthConditionState, HealthEvaluabilityState } from '../../fleet-health-evaluation/types';
 import type { OperationalAvailabilityState } from '../../operational-availability/types';
 import type { PipelineAvailability } from '../field-semantics';

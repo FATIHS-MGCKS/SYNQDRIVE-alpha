@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import { legalDocumentsEn } from '../i18n/translations/legal-documents.en';
-import type { LegalDocumentsTranslationKey } from '../i18n/translations/legal-documents.en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import { legalDocumentsEn } from '../../i18n/translations/legal-documents.en';
+import type { LegalDocumentsTranslationKey } from '../../i18n/translations/legal-documents.en';
+import type { TranslationKey } from '../../i18n/translations/en';
 
 const LEGAL_DOCUMENTS_KEYS = Object.keys(legalDocumentsEn) as LegalDocumentsTranslationKey[];
 

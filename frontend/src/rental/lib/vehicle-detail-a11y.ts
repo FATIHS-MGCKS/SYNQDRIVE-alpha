@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import type { VehicleDetailTab } from './vehicle-overview.types';
 import { VEHICLE_DETAIL_TAB_KEYS } from './vehicle-overview-navigation';
 

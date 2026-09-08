@@ -8,7 +8,7 @@ import { api, type GeneratedDocumentDto } from '../../lib/api';
 import { dedupeDocumentsByType } from '../../lib/document-list.utils';
 import { isEmailSendableDocument } from '../../lib/email-sendable';
 import { emailDocTypeLabel } from '../../lib/email-i18n';
-import { useLanguage } from '../../rental/i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export interface SendDocumentsEmailModalProps {
   open: boolean;

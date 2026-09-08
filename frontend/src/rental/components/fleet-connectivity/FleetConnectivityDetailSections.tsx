@@ -13,7 +13,7 @@ import type {
   ProviderLinkState,
 } from '../../../lib/api';
 import { formatOdometerKmFloor } from '../../../lib/formatVehicleDisplay';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { OverallStateChip } from './fleet-connectivity.badges';
 import {
   attentionTone,

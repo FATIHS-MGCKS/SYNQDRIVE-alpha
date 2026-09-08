@@ -11,9 +11,9 @@ import {
   overallStateLabel,
   overallStateTone,
 } from '../components/fleet-connectivity/fleet-connectivity.presentation';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import {
   buildFleetVehicleUiProjection,
   type FleetProjectionVehicle,

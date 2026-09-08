@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react';
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
 import type { CommunicationClientErrorCode } from '../../../lib/communication/communication-client';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationConversationListItem } from '../../../lib/communication/types';
 import { CommunicationConversationRow } from './CommunicationConversationRow';
 import { CommunicationInboxSkeleton } from './skeletons/CommunicationInboxSkeleton';

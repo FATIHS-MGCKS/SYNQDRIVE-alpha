@@ -1,5 +1,5 @@
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { DASHBOARD_LAYOUT } from './dashboardShell';
 import {
   FinanceKpiCard,

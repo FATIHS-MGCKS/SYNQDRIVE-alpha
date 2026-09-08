@@ -4,8 +4,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
 import {
   buildInvoiceProvenance,

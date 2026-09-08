@@ -1,5 +1,5 @@
 import type { ConnectivityReasonCode } from '../../../../lib/api';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { reasonCodeHint } from '../../../components/fleet-connectivity/fleet-connectivity.presentation';
 import type { VehicleOperationalAudience } from './types';
 

@@ -3,7 +3,7 @@ import { Mail, CheckCircle2, XCircle } from 'lucide-react';
 
 import type { PublicDocumentFollowUpSuggestion } from '../../lib/document-extraction.types';
 import { isContactPrepareSuggestionType } from '../../lib/document-follow-up-contact';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { DocumentFollowUpContactPrepareModal } from './DocumentFollowUpContactPrepareModal';
 
 export interface DocumentFollowUpSuggestionsPanelProps {

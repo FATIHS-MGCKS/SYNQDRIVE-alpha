@@ -14,8 +14,8 @@ import {
   parseOpeningHours,
 } from '../../lib/stationUtils';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const RADIUS_MIN = 25;
 const RADIUS_MAX = 5000;

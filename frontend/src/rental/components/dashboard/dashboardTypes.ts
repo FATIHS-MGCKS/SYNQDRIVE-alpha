@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
-import type { TranslationKey } from '../../i18n/translations/en';
-import type { Locale } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
+import type { Locale } from '../../../i18n/LanguageContext';
 import type { Station } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';

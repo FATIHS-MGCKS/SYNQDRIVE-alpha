@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
 import type { VehicleData } from '../../data/vehicles';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   deriveOverviewMapPosition,
   type OverviewMapPositionMode,

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { BatteryHvSummaryCard } from './BatteryHvSummaryCard';
 import { buildBatteryHvSummaryVm } from '../../lib/battery-hv-view-model';
 import { evHvLegacyUnverified, evHvMissingSoh, evHvProviderSoh } from '../../lib/battery-test-fixtures';

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { cs } from '../../i18n/translations/cs';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
-import { es } from '../../i18n/translations/es';
-import { fr } from '../../i18n/translations/fr';
-import { it as itLocale } from '../../i18n/translations/it';
-import { nl } from '../../i18n/translations/nl';
-import { pl } from '../../i18n/translations/pl';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { cs } from '../../../i18n/translations/cs';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
+import { es } from '../../../i18n/translations/es';
+import { fr } from '../../../i18n/translations/fr';
+import { it as itLocale } from '../../../i18n/translations/it';
+import { nl } from '../../../i18n/translations/nl';
+import { pl } from '../../../i18n/translations/pl';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 const REQUIRED_KEYS: TranslationKey[] = [
   'fleet.healthEvaluation.condition.good',

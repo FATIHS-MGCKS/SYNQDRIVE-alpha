@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export function CommunicationAiSuggestionButton({
   disabled,

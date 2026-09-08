@@ -18,7 +18,7 @@ import {
   canonicalConnectivityRuntime,
   dashboardTestVehicle,
 } from '../components/dashboard/runtime/dashboard-canonical-test-fixtures';
-import { en as enTranslations } from '../i18n/translations/en';
+import { en as enTranslations } from '../../i18n/translations/en';
 
 const tireFinding: ActiveHealthFinding = {
   type: ACTIVE_HEALTH_FINDING_TYPE.TIRE,
