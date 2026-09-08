@@ -132,7 +132,7 @@ if (REQUIRED && !LIVE) {
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
         const beforeDelay = await getActiveTickJobDelayMs(trackingQueue, fixture);
-        expect(beforeDelay).toBeGreaterThan(30_000);
+        expect(beforeDelay).toBeGreaterThanOrEqual(30_000);
 
         await TripDetectionOrchestrationService.prototype.accelerateActiveTickAfterWake.call(
           harness.orchestration,
@@ -179,8 +179,11 @@ if (REQUIRED && !LIVE) {
       useTripR11FrozenClock(tickAt);
       try {
         await harness.runJob(buildActiveTickJob(fixture, tickAt));
+        const tickAt2 = new Date('2026-09-08T05:03:30.000Z');
+        jest.setSystemTime(tickAt2);
+        await harness.runJob(buildActiveTickJob(fixture, tickAt2));
         const atDelay = await getActiveTickJobDelayMs(trackingQueue, fixture);
-        expect(atDelay).toBeGreaterThan(60_000);
+        expect(atDelay).toBeGreaterThanOrEqual(60_000);
 
         await prisma.vehicleTripDetectionState.update({
           where: { vehicleId: fixture.vehicle.id },

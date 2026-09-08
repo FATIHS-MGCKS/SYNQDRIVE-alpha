@@ -116,7 +116,7 @@ if (REQUIRED) {
         expect(pecJob).not.toBeNull();
 
         const endCycleAt = new Date('2026-09-08T05:04:30.000Z');
-        jest.setSystemTime(endCycleAt);
+        useTripR11FrozenClock(endCycleAt);
         const steps = await drainTripTrackingQueue({
           queue: trackingQueue,
           runJob: harness.runJob,

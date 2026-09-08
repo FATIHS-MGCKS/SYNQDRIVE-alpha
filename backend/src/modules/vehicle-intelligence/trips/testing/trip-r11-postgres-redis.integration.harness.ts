@@ -464,12 +464,25 @@ export async function drainTripTrackingQueue(params: {
 }): Promise<number> {
   let steps = 0;
   const maxSteps = params.maxSteps ?? 20;
+
+  const jobPhasePriority = (jobId: string | undefined): number => {
+    if (!jobId) return 99;
+    if (jobId.includes('-pec-')) return 1;
+    if (jobId.includes('-ev-')) return 2;
+    if (jobId.includes('-fin-')) return 3;
+    if (jobId.includes('-at-')) return 4;
+    return 50;
+  };
+
   while (steps < maxSteps) {
     const jobs = await params.queue.getJobs(['waiting', 'delayed', 'prioritized'], 0, 20);
     if (jobs.length === 0) break;
-    const job = jobs.sort(
-      (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
-    )[0]!;
+    const job = jobs.sort((a, b) => {
+      const phaseDelta =
+        jobPhasePriority(a.id) - jobPhasePriority(b.id);
+      if (phaseDelta !== 0) return phaseDelta;
+      return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+    })[0]!;
     const state = await job.getState();
     if (state === 'delayed') {
       await job.promote();
