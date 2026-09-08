@@ -7,7 +7,7 @@
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
 | **Production baseline (current)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994` (R10 deploy 2026-09-08) |
 | **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
-| **Last verified Production evidence** | `2026-09-08T20:53:16Z` (KS MS 661 natural-drive addendum TDL-EV-KS-MS-661-001; R10 deploy TDL-EV-R10-PROD-DEPLOY-001) |
+| **Last verified Production evidence** | `2026-09-08T20:53:16Z` (KS MS 661 natural-drive addendum TDL-EVID-KS-MS-661-001; R10 deploy TDL-EV-R10-PROD-DEPLOY-001) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -192,9 +192,10 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 ## Explicit non-claims
 
 - Production validation of R1–R8 (separate from repo/test evidence)
-- Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…`; **natural start wake observed** on KS MS 661 drive (TDL-EV-KS-MS-661-001); efficiency vs polling-only **not proven**
+- Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…`; **natural start wake observed** on KS MS 661 drive (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **partially validated** (start wake on tokenId 187361); in-trip/end-path wake forensics and payload archive gaps remain
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…`; **NOT exercised** on KS MS 661 (FSM never reached `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
+- Empty-core end block on natural drive — **reproduced** (TDL-EVID-KS-MS-661-REPRO-001); **PROPOSED** fix TDL-DEC-R11-001 (not implemented)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)

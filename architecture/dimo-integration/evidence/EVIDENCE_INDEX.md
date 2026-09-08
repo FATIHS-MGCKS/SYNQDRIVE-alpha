@@ -21,7 +21,7 @@
 | DIM-EV-R9-BOOTSTRAP-001 | PRODUCTION_OBSERVATION | Authorized six-vehicle scoped provider bootstrap + GET audit | R9 trigger bootstrap **ROLLED_BACK**; legacy OBD/RPM unchanged; **0/6** coverage | **HISTORICAL** @ `0ba96e03…` | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) |
 | DIM-EV-R9-PERM-001 | PRODUCTION_OBSERVATION | Read-only permission root-cause audit | tokenId **190497** = `FORMER_FLEET_VEHICLE` / excluded; re-grant **rejected** | CONFIRMED_AT_PRODUCTION_RELEASE | [R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md](R9_PERMISSION_ROOT_CAUSE_AUDIT_2026-09-07.md) |
 | DIM-EV-R9-CANARY-001 | PRODUCTION_OBSERVATION | Authorized five-vehicle R9 canary + GET audit | Provider wiring **PASS** — 5/5 speed+ignition; stableIds `9eeb7158afee`, `5d611d470eab`; 190497 excluded | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | Natural wake **not validated** — [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
-| DIM-EV-KS-MS-661-R9-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_2026-09-08.md](KS_MS_661_R9_WAKE_2026-09-08.md) | **First** natural R9 trigger delivery observed (tokenId 187361); 22 webhook logs window A on replica A; 19:53:24 **not** proven ignition-off | CONFIRMED_AT_PRODUCTION_RELEASE @ `684950419…` | Cross-ref TDL-EV-KS-MS-661-001; payload archive gap |
+| DIM-EV-KS-MS-661-R9-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_2026-09-08.md](KS_MS_661_R9_WAKE_2026-09-08.md) | **First** natural R9 trigger delivery observed (tokenId 187361); 22 webhook logs window A on replica A; 19:53:24 **not** proven ignition-off | CONFIRMED_AT_PRODUCTION_RELEASE @ `684950419…` | Cross-ref TDL-EVID-KS-MS-661-001; payload archive gap |
 
 ## Cross-reference
 

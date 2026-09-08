@@ -14,6 +14,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED | TDL-EVID-R9-AUDIT-001; [DIM-DEC-R9-001](../../dimo-integration/decisions/DECISION_REGISTER.md) |
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
+| TDL-DEC-R11-001 | Empty-core positive vs corroboration evidence contract | PROPOSED | TDL-EVID-KS-MS-661-REPRO-001 |
 
 ---
 
@@ -48,6 +49,23 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | **Not deployed** — fix on branch only |
 | **NON_EFFECTS** | Does not change R9 RESTING-only primary wake; does not alter mid-gap split drift thresholds |
 | **EVIDENCE** | TDL-EVID-R10-KS-MX-001 |
+
+---
+
+## TDL-DEC-R11-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | Single 120 s freshness for VLS positive + end corroboration; `lastActivityAt=workerNow` shrinks empty-core silence; stale-positive VLS/engine-load blocks indefinitely; inner gate reason overwritten in persistence |
+| **WHY** | KS MS 661 @ `684950419…`: empty-core gate never reached `POSSIBLE_END` — operational timer + fresh VLS ACTIVE (incl. engine load) then prolonged UNKNOWN safety without recovery |
+| **CHANGE** | Split **positive activity TTL** (default 45 s) vs **end corroboration TTL** (120 s); decay stale-positive to UNKNOWN-for-end; provider-time operational anchor; optional bounded unknown → LOW-confidence `POSSIBLE_END` (flag); persist `innerGateReason` |
+| **ALTERNATIVES REJECTED** | Global inactivity reduction; remove UNKNOWN safety; fleet polling increase; per-vehicle overrides; webhook-only motor-off finalize |
+| **EXPECTED EFFECT** | Running trips protected during gaps; corroborated stops can reach `POSSIBLE_END` → existing R10 finalize; pause taggable without mandatory split |
+| **VALIDATION** | Unit matrix AC-1–AC-8 in [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md); replay TDL-EVID-KS-MS-661-REPRO-001 |
+| **PRODUCTION STATUS** | **Not implemented** |
+| **NON_EFFECTS** | Does not replace R10; does not change R9 wake cadence; does not auto-split on short pause |
+| **EVIDENCE** | TDL-EVID-KS-MS-661-REPRO-001 |
 
 ---
 

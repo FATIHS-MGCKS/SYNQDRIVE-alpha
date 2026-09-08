@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Evidence ID** | TDL-EV-KS-MS-661-001 |
+| **Evidence ID** | TDL-EVID-KS-MS-661-001 |
 | **Source type** | PRODUCTION_OBSERVATION + CODE |
 | **Historical deployed SHA** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` |
 | **First audit observedAt (UTC)** | `2026-09-08T20:41:28Z` |
@@ -30,7 +30,8 @@
 | 19:53:24 webhook = motor-off / ignition-off | **NOT PROVEN** (generic `dimo.trigger` log only; no archived payload) |
 | R10 motor-off pause / resume guards exercised | **NOT_EXERCISED** (FSM never entered `POSSIBLE_END`) |
 | `no_core_data_keep_open` blocked end candidacy | **Historically observed + code-proven path** @ `684950419…` |
-| Pre-pause `motion_detected` reused stale core motion | **Historically observed** (tracking runs + `assessActiveContinuity` code path) |
+| Pre-pause core sample reuse after motor-off | **NOT_PROVEN** — core fetch non-empty @ 19:53:51/19:54:21 but provider timestamps not archived; worker-time `lastActivityAt` reset **code-proven** |
+| “Stale VLS ACTIVE” @ reference run | **Corrected** — VLS @ 67 s is **fresh per 120 s rule**; semantically contradictory to operator motor-off **plausible**, not proven |
 | LTE_R1 caused provider gap | **Hypothesis only** (hardware label observed; root cause **UNKNOWN**) |
 | Trip auto-completed after addendum | **Contradicted @ window C** (`trip_status=ONGOING`) |
 
@@ -142,9 +143,9 @@ Code-derived namespace: `snapshot-wake.util.ts` → `synqdrive:snapshot-wake:pen
 
 | Run time (UTC) | FSM in → out | `result_summary.reason` | Forensics |
 |----------------|--------------|---------------------------|-----------|
-| 19:52:19 – 19:54:21 | ACTIVE_TRIP | `motion_detected` | Core stream present — **includes 19:53:51 and 19:54:21 after operator motor-off 19:53:22** |
-| 19:54:38 – 19:55:22 | ACTIVE_TRIP | `no_core_data_keep_open` | `operationalAnchorAt=19:54:21.115Z`; `vlsProviderObservedAt=19:53:31Z`; `vlsEvidenceState=ACTIVE` |
-| 19:55:52 | ACTIVE_TRIP | `no_core_data_keep_open` | `vlsEvidenceState=UNKNOWN` (post-resume) |
+| 19:52:19 – 19:54:21 | ACTIVE_TRIP | `motion_detected` | Core stream present (`core_points_count` 1–3) — **includes runs after operator motor-off 19:53:22**; sample provider timestamps **NOT_PROVEN** |
+| 19:54:38 – 19:55:22 | ACTIVE_TRIP | `no_core_data_keep_open` | `operationalInactiveMs=16896`; **`innerGateReason=operational_inactivity_below_threshold`** (reconstructed); VLS **ACTIVE fresh** @ obs 19:53:31 (67011 ms) |
+| 19:55:52 | ACTIVE_TRIP | `no_core_data_keep_open` | VLS **UNKNOWN** (`vlsObservationAgeMs=141466` > 120000) |
 | 19:56:23 | ACTIVE_TRIP | `stopped_stale_ignition_no_activity` | CH end assist path evaluated; **remained ACTIVE_TRIP** |
 | 19:56:38+ | ACTIVE_TRIP | `motion_detected` | Resume consistent with operator 19:55:38 |
 | 19:59:56 | ACTIVE_TRIP → **IDLE_WITHIN_TRIP** | `stopped_perf_active` | **Not** `POSSIBLE_END` |
@@ -156,11 +157,10 @@ Code-derived namespace: `snapshot-wake.util.ts` → `synqdrive:snapshot-wake:pen
 |----------|--------|
 | Same trip across pause? | **Yes** — continuity only; **not** correct pause segmentation |
 | Pause recognized as separate stop? | **No** — no `POSSIBLE_END`, no mid-gap split applied |
-| Old motion treated as current activity? | **Yes @ 19:53:51–19:54:21** — `motion_detected` on **core path** while operator reports motor off; stale in-window core points satisfy `assessActiveContinuity` (`trip-evidence.helpers.ts` §1) |
-| What triggers `no_core_data_keep_open`? | Empty core stream + `assessSuccessfulEmptyCoreEndEligibility` → `eligible=false` (`trip-empty-core-end-gate.ts`); persisted when VLS **UNKNOWN** or **ACTIVE**, or perf/route contradiction |
-| First blocking end decision | **`no_core_data_keep_open` @ 19:54:38** with **`vls_speed_above_motion_threshold` / VLS ACTIVE @ stale 19:53:31** |
-| Recovery policy expected to exit block | VLS **INACTIVE** + no perf/route motion + operational inactivity ≥ threshold → `no_core_data_corroborated_to_possible_end` |
-| Why recovery did not apply | Stale/fresh VLS **ACTIVE** samples at 19:53:31 / 19:59:22; intermittent core `motion_detected`; **never** reached empty-core eligibility |
+| Old motion treated as current activity? | **SUSPECTED / NOT_PROVEN** for specific sample reuse; **code-proven** that `motion_detected` runs while core fetch non-empty and `lastActivityAt` updates on worker time |
+| What triggers `no_core_data_keep_open`? | Empty core + `assessSuccessfulEmptyCoreEndEligibility` → `eligible=false` |
+| First blocking end decision @ 19:54:38 | **`operational_inactivity_below_threshold`** (16896 ms < 120000 ms) **and** would also block on **fresh VLS ACTIVE** (67011 ms < 120000 ms) — see [REPRO-001](KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md) |
+| Why recovery did not apply | (1) Operational timer + fresh VLS ACTIVE during pause; (2) post-IDLE **engine load > 15** keeps VLS ACTIVE; (3) later VLS **UNKNOWN** keeps open by safety design |
 | R10 guards | **NOT_EXERCISED** — require `POSSIBLE_END` cycle |
 
 ### Code path @ historical SHA (pre-R10 end-cycle guards irrelevant)
@@ -172,7 +172,8 @@ Code-derived namespace: `snapshot-wake.util.ts` → `synqdrive:snapshot-wake:pen
 
 | Layer | Confidence |
 |-------|------------|
-| Blocking code decision (`no_core_data_keep_open` + stale VLS ACTIVE) | **HIGH** (DB forensics + code) |
+| Blocking code decision (empty-core gate chain) | **HIGH** (DB forensics + reproduced helpers) |
+| Sample-level reuse after motor-off | **NOT_PROVEN** (missing raw core timestamps) |
 | Missing/stale core stream after stop | **MEDIUM** (observed empty core + frozen VLS timestamps) |
 | Provider / LTE_R1 hardware causation | **LOW / hypothesis** — LTE_R1 is observed label, not proven technical cause |
 
@@ -211,7 +212,9 @@ A later automatic recovery would **not** retroactively validate historical end-d
 |-------------|------------|
 | Four `no_core_data_keep_open` runs during pause | **Three** during `[19:53:22, 19:55:38)`; **19:55:52** is post-resume |
 | 19:53:24 webhook = ignition-off | **Not proven** — generic trigger log only |
-| R10 would have prevented open trip | **Misleading** — R10 targets false resume/finalize in **`POSSIBLE_END` cycle**; **not exercised** |
+| “Stale VLS ACTIVE” @ 19:54:38 | **Mislabelled** — VLS **fresh per 120 s rule** (67011 ms); primary inner blocker **`operational_inactivity_below_threshold`** |
+| Pre-pause sample reuse YES | **Downgraded to NOT_PROVEN** |
+| R10 would have prevented open trip | **Misleading** — R10 requires **`POSSIBLE_END`** first; **not exercised** |
 | Start wake log time = HTTP receipt | **`receivedAt` precedes first log line** — same-event identity **not proven** |
 
 ---
@@ -250,4 +253,6 @@ A later automatic recovery would **not** retroactively validate historical end-d
 
 **Authority promotion:** NONE — remains `AUDIT_IN_PROGRESS`; TDL-DEC-R10-001/002 **not** set `PRODUCTION_VALIDATED`.
 
-**NEXT_GATE (evidence-driven):** `POSSIBLE_END_PATH_REPRODUCTION_OR_VLS_STALE_SAMPLE_CAPTURE` — capture raw VLS + core fetch forensics for a post-stop `no_core_data_keep_open` cycle before any fix workstream.
+**NEXT_GATE (evidence-driven):** Implement **TDL-DEC-R11-001** (PROPOSED) — empty-core evidence contract; see [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md).
+
+**Related:** [KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md](KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md) (TDL-EVID-KS-MS-661-REPRO-001)
