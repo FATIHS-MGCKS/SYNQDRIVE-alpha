@@ -111,13 +111,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Legacy tokenless FINALIZE: requestedAt vs possibleEndEnteredAt (never silent token assignment); pre-write admission before finalizeTrip.',
       'enqueueEndCycleTripTrackingJob recycles waiting finalize slot — fixes skipped re-enqueue after cycle A (Production-plausible root cause @ 05:17:36).',
       'Postgres integration test (gated locally; required in trip-fsm-production-readiness CI): scheduleFinalize → queue → consumer → persisted COMPLETED + RESTING.',
+      'Merged to origin/main via PR #1574 (merge 2d86dfdd…); not deployed to Production; natural-drive validation still open; Trip Detection authority remains AUDIT_IN_PROGRESS (TDL-DEC-R10-001/002 PROPOSED).',
     ],
     reason:
       'KS MX 2026-09-08: false resume during motor-off gap; true end not persisted despite scheduleFinalize @ 05:17:36 (stale waiting job + missing end-boundary anchor).',
     previousBehavior:
       '90s fetch without resumeAfterAt; scheduleFinalize skipped when prior fin job waiting; no end-cycle token; incorrect movement-after-end guard would block legitimate finalize.',
     details:
-      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md, trip-fsm-motor-off-pause-r10.spec.ts, trip-finalize-end-cycle.postgres.integration.spec.ts',
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md (TDL-EVID-R10-KS-MX-001), decisions/DECISION_REGISTER.md (TDL-DEC-R10-001/002), trip-fsm-motor-off-pause-r10.spec.ts, trip-finalize-end-cycle.postgres.integration.spec.ts',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-08T05:55:00.000Z',
