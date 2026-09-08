@@ -7,6 +7,7 @@
 | **Status** | **IMPLEMENTED (CI)** — not PRODUCTION_VALIDATED |
 | **Design basis** | Draft PR #1583 documentation (`a352e9bcc`) — referenced, not merged |
 | **Branch** | `cursor/trip-fsm-r11-empty-core-evidence-64c8` |
+| **Head SHA (evidence)** | `4cf4d616e96203c0f7f21b268c46c5f056cb3606` |
 | **Runtime PR** | #1584 |
 
 ## Merge order vs #1583 (documentation)
@@ -18,6 +19,8 @@
 #1583 does not overwrite #1584 implementation artifacts; if #1583 lands first, re-read `TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md` after merge for any contract wording drift. If #1584 lands first, #1583 remains valid design basis without changing runtime behaviour.
 
 **SynqDrive Code views:** `ChangesView.tsx` / `ArchitekturView.tsx` updates are **deferred** from #1584 (i18n authority-protection gate blocks mixed `.github/workflows/*` + `frontend/src/*` product changes). Apply in a follow-up PR after merge or bundled with #1583 docs-only merge — architecture evidence here remains canonical for R11 integration proof.
+
+**CI merge gate (non-R11):** `.github/workflows/trip-fsm-production-readiness.yml` changes require trusted `i18n-governance-authority-change` label approval (`GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL`) — expected until maintainer labels the PR.
 
 ## Implemented behaviour
 
@@ -36,12 +39,12 @@
 |----------|-------------------|--------|
 | A — 60 s pause + resume | `trip-fsm-r11-empty-core-evidence.spec.ts` › A | **PASS** (unit) |
 | B — 136 s KS MS 661 (SYNTHETIC) | `trip-fsm-r11-empty-core-evidence.spec.ts` › B | **PASS** (unit) |
-| C — full completion chain | `trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts` › `C — provider anchor → … COMPLETED + RESTING` | **PASS** (CI postgres+redis-memory-server BullMQ) |
+| C — full completion chain | `trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts` › `C — provider anchor → … COMPLETED + RESTING` | **PASS** (CI run 34292251272 @ `4cf4d616e`) |
 | D/E — data loss standing/moving | `trip-fsm-r11-empty-core-evidence.spec.ts` › D/E | **PASS** (unit) |
 | F — motor at standstill | `trip-fsm-r11-empty-core-evidence.spec.ts` › F | **PASS** (unit) |
 | G — stale load at boundary | `trip-fsm-r11-empty-core-evidence.spec.ts` › G + `trip-r11-stop-evidence-semantics.spec.ts` | **PASS** |
 | H — fetch taxonomy | `trip-fsm-r11-empty-core-evidence.spec.ts` › H | **PASS** (unit) |
-| I — backoff/wake/queue | `trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts` › I-a…I-f | **PASS** (CI postgres+BullMQ) |
+| I — backoff/wake/queue | `trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts` › I-a…I-f | **PASS** (CI run 34292251272 @ `4cf4d616e`) |
 | J — R10 regression | `trip-fsm-motor-off-pause-r10`, `trip-finalize-end-cycle.postgres.integration` | **PASS** (CI) |
 | Stop evidence semantics | `trip-r11-stop-evidence-semantics.spec.ts` | **PASS** (unit) |
 | Scaling probe (synthetic) | `trip-r11-scaling-simulation.spec.ts` (5 / 1 000 / 10 000) | **PASS** (measured enqueue/backoff only — **not** production load) |
