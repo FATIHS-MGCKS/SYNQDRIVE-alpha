@@ -31,11 +31,13 @@ nodes:
     type: pipeline
     title: R9 speed/ignition wake delegation
     epistemic_status: CONFIRMED
-    summary: Webhook delegates to SnapshotWakeIntakeService; DIMO does not own trip FSM.
+    summary: Webhook delegates to SnapshotWakeIntakeService; DIMO does not own trip FSM. Deployed on Production @ 0ba96e03…
     source_paths:
       - backend/src/modules/dimo/dimo-webhook.controller.ts
     evidence:
       - DIM-EVID-R9-AUDIT-001
+      - DIM-EVID-PROD-R9-001
+      - DIM-EVID-R9-CANARY-001
 
   - id: DIM-ORCH-TRIP-WAKE-001
     type: orchestrator
@@ -50,7 +52,7 @@ nodes:
     title: Webhook controller source
     source_type: CURRENT_CODE
     epistemic_status: CONFIRMED
-    summary: DIMO webhook implementation including R9 delegation on audit branch.
+    summary: DIMO webhook implementation including R9 delegation on main.
     source_paths:
       - backend/src/modules/dimo/dimo-webhook.controller.ts
 
@@ -65,19 +67,38 @@ nodes:
 
   - id: DIM-EVID-PROD-005
     type: evidence
-    title: R9 absent from Production build
+    title: R9 absent from pre-R9 Production build
     source_type: PRODUCTION_OBSERVATION
-    epistemic_status: CONFIRMED
-    summary: SnapshotWakeIntakeService not in deployed webhook controller JS.
+    epistemic_status: HISTORICAL
+    summary: SnapshotWakeIntakeService not in deployed webhook controller @ 01541c2ab… — superseded.
     source_paths:
       - architecture/dimo-integration/evidence/PRODUCTION_BASELINE.md
+
+  - id: DIM-EVID-PROD-R9-001
+    type: evidence
+    title: R9 runtime deployed on Production
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: SnapshotWakeIntakeService present in deployed webhook controller @ 0ba96e03…
+    source_paths:
+      - architecture/dimo-integration/evidence/PRODUCTION_BASELINE.md
+      - architecture/dimo-integration/evidence/EVIDENCE_INDEX.md
+
+  - id: DIM-EVID-R9-CANARY-001
+    type: evidence
+    title: Five-vehicle R9 provider canary PASS
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: 5/5 speed+ignition subscriptions; stableIds 9eeb7158afee, 5d611d470eab; 190497 excluded; natural wake not observed.
+    source_paths:
+      - architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md
 
   - id: DIM-DEC-R9-001
     type: decision
     title: Provider webhook to Trip wake delegation
     decision_status: VALIDATED
     epistemic_status: CONFIRMED
-    summary: DIM-R9-001 cross-module boundary.
+    summary: DIM-R9-001 cross-module boundary; runtime deployed; provider wiring validated.
     source_paths:
       - architecture/dimo-integration/decisions/DECISION_REGISTER.md
     evidence:
@@ -95,7 +116,7 @@ nodes:
     type: gap
     title: Provider trigger subscription inventory
     epistemic_status: UNKNOWN
-    summary: Not verified read-only.
+    summary: R9 active cohort 5/5 verified via GET audit; broader fleet inventory remains partial.
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
@@ -123,6 +144,14 @@ nodes:
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: DIM-GAP-006
+    type: gap
+    title: Natural R9 webhook wake end-to-end delivery
+    epistemic_status: UNKNOWN
+    summary: Provider wiring validated; no observed Production drive/ignition wake event.
+    source_paths:
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
   - id: DIM-CX-001
     type: contradiction
     title: DI boundary vs DIMO authority bootstrap delay
@@ -133,9 +162,9 @@ nodes:
 
   - id: DIM-HYP-001
     type: hypothesis
-    title: Production receives speed/ignition webhooks
+    title: Production receives speed/ignition webhooks for active R9 cohort
     epistemic_status: INFERRED
-    summary: Webhook deployed; subscriptions UNKNOWN.
+    summary: Provider wiring 5/5 validated; natural delivery not yet observed.
     source_paths:
       - architecture/dimo-integration/research/OPEN_HYPOTHESES.md
 

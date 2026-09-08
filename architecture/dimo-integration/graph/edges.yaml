@@ -8,9 +8,15 @@ edges:
   - from: DIM-EVID-R9-AUDIT-001
     relation: supports
     to: DIM-PIPE-WAKE-DELEGATE-001
+  - from: DIM-EVID-PROD-R9-001
+    relation: supports
+    to: DIM-PIPE-WAKE-DELEGATE-001
+  - from: DIM-EVID-R9-CANARY-001
+    relation: supports
+    to: DIM-PIPE-WAKE-DELEGATE-001
+  - from: DIM-EVID-R9-CANARY-001
+    relation: supports
+    to: DIM-API-WEBHOOK-001
   - from: DIM-EVID-CODE-WEBHOOK-001
     relation: supports
     to: DIM-API-WEBHOOK-001
-  - from: DIM-EVID-PROD-005
-    relation: supports
-    to: DIM-PIPE-WAKE-DELEGATE-001

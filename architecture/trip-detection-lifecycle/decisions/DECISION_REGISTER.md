@@ -27,8 +27,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **FAILURE SEMANTICS** | DIMO returns `wakeOutcome` from Trip intake; webhook auth failures remain DIMO-owned |
 | **NON_EFFECTS** | DIMO does not become Trip FSM authority; Trip Detection does not own DIMO provider transport |
 | **EVIDENCE** | TDL-EVID-R9-AUDIT-001; DIM-DEC-R9-001 |
-| **PRODUCTION STATUS** | NOT_ON_PRODUCTION at observed release `01541c2ab…` |
-| **OPEN GAPS** | Segment reconciliation split (TDL-CX-006 partial); provider subscription state UNKNOWN |
+| **PRODUCTION STATUS** | Runtime **deployed** @ `0ba96e03…`; provider R9 trigger wiring **validated** (5/5 active cohort — TDL-EV-R9-CANARY-001). **Natural end-to-end wake not PRODUCTION_VALIDATED.** |
+| **OPEN GAPS** | Natural R9 wake observation (DIM-GAP-006 cross-ref); segment reconciliation split (TDL-CX-006 partial); stale mirror for 190497 (DIM-GAP-005 cross-ref) |
 
 ---
 

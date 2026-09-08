@@ -302,11 +302,19 @@ nodes:
 
   - id: TDL-GAP-009
     type: gap
-    title: R8 on main and R9 on audit branch not on Production
-    epistemic_status: CONFIRMED
-    summary: origin/main includes R8; R9 is branch-only @ 1186e9d23…; observed Production release predates both R8 deploy and R9 merge.
+    title: Pre-R9 deploy drift (historical)
+    epistemic_status: HISTORICAL
+    summary: At 01541c2ab… R8/R9 were NOT_ON_PRODUCTION; resolved at current release 0ba96e03…
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md
+
+  - id: TDL-GAP-013
+    type: gap
+    title: Natural R9 webhook wake end-to-end delivery
+    epistemic_status: UNKNOWN
+    summary: R9 runtime deployed and provider wiring 5/5; no observed Production drive/ignition wake.
+    source_paths:
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
   - id: TDL-GAP-007
     type: gap
@@ -368,15 +376,15 @@ nodes:
     type: hypothesis
     title: R9 wake reduces start validation latency post-deploy
     epistemic_status: UNKNOWN
-    summary: Repo/test only; not Production-validated.
+    summary: Runtime deployed and provider wiring validated; natural wake not yet observed on Production.
     source_paths:
       - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
 
   - id: TDL-CX-001
     type: contradiction
-    title: Repo vs Production FSM version drift
-    epistemic_status: CONFIRMED
-    summary: main ahead of Production release for R8/R9.
+    title: Repo vs Production FSM version drift (historical)
+    epistemic_status: HISTORICAL
+    summary: Resolved at 0ba96e03… for R8/R9 deploy; historical drift at 01541c2ab… preserved in evidence.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
 

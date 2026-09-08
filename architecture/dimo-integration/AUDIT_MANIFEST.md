@@ -14,20 +14,22 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` (**historical** integrated baseline at R9 rebase; **does not contain R9**) |
-| **CURRENT_ORIGIN_MAIN_SHA** | `feaf1f13559ba906f28bdd8641393227a90880a3` (branch merged with current `origin/main` via non-destructive merge; R9 still branch-only until #1553 merges) |
-| **PRIOR_ORIGIN_MAIN_SHA** | `dc34c9a28d6b4fb2181ed214c81265f38bd45770` (prior integrated `main` baseline) |
-| **AUDIT_BRANCH** | `trip-fsm/r9-adaptive-polling-wake` |
-| **AUDIT_BRANCH_SHA** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — post-rebase R9 runtime/code state audited on PR #1553 branch |
+| **ORIGIN_MAIN_SHA (historical R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
+| **CURRENT_ORIGIN_MAIN_SHA** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
+| **R9_MERGE_ON_MAIN_SHA** | `4bef60463…` (PR #1553) |
+| **PRIOR_ORIGIN_MAIN_SHA** | `feaf1f13559ba906f28bdd8641393227a90880a3` (pre-canary docs merge baseline) |
+| **AUDIT_BRANCH (historical)** | `trip-fsm/r9-adaptive-polling-wake` |
+| **AUDIT_BRANCH_SHA (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge R9 audit baseline; superseded by main merge |
 | **PRE_CORRECTION_GOVERNANCE_HEAD** | `5383391c27c8265c2bff12c068a6f8d527a1102e` |
-| **PRODUCTION_AUDITED_AT** | `2026-09-07T02:55:00Z` (read-only SSH session) |
+| **PRODUCTION_AUDITED_AT** | `2026-09-07T22:35:00Z` (read-only SSH + provider GET audit) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
-| **PRODUCTION_RELEASE_SHA** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` |
-| **PRODUCTION_RELEASE_PATH** | `/opt/synqdrive/releases/20260906213654_v4994` |
-| **REPO_PRODUCTION_DRIFT (origin/main)** | Production release is an **ancestor** of `origin/main` @ `a47255148…`. R8 #1549 on `main` is **NOT_ON_PRODUCTION**. |
-| **REPO_PRODUCTION_DRIFT (R9 branch)** | R9 runtime @ `1186e9d23…` includes webhook wake wiring + snapshot-wake module — **NOT_ON_PRODUCTION** at observed release (`SnapshotWakeIntakeService` absent from deployed `dimo-webhook.controller.js`; zero `bull:snapshot.wake*` Redis keys). |
+| **PRODUCTION_RELEASE_SHA (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` |
+| **PRODUCTION_RELEASE_PATH (current)** | `/opt/synqdrive/releases/20260907204434_v4994` |
+| **PRODUCTION_RELEASE_SHA (historical pre-R9)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
+| **REPO_PRODUCTION_DRIFT (historical @ 01541c2ab…)** | R8 #1549 and R9 were **NOT_ON_PRODUCTION** at pre-R9 release — **HISTORICAL** |
+| **REPO_PRODUCTION_DRIFT (current @ 0ba96e03…)** | R9 runtime **deployed**; provider R9 trigger wiring **validated** (five-vehicle canary PASS); natural wake delivery **not yet validated** |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **VALIDATION_STATUS** | `PASS` — `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/dimo-integration/scripts/validate-graph.sh`; `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh`; `git diff --check` (final merge metadata seal, 2026-09-07) |
+| **VALIDATION_STATUS** | `PASS` — authority graph + registry validators (latest semantic cleanup pass) |
 
 ## Lifecycle phase status
 
@@ -35,15 +37,28 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
 | **1 — Repository current-state audit** | **Initial consolidated baseline** — `backend/src/modules/dimo/` inspected |
-| **2 — Production read-only audit** | **Verified** — release SHA, health, PM2, deployed build grep, Redis prefix counts |
+| **2 — Production read-only audit** | **Verified** — release SHA, health, PM2, deployed build grep, provider GET audit, Redis prefix counts |
 | **3 — Reconciliation** | **Pending** |
-| **4 — Authority construction** | **Partial** — bootstrap graph + DIM-R9-001 |
+| **4 — Authority construction** | **Partial** — bootstrap graph + DIM-DEC-R9-001 + canary evidence |
 | **5 — Promotion gate** | **Pending** — not `AUTHORITY_ACTIVE` |
 
 ## Mutations performed
 
-**None.**
+**None** in authority/documentation workstreams. Historical authorized provider mutation: five-vehicle R9 canary (documented in DIM-EV-R9-CANARY-001).
 
-## Provider subscription state
+## Provider subscription state (current)
 
-**UNKNOWN** — trigger/subscription inventory not verified read-only without provider mutation APIs or credential exposure in this session.
+**Verified read-only for active R9 cohort** @ `2026-09-07T22:35:00Z`:
+
+| Metric | Value |
+|--------|------:|
+| Active cohort | **5** (186946, 187336, 187361, 187784, 192922) |
+| subscribed_speed | **5** |
+| subscribed_ignition | **5** |
+| subscribed_both | **5** |
+| missing_both | **0** |
+| tokenId 190497 R9 subscribed | **NO** (`FORMER_FLEET_VEHICLE`) |
+
+Method: GET `/v1/webhooks` + per-asset subscription audit (see `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs`). Detail: [evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md).
+
+**Natural R9 wake delivery:** not yet observed — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION`.
