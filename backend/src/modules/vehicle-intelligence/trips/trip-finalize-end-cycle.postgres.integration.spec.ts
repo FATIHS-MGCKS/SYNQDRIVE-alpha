@@ -14,6 +14,24 @@ import {
 } from '../testing/trip-finalize-end-cycle-postgres.integration.harness';
 
 const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
+const REQUIRED = process.env.TRIP_FINALIZE_POSTGRES_REQUIRED === '1';
+
+if (REQUIRED) {
+  if (!LIVE) {
+    throw new Error(
+      'TRIP_FINALIZE_POSTGRES_REQUIRED=1 but TRIP_FINALIZE_POSTGRES_INTEGRATION is not 1',
+    );
+  }
+  const url = process.env.DATABASE_URL ?? '';
+  if (!url) {
+    throw new Error('TRIP_FINALIZE_POSTGRES_REQUIRED=1 but DATABASE_URL is unset');
+  }
+  if (!url.includes('127.0.0.1') && !url.includes('localhost')) {
+    throw new Error(
+      'TRIP_FINALIZE_POSTGRES_REQUIRED=1 but DATABASE_URL is not CI-local (127.0.0.1/localhost)',
+    );
+  }
+}
 
 (LIVE ? describe : describe.skip)(
   'Trip finalize end-cycle PostgreSQL integration (DATABASE_URL)',
@@ -24,13 +42,18 @@ const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
 
     beforeAll(async () => {
       dbOk = await probeTripFinalizeDatabase();
+      if (REQUIRED && !dbOk) {
+        throw new Error(
+          'Trip finalize PostgreSQL probe failed in required CI integration mode',
+        );
+      }
       if (!dbOk) return;
       prisma = new PrismaClient();
       RuntimeStatusRegistry.setWorkersEnabled(true);
     }, 60_000);
 
     beforeEach(async () => {
-      if (!dbOk) return;
+      expect(dbOk).toBe(true);
       fixture = await createTripFinalizePostgresFixture(prisma);
     });
 
@@ -49,7 +72,6 @@ const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
      * Substituted: BullMQ (in-memory queue), post-finalize producers, DIMO/CH/metrics.
      */
     it('A — scheduleFinalize → queue → consumer persists COMPLETED + RESTING', async () => {
-      if (!dbOk) return;
       const queue = createInMemoryTripTrackingQueue();
       const orchestration = buildTripFinalizeIntegrationOrchestration(prisma, queue);
 
@@ -70,10 +92,10 @@ const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
       expect(det?.state).toBe(TripDetectionState.RESTING);
       expect(det?.activeTripId).toBeNull();
       expect(det?.possibleEndEnteredAt).toBeNull();
+      expect(det?.possibleEndAt).toBeNull();
     });
 
     it('B — stale legacy cycle-A job cannot mutate cycle-B state', async () => {
-      if (!dbOk) return;
       const queue = createInMemoryTripTrackingQueue();
       const orchestration = buildTripFinalizeIntegrationOrchestration(prisma, queue);
 
@@ -89,12 +111,13 @@ const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(trip?.tripStatus).toBe(TripStatus.ONGOING);
+      expect(trip?.endTime).toBeNull();
       expect(det?.state).toBe(TripDetectionState.POSSIBLE_END);
       expect(det?.activeTripId).toBe(fixture.trip.id);
+      expect(det?.possibleEndEnteredAt?.toISOString()).toBe(fixture.cycleToken);
     });
 
     it('C — valid cycle-B job completes after legacy cycle-A rejected', async () => {
-      if (!dbOk) return;
       const queue = createInMemoryTripTrackingQueue();
       const orchestration = buildTripFinalizeIntegrationOrchestration(prisma, queue);
 
@@ -116,28 +139,41 @@ const LIVE = process.env.TRIP_FINALIZE_POSTGRES_INTEGRATION === '1';
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(trip?.tripStatus).toBe(TripStatus.COMPLETED);
+      expect(trip?.endTime).toEqual(fixture.endTime);
       expect(det?.state).toBe(TripDetectionState.RESTING);
+      expect(det?.activeTripId).toBeNull();
     });
 
     it('D — duplicate consumer execution does not double-complete', async () => {
-      if (!dbOk) return;
       const queue = createInMemoryTripTrackingQueue();
       const orchestration = buildTripFinalizeIntegrationOrchestration(prisma, queue);
-      const job = await scheduleFinalizeThroughQueue(orchestration, fixture)!;
+      const job = (await scheduleFinalizeThroughQueue(orchestration, fixture))!;
 
-      await consumeTripTrackingFinalizeJob(orchestration, job!);
-      await consumeTripTrackingFinalizeJob(orchestration, job!);
+      await consumeTripTrackingFinalizeJob(orchestration, job);
+      await consumeTripTrackingFinalizeJob(orchestration, job);
 
       const trips = await prisma.vehicleTrip.findMany({
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(trips).toHaveLength(1);
       expect(trips[0]?.tripStatus).toBe(TripStatus.COMPLETED);
+      expect(trips[0]?.endTime).toEqual(fixture.endTime);
+
+      const completedCount = await prisma.vehicleTrip.count({
+        where: { vehicleId: fixture.vehicle.id, tripStatus: TripStatus.COMPLETED },
+      });
+      expect(completedCount).toBe(1);
 
       const trackingRuns = await prisma.vehicleTripTrackingRun.findMany({
         where: { vehicleId: fixture.vehicle.id, runType: 'FINALIZATION_CHECK' },
       });
       expect(trackingRuns.length).toBeGreaterThanOrEqual(1);
+
+      const det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      expect(det?.state).toBe(TripDetectionState.RESTING);
+      expect(det?.activeTripId).toBeNull();
     });
   },
 );

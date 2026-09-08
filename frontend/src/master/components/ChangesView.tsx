@@ -110,7 +110,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'endCycleToken (= possibleEndEnteredAt) on END_VALIDATION/FINALIZE jobs; stale jobs abort via evaluateEndCycleJobAdmission.',
       'Legacy tokenless FINALIZE: requestedAt vs possibleEndEnteredAt (never silent token assignment); pre-write admission before finalizeTrip.',
       'enqueueEndCycleTripTrackingJob recycles waiting finalize slot — fixes skipped re-enqueue after cycle A (Production-plausible root cause @ 05:17:36).',
-      'Postgres integration test (gated): scheduleFinalize → queue → consumer → persisted COMPLETED + RESTING.',
+      'Postgres integration test (gated locally; required in trip-fsm-production-readiness CI): scheduleFinalize → queue → consumer → persisted COMPLETED + RESTING.',
     ],
     reason:
       'KS MX 2026-09-08: false resume during motor-off gap; true end not persisted despite scheduleFinalize @ 05:17:36 (stale waiting job + missing end-boundary anchor).',

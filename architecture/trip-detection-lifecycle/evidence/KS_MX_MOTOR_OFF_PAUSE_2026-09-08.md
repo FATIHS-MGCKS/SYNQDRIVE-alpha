@@ -140,13 +140,22 @@ Pre-write re-validation immediately before `TripDecisionEngine.finalizeTrip` rep
 
 ### Persisted completion integration test (gated)
 
+Local / optional:
+
 `TRIP_FINALIZE_POSTGRES_INTEGRATION=1 npm run test:trip-finalize:postgres`
+
+**CI (required on Trip FSM PRs):** `.github/workflows/trip-fsm-production-readiness.yml` job `Backend trip finalize PostgreSQL integration`
+
+- PostgreSQL `16-alpine` service on `127.0.0.1:5432`
+- `DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public`
+- Schema: `npx prisma db push --accept-data-loss --skip-generate` (ephemeral CI DB only)
+- Command: `npm run test:trip-finalize:postgres:ci` with `TRIP_FINALIZE_POSTGRES_REQUIRED=1` (fail-closed; zero skipped tests)
 
 | Real | Substituted |
 |------|-------------|
 | Prisma, `TripDecisionEngine.finalizeTrip`, orchestration `processFinalize` / `scheduleFinalize`, worker lock, FSM `transitionState` | BullMQ (in-memory queue), post-finalize producers, DIMO/CH/metrics |
 
-Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLETED` + FSM `RESTING`; stale legacy rejection; cycle-B completion after A rejected; duplicate consumer no double-complete. **Does not** prove Production Redis/BullMQ archive or natural-drive behavior.
+Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLETED` + FSM `RESTING`; stale legacy rejection; cycle-B completion after A rejected; duplicate consumer idempotent. **CI-verified on ephemeral Postgres; not deployed; not natural-drive validated.**
 
 ## Cross-module notes (out of scope)
 
@@ -160,6 +169,7 @@ Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLE
 
 ```bash
 cd backend && npm test -- --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7" --no-coverage
-TRIP_FINALIZE_POSTGRES_INTEGRATION=1 npm run test:trip-finalize:postgres  # requires DATABASE_URL
+TRIP_FINALIZE_POSTGRES_INTEGRATION=1 npm run test:trip-finalize:postgres  # optional local
+# CI: trip-fsm-production-readiness.yml → test:trip-finalize:postgres:ci
 bash architecture/scripts/validate-module-registry.sh
 ```
