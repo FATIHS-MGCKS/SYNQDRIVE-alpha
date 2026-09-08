@@ -18,7 +18,7 @@ describe('LanguageSelector', () => {
     expect(SUPPORTED_LOCALES).toHaveLength(9);
   });
 
-  it.skip('is shared by Login and Rental TopBar (INTEGRATION-2)', () => {
+  it('is shared by Login and Rental TopBar (INTEGRATION-2)', () => {
     expect(loginSource).toContain("LanguageSelector variant=\"login-menu\"");
     expect(topBarSource).toContain('LanguageSelector variant="topbar-pill"');
     expect(loginSource).not.toMatch(/useState<['"]en['"] \| ['"]de['"]>/);

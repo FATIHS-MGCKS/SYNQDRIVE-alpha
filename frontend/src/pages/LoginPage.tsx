@@ -2,43 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setAuth } from '../lib/auth';
-import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe, Building2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Building2, Zap } from 'lucide-react';
 import { SynqDriveBrandLogo } from '../components/brand/SynqDriveBrandLogo';
 import loginHeroVideo from '../assets/synqdrive-login.mp4';
-
-const loginCopy: Record<string, { en: string; de: string }> = {
-  fleetManagement: { en: 'LIVE FLEET INTELLIGENCE', de: 'LIVE FLOTTEN-INTELLIGENZ' },
-  headline: { en: 'See your fleet', de: 'Sehen Sie Ihre Flotte' },
-  headlineBr: { en: 'in real time.', de: 'in Echtzeit.' },
-  subPart1: { en: 'Live telemetry,', de: 'Live-Telemetrie,' },
-  subHighlight1: { en: 'AI analytics', de: 'KI-Analyse' },
-  subAnd: { en: 'and', de: 'und' },
-  subHighlight2: { en: 'smart automation', de: 'smarte Automatisierung' },
-  subPart2: { en: 'in one platform.', de: 'in einer Plattform.' },
-  pillFleet: { en: 'Live Tracking', de: 'Live-Tracking' },
-  pillSecure: { en: 'Secure', de: 'Sicher' },
-  pillRealtime: { en: 'Real-time', de: 'Echtzeit' },
-  trustHeadline: { en: 'Fleet operations in one workspace', de: 'Flottenbetrieb in einer Oberfläche' },
-  trustSubtitle: { en: 'Telemetry, rentals, health and tasks — connected', de: 'Telemetrie, Vermietung, Health und Tasks — verbunden' },
-  welcomeBack: { en: 'Welcome Back!', de: 'Willkommen zurück!' },
-  subtitle: { en: 'Enter your details below to sign in.', de: 'Geben Sie Ihre Daten ein, um sich anzumelden.' },
-  chooseOrgTitle: { en: 'Choose your organization', de: 'Organisation auswählen' },
-  chooseOrgSubtitle: {
-    en: 'Your account has access to multiple organizations. Select where you want to work.',
-    de: 'Ihr Konto hat Zugriff auf mehrere Organisationen. Wählen Sie Ihren Arbeitsbereich.',
-  },
-  continue: { en: 'Continue', de: 'Weiter' },
-  back: { en: 'Back', de: 'Zurück' },
-  email: { en: 'Email', de: 'E-Mail' },
-  password: { en: 'Password', de: 'Passwort' },
-  emailPlaceholder: { en: 'name@company.com', de: 'name@unternehmen.com' },
-  passwordPlaceholder: { en: '••••••••', de: '••••••••' },
-  rememberMe: { en: 'Remember me', de: 'Angemeldet bleiben' },
-  forgotPassword: { en: 'Forgot password?', de: 'Passwort vergessen?' },
-  logIn: { en: 'Log in', de: 'Anmelden' },
-  or: { en: 'or', de: 'oder' },
-  footer: { en: '© 2026 SYNQDRIVE · Multi-Tenant Fleet Management SaaS', de: '© 2026 SYNQDRIVE · Multi-Mandanten-Flottenmanagement SaaS' },
-};
+import { translateAuthError } from '../i18n/auth-error-i18n';
+import { LanguageSelector } from '../i18n/components/LanguageSelector';
+import { useLanguage } from '../i18n/LanguageContext';
 
 type OrganizationChoice = {
   organizationId: string;
@@ -50,22 +19,18 @@ type OrganizationChoice = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [locale, setLocale] = useState<'en' | 'de'>('de');
+  const { locale, t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showLangMenu, setShowLangMenu] = useState(false);
   const [organizationChoices, setOrganizationChoices] = useState<OrganizationChoice[] | null>(null);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null);
   const [mfaPendingToken, setMfaPendingToken] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaRecoveryCode, setMfaRecoveryCode] = useState('');
   const [useMfaRecovery, setUseMfaRecovery] = useState(false);
-
-  const t = (key: keyof typeof loginCopy) => loginCopy[key]?.[locale] ?? loginCopy[key]?.en ?? '';
 
   const completeLogin = (res: { token?: string; accessToken?: string; refreshToken?: string; user: any }) => {
     const token = res.accessToken ?? res.token;
@@ -82,7 +47,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     if (!email.trim() || !password.trim()) {
-      setError(locale === 'de' ? 'Bitte E-Mail und Passwort eingeben.' : 'Please enter email and password.');
+      setError(t('auth.error.credentialsRequired'));
       return;
     }
     setLoading(true);
@@ -107,7 +72,7 @@ export default function LoginPage() {
         user: res.user,
       });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(translateAuthError(locale, err));
     } finally {
       setLoading(false);
     }
@@ -115,7 +80,7 @@ export default function LoginPage() {
 
   const handleOrganizationContinue = async () => {
     if (!selectedOrganizationId) {
-      setError(locale === 'de' ? 'Bitte eine Organisation auswählen.' : 'Please select an organization.');
+      setError(t('auth.error.organizationRequired'));
       return;
     }
     setLoading(true);
@@ -135,7 +100,7 @@ export default function LoginPage() {
         user: res.user,
       });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(translateAuthError(locale, err));
     } finally {
       setLoading(false);
     }
@@ -154,7 +119,7 @@ export default function LoginPage() {
       });
       completeLogin(res);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'MFA verification failed');
+      setError(translateAuthError(locale, err));
     } finally {
       setLoading(false);
     }
@@ -181,42 +146,7 @@ export default function LoginPage() {
       />
 
       <div className="fixed top-5 right-6 z-50">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowLangMenu(!showLangMenu)}
-            className="surface-frosted flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border shadow-[var(--shadow-1)] hover:border-border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-          >
-            <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="inline-flex h-4 min-w-[22px] items-center justify-center rounded-sm bg-muted px-1 font-mono text-[9px] font-semibold tracking-[0.08em] text-muted-foreground">
-              {locale === 'de' ? 'DE' : 'EN'}
-            </span>
-            <span className="text-xs text-foreground font-medium">
-              {locale === 'de' ? 'Deutsch' : 'English'}
-            </span>
-          </button>
-          {showLangMenu && (
-            <>
-              <div className="fixed inset-0" onClick={() => setShowLangMenu(false)} aria-hidden />
-              <div className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-border bg-popover shadow-[var(--shadow-2)] overflow-hidden animate-fade-up">
-                <button
-                  type="button"
-                  onClick={() => { setLocale('en'); setShowLangMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'en' ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]' : 'text-muted-foreground hover:bg-muted'}`}
-                >
-                  <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">EN</span> English
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setLocale('de'); setShowLangMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'de' ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]' : 'text-muted-foreground hover:bg-muted'}`}
-                >
-                  <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">DE</span> Deutsch
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <LanguageSelector variant="login-menu" />
       </div>
 
       <div className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] surface-frosted border border-border shadow-[var(--shadow-2)]">
@@ -240,18 +170,20 @@ export default function LoginPage() {
                   style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
                 >
                   <Zap className="w-3 h-3 text-[color:var(--brand)]" />
-                  <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('fleetManagement')}</span>
+                  <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('login.fleetManagement')}</span>
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight leading-snug drop-shadow-md">
-                    {t('headline')}<br />{t('headlineBr')}
+                    {t('login.headline')}
+                    <br />
+                    {t('login.headlineBr')}
                   </h2>
                   <p className="text-xs text-white/80 mt-2 leading-relaxed max-w-[280px] drop-shadow">
-                    {t('subPart1')}{' '}
-                    <span className="text-white font-semibold">{t('subHighlight1')}</span> {t('subAnd')}{' '}
-                    <span className="text-white font-semibold">{t('subHighlight2')}</span>
+                    {t('login.subPart1')}{' '}
+                    <span className="text-white font-semibold">{t('login.subHighlight1')}</span> {t('login.subAnd')}{' '}
+                    <span className="text-white font-semibold">{t('login.subHighlight2')}</span>
                     <span className="text-white/50 mx-1">&mdash;</span>
-                    {t('subPart2')}
+                    {t('login.subPart2')}
                   </p>
                 </div>
               </div>
@@ -267,8 +199,8 @@ export default function LoginPage() {
               {!organizationChoices && !mfaPendingToken ? (
                 <>
                   <div className="mb-4 text-center">
-                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('welcomeBack')}</h1>
-                    <p className="text-[11px] text-muted-foreground mt-1">{t('subtitle')}</p>
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('login.welcomeBack')}</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t('login.subtitle')}</p>
                   </div>
                   <form onSubmit={handleSubmit} className="space-y-2.5">
                     {error && (
@@ -277,30 +209,28 @@ export default function LoginPage() {
                       </div>
                     )}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('email')}</label>
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('emailPlaceholder')} className={inputClass} autoComplete="email" />
+                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('login.email')}</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('login.emailPlaceholder')} className={inputClass} autoComplete="email" />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('password')}</label>
+                      <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('login.password')}</label>
                       <div className="relative">
-                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('passwordPlaceholder')} className={`${inputClass} pr-8`} autoComplete="current-password" />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('login.passwordPlaceholder')} className={`${inputClass} pr-8`} autoComplete="current-password" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted" aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}>
                           {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
                     <button type="submit" disabled={loading} className="w-full py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors duration-200 flex items-center justify-center gap-2 shadow-[var(--shadow-1)] disabled:opacity-70 mt-1 sq-press">
-                      {loading ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{t('logIn')}<ArrowRight className="w-3.5 h-3.5" /></>}
+                      {loading ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{t('login.logIn')}<ArrowRight className="w-3.5 h-3.5" /></>}
                     </button>
                   </form>
                 </>
               ) : mfaPendingToken ? (
                 <>
                   <div className="mb-4 text-center">
-                    <h1 className="text-sm font-bold tracking-tight text-foreground">2FA bestätigen</h1>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Geben Sie den Code aus Ihrer Authenticator-App ein.
-                    </p>
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('twoFactor.title')}</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t('twoFactor.subtitle')}</p>
                   </div>
                   <form onSubmit={handleMfaSubmit} className="space-y-2.5">
                     {error && (
@@ -315,7 +245,7 @@ export default function LoginPage() {
                         autoComplete="one-time-code"
                         value={mfaCode}
                         onChange={(e) => setMfaCode(e.target.value.replace(/\s+/g, ''))}
-                        placeholder="000000"
+                        placeholder={t('twoFactor.codePlaceholder')}
                         className={inputClass}
                         maxLength={6}
                       />
@@ -324,7 +254,7 @@ export default function LoginPage() {
                         type="text"
                         value={mfaRecoveryCode}
                         onChange={(e) => setMfaRecoveryCode(e.target.value)}
-                        placeholder="XXXX-XXXX"
+                        placeholder={t('twoFactor.recoveryPlaceholder')}
                         className={inputClass}
                       />
                     )}
@@ -333,7 +263,7 @@ export default function LoginPage() {
                       className="text-[10px] text-[color:var(--brand)]"
                       onClick={() => setUseMfaRecovery((v) => !v)}
                     >
-                      {useMfaRecovery ? 'Authenticator-Code verwenden' : 'Wiederherstellungscode verwenden'}
+                      {useMfaRecovery ? t('twoFactor.useAuthenticator') : t('twoFactor.useRecovery')}
                     </button>
                     <div className="flex gap-2 pt-1">
                       <button
@@ -346,14 +276,14 @@ export default function LoginPage() {
                         }}
                         className="flex-1 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
                       >
-                        {t('back')}
+                        {t('login.back')}
                       </button>
                       <button
                         type="submit"
                         disabled={loading || (!useMfaRecovery ? mfaCode.length < 6 : !mfaRecoveryCode.trim())}
                         className="flex-1 py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-70"
                       >
-                        {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('continue')}
+                        {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('login.continue')}
                       </button>
                     </div>
                   </form>
@@ -361,8 +291,8 @@ export default function LoginPage() {
               ) : (
                 <>
                   <div className="mb-4 text-center">
-                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('chooseOrgTitle')}</h1>
-                    <p className="text-[11px] text-muted-foreground mt-1">{t('chooseOrgSubtitle')}</p>
+                    <h1 className="text-sm font-bold tracking-tight text-foreground">{t('login.chooseOrg.title')}</h1>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t('login.chooseOrg.subtitle')}</p>
                   </div>
                   {error && (
                     <div className="mb-3 px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
@@ -394,10 +324,10 @@ export default function LoginPage() {
                   </div>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => { setOrganizationChoices(null); setError(''); }} className="flex-1 py-2 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-                      {t('back')}
+                      {t('login.back')}
                     </button>
                     <button type="button" onClick={handleOrganizationContinue} disabled={loading || !selectedOrganizationId} className="flex-1 py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors disabled:opacity-70">
-                      {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('continue')}
+                      {loading ? <div className="mx-auto w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('login.continue')}
                     </button>
                   </div>
                 </>
@@ -408,7 +338,7 @@ export default function LoginPage() {
       </div>
 
       <div className="fixed bottom-4 text-center w-full z-10">
-        <p className="text-[10px] text-muted-foreground">{t('footer')}</p>
+        <p className="text-[10px] text-muted-foreground">{t('login.footer')}</p>
       </div>
     </div>
   );
