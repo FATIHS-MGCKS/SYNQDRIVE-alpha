@@ -69,7 +69,6 @@ import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { recordVehicleDetailClientSignal } from './lib/vehicle-detail-observability';
-import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { pushDocumentIntakeEntry, type DocumentIntakeEntryState } from './lib/document-intake-entry';
 import { AIAssistantView } from './components/AIAssistantView';
@@ -1422,19 +1421,17 @@ function RentalAppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <RentalProvider>
-        <FleetProvider>
-          <DashboardInsightsProvider>
-            <AppErrorBoundary
-              title="Rental view crashed"
-              description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
-            >
-              <RentalAppContent />
-            </AppErrorBoundary>
-          </DashboardInsightsProvider>
-        </FleetProvider>
-      </RentalProvider>
-    </LanguageProvider>
+    <RentalProvider>
+      <FleetProvider>
+        <DashboardInsightsProvider>
+          <AppErrorBoundary
+            title="Rental view crashed"
+            description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
+          >
+            <RentalAppContent />
+          </AppErrorBoundary>
+        </DashboardInsightsProvider>
+      </FleetProvider>
+    </RentalProvider>
   );
 }

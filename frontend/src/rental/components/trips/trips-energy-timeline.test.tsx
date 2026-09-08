@@ -27,6 +27,7 @@ const locales: Record<Locale, Record<string, string>> = {
   it: itLocale,
   pl,
   cs,
+  tr: {},
 };
 
 function baseEvent(overrides: Partial<EnergyEvent> = {}): EnergyEvent {

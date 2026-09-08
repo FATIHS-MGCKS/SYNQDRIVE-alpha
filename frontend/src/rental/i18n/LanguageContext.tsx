@@ -1,95 +1,95 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { en, type TranslationKey } from './translations/en';
-import { de } from './translations/de';
-import { fr } from './translations/fr';
-import { nl } from './translations/nl';
-import { es } from './translations/es';
-import { it } from './translations/it';
-import { pl } from './translations/pl';
+/**
+ * Rental compatibility bridge for the canonical SynqDrive platform i18n runtime.
+ *
+ * Existing Rental imports may continue to target this module during Integration 2+.
+ * Locale state and persistence delegate to `frontend/src/i18n/LanguageContext.tsx`.
+ * Translation lookup prefers the canonical dictionary and falls back to legacy
+ * Rental dictionaries for keys not yet migrated.
+ */
+import { useCallback } from 'react';
+import {
+  LanguageProvider,
+  translateKey as translateCanonicalKey,
+  useLanguage as useCanonicalLanguage,
+  type Locale as CanonicalLocale,
+  type SupportedLocale,
+} from '../../i18n/LanguageContext';
 import { cs } from './translations/cs';
+import { de } from './translations/de';
+import { en, type TranslationKey } from './translations/en';
+import { es } from './translations/es';
+import { fr } from './translations/fr';
+import { it } from './translations/it';
+import { nl } from './translations/nl';
+import { pl } from './translations/pl';
 
-export type Locale = 'en' | 'de' | 'fr' | 'nl' | 'es' | 'it' | 'pl' | 'cs';
+export type Locale = CanonicalLocale;
 
-const translations: Record<Locale, Record<string, string>> = { en, de, fr, nl, es, it, pl, cs };
-
-const LOCALE_STORAGE_KEY = 'synqdrive.locale';
-
-function isLocale(value: string | null | undefined): value is Locale {
-  return Boolean(value && value in translations);
-}
-
-function readInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'en';
-
-  try {
-    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    if (isLocale(stored)) return stored;
-  } catch {
-    // ignore storage failures
-  }
-
-  const browserLocale = navigator.language?.toLowerCase() ?? '';
-  if (browserLocale.startsWith('de')) return 'de';
-
-  return 'en';
-}
-
-interface LanguageContextValue {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
-}
-
-const defaultT = (key: TranslationKey, vars?: Record<string, string | number>): string => {
-  let text = translations.en[key] ?? key;
-  if (vars) {
-    Object.entries(vars).forEach(([k, v]) => {
-      text = text.replace(`{${k}}`, String(v));
-    });
-  }
-  return text;
+const rentalDictionaries: Partial<Record<SupportedLocale, Record<string, string>>> = {
+  en,
+  de,
+  fr,
+  nl,
+  es,
+  it,
+  pl,
+  cs,
 };
 
-const defaultValue: LanguageContextValue = {
-  locale: 'en',
-  setLocale: () => {},
-  t: defaultT,
-};
+function interpolate(text: string, vars?: Record<string, string | number>): string {
+  if (!vars) return text;
+  let result = text;
+  for (const [name, value] of Object.entries(vars)) {
+    result = result.replaceAll(`{${name}}`, String(value));
+  }
+  return result;
+}
 
-const LanguageContext = createContext<LanguageContextValue>(defaultValue);
-
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(readInitialLocale);
-
-  const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
-    try {
-      localStorage.setItem(LOCALE_STORAGE_KEY, next);
-    } catch {
-      // ignore storage failures
-    }
-  }, []);
-
-  const t = useCallback(
-    (key: TranslationKey, vars?: Record<string, string | number>): string => {
-      let text = translations[locale]?.[key] ?? translations.en[key] ?? key;
-      if (vars) {
-        Object.entries(vars).forEach(([k, v]) => {
-          text = text.replace(`{${k}}`, String(v));
-        });
-      }
-      return text;
-    },
-    [locale],
-  );
-
-  return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+function translateRentalFallback(
+  locale: SupportedLocale,
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+): string {
+  const dictionary = rentalDictionaries[locale] ?? rentalDictionaries.en ?? en;
+  const text = dictionary[key] ?? rentalDictionaries.en?.[key] ?? en[key] ?? key;
+  return interpolate(text, vars);
 }
 
 export function useLanguage() {
-  return useContext(LanguageContext);
+  const canonical = useCanonicalLanguage();
+
+  const t = useCallback(
+    (key: TranslationKey, vars?: Record<string, string | number>) => {
+      const canonicalResult = translateCanonicalKey(
+        canonical.locale,
+        key as Parameters<typeof translateCanonicalKey>[1],
+        vars,
+      );
+      if (canonicalResult.source !== 'missing-key') {
+        return canonicalResult.text;
+      }
+      return translateRentalFallback(canonical.locale, key, vars);
+    },
+    [canonical.locale],
+  );
+
+  return {
+    locale: canonical.locale,
+    setLocale: canonical.setLocale,
+    t,
+  };
 }
+
+export {
+  LanguageProvider,
+  translateKey,
+  syncDocumentLanguage,
+  usesLocaleDictionary,
+  type TranslationSource,
+  type TranslateResult,
+  type LocaleMetadata,
+} from '../../i18n/LanguageContext';
+
+export { LOCALE_STORAGE_KEY } from '../../i18n/locales';
+
+export type { TranslationKey };
