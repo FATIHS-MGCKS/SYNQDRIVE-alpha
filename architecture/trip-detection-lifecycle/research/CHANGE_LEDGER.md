@@ -25,6 +25,7 @@ Append-only record for this authority directory.
 | 2026-09-08 | R10 graph: add TDL-DEC-R10-001/002, TDL-EVID-R10-KS-MX-001, TDL-TEST-R10-001 nodes + edges; align evidence IDs to TDL-EVID-* schema | Trip FSM R10 PR #1574 graph correction | [graph/nodes.yaml](../graph/nodes.yaml), [graph/edges.yaml](../graph/edges.yaml) |
 | 2026-09-08 | R10 production deploy @ `684950419…` release `20260908172927_v4994`; previous `7b9a7857…`; rolling restart both replicas; mixed-version window ~18s documented | R10 production deploy (authorized) | [R10_PRODUCTION_DEPLOY_2026-09-08.md](../evidence/R10_PRODUCTION_DEPLOY_2026-09-08.md) |
 | 2026-09-08 | TDL-DEC-R11-001 runtime implementation — provider anchor, stop boundary, pause, inner forensics, backoff; PD-2 off; design basis PR #1583 | Trip FSM R11 implementation | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](../evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) |
+| 2026-09-08 | R11 integration evidence — Scenario C postgres+BullMQ completion chain; Scenario I queue/wake; stop semantics; synthetic scaling probe | Trip FSM R11 integration tests | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](../evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

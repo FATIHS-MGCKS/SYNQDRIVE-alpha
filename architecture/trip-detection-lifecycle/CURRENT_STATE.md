@@ -193,7 +193,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Production validation of R1–R8 (separate from repo/test evidence)
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `0ba96e03…`; **provider speed/ignition trigger wiring validated** for five-vehicle active cohort (5/5; see TDL-EV-R9-CANARY-001)
 - Natural R9 wake delivery — **NOT validated** until actual drive/ignition provider events observed (`NATURAL_R9_WAKE_OBSERVATION`)
-- TDL-DEC-R11-001 — **implemented on branch** only (TDL-EVID-R11-IMPL-001); **not deployed**; **not** PRODUCTION_VALIDATED; KS MS 661 absent-VLS end gap may remain
+- TDL-DEC-R11-001 — **implemented on branch / PR #1584** (TDL-EVID-R11-IMPL-001); Scenario C+I postgres+BullMQ integration PASS in CI; **not deployed**; KS MS 661 absent-VLS gap may remain
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
 - Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)

@@ -61,3 +61,21 @@ edges:
   - from: TDL-DEC-R11-001
     relation: tested_by
     to: TDL-TEST-R11-001
+  - from: TDL-TEST-R11-002
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-DEC-R11-001
+    relation: tested_by
+    to: TDL-TEST-R11-002
+  - from: TDL-TEST-R11-003
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-DEC-R11-001
+    relation: tested_by
+    to: TDL-TEST-R11-003
+  - from: TDL-TEST-R11-004
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-DEC-R11-001
+    relation: tested_by
+    to: TDL-TEST-R11-004
