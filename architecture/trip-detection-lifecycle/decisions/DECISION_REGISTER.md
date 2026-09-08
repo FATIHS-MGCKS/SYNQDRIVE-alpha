@@ -12,8 +12,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R9E-001 | UNKNOWN handoff defer and obsolete CAS retirement | VALIDATED | TDL-TEST-R9-001 |
 | TDL-DEC-R9F-001 | UNKNOWN bounded retry outside handoff dispatch | VALIDATED | TDL-TEST-R9-001 |
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED | TDL-EVID-R9-AUDIT-001; [DIM-DEC-R9-001](../../dimo-integration/decisions/DECISION_REGISTER.md) |
-| TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EV-R10-KS-MX-001 |
-| TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EV-R10-KS-MX-001 |
+| TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
+| TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 
 ---
 
@@ -30,7 +30,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **VALIDATION** | `trip-fsm-motor-off-pause-r10.spec.ts` H–J; `trip-finalize-end-cycle.postgres.integration.spec.ts` (gated) |
 | **PRODUCTION STATUS** | **Not deployed** |
 | **DEPLOY PREREQUISITE** | All PM2 trip-tracking replicas must run R10+ before legacy tokenless safety is authoritative — old workers bypass new guards during rolling deploy |
-| **EVIDENCE** | TDL-EV-R10-KS-MX-001 |
+| **EVIDENCE** | TDL-EVID-R10-KS-MX-001 |
 
 ---
 
@@ -47,7 +47,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **VALIDATION** | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-detection.spec.ts` |
 | **PRODUCTION STATUS** | **Not deployed** — fix on branch only |
 | **NON_EFFECTS** | Does not change R9 RESTING-only primary wake; does not alter mid-gap split drift thresholds |
-| **EVIDENCE** | TDL-EV-R10-KS-MX-001 |
+| **EVIDENCE** | TDL-EVID-R10-KS-MX-001 |
 
 ---
 

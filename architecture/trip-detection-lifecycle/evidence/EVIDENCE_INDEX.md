@@ -111,7 +111,7 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 | Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
 |-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
-| TDL-EV-R10-KS-MX-001 | PRODUCTION_OBSERVATION + CODE | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) | `2026-09-08T05:25:00Z` | Production `7b9a7857…`; fix branch pending | False resume from pre-boundary motion; stale finalize guards; mid-gap split reject @ 798 m | PARTIALLY_CURRENT | R10 fix **not deployed**; Production read-only audit |
+| TDL-EVID-R10-KS-MX-001 | PRODUCTION_OBSERVATION + CODE | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) | `2026-09-08T05:25:00Z` | Production `7b9a7857…`; fix branch pending | False resume from pre-boundary motion; stale finalize guards; mid-gap split reject @ 798 m | PARTIALLY_CURRENT | R10 fix **not deployed**; Production read-only audit |
 
 ---
 

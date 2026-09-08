@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Evidence ID** | TDL-EV-R10-KS-MX-001 |
+| **Evidence ID** | TDL-EVID-R10-KS-MX-001 |
 | **Source type** | PRODUCTION_OBSERVATION + CODE |
 | **Observation window (UTC)** | `2026-09-08T04:43:00Z` – `05:25:00Z` |
 | **Vehicle** | KS MX 2024 — DIMO tokenId `187336` |
