@@ -559,6 +559,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021-pre-drive-integrity-gate-2026-09-08',
+    version: '4.9.1072',
+    title: 'EXP-021 — Pre-drive integrity gate BLOCKED (settlement timing)',
+    summary: [
+      'Mandatory audit before physical drive: deployed settlement shadow creates fixed-interval schedules only at phase COMPLETION.',
+      '+30/+60 observations for probe A cannot execute on-time (expected drift ~90s/+60s) — EXP021_SETTLEMENT_TIMING_INTEGRITY_PASS=NO on production.',
+      'Whole-trip shadow has no recovery if VehicleTrip.endTime missing at stopRecording — WHOLE_TRIP_SHADOW_END_RACE_SAFE=NO.',
+      'Draft fix: prospective probe A scheduling during active phase + whole-trip recovery retry; 13 unit tests PASS.',
+      'Physical drive NOT started; session NOT created; awaiting fix deploy + operator START EXP-021 NOW.',
+    ],
+    reason: 'EXP-021 physical run requires genuine +30/+60 maturation observations — metadata-only scheduledAgeMs insufficient.',
+    previousBehavior: 'Settlement shadow schedules deferred until phase completion; late ages execute with large scheduleDriftMs.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-08T04:16:00.000Z',
+  },
+  {
     id: 'dimo-exp-021d-stale-session-cleanup-preflight-2026-09-07',
     version: '4.9.1071',
     title: 'EXP-021D — Stale RC session cleanup + settlement shadow go gate',
