@@ -22,7 +22,7 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 | Starting pre-2C `origin/main` SHA | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | PR #1575 merge commit present | Yes (`c7bb4df4022122c662f07fc23fafc427733263cf`) |
 | Product branch | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` |
-| Product HEAD | `a4a204468` |
+| Validated product-content HEAD (before normalization documentation-only commit) | `a4a204468` |
 | Product PR | **#1578** — https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1578 |
 | Product PR base | **`main`** (normalized 2026-09-08 after #1579 merge) |
 | Authority prerequisite PR | **#1579** — **MERGED** (`020c89c34` on `main`) |
@@ -32,7 +32,7 @@ Retire the temporary Rental i18n compatibility bridge (`frontend/src/rental/i18n
 
 ## 3. Translation-key reconciliation matrix
 
-Measured at product HEAD against `origin/main` @ `684950419`.
+Measured at validated product-content HEAD (`a4a204468`) against the **pre-Integration-2C translation-key measurement baseline** `origin/main` @ `684950419`. This SHA is the dictionary state before bridge retirement; it is **not** the current PR merge base. The current #1578 merge base is `020c89c34` on `main` (includes merged #1579).
 
 | Metric | Count | Method / meaning |
 |--------|------:|------------------|
@@ -148,13 +148,13 @@ frontend/src/rental/i18n/                    (directory removed)
 
 | Path | Deferred to |
 |------|-------------|
-| `frontend/package.json` `lint:legal-documents` | **PR #1579** (authority prerequisite) |
+| `frontend/package.json` `lint:legal-documents` | **Merged on `main` via #1579** (`020c89c34`) |
 | `frontend/src/i18n/translation-coverage-baseline.json` | **PR #1581** (governance closure) |
 | `frontend/src/i18n/translation-coverage.test.ts` | **PR #1581** (expected owned-count sync) |
 | `frontend/src/i18n/i18n-structural-check.test.ts` | **PR #1581** (activate INTEGRATION-2C bridge-removal assertion) |
 | `i18n-governance-scanner.test.ts`, `i18n-pr-gate.test.ts`, workflows, `AGENTS.md`, `.cursor/rules/i18n.mdc` | Out of scope |
 
-**Protected-path count in #1578 diff vs stacked base:** **0**
+**Protected-path count in #1578 diff vs `main`:** **0**
 
 ---
 
@@ -178,7 +178,7 @@ frontend/src/rental/i18n/                    (directory removed)
 | `npm run i18n:pr-gate:test` | **113/113 pass** |
 | `npm run i18n:check:ci` | **PASS** |
 | `npm run build` | **PASS** |
-| `npm run lint:legal-documents` | **PASS** (via stacked #1579 base) |
+| `npm run lint:legal-documents` | **PASS** (inherited from merged #1579 on `main`) |
 
 ---
 
@@ -195,14 +195,16 @@ frontend/src/rental/i18n/                    (directory removed)
 
 ## 12. Stacked PR chain and merge order (document only)
 
-1. Independently audit and merge corrected **#1579** to `main`.
-2. Rebase **#1578** onto updated `main`.
-3. Retarget **#1578** base from `#1579` branch to `main`.
+**Historical sequence:** #1578 was initially stacked on the #1579 authority branch while `frontend/package.json` could not be changed in the product PR. #1579 merged into `main` (`020c89c34`). #1578 was then rebased and retargeted directly onto `main`; the legal-documents lint correction is inherited from `main`, not from a stacked base branch.
+
+1. ~~Independently audit and merge corrected **#1579** to `main`.~~ **Done** (`020c89c34`).
+2. ~~Rebase **#1578** onto updated `main`.~~ **Done** (validated product-content `a4a204468`).
+3. ~~Retarget **#1578** base from `#1579` branch to `main`.~~ **Done**.
 4. Re-run and independently audit **#1578**; merge **#1578**.
-5. Rebase/retarget **#1581** governance-closure PR onto `main`.
+5. Rebase/retarget **#1581** governance-closure PR onto `main` after #1578 merges.
 6. Re-run authority CI; merge **#1581**.
 
-**Do not merge until each PR is independently audited.**
+**Do not merge until each remaining PR is independently audited.**
 
 ---
 
@@ -210,12 +212,10 @@ frontend/src/rental/i18n/                    (directory removed)
 
 | PR | Branch | Role | State |
 |----|--------|------|-------|
-| #1579 | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` | Authority: `lint:legal-documents` path substitution | Draft, unmerged |
-| #1578 | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` | Product: bridge retirement | Draft, unmerged |
-| #1581 | `cursor/i18n-integration-2c-governance-closure-3c10` | Authority: coverage baseline + structural closure | Draft, unmerged |
+| #1579 | `cursor/i18n-integration-2c-legal-docs-lint-authority-3c10` | Authority: `lint:legal-documents` path substitution | **MERGED into `main`** (`020c89c34`) |
+| #1578 | `cursor/i18n-integration-2c-rental-bridge-retirement-3c10` | Product: bridge retirement | Draft, open; base **`main`** |
+| #1581 | `cursor/i18n-integration-2c-governance-closure-3c10` | Authority: coverage baseline + structural closure | Draft, deferred; stacked above #1578 |
 
 ### CI remediation (Legal Documents Lint)
 
-Deleting `frontend/src/rental/i18n/**` broke `npm run lint:legal-documents` because `frontend/package.json` still globbed the removed rental translation path. `frontend/package.json` is an i18n governance authority path; changing it in the same PR as ~400 product files triggers `MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE`.
-
-**Resolution:** **#1579** performs only the required path substitution (`src/rental/i18n/translations/legal-documents*.ts` → `src/i18n/translations/legal-documents*.ts`) with **no** `--no-error-on-unmatched-pattern`. **#1578** is stacked on #1579 so lint passes without mixing governance paths.
+Deleting `frontend/src/rental/i18n/**` broke `npm run lint:legal-documents` because `frontend/package.json` still globbed the removed rental translation path. **#1579** (merged) performs only the required path substitution (`src/rental/i18n/translations/legal-documents*.ts` → `src/i18n/translations/legal-documents*.ts`) with **no** lint weakening. **#1578** now targets `main` directly and inherits that fix from the merged prerequisite.
