@@ -248,7 +248,6 @@ export class ReferenceCaptureSettlementShadowRepository {
   findExperimentsMissingWholeTripShadow(limit = 20) {
     return this.prisma.referenceCaptureSettlementShadowExperiment.findMany({
       where: {
-        OR: [{ vehicleTripId: null }, { tripEndTime: null }],
         session: { status: { in: ['COMPLETED', 'STOPPING'] } },
       },
       include: {
@@ -269,7 +268,7 @@ export class ReferenceCaptureSettlementShadowRepository {
         },
       },
       orderBy: { updatedAt: 'desc' },
-      take: limit,
+      take: limit * 3,
     });
   }
 }

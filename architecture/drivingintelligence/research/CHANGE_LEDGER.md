@@ -187,9 +187,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 
 | Event | Detail |
 |-------|--------|
-| Status | **BLOCKED** — settlement shadow fixed-interval schedules created only at phase completion; +30/+60 not executable on deployed binary |
-| Whole-trip | No recovery when `VehicleTrip.endTime` missing at `stopRecording` |
-| Fix | Draft PR: prospective probe A scheduling + whole-trip recovery retry |
+| Status | **HARDENED DRAFT** (PR #1570) — prospective probe A **and** B scheduling; whole-trip partial recovery |
+| Deployed baseline | Fixed-interval schedules at phase completion only; +30/+60 late for both probes |
+| First draft gap | Probe B still at completion — B+30 ~45s late, B+60 ~15s late |
+| Final fix | `buildProspectiveProbeBForPhase` using nominal 300s offset at phase EFFECTIVE; runtime hook proven via `ReferenceCaptureProcessor` |
+| Whole-trip | Partial schedule recovery (1–5 WHOLE_TRIP rows) now selected; idempotent fill to 6 ages |
+| Tests | 21 settlement-shadow focused tests PASS; runtime lifecycle timing PASS |
 | Physical drive | **NOT STARTED**; session **NOT CREATED** |
 | Evidence | `EXP_021_PRE_DRIVE_INTEGRITY_GATE_2026-09-08.md` |
 

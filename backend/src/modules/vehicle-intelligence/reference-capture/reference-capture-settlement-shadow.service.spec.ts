@@ -230,7 +230,7 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
     expect(recovered).toBeGreaterThan(0);
   });
 
-  it('schedules prospective probe A during active phase before completion', async () => {
+  it('schedules prospective probes A and B during active phase before completion', async () => {
     const scheduleRows: Array<{ probeId: string; scheduledAgeMs: number; scheduledAt: Date }> = [];
     const repository = {
       findExperimentBySessionId: jest.fn().mockResolvedValue({
@@ -291,7 +291,10 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
     });
 
     expect(scheduleRows.some((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000)).toBe(true);
-    const plus30 = scheduleRows.find((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000);
-    expect(plus30?.scheduledAt.toISOString()).toBe('2026-09-07T10:03:30.000Z');
+    expect(scheduleRows.some((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000)).toBe(true);
+    const plus30A = scheduleRows.find((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000);
+    const plus30B = scheduleRows.find((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000);
+    expect(plus30A?.scheduledAt.toISOString()).toBe('2026-09-07T10:03:30.000Z');
+    expect(plus30B?.scheduledAt.toISOString()).toBe('2026-09-07T10:04:15.000Z');
   });
 });

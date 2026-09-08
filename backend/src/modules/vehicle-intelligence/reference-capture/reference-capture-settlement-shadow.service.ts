@@ -12,14 +12,18 @@ import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
   buildProspectiveProbeAForPhase,
+  buildProspectiveProbeBForPhase,
   buildProbeBForCompletedPhase,
   buildScheduleIdempotencyKey,
   buildWholeTripProbeId,
   computeActualAgeMs,
   computeScheduleDriftMs,
   EXP021_MANDATORY_AGES_MS,
+  EXP021_PHASE_STABILIZATION_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
   EXP021_WHOLE_TRIP_AGES_MS,
+  validatePhaseDurationForProbes,
+  validateProspectiveProbeBAgainstCompletedPhase,
   type SettlementShadowProbePlan,
 } from './reference-capture-settlement-shadow.policy';
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
@@ -97,7 +101,7 @@ export class ReferenceCaptureSettlementShadowService {
       });
       if (!experiment) return;
 
-      await this.syncProspectiveProbeAForActivePhase({
+      await this.syncProspectiveProbesForActivePhase({
         experiment,
         series,
       });
@@ -107,7 +111,7 @@ export class ReferenceCaptureSettlementShadowService {
         const newPhases = completed.slice(experiment.lastSyncedPhaseCount);
         for (const phase of newPhases) {
           if (!phase.phaseEndedAt) continue;
-          await this.scheduleProbeBForCompletedPhase({
+          await this.validateCompletedPhaseProbeGeometry({
             experiment,
             phase,
           });
@@ -124,10 +128,10 @@ export class ReferenceCaptureSettlementShadowService {
   }
 
   /**
-   * EXP-021 timing integrity: probe A interval is deterministic from phase start,
+   * EXP-021 timing integrity: probe A/B intervals are deterministic from phase start,
    * so schedule +30/+60 observations before phase completion.
    */
-  private async syncProspectiveProbeAForActivePhase(args: {
+  private async syncProspectiveProbesForActivePhase(args: {
     experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
     series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
   }): Promise<void> {
@@ -141,15 +145,26 @@ export class ReferenceCaptureSettlementShadowService {
       phasePollIntervalMs: active.effectivePollIntervalMs,
       phaseStartedAtMs,
     });
-    if (!probeA) return;
-
-    await this.scheduleProbeObservations({
-      experiment: args.experiment,
-      probe: probeA,
+    const probeB = buildProspectiveProbeBForPhase({
+      phasePollIntervalMs: active.effectivePollIntervalMs,
+      phaseStartedAtMs,
     });
+
+    if (probeA) {
+      await this.scheduleProbeObservations({
+        experiment: args.experiment,
+        probe: probeA,
+      });
+    }
+    if (probeB) {
+      await this.scheduleProbeObservations({
+        experiment: args.experiment,
+        probe: probeB,
+      });
+    }
   }
 
-  private async scheduleProbeBForCompletedPhase(args: {
+  private async validateCompletedPhaseProbeGeometry(args: {
     experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
     phase: HfCalibrationPhaseRecord;
   }) {
@@ -157,23 +172,47 @@ export class ReferenceCaptureSettlementShadowService {
     const phaseEndedAtMs = Date.parse(args.phase.phaseEndedAt ?? '');
     if (!Number.isFinite(phaseStartedAtMs) || !Number.isFinite(phaseEndedAtMs)) return;
 
-    const { probe, validation } = buildProbeBForCompletedPhase({
-      phasePollIntervalMs: args.phase.effectivePollIntervalMs,
+    const validation = validatePhaseDurationForProbes({
       phaseStartedAtMs,
       phaseEndedAtMs,
+      probeDurationMs: EXP021_PRIMARY_PROBE_DURATION_MS,
+      stabilizationMs: EXP021_PHASE_STABILIZATION_MS,
     });
 
-    if (!validation.probeB.fits || !probe) {
+    if (!validation.sufficient) {
       this.logger.warn(
-        `Insufficient phase duration for settlement probe B phase=${args.phase.calibrationPhaseId} poll=${args.phase.effectivePollIntervalMs}`,
+        `Insufficient phase duration for settlement probes phase=${args.phase.calibrationPhaseId} poll=${args.phase.effectivePollIntervalMs}`,
       );
       return;
     }
 
-    await this.scheduleProbeObservations({
-      experiment: args.experiment,
-      probe,
+    const prospectiveProbeB = buildProspectiveProbeBForPhase({
+      phasePollIntervalMs: args.phase.effectivePollIntervalMs,
+      phaseStartedAtMs,
     });
+    if (!prospectiveProbeB) return;
+
+    const geometryCheck = validateProspectiveProbeBAgainstCompletedPhase({
+      phaseStartedAtMs,
+      phaseEndedAtMs,
+      prospectiveProbeB,
+    });
+    if (!geometryCheck.matchesCompletedGeometry) {
+      this.logger.warn(
+        `Prospective probe B geometry differs from completed-phase rule phase=${args.phase.calibrationPhaseId} deltaMs=${geometryCheck.startOffsetDeltaMs}`,
+      );
+    }
+
+    const { probe: completedProbeB, validation: probeBValidation } = buildProbeBForCompletedPhase({
+      phasePollIntervalMs: args.phase.effectivePollIntervalMs,
+      phaseStartedAtMs,
+      phaseEndedAtMs,
+    });
+    if (!probeBValidation.probeB.fits || !completedProbeB) {
+      this.logger.warn(
+        `Completed-phase probe B validation failed phase=${args.phase.calibrationPhaseId}`,
+      );
+    }
   }
 
   private async scheduleProbeObservations(args: {
@@ -346,12 +385,18 @@ export class ReferenceCaptureSettlementShadowService {
 
     const pending = await this.repository.findExperimentsMissingWholeTripShadow();
     let recovered = 0;
+    let examined = 0;
     for (const row of pending) {
+      if (examined >= 20) break;
       if (!row.session) continue;
+
       const wholeTripCount = row.schedules?.length ?? 0;
-      if (row.vehicleTripId && row.tripEndTime && wholeTripCount >= EXP021_WHOLE_TRIP_AGES_MS.length) {
+      const needsTripBinding = !row.vehicleTripId || !row.tripEndTime;
+      const needsMoreSchedules = wholeTripCount < EXP021_WHOLE_TRIP_AGES_MS.length;
+      if (!needsTripBinding && !needsMoreSchedules) {
         continue;
       }
+      examined += 1;
       const sessionStoppedAt =
         row.session.stoppedAt ?? row.session.completedAt ?? row.session.startedAt ?? now;
       const ok = await this.scheduleWholeTripShadowFromVehicleTrip({
