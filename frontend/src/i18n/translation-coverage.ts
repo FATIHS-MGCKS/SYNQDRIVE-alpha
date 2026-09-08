@@ -115,16 +115,8 @@ export function countNewCanonicalKeysSinceBaseline(baseline: CoverageBaseline): 
   return Math.max(CANONICAL_KEY_COUNT - floor, 0);
 }
 
-export function findNewCanonicalKeysMissingFromLocale(
-  locale: SupportedLocale,
-  previousCanonicalKeyCount: number,
-): number {
-  if (CANONICAL_KEY_COUNT <= previousCanonicalKeyCount) {
-    return 0;
-  }
-  const addedKeys = CANONICAL_KEY_COUNT - previousCanonicalKeyCount;
-  const report = buildLocaleCoverageReport(locale);
-  return report.ownedCount === 0 ? addedKeys : addedKeys;
-}
+// Per-locale detection of which newly introduced canonical keys a locale is missing
+// cannot be derived from owned-key counts alone. A future API must compare actual
+// canonical key identities against each locale's owned key set (not English fallback).
 
 export { TRANSLATION_LOCALE_REGISTRY };
