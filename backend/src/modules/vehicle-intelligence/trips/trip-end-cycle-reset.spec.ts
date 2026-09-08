@@ -14,6 +14,8 @@ import {
   extractR5EndForensicsForPersistence,
   stripEndCycleEvidenceForActiveReopen,
   validateCusumMovementEventTime,
+  isEndCycleTokenStale,
+  resolveEndCycleToken,
 } from './trip-end-cycle-reset';
 
 const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
@@ -223,5 +225,29 @@ describe('trip-end-cycle-reset (R5)', () => {
         lifecycleNote: 'keep',
       }),
     ).toEqual({ lifecycleNote: 'keep' });
+  });
+
+  it('resolveEndCycleToken uses possibleEndEnteredAt ISO', () => {
+    const entered = new Date('2026-09-08T05:02:20.000Z');
+    expect(resolveEndCycleToken({ possibleEndEnteredAt: entered })).toBe(
+      entered.toISOString(),
+    );
+  });
+
+  it('isEndCycleTokenStale detects ACTIVE_TRIP and token mismatch', () => {
+    expect(
+      isEndCycleTokenStale({
+        jobToken: 'a',
+        expectedToken: 'b',
+        fsmState: 'POSSIBLE_END',
+      }),
+    ).toBe('stale_token_mismatch');
+    expect(
+      isEndCycleTokenStale({
+        jobToken: 'a',
+        expectedToken: null,
+        fsmState: 'ACTIVE_TRIP',
+      }),
+    ).toBe('stale_active_trip');
   });
 });

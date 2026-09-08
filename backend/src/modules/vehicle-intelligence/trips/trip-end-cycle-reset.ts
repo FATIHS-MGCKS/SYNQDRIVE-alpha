@@ -26,7 +26,28 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
   'maxAttemptFallbackReason',
   'resumeCheckOutcome',
   'completedAttemptCount',
+  'pendingFinalizeCycleToken',
+  'pendingFinalizeScheduledAt',
 ] as const;
+
+/** Stable token for one POSSIBLE_END episode (worker-entered clock). */
+export function resolveEndCycleToken(det: {
+  possibleEndEnteredAt?: Date | null;
+}): string | null {
+  return det.possibleEndEnteredAt?.toISOString() ?? null;
+}
+
+export function isEndCycleTokenStale(params: {
+  jobToken?: string;
+  expectedToken: string | null;
+  fsmState: string;
+}): 'ok' | 'stale_active_trip' | 'stale_token_mismatch' | 'stale_cycle_cleared' {
+  if (params.fsmState === 'ACTIVE_TRIP') return 'stale_active_trip';
+  if (!params.jobToken) return 'ok';
+  if (!params.expectedToken) return 'stale_cycle_cleared';
+  if (params.jobToken !== params.expectedToken) return 'stale_token_mismatch';
+  return 'ok';
+}
 
 /** Attempt-local runtime fields cleared between validation attempts within the same end episode. */
 export const END_VALIDATION_ATTEMPT_LOCAL_KEYS = [

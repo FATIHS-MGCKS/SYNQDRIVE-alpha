@@ -124,6 +124,8 @@ import {
   buildMaxAttemptFallbackEvidence,
   buildPossibleEndToActiveReset,
   extractR5EndForensicsForPersistence,
+  isEndCycleTokenStale,
+  resolveEndCycleToken,
   type PecResumeCheckOutcome,
   validateCusumMovementEventTime,
 } from './trip-end-cycle-reset';
@@ -132,6 +134,7 @@ import {
 } from './trip-end-validation-classifier';
 import {
   cancelPendingTripTrackingJobs,
+  enqueueEndCycleTripTrackingJob,
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
 import {
@@ -602,6 +605,9 @@ export class TripDetectionOrchestrationService {
     opts?: {
       delayMs?: number;
       activeTripId?: string | null;
+      endCycleToken?: string | null;
+      /** R10: recycle waiting end-cycle jobs before enqueue (FINALIZE / END_VALIDATION). */
+      recycleEndCycleSlot?: boolean;
     },
   ): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
@@ -615,21 +621,32 @@ export class TripDetectionOrchestrationService {
 
     const jobId = this.tripTrackingJobId(phase, vehicleId, activeTripId);
     const delayMs = opts?.delayMs ?? 0;
-
-    const outcome = await enqueueStableTripTrackingJob({
-      queue: this.trackingQueue,
-      jobName: 'trip-tracking',
-      jobId,
-      data: {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger,
-        requestedAt: new Date().toISOString(),
-      },
+    const data: TripTrackingJobData = {
+      vehicleId,
+      organizationId,
+      dimoTokenId,
       trigger,
-      delayMs,
-    });
+      requestedAt: new Date().toISOString(),
+      ...(opts?.endCycleToken ? { endCycleToken: opts.endCycleToken } : {}),
+    };
+
+    const outcome = opts?.recycleEndCycleSlot
+      ? await enqueueEndCycleTripTrackingJob({
+          queue: this.trackingQueue,
+          jobName: 'trip-tracking',
+          jobId,
+          data,
+          trigger,
+          delayMs,
+        })
+      : await enqueueStableTripTrackingJob({
+          queue: this.trackingQueue,
+          jobName: 'trip-tracking',
+          jobId,
+          data,
+          trigger,
+          delayMs,
+        });
 
     if (outcome === 'skipped') {
       this.logger.debug(
@@ -696,13 +713,20 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
+    const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+    const endCycleToken = resolveEndCycleToken(det);
     await this.enqueueTripTrackingJob(
       'ev',
       vehicleId,
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.END_VALIDATION,
-      { delayMs: delayMs ?? 0 },
+      {
+        delayMs: delayMs ?? 0,
+        activeTripId: det.activeTripId,
+        endCycleToken,
+        recycleEndCycleSlot: endCycleToken != null,
+      },
     );
   }
 
@@ -711,13 +735,32 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
   ): Promise<void> {
+    const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+    if (det.state === TripDetectionState.ACTIVE_TRIP) {
+      this.logger.debug(
+        `scheduleFinalize skipped for ${vehicleId}: FSM is ACTIVE_TRIP`,
+      );
+      return;
+    }
+    const endCycleToken = resolveEndCycleToken(det);
+    if (!endCycleToken) {
+      this.logger.warn(
+        `scheduleFinalize skipped for ${vehicleId}: missing end cycle token (possibleEndEnteredAt)`,
+      );
+      return;
+    }
     await this.enqueueTripTrackingJob(
       'fin',
       vehicleId,
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.FINALIZE,
-      { delayMs: 0 },
+      {
+        delayMs: 0,
+        activeTripId: det.activeTripId,
+        endCycleToken,
+        recycleEndCycleSlot: true,
+      },
     );
   }
 
@@ -2737,6 +2780,18 @@ export class TripDetectionOrchestrationService {
       det = await this.getOrCreateDetectionState(vehicleId, organizationId);
       if (det.state !== TripDetectionState.POSSIBLE_END) return;
 
+      const endCycleCheck = isEndCycleTokenStale({
+        jobToken: data.endCycleToken,
+        expectedToken: resolveEndCycleToken(det),
+        fsmState: det.state,
+      });
+      if (endCycleCheck !== 'ok') {
+        this.logger.debug(
+          `END_VALIDATION skipped for ${vehicleId}: ${endCycleCheck}`,
+        );
+        return;
+      }
+
       const now = new Date();
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
       const priorSummary =
@@ -3086,34 +3141,21 @@ export class TripDetectionOrchestrationService {
         return;
       }
 
-      if (det.state === TripDetectionState.ACTIVE_TRIP) {
+      const endCycleCheck = isEndCycleTokenStale({
+        jobToken: data.endCycleToken,
+        expectedToken: resolveEndCycleToken(det),
+        fsmState: det.state,
+      });
+      if (endCycleCheck !== 'ok') {
+        const reason =
+          endCycleCheck === 'stale_active_trip'
+            ? 'stale_finalize_aborted_active_trip'
+            : endCycleCheck === 'stale_token_mismatch'
+              ? 'stale_finalize_aborted_end_cycle_mismatch'
+              : 'stale_finalize_aborted_end_cycle_cleared';
         this.logger.log(
-          `FINALIZE skipped for ${vehicleId}: FSM is ACTIVE_TRIP (stale end job after activity resumed)`,
-        );
-        await this.logTrackingRun({
-          vehicleId,
-          organizationId,
-          tripId: det.activeTripId,
-          stateAtRun: det.state,
-          runType: TripTrackingRunType.FINALIZATION_CHECK,
-          resultSummary: { reason: 'stale_finalize_aborted_active_trip' },
-          durationMs: Date.now() - startedMs,
-        });
-        return;
-      }
-
-      const endBoundary =
-        (det as { cusumSegmentEnd?: Date | null }).cusumSegmentEnd ??
-        det.possibleEndAt ??
-        null;
-      if (
-        endBoundary &&
-        det.lastMeaningfulMovementAt &&
-        det.lastMeaningfulMovementAt.getTime() > endBoundary.getTime()
-      ) {
-        this.logger.log(
-          `FINALIZE skipped for ${vehicleId}: movement after end boundary ` +
-            `(${det.lastMeaningfulMovementAt.toISOString()} > ${endBoundary.toISOString()})`,
+          `FINALIZE skipped for ${vehicleId}: ${reason}` +
+            (data.endCycleToken ? ` jobToken=${data.endCycleToken}` : ''),
         );
         await this.logTrackingRun({
           vehicleId,
@@ -3122,9 +3164,9 @@ export class TripDetectionOrchestrationService {
           stateAtRun: det.state,
           runType: TripTrackingRunType.FINALIZATION_CHECK,
           resultSummary: {
-            reason: 'stale_finalize_aborted_movement_after_end',
-            endBoundary: endBoundary.toISOString(),
-            lastMeaningfulMovementAt: det.lastMeaningfulMovementAt.toISOString(),
+            reason,
+            jobEndCycleToken: data.endCycleToken ?? null,
+            expectedEndCycleToken: resolveEndCycleToken(det),
           },
           durationMs: Date.now() - startedMs,
         });

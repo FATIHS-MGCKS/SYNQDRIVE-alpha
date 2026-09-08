@@ -104,13 +104,43 @@ export async function cancelPendingTripTrackingJobs(params: {
       const job = await params.queue.getJob(jobId);
       if (!job) continue;
       const state = await job.getState();
-      if (isQueuedQueueState(state) || isActiveQueueState(state)) {
+      if (
+        isTerminalQueueState(state) ||
+        isQueuedQueueState(state) ||
+        isActiveQueueState(state)
+      ) {
         await job.remove();
         removed += 1;
       }
     }
   }
   return removed;
+}
+
+/**
+ * R10: recycle any existing stable slot then enqueue a fresh end-cycle job.
+ * Prevents `skipped` re-enqueue when an older cycle left a waiting FINALIZE job.
+ */
+export async function enqueueEndCycleTripTrackingJob(params: {
+  queue: TripTrackingQueueLike;
+  jobName: string;
+  jobId: string;
+  data: TripTrackingJobData;
+  trigger: TripTrackingTrigger;
+  delayMs?: number;
+}): Promise<StableTripTrackingEnqueueOutcome> {
+  await cancelPendingTripTrackingJobs({
+    queue: params.queue,
+    jobIds: [params.jobId],
+  });
+  return enqueueStableTripTrackingJob({
+    queue: params.queue,
+    jobName: params.jobName,
+    jobId: params.jobId,
+    data: params.data,
+    trigger: params.trigger,
+    delayMs: params.delayMs,
+  });
 }
 
 function isActiveQueueState(state: TripTrackingQueueJobState): boolean {

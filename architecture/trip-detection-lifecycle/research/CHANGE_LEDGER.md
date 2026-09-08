@@ -18,6 +18,7 @@ Append-only record for this authority directory.
 | 2026-09-07 | R9 five-vehicle canary provider mutation — **PASS** (5/5 speed+ignition; 190497 excluded) | Provider mutation session | [../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](../evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 | 2026-09-08 | Cross-authority semantic cleanup — R9 on main + deployed @ `0ba96e03…`; pre-R9/`01541c2ab…` claims reclassified HISTORICAL | Post-canary reconciliation | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
 | 2026-09-08 | R10 motor-off pause / false resume / stale finalize — KS MX reference case; code fix + regression tests (not deployed) | Trip FSM R10 | [KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md](../evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md) |
+| 2026-09-08 | R10 follow-up: end-cycle token + recycle enqueue; removed incorrect movement-after-end guard; expanded tests A–G | Trip FSM R10 PR #1574 | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

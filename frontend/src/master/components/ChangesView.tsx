@@ -106,15 +106,15 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1090',
     title: 'Trip FSM R10 — Motor-off pause resume anchor + stale finalize guards',
     summary: [
-      'hasActivityResumed / EndContinuityDetector anchor to possibleEndAt — pre-stop motion in 90s window no longer false-triggers activity_resumed.',
-      'checkDimoActivityResumed passes resumeAfterAt from PEC end boundary and CH end assist.',
-      'cancelPendingEndCycleJobs removes queued END_VALIDATION + FINALIZE jobs when trip resumes.',
-      'processFinalize aborts stale jobs when FSM is ACTIVE_TRIP or movement anchor is after end boundary.',
+      'hasActivityResumed / EndContinuityDetector anchor to possibleEndAt — pre-stop motion must not trigger activity_resumed.',
+      'endCycleToken (= possibleEndEnteredAt) on END_VALIDATION/FINALIZE jobs; stale jobs abort via isEndCycleTokenStale.',
+      'enqueueEndCycleTripTrackingJob recycles waiting finalize slot — fixes skipped re-enqueue after cycle A (Production-plausible root cause @ 05:17:36).',
+      'cancelPendingEndCycleJobs on resume; worker lock serializes finalize vs resume.',
     ],
     reason:
-      'KS MX 2024 reference case (2026-09-08): motor-off pause produced false resume @ 04:48:51 UTC and non-terminal end despite scheduleFinalize.',
+      'KS MX 2026-09-08: false resume during motor-off gap; true end not persisted despite scheduleFinalize @ 05:17:36 (stale waiting job + missing end-boundary anchor).',
     previousBehavior:
-      '90s sliding resume window counted pre-boundary speed; pending finalize jobs survived resume; processFinalize had no ACTIVE_TRIP guard.',
+      '90s fetch without resumeAfterAt; scheduleFinalize skipped when prior fin job waiting; no end-cycle token; incorrect movement-after-end guard would block legitimate finalize.',
     details:
       'architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md, trip-fsm-motor-off-pause-r10.spec.ts',
     affectsArchitecture: true,

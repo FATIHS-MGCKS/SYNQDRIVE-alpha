@@ -8,85 +8,122 @@
 | **Vehicle** | KS MX 2024 — DIMO tokenId `187336` |
 | **Trip ID** | `e830b6e6-b738-4c35-8d88-39e05f1b5aad` |
 | **Operator ground truth** | ~06:47 CEST motor/ignition OFF for several minutes, then restart — same journey |
-| **Production release @ observation** | `7b9a7857…` @ `20260908045043_v4994` (deploy during trip tail ~05:01:27 UTC) |
+| **Production release @ mid-trip** | `7b9a7857…` @ `20260908045043_v4994` (deploy ~`05:01:27` UTC during trip tail) |
 | **Repository fix branch** | `cursor/trip-fsm-motor-off-pause-finalize-64c8` (R10) |
-| **Epistemic** | Root causes **CONFIRMED** in code review + regression tests; Production fix **NOT DEPLOYED** |
+| **Epistemic split** | See §Classification below |
+
+## Classification (historical vs code-proven vs open)
+
+| Claim | Status |
+|-------|--------|
+| False `activity_resumed` @ `04:48:51` during motor-off gap | **Historically observed** (Production tracking run + FSM transition) |
+| Pre-stop motion caused resume without post-boundary evidence | **Code-proven** pre-R10 (`hasActivityResumed` lacked `resumeAfterAt` anchor) |
+| `04:47:19` is exactly 92s before logged `04:48:51` | **Historically observed** arithmetic |
+| `04:47:19` was inside the 90s fetch window at `04:48:51` worker time | **Contradicted** — lower bound = `04:47:21` when `now=04:48:51` |
+| False resume likely from missing end-boundary anchor (any in-window speed) or worker `now` ≤ `04:48:49` | **Code-proven fix** + **inferred** historical trigger (exact Production point set **UNKNOWN** without raw PEC fetch log) |
+| `scheduleFinalize` @ `04:50:08` did not yield persisted COMPLETED | **Historically observed** |
+| Stale waiting `FINALIZE` job blocked re-enqueue @ `05:17:36` (`enqueueStableTripTrackingJob` → `skipped`) | **Code-proven mechanism**; **Production queue state UNKNOWN** (no BullMQ archive) |
+| R10 end-cycle recycle + token guards address missed true end | **Code-proven** (tests); **not deployed** |
+| PM2 restart @ `05:01:27` primary cause | **Not proven** |
 
 ## Reconstructed timeline (UTC)
 
 | Time | Event | Layer |
 |------|-------|-------|
 | `04:47:19` | Last meaningful movement (speed ~38 km/h) | Provider |
-| `04:47:51` | ClickHouse ignition segment end | Analytics assist |
-| `04:48:50` | CH end assist → `POSSIBLE_END` | FSM |
+| `04:47:51` | ClickHouse ignition segment end → end boundary | Analytics assist |
+| `04:48:50` | CH end assist → `POSSIBLE_END` (`possibleEndEnteredAt` ≈ now) | FSM |
 | `04:48:51` | **`activity_resumed`** — cancelled `POSSIBLE_END` | FSM (false positive) |
-| `04:50:08` | `END_VALIDATION` → RESTING logged + `scheduleFinalize` | Worker |
+| `04:50:08` | `END_VALIDATION` → RESTING **logged** + `scheduleFinalize` | Worker handler result |
 | `04:51:34` | Telemetry returns after ~7 min gap | Provider |
 | `04:52:02` | Movement resumes | Provider |
 | `04:53:37` | Second `activity_resumed` → `ACTIVE_TRIP` | FSM (legitimate) |
 | `04:54:08` | Mid-gap split **REJECTED** (798 m drift > 200 m max) | R6 guard |
-| `05:02:45` | True trip end boundary | Provider |
-| `05:17:36` | Second `END_VALIDATION` → RESTING logged | Worker |
-| Audit (~05:24) | Trip `ONGOING`, provisional `end_time` set, FSM `POSSIBLE_END` | DB + FSM |
+| `05:02:45` | True trip end boundary (canonical) | Provider |
+| `05:17:36` | Second `END_VALIDATION` → RESTING **logged** + `scheduleFinalize` | Worker handler result |
+| Audit (~05:24) | Trip `ONGOING`, provisional `end_time` ≈ `05:02:45`, FSM `POSSIBLE_END` | DB + FSM |
+
+**Distinction:** RESTING in tracking-run `resultState` is the **planned/handler outcome**, not proof of persisted `tripStatus=COMPLETED` or FSM `RESTING`.
+
+## 90s / 92s window correction
+
+| Measurement | Value |
+|-------------|-------|
+| Wall delta `04:47:19` → `04:48:51` | **92s** |
+| PEC fetch lower bound (`workerNow - 90_000`) when `workerNow=04:48:51` | **`04:47:21`** |
+| Is `04:47:19` inside fetch window at that instant? | **No** (2s before lower bound) |
+
+**Correct anchor:** resume fetch uses **`workerNow - 90_000ms`**, not “92 seconds before the log line.” Pre-R10 resume verdict used **any fetched point with speed > threshold** without **`resumeAfterAt`** filtering — so any in-window speed (or wider active-tick batch passed to CH assist) could trigger resume even when the last pre-stop point is slightly outside the nominal 90s bound.
+
+**R10 fix:** `hasActivityResumed(points, profile, possibleEndAt)` — only timestamps **strictly after** the end boundary count.
 
 ## Proven root causes (code)
 
 ### 1. False `activity_resumed` @ `04:48:51`
 
-**Mechanism:** `checkDimoActivityResumed` / `hasActivityResumed` scanned a sliding 90s window from worker `now` without anchoring to the end boundary (`possibleEndAt` / `cusumSegmentEnd`). Pre-stop motion at `04:47:19` (speed 38) remained inside the window and satisfied `speed > speedMotionKmh`.
+Missing **`resumeAfterAt`** anchor on `hasActivityResumed` / `EndContinuityDetector`. Ignition-only stale resume was already fixed (Fix C); this case is **stale movement before end boundary**.
 
-**Not the cause:** Stale ignition alone (already fixed in Fix C). Telemetry gap itself did not trigger resume — old **movement** points did.
+### 2. True end not persisted despite `scheduleFinalize` @ `05:17:36`
 
-### 2. Finalize path did not complete despite `scheduleFinalize`
+**Primary code mechanism (Production-plausible, queue archive unavailable):**
 
-**Mechanism (multi-factor):**
+1. Cycle A (`possibleEndEnteredAt≈04:48:50`) called `scheduleFinalize` @ `04:50:08` → stable jobId `trip-fin-{vehicle}-{tripId}` queued.
+2. Resume @ `04:53:37` returned FSM to `ACTIVE_TRIP` but **pre-R10 did not cancel** the waiting finalize job.
+3. Cycle B @ `05:17:36` called `scheduleFinalize` again → **`enqueueStableTripTrackingJob` returned `skipped`** (job already waiting).
+4. Stale cycle-A job either never ran successfully or could not apply to resumed trip; **no fresh finalize job** for cycle B.
 
-1. False resume @ `04:48:51` returned FSM to `ACTIVE_TRIP`, clearing end-cycle fields; a later end episode re-scheduled finalize.
-2. Legitimate resume @ `04:53:37` returned FSM to `ACTIVE_TRIP` while a pending `FINALIZE` job from the earlier end episode could still run — **`processFinalize` had no guard** against `ACTIVE_TRIP` or movement-after-end-boundary.
-3. Pending `FINALIZE` / `END_VALIDATION` jobs were **not cancelled** on resume (`buildPossibleEndToActiveReset` clears FSM fields only).
-4. `ONGOING` + provisional `end_time` is **contractually allowed** during `ACTIVE_TICK` (worker-anchored progress field — not proof of failed finalize alone).
+**R10 corrections:**
 
-**Not proven as primary cause:** PM2 deploy restart @ `05:01:27` (FSM persisted in PostgreSQL; issues predate restart).
+| Mechanism | Purpose |
+|-----------|---------|
+| `resumeAfterAt` anchor | Prevent false resume |
+| `cancelPendingEndCycleJobs` on resume | Drop queued `ev`/`fin` jobs |
+| `enqueueEndCycleTripTrackingJob` in `scheduleFinalize` | **Recycle** waiting slot before enqueue (fixes `skipped` re-enqueue) |
+| `endCycleToken` = `possibleEndEnteredAt` ISO in job payload | Stale active/wrong-cycle jobs abort in `processFinalize` |
+| Removed `movement-after-end` guard | Was **incorrect** — canonical end often has `lastMeaningfulMovementAt > possibleEndAt` |
 
-### 3. Mid-gap split rejected (expected)
+**Worker lock:** `processFinalize` / resume paths serialize on `acquireWorkerLock` — guard checks and DB writes occur under the same lock (no resume-between-check-and-write without lock release).
 
-798 m drift between pre-gap and post-gap samples exceeded `TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M` (200 m default). First post-gap GPS fix can be delayed — drift alone does not prove vehicle moved during motor-off pause.
+### 3. Mid-gap split rejected (expected, not a defect)
 
-## R10 fix (repository, not deployed)
+798 m drift between pre-gap last fix and first post-gap fix. **Measurement:** compared last pre-gap waypoint/core fix vs first post-gap fix after ~316s silence — not continuous motion during motor-off. High drift alone does not prove driving during pause; delayed first GPS fix after telemetry return can inflate drift.
+
+## Motor-off / pause / end contract (precise)
+
+| Phase | Semantics |
+|-------|-----------|
+| Motor/ignition off + inactivity signals | Creates **end candidate** (`POSSIBLE_END`) per existing CH assist / inactivity rules — not instant COMPLETED |
+| Telemetry gap | **Neither** fresh movement **nor** alone sufficient proof of trip end — absence of data ≠ proof of rest |
+| Pre-boundary motion in fetch window | **Must not** cancel end candidate (`activity_resumed`) |
+| Fresh post-boundary motion | **May** cancel end candidate → `ACTIVE_TRIP` (same trip continues) |
+| No post-boundary resume | Valid end path must still reach **`TripDecisionEngine.finalizeTrip`** → `COMPLETED` + FSM `RESTING` |
+| After persisted COMPLETED | New movement → **new trip** per existing start rules (not unbounded pause semantics) |
+
+**Tensions (documented, not resolved in R10):**
+
+- Mid-gap split vs single-trip continuation: R6 drift guard rejected split @ 798 m — trip stays single ONGOING (correct for this case).
+- Provisional `ONGOING.end_time` from `ACTIVE_TICK` vs canonical finalize end — by design; not finalize failure alone.
+
+## R10 fix summary (branch only — **not deployed**)
 
 | Change | File(s) |
 |--------|---------|
-| Resume anchor: only points **strictly after** end boundary | `trip-evidence.helpers.ts`, `end-continuity.detector.ts` |
-| Pass `resumeAfterAt` through `checkDimoActivityResumed` | `trip-detection-orchestration.service.ts` |
-| Cancel pending `END_VALIDATION` + `FINALIZE` jobs on resume | `trip-tracking-queue.util.ts`, orchestration |
-| Stale finalize guards in `processFinalize` | `trip-detection-orchestration.service.ts` |
-| Regression tests | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-detection.spec.ts` |
+| Resume anchor (`resumeAfterAt`) | `trip-evidence.helpers.ts`, `end-continuity.detector.ts` |
+| End-cycle token + recycle enqueue | `trip-detection.types.ts`, `trip-end-cycle-reset.ts`, `trip-tracking-queue.util.ts`, orchestration |
+| Stale finalize guards (`isEndCycleTokenStale`) | `trip-detection-orchestration.service.ts` |
+| Regression tests A–G | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-end-cycle-reset.spec.ts` |
 
-## Motor-off / restart semantics (canonical contract)
+## Cross-module notes (out of scope)
 
-| Scenario | Expected behaviour |
-|----------|-------------------|
-| Motor/ignition OFF, telemetry gap, **no post-boundary motion** | Stay in end path toward finalize (same trip) |
-| Pre-stop motion still in fetch window | **Must not** trigger `activity_resumed` |
-| Fresh motion **after** end boundary + telemetry return | Resume same trip (`POSSIBLE_END` → `ACTIVE_TRIP`) |
-| Mid-gap split | Only when silence + low drift; high drift → reject split, continue single trip |
-| Stale finalize job after resume | Must abort; must not set `tripStatus=COMPLETED` |
-
-## Cross-module notes (documented only — out of R10 scope)
-
-| Module | Observation |
-|--------|-------------|
-| KS MS 661 (`187361`) | 49 `no_core_data_keep_open` runs — separate open path; do not assume shared root cause |
-| Battery V2 | LV rest window opens on persisted finalize — delayed finalize affects shutdown/rest timing |
-| ATE / enrichment | Post-finalize producers depend on `TripDecisionEngine.finalizeTrip` commit |
-
-## Remaining hypotheses (not proven)
-
-- Exact BullMQ job dequeue ordering between `04:50:08` finalize schedule and `04:53:37` resume (mitigated by R10 guards, not re-run on Production)
-- Whether second `END_VALIDATION` @ `05:17:36` would have succeeded without R10 on a clean redeploy
+| Module | Note |
+|--------|------|
+| KS MS 661 | 49× `no_core_data_keep_open` — separate path |
+| Battery V2 | LV rest window opens on persisted finalize |
+| ATE / enrichment | Post-finalize producers require `COMPLETED` commit |
 
 ## Validation
 
 ```bash
-cd backend && npm test -- --testPathPattern="trip-fsm-motor-off-pause-r10" --no-coverage
+cd backend && npm test -- --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset" --no-coverage
+bash architecture/scripts/validate-module-registry.sh
 ```

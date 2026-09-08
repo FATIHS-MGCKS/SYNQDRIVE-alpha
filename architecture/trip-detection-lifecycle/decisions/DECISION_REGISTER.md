@@ -21,10 +21,10 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | Field | Value |
 |-------|-------|
 | **STATUS** | PROPOSED |
-| **BEFORE** | `hasActivityResumed` scanned 90s window from worker `now`; pre-stop motion could false-trigger `activity_resumed`. Pending `FINALIZE` jobs were not cancelled on resume; `processFinalize` lacked guards for resumed `ACTIVE_TRIP`. |
-| **WHY** | KS MX 2026-09-08 reference case: motor-off pause with telemetry gap produced false resume @ `04:48:51` and non-terminal end state despite `scheduleFinalize` |
-| **CHANGE** | Anchor resume to `possibleEndAt`/`cusumSegmentEnd`; cancel pending `ev`/`fin` queue jobs on resume; abort stale finalize when FSM is `ACTIVE_TRIP` or movement anchor is after end boundary |
-| **ALTERNATIVES REJECTED** | Broad timeout/threshold tuning; forcing mid-gap split on high drift |
+| **BEFORE** | `hasActivityResumed` scanned fetched points without `resumeAfterAt`; stale waiting `FINALIZE` jobs blocked re-enqueue (`skipped`); `processFinalize` lacked end-cycle correlation |
+| **WHY** | KS MX 2026-09-08: false resume during motor-off gap; true end @ ~05:02:45 not persisted despite `scheduleFinalize` @ 05:17:36 |
+| **CHANGE** | Anchor resume to end boundary; `endCycleToken=possibleEndEnteredAt` on `ev`/`fin` jobs; recycle waiting slot before finalize enqueue; abort stale jobs via `isEndCycleTokenStale`; cancel pending end-cycle jobs on resume |
+| **ALTERNATIVES REJECTED** | Movement-after-end finalize guard (blocked legitimate ends); broad timeout tuning; mid-gap split threshold change |
 | **EXPECTED EFFECT** | Motor-off pauses within same journey stay on end path until fresh post-boundary motion; resumed trips cannot be closed by stale finalize jobs |
 | **VALIDATION** | `trip-fsm-motor-off-pause-r10.spec.ts`, `trip-detection.spec.ts` |
 | **PRODUCTION STATUS** | **Not deployed** — fix on branch only |
