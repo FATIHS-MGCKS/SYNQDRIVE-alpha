@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -83,10 +83,10 @@ describe('i18n structural invariants (P0/P1 guardrails)', () => {
     );
   });
 
-  it.skip('keeps rental LanguageContext as a compatibility re-export shim (INTEGRATION-2)', () => {
-    const shimSource = readFileSync(rentalShimPath, 'utf8');
-    expect(shimSource).toContain("from '../../i18n/LanguageContext'");
-    expect(shimSource).not.toContain('createContext');
+  it('confirms Rental compatibility bridge removal after Integration 2C', () => {
+    expect(existsSync(rentalShimPath)).toBe(false);
+    expect(existsSync(join(__dirname, '../rental/i18n'))).toBe(false);
+    expect(existsSync(join(__dirname, '../rental/i18n/translations/en.ts'))).toBe(false);
   });
 
   it('documents that strict translation-key completeness is deferred to P3/P6', () => {
