@@ -21,6 +21,7 @@ Append-only record for this authority directory.
 | 2026-09-08 | R10 follow-up: end-cycle token + recycle enqueue; removed incorrect movement-after-end guard; expanded tests A–G | Trip FSM R10 PR #1574 | Same evidence doc |
 | 2026-09-08 | R10 gap close: legacy tokenless FINALIZE safety (`requestedAt` vs episode clock); pre-write admission; postgres integration test (gated); tests H–J | Trip FSM R10 PR #1574 | Same evidence doc |
 | 2026-09-08 | R10 CI: trip-fsm-production-readiness workflow runs persisted postgres integration (fail-closed, cases A–D) on ephemeral PostgreSQL 16 | Trip FSM R10 PR #1574 | Same evidence doc |
+| 2026-09-08 | R10 CI fix: harness import path + fixture-local `dimoTokenId` (Vehicle schema); CI green 4/4 postgres integration at `0f0b8bedc` | Trip FSM R10 PR #1574 | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

@@ -155,7 +155,9 @@ Local / optional:
 |------|-------------|
 | Prisma, `TripDecisionEngine.finalizeTrip`, orchestration `processFinalize` / `scheduleFinalize`, worker lock, FSM `transitionState` | BullMQ (in-memory queue), post-finalize producers, DIMO/CH/metrics |
 
-Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLETED` + FSM `RESTING`; stale legacy rejection; cycle-B completion after A rejected; duplicate consumer idempotent. **CI-verified on ephemeral Postgres; not deployed; not natural-drive validated.**
+Proves: scheduleFinalize → queue admission → consumer → `tripStatus=COMPLETED` + FSM `RESTING`; stale legacy rejection; cycle-B completion after A rejected; duplicate consumer idempotent.
+
+**CI proof (2026-09-08, commit `0f0b8bedc`):** GitHub Actions job `Backend trip finalize PostgreSQL integration` — **4 passed, 0 skipped, 0 failed** (cases A–D). Ephemeral Postgres only; **not deployed; not natural-drive validated.**
 
 ## Cross-module notes (out of scope)
 
