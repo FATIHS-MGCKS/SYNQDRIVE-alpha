@@ -131,6 +131,7 @@ import {
   mergeLastProviderActivityAt,
   mergePauseDetectedAt,
   mergeStopBoundaryAt,
+  resolveIdleStopBoundaryAt,
   readEmptyCoreDeferralStreak,
   readStopBoundaryAt,
   resolveProviderOperationalAnchor,
@@ -2525,16 +2526,28 @@ export class TripDetectionOrchestrationService {
         case 'IDLE':
           resultState = TripDetectionState.IDLE_WITHIN_TRIP;
           {
-            const idleBoundary =
-              movementEventAt ??
-              det.lastMeaningfulMovementAt ??
-              det.lastActivityAt ??
-              now;
-            const idleEvidence = mergeStopBoundaryAt(
+            const { boundaryAt: idleBoundary, boundarySource } =
+              resolveIdleStopBoundaryAt({
+                movementEventAt,
+                lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                lastActivityAt: det.lastActivityAt,
+                workerNow: now,
+                telemetry: telemetry
+                  ? {
+                      isIgnitionOn: telemetry.isIgnitionOn,
+                      speedKmh: telemetry.speedKmh,
+                      engineLoad: telemetry.engineLoad,
+                      sourceTimestamp: telemetry.sourceTimestamp,
+                    }
+                  : null,
+                profile,
+              });
+            let idleEvidence = mergeStopBoundaryAt(
               continuityEvidencePatch,
               idleBoundary,
-              'idle_within_trip',
+              boundarySource,
             );
+            idleEvidence = mergeLastProviderActivityAt(idleEvidence, idleBoundary);
             await this.transitionState(
               vehicleId,
               TripDetectionState.IDLE_WITHIN_TRIP,

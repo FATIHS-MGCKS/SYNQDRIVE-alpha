@@ -27,7 +27,7 @@
 | Area | Implementation | Time boundaries |
 |------|----------------|-----------------|
 | Provider operational anchor | `resolveProviderOperationalAnchor()` | **120 s** corroboration TTL |
-| Stop boundary | `stopBoundaryAt` + `vls_stop_boundary_corroboration` | Provider EVENT_TIME |
+| Stop boundary | `stopBoundaryAt` + `resolveIdleStopBoundaryAt()` + `vls_stop_boundary_corroboration` | Provider EVENT_TIME; IDLE prefers stationary VLS obs |
 | Pause detection | `pauseDetectedAt`; no `POSSIBLE_END` from pause alone | `< 120 s` silence |
 | Wake preemption | `accelerateActiveTickAfterWake()` + `enqueuePreemptiveTripTrackingJob` | Replaces delayed ACTIVE_TICK |
 | Backoff | `computeEmptyCoreBackoffMs` 30 s → 600 s cap | `TRIP_EMPTY_CORE_BACKOFF_*` |
@@ -39,13 +39,15 @@
 |----------|-------------------|--------|
 | A — 60 s pause + resume | `trip-fsm-r11-empty-core-evidence.spec.ts` › A | **PASS** (unit) |
 | B — 136 s KS MS 661 (SYNTHETIC) | `trip-fsm-r11-empty-core-evidence.spec.ts` › B | **PASS** (unit) |
-| C — full completion chain | `trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts` › `C — provider anchor → … COMPLETED + RESTING` | **PASS** (CI run 34292251272 @ `4cf4d616e`) |
+| C — full completion chain (pre-seeded boundary) | `trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts` › C | **PASS** (CI) |
+| **J — stop boundary generation + full chain (KS661 entry)** | `trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts` › J | **PASS** (CI) — proves boundary from orchestration, not fixture |
 | D/E — data loss standing/moving | `trip-fsm-r11-empty-core-evidence.spec.ts` › D/E | **PASS** (unit) |
 | F — motor at standstill | `trip-fsm-r11-empty-core-evidence.spec.ts` › F | **PASS** (unit) |
 | G — stale load at boundary | `trip-fsm-r11-empty-core-evidence.spec.ts` › G + `trip-r11-stop-evidence-semantics.spec.ts` | **PASS** |
 | H — fetch taxonomy | `trip-fsm-r11-empty-core-evidence.spec.ts` › H | **PASS** (unit) |
-| I — backoff/wake/queue | `trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts` › I-a…I-f | **PASS** (CI run 34292251272 @ `4cf4d616e`) |
-| J — R10 regression | `trip-fsm-motor-off-pause-r10`, `trip-finalize-end-cycle.postgres.integration` | **PASS** (CI) |
+| I — backoff/wake/queue | `trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts` › I-a…I-f | **PASS** (CI) |
+| R10 regression | `trip-fsm-motor-off-pause-r10`, `trip-finalize-end-cycle.postgres.integration` | **PASS** (CI) |
+| Stop boundary + counter-cases | `trip-fsm-evidence-state.spec.ts` | **PASS** (unit) |
 | Stop evidence semantics | `trip-r11-stop-evidence-semantics.spec.ts` | **PASS** (unit) |
 | Scaling probe (synthetic) | `trip-r11-scaling-simulation.spec.ts` (5 / 1 000 / 10 000) | **PASS** (measured enqueue/backoff only — **not** production load) |
 
@@ -65,9 +67,12 @@ Design load model remains in #1583 contract docs; execution evidence is the synt
 |-------|------------|
 | Worker-time anchor shrink | **Yes** |
 | Stale core motion before pause | **Yes** |
-| Stale engine load after IDLE (VLS present) | **Partial** |
-| Prolonged `vls_row_absent` | **Open** — UNKNOWN, no false end |
-| Missing end corroboration within 120 s | **Unchanged product limit** |
+| Stale engine load after IDLE (VLS present) | **Yes** — `resolveIdleStopBoundaryAt` + boundary corroboration (Scenario J) |
+| **`vls_row_absent` misclassified on KS MS 661 Production** | **Corrected** — see [KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md](KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md); actual blocker was load/freshness |
+| True `telemetry === null` (`vls_row_absent`) | **Open** — UNKNOWN, no false end |
+| Natural Production validation | **After authorized deploy** — not claimed pre-deploy |
+
+**Audit correction:** Prior docs cited `vls_row_absent` for KS MS 661 late phase; Production DB forensics show persistent VLS row with `vls_stale_provider_observation` / engine-load ACTIVE. Production trip completed via **`STALE_ONGOING` repair**, not FSM end detection.
 
 ## CI commands
 

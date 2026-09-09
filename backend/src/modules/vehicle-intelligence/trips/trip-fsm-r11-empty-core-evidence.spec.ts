@@ -178,7 +178,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
 
   describe('G — stale engine load at stop boundary (KS MS 661 post-IDLE)', () => {
     it('allows end path when obs predates stop boundary (stop corroboration)', () => {
-      const stopBoundary = new Date('2026-09-08T19:59:55.895Z');
+      const stopBoundary = new Date('2026-09-08T19:59:22.000Z');
       const workerNow = new Date('2026-09-08T20:02:00.000Z');
       const gate = assessSuccessfulEmptyCoreEndEligibility({
         operationalInactiveMs: workerNow.getTime() - stopBoundary.getTime(),

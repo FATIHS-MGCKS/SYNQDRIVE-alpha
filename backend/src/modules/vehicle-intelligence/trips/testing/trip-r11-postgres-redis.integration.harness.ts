@@ -29,6 +29,8 @@ export type TripR11PostgresFixture = {
   lastMovementAt: Date;
   stopBoundaryAt: Date;
   expectedEndTime: Date;
+  /** Set when fixture intentionally omits pre-seeded stop boundary (KS661 entry path). */
+  stopBoundaryPreseeded?: boolean;
 };
 
 export type TripR11SegmentsMock = {
@@ -212,7 +214,138 @@ export async function createTripR11ActiveTripFixture(
     lastMovementAt,
     stopBoundaryAt,
     expectedEndTime,
+    stopBoundaryPreseeded: true,
   };
+}
+
+/** KS MS 661–shaped entry: ACTIVE_TRIP without pre-seeded stopBoundaryAt. */
+export async function createTripR11Ks661PreIdleFixture(
+  prisma: PrismaClient,
+): Promise<TripR11PostgresFixture> {
+  const suffix = uniqueSuffix();
+  const tripStartAt = new Date('2026-09-08T19:36:00.000Z');
+  const lastMovementAt = new Date('2026-09-08T19:58:45.114Z');
+  const vlsObservedAt = new Date('2026-09-08T19:59:22.000Z');
+  const expectedEndTime = vlsObservedAt;
+  const dimoTokenId = 910000 + Math.floor(Math.random() * 1000);
+
+  const org = await prisma.organization.create({
+    data: {
+      companyName: `Trip R11 KS661 ${suffix}`,
+      businessType: 'RENTAL',
+      status: 'ACTIVE',
+    },
+    select: { id: true },
+  });
+
+  const vehicle = await prisma.vehicle.create({
+    data: {
+      organizationId: org.id,
+      vin: `VIN${suffix}`.slice(0, 17).padEnd(17, '0'),
+      licensePlate: `K661-${suffix}`.slice(0, 12),
+      make: 'Audi',
+      model: 'KS661',
+      year: 2024,
+      fuelType: 'GASOLINE',
+      status: 'AVAILABLE',
+    },
+    select: { id: true, organizationId: true },
+  });
+
+  const trip = await prisma.vehicleTrip.create({
+    data: {
+      vehicleId: vehicle.id,
+      tripStatus: TripStatus.ONGOING,
+      startTime: tripStartAt,
+      startLatitude: 51.2,
+      startLongitude: 9.3,
+      distanceKm: 8.4,
+      rawDetectionMeta: {},
+    },
+    select: { id: true, startTime: true },
+  });
+
+  await prisma.vehicleTripDetectionState.create({
+    data: {
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      state: TripDetectionState.ACTIVE_TRIP,
+      detectionProfile: VehicleDetectionProfile.ICE,
+      activeTripId: trip.id,
+      possibleStartAt: tripStartAt,
+      lastMeaningfulMovementAt: lastMovementAt,
+      lastActivityAt: lastMovementAt,
+      lastCoreProcessedAt: lastMovementAt,
+      lastRouteProcessedAt: lastMovementAt,
+      lastDrivingProcessedAt: lastMovementAt,
+      lastEvidenceSummary: {
+        lastProviderActivityAt: lastMovementAt.toISOString(),
+      },
+    },
+  });
+
+  await prisma.vehicleLatestState.create({
+    data: {
+      vehicleId: vehicle.id,
+      dimoTokenId,
+      isIgnitionOn: false,
+      speedKmh: 0,
+      engineLoad: 42.74509803921568,
+      sourceTimestamp: vlsObservedAt,
+      updatedAt: vlsObservedAt,
+    },
+  });
+
+  return {
+    suffix,
+    org,
+    vehicle: { id: vehicle.id, organizationId: vehicle.organizationId, dimoTokenId },
+    trip,
+    lastMovementAt,
+    stopBoundaryAt: vlsObservedAt,
+    expectedEndTime,
+    stopBoundaryPreseeded: false,
+  };
+}
+
+export function buildKs661IdleTransitionSegmentsMock(
+  vlsObservedAt: Date,
+): TripR11SegmentsMock {
+  const coreTs = vlsObservedAt.toISOString();
+  return {
+    fetchRawTripCoreData: jest.fn().mockResolvedValue([
+      { timestamp: coreTs, speed: 0, odometer: 1000, isIgnitionOn: false },
+      { timestamp: coreTs, speed: 0, odometer: 1000, isIgnitionOn: false },
+    ]),
+    fetchRouteEnrichment: jest.fn().mockResolvedValue([]),
+    fetchPerformance: jest.fn().mockResolvedValue([
+      {
+        timestamp: coreTs,
+        rpm: 800,
+        throttlePosition: 12,
+        engineLoad: 42.745,
+      },
+    ]),
+    fetchEndValidationWindow: jest.fn().mockResolvedValue([
+      {
+        timestamp: coreTs,
+        speed: 0,
+        isIgnitionOn: false,
+        travelledDistance: 1000,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+    ]),
+  };
+}
+
+export function buildKs661EmptyCoreSegmentsMock(
+  expectedEndTime: Date,
+): TripR11SegmentsMock {
+  const base = buildTripR11SegmentsMock(expectedEndTime);
+  base.fetchRawTripCoreData = jest.fn().mockResolvedValue([]);
+  base.fetchPerformance = jest.fn().mockResolvedValue([]);
+  return base;
 }
 
 export async function cleanupTripR11Fixture(

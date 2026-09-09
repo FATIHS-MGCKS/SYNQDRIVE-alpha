@@ -3,6 +3,7 @@ import {
   resolveOperationalNoCoreInactivityAnchor as resolveOperationalNoCoreInactivityAnchorLegacy,
 } from './trip-fsm-clock-contract';
 import type { EmptyCoreVlsTelemetry } from './trip-empty-core-end-gate';
+import { getSharedSignalThresholds } from './trip-start-detection-policy';
 
 export type TripFsmEvidenceSummary = Record<string, unknown>;
 
@@ -78,6 +79,76 @@ export function resolveProviderOperationalAnchor(params: {
       : params.lastMeaningfulMovementAt
         ? 'lastMeaningfulMovementAt_legacy'
         : 'possibleStartAt_or_workerNow',
+  };
+}
+
+/**
+ * Resolve stop boundary when entering IDLE_WITHIN_TRIP.
+ * Prefers post-movement stationary VLS provider time over last movement alone so
+ * corroboration can use the stop snapshot (e.g. KS MS 661 ignition-off row).
+ */
+export function resolveIdleStopBoundaryAt(params: {
+  movementEventAt: Date | null;
+  lastMeaningfulMovementAt: Date | null;
+  lastActivityAt: Date | null;
+  workerNow: Date;
+  telemetry: EmptyCoreVlsTelemetry | null;
+  profile: string;
+}): { boundaryAt: Date; boundarySource: string } {
+  if (
+    params.movementEventAt &&
+    isValidProviderEventTimestamp(params.movementEventAt, params.workerNow)
+  ) {
+    return {
+      boundaryAt: params.movementEventAt,
+      boundarySource: 'idle_within_trip_movement',
+    };
+  }
+
+  const shared = getSharedSignalThresholds(params.profile);
+  const ts = params.telemetry?.sourceTimestamp ?? null;
+  const speed = params.telemetry?.speedKmh;
+
+  if (
+    ts &&
+    isValidProviderEventTimestamp(ts, params.workerNow) &&
+    speed != null &&
+    speed <= shared.speedMotionKmh
+  ) {
+    const afterLastMove =
+      !params.lastMeaningfulMovementAt ||
+      ts.getTime() >= params.lastMeaningfulMovementAt.getTime();
+    if (afterLastMove) {
+      return {
+        boundaryAt: ts,
+        boundarySource: 'idle_within_trip_stationary_vls',
+      };
+    }
+  }
+
+  if (
+    params.lastMeaningfulMovementAt &&
+    isValidProviderEventTimestamp(params.lastMeaningfulMovementAt, params.workerNow)
+  ) {
+    return {
+      boundaryAt: params.lastMeaningfulMovementAt,
+      boundarySource: 'idle_within_trip_last_movement',
+    };
+  }
+
+  if (
+    params.lastActivityAt &&
+    isValidProviderEventTimestamp(params.lastActivityAt, params.workerNow)
+  ) {
+    return {
+      boundaryAt: params.lastActivityAt,
+      boundarySource: 'idle_within_trip_last_activity',
+    };
+  }
+
+  return {
+    boundaryAt: params.workerNow,
+    boundarySource: 'idle_within_trip_worker_now',
   };
 }
 
