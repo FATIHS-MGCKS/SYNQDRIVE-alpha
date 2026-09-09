@@ -35,7 +35,14 @@ const DRIVE_END_PARKED_SEC = Number.parseInt(process.env.EXP021_DRIVE_END_PARKED
 const PHASE_DURATION_MS = Number.parseInt(process.env.EXP021_PHASE_DURATION_MS ?? '300000', 10);
 const POLL_MS = Number.parseInt(process.env.EXP021_POLL_MS ?? '15000', 10);
 
-type Phase = 'WAIT_DEPLOY' | 'PREP' | 'WAIT_TELEMETRY' | 'PRE_ROLL' | 'WAIT_MOVEMENT' | 'DRIVING' | 'DONE' | 'SKIPPED';
+type Phase =
+  | 'WAIT_DEPLOY'
+  | 'PREP'
+  | 'WAIT_TELEMETRY'
+  | 'WAIT_MOVEMENT'
+  | 'DRIVING'
+  | 'DONE'
+  | 'SKIPPED';
 
 function loadEnv(): void {
   const envPath = process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
@@ -230,7 +237,8 @@ async function main(): Promise<void> {
   let movementSustainSince: number | null = null;
   let parkedSustainSince: number | null = null;
 
-  let app: Awaited<ReturnType<typeof NestFactory.createApplicationContext>> | null = null;
+  type AppContext = Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
+  let app: AppContext | null = null;
   let prisma: PrismaService | null = null;
   let sessionService: ReferenceCaptureSessionService | null = null;
   let sessionRepo: ReferenceCaptureSessionRepository | null = null;
@@ -247,7 +255,8 @@ async function main(): Promise<void> {
   }
 
   try {
-    while (phase !== 'DONE' && phase !== 'SKIPPED') {
+    while (true) {
+      if (phase === 'DONE' || phase === 'SKIPPED') break;
       const sha = currentReleaseSha();
       const deployRunning = deployProcessRunning();
       const r3001 = replicaHealthy(3001);
@@ -291,7 +300,7 @@ async function main(): Promise<void> {
           break;
         }
 
-        log('DEPLOY_WAIT', { deployRunning, sha, TARGET_SHA, r3001, r3002, ext, speedKmh: motion.speedKmh });
+        log('DEPLOY_WAIT', { deployRunning, sha, TARGET_SHA, r3001, r3002, ext, speedKmh: motion?.speedKmh ?? null });
         await sleep(POLL_MS);
         continue;
       }
@@ -339,9 +348,9 @@ async function main(): Promise<void> {
         continue;
       }
 
-      if (phase === 'WAIT_TELEMETRY' || phase === 'PRE_ROLL') {
-        if (!motion || !motion.liveReady) {
-          log('WAIT_TELEMETRY', { providerAgeSec: motion.providerAgeSec, speedKmh: motion.speedKmh });
+      if (phase === 'WAIT_TELEMETRY') {
+        if (!motion?.liveReady) {
+          log('WAIT_TELEMETRY', { providerAgeSec: motion?.providerAgeSec ?? null, speedKmh: motion?.speedKmh ?? null });
           await sleep(POLL_MS);
           continue;
         }
@@ -352,9 +361,9 @@ async function main(): Promise<void> {
         });
         if (competing > 0) throw new Error('competing RECORDING session exists');
 
-        const parked = motion.speedKmh == null || motion.speedKmh < PARKED_SPEED_KMH;
+        const parked = motion!.speedKmh == null || motion!.speedKmh < PARKED_SPEED_KMH;
         if (!parked) {
-          log('WAIT_PARKED_FOR_PRE_ROLL', { speedKmh: motion.speedKmh });
+          log('WAIT_PARKED_FOR_PRE_ROLL', { speedKmh: motion!.speedKmh });
           await sleep(POLL_MS);
           continue;
         }
@@ -384,6 +393,10 @@ async function main(): Promise<void> {
 
       if (phase === 'WAIT_MOVEMENT') {
         if (!sessionId) throw new Error('missing sessionId');
+        if (!motion) {
+          await sleep(POLL_MS);
+          continue;
+        }
         const speed = motion.speedKmh;
         if (speed != null && speed >= MOVEMENT_SPEED_KMH) {
           if (!movementSustainSince) movementSustainSince = Date.now();
@@ -411,6 +424,10 @@ async function main(): Promise<void> {
 
       if (phase === 'DRIVING') {
         if (!sessionId) throw new Error('missing sessionId');
+        if (!motion) {
+          await sleep(POLL_MS);
+          continue;
+        }
         const speed = motion.speedKmh;
 
         if (phaseActivatedAtMs != null && currentPhaseIndex >= 0 && currentPhaseIndex < EXP021_CADENCE_PHASE_ORDER_MS.length - 1) {
