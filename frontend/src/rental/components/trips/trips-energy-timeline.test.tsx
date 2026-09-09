@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { TripTimelineEnergyCard } from './trip-timeline-shared';
 import type { EnergyEvent } from '../../../lib/api';
 import {
@@ -8,15 +8,15 @@ import {
   formatRefuelSignalChangeMinutes,
   TRIPS_ENERGY_I18N_KEYS,
 } from './trips-energy-i18n';
-import { en } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import { fr } from '../../i18n/translations/fr';
-import { nl } from '../../i18n/translations/nl';
-import { es } from '../../i18n/translations/es';
-import { it as itLocale } from '../../i18n/translations/it';
-import { pl } from '../../i18n/translations/pl';
-import { cs } from '../../i18n/translations/cs';
-import type { Locale } from '../../i18n/LanguageContext';
+import { en } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { fr } from '../../../i18n/translations/fr';
+import { nl } from '../../../i18n/translations/nl';
+import { es } from '../../../i18n/translations/es';
+import { it as itLocale } from '../../../i18n/translations/it';
+import { pl } from '../../../i18n/translations/pl';
+import { cs } from '../../../i18n/translations/cs';
+import type { Locale } from '../../../i18n/LanguageContext';
 
 const locales: Record<Locale, Record<string, string>> = {
   en,

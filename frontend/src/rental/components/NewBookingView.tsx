@@ -37,7 +37,7 @@ import {
   type CustomerVerificationPlanState,
 } from '../lib/add-customer-wizard';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
 import type { BookingWizardEligibilityPreview } from '../lib/booking-wizard-eligibility.types';
 import {

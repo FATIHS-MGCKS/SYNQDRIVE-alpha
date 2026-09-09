@@ -3,9 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { FleetConnectivityDetail } from '../../../lib/api';
 import { FleetConnectivityDetailSections } from './FleetConnectivityDetailSections';
 import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 
 function t(key: TranslationKey, params?: Record<string, string | number>): string {
   let value: string = en[key] ?? key;

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { en } from '../../i18n/translations/en';
+import { en } from '../../../i18n/translations/en';
 import {
   buildCopyParamVariables,
   executeRecommendationAction,
@@ -14,7 +14,7 @@ import {
   sectionAnchorId,
 } from '../../components/evaluations/recommendation-presentation';
 import { RecommendationCard } from '../../components/evaluations/RecommendationCard';
-import { LanguageProvider } from '../../i18n/LanguageContext';
+import { LanguageProvider } from '../../../i18n/LanguageContext';
 import { e7TestRecommendation } from '../../lib/evaluations/evaluations-recommendations-test-fixtures';
 import type { E7CopyParam } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
 

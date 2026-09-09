@@ -5,7 +5,7 @@ import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';

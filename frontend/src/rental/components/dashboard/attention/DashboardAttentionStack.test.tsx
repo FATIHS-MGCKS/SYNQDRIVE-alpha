@@ -5,8 +5,8 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DashboardAttentionStack } from './DashboardAttentionStack';
 import type { DashboardViewModel } from '../dashboardTypes';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 
 vi.mock('../../../RentalContext', () => ({
   useRentalOrg: () => ({ orgId: 'org-1' }),

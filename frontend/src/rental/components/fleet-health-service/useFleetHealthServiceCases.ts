@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type ApiServiceCase } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export function useFleetHealthServiceCases(orgId: string | null | undefined) {
   const { t } = useLanguage();

@@ -1,5 +1,7 @@
 # KS MS 661 — Blocked empty-core decision reproduction
 
+> **Partial supersession (TDL-EVID-KS-MS-661-002):** Row **20:01:58+** citing **`vls_row_absent`** is **incorrect** for this Production drive — a **persisted VLS row** remained (`vlsProviderObservedAt=19:59:22Z`); late blocker was **`vls_engine_load_active` → `vls_stale_provider_observation` → UNKNOWN**. **16.9 s** = worker `lastActivityAt` anchor only; **76 s** = reported motor-off → first empty-core tick @ 19:54:38. Trip completed via **`STALE_ONGOING` repair** @ 21:40:38Z — **not** regular FSM end detection. See [KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md](KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md).
+
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | TDL-EVID-KS-MS-661-REPRO-001 |
@@ -85,7 +87,7 @@ Unchanged: delayed recognition **observed** (~4m31s to first provider wake). Pro
 | Perf readings | 0 | tracking run | n/a | same | n/a | n/a | `performanceActivity=false` |
 | FSM state | `ACTIVE_TRIP` | tracking run `result_state` | n/a | same | n/a | n/a | Empty-core in active tick |
 | `lastActivityAt` / anchor | **19:54:21.115Z** | `operationalAnchorAt` in forensics | n/a | used as anchor input | n/a | `resolveOperationalNoCoreInactivityAnchor` prefers `lastActivityAt` over `lastMeaningfulMovementAt` | Anchor for inactivity ms |
-| `operationalInactiveMs` | **16896** | forensics | n/a | same | **16.9 s** | `< minInactivityBeforeCusumMs (120000)` | **`operational_inactivity_below_threshold`** ← **primary inner gate reason** |
+| `operationalInactiveMs` | **16896** | forensics | n/a | same | **16.9 s** (worker anchor @ 19:54:21; **76 s** since operator motor-off @ 19:53:22) | `< minInactivityBeforeCusumMs (120000)` | **`operational_inactivity_below_threshold`** ← **primary inner gate reason** |
 | VLS speed / ignition / load | **not in forensics** | `vehicle_latest_states` not snapshotted per run | obs **19:53:31** | read @ worker | **67011 ms** | `< 120000 → FRESH` | **`vls_speed_above_motion_threshold` → ACTIVE** (secondary blocker if inactivity passed) |
 | VLS tri-state | **ACTIVE** | forensics | 19:53:31 | 19:54:38 | 67 s | Fresh | Would block after inactivity threshold |
 | CH end assist | Not applied | No `clickhouse_end_assist_no_core_stream` reason | n/a | same | n/a | n/a | Fell through to empty-core gate |
@@ -100,7 +102,7 @@ Unchanged: delayed recognition **observed** (~4m31s to first provider wake). Pro
 | 19:54:38 – ~19:56:21 | `operational_inactivity_below_threshold` | `operationalInactiveMs` < 120000 while anchor @ 19:54:21 |
 | ~19:55:52+ | `vls_stale_provider_observation` → UNKNOWN | `vlsObservationAgeMs` > 120000 |
 | 20:00:26+ (post-IDLE) | `operational_inactivity_below_threshold` then **`vls_engine_load_active`** | Reconstructed: VLS speed 0, **engineLoad≈42.7**, obs 19:59:22 → ACTIVE (`RECONSTRUCTED` replay) |
-| 20:01:58+ | **`vls_row_absent` / UNKNOWN** with `operationalInactiveMs` ≥ 120000 | Observed UNKNOWN; null/absent VLS keeps open by design |
+| 20:01:58+ | **`vls_engine_load_active` → `vls_stale_provider_observation` → UNKNOWN** with `operationalInactiveMs` ≥ 120000 | **SUPERSEDED label:** forensics said `vls_row_absent`; persisted VLS row @ 19:59:22 — TDL-EVID-KS-MS-661-002 |
 
 **R10 prerequisite:** FSM never entered `POSSIBLE_END` → R10 end-cycle guards **NOT_EXERCISED**.
 
@@ -176,8 +178,9 @@ This explains sustained **`vlsEvidenceState=ACTIVE`** after operator end despite
 2. **Empty-core begins @ 19:54:38:** dual block — **operational inactivity timer not met** (16.9 s < 120 s) and **fresh VLS ACTIVE** (67 s < 120 s rule).
 3. **During pause/resume:** core returns → motion resumes; mid-gap split not triggered (no sustained silence gap in live path at stop).
 4. **After operator end:** FSM → `IDLE_WITHIN_TRIP` via `stopped_perf_active`, **not** `POSSIBLE_END`.
-5. **Post-IDLE empty core:** VLS **engine load > 15** keeps ACTIVE; later VLS ages to **UNKNOWN** → intentional “absence ≠ end proof” safety → **no POSSIBLE_END**.
+5. **Post-IDLE empty core:** VLS **engine load > 15** keeps ACTIVE; later VLS ages to **UNKNOWN** → intentional “absence ≠ end proof” safety → **no POSSIBLE_END** (persisted VLS row — **not** `telemetry === null`).
 6. **R10 never engaged** — requires `POSSIBLE_END` entry first.
+7. **Trip terminal:** **`STALE_ONGOING` repair** @ `2026-09-08T21:40:38Z` — **not** successful regular FSM end detection.
 
 ---
 

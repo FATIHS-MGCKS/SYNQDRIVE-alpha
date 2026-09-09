@@ -159,6 +159,24 @@ nodes:
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MX_MOTOR_OFF_PAUSE_2026-09-08.md
 
+  - id: TDL-EVID-KS-MS-661-001
+    type: evidence
+    title: KS MS 661 natural drive audit addendum
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: R9 start wake; blocked empty-core; STALE_ONGOING repair @ 21:40:38Z; 0x POSSIBLE_END on Production @ 684950419.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MS_661_NATURAL_DRIVE_2026-09-08.md
+
+  - id: TDL-EVID-KS-MS-661-002
+    type: evidence
+    title: KS MS 661 stop-boundary audit correction
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: Corrects vls_row_absent misclassification; 16.9s worker anchor vs 76s motor-off; ignition OFF guard; Scenario J CI.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md
+
   - id: TDL-EVID-KS-MS-661-REPRO-001
     type: evidence
     title: KS MS 661 empty-core decision reproduction
@@ -173,7 +191,7 @@ nodes:
     title: KS MS 661 empty-core solution proposal
     source_type: ARCHITECTURE_DOCUMENT
     epistemic_status: INFERRED
-    summary: TDL-DEC-R11-001 complete PROPOSED contract; signal policy; scalability; implementation order; not implemented.
+    summary: TDL-DEC-R11-001 PROPOSED design contract; 45s positive TTL and PD-2 are candidates only — partial base implemented #1584; not fully deployed.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md
 
@@ -182,7 +200,7 @@ nodes:
     title: KS MS 661 full temporal flow
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
-    summary: Production tracking-run timeline 19:50-20:05 UTC; inner vs outer gate reasons; post-IDLE UNKNOWN phase.
+    summary: Production tracking-run timeline 19:50-20:05 UTC; late phase load/stale UNKNOWN — superseded vls_row_absent rows per TDL-EVID-KS-MS-661-002.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_TEMPORAL_FLOW_2026-09-08.md
 
@@ -240,23 +258,79 @@ nodes:
 
   - id: TDL-DEC-R11-001
     type: decision
-    title: Empty-core positive vs corroboration evidence contract
+    title: Empty-core evidence contract (pause, provider anchor, stop boundary)
     decision_status: PROPOSED
     epistemic_status: CONFIRMED
     summary: >
-      Complete contract: signal-age policy (45s positive UNVALIDATED_CANDIDATE, 120s corroboration);
-      UNKNOWN not INACTIVE; stopBoundaryAt and active resumeAfterStop without circularity; pause vs end
-      vs finalize separated; R10 handoff unchanged; optional flag-gated LOW UNKNOWN candidacy; scheduler
-      backoff and coalesced wake; corrected deploy sequence. Pre-POSSIBLE_END only. Not implemented.
+      Provider operational anchor; stopBoundaryAt with explicit ignition-OFF VLS anchoring;
+      pause tagging; inner/outer forensics; fetch taxonomy; bounded backoff; no PD-2;
+      no default 45s TTL. Merged to main @ 32526c95a (#1584) IMPLEMENTED (CI); not deployed.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
-      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-clock-contract.ts
-      - backend/src/modules/vehicle-intelligence/trips/trip-evidence.helpers.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
     evidence:
-      - TDL-EVID-KS-MS-661-REPRO-001
-      - TDL-EVID-KS-MS-661-TEMPORAL-001
-      - TDL-EVID-KS-MS-661-SCENARIOS-001
+      - TDL-EVID-R11-IMPL-001
       - TDL-EVID-KS-MS-661-PROPOSAL-001
+      - TDL-EVID-KS-MS-661-002
+      - TDL-EVID-KS-MS-661-TEMPORAL-001
+      - TDL-EVID-KS-MS-661-REPRO-001
+
+  - id: TDL-EVID-R11-IMPL-001
+    type: evidence
+    title: TDL-DEC-R11-001 implementation record
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Runtime merged #1584; Jest A-J CI PASS; Scenario J proves stop boundary from orchestration; not production validated.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md
+
+  - id: TDL-TEST-R11-001
+    type: test_evidence
+    title: R11 empty-core evidence unit matrix
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Unit scenarios A–H; gate/backoff specs.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-r11-empty-core-evidence.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-stop-evidence-semantics.spec.ts
+
+  - id: TDL-TEST-R11-002
+    type: test_evidence
+    title: R11 Scenario C postgres+BullMQ completion chain
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Pre-seeded stopBoundaryAt; processActiveTick empty-core through queue to COMPLETED+RESTING.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts
+
+  - id: TDL-TEST-R11-003
+    type: test_evidence
+    title: R11 Scenario I backoff/wake queue integration
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: BullMQ backoff, wake preemption, finalize not delayed, recovery enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts
+
+  - id: TDL-TEST-R11-004
+    type: test_evidence
+    title: R11 synthetic scaling probe
+    source_type: SYNTHETIC_TEST
+    epistemic_status: CONFIRMED
+    summary: Measured enqueue/backoff for 5/1k/10k — design load model separate; not production load proof.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-scaling-simulation.spec.ts
+
+  - id: TDL-TEST-R11-005
+    type: test_evidence
+    title: R11 Scenario J stop boundary generation chain
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: ACTIVE_TRIP without pre-seeded boundary; orchestration sets stopBoundaryAt; R10 finalize; no STALE_ONGOING.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts
 
   - id: TDL-DEC-R9-001
     type: decision
@@ -432,7 +506,7 @@ nodes:
     type: gap
     title: Empty-core no_core_data_keep_open end block on natural drive
     epistemic_status: CONFIRMED
-    summary: KS MS 661 — empty-core gate blocked POSSIBLE_END; complete PROPOSED TDL-DEC-R11-001; R10 NOT_EXERCISED.
+    summary: TDL-GAP-014 — natural drive blocked POSSIBLE_END @ 684950419; R11 merged CI addresses reconstructed path; natural validation pending deploy.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_TEMPORAL_FLOW_2026-09-08.md

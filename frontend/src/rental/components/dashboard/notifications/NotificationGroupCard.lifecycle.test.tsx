@@ -14,8 +14,8 @@ import {
   projectFleetReadinessVehicleGroups,
 } from '../../../lib/notifications/fleet-readiness-attention-projection';
 import { minimalLifecycleActionQueueItem } from '../../../lib/notifications/fixtures/action-queue-item.fixture';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { ActionQueueGroupItem, ActionQueueItem } from '../dashboardTypes';
 
 function t(key: TranslationKey): string {

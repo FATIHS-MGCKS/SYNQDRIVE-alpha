@@ -5,7 +5,7 @@ import {
   formatLegalDocumentDate,
   legalDocumentVariantLabel,
 } from '../../lib/legal-documents-overview';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface Props {
   categories: LegalDocumentCategoryOverview[];

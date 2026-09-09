@@ -2,7 +2,7 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { StatusChip } from '../../../components/patterns';
 import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   VehicleOperationalStatusInlineHint,
 } from '../fleet/VehicleOperationalStatusCallout';

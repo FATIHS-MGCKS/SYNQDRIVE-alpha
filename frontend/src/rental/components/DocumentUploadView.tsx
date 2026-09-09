@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { Icon } from './ui/Icon';
 
 import { formatUploadContextBanner, hasUploadContextConflict } from '../../lib/document-upload-context';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { useDocumentUploadPage } from '../hooks/useDocumentUploadPage';
 import { useDocumentReviewInbox } from '../hooks/useDocumentReviewInbox';

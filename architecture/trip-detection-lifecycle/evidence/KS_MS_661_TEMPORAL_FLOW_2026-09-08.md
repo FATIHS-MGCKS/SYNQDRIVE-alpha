@@ -1,5 +1,7 @@
 # KS MS 661 — Full temporal flow (pause → resume → end → data gap)
 
+> **Partial supersession (TDL-EVID-KS-MS-661-002):** Rows citing **`vls_row_absent`** for 20:01:58+ reflect **tracking-run forensics wording** at audit time. Production DB retained a **persisted VLS row** (`vlsProviderObservedAt=19:59:22Z`); late blocker was **`vls_engine_load_active` → `vls_stale_provider_observation` → UNKNOWN**. Rows kept below for historical traceability; interpret via [KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md](KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md).
+
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | TDL-EVID-KS-MS-661-TEMPORAL-001 |
@@ -49,7 +51,7 @@ Empty-core branch (`corePoints.length === 0`, successful fetch):
 | `no_core_data_keep_open` | `operational_inactivity_below_threshold` |
 | `no_core_data_keep_open` | `vls_stale_provider_observation` |
 | `no_core_data_keep_open` | `vls_speed_above_motion_threshold` / `vls_engine_load_active` |
-| `no_core_data_keep_open` | `vls_row_absent` |
+| `no_core_data_keep_open` | `vls_row_absent` (**separate case** — `telemetry === null`; **SUPERSEDED as KS661 late-phase label** per TDL-EVID-KS-MS-661-002) |
 
 ---
 
@@ -62,7 +64,7 @@ Epistemic: rows from Production tracking runs = **OBSERVED** unless marked **REC
 | Zeit (UTC) | Neue Messungen | Datenalter | Zustand | Maßgeblicher Anker | Erster blockierender Grund (inner) | Nächste Prüfung | Epistemic |
 |------------|----------------|------------|---------|-------------------|-----------------------------------|-----------------|-----------|
 | 19:50–19:54:21 | core >0, `motion_detected` | core fresh in window | `ACTIVE_TRIP` | `lastActivityAt` ← workerNow on motion | n/a (not empty-core) | ACTIVE_TICK ~30 s | OBSERVED |
-| **19:54:38** | core **0**, VLS obs **19:53:31** | VLS **67 s** (<120 s rule) | `ACTIVE_TRIP` | **19:54:21.115** (`lastActivityAt`) | **`operational_inactivity_below_threshold`** (16.9 s < 120 s); secondary: VLS **ACTIVE** fresh | 19:55:22 tick | OBSERVED |
+| **19:54:38** | core **0**, VLS obs **19:53:31** | VLS **67 s** (<120 s rule) | `ACTIVE_TRIP` | **19:54:21.115** (`lastActivityAt`) | **`operational_inactivity_below_threshold`** (**16.9 s** from worker anchor — **not** 76 s from motor-off @ 19:53:22); secondary: VLS **ACTIVE** fresh | 19:55:22 tick | OBSERVED |
 | 19:54:52 | core 0 | VLS **81 s** | `ACTIVE_TRIP` | 19:54:21.115 | **`operational_inactivity_below_threshold`** (30.6 s) | 19:55:22 | OBSERVED |
 | 19:55:22 | core 0 | VLS **111 s** | `ACTIVE_TRIP` | 19:54:21.115 | **`operational_inactivity_below_threshold`** (61 s); VLS still **ACTIVE** fresh | 19:55:52 | OBSERVED |
 | **19:55:52** | core 0 | VLS **141 s** (>120 s) | `ACTIVE_TRIP` | 19:54:21.115 | **`operational_inactivity_below_threshold`** (91 s); VLS → **UNKNOWN** (`vls_stale_provider_observation`) would block even if timer met | 19:56:22 | OBSERVED |
@@ -73,8 +75,8 @@ Epistemic: rows from Production tracking runs = **OBSERVED** unless marked **REC
 | 20:00:38 | core 0 | VLS age **76 s** | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`operational_inactivity_below_threshold`** (42 s); VLS **ACTIVE** (engine load) | 20:00:57 | OBSERVED |
 | 20:00:57 | core 0 | VLS age **95 s** | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`operational_inactivity_below_threshold`** (61 s); VLS **ACTIVE** | 20:01:28 | OBSERVED |
 | **20:01:28** | core 0 | VLS age **125 s** | `IDLE_WITHIN_TRIP` | 19:59:55.895 | Timer still **91 s** (<120 s); VLS **UNKNOWN** (`vls_stale_provider_observation`) | 20:01:58 | OBSERVED |
-| **20:01:58** | core 0, VLS **absent/null** | no VLS row | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`vls_row_absent` → UNKNOWN**; timer **≥122 s met** — UNKNOWN blocks end | 20:02:28 | OBSERVED |
-| 20:02:28–20:04:38 | core 0, VLS absent | op silence **152–282 s** | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`vls_row_absent`** — prolonged UNKNOWN, no `POSSIBLE_END` | ACTIVE_TICK continues | OBSERVED |
+| **20:01:58** | core 0, forensics **VLS absent/null** | no VLS row in run forensics | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`vls_row_absent` → UNKNOWN** (**SUPERSEDED** — DB row persisted; see 002); timer **≥122 s met** | 20:02:28 | OBSERVED (wording) |
+| 20:02:28–20:04:38 | core 0, forensics VLS absent | op silence **152–282 s** | `IDLE_WITHIN_TRIP` | 19:59:55.895 | **`vls_row_absent`** (**SUPERSEDED**); corrected: load ACTIVE → stale/UNKNOWN; no `POSSIBLE_END` | ACTIVE_TICK continues | OBSERVED (wording) |
 
 ### Phase interpretation
 
@@ -82,7 +84,7 @@ Epistemic: rows from Production tracking runs = **OBSERVED** unless marked **REC
 
 **Phase B — Resume (19:55:38 operator, 19:56:23 core):** Timer would complete ~**19:56:21** from anchor 19:54:21; core returns **19:56:23** before empty-core candidacy. Trip stays same; pause **not** tagged in FSM.
 
-**Phase C — Post-operator end (19:59:56+):** FSM → `IDLE_WITHIN_TRIP` via perf stop, **not** `POSSIBLE_END`. Empty-core resumes with new anchor **19:59:55.895**. Engine load >15 keeps VLS **ACTIVE** until age >120 s; then **UNKNOWN**; then VLS row **absent**. Operational silence exceeds 120 s from **20:01:58** but **UNKNOWN safety** prevents `POSSIBLE_END`.
+**Phase C — Post-operator end (19:59:56+):** FSM → `IDLE_WITHIN_TRIP` via perf stop, **not** `POSSIBLE_END`. Empty-core resumes with new anchor **19:59:55.895**. Engine load >15 keeps VLS **ACTIVE** until age >120 s; then **UNKNOWN** (`vls_stale_provider_observation`). **Corrected (002):** VLS **row persisted** in Production DB — not a true `telemetry === null` gap. Operational silence exceeds 120 s from **~20:01:55** but end candidacy remained blocked. Trip later completed via **`STALE_ONGOING` repair** — not FSM finalize.
 
 **R10:** **NOT_EXERCISED** — no `POSSIBLE_END` / `END_VALIDATION` / `FINALIZE` runs for this `tripId`.
 
@@ -109,7 +111,7 @@ Epistemic: rows from Production tracking runs = **OBSERVED** unless marked **REC
 | 19:55:52 | op timer (91 s) + VLS UNKNOWN | op timer + VLS UNKNOWN | Same outcome; timer still blocks |
 | ~19:56:21 | Would be VLS UNKNOWN only | Provider anchor unchanged → timer met; **still no fresh INACTIVE VLS** | Core returns before candidacy either way |
 | 20:00:26 | op timer + VLS ACTIVE (load) | op timer + **STALE_POSITIVE** (64 s >45 s) | Engine load decay for end candidacy |
-| 20:01:58+ | `vls_row_absent` | `vls_row_absent` + optional corroboration wake (flag) | Still no false end without corroboration |
+| 20:01:58+ | forensics `vls_row_absent` | **`vls_stale_provider_observation` / load path** (002) + optional corroboration wake (flag, **not activated**) | Still no false end without corroboration |
 
 ---
 

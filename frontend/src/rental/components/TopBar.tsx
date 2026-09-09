@@ -7,7 +7,7 @@ import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { LanguageSelector } from '../../i18n/components/LanguageSelector';
 import { api } from '../../lib/api';
 import { unwrapTaskListPage } from '../../lib/tasks-pagination';

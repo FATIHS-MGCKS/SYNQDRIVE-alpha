@@ -14,7 +14,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED | TDL-EVID-R9-AUDIT-001; [DIM-DEC-R9-001](../../dimo-integration/decisions/DECISION_REGISTER.md) |
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
-| TDL-DEC-R11-001 | Empty-core positive vs corroboration evidence contract | PROPOSED | TDL-EVID-KS-MS-661-REPRO-001 |
+| TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
 
 ---
 
@@ -49,24 +49,6 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | **Not deployed** — fix on branch only |
 | **NON_EFFECTS** | Does not change R9 RESTING-only primary wake; does not alter mid-gap split drift thresholds |
 | **EVIDENCE** | TDL-EVID-R10-KS-MX-001 |
-
----
-
-## TDL-DEC-R11-001
-
-| Field | Value |
-|-------|-------|
-| **STATUS** | PROPOSED |
-| **NUMBERING** | Trip Detection decision register R11 — **no collision** with R10 Production deploy / R9 canary tracks |
-| **BEFORE** | Single 120 s freshness for VLS positive + end corroboration; `lastActivityAt=workerNow` shrinks empty-core silence; stale-positive VLS/engine-load blocks indefinitely; inner gate reason overwritten in persistence; UNKNOWN conflated with end blocking without recovery path |
-| **WHY** | KS MS 661 @ `684950419…`: full temporal flow (TDL-EVID-KS-MS-661-TEMPORAL-001) — empty-core gate never reached `POSSIBLE_END`; dual block operational timer + fresh/stale VLS ACTIVE; post-IDLE prolonged UNKNOWN (`vls_row_absent`) |
-| **CHANGE** | Signal-age policy (positive 45 s **UNVALIDATED_CANDIDATE**, corroboration 120 s); UNKNOWN ≠ INACTIVE; provider-time operational anchor + `stopBoundaryAt` / active `resumeAfterStop` without circularity; pause vs end candidacy vs finalize separated; R10 handoff unchanged; optional flag-gated LOW UNKNOWN-timeout candidacy; scheduler backoff + coalesced corroboration wake; corrected deploy sequence (implement → deploy → natural validate) |
-| **ALTERNATIVES REJECTED** | Global inactivity reduction; UNKNOWN → auto-INACTIVE; fleet polling increase; per-vehicle overrides; webhook-only motor-off finalize; deploy blocked on pre-implementation natural validation |
-| **EXPECTED EFFECT** | Running trips protected during gaps; corroborated stops can reach `POSSIBLE_END` → existing R10 finalize; ~1 min pause taggable (not end) when signals present; bounded cost at 10k scale |
-| **VALIDATION** | Scenario matrix TDL-EVID-KS-MS-661-SCENARIOS-001; temporal table TDL-EVID-KS-MS-661-TEMPORAL-001; implementation SC-1–SC-6 in [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) |
-| **PRODUCTION STATUS** | **Not implemented** |
-| **NON_EFFECTS** | Does not replace R10; does not change R9 wake cadence; does not auto-split on short pause; does not promote authority |
-| **EVIDENCE** | TDL-EVID-KS-MS-661-REPRO-001, TDL-EVID-KS-MS-661-TEMPORAL-001, TDL-EVID-KS-MS-661-SCENARIOS-001 |
 
 ---
 
@@ -169,3 +151,23 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **WHY** | reconcile/afterSnapshot/scheduleDurable paths preserved pending but never scheduled retry |
 | **CHANGE** | scheduleUnknownContinuationRetryHandoff applied consistently with explicit enqueue outcomes |
 | **EVIDENCE** | TDL-TEST-R9-001 |
+
+---
+
+## TDL-DEC-R11-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **NUMBERING** | Trip Detection decision register R11 — distinct from R9 canary / unrelated CI R11 labels |
+| **CI / MERGE** | Runtime subset merged @ `32526c95a` (#1584); Jest A–J PASS; design-only 45 s TTL, PD-2, Ignition-OFF webhook **not activated** |
+| **DESIGN BASIS** | [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) (PROPOSED contract); Production forensics TDL-EVID-KS-MS-661-001 … TEMPORAL-001 |
+| **BEFORE** | Worker-time empty-core anchor; stale VLS/engine-load blocks; inner gate reason overwritten; no pause tagging; fixed 30 s tick only |
+| **WHY** | KS MS 661 @ `684950419…`: empty-core gate never reached `POSSIBLE_END`; dual block operational timer + fresh/stale VLS ACTIVE; post-IDLE **`vls_engine_load_active` → stale/UNKNOWN** — **not** `vls_row_absent` (see TDL-EVID-KS-MS-661-002) |
+| **CHANGE** | Provider operational anchor; `stopBoundaryAt` + explicit ignition-OFF VLS anchoring; pause detection; inner/outer forensics; fetch taxonomy; bounded backoff; active continuity post-boundary filter; **no PD-2**; **no default 45 s TTL** |
+| **TIME BOUNDARIES** | End corroboration + operational silence: **120 s** (`TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`); backoff 30–600 s + jitter; **45 s positive TTL = PROPOSED only (PD-3, not activated)** |
+| **VALIDATION** | TDL-EVID-R11-IMPL-001 — Jest scenarios A–**J** CI PASS @ merge `32526c95a`; design prototype S1–S9 (TDL-EVID-KS-MS-661-SCENARIOS-001) |
+| **MERGE STATUS** | **Merged to main** @ `32526c95a` (#1584) |
+| **PRODUCTION STATUS** | **Not deployed** — CI-verified only; natural Production validation **after authorized deploy** |
+| **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; Ignition-OFF DIMO webhook not registered; no provider subscription changes |
+| **EVIDENCE** | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-002; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-TEMPORAL-001; TDL-EVID-KS-MS-661-REPRO-001 |

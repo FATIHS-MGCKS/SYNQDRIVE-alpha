@@ -31,7 +31,7 @@ import {
   resolveVehicleDetailCanonicalHealthDisplay,
 } from './vehicle-detail-row-projection';
 import { isOperationalAttentionReasonCode } from './fleet-reason-badge-domain';
-import { en as enTranslations } from '../i18n/translations/en';
+import { en as enTranslations } from '../../i18n/translations/en';
 
 const NOW = '2026-08-26T12:00:00.000Z';
 

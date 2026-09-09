@@ -17,7 +17,7 @@ import {
 import { AttentionItemRow, AttentionRowAction } from './AttentionItemRow';
 import { DataTrustHint } from './DataTrustHint';
 import { useRentalOrg } from '../../RentalContext';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
 import { sectionTrustHint } from './dataTrustBuilder';
 import {

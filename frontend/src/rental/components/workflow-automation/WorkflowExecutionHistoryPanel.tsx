@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { WorkflowRunDto } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { workflowLastRunOutcomeLabel, workflowLastRunTone } from './workflow-runtime.utils';
 import {
   deriveRunHistoryFlags,

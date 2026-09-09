@@ -5,9 +5,9 @@
  * to select icons, severity, or aggregation behavior.
  */
 import type { StatusTone } from '../../components/patterns';
-import type { TranslationKey } from '../i18n/translations/en';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
 import vhBrakeIcon from '../../assets/icons/vehicle-health/brake.svg';
 import vhMotorFilterIcon from '../../assets/icons/vehicle-health/motor-filter.svg';
 import vhCarBatteryIcon from '../../assets/icons/vehicle-health/car-battery.svg';

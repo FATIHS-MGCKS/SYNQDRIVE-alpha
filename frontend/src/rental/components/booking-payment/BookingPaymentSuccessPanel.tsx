@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { formatMoneyCents, normalizeCurrencyCode } from '../../../lib/money';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import type { BookingSuccessPaymentFlow } from '../new-booking/BookingSuccessState';

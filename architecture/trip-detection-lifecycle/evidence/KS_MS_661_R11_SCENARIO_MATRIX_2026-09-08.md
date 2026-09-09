@@ -1,11 +1,13 @@
 # KS MS 661 — TDL-DEC-R11-001 scenario matrix (local design prototype)
 
+> **Integration proof (merged #1584):** Scenarios **A–J** CI PASS on `origin/main` @ `32526c95a` — see [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md). **Scenario C** uses a **pre-seeded** `stopBoundaryAt` fixture; **Scenario J** generates the boundary via **orchestration** (`resolveIdleStopBoundaryAt` + ignition OFF) — the KS MS 661 Production entry path.
+
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | TDL-EVID-KS-MS-661-SCENARIOS-001 |
 | **Method** | SYNTHETIC / RECONSTRUCTED — isolated Node replay @ compiled helpers `684950419…` + inline PROPOSED gate |
 | **Not** | Integration test, Production mutation, or authority promotion |
-| **Decision** | TDL-DEC-R11-001 (PROPOSED) |
+| **Decision** | TDL-DEC-R11-001 — design prototype **S1–S9**; runtime integration **A–J** (TDL-TEST-R11-001 … 005) |
 
 ## Prototype scope
 
@@ -58,6 +60,18 @@ cd backend && npx tsc -p tsconfig.build.json
 | S9 | DOCUMENTED_LIMITATION | DOCUMENTED_LIMITATION | NOT_EXERCISED |
 
 **Important:** Prototype PASS/FAIL validates **design mechanics only**. Production integration requires items in implementation order (proposal doc §Implementation order).
+
+---
+
+## Integration scenarios (merged #1584 — CI on main)
+
+| Scenario | Boundary source | Test ID | Result |
+|----------|-----------------|---------|--------|
+| **C** | **Pre-seeded** `stopBoundaryAt` in fixture | TDL-TEST-R11-002 | **PASS** (CI) |
+| **J** | **Orchestration-generated** via IDLE + explicit ignition OFF VLS | TDL-TEST-R11-005 | **PASS** (CI) — no STALE_ONGOING |
+| A, B, D–I | Unit / integration per implementation record | TDL-TEST-R11-001, 003, 004 | **PASS** (CI) |
+
+Design prototype **S1–S9** below maps conceptually to A–J but uses inline PROPOSED gate — **not** identical to merged runtime.
 
 ---
 

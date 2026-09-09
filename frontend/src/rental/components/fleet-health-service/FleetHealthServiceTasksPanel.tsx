@@ -3,7 +3,7 @@ import type { ApiTask, Vendor } from '../../../lib/api';
 import { ServiceTasksPanel } from '../service-center/ServiceTasksPanel';
 import type { ServiceTaskFilter } from '../service-center/service-center.types';
 import type { ServiceTaskAdvancedFilters } from '../../lib/service-task-filters';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { fhs } from './fleet-health-service-shell';
 import { DashboardSectionLabel } from '../dashboard/dashboardShell';
 

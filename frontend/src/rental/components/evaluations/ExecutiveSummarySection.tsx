@@ -4,7 +4,7 @@
  * preserves status (no false zero). The issued-revenue KPI is E3/MTD authority
  * (from the summary's E3-delegated finance slice) and is labelled MTD.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsAsyncResult } from '../../lib/evaluations/evaluations-request';
 import type { EvaluationsAnalyticsInsightsSummary } from '../../lib/evaluations/evaluations-canonical.types';
 import { formatEvaluationsMoney } from '../../lib/evaluations/evaluations-money';

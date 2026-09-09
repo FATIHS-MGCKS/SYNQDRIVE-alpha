@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import { RentalRulesMutationError } from './rental-rules-concurrency.errors';
 import {
   buildRentalRulesConflictModel,

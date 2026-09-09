@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
 import type { ApiTask } from '../../../../lib/api';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { VehicleData } from '../../../data/vehicles';
 import {
   resolveTaskPreviewPriority,

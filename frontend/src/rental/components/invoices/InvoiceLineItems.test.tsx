@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { InvoiceLineItems } from './InvoiceLineItems';
 import { rentalDaysLineItemExample } from './invoiceLineItems.mapper';
 import type { Invoice } from './invoiceTypes';

@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Document type** | PROPOSED decision contract + implementation order (no runtime changes in this PR) |
+| **Document type** | PROPOSED decision contract + implementation record (runtime subset merged #1584) |
 | **Decision ID** | **TDL-DEC-R11-001** |
-| **Status** | **PROPOSED** — registry **AUDIT_IN_PROGRESS**; not PRODUCTION_VALIDATED |
+| **Status** | **IMPLEMENTED (CI)** on `origin/main` @ `32526c95a` (#1584) — **45 s positive TTL (PD-3), PD-2 LOW candidacy, Ignition-OFF DIMO webhook = PROPOSED / not activated**; registry **AUDIT_IN_PROGRESS**; not PRODUCTION_VALIDATED |
 | **Evidence basis** | TDL-EVID-KS-MS-661-001, TDL-EVID-KS-MS-661-REPRO-001, TDL-EVID-KS-MS-661-TEMPORAL-001, TDL-EVID-KS-MS-661-SCENARIOS-001 |
 | **Historical SHA** | `68495041974135f7c6565fd5b836b3e2f9176fae` |
 | **Depends on** | TDL-DEC-R10-001/002 (finalize guards apply **after** `POSSIBLE_END` only) |
@@ -367,9 +367,13 @@ Default: `tripTrackingIntervalSec=30`, `emptyCoreRate≈4%`, `wakeCoalesceRate�
 
 ---
 
-## Implementation order (concrete — next PR)
+## Implementation order (merged subset + remaining PROPOSED items)
 
-### Affected files / components
+**Merged to `origin/main` @ `32526c95a` (#1584):** items 1–5, 7–9 (provider anchor, stop boundary, pause tagging, inner forensics, fetch taxonomy, backoff, wake preemption). **CI proof:** [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) — Scenarios **C** (pre-seeded `stopBoundaryAt`), **I**, **J** (orchestration-generated boundary).
+
+**Not activated (PROPOSED only):** item 6 (PD-2 LOW UNKNOWN candidacy); default **45 s** positive TTL (PD-3); Ignition-OFF DIMO webhook trigger; coalesced corroboration wake reason `EMPTY_CORE_CORROBORATION` (partial — generic wake preemption only).
+
+### Affected files / components (reference — see implementation record for merged subset)
 
 | # | Component | File(s) | Behaviour change |
 |---|-----------|---------|------------------|

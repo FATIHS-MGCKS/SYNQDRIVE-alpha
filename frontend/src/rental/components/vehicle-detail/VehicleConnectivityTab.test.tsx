@@ -7,9 +7,9 @@ import {
   VEHICLE_DETAIL_TAB_KEYS,
   VEHICLE_DETAIL_TAB_TRANSLATION_KEYS,
 } from '../../lib/vehicle-detail-a11y';
-import { en } from '../../i18n/translations/en';
-import { de } from '../../i18n/translations/de';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { en } from '../../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { buildVehicleConnectivityOverviewView } from './vehicle-connectivity-presentation';
 import type { DeviceConnectionSummary, VehicleConnectivityRuntimeState } from '../../../lib/api';
 

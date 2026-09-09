@@ -1,4 +1,4 @@
-import type { TranslationKey } from '../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { LEGAL_DOCUMENT_TYPE_CONFIGS } from './legal-document-types';
 
 export const LEGAL_UPLOAD_WIZARD_STEPS: {

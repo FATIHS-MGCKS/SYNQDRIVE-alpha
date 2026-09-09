@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FileText, Download } from 'lucide-react';
 import { cn } from '../../../components/ui/utils';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { CommunicationAttachmentSummary } from '../../../lib/communication/types';
 import { communicationClient } from '../../../lib/communication/communication-client';
 

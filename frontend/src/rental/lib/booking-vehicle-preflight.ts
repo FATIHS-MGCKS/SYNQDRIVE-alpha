@@ -1,8 +1,8 @@
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { BookingUiRow } from '../components/bookings/bookingTypes';
-import { de } from '../i18n/translations/de';
-import { en } from '../i18n/translations/en';
-import type { TranslationKey } from '../i18n/translations/en';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { isRentalBlockedUnverified } from './rental-health-availability';
 import type { PriceTariffCatalog } from '../pricing/pricingTypes';
 import {

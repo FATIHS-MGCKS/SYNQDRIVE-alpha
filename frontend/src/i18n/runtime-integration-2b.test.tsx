@@ -16,10 +16,6 @@ import {
   translateKey,
 } from './LanguageContext';
 import {
-  LanguageProvider as RentalLanguageProvider,
-  useLanguage as useRentalLanguage,
-} from '../rental/i18n/LanguageContext';
-import {
   LOCALE_STORAGE_KEY,
   OFFICIAL_PRODUCT_LOCALE_CODES,
   SUPPORTED_LOCALES,
@@ -180,7 +176,7 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
 
   it('updates the same canonical locale when TopBar selection changes', async () => {
     const platform: { current: ReturnType<typeof useLanguage> | null } = { current: null };
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
 
     const rendered = renderWithProviders(
       createElement(
@@ -193,7 +189,7 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
           },
         }),
         createElement(function RentalProbe() {
-          const value = useRentalLanguage();
+          const value = useLanguage();
           useEffect(() => {
             rental.current = value;
           }, [value]);
@@ -224,7 +220,7 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
   it('preserves locale selected on Login when Rental compatibility consumer mounts', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'pl');
     const platform: { current: ReturnType<typeof useLanguage> | null } = { current: null };
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
 
     const rendered = renderWithProviders(
       createElement(
@@ -237,7 +233,7 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
           },
         }),
         createElement(function RentalProbe() {
-          const value = useRentalLanguage();
+          const value = useLanguage();
           useEffect(() => {
             rental.current = value;
           }, [value]);
@@ -253,10 +249,10 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
   });
 
   it('writes only synqdrive.locale for locale persistence', () => {
-    const rental: { current: ReturnType<typeof useRentalLanguage> | null } = { current: null };
+    const rental: { current: ReturnType<typeof useLanguage> | null } = { current: null };
     const rendered = renderWithProviders(
       createElement(function RentalProbe() {
-        const value = useRentalLanguage();
+        const value = useLanguage();
         useEffect(() => {
           rental.current = value;
         }, [value]);
@@ -292,7 +288,4 @@ describe('Integration 2B — canonical Login and TopBar language surfaces', () =
     expect(LanguageSelector).toBeTypeOf('function');
   });
 
-  it('keeps Rental compatibility bridge delegating to canonical runtime', () => {
-    expect(RentalLanguageProvider).toBe(LanguageProvider);
-  });
 });

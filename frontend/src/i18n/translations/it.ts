@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapIT } from './rental-legacy-gap.it';
 
 export const it = {
   'dashboard.welcomeBack': 'Bentornato, {name}',
@@ -52,5 +53,6 @@ export const it = {
   'health.aiHealthCare': 'Salute IA', 'health.poweredByAi': 'Alimentato da IA', 'health.errorCodes': 'Codici errore', 'health.noActiveErrors': 'Nessun codice errore attivo', 'health.timeline': 'Cronologia', 'health.battery': 'Batteria', 'health.voltage': 'Tensione', 'health.lastCheck': 'Ultimo controllo', 'health.temperature': 'Temperatura', 'health.estimatedCapacity': 'Capacita stimata', 'health.serviceInfo': 'Info servizio', 'health.nextService': 'Prossimo tagliando', 'health.serviceHistory': 'Storico servizi', 'health.brakes': 'Freni', 'health.changeHistory': 'Storico cambi', 'health.tires': 'Pneumatici', 'health.usageDistribution': 'Distribuzione uso', 'health.city': 'Citta', 'health.highway': 'Autostrada', 'health.countryRoad': 'Strada extraurbana', 'health.engineOil': 'Olio motore', 'health.lastChange': 'Ultimo cambio', 'health.oilChangeHistory': 'Storico cambi olio', 'health.tireRotation': 'Rotazione pneumatici', 'health.tireChange': 'Cambio pneumatici',
   'damages.totalDamages': 'Totale danni', 'damages.activeDamages': 'Danni attivi', 'damages.vehicleDamageMap': 'Mappa danni veicolo', 'damages.damageHistory': 'Storico danni',
   'documents.vehicleDocuments': 'Documenti veicolo', 'documents.monthlyFixedCosts': 'Costi fissi mensili',
-  'customerDetail.title': 'Dettagli cliente', 'customerDetail.customerDocuments': 'Documenti cliente', 'customerDetail.customerAlerts': 'Avvisi cliente', 'customerDetail.customerNotes': 'Note cliente', 'customerDetail.drivingScore': 'Punteggio di guida',
+  'customerDetail.title': 'Dettagli cliente', 'customerDetail.customerDocuments': 'Documenti cliente', 'customerDetail.customerAlerts': 'Avvisi cliente', 'customerDetail.customerNotes': 'Note cliente',   'customerDetail.drivingScore': 'Punteggio di guida',
+  ...rentalLegacyGapIT,
 } satisfies PartialTranslationDictionary;

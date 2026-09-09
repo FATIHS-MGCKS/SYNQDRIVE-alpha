@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapCS } from './rental-legacy-gap.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -52,5 +53,6 @@ export const cs = {
   'health.aiHealthCare': 'AI zdravi', 'health.poweredByAi': 'Pohaneno AI', 'health.errorCodes': 'Chybove kody', 'health.noActiveErrors': 'Zadne aktivni chybove kody', 'health.timeline': 'Casova osa', 'health.battery': 'Baterie', 'health.voltage': 'Napeti', 'health.lastCheck': 'Posledni kontrola', 'health.temperature': 'Teplota', 'health.estimatedCapacity': 'Odhadovana kapacita', 'health.serviceInfo': 'Info o servisu', 'health.nextService': 'Dalsi servis', 'health.serviceHistory': 'Historie servisu', 'health.brakes': 'Brzdy', 'health.changeHistory': 'Historie vymen', 'health.tires': 'Pneumatiky', 'health.usageDistribution': 'Rozlozeni pouziti', 'health.city': 'Mesto', 'health.highway': 'Dalnice', 'health.countryRoad': 'Silnice', 'health.engineOil': 'Motorovy olej', 'health.lastChange': 'Posledni vymena', 'health.oilChangeHistory': 'Historie vymen oleje', 'health.tireRotation': 'Rotace pneumatik', 'health.tireChange': 'Vymena pneumatik',
   'damages.totalDamages': 'Celkem poskozeni', 'damages.activeDamages': 'Aktivni poskozeni', 'damages.vehicleDamageMap': 'Mapa poskozeni vozidla', 'damages.damageHistory': 'Historie poskozeni',
   'documents.vehicleDocuments': 'Dokumenty vozidla', 'documents.monthlyFixedCosts': 'Mesicni fixni naklady',
-  'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika', 'customerDetail.drivingScore': 'Skore jizdy',
+  'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika',   'customerDetail.drivingScore': 'Skore jizdy',
+  ...rentalLegacyGapCS,
 } satisfies PartialTranslationDictionary;

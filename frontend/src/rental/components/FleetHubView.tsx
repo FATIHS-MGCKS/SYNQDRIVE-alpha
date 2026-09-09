@@ -10,7 +10,7 @@ import {
   type FleetTabInput,
 } from './fleet-health-service/fleet-health-service.types';
 import { Button } from '../../components/ui/button';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   chromeTabBarClass,
   chromeTabTriggerClass,

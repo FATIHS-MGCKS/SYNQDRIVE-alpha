@@ -6,7 +6,7 @@ import { attentionExpandLabel } from '../attentionItemDisplay';
 import type { DashboardViewModel } from '../dashboardTypes';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { headerStatusTone } from './notificationPanelFilters';
-import type { useLanguage } from '../../../i18n/LanguageContext';
+import type { useLanguage } from '../../../../i18n/LanguageContext';
 
 function statusDotClass(tone: ReturnType<typeof headerStatusTone>): string {
   if (tone === 'critical') return 'bg-[color:var(--status-critical)]';

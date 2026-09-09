@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
 import type { BookingFiltersState, BookingPlannerView } from './bookingTypes';

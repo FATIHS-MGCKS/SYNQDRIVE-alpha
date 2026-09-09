@@ -1,4 +1,5 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
+import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -53,5 +54,6 @@ export const nl = {
   'health.aiHealthCare': 'AI-gezondheidszorg', 'health.poweredByAi': 'Aangedreven door AI', 'health.errorCodes': 'Foutcodes', 'health.noActiveErrors': 'Geen actieve foutcodes', 'health.timeline': 'Tijdlijn', 'health.battery': 'Batterij', 'health.voltage': 'Spanning', 'health.lastCheck': 'Laatste controle', 'health.temperature': 'Temperatuur', 'health.estimatedCapacity': 'Geschatte capaciteit', 'health.serviceInfo': 'Service-info', 'health.nextService': 'Volgende service', 'health.serviceHistory': 'Servicegeschiedenis', 'health.brakes': 'Remmen', 'health.changeHistory': 'Wisselgeschiedenis', 'health.tires': 'Banden', 'health.usageDistribution': 'Gebruiksverdeling', 'health.city': 'Stad', 'health.highway': 'Snelweg', 'health.countryRoad': 'Buitenweg', 'health.engineOil': 'Motorolie', 'health.lastChange': 'Laatste wissel', 'health.oilChangeHistory': 'Olieverversingsgeschiedenis', 'health.tireRotation': 'Bandenrotatie', 'health.tireChange': 'Bandwissel',
   'damages.totalDamages': 'Totaal schades', 'damages.activeDamages': 'Actieve schades', 'damages.vehicleDamageMap': 'Voertuig schadekaart', 'damages.damageHistory': 'Schadegeschiedenis',
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
-  'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities', 'customerDetail.drivingScore': 'Rijscore',
+  'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
+  ...rentalLegacyGapNL,
 } satisfies PartialTranslationDictionary;

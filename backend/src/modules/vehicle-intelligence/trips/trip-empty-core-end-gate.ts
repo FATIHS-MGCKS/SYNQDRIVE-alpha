@@ -32,6 +32,10 @@ export type EmptyCoreForensics = {
   routeMotion: boolean;
   decision: 'KEEP_OPEN' | 'POSSIBLE_END';
   reason: string;
+  innerGateReason: string;
+  outerReason: 'no_core_data_keep_open' | 'no_core_data_corroborated_to_possible_end';
+  stopBoundaryAt?: string | null;
+  operationalAnchorSource?: string;
 };
 
 export function hasRouteMotionAboveThreshold(
@@ -44,15 +48,27 @@ export function hasRouteMotionAboveThreshold(
   );
 }
 
+function isObservationAfterStopBoundary(
+  providerObservedAt: Date,
+  stopBoundaryAt: Date | null | undefined,
+): boolean {
+  if (!stopBoundaryAt) return true;
+  return providerObservedAt.getTime() > stopBoundaryAt.getTime();
+}
+
 /**
  * Stricter empty-core VLS classifier — tri-state ACTIVE / INACTIVE / UNKNOWN.
  * Does NOT coerce null speed/engineLoad to zero (unlike isCurrentTelemetryInactive).
+ *
+ * For end candidacy, positive evidence after `stopBoundaryAt` blocks; observations
+ * at or before the boundary are treated as stale at stop.
  */
 export function classifyEmptyCoreVlsInactivity(params: {
   telemetry: EmptyCoreVlsTelemetry | null;
   profile: string;
   workerNow: Date;
   maxObservationAgeMs: number;
+  stopBoundaryAt?: Date | null;
 }): EmptyCoreVlsEvidence {
   if (!params.telemetry) {
     return {
@@ -84,6 +100,39 @@ export function classifyEmptyCoreVlsInactivity(params: {
     };
   }
 
+  const shared = getSharedSignalThresholds(params.profile);
+
+  if (telemetry.speedKmh == null) {
+    return {
+      state: 'UNKNOWN',
+      providerObservedAt,
+      observationAgeMs: null,
+      reason: 'vls_speed_missing',
+    };
+  }
+
+  const speed = telemetry.speedKmh;
+  const afterStop = isObservationAfterStopBoundary(
+    providerObservedAt,
+    params.stopBoundaryAt,
+  );
+
+  // Pre-stop-boundary stationary samples corroborate the stop moment itself.
+  if (
+    params.stopBoundaryAt &&
+    !afterStop &&
+    speed <= shared.speedMotionKmh
+  ) {
+    const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
+    const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
+    return {
+      state: 'INACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_stop_boundary_corroboration',
+    };
+  }
+
   const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
   const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
   if (observationAgeMs > params.maxObservationAgeMs) {
@@ -95,19 +144,15 @@ export function classifyEmptyCoreVlsInactivity(params: {
     };
   }
 
-  if (telemetry.speedKmh == null) {
-    return {
-      state: 'UNKNOWN',
-      providerObservedAt,
-      observationAgeMs,
-      reason: 'vls_speed_missing',
-    };
-  }
-
-  const shared = getSharedSignalThresholds(params.profile);
-  const speed = telemetry.speedKmh;
-
   if (speed > shared.speedMotionKmh) {
+    if (!afterStop) {
+      return {
+        state: 'INACTIVE',
+        providerObservedAt,
+        observationAgeMs,
+        reason: 'vls_stale_speed_before_stop_boundary',
+      };
+    }
     return {
       state: 'ACTIVE',
       providerObservedAt,
@@ -118,15 +163,31 @@ export function classifyEmptyCoreVlsInactivity(params: {
 
   const engineLoad = telemetry.engineLoad;
   if (engineLoad != null && engineLoad > 15) {
+    if (!afterStop) {
+      return {
+        state: 'INACTIVE',
+        providerObservedAt,
+        observationAgeMs,
+        reason: 'vls_stale_engine_load_before_stop_boundary',
+      };
+    }
     return {
-      state: 'ACTIVE',
+      state: 'UNKNOWN',
       providerObservedAt,
       observationAgeMs,
-      reason: 'vls_engine_load_active',
+      reason: 'vls_motor_activity_at_standstill',
     };
   }
 
   if (telemetry.isIgnitionOn === true && speed > 0) {
+    if (!afterStop) {
+      return {
+        state: 'INACTIVE',
+        providerObservedAt,
+        observationAgeMs,
+        reason: 'vls_stale_ignition_before_stop_boundary',
+      };
+    }
     return {
       state: 'ACTIVE',
       providerObservedAt,
@@ -155,12 +216,15 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
   routePoints: RoutePoint[];
   profile: string;
   workerNow: Date;
+  stopBoundaryAt?: Date | null;
+  operationalAnchorSource?: string;
 }): { eligible: boolean; forensics: EmptyCoreForensics } {
   const vlsEvidence = classifyEmptyCoreVlsInactivity({
     telemetry: params.telemetry,
     profile: params.profile,
     workerNow: params.workerNow,
     maxObservationAgeMs: params.minInactivityBeforeCusumMs,
+    stopBoundaryAt: params.stopBoundaryAt,
   });
   const performanceActivity = evaluatePerformanceActivity(params.perfReadings);
   const routeMotion = hasRouteMotionAboveThreshold(
@@ -168,7 +232,10 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
     params.profile,
   );
 
-  const baseForensics: Omit<EmptyCoreForensics, 'decision' | 'reason'> = {
+  const baseForensics: Omit<
+    EmptyCoreForensics,
+    'decision' | 'reason' | 'innerGateReason' | 'outerReason'
+  > = {
     noCoreStream: true,
     operationalInactiveMs: params.operationalInactiveMs,
     vlsEvidenceState: vlsEvidence.state,
@@ -176,57 +243,37 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
     vlsObservationAgeMs: vlsEvidence.observationAgeMs,
     performanceActivity,
     routeMotion,
+    stopBoundaryAt: params.stopBoundaryAt?.toISOString() ?? null,
+    operationalAnchorSource: params.operationalAnchorSource,
   };
 
+  const reject = (
+    innerGateReason: string,
+  ): { eligible: false; forensics: EmptyCoreForensics } => ({
+    eligible: false,
+    forensics: {
+      ...baseForensics,
+      decision: 'KEEP_OPEN',
+      reason: innerGateReason,
+      innerGateReason,
+      outerReason: 'no_core_data_keep_open',
+    },
+  });
+
   if (params.operationalInactiveMs < params.minInactivityBeforeCusumMs) {
-    return {
-      eligible: false,
-      forensics: {
-        ...baseForensics,
-        decision: 'KEEP_OPEN',
-        reason: 'operational_inactivity_below_threshold',
-      },
-    };
+    return reject('operational_inactivity_below_threshold');
   }
   if (vlsEvidence.state === 'UNKNOWN') {
-    return {
-      eligible: false,
-      forensics: {
-        ...baseForensics,
-        decision: 'KEEP_OPEN',
-        reason: vlsEvidence.reason,
-      },
-    };
+    return reject(vlsEvidence.reason);
   }
   if (vlsEvidence.state === 'ACTIVE') {
-    return {
-      eligible: false,
-      forensics: {
-        ...baseForensics,
-        decision: 'KEEP_OPEN',
-        reason: vlsEvidence.reason,
-      },
-    };
+    return reject(vlsEvidence.reason);
   }
   if (performanceActivity) {
-    return {
-      eligible: false,
-      forensics: {
-        ...baseForensics,
-        decision: 'KEEP_OPEN',
-        reason: 'performance_still_active',
-      },
-    };
+    return reject('performance_still_active');
   }
   if (routeMotion) {
-    return {
-      eligible: false,
-      forensics: {
-        ...baseForensics,
-        decision: 'KEEP_OPEN',
-        reason: 'route_motion_detected',
-      },
-    };
+    return reject('route_motion_detected');
   }
 
   return {
@@ -235,6 +282,32 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
       ...baseForensics,
       decision: 'POSSIBLE_END',
       reason: 'empty_core_corroborated_inactivity',
+      innerGateReason: 'empty_core_corroborated_inactivity',
+      outerReason: 'no_core_data_corroborated_to_possible_end',
     },
+  };
+}
+
+export function buildEmptyCoreKeepOpenSummary(
+  forensics: EmptyCoreForensics,
+  operationalAnchorAt: string,
+): Record<string, unknown> {
+  return {
+    ...forensics,
+    reason: forensics.outerReason,
+    innerGateReason: forensics.innerGateReason,
+    operationalAnchorAt,
+  };
+}
+
+export function buildEmptyCorePossibleEndSummary(
+  forensics: EmptyCoreForensics,
+  operationalAnchorAt: string,
+): Record<string, unknown> {
+  return {
+    ...forensics,
+    reason: forensics.outerReason,
+    innerGateReason: forensics.innerGateReason,
+    operationalAnchorAt,
   };
 }

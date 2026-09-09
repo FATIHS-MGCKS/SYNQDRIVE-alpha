@@ -1,5 +1,5 @@
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { RentalRulesSectionId } from './rental-rules-matrix.utils';
 
 const SECTIONS: RentalRulesSectionId[] = [

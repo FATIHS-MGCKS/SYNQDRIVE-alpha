@@ -3,7 +3,7 @@ import type {
   PublicDocumentApplyResult,
 } from '../../lib/document-extraction.types';
 import { resolveApplyEntityNavigationTarget } from '../../lib/document-apply-result';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import type { FlowStatus } from './document-extraction.shared';
 
 function statusClass(status: string): string {

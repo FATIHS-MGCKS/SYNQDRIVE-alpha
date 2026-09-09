@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../../components/ui/dropdown-menu';
 import { cn } from '../../../../components/ui/utils';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import { fhs } from '../../fleet-health-service/fleet-health-service-shell';
 import { META_TEXT_CLASS, ROW_BODY_CLASS, ROW_TITLE_CLASS } from '../../dashboard/dashboardShell';
 import {

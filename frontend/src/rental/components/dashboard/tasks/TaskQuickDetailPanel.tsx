@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { cn } from '../../../../components/ui/utils';
 import type { ApiTask } from '../../../../lib/api';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import type { VehicleData } from '../../../data/vehicles';
 import { resolvePrimaryLinkedObjectLabel } from '../../../lib/task-list.utils';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';

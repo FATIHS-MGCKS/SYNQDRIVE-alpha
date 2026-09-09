@@ -1,6 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { dashboardPanelHeaderClass, panelShellClass } from './dashboardShell';
 import {
   hasOptionalBusinessMetrics,

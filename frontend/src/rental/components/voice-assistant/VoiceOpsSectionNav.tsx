@@ -4,7 +4,7 @@ import {
   chromeSectionNavClass,
   chromeSectionNavItemClass,
 } from '../../../components/patterns/chrome-tab-bar';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VoiceOpsTab } from './voice-wizard.ops';
 
 const OPS_TABS: { key: VoiceOpsTab; labelKey: string; icon: string }[] = [

@@ -1,6 +1,6 @@
 import { cn } from '../../../../components/ui/utils';
 import { NOTIFICATION_PANEL_TYPO } from '../notifications/notificationPanelTypography';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 import {
   DASHBOARD_ATTENTION_SCOPES,
   DASHBOARD_ATTENTION_SCOPE_LABEL_KEYS,

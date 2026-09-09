@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TasksOverviewHeader } from './TasksOverviewHeader';
-import { de } from '../../../i18n/translations/de';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { de } from '../../../../i18n/translations/de';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 
 function t(key: TranslationKey, vars?: Record<string, string | number>): string {
   let value: string = de[key] ?? String(key);

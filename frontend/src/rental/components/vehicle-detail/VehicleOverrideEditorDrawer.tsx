@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DetailDrawer } from '../../../components/patterns';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { VehicleRentalRequirementsDto } from '../settings/rental-rules/rental-rules.types';
 import { RentalRuleFieldsForm } from '../settings/rental-rules/RentalRuleFieldsForm';
 import { RentalRuleLivePreviewPanel } from '../settings/rental-rules/RentalRuleLivePreviewPanel';

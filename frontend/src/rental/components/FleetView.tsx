@@ -2,7 +2,7 @@
 import { useState, useRef, useMemo, useEffect, useSyncExternalStore, useCallback, Component, type ReactNode, type ErrorInfo, type SyntheticEvent } from 'react';
 import { MapboxMap, type MapboxMapHandle } from '../../components/MapboxMap';
 import { VehicleData } from '../data/vehicles';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import { PageHeader, SkeletonCard } from '../../components/patterns';
 import { useFleetVehicles } from '../FleetContext';

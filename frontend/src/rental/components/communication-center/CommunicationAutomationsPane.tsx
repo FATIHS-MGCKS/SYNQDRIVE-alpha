@@ -1,6 +1,6 @@
 import { Workflow } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { canAccessWorkflowAutomations } from './communication-channels-permissions';
 

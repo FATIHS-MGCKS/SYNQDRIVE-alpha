@@ -18,7 +18,7 @@ import {
   type E7RecommendationEmptyState,
   type E7RecommendationSeverity,
 } from '@synq/evaluations-recommendations/evaluations-recommendations.contract';
-import { en, type TranslationKey } from '../../i18n/translations/en';
+import { en, type TranslationKey } from '../../../i18n/translations/en';
 import { formatEvaluationsMoney } from '../../lib/evaluations/evaluations-money';
 import {
   dimensionLabelKey,

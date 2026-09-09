@@ -1,7 +1,7 @@
 import { FormDialog } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns/status-utils';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import {
   formatPaymentAmount,
   formatPaymentRowDate,

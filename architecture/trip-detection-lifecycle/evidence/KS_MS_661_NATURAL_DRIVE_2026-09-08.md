@@ -1,5 +1,7 @@
 # KS MS 661 — Natural drive audit addendum (R9 start wake + blocked end)
 
+> **Partial supersession:** Late-phase **`vls_row_absent`** claims in related docs are **incorrect** for this Production drive. Authoritative correction: [KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md](KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md) (TDL-EVID-KS-MS-661-002). Observations below remain valid unless marked **SUPERSEDED**.
+
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | TDL-EVID-KS-MS-661-001 |
@@ -33,7 +35,7 @@
 | Pre-pause core sample reuse after motor-off | **NOT_PROVEN** — core fetch non-empty @ 19:53:51/19:54:21 but provider timestamps not archived; worker-time `lastActivityAt` reset **code-proven** |
 | “Stale VLS ACTIVE” @ reference run | **Corrected** — VLS @ 67 s is **fresh per 120 s rule**; semantically contradictory to operator motor-off **plausible**, not proven |
 | LTE_R1 caused provider gap | **Hypothesis only** (hardware label observed; root cause **UNKNOWN**) |
-| Trip auto-completed after addendum | **Contradicted @ window C** (`trip_status=ONGOING`) |
+| Trip auto-completed after addendum via FSM end detection | **Contradicted** — trip remained **ONGOING** @ window C; later completed via **`STALE_ONGOING` repair** @ `2026-09-08T21:40:38Z` (**not** regular FSM path) |
 
 ## Reference identifiers (re-verified)
 
@@ -192,6 +194,14 @@ Code-derived namespace: `snapshot-wake.util.ts` → `synqdrive:snapshot-wake:pen
 | `POSSIBLE_END` / `END_VALIDATION` / `FINALIZE` runs | **0** for this `tripId` |
 | End recognition | **FAILED in window A+B** — blocked before candidacy |
 
+### Final outcome (after window C — OBSERVED)
+
+| Field | Value |
+|-------|-------|
+| Trip completion mechanism | **`STALE_ONGOING` repair** @ `2026-09-08T21:40:38Z` |
+| Regular FSM path | **None** — 0× `POSSIBLE_END` / `END_VALIDATION` / `FINALIZE` for this `tripId` @ `684950419…` |
+| Implication | Open-trip symptom validated; repair completion **does not** validate empty-core fix on Production |
+
 ### Current state (window C only — `@ 2026-09-08T20:53:16Z`)
 
 | Field | Value |
@@ -253,6 +263,6 @@ A later automatic recovery would **not** retroactively validate historical end-d
 
 **Authority promotion:** NONE — remains `AUDIT_IN_PROGRESS`; TDL-DEC-R10-001/002 **not** set `PRODUCTION_VALIDATED`.
 
-**NEXT_GATE (evidence-driven):** Implement **TDL-DEC-R11-001** (PROPOSED) — see [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) §Implementation order. Temporal flow: [KS_MS_661_TEMPORAL_FLOW_2026-09-08.md](KS_MS_661_TEMPORAL_FLOW_2026-09-08.md).
+**NEXT_GATE (evidence-driven):** TDL-DEC-R11-001 **merged CI** @ `32526c95a` (#1584) — **authorized deploy** → natural Production revalidation (KS MS 661 class drives). Design contract + forensics: [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) · [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md). Temporal flow: [KS_MS_661_TEMPORAL_FLOW_2026-09-08.md](KS_MS_661_TEMPORAL_FLOW_2026-09-08.md).
 
 **Related:** [KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md](KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md) · [KS_MS_661_R11_SCENARIO_MATRIX_2026-09-08.md](KS_MS_661_R11_SCENARIO_MATRIX_2026-09-08.md)

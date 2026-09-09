@@ -1,7 +1,7 @@
 import { ClipboardCheck } from 'lucide-react';
 import { Button } from '../../../../components/ui/button';
 import { EmptyState, SectionHeader } from '../../../../components/patterns';
-import { useLanguage } from '../../../i18n/LanguageContext';
+import { useLanguage } from '../../../../i18n/LanguageContext';
 import type { OrganizationRentalRulesDto, RentalRulesOverviewDto } from './rental-rules.types';
 import { countConfiguredRuleFields, formatBool, summarizeRules } from './rental-rules.utils';
 import { RentalRulePublishImpactPanel } from './RentalRulePublishImpactPanel';

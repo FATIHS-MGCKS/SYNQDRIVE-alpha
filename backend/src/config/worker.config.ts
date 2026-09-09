@@ -47,6 +47,18 @@ export default registerAs('worker', () => ({
     10,
   ),
 
+  tripEndEmptyCoreBackoffBaseMs: parseInt(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_BASE_MS || '30000',
+    10,
+  ),
+  tripEndEmptyCoreBackoffMaxMs: parseInt(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_MAX_MS || '600000',
+    10,
+  ),
+  tripEndEmptyCoreBackoffJitterRatio: parseFloat(
+    process.env.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO || '0.15',
+  ),
+
   // ── Trip End: Retry interval between CUSUM validation attempts ──
   tripEndValidationRetryMs: parseInt(process.env.TRIP_END_VALIDATION_RETRY_MS || '60000', 10),
 

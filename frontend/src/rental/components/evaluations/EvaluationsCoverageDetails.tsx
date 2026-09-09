@@ -5,7 +5,7 @@
  * placeholder). Used by both the Data Quality panel and the Driver Influence surface so
  * coverage formatting is not duplicated.
  */
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EvaluationsDataCoverage } from '../../lib/evaluations/evaluations-canonical.types';
 
 export function EvaluationsCoverageDetails({

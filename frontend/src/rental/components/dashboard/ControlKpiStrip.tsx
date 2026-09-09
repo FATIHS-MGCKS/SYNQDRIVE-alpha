@@ -7,8 +7,8 @@ import {
   DASHBOARD_LAYOUT,
 } from './dashboardShell';
 import { DASHBOARD_BOX_TITLE_CLASS } from './notifications/notificationPanelTypography';
-import { de } from '../../i18n/translations/de';
-import { en } from '../../i18n/translations/en';
+import { de } from '../../../i18n/translations/de';
+import { en } from '../../../i18n/translations/en';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
   getKpiCardSurfaceClass,

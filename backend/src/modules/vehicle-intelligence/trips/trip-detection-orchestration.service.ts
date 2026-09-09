@@ -87,6 +87,7 @@ import {
   resolvePossibleStartConfirmationAnchor,
   resolveOperationalNoCoreInactivityAnchor,
   resolveStartCandidateClock,
+  isValidProviderEventTimestamp,
 } from './trip-fsm-clock-contract';
 import {
   TripLifecycleRecoveryService,
@@ -114,7 +115,27 @@ import {
 } from './trip-terminal-lifecycle-commit.util';
 import {
   assessSuccessfulEmptyCoreEndEligibility,
+  buildEmptyCoreKeepOpenSummary,
+  buildEmptyCorePossibleEndSummary,
 } from './trip-empty-core-end-gate';
+import { computeEmptyCoreBackoffMs } from './trip-empty-core-backoff';
+import {
+  classifyFetchError,
+  coreFetchOutcome,
+  type TripTelemetryFetchOutcome,
+} from './trip-fetch-outcome';
+import {
+  clearPauseEvidence,
+  isPauseCorroborated,
+  mergeEmptyCoreDeferral,
+  mergeLastProviderActivityAt,
+  mergePauseDetectedAt,
+  mergeStopBoundaryAt,
+  resolveIdleStopBoundaryAt,
+  readEmptyCoreDeferralStreak,
+  readStopBoundaryAt,
+  resolveProviderOperationalAnchor,
+} from './trip-fsm-evidence-state';
 import {
   buildEndValidationCompletionEvidence,
   buildEndValidationFailureEvidence,
@@ -137,6 +158,7 @@ import {
 import {
   cancelPendingTripTrackingJobs,
   enqueueEndCycleTripTrackingJob,
+  enqueuePreemptiveTripTrackingJob,
   enqueueStableTripTrackingJob,
 } from './trip-tracking-queue.util';
 import {
@@ -216,6 +238,10 @@ export class TripDetectionOrchestrationService {
   private readonly TRIP_END_CH_ASSIST_STABILITY_MS: number;
   private readonly TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS: number;
 
+  private readonly TRIP_EMPTY_CORE_BACKOFF_BASE_MS: number;
+  private readonly TRIP_EMPTY_CORE_BACKOFF_MAX_MS: number;
+  private readonly TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO: number;
+
   // ── Mid-trip gap split: recognise short ignition-off parks inside a trip ──
   // Silence of at least this duration inside an otherwise ACTIVE trip,
   // sandwiched by stationary data, is treated as a mid-trip end + restart
@@ -272,6 +298,12 @@ export class TripDetectionOrchestrationService {
       this.configService.get<number>('worker.tripEndChAssistStabilityMs') ?? 30_000;
     this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS =
       this.configService.get<number>('worker.tripEndChAssistHighConfidenceStationaryMs') ?? 90_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffBaseMs') ?? 30_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffMaxMs') ?? 600_000;
+    this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO =
+      this.configService.get<number>('worker.tripEndEmptyCoreBackoffJitterRatio') ?? 0.15;
     this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
@@ -610,6 +642,8 @@ export class TripDetectionOrchestrationService {
       endCycleToken?: string | null;
       /** R10: recycle waiting end-cycle jobs before enqueue (FINALIZE / END_VALIDATION). */
       recycleEndCycleSlot?: boolean;
+      /** R11: replace delayed empty-core backoff with an urgent ACTIVE_TICK. */
+      preemptDelayed?: boolean;
     },
   ): Promise<void> {
     if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
@@ -641,14 +675,23 @@ export class TripDetectionOrchestrationService {
           trigger,
           delayMs,
         })
-      : await enqueueStableTripTrackingJob({
-          queue: this.trackingQueue,
-          jobName: 'trip-tracking',
-          jobId,
-          data,
-          trigger,
-          delayMs,
-        });
+      : opts?.preemptDelayed
+        ? await enqueuePreemptiveTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          })
+        : await enqueueStableTripTrackingJob({
+            queue: this.trackingQueue,
+            jobName: 'trip-tracking',
+            jobId,
+            data,
+            trigger,
+            delayMs,
+          });
 
     if (outcome === 'skipped') {
       this.logger.debug(
@@ -682,6 +725,7 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
     delayMs?: number,
+    opts?: { preemptDelayed?: boolean },
   ): Promise<void> {
     await this.enqueueTripTrackingJob(
       'at',
@@ -689,8 +733,24 @@ export class TripDetectionOrchestrationService {
       organizationId,
       dimoTokenId,
       TRIP_TRACKING_TRIGGERS.ACTIVE_TICK,
-      { delayMs: delayMs ?? this.TRACKING_INTERVAL_MS },
+      {
+        delayMs: delayMs ?? this.TRACKING_INTERVAL_MS,
+        preemptDelayed: opts?.preemptDelayed,
+      },
     );
+  }
+
+  /**
+   * R11: urgent provider wake during empty-core backoff — preempt delayed ACTIVE_TICK.
+   */
+  async accelerateActiveTickAfterWake(
+    vehicleId: string,
+    organizationId: string | null,
+    dimoTokenId: number,
+  ): Promise<void> {
+    await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId, 0, {
+      preemptDelayed: true,
+    });
   }
 
   async schedulePossibleEndCheck(
@@ -1668,12 +1728,17 @@ export class TripDetectionOrchestrationService {
         // inactivity threshold, hand off to POSSIBLE_END and let the
         // POSSIBLE_END_CHECK → END_VALIDATION chain finalize the trip with
         // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
-        const operationalAnchor = resolveOperationalNoCoreInactivityAnchor({
-          lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
-          lastActivityAt: det.lastActivityAt,
-          possibleStartAt: det.possibleStartAt,
-          workerNow: now,
-        });
+        const priorSummary =
+          (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+        const stopBoundaryAt = readStopBoundaryAt(priorSummary);
+        const { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource } =
+          resolveProviderOperationalAnchor({
+            lastEvidenceSummary: priorSummary,
+            lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+            lastActivityAt: det.lastActivityAt,
+            possibleStartAt: det.possibleStartAt,
+            workerNow: now,
+          });
         const inactiveMs = now.getTime() - operationalAnchor.getTime();
         const emptyCoreGate = assessSuccessfulEmptyCoreEndEligibility({
           operationalInactiveMs: inactiveMs,
@@ -1691,7 +1756,45 @@ export class TripDetectionOrchestrationService {
           routePoints,
           profile,
           workerNow: now,
+          stopBoundaryAt,
+          operationalAnchorSource,
         });
+
+        let evidencePatch: Record<string, unknown> = { ...priorSummary };
+        if (
+          isPauseCorroborated({
+            telemetry: telemetryNoCore
+              ? {
+                  isIgnitionOn: telemetryNoCore.isIgnitionOn,
+                  speedKmh: telemetryNoCore.speedKmh,
+                  engineLoad: telemetryNoCore.engineLoad,
+                  sourceTimestamp: telemetryNoCore.sourceTimestamp,
+                }
+              : null,
+            workerNow: now,
+            maxObservationAgeMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+            operationalInactiveMs: inactiveMs,
+            minEndInactivityMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+          })
+        ) {
+          const pauseAt =
+            telemetryNoCore?.sourceTimestamp &&
+            isValidProviderEventTimestamp(telemetryNoCore.sourceTimestamp, now)
+              ? telemetryNoCore.sourceTimestamp
+              : operationalAnchor;
+          evidencePatch = mergePauseDetectedAt(
+            evidencePatch,
+            pauseAt,
+            'vls_inactive_empty_core',
+          );
+          if (!readStopBoundaryAt(evidencePatch)) {
+            evidencePatch = mergeStopBoundaryAt(
+              evidencePatch,
+              pauseAt,
+              'pause_corroborated',
+            );
+          }
+        }
 
         if (emptyCoreGate.eligible) {
           const endBoundary = resolvePossibleEndBoundaryCandidate({
@@ -1708,12 +1811,12 @@ export class TripDetectionOrchestrationService {
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
             lastEvidenceSummary: {
-              ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ??
-                {})),
+              ...evidencePatch,
               endCandidateClockSource: endBoundary.clockSource,
               noCoreEmptyCoreForensics: emptyCoreGate.forensics,
               emptyCoreDecision: emptyCoreGate.forensics.decision,
               emptyCoreReason: emptyCoreGate.forensics.reason,
+              innerGateReason: emptyCoreGate.forensics.innerGateReason,
             },
           });
           await this.schedulePossibleEndCheck(
@@ -1759,18 +1862,42 @@ export class TripDetectionOrchestrationService {
             routePointsCount: routePoints.length,
             drivingPointsCount: perfReadings.length,
             resultState,
-            resultSummary: {
-              ...emptyCoreGate.forensics,
-              reason: 'no_core_data_corroborated_to_possible_end',
-              operationalAnchorAt: operationalAnchor.toISOString(),
-            },
+            resultSummary: buildEmptyCorePossibleEndSummary(
+              emptyCoreGate.forensics,
+              operationalAnchor.toISOString(),
+            ),
             durationMs: Date.now() - startedMs,
           });
           return;
         }
 
         resultState = det.state;
-        await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+        const deferralStreak =
+          emptyCoreGate.forensics.vlsEvidenceState === 'UNKNOWN' ||
+          emptyCoreGate.forensics.innerGateReason.startsWith('vls_')
+            ? readEmptyCoreDeferralStreak(priorSummary) + 1
+            : 0;
+        const nextDelayMs = computeEmptyCoreBackoffMs({
+          baseIntervalMs: this.TRACKING_INTERVAL_MS,
+          consecutiveDeferrals: deferralStreak,
+          backoffBaseMs: this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS,
+          backoffMaxMs: this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS,
+          jitterRatio: this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO,
+        });
+        evidencePatch = mergeEmptyCoreDeferral(evidencePatch, {
+          streak: deferralStreak,
+          nextCheckDelayMs: nextDelayMs,
+          innerGateReason: emptyCoreGate.forensics.innerGateReason,
+        });
+        await this.transitionState(vehicleId, det.state, {
+          lastEvidenceSummary: evidencePatch,
+        });
+        await this.scheduleActiveTick(
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          nextDelayMs,
+        );
         await this.logTrackingRun({
           vehicleId,
           organizationId,
@@ -1784,9 +1911,13 @@ export class TripDetectionOrchestrationService {
           drivingPointsCount: perfReadings.length,
           resultState,
           resultSummary: {
-            ...emptyCoreGate.forensics,
-            reason: 'no_core_data_keep_open',
-            operationalAnchorAt: operationalAnchor.toISOString(),
+            ...buildEmptyCoreKeepOpenSummary(
+              emptyCoreGate.forensics,
+              operationalAnchor.toISOString(),
+            ),
+            fetchOutcome: 'SUCCESS_EMPTY' satisfies TripTelemetryFetchOutcome,
+            nextCheckDelayMs: nextDelayMs,
+            emptyCoreDeferralStreak: deferralStreak,
           },
           durationMs: Date.now() - startedMs,
         });
@@ -2235,6 +2366,10 @@ export class TripDetectionOrchestrationService {
       });
 
       // ── PHASE 2 SEAM: ContinuityAssessmentDetector ───────────────────────────
+      const priorSummaryForCore =
+        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      const stopBoundaryForContinuity = readStopBoundaryAt(priorSummaryForCore);
+
       const continuityFindings = await this.detectorRegistry.runAll(
         continuityPolicy.detectors,
         {
@@ -2245,6 +2380,7 @@ export class TripDetectionOrchestrationService {
           timeWindow: { from: coreFrom, to: now },
           coreDataPoints: evalCore,
           performanceReadings: recentPerf,
+          resumeAfterStopAt: stopBoundaryForContinuity,
           anomalyContext: {
             clickhouseAvailable,
           },
@@ -2358,8 +2494,18 @@ export class TripDetectionOrchestrationService {
               continuitySummary: effectiveContinuitySummary,
               clickhouseGuardSummary: chGuardSummary,
               workerNow: now,
+              resumeAfterAt: stopBoundaryForContinuity,
             })
           : null;
+
+      let continuityEvidencePatch = priorSummaryForCore;
+      if (movementEventAt) {
+        continuityEvidencePatch = mergeLastProviderActivityAt(
+          continuityEvidencePatch,
+          movementEventAt,
+        );
+        continuityEvidencePatch = clearPauseEvidence(continuityEvidencePatch);
+      }
 
       switch (effectiveContinuityDecision.verdict) {
         case 'ACTIVE':
@@ -2371,6 +2517,7 @@ export class TripDetectionOrchestrationService {
               ...stateUpdateBase,
               lastActivityAt: now,
               ...(movementEventAt && { lastMeaningfulMovementAt: movementEventAt }),
+              lastEvidenceSummary: continuityEvidencePatch,
             },
           );
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
@@ -2378,11 +2525,39 @@ export class TripDetectionOrchestrationService {
 
         case 'IDLE':
           resultState = TripDetectionState.IDLE_WITHIN_TRIP;
-          await this.transitionState(
-            vehicleId,
-            TripDetectionState.IDLE_WITHIN_TRIP,
-            { ...stateUpdateBase, lastActivityAt: now },
-          );
+          {
+            const { boundaryAt: idleBoundary, boundarySource } =
+              resolveIdleStopBoundaryAt({
+                movementEventAt,
+                lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                lastActivityAt: det.lastActivityAt,
+                workerNow: now,
+                telemetry: telemetry
+                  ? {
+                      isIgnitionOn: telemetry.isIgnitionOn,
+                      speedKmh: telemetry.speedKmh,
+                      engineLoad: telemetry.engineLoad,
+                      sourceTimestamp: telemetry.sourceTimestamp,
+                    }
+                  : null,
+                profile,
+              });
+            let idleEvidence = mergeStopBoundaryAt(
+              continuityEvidencePatch,
+              idleBoundary,
+              boundarySource,
+            );
+            idleEvidence = mergeLastProviderActivityAt(idleEvidence, idleBoundary);
+            await this.transitionState(
+              vehicleId,
+              TripDetectionState.IDLE_WITHIN_TRIP,
+              {
+                ...stateUpdateBase,
+                lastActivityAt: now,
+                lastEvidenceSummary: idleEvidence,
+              },
+            );
+          }
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           break;
 
@@ -2460,17 +2635,51 @@ export class TripDetectionOrchestrationService {
         routePointsCount: routePoints.length,
         drivingPointsCount: perfReadings.length,
         resultState,
-        resultSummary: effectiveContinuitySummary,
+        resultSummary: {
+          ...(effectiveContinuitySummary ?? {}),
+          fetchOutcome: coreFetchOutcome(corePoints.length),
+          stopBoundaryAt: stopBoundaryForContinuity?.toISOString() ?? null,
+        },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
       this.logger.warn(`ACTIVE_TICK error for ${vehicleId}: ${err}`);
+      const detOnError = await this.getOrCreateDetectionState(
+        vehicleId,
+        organizationId,
+      ).catch(() => null);
+      const errorSummary =
+        (detOnError?.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      const errorStreak = readEmptyCoreDeferralStreak(errorSummary) + 1;
+      const errorDelayMs = computeEmptyCoreBackoffMs({
+        baseIntervalMs: this.TRACKING_INTERVAL_MS,
+        consecutiveDeferrals: errorStreak,
+        backoffBaseMs: this.TRIP_EMPTY_CORE_BACKOFF_BASE_MS,
+        backoffMaxMs: this.TRIP_EMPTY_CORE_BACKOFF_MAX_MS,
+        jitterRatio: this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO,
+      });
+      if (detOnError) {
+        await this.transitionState(vehicleId, detOnError.state, {
+          lastEvidenceSummary: mergeEmptyCoreDeferral(errorSummary, {
+            streak: errorStreak,
+            nextCheckDelayMs: errorDelayMs,
+            innerGateReason: 'active_tick_fetch_error',
+          }),
+        }).catch(() => {});
+      }
       await this.logTrackingRun({
         vehicleId,
         organizationId,
         stateAtRun: TripDetectionState.ACTIVE_TRIP,
         runType: TripTrackingRunType.ACTIVE_TRACKING,
         errorMessage: err instanceof Error ? err.message : String(err),
+        resultSummary: {
+          fetchOutcome: 'FETCH_ERROR',
+          fetchErrorClass: classifyFetchError(err),
+          innerGateReason: 'active_tick_fetch_error',
+          nextCheckDelayMs: errorDelayMs,
+          emptyCoreDeferralStreak: errorStreak,
+        },
         durationMs: Date.now() - startedMs,
       }).catch(() => {});
 
@@ -2478,7 +2687,7 @@ export class TripDetectionOrchestrationService {
         vehicleId,
         organizationId,
         dimoTokenId,
-        this.TRACKING_INTERVAL_MS,
+        errorDelayMs,
       ).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);

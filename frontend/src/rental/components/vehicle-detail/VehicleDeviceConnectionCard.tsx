@@ -4,7 +4,7 @@ import { StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns/status-utils';
 import { cn } from '../../../components/ui/utils';
 import { api, type DeviceConnectionSummary } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { recordVehicleDetailClientSignal } from '../../lib/vehicle-detail-observability';
 import {
   buildVehicleConnectivityOverviewView,

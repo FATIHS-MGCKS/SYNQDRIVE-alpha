@@ -1,5 +1,5 @@
 import type { ActionQueueCategory, ActionQueueItem, ActionQueueSeverity } from '../../components/dashboard/dashboardTypes';
-import type { TranslationKey } from '../../i18n/translations/en';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { createNotificationTranslator } from '../../components/dashboard/notificationQueueEnricher';
 import type {
   NotificationDomain,

@@ -5,8 +5,8 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiTask } from '../../../../lib/api';
 import { TaskPreviewCard } from './TaskPreviewCard';
-import { en } from '../../../i18n/translations/en';
-import type { TranslationKey } from '../../../i18n/translations/en';
+import { en } from '../../../../i18n/translations/en';
+import type { TranslationKey } from '../../../../i18n/translations/en';
 
 function t(key: TranslationKey, vars?: Record<string, string | number>): string {
   let value: string = en[key] ?? String(key);

@@ -49,7 +49,7 @@ export function mapHealthUiPresentation(
       secondaryLabel: null,
     };
   } else if (evaluability === HEALTH_EVALUABILITY_STATE.EVALUABLE) {
-    const unknownKey = 'fleet.healthEvaluation.unknown' as import('../../../i18n/translations/en').TranslationKey;
+    const unknownKey = 'fleet.healthEvaluation.unknown' as import('../../../../i18n/translations/en').TranslationKey;
     base = {
       evaluability,
       labelKey: unknownKey,

@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { waitForHook } from '../../test/renderHook';
-import { LanguageProvider } from '../i18n/LanguageContext';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { WhatsAppBusinessSettings } from './whatsapp/WhatsAppBusinessSettings';
 import { VoiceAgentSettings } from './voice-assistant/VoiceAgentSettings';
 

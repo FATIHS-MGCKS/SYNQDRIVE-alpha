@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { DetailDrawer, ErrorState } from '../../../components/patterns';
 import { api, type FleetConnectivityDetail } from '../../../lib/api';
-import { useLanguage } from '../../i18n/LanguageContext';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { OverallStateChip } from './fleet-connectivity.badges';
 import { FleetConnectivityDetailSections } from './FleetConnectivityDetailSections';
 import { vehicleTitle } from './fleet-connectivity.presentation';
