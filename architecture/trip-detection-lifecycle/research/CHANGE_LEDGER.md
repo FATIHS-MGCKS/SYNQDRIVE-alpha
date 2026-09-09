@@ -26,6 +26,7 @@ Append-only record for this authority directory.
 | 2026-09-08 | R10 production deploy @ `684950419…` release `20260908172927_v4994`; previous `7b9a7857…`; rolling restart both replicas; mixed-version window ~18s documented | R10 production deploy (authorized) | [R10_PRODUCTION_DEPLOY_2026-09-08.md](../evidence/R10_PRODUCTION_DEPLOY_2026-09-08.md) |
 | 2026-09-08 | TDL-DEC-R11-001 runtime implementation — provider anchor, stop boundary, pause, inner forensics, backoff; PD-2 off; design basis PR #1583 | Trip FSM R11 implementation | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](../evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) |
 | 2026-09-08 | R11 integration evidence — Scenario C postgres+BullMQ completion chain; Scenario I queue/wake; stop semantics; synthetic scaling probe | Trip FSM R11 integration tests | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](../evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) |
+| 2026-09-09 | R11 stop-boundary follow-up — `resolveIdleStopBoundaryAt` requires explicit ignition OFF; harness wires real `ContinuityAssessmentDetector` for Scenario J; ignition normalization doc correction | Trip FSM R11 PR #1584 | [KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md](../evidence/KS_MS_661_STOP_BOUNDARY_AUDIT_CORRECTION_2026-09-09.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
