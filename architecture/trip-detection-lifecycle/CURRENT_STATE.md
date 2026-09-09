@@ -3,11 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
-| **origin/main (current)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 @ `32526c95a` |
+| **origin/main (current @ evidence auth)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 |
+| **origin/main (at R11 deploy)** | `0b91dcd96f68164282a38458242fe8489e0b3b82` — **not deployed** (frozen target used) |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
-| **Production baseline (current)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994` (R10 deploy 2026-09-08) |
+| **Production baseline (current)** | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994` (R11 deploy 2026-09-09) |
+| **Pre-R11 Production (historical)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` (R10 deploy 2026-09-08) |
 | **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
-| **Last verified Production evidence** | `2026-09-08T20:53:16Z` (KS MS 661 natural-drive addendum TDL-EVID-KS-MS-661-001; R10 deploy TDL-EV-R10-PROD-DEPLOY-001) |
+| **Last verified Production evidence** | `2026-09-09T02:52:38Z` (R11 deploy TDL-EV-R11-PROD-DEPLOY-001; natural-drive T0 KS MX 187336) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Phase status (this document)
@@ -195,7 +197,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…` (R10 release); **provider trigger wiring validated** (5/5 canary); **natural start wake partially observed** on KS MS 661 tokenId 187361 (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…` (TDL-EV-R10-PROD-DEPLOY-001); **NOT exercised** on KS MS 661 (0× `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
-- TDL-DEC-R11-001 — **merged to main** @ `32526c95a` (#1584); **IMPLEMENTED (CI)** — Scenarios C, I, **J** PASS; **not deployed**; natural Production drive validation **after authorized deploy only**; late KS MS 661 blocker was **not** `vls_row_absent` — see TDL-EVID-KS-MS-661-002
+- TDL-DEC-R11-001 — **deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001); **CI_VALIDATED** via tree-equivalent run 34302677308; **POST_DEPLOY_HEALTH_CONFIRMED**; **not PRODUCTION_BEHAVIOR_VALIDATED**; natural drive pending (T0 KS MX 187336 captured)
 - KS MS 661 Production trip completed via **`STALE_ONGOING` repair** @ `2026-09-08T21:40:38Z` — **not** regular FSM end detection; audit corpus in this PR (TDL-EVID-KS-MS-661-001 … PROPOSAL-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
