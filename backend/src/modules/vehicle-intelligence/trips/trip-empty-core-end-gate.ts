@@ -36,6 +36,7 @@ export type EmptyCoreForensics = {
   outerReason: 'no_core_data_keep_open' | 'no_core_data_corroborated_to_possible_end';
   stopBoundaryAt?: string | null;
   operationalAnchorSource?: string;
+  boundaryBackedSilenceEligible?: boolean;
 };
 
 export function hasRouteMotionAboveThreshold(
@@ -205,8 +206,69 @@ export function classifyEmptyCoreVlsInactivity(params: {
 }
 
 /**
+ * R12: bounded provider silence after a trusted stop boundary.
+ * UNKNOWN remains UNKNOWN — this does not coerce stale telemetry to INACTIVE.
+ */
+export function assessBoundaryBackedEmptyCoreSilence(params: {
+  stopBoundaryAt: Date;
+  operationalInactiveMs: number;
+  minInactivityBeforeCusumMs: number;
+  vlsEvidence: EmptyCoreVlsEvidence;
+  performanceActivity: boolean;
+  routeMotion: boolean;
+  hasCrediblePostBoundaryMovement: boolean;
+  workerNow: Date;
+}): { eligible: boolean; reason: string } {
+  if (params.operationalInactiveMs < params.minInactivityBeforeCusumMs) {
+    return { eligible: false, reason: 'operational_inactivity_below_threshold' };
+  }
+  if (params.performanceActivity || params.routeMotion) {
+    return { eligible: false, reason: 'post_boundary_positive_contradiction' };
+  }
+  if (params.hasCrediblePostBoundaryMovement) {
+    return { eligible: false, reason: 'post_boundary_movement_detected' };
+  }
+
+  if (params.vlsEvidence.state === 'ACTIVE') {
+    return { eligible: false, reason: params.vlsEvidence.reason };
+  }
+
+  if (
+    params.vlsEvidence.state === 'UNKNOWN' &&
+    params.vlsEvidence.reason === 'vls_motor_activity_at_standstill' &&
+    params.vlsEvidence.observationAgeMs != null &&
+    params.vlsEvidence.observationAgeMs <= params.minInactivityBeforeCusumMs
+  ) {
+    return { eligible: false, reason: 'vls_motor_activity_at_standstill' };
+  }
+
+  // Explicit INACTIVE VLS uses the normal empty-core corroboration path.
+  if (params.vlsEvidence.state === 'INACTIVE') {
+    return { eligible: false, reason: 'vls_explicit_inactive_use_normal_path' };
+  }
+
+  const silenceSinceBoundaryMs =
+    params.workerNow.getTime() - params.stopBoundaryAt.getTime();
+  if (silenceSinceBoundaryMs < params.minInactivityBeforeCusumMs) {
+    return { eligible: false, reason: 'boundary_silence_below_threshold' };
+  }
+
+  // Boundary-backed silence applies only when parked telemetry went stale after
+  // a trusted stop boundary — not when VLS is absent or structurally unknown.
+  if (
+    params.vlsEvidence.state === 'UNKNOWN' &&
+    params.vlsEvidence.reason === 'vls_stale_provider_observation'
+  ) {
+    return { eligible: true, reason: 'boundary_backed_provider_silence' };
+  }
+
+  return { eligible: false, reason: params.vlsEvidence.reason };
+}
+
+/**
  * Successful empty core [] is absence of core stream — not proof of inactivity.
- * Requires explicit, fresh VLS INACTIVE + no performance/route contradiction.
+ * Requires explicit, fresh VLS INACTIVE + no performance/route contradiction,
+ * OR R12 boundary-backed provider silence when a trusted stop boundary exists.
  */
 export function assessSuccessfulEmptyCoreEndEligibility(params: {
   operationalInactiveMs: number;
@@ -218,6 +280,7 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
   workerNow: Date;
   stopBoundaryAt?: Date | null;
   operationalAnchorSource?: string;
+  hasCrediblePostBoundaryMovement?: boolean;
 }): { eligible: boolean; forensics: EmptyCoreForensics } {
   const vlsEvidence = classifyEmptyCoreVlsInactivity({
     telemetry: params.telemetry,
@@ -263,6 +326,37 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
   if (params.operationalInactiveMs < params.minInactivityBeforeCusumMs) {
     return reject('operational_inactivity_below_threshold');
   }
+
+  if (params.stopBoundaryAt) {
+    const boundaryBacked = assessBoundaryBackedEmptyCoreSilence({
+      stopBoundaryAt: params.stopBoundaryAt,
+      operationalInactiveMs: params.operationalInactiveMs,
+      minInactivityBeforeCusumMs: params.minInactivityBeforeCusumMs,
+      vlsEvidence,
+      performanceActivity,
+      routeMotion,
+      hasCrediblePostBoundaryMovement:
+        params.hasCrediblePostBoundaryMovement ?? false,
+      workerNow: params.workerNow,
+    });
+    if (boundaryBacked.eligible) {
+      return {
+        eligible: true,
+        forensics: {
+          ...baseForensics,
+          decision: 'POSSIBLE_END',
+          reason: boundaryBacked.reason,
+          innerGateReason: boundaryBacked.reason,
+          outerReason: 'no_core_data_corroborated_to_possible_end',
+          boundaryBackedSilenceEligible: true,
+        },
+      };
+    }
+    if (vlsEvidence.state === 'UNKNOWN' || vlsEvidence.state === 'ACTIVE') {
+      return reject(boundaryBacked.reason);
+    }
+  }
+
   if (vlsEvidence.state === 'UNKNOWN') {
     return reject(vlsEvidence.reason);
   }

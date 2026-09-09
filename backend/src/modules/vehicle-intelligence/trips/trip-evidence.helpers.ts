@@ -1679,3 +1679,47 @@ export function continuityImpliesMeaningfulMovement(
     (ch?.odometerDeltaKm ?? 0) > 0.05
   );
 }
+
+/**
+ * R12: when a stop boundary exists, continuity "motion" must be credible post-boundary
+ * provider-time movement — not stale pre-stop samples or contradictory standstill cores.
+ */
+export function continuityImpliesCrediblePostBoundaryMovement(params: {
+  recentPoints: TripCoreDataPoint[];
+  profile: string;
+  continuitySummary?: Record<string, unknown> | null;
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+    windowEndAt?: string | Date | null;
+  } | null;
+  stopBoundaryAt: Date;
+  workerNow: Date;
+}): boolean {
+  return (
+    resolveLatestMeaningfulMovementEventAt({
+      recentPoints: params.recentPoints,
+      profile: params.profile,
+      continuitySummary: params.continuitySummary,
+      clickhouseGuardSummary: params.clickhouseGuardSummary,
+      workerNow: params.workerNow,
+      resumeAfterAt: params.stopBoundaryAt,
+    }) != null
+  );
+}
+
+export function hasCrediblePostBoundaryRouteMotion(
+  routePoints: RoutePoint[],
+  profile: string,
+  stopBoundaryAt: Date,
+): boolean {
+  const shared = getProfileThresholds(profile);
+  return routePoints.some((p) => {
+    const ts = new Date(p.timestamp);
+    return (
+      ts.getTime() > stopBoundaryAt.getTime() &&
+      p.speedKmh != null &&
+      p.speedKmh > shared.speedMotionKmh
+    );
+  });
+}

@@ -54,6 +54,8 @@ import {
   extractLatestSegmentEnd,
   resolveLatestMeaningfulMovementEventAt,
   continuityImpliesMeaningfulMovement,
+  continuityImpliesCrediblePostBoundaryMovement,
+  hasCrediblePostBoundaryRouteMotion,
   assessLiveStartSnapshotFreshness,
 } from './trip-evidence.helpers';
 import { START_DETECTION_PHASES } from './trip-start-detection-policy';
@@ -131,8 +133,11 @@ import {
   mergeLastProviderActivityAt,
   mergePauseDetectedAt,
   mergeStopBoundaryAt,
+  mergeProviderStopBoundaryCandidate,
   resolveIdleStopBoundaryAt,
+  resolveProviderStopBoundaryCandidate,
   readEmptyCoreDeferralStreak,
+  readPauseDetectedAt,
   readStopBoundaryAt,
   resolveProviderOperationalAnchor,
 } from './trip-fsm-evidence-state';
@@ -1730,47 +1735,78 @@ export class TripDetectionOrchestrationService {
         // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
         const priorSummary =
           (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
-        const stopBoundaryAt = readStopBoundaryAt(priorSummary);
+        let evidencePatch: Record<string, unknown> = { ...priorSummary };
+        let stopBoundaryAt = readStopBoundaryAt(evidencePatch);
+        const emptyCoreVlsTelemetry = telemetryNoCore
+          ? {
+              isIgnitionOn: telemetryNoCore.isIgnitionOn,
+              speedKmh: telemetryNoCore.speedKmh,
+              engineLoad: telemetryNoCore.engineLoad,
+              sourceTimestamp: telemetryNoCore.sourceTimestamp,
+            }
+          : null;
+        const emptyCoreStopCandidate = resolveProviderStopBoundaryCandidate({
+          telemetry: emptyCoreVlsTelemetry,
+          profile,
+          workerNow: now,
+          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+          existingStopBoundaryAt: stopBoundaryAt,
+        });
+        if (emptyCoreStopCandidate) {
+          evidencePatch = mergeProviderStopBoundaryCandidate(
+            evidencePatch,
+            emptyCoreStopCandidate,
+          );
+          stopBoundaryAt = readStopBoundaryAt(evidencePatch);
+          if (
+            now.getTime() - emptyCoreStopCandidate.boundaryAt.getTime() <
+            this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS
+          ) {
+            evidencePatch = mergePauseDetectedAt(
+              evidencePatch,
+              emptyCoreStopCandidate.boundaryAt,
+              'provider_stationary_vls',
+            );
+          }
+        }
+
         const { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource } =
           resolveProviderOperationalAnchor({
-            lastEvidenceSummary: priorSummary,
+            lastEvidenceSummary: evidencePatch,
             lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
             lastActivityAt: det.lastActivityAt,
             possibleStartAt: det.possibleStartAt,
             workerNow: now,
           });
-        const inactiveMs = now.getTime() - operationalAnchor.getTime();
+        const effectiveOperationalAnchor =
+          stopBoundaryAt &&
+          isValidProviderEventTimestamp(stopBoundaryAt, now) &&
+          operationalAnchor.getTime() < stopBoundaryAt.getTime()
+            ? { anchorAt: stopBoundaryAt, anchorSource: 'stopBoundaryAt' }
+            : { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource };
+        const inactiveMs =
+          now.getTime() - effectiveOperationalAnchor.anchorAt.getTime();
+        const hasCrediblePostBoundaryMovement =
+          stopBoundaryAt != null
+            ? hasCrediblePostBoundaryRouteMotion(routePoints, profile, stopBoundaryAt)
+            : false;
         const emptyCoreGate = assessSuccessfulEmptyCoreEndEligibility({
           operationalInactiveMs: inactiveMs,
           minInactivityBeforeCusumMs:
             this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-          telemetry: telemetryNoCore
-            ? {
-                isIgnitionOn: telemetryNoCore.isIgnitionOn,
-                speedKmh: telemetryNoCore.speedKmh,
-                engineLoad: telemetryNoCore.engineLoad,
-                sourceTimestamp: telemetryNoCore.sourceTimestamp,
-              }
-            : null,
+          telemetry: emptyCoreVlsTelemetry,
           perfReadings,
           routePoints,
           profile,
           workerNow: now,
           stopBoundaryAt,
-          operationalAnchorSource,
+          operationalAnchorSource: effectiveOperationalAnchor.anchorSource,
+          hasCrediblePostBoundaryMovement,
         });
 
-        let evidencePatch: Record<string, unknown> = { ...priorSummary };
         if (
           isPauseCorroborated({
-            telemetry: telemetryNoCore
-              ? {
-                  isIgnitionOn: telemetryNoCore.isIgnitionOn,
-                  speedKmh: telemetryNoCore.speedKmh,
-                  engineLoad: telemetryNoCore.engineLoad,
-                  sourceTimestamp: telemetryNoCore.sourceTimestamp,
-                }
-              : null,
+            telemetry: emptyCoreVlsTelemetry,
             workerNow: now,
             maxObservationAgeMs: this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
             operationalInactiveMs: inactiveMs,
@@ -1781,7 +1817,7 @@ export class TripDetectionOrchestrationService {
             telemetryNoCore?.sourceTimestamp &&
             isValidProviderEventTimestamp(telemetryNoCore.sourceTimestamp, now)
               ? telemetryNoCore.sourceTimestamp
-              : operationalAnchor;
+              : effectiveOperationalAnchor.anchorAt;
           evidencePatch = mergePauseDetectedAt(
             evidencePatch,
             pauseAt,
@@ -1794,10 +1830,21 @@ export class TripDetectionOrchestrationService {
               'pause_corroborated',
             );
           }
+        } else if (
+          emptyCoreStopCandidate &&
+          inactiveMs < this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS &&
+          !readPauseDetectedAt(evidencePatch)
+        ) {
+          evidencePatch = mergePauseDetectedAt(
+            evidencePatch,
+            emptyCoreStopCandidate.boundaryAt,
+            'provider_stationary_vls',
+          );
         }
 
         if (emptyCoreGate.eligible) {
           const endBoundary = resolvePossibleEndBoundaryCandidate({
+            stopBoundaryAt,
             lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
             lastActivityAt: det.lastActivityAt,
             workerNow: now,
@@ -1864,7 +1911,7 @@ export class TripDetectionOrchestrationService {
             resultState,
             resultSummary: buildEmptyCorePossibleEndSummary(
               emptyCoreGate.forensics,
-              operationalAnchor.toISOString(),
+              effectiveOperationalAnchor.anchorAt.toISOString(),
             ),
             durationMs: Date.now() - startedMs,
           });
@@ -1913,7 +1960,7 @@ export class TripDetectionOrchestrationService {
           resultSummary: {
             ...buildEmptyCoreKeepOpenSummary(
               emptyCoreGate.forensics,
-              operationalAnchor.toISOString(),
+              effectiveOperationalAnchor.anchorAt.toISOString(),
             ),
             fetchOutcome: 'SUCCESS_EMPTY' satisfies TripTelemetryFetchOutcome,
             nextCheckDelayMs: nextDelayMs,
@@ -2366,9 +2413,42 @@ export class TripDetectionOrchestrationService {
       });
 
       // ── PHASE 2 SEAM: ContinuityAssessmentDetector ───────────────────────────
-      const priorSummaryForCore =
+      let priorSummaryForCore =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
-      const stopBoundaryForContinuity = readStopBoundaryAt(priorSummaryForCore);
+      let stopBoundaryForContinuity = readStopBoundaryAt(priorSummaryForCore);
+
+      const vlsTelemetryForBoundary = telemetry
+        ? {
+            isIgnitionOn: telemetry.isIgnitionOn,
+            speedKmh: telemetry.speedKmh,
+            engineLoad: telemetry.engineLoad,
+            sourceTimestamp: telemetry.sourceTimestamp,
+          }
+        : null;
+      const providerStopCandidate = resolveProviderStopBoundaryCandidate({
+        telemetry: vlsTelemetryForBoundary,
+        profile,
+        workerNow: now,
+        lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+        existingStopBoundaryAt: stopBoundaryForContinuity,
+      });
+      if (providerStopCandidate) {
+        priorSummaryForCore = mergeProviderStopBoundaryCandidate(
+          priorSummaryForCore,
+          providerStopCandidate,
+        );
+        stopBoundaryForContinuity = readStopBoundaryAt(priorSummaryForCore);
+        if (
+          now.getTime() - providerStopCandidate.boundaryAt.getTime() <
+          this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS
+        ) {
+          priorSummaryForCore = mergePauseDetectedAt(
+            priorSummaryForCore,
+            providerStopCandidate.boundaryAt,
+            'provider_stationary_vls',
+          );
+        }
+      }
 
       const continuityFindings = await this.detectorRegistry.runAll(
         continuityPolicy.detectors,
@@ -2482,10 +2562,19 @@ export class TripDetectionOrchestrationService {
 
       // Track the last moment meaningful movement was observed (EVENT_TIME only).
       const chGuardSummary = (effectiveContinuitySummary as any)?.clickhouseGuard;
-      const impliesMovement = continuityImpliesMeaningfulMovement(
-        effectiveContinuitySummary,
-        chGuardSummary,
-      );
+      const impliesMovement = stopBoundaryForContinuity
+        ? continuityImpliesCrediblePostBoundaryMovement({
+            recentPoints: evalCore,
+            profile,
+            continuitySummary: effectiveContinuitySummary,
+            clickhouseGuardSummary: chGuardSummary,
+            stopBoundaryAt: stopBoundaryForContinuity,
+            workerNow: now,
+          })
+        : continuityImpliesMeaningfulMovement(
+            effectiveContinuitySummary,
+            chGuardSummary,
+          );
       const movementEventAt =
         effectiveContinuityDecision.verdict === 'ACTIVE' && impliesMovement
           ? resolveLatestMeaningfulMovementEventAt({
@@ -2566,6 +2655,7 @@ export class TripDetectionOrchestrationService {
           {
             const enteredAt = now;
             const endBoundary = resolvePossibleEndBoundaryCandidate({
+              stopBoundaryAt: stopBoundaryForContinuity,
               lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
               lastActivityAt: det.lastActivityAt,
               workerNow: now,

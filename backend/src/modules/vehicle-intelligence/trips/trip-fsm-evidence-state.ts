@@ -87,6 +87,103 @@ export function resolveProviderOperationalAnchor(params: {
  * Prefers post-movement stationary VLS provider time when ignition is explicitly OFF.
  * Ignition ON or unknown does not qualify as shutdown evidence for boundary anchoring.
  */
+export function resolveStationaryIgnitionOffBoundary(params: {
+  telemetry: EmptyCoreVlsTelemetry | null;
+  profile: string;
+  workerNow: Date;
+  lastMeaningfulMovementAt: Date | null;
+}): {
+  boundaryAt: Date;
+  boundarySource: string;
+  candidateReason: string;
+  contradictions: string[];
+  evidenceState: 'STRONG' | 'QUALIFIED';
+} | null {
+  const shared = getSharedSignalThresholds(params.profile);
+  const ts = params.telemetry?.sourceTimestamp ?? null;
+  const speed = params.telemetry?.speedKmh;
+
+  if (
+    !ts ||
+    !isValidProviderEventTimestamp(ts, params.workerNow) ||
+    speed == null ||
+    speed > shared.speedMotionKmh ||
+    params.telemetry?.isIgnitionOn !== false
+  ) {
+    return null;
+  }
+
+  const afterLastMove =
+    !params.lastMeaningfulMovementAt ||
+    ts.getTime() >= params.lastMeaningfulMovementAt.getTime();
+  if (!afterLastMove) return null;
+
+  const contradictions: string[] = [];
+  const load = params.telemetry?.engineLoad;
+  if (load != null && load > 15) {
+    contradictions.push('engine_load_at_standstill');
+  }
+
+  return {
+    boundaryAt: ts,
+    boundarySource: 'provider_stationary_vls',
+    candidateReason:
+      contradictions.length > 0
+        ? 'stationary_ignition_off_qualified'
+        : 'stationary_ignition_off_strong',
+    contradictions,
+    evidenceState: contradictions.length > 0 ? 'QUALIFIED' : 'STRONG',
+  };
+}
+
+export type ProviderStopBoundaryCandidate = NonNullable<
+  ReturnType<typeof resolveStationaryIgnitionOffBoundary>
+>;
+
+/**
+ * R12: provider-time stop boundary candidate while trip remains ACTIVE_TRIP / IDLE.
+ * Does not finalize or split — observation only.
+ */
+export function resolveProviderStopBoundaryCandidate(params: {
+  telemetry: EmptyCoreVlsTelemetry | null;
+  profile: string;
+  workerNow: Date;
+  lastMeaningfulMovementAt: Date | null;
+  existingStopBoundaryAt?: Date | null;
+}): ProviderStopBoundaryCandidate | null {
+  const candidate = resolveStationaryIgnitionOffBoundary({
+    telemetry: params.telemetry,
+    profile: params.profile,
+    workerNow: params.workerNow,
+    lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+  });
+  if (!candidate) return null;
+
+  const existing = params.existingStopBoundaryAt;
+  if (existing && existing.getTime() >= candidate.boundaryAt.getTime()) {
+    return null;
+  }
+
+  return candidate;
+}
+
+export function mergeProviderStopBoundaryCandidate(
+  prior: TripFsmEvidenceSummary | null | undefined,
+  candidate: ProviderStopBoundaryCandidate,
+): TripFsmEvidenceSummary {
+  const next = mergeStopBoundaryAt(
+    prior,
+    candidate.boundaryAt,
+    candidate.boundarySource,
+  );
+  return {
+    ...next,
+    stopBoundaryCandidateReason: candidate.candidateReason,
+    stopBoundaryContradictions: candidate.contradictions,
+    stopBoundaryEvidenceState: candidate.evidenceState,
+  };
+}
+
 export function resolveIdleStopBoundaryAt(params: {
   movementEventAt: Date | null;
   lastMeaningfulMovementAt: Date | null;
@@ -105,26 +202,17 @@ export function resolveIdleStopBoundaryAt(params: {
     };
   }
 
-  const shared = getSharedSignalThresholds(params.profile);
-  const ts = params.telemetry?.sourceTimestamp ?? null;
-  const speed = params.telemetry?.speedKmh;
-
-  if (
-    ts &&
-    isValidProviderEventTimestamp(ts, params.workerNow) &&
-    speed != null &&
-    speed <= shared.speedMotionKmh &&
-    params.telemetry?.isIgnitionOn === false
-  ) {
-    const afterLastMove =
-      !params.lastMeaningfulMovementAt ||
-      ts.getTime() >= params.lastMeaningfulMovementAt.getTime();
-    if (afterLastMove) {
-      return {
-        boundaryAt: ts,
-        boundarySource: 'idle_within_trip_stationary_vls',
-      };
-    }
+  const stationary = resolveStationaryIgnitionOffBoundary({
+    telemetry: params.telemetry,
+    profile: params.profile,
+    workerNow: params.workerNow,
+    lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+  });
+  if (stationary) {
+    return {
+      boundaryAt: stationary.boundaryAt,
+      boundarySource: 'idle_within_trip_stationary_vls',
+    };
   }
 
   if (

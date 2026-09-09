@@ -133,10 +133,17 @@ export function resolvePossibleEndBoundaryAnchor(
 }
 
 export function resolvePossibleEndBoundaryCandidate(params: {
+  stopBoundaryAt?: Date | null;
   lastMeaningfulMovementAt?: Date | null;
   lastActivityAt?: Date | null;
   workerNow: Date;
 }): { boundaryAt: Date; clockSource: TripFsmClockSource } {
+  if (isValidProviderEventTimestamp(params.stopBoundaryAt, params.workerNow)) {
+    return {
+      boundaryAt: params.stopBoundaryAt!,
+      clockSource: 'PROVIDER_EVENT_TIME',
+    };
+  }
   if (
     isValidProviderEventTimestamp(params.lastMeaningfulMovementAt, params.workerNow)
   ) {
