@@ -29,12 +29,14 @@
 
 **Independent stop-boundary evidence (R11 fix):** IDLE transition anchors via `resolveIdleStopBoundaryAt()` using stationary VLS provider time **only when `isIgnitionOn === false` (explicit OFF)**. Ignition ON or `null` does not qualify — traffic-stop/idling is not shutdown evidence.
 
-## Runtime proof (R11 branch, integration — requires green CI on head)
+## Runtime proof (R11 branch, CI-verified @ `6a460b868`)
 
-| Artifact | Status |
+| Artifact | Result |
 |----------|--------|
-| `trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts` › **Scenario J** | **Target proof** — ACTIVE_TRIP without pre-seeded boundary → IDLE sets `stopBoundaryAt` via orchestration → empty-core → `POSSIBLE_END` → R10 finalize → `COMPLETED` + `RESTING`; no `STALE_ONGOING` repair. Head `17b841953` failed (missing `ContinuityAssessmentDetector` in harness mock → spurious `POSSIBLE_END`). Follow-up fix wires real detector + `isIgnitionOn === false` guard on `resolveIdleStopBoundaryAt`. |
-| `trip-fsm-evidence-state.spec.ts` | **PASS** locally — `resolveIdleStopBoundaryAt`, ignition ON/null counter-cases, DIMO ignition normalization contract |
+| `trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts` › **Scenario J** | **PASS** — CI run [34298939251](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34298939251) job *Backend R11 postgres+redis integration* @ head `6a460b868`. ACTIVE_TRIP without pre-seeded boundary → IDLE sets `stopBoundaryAt`/`idle_within_trip_stationary_vls` via orchestration → empty-core → `POSSIBLE_END` → R10 queue drain → `COMPLETED` + `RESTING` + `activeTripId=null`; no `STALE_ONGOING` repair. |
+| `trip-fsm-evidence-state.spec.ts` | **PASS** — unit proof for `resolveIdleStopBoundaryAt`, ignition ON/null counter-cases, DIMO ignition normalization contract (41/41 R11 unit tests green in same CI run) |
+
+**Head history:** `17b841953` failed Scenario J (harness omitted `ContinuityAssessmentDetector` → spurious `POSSIBLE_END`). Fixed in `70a5e48b4` + ledger `6a460b868`.
 
 ## Remaining limits (unchanged)
 
