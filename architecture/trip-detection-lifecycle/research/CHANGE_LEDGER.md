@@ -36,6 +36,8 @@ Append-only record for this authority directory.
 | 2026-09-09 | R12 intensive review remediation — same-tick continuity guard; active boundary retire/latch; lifecycle safety + idempotency integration; R11 Scenario J source aligned to provider path | Trip FSM R12 PR #1591 | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
 | 2026-09-09 | R12 Trip FSM + i18n CI green @ `091c478af…` run 34360964547 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CI-PASS-001 |
 | 2026-09-09 | R12 final clock-authority hardening — typed stop boundary provenance/trust, latch hierarchy, route bridge displacement, R12-CLOCK-1..6 + R12-ROUTE-1..3; CI green @ `e5b21b0d3` run 34377256197 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CLOCK-001 |
+| 2026-09-09 | R12 trust-transition seam — `priorTrustedStopBoundaryAt`, `trustedBoundaryEstablishedThisTick`, R12-TRUST-A/B integration; final CI green @ `0ebf248c0` run 34387586390 | Trip FSM R12 PR #1591 | TDL-EVID-R12-TRUST-001 |
+| 2026-09-09 | R12 Production deploy @ `157b3c722268…` release `20260909190912_v4994`; tree-equivalent CI admission; rolling two-replica ~14s mixed window; T0 KS MS 661 **PHYSICAL_TEST_READY=NO** (ACTIVE_TRIP) | Trip FSM R12 production deploy (authorized) | [R12_PRODUCTION_DEPLOY_2026-09-09.md](../evidence/R12_PRODUCTION_DEPLOY_2026-09-09.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
