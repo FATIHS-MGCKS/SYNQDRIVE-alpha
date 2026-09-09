@@ -344,6 +344,52 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts
 
+  - id: TDL-DEC-R12-001
+    type: decision
+    title: Provider-time stop boundary + boundary-backed end liveness
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      resolveProviderStopBoundaryCandidate on ACTIVE_TRIP; boundary-backed silence for vls_stale_provider_observation
+      only; credible post-boundary movement filter; resolvePossibleEndBoundaryCandidate prefers stopBoundaryAt.
+      Motivated by TDL-EVID-KS-MS-661-R11-NATURAL-001 Axis E FAIL. Not deployed.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-evidence.helpers.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-clock-contract.ts
+    evidence:
+      - TDL-EVID-R12-IMPL-001
+      - TDL-EVID-KS-MS-661-R11-NATURAL-001
+
+  - id: TDL-EVID-R12-IMPL-001
+    type: evidence
+    title: TDL-DEC-R12-001 implementation record
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: R12 provider stop boundary + boundary-backed silence; unit K1-K9 PASS; integration K1/K2/K11 CI-gated; not deployed.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md
+
+  - id: TDL-TEST-R12-001
+    type: test_evidence
+    title: R12 stop boundary + boundary-backed silence unit matrix
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Unit scenarios K1-K9; post-boundary movement policy; pause provenance.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-r12-stop-boundary-end-liveness.spec.ts
+
+  - id: TDL-TEST-R12-002
+    type: test_evidence
+    title: R12 KS661 Production ordering postgres+redis integration
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: K1 Production ordering without pre-seeded boundary; K2 pause; K11 normal finalize chain.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts
+
   - id: TDL-DEC-R9-001
     type: decision
     title: R9 adaptive polling wake subsystem

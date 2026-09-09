@@ -1,7 +1,9 @@
 import {
+  classifyStopBoundarySourceClockAuthority,
   clearPossibleEndClockFields,
   clearPossibleStartClockFields,
   isPossibleEndRecoveryEligible,
+  isTrustedStopBoundaryAuthority,
   isValidProviderEventTimestamp,
   resolveOperationalNoCoreInactivityAnchor,
   resolvePossibleEndBoundaryAnchor,
@@ -445,6 +447,20 @@ describe('R1 — trip FSM clock contract', () => {
           workerNow,
         })?.toISOString(),
       ).toBe(ts);
+    });
+  });
+
+  describe('R12 stop boundary source authority', () => {
+    it('deny-by-default: unknown stopBoundarySource is WORKER_TIME (untrusted)', () => {
+      expect(classifyStopBoundarySourceClockAuthority('legacy_unspecified')).toBe(
+        'WORKER_TIME',
+      );
+      expect(classifyStopBoundarySourceClockAuthority('stale_snapshot')).toBe('WORKER_TIME');
+      expect(
+        isTrustedStopBoundaryAuthority(
+          classifyStopBoundarySourceClockAuthority('made_up_provider_vls'),
+        ),
+      ).toBe(false);
     });
   });
 

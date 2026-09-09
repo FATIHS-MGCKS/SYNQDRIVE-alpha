@@ -11,6 +11,77 @@ export type TripFsmClockSource = 'PROVIDER_EVENT_TIME' | 'WORKER_FALLBACK';
 
 export type TripFsmClockAuthority = 'EVENT_TIME' | 'WORKER_TIME' | 'DB_TIME';
 
+/** R12: explicit stop-boundary clock authority (separate from FSM field authority). */
+export type StopBoundaryClockAuthority =
+  | 'PROVIDER_EVENT_TIME'
+  | 'EVENT_TIME'
+  | 'WORKER_TIME';
+
+export type StopBoundaryProvenance = {
+  boundaryAt: Date;
+  source: string;
+  clockAuthority: StopBoundaryClockAuthority;
+  /** Trusted for boundary-backed provider silence and PROVIDER_EVENT_TIME end candidacy. */
+  trust: boolean;
+};
+
+const STOP_BOUNDARY_SOURCE_CLOCK_AUTHORITY: Record<string, StopBoundaryClockAuthority> =
+  {
+    idle_within_trip_movement: 'EVENT_TIME',
+    idle_within_trip_stationary_vls: 'PROVIDER_EVENT_TIME',
+    provider_stationary_vls: 'PROVIDER_EVENT_TIME',
+    idle_within_trip_last_movement: 'EVENT_TIME',
+    idle_within_trip_last_activity: 'WORKER_TIME',
+    idle_within_trip_worker_now: 'WORKER_TIME',
+    pause_corroborated: 'PROVIDER_EVENT_TIME',
+  };
+
+const STOP_BOUNDARY_AUTHORITY_RANK: Record<StopBoundaryClockAuthority, number> = {
+  WORKER_TIME: 0,
+  EVENT_TIME: 1,
+  PROVIDER_EVENT_TIME: 2,
+};
+
+export function classifyStopBoundarySourceClockAuthority(
+  source: string,
+): StopBoundaryClockAuthority {
+  const mapped = STOP_BOUNDARY_SOURCE_CLOCK_AUTHORITY[source];
+  if (mapped) return mapped;
+  return 'WORKER_TIME';
+}
+
+export function isTrustedStopBoundaryAuthority(
+  clockAuthority: StopBoundaryClockAuthority,
+): boolean {
+  return (
+    clockAuthority === 'PROVIDER_EVENT_TIME' || clockAuthority === 'EVENT_TIME'
+  );
+}
+
+/**
+ * R12 stop-episode latch hierarchy:
+ * PROVIDER_EVENT_TIME > EVENT_TIME > WORKER_TIME
+ *
+ * - Same authority within one stop episode: latch earliest — no forward slide.
+ * - Stronger authority may replace weaker fallback (e.g. WORKER_TIME → provider VLS).
+ * - Upgrades require explainable chronology (incoming boundary not before existing).
+ * - Never replace an existing boundary with weaker authority.
+ */
+export function shouldReplaceStopBoundaryProvenance(
+  existing: StopBoundaryProvenance,
+  incoming: StopBoundaryProvenance,
+): boolean {
+  const existingRank = STOP_BOUNDARY_AUTHORITY_RANK[existing.clockAuthority];
+  const incomingRank = STOP_BOUNDARY_AUTHORITY_RANK[incoming.clockAuthority];
+
+  if (incomingRank > existingRank) {
+    if (existing.clockAuthority === 'WORKER_TIME') return true;
+    return incoming.boundaryAt.getTime() >= existing.boundaryAt.getTime();
+  }
+  if (incomingRank === existingRank) return false;
+  return false;
+}
+
 export const TRIP_FSM_CLOCK_FIELDS = {
   possibleStartAt: 'EVENT_TIME' as TripFsmClockAuthority,
   possibleEndAt: 'EVENT_TIME' as TripFsmClockAuthority,
@@ -133,10 +204,50 @@ export function resolvePossibleEndBoundaryAnchor(
 }
 
 export function resolvePossibleEndBoundaryCandidate(params: {
+  stopBoundaryProvenance?: StopBoundaryProvenance | null;
+  stopBoundaryAt?: Date | null;
+  stopBoundarySource?: string | null;
+  stopBoundaryClockAuthority?: StopBoundaryClockAuthority | null;
+  stopBoundaryTrust?: boolean | null;
   lastMeaningfulMovementAt?: Date | null;
   lastActivityAt?: Date | null;
   workerNow: Date;
 }): { boundaryAt: Date; clockSource: TripFsmClockSource } {
+  const provenance =
+    params.stopBoundaryProvenance ??
+    (params.stopBoundaryAt
+      ? {
+          boundaryAt: params.stopBoundaryAt,
+          source: params.stopBoundarySource ?? 'legacy_unspecified',
+          clockAuthority:
+            params.stopBoundaryClockAuthority ??
+            classifyStopBoundarySourceClockAuthority(
+              params.stopBoundarySource ?? 'legacy_unspecified',
+            ),
+          trust:
+            params.stopBoundaryTrust ??
+            isTrustedStopBoundaryAuthority(
+              params.stopBoundaryClockAuthority ??
+                classifyStopBoundarySourceClockAuthority(
+                  params.stopBoundarySource ?? 'legacy_unspecified',
+                ),
+            ),
+        }
+      : null);
+
+  if (
+    provenance?.trust &&
+    isValidProviderEventTimestamp(provenance.boundaryAt, params.workerNow)
+  ) {
+    return {
+      boundaryAt: provenance.boundaryAt,
+      clockSource:
+        provenance.clockAuthority === 'WORKER_TIME'
+          ? 'WORKER_FALLBACK'
+          : 'PROVIDER_EVENT_TIME',
+    };
+  }
+
   if (
     isValidProviderEventTimestamp(params.lastMeaningfulMovementAt, params.workerNow)
   ) {
