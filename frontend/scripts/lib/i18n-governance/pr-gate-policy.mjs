@@ -1,40 +1,26 @@
 import { normalizeRepoPath, toSrcRelativePath } from './git-diff.mjs';
+import {
+  BOOTSTRAP_RELEVANT_PATH_CONTRACT,
+  CANONICAL_GOVERNANCE_EXACT_PATHS,
+  CANONICAL_GOVERNANCE_PREFIX_RULES,
+  isCanonicalGovernanceAuthorityPath,
+  matchesPrefixRule,
+} from './authority-path-contract.mjs';
 
-/** Canonical protected governance paths — workflow bootstrap and JS gate must stay aligned. */
-export const PROTECTED_GOVERNANCE_EXACT_PATHS = [
-  '.cursor/rules/i18n.mdc',
-  'AGENTS.md',
-  '.github/workflows/i18n-governance-new-debt.yml',
-  'frontend/package.json',
-  'frontend/package-lock.json',
-  'frontend/src/i18n/hardcoded-copy-inventory.json',
-  'frontend/src/i18n/translation-coverage-baseline.json',
-  'frontend/src/i18n/translation-coverage.ts',
-  'frontend/src/i18n/translation-coverage.test.ts',
-  'frontend/src/i18n/i18n-debt-classifications.json',
-  'frontend/src/i18n/i18n-governance-scanner.test.ts',
-  'frontend/src/i18n/i18n-pr-gate.test.ts',
-  'frontend/src/i18n/i18n-structural-check.test.ts',
-  'frontend/src/i18n/locales.test.ts',
-  'frontend/src/i18n/translation-registry.test.ts',
-];
+/** @deprecated Use CANONICAL_GOVERNANCE_EXACT_PATHS — kept for existing imports. */
+export const PROTECTED_GOVERNANCE_EXACT_PATHS = CANONICAL_GOVERNANCE_EXACT_PATHS;
 
-export const PROTECTED_GOVERNANCE_PREFIXES = [
-  'frontend/scripts/i18n-',
-  'frontend/scripts/lib/i18n-governance/',
-];
+/** @deprecated Use CANONICAL_GOVERNANCE_PREFIX_RULES prefix strings — kept for existing imports. */
+export const PROTECTED_GOVERNANCE_PREFIXES = CANONICAL_GOVERNANCE_PREFIX_RULES.map(
+  (rule) => rule.prefix,
+);
+
+export { BOOTSTRAP_RELEVANT_PATH_CONTRACT };
 
 export const GOVERNANCE_AUTHORITY_PREFIXES = [
   ...PROTECTED_GOVERNANCE_EXACT_PATHS,
   ...PROTECTED_GOVERNANCE_PREFIXES,
 ];
-
-/** Layer A bootstrap relevance contract — must stay aligned with workflow-inline Classify PR relevance step */
-export const BOOTSTRAP_RELEVANT_PATH_CONTRACT = {
-  prefixes: ['frontend/src/', ...PROTECTED_GOVERNANCE_PREFIXES],
-  exact: [...PROTECTED_GOVERNANCE_EXACT_PATHS],
-  scriptSuffix: '.mjs',
-};
 
 export const GOVERNANCE_AUTHORITY_LABEL = 'i18n-governance-authority-change';
 
@@ -64,16 +50,7 @@ export function isIntentionallyExcludedFromGovernance(repoPath) {
 }
 
 export function isGovernanceAuthorityPath(repoPath) {
-  const normalized = normalizeRepoPath(repoPath);
-  if (I18N_RELEVANT_EXACT_PATHS.has(normalized)) return true;
-  for (const prefix of PROTECTED_GOVERNANCE_PREFIXES) {
-    if (!normalized.startsWith(prefix)) continue;
-    if (prefix === 'frontend/scripts/i18n-') {
-      return normalized.endsWith('.mjs');
-    }
-    return true;
-  }
-  return false;
+  return isCanonicalGovernanceAuthorityPath(repoPath);
 }
 
 export function isI18nRelevantPath(repoPath) {
@@ -201,3 +178,6 @@ export function evaluateGovernanceAuthorityPolicy({
       : 'NO_GOVERNANCE_AUTHORITY_CHANGE',
   };
 }
+
+// Re-export for tests that need prefix-rule matching details.
+export { matchesPrefixRule };

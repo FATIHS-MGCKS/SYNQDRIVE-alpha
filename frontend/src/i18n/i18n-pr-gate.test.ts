@@ -717,6 +717,7 @@ describe('P2.3.3 PR gate — protected-path contract parity', () => {
     'frontend/src/i18n/i18n-governance-scanner.test.ts',
     'frontend/src/i18n/i18n-pr-gate.test.ts',
     'frontend/src/i18n/i18n-structural-check.test.ts',
+    'frontend/src/i18n/hardcoded-copy-guard.test.ts',
     'frontend/src/i18n/locales.test.ts',
     'frontend/src/i18n/translation-registry.test.ts',
   ];

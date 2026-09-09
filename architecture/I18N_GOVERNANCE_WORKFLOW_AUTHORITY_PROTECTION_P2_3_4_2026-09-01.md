@@ -158,30 +158,27 @@ Authority-label removal uses `invalidate_authority_label()` with **no**
 
 ## 6. Trusted governance authority path census
 
+**Canonical contract (2026-09-09):** `frontend/scripts/lib/i18n-governance/authority-path-contract.mjs`
+is the single source of truth for checkout-based JS governance. Layer 0 keeps
+an inline bash duplicate; parity is enforced by `authority-path-parity.test.ts`.
+See `architecture/I18N_GOVERNANCE_AUTHORITY_PATH_CONTRACT_PARITY_2026-09-09.md`.
+
 Layer 0 independently protects:
 
 | Path / prefix |
 |---------------|
-| `.github/workflows/**` (complete workflow namespace) |
-| `frontend/scripts/i18n-hardcoded-scan.mjs` |
-| `frontend/scripts/i18n-check.mjs` |
-| `frontend/scripts/i18n-governance.mjs` |
-| `frontend/scripts/i18n-pr-gate.mjs` |
-| `frontend/scripts/i18n-shim-inventory.mjs` |
+| `.github/workflows/**` (complete workflow namespace — **workflow-only expansion**) |
+| `.cursor/rules/i18n.mdc` |
+| `AGENTS.md` |
+| `frontend/scripts/i18n-*.mjs` (via exact script list in workflow; canonical uses prefix rule) |
 | `frontend/scripts/lib/i18n-governance/**` |
 | `frontend/package.json` |
 | `frontend/package-lock.json` |
-| `frontend/src/i18n/i18n-debt-classifications.json` |
-| `frontend/src/i18n/i18n-pr-gate.test.ts` |
-| `frontend/src/i18n/i18n-governance-scanner.test.ts` |
-| `frontend/src/i18n/translation-registry.test.ts` |
-| `frontend/src/i18n/locales.test.ts` |
-| `frontend/src/i18n/i18n-structural-check.test.ts` |
-| `frontend/src/i18n/hardcoded-copy-guard.test.ts` |
+| All paths in `CANONICAL_GOVERNANCE_EXACT_PATHS` (inventory, coverage, debt manifest, governance tests) |
 
-The three additional `frontend/src/i18n/*` test files are included because
-`i18n-check.mjs` executes them directly and they can materially alter
-dictionary / structural validation without touching the scripts above.
+**Intentional asymmetry:** `.github/workflows/**` is authority in Layer 0 only.
+Canonical JS policy marks only `i18n-governance-new-debt.yml` as authority;
+other workflow files are `otherPaths` in checkout-based partition.
 
 `frontend/.npmrc` does not exist. No local `.github/actions` i18n runners
 exist.
