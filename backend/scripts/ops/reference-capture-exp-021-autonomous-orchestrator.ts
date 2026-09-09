@@ -238,7 +238,7 @@ async function main(): Promise<void> {
   let parkedSustainSince: number | null = null;
 
   type AppContext = Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
-  let app: AppContext | null = null;
+  let app: AppContext | undefined;
   let prisma: PrismaService | null = null;
   let sessionService: ReferenceCaptureSessionService | null = null;
   let sessionRepo: ReferenceCaptureSessionRepository | null = null;
@@ -254,9 +254,9 @@ async function main(): Promise<void> {
     settlementShadow = app.get(ReferenceCaptureSettlementShadowService);
   }
 
+  let running = true;
   try {
-    while (true) {
-      if (phase === 'DONE' || phase === 'SKIPPED') break;
+    while (running) {
       const sha = currentReleaseSha();
       const deployRunning = deployProcessRunning();
       const r3001 = replicaHealthy(3001);
@@ -297,6 +297,7 @@ async function main(): Promise<void> {
           log('EXP021_RUN_SKIPPED', {
             EXP021_RUN_SKIPPED_REASON: 'DEPLOY_NOT_READY_BEFORE_DRIVE_START',
           });
+          running = false;
           break;
         }
 
@@ -458,6 +459,7 @@ async function main(): Promise<void> {
               WHOLE_TRIP_SHADOW_SCHEDULED: wholeTrip,
             });
             phase = 'DONE';
+            running = false;
             break;
           }
         } else {
@@ -477,7 +479,9 @@ async function main(): Promise<void> {
       log('ORCHESTRATOR_COMPLETE', { sessionId, physicalDriveStarted, physicalDriveEnded, preRollStarted });
     }
   } finally {
-    if (app) await app.close();
+    if (app) {
+      await app.close();
+    }
   }
 }
 
