@@ -39,6 +39,10 @@ const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
 const workflowPath = join(repoRoot, '.github/workflows/i18n-governance-new-debt.yml');
+const authorityProtectionWorkflowPath = join(
+  repoRoot,
+  '.github/workflows/i18n-authority-protection.yml',
+);
 const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
 const removedBootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
 
@@ -136,6 +140,74 @@ function workflowBootstrapRelevant(path: string) {
 
 function bootstrapRelevantFromPath(path: string) {
   return workflowBootstrapRelevant(path);
+}
+
+function extractAuthorityProtectionCasePatterns() {
+  const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+  const caseMatch = workflowYaml.match(
+    /frontend\/src\/i18n\/[^\n]+\)\s*\n\s+return 0/,
+  );
+  if (!caseMatch?.[0]) {
+    throw new Error('Authority protection workflow classifier case statement not found');
+  }
+  const caseLine = caseMatch[0].split('\n')[0].replace(/\)\s*$/, '');
+  const prefix = 'frontend/src/i18n/';
+  const start = caseLine.indexOf(prefix);
+  if (start < 0) {
+    throw new Error('Authority protection workflow classifier missing frontend/src/i18n paths');
+  }
+  return caseLine.slice(start).split('|').map((pattern) => pattern.trim());
+}
+
+function workflowAuthorityProtectionIsAuthority(path: string) {
+  if (path.startsWith('.github/workflows/')) return true;
+  if (
+    path === 'frontend/scripts/i18n-hardcoded-scan.mjs' ||
+    path === 'frontend/scripts/i18n-check.mjs' ||
+    path === 'frontend/scripts/i18n-governance.mjs' ||
+    path === 'frontend/scripts/i18n-pr-gate.mjs' ||
+    path === 'frontend/scripts/i18n-shim-inventory.mjs'
+  ) {
+    return true;
+  }
+  if (path.startsWith('frontend/scripts/lib/i18n-governance/')) return true;
+  if (path === 'frontend/package.json' || path === 'frontend/package-lock.json') return true;
+  const patterns = extractAuthorityProtectionCasePatterns();
+  return patterns.includes(path);
+}
+
+function workflowAuthorityProtectionIsProduct(path: string) {
+  if (!path.startsWith('frontend/src/')) return false;
+  return !workflowAuthorityProtectionIsAuthority(path);
+}
+
+function classifyAuthorityProtectionPaths(paths: string[]) {
+  const authorityPaths = paths.filter((path) => workflowAuthorityProtectionIsAuthority(path));
+  const productPaths = paths.filter((path) => workflowAuthorityProtectionIsProduct(path));
+  return { authorityPaths, productPaths };
+}
+
+function evaluateAuthorityProtectionGate(options: {
+  paths: string[];
+  eventAction: 'opened' | 'labeled';
+  authorityLabelPresent: boolean;
+  trustedSender?: string;
+}) {
+  const { authorityPaths, productPaths } = classifyAuthorityProtectionPaths(options.paths);
+  if (authorityPaths.length === 0) {
+    return { ok: true, reason: 'NO_GOVERNANCE_AUTHORITY_CHANGE' };
+  }
+  if (productPaths.length > 0) {
+    return { ok: false, reason: 'MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE' };
+  }
+  if (
+    options.eventAction === 'labeled' &&
+    options.authorityLabelPresent &&
+    options.trustedSender === 'FATIHS-MGCKS'
+  ) {
+    return { ok: true, reason: 'GOVERNANCE_AUTHORITY_APPROVED' };
+  }
+  return { ok: false, reason: 'GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL' };
 }
 
 function defaultGateOptions(overrides: Record<string, unknown> = {}) {
@@ -754,6 +826,60 @@ describe('P2.3.3 PR gate — protected-path contract parity', () => {
       expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
     },
   );
+});
+
+describe('P2.3.2 authority protection — workflow classifier parity', () => {
+  const pr1581AuthorityPaths = [
+    'frontend/src/i18n/i18n-structural-check.test.ts',
+    'frontend/src/i18n/translation-coverage-baseline.json',
+    'frontend/src/i18n/translation-coverage.test.ts',
+  ];
+
+  it('workflow classifier includes translation coverage governance paths', () => {
+    const patterns = extractAuthorityProtectionCasePatterns();
+    expect(patterns).toContain('frontend/src/i18n/translation-coverage-baseline.json');
+    expect(patterns).toContain('frontend/src/i18n/translation-coverage.test.ts');
+  });
+
+  it('PR #1581 authority paths classify as authority-only in workflow classifier', () => {
+    const { authorityPaths, productPaths } = classifyAuthorityProtectionPaths(pr1581AuthorityPaths);
+    expect(authorityPaths).toEqual(pr1581AuthorityPaths);
+    expect(productPaths).toEqual([]);
+  });
+
+  it('adding real product code still fails the mixed-change guard', () => {
+    const result = evaluateAuthorityProtectionGate({
+      paths: [
+        'frontend/src/i18n/translation-coverage-baseline.json',
+        'frontend/src/rental/components/TopBar.tsx',
+      ],
+      eventAction: 'opened',
+      authorityLabelPresent: false,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
+  });
+
+  it('authority-only change still requires owner approval without label', () => {
+    const result = evaluateAuthorityProtectionGate({
+      paths: pr1581AuthorityPaths,
+      eventAction: 'opened',
+      authorityLabelPresent: false,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL');
+  });
+
+  it('trusted owner label approval passes authority-only PR #1581 paths', () => {
+    const result = evaluateAuthorityProtectionGate({
+      paths: pr1581AuthorityPaths,
+      eventAction: 'labeled',
+      authorityLabelPresent: true,
+      trustedSender: 'FATIHS-MGCKS',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.reason).toBe('GOVERNANCE_AUTHORITY_APPROVED');
+  });
 });
 
 describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { timeout: 60000 }, () => {
