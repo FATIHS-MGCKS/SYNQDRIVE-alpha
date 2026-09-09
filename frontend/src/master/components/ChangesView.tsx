@@ -36,28 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'trip-fsm-r12-stop-boundary-remediation-2026-09-09',
-    version: '4.9.1092',
-    title: 'Trip FSM R12 — Intensive review remediation (stop boundary lifecycle + CI blockers)',
-    summary: [
-      'Same-tick invariant: newly observed provider stop boundary must not filter continuity in the same ACTIVE_TICK batch (STOP OBSERVATION ≠ END DECISION).',
-      'Active stop boundary lifecycle: latch earliest boundary per stop episode; retire from end candidacy after credible post-boundary movement while preserving lastPauseBoundaryAt forensics.',
-      'Boundary-backed empty-core silence requires UNKNOWN stale VLS (vls_stale_provider_observation) — UNKNOWN is never coerced to INACTIVE.',
-      'Route post-boundary credibility: speed above profile threshold OR ≥25 m haversine displacement (GPS jitter guard).',
-      'New postgres+redis regressions: B1-resume-without-B2, K7 orchestration fresh contradiction, K12 boundary-backed idempotency; K1-same-tick regression.',
-      'First CI @ f92cd1ff FAILED (run 34354237230); status IMPLEMENTED_AWAITING_CI until Trip FSM Production Readiness CI green on final PR #1591 head — not deployed.',
-    ],
-    reason:
-      'KS MS 661 R11 natural drive Axis E FAIL — empty core + stale VLS without trusted stop boundary; first R12 head regressed K1 via same-tick continuity filter.',
-    previousBehavior:
-      'No provider-time stop boundary while ACTIVE_TRIP; stale/UNKNOWN VLS kept trip open indefinitely; first R12 head could enter POSSIBLE_END on stop-observation tick.',
-    details:
-      'architecture/trip-detection-lifecycle/evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md, trip-detection-orchestration.service.ts, trip-fsm-evidence-state.ts, trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-09T13:30:00.000Z',
-  },
-  {
     id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
     version: '4.9.1091',
     title: 'Battery V2 M3.2B Phase C — Production shadow flag ON (controlled activation)',

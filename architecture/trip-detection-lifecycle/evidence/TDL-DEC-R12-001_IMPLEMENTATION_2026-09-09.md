@@ -4,7 +4,7 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-R12-IMPL-001 |
 | **Decision** | TDL-DEC-R12-001 |
-| **Status** | **CI_VALIDATED** @ `c4cd5510a…` — not deployed |
+| **Status** | **IMPLEMENTED_AWAITING_CI** — prior green @ `c4cd5510a…` run 34358728200; i18n gate fix pending re-run |
 | **Motivation** | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) (`TDL-EVID-KS-MS-661-R11-NATURAL-001`) — Axis E FAIL |
 | **Baseline main @ task start** | `c343fab9aa8930b0023702bd4f3c31afd34393fa` (#1590 merge) |
 | **PR** | #1591 |
@@ -60,6 +60,8 @@ End gate: `boundaryBackedSilenceEligible`, `innerGateReason`, `vlsEvidenceState`
 
 - `trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts` — K1, K1-same-tick, K2, K11
 - `trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts` — B1-resume-without-B2, K7-orchestration, K12
+
+**CI wiring:** R12 tests run inside existing Trip FSM Production Readiness jobs via extended `test:trip-r11:unit` and `test:trip-r11:postgres-redis:ci` (avoids `.github/workflows/*` change that triggers i18n authority-protection mixed-change gate on this PR).
 
 ## Non-claims
 

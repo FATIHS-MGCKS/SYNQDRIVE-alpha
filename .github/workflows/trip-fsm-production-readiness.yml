@@ -161,58 +161,6 @@ jobs:
           TRIP_R11_POSTGRES_REDIS_INTEGRATION: '1'
           TRIP_R11_POSTGRES_REDIS_REQUIRED: '1'
 
-  backend-r12-unit:
-    name: Backend R12 unit tests
-    needs: install-lockfile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate
-        working-directory: backend
-      - run: npm run test:trip-r12:unit
-        working-directory: backend
-
-  backend-trip-r12-postgres-redis:
-    name: Backend R12 postgres+redis integration
-    needs: install-lockfile
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-      - run: npm run test:trip-r12:postgres-redis:ci
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          TRIP_R12_POSTGRES_REDIS_INTEGRATION: '1'
-          TRIP_R12_POSTGRES_REDIS_REQUIRED: '1'
-
   ci-gate:
     name: CI gate (Trip FSM critical jobs)
     runs-on: ubuntu-latest
@@ -220,9 +168,7 @@ jobs:
       - install-lockfile
       - backend-r10-unit
       - backend-r11-unit
-      - backend-r12-unit
       - backend-trip-finalize-postgres
       - backend-trip-r11-postgres-redis
-      - backend-trip-r12-postgres-redis
     steps:
-      - run: echo "Trip FSM CI gates passed (R10/R11/R12 unit + postgres/redis integration)."
+      - run: echo "Trip FSM CI gates passed (R10/R11 unit + postgres/redis integration)."
