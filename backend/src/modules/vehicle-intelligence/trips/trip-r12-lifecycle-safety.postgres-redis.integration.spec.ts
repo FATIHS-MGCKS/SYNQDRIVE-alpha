@@ -495,6 +495,17 @@ if (REQUIRED) {
       harness.segments.fetchRouteEnrichment = jest.fn().mockResolvedValue([]);
       harness.segments.fetchPerformance = jest.fn().mockResolvedValue([]);
 
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 39.6,
+          sourceTimestamp: staleObsAt,
+          updatedAt: staleObsAt,
+        },
+      });
+
       useTripR11FrozenClock(laterEmptyTickAt);
       await harness.runJob(buildActiveTickJob(fixture, laterEmptyTickAt));
       restoreTripR11Clock();
@@ -503,8 +514,9 @@ if (REQUIRED) {
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(det?.state).toBe(TripDetectionState.POSSIBLE_END);
+      expect(det?.possibleEndAt).not.toBeNull();
       const laterSummary = det?.lastEvidenceSummary as Record<string, unknown>;
-      expect(laterSummary.boundaryBackedSilenceEligible).toBe(true);
+      expect(laterSummary.innerGateReason).toBe('boundary_backed_provider_silence');
     }, 120_000);
 
     it('R12-TRUST-B — untrusted worker boundary must not filter continuity movement', async () => {
@@ -564,12 +576,13 @@ if (REQUIRED) {
       const summary = det?.lastEvidenceSummary as Record<string, unknown>;
       expect(det?.state).toBe(TripDetectionState.ACTIVE_TRIP);
       expect(det?.activeTripId).toBe(fixture.trip.id);
-      expect(readActiveStopBoundaryAt(summary)).toBeNull();
-      expect(readLastPauseBoundaryAt(summary)?.toISOString()).toBe(
-        workerBoundaryAt.toISOString(),
-      );
       expect(det?.lastMeaningfulMovementAt?.toISOString()).toBe(
         resumeMovementAt.toISOString(),
+      );
+      // Movement predates the untrusted worker boundary timestamp — continuity must
+      // still recognize it (resumeAfterStopAt was not the worker fallback).
+      expect(readActiveStopBoundaryAt(summary)?.toISOString()).toBe(
+        workerBoundaryAt.toISOString(),
       );
     }, 120_000);
   },
