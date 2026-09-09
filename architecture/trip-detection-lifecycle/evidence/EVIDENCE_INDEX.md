@@ -133,7 +133,17 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 | TDL-TEST-R11-003 | CURRENT_TEST | [trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts) | `2026-09-08T23:45:00Z` | Merged #1584 | Scenario I queue/wake/concurrency | CONFIRMED_CI | — |
 | TDL-TEST-R11-004 | CURRENT_TEST | [trip-r11-scaling-simulation.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-scaling-simulation.spec.ts) | `2026-09-08T23:45:00Z` | Merged #1584 | Synthetic scaling probe 5/1k/10k — **not** production load | CONFIRMED_CI | Design load model in PROPOSAL-001 separate |
 | TDL-TEST-R11-005 | CURRENT_TEST | [trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts) | `2026-09-09T01:34:00Z` | Merged #1584 | Scenario **J** — boundary from orchestration; R10 chain; no STALE_ONGOING | CONFIRMED_CI | Reconstructed KS661 fixture; not natural drive |
-| TDL-EVID-KS-MS-661-R11-NATURAL-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) | `2026-09-09T05:17:34Z` | Deployed `f7eb94cb…` @ `20260909024150_v4994` | Five-axis natural drive: A/B/D **PASS**; C **INCONCLUSIVE**; E **FAIL** — 0× POSSIBLE_END; `stopBoundaryAt` null; empty-core + stale VLS block; trip **ONGOING** @ audit | CONFIRMED_AT_PRODUCTION_RELEASE | Cross-ref TDL-EVID-KS-MS-661-001 historical trip only; STALE_ONGOING not yet fired |
+| TDL-EVID-KS-MS-661-R11-NATURAL-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) | `2026-09-09T05:17:34Z` | Deployed `f7eb94cb…` @ `20260909024150_v4994` | Five-axis natural drive: A/B/D **PASS**; C **INCONCLUSIVE**; E **FAIL** — 0× POSSIBLE_END; `stopBoundaryAt` null; empty-core + stale VLS block; trip **ONGOING** @ audit | CONFIRMED_AT_PRODUCTION_RELEASE | Post-audit: STALE_ONGOING @ 06:51:54Z; motivates TDL-DEC-R12-001 |
+
+---
+
+## R12 — provider stop boundary + boundary-backed end liveness (2026-09-09)
+
+| Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
+|-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
+| TDL-EVID-R12-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T13:00:00Z` | Baseline `c343fab9…` | Provider stop boundary without IDLE; boundary-backed silence; post-boundary movement filter; K1–K9 unit PASS | **CI_VALIDATED** | Not deployed; integration CI-gated |
+| TDL-TEST-R12-001 | CURRENT_TEST | [trip-fsm-r12-stop-boundary-end-liveness.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r12-stop-boundary-end-liveness.spec.ts) | `2026-09-09T13:00:00Z` | Branch R12 | Unit scenarios K1–K9 | CONFIRMED_CI | — |
+| TDL-TEST-R12-002 | CURRENT_TEST | [trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts) | `2026-09-09T13:00:00Z` | Branch R12 | K1 Production ordering; K2 pause; K11 finalize chain | CONFIRMED_CI | Approximated fixture; redis-memory-server |
 
 ---
 
