@@ -68,8 +68,10 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
         id: 'exp-db-1',
         experimentId: 'exp-021-test',
         sessionId: 'sess-1',
+        status: 'ACTIVE',
         lastSyncedPhaseCount: 0,
       }),
+      findExperimentStatusById: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       createExperiment: jest.fn(),
       createSchedulesIfAbsent: jest.fn(
         async (
@@ -268,9 +270,11 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
     const observations: unknown[] = [];
     const repository = {
       findScheduleById: jest.fn().mockResolvedValue(schedule),
+      findExperimentStatusById: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       markExecuting: jest.fn(),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
+      markSkipped: jest.fn(),
       createObservation: jest.fn(async (input: { actualAgeMs: number; scheduleDriftMs: number }) => {
         observations.push(input);
       }),

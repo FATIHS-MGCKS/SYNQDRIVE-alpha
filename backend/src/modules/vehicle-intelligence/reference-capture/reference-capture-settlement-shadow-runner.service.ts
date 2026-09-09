@@ -55,6 +55,30 @@ export class ReferenceCaptureSettlementShadowRunnerService {
     }
   }
 
+  async removeJobIfQueued(jobId: string): Promise<boolean> {
+    const job = await this.queue.getJob(jobId);
+    if (!job) return false;
+    const state = await job.getState();
+    if (state === 'delayed' || state === 'waiting' || state === 'active') {
+      await job.remove();
+      return true;
+    }
+    return false;
+  }
+
+  async cancelQueuedJobsForSession(
+    bullJobIds: string[],
+  ): Promise<{ removed: number; attempted: number }> {
+    let removed = 0;
+    for (const jobId of bullJobIds) {
+      if (!jobId) continue;
+      if (await this.removeJobIfQueued(jobId)) {
+        removed += 1;
+      }
+    }
+    return { removed, attempted: bullJobIds.length };
+  }
+
   async recoverDueSchedules(now = new Date()): Promise<number> {
     const due = await this.repository.findRecoverableSchedules(now);
     let recovered = 0;

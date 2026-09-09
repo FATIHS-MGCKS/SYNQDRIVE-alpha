@@ -183,6 +183,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Settlement-shadow abort lifecycle (2026-09-09)
+
+| Event | Detail |
+|-------|--------|
+| Status | **LIFECYCLE FIX** — `abortSession` now terminalizes settlement-shadow experiments |
+| Defect | ABORTED RC sessions left `ACTIVE` settlement experiments + pending BullMQ jobs (2 orphans in post-deploy recert) |
+| Fix | `cancelExperimentForAbortedSession`: experiment → `CANCELLED`, unobserved schedules → `SKIPPED`, jobs removed, observations preserved |
+| Normal stop | `stopRecording` / COMPLETED path unchanged — post-stop shadow continuation preserved |
+| Tests | 8 focused abort-lifecycle tests + 565 reference-capture tests PASS |
+| Evidence | `EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md` |
+
 ## EXP-021 — Audi re-run readiness hardening (2026-09-09)
 
 | Event | Detail |

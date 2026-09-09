@@ -193,7 +193,8 @@ async function main(): Promise<void> {
       result.A60_SCHEDULABLE_ON_TIME === 'YES' &&
       result.B30_SCHEDULABLE_ON_TIME === 'YES' &&
       result.B60_SCHEDULABLE_ON_TIME === 'YES' &&
-      result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN === 'YES'
+      result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN === 'YES' &&
+      result.NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN === 'YES'
         ? 'YES'
         : 'NO';
 

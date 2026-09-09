@@ -5,6 +5,7 @@ import {
   ReferenceCaptureSettlementShadowScheduleStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS } from './reference-capture-settlement-shadow.constants';
 
 @Injectable()
 export class ReferenceCaptureSettlementShadowRepository {
@@ -14,6 +15,13 @@ export class ReferenceCaptureSettlementShadowRepository {
     return this.prisma.referenceCaptureSettlementShadowExperiment.findUnique({
       where: { sessionId },
       include: { schedules: true },
+    });
+  }
+
+  findExperimentStatusById(experimentDbId: string) {
+    return this.prisma.referenceCaptureSettlementShadowExperiment.findUnique({
+      where: { id: experimentDbId },
+      select: { status: true },
     });
   }
 
@@ -34,8 +42,99 @@ export class ReferenceCaptureSettlementShadowRepository {
         vehicleId: input.vehicleId,
         tokenId: input.tokenId,
         calibrationSeriesId: input.calibrationSeriesId ?? null,
-        status: 'ACTIVE',
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
         metadataJson: input.metadataJson ?? {},
+      },
+    });
+  }
+
+  findActiveBullJobIdsForSession(sessionId: string): Promise<Array<{ id: string; bullJobId: string }>> {
+    return this.prisma.referenceCaptureSettlementShadowSchedule.findMany({
+      where: {
+        sessionId,
+        bullJobId: { not: null },
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+      },
+      select: { id: true, bullJobId: true },
+    }) as Promise<Array<{ id: string; bullJobId: string }>>;
+  }
+
+  async terminalizeExperimentOnAbort(
+    experimentDbId: string,
+    input: {
+      abortReason: string;
+      abortedAt: string;
+      organizationId: string;
+      existingMetadata: Prisma.JsonValue | null;
+    },
+  ): Promise<boolean> {
+    const existingMeta =
+      input.existingMetadata && typeof input.existingMetadata === 'object' && !Array.isArray(input.existingMetadata)
+        ? (input.existingMetadata as Record<string, unknown>)
+        : {};
+
+    const updated = await this.prisma.referenceCaptureSettlementShadowExperiment.updateMany({
+      where: {
+        id: experimentDbId,
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+      },
+      data: {
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED,
+        metadataJson: {
+          ...existingMeta,
+          terminalization: {
+            reason: 'RC_SESSION_ABORTED',
+            abortReason: input.abortReason,
+            abortedAt: input.abortedAt,
+            organizationId: input.organizationId,
+          },
+        },
+      },
+    });
+    return updated.count > 0;
+  }
+
+  skipUnobservedSchedulesForSession(sessionId: string, skipReason: string) {
+    return this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        sessionId,
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+        observation: { is: null },
+      },
+      data: {
+        status: ReferenceCaptureSettlementShadowScheduleStatus.SKIPPED,
+        lastError: skipReason,
+        bullJobId: null,
+      },
+    });
+  }
+
+  completeObservedSchedulesForSession(sessionId: string) {
+    return this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        sessionId,
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+        observation: { isNot: null },
+      },
+      data: {
+        status: ReferenceCaptureSettlementShadowScheduleStatus.COMPLETED,
+        lastError: null,
+        bullJobId: null,
       },
     });
   }
@@ -134,6 +233,9 @@ export class ReferenceCaptureSettlementShadowRepository {
         },
         scheduledAt: { lte: now },
         observation: { is: null },
+        experiment: {
+          status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+        },
       },
       orderBy: { scheduledAt: 'asc' },
       take: limit,

@@ -447,6 +447,12 @@ export class ReferenceCaptureSessionService {
       },
     );
 
+    await this.settlementShadowService.cancelExperimentForAbortedSession({
+      sessionId,
+      organizationId,
+      abortReason: reason ?? 'aborted_by_operator',
+    });
+
     return this.toView(
       aborted,
       session.massBindingJson as never,

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-settlement-shadow-abort-lifecycle-2026-09-09',
+    version: '4.9.1092',
+    title: 'EXP-021 — Settlement-shadow abort lifecycle micro-hardening',
+    summary: [
+      'Forensic gap: `abortSession` left ACTIVE settlement-shadow experiments and pending BullMQ jobs on ABORTED RC sessions (2 dry-run orphans after PR #1582 recert).',
+      'Canonical fix: `cancelExperimentForAbortedSession` wired from `abortSession` — experiment → CANCELLED, unobserved schedules → SKIPPED, queued jobs removed, completed observations preserved.',
+      'Guards on execute + recovery skip CANCELLED experiments; normal `stopRecording` post-stop +30/+60 shadow continuation unchanged.',
+      '8 focused abort-lifecycle tests; stationary cert now requires zero active settlement experiments after dry-run abort.',
+    ],
+    reason:
+      'Close lifecycle defect before next EXP-021 physical run — abort must not leave invalid shadow state.',
+    previousBehavior:
+      'RC abort terminalized session only; settlement-shadow experiment could remain ACTIVE with pending/delayed jobs.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T22:40:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
     version: '4.9.1091',
     title: 'Battery V2 M3.2B Phase C — Production shadow flag ON (controlled activation)',

@@ -29,6 +29,10 @@ import {
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture-settlement-shadow-runner.service';
 import {
+  buildSettlementShadowAbortSkipReason,
+  REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS,
+} from './reference-capture-settlement-shadow.constants';
+import {
   compareBucketSets,
   hashCanonicalShadowResponse,
   parseShadowSignalsResponse,
@@ -50,6 +54,137 @@ export class ReferenceCaptureSettlementShadowService {
 
   isEnabled(): boolean {
     return this.config.isSettlementShadowEnabled();
+  }
+
+  isExperimentActive(status: string | null | undefined): boolean {
+    return status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
+  }
+
+  /**
+   * Canonical RC abort path: terminalize settlement-shadow experiment, skip unobserved
+   * schedules, preserve completed observations, and remove queued BullMQ jobs.
+   */
+  async cancelExperimentForAbortedSession(args: {
+    sessionId: string;
+    organizationId: string;
+    abortReason: string;
+  }): Promise<{
+    cancelled: boolean;
+    alreadyTerminal: boolean;
+    experimentId?: string;
+    schedulesSkipped: number;
+    schedulesCompleted: number;
+    jobsRemoved: number;
+  }> {
+    try {
+      return await this.cancelExperimentForAbortedSessionInternal(args);
+    } catch (error) {
+      this.logger.warn(
+        `Settlement shadow abort cleanup failed session=${args.sessionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return {
+        cancelled: false,
+        alreadyTerminal: false,
+        schedulesSkipped: 0,
+        schedulesCompleted: 0,
+        jobsRemoved: 0,
+      };
+    }
+  }
+
+  private async cancelExperimentForAbortedSessionInternal(args: {
+    sessionId: string;
+    organizationId: string;
+    abortReason: string;
+  }): Promise<{
+    cancelled: boolean;
+    alreadyTerminal: boolean;
+    experimentId?: string;
+    schedulesSkipped: number;
+    schedulesCompleted: number;
+    jobsRemoved: number;
+  }> {
+    if (!this.isEnabled()) {
+      return {
+        cancelled: false,
+        alreadyTerminal: false,
+        schedulesSkipped: 0,
+        schedulesCompleted: 0,
+        jobsRemoved: 0,
+      };
+    }
+
+    const experiment = await this.repository.findExperimentBySessionId(args.sessionId);
+    if (!experiment) {
+      return {
+        cancelled: false,
+        alreadyTerminal: false,
+        schedulesSkipped: 0,
+        schedulesCompleted: 0,
+        jobsRemoved: 0,
+      };
+    }
+
+    if (experiment.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED) {
+      return {
+        cancelled: true,
+        alreadyTerminal: true,
+        experimentId: experiment.id,
+        schedulesSkipped: 0,
+        schedulesCompleted: 0,
+        jobsRemoved: 0,
+      };
+    }
+
+    const queuedJobs = await this.repository.findActiveBullJobIdsForSession(args.sessionId);
+    const bullJobIds = queuedJobs.map((row) => row.bullJobId);
+    const skipReason = buildSettlementShadowAbortSkipReason(args.abortReason);
+    const abortedAt = new Date().toISOString();
+
+    const { schedulesSkipped, schedulesCompleted, terminalized } = await this.prisma.$transaction(
+      async () => {
+        const skipped = await this.repository.skipUnobservedSchedulesForSession(args.sessionId, skipReason);
+        const completed = await this.repository.completeObservedSchedulesForSession(args.sessionId);
+        const didTerminalize = await this.repository.terminalizeExperimentOnAbort(experiment.id, {
+          abortReason: args.abortReason,
+          abortedAt,
+          organizationId: args.organizationId,
+          existingMetadata: experiment.metadataJson,
+        });
+        return {
+          schedulesSkipped: skipped.count,
+          schedulesCompleted: completed.count,
+          terminalized: didTerminalize,
+        };
+      },
+    );
+
+    const { removed: jobsRemoved } = await this.runner.cancelQueuedJobsForSession(bullJobIds);
+
+    if (!terminalized) {
+      const latest = await this.repository.findExperimentBySessionId(args.sessionId);
+      if (latest?.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED) {
+        return {
+          cancelled: true,
+          alreadyTerminal: true,
+          experimentId: experiment.id,
+          schedulesSkipped,
+          schedulesCompleted,
+          jobsRemoved,
+        };
+      }
+    }
+
+    return {
+      cancelled: terminalized,
+      alreadyTerminal: false,
+      experimentId: experiment.id,
+      schedulesSkipped,
+      schedulesCompleted,
+      jobsRemoved,
+    };
   }
 
   async ensureExperiment(args: {
@@ -100,6 +235,7 @@ export class ReferenceCaptureSettlementShadowService {
         calibrationSeriesId: series.calibrationSeriesId,
       });
       if (!experiment) return;
+      if (!this.isExperimentActive(experiment.status)) return;
 
       await this.syncProspectiveProbesForActivePhase({
         experiment,
@@ -415,6 +551,17 @@ export class ReferenceCaptureSettlementShadowService {
   async executeScheduledObservation(scheduleId: string): Promise<void> {
     const schedule = await this.repository.findScheduleById(scheduleId);
     if (!schedule) return;
+
+    const experiment = await this.repository.findExperimentStatusById(schedule.experimentId);
+    if (experiment && !this.isExperimentActive(experiment.status)) {
+      if (!schedule.observation) {
+        await this.repository.markSkipped(
+          scheduleId,
+          buildSettlementShadowAbortSkipReason('experiment_not_active'),
+        );
+      }
+      return;
+    }
 
     if (schedule.observation) {
       this.logger.debug(`Shadow observation already exists schedule=${scheduleId} — idempotent skip`);
