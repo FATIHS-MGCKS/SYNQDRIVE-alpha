@@ -13,6 +13,7 @@ import {
   mergeProviderStopBoundaryCandidate,
   readStopBoundaryAt,
   resolveProviderStopBoundaryCandidate,
+  retireActiveStopBoundaryAfterMovement,
 } from './trip-fsm-evidence-state';
 
 const MIN_INACTIVITY = 120_000;
@@ -29,7 +30,7 @@ describe('R12 provider stop boundary candidate', () => {
         sourceTimestamp: new Date('2026-09-09T05:07:00.000Z'),
       },
       profile: 'ICE',
-      workerNow: WORKER_NOW,
+      workerNow: new Date('2026-09-09T05:07:30.000Z'),
       lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
       existingStopBoundaryAt: null,
     });
@@ -40,21 +41,66 @@ describe('R12 provider stop boundary candidate', () => {
     });
   });
 
-  it('boundaries are monotonic — older candidate rejected', () => {
+  it('stale stationary VLS does not establish a new active boundary', () => {
     expect(
       resolveProviderStopBoundaryCandidate({
         telemetry: {
           isIgnitionOn: false,
           speedKmh: 0,
           engineLoad: 0,
-          sourceTimestamp: new Date('2026-09-09T05:01:00.000Z'),
+          sourceTimestamp: new Date('2026-09-09T05:07:00.000Z'),
         },
         profile: 'ICE',
         workerNow: WORKER_NOW,
-        lastMeaningfulMovementAt: new Date('2026-09-09T04:59:00.000Z'),
-        existingStopBoundaryAt: STOP_BOUNDARY,
+        lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
+        existingStopBoundaryAt: null,
+        maxFreshObservationAgeMs: MIN_INACTIVITY,
       }),
     ).toBeNull();
+  });
+
+  it('REPEATED_STATIONARY — later sample does not slide latched boundary', () => {
+    const t1 = new Date('2026-09-09T05:07:00.000Z');
+    const summary = mergeProviderStopBoundaryCandidate({}, {
+      boundaryAt: t1,
+      boundarySource: 'provider_stationary_vls',
+      candidateReason: 'stationary_ignition_off_qualified',
+      contradictions: [],
+      evidenceState: 'QUALIFIED',
+    });
+    expect(
+      resolveProviderStopBoundaryCandidate({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: new Date('2026-09-09T05:08:00.000Z'),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
+        existingStopBoundaryAt: readStopBoundaryAt(summary),
+      }),
+    ).toBeNull();
+  });
+
+  it('retireActiveStopBoundaryAfterMovement clears active end boundary', () => {
+    const summary = mergeProviderStopBoundaryCandidate({}, {
+      boundaryAt: STOP_BOUNDARY,
+      boundarySource: 'provider_stationary_vls',
+      candidateReason: 'stationary_ignition_off_qualified',
+      contradictions: [],
+      evidenceState: 'QUALIFIED',
+    });
+    const retired = retireActiveStopBoundaryAfterMovement(
+      summary,
+      new Date('2026-09-09T05:08:00.000Z'),
+    );
+    expect(readStopBoundaryAt(retired)).toBeNull();
+    expect(retired.lastPauseBoundaryAt).toBe(STOP_BOUNDARY.toISOString());
+    expect(retired.stopBoundaryRetiredByMovementAt).toBe(
+      '2026-09-09T05:08:00.000Z',
+    );
   });
 });
 
@@ -218,24 +264,36 @@ describe('R12 pause provenance', () => {
     );
   });
 
-  it('K4 — later final stop boundary supersedes earlier pause boundary', () => {
-    const pauseSummary = mergeProviderStopBoundaryCandidate({}, {
-      boundaryAt: new Date('2026-09-09T04:59:57.000Z'),
+  it('K4 — later final stop boundary after resume establishes B2 > B1', () => {
+    const b1At = new Date('2026-09-09T04:59:57.000Z');
+    const b2At = new Date('2026-09-09T05:12:00.000Z');
+    let summary = mergeProviderStopBoundaryCandidate({}, {
+      boundaryAt: b1At,
       boundarySource: 'provider_stationary_vls',
       candidateReason: 'stationary_ignition_off_qualified',
       contradictions: [],
       evidenceState: 'QUALIFIED',
     });
-    const finalSummary = mergeProviderStopBoundaryCandidate(pauseSummary, {
-      boundaryAt: STOP_BOUNDARY,
-      boundarySource: 'provider_stationary_vls',
-      candidateReason: 'stationary_ignition_off_qualified',
-      contradictions: ['engine_load_at_standstill'],
-      evidenceState: 'QUALIFIED',
-    });
-    expect(readStopBoundaryAt(finalSummary)?.toISOString()).toBe(
-      STOP_BOUNDARY.toISOString(),
+    summary = retireActiveStopBoundaryAfterMovement(
+      summary,
+      new Date('2026-09-09T05:08:00.000Z'),
     );
+    const b2Candidate = resolveProviderStopBoundaryCandidate({
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 39.6,
+        sourceTimestamp: b2At,
+      },
+      profile: 'ICE',
+      workerNow: new Date('2026-09-09T05:12:30.000Z'),
+      lastMeaningfulMovementAt: new Date('2026-09-09T05:11:00.000Z'),
+      existingStopBoundaryAt: readStopBoundaryAt(summary),
+    });
+    expect(b2Candidate).not.toBeNull();
+    summary = mergeProviderStopBoundaryCandidate(summary, b2Candidate!);
+    expect(readStopBoundaryAt(summary)?.toISOString()).toBe(b2At.toISOString());
+    expect(summary.lastPauseBoundaryAt).toBe(b1At.toISOString());
   });
 });
 

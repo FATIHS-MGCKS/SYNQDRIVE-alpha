@@ -23,6 +23,19 @@ export function readStopBoundaryAt(
   return readIsoDate(summary, 'stopBoundaryAt');
 }
 
+/** Active end-candidacy boundary — cleared after credible post-boundary movement. */
+export function readActiveStopBoundaryAt(
+  summary: TripFsmEvidenceSummary | null | undefined,
+): Date | null {
+  return readStopBoundaryAt(summary);
+}
+
+export function readLastPauseBoundaryAt(
+  summary: TripFsmEvidenceSummary | null | undefined,
+): Date | null {
+  return readIsoDate(summary, 'lastPauseBoundaryAt');
+}
+
 export function readPauseDetectedAt(
   summary: TripFsmEvidenceSummary | null | undefined,
 ): Date | null {
@@ -92,6 +105,7 @@ export function resolveStationaryIgnitionOffBoundary(params: {
   profile: string;
   workerNow: Date;
   lastMeaningfulMovementAt: Date | null;
+  maxFreshObservationAgeMs?: number;
 }): {
   boundaryAt: Date;
   boundarySource: string;
@@ -117,6 +131,13 @@ export function resolveStationaryIgnitionOffBoundary(params: {
     !params.lastMeaningfulMovementAt ||
     ts.getTime() >= params.lastMeaningfulMovementAt.getTime();
   if (!afterLastMove) return null;
+
+  if (params.maxFreshObservationAgeMs != null) {
+    const observationAgeMs = params.workerNow.getTime() - ts.getTime();
+    if (observationAgeMs < 0 || observationAgeMs > params.maxFreshObservationAgeMs) {
+      return null;
+    }
+  }
 
   const contradictions: string[] = [];
   const load = params.telemetry?.engineLoad;
@@ -150,17 +171,24 @@ export function resolveProviderStopBoundaryCandidate(params: {
   workerNow: Date;
   lastMeaningfulMovementAt: Date | null;
   existingStopBoundaryAt?: Date | null;
+  /** Fresh provider observation window for establishing a new active boundary. */
+  maxFreshObservationAgeMs?: number;
 }): ProviderStopBoundaryCandidate | null {
   const candidate = resolveStationaryIgnitionOffBoundary({
     telemetry: params.telemetry,
     profile: params.profile,
     workerNow: params.workerNow,
     lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+    maxFreshObservationAgeMs: params.maxFreshObservationAgeMs ?? 120_000,
   });
   if (!candidate) return null;
 
   const existing = params.existingStopBoundaryAt;
-  if (existing && existing.getTime() >= candidate.boundaryAt.getTime()) {
+  if (
+    existing &&
+    isValidProviderEventTimestamp(existing, params.workerNow)
+  ) {
+    // Latch earliest trustworthy boundary for the same uninterrupted stop episode.
     return null;
   }
 
@@ -191,6 +219,7 @@ export function resolveIdleStopBoundaryAt(params: {
   workerNow: Date;
   telemetry: EmptyCoreVlsTelemetry | null;
   profile: string;
+  maxFreshObservationAgeMs?: number;
 }): { boundaryAt: Date; boundarySource: string } {
   if (
     params.movementEventAt &&
@@ -207,6 +236,7 @@ export function resolveIdleStopBoundaryAt(params: {
     profile: params.profile,
     workerNow: params.workerNow,
     lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+    maxFreshObservationAgeMs: params.maxFreshObservationAgeMs,
   });
   if (stationary) {
     return {
@@ -247,7 +277,7 @@ export function mergeStopBoundaryAt(
   source: string,
 ): TripFsmEvidenceSummary {
   const existing = readStopBoundaryAt(prior);
-  if (existing && existing.getTime() >= boundaryAt.getTime()) {
+  if (existing) {
     return prior ?? {};
   }
   return {
@@ -308,6 +338,39 @@ export function clearPauseEvidence(
   delete next.pauseDetectedSource;
   delete next.emptyCoreDeferralStreak;
   delete next.emptyCoreNextCheckDelayMs;
+  return next;
+}
+
+/**
+ * R12: after credible provider-time movement strictly after the active stop boundary,
+ * retire it from end candidacy while preserving pause forensics.
+ */
+export function retireActiveStopBoundaryAfterMovement(
+  prior: TripFsmEvidenceSummary | null | undefined,
+  movementAt: Date,
+): TripFsmEvidenceSummary {
+  const active = readActiveStopBoundaryAt(prior);
+  if (!active || movementAt.getTime() <= active.getTime()) {
+    return prior ?? {};
+  }
+
+  const next: TripFsmEvidenceSummary = { ...(prior ?? {}) };
+  next.lastPauseBoundaryAt = active.toISOString();
+  if (typeof prior?.stopBoundarySource === 'string') {
+    next.lastPauseBoundarySource = prior.stopBoundarySource;
+  }
+  if (typeof prior?.stopBoundaryCandidateReason === 'string') {
+    next.lastPauseBoundaryCandidateReason = prior.stopBoundaryCandidateReason;
+  }
+  next.stopBoundaryRetiredAt = movementAt.toISOString();
+  next.stopBoundaryRetiredByMovementAt = movementAt.toISOString();
+
+  delete next.stopBoundaryAt;
+  delete next.stopBoundarySource;
+  delete next.stopBoundaryCandidateReason;
+  delete next.stopBoundaryContradictions;
+  delete next.stopBoundaryEvidenceState;
+
   return next;
 }
 

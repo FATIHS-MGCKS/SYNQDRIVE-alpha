@@ -218,7 +218,8 @@ function buildKs661R12EmptyStaleMock(): TripR11SegmentsMock {
 
     it('K1 — Production ordering reaches POSSIBLE_END without pre-seeded boundary', async () => {
       const stopTickAt = new Date('2026-09-09T05:07:30.000Z');
-      const emptyTickAt = new Date('2026-09-09T05:09:30.000Z');
+      const staleObsAt = new Date('2026-09-09T05:08:00.000Z');
+      const emptyTickAt = new Date('2026-09-09T05:10:30.000Z');
 
       const harness = buildTripR11OrchestrationHarness(
         prisma,
@@ -244,6 +245,17 @@ function buildKs661R12EmptyStaleMock(): TripR11SegmentsMock {
         FINAL_STOP_VLS.toISOString(),
       );
 
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 39.6078431372549,
+          sourceTimestamp: staleObsAt,
+          updatedAt: staleObsAt,
+        },
+      });
+
       harness.segments.fetchRawTripCoreData =
         buildKs661R12EmptyStaleMock().fetchRawTripCoreData;
       harness.segments.fetchRouteEnrichment =
@@ -265,11 +277,33 @@ function buildKs661R12EmptyStaleMock(): TripR11SegmentsMock {
       const emptySummary = afterEmpty?.lastEvidenceSummary as Record<string, unknown>;
       expect(emptySummary.boundaryBackedSilenceEligible).toBe(true);
       expect(emptySummary.innerGateReason).toBe('boundary_backed_provider_silence');
+      expect(emptySummary.vlsEvidenceState).toBe('UNKNOWN');
+      expect(emptySummary.vlsProviderObservedAt).toBe(staleObsAt.toISOString());
+    }, 120_000);
+
+    it('K1-same-tick — stop observation tick stays ACTIVE_TRIP (no immediate end)', async () => {
+      const stopTickAt = new Date('2026-09-09T05:07:30.000Z');
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        buildKs661R12FinalStopCoreMock(),
+        buildTripR11DetectorMock(fixture.expectedEndTime),
+      );
+      useTripR11FrozenClock(stopTickAt);
+      await harness.runJob(buildActiveTickJob(fixture, stopTickAt));
+      restoreTripR11Clock();
+      const det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      expect(det?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+      expect(det?.possibleEndAt).toBeNull();
     }, 120_000);
 
     it('K11 — normal R10 finalize chain to COMPLETED + RESTING', async () => {
       const stopTickAt = new Date('2026-09-09T05:07:30.000Z');
-      const emptyTickAt = new Date('2026-09-09T05:09:30.000Z');
+      const staleObsAt = new Date('2026-09-09T05:08:00.000Z');
+      const emptyTickAt = new Date('2026-09-09T05:10:30.000Z');
       const endCycleAt = new Date('2026-09-09T05:12:00.000Z');
 
       const finalStopMock = buildKs661R12FinalStopCoreMock();
@@ -287,6 +321,17 @@ function buildKs661R12EmptyStaleMock(): TripR11SegmentsMock {
       useTripR11FrozenClock(stopTickAt);
       await harness.runJob(buildActiveTickJob(fixture, stopTickAt));
       restoreTripR11Clock();
+
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 39.6078431372549,
+          sourceTimestamp: staleObsAt,
+          updatedAt: staleObsAt,
+        },
+      });
 
       harness.segments.fetchRawTripCoreData = emptyMock.fetchRawTripCoreData;
       harness.segments.fetchRouteEnrichment = emptyMock.fetchRouteEnrichment;

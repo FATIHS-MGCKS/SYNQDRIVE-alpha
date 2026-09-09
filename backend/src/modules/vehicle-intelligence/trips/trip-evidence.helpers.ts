@@ -1714,12 +1714,31 @@ export function hasCrediblePostBoundaryRouteMotion(
   stopBoundaryAt: Date,
 ): boolean {
   const shared = getProfileThresholds(profile);
-  return routePoints.some((p) => {
-    const ts = new Date(p.timestamp);
-    return (
-      ts.getTime() > stopBoundaryAt.getTime() &&
-      p.speedKmh != null &&
-      p.speedKmh > shared.speedMotionKmh
-    );
-  });
+  const ROUTE_MOVEMENT_MIN_METERS = 25;
+
+  for (let index = 0; index < routePoints.length; index++) {
+    const point = routePoints[index];
+    const ts = new Date(point.timestamp);
+    if (ts.getTime() <= stopBoundaryAt.getTime()) continue;
+
+    const hasSpeedMotion =
+      point.speedKmh != null && point.speedKmh > shared.speedMotionKmh;
+
+    const previous = index > 0 ? routePoints[index - 1] : null;
+    const hasCoordinateJump =
+      previous != null &&
+      new Date(previous.timestamp).getTime() > stopBoundaryAt.getTime() &&
+      haversineM(
+        previous.latitude,
+        previous.longitude,
+        point.latitude,
+        point.longitude,
+      ) > ROUTE_MOVEMENT_MIN_METERS;
+
+    if (hasSpeedMotion || hasCoordinateJump) {
+      return true;
+    }
+  }
+
+  return false;
 }
