@@ -32,10 +32,13 @@ Terminal experiment state: `CANCELLED` (existing String column — no schema mig
 
 - `ReferenceCaptureSettlementShadowService.cancelExperimentForAbortedSession` — canonical abort path
 - Wired from `abortSession` after RC status → `ABORTED`
-- Transaction: skip unobserved schedules, complete observed schedules, terminalize experiment
+- **Cleanup is NOT feature-gated** — existing experiments terminalize even when `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED=false`
+- **Atomic DB:** `terminalizeAbortedSessionInTransaction(tx, …)` runs all schedule + experiment mutations on interactive `Prisma.TransactionClient`
+- **Reconciliation:** `reconcileAbortedSessionSettlementExperiments` in recovery scheduler discovers `ABORTED` session + `ACTIVE` experiment orphans
+- **Failure surfacing:** `cleanupFailed=true` on errors; session abort remains authoritative; reconciliation retries
 - BullMQ: `cancelQueuedJobsForSession` removes delayed/waiting/active jobs captured before DB terminalization
-- Guards: `executeScheduledObservation` + `findRecoverableSchedules` skip `CANCELLED` experiments
-- Stationary cert: `STATIONARY_DRY_RUN_PASS` now requires `NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN=YES`
+- **Race guards:** `markExecutingIfEligible` + pre-persist eligibility checks prevent new observations on `CANCELLED` experiments
+- Stationary cert: `STATIONARY_DRY_RUN_PASS` requires `NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN=YES`
 
 ## Orchestrator fatal cleanup
 

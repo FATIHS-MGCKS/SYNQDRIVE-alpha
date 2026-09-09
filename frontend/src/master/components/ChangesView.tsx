@@ -43,7 +43,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Forensic gap: `abortSession` left ACTIVE settlement-shadow experiments and pending BullMQ jobs on ABORTED RC sessions (2 dry-run orphans after PR #1582 recert).',
       'Canonical fix: `cancelExperimentForAbortedSession` wired from `abortSession` — experiment → CANCELLED, unobserved schedules → SKIPPED, queued jobs removed, completed observations preserved.',
       'Guards on execute + recovery skip CANCELLED experiments; normal `stopRecording` post-stop +30/+60 shadow continuation unchanged.',
-      '8 focused abort-lifecycle tests; stationary cert now requires zero active settlement experiments after dry-run abort.',
+      'Durability hardening: cleanup not feature-gated; atomic interactive transaction; ABORTED+ACTIVE reconciliation scheduler; cleanup failure surfaced; worker race guards.',
+      '11+ focused abort-lifecycle tests; stationary cert requires zero active settlement experiments after dry-run abort.',
     ],
     reason:
       'Close lifecycle defect before next EXP-021 physical run — abort must not leave invalid shadow state.',

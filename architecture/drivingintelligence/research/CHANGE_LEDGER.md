@@ -187,11 +187,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 
 | Event | Detail |
 |-------|--------|
-| Status | **LIFECYCLE FIX** — `abortSession` now terminalizes settlement-shadow experiments |
+| Status | **LIFECYCLE FIX + DURABILITY HARDENING** (PR #1593) |
 | Defect | ABORTED RC sessions left `ACTIVE` settlement experiments + pending BullMQ jobs (2 orphans in post-deploy recert) |
 | Fix | `cancelExperimentForAbortedSession`: experiment → `CANCELLED`, unobserved schedules → `SKIPPED`, jobs removed, observations preserved |
+| Durability | Cleanup not feature-gated; atomic interactive transaction; reconciliation scheduler; cleanup failure surfaced; worker race guards |
 | Normal stop | `stopRecording` / COMPLETED path unchanged — post-stop shadow continuation preserved |
-| Tests | 8 focused abort-lifecycle tests + 565 reference-capture tests PASS |
+| Tests | 11+ focused abort-lifecycle tests + reference-capture suite PASS |
 | Evidence | `EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md` |
 
 ## EXP-021 — Audi re-run readiness hardening (2026-09-09)

@@ -7,9 +7,19 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS } from './reference-capture-settlement-shadow.constants';
 
+export type SettlementShadowAbortTerminalizationResult = {
+  schedulesSkipped: number;
+  schedulesCompleted: number;
+  terminalized: boolean;
+};
+
 @Injectable()
 export class ReferenceCaptureSettlementShadowRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  private client(tx?: Prisma.TransactionClient): PrismaService | Prisma.TransactionClient {
+    return tx ?? this.prisma;
+  }
 
   findExperimentBySessionId(sessionId: string) {
     return this.prisma.referenceCaptureSettlementShadowExperiment.findUnique({
@@ -64,6 +74,107 @@ export class ReferenceCaptureSettlementShadowRepository {
     }) as Promise<Array<{ id: string; bullJobId: string }>>;
   }
 
+  findAbortedSessionsWithActiveExperiments(limit = 50) {
+    return this.prisma.referenceCaptureSettlementShadowExperiment.findMany({
+      where: {
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+        session: { status: 'ABORTED' },
+      },
+      include: {
+        session: {
+          select: {
+            organizationId: true,
+            failureReason: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+    });
+  }
+
+  /**
+   * Atomic DB unit for RC abort settlement cleanup. Must run inside prisma.$transaction.
+   */
+  async terminalizeAbortedSessionInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      sessionId: string;
+      experimentDbId: string;
+      abortReason: string;
+      abortedAt: string;
+      organizationId: string;
+      existingMetadata: Prisma.JsonValue | null;
+      skipReason: string;
+    },
+  ): Promise<SettlementShadowAbortTerminalizationResult> {
+    const skipped = await tx.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        sessionId: input.sessionId,
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+        observation: { is: null },
+      },
+      data: {
+        status: ReferenceCaptureSettlementShadowScheduleStatus.SKIPPED,
+        lastError: input.skipReason,
+        bullJobId: null,
+      },
+    });
+
+    const completed = await tx.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        sessionId: input.sessionId,
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+        observation: { isNot: null },
+      },
+      data: {
+        status: ReferenceCaptureSettlementShadowScheduleStatus.COMPLETED,
+        lastError: null,
+        bullJobId: null,
+      },
+    });
+
+    const existingMeta =
+      input.existingMetadata && typeof input.existingMetadata === 'object' && !Array.isArray(input.existingMetadata)
+        ? (input.existingMetadata as Record<string, unknown>)
+        : {};
+
+    const terminalized = await tx.referenceCaptureSettlementShadowExperiment.updateMany({
+      where: {
+        id: input.experimentDbId,
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+      },
+      data: {
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED,
+        metadataJson: {
+          ...existingMeta,
+          terminalization: {
+            reason: 'RC_SESSION_ABORTED',
+            abortReason: input.abortReason,
+            abortedAt: input.abortedAt,
+            organizationId: input.organizationId,
+          },
+        },
+      },
+    });
+
+    return {
+      schedulesSkipped: skipped.count,
+      schedulesCompleted: completed.count,
+      terminalized: terminalized.count > 0,
+    };
+  }
+
   async terminalizeExperimentOnAbort(
     experimentDbId: string,
     input: {
@@ -72,13 +183,14 @@ export class ReferenceCaptureSettlementShadowRepository {
       organizationId: string;
       existingMetadata: Prisma.JsonValue | null;
     },
+    tx?: Prisma.TransactionClient,
   ): Promise<boolean> {
     const existingMeta =
       input.existingMetadata && typeof input.existingMetadata === 'object' && !Array.isArray(input.existingMetadata)
         ? (input.existingMetadata as Record<string, unknown>)
         : {};
 
-    const updated = await this.prisma.referenceCaptureSettlementShadowExperiment.updateMany({
+    const updated = await this.client(tx).referenceCaptureSettlementShadowExperiment.updateMany({
       where: {
         id: experimentDbId,
         status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
@@ -99,8 +211,8 @@ export class ReferenceCaptureSettlementShadowRepository {
     return updated.count > 0;
   }
 
-  skipUnobservedSchedulesForSession(sessionId: string, skipReason: string) {
-    return this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+  skipUnobservedSchedulesForSession(sessionId: string, skipReason: string, tx?: Prisma.TransactionClient) {
+    return this.client(tx).referenceCaptureSettlementShadowSchedule.updateMany({
       where: {
         sessionId,
         status: {
@@ -119,8 +231,8 @@ export class ReferenceCaptureSettlementShadowRepository {
     });
   }
 
-  completeObservedSchedulesForSession(sessionId: string) {
-    return this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+  completeObservedSchedulesForSession(sessionId: string, tx?: Prisma.TransactionClient) {
+    return this.client(tx).referenceCaptureSettlementShadowSchedule.updateMany({
       where: {
         sessionId,
         status: {
@@ -257,6 +369,25 @@ export class ReferenceCaptureSettlementShadowRepository {
         attemptCount: { increment: 1 },
       },
     });
+  }
+
+  async markExecutingIfEligible(scheduleId: string, experimentDbId: string): Promise<boolean> {
+    const updated = await this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        id: scheduleId,
+        status: ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+        observation: { is: null },
+        experiment: {
+          id: experimentDbId,
+          status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+        },
+      },
+      data: {
+        status: ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+        attemptCount: { increment: 1 },
+      },
+    });
+    return updated.count > 0;
   }
 
   markCompleted(scheduleId: string, executedAt: Date) {

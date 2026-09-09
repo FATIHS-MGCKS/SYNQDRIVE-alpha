@@ -272,6 +272,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       findScheduleById: jest.fn().mockResolvedValue(schedule),
       findExperimentStatusById: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       markExecuting: jest.fn(),
+      markExecutingIfEligible: jest.fn().mockResolvedValue(true),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
       markSkipped: jest.fn(),

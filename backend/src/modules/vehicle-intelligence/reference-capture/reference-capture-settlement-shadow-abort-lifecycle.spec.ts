@@ -45,11 +45,60 @@ type ScheduleRow = {
   observation?: { requestCompletedAt: Date };
 };
 
-function buildHarness() {
+function buildHarness(options?: { settlementShadowEnabled?: boolean }) {
+  const settlementShadowEnabled = options?.settlementShadowEnabled ?? true;
   const experiments = new Map<string, ExperimentRow>();
   const schedules = new Map<string, ScheduleRow>();
   const observations = new Map<string, { requestCompletedAt: Date }>();
   const removedJobs: string[] = [];
+  let transactionShouldFail = false;
+
+  const terminalizeInTx = async (
+    _tx: unknown,
+    input: {
+      sessionId: string;
+      experimentDbId: string;
+      abortReason: string;
+      abortedAt: string;
+      organizationId: string;
+      skipReason: string;
+    },
+  ) => {
+    if (transactionShouldFail) {
+      throw new Error('simulated_db_transaction_failure');
+    }
+    let schedulesSkipped = 0;
+    let schedulesCompleted = 0;
+    for (const schedule of schedules.values()) {
+      if (schedule.sessionId !== input.sessionId) continue;
+      if (schedule.status !== 'PENDING' && schedule.status !== 'EXECUTING') continue;
+      if (observations.has(schedule.id)) {
+        schedule.status = 'COMPLETED';
+        schedule.bullJobId = null;
+        schedulesCompleted += 1;
+      } else {
+        schedule.status = 'SKIPPED';
+        schedule.lastError = input.skipReason;
+        schedule.bullJobId = null;
+        schedulesSkipped += 1;
+      }
+    }
+    const row = experiments.get(input.experimentDbId);
+    if (!row || row.status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE) {
+      return { schedulesSkipped, schedulesCompleted, terminalized: false };
+    }
+    row.status = REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
+    row.metadataJson = {
+      ...(row.metadataJson ?? {}),
+      terminalization: {
+        reason: 'RC_SESSION_ABORTED',
+        abortReason: input.abortReason,
+        abortedAt: input.abortedAt,
+        organizationId: input.organizationId,
+      },
+    };
+    return { schedulesSkipped, schedulesCompleted, terminalized: true };
+  };
 
   const repository = {
     findExperimentBySessionId: jest.fn(async (sessionId: string) => {
@@ -60,6 +109,16 @@ function buildHarness() {
         schedules: [...schedules.values()].filter((s) => s.sessionId === sessionId),
       };
     }),
+    findAbortedSessionsWithActiveExperiments: jest.fn(async () =>
+      [...experiments.values()]
+        .filter((e) => e.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE)
+        .map((e) => ({
+          id: e.id,
+          sessionId: e.sessionId,
+          organizationId: e.organizationId,
+          session: { organizationId: e.organizationId, failureReason: 'aborted_session' },
+        })),
+    ),
     findActiveBullJobIdsForSession: jest.fn(async (sessionId: string) =>
       [...schedules.values()]
         .filter(
@@ -70,65 +129,7 @@ function buildHarness() {
         )
         .map((s) => ({ id: s.id, bullJobId: s.bullJobId! })),
     ),
-    skipUnobservedSchedulesForSession: jest.fn(async (sessionId: string, skipReason: string) => {
-      let count = 0;
-      for (const schedule of schedules.values()) {
-        if (
-          schedule.sessionId === sessionId &&
-          (schedule.status === 'PENDING' || schedule.status === 'EXECUTING') &&
-          !observations.has(schedule.id)
-        ) {
-          schedule.status = 'SKIPPED';
-          schedule.lastError = skipReason;
-          schedule.bullJobId = null;
-          count += 1;
-        }
-      }
-      return { count };
-    }),
-    completeObservedSchedulesForSession: jest.fn(async (sessionId: string) => {
-      let count = 0;
-      for (const schedule of schedules.values()) {
-        if (
-          schedule.sessionId === sessionId &&
-          (schedule.status === 'PENDING' || schedule.status === 'EXECUTING') &&
-          observations.has(schedule.id)
-        ) {
-          schedule.status = 'COMPLETED';
-          schedule.lastError = null;
-          schedule.bullJobId = null;
-          count += 1;
-        }
-      }
-      return { count };
-    }),
-    terminalizeExperimentOnAbort: jest.fn(
-      async (
-        experimentDbId: string,
-        input: {
-          abortReason: string;
-          abortedAt: string;
-          organizationId: string;
-          existingMetadata: Record<string, unknown> | null;
-        },
-      ) => {
-        const row = experiments.get(experimentDbId);
-        if (!row || row.status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE) {
-          return false;
-        }
-        row.status = REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
-        row.metadataJson = {
-          ...(row.metadataJson ?? {}),
-          terminalization: {
-            reason: 'RC_SESSION_ABORTED',
-            abortReason: input.abortReason,
-            abortedAt: input.abortedAt,
-            organizationId: input.organizationId,
-          },
-        };
-        return true;
-      },
-    ),
+    terminalizeAbortedSessionInTransaction: jest.fn(terminalizeInTx),
     findExperimentStatusById: jest.fn(async (experimentDbId: string) => {
       const row = experiments.get(experimentDbId);
       return row ? { status: row.status } : null;
@@ -145,6 +146,31 @@ function buildHarness() {
       schedule.status = 'SKIPPED';
       schedule.lastError = reason;
     }),
+    markExecutingIfEligible: jest.fn(async (scheduleId: string, experimentDbId: string) => {
+      const schedule = schedules.get(scheduleId);
+      const experiment = experiments.get(experimentDbId);
+      if (!schedule || !experiment) return false;
+      if (experiment.status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE) {
+        return false;
+      }
+      if (schedule.status !== 'PENDING' || observations.has(scheduleId)) {
+        return false;
+      }
+      schedule.status = 'EXECUTING';
+      schedule.attemptCount += 1;
+      return true;
+    }),
+    markCompleted: jest.fn(async (scheduleId: string, executedAt: Date) => {
+      const schedule = schedules.get(scheduleId);
+      if (schedule) {
+        schedule.status = 'COMPLETED';
+        schedule.executedAt = executedAt;
+      }
+    }),
+    markFailed: jest.fn(),
+    createObservation: jest.fn(async (input: { scheduleId: string }) => {
+      observations.set(input.scheduleId, { requestCompletedAt: new Date() });
+    }),
   } as unknown as ReferenceCaptureSettlementShadowRepository;
 
   const runner = {
@@ -156,18 +182,15 @@ function buildHarness() {
   } as unknown as ReferenceCaptureSettlementShadowRunnerService;
 
   const prisma = {
-    $transaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
-    referenceCaptureSettlementShadowExperiment: {
-      findUnique: jest.fn(async ({ where }: { where: { id: string } }) => experiments.get(where.id) ?? null),
-    },
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     referenceCaptureSettlementShadowObservation: {
       findMany: jest.fn(async () => []),
     },
   };
 
   const config = {
-    isEnabled: () => true,
-    isSettlementShadowEnabled: () => true,
+    isEnabled: () => settlementShadowEnabled,
+    isSettlementShadowEnabled: () => settlementShadowEnabled,
   } as ReferenceCaptureConfig;
 
   const service = new ReferenceCaptureSettlementShadowService(
@@ -187,6 +210,9 @@ function buildHarness() {
     schedules,
     observations,
     removedJobs,
+    setTransactionShouldFail(value: boolean) {
+      transactionShouldFail = value;
+    },
     seedExperiment(sessionId: string) {
       const row: ExperimentRow = {
         id: 'exp-db-1',
@@ -241,7 +267,26 @@ describe('reference-capture-settlement-shadow abort lifecycle', () => {
       abortReason: 'operator_abort',
     });
     expect(result.cancelled).toBe(false);
+    expect(result.cleanupFailed).toBe(false);
     expect(result.schedulesSkipped).toBe(0);
+  });
+
+  it('FEATURE_DISABLED_EXISTING_EXPERIMENT_ABORT_CLEANUP = PASS', async () => {
+    const harness = buildHarness({ settlementShadowEnabled: false });
+    harness.seedExperiment('sess-disabled');
+    harness.seedSchedule({ id: 'sched-disabled', sessionId: 'sess-disabled', bullJobId: 'job-disabled' });
+
+    const result = await harness.service.cancelExperimentForAbortedSession({
+      sessionId: 'sess-disabled',
+      organizationId: 'org-1',
+      abortReason: 'feature_disabled_abort_cleanup',
+    });
+
+    expect(result.cancelled).toBe(true);
+    expect(result.cleanupFailed).toBe(false);
+    expect(harness.experiments.get('exp-db-1')?.status).toBe(
+      REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED,
+    );
   });
 
   it('abort with experiment but no observations skips pending schedules and cancels jobs', async () => {
@@ -259,6 +304,7 @@ describe('reference-capture-settlement-shadow abort lifecycle', () => {
     expect(result.cancelled).toBe(true);
     expect(result.schedulesSkipped).toBe(2);
     expect(result.jobsRemoved).toBe(2);
+    expect(harness.repository.terminalizeAbortedSessionInTransaction).toHaveBeenCalled();
     expect(harness.experiments.get('exp-db-1')?.status).toBe(
       REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED,
     );
@@ -286,6 +332,31 @@ describe('reference-capture-settlement-shadow abort lifecycle', () => {
     expect(harness.schedules.get('sched-pending')?.status).toBe('SKIPPED');
   });
 
+  it('surfaces cleanup failure and reconciles later', async () => {
+    const harness = buildHarness();
+    harness.seedExperiment('sess-fail');
+    harness.seedSchedule({ id: 'sched-fail', sessionId: 'sess-fail', bullJobId: 'job-fail' });
+    harness.setTransactionShouldFail(true);
+
+    const failed = await harness.service.cancelExperimentForAbortedSession({
+      sessionId: 'sess-fail',
+      organizationId: 'org-1',
+      abortReason: 'cleanup_failure',
+    });
+    expect(failed.cleanupFailed).toBe(true);
+    expect(failed.cancelled).toBe(false);
+    expect(harness.experiments.get('exp-db-1')?.status).toBe(
+      REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+    );
+
+    harness.setTransactionShouldFail(false);
+    const reconciled = await harness.service.reconcileAbortedSessionSettlementExperiments();
+    expect(reconciled).toBe(1);
+    expect(harness.experiments.get('exp-db-1')?.status).toBe(
+      REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED,
+    );
+  });
+
   it('abort called twice is idempotent', async () => {
     const harness = buildHarness();
     harness.seedExperiment('sess-3');
@@ -307,37 +378,47 @@ describe('reference-capture-settlement-shadow abort lifecycle', () => {
     expect(harness.runner.cancelQueuedJobsForSession).toHaveBeenCalledTimes(1);
   });
 
-  it('executeScheduledObservation skips cancelled experiment schedules without creating observations', async () => {
+  it('CANCELLED experiment cannot create new observation after concurrent abort race', async () => {
     const harness = buildHarness();
-    harness.seedExperiment('sess-4');
-    const experiment = harness.experiments.get('exp-db-1')!;
-    experiment.status = REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
-    harness.seedSchedule({ id: 'sched-4', sessionId: 'sess-4', bullJobId: null });
+    harness.seedExperiment('sess-race');
+    harness.seedSchedule({ id: 'sched-race', sessionId: 'sess-race', bullJobId: null, status: 'EXECUTING' });
 
-    await harness.service.executeScheduledObservation('sched-4');
+    const dimoTelemetry = {
+      queryGraphQLWithIngressTiming: jest.fn().mockResolvedValue({
+        result: { data: { signals: [{ timestamp: '2026-09-09T10:03:32.000Z', speed: 10 }] } },
+      }),
+    };
+    const dimoAuth = { getVehicleJwt: jest.fn().mockResolvedValue('jwt') };
+    const service = new ReferenceCaptureSettlementShadowService(
+      { isEnabled: () => true, isSettlementShadowEnabled: () => true } as ReferenceCaptureConfig,
+      harness.repository,
+      harness.runner,
+      dimoTelemetry as never,
+      dimoAuth as never,
+      {
+        referenceCaptureSettlementShadowObservation: { findMany: jest.fn().mockResolvedValue([]) },
+      } as never,
+    );
 
-    expect(harness.repository.markSkipped).toHaveBeenCalled();
+    harness.experiments.get('exp-db-1')!.status =
+      REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
+
+    await service.executeScheduledObservation('sched-race');
+
+    expect(harness.repository.createObservation).not.toHaveBeenCalled();
     expect(harness.observations.size).toBe(0);
   });
 
-  it('abort with delayed BullMQ jobs removes queued job ids before terminalizing experiment', async () => {
+  it('markExecutingIfEligible refuses cancelled experiment schedules', async () => {
     const harness = buildHarness();
-    harness.seedExperiment('sess-delayed');
-    harness.seedSchedule({
-      id: 'sched-delayed',
-      sessionId: 'sess-delayed',
-      bullJobId: 'rc-shadow-sched-delayed',
-      scheduledAt: new Date(Date.now() + 60_000),
-    });
+    harness.seedExperiment('sess-claim');
+    harness.seedSchedule({ id: 'sched-claim', sessionId: 'sess-claim', bullJobId: null });
+    harness.experiments.get('exp-db-1')!.status =
+      REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
 
-    const result = await harness.service.cancelExperimentForAbortedSession({
-      sessionId: 'sess-delayed',
-      organizationId: 'org-1',
-      abortReason: 'delayed_job_abort',
-    });
-
-    expect(result.jobsRemoved).toBe(1);
-    expect(harness.removedJobs).toContain('rc-shadow-sched-delayed');
+    const claimed = await harness.repository.markExecutingIfEligible('sched-claim', 'exp-db-1');
+    expect(claimed).toBe(false);
+    expect(harness.schedules.get('sched-claim')?.status).toBe('PENDING');
   });
 
   it('active experiment without abort still allows sync scheduling path', async () => {

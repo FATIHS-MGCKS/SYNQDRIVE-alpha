@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ReferenceCaptureObservationKind, ReferenceCaptureSessionStatus } from '@prisma/client';
@@ -51,6 +52,8 @@ const ACTIVE_STATUSES: ReferenceCaptureSessionStatus[] = [
 
 @Injectable()
 export class ReferenceCaptureSessionService {
+  private readonly logger = new Logger(ReferenceCaptureSessionService.name);
+
   constructor(
     private readonly config: ReferenceCaptureConfig,
     private readonly sessionRepository: ReferenceCaptureSessionRepository,
@@ -447,11 +450,16 @@ export class ReferenceCaptureSessionService {
       },
     );
 
-    await this.settlementShadowService.cancelExperimentForAbortedSession({
+    const settlementCleanup = await this.settlementShadowService.cancelExperimentForAbortedSession({
       sessionId,
       organizationId,
       abortReason: reason ?? 'aborted_by_operator',
     });
+    if (settlementCleanup.cleanupFailed) {
+      this.logger.error(
+        `Settlement shadow abort cleanup failed for ABORTED session=${sessionId} — reconciliation will retry`,
+      );
+    }
 
     return this.toView(
       aborted,

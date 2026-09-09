@@ -137,6 +137,13 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
           row.attemptCount += 1;
         }
       }),
+      markExecutingIfEligible: jest.fn(async (id: string) => {
+        const row = schedules.find((s) => s.id === id);
+        if (!row || row.status !== 'PENDING') return false;
+        row.status = 'EXECUTING';
+        row.attemptCount += 1;
+        return true;
+      }),
       markCompleted: jest.fn(async (id: string, executedAt: Date) => {
         const row = schedules.find((s) => s.id === id);
         if (row) {
