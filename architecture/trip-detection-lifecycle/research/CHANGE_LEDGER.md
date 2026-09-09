@@ -33,6 +33,7 @@ Append-only record for this authority directory.
 | 2026-09-09 | R11 Production deploy @ `f7eb94cb…` release `20260909024150_v4994`; tree-equivalent CI admission; rolling two-replica; T0 KS MX 187336 | Trip FSM R11 production deploy (authorized) | [R11_PRODUCTION_DEPLOY_2026-09-09.md](../evidence/R11_PRODUCTION_DEPLOY_2026-09-09.md) |
 | 2026-09-09 | KS MS 661 R11 natural-drive five-axis Production forensics — read-only @ `f7eb94cb…`; trip `3b26019d…`; A/B/D PASS, C INCONCLUSIVE, E FAIL; end regression vs 2026-09-08 | Natural-drive acceptance audit (read-only) | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](../evidence/KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) |
 | 2026-09-09 | TDL-DEC-R12-001 — provider stop boundary without IDLE; boundary-backed silence for stale VLS after trusted boundary; post-boundary movement filter; K1–K11 regressions | Trip FSM R12 implementation | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
+| 2026-09-09 | R12 intensive review remediation — same-tick continuity guard; active boundary retire/latch; lifecycle safety + idempotency integration; R11 Scenario J source expectation aligned to provider path | Trip FSM R12 PR #1591 | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

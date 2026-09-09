@@ -185,7 +185,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **CHANGE** | `resolveProviderStopBoundaryCandidate()` on ACTIVE_TICK; `assessBoundaryBackedEmptyCoreSilence()` for trusted boundary + `vls_stale_provider_observation` only; credible post-boundary movement filter; `resolvePossibleEndBoundaryCandidate()` prefers provider stop boundary |
 | **ALTERNATIVES REJECTED** | Coerce UNKNOWN→INACTIVE; timer-only end fallback; direct finalize from ACTIVE_TRIP; global 45s TTL; PD-2 |
 | **EXPECTED EFFECT** | Normal POSSIBLE_END after parked vehicle sleep when provider-time stop boundary exists; short pauses preserve same trip; fresh movement still blocks end |
-| **VALIDATION** | TDL-EVID-R12-IMPL-001 — unit K1–K9 PASS; integration K1/K2/K11 CI-gated; R10/R11 regressions PASS |
+| **VALIDATION** | TDL-EVID-R12-IMPL-001 — unit PASS; integration **IMPLEMENTED_AWAITING_CI** (first head `f92cd1ff…` failed run 34354237230) |
 | **PRODUCTION STATUS** | **Not deployed** |
 | **NON_EFFECTS** | 120s threshold unchanged; R10 finalize guards unchanged; UNKNOWN semantic unchanged; no provider subscription changes |
 | **EVIDENCE** | TDL-EVID-R12-IMPL-001; TDL-EVID-KS-MS-661-R11-NATURAL-001 |

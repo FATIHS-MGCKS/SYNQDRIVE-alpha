@@ -198,7 +198,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…` (TDL-EV-R10-PROD-DEPLOY-001); **NOT exercised** on KS MS 661 (0× `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
 - TDL-DEC-R11-001 — **deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001); **CI_VALIDATED**; **POST_DEPLOY_HEALTH_CONFIRMED**; natural end-path **NOT validated** on KS MS 661 (TDL-EVID-KS-MS-661-R11-NATURAL-001: Axis E **FAIL**, `stopBoundaryAt` null, 0× POSSIBLE_END); post-audit STALE_ONGOING @ 06:51:54Z
-- TDL-DEC-R12-001 — **CI_VALIDATED** on branch; provider stop boundary without IDLE + boundary-backed silence; **not deployed**
+- TDL-DEC-R12-001 — **IMPLEMENTED_AWAITING_CI** on PR #1591; first head `f92cd1ff…` failed CI run 34354237230; remediation pushed locally — **awaiting green CI on final head**; **not deployed**
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)

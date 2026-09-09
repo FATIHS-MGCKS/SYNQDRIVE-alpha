@@ -141,9 +141,11 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 | Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
 |-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
-| TDL-EVID-R12-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T13:00:00Z` | Baseline `c343fab9…` | Provider stop boundary without IDLE; boundary-backed silence; post-boundary movement filter; K1–K9 unit PASS | **CI_VALIDATED** | Not deployed; integration CI-gated |
-| TDL-TEST-R12-001 | CURRENT_TEST | [trip-fsm-r12-stop-boundary-end-liveness.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r12-stop-boundary-end-liveness.spec.ts) | `2026-09-09T13:00:00Z` | Branch R12 | Unit scenarios K1–K9 | CONFIRMED_CI | — |
-| TDL-TEST-R12-002 | CURRENT_TEST | [trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts) | `2026-09-09T13:00:00Z` | Branch R12 | K1 Production ordering; K2 pause; K11 finalize chain | CONFIRMED_CI | Approximated fixture; redis-memory-server |
+| TDL-EVID-R12-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T13:00:00Z` | Baseline `c343fab9…` | R12 provider stop boundary + boundary-backed silence | **IMPLEMENTED_AWAITING_CI** | First head `f92cd1ff…` CI FAIL run 34354237230; remediation pending green CI |
+| TDL-EVID-R12-CI-FAIL-001 | CI_OBSERVATION | GitHub Actions run 34354237230 job 102476180546 | `2026-09-09T13:09:55Z` | `f92cd1ff…` | K1 same-tick POSSIBLE_END false positive; R11 J regression | CONFIRMED | Motivated intensive review remediation |
+| TDL-TEST-R12-001 | CURRENT_TEST | [trip-fsm-r12-stop-boundary-end-liveness.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r12-stop-boundary-end-liveness.spec.ts) | `2026-09-09T13:00:00Z` | PR #1591 | Unit K1–K9 + latch + retire | IMPLEMENTED_AWAITING_CI | — |
+| TDL-TEST-R12-002 | CURRENT_TEST | [trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts) | `2026-09-09T13:00:00Z` | PR #1591 | K1/K2/K11 + same-tick regression | IMPLEMENTED_AWAITING_CI | — |
+| TDL-TEST-R12-003 | CURRENT_TEST | [trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts) | `2026-09-09T13:30:00Z` | PR #1591 | B1-resume-without-B2, K7 orchestration, K12 idempotency | IMPLEMENTED_AWAITING_CI | — |
 
 ---
 
