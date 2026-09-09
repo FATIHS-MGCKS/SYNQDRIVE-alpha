@@ -45,7 +45,7 @@ Scaling Process
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
-│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.9 candidate-window longest 48758s; all-time longest 76832s; current segment from 2026-09-07T22:47:37Z)
+│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.10 certification gate broke at 05:01:28Z after 22431s; current segment from 2026-09-08T17:40:39Z)
 │   ├── INC-07 trip reconciliation idempotency → **CLOSED** (P1.8.3.8 CASE B combined reachability proof)
 │   ├── OQ-30 INTRA_TRIP_GAP_SPLIT idempotency → **CLOSED** (P1.8.3.8)
 │   ├── Trip reconciliation duplicate rows → INC-07 — **CLOSED** (P1.8.3.8; HISTORICAL P1.8.3.6.2 MODERATE / FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS superseded)
@@ -53,7 +53,7 @@ Scaling Process
 │
 ├── Scaling Envelopes
 │   ├── N=1 PROVEN (soak)
-│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.9: INC-07 CLOSED; OQ-28 PARTIAL; continuous FULL_N2 soak NOT_MET)
+│   ├── N=2 EARLY_PRODUCTION_VALIDATION (P1.8.3.10: INC-07 CLOSED; OQ-28 PARTIAL; 24h gate NOT_MET at 22431s)
 │   └── N≈1000 CONDITIONAL
 │
 └── Evidence / Decisions / Open Work

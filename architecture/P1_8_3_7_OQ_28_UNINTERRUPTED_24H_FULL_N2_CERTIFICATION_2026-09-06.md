@@ -380,3 +380,149 @@ Calendar elapsed `101233s` (~28.1h) from candidate start does **not** certify co
 **Next 24h checkpoint:** `2026-09-08T22:47:37Z`.
 
 **Scope (unchanged):** N=2 production topology verified under observed real production workload when segments are healthy — **not** N≈1000 or provider-ceiling certification.
+
+---
+
+## P1.8.3.10 — FINAL 24H CERTIFICATION GATE (PARTIAL — break before 86400s)
+
+**Audit end:** `2026-09-09T01:42:11Z`  
+**Certification start:** `2026-09-07T22:47:37Z`  
+**Certification threshold end:** `2026-09-08T22:47:37Z`  
+**Verdict:** `OQ-28 REMAINS PARTIAL` — qualifying segment **22431s** (<86400)
+
+### Machine-readable verdict block (P1.8.3.10)
+
+```
+P1_8_3_10_FINAL_VERDICT = PARTIAL_BREAK_BEFORE_86400S
+
+AUDIT_END_UTC = 2026-09-09T01:42:11Z
+CERTIFICATION_START_UTC = 2026-09-07T22:47:37Z
+CERTIFICATION_THRESHOLD_END_UTC = 2026-09-08T22:47:37Z
+CALENDAR_SECONDS_SINCE_START = 96874
+
+LATEST_MAIN_SHA = e3ca36626a367008f858f02b1cca09efc1f79a29
+CURRENT_PRODUCTION_SHA = 68495041974135f7c6565fd5b836b3e2f9176fae
+MAIN_AHEAD_OF_PRODUCTION = YES
+
+PRODUCTION_BOUNDARY_COUNT = 2
+PRE_86400_FULL_N2_BREAK_COUNT = 1
+
+QUALIFYING_SEGMENT_START = 2026-09-07T22:47:37Z
+QUALIFYING_SEGMENT_END = 2026-09-08T05:01:28Z
+QUALIFYING_SEGMENT_SECONDS = 22431
+QUALIFYING_24H_FULL_N2_SEGMENT = NO
+
+BOUNDARY_01_TIMESTAMP = 2026-09-08T05:01:28Z
+BOUNDARY_01_TYPE = PM2_RESTART_A
+BOUNDARY_01_SOURCE = PM2 bootstrap log + pm2-pre-deploy-20260908050120.dump
+BOUNDARY_01_A_STATUS = restarting
+BOUNDARY_01_B_STATUS = online
+BOUNDARY_01_A_SHA = 0ba96e03
+BOUNDARY_01_B_SHA = 0ba96e03
+BOUNDARY_01_BREAKS_FULL_N2 = YES
+BOUNDARY_01_REASON = Cold Nest bootstrap PID 4120999→25368; pm2-pre-deploy captured at 05:01:20Z; release dir 20260908045043 (7b9a7857) present but current symlink not promoted until later deploy
+
+BOUNDARY_02_TIMESTAMP = 2026-09-08T17:40:30Z
+BOUNDARY_02_TYPE = PRODUCTION_DEPLOY_A_RESTART
+BOUNDARY_02_SOURCE = PM2 created_at + last-deploy-state CAPTURED_AT=2026-09-08T17:40:29Z
+BOUNDARY_02_A_STATUS = restarting
+BOUNDARY_02_B_STATUS = online→restarting
+BOUNDARY_02_A_SHA = 68495041
+BOUNDARY_02_B_SHA = 7b9a7857→68495041
+BOUNDARY_02_BREAKS_FULL_N2 = YES
+BOUNDARY_02_REASON = Rolling deploy to release 20260908172927 (#1577 Trip FSM R10); symlink promoted 17:40:29Z
+
+GITHUB_ACTIVITY_CAUSED_PRODUCTION_DEPLOY = NO (at 22:46Z checkpoint window)
+GITHUB_ACTIVITY_CAUSED_PM2_RESTART = NO
+GITHUB_ACTIVITY_CAUSED_SHA_CHANGE = NO
+
+BREAK_TIMESTAMP = 2026-09-08T05:01:28Z
+BREAK_TYPE = PM2_RESTART_A
+BREAK_DURATION = 22431
+BREAK_CAUSE = Process cold restart; pm2-pre-deploy dump at 05:01:20Z; cause of initial stop UNAVAILABLE (no crash log; pattern mirrors Sep 7 05:01Z overnight restart)
+NEXT_FULL_N2_CANDIDATE_START = 2026-09-08T05:01:35Z
+NEXT_24H_CHECKPOINT = 2026-09-09T05:01:35Z
+CURRENT_FULL_N2_SEGMENT_START = 2026-09-08T17:40:39Z
+CURRENT_FULL_N2_SEGMENT_SECONDS = 28892
+
+CURRENT_RELEASE = 20260908172927_v4994
+REPLICA_COUNT = 2
+REPLICA_A_STATUS = online PORT=3001 PID=170515
+REPLICA_B_STATUS = online PORT=3002 PID=170770
+REPLICA_SHA_MATCH = YES
+NGINX_DUAL_UPSTREAM = YES
+DIRECT_HEALTH_A = 200
+DIRECT_HEALTH_B = 200
+EXTERNAL_HEALTH = 200
+SCHEDULER_LEADER_COUNT = 1
+REDIS_HEALTH = PONG
+
+MIN_REPLICA_COUNT = 2
+MAX_REPLICA_COUNT = 2
+REPLICA_SHA_DIVERGENCE_SIGNAL = NO
+DEAD_UPSTREAM_SIGNAL = NO
+UNEXPECTED_PM2_RESTART_COUNT = 1
+UNEXPECTED_PROCESS_EXIT_COUNT = 0
+MAX_PROVEN_LEADER_COUNT = 1
+SPLIT_BRAIN_SIGNAL = NO
+PERSISTENT_ZERO_LEADER_SIGNAL = NO
+REDIS_FAILURE_SIGNAL = NO
+MUTEX_DOUBLE_EXECUTION_SIGNAL = NO
+MUTEX_STALE_SIGNAL = NO
+MUTEX_RENEW_FAILURE_SIGNAL = NO
+DIMO_LIMIT_BREACH_COUNT = 0
+DIMO_429_BURST_SIGNAL = NO
+DIMO_TIMEOUT_BURST_SIGNAL = NO
+QUEUE_RUNAWAY_SIGNAL = NO
+QUEUE_STALLED_SIGNAL = NO
+QUEUE_RETRY_AMPLIFICATION_SIGNAL = NO
+QUEUE_DUPLICATE_PROCESSING_SIGNAL = NO
+TRIP_PROCESSING_REGRESSION = NO
+ROUTE_V2_REGRESSION = NO
+ATE_REGRESSION = NO
+ENERGY_REGRESSION = NO
+
+OQ_28_STATUS = PARTIAL
+N2_PRODUCTION_CERTIFICATION = EARLY
+N2_CERTIFICATION_SCOPE = N2_PRODUCTION_TOPOLOGY_ONLY_NOT_N1000_NOT_PROVIDER_CEILING
+
+N2_ALL_TIME_LONGEST_CONTINUOUS_SEGMENT_SECONDS = 76832
+OQ28_CANDIDATE_WINDOW_LONGEST_SEGMENT_SECONDS = 22431
+
+NEW_P0_COUNT = 0
+NEW_P1_COUNT = 0
+NEW_P2_COUNT = 0
+NEW_P3_COUNT = 0
+
+PRODUCTION_MUTATION_EXECUTED = NO
+```
+
+### Boundary reconstruction (certification window only)
+
+| ID | Timestamp (UTC) | Type | Evidence | Breaks FULL_N2 |
+|----|-----------------|------|----------|----------------|
+| — | `22:47:37` | Segment start | B bootstrap PID 4121205; A running PID 4120999 on `0ba96e03` | — |
+| 1 | `05:01:28` / `05:01:35` | PM2 restart A then B | `SynqDrive backend running on port` logs; `pm2-pre-deploy-20260908050120` | **YES** (ends segment at 22431s) |
+| 2 | `17:40:30` / `17:40:39` | Production deploy | `last-deploy-state.env` `CAPTURED_AT=17:40:29Z`; release `20260908172927` (`68495041`) | **YES** (post-threshold for certification gate, but breaks current segment) |
+
+**PRE_86400_FULL_N2_BREAK_COUNT = 1** — first break at `05:01:28Z`, **17h 46m 9s** before the `22:47:37Z` checkpoint.
+
+### GitHub / main activity check
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| `main` at audit | `e3ca36626` (#1578 i18n) | `origin/main` |
+| Production SHA | `68495041` (#1577 R10) | release `20260908172927` |
+| Deploy at `22:46Z` Sep 8? | **NO** | No pm2/deploy auth.log entries; no bootstrap after `17:40:39Z` before threshold |
+| Checkpoint reached? | Calendar yes; continuity **NO** | Segment already broken at `05:01:28Z` |
+
+Production deploy to `68495041` occurred at **`17:40:29Z`** (Trip FSM R10 evidence artifact `R10_PRODUCTION_DEPLOY_2026-09-08.md`) — **after** the certification-breaking `05:01Z` restart and **before** the calendar checkpoint, but irrelevant to PASS because continuity failed earlier.
+
+### OQ-28 decision (P1.8.3.10)
+
+`QUALIFYING_SEGMENT_SECONDS = 22431` < `86400` → **OQ-28 remains PARTIAL**.
+
+`N2_PRODUCTION_CERTIFICATION` stays **EARLY**.
+
+**Next continuous candidate start:** `2026-09-08T17:40:39Z` (both replicas on `68495041`).  
+**Next 24h checkpoint:** `2026-09-09T17:40:39Z`.

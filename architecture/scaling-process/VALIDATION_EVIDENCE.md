@@ -329,3 +329,17 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | OQ-28 closure | P1.8.3.9 | — | >=86400s rule | PARTIAL | HIGH |
 | N2 certification scope | P1.8.3.9 | — | explicit limits | N=2 topology only | HIGH |
 
+---
+
+## P1.8.3.10 — OQ-28 final 24h certification gate
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Certification calendar elapsed | P1.8.3.10 | — | wall clock to audit | `96874s` (~26.9h) | HIGH |
+| First pre-86400s break | P1.8.3.10 | — | PM2 bootstrap `05:01:28Z` | CONFIRMED | HIGH |
+| Qualifying segment seconds | P1.8.3.10 | — | segment reconstruction | `22431s` (<86400) | HIGH |
+| Pre-86400 break count | P1.8.3.10 | — | boundary table | 1 | HIGH |
+| GitHub activity at 22:46Z deploy | P1.8.3.10 | — | auth.log + PM2 | NO | HIGH |
+| OQ-28 closure | P1.8.3.10 | — | >=86400s rule | PARTIAL | HIGH |
+| Current segment start | P1.8.3.10 | — | PM2 `created_at` | `2026-09-08T17:40:39Z` | HIGH |
+
