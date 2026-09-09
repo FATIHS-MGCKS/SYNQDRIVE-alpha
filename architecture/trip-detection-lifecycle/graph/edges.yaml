@@ -49,6 +49,33 @@ edges:
   - from: TDL-DEC-R10-002
     relation: tested_by
     to: TDL-TEST-R10-001
+  - from: TDL-EVID-KS-MS-661-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-EVID-KS-MS-661-002
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-002
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-EVID-KS-MS-661-REPRO-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-EVID-KS-MS-661-REPRO-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-TEMPORAL-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-TEMPORAL-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-EVID-KS-MS-661-SCENARIOS-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-PROPOSAL-001
+    relation: supports
+    to: TDL-DEC-R11-001
   - from: TDL-EVID-R11-IMPL-001
     relation: supports
     to: TDL-DEC-R11-001
@@ -79,3 +106,9 @@ edges:
   - from: TDL-DEC-R11-001
     relation: tested_by
     to: TDL-TEST-R11-004
+  - from: TDL-TEST-R11-005
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-DEC-R11-001
+    relation: tested_by
+    to: TDL-TEST-R11-005

@@ -7,4 +7,4 @@
 | **DIM-GAP-003** | Complete DIMO env/feature-flag matrix | UNKNOWN | Production env file not sampled |
 | **DIM-GAP-004** | Full provider gateway graph | UNKNOWN | Phase 4 partial only |
 | **DIM-GAP-005** | Stale SynqDrive vehicle mirror for former fleet tokenId **190497** | OPEN | DB shows AVAILABLE/CONNECTED + active consent/link; Identity privileged absent — data-integrity cleanup deferred |
-| **DIM-GAP-006** | Natural R9 webhook wake end-to-end delivery | OPEN | Provider wiring validated (5/5); no observed Production drive/ignition wake event — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION` |
+| **DIM-GAP-006** | Natural R9 webhook wake end-to-end delivery | **PARTIAL** | Start wake observed tokenId 187361 @ `684950419…` (DIM-EV-KS-MS-661-R9-001); 22 window-A log lines replica A; payload archive + efficiency **OPEN** |

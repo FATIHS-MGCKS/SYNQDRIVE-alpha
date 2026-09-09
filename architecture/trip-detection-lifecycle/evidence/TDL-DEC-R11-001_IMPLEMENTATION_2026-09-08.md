@@ -5,18 +5,16 @@
 | **Evidence ID** | TDL-EVID-R11-IMPL-001 |
 | **Decision** | TDL-DEC-R11-001 |
 | **Status** | **IMPLEMENTED (CI)** — not PRODUCTION_VALIDATED |
-| **Design basis** | Draft PR #1583 documentation (`a352e9bcc`) — referenced, not merged |
-| **Branch** | `cursor/trip-fsm-r11-empty-core-evidence-64c8` |
-| **Head SHA (evidence)** | `4cf4d616e96203c0f7f21b268c46c5f056cb3606` |
-| **Runtime PR** | #1584 |
+| **Design basis** | [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md); KS661 audit corpus TDL-EVID-KS-MS-661-001 … TEMPORAL-001 |
+| **Branch** | Merged via #1584 → `origin/main` @ `32526c95a6ae6fae930fd048072dccfc19b30516` |
+| **Head SHA (evidence)** | `32526c95a6ae6fae930fd048072dccfc19b30516` (main post-merge) |
+| **Runtime PR** | #1584 (merged) · design corpus PR #1583 |
 
 ## Merge order vs #1583 (documentation)
 
-1. **Optional first:** merge #1583 (docs-only contract) — no runtime dependency for #1584.
-2. **Required for runtime:** merge #1584 (implementation + integration evidence).
-3. **After merge to `main`:** authorized deploy of pinned SHA → natural-drive validation.
-
-#1583 does not overwrite #1584 implementation artifacts; if #1583 lands first, re-read `TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md` after merge for any contract wording drift. If #1584 lands first, #1583 remains valid design basis without changing runtime behaviour.
+1. **#1584 merged first** @ `32526c95a` — runtime + CI evidence canonical on main.
+2. **#1583** integrates KS661 audit corpus + design contract; corrects superseded `vls_row_absent` wording; does **not** revert #1584 implementation.
+3. **After merge to `main`:** authorized deploy of pinned SHA → natural-drive validation only.
 
 **SynqDrive Code views:** `ChangesView.tsx` / `ArchitekturView.tsx` updates are **deferred** from #1584 (i18n authority-protection gate blocks mixed `.github/workflows/*` + `frontend/src/*` product changes). Apply in a follow-up PR after merge or bundled with #1583 docs-only merge — architecture evidence here remains canonical for R11 integration proof.
 

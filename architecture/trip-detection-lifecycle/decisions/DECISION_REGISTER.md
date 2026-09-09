@@ -14,7 +14,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED | TDL-EVID-R9-AUDIT-001; [DIM-DEC-R9-001](../../dimo-integration/decisions/DECISION_REGISTER.md) |
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
-| TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; design basis PR #1583 |
+| TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
 
 ---
 
@@ -160,11 +160,14 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 |-------|-------|
 | **STATUS** | PROPOSED |
 | **NUMBERING** | Trip Detection decision register R11 — distinct from R9 canary / unrelated CI R11 labels |
-| **DESIGN BASIS** | PR #1583 documentation (`a352e9bcc`) — referenced, not merged into runtime branch |
+| **CI / MERGE** | Runtime subset merged @ `32526c95a` (#1584); Jest A–J PASS; design-only 45 s TTL, PD-2, Ignition-OFF webhook **not activated** |
+| **DESIGN BASIS** | [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](../evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md) (PROPOSED contract); Production forensics TDL-EVID-KS-MS-661-001 … TEMPORAL-001 |
 | **BEFORE** | Worker-time empty-core anchor; stale VLS/engine-load blocks; inner gate reason overwritten; no pause tagging; fixed 30 s tick only |
-| **CHANGE** | Provider operational anchor; `stopBoundaryAt` + pre-boundary corroboration; pause detection; inner/outer forensics; fetch taxonomy; bounded backoff; active continuity post-boundary filter; **no PD-2**; **no default 45 s TTL** |
-| **TIME BOUNDARIES** | End corroboration + operational silence: **120 s** (`TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`); backoff 30–600 s + jitter |
-| **VALIDATION** | TDL-EVID-R11-IMPL-001; Jest scenarios A–J (C postgres NOT_RUN in default CI) |
-| **PRODUCTION STATUS** | **Not deployed** — branch implementation only |
-| **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; no provider subscription changes |
-| **EVIDENCE** | TDL-EVID-R11-IMPL-001 |
+| **WHY** | KS MS 661 @ `684950419…`: empty-core gate never reached `POSSIBLE_END`; dual block operational timer + fresh/stale VLS ACTIVE; post-IDLE **`vls_engine_load_active` → stale/UNKNOWN** — **not** `vls_row_absent` (see TDL-EVID-KS-MS-661-002) |
+| **CHANGE** | Provider operational anchor; `stopBoundaryAt` + explicit ignition-OFF VLS anchoring; pause detection; inner/outer forensics; fetch taxonomy; bounded backoff; active continuity post-boundary filter; **no PD-2**; **no default 45 s TTL** |
+| **TIME BOUNDARIES** | End corroboration + operational silence: **120 s** (`TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`); backoff 30–600 s + jitter; **45 s positive TTL = PROPOSED only (PD-3, not activated)** |
+| **VALIDATION** | TDL-EVID-R11-IMPL-001 — Jest scenarios A–**J** CI PASS @ merge `32526c95a`; design prototype S1–S9 (TDL-EVID-KS-MS-661-SCENARIOS-001) |
+| **MERGE STATUS** | **Merged to main** @ `32526c95a` (#1584) |
+| **PRODUCTION STATUS** | **Not deployed** — CI-verified only; natural Production validation **after authorized deploy** |
+| **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; Ignition-OFF DIMO webhook not registered; no provider subscription changes |
+| **EVIDENCE** | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-002; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-TEMPORAL-001; TDL-EVID-KS-MS-661-REPRO-001 |
