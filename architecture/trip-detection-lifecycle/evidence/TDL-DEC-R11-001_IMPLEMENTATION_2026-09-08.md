@@ -4,7 +4,7 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-R11-IMPL-001 |
 | **Decision** | TDL-DEC-R11-001 |
-| **Status** | **IMPLEMENTED (CI)** — not PRODUCTION_VALIDATED |
+| **Status** | **DEPLOYED (CI + Production)** — not PRODUCTION_BEHAVIOR_VALIDATED |
 | **Design basis** | [KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md](KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md); KS661 audit corpus TDL-EVID-KS-MS-661-001 … TEMPORAL-001 |
 | **Branch** | Merged via #1584 → `origin/main` @ `32526c95a6ae6fae930fd048072dccfc19b30516` |
 | **Head SHA (evidence)** | `32526c95a6ae6fae930fd048072dccfc19b30516` (main post-merge) |
