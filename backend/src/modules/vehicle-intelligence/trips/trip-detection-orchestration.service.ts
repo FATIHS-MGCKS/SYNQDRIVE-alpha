@@ -1740,6 +1740,11 @@ export class TripDetectionOrchestrationService {
           (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
         let evidencePatch: Record<string, unknown> = { ...priorSummary };
         const priorStopBoundaryAt = readActiveStopBoundaryAt(evidencePatch);
+        const priorStopBoundaryProvenance = readStopBoundaryProvenance(priorSummary);
+        const priorTrustedStopBoundaryAt =
+          priorStopBoundaryProvenance?.trust === true
+            ? priorStopBoundaryProvenance.boundaryAt
+            : null;
         let stopBoundaryAt = priorStopBoundaryAt;
         const emptyCoreVlsTelemetry = telemetryNoCore
           ? {
@@ -1777,7 +1782,7 @@ export class TripDetectionOrchestrationService {
         }
 
         const emptyCoreGateStopBoundary = emptyCoreStopCandidate
-          ? priorStopBoundaryAt
+          ? priorTrustedStopBoundaryAt
           : stopBoundaryAt;
 
         const { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource } =
@@ -2440,6 +2445,11 @@ export class TripDetectionOrchestrationService {
       // ── PHASE 2 SEAM: ContinuityAssessmentDetector ───────────────────────────
       let priorSummaryForCore =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+      const priorStopBoundaryProvenance = readStopBoundaryProvenance(priorSummaryForCore);
+      const priorTrustedStopBoundaryAt =
+        priorStopBoundaryProvenance?.trust === true
+          ? priorStopBoundaryProvenance.boundaryAt
+          : null;
       const priorStopBoundaryAt = readActiveStopBoundaryAt(priorSummaryForCore);
       let persistedStopBoundaryAt = priorStopBoundaryAt;
 
@@ -2478,7 +2488,7 @@ export class TripDetectionOrchestrationService {
         }
       }
 
-      const continuityStopBoundaryAt = priorStopBoundaryAt;
+      const continuityStopBoundaryAt = priorTrustedStopBoundaryAt;
 
       const continuityFindings = await this.detectorRegistry.runAll(
         continuityPolicy.detectors,
@@ -2584,12 +2594,14 @@ export class TripDetectionOrchestrationService {
         }
       }
 
-      // R12: STOP OBSERVATION != END DECISION — a newly established provider stop
-      // boundary must not authorize continuity POSSIBLE_END in the same tick.
-      const stopBoundaryEstablishedThisTick =
-        providerStopCandidate != null && priorStopBoundaryAt == null;
+      // R12: STOP OBSERVATION != END DECISION — first trusted stop boundary of the
+      // episode (including WORKER_TIME → PROVIDER upgrade) must not authorize
+      // continuity POSSIBLE_END in the same tick.
+      const trustedBoundaryEstablishedThisTick =
+        providerStopCandidate != null &&
+        priorStopBoundaryProvenance?.trust !== true;
       if (
-        stopBoundaryEstablishedThisTick &&
+        trustedBoundaryEstablishedThisTick &&
         effectiveContinuityDecision.verdict === 'POSSIBLE_END'
       ) {
         effectiveContinuityDecision = {

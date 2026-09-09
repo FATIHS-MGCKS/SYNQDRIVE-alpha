@@ -47,11 +47,6 @@ export function classifyStopBoundarySourceClockAuthority(
 ): StopBoundaryClockAuthority {
   const mapped = STOP_BOUNDARY_SOURCE_CLOCK_AUTHORITY[source];
   if (mapped) return mapped;
-  if (source.includes('provider') || source.includes('vls')) {
-    return 'PROVIDER_EVENT_TIME';
-  }
-  if (source.includes('worker')) return 'WORKER_TIME';
-  if (source.includes('movement')) return 'EVENT_TIME';
   return 'WORKER_TIME';
 }
 

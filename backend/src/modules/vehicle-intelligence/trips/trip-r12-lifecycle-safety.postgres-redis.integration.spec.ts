@@ -409,5 +409,168 @@ if (REQUIRED) {
       expect(det?.state).toBe(TripDetectionState.RESTING);
       expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
     }, 120_000);
+
+    it('R12-TRUST-A — worker→provider trust transition same tick stays ACTIVE_TRIP', async () => {
+      const workerBoundaryAt = new Date('2026-09-09T05:07:00.000Z');
+      const providerObsAt = new Date('2026-09-09T05:07:00.000Z');
+      const lastMovement = new Date('2026-09-09T05:06:49.562Z');
+      const stopTickAt = new Date('2026-09-09T05:07:30.000Z');
+      const laterEmptyTickAt = new Date('2026-09-09T05:10:30.000Z');
+      const staleObsAt = new Date('2026-09-09T05:07:00.000Z');
+
+      await prisma.vehicleTripDetectionState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          lastMeaningfulMovementAt: lastMovement,
+          lastActivityAt: lastMovement,
+          lastEvidenceSummary: {
+            stopBoundaryAt: workerBoundaryAt.toISOString(),
+            stopBoundarySource: 'idle_within_trip_worker_now',
+            stopBoundaryClockAuthority: 'WORKER_TIME',
+            stopBoundaryTrust: false,
+          },
+        },
+      });
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 39.6,
+          sourceTimestamp: providerObsAt,
+          updatedAt: providerObsAt,
+        },
+      });
+
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        {
+          fetchRawTripCoreData: jest.fn().mockResolvedValue([
+            {
+              timestamp: lastMovement.toISOString(),
+              speed: 3.3,
+              travelledDistance: 191075,
+              isIgnitionOn: false,
+            },
+            {
+              timestamp: providerObsAt.toISOString(),
+              speed: 0,
+              travelledDistance: 191075,
+              isIgnitionOn: false,
+            },
+          ]),
+          fetchRouteEnrichment: jest.fn().mockResolvedValue([
+            {
+              latitude: 51.33535,
+              longitude: 9.5059516,
+              speedKmh: 0,
+              timestamp: providerObsAt.toISOString(),
+            },
+          ]),
+          fetchPerformance: jest.fn().mockResolvedValue([]),
+          fetchEndValidationWindow: jest.fn().mockResolvedValue([]),
+        },
+        buildTripR11DetectorMock(providerObsAt),
+      );
+
+      useTripR11FrozenClock(stopTickAt);
+      await harness.runJob(buildActiveTickJob(fixture, stopTickAt));
+      restoreTripR11Clock();
+
+      let det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const sameTickSummary = det?.lastEvidenceSummary as Record<string, unknown>;
+      expect(det?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+      expect(det?.possibleEndAt).toBeNull();
+      expect(sameTickSummary.stopBoundaryClockAuthority).toBe('PROVIDER_EVENT_TIME');
+      expect(sameTickSummary.stopBoundaryTrust).toBe(true);
+      expect(readStopBoundaryAt(sameTickSummary)?.toISOString()).toBe(
+        providerObsAt.toISOString(),
+      );
+
+      harness.segments.fetchRawTripCoreData = jest.fn().mockResolvedValue([]);
+      harness.segments.fetchRouteEnrichment = jest.fn().mockResolvedValue([]);
+      harness.segments.fetchPerformance = jest.fn().mockResolvedValue([]);
+
+      useTripR11FrozenClock(laterEmptyTickAt);
+      await harness.runJob(buildActiveTickJob(fixture, laterEmptyTickAt));
+      restoreTripR11Clock();
+
+      det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      expect(det?.state).toBe(TripDetectionState.POSSIBLE_END);
+      const laterSummary = det?.lastEvidenceSummary as Record<string, unknown>;
+      expect(laterSummary.boundaryBackedSilenceEligible).toBe(true);
+    }, 120_000);
+
+    it('R12-TRUST-B — untrusted worker boundary must not filter continuity movement', async () => {
+      const workerBoundaryAt = new Date('2026-09-09T05:08:00.000Z');
+      const lastMovement = new Date('2026-09-09T05:06:49.562Z');
+      const resumeMovementAt = new Date('2026-09-09T05:07:15.000Z');
+      const resumeTickAt = new Date('2026-09-09T05:08:30.000Z');
+
+      await prisma.vehicleTripDetectionState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          lastMeaningfulMovementAt: lastMovement,
+          lastActivityAt: lastMovement,
+          lastEvidenceSummary: {
+            stopBoundaryAt: workerBoundaryAt.toISOString(),
+            stopBoundarySource: 'idle_within_trip_worker_now',
+            stopBoundaryClockAuthority: 'WORKER_TIME',
+            stopBoundaryTrust: false,
+          },
+        },
+      });
+
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        {
+          fetchRawTripCoreData: jest.fn().mockResolvedValue([
+            {
+              timestamp: resumeMovementAt.toISOString(),
+              speed: 18,
+              travelledDistance: 191076,
+              isIgnitionOn: true,
+            },
+          ]),
+          fetchRouteEnrichment: jest.fn().mockResolvedValue([
+            {
+              latitude: 51.34,
+              longitude: 9.51,
+              speedKmh: 18,
+              timestamp: resumeMovementAt.toISOString(),
+            },
+          ]),
+          fetchPerformance: jest.fn().mockResolvedValue([]),
+          fetchEndValidationWindow: jest.fn().mockResolvedValue([]),
+        },
+        buildTripR11DetectorMock(workerBoundaryAt),
+      );
+
+      useTripR11FrozenClock(resumeTickAt);
+      await harness.runJob(buildActiveTickJob(fixture, resumeTickAt));
+      restoreTripR11Clock();
+
+      const det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const summary = det?.lastEvidenceSummary as Record<string, unknown>;
+      expect(det?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+      expect(det?.activeTripId).toBe(fixture.trip.id);
+      expect(readActiveStopBoundaryAt(summary)).toBeNull();
+      expect(readLastPauseBoundaryAt(summary)?.toISOString()).toBe(
+        workerBoundaryAt.toISOString(),
+      );
+      expect(det?.lastMeaningfulMovementAt?.toISOString()).toBe(
+        resumeMovementAt.toISOString(),
+      );
+    }, 120_000);
   },
 );
