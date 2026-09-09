@@ -15,8 +15,19 @@ import { buildBroadReferenceSignalsLatestQuery } from '../../src/modules/vehicle
 import { buildAvailableSignalsQuery } from '../../src/modules/dimo/queries/available-signals.query';
 import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.service';
 import { ReferenceCaptureSessionRepository, parseAcquisitionState } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
+import { ReferenceCaptureConfig } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture.config';
 import { ReferenceCaptureSettlementShadowService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
 import { EXP021_CADENCE_PHASE_ORDER_MS } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
+import Redis from 'ioredis';
+import {
+  acquireOrchestratorLock,
+  buildOrchestratorLockKey,
+  evaluateEffectivePolicyGate,
+  extendOrchestratorLock,
+  releaseOrchestratorLock,
+  resolveFatalSessionCleanupMode,
+  type OrchestratorLockHandle,
+} from './reference-capture-exp-021-autonomous-orchestrator.lib';
 
 const TARGET_SHA = (process.env.EXP021_TARGET_DEPLOY_SHA ?? '157b3c72226869e4e35d1a9398b78cab50d3fa54').toLowerCase();
 const ORG = process.env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
@@ -107,6 +118,15 @@ function redisHealthy(): boolean {
   } catch {
     return false;
   }
+}
+
+function redisConnection(): { host: string; port: number; password?: string; db?: number } {
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: Number.parseInt(process.env.REDIS_PORT ?? '6379', 10),
+    password: process.env.REDIS_PASSWORD || undefined,
+    db: process.env.REDIS_DB ? Number.parseInt(process.env.REDIS_DB, 10) : undefined,
+  };
 }
 
 function tripFsmR12Present(): boolean {
@@ -218,6 +238,31 @@ async function waitPhaseEffective(
   throw new Error(`phase ${pollMs}ms not effective`);
 }
 
+async function terminalizeSessionAfterFatal(
+  organizationId: string,
+  sessionId: string,
+  sessionService: ReferenceCaptureSessionService,
+  sessionRepo: ReferenceCaptureSessionRepository,
+  reason: string,
+): Promise<{ cleanupMode: string; cleanupStatus: string; cleanupError?: string }> {
+  const session = await sessionRepo.findById(organizationId, sessionId);
+  const cleanupMode = resolveFatalSessionCleanupMode(session?.acquisitionStateJson);
+  try {
+    if (cleanupMode === 'stop') {
+      const stopped = await sessionService.stopRecording(organizationId, sessionId);
+      return { cleanupMode, cleanupStatus: stopped.status };
+    }
+    const aborted = await sessionService.abortSession(organizationId, sessionId, reason);
+    return { cleanupMode, cleanupStatus: aborted.status };
+  } catch (cleanupError) {
+    return {
+      cleanupMode,
+      cleanupStatus: 'CLEANUP_FAILED',
+      cleanupError: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+    };
+  }
+}
+
 async function main(): Promise<void> {
   if (!process.argv.includes('--confirm-exp021-autonomous')) {
     throw new Error('Refusing without --confirm-exp021-autonomous');
@@ -225,9 +270,26 @@ async function main(): Promise<void> {
   loadEnv();
   log('ORCHESTRATOR_START', { TARGET_SHA, ORG, VEH, TOKEN, PLATE });
 
+  const redis = new Redis(redisConnection());
+  const lockKey = buildOrchestratorLockKey(ORG, VEH);
+  const lockResult = await acquireOrchestratorLock(redis, lockKey);
+  if (!lockResult.acquired) {
+    log('ORCHESTRATOR_FATAL', {
+      error: 'competing orchestrator instance holds lock',
+      lockReason: lockResult.reason,
+      DUPLICATE_INSTANCE_FAIL_CLOSED: 'YES',
+    });
+    await redis.quit();
+    process.exit(1);
+  }
+  const lockHandle: OrchestratorLockHandle = lockResult.handle;
+  log('ORCHESTRATOR_LOCK_ACQUIRED', { lockKey, DUPLICATE_INSTANCE_FAIL_CLOSED: 'YES' });
+
   let phase: Phase = 'WAIT_DEPLOY';
   let sessionId: string | null = null;
+  let sessionStarted = false;
   let deployReady = false;
+  let policyGatePassed = false;
   let movementBeforeDeploy = false;
   let physicalDriveStarted = false;
   let physicalDriveEnded = false;
@@ -236,13 +298,15 @@ async function main(): Promise<void> {
   let phaseActivatedAtMs: number | null = null;
   let movementSustainSince: number | null = null;
   let parkedSustainSince: number | null = null;
+  let fatalError: Error | null = null;
 
   type AppContext = Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
   let app: AppContext | undefined;
-  let prisma: PrismaService | null = null;
-  let sessionService: ReferenceCaptureSessionService | null = null;
-  let sessionRepo: ReferenceCaptureSessionRepository | null = null;
-  let settlementShadow: ReferenceCaptureSettlementShadowService | null = null;
+  let prisma: PrismaService | undefined;
+  let sessionService: ReferenceCaptureSessionService | undefined;
+  let sessionRepo: ReferenceCaptureSessionRepository | undefined;
+  let settlementShadow: ReferenceCaptureSettlementShadowService | undefined;
+  let rcConfig: ReferenceCaptureConfig | undefined;
 
   async function ensureApp(): Promise<void> {
     if (app) return;
@@ -252,11 +316,13 @@ async function main(): Promise<void> {
     sessionService = app.get(ReferenceCaptureSessionService);
     sessionRepo = app.get(ReferenceCaptureSessionRepository);
     settlementShadow = app.get(ReferenceCaptureSettlementShadowService);
+    rcConfig = app.get(ReferenceCaptureConfig);
   }
 
   let running = true;
   try {
     while (running) {
+      await extendOrchestratorLock(redis, lockHandle);
       const sha = currentReleaseSha();
       const deployRunning = deployProcessRunning();
       const r3001 = replicaHealthy(3001);
@@ -311,6 +377,19 @@ async function main(): Promise<void> {
 
       if (phase === 'PREP') {
         await ensureApp();
+        if (!policyGatePassed) {
+          const gate = evaluateEffectivePolicyGate(rcConfig!.getHfRecoveryPolicyConfig(), TOKEN);
+          log('EFFECTIVE_POLICY_PRECHECK', {
+            EFFECTIVE_HF_POLICY_MODE: gate.effectiveMode,
+            CALIBRATION_PHASE_ACTIVATION_ALLOWED: gate.allowed ? 'YES' : 'NO',
+            blocker: gate.blocker ?? null,
+          });
+          if (!gate.allowed) {
+            throw new Error(gate.blocker ?? 'HF V2 policy gate failed before session creation');
+          }
+          policyGatePassed = true;
+        }
+
         const fsm = await prisma!.vehicleTripDetectionState.findUnique({ where: { vehicleId: VEH } });
         const lastTrip = await prisma!.vehicleTrip.findFirst({ where: { vehicleId: VEH }, orderBy: { startTime: 'desc' } });
         log('TRIP_FSM_POST_DEPLOY', {
@@ -382,6 +461,7 @@ async function main(): Promise<void> {
         if (sess?.status !== 'READY') throw new Error(`session not READY: ${sess?.status}`);
 
         await sessionService!.startRecording(ORG, sessionId);
+        sessionStarted = true;
         await waitForRecordingCycles(sessionRepo!, sessionId);
         preRollStarted = true;
         log('AUTO_START_RECORDING_CALLED', {
@@ -481,7 +561,38 @@ async function main(): Promise<void> {
     if (phase === 'DONE') {
       log('ORCHESTRATOR_COMPLETE', { sessionId, physicalDriveStarted, physicalDriveEnded, preRollStarted });
     }
+  } catch (error) {
+    fatalError = error instanceof Error ? error : new Error(String(error));
+    throw fatalError;
   } finally {
+    const cleanupSessionService = sessionService;
+    const cleanupSessionRepo = sessionRepo;
+    const cleanupSessionId = sessionId;
+    if (fatalError && sessionStarted && cleanupSessionId && cleanupSessionService && cleanupSessionRepo) {
+      const session = await cleanupSessionRepo.findById(ORG, cleanupSessionId);
+      if (session && (session.status === 'RECORDING' || session.status === 'STOPPING' || session.status === 'READY' || session.status === 'STARTING')) {
+        const cleanup = await terminalizeSessionAfterFatal(
+          ORG,
+          cleanupSessionId,
+          cleanupSessionService,
+          cleanupSessionRepo,
+          fatalError
+            ? `exp021_autonomous_fatal:${fatalError.message}`
+            : 'exp021_autonomous_unexpected_exit',
+        );
+        log('FATAL_SESSION_CLEANUP', {
+          FATAL_AFTER_RECORDING_TERMINALIZES_SESSION: 'YES',
+          sessionId,
+          ...cleanup,
+          originalFatal: fatalError?.message ?? null,
+        });
+      }
+    }
+
+    const released = await releaseOrchestratorLock(redis, lockHandle);
+    log('ORCHESTRATOR_LOCK_RELEASED', { lockKey, released, ORCHESTRATOR_LOCK_RELEASE_ALWAYS: 'YES' });
+    await redis.quit();
+
     if (app) {
       await app.close();
     }

@@ -183,6 +183,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Audi re-run readiness hardening (2026-09-09)
+
+| Event | Detail |
+|-------|--------|
+| Status | **STATIONARY CERT PASS** — V2 canary enabled for token 187361; orchestrator hardened in PR #1582 |
+| Stuck session | `0aa0dd4f-…` → **ABORTED** (10,671 obs preserved) |
+| V2 canary | `HF_RECOVERY_POLICY_V2_ENABLED=true`, canary-only, `CANARY_TOKEN_IDS=187361` (experiment-only) |
+| Orchestrator | Pre-recording V2 gate, Redis single-instance lock, fatal session cleanup |
+| Stationary cert | Phase 60 REQUESTED; calibration series created; prospective probes schedulable |
+| Blocker | Hardened orchestrator **not deployed** — physical run awaits merge+deploy |
+| Evidence | `EXP_021_AUDI_RERUN_READINESS_HARDENING_2026-09-09.md` |
+
 ## EXP-021 — Audi autonomous post-run forensic closeout (2026-09-09 evening)
 
 | Event | Detail |

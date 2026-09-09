@@ -581,6 +581,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021-audi-rerun-readiness-hardening-2026-09-09',
+    version: '4.9.1096',
+    title: 'EXP-021 Audi — re-run readiness hardening + V2 canary + stationary cert',
+    summary: [
+      'Stuck session 0aa0dd4f-… terminalized ABORTED (10,671 obs preserved).',
+      'HF V2 canary enabled for token 187361 only (not fleet-wide).',
+      'Orchestrator hardened: pre-recording V2 gate, Redis lock, fatal session cleanup.',
+      'Stationary production cert PASS: phase 60 REQUESTED, prospective probes schedulable.',
+      'READY_FOR_NEXT_EXP021_PHYSICAL_RUN=NO until hardened orchestrator deployed.',
+    ],
+    reason: 'Close degraded autonomous EXP-021 failure chain and certify stationary pre-drive readiness.',
+    previousBehavior: 'Audi token LEGACY; orchestrator could startRecording then fail phase activation.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_RERUN_READINESS_HARDENING_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T21:45:00.000Z',
+  },
+  {
     id: 'dimo-exp-021-audi-autonomous-post-run-forensic-2026-09-09',
     version: '4.9.1095',
     title: 'EXP-021 Audi — autonomous post-run forensic closeout (DEGRADED)',
