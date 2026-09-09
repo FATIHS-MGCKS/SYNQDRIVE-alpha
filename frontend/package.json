@@ -53,6 +53,7 @@
     "i18n:scanner:test": "vitest run src/i18n/i18n-governance-scanner.test.ts",
     "i18n:pr-gate": "node scripts/i18n-pr-gate.mjs",
     "i18n:pr-gate:test": "vitest run src/i18n/i18n-pr-gate.test.ts",
+    "i18n:authority-protection:classifier-harness": "bash ../.cursor/scripts/i18n-authority-protection-classifier.harness.sh",
     "i18n:governance": "node scripts/i18n-governance.mjs"
   },
   "dependencies": {

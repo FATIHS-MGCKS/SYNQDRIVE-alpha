@@ -39,6 +39,10 @@ const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
 const workflowPath = join(repoRoot, '.github/workflows/i18n-governance-new-debt.yml');
+const authorityProtectionClassifierHarnessPath = join(
+  repoRoot,
+  '.cursor/scripts/i18n-authority-protection-classifier.harness.sh',
+);
 const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
 const removedBootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
 
@@ -754,6 +758,27 @@ describe('P2.3.3 PR gate — protected-path contract parity', () => {
       expect(result.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
     },
   );
+});
+
+describe('P2.3.2 authority protection — extracted workflow classifier harness', () => {
+  it('executes the trusted workflow run script with mocked GitHub API responses', () => {
+    const harnessTemp = mkdtempSync(join(tmpdir(), 'i18n-authority-classifier-harness-'));
+    const result = spawnSync('bash', [authorityProtectionClassifierHarnessPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        RUNNER_TEMP: harnessTemp,
+      },
+    });
+
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(result.stdout).toContain('Harness complete:');
+    expect(result.stdout).toMatch(/8\/8 tests passed/);
+    expect(result.stdout).toContain('PR #1581 authority paths + trusted owner label pass');
+    expect(result.stdout).toContain('mixed authority + product change fails even with trusted owner approval');
+    expect(result.stdout).toContain('negative control: broken workflow incorrectly approves mixed change');
+  });
 });
 
 describe('P2.3.3 PR gate — workflow-inline trusted bootstrap relevance', { timeout: 60000 }, () => {
