@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { normalizeRepoPath } from './git-diff.mjs';
 import {
+  buildExpectedTrustedWorkflowAuthorityPatterns,
   CANONICAL_GOVERNANCE_EXACT_PATHS,
   CANONICAL_GOVERNANCE_PREFIX_RULES,
   isCanonicalGovernanceAuthorityPath,
@@ -477,10 +478,6 @@ function matchesWorkflowOnlyRule(normalizedPath) {
   );
 }
 
-function isLiteralPattern(pattern) {
-  return !pattern.includes('*') && !pattern.includes('?');
-}
-
 function isBootstrapNeutralPath(normalizedPath) {
   if (BOOTSTRAP_SAFE_NEUTRAL_EXACT_PATHS.includes(normalizedPath)) return true;
   return BOOTSTRAP_SAFE_NEUTRAL_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix));
@@ -503,9 +500,30 @@ function patternCoversCanonicalPrefixRule(pattern, rule) {
 
 export function analyzeParsedWorkflowCanonicalParity(contractOrPatterns) {
   const contract = assertWorkflowAuthorityContractValid(normalizeContractInput(contractOrPatterns));
-  const patterns = contract.authorityPatterns;
+  const expectedPatterns = buildExpectedTrustedWorkflowAuthorityPatterns();
+  const expectedSet = new Set(expectedPatterns);
+  const actualAuthorityPatterns = [
+    ...new Set(
+      contract.arms
+        .filter((arm) => arm.returnCode === 0)
+        .flatMap((arm) => arm.patterns),
+    ),
+  ].sort();
+
+  const actualSet = new Set(actualAuthorityPatterns);
+  const missingExpectedPatterns = expectedPatterns.filter((pattern) => !actualSet.has(pattern));
+  const unexpectedAuthorityPatterns = actualAuthorityPatterns.filter(
+    (pattern) => !expectedSet.has(pattern),
+  );
+  const forbiddenDenyPatterns = [
+    ...new Set(
+      contract.arms
+        .filter((arm) => arm.returnCode === 1)
+        .flatMap((arm) => arm.patterns),
+    ),
+  ].sort();
+
   const canonicalOnly = [];
-  const unexplainedWorkflowExact = [];
   const prefixMismatches = [];
 
   for (const path of CANONICAL_GOVERNANCE_EXACT_PATHS) {
@@ -514,16 +532,10 @@ export function analyzeParsedWorkflowCanonicalParity(contractOrPatterns) {
     }
   }
 
-  for (const pattern of patterns) {
-    if (!isLiteralPattern(pattern)) continue;
-    const path = normalizeRepoPath(pattern);
-    if (isCanonicalGovernanceAuthorityPath(path)) continue;
-    if (matchesWorkflowOnlyRule(path)) continue;
-    unexplainedWorkflowExact.push(path);
-  }
-
   for (const rule of CANONICAL_GOVERNANCE_PREFIX_RULES) {
-    const coveringPatterns = patterns.filter((pattern) => patternCoversCanonicalPrefixRule(pattern, rule));
+    const coveringPatterns = actualAuthorityPatterns.filter((pattern) =>
+      patternCoversCanonicalPrefixRule(pattern, rule),
+    );
     if (coveringPatterns.length === 0) {
       prefixMismatches.push({
         rule,
@@ -532,11 +544,22 @@ export function analyzeParsedWorkflowCanonicalParity(contractOrPatterns) {
     }
   }
 
+  const parityOk =
+    contract.ok &&
+    missingExpectedPatterns.length === 0 &&
+    unexpectedAuthorityPatterns.length === 0 &&
+    forbiddenDenyPatterns.length === 0;
+
   return {
-    canonicalOnly: [...new Set(canonicalOnly)].sort(),
-    unexplainedWorkflowExact: [...new Set(unexplainedWorkflowExact)].sort(),
+    missingExpectedPatterns,
+    unexpectedAuthorityPatterns,
+    forbiddenDenyPatterns,
     prefixMismatches,
+    canonicalOnly: [...new Set(canonicalOnly)].sort(),
     contractOk: contract.ok,
+    parityOk,
+    expectedPatterns,
+    actualAuthorityPatterns,
   };
 }
 
@@ -779,6 +802,34 @@ export function mutateWorkflowYamlDefaultReturnZero(workflowYaml) {
 
 export function mutateWorkflowYamlRemoveDefaultReturn(workflowYaml) {
   return workflowYaml.replace(/\s+return 1\s*\n(\s+}\s*\n\s+is_product_or_presentation_path)/, '\n$1');
+}
+
+export function mutateWorkflowYamlInsertUndeclaredWildcard(workflowYaml) {
+  return workflowYaml.replace(
+    /(is_authority_path\(\) \{[\s\S]*?case "\$path" in\n)/,
+    '$1              backend/private/*)\n                return 0\n                ;;\n',
+  );
+}
+
+export function mutateWorkflowYamlInsertDenyShadowBeforeI18n(workflowYaml) {
+  return workflowYaml.replace(
+    /(\s+frontend\/scripts\/i18n-\*\.mjs\))/,
+    '              frontend/scripts/i18n-private-*)\n                return 1\n                ;;\n$1',
+  );
+}
+
+export function mutateWorkflowYamlInsertBroadAuthorityRule(workflowYaml) {
+  return workflowYaml.replace(
+    /(is_authority_path\(\) \{[\s\S]*?case "\$path" in\n)/,
+    '$1              frontend/scripts/*)\n                return 0\n                ;;\n',
+  );
+}
+
+export function mutateWorkflowYamlRemoveWorkflowOnlyRule(workflowYaml) {
+  return workflowYaml.replace(
+    /(\s+)\.github\/workflows\/\*\)\s*\n\s+return 0\s*\n\s+;;\s*\n/,
+    '\n',
+  );
 }
 
 export function mutateWorkflowContractInvertAuthorityReturn(contract) {

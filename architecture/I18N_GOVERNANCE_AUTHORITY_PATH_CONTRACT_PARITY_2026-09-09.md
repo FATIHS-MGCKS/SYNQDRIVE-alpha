@@ -101,3 +101,16 @@ The workflow classifier parser is deliberately narrow and **fail-closed**:
 | Bootstrap diff scope | PR effective paths from `git diff --name-only origin/main`; historical `2f0d128d` retained only as classifier fixture |
 
 Bootstrap neutral paths for #1589 are exact-path scoped (not `architecture/*` prefix).
+
+### Exact pattern parity closure
+
+`buildExpectedTrustedWorkflowAuthorityPatterns()` derives the trusted workflow
+pattern set algorithmically from `CANONICAL_GOVERNANCE_EXACT_PATHS`,
+`CANONICAL_GOVERNANCE_PREFIX_RULES`, and `TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES`.
+
+`analyzeParsedWorkflowCanonicalParity()` compares expected vs parsed return-0
+patterns and rejects:
+
+- `missingExpectedPatterns` — declared canonical/trusted patterns absent from workflow
+- `unexpectedAuthorityPatterns` — undeclared wildcards or literals (e.g. `backend/private/*`)
+- `forbiddenDenyPatterns` — any explicit `return 1` case arm (deny shadows); only the trailing default `return 1` is permitted

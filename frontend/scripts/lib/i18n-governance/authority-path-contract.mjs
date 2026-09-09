@@ -60,6 +60,66 @@ export const TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES = [
 
 const CANONICAL_EXACT_SET = new Set(CANONICAL_GOVERNANCE_EXACT_PATHS);
 
+function bashCasePatternToRegExp(pattern) {
+  let regex = '^';
+  for (let i = 0; i < pattern.length; i += 1) {
+    const ch = pattern[i];
+    if (ch === '*') {
+      regex += '.*';
+      continue;
+    }
+    if (ch === '?') {
+      regex += '.';
+      continue;
+    }
+    if ('\\.[]^$+{}()|'.includes(ch)) {
+      regex += `\\${ch}`;
+      continue;
+    }
+    regex += ch;
+  }
+  regex += '$';
+  return new RegExp(regex);
+}
+
+export function pathMatchesShellCasePattern(repoPath, pattern) {
+  const normalized = normalizeRepoPath(repoPath);
+  if (!normalized) return false;
+  return bashCasePatternToRegExp(pattern).test(normalized);
+}
+
+export function deriveShellPatternFromPrefixRule({ prefix, extension }) {
+  if (extension) {
+    return `${prefix}*${extension}`;
+  }
+  return `${prefix}*`;
+}
+
+export function deriveShellPatternFromWorkflowOnlyRule(rule) {
+  if (rule.type !== 'prefix') {
+    throw new Error(`Unsupported trusted workflow-only rule type: ${rule.type}`);
+  }
+  return `${rule.prefix}*`;
+}
+
+/**
+ * Algorithmically derive the trusted workflow authority pattern set from canonical
+ * structures. Wildcards are generated from prefix rules; exact paths omitted when
+ * already subsumed by a derived wildcard.
+ */
+export function buildExpectedTrustedWorkflowAuthorityPatterns() {
+  const wildcardPatterns = [
+    ...CANONICAL_GOVERNANCE_PREFIX_RULES.map(deriveShellPatternFromPrefixRule),
+    ...TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES.map(deriveShellPatternFromWorkflowOnlyRule),
+  ];
+
+  const exactPatterns = CANONICAL_GOVERNANCE_EXACT_PATHS.filter(
+    (path) => !wildcardPatterns.some((pattern) => pathMatchesShellCasePattern(path, pattern)),
+  );
+
+  return [...new Set([...wildcardPatterns, ...exactPatterns])].sort();
+}
+
 export function matchesPrefixRule(normalizedPath, { prefix, extension }) {
   if (!normalizedPath.startsWith(prefix)) return false;
   if (extension === null) return true;

@@ -33,6 +33,7 @@ import {
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
 import { gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
 import {
+  buildExpectedTrustedWorkflowAuthorityPatterns,
   CANONICAL_GOVERNANCE_EXACT_PATHS,
   CANONICAL_GOVERNANCE_PREFIX_RULES,
   isCanonicalGovernanceAuthorityPath,
@@ -55,9 +56,13 @@ import {
   mutatePatternsReplaceWildcardWithExactList,
   mutateWorkflowContractInvertAuthorityReturn,
   mutateWorkflowYamlDefaultReturnZero,
+  mutateWorkflowYamlInsertBroadAuthorityRule,
+  mutateWorkflowYamlInsertDenyShadowBeforeI18n,
+  mutateWorkflowYamlInsertUndeclaredWildcard,
   mutateWorkflowYamlInsertUnsupportedPattern,
   mutateWorkflowYamlInvertAuthorityReturn,
   mutateWorkflowYamlRemoveDefaultReturn,
+  mutateWorkflowYamlRemoveWorkflowOnlyRule,
   mutateWorkflowYamlSameLineCaseArm,
   mutateWorkflowYamlUnexpectedCommandBeforeReturn,
   mutateWorkflowYamlUnrecognizedArmLayout,
@@ -1381,11 +1386,30 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   it('parsed workflow structurally covers canonical exact paths and prefix rules', () => {
     const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
     const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(true);
     expect(analysis.canonicalOnly, JSON.stringify(analysis.canonicalOnly)).toEqual([]);
-    expect(analysis.unexplainedWorkflowExact, JSON.stringify(analysis.unexplainedWorkflowExact)).toEqual(
+    expect(analysis.missingExpectedPatterns, JSON.stringify(analysis.missingExpectedPatterns)).toEqual(
+      [],
+    );
+    expect(
+      analysis.unexpectedAuthorityPatterns,
+      JSON.stringify(analysis.unexpectedAuthorityPatterns),
+    ).toEqual([]);
+    expect(analysis.forbiddenDenyPatterns, JSON.stringify(analysis.forbiddenDenyPatterns)).toEqual(
       [],
     );
     expect(analysis.prefixMismatches, JSON.stringify(analysis.prefixMismatches)).toEqual([]);
+  });
+
+  it('expected trusted workflow authority patterns are derived algorithmically from canonical contract', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const expected = buildExpectedTrustedWorkflowAuthorityPatterns();
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(expected).toEqual(analysis.expectedPatterns);
+    expect(analysis.actualAuthorityPatterns).toEqual(expected);
+    expect(expected).toContain('.github/workflows/*');
+    expect(expected).toContain('frontend/scripts/i18n-*.mjs');
+    expect(expected).not.toContain('.github/workflows/i18n-governance-new-debt.yml');
   });
 
   it('synthetic boundary witness matrix matches canonical and parsed workflow semantics', () => {
@@ -1507,7 +1531,54 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
       loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath),
     );
     const analysis = analyzeParsedWorkflowCanonicalParity(invertedContract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.forbiddenDenyPatterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(analysis.missingExpectedPatterns).toContain('frontend/scripts/i18n-*.mjs');
     expect(analysis.prefixMismatches.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: undeclared wildcard expansion fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertUndeclaredWildcard(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    expect(contract.structural.unconsumedFragments).toEqual([]);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.unexpectedAuthorityPatterns).toContain('backend/private/*');
+  });
+
+  it('mutation: canonical prefix deny shadow fails parity even when first-match evaluator applies', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertDenyShadowBeforeI18n(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    expect(
+      isParsedWorkflowAuthorityPath('frontend/scripts/i18n-private-test.mjs', contract),
+    ).toBe(false);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.forbiddenDenyPatterns).toContain('frontend/scripts/i18n-private-*');
+  });
+
+  it('mutation: undeclared broad authority rule fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertBroadAuthorityRule(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.unexpectedAuthorityPatterns).toContain('frontend/scripts/*');
+  });
+
+  it('mutation: missing declared workflow-only rule fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlRemoveWorkflowOnlyRule(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.missingExpectedPatterns).toContain('.github/workflows/*');
   });
 
   it('mutation: finite i18n script list breaks prefix semantics for future scripts', () => {
@@ -1517,6 +1588,8 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
       false,
     );
     const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.missingExpectedPatterns).toContain('frontend/scripts/i18n-*.mjs');
     expect(analysis.prefixMismatches.length).toBeGreaterThan(0);
   });
 
@@ -1546,7 +1619,11 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
       (pattern) => !pattern.includes('translation-coverage-baseline.json'),
     );
     const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.parityOk).toBe(false);
     expect(analysis.canonicalOnly).toContain('frontend/src/i18n/translation-coverage-baseline.json');
+    expect(analysis.missingExpectedPatterns).toContain(
+      'frontend/src/i18n/translation-coverage-baseline.json',
+    );
   });
 
   it('pr-gate-policy delegates to canonical contract for all exact paths', () => {
