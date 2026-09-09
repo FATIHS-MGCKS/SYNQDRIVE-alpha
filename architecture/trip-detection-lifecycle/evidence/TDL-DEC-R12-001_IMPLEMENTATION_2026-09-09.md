@@ -4,7 +4,7 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-R12-IMPL-001 |
 | **Decision** | TDL-DEC-R12-001 |
-| **Status** | **CI_VALIDATED** @ `091c478af…` run 34360964547 — not deployed |
+| **Status** | **CI_VALIDATED** @ pending final clock-authority head — not deployed |
 | **Motivation** | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) (`TDL-EVID-KS-MS-661-R11-NATURAL-001`) — Axis E FAIL |
 | **Baseline main @ task start** | `c343fab9aa8930b0023702bd4f3c31afd34393fa` (#1590 merge) |
 | **PR** | #1591 |
@@ -17,8 +17,12 @@
 | [34354237230](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34354237230) | `f92cd1ff…` | Trip FSM Production Readiness CI | **FAIL** | Job `102476180546` — K1 expected ACTIVE_TRIP @ stop tick, got POSSIBLE_END (same-tick boundary/continuity); R11 Scenario J also failed |
 | [34358728200](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34358728200) | `c4cd5510a…` | Trip FSM Production Readiness CI | **PASS** | Remediation — dedicated R12 workflow jobs (superseded by i18n gate fix) |
 | [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547) | `091c478af…` | Trip FSM Production Readiness CI | **PASS** | R12 via extended `test:trip-r11:*` scripts; i18n-authority-protection PASS |
+| [34362315744](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34362315744) | `23cf5c92f…` | Trip FSM Production Readiness CI | **PASS** | Docs-only authority @ prior remediation head |
+| _pending_ | _final clock head_ | Trip FSM Production Readiness CI | _pending_ | Final clock-authority hardening |
 
-**TDL-EVID-R12-CI-PASS-001:** Final remediation CI green @ `091c478af…` run [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547).
+**TDL-EVID-R12-CI-PASS-001:** Remediation CI green @ `091c478af…` run [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547).
+
+**TDL-EVID-R12-CLOCK-001:** Final clock-authority hardening — pending CI on final PR head.
 
 ## Intensive review remediation (post-`f92cd1ff…`)
 
@@ -31,6 +35,35 @@
 | Boundary-backed UNKNOWN not exercised | K1 uses post-boundary stale obs T2 > B |
 | Route post-boundary jitter | `hasCrediblePostBoundaryRouteMotion()` adds 25 m displacement gate |
 | R12-specific idempotency | `trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts` K12 |
+
+## Final clock-authority hardening (post-`23cf5c92f…`)
+
+| Blocker | Fix |
+|---------|-----|
+| Stop boundary provenance / clock authority | `StopBoundaryClockAuthority` typed per source; persisted `stopBoundaryClockAuthority`, `stopBoundaryTrust` in `lastEvidenceSummary` |
+| Boundary-backed silence trust | `assessBoundaryBackedEmptyCoreSilence()` requires trusted provider/event-time boundary; WORKER_TIME ⇒ KEEP_OPEN |
+| POSSIBLE_END clock source | `resolvePossibleEndBoundaryCandidate()` accepts provenance; never promotes WORKER_TIME boundary to `PROVIDER_EVENT_TIME` |
+| Boundary latch hierarchy | `shouldReplaceStopBoundaryProvenance()` — PROVIDER_EVENT_TIME > EVENT_TIME > WORKER_TIME; same-authority latch; stronger supersedes weaker worker fallback |
+| Route cross-boundary displacement | Bridge comparison: anchor at/before boundary vs first post-boundary point (25 m threshold) |
+
+### Clock authority by idle source
+
+| Source | Clock authority | Trust |
+|--------|-----------------|-------|
+| `idle_within_trip_movement` | EVENT_TIME | yes |
+| `idle_within_trip_stationary_vls` / `provider_stationary_vls` | PROVIDER_EVENT_TIME | yes |
+| `idle_within_trip_last_movement` | EVENT_TIME | yes |
+| `idle_within_trip_last_activity` | WORKER_TIME | no |
+| `idle_within_trip_worker_now` | WORKER_TIME | no |
+
+### Regression IDs (clock + route)
+
+| ID | Result (local pre-push) |
+|----|-------------------------|
+| R12-CLOCK-1..6 | PASS |
+| R12-ROUTE-1..3 | PASS |
+
+Unit suite: `trip-fsm-r12-clock-authority.spec.ts` wired into `test:trip-r11:unit` / `test:trip-r12:unit`.
 
 ## Root cause (R11 @ `c343fab9…`)
 
@@ -45,15 +78,15 @@ Proven — see first implementation record. **Liveness deadlock:** NO STOP BOUND
 | Active boundary lifecycle | Latch per episode; retire after credible movement; new B2 after resume |
 | Post-boundary activity | Event-time credibility filters on core + route |
 | UNKNOWN ≠ INACTIVE | `assessBoundaryBackedEmptyCoreSilence` — `vls_stale_provider_observation` only |
-| Physical end boundary | `resolvePossibleEndBoundaryCandidate()` prefers active `stopBoundaryAt` |
+| Physical end boundary | `resolvePossibleEndBoundaryCandidate()` prefers trusted active `stopBoundaryProvenance`; skips untrusted WORKER_TIME |
 
 **Non-goals preserved:** no PD-2, no 45s TTL, no 120s threshold change, no webhook, no Prisma migration.
 
 ## Forensic fields (`lastEvidenceSummary`)
 
-Active: `stopBoundaryAt`, `stopBoundarySource`, `stopBoundaryCandidateReason`, `stopBoundaryContradictions`, `stopBoundaryEvidenceState`.
+Active: `stopBoundaryAt`, `stopBoundarySource`, `stopBoundaryClockAuthority`, `stopBoundaryTrust`, `stopBoundaryCandidateReason`, `stopBoundaryContradictions`, `stopBoundaryEvidenceState`.
 
-Historical after resume: `lastPauseBoundaryAt`, `lastPauseBoundarySource`, `stopBoundaryRetiredAt`, `stopBoundaryRetiredByMovementAt`.
+Historical after resume: `lastPauseBoundaryAt`, `lastPauseBoundarySource`, `lastPauseBoundaryClockAuthority`, `lastPauseBoundaryTrust`, `stopBoundaryRetiredAt`, `stopBoundaryRetiredByMovementAt`.
 
 End gate: `boundaryBackedSilenceEligible`, `innerGateReason`, `vlsEvidenceState`, `vlsProviderObservedAt`, `vlsObservationAgeMs`.
 

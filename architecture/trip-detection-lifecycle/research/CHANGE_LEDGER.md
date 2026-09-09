@@ -35,6 +35,7 @@ Append-only record for this authority directory.
 | 2026-09-09 | TDL-DEC-R12-001 — provider stop boundary without IDLE; boundary-backed silence for stale VLS after trusted boundary; post-boundary movement filter; K1–K11 regressions | Trip FSM R12 implementation | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
 | 2026-09-09 | R12 intensive review remediation — same-tick continuity guard; active boundary retire/latch; lifecycle safety + idempotency integration; R11 Scenario J source aligned to provider path | Trip FSM R12 PR #1591 | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
 | 2026-09-09 | R12 Trip FSM + i18n CI green @ `091c478af…` run 34360964547 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CI-PASS-001 |
+| 2026-09-09 | R12 final clock-authority hardening — typed stop boundary provenance/trust, latch hierarchy, route bridge displacement, R12-CLOCK-1..6 + R12-ROUTE-1..3 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CLOCK-001 |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

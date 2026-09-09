@@ -64,6 +64,7 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
       profile: 'ICE',
       workerNow,
       stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'pause_corroborated',
     });
     expect(gate.eligible).toBe(false);
     expect(gate.forensics.innerGateReason).toBe('vls_speed_above_motion_threshold');
@@ -112,6 +113,7 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
       profile: 'ICE',
       workerNow: new Date('2026-09-08T20:05:00.000Z'),
       stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'pause_corroborated',
     });
     expect(gate.eligible).toBe(false);
     expect(gate.forensics.innerGateReason).toBe('vls_row_absent');

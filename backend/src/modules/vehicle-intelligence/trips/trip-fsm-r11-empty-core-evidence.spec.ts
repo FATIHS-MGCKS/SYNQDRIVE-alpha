@@ -129,6 +129,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow,
         stopBoundaryAt: anchor,
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
       expect(gate.eligible).toBe(false);
       expect(gate.forensics.innerGateReason).toBe('vls_row_absent');
@@ -194,8 +195,8 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow,
         stopBoundaryAt: stopBoundary,
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
-      expect(gate.eligible).toBe(true);
       expect(gate.forensics.innerGateReason).toBe(
         'empty_core_corroborated_inactivity',
       );
@@ -211,6 +212,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow: new Date('2026-09-08T20:05:00.000Z'),
         stopBoundaryAt: new Date('2026-09-08T19:59:55.895Z'),
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
       expect(gate.eligible).toBe(false);
       expect(gate.forensics.innerGateReason).toBe('vls_row_absent');

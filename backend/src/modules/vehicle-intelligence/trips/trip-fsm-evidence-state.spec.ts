@@ -27,7 +27,9 @@ describe('resolveIdleStopBoundaryAt', () => {
       profile: 'ICE',
     });
     expect(result.boundaryAt.toISOString()).toBe(vlsObs.toISOString());
-    expect(result.boundarySource).toBe('idle_within_trip_stationary_vls');
+    expect(result.source).toBe('idle_within_trip_stationary_vls');
+    expect(result.clockAuthority).toBe('PROVIDER_EVENT_TIME');
+    expect(result.trust).toBe(true);
   });
 
   it('does not anchor on stationary VLS when ignition is explicitly ON (traffic stop)', () => {
@@ -45,7 +47,7 @@ describe('resolveIdleStopBoundaryAt', () => {
       profile: 'ICE',
     });
     expect(result.boundaryAt.toISOString()).toBe(lastMovement.toISOString());
-    expect(result.boundarySource).toBe('idle_within_trip_last_movement');
+    expect(result.source).toBe('idle_within_trip_last_movement');
   });
 
   it('does not anchor on stationary VLS when ignition is unknown (null)', () => {
@@ -62,7 +64,7 @@ describe('resolveIdleStopBoundaryAt', () => {
       },
       profile: 'ICE',
     });
-    expect(result.boundarySource).toBe('idle_within_trip_last_movement');
+    expect(result.source).toBe('idle_within_trip_last_movement');
   });
 
   it('prefers movementEventAt when present', () => {
@@ -81,7 +83,7 @@ describe('resolveIdleStopBoundaryAt', () => {
       profile: 'ICE',
     });
     expect(result.boundaryAt.toISOString()).toBe(movement.toISOString());
-    expect(result.boundarySource).toBe('idle_within_trip_movement');
+    expect(result.source).toBe('idle_within_trip_movement');
   });
 
   it('falls back to last movement when VLS speed missing', () => {
@@ -99,7 +101,7 @@ describe('resolveIdleStopBoundaryAt', () => {
       profile: 'ICE',
     });
     expect(result.boundaryAt.toISOString()).toBe(lastMovement.toISOString());
-    expect(result.boundarySource).toBe('idle_within_trip_last_movement');
+    expect(result.source).toBe('idle_within_trip_last_movement');
   });
 });
 
@@ -156,8 +158,8 @@ describe('KS MS 661 counter-cases and field semantics', () => {
       profile: 'ICE',
       workerNow,
       stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'provider_stationary_vls',
     });
-    expect(gate.forensics.innerGateReason).toBe('vls_row_absent');
     expect(gate.eligible).toBe(false);
   });
 

@@ -1,6 +1,11 @@
 import {
+  classifyStopBoundarySourceClockAuthority,
+  isTrustedStopBoundaryAuthority,
   isValidProviderEventTimestamp,
   resolveOperationalNoCoreInactivityAnchor as resolveOperationalNoCoreInactivityAnchorLegacy,
+  shouldReplaceStopBoundaryProvenance,
+  type StopBoundaryClockAuthority,
+  type StopBoundaryProvenance,
 } from './trip-fsm-clock-contract';
 import type { EmptyCoreVlsTelemetry } from './trip-empty-core-end-gate';
 import { getSharedSignalThresholds } from './trip-start-detection-policy';
@@ -15,6 +20,70 @@ export function readIsoDate(
   if (typeof raw !== 'string') return null;
   const d = new Date(raw);
   return Number.isFinite(d.getTime()) ? d : null;
+}
+
+export function readStopBoundarySource(
+  summary: TripFsmEvidenceSummary | null | undefined,
+): string | null {
+  return typeof summary?.stopBoundarySource === 'string'
+    ? summary.stopBoundarySource
+    : null;
+}
+
+export function readStopBoundaryClockAuthority(
+  summary: TripFsmEvidenceSummary | null | undefined,
+  source?: string | null,
+): StopBoundaryClockAuthority {
+  const raw = summary?.stopBoundaryClockAuthority;
+  if (
+    raw === 'PROVIDER_EVENT_TIME' ||
+    raw === 'EVENT_TIME' ||
+    raw === 'WORKER_TIME'
+  ) {
+    return raw;
+  }
+  const resolvedSource = source ?? readStopBoundarySource(summary);
+  return classifyStopBoundarySourceClockAuthority(resolvedSource ?? 'unknown');
+}
+
+export function readStopBoundaryTrust(
+  summary: TripFsmEvidenceSummary | null | undefined,
+): boolean {
+  if (typeof summary?.stopBoundaryTrust === 'boolean') {
+    return summary.stopBoundaryTrust;
+  }
+  return isTrustedStopBoundaryAuthority(
+    readStopBoundaryClockAuthority(summary),
+  );
+}
+
+export function readStopBoundaryProvenance(
+  summary: TripFsmEvidenceSummary | null | undefined,
+): StopBoundaryProvenance | null {
+  const boundaryAt = readStopBoundaryAt(summary);
+  if (!boundaryAt) return null;
+  const source = readStopBoundarySource(summary) ?? 'unknown';
+  const clockAuthority = readStopBoundaryClockAuthority(summary, source);
+  return {
+    boundaryAt,
+    source,
+    clockAuthority,
+    trust: readStopBoundaryTrust(summary),
+  };
+}
+
+export function buildStopBoundaryProvenance(
+  boundaryAt: Date,
+  source: string,
+  clockAuthority?: StopBoundaryClockAuthority,
+): StopBoundaryProvenance {
+  const authority = clockAuthority ?? classifyStopBoundarySourceClockAuthority(source);
+  return {
+    boundaryAt,
+    source,
+    clockAuthority: authority,
+    trust: isTrustedStopBoundaryAuthority(authority),
+  };
 }
 
 export function readStopBoundaryAt(
@@ -171,6 +240,7 @@ export function resolveProviderStopBoundaryCandidate(params: {
   workerNow: Date;
   lastMeaningfulMovementAt: Date | null;
   existingStopBoundaryAt?: Date | null;
+  existingStopBoundarySummary?: TripFsmEvidenceSummary | null;
   /** Fresh provider observation window for establishing a new active boundary. */
   maxFreshObservationAgeMs?: number;
 }): ProviderStopBoundaryCandidate | null {
@@ -183,11 +253,15 @@ export function resolveProviderStopBoundaryCandidate(params: {
   });
   if (!candidate) return null;
 
-  const existing = params.existingStopBoundaryAt;
-  if (
-    existing &&
-    isValidProviderEventTimestamp(existing, params.workerNow)
-  ) {
+  const existing =
+    readStopBoundaryProvenance(params.existingStopBoundarySummary) ??
+    (params.existingStopBoundaryAt
+      ? buildStopBoundaryProvenance(
+          params.existingStopBoundaryAt,
+          'legacy_unspecified',
+        )
+      : null);
+  if (existing?.trust) {
     // Latch earliest trustworthy boundary for the same uninterrupted stop episode.
     return null;
   }
@@ -199,11 +273,12 @@ export function mergeProviderStopBoundaryCandidate(
   prior: TripFsmEvidenceSummary | null | undefined,
   candidate: ProviderStopBoundaryCandidate,
 ): TripFsmEvidenceSummary {
-  const next = mergeStopBoundaryAt(
-    prior,
+  const provenance = buildStopBoundaryProvenance(
     candidate.boundaryAt,
     candidate.boundarySource,
+    'PROVIDER_EVENT_TIME',
   );
+  const next = mergeStopBoundaryProvenance(prior, provenance);
   return {
     ...next,
     stopBoundaryCandidateReason: candidate.candidateReason,
@@ -220,15 +295,16 @@ export function resolveIdleStopBoundaryAt(params: {
   telemetry: EmptyCoreVlsTelemetry | null;
   profile: string;
   maxFreshObservationAgeMs?: number;
-}): { boundaryAt: Date; boundarySource: string } {
+}): StopBoundaryProvenance {
   if (
     params.movementEventAt &&
     isValidProviderEventTimestamp(params.movementEventAt, params.workerNow)
   ) {
-    return {
-      boundaryAt: params.movementEventAt,
-      boundarySource: 'idle_within_trip_movement',
-    };
+    return buildStopBoundaryProvenance(
+      params.movementEventAt,
+      'idle_within_trip_movement',
+      'EVENT_TIME',
+    );
   }
 
   const stationary = resolveStationaryIgnitionOffBoundary({
@@ -239,35 +315,56 @@ export function resolveIdleStopBoundaryAt(params: {
     maxFreshObservationAgeMs: params.maxFreshObservationAgeMs,
   });
   if (stationary) {
-    return {
-      boundaryAt: stationary.boundaryAt,
-      boundarySource: 'idle_within_trip_stationary_vls',
-    };
+    return buildStopBoundaryProvenance(
+      stationary.boundaryAt,
+      'idle_within_trip_stationary_vls',
+      'PROVIDER_EVENT_TIME',
+    );
   }
 
   if (
     params.lastMeaningfulMovementAt &&
     isValidProviderEventTimestamp(params.lastMeaningfulMovementAt, params.workerNow)
   ) {
-    return {
-      boundaryAt: params.lastMeaningfulMovementAt,
-      boundarySource: 'idle_within_trip_last_movement',
-    };
+    return buildStopBoundaryProvenance(
+      params.lastMeaningfulMovementAt,
+      'idle_within_trip_last_movement',
+      'EVENT_TIME',
+    );
   }
 
   if (
     params.lastActivityAt &&
     isValidProviderEventTimestamp(params.lastActivityAt, params.workerNow)
   ) {
-    return {
-      boundaryAt: params.lastActivityAt,
-      boundarySource: 'idle_within_trip_last_activity',
-    };
+    return buildStopBoundaryProvenance(
+      params.lastActivityAt,
+      'idle_within_trip_last_activity',
+      'WORKER_TIME',
+    );
   }
 
+  return buildStopBoundaryProvenance(
+    params.workerNow,
+    'idle_within_trip_worker_now',
+    'WORKER_TIME',
+  );
+}
+
+export function mergeStopBoundaryProvenance(
+  prior: TripFsmEvidenceSummary | null | undefined,
+  incoming: StopBoundaryProvenance,
+): TripFsmEvidenceSummary {
+  const existing = readStopBoundaryProvenance(prior);
+  if (existing && !shouldReplaceStopBoundaryProvenance(existing, incoming)) {
+    return prior ?? {};
+  }
   return {
-    boundaryAt: params.workerNow,
-    boundarySource: 'idle_within_trip_worker_now',
+    ...(prior ?? {}),
+    stopBoundaryAt: incoming.boundaryAt.toISOString(),
+    stopBoundarySource: incoming.source,
+    stopBoundaryClockAuthority: incoming.clockAuthority,
+    stopBoundaryTrust: incoming.trust,
   };
 }
 
@@ -275,16 +372,12 @@ export function mergeStopBoundaryAt(
   prior: TripFsmEvidenceSummary | null | undefined,
   boundaryAt: Date,
   source: string,
+  clockAuthority?: StopBoundaryClockAuthority,
 ): TripFsmEvidenceSummary {
-  const existing = readStopBoundaryAt(prior);
-  if (existing) {
-    return prior ?? {};
-  }
-  return {
-    ...(prior ?? {}),
-    stopBoundaryAt: boundaryAt.toISOString(),
-    stopBoundarySource: source,
-  };
+  return mergeStopBoundaryProvenance(
+    prior,
+    buildStopBoundaryProvenance(boundaryAt, source, clockAuthority),
+  );
 }
 
 export function mergePauseDetectedAt(
@@ -359,6 +452,12 @@ export function retireActiveStopBoundaryAfterMovement(
   if (typeof prior?.stopBoundarySource === 'string') {
     next.lastPauseBoundarySource = prior.stopBoundarySource;
   }
+  if (typeof prior?.stopBoundaryClockAuthority === 'string') {
+    next.lastPauseBoundaryClockAuthority = prior.stopBoundaryClockAuthority;
+  }
+  if (typeof prior?.stopBoundaryTrust === 'boolean') {
+    next.lastPauseBoundaryTrust = prior.stopBoundaryTrust;
+  }
   if (typeof prior?.stopBoundaryCandidateReason === 'string') {
     next.lastPauseBoundaryCandidateReason = prior.stopBoundaryCandidateReason;
   }
@@ -367,6 +466,8 @@ export function retireActiveStopBoundaryAfterMovement(
 
   delete next.stopBoundaryAt;
   delete next.stopBoundarySource;
+  delete next.stopBoundaryClockAuthority;
+  delete next.stopBoundaryTrust;
   delete next.stopBoundaryCandidateReason;
   delete next.stopBoundaryContradictions;
   delete next.stopBoundaryEvidenceState;

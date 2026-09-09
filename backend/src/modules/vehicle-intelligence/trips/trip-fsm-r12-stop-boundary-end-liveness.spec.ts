@@ -12,6 +12,7 @@ import {
 import {
   mergeProviderStopBoundaryCandidate,
   readStopBoundaryAt,
+  buildStopBoundaryProvenance,
   resolveProviderStopBoundaryCandidate,
   retireActiveStopBoundaryAfterMovement,
 } from './trip-fsm-evidence-state';
@@ -80,6 +81,7 @@ describe('R12 provider stop boundary candidate', () => {
         workerNow: WORKER_NOW,
         lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
         existingStopBoundaryAt: readStopBoundaryAt(summary),
+        existingStopBoundarySummary: summary,
       }),
     ).toBeNull();
   });
@@ -155,6 +157,7 @@ describe('R12 boundary-backed empty-core silence', () => {
       profile: 'ICE',
       workerNow: WORKER_NOW,
       stopBoundaryAt: STOP_BOUNDARY,
+      stopBoundarySource: 'provider_stationary_vls',
       hasCrediblePostBoundaryMovement: false,
     });
     expect(gate.eligible).toBe(true);
@@ -164,7 +167,11 @@ describe('R12 boundary-backed empty-core silence', () => {
 
   it('K7 — fresh engineLoad contradiction blocks until stale, then boundary-backed silence progresses', () => {
     const fresh = assessBoundaryBackedEmptyCoreSilence({
-      stopBoundaryAt: STOP_BOUNDARY,
+      stopBoundaryProvenance: buildStopBoundaryProvenance(
+        STOP_BOUNDARY,
+        'provider_stationary_vls',
+        'PROVIDER_EVENT_TIME',
+      ),
       operationalInactiveMs: 130_000,
       minInactivityBeforeCusumMs: MIN_INACTIVITY,
       vlsEvidence: classifyEmptyCoreVlsInactivity({
@@ -319,7 +326,11 @@ describe('R12 fresh contradiction and resume', () => {
 
   it('K6 — fresh route motion blocks boundary-backed silence', () => {
     const blocked = assessBoundaryBackedEmptyCoreSilence({
-      stopBoundaryAt: STOP_BOUNDARY,
+      stopBoundaryProvenance: buildStopBoundaryProvenance(
+        STOP_BOUNDARY,
+        'provider_stationary_vls',
+        'PROVIDER_EVENT_TIME',
+      ),
       operationalInactiveMs: 130_000,
       minInactivityBeforeCusumMs: MIN_INACTIVITY,
       vlsEvidence: classifyEmptyCoreVlsInactivity({
