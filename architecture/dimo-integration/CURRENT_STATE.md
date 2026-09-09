@@ -88,7 +88,7 @@ Do not treat pre-R9 Production observations as current state.
 
 | Gap | Status |
 |-----|--------|
-| Natural R9 webhook wake end-to-end delivery | **PARTIALLY VALIDATED** — first natural start wake on tokenId 187361 (DIM-EV-KS-MS-661-R9-001); payload archive + efficiency gaps remain (DIM-GAP-006) |
+| Natural R9 webhook wake end-to-end delivery | **PARTIALLY VALIDATED** — natural **start** wake reconfirmed tokenId 187361 @ R11 `f7eb94cb…` (DIM-EV-KS-MS-661-R9-002); first observation @ `684950419…` (DIM-EV-KS-MS-661-R9-001); in-trip/end-path wake + payload archive **OPEN** (DIM-GAP-006) |
 | Full fleet-wide trigger inventory beyond active R9 cohort | **PARTIAL** — GET-based method established for audited cohort (DIM-GAP-002) |
 | Complete DIMO env flag matrix | **UNKNOWN** (DIM-GAP-003) |
 | Segment reconciliation ownership vs Trip Detection | **PARTIAL** (DIM-GAP-001) |

@@ -213,6 +213,17 @@ nodes:
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_R11_SCENARIO_MATRIX_2026-09-08.md
 
+  - id: TDL-EVID-KS-MS-661-R11-NATURAL-001
+    type: evidence
+    title: KS MS 661 R11 natural drive five-axis forensics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Natural drive 2026-09-09 @ f7eb94cb; trip 3b26019d; A/B/D PASS, C INCONCLUSIVE, E FAIL;
+      0x POSSIBLE_END; stopBoundaryAt null; ONGOING @ audit; empty-core + stale VLS block reproduced.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md
+
   - id: TDL-TEST-R10-001
     type: test_evidence
     title: R10 motor-off pause and end-cycle finalize tests
@@ -275,6 +286,7 @@ nodes:
       - TDL-EVID-KS-MS-661-002
       - TDL-EVID-KS-MS-661-TEMPORAL-001
       - TDL-EVID-KS-MS-661-REPRO-001
+      - TDL-EVID-KS-MS-661-R11-NATURAL-001
 
   - id: TDL-EVID-R11-IMPL-001
     type: evidence
