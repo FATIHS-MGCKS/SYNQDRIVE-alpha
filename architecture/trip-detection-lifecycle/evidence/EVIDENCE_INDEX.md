@@ -116,6 +116,18 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 ---
 
+## R11 — empty-core evidence implementation (2026-09-08)
+
+| Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
+|-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
+| TDL-EVID-R11-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) | `2026-09-08T23:45:00Z` | PR #1584 branch | Provider anchor, stop boundary, wake preemption, postgres+BullMQ Scenario C+I; PD-2 off | IMPLEMENTED_CI | Not deployed; KS MS 661 absent-VLS limit remains |
+| TDL-TEST-R11-001 | CURRENT_TEST | [trip-fsm-r11-empty-core-evidence.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r11-empty-core-evidence.spec.ts) | `2026-09-08T23:45:00Z` | PR #1584 | Unit scenarios A–H | CONFIRMED_CI | — |
+| TDL-TEST-R11-002 | CURRENT_TEST | [trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts) | `2026-09-08T23:45:00Z` | PR #1584 | Scenario C full chain via processActiveTick → queue → COMPLETED | CONFIRMED_CI | redis-memory-server; not production load |
+| TDL-TEST-R11-003 | CURRENT_TEST | [trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts) | `2026-09-08T23:45:00Z` | PR #1584 | Scenario I queue/wake/concurrency | CONFIRMED_CI | — |
+| TDL-TEST-R11-004 | CURRENT_TEST | [trip-r11-scaling-simulation.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-scaling-simulation.spec.ts) | `2026-09-08T23:45:00Z` | PR #1584 | Synthetic scaling probe 5/1k/10k | CONFIRMED_CI | Measured enqueue only — not production load |
+
+---
+
 ## Explicit non-artifacts
 
 - **Competing authority paths** — must not be created under `architecture/trip-fsm/` or `docs/architecture/trip-fsm/`

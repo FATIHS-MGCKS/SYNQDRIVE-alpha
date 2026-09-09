@@ -1206,8 +1206,14 @@ export function assessActiveContinuity(
   recentPoints: TripCoreDataPoint[],
   perfHasActivity: boolean,
   profile: string = 'UNKNOWN',
+  resumeAfterStopAt?: Date | null,
 ): ContinuityAssessment {
-  if (recentPoints.length === 0) {
+  const scopedPoints =
+    resumeAfterStopAt != null
+      ? filterCorePointsAfterBoundary(recentPoints, resumeAfterStopAt)
+      : recentPoints;
+
+  if (scopedPoints.length === 0) {
     return {
       verdict: 'POSSIBLE_END',
       endMode: END_DETECTION_MODES.NO_ACTIVITY_TIMEOUT,
@@ -1216,14 +1222,14 @@ export function assessActiveContinuity(
     };
   }
 
-  const act = evaluateActivityWindow(recentPoints, profile);
-  const inact = evaluateInactivityWindow(recentPoints, profile);
+  const act = evaluateActivityWindow(scopedPoints, profile);
+  const inact = evaluateInactivityWindow(scopedPoints, profile);
   const windowMs =
-    recentPoints.length >= 2
-      ? new Date(recentPoints[recentPoints.length - 1].timestamp).getTime() -
-        new Date(recentPoints[0].timestamp).getTime()
+    scopedPoints.length >= 2
+      ? new Date(scopedPoints[scopedPoints.length - 1].timestamp).getTime() -
+        new Date(scopedPoints[0].timestamp).getTime()
       : 0;
-  const freq = evaluateFrequency(recentPoints, windowMs, profile);
+  const freq = evaluateFrequency(scopedPoints, windowMs, profile);
 
   const isEvOrHybrid = profile === 'EV' || profile === 'HYBRID';
 
@@ -1357,6 +1363,15 @@ export function assessActiveContinuity(
  * This prevents devices with slow ignition-off reporting from indefinitely
  * blocking trip finalization.
  */
+export function filterCorePointsAfterBoundary(
+  points: TripCoreDataPoint[],
+  boundaryAt: Date | null | undefined,
+): TripCoreDataPoint[] {
+  const anchorMs = boundaryAt?.getTime();
+  if (anchorMs == null) return points;
+  return points.filter((p) => new Date(p.timestamp).getTime() > anchorMs);
+}
+
 export function hasActivityResumed(
   recentPoints: TripCoreDataPoint[],
   profile: string = 'UNKNOWN',

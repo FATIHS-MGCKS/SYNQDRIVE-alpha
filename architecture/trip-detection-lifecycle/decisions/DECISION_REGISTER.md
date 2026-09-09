@@ -14,6 +14,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R9-CX-001 | DIMO webhook → Trip wake delegation boundary | VALIDATED | TDL-EVID-R9-AUDIT-001; [DIM-DEC-R9-001](../../dimo-integration/decisions/DECISION_REGISTER.md) |
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
+| TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; design basis PR #1583 |
 
 ---
 
@@ -150,3 +151,20 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **WHY** | reconcile/afterSnapshot/scheduleDurable paths preserved pending but never scheduled retry |
 | **CHANGE** | scheduleUnknownContinuationRetryHandoff applied consistently with explicit enqueue outcomes |
 | **EVIDENCE** | TDL-TEST-R9-001 |
+
+---
+
+## TDL-DEC-R11-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **NUMBERING** | Trip Detection decision register R11 — distinct from R9 canary / unrelated CI R11 labels |
+| **DESIGN BASIS** | PR #1583 documentation (`a352e9bcc`) — referenced, not merged into runtime branch |
+| **BEFORE** | Worker-time empty-core anchor; stale VLS/engine-load blocks; inner gate reason overwritten; no pause tagging; fixed 30 s tick only |
+| **CHANGE** | Provider operational anchor; `stopBoundaryAt` + pre-boundary corroboration; pause detection; inner/outer forensics; fetch taxonomy; bounded backoff; active continuity post-boundary filter; **no PD-2**; **no default 45 s TTL** |
+| **TIME BOUNDARIES** | End corroboration + operational silence: **120 s** (`TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`); backoff 30–600 s + jitter |
+| **VALIDATION** | TDL-EVID-R11-IMPL-001; Jest scenarios A–J (C postgres NOT_RUN in default CI) |
+| **PRODUCTION STATUS** | **Not deployed** — branch implementation only |
+| **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; no provider subscription changes |
+| **EVIDENCE** | TDL-EVID-R11-IMPL-001 |

@@ -79,6 +79,8 @@ export interface DetectorContext {
   activeTripId?: string | null;
   possibleEndAt?: Date | null;
   endValidationAttempts?: number;
+  /** Provider stop boundary — only post-boundary core points count for continuity. */
+  resumeAfterStopAt?: Date | null;
 }
 
 // ═══════════════════════════════════════════════════════════════

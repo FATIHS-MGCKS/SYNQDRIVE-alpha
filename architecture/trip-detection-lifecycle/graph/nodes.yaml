@@ -202,6 +202,68 @@ nodes:
     evidence:
       - TDL-EVID-R10-KS-MX-001
 
+  - id: TDL-DEC-R11-001
+    type: decision
+    title: Empty-core evidence contract (pause, provider anchor, stop boundary)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Provider operational anchor; stopBoundaryAt corroboration; pause tagging; inner forensics;
+      fetch taxonomy; bounded backoff; no PD-2; no default 45s TTL. Implemented on branch, not deployed.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-R11-IMPL-001
+
+  - id: TDL-EVID-R11-IMPL-001
+    type: evidence
+    title: TDL-DEC-R11-001 implementation record
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Runtime implementation + Jest scenarios; design basis PR 1583; not production validated.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md
+
+  - id: TDL-TEST-R11-001
+    type: test_evidence
+    title: R11 empty-core evidence unit matrix
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: Unit scenarios A–H; gate/backoff specs.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-r11-empty-core-evidence.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-stop-evidence-semantics.spec.ts
+
+  - id: TDL-TEST-R11-002
+    type: test_evidence
+    title: R11 Scenario C postgres+BullMQ completion chain
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: processActiveTick empty-core gate through queue to COMPLETED+RESTING.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts
+
+  - id: TDL-TEST-R11-003
+    type: test_evidence
+    title: R11 Scenario I backoff/wake queue integration
+    source_type: CURRENT_TEST
+    epistemic_status: CONFIRMED
+    summary: BullMQ backoff, wake preemption, finalize not delayed, recovery enqueue.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts
+
+  - id: TDL-TEST-R11-004
+    type: test_evidence
+    title: R11 synthetic scaling probe
+    source_type: SYNTHETIC_TEST
+    epistemic_status: CONFIRMED
+    summary: Measured enqueue/backoff for 5/1k/10k — not production load proof.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-r11-scaling-simulation.spec.ts
+
   - id: TDL-DEC-R9-001
     type: decision
     title: R9 adaptive polling wake subsystem

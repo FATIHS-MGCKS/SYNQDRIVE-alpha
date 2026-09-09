@@ -35,7 +35,12 @@ export class ContinuityAssessmentDetector implements TripDetector {
     }
 
     const perfActive = evaluatePerformanceActivity(performanceReadings ?? []);
-    const assessment = assessActiveContinuity(coreDataPoints, perfActive, profile);
+    const assessment = assessActiveContinuity(
+      coreDataPoints,
+      perfActive,
+      profile,
+      ctx.resumeAfterStopAt ?? null,
+    );
 
     // Translate continuity verdict to detector finding
     // TRIGGERED = trip is active/idle (keep open)
