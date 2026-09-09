@@ -374,6 +374,16 @@ READY_TO_DRIVE = NO
 
 ---
 
+## 14 — Autonomous orchestrator run (2026-09-09 evening)
+
+Superseded by canonical post-run forensic closeout:
+
+**`EXP_021_AUDI_AUTONOMOUS_POST_RUN_FORENSIC_2026-09-09.md`**
+
+Summary: autonomous orchestrator auto-started session `0aa0dd4f-6436-43d1-ae51-e23eaf947927` after R12 deploy convergence; cadence/settlement channels **INVALID** (HF V2 policy blocker for token 187361); overall result **DEGRADED**.
+
+---
+
 ## Policy unchanged
 
 ```

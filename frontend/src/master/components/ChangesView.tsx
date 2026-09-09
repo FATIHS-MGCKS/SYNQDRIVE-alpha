@@ -581,6 +581,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-06T12:00:00.000Z',
   },
   {
+    id: 'dimo-exp-021-audi-autonomous-post-run-forensic-2026-09-09',
+    version: '4.9.1095',
+    title: 'EXP-021 Audi — autonomous post-run forensic closeout (DEGRADED)',
+    summary: [
+      'Autonomous orchestrator executed: auto-start YES; deploy converged before RC session.',
+      'Cadence/settlement INVALID: HF V2 policy blocker for token 187361 — 0/48 fixed observations.',
+      'Session 0aa0dd4f-… stuck RECORDING; CALIBRATION_SERIES_ID=null; no stop/complete.',
+      'Live RC PARTIAL: 5,606 obs default LEGACY polling; max speed gap 125.76s during drive.',
+      'R12 PARTIAL: gap split e62c964d→bd55f98d; POSSIBLE_END not terminalized.',
+      'WHOLE_TRIP_PRE_ROLL_CONFOUND_PRESENT=YES; settlement maturation NOT ASSESSABLE on Audi.',
+      'PRODUCTION_POLICY_CHANGE_AUTHORIZED=NO.',
+    ],
+    reason: 'Post +600s settlement maturation window forensic closeout after autonomous EXP-021 Audi drive.',
+    previousBehavior: 'Autonomous orchestrator armed; awaiting cadence phases and settlement shadow probes.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_AUTONOMOUS_POST_RUN_FORENSIC_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T20:40:00.000Z',
+  },
+  {
     id: 'dimo-exp-021-audi-cross-vehicle-supplemental-2026-09-08',
     version: '4.9.1074',
     title: 'EXP-021 — Audi KS MS 661 cross-vehicle supplemental pre-arm',

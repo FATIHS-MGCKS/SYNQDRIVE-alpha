@@ -183,6 +183,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Audi autonomous post-run forensic closeout (2026-09-09 evening)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DEGRADED** — settlement shadow **not executed**; cadence phases **blocked** |
+| Session | `0aa0dd4f-6436-43d1-ae51-e23eaf947927` — RECORDING (stuck; no stop/complete) |
+| Autonomous orchestrator | Deploy converged before RC; auto-start YES; phase activation FATAL @ 19:44:08 |
+| Root cause | `HF_RECOVERY_POLICY_V2_ENABLED=false` + canary-only + Audi token **187361** not allowlisted → LEGACY blocks cadence |
+| Fixed settlement | **0/48** observations; **0/8** probes; no maturation curves |
+| Live RC capture | **PARTIAL** — 5,606 obs default LEGACY polling; 649 speed rows; max gap 125.76s |
+| R12 natural run | Gap split `e62c964d`→`bd55f98d`; POSSIBLE_END not terminalized |
+| Whole-trip confound | **YES** — pre-RC wake trip overlaps activity window |
+| Mercedes comparison | **PARTIAL** — live gap sparsity similar; settlement maturation not replicated |
+| Policy | PRODUCTION_POLICY_CHANGE_AUTHORIZED=NO |
+| Evidence | `EXP_021_AUDI_AUTONOMOUS_POST_RUN_FORENSIC_2026-09-09.md` |
+
 ## EXP-021 — Audi cross-vehicle supplemental re-arm (2026-09-09)
 
 | Event | Detail |
