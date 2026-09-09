@@ -184,7 +184,7 @@ jobs:
               .cursor/rules/i18n.mdc|AGENTS.md)
                 return 0
                 ;;
-              frontend/scripts/i18n-hardcoded-scan.mjs|frontend/scripts/i18n-check.mjs|frontend/scripts/i18n-governance.mjs|frontend/scripts/i18n-pr-gate.mjs|frontend/scripts/i18n-shim-inventory.mjs)
+              frontend/scripts/i18n-*.mjs)
                 return 0
                 ;;
               frontend/scripts/lib/i18n-governance/*)

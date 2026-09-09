@@ -7,7 +7,7 @@ import { normalizeRepoPath } from './git-diff.mjs';
  * (pr-gate-policy, new-debt bootstrap relevance). The trusted
  * pull_request_target workflow keeps an inline duplicate classifier for
  * security (no PR-head checkout/execution). Parity is enforced by
- * authority-path-parity.test.ts and the classifier harness.
+ * i18n-pr-gate.test.ts (parity section) and the classifier harness.
  */
 
 /** Exact repo paths that are governance authority artifacts or machinery. */

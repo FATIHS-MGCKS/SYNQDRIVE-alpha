@@ -23,8 +23,8 @@ Patching individual missing paths does not prevent recurrence.
 | `frontend/scripts/lib/i18n-governance/authority-path-contract.mjs` | **Canonical SSOT** for checkout-based JS governance |
 | `frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs` | Delegates `isGovernanceAuthorityPath()` to contract |
 | `.github/workflows/i18n-authority-protection.yml` | Inline bash duplicate (required for `pull_request_target` security) |
-| `frontend/scripts/lib/i18n-governance/workflow-authority-classifier.mjs` | YAML mirror for drift detection (no execution) |
-| `frontend/src/i18n/authority-path-parity.test.ts` | Regression contract — fails CI on unexplained drift |
+| `frontend/scripts/lib/i18n-governance/workflow-authority-classifier.mjs` | Parses actual workflow YAML case patterns (no handwritten mirror, no execution) |
+| `frontend/src/i18n/i18n-pr-gate.test.ts` (P2.3.4 parity section) | Regression contract — fails CI on unexplained drift |
 
 **Why not a single manifest sourced by the workflow?**
 
@@ -58,7 +58,10 @@ Notable additions in this change:
 | `.github/workflows/*` | `all-github-workflows` | Layer 0 runs without checkout; all workflow files are security-critical. Canonical JS gate only marks `i18n-governance-new-debt.yml` as authority; other workflow changes fall to `otherPaths` in checkout-based partition. |
 
 Encoded in `TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES` and tested by
-`authority-path-parity.test.ts`.
+`i18n-pr-gate.test.ts` (P2.3.4 parity section).
+
+Workflow i18n script rule uses shell wildcard `frontend/scripts/i18n-*.mjs`
+(semantically equivalent to canonical prefix `frontend/scripts/i18n-` + `.mjs`).
 
 ---
 

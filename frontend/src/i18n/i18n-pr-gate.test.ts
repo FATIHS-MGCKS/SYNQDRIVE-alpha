@@ -32,6 +32,25 @@ import {
   PROTECTED_GOVERNANCE_PREFIXES,
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
 import { gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
+import {
+  CANONICAL_GOVERNANCE_EXACT_PATHS,
+  CANONICAL_GOVERNANCE_PREFIX_RULES,
+  isCanonicalGovernanceAuthorityPath,
+  TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES,
+} from '../../scripts/lib/i18n-governance/authority-path-contract.mjs';
+import {
+  analyzeExpectedVsParsedWorkflowParity,
+  analyzeParsedWorkflowCanonicalParity,
+  assertWorkflowYamlSecurityInvariants,
+  classifyPathsWithParsedWorkflow,
+  evaluateSyntheticBoundaryWitnesses,
+  extractIsAuthorityPathCasePatterns,
+  isParsedWorkflowAuthorityPath,
+  isParsedWorkflowProductOrPresentationPath,
+  loadParsedWorkflowAuthorityPatterns,
+  mutatePatternsBroadenI18nScriptWildcard,
+  mutatePatternsReplaceWildcardWithExactList,
+} from '../../scripts/lib/i18n-governance/workflow-authority-classifier.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const manifestPath = join(__dirname, 'i18n-debt-classifications.json');
@@ -39,10 +58,15 @@ const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
 const workflowPath = join(repoRoot, '.github/workflows/i18n-governance-new-debt.yml');
+const authorityProtectionWorkflowPath = join(
+  repoRoot,
+  '.github/workflows/i18n-authority-protection.yml',
+);
 const authorityProtectionClassifierHarnessPath = join(
   repoRoot,
   '.cursor/scripts/i18n-authority-protection-classifier.harness.sh',
 );
+const GOVERNANCE_PARITY_BASE_SHA = '2f0d128da1ee966250da200a2a17f2a5e24f1a73';
 const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
 const removedBootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
 
@@ -775,7 +799,7 @@ describe('P2.3.2 authority protection — extracted workflow classifier harness'
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     expect(result.stdout).toContain('Harness complete:');
-    expect(result.stdout).toMatch(/8\/8 tests passed/);
+    expect(result.stdout).toMatch(/9\/9 tests passed/);
     expect(result.stdout).toContain('PR #1581 authority paths + trusted owner label pass');
     expect(result.stdout).toContain('mixed authority + product change fails even with trusted owner approval');
     expect(result.stdout).toContain('negative control: broken workflow incorrectly approves mixed change');
@@ -1298,6 +1322,157 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
     const gateSource = readFileSync(prGateCliPath, 'utf8');
     expect(gateSource).toContain('function shouldEmitGithubAnnotations');
     expect(gateSource).toMatch(/if \(emitAnnotations\) \{\s*\n\s*emitGithubAnnotation/);
+  });
+});
+
+describe('P2.3.4 authority path contract — parsed workflow structural parity', () => {
+  function gitShowAtRef(ref: string, path: string) {
+    return execFileSync('git', ['show', `${ref}:${path}`], { cwd: repoRoot, encoding: 'utf8' });
+  }
+
+  function effectiveDiffPaths(baseSha: string) {
+    return execFileSync('git', ['diff', '--name-only', baseSha], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+  }
+
+  it('extracts authority case patterns from actual workflow YAML (no handwritten mirror)', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const patterns = extractIsAuthorityPathCasePatterns(workflowYaml);
+    expect(patterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(patterns).toContain('.github/workflows/*');
+    expect(patterns).not.toContain('frontend/scripts/i18n-check.mjs');
+  });
+
+  it('parsed workflow structurally covers canonical exact paths and prefix rules', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const analysis = analyzeParsedWorkflowCanonicalParity(patterns);
+    expect(analysis.canonicalOnly, JSON.stringify(analysis.canonicalOnly)).toEqual([]);
+    expect(analysis.unexplainedWorkflowExact, JSON.stringify(analysis.unexplainedWorkflowExact)).toEqual(
+      [],
+    );
+    expect(analysis.prefixMismatches, JSON.stringify(analysis.prefixMismatches)).toEqual([]);
+  });
+
+  it('synthetic boundary witness matrix matches canonical and parsed workflow semantics', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const witnesses = evaluateSyntheticBoundaryWitnesses(patterns);
+    const failures = witnesses.filter((entry) => !entry.ok);
+    expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
+  });
+
+  it('frontend/scripts/i18n-future-check.mjs agrees across canonical and parsed workflow', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const path = 'frontend/scripts/i18n-future-check.mjs';
+    expect(isCanonicalGovernanceAuthorityPath(path)).toBe(true);
+    expect(isParsedWorkflowAuthorityPath(path, patterns)).toBe(true);
+    expect(isParsedWorkflowProductOrPresentationPath(path, patterns)).toBe(false);
+  });
+
+  it('documents intentional .github/workflows/* workflow-only expansion', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const path = '.github/workflows/future-workflow.yml';
+    expect(isCanonicalGovernanceAuthorityPath(path)).toBe(false);
+    expect(isParsedWorkflowAuthorityPath(path, patterns)).toBe(true);
+    const parity = analyzeExpectedVsParsedWorkflowParity(patterns, [path]);
+    expect(parity.workflowOnly).toEqual([path]);
+    expect(parity.canonicalOnly).toEqual([]);
+    expect(parity.semanticDifferences).toEqual([]);
+    expect(TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES[0]?.id).toBe('all-github-workflows');
+  });
+
+  it('mutation: finite i18n script list breaks prefix semantics for future scripts', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const stale = mutatePatternsReplaceWildcardWithExactList(patterns);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-future-check.mjs', stale)).toBe(
+      false,
+    );
+    const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.prefixMismatches.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: broadened frontend/scripts/i18n-* wildcard fails synthetic .ts witness', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const broadened = mutatePatternsBroadenI18nScriptWildcard(patterns);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-future-check.ts', broadened)).toBe(
+      true,
+    );
+    const witnesses = evaluateSyntheticBoundaryWitnesses(broadened);
+    const tsWitness = witnesses.find((entry) => entry.path === 'frontend/scripts/i18n-future-check.ts');
+    expect(tsWitness?.ok).toBe(false);
+  });
+
+  it('mutation: removing a canonical exact path from parsed patterns is detected', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const stale = patterns.filter(
+      (pattern) => !pattern.includes('translation-coverage-baseline.json'),
+    );
+    const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.canonicalOnly).toContain('frontend/src/i18n/translation-coverage-baseline.json');
+  });
+
+  it('pr-gate-policy delegates to canonical contract for all exact paths', () => {
+    for (const path of CANONICAL_GOVERNANCE_EXACT_PATHS) {
+      expect(isGovernanceAuthorityPath(path)).toBe(isCanonicalGovernanceAuthorityPath(path));
+    }
+  });
+
+  it('prefix rule accepts only .mjs under frontend/scripts/i18n-', () => {
+    const rule = CANONICAL_GOVERNANCE_PREFIX_RULES.find(
+      (entry) => entry.prefix === 'frontend/scripts/i18n-',
+    );
+    expect(rule).toBeDefined();
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    expect(isCanonicalGovernanceAuthorityPath('frontend/scripts/i18n-check.mjs')).toBe(true);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-check.mjs', patterns)).toBe(true);
+    expect(isCanonicalGovernanceAuthorityPath('frontend/scripts/i18n-check.ts')).toBe(false);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-check.ts', patterns)).toBe(false);
+  });
+
+  it('workflow YAML satisfies pull_request_target security invariants', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    assertWorkflowYamlSecurityInvariants(workflowYaml);
+    expect(workflowYaml).not.toMatch(/uses:\s*actions\/checkout/);
+  });
+
+  it('PR effective diff is bootstrap-safe under BASE trusted classifier (2f0d128d)', () => {
+    const baseWorkflowYaml = gitShowAtRef(
+      GOVERNANCE_PARITY_BASE_SHA,
+      '.github/workflows/i18n-authority-protection.yml',
+    );
+    const basePatterns = extractIsAuthorityPathCasePatterns(baseWorkflowYaml);
+    const diffPaths = effectiveDiffPaths(GOVERNANCE_PARITY_BASE_SHA).filter(
+      (path) => path !== 'frontend/src/i18n/authority-path-parity.test.ts',
+    );
+    expect(diffPaths).not.toContain('frontend/src/i18n/authority-path-parity.test.ts');
+    const classified = classifyPathsWithParsedWorkflow(basePatterns, diffPaths);
+    expect(classified.productPaths, JSON.stringify(classified.productPaths)).toEqual([]);
+    expect(classified.authorityPaths.length).toBeGreaterThan(0);
+  });
+
+  it('PR effective diff is authority-only under corrected HEAD trusted classifier', () => {
+    const headPatterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const diffPaths = effectiveDiffPaths(GOVERNANCE_PARITY_BASE_SHA);
+    const classified = classifyPathsWithParsedWorkflow(headPatterns, diffPaths);
+    expect(classified.productPaths, JSON.stringify(classified.productPaths)).toEqual([]);
+    expect(classified.authorityPaths.length).toBeGreaterThan(0);
+  });
+
+  it('preserves #1581/#1585 authority paths as authority-only under parsed HEAD classifier', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const pr1581Paths = [
+      'frontend/src/i18n/i18n-structural-check.test.ts',
+      'frontend/src/i18n/translation-coverage-baseline.json',
+      'frontend/src/i18n/translation-coverage.test.ts',
+    ];
+    for (const path of pr1581Paths) {
+      expect(isParsedWorkflowAuthorityPath(path, patterns)).toBe(true);
+      expect(isParsedWorkflowProductOrPresentationPath(path, patterns)).toBe(false);
+    }
   });
 });
 
