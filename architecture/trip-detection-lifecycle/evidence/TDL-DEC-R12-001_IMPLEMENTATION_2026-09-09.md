@@ -4,7 +4,7 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-R12-IMPL-001 |
 | **Decision** | TDL-DEC-R12-001 |
-| **Status** | **CI_VALIDATED** @ pending final clock-authority head — not deployed |
+| **Status** | **CI_VALIDATED** @ `e5b21b0d3` run [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197) — not deployed |
 | **Motivation** | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) (`TDL-EVID-KS-MS-661-R11-NATURAL-001`) — Axis E FAIL |
 | **Baseline main @ task start** | `c343fab9aa8930b0023702bd4f3c31afd34393fa` (#1590 merge) |
 | **PR** | #1591 |
@@ -18,11 +18,11 @@
 | [34358728200](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34358728200) | `c4cd5510a…` | Trip FSM Production Readiness CI | **PASS** | Remediation — dedicated R12 workflow jobs (superseded by i18n gate fix) |
 | [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547) | `091c478af…` | Trip FSM Production Readiness CI | **PASS** | R12 via extended `test:trip-r11:*` scripts; i18n-authority-protection PASS |
 | [34362315744](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34362315744) | `23cf5c92f…` | Trip FSM Production Readiness CI | **PASS** | Docs-only authority @ prior remediation head |
-| _pending_ | _final clock head_ | Trip FSM Production Readiness CI | _pending_ | Final clock-authority hardening |
+| [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197) | `e5b21b0d3` | Trip FSM Production Readiness CI | **PASS** | Final clock-authority hardening; R12-CLOCK + R12-ROUTE regressions |
 
 **TDL-EVID-R12-CI-PASS-001:** Remediation CI green @ `091c478af…` run [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547).
 
-**TDL-EVID-R12-CLOCK-001:** Final clock-authority hardening — pending CI on final PR head.
+**TDL-EVID-R12-CLOCK-001:** Final clock-authority hardening CI green @ `e5b21b0d3` run [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197).
 
 ## Intensive review remediation (post-`f92cd1ff…`)
 
@@ -58,8 +58,8 @@
 
 ### Regression IDs (clock + route)
 
-| ID | Result (local pre-push) |
-|----|-------------------------|
+| ID | Result @ `e5b21b0d3` run 34377256197 |
+|----|--------------------------------------|
 | R12-CLOCK-1..6 | PASS |
 | R12-ROUTE-1..3 | PASS |
 
