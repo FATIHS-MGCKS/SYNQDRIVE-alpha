@@ -601,6 +601,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-08T19:15:00.000Z',
   },
   {
+    id: 'dimo-exp-021-audi-redrive-prearm-2026-09-09',
+    version: '4.9.1094',
+    title: 'EXP-021 Audi — final pre-drive re-arm (new session)',
+    summary: [
+      'New RC session 3cc8465a-… READY for KS MS 661; old 619284b3-… ABORTED not reused.',
+      'Fresh-trip gate PASS: prior trip e324ee8c-… COMPLETED; Trip FSM RESTING.',
+      'BLOCKER: LIVE_TELEMETRY_READY=NO — DIMO provider age ~8.5h; VEHICLE_WAKE_REQUIRED=YES.',
+      'Settlement integrity PASS: PR #1570 hardened code on prod; 8 probes × 6 ages = 48 schedulable.',
+      'startRecording NOT called — awaiting operator START EXP-021 NOW after wake + re-qualify.',
+    ],
+    reason: 'Operator re-armed EXP-021 Audi cross-vehicle supplemental after prior non-RC physical drive.',
+    previousBehavior: 'Prior Audi session ABORTED; physical drive occurred outside Reference Capture.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md §13',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T04:35:00.000Z',
+  },
+  {
     id: 'dimo-exp-021-audi-post-drive-no-rc-capture-2026-09-08',
     version: '4.9.1075',
     title: 'EXP-021 Audi — physical drive outside Reference Capture',

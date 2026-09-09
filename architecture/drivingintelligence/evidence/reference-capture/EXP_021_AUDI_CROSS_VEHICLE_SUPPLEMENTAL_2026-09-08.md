@@ -249,6 +249,131 @@ No retrospective EXP-021 drive evidence fabricated. All preflight evidence prese
 
 ---
 
+## 13 — Final pre-drive re-arm (2026-09-09)
+
+Operator requested fresh EXP-021 Audi run after prior attempt (`619284b3-…`) was ABORTED without `startRecording`.
+
+### Production authority
+
+| Field | Value |
+|-------|-------|
+| `CURRENT_MAIN_SHA` | `2f0d128da1ee966250da200a2a17f2a5e24f1a73` |
+| `PRODUCTION_SHA` | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` |
+| `PR_1570_INCLUDED` | **YES** (`7b9a78571` ancestor; `buildProspectiveProbeBForPhase` present on prod) |
+| `PRODUCTION_REPLICAS_HEALTHY` | **YES** (3001 + 3002 ok) |
+| `DATABASE_HEALTHY` | **YES** |
+| `REDIS_HEALTHY` | **YES** |
+| `BULLMQ_HEALTHY` | **YES** (recording queue 0/0/0) |
+| `REFERENCE_CAPTURE_ENABLED_EFFECTIVE` | **true** |
+| `REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_EFFECTIVE` | **true** |
+
+### Vehicle resolution (production authority)
+
+| Field | Value |
+|-------|-------|
+| `PLATE` | KS MS 661 |
+| `MAKE` | Audi |
+| `MODEL` | A4 |
+| `YEAR` | 2016 |
+| `ORGANIZATION_ID` | `faa710c9-6d91-4079-a7d5-91fdccdec14a` |
+| `VEHICLE_ID` | `c10351f8-b6a2-4258-947f-631aeaa6d359` |
+| `TOKEN_ID` | **187361** |
+| `DIMO_VEHICLE_ID` | `187361` |
+| `DIMO_INTEGRATION_STATUS` | **CONNECTED** |
+| `PLATE_MATCH` | **YES** |
+| `VEHICLE_ID_RESOLVED` | **YES** |
+| `TOKEN_ID_RESOLVED` | **YES** |
+| `DIMO_INTEGRATION_CONNECTED` | **YES** |
+
+### Fresh trip boundary
+
+| Field | Value |
+|-------|-------|
+| `AUDI_ACTIVE_TRIP_ID` | **NONE** |
+| `AUDI_PREVIOUS_TRIP_COMPLETED` | **YES** (`e324ee8c-…`, `tripStatus=COMPLETED`) |
+| `AUDI_TRIP_FSM_RESTING` | **YES** (`RESTING`, `activeTripId=null`) |
+| `AUDI_FRESH_TRIP_BOUNDARY_READY` | **YES** |
+
+### Live telemetry (blocking)
+
+Qualified at `2026-09-09T04:27:56Z` via live DIMO `signalsLatest`:
+
+| Field | Value |
+|-------|-------|
+| `WALL_CLOCK_NOW_UTC` | `2026-09-09T04:27:56.126Z` |
+| `LATEST_PROVIDER_TIMESTAMP` | `2026-09-08T19:59:22Z` |
+| `LATEST_INGEST_TIMESTAMP` | `2026-09-09T04:27:57.947Z` |
+| `TELEMETRY_PROVIDER_AGE_SECONDS` | **30516** (~8.5 h) |
+| `TELEMETRY_INGEST_AGE_SECONDS` | 0 |
+| `LIVE_TELEMETRY_READY` | **NO** (`WAIT_FOR_VEHICLE_WAKE`) |
+
+Vehicle asleep since prior physical drive end (~19:59 UTC). Operator must wake/start Audi and re-qualify.
+
+### Audi signal preflight
+
+Preflight at PRE-ARM (`2026-09-09T04:29:50Z`): **30** broad observation fields, `ICE_GASOLINE`, manifest `1.1.0`.
+
+| Signal | Available | Historical | Notes |
+|--------|-----------|------------|-------|
+| speed | **YES** | YES | `CAN_VEHICLE_SPEED` / `speed` |
+| RPM | **YES** | YES | `CAN_ENGINE_RPM` / `powertrainCombustionEngineSpeed` |
+| throttle/TPS | **YES** | YES | `CAN_ENGINE_THROTTLE_POSITION` + `CAN_ENGINE_TPS` |
+| engine load | **YES** | YES | `CAN_ENGINE_LOAD` / `obdEngineLoad` |
+| gear | **NO** | NO | Not in Audi manifest |
+| longitudinal acceleration | **NO** | NO | Not in Audi manifest |
+
+### Global clean state
+
+| Field | Value |
+|-------|-------|
+| `ACTIVE_RECORDING_RC_SESSIONS` | **0** |
+| `ACTIVE_CALIBRATION_SERIES` | **0** |
+| `ACTIVE_SETTLEMENT_EXPERIMENTS` | **0** |
+| `SETTLEMENT_QUEUE_PENDING_EXECUTING` | **0** |
+| `OLD_SESSION_619284b3_STATUS` | **ABORTED** (not reused) |
+
+### New Reference Capture session
+
+| Field | Value |
+|-------|-------|
+| `NEW_SESSION_ID` | **`3cc8465a-6977-4912-981c-63052398514c`** |
+| `SESSION_STATUS` | **READY** |
+| `SESSION_READY` | **YES** |
+| `PREARM_READY` | **YES** |
+| `startRecording` called | **NO** |
+
+### Settlement integrity (deployed hardened runtime)
+
+| Gate | Value |
+|------|-------|
+| `SETTLEMENT_TIMING_INTEGRITY_PASS` | **YES** |
+| `WHOLE_TRIP_SHADOW_END_RACE_SAFE` | **YES** |
+| `ALL_8_FIXED_PROBES_SUPPORTED` | **YES** |
+| `ALL_48_FIXED_OBSERVATIONS_SCHEDULABLE` | **YES** |
+| Policy tests | 9/9 PASS on production (`reference-capture-settlement-shadow.policy.spec.ts`) |
+
+Cadence: **60 → 30 → 20 → 10**  
+Settlement ages: **+30/+60/+120/+180/+300/+600** s
+
+### Final go gate
+
+```
+EXP021_AUDI_PREFLIGHT_PASS = NO
+READY_TO_DRIVE = NO
+```
+
+| Gate | Value |
+|------|-------|
+| `LIVE_TELEMETRY_READY` | **NO** |
+| `AUDI_FRESH_TRIP_BOUNDARY_READY` | **YES** |
+| `SESSION_READY` | **YES** |
+| `SETTLEMENT_TIMING_INTEGRITY_PASS` | **YES** |
+| `WHOLE_TRIP_SHADOW_END_RACE_SAFE` | **YES** |
+
+**Blocker:** `LIVE_TELEMETRY_READY = NO` — wake Audi, then re-qualify before `START EXP-021 NOW`.
+
+---
+
 ## Policy unchanged
 
 ```
@@ -257,4 +382,5 @@ PRODUCTION_SCORE_CHANGED = NO
 PRODUCTION_DETECTORS_CHANGED = NO
 PRODUCTION_TIRE_BRAKE_CHANGED = NO
 TRIP_FSM_CHANGED = NO
+ATE_CHANGED = NO
 ```
