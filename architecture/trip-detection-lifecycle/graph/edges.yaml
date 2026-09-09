@@ -76,6 +76,12 @@ edges:
   - from: TDL-EVID-KS-MS-661-PROPOSAL-001
     relation: supports
     to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-R11-NATURAL-001
+    relation: supports
+    to: TDL-DEC-R11-001
+  - from: TDL-EVID-KS-MS-661-R11-NATURAL-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
   - from: TDL-EVID-R11-IMPL-001
     relation: supports
     to: TDL-DEC-R11-001

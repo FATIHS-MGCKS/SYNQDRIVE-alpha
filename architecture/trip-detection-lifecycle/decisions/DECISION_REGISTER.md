@@ -168,6 +168,6 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **TIME BOUNDARIES** | End corroboration + operational silence: **120 s** (`TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`); backoff 30–600 s + jitter; **45 s positive TTL = PROPOSED only (PD-3, not activated)** |
 | **VALIDATION** | TDL-EVID-R11-IMPL-001 — Jest scenarios A–**J** CI PASS @ merge `32526c95a`; design prototype S1–S9 (TDL-EVID-KS-MS-661-SCENARIOS-001) |
 | **MERGE STATUS** | **Merged to main** @ `32526c95a` (#1584) |
-| **PRODUCTION STATUS** | **Deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001) — **POST_DEPLOY_HEALTH_CONFIRMED**; natural Production behavior validation **pending** |
+| **PRODUCTION STATUS** | **Deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001) — **POST_DEPLOY_HEALTH_CONFIRMED**; scenario `KS_MS_661_NATURAL_DRIVE_R11`: start/resume **observed** (TDL-EVID-KS-MS-661-R11-NATURAL-001 Axes A/B/D PASS); end path **NOT validated** (Axis E FAIL — 0× POSSIBLE_END, `stopBoundaryAt` null) |
 | **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; Ignition-OFF DIMO webhook not registered; no provider subscription changes |
-| **EVIDENCE** | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-002; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-TEMPORAL-001; TDL-EVID-KS-MS-661-REPRO-001 |
+| **EVIDENCE** | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-002; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-TEMPORAL-001; TDL-EVID-KS-MS-661-REPRO-001; **TDL-EVID-KS-MS-661-R11-NATURAL-001** |
