@@ -283,6 +283,7 @@ async function main(): Promise<void> {
             TRIP_FSM_NEW_VERSION_PRESENT: tripFsmR12Present() ? 'YES' : 'NO',
           });
           phase = 'PREP';
+          // fall through to PREP handling in same iteration
         } else if (motion && motion.speedKmh != null && motion.speedKmh >= MOVEMENT_SPEED_KMH) {
           if (!movementSustainSince) movementSustainSince = Date.now();
           else if (Date.now() - movementSustainSince >= MOVEMENT_SUSTAIN_SEC * 1000) {
@@ -301,9 +302,11 @@ async function main(): Promise<void> {
           break;
         }
 
-        log('DEPLOY_WAIT', { deployRunning, sha, TARGET_SHA, r3001, r3002, ext, speedKmh: motion?.speedKmh ?? null });
-        await sleep(POLL_MS);
-        continue;
+        if (!deployReady) {
+          log('DEPLOY_WAIT', { deployRunning, sha, TARGET_SHA, r3001, r3002, ext, speedKmh: motion?.speedKmh ?? null });
+          await sleep(POLL_MS);
+          continue;
+        }
       }
 
       if (phase === 'PREP') {
