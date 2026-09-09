@@ -4,7 +4,7 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-R12-IMPL-001 |
 | **Decision** | TDL-DEC-R12-001 |
-| **Status** | **CI_VALIDATED** @ `e5b21b0d3` run [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197) — not deployed |
+| **Status** | **CI_VALIDATED** @ `db6451d8b` run [34378638735](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34378638735) — not deployed |
 | **Motivation** | [KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md](KS_MS_661_R11_NATURAL_DRIVE_2026-09-09.md) (`TDL-EVID-KS-MS-661-R11-NATURAL-001`) — Axis E FAIL |
 | **Baseline main @ task start** | `c343fab9aa8930b0023702bd4f3c31afd34393fa` (#1590 merge) |
 | **PR** | #1591 |
@@ -22,7 +22,7 @@
 
 **TDL-EVID-R12-CI-PASS-001:** Remediation CI green @ `091c478af…` run [34360964547](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34360964547).
 
-**TDL-EVID-R12-CLOCK-001:** Final clock-authority hardening CI green @ `e5b21b0d3` run [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197).
+**TDL-EVID-R12-CLOCK-001:** Final clock-authority hardening CI green @ `e5b21b0d3` run [34377256197](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34377256197); authority record @ `db6451d8b` run [34378638735](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34378638735).
 
 ## Intensive review remediation (post-`f92cd1ff…`)
 
