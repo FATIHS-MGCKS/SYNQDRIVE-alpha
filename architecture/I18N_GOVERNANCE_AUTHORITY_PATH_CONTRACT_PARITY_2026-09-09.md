@@ -114,3 +114,8 @@ patterns and rejects:
 - `missingExpectedPatterns` — declared canonical/trusted patterns absent from workflow
 - `unexpectedAuthorityPatterns` — undeclared wildcards or literals (e.g. `backend/private/*`)
 - `forbiddenDenyPatterns` — any explicit `return 1` case arm (deny shadows); only the trailing default `return 1` is permitted
+
+Bootstrap-safety regression uses `resolveEffectivePrChangedPaths()` (`pr-changed-paths.mjs`):
+GitHub three-dot `base.sha...head.sha` from pull_request event metadata (or `gh pr view` locally).
+Never two-dot `git diff origin/main` — that contaminates the path set when `origin/main` diverges from PR base.
+Classifier Git refs load workflow YAML only; they do not redefine the PR diff boundary.
