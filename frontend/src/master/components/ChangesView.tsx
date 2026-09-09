@@ -1543,6 +1543,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-10-oq28-certification-gate-2026-09-09',
+    version: '4.9.1033',
+    title: 'P1.8.3.10 — OQ-28 continuity recheck (24h gate)',
+    summary: [
+      'Narrow read-only certification gate from 2026-09-07T22:47:37Z through 2026-09-08T22:47:37Z threshold.',
+      'OQ-28 PARTIAL: segment broke at 2026-09-08T05:01:28Z after 22431s (<86400). PM2 cold restart; pm2-pre-deploy dump at 05:01:20Z.',
+      'Sep 8 17:40Z deploy to 68495041 (#1577 R10) broke subsequent segment. GitHub activity at 22:46Z did NOT cause production deploy.',
+      'Current segment from 2026-09-08T17:40:39Z. N2=EARLY. No production mutations.',
+    ],
+    reason: 'P1.8.3.10 final OQ-28 24h FULL_N2 certification gate — did Production maintain uninterrupted >=86400s from canonical candidate start?',
+    previousBehavior: 'P1.8.3.9: next candidate 2026-09-07T22:47:37Z; checkpoint 2026-09-08T22:47:37Z pending.',
+    details:
+      'architecture/P1_8_3_7_OQ_28_UNINTERRUPTED_24H_FULL_N2_CERTIFICATION_2026-09-06.md; architecture/scaling-process/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T01:50:00.000Z',
+  },
+  {
     id: 'p1-8-3-9-oq28-final-certification-recheck-2026-09-08',
     version: '4.9.1032',
     title: 'P1.8.3.9 — OQ-28 continuity recheck (PARTIAL)',
