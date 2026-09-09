@@ -23,7 +23,7 @@ Patching individual missing paths does not prevent recurrence.
 | `frontend/scripts/lib/i18n-governance/authority-path-contract.mjs` | **Canonical SSOT** for checkout-based JS governance |
 | `frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs` | Delegates `isGovernanceAuthorityPath()` to contract |
 | `.github/workflows/i18n-authority-protection.yml` | Inline bash duplicate (required for `pull_request_target` security) |
-| `frontend/scripts/lib/i18n-governance/workflow-authority-classifier.mjs` | Parses actual workflow YAML case patterns (no handwritten mirror, no execution) |
+| `frontend/scripts/lib/i18n-governance/workflow-authority-classifier.mjs` | Parses actual workflow YAML case arms + return semantics; unknown pattern syntax fails closed (no handwritten mirror, no execution) |
 | `frontend/src/i18n/i18n-pr-gate.test.ts` (P2.3.4 parity section) | Regression contract — fails CI on unexplained drift |
 
 **Why not a single manifest sourced by the workflow?**
