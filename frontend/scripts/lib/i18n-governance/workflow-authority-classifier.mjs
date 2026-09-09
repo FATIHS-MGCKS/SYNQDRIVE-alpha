@@ -8,21 +8,20 @@ import {
 } from './authority-path-contract.mjs';
 
 /**
- * Parse the inline is_authority_path() bash case statement from the trusted
- * workflow YAML and evaluate paths using extracted shell-case semantics.
- *
- * Does NOT execute workflow code. Does NOT maintain a handwritten classifier
- * mirror — case arms and return semantics are derived from YAML text only.
+ * Deliberately narrow structural parser for trusted is_authority_path() grammar.
+ * Parses workflow YAML text only — no eval, no execution, no handwritten mirror.
  */
 
 const AUTHORITY_FN_MARKER = 'is_authority_path() {';
+const CASE_HEADER = 'case "$path" in';
 
-/** Non-authority paths allowed in governance PRs without triggering mixed-change. */
 export const BOOTSTRAP_SAFE_NEUTRAL_EXACT_PATHS = [
   '.cursor/scripts/i18n-authority-protection-classifier.harness.sh',
+  'architecture/I18N_GOVERNANCE_AUTHORITY_PATH_CONTRACT_PARITY_2026-09-09.md',
+  'architecture/I18N_GOVERNANCE_WORKFLOW_AUTHORITY_PROTECTION_P2_3_4_2026-09-01.md',
 ];
 
-export const BOOTSTRAP_SAFE_NEUTRAL_PREFIXES = ['architecture/'];
+export const BOOTSTRAP_SAFE_NEUTRAL_PREFIXES = [];
 
 const UNSUPPORTED_PATTERN_CHAR_RE = /[\[\]{}!@#$%^&=+~`'"\\]/;
 
@@ -47,6 +46,13 @@ function resolveWorkflowScript(workflowYaml) {
   return input.includes(AUTHORITY_FN_MARKER) ? input : extractWorkflowRunScript(input);
 }
 
+function stripLineComments(text) {
+  return text
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n');
+}
+
 export function validateWorkflowPatternSyntax(pattern) {
   const normalized = String(pattern ?? '').trim();
   if (!normalized) {
@@ -62,9 +68,180 @@ export function validateWorkflowPatternSyntax(pattern) {
 }
 
 /**
- * Parse is_authority_path() case arms including per-arm return semantics.
- * return 0 => authority; return 1 => explicit non-authority for matched patterns.
+ * Parse supported grammar only:
+ * PATTERN[|PATTERN...])
+ *   return 0|1
+ *   ;;
  */
+export function parseAuthorityCaseBody(caseBody) {
+  const cleaned = stripLineComments(caseBody);
+  const arms = [];
+  const structuralErrors = [];
+  let position = 0;
+
+  while (position < cleaned.length) {
+    const leadingWhitespace = cleaned.slice(position).match(/^\s*/);
+    position += leadingWhitespace?.[0]?.length ?? 0;
+    if (position >= cleaned.length) {
+      break;
+    }
+
+    const closeParenIndex = cleaned.indexOf(')', position);
+    if (closeParenIndex < 0) {
+      structuralErrors.push({
+        fragment: cleaned.slice(position).trim(),
+        reason: 'unparsed case arm fragment: missing pattern terminator )',
+      });
+      break;
+    }
+
+    const patternSegment = cleaned.slice(position, closeParenIndex);
+    if (patternSegment.includes('\n')) {
+      structuralErrors.push({
+        fragment: patternSegment.trim(),
+        reason: 'unsupported case arm layout: pattern spans multiple lines',
+      });
+      break;
+    }
+
+    const patterns = patternSegment
+      .trim()
+      .split('|')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (patterns.length === 0) {
+      structuralErrors.push({
+        fragment: patternSegment.trim(),
+        reason: 'empty case arm pattern list',
+      });
+      break;
+    }
+
+    position = closeParenIndex + 1;
+
+    if (cleaned[position] !== '\n') {
+      structuralErrors.push({
+        fragment: cleaned.slice(closeParenIndex, closeParenIndex + 40).trim(),
+        reason: 'unsupported same-line case arm body; newline required after pattern)',
+      });
+      break;
+    }
+
+    position += 1;
+    const afterPatternNewlineWs = cleaned.slice(position).match(/^\s*/);
+    position += afterPatternNewlineWs?.[0]?.length ?? 0;
+
+    const returnMatch = cleaned.slice(position).match(/^return\s+(0|1)(?:;)?/);
+    if (!returnMatch) {
+      structuralErrors.push({
+        fragment: cleaned.slice(position, position + 120).trim(),
+        reason: 'unsupported case arm body: expected return 0|1 immediately after pattern line',
+      });
+      break;
+    }
+
+    const returnCode = Number(returnMatch[1]);
+    position += returnMatch[0].length;
+
+    if (cleaned[position] !== '\n') {
+      structuralErrors.push({
+        fragment: cleaned.slice(position, position + 40).trim(),
+        reason: 'unsupported same-line case arm terminator; newline required after return',
+      });
+      break;
+    }
+
+    position += 1;
+    const afterReturnNewlineWs = cleaned.slice(position).match(/^\s*/);
+    position += afterReturnNewlineWs?.[0]?.length ?? 0;
+
+    if (!cleaned.slice(position).startsWith(';;')) {
+      structuralErrors.push({
+        fragment: cleaned.slice(position, position + 40).trim(),
+        reason: 'unsupported case arm terminator: expected ;;',
+      });
+      break;
+    }
+
+    position += 2;
+    arms.push({ patterns, returnCode, order: arms.length });
+  }
+
+  const unconsumedFragment = cleaned.slice(position).trim();
+  if (unconsumedFragment) {
+    structuralErrors.push({
+      fragment: unconsumedFragment,
+      reason: 'unconsumed authority case body fragment',
+    });
+  }
+
+  return {
+    arms,
+    structuralErrors,
+    discoveredArms: arms.length + structuralErrors.length,
+    parsedArms: arms.length,
+    unconsumedFragments: unconsumedFragment ? [unconsumedFragment] : [],
+  };
+}
+
+function findFunctionEnd(script, fnStart) {
+  const openBrace = script.indexOf('{', fnStart);
+  if (openBrace < 0) {
+    return -1;
+  }
+  let depth = 0;
+  for (let i = openBrace; i < script.length; i += 1) {
+    const ch = script[i];
+    if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+function parseExplicitDefaultReturn(script, esacEnd, fnEnd) {
+  const afterEsac = script.slice(esacEnd + 'esac'.length, fnEnd);
+  const defaultMatch = afterEsac.match(/^\s*return\s+(0|1)(?:;)?\s*(?:\n|$)/);
+  if (!defaultMatch) {
+    return {
+      defaultReturn: null,
+      defaultReturnExplicit: false,
+      error: 'missing explicit trailing default return after esac',
+    };
+  }
+
+  const trailingTail = afterEsac.slice(defaultMatch[0].length);
+  const additionalReturn = trailingTail.match(/^\s*return\s+(0|1)(?:;)?/m);
+  if (additionalReturn) {
+    return {
+      defaultReturn: Number(defaultMatch[1]),
+      defaultReturnExplicit: false,
+      error: 'ambiguous trailing default return after esac',
+    };
+  }
+
+  const defaultReturn = Number(defaultMatch[1]);
+  if (defaultReturn !== 1) {
+    return {
+      defaultReturn,
+      defaultReturnExplicit: false,
+      error: `unsupported trailing default return ${defaultReturn}; expected exactly 1`,
+    };
+  }
+
+  return {
+    defaultReturn,
+    defaultReturnExplicit: true,
+    error: null,
+  };
+}
+
 export function parseWorkflowAuthorityContract(workflowYaml) {
   const script = resolveWorkflowScript(workflowYaml);
   const fnStart = script.indexOf(AUTHORITY_FN_MARKER);
@@ -72,83 +249,98 @@ export function parseWorkflowAuthorityContract(workflowYaml) {
     throw new Error('is_authority_path() not found in workflow run script');
   }
 
-  const caseStart = script.indexOf('case "$path" in', fnStart);
+  const caseStart = script.indexOf(CASE_HEADER, fnStart);
   const esacEnd = script.indexOf('esac', caseStart);
   if (caseStart < 0 || esacEnd < 0) {
     throw new Error('is_authority_path() case statement not found');
   }
 
-  const caseBody = script.slice(caseStart, esacEnd);
-  const arms = [];
-  const unsupported = [];
-  const armRegex = /^\s+([^)\n]+)\)\s*\n\s+return\s+(\d+)\s*;/gm;
-  let match = armRegex.exec(caseBody);
-  while (match) {
-    const patterns = match[1]
-      .split('|')
-      .map((part) => part.trim())
-      .filter(Boolean);
-    const returnCode = Number(match[2]);
-    if (returnCode !== 0 && returnCode !== 1) {
-      unsupported.push({
-        patterns,
-        reason: `unsupported return code ${returnCode}`,
-      });
-    }
-    for (const pattern of patterns) {
-      const syntax = validateWorkflowPatternSyntax(pattern);
-      if (!syntax.ok) {
-        unsupported.push({ pattern, reason: syntax.reason });
-      }
-    }
-    arms.push({ patterns, returnCode });
-    match = armRegex.exec(caseBody);
+  const fnEnd = findFunctionEnd(script, fnStart);
+  if (fnEnd < 0) {
+    throw new Error('is_authority_path() function body terminator not found');
   }
 
-  if (arms.length === 0) {
-    throw new Error('No authority case arms extracted from workflow');
+  const caseBody = script.slice(caseStart + CASE_HEADER.length, esacEnd);
+  const caseParse = parseAuthorityCaseBody(caseBody);
+  const defaultParse = parseExplicitDefaultReturn(script, esacEnd, fnEnd);
+
+  const unsupportedPatterns = [];
+  for (const arm of caseParse.arms) {
+    if (arm.returnCode !== 0 && arm.returnCode !== 1) {
+      unsupportedPatterns.push({
+        patterns: arm.patterns,
+        reason: `unsupported return code ${arm.returnCode}`,
+      });
+    }
+    for (const pattern of arm.patterns) {
+      const syntax = validateWorkflowPatternSyntax(pattern);
+      if (!syntax.ok) {
+        unsupportedPatterns.push({ pattern, reason: syntax.reason });
+      }
+    }
   }
+
+  const structuralCompletenessErrors = [
+    ...caseParse.structuralErrors,
+    ...(defaultParse.error ? [{ reason: defaultParse.error }] : []),
+  ];
 
   const authorityPatterns = [
     ...new Set(
-      arms.filter((arm) => arm.returnCode === 0).flatMap((arm) => arm.patterns),
+      caseParse.arms.filter((arm) => arm.returnCode === 0).flatMap((arm) => arm.patterns),
     ),
   ];
 
   const explicitNonAuthorityPatterns = [
     ...new Set(
-      arms.filter((arm) => arm.returnCode === 1).flatMap((arm) => arm.patterns),
+      caseParse.arms.filter((arm) => arm.returnCode === 1).flatMap((arm) => arm.patterns),
     ),
   ];
 
-  const trailingReturnMatch = script
-    .slice(esacEnd)
-    .match(/^\s*return\s+(\d+)\s*;/m);
-  const defaultReturn = trailingReturnMatch ? Number(trailingReturnMatch[1]) : 1;
+  const ok =
+    structuralCompletenessErrors.length === 0 &&
+    unsupportedPatterns.length === 0 &&
+    caseParse.arms.length > 0 &&
+    defaultParse.defaultReturnExplicit === true;
 
   return {
-    arms,
+    arms: caseParse.arms,
     authorityPatterns,
     explicitNonAuthorityPatterns,
-    defaultReturn,
-    unsupportedPatterns: unsupported,
-    ok: unsupported.length === 0,
+    defaultReturn: defaultParse.defaultReturn,
+    defaultReturnExplicit: defaultParse.defaultReturnExplicit,
+    unsupportedPatterns,
+    structuralCompletenessErrors,
+    structural: {
+      discoveredArms: caseParse.arms.length,
+      parsedArms: caseParse.parsedArms,
+      unconsumedFragments: caseParse.unconsumedFragments,
+      armOrder: caseParse.arms.map((arm) => arm.patterns.join('|')),
+    },
+    ok,
   };
 }
 
 export function assertWorkflowAuthorityContractValid(contract) {
   if (!contract?.ok) {
-    throw new Error(
-      `Unsupported workflow authority patterns: ${JSON.stringify(contract?.unsupportedPatterns ?? [], null, 2)}`,
-    );
+    const details = {
+      unsupportedPatterns: contract?.unsupportedPatterns ?? [],
+      structuralCompletenessErrors: contract?.structuralCompletenessErrors ?? [],
+      defaultReturn: contract?.defaultReturn ?? null,
+      defaultReturnExplicit: contract?.defaultReturnExplicit ?? false,
+      structural: contract?.structural ?? null,
+    };
+    throw new Error(`Invalid workflow authority contract: ${JSON.stringify(details, null, 2)}`);
   }
-  if (!contract.authorityPatterns?.length) {
-    throw new Error('Workflow authority contract has no authority patterns');
+  if (!contract.arms?.length) {
+    throw new Error('Workflow authority contract has no parsed case arms');
+  }
+  if (!contract.defaultReturnExplicit || contract.defaultReturn !== 1) {
+    throw new Error('Workflow authority contract requires explicit trailing default return 1');
   }
   return contract;
 }
 
-/** Convert bash case glob to anchored RegExp (no path separator special-casing). */
 export function bashCasePatternToRegExp(pattern) {
   let regex = '^';
   for (let i = 0; i < pattern.length; i++) {
@@ -181,21 +373,38 @@ export function matchesParsedWorkflowCasePattern(repoPath, pattern) {
   return bashCasePatternToRegExp(pattern).test(normalized);
 }
 
-export function isParsedWorkflowAuthorityPath(repoPath, contractOrPatterns) {
-  const contract = normalizeContractInput(contractOrPatterns);
-  assertWorkflowAuthorityContractValid(contract);
+export function evaluatePathAuthoritySemantics(repoPath, contract) {
   const normalized = normalizeRepoPath(repoPath);
-  if (!normalized) return false;
+  if (!normalized) {
+    return {
+      matched: false,
+      authority: contract.defaultReturn === 0,
+      matchedArm: null,
+    };
+  }
 
-  for (const pattern of contract.explicitNonAuthorityPatterns) {
-    if (matchesParsedWorkflowCasePattern(normalized, pattern)) {
-      return false;
+  for (const arm of contract.arms) {
+    for (const pattern of arm.patterns) {
+      if (matchesParsedWorkflowCasePattern(normalized, pattern)) {
+        return {
+          matched: true,
+          authority: arm.returnCode === 0,
+          matchedArm: arm,
+        };
+      }
     }
   }
 
-  return contract.authorityPatterns.some((pattern) =>
-    matchesParsedWorkflowCasePattern(normalized, pattern),
-  );
+  return {
+    matched: false,
+    authority: contract.defaultReturn === 0,
+    matchedArm: null,
+  };
+}
+
+export function isParsedWorkflowAuthorityPath(repoPath, contractOrPatterns) {
+  const contract = assertWorkflowAuthorityContractValid(normalizeContractInput(contractOrPatterns));
+  return evaluatePathAuthoritySemantics(repoPath, contract).authority;
 }
 
 export function isParsedWorkflowProductOrPresentationPath(repoPath, contractOrPatterns) {
@@ -204,18 +413,62 @@ export function isParsedWorkflowProductOrPresentationPath(repoPath, contractOrPa
   return !isParsedWorkflowAuthorityPath(normalized, contractOrPatterns);
 }
 
+function contractFromAuthorityPatterns(patterns, defaultReturn = 1) {
+  return {
+    arms: patterns.map((pattern, order) => ({
+      patterns: [pattern],
+      returnCode: 0,
+      order,
+    })),
+    authorityPatterns: [...patterns],
+    explicitNonAuthorityPatterns: [],
+    defaultReturn,
+    defaultReturnExplicit: true,
+    unsupportedPatterns: [],
+    structuralCompletenessErrors: [],
+    structural: {
+      discoveredArms: patterns.length,
+      parsedArms: patterns.length,
+      unconsumedFragments: [],
+      armOrder: patterns,
+    },
+    ok: true,
+  };
+}
+
 function normalizeContractInput(contractOrPatterns) {
   if (Array.isArray(contractOrPatterns)) {
-    return {
-      authorityPatterns: contractOrPatterns,
-      explicitNonAuthorityPatterns: [],
-      unsupportedPatterns: [],
-      ok: true,
-      arms: [],
-      defaultReturn: 1,
-    };
+    return contractFromAuthorityPatterns(contractOrPatterns);
   }
   return contractOrPatterns;
+}
+
+export function buildSyntheticOrderedContract(armDefs, defaultReturn = 1) {
+  const arms = armDefs.map((def, order) => ({
+    patterns: def.patterns,
+    returnCode: def.returnCode,
+    order,
+  }));
+  return assertWorkflowAuthorityContractValid({
+    arms,
+    authorityPatterns: arms
+      .filter((arm) => arm.returnCode === 0)
+      .flatMap((arm) => arm.patterns),
+    explicitNonAuthorityPatterns: arms
+      .filter((arm) => arm.returnCode === 1)
+      .flatMap((arm) => arm.patterns),
+    defaultReturn,
+    defaultReturnExplicit: true,
+    unsupportedPatterns: [],
+    structuralCompletenessErrors: [],
+    structural: {
+      discoveredArms: arms.length,
+      parsedArms: arms.length,
+      unconsumedFragments: [],
+      armOrder: arms.map((arm) => arm.patterns.join('|')),
+    },
+    ok: true,
+  });
 }
 
 function matchesWorkflowOnlyRule(normalizedPath) {
@@ -353,12 +606,10 @@ export function loadParsedWorkflowAuthorityContract(workflowPathOrYaml) {
   return assertWorkflowAuthorityContractValid(parseWorkflowAuthorityContract(yaml));
 }
 
-/** @deprecated Prefer loadParsedWorkflowAuthorityContract(). */
 export function loadParsedWorkflowAuthorityPatterns(workflowPathOrYaml) {
   return loadParsedWorkflowAuthorityContract(workflowPathOrYaml).authorityPatterns;
 }
 
-/** @deprecated Prefer parseWorkflowAuthorityContract(). */
 export function extractIsAuthorityPathCasePatterns(workflowYaml) {
   return loadParsedWorkflowAuthorityContract(workflowYaml).authorityPatterns;
 }
@@ -493,25 +744,56 @@ export function mutateWorkflowYamlInsertUnsupportedPattern(workflowYaml) {
 
 export function mutateWorkflowYamlInvertAuthorityReturn(workflowYaml) {
   return workflowYaml.replace(
-    /(frontend\/scripts\/i18n-\*\.mjs\)\s*\n\s+)return 0/,
-    '$1return 1',
+    /(frontend\/scripts\/i18n-\*\.mjs\)\s*\n\s+)return 0(\s*\n)/,
+    '$1return 1$2',
   );
 }
 
-export function mutateWorkflowContractInvertAuthorityReturn(contract) {
-  const authorityPatterns = contract.authorityPatterns.filter(
-    (pattern) => pattern !== 'frontend/scripts/i18n-*.mjs',
+export function mutateWorkflowYamlSameLineCaseArm(workflowYaml) {
+  return workflowYaml.replace(
+    /frontend\/scripts\/i18n-\*\.mjs\)\s*\n\s+return 0\s*\n\s+;;/,
+    'frontend/scripts/i18n-alt-*.mjs) return 0 ;;',
   );
+}
+
+export function mutateWorkflowYamlUnexpectedCommandBeforeReturn(workflowYaml) {
+  return workflowYaml.replace(
+    /(frontend\/scripts\/i18n-\*\.mjs\)\s*\n)(\s+return 0\s*\n\s+;;)/,
+    '$1                echo "unexpected"\n$2',
+  );
+}
+
+export function mutateWorkflowYamlUnrecognizedArmLayout(workflowYaml) {
+  return workflowYaml.replace(
+    /(frontend\/scripts\/i18n-\*\.mjs\)\s*\n\s+return 0\s*\n\s+;;)/,
+    '$1\n              alt-arm)\n                return 0\n                ;&',
+  );
+}
+
+export function mutateWorkflowYamlDefaultReturnZero(workflowYaml) {
+  return workflowYaml.replace(
+    /(\s+esac\s*\n\s+)return 1(\s*\n)/,
+    '$1return 0$2',
+  );
+}
+
+export function mutateWorkflowYamlRemoveDefaultReturn(workflowYaml) {
+  return workflowYaml.replace(/\s+return 1\s*\n(\s+}\s*\n\s+is_product_or_presentation_path)/, '\n$1');
+}
+
+export function mutateWorkflowContractInvertAuthorityReturn(contract) {
   return {
     ...contract,
-    authorityPatterns,
-    explicitNonAuthorityPatterns: [
-      ...new Set([...contract.explicitNonAuthorityPatterns, 'frontend/scripts/i18n-*.mjs']),
-    ],
     arms: contract.arms.map((arm) =>
       arm.patterns.includes('frontend/scripts/i18n-*.mjs')
         ? { ...arm, returnCode: 1 }
         : arm,
     ),
+    authorityPatterns: contract.authorityPatterns.filter(
+      (pattern) => pattern !== 'frontend/scripts/i18n-*.mjs',
+    ),
+    explicitNonAuthorityPatterns: [
+      ...new Set([...contract.explicitNonAuthorityPatterns, 'frontend/scripts/i18n-*.mjs']),
+    ],
   };
 }

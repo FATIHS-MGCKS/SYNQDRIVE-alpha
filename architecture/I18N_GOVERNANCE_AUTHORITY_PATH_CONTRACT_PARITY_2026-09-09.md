@@ -83,3 +83,21 @@ CI fails when:
 - No PR-head script execution in Layer 0
 - Fail-closed on enumeration limits, untrusted label actors, stale labels on synchronize
 - Mixed authority + product still blocked regardless of label
+
+---
+
+## Final semantic parser hardening (PR #1589 correction)
+
+**Synced to main:** `c343fab9aa8930b0023702bd4f3c31afd34393fa`
+
+The workflow classifier parser is deliberately narrow and **fail-closed**:
+
+| Invariant | Enforcement |
+|-----------|-------------|
+| Complete case-arm consumption | Every arm between `case "$path" in` and `esac` must match supported grammar or contract is invalid |
+| Supported arm grammar | `PATTERN[|PATTERN...])\n  return 0\|1\n  ;;` only — same-line bodies, extra commands, `;&`, or single `;` terminators fail |
+| First-match semantics | `evaluatePathAuthoritySemantics()` walks `contract.arms` in source order (not grouped return-0/return-1 buckets) |
+| Explicit default | Trailing `return 1` required inside `is_authority_path()` after `esac`; absent or `return 0` fails validation |
+| Bootstrap diff scope | PR effective paths from `git diff --name-only origin/main`; historical `2f0d128d` retained only as classifier fixture |
+
+Bootstrap neutral paths for #1589 are exact-path scoped (not `architecture/*` prefix).
