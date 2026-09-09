@@ -13,6 +13,7 @@ import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.reg
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
 import { TripDecisionEngine } from '../decision/trip-decision.engine';
+import { ContinuityAssessmentDetector } from '../detectors/continuity-assessment.detector';
 import { TripDetectionOrchestrationService } from '../trip-detection-orchestration.service';
 import {
   END_DETECTION_MODES,
@@ -314,8 +315,22 @@ export function buildKs661IdleTransitionSegmentsMock(
   const coreTs = vlsObservedAt.toISOString();
   return {
     fetchRawTripCoreData: jest.fn().mockResolvedValue([
-      { timestamp: coreTs, speed: 0, odometer: 1000, isIgnitionOn: false },
-      { timestamp: coreTs, speed: 0, odometer: 1000, isIgnitionOn: false },
+      {
+        timestamp: coreTs,
+        speed: 0,
+        travelledDistance: 1000,
+        isIgnitionOn: false,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+      {
+        timestamp: coreTs,
+        speed: 0,
+        travelledDistance: 1000,
+        isIgnitionOn: false,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
     ]),
     fetchRouteEnrichment: jest.fn().mockResolvedValue([]),
     fetchPerformance: jest.fn().mockResolvedValue([
@@ -389,8 +404,12 @@ export function buildTripR11SegmentsMock(
 }
 
 export function buildTripR11DetectorMock(expectedEndTime: Date): TripR11DetectorMock {
+  const continuityDetector = new ContinuityAssessmentDetector();
   return {
-    runAll: jest.fn().mockImplementation((names: string[]) => {
+    runAll: jest.fn().mockImplementation(async (names: string[], ctx: unknown) => {
+      if (names.includes('ContinuityAssessmentDetector')) {
+        return [await continuityDetector.evaluate(ctx as never)];
+      }
       if (names.includes('ChangePointEndDetector')) {
         return [
           {

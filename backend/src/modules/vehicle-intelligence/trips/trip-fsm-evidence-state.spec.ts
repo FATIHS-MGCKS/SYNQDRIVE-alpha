@@ -12,7 +12,7 @@ describe('resolveIdleStopBoundaryAt', () => {
   const vlsObs = new Date('2026-09-08T19:59:22.000Z');
   const workerNow = new Date('2026-09-08T19:59:56.000Z');
 
-  it('prefers stationary VLS provider time over last movement (KS MS 661)', () => {
+  it('prefers stationary VLS provider time when ignition explicitly OFF (KS MS 661)', () => {
     const result = resolveIdleStopBoundaryAt({
       movementEventAt: null,
       lastMeaningfulMovementAt: lastMovement,
@@ -28,6 +28,41 @@ describe('resolveIdleStopBoundaryAt', () => {
     });
     expect(result.boundaryAt.toISOString()).toBe(vlsObs.toISOString());
     expect(result.boundarySource).toBe('idle_within_trip_stationary_vls');
+  });
+
+  it('does not anchor on stationary VLS when ignition is explicitly ON (traffic stop)', () => {
+    const result = resolveIdleStopBoundaryAt({
+      movementEventAt: null,
+      lastMeaningfulMovementAt: lastMovement,
+      lastActivityAt: lastMovement,
+      workerNow,
+      telemetry: {
+        isIgnitionOn: true,
+        speedKmh: 0,
+        engineLoad: 42.745,
+        sourceTimestamp: vlsObs,
+      },
+      profile: 'ICE',
+    });
+    expect(result.boundaryAt.toISOString()).toBe(lastMovement.toISOString());
+    expect(result.boundarySource).toBe('idle_within_trip_last_movement');
+  });
+
+  it('does not anchor on stationary VLS when ignition is unknown (null)', () => {
+    const result = resolveIdleStopBoundaryAt({
+      movementEventAt: null,
+      lastMeaningfulMovementAt: lastMovement,
+      lastActivityAt: lastMovement,
+      workerNow,
+      telemetry: {
+        isIgnitionOn: null,
+        speedKmh: 0,
+        engineLoad: 42.745,
+        sourceTimestamp: vlsObs,
+      },
+      profile: 'ICE',
+    });
+    expect(result.boundarySource).toBe('idle_within_trip_last_movement');
   });
 
   it('prefers movementEventAt when present', () => {
@@ -157,5 +192,32 @@ describe('KS MS 661 counter-cases and field semantics', () => {
     });
     expect(vls.state).toBe('INACTIVE');
     expect(vls.reason).toBe('vls_stop_boundary_corroboration');
+  });
+});
+
+/** Mirrors dimo-snapshot.processor.ts normalizeSnapshot isIgnitionOn branch. */
+function normalizeDimoIgnitionSignal(raw: unknown): boolean | null {
+  const numVal = (field: unknown): number | null => {
+    if (field == null) return null;
+    if (typeof field === 'number') return Number.isNaN(field) ? null : field;
+    if (typeof field === 'object') {
+      const v = (field as Record<string, unknown>).value;
+      return v != null && typeof v === 'number' && !Number.isNaN(v) ? v : null;
+    }
+    return null;
+  };
+  const v = numVal(raw);
+  return v != null ? v >= 0.5 : null;
+}
+
+describe('DIMO VLS ignition normalization contract', () => {
+  it('maps explicit ON, explicit OFF, and missing signal distinctly', () => {
+    expect(normalizeDimoIgnitionSignal(1)).toBe(true);
+    expect(normalizeDimoIgnitionSignal(0)).toBe(false);
+    expect(normalizeDimoIgnitionSignal(0.49)).toBe(false);
+    expect(normalizeDimoIgnitionSignal(null)).toBeNull();
+    expect(normalizeDimoIgnitionSignal(undefined)).toBeNull();
+    expect(normalizeDimoIgnitionSignal({ value: 1 })).toBe(true);
+    expect(normalizeDimoIgnitionSignal({ value: 0 })).toBe(false);
   });
 });

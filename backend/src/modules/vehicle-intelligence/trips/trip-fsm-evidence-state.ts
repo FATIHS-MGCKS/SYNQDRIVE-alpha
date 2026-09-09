@@ -84,8 +84,8 @@ export function resolveProviderOperationalAnchor(params: {
 
 /**
  * Resolve stop boundary when entering IDLE_WITHIN_TRIP.
- * Prefers post-movement stationary VLS provider time over last movement alone so
- * corroboration can use the stop snapshot (e.g. KS MS 661 ignition-off row).
+ * Prefers post-movement stationary VLS provider time when ignition is explicitly OFF.
+ * Ignition ON or unknown does not qualify as shutdown evidence for boundary anchoring.
  */
 export function resolveIdleStopBoundaryAt(params: {
   movementEventAt: Date | null;
@@ -113,7 +113,8 @@ export function resolveIdleStopBoundaryAt(params: {
     ts &&
     isValidProviderEventTimestamp(ts, params.workerNow) &&
     speed != null &&
-    speed <= shared.speedMotionKmh
+    speed <= shared.speedMotionKmh &&
+    params.telemetry?.isIgnitionOn === false
   ) {
     const afterLastMove =
       !params.lastMeaningfulMovementAt ||

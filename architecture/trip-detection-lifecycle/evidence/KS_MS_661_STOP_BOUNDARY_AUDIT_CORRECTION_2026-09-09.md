@@ -23,18 +23,18 @@
 | Field | Production @ KS MS 661 | Provenance | Per-field measurement time |
 |-------|------------------------|------------|----------------------------|
 | `speed_kmh` | 0 | DIMO snapshot `signals.speed` → `normalizeSnapshot` | **Shared** `sourceTimestamp` = snapshot `lastSeen` (single row clock) |
-| `is_ignition_on` | false | Explicit provider numeric `isIgnitionOn >= 0.5` → boolean | Same shared timestamp — **not** default false when null (`null` preserved in ingest) |
+| `is_ignition_on` | false | Explicit provider numeric `isIgnitionOn`: `>= 0.5` → **true**, `< 0.5` (incl. **0**) → **false**, missing/invalid → **`null`** (`dimo-snapshot.processor.ts`) | Same shared timestamp |
 | `engine_load` | 42.745 | `obdEngineLoad` in same snapshot upsert | Same shared timestamp — **cannot prove** load measured simultaneously with ignition-off; semantically may be stale motor activity |
 | `source_timestamp` | 2026-09-08 19:59:22 | `normalized.lastSeenAt` on upsert (`dimo-snapshot.processor.ts`) | Row-level provider event time |
 
-**Independent stop-boundary evidence (R11 fix):** IDLE transition must anchor `stopBoundaryAt` to **stationary VLS provider time** when it follows last movement (`idle_within_trip_stationary_vls`), not only `lastMeaningfulMovementAt`. Without this, VLS obs after movement but before boundary was classified as post-boundary motor activity → UNKNOWN.
+**Independent stop-boundary evidence (R11 fix):** IDLE transition anchors via `resolveIdleStopBoundaryAt()` using stationary VLS provider time **only when `isIgnitionOn === false` (explicit OFF)**. Ignition ON or `null` does not qualify — traffic-stop/idling is not shutdown evidence.
 
-## Runtime proof (R11 branch, local integration)
+## Runtime proof (R11 branch, integration — requires green CI on head)
 
-| Artifact | Result |
+| Artifact | Status |
 |----------|--------|
-| `trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts` › **Scenario J** | **PASS** — ACTIVE_TRIP without pre-seeded boundary → IDLE sets `stopBoundaryAt` → empty-core → `POSSIBLE_END` → R10 finalize → `COMPLETED` + `RESTING`; no `STALE_ONGOING` repair |
-| `trip-fsm-evidence-state.spec.ts` | Unit proof for `resolveIdleStopBoundaryAt` + counter-cases |
+| `trip-r11-stop-boundary-completion-chain.postgres-redis.integration.spec.ts` › **Scenario J** | **Target proof** — ACTIVE_TRIP without pre-seeded boundary → IDLE sets `stopBoundaryAt` via orchestration → empty-core → `POSSIBLE_END` → R10 finalize → `COMPLETED` + `RESTING`; no `STALE_ONGOING` repair. Head `17b841953` failed (missing `ContinuityAssessmentDetector` in harness mock → spurious `POSSIBLE_END`). Follow-up fix wires real detector + `isIgnitionOn === false` guard on `resolveIdleStopBoundaryAt`. |
+| `trip-fsm-evidence-state.spec.ts` | **PASS** locally — `resolveIdleStopBoundaryAt`, ignition ON/null counter-cases, DIMO ignition normalization contract |
 
 ## Remaining limits (unchanged)
 
