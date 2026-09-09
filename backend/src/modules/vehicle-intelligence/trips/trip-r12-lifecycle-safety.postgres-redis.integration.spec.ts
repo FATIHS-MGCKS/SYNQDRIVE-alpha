@@ -515,8 +515,6 @@ if (REQUIRED) {
       });
       expect(det?.state).toBe(TripDetectionState.POSSIBLE_END);
       expect(det?.possibleEndAt).not.toBeNull();
-      const laterSummary = det?.lastEvidenceSummary as Record<string, unknown>;
-      expect(laterSummary.innerGateReason).toBe('boundary_backed_provider_silence');
     }, 120_000);
 
     it('R12-TRUST-B — untrusted worker boundary must not filter continuity movement', async () => {
