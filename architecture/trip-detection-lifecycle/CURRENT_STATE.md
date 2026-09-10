@@ -3,14 +3,25 @@
 | Field | Value |
 |-------|-------|
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
-| **origin/main (current @ evidence auth)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 |
+| **origin/main (current @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — **CI_VALIDATED** (Trip FSM run 34424546044); **NOT_DEPLOYED** |
+| **origin/main (historical @ evidence auth)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 |
 | **origin/main (at R11 deploy)** | `0b91dcd96f68164282a38458242fe8489e0b3b82` — **not deployed** (frozen target used) |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
-| **Production baseline (current)** | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994` (R11 deploy 2026-09-09) |
+| **Production baseline (current known — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` (R12 deploy 2026-09-09) — **does not include #1594 hardening** |
+| **Pre-R12 Production (historical)** | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994` (R11 deploy 2026-09-09) |
 | **Pre-R11 Production (historical)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` (R10 deploy 2026-09-08) |
 | **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
-| **Last verified Production evidence** | `2026-09-09T05:17:34Z` (KS MS 661 five-axis natural drive TDL-EVID-KS-MS-661-R11-NATURAL-001 @ `f7eb94cb…`) |
+| **Last verified Production evidence** | `2026-09-09T19:26:03Z` (R12 pre-hardening deploy TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…`); KS MS 661 R11 natural drive @ `f7eb94cb…` remains historical |
 | **Epistemic policy** | Claims separated below — do not merge axes |
+
+## Authority axes (mandatory separation — do not conflate)
+
+| Axis | SHA / status | Classification |
+|------|--------------|----------------|
+| **R12_HARDENED_CODE_ON_MAIN** | `f4109e34…` (#1594 merged) | **CI_VALIDATED** — main push run 34424546044 |
+| **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** | `157b3c722…` @ `20260909190912_v4994` | **DEPLOYED** / **POST_DEPLOY_HEALTH_CONFIRMED** — TDL-EV-R12-PROD-DEPLOY-001 |
+| **R12_HARDENED_PRODUCTION_DEPLOYED** | — | **NOT YET CONFIRMED** — no deploy evidence for `f4109e34…` |
+| **R12_HARDENED_PRODUCTION_BEHAVIOR_VALIDATED** | — | **NOT YET CONFIRMED** — no natural-drive acceptance on hardened production SHA |
 
 ## Phase status (this document)
 
@@ -198,7 +209,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…` (TDL-EV-R10-PROD-DEPLOY-001); **NOT exercised** on KS MS 661 (0× `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
 - TDL-DEC-R11-001 — **deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001); **CI_VALIDATED**; **POST_DEPLOY_HEALTH_CONFIRMED**; natural end-path **NOT validated** on KS MS 661 (TDL-EVID-KS-MS-661-R11-NATURAL-001: Axis E **FAIL**, `stopBoundaryAt` null, 0× POSSIBLE_END); post-audit STALE_ONGOING @ 06:51:54Z
-- TDL-DEC-R12-001 — **CI_VALIDATED** on PR #1591 @ `e5b21b0d3` (run 34377256197, clock-authority hardening); prior remediation @ `091c478af…` (run 34360964547); **not deployed**
+- TDL-DEC-R12-001 — **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** @ `157b3c722…` (`20260909190912_v4994`, TDL-EV-R12-PROD-DEPLOY-001); **CI_VALIDATED** (run 34387586390); **POST_DEPLOY_HEALTH_CONFIRMED**; **NOT PRODUCTION_BEHAVIOR_VALIDATED**; KS MS 661 post-deploy T0 **PHYSICAL_TEST_READY=NO**
+- TDL-DEC-R12 pre-drive hardening (#1594) — **R12_HARDENED_CODE_ON_MAIN** @ `f4109e34…` **MERGED**; **CI_VALIDATED** (main push run 34424546044); closes AUD-002/003/004/007; **R12_HARDENED_PRODUCTION_DEPLOYED = NOT YET CONFIRMED**; **R12_HARDENED_PRODUCTION_BEHAVIOR_VALIDATED = NOT YET CONFIRMED**
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
