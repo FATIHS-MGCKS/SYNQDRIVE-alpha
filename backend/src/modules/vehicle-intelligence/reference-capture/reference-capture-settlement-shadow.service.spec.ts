@@ -292,6 +292,7 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
             calibrationPhaseId: 'phase-60',
             phaseSequence: 1,
             phaseEndedAt: null,
+            phaseProvenance: 'PHYSICAL_T0',
           },
           completedPhases: [],
           completedPhaseSummaries: [],

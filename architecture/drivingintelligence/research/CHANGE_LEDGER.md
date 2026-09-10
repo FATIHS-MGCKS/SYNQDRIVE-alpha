@@ -368,6 +368,68 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Merge / deploy / drive | **NOT AUTHORIZED** |
 | Evidence | `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` |
 
+## EXP-021 — KS MS 661 deep forensic audit addendum (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DEEP AUDIT COMPLETE** — bucket-level maturation + Trip FSM follow-up |
+| Bucket identity | `FIELD_PIPE_CANONICAL_ISO_MS` — all 6 FIXED probes structurally stable after first success |
+| Settlement gap recovery | **NO** late bucket recovery across ages |
+| PDI structure | 3218 identities stable +30…+600; **values UNKNOWN** (not persisted) |
+| Trip FSM | Still `ONGOING` + provisional `endTime`; detection `POSSIBLE_END`; WHOLE_TRIP unbound |
+| Phase 10 | Missing due to insufficient movement in phase 20 (300s rule), not code defect |
+| Next action | **LONGER_COMPLETION_RUN** — no new code fix required |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` §15–§19 |
+
+## EXP-021 — KS MS 661 physical run post-drive forensic (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POST-DRIVE FORENSIC COMPLETE** — read-only production evidence |
+| Session | `945edc40-3002-4b87-83f6-a55d8cf66ffb` · settlement `exp-021-945edc40-e7850aa0` |
+| Canonical T0 | `2026-09-10T19:41:19.000Z` — **CONFIRMED** durable; no duplicate 60→60 fatal |
+| Phases | 60→30→20 completed; **10 NOT reached** |
+| FIXED_INTERVAL | **36/48** completed (all +600 terminal); 12 missing (phase 10) |
+| PDI | **6/6** through +600 on authoritative candidate `pdi-1789070475000` |
+| WHOLE_TRIP | **0/6** — trip `2bdc6e71-…` still `ONGOING` |
+| Classification | PARTIAL SUCCESS / DEGRADED |
+| Policy | PRODUCTION unchanged — no deploy/merge/cleanup during forensics |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` |
+
+## EXP-021 — Gap→settlement correlation + value revision instrumentation (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **INSTRUMENTATION COMPLETE** — evidence freeze + forward persistence; no physical drive |
+| Freeze | `EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json` — run `945edc40-…` immutable |
+| Retroactive | Bucket identity maturation **YES**; per-gap timestamp matrix **NO**; value revision **NO** on frozen run |
+| Code | `reference-capture-settlement-shadow-value-snapshot.ts`, gap-settlement analyzer, cross-age analyzer |
+| Persistence | `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` on new observations |
+| Correction | `responseHash` ≠ value revision evidence — metadata includes age/drift |
+| Trip FSM | **UNCHANGED** — WHOLE_TRIP remains `BLOCKED_BY_EXTERNAL_TRIP_FSM_WORKSTREAM` |
+| Evidence | `EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md`; forensic §20 |
+
+## EXP-021 — Native temporal bucket persistence micro-pass (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PERSISTENCE COMPLETE** — prospective only; KS MS 661 not backfilled |
+| Location | `completedPhaseSummaries[].nativeTemporalEvidence` (`EXP021_NATIVE_TEMPORAL_v1`) |
+| Reconstruction | `reference-capture-exp021-native-gap-reconstruction.ts` — post-run gap ledger without live memory |
+| Join | `reference-capture-exp021-native-settlement-join.ts` — native gaps ↔ settlement snapshots |
+| Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
+| Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
+
+## EXP-021 — PostgreSQL native temporal persistence proof (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POSTGRES INTEGRATION PASS** — isolated DB, 3/3 tests |
+| Proof | Reload after disconnect; 60→30 transition; settlement join with value snapshots |
+| Harness | `reference-capture-postgres.integration.harness.ts` helpers |
+| Spec | `reference-capture-exp021-native-temporal-evidence.postgres.integration.spec.ts` |
+| Result | `INSTRUMENTATION_MERGE_READY=YES` (instrumentation scope only) |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |

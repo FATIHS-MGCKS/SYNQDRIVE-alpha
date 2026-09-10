@@ -4,6 +4,11 @@ import {
   buildExp021BucketIdentity,
 } from './reference-capture-settlement-shadow-bucket-identity';
 import { HF_AGGREGATION_TYPE, HF_REQUESTED_INTERVAL } from './reference-capture-hf-watermark-policy';
+import {
+  buildBucketValueSnapshots,
+  compareValueSnapshots,
+  type BucketValueSnapshots,
+} from './reference-capture-settlement-shadow-value-snapshot';
 
 function extractProviderTimestamp(value: Record<string, unknown>): Date | null {
   const raw = value.timestamp;
@@ -28,6 +33,7 @@ export function parseShadowSignalsResponse(args: {
   fieldSampleCounts: Record<string, number>;
   uniqueBucketIdentities: string[];
   uniqueTemporalStarts: string[];
+  bucketValueSnapshots: BucketValueSnapshots;
 } {
   const parsedRows: ParsedShadowSignalRow[] = [];
   const fieldSampleCounts: Record<string, number> = {};
@@ -57,11 +63,17 @@ export function parseShadowSignalsResponse(args: {
     }
   }
 
+  const bucketValueSnapshots = buildBucketValueSnapshots({
+    rows: args.rows,
+    providerFields: args.providerFields,
+  });
+
   return {
     parsedRows,
     fieldSampleCounts,
     uniqueBucketIdentities: [...identitySet].sort(),
     uniqueTemporalStarts: [...temporalSet].sort(),
+    bucketValueSnapshots,
   };
 }
 
@@ -72,20 +84,42 @@ export function hashCanonicalShadowResponse(payload: unknown): string {
 export function compareBucketSets(
   current: string[],
   prior: string[],
+  valueContext?: {
+    currentSnapshots?: BucketValueSnapshots;
+    priorSnapshots?: BucketValueSnapshots;
+  },
 ): {
   newBucketIdentities: string[];
   missingBucketIdentities: string[];
   revisionCount: number;
+  valueRevisedBucketIdentities: string[];
 } {
   const priorSet = new Set(prior);
   const currentSet = new Set(current);
   const newBucketIdentities = current.filter((id) => !priorSet.has(id));
   const missingBucketIdentities = prior.filter((id) => !currentSet.has(id));
-  // VALUE_REVISION_DETECTION: NOT_IMPLEMENTED — identity-only comparison; same bucket key with revised value is not detected.
+
+  let revisionCount = 0;
+  let valueRevisedBucketIdentities: string[] = [];
+  if (
+    valueContext?.currentSnapshots &&
+    valueContext?.priorSnapshots &&
+    Object.keys(valueContext.currentSnapshots).length > 0 &&
+    Object.keys(valueContext.priorSnapshots).length > 0
+  ) {
+    const valueCmp = compareValueSnapshots(
+      valueContext.currentSnapshots,
+      valueContext.priorSnapshots,
+    );
+    revisionCount = valueCmp.revisionCount;
+    valueRevisedBucketIdentities = valueCmp.revisedBuckets.map((row) => row.bucketIdentity);
+  }
+
   return {
     newBucketIdentities,
     missingBucketIdentities,
-    revisionCount: 0,
+    revisionCount,
+    valueRevisedBucketIdentities,
   };
 }
 

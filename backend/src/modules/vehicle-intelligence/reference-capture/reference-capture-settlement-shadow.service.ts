@@ -43,8 +43,10 @@ import {
 } from './reference-capture-settlement-shadow-response.parser';
 import {
   priorBucketIdentitiesFromMaturationRecord,
+  priorBucketValueSnapshotsFromMaturationRecord,
   selectPriorMaturationObservation,
 } from './reference-capture-settlement-shadow-maturation.lib';
+import { hashBucketValueContent } from './reference-capture-settlement-shadow-value-snapshot';
 import {
   buildPhysicalDriveIntervalProbeId,
   computePdiExecutedOnTime,
@@ -1063,12 +1065,21 @@ export class ReferenceCaptureSettlementShadowService {
         observationJson: row.observationJson as {
           candidateId?: string;
           uniqueBucketIdentities?: string[];
+          bucketValueSnapshots?: Record<string, string>;
         } | null,
       })),
       pdiCandidateId,
     });
     const priorIdentities = priorBucketIdentitiesFromMaturationRecord(priorRecord);
-    const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
+    const priorSnapshots = priorBucketValueSnapshotsFromMaturationRecord(priorRecord);
+    const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities, {
+      currentSnapshots: parsed.bucketValueSnapshots,
+      priorSnapshots,
+    });
+    const valueContentHash =
+      Object.keys(parsed.bucketValueSnapshots).length > 0
+        ? hashBucketValueContent(parsed.bucketValueSnapshots)
+        : null;
 
     const candidateBoundaryAt = args.schedule.sourceIntervalEnd;
     const prospectiveAtCreation =
@@ -1121,6 +1132,10 @@ export class ReferenceCaptureSettlementShadowService {
       newBucketIdentities: comparison.newBucketIdentities,
       missingBucketIdentities: comparison.missingBucketIdentities,
       revisionCount: comparison.revisionCount,
+      valueRevisedBucketIdentities: comparison.valueRevisedBucketIdentities,
+      bucketValueSnapshots: parsed.bucketValueSnapshots,
+      valueContentHash,
+      valueIdentityFormat: 'FIELD_PIPE_CANONICAL_ISO_MS|NORMALIZED_SIGNAL_VALUE',
       canonicalBucketIdentity: 'FIELD_PIPE_CANONICAL_ISO_MS',
     };
 

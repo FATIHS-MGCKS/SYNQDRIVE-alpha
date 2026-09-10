@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient, type ReferenceCaptureSession } from '@prisma/client';
+import { Prisma, PrismaClient, type ReferenceCaptureSession } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   ReferenceCaptureSessionRepository,
@@ -11,6 +11,11 @@ import {
   type HfRecoveryPolicyV2Config,
 } from '../reference-capture-hf-recovery-v2.policy';
 import { HF_PHYSICAL_IDENTITY_VERSION } from '../reference-capture-physical-sample-identity.util';
+import {
+  accumulatePhaseQueryMetrics,
+  switchHfCalibrationPhase,
+  type HfCalibrationPhaseRuntimeCounters,
+} from '../reference-capture-hf-calibration-phase.policy';
 
 export const RC_POSTGRES_HOST = process.env.TEST_POSTGRES_HOST ?? '127.0.0.1';
 export const RC_POSTGRES_PORT = Number.parseInt(process.env.TEST_POSTGRES_PORT ?? '5432', 10);
@@ -214,6 +219,15 @@ export async function cleanupReferenceCaptureSeed(
   seed: Pick<ReferenceCaptureSeed, 'organizationId' | 'vehicleId' | 'sessionId'>,
 ): Promise<void> {
   await prisma.$executeRaw`
+    DELETE FROM reference_capture_settlement_shadow_observations WHERE session_id = ${seed.sessionId}
+  `;
+  await prisma.$executeRaw`
+    DELETE FROM reference_capture_settlement_shadow_schedules WHERE session_id = ${seed.sessionId}
+  `;
+  await prisma.$executeRaw`
+    DELETE FROM reference_capture_settlement_shadow_experiments WHERE session_id = ${seed.sessionId}
+  `;
+  await prisma.$executeRaw`
     DELETE FROM reference_capture_observations WHERE session_id = ${seed.sessionId}
   `;
   await prisma.$executeRaw`
@@ -298,4 +312,184 @@ export async function requestAndActivatePhase(
     );
   }
   return atomic.session;
+}
+
+export function buildNativeCountersForPhase(
+  phaseId: string,
+  temporalBucketStartTimestamps: string[],
+): HfCalibrationPhaseRuntimeCounters {
+  let counters: HfCalibrationPhaseRuntimeCounters | null = null;
+  for (const ts of temporalBucketStartTimestamps) {
+    counters = accumulatePhaseQueryMetrics(
+      counters,
+      {
+        record: {
+          status: 'SUCCESS',
+          resultBucketCount: 1,
+          duplicateBucketCount: 0,
+          revisionBucketCount: 0,
+          recoveredLateBucketCount: 0,
+          maxIntraResponseTemporalGapMs: 1000,
+          windowClassification: 'PHASE_NATIVE',
+          queryOrigin: 'FAST_LOOP',
+        },
+        newBucketCount: 1,
+        temporalBucketStartTimestamps: [ts],
+      },
+      phaseId,
+    );
+  }
+  if (!counters) {
+    throw new Error(`No native counters built for phase ${phaseId}`);
+  }
+  return counters;
+}
+
+/** Canonical acquisition-cycle path used by ReferenceCaptureAcquisitionService. */
+export async function persistCountersViaCanonicalCycleRelease(
+  repo: ReferenceCaptureSessionRepository,
+  seed: ReferenceCaptureSeed,
+  counters: HfCalibrationPhaseRuntimeCounters,
+  hfPolicy: HfRecoveryPolicyV2Config,
+  effectiveAtMs: number,
+): Promise<void> {
+  const cycleJobId = `cycle-${randomUUID()}`;
+  const acquired = await repo.tryAcquireCycleLock(
+    seed.organizationId,
+    seed.sessionId,
+    cycleJobId,
+  );
+  if (!acquired.acquired) {
+    throw new Error(`Failed to acquire cycle lock for session ${seed.sessionId}`);
+  }
+  const session = await repo.findById(seed.organizationId, seed.sessionId);
+  if (!session) throw new Error(`Session ${seed.sessionId} not found`);
+  const current = parseAcquisitionState(session.acquisitionStateJson);
+  const released = await repo.releaseCycleLockAndUpdateState(
+    seed.organizationId,
+    seed.sessionId,
+    cycleJobId,
+    {
+      dataPlane: {
+        ...current,
+        hfCalibrationActiveCounters: counters,
+      },
+      hfPolicy,
+      effectiveAtMs,
+    },
+  );
+  if (!released) {
+    throw new Error(`Cycle release failed for session ${seed.sessionId}`);
+  }
+}
+
+export async function reloadSessionFromPostgres(
+  organizationId: string,
+  sessionId: string,
+): Promise<{
+  prisma: PrismaClient;
+  repo: ReferenceCaptureSessionRepository;
+  session: ReferenceCaptureSession;
+}> {
+  const prisma = new PrismaClient();
+  const repo = createRepository(prisma);
+  const session = await repo.findById(organizationId, sessionId);
+  if (!session) {
+    await prisma.$disconnect().catch(() => undefined);
+    throw new Error(`Session ${sessionId} missing after PostgreSQL reload`);
+  }
+  return { prisma, repo, session };
+}
+
+export async function seedPreRollCalibrationSeries(
+  prisma: PrismaClient,
+  seed: ReferenceCaptureSeed,
+  nowMs: number,
+): Promise<void> {
+  const preRollSeries = switchHfCalibrationPhase({
+    existing: null,
+    vehicleId: seed.vehicleId,
+    tokenId: seed.tokenId,
+    effectivePollIntervalMs: 60_000,
+    nowMs,
+    phaseProvenance: 'PRE_ROLL',
+  }).series;
+  const acquisitionState = emptyDataPlane(nowMs);
+  acquisitionState.hfCalibrationSeries = preRollSeries;
+  await prisma.referenceCaptureSession.update({
+    where: { id: seed.sessionId },
+    data: { acquisitionStateJson: acquisitionState as object },
+  });
+}
+
+export async function seedSettlementShadowObservation(args: {
+  prisma: PrismaClient;
+  seed: ReferenceCaptureSeed;
+  experimentId: string;
+  probeId: string;
+  scheduledAgeMs: number;
+  observationJson: Record<string, unknown>;
+  sourceIntervalStart: Date;
+  sourceIntervalEnd: Date;
+}): Promise<{ scheduleId: string; observationId: string }> {
+  const experiment = await args.prisma.referenceCaptureSettlementShadowExperiment.create({
+    data: {
+      experimentId: args.experimentId,
+      sessionId: args.seed.sessionId,
+      organizationId: args.seed.organizationId,
+      vehicleId: args.seed.vehicleId,
+      tokenId: args.seed.tokenId,
+      status: 'ACTIVE',
+    },
+  });
+  const now = new Date();
+  const schedule = await args.prisma.referenceCaptureSettlementShadowSchedule.create({
+    data: {
+      experimentId: experiment.id,
+      sessionId: args.seed.sessionId,
+      organizationId: args.seed.organizationId,
+      vehicleId: args.seed.vehicleId,
+      tokenId: args.seed.tokenId,
+      probeId: args.probeId,
+      probeType: 'FIXED_INTERVAL',
+      phase: '60s',
+      sourceIntervalStart: args.sourceIntervalStart,
+      sourceIntervalEnd: args.sourceIntervalEnd,
+      queryFrom: args.sourceIntervalStart,
+      queryTo: args.sourceIntervalEnd,
+      scheduledAgeMs: args.scheduledAgeMs,
+      scheduledAt: now,
+      status: 'COMPLETED',
+      idempotencyKey: `pg-proof-${randomUUID()}`,
+    },
+  });
+  const observation = await args.prisma.referenceCaptureSettlementShadowObservation.create({
+    data: {
+      scheduleId: schedule.id,
+      experimentId: experiment.id,
+      sessionId: args.seed.sessionId,
+      organizationId: args.seed.organizationId,
+      vehicleId: args.seed.vehicleId,
+      tokenId: args.seed.tokenId,
+      probeId: args.probeId,
+      probeType: 'FIXED_INTERVAL',
+      phase: '60s',
+      sourceIntervalStart: args.sourceIntervalStart,
+      sourceIntervalEnd: args.sourceIntervalEnd,
+      scheduledAgeMs: args.scheduledAgeMs,
+      actualAgeMs: args.scheduledAgeMs + 50,
+      scheduleDriftMs: 50,
+      requestStartedAt: now,
+      requestCompletedAt: now,
+      queryFrom: args.sourceIntervalStart,
+      queryTo: args.sourceIntervalEnd,
+      aggregationInterval: '1s',
+      providerRequestStatus: 'SUCCESS',
+      providerError: null,
+      rawRowCount: 5,
+      responseHash: `hash-${randomUUID()}`,
+      observationJson: args.observationJson as Prisma.InputJsonValue,
+    },
+  });
+  return { scheduleId: schedule.id, observationId: observation.id };
 }
