@@ -43,6 +43,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
           calibrationPhaseId: 'phase-60',
           phaseSequence: 1,
           phaseEndedAt: null,
+          phaseProvenance: 'PHYSICAL_T0',
         },
         completedPhases: [],
         completedPhaseSummaries: [],
