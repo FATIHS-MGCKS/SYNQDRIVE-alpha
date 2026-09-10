@@ -37,20 +37,51 @@ export type StableTripTrackingEnqueueOutcome =
 
 export type RecoveryTripTrackingEnqueueOutcome = 'enqueued' | 'skipped';
 
+/** Jobs that may be physically removed for recycle/preemption. */
+export type TripTrackingRemovableQueueState =
+  | 'waiting'
+  | 'delayed'
+  | 'prioritized'
+  | 'completed'
+  | 'failed';
+
+/** Jobs owned by a worker lock — never remove for preemption. */
+export type TripTrackingPreservedActiveQueueState = 'active' | 'waiting-children';
+
+export type CancelPendingTripTrackingJobsResult = {
+  /** Queued or terminal jobs physically removed. */
+  removed: number;
+  /** Active / waiting-children jobs left in place (no remove attempted). */
+  activePreserved: number;
+};
+
+function isRemovableQueueState(state: TripTrackingQueueJobState): boolean {
+  return isTerminalQueueState(state) || isQueuedQueueState(state);
+}
+
+async function removeRemovableTripTrackingSlot(
+  queue: TripTrackingQueueLike,
+  jobId: string,
+): Promise<'removed' | 'active_preserved' | 'absent'> {
+  const existing = await queue.getJob(jobId);
+  if (!existing) return 'absent';
+  const state = await existing.getState();
+  if (isActiveQueueState(state)) {
+    return 'active_preserved';
+  }
+  if (isRemovableQueueState(state)) {
+    await existing.remove();
+    return 'removed';
+  }
+  return 'absent';
+}
+
+/** @deprecated internal alias — only removes removable slots, never active jobs. */
 async function removeQueuedTripTrackingSlot(
   queue: TripTrackingQueueLike,
   jobId: string,
 ): Promise<void> {
-  const existing = await queue.getJob(jobId);
-  if (!existing) return;
-  const state = await existing.getState();
-  if (
-    isTerminalQueueState(state) ||
-    isQueuedQueueState(state) ||
-    isActiveQueueState(state)
-  ) {
-    await existing.remove();
-  }
+  await removeRemovableTripTrackingSlot(queue, jobId);
 }
 
 /**
@@ -110,36 +141,42 @@ function isQueuedQueueState(state: TripTrackingQueueJobState): boolean {
 }
 
 /**
- * Removes pending primary/successor trip-tracking jobs (waiting, delayed, active).
- * Used when an end-cycle is cancelled (e.g. activity resumed) so stale FINALIZE
- * jobs cannot close a trip that continued.
+ * Removes queued/terminal primary/successor trip-tracking jobs only.
+ * Active / waiting-children jobs are preserved — never calls Job.remove() on them.
+ * Used when an end-cycle is cancelled (e.g. activity resumed) so stale queued
+ * FINALIZE jobs cannot close a trip that continued; active jobs rely on AUD-007
+ * stale-token guards at execution time.
  */
 export async function cancelPendingTripTrackingJobs(params: {
   queue: TripTrackingQueueLike;
   jobIds: string[];
-}): Promise<number> {
+}): Promise<CancelPendingTripTrackingJobsResult> {
   let removed = 0;
+  let activePreserved = 0;
   for (const primaryId of params.jobIds) {
     for (const jobId of [primaryId, buildTripTrackingSuccessorJobId(primaryId)]) {
-      const job = await params.queue.getJob(jobId);
-      if (!job) continue;
-      const state = await job.getState();
-      if (
-        isTerminalQueueState(state) ||
-        isQueuedQueueState(state) ||
-        isActiveQueueState(state)
-      ) {
-        await job.remove();
-        removed += 1;
-      }
+      const outcome = await removeRemovableTripTrackingSlot(params.queue, jobId);
+      if (outcome === 'removed') removed += 1;
+      if (outcome === 'active_preserved') activePreserved += 1;
     }
   }
-  return removed;
+  return { removed, activePreserved };
 }
 
 /**
- * R10: recycle any existing stable slot then enqueue a fresh end-cycle job.
- * Prevents `skipped` re-enqueue when an older cycle left a waiting FINALIZE job.
+ * Recycles only removable (queued/terminal) end-cycle slots before enqueue.
+ * Active primaries flow through stable-slot successor/handoff semantics.
+ */
+export async function recycleRemovableEndCycleTripTrackingJobs(params: {
+  queue: TripTrackingQueueLike;
+  jobIds: string[];
+}): Promise<CancelPendingTripTrackingJobsResult> {
+  return cancelPendingTripTrackingJobs(params);
+}
+
+/**
+ * R10/R12: recycle removable end-cycle slots then enqueue via stable-slot ownership.
+ * Never attempts Job.remove() on active / waiting-children jobs (multi-replica safe).
  */
 export async function enqueueEndCycleTripTrackingJob(params: {
   queue: TripTrackingQueueLike;
@@ -149,7 +186,23 @@ export async function enqueueEndCycleTripTrackingJob(params: {
   trigger: TripTrackingTrigger;
   delayMs?: number;
 }): Promise<StableTripTrackingEnqueueOutcome> {
-  await cancelPendingTripTrackingJobs({
+  const existingPrimary = await params.queue.getJob(params.jobId);
+  if (existingPrimary) {
+    const primaryState = await existingPrimary.getState();
+    if (isActiveQueueState(primaryState)) {
+      // Active owner — handoff/skip only; never recycle primary or queued successor.
+      return enqueueStableTripTrackingJob({
+        queue: params.queue,
+        jobName: params.jobName,
+        jobId: params.jobId,
+        data: params.data,
+        trigger: params.trigger,
+        delayMs: params.delayMs,
+      });
+    }
+  }
+
+  await recycleRemovableEndCycleTripTrackingJobs({
     queue: params.queue,
     jobIds: [params.jobId],
   });

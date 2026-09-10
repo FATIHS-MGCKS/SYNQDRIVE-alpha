@@ -96,6 +96,9 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
     dimoProviderContext: jest.fn().mockReturnValue({}),
     checkDimoActivityResumed: jest.fn().mockResolvedValue(false),
     parseEvidenceTimestamp: jest.fn().mockReturnValue(null),
+    ensurePossibleEndClockDurability: jest
+      .fn()
+      .mockImplementation(async (_vehicleId: string, d: typeof det) => d),
   };
 
   return {

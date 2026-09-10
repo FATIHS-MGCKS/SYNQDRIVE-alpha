@@ -6,6 +6,7 @@ import {
   isTrustedStopBoundaryAuthority,
   isValidProviderEventTimestamp,
   resolveOperationalNoCoreInactivityAnchor,
+  reconcilePossibleEndClockColumns,
   resolvePossibleEndBoundaryAnchor,
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
@@ -178,6 +179,77 @@ describe('R1 — trip FSM clock contract', () => {
         updatedAt: T0_31m,
       };
       expect(resolvePossibleEndFsmDwellAnchor(legacy, T0_31m)).toEqual(T0);
+    });
+
+    it('R12: modern PE dwell uses evidence possibleEndEnteredAt before updatedAt', () => {
+      const workerNow = new Date('2026-09-10T20:35:00.000Z');
+      const enteredAt = new Date('2026-09-10T20:04:37.793Z');
+      const det = {
+        possibleEndAt: new Date('2026-09-10T20:01:15.000Z'),
+        possibleEndEnteredAt: null,
+        updatedAt: workerNow,
+        lastEvidenceSummary: {
+          stopBoundaryAt: '2026-09-10T20:01:15.000Z',
+          stopBoundaryTrust: true,
+          possibleEndEnteredAt: enteredAt.toISOString(),
+        },
+      };
+      expect(resolvePossibleEndFsmDwellAnchor(det, workerNow)).toEqual(enteredAt);
+      expect(
+        workerNow.getTime() - resolvePossibleEndFsmDwellAnchor(det, workerNow).getTime(),
+      ).toBeGreaterThanOrEqual(30 * 60_000);
+    });
+
+    it('R12: boundary anchor falls back to trusted stopBoundaryAt in evidence', () => {
+      const workerNow = new Date('2026-09-10T20:20:00.000Z');
+      const stopBoundary = new Date('2026-09-10T20:01:15.000Z');
+      expect(
+        resolvePossibleEndBoundaryAnchor(
+          {
+            possibleEndAt: null,
+            lastEvidenceSummary: {
+              stopBoundaryAt: stopBoundary.toISOString(),
+              stopBoundaryTrust: true,
+            },
+          },
+          workerNow,
+        ),
+      ).toEqual(stopBoundary);
+    });
+
+    it('R12: dwell anchor may use endValidationScheduledAt but not as episode token', () => {
+      const workerNow = new Date('2026-09-10T20:35:00.000Z');
+      const scheduledAt = new Date('2026-09-10T20:16:37.000Z');
+      const det = {
+        possibleEndAt: new Date('2026-09-10T20:01:15.000Z'),
+        possibleEndEnteredAt: null,
+        updatedAt: workerNow,
+        lastEvidenceSummary: {
+          endValidationScheduledAt: scheduledAt.toISOString(),
+        },
+      };
+      expect(resolvePossibleEndFsmDwellAnchor(det, workerNow)).toEqual(scheduledAt);
+    });
+
+    it('reconcilePossibleEndClockColumns restores durable anchors for POSSIBLE_END', () => {
+      const enteredAt = new Date('2026-09-10T20:04:37.793Z');
+      const stopBoundary = new Date('2026-09-10T20:01:15.000Z');
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          possibleEndEnteredAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: true,
+            possibleEndEnteredAt: enteredAt.toISOString(),
+          },
+          workerNow: new Date('2026-09-10T20:20:00.000Z'),
+        }),
+      ).toEqual({
+        possibleEndAt: stopBoundary,
+        possibleEndEnteredAt: enteredAt,
+      });
     });
 
     it('legacy POSSIBLE_END recovery eligible when dwell age exceeds 30 min', () => {

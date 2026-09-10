@@ -68,6 +68,9 @@ function buildEvHarness(detOverrides: Record<string, unknown> = {}) {
     decisionEngine: { evaluateEndCandidate },
     dimoProviderContext: jest.fn().mockReturnValue({}),
     parseEvidenceTimestamp: jest.fn().mockReturnValue(null),
+    ensurePossibleEndClockDurability: jest
+      .fn()
+      .mockImplementation(async (_vehicleId: string, d: typeof det) => d),
   };
 
   return {

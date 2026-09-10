@@ -1,6 +1,7 @@
 import {
   clearPossibleEndClockFields,
   isValidProviderEventTimestamp,
+  readPossibleEndEnteredAtFromEvidence,
 } from './trip-fsm-clock-contract';
 import type { EmptyCoreForensics } from './trip-empty-core-end-gate';
 
@@ -41,8 +42,13 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
 /** Stable token for one POSSIBLE_END episode (worker-entered clock). */
 export function resolveEndCycleToken(det: {
   possibleEndEnteredAt?: Date | null;
+  lastEvidenceSummary?: unknown;
 }): string | null {
-  return det.possibleEndEnteredAt?.toISOString() ?? null;
+  if (det.possibleEndEnteredAt) {
+    return det.possibleEndEnteredAt.toISOString();
+  }
+  const fromEvidence = readPossibleEndEnteredAtFromEvidence(det.lastEvidenceSummary);
+  return fromEvidence?.toISOString() ?? null;
 }
 
 export function resolvePendingFinalizeCycleToken(
@@ -251,10 +257,14 @@ export function buildPossibleEndToActiveReset(params: {
 export function buildEndValidationScheduledEvidence(params: {
   priorSummary?: Record<string, unknown> | null;
   workerNow: Date;
+  possibleEndEnteredAt?: Date | null;
 }): Record<string, unknown> {
   return {
     ...clearEndValidationAttemptLocalEvidence(params.priorSummary),
     endValidationScheduledAt: params.workerNow.toISOString(),
+    ...(params.possibleEndEnteredAt
+      ? { possibleEndEnteredAt: params.possibleEndEnteredAt.toISOString() }
+      : {}),
   };
 }
 

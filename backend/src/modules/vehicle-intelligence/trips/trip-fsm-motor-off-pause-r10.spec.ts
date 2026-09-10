@@ -457,6 +457,32 @@ describe('R10 queue — recycle stale waiting finalize before new cycle', () => 
     expect(removed.has(`trip-ev-${VEHICLE}-${TRIP_ID}`)).toBe(true);
     expect(removed.has(`trip-at-${VEHICLE}-${TRIP_ID}`)).toBe(false);
   });
+
+  it('H: cancelPendingEndCycleJobs preserves active locked jobs', async () => {
+    const removed = new Set<string>();
+    const queue = {
+      getJob: jest.fn(async (id: string) => {
+        if (id.endsWith('__succ')) return undefined;
+        return {
+          getState: async () => (id.includes('ev') ? 'active' : 'waiting'),
+          remove: async () => {
+            removed.add(id);
+          },
+        };
+      }),
+      add: jest.fn(),
+    };
+
+    const result = await cancelPendingTripTrackingJobs({
+      queue,
+      jobIds: [`trip-fin-${VEHICLE}-${TRIP_ID}`, `trip-ev-${VEHICLE}-${TRIP_ID}`],
+    });
+
+    expect(result.removed).toBe(1);
+    expect(result.activePreserved).toBe(1);
+    expect(removed.has(`trip-fin-${VEHICLE}-${TRIP_ID}`)).toBe(true);
+    expect(removed.has(`trip-ev-${VEHICLE}-${TRIP_ID}`)).toBe(false);
+  });
 });
 
 describe('R10 resolveEndCycleToken', () => {
@@ -464,5 +490,14 @@ describe('R10 resolveEndCycleToken', () => {
     const entered = new Date(CYCLE_B);
     expect(resolveEndCycleToken({ possibleEndEnteredAt: entered })).toBe(CYCLE_B);
     expect(resolveEndCycleToken({ possibleEndEnteredAt: null })).toBeNull();
+  });
+
+  it('falls back to evidence possibleEndEnteredAt when DB column is null', () => {
+    expect(
+      resolveEndCycleToken({
+        possibleEndEnteredAt: null,
+        lastEvidenceSummary: { possibleEndEnteredAt: CYCLE_B },
+      }),
+    ).toBe(CYCLE_B);
   });
 });

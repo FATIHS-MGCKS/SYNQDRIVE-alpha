@@ -83,6 +83,7 @@ import {
 import {
   clearPossibleEndClockFields,
   clearPossibleStartClockFields,
+  reconcilePossibleEndClockColumns,
   resolvePossibleEndBoundaryAnchor,
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
@@ -620,15 +621,37 @@ export class TripDetectionOrchestrationService {
     const jobIds = phases.map((phase) =>
       this.tripTrackingJobId(phase, vehicleId, activeTripId),
     );
-    const removed = await cancelPendingTripTrackingJobs({
+    const { removed, activePreserved } = await cancelPendingTripTrackingJobs({
       queue: this.trackingQueue,
       jobIds,
     });
-    if (removed > 0) {
+    if (removed > 0 || activePreserved > 0) {
       this.logger.debug(
-        `Cancelled ${removed} stale end-cycle job(s) for ${vehicleId} trip=${activeTripId ?? 'pending'}`,
+        `End-cycle job recycle for ${vehicleId} trip=${activeTripId ?? 'pending'}: ` +
+          `removed=${removed} activePreserved=${activePreserved}`,
       );
     }
+  }
+
+  /**
+   * R12: restore POSSIBLE_END clock columns from durable evidence when DB columns
+   * were lost; prevents updatedAt/workerNow from becoming dwell/boundary anchors.
+   */
+  private async ensurePossibleEndClockDurability(
+    vehicleId: string,
+    det: DetState,
+    workerNow: Date,
+  ): Promise<DetState> {
+    if (det.state !== TripDetectionState.POSSIBLE_END) return det;
+    const patch = reconcilePossibleEndClockColumns({
+      state: det.state,
+      possibleEndAt: det.possibleEndAt,
+      possibleEndEnteredAt: det.possibleEndEnteredAt,
+      lastEvidenceSummary: det.lastEvidenceSummary,
+      workerNow,
+    });
+    if (!patch) return det;
+    return this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, patch);
   }
 
   /**
@@ -708,6 +731,10 @@ export class TripDetectionOrchestrationService {
     } else if (outcome === 'successor') {
       this.logger.debug(
         `Trip tracking successor scheduled: primary=${jobId} successor=${jobId}__succ trigger=${trigger} delayMs=${delayMs}`,
+      );
+    } else if (opts?.recycleEndCycleSlot) {
+      this.logger.debug(
+        `End-cycle enqueue outcome=${outcome} jobId=${jobId} trigger=${trigger} delayMs=${delayMs}`,
       );
     }
   }
@@ -2886,12 +2913,17 @@ export class TripDetectionOrchestrationService {
 
       const profile = String(det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN);
       const now = new Date();
-      const endBoundaryAt = resolvePossibleEndBoundaryAnchor(det, now);
-      const fsmEnteredAt = resolvePossibleEndFsmDwellAnchor(det, now);
+      const durableDet = await this.ensurePossibleEndClockDurability(
+        vehicleId,
+        det,
+        now,
+      );
+      const endBoundaryAt = resolvePossibleEndBoundaryAnchor(durableDet, now);
+      const fsmEnteredAt = resolvePossibleEndFsmDwellAnchor(durableDet, now);
       const fsmDwellMs = now.getTime() - fsmEnteredAt.getTime();
       const physicalInactivityMs = now.getTime() - endBoundaryAt.getTime();
       const priorSummary =
-        (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+        (durableDet.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
       let resumeCheckOutcome: PecResumeCheckOutcome = 'NO_RESUME_EVIDENCE';
 
       // ── Step 1: Check if activity has resumed ──
@@ -3058,13 +3090,17 @@ export class TripDetectionOrchestrationService {
           lastEvidenceSummary: buildEndValidationScheduledEvidence({
             priorSummary,
             workerNow: now,
+            possibleEndEnteredAt:
+              durableDet.possibleEndEnteredAt ??
+              resolvePossibleEndFsmDwellAnchor(durableDet, now),
           }),
         });
         this.logTripEndTimeline('end_validation_scheduled', {
           vehicleId,
-          tripId: det.activeTripId,
-          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
-          possibleEndAt: det.possibleEndAt,
+          tripId: durableDet.activeTripId,
+          lastMeaningfulMovementAt: durableDet.lastMeaningfulMovementAt,
+          possibleEndAt: durableDet.possibleEndAt ?? endBoundaryAt,
+          possibleEndEnteredAt: durableDet.possibleEndEnteredAt ?? fsmEnteredAt,
           endValidationScheduledAt: now,
           completedAttempts: attempts,
           maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
@@ -3167,6 +3203,7 @@ export class TripDetectionOrchestrationService {
       }
 
       const now = new Date();
+      det = await this.ensurePossibleEndClockDurability(vehicleId, det, now);
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
       const priorSummary =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};

@@ -458,6 +458,9 @@ describe('R8C — max-attempt gauge', () => {
           }),
         },
       },
+      ensurePossibleEndClockDurability: jest
+        .fn()
+        .mockImplementation(async (_vehicleId: string, d: unknown) => d),
     };
 
     await TripDetectionOrchestrationService.prototype.processPossibleEndCheck.call(
