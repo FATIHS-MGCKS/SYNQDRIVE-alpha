@@ -1,12 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  existsSync,
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1371,51 +1364,11 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     return execFileSync('git', ['show', `${ref}:${path}`], { cwd: repoRoot, encoding: 'utf8' });
   }
 
-  let cachedPr1589Fixture: {
-    dir: string;
-    baseSha: string;
-    headSha: string;
-    changedPaths: string[];
-  } | null = null;
+  let cachedPrResolution: ReturnType<typeof resolveEffectivePrChangedPaths> | null = null;
 
-  /** Isolated PR #1589 parity fixture — must not bind to the CI PR under test. */
-  function resolvePr1589ParityFixtureOnce() {
-    if (cachedPr1589Fixture) {
-      return cachedPr1589Fixture;
-    }
-    const dir = mkdtempSync(join(tmpdir(), 'i18n-pr1589-parity-'));
-    const runGit = (...args: string[]) =>
-      execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
-    runGit('init', '-b', 'main');
-    runGit('config', 'user.email', 'parity@test.local');
-    runGit('config', 'user.name', 'Parity Test');
-    writeFileSync(join(dir, 'README.md'), 'base\n');
-    runGit('add', '.');
-    runGit('commit', '-m', 'pr-base');
-    const baseSha = runGit('rev-parse', 'HEAD').trim();
-
-    runGit('checkout', '-b', 'feature/pr-1589-parity');
-    for (const relPath of PR_1589_EXPECTED_PATHS) {
-      const absPath = join(dir, relPath);
-      mkdirSync(dirname(absPath), { recursive: true });
-      const sourcePath = join(repoRoot, relPath);
-      if (existsSync(sourcePath)) {
-        copyFileSync(sourcePath, absPath);
-      } else {
-        writeFileSync(absPath, `# parity fixture for ${relPath}\n`);
-      }
-      runGit('add', relPath);
-    }
-    runGit('commit', '-m', 'PR #1589 authority-only parity fixture');
-    const headSha = runGit('rev-parse', 'HEAD').trim();
-    const changedPaths = resolveEffectivePrChangedPaths({
-      repoRoot: dir,
-      baseSha,
-      headSha,
-      source: 'pr1589_parity_fixture',
-    }).changedPaths;
-    cachedPr1589Fixture = { dir, baseSha, headSha, changedPaths };
-    return cachedPr1589Fixture;
+  function resolveCurrentPrChangedPathsOnce() {
+    cachedPrResolution ??= resolveEffectivePrChangedPaths({ repoRoot });
+    return cachedPrResolution;
   }
 
   function createTempGitRepoForPrBoundary() {
@@ -1732,16 +1685,9 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     expect(workflowYaml).not.toMatch(/uses:\s*actions\/checkout/);
   });
 
-  it('resolves PR #1589 parity fixture changed paths via base...head', () => {
-    const { dir, baseSha, headSha, changedPaths } = resolvePr1589ParityFixtureOnce();
-    const resolved = resolveEffectivePrChangedPaths({
-      repoRoot: dir,
-      baseSha,
-      headSha,
-      source: 'pr1589_parity_recheck',
-    });
+  it('resolves current PR changed paths via base...head and matches PR #1589 file set', () => {
+    const resolved = resolveCurrentPrChangedPathsOnce();
     expect(resolved.changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
-    expect(changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
     expect(
       resolved.changedPaths.some((path) => path.startsWith('architecture/trip-detection-lifecycle/')),
     ).toBe(false);
@@ -1749,40 +1695,37 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   });
 
   it('regression: classifier ref selection does not redefine PR changed-path set', { timeout: 15000 }, () => {
-    const { dir, baseSha, headSha, changedPaths } = resolvePr1589ParityFixtureOnce();
+    const resolvedAtBase = resolveEffectivePrChangedPaths({ repoRoot });
     const resolvedAgain = resolveEffectivePrChangedPaths({
+      repoRoot,
+      baseSha: resolvedAtBase.baseSha,
+      headSha: resolvedAtBase.headSha,
+      source: 'explicit_recheck',
+    });
+    expect(resolvedAgain.changedPaths).toEqual(resolvedAtBase.changedPaths);
+
+    const { dir, baseSha, headSha, mainTipSha } = createTempGitRepoForPrBoundary();
+    execFileSync('git', ['update-ref', 'refs/remotes/origin/main', mainTipSha], { cwd: dir });
+    const correctPaths = resolveEffectivePrChangedPaths({
       repoRoot: dir,
       baseSha,
       headSha,
-      source: 'explicit_recheck',
-    });
-    expect(resolvedAgain.changedPaths).toEqual(changedPaths);
-
-    const { dir: boundaryDir, baseSha: boundaryBase, headSha: boundaryHead, mainTipSha } =
-      createTempGitRepoForPrBoundary();
-    execFileSync('git', ['update-ref', 'refs/remotes/origin/main', mainTipSha], {
-      cwd: boundaryDir,
-    });
-    const correctPaths = resolveEffectivePrChangedPaths({
-      repoRoot: boundaryDir,
-      baseSha: boundaryBase,
-      headSha: boundaryHead,
     }).changedPaths;
     expect(correctPaths).toEqual(['frontend/scripts/lib/i18n-governance/authority-path-contract.mjs']);
 
-    const legacyAfterMainAdvance = resolveLegacyOriginMainTwoDotPaths(boundaryDir);
+    const legacyAfterMainAdvance = resolveLegacyOriginMainTwoDotPaths(dir);
     expect(legacyAfterMainAdvance).toContain('architecture/trip-detection-lifecycle/CURRENT_STATE.md');
     expect(correctPaths).not.toContain('architecture/trip-detection-lifecycle/CURRENT_STATE.md');
     expect(legacyAfterMainAdvance.length).toBeGreaterThan(correctPaths.length);
   });
 
   it('PR effective diff is bootstrap-safe under CURRENT MAIN trusted classifier', () => {
-    const { dir, baseSha, changedPaths } = resolvePr1589ParityFixtureOnce();
+    const { changedPaths, baseSha } = resolveCurrentPrChangedPathsOnce();
     expect(changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
 
-    const mainWorkflowYaml = readFileSync(
-      join(dir, '.github/workflows/i18n-authority-protection.yml'),
-      'utf8',
+    const mainWorkflowYaml = gitShowAtRef(
+      baseSha,
+      '.github/workflows/i18n-authority-protection.yml',
     );
     const mainContract = loadParsedWorkflowAuthorityContract(mainWorkflowYaml);
     const bootstrap = evaluateBootstrapSafety(mainContract, changedPaths);
@@ -1794,7 +1737,7 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   });
 
   it('PR effective diff is authority-only under corrected HEAD trusted classifier', () => {
-    const { changedPaths } = resolvePr1589ParityFixtureOnce();
+    const { changedPaths } = resolveCurrentPrChangedPathsOnce();
     const headContract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
     const bootstrap = evaluateBootstrapSafety(headContract, changedPaths);
     expect(bootstrap.authorityChanged).toBe(true);
@@ -1805,7 +1748,7 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   });
 
   it('PR effective diff remains bootstrap-safe under historical 2f0d trusted classifier', () => {
-    const { changedPaths } = resolvePr1589ParityFixtureOnce();
+    const { changedPaths } = resolveCurrentPrChangedPathsOnce();
     const historicalWorkflowYaml = gitShowAtRef(
       GOVERNANCE_PARITY_HISTORICAL_BASE_SHA,
       '.github/workflows/i18n-authority-protection.yml',
@@ -1820,10 +1763,10 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   });
 
   it('mutation: forbidden product path in effective PR diff fails bootstrap safety', () => {
-    const { dir, baseSha, changedPaths } = resolvePr1589ParityFixtureOnce();
-    const mainWorkflowYaml = readFileSync(
-      join(dir, '.github/workflows/i18n-authority-protection.yml'),
-      'utf8',
+    const { changedPaths, baseSha } = resolveCurrentPrChangedPathsOnce();
+    const mainWorkflowYaml = gitShowAtRef(
+      baseSha,
+      '.github/workflows/i18n-authority-protection.yml',
     );
     const mainContract = loadParsedWorkflowAuthorityContract(mainWorkflowYaml);
     const diffPaths = [
