@@ -129,6 +129,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow,
         stopBoundaryAt: anchor,
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
       expect(gate.eligible).toBe(false);
       expect(gate.forensics.innerGateReason).toBe('vls_row_absent');
@@ -177,7 +178,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
   });
 
   describe('G — stale engine load at stop boundary (KS MS 661 post-IDLE)', () => {
-    it('allows end path when obs predates stop boundary (stop corroboration)', () => {
+    it('allows end via boundary-backed silence when obs is stale with motor-load contradiction', () => {
       const stopBoundary = new Date('2026-09-08T19:59:22.000Z');
       const workerNow = new Date('2026-09-08T20:02:00.000Z');
       const gate = assessSuccessfulEmptyCoreEndEligibility({
@@ -194,11 +195,14 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow,
         stopBoundaryAt: stopBoundary,
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
       expect(gate.eligible).toBe(true);
       expect(gate.forensics.innerGateReason).toBe(
-        'empty_core_corroborated_inactivity',
+        'boundary_backed_provider_silence',
       );
+      expect(gate.forensics.vlsEvidenceState).toBe('UNKNOWN');
+      expect(gate.forensics.vlsEvidenceState).not.toBe('INACTIVE');
     });
 
     it('DOCUMENTED_LIMITATION: absent VLS after prolonged gap stays UNKNOWN', () => {
@@ -211,6 +215,7 @@ describe('TDL-DEC-R11-001 base implementation', () => {
         profile: 'ICE',
         workerNow: new Date('2026-09-08T20:05:00.000Z'),
         stopBoundaryAt: new Date('2026-09-08T19:59:55.895Z'),
+        stopBoundarySource: 'idle_within_trip_stationary_vls',
       });
       expect(gate.eligible).toBe(false);
       expect(gate.forensics.innerGateReason).toBe('vls_row_absent');

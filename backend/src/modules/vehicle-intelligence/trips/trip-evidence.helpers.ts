@@ -1679,3 +1679,99 @@ export function continuityImpliesMeaningfulMovement(
     (ch?.odometerDeltaKm ?? 0) > 0.05
   );
 }
+
+/**
+ * R12: when a stop boundary exists, continuity "motion" must be credible post-boundary
+ * provider-time movement — not stale pre-stop samples or contradictory standstill cores.
+ */
+export function continuityImpliesCrediblePostBoundaryMovement(params: {
+  recentPoints: TripCoreDataPoint[];
+  profile: string;
+  continuitySummary?: Record<string, unknown> | null;
+  clickhouseGuardSummary?: {
+    maxSpeedKmh?: number;
+    odometerDeltaKm?: number;
+    windowEndAt?: string | Date | null;
+  } | null;
+  stopBoundaryAt: Date;
+  workerNow: Date;
+}): boolean {
+  return (
+    resolveLatestMeaningfulMovementEventAt({
+      recentPoints: params.recentPoints,
+      profile: params.profile,
+      continuitySummary: params.continuitySummary,
+      clickhouseGuardSummary: params.clickhouseGuardSummary,
+      workerNow: params.workerNow,
+      resumeAfterAt: params.stopBoundaryAt,
+    }) != null
+  );
+}
+
+export function hasCrediblePostBoundaryRouteMotion(
+  routePoints: RoutePoint[],
+  profile: string,
+  stopBoundaryAt: Date,
+): boolean {
+  const shared = getProfileThresholds(profile);
+  const ROUTE_MOVEMENT_MIN_METERS = 25;
+  const boundaryMs = stopBoundaryAt.getTime();
+
+  let anchorIndex = -1;
+  for (let i = routePoints.length - 1; i >= 0; i--) {
+    const anchorTs = new Date(routePoints[i].timestamp).getTime();
+    if (!Number.isFinite(anchorTs)) continue;
+    if (anchorTs <= boundaryMs) {
+      anchorIndex = i;
+      break;
+    }
+  }
+
+  let bridgedFromAnchor = false;
+
+  for (let index = 0; index < routePoints.length; index++) {
+    const point = routePoints[index];
+    const ts = new Date(point.timestamp);
+    const pointMs = ts.getTime();
+    if (!Number.isFinite(pointMs) || pointMs <= boundaryMs) continue;
+
+    const hasSpeedMotion =
+      point.speedKmh != null && point.speedKmh > shared.speedMotionKmh;
+    if (hasSpeedMotion) return true;
+
+    if (!bridgedFromAnchor && anchorIndex >= 0) {
+      bridgedFromAnchor = true;
+      const anchor = routePoints[anchorIndex];
+      const bridgeDisplacement = haversineM(
+        anchor.latitude,
+        anchor.longitude,
+        point.latitude,
+        point.longitude,
+      );
+      if (bridgeDisplacement > ROUTE_MOVEMENT_MIN_METERS) {
+        return true;
+      }
+    }
+
+    const previous = index > 0 ? routePoints[index - 1] : null;
+    if (previous != null) {
+      const previousMs = new Date(previous.timestamp).getTime();
+      if (
+        Number.isFinite(previousMs) &&
+        previousMs > boundaryMs
+      ) {
+        const pairDisplacement = haversineM(
+          previous.latitude,
+          previous.longitude,
+          point.latitude,
+          point.longitude,
+        );
+        if (pairDisplacement > ROUTE_MOVEMENT_MIN_METERS) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}

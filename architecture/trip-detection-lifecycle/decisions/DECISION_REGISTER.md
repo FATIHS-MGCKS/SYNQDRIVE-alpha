@@ -15,6 +15,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
+| TDL-DEC-R12-001 | Provider-time stop boundary + boundary-backed end liveness | PROPOSED | TDL-EVID-R12-IMPL-001; TDL-EVID-KS-MS-661-R11-NATURAL-001 |
 
 ---
 
@@ -171,3 +172,20 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | **Deployed** @ `f7eb94cb…` (`20260909024150_v4994`, TDL-EV-R11-PROD-DEPLOY-001) — **POST_DEPLOY_HEALTH_CONFIRMED**; scenario `KS_MS_661_NATURAL_DRIVE_R11`: start/resume **observed** (TDL-EVID-KS-MS-661-R11-NATURAL-001 Axes A/B/D PASS); end path **NOT validated** (Axis E FAIL — 0× POSSIBLE_END, `stopBoundaryAt` null) |
 | **NON_EFFECTS** | R10 finalize guards unchanged; PD-2 LOW UNKNOWN candidacy not enabled; Ignition-OFF DIMO webhook not registered; no provider subscription changes |
 | **EVIDENCE** | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-002; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-TEMPORAL-001; TDL-EVID-KS-MS-661-REPRO-001; **TDL-EVID-KS-MS-661-R11-NATURAL-001** |
+
+---
+
+## TDL-DEC-R12-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | `stopBoundaryAt` primarily from IDLE transition; ACTIVE_TRIP stationary shutdown without IDLE leaves boundary null; stale UNKNOWN VLS blocks empty-core end forever |
+| **WHY** | KS MS 661 R11 natural drive (`TDL-EVID-KS-MS-661-R11-NATURAL-001`): Axis E FAIL — trip `3b26019d…` stuck ACTIVE_TRIP; completed later via STALE_ONGOING repair @ 06:51:54Z |
+| **CHANGE** | `resolveProviderStopBoundaryCandidate()` on ACTIVE_TICK; `assessBoundaryBackedEmptyCoreSilence()` for trusted boundary + `vls_stale_provider_observation` only; credible post-boundary movement filter; `resolvePossibleEndBoundaryCandidate()` prefers provider stop boundary |
+| **ALTERNATIVES REJECTED** | Coerce UNKNOWN→INACTIVE; timer-only end fallback; direct finalize from ACTIVE_TRIP; global 45s TTL; PD-2 |
+| **EXPECTED EFFECT** | Normal POSSIBLE_END after parked vehicle sleep when provider-time stop boundary exists; short pauses preserve same trip; fresh movement still blocks end |
+| **VALIDATION** | TDL-EVID-R12-IMPL-001 — **CI_VALIDATED** @ `091c478af…` run 34360964547 (first head `f92cd1ff…` failed run 34354237230) |
+| **PRODUCTION STATUS** | **Not deployed** |
+| **NON_EFFECTS** | 120s threshold unchanged; R10 finalize guards unchanged; UNKNOWN semantic unchanged; no provider subscription changes |
+| **EVIDENCE** | TDL-EVID-R12-IMPL-001; TDL-EVID-KS-MS-661-R11-NATURAL-001 |

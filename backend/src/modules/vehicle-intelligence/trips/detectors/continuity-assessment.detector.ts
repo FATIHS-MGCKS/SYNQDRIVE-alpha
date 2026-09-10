@@ -27,7 +27,7 @@ export class ContinuityAssessmentDetector implements TripDetector {
         verdict: 'NOT_TRIGGERED',
         confidence: 'LOW',
         evidence: {
-          verdict: 'POSSIBLE_END',
+          continuityVerdict: 'POSSIBLE_END',
           reason: 'no_core_data_points',
         },
         timestamp: new Date(),

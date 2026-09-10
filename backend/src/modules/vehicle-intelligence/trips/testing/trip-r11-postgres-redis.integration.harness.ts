@@ -124,6 +124,7 @@ export async function createTripR11ActiveTripFixture(
   options?: {
     lastMovementAt?: Date;
     stopBoundaryAt?: Date;
+    stopBoundarySource?: string;
     expectedEndTime?: Date;
     tripStartAt?: Date;
   },
@@ -136,6 +137,7 @@ export async function createTripR11ActiveTripFixture(
     options?.stopBoundaryAt ?? new Date('2026-09-08T05:00:05.000Z');
   const expectedEndTime =
     options?.expectedEndTime ?? new Date('2026-09-08T05:00:45.000Z');
+  const stopBoundarySource = options?.stopBoundarySource ?? 'idle_within_trip';
   const dimoTokenId = 910000 + Math.floor(Math.random() * 1000);
 
   const org = await prisma.organization.create({
@@ -190,7 +192,7 @@ export async function createTripR11ActiveTripFixture(
       lastEvidenceSummary: {
         lastProviderActivityAt: lastMovementAt.toISOString(),
         stopBoundaryAt: stopBoundaryAt.toISOString(),
-        stopBoundarySource: 'idle_within_trip',
+        stopBoundarySource,
       },
     },
   });

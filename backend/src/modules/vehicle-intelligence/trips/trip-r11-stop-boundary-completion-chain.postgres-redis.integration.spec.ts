@@ -122,7 +122,7 @@ if (REQUIRED) {
       expect(afterIdle?.state).toBe(TripDetectionState.IDLE_WITHIN_TRIP);
       const idleSummary = afterIdle?.lastEvidenceSummary as Record<string, unknown>;
       expect(idleSummary.stopBoundaryAt).toBe(vlsObservedAt.toISOString());
-      expect(idleSummary.stopBoundarySource).toBe('idle_within_trip_stationary_vls');
+      expect(idleSummary.stopBoundarySource).toBe('provider_stationary_vls');
       expect(idleSummary.lastProviderActivityAt).toBe(vlsObservedAt.toISOString());
 
       harness.segments.fetchRawTripCoreData = emptySegments.fetchRawTripCoreData;
@@ -144,8 +144,9 @@ if (REQUIRED) {
         emptyCoreTickAt.toISOString(),
       );
       const emptySummary = afterEmptyCore?.lastEvidenceSummary as Record<string, unknown>;
-      expect(emptySummary.innerGateReason).toBe('empty_core_corroborated_inactivity');
+      expect(emptySummary.innerGateReason).toBe('boundary_backed_provider_silence');
       expect(emptySummary.emptyCoreDecision).toBe('POSSIBLE_END');
+      expect(emptySummary.vlsEvidenceState).toBe('UNKNOWN');
 
       const pecJobId = buildTripTrackingJobId(
         'pec',

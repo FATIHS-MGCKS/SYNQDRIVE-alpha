@@ -14,9 +14,25 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
   const stopBoundary = new Date('2026-09-08T19:59:55.895Z');
   const workerNow = new Date('2026-09-08T20:02:00.000Z');
 
-  it('older VLS observation before stopBoundary corroborates stop — does not fake fresh stop proof', () => {
+  it('non-contradictory pre-boundary stationary corroborates stop — high engineLoad does not', () => {
     const obsAt = new Date('2026-09-08T19:59:22.000Z');
-    const vls = classifyEmptyCoreVlsInactivity({
+    const freshWorkerNow = new Date('2026-09-08T19:59:50.000Z');
+    const corroborated = classifyEmptyCoreVlsInactivity({
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 0,
+        sourceTimestamp: obsAt,
+      },
+      profile: 'ICE',
+      workerNow: freshWorkerNow,
+      maxObservationAgeMs: MIN_INACTIVITY,
+      stopBoundaryAt: stopBoundary,
+    });
+    expect(corroborated.state).toBe('INACTIVE');
+    expect(corroborated.reason).toBe('vls_stop_boundary_corroboration');
+
+    const contradictory = classifyEmptyCoreVlsInactivity({
       telemetry: {
         isIgnitionOn: false,
         speedKmh: 0,
@@ -24,13 +40,12 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
         sourceTimestamp: obsAt,
       },
       profile: 'ICE',
-      workerNow,
+      workerNow: freshWorkerNow,
       maxObservationAgeMs: MIN_INACTIVITY,
       stopBoundaryAt: stopBoundary,
     });
-    expect(vls.state).toBe('INACTIVE');
-    expect(vls.reason).toBe('vls_stop_boundary_corroboration');
-    expect(vls.providerObservedAt?.toISOString()).toBe(obsAt.toISOString());
+    expect(contradictory.state).toBe('UNKNOWN');
+    expect(contradictory.reason).toBe('vls_motor_activity_at_standstill');
   });
 
   it('records which measurement anchors stopBoundaryAt in evidence summary', () => {
@@ -64,6 +79,7 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
       profile: 'ICE',
       workerNow,
       stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'pause_corroborated',
     });
     expect(gate.eligible).toBe(false);
     expect(gate.forensics.innerGateReason).toBe('vls_speed_above_motion_threshold');
@@ -112,6 +128,7 @@ describe('TDL-DEC-R11 stop evidence semantics (vls_stop_boundary_corroboration)'
       profile: 'ICE',
       workerNow: new Date('2026-09-08T20:05:00.000Z'),
       stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'pause_corroborated',
     });
     expect(gate.eligible).toBe(false);
     expect(gate.forensics.innerGateReason).toBe('vls_row_absent');

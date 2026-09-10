@@ -118,3 +118,24 @@ edges:
   - from: TDL-DEC-R11-001
     relation: tested_by
     to: TDL-TEST-R11-005
+  - from: TDL-EVID-KS-MS-661-R11-NATURAL-001
+    relation: supports
+    to: TDL-DEC-R12-001
+  - from: TDL-EVID-R12-IMPL-001
+    relation: supports
+    to: TDL-DEC-R12-001
+  - from: TDL-EVID-R12-IMPL-001
+    relation: supports
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-TEST-R12-001
+    relation: supports
+    to: TDL-DEC-R12-001
+  - from: TDL-DEC-R12-001
+    relation: tested_by
+    to: TDL-TEST-R12-001
+  - from: TDL-TEST-R12-002
+    relation: supports
+    to: TDL-DEC-R12-001
+  - from: TDL-DEC-R12-001
+    relation: tested_by
+    to: TDL-TEST-R12-002

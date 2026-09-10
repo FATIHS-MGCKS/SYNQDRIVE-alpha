@@ -183,6 +183,63 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Audi re-run readiness hardening (2026-09-09)
+
+| Event | Detail |
+|-------|--------|
+| Status | **STATIONARY CERT PASS** — V2 canary enabled for token 187361; orchestrator hardened in PR #1582 |
+| Stuck session | `0aa0dd4f-…` → **ABORTED** (10,671 obs preserved) |
+| V2 canary | `HF_RECOVERY_POLICY_V2_ENABLED=true`, canary-only, `CANARY_TOKEN_IDS=187361` (experiment-only) |
+| Orchestrator | Pre-recording V2 gate, Redis single-instance lock, fatal session cleanup |
+| Stationary cert | Phase 60 REQUESTED; calibration series created; prospective probes schedulable |
+| Blocker | Hardened orchestrator **not deployed** — physical run awaits merge+deploy |
+| Evidence | `EXP_021_AUDI_RERUN_READINESS_HARDENING_2026-09-09.md` |
+
+## EXP-021 — Audi autonomous post-run forensic closeout (2026-09-09 evening)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DEGRADED** — settlement shadow **not executed**; cadence phases **blocked** |
+| Session | `0aa0dd4f-6436-43d1-ae51-e23eaf947927` — RECORDING (stuck; no stop/complete) |
+| Autonomous orchestrator | Deploy converged before RC; auto-start YES; phase activation FATAL @ 19:44:08 |
+| Root cause | `HF_RECOVERY_POLICY_V2_ENABLED=false` + canary-only + Audi token **187361** not allowlisted → LEGACY blocks cadence |
+| Fixed settlement | **0/48** observations; **0/8** probes; no maturation curves |
+| Live RC capture | **PARTIAL** — 5,606 obs default LEGACY polling; 649 speed rows; max gap 125.76s |
+| R12 natural run | Gap split `e62c964d`→`bd55f98d`; POSSIBLE_END not terminalized |
+| Whole-trip confound | **YES** — pre-RC wake trip overlaps activity window |
+| Mercedes comparison | **PARTIAL** — live gap sparsity similar; settlement maturation not replicated |
+| Policy | PRODUCTION_POLICY_CHANGE_AUTHORIZED=NO |
+| Evidence | `EXP_021_AUDI_AUTONOMOUS_POST_RUN_FORENSIC_2026-09-09.md` |
+
+## EXP-021 — Audi cross-vehicle supplemental re-arm (2026-09-09)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PRE-ARMED — NOT DRIVING** (telemetry stale) |
+| Vehicle | **KS MS 661** Audi A4 2016 (`c10351f8-…`, token **187361**) |
+| New session | `3cc8465a-6977-4912-981c-63052398514c` READY; old `619284b3-…` ABORTED (not reused) |
+| Fresh-trip gate | **PASS** — prior trip `e324ee8c-…` COMPLETED; FSM RESTING |
+| Blocker | `LIVE_TELEMETRY_READY=NO` — provider age ~30516s; `VEHICLE_WAKE_REQUIRED=YES` |
+| Settlement integrity | PR #1570 hardened runtime PASS; policy tests 9/9 on prod |
+| Evidence | `EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md` §13 |
+
+## EXP-021 — Audi cross-vehicle supplemental (2026-09-08 evening)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PHYSICAL DRIVE OUTSIDE RC** — `START EXP-021 NOW` never received |
+| Vehicle | **KS MS 661** Audi A4 2016 (`c10351f8-…`, token **187361**) |
+| Classification | `EXP021_CROSS_VEHICLE_SUPPLEMENTAL=YES`; `VEHICLE_CONFOUND_PRESENT=YES` |
+| Cadence (planned) | **60→30→20→10** (not same-vehicle counterbalance vs EXP-019 KS MX) |
+| Session | `619284b3-…` pre-armed READY → **ABORTED** `2026-09-08T20:06:12Z`; **startRecording NOT called** |
+| Physical run | `EXP021_AUDI_PHYSICAL_RUN_EXECUTED=NO`; `EXP021_AUDI_DRIVE_CAPTURED=NO` |
+| Operational trip | `e324ee8c-…` 19:36–19:59 UTC (Trip FSM, not RC-bound) |
+| Settlement shadow | **NOT created** — no RECORDING session |
+| KS MX session | `fb553442-…` left READY unstarted (different vehicle) |
+| Go gate (post-wake) | `READY_TO_DRIVE=YES` at 19:40 UTC; operator did not send start command |
+| Settlement integrity | Deployed PR #1570 hardened runtime PASS (unused this run) |
+| Evidence | `EXP_021_AUDI_CROSS_VEHICLE_SUPPLEMENTAL_2026-09-08.md` |
+
 ## EXP-021 — Pre-drive integrity gate (2026-09-08)
 
 | Event | Detail |
