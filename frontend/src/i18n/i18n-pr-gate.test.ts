@@ -1360,6 +1360,11 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     'frontend/src/i18n/i18n-pr-gate.test.ts',
   ];
 
+  const PR_1589_FROZEN_BOUNDARY = {
+    baseSha: 'f4109e34c24f1eb497e2023f4b4bb997abfc159f',
+    headSha: '397903465a48da97dad9049e64950cdee09dc7b3',
+  };
+
   function gitShowAtRef(ref: string, path: string) {
     return execFileSync('git', ['show', `${ref}:${path}`], { cwd: repoRoot, encoding: 'utf8' });
   }
@@ -1367,7 +1372,30 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
   let cachedPrResolution: ReturnType<typeof resolveEffectivePrChangedPaths> | null = null;
 
   function resolveCurrentPrChangedPathsOnce() {
-    cachedPrResolution ??= resolveEffectivePrChangedPaths({ repoRoot });
+    if (!cachedPrResolution) {
+      const hasCiBoundary =
+        process.env.GITHUB_EVENT_PATH ||
+        process.env.GITHUB_BASE_SHA ||
+        process.env.I18N_PR_BASE_SHA;
+      if (hasCiBoundary) {
+        cachedPrResolution = resolveEffectivePrChangedPaths({ repoRoot });
+      } else {
+        const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        const baseSha = execFileSync('git', ['merge-base', 'origin/main', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        cachedPrResolution = resolveEffectivePrChangedPaths({
+          repoRoot,
+          baseSha,
+          headSha,
+          source: 'local_merge_base_fallback',
+        });
+      }
+    }
     return cachedPrResolution;
   }
 
@@ -1685,8 +1713,13 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     expect(workflowYaml).not.toMatch(/uses:\s*actions\/checkout/);
   });
 
-  it('resolves current PR changed paths via base...head and matches PR #1589 file set', () => {
-    const resolved = resolveCurrentPrChangedPathsOnce();
+  it('frozen replay: PR #1589 effective diff matches historical governance file set', () => {
+    const resolved = resolveEffectivePrChangedPaths({
+      repoRoot,
+      baseSha: PR_1589_FROZEN_BOUNDARY.baseSha,
+      headSha: PR_1589_FROZEN_BOUNDARY.headSha,
+      source: 'frozen_replay_pr1589',
+    });
     expect(resolved.changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
     expect(
       resolved.changedPaths.some((path) => path.startsWith('architecture/trip-detection-lifecycle/')),
@@ -1694,8 +1727,21 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     expect(resolved.changedPaths.some((path) => path.startsWith('backend/'))).toBe(false);
   });
 
-  it('regression: classifier ref selection does not redefine PR changed-path set', { timeout: 15000 }, () => {
-    const resolvedAtBase = resolveEffectivePrChangedPaths({ repoRoot });
+  it('resolves current PR changed paths via base...head (module authority bootstrap)', () => {
+    const resolved = resolveCurrentPrChangedPathsOnce();
+    expect(resolved.changedPaths.length).toBeGreaterThan(0);
+    expect(
+      resolved.changedPaths.some((path) => path.startsWith('architecture/internationalization/')),
+    ).toBe(true);
+    expect(resolved.changedPaths).toContain('architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md');
+    expect(
+      resolved.changedPaths.some((path) => path.startsWith('architecture/trip-detection-lifecycle/')),
+    ).toBe(false);
+    expect(resolved.changedPaths.some((path) => path.startsWith('backend/'))).toBe(false);
+  });
+
+  it('regression: classifier ref selection does not redefine PR changed-path set', () => {
+    const resolvedAtBase = resolveCurrentPrChangedPathsOnce();
     const resolvedAgain = resolveEffectivePrChangedPaths({
       repoRoot,
       baseSha: resolvedAtBase.baseSha,
@@ -1719,9 +1765,13 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     expect(legacyAfterMainAdvance.length).toBeGreaterThan(correctPaths.length);
   });
 
-  it('PR effective diff is bootstrap-safe under CURRENT MAIN trusted classifier', () => {
-    const { changedPaths, baseSha } = resolveCurrentPrChangedPathsOnce();
-    expect(changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
+  it('frozen replay: PR #1589 bootstrap-safe under PR-base trusted classifier', () => {
+    const { changedPaths, baseSha } = resolveEffectivePrChangedPaths({
+      repoRoot,
+      baseSha: PR_1589_FROZEN_BOUNDARY.baseSha,
+      headSha: PR_1589_FROZEN_BOUNDARY.headSha,
+      source: 'frozen_replay_pr1589',
+    });
 
     const mainWorkflowYaml = gitShowAtRef(
       baseSha,
@@ -1747,8 +1797,13 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     expect(bootstrap.ok).toBe(true);
   });
 
-  it('PR effective diff remains bootstrap-safe under historical 2f0d trusted classifier', () => {
-    const { changedPaths } = resolveCurrentPrChangedPathsOnce();
+  it('frozen replay: PR #1589 bootstrap-safe under historical 2f0d trusted classifier', () => {
+    const { changedPaths } = resolveEffectivePrChangedPaths({
+      repoRoot,
+      baseSha: PR_1589_FROZEN_BOUNDARY.baseSha,
+      headSha: PR_1589_FROZEN_BOUNDARY.headSha,
+      source: 'frozen_replay_pr1589',
+    });
     const historicalWorkflowYaml = gitShowAtRef(
       GOVERNANCE_PARITY_HISTORICAL_BASE_SHA,
       '.github/workflows/i18n-authority-protection.yml',

@@ -14,6 +14,9 @@ import { normalizeRepoPath } from './git-diff.mjs';
 export const CANONICAL_GOVERNANCE_EXACT_PATHS = [
   '.cursor/rules/i18n.mdc',
   'AGENTS.md',
+  'architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md',
+  'frontend/src/master/components/ArchitekturView.tsx',
+  'frontend/src/master/components/ChangesView.tsx',
   '.github/workflows/i18n-governance-new-debt.yml',
   'frontend/package.json',
   'frontend/package-lock.json',
@@ -37,6 +40,8 @@ export const CANONICAL_GOVERNANCE_EXACT_PATHS = [
 export const CANONICAL_GOVERNANCE_PREFIX_RULES = [
   { prefix: 'frontend/scripts/i18n-', extension: '.mjs' },
   { prefix: 'frontend/scripts/lib/i18n-governance/', extension: null },
+  /** Registered module living authorities (bootstrap + maintenance). */
+  { prefix: 'architecture/internationalization/', extension: null },
 ];
 
 /**
@@ -229,6 +234,9 @@ export function buildAuthorityPathParitySampleSet() {
     'frontend/scripts/i18n-not-governance.ts',
     'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs',
     'frontend/scripts/lib/i18n-governance/authority-path-contract.mjs',
+    'architecture/internationalization/CURRENT_STATE.md',
+    'architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md',
+    'frontend/src/master/components/ChangesView.tsx',
     'frontend/src/rental/components/TopBar.tsx',
     'frontend/src/i18n/de.ts',
     'README.md',
