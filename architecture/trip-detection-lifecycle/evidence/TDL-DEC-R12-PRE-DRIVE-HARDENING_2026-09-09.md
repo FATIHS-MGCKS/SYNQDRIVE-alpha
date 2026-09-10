@@ -5,10 +5,13 @@
 | Field | Value |
 |-------|-------|
 | **Workstream** | R12 pre-drive audit remediation |
-| **PR** | #1594 |
+| **PR** | #1594 (**MERGED** to `origin/main`) |
+| **MERGE_SHA** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` |
 | **BASE_SHA** | `2e82171d11862a80c2e8cd62c65023393ef0ce64` |
 | **Epistemic** | CURRENT_CODE + CURRENT_TEST |
-| **Validation** | Trip FSM Production Readiness CI green @ run 34421189658 (`2d8c5d61c`) |
+| **Validation** | Trip FSM Production Readiness CI green @ main push run **34424546044** (`f4109e34`) |
+| **Deploy status** | **NOT_DEPLOYED** — distinct from pre-hardening production deploy @ `157b3c722268…` (TDL-EV-R12-PROD-DEPLOY-001) |
+| **Behavior status** | **NOT_PRODUCTION_BEHAVIOR_VALIDATED** |
 
 ## Findings closed
 
