@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-10 (Internationalization module authority bootstrap — registry intake `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-09-10 (Internationalization module authority promoted to `AUTHORITY_ACTIVE`)
 
 ---
 
@@ -48,7 +48,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | IAM MFA | Multi-factor authentication enrollment, step-up grants, and MFA administration. | `NOT_STARTED` | N/A — inventory only | — |
 | Insurances | Vehicle insurance policy management and insurance partner channel adapters. | `NOT_STARTED` | N/A — inventory only | — |
 | Integrations Hub | Tenant integrations configuration and connection management surface. | `NOT_STARTED` | N/A — inventory only | — |
-| Internationalization (i18n) | Owns locale selection, translation catalogs, runtime translation delivery, Rental UI localization, fallback behavior, translation coverage, hardcoded-copy prevention, and i18n governance/CI. | `AUDIT_IN_PROGRESS` | Bootstrap audit V1 (2026-09-10) · substantial reconstruction · runtime-bearing frontend module | [`architecture/internationalization/`](internationalization/) |
+| Internationalization (i18n) | Owns locale selection, translation catalogs, runtime translation delivery, Rental UI localization, fallback behavior, translation coverage, hardcoded-copy prevention, and i18n governance/CI. | `AUTHORITY_ACTIVE` | Bootstrap audit V1 (2026-09-10) · Gate A satisfied · runtime-bearing frontend module · product migration debt documented | [`architecture/internationalization/`](internationalization/) |
 | Invoices | Operational invoice records, issue and send flows, and accounts-receivable management for rentals. | `NOT_STARTED` | N/A — inventory only | — |
 | Notifications | Multi-channel notification evaluation, preferences, delivery outbox, and in-app notification consumption. | `NOT_STARTED` | N/A — inventory only | — |
 | Organizations & Tenancy | Multi-tenant organization profiles, operational settings, and tenant-scoped configuration. | `NOT_STARTED` | N/A — inventory only | — |
@@ -257,13 +257,13 @@ Detailed sections for modules with usable living authorities. See [Module invent
 
 | Field | Value |
 |-------|-------|
-| **Registry coverage status** | `AUDIT_IN_PROGRESS` — bootstrap reconstruction **in progress**; **not** a complete usable authority |
+| **Registry coverage status** | `AUTHORITY_ACTIVE` — structured living authority; open product/runtime gaps documented explicitly |
 | **Scope** | Platform locale contract (9 official locales), `LanguageProvider` / `translateKey` runtime, translation catalogs (`frontend/src/i18n/translations/`), locale persistence and fallback, Rental/Operator/Master/Login consumer integration (post Integration 2C), translation coverage baselines, hardcoded-copy inventory and phased enforce-clean, i18n governance scripts/CI (P2.3), targeted backend DE/EN copy (billing email, evaluations metrics). |
 | **Authority directory** | [`architecture/internationalization/`](internationalization/) |
-| **Authority-native status** | **Bootstrap audit V1** (2026-09-10) · platform runtime CONFIRMED · Rental migration SUBSTANTIAL · hardcoded-copy IN_PROGRESS · governance CONFIRMED on main · **not** promoted |
+| **Authority-native status** | **Bootstrap audit V1** (2026-09-10) · platform runtime CONFIRMED · Rental migration SUBSTANTIAL · hardcoded-copy IN_PROGRESS · governance CONFIRMED on main · **promoted Gate A 2026-09-10** |
 | **Ownership boundary** | **Owns** frontend i18n runtime, catalogs, locale contract, governance/CI, hardcoded-copy scanner/inventory. **Does NOT own** general backend API localization, legal document authoritative text, Rental business logic (except `t()` usage patterns), DIMO/trip/health modules. Flat `architecture/I18N_*` and `audit-campaign/architecture/I18N_*` are **supporting evidence only**. |
-| **Reconstruction status** | Phase **0** complete (registry intake); Phase **1** repository audit complete; Phase **2** read-only Production baseline established; Phase **3** authority bootstrap complete; Phase **4** graph partial; Phase **5** promotion **blocked** (external review + Production UX validation). |
-| **Mandatory entry documents (partial)** | [README.md](internationalization/README.md) · [AUDIT_MANIFEST.md](internationalization/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](internationalization/CURRENT_STATE.md) · [AGENT_CONTRACT.md](internationalization/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](internationalization/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](internationalization/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](internationalization/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](internationalization/evidence/PRODUCTION_BASELINE.md) |
+| **Reconstruction status** | Phase **0–3** complete; Phase **4** graph validators active; Phase **5** promotion gate satisfied (authority coverage). Remaining **product debt**: partial locales, 1,661 enforce-clean findings, Master surface migration, no per-locale Production UX probe. |
+| **Mandatory entry documents** | [README.md](internationalization/README.md) · [AUDIT_MANIFEST.md](internationalization/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](internationalization/CURRENT_STATE.md) · [AGENT_CONTRACT.md](internationalization/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](internationalization/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](internationalization/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](internationalization/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](internationalization/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/internationalization/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` · `cd frontend && npm run i18n:check:ci && npm run i18n:pr-gate:test` |
 
 ---

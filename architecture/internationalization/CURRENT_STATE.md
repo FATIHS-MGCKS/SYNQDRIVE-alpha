@@ -1,7 +1,7 @@
 # Current State — Internationalization (i18n)
 
-**Last verified:** 2026-09-10 (repository audit + read-only Production SSH)  
-**Registry coverage status:** `AUDIT_IN_PROGRESS`
+**Last verified:** 2026-09-10 (repository audit + read-only Production SSH; main sync + promotion pass)
+**Registry coverage status:** `AUTHORITY_ACTIVE`
 
 ## Executive summary
 
@@ -17,7 +17,7 @@ SynqDrive i18n is a **frontend-centric platform runtime** with heavy **governanc
 
 | Field | Value |
 |-------|-------|
-| Branch | `main` @ `8186b4d830f472bc5f687c711bb53c72da243cb0` |
+| Branch | `origin/main` @ `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` |
 | Canonical keys | 10,431 (`frontend/src/i18n/translations/en.ts`) |
 | Locale files | ~125 TypeScript modules under `frontend/src/i18n/translations/` |
 | Tests | 12 vitest files under `frontend/src/i18n/` + governance scripts |

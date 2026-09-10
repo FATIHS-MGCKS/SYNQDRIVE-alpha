@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Registry coverage status** | `AUDIT_IN_PROGRESS` |
-| **Authority-native status** | Bootstrap audit V1 (2026-09-10) · substantial reconstruction · runtime-bearing frontend module |
+| **Registry coverage status** | `AUTHORITY_ACTIVE` |
+| **Authority-native status** | Bootstrap audit V1 (2026-09-10) · Gate A satisfied · runtime-bearing frontend module |
 | **Maturity** | Platform runtime **CONFIRMED** · Rental surface migration **SUBSTANTIAL** · Hardcoded-copy elimination **IN_PROGRESS** · Governance **CONFIRMED** |
 | **Runtime impact** | Frontend SPA locale selection, translation delivery, Rental/Operator/Master UI presentation, CI governance gates |
 

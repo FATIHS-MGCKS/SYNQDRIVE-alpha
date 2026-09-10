@@ -77,13 +77,16 @@ Scientific history of the i18n rebuild workstream. No runtime code changes in th
 | **STATUS** | COMPLETE (main); Production behind (I18N-GAP-005) |
 | **DECISION** | I18N-DEC-GOV-P23-001 |
 
-## 2026-09-10 — Module authority bootstrap (this workstream)
+## 2026-09-10 — Module authority bootstrap + Gate A promotion (PR #1596)
 
 | Field | Detail |
 |-------|--------|
-| **CHANGE** | Registry intake `NOT_STARTED` → `AUDIT_IN_PROGRESS`; `architecture/internationalization/` authority bootstrap |
-| **NON_EFFECTS** | No feature implementation, translation migration, or governance redesign |
-| **STATUS** | Documentation only |
+| **BEFORE** | Internationalization absent from central registry inventory |
+| **CHANGE** | Registry `NOT_STARTED` → `AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE`; full `architecture/internationalization/` authority; authority-path contract extended for module bootstrap PRs; PR-gate adversarial tests frozen #1589 boundary |
+| **WHY** | First canonical bootstrap per `MODULE_AUTHORITY_STANDARD.md` Gate A |
+| **NON_EFFECTS** | No translation migration, locale dictionary fill, or governance weakening |
+| **REMAINING_GAPS** | Partial locales, 1,661 enforce-clean findings, Master debt, I18N-GAP-004 |
+| **STATUS** | Authority coverage COMPLETE; product migration IN_PROGRESS |
 
 ---
 

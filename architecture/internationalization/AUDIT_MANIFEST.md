@@ -5,12 +5,12 @@
 | **MODULE** | Internationalization (i18n) |
 | **MODULE_SLUG** | `internationalization` |
 | **AUDIT_STARTED_AT** | `2026-09-10T02:30:00Z` |
-| **AUDIT_COMPLETED_AT** | `2026-09-10T03:00:00Z` (bootstrap authority reconstruction — promotion blocked) |
+| **AUDIT_COMPLETED_AT** | `2026-09-10T03:30:00Z` (Gate A satisfied — promoted `AUTHORITY_ACTIVE`) |
 | **REGISTRY_STATUS_AT_START** | absent from inventory (treated as `NOT_STARTED`) |
-| **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
+| **REGISTRY_STATUS_AT_END** | `AUTHORITY_ACTIVE` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `8186b4d830f472bc5f687c711bb53c72da243cb0` |
+| **ORIGIN_MAIN_SHA** | `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` (post-sync baseline for promotion PR) |
 | **AUDIT_BRANCH_SHA** | set at PR commit |
 | **PRODUCTION_AUDITED_AT** | `2026-09-10T02:34:30Z` |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
@@ -36,9 +36,15 @@
 | Health endpoint | — | HTTP 200 `app.synqdrive.eu` | I18N-EVID-PROD-002 | CONFIRMED | — |
 | Backend general i18n framework | Inspected | N/A | I18N-EVID-REPO-007 | CONFIRMED absent | By design |
 
-## AUTHORITY_ACTIVE promotion blockers
+## Gate A promotion (2026-09-10)
 
-1. Bootstrap authority files newly created — not yet reviewed externally.
-2. Production baseline is read-only structural presence only — no per-locale Production UX validation.
-3. Remaining migration debt (hardcoded copy, partial locales) not fully catalogued per-surface in authority graph.
-4. `hardcoded-copy-guard.test.ts` referenced by `i18n-check.mjs` missing from main `frontend/` (documentation/test gap).
+**Result:** `AUTHORITY_ACTIVE` — all normative Gate A checklist items satisfied per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) §6 and §8.
+
+**Explicit non-blockers (product/runtime debt, documented in authority):**
+
+1. Partial locale dictionaries (fr/pl/cs/nl/es/it) and fallback-only `tr`
+2. 1,661 enforce-clean hardcoded-copy findings remaining
+3. Master surface migration debt (1,071 inventory findings)
+4. No browser-level per-locale Production UX probe
+5. `hardcoded-copy-guard.test.ts` referenced by `i18n-check.mjs` but missing from `frontend/src/i18n/` (I18N-GAP-004)
+6. Production SHA behind `origin/main` (governance parity commits not yet deployed)
