@@ -183,6 +183,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Exact-SHA CI closure attempt (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CI CLOSURE INCOMPLETE** (PR #1593 @ `88b918a73`) |
+| i18n | `PRE_EXISTING_MAIN_TOOLING_DEFECT` — P2.3.4 tests bound to live PR; fix in [#1597](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1597) |
+| Trip FSM CI | Not auto-triggered; manual dispatch required |
+| RC tests | 641 total = 610 passed + 31 skipped (reconciled) |
+| Evidence | `EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md` §Exact-SHA CI closure |
+
 ## EXP-021 — Post-#1594/#1595 rebase integration audit (2026-09-10)
 
 | Event | Detail |

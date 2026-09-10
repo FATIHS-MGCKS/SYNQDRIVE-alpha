@@ -12,7 +12,7 @@
 | `REBASE_TARGET_MAIN_SHA` | `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` |
 | `MAIN_CONTAINS_1594` | **YES** (`f4109e34c…` ancestor) |
 | `MAIN_CONTAINS_1595` | **YES** (`7203b5bd6…` ancestor) |
-| `PR1593_POST_REBASE_HEAD` | `00f92b35d3f9d152ceaf27ecda9c0f175485e56b` |
+| `PR1593_POST_REBASE_HEAD` | `88b918a73d88b7e80bf12e652db32661dacac534` |
 | `MERGE_BASE_EQUALS_CURRENT_MAIN` | **YES** |
 | `REBASE_CONFLICTS` | **0** (clean rebase) |
 | `SEMANTIC_CONFLICTS_RESOLVED` | **0** (no conflict files) |
@@ -100,11 +100,57 @@ DIMO telemetry ─┬─► Trip FSM (detectors → TripDecisionEngine → Vehic
 | `ONGOING_ENDTIME_TREATED_AS_COMPLETED` | **NO** |
 | `PDI_SURVIVES_DELAYED_TRIP_COMPLETION` | **YES** |
 
+## Exact-SHA CI closure (`88b918a73`)
+
+### GitHub workflow runs @ `88b918a73d88b7e80bf12e652db32661dacac534`
+
+| Workflow | Run ID | Conclusion |
+|----------|--------|------------|
+| i18n Governance — New Debt Gate | [34433703415](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34433703415) | **failure** |
+| Module registry governance | [34433703431](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34433703431) | **success** |
+| Legal Documents — Production Readiness CI | [34433703542](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34433703542) | **success** |
+| Vehicle Detail — Production Readiness CI | [34433703413](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34433703413) | **success** |
+| i18n Governance — Authority Protection | [34433701971](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/34433701971) | **success** |
+| Trip FSM — Production Readiness CI | — | **not triggered** (no `trips/*` diff) |
+
+### i18n failure forensics
+
+| Check | PR #1593 @ `88b918a73` | `origin/main` @ `7203b5bd` |
+|-------|------------------------|----------------------------|
+| `npm run i18n:check` | **PASS** | **PASS** |
+| `npm run i18n:scanner:test` | **PASS** (43/45, 2 skipped) | **PASS** (43/45, 2 skipped) |
+| `npm run i18n:pr-gate:test` P2.3.4 block | N/A in CI log root cause | N/A |
+
+**Classification:** `PRE_EXISTING_MAIN_TOOLING_DEFECT` — P2.3.4 tests in `i18n-pr-gate.test.ts` bound `resolveEffectivePrChangedPaths({ repoRoot })` to the **live CI PR**, expecting hardcoded PR #1589 paths. #1593 touches `ChangesView.tsx` → i18n-relevant → adversarial step runs → path mismatch (not new translation debt).
+
+**Fix:** separate tooling PR [#1597](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1597) (`cursor/i18n-pr-gate-parity-isolation-fix-7d78`) — isolated PR #1589 parity fixture. **#1593 must rebase after #1597 merges to main.**
+
+### Trip FSM Production Readiness dispatch
+
+`workflow_dispatch` on `.github/workflows/trip-fsm-production-readiness.yml` @ #1593 branch: **HTTP 403** (agent token lacks dispatch permission). **Requires operator manual dispatch** on `88b918a73` or post-rebase head.
+
+### Reference Capture test counts (reconciled @ `88b918a73`)
+
+| Metric | Value |
+|--------|-------|
+| `TEST_SUITES_TOTAL` | 56 |
+| `TEST_SUITES_PASSED` | 52 |
+| `TEST_SUITES_FAILED` | 0 |
+| `TEST_SUITES_SKIPPED` | 4 |
+| `TESTS_TOTAL` | 641 |
+| `TESTS_PASSED` | 610 |
+| `TESTS_FAILED` | 0 |
+| `TESTS_SKIPPED` | 31 |
+
+`610 + 0 + 31 = 641` ✓ — prior `640` total was incorrect.
+
+Skipped suites (31 tests): **EXPECTED_INFRA_SKIP** — postgres/redis integration harnesses without local PG/Redis/Docker.
+
 ## Test evidence (rebased head)
 
 | Suite | Total | Passed | Failed | Skipped | Notes |
 |-------|-------|--------|--------|---------|-------|
-| Reference Capture (`--testPathPattern=reference-capture`) | 640 | **609** | 0 | 31 | skips: infra/optional harness |
+| Reference Capture (`--testPathPattern=reference-capture`) | 641 | **610** | 0 | 31 | 4 suites skipped; infra harness |
 | Trip FSM R11 unit (`test:trip-r11:unit`) | 67 | **67** | 0 | 0 | |
 | Trip FSM R12 unit (`test:trip-r12:unit`) | 24 | **24** | 0 | 0 | |
 | R12 AUD-002/003/004 unit | 31 | **26** | 0 | 5 | AUD-007 PG suite skipped locally |
@@ -113,7 +159,8 @@ DIMO telemetry ─┬─► Trip FSM (detectors → TripDecisionEngine → Vehic
 | DI graph validation | — | **PASS** | — | — | |
 | DI doc validation | — | **PASS** | — | — | |
 | Module registry | — | **PASS** | — | — | |
-| i18n PR gate (base→head) | — | **PASS** | — | — | 0 new debt |
+| i18n PR gate CLI (base→head local) | — | **PASS** | — | — | 0 new debt |
+| i18n CI New Debt Gate @ `88b918a73` | — | **FAIL** | — | — | tooling defect; see #1597 |
 
 ### Fourth-pass regression (unchanged)
 
@@ -137,16 +184,21 @@ DIMO telemetry ─┬─► Trip FSM (detectors → TripDecisionEngine → Vehic
 
 `DIRECT_TRIPFSM_BEHAVIOR_CHANGE_FROM_1593` = **NO**
 
-## Remaining risks
+## Remaining risks / open blockers
 
-1. **AUD-007 PostgreSQL integration** — not executed locally; requires CI Trip FSM Production Readiness workflow on final SHA.
-2. **Post-merge VPS `--e2e-shadow-smoke`** — still required before physical run (unchanged).
-3. **AUD-006 deferred** — operators must not infer trip completion from `endTime` alone anywhere outside canonical COMPLETED binding.
+1. **i18n New Debt Gate** — blocked on [#1597](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1597) merge + #1593 rebase.
+2. **Trip FSM Production Readiness** — not auto-triggered; manual `workflow_dispatch` required (agent 403).
+3. **AUD-007 PostgreSQL integration** — requires Trip FSM CI run with PG service (not available locally).
+4. **Post-merge VPS `--e2e-shadow-smoke`** — still required before physical run (unchanged).
+5. **AUD-006 deferred** — operators must not infer trip completion from `endTime` alone.
 
 ## Merge gate
 
-`READY_TO_MERGE_1593` = **YES** subject to CI green on `00f92b35d…` and operator approval.
+`EXACT_SHA_CI_CLOSURE_COMPLETE` = **NO**
 
-`FINAL_INTEGRATION_SHA` = `00f92b35d3f9d152ceaf27ecda9c0f175485e56b`  
+`FINAL_INTEGRATION_SHA` = `88b918a73d88b7e80bf12e652db32661dacac534`
+
+`READY_TO_MERGE_1593` = **NO** — `CI_FAILED > 0` (i18n gate); Trip FSM CI not executed on this SHA
+
 `READY_TO_DEPLOY` = **NO**  
 `READY_FOR_NEXT_EXP021_PHYSICAL_RUN` = **NO**
