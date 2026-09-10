@@ -179,6 +179,23 @@ describe('reference-capture-exp-021-motion.lib', () => {
     expect(stop.shouldAutoStop).toBe(false);
   });
 
+  it('invalidated candidate cannot auto-stop from stale parked evidence after MOVING', () => {
+    const detector = new PhysicalEndDetector({
+      parkedSpeedKmh: 3,
+      movementSpeedKmh: 8,
+      provisionalConfirmMs: 2_000,
+      finalParkedMs: 600_000,
+      maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
+    });
+    detector.observe(speedSample(0, 0), 'PARKED_CANDIDATE', baseMs);
+    detector.observe(speedSample(5, 0), 'PARKED_CANDIDATE', baseMs + 5_000);
+    const invalidated = detector.observe(speedSample(10, 25), 'MOVING', baseMs + 10_000);
+    const stop = detector.observe(speedSample(10, 25), 'UNKNOWN', baseMs + 20_000);
+    expect(invalidated.candidateInvalidated).toBe(true);
+    expect(stop.shouldAutoStop).toBe(false);
+  });
+
   it('STRONG_PARKED_EVIDENCE_REQUIRED_FOR_UNKNOWN_STOP', () => {
     const detector = new PhysicalEndDetector({
       parkedSpeedKmh: 3,
