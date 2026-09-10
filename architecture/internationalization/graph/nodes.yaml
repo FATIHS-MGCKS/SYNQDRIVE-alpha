@@ -1,0 +1,360 @@
+# Internationalization (i18n) — Knowledge Graph Nodes (bootstrap V1)
+
+nodes:
+  - id: I18N-DOM-PLATFORM-001
+    type: domain
+    title: Internationalization platform domain
+    epistemic_status: CONFIRMED
+    summary: >
+      Frontend-centric locale selection, translation catalogs, runtime delivery,
+      governance/CI, and Rental/Operator/Master consumer integration.
+    source_paths:
+      - architecture/internationalization/README.md
+
+  - id: I18N-ORCH-LANGUAGE-PROVIDER-001
+    type: orchestrator
+    title: LanguageProvider runtime
+    epistemic_status: CONFIRMED
+    summary: >
+      Single SPA-root provider; translateKey(locale, key) with en fallback and {var} interpolation.
+    source_paths:
+      - frontend/src/i18n/LanguageContext.tsx
+    evidence:
+      - I18N-EVID-CODE-RUNTIME-001
+
+  - id: I18N-DATA-LOCALES-001
+    type: data
+    title: Official product locale contract
+    epistemic_status: CONFIRMED
+    summary: Nine official locales; en canonical; de complete; partial fr/pl/cs/nl/es/it; tr fallback-only.
+    source_paths:
+      - frontend/src/i18n/locales.ts
+      - frontend/src/i18n/translation-registry.ts
+    evidence:
+      - I18N-EVID-CODE-LOCALES-001
+
+  - id: I18N-DATA-EN-CANONICAL-001
+    type: data
+    title: Canonical English dictionary
+    epistemic_status: CONFIRMED
+    summary: 10,431 keys in en.ts — canonical key source for coverage and governance.
+    source_paths:
+      - frontend/src/i18n/translations/en.ts
+    evidence:
+      - I18N-EVID-CODE-COVERAGE-001
+
+  - id: I18N-STATE-PERSISTENCE-001
+    type: state
+    title: Locale persistence
+    epistemic_status: CONFIRMED
+    summary: localStorage key synqdrive.locale; initial resolution persisted → navigator → en.
+    source_paths:
+      - frontend/src/i18n/locales.ts
+      - frontend/src/i18n/LanguageContext.tsx
+
+  - id: I18N-PIPE-RENTAL-INTEGRATION-001
+    type: pipeline
+    title: Rental direct platform integration (2C)
+    epistemic_status: CONFIRMED
+    summary: frontend/src/rental/i18n/ bridge removed; Rental imports ../../i18n/LanguageContext.
+    source_paths:
+      - frontend/src/rental/
+    evidence:
+      - I18N-EVID-AUDIT-2C-001
+
+  - id: I18N-DATA-HARDCODED-INVENTORY-001
+    type: data
+    title: Hardcoded-copy inventory v3
+    epistemic_status: CONFIRMED
+    summary: 3,091 total findings; 1,661 remaining in phased enforce-clean surfaces (P21–P23).
+    source_paths:
+      - frontend/src/i18n/hardcoded-copy-inventory.json
+    evidence:
+      - I18N-EVID-CODE-INVENTORY-001
+
+  - id: I18N-AUTH-GOVERNANCE-001
+    type: authority
+    title: i18n governance stack (P2.3)
+    epistemic_status: CONFIRMED
+    summary: >
+      Authority Protection workflow, PR new-debt gate, authority-path contract SSOT,
+      structural workflow classifier parser (#1581/#1585/#1589 on main).
+    source_paths:
+      - frontend/scripts/lib/i18n-governance/
+      - .github/workflows/i18n-authority-protection.yml
+      - .github/workflows/i18n-governance-new-debt.yml
+    evidence:
+      - I18N-EVID-CODE-GOV-001
+
+  - id: I18N-CONS-RENTAL-001
+    type: consumer
+    title: Rental UI surfaces
+    epistemic_status: CONFIRMED
+    summary: Rental components consume useLanguage() from platform i18n.
+    source_paths:
+      - frontend/src/rental/
+
+  - id: I18N-CONS-OPERATOR-001
+    type: consumer
+    title: Operator UI surfaces
+    epistemic_status: CONFIRMED
+    summary: Operator app consumes platform LanguageContext.
+    source_paths:
+      - frontend/src/operator/
+
+  - id: I18N-CONS-MASTER-001
+    type: consumer
+    title: Master admin surfaces
+    epistemic_status: INFERRED
+    summary: Master surfaces partially migrated; 1,071 MASTER inventory findings remain.
+    source_paths:
+      - frontend/src/master/
+
+  - id: I18N-PIPE-BACKEND-LIMITED-001
+    type: pipeline
+    title: Targeted backend locale copy
+    epistemic_status: CONFIRMED
+    summary: billing-email-i18n.ts and evaluations-metric.i18n.ts — DE/EN only; not a general backend i18n framework.
+    source_paths:
+      - backend/src/modules/billing/email/billing-email-i18n.ts
+      - backend/src/synq/evaluations-metrics/evaluations-metric.i18n.ts
+
+  - id: I18N-SUPERSEDED-RENTAL-BRIDGE-001
+    type: superseded_approach
+    title: Rental i18n compat bridge
+    epistemic_status: HISTORICAL
+    summary: frontend/src/rental/i18n/ re-export bridge — retired Integration 2C.
+    source_paths:
+      - docs/audits/i18n-integration-2c-rental-bridge-retirement-2026-09-08.md
+
+  - id: I18N-EVID-CODE-RUNTIME-001
+    type: evidence
+    title: LanguageContext runtime source
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Platform translation provider and lookup semantics.
+    source_paths:
+      - frontend/src/i18n/LanguageContext.tsx
+
+  - id: I18N-EVID-CODE-LOCALES-001
+    type: evidence
+    title: Locale contract source
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: OFFICIAL_PRODUCT_LOCALE_CODES and persistence helpers.
+    source_paths:
+      - frontend/src/i18n/locales.ts
+
+  - id: I18N-EVID-CODE-COVERAGE-001
+    type: evidence
+    title: Translation coverage baseline
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: en.ts key count and coverage registry tests.
+    source_paths:
+      - frontend/src/i18n/translations/en.ts
+      - frontend/src/i18n/translation-coverage.test.ts
+
+  - id: I18N-EVID-AUDIT-2C-001
+    type: evidence
+    title: Integration 2C audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Rental bridge retirement verified.
+    source_paths:
+      - docs/audits/i18n-integration-2c-rental-bridge-retirement-2026-09-08.md
+
+  - id: I18N-EVID-CODE-INVENTORY-001
+    type: evidence
+    title: Hardcoded-copy inventory snapshot
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Inventory v3 dated 2026-09-07.
+    source_paths:
+      - frontend/src/i18n/hardcoded-copy-inventory.json
+
+  - id: I18N-EVID-CODE-GOV-001
+    type: evidence
+    title: Governance scripts and workflows
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: P2.3 governance on origin/main.
+    source_paths:
+      - frontend/scripts/lib/i18n-governance/authority-path-contract.mjs
+      - .github/workflows/i18n-authority-protection.yml
+
+  - id: I18N-EVID-PROD-001
+    type: evidence
+    title: Production i18n runtime presence
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: LanguageContext and authority workflow present in deployed release @ 2e82171d…
+    source_paths:
+      - architecture/internationalization/evidence/PRODUCTION_BASELINE.md
+
+  - id: I18N-DEC-CANONICAL-EN-001
+    type: decision
+    title: English as canonical key source and fallback
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: en is default locale and fallback; missing keys return key string in dev with warning.
+    source_paths:
+      - architecture/internationalization/decisions/DECISION_REGISTER.md
+    evidence:
+      - I18N-EVID-CODE-RUNTIME-001
+
+  - id: I18N-DEC-BRIDGE-RETIRE-001
+    type: decision
+    title: Retire Rental i18n bridge (Integration 2C)
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Single platform LanguageProvider; no nested Rental provider.
+    source_paths:
+      - architecture/internationalization/decisions/DECISION_REGISTER.md
+    evidence:
+      - I18N-EVID-AUDIT-2C-001
+
+  - id: I18N-DEC-GOV-P23-001
+    type: decision
+    title: P2.3 governance fail-closed PR gate
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Authority Protection + new-debt gate + authority-path contract parity preserved from #1581/#1585/#1589.
+    source_paths:
+      - architecture/internationalization/decisions/DECISION_REGISTER.md
+    evidence:
+      - I18N-EVID-CODE-GOV-001
+
+  - id: I18N-GAP-001
+    type: gap
+    title: Hardcoded-copy enforce-clean remaining debt
+    epistemic_status: CONFIRMED
+    summary: 1,661 findings in phased enforce-clean surfaces; Master surface disproportionately affected.
+    source_paths:
+      - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: I18N-GAP-002
+    type: gap
+    title: Partial locale dictionaries
+    epistemic_status: CONFIRMED
+    summary: fr/pl/cs/nl/es/it incomplete vs en; tr.ts empty (fallback-only).
+    source_paths:
+      - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: I18N-GAP-003
+    type: gap
+    title: Production locale UX validation
+    epistemic_status: UNKNOWN
+    summary: Read-only structural Production audit only; no browser-level per-locale UX probe.
+    source_paths:
+      - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: I18N-GAP-004
+    type: gap
+    title: hardcoded-copy-guard.test.ts missing from main
+    epistemic_status: CONFIRMED
+    summary: i18n-check.mjs references test file absent from frontend/ on main.
+    source_paths:
+      - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: I18N-GAP-005
+    type: gap
+    title: Repo vs Production governance drift
+    epistemic_status: CONFIRMED
+    summary: origin/main ahead of Production; #1589 parity not deployed.
+    source_paths:
+      - architecture/internationalization/evidence/PRODUCTION_BASELINE.md
+
+  - id: I18N-GAP-006
+    type: gap
+    title: Campaign slice file-by-file re-validation
+    epistemic_status: INFERRED
+    summary: ~60+ audit-campaign I18N slice docs not fully re-audited in bootstrap.
+    source_paths:
+      - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: I18N-GAP-007
+    type: gap
+    title: Stale i18n.mdc Rental bridge reference
+    epistemic_status: CONFIRMED
+    summary: .cursor/rules/i18n.mdc still mentions removed rental/i18n path.
+    source_paths:
+      - .cursor/rules/i18n.mdc
+
+  - id: I18N-GAP-008
+    type: gap
+    title: Backend evaluations metric stale comment
+    epistemic_status: INFERRED
+    summary: evaluations-metric.i18n.ts may reference old rental i18n path in comment.
+    source_paths:
+      - backend/src/synq/evaluations-metrics/evaluations-metric.i18n.ts
+
+  - id: I18N-HYP-001
+    type: hypothesis
+    title: Master admin holds majority of enforce-clean debt
+    epistemic_status: INFERRED
+    summary: Inventory bucket suggests Master disproportionately affected.
+    source_paths:
+      - architecture/internationalization/research/OPEN_HYPOTHESES.md
+
+  - id: I18N-HYP-002
+    type: hypothesis
+    title: Production locale switch matches repo behavior
+    epistemic_status: UNKNOWN
+    summary: Requires read-only browser probe post-deploy.
+    source_paths:
+      - architecture/internationalization/research/OPEN_HYPOTHESES.md
+
+  - id: I18N-HYP-003
+    type: hypothesis
+    title: Partial locales sufficient via en fallback
+    epistemic_status: INFERRED
+    summary: Product usage may not require full fr/pl/cs/nl/es/it dictionaries yet.
+    source_paths:
+      - architecture/internationalization/research/OPEN_HYPOTHESES.md
+
+  - id: I18N-CX-001
+    type: contradiction
+    title: i18n.mdc vs Integration 2C code
+    epistemic_status: CONTRADICTED
+    summary: Rule documents rental/i18n bridge; code removed it.
+    source_paths:
+      - architecture/internationalization/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: I18N-CX-002
+    type: contradiction
+    title: ArchitekturView stale rental i18n paths
+    epistemic_status: CONTRADICTED
+    summary: Historical entries reference frontend/rental/i18n/translations/.
+    source_paths:
+      - architecture/internationalization/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: I18N-CX-003
+    type: contradiction
+    title: Registry absence vs flat I18N docs
+    epistemic_status: HISTORICAL
+    summary: Resolved by this bootstrap — flat docs remain supporting evidence only.
+    source_paths:
+      - architecture/internationalization/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: I18N-DEC-NINE-LOCALES-001
+    type: decision
+    title: Nine official product locales including tr fallback-only
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: OFFICIAL_PRODUCT_LOCALE_CODES length 9; tr.ts empty by design.
+    source_paths:
+      - architecture/internationalization/decisions/DECISION_REGISTER.md
+    evidence:
+      - I18N-EVID-CODE-LOCALES-001
+
+  - id: I18N-DEC-HARDCODED-PHASED-001
+    type: decision
+    title: Phased enforce-clean hardcoded-copy elimination
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Inventory v3 + scanner + PR gate on P21-P23 enforce-clean surfaces.
+    source_paths:
+      - architecture/internationalization/decisions/DECISION_REGISTER.md
+    evidence:
+      - I18N-EVID-CODE-INVENTORY-001

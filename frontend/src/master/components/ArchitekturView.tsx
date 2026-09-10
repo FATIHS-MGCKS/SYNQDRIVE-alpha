@@ -456,6 +456,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Internationalization Platform Runtime (i18n authority bootstrap — V4.9.1092)', icon: Globe,
+    endpoint: '(n/a — frontend SPA runtime)',
+    service: '**Canonical authority:** `architecture/internationalization/` (`AUDIT_IN_PROGRESS`). **Runtime:** `frontend/src/i18n/LanguageContext.tsx` — single SPA-root `LanguageProvider`, `translateKey(locale, key)` with `en` fallback and `{var}` interpolation; persistence via `localStorage` key `synqdrive.locale`. **Locales:** 9 official (`OFFICIAL_PRODUCT_LOCALE_CODES`); `en` canonical (10,431 keys); `de` complete; fr/pl/cs/nl/es/it partial; `tr` fallback-only (empty `tr.ts`). **Integration 2C:** `frontend/src/rental/i18n/` bridge **retired** — Rental/Operator/Master import platform `useLanguage()` directly. **Governance (P2.3, main):** `i18n-authority-protection.yml`, `i18n-governance-new-debt.yml`, `authority-path-contract.mjs`, structural workflow classifier (#1581/#1585/#1589). **Debt:** hardcoded-copy inventory v3 — 1,661 enforce-clean remaining (P21–P23).',
+    dataSource: 'architecture/internationalization/CURRENT_STATE.md, KNOWLEDGE_GRAPH.md; supporting evidence: docs/audits/i18n-integration-*.md, audit-campaign/architecture/I18N_*.' },
   { name: 'Auswertungen E9D-DEFER Forecast Runtime Deferred (Phase 3 — V4.9.904)', icon: Layers,
     endpoint: 'E9 runtime deferred — no forecast API/UI in product.',
     service: 'E9D-DEFER: E9A.1 Production read-only certification (5 invoices, 1-day span, 3 daily buckets, 0 rolling origins) → CERTIFIED_INSUFFICIENT. Authority complete; E9B NOT_READY. E8 merge 83b140b5. PR #1059 Ready — not merged.',

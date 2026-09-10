@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'i18n-module-authority-bootstrap-2026-09-10',
+    version: '4.9.1092',
+    title: 'Internationalization (i18n) — module authority bootstrap audit',
+    summary: [
+      'Central registry intake: module absent → registered → `AUDIT_IN_PROGRESS` at `architecture/internationalization/`.',
+      'Repository audit: platform `LanguageContext` runtime CONFIRMED; Integration 2C Rental bridge retirement COMPLETE; 10,431 canonical en keys; hardcoded-copy inventory v3 — 1,661 enforce-clean remaining.',
+      'Governance P2.3 (#1581/#1585/#1589) CONFIRMED on main; Production read-only baseline @ `2e82171d…` — drift: main ahead (governance parity not deployed).',
+      'No feature implementation or translation migration in this workstream — documentation and audit only.',
+      'Promotion to `AUTHORITY_ACTIVE` blocked pending external review and Production per-locale UX validation.',
+    ],
+    reason:
+      'i18n was a large shared frontend module without canonical registry routing; agents could not navigate architecture without reconstructing weeks of PR history.',
+    previousBehavior:
+      'No Internationalization row in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`; flat `architecture/I18N_*` and campaign docs treated as implicit authority.',
+    details:
+      'architecture/internationalization/*, architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md. Validators: validate-graph.sh, validate-module-registry.sh.',
+    affectsArchitecture: true,
+    module: 'Internationalization',
+    createdAt: '2026-09-10T02:45:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
     version: '4.9.1091',
     title: 'Battery V2 M3.2B Phase C — Production shadow flag ON (controlled activation)',

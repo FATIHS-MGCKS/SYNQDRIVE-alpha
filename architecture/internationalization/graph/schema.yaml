@@ -1,0 +1,157 @@
+# Internationalization (i18n) Knowledge Graph — Schema
+
+version: "1.0"
+description: >
+  Schema for Internationalization living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - data
+  - pipeline
+  - orchestrator
+  - resolver
+  - state
+  - policy
+  - authority
+  - api
+  - dto
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - decides
+  - invokes
+  - uses
+  - input_to
+  - returns_to
+  - governs
+  - projects_to
+  - presents
+  - supports
+  - contradicts
+  - supersedes
+  - superseded_by
+  - tested_by
+  - protected_by
+  - does_not_solve
+  - gates
+  - validates
+  - derives_from
+  - enables
+
+relation_semantics_doc: architecture/internationalization/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: I18N-DOM-
+  data: I18N-DATA-
+  pipeline: I18N-PIPE-
+  orchestrator: I18N-ORCH-
+  resolver: I18N-RES-
+  state: I18N-STATE-
+  policy: I18N-POL-
+  authority: I18N-AUTH-
+  api: I18N-API-
+  dto: I18N-DTO-
+  consumer: I18N-CONS-
+  decision: I18N-DEC-
+  evidence: I18N-EVID-
+  test_evidence: I18N-TEST-
+  hypothesis: I18N-HYP-
+  invariant: I18N-INV-
+  gap: I18N-GAP-
+  contradiction: I18N-CX-
+  failed_approach: I18N-FAIL-
+  rejected_approach: I18N-REJECT-
+  superseded_approach: I18N-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - source_locator
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - non_effects
+    - superseded_by
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
