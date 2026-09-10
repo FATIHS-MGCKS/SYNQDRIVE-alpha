@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-ks-ms-661-t0-phase-settlement-hardening-2026-09-10',
+    version: '4.9.1098',
+    title: 'EXP-021 — KS MS 661 T0 / phase / settlement hardening (draft)',
+    summary: [
+      'Production forensic: session 8374c2fc — duplicate 60→60 fatal at movement; 12/12 PRE-T0 settlement probes; no PDI; WHOLE_TRIP 6/6 late.',
+      'Durable canonical T0 persisted before phase activation; PRE_ROLL phase provenance separated from PHYSICAL_T0/TRANSITION.',
+      'reanchorPhysicalCalibrationPhaseAtT0 seals stationary pre-arm and starts physical phase 60 at T0.',
+      'Settlement shadow gated on physical provenance; orchestration errors degrade (RC continues) vs integrity fail-closed.',
+    ],
+    reason:
+      'Next physical EXP-021 run must survive long pre-roll, stale telemetry, and delayed Trip FSM without losing T0 or crediting stationary time.',
+    previousBehavior:
+      'switchHfCalibrationPhase(60000) at movement threw when stationary phase 60 already effective; T0 logged after fallible switch; PRE_ROLL settlement probes matured before drive.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-post-1594-1595-rebase-integration-2026-09-10',
     version: '4.9.1097',
     title: 'EXP-021 — Post-#1594/#1595 rebase integration audit (PR #1593)',

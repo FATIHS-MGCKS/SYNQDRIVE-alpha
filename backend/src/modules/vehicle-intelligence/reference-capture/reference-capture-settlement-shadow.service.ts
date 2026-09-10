@@ -7,7 +7,10 @@ import { loadFrozenReferenceManifest } from './reference-capture-manifest.loader
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { buildBroadReferenceHistoricalSignalsQuery } from './reference-capture-query-builder';
 import { parseAcquisitionState } from './reference-capture-session.repository';
-import type { HfCalibrationPhaseRecord } from './reference-capture-hf-calibration-phase.policy';
+import {
+  isPhaseEligibleForPhysicalSettlement,
+  type HfCalibrationPhaseRecord,
+} from './reference-capture-hf-calibration-phase.policy';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
@@ -281,6 +284,7 @@ export class ReferenceCaptureSettlementShadowService {
         const newPhases = completed.slice(experiment.lastSyncedPhaseCount);
         for (const phase of newPhases) {
           if (!phase.phaseEndedAt) continue;
+          if (!isPhaseEligibleForPhysicalSettlement(phase)) continue;
           await this.validateCompletedPhaseProbeGeometry({
             experiment,
             phase,
@@ -307,6 +311,7 @@ export class ReferenceCaptureSettlementShadowService {
   }): Promise<void> {
     const active = args.series.activePhase;
     if (!active?.phaseStartedAt) return;
+    if (!isPhaseEligibleForPhysicalSettlement(active)) return;
 
     const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
     if (!Number.isFinite(phaseStartedAtMs)) return;

@@ -490,10 +490,80 @@ export class ReferenceCaptureSessionService {
     return this.observationRepository.findBySession(organizationId, sessionId, options);
   }
 
+  async persistExp021CanonicalT0(
+    organizationId: string,
+    sessionId: string,
+    args: {
+      firstQualifyingMovementAt: Date;
+      startConfirmedAt: Date;
+      nowMs: number;
+    },
+  ) {
+    this.assertEnabled();
+    await this.requireSession(organizationId, sessionId);
+    const result = await this.sessionRepository.persistExp021CanonicalT0Atomic({
+      organizationId,
+      sessionId,
+      ...args,
+    });
+    if (!result) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
+    return result;
+  }
+
+  async activatePhysicalPhaseAtT0(
+    organizationId: string,
+    sessionId: string,
+    body: { effectivePollIntervalMs: number; canonicalT0Ms: number },
+  ) {
+    this.assertEnabled();
+    const session = await this.requireSession(organizationId, sessionId);
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: session.vehicleId, organizationId },
+      select: { dimoVehicle: { select: { tokenId: true } } },
+    });
+    const tokenId = vehicle?.dimoVehicle?.tokenId;
+    if (!tokenId) {
+      throw new BadRequestException('Vehicle has no DIMO tokenId for calibration');
+    }
+    const hfPolicy = this.config.resolveHfRecoveryPolicyForToken(tokenId);
+    const result = await this.sessionRepository.activatePhysicalPhaseAtT0Atomic({
+      organizationId,
+      sessionId,
+      vehicleId: session.vehicleId,
+      tokenId,
+      effectivePollIntervalMs: body.effectivePollIntervalMs,
+      canonicalT0Ms: body.canonicalT0Ms,
+      hfPolicy,
+      nowMs: Date.now(),
+    });
+    if (!result) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
+    return {
+      reanchored: result.reanchored,
+      sealedPreRollPhaseId: result.sealedPreRollPhaseId,
+      phaseStartedAt: result.phaseStartedAt,
+      canonicalT0At: result.canonicalT0At,
+      calibrationPhaseId: result.activePhase.calibrationPhaseId,
+    };
+  }
+
+  async markExp021OrchestrationDegraded(
+    organizationId: string,
+    sessionId: string,
+    reason: string,
+  ): Promise<void> {
+    this.assertEnabled();
+    await this.sessionRepository.markExp021OrchestrationDegradedAtomic({
+      organizationId,
+      sessionId,
+      reason,
+      nowMs: Date.now(),
+    });
+  }
+
   async switchHfCalibrationPhase(
     organizationId: string,
     sessionId: string,
-    body: { effectivePollIntervalMs: number },
+    body: { effectivePollIntervalMs: number; phaseProvenance?: 'PRE_ROLL' | 'PHYSICAL_T0' | 'PHYSICAL_TRANSITION' },
   ) {
     this.assertEnabled();
     const intervalMs = body.effectivePollIntervalMs;
@@ -534,6 +604,7 @@ export class ReferenceCaptureSessionService {
         tokenId,
         effectivePollIntervalMs: intervalMs,
         nowMs: Date.now(),
+        phaseProvenance: body.phaseProvenance ?? 'PRE_ROLL',
       });
       if (!atomic) throw new NotFoundException(`Reference capture session ${sessionId} not found`);
 

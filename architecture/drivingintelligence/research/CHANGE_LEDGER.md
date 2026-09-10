@@ -349,6 +349,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 
+## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **HARDENING DRAFT** — forensic root cause from production telemetry-only run |
+| Session | `8374c2fc-…` · orchestrator fatal duplicate 60→60 at movement |
+| Root cause | PRE_ROLL phase 60 credited as physical; T0 logged after fallible phase switch |
+| Fix | Durable T0 before phase activation; `reanchorPhysicalCalibrationPhaseAtT0`; PRE_ROLL settlement gate; orchestration degraded vs integrity fatal |
+| Physical drive | **NOT STARTED** post-fix |
+| Evidence | `EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md` |
+
 ## EXP-021 — Settlement shadow experiment design (2026-09-07)
 
 | Event | Detail |

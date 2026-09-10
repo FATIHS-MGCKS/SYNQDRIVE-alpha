@@ -4,14 +4,23 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sample-identity.util';
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
 import {
+  buildExp021PhysicalAuthority,
+  mergeExp021PhysicalAuthority,
+  parseExp021PhysicalAuthority,
+  type Exp021PhysicalAuthority,
+} from './reference-capture-exp-021-physical-authority.lib';
+import {
   buildCycleReleaseAcquisitionState,
   finalizeTerminalCalibrationSeries,
   normalizeHfCalibrationSeriesState,
+  reanchorPhysicalCalibrationPhaseAtT0,
   requestHfCalibrationPhase,
   type HfCalibrationPhaseRequestResult,
+  type ReanchorPhysicalCalibrationPhaseResult,
   type TerminalCalibrationFinalizationReason,
 } from './reference-capture-hf-calibration-phase.policy';
 import type { HfRecoveryPolicyV2Config } from './reference-capture-hf-recovery-v2.policy';
+import type { HfCalibrationPhaseProvenance } from './reference-capture-exp-021-physical-authority.lib';
 
 function parseAcquisitionState(raw: unknown): ReferenceCaptureAcquisitionState {
   const base = (raw ?? {}) as Partial<ReferenceCaptureAcquisitionState>;
@@ -386,6 +395,125 @@ export class ReferenceCaptureSessionRepository {
     return { quiesced: false, timedOut: true };
   }
 
+  async persistExp021CanonicalT0Atomic(input: {
+    organizationId: string;
+    sessionId: string;
+    firstQualifyingMovementAt: Date;
+    startConfirmedAt: Date;
+    nowMs: number;
+  }): Promise<{ created: boolean; authority: Exp021PhysicalAuthority } | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+
+      const existing = parseExp021PhysicalAuthority(session.preflightJson);
+      if (existing?.canonicalT0At) {
+        return { created: false, authority: existing };
+      }
+
+      const authority = buildExp021PhysicalAuthority({
+        firstQualifyingMovementAt: input.firstQualifyingMovementAt,
+        startConfirmedAt: input.startConfirmedAt,
+        persistedAtMs: input.nowMs,
+      });
+      const preflightJson = mergeExp021PhysicalAuthority(session.preflightJson, authority);
+
+      await tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: { preflightJson: preflightJson as object },
+      });
+
+      return { created: true, authority };
+    });
+  }
+
+  async activatePhysicalPhaseAtT0Atomic(input: {
+    organizationId: string;
+    sessionId: string;
+    vehicleId: string;
+    tokenId: number;
+    effectivePollIntervalMs: number;
+    canonicalT0Ms: number;
+    hfPolicy: HfRecoveryPolicyV2Config;
+    nowMs: number;
+  }): Promise<ReanchorPhysicalCalibrationPhaseResult & { session: ReferenceCaptureSession } | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+      if (session.status !== 'RECORDING') {
+        throw new Error(
+          `Physical phase activation requires RECORDING status (current: ${session.status})`,
+        );
+      }
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const reanchor = reanchorPhysicalCalibrationPhaseAtT0({
+        existing: current.hfCalibrationSeries ?? null,
+        vehicleId: input.vehicleId,
+        tokenId: input.tokenId,
+        canonicalT0Ms: input.canonicalT0Ms,
+        effectivePollIntervalMs: input.effectivePollIntervalMs,
+        hfPolicy: input.hfPolicy,
+        nowMs: input.nowMs,
+      });
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationSeries: reanchor.series,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
+
+      const authority = parseExp021PhysicalAuthority(session.preflightJson);
+      const preflightJson = mergeExp021PhysicalAuthority(session.preflightJson, {
+        ...authority,
+        orchestrationState: 'DRIVING',
+        physicalPhase60StartedAt: reanchor.phaseStartedAt,
+      });
+
+      const updated = await tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: {
+          acquisitionStateJson: nextState as object,
+          preflightJson: preflightJson as object,
+        },
+      });
+
+      return { ...reanchor, session: updated };
+    });
+  }
+
+  async markExp021OrchestrationDegradedAtomic(input: {
+    organizationId: string;
+    sessionId: string;
+    reason: string;
+    nowMs: number;
+  }): Promise<ReferenceCaptureSession | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+
+      const preflightJson = mergeExp021PhysicalAuthority(session.preflightJson, {
+        orchestrationState: 'DEGRADED',
+        degradedReason: input.reason,
+        degradedAt: new Date(input.nowMs).toISOString(),
+      });
+
+      return tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: { preflightJson: preflightJson as object },
+      });
+    });
+  }
+
   async requestHfCalibrationPhaseAtomic(input: {
     organizationId: string;
     sessionId: string;
@@ -393,6 +521,7 @@ export class ReferenceCaptureSessionRepository {
     tokenId: number;
     effectivePollIntervalMs: number;
     nowMs: number;
+    phaseProvenance?: HfCalibrationPhaseProvenance;
   }): Promise<{
     session: ReferenceCaptureSession;
     result: HfCalibrationPhaseRequestResult;
@@ -416,6 +545,7 @@ export class ReferenceCaptureSessionRepository {
         tokenId: input.tokenId,
         effectivePollIntervalMs: input.effectivePollIntervalMs,
         nowMs: input.nowMs,
+        phaseProvenance: input.phaseProvenance,
       });
 
       const nextState: ReferenceCaptureAcquisitionState = {

@@ -5,6 +5,10 @@
  * Pending phase requests activate at acquisition-cycle release boundary only.
  */
 import { randomUUID } from 'node:crypto';
+import type { HfCalibrationPhaseProvenance } from './reference-capture-exp-021-physical-authority.lib';
+import {
+  isPhysicalPhaseProvenance,
+} from './reference-capture-exp-021-physical-authority.lib';
 import {
   clampHfPollIntervalMs,
   HF_POLL_CALIBRATION_CANDIDATES_MS,
@@ -94,6 +98,7 @@ export type HfCalibrationPendingPhaseRequest = {
   requestId: string;
   requestedAt: string;
   effectivePollIntervalMs: number;
+  phaseProvenance?: HfCalibrationPhaseProvenance;
 };
 
 export type HfCalibrationPhaseRecord = {
@@ -103,6 +108,10 @@ export type HfCalibrationPhaseRecord = {
   phaseStartedAt: string;
   phaseEndedAt: string | null;
   effectiveConfig?: HfCalibrationEffectiveConfigSnapshot;
+  /** PRE_ROLL phases do not accrue physical cadence or settlement evidence. */
+  phaseProvenance?: HfCalibrationPhaseProvenance;
+  /** When PHYSICAL_T0, must be >= canonical T0. */
+  canonicalT0At?: string | null;
 };
 
 export type HfCalibrationSeriesState = {
@@ -190,12 +199,19 @@ export class HfCalibrationPhaseChangePendingError extends Error {
   }
 }
 
+export function isPhaseEligibleForPhysicalSettlement(
+  phase: HfCalibrationPhaseRecord | null | undefined,
+): boolean {
+  return isPhysicalPhaseProvenance(phase?.phaseProvenance);
+}
+
 export function requestHfCalibrationPhase(args: {
   existing: HfCalibrationSeriesState | null;
   vehicleId: string;
   tokenId: number;
   effectivePollIntervalMs: number;
   nowMs: number;
+  phaseProvenance?: HfCalibrationPhaseProvenance;
   idFactory?: () => string;
 }): {
   series: HfCalibrationSeriesState;
@@ -203,15 +219,29 @@ export function requestHfCalibrationPhase(args: {
   deduplicated: boolean;
 } {
   const intervalMs = clampHfPollIntervalMs(args.effectivePollIntervalMs);
+  const phaseProvenance = args.phaseProvenance ?? 'PRE_ROLL';
   const newId = args.idFactory ?? randomUUID;
   const requestedAt = new Date(args.nowMs).toISOString();
   const request: HfCalibrationPendingPhaseRequest = {
     requestId: newId(),
     requestedAt,
     effectivePollIntervalMs: intervalMs,
+    phaseProvenance,
   };
 
-  if (args.existing?.activePhase?.effectivePollIntervalMs === intervalMs) {
+  const active = args.existing?.activePhase;
+  if (active?.effectivePollIntervalMs === intervalMs) {
+    const samePhysicalIdentity =
+      isPhysicalPhaseProvenance(active.phaseProvenance) &&
+      isPhysicalPhaseProvenance(phaseProvenance) &&
+      active.phaseProvenance === phaseProvenance;
+    if (samePhysicalIdentity) {
+      return {
+        series: args.existing!,
+        request,
+        deduplicated: true,
+      };
+    }
     throw new Error(
       `Requested calibration phase ${intervalMs}ms matches current effective phase`,
     );
@@ -456,7 +486,15 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
     effectivePollIntervalMs: intervalMs,
     phaseStartedAt: effectiveAtIso,
     phaseEndedAt: null,
+    phaseProvenance: args.pending.phaseProvenance,
+    canonicalT0At:
+      args.pending.phaseProvenance === 'PHYSICAL_T0'
+        ? effectiveAtIso
+        : args.series?.activePhase?.canonicalT0At ?? null,
   };
+  if (args.pending.phaseProvenance === 'PHYSICAL_TRANSITION' && draftPhase.canonicalT0At == null) {
+    draftPhase.canonicalT0At = args.series?.activePhase?.canonicalT0At ?? null;
+  }
 
   const baseSeries: HfCalibrationSeriesState = series ?? {
     calibrationSeriesId: newId(),
@@ -867,12 +905,132 @@ export type SwitchHfCalibrationPhaseResult = {
   previousPhaseEndedAt: string | null;
 };
 
+export type ReanchorPhysicalCalibrationPhaseResult = {
+  series: HfCalibrationSeriesState;
+  activePhase: HfCalibrationPhaseRecord;
+  reanchored: boolean;
+  sealedPreRollPhaseId: string | null;
+  phaseStartedAt: string;
+  canonicalT0At: string;
+};
+
+/**
+ * Seal any PRE_ROLL (or mismatched physical) phase and establish PHYSICAL_T0 phase 60 at canonical T0.
+ * Idempotent when the correct physical phase is already active at T0.
+ */
+export function reanchorPhysicalCalibrationPhaseAtT0(args: {
+  existing: HfCalibrationSeriesState | null;
+  vehicleId: string;
+  tokenId: number;
+  canonicalT0Ms: number;
+  effectivePollIntervalMs: number;
+  hfPolicy: HfRecoveryPolicyV2Config;
+  nowMs: number;
+  idFactory?: () => string;
+}): ReanchorPhysicalCalibrationPhaseResult {
+  const intervalMs = clampHfPollIntervalMs(args.effectivePollIntervalMs);
+  const canonicalT0At = new Date(args.canonicalT0Ms).toISOString();
+  const newId = args.idFactory ?? randomUUID;
+
+  const active = args.existing?.activePhase;
+  if (
+    active &&
+    active.effectivePollIntervalMs === intervalMs &&
+    active.phaseProvenance === 'PHYSICAL_T0' &&
+    active.canonicalT0At === canonicalT0At
+  ) {
+    return {
+      series: args.existing!,
+      activePhase: active,
+      reanchored: false,
+      sealedPreRollPhaseId: null,
+      phaseStartedAt: active.phaseStartedAt,
+      canonicalT0At,
+    };
+  }
+
+  let sealedPreRollPhaseId: string | null = null;
+  let completedPhases = [...(args.existing?.completedPhases ?? [])];
+  let completedSummaries = [...(args.existing?.completedPhaseSummaries ?? [])];
+  const baseSeries: HfCalibrationSeriesState = args.existing ?? {
+    calibrationSeriesId: newId(),
+    vehicleId: args.vehicleId,
+    tokenId: args.tokenId,
+    phaseOrder: [],
+    activePhase: null,
+    completedPhases: [],
+    completedPhaseSummaries: [],
+    pendingPhaseRequest: null,
+    cancelledPhaseRequests: [],
+    terminalFinalizationAt: null,
+    lastPhaseBoundaryAt: null,
+    seriesStartedAt: canonicalT0At,
+    controlPlaneRevision: 0,
+  };
+
+  if (active) {
+    sealedPreRollPhaseId = active.calibrationPhaseId;
+    completedPhases.push({
+      ...active,
+      phaseEndedAt: canonicalT0At,
+    });
+  }
+
+  const phaseSequence = completedPhases.length + 1;
+  const phaseId = newId();
+  const phaseOrder = [...baseSeries.phaseOrder];
+  if (phaseOrder[phaseOrder.length - 1] !== intervalMs) {
+    phaseOrder.push(intervalMs);
+  }
+
+  const draftPhase: HfCalibrationPhaseRecord = {
+    calibrationPhaseId: phaseId,
+    phaseSequence,
+    effectivePollIntervalMs: intervalMs,
+    phaseStartedAt: canonicalT0At,
+    phaseEndedAt: null,
+    phaseProvenance: 'PHYSICAL_T0',
+    canonicalT0At,
+  };
+
+  const effectiveConfig = buildEffectiveConfigSnapshot({
+    series: baseSeries,
+    phase: draftPhase,
+    hfPolicy: args.hfPolicy,
+    effectiveAtMs: args.canonicalT0Ms,
+  });
+
+  const activePhase: HfCalibrationPhaseRecord = { ...draftPhase, effectiveConfig };
+  const series: HfCalibrationSeriesState = {
+    ...baseSeries,
+    vehicleId: args.vehicleId,
+    tokenId: args.tokenId,
+    phaseOrder,
+    activePhase,
+    completedPhases,
+    completedPhaseSummaries: completedSummaries,
+    pendingPhaseRequest: null,
+    lastPhaseBoundaryAt: active ? canonicalT0At : baseSeries.lastPhaseBoundaryAt,
+    controlPlaneRevision: (baseSeries.controlPlaneRevision ?? 0) + 1,
+  };
+
+  return {
+    series,
+    activePhase,
+    reanchored: true,
+    sealedPreRollPhaseId,
+    phaseStartedAt: canonicalT0At,
+    canonicalT0At,
+  };
+}
+
 export function switchHfCalibrationPhase(args: {
   existing: HfCalibrationSeriesState | null;
   vehicleId: string;
   tokenId: number;
   effectivePollIntervalMs: number;
   nowMs: number;
+  phaseProvenance?: HfCalibrationPhaseProvenance;
   idFactory?: () => string;
 }): SwitchHfCalibrationPhaseResult {
   const intervalMs = clampHfPollIntervalMs(args.effectivePollIntervalMs);
@@ -882,6 +1040,7 @@ export function switchHfCalibrationPhase(args: {
     tokenId: args.tokenId,
     effectivePollIntervalMs: intervalMs,
     nowMs: args.nowMs,
+    phaseProvenance: args.phaseProvenance,
     idFactory: args.idFactory,
   });
   const applied = applyPendingCalibrationPhaseAtBoundary({
