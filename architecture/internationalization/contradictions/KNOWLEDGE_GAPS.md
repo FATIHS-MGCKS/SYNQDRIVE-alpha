@@ -2,7 +2,7 @@
 
 | Gap ID | Topic | Epistemic | Notes |
 |--------|-------|-----------|-------|
-| **I18N-GAP-001** | Hardcoded-copy enforce-clean remaining | CONFIRMED | 1,661 of 3,091 inventory findings in P21–P23 enforce-clean surfaces; Master disproportionately affected (1,071 MASTER findings) |
+| **I18N-GAP-001** | Hardcoded-copy enforce-clean remaining | CONFIRMED | **Current read-only scan:** 1,658 of 3,088 in P21–P23 enforce-clean surfaces (MASTER 1,071). **Snapshot (2026-09-07):** 1,661 of 3,091 — see snapshot vs current reconciliation in `CURRENT_STATE.md`. |
 | **I18N-GAP-002** | Partial locale dictionaries | CONFIRMED | fr/pl/cs/nl/es/it partial; tr.ts empty (fallback-only official locale) |
 | **I18N-GAP-003** | Production per-locale UX validation | UNKNOWN | Read-only structural audit only; no browser probe |
 | **I18N-GAP-004** | Missing `hardcoded-copy-guard.test.ts` on main | CONFIRMED | Referenced by `i18n-check.mjs` but file absent from `frontend/` |

@@ -69,5 +69,5 @@
 | **BEFORE** | Ad-hoc hardcoded German/English across Rental/Master/Operator |
 | **WHY** | Need measurable inventory and phased enforce-clean to avoid blocking all PRs |
 | **CHANGE** | `hardcoded-copy-inventory.json` v3; scanner + PR gate on enforce-clean surfaces (P21–P23) |
-| **OPEN GAPS** | 1,661 enforce-clean findings remain (I18N-GAP-001) |
+| **OPEN GAPS** | 1,658 enforce-clean findings remain per current scan (I18N-GAP-001); 1,661 in 2026-09-07 snapshot |
 | **EVIDENCE** | I18N-EVID-CODE-INVENTORY-001 |

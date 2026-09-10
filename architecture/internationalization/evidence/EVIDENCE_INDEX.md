@@ -1,6 +1,7 @@
 # Internationalization (i18n) — Evidence Index
 
-**origin/main (audit baseline):** `8186b4d830f472bc5f687c711bb53c72da243cb0`  
+**origin/main (synchronized baseline):** `83546cc37f9f05f9a170223f2ef114c6cac3b9f5`  
+**audit evidence snapshot commit:** `335b1a9ace772d25147f9767d201964903c08c5c`  
 **Production release (read-only):** `2e82171d11862a80c2e8cd62c65023393ef0ce64` @ `/opt/synqdrive/releases/20260909220606_v4994`
 
 | Evidence ID | Source type | Source path | Supported claim | Currentness | Limitations |
@@ -8,7 +9,8 @@
 | I18N-EVID-REPO-001 | CURRENT_CODE | `frontend/src/i18n/LanguageContext.tsx` | Platform runtime provider | CONFIRMED_ON_MAIN | — |
 | I18N-EVID-REPO-002 | CURRENT_CODE | `frontend/src/i18n/translation-registry.ts` | Nine-locale registry | CONFIRMED_ON_MAIN | — |
 | I18N-EVID-REPO-003 | AUDIT_DOCUMENT | `docs/audits/i18n-integration-2c-rental-bridge-retirement-2026-09-08.md` | Rental bridge retired | CONFIRMED_ON_MAIN | — |
-| I18N-EVID-REPO-004 | CURRENT_CODE | `frontend/src/i18n/hardcoded-copy-inventory.json` | Inventory v3 snapshot | CONFIRMED_ON_MAIN @ 2026-09-07 | Not re-scanned in this audit |
+| I18N-EVID-REPO-004 | CURRENT_CODE | `frontend/src/i18n/hardcoded-copy-inventory.json` | Inventory v3 **historical snapshot** | CONFIRMED_ON_MAIN @ 2026-09-07 | 3,091 total / 1,661 enforce-clean — not mutated in this PR |
+| I18N-EVID-SCAN-READONLY-001 | CURRENT_CODE | `node scripts/i18n-hardcoded-scan.mjs --read-only` | Current hardcoded-copy scan | CONFIRMED @ 2026-09-10 post-main-sync | 3,088 total / 1,658 enforce-clean; inventory file not written |
 | I18N-EVID-REPO-005 | CURRENT_CODE | `frontend/src/i18n/translations/en.ts` | 10,431 canonical keys | CONFIRMED_ON_MAIN | — |
 | I18N-EVID-REPO-006 | CURRENT_CODE | `frontend/scripts/lib/i18n-governance/` | P2.3 governance scripts | CONFIRMED_ON_MAIN | — |
 | I18N-EVID-REPO-007 | CURRENT_CODE | `backend/src/modules/billing/email/billing-email-i18n.ts` | Targeted backend DE/EN copy only | CONFIRMED_ON_MAIN | Not general backend i18n |

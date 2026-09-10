@@ -85,8 +85,18 @@ Scientific history of the i18n rebuild workstream. No runtime code changes in th
 | **CHANGE** | Registry `NOT_STARTED` → `AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE`; full `architecture/internationalization/` authority; authority-path contract extended for module bootstrap PRs; PR-gate adversarial tests frozen #1589 boundary |
 | **WHY** | First canonical bootstrap per `MODULE_AUTHORITY_STANDARD.md` Gate A |
 | **NON_EFFECTS** | No translation migration, locale dictionary fill, or governance weakening |
-| **REMAINING_GAPS** | Partial locales, 1,661 enforce-clean findings, Master debt, I18N-GAP-004 |
+| **REMAINING_GAPS** | Partial locales, enforce-clean debt, Master debt, I18N-GAP-004 |
 | **STATUS** | Authority coverage COMPLETE; product migration IN_PROGRESS |
+
+## 2026-09-10 — Governance boundary correction (PR #1596 continuation)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | Removed Master UI TSX + shared global paths from i18n authority contract; restored Master components to main; negative security regressions; reconciled hardcoded scan vs snapshot |
+| **WHY** | Whole-file authority classification on product TSX bypasses governedProductionPaths; shared registry files are not i18n-owned |
+| **NON_EFFECTS** | No bypass of exit code 3; no authority label; PR-boundary fix preserved |
+| **FOLLOW-UP** | SynqDrive Code discoverability UI updates deferred to separate product PR |
+| **STATUS** | Governance boundary correction |
 
 ---
 

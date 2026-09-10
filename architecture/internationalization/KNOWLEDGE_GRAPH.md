@@ -56,7 +56,7 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 
 | ID | Gap |
 |----|-----|
-| I18N-GAP-001 | 1,661 enforce-clean hardcoded findings remain |
+| I18N-GAP-001 | 1,658 enforce-clean hardcoded findings (current scan); 1,661 in 2026-09-07 snapshot |
 | I18N-GAP-002 | Partial locale dictionaries |
 | I18N-GAP-003 | No Production per-locale UX validation |
 | I18N-GAP-004 | Missing hardcoded-copy-guard.test.ts |

@@ -10,8 +10,9 @@
 | **REGISTRY_STATUS_AT_END** | `AUTHORITY_ACTIVE` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` (post-sync baseline for promotion PR) |
-| **AUDIT_BRANCH_SHA** | set at PR commit |
+| **ORIGIN_MAIN_SHA** | `83546cc37f9f05f9a170223f2ef114c6cac3b9f5` (synchronized main baseline after correction pass) |
+| **AUDIT_BRANCH_SHA** | `335b1a9ace772d25147f9767d201964903c08c5c` |
+| **AUDIT_BRANCH_SHA_SEMANTICS** | Immutable commit where substantive repository audit + read-only Production evidence was captured (initial bootstrap audit). Later promotion/correction commits are separate ledger entries — not retroactive rewrites of this snapshot. |
 | **PRODUCTION_AUDITED_AT** | `2026-09-10T02:34:30Z` |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA** | `2e82171d11862a80c2e8cd62c65023393ef0ce64` |
@@ -43,7 +44,7 @@
 **Explicit non-blockers (product/runtime debt, documented in authority):**
 
 1. Partial locale dictionaries (fr/pl/cs/nl/es/it) and fallback-only `tr`
-2. 1,661 enforce-clean hardcoded-copy findings remaining
+2. 1,658 enforce-clean hardcoded-copy findings (current read-only scan); 1,661 in 2026-09-07 inventory snapshot
 3. Master surface migration debt (1,071 inventory findings)
 4. No browser-level per-locale Production UX probe
 5. `hardcoded-copy-guard.test.ts` referenced by `i18n-check.mjs` but missing from `frontend/src/i18n/` (I18N-GAP-004)

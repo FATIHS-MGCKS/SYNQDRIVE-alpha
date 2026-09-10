@@ -66,7 +66,9 @@ nodes:
     type: data
     title: Hardcoded-copy inventory v3
     epistemic_status: CONFIRMED
-    summary: 3,091 total findings; 1,661 remaining in phased enforce-clean surfaces (P21–P23).
+    summary: >
+      Snapshot (2026-09-07): 3,091 total; 1,661 enforce-clean. Current read-only scan @ synchronized main:
+      3,088 total; 1,658 enforce-clean (P21–P23).
     source_paths:
       - frontend/src/i18n/hardcoded-copy-inventory.json
     evidence:
@@ -229,7 +231,7 @@ nodes:
     type: gap
     title: Hardcoded-copy enforce-clean remaining debt
     epistemic_status: CONFIRMED
-    summary: 1,661 findings in phased enforce-clean surfaces; Master surface disproportionately affected.
+    summary: 1,658 enforce-clean (current scan); 1,661 snapshot (2026-09-07); Master surface disproportionately affected (1,071).
     source_paths:
       - architecture/internationalization/contradictions/KNOWLEDGE_GAPS.md
 

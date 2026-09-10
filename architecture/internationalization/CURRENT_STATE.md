@@ -9,7 +9,7 @@ SynqDrive i18n is a **frontend-centric platform runtime** with heavy **governanc
 
 **Integration 2C (Rental bridge retirement)** is **complete in repository**: `frontend/src/rental/i18n/` removed; Rental imports `../../i18n/LanguageContext` directly.
 
-**Hardcoded UI copy elimination** is **in progress**: inventory v3 reports **3,091** total findings, **1,661** remaining in phased enforce-clean surfaces (P21–P23).
+**Hardcoded UI copy elimination** is **in progress**: read-only scan @ synchronized `origin/main` reports **3,088** unique findings, **1,658** in phased enforce-clean surfaces (P21–P23). Historical inventory snapshot (2026-09-07) remains **3,091** / **1,661** — see snapshot vs current reconciliation below.
 
 **Governance** (P2.3.x, #1581/#1585/#1589) is **implemented on `origin/main`**: PR new-debt gate, authority protection workflow, authority-path contract parity, structural parser for trusted workflow classifier.
 
@@ -17,8 +17,11 @@ SynqDrive i18n is a **frontend-centric platform runtime** with heavy **governanc
 
 | Field | Value |
 |-------|-------|
-| Branch | `origin/main` @ `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` |
+| Branch | `origin/main` @ `83546cc37f9f05f9a170223f2ef114c6cac3b9f5` (post-sync baseline) |
 | Canonical keys | 10,431 (`frontend/src/i18n/translations/en.ts`) |
+| Locale coverage (owned keys) | `en` 10,431 · `de` 10,431 · `fr` 1,038 · `pl` 745 · `cs` 727 · `nl` 745 · `es` 745 · `it` 745 · `tr` 0 (fallback-only) |
+| Hardcoded scan (read-only, current) | 3,088 total · 1,658 enforce-clean · surfaces: SHELL 41 · SHARED 36 · MASTER 1,071 · OPERATOR 179 · RENTAL 1,761 |
+| Hardcoded inventory snapshot | 3,091 total · 1,661 enforce-clean · dated 2026-09-07 (`hardcoded-copy-inventory.json`) |
 | Locale files | ~125 TypeScript modules under `frontend/src/i18n/translations/` |
 | Tests | 12 vitest files under `frontend/src/i18n/` + governance scripts |
 
@@ -79,7 +82,7 @@ useLanguage() in Rental / Operator / Master / Login components
 | P2.1 Hardcoded-copy inventory | COMPLETE (inventory) | `frontend/src/i18n/hardcoded-copy-inventory.json` v3 |
 | P2.3 Governance (scanner, PR gate, authority) | COMPLETE (main) | #1581, #1585, #1589 |
 | Partial locale dictionaries | IN_PROGRESS | coverage registry |
-| Hardcoded-copy cleanup (enforce-clean) | IN_PROGRESS | 1,661 remaining |
+| Hardcoded-copy cleanup (enforce-clean) | IN_PROGRESS | 1,658 current scan; 1,661 snapshot (2026-09-07) |
 | Turkish owned dictionary | NOT_STARTED | `tr.ts` empty |
 | Master surface migration | IN_PROGRESS | 1,071 MASTER findings in inventory |
 
@@ -121,6 +124,17 @@ useLanguage() in Rental / Operator / Master / Login components
 3. `en` and `de` dictionaries are complete vs canonical key set.
 4. `...en` spread inheritance forbidden (structural test).
 5. Governance authority paths fail closed on drift (main).
+
+## Hardcoded-copy snapshot vs current scan reconciliation
+
+| Source | Date | Total | Enforce-clean | Notes |
+|--------|------|-------|---------------|-------|
+| **A) Historical snapshot** | 2026-09-07 | 3,091 | 1,661 | `frontend/src/i18n/hardcoded-copy-inventory.json` — not mutated in this PR |
+| **B) Current read-only scan** | 2026-09-10 | 3,088 | 1,658 | `node scripts/i18n-hardcoded-scan.mjs --read-only` @ synchronized main |
+
+**Delta (−3 total, −3 enforce-clean):** repository code drift since snapshot generation (main advanced; minor surface reclassification). Snapshot includes `LOGIN: 2` in `bySurface`; current scan surfaces are SHELL 41 · SHARED 36 · MASTER 1,071 · OPERATOR 179 · RENTAL 1,761.
+
+**Canonical CURRENT_STATE uses (B).** Snapshot (A) remains historical evidence only.
 
 ## Open gaps
 
