@@ -106,16 +106,22 @@ export class TripDecisionEngine {
 
     if (!continuityFinding) {
       return {
-        verdict: 'POSSIBLE_END',
-        endMode: 'NO_ACTIVITY_TIMEOUT',
-        endConfidence: 'LOW',
-        reason: 'No continuity finding available',
+        verdict: 'ACTIVE',
+        reason: 'continuity_finding_missing_fail_closed',
+        findings,
+      };
+    }
+
+    if (continuityFinding.verdict === 'INCONCLUSIVE') {
+      return {
+        verdict: 'ACTIVE',
+        reason: 'continuity_finding_inconclusive_fail_closed',
         findings,
       };
     }
 
     const ev = continuityFinding.evidence as Record<string, unknown>;
-    const rawVerdict = ev?.continuityVerdict as string;
+    const rawVerdict = (ev?.continuityVerdict ?? ev?.verdict) as string;
 
     if (continuityFinding.verdict === 'TRIGGERED') {
       return {
@@ -125,11 +131,22 @@ export class TripDecisionEngine {
       };
     }
 
+    if (
+      continuityFinding.verdict === 'NOT_TRIGGERED' &&
+      rawVerdict === 'POSSIBLE_END'
+    ) {
+      return {
+        verdict: 'POSSIBLE_END',
+        endMode: (ev?.endMode as string) ?? 'COMPOSITE_INACTIVITY',
+        endConfidence: continuityFinding.confidence,
+        reason: `Continuity assessment: ${rawVerdict}`,
+        findings,
+      };
+    }
+
     return {
-      verdict: 'POSSIBLE_END',
-      endMode: (ev?.endMode as string) ?? 'COMPOSITE_INACTIVITY',
-      endConfidence: continuityFinding.confidence,
-      reason: `Continuity assessment: ${rawVerdict}`,
+      verdict: 'ACTIVE',
+      reason: 'continuity_finding_malformed_fail_closed',
       findings,
     };
   }

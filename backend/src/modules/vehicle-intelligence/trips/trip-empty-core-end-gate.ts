@@ -126,24 +126,9 @@ export function classifyEmptyCoreVlsInactivity(params: {
     params.stopBoundaryAt,
   );
 
-  // Pre-stop-boundary stationary samples corroborate the stop moment itself.
-  if (
-    params.stopBoundaryAt &&
-    !afterStop &&
-    speed <= shared.speedMotionKmh
-  ) {
-    const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
-    const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
-    return {
-      state: 'INACTIVE',
-      providerObservedAt,
-      observationAgeMs,
-      reason: 'vls_stop_boundary_corroboration',
-    };
-  }
-
   const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
   const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
+
   if (observationAgeMs > params.maxObservationAgeMs) {
     return {
       state: 'UNKNOWN',
@@ -172,14 +157,6 @@ export function classifyEmptyCoreVlsInactivity(params: {
 
   const engineLoad = telemetry.engineLoad;
   if (engineLoad != null && engineLoad > 15) {
-    if (!afterStop) {
-      return {
-        state: 'INACTIVE',
-        providerObservedAt,
-        observationAgeMs,
-        reason: 'vls_stale_engine_load_before_stop_boundary',
-      };
-    }
     return {
       state: 'UNKNOWN',
       providerObservedAt,
@@ -202,6 +179,31 @@ export function classifyEmptyCoreVlsInactivity(params: {
       providerObservedAt,
       observationAgeMs,
       reason: 'vls_ignition_with_speed',
+    };
+  }
+
+  if (
+    telemetry.isIgnitionOn === true &&
+    speed <= shared.speedMotionKmh
+  ) {
+    return {
+      state: 'ACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_ignition_on_stationary',
+    };
+  }
+
+  if (
+    params.stopBoundaryAt &&
+    !afterStop &&
+    speed <= shared.speedMotionKmh
+  ) {
+    return {
+      state: 'INACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_stop_boundary_corroboration',
     };
   }
 
