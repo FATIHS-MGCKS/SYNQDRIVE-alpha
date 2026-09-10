@@ -24,10 +24,16 @@ export class ReferenceCaptureSettlementShadowRecoveryScheduler implements OnModu
 
   @Interval(60_000)
   async recoverDueShadowSchedules(): Promise<void> {
-    if (!this.config.isSettlementShadowEnabled()) return;
     if (this.leaderGuard && !this.leaderGuard.shouldRun('reference_capture_settlement_shadow_recovery')) {
       return;
     }
+
+    const reconciled = await this.settlementShadowService.reconcileAbortedSessionSettlementExperiments();
+    if (reconciled > 0) {
+      this.logger.warn(`Reconciled ${reconciled} aborted-session active settlement experiment(s)`);
+    }
+
+    if (!this.config.isSettlementShadowEnabled()) return;
 
     const recovered = await this.runner.recoverDueSchedules();
     const wholeTripRecovered = await this.settlementShadowService.recoverWholeTripShadowForPendingExperiments();

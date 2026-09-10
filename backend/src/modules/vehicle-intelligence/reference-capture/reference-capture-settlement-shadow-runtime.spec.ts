@@ -68,8 +68,10 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
         id: 'exp-db-1',
         experimentId: 'exp-021-test',
         sessionId: 'sess-1',
+        status: 'ACTIVE',
         lastSyncedPhaseCount: 0,
       }),
+      findExperimentStatusById: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       createExperiment: jest.fn(),
       createSchedulesIfAbsent: jest.fn(
         async (
@@ -268,11 +270,15 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
     const observations: unknown[] = [];
     const repository = {
       findScheduleById: jest.fn().mockResolvedValue(schedule),
+      findExperimentStatusById: jest.fn().mockResolvedValue({ status: 'ACTIVE' }),
       markExecuting: jest.fn(),
+      markExecutingIfEligible: jest.fn().mockResolvedValue(true),
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
-      createObservation: jest.fn(async (input: { actualAgeMs: number; scheduleDriftMs: number }) => {
+      markSkipped: jest.fn(),
+      createObservationIfEligible: jest.fn(async (input: { actualAgeMs: number; scheduleDriftMs: number }) => {
         observations.push(input);
+        return true;
       }),
     } as unknown as ReferenceCaptureSettlementShadowRepository;
 
@@ -331,9 +337,11 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
         id: 'exp-partial',
         experimentId: 'exp-021-partial',
         sessionId: 'sess-partial',
+        metadataJson: null,
       }),
       createSchedulesIfAbsent: jest.fn().mockResolvedValue({ created: 4, skipped: 2 }),
       updateExperimentTripBinding: jest.fn(),
+      mergeExperimentMetadataJson: jest.fn(),
     } as unknown as ReferenceCaptureSettlementShadowRepository;
 
     const service = new ReferenceCaptureSettlementShadowService(
@@ -348,6 +356,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
           findMany: jest.fn().mockResolvedValue([
             {
               id: 'trip-1',
+              tripStatus: 'COMPLETED',
               startTime: new Date('2026-09-07T10:00:00.000Z'),
               endTime: new Date('2026-09-07T11:00:00.000Z'),
             },

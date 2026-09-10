@@ -78,15 +78,18 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
               id: 'exp-db-1',
               experimentId: 'exp-021-test',
               sessionId,
+              status: 'ACTIVE',
               lastSyncedPhaseCount: 0,
               schedules,
             }
           : null,
       ),
+      findExperimentStatusById: jest.fn(async () => ({ status: 'ACTIVE' })),
       createExperiment: jest.fn(async (input: { experimentId: string; sessionId: string }) => ({
         id: 'exp-db-1',
         experimentId: input.experimentId,
         sessionId: input.sessionId,
+        status: 'ACTIVE',
         lastSyncedPhaseCount: 0,
       })),
       createSchedulesIfAbsent: jest.fn(async (rows: Array<{ idempotencyKey: string }>) => {
@@ -134,6 +137,13 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
           row.attemptCount += 1;
         }
       }),
+      markExecutingIfEligible: jest.fn(async (id: string) => {
+        const row = schedules.find((s) => s.id === id);
+        if (!row || row.status !== 'PENDING') return false;
+        row.status = 'EXECUTING';
+        row.attemptCount += 1;
+        return true;
+      }),
       markCompleted: jest.fn(async (id: string, executedAt: Date) => {
         const row = schedules.find((s) => s.id === id);
         if (row) {
@@ -142,6 +152,7 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
         }
       }),
       markFailed: jest.fn(),
+      markSkipped: jest.fn(),
       updateBullJobId: jest.fn(async (id: string, jobId: string) => {
         const row = schedules.find((s) => s.id === id);
         if (row) row.bullJobId = jobId;
@@ -156,8 +167,9 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
       findRecoverableSchedules: jest.fn(async () =>
         schedules.filter((s) => s.status === 'PENDING' && !observations.has(s.id)),
       ),
-      createObservation: jest.fn(async (input: { scheduleId: string }) => {
+      createObservationIfEligible: jest.fn(async (input: { scheduleId: string }) => {
         observations.set(input.scheduleId, input);
+        return true;
       }),
       updateLastSyncedPhaseCount: jest.fn(),
       updateExperimentTripBinding: jest.fn(),
@@ -237,6 +249,7 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
         id: 'exp-db-1',
         experimentId: 'exp-021-test',
         sessionId: 'sess-1',
+        status: 'ACTIVE',
         lastSyncedPhaseCount: 0,
       }),
       createExperiment: jest.fn(),

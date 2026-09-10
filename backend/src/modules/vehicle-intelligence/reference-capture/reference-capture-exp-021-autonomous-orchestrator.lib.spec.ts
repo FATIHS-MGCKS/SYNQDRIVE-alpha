@@ -1,15 +1,83 @@
 import {
   acquireOrchestratorLock,
+  buildExp021RuntimeConfig,
   buildOrchestratorLockKey,
   evaluateEffectivePolicyGate,
   evaluateEffectivePolicyGateFromEnv,
   extendOrchestratorLock,
+  isOrchestratorOwnedRecordingSession,
   releaseOrchestratorLock,
+  resolveExp021TargetDeploySha,
   resolveFatalSessionCleanupMode,
 } from '../../../../scripts/ops/reference-capture-exp-021-autonomous-orchestrator.lib';
 import { parseHfRecoveryPolicyV2ConfigFromEnv } from './reference-capture-hf-recovery-v2.policy';
 
 describe('reference-capture-exp-021-autonomous-orchestrator.lib', () => {
+  describe('buildExp021RuntimeConfig', () => {
+    it('freezes orchestrator env after loadBackendEnvFile semantics', () => {
+      const config = buildExp021RuntimeConfig({
+        env: {
+          ORGANIZATION_ID: 'org-test',
+          VEHICLE_ID: 'veh-test',
+          TOKEN_ID: '999',
+          EXP021_MOVEMENT_SPEED_KMH: '12',
+          EXP021_PARKED_SPEED_KMH: '2',
+          EXP021_PHASE_DURATION_MS: '240000',
+          EXP021_TARGET_DEPLOY_SHA: 'sha-test',
+        },
+        targetDeploySha: 'sha-test',
+      });
+      expect(config.organizationId).toBe('org-test');
+      expect(config.vehicleId).toBe('veh-test');
+      expect(config.tokenId).toBe(999);
+      expect(config.movementSpeedKmh).toBe(12);
+      expect(config.parkedSpeedKmh).toBe(2);
+      expect(config.phaseDurationMs).toBe(240_000);
+      expect(config.targetDeploySha).toBe('sha-test');
+    });
+  });
+
+  describe('resolveExp021TargetDeploySha', () => {
+    it('uses explicit SHA when provided', () => {
+      expect(
+        resolveExp021TargetDeploySha({
+          explicitSha: 'abc123',
+          productionSha: 'def456',
+        }),
+      ).toBe('abc123');
+    });
+
+    it('snapshots production SHA when explicit missing', () => {
+      expect(
+        resolveExp021TargetDeploySha({
+          explicitSha: '',
+          productionSha: 'def456',
+        }),
+      ).toBe('def456');
+    });
+
+    it('throws when no SHA authority exists', () => {
+      expect(() =>
+        resolveExp021TargetDeploySha({ explicitSha: '', productionSha: '' }),
+      ).toThrow(/EXP021 deploy SHA unresolved/);
+    });
+  });
+
+  describe('isOrchestratorOwnedRecordingSession', () => {
+    it('rejects arbitrary recording sessions without ownership', () => {
+      expect(isOrchestratorOwnedRecordingSession({ vehicleId: 'x' }, 'run-1')).toBe(false);
+    });
+
+    it('accepts matching orchestrator run id', () => {
+      expect(
+        isOrchestratorOwnedRecordingSession(
+          { exp021AutonomousOrchestrator: { runId: 'run-1' } },
+          'run-1',
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('evaluateEffectivePolicyGate', () => {
     it('allows V2 when token is in canary allowlist', () => {
       const base = parseHfRecoveryPolicyV2ConfigFromEnv({

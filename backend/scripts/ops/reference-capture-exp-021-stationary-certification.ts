@@ -1,6 +1,7 @@
 /**
- * EXP-021 — Stationary production certification (NON_PHYSICAL_DRY_RUN).
- * Proves V2 policy + 60s phase activation + settlement probe scheduling without physical drive.
+ * EXP-021 — Stationary production certification (NON_PHYSICAL).
+ * Default: structural dry-run with real phase-60 activation + persisted schedule proof.
+ * Optional: --e2e-shadow-smoke waits for real A30/A60/B30/B60 observations via BullMQ worker.
  */
 import * as fs from 'fs';
 import { NestFactory } from '@nestjs/core';
@@ -10,39 +11,51 @@ import { ReferenceCaptureConfig } from '../../src/modules/vehicle-intelligence/r
 import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.service';
 import { ReferenceCaptureSessionRepository } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import { ReferenceCaptureSettlementShadowService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
-import {
-  buildProspectiveProbeAForPhase,
-  buildProspectiveProbeBForPhase,
-  computeScheduleTimingProjection,
-  EXP021_NOMINAL_PHASE_DURATION_MS,
-  EXP021_PRIMARY_PROBE_DURATION_MS,
-} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
-
-function loadEnv(): void {
-  const envPath = process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) {
-      process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
-    }
-  }
-}
+import { EXP021_MANDATORY_AGES_MS } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
+import {
+  buildExp021RuntimeConfig,
+  loadBackendEnvFile,
+} from './reference-capture-exp-021-autonomous-orchestrator.lib';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+async function waitForPhaseEffective(
+  sessionRepo: ReferenceCaptureSessionRepository,
+  organizationId: string,
+  sessionId: string,
+  pollMs: number,
+): Promise<boolean> {
+  for (let i = 0; i < 45; i += 1) {
+    await sleep(2000);
+    const s = await sessionRepo.findById(organizationId, sessionId);
+    const state =
+      s?.acquisitionStateJson && typeof s.acquisitionStateJson === 'object'
+        ? (s.acquisitionStateJson as {
+            hfCalibrationSeries?: { activePhase?: { effectivePollIntervalMs?: number; phaseStartedAt?: string } };
+          })
+        : null;
+    const ap = state?.hfCalibrationSeries?.activePhase;
+    if (ap?.effectivePollIntervalMs === pollMs && ap.phaseStartedAt) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function main(): Promise<void> {
+  const e2eSmoke = process.argv.includes('--e2e-shadow-smoke');
   if (!process.argv.includes('--confirm-stationary-cert')) {
     throw new Error('Refusing without --confirm-stationary-cert');
   }
 
-  const organizationId = process.env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
-  const vehicleId = process.env.VEHICLE_ID ?? 'c10351f8-b6a2-4258-947f-631aeaa6d359';
-  const tokenId = Number.parseInt(process.env.TOKEN_ID ?? '187361', 10);
-
-  loadEnv();
+  loadBackendEnvFile();
+  const runtimeConfig = buildExp021RuntimeConfig();
+  const organizationId = runtimeConfig.organizationId;
+  const vehicleId = runtimeConfig.vehicleId;
+  const tokenId = runtimeConfig.tokenId;
   const appModule = await AppModule.forRootAsync();
   const app = await NestFactory.createApplicationContext(appModule, { logger: ['error', 'warn'] });
 
@@ -50,6 +63,7 @@ async function main(): Promise<void> {
   const result: Record<string, unknown> = {
     NON_PHYSICAL_DRY_RUN: true,
     STATIONARY_DRY_RUN_EXECUTED: 'YES',
+    E2E_SHADOW_SMOKE: e2eSmoke ? 'YES' : 'NO',
   };
 
   try {
@@ -89,7 +103,9 @@ async function main(): Promise<void> {
     const created = await sessionService.createSession({
       organizationId,
       vehicleId,
-      groundTruthVideoRef: 'NON_PHYSICAL_DRY_RUN_EXP021_STATIONARY_CERT',
+      groundTruthVideoRef: e2eSmoke
+        ? 'NON_PHYSICAL_E2E_SHADOW_SMOKE_EXP021'
+        : 'NON_PHYSICAL_DRY_RUN_EXP021_STATIONARY_CERT',
     });
     sessionId = created.id;
     const preflight = await sessionService.runPreflight(organizationId, sessionId);
@@ -98,7 +114,7 @@ async function main(): Promise<void> {
     }
 
     await sessionService.startRecording(organizationId, sessionId);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 30; i += 1) {
       await sleep(2000);
       const s = await sessionRepo.findById(organizationId, sessionId);
       if (s?.status === 'RECORDING') break;
@@ -113,20 +129,13 @@ async function main(): Promise<void> {
     result.PHASE_60_ACTIVATION_STATUS = phaseResult.activationStatus;
     result.CALIBRATION_SERIES_ID = phaseResult.calibrationSeriesId;
 
-    for (let i = 0; i < 45; i++) {
-      await sleep(2000);
-      const s = await sessionRepo.findById(organizationId, sessionId);
-      const state =
-        s?.acquisitionStateJson && typeof s.acquisitionStateJson === 'object'
-          ? (s.acquisitionStateJson as {
-              hfCalibrationSeries?: { activePhase?: { effectivePollIntervalMs?: number } };
-            })
-          : null;
-      const pollMs = state?.hfCalibrationSeries?.activePhase?.effectivePollIntervalMs;
-      if (pollMs === 60000) break;
+    const phase60Effective = await waitForPhaseEffective(sessionRepo, organizationId, sessionId, 60000);
+    result.PHASE_60_EFFECTIVE_PROVEN = phase60Effective ? 'YES' : 'NO';
+    if (!phase60Effective) {
+      throw new Error('Phase 60 did not become EFFECTIVE in acquisition state');
     }
 
-    const synced = await settlementShadow.syncCompletedPhasesFromSession({
+    await settlementShadow.syncCompletedPhasesFromSession({
       sessionId,
       organizationId,
       vehicleId,
@@ -134,50 +143,77 @@ async function main(): Promise<void> {
       acquisitionStateJson: (await sessionRepo.findById(organizationId, sessionId))?.acquisitionStateJson,
     });
 
-    const phaseStart = Date.parse('2026-09-09T12:00:00.000Z');
-    const probeA = buildProspectiveProbeAForPhase({
-      phasePollIntervalMs: 60000,
-      phaseStartedAtMs: phaseStart,
+    const persistedSchedules = await prisma.referenceCaptureSettlementShadowSchedule.findMany({
+      where: { sessionId, probeId: { in: ['SP-60-A', 'SP-60-B'] } },
+      select: { probeId: true, scheduledAgeMs: true, status: true, scheduledAt: true },
     });
-    const probeB = buildProspectiveProbeBForPhase({
-      phasePollIntervalMs: 60000,
-      phaseStartedAtMs: phaseStart,
-    });
-    const scheduleCreatedAt = phaseStart + 60_000;
-    const a30 = computeScheduleTimingProjection({
-      sourceIntervalEndMs: probeA!.sourceIntervalEndMs,
-      scheduledAgeMs: 30_000,
-      scheduleCreatedAtMs: scheduleCreatedAt,
-    });
-    const a60 = computeScheduleTimingProjection({
-      sourceIntervalEndMs: probeA!.sourceIntervalEndMs,
-      scheduledAgeMs: 60_000,
-      scheduleCreatedAtMs: scheduleCreatedAt,
-    });
-    const b30 = computeScheduleTimingProjection({
-      sourceIntervalEndMs: probeB!.sourceIntervalEndMs,
-      scheduledAgeMs: 30_000,
-      scheduleCreatedAtMs: scheduleCreatedAt,
-    });
-    const b60 = computeScheduleTimingProjection({
-      sourceIntervalEndMs: probeB!.sourceIntervalEndMs,
-      scheduledAgeMs: 60_000,
-      scheduleCreatedAtMs: scheduleCreatedAt,
-    });
+    result.PHASE60_EXPECTED_SCHEDULES = 12;
+    result.PHASE60_PERSISTED_SCHEDULES = persistedSchedules.length;
+    result.PERSISTED_SCHEDULE_COUNT = persistedSchedules.length;
+    for (const probeId of ['SP-60-A', 'SP-60-B']) {
+      for (const age of EXP021_MANDATORY_AGES_MS) {
+        const found = persistedSchedules.some(
+          (row) => row.probeId === probeId && row.scheduledAgeMs === age,
+        );
+        result[`PERSISTED_${probeId}_${age / 1000}S`] = found ? 'YES' : 'NO';
+      }
+    }
 
-    result.PROSPECTIVE_PROBE_A_SUPPORTED = probeA ? 'YES' : 'NO';
-    result.PROSPECTIVE_PROBE_B_SUPPORTED = probeB ? 'YES' : 'NO';
-    result.A30_SCHEDULABLE_ON_TIME = a30.executableOnTime ? 'YES' : 'NO';
-    result.A60_SCHEDULABLE_ON_TIME = a60.executableOnTime ? 'YES' : 'NO';
-    result.B30_SCHEDULABLE_ON_TIME = b30.executableOnTime ? 'YES' : 'NO';
-    result.B60_SCHEDULABLE_ON_TIME = b60.executableOnTime ? 'YES' : 'NO';
-    result.WHOLE_TRIP_6_OF_6_RECOVERABLE = 'YES';
-    result.settlementSync = synced;
+    if (e2eSmoke) {
+      const observationTargets = [
+        { probeId: 'SP-60-A', age: 30_000, key: 'REAL_A30_OBSERVATION_EXECUTED' },
+        { probeId: 'SP-60-A', age: 60_000, key: 'REAL_A60_OBSERVATION_EXECUTED' },
+        { probeId: 'SP-60-B', age: 30_000, key: 'REAL_B30_OBSERVATION_EXECUTED' },
+        { probeId: 'SP-60-B', age: 60_000, key: 'REAL_B60_OBSERVATION_EXECUTED' },
+      ];
+      for (const target of observationTargets) {
+        result[target.key] = 'NO';
+      }
+      for (let minute = 0; minute < 8; minute += 1) {
+        await sleep(60_000);
+        for (const target of observationTargets) {
+          if (result[target.key] === 'YES') continue;
+          const obs = await prisma.referenceCaptureSettlementShadowObservation.findFirst({
+            where: { sessionId, probeId: target.probeId, scheduledAgeMs: target.age },
+            select: {
+              actualAgeMs: true,
+              scheduleDriftMs: true,
+              providerRequestStatus: true,
+              rawRowCount: true,
+              requestStartedAt: true,
+              observationJson: true,
+            },
+          });
+          if (obs) {
+            result[target.key] = 'YES';
+            result[`${target.key}_META`] = {
+              actualAgeMs: obs.actualAgeMs,
+              scheduleDriftMs: obs.scheduleDriftMs,
+              providerRequestStatus: obs.providerRequestStatus,
+              rawRowCount: obs.rawRowCount,
+              requestStartedAt: obs.requestStartedAt.toISOString(),
+            };
+          }
+        }
+        if (observationTargets.every((t) => result[t.key] === 'YES')) {
+          break;
+        }
+      }
+    } else {
+      result.REAL_A30_OBSERVATION_EXECUTED = 'SKIPPED_NON_E2E';
+      result.REAL_A60_OBSERVATION_EXECUTED = 'SKIPPED_NON_E2E';
+      result.REAL_B30_OBSERVATION_EXECUTED = 'SKIPPED_NON_E2E';
+      result.REAL_B60_OBSERVATION_EXECUTED = 'SKIPPED_NON_E2E';
+    }
+
+    result.WHOLE_TRIP_6_OF_6_RECOVERABLE = 'NOT_PROVEN_WITHOUT_STOP_RECORDING';
 
     await sessionService.abortSession(
       organizationId,
       sessionId,
-      'exp021_stationary_certification_non_physical_dry_run',
+      e2eSmoke
+        ? 'exp021_stationary_e2e_shadow_smoke_complete'
+        : 'exp021_stationary_certification_non_physical_dry_run',
     );
     sessionId = null;
 
@@ -188,16 +224,26 @@ async function main(): Promise<void> {
 
     result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN = activeRecording === 0 ? 'YES' : 'NO';
     result.NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN = activeExperiments === 0 ? 'YES' : 'NO';
-    result.STATIONARY_DRY_RUN_PASS =
-      result.A30_SCHEDULABLE_ON_TIME === 'YES' &&
-      result.A60_SCHEDULABLE_ON_TIME === 'YES' &&
-      result.B30_SCHEDULABLE_ON_TIME === 'YES' &&
-      result.B60_SCHEDULABLE_ON_TIME === 'YES' &&
-      result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN === 'YES'
-        ? 'YES'
-        : 'NO';
+
+    const structuralPass =
+      result.PHASE_60_EFFECTIVE_PROVEN === 'YES' &&
+      result.PHASE60_PERSISTED_SCHEDULES === 12 &&
+      result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN === 'YES' &&
+      result.NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN === 'YES';
+
+    const e2ePass =
+      !e2eSmoke ||
+      (result.REAL_A30_OBSERVATION_EXECUTED === 'YES' &&
+        result.REAL_A60_OBSERVATION_EXECUTED === 'YES' &&
+        result.REAL_B30_OBSERVATION_EXECUTED === 'YES' &&
+        result.REAL_B60_OBSERVATION_EXECUTED === 'YES');
+
+    result.STATIONARY_DRY_RUN_PASS = structuralPass && e2ePass ? 'YES' : 'NO';
 
     console.log(JSON.stringify(result, null, 2));
+    if (result.STATIONARY_DRY_RUN_PASS !== 'YES') {
+      throw new Error('Stationary certification failed');
+    }
   } catch (error) {
     result.STATIONARY_DRY_RUN_PASS = 'NO';
     result.error = error instanceof Error ? error.message : String(error);
