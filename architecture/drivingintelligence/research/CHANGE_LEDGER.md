@@ -368,6 +368,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Merge / deploy / drive | **NOT AUTHORIZED** |
 | Evidence | `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` |
 
+## EXP-021 — KS MS 661 deep forensic audit addendum (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DEEP AUDIT COMPLETE** — bucket-level maturation + Trip FSM follow-up |
+| Bucket identity | `FIELD_PIPE_CANONICAL_ISO_MS` — all 6 FIXED probes structurally stable after first success |
+| Settlement gap recovery | **NO** late bucket recovery across ages |
+| PDI structure | 3218 identities stable +30…+600; **values UNKNOWN** (not persisted) |
+| Trip FSM | Still `ONGOING` + provisional `endTime`; detection `POSSIBLE_END`; WHOLE_TRIP unbound |
+| Phase 10 | Missing due to insufficient movement in phase 20 (300s rule), not code defect |
+| Next action | **LONGER_COMPLETION_RUN** — no new code fix required |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` §15–§19 |
+
 ## EXP-021 — KS MS 661 physical run post-drive forensic (2026-09-10)
 
 | Event | Detail |
