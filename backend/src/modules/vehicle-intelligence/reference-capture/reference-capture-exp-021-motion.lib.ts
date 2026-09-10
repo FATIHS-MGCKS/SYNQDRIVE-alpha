@@ -276,25 +276,70 @@ export type PreDeployMovementGateConfig = {
   movementSpeedKmh: number;
   minDistinctFreshSamples: number;
   maxSampleAgeMs: number;
+  /** Sliding window for qualifying movement samples (mirrors PhysicalStartDetector). */
+  confirmationWindowMs: number;
+  /** Sustained parked/non-moving duration that resets pre-deploy movement progress. */
+  sustainedParkingResetMs: number;
 };
 
 export const EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT: PreDeployMovementGateConfig = {
   movementSpeedKmh: 8,
   minDistinctFreshSamples: 3,
   maxSampleAgeMs: 120_000,
+  confirmationWindowMs: EXP021_DEFAULT_PHYSICAL_START.confirmationWindowMs,
+  sustainedParkingResetMs: EXP021_DEFAULT_PHYSICAL_START.sustainedParkingResetMs,
 };
 
-/** Pre-deploy movement gate — distinct provider speed timestamps only (not poll counts). */
+type PreDeployWindowSample = {
+  timestamp: string;
+  timestampMs: number;
+};
+
+/**
+ * Pre-deploy movement gate — distinct provider speed timestamps inside a bounded
+ * confirmation window. Sustained PARKED resets progress; UNKNOWN alone does not.
+ */
 export class PreDeployMovementGate {
   private readonly seenTimestamps = new Set<string>();
+  private readonly windowSamples: PreDeployWindowSample[] = [];
+  private sustainedNonMovingSinceMs: number | null = null;
 
   constructor(private readonly config: PreDeployMovementGateConfig) {}
 
   reset(): void {
     this.seenTimestamps.clear();
+    this.windowSamples.length = 0;
+    this.sustainedNonMovingSinceMs = null;
+  }
+
+  private pruneWindow(nowMs: number): void {
+    const cutoff = nowMs - this.config.confirmationWindowMs;
+    while (this.windowSamples.length > 0 && this.windowSamples[0].timestampMs < cutoff) {
+      const removed = this.windowSamples.shift()!;
+      this.seenTimestamps.delete(removed.timestamp);
+    }
+  }
+
+  private maybeResetForSustainedParking(nowMs: number, motionState: MotionState): void {
+    if (motionState === 'MOVING') {
+      this.sustainedNonMovingSinceMs = null;
+      return;
+    }
+    if (motionState === 'PARKED_CANDIDATE') {
+      if (this.sustainedNonMovingSinceMs == null) {
+        this.sustainedNonMovingSinceMs = nowMs;
+      } else if (nowMs - this.sustainedNonMovingSinceMs >= this.config.sustainedParkingResetMs) {
+        this.reset();
+      }
+      return;
+    }
+    // UNKNOWN alone does not reset; only track if we already had sustained parking clock.
   }
 
   record(sample: SpeedSample, motionState: MotionState, nowMs: number): void {
+    this.pruneWindow(nowMs);
+    this.maybeResetForSustainedParking(nowMs, motionState);
+
     if (motionState !== 'MOVING') {
       return;
     }
@@ -310,15 +355,19 @@ export class PreDeployMovementGate {
     if (this.seenTimestamps.has(sample.speedTimestamp)) {
       return;
     }
+
+    const timestampMs = Date.parse(sample.speedTimestamp);
     this.seenTimestamps.add(sample.speedTimestamp);
+    this.windowSamples.push({ timestamp: sample.speedTimestamp, timestampMs });
+    this.pruneWindow(nowMs);
   }
 
   isDriveStartBeforeDeploy(): boolean {
-    return this.seenTimestamps.size >= this.config.minDistinctFreshSamples;
+    return this.windowSamples.length >= this.config.minDistinctFreshSamples;
   }
 
   getDistinctSampleCount(): number {
-    return this.seenTimestamps.size;
+    return this.windowSamples.length;
   }
 }
 

@@ -211,14 +211,29 @@ describe('reference-capture-exp-021-motion.lib', () => {
     expect(stop.shouldAutoStop).toBe(true);
   });
 
-  it('PRE_DEPLOY_REPEATED_TIMESTAMP_FALSE_START = NO', () => {
-    const gate = new PreDeployMovementGate({
+  function preDeployGateConfig(
+    overrides: Partial<{
+      movementSpeedKmh: number;
+      minDistinctFreshSamples: number;
+      maxSampleAgeMs: number;
+      confirmationWindowMs: number;
+      sustainedParkingResetMs: number;
+    }> = {},
+  ) {
+    return {
       movementSpeedKmh: 8,
       minDistinctFreshSamples: 3,
       maxSampleAgeMs: 120_000,
-    });
+      confirmationWindowMs: 180_000,
+      sustainedParkingResetMs: 90_000,
+      ...overrides,
+    };
+  }
+
+  it('PRE_DEPLOY_REPEATED_TIMESTAMP_FALSE_START = NO', () => {
+    const gate = new PreDeployMovementGate(preDeployGateConfig());
     const sample = speedSample(0, 20);
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       gate.record(sample, 'MOVING', baseMs + i * 15_000);
     }
     expect(gate.isDriveStartBeforeDeploy()).toBe(false);
@@ -226,15 +241,53 @@ describe('reference-capture-exp-021-motion.lib', () => {
   });
 
   it('PRE_DEPLOY_MOVEMENT_USES_DISTINCT_PROVIDER_EVIDENCE', () => {
-    const gate = new PreDeployMovementGate({
-      movementSpeedKmh: 8,
-      minDistinctFreshSamples: 3,
-      maxSampleAgeMs: 120_000,
-    });
+    const gate = new PreDeployMovementGate(preDeployGateConfig());
     for (const offset of [0, 15, 30, 45]) {
       gate.record(speedSample(offset, 20), 'MOVING', baseMs + offset * 1000);
     }
     expect(gate.isDriveStartBeforeDeploy()).toBe(true);
+  });
+
+  it('PRE_DEPLOY_SEPARATED_MOVEMENT_FALSE_START = NO', () => {
+    const gate = new PreDeployMovementGate(
+      preDeployGateConfig({ sustainedParkingResetMs: 60_000 }),
+    );
+    gate.record(speedSample(0, 20), 'MOVING', baseMs);
+    gate.record(speedSample(15, 20), 'MOVING', baseMs + 15_000);
+    gate.record(speedSample(30, 0), 'PARKED_CANDIDATE', baseMs + 30_000);
+    gate.record(speedSample(91, 0), 'PARKED_CANDIDATE', baseMs + 91_000);
+    gate.record(speedSample(105, 20), 'MOVING', baseMs + 105_000);
+    expect(gate.isDriveStartBeforeDeploy()).toBe(false);
+    expect(gate.getDistinctSampleCount()).toBe(1);
+  });
+
+  it('PRE_DEPLOY_EXPIRED_MOVEMENT_FALSE_START = NO', () => {
+    const gate = new PreDeployMovementGate(
+      preDeployGateConfig({ confirmationWindowMs: 60_000 }),
+    );
+    gate.record(speedSample(0, 20), 'MOVING', baseMs);
+    gate.record(speedSample(15, 20), 'MOVING', baseMs + 15_000);
+    gate.record(speedSample(200, 20), 'MOVING', baseMs + 200_000);
+    expect(gate.isDriveStartBeforeDeploy()).toBe(false);
+    expect(gate.getDistinctSampleCount()).toBe(1);
+  });
+
+  it('PRE_DEPLOY_URBAN_STOP_GO_REACHABLE = YES', () => {
+    const gate = new PreDeployMovementGate(
+      preDeployGateConfig({
+        minDistinctFreshSamples: 4,
+        confirmationWindowMs: 300_000,
+        sustainedParkingResetMs: 90_000,
+      }),
+    );
+    gate.record(speedSample(0, 20), 'MOVING', baseMs);
+    gate.record(speedSample(20, 0), 'PARKED_CANDIDATE', baseMs + 20_000);
+    gate.record(speedSample(40, 20), 'MOVING', baseMs + 40_000);
+    gate.record(speedSample(55, 20), 'UNKNOWN', baseMs + 55_000);
+    gate.record(speedSample(70, 20), 'MOVING', baseMs + 70_000);
+    gate.record(speedSample(85, 20), 'MOVING', baseMs + 85_000);
+    expect(gate.isDriveStartBeforeDeploy()).toBe(true);
+    expect(gate.getDistinctSampleCount()).toBe(4);
   });
 
   it('rankCanonicalVehicleTripCandidates prefers highest overlap', () => {

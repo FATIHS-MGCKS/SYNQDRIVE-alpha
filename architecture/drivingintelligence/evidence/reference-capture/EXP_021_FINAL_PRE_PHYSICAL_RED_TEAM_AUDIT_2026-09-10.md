@@ -256,7 +256,7 @@ Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI 
 |---|-------|-------------------|
 | 1 | PDI/WHOLE_TRIP cross-age maturation grouped by age-specific probeId | **FIXED** — `selectPriorMaturationObservation`: PDI by candidate+interval, canonical WHOLE_TRIP by interval+phase null, FIXED_INTERVAL by stable probeId |
 | 2 | Final PDI candidate stuck PROVISIONAL | **FIXED** — `confirmPhysicalDriveIntervalCandidate` + orchestrator handles `candidateConfirmed` / auto-stop promotion; INVALIDATED cannot become CONFIRMED |
-| 3 | Pre-deploy movement counted orchestrator polls not provider evidence | **FIXED** — `PreDeployMovementGate` dedupes distinct `speedTimestamp` |
+| 3 | Pre-deploy movement counted orchestrator polls not provider evidence | **FIXED** — `PreDeployMovementGate` dedupes distinct `speedTimestamp` inside sliding `confirmationWindowMs`; sustained `PARKED_CANDIDATE` resets via `sustainedParkingResetMs` (mirrors `PhysicalStartDetector`) |
 | 4 | Single PARKED + UNKNOWN could auto-stop | **FIXED** — `minDistinctParkedSamples` (default 2) before UNKNOWN auto-stop arms |
 
 | Assertion | Result |
@@ -269,6 +269,9 @@ Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI 
 | `OBSERVATION_PAYLOAD_REMAINS_IMMUTABLE` | **YES** |
 | `PRE_DEPLOY_MOVEMENT_USES_DISTINCT_PROVIDER_EVIDENCE` | **YES** |
 | `PRE_DEPLOY_REPEATED_TIMESTAMP_FALSE_START` | **NO** |
+| `PRE_DEPLOY_SEPARATED_MOVEMENT_FALSE_START` | **NO** |
+| `PRE_DEPLOY_EXPIRED_MOVEMENT_FALSE_START` | **NO** |
+| `PRE_DEPLOY_URBAN_STOP_GO_REACHABLE` | **YES** |
 | `SINGLE_PARKED_SAMPLE_PLUS_UNKNOWN_CAN_STOP` | **NO** |
 | `STRONG_PARKED_EVIDENCE_REQUIRED_FOR_UNKNOWN_STOP` | **YES** |
 | `TELEMETRY_DROPOUT_PREMATURE_STOP_PROTECTED` | **YES** |

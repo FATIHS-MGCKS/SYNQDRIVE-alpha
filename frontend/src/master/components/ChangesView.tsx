@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Cross-age maturation: PDI/WHOLE_TRIP compare prior observations by candidate+interval or canonical interval — not age-specific probeId.',
       'PDI candidate lifecycle: PROVISIONAL → CONFIRMED or INVALIDATED_END_CANDIDATE; observationJson/responseHash remain immutable.',
-      'Pre-deploy movement gate dedupes distinct provider speed timestamps; repeated stale MOVING cannot false-start.',
+      'Pre-deploy movement gate dedupes distinct provider speed timestamps inside sliding confirmation window; sustained PARKED resets progress; separated/expired movements cannot false-start.',
       'UNKNOWN auto-stop requires strong parked evidence (≥2 distinct fresh timestamps) — single zero-speed sample insufficient.',
     ],
     reason:
