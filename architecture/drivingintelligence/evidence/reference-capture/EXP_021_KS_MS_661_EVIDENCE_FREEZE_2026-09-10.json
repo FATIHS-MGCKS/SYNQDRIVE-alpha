@@ -1,0 +1,81 @@
+{
+  "freezeVersion": "EXP-021-EVIDENCE-FREEZE-v1",
+  "frozenAtUtc": "2026-09-10T22:00:00Z",
+  "CURRENT_RUN_EVIDENCE_FROZEN": "YES",
+  "FINAL_EXP021_CLOSURE": "NO",
+  "FINAL_EXP021_CLOSURE_REASON": "WAITING_FOR_COMPLETION_RUN_AND_EXTERNAL_TRIP_FSM_WORKSTREAM",
+  "runIdentity": {
+    "vehiclePlate": "KS MS 661",
+    "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+    "tokenId": 187361,
+    "rcSessionId": "945edc40-3002-4b87-83f6-a55d8cf66ffb",
+    "settlementExperimentId": "exp-021-945edc40-e7850aa0",
+    "calibrationSeriesId": "c8b9cd3e-3cb9-40c2-a8f2-dd2a6ba26741",
+    "vehicleTripId": "2bdc6e71-3822-4c9e-bda3-b46c681e6844",
+    "productionSha": "2f1b4f53d418448be5e9dc087393fabf46faf4c1"
+  },
+  "canonicalT0": "2026-09-10T19:41:19.000Z",
+  "physicalEndCandidate": {
+    "candidateId": "pdi-1789070475000",
+    "boundaryAt": "2026-09-10T20:01:15.000Z",
+    "status": "PROVISIONAL"
+  },
+  "phaseClassification": {
+    "orderAchieved": ["60s", "30s", "20s"],
+    "phase60": "COMPLETED",
+    "phase30": "COMPLETED",
+    "phase20": "PARTIAL",
+    "phase10": "NOT_REACHED"
+  },
+  "settlementObservations": {
+    "fixedIntervalScheduled": 36,
+    "fixedIntervalCompleted": 36,
+    "fixedIntervalFailed": 0,
+    "pdiAuthoritativeCandidateObservations": 6,
+    "wholeTripCanonical": 0,
+    "mandatoryAgesMs": [30000, 60000, 120000, 180000, 300000, 600000]
+  },
+  "retroactiveAssessment": {
+    "HISTORICAL_BUCKET_IDENTITY_COMPARISON_POSSIBLE": "YES",
+    "HISTORICAL_VALUE_REVISION_COMPARISON_POSSIBLE": "NO",
+    "valueRevisionBlocker": "observationJson persisted uniqueBucketIdentities only; bucketValueSnapshots not stored on this run; responseHash includes query age and schedule drift metadata"
+  },
+  "nativeCadenceAggregates": {
+    "phase60": {
+      "wallSeconds": 579.7,
+      "validMovementSeconds": 314.1,
+      "providerRequestCount": 7,
+      "uniqueTemporalBuckets": 53,
+      "medianGapMs": 4000,
+      "p90GapMs": 20000,
+      "maxGapMs": 22462
+    },
+    "phase30": {
+      "wallSeconds": 367.9,
+      "validMovementSeconds": 315.1,
+      "providerRequestCount": 9,
+      "uniqueTemporalBuckets": 31,
+      "medianGapMs": 7000,
+      "p90GapMs": 19000,
+      "maxGapMs": 29056
+    },
+    "phase20": {
+      "status": "PARTIAL",
+      "wallSecondsAtLeast": 248,
+      "providerRequestCountFromSummary": 11,
+      "maxGapMsFromSummary": 18000
+    }
+  },
+  "gapSettlementRetroactive": {
+    "perGapTimestampMatrixPossible": "NO",
+    "reason": "nativeUniqueTemporalBucketStarts exist only in ephemeral hfCalibrationActiveCounters; completedPhaseSummaries retain aggregate gap stats only",
+    "settlementStructuralMaturation": "CONFIRMED — bucket identity sets stable from first successful age per FIXED probe; no LATE_BUCKET_RECOVERY",
+    "settlementValueMaturation": "UNKNOWN — values not persisted on this run"
+  },
+  "authoritativeEvidenceDocuments": [
+    "architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md",
+    "architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md",
+    "architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md"
+  ],
+  "immutableObservationPolicy": "Historical ReferenceCaptureSettlementShadowObservation rows are not mutated by this freeze or subsequent instrumentation work"
+}

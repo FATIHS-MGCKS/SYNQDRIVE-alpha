@@ -275,7 +275,7 @@ After first successful age: `newBucketIdentities = []` at all later ages for eve
 | +30 | 1189 | 3218 | yes |
 | +60 | 1189 | 3218 | yes |
 | +120 | 1189 | 3218 | yes |
-| +180 | 1189 | 1189 | yes |
+| +180 | 1189 | 3218 | yes |
 | +300 | 1189 | 3218 | yes |
 | +600 | 1189 | 3218 | yes |
 
@@ -368,3 +368,23 @@ Blockers for full EXP-021 closure:
 
 `READY_TO_MERGE_PR1599` = **YES** (evidence-only documentation)  
 `READY_TO_START_NEXT_PHYSICAL_RUN` = **YES** after operator accepts incomplete WHOLE_TRIP on this run
+
+---
+
+## 20 — Gap→settlement instrumentation addendum (2026-09-10)
+
+**Evidence freeze:** `EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json`  
+**Retroactive assessment:** `EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md`
+
+| Flag | Value | Epistemic |
+|------|-------|-----------|
+| `CURRENT_RUN_EVIDENCE_FROZEN` | YES | CONFIRMED |
+| `HISTORICAL_BUCKET_IDENTITY_COMPARISON_POSSIBLE` | YES | CONFIRMED |
+| `HISTORICAL_VALUE_REVISION_COMPARISON_POSSIBLE` | NO | CONFIRMED |
+| `VALUE_REVISION_DETECTION_IMPLEMENTED` | YES (forward) | CONFIRMED from code |
+| `VALUE_HASH_EXCLUDES_QUERY_METADATA` | YES | CONFIRMED |
+| Per-gap native→settlement matrix on frozen run | NOT_ASSESSABLE | CONFIRMED — `nativeUniqueTemporalBucketStarts` not in `completedPhaseSummaries` |
+
+**Correction (provenance):** Prior informal inference that `responseHash` drift might indicate vehicle-value revision is **CONTRADICTED**. Hash includes query-age and schedule-drift metadata.
+
+**Forward instrumentation:** `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` appended to new settlement observations; historical rows immutable.

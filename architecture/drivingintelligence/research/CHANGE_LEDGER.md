@@ -396,6 +396,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION unchanged — no deploy/merge/cleanup during forensics |
 | Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` |
 
+## EXP-021 — Gap→settlement correlation + value revision instrumentation (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **INSTRUMENTATION COMPLETE** — evidence freeze + forward persistence; no physical drive |
+| Freeze | `EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json` — run `945edc40-…` immutable |
+| Retroactive | Bucket identity maturation **YES**; per-gap timestamp matrix **NO**; value revision **NO** on frozen run |
+| Code | `reference-capture-settlement-shadow-value-snapshot.ts`, gap-settlement analyzer, cross-age analyzer |
+| Persistence | `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` on new observations |
+| Correction | `responseHash` ≠ value revision evidence — metadata includes age/drift |
+| Trip FSM | **UNCHANGED** — WHOLE_TRIP remains `BLOCKED_BY_EXTERNAL_TRIP_FSM_WORKSTREAM` |
+| Evidence | `EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md`; forensic §20 |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |

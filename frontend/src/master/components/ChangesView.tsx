@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-gap-settlement-value-revision-instrumentation-2026-09-10',
+    version: '4.9.1100',
+    title: 'EXP-021 — Gap→settlement correlation + value revision instrumentation',
+    summary: [
+      'Evidence freeze for KS MS 661 physical run `945edc40-…` — historical observations immutable.',
+      'Forward persistence: bucketValueSnapshots, valueContentHash (metadata-free), valueRevisedBucketIdentities.',
+      'Deterministic gap→settlement matrix analyzer + cross-age probe report generator.',
+      'Retroactive: bucket identity maturation provable; per-gap timestamp matrix and value revision NOT on frozen run.',
+      'Corrects prior responseHash drift ≠ value revision inference.',
+    ],
+    reason:
+      'Answer gap→settlement and value-revision questions rigorously before EXP-021 completion run without another physical drive.',
+    previousBehavior:
+      'Settlement shadow stored uniqueBucketIdentities only; responseHash included query age and schedule drift; VALUE_REVISION_DETECTION not implemented.',
+    details:
+      'Evidence: EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json, EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md. Trip FSM untouched.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:00:00.000Z',
+  },
+  {
     id: 'exp-021-pr1598-final-red-team-2026-09-10',
     version: '4.9.1099',
     title: 'EXP-021 PR #1598 — final red-team T0 recovery + orchestrator survivability',
