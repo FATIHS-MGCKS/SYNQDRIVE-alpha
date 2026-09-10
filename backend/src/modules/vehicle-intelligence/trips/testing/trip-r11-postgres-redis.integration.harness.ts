@@ -641,8 +641,12 @@ export async function drainTripTrackingQueue(params: {
     if (state === 'delayed') {
       await job.promote();
     }
-    await params.runJob(job.data);
+    const jobData = job.data;
+    // Remove before runJob so nested schedule* calls do not see this job as
+    // queued primary (BullMQ workers hold ACTIVE during processing; manual drain
+    // otherwise leaves WAITING and stable-slot enqueue returns skipped).
     await job.remove().catch(() => undefined);
+    await params.runJob(jobData);
     steps += 1;
   }
   return steps;
