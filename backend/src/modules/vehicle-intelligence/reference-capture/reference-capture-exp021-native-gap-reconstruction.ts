@@ -1,4 +1,5 @@
 import { HF_AGGREGATE_BUCKET_INTERVAL_MS } from './reference-capture-hf-aggregate-bucket-analysis';
+import { computeNativeTemporalCadenceStats } from './reference-capture-hf-calibration-phase.policy';
 import {
   EXP021_GAP_SETTLEMENT_MIN_GAP_MS,
   expectedInteriorTemporalBuckets,
@@ -36,8 +37,9 @@ function formatPhaseLabel(pollIntervalMs: number): string {
   return `${pollIntervalMs / 1000}s`;
 }
 
-function percentile(sorted: number[], p: number): number | null {
-  if (sorted.length === 0) return null;
+function percentileFromGaps(gaps: number[], p: number): number | null {
+  if (gaps.length === 0) return null;
+  const sorted = [...gaps].sort((a, b) => a - b);
   const idx = Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1);
   return sorted[idx];
 }
@@ -116,18 +118,18 @@ export function reconstructNativeGapReportFromEvidence(
     minGapMs,
   });
 
+  const cadence = computeNativeTemporalCadenceStats(ordered);
   const dts: number[] = [];
   for (let i = 1; i < ordered.length; i++) {
     dts.push(Date.parse(ordered[i]) - Date.parse(ordered[i - 1]));
   }
-  const sortedDts = [...dts].sort((a, b) => a - b);
 
   return {
     nativeBucketCount: ordered.length,
     nativeGapsTotal: gaps.length,
-    medianNativeDtMs: percentile(sortedDts, 0.5),
-    p95NativeDtMs: percentile(sortedDts, 0.95),
-    maxNativeDtMs: dts.length > 0 ? Math.max(...dts) : null,
+    medianNativeDtMs: cadence.nativeMedianTemporalCadenceMs,
+    p95NativeDtMs: percentileFromGaps(dts, 0.95),
+    maxNativeDtMs: cadence.nativeMaxTemporalGapMs,
     gapsGe10s: gaps.filter((g) => g.gapDurationMs >= 10_000).length,
     gapsGe30s: gaps.filter((g) => g.gapDurationMs >= 30_000).length,
     gapsGe60s: gaps.filter((g) => g.gapDurationMs >= 60_000).length,
