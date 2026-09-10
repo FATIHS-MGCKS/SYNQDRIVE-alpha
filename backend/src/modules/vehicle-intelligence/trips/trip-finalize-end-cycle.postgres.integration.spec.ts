@@ -1,6 +1,7 @@
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 
+import { buildPossibleEndToActiveReset } from './trip-end-cycle-reset';
 import {
   buildTripFinalizeIntegrationOrchestration,
   cleanupTripFinalizePostgresFixture,
@@ -174,6 +175,66 @@ if (REQUIRED) {
       });
       expect(det?.state).toBe(TripDetectionState.RESTING);
       expect(det?.activeTripId).toBeNull();
+    });
+
+    it('E — live resume before stale FINALIZE consumer must not finalize trip', async () => {
+      const queue = createInMemoryTripTrackingQueue();
+      const orchestration = buildTripFinalizeIntegrationOrchestration(prisma, queue);
+
+      const job = await scheduleFinalizeThroughQueue(orchestration, fixture);
+      expect(job).toBeDefined();
+      expect(job?.endCycleToken).toBe(fixture.cycleToken);
+
+      const detBefore = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const resumeAt = new Date('2026-09-08T05:03:00.000Z');
+      await orchestration.transitionState(
+        fixture.vehicle.id,
+        TripDetectionState.ACTIVE_TRIP,
+        {
+          activeTripId: fixture.trip.id,
+          ...buildPossibleEndToActiveReset({
+            workerNow: resumeAt,
+            priorSummary: detBefore?.lastEvidenceSummary as Record<
+              string,
+              unknown
+            > | null,
+          }),
+        },
+      );
+
+      const detAfterResume = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      expect(detAfterResume?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+      expect(detAfterResume?.activeTripId).toBe(fixture.trip.id);
+      expect(detAfterResume?.possibleEndEnteredAt).toBeNull();
+      expect(detAfterResume?.possibleEndAt).toBeNull();
+      expect(
+        (detAfterResume?.lastEvidenceSummary as Record<string, unknown> | null)
+          ?.pendingFinalizeCycleToken,
+      ).toBeUndefined();
+
+      await consumeTripTrackingFinalizeJob(orchestration, job!);
+
+      const trip = await prisma.vehicleTrip.findUnique({
+        where: { id: fixture.trip.id },
+      });
+      const det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+
+      expect(trip?.tripStatus).toBe(TripStatus.ONGOING);
+      expect(trip?.endTime).toBeNull();
+      expect(det?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+      expect(det?.activeTripId).toBe(fixture.trip.id);
+      expect(det?.possibleEndEnteredAt).toBeNull();
+      expect(det?.possibleEndAt).toBeNull();
+      expect(
+        (det?.lastEvidenceSummary as Record<string, unknown> | null)
+          ?.pendingFinalizeCycleToken,
+      ).toBeUndefined();
     });
   },
 );

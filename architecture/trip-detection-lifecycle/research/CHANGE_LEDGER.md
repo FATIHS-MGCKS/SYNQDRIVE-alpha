@@ -36,6 +36,7 @@ Append-only record for this authority directory.
 | 2026-09-09 | R12 intensive review remediation — same-tick continuity guard; active boundary retire/latch; lifecycle safety + idempotency integration; R11 Scenario J source aligned to provider path | Trip FSM R12 PR #1591 | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](../evidence/TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) |
 | 2026-09-09 | R12 Trip FSM + i18n CI green @ `091c478af…` run 34360964547 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CI-PASS-001 |
 | 2026-09-09 | R12 final clock-authority hardening — typed stop boundary provenance/trust, latch hierarchy, route bridge displacement, R12-CLOCK-1..6 + R12-ROUTE-1..3; CI green @ `e5b21b0d3` run 34377256197 | Trip FSM R12 PR #1591 | TDL-EVID-R12-CLOCK-001 |
+| 2026-09-09 | R12 pre-drive safety hardening — fail-closed continuity (AUD-003), evidence ordering / motor-load before boundary corroboration (AUD-002), ignition-ON stationary keep-open (AUD-004), postgres resume-before-finalize case E (AUD-007) | Trip FSM R12 pre-drive PR #1594 | [TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md](../evidence/TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

@@ -119,7 +119,7 @@ describe('classifyEmptyCoreVlsInactivity (R5A)', () => {
     ).toBe('UNKNOWN');
   });
 
-  it('engine load before stop boundary → INACTIVE (stale at stop)', () => {
+  it('engine load before stop boundary → UNKNOWN motor activity (fresh contradiction blocks INACTIVE)', () => {
     const stopBoundary = new Date(WORKER_NOW.getTime() - 10_000);
     expect(
       classifyEmptyCoreVlsInactivity({
@@ -135,8 +135,48 @@ describe('classifyEmptyCoreVlsInactivity (R5A)', () => {
         stopBoundaryAt: stopBoundary,
       }),
     ).toMatchObject({
+      state: 'UNKNOWN',
+      reason: 'vls_motor_activity_at_standstill',
+    });
+  });
+
+  it('non-contradictory pre-boundary stationary → INACTIVE corroboration', () => {
+    const stopBoundary = new Date(WORKER_NOW.getTime() - 10_000);
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: freshTs(-60_000),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+        stopBoundaryAt: stopBoundary,
+      }),
+    ).toMatchObject({
       state: 'INACTIVE',
       reason: 'vls_stop_boundary_corroboration',
+    });
+  });
+
+  it('R12-AUD-004 — fresh ignition ON stationary → ACTIVE keep-open evidence', () => {
+    expect(
+      classifyEmptyCoreVlsInactivity({
+        telemetry: {
+          isIgnitionOn: true,
+          speedKmh: 0,
+          engineLoad: 0,
+          sourceTimestamp: freshTs(),
+        },
+        profile: 'ICE',
+        workerNow: WORKER_NOW,
+        maxObservationAgeMs: MIN_INACTIVITY,
+      }),
+    ).toMatchObject({
+      state: 'ACTIVE',
+      reason: 'vls_ignition_on_stationary',
     });
   });
 
@@ -243,6 +283,48 @@ describe('assessSuccessfulEmptyCoreEndEligibility (R5A)', () => {
     });
     expect(result.eligible).toBe(true);
     expect(result.forensics.vlsEvidenceState).toBe('INACTIVE');
+  });
+
+  it('R12-AUD-004 — ignition ON idle blocks end even after 120s inactivity', () => {
+    const result = assessSuccessfulEmptyCoreEndEligibility({
+      operationalInactiveMs: 150_000,
+      minInactivityBeforeCusumMs: MIN_INACTIVITY,
+      telemetry: {
+        isIgnitionOn: true,
+        speedKmh: 0,
+        engineLoad: 0,
+        sourceTimestamp: freshTs(),
+      },
+      perfReadings: [],
+      routePoints: [{ latitude: 1, longitude: 2, speedKmh: 0, timestamp: 't' }],
+      profile: 'ICE',
+      workerNow: WORKER_NOW,
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.forensics.vlsEvidenceState).toBe('ACTIVE');
+    expect(result.forensics.innerGateReason).toBe('vls_ignition_on_stationary');
+  });
+
+  it('R12-AUD-004 — post-boundary ignition ON stationary remains keep-open', () => {
+    const stopBoundary = new Date(WORKER_NOW.getTime() - 130_000);
+    const result = assessSuccessfulEmptyCoreEndEligibility({
+      operationalInactiveMs: 150_000,
+      minInactivityBeforeCusumMs: MIN_INACTIVITY,
+      telemetry: {
+        isIgnitionOn: true,
+        speedKmh: 0,
+        engineLoad: 0,
+        sourceTimestamp: freshTs(),
+      },
+      perfReadings: [],
+      routePoints: [],
+      profile: 'ICE',
+      workerNow: WORKER_NOW,
+      stopBoundaryAt: stopBoundary,
+      stopBoundarySource: 'provider_stationary_vls',
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.forensics.innerGateReason).toBe('vls_ignition_on_stationary');
   });
 
   it('UNKNOWN VLS keeps open even without perf/route activity', () => {

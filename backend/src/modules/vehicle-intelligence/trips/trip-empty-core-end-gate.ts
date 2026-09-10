@@ -69,8 +69,12 @@ function isObservationAfterStopBoundary(
  * Stricter empty-core VLS classifier — tri-state ACTIVE / INACTIVE / UNKNOWN.
  * Does NOT coerce null speed/engineLoad to zero (unlike isCurrentTelemetryInactive).
  *
- * For end candidacy, positive evidence after `stopBoundaryAt` blocks; observations
- * at or before the boundary are treated as stale at stop.
+ * Evaluation hierarchy:
+ * 1. Stale provider observations → UNKNOWN (`vls_stale_provider_observation`)
+ * 2. Fresh positive contradictions (movement, motor activity, ignition ON stationary)
+ *    before any INACTIVE boundary corroboration
+ * 3. Only fresh, non-contradictory stationary evidence may corroborate a stop boundary
+ * 4. Stale evidence may progress only via trusted boundary-backed provider silence
  */
 export function classifyEmptyCoreVlsInactivity(params: {
   telemetry: EmptyCoreVlsTelemetry | null;
@@ -126,24 +130,9 @@ export function classifyEmptyCoreVlsInactivity(params: {
     params.stopBoundaryAt,
   );
 
-  // Pre-stop-boundary stationary samples corroborate the stop moment itself.
-  if (
-    params.stopBoundaryAt &&
-    !afterStop &&
-    speed <= shared.speedMotionKmh
-  ) {
-    const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
-    const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
-    return {
-      state: 'INACTIVE',
-      providerObservedAt,
-      observationAgeMs,
-      reason: 'vls_stop_boundary_corroboration',
-    };
-  }
-
   const rawAgeMs = params.workerNow.getTime() - providerObservedAt.getTime();
   const observationAgeMs = rawAgeMs < 0 ? 0 : rawAgeMs;
+
   if (observationAgeMs > params.maxObservationAgeMs) {
     return {
       state: 'UNKNOWN',
@@ -172,14 +161,6 @@ export function classifyEmptyCoreVlsInactivity(params: {
 
   const engineLoad = telemetry.engineLoad;
   if (engineLoad != null && engineLoad > 15) {
-    if (!afterStop) {
-      return {
-        state: 'INACTIVE',
-        providerObservedAt,
-        observationAgeMs,
-        reason: 'vls_stale_engine_load_before_stop_boundary',
-      };
-    }
     return {
       state: 'UNKNOWN',
       providerObservedAt,
@@ -202,6 +183,31 @@ export function classifyEmptyCoreVlsInactivity(params: {
       providerObservedAt,
       observationAgeMs,
       reason: 'vls_ignition_with_speed',
+    };
+  }
+
+  if (
+    telemetry.isIgnitionOn === true &&
+    speed <= shared.speedMotionKmh
+  ) {
+    return {
+      state: 'ACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_ignition_on_stationary',
+    };
+  }
+
+  if (
+    params.stopBoundaryAt &&
+    !afterStop &&
+    speed <= shared.speedMotionKmh
+  ) {
+    return {
+      state: 'INACTIVE',
+      providerObservedAt,
+      observationAgeMs,
+      reason: 'vls_stop_boundary_corroboration',
     };
   }
 

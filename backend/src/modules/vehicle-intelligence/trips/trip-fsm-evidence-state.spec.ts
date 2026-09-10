@@ -178,8 +178,26 @@ describe('KS MS 661 counter-cases and field semantics', () => {
     expect(anchorAt.toISOString()).toBe(stopBoundary.toISOString());
   });
 
-  it('boundary corroboration uses provider obs at boundary, not worker re-read age alone', () => {
-    const workerNow = new Date('2026-09-08T20:02:00.000Z');
+  it('boundary corroboration uses non-contradictory provider obs at boundary', () => {
+    const workerNow = new Date('2026-09-08T19:59:30.000Z');
+    const vls = classifyEmptyCoreVlsInactivity({
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 0,
+        sourceTimestamp: stopBoundary,
+      },
+      profile: 'ICE',
+      workerNow,
+      maxObservationAgeMs: MIN,
+      stopBoundaryAt: stopBoundary,
+    });
+    expect(vls.state).toBe('INACTIVE');
+    expect(vls.reason).toBe('vls_stop_boundary_corroboration');
+  });
+
+  it('high engineLoad at boundary is motor-activity contradiction when still fresh', () => {
+    const workerNow = new Date('2026-09-08T19:59:30.000Z');
     const vls = classifyEmptyCoreVlsInactivity({
       telemetry: {
         isIgnitionOn: false,
@@ -192,8 +210,26 @@ describe('KS MS 661 counter-cases and field semantics', () => {
       maxObservationAgeMs: MIN,
       stopBoundaryAt: stopBoundary,
     });
-    expect(vls.state).toBe('INACTIVE');
-    expect(vls.reason).toBe('vls_stop_boundary_corroboration');
+    expect(vls.state).toBe('UNKNOWN');
+    expect(vls.reason).toBe('vls_motor_activity_at_standstill');
+  });
+
+  it('aged high engineLoad observation becomes stale before boundary-backed silence', () => {
+    const workerNow = new Date('2026-09-08T20:01:30.000Z');
+    const vls = classifyEmptyCoreVlsInactivity({
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 42.745,
+        sourceTimestamp: stopBoundary,
+      },
+      profile: 'ICE',
+      workerNow,
+      maxObservationAgeMs: MIN,
+      stopBoundaryAt: stopBoundary,
+    });
+    expect(vls.state).toBe('UNKNOWN');
+    expect(vls.reason).toBe('vls_stale_provider_observation');
   });
 });
 

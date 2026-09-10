@@ -64,7 +64,9 @@ if (REQUIRED) {
     beforeEach(async () => {
       if (!dbOk) return;
       await trackingQueue.obliterate({ force: true });
-      fixture = await createTripR11ActiveTripFixture(prisma);
+      fixture = await createTripR11ActiveTripFixture(prisma, {
+        stopBoundarySource: 'provider_stationary_vls',
+      });
     });
 
     afterEach(async () => {
@@ -104,8 +106,9 @@ if (REQUIRED) {
           emptyCoreTickAt.toISOString(),
         );
         const summary = afterEmptyCore?.lastEvidenceSummary as Record<string, unknown>;
-        expect(summary.innerGateReason).toBe('empty_core_corroborated_inactivity');
+        expect(summary.innerGateReason).toBe('boundary_backed_provider_silence');
         expect(summary.emptyCoreDecision).toBe('POSSIBLE_END');
+        expect(summary.vlsEvidenceState).toBe('UNKNOWN');
 
         const pecJobId = buildTripTrackingJobId(
           'pec',
@@ -141,6 +144,42 @@ if (REQUIRED) {
         expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
       } finally {
         restoreTripR11Clock();
+      }
+    }, 120_000);
+
+    it('C-counter — untrusted worker-time boundary with stale VLS stays ACTIVE_TRIP', async () => {
+      const untrustedFixture = await createTripR11ActiveTripFixture(prisma, {
+        stopBoundarySource: 'idle_within_trip',
+      });
+      try {
+        const segments = buildTripR11SegmentsMock(untrustedFixture.expectedEndTime);
+        const detectorRegistry = buildTripR11DetectorMock(
+          untrustedFixture.expectedEndTime,
+        );
+        const harness = buildTripR11OrchestrationHarness(
+          prisma,
+          trackingQueue,
+          untrustedFixture,
+          segments,
+          detectorRegistry,
+        );
+
+        const emptyCoreTickAt = new Date('2026-09-08T05:02:30.000Z');
+        useTripR11FrozenClock(emptyCoreTickAt);
+        try {
+          await harness.runJob(buildActiveTickJob(untrustedFixture, emptyCoreTickAt));
+
+          const afterEmptyCore = await prisma.vehicleTripDetectionState.findUnique({
+            where: { vehicleId: untrustedFixture.vehicle.id },
+          });
+          expect(afterEmptyCore?.state).toBe(TripDetectionState.ACTIVE_TRIP);
+          expect(afterEmptyCore?.activeTripId).toBe(untrustedFixture.trip.id);
+          expect(afterEmptyCore?.possibleEndEnteredAt).toBeNull();
+        } finally {
+          restoreTripR11Clock();
+        }
+      } finally {
+        await cleanupTripR11Fixture(prisma, untrustedFixture);
       }
     }, 120_000);
   },
