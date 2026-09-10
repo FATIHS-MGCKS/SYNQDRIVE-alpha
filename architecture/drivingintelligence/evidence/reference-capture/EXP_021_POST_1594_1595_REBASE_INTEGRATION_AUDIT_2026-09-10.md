@@ -12,7 +12,7 @@
 | `REBASE_TARGET_MAIN_SHA` | `7203b5bd63dd3a32a65e2cc077f3d4fda8fe4584` |
 | `MAIN_CONTAINS_1594` | **YES** (`f4109e34c…` ancestor) |
 | `MAIN_CONTAINS_1595` | **YES** (`7203b5bd6…` ancestor) |
-| `PR1593_POST_REBASE_HEAD` | `9f5abe9f263b0ead601ccbccbac024e209e7f92e` |
+| `PR1593_POST_REBASE_HEAD` | `3a1f3ea1b3f9d152ceaf27ecda9c0f175485e56b` |
 | `MERGE_BASE_EQUALS_CURRENT_MAIN` | **YES** |
 | `REBASE_CONFLICTS` | **0** (clean rebase) |
 | `SEMANTIC_CONFLICTS_RESOLVED` | **0** (no conflict files) |
@@ -145,6 +145,8 @@ DIMO telemetry ─┬─► Trip FSM (detectors → TripDecisionEngine → Vehic
 
 ## Merge gate
 
-`READY_TO_MERGE_1593` = **YES** subject to CI green on `9f5abe9f…` and operator approval.  
+`READY_TO_MERGE_1593` = **YES** subject to CI green on `3a1f3ea1b…` and operator approval.
+
+`FINAL_INTEGRATION_SHA` = `3a1f3ea1b3f9d152ceaf27ecda9c0f175485e56b`  
 `READY_TO_DEPLOY` = **NO**  
 `READY_FOR_NEXT_EXP021_PHYSICAL_RUN` = **NO**
