@@ -1,6 +1,8 @@
 /**
  * EXP-021 autonomous orchestrator — testable helpers (policy gate, lock, fatal cleanup).
  */
+import { execSync } from 'child_process';
+import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
@@ -13,6 +15,64 @@ import {
 
 export const EXP021_ORCHESTRATOR_LOCK_KEY_PREFIX = 'exp021:autonomous-orchestrator:lock';
 export const EXP021_ORCHESTRATOR_LOCK_TTL_MS = 4 * 60 * 60 * 1000;
+export const EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY = 'exp021AutonomousOrchestrator';
+
+export function loadBackendEnvFile(envPath?: string): void {
+  const resolved = envPath ?? process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
+  for (const line of fs.readFileSync(resolved, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+    }
+  }
+}
+
+export function readCurrentProductionSha(): string {
+  try {
+    return execSync('git -C /opt/synqdrive/current rev-parse HEAD', { encoding: 'utf8' })
+      .trim()
+      .toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Resolve deploy authority SHA without historical baked-in defaults.
+ * Explicit EXP021_TARGET_DEPLOY_SHA wins; otherwise snapshot current production HEAD.
+ */
+export function resolveExp021TargetDeploySha(options?: {
+  explicitSha?: string | null;
+  productionSha?: string | null;
+}): string {
+  const explicit = (options?.explicitSha ?? process.env.EXP021_TARGET_DEPLOY_SHA ?? '')
+    .trim()
+    .toLowerCase();
+  if (explicit) {
+    return explicit;
+  }
+  const production = (options?.productionSha ?? readCurrentProductionSha()).trim().toLowerCase();
+  if (production) {
+    return production;
+  }
+  throw new Error(
+    'EXP021 deploy SHA unresolved: set EXP021_TARGET_DEPLOY_SHA or ensure /opt/synqdrive/current is readable',
+  );
+}
+
+export function isOrchestratorOwnedRecordingSession(
+  preflightJson: unknown,
+  orchestratorRunId: string,
+): boolean {
+  if (!preflightJson || typeof preflightJson !== 'object' || Array.isArray(preflightJson)) {
+    return false;
+  }
+  const ownership = (preflightJson as Record<string, unknown>)[EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY];
+  if (!ownership || typeof ownership !== 'object' || Array.isArray(ownership)) {
+    return false;
+  }
+  return (ownership as { runId?: string }).runId === orchestratorRunId;
+}
 
 const RELEASE_SCRIPT = `
 if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -119,6 +179,50 @@ export function evaluateEffectivePolicyGateFromEnv(
 }
 
 /** Derive terminal cleanup path from current Reference Capture lifecycle semantics. */
+export type Exp021RuntimeConfig = Readonly<{
+  organizationId: string;
+  vehicleId: string;
+  tokenId: number;
+  licensePlate: string;
+  freshThresholdSec: number;
+  movementSpeedKmh: number;
+  parkedSpeedKmh: number;
+  driveEndCandidateParkedSec: number;
+  driveEndParkedSec: number;
+  phaseDurationMs: number;
+  pollMs: number;
+  targetDeploySha: string;
+  logPath: string;
+}>;
+
+/** Resolve all EXP-021 orchestrator runtime values after backend.env is loaded. */
+export function buildExp021RuntimeConfig(options?: {
+  env?: NodeJS.ProcessEnv;
+  targetDeploySha?: string;
+}): Exp021RuntimeConfig {
+  const env = options?.env ?? process.env;
+  const targetDeploySha =
+    options?.targetDeploySha ??
+    resolveExp021TargetDeploySha({ explicitSha: env.EXP021_TARGET_DEPLOY_SHA });
+  return Object.freeze({
+    organizationId: env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a',
+    vehicleId: env.VEHICLE_ID ?? 'c10351f8-b6a2-4258-947f-631aeaa6d359',
+    tokenId: Number.parseInt(env.TOKEN_ID ?? '187361', 10),
+    licensePlate: env.LICENSE_PLATE ?? 'KS MS 661',
+    freshThresholdSec: Number.parseInt(env.FRESH_THRESHOLD_SEC ?? '600', 10),
+    movementSpeedKmh: Number.parseFloat(env.EXP021_MOVEMENT_SPEED_KMH ?? '8'),
+    parkedSpeedKmh: Number.parseFloat(env.EXP021_PARKED_SPEED_KMH ?? '3'),
+    driveEndCandidateParkedSec: Number.parseInt(env.EXP021_DRIVE_END_CANDIDATE_PARKED_SEC ?? '120', 10),
+    driveEndParkedSec: Number.parseInt(env.EXP021_DRIVE_END_PARKED_SEC ?? '600', 10),
+    phaseDurationMs: Number.parseInt(env.EXP021_PHASE_DURATION_MS ?? '300000', 10),
+    pollMs: Number.parseInt(env.EXP021_POLL_MS ?? '15000', 10),
+    targetDeploySha,
+    logPath:
+      env.EXP021_AUTONOMOUS_LOG_PATH ??
+      '/opt/synqdrive/shared/reference-evidence/exp-021-autonomous-orchestrator.jsonl',
+  });
+}
+
 export function resolveFatalSessionCleanupMode(
   acquisitionStateJson: unknown,
 ): FatalSessionCleanupMode {

@@ -183,6 +183,76 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Exact-SHA CI closure attempt (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CI CLOSURE INCOMPLETE** (PR #1593 @ `88b918a73`) |
+| i18n | `PRE_EXISTING_MAIN_TOOLING_DEFECT` — P2.3.4 tests bound to live PR; fix in [#1597](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1597) |
+| Trip FSM CI | Not auto-triggered; manual dispatch required |
+| RC tests | 641 total = 610 passed + 31 skipped (reconciled) |
+| Evidence | `EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md` §Exact-SHA CI closure |
+
+## EXP-021 — Post-#1594/#1595 rebase integration audit (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **INTEGRATION AUDIT** (PR #1593 rebased on `7203b5bd6…`) |
+| Rebase | Clean (0 conflicts); merge-base = current main; no Trip FSM file overlap |
+| Contracts | PDI independent of Trip FSM completion; canonical WHOLE_TRIP requires COMPLETED; R12 AUD-002/003/004 unit green |
+| Evidence | `EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md` |
+
+## EXP-021 — Fourth-pass scientific consistency micro-pass (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **MICRO-PASS FIX** (PR #1593 pre-merge) |
+| Fixes | Cross-age PDI/WHOLE_TRIP maturation grouping; PDI candidate CONFIRMED overlay lifecycle; pre-deploy distinct speed timestamps with sliding window + sustained-park reset; strong parked evidence before UNKNOWN auto-stop |
+| Tests | `PDI_CROSS_AGE_MATURATION_COMPARISON`, `WHOLE_TRIP_CROSS_AGE_MATURATION_COMPARISON`, `FIXED_INTERVAL_MATURATION_REGRESSION` PASS; reference-capture 605 tests |
+| Evidence | `EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md` §Fourth-pass |
+
+## EXP-021 — Third-pass micro-correction (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **MICRO-PASS FIX** (PR #1593 pre-merge) |
+| Fixes | PDI schedule/execution timestamp separation; immutable observation hash; candidate overlay; start window recalc; deploy reset; wake-and-go recording; physical interval for VehicleTrip; no synthetic phase movement |
+| Capability vs runtime | `PDI_30_PROSPECTIVE_CAPABILITY=YES`; `PDI_*_PROSPECTIVE_ACHIEVED=RUNTIME_ONLY` |
+| Evidence | `EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md` §Third-pass |
+
+## EXP-021 — Second-pass deterministic logic correction (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **SECOND-PASS FIX** (PR #1593 continuation) |
+| Blockers fixed | PDI +30 at boundary not +150s; final phase validity; phase transition at effective boundary; urban start sliding window; ignition-off end; false-candidate provenance; PDI vs WHOLE_TRIP counts; VehicleTrip overlap ranking; full runtime config freeze; fail-closed movement accounting |
+| Tests | Full-run simulation PASS; motion/orchestrator/settlement suites green |
+| Revision analysis | `VALUE_REVISION_DETECTION` remains **NOT_IMPLEMENTED** |
+| Evidence | `EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md` §Second-pass |
+
+## EXP-021 — Final pre-physical red-team hardening (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RED-TEAM AUDIT + HARDENING** (PR #1593 continuation) |
+| Blockers fixed | Stale TARGET_SHA; unreachable deploy-movement gate; gear-as-speed; NULL=parked; lock-loss continue; arbitrary RECORDING attach; wall-clock phases while parked; whole-trip false prospective ages at auto-end; ONGOING trip binding; ERROR observation loss; enqueue/abort race; observation TOCTOU; loose experiment-active guard |
+| New channel | `PHYSICAL_DRIVE_INTERVAL_SHADOW` (PDI probes) — true +30…+600 from drive-end candidate |
+| Stationary cert | Real phase-60 EFFECTIVE proof + persisted schedule DB proof; optional `--e2e-shadow-smoke` |
+| Revision analysis | `VALUE_REVISION_DETECTION` explicitly **NOT_IMPLEMENTED** |
+| Evidence | `EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md` |
+
+## EXP-021 — Settlement-shadow abort lifecycle (2026-09-09)
+
+| Event | Detail |
+|-------|--------|
+| Status | **LIFECYCLE FIX + DURABILITY HARDENING** (PR #1593) |
+| Defect | ABORTED RC sessions left `ACTIVE` settlement experiments + pending BullMQ jobs (2 orphans in post-deploy recert) |
+| Fix | `cancelExperimentForAbortedSession`: experiment → `CANCELLED`, unobserved schedules → `SKIPPED`, jobs removed, observations preserved |
+| Durability | Cleanup not feature-gated; atomic interactive transaction; reconciliation scheduler; cleanup failure surfaced; worker race guards |
+| Normal stop | `stopRecording` / COMPLETED path unchanged — post-stop shadow continuation preserved |
+| Tests | 11+ focused abort-lifecycle tests + reference-capture suite PASS |
+| Evidence | `EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md` |
+
 ## EXP-021 — Audi re-run readiness hardening (2026-09-09)
 
 | Event | Detail |

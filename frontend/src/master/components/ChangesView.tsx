@@ -36,25 +36,126 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'i18n-module-authority-bootstrap-2026-09-10',
-    version: '4.9.1092',
-    title: 'Internationalization (i18n) — module authority bootstrap audit',
+    id: 'exp-021-post-1594-1595-rebase-integration-2026-09-10',
+    version: '4.9.1097',
+    title: 'EXP-021 — Post-#1594/#1595 rebase integration audit (PR #1593)',
     summary: [
-      'Central registry intake: module absent → registered → `AUDIT_IN_PROGRESS` at `architecture/internationalization/`.',
-      'Repository audit: platform `LanguageContext` runtime CONFIRMED; Integration 2C Rental bridge retirement COMPLETE; 10,431 canonical en keys; hardcoded-copy inventory v3 — 1,661 enforce-clean remaining.',
-      'Governance P2.3 (#1581/#1585/#1589) CONFIRMED on main; Production read-only baseline @ `2e82171d…` — drift: main ahead (governance parity not deployed).',
-      'No feature implementation or translation migration in this workstream — documentation and audit only.',
-      'Promotion to `AUTHORITY_ACTIVE` blocked pending external review and Production per-locale UX validation.',
+      'Rebased PR #1593 onto main @ 7203b5bd (includes #1594 Trip FSM R12 + #1595 TDL evidence) — 0 conflicts.',
+      'Cross-module audit: PDI schedules independent of Trip FSM completion; canonical WHOLE_TRIP requires tripStatus COMPLETED (not endTime alone).',
+      'No Reference Capture writes to Trip FSM or VehicleTrip status; R12 AUD-002/003/004 unit tests unchanged green.',
+      '609 reference-capture tests PASS; Trip FSM R11/R12 unit suites PASS; backend build + DI validators + module registry + i18n gate PASS.',
     ],
     reason:
-      'i18n was a large shared frontend module without canonical registry routing; agents could not navigate architecture without reconstructing weeks of PR history.',
+      'Prove EXP-021 integration safety after #1594 fail-closed Trip FSM hardening and #1595 evidence authority landed on main.',
     previousBehavior:
-      'No Internationalization row in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`; flat `architecture/I18N_*` and campaign docs treated as implicit authority.',
+      'PR #1593 based on pre-#1594 main; integration with R12 contracts unverified.',
     details:
-      'architecture/internationalization/*, architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md. Validators: validate-graph.sh, validate-module-registry.sh.',
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md',
     affectsArchitecture: true,
-    module: 'Internationalization',
-    createdAt: '2026-09-10T02:45:00.000Z',
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-fourth-pass-scientific-consistency-2026-09-10',
+    version: '4.9.1096',
+    title: 'EXP-021 — Fourth-pass scientific consistency micro-pass (PR #1593)',
+    summary: [
+      'Cross-age maturation: PDI/WHOLE_TRIP compare prior observations by candidate+interval or canonical interval — not age-specific probeId.',
+      'PDI candidate lifecycle: PROVISIONAL → CONFIRMED or INVALIDATED_END_CANDIDATE; observationJson/responseHash remain immutable.',
+      'Pre-deploy movement gate dedupes distinct provider speed timestamps inside sliding confirmation window; sustained PARKED resets progress; separated/expired movements cannot false-start.',
+      'UNKNOWN auto-stop requires strong parked evidence (≥2 distinct fresh timestamps) — single zero-speed sample insufficient.',
+    ],
+    reason:
+      'Close four independent-repo consistency defects so the same historical interval is comparable across settlement ages.',
+    previousBehavior:
+      'Maturation grouped by probeId+age; candidates could remain PROVISIONAL; pre-deploy counted polls; one PARKED sample + UNKNOWN could auto-stop.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Fourth-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-third-pass-micro-correction-2026-09-10',
+    version: '4.9.1095',
+    title: 'EXP-021 — Third-pass micro-correction before merge (PR #1593)',
+    summary: [
+      'PDI provenance: schedule.createdAt vs requestStartedAt separated; prospectiveAtCreation from schedule creation only.',
+      'False-candidate invalidation updates experiment pdiCandidates overlay — completed observationJson/responseHash immutable.',
+      'Start detector: recompute first evidence after prune; deploy-convergence reset; wake-and-go startRecording without parked wait.',
+      'Physical drive interval persisted for canonical VehicleTrip overlap ranking; phase seal no synthetic MOVING credit.',
+    ],
+    reason:
+      'Close remaining deterministic evidence-integrity and operator wake-and-go gaps before merge of PR #1593.',
+    previousBehavior:
+      'PDI prospective inferred from request time; observationJson mutated on invalidation; parked required before recording; session envelope used for trip binding.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Third-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-second-pass-deterministic-logic-2026-09-10',
+    version: '4.9.1094',
+    title: 'EXP-021 — Second-pass deterministic logic correction (PR #1593)',
+    summary: [
+      'Independent second-pass review: fixed PDI prospective timing (boundary at first parked sample, schedule before +30), final-phase validity, phase transition at effective boundary, urban start sliding window, ignition-off end detector.',
+      'False end-candidate provenance: completed PDI observations marked INVALIDATED_END_CANDIDATE; cross-candidate bucket comparison isolated.',
+      'Canonical WHOLE_TRIP vs PDI counts separated (phase discriminator); VehicleTrip binding ranked by overlap with AMBIGUOUS_SPLIT guard.',
+      'buildExp021RuntimeConfig() after env load; fail-closed movement interval accounting; stationary cert requires 12 phase-60 schedules; full-run simulation test.',
+    ],
+    reason:
+      'Correct overclaimed first-pass authority flags and remove deterministic self-inflicted invalidation before merge of PR #1593.',
+    previousBehavior:
+      'PDI +30 at ~T0+150s; final 10s phase always invalid at drive end; phase tracker advanced before HF effective; start reset on brief stop; UNKNOWN cleared end candidate.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Second-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-final-pre-physical-red-team-2026-09-10',
+    version: '4.9.1093',
+    title: 'EXP-021 — Final pre-physical red-team scientific hardening',
+    summary: [
+      'Red-team audit of full EXP-021 path before next physical drive: orchestrator SHA/motion/lock/phase validity, whole-trip timing, VehicleTrip resolver, stationary cert, settlement races.',
+      'Removed stale TARGET_SHA default; motion authority uses speed/currentSpeed only (never gear); distinct fresh samples for physical start; movement-based phase validity.',
+      'Added PHYSICAL_DRIVE_INTERVAL_SHADOW channel for true post-drive +30…+600 ages at drive-end candidate (independent of 600s stopRecording delay).',
+      'Provider ERROR observations persisted; enqueue/abort race hardened; atomic observation eligibility; experiment status fail-closed ACTIVE only.',
+      'Stationary cert proves real phase-60 EFFECTIVE + persisted schedules; optional --e2e-shadow-smoke for full BullMQ→DIMO→DB path.',
+    ],
+    reason:
+      'Maximize probability next physical EXP-021 run produces scientifically usable 4-phase / 48-observation evidence.',
+    previousBehavior:
+      'Multiple self-inflicted invalidation modes (stale SHA, false prospective whole-trip ages, gear-as-speed, ERROR observation loss, wall-clock phases while parked).',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-settlement-shadow-abort-lifecycle-2026-09-09',
+    version: '4.9.1092',
+    title: 'EXP-021 — Settlement-shadow abort lifecycle micro-hardening',
+    summary: [
+      'Forensic gap: `abortSession` left ACTIVE settlement-shadow experiments and pending BullMQ jobs on ABORTED RC sessions (2 dry-run orphans after PR #1582 recert).',
+      'Canonical fix: `cancelExperimentForAbortedSession` wired from `abortSession` — experiment → CANCELLED, unobserved schedules → SKIPPED, queued jobs removed, completed observations preserved.',
+      'Guards on execute + recovery skip CANCELLED experiments; normal `stopRecording` post-stop +30/+60 shadow continuation unchanged.',
+      'Durability hardening: cleanup not feature-gated; atomic interactive transaction; ABORTED+ACTIVE reconciliation scheduler; cleanup failure surfaced; worker race guards.',
+      '11+ focused abort-lifecycle tests; stationary cert requires zero active settlement experiments after dry-run abort.',
+    ],
+    reason:
+      'Close lifecycle defect before next EXP-021 physical run — abort must not leave invalid shadow state.',
+    previousBehavior:
+      'RC abort terminalized session only; settlement-shadow experiment could remain ACTIVE with pending/delayed jobs.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_SETTLEMENT_SHADOW_ABORT_LIFECYCLE_2026-09-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T22:40:00.000Z',
   },
   {
     id: 'battery-v2-m3-2b-phase-c-shadow-activation-2026-09-08',
