@@ -47,14 +47,14 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | **NOT_ON_PRODUCTION (historical)** | Present on `main` but absent on **historical** Production release `01541c2ab…` at the time of that audit |
 | **CI_VALIDATED** | Repository/test claim validated by Trip FSM Production Readiness CI (or equivalent) at stated Audited SHA — **does not imply Production deploy** |
 | **CONFIRMED_CI** | CI observation confirmed at stated run — separate from Production deploy currentness |
+| **UNKNOWN** | Not re-verified in this authority pass |
+| **UNKNOWN_NOT_RECOVERED** | Exact SHA not recoverable from repository history |
 
 ### Qualifiers (not Currentness labels — use in Supported claim / Limitations)
 
 | Qualifier | Meaning |
 |-----------|---------|
 | **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** PR #1594 hardening; distinct from hardened main @ `f4109e34…` |
-| **UNKNOWN** | Not re-verified in this authority pass |
-| **UNKNOWN_NOT_RECOVERED** | Exact SHA not recoverable from repository history |
 
 ---
 
