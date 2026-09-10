@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-post-1594-1595-rebase-integration-2026-09-10',
+    version: '4.9.1097',
+    title: 'EXP-021 — Post-#1594/#1595 rebase integration audit (PR #1593)',
+    summary: [
+      'Rebased PR #1593 onto main @ 7203b5bd (includes #1594 Trip FSM R12 + #1595 TDL evidence) — 0 conflicts.',
+      'Cross-module audit: PDI schedules independent of Trip FSM completion; canonical WHOLE_TRIP requires tripStatus COMPLETED (not endTime alone).',
+      'No Reference Capture writes to Trip FSM or VehicleTrip status; R12 AUD-002/003/004 unit tests unchanged green.',
+      '609 reference-capture tests PASS; Trip FSM R11/R12 unit suites PASS; backend build + DI validators + module registry + i18n gate PASS.',
+    ],
+    reason:
+      'Prove EXP-021 integration safety after #1594 fail-closed Trip FSM hardening and #1595 evidence authority landed on main.',
+    previousBehavior:
+      'PR #1593 based on pre-#1594 main; integration with R12 contracts unverified.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-fourth-pass-scientific-consistency-2026-09-10',
     version: '4.9.1096',
     title: 'EXP-021 — Fourth-pass scientific consistency micro-pass (PR #1593)',

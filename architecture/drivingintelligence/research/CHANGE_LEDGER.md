@@ -183,6 +183,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Post-#1594/#1595 rebase integration audit (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **INTEGRATION AUDIT** (PR #1593 rebased on `7203b5bd6…`) |
+| Rebase | Clean (0 conflicts); merge-base = current main; no Trip FSM file overlap |
+| Contracts | PDI independent of Trip FSM completion; canonical WHOLE_TRIP requires COMPLETED; R12 AUD-002/003/004 unit green |
+| Evidence | `EXP_021_POST_1594_1595_REBASE_INTEGRATION_AUDIT_2026-09-10.md` |
+
 ## EXP-021 — Fourth-pass scientific consistency micro-pass (2026-09-10)
 
 | Event | Detail |

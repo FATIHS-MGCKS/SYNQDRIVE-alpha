@@ -290,6 +290,24 @@ describe('reference-capture-exp-021-motion.lib', () => {
     expect(gate.getDistinctSampleCount()).toBe(4);
   });
 
+  it('ONGOING_ENDTIME_CAN_BIND = NO — requires tripStatus COMPLETED', () => {
+    const physicalStartMs = Date.parse('2026-09-10T12:00:00.000Z');
+    const physicalEndMs = Date.parse('2026-09-10T12:30:00.000Z');
+    const ranked = rankCanonicalVehicleTripCandidates({
+      physicalStartMs,
+      physicalEndMs,
+      trips: [
+        {
+          id: 'trip-ongoing-provisional-end',
+          tripStatus: 'ONGOING',
+          startTime: new Date('2026-09-10T12:00:00.000Z'),
+          endTime: new Date('2026-09-10T12:30:00.000Z'),
+        },
+      ],
+    });
+    expect(ranked.binding).toBe('NOT_FOUND');
+  });
+
   it('rankCanonicalVehicleTripCandidates prefers highest overlap', () => {
     const physicalStartMs = Date.parse('2026-09-10T12:00:00.000Z');
     const physicalEndMs = Date.parse('2026-09-10T12:30:00.000Z');
