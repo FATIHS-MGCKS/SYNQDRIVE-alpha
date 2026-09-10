@@ -228,6 +228,35 @@ function readEvidenceIsoDate(
   return Number.isFinite(d.getTime()) ? d : null;
 }
 
+/**
+ * Mirrors `readStopBoundaryTrust` in trip-fsm-evidence-state (avoid circular import).
+ * Fail-closed: explicit false and malformed trust reject; missing trust infers from authority.
+ */
+function readTrustedStopBoundaryTrustFromEvidence(
+  record: Record<string, unknown>,
+): boolean {
+  const rawTrust = record.stopBoundaryTrust;
+  if (
+    rawTrust !== undefined &&
+    rawTrust !== null &&
+    typeof rawTrust !== 'boolean'
+  ) {
+    return false;
+  }
+  if (typeof rawTrust === 'boolean') {
+    return rawTrust;
+  }
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  return isTrustedStopBoundaryAuthority(clockAuthority);
+}
+
 function readTrustedStopBoundaryFromEvidence(
   summary: unknown,
   workerNow: Date,
@@ -238,7 +267,7 @@ function readTrustedStopBoundaryFromEvidence(
 
   if (!summary || typeof summary !== 'object') return null;
   const record = summary as Record<string, unknown>;
-  if (record.stopBoundaryTrust !== true) return null;
+  if (!readTrustedStopBoundaryTrustFromEvidence(record)) return null;
 
   const source =
     typeof record.stopBoundarySource === 'string'

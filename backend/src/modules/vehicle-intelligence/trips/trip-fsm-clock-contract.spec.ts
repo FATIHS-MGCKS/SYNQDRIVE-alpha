@@ -559,7 +559,7 @@ describe('R1 — trip FSM clock contract', () => {
       ).toBeNull();
     });
 
-    it('trust missing → rejected', () => {
+    it('trust missing on trusted provider source → inferred via canonical provenance', () => {
       expect(
         reconcilePossibleEndClockColumns({
           state: 'POSSIBLE_END',
@@ -567,6 +567,20 @@ describe('R1 — trip FSM clock contract', () => {
           lastEvidenceSummary: {
             stopBoundaryAt: stopBoundary.toISOString(),
             stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toEqual({ possibleEndAt: stopBoundary });
+    });
+
+    it('trust missing on untrusted worker-time source → rejected', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundarySource: 'idle_within_trip_worker_now',
           },
           workerNow,
         }),
