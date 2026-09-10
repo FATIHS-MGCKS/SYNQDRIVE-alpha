@@ -2,13 +2,19 @@
 
 **origin/main (historical @ R9 rebase):** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9**
 
-**origin/main (current):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…`
+**origin/main (current @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
 
 **R9 audit branch (historical):** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
 
-**Production release (current):** `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994`
+**Production release (current known — PRE_HARDENING_R12):** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` — **does not include #1594 hardening**
 
-**Production release (historical):** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994`
+**Production release (historical @ R11):** `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994`
+
+**Production release (historical @ R10):** `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994`
+
+**Production release (historical @ R9):** `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994`
+
+**Production release (historical @ pre-R9):** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994`
 
 Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/) — **supporting evidence only**, not canonical authority.
 
@@ -38,9 +44,17 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 | **CONFIRMED_AT_PRODUCTION_RELEASE** | Observation confirmed against stated Production release SHA at stated UTC timestamp |
 | **PARTIALLY_CURRENT** | Core claim valid; stale Production refs, line numbers, or pre-R context in artifact |
 | **HISTORICAL** | Pre-remediation, pre-R9 deploy, or superseded runtime context |
-| **NOT_ON_PRODUCTION (historical)** | Present on `main` but absent on **historical** Production release `01541c2ab…` — not current state @ `0ba96e03…` |
+| **NOT_ON_PRODUCTION (historical)** | Present on `main` but absent on **historical** Production release `01541c2ab…` at the time of that audit |
+| **CI_VALIDATED** | Repository/test claim validated by Trip FSM Production Readiness CI (or equivalent) at stated Audited SHA — **does not imply Production deploy** |
+| **CONFIRMED_CI** | CI observation confirmed at stated run — separate from Production deploy currentness |
 | **UNKNOWN** | Not re-verified in this authority pass |
 | **UNKNOWN_NOT_RECOVERED** | Exact SHA not recoverable from repository history |
+
+### Qualifiers (not Currentness labels — use in Supported claim / Limitations)
+
+| Qualifier | Meaning |
+|-----------|---------|
+| **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** PR #1594 hardening; distinct from hardened main @ `f4109e34…` |
 
 ---
 
@@ -89,7 +103,7 @@ Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Applicati
 
 ## Production observations (read-only) — historical session `2026-09-06T23:47:41Z` @ `01541c2ab…`
 
-**Note:** These observations remain valid for the **historical** release. Current Production is `0ba96e03…` — see R9/canary evidence above.
+**Note:** These observations remain valid for the **historical** release @ `01541c2ab…` @ `2026-09-06T23:47:41Z`. **Current known Production** is `157b3c722…` — see TDL-EV-R12-PROD-DEPLOY-001.
 
 | Evidence ID | Source type | Method | Timestamp (UTC) | Environment | Supported claim | Currentness | Limitations |
 |-------------|-------------|--------|-----------------|-------------|-----------------|-------------|-------------|
@@ -127,7 +141,7 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 | Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
 |-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
 | TDL-EVID-R11-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md](TDL-DEC-R11-001_IMPLEMENTATION_2026-09-08.md) | `2026-09-09T01:34:00Z` | Deployed `f7eb94cb…` | Provider anchor, stop boundary (Scenario J), wake preemption, Scenarios C+I+J CI; PD-2 off; 45 s off | **DEPLOYED_CI** | Natural end-path **not validated** — see TDL-EVID-KS-MS-661-R11-NATURAL-001 |
-| TDL-EV-R11-PROD-DEPLOY-001 | PRODUCTION_DEPLOY_AUDIT | [R11_PRODUCTION_DEPLOY_2026-09-09.md](R11_PRODUCTION_DEPLOY_2026-09-09.md) | `2026-09-09T02:52:13Z` | Deployed `f7eb94cb…` @ `20260909024150_v4994` | R11 runtime promoted; tree-equivalent CI 34302677308; rolling two-replica; T0 KS MX 187336 | **CURRENT** | Deploy + health only — **not** natural-drive validation |
+| TDL-EV-R11-PROD-DEPLOY-001 | PRODUCTION_DEPLOY_AUDIT | [R11_PRODUCTION_DEPLOY_2026-09-09.md](R11_PRODUCTION_DEPLOY_2026-09-09.md) | `2026-09-09T02:52:13Z` | Deployed `f7eb94cb…` @ `20260909024150_v4994` | R11 runtime promoted; tree-equivalent CI 34302677308; rolling two-replica; T0 KS MX 187336 | **HISTORICAL** (superseded by R12 @ `157b3c722…`) | Deploy + health only — **not** natural-drive validation |
 | TDL-TEST-R11-001 | CURRENT_TEST | [trip-fsm-r11-empty-core-evidence.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r11-empty-core-evidence.spec.ts) | `2026-09-08T23:45:00Z` | Merged #1584 | Unit scenarios A–H | CONFIRMED_CI | — |
 | TDL-TEST-R11-002 | CURRENT_TEST | [trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts) | `2026-09-08T23:45:00Z` | Merged #1584 | Scenario **C** — pre-seeded `stopBoundaryAt` | CONFIRMED_CI | redis-memory-server; not production load |
 | TDL-TEST-R11-003 | CURRENT_TEST | [trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r11-backoff-wake-queue.postgres-redis.integration.spec.ts) | `2026-09-08T23:45:00Z` | Merged #1584 | Scenario I queue/wake/concurrency | CONFIRMED_CI | — |
@@ -141,15 +155,18 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 
 | Evidence ID | Source type | Source path | Timestamp (UTC) | Audited SHA | Supported claim | Currentness | Limitations |
 |-------------|-------------|-------------|-----------------|-------------|-----------------|-------------|-------------|
-| TDL-EVID-R12-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T14:10:00Z` | `091c478af…` PR #1591 | R12 provider stop boundary + boundary-backed silence + lifecycle | **CI_VALIDATED** | Not deployed; SynqDrive Code UI updates deferred (i18n mixed-change gate) |
+| TDL-EVID-R12-IMPL-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T14:10:00Z` | `091c478af…` PR #1591 | R12 provider stop boundary + boundary-backed silence + lifecycle | **CONFIRMED_CI** | Later **PRE_HARDENING_R12** deploy @ `157b3c722…` (tree-equivalent CI head `0ebf248c0`) — see TDL-EV-R12-PROD-DEPLOY-001; does **not** include #1594 hardening; behavior not validated |
+| TDL-EVID-R12-CLOCK-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T18:00:00Z` | `e5b21b0d3…` PR #1591 run 34377256197 | Stop boundary clock authority + provenance/trust | **CONFIRMED_CI** | Included in **PRE_HARDENING_R12** deploy tree @ `157b3c722…` (tree-equivalent); not natural-drive proof |
+| TDL-EVID-R12-TRUST-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md](TDL-DEC-R12-001_IMPLEMENTATION_2026-09-09.md) | `2026-09-09T19:00:00Z` | `0ebf248c0…` PR #1591 run 34387586390 | Trust-transition seam R12-TRUST-A/B | **CONFIRMED_CI** | CI head tree-equivalent to deployed `157b3c722…` — see TDL-EV-R12-PROD-DEPLOY-001 |
+| TDL-EV-R12-PROD-DEPLOY-001 | PRODUCTION_DEPLOY_AUDIT | [R12_PRODUCTION_DEPLOY_2026-09-09.md](R12_PRODUCTION_DEPLOY_2026-09-09.md) | `2026-09-09T19:21:10Z` | Deployed `157b3c722268…` @ `20260909190912_v4994` | **PRE_HARDENING_R12** runtime promoted; tree-equivalent CI 34387586390 @ `0ebf248c0`; rolling two-replica ~14s mixed; KS MS 661 T0 **PHYSICAL_TEST_READY=NO** | **CONFIRMED_AT_PRODUCTION_RELEASE** | Deploy + health only — **not** #1594 hardened deploy; **not** natural-drive validation |
 | TDL-EVID-R12-CI-PASS-001 | CI_OBSERVATION | GitHub Actions run 34360964547 | `2026-09-09T14:08:00Z` | `091c478af…` | Trip FSM Production Readiness CI + i18n-authority-protection PASS | CONFIRMED_CI | PR #1591 not merged |
 | TDL-EVID-R12-CI-FAIL-001 | CI_OBSERVATION | GitHub Actions run 34354237230 job 102476180546 | `2026-09-09T13:09:55Z` | `f92cd1ff…` | K1 same-tick POSSIBLE_END false positive; R11 J regression | CONFIRMED | Motivated intensive review remediation |
 | TDL-TEST-R12-001 | CURRENT_TEST | [trip-fsm-r12-stop-boundary-end-liveness.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-fsm-r12-stop-boundary-end-liveness.spec.ts) | `2026-09-09T14:08:00Z` | `091c478af…` | Unit K1–K9 + latch + retire | CONFIRMED_CI | via `test:trip-r11:unit` |
 | TDL-TEST-R12-002 | CURRENT_TEST | [trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ks661-production-ordering.postgres-redis.integration.spec.ts) | `2026-09-09T14:08:00Z` | `091c478af…` | K1/K2/K11 + same-tick regression | CONFIRMED_CI | via `test:trip-r11:postgres-redis:ci` |
 | TDL-TEST-R12-003 | CURRENT_TEST | [trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-lifecycle-safety.postgres-redis.integration.spec.ts) | `2026-09-09T14:08:00Z` | `091c478af…` | B1-resume-without-B2, K7 orchestration, K12 idempotency | CONFIRMED_CI | via `test:trip-r11:postgres-redis:ci` |
-| TDL-EVID-R12-HARDENING-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md](TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md) | `2026-09-10T00:35:00Z` | `2d8c5d61c…` PR #1594 | R12 pre-drive fail-closed continuity + evidence ordering + ignition-ON keep-open + finalize resume case E | **CI_VALIDATED** | Not deployed; SynqDrive Code UI updates deferred |
-| TDL-TEST-R12-HARDENING-001 | CURRENT_TEST | [trip-decision.engine.continuity.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.continuity.spec.ts) | `2026-09-10T00:35:00Z` | `2d8c5d61c…` PR #1594 | AUD-003 fail-closed + legacy-field regression | CONFIRMED_CI | via `test:trip-r11:unit` + Trip FSM CI |
-| TDL-TEST-R12-HARDENING-002 | CURRENT_TEST | [trip-finalize-end-cycle.postgres.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-finalize-end-cycle.postgres.integration.spec.ts) | `2026-09-10T00:35:00Z` | `2d8c5d61c…` PR #1594 | AUD-007 scenario E resume-before-finalize | CONFIRMED_CI | via `test:trip-finalize:postgres:ci` |
+| TDL-EVID-R12-HARDENING-001 | CURRENT_CODE + CURRENT_TEST | [TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md](TDL-DEC-R12-PRE-DRIVE-HARDENING_2026-09-09.md) | `2026-09-10T01:12:40Z` | `f4109e34…` PR #1594 **merged** | R12 pre-drive fail-closed continuity + evidence ordering + ignition-ON keep-open + finalize resume case E | **CI_VALIDATED** | **NOT_DEPLOYED** — distinct from **PRE_HARDENING_R12** deploy @ `157b3c722268…`; **NOT_PRODUCTION_BEHAVIOR_VALIDATED** |
+| TDL-TEST-R12-HARDENING-001 | CURRENT_TEST | [trip-decision.engine.continuity.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.continuity.spec.ts) | `2026-09-10T01:12:40Z` | `f4109e34…` PR #1594 merged | AUD-003 fail-closed + legacy-field regression | CONFIRMED_CI | via `test:trip-r11:unit` + Trip FSM CI run 34424546044 |
+| TDL-TEST-R12-HARDENING-002 | CURRENT_TEST | [trip-finalize-end-cycle.postgres.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-finalize-end-cycle.postgres.integration.spec.ts) | `2026-09-10T01:12:40Z` | `f4109e34…` PR #1594 merged | AUD-007 scenario E resume-before-finalize | CONFIRMED_CI | via `test:trip-finalize:postgres:ci` run 34424546044 |
 
 ---
 
