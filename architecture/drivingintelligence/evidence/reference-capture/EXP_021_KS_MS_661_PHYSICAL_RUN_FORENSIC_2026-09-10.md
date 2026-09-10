@@ -77,11 +77,13 @@ Early false end candidates at `19:45:18` and `19:46:35` were **INVALIDATED** (`m
 
 **Order achieved:** `60 → 30 → 20` (phase **10 not reached**)
 
-| Phase | Provenance | Effective | Ended | Wall (s) | Valid movement (s) | Req | Success | Zero | Unique buckets | Median Δt | P90 Δt | Max gap (ms) | Req/min (movement) |
-|-------|------------|-----------|-------|----------|-------------------|-----|---------|------|----------------|-----------|--------|--------------|-------------------|
-| 60s | PHYSICAL_T0 | 19:41:19 | 19:50:58 | 580 | 314 | 7 | 7 | 0 | 53 | 4000 | 20000 | 22462 | 1.34 |
-| 30s | PHYSICAL_TRANSITION | 19:50:58 | 19:57:06 | 368 | 315 | 9 | 9 | 0 | 31 | 7000 | 19000 | 29056 | 1.71 |
-| 20s | PHYSICAL_TRANSITION | 19:57:06 | — (never formally ended) | ≥248 | UNKNOWN | 11† | 9† | 0† | 45† | UNKNOWN | UNKNOWN | 18000† | UNKNOWN |
+| Phase | Provenance | Effective | Ended | Wall (s) | Valid movement (s) | Req | Success | Zero | Unique buckets | Median Δt | P90 Δt | Max gap (ms) | REQ_PER_WALL_MIN | REQ_PER_MOVEMENT_MIN |
+|-------|------------|-----------|-------|----------|-------------------|-----|---------|------|----------------|-----------|--------|--------------|------------------|----------------------|
+| 60s | PHYSICAL_T0 | 19:41:19 | 19:50:58 | 579.7 | 314.1 | 7 | 7 | 0 | 53 | 4000 | 20000 | 22462 | **0.725** | **1.338** |
+| 30s | PHYSICAL_TRANSITION | 19:50:58 | 19:57:06 | 367.9 | 315.1 | 9 | 9 | 0 | 31 | 7000 | 19000 | 29056 | **1.468** | **1.714** |
+| 20s | PHYSICAL_TRANSITION | 19:57:06 | — (never formally ended) | ≥248 | UNKNOWN | 11† | 9† | 0† | 45† | UNKNOWN | UNKNOWN | 18000† | UNKNOWN | UNKNOWN |
+
+Movement seconds from orchestrator `PHASE_TRANSITION` logs (`validMovementDurationMs`). Rates: `req / wallSeconds × 60` and `req / movementSeconds × 60`.
 
 †Phase 20 from `completedPhaseSummaries` (only 60/30 sealed); active phase still 20s at orchestrator closeout with post-park zero-result pollution in live counters.
 
@@ -165,16 +167,9 @@ Trip FSM `POSSIBLE_END` at closeout; RC did not mutate FSM.
 
 ---
 
-## 9 — Gap / maturation (INFERRED from summaries + settlement hashes)
+## 9 — Gap / maturation (superseded by §15 deep audit)
 
-**Cadence-phase native gaps (CONFIRMED summaries):**
-- 60s: max 22.5s; 30s: max 29.1s; 20s (partial): max 18s in active counters
-
-**Settlement maturation example `SP-60-A`:** bucket row count stable at 60 across +30…+600; response hashes change each age → **VALUE_REVISION / maturation** class, not query failure.
-
-**PDI authoritative candidate:** row count stable 1189 from +30 through +600 → early completeness at first post-end probe.
-
-**Gaps persisting at +600:** UNKNOWN without bucket-level gap ledger export (not in closeout scope); cadence native gaps do not automatically imply settlement gaps.
+See **§15 Bucket presence vs value stability** and **§16 Native gap ↔ settlement correlation** for bucket-level production evidence.
 
 ---
 
@@ -187,7 +182,7 @@ Trip FSM `POSSIBLE_END` at closeout; RC did not mutate FSM.
 | 20s promising at N=1 | **Not confirmed** — phase 20 not operationally completed |
 | No cadence winner | **Still holds** |
 
-Normalized: phase 60 had lowest req/min (~0.72 clean req/min on 7 native requests / 9.7 min movement); phase 30 ~1.47 req/min; phase 20 polluted by post-stop zeros.
+Normalized (movement basis): phase 60 **1.338 REQ_PER_MOVEMENT_MIN**; phase 30 **1.714 REQ_PER_MOVEMENT_MIN**. Wall-clock basis: 0.725 and 1.468 respectively. Phase 20 post-stop zeros are cadence-channel only and do not affect settlement probe windows.
 
 ---
 
@@ -239,3 +234,137 @@ Normalized: phase 60 had lowest req/min (~0.72 clean req/min on 7 native request
 - Full gap persistence matrix at bucket level.
 
 **Recommendation:** Treat as **valid settlement-timing + T0 hardening validation**; schedule **completion run** for phase 10s and canonical WHOLE_TRIP after Trip FSM COMPLETED, without changing production HF fleet policy.
+
+---
+
+## 15 — Bucket presence vs value stability (deep audit addendum)
+
+**Audit UTC:** `2026-09-10T21:37:30Z` · read-only production DB  
+**Canonical bucket identity:** `FIELD_PIPE_CANONICAL_ISO_MS` (`field|ISO-ms`) — **CONFIRMED** from `reference-capture-settlement-shadow-bucket-identity.ts`
+
+### Critical parser limitation (CONFIRMED from code)
+
+`compareBucketSets()` in `reference-capture-settlement-shadow-response.parser.ts` documents:
+
+> `VALUE_REVISION_DETECTION: NOT_IMPLEMENTED — identity-only comparison`
+
+Persisted `observationJson` stores `uniqueBucketIdentities` but **not per-bucket field values**. `responseHash` hashes the full observation payload including `actualAgeMs`, `scheduleDriftMs`, and maturation metadata — **hash change ≠ value change**.
+
+### FIXED_INTERVAL maturation matrix (CONFIRMED)
+
+| Probe | Phase | First structural success | Identities @ first success | Stable +30→+600 | Classification |
+|-------|-------|------------------------|---------------------------|-----------------|----------------|
+| SP-60-A | 60s | +30 | 174 | YES | STRUCTURALLY_COMPLETE_AT_30 |
+| SP-60-B | 60s | +30 | 174 | YES | STRUCTURALLY_COMPLETE_AT_30 |
+| SP-30-A | 30s | +30 | 150 | YES | STRUCTURALLY_COMPLETE_AT_30 |
+| SP-30-B | 30s | +30 | 150 | YES | STRUCTURALLY_COMPLETE_AT_30 |
+| SP-20-A | 20s | **+60** (+30 ZERO_RESULT) | 120 @ +60 | YES from +60 | QUERY_OBSERVATION_FAILURE @ +30; STRUCTURALLY_COMPLETE_AT_60 |
+| SP-20-B | 20s | +30 | 162 | YES | STRUCTURALLY_COMPLETE_AT_30 |
+
+After first successful age: `newBucketIdentities = []` at all later ages for every probe — **no LATE_BUCKET_RECOVERY** observed.
+
+`GAPS_RECOVERED_BY_SETTLEMENT` = **NO** (for analyzed probe windows)  
+`GAPS_PERSISTING_AT_600S` = **NO** (bucket identity sets stable after first success)
+
+`CAN_BUCKET_STRUCTURE_BE_COMPLETE_BEFORE_VALUES_STABILIZE` = **YES** for structure (identities stable from first success); field **values** = **UNKNOWN** (not persisted).
+
+### PDI authoritative candidate (CONFIRMED)
+
+| Age | Rows | Canonical identities | Hash changes |
+|-----|------|---------------------|--------------|
+| +30 | 1189 | 3218 | yes |
+| +60 | 1189 | 3218 | yes |
+| +120 | 1189 | 3218 | yes |
+| +180 | 1189 | 1189 | yes |
+| +300 | 1189 | 3218 | yes |
+| +600 | 1189 | 3218 | yes |
+
+- `PDI_BUCKET_SET_STABLE_FROM_30` = **YES** (3218 identities identical +30…+600)
+- `PDI_VALUES_STABLE_FROM_30` = **UNKNOWN** (values not stored; hashes include age metadata)
+- `PDI_LAST_BUCKET_ADDITION_AGE` = **+30** (first observation)
+- `PDI_LAST_VALUE_REVISION_AGE` = **UNKNOWN**
+- `PDI_STRUCTURAL_COMPLETENESS_AT_30` = **CONFIRMED**
+- `PDI_VALUE_COMPLETENESS_AT_30` = **UNKNOWN**
+
+Row count stability alone does **not** prove value stability.
+
+---
+
+## 16 — Native gap ↔ settlement correlation (CONFIRMED / INFERRED)
+
+Native cadence gaps (live HF polling during movement) and settlement probe windows (fixed 60s historical intervals) are **different channels**. Direct timestamp-level gap ledger mapping is **not available** in persisted evidence.
+
+| Phase | Max native gap | Settlement probe behavior | Correlation |
+|-------|----------------|---------------------------|-------------|
+| 60s | 22.5s | SP-60-* structurally complete @ +30 | Native gaps **do not** manifest as missing settlement buckets in probe windows |
+| 30s | 29.1s | SP-30-* structurally complete @ +30 | Same |
+| 20s | 18s (partial) | SP-20-A +30 fail; +60 complete | One zero-result at +30 near park; not gap-recovery pattern |
+
+**FINAL_CLASSIFICATION:** Native cadence sparsity is **POLL_CADENCE_EFFECT** (CONFIRMED). Settlement probe completeness is **SETTLEMENT_TIMING_EFFECT** at first successful age (CONFIRMED). No evidence that settlement **fills** native live-poll gaps — probes return complete bucket sets for their query windows independently.
+
+---
+
+## 17 — Trip FSM completion / WHOLE_TRIP follow-up (deep audit)
+
+**Re-checked UTC:** `2026-09-10T21:37:30Z`
+
+| Field | Value | Epistemic |
+|-------|-------|-----------|
+| `VehicleTrip.tripStatus` | **ONGOING** | CONFIRMED |
+| `VehicleTrip.endTime` | `2026-09-10T20:02:05.213Z` | CONFIRMED |
+| `VehicleTripDetectionState.state` | **POSSIBLE_END** | CONFIRMED |
+| `stopBoundaryAt` (evidence) | `2026-09-10T20:01:15.000Z` | CONFIRMED |
+| `emptyCoreDecision` | `POSSIBLE_END` | CONFIRMED |
+| `stopBoundaryContradictions` | `engine_load_at_standstill` | CONFIRMED |
+| `endValidationFetchFailureReason` | BullMQ job locked by another worker | CONFIRMED |
+| `experiment.vehicleTripId` | **null** | CONFIRMED |
+| Canonical WHOLE_TRIP schedules | **0** | CONFIRMED |
+
+`ONGOING_WITH_ENDTIME_CURRENTLY_EXISTS` = **YES**
+
+**Interpretation (INFERRED from code + evidence):**
+
+- `trip-detection-orchestration.service.ts` explicitly documents ONGOING `endTime` as **provisional/worker-anchored**, not canonical completion (R1/P5-F01). This is **not** a COMPLETED trip.
+- Trip FSM reached `POSSIBLE_END` with qualified stop boundary at `20:01:15` but **did not finalize** to COMPLETED.
+- `engine_load_at_standstill` contradiction is consistent with **AUD-002** fail-closed semantics (motor-load blocks premature finalize).
+- End validation was scheduled (`20:16:37`) but failed with worker lock — **STUCK_RECOVERABLE_STATE** (operational), not RC defect.
+- EXP-021 correctly refused WHOLE_TRIP binding per authority contract.
+
+**AUD runtime semantics (INFERRED from observed state vs #1594 intent):**
+
+| Audit | Preserved |
+|-------|-----------|
+| AUD-002 | **YES** — motor-load contradiction present; trip not incorrectly finalized |
+| AUD-003 | **YES** — fail-closed POSSIBLE_END; no premature COMPLETED |
+| AUD-004 | **YES** — ignition-ON evidence in summary; end eligibility guarded |
+| AUD-007 | **UNKNOWN** — resume-before-finalize scenario not directly observed; lock failure is separate |
+
+---
+
+## 18 — Phase 10 absence root cause (CONFIRMED)
+
+| Metric | Value |
+|--------|-------|
+| T0 → provisional physical end | 1196 s |
+| Phase 20 available wall time | 248.5 s |
+| Required valid movement per phase (`EXP021_PHASE_DURATION_MS`) | **300 s** |
+| Phase 20 could satisfy advance rule | **NO** |
+
+`PHASE10_MISSING_DUE_TO_CODE_DEFECT` = **NO** — insufficient movement accumulation in phase 20 before park (CONFIRMED).  
+`NEXT_RUN_NEEDS_LONGER_DRIVE` = **YES** — need ≥300 s valid MOVING in phase 20 **plus** full phase 10 window under current operator rule.
+
+**Recommended next-run duration:** ≥**45 min** total drive after T0 (INFERRED): ~10 min phase 60 + ~10 min phase 30 + ~5 min phase 20 + ~5 min phase 10, including stop/go margin.
+
+---
+
+## 19 — Deep audit decision
+
+`NEXT_ACTION` = **NO_NEW_CODE_FIX_REQUIRED_LONGER_COMPLETION_RUN**
+
+Blockers for full EXP-021 closure:
+1. Longer drive to complete phases 20→10 (operational)
+2. Trip FSM COMPLETED for canonical WHOLE_TRIP (expected delayed finalize; currently stuck at POSSIBLE_END with worker lock — monitor, do not mutate)
+3. Field-level value maturation analysis requires future instrumentation (not a run blocker)
+
+`READY_TO_MERGE_PR1599` = **YES** (evidence-only documentation)  
+`READY_TO_START_NEXT_PHYSICAL_RUN` = **YES** after operator accepts incomplete WHOLE_TRIP on this run
