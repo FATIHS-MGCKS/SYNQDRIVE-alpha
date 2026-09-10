@@ -68,6 +68,8 @@ Each sealed calibration phase now persists `nativeTemporalEvidence` (`EXP021_NAT
 
 Post-run gap reconstruction uses persisted evidence only (`reference-capture-exp021-native-gap-reconstruction.ts`).
 
+**PostgreSQL persistence proof (isolated, 2026-09-10):** `reference-capture-exp021-native-temporal-evidence.postgres.integration.spec.ts` — 3/3 PASS — proves reload after `$disconnect`, 60→30 transition isolation, and settlement `bucketValueSnapshots` join without process memory.
+
 **KS MS 661 cannot gain this ledger retroactively.**
 
 For the **next** physical run, Reference Capture also persists per settlement observation:

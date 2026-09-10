@@ -420,6 +420,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
 | Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
 
+## EXP-021 — PostgreSQL native temporal persistence proof (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POSTGRES INTEGRATION PASS** — isolated DB, 3/3 tests |
+| Proof | Reload after disconnect; 60→30 transition; settlement join with value snapshots |
+| Harness | `reference-capture-postgres.integration.harness.ts` helpers |
+| Spec | `reference-capture-exp021-native-temporal-evidence.postgres.integration.spec.ts` |
+| Result | `INSTRUMENTATION_MERGE_READY=YES` (instrumentation scope only) |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |
