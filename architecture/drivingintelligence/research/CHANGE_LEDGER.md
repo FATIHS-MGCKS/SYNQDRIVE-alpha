@@ -368,6 +368,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Merge / deploy / drive | **NOT AUTHORIZED** |
 | Evidence | `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` |
 
+## EXP-021 — KS MS 661 physical run post-drive forensic (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POST-DRIVE FORENSIC COMPLETE** — read-only production evidence |
+| Session | `945edc40-3002-4b87-83f6-a55d8cf66ffb` · settlement `exp-021-945edc40-e7850aa0` |
+| Canonical T0 | `2026-09-10T19:41:19.000Z` — **CONFIRMED** durable; no duplicate 60→60 fatal |
+| Phases | 60→30→20 completed; **10 NOT reached** |
+| FIXED_INTERVAL | **36/48** completed (all +600 terminal); 12 missing (phase 10) |
+| PDI | **6/6** through +600 on authoritative candidate `pdi-1789070475000` |
+| WHOLE_TRIP | **0/6** — trip `2bdc6e71-…` still `ONGOING` |
+| Classification | PARTIAL SUCCESS / DEGRADED |
+| Policy | PRODUCTION unchanged — no deploy/merge/cleanup during forensics |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |

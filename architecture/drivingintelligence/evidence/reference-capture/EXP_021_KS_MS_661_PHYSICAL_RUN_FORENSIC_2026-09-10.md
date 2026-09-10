@@ -77,13 +77,13 @@ Early false end candidates at `19:45:18` and `19:46:35` were **INVALIDATED** (`m
 
 **Order achieved:** `60 → 30 → 20` (phase **10 not reached**)
 
-| Phase | Provenance | Effective | Ended | Wall (s) | Valid movement (s) | Req | Success | Zero | Unique buckets | Median Δt | P90 Δt | Max gap (ms) |
-|-------|------------|-----------|-------|----------|-------------------|-----|---------|------|----------------|-----------|--------|--------------|
-| 60s | PHYSICAL_T0 | 19:41:19 | 19:50:58 | 580 | 314 | 7 | 7 | 0 | 53 | 4000 | 20000 | 22462 |
-| 30s | PHYSICAL_TRANSITION | 19:50:58 | 19:57:06 | 368 | 315 | 9 | 9 | 0 | 31 | 7000 | 19000 | 29056 |
-| 20s | PHYSICAL_TRANSITION | 19:57:06 | — (active at closeout) | ≥248 | UNKNOWN | 81* | 8* | 73* | 45* | UNKNOWN | UNKNOWN | 18000* |
+| Phase | Provenance | Effective | Ended | Wall (s) | Valid movement (s) | Req | Success | Zero | Unique buckets | Median Δt | P90 Δt | Max gap (ms) | Req/min (movement) |
+|-------|------------|-----------|-------|----------|-------------------|-----|---------|------|----------------|-----------|--------|--------------|-------------------|
+| 60s | PHYSICAL_T0 | 19:41:19 | 19:50:58 | 580 | 314 | 7 | 7 | 0 | 53 | 4000 | 20000 | 22462 | 1.34 |
+| 30s | PHYSICAL_TRANSITION | 19:50:58 | 19:57:06 | 368 | 315 | 9 | 9 | 0 | 31 | 7000 | 19000 | 29056 | 1.71 |
+| 20s | PHYSICAL_TRANSITION | 19:57:06 | — (never formally ended) | ≥248 | UNKNOWN | 11† | 9† | 0† | 45† | UNKNOWN | UNKNOWN | 18000† | UNKNOWN |
 
-\*Phase 20 from live `hfCalibrationActiveCounters` at closeout — includes post-park stationary polling (high zero-result rate after `20:01:15`).
+†Phase 20 from `completedPhaseSummaries` (only 60/30 sealed); active phase still 20s at orchestrator closeout with post-park zero-result pollution in live counters.
 
 | Flag | Value |
 |------|-------|
