@@ -421,7 +421,6 @@ describe('R10 queue — recycle stale waiting finalize before new cycle', () => 
 
     const jobId = `trip-fin-${VEHICLE}-${TRIP_ID}`;
     stored.set(jobId, { state: 'waiting' });
-    stored.set(`${jobId}__succ`, { state: 'waiting' });
 
     await enqueueEndCycleTripTrackingJob({
       queue,

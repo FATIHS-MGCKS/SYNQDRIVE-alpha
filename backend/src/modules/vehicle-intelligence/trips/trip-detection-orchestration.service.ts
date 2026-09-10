@@ -84,6 +84,7 @@ import {
   clearPossibleEndClockFields,
   clearPossibleStartClockFields,
   reconcilePossibleEndClockColumns,
+  readPossibleEndEnteredAtFromEvidence,
   resolvePossibleEndBoundaryAnchor,
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
@@ -3092,7 +3093,8 @@ export class TripDetectionOrchestrationService {
             workerNow: now,
             possibleEndEnteredAt:
               durableDet.possibleEndEnteredAt ??
-              resolvePossibleEndFsmDwellAnchor(durableDet, now),
+              readPossibleEndEnteredAtFromEvidence(priorSummary) ??
+              undefined,
           }),
         });
         this.logTripEndTimeline('end_validation_scheduled', {

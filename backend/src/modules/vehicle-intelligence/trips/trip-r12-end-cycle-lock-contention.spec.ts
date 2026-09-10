@@ -250,7 +250,60 @@ describe('R12 end-cycle lock contention + POSSIBLE_END clock durability', () => 
     });
   });
 
-  describe('RED-4 — hard timeout cannot slide forever on updatedAt refresh', () => {
+  describe('RED-4 — dwell/token monotonicity (no workerNow fabrication)', () => {
+    it('repeated reconcilePossibleEndClockColumns never invents possibleEndEnteredAt from workerNow', () => {
+      const workerTick1 = new Date('2026-09-10T20:10:00.000Z');
+      const workerTick2 = new Date('2026-09-10T20:35:00.000Z');
+      const evidence = {
+        stopBoundaryAt: STOP_BOUNDARY.toISOString(),
+        stopBoundaryTrust: true,
+        stopBoundarySource: 'provider_stationary_vls',
+        endValidationScheduledAt: '2026-09-10T20:16:37.000Z',
+      };
+
+      const patch1 = reconcilePossibleEndClockColumns({
+        state: TripDetectionState.POSSIBLE_END,
+        possibleEndAt: null,
+        possibleEndEnteredAt: null,
+        lastEvidenceSummary: evidence,
+        workerNow: workerTick1,
+      });
+      const patch2 = reconcilePossibleEndClockColumns({
+        state: TripDetectionState.POSSIBLE_END,
+        possibleEndAt: null,
+        possibleEndEnteredAt: null,
+        lastEvidenceSummary: evidence,
+        workerNow: workerTick2,
+      });
+
+      expect(patch1?.possibleEndEnteredAt).toBeUndefined();
+      expect(patch2?.possibleEndEnteredAt).toBeUndefined();
+      expect(patch1?.possibleEndAt).toEqual(STOP_BOUNDARY);
+      expect(patch2?.possibleEndAt).toEqual(STOP_BOUNDARY);
+    });
+
+    it('endValidationScheduledAt may anchor dwell but not end-cycle token', () => {
+      const workerNow = new Date('2026-09-10T20:35:00.000Z');
+      const scheduledAt = new Date('2026-09-10T20:16:37.000Z');
+      const evidence = { endValidationScheduledAt: scheduledAt.toISOString() };
+      const det = {
+        possibleEndAt: STOP_BOUNDARY,
+        possibleEndEnteredAt: null,
+        updatedAt: workerNow,
+        lastEvidenceSummary: evidence,
+      };
+
+      expect(resolvePossibleEndFsmDwellAnchor(det, workerNow)).toEqual(scheduledAt);
+      expect(
+        resolveEndCycleToken({
+          possibleEndEnteredAt: null,
+          lastEvidenceSummary: evidence,
+        }),
+      ).toBeNull();
+    });
+  });
+
+  describe('RED-4b — hard timeout cannot slide forever on updatedAt refresh', () => {
     const TRIP_END_TIMEOUT_MS = 30 * 60_000;
     const enteredAt = new Date('2026-09-10T20:04:37.793Z');
 
@@ -260,6 +313,7 @@ describe('R12 end-cycle lock contention + POSSIBLE_END clock durability', () => 
       const evidence = {
         stopBoundaryAt: STOP_BOUNDARY.toISOString(),
         stopBoundaryTrust: true,
+        stopBoundarySource: 'provider_stationary_vls',
         possibleEndEnteredAt: enteredAt.toISOString(),
       };
 

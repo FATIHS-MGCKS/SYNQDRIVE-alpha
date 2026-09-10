@@ -7,6 +7,10 @@ import {
 } from './trip-detection.types';
 import { POSSIBLE_START_TRIP_TRACKING_RETRY_POLICY } from './trip-tracking-retry.policy';
 import { buildHandoffSuccessorJobData } from './trip-tracking-lock-contention';
+import {
+  inspectStableSlotFamily,
+  planStableSlotFamilyEnqueue,
+} from './trip-tracking-stable-slot-family';
 
 const DEFAULT_TRIP_TRACKING_JOB_OPTIONS: JobsOptions = {
   removeOnComplete: true,
@@ -186,20 +190,22 @@ export async function enqueueEndCycleTripTrackingJob(params: {
   trigger: TripTrackingTrigger;
   delayMs?: number;
 }): Promise<StableTripTrackingEnqueueOutcome> {
-  const existingPrimary = await params.queue.getJob(params.jobId);
-  if (existingPrimary) {
-    const primaryState = await existingPrimary.getState();
-    if (isActiveQueueState(primaryState)) {
-      // Active owner — handoff/skip only; never recycle primary or queued successor.
-      return enqueueStableTripTrackingJob({
-        queue: params.queue,
-        jobName: params.jobName,
-        jobId: params.jobId,
-        data: params.data,
-        trigger: params.trigger,
-        delayMs: params.delayMs,
-      });
-    }
+  const family = await inspectStableSlotFamily(params.queue, params.jobId);
+  const plan = planStableSlotFamilyEnqueue(family);
+
+  if (
+    plan === 'skip_active_successor' ||
+    plan === 'handoff_to_successor' ||
+    plan === 'skip_queued_successor'
+  ) {
+    return enqueueStableTripTrackingJob({
+      queue: params.queue,
+      jobName: params.jobName,
+      jobId: params.jobId,
+      data: params.data,
+      trigger: params.trigger,
+      delayMs: params.delayMs,
+    });
   }
 
   await recycleRemovableEndCycleTripTrackingJobs({
@@ -321,26 +327,29 @@ export async function enqueueStableTripTrackingJob(params: {
   delayMs?: number;
 }): Promise<StableTripTrackingEnqueueOutcome> {
   const delayMs = params.delayMs ?? 0;
-  const existingPrimary = await params.queue.getJob(params.jobId);
+  const family = await inspectStableSlotFamily(params.queue, params.jobId);
+  const plan = planStableSlotFamilyEnqueue(family);
 
-  if (existingPrimary) {
-    const state = await existingPrimary.getState();
-    if (isTerminalQueueState(state)) {
-      await existingPrimary.remove();
-    } else if (isQueuedQueueState(state)) {
-      return 'skipped';
-    } else if (isActiveQueueState(state)) {
-      const outcome = await enqueueIntoStableSlot({
-        queue: params.queue,
-        jobName: params.jobName,
-        jobId: buildTripTrackingSuccessorJobId(params.jobId),
-        primaryJobId: params.jobId,
-        data: params.data,
-        trigger: params.trigger,
-        delayMs,
-      });
-      return outcome;
-    }
+  if (plan === 'skip_active_successor') {
+    return 'skipped';
+  }
+  if (plan === 'handoff_to_successor') {
+    const outcome = await enqueueIntoStableSlot({
+      queue: params.queue,
+      jobName: params.jobName,
+      jobId: family.successorJobId,
+      primaryJobId: params.jobId,
+      data: params.data,
+      trigger: params.trigger,
+      delayMs,
+    });
+    return outcome;
+  }
+  if (plan === 'skip_queued_successor' || plan === 'skip_queued_primary') {
+    return 'skipped';
+  }
+  if (plan === 'recycle_terminal_enqueue_primary') {
+    await removeRemovableTripTrackingSlot(params.queue, params.jobId);
   }
 
   try {

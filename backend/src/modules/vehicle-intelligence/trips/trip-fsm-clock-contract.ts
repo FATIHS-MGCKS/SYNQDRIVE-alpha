@@ -234,14 +234,22 @@ function readTrustedStopBoundaryFromEvidence(
 ): Date | null {
   const boundaryAt = readEvidenceIsoDate(summary, 'stopBoundaryAt');
   if (!boundaryAt) return null;
-  const trust =
-    summary &&
-    typeof summary === 'object' &&
-    typeof (summary as Record<string, unknown>).stopBoundaryTrust === 'boolean'
-      ? ((summary as Record<string, unknown>).stopBoundaryTrust as boolean)
-      : true;
-  if (!trust) return null;
   if (!isValidProviderEventTimestamp(boundaryAt, workerNow)) return null;
+
+  if (!summary || typeof summary !== 'object') return null;
+  const record = summary as Record<string, unknown>;
+  if (record.stopBoundaryTrust !== true) return null;
+
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  if (!isTrustedStopBoundaryAuthority(clockAuthority)) return null;
+
   return boundaryAt;
 }
 
@@ -280,9 +288,7 @@ export function reconcilePossibleEndClockColumns(params: {
     if (boundary) patch.possibleEndAt = boundary;
   }
   if (!params.possibleEndEnteredAt) {
-    const entered =
-      readPossibleEndEnteredAtFromEvidence(summary) ??
-      (params.possibleEndAt ? null : patch.possibleEndAt ? params.workerNow : null);
+    const entered = readPossibleEndEnteredAtFromEvidence(summary);
     if (entered) patch.possibleEndEnteredAt = entered;
   }
   return Object.keys(patch).length > 0 ? patch : null;
