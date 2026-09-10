@@ -15,6 +15,8 @@ export const CANONICAL_GOVERNANCE_EXACT_PATHS = [
   '.cursor/rules/i18n.mdc',
   'AGENTS.md',
   'architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md',
+  'architecture/scripts/validate-module-registry.mjs',
+  'architecture/scripts/validate-module-registry.sh',
   'frontend/src/master/components/ArchitekturView.tsx',
   'frontend/src/master/components/ChangesView.tsx',
   '.github/workflows/i18n-governance-new-debt.yml',

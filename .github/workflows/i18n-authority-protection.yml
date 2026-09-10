@@ -199,7 +199,7 @@ jobs:
               architecture/internationalization/*)
                 return 0
                 ;;
-              architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md|frontend/src/master/components/ChangesView.tsx|frontend/src/master/components/ArchitekturView.tsx)
+              architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md|architecture/scripts/validate-module-registry.mjs|architecture/scripts/validate-module-registry.sh|frontend/src/master/components/ChangesView.tsx|frontend/src/master/components/ArchitekturView.tsx)
                 return 0
                 ;;
             esac
