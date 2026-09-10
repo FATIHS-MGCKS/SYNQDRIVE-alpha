@@ -8,7 +8,7 @@
 | **PR** | #1594 |
 | **BASE_SHA** | `2e82171d11862a80c2e8cd62c65023393ef0ce64` |
 | **Epistemic** | CURRENT_CODE + CURRENT_TEST |
-| **Validation** | Trip FSM unit/integration suites; status updated after CI green |
+| **Validation** | Trip FSM Production Readiness CI green @ run 34421189658 (`2d8c5d61c`) |
 
 ## Findings closed
 
