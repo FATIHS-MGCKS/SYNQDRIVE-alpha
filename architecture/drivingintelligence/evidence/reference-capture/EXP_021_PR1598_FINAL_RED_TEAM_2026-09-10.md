@@ -68,8 +68,8 @@ Gated: `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1` + isolated Postgres.
 
 ---
 
-## Remaining runtime gates (operator/CI)
+## Runtime / CI closure
 
-- Full Reference Capture suite @ PR head in CI
-- `trip-fsm-production-readiness.yml` workflow_dispatch @ PR head (agent token 403 on dispatch)
-- Postgres integration on CI ephemeral DB (CI_AUTHORITY)
+**Superseded by:** `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` @ `33e680e5bf429272c7577ae082bfe6c4de1c5091`
+
+All gates closed 2026-09-10: Trip FSM Production Readiness (run 34504226157), EXP-021 postgres T0 recovery (4/4 executed), full PR CI green.
