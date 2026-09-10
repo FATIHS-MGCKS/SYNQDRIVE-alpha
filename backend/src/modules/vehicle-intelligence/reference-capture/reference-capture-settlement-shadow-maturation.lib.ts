@@ -1,4 +1,5 @@
 import { EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL } from './reference-capture-exp-021-motion.lib';
+import type { BucketValueSnapshots } from './reference-capture-settlement-shadow-value-snapshot';
 
 export type MaturationObservationRecord = {
   probeId: string;
@@ -10,6 +11,9 @@ export type MaturationObservationRecord = {
   observationJson: {
     candidateId?: string;
     uniqueBucketIdentities?: string[];
+    bucketValueSnapshots?: BucketValueSnapshots;
+    valueContentHash?: string;
+    valueRevisedBucketIdentities?: string[];
   } | null;
 };
 
@@ -73,4 +77,10 @@ export function priorBucketIdentitiesFromMaturationRecord(
   record: MaturationObservationRecord | null,
 ): string[] {
   return record?.observationJson?.uniqueBucketIdentities ?? [];
+}
+
+export function priorBucketValueSnapshotsFromMaturationRecord(
+  record: MaturationObservationRecord | null,
+): BucketValueSnapshots {
+  return record?.observationJson?.bucketValueSnapshots ?? {};
 }

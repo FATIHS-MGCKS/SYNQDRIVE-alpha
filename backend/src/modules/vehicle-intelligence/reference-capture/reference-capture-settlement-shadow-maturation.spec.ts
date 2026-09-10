@@ -144,4 +144,30 @@ describe('reference-capture-settlement-shadow-maturation.lib', () => {
     });
     expect(wrongProbe).toBeNull();
   });
+
+  it('VALUE_REVISION_DETECTED_WHEN_SNAPSHOTS_PRESENT', () => {
+    const prior = {
+      probeId: 'SP-60-A',
+      probeType: 'FIXED_INTERVAL' as const,
+      phase: '60s',
+      sourceIntervalStart: intervalStart,
+      sourceIntervalEnd: intervalEnd,
+      scheduledAgeMs: 30_000,
+      observationJson: {
+        uniqueBucketIdentities: ['speed|2026-09-10T12:00:00.000Z'],
+        bucketValueSnapshots: { 'speed|2026-09-10T12:00:00.000Z': '40' },
+      },
+    };
+    const cmp = compareBucketSets(
+      ['speed|2026-09-10T12:00:00.000Z'],
+      prior.observationJson!.uniqueBucketIdentities!,
+      {
+        currentSnapshots: { 'speed|2026-09-10T12:00:00.000Z': '41' },
+        priorSnapshots: prior.observationJson!.bucketValueSnapshots,
+      },
+    );
+    expect(cmp.revisionCount).toBe(1);
+    expect(cmp.valueRevisedBucketIdentities).toEqual(['speed|2026-09-10T12:00:00.000Z']);
+  });
 });
+
