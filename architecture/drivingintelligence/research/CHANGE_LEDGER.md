@@ -409,6 +409,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Trip FSM | **UNCHANGED** — WHOLE_TRIP remains `BLOCKED_BY_EXTERNAL_TRIP_FSM_WORKSTREAM` |
 | Evidence | `EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md`; forensic §20 |
 
+## EXP-021 — Native temporal bucket persistence micro-pass (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PERSISTENCE COMPLETE** — prospective only; KS MS 661 not backfilled |
+| Location | `completedPhaseSummaries[].nativeTemporalEvidence` (`EXP021_NATIVE_TEMPORAL_v1`) |
+| Reconstruction | `reference-capture-exp021-native-gap-reconstruction.ts` — post-run gap ledger without live memory |
+| Join | `reference-capture-exp021-native-settlement-join.ts` — native gaps ↔ settlement snapshots |
+| Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
+| Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |

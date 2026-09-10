@@ -479,6 +479,8 @@ describe('reference-capture-hf-calibration-concurrency (DI-EV-0035C.1d)', () => 
     expect(summary.providerBucketCount).toBe(4);
     expect(summary.newBucketCount).toBe(3);
     expect(summary.nativeUniqueTemporalBucketStartCount).toBe(3);
+    expect(summary.nativeTemporalEvidence?.orderedNativeTemporalBucketStarts).toHaveLength(3);
+    expect(summary.nativeTemporalEvidence?.schemaVersion).toBe('EXP021_NATIVE_TEMPORAL_v1');
     expect(summary.effectiveConfig.policyMode).toBe('V2');
     expect(summary.phaseEndedAt).toBe(new Date(t0 + 10_000).toISOString());
   });

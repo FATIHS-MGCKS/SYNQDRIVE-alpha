@@ -58,7 +58,19 @@ HISTORICAL_VALUE_REVISION_COMPARISON_POSSIBLE = NO
 
 ## Phase 4–5 — Instrumentation added (forward-looking)
 
-For the **next** physical run, Reference Capture now persists per observation:
+### Native temporal bucket persistence (prospective)
+
+Each sealed calibration phase now persists `nativeTemporalEvidence` (`EXP021_NATIVE_TEMPORAL_v1`) inside `hfCalibrationSeries.completedPhaseSummaries[]`, including:
+
+- ordered canonical `orderedNativeTemporalBucketStarts`
+- phase provenance (`PRE_ROLL` / `PHYSICAL_T0` / `PHYSICAL_TRANSITION`)
+- phase boundaries, series/phase IDs, duplicate semantics
+
+Post-run gap reconstruction uses persisted evidence only (`reference-capture-exp021-native-gap-reconstruction.ts`).
+
+**KS MS 661 cannot gain this ledger retroactively.**
+
+For the **next** physical run, Reference Capture also persists per settlement observation:
 
 - `bucketValueSnapshots` — `FIELD|ISO_MS → normalized value`
 - `valueContentHash` — SHA-256 of sorted identity=value pairs (no query metadata)

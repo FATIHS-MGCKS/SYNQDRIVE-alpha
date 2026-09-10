@@ -68,7 +68,12 @@
   },
   "gapSettlementRetroactive": {
     "perGapTimestampMatrixPossible": "NO",
-    "reason": "nativeUniqueTemporalBucketStarts exist only in ephemeral hfCalibrationActiveCounters; completedPhaseSummaries retain aggregate gap stats only",
+    "reason": "KS MS 661 predates nativeTemporalEvidence persistence in completedPhaseSummaries; cannot backfill",
+    "prospectivePersistence": {
+      "NATIVE_TEMPORAL_BUCKET_LIST_PERSISTED": "YES_FROM_NEXT_RUN",
+      "location": "hfCalibrationSeries.completedPhaseSummaries[].nativeTemporalEvidence",
+      "schema": "EXP021_NATIVE_TEMPORAL_v1"
+    },
     "settlementStructuralMaturation": "CONFIRMED — bucket identity sets stable from first successful age per FIXED probe; no LATE_BUCKET_RECOVERY",
     "settlementValueMaturation": "UNKNOWN — values not persisted on this run"
   },

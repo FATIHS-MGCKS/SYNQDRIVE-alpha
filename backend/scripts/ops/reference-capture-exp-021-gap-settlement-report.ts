@@ -129,16 +129,21 @@ async function main(): Promise<void> {
           : phaseStartMs + 600_000,
       });
 
+      const persistedEvidence = summary?.nativeTemporalEvidence as
+        | { orderedNativeTemporalBucketStarts?: string[] }
+        | undefined;
       const nativeStarts: string[] =
-        pollMs === 20_000 && activeCounters?.nativeUniqueTemporalBucketStarts?.length
-          ? activeCounters.nativeUniqueTemporalBucketStarts
-          : [];
+        persistedEvidence?.orderedNativeTemporalBucketStarts?.length
+          ? persistedEvidence.orderedNativeTemporalBucketStarts
+          : pollMs === 20_000 && activeCounters?.nativeUniqueTemporalBucketStarts?.length
+            ? activeCounters.nativeUniqueTemporalBucketStarts
+            : [];
 
       if (nativeStarts.length === 0) {
         gapMatrices[label] = {
           status: 'NOT_ASSESSABLE',
           reason:
-            'nativeUniqueTemporalBucketStarts not persisted in completedPhaseSummaries; active counters unavailable or empty',
+            'orderedNativeTemporalBucketStarts not in completedPhaseSummaries.nativeTemporalEvidence (KS MS 661 frozen run predates persistence)',
           aggregateMaxGapMs: summary?.nativeMaxTemporalGapMs ?? null,
         };
         continue;

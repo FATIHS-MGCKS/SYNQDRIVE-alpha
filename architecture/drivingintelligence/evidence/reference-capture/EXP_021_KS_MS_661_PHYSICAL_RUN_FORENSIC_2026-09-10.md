@@ -387,4 +387,4 @@ Blockers for full EXP-021 closure:
 
 **Correction (provenance):** Prior informal inference that `responseHash` drift might indicate vehicle-value revision is **CONTRADICTED**. Hash includes query-age and schedule-drift metadata.
 
-**Forward instrumentation:** `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` appended to new settlement observations; historical rows immutable.
+**Forward instrumentation:** `nativeTemporalEvidence` in `completedPhaseSummaries[]` (ordered native bucket starts); settlement `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` on new observations; historical rows immutable.

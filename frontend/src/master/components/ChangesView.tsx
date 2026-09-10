@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
+    version: '4.9.1101',
+    title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',
+    summary: [
+      'Persists ordered nativeTemporalEvidence (EXP021_NATIVE_TEMPORAL_v1) in completedPhaseSummaries.',
+      'Post-run gap ledger reconstruction without live hfCalibrationActiveCounters.',
+      'Native↔settlement join with bucketValueSnapshots on next run.',
+      'KS MS 661 frozen run cannot be backfilled — prospective only.',
+    ],
+    reason:
+      'Completion run requires durable per-gap native evidence joined with settlement value snapshots.',
+    previousBehavior:
+      'nativeUniqueTemporalBucketStarts lived only in ephemeral active counters; not in sealed phase summaries.',
+    details:
+      'reference-capture-native-temporal-evidence.lib.ts; exp021-native-gap-reconstruction; exp021-native-settlement-join.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:45:00.000Z',
+  },
+  {
     id: 'exp-021-gap-settlement-value-revision-instrumentation-2026-09-10',
     version: '4.9.1100',
     title: 'EXP-021 — Gap→settlement correlation + value revision instrumentation',

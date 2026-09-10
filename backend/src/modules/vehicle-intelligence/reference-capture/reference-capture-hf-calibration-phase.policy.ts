@@ -20,6 +20,11 @@ import {
   type HfQueryProvenanceRecord,
   type HfRecoveryPolicyV2Config,
 } from './reference-capture-hf-recovery-v2.policy';
+import { canonicalizeBucketTimestamp } from './reference-capture-hf-aggregate-bucket-analysis';
+import {
+  buildNativeTemporalEvidenceV1,
+  type Exp021NativeTemporalEvidenceV1,
+} from './reference-capture-native-temporal-evidence.lib';
 
 export type HfCalibrationWindowClassification = 'PHASE_NATIVE' | 'TRANSITION_WINDOW';
 
@@ -67,6 +72,8 @@ export type HfCalibrationPhaseSummary = {
   recoverySweepRequestCount: number;
   /** @deprecated use nativeUniqueTemporalBucketStartCount */
   uniqueTemporalBucketStartCount: number;
+  /** Durable ordered native temporal bucket evidence for post-run gap reconstruction (prospective). */
+  nativeTemporalEvidence?: Exp021NativeTemporalEvidenceV1 | null;
 };
 
 export type HfCalibrationPhaseRuntimeCounters = {
@@ -381,7 +388,14 @@ export function finalizePhaseSummary(args: {
 }): HfCalibrationPhaseSummary {
   const startedMs = Date.parse(args.phase.phaseStartedAt);
   const endedMs = args.phaseEndedAtMs;
-  const temporal = computeNativeTemporalCadenceStats(args.counters.nativeUniqueTemporalBucketStarts);
+  const nativeTemporalEvidence = buildNativeTemporalEvidenceV1({
+    phase: args.phase,
+    counters: args.counters,
+    phaseEndedAtIso: new Date(endedMs).toISOString(),
+  });
+  const temporal = computeNativeTemporalCadenceStats(
+    nativeTemporalEvidence.orderedNativeTemporalBucketStarts,
+  );
   return {
     calibrationPhaseId: args.phase.calibrationPhaseId,
     phaseSequence: args.phase.phaseSequence,
@@ -409,6 +423,7 @@ export function finalizePhaseSummary(args: {
     transitionProviderBucketCount: args.counters.transitionProviderBucketCount,
     recoverySweepRequestCount: args.counters.recoverySweepRequestCount,
     uniqueTemporalBucketStartCount: temporal.nativeUniqueTemporalBucketStartCount,
+    nativeTemporalEvidence,
   };
 }
 
@@ -669,7 +684,12 @@ export function accumulatePhaseQueryMetrics(
   const nativeStarts = new Set(base.nativeUniqueTemporalBucketStarts);
   if (isNativeFastLoop) {
     for (const ts of input.temporalBucketStartTimestamps) {
-      if (ts) nativeStarts.add(ts);
+      if (!ts) continue;
+      try {
+        nativeStarts.add(canonicalizeBucketTimestamp(ts));
+      } catch {
+        continue;
+      }
     }
   }
 
