@@ -32,6 +32,46 @@ import {
   PROTECTED_GOVERNANCE_PREFIXES,
 } from '../../scripts/lib/i18n-governance/pr-gate-policy.mjs';
 import { gitExec, runGate } from '../../scripts/i18n-pr-gate.mjs';
+import {
+  buildExpectedTrustedWorkflowAuthorityPatterns,
+  CANONICAL_GOVERNANCE_EXACT_PATHS,
+  CANONICAL_GOVERNANCE_PREFIX_RULES,
+  isCanonicalGovernanceAuthorityPath,
+  TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES,
+} from '../../scripts/lib/i18n-governance/authority-path-contract.mjs';
+import {
+  resolveEffectivePrChangedPaths,
+  resolveLegacyOriginMainTwoDotPaths,
+} from '../../scripts/lib/i18n-governance/pr-changed-paths.mjs';
+import {
+  analyzeExpectedVsParsedWorkflowParity,
+  analyzeParsedWorkflowCanonicalParity,
+  assertWorkflowAuthorityContractValid,
+  assertWorkflowYamlSecurityInvariants,
+  buildSyntheticOrderedContract,
+  evaluateBootstrapSafety,
+  evaluateSyntheticBoundaryWitnesses,
+  extractIsAuthorityPathCasePatterns,
+  isParsedWorkflowAuthorityPath,
+  isParsedWorkflowProductOrPresentationPath,
+  loadParsedWorkflowAuthorityContract,
+  loadParsedWorkflowAuthorityPatterns,
+  mutatePatternsBroadenI18nScriptWildcard,
+  mutatePatternsReplaceWildcardWithExactList,
+  mutateWorkflowContractInvertAuthorityReturn,
+  mutateWorkflowYamlDefaultReturnZero,
+  mutateWorkflowYamlInsertBroadAuthorityRule,
+  mutateWorkflowYamlInsertDenyShadowBeforeI18n,
+  mutateWorkflowYamlInsertUndeclaredWildcard,
+  mutateWorkflowYamlInsertUnsupportedPattern,
+  mutateWorkflowYamlInvertAuthorityReturn,
+  mutateWorkflowYamlRemoveDefaultReturn,
+  mutateWorkflowYamlRemoveWorkflowOnlyRule,
+  mutateWorkflowYamlSameLineCaseArm,
+  mutateWorkflowYamlUnexpectedCommandBeforeReturn,
+  mutateWorkflowYamlUnrecognizedArmLayout,
+  parseWorkflowAuthorityContract,
+} from '../../scripts/lib/i18n-governance/workflow-authority-classifier.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const manifestPath = join(__dirname, 'i18n-debt-classifications.json');
@@ -39,10 +79,15 @@ const manifest = loadManifest(manifestPath);
 const fixtureRoot = join(__dirname, '__fixtures__/governance-adversarial');
 const repoRoot = join(__dirname, '../../..');
 const workflowPath = join(repoRoot, '.github/workflows/i18n-governance-new-debt.yml');
+const authorityProtectionWorkflowPath = join(
+  repoRoot,
+  '.github/workflows/i18n-authority-protection.yml',
+);
 const authorityProtectionClassifierHarnessPath = join(
   repoRoot,
   '.cursor/scripts/i18n-authority-protection-classifier.harness.sh',
 );
+const GOVERNANCE_PARITY_HISTORICAL_BASE_SHA = '2f0d128da1ee966250da200a2a17f2a5e24f1a73';
 const prGateCliPath = join(repoRoot, 'frontend/scripts/i18n-pr-gate.mjs');
 const removedBootstrapScriptPath = join(repoRoot, '.github/scripts/i18n-pr-bootstrap-relevance.sh');
 
@@ -717,6 +762,7 @@ describe('P2.3.3 PR gate — protected-path contract parity', () => {
     'frontend/src/i18n/i18n-governance-scanner.test.ts',
     'frontend/src/i18n/i18n-pr-gate.test.ts',
     'frontend/src/i18n/i18n-structural-check.test.ts',
+    'frontend/src/i18n/hardcoded-copy-guard.test.ts',
     'frontend/src/i18n/locales.test.ts',
     'frontend/src/i18n/translation-registry.test.ts',
   ];
@@ -774,7 +820,7 @@ describe('P2.3.2 authority protection — extracted workflow classifier harness'
 
     expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     expect(result.stdout).toContain('Harness complete:');
-    expect(result.stdout).toMatch(/8\/8 tests passed/);
+    expect(result.stdout).toMatch(/9\/9 tests passed/);
     expect(result.stdout).toContain('PR #1581 authority paths + trusted owner label pass');
     expect(result.stdout).toContain('mixed authority + product change fails even with trusted owner approval');
     expect(result.stdout).toContain('negative control: broken workflow incorrectly approves mixed change');
@@ -1297,6 +1343,453 @@ describe('P2.3.3 PR gate — GitHub annotation emission', () => {
     const gateSource = readFileSync(prGateCliPath, 'utf8');
     expect(gateSource).toContain('function shouldEmitGithubAnnotations');
     expect(gateSource).toMatch(/if \(emitAnnotations\) \{\s*\n\s*emitGithubAnnotation/);
+  });
+});
+
+describe('P2.3.4 authority path contract — parsed workflow structural parity', () => {
+  const PR_1589_EXPECTED_PATHS = [
+    '.cursor/scripts/i18n-authority-protection-classifier.harness.sh',
+    '.github/workflows/i18n-authority-protection.yml',
+    '.github/workflows/i18n-governance-new-debt.yml',
+    'architecture/I18N_GOVERNANCE_AUTHORITY_PATH_CONTRACT_PARITY_2026-09-09.md',
+    'architecture/I18N_GOVERNANCE_WORKFLOW_AUTHORITY_PROTECTION_P2_3_4_2026-09-01.md',
+    'frontend/scripts/lib/i18n-governance/authority-path-contract.mjs',
+    'frontend/scripts/lib/i18n-governance/pr-changed-paths.mjs',
+    'frontend/scripts/lib/i18n-governance/pr-gate-policy.mjs',
+    'frontend/scripts/lib/i18n-governance/workflow-authority-classifier.mjs',
+    'frontend/src/i18n/i18n-pr-gate.test.ts',
+  ];
+
+  function gitShowAtRef(ref: string, path: string) {
+    return execFileSync('git', ['show', `${ref}:${path}`], { cwd: repoRoot, encoding: 'utf8' });
+  }
+
+  let cachedPrResolution: ReturnType<typeof resolveEffectivePrChangedPaths> | null = null;
+
+  function resolveCurrentPrChangedPathsOnce() {
+    cachedPrResolution ??= resolveEffectivePrChangedPaths({ repoRoot });
+    return cachedPrResolution;
+  }
+
+  function createTempGitRepoForPrBoundary() {
+    const dir = mkdtempSync(join(tmpdir(), 'i18n-pr-boundary-'));
+    const runGit = (...args: string[]) =>
+      execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
+    runGit('init', '-b', 'main');
+    runGit('config', 'user.email', 'parity@test.local');
+    runGit('config', 'user.name', 'Parity Test');
+    mkdirSync(join(dir, 'architecture/trip-detection-lifecycle'), { recursive: true });
+    writeFileSync(join(dir, 'README.md'), 'base\n');
+    runGit('add', '.');
+    runGit('commit', '-m', 'pr-base');
+    const baseSha = runGit('rev-parse', 'HEAD').trim();
+
+    writeFileSync(join(dir, 'architecture/trip-detection-lifecycle/CURRENT_STATE.md'), 'main-only\n');
+    runGit('add', 'architecture/trip-detection-lifecycle/CURRENT_STATE.md');
+    runGit('commit', '-m', 'main-only trip lifecycle');
+    const mainTipSha = runGit('rev-parse', 'HEAD').trim();
+
+    runGit('checkout', '-b', 'feature/governance', baseSha);
+    mkdirSync(join(dir, 'frontend/scripts/lib/i18n-governance'), { recursive: true });
+    writeFileSync(join(dir, 'frontend/scripts/lib/i18n-governance/authority-path-contract.mjs'), 'export const x = 1;\n');
+    runGit('add', 'frontend/scripts/lib/i18n-governance/authority-path-contract.mjs');
+    runGit('commit', '-m', 'governance-only pr change');
+    const headSha = runGit('rev-parse', 'HEAD').trim();
+
+    return { dir, baseSha, headSha, mainTipSha };
+  }
+
+  it('valid real workflow parses all case arms with explicit default return 1', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const contract = parseWorkflowAuthorityContract(workflowYaml);
+    expect(contract.ok).toBe(true);
+    expect(contract.structural.parsedArms).toBe(contract.arms.length);
+    expect(contract.structural.unconsumedFragments).toEqual([]);
+    expect(contract.defaultReturn).toBe(1);
+    expect(contract.defaultReturnExplicit).toBe(true);
+    expect(isParsedWorkflowAuthorityPath('backend/src/modules/example.ts', contract)).toBe(false);
+  });
+
+  it('extracts authority case patterns from actual workflow YAML (no handwritten mirror)', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const patterns = extractIsAuthorityPathCasePatterns(workflowYaml);
+    expect(patterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(patterns).toContain('.github/workflows/*');
+    expect(patterns).not.toContain('frontend/scripts/i18n-check.mjs');
+  });
+
+  it('parsed workflow structurally covers canonical exact paths and prefix rules', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(true);
+    expect(analysis.canonicalOnly, JSON.stringify(analysis.canonicalOnly)).toEqual([]);
+    expect(analysis.missingExpectedPatterns, JSON.stringify(analysis.missingExpectedPatterns)).toEqual(
+      [],
+    );
+    expect(
+      analysis.unexpectedAuthorityPatterns,
+      JSON.stringify(analysis.unexpectedAuthorityPatterns),
+    ).toEqual([]);
+    expect(analysis.forbiddenDenyPatterns, JSON.stringify(analysis.forbiddenDenyPatterns)).toEqual(
+      [],
+    );
+    expect(analysis.prefixMismatches, JSON.stringify(analysis.prefixMismatches)).toEqual([]);
+  });
+
+  it('expected trusted workflow authority patterns are derived algorithmically from canonical contract', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const expected = buildExpectedTrustedWorkflowAuthorityPatterns();
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(expected).toEqual(analysis.expectedPatterns);
+    expect(analysis.actualAuthorityPatterns).toEqual(expected);
+    expect(expected).toContain('.github/workflows/*');
+    expect(expected).toContain('frontend/scripts/i18n-*.mjs');
+    expect(expected).not.toContain('.github/workflows/i18n-governance-new-debt.yml');
+  });
+
+  it('synthetic boundary witness matrix matches canonical and parsed workflow semantics', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const witnesses = evaluateSyntheticBoundaryWitnesses(contract);
+    const failures = witnesses.filter((entry) => !entry.ok);
+    expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
+  });
+
+  it('frontend/scripts/i18n-future-check.mjs agrees across canonical and parsed workflow', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const path = 'frontend/scripts/i18n-future-check.mjs';
+    expect(isCanonicalGovernanceAuthorityPath(path)).toBe(true);
+    expect(isParsedWorkflowAuthorityPath(path, contract)).toBe(true);
+    expect(isParsedWorkflowProductOrPresentationPath(path, contract)).toBe(false);
+  });
+
+  it('documents intentional .github/workflows/* workflow-only expansion', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const path = '.github/workflows/future-workflow.yml';
+    expect(isCanonicalGovernanceAuthorityPath(path)).toBe(false);
+    expect(isParsedWorkflowAuthorityPath(path, contract)).toBe(true);
+    const parity = analyzeExpectedVsParsedWorkflowParity(contract, [path]);
+    expect(parity.workflowOnly).toEqual([path]);
+    expect(parity.canonicalOnly).toEqual([]);
+    expect(parity.semanticDifferences).toEqual([]);
+    expect(TRUSTED_WORKFLOW_ONLY_AUTHORITY_RULES[0]?.id).toBe('all-github-workflows');
+  });
+
+  it('mutation: unsupported workflow wildcard syntax fails contract validation closed', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertUnsupportedPattern(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(contract.unsupportedPatterns.length).toBeGreaterThan(0);
+    expect(() => assertWorkflowAuthorityContractValid(contract)).toThrow(
+      /Invalid workflow authority contract/,
+    );
+  });
+
+  it('mutation: same-line case arm body fails structural completeness closed', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlSameLineCaseArm(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(contract.structuralCompletenessErrors.length).toBeGreaterThan(0);
+    expect(() => assertWorkflowAuthorityContractValid(contract)).toThrow(
+      /Invalid workflow authority contract/,
+    );
+  });
+
+  it('mutation: unexpected command before return fails structural completeness closed', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlUnexpectedCommandBeforeReturn(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(contract.structuralCompletenessErrors.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: unrecognized case arm layout fails structural completeness closed', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlUnrecognizedArmLayout(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(contract.structuralCompletenessErrors.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: explicit default return 1 -> 0 fails contract validation', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlDefaultReturnZero(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(() => assertWorkflowAuthorityContractValid(contract)).toThrow(
+      /Invalid workflow authority contract/,
+    );
+  });
+
+  it('mutation: missing explicit default return fails contract validation', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlRemoveDefaultReturn(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(false);
+    expect(contract.defaultReturnExplicit).toBe(false);
+    expect(() => assertWorkflowAuthorityContractValid(contract)).toThrow(
+      /Invalid workflow authority contract/,
+    );
+  });
+
+  it('first-match arm order grants authority when broad arm precedes narrow deny arm', () => {
+    const contract = buildSyntheticOrderedContract([
+      { patterns: ['frontend/scripts/*'], returnCode: 0 },
+      { patterns: ['frontend/scripts/i18n-private-*'], returnCode: 1 },
+    ]);
+    expect(
+      isParsedWorkflowAuthorityPath('frontend/scripts/i18n-private-test.mjs', contract),
+    ).toBe(true);
+  });
+
+  it('reversed first-match arm order denies authority when narrow deny arm precedes broad arm', () => {
+    const contract = buildSyntheticOrderedContract([
+      { patterns: ['frontend/scripts/i18n-private-*'], returnCode: 1 },
+      { patterns: ['frontend/scripts/*'], returnCode: 0 },
+    ]);
+    expect(
+      isParsedWorkflowAuthorityPath('frontend/scripts/i18n-private-test.mjs', contract),
+    ).toBe(false);
+  });
+
+  it('mutation: authority case arm return 0 -> return 1 fails parity semantics', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutatedYaml = mutateWorkflowYamlInvertAuthorityReturn(workflowYaml);
+    const mutatedContract = parseWorkflowAuthorityContract(mutatedYaml);
+    assertWorkflowAuthorityContractValid(mutatedContract);
+    expect(
+      isParsedWorkflowAuthorityPath('frontend/scripts/i18n-future-check.mjs', mutatedContract),
+    ).toBe(false);
+
+    const invertedContract = mutateWorkflowContractInvertAuthorityReturn(
+      loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath),
+    );
+    const analysis = analyzeParsedWorkflowCanonicalParity(invertedContract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.forbiddenDenyPatterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(analysis.missingExpectedPatterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(analysis.prefixMismatches.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: undeclared wildcard expansion fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertUndeclaredWildcard(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    expect(contract.structural.unconsumedFragments).toEqual([]);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.unexpectedAuthorityPatterns).toContain('backend/private/*');
+  });
+
+  it('mutation: canonical prefix deny shadow fails parity even when first-match evaluator applies', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertDenyShadowBeforeI18n(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    expect(
+      isParsedWorkflowAuthorityPath('frontend/scripts/i18n-private-test.mjs', contract),
+    ).toBe(false);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.forbiddenDenyPatterns).toContain('frontend/scripts/i18n-private-*');
+  });
+
+  it('mutation: undeclared broad authority rule fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlInsertBroadAuthorityRule(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.unexpectedAuthorityPatterns).toContain('frontend/scripts/*');
+  });
+
+  it('mutation: missing declared workflow-only rule fails exact pattern parity', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    const mutated = mutateWorkflowYamlRemoveWorkflowOnlyRule(workflowYaml);
+    const contract = parseWorkflowAuthorityContract(mutated);
+    expect(contract.ok).toBe(true);
+    const analysis = analyzeParsedWorkflowCanonicalParity(contract);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.missingExpectedPatterns).toContain('.github/workflows/*');
+  });
+
+  it('mutation: finite i18n script list breaks prefix semantics for future scripts', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const stale = mutatePatternsReplaceWildcardWithExactList(patterns);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-future-check.mjs', stale)).toBe(
+      false,
+    );
+    const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.missingExpectedPatterns).toContain('frontend/scripts/i18n-*.mjs');
+    expect(analysis.prefixMismatches.length).toBeGreaterThan(0);
+  });
+
+  it('mutation: broadened frontend/scripts/i18n-* wildcard fails synthetic .ts witness', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const broadenedPatterns = mutatePatternsBroadenI18nScriptWildcard(contract.authorityPatterns);
+    const broadened = {
+      ...contract,
+      authorityPatterns: broadenedPatterns,
+      arms: contract.arms.map((arm) =>
+        arm.patterns.includes('frontend/scripts/i18n-*.mjs')
+          ? { ...arm, patterns: ['frontend/scripts/i18n-*'] }
+          : arm,
+      ),
+    };
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-future-check.ts', broadened)).toBe(
+      true,
+    );
+    const witnesses = evaluateSyntheticBoundaryWitnesses(broadened);
+    const tsWitness = witnesses.find((entry) => entry.path === 'frontend/scripts/i18n-future-check.ts');
+    expect(tsWitness?.ok).toBe(false);
+  });
+
+  it('mutation: removing a canonical exact path from parsed patterns is detected', () => {
+    const patterns = loadParsedWorkflowAuthorityPatterns(authorityProtectionWorkflowPath);
+    const stale = patterns.filter(
+      (pattern) => !pattern.includes('translation-coverage-baseline.json'),
+    );
+    const analysis = analyzeParsedWorkflowCanonicalParity(stale);
+    expect(analysis.parityOk).toBe(false);
+    expect(analysis.canonicalOnly).toContain('frontend/src/i18n/translation-coverage-baseline.json');
+    expect(analysis.missingExpectedPatterns).toContain(
+      'frontend/src/i18n/translation-coverage-baseline.json',
+    );
+  });
+
+  it('pr-gate-policy delegates to canonical contract for all exact paths', () => {
+    for (const path of CANONICAL_GOVERNANCE_EXACT_PATHS) {
+      expect(isGovernanceAuthorityPath(path)).toBe(isCanonicalGovernanceAuthorityPath(path));
+    }
+  });
+
+  it('prefix rule accepts only .mjs under frontend/scripts/i18n-', () => {
+    const rule = CANONICAL_GOVERNANCE_PREFIX_RULES.find(
+      (entry) => entry.prefix === 'frontend/scripts/i18n-',
+    );
+    expect(rule).toBeDefined();
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isCanonicalGovernanceAuthorityPath('frontend/scripts/i18n-check.mjs')).toBe(true);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-check.mjs', contract)).toBe(true);
+    expect(isCanonicalGovernanceAuthorityPath('frontend/scripts/i18n-check.ts')).toBe(false);
+    expect(isParsedWorkflowAuthorityPath('frontend/scripts/i18n-check.ts', contract)).toBe(false);
+  });
+
+  it('workflow YAML satisfies pull_request_target security invariants', () => {
+    const workflowYaml = readFileSync(authorityProtectionWorkflowPath, 'utf8');
+    assertWorkflowYamlSecurityInvariants(workflowYaml);
+    expect(workflowYaml).not.toMatch(/uses:\s*actions\/checkout/);
+  });
+
+  it('resolves current PR changed paths via base...head and matches PR #1589 file set', () => {
+    const resolved = resolveCurrentPrChangedPathsOnce();
+    expect(resolved.changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
+    expect(
+      resolved.changedPaths.some((path) => path.startsWith('architecture/trip-detection-lifecycle/')),
+    ).toBe(false);
+    expect(resolved.changedPaths.some((path) => path.startsWith('backend/'))).toBe(false);
+  });
+
+  it('regression: classifier ref selection does not redefine PR changed-path set', { timeout: 15000 }, () => {
+    const resolvedAtBase = resolveEffectivePrChangedPaths({ repoRoot });
+    const resolvedAgain = resolveEffectivePrChangedPaths({
+      repoRoot,
+      baseSha: resolvedAtBase.baseSha,
+      headSha: resolvedAtBase.headSha,
+      source: 'explicit_recheck',
+    });
+    expect(resolvedAgain.changedPaths).toEqual(resolvedAtBase.changedPaths);
+
+    const { dir, baseSha, headSha, mainTipSha } = createTempGitRepoForPrBoundary();
+    execFileSync('git', ['update-ref', 'refs/remotes/origin/main', mainTipSha], { cwd: dir });
+    const correctPaths = resolveEffectivePrChangedPaths({
+      repoRoot: dir,
+      baseSha,
+      headSha,
+    }).changedPaths;
+    expect(correctPaths).toEqual(['frontend/scripts/lib/i18n-governance/authority-path-contract.mjs']);
+
+    const legacyAfterMainAdvance = resolveLegacyOriginMainTwoDotPaths(dir);
+    expect(legacyAfterMainAdvance).toContain('architecture/trip-detection-lifecycle/CURRENT_STATE.md');
+    expect(correctPaths).not.toContain('architecture/trip-detection-lifecycle/CURRENT_STATE.md');
+    expect(legacyAfterMainAdvance.length).toBeGreaterThan(correctPaths.length);
+  });
+
+  it('PR effective diff is bootstrap-safe under CURRENT MAIN trusted classifier', () => {
+    const { changedPaths, baseSha } = resolveCurrentPrChangedPathsOnce();
+    expect(changedPaths.sort()).toEqual([...PR_1589_EXPECTED_PATHS].sort());
+
+    const mainWorkflowYaml = gitShowAtRef(
+      baseSha,
+      '.github/workflows/i18n-authority-protection.yml',
+    );
+    const mainContract = loadParsedWorkflowAuthorityContract(mainWorkflowYaml);
+    const bootstrap = evaluateBootstrapSafety(mainContract, changedPaths);
+    expect(bootstrap.authorityChanged).toBe(true);
+    expect(bootstrap.productOrPresentationChanged).toBe(false);
+    expect(bootstrap.productPaths, JSON.stringify(bootstrap.productPaths)).toEqual([]);
+    expect(bootstrap.unrecognizedPaths, JSON.stringify(bootstrap.unrecognizedPaths)).toEqual([]);
+    expect(bootstrap.ok).toBe(true);
+  });
+
+  it('PR effective diff is authority-only under corrected HEAD trusted classifier', () => {
+    const { changedPaths } = resolveCurrentPrChangedPathsOnce();
+    const headContract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const bootstrap = evaluateBootstrapSafety(headContract, changedPaths);
+    expect(bootstrap.authorityChanged).toBe(true);
+    expect(bootstrap.productOrPresentationChanged).toBe(false);
+    expect(bootstrap.productPaths, JSON.stringify(bootstrap.productPaths)).toEqual([]);
+    expect(bootstrap.unrecognizedPaths, JSON.stringify(bootstrap.unrecognizedPaths)).toEqual([]);
+    expect(bootstrap.ok).toBe(true);
+  });
+
+  it('PR effective diff remains bootstrap-safe under historical 2f0d trusted classifier', () => {
+    const { changedPaths } = resolveCurrentPrChangedPathsOnce();
+    const historicalWorkflowYaml = gitShowAtRef(
+      GOVERNANCE_PARITY_HISTORICAL_BASE_SHA,
+      '.github/workflows/i18n-authority-protection.yml',
+    );
+    const historicalContract = loadParsedWorkflowAuthorityContract(historicalWorkflowYaml);
+    const bootstrap = evaluateBootstrapSafety(historicalContract, changedPaths);
+    expect(bootstrap.authorityChanged).toBe(true);
+    expect(bootstrap.productOrPresentationChanged).toBe(false);
+    expect(bootstrap.productPaths, JSON.stringify(bootstrap.productPaths)).toEqual([]);
+    expect(bootstrap.unrecognizedPaths, JSON.stringify(bootstrap.unrecognizedPaths)).toEqual([]);
+    expect(bootstrap.ok).toBe(true);
+  });
+
+  it('mutation: forbidden product path in effective PR diff fails bootstrap safety', () => {
+    const { changedPaths, baseSha } = resolveCurrentPrChangedPathsOnce();
+    const mainWorkflowYaml = gitShowAtRef(
+      baseSha,
+      '.github/workflows/i18n-authority-protection.yml',
+    );
+    const mainContract = loadParsedWorkflowAuthorityContract(mainWorkflowYaml);
+    const diffPaths = [
+      ...changedPaths,
+      'frontend/src/rental/components/ForbiddenBootstrap.tsx',
+    ];
+    const bootstrap = evaluateBootstrapSafety(mainContract, diffPaths);
+    expect(bootstrap.productOrPresentationChanged).toBe(true);
+    expect(bootstrap.productPaths).toContain('frontend/src/rental/components/ForbiddenBootstrap.tsx');
+    expect(bootstrap.ok).toBe(false);
+  });
+
+  it('preserves #1581/#1585 authority paths as authority-only under parsed HEAD classifier', () => {
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    const pr1581Paths = [
+      'frontend/src/i18n/i18n-structural-check.test.ts',
+      'frontend/src/i18n/translation-coverage-baseline.json',
+      'frontend/src/i18n/translation-coverage.test.ts',
+    ];
+    for (const path of pr1581Paths) {
+      expect(isParsedWorkflowAuthorityPath(path, contract)).toBe(true);
+      expect(isParsedWorkflowProductOrPresentationPath(path, contract)).toBe(false);
+    }
   });
 });
 

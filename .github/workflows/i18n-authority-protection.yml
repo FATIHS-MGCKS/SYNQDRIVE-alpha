@@ -181,7 +181,10 @@ jobs:
               .github/workflows/*)
                 return 0
                 ;;
-              frontend/scripts/i18n-hardcoded-scan.mjs|frontend/scripts/i18n-check.mjs|frontend/scripts/i18n-governance.mjs|frontend/scripts/i18n-pr-gate.mjs|frontend/scripts/i18n-shim-inventory.mjs)
+              .cursor/rules/i18n.mdc|AGENTS.md)
+                return 0
+                ;;
+              frontend/scripts/i18n-*.mjs)
                 return 0
                 ;;
               frontend/scripts/lib/i18n-governance/*)
@@ -190,7 +193,7 @@ jobs:
               frontend/package.json|frontend/package-lock.json)
                 return 0
                 ;;
-              frontend/src/i18n/i18n-debt-classifications.json|frontend/src/i18n/i18n-pr-gate.test.ts|frontend/src/i18n/i18n-governance-scanner.test.ts|frontend/src/i18n/translation-registry.test.ts|frontend/src/i18n/locales.test.ts|frontend/src/i18n/i18n-structural-check.test.ts|frontend/src/i18n/hardcoded-copy-guard.test.ts|frontend/src/i18n/translation-coverage-baseline.json|frontend/src/i18n/translation-coverage.test.ts)
+              frontend/src/i18n/hardcoded-copy-inventory.json|frontend/src/i18n/hardcoded-copy-guard.test.ts|frontend/src/i18n/translation-coverage.ts|frontend/src/i18n/translation-coverage-baseline.json|frontend/src/i18n/translation-coverage.test.ts|frontend/src/i18n/i18n-debt-classifications.json|frontend/src/i18n/i18n-pr-gate.test.ts|frontend/src/i18n/i18n-governance-scanner.test.ts|frontend/src/i18n/translation-registry.test.ts|frontend/src/i18n/locales.test.ts|frontend/src/i18n/i18n-structural-check.test.ts)
                 return 0
                 ;;
             esac

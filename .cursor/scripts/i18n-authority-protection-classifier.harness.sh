@@ -311,6 +311,18 @@ if grep -qE '(source|\. )[[:space:]]*.*\.github/scripts/' "${WORKFLOW}"; then
 fi
 pass "no repository runtime helper dependency"
 
+# --- Test 9: synthetic future i18n script path is authority under wildcard rule ---
+echo "==> 9. synthetic future i18n script path is authority under wildcard rule"
+EVENT_ACTION_VALUE=opened
+EVENT_LABEL_NAME=
+EVENT_SENDER_LOGIN=
+HAS_AUTHORITY_LABEL=false
+HARNESS_LABELS_JSON='[]'
+run_extracted_workflow "${WORKFLOW}" "frontend/scripts/i18n-future-check.mjs"
+assert_exit 1
+assert_reason GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL
+pass "synthetic i18n-future-check.mjs path is authority (requires approval)"
+
 echo ""
 echo "Harness complete: ${PASS_COUNT}/${TOTAL_TESTS} tests passed, ${FAIL_COUNT} failures"
 [[ "${PASS_COUNT}" -eq "${TOTAL_TESTS}" ]] || fail "expected ${TOTAL_TESTS} passing tests, got ${PASS_COUNT}"
