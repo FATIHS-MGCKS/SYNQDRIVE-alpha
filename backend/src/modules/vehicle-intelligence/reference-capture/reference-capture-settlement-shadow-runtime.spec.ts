@@ -337,9 +337,11 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
         id: 'exp-partial',
         experimentId: 'exp-021-partial',
         sessionId: 'sess-partial',
+        metadataJson: null,
       }),
       createSchedulesIfAbsent: jest.fn().mockResolvedValue({ created: 4, skipped: 2 }),
       updateExperimentTripBinding: jest.fn(),
+      mergeExperimentMetadataJson: jest.fn(),
     } as unknown as ReferenceCaptureSettlementShadowRepository;
 
     const service = new ReferenceCaptureSettlementShadowService(

@@ -64,6 +64,29 @@ describe('reference-capture-exp-021-motion.lib', () => {
     expect(detector.isConfirmed()).toBe(false);
   });
 
+  it('START_BOUNDARY_ALWAYS_INSIDE_CONFIRMATION_WINDOW', () => {
+    const detector = new PhysicalStartDetector({
+      movementSpeedKmh: 8,
+      minDistinctFreshSamples: 4,
+      minDistinctTimestamps: 3,
+      maxSampleAgeMs: 120_000,
+      confirmationWindowMs: 180_000,
+      sustainedParkingResetMs: 90_000,
+    });
+    const t0 = baseMs;
+    detector.record(speedSample(0, 20), t0, 'MOVING');
+    const lateOffsets = [200, 215, 230, 245];
+    for (const offset of lateOffsets) {
+      detector.record(speedSample(offset, 20), baseMs + offset * 1000, 'MOVING');
+    }
+    expect(detector.isConfirmed()).toBe(true);
+    const confirmation = detector.getConfirmation();
+    expect(confirmation?.firstQualifyingMovementAt.getTime()).toBe(baseMs + 200_000);
+    expect(confirmation!.firstQualifyingMovementAt.getTime()).toBeGreaterThanOrEqual(
+      baseMs + 180_000 - 15_000,
+    );
+  });
+
   it('URBAN_STOP_GO_START_REACHABLE', () => {
     const detector = new PhysicalStartDetector({
       movementSpeedKmh: 8,

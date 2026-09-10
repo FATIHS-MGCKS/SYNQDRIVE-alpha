@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-third-pass-micro-correction-2026-09-10',
+    version: '4.9.1095',
+    title: 'EXP-021 — Third-pass micro-correction before merge (PR #1593)',
+    summary: [
+      'PDI provenance: schedule.createdAt vs requestStartedAt separated; prospectiveAtCreation from schedule creation only.',
+      'False-candidate invalidation updates experiment pdiCandidates overlay — completed observationJson/responseHash immutable.',
+      'Start detector: recompute first evidence after prune; deploy-convergence reset; wake-and-go startRecording without parked wait.',
+      'Physical drive interval persisted for canonical VehicleTrip overlap ranking; phase seal no synthetic MOVING credit.',
+    ],
+    reason:
+      'Close remaining deterministic evidence-integrity and operator wake-and-go gaps before merge of PR #1593.',
+    previousBehavior:
+      'PDI prospective inferred from request time; observationJson mutated on invalidation; parked required before recording; session envelope used for trip binding.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Third-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-second-pass-deterministic-logic-2026-09-10',
     version: '4.9.1094',
     title: 'EXP-021 — Second-pass deterministic logic correction (PR #1593)',

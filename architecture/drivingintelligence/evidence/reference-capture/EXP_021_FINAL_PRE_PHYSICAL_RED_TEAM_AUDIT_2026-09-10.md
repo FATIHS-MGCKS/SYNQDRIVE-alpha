@@ -10,6 +10,7 @@
 |--------|-------|
 | `RED_TEAM_AUDIT_COMPLETE` | **YES** (first pass) |
 | `SECOND_PASS_AUDIT_COMPLETE` | **YES** (deterministic logic correction) |
+| `THIRD_PASS_AUDIT_COMPLETE` | **YES** (micro-pass before merge) |
 | `CONFIRMED_BLOCKERS_FOUND` | **14** (first pass) + **13** (second pass) |
 | `CONFIRMED_BLOCKERS_FIXED` | **27** (combined in PR #1593) |
 | `OPEN_BLOCKERS` | **1** — post-merge `--e2e-shadow-smoke` on production VPS not yet executed |
@@ -245,6 +246,24 @@ Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI 
 | Focused red-team / abort / motion / enqueue / ERROR | **587** reference-capture tests pass (31 skipped) |
 | Backend build | **PASS** |
 | DI graph + doc validation | **PASS** (pending re-run after doc commit) |
+
+---
+
+## Third-pass micro-correction (2026-09-10)
+
+| # | Issue | Third-pass result |
+|---|-------|-------------------|
+| 1 | PDI `scheduleCreatedAt` vs `requestStartedAt` | **FIXED** — `schedule.createdAt` authority; `executedOnTime` separate |
+| 2 | Completed observation mutation | **FIXED** — candidate status in experiment `pdiCandidates` overlay only |
+| 3 | Start window first evidence | **FIXED** — `recomputeFirstQualifyingMovementAt()` after prune |
+| 4 | Pre-deploy start contamination | **FIXED** — detector reset at deploy; reject start before `deployConvergedAt` |
+| 5 | Wake-and-go operator path | **FIXED** — no parked prerequisite for `startRecording` |
+| 6 | Physical interval for VehicleTrip | **FIXED** — `persistPhysicalDriveIntervalAuthority` + resolver priority |
+| 7 | Synthetic boundary movement | **FIXED** — unobserved tail → uncertain only |
+| 8 | Stationary cert env order | **FIXED** — `buildExp021RuntimeConfig()` after env load |
+| 9 | PDI +30/+60 overclaim | **CLARIFIED** — `PDI_30_PROSPECTIVE_CAPABILITY=YES`; achieved is **RUNTIME_ONLY** |
+
+`PDI_30_PROSPECTIVE_ACHIEVED` / `PDI_60_PROSPECTIVE_ACHIEVED` are **never** static YES in audit docs — only per-run timestamps.
 
 ---
 

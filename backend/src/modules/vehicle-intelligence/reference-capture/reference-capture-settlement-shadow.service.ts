@@ -40,8 +40,14 @@ import {
 } from './reference-capture-settlement-shadow-response.parser';
 import {
   buildPhysicalDriveIntervalProbeId,
+  computePdiExecutedOnTime,
+  computePdiProspectiveAtCreation,
   EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+  EXP021_PHYSICAL_DRIVE_INTERVAL_METADATA_KEY,
+  EXP021_PDI_CANDIDATES_METADATA_KEY,
   rankCanonicalVehicleTripCandidates,
+  type Exp021PhysicalDriveIntervalAuthority,
+  type PdiCandidateOverlayRecord,
   type PhysicalEndCandidateStatus,
 } from './reference-capture-exp-021-motion.lib';
 
@@ -472,18 +478,6 @@ export class ReferenceCaptureSettlementShadowService {
     if (!this.isEnabled()) return false;
 
     try {
-      const trip = await this.resolveCanonicalVehicleTrip({
-        vehicleId: args.vehicleId,
-        sessionStartedAt: args.sessionStartedAt,
-        sessionStoppedAt: args.sessionStoppedAt,
-      });
-      if (!trip?.endTime) {
-        this.logger.warn(
-          `Whole-trip shadow skipped — no canonical VehicleTrip end for vehicle=${args.vehicleId} session=${args.sessionId}`,
-        );
-        return false;
-      }
-
       const experiment = await this.ensureExperiment({
         sessionId: args.sessionId,
         organizationId: args.organizationId,
@@ -492,10 +486,35 @@ export class ReferenceCaptureSettlementShadowService {
       });
       if (!experiment) return false;
 
+      const physicalAuthority = this.readPhysicalDriveIntervalAuthority(experiment.metadataJson);
+      const trip = await this.resolveCanonicalVehicleTrip({
+        vehicleId: args.vehicleId,
+        sessionStartedAt: args.sessionStartedAt,
+        sessionStoppedAt: args.sessionStoppedAt,
+        physicalStartAt: physicalAuthority
+          ? new Date(physicalAuthority.physicalStartAt)
+          : null,
+        physicalEndAt: physicalAuthority ? new Date(physicalAuthority.physicalEndAt) : null,
+      });
+      if (!trip?.endTime) {
+        this.logger.warn(
+          `Whole-trip shadow skipped — no canonical VehicleTrip end for vehicle=${args.vehicleId} session=${args.sessionId} intervalSource=${trip?.intervalSource ?? 'NOT_FOUND'}`,
+        );
+        return false;
+      }
+
       await this.repository.updateExperimentTripBinding(experiment.id, {
         vehicleTripId: trip.id,
         tripStartTime: trip.startTime,
         tripEndTime: trip.endTime,
+      });
+      await this.repository.mergeExperimentMetadataJson(experiment.id, {
+        canonicalTripBinding: {
+          binding: trip.binding,
+          intervalSource: trip.intervalSource,
+          overlapMs: trip.overlapMs,
+          physicalIntervalCoverage: trip.physicalIntervalCoverage,
+        },
       });
 
       const tripEndTime = trip.endTime;
@@ -590,6 +609,13 @@ export class ReferenceCaptureSettlementShadowService {
 
       const { created } = await this.repository.createSchedulesIfAbsent(scheduleRows);
       if (created > 0) {
+        await this.registerPdiCandidateOverlay({
+          experimentDbId: experiment.id,
+          candidateId: args.candidateId,
+          candidateBoundaryAt: args.candidateBoundaryAt,
+          candidateStatus: args.candidateStatus,
+          candidateDetectedAt: scheduleCreatedAt,
+        });
         await this.enqueuePendingSchedules(experiment.id);
       }
       return true;
@@ -624,12 +650,124 @@ export class ReferenceCaptureSettlementShadowService {
       await this.repository.markSkipped(row.id, args.reason);
       skipped += 1;
     }
-    const markedCompleted = await this.repository.markPdiObservationsInvalidatedForCandidate({
+    const overlayUpdated = await this.updatePdiCandidateOverlayStatus({
       sessionId: args.sessionId,
       candidateId: args.candidateId,
+      candidateStatus: 'INVALIDATED_END_CANDIDATE',
       reason: args.reason,
     });
-    return skipped + markedCompleted;
+    return skipped + (overlayUpdated ? 1 : 0);
+  }
+
+  async persistPhysicalDriveIntervalAuthority(args: {
+    sessionId: string;
+    physicalStartAt: Date;
+    physicalEndAt: Date;
+    candidateId?: string;
+    source?: Exp021PhysicalDriveIntervalAuthority['source'];
+  }): Promise<boolean> {
+    const experiment = await this.repository.findExperimentBySessionId(args.sessionId);
+    if (!experiment) return false;
+    const authority: Exp021PhysicalDriveIntervalAuthority = {
+      physicalStartAt: args.physicalStartAt.toISOString(),
+      physicalEndAt: args.physicalEndAt.toISOString(),
+      source: args.source ?? (args.candidateId ? 'PDI_CANDIDATE' : 'ORCHESTRATOR_CONFIRMED'),
+      candidateId: args.candidateId,
+    };
+    await this.repository.mergeExperimentMetadataJson(experiment.id, {
+      [EXP021_PHYSICAL_DRIVE_INTERVAL_METADATA_KEY]: authority,
+    });
+    return true;
+  }
+
+  private async registerPdiCandidateOverlay(args: {
+    experimentDbId: string;
+    candidateId: string;
+    candidateBoundaryAt: Date;
+    candidateStatus: PhysicalEndCandidateStatus;
+    candidateDetectedAt: Date;
+  }): Promise<void> {
+    const experiment = await this.prisma.referenceCaptureSettlementShadowExperiment.findUnique({
+      where: { id: args.experimentDbId },
+      select: { metadataJson: true },
+    });
+    const prior =
+      experiment?.metadataJson &&
+      typeof experiment.metadataJson === 'object' &&
+      !Array.isArray(experiment.metadataJson)
+        ? (experiment.metadataJson as Record<string, unknown>)
+        : {};
+    const existingCandidates =
+      prior[EXP021_PDI_CANDIDATES_METADATA_KEY] &&
+      typeof prior[EXP021_PDI_CANDIDATES_METADATA_KEY] === 'object' &&
+      !Array.isArray(prior[EXP021_PDI_CANDIDATES_METADATA_KEY])
+        ? (prior[EXP021_PDI_CANDIDATES_METADATA_KEY] as Record<string, PdiCandidateOverlayRecord>)
+        : {};
+    const nextRecord: PdiCandidateOverlayRecord = {
+      candidateId: args.candidateId,
+      candidateBoundaryAt: args.candidateBoundaryAt.toISOString(),
+      candidateStatus: args.candidateStatus,
+      candidateDetectedAt: args.candidateDetectedAt.toISOString(),
+    };
+    await this.repository.mergeExperimentMetadataJson(args.experimentDbId, {
+      [EXP021_PDI_CANDIDATES_METADATA_KEY]: {
+        ...existingCandidates,
+        [args.candidateId]: nextRecord,
+      },
+    });
+  }
+
+  private async updatePdiCandidateOverlayStatus(args: {
+    sessionId: string;
+    candidateId: string;
+    candidateStatus: PdiCandidateOverlayRecord['candidateStatus'];
+    reason?: string;
+  }): Promise<boolean> {
+    const experiment = await this.repository.findExperimentBySessionId(args.sessionId);
+    if (!experiment) return false;
+    const prior =
+      experiment.metadataJson &&
+      typeof experiment.metadataJson === 'object' &&
+      !Array.isArray(experiment.metadataJson)
+        ? (experiment.metadataJson as Record<string, unknown>)
+        : {};
+    const existingCandidates =
+      prior[EXP021_PDI_CANDIDATES_METADATA_KEY] &&
+      typeof prior[EXP021_PDI_CANDIDATES_METADATA_KEY] === 'object' &&
+      !Array.isArray(prior[EXP021_PDI_CANDIDATES_METADATA_KEY])
+        ? (prior[EXP021_PDI_CANDIDATES_METADATA_KEY] as Record<string, PdiCandidateOverlayRecord>)
+        : {};
+    const current = existingCandidates[args.candidateId];
+    if (!current) return false;
+    await this.repository.mergeExperimentMetadataJson(experiment.id, {
+      [EXP021_PDI_CANDIDATES_METADATA_KEY]: {
+        ...existingCandidates,
+        [args.candidateId]: {
+          ...current,
+          candidateStatus: args.candidateStatus,
+          invalidatedAt: new Date().toISOString(),
+          invalidatedReason: args.reason,
+        },
+      },
+    });
+    return true;
+  }
+
+  private readPhysicalDriveIntervalAuthority(
+    metadataJson: unknown,
+  ): Exp021PhysicalDriveIntervalAuthority | null {
+    if (!metadataJson || typeof metadataJson !== 'object' || Array.isArray(metadataJson)) {
+      return null;
+    }
+    const raw = (metadataJson as Record<string, unknown>)[EXP021_PHYSICAL_DRIVE_INTERVAL_METADATA_KEY];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return null;
+    }
+    const record = raw as Exp021PhysicalDriveIntervalAuthority;
+    if (!record.physicalStartAt || !record.physicalEndAt) {
+      return null;
+    }
+    return record;
   }
 
   async recoverWholeTripShadowForPendingExperiments(now = new Date()): Promise<number> {
@@ -817,6 +955,8 @@ export class ReferenceCaptureSettlementShadowService {
       queryTo: Date;
       aggregationInterval: string;
       idempotencyKey?: string | null;
+      createdAt: Date;
+      scheduledAt: Date;
     };
     actualAgeMs: number;
     scheduleDriftMs: number;
@@ -872,10 +1012,21 @@ export class ReferenceCaptureSettlementShadowService {
     }
     const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
 
-    const boundaryMs = args.schedule.sourceIntervalEnd.getTime();
-    const scheduleCreatedAtMs = args.requestStartedAt.getTime();
+    const candidateBoundaryAt = args.schedule.sourceIntervalEnd;
     const prospectiveAtCreation =
-      isPdiChannel && scheduleCreatedAtMs <= boundaryMs + args.schedule.scheduledAgeMs;
+      isPdiChannel &&
+      computePdiProspectiveAtCreation({
+        scheduleCreatedAt: args.schedule.createdAt,
+        candidateBoundaryAt,
+        scheduledAgeMs: args.schedule.scheduledAgeMs,
+      });
+    const executedOnTime =
+      isPdiChannel && args.schedule.scheduledAt
+        ? computePdiExecutedOnTime({
+            requestStartedAt: args.requestStartedAt,
+            scheduledAt: args.schedule.scheduledAt,
+          })
+        : undefined;
 
     const observationPayload = {
       channel:
@@ -886,10 +1037,12 @@ export class ReferenceCaptureSettlementShadowService {
       ...(isPdiChannel && pdiCandidateId
         ? {
             candidateId: pdiCandidateId,
-            candidateBoundaryAt: args.schedule.sourceIntervalEnd.toISOString(),
-            candidateStatus: 'PROVISIONAL',
-            scheduleCreatedAt: args.requestStartedAt.toISOString(),
+            candidateBoundaryAt: candidateBoundaryAt.toISOString(),
+            scheduleCreatedAt: args.schedule.createdAt.toISOString(),
+            requestStartedAt: args.requestStartedAt.toISOString(),
+            scheduledAt: args.schedule.scheduledAt.toISOString(),
             prospectiveAtCreation,
+            executedOnTime,
           }
         : {}),
       sourceIntervalStart: args.schedule.sourceIntervalStart.toISOString(),
@@ -968,6 +1121,10 @@ export class ReferenceCaptureSettlementShadowService {
     physicalEndAt?: Date | null;
   }) {
     const windowStart = args.sessionStartedAt ?? new Date(args.sessionStoppedAt.getTime() - 4 * 60 * 60 * 1000);
+    const intervalSource =
+      args.physicalStartAt && args.physicalEndAt
+        ? 'PHYSICAL_INTERVAL_AUTHORITATIVE'
+        : 'SESSION_ENVELOPE_FALLBACK';
     const candidates = await this.prisma.vehicleTrip.findMany({
       where: {
         vehicleId: args.vehicleId,
@@ -992,6 +1149,7 @@ export class ReferenceCaptureSettlementShadowService {
         startTime: ranked.trip.startTime,
         endTime: ranked.trip.endTime,
         binding: ranked.binding,
+        intervalSource,
         overlapMs: ranked.trip.overlapMs,
         physicalIntervalCoverage: ranked.trip.physicalIntervalCoverage,
         startBoundaryDeltaMs: ranked.trip.startBoundaryDeltaMs,
@@ -1001,12 +1159,14 @@ export class ReferenceCaptureSettlementShadowService {
 
     if (ranked.binding === 'AMBIGUOUS_SPLIT') {
       this.logger.warn(
-        `Canonical VehicleTrip binding AMBIGUOUS_SPLIT vehicle=${args.vehicleId} candidates=${ranked.candidates
+        `Canonical VehicleTrip binding AMBIGUOUS_SPLIT vehicle=${args.vehicleId} intervalSource=${intervalSource} candidates=${ranked.candidates
           .map((c) => c.id)
           .join(',')}`,
       );
     }
 
-    return null;
+    return intervalSource === 'SESSION_ENVELOPE_FALLBACK'
+      ? { intervalSource, binding: ranked.binding }
+      : { intervalSource, binding: ranked.binding };
   }
 }

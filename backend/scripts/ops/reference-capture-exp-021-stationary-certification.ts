@@ -13,7 +13,10 @@ import { ReferenceCaptureSessionRepository } from '../../src/modules/vehicle-int
 import { ReferenceCaptureSettlementShadowService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
 import { EXP021_MANDATORY_AGES_MS } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
-import { loadBackendEnvFile } from './reference-capture-exp-021-autonomous-orchestrator.lib';
+import {
+  buildExp021RuntimeConfig,
+  loadBackendEnvFile,
+} from './reference-capture-exp-021-autonomous-orchestrator.lib';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -48,11 +51,11 @@ async function main(): Promise<void> {
     throw new Error('Refusing without --confirm-stationary-cert');
   }
 
-  const organizationId = process.env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
-  const vehicleId = process.env.VEHICLE_ID ?? 'c10351f8-b6a2-4258-947f-631aeaa6d359';
-  const tokenId = Number.parseInt(process.env.TOKEN_ID ?? '187361', 10);
-
   loadBackendEnvFile();
+  const runtimeConfig = buildExp021RuntimeConfig();
+  const organizationId = runtimeConfig.organizationId;
+  const vehicleId = runtimeConfig.vehicleId;
+  const tokenId = runtimeConfig.tokenId;
   const appModule = await AppModule.forRootAsync();
   const app = await NestFactory.createApplicationContext(appModule, { logger: ['error', 'warn'] });
 

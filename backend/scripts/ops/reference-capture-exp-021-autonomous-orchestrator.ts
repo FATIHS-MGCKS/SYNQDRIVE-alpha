@@ -282,6 +282,8 @@ async function main(): Promise<void> {
   let deployReady = false;
   let policyGatePassed = false;
   let movementBeforeDeploy = false;
+  let preDeployMovingPolls = 0;
+  let deployConvergedAtMs: number | null = null;
   let physicalDriveStarted = false;
   let physicalDriveEnded = false;
   let preRollStarted = false;
@@ -342,6 +344,8 @@ async function main(): Promise<void> {
 
       if (!deployReady) {
         if (!deployRunning && sha === config.targetDeploySha && r3001 && r3002 && ext && redisHealthy()) {
+          physicalStartDetector.reset();
+          deployConvergedAtMs = Date.now();
           deployReady = true;
           log(config, 'DEPLOY_CONVERGED', {
             DEPLOY_PROCESS_FINISHED: 'YES',
@@ -362,9 +366,11 @@ async function main(): Promise<void> {
             config.parkedSpeedKmh,
             config.movementSpeedKmh,
           );
-          physicalStartDetector.record(motion, Date.now(), deployMotion);
-          if (physicalStartDetector.isConfirmed()) {
-            movementBeforeDeploy = true;
+          if (deployMotion === 'MOVING') {
+            preDeployMovingPolls += 1;
+            if (preDeployMovingPolls >= 3) {
+              movementBeforeDeploy = true;
+            }
           }
         }
 
@@ -521,14 +527,6 @@ async function main(): Promise<void> {
           config.parkedSpeedKmh,
           config.movementSpeedKmh,
         );
-        if (preRollMotion !== 'PARKED_CANDIDATE') {
-          log(config, 'WAIT_PARKED_FOR_PRE_ROLL', {
-            speedKmh: motion!.speedKmh,
-            motionState: preRollMotion,
-          });
-          await sleep(config.pollMs);
-          continue;
-        }
 
         const sess = await sessionRepo!.findById(config.organizationId, sessionId);
         if (sess?.status === 'RECORDING') {
@@ -548,6 +546,9 @@ async function main(): Promise<void> {
           SESSION_ID: sessionId,
           SESSION_STATUS: 'RECORDING',
           LIVE_TELEMETRY_READY: 'YES',
+          PRE_ROLL_COMPLETE: preRollMotion === 'PARKED_CANDIDATE' ? 'YES' : 'PARTIAL',
+          FIRST_FRESH_SAMPLE_MOVING: preRollMotion === 'MOVING' ? 'YES' : 'NO',
+          AUTONOMOUS_WAKE_AND_GO_SUPPORTED: 'YES',
         });
         phase = 'WAIT_MOVEMENT';
         await sleep(config.pollMs);
@@ -569,6 +570,21 @@ async function main(): Promise<void> {
         physicalStartDetector.record(motion, nowMs, motionState);
         if (physicalStartDetector.isConfirmed()) {
           const confirmation = physicalStartDetector.getConfirmation();
+          if (
+            deployConvergedAtMs != null &&
+            confirmation &&
+            confirmation.firstQualifyingMovementAt.getTime() < deployConvergedAtMs
+          ) {
+            phase = 'SKIPPED';
+            log(config, 'EXP021_RUN_SKIPPED', {
+              EXP021_RUN_SKIPPED_REASON: 'PHYSICAL_START_BEFORE_DEPLOY_CONVERGENCE',
+              DRIVE_STARTED_BEFORE_DEPLOY_FAILS_CLOSED: 'YES',
+              firstQualifyingMovementAt: confirmation.firstQualifyingMovementAt.toISOString(),
+              deployConvergedAt: new Date(deployConvergedAtMs).toISOString(),
+            });
+            running = false;
+            break;
+          }
           physicalDriveStarted = true;
           physicalDriveStartedAt =
             confirmation?.firstQualifyingMovementAt ?? new Date(nowMs);
@@ -696,6 +712,23 @@ async function main(): Promise<void> {
         if (physicalDriveStarted && endObservation.shouldAutoStop) {
           physicalDriveEnded = true;
           const finalPhase = phaseTracker.markPhysicalDriveEnded(nowMs);
+          const endCandidate = physicalEndDetector.getCandidate();
+          if (physicalDriveStartedAt && endCandidate?.candidateBoundaryAt) {
+            await settlementShadow!.persistPhysicalDriveIntervalAuthority({
+              sessionId,
+              physicalStartAt: physicalDriveStartedAt,
+              physicalEndAt: endCandidate.candidateBoundaryAt,
+              candidateId: endCandidate.candidateId,
+              source: 'PDI_CANDIDATE',
+            });
+          } else if (physicalDriveStartedAt) {
+            await settlementShadow!.persistPhysicalDriveIntervalAuthority({
+              sessionId,
+              physicalStartAt: physicalDriveStartedAt,
+              physicalEndAt: new Date(nowMs),
+              source: 'ORCHESTRATOR_CONFIRMED',
+            });
+          }
           await sessionService!.stopRecording(config.organizationId, sessionId);
           const final = await sessionRepo!.findById(config.organizationId, sessionId);
           const canonicalWholeTrip = await prisma!.referenceCaptureSettlementShadowSchedule.count({

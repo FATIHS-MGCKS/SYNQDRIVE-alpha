@@ -158,6 +158,18 @@ export class PhysicalStartDetector {
       const removed = this.windowSamples.shift()!;
       this.seenTimestamps.delete(removed.timestamp);
     }
+    this.recomputeFirstQualifyingMovementAt();
+  }
+
+  private recomputeFirstQualifyingMovementAt(): void {
+    if (this.windowSamples.length === 0) {
+      this.firstQualifyingMovementAtMs = null;
+      return;
+    }
+    this.firstQualifyingMovementAtMs = this.windowSamples.reduce(
+      (min, sample) => Math.min(min, sample.timestampMs),
+      this.windowSamples[0].timestampMs,
+    );
   }
 
   private maybeResetForSustainedParking(nowMs: number, motionState: MotionState): void {
@@ -202,13 +214,7 @@ export class PhysicalStartDetector {
     this.seenTimestamps.add(sample.speedTimestamp);
     this.windowSamples.push({ timestamp: sample.speedTimestamp, timestampMs });
     this.pruneWindow(nowMs);
-
-    if (
-      this.firstQualifyingMovementAtMs == null ||
-      timestampMs < this.firstQualifyingMovementAtMs
-    ) {
-      this.firstQualifyingMovementAtMs = timestampMs;
-    }
+    this.recomputeFirstQualifyingMovementAt();
 
     if (
       this.windowSamples.length >= this.config.minDistinctFreshSamples &&
@@ -472,7 +478,8 @@ export class PhysicalDrivePhaseTracker {
       return null;
     }
     if (this.lastTickMs != null && boundaryMs > this.lastTickMs) {
-      this.tick(this.lastMotionState ?? 'UNKNOWN', boundaryMs);
+      // Unobserved tail after last real poll is uncertain — never fabricate MOVING boundaries.
+      this.uncertainMovementDurationMs += Math.max(0, boundaryMs - this.lastTickMs);
     }
     const required = this.requiredMovementMs ?? 0;
     const satisfied = this.movementAccumulatedMs >= required;
@@ -535,6 +542,47 @@ export function buildPhysicalDriveIntervalProbeId(ageMs: number): string {
 }
 
 export const EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL = 'PHYSICAL_DRIVE_INTERVAL_SHADOW';
+
+export type PdiCandidateOverlayStatus =
+  | PhysicalEndCandidateStatus
+  | 'INVALIDATED_END_CANDIDATE';
+
+export type PdiCandidateOverlayRecord = {
+  candidateId: string;
+  candidateBoundaryAt: string;
+  candidateStatus: PdiCandidateOverlayStatus;
+  candidateDetectedAt?: string;
+  invalidatedAt?: string;
+  invalidatedReason?: string;
+};
+
+export type Exp021PhysicalDriveIntervalAuthority = {
+  physicalStartAt: string;
+  physicalEndAt: string;
+  source: 'ORCHESTRATOR_CONFIRMED' | 'PDI_CANDIDATE' | 'SESSION_ENVELOPE_FALLBACK';
+  candidateId?: string;
+};
+
+export const EXP021_PDI_CANDIDATES_METADATA_KEY = 'pdiCandidates';
+export const EXP021_PHYSICAL_DRIVE_INTERVAL_METADATA_KEY = 'physicalDriveInterval';
+
+export function computePdiProspectiveAtCreation(args: {
+  scheduleCreatedAt: Date;
+  candidateBoundaryAt: Date;
+  scheduledAgeMs: number;
+}): boolean {
+  return (
+    args.scheduleCreatedAt.getTime() <=
+    args.candidateBoundaryAt.getTime() + args.scheduledAgeMs
+  );
+}
+
+export function computePdiExecutedOnTime(args: {
+  requestStartedAt: Date;
+  scheduledAt: Date;
+}): boolean {
+  return args.requestStartedAt.getTime() <= args.scheduledAt.getTime();
+}
 
 export type CanonicalTripBindingResult =
   | {
