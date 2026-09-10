@@ -342,7 +342,7 @@ function buildKs661R12EmptyStaleMock(): TripR11SegmentsMock {
       restoreTripR11Clock();
 
       useTripR11FrozenClock(endCycleAt);
-      const steps = await drainTripTrackingQueue({
+      const { steps } = await drainTripTrackingQueue({
         queue: trackingQueue,
         runJob: harness.runJob,
       });

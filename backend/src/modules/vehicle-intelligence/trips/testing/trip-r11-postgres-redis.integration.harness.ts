@@ -193,6 +193,7 @@ export async function createTripR11ActiveTripFixture(
         lastProviderActivityAt: lastMovementAt.toISOString(),
         stopBoundaryAt: stopBoundaryAt.toISOString(),
         stopBoundarySource,
+        stopBoundaryTrust: true,
       },
     },
   });
@@ -615,8 +616,9 @@ export async function drainTripTrackingQueue(params: {
   queue: Queue<TripTrackingJobData>;
   runJob: (job: TripTrackingJobData) => Promise<void>;
   maxSteps?: number;
-}): Promise<number> {
+}): Promise<{ steps: number; triggers: TripTrackingJobData['trigger'][] }> {
   let steps = 0;
+  const triggers: TripTrackingJobData['trigger'][] = [];
   const maxSteps = params.maxSteps ?? 20;
 
   const jobPhasePriority = (jobId: string | undefined): number => {
@@ -647,9 +649,10 @@ export async function drainTripTrackingQueue(params: {
     // otherwise leaves WAITING and stable-slot enqueue returns skipped).
     await job.remove().catch(() => undefined);
     await params.runJob(jobData);
+    triggers.push(jobData.trigger);
     steps += 1;
   }
-  return steps;
+  return { steps, triggers };
 }
 
 export function createTripTrackingWorkers(params: {
