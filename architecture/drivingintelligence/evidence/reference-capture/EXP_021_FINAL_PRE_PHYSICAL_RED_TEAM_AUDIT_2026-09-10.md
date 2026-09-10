@@ -8,9 +8,10 @@
 
 | Metric | Value |
 |--------|-------|
-| `RED_TEAM_AUDIT_COMPLETE` | **YES** |
-| `CONFIRMED_BLOCKERS_FOUND` | **14** |
-| `CONFIRMED_BLOCKERS_FIXED` | **14** (in this PR iteration) |
+| `RED_TEAM_AUDIT_COMPLETE` | **YES** (first pass) |
+| `SECOND_PASS_AUDIT_COMPLETE` | **YES** (deterministic logic correction) |
+| `CONFIRMED_BLOCKERS_FOUND` | **14** (first pass) + **13** (second pass) |
+| `CONFIRMED_BLOCKERS_FIXED` | **27** (combined in PR #1593) |
 | `OPEN_BLOCKERS` | **1** — post-merge `--e2e-shadow-smoke` on production VPS not yet executed |
 
 ---
@@ -32,7 +33,7 @@
 | `loadEnv` after constant freeze | **CONFIRMED** | `TARGET_SHA` frozen before `backend.env` | **Fixed** — env loaded before SHA resolution |
 | `STALE_TARGET_SHA_DEFAULT_PRESENT` | **CONFIRMED → FIXED** | YES | **NO** |
 
-`RUNTIME_CONFIG_LOADED_BEFORE_CONSTANT_RESOLUTION = YES` (post-fix)
+`RUNTIME_CONFIG_LOADED_BEFORE_CONSTANT_RESOLUTION = YES` only for **TARGET_SHA** in first pass; **second pass** freezes all orchestrator env via `buildExp021RuntimeConfig()` after `loadBackendEnvFile()`.
 
 ---
 
@@ -128,14 +129,17 @@ Phase records include: `PHASE_STARTED_AT`, `PHASE_ENDED_AT`, `WALL_DURATION_MS`,
 | `CURRENT_AUTO_END_PRESERVES_TRUE_WHOLE_TRIP_60S` | **NO** |
 | `CURRENT_AUTO_END_PRESERVES_TRUE_WHOLE_TRIP_120S` | **NO** |
 
-**Mitigation (CONFIRMED fix):** `PHYSICAL_DRIVE_INTERVAL_SHADOW` channel schedules at **drive-end candidate** (+120s parked default), not at `stopRecording`.
+**First-pass mitigation (insufficient):** PDI scheduled only after **120s sustain**, with `driveEndedAt = Date.now()` — true +30 was **~T0+150s**, not boundary+30s.
 
-| Question | Post-fix |
-|----------|----------|
-| `TRUE_POST_DRIVE_30S_QUERY_PRESERVED` | **YES** (PDI channel) |
-| `TRUE_POST_DRIVE_60S_QUERY_PRESERVED` | **YES** (PDI channel) |
+**Second-pass fix:** `PhysicalEndDetector` creates **PROVISIONAL** boundary at **first fresh parked provider timestamp** and schedules PDI **immediately** (`scheduledAt = boundary + ageMs`). Movement resume **INVALIDATES** candidate; completed observations marked `INVALIDATED_END_CANDIDATE` (immutable).
 
-Canonical `WHOLE_TRIP` (VehicleTrip) unchanged for later comparison.
+| Question | Second-pass |
+|----------|-------------|
+| `TRUE_POST_DRIVE_30S_QUERY_PRESERVED` | **YES** (when schedule created before boundary+30s) |
+| `TRUE_POST_DRIVE_60S_QUERY_PRESERVED` | **YES** (same prospective semantics) |
+| `PDI_30_SCHEDULE_CREATED_BEFORE_DEADLINE` | **YES** (code path + unit test) |
+
+Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI uses `phase=PHYSICAL_DRIVE_INTERVAL_SHADOW`.
 
 ---
 
@@ -244,10 +248,34 @@ Canonical `WHOLE_TRIP` (VehicleTrip) unchanged for later comparison.
 
 ---
 
+## Second-pass deterministic correction (2026-09-10)
+
+| # | Issue | Second-pass result |
+|---|-------|-------------------|
+| 1 | PDI timing (+30/+60) | **FIXED** — prospective boundary + immediate schedule |
+| 2 | Final 10s phase validity | **FIXED** — `sealActivePhaseAtBoundary` before terminalization |
+| 3 | Phase transition authority | **FIXED** — switch → effective → seal at canonical boundary |
+| 4 | Urban start detector | **FIXED** — sliding window; brief stops do not reset |
+| 5 | Ignition-off auto-end | **FIXED** — `PhysicalEndDetector` preserves candidate on UNKNOWN |
+| 6 | False end-candidate provenance | **FIXED** — invalidate completed obs + skip pending |
+| 7 | PDI vs WHOLE_TRIP ambiguity | **FIXED** — phase discriminator in counts/comparisons |
+| 8 | VehicleTrip gap-split | **FIXED** — overlap ranking; `AMBIGUOUS_SPLIT` logged, no silent bind |
+| 9 | Runtime config after env load | **FIXED** — `buildExp021RuntimeConfig()` |
+| 10 | Movement accounting | **FIXED** — fail-closed consecutive-MOVING intervals |
+| 11 | Probe B geometry authority | **NOMINAL_PHASE_START_OFFSET** (documented constant) |
+| 12 | Stationary cert 12 schedules | **FIXED** — 2 probes × 6 ages structural proof |
+| 13 | Full-run simulation | **PASS** — deterministic fake-clock test |
+| 14 | Value revision detection | **NOT_IMPLEMENTED** (low priority; gap timing primary) |
+
+`PROSPECTIVE_PROBE_B_GEOMETRY_AUTHORITY = NOMINAL_PHASE_START_OFFSET`  
+`COMPLETED_PHASE_VALIDATION_CONSISTENT = YES` (prospective B immutable; completion validation separate)
+
+---
+
 ## Merge / physical-run gates
 
 | Flag | Value |
 |------|-------|
-| `READY_TO_MERGE_1593` | **YES** (no known self-inflicted invalidation paths remain in code; CI re-run required) |
+| `READY_TO_MERGE_1593` | **YES** (second-pass blockers addressed; CI re-run required) |
 | `READY_TO_DEPLOY` | **NO** (operator instruction) |
 | `READY_FOR_NEXT_EXP021_PHYSICAL_RUN` | **NO** — requires merge + deploy + stationary `--e2e-shadow-smoke` + post-deploy abort recert |

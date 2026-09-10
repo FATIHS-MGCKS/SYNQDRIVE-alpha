@@ -12,6 +12,7 @@ import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intell
 import { ReferenceCaptureSessionRepository } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import { ReferenceCaptureSettlementShadowService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
+import { EXP021_MANDATORY_AGES_MS } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
 import { loadBackendEnvFile } from './reference-capture-exp-021-autonomous-orchestrator.lib';
 
 function sleep(ms: number): Promise<void> {
@@ -143,10 +144,11 @@ async function main(): Promise<void> {
       where: { sessionId, probeId: { in: ['SP-60-A', 'SP-60-B'] } },
       select: { probeId: true, scheduledAgeMs: true, status: true, scheduledAt: true },
     });
+    result.PHASE60_EXPECTED_SCHEDULES = 12;
+    result.PHASE60_PERSISTED_SCHEDULES = persistedSchedules.length;
     result.PERSISTED_SCHEDULE_COUNT = persistedSchedules.length;
-    const expectedAges = [30_000, 60_000];
     for (const probeId of ['SP-60-A', 'SP-60-B']) {
-      for (const age of expectedAges) {
+      for (const age of EXP021_MANDATORY_AGES_MS) {
         const found = persistedSchedules.some(
           (row) => row.probeId === probeId && row.scheduledAgeMs === age,
         );
@@ -222,10 +224,7 @@ async function main(): Promise<void> {
 
     const structuralPass =
       result.PHASE_60_EFFECTIVE_PROVEN === 'YES' &&
-      result.PERSISTED_SP_60_A_30S === 'YES' &&
-      result.PERSISTED_SP_60_A_60S === 'YES' &&
-      result.PERSISTED_SP_60_B_30S === 'YES' &&
-      result.PERSISTED_SP_60_B_60S === 'YES' &&
+      result.PHASE60_PERSISTED_SCHEDULES === 12 &&
       result.NO_ACTIVE_RC_SESSION_AFTER_DRY_RUN === 'YES' &&
       result.NO_ACTIVE_SETTLEMENT_EXPERIMENT_AFTER_DRY_RUN === 'YES';
 

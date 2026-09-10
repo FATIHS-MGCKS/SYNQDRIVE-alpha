@@ -183,6 +183,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 | Evidence | `EXP_020_RETROSPECTIVE_WINDOW_POST_TRIP_MATRIX_2026-09-07.md` + VPS `/tmp/exp-020/` |
 
+## EXP-021 — Second-pass deterministic logic correction (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **SECOND-PASS FIX** (PR #1593 continuation) |
+| Blockers fixed | PDI +30 at boundary not +150s; final phase validity; phase transition at effective boundary; urban start sliding window; ignition-off end; false-candidate provenance; PDI vs WHOLE_TRIP counts; VehicleTrip overlap ranking; full runtime config freeze; fail-closed movement accounting |
+| Tests | Full-run simulation PASS; motion/orchestrator/settlement suites green |
+| Revision analysis | `VALUE_REVISION_DETECTION` remains **NOT_IMPLEMENTED** |
+| Evidence | `EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md` §Second-pass |
+
 ## EXP-021 — Final pre-physical red-team hardening (2026-09-10)
 
 | Event | Detail |

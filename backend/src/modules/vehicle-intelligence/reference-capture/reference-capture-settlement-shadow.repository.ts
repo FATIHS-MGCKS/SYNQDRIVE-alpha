@@ -583,6 +583,46 @@ export class ReferenceCaptureSettlementShadowRepository {
     });
   }
 
+  markPdiObservationsInvalidatedForCandidate(args: {
+    sessionId: string;
+    candidateId: string;
+    reason: string;
+  }): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
+      const schedules = await tx.referenceCaptureSettlementShadowSchedule.findMany({
+        where: {
+          sessionId: args.sessionId,
+          phase: 'PHYSICAL_DRIVE_INTERVAL_SHADOW',
+          idempotencyKey: { contains: args.candidateId },
+        },
+        select: { id: true, observation: { select: { id: true, observationJson: true } } },
+      });
+      let updated = 0;
+      for (const schedule of schedules) {
+        if (!schedule.observation) continue;
+        const prior =
+          schedule.observation.observationJson &&
+          typeof schedule.observation.observationJson === 'object' &&
+          !Array.isArray(schedule.observation.observationJson)
+            ? (schedule.observation.observationJson as Record<string, unknown>)
+            : {};
+        await tx.referenceCaptureSettlementShadowObservation.update({
+          where: { id: schedule.observation.id },
+          data: {
+            observationJson: {
+              ...prior,
+              candidateId: args.candidateId,
+              candidateStatus: 'INVALIDATED_END_CANDIDATE',
+              invalidatedReason: args.reason,
+            },
+          },
+        });
+        updated += 1;
+      }
+      return updated;
+    });
+  }
+
   findExperimentsMissingWholeTripShadow(limit = 20) {
     return this.prisma.referenceCaptureSettlementShadowExperiment.findMany({
       where: {
@@ -601,7 +641,7 @@ export class ReferenceCaptureSettlementShadowRepository {
           },
         },
         schedules: {
-          where: { probeType: 'WHOLE_TRIP' },
+          where: { probeType: 'WHOLE_TRIP', phase: null },
           select: { id: true },
         },
       },

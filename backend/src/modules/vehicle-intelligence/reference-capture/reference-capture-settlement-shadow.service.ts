@@ -41,6 +41,8 @@ import {
 import {
   buildPhysicalDriveIntervalProbeId,
   EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+  rankCanonicalVehicleTripCandidates,
+  type PhysicalEndCandidateStatus,
 } from './reference-capture-exp-021-motion.lib';
 
 @Injectable()
@@ -550,6 +552,9 @@ export class ReferenceCaptureSettlementShadowService {
     driveStartedAt: Date;
     driveEndedAt: Date;
     candidateId: string;
+    candidateBoundaryAt: Date;
+    candidateStatus: PhysicalEndCandidateStatus;
+    scheduleCreatedAt?: Date;
   }): Promise<boolean> {
     if (!this.isEnabled()) return false;
 
@@ -562,7 +567,8 @@ export class ReferenceCaptureSettlementShadowService {
       });
       if (!experiment) return false;
 
-      const driveEndMs = args.driveEndedAt.getTime();
+      const scheduleCreatedAt = args.scheduleCreatedAt ?? new Date();
+      const boundaryMs = args.candidateBoundaryAt.getTime();
       const scheduleRows = EXP021_MANDATORY_AGES_MS.map((ageMs) => ({
         experimentId: experiment.id,
         sessionId: args.sessionId,
@@ -573,17 +579,13 @@ export class ReferenceCaptureSettlementShadowService {
         probeType: ReferenceCaptureSettlementShadowProbeType.WHOLE_TRIP,
         phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
         sourceIntervalStart: args.driveStartedAt,
-        sourceIntervalEnd: args.driveEndedAt,
+        sourceIntervalEnd: args.candidateBoundaryAt,
         queryFrom: args.driveStartedAt,
-        queryTo: args.driveEndedAt,
+        queryTo: args.candidateBoundaryAt,
         aggregationInterval: SHADOW_AGGREGATION_INTERVAL,
         scheduledAgeMs: ageMs,
-        scheduledAt: new Date(driveEndMs + ageMs),
-        idempotencyKey: buildScheduleIdempotencyKey({
-          experimentId: experiment.experimentId,
-          probeId: `${buildPhysicalDriveIntervalProbeId(ageMs)}|${args.candidateId}`,
-          scheduledAgeMs: ageMs,
-        }),
+        scheduledAt: new Date(boundaryMs + ageMs),
+        idempotencyKey: `${experiment.experimentId}|${buildPhysicalDriveIntervalProbeId(ageMs)}|${args.candidateId}|${ageMs}`,
       }));
 
       const { created } = await this.repository.createSchedulesIfAbsent(scheduleRows);
@@ -622,7 +624,12 @@ export class ReferenceCaptureSettlementShadowService {
       await this.repository.markSkipped(row.id, args.reason);
       skipped += 1;
     }
-    return skipped;
+    const markedCompleted = await this.repository.markPdiObservationsInvalidatedForCandidate({
+      sessionId: args.sessionId,
+      candidateId: args.candidateId,
+      reason: args.reason,
+    });
+    return skipped + markedCompleted;
   }
 
   async recoverWholeTripShadowForPendingExperiments(now = new Date()): Promise<number> {
@@ -783,6 +790,15 @@ export class ReferenceCaptureSettlementShadowService {
     });
   }
 
+  private extractPdiCandidateIdFromIdempotencyKey(idempotencyKey: string | null | undefined): string | null {
+    if (!idempotencyKey) return null;
+    const parts = idempotencyKey.split('|');
+    if (parts.length < 4 || !parts[2]?.startsWith('pdi-')) {
+      return null;
+    }
+    return parts[2];
+  }
+
   private async persistObservation(args: {
     schedule: {
       id: string;
@@ -800,6 +816,7 @@ export class ReferenceCaptureSettlementShadowService {
       queryFrom: Date;
       queryTo: Date;
       aggregationInterval: string;
+      idempotencyKey?: string | null;
     };
     actualAgeMs: number;
     scheduleDriftMs: number;
@@ -815,28 +832,66 @@ export class ReferenceCaptureSettlementShadowService {
       providerFields: args.providerFields,
     });
 
-    const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
-      where: {
-        experimentId: args.schedule.experimentId,
-        probeId: args.schedule.probeId,
-        scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
-      },
-      orderBy: { scheduledAgeMs: 'desc' },
-      take: 1,
-    });
-    const priorIdentities =
-      (priorObservations[0]?.observationJson as { uniqueBucketIdentities?: string[] } | null)
-        ?.uniqueBucketIdentities ?? [];
+    const isPdiChannel = args.schedule.phase === EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL;
+    const pdiCandidateId = isPdiChannel
+      ? this.extractPdiCandidateIdFromIdempotencyKey(args.schedule.idempotencyKey)
+      : null;
+
+    let priorIdentities: string[] = [];
+    if (isPdiChannel && pdiCandidateId) {
+      const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
+        where: {
+          experimentId: args.schedule.experimentId,
+          probeId: args.schedule.probeId,
+          scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
+          phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+        },
+        orderBy: { scheduledAgeMs: 'desc' },
+        take: 20,
+      });
+      const sameCandidate = priorObservations.find((row) => {
+        const json = row.observationJson as { candidateId?: string } | null;
+        return json?.candidateId === pdiCandidateId;
+      });
+      priorIdentities =
+        (sameCandidate?.observationJson as { uniqueBucketIdentities?: string[] } | null)
+          ?.uniqueBucketIdentities ?? [];
+    } else if (!isPdiChannel) {
+      const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
+        where: {
+          experimentId: args.schedule.experimentId,
+          probeId: args.schedule.probeId,
+          scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
+        },
+        orderBy: { scheduledAgeMs: 'desc' },
+        take: 1,
+      });
+      priorIdentities =
+        (priorObservations[0]?.observationJson as { uniqueBucketIdentities?: string[] } | null)
+          ?.uniqueBucketIdentities ?? [];
+    }
     const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
+
+    const boundaryMs = args.schedule.sourceIntervalEnd.getTime();
+    const scheduleCreatedAtMs = args.requestStartedAt.getTime();
+    const prospectiveAtCreation =
+      isPdiChannel && scheduleCreatedAtMs <= boundaryMs + args.schedule.scheduledAgeMs;
 
     const observationPayload = {
       channel:
-        args.schedule.phase === EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL
-          ? EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL
-          : 'SETTLEMENT_SHADOW',
+        isPdiChannel ? EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL : 'SETTLEMENT_SHADOW',
       probeId: args.schedule.probeId,
       probeType: args.schedule.probeType,
       phase: args.schedule.phase,
+      ...(isPdiChannel && pdiCandidateId
+        ? {
+            candidateId: pdiCandidateId,
+            candidateBoundaryAt: args.schedule.sourceIntervalEnd.toISOString(),
+            candidateStatus: 'PROVISIONAL',
+            scheduleCreatedAt: args.requestStartedAt.toISOString(),
+            prospectiveAtCreation,
+          }
+        : {}),
       sourceIntervalStart: args.schedule.sourceIntervalStart.toISOString(),
       sourceIntervalEnd: args.schedule.sourceIntervalEnd.toISOString(),
       scheduledAgeMs: args.schedule.scheduledAgeMs,
@@ -909,6 +964,8 @@ export class ReferenceCaptureSettlementShadowService {
     vehicleId: string;
     sessionStartedAt: Date | null;
     sessionStoppedAt: Date;
+    physicalStartAt?: Date | null;
+    physicalEndAt?: Date | null;
   }) {
     const windowStart = args.sessionStartedAt ?? new Date(args.sessionStoppedAt.getTime() - 4 * 60 * 60 * 1000);
     const candidates = await this.prisma.vehicleTrip.findMany({
@@ -918,21 +975,38 @@ export class ReferenceCaptureSettlementShadowService {
         OR: [{ endTime: null }, { endTime: { gte: windowStart } }],
       },
       orderBy: { startTime: 'desc' },
-      take: 5,
+      take: 10,
     });
 
-    const sessionStartMs = windowStart.getTime();
-    const sessionStopMs = args.sessionStoppedAt.getTime();
-
-    const completed = candidates.find((trip) => {
-      if (trip.tripStatus !== 'COMPLETED' || !trip.endTime) {
-        return false;
-      }
-      const tripStartMs = trip.startTime.getTime();
-      const tripEndMs = trip.endTime.getTime();
-      const overlapsSession = tripStartMs <= sessionStopMs && tripEndMs >= sessionStartMs;
-      return overlapsSession;
+    const physicalStartMs = (args.physicalStartAt ?? windowStart).getTime();
+    const physicalEndMs = (args.physicalEndAt ?? args.sessionStoppedAt).getTime();
+    const ranked = rankCanonicalVehicleTripCandidates({
+      trips: candidates,
+      physicalStartMs,
+      physicalEndMs,
     });
-    return completed ?? null;
+
+    if (ranked.binding === 'SINGLE_MATCH') {
+      return {
+        id: ranked.trip.id,
+        startTime: ranked.trip.startTime,
+        endTime: ranked.trip.endTime,
+        binding: ranked.binding,
+        overlapMs: ranked.trip.overlapMs,
+        physicalIntervalCoverage: ranked.trip.physicalIntervalCoverage,
+        startBoundaryDeltaMs: ranked.trip.startBoundaryDeltaMs,
+        endBoundaryDeltaMs: ranked.trip.endBoundaryDeltaMs,
+      };
+    }
+
+    if (ranked.binding === 'AMBIGUOUS_SPLIT') {
+      this.logger.warn(
+        `Canonical VehicleTrip binding AMBIGUOUS_SPLIT vehicle=${args.vehicleId} candidates=${ranked.candidates
+          .map((c) => c.id)
+          .join(',')}`,
+      );
+    }
+
+    return null;
   }
 }

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-second-pass-deterministic-logic-2026-09-10',
+    version: '4.9.1094',
+    title: 'EXP-021 — Second-pass deterministic logic correction (PR #1593)',
+    summary: [
+      'Independent second-pass review: fixed PDI prospective timing (boundary at first parked sample, schedule before +30), final-phase validity, phase transition at effective boundary, urban start sliding window, ignition-off end detector.',
+      'False end-candidate provenance: completed PDI observations marked INVALIDATED_END_CANDIDATE; cross-candidate bucket comparison isolated.',
+      'Canonical WHOLE_TRIP vs PDI counts separated (phase discriminator); VehicleTrip binding ranked by overlap with AMBIGUOUS_SPLIT guard.',
+      'buildExp021RuntimeConfig() after env load; fail-closed movement interval accounting; stationary cert requires 12 phase-60 schedules; full-run simulation test.',
+    ],
+    reason:
+      'Correct overclaimed first-pass authority flags and remove deterministic self-inflicted invalidation before merge of PR #1593.',
+    previousBehavior:
+      'PDI +30 at ~T0+150s; final 10s phase always invalid at drive end; phase tracker advanced before HF effective; start reset on brief stop; UNKNOWN cleared end candidate.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Second-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-final-pre-physical-red-team-2026-09-10',
     version: '4.9.1093',
     title: 'EXP-021 — Final pre-physical red-team scientific hardening',

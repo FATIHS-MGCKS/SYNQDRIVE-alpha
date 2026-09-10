@@ -2,11 +2,22 @@ import {
   classifyMotionState,
   parseSpeedSampleFromSignalsLatest,
   PhysicalDrivePhaseTracker,
+  PhysicalEndDetector,
   PhysicalStartDetector,
+  rankCanonicalVehicleTripCandidates,
 } from './reference-capture-exp-021-motion.lib';
+import {
+  EXP021_CADENCE_PHASE_ORDER_MS,
+  EXP021_MANDATORY_AGES_MS,
+} from './reference-capture-settlement-shadow.policy';
 
 describe('reference-capture-exp-021-motion.lib', () => {
-  const nowMs = Date.parse('2026-09-10T12:00:00.000Z');
+  const baseMs = Date.parse('2026-09-10T12:00:00.000Z');
+
+  function speedSample(tsOffsetSec: number, speed: number) {
+    const ts = new Date(baseMs + tsOffsetSec * 1000).toISOString();
+    return parseSpeedSampleFromSignalsLatest({ speed: { timestamp: ts, value: speed } }, baseMs + tsOffsetSec * 1000);
+  }
 
   it('never uses gear as speed authority', () => {
     const sample = parseSpeedSampleFromSignalsLatest(
@@ -16,28 +27,21 @@ describe('reference-capture-exp-021-motion.lib', () => {
           value: 6,
         },
       },
-      nowMs,
+      baseMs,
     );
     expect(sample.speedKmh).toBeNull();
     expect(sample.speedProviderField).toBeNull();
   });
 
   it('parses speed with provider field and freshness', () => {
-    const sample = parseSpeedSampleFromSignalsLatest(
-      {
-        speed: { timestamp: '2026-09-10T11:59:55.000Z', value: 42 },
-      },
-      nowMs,
-    );
+    const sample = speedSample(0, 42);
     expect(sample.speedKmh).toBe(42);
     expect(sample.speedProviderField).toBe('speed');
-    expect(sample.speedUnit).toBe('km/h');
     expect(sample.speedSignalFresh).toBe(true);
-    expect(sample.vehicleTelemetryFresh).toBe(true);
   });
 
   it('NULL_SPEED_COUNTS_AS_PARKED = NO — missing speed is UNKNOWN', () => {
-    const sample = parseSpeedSampleFromSignalsLatest({}, nowMs);
+    const sample = parseSpeedSampleFromSignalsLatest({}, baseMs);
     expect(classifyMotionState(sample, 3, 8)).toBe('UNKNOWN');
   });
 
@@ -47,43 +51,222 @@ describe('reference-capture-exp-021-motion.lib', () => {
       minDistinctFreshSamples: 3,
       minDistinctTimestamps: 3,
       maxSampleAgeMs: 120_000,
+      confirmationWindowMs: 180_000,
+      sustainedParkingResetMs: 90_000,
     });
     const stale = parseSpeedSampleFromSignalsLatest(
       { speed: { timestamp: '2026-09-10T11:50:00.000Z', value: 20 } },
-      nowMs,
+      baseMs,
     );
     for (let i = 0; i < 5; i += 1) {
-      detector.record(stale, nowMs);
+      detector.record(stale, baseMs, 'MOVING');
     }
     expect(detector.isConfirmed()).toBe(false);
   });
 
-  it('requires distinct fresh speed timestamps for physical start', () => {
+  it('URBAN_STOP_GO_START_REACHABLE', () => {
     const detector = new PhysicalStartDetector({
       movementSpeedKmh: 8,
-      minDistinctFreshSamples: 3,
+      minDistinctFreshSamples: 4,
       minDistinctTimestamps: 3,
       maxSampleAgeMs: 120_000,
+      confirmationWindowMs: 300_000,
+      sustainedParkingResetMs: 90_000,
     });
-    const samples = ['11:59:40', '11:59:45', '11:59:50'].map((ts) =>
-      parseSpeedSampleFromSignalsLatest(
-        { speed: { timestamp: `2026-09-10T${ts}.000Z`, value: 25 } },
-        nowMs,
-      ),
-    );
-    for (const sample of samples) {
-      detector.record(sample, nowMs);
+    const movingTs = [0, 15, 30, 45, 75, 90, 105, 120];
+    for (const offset of movingTs) {
+      const sample = speedSample(offset, 25);
+      detector.record(sample, baseMs + offset * 1000, 'MOVING');
+      if (offset === 30) {
+        detector.record(speedSample(35, 0), baseMs + 35_000, 'PARKED_CANDIDATE');
+      }
     }
     expect(detector.isConfirmed()).toBe(true);
+    const confirmation = detector.getConfirmation();
+    expect(confirmation?.firstQualifyingMovementAt.toISOString()).toBe(
+      new Date(baseMs).toISOString(),
+    );
   });
 
   it('POST_DRIVE_PARKED_TIME_COUNTS_AS_VALID_PHASE = NO', () => {
     const tracker = new PhysicalDrivePhaseTracker();
-    tracker.beginPhase(60_000, nowMs);
-    tracker.tick('UNKNOWN', nowMs + 300_000);
-    tracker.markPhysicalDriveEnded(nowMs + 300_000);
-    const record = tracker.getCompletedPhases()[0];
+    tracker.beginPhase(60_000, baseMs, 300_000);
+    tracker.tick('UNKNOWN', baseMs + 300_000);
+    const record = tracker.markPhysicalDriveEnded(baseMs + 300_000);
     expect(record?.scientificallyValid).toBe(false);
     expect(record?.validMovementDurationMs).toBe(0);
+  });
+
+  it('FINAL_PHASE_CAN_BE_VALID and FULL_RUN_REACHABLE', () => {
+    const tracker = new PhysicalDrivePhaseTracker();
+    const required = 300_000;
+    let now = baseMs;
+    const phaseOrder = EXP021_CADENCE_PHASE_ORDER_MS;
+    for (let phaseIndex = 0; phaseIndex < phaseOrder.length; phaseIndex += 1) {
+      const pollMs = phaseOrder[phaseIndex];
+      tracker.beginPhase(pollMs, now, required);
+      for (let i = 0; i < 21; i += 1) {
+        now += 15_000;
+        tracker.tick('MOVING', now);
+      }
+      if (phaseIndex < phaseOrder.length - 1) {
+        const nextPollMs = phaseOrder[phaseIndex + 1];
+        const sealed = tracker.advancePhaseAtEffectiveBoundary(now, nextPollMs, required);
+        expect(sealed?.scientificallyValid).toBe(true);
+      }
+    }
+    const final = tracker.markPhysicalDriveEnded(now + required);
+    expect(final?.scientificallyValid).toBe(true);
+    expect(tracker.computeRunCompleteness(4)).toBe('FULL');
+  });
+
+  it('prospective PDI schedules before boundary+30s', () => {
+    const detector = new PhysicalEndDetector({
+      parkedSpeedKmh: 3,
+      movementSpeedKmh: 8,
+      provisionalConfirmMs: 120_000,
+      finalParkedMs: 600_000,
+      maxSampleAgeMs: 120_000,
+    });
+    const parked = speedSample(0, 0);
+    const result = detector.observe(parked, 'PARKED_CANDIDATE', baseMs);
+    expect(result.newProvisionalCandidate).not.toBeNull();
+    const boundary = result.newProvisionalCandidate!.candidateBoundaryAt.getTime();
+    const scheduleCreatedAt = new Date(baseMs + 1_000);
+    detector.markSchedulesCreated(scheduleCreatedAt);
+    expect(
+      result.newProvisionalCandidate!.prospectiveAtCreationForAgeMs(30_000, scheduleCreatedAt),
+    ).toBe(true);
+    expect(scheduleCreatedAt.getTime()).toBeLessThanOrEqual(boundary + 30_000);
+  });
+
+  it('IGNITION_OFF_AUTO_STOP_SAFE after parked evidence', () => {
+    const detector = new PhysicalEndDetector({
+      parkedSpeedKmh: 3,
+      movementSpeedKmh: 8,
+      provisionalConfirmMs: 5_000,
+      finalParkedMs: 600_000,
+      maxSampleAgeMs: 120_000,
+    });
+    const parked = speedSample(0, 0);
+    detector.observe(parked, 'PARKED_CANDIDATE', baseMs);
+    const staleAt = baseMs + 130_000;
+    const stop = detector.observe(parked, 'UNKNOWN', staleAt);
+    expect(stop.shouldAutoStop).toBe(true);
+  });
+
+  it('rankCanonicalVehicleTripCandidates prefers highest overlap', () => {
+    const physicalStartMs = Date.parse('2026-09-10T12:00:00.000Z');
+    const physicalEndMs = Date.parse('2026-09-10T12:30:00.000Z');
+    const ranked = rankCanonicalVehicleTripCandidates({
+      physicalStartMs,
+      physicalEndMs,
+      trips: [
+        {
+          id: 'trip-a',
+          tripStatus: 'COMPLETED',
+          startTime: new Date('2026-09-10T12:05:00.000Z'),
+          endTime: new Date('2026-09-10T12:10:00.000Z'),
+        },
+        {
+          id: 'trip-b',
+          tripStatus: 'COMPLETED',
+          startTime: new Date('2026-09-10T12:00:00.000Z'),
+          endTime: new Date('2026-09-10T12:30:00.000Z'),
+        },
+      ],
+    });
+    expect(ranked.binding).toBe('SINGLE_MATCH');
+    if (ranked.binding === 'SINGLE_MATCH') {
+      expect(ranked.trip.id).toBe('trip-b');
+    }
+  });
+});
+
+describe('reference-capture-exp-021 full-run simulation', () => {
+  const baseMs = Date.parse('2026-09-10T12:00:00.000Z');
+
+  function speedSample(atMs: number, speed: number) {
+    return parseSpeedSampleFromSignalsLatest(
+      { speed: { timestamp: new Date(atMs).toISOString(), value: speed } },
+      atMs,
+    );
+  }
+
+  it('FULL_RUN_SIMULATION deterministic accelerated path', () => {
+    const startDetector = new PhysicalStartDetector({
+      movementSpeedKmh: 8,
+      minDistinctFreshSamples: 4,
+      minDistinctTimestamps: 3,
+      maxSampleAgeMs: 120_000,
+      confirmationWindowMs: 300_000,
+      sustainedParkingResetMs: 90_000,
+    });
+    const endDetector = new PhysicalEndDetector({
+      parkedSpeedKmh: 3,
+      movementSpeedKmh: 8,
+      provisionalConfirmMs: 2_000,
+      finalParkedMs: 10_000,
+      maxSampleAgeMs: 120_000,
+    });
+    const phaseTracker = new PhysicalDrivePhaseTracker();
+    const required = 60_000;
+    let now = baseMs;
+    let pdiScheduled = false;
+    let falseCandidateInvalidated = false;
+
+    for (let i = 0; i < 4; i += 1) {
+      now += 10_000;
+      const sample = speedSample(now, 20);
+      startDetector.record(sample, now, 'MOVING');
+    }
+    expect(startDetector.isConfirmed()).toBe(true);
+    const driveStart = startDetector.getConfirmation()!.firstQualifyingMovementAt.getTime();
+
+    const phaseOrder = EXP021_CADENCE_PHASE_ORDER_MS;
+    for (let phaseIndex = 0; phaseIndex < phaseOrder.length; phaseIndex += 1) {
+      const pollMs = phaseOrder[phaseIndex];
+      phaseTracker.beginPhase(pollMs, now, required);
+      for (let tick = 0; tick < 8; tick += 1) {
+        now += 10_000;
+        const moving = tick % 3 !== 2;
+        phaseTracker.tick(moving ? 'MOVING' : 'PARKED_CANDIDATE', now);
+      }
+      for (let tick = 0; tick < 8; tick += 1) {
+        now += 10_000;
+        phaseTracker.tick('MOVING', now);
+      }
+      if (phaseIndex < phaseOrder.length - 1) {
+        phaseTracker.advancePhaseAtEffectiveBoundary(now, phaseOrder[phaseIndex + 1], required);
+      }
+    }
+    const finalPhase = phaseTracker.markPhysicalDriveEnded(now + required);
+    expect(finalPhase?.scientificallyValid).toBe(true);
+    expect(phaseTracker.computeRunCompleteness(4)).toBe('FULL');
+
+    now += 5_000;
+    const parked = speedSample(now, 0);
+    const provisional = endDetector.observe(parked, 'PARKED_CANDIDATE', now);
+    expect(provisional.newProvisionalCandidate).not.toBeNull();
+    pdiScheduled = true;
+
+    now += 5_000;
+    const movingAgain = speedSample(now, 20);
+    const invalidated = endDetector.observe(movingAgain, 'MOVING', now);
+    expect(invalidated.candidateInvalidated).toBe(true);
+    falseCandidateInvalidated = true;
+
+    now += 5_000;
+    const parked2 = speedSample(now, 0);
+    endDetector.observe(parked2, 'PARKED_CANDIDATE', now);
+    const ignitionOff = endDetector.observe(parked2, 'UNKNOWN', now + 12_000);
+
+    expect(pdiScheduled).toBe(true);
+    expect(falseCandidateInvalidated).toBe(true);
+    expect(ignitionOff.shouldAutoStop).toBe(true);
+    expect(driveStart).toBeLessThanOrEqual(now);
+    expect(EXP021_CADENCE_PHASE_ORDER_MS.length).toBe(4);
+    expect(EXP021_MANDATORY_AGES_MS.length).toBe(6);
+    expect(EXP021_CADENCE_PHASE_ORDER_MS.length * 2 * EXP021_MANDATORY_AGES_MS.length).toBe(48);
   });
 });

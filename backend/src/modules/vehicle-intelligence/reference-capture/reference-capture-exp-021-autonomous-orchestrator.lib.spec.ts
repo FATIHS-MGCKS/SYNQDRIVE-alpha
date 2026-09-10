@@ -1,5 +1,6 @@
 import {
   acquireOrchestratorLock,
+  buildExp021RuntimeConfig,
   buildOrchestratorLockKey,
   evaluateEffectivePolicyGate,
   evaluateEffectivePolicyGateFromEnv,
@@ -12,6 +13,30 @@ import {
 import { parseHfRecoveryPolicyV2ConfigFromEnv } from './reference-capture-hf-recovery-v2.policy';
 
 describe('reference-capture-exp-021-autonomous-orchestrator.lib', () => {
+  describe('buildExp021RuntimeConfig', () => {
+    it('freezes orchestrator env after loadBackendEnvFile semantics', () => {
+      const config = buildExp021RuntimeConfig({
+        env: {
+          ORGANIZATION_ID: 'org-test',
+          VEHICLE_ID: 'veh-test',
+          TOKEN_ID: '999',
+          EXP021_MOVEMENT_SPEED_KMH: '12',
+          EXP021_PARKED_SPEED_KMH: '2',
+          EXP021_PHASE_DURATION_MS: '240000',
+          EXP021_TARGET_DEPLOY_SHA: 'sha-test',
+        },
+        targetDeploySha: 'sha-test',
+      });
+      expect(config.organizationId).toBe('org-test');
+      expect(config.vehicleId).toBe('veh-test');
+      expect(config.tokenId).toBe(999);
+      expect(config.movementSpeedKmh).toBe(12);
+      expect(config.parkedSpeedKmh).toBe(2);
+      expect(config.phaseDurationMs).toBe(240_000);
+      expect(config.targetDeploySha).toBe('sha-test');
+    });
+  });
+
   describe('resolveExp021TargetDeploySha', () => {
     it('uses explicit SHA when provided', () => {
       expect(
