@@ -76,4 +76,38 @@ describe('TripDecisionEngine.evaluateContinuity (R12-AUD-003 fail-closed)', () =
     const decision = engine.evaluateContinuity(findings);
     expect(decision.verdict).toBe('IDLE');
   });
+
+  it('F — legacy evidence.verdict alone must not grant POSSIBLE_END', () => {
+    const findings: DetectorFinding[] = [
+      {
+        detectorName: 'ContinuityAssessmentDetector',
+        verdict: 'NOT_TRIGGERED',
+        confidence: 'MEDIUM',
+        evidence: { verdict: 'POSSIBLE_END' },
+        timestamp: new Date(),
+      },
+    ];
+    const decision = engine.evaluateContinuity(findings);
+    expect(decision.verdict).toBe('ACTIVE');
+    expect(decision.endMode).toBeUndefined();
+    expect(decision.endConfidence).toBeUndefined();
+    expect(decision.reason).toBe('continuity_finding_malformed_fail_closed');
+  });
+
+  it('G — NOT_TRIGGERED with empty evidence must not grant end authority', () => {
+    const findings: DetectorFinding[] = [
+      {
+        detectorName: 'ContinuityAssessmentDetector',
+        verdict: 'NOT_TRIGGERED',
+        confidence: 'LOW',
+        evidence: {},
+        timestamp: new Date(),
+      },
+    ];
+    const decision = engine.evaluateContinuity(findings);
+    expect(decision.verdict).toBe('ACTIVE');
+    expect(decision.endMode).toBeUndefined();
+    expect(decision.endConfidence).toBeUndefined();
+    expect(decision.reason).toBe('continuity_finding_malformed_fail_closed');
+  });
 });

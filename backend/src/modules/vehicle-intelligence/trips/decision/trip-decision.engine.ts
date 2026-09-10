@@ -121,7 +121,7 @@ export class TripDecisionEngine {
     }
 
     const ev = continuityFinding.evidence as Record<string, unknown>;
-    const rawVerdict = (ev?.continuityVerdict ?? ev?.verdict) as string;
+    const rawVerdict = ev?.continuityVerdict as string;
 
     if (continuityFinding.verdict === 'TRIGGERED') {
       return {

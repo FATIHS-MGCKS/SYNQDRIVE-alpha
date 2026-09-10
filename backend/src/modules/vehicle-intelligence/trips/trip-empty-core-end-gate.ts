@@ -69,8 +69,12 @@ function isObservationAfterStopBoundary(
  * Stricter empty-core VLS classifier — tri-state ACTIVE / INACTIVE / UNKNOWN.
  * Does NOT coerce null speed/engineLoad to zero (unlike isCurrentTelemetryInactive).
  *
- * For end candidacy, positive evidence after `stopBoundaryAt` blocks; observations
- * at or before the boundary are treated as stale at stop.
+ * Evaluation hierarchy:
+ * 1. Stale provider observations → UNKNOWN (`vls_stale_provider_observation`)
+ * 2. Fresh positive contradictions (movement, motor activity, ignition ON stationary)
+ *    before any INACTIVE boundary corroboration
+ * 3. Only fresh, non-contradictory stationary evidence may corroborate a stop boundary
+ * 4. Stale evidence may progress only via trusted boundary-backed provider silence
  */
 export function classifyEmptyCoreVlsInactivity(params: {
   telemetry: EmptyCoreVlsTelemetry | null;
