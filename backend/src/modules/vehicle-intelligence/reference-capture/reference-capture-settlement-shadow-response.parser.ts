@@ -81,6 +81,7 @@ export function compareBucketSets(
   const currentSet = new Set(current);
   const newBucketIdentities = current.filter((id) => !priorSet.has(id));
   const missingBucketIdentities = prior.filter((id) => !currentSet.has(id));
+  // VALUE_REVISION_DETECTION: NOT_IMPLEMENTED — identity-only comparison; same bucket key with revised value is not detected.
   return {
     newBucketIdentities,
     missingBucketIdentities,

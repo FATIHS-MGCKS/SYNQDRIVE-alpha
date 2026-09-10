@@ -361,6 +361,48 @@ export class ReferenceCaptureSettlementShadowRepository {
     });
   }
 
+  async linkBullJobIdIfEligible(scheduleId: string, bullJobId: string): Promise<boolean> {
+    const updated = await this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: {
+        id: scheduleId,
+        status: ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+        observation: { is: null },
+        experiment: {
+          status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+        },
+      },
+      data: { bullJobId },
+    });
+    return updated.count > 0;
+  }
+
+  async isScheduleEligibleForExecution(scheduleId: string): Promise<boolean> {
+    const row = await this.prisma.referenceCaptureSettlementShadowSchedule.findUnique({
+      where: { id: scheduleId },
+      select: {
+        status: true,
+        observation: { select: { id: true } },
+        experiment: { select: { status: true } },
+      },
+    });
+    if (!row || row.observation) return false;
+    if (
+      row.status === ReferenceCaptureSettlementShadowScheduleStatus.SKIPPED ||
+      row.status === ReferenceCaptureSettlementShadowScheduleStatus.COMPLETED ||
+      row.status === ReferenceCaptureSettlementShadowScheduleStatus.FAILED
+    ) {
+      return false;
+    }
+    return row.experiment.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE;
+  }
+
+  clearBullJobId(scheduleId: string) {
+    return this.prisma.referenceCaptureSettlementShadowSchedule.updateMany({
+      where: { id: scheduleId },
+      data: { bullJobId: null },
+    });
+  }
+
   markExecuting(scheduleId: string) {
     return this.prisma.referenceCaptureSettlementShadowSchedule.update({
       where: { id: scheduleId },
@@ -431,6 +473,69 @@ export class ReferenceCaptureSettlementShadowRepository {
         status: ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
         bullJobId: null,
       },
+    });
+  }
+
+  async createObservationIfEligible(
+    input: {
+      scheduleId: string;
+      experimentId: string;
+      sessionId: string;
+      organizationId: string;
+      vehicleId: string;
+      tokenId: number;
+      probeId: string;
+      probeType: ReferenceCaptureSettlementShadowProbeType;
+      phase: string | null;
+      sourceIntervalStart: Date;
+      sourceIntervalEnd: Date;
+      scheduledAgeMs: number;
+      actualAgeMs: number;
+      scheduleDriftMs: number;
+      requestStartedAt: Date;
+      requestCompletedAt: Date;
+      queryFrom: Date;
+      queryTo: Date;
+      aggregationInterval: string;
+      providerRequestStatus: string;
+      providerError: string | null;
+      rawRowCount: number;
+      responseHash: string;
+      observationJson: Prisma.InputJsonValue;
+    },
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const schedule = await tx.referenceCaptureSettlementShadowSchedule.findUnique({
+        where: { id: input.scheduleId },
+        include: {
+          observation: { select: { id: true } },
+          experiment: { select: { status: true } },
+        },
+      });
+      if (!schedule || schedule.observation) {
+        return false;
+      }
+      if (
+        schedule.status === ReferenceCaptureSettlementShadowScheduleStatus.SKIPPED ||
+        schedule.status === ReferenceCaptureSettlementShadowScheduleStatus.COMPLETED ||
+        schedule.status === ReferenceCaptureSettlementShadowScheduleStatus.FAILED
+      ) {
+        return false;
+      }
+      if (schedule.experiment.status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE) {
+        return false;
+      }
+      await tx.referenceCaptureSettlementShadowObservation.create({ data: input });
+      await tx.referenceCaptureSettlementShadowSchedule.update({
+        where: { id: input.scheduleId },
+        data: {
+          status: ReferenceCaptureSettlementShadowScheduleStatus.COMPLETED,
+          executedAt: input.requestCompletedAt,
+          lastError: input.providerError,
+          bullJobId: null,
+        },
+      });
+      return true;
     });
   }
 

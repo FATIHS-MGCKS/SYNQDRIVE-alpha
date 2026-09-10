@@ -167,8 +167,9 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
       findRecoverableSchedules: jest.fn(async () =>
         schedules.filter((s) => s.status === 'PENDING' && !observations.has(s.id)),
       ),
-      createObservation: jest.fn(async (input: { scheduleId: string }) => {
+      createObservationIfEligible: jest.fn(async (input: { scheduleId: string }) => {
         observations.set(input.scheduleId, input);
+        return true;
       }),
       updateLastSyncedPhaseCount: jest.fn(),
       updateExperimentTripBinding: jest.fn(),
@@ -248,6 +249,7 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
         id: 'exp-db-1',
         experimentId: 'exp-021-test',
         sessionId: 'sess-1',
+        status: 'ACTIVE',
         lastSyncedPhaseCount: 0,
       }),
       createExperiment: jest.fn(),

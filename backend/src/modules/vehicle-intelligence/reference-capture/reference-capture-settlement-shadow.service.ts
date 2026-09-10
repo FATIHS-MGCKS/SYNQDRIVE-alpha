@@ -38,6 +38,10 @@ import {
   parseShadowSignalsResponse,
   SHADOW_AGGREGATION_INTERVAL,
 } from './reference-capture-settlement-shadow-response.parser';
+import {
+  buildPhysicalDriveIntervalProbeId,
+  EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+} from './reference-capture-exp-021-motion.lib';
 
 @Injectable()
 export class ReferenceCaptureSettlementShadowService {
@@ -57,7 +61,7 @@ export class ReferenceCaptureSettlementShadowService {
   }
 
   isExperimentActive(status: string | null | undefined): boolean {
-    return status !== REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED;
+    return status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE;
   }
 
   /**
@@ -534,6 +538,93 @@ export class ReferenceCaptureSettlementShadowService {
   /**
    * Recovery path when stopRecording runs before canonical VehicleTrip.endTime is persisted.
    */
+  /**
+   * Prospective physical-drive interval shadow — schedules +30…+600 from detected drive end,
+   * independent of Trip FSM completion latency. Canonical WHOLE_TRIP (VehicleTrip) remains separate.
+   */
+  async schedulePhysicalDriveIntervalShadow(args: {
+    sessionId: string;
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    driveStartedAt: Date;
+    driveEndedAt: Date;
+    candidateId: string;
+  }): Promise<boolean> {
+    if (!this.isEnabled()) return false;
+
+    try {
+      const experiment = await this.ensureExperiment({
+        sessionId: args.sessionId,
+        organizationId: args.organizationId,
+        vehicleId: args.vehicleId,
+        tokenId: args.tokenId,
+      });
+      if (!experiment) return false;
+
+      const driveEndMs = args.driveEndedAt.getTime();
+      const scheduleRows = EXP021_MANDATORY_AGES_MS.map((ageMs) => ({
+        experimentId: experiment.id,
+        sessionId: args.sessionId,
+        organizationId: args.organizationId,
+        vehicleId: args.vehicleId,
+        tokenId: args.tokenId,
+        probeId: buildPhysicalDriveIntervalProbeId(ageMs),
+        probeType: ReferenceCaptureSettlementShadowProbeType.WHOLE_TRIP,
+        phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+        sourceIntervalStart: args.driveStartedAt,
+        sourceIntervalEnd: args.driveEndedAt,
+        queryFrom: args.driveStartedAt,
+        queryTo: args.driveEndedAt,
+        aggregationInterval: SHADOW_AGGREGATION_INTERVAL,
+        scheduledAgeMs: ageMs,
+        scheduledAt: new Date(driveEndMs + ageMs),
+        idempotencyKey: buildScheduleIdempotencyKey({
+          experimentId: experiment.experimentId,
+          probeId: `${buildPhysicalDriveIntervalProbeId(ageMs)}|${args.candidateId}`,
+          scheduledAgeMs: ageMs,
+        }),
+      }));
+
+      const { created } = await this.repository.createSchedulesIfAbsent(scheduleRows);
+      if (created > 0) {
+        await this.enqueuePendingSchedules(experiment.id);
+      }
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Physical-drive interval shadow scheduling failed session=${args.sessionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
+  }
+
+  async invalidatePhysicalDriveIntervalCandidate(args: {
+    sessionId: string;
+    candidateId: string;
+    reason: string;
+  }): Promise<number> {
+    const schedules = await this.prisma.referenceCaptureSettlementShadowSchedule.findMany({
+      where: {
+        sessionId: args.sessionId,
+        phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+        status: { in: ['PENDING', 'EXECUTING'] },
+        idempotencyKey: { contains: args.candidateId },
+      },
+      select: { id: true, bullJobId: true },
+    });
+    const bullJobIds = schedules.map((s) => s.bullJobId).filter((id): id is string => Boolean(id));
+    await this.runner.cancelQueuedJobsForSession(bullJobIds);
+    let skipped = 0;
+    for (const row of schedules) {
+      await this.repository.markSkipped(row.id, args.reason);
+      skipped += 1;
+    }
+    return skipped;
+  }
+
   async recoverWholeTripShadowForPendingExperiments(now = new Date()): Promise<number> {
     if (!this.isEnabled()) return 0;
 
@@ -661,10 +752,6 @@ export class ReferenceCaptureSettlementShadowService {
       providerError = error instanceof Error ? error.message : String(error);
       providerRequestStatus = 'ERROR';
       requestCompletedAt = new Date();
-      if (!(await this.guardScheduleObservationAllowed(scheduleId, schedule.experimentId, null))) {
-        return;
-      }
-      await this.repository.markFailed(scheduleId, providerError);
       await this.persistObservation({
         schedule,
         actualAgeMs,
@@ -694,7 +781,6 @@ export class ReferenceCaptureSettlementShadowService {
       rows,
       providerFields,
     });
-    await this.repository.markCompleted(scheduleId, requestCompletedAt);
   }
 
   private async persistObservation(args: {
@@ -724,15 +810,6 @@ export class ReferenceCaptureSettlementShadowService {
     rows: Array<Record<string, unknown>>;
     providerFields: string[];
   }) {
-    const allowed = await this.guardScheduleObservationAllowed(
-      args.schedule.id,
-      args.schedule.experimentId,
-      null,
-    );
-    if (!allowed) {
-      return;
-    }
-
     const parsed = parseShadowSignalsResponse({
       rows: args.rows,
       providerFields: args.providerFields,
@@ -753,7 +830,10 @@ export class ReferenceCaptureSettlementShadowService {
     const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
 
     const observationPayload = {
-      channel: 'SETTLEMENT_SHADOW',
+      channel:
+        args.schedule.phase === EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL
+          ? EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL
+          : 'SETTLEMENT_SHADOW',
       probeId: args.schedule.probeId,
       probeType: args.schedule.probeType,
       phase: args.schedule.phase,
@@ -781,7 +861,7 @@ export class ReferenceCaptureSettlementShadowService {
     const responseHash = hashCanonicalShadowResponse(observationPayload);
 
     try {
-      await this.repository.createObservation({
+      const persisted = await this.repository.createObservationIfEligible({
         scheduleId: args.schedule.id,
         experimentId: args.schedule.experimentId,
         sessionId: args.schedule.sessionId,
@@ -807,6 +887,12 @@ export class ReferenceCaptureSettlementShadowService {
         responseHash,
         observationJson: observationPayload,
       });
+      if (!persisted) {
+        this.logger.debug(
+          `Shadow observation persistence skipped schedule=${args.schedule.id} — eligibility lost`,
+        );
+        return;
+      }
     } catch (error) {
       if (
         error instanceof Error &&
@@ -835,9 +921,18 @@ export class ReferenceCaptureSettlementShadowService {
       take: 5,
     });
 
-    const completed = candidates.find(
-      (trip) => trip.endTime && trip.endTime.getTime() >= windowStart.getTime(),
-    );
+    const sessionStartMs = windowStart.getTime();
+    const sessionStopMs = args.sessionStoppedAt.getTime();
+
+    const completed = candidates.find((trip) => {
+      if (trip.tripStatus !== 'COMPLETED' || !trip.endTime) {
+        return false;
+      }
+      const tripStartMs = trip.startTime.getTime();
+      const tripEndMs = trip.endTime.getTime();
+      const overlapsSession = tripStartMs <= sessionStopMs && tripEndMs >= sessionStartMs;
+      return overlapsSession;
+    });
     return completed ?? null;
   }
 }

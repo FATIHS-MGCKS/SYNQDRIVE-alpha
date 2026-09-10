@@ -24,12 +24,22 @@ import {
   buildOrchestratorLockKey,
   evaluateEffectivePolicyGate,
   extendOrchestratorLock,
+  EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY,
+  isOrchestratorOwnedRecordingSession,
+  loadBackendEnvFile,
   releaseOrchestratorLock,
+  resolveExp021TargetDeploySha,
   resolveFatalSessionCleanupMode,
   type OrchestratorLockHandle,
 } from './reference-capture-exp-021-autonomous-orchestrator.lib';
-
-const TARGET_SHA = (process.env.EXP021_TARGET_DEPLOY_SHA ?? '157b3c72226869e4e35d1a9398b78cab50d3fa54').toLowerCase();
+import {
+  classifyMotionState,
+  EXP021_DEFAULT_PHYSICAL_START,
+  EXP021_DEFAULT_TELEMETRY_FRESHNESS,
+  parseSpeedSampleFromSignalsLatest,
+  PhysicalDrivePhaseTracker,
+  PhysicalStartDetector,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-motion.lib';
 const ORG = process.env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 const VEH = process.env.VEHICLE_ID ?? 'c10351f8-b6a2-4258-947f-631aeaa6d359';
 const TOKEN = Number.parseInt(process.env.TOKEN_ID ?? '187361', 10);
@@ -40,8 +50,11 @@ const LOG_PATH =
   '/opt/synqdrive/shared/reference-evidence/exp-021-autonomous-orchestrator.jsonl';
 
 const MOVEMENT_SPEED_KMH = Number.parseFloat(process.env.EXP021_MOVEMENT_SPEED_KMH ?? '8');
-const MOVEMENT_SUSTAIN_SEC = Number.parseInt(process.env.EXP021_MOVEMENT_SUSTAIN_SEC ?? '45', 10);
 const PARKED_SPEED_KMH = Number.parseFloat(process.env.EXP021_PARKED_SPEED_KMH ?? '3');
+const DRIVE_END_CANDIDATE_PARKED_SEC = Number.parseInt(
+  process.env.EXP021_DRIVE_END_CANDIDATE_PARKED_SEC ?? '120',
+  10,
+);
 const DRIVE_END_PARKED_SEC = Number.parseInt(process.env.EXP021_DRIVE_END_PARKED_SEC ?? '600', 10);
 const PHASE_DURATION_MS = Number.parseInt(process.env.EXP021_PHASE_DURATION_MS ?? '300000', 10);
 const POLL_MS = Number.parseInt(process.env.EXP021_POLL_MS ?? '15000', 10);
@@ -54,16 +67,6 @@ type Phase =
   | 'DRIVING'
   | 'DONE'
   | 'SKIPPED';
-
-function loadEnv(): void {
-  const envPath = process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m && process.env[m[1]] === undefined) {
-      process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
-    }
-  }
-}
 
 function log(event: string, payload: Record<string, unknown> = {}): void {
   const row = JSON.stringify({ at: new Date().toISOString(), event, ...payload });
@@ -141,12 +144,9 @@ function tripFsmR12Present(): boolean {
   }
 }
 
-async function querySpeedKmh(app: Awaited<ReturnType<typeof NestFactory.createApplicationContext>>): Promise<{
-  speedKmh: number | null;
-  providerAgeSec: number | null;
-  liveReady: boolean;
-  latestProviderTimestamp: string | null;
-}> {
+async function queryMotionSample(
+  app: Awaited<ReturnType<typeof NestFactory.createApplicationContext>>,
+): Promise<ReturnType<typeof parseSpeedSampleFromSignalsLatest> & { liveReady: boolean }> {
   const dimoAuth = app.get(DimoAuthService);
   const dimoTelemetry = app.get(DimoTelemetryService);
   const jwt = await dimoAuth.getVehicleJwt(TOKEN);
@@ -168,33 +168,17 @@ async function querySpeedKmh(app: Awaited<ReturnType<typeof NestFactory.createAp
     providerContext,
     'REFERENCE_CAPTURE',
   );
-  const signalsLatest = (latest.result?.data?.signalsLatest ?? {}) as Record<string, { timestamp?: string; value?: unknown }>;
-  let latestProviderTimestamp: string | null = null;
-  for (const entry of Object.values(signalsLatest)) {
-    if (!entry?.timestamp) continue;
-    if (!latestProviderTimestamp || entry.timestamp > latestProviderTimestamp) {
-      latestProviderTimestamp = entry.timestamp;
-    }
-  }
-  const providerAgeSec = latestProviderTimestamp
-    ? Math.round((Date.now() - Date.parse(latestProviderTimestamp)) / 1000)
-    : null;
-  const liveReady = providerAgeSec != null && providerAgeSec <= FRESH_THRESHOLD_SEC;
-
-  const speedEntry =
-    signalsLatest.speed ??
-    signalsLatest.currentSpeed ??
-    signalsLatest['powertrainTransmissionCurrentGear'] ??
-    null;
-  let speedKmh: number | null = null;
-  const raw = speedEntry?.value;
-  if (typeof raw === 'number' && Number.isFinite(raw)) speedKmh = raw;
-  else if (typeof raw === 'string' && raw.trim() !== '') {
-    const n = Number.parseFloat(raw);
-    if (Number.isFinite(n)) speedKmh = n;
-  }
-
-  return { speedKmh, providerAgeSec, liveReady, latestProviderTimestamp };
+  const signalsLatest = (latest.result?.data?.signalsLatest ?? {}) as Record<
+    string,
+    { timestamp?: string; value?: unknown }
+  >;
+  const nowMs = Date.now();
+  const sample = parseSpeedSampleFromSignalsLatest(signalsLatest, nowMs, {
+    vehicleTelemetryFreshThresholdMs: FRESH_THRESHOLD_SEC * 1000,
+    speedSignalFreshThresholdMs: EXP021_DEFAULT_TELEMETRY_FRESHNESS.speedSignalFreshThresholdMs,
+  });
+  const liveReady = sample.vehicleTelemetryFresh;
+  return { ...sample, liveReady };
 }
 
 async function syncSettlement(
@@ -267,8 +251,10 @@ async function main(): Promise<void> {
   if (!process.argv.includes('--confirm-exp021-autonomous')) {
     throw new Error('Refusing without --confirm-exp021-autonomous');
   }
-  loadEnv();
-  log('ORCHESTRATOR_START', { TARGET_SHA, ORG, VEH, TOKEN, PLATE });
+  loadBackendEnvFile();
+  const TARGET_SHA = resolveExp021TargetDeploySha();
+  const orchestratorRunId = `exp021-${Date.now()}`;
+  log('ORCHESTRATOR_START', { TARGET_SHA, ORG, VEH, TOKEN, PLATE, orchestratorRunId });
 
   const redis = new Redis(redisConnection());
   const lockKey = buildOrchestratorLockKey(ORG, VEH);
@@ -296,8 +282,17 @@ async function main(): Promise<void> {
   let preRollStarted = false;
   let currentPhaseIndex = -1;
   let phaseActivatedAtMs: number | null = null;
-  let movementSustainSince: number | null = null;
   let parkedSustainSince: number | null = null;
+  let endCandidateSustainSince: number | null = null;
+  let physicalDriveStartedAt: Date | null = null;
+  let physicalDriveEndCandidateAt: Date | null = null;
+  let physicalDriveEndCandidateId: string | null = null;
+  let physicalDriveIntervalScheduled = false;
+  const physicalStartDetector = new PhysicalStartDetector({
+    ...EXP021_DEFAULT_PHYSICAL_START,
+    movementSpeedKmh: MOVEMENT_SPEED_KMH,
+  });
+  const phaseTracker = new PhysicalDrivePhaseTracker();
   let fatalError: Error | null = null;
 
   type AppContext = Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
@@ -322,16 +317,19 @@ async function main(): Promise<void> {
   let running = true;
   try {
     while (running) {
-      await extendOrchestratorLock(redis, lockHandle);
+      const lockExtended = await extendOrchestratorLock(redis, lockHandle);
+      if (!lockExtended) {
+        throw new Error('orchestrator lock lease lost — fail closed');
+      }
       const sha = currentReleaseSha();
       const deployRunning = deployProcessRunning();
       const r3001 = replicaHealthy(3001);
       const r3002 = replicaHealthy(3002);
       const ext = externalHealthy();
-      let motion: Awaited<ReturnType<typeof querySpeedKmh>> | null = null;
-      if (deployReady) {
+      let motion: Awaited<ReturnType<typeof queryMotionSample>> | null = null;
+      if (deployReady || !deployRunning) {
         await ensureApp();
-        motion = await querySpeedKmh(app!);
+        motion = await queryMotionSample(app!);
       }
 
       if (!deployReady) {
@@ -350,13 +348,16 @@ async function main(): Promise<void> {
           });
           phase = 'PREP';
           // fall through to PREP handling in same iteration
-        } else if (motion && motion.speedKmh != null && motion.speedKmh >= MOVEMENT_SPEED_KMH) {
-          if (!movementSustainSince) movementSustainSince = Date.now();
-          else if (Date.now() - movementSustainSince >= MOVEMENT_SUSTAIN_SEC * 1000) {
+        } else if (
+          motion &&
+          classifyMotionState(motion, PARKED_SPEED_KMH, MOVEMENT_SPEED_KMH) === 'MOVING'
+        ) {
+          physicalStartDetector.record(motion, Date.now());
+          if (physicalStartDetector.isConfirmed()) {
             movementBeforeDeploy = true;
           }
         } else {
-          movementSustainSince = null;
+          physicalStartDetector.reset();
         }
 
         if (movementBeforeDeploy && !deployReady) {
@@ -369,7 +370,18 @@ async function main(): Promise<void> {
         }
 
         if (!deployReady) {
-          log('DEPLOY_WAIT', { deployRunning, sha, TARGET_SHA, r3001, r3002, ext, speedKmh: motion?.speedKmh ?? null });
+          log('DEPLOY_WAIT', {
+            deployRunning,
+            sha,
+            TARGET_SHA,
+            r3001,
+            r3002,
+            ext,
+            speedKmh: motion?.speedKmh ?? null,
+            motionState: motion
+              ? classifyMotionState(motion, PARKED_SPEED_KMH, MOVEMENT_SPEED_KMH)
+              : 'UNKNOWN',
+          });
           await sleep(POLL_MS);
           continue;
         }
@@ -405,10 +417,17 @@ async function main(): Promise<void> {
           orderBy: { createdAt: 'desc' },
         });
         if (recording) {
+          const owned = isOrchestratorOwnedRecordingSession(recording.preflightJson, orchestratorRunId);
+          if (!owned) {
+            throw new Error(
+              `Refusing ATTACH_EXISTING_RECORDING without orchestrator ownership session=${recording.id}`,
+            );
+          }
           sessionId = recording.id;
+          sessionStarted = true;
           preRollStarted = true;
           phase = 'WAIT_MOVEMENT';
-          log('ATTACH_EXISTING_RECORDING', { sessionId });
+          log('ATTACH_EXISTING_RECORDING', { sessionId, orchestratorRunId });
           await sleep(POLL_MS);
           continue;
         }
@@ -425,6 +444,18 @@ async function main(): Promise<void> {
         const preflight = await sessionService!.runPreflight(ORG, created.id);
         if (preflight.status !== 'READY') throw new Error(`preflight not READY: ${preflight.status}`);
         sessionId = created.id;
+        await prisma!.referenceCaptureSession.update({
+          where: { id: sessionId },
+          data: {
+            preflightJson: {
+              ...((preflight.preflight ?? {}) as Record<string, unknown>),
+              [EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY]: {
+                runId: orchestratorRunId,
+                startedAt: new Date().toISOString(),
+              },
+            },
+          },
+        });
         log('NEW_SESSION_READY', { sessionId, PREARM_READY: preflight.readiness?.deploymentPreflightReady });
         phase = 'WAIT_TELEMETRY';
         await sleep(POLL_MS);
@@ -433,7 +464,12 @@ async function main(): Promise<void> {
 
       if (phase === 'WAIT_TELEMETRY') {
         if (!motion?.liveReady) {
-          log('WAIT_TELEMETRY', { providerAgeSec: motion?.providerAgeSec ?? null, speedKmh: motion?.speedKmh ?? null });
+          log('WAIT_TELEMETRY', {
+            speedKmh: motion?.speedKmh ?? null,
+            speedAgeMs: motion?.speedAgeMs ?? null,
+            vehicleTelemetryFresh: motion?.vehicleTelemetryFresh ?? false,
+            speedSignalFresh: motion?.speedSignalFresh ?? false,
+          });
           await sleep(POLL_MS);
           continue;
         }
@@ -444,9 +480,12 @@ async function main(): Promise<void> {
         });
         if (competing > 0) throw new Error('competing RECORDING session exists');
 
-        const parked = motion!.speedKmh == null || motion!.speedKmh < PARKED_SPEED_KMH;
-        if (!parked) {
-          log('WAIT_PARKED_FOR_PRE_ROLL', { speedKmh: motion!.speedKmh });
+        const preRollMotion = classifyMotionState(motion!, PARKED_SPEED_KMH, MOVEMENT_SPEED_KMH);
+        if (preRollMotion !== 'PARKED_CANDIDATE') {
+          log('WAIT_PARKED_FOR_PRE_ROLL', {
+            speedKmh: motion!.speedKmh,
+            motionState: preRollMotion,
+          });
           await sleep(POLL_MS);
           continue;
         }
@@ -481,26 +520,32 @@ async function main(): Promise<void> {
           await sleep(POLL_MS);
           continue;
         }
-        const speed = motion.speedKmh;
-        if (speed != null && speed >= MOVEMENT_SPEED_KMH) {
-          if (!movementSustainSince) movementSustainSince = Date.now();
-          else if (Date.now() - movementSustainSince >= MOVEMENT_SUSTAIN_SEC * 1000) {
+        const motionState = classifyMotionState(motion, PARKED_SPEED_KMH, MOVEMENT_SPEED_KMH);
+        if (motionState === 'MOVING') {
+          physicalStartDetector.record(motion, Date.now());
+          if (physicalStartDetector.isConfirmed()) {
             physicalDriveStarted = true;
+            physicalDriveStartedAt = new Date();
             await sessionService!.switchHfCalibrationPhase(ORG, sessionId, { effectivePollIntervalMs: 60000 });
             await waitPhaseEffective(sessionRepo!, sessionId, 60000);
             await syncSettlement(settlementShadow!, sessionRepo!, sessionId);
             currentPhaseIndex = 0;
             phaseActivatedAtMs = Date.now();
+            phaseTracker.beginPhase(EXP021_CADENCE_PHASE_ORDER_MS[0], Date.now());
             phase = 'DRIVING';
             log('PHYSICAL_DRIVE_START_DETECTED', {
               PHYSICAL_DRIVE_START_DETECTED: 'YES',
               PHASE_60_EFFECTIVE: 'YES',
-              speedKmh: speed,
+              speedKmh: motion.speedKmh,
+              SPEED_PROVIDER_FIELD: motion.speedProviderField,
+              SPEED_TIMESTAMP: motion.speedTimestamp,
+              SPEED_AGE_MS: motion.speedAgeMs,
+              distinctMovingSamples: physicalStartDetector.getQualifyingSampleCount(),
             });
-            movementSustainSince = null;
+            physicalStartDetector.reset();
           }
         } else {
-          movementSustainSince = null;
+          physicalStartDetector.reset();
         }
         await sleep(POLL_MS);
         continue;
@@ -512,25 +557,71 @@ async function main(): Promise<void> {
           await sleep(POLL_MS);
           continue;
         }
-        const speed = motion.speedKmh;
+        const motionState = classifyMotionState(motion, PARKED_SPEED_KMH, MOVEMENT_SPEED_KMH);
+        phaseTracker.tick(motionState, Date.now());
 
-        if (phaseActivatedAtMs != null && currentPhaseIndex >= 0 && currentPhaseIndex < EXP021_CADENCE_PHASE_ORDER_MS.length - 1) {
-          const elapsed = Date.now() - phaseActivatedAtMs;
-          if (elapsed >= PHASE_DURATION_MS) {
-            const next = EXP021_CADENCE_PHASE_ORDER_MS[currentPhaseIndex + 1];
-            await sessionService!.switchHfCalibrationPhase(ORG, sessionId, { effectivePollIntervalMs: next });
-            await waitPhaseEffective(sessionRepo!, sessionId, next);
-            await syncSettlement(settlementShadow!, sessionRepo!, sessionId);
-            currentPhaseIndex += 1;
-            phaseActivatedAtMs = Date.now();
-            log('PHASE_TRANSITION', { phaseIndex: currentPhaseIndex, effectivePollIntervalMs: next });
-          }
+        if (
+          !physicalDriveEnded &&
+          currentPhaseIndex >= 0 &&
+          currentPhaseIndex < EXP021_CADENCE_PHASE_ORDER_MS.length - 1 &&
+          phaseTracker.shouldAdvancePhase(PHASE_DURATION_MS)
+        ) {
+          const next = EXP021_CADENCE_PHASE_ORDER_MS[currentPhaseIndex + 1];
+          const completed = phaseTracker.advancePhase(Date.now(), next);
+          await sessionService!.switchHfCalibrationPhase(ORG, sessionId, { effectivePollIntervalMs: next });
+          await waitPhaseEffective(sessionRepo!, sessionId, next);
+          await syncSettlement(settlementShadow!, sessionRepo!, sessionId);
+          currentPhaseIndex += 1;
+          phaseActivatedAtMs = Date.now();
+          log('PHASE_TRANSITION', {
+            phaseIndex: currentPhaseIndex,
+            effectivePollIntervalMs: next,
+            completedPhase: completed,
+          });
         }
 
-        if (physicalDriveStarted && (speed == null || speed < PARKED_SPEED_KMH)) {
+        if (physicalDriveStarted && motionState === 'MOVING' && physicalDriveEndCandidateId) {
+          await settlementShadow!.invalidatePhysicalDriveIntervalCandidate({
+            sessionId,
+            candidateId: physicalDriveEndCandidateId,
+            reason: 'movement_resumed_after_end_candidate',
+          });
+          physicalDriveEndCandidateId = null;
+          physicalDriveEndCandidateAt = null;
+          physicalDriveIntervalScheduled = false;
+          endCandidateSustainSince = null;
+          parkedSustainSince = null;
+        }
+
+        if (physicalDriveStarted && motionState === 'PARKED_CANDIDATE') {
+          if (!endCandidateSustainSince) endCandidateSustainSince = Date.now();
+          if (
+            !physicalDriveIntervalScheduled &&
+            Date.now() - endCandidateSustainSince >= DRIVE_END_CANDIDATE_PARKED_SEC * 1000 &&
+            physicalDriveStartedAt
+          ) {
+            physicalDriveEndCandidateAt = new Date();
+            physicalDriveEndCandidateId = `pdi-${physicalDriveEndCandidateAt.getTime()}`;
+            await settlementShadow!.schedulePhysicalDriveIntervalShadow({
+              sessionId,
+              organizationId: ORG,
+              vehicleId: VEH,
+              tokenId: TOKEN,
+              driveStartedAt: physicalDriveStartedAt,
+              driveEndedAt: physicalDriveEndCandidateAt,
+              candidateId: physicalDriveEndCandidateId,
+            });
+            physicalDriveIntervalScheduled = true;
+            log('PHYSICAL_DRIVE_END_CANDIDATE', {
+              candidateId: physicalDriveEndCandidateId,
+              driveEndedAt: physicalDriveEndCandidateAt.toISOString(),
+            });
+          }
+
           if (!parkedSustainSince) parkedSustainSince = Date.now();
           else if (Date.now() - parkedSustainSince >= DRIVE_END_PARKED_SEC * 1000) {
             physicalDriveEnded = true;
+            phaseTracker.markPhysicalDriveEnded(Date.now());
             await sessionService!.stopRecording(ORG, sessionId);
             const final = await sessionRepo!.findById(ORG, sessionId);
             const wholeTrip = await prisma!.referenceCaptureSettlementShadowSchedule.count({
@@ -540,17 +631,28 @@ async function main(): Promise<void> {
               physicalDriveEnded: true,
               SESSION_STATUS: final?.status,
               WHOLE_TRIP_SHADOW_SCHEDULED: wholeTrip,
+              EXP021_RUN_COMPLETENESS: phaseTracker.computeRunCompleteness(
+                EXP021_CADENCE_PHASE_ORDER_MS.length,
+              ),
+              completedPhases: phaseTracker.getCompletedPhases(),
             });
             phase = 'DONE';
             running = false;
             break;
           }
-        } else {
+        } else if (physicalDriveStarted && motionState === 'UNKNOWN') {
+          endCandidateSustainSince = null;
+        } else if (physicalDriveStarted) {
+          endCandidateSustainSince = null;
           parkedSustainSince = null;
         }
 
         log('DRIVING_TICK', {
-          speedKmh: speed,
+          speedKmh: motion.speedKmh,
+          motionState,
+          SPEED_PROVIDER_FIELD: motion.speedProviderField,
+          SPEED_TIMESTAMP: motion.speedTimestamp,
+          SPEED_AGE_MS: motion.speedAgeMs,
           currentPhaseIndex,
           phaseMs: currentPhaseIndex >= 0 ? EXP021_CADENCE_PHASE_ORDER_MS[currentPhaseIndex] : null,
         });

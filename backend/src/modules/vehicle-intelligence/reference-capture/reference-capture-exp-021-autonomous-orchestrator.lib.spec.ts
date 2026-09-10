@@ -4,12 +4,55 @@ import {
   evaluateEffectivePolicyGate,
   evaluateEffectivePolicyGateFromEnv,
   extendOrchestratorLock,
+  isOrchestratorOwnedRecordingSession,
   releaseOrchestratorLock,
+  resolveExp021TargetDeploySha,
   resolveFatalSessionCleanupMode,
 } from '../../../../scripts/ops/reference-capture-exp-021-autonomous-orchestrator.lib';
 import { parseHfRecoveryPolicyV2ConfigFromEnv } from './reference-capture-hf-recovery-v2.policy';
 
 describe('reference-capture-exp-021-autonomous-orchestrator.lib', () => {
+  describe('resolveExp021TargetDeploySha', () => {
+    it('uses explicit SHA when provided', () => {
+      expect(
+        resolveExp021TargetDeploySha({
+          explicitSha: 'abc123',
+          productionSha: 'def456',
+        }),
+      ).toBe('abc123');
+    });
+
+    it('snapshots production SHA when explicit missing', () => {
+      expect(
+        resolveExp021TargetDeploySha({
+          explicitSha: '',
+          productionSha: 'def456',
+        }),
+      ).toBe('def456');
+    });
+
+    it('throws when no SHA authority exists', () => {
+      expect(() =>
+        resolveExp021TargetDeploySha({ explicitSha: '', productionSha: '' }),
+      ).toThrow(/EXP021 deploy SHA unresolved/);
+    });
+  });
+
+  describe('isOrchestratorOwnedRecordingSession', () => {
+    it('rejects arbitrary recording sessions without ownership', () => {
+      expect(isOrchestratorOwnedRecordingSession({ vehicleId: 'x' }, 'run-1')).toBe(false);
+    });
+
+    it('accepts matching orchestrator run id', () => {
+      expect(
+        isOrchestratorOwnedRecordingSession(
+          { exp021AutonomousOrchestrator: { runId: 'run-1' } },
+          'run-1',
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('evaluateEffectivePolicyGate', () => {
     it('allows V2 when token is in canary allowlist', () => {
       const base = parseHfRecoveryPolicyV2ConfigFromEnv({

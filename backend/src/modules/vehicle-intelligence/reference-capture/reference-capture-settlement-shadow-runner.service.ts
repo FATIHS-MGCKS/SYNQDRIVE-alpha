@@ -35,6 +35,11 @@ export class ReferenceCaptureSettlementShadowRunnerService {
       organizationId: schedule.organizationId,
     };
 
+    const linked = await this.repository.linkBullJobIdIfEligible(schedule.id, jobId);
+    if (!linked) {
+      return null;
+    }
+
     try {
       await this.queue.add(REFERENCE_CAPTURE_SETTLEMENT_SHADOW_JOB_NAME, data, {
         jobId,
@@ -42,9 +47,16 @@ export class ReferenceCaptureSettlementShadowRunnerService {
         removeOnComplete: 100,
         removeOnFail: 100,
       });
-      await this.repository.updateBullJobId(schedule.id, jobId);
+      const stillEligible = await this.repository.isScheduleEligibleForExecution(schedule.id);
+      if (!stillEligible) {
+        await this.removeJobIfQueued(jobId);
+        await this.repository.clearBullJobId(schedule.id);
+        return null;
+      }
       return jobId;
     } catch (error) {
+      await this.repository.clearBullJobId(schedule.id);
+      await this.removeJobIfQueued(jobId);
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('Job') && message.includes('exists')) {
         this.logger.debug(`Shadow job already queued schedule=${schedule.id}`);

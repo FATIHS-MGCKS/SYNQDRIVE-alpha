@@ -1,6 +1,8 @@
 /**
  * EXP-021 autonomous orchestrator — testable helpers (policy gate, lock, fatal cleanup).
  */
+import { execSync } from 'child_process';
+import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
@@ -13,6 +15,64 @@ import {
 
 export const EXP021_ORCHESTRATOR_LOCK_KEY_PREFIX = 'exp021:autonomous-orchestrator:lock';
 export const EXP021_ORCHESTRATOR_LOCK_TTL_MS = 4 * 60 * 60 * 1000;
+export const EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY = 'exp021AutonomousOrchestrator';
+
+export function loadBackendEnvFile(envPath?: string): void {
+  const resolved = envPath ?? process.env.SYNQDRIVE_BACKEND_ENV ?? '/opt/synqdrive/shared/backend.env';
+  for (const line of fs.readFileSync(resolved, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+    }
+  }
+}
+
+export function readCurrentProductionSha(): string {
+  try {
+    return execSync('git -C /opt/synqdrive/current rev-parse HEAD', { encoding: 'utf8' })
+      .trim()
+      .toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Resolve deploy authority SHA without historical baked-in defaults.
+ * Explicit EXP021_TARGET_DEPLOY_SHA wins; otherwise snapshot current production HEAD.
+ */
+export function resolveExp021TargetDeploySha(options?: {
+  explicitSha?: string | null;
+  productionSha?: string | null;
+}): string {
+  const explicit = (options?.explicitSha ?? process.env.EXP021_TARGET_DEPLOY_SHA ?? '')
+    .trim()
+    .toLowerCase();
+  if (explicit) {
+    return explicit;
+  }
+  const production = (options?.productionSha ?? readCurrentProductionSha()).trim().toLowerCase();
+  if (production) {
+    return production;
+  }
+  throw new Error(
+    'EXP021 deploy SHA unresolved: set EXP021_TARGET_DEPLOY_SHA or ensure /opt/synqdrive/current is readable',
+  );
+}
+
+export function isOrchestratorOwnedRecordingSession(
+  preflightJson: unknown,
+  orchestratorRunId: string,
+): boolean {
+  if (!preflightJson || typeof preflightJson !== 'object' || Array.isArray(preflightJson)) {
+    return false;
+  }
+  const ownership = (preflightJson as Record<string, unknown>)[EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY];
+  if (!ownership || typeof ownership !== 'object' || Array.isArray(ownership)) {
+    return false;
+  }
+  return (ownership as { runId?: string }).runId === orchestratorRunId;
+}
 
 const RELEASE_SCRIPT = `
 if redis.call("get", KEYS[1]) == ARGV[1] then

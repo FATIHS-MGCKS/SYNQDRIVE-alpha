@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-final-pre-physical-red-team-2026-09-10',
+    version: '4.9.1093',
+    title: 'EXP-021 — Final pre-physical red-team scientific hardening',
+    summary: [
+      'Red-team audit of full EXP-021 path before next physical drive: orchestrator SHA/motion/lock/phase validity, whole-trip timing, VehicleTrip resolver, stationary cert, settlement races.',
+      'Removed stale TARGET_SHA default; motion authority uses speed/currentSpeed only (never gear); distinct fresh samples for physical start; movement-based phase validity.',
+      'Added PHYSICAL_DRIVE_INTERVAL_SHADOW channel for true post-drive +30…+600 ages at drive-end candidate (independent of 600s stopRecording delay).',
+      'Provider ERROR observations persisted; enqueue/abort race hardened; atomic observation eligibility; experiment status fail-closed ACTIVE only.',
+      'Stationary cert proves real phase-60 EFFECTIVE + persisted schedules; optional --e2e-shadow-smoke for full BullMQ→DIMO→DB path.',
+    ],
+    reason:
+      'Maximize probability next physical EXP-021 run produces scientifically usable 4-phase / 48-observation evidence.',
+    previousBehavior:
+      'Multiple self-inflicted invalidation modes (stale SHA, false prospective whole-trip ages, gear-as-speed, ERROR observation loss, wall-clock phases while parked).',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-settlement-shadow-abort-lifecycle-2026-09-09',
     version: '4.9.1092',
     title: 'EXP-021 — Settlement-shadow abort lifecycle micro-hardening',

@@ -276,8 +276,9 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       markCompleted: jest.fn(),
       markFailed: jest.fn(),
       markSkipped: jest.fn(),
-      createObservation: jest.fn(async (input: { actualAgeMs: number; scheduleDriftMs: number }) => {
+      createObservationIfEligible: jest.fn(async (input: { actualAgeMs: number; scheduleDriftMs: number }) => {
         observations.push(input);
+        return true;
       }),
     } as unknown as ReferenceCaptureSettlementShadowRepository;
 
@@ -353,6 +354,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
           findMany: jest.fn().mockResolvedValue([
             {
               id: 'trip-1',
+              tripStatus: 'COMPLETED',
               startTime: new Date('2026-09-07T10:00:00.000Z'),
               endTime: new Date('2026-09-07T11:00:00.000Z'),
             },

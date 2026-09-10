@@ -168,8 +168,9 @@ function buildHarness(options?: { settlementShadowEnabled?: boolean }) {
       }
     }),
     markFailed: jest.fn(),
-    createObservation: jest.fn(async (input: { scheduleId: string }) => {
+    createObservationIfEligible: jest.fn(async (input: { scheduleId: string }) => {
       observations.set(input.scheduleId, { requestCompletedAt: new Date() });
+      return true;
     }),
   } as unknown as ReferenceCaptureSettlementShadowRepository;
 
@@ -405,7 +406,7 @@ describe('reference-capture-settlement-shadow abort lifecycle', () => {
 
     await service.executeScheduledObservation('sched-race');
 
-    expect(harness.repository.createObservation).not.toHaveBeenCalled();
+    expect(harness.repository.createObservationIfEligible).not.toHaveBeenCalled();
     expect(harness.observations.size).toBe(0);
   });
 
