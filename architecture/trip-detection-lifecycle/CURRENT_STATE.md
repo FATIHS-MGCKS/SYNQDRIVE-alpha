@@ -112,9 +112,9 @@ R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463�
 
 ---
 
-## CONFIRMED — R9 runtime on main and Production @ `0ba96e03…`
+## CONFIRMED — R9 runtime on main (@ `4bef60463…`)
 
-**Epistemic note:** R9 code merged to `origin/main` via #1553. Production runtime **deployed** @ `0ba96e03…`. Provider speed/ignition trigger wiring **validated** (5/5 active cohort — see TDL-EV-R9-CANARY-001). **Natural wake delivery not yet validated.**
+**Epistemic note:** R9 code merged to `origin/main` via #1553. **Current known Production** is **not** @ `0ba96e03…` — see authority axes above (`157b3c722…` pre-hardening R12). Historical R9 Production snapshot @ `0ba96e03…` preserved below. Provider speed/ignition trigger wiring **validated** on that historical release (5/5 active cohort — see TDL-EV-R9-CANARY-001). **Natural wake delivery not yet validated.**
 
 ### R9 wake subsystem entry points
 
@@ -127,7 +127,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463�
 | Redis scripts | `backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts` |
 | DIMO webhook wiring | `backend/src/modules/dimo/dimo-webhook.controller.ts` (delegates eligible wakes to intake; provider gateway owned by [DIMO Integration](../dimo-integration/)) |
 
-**R9 architecture (confirmed on main @ `4bef60463…`; deployed @ `0ba96e03…`):**
+**R9 architecture (confirmed on main @ `4bef60463…`; historical Production deploy @ `0ba96e03…` — superseded):**
 
 - Durable **pending** and **successor** Redis mailboxes with monotonic version merge
 - Coalesce while canonical `snapshot-{vehicleId}` job is **QUEUED** or **ACTIVE**
@@ -144,22 +144,41 @@ See [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*.
 
 ---
 
-## CONFIRMED — Production state (read-only)
+## CONFIRMED — Current known Production state (read-only)
 
-See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
+**Current known Production authority:** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` — **PRE_HARDENING_R12** (does not include #1594 hardening).
+
+Canonical detailed evidence: [R12_PRODUCTION_DEPLOY_2026-09-09.md](evidence/R12_PRODUCTION_DEPLOY_2026-09-09.md) (**TDL-EV-R12-PROD-DEPLOY-001** @ `2026-09-09T19:26:03Z`).
+
+Chronological baseline index: [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 
 | Observation | Value | Evidence ID |
 |-------------|-------|-------------|
-| Deployed SHA / path | `0ba96e03…` @ `20260907204434_v4994` | TDL-EV-PROD-001 (updated); historical `01541c2ab…` @ `20260906213654_v4994` preserved in baseline doc |
-| Health | HTTP 200 | TDL-EV-PROD-002 |
-| PM2 / Node processes | Two Node PIDs (`3789590`, `3789796`) each running `node …/backend/dist/src/main.js`; 1:1 with PM2 apps `synqdrive` (pid 3789590) and `synqdrive-b` (pid 3789796), each `instances=1` | TDL-EV-PROD-003 |
-| FSM states | 6 × RESTING | TDL-EV-PROD-005 |
-| Trips | 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | TDL-EV-PROD-006 |
-| Route artifacts | 94 | TDL-EV-PROD-007 |
-| Tracking runs (7d) | 6964 PS validation, 3753 PEC, 1842 active, 53 finalize, 2 end validation | TDL-EV-PROD-009 |
-| Redis key prefixes | snapshot 5, trip-tracking 7 | TDL-EV-PROD-004 |
+| Deployed SHA / path | `157b3c722…` @ `20260909190912_v4994` | TDL-EV-R12-PROD-DEPLOY-001 |
+| Classification | DEPLOYED / CI_VALIDATED / POST_DEPLOY_HEALTH_CONFIRMED | TDL-EV-R12-PROD-DEPLOY-001 |
+| Behavior validation | **NOT PRODUCTION_BEHAVIOR_VALIDATED** | TDL-EV-R12-PROD-DEPLOY-001 |
+| KS MS 661 post-deploy T0 | ACTIVE_TRIP — **PHYSICAL_TEST_READY=NO** | TDL-EV-R12-PROD-DEPLOY-001 Gate 9 |
 
-**Topology wording:** `pgrep -f '/opt/synqdrive/.+/backend/dist/src/main\.js'` returned **two** PIDs at `2026-09-06T23:47:41Z`, each matching one of two **distinct** PM2 application names (`synqdrive`, `synqdrive-b`), each configured with `instances=1`. **Not** described as replicas of a single PM2 application; trip-worker role split was **not** verified beyond PID correlation.
+---
+
+## HISTORICAL — Production snapshot @ `0ba96e03…` (R9 release, `2026-09-06T23:47:41Z` session counts)
+
+**Not current Production.** These observations describe the **historical** R9-era release only. Counts/topology below are frozen at the read-only session timestamp and must not be read as today's fleet state.
+
+See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Historical R9 Production snapshot.
+
+| Observation | Value | Evidence ID |
+|-------------|-------|-------------|
+| Deployed SHA / path (historical) | `0ba96e03…` @ `20260907204434_v4994` | TDL-EV-R9-CANARY-001 cross-ref; superseded by R10→R11→R12 deploys |
+| Health (historical session) | HTTP 200 | TDL-EV-PROD-002 @ `2026-09-06T23:47:41Z` |
+| PM2 / Node processes (historical) | Two Node PIDs (`3789590`, `3789796`) … | TDL-EV-PROD-003 @ `2026-09-06T23:47:41Z` |
+| FSM states (historical) | 6 × RESTING | TDL-EV-PROD-005 @ `2026-09-06T23:47:41Z` |
+| Trips (historical) | 1994 COMPLETED, 18 CANCELLED, 0 ONGOING | TDL-EV-PROD-006 @ `2026-09-06T23:47:41Z` |
+| Route artifacts (historical) | 94 | TDL-EV-PROD-007 @ `2026-09-06T23:47:41Z` |
+| Tracking runs 7d (historical) | 6964 PS validation, 3753 PEC, 1842 active, 53 finalize, 2 end validation | TDL-EV-PROD-009 @ `2026-09-06T23:47:41Z` |
+| Redis key prefixes (historical) | snapshot 5, trip-tracking 7 | TDL-EV-PROD-004 @ `2026-09-06T23:47:41Z` |
+
+**Topology wording (historical @ `2026-09-06T23:47:41Z`):** two distinct PM2 application names (`synqdrive`, `synqdrive-b`), each `instances=1`. **Not** described as replicas of a single PM2 application; trip-worker role split was **not** verified beyond PID correlation.
 
 ---
 
@@ -169,7 +188,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
 |-----------|-------|
 | Small telematics cohort drives live FSM rows | TDL-EV-PROD-005 vs PROD-009 |
 | Reconciliation scans broader history than live FSM | TDL-EV-PROD-008 vs PROD-006 |
-| Production trip FSM R8/R9 deploy | R8/R9 **deployed** @ `0ba96e03…`; historical NOT_ON_PRODUCTION only @ `01541c2ab…` |
+| Production trip FSM R8/R9 deploy (historical) | R8/R9 **were deployed** @ `0ba96e03…` (historical); superseded by R10→R11→R12; current known Production @ `157b3c722…` |
 | Natural trip processing active | TDL-EV-PROD-009 |
 
 ---

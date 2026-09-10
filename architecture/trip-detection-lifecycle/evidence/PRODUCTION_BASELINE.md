@@ -1,13 +1,34 @@
 # Production Baseline — Trip Detection & Lifecycle (Read-Only)
 
-## Current Production release (R9 + canary cross-ref)
+Chronological Production baseline index. **Do not conflate** current known Production, hardened main code, and behavior validation — see [CURRENT_STATE.md](../CURRENT_STATE.md) authority axes.
+
+---
+
+## Current known Production (PRE_HARDENING_R12)
+
+| Field | Value |
+|-------|-------|
+| **Evidence class** | `VERIFIED_READ_ONLY` (deploy audit) |
+| **Observation window** | `2026-09-09T19:08:29Z` – `2026-09-09T19:26:03Z` |
+| **Production release (current known)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` |
+| **Classification** | **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** — CI_VALIDATED; POST_DEPLOY_HEALTH_CONFIRMED; **NOT PRODUCTION_BEHAVIOR_VALIDATED** |
+| **Canonical detailed evidence** | [R12_PRODUCTION_DEPLOY_2026-09-09.md](R12_PRODUCTION_DEPLOY_2026-09-09.md) — **TDL-EV-R12-PROD-DEPLOY-001** |
+| **Does not include** | PR #1594 pre-drive hardening @ `f4109e34…` (merged to main; **NOT_DEPLOYED**) |
+
+Summary cross-ref only — full gates (CI admission, rolling deploy, scheduler, KS MS 661 T0) live in the deploy artifact above.
+
+---
+
+## Historical R9 Production snapshot (canary cross-ref @ `2026-09-07T22:35:00Z`)
+
+**Not current Production.** Superseded by R10 → R11 → R12 deploy chain ending at `157b3c722…`.
 
 | Field | Value |
 |-------|-------|
 | **Evidence class** | `VERIFIED_READ_ONLY` |
 | **Observation timestamp (canary)** | `2026-09-07T22:35:00Z` |
-| **Production release (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
-| **R9 runtime** | **Deployed** (cross-ref [DIMO Integration PRODUCTION_BASELINE.md](../../dimo-integration/evidence/PRODUCTION_BASELINE.md)) |
+| **Production release (historical @ R9)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
+| **R9 runtime** | **Was deployed** at this historical release (cross-ref [DIMO Integration PRODUCTION_BASELINE.md](../../dimo-integration/evidence/PRODUCTION_BASELINE.md)) |
 | **R9 provider wiring** | **PASS** — 5/5 speed+ignition; tokenId **190497** excluded |
 | **Natural R9 wake** | **Not validated** — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION` |
 
@@ -20,7 +41,7 @@
 | **Evidence class** | `VERIFIED_READ_ONLY` |
 | **Observation timestamp** | `2026-09-06T23:47:41Z` (`date -u` at start of single read-only session) |
 | **Production release (historical)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Note** | At this session R8/R9 were **NOT_ON_PRODUCTION** — superseded by current release above |
+| **Note** | At this session R8/R9 were **NOT_ON_PRODUCTION** — superseded by later R9→R10→R11→R12 deploy chain; **current known Production** is `157b3c722…` |
 | **Access path** | SSH to `srv1374778.hstgr.cloud` as `synqdrive-admin` |
 | **External PostgreSQL `:5432`** | Not reachable from agent network |
 | **DB access method** | SSH + `sudo` sourced `/opt/synqdrive/shared/backend.env`; `psql` with URI query string stripped |
