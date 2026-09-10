@@ -11,6 +11,7 @@
 | `RED_TEAM_AUDIT_COMPLETE` | **YES** (first pass) |
 | `SECOND_PASS_AUDIT_COMPLETE` | **YES** (deterministic logic correction) |
 | `THIRD_PASS_AUDIT_COMPLETE` | **YES** (micro-pass before merge) |
+| `FOURTH_PASS_AUDIT_COMPLETE` | **YES** (scientific consistency micro-pass) |
 | `CONFIRMED_BLOCKERS_FOUND` | **14** (first pass) + **13** (second pass) |
 | `CONFIRMED_BLOCKERS_FIXED` | **27** (combined in PR #1593) |
 | `OPEN_BLOCKERS` | **1** — post-merge `--e2e-shadow-smoke` on production VPS not yet executed |
@@ -249,6 +250,34 @@ Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI 
 
 ---
 
+## Fourth-pass scientific consistency micro-pass (2026-09-10)
+
+| # | Issue | Fourth-pass result |
+|---|-------|-------------------|
+| 1 | PDI/WHOLE_TRIP cross-age maturation grouped by age-specific probeId | **FIXED** — `selectPriorMaturationObservation`: PDI by candidate+interval, canonical WHOLE_TRIP by interval+phase null, FIXED_INTERVAL by stable probeId |
+| 2 | Final PDI candidate stuck PROVISIONAL | **FIXED** — `confirmPhysicalDriveIntervalCandidate` + orchestrator handles `candidateConfirmed` / auto-stop promotion; INVALIDATED cannot become CONFIRMED |
+| 3 | Pre-deploy movement counted orchestrator polls not provider evidence | **FIXED** — `PreDeployMovementGate` dedupes distinct `speedTimestamp` |
+| 4 | Single PARKED + UNKNOWN could auto-stop | **FIXED** — `minDistinctParkedSamples` (default 2) before UNKNOWN auto-stop arms |
+
+| Assertion | Result |
+|-----------|--------|
+| `PDI_CROSS_AGE_MATURATION_COMPARISON` | **PASS** |
+| `WHOLE_TRIP_CROSS_AGE_MATURATION_COMPARISON` | **PASS** |
+| `FIXED_INTERVAL_MATURATION_REGRESSION` | **PASS** |
+| `FINAL_ACCEPTED_PDI_CANDIDATE_STATUS` | **CONFIRMED** |
+| `INVALIDATED_CANDIDATE_CANNOT_BECOME_CONFIRMED` | **YES** |
+| `OBSERVATION_PAYLOAD_REMAINS_IMMUTABLE` | **YES** |
+| `PRE_DEPLOY_MOVEMENT_USES_DISTINCT_PROVIDER_EVIDENCE` | **YES** |
+| `PRE_DEPLOY_REPEATED_TIMESTAMP_FALSE_START` | **NO** |
+| `SINGLE_PARKED_SAMPLE_PLUS_UNKNOWN_CAN_STOP` | **NO** |
+| `STRONG_PARKED_EVIDENCE_REQUIRED_FOR_UNKNOWN_STOP` | **YES** |
+| `TELEMETRY_DROPOUT_PREMATURE_STOP_PROTECTED` | **YES** |
+| `FINAL_AUTONOMOUS_STOP_REMAINS_REACHABLE` | **YES** |
+
+Reference-capture suite: **605 passed** (fourth-pass HEAD). Backend build: **PASS**.
+
+---
+
 ## Third-pass micro-correction (2026-09-10)
 
 | # | Issue | Third-pass result |
@@ -295,6 +324,6 @@ Canonical `WHOLE_TRIP` counts use `probeType=WHOLE_TRIP AND phase IS NULL`; PDI 
 
 | Flag | Value |
 |------|-------|
-| `READY_TO_MERGE_1593` | **YES** (second-pass blockers addressed; CI re-run required) |
+| `READY_TO_MERGE_1593` | **YES** (fourth-pass consistency defects fixed; CI re-run required) |
 | `READY_TO_DEPLOY` | **NO** (operator instruction) |
 | `READY_FOR_NEXT_EXP021_PHYSICAL_RUN` | **NO** — requires merge + deploy + stationary `--e2e-shadow-smoke` + post-deploy abort recert |

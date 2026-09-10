@@ -40,9 +40,11 @@ import {
   EXP021_DEFAULT_TELEMETRY_FRESHNESS,
   EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
   parseSpeedSampleFromSignalsLatest,
+  EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT,
   PhysicalDrivePhaseTracker,
   PhysicalEndDetector,
   PhysicalStartDetector,
+  PreDeployMovementGate,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-motion.lib';
 
 type Phase =
@@ -282,8 +284,11 @@ async function main(): Promise<void> {
   let deployReady = false;
   let policyGatePassed = false;
   let movementBeforeDeploy = false;
-  let preDeployMovingPolls = 0;
   let deployConvergedAtMs: number | null = null;
+  const preDeployMovementGate = new PreDeployMovementGate({
+    ...EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT,
+    movementSpeedKmh: config.movementSpeedKmh,
+  });
   let physicalDriveStarted = false;
   let physicalDriveEnded = false;
   let preRollStarted = false;
@@ -345,6 +350,7 @@ async function main(): Promise<void> {
       if (!deployReady) {
         if (!deployRunning && sha === config.targetDeploySha && r3001 && r3002 && ext && redisHealthy()) {
           physicalStartDetector.reset();
+          preDeployMovementGate.reset();
           deployConvergedAtMs = Date.now();
           deployReady = true;
           log(config, 'DEPLOY_CONVERGED', {
@@ -366,11 +372,9 @@ async function main(): Promise<void> {
             config.parkedSpeedKmh,
             config.movementSpeedKmh,
           );
-          if (deployMotion === 'MOVING') {
-            preDeployMovingPolls += 1;
-            if (preDeployMovingPolls >= 3) {
-              movementBeforeDeploy = true;
-            }
+          preDeployMovementGate.record(motion, deployMotion, Date.now());
+          if (preDeployMovementGate.isDriveStartBeforeDeploy()) {
+            movementBeforeDeploy = true;
           }
         }
 
@@ -676,6 +680,14 @@ async function main(): Promise<void> {
           physicalDriveEndCandidateId = null;
         }
 
+        if (endObservation.candidateConfirmed && physicalDriveEndCandidateId) {
+          await settlementShadow!.confirmPhysicalDriveIntervalCandidate({
+            sessionId,
+            candidateId: physicalDriveEndCandidateId,
+            reason: 'sustained_distinct_parked_evidence',
+          });
+        }
+
         if (
           endObservation.newProvisionalCandidate &&
           physicalDriveStartedAt &&
@@ -713,6 +725,17 @@ async function main(): Promise<void> {
           physicalDriveEnded = true;
           const finalPhase = phaseTracker.markPhysicalDriveEnded(nowMs);
           const endCandidate = physicalEndDetector.getCandidate();
+          if (
+            endCandidate &&
+            physicalDriveEndCandidateId &&
+            endCandidate.candidateStatus !== 'CONFIRMED'
+          ) {
+            await settlementShadow!.confirmPhysicalDriveIntervalCandidate({
+              sessionId,
+              candidateId: physicalDriveEndCandidateId,
+              reason: 'final_auto_stop_terminalization',
+            });
+          }
           if (physicalDriveStartedAt && endCandidate?.candidateBoundaryAt) {
             await settlementShadow!.persistPhysicalDriveIntervalAuthority({
               sessionId,

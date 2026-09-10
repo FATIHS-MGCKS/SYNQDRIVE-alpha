@@ -61,6 +61,7 @@ describe('EXP-021 full operator journey simulation', () => {
       provisionalConfirmMs: 2_000,
       finalParkedMs: 10_000,
       maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
     });
     const required = 60_000;
     let now = wakeAt + 60_000;
@@ -85,7 +86,8 @@ describe('EXP-021 full operator journey simulation', () => {
     endDetector.observe(falsePark, 'PARKED_CANDIDATE', now + 5_000);
     endDetector.observe(sample(now + 10_000, 25), 'MOVING', now + 10_000);
     endDetector.observe(sample(now + 15_000, 0), 'PARKED_CANDIDATE', now + 15_000);
-    const ignitionOff = endDetector.observe(falsePark, 'UNKNOWN', now + 30_000);
+    endDetector.observe(sample(now + 20_000, 0), 'PARKED_CANDIDATE', now + 20_000);
+    const ignitionOff = endDetector.observe(sample(now + 20_000, 0), 'UNKNOWN', now + 30_000);
 
     const finalPhase = phaseTracker.markPhysicalDriveEnded(now + required);
     expect(recordingStarted).toBe(true);

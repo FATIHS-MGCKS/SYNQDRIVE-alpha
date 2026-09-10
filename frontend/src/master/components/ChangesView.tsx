@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-fourth-pass-scientific-consistency-2026-09-10',
+    version: '4.9.1096',
+    title: 'EXP-021 — Fourth-pass scientific consistency micro-pass (PR #1593)',
+    summary: [
+      'Cross-age maturation: PDI/WHOLE_TRIP compare prior observations by candidate+interval or canonical interval — not age-specific probeId.',
+      'PDI candidate lifecycle: PROVISIONAL → CONFIRMED or INVALIDATED_END_CANDIDATE; observationJson/responseHash remain immutable.',
+      'Pre-deploy movement gate dedupes distinct provider speed timestamps; repeated stale MOVING cannot false-start.',
+      'UNKNOWN auto-stop requires strong parked evidence (≥2 distinct fresh timestamps) — single zero-speed sample insufficient.',
+    ],
+    reason:
+      'Close four independent-repo consistency defects so the same historical interval is comparable across settlement ages.',
+    previousBehavior:
+      'Maturation grouped by probeId+age; candidates could remain PROVISIONAL; pre-deploy counted polls; one PARKED sample + UNKNOWN could auto-stop.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_FINAL_PRE_PHYSICAL_RED_TEAM_AUDIT_2026-09-10.md §Fourth-pass',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-third-pass-micro-correction-2026-09-10',
     version: '4.9.1095',
     title: 'EXP-021 — Third-pass micro-correction before merge (PR #1593)',

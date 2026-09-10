@@ -149,4 +149,42 @@ describe('EXP-021 PDI schedule provenance', () => {
     expect(mergeExperimentMetadataJson).toHaveBeenCalled();
     expect(originalHash).toBe(hashCanonicalShadowResponse(originalJson));
   });
+
+  it('INVALIDATED_CANDIDATE_CANNOT_BECOME_CONFIRMED', async () => {
+    const mergeExperimentMetadataJson = jest.fn().mockResolvedValue(undefined);
+    const repository = {
+      findExperimentBySessionId: jest.fn().mockResolvedValue({
+        id: 'exp-db-1',
+        metadataJson: {
+          pdiCandidates: {
+            'pdi-abc': {
+              candidateId: 'pdi-abc',
+              candidateBoundaryAt: '2026-09-10T12:00:00.000Z',
+              candidateStatus: 'INVALIDATED_END_CANDIDATE',
+            },
+          },
+        },
+      }),
+      mergeExperimentMetadataJson,
+      markSkipped: jest.fn(),
+    };
+
+    const service = new ReferenceCaptureSettlementShadowService(
+      { isSettlementShadowEnabled: () => true } as never,
+      repository as never,
+      { cancelQueuedJobsForSession: jest.fn() } as never,
+      {} as never,
+      {} as never,
+      {
+        referenceCaptureSettlementShadowSchedule: { findMany: jest.fn().mockResolvedValue([]) },
+      } as never,
+    );
+
+    const confirmed = await service.confirmPhysicalDriveIntervalCandidate({
+      sessionId: 'sess-1',
+      candidateId: 'pdi-abc',
+      reason: 'should_not_apply',
+    });
+    expect(confirmed).toBe(false);
+  });
 });

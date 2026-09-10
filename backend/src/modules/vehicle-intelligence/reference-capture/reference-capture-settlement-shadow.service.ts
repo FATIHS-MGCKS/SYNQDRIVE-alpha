@@ -39,6 +39,10 @@ import {
   SHADOW_AGGREGATION_INTERVAL,
 } from './reference-capture-settlement-shadow-response.parser';
 import {
+  priorBucketIdentitiesFromMaturationRecord,
+  selectPriorMaturationObservation,
+} from './reference-capture-settlement-shadow-maturation.lib';
+import {
   buildPhysicalDriveIntervalProbeId,
   computePdiExecutedOnTime,
   computePdiProspectiveAtCreation,
@@ -659,6 +663,19 @@ export class ReferenceCaptureSettlementShadowService {
     return skipped + (overlayUpdated ? 1 : 0);
   }
 
+  async confirmPhysicalDriveIntervalCandidate(args: {
+    sessionId: string;
+    candidateId: string;
+    reason: string;
+  }): Promise<boolean> {
+    return this.updatePdiCandidateOverlayStatus({
+      sessionId: args.sessionId,
+      candidateId: args.candidateId,
+      candidateStatus: 'CONFIRMED',
+      reason: args.reason,
+    });
+  }
+
   async persistPhysicalDriveIntervalAuthority(args: {
     sessionId: string;
     physicalStartAt: Date;
@@ -739,15 +756,28 @@ export class ReferenceCaptureSettlementShadowService {
         : {};
     const current = existingCandidates[args.candidateId];
     if (!current) return false;
+    if (
+      current.candidateStatus === 'INVALIDATED_END_CANDIDATE' &&
+      args.candidateStatus === 'CONFIRMED'
+    ) {
+      return false;
+    }
+    const nowIso = new Date().toISOString();
+    const nextRecord: PdiCandidateOverlayRecord = {
+      ...current,
+      candidateStatus: args.candidateStatus,
+    };
+    if (args.candidateStatus === 'CONFIRMED') {
+      nextRecord.confirmedAt = nowIso;
+      nextRecord.confirmedReason = args.reason;
+    } else if (args.candidateStatus === 'INVALIDATED_END_CANDIDATE') {
+      nextRecord.invalidatedAt = nowIso;
+      nextRecord.invalidatedReason = args.reason;
+    }
     await this.repository.mergeExperimentMetadataJson(experiment.id, {
       [EXP021_PDI_CANDIDATES_METADATA_KEY]: {
         ...existingCandidates,
-        [args.candidateId]: {
-          ...current,
-          candidateStatus: args.candidateStatus,
-          invalidatedAt: new Date().toISOString(),
-          invalidatedReason: args.reason,
-        },
+        [args.candidateId]: nextRecord,
       },
     });
     return true;
@@ -977,39 +1007,62 @@ export class ReferenceCaptureSettlementShadowService {
       ? this.extractPdiCandidateIdFromIdempotencyKey(args.schedule.idempotencyKey)
       : null;
 
-    let priorIdentities: string[] = [];
-    if (isPdiChannel && pdiCandidateId) {
-      const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
-        where: {
-          experimentId: args.schedule.experimentId,
-          probeId: args.schedule.probeId,
-          scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
-          phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
-        },
-        orderBy: { scheduledAgeMs: 'desc' },
-        take: 20,
-      });
-      const sameCandidate = priorObservations.find((row) => {
-        const json = row.observationJson as { candidateId?: string } | null;
-        return json?.candidateId === pdiCandidateId;
-      });
-      priorIdentities =
-        (sameCandidate?.observationJson as { uniqueBucketIdentities?: string[] } | null)
-          ?.uniqueBucketIdentities ?? [];
-    } else if (!isPdiChannel) {
-      const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
-        where: {
-          experimentId: args.schedule.experimentId,
-          probeId: args.schedule.probeId,
-          scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
-        },
-        orderBy: { scheduledAgeMs: 'desc' },
-        take: 1,
-      });
-      priorIdentities =
-        (priorObservations[0]?.observationJson as { uniqueBucketIdentities?: string[] } | null)
-          ?.uniqueBucketIdentities ?? [];
-    }
+    const isCanonicalWholeTrip =
+      args.schedule.probeType === ReferenceCaptureSettlementShadowProbeType.WHOLE_TRIP &&
+      (args.schedule.phase == null || args.schedule.phase === '');
+
+    const priorWhere = {
+      experimentId: args.schedule.experimentId,
+      scheduledAgeMs: { lt: args.schedule.scheduledAgeMs },
+      ...(isPdiChannel && pdiCandidateId
+        ? {
+            phase: EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
+            sourceIntervalStart: args.schedule.sourceIntervalStart,
+            sourceIntervalEnd: args.schedule.sourceIntervalEnd,
+          }
+        : isCanonicalWholeTrip
+          ? {
+              probeType: ReferenceCaptureSettlementShadowProbeType.WHOLE_TRIP,
+              phase: null,
+              sourceIntervalStart: args.schedule.sourceIntervalStart,
+              sourceIntervalEnd: args.schedule.sourceIntervalEnd,
+            }
+          : {
+              probeId: args.schedule.probeId,
+            }),
+    };
+
+    const priorObservations = await this.prisma.referenceCaptureSettlementShadowObservation.findMany({
+      where: priorWhere,
+      orderBy: { scheduledAgeMs: 'desc' },
+      take: 50,
+    });
+
+    const priorRecord = selectPriorMaturationObservation({
+      current: {
+        probeId: args.schedule.probeId,
+        probeType: args.schedule.probeType,
+        phase: args.schedule.phase,
+        sourceIntervalStart: args.schedule.sourceIntervalStart,
+        sourceIntervalEnd: args.schedule.sourceIntervalEnd,
+        scheduledAgeMs: args.schedule.scheduledAgeMs,
+        observationJson: null,
+      },
+      priorObservations: priorObservations.map((row) => ({
+        probeId: row.probeId,
+        probeType: row.probeType,
+        phase: row.phase,
+        sourceIntervalStart: row.sourceIntervalStart,
+        sourceIntervalEnd: row.sourceIntervalEnd,
+        scheduledAgeMs: row.scheduledAgeMs,
+        observationJson: row.observationJson as {
+          candidateId?: string;
+          uniqueBucketIdentities?: string[];
+        } | null,
+      })),
+      pdiCandidateId,
+    });
+    const priorIdentities = priorBucketIdentitiesFromMaturationRecord(priorRecord);
     const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
 
     const candidateBoundaryAt = args.schedule.sourceIntervalEnd;

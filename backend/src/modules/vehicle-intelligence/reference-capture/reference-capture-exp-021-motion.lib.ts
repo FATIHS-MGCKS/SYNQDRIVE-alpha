@@ -259,6 +259,8 @@ export type PhysicalEndDetectorConfig = {
   provisionalConfirmMs: number;
   finalParkedMs: number;
   maxSampleAgeMs: number;
+  /** Distinct fresh parked provider timestamps required before UNKNOWN may auto-stop. */
+  minDistinctParkedSamples: number;
 };
 
 export const EXP021_DEFAULT_PHYSICAL_END: PhysicalEndDetectorConfig = {
@@ -267,7 +269,58 @@ export const EXP021_DEFAULT_PHYSICAL_END: PhysicalEndDetectorConfig = {
   provisionalConfirmMs: 120_000,
   finalParkedMs: 600_000,
   maxSampleAgeMs: 120_000,
+  minDistinctParkedSamples: 2,
 };
+
+export type PreDeployMovementGateConfig = {
+  movementSpeedKmh: number;
+  minDistinctFreshSamples: number;
+  maxSampleAgeMs: number;
+};
+
+export const EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT: PreDeployMovementGateConfig = {
+  movementSpeedKmh: 8,
+  minDistinctFreshSamples: 3,
+  maxSampleAgeMs: 120_000,
+};
+
+/** Pre-deploy movement gate — distinct provider speed timestamps only (not poll counts). */
+export class PreDeployMovementGate {
+  private readonly seenTimestamps = new Set<string>();
+
+  constructor(private readonly config: PreDeployMovementGateConfig) {}
+
+  reset(): void {
+    this.seenTimestamps.clear();
+  }
+
+  record(sample: SpeedSample, motionState: MotionState, nowMs: number): void {
+    if (motionState !== 'MOVING') {
+      return;
+    }
+    if (sample.speedKmh == null || sample.speedTimestamp == null) {
+      return;
+    }
+    if (sample.speedAgeMs == null || sample.speedAgeMs > this.config.maxSampleAgeMs) {
+      return;
+    }
+    if (sample.speedKmh < this.config.movementSpeedKmh) {
+      return;
+    }
+    if (this.seenTimestamps.has(sample.speedTimestamp)) {
+      return;
+    }
+    this.seenTimestamps.add(sample.speedTimestamp);
+  }
+
+  isDriveStartBeforeDeploy(): boolean {
+    return this.seenTimestamps.size >= this.config.minDistinctFreshSamples;
+  }
+
+  getDistinctSampleCount(): number {
+    return this.seenTimestamps.size;
+  }
+}
 
 /**
  * Prospective physical end detector. UNKNOWN alone never initiates a candidate; after a
@@ -277,7 +330,8 @@ export class PhysicalEndDetector {
   private candidate: PhysicalEndCandidateRecord | null = null;
   private provisionalSustainSinceMs: number | null = null;
   private finalParkedSinceMs: number | null = null;
-  private hadFreshParkedEvidence = false;
+  private readonly distinctParkedTimestamps = new Set<string>();
+  private strongParkedEvidence = false;
 
   constructor(private readonly config: PhysicalEndDetectorConfig) {}
 
@@ -315,7 +369,8 @@ export class PhysicalEndDetector {
       }
       this.provisionalSustainSinceMs = null;
       this.finalParkedSinceMs = null;
-      this.hadFreshParkedEvidence = false;
+      this.distinctParkedTimestamps.clear();
+      this.strongParkedEvidence = false;
       return {
         newProvisionalCandidate: null,
         candidateInvalidated,
@@ -325,7 +380,12 @@ export class PhysicalEndDetector {
     }
 
     if (motionState === 'PARKED_CANDIDATE' && sample.speedSignalFresh) {
-      this.hadFreshParkedEvidence = true;
+      if (sample.speedTimestamp && !this.distinctParkedTimestamps.has(sample.speedTimestamp)) {
+        this.distinctParkedTimestamps.add(sample.speedTimestamp);
+      }
+      if (this.distinctParkedTimestamps.size >= this.config.minDistinctParkedSamples) {
+        this.strongParkedEvidence = true;
+      }
       const boundary = this.boundaryFromSample(sample) ?? new Date(nowMs);
 
       if (!this.candidate || this.candidate.candidateStatus === 'INVALIDATED') {
@@ -358,8 +418,8 @@ export class PhysicalEndDetector {
         candidateConfirmed = true;
       }
     } else if (motionState === 'UNKNOWN') {
-      // UNKNOWN alone never initiates; preserve existing candidate for ignition-off path.
-      if (this.candidate && this.hadFreshParkedEvidence && this.finalParkedSinceMs == null) {
+      // UNKNOWN is not parked/ignition authority — preserve candidate only.
+      if (this.candidate && this.finalParkedSinceMs == null) {
         this.finalParkedSinceMs = nowMs;
       }
     }
@@ -393,10 +453,10 @@ export class PhysicalEndDetector {
       return true;
     }
 
-    // Ignition-off / telemetry stale after strong parked evidence + confirmed/provisional candidate.
+    // Telemetry dropout may auto-stop only after STRONG distinct parked evidence — not one sample.
     if (
       motionState === 'UNKNOWN' &&
-      this.hadFreshParkedEvidence &&
+      this.strongParkedEvidence &&
       (this.candidate.candidateStatus === 'CONFIRMED' ||
         (this.provisionalSustainSinceMs != null &&
           nowMs - this.provisionalSustainSinceMs >= this.config.provisionalConfirmMs))
@@ -552,6 +612,8 @@ export type PdiCandidateOverlayRecord = {
   candidateBoundaryAt: string;
   candidateStatus: PdiCandidateOverlayStatus;
   candidateDetectedAt?: string;
+  confirmedAt?: string;
+  confirmedReason?: string;
   invalidatedAt?: string;
   invalidatedReason?: string;
 };

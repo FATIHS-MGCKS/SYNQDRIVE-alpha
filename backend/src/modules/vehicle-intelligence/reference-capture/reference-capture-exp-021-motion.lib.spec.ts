@@ -4,6 +4,7 @@ import {
   PhysicalDrivePhaseTracker,
   PhysicalEndDetector,
   PhysicalStartDetector,
+  PreDeployMovementGate,
   rankCanonicalVehicleTripCandidates,
 } from './reference-capture-exp-021-motion.lib';
 import {
@@ -150,6 +151,7 @@ describe('reference-capture-exp-021-motion.lib', () => {
       provisionalConfirmMs: 120_000,
       finalParkedMs: 600_000,
       maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
     });
     const parked = speedSample(0, 0);
     const result = detector.observe(parked, 'PARKED_CANDIDATE', baseMs);
@@ -163,19 +165,59 @@ describe('reference-capture-exp-021-motion.lib', () => {
     expect(scheduleCreatedAt.getTime()).toBeLessThanOrEqual(boundary + 30_000);
   });
 
-  it('IGNITION_OFF_AUTO_STOP_SAFE after parked evidence', () => {
+  it('SINGLE_PARKED_SAMPLE_PLUS_UNKNOWN_CAN_STOP = NO', () => {
     const detector = new PhysicalEndDetector({
       parkedSpeedKmh: 3,
       movementSpeedKmh: 8,
       provisionalConfirmMs: 5_000,
       finalParkedMs: 600_000,
       maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
     });
-    const parked = speedSample(0, 0);
-    detector.observe(parked, 'PARKED_CANDIDATE', baseMs);
-    const staleAt = baseMs + 130_000;
-    const stop = detector.observe(parked, 'UNKNOWN', staleAt);
+    detector.observe(speedSample(0, 0), 'PARKED_CANDIDATE', baseMs);
+    const stop = detector.observe(speedSample(0, 0), 'UNKNOWN', baseMs + 10_000);
+    expect(stop.shouldAutoStop).toBe(false);
+  });
+
+  it('STRONG_PARKED_EVIDENCE_REQUIRED_FOR_UNKNOWN_STOP', () => {
+    const detector = new PhysicalEndDetector({
+      parkedSpeedKmh: 3,
+      movementSpeedKmh: 8,
+      provisionalConfirmMs: 2_000,
+      finalParkedMs: 600_000,
+      maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
+    });
+    detector.observe(speedSample(0, 0), 'PARKED_CANDIDATE', baseMs);
+    detector.observe(speedSample(5, 0), 'PARKED_CANDIDATE', baseMs + 5_000);
+    const stop = detector.observe(speedSample(5, 0), 'UNKNOWN', baseMs + 8_000);
     expect(stop.shouldAutoStop).toBe(true);
+  });
+
+  it('PRE_DEPLOY_REPEATED_TIMESTAMP_FALSE_START = NO', () => {
+    const gate = new PreDeployMovementGate({
+      movementSpeedKmh: 8,
+      minDistinctFreshSamples: 3,
+      maxSampleAgeMs: 120_000,
+    });
+    const sample = speedSample(0, 20);
+    for (let i = 0; i < 4; i += 1) {
+      gate.record(sample, 'MOVING', baseMs + i * 15_000);
+    }
+    expect(gate.isDriveStartBeforeDeploy()).toBe(false);
+    expect(gate.getDistinctSampleCount()).toBe(1);
+  });
+
+  it('PRE_DEPLOY_MOVEMENT_USES_DISTINCT_PROVIDER_EVIDENCE', () => {
+    const gate = new PreDeployMovementGate({
+      movementSpeedKmh: 8,
+      minDistinctFreshSamples: 3,
+      maxSampleAgeMs: 120_000,
+    });
+    for (const offset of [0, 15, 30, 45]) {
+      gate.record(speedSample(offset, 20), 'MOVING', baseMs + offset * 1000);
+    }
+    expect(gate.isDriveStartBeforeDeploy()).toBe(true);
   });
 
   it('rankCanonicalVehicleTripCandidates prefers highest overlap', () => {
@@ -231,6 +273,7 @@ describe('reference-capture-exp-021 full-run simulation', () => {
       provisionalConfirmMs: 2_000,
       finalParkedMs: 10_000,
       maxSampleAgeMs: 120_000,
+      minDistinctParkedSamples: 2,
     });
     const phaseTracker = new PhysicalDrivePhaseTracker();
     const required = 60_000;
@@ -282,7 +325,10 @@ describe('reference-capture-exp-021 full-run simulation', () => {
     now += 5_000;
     const parked2 = speedSample(now, 0);
     endDetector.observe(parked2, 'PARKED_CANDIDATE', now);
-    const ignitionOff = endDetector.observe(parked2, 'UNKNOWN', now + 12_000);
+    now += 5_000;
+    const parked3 = speedSample(now, 0);
+    endDetector.observe(parked3, 'PARKED_CANDIDATE', now);
+    const ignitionOff = endDetector.observe(parked3, 'UNKNOWN', now + 12_000);
 
     expect(pdiScheduled).toBe(true);
     expect(falseCandidateInvalidated).toBe(true);
