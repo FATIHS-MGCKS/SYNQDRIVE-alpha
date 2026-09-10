@@ -1631,10 +1631,10 @@ function runSelfTests() {
       if (!out.includes('Central module registry validation passed.')) {
         throw new Error(`missing success marker in wrapper output: ${out}`);
       }
-      if (!out.includes('AUTHORITY_ACTIVE: 6')) {
+      if (!out.includes('AUTHORITY_ACTIVE: 7')) {
         throw new Error(`missing expected module counts in wrapper output: ${out}`);
       }
-      if (!out.includes('modules inventoried: 6')) {
+      if (!out.includes('modules inventoried: 64')) {
         throw new Error(`missing inventoried count in wrapper output: ${out}`);
       }
     },
