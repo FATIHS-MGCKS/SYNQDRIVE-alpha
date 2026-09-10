@@ -1,6 +1,9 @@
 import {
+  assertCandidateMatchesPersistedT0,
   buildExp021PhysicalAuthority,
   classifyOrchestratorFailure,
+  Exp021PhaseIdentityConflictError,
+  Exp021T0ConsistencyError,
   isLatePlus30MisclassifiedAsActualPlus30,
   parseExp021PhysicalAuthority,
 } from './reference-capture-exp-021-physical-authority.lib';
@@ -168,16 +171,85 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
   it('scenario I: orchestration failure classified separately from lock loss', () => {
     expect(
       classifyOrchestratorFailure(new Error('Requested calibration phase 60000ms matches current effective phase')),
-    ).toBe('orchestration');
+    ).toBe('recoverable_orchestration');
     expect(classifyOrchestratorFailure(new Error('orchestrator lock lease lost — fail closed'))).toBe(
-      'integrity',
+      'integrity_fatal',
     );
   });
 
   it('scenario J: lock loss is integrity fail-closed', () => {
     expect(classifyOrchestratorFailure(new Error('competing orchestrator instance holds lock'))).toBe(
-      'integrity',
+      'integrity_fatal',
     );
+  });
+
+  it('unknown errors default to integrity_fatal (fail closed)', () => {
+    expect(classifyOrchestratorFailure(new Error('unexpected internal state'))).toBe('integrity_fatal');
+  });
+
+  it('transient provider errors are classified separately', () => {
+    expect(classifyOrchestratorFailure(new Error('fetch failed with status code 503'))).toBe(
+      'transient_provider',
+    );
+  });
+
+  it('canonical T0 is immutable once persisted', () => {
+    const persisted = buildExp021PhysicalAuthority({
+      firstQualifyingMovementAt: new Date(t0Ms),
+      startConfirmedAt: new Date(t0Ms + 1000),
+      persistedAtMs: t0Ms + 1000,
+    });
+    expect(() =>
+      assertCandidateMatchesPersistedT0({
+        persistedCanonicalT0At: persisted.canonicalT0At,
+        candidateFirstQualifyingMovementAt: new Date(t0Ms + 60_000),
+      }),
+    ).toThrow(Exp021T0ConsistencyError);
+  });
+
+  it('reanchor rejects PHYSICAL_T0 with different canonical T0', () => {
+    const first = reanchorPhysicalCalibrationPhaseAtT0({
+      existing: null,
+      vehicleId,
+      tokenId,
+      canonicalT0Ms: t0Ms,
+      effectivePollIntervalMs: 60000,
+      hfPolicy: HF_POLICY,
+      nowMs: t0Ms,
+    });
+    expect(() =>
+      reanchorPhysicalCalibrationPhaseAtT0({
+        existing: first.series,
+        vehicleId,
+        tokenId,
+        canonicalT0Ms: t0Ms + 60_000,
+        effectivePollIntervalMs: 60000,
+        hfPolicy: HF_POLICY,
+        nowMs: t0Ms + 60_000,
+      }),
+    ).toThrow(Exp021PhaseIdentityConflictError);
+  });
+
+  it('reanchor rejects PRE_ROLL phaseStartedAt after canonical T0', () => {
+    const preRoll = switchHfCalibrationPhase({
+      existing: null,
+      vehicleId,
+      tokenId,
+      effectivePollIntervalMs: 60000,
+      nowMs: t0Ms + 60_000,
+      phaseProvenance: 'PRE_ROLL',
+    }).series;
+    expect(() =>
+      reanchorPhysicalCalibrationPhaseAtT0({
+        existing: preRoll,
+        vehicleId,
+        tokenId,
+        canonicalT0Ms: t0Ms,
+        effectivePollIntervalMs: 60000,
+        hfPolicy: HF_POLICY,
+        nowMs: t0Ms + 120_000,
+      }),
+    ).toThrow(Exp021PhaseIdentityConflictError);
   });
 
   it('T0 authority persists in preflight and survives parse round-trip', () => {

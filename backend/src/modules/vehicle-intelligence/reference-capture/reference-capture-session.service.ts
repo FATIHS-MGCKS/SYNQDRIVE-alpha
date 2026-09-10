@@ -513,7 +513,7 @@ export class ReferenceCaptureSessionService {
   async activatePhysicalPhaseAtT0(
     organizationId: string,
     sessionId: string,
-    body: { effectivePollIntervalMs: number; canonicalT0Ms: number },
+    body: { effectivePollIntervalMs: number },
   ) {
     this.assertEnabled();
     const session = await this.requireSession(organizationId, sessionId);
@@ -532,7 +532,6 @@ export class ReferenceCaptureSessionService {
       vehicleId: session.vehicleId,
       tokenId,
       effectivePollIntervalMs: body.effectivePollIntervalMs,
-      canonicalT0Ms: body.canonicalT0Ms,
       hfPolicy,
       nowMs: Date.now(),
     });

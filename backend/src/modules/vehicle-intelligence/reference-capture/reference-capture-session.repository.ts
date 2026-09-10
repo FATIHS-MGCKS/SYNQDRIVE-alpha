@@ -4,9 +4,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HF_PHYSICAL_IDENTITY_VERSION } from './reference-capture-physical-sample-identity.util';
 import type { ReferenceCaptureAcquisitionState } from './reference-capture.types';
 import {
+  assertCandidateMatchesPersistedT0,
   buildExp021PhysicalAuthority,
+  Exp021T0ConsistencyError,
   mergeExp021PhysicalAuthority,
   parseExp021PhysicalAuthority,
+  resolvePersistedCanonicalT0Ms,
   type Exp021PhysicalAuthority,
 } from './reference-capture-exp-021-physical-authority.lib';
 import {
@@ -411,6 +414,10 @@ export class ReferenceCaptureSessionRepository {
 
       const existing = parseExp021PhysicalAuthority(session.preflightJson);
       if (existing?.canonicalT0At) {
+        assertCandidateMatchesPersistedT0({
+          persistedCanonicalT0At: existing.canonicalT0At,
+          candidateFirstQualifyingMovementAt: input.firstQualifyingMovementAt,
+        });
         return { created: false, authority: existing };
       }
 
@@ -436,7 +443,6 @@ export class ReferenceCaptureSessionRepository {
     vehicleId: string;
     tokenId: number;
     effectivePollIntervalMs: number;
-    canonicalT0Ms: number;
     hfPolicy: HfRecoveryPolicyV2Config;
     nowMs: number;
   }): Promise<ReanchorPhysicalCalibrationPhaseResult & { session: ReferenceCaptureSession } | null> {
@@ -451,13 +457,17 @@ export class ReferenceCaptureSessionRepository {
           `Physical phase activation requires RECORDING status (current: ${session.status})`,
         );
       }
+      if (session.vehicleId !== input.vehicleId) {
+        throw new Exp021T0ConsistencyError('session vehicleId mismatch during physical phase activation');
+      }
 
+      const canonicalT0Ms = resolvePersistedCanonicalT0Ms(session.preflightJson);
       const current = parseAcquisitionState(session.acquisitionStateJson);
       const reanchor = reanchorPhysicalCalibrationPhaseAtT0({
         existing: current.hfCalibrationSeries ?? null,
         vehicleId: input.vehicleId,
         tokenId: input.tokenId,
-        canonicalT0Ms: input.canonicalT0Ms,
+        canonicalT0Ms,
         effectivePollIntervalMs: input.effectivePollIntervalMs,
         hfPolicy: input.hfPolicy,
         nowMs: input.nowMs,

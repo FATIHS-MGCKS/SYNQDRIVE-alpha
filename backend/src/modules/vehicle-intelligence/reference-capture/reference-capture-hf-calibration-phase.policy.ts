@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import type { HfCalibrationPhaseProvenance } from './reference-capture-exp-021-physical-authority.lib';
 import {
+  Exp021PhaseIdentityConflictError,
   isPhysicalPhaseProvenance,
 } from './reference-capture-exp-021-physical-authority.lib';
 import {
@@ -915,7 +916,7 @@ export type ReanchorPhysicalCalibrationPhaseResult = {
 };
 
 /**
- * Seal any PRE_ROLL (or mismatched physical) phase and establish PHYSICAL_T0 phase 60 at canonical T0.
+ * Seal a valid PRE_ROLL phase and establish PHYSICAL_T0 at canonical T0.
  * Idempotent when the correct physical phase is already active at T0.
  */
 export function reanchorPhysicalCalibrationPhaseAtT0(args: {
@@ -932,26 +933,50 @@ export function reanchorPhysicalCalibrationPhaseAtT0(args: {
   const canonicalT0At = new Date(args.canonicalT0Ms).toISOString();
   const newId = args.idFactory ?? randomUUID;
 
+  if (args.existing) {
+    if (args.existing.vehicleId !== args.vehicleId || args.existing.tokenId !== args.tokenId) {
+      throw new Exp021PhaseIdentityConflictError(
+        'calibration series vehicle/token mismatch during physical T0 reanchor',
+      );
+    }
+  }
+
   const active = args.existing?.activePhase;
-  if (
-    active &&
-    active.effectivePollIntervalMs === intervalMs &&
-    active.phaseProvenance === 'PHYSICAL_T0' &&
-    active.canonicalT0At === canonicalT0At
-  ) {
-    return {
-      series: args.existing!,
-      activePhase: active,
-      reanchored: false,
-      sealedPreRollPhaseId: null,
-      phaseStartedAt: active.phaseStartedAt,
-      canonicalT0At,
-    };
+  if (active?.phaseProvenance === 'PHYSICAL_T0') {
+    if (active.canonicalT0At === canonicalT0At && active.effectivePollIntervalMs === intervalMs) {
+      return {
+        series: args.existing!,
+        activePhase: active,
+        reanchored: false,
+        sealedPreRollPhaseId: null,
+        phaseStartedAt: active.phaseStartedAt,
+        canonicalT0At,
+      };
+    }
+    throw new Exp021PhaseIdentityConflictError(
+      `PHYSICAL_T0 exists with different canonical T0 (${active.canonicalT0At} vs ${canonicalT0At})`,
+    );
+  }
+
+  if (active?.phaseProvenance === 'PHYSICAL_TRANSITION') {
+    if (active.canonicalT0At === canonicalT0At) {
+      return {
+        series: args.existing!,
+        activePhase: active,
+        reanchored: false,
+        sealedPreRollPhaseId: null,
+        phaseStartedAt: active.phaseStartedAt,
+        canonicalT0At,
+      };
+    }
+    throw new Exp021PhaseIdentityConflictError(
+      `PHYSICAL_TRANSITION exists with different canonical T0 (${active.canonicalT0At} vs ${canonicalT0At})`,
+    );
   }
 
   let sealedPreRollPhaseId: string | null = null;
   let completedPhases = [...(args.existing?.completedPhases ?? [])];
-  let completedSummaries = [...(args.existing?.completedPhaseSummaries ?? [])];
+  const completedSummaries = [...(args.existing?.completedPhaseSummaries ?? [])];
   const baseSeries: HfCalibrationSeriesState = args.existing ?? {
     calibrationSeriesId: newId(),
     vehicleId: args.vehicleId,
@@ -969,6 +994,26 @@ export function reanchorPhysicalCalibrationPhaseAtT0(args: {
   };
 
   if (active) {
+    const provenance = active.phaseProvenance ?? 'PRE_ROLL';
+    if (provenance !== 'PRE_ROLL') {
+      throw new Exp021PhaseIdentityConflictError(
+        `cannot reanchor non-PRE_ROLL active phase provenance=${provenance ?? 'UNKNOWN'}`,
+      );
+    }
+    const startedMs = Date.parse(active.phaseStartedAt);
+    if (!Number.isFinite(startedMs)) {
+      throw new Exp021PhaseIdentityConflictError('PRE_ROLL phaseStartedAt is not parseable');
+    }
+    if (startedMs > args.canonicalT0Ms) {
+      throw new Exp021PhaseIdentityConflictError(
+        `PRE_ROLL phaseStartedAt (${active.phaseStartedAt}) is after canonical T0 (${canonicalT0At})`,
+      );
+    }
+    if (completedPhases.some((phase) => phase.calibrationPhaseId === active.calibrationPhaseId)) {
+      throw new Exp021PhaseIdentityConflictError(
+        `duplicate completed phase insertion blocked for ${active.calibrationPhaseId}`,
+      );
+    }
     sealedPreRollPhaseId = active.calibrationPhaseId;
     completedPhases.push({
       ...active,

@@ -349,6 +349,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 
+## EXP-021 — PR #1598 final red-team (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RED-TEAM DRAFT** on PR #1598 |
+| Fixes | Immutable persisted T0; recovery uses DB authority; orchestrator iteration survivability; reanchor validation; postgres T0 recovery integration harness |
+| Evidence | `EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md` |
+
 ## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
 
 | Event | Detail |

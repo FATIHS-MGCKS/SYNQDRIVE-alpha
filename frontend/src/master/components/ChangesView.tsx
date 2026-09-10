@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-pr1598-final-red-team-2026-09-10',
+    version: '4.9.1099',
+    title: 'EXP-021 PR #1598 — final red-team T0 recovery + orchestrator survivability',
+    summary: [
+      'Immutable persisted canonical T0 — activatePhysicalPhaseAtT0 derives T0 from DB authority only.',
+      'RECOVER_T0_PHASE_ACTIVATION on attach when T0 exists without physical phase; no second movement detection.',
+      'Orchestrator iteration survivability: transient_provider + recoverable_orchestration keep supervisor alive; unknown → integrity_fatal.',
+      'reanchorPhysicalCalibrationPhaseAtT0 validates PRE_ROLL only; PHYSICAL_T0 fork blocked.',
+      'Postgres T0 recovery integration harness added (CI_AUTHORITY when isolated PG available).',
+    ],
+    reason:
+      'Final pre-merge red-team pass on PR #1598 — close T0 fork and orchestrator exit risks before physical rerun.',
+    previousBehavior:
+      'Caller-supplied canonicalT0Ms could diverge from persisted authority; recoverable errors could exit supervisor loop; unknown errors defaulted recoverable.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-ks-ms-661-t0-phase-settlement-hardening-2026-09-10',
     version: '4.9.1098',
     title: 'EXP-021 — KS MS 661 T0 / phase / settlement hardening (draft)',

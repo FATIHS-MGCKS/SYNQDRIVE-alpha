@@ -301,6 +301,7 @@ async function main(): Promise<void> {
   let phaseActivatedAtMs: number | null = null;
   let physicalDriveStartedAt: Date | null = null;
   let physicalDriveEndCandidateId: string | null = null;
+  let pendingT0PhaseActivation = false;
   const physicalStartDetector = new PhysicalStartDetector({
     ...EXP021_DEFAULT_PHYSICAL_START,
     movementSpeedKmh: config.movementSpeedKmh,
@@ -334,9 +335,47 @@ async function main(): Promise<void> {
     rcConfig = app.get(ReferenceCaptureConfig);
   }
 
+  async function activatePhysicalPhaseFromPersistedAuthority(
+    recoveryMode: 'T0_RECOVERY' | 'T0_CONFIRM',
+  ): Promise<void> {
+    if (!sessionId || !sessionService) {
+      throw new Error('missing session context for physical phase activation');
+    }
+    const activation = await sessionService.activatePhysicalPhaseAtT0(
+      config.organizationId,
+      sessionId,
+      { effectivePollIntervalMs: 60000 },
+    );
+    const phase60EffectiveAt = new Date(activation.phaseStartedAt);
+    await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
+    currentPhaseIndex = 0;
+    phaseActivatedAtMs = phase60EffectiveAt.getTime();
+    phaseTracker.beginPhase(
+      EXP021_CADENCE_PHASE_ORDER_MS[0],
+      phase60EffectiveAt.getTime(),
+      config.phaseDurationMs,
+    );
+    phase = 'DRIVING';
+    pendingT0PhaseActivation = false;
+    log(config, 'PHYSICAL_PHASE_60_REANCHORED_AT_T0', {
+      PHASE_60_EFFECTIVE: 'YES',
+      REANCHORED: activation.reanchored ? 'YES' : 'NO',
+      SEALED_PRE_ROLL_PHASE_ID: activation.sealedPreRollPhaseId,
+      EFFECTIVE_AT: activation.phaseStartedAt,
+      CANONICAL_T0_AT: activation.canonicalT0At,
+      RECOVERY_MODE: recoveryMode,
+      CANONICAL_T0_SOURCE: 'PERSISTED_AUTHORITY',
+    });
+    log(config, 'PHASE_60_PHYSICAL_BOUNDARY', {
+      PHASE_60_EFFECTIVE: 'YES',
+      EFFECTIVE_AT: phase60EffectiveAt.toISOString(),
+    });
+  }
+
   let running = true;
   try {
     while (running) {
+      try {
       const lockExtended = await extendOrchestratorLock(redis, lockHandle);
       if (!lockExtended) {
         throw new Error('orchestrator lock lease lost — fail closed');
@@ -349,7 +388,23 @@ async function main(): Promise<void> {
       let motion: Awaited<ReturnType<typeof queryMotionSample>> | null = null;
       if (deployReady || !deployRunning) {
         await ensureApp();
-        motion = await queryMotionSample(app!, config);
+        try {
+          motion = await queryMotionSample(app!, config);
+        } catch (motionError) {
+          const motionErr =
+            motionError instanceof Error ? motionError : new Error(String(motionError));
+          const motionFailureClass = classifyOrchestratorFailure(motionErr);
+          if (motionFailureClass === 'integrity_fatal') {
+            throw motionErr;
+          }
+          log(config, motionFailureClass === 'transient_provider' ? 'TRANSIENT_PROVIDER_ERROR' : 'RECOVERABLE_ORCHESTRATION_ERROR', {
+            ORCHESTRATOR_REMAINS_ALIVE: 'YES',
+            RAW_RC_CONTINUES: 'YES',
+            error: motionErr.message,
+          });
+          await sleep(config.pollMs);
+          continue;
+        }
       }
 
       if (!deployReady) {
@@ -485,7 +540,13 @@ async function main(): Promise<void> {
                 activePhaseMs: ap.effectivePollIntervalMs,
               });
             } else {
+              pendingT0PhaseActivation = true;
               phase = 'WAIT_MOVEMENT';
+              log(config, 'RECOVER_T0_PHASE_ACTIVATION', {
+                RECOVER_T0_PHASE_ACTIVATION: 'YES',
+                canonicalT0At: authority.canonicalT0At,
+                SECOND_T0_DETECTION_REQUIRED: 'NO',
+              });
             }
           } else {
             phase = 'WAIT_MOVEMENT';
@@ -597,6 +658,28 @@ async function main(): Promise<void> {
 
       if (phase === 'WAIT_MOVEMENT') {
         if (!sessionId) throw new Error('missing sessionId');
+        if (pendingT0PhaseActivation && physicalDriveStarted) {
+          try {
+            await activatePhysicalPhaseFromPersistedAuthority('T0_RECOVERY');
+          } catch (phaseError) {
+            orchestrationDegraded = true;
+            await sessionService!.markExp021OrchestrationDegraded(
+              config.organizationId,
+              sessionId,
+              phaseError instanceof Error ? phaseError.message : String(phaseError),
+            );
+            phase = 'DRIVING';
+            log(config, 'ORCHESTRATION_DEGRADED', {
+              ORCHESTRATION_STATE: 'DEGRADED',
+              RAW_RC_CONTINUES: 'YES',
+              PHASE_60_EFFECTIVE: 'NO',
+              RECOVERY_RETRY_PENDING: pendingT0PhaseActivation ? 'YES' : 'NO',
+              reason: phaseError instanceof Error ? phaseError.message : String(phaseError),
+            });
+          }
+          await sleep(config.pollMs);
+          continue;
+        }
         if (!motion) {
           await sleep(config.pollMs);
           continue;
@@ -607,8 +690,10 @@ async function main(): Promise<void> {
           config.parkedSpeedKmh,
           config.movementSpeedKmh,
         );
-        physicalStartDetector.record(motion, nowMs, motionState);
-        if (physicalStartDetector.isConfirmed()) {
+        if (!physicalDriveStarted) {
+          physicalStartDetector.record(motion, nowMs, motionState);
+        }
+        if (!physicalDriveStarted && physicalStartDetector.isConfirmed()) {
           const confirmation = physicalStartDetector.getConfirmation();
           if (
             deployConvergedAtMs != null &&
@@ -650,40 +735,13 @@ async function main(): Promise<void> {
           });
 
           physicalDriveStarted = true;
-          physicalDriveStartedAt = firstQualifyingMovementAt;
+          physicalDriveStartedAt = new Date(t0Persist.authority.canonicalT0At);
 
           try {
-            const activation = await sessionService!.activatePhysicalPhaseAtT0(
-              config.organizationId,
-              sessionId,
-              {
-                effectivePollIntervalMs: 60000,
-                canonicalT0Ms: firstQualifyingMovementAt.getTime(),
-              },
-            );
-            const phase60EffectiveAt = new Date(activation.phaseStartedAt);
-            await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
-            currentPhaseIndex = 0;
-            phaseActivatedAtMs = phase60EffectiveAt.getTime();
-            phaseTracker.beginPhase(
-              EXP021_CADENCE_PHASE_ORDER_MS[0],
-              phase60EffectiveAt.getTime(),
-              config.phaseDurationMs,
-            );
-            phase = 'DRIVING';
-            log(config, 'PHYSICAL_PHASE_60_REANCHORED_AT_T0', {
-              PHASE_60_EFFECTIVE: 'YES',
-              REANCHORED: activation.reanchored ? 'YES' : 'NO',
-              SEALED_PRE_ROLL_PHASE_ID: activation.sealedPreRollPhaseId,
-              EFFECTIVE_AT: activation.phaseStartedAt,
-              CANONICAL_T0_AT: activation.canonicalT0At,
-            });
-            log(config, 'PHASE_60_PHYSICAL_BOUNDARY', {
-              PHASE_60_EFFECTIVE: 'YES',
-              EFFECTIVE_AT: phase60EffectiveAt.toISOString(),
-            });
+            await activatePhysicalPhaseFromPersistedAuthority('T0_CONFIRM');
           } catch (phaseError) {
             orchestrationDegraded = true;
+            pendingT0PhaseActivation = true;
             await sessionService!.markExp021OrchestrationDegraded(
               config.organizationId,
               sessionId,
@@ -694,6 +752,7 @@ async function main(): Promise<void> {
               ORCHESTRATION_STATE: 'DEGRADED',
               RAW_RC_CONTINUES: 'YES',
               PHASE_60_EFFECTIVE: 'NO',
+              RECOVERY_RETRY_PENDING: 'YES',
               reason: phaseError instanceof Error ? phaseError.message : String(phaseError),
             });
           }
@@ -880,6 +939,37 @@ async function main(): Promise<void> {
         });
         await sleep(config.pollMs);
       }
+      } catch (iterationError) {
+        const err = iterationError instanceof Error ? iterationError : new Error(String(iterationError));
+        const failureClass = classifyOrchestratorFailure(err);
+        if (failureClass === 'integrity_fatal') {
+          throw err;
+        }
+        if (failureClass === 'transient_provider') {
+          log(config, 'TRANSIENT_PROVIDER_ERROR', {
+            ORCHESTRATOR_REMAINS_ALIVE: 'YES',
+            RAW_RC_CONTINUES: 'YES',
+            error: err.message,
+          });
+          await sleep(config.pollMs);
+          continue;
+        }
+        orchestrationDegraded = true;
+        if (sessionId && sessionService) {
+          await sessionService.markExp021OrchestrationDegraded(
+            config.organizationId,
+            sessionId,
+            err.message,
+          );
+        }
+        log(config, 'RECOVERABLE_ORCHESTRATION_ERROR', {
+          ORCHESTRATION_STATE: 'DEGRADED',
+          ORCHESTRATOR_REMAINS_ALIVE: 'YES',
+          RAW_RC_CONTINUES: 'YES',
+          error: err.message,
+        });
+        await sleep(config.pollMs);
+      }
     }
 
     if (phase === 'DONE') {
@@ -891,30 +981,14 @@ async function main(): Promise<void> {
       });
     }
   } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    if (classifyOrchestratorFailure(err) === 'integrity') {
-      fatalError = err;
-      throw fatalError;
-    }
-    orchestrationDegraded = true;
-    if (sessionId && sessionService) {
-      await sessionService.markExp021OrchestrationDegraded(
-        config.organizationId,
-        sessionId,
-        err.message,
-      );
-    }
-    log(config, 'ORCHESTRATION_DEGRADED', {
-      ORCHESTRATION_STATE: 'DEGRADED',
-      RAW_RC_CONTINUES: 'YES',
-      reason: err.message,
-    });
+    fatalError = error instanceof Error ? error : new Error(String(error));
+    throw fatalError;
   } finally {
     const cleanupSessionService = sessionService;
     const cleanupSessionRepo = sessionRepo;
     const cleanupSessionId = sessionId;
     const integrityFatal =
-      fatalError != null && classifyOrchestratorFailure(fatalError) === 'integrity';
+      fatalError != null && classifyOrchestratorFailure(fatalError) === 'integrity_fatal';
     if (integrityFatal && sessionStarted && cleanupSessionId && cleanupSessionService && cleanupSessionRepo) {
       const session = await cleanupSessionRepo.findById(config.organizationId, cleanupSessionId);
       if (session && (session.status === 'RECORDING' || session.status === 'STOPPING' || session.status === 'READY' || session.status === 'STARTING')) {
