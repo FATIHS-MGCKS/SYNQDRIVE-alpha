@@ -349,6 +349,36 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 
+## EXP-021 — PR #1598 final red-team (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RED-TEAM DRAFT** on PR #1598 |
+| Fixes | Immutable persisted T0; recovery uses DB authority; orchestrator iteration survivability; reanchor validation; postgres T0 recovery integration harness |
+| Evidence | `EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md` |
+
+## EXP-021 — PR #1598 final exact-SHA closure (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CI CLOSURE COMPLETE** @ `33e680e5bf429272c7577ae082bfe6c4de1c5091` |
+| Trip FSM CI | Run 34504226157 — workflow_dispatch SUCCESS |
+| EXP-021 postgres T0 | 4/4 executed PASS (isolated DB) |
+| PR CI | 30/30 checks success; 0 failed; 0 pending |
+| Merge / deploy / drive | **NOT AUTHORIZED** |
+| Evidence | `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` |
+
+## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **HARDENING DRAFT** — forensic root cause from production telemetry-only run |
+| Session | `8374c2fc-…` · orchestrator fatal duplicate 60→60 at movement |
+| Root cause | PRE_ROLL phase 60 credited as physical; T0 logged after fallible phase switch |
+| Fix | Durable T0 before phase activation; `reanchorPhysicalCalibrationPhaseAtT0`; PRE_ROLL settlement gate; orchestration degraded vs integrity fatal |
+| Physical drive | **NOT STARTED** post-fix |
+| Evidence | `EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md` |
+
 ## EXP-021 — Settlement shadow experiment design (2026-09-07)
 
 | Event | Detail |

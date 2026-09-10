@@ -23,6 +23,17 @@ export function buildReferenceCapturePostgresDatabaseUrl(): string {
   return `postgresql://${user}:${password}@${RC_POSTGRES_HOST}:${RC_POSTGRES_PORT}/${RC_POSTGRES_DATABASE}?schema=public`;
 }
 
+function extractPostgresDatabaseName(databaseUrl: string): string {
+  try {
+    const parsed = new URL(databaseUrl);
+    const pathDb = parsed.pathname.replace(/^\//, '').split('/')[0];
+    return decodeURIComponent(pathDb ?? '').toLowerCase();
+  } catch {
+    const match = databaseUrl.match(/\/([^/?]+)(?:\?|$)/);
+    return (match?.[1] ?? '').toLowerCase();
+  }
+}
+
 export function proveIsolatedReferenceCapturePostgres(): {
   postgresHost: string;
   postgresPort: number;
@@ -32,6 +43,7 @@ export function proveIsolatedReferenceCapturePostgres(): {
   const blockedHosts = ['srv1374778', 'app.synqdrive.eu', 'mein-vps', 'hstgr.cloud'];
   const blockedDbNames = ['synqdrive_prod', 'synqdrive_production', 'synqdrive'];
   const lowerUrl = databaseUrl.toLowerCase();
+  const actualDb = extractPostgresDatabaseName(databaseUrl);
 
   for (const host of blockedHosts) {
     if (lowerUrl.includes(host)) {
@@ -39,13 +51,13 @@ export function proveIsolatedReferenceCapturePostgres(): {
     }
   }
   for (const dbName of blockedDbNames) {
-    if (lowerUrl.includes(`/${dbName}`) || lowerUrl.includes(`/${dbName}?`)) {
+    if (actualDb === dbName.toLowerCase()) {
       throw new Error(`Refusing non-isolated DATABASE_URL database: ${dbName}`);
     }
   }
 
   const expectedDb = RC_POSTGRES_DATABASE.toLowerCase();
-  if (!lowerUrl.includes(`/${expectedDb}`) && !lowerUrl.includes(`/${expectedDb}?`)) {
+  if (actualDb !== expectedDb) {
     throw new Error(`DATABASE_URL must target ${RC_POSTGRES_DATABASE}`);
   }
 
