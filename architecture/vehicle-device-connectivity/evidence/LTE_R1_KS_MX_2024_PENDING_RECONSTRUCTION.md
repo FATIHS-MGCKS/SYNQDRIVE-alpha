@@ -5,7 +5,7 @@
 | **Evidence ID** | VDC-EVID-LTE-R1-PENDING-001 |
 | **Source type** | `PRODUCTION_OBSERVATION_PENDING_RECONSTRUCTION` |
 | **Epistemic status** | `INFERRED` (chat/session notes — **not** canonical) |
-| **Validation status** | `PROPOSED` — requires independent Phase 2 audit |
+| **Validation status** | `SUPERSEDED` — see [LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](./LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Vehicle** | Mercedes-Benz C 63 AMG, license plate **KS MX 2024** |
 | **Hardware** | `LTE_R1` |
 | **DIMO token ID** | 187336 |

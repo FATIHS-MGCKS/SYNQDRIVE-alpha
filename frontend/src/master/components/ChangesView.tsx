@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-phase2-production-lte-r1-forensics-2026-09-11',
+    version: '4.9.1104',
+    title: 'VDC Phase 2 — LTE_R1 Production read-only forensics (KS MX 2024)',
+    summary: [
+      'Read-only Production audit for DIMO Ruptela LTE_R1 primary vehicle KS MX 2024 (token 187336).',
+      'Verified ~24 h strict source advances (86,563–86,581 s) during post-trip standby; 6 h cadence not observed.',
+      'Poll SUCCESS : strict source advance ratio ~343:1 over 3.75 d stationary window.',
+      '24 h threshold jitter quantified: 163–181 s transient signal_delayed window per cycle (VDC-Q-011).',
+      'IO174 not exposed in signalsLatest ingest; GT-R1-UNPLUG-001 ground-truth protocol prepared (not executed).',
+      'Authority remains AUDIT_IN_PROGRESS — no runtime/threshold changes.',
+    ],
+    reason:
+      'Phase 2 gate: establish empirical Production truth for Vehicle & Device Connectivity before Phase 3 reconciliation.',
+    previousBehavior:
+      'Phase 1 repository audit only; Production baseline and LTE_R1 standby behavior unverified.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md; LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md; backend/scripts/ops/vdc-phase2-lte-r1-production-forensic.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-11T23:20:00.000Z',
+  },
+  {
     id: 'exp-021-candidate-bracket-v3-prospective-2026-09-11',
     version: '4.9.1103',
     title: 'EXP-021 — CANDIDATE_BRACKET_V3 prospective sweet-spot plan (120→90→60)',

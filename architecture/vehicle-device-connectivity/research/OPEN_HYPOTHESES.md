@@ -1,6 +1,8 @@
 # Vehicle & Device Connectivity — Open Hypotheses
 
-Falsifiable questions — **not conclusions**. Each hypothesis has a graph node `VDC-HYP-*`.
+Falsifiable questions — each hypothesis has a graph node `VDC-HYP-*`.
+
+Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md).
 
 ---
 
@@ -9,11 +11,11 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | LTE_R1 may emit a periodic source update approximately every 24h while the vehicle remains stationary. |
-| **Reason** | Pending forensic session on KS MX 2024 suggested ~86.5k s gaps between distinct `lastSeen` values post-trip; aligns with AI mapper standby window upper bound (24h). |
-| **Falsification** | Observe ≥5 post-trip wakes with gaps consistently **not** near 86.400 s ± tolerance; or sustained silence >48h without disconnect evidence. |
-| **Required evidence** | Deduplicated ClickHouse `telemetry_snapshots`, VLS `source_timestamp` series, multi-day Production window |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **STRONGLY_SUPPORTED** |
+| **Evidence** | KS MX 2024: 3 post-trip intervals 86,563–86,581 s (2026-09-08 → 2026-09-11) |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED (single vehicle, 3 samples) |
+| **Remaining gap** | Physical IO174 timer not proven |
 
 ---
 
@@ -22,11 +24,11 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | Periodic standby update may be device-timer initiated, but IO174 is not exposed through the SynqDrive DIMO `signalsLatest` ingestion path. |
-| **Reason** | VSS GraphQL abstracts Ruptela raw IO; no IO174 in latest VLS payloads indexed to date. |
-| **Falsification** | Discover IO174 or sleep-timer fields in raw ingest archive, reference capture, or provider raw tables. |
-| **Required evidence** | Raw payload archives, DIMO MCP/device raw surfaces, reference-evidence captures |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **STRONGLY_SUPPORTED** |
+| **Evidence** | No IO174/sleep/Ruptela/0x10 in VLS or webhook payloads searched |
+| **Classification** | IO174_NOT_EXPOSED_BY_CURRENT_INGEST |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED |
 
 ---
 
@@ -35,11 +37,10 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | SynqDrive snapshot poll frequency is independent of actual R1 source-update frequency. |
-| **Reason** | Scheduler polls ~every 5 min while device may source-silent for hours; monotonic guard drops stale responses. |
-| **Falsification** | 1:1 correlation between `dimo_poll_logs` SUCCESS and new `source_timestamp` over 72h stationary window. |
-| **Required evidence** | `dimo_poll_logs`, VLS history or ClickHouse deduped timeline |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **CONFIRMED** |
+| **Evidence** | 1,030 SUCCESS polls vs 3 strict source advances (~343:1) in 3.75 d stationary window |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED |
 
 ---
 
@@ -48,11 +49,10 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | Individual signals may retain older timestamps even when `signalsLatest.lastSeen` advances on standby wakes. |
-| **Reason** | Latest KS MX 2024 payload showed fuel/ECT stale at trip-end while LV/GNSS updated on wake. |
-| **Falsification** | All signal `.timestamp` fields advance in lockstep with `lastSeen` on every standby wake. |
-| **Required evidence** | Per-wake `raw_payload_json` capture or reference-evidence time series |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **CONFIRMED** |
+| **Evidence** | Fuel/ECT frozen at trip end; LV/GNSS on latest wake; odometer partial Sep 9 wake |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED (latest payload only; per-wake archive limited) |
 
 ---
 
@@ -61,11 +61,10 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | A healthy sleeping LTE_R1 may remain source-silent for many hours and must not be classified as disconnected based solely on short `lastSeen` age. |
-| **Reason** | Product false alarms if standby tolerance too aggressive; AI mapper already distinguishes standby up to 24h. |
-| **Falsification** | Device confirmed unplugged/offline while source-silent <24h without other fault signals. |
-| **Required evidence** | Controlled unplug test + Production stationary baselines |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **STRONGLY_SUPPORTED** |
+| **Evidence** | CONNECTED + plugged + standby at 18 h source age; polls succeeding |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED |
 
 ---
 
@@ -74,11 +73,10 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 | Field | Value |
 |-------|-------|
 | **Statement** | Device disconnected, device sleeping, DIMO provider unavailable, permission failure, and vehicle not producing CAN data require separate connectivity states. |
-| **Reason** | Collapsed states cause incorrect operator action and alert noise. |
-| **Falsification** | Single observable dimension reliably separates all cases in Production data. |
-| **Required evidence** | Fault injection matrix (ground-truth plan), episode + permission + source timelines |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Phase 2 result** | **STRONGLY_SUPPORTED** |
+| **Evidence** | Observed CONNECTED + stale source + fresh poll + standby simultaneously |
+| **Epistemic state** | PRODUCTION_OBSERVATION |
+| **Validation status** | PRODUCTION_VALIDATED |
 
 ---
 
@@ -86,9 +84,8 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 
 | Field | Value |
 |-------|-------|
-| **Statement** | **FULL_CONNECTIVITY_RECOVERED** (composite outcome) should require strict source advance (`incoming > existing` on `sourceTimestamp`), not merely a successful HTTP/API poll or equality upsert with unchanged `signalsLatest` (**VDC-CX-010**). **PHYSICAL_REPLUG** and **TELEMETRY_RESUMED** are separate evidence layers. |
-| **Reason** | Monotonic guard prevents regression but accepts equality; poll success and plug webhooks may be misread as full recovery. |
-| **Falsification** | Product correctly avoids **FULL_CONNECTIVITY_RECOVERED** when polls succeed or plug events arrive but `sourceTimestamp` is unchanged for >N hours. |
-| **Required evidence** | Fleet connectivity projection code paths + UI acceptance tests |
-| **Epistemic state** | INFERRED |
-| **Validation status** | PROPOSED |
+| **Statement** | **FULL_CONNECTIVITY_RECOVERED** should require strict source advance, not merely poll success or equality upsert. |
+| **Phase 2 result** | **STRONGLY_SUPPORTED** |
+| **Evidence** | Aug 2026 recovery resolved episode via snapshot plug signal; Sep window shows poll success without source advance for ~18 h while still "healthy standby" |
+| **Epistemic state** | PRODUCTION_OBSERVATION + CODE (VDC-CX-010) |
+| **Validation status** | PRODUCTION_VALIDATED |

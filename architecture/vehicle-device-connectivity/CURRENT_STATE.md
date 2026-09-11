@@ -1,19 +1,19 @@
-# Vehicle & Device Connectivity — Current State (Phase 1 Repository Audit)
+# Vehicle & Device Connectivity — Current State
 
 | Field | Value |
 |-------|-------|
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
 | **Phase 1 completed** | 2026-09-11 (repository current-state audit) |
-| **origin/main SHA (audit)** | `d6ce9c104033afcfa55678c8de6e9eef2397e12a` |
-| **Audit branch SHA** | recorded at commit time in `AUDIT_MANIFEST.md` |
-| **Production baseline** | **Not established** — Phase 2 required |
+| **Phase 2 completed** | 2026-09-11 (Production read-only LTE_R1 forensics) |
+| **Production baseline** | **VERIFIED_READ_ONLY** — see [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) |
+| **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Last updated** | 2026-09-11 |
 
 ## Executive summary
 
 SynqDrive implements a **substantial multi-dimensional connectivity model** centered on `VehicleConnectivityRuntimeState` under `backend/src/modules/vehicles/connectivity/`, fed primarily by DIMO snapshot ingest, device-connection webhooks/episodes, and IAM/provider-link evidence. There is **no single code module** named Vehicle & Device Connectivity — semantics are distributed across Vehicles, DIMO Integration, AI evidence mapping, Trip Detection (snapshot wake), and rental operational projection.
 
-Phase 1 confirms:
+Phase 1 (repository) confirms:
 
 - Canonical telemetry freshness uses **15 min / 24 h / 48 h** five-state classification (`vehicle-state-interpreter.ts`).
 - **Poll success ≠ strict source advance** — only `incoming > existing` proves a new observation instant; `incoming == existing` still full-upserts (**VDC-CX-010**); `<` skips telemetry but updates `providerFetchedAt` (VDC-INV-001, VDC-INV-002).
@@ -21,6 +21,14 @@ Phase 1 confirms:
 - **Connectivity alert policy** is provider-neutral pure functions but **implemented under DIMO** (VDC-CX-001).
 - **Legacy parallel paths** (3-state `onlineStatus`, operational list reduced timestamps, admin DIMO debug thresholds) **drift** from canonical runtime.
 - **High Mobility** is not integrated into canonical connectivity runtime (VDC-GAP-009).
+
+Phase 2 (Production, KS MX 2024 LTE_R1) confirms:
+
+- **~24 h strict source advances** during standby (86,563–86,581 s; n=3) — VDC-HYP-001 STRONGLY_SUPPORTED.
+- **Poll success ≠ source advance** at ~343:1 during 3.75 d stationary window — VDC-HYP-003 CONFIRMED.
+- **24 h threshold jitter** produces 163–181 s transient `signal_delayed` windows per cycle — VDC-Q-011 answered.
+- **IO174 not exposed** in signalsLatest ingest — VDC-HYP-002 STRONGLY_SUPPORTED.
+- **VDC-CX-010** equality upserts MATERIAL in Production churn; not fixed in Phase 2.
 
 ## Component hierarchy
 
