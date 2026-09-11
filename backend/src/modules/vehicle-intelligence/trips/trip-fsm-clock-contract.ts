@@ -150,10 +150,15 @@ export function resolvePossibleEndFsmDwellAnchor(
     possibleEndEnteredAt?: Date | null;
     possibleEndAt?: Date | null;
     updatedAt?: Date | null;
+    lastEvidenceSummary?: unknown;
   },
   workerNow: Date,
 ): Date {
   if (det.possibleEndEnteredAt) return det.possibleEndEnteredAt;
+  const evidenceEntered = readPossibleEndDwellAnchorFromEvidence(
+    det.lastEvidenceSummary,
+  );
+  if (evidenceEntered) return evidenceEntered;
   // Pre-R1 rows used possibleEndAt as the dwell clock; prefer it over updatedAt.
   if (det.possibleEndAt) return det.possibleEndAt;
   if (det.updatedAt) return det.updatedAt;
@@ -197,10 +202,161 @@ export function isPossibleEndRecoveryEligible(
 
 /** Physical end-boundary anchor for CUSUM windows and finalize priority. */
 export function resolvePossibleEndBoundaryAnchor(
-  det: { possibleEndAt?: Date | null },
+  det: {
+    possibleEndAt?: Date | null;
+    lastEvidenceSummary?: unknown;
+  },
   workerNow: Date,
 ): Date {
-  return det.possibleEndAt ?? workerNow;
+  if (det.possibleEndAt) return det.possibleEndAt;
+  const boundaryFromEvidence = readTrustedStopBoundaryFromEvidence(
+    det.lastEvidenceSummary,
+    workerNow,
+  );
+  if (boundaryFromEvidence) return boundaryFromEvidence;
+  return workerNow;
+}
+
+function readEvidenceIsoDate(
+  summary: unknown,
+  key: string,
+): Date | null {
+  if (!summary || typeof summary !== 'object') return null;
+  const raw = (summary as Record<string, unknown>)[key];
+  if (typeof raw !== 'string') return null;
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+/**
+ * Mirrors `readStopBoundaryTrust` in trip-fsm-evidence-state (avoid circular import).
+ * Fail-closed: explicit false and malformed trust reject; missing trust infers from authority.
+ */
+function readTrustedStopBoundaryTrustFromEvidence(
+  record: Record<string, unknown>,
+): boolean {
+  const rawTrust = record.stopBoundaryTrust;
+  if (
+    rawTrust !== undefined &&
+    rawTrust !== null &&
+    typeof rawTrust !== 'boolean'
+  ) {
+    return false;
+  }
+  if (typeof rawTrust === 'boolean') {
+    return rawTrust;
+  }
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  return isTrustedStopBoundaryAuthority(clockAuthority);
+}
+
+function readTrustedStopBoundaryFromEvidence(
+  summary: unknown,
+  workerNow: Date,
+): Date | null {
+  const boundaryAt = readEvidenceIsoDate(summary, 'stopBoundaryAt');
+  if (!boundaryAt) return null;
+  if (!isValidProviderEventTimestamp(boundaryAt, workerNow)) return null;
+
+  if (!summary || typeof summary !== 'object') return null;
+  const record = summary as Record<string, unknown>;
+  if (!readTrustedStopBoundaryTrustFromEvidence(record)) return null;
+
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  if (!isTrustedStopBoundaryAuthority(clockAuthority)) return null;
+
+  return boundaryAt;
+}
+
+/**
+ * R12 recovery-only stop boundary reader (stricter than anchor resolution).
+ *
+ * RECOVERY boundary may be restored only when:
+ * - stopBoundaryTrust === true (explicit boolean; missing does NOT infer)
+ * - clock authority is trusted (not WORKER_TIME)
+ * - timestamp is valid provider event time
+ */
+export function readR12RecoveryTrustedStopBoundaryFromEvidence(
+  summary: unknown,
+  workerNow: Date,
+): Date | null {
+  const boundaryAt = readEvidenceIsoDate(summary, 'stopBoundaryAt');
+  if (!boundaryAt) return null;
+  if (!isValidProviderEventTimestamp(boundaryAt, workerNow)) return null;
+
+  if (!summary || typeof summary !== 'object') return null;
+  const record = summary as Record<string, unknown>;
+  if (record.stopBoundaryTrust !== true) return null;
+
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  if (!isTrustedStopBoundaryAuthority(clockAuthority)) return null;
+
+  return boundaryAt;
+}
+
+/** Worker-time FSM entry anchor persisted in evidence when DB column is missing. */
+export function readPossibleEndEnteredAtFromEvidence(summary: unknown): Date | null {
+  return readEvidenceIsoDate(summary, 'possibleEndEnteredAt');
+}
+
+/** Dwell anchor fallback — scheduled time is not the episode token but may anchor dwell. */
+function readPossibleEndDwellAnchorFromEvidence(summary: unknown): Date | null {
+  return (
+    readPossibleEndEnteredAtFromEvidence(summary) ??
+    readEvidenceIsoDate(summary, 'endValidationScheduledAt')
+  );
+}
+
+/**
+ * When modern R12 POSSIBLE_END row lost DB clock columns, restore from durable evidence.
+ * Does not mutate evidence; returns Prisma patch fields only.
+ */
+export function reconcilePossibleEndClockColumns(params: {
+  state: string;
+  possibleEndAt?: Date | null;
+  possibleEndEnteredAt?: Date | null;
+  lastEvidenceSummary?: unknown;
+  workerNow: Date;
+}): {
+  possibleEndAt?: Date;
+  possibleEndEnteredAt?: Date;
+} | null {
+  if (params.state !== 'POSSIBLE_END') return null;
+  const summary = params.lastEvidenceSummary;
+  const patch: { possibleEndAt?: Date; possibleEndEnteredAt?: Date } = {};
+  if (!params.possibleEndAt) {
+    const boundary = readR12RecoveryTrustedStopBoundaryFromEvidence(
+      summary,
+      params.workerNow,
+    );
+    if (boundary) patch.possibleEndAt = boundary;
+  }
+  if (!params.possibleEndEnteredAt) {
+    const entered = readPossibleEndEnteredAtFromEvidence(summary);
+    if (entered) patch.possibleEndEnteredAt = entered;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
 }
 
 export function resolvePossibleEndBoundaryCandidate(params: {

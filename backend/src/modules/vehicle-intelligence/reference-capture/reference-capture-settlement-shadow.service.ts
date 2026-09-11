@@ -7,7 +7,11 @@ import { loadFrozenReferenceManifest } from './reference-capture-manifest.loader
 import { ReferenceCaptureConfig } from './reference-capture.config';
 import { buildBroadReferenceHistoricalSignalsQuery } from './reference-capture-query-builder';
 import { parseAcquisitionState } from './reference-capture-session.repository';
-import type { HfCalibrationPhaseRecord } from './reference-capture-hf-calibration-phase.policy';
+import {
+  isPhaseEligibleForPhysicalSettlement,
+  type HfCalibrationPhaseRecord,
+} from './reference-capture-hf-calibration-phase.policy';
+import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
@@ -40,8 +44,10 @@ import {
 } from './reference-capture-settlement-shadow-response.parser';
 import {
   priorBucketIdentitiesFromMaturationRecord,
+  priorBucketValueSnapshotsFromMaturationRecord,
   selectPriorMaturationObservation,
 } from './reference-capture-settlement-shadow-maturation.lib';
+import { hashBucketValueContent } from './reference-capture-settlement-shadow-value-snapshot';
 import {
   buildPhysicalDriveIntervalProbeId,
   computePdiExecutedOnTime,
@@ -281,6 +287,7 @@ export class ReferenceCaptureSettlementShadowService {
         const newPhases = completed.slice(experiment.lastSyncedPhaseCount);
         for (const phase of newPhases) {
           if (!phase.phaseEndedAt) continue;
+          if (!isPhaseEligibleForPhysicalSettlement(phase)) continue;
           await this.validateCompletedPhaseProbeGeometry({
             experiment,
             phase,
@@ -307,6 +314,7 @@ export class ReferenceCaptureSettlementShadowService {
   }): Promise<void> {
     const active = args.series.activePhase;
     if (!active?.phaseStartedAt) return;
+    if (!isPhaseEligibleForPhysicalSettlement(active)) return;
 
     const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
     if (!Number.isFinite(phaseStartedAtMs)) return;
@@ -318,6 +326,7 @@ export class ReferenceCaptureSettlementShadowService {
     const probeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: active.effectivePollIntervalMs,
       phaseStartedAtMs,
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(active.effectivePollIntervalMs),
     });
 
     if (probeA) {
@@ -359,6 +368,7 @@ export class ReferenceCaptureSettlementShadowService {
     const prospectiveProbeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: args.phase.effectivePollIntervalMs,
       phaseStartedAtMs,
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(args.phase.effectivePollIntervalMs),
     });
     if (!prospectiveProbeB) return;
 
@@ -1058,12 +1068,21 @@ export class ReferenceCaptureSettlementShadowService {
         observationJson: row.observationJson as {
           candidateId?: string;
           uniqueBucketIdentities?: string[];
+          bucketValueSnapshots?: Record<string, string>;
         } | null,
       })),
       pdiCandidateId,
     });
     const priorIdentities = priorBucketIdentitiesFromMaturationRecord(priorRecord);
-    const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities);
+    const priorSnapshots = priorBucketValueSnapshotsFromMaturationRecord(priorRecord);
+    const comparison = compareBucketSets(parsed.uniqueBucketIdentities, priorIdentities, {
+      currentSnapshots: parsed.bucketValueSnapshots,
+      priorSnapshots,
+    });
+    const valueContentHash =
+      Object.keys(parsed.bucketValueSnapshots).length > 0
+        ? hashBucketValueContent(parsed.bucketValueSnapshots)
+        : null;
 
     const candidateBoundaryAt = args.schedule.sourceIntervalEnd;
     const prospectiveAtCreation =
@@ -1116,6 +1135,10 @@ export class ReferenceCaptureSettlementShadowService {
       newBucketIdentities: comparison.newBucketIdentities,
       missingBucketIdentities: comparison.missingBucketIdentities,
       revisionCount: comparison.revisionCount,
+      valueRevisedBucketIdentities: comparison.valueRevisedBucketIdentities,
+      bucketValueSnapshots: parsed.bucketValueSnapshots,
+      valueContentHash,
+      valueIdentityFormat: 'FIELD_PIPE_CANONICAL_ISO_MS|NORMALIZED_SIGNAL_VALUE',
       canonicalBucketIdentity: 'FIELD_PIPE_CANONICAL_ISO_MS',
     };
 

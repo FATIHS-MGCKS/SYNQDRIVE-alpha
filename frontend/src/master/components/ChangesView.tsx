@@ -36,6 +36,88 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
+    version: '4.9.1101',
+    title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',
+    summary: [
+      'Persists ordered nativeTemporalEvidence (EXP021_NATIVE_TEMPORAL_v1) in completedPhaseSummaries.',
+      'Post-run gap ledger reconstruction without live hfCalibrationActiveCounters.',
+      'Native↔settlement join with bucketValueSnapshots on next run.',
+      'KS MS 661 frozen run cannot be backfilled — prospective only.',
+    ],
+    reason:
+      'Completion run requires durable per-gap native evidence joined with settlement value snapshots.',
+    previousBehavior:
+      'nativeUniqueTemporalBucketStarts lived only in ephemeral active counters; not in sealed phase summaries.',
+    details:
+      'reference-capture-native-temporal-evidence.lib.ts; exp021-native-gap-reconstruction; exp021-native-settlement-join.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:45:00.000Z',
+  },
+  {
+    id: 'exp-021-gap-settlement-value-revision-instrumentation-2026-09-10',
+    version: '4.9.1100',
+    title: 'EXP-021 — Gap→settlement correlation + value revision instrumentation',
+    summary: [
+      'Evidence freeze for KS MS 661 physical run `945edc40-…` — historical observations immutable.',
+      'Forward persistence: bucketValueSnapshots, valueContentHash (metadata-free), valueRevisedBucketIdentities.',
+      'Deterministic gap→settlement matrix analyzer + cross-age probe report generator.',
+      'Retroactive: bucket identity maturation provable; per-gap timestamp matrix and value revision NOT on frozen run.',
+      'Corrects prior responseHash drift ≠ value revision inference.',
+    ],
+    reason:
+      'Answer gap→settlement and value-revision questions rigorously before EXP-021 completion run without another physical drive.',
+    previousBehavior:
+      'Settlement shadow stored uniqueBucketIdentities only; responseHash included query age and schedule drift; VALUE_REVISION_DETECTION not implemented.',
+    details:
+      'Evidence: EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json, EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md. Trip FSM untouched.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-10T22:00:00.000Z',
+  },
+  {
+    id: 'exp-021-pr1598-final-red-team-2026-09-10',
+    version: '4.9.1099',
+    title: 'EXP-021 PR #1598 — final red-team T0 recovery + orchestrator survivability',
+    summary: [
+      'Immutable persisted canonical T0 — activatePhysicalPhaseAtT0 derives T0 from DB authority only.',
+      'RECOVER_T0_PHASE_ACTIVATION on attach when T0 exists without physical phase; no second movement detection.',
+      'Orchestrator iteration survivability: transient_provider + recoverable_orchestration keep supervisor alive; unknown → integrity_fatal.',
+      'reanchorPhysicalCalibrationPhaseAtT0 validates PRE_ROLL only; PHYSICAL_T0 fork blocked.',
+      'Postgres T0 recovery integration harness added (CI_AUTHORITY when isolated PG available).',
+    ],
+    reason:
+      'Final pre-merge red-team pass on PR #1598 — close T0 fork and orchestrator exit risks before physical rerun.',
+    previousBehavior:
+      'Caller-supplied canonicalT0Ms could diverge from persisted authority; recoverable errors could exit supervisor loop; unknown errors defaulted recoverable.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'exp-021-ks-ms-661-t0-phase-settlement-hardening-2026-09-10',
+    version: '4.9.1098',
+    title: 'EXP-021 — KS MS 661 T0 / phase / settlement hardening (draft)',
+    summary: [
+      'Production forensic: session 8374c2fc — duplicate 60→60 fatal at movement; 12/12 PRE-T0 settlement probes; no PDI; WHOLE_TRIP 6/6 late.',
+      'Durable canonical T0 persisted before phase activation; PRE_ROLL phase provenance separated from PHYSICAL_T0/TRANSITION.',
+      'reanchorPhysicalCalibrationPhaseAtT0 seals stationary pre-arm and starts physical phase 60 at T0.',
+      'Settlement shadow gated on physical provenance; orchestration errors degrade (RC continues) vs integrity fail-closed.',
+    ],
+    reason:
+      'Next physical EXP-021 run must survive long pre-roll, stale telemetry, and delayed Trip FSM without losing T0 or crediting stationary time.',
+    previousBehavior:
+      'switchHfCalibrationPhase(60000) at movement threw when stationary phase 60 already effective; T0 logged after fallible switch; PRE_ROLL settlement probes matured before drive.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'exp-021-post-1594-1595-rebase-integration-2026-09-10',
     version: '4.9.1097',
     title: 'EXP-021 — Post-#1594/#1595 rebase integration audit (PR #1593)',

@@ -110,6 +110,9 @@ function buildStatefulHarness(initial: Record<string, unknown> = {}) {
       return null;
     }),
     tripMetrics: { possibleEndStuck: { set: jest.fn() } },
+    ensurePossibleEndClockDurability: jest
+      .fn()
+      .mockImplementation(async (_vehicleId: string, d: typeof det) => d),
   };
 
   return {

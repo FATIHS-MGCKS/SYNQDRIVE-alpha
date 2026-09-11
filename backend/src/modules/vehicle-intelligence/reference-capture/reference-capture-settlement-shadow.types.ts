@@ -18,4 +18,5 @@ export type SettlementShadowPreflightResult = {
   expectedPostTripShadowRequests: number;
   expectedTotalShadowRequests: number;
   nextSequence: string;
+  calibrationPlanVersion: string;
 };

@@ -185,7 +185,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## Unresolved validation items
 
-- Live 10/20/30/60s HF calibration — **EXP-019 + EXP-020 complete**; **EXP-021 tooling implemented** (settlement shadow, default OFF); physical drive not started
+- Live 10/20/30/60s HF calibration — **EXP-019 + EXP-020 complete**; **EXP-021 tooling implemented** (settlement shadow, default OFF); KS MS 661 physical run **PARTIAL** (2026-09-10, evidence frozen, native gap ledger **not retroactively recoverable**); native temporal bucket list + settlement value snapshots **persist on next run**; **prospective next-run plan `EXP021_UPPER_BOUND_V2`** (180→120→60→30 CONTROL, ~33 min wall-clock) prepared 2026-09-11 — **not yet physically executed**; WHOLE_TRIP **BLOCKED_BY_EXTERNAL_TRIP_FSM_WORKSTREAM**
 - `HF_RECOVERY_POLICY_V2_ENABLED` production canary
 - V2 full stage DAG under production load
 - Natural fleet-scale block polling density proof

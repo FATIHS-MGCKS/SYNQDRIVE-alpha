@@ -6,6 +6,13 @@ import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 import type Redis from 'ioredis';
 import { assertHfCalibrationPhaseActivationAllowed } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-calibration-phase.policy';
+import {
+  buildPhaseAdvancementConfig,
+  cadenceSequenceFromPlan,
+  nominalTotalDurationMs,
+  resolveExp021CalibrationPlan,
+  type Exp021CalibrationPlan,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp021-calibration-plan.lib';
 import { parseAcquisitionState } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import type { HfRecoveryPolicyV2Config } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-hf-recovery-v2.policy';
 import {
@@ -189,7 +196,12 @@ export type Exp021RuntimeConfig = Readonly<{
   parkedSpeedKmh: number;
   driveEndCandidateParkedSec: number;
   driveEndParkedSec: number;
+  /** @deprecated Legacy MOVING gate — only used when calibrationPlan is LOWER_BOUND_V1. */
   phaseDurationMs: number;
+  calibrationPlan: Exp021CalibrationPlan;
+  cadencePhaseOrderMs: readonly number[];
+  nominalTotalDurationMs: number;
+  maxTotalDurationMs: number;
   pollMs: number;
   targetDeploySha: string;
   logPath: string;
@@ -204,6 +216,9 @@ export function buildExp021RuntimeConfig(options?: {
   const targetDeploySha =
     options?.targetDeploySha ??
     resolveExp021TargetDeploySha({ explicitSha: env.EXP021_TARGET_DEPLOY_SHA });
+  const calibrationPlan = resolveExp021CalibrationPlan(env);
+  const cadencePhaseOrderMs = cadenceSequenceFromPlan(calibrationPlan);
+  const legacyPhaseDurationMs = Number.parseInt(env.EXP021_PHASE_DURATION_MS ?? '300000', 10);
   return Object.freeze({
     organizationId: env.ORGANIZATION_ID ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a',
     vehicleId: env.VEHICLE_ID ?? 'c10351f8-b6a2-4258-947f-631aeaa6d359',
@@ -214,13 +229,28 @@ export function buildExp021RuntimeConfig(options?: {
     parkedSpeedKmh: Number.parseFloat(env.EXP021_PARKED_SPEED_KMH ?? '3'),
     driveEndCandidateParkedSec: Number.parseInt(env.EXP021_DRIVE_END_CANDIDATE_PARKED_SEC ?? '120', 10),
     driveEndParkedSec: Number.parseInt(env.EXP021_DRIVE_END_PARKED_SEC ?? '600', 10),
-    phaseDurationMs: Number.parseInt(env.EXP021_PHASE_DURATION_MS ?? '300000', 10),
+    phaseDurationMs: legacyPhaseDurationMs,
+    calibrationPlan,
+    cadencePhaseOrderMs,
+    nominalTotalDurationMs: nominalTotalDurationMs(calibrationPlan),
+    maxTotalDurationMs: calibrationPlan.maxTotalDurationMs,
     pollMs: Number.parseInt(env.EXP021_POLL_MS ?? '15000', 10),
     targetDeploySha,
     logPath:
       env.EXP021_AUTONOMOUS_LOG_PATH ??
       '/opt/synqdrive/shared/reference-evidence/exp-021-autonomous-orchestrator.jsonl',
   });
+}
+
+export function resolvePhaseAdvancementForIndex(
+  config: Exp021RuntimeConfig,
+  phaseIndex: number,
+) {
+  const phaseSpec = config.calibrationPlan.phases[phaseIndex];
+  if (!phaseSpec) {
+    throw new Error(`invalid phase index ${phaseIndex} for plan ${config.calibrationPlan.planVersion}`);
+  }
+  return buildPhaseAdvancementConfig(config.calibrationPlan, phaseSpec);
 }
 
 export function resolveFatalSessionCleanupMode(

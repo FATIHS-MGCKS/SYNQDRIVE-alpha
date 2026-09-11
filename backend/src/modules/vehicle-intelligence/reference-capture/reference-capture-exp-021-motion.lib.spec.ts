@@ -7,10 +7,8 @@ import {
   PreDeployMovementGate,
   rankCanonicalVehicleTripCandidates,
 } from './reference-capture-exp-021-motion.lib';
-import {
-  EXP021_CADENCE_PHASE_ORDER_MS,
-  EXP021_MANDATORY_AGES_MS,
-} from './reference-capture-settlement-shadow.policy';
+import { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS } from './reference-capture-exp021-calibration-plan.lib';
+import { EXP021_MANDATORY_AGES_MS } from './reference-capture-settlement-shadow.policy';
 
 describe('reference-capture-exp-021-motion.lib', () => {
   const baseMs = Date.parse('2026-09-10T12:00:00.000Z');
@@ -114,7 +112,7 @@ describe('reference-capture-exp-021-motion.lib', () => {
 
   it('POST_DRIVE_PARKED_TIME_COUNTS_AS_VALID_PHASE = NO', () => {
     const tracker = new PhysicalDrivePhaseTracker();
-    tracker.beginPhase(60_000, baseMs, 300_000);
+    tracker.beginPhase(60_000, baseMs, { mode: 'MOVING_ACCUMULATION', requiredMovementMs: 300_000 });
     tracker.tick('UNKNOWN', baseMs + 300_000);
     const record = tracker.markPhysicalDriveEnded(baseMs + 300_000);
     expect(record?.scientificallyValid).toBe(false);
@@ -125,17 +123,20 @@ describe('reference-capture-exp-021-motion.lib', () => {
     const tracker = new PhysicalDrivePhaseTracker();
     const required = 300_000;
     let now = baseMs;
-    const phaseOrder = EXP021_CADENCE_PHASE_ORDER_MS;
+    const phaseOrder = EXP021_LEGACY_CADENCE_PHASE_ORDER_MS;
     for (let phaseIndex = 0; phaseIndex < phaseOrder.length; phaseIndex += 1) {
       const pollMs = phaseOrder[phaseIndex];
-      tracker.beginPhase(pollMs, now, required);
+      tracker.beginPhase(pollMs, now, { mode: 'MOVING_ACCUMULATION', requiredMovementMs: required });
       for (let i = 0; i < 21; i += 1) {
         now += 15_000;
         tracker.tick('MOVING', now);
       }
       if (phaseIndex < phaseOrder.length - 1) {
         const nextPollMs = phaseOrder[phaseIndex + 1];
-        const sealed = tracker.advancePhaseAtEffectiveBoundary(now, nextPollMs, required);
+        const sealed = tracker.advancePhaseAtEffectiveBoundary(now, nextPollMs, {
+          mode: 'MOVING_ACCUMULATION',
+          requiredMovementMs: required,
+        });
         expect(sealed?.scientificallyValid).toBe(true);
       }
     }
@@ -377,10 +378,10 @@ describe('reference-capture-exp-021 full-run simulation', () => {
     expect(startDetector.isConfirmed()).toBe(true);
     const driveStart = startDetector.getConfirmation()!.firstQualifyingMovementAt.getTime();
 
-    const phaseOrder = EXP021_CADENCE_PHASE_ORDER_MS;
+    const phaseOrder = EXP021_LEGACY_CADENCE_PHASE_ORDER_MS;
     for (let phaseIndex = 0; phaseIndex < phaseOrder.length; phaseIndex += 1) {
       const pollMs = phaseOrder[phaseIndex];
-      phaseTracker.beginPhase(pollMs, now, required);
+      phaseTracker.beginPhase(pollMs, now, { mode: 'MOVING_ACCUMULATION', requiredMovementMs: required });
       for (let tick = 0; tick < 8; tick += 1) {
         now += 10_000;
         const moving = tick % 3 !== 2;
@@ -391,7 +392,10 @@ describe('reference-capture-exp-021 full-run simulation', () => {
         phaseTracker.tick('MOVING', now);
       }
       if (phaseIndex < phaseOrder.length - 1) {
-        phaseTracker.advancePhaseAtEffectiveBoundary(now, phaseOrder[phaseIndex + 1], required);
+        phaseTracker.advancePhaseAtEffectiveBoundary(now, phaseOrder[phaseIndex + 1], {
+          mode: 'MOVING_ACCUMULATION',
+          requiredMovementMs: required,
+        });
       }
     }
     const finalPhase = phaseTracker.markPhysicalDriveEnded(now + required);
@@ -422,8 +426,10 @@ describe('reference-capture-exp-021 full-run simulation', () => {
     expect(falseCandidateInvalidated).toBe(true);
     expect(ignitionOff.shouldAutoStop).toBe(true);
     expect(driveStart).toBeLessThanOrEqual(now);
-    expect(EXP021_CADENCE_PHASE_ORDER_MS.length).toBe(4);
+    expect(EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length).toBe(4);
     expect(EXP021_MANDATORY_AGES_MS.length).toBe(6);
-    expect(EXP021_CADENCE_PHASE_ORDER_MS.length * 2 * EXP021_MANDATORY_AGES_MS.length).toBe(48);
+    expect(EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length * 2 * EXP021_MANDATORY_AGES_MS.length).toBe(
+      48,
+    );
   });
 });

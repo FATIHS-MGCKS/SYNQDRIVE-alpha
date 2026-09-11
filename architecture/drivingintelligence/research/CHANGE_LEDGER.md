@@ -349,6 +349,110 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Preflight | `backend/scripts/ops/reference-capture-exp-021-preflight.cjs` |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO |
 
+## EXP-021 — PR #1598 final red-team (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RED-TEAM DRAFT** on PR #1598 |
+| Fixes | Immutable persisted T0; recovery uses DB authority; orchestrator iteration survivability; reanchor validation; postgres T0 recovery integration harness |
+| Evidence | `EXP_021_PR1598_FINAL_RED_TEAM_2026-09-10.md` |
+
+## EXP-021 — PR #1598 final exact-SHA closure (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CI CLOSURE COMPLETE** @ `33e680e5bf429272c7577ae082bfe6c4de1c5091` |
+| Trip FSM CI | Run 34504226157 — workflow_dispatch SUCCESS |
+| EXP-021 postgres T0 | 4/4 executed PASS (isolated DB) |
+| PR CI | 30/30 checks success; 0 failed; 0 pending |
+| Merge / deploy / drive | **NOT AUTHORIZED** |
+| Evidence | `EXP_021_PR1598_FINAL_CLOSURE_2026-09-10.md` |
+
+## EXP-021 — KS MS 661 deep forensic audit addendum (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **DEEP AUDIT COMPLETE** — bucket-level maturation + Trip FSM follow-up |
+| Bucket identity | `FIELD_PIPE_CANONICAL_ISO_MS` — all 6 FIXED probes structurally stable after first success |
+| Settlement gap recovery | **NO** late bucket recovery across ages |
+| PDI structure | 3218 identities stable +30…+600; **values UNKNOWN** (not persisted) |
+| Trip FSM | Still `ONGOING` + provisional `endTime`; detection `POSSIBLE_END`; WHOLE_TRIP unbound |
+| Phase 10 | Missing due to insufficient movement in phase 20 (300s rule), not code defect |
+| Next action | **LONGER_COMPLETION_RUN** — no new code fix required |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` §15–§19 |
+
+## EXP-021 — KS MS 661 physical run post-drive forensic (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POST-DRIVE FORENSIC COMPLETE** — read-only production evidence |
+| Session | `945edc40-3002-4b87-83f6-a55d8cf66ffb` · settlement `exp-021-945edc40-e7850aa0` |
+| Canonical T0 | `2026-09-10T19:41:19.000Z` — **CONFIRMED** durable; no duplicate 60→60 fatal |
+| Phases | 60→30→20 completed; **10 NOT reached** |
+| FIXED_INTERVAL | **36/48** completed (all +600 terminal); 12 missing (phase 10) |
+| PDI | **6/6** through +600 on authoritative candidate `pdi-1789070475000` |
+| WHOLE_TRIP | **0/6** — trip `2bdc6e71-…` still `ONGOING` |
+| Classification | PARTIAL SUCCESS / DEGRADED |
+| Policy | PRODUCTION unchanged — no deploy/merge/cleanup during forensics |
+| Evidence | `EXP_021_KS_MS_661_PHYSICAL_RUN_FORENSIC_2026-09-10.md` |
+
+## EXP-021 — Gap→settlement correlation + value revision instrumentation (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **INSTRUMENTATION COMPLETE** — evidence freeze + forward persistence; no physical drive |
+| Freeze | `EXP_021_KS_MS_661_EVIDENCE_FREEZE_2026-09-10.json` — run `945edc40-…` immutable |
+| Retroactive | Bucket identity maturation **YES**; per-gap timestamp matrix **NO**; value revision **NO** on frozen run |
+| Code | `reference-capture-settlement-shadow-value-snapshot.ts`, gap-settlement analyzer, cross-age analyzer |
+| Persistence | `bucketValueSnapshots`, `valueContentHash`, `valueRevisedBucketIdentities` on new observations |
+| Correction | `responseHash` ≠ value revision evidence — metadata includes age/drift |
+| Trip FSM | **UNCHANGED** — WHOLE_TRIP remains `BLOCKED_BY_EXTERNAL_TRIP_FSM_WORKSTREAM` |
+| Evidence | `EXP_021_KS_MS_661_GAP_SETTLEMENT_RETROACTIVE_ASSESSMENT_2026-09-10.md`; forensic §20 |
+
+## EXP-021 — Native temporal bucket persistence micro-pass (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PERSISTENCE COMPLETE** — prospective only; KS MS 661 not backfilled |
+| Location | `completedPhaseSummaries[].nativeTemporalEvidence` (`EXP021_NATIVE_TEMPORAL_v1`) |
+| Reconstruction | `reference-capture-exp021-native-gap-reconstruction.ts` — post-run gap ledger without live memory |
+| Join | `reference-capture-exp021-native-settlement-join.ts` — native gaps ↔ settlement snapshots |
+| Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
+| Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
+
+## EXP-021 — Upper-bound cadence calibration plan V2 (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE DESIGN IMPLEMENTED** — no physical run |
+| Plan | `EXP021_UPPER_BOUND_V2` — 180→120→60→30 CONTROL, 33 min nominal / 35 min max |
+| Advancement | `WALL_CLOCK` per phase (replaces universal 300s MOVING for this plan) |
+| Legacy | `EXP021_LOWER_BOUND_V1` preserved (`EXP021_CALIBRATION_PLAN=LOWER_BOUND_V1`) |
+| Code | `reference-capture-exp021-calibration-plan.lib.ts` |
+| Evidence | `EXP_021_UPPER_BOUND_V2_PROSPECTIVE_DESIGN_2026-09-11.md` |
+| Physical run | **NOT STARTED** |
+
+## EXP-021 — PostgreSQL native temporal persistence proof (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POSTGRES INTEGRATION PASS** — isolated DB, 3/3 tests |
+| Proof | Reload after disconnect; 60→30 transition; settlement join with value snapshots |
+| Harness | `reference-capture-postgres.integration.harness.ts` helpers |
+| Spec | `reference-capture-exp021-native-temporal-evidence.postgres.integration.spec.ts` |
+| Result | `INSTRUMENTATION_MERGE_READY=YES` (instrumentation scope only) |
+
+## EXP-021 — KS MS 661 T0 / phase / settlement hardening (2026-09-10)
+
+| Event | Detail |
+|-------|--------|
+| Status | **HARDENING DRAFT** — forensic root cause from production telemetry-only run |
+| Session | `8374c2fc-…` · orchestrator fatal duplicate 60→60 at movement |
+| Root cause | PRE_ROLL phase 60 credited as physical; T0 logged after fallible phase switch |
+| Fix | Durable T0 before phase activation; `reanchorPhysicalCalibrationPhaseAtT0`; PRE_ROLL settlement gate; orchestration degraded vs integrity fatal |
+| Physical drive | **NOT STARTED** post-fix |
+| Evidence | `EXP_021_KS_MS_661_T0_PHASE_SETTLEMENT_HARDENING_2026-09-10.md` |
+
 ## EXP-021 — Settlement shadow experiment design (2026-09-07)
 
 | Event | Detail |

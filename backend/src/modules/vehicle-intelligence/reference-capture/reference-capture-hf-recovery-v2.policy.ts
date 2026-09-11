@@ -34,7 +34,7 @@ export const HF_QUERY_PROVENANCE_RING_MAX = 500;
 /** DI-EV-0035C.1 — provisional block poll cadence (NOT validated). */
 export const PROVISIONAL_HF_POLL_INTERVAL_MS = 30_000;
 export const HF_HISTORICAL_POLL_INTERVAL_MS_MIN = 5_000;
-export const HF_HISTORICAL_POLL_INTERVAL_MS_MAX = 120_000;
+export const HF_HISTORICAL_POLL_INTERVAL_MS_MAX = 180_000;
 
 export type HfRecoveryPolicyMode = 'LEGACY' | 'V2';
 

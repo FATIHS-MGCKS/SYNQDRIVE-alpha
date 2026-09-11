@@ -120,7 +120,7 @@ if (REQUIRED) {
 
         const endCycleAt = new Date('2026-09-08T05:04:30.000Z');
         useTripR11FrozenClock(endCycleAt);
-        const steps = await drainTripTrackingQueue({
+        const { steps, triggers } = await drainTripTrackingQueue({
           queue: trackingQueue,
           runJob: harness.runJob,
         });
@@ -132,7 +132,18 @@ if (REQUIRED) {
         const det = await prisma.vehicleTripDetectionState.findUnique({
           where: { vehicleId: fixture.vehicle.id },
         });
+        const runs = await prisma.vehicleTripTrackingRun.findMany({
+          where: { vehicleId: fixture.vehicle.id },
+          orderBy: { createdAt: 'asc' },
+        });
 
+        if (trip?.tripStatus !== TripStatus.COMPLETED) {
+          throw new Error(
+            `Scenario C completion failed: tripStatus=${trip?.tripStatus} ` +
+              `det=${det?.state} drainTriggers=${triggers.join('>')} ` +
+              `runs=${JSON.stringify(runs.map((r) => r.resultSummary))}`,
+          );
+        }
         expect(trip?.tripStatus).toBe(TripStatus.COMPLETED);
         expect(trip?.endTime).toEqual(fixture.expectedEndTime);
         expect(det?.state).toBe(TripDetectionState.RESTING);

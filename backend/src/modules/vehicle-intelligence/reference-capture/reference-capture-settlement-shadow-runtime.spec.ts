@@ -4,11 +4,11 @@ import {
   computeActualAgeMs,
   computeScheduleDriftMs,
   computeScheduleTimingProjection,
-  EXP021_NOMINAL_PHASE_DURATION_MS,
   EXP021_PHASE_STABILIZATION_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
-  EXP021_PROBE_B_START_OFFSET_MS,
+  resolveProbeBStartOffsetMs,
 } from './reference-capture-settlement-shadow.policy';
+import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture-settlement-shadow-runner.service';
 import { ReferenceCaptureSettlementShadowService } from './reference-capture-settlement-shadow.service';
@@ -36,13 +36,14 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
         vehicleId: 'veh-1',
         tokenId: 187336,
         seriesStartedAt: phaseStartIso,
-        phaseOrder: [60_000],
+        phaseOrder: [180_000],
         activePhase: {
           phaseStartedAt: phaseStartIso,
-          effectivePollIntervalMs: 60_000,
-          calibrationPhaseId: 'phase-60',
+          effectivePollIntervalMs: 180_000,
+          calibrationPhaseId: 'phase-180',
           phaseSequence: 1,
           phaseEndedAt: null,
+          phaseProvenance: 'PHYSICAL_T0',
         },
         completedPhases: [],
         completedPhaseSummaries: [],
@@ -200,8 +201,10 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
 
     jest.spyOn(Date, 'now').mockRestore();
 
+    const nominalDurationMs = resolveNominalPhaseDurationMs(180_000);
     const probeAEndMs = phaseStartMs + EXP021_PHASE_STABILIZATION_MS + EXP021_PRIMARY_PROBE_DURATION_MS;
-    const probeBEndMs = phaseStartMs + EXP021_PROBE_B_START_OFFSET_MS + EXP021_PRIMARY_PROBE_DURATION_MS;
+    const probeBEndMs =
+      phaseStartMs + resolveProbeBStartOffsetMs(nominalDurationMs) + EXP021_PRIMARY_PROBE_DURATION_MS;
 
     const assertOnTime = (probeId: string, ageMs: number, sourceEndMs: number) => {
       const row = scheduleRows.find((r) => r.probeId === probeId && r.scheduledAgeMs === ageMs);
@@ -215,12 +218,12 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       expect(row!.scheduledAt.getTime()).toBe(sourceEndMs + ageMs);
     };
 
-    assertOnTime('SP-60-A', 30_000, probeAEndMs);
-    assertOnTime('SP-60-A', 60_000, probeAEndMs);
-    assertOnTime('SP-60-B', 30_000, probeBEndMs);
-    assertOnTime('SP-60-B', 60_000, probeBEndMs);
+    assertOnTime('SP-180-A', 30_000, probeAEndMs);
+    assertOnTime('SP-180-A', 60_000, probeAEndMs);
+    assertOnTime('SP-180-B', 30_000, probeBEndMs);
+    assertOnTime('SP-180-B', 60_000, probeBEndMs);
 
-    expect(scheduleRows.filter((r) => r.probeId.startsWith('SP-60-')).length).toBe(12);
+    expect(scheduleRows.filter((r) => r.probeId.startsWith('SP-180-')).length).toBe(12);
   });
 
   it('prospective schedule creation is idempotent across repeated sync calls', async () => {
@@ -254,7 +257,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       organizationId: 'org-1',
       vehicleId: 'veh-1',
       tokenId: 187336,
-      probeId: 'SP-60-A',
+      probeId: 'SP-180-A',
       probeType: 'FIXED_INTERVAL',
       phase: '60s',
       sourceIntervalStart: new Date(probeAEndMs - EXP021_PRIMARY_PROBE_DURATION_MS),

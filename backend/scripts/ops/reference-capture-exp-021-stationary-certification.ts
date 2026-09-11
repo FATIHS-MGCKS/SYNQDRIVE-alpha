@@ -125,6 +125,7 @@ async function main(): Promise<void> {
 
     const phaseResult = await sessionService.switchHfCalibrationPhase(organizationId, sessionId, {
       effectivePollIntervalMs: 60000,
+      phaseProvenance: 'PRE_ROLL',
     });
     result.PHASE_60_ACTIVATION_STATUS = phaseResult.activationStatus;
     result.CALIBRATION_SERIES_ID = phaseResult.calibrationSeriesId;

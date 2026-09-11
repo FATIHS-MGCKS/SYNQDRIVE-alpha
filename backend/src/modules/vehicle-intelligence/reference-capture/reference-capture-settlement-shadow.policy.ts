@@ -2,17 +2,34 @@
  * EXP-021 — settlement shadow experiment policy (Reference Capture forensic-only).
  */
 import { randomUUID } from 'node:crypto';
+import {
+  cadenceSequenceFromPlan,
+  EXP021_DEFAULT_CALIBRATION_PLAN,
+  EXP021_LEGACY_CADENCE_PHASE_ORDER_MS,
+  EXP021_LOWER_BOUND_V1,
+  resolveNominalPhaseDurationMs,
+} from './reference-capture-exp021-calibration-plan.lib';
 
 export const EXP021_PRIMARY_PROBE_DURATION_MS = 60_000;
 export const EXP021_PHASE_STABILIZATION_MS = 120_000;
-/** Nominal cadence phase wall-clock used for prospective probe-B offset only (not fabricated final duration). */
+/** Legacy nominal duration for LOWER_BOUND_V1 probe-B offset (KS MS 661 design). */
 export const EXP021_NOMINAL_PHASE_DURATION_MS = 300_000;
-/** floor(0.55 × EXP021_NOMINAL_PHASE_DURATION_MS) — immutable once probe B is scheduled. */
-export const EXP021_PROBE_B_START_OFFSET_MS = Math.floor(
-  0.55 * EXP021_NOMINAL_PHASE_DURATION_MS,
+/** floor(0.55 × nominal phase duration) — immutable once probe B is scheduled. */
+export function resolveProbeBStartOffsetMs(nominalPhaseDurationMs: number): number {
+  return Math.floor(0.55 * nominalPhaseDurationMs);
+}
+/** @deprecated Use resolveProbeBStartOffsetMs with plan-specific nominal duration. */
+export const EXP021_PROBE_B_START_OFFSET_MS = resolveProbeBStartOffsetMs(
+  EXP021_NOMINAL_PHASE_DURATION_MS,
 );
 export const EXP021_MANDATORY_AGES_MS = [30_000, 60_000, 120_000, 180_000, 300_000, 600_000] as const;
-export const EXP021_CADENCE_PHASE_ORDER_MS = [60_000, 30_000, 20_000, 10_000] as const;
+/** Active prospective cadence sequence (defaults to UPPER_BOUND_V2). */
+export const EXP021_CADENCE_PHASE_ORDER_MS = cadenceSequenceFromPlan(
+  EXP021_DEFAULT_CALIBRATION_PLAN,
+) as [number, number, number, number];
+/** Historical 60→30→20→10 sequence — preserved for evidence parsing. */
+export { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS };
+export { EXP021_LOWER_BOUND_V1, EXP021_DEFAULT_CALIBRATION_PLAN };
 export const EXP021_WHOLE_TRIP_AGES_MS = EXP021_MANDATORY_AGES_MS;
 export const EXP021_FIXED_INTERVAL_PROBE_COUNT = 8;
 export const EXP021_MANDATORY_SETTLEMENT_OBSERVATIONS = 48;
@@ -109,9 +126,12 @@ export function buildProspectiveProbeAForPhase(args: {
 export function buildProspectiveProbeBForPhase(args: {
   phasePollIntervalMs: number;
   phaseStartedAtMs: number;
+  nominalPhaseDurationMs?: number;
 }): SettlementShadowProbePlan | null {
+  const nominal =
+    args.nominalPhaseDurationMs ?? resolveNominalPhaseDurationMs(args.phasePollIntervalMs);
   const probeBStart = snapToSecondBoundaryMs(
-    args.phaseStartedAtMs + EXP021_PROBE_B_START_OFFSET_MS,
+    args.phaseStartedAtMs + resolveProbeBStartOffsetMs(nominal),
   );
   const probeBEnd = probeBStart + EXP021_PRIMARY_PROBE_DURATION_MS;
   const probeA = buildProspectiveProbeAForPhase(args);
