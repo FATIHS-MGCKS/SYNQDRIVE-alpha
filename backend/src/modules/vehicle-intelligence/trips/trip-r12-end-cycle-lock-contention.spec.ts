@@ -413,4 +413,24 @@ describe('R12 end-cycle lock contention + POSSIBLE_END clock durability', () => 
       expect(queue.removeAttempts).toHaveLength(0);
     });
   });
+
+  describe('END_VALIDATION worker-lock miss — durable deferral (secondary defense)', () => {
+    it('processEndValidation throws TripTrackingHandoffLockContentionError when lock unavailable', async () => {
+      const { TripDetectionOrchestrationService } = require('./trip-detection-orchestration.service');
+      const { TripTrackingHandoffLockContentionError } = require('./trip-tracking-lock-contention');
+
+      const svc = {
+        acquireWorkerLock: jest.fn().mockResolvedValue({ acquired: false, runToken: 'x' }),
+      };
+
+      await expect(
+        TripDetectionOrchestrationService.prototype.processEndValidation.call(
+          svc,
+          jobData(TRIP_TRACKING_TRIGGERS.END_VALIDATION, {
+            endCycleToken: CYCLE_TOKEN,
+          }),
+        ),
+      ).rejects.toBeInstanceOf(TripTrackingHandoffLockContentionError);
+    });
+  });
 });
