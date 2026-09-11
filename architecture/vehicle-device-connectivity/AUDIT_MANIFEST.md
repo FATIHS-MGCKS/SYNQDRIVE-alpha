@@ -61,5 +61,5 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 ## NEXT_GATE
 
 1. Phase 2 read-only Production audit (LTE_R1 ground truth, poll vs source forensics).
-2. Phase 3 reconciliation of contradictions (VDC-CX-001..009).
+2. Phase 3 reconciliation of contradictions (VDC-CX-001..010).
 3. HM runtime integration design (VDC-GAP-009).
