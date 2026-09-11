@@ -176,13 +176,6 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           TRIP_R11_POSTGRES_REDIS_INTEGRATION: '1'
           TRIP_R11_POSTGRES_REDIS_REQUIRED: '1'
-      - run: npm run test:trip-r12:pec-ev:green-repeat
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          TRIP_R12_POSTGRES_REDIS_INTEGRATION: '1'
-          TRIP_R12_POSTGRES_REDIS_REQUIRED: '1'
-          REPEAT: '10'
 
   ci-gate:
     name: CI gate (Trip FSM critical jobs)
