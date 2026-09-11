@@ -21,9 +21,14 @@
   },
   "physical": {
     "physicalT0": "2026-09-11T19:42:19.000Z",
-    "physicalEnd": "2026-09-11T20:05:08.000Z",
+    "systemPdiPhysicalEnd": "2026-09-11T20:05:08.000Z",
+    "pdiConfirmationAt": "2026-09-11T20:07:34.929Z",
+    "operatorReportedPhysicalEnd": "2026-09-11T20:15:00.000Z",
+    "physicalEndAuthority": "CONTRADICTED_UNDER_INVESTIGATION",
     "physicalDurationSec": 1369,
-    "orchestrationState": "PHYSICAL_RUN_ENDED_EARLY"
+    "orchestrationState": "PHYSICAL_RUN_ENDED_EARLY",
+    "movementAfterPdiBoundaryConfirmed": "NO",
+    "movementAfterPdiConfirmationConfirmed": "UNKNOWN"
   },
   "slotAudit": {
     "180s": {
@@ -58,9 +63,10 @@
     "zeroResultSlots": 0,
     "failedSlots": 0,
     "skippedSlots": 0,
-    "unslottedHfRequests": 8,
-    "duplicateSlotExecutions": 0,
-    "silentlyLostSlots": 0
+    "unslottedHfRequests": "UNKNOWN_UNPROVABLE",
+    "duplicateSlotExecutions": "UNKNOWN_UNPROVABLE",
+    "silentlyLostSlots": "UNKNOWN_UNPROVABLE",
+    "unslottedHfRequestsRawAggregate": 8
   },
   "phaseReports": {
     "180s": {
@@ -317,6 +323,9 @@
     "createdSourceWindows": 57,
     "expectedObservations": 372,
     "createdObservations": 372,
+    "fixedIntervalObservationsCompleted": 342,
+    "schedulesCompleted": 357,
+    "schedulesSkipped": 15,
     "completedObservations": 342,
     "zeroResultObservations": 0,
     "failedObservations": 0,
@@ -348,8 +357,16 @@
       "300": 2,
       "600": 2
     },
-    "bucketStructureStableFromAge": "+30",
-    "valuesStableFromAge": "REVISED"
+    "bucketStructureStableFromAge": "+120",
+    "bucketStructureStableFromAgePriorIncorrect": "+30",
+    "bucketIdentitiesAddedAt60": 10,
+    "bucketIdentitiesAddedAt120": 5,
+    "bucketIdentitiesAddedAt180": 0,
+    "bucketIdentitiesAddedAt300": 0,
+    "bucketIdentitiesAddedAt600": 0,
+    "firstAgeAfterWhichNoMoreBucketIdentitiesAdded": "+120",
+    "valuesStableFromAge": "REVISED",
+    "firstAgeAfterWhichNoMoreValueRevisions": null
   },
   "completeness": {
     "allFourPhasesReached": "NO",
@@ -365,6 +382,13 @@
   "terminalization": {
     "rcFinalState": "COMPLETED",
     "calibrationFinalState": "SERIES_CLOSED",
-    "settlementFinalState": "ACTIVE"
+    "settlementFinalState": "ACTIVE",
+    "settlementExperimentOrphaned": true
+  },
+  "correction": {
+    "evidencePr": 1605,
+    "runtimeCorrectionPr": 1606,
+    "provisionalConfirmBypassesFinalParkedGate": "YES",
+    "physicalEndRootCause": "orchestrator physicalEndEarly on PDI CONFIRMED (120s) bypassing finalParkedMs (600s)"
   }
 }

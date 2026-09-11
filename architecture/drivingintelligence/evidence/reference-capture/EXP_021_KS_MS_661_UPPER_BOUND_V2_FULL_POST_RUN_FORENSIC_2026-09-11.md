@@ -12,8 +12,10 @@
 | Orchestrator run | `exp021-1789155698492` |
 | ORCHESTRATOR_START | `2026-09-11T19:41:38Z` |
 | **PHYSICAL_T0** | `2026-09-11T19:42:19.000Z` (first qualifying movement; persisted `2026-09-11T19:44:54.597Z`) |
-| **PHYSICAL_END** | `2026-09-11T20:05:08.000Z` (PDI `pdi-1789157108000`, confirmed `2026-09-11T20:07:34.929Z`) |
-| **PHYSICAL_DURATION** | **1369 s** (~22.8 min) |
+| **SYSTEM_PDI_PHYSICAL_END** | `2026-09-11T20:05:08.000Z` (PDI `pdi-1789157108000`, confirmed `2026-09-11T20:07:34.929Z`) |
+| **OPERATOR_REPORTED_PHYSICAL_END** | ≈ `2026-09-11T20:15Z` (external ground truth — not provider proof) |
+| **PHYSICAL_END_AUTHORITY** | **CONTRADICTED / UNDER_INVESTIGATION** |
+| **PHYSICAL_DURATION (PDI authority)** | **1369 s** (~22.8 min) |
 | POST_RUN_SETTLEMENT_MATURE | **YES** (all mandatory +600 schedules terminal: 59 COMPLETED + 3 SKIPPED PDI; 0 PENDING) |
 
 Machine-readable audit: `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json`
@@ -47,7 +49,24 @@ Prior frozen runs preserved separately (`26a8554c…`, `945edc40…` partial UPP
 | ALL_FOUR_PHASES_WITH_VALID_MOVEMENT | **NO** (60/30 absent; 180 summary wrongly reports 0 movement) |
 | EXP021_RUN_COMPLETENESS (orchestrator) | **PARTIAL** |
 
-**Operator timing:** Driving continued to ~20:15 local report vs canonical PHYSICAL_END 20:05:08 — ~10 min discrepancy vs operator recall; durable PDI authority used.
+**Physical-end authority:** System PDI boundary `20:05:08Z` vs operator-reported continued driving until ≈`20:15Z`. Raw PDI record preserved; interpretive classification is **CONTRADICTED** pending independent provider proof. Early AUTO_STOP was triggered by provisional PDI CONFIRMED bypass (see correction PR #1606), not hard `finalParkedMs` evidence.
+
+### Motion timeline 20:04–20:16 UTC (orchestrator + native RC)
+
+| observedAt (UTC) | speedKmh | motionState | phase | providerEvidenceOfMovement |
+|------------------|---------:|-------------|-------|---------------------------|
+| 20:04:00–20:05:07 | 7–32 | MOVING | 120s | YES |
+| 20:05:23 | 0 | PARKED_CANDIDATE | 120s | NO — PDI boundary `20:05:08` |
+| 20:05:23–20:07:14 | 0 | PARKED_CANDIDATE (PROVISIONAL→CONFIRMED) | 120s | NO |
+| 20:07:32 | — | — | 60s phase activated | NO |
+| 20:07:35 | 0 | PARKED_CANDIDATE | 60s | NO — AUTO_STOP |
+
+Post-20:07:35: no orchestrator ticks (process exited). Native 120s last bucket `20:05:07.727Z`. DIMO HF historical window 20:07–20:16 not queried in this audit pass.
+
+| Gate | Result |
+|------|--------|
+| MOVEMENT_AFTER_PDI_BOUNDARY (`20:05:08Z`) | **NO** (orchestrator provider evidence) |
+| MOVEMENT_AFTER_PDI_CONFIRMATION (`20:07:34Z`) | **UNKNOWN** (no provider samples after orchestrator exit) |
 
 ---
 
@@ -63,9 +82,9 @@ Prior frozen runs preserved separately (`26a8554c…`, `945edc40…` partial UPP
 | ZERO_RESULT | **0** | summaries |
 | FAILED | **0** | summaries |
 | SKIPPED (never due before early end) | **13** | 21−8 |
-| UNSLOTTED_HF_REQUESTS | **0** | No evidence of off-slot requests |
-| DUPLICATE_SLOT_EXECUTIONS | **0** | No duplicate evidence |
-| SILENTLY_LOST_SLOTS | **0** (unprovable without ledger) | **INSTRUMENTATION_DEFECT** — ledger not frozen |
+| UNSLOTTED_HF_REQUESTS | **UNKNOWN_UNPROVABLE** | Per-slot ledger absent; aggregate `providerRequestCount=8` cannot prove slot alignment |
+| DUPLICATE_SLOT_EXECUTIONS | **UNKNOWN_UNPROVABLE** | Ledger absent |
+| SILENTLY_LOST_SLOTS | **UNKNOWN_UNPROVABLE** | Ledger absent — cannot assert zero |
 
 Per-phase issued: 180=5, 120=3, 60=0, 30=0.
 
@@ -96,8 +115,10 @@ Compare EXP-019: no 80–170 s scale gaps in 120s phase here; **180s phase did e
 | CREATED_SETTLEMENT_SOURCE_WINDOWS | **57** |
 | EXPECTED_SETTLEMENT_OBSERVATIONS (nominal max) | 372 |
 | CREATED schedules | **372** |
-| COMPLETED observations | **357** |
-| SKIPPED (PDI-invalidated) | **15** |
+| FIXED_INTERVAL_OBSERVATIONS_COMPLETED | **342** |
+| PDI_OBSERVATIONS_COMPLETED | (included in schedule counts; 15 SKIPPED families) |
+| SCHEDULES_COMPLETED | **357** |
+| SCHEDULES_SKIPPED | **15** |
 | ZERO_RESULT observations | **0** |
 | FAILED observations | **0** |
 | MISSING (non-terminal) | **0** |
@@ -129,10 +150,13 @@ Per phase assessability: 180s **90.5%** (19/21), 120s **100%** (16/16).
 
 | Metric | Value |
 |--------|-------|
-| BUCKET_STRUCTURE_STABLE_FROM_AGE | **+30** (all successful FIXED_INTERVAL probes) |
-| BUCKETS_ADDED_AFTER_30 | 10 probes |
-| BUCKETS_ADDED_AFTER_60 | 5 probes |
-| BUCKETS_ADDED_AFTER_120+ | 0 |
+| BUCKET_IDENTITIES_ADDED_AT_60 | 10 probes (cumulative vs +30 baseline) |
+| BUCKET_IDENTITIES_ADDED_AT_120 | 5 probes (cumulative vs +60 baseline) |
+| BUCKET_IDENTITIES_ADDED_AT_180+ | 0 |
+| **FIRST_AGE_AFTER_WHICH_NO_MORE_BUCKET_IDENTITIES_WERE_ADDED** | **+120** |
+| BUCKET_STRUCTURE_STABLE_FROM_AGE (corrected) | **+120** — identities still added at +60; none after +120 |
+| VALUE_REVISIONS_TOTAL | 51 |
+| **FIRST_AGE_AFTER_WHICH_NO_MORE_VALUE_REVISIONS** | Not stable — revisions through +600 on subset |
 | VALUE_REVISED_BUCKETS_TOTAL | **51** |
 | VALUE_REVISED_AT_60 | 13 |
 | VALUE_REVISED_AT_120 | 5 |
@@ -163,9 +187,12 @@ Value revisions from `bucketValueSnapshots` / `valueContentHash` — not `respon
 1. **`exp021RequestSlots` ledger not persisted** to `completedPhases` — post-run per-slot forensic impossible.
 2. **`hfQueryProvenanceRing` truncated** (15 records) — insufficient for full HF request replay.
 
-### OPERATOR_CONDITION
-1. **PHYSICAL_RUN_ENDED_EARLY** — 22.8 min vs 33 min nominal plan; 60s/30s phases never scientifically executed.
-2. **T0 detection latency** 155.6 s (movement from 19:42:19, confirmation 19:44:54).
+### PHYSICAL_END_AUTHORITY_CONTRADICTION
+1. **SYSTEM_PDI_PHYSICAL_END** `20:05:08Z` vs **OPERATOR_REPORTED_PHYSICAL_END** ≈`20:15Z` — not classified as CONFIRMED operator early-end without provider proof.
+2. **False positive early terminalization** — provisional PDI CONFIRMED (120s) bypassed `finalParkedMs` (600s); correction in PR #1606.
+
+### OPERATOR_CONDITION (non-terminalization)
+1. **T0 detection latency** 155.6 s (movement from 19:42:19, confirmation 19:44:54).
 
 ### PROVIDER_BEHAVIOR
 1. **180s native 90 s gap** — provider emission / connectivity, not poll-slot scheduling.
@@ -203,13 +230,9 @@ Independent evaluation first: **this run is scientifically incomplete** despite 
 
 **EXACTLY_WHAT_REMAINS_UNKNOWN:** 60s and 30s CONTROL phases; full 21-slot execution under complete 33-minute drive; whether 180s 90s gaps are cadence-causal or provider-local.
 
-**CORRECTION_PR_REQUIRED = YES** (evidence frozen; PR not opened per operator instruction)
+**CORRECTION_PR = #1606** (`cursor/exp-021-false-physical-end-correction-7d78` from `main`) — runtime hardening; **NO MERGE / NO DEPLOY**
 
-Proposed correction scope (no merge/deploy):
-- Persist `exp021RequestSlots` into sealed phase records
-- Fix movement duration persistence mismatch (180s summary)
-- Fix phase-60 terminalization wall-clock ordering
-- Terminalize settlement experiment on RC COMPLETED
+Evidence PR **#1605** — interpretive corrections only; raw PDI record preserved.
 
 ---
 
