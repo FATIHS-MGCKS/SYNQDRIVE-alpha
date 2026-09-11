@@ -118,18 +118,6 @@ if (REQUIRED) {
       expect(afterPe?.state).toBe(TripDetectionState.POSSIBLE_END);
       expect(afterPe?.possibleEndEnteredAt).not.toBeNull();
 
-      useTripR11FrozenClock(endCycleAt);
-      try {
-        await TripDetectionOrchestrationService.prototype.scheduleEndValidation.call(
-          harness.orchestration,
-          fixture.vehicle.id,
-          fixture.org.id,
-          fixture.vehicle.dimoTokenId,
-        );
-      } finally {
-        restoreTripR11Clock();
-      }
-
       let releaseEvHold: (() => void) | undefined;
       const evHold = new Promise<void>((resolve) => {
         releaseEvHold = resolve;
@@ -142,21 +130,28 @@ if (REQUIRED) {
         await harness.runJob(job);
       };
 
-      const workers = createTripTrackingWorkers({
-        connection: redisStack.connectionOptions,
-        runJob: runJobWithActiveHold,
-        workerCount: 2,
-        concurrency: 1,
-      });
-
+      useTripR11FrozenClock(endCycleAt);
       try {
-        await waitForTripTrackingJobState(trackingQueue, evPrimaryId, 'active', 15_000);
+        await TripDetectionOrchestrationService.prototype.scheduleEndValidation.call(
+          harness.orchestration,
+          fixture.vehicle.id,
+          fixture.org.id,
+          fixture.vehicle.dimoTokenId,
+        );
 
-        const familyWhileActive = await inspectStableSlotFamily(trackingQueue, evPrimaryId);
-        expect(familyWhileActive.primaryState).toBe('active');
+        const workers = createTripTrackingWorkers({
+          connection: redisStack.connectionOptions,
+          runJob: runJobWithActiveHold,
+          workerCount: 2,
+          concurrency: 1,
+        });
 
-        useTripR11FrozenClock(endCycleAt);
         try {
+          await waitForTripTrackingJobState(trackingQueue, evPrimaryId, 'active', 15_000);
+
+          const familyWhileActive = await inspectStableSlotFamily(trackingQueue, evPrimaryId);
+          expect(familyWhileActive.primaryState).toBe('active');
+
           await expect(
             TripDetectionOrchestrationService.prototype.scheduleEndValidation.call(
               harness.orchestration,
@@ -165,51 +160,51 @@ if (REQUIRED) {
               fixture.vehicle.dimoTokenId,
             ),
           ).resolves.toBeUndefined();
-        } finally {
-          restoreTripR11Clock();
-        }
 
-        const familyAfterCompete = await inspectStableSlotFamily(trackingQueue, evPrimaryId);
-        expect(familyAfterCompete.primaryState).toBe('active');
-        expect(await stableSlotFamilyHasFutureAuthority(familyAfterCompete)).toBe(true);
+          const familyAfterCompete = await inspectStableSlotFamily(trackingQueue, evPrimaryId);
+          expect(familyAfterCompete.primaryState).toBe('active');
+          expect(await stableSlotFamilyHasFutureAuthority(familyAfterCompete)).toBe(true);
 
-        const successor = await trackingQueue.getJob(evSuccId);
-        expect(successor).not.toBeNull();
-        expect(await successor!.getState()).not.toBe('failed');
+          const successor = await trackingQueue.getJob(evSuccId);
+          expect(successor).not.toBeNull();
+          expect(await successor!.getState()).not.toBe('failed');
 
-        releaseEvHold?.();
+          releaseEvHold?.();
 
-        const deadline = Date.now() + 60_000;
-        let trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
-        let det = await prisma.vehicleTripDetectionState.findUnique({
-          where: { vehicleId: fixture.vehicle.id },
-        });
-        while (Date.now() < deadline) {
-          trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
-          det = await prisma.vehicleTripDetectionState.findUnique({
+          const deadline = Date.now() + 60_000;
+          let trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+          let det = await prisma.vehicleTripDetectionState.findUnique({
             where: { vehicleId: fixture.vehicle.id },
           });
-          if (
-            trip?.tripStatus === TripStatus.COMPLETED &&
-            det?.state === TripDetectionState.RESTING &&
-            det.activeTripId === null
-          ) {
-            break;
+          while (Date.now() < deadline) {
+            trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+            det = await prisma.vehicleTripDetectionState.findUnique({
+              where: { vehicleId: fixture.vehicle.id },
+            });
+            if (
+              trip?.tripStatus === TripStatus.COMPLETED &&
+              det?.state === TripDetectionState.RESTING &&
+              det.activeTripId === null
+            ) {
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 200));
           }
-          await new Promise((r) => setTimeout(r, 200));
-        }
 
-        expect(trip?.tripStatus).toBe(TripStatus.COMPLETED);
-        expect(trip?.endTime).toEqual(fixture.expectedEndTime);
-        expect(det?.state).toBe(TripDetectionState.RESTING);
-        expect(det?.activeTripId).toBeNull();
-        expect(det?.possibleEndEnteredAt).toBeNull();
-        expect(det?.possibleEndAt).toBeNull();
-        expect(resolveEndCycleToken(det!)).toBeNull();
-        expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
+          expect(trip?.tripStatus).toBe(TripStatus.COMPLETED);
+          expect(trip?.endTime).toEqual(fixture.expectedEndTime);
+          expect(det?.state).toBe(TripDetectionState.RESTING);
+          expect(det?.activeTripId).toBeNull();
+          expect(det?.possibleEndEnteredAt).toBeNull();
+          expect(det?.possibleEndAt).toBeNull();
+          expect(resolveEndCycleToken(det!)).toBeNull();
+          expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
+        } finally {
+          releaseEvHold?.();
+          await closeTripTrackingWorkers(workers);
+        }
       } finally {
-        releaseEvHold?.();
-        await closeTripTrackingWorkers(workers);
+        restoreTripR11Clock();
       }
     }, 120_000);
   },
