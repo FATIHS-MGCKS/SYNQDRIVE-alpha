@@ -15,8 +15,8 @@ Bootstrap Phase 0 establishes scope, ownership boundaries, graph scaffolding, in
 
 | Phase | Status |
 |-------|--------|
-| **0 — Entry and scope** | **Complete** (this workstream) |
-| **1 — Repository current-state audit** | **Pending** — bounded discovery indexed only |
+| **0 — Entry and scope** | **Complete** |
+| **1 — Repository current-state audit** | **Complete** (2026-09-11) — see [CURRENT_STATE.md](./CURRENT_STATE.md) |
 | **2 — Production read-only audit** | **Pending** — immediate next phase |
 | **3 — Reconciliation and classification** | **Not started** |
 | **4 — Authority construction** | **Bootstrap scaffold** |
@@ -72,6 +72,10 @@ Flat `architecture/*.md` memos and prior forensic chat output are **supporting e
 | [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview |
 | [research/OPEN_HYPOTHESES.md](./research/OPEN_HYPOTHESES.md) | Falsifiable research questions |
 | [ground-truth/TEST_STRATEGY.md](./ground-truth/TEST_STRATEGY.md) | Reproducible connectivity test methodology |
+| [signals/SIGNAL_AUTHORITY.md](./signals/SIGNAL_AUTHORITY.md) | Timestamp authority matrix (Phase 1) |
+| [signals/FRESHNESS_SEMANTICS.md](./signals/FRESHNESS_SEMANTICS.md) | Freshness thresholds and dimensions |
+| [lifecycle/CURRENT_SEMANTIC_MAP.md](./lifecycle/CURRENT_SEMANTIC_MAP.md) | Current-state label map |
+| [evidence/REPOSITORY_INVENTORY.md](./evidence/REPOSITORY_INVENTORY.md) | Complete source path inventory |
 
 ## Validation
 

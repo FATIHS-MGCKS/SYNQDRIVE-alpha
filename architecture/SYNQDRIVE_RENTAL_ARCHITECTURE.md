@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-11 (Vehicle & Device Connectivity authority bootstrap — `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-09-11 (Vehicle & Device Connectivity Phase 1 repository audit complete — `AUDIT_IN_PROGRESS`)
 
 ---
 
@@ -74,7 +74,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Tires Health | Tire wear modeling, lifecycle, measurements, health alerts, and tire trip-usage ledger. | `NOT_STARTED` | N/A — inventory only | — |
 | Trip Detection & Lifecycle | Live trip finite-state machine, start and end detection, DIMO segment reconciliation, and route artifacts. | `AUDIT_IN_PROGRESS` | Bootstrap audit · Phase 0–2 evidence collection | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
 | Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
-| Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Bootstrap audit · current-state reconstruction in progress | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
+| Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1 repository audit complete (2026-09-11) · Phase 2 Production audit pending | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
 | Vendors | Third-party vendor and workshop directory including geocoding helpers for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |

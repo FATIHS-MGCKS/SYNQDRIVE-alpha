@@ -9,52 +9,57 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **MODULE** | Vehicle & Device Connectivity |
 | **MODULE_SLUG** | `vehicle-device-connectivity` |
 | **AUDIT_STARTED_AT** | `2026-09-11T22:15:00Z` |
-| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` |
+| **PHASE_1_COMPLETED_AT** | `2026-09-11T22:29:15Z` |
+| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` (Phase 2 pending) |
 | **REGISTRY_STATUS_AT_START** | `NOT_STARTED` (module absent from registry) |
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` (at bootstrap) |
-| **AUDIT_BRANCH_SHA** | `IN_PROGRESS` |
+| **ORIGIN_MAIN_SHA** | `d6ce9c104033afcfa55678c8de6e9eef2397e12a` (Phase 1 audit) |
+| **AUDIT_BRANCH_SHA** | recorded at Phase 1 commit |
+| **BOOTSTRAP_ON_MAIN** | Yes — authority path exists on `origin/main` via PR #1607 branch |
 | **PRODUCTION_AUDITED_AT** | `N/A` |
-| **PRODUCTION_ACCESS** | `N/A — Phase 2 not performed in bootstrap` |
+| **PRODUCTION_ACCESS** | `N/A — Phase 2 not performed` |
 | **PRODUCTION_RELEASE_SHA** | `N/A` |
-| **PRODUCTION_RELEASE_PATH** | `N/A` |
-| **REPO_PRODUCTION_DRIFT** | `UNKNOWN` — not assessed in Phase 0 |
-| **RUNTIME_FOOTPRINT** | Backend connectivity projection, DIMO device-connection paths, fleet map consumers, telemetry freshness — **DISCOVERED, not fully audited** |
-| **AUDIT_MODE** | `READ_ONLY` (bootstrap documentation only) |
-| **VALIDATION_STATUS** | `PENDING` — run validators before merge |
+| **REPO_PRODUCTION_DRIFT** | `UNKNOWN` |
+| **RUNTIME_FOOTPRINT** | vehicles/connectivity, dimo device-connection + alerts, snapshot polling, fleet/frontend projection |
+| **AUDIT_MODE** | `READ_ONLY` (documentation only) |
+| **VALIDATION_STATUS** | Run validators before merge |
 
 ## Lifecycle phase status
 
 | Phase | Status |
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
-| **1 — Repository current-state audit** | **Bounded discovery only** — see coverage matrix |
-| **2 — Production read-only audit** | **Not started** — immediate next phase |
+| **1 — Repository current-state audit** | **Complete** (2026-09-11) |
+| **2 — Production read-only audit** | **Not started** — next gate |
 | **3 — Reconciliation** | **Not started** |
-| **4 — Authority construction** | **Bootstrap scaffold** |
+| **4 — Authority construction** | **In progress** (Phase 1 artifacts) |
 | **5 — Promotion gate** | **Not eligible** — remains `AUDIT_IN_PROGRESS` |
 
 ## Mutations performed
 
-**None.** No Production, repository runtime, or deployment mutations in this workstream.
+**None** to application runtime, Production, databases, or deployment.
 
-## Audit coverage matrix (bootstrap)
+## Audit coverage matrix (Phase 1)
 
-| Surface | Inspected | Evidence | Result | Limitation |
-|---------|-----------|----------|--------|------------|
-| Central registry | Yes | `SYNQDRIVE_RENTAL_ARCHITECTURE.md` | New row added | Neighbor rows reviewed, not modified |
-| Neighbor DIMO Integration authority | Yes | `architecture/dimo-integration/*` | Boundaries recorded | DIMO remains provider owner |
-| Neighbor Trip Detection authority | Yes | `architecture/trip-detection-lifecycle/*` | Boundaries recorded | Wake/trip split preserved |
-| Backend connectivity domain | Partial | `grep` + path index | **DISCOVERED — FULL AUDIT PENDING** | No line-by-line audit |
-| Backend DIMO device-connection | Partial | path index | **DISCOVERED — FULL AUDIT PENDING** | Owned by DIMO module code |
-| Frontend connectivity projection | Partial | path index | **DISCOVERED — FULL AUDIT PENDING** | Rental + master surfaces |
-| Production VPS | No | — | **NOT AUDITED IN THIS PHASE** | See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) |
-| LTE_R1 KS MX 2024 forensics | Placeholder | [evidence/LTE_R1_KS_MX_2024_PENDING_RECONSTRUCTION.md](evidence/LTE_R1_KS_MX_2024_PENDING_RECONSTRUCTION.md) | **PENDING RECONSTRUCTION** | Chat-derived numbers not promoted |
+| Surface | Inspected | Evidence | Result |
+|---------|-----------|----------|--------|
+| Central registry | Yes | `SYNQDRIVE_RENTAL_ARCHITECTURE.md` | VDC row present |
+| Neighbor DIMO Integration | Yes | `architecture/dimo-integration/*` | Boundaries recorded |
+| Neighbor Trip Detection | Yes | snapshot-wake, FSM boundary | Documented |
+| Neighbor Scaling Process | Yes | scheduler-leader reference | No ownership duplication |
+| Backend vehicles/connectivity | Yes | Full file read + tests index | **RECONSTRUCTED** |
+| Backend DIMO connectivity | Yes | connectivity-alert, episodes, webhooks, processor | **RECONSTRUCTED** |
+| Frontend projection | Yes | telemetryFreshness, operational-projection, detail UI | **RECONSTRUCTED** |
+| Prisma / ClickHouse | Yes | schema + services | **RECONSTRUCTED** |
+| High Mobility | Yes | bounded | **PARTIAL** — see HM audit doc |
+| AI telemetry mapper | Yes | standby semantics | **RECONSTRUCTED** |
+| Polling / schedulers | Yes | tiers, wake, leader guards | **RECONSTRUCTED** |
+| Production VPS | No | — | **Phase 2** |
 
 ## NEXT_GATE
 
-1. Full repository audit (Phase 1) of indexed connectivity surfaces.
-2. Dedicated read-only Production audit (Phase 2) including LTE_R1 ground-truth reconstruction.
-3. Reconcile code-implied connectivity semantics vs proposed ownership model.
+1. Phase 2 read-only Production audit (LTE_R1 ground truth, poll vs source forensics).
+2. Phase 3 reconciliation of contradictions (VDC-CX-001..009).
+3. HM runtime integration design (VDC-GAP-009).

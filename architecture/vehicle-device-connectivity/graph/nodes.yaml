@@ -199,3 +199,166 @@ nodes:
     summary: Proposed VDC ownership of alert semantics vs current code in dimo/connectivity-alert.
     source_paths:
       - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-002
+    type: contradiction
+    title: Webhook failure type naming mismatch
+    epistemic_status: CONTRADICTED
+    summary: WEBHOOK_PROCESSING_FAILED vs WEBHOOK_FAILURE across types, service, and runtime builder.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-003
+    type: contradiction
+    title: Unused connectivity alert dedupe key helper
+    epistemic_status: CONTRADICTED
+    summary: buildConnectivityAlertDedupeKey unused; fingerprints used instead.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-004
+    type: contradiction
+    title: Admin DIMO debug thresholds vs canonical 48h soft offline
+    epistemic_status: CONTRADICTED
+    summary: dimo.controller.ts offline at 24h vs signal_delayed until 48h in interpreter.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-005
+    type: contradiction
+    title: Stale snapshot metric threshold vs live freshness
+    epistemic_status: CONTRADICTED
+    summary: Processor Prometheus 5 min stale counter vs 15 min live classification.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-006
+    type: contradiction
+    title: Episode evidence reliability default false
+    epistemic_status: CONTRADICTED
+    summary: buildDeviceConnectionSummary defaults episodeEvidenceReliable false.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-007
+    type: contradiction
+    title: Physical episode vs physical evidence without episode
+    epistemic_status: CONTRADICTED
+    summary: interruption-knowledge warns open episode absence does not disprove unplug.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-008
+    type: contradiction
+    title: Webhook failure mapped from provider link ERROR
+    epistemic_status: CONTRADICTED
+    summary: syncConnectivityAlerts conflates provider link ERROR with webhook processing failure.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-009
+    type: contradiction
+    title: Diagnostic transition tracker not authoritative
+    epistemic_status: CONTRADICTED
+    summary: Process-local diagnostic tracker; multi-replica double-count risk.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-GAP-008
+    type: gap
+    title: Legacy 3-state onlineStatus vs 5-state freshness
+    epistemic_status: CONFIRMED
+    summary: onlineStatus OFFLINE at 24h while telemetryFreshness signal_delayed until 48h.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-009
+    type: gap
+    title: HM not in canonical connectivity runtime
+    epistemic_status: CONFIRMED
+    summary: VehicleConnectivityRuntimeStateBuilder DIMO-centric; HM vehicles lack runtime projection.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-010
+    type: gap
+    title: Dual telemetry resolution paths
+    epistemic_status: CONFIRMED
+    summary: Fleet assembler full evidence vs operational resolveRowTelemetry reduced timestamps.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-011
+    type: gap
+    title: Episode and webhook table retention
+    epistemic_status: CONFIRMED
+    summary: device_connection_* tables unbounded unlike dimo_poll_logs 30d retention.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-012
+    type: gap
+    title: Frontend dual connectivity derivation paths
+    epistemic_status: CONFIRMED
+    summary: connectivityRuntime authoritative on P1 surfaces; legacy client classifier remains.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-EVID-REPO-PHASE1-001
+    type: evidence
+    title: Phase 1 repository current-state audit
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Full repository connectivity audit 2026-09-11; Production claims excluded.
+    source_paths:
+      - architecture/vehicle-device-connectivity/CURRENT_STATE.md
+      - architecture/vehicle-device-connectivity/evidence/REPOSITORY_INVENTORY.md
+
+  - id: VDC-PIPE-SNAPSHOT-001
+    type: pipeline
+    title: DIMO snapshot poll pipeline
+    epistemic_status: CONFIRMED
+    summary: dimo.snapshot.poll queue, processor, monotonic guard, VLS upsert, ClickHouse mirror.
+    source_paths:
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+
+  - id: VDC-POL-ALERT-001
+    type: policy
+    title: Connectivity alert policy
+    epistemic_status: CONFIRMED
+    summary: Pure policy functions for device and telemetry alerts; colocated under dimo module.
+    source_paths:
+      - backend/src/modules/dimo/connectivity-alert/connectivity-alert.policy.ts
+
+  - id: VDC-PERSIST-VLS-001
+    type: persist
+    title: vehicle_latest_states persistence
+    epistemic_status: CONFIRMED
+    summary: Latest observation row; source_timestamp vs provider_fetched_at split.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: VDC-PERSIST-CH-001
+    type: persist
+    title: ClickHouse telemetry_snapshots
+    epistemic_status: CONFIRMED
+    summary: Historical snapshots with recorded_at dedupe and 180d TTL.
+    source_paths:
+      - backend/src/modules/clickhouse/clickhouse-telemetry.service.ts
+
+  - id: VDC-API-FLEET-001
+    type: api
+    title: Fleet connectivity API
+    epistemic_status: CONFIRMED
+    summary: GET fleet-connectivity list and detail with connectivityRuntime projection.
+    source_paths:
+      - backend/src/modules/vehicles/vehicles.controller.ts
+
+  - id: VDC-CONS-FE-001
+    type: consumer
+    title: Rental operational projection consumer
+    epistemic_status: CONFIRMED
+    summary: Frontend map-fleet-map-to-canonical and vehicle detail presentation consume connectivityRuntime.
+    source_paths:
+      - frontend/src/rental/lib/operational-projection/map-fleet-map-to-canonical.ts

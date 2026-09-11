@@ -1,95 +1,180 @@
-# Vehicle & Device Connectivity — Current State (Bootstrap, `AUDIT_IN_PROGRESS`)
+# Vehicle & Device Connectivity — Current State (Phase 1 Repository Audit)
 
 | Field | Value |
 |-------|-------|
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Repository baseline** | `origin/main` @ `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` (bootstrap timestamp) |
-| **Production baseline** | **Not established in Phase 0** — see [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) |
+| **Phase 1 completed** | 2026-09-11 (repository current-state audit) |
+| **origin/main SHA (audit)** | `d6ce9c104033afcfa55678c8de6e9eef2397e12a` |
+| **Audit branch SHA** | recorded at commit time in `AUDIT_MANIFEST.md` |
+| **Production baseline** | **Not established** — Phase 2 required |
 | **Last updated** | 2026-09-11 |
 
 ## Executive summary
 
-SynqDrive already contains **substantial connectivity-related code** spread across Vehicles, DIMO Integration, AI telemetry semantics, and rental operational projection layers. There is **no single module authority** for provider-neutral connectivity semantics until this bootstrap.
+SynqDrive implements a **substantial multi-dimensional connectivity model** centered on `VehicleConnectivityRuntimeState` under `backend/src/modules/vehicles/connectivity/`, fed primarily by DIMO snapshot ingest, device-connection webhooks/episodes, and IAM/provider-link evidence. There is **no single code module** named Vehicle & Device Connectivity — semantics are distributed across Vehicles, DIMO Integration, AI evidence mapping, Trip Detection (snapshot wake), and rental operational projection.
 
-This document records **bounded discovery** only. It does **not** claim complete current-state reconstruction.
+Phase 1 confirms:
 
-## Proposed ownership vs discovered code (preliminary)
+- Canonical telemetry freshness uses **15 min / 24 h / 48 h** five-state classification (`vehicle-state-interpreter.ts`).
+- **Poll success ≠ new source data** — monotonic guard + `providerFetchedAt`-only updates on stale skip (VDC-INV-001, VDC-INV-002).
+- **Runtime projection** combines provider link, telemetry, physical device, data coverage, attention, and overall state with explicit precedence.
+- **Connectivity alert policy** is provider-neutral pure functions but **implemented under DIMO** (VDC-CX-001).
+- **Legacy parallel paths** (3-state `onlineStatus`, operational list reduced timestamps, admin DIMO debug thresholds) **drift** from canonical runtime.
+- **High Mobility** is not integrated into canonical connectivity runtime (VDC-GAP-009).
 
-| Concern | Proposed VDC owner | Currently implemented in (discovered) | Notes |
-|---------|--------------------|--------------------------------------|-------|
-| Connectivity runtime state projection | VDC | `backend/src/modules/vehicles/connectivity/**` | Domain builders, diagnostic state, legacy projection |
-| Telemetry freshness / standby | VDC | `telemetry-freshness.resolver.ts`, `vehicle-state-interpreter.ts` | 15 min–24 h standby window documented in AI mapper |
-| Fleet connectivity API | VDC consumes / Vehicles presents | `fleet-connectivity*.ts`, `vehicles.controller.ts` | Boundary with Vehicles TBD in full audit |
-| DIMO `connectionStatus` mirror | DIMO owns field; VDC owns semantics | `dimo_vehicles.connection_status`, sync services | |
-| `sourceTimestamp` / monotonic guard | VDC semantics; DIMO ingest | `vls-monotonic-merge.util.ts`, `dimo-snapshot.processor.ts` | Stale poll ≠ new source |
-| Device connection episodes | DIMO owns persistence; VDC interprets | `device-connection-episode*`, webhook inbox | |
-| Connectivity alerts | VDC policy semantics; DIMO implements | `connectivity-alert/*` under dimo module | **Potential boundary tension** — see VDC-CX-001 |
-| Snapshot wake | Trip Detection | `backend/src/workers/snapshot-wake/**` | Not connectivity lifecycle |
-| OBD plug evidence | VDC evidence class | `obdIsPluggedIn` in snapshot payload, episode resolution | |
-| Physical device state (plugged, power, sleep/wake) | VDC | `physical-device-evidence*`, episode resolution | Provider-neutral interpretation only |
-| Device heartbeat / periodic records | VDC | DIMO snapshot ingest, LTE_R1 profiles | DIMO Integration owns ingest |
-| Hardware fault classification | VDC | `interruption-knowledge.ts`, diagnostic state | Hardware vs provider vs vehicle |
+## Component hierarchy
 
-## Discovered repository surfaces (index — FULL AUDIT PENDING)
+```
+[DIMO API / webhooks]
+        ↓
+dimo-snapshot.processor / device-connection-webhook pipeline
+        ↓
+vehicle_latest_states + dimo_vehicles + episodes/events + dimo_poll_logs
+        ↓
+telemetry-freshness.resolver + physical-device-evidence + provider-link builder
+        ↓
+vehicle-connectivity-runtime-state.builder
+        ↓
+vehicle-connectivity-runtime-projection.service → fleet-connectivity API / device-connection API
+        ↓
+frontend operational-projection (connectivityRuntime authoritative on P1 surfaces)
+```
 
-### Backend — vehicles / connectivity projection
+**Neighbor boundaries:**
 
-- `backend/src/modules/vehicles/connectivity/domain/*` — provider link state, diagnostic state, physical device evidence, runtime state builder
-- `backend/src/modules/vehicles/connectivity/vehicle-connectivity-runtime-*.ts`
-- `backend/src/modules/vehicles/telemetry-freshness.resolver.ts`
-- `backend/src/modules/vehicles/vehicle-state-interpreter.ts`
-- `backend/src/modules/vehicles/fleet-connectivity*.ts`
-- `backend/src/modules/vehicles/vehicles-operational.service.ts`
-- `backend/src/modules/vehicles/connectivity-state-regression.spec.ts`
+- Trip Detection: snapshot wake, trip FSM (`backend/src/workers/snapshot-wake/**`)
+- DIMO Integration: provider clients, webhooks, episode persistence, alert delivery
+- Scaling Process: scheduler leader election
+- Notifications: delivery channel; VDC owns alert **semantics** (proposed)
 
-### Backend — DIMO (provider; VDC consumer)
+## Data flow (repository-confirmed)
 
-- `backend/src/modules/dimo/connectivity-alert/*`
-- `backend/src/modules/dimo/device-connection-*` (episodes, webhook inbox, read model)
-- `backend/src/modules/dimo/dimo-connectivity-lifecycle-di.module.ts`
-- `backend/src/modules/dimo/interruption-knowledge.ts`
-- `backend/src/modules/dimo/vls-monotonic-merge.util.ts`
-- `backend/src/workers/processors/dimo-snapshot.processor.ts`
-- `backend/src/modules/dimo/queries/latest-vehicle-snapshot.query.ts`
+1. **Scheduled poll** (`dimo.snapshot.poll`) fetches `signalsLatest` → normalizes `lastSeenAt` → monotonic guard → VLS upsert (+ optional ClickHouse).
+2. **Webhooks** (`POST /webhooks/dimo`): OBD plug/unplug → inbox → episodes; speed/ignition → snapshot wake (Trip Detection).
+3. **Batch assembler** resolves canonical telemetry timestamps from VLS + dimo mirror fields.
+4. **Runtime builder** synthesizes dimensions → legacy projection for list filters.
+5. **Alert sync** (`ConnectivityAlertService`) after runtime projection.
 
-### Backend — AI / evidence semantics
+Detail: [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md), [operations/POLLING_AND_SCHEDULERS.md](operations/POLLING_AND_SCHEDULERS.md).
 
-- `backend/src/modules/ai/evidence/ai-evidence-telemetry.mapper.ts` — standby heartbeat 15 min–24 h
-- `backend/src/modules/ai/tools/get-vehicle-telemetry-status/*`
+## State semantics
 
-### Backend — workers / wake (neighbor — Trip Detection)
+Full map: [lifecycle/CURRENT_SEMANTIC_MAP.md](lifecycle/CURRENT_SEMANTIC_MAP.md).
 
-- `backend/src/workers/snapshot-wake/*`
+**Thresholds:** [signals/FRESHNESS_SEMANTICS.md](signals/FRESHNESS_SEMANTICS.md).
 
-### Frontend — operational projection
+## Timestamp semantics
 
-- `frontend/src/rental/lib/telemetryFreshness.ts`
-- `frontend/src/rental/lib/operational-projection/**` (connectivity enums, presentation)
-- `frontend/src/rental/lib/obd-plug-status.ts`
+See [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md).
 
-### Persistence (discovered models — not audited)
+**Monotonic equality behavior:** `incoming == existing` **is applied** (not stale). ClickHouse dedupes identical `(vehicle_id, recorded_at)` — documented defect candidate, not fixed in Phase 1.
 
-- `vehicle_latest_states` — `source_timestamp`, `provider_fetched_at`, `raw_payload_json`
-- `dimo_vehicles` — `connection_status`, `last_signal`
-- `device_connection_episodes`, `device_connection_webhook_inbox`
-- `dimo_poll_logs`
+## Persistence & history
 
-## Confirmed code facts (repository only, bootstrap)
+| Store | Connectivity role | Historical retention |
+|-------|-------------------|----------------------|
+| `vehicle_latest_states` | Latest observation + raw payload | Latest only (VDC-GAP-003) |
+| `dimo_vehicles` | connection_status, last_signal mirror | Latest |
+| `dimo_poll_logs` | Poll forensics | 30 days |
+| `device_connection_episodes` | Unplug lifecycle | Unbounded |
+| `dimo_device_connection_events` | Webhook events | Unbounded (VDC-GAP-011) |
+| `device_connection_webhook_inbox` | Queue | Unbounded |
+| ClickHouse `telemetry_snapshots` | Observation history | 180 days TTL |
+| Notifications | Alert state | Notification system retention |
 
-| Claim | Epistemic | Source |
-|-------|-----------|--------|
-| `signalsLatest.lastSeen` maps to VLS `sourceTimestamp` / `lastSeenAt` | CONFIRMED | `dimo-snapshot.processor.ts` `normalizeSnapshot` |
-| Stale provider snapshot skips VLS update except `providerFetchedAt` / `syncJobRef` | CONFIRMED | `dimo-snapshot.processor.ts` monotonic guard branch |
-| ClickHouse `telemetry_snapshots.recorded_at` derives from normalized `lastSeenAt` | CONFIRMED | `clickhouse-telemetry.service.ts` |
-| AI mapper documents standby window 15 min–24 h | CONFIRMED | `ai-evidence-telemetry.mapper.ts` |
+## Polling & schedulers
+
+See [operations/POLLING_AND_SCHEDULERS.md](operations/POLLING_AND_SCHEDULERS.md).
+
+Activity tiers: 30s (driving) → 30min (long idle). RESTING_STANDBY tier ties to telemetry `standby` classification.
+
+## APIs
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET .../fleet-connectivity` | Fleet list + `connectivityRuntime` + legacy fields |
+| `GET .../fleet-connectivity/:vehicleId` | Detail + timeline |
+| `GET .../vehicles/:vehicleId/device-connection` | Device connection card |
+| `GET /admin/vehicles/operational*` | Master-admin (reduced telemetry path) |
+
+## Frontend
+
+- **Canonical:** `connectivityRuntime` via operational-projection (`map-fleet-map-to-canonical.ts`, vehicle detail presentation).
+- **Legacy:** `telemetryFreshness.ts` client classifier when runtime absent.
+- **Drift:** 5 min “Live” label vs 15 min freshness; legacy `onlineStatus` on map paths (VDC-GAP-012).
+
+## DIMO / device connectivity
+
+- **Episodes:** OBD unplug opens episode; resolve via plug webhook, snapshot OBD, or sustained telemetry policies.
+- **Physical evidence:** `physical-device-evidence.ts` + read-model anchors.
+- **Alerts:** policy in `connectivity-alert.policy.ts`; delivery in DIMO module.
+- **Native events inventory:** OBD plug/unplug, speed, ignition, RPM (wake), DTC — see DIMO webhook controller.
+
+Provider profile (LTE_R1): [providers/dimo/LTE_R1.md](providers/dimo/LTE_R1.md) — hardware timing **not** confirmed in Phase 1.
+
+## High Mobility
+
+Bounded audit: [providers/high-mobility/REPOSITORY_AUDIT.md](providers/high-mobility/REPOSITORY_AUDIT.md). Not in canonical runtime.
+
+## Failure / recovery (summary)
+
+| Condition | Behavior |
+|-----------|----------|
+| Stale provider snapshot | Skip VLS telemetry; update `providerFetchedAt` |
+| Provider HTTP failure | Poll log FAILURE; BullMQ retry |
+| Auth/consent expired | `AUTHORIZATION_REQUIRED` overall state |
+| OBD unplug webhook | Open episode + device alert |
+| Webhook inbox failure | Retry → dead letter |
+| Recovery | Episode resolution paths + alert policy resolve |
+| Redis/leader loss | Scaling Process leader guard skips tick |
+
+## Test coverage
+
+[Index](evidence/TEST_COVERAGE_INDEX.md) — strong unit/regression on runtime builder, freshness, alerts, episodes; gaps on operational path and E2E Production cadence.
+
+## Ownership reality vs proposed VDC
+
+| Concern | Code location today | Proposed VDC owner |
+|---------|---------------------|-------------------|
+| Runtime semantics | `vehicles/connectivity/**` | VDC |
+| Alert policy | `dimo/connectivity-alert/**` | VDC semantics (VDC-CX-001) |
+| Episode persistence | `dimo/device-connection-*` | DIMO |
+| Snapshot ingest | `dimo-snapshot.processor` | DIMO |
+| Wake | `snapshot-wake/**` | Trip Detection |
+
+## Contradictions
+
+[contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md) — VDC-CX-001 through VDC-CX-009.
+
+## Knowledge gaps
+
+[contradictions/KNOWLEDGE_GAPS.md](contradictions/KNOWLEDGE_GAPS.md) — VDC-GAP-001 through VDC-GAP-012.
+
+## Hypotheses (unchanged status)
+
+VDC-HYP-001 through VDC-HYP-007 remain **PROPOSED** — not promoted. LTE_R1 ~24h observation stays pending Production reconstruction.
 
 ## Explicit non-claims
 
-- Complete connectivity state machine across all providers
-- Production-validated LTE_R1 sleep/wake intervals (pending Phase 2)
-- IO174 / Ruptela 0x10 heartbeat visibility in SynqDrive ingest
+- Production-validated LTE_R1 sleep/wake cadence
+- IO174 visibility in ingest
+- HM connectivity parity
 - Canonical promotion of KS MX 2024 forensic numbers
+- Physical device transmission frequency (requires Phase 2)
 
-## Open gaps
+## Phase 2 Production questions
 
-See [contradictions/KNOWLEDGE_GAPS.md](contradictions/KNOWLEDGE_GAPS.md) and [research/OPEN_QUESTIONS.md](research/OPEN_QUESTIONS.md).
+1. Deduplicated `source_timestamp` series vs `dimo_poll_logs` SUCCESS rate (VDC-HYP-003).
+2. Post-trip LTE_R1 gap distribution (VDC-HYP-001).
+3. Per-signal timestamp heterogeneity on standby wakes (VDC-HYP-004).
+4. IO174 / raw IO in Production payloads (VDC-HYP-002).
+5. Episode vs physical-unplug without episode incidence rate (VDC-CX-007).
+6. Operator false-positive rate for standby vs offline at 24h/48h boundaries.
+7. Multi-replica duplicate snapshot insert rate in ClickHouse.
+8. Webhook delivery latency vs poll-only reconnect detection.
+
+## Related entry documents
+
+- [evidence/REPOSITORY_INVENTORY.md](evidence/REPOSITORY_INVENTORY.md)
+- [lifecycle/EVIDENCE_HIERARCHY.md](lifecycle/EVIDENCE_HIERARCHY.md)
+- [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md)
