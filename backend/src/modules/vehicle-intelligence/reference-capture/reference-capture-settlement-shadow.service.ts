@@ -21,7 +21,7 @@ import {
   buildFixedIntervalProbesForPhase,
   buildProspectiveProbeAForPhase,
   buildProspectiveProbeBForPhase,
-  buildTiledSettlementProbesForPhase,
+  buildFullPhaseOverlappingSettlementProbesForPhase,
   buildProbeBForCompletedPhase,
   buildScheduleIdempotencyKey,
   buildWholeTripProbeId,
@@ -328,7 +328,7 @@ export class ReferenceCaptureSettlementShadowService {
     if (plan.planVersion === EXP021_UPPER_BOUND_V2.planVersion) {
       const nominalEndMs =
         phaseStartedAtMs + resolveNominalPhaseDurationMs(active.effectivePollIntervalMs);
-      const probes = buildTiledSettlementProbesForPhase({
+      const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
         phasePollIntervalMs: active.effectivePollIntervalMs,
         phaseStartedAtMs,
         phaseEndMs: nominalEndMs,

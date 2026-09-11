@@ -420,6 +420,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
 | Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
 
+## EXP-021 — Post-run hardening scientific correction pass (2026-09-11, PR #1604)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CORRECTION PASS** — runtime + settlement geometry fixes before next physical run |
+| HF slots | Strict `resolveExp021HfHistoricalPollDecision` — no legacy interval fallback when slot ledger active; `persistCalibrationCountersDuringCycle` reserves ISSUED before provider I/O |
+| Settlement | `buildFullPhaseOverlappingSettlementProbesForPhase` — full phase from t+0, 60s windows, 30s step; 62 tiles × 6 ages = 372 queries; synthetic gap assessability 32/32 (100%) |
+| Legacy geometry | 120s stabilization tiling retained as `buildLegacyStabilizedTiledSettlementProbesForPhase` for 2026-09-11 evidence parse only (25 tiles, 75.76% nominal minutes) |
+| Terminalization | Realistic early-end (180/120 completed, 60 sealed, 30 NOT_RUN); final 30s CONTROL wall-clock expiry without fresh telemetry |
+| Evidence | Frozen 2026-09-11 run artifacts **unchanged**; 4/44 assessable remains historical under old A/B geometry |
+
 ## EXP-021 — Upper-bound cadence calibration plan V2 (2026-09-11)
 
 | Event | Detail |

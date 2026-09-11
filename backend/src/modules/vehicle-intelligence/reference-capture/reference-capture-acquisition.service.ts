@@ -52,8 +52,7 @@ import {
 } from './reference-capture-hf-block-polling.policy';
 import {
   finalizeRequestSlotOutcome,
-  isExp021RequestSlotPollDue,
-  markRequestSlotIssued,
+  resolveExp021HfHistoricalPollDecision,
 } from './reference-capture-exp021-request-slots.lib';
 import {
   accumulatePhaseQueryMetrics,
@@ -315,36 +314,33 @@ export class ReferenceCaptureAcquisitionService {
 
       if (surfacePlan.surface === 'HF_HISTORICAL') {
         const nowMs = Date.now();
-        const activeSlots = hfCalibrationActiveCounters?.exp021RequestSlots ?? null;
-        const pollDue =
-          activeSlots?.length
-            ? isExp021RequestSlotPollDue({
-                nowMs,
-                slots: activeSlots,
-                lastHfHistoricalPollAt,
-                pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
-                policyMode: hfPolicyEffective.mode,
-              })
-            : isHfHistoricalPollDue({
-                nowMs,
-                lastHfHistoricalPollAt,
-                pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
-                policyMode: hfPolicyEffective.mode,
-              });
-        if (!pollDue) {
+        const pollDecision = resolveExp021HfHistoricalPollDecision({
+          nowMs,
+          slots: hfCalibrationActiveCounters?.exp021RequestSlots ?? null,
+          lastHfHistoricalPollAt,
+          pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
+          policyMode: hfPolicyEffective.mode,
+        });
+        if (!pollDecision.pollAllowed) {
           continue;
         }
 
-        let issuedSlotIndex: number | null = null;
-        if (activeSlots?.length && hfCalibrationActiveCounters) {
-          const issued = markRequestSlotIssued(activeSlots, nowMs);
-          if (issued.slotIndex != null) {
-            issuedSlotIndex = issued.slotIndex;
-            hfCalibrationActiveCounters = {
-              ...hfCalibrationActiveCounters,
-              exp021RequestSlots: issued.slots,
-            };
-          }
+        let issuedSlotIndex: number | null = pollDecision.slotIndex;
+        if (
+          pollDecision.mode === 'DETERMINISTIC_SLOTS' &&
+          pollDecision.pollAllowed &&
+          hfCalibrationActiveCounters
+        ) {
+          hfCalibrationActiveCounters = {
+            ...hfCalibrationActiveCounters,
+            exp021RequestSlots: pollDecision.slots,
+          };
+          await this.sessionRepository.persistCalibrationCountersDuringCycle(
+            input.organizationId,
+            input.sessionId,
+            input.cycleJobId,
+            hfCalibrationActiveCounters,
+          );
         }
 
         const hfResult = await this.captureHistoricalSurface({

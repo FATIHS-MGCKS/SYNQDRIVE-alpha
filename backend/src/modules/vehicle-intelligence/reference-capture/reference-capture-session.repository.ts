@@ -21,6 +21,7 @@ import {
   reanchorPhysicalCalibrationPhaseAtT0,
   requestHfCalibrationPhase,
   type HfCalibrationPhaseRequestResult,
+  type HfCalibrationPhaseRuntimeCounters,
   type ReanchorPhysicalCalibrationPhaseResult,
   type TerminalCalibrationFinalizationReason,
 } from './reference-capture-hf-calibration-phase.policy';
@@ -592,6 +593,36 @@ export class ReferenceCaptureSessionRepository {
           controlPlaneRevision: transition.series.controlPlaneRevision,
         },
       };
+    });
+  }
+
+  async persistCalibrationCountersDuringCycle(
+    organizationId: string,
+    sessionId: string,
+    activeCycleJobId: string,
+    counters: HfCalibrationPhaseRuntimeCounters,
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, organizationId, sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: sessionId, organizationId },
+      });
+      if (!session) return false;
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      if (current.activeCycleJobId !== activeCycleJobId) return false;
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationActiveCounters: counters,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
+
+      await tx.referenceCaptureSession.update({
+        where: { id: sessionId, organizationId },
+        data: { acquisitionStateJson: nextState as object },
+      });
+      return true;
     });
   }
 

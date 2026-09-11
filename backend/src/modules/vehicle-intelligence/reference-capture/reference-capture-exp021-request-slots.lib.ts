@@ -77,6 +77,95 @@ export function resolveNextDueRequestSlot(
   return due[0] ?? null;
 }
 
+export type Exp021HfHistoricalPollDecision =
+  | {
+      mode: 'DETERMINISTIC_SLOTS';
+      pollAllowed: true;
+      slotIndex: number;
+      slots: Exp021RequestSlotRecord[];
+      dueAtMs: number;
+    }
+  | {
+      mode: 'DETERMINISTIC_SLOTS';
+      pollAllowed: false;
+      slotIndex: null;
+      slots: Exp021RequestSlotRecord[];
+      blockReason:
+        | 'NO_INTENDED_SLOT_DUE'
+        | 'ALL_SLOTS_TERMINAL'
+        | 'SLOT_RESERVATION_FAILED';
+    }
+  | {
+      mode: 'LEGACY_INTERVAL';
+      pollAllowed: boolean;
+      slotIndex: null;
+      slots: null;
+      blockReason?: 'LEGACY_INTERVAL_NOT_ELAPSED';
+    };
+
+/**
+ * When deterministic EXP-021 slots are active, polling is governed strictly by slot due state.
+ * Legacy interval gating applies only when no slot ledger exists.
+ */
+export function resolveExp021HfHistoricalPollDecision(args: {
+  nowMs: number;
+  slots: Exp021RequestSlotRecord[] | null | undefined;
+  lastHfHistoricalPollAt: string | null | undefined;
+  pollIntervalMs: number;
+  policyMode: 'V2' | 'LEGACY';
+}): Exp021HfHistoricalPollDecision {
+  if (args.slots?.length) {
+    const nextSlot = resolveNextDueRequestSlot(args.slots, args.nowMs);
+    if (!nextSlot) {
+      const hasIntended = args.slots.some((slot) => slot.status === 'INTENDED');
+      return {
+        mode: 'DETERMINISTIC_SLOTS',
+        pollAllowed: false,
+        slotIndex: null,
+        slots: args.slots,
+        blockReason: hasIntended ? 'NO_INTENDED_SLOT_DUE' : 'ALL_SLOTS_TERMINAL',
+      };
+    }
+    const issued = markRequestSlotIssued(args.slots, args.nowMs);
+    if (issued.slotIndex == null) {
+      return {
+        mode: 'DETERMINISTIC_SLOTS',
+        pollAllowed: false,
+        slotIndex: null,
+        slots: args.slots,
+        blockReason: 'SLOT_RESERVATION_FAILED',
+      };
+    }
+    return {
+      mode: 'DETERMINISTIC_SLOTS',
+      pollAllowed: true,
+      slotIndex: issued.slotIndex,
+      slots: issued.slots,
+      dueAtMs: nextSlot.dueAtMs,
+    };
+  }
+
+  if (args.policyMode !== 'V2') {
+    return { mode: 'LEGACY_INTERVAL', pollAllowed: true, slotIndex: null, slots: null };
+  }
+  if (!args.lastHfHistoricalPollAt) {
+    return { mode: 'LEGACY_INTERVAL', pollAllowed: true, slotIndex: null, slots: null };
+  }
+  const last = Date.parse(args.lastHfHistoricalPollAt);
+  if (!Number.isFinite(last)) {
+    return { mode: 'LEGACY_INTERVAL', pollAllowed: true, slotIndex: null, slots: null };
+  }
+  const pollAllowed = args.nowMs - last >= args.pollIntervalMs;
+  return {
+    mode: 'LEGACY_INTERVAL',
+    pollAllowed,
+    slotIndex: null,
+    slots: null,
+    blockReason: pollAllowed ? undefined : 'LEGACY_INTERVAL_NOT_ELAPSED',
+  };
+}
+
+/** @deprecated Use resolveExp021HfHistoricalPollDecision — strict slot-only when slots exist. */
 export function isExp021RequestSlotPollDue(args: {
   nowMs: number;
   slots: Exp021RequestSlotRecord[] | null | undefined;
@@ -84,13 +173,8 @@ export function isExp021RequestSlotPollDue(args: {
   pollIntervalMs: number;
   policyMode: 'V2' | 'LEGACY';
 }): boolean {
-  if (args.policyMode !== 'V2') return true;
-  const nextSlot = resolveNextDueRequestSlot(args.slots, args.nowMs);
-  if (nextSlot) return true;
-  if (!args.lastHfHistoricalPollAt) return true;
-  const last = Date.parse(args.lastHfHistoricalPollAt);
-  if (!Number.isFinite(last)) return true;
-  return args.nowMs - last >= args.pollIntervalMs;
+  const decision = resolveExp021HfHistoricalPollDecision(args);
+  return decision.pollAllowed;
 }
 
 export function markRequestSlotIssued(
@@ -100,13 +184,26 @@ export function markRequestSlotIssued(
   const next = resolveNextDueRequestSlot(slots, nowMs);
   if (!next) return { slots, slotIndex: null };
   return {
-    slots: slots.map((slot) =>
-      slot.slotIndex === next.slotIndex
-        ? { ...slot, status: 'ISSUED', issuedAtMs: nowMs }
-        : slot,
-    ),
+    slots: reserveRequestSlot(slots, next.slotIndex, nowMs),
     slotIndex: next.slotIndex,
   };
+}
+
+/** Durable reservation marker — ISSUED slots are never re-selected as INTENDED. */
+export function reserveRequestSlot(
+  slots: Exp021RequestSlotRecord[],
+  slotIndex: number,
+  issuedAtMs: number,
+): Exp021RequestSlotRecord[] {
+  return slots.map((slot) =>
+    slot.slotIndex === slotIndex
+      ? { ...slot, status: 'ISSUED', issuedAtMs, skipReason: null }
+      : slot,
+  );
+}
+
+export function countIssuedOrTerminalSlots(slots: Exp021RequestSlotRecord[]): number {
+  return slots.filter((slot) => slot.status !== 'INTENDED').length;
 }
 
 export function finalizeRequestSlotOutcome(

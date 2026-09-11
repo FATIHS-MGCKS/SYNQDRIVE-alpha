@@ -41,9 +41,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'EXP-021 — UPPER_BOUND_V2 post-run hardening (2026-09-11 KS MS 661)',
     summary: [
       'Evidence freeze for session 26a8554c — UPPER_BOUND_V2 physical run (~26.2 min early stop).',
-      'Deterministic HF request slots (5/5/5/6) + T0 lastHfHistoricalPollAt reset — fixes ~4 polls/phase.',
+      'Strict deterministic HF slot gating (5/5/5/6) — ISSUED reserved before provider I/O; no unslotted polls.',
       'Physical-end-early + final-phase wall-clock terminalization; validMovementDurationMs persisted from counters.',
-      'Tiled 60s settlement coverage (~25 probes × 6 ages = 150 queries) for ≥90% native gap assessability target.',
+      'Full-phase overlapping 60s settlement tiles (62 × 6 = 372 queries); synthetic gap assessability 100%.',
       'Trip FSM explicitly excluded from this workstream.',
     ],
     reason:
