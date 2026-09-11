@@ -116,6 +116,8 @@ install_and_run_probe() {
   cp "$PROBE_SRC" "$dir/$PROBE_REL"
 
   echo "=== ${label} probe @ ${dir} (TRIP_R12_PROBE_EXPECT=${expect}) ===" >&2
+
+  cd "$dir/backend"
   npm ci >/dev/null 2>&1
   npx prisma generate >/dev/null 2>&1
   npx prisma db push --accept-data-loss --skip-generate >/dev/null 2>&1

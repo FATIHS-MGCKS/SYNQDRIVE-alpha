@@ -141,7 +141,15 @@ function createProbeWorkers(params: {
   return workers;
 }
 
-function buildPossibleEndCheckJob(
+function refreshOrchestrationProtoBindings(
+  orchestration: TripR11OrchestrationHarness['orchestration'],
+): void {
+  const o = orchestration as Record<string, unknown>;
+  o.acquireWorkerLock = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
+  o.releaseWorkerLock = TripDetectionOrchestrationService.prototype.releaseWorkerLock;
+  o.scheduleEndValidation = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
+  o.scheduleFinalize = TripDetectionOrchestrationService.prototype.scheduleFinalize;
+}
   fixture: TripR11PostgresFixture,
   requestedAt: Date,
 ): TripTrackingJobData {
@@ -336,6 +344,8 @@ async function waitForNaturalTerminal(params: {
 
             await scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
           });
+
+        refreshOrchestrationProtoBindings(harness.orchestration);
 
         const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
         const workers = createProbeWorkers({
