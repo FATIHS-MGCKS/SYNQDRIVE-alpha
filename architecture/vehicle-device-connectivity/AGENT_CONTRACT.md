@@ -75,7 +75,7 @@ If code today contradicts these boundaries, record in [contradictions/OPEN_CONTR
 | Concept | Valid evidence |
 |---------|----------------|
 | New device/source data | Monotonic `sourceTimestamp` / `signalsLatest.lastSeen` |
-| SynqDrive polled | `DimoPollLog`, `providerFetchedAt` — **not** proof of new device data |
+| SynqDrive polled | `DimoPollLog`, `providerFetchedAt` — **not** proof of strict source advance; equality upsert ≠ advance (**VDC-CX-010**) |
 | Standby vs disconnected | Multi-source: source gaps, signal groups, physical evidence, provider status |
 
 Separate registry coverage, epistemic state, and validation status.

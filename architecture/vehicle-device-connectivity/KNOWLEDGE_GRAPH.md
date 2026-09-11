@@ -1,78 +1,58 @@
-# Vehicle & Device Connectivity — Knowledge Graph (Bootstrap)
+# Vehicle & Device Connectivity — Knowledge Graph (Phase 1)
 
-Human-readable overview. Machine-readable source: [`graph/`](graph/).
+**Registry status:** `AUDIT_IN_PROGRESS`  
+**Graph validator:** `bash architecture/vehicle-device-connectivity/scripts/validate-graph.sh`
 
-## Epistemic legend
+## Overview
 
-| State | Meaning |
-|-------|---------|
-| `CONFIRMED` | Supported by inspected code or strong evidence |
-| `INFERRED` | Reasonable; pending full audit |
-| `UNKNOWN` | Not yet reconstructed |
-| `CONTRADICTED` | Sources disagree — see contradictions |
+Phase 1 expanded the bootstrap graph with repository-discovered components: snapshot pipeline, VLS/ClickHouse persistence, fleet API, frontend consumer, alert policy, and 8 additional contradictions / 5 gaps.
 
-## Core nodes
+## Node inventory (summary)
 
-| ID | Type | Title | Status |
-|----|------|-------|--------|
-| VDC-DOM-CONNECTIVITY-001 | domain | Vehicle & Device Connectivity domain | CONFIRMED |
-| VDC-STATE-FRESHNESS-001 | state | Source freshness state | CONFIRMED |
-| VDC-RES-FRESHNESS-001 | resolver | Telemetry freshness resolver | CONFIRMED |
-| VDC-ORCH-RUNTIME-001 | orchestrator | Runtime state builder | CONFIRMED |
-| VDC-PROF-LTE-R1-001 | profile | LTE_R1 hardware profile | INFERRED |
+| Prefix | Count (approx) | Role |
+|--------|----------------|------|
+| VDC-DOM- | 1 | Domain root |
+| VDC-AUTH- | 1 | Semantic authority |
+| VDC-STATE- / VDC-RES- / VDC-ORCH- | 3 | Freshness + runtime assembly |
+| VDC-PIPE- / VDC-PERSIST- | 3 | Ingest + storage |
+| VDC-POL- | 1 | Alert policy |
+| VDC-API- / VDC-CONS- | 2 | API + frontend consumer |
+| VDC-HYP- | 7 | Open hypotheses (unchanged) |
+| VDC-GAP- | 12 | Knowledge gaps |
+| VDC-CX- | 10 | Contradictions |
+| VDC-EVID- | 3 | Evidence artifacts |
+| VDC-DEC- | 1 | Bootstrap decision |
+| VDC-PROF- | 1 | LTE_R1 profile |
 
-## Hypotheses (seed)
+Machine-readable: [graph/nodes.yaml](graph/nodes.yaml), [graph/edges.yaml](graph/edges.yaml), [graph/invariants.yaml](graph/invariants.yaml).
 
-| ID | Summary |
-|----|---------|
-| VDC-HYP-001 | ~24h periodic stationary source update (pending reconstruction) |
-| VDC-HYP-002 | IO174 not exposed via signalsLatest ingest |
-| VDC-HYP-003 | Poll frequency ≠ R1 source-update frequency |
-| VDC-HYP-004 | Per-signal timestamp heterogeneity on standby wakes |
-| VDC-HYP-005 | Long silence ≠ disconnect |
-| VDC-HYP-006 | Distinct fault states required |
-| VDC-HYP-007 | Reconnect requires fresh device evidence |
+## Decision register
+
+| ID | Status | Summary |
+|----|--------|---------|
+| VDC-DEC-BOOTSTRAP-001 | PROPOSED | Bootstrap authority scope; remains AUDIT_IN_PROGRESS |
+
+## Key edges (runtime flow)
+
+```
+VDC-PIPE-SNAPSHOT-001 → VDC-STATE-FRESHNESS-001 → VDC-RES-FRESHNESS-001
+  → VDC-ORCH-RUNTIME-001 → VDC-API-FLEET-001 → VDC-CONS-FE-001
+VDC-POL-ALERT-001 derives_from VDC-ORCH-RUNTIME-001 (VDC-CX-001 tension)
+```
 
 ## Invariants
 
-| ID | Kind | Statement |
-|----|------|-----------|
-| VDC-INV-001 | CONFIRMED | Poll time is not source time |
-| VDC-INV-002 | CONFIRMED | Monotonic sourceTimestamp guard |
+| ID | Kind | Title |
+|----|------|-------|
+| VDC-INV-001 | CONFIRMED | Poll time ≠ source time |
+| VDC-INV-002 | CONFIRMED | Strict-less-than monotonic guard |
 | VDC-INV-003 | CANDIDATE | Standby silence tolerance |
+| VDC-INV-004 | CANDIDATE | Three frequency layers |
+| VDC-INV-005 | CONFIRMED | Equal timestamp not stale (see VDC-CX-010) |
 
-## Ownership edges (conceptual)
+## Mandatory cross-references
 
-```
-[DIMO Integration] --acquires--> signalsLatest / webhooks
-        |
-        v (evidence)
-[Vehicle & Device Connectivity] --interprets--> freshness / standby / fault class
-        |
-        v (projects)
-[Vehicles / Fleet surfaces] --presents--> connectivity UI/API
-```
-
-Trip Detection owns wake/trip FSM — **not** connectivity lifecycle.
-
-## Decisions (bootstrap)
-
-| ID | Title | Status |
-|----|-------|--------|
-| VDC-DEC-BOOTSTRAP-001 | Bootstrap authority scope | PROPOSED |
-
-## Open gaps
-
-- VDC-GAP-001 — fragmented ownership in code
-- VDC-GAP-002 — Production baseline pending
-- VDC-GAP-003 — historical raw payload retention
-- VDC-GAP-004 — LTE_R1 standby interval
-- VDC-GAP-005 — IO174 visibility
-- VDC-GAP-006 — HM profile
-- VDC-GAP-007 — trip-wake correlation
-
-## Validation
-
-```bash
-bash architecture/vehicle-device-connectivity/scripts/validate-graph.sh
-```
+- [CURRENT_STATE.md](CURRENT_STATE.md) — Phase 1 repository baseline
+- [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md) — timestamp matrix
+- [lifecycle/CURRENT_SEMANTIC_MAP.md](lifecycle/CURRENT_SEMANTIC_MAP.md) — state map
+- [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md)

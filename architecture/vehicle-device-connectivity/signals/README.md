@@ -1,19 +1,8 @@
-# Connectivity Signals (Vehicle & Device Connectivity)
+# Vehicle & Device Connectivity — Signals
 
-**Status:** Index only — signal catalog audit pending.
+Phase 1 repository audit documents:
 
-## Priority signals (research list)
+- [SIGNAL_AUTHORITY.md](./SIGNAL_AUTHORITY.md) — timestamp authority matrix
+- [FRESHNESS_SEMANTICS.md](./FRESHNESS_SEMANTICS.md) — freshness thresholds and runtime dimensions
 
-| Signal / field | Role |
-|----------------|------|
-| `signalsLatest.lastSeen` | Canonical source observation time |
-| `providerFetchedAt` | SynqDrive fetch time — not source time |
-| `sourceTimestamp` (VLS) | Persisted monotonic source time |
-| `isIgnitionOn` | Active vs resting context |
-| `speed` | Motion evidence |
-| `obdIsPluggedIn` | Physical connection evidence |
-| `lowVoltageBatteryCurrentVoltage` | Standby wake indicator (candidate) |
-| `currentLocationCoordinates` | GNSS freshness on wake |
-| Per-signal `.timestamp` in raw payload | Heterogeneity (VDC-HYP-004) |
-
-DIMO field acquisition: [DIMO Integration](../../dimo-integration/README.md).
+Canonical thresholds: **15 min / 24 h / 48 h** (`vehicle-state-interpreter.ts`).

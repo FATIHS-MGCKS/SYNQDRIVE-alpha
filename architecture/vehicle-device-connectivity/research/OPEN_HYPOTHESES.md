@@ -82,13 +82,13 @@ Falsifiable questions — **not conclusions**. Each hypothesis has a graph node 
 
 ---
 
-## VDC-HYP-007 — Reconnect requires fresh device evidence
+## VDC-HYP-007 — FULL_CONNECTIVITY_RECOVERED requires strict source advance
 
 | Field | Value |
 |-------|-------|
-| **Statement** | Reconnect should require fresh provider/device evidence (new monotonic `sourceTimestamp`), not merely a successful HTTP/API poll returning stale `signalsLatest`. |
-| **Reason** | Monotonic guard already prevents VLS regression; reconnect semantics may still treat poll success as recovery incorrectly in UI. |
-| **Falsification** | Product correctly stays in suspect/disconnected when polls succeed but `lastSeen` unchanged for >N hours. |
+| **Statement** | **FULL_CONNECTIVITY_RECOVERED** (composite outcome) should require strict source advance (`incoming > existing` on `sourceTimestamp`), not merely a successful HTTP/API poll or equality upsert with unchanged `signalsLatest` (**VDC-CX-010**). **PHYSICAL_REPLUG** and **TELEMETRY_RESUMED** are separate evidence layers. |
+| **Reason** | Monotonic guard prevents regression but accepts equality; poll success and plug webhooks may be misread as full recovery. |
+| **Falsification** | Product correctly avoids **FULL_CONNECTIVITY_RECOVERED** when polls succeed or plug events arrive but `sourceTimestamp` is unchanged for >N hours. |
 | **Required evidence** | Fleet connectivity projection code paths + UI acceptance tests |
 | **Epistemic state** | INFERRED |
 | **Validation status** | PROPOSED |
