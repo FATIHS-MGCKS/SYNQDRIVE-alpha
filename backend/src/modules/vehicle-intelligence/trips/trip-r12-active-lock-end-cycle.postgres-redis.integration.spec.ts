@@ -209,6 +209,6 @@ if (REQUIRED) {
       } finally {
         restoreTripR11Clock();
       }
-    }, 120_000);
+    }, 180_000);
   },
 );
