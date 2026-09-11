@@ -478,3 +478,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Load | ~113 total requests (59 cadence + 48 shadow + 6 post-trip) |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO; shadow tooling NOT deployed |
 | Evidence | `EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md`; `EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md` |
+
+## EXP-021 — KS MS 661 UPPER_BOUND_V2 full post-run forensic (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **POST-RUN FORENSIC COMPLETE** — settlement mature; run scientifically **PARTIAL** |
+| SHA | `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` |
+| Session | `d633da9d-e32c-461c-8a27-8c0c6bfff209` · series `6b45b3c9-6601-4a23-aadc-7df8d36344a1` |
+| PHYSICAL_T0 / END | `2026-09-11T19:42:19Z` → `2026-09-11T20:05:08Z` (1369 s; ended early) |
+| HF slots issued | **8/21** (180:5, 120:3, 60:0, 30:0) |
+| Native gaps | 180 max **90 s**; 120 max **21 s**; gap assessability **94.6%** |
+| Settlement | 372 schedules; 357 COMPLETED; overlapping geometry executed |
+| Value maturation | **51** value revisions; bucket identity stable from +30 |
+| Defects | Slot ledger not persisted; phase-180 movement summary mismatch; phase-60 negative wall; settlement ACTIVE orphan |
+| Cadence decision | **READY_TO_CHOOSE_PRODUCTION_CADENCE=NO** (60/30 not executed) |
+| Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md`; `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json` |
