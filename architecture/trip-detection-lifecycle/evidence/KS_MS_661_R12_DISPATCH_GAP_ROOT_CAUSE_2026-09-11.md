@@ -85,12 +85,35 @@ Invariant: `END_VALIDATION_LOCK_MISS_CAN_SILENTLY_DESTROY_AUTHORITY = NO`.
 
 Invariant: `SCHEDULE_FINALIZE_WHILE_EV_WORKER_LOCK_HELD = NO`.
 
+### Quaternary — FINALIZE primary lock-miss defense (PR #1603 closure)
+
+Audit of all `scheduleFinalize()` production call sites (@ fix branch):
+
+| Call site | Context | Lock held? | Collision risk |
+|-----------|---------|------------|----------------|
+| PEC hard timeout / max-attempt fallback (~3003, 3045, 3154) | Inside PEC `try` before `finally` release | **YES** | Concurrent FINALIZE can run during PEC |
+| EV primary success path (~3527) | EV `finally` after `releaseWorkerLock` | NO | Primary EV→FIN path safe |
+| FINALIZE catch orphan recovery (~4024) | Inside FINALIZE `catch` before `finally` release | **YES** | Recovery wake can collide |
+| CH end assist HIGH (~4440) | `tryApplyClickHouseAssistedEnd` (no worker lock) | NO | Different authority path |
+
+**Conclusions (code audit, not guessed):**
+
+- `CAN_PRIMARY_FINALIZE_COLLIDE_WITH_OTHER_VEHICLE_AUTHORITY=YES`
+- `CAN_PRIMARY_FINALIZE_SILENTLY_COMPLETE_ON_LOCK_MISS=YES` (pre-quaternary: non-handoff silent `return`)
+- `IS_EXISTING_EV_AFTER_RELEASE_ORDERING_SUFFICIENT_FOR_ALL_CALL_SITES=NO`
+
+**Fix:** `processFinalize` lock miss always throws `TripTrackingHandoffLockContentionError` (mirrors END_VALIDATION) → processor `moveToDelayed` + natural retry.
+
+Invariant: `FINALIZE_LOCK_MISS_CAN_SILENTLY_DESTROY_AUTHORITY = NO`.
+
 ## Tests
 
 | ID | File | Claim |
 |----|------|-------|
-| TDL-TEST-R12-PEC-EV-001 | `trip-r12-pec-ev-lock-collision.postgres-redis.integration.spec.ts` | Lock-order regression + full POSSIBLE_END→RESTING under concurrent workers |
-| TDL-TEST-R12-PEC-EV-002 | `trip-r12-end-cycle-lock-contention.spec.ts` | EV lock miss throws contention error |
+| TDL-TEST-R12-PEC-EV-001 | `trip-r12-pec-ev-lock-collision.postgres-redis.integration.spec.ts` | Lock-order regression + **natural** BullMQ completion chain (no `Job.promote`) + EV natural delayed retry + FINALIZE primary lock-miss retry |
+| TDL-TEST-R12-PEC-EV-002 | `trip-r12-end-cycle-lock-contention.spec.ts` | EV + FINALIZE lock miss throw contention error |
+| TDL-TEST-R12-PEC-EV-003 | `trip-r12-pec-ev-base-head-red-probe.postgres-redis.integration.spec.ts` | Portable BASE vs HEAD behavioral probe (copied into worktrees) |
+| TDL-TEST-R12-PEC-EV-004 | `scripts/test/trip-r12-pec-ev-green-repeat.sh` | 10× consecutive CI-local repeat gate wired in Trip FSM workflow |
 
 ## Explicit non-actions
 
@@ -116,7 +139,6 @@ bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 | i18n 34602066051 | **FAIL** | PR touched Master `frontend/src/*` (SynqDrive Code) + bound P2.3.4 to live CI diff — Master UI reverted; i18n gate passes as NO_I18N_RELEVANT_CHANGES on backend-only diff |
 | Trip FSM 34610166236 | **FAIL** | Same integration file — completion/lock-miss tests hit Jest 120s timeout because harness waits used frozen `Date.now()` (fixed @ `4376748cf` follow-up) |
 | i18n 34610170529 | **FAIL** (then **PASS** @ `4376748cf`) | Governance test edit required authority label — reverted from trip PR |
+| Trip FSM 34614522784 | **PASS** @ `b09f1cab7` | Prior green — used manual promote in completion/lock-miss tests; superseded by natural-path proofs |
 
-**CI_PENDING** until green Trip FSM re-run after monotonic wait + worker-slot fixture fix.
-
-| Trip FSM 34614522784 | **PASS** @ `b09f1cab7` | All `trip-r12-pec-ev-lock-collision` tests green (lock-order 443ms, completion 192ms, lock-miss 275ms); tertiary `scheduleFinalize` defer fix |
+**CI_PENDING** for final HEAD after quaternary FINALIZE hardening + natural retry + 10× repeat gate + portable BASE/HEAD probe.
