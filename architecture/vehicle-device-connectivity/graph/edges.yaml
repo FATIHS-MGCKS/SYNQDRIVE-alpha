@@ -62,3 +62,8 @@ edges:
     relation: contradicts
     to: VDC-POL-ALERT-001
     notes: Policy colocated under DIMO module vs proposed VDC semantic ownership
+
+  - from: VDC-CX-010
+    relation: contradicts
+    to: VDC-STATE-FRESHNESS-001
+    notes: Equality upsert does not prove source advance despite freshness state derivation

@@ -16,7 +16,7 @@ SynqDrive implements a **substantial multi-dimensional connectivity model** cent
 Phase 1 confirms:
 
 - Canonical telemetry freshness uses **15 min / 24 h / 48 h** five-state classification (`vehicle-state-interpreter.ts`).
-- **Poll success ≠ new source data** — monotonic guard + `providerFetchedAt`-only updates on stale skip (VDC-INV-001, VDC-INV-002).
+- **Poll success ≠ strict source advance** — only `incoming > existing` proves a new observation instant; `incoming == existing` still full-upserts (**VDC-CX-010**); `<` skips telemetry but updates `providerFetchedAt` (VDC-INV-001, VDC-INV-002).
 - **Runtime projection** combines provider link, telemetry, physical device, data coverage, attention, and overall state with explicit precedence.
 - **Connectivity alert policy** is provider-neutral pure functions but **implemented under DIMO** (VDC-CX-001).
 - **Legacy parallel paths** (3-state `onlineStatus`, operational list reduced timestamps, admin DIMO debug thresholds) **drift** from canonical runtime.
@@ -67,7 +67,7 @@ Full map: [lifecycle/CURRENT_SEMANTIC_MAP.md](lifecycle/CURRENT_SEMANTIC_MAP.md)
 
 See [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md).
 
-**Monotonic equality behavior:** `incoming == existing` **is applied** (not stale). ClickHouse dedupes identical `(vehicle_id, recorded_at)` — documented defect candidate, not fixed in Phase 1.
+**Source-advance semantics:** See [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md). Strict advance requires `incoming > existing`. Equality (`==`) performs full VLS upsert **without** proving new source/device evidence (**VDC-CX-010**). Null incoming is not advance proof. ClickHouse may dedupe identical `(vehicle_id, recorded_at)` on equality replay (VDC-Q-009).
 
 ## Persistence & history
 
@@ -105,7 +105,7 @@ Activity tiers: 30s (driving) → 30min (long idle). RESTING_STANDBY tier ties t
 
 ## DIMO / device connectivity
 
-- **Episodes:** OBD unplug opens episode; resolve via plug webhook, snapshot OBD, or sustained telemetry policies.
+- **Episodes:** OBD unplug opens episode; resolve via **PHYSICAL_REPLUG** (plug webhook / snapshot OBD), **TELEMETRY_RESUMED** (sustained telemetry policy), or explicit plug webhook resolution paths — each proves a different recovery layer; none alone proves **FULL_CONNECTIVITY_RECOVERED**.
 - **Physical evidence:** `physical-device-evidence.ts` + read-model anchors.
 - **Alerts:** policy in `connectivity-alert.policy.ts`; delivery in DIMO module.
 - **Native events inventory:** OBD plug/unplug, speed, ignition, RPM (wake), DTC — see DIMO webhook controller.
@@ -125,7 +125,8 @@ Bounded audit: [providers/high-mobility/REPOSITORY_AUDIT.md](providers/high-mobi
 | Auth/consent expired | `AUTHORIZATION_REQUIRED` overall state |
 | OBD unplug webhook | Open episode + device alert |
 | Webhook inbox failure | Retry → dead letter |
-| Recovery | Episode resolution paths + alert policy resolve |
+| Episode resolution | **PHYSICAL_REPLUG**, **TELEMETRY_RESUMED**, or explicit plug paths — see recovery vocabulary in `SIGNAL_AUTHORITY.md` |
+| Alert resolve | Policy resolves telemetry/device alerts when freshness/dimensions improve — not synonymous with **FULL_CONNECTIVITY_RECOVERED** |
 | Redis/leader loss | Scaling Process leader guard skips tick |
 
 ## Test coverage
@@ -144,7 +145,7 @@ Bounded audit: [providers/high-mobility/REPOSITORY_AUDIT.md](providers/high-mobi
 
 ## Contradictions
 
-[contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md) — VDC-CX-001 through VDC-CX-009.
+[contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md) — VDC-CX-001 through VDC-CX-010.
 
 ## Knowledge gaps
 
@@ -170,8 +171,9 @@ VDC-HYP-001 through VDC-HYP-007 remain **PROPOSED** — not promoted. LTE_R1 ~24
 4. IO174 / raw IO in Production payloads (VDC-HYP-002).
 5. Episode vs physical-unplug without episode incidence rate (VDC-CX-007).
 6. Operator false-positive rate for standby vs offline at 24h/48h boundaries.
-7. Multi-replica duplicate snapshot insert rate in ClickHouse.
-8. Webhook delivery latency vs poll-only reconnect detection.
+7. **LTE_R1 stationary periodic-source jitter around 86,400 s:** what is normal jitter, and does the current 24 h standby boundary (`standby` < 24 h; `signal_delayed` ≥ 24 h and < 48 h) produce transient false `SOFT_OFFLINE` / `signal_delayed` for healthy devices? (VDC-Q-011)
+8. Multi-replica duplicate snapshot insert rate in ClickHouse at equal `recorded_at` (VDC-Q-009, **VDC-CX-010**).
+9. Webhook delivery latency vs poll-only **TELEMETRY_RESUMED** / strict source-advance detection.
 
 ## Related entry documents
 

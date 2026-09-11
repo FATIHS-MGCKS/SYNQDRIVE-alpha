@@ -110,9 +110,9 @@ nodes:
 
   - id: VDC-HYP-007
     type: hypothesis
-    title: Reconnect requires fresh device evidence
+    title: FULL_CONNECTIVITY_RECOVERED requires strict source advance
     epistemic_status: INFERRED
-    summary: Successful HTTP poll alone must not mark reconnect without new sourceTimestamp.
+    summary: Poll or equality upsert must not imply full recovery without incoming greater than existing sourceTimestamp; VDC-CX-010.
     source_paths:
       - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
 
@@ -263,6 +263,15 @@ nodes:
     summary: Process-local diagnostic tracker; multi-replica double-count risk.
     source_paths:
       - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VDC-CX-010
+    type: contradiction
+    title: Equal sourceTimestamp accepted as full VLS upsert
+    epistemic_status: CONTRADICTED
+    summary: Monotonic guard rejects only incoming less than existing; equality runs full upsert without source advance proof.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md
 
   - id: VDC-GAP-008
     type: gap

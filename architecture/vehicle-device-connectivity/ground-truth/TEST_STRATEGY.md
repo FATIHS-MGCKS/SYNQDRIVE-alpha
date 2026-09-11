@@ -18,7 +18,7 @@
 | Prolonged parking | Source silence duration; standby wakes | Tolerance calibration |
 | Expected standby source update | New `lastSeen` without trip | VDC-HYP-001 |
 | OBD/R1 physically unplugged | `obdIsPluggedIn`, device connection episodes/webhooks | Physical fault class |
-| R1 plugged back in | New source + plug signal after unplug | Reconnect evidence |
+| R1 plugged back in | New strict source advance + plug signal after unplug | **PHYSICAL_REPLUG** + optional **TELEMETRY_RESUMED** — not **FULL_CONNECTIVITY_RECOVERED** unless all dimensions align |
 | LTE/network loss | Provider vs device divergence | If observable |
 | Provider/API outage | Poll failures vs stale success | VDC-HYP-006 |
 | DIMO permission/auth failure | Consent/link status vs telemetry | Separate from sleep |

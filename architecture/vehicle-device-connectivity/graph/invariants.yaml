@@ -45,9 +45,10 @@ invariants:
     kind: CONFIRMED_INVARIANT
     title: Equal sourceTimestamp is not treated as stale
     epistemic_status: CONFIRMED
-    statement: Monotonic guard accepts incoming == existing; full VLS upsert proceeds. ClickHouse may skip duplicate recorded_at.
+    statement: Monotonic guard accepts incoming == existing; full VLS upsert proceeds without strict source advance. Does NOT prove new source/device evidence — see VDC-CX-010. ClickHouse may skip duplicate recorded_at.
     evidence:
       - VDC-EVID-REPO-PHASE1-001
     source_paths:
       - backend/src/modules/dimo/vls-monotonic-merge.util.ts
       - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md

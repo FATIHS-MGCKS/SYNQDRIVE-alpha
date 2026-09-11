@@ -3,6 +3,8 @@
 **Epistemic:** CONFIRMED from repository code  
 **Canonical thresholds:** shared across backend + aligned frontend copy
 
+**Source advance:** Freshness classification uses persisted observation time; it does **not** prove strict source advance on every upsert. Only `incoming > existing` proves a new observation instant. `incoming == existing` still upserts (**VDC-CX-010**). See [SIGNAL_AUTHORITY.md](./SIGNAL_AUTHORITY.md).
+
 ## Five-state telemetry freshness
 
 **Classifier:** `classifyTelemetryFreshness()` in `backend/src/modules/vehicles/vehicle-state-interpreter.ts`

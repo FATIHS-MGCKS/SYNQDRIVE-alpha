@@ -11,11 +11,11 @@
 | Provider fetch success | VLS `providerFetchedAt` | Diagnostic reachability only | Updated on stale skip |
 | Provider connectionStatus | `dimo_vehicles.connection_status` | Read-model anchor, recovery evaluator | Not sole freshness |
 | Physical OBD plugged | `obdIsPluggedIn` in snapshot | Physical device inference | Tie-break vs webhooks |
-| Provider webhook (plug/unplug) | `dimo_device_connection_events` | Episodes, physical evidence | Ordered by `observed_at` |
+| Provider webhook (plug/unplug) | `dimo_device_connection_events` | Episodes, **PHYSICAL_REPLUG** evidence | Ordered by `observed_at`; does not alone prove **TELEMETRY_RESUMED** or **FULL_CONNECTIVITY_RECOVERED** |
 | Device connection episode | `device_connection_episodes` | Unplug lifecycle, alerts | Open episode ≠ only unplug path |
 | Speed/ignition webhook | DIMO webhook → snapshot wake | Trip wake (Trip Detection) | Does not prove fresh snapshot |
 | Latest snapshot bundle | VLS row | Runtime assembly | Single latest row only |
-| Poll success | `dimo_poll_logs` SUCCESS | Ops attention (6h), forensics | ≠ new source data |
+| Poll success | `dimo_poll_logs` SUCCESS | Ops attention (6h), forensics | ≠ strict source advance (`incoming > existing`) |
 | HTTP/API availability | Provider gateway errors | Provider link ERROR | |
 | Signal coverage % | Computed in builder | Data coverage dimension | ≥80/≥50 thresholds |
 | Consent/authorization expiry | IAM tables | Provider link state | Precedence before ACTIVE |
@@ -43,7 +43,8 @@
 
 ## Inconsistencies (not resolved)
 
-- Poll success vs source advance (VDC-HYP-003, VDC-HYP-007)
+- Poll success vs **strict source advance** (`incoming > existing` only) — VDC-HYP-003, VDC-HYP-007, **VDC-CX-010**
+- Equality upsert (`incoming == existing`) vs advance proof — **VDC-CX-010**
 - `providerFetchedAt` freshness vs `sourceTimestamp` freshness
 - Episode absent vs physical unplug evidence (VDC-CX-007)
 - Webhook failure reason vs provider link ERROR (VDC-CX-008)

@@ -19,7 +19,7 @@ Phase 1 expanded the bootstrap graph with repository-discovered components: snap
 | VDC-API- / VDC-CONS- | 2 | API + frontend consumer |
 | VDC-HYP- | 7 | Open hypotheses (unchanged) |
 | VDC-GAP- | 12 | Knowledge gaps |
-| VDC-CX- | 9 | Contradictions |
+| VDC-CX- | 10 | Contradictions |
 | VDC-EVID- | 3 | Evidence artifacts |
 | VDC-DEC- | 1 | Bootstrap decision |
 | VDC-PROF- | 1 | LTE_R1 profile |
@@ -48,7 +48,7 @@ VDC-POL-ALERT-001 derives_from VDC-ORCH-RUNTIME-001 (VDC-CX-001 tension)
 | VDC-INV-002 | CONFIRMED | Strict-less-than monotonic guard |
 | VDC-INV-003 | CANDIDATE | Standby silence tolerance |
 | VDC-INV-004 | CANDIDATE | Three frequency layers |
-| VDC-INV-005 | CONFIRMED | Equal timestamp not stale |
+| VDC-INV-005 | CONFIRMED | Equal timestamp not stale (see VDC-CX-010) |
 
 ## Mandatory cross-references
 
