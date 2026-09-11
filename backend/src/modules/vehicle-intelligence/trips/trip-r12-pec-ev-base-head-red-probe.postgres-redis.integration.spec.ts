@@ -2,10 +2,14 @@
  * Portable BASE vs HEAD behavioral probe for PEC/EV lock-order regression.
  * Copied into isolated git worktrees by trip-r12-pec-ev-base-head-red-proof.sh.
  *
- * Emits PROBE_METRIC=<json> lines for shell validation — never treat infra failures as RED.
+ * Uses only harness APIs present on BASE 24c2632… and HEAD.
+ * Writes structured metrics to TRIP_R12_PROBE_METRICS_FILE (required in CI).
  */
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
-import { DelayedError, Queue, type Job } from 'bullmq';
+import { DelayedError, Queue, Worker, type ConnectionOptions, type Job } from 'bullmq';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
@@ -23,14 +27,11 @@ import {
   cleanupTripR11Fixture,
   closeTripTrackingWorkers,
   createTripR11ActiveTripFixture,
-  createTripTrackingWorkers,
   probeTripR11Postgres,
-  purgeTripTrackingQueueJobs,
   restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
   useTripR11FrozenClock,
-  waitForHarnessCondition,
   type TripR11OrchestrationHarness,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
@@ -38,10 +39,96 @@ import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
+const METRICS_FILE = process.env.TRIP_R12_PROBE_METRICS_FILE ?? '';
 
-function emitMetric(name: string, value: unknown): void {
-  // eslint-disable-next-line no-console
-  console.log(`PROBE_METRIC ${name}=${JSON.stringify(value)}`);
+type ProbeMetrics = {
+  PROBE_EXECUTED: boolean;
+  PROBE_INFRASTRUCTURE_ERROR: boolean;
+  INFRA_ERROR_DETAIL: string | null;
+  SCHEDULE_WHILE_PEC_LOCK_HELD: boolean | null;
+  EV_PROCESSOR_ENTRY: boolean | null;
+  EV_LOCK_MISS: boolean | null;
+  EV_LOCK_ACQUIRED: boolean | null;
+  EV_TRACKING_RUN_COUNT: number | null;
+  FINALIZE_REACHED: boolean | null;
+  TRIP_COMPLETED: boolean | null;
+  RESTING: boolean | null;
+  TERMINAL_STATE: 'TERMINAL' | 'NONTERMINAL' | null;
+};
+
+function emptyMetrics(): ProbeMetrics {
+  return {
+    PROBE_EXECUTED: false,
+    PROBE_INFRASTRUCTURE_ERROR: false,
+    INFRA_ERROR_DETAIL: null,
+    SCHEDULE_WHILE_PEC_LOCK_HELD: null,
+    EV_PROCESSOR_ENTRY: null,
+    EV_LOCK_MISS: null,
+    EV_LOCK_ACQUIRED: null,
+    EV_TRACKING_RUN_COUNT: null,
+    FINALIZE_REACHED: null,
+    TRIP_COMPLETED: null,
+    RESTING: null,
+    TERMINAL_STATE: null,
+  };
+}
+
+function writeMetricsFile(metrics: ProbeMetrics): void {
+  if (!METRICS_FILE) {
+    process.stdout.write(`TRIP_R12_PROBE_METRICS_JSON=${JSON.stringify(metrics)}\n`);
+    return;
+  }
+  fs.mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
+  fs.writeFileSync(METRICS_FILE, `${JSON.stringify(metrics)}\n`, 'utf8');
+}
+
+async function probeWaitForCondition(
+  predicate: () => Promise<boolean>,
+  timeoutMs: number,
+  label: string,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`${label} timed out after ${timeoutMs}ms`);
+}
+
+async function probePurgeQueueJobs(queue: Queue<TripTrackingJobData>): Promise<number> {
+  const states = ['waiting', 'delayed', 'active', 'prioritized', 'paused'] as const;
+  let removed = 0;
+  for (const state of states) {
+    const jobs = await queue.getJobs([state], 0, 100);
+    for (const job of jobs) {
+      await job.remove().catch(() => undefined);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+function createProbeWorkers(params: {
+  connection: ConnectionOptions;
+  processor: (job: Job<TripTrackingJobData>) => Promise<void>;
+  workerCount?: number;
+  concurrency?: number;
+}): Worker[] {
+  const workers: Worker[] = [];
+  const count = params.workerCount ?? 2;
+  for (let i = 0; i < count; i += 1) {
+    workers.push(
+      new Worker<TripTrackingJobData>(
+        QUEUE_NAMES.TRIP_TRACKING,
+        async (job: Job<TripTrackingJobData>) => params.processor(job),
+        {
+          connection: params.connection,
+          concurrency: params.concurrency ?? 1,
+        },
+      ),
+    );
+  }
+  return workers;
 }
 
 function buildPossibleEndCheckJob(
@@ -108,10 +195,16 @@ async function waitForNaturalTerminal(params: {
     let dbOk = false;
     let redisStack: Awaited<ReturnType<typeof startTripR11RedisStack>>;
     let trackingQueue: Queue<TripTrackingJobData>;
-    let fixture: TripR11PostgresFixture;
-    let infraError: string | null = null;
+    let fixture: TripR11PostgresFixture | undefined;
+    let metrics = emptyMetrics();
 
     beforeAll(async () => {
+      if (REQUIRED && !METRICS_FILE) {
+        metrics.PROBE_INFRASTRUCTURE_ERROR = true;
+        metrics.INFRA_ERROR_DETAIL = 'TRIP_R12_PROBE_METRICS_FILE is required';
+        writeMetricsFile(metrics);
+        throw new Error(metrics.INFRA_ERROR_DETAIL);
+      }
       try {
         dbOk = await probeTripR11Postgres();
         if (REQUIRED && !dbOk) {
@@ -125,166 +218,177 @@ async function waitForNaturalTerminal(params: {
         });
         RuntimeStatusRegistry.setWorkersEnabled(true);
       } catch (err) {
-        infraError = err instanceof Error ? err.message : String(err);
+        metrics.PROBE_INFRASTRUCTURE_ERROR = true;
+        metrics.INFRA_ERROR_DETAIL = err instanceof Error ? err.message : String(err);
+        writeMetricsFile(metrics);
+        throw err;
       }
     }, 120_000);
 
     afterAll(async () => {
-      emitMetric('BASE_TEST_INFRASTRUCTURE_ERROR', infraError != null);
-      if (infraError) emitMetric('INFRA_ERROR_DETAIL', infraError);
+      writeMetricsFile(metrics);
       await trackingQueue?.close().catch(() => undefined);
       await prisma?.$disconnect().catch(() => undefined);
       if (redisStack) await stopTripR11RedisStack(redisStack);
     }, 60_000);
 
     it('captures causal PEC→EV observations for BASE/HEAD comparison', async () => {
-      if (infraError) {
-        throw new Error(`Probe infrastructure error: ${infraError}`);
-      }
-      if (!dbOk) return;
-
-      await trackingQueue.obliterate({ force: true });
-      fixture = await createTripR11ActiveTripFixture(prisma, {
-        stopBoundarySource: 'provider_stationary_vls',
-      });
-
-      const segments = buildTripR11SegmentsMock(fixture.expectedEndTime);
-      const detectorRegistry = buildTripR11DetectorMock(fixture.expectedEndTime);
-      const harness = buildTripR11OrchestrationHarness(
-        prisma,
-        trackingQueue,
-        fixture,
-        segments,
-        detectorRegistry,
-      );
-
-      const emptyCoreTickAt = new Date('2026-09-08T05:02:30.000Z');
-      useTripR11FrozenClock(emptyCoreTickAt);
-      try {
-        await harness.runJob(buildActiveTickJob(fixture, emptyCoreTickAt));
-      } finally {
-        restoreTripR11Clock();
-      }
-      await purgeTripTrackingQueueJobs(trackingQueue);
-
-      const pecNow = new Date('2026-09-08T05:04:30.000Z');
-      useTripR11FrozenClock(pecNow);
+      if (metrics.PROBE_INFRASTRUCTURE_ERROR || !dbOk) return;
 
       let scheduleWhilePecLockHeld = false;
       let evProcessorEntry = false;
       let evLockMiss = false;
       let finalizeReached = false;
 
-      const scheduleProto = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
-      jest
-        .spyOn(TripDetectionOrchestrationService.prototype, 'scheduleEndValidation')
-        .mockImplementation(async function (
-          this: TripDetectionOrchestrationService,
-          vehicleId: string,
-          organizationId: string | null,
-          dimoTokenId: number,
-          delayMs?: number,
-        ) {
-          const det = await prisma.vehicleTripDetectionState.findUnique({
-            where: { vehicleId },
-            select: { workerRunToken: true, workerLockedUntil: true },
-          });
-          const locked =
-            det?.workerRunToken != null &&
-            det.workerLockedUntil != null &&
-            det.workerLockedUntil.getTime() > Date.now();
-          if (locked) scheduleWhilePecLockHeld = true;
-          return scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
-        });
-
-      const acquireProto = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
-      jest
-        .spyOn(TripDetectionOrchestrationService.prototype, 'acquireWorkerLock')
-        .mockImplementation(async function (
-          this: TripDetectionOrchestrationService,
-          vehicleId: string,
-          ttlMs?: number,
-        ) {
-          const stack = new Error().stack ?? '';
-          const fromEndValidation = stack.includes('processEndValidation');
-          const fromFinalize = stack.includes('processFinalize');
-          const result = await acquireProto.call(this, vehicleId, ttlMs);
-          if (fromEndValidation) {
-            evProcessorEntry = true;
-            if (!result.acquired) evLockMiss = true;
-          }
-          if (fromFinalize && result.acquired) finalizeReached = true;
-          return result;
-        });
-
-      const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
-      const workers = createTripTrackingWorkers({
-        connection: redisStack.connectionOptions,
-        runJob: async (bullJob) => runJobLikeTripTrackingProcessor(harness, bullJob),
-        workerCount: 2,
-        concurrency: 1,
-      });
-
       try {
-        await trackingQueue.add(
-          'trip-tracking',
-          buildPossibleEndCheckJob(fixture, pecNow),
-          {
-            jobId: pecJobId,
-            ...buildTripTrackingJobOptions(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK),
-          },
+        await trackingQueue.obliterate({ force: true });
+        fixture = await createTripR11ActiveTripFixture(prisma, {
+          stopBoundarySource: 'provider_stationary_vls',
+        });
+
+        const segments = buildTripR11SegmentsMock(fixture.expectedEndTime);
+        const detectorRegistry = buildTripR11DetectorMock(fixture.expectedEndTime);
+        const harness = buildTripR11OrchestrationHarness(
+          prisma,
+          trackingQueue,
+          fixture,
+          segments,
+          detectorRegistry,
         );
 
-        await waitForHarnessCondition(async () => {
-          const pecRuns = await prisma.vehicleTripTrackingRun.count({
-            where: {
-              tripId: fixture.trip.id,
-              runType: 'POSSIBLE_END_CHECK',
-              resultSummary: { path: ['reason'], equals: 'triggering_cusum_validation' },
-            },
+        const emptyCoreTickAt = new Date('2026-09-08T05:02:30.000Z');
+        useTripR11FrozenClock(emptyCoreTickAt);
+        try {
+          await harness.runJob(buildActiveTickJob(fixture, emptyCoreTickAt));
+        } finally {
+          restoreTripR11Clock();
+        }
+        await probePurgeQueueJobs(trackingQueue);
+
+        const pecNow = new Date('2026-09-08T05:04:30.000Z');
+        useTripR11FrozenClock(pecNow);
+
+        const scheduleProto = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
+        jest
+          .spyOn(TripDetectionOrchestrationService.prototype, 'scheduleEndValidation')
+          .mockImplementation(async function (
+            this: TripDetectionOrchestrationService,
+            vehicleId: string,
+            organizationId: string | null,
+            dimoTokenId: number,
+            delayMs?: number,
+          ) {
+            const det = await prisma.vehicleTripDetectionState.findUnique({
+              where: { vehicleId },
+              select: { workerRunToken: true, workerLockedUntil: true },
+            });
+            const locked =
+              det?.workerRunToken != null &&
+              det.workerLockedUntil != null &&
+              det.workerLockedUntil.getTime() > Date.now();
+            if (locked) scheduleWhilePecLockHeld = true;
+            return scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
           });
-          return pecRuns >= 1;
-        }, 30_000, 'PEC triggering_cusum_validation');
 
-        restoreTripR11Clock();
+        const acquireProto = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
+        jest
+          .spyOn(TripDetectionOrchestrationService.prototype, 'acquireWorkerLock')
+          .mockImplementation(async function (
+            this: TripDetectionOrchestrationService,
+            vehicleId: string,
+            ttlMs?: number,
+          ) {
+            const stack = new Error().stack ?? '';
+            const fromEndValidation = stack.includes('processEndValidation');
+            const fromFinalize = stack.includes('processFinalize');
+            const result = await acquireProto.call(this, vehicleId, ttlMs);
+            if (fromEndValidation) {
+              evProcessorEntry = true;
+              if (!result.acquired) evLockMiss = true;
+            }
+            if (fromFinalize && result.acquired) finalizeReached = true;
+            return result;
+          });
 
-        await waitForNaturalTerminal({
-          prisma,
-          fixture,
-          timeoutMs: 60_000,
+        const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
+        const workers = createProbeWorkers({
+          connection: redisStack.connectionOptions,
+          processor: async (bullJob) => runJobLikeTripTrackingProcessor(harness, bullJob),
+          workerCount: 2,
+          concurrency: 1,
         });
+
+        try {
+          await trackingQueue.add(
+            'trip-tracking',
+            buildPossibleEndCheckJob(fixture, pecNow),
+            {
+              jobId: pecJobId,
+              ...buildTripTrackingJobOptions(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK),
+            },
+          );
+
+          await probeWaitForCondition(async () => {
+            const pecRuns = await prisma.vehicleTripTrackingRun.count({
+              where: {
+                tripId: fixture!.trip.id,
+                runType: 'POSSIBLE_END_CHECK',
+                resultSummary: { path: ['reason'], equals: 'triggering_cusum_validation' },
+              },
+            });
+            return pecRuns >= 1;
+          }, 30_000, 'PEC triggering_cusum_validation');
+
+          restoreTripR11Clock();
+
+          await waitForNaturalTerminal({
+            prisma,
+            fixture,
+            timeoutMs: 60_000,
+          });
+        } finally {
+          jest.restoreAllMocks();
+          await closeTripTrackingWorkers(workers);
+          restoreTripR11Clock();
+        }
+
+        const evRuns = await prisma.vehicleTripTrackingRun.count({
+          where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
+        });
+        const trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+        const det = await prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId: fixture.vehicle.id },
+        });
+
+        const terminal =
+          trip?.tripStatus === TripStatus.COMPLETED &&
+          det?.state === TripDetectionState.RESTING &&
+          det?.activeTripId === null;
+
+        metrics = {
+          PROBE_EXECUTED: true,
+          PROBE_INFRASTRUCTURE_ERROR: false,
+          INFRA_ERROR_DETAIL: null,
+          SCHEDULE_WHILE_PEC_LOCK_HELD: scheduleWhilePecLockHeld,
+          EV_PROCESSOR_ENTRY: evProcessorEntry,
+          EV_LOCK_MISS: evLockMiss,
+          EV_LOCK_ACQUIRED: evProcessorEntry && !evLockMiss,
+          EV_TRACKING_RUN_COUNT: evRuns,
+          FINALIZE_REACHED: finalizeReached,
+          TRIP_COMPLETED: trip?.tripStatus === TripStatus.COMPLETED,
+          RESTING: det?.state === TripDetectionState.RESTING,
+          TERMINAL_STATE: terminal ? 'TERMINAL' : 'NONTERMINAL',
+        };
+      } catch (err) {
+        metrics.PROBE_INFRASTRUCTURE_ERROR = true;
+        metrics.INFRA_ERROR_DETAIL = err instanceof Error ? err.message : String(err);
+        throw err;
       } finally {
-        jest.restoreAllMocks();
-        await closeTripTrackingWorkers(workers);
-        restoreTripR11Clock();
+        writeMetricsFile(metrics);
+        if (fixture) await cleanupTripR11Fixture(prisma, fixture);
       }
 
-      const evRuns = await prisma.vehicleTripTrackingRun.count({
-        where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
-      });
-      const trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
-      const det = await prisma.vehicleTripDetectionState.findUnique({
-        where: { vehicleId: fixture.vehicle.id },
-      });
-
-      const terminal =
-        trip?.tripStatus === TripStatus.COMPLETED &&
-        det?.state === TripDetectionState.RESTING &&
-        det?.activeTripId === null;
-
-      emitMetric('PROBE_EXECUTED', true);
-      emitMetric('SCHEDULE_WHILE_PEC_LOCK_HELD', scheduleWhilePecLockHeld);
-      emitMetric('EV_PROCESSOR_ENTRY', evProcessorEntry);
-      emitMetric('EV_LOCK_MISS', evLockMiss);
-      emitMetric('EV_TRACKING_RUN_COUNT', evRuns);
-      emitMetric('FINALIZE_REACHED', finalizeReached);
-      emitMetric('TRIP_COMPLETED', trip?.tripStatus === TripStatus.COMPLETED);
-      emitMetric('RESTING', det?.state === TripDetectionState.RESTING);
-      emitMetric('TERMINAL_STATE', terminal ? 'TERMINAL' : 'NONTERMINAL');
-
-      await cleanupTripR11Fixture(prisma, fixture);
-
-      expect(true).toBe(true);
+      expect(metrics.PROBE_EXECUTED).toBe(true);
     }, 180_000);
   },
 );
