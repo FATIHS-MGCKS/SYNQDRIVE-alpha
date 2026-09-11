@@ -36,7 +36,8 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
       staleShadowJobs: 0,
     });
 
-    expect(result.nextSequence).toBe('60_30_20_10');
+    expect(result.nextSequence).toBe('180_120_60_30');
+    expect(result.calibrationPlanVersion).toBe('EXP021_UPPER_BOUND_V2');
     expect(result.expectedSettlementShadowRequests).toBe(48);
     expect(result.expectedPostTripShadowRequests).toBe(6);
     expect(result.ready).toBe(true);
@@ -285,11 +286,11 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
           vehicleId: 'veh-1',
           tokenId: 187336,
           seriesStartedAt: phaseStart,
-          phaseOrder: [60_000],
+          phaseOrder: [180_000],
           activePhase: {
             phaseStartedAt: phaseStart,
-            effectivePollIntervalMs: 60_000,
-            calibrationPhaseId: 'phase-60',
+            effectivePollIntervalMs: 180_000,
+            calibrationPhaseId: 'phase-180',
             phaseSequence: 1,
             phaseEndedAt: null,
             phaseProvenance: 'PHYSICAL_T0',
@@ -304,11 +305,11 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
       },
     });
 
-    expect(scheduleRows.some((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000)).toBe(true);
-    expect(scheduleRows.some((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000)).toBe(true);
-    const plus30A = scheduleRows.find((r) => r.probeId === 'SP-60-A' && r.scheduledAgeMs === 30_000);
-    const plus30B = scheduleRows.find((r) => r.probeId === 'SP-60-B' && r.scheduledAgeMs === 30_000);
+    expect(scheduleRows.some((r) => r.probeId === 'SP-180-A' && r.scheduledAgeMs === 30_000)).toBe(true);
+    expect(scheduleRows.some((r) => r.probeId === 'SP-180-B' && r.scheduledAgeMs === 30_000)).toBe(true);
+    const plus30A = scheduleRows.find((r) => r.probeId === 'SP-180-A' && r.scheduledAgeMs === 30_000);
+    const plus30B = scheduleRows.find((r) => r.probeId === 'SP-180-B' && r.scheduledAgeMs === 30_000);
     expect(plus30A?.scheduledAt.toISOString()).toBe('2026-09-07T10:03:30.000Z');
-    expect(plus30B?.scheduledAt.toISOString()).toBe('2026-09-07T10:04:15.000Z');
+    expect(plus30B?.scheduledAt.toISOString()).toBe('2026-09-07T10:09:45.000Z');
   });
 });

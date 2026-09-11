@@ -14,9 +14,7 @@ import {
   switchHfCalibrationPhase,
 } from './reference-capture-hf-calibration-phase.policy';
 import { parseHfRecoveryPolicyV2ConfigFromEnv } from './reference-capture-hf-recovery-v2.policy';
-import {
-  EXP021_CADENCE_PHASE_ORDER_MS,
-} from './reference-capture-settlement-shadow.policy';
+import { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS } from './reference-capture-exp021-calibration-plan.lib';
 import {
   PhysicalDrivePhaseTracker,
   PhysicalEndDetector,
@@ -131,8 +129,11 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
     const tracker = new PhysicalDrivePhaseTracker();
     const required = 60_000;
     let now = t0Ms;
-    for (let i = 0; i < EXP021_CADENCE_PHASE_ORDER_MS.length; i += 1) {
-      tracker.beginPhase(EXP021_CADENCE_PHASE_ORDER_MS[i], now, required);
+    for (let i = 0; i < EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length; i += 1) {
+      tracker.beginPhase(EXP021_LEGACY_CADENCE_PHASE_ORDER_MS[i], now, {
+        mode: 'MOVING_ACCUMULATION',
+        requiredMovementMs: required,
+      });
       for (let tick = 0; tick < 10; tick += 1) {
         now += 10_000;
         tracker.tick(tick % 3 !== 2 ? 'MOVING' : 'PARKED_CANDIDATE', now);
@@ -141,12 +142,11 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
         now += 10_000;
         tracker.tick('MOVING', now);
       }
-      if (i < EXP021_CADENCE_PHASE_ORDER_MS.length - 1) {
-        tracker.advancePhaseAtEffectiveBoundary(
-          now,
-          EXP021_CADENCE_PHASE_ORDER_MS[i + 1],
-          required,
-        );
+      if (i < EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length - 1) {
+        tracker.advancePhaseAtEffectiveBoundary(now, EXP021_LEGACY_CADENCE_PHASE_ORDER_MS[i + 1], {
+          mode: 'MOVING_ACCUMULATION',
+          requiredMovementMs: required,
+        });
       }
     }
     tracker.markPhysicalDriveEnded(now);
@@ -320,8 +320,11 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       minDistinctParkedSamples: 2,
     });
     let now = confirmation.startConfirmedAt.getTime();
-    for (let i = 0; i < EXP021_CADENCE_PHASE_ORDER_MS.length; i += 1) {
-      tracker.beginPhase(EXP021_CADENCE_PHASE_ORDER_MS[i], now, 60_000);
+    for (let i = 0; i < EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length; i += 1) {
+      tracker.beginPhase(EXP021_LEGACY_CADENCE_PHASE_ORDER_MS[i], now, {
+        mode: 'MOVING_ACCUMULATION',
+        requiredMovementMs: 60_000,
+      });
       for (let tick = 0; tick < 10; tick += 1) {
         now += 10_000;
         tracker.tick(tick % 3 !== 2 ? 'MOVING' : 'PARKED_CANDIDATE', now);
@@ -330,8 +333,11 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
         now += 10_000;
         tracker.tick('MOVING', now);
       }
-      if (i < EXP021_CADENCE_PHASE_ORDER_MS.length - 1) {
-        tracker.advancePhaseAtEffectiveBoundary(now, EXP021_CADENCE_PHASE_ORDER_MS[i + 1], 60_000);
+      if (i < EXP021_LEGACY_CADENCE_PHASE_ORDER_MS.length - 1) {
+        tracker.advancePhaseAtEffectiveBoundary(now, EXP021_LEGACY_CADENCE_PHASE_ORDER_MS[i + 1], {
+          mode: 'MOVING_ACCUMULATION',
+          requiredMovementMs: 60_000,
+        });
       }
     }
     tracker.markPhysicalDriveEnded(now);

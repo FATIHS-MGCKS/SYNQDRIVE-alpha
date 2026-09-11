@@ -420,6 +420,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
 | Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
 
+## EXP-021 — Upper-bound cadence calibration plan V2 (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE DESIGN IMPLEMENTED** — no physical run |
+| Plan | `EXP021_UPPER_BOUND_V2` — 180→120→60→30 CONTROL, 33 min nominal / 35 min max |
+| Advancement | `WALL_CLOCK` per phase (replaces universal 300s MOVING for this plan) |
+| Legacy | `EXP021_LOWER_BOUND_V1` preserved (`EXP021_CALIBRATION_PLAN=LOWER_BOUND_V1`) |
+| Code | `reference-capture-exp021-calibration-plan.lib.ts` |
+| Evidence | `EXP_021_UPPER_BOUND_V2_PROSPECTIVE_DESIGN_2026-09-11.md` |
+| Physical run | **NOT STARTED** |
+
 ## EXP-021 — PostgreSQL native temporal persistence proof (2026-09-10)
 
 | Event | Detail |

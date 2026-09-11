@@ -17,7 +17,6 @@ import { ReferenceCaptureSessionService } from '../../src/modules/vehicle-intell
 import { ReferenceCaptureSessionRepository, parseAcquisitionState } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-session.repository';
 import { ReferenceCaptureConfig } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture.config';
 import { ReferenceCaptureSettlementShadowService } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.service';
-import { EXP021_CADENCE_PHASE_ORDER_MS } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-settlement-shadow.policy';
 import Redis from 'ioredis';
 import {
   acquireOrchestratorLock,
@@ -30,6 +29,7 @@ import {
   loadBackendEnvFile,
   releaseOrchestratorLock,
   resolveFatalSessionCleanupMode,
+  resolvePhaseAdvancementForIndex,
   type Exp021RuntimeConfig,
   type OrchestratorLockHandle,
 } from './reference-capture-exp-021-autonomous-orchestrator.lib';
@@ -341,24 +341,27 @@ async function main(): Promise<void> {
     if (!sessionId || !sessionService) {
       throw new Error('missing session context for physical phase activation');
     }
+    const firstCadenceMs = config.cadencePhaseOrderMs[0];
     const activation = await sessionService.activatePhysicalPhaseAtT0(
       config.organizationId,
       sessionId,
-      { effectivePollIntervalMs: 60000 },
+      { effectivePollIntervalMs: firstCadenceMs },
     );
     const phase60EffectiveAt = new Date(activation.phaseStartedAt);
     await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
     currentPhaseIndex = 0;
     phaseActivatedAtMs = phase60EffectiveAt.getTime();
     phaseTracker.beginPhase(
-      EXP021_CADENCE_PHASE_ORDER_MS[0],
+      firstCadenceMs,
       phase60EffectiveAt.getTime(),
-      config.phaseDurationMs,
+      resolvePhaseAdvancementForIndex(config, 0),
     );
     phase = 'DRIVING';
     pendingT0PhaseActivation = false;
     log(config, 'PHYSICAL_PHASE_60_REANCHORED_AT_T0', {
       PHASE_60_EFFECTIVE: 'YES',
+      CALIBRATION_PLAN: config.calibrationPlan.planVersion,
+      FIRST_CADENCE_MS: firstCadenceMs,
       REANCHORED: activation.reanchored ? 'YES' : 'NO',
       SEALED_PRE_ROLL_PHASE_ID: activation.sealedPreRollPhaseId,
       EFFECTIVE_AT: activation.phaseStartedAt,
@@ -523,7 +526,7 @@ async function main(): Promise<void> {
             if (ap?.phaseProvenance === 'PHYSICAL_T0' || ap?.phaseProvenance === 'PHYSICAL_TRANSITION') {
               currentPhaseIndex = Math.max(
                 0,
-                (EXP021_CADENCE_PHASE_ORDER_MS as readonly number[]).indexOf(
+                (config.cadencePhaseOrderMs as readonly number[]).indexOf(
                   ap.effectivePollIntervalMs,
                 ),
               );
@@ -531,7 +534,7 @@ async function main(): Promise<void> {
               phaseTracker.beginPhase(
                 ap.effectivePollIntervalMs,
                 phaseActivatedAtMs ?? Date.now(),
-                config.phaseDurationMs,
+                resolvePhaseAdvancementForIndex(config, currentPhaseIndex),
               );
               phase = 'DRIVING';
               log(config, 'T0_RECOVERY_RESUME_DRIVING', {
@@ -779,10 +782,11 @@ async function main(): Promise<void> {
         if (
           !physicalDriveEnded &&
           currentPhaseIndex >= 0 &&
-          currentPhaseIndex < EXP021_CADENCE_PHASE_ORDER_MS.length - 1 &&
-          phaseTracker.shouldAdvancePhase()
+          currentPhaseIndex < config.cadencePhaseOrderMs.length - 1 &&
+          phaseTracker.shouldAdvancePhase(nowMs)
         ) {
-          const next = EXP021_CADENCE_PHASE_ORDER_MS[currentPhaseIndex + 1];
+          const nextIndex = currentPhaseIndex + 1;
+          const next = config.cadencePhaseOrderMs[nextIndex];
           try {
             await sessionService!.switchHfCalibrationPhase(config.organizationId, sessionId, {
               effectivePollIntervalMs: next,
@@ -792,7 +796,7 @@ async function main(): Promise<void> {
             const completed = phaseTracker.advancePhaseAtEffectiveBoundary(
               effectiveAt.getTime(),
               next,
-              config.phaseDurationMs,
+              resolvePhaseAdvancementForIndex(config, nextIndex),
             );
             await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
             currentPhaseIndex += 1;
@@ -918,8 +922,9 @@ async function main(): Promise<void> {
             PDI_COUNT: pdiSchedules,
             finalPhase,
             EXP021_RUN_COMPLETENESS: phaseTracker.computeRunCompleteness(
-              EXP021_CADENCE_PHASE_ORDER_MS.length,
+              config.cadencePhaseOrderMs.length,
             ),
+            CALIBRATION_PLAN: config.calibrationPlan.planVersion,
             completedPhases: phaseTracker.getCompletedPhases(),
           });
           phase = 'DONE';
@@ -934,7 +939,8 @@ async function main(): Promise<void> {
           SPEED_TIMESTAMP: motion.speedTimestamp,
           SPEED_AGE_MS: motion.speedAgeMs,
           currentPhaseIndex,
-          phaseMs: currentPhaseIndex >= 0 ? EXP021_CADENCE_PHASE_ORDER_MS[currentPhaseIndex] : null,
+          phaseMs:
+            currentPhaseIndex >= 0 ? config.cadencePhaseOrderMs[currentPhaseIndex] : null,
           endCandidateStatus: physicalEndDetector.getCandidate()?.candidateStatus ?? null,
         });
         await sleep(config.pollMs);

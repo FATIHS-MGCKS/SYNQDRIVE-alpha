@@ -22,7 +22,14 @@ export {
 };
 
 /** Controlled calibration matrix (ms). */
-export const HF_POLL_CALIBRATION_CANDIDATES_MS = [10_000, 20_000, 30_000, 60_000] as const;
+export const HF_POLL_CALIBRATION_CANDIDATES_MS = [
+  10_000,
+  20_000,
+  30_000,
+  60_000,
+  120_000,
+  180_000,
+] as const;
 
 export const HF_BUCKET_AGGREGATION_INTERVAL = HF_REQUESTED_INTERVAL;
 

@@ -22,6 +22,12 @@ import {
 } from './reference-capture-hf-recovery-v2.policy';
 import { canonicalizeBucketTimestamp } from './reference-capture-hf-aggregate-bucket-analysis';
 import {
+  classifyPhaseScientificStatus,
+  computeRequestRates,
+  findPhaseSpecByCadence,
+  resolveExp021CalibrationPlan,
+} from './reference-capture-exp021-calibration-plan.lib';
+import {
   buildNativeTemporalEvidenceV1,
   type Exp021NativeTemporalEvidenceV1,
 } from './reference-capture-native-temporal-evidence.lib';
@@ -74,6 +80,19 @@ export type HfCalibrationPhaseSummary = {
   uniqueTemporalBucketStartCount: number;
   /** Durable ordered native temporal bucket evidence for post-run gap reconstruction (prospective). */
   nativeTemporalEvidence?: Exp021NativeTemporalEvidenceV1 | null;
+  /** Prospective calibration plan provenance (UPPER_BOUND_V2, LOWER_BOUND_V1, …). */
+  calibrationPlanVersion?: string | null;
+  phaseRole?: 'EXPERIMENTAL' | 'CONTROL' | 'LEGACY' | null;
+  scientificStatus?:
+    | 'VALID'
+    | 'DEGRADED_INSUFFICIENT_REQUESTS'
+    | 'DEGRADED_LOW_MOVEMENT'
+    | 'INVALID_RUNTIME_FAILURE'
+    | null;
+  validMovementDurationMs?: number | null;
+  requestRatePerWallMinute?: number | null;
+  requestRatePerMovingMinute?: number | null;
+  successRatePerWallMinute?: number | null;
 };
 
 export type HfCalibrationPhaseRuntimeCounters = {
@@ -385,9 +404,32 @@ export function finalizePhaseSummary(args: {
   phase: HfCalibrationPhaseRecord;
   counters: HfCalibrationPhaseRuntimeCounters;
   phaseEndedAtMs: number;
+  validMovementDurationMs?: number;
+  runtimeFailure?: boolean;
+  calibrationPlan?: ReturnType<typeof resolveExp021CalibrationPlan>;
 }): HfCalibrationPhaseSummary {
   const startedMs = Date.parse(args.phase.phaseStartedAt);
   const endedMs = args.phaseEndedAtMs;
+  const wallDurationMs = Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0;
+  const plan = args.calibrationPlan ?? resolveExp021CalibrationPlan();
+  const phaseSpec = findPhaseSpecByCadence(plan, args.phase.effectivePollIntervalMs);
+  const validMovementDurationMs = args.validMovementDurationMs ?? 0;
+  const scientificStatus = phaseSpec
+    ? classifyPhaseScientificStatus({
+        plan,
+        phaseSpec,
+        providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+        validMovementDurationMs,
+        wallDurationMs,
+        runtimeFailure: args.runtimeFailure,
+      })
+    : null;
+  const requestRates = computeRequestRates({
+    providerRequestCount: args.counters.nativeFastLoopRequestCount,
+    providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+    wallDurationMs,
+    validMovementDurationMs,
+  });
   const nativeTemporalEvidence = buildNativeTemporalEvidenceV1({
     phase: args.phase,
     counters: args.counters,
@@ -402,7 +444,7 @@ export function finalizePhaseSummary(args: {
     effectivePollIntervalMs: args.phase.effectivePollIntervalMs,
     phaseStartedAt: args.phase.phaseStartedAt,
     phaseEndedAt: new Date(endedMs).toISOString(),
-    durationMs: Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0,
+    durationMs: wallDurationMs,
     effectiveConfig: args.phase.effectiveConfig!,
     providerRequestCount: args.counters.nativeFastLoopRequestCount,
     providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
@@ -424,6 +466,13 @@ export function finalizePhaseSummary(args: {
     recoverySweepRequestCount: args.counters.recoverySweepRequestCount,
     uniqueTemporalBucketStartCount: temporal.nativeUniqueTemporalBucketStartCount,
     nativeTemporalEvidence,
+    calibrationPlanVersion: plan.planVersion,
+    phaseRole: phaseSpec?.role ?? null,
+    scientificStatus,
+    validMovementDurationMs,
+    requestRatePerWallMinute: requestRates.requestRatePerWallMinute,
+    requestRatePerMovingMinute: requestRates.requestRatePerMovingMinute,
+    successRatePerWallMinute: requestRates.successRatePerWallMinute,
   };
 }
 

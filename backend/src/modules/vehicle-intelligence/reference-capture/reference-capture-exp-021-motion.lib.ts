@@ -527,27 +527,54 @@ export type PhaseValidityRecord = {
   motionCoveragePercent: number;
   scientificallyValid: boolean;
   phaseCompletion: 'SATISFIED' | 'INCOMPLETE';
+  advancementMode: PhaseAdvancementMode;
+  targetWallDurationMs: number | null;
+  requiredMovementMs: number | null;
 };
+
+export type PhaseAdvancementMode = 'MOVING_ACCUMULATION' | 'WALL_CLOCK';
+
+export type PhaseAdvancementConfig =
+  | { mode: 'MOVING_ACCUMULATION'; requiredMovementMs: number }
+  | {
+      mode: 'WALL_CLOCK';
+      targetWallDurationMs: number;
+      /** Run-level grace budget (ms); consumed only when wall target is met. */
+      graceBudgetMs?: number;
+    };
 
 export class PhysicalDrivePhaseTracker {
   private currentPhasePollMs: number | null = null;
   private phaseStartedAtMs: number | null = null;
-  private requiredMovementMs: number | null = null;
+  private advancement: PhaseAdvancementConfig | null = null;
   private movementAccumulatedMs = 0;
   private uncertainMovementDurationMs = 0;
   private lastTickMs: number | null = null;
   private lastMotionState: MotionState | null = null;
   private physicalDriveEnded = false;
+  private graceConsumedMs = 0;
   private readonly completed: PhaseValidityRecord[] = [];
 
-  beginPhase(pollMs: number, startedAtMs: number, requiredMovementMs: number): void {
+  beginPhase(pollMs: number, startedAtMs: number, advancement: PhaseAdvancementConfig): void {
     this.currentPhasePollMs = pollMs;
     this.phaseStartedAtMs = startedAtMs;
-    this.requiredMovementMs = requiredMovementMs;
+    this.advancement = advancement;
     this.movementAccumulatedMs = 0;
     this.uncertainMovementDurationMs = 0;
     this.lastTickMs = startedAtMs;
     this.lastMotionState = null;
+  }
+
+  /** @deprecated Use beginPhase(pollMs, startedAtMs, { mode: 'MOVING_ACCUMULATION', requiredMovementMs }). */
+  beginPhaseWithMovementRequirement(
+    pollMs: number,
+    startedAtMs: number,
+    requiredMovementMs: number,
+  ): void {
+    this.beginPhase(pollMs, startedAtMs, {
+      mode: 'MOVING_ACCUMULATION',
+      requiredMovementMs,
+    });
   }
 
   tick(motionState: MotionState, nowMs: number): void {
@@ -567,16 +594,33 @@ export class PhysicalDrivePhaseTracker {
     this.lastMotionState = motionState;
   }
 
-  isPhaseSatisfied(): boolean {
-    if (this.requiredMovementMs == null) return false;
-    return this.movementAccumulatedMs >= this.requiredMovementMs;
+  isPhaseSatisfied(nowMs?: number): boolean {
+    if (!this.advancement || this.phaseStartedAtMs == null) return false;
+    if (this.advancement.mode === 'WALL_CLOCK') {
+      const elapsed = (nowMs ?? this.lastTickMs ?? this.phaseStartedAtMs) - this.phaseStartedAtMs;
+      return elapsed >= this.advancement.targetWallDurationMs;
+    }
+    return this.movementAccumulatedMs >= this.advancement.requiredMovementMs;
   }
 
-  shouldAdvancePhase(): boolean {
-    if (this.physicalDriveEnded || this.phaseStartedAtMs == null) {
+  shouldAdvancePhase(nowMs?: number): boolean {
+    if (this.physicalDriveEnded || this.phaseStartedAtMs == null || !this.advancement) {
       return false;
     }
-    return this.isPhaseSatisfied();
+    if (this.advancement.mode === 'WALL_CLOCK') {
+      const at = nowMs ?? this.lastTickMs ?? this.phaseStartedAtMs;
+      const elapsed = at - this.phaseStartedAtMs;
+      if (elapsed < this.advancement.targetWallDurationMs) {
+        return false;
+      }
+      const graceBudget = this.advancement.graceBudgetMs ?? 0;
+      const graceRemaining = Math.max(0, graceBudget - this.graceConsumedMs);
+      if (elapsed <= this.advancement.targetWallDurationMs + graceRemaining) {
+        return true;
+      }
+      return elapsed >= this.advancement.targetWallDurationMs;
+    }
+    return this.isPhaseSatisfied(nowMs);
   }
 
   sealActivePhaseAtBoundary(
@@ -590,11 +634,24 @@ export class PhysicalDrivePhaseTracker {
       // Unobserved tail after last real poll is uncertain — never fabricate MOVING boundaries.
       this.uncertainMovementDurationMs += Math.max(0, boundaryMs - this.lastTickMs);
     }
-    const required = this.requiredMovementMs ?? 0;
-    const satisfied = this.movementAccumulatedMs >= required;
-    const scientificallyValid =
-      satisfied && this.movementAccumulatedMs > 0 && (reason === 'ADVANCE' || satisfied);
+    const advancement = this.advancement;
     const wallDurationMs = boundaryMs - this.phaseStartedAtMs;
+    let satisfied = false;
+    let scientificallyValid = false;
+    if (advancement?.mode === 'WALL_CLOCK') {
+      satisfied = wallDurationMs >= advancement.targetWallDurationMs;
+      const minMovementMs = Math.min(wallDurationMs * 0.25, advancement.targetWallDurationMs * 0.25);
+      scientificallyValid =
+        satisfied && this.movementAccumulatedMs >= minMovementMs && this.movementAccumulatedMs > 0;
+      if (wallDurationMs > advancement.targetWallDurationMs) {
+        this.graceConsumedMs += wallDurationMs - advancement.targetWallDurationMs;
+      }
+    } else {
+      const required = advancement?.requiredMovementMs ?? 0;
+      satisfied = this.movementAccumulatedMs >= required;
+      scientificallyValid =
+        satisfied && this.movementAccumulatedMs > 0 && (reason === 'ADVANCE' || satisfied);
+    }
     const motionCoveragePercent =
       wallDurationMs > 0
         ? Math.min(100, Math.round((this.movementAccumulatedMs / wallDurationMs) * 100))
@@ -609,11 +666,16 @@ export class PhysicalDrivePhaseTracker {
       motionCoveragePercent,
       scientificallyValid,
       phaseCompletion: satisfied ? 'SATISFIED' : 'INCOMPLETE',
+      advancementMode: advancement?.mode ?? 'MOVING_ACCUMULATION',
+      targetWallDurationMs:
+        advancement?.mode === 'WALL_CLOCK' ? advancement.targetWallDurationMs : null,
+      requiredMovementMs:
+        advancement?.mode === 'MOVING_ACCUMULATION' ? advancement.requiredMovementMs : null,
     };
     this.completed.push(record);
     this.currentPhasePollMs = null;
     this.phaseStartedAtMs = null;
-    this.requiredMovementMs = null;
+    this.advancement = null;
     this.movementAccumulatedMs = 0;
     this.uncertainMovementDurationMs = 0;
     this.lastTickMs = null;
@@ -624,11 +686,23 @@ export class PhysicalDrivePhaseTracker {
   advancePhaseAtEffectiveBoundary(
     effectiveBoundaryMs: number,
     nextPollMs: number,
-    requiredMovementMs: number,
+    nextAdvancement: PhaseAdvancementConfig,
   ): PhaseValidityRecord | null {
     const record = this.sealActivePhaseAtBoundary(effectiveBoundaryMs, 'ADVANCE');
-    this.beginPhase(nextPollMs, effectiveBoundaryMs, requiredMovementMs);
+    this.beginPhase(nextPollMs, effectiveBoundaryMs, nextAdvancement);
     return record;
+  }
+
+  /** @deprecated Use advancePhaseAtEffectiveBoundary with PhaseAdvancementConfig. */
+  advancePhaseAtEffectiveBoundaryWithMovement(
+    effectiveBoundaryMs: number,
+    nextPollMs: number,
+    requiredMovementMs: number,
+  ): PhaseValidityRecord | null {
+    return this.advancePhaseAtEffectiveBoundary(effectiveBoundaryMs, nextPollMs, {
+      mode: 'MOVING_ACCUMULATION',
+      requiredMovementMs,
+    });
   }
 
   markPhysicalDriveEnded(nowMs: number): PhaseValidityRecord | null {

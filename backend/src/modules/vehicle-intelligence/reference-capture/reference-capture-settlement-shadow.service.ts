@@ -11,6 +11,7 @@ import {
   isPhaseEligibleForPhysicalSettlement,
   type HfCalibrationPhaseRecord,
 } from './reference-capture-hf-calibration-phase.policy';
+import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
@@ -325,6 +326,7 @@ export class ReferenceCaptureSettlementShadowService {
     const probeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: active.effectivePollIntervalMs,
       phaseStartedAtMs,
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(active.effectivePollIntervalMs),
     });
 
     if (probeA) {
@@ -366,6 +368,7 @@ export class ReferenceCaptureSettlementShadowService {
     const prospectiveProbeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: args.phase.effectivePollIntervalMs,
       phaseStartedAtMs,
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(args.phase.effectivePollIntervalMs),
     });
     if (!prospectiveProbeB) return;
 
