@@ -273,6 +273,15 @@ nodes:
       - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
       - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md
 
+  - id: VDC-CX-011
+    type: contradiction
+    title: DIMO CONNECTED vs runtime providerLinkState UNKNOWN
+    epistemic_status: CONTRADICTED
+    summary: Production KS MX 2024 shows DIMO connectionStatus CONNECTED while runtime providerLinkState is UNKNOWN.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md
+
   - id: VDC-GAP-008
     type: gap
     title: Legacy 3-state onlineStatus vs 5-state freshness

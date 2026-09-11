@@ -19,7 +19,7 @@ Phase 1 expanded the bootstrap graph with repository-discovered components: snap
 | VDC-API- / VDC-CONS- | 2 | API + frontend consumer |
 | VDC-HYP- | 7 | Open hypotheses (unchanged) |
 | VDC-GAP- | 12 | Knowledge gaps |
-| VDC-CX- | 10 | Contradictions |
+| VDC-CX- | 11 | Contradictions |
 | VDC-EVID- | 3 | Evidence artifacts |
 | VDC-DEC- | 1 | Bootstrap decision |
 | VDC-PROF- | 1 | LTE_R1 profile |

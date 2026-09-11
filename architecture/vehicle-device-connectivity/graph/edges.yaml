@@ -67,3 +67,8 @@ edges:
     relation: contradicts
     to: VDC-STATE-FRESHNESS-001
     notes: Equality upsert does not prove source advance despite freshness state derivation
+
+  - from: VDC-CX-011
+    relation: contradicts
+    to: VDC-ORCH-RUNTIME-001
+    notes: Provider mirror CONNECTED disagrees with runtime providerLinkState UNKNOWN on same vehicle

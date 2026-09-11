@@ -44,3 +44,70 @@
 - Production mutations, deploys, restarts
 - Synthetic Production records
 - Promoting chat-derived numbers without reconstruction
+
+---
+
+## GT-R1-UNPLUG-001 — Controlled physical unplug/replug (LTE_R1)
+
+**Status:** Prepared in Phase 2 — **NOT EXECUTED** (read-only audit phase).
+
+### Preconditions
+
+- Operator authorization for physical OBD manipulation
+- Healthy baseline: LTE_R1, CONNECTED, `obdIsPluggedIn=1`, recent strict source advance
+- Recommended vehicle: KS MX 2024 (token 187336) or operator-selected equivalent LTE_R1
+
+### Sequence
+
+1. **Baseline** — record VLS `sourceTimestamp`, `providerFetchedAt`, DIMO `connectionStatus`, `obdIsPluggedIn`, connectivity runtime JSON
+2. **Physical unplug** — operator removes R1 from OBD port; do not restart services
+3. **Capture provider webhook** — `device_connection_webhook_inbox`, `dimo_device_connection_events`
+4. **Capture episode/alert** — `device_connection_episodes`, `notifications` (DEVICE_UNPLUGGED / TELEMETRY_*)
+5. **Wait** — observe telemetry stall (expect stale `sourceTimestamp`, continued polls)
+6. **Physical replug** — operator reinserts R1
+7. **Capture plug path** — webhook and/or snapshot plug signal
+8. **Wait for strict source advance** — `incoming > existing` on `sourceTimestamp`
+9. **Confirm TELEMETRY_RESUMED** — fresh source + operational signals
+10. **Confirm FULL_CONNECTIVITY_RECOVERED** — all runtime dimensions aligned
+
+### Timestamps to record (UTC + Europe/Berlin)
+
+| Layer | Fields |
+|-------|--------|
+| Physical | Operator T0 unplug, T1 replug (video/time.is optional) |
+| Provider | Webhook `observed_at`, `received_at` |
+| SynqDrive | Episode `opened_at`, `resolved_at`, VLS `sourceTimestamp`, `providerFetchedAt` |
+| Alerts | Notification `firstSeenAt`, `resolvedAt` |
+
+### Tables / logs to monitor (read-only)
+
+- `vehicle_latest_states`
+- `dimo_poll_logs` (SNAPSHOT)
+- `dimo_device_connection_events`
+- `device_connection_webhook_inbox`
+- `device_connection_episodes`
+- `notifications` (TELEMETRY_*, DEVICE_*)
+- ClickHouse `telemetry_snapshots` (distinct `recorded_at`)
+- PM2 logs: `VLS monotonic guard`, snapshot processor (no log mutation)
+
+### Expected vs falsifying observations
+
+| Expectation | Falsified if |
+|-------------|--------------|
+| Unplug webhook arrives within minutes | No inbox row within 15 min of physical unplug |
+| Episode opens on unplug | No episode; only snapshot `obdIsPluggedIn=false` |
+| Telemetry stalls after unplug | Strict source continues advancing without replug |
+| Replug resolves via webhook and/or snapshot | Episode stays open >24 h with plugged signal |
+| FULL_CONNECTIVITY_RECOVERED requires strict source advance | Runtime shows recovered while `sourceTimestamp` unchanged >1 h |
+
+### Max safe observation window
+
+- Unplug observation: up to **2 h** before abort (avoid false TELEMETRY_OFFLINE conflation with standby)
+- Post-replug wait: up to **26 h** (one standby cycle + jitter buffer)
+
+### Stop conditions
+
+- Operator safety concern
+- Unexpected vehicle movement / ignition on
+- Production incident declared by operator
+- GT-R1-UNPLUG-001 completes all capture checkpoints
