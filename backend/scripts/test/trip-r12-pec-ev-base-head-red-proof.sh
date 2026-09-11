@@ -41,6 +41,7 @@ HEAD_PROBE_EXECUTED=NO
 BASE_RED_REPRODUCED=NO
 HEAD_GREEN_PROVEN=NO
 EOF
+  cleanup
   exit 2
 }
 
@@ -49,7 +50,6 @@ cleanup() {
   git -C "$ROOT" worktree remove --force "$HEAD_DIR" 2>/dev/null || true
   rm -rf "$WORKTREE_ROOT" "$METRICS_ROOT"
 }
-trap cleanup EXIT
 
 if [[ ! -f "$PROBE_SRC" ]]; then
   fail_infra "PROBE_SOURCE_MISSING path=${PROBE_SRC}"
@@ -141,11 +141,15 @@ BASE_METRICS_JSON="$METRICS_ROOT/base-metrics.json"
 HEAD_METRICS_JSON="$METRICS_ROOT/head-metrics.json"
 
 echo "=== BASE probe @ ${BASE_SHA} (expect=BASE) ==="
-BASE_OUT="$(install_and_run_probe "$BASE_DIR" BASE BASE)"
+BASE_OUT_FILE="$METRICS_ROOT/base-out.txt"
+install_and_run_probe "$BASE_DIR" BASE BASE > "$BASE_OUT_FILE"
+BASE_OUT="$(cat "$BASE_OUT_FILE")"
 echo "$BASE_OUT"
 
 echo "=== HEAD probe @ ${HEAD_SHA} (expect=HEAD) ==="
-HEAD_OUT="$(install_and_run_probe "$HEAD_DIR" HEAD HEAD)"
+HEAD_OUT_FILE="$METRICS_ROOT/head-out.txt"
+install_and_run_probe "$HEAD_DIR" HEAD HEAD > "$HEAD_OUT_FILE"
+HEAD_OUT="$(cat "$HEAD_OUT_FILE")"
 echo "$HEAD_OUT"
 
 set +e
@@ -231,5 +235,8 @@ HEAD_PROBE_RUN_ID=${HEAD_PROBE_RUN_ID}
 EOF
 
 if [[ "$validation_exit" -ne 0 ]]; then
+  cleanup
   exit "$validation_exit"
 fi
+
+cleanup
