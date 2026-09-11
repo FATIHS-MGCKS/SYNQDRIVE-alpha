@@ -1,0 +1,31 @@
+# Vehicle Connectivity — Knowledge Graph Edges (bootstrap)
+
+edges:
+  - from: VC-STATE-FRESHNESS-001
+    relation: upstream_of
+    to: VC-RES-FRESHNESS-001
+
+  - from: VC-STATE-FRESHNESS-001
+    relation: upstream_of
+    to: VC-ORCH-RUNTIME-001
+
+  - from: VC-AUTH-SEMANTICS-001
+    relation: governs
+    to: VC-ORCH-RUNTIME-001
+
+  - from: VC-PROF-LTE-R1-001
+    relation: enables
+    to: VC-AUTH-SEMANTICS-001
+
+  - from: VC-EVID-LTE-R1-PENDING-001
+    relation: supports
+    to: VC-HYP-001
+
+  - from: VC-EVID-LTE-R1-PENDING-001
+    relation: supports
+    to: VC-HYP-003
+
+  - from: VC-GAP-002
+    relation: contradicts
+    to: VC-EVID-LTE-R1-PENDING-001
+    notes: Production reconstruction not yet performed

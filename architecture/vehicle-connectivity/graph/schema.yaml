@@ -1,0 +1,140 @@
+# Vehicle Connectivity Knowledge Graph — Schema
+
+version: "1.0"
+description: >
+  Schema for Vehicle Connectivity living architecture authority.
+  Maintained incrementally by agents per AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - data
+  - pipeline
+  - orchestrator
+  - resolver
+  - state
+  - policy
+  - authority
+  - persist
+  - api
+  - consumer
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - invariant
+  - gap
+  - contradiction
+  - profile
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - PRODUCTION_OBSERVATION_PENDING_RECONSTRUCTION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+  - CALIBRATION_RUN
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - produced_by
+  - consumed_by
+  - upstream_of
+  - downstream_of
+  - derives_from
+  - governs
+  - projects_to
+  - supports
+  - contradicts
+  - validates
+  - enables
+  - input_to
+
+relation_semantics_doc: architecture/vehicle-connectivity/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: VC-DOM-
+  data: VC-DATA-
+  pipeline: VC-PIPE-
+  orchestrator: VC-ORCH-
+  resolver: VC-RES-
+  state: VC-STATE-
+  policy: VC-POL-
+  authority: VC-AUTH-
+  persist: VC-PERSIST-
+  api: VC-API-
+  consumer: VC-CONS-
+  decision: VC-DEC-
+  evidence: VC-EVID-
+  test_evidence: VC-TEST-
+  hypothesis: VC-HYP-
+  invariant: VC-INV-
+  gap: VC-GAP-
+  contradiction: VC-CX-
+  profile: VC-PROF-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - verified_ref
+    - verified_at
+    - evidence
+    - open_questions
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
