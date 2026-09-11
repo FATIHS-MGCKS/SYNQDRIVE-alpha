@@ -1634,7 +1634,7 @@ function runSelfTests() {
       if (!out.includes('AUTHORITY_ACTIVE: 7')) {
         throw new Error(`missing expected module counts in wrapper output: ${out}`);
       }
-      if (!out.includes('modules inventoried: 64')) {
+      if (!out.includes('modules inventoried: 65')) {
         throw new Error(`missing inventoried count in wrapper output: ${out}`);
       }
     },
