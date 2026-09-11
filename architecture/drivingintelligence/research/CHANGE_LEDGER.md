@@ -483,12 +483,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 
 | Event | Detail |
 |-------|--------|
-| Status | **RUNTIME CORRECTION DRAFT** — PR from `main`; evidence correction on #1605 branch |
+| Status | **MERGED** — PR #1606 at `e99cf710088732069bc5d448ae5436b893b3440e` |
 | Session | `d633da9d-…` · KS MS 661 UPPER_BOUND_V2 |
 | Root cause | Orchestrator `physicalEndEarly` terminated on provisional PDI CONFIRMED (120s) bypassing `finalParkedMs` (600s); boundary race sealed phase 60 with negative wall duration |
 | Fix | `hardPhysicalEndEligible` / `shouldAutoStop` only for early end; boundary-safe `finalizeCalibrationOnPhysicalEndEarly`; movement metrics to completing phase; durable `exp021RequestSlots` in phase summaries; settlement experiment `COMPLETED` convergence |
-| Physical drive | **NOT STARTED** |
-| Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md` (corrected interpretive layer) |
+| Evidence | Corrected forensic layer in evidence-only PR (supersedes #1605) |
 
 ## EXP-021 — Hard-end UNKNOWN fail-safe micro pass (2026-09-11)
 
@@ -512,3 +511,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Reconstruction | Read-only analyzer scaffold; map-matching adapter documented as follow-up |
 | Selection | `EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3` — default remains `UPPER_BOUND_V2` |
 | Evidence | `EXP_021_CANDIDATE_BRACKET_V3_PROSPECTIVE_DESIGN_2026-09-11.md` |
+
+## EXP-021 — KS MS 661 UPPER_BOUND_V2 corrected forensic evidence (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **EVIDENCE REGISTERED** — evidence-only PR from post-#1606 `main` |
+| Session | `d633da9d-e32c-461c-8a27-8c0c6bfff209` · KS MS 661 UPPER_BOUND_V2 |
+| Interpretation | PHYSICAL_END_AUTHORITY **CONTRADICTED**; UNSLOTTED/SILENTLY_LOST **UNKNOWN_UNPROVABLE**; bucket structure stable from **+120** |
+| Settlement | FIXED_INTERVAL_OBSERVATIONS_COMPLETED **342**; SCHEDULES_COMPLETED **357**; SCHEDULES_SKIPPED **15** |
+| Gap assessability | **94.6%** (35/37 assessable); SETTLEMENT_PRESENT_LATER **0**; ABSENT_THROUGH_600 **550** |
+| Value maturation | **51** revisions (`bucketValueSnapshots` / `valueContentHash`) |
+| Cadence decision | **READY_TO_CHOOSE_PRODUCTION_CADENCE=NO** — 60/30 not executed; runtime defect (fixed #1606) |
+| Supersedes | PR **#1605** (obsolete mixed runtime branch — do not merge) |
+| Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md`; `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json` |
