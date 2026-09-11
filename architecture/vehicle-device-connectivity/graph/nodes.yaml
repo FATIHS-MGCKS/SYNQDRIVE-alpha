@@ -1,0 +1,201 @@
+# Vehicle & Device Connectivity — Knowledge Graph Nodes (bootstrap)
+
+nodes:
+  - id: VDC-DOM-CONNECTIVITY-001
+    type: domain
+    title: Vehicle & Device Connectivity domain
+    epistemic_status: CONFIRMED
+    summary: Provider-neutral connectivity lifecycle, freshness, standby/disconnect semantics, and projection.
+    source_paths:
+      - architecture/vehicle-device-connectivity/README.md
+
+  - id: VDC-AUTH-SEMANTICS-001
+    type: authority
+    title: Connectivity semantics authority (bootstrap)
+    epistemic_status: INFERRED
+    summary: Owns interpretation of connected/standby/suspect/disconnected; not provider API wiring.
+    source_paths:
+      - architecture/vehicle-device-connectivity/AGENT_CONTRACT.md
+
+  - id: VDC-STATE-FRESHNESS-001
+    type: state
+    title: Source freshness state
+    epistemic_status: CONFIRMED
+    summary: sourceTimestamp/lastSeen vs providerFetchedAt vs poll time — monotonic guard in DIMO snapshot processor.
+    source_paths:
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+      - backend/src/modules/dimo/vls-monotonic-merge.util.ts
+
+  - id: VDC-RES-FRESHNESS-001
+    type: resolver
+    title: Telemetry freshness resolver
+    epistemic_status: CONFIRMED
+    summary: Canonical freshness buckets including standby window.
+    source_paths:
+      - backend/src/modules/vehicles/telemetry-freshness.resolver.ts
+      - backend/src/modules/vehicles/vehicle-state-interpreter.ts
+
+  - id: VDC-ORCH-RUNTIME-001
+    type: orchestrator
+    title: Vehicle connectivity runtime state builder
+    epistemic_status: CONFIRMED
+    summary: Assembles provider-neutral connectivity runtime projection for fleet surfaces.
+    source_paths:
+      - backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts
+
+  - id: VDC-PROF-LTE-R1-001
+    type: profile
+    title: DIMO Ruptela LTE_R1 hardware profile
+    epistemic_status: INFERRED
+    summary: First research target; standby/sleep behavior under active audit.
+    source_paths:
+      - architecture/vehicle-device-connectivity/providers/dimo/LTE_R1.md
+
+  - id: VDC-EVID-LTE-R1-PENDING-001
+    type: evidence
+    title: KS MX 2024 LTE_R1 forensics — pending reconstruction
+    source_type: PRODUCTION_OBSERVATION_PENDING_RECONSTRUCTION
+    epistemic_status: INFERRED
+    summary: Placeholder for read-only Production forensics; numbers not canonical until Phase 2.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PENDING_RECONSTRUCTION.md
+
+  - id: VDC-HYP-001
+    type: hypothesis
+    title: ~24h stationary source update
+    epistemic_status: INFERRED
+    summary: LTE_R1 may emit periodic source updates ~24h while parked — pending independent Production reconstruction.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-002
+    type: hypothesis
+    title: IO174 not exposed via signalsLatest
+    epistemic_status: INFERRED
+    summary: Device timer wake may exist upstream without IO174 in SynqDrive DIMO ingest path.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-003
+    type: hypothesis
+    title: Poll frequency independent of R1 source rate
+    epistemic_status: INFERRED
+    summary: SynqDrive scheduler polls more often than R1 produces new source timestamps.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-004
+    type: hypothesis
+    title: Per-signal timestamp heterogeneity
+    epistemic_status: INFERRED
+    summary: Individual signal timestamps may lag lastSeen on standby wakes.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-005
+    type: hypothesis
+    title: Long silence is not disconnect
+    epistemic_status: INFERRED
+    summary: Healthy sleeping LTE_R1 may be silent many hours without being disconnected.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-006
+    type: hypothesis
+    title: Distinct fault states required
+    epistemic_status: INFERRED
+    summary: Device unplugged, sleeping, provider outage, permission failure, and CAN silence need separate states.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-HYP-007
+    type: hypothesis
+    title: Reconnect requires fresh device evidence
+    epistemic_status: INFERRED
+    summary: Successful HTTP poll alone must not mark reconnect without new sourceTimestamp.
+    source_paths:
+      - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
+
+  - id: VDC-GAP-001
+    type: gap
+    title: No unified connectivity authority before bootstrap
+    epistemic_status: CONFIRMED
+    summary: Logic spread across vehicles/, dimo/, AI modules without single semantic owner.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-002
+    type: gap
+    title: Production baseline not established
+    epistemic_status: UNKNOWN
+    summary: Phase 2 read-only Production audit not performed in bootstrap.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-GAP-003
+    type: gap
+    title: Historical per-wake raw payload retention
+    epistemic_status: UNKNOWN
+    summary: VLS holds latest raw payload only; limits IO174 and per-signal forensics.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-004
+    type: gap
+    title: LTE_R1 standby interval ground truth
+    epistemic_status: UNKNOWN
+    summary: ~24h hypothesis pending independent Production reconstruction.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-005
+    type: gap
+    title: IO174 visibility
+    epistemic_status: UNKNOWN
+    summary: Ruptela sleep timer IO not exposed in signalsLatest ingest path.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-006
+    type: gap
+    title: HM connectivity profile
+    epistemic_status: UNKNOWN
+    summary: High Mobility profile audit not started.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-GAP-007
+    type: gap
+    title: Connectivity vs trip-wake correlation
+    epistemic_status: INFERRED
+    summary: Snapshot wake owned by Trip Detection; VDC correlation rules undocumented.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: VDC-EVID-PROD-BASELINE-001
+    type: evidence
+    title: Production baseline gate document
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: UNKNOWN
+    summary: Phase 2 Production audit not performed in bootstrap.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-DEC-BOOTSTRAP-001
+    type: decision
+    title: Bootstrap Vehicle & Device Connectivity authority scope
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Provider-neutral connectivity semantics module established; remains AUDIT_IN_PROGRESS.
+    source_paths:
+      - architecture/vehicle-device-connectivity/README.md
+    evidence:
+      - VDC-EVID-PROD-BASELINE-001
+
+  - id: VDC-CX-001
+    type: contradiction
+    title: Connectivity alert implementation under DIMO module
+    epistemic_status: CONTRADICTED
+    summary: Proposed VDC ownership of alert semantics vs current code in dimo/connectivity-alert.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
