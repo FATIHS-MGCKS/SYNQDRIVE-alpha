@@ -513,6 +513,7 @@ export function buildTripR11OrchestrationHarness(
     acquireWorkerLock: proto.acquireWorkerLock,
     releaseWorkerLock: proto.releaseWorkerLock,
     maybeRecoverLifecycleInvariant: async () => 'continue' as const,
+    ensurePossibleEndClockDurability: proto.ensurePossibleEndClockDurability,
     logTrackingRun: proto.logTrackingRun,
     enqueueTripTrackingJob: proto.enqueueTripTrackingJob,
     tripTrackingJobId: proto.tripTrackingJobId,

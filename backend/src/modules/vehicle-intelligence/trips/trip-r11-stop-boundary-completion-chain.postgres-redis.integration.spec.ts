@@ -156,12 +156,14 @@ if (REQUIRED) {
       expect(await trackingQueue.getJob(pecJobId)).not.toBeNull();
 
       useTripR11FrozenClock(endCycleAt);
+      let drainTriggers: TripTrackingJobData['trigger'][] = [];
       try {
-        const { steps, triggers } = await drainTripTrackingQueue({
+        const drainResult = await drainTripTrackingQueue({
           queue: trackingQueue,
           runJob: harness.runJob,
         });
-        expect(steps).toBeGreaterThanOrEqual(3);
+        drainTriggers = drainResult.triggers;
+        expect(drainResult.steps).toBeGreaterThanOrEqual(3);
       } finally {
         restoreTripR11Clock();
       }
@@ -178,7 +180,7 @@ if (REQUIRED) {
       if (trip?.tripStatus !== TripStatus.COMPLETED) {
         throw new Error(
           `Scenario J completion failed: tripStatus=${trip?.tripStatus} ` +
-            `det=${det?.state} drainTriggers=${triggers.join('>')} ` +
+            `det=${det?.state} drainTriggers=${drainTriggers.join('>')} ` +
             `runs=${JSON.stringify(runs.map((r) => r.resultSummary))}`,
         );
       }

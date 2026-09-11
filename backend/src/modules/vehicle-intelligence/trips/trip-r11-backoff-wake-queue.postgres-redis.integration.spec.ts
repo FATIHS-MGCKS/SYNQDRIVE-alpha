@@ -84,6 +84,16 @@ if (REQUIRED && !LIVE) {
 
     async function buildHarnessWithAbsentVls() {
       await prisma.vehicleLatestState.delete({ where: { vehicleId: fixture.vehicle.id } });
+      // No trusted stop boundary — empty-core UNKNOWN should surface vls_row_absent,
+      // not stop_boundary_untrusted_worker_time from a pre-seeded idle_within_trip latch.
+      await prisma.vehicleTripDetectionState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          lastEvidenceSummary: {
+            lastProviderActivityAt: fixture.lastMovementAt.toISOString(),
+          },
+        },
+      });
       const segments = buildTripR11SegmentsMock(fixture.expectedEndTime);
       segments.fetchRawTripCoreData.mockResolvedValue([]);
       const detectorRegistry = buildTripR11DetectorMock(fixture.expectedEndTime);
