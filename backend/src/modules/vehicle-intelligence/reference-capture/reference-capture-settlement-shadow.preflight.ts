@@ -1,6 +1,11 @@
 import type { ReferenceCaptureConfig } from './reference-capture.config';
 import type { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
 import {
+  cadenceSequenceArrow,
+  cadenceSequenceLabel,
+  EXP021_DEFAULT_CALIBRATION_PLAN,
+} from './reference-capture-exp021-calibration-plan.lib';
+import {
   EXP021_CADENCE_PHASE_ORDER_MS,
   EXP021_MANDATORY_SETTLEMENT_OBSERVATIONS,
   EXP021_WHOLE_TRIP_SHADOW_OBSERVATIONS,
@@ -61,7 +66,7 @@ export async function runExp021SettlementShadowPreflight(args: {
     {
       code: 'NEXT_SEQUENCE',
       ok: true,
-      detail: EXP021_CADENCE_PHASE_ORDER_MS.map((ms) => ms / 1000).join('→'),
+      detail: cadenceSequenceArrow(EXP021_DEFAULT_CALIBRATION_PLAN),
     },
     {
       code: 'VIDEO_GT_REQUIRED',
@@ -79,6 +84,7 @@ export async function runExp021SettlementShadowPreflight(args: {
     expectedPostTripShadowRequests: EXP021_WHOLE_TRIP_SHADOW_OBSERVATIONS,
     expectedTotalShadowRequests:
       EXP021_MANDATORY_SETTLEMENT_OBSERVATIONS + EXP021_WHOLE_TRIP_SHADOW_OBSERVATIONS,
-    nextSequence: EXP021_CADENCE_PHASE_ORDER_MS.map((ms) => ms / 1000).join('_'),
+    nextSequence: cadenceSequenceLabel(EXP021_DEFAULT_CALIBRATION_PLAN),
+    calibrationPlanVersion: EXP021_DEFAULT_CALIBRATION_PLAN.planVersion,
   };
 }

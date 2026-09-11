@@ -5,7 +5,7 @@ import {
   PhysicalEndDetector,
   PhysicalStartDetector,
 } from './reference-capture-exp-021-motion.lib';
-import { EXP021_CADENCE_PHASE_ORDER_MS } from './reference-capture-settlement-shadow.policy';
+import { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS } from './reference-capture-exp021-calibration-plan.lib';
 
 describe('EXP-021 full operator journey simulation', () => {
   const deployAt = Date.parse('2026-09-10T11:40:00.000Z');
@@ -65,9 +65,12 @@ describe('EXP-021 full operator journey simulation', () => {
     });
     const required = 60_000;
     let now = wakeAt + 60_000;
-    const phaseOrder = EXP021_CADENCE_PHASE_ORDER_MS;
+    const phaseOrder = EXP021_LEGACY_CADENCE_PHASE_ORDER_MS;
     for (let i = 0; i < phaseOrder.length; i += 1) {
-      phaseTracker.beginPhase(phaseOrder[i], now, required);
+      phaseTracker.beginPhase(phaseOrder[i], now, {
+        mode: 'MOVING_ACCUMULATION',
+        requiredMovementMs: required,
+      });
       for (let tick = 0; tick < 10; tick += 1) {
         now += 10_000;
         const moving = tick % 3 !== 2;
@@ -78,7 +81,10 @@ describe('EXP-021 full operator journey simulation', () => {
         phaseTracker.tick('MOVING', now);
       }
       if (i < phaseOrder.length - 1) {
-        phaseTracker.advancePhaseAtEffectiveBoundary(now, phaseOrder[i + 1], required);
+        phaseTracker.advancePhaseAtEffectiveBoundary(now, phaseOrder[i + 1], {
+          mode: 'MOVING_ACCUMULATION',
+          requiredMovementMs: required,
+        });
       }
     }
 
