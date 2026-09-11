@@ -40,7 +40,12 @@ import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
 const METRICS_FILE = process.env.TRIP_R12_PROBE_METRICS_FILE ?? '';
-const PROBE_EXPECT = (process.env.TRIP_R12_PROBE_EXPECT ?? 'HEAD').toUpperCase();
+
+function readProbeExpect(): 'BASE' | 'HEAD' {
+  return (process.env.TRIP_R12_PROBE_EXPECT ?? 'HEAD').toUpperCase() === 'BASE'
+    ? 'BASE'
+    : 'HEAD';
+}
 
 type ProbeMetrics = {
   PROBE_EXECUTED: boolean;
@@ -59,12 +64,12 @@ type ProbeMetrics = {
   TERMINAL_STATE: 'TERMINAL' | 'NONTERMINAL' | null;
 };
 
-function emptyMetrics(): ProbeMetrics {
+function emptyMetrics(probeExpect: 'BASE' | 'HEAD'): ProbeMetrics {
   return {
     PROBE_EXECUTED: false,
     PROBE_INFRASTRUCTURE_ERROR: false,
     INFRA_ERROR_DETAIL: null,
-    PROBE_EXPECT,
+    PROBE_EXPECT: probeExpect,
     SCHEDULE_WHILE_PEC_LOCK_HELD: null,
     EV_PROCESSOR_ENTRY: null,
     EV_LOCK_MISS: null,
@@ -201,9 +206,11 @@ async function waitForNaturalTerminal(params: {
     let redisStack: Awaited<ReturnType<typeof startTripR11RedisStack>>;
     let trackingQueue: Queue<TripTrackingJobData>;
     let fixture: TripR11PostgresFixture | undefined;
-    let metrics = emptyMetrics();
+    let metrics = emptyMetrics(readProbeExpect());
 
     beforeAll(async () => {
+      const probeExpect = readProbeExpect();
+      metrics = emptyMetrics(probeExpect);
       if (REQUIRED && !METRICS_FILE) {
         metrics.PROBE_INFRASTRUCTURE_ERROR = true;
         metrics.INFRA_ERROR_DETAIL = 'TRIP_R12_PROBE_METRICS_FILE is required';
@@ -240,6 +247,7 @@ async function waitForNaturalTerminal(params: {
     it('captures causal PEC→EV observations for BASE/HEAD comparison', async () => {
       if (metrics.PROBE_INFRASTRUCTURE_ERROR || !dbOk) return;
 
+      const probeExpect = readProbeExpect();
       let scheduleWhilePecLockHeld = false;
       let evProcessorEntry = false;
       let evLockMiss = false;
@@ -273,26 +281,10 @@ async function waitForNaturalTerminal(params: {
         const pecNow = new Date('2026-09-08T05:04:30.000Z');
         useTripR11FrozenClock(pecNow);
 
-        let pecWorkerLockDepth = 0;
         let processingTrigger: TripTrackingJobData['trigger'] | null = null;
 
         const scheduleProto = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
         const acquireProto = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
-        const releaseProto = TripDetectionOrchestrationService.prototype.releaseWorkerLock;
-
-        jest
-          .spyOn(TripDetectionOrchestrationService.prototype, 'releaseWorkerLock')
-          .mockImplementation(async function (
-            this: TripDetectionOrchestrationService,
-            vehicleId: string,
-            runToken: string,
-          ) {
-            const stack = new Error().stack ?? '';
-            await releaseProto.call(this, vehicleId, runToken);
-            if (stack.includes('processPossibleEndCheck')) {
-              pecWorkerLockDepth = Math.max(0, pecWorkerLockDepth - 1);
-            }
-          });
 
         jest
           .spyOn(TripDetectionOrchestrationService.prototype, 'acquireWorkerLock')
@@ -302,17 +294,13 @@ async function waitForNaturalTerminal(params: {
             ttlMs?: number,
           ) {
             const stack = new Error().stack ?? '';
-            const fromPec = stack.includes('processPossibleEndCheck');
             const fromEv =
               processingTrigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION ||
               stack.includes('processEndValidation');
             const fromFinalize = stack.includes('processFinalize');
             const result = await acquireProto.call(this, vehicleId, ttlMs);
-            if (fromPec && result.acquired) {
-              pecWorkerLockDepth += 1;
-            }
-            if (fromEv) {
-              if (!result.acquired) evLockMiss = true;
+            if (fromEv && !result.acquired) {
+              evLockMiss = true;
             }
             if (fromFinalize && result.acquired) {
               finalizeProcessorEntry = true;
@@ -329,27 +317,24 @@ async function waitForNaturalTerminal(params: {
             dimoTokenId: number,
             delayMs?: number,
           ) {
-            if (pecWorkerLockDepth > 0) {
+            if (probeExpect === 'BASE') {
+              // Historical BASE ordering: inline schedule before PEC finally releases lock.
               scheduleWhilePecLockHeld = true;
-            }
-
-            await scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
-
-            // BASE: keep PEC worker-lock held until EV is picked up concurrently.
-            if (PROBE_EXPECT === 'BASE' && pecWorkerLockDepth > 0) {
+              await scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
               await probeWaitForCondition(
-                async () => evProcessorEntry && pecWorkerLockDepth > 0,
+                async () => evProcessorEntry,
                 15_000,
-                'BASE EV processor entry while PEC worker lock held',
+                'BASE EV processor entry while PEC scheduleEndValidation held open',
               );
               await probeWaitForCondition(
                 async () => evLockMiss,
                 15_000,
                 'BASE EV lock miss while PEC worker lock held',
               );
+              return;
             }
 
-            return;
+            await scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
           });
 
         const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
@@ -394,7 +379,7 @@ async function waitForNaturalTerminal(params: {
             return pecRuns >= 1;
           }, 30_000, 'PEC triggering_cusum_validation');
 
-          if (PROBE_EXPECT === 'HEAD') {
+          if (probeExpect === 'HEAD') {
             restoreTripR11Clock();
             await waitForNaturalTerminal({
               prisma,
@@ -431,7 +416,7 @@ async function waitForNaturalTerminal(params: {
           PROBE_EXECUTED: true,
           PROBE_INFRASTRUCTURE_ERROR: false,
           INFRA_ERROR_DETAIL: null,
-          PROBE_EXPECT,
+          PROBE_EXPECT: probeExpect,
           SCHEDULE_WHILE_PEC_LOCK_HELD: scheduleWhilePecLockHeld,
           EV_PROCESSOR_ENTRY: evProcessorEntry,
           EV_LOCK_MISS: evLockMiss,
