@@ -153,7 +153,7 @@ HEAD_OUT="$(cat "$HEAD_OUT_FILE")"
 echo "$HEAD_OUT"
 
 set +e
-VALIDATION="$(node -e "
+VALIDATION="$(BASE_METRICS_JSON="$BASE_METRICS_JSON" HEAD_METRICS_JSON="$HEAD_METRICS_JSON" node -e "
 const fs = require('fs');
 
 function loadMetrics(file) {
@@ -219,7 +219,7 @@ console.log('HEAD_GREEN_PROVEN=' + (headOk ? 'YES' : 'NO'));
 if (base.missing) console.log('BASE_METRICS_LOAD_ERROR=' + JSON.stringify(base.reason ?? 'missing'));
 if (head.missing) console.log('HEAD_METRICS_LOAD_ERROR=' + JSON.stringify(head.reason ?? 'missing'));
 process.exit(baseOk && headOk ? 0 : 1);
-" BASE_METRICS_JSON="$BASE_METRICS_JSON" HEAD_METRICS_JSON="$HEAD_METRICS_JSON")"
+")"
 validation_exit=$?
 set -e
 
