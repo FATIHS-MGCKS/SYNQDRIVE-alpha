@@ -154,6 +154,80 @@ export class ReferenceCaptureSettlementShadowService {
     return reconciled;
   }
 
+  /**
+   * Converge settlement experiment lifecycle when RC session is terminal and all schedules
+   * are terminal (COMPLETED / SKIPPED / FAILED). Preserves observations.
+   */
+  async tryCompleteSettlementExperimentForSession(sessionId: string): Promise<{
+    completed: boolean;
+    alreadyTerminal: boolean;
+    pendingSchedules: number;
+    experimentId?: string;
+  }> {
+    const experiment = await this.repository.findExperimentBySessionId(sessionId);
+    if (!experiment) {
+      return { completed: false, alreadyTerminal: false, pendingSchedules: 0 };
+    }
+    if (experiment.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.COMPLETED) {
+      return {
+        completed: true,
+        alreadyTerminal: true,
+        pendingSchedules: 0,
+        experimentId: experiment.experimentId,
+      };
+    }
+    if (experiment.status === REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.CANCELLED) {
+      return {
+        completed: false,
+        alreadyTerminal: true,
+        pendingSchedules: 0,
+        experimentId: experiment.experimentId,
+      };
+    }
+
+    const pendingSchedules = await this.repository.countNonTerminalSchedulesForSession(sessionId);
+    if (pendingSchedules > 0) {
+      return {
+        completed: false,
+        alreadyTerminal: false,
+        pendingSchedules,
+        experimentId: experiment.experimentId,
+      };
+    }
+
+    const terminalized = await this.repository.terminalizeExperimentOnCompletion(experiment.id, {
+      completedAt: new Date().toISOString(),
+      organizationId: experiment.organizationId,
+      existingMetadata: experiment.metadataJson,
+    });
+    if (terminalized) {
+      this.logger.log(
+        `Settlement experiment completed session=${sessionId} experiment=${experiment.experimentId}`,
+      );
+    }
+    return {
+      completed: terminalized,
+      alreadyTerminal: false,
+      pendingSchedules: 0,
+      experimentId: experiment.experimentId,
+    };
+  }
+
+  /**
+   * Recovery path for COMPLETED RC sessions with orphaned ACTIVE settlement experiments.
+   */
+  async reconcileCompletedSessionSettlementExperiments(limit = 50): Promise<number> {
+    const orphans = await this.repository.findCompletedSessionsWithActiveExperiments(limit);
+    let reconciled = 0;
+    for (const row of orphans) {
+      const result = await this.tryCompleteSettlementExperimentForSession(row.sessionId);
+      if (result.completed || result.alreadyTerminal) {
+        reconciled += 1;
+      }
+    }
+    return reconciled;
+  }
+
   private async cancelExperimentForAbortedSessionInternal(args: {
     sessionId: string;
     organizationId: string;

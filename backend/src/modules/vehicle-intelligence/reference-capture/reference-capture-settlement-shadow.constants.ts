@@ -3,6 +3,7 @@ export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_JOB_NAME = 'reference-capture-s
 /** Persisted experiment lifecycle states (status column is String, not enum). */
 export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS = {
   ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 } as const;
 

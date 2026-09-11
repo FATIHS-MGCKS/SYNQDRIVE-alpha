@@ -276,6 +276,66 @@ export class ReferenceCaptureSettlementShadowRepository {
     });
   }
 
+  countNonTerminalSchedulesForSession(sessionId: string): Promise<number> {
+    return this.prisma.referenceCaptureSettlementShadowSchedule.count({
+      where: {
+        sessionId,
+        status: {
+          in: [
+            ReferenceCaptureSettlementShadowScheduleStatus.PENDING,
+            ReferenceCaptureSettlementShadowScheduleStatus.EXECUTING,
+          ],
+        },
+      },
+    });
+  }
+
+  async terminalizeExperimentOnCompletion(
+    experimentDbId: string,
+    input: {
+      completedAt: string;
+      organizationId: string;
+      existingMetadata: Prisma.JsonValue | null;
+    },
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const existingMeta =
+      input.existingMetadata && typeof input.existingMetadata === 'object' && !Array.isArray(input.existingMetadata)
+        ? (input.existingMetadata as Record<string, unknown>)
+        : {};
+
+    const updated = await this.client(tx).referenceCaptureSettlementShadowExperiment.updateMany({
+      where: {
+        id: experimentDbId,
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+      },
+      data: {
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.COMPLETED,
+        metadataJson: {
+          ...existingMeta,
+          terminalization: {
+            reason: 'RC_SESSION_COMPLETED',
+            completedAt: input.completedAt,
+            organizationId: input.organizationId,
+          },
+        },
+      },
+    });
+    return updated.count > 0;
+  }
+
+  findCompletedSessionsWithActiveExperiments(limit = 50) {
+    return this.prisma.referenceCaptureSettlementShadowExperiment.findMany({
+      where: {
+        status: REFERENCE_CAPTURE_SETTLEMENT_SHADOW_EXPERIMENT_STATUS.ACTIVE,
+        session: { status: 'COMPLETED' },
+      },
+      include: { session: { select: { status: true, completedAt: true } } },
+      take: limit,
+      orderBy: { updatedAt: 'asc' },
+    });
+  }
+
   async createSchedulesIfAbsent(
     schedules: Array<{
       experimentId: string;

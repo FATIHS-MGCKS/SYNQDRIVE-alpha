@@ -548,13 +548,18 @@ export class ReferenceCaptureSessionService {
   async persistExp021ActivePhaseMovementMetrics(
     organizationId: string,
     sessionId: string,
-    body: { validMovementDurationMs: number; uncertainMovementDurationMs?: number },
+    body: {
+      calibrationPhaseId?: string;
+      validMovementDurationMs: number;
+      uncertainMovementDurationMs?: number;
+    },
   ): Promise<void> {
     this.assertEnabled();
     await this.requireSession(organizationId, sessionId);
     await this.sessionRepository.persistExp021ActivePhaseMovementAtomic({
       organizationId,
       sessionId,
+      calibrationPhaseId: body.calibrationPhaseId,
       validMovementDurationMs: body.validMovementDurationMs,
       uncertainMovementDurationMs: body.uncertainMovementDurationMs,
     });
@@ -828,5 +833,7 @@ export class ReferenceCaptureSessionService {
       sessionStartedAt: args.sessionStartedAt,
       sessionStoppedAt: args.sessionStoppedAt,
     });
+
+    await this.settlementShadowService.tryCompleteSettlementExperimentForSession(args.sessionId);
   }
 }

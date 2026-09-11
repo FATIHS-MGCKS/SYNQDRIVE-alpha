@@ -478,3 +478,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Load | ~113 total requests (59 cadence + 48 shadow + 6 post-trip) |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO; shadow tooling NOT deployed |
 | Evidence | `EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md`; `EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md` |
+
+## EXP-021 — False physical-end authority correction (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RUNTIME CORRECTION DRAFT** — PR from `main`; evidence correction on #1605 branch |
+| Session | `d633da9d-…` · KS MS 661 UPPER_BOUND_V2 |
+| Root cause | Orchestrator `physicalEndEarly` terminated on provisional PDI CONFIRMED (120s) bypassing `finalParkedMs` (600s); boundary race sealed phase 60 with negative wall duration |
+| Fix | `hardPhysicalEndEligible` / `shouldAutoStop` only for early end; boundary-safe `finalizeCalibrationOnPhysicalEndEarly`; movement metrics to completing phase; durable `exp021RequestSlots` in phase summaries; settlement experiment `COMPLETED` convergence |
+| Physical drive | **NOT STARTED** |
+| Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md` (corrected interpretive layer) |

@@ -46,6 +46,7 @@ import {
   PhysicalStartDetector,
   PreDeployMovementGate,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-motion.lib';
+import { resolvePhysicalEndSealMs } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-physical-authority.lib';
 import {
   classifyOrchestratorFailure,
   parseExp021PhysicalAuthority,
@@ -222,10 +223,16 @@ async function completePhysicalRunAndStop(args: {
   reason: 'AUTO_STOP' | 'FINAL_PHASE_WALL_CLOCK' | 'PHYSICAL_RUN_ENDED_EARLY';
 }): Promise<void> {
   const endCandidate = args.physicalEndDetector.getCandidate();
-  const sealMs =
+  const activePhaseStartedAtMs = args.phaseTracker.getActivePhaseStartedAtMs();
+  const boundaryMs =
     args.reason === 'PHYSICAL_RUN_ENDED_EARLY' && endCandidate?.candidateBoundaryAt
       ? endCandidate.candidateBoundaryAt.getTime()
-      : args.nowMs;
+      : null;
+  const sealMs = resolvePhysicalEndSealMs({
+    nowMs: args.nowMs,
+    physicalEndBoundaryMs: boundaryMs,
+    activePhaseStartedAtMs,
+  });
   const finalPhase = args.phaseTracker.markPhysicalDriveEnded(sealMs);
   if (
     endCandidate &&
@@ -851,6 +858,10 @@ async function main(): Promise<void> {
           const nextIndex = currentPhaseIndex + 1;
           const next = config.cadencePhaseOrderMs[nextIndex];
           try {
+            const sessionBefore = await sessionRepo!.findById(config.organizationId, sessionId);
+            const completingPhaseId =
+              parseAcquisitionState(sessionBefore?.acquisitionStateJson).hfCalibrationSeries
+                ?.activePhase?.calibrationPhaseId ?? null;
             await sessionService!.switchHfCalibrationPhase(config.organizationId, sessionId, {
               effectivePollIntervalMs: next,
               phaseProvenance: 'PHYSICAL_TRANSITION',
@@ -861,11 +872,12 @@ async function main(): Promise<void> {
               next,
               resolvePhaseAdvancementForIndex(config, nextIndex),
             );
-            if (completed) {
+            if (completed && completingPhaseId) {
               await sessionService!.persistExp021ActivePhaseMovementMetrics(
                 config.organizationId,
                 sessionId,
                 {
+                  calibrationPhaseId: completingPhaseId,
                   validMovementDurationMs: completed.validMovementDurationMs,
                   uncertainMovementDurationMs: completed.uncertainMovementDurationMs,
                 },
@@ -954,20 +966,19 @@ async function main(): Promise<void> {
           !physicalDriveEnded &&
           currentPhaseIndex === lastPhaseIndex &&
           phaseTracker.shouldAdvancePhase(nowMs);
-        const physicalEndCandidate = physicalEndDetector.getCandidate();
-        const physicalEndEarly =
-          physicalDriveStarted &&
-          !physicalDriveEnded &&
-          physicalEndCandidate?.candidateStatus === 'CONFIRMED' &&
-          physicalEndCandidate.candidateBoundaryAt.getTime() <= nowMs;
+        const hardPhysicalEndEligible = physicalEndDetector.hardPhysicalEndEligible(
+          nowMs,
+          motionState,
+        );
 
-        if (physicalDriveStarted && (endObservation.shouldAutoStop || finalPhaseWallClockExpired || physicalEndEarly)) {
+        if (
+          physicalDriveStarted &&
+          (hardPhysicalEndEligible || finalPhaseWallClockExpired)
+        ) {
           physicalDriveEnded = true;
-          const stopReason = physicalEndEarly
-            ? 'PHYSICAL_RUN_ENDED_EARLY'
-            : finalPhaseWallClockExpired
-              ? 'FINAL_PHASE_WALL_CLOCK'
-              : 'AUTO_STOP';
+          const stopReason = finalPhaseWallClockExpired
+            ? 'FINAL_PHASE_WALL_CLOCK'
+            : 'PHYSICAL_RUN_ENDED_EARLY';
           await completePhysicalRunAndStop({
             sessionService: sessionService!,
             settlementShadow: settlementShadow!,
