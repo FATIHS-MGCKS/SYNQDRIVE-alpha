@@ -137,6 +137,9 @@ install_and_run_probe() {
   read_metrics "$metrics_file" "$label" || true
 }
 
+BASE_METRICS_JSON="$METRICS_ROOT/base-metrics.json"
+HEAD_METRICS_JSON="$METRICS_ROOT/head-metrics.json"
+
 echo "=== BASE probe @ ${BASE_SHA} (expect=BASE) ==="
 BASE_OUT="$(install_and_run_probe "$BASE_DIR" BASE BASE)"
 echo "$BASE_OUT"
@@ -149,18 +152,15 @@ set +e
 VALIDATION="$(node -e "
 const fs = require('fs');
 
-function loadMetrics(label) {
-  const marker = label + '_METRICS_FILE=';
-  const out = process.env[label + '_OUT'] || '';
-  const line = out.split('\n').find((l) => l.startsWith(marker));
-  if (!line) return { missing: true, reason: 'metrics_file_line_missing' };
-  const file = line.slice(marker.length).trim();
-  if (!fs.existsSync(file)) return { missing: true, reason: 'metrics_file_missing', file };
+function loadMetrics(file) {
+  if (!file || !fs.existsSync(file)) {
+    return { missing: true, reason: 'metrics_file_missing', file };
+  }
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-const base = loadMetrics('BASE');
-const head = loadMetrics('HEAD');
+const base = loadMetrics(process.env.BASE_METRICS_JSON);
+const head = loadMetrics(process.env.HEAD_METRICS_JSON);
 
 function emit(prefix, m) {
   if (m.missing) {
@@ -215,7 +215,7 @@ console.log('HEAD_GREEN_PROVEN=' + (headOk ? 'YES' : 'NO'));
 if (base.missing) console.log('BASE_METRICS_LOAD_ERROR=' + JSON.stringify(base.reason ?? 'missing'));
 if (head.missing) console.log('HEAD_METRICS_LOAD_ERROR=' + JSON.stringify(head.reason ?? 'missing'));
 process.exit(baseOk && headOk ? 0 : 1);
-" BASE_OUT="$BASE_OUT" HEAD_OUT="$HEAD_OUT")"
+" BASE_METRICS_JSON="$BASE_METRICS_JSON" HEAD_METRICS_JSON="$HEAD_METRICS_JSON")"
 validation_exit=$?
 set -e
 
@@ -229,8 +229,6 @@ HEAD_COMMIT_AVAILABLE=${HEAD_COMMIT_AVAILABLE}
 BASE_PROBE_RUN_ID=${BASE_PROBE_RUN_ID}
 HEAD_PROBE_RUN_ID=${HEAD_PROBE_RUN_ID}
 EOF
-
-echo "$VALIDATION"
 
 if [[ "$validation_exit" -ne 0 ]]; then
   exit "$validation_exit"
