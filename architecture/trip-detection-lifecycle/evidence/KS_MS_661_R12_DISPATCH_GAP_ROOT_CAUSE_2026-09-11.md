@@ -106,7 +106,9 @@ bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 
 | Run | Result | Notes |
 |-----|--------|-------|
-| Trip FSM 34602066031 | **FAIL** | `trip-r12-pec-ev-lock-collision` completion test timed out — stale delayed PEC from seed + worker-only drain gap |
-| i18n 34602066051 | **FAIL** | P2.3.4 bound to CI PR diff instead of isolated fixture — corrected in PR #1603 follow-up |
+| Trip FSM 34602066031 | **FAIL** | `trip-r12-pec-ev-lock-collision` completion test timed out — stale delayed PEC from seed + worker-only drain gap; wait helpers used frozen `Date.now()` deadlines |
+| i18n 34602066051 | **FAIL** | PR touched Master `frontend/src/*` (SynqDrive Code) + bound P2.3.4 to live CI diff — Master UI reverted; i18n gate passes as NO_I18N_RELEVANT_CHANGES on backend-only diff |
+| Trip FSM 34610166236 | **FAIL** | Same integration file — completion/lock-miss tests hit Jest 120s timeout because harness waits used frozen `Date.now()` (fixed @ `4376748cf` follow-up) |
+| i18n 34610170529 | **FAIL** (then **PASS** @ `4376748cf`) | Governance test edit required authority label — reverted from trip PR |
 
-**CI_PENDING** until green re-run after fixture + i18n gate corrections.
+**CI_PENDING** until green Trip FSM re-run after monotonic wait + worker-slot fixture fix.

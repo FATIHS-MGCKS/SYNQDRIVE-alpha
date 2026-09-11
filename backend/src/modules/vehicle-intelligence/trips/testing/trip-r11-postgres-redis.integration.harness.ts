@@ -62,6 +62,19 @@ export type TripR11RedisStack = {
   connectionOptions: ConnectionOptions;
 };
 
+/** Monotonic ms for harness waits — safe while jest fake Date is frozen. */
+export function harnessMonotonicNowMs(): number {
+  return performance.now();
+}
+
+export function waitHarnessDeadlineMs(timeoutMs: number): number {
+  return harnessMonotonicNowMs() + timeoutMs;
+}
+
+export function isBeforeHarnessDeadline(deadlineMs: number): boolean {
+  return harnessMonotonicNowMs() < deadlineMs;
+}
+
 /** Fake Date for orchestration while leaving BullMQ/ioredis timers real. */
 export function useTripR11FrozenClock(now: Date): void {
   jest.useFakeTimers({
@@ -683,14 +696,27 @@ export async function closeTripTrackingWorkers(workers: Worker[]): Promise<void>
   await Promise.all(workers.map((w) => w.close().catch(() => undefined)));
 }
 
+export async function waitForHarnessCondition(
+  predicate: () => Promise<boolean>,
+  timeoutMs = 30_000,
+  label = 'waitForHarnessCondition',
+): Promise<void> {
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
+    if (await predicate()) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`${label} timed out after ${timeoutMs}ms`);
+}
+
 export async function waitForTripTrackingJobState(
   queue: Queue<TripTrackingJobData>,
   jobId: string,
   expectedState: string,
   timeoutMs = 10_000,
 ): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
     const job = await queue.getJob(jobId);
     if (job && (await job.getState()) === expectedState) return;
     await new Promise((r) => setTimeout(r, 50));
@@ -758,8 +784,9 @@ export async function waitForTripTerminalState(params: {
   trackingQueue: Queue<TripTrackingJobData>;
   timeoutMs?: number;
 }): Promise<void> {
-  const deadline = Date.now() + (params.timeoutMs ?? 30_000);
-  while (Date.now() < deadline) {
+  const timeoutMs = params.timeoutMs ?? 30_000;
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
     await promoteDelayedTripTrackingJobs(params.trackingQueue);
     const trip = await params.prisma.vehicleTrip.findUnique({
       where: { id: params.fixture.trip.id },
