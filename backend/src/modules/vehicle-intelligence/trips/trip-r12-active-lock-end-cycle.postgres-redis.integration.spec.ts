@@ -21,6 +21,7 @@ import {
   startTripR11RedisStack,
   stopTripR11RedisStack,
   useTripR11FrozenClock,
+  waitForHarnessCondition,
   waitForTripTrackingJobState,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
@@ -203,7 +204,11 @@ if (REQUIRED) {
           expect(det?.possibleEndEnteredAt).toBeNull();
           expect(det?.possibleEndAt).toBeNull();
           expect(resolveEndCycleToken(det!)).toBeNull();
-          expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
+          await waitForHarnessCondition(
+            async () => (await countTripTrackingJobs(trackingQueue)) === 0,
+            15_000,
+            'queue drain after terminal',
+          );
         } finally {
           releaseEvHold?.();
           await closeTripTrackingWorkers(workers);

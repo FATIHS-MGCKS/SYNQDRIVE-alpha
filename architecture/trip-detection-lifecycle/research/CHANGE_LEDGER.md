@@ -48,6 +48,7 @@ Append-only record for this authority directory.
 | 2026-09-11 | KS MS 661 POST-#1600 physical drive — trip `fc93f98f…` stuck POSSIBLE_END; production-proven PEC-held worker lock vs zero-delay END_VALIDATION; 15/15 EV processor entries, 0 tracking runs; PE clocks durable | Read-only acceptance audit | [KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md](../evidence/KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md) |
 | 2026-09-11 | R12 PEC↔EV lock-order fix — defer `scheduleEndValidation` until after `releaseWorkerLock` in PEC `finally`; EV lock miss throws `TripTrackingHandoffLockContentionError` (DelayedError handoff); integration + unit regressions | Trip FSM R12 fix branch (draft PR) | Same dispatch-gap evidence doc |
 | 2026-09-11 | PR #1603 CI follow-up — integration fixture purges stale delayed PEC after seed; worker wrapper mirrors processor moveToDelayed; i18n P2.3.4 uses isolated bootstrap fixture (not CI PR diff) | Trip FSM R12 PR #1603 | Same dispatch-gap evidence doc |
+| 2026-09-11 | PR #1603 — defer `scheduleFinalize` until END_VALIDATION `releaseWorkerLock` (tertiary lock-order fix); harness monotonic waits under fake Date; i18n governance test removed from trip-only PR | Trip FSM R12 PR #1603 | KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

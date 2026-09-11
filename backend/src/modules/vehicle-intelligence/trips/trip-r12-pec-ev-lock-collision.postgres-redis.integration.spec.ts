@@ -344,7 +344,7 @@ async function runJobLikeTripTrackingProcessor(
       expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
 
       const evJob = await trackingQueue.getJob(evJobId);
-      expect(evJob).toBeNull();
+      expect(evJob ?? null).toBeNull();
     }, 120_000);
 
     it('END_VALIDATION lock miss — processor moveToDelayed preserves authority and retries', async () => {
