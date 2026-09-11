@@ -2898,6 +2898,11 @@ export class TripDetectionOrchestrationService {
 
     const startedMs = Date.now();
     let resultState: TripDetectionState | undefined;
+    let deferredEndValidation: {
+      vehicleId: string;
+      organizationId: string | null;
+      dimoTokenId: number;
+    } | null = null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -3107,7 +3112,7 @@ export class TripDetectionOrchestrationService {
           completedAttempts: attempts,
           maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
         });
-        await this.scheduleEndValidation(vehicleId, organizationId, dimoTokenId);
+        deferredEndValidation = { vehicleId, organizationId, dimoTokenId };
         await this.logTrackingRun({
           vehicleId, organizationId,
           tripId: det.activeTripId,
@@ -3168,6 +3173,14 @@ export class TripDetectionOrchestrationService {
       await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
+      // Must run inside finally: early `return` paths in try skip any code placed after try/finally.
+      if (deferredEndValidation) {
+        await this.scheduleEndValidation(
+          deferredEndValidation.vehicleId,
+          deferredEndValidation.organizationId,
+          deferredEndValidation.dimoTokenId,
+        );
+      }
     }
   }
 
@@ -3179,11 +3192,7 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, dimoTokenId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
-      if (isTripTrackingHandoffJob(data)) {
-        throw new TripTrackingHandoffLockContentionError();
-      }
-      this.logger.debug(`Lock not acquired for END_VALIDATION ${vehicleId}`);
-      return;
+      throw new TripTrackingHandoffLockContentionError();
     }
 
     const startedMs = Date.now();
@@ -3191,6 +3200,11 @@ export class TripDetectionOrchestrationService {
     let det: Awaited<ReturnType<typeof this.getOrCreateDetectionState>> | undefined;
     let validationStartedAt: Date | null = null;
     let priorSummaryForFailure: Record<string, unknown> = {};
+    let deferredFinalize: {
+      vehicleId: string;
+      organizationId: string | null;
+      dimoTokenId: number;
+    } | null = null;
 
     try {
       det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -3235,7 +3249,7 @@ export class TripDetectionOrchestrationService {
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId,
@@ -3436,7 +3450,7 @@ export class TripDetectionOrchestrationService {
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId, organizationId,
@@ -3507,6 +3521,15 @@ export class TripDetectionOrchestrationService {
       ).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
+      // Must run inside finally: schedule after lock release so concurrent BullMQ
+      // workers cannot pick FINALIZE while END_VALIDATION still holds the lock.
+      if (deferredFinalize) {
+        await this.scheduleFinalize(
+          deferredFinalize.vehicleId,
+          deferredFinalize.organizationId,
+          deferredFinalize.dimoTokenId,
+        );
+      }
     }
   }
 
@@ -3518,11 +3541,7 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
-      if (isTripTrackingHandoffJob(data)) {
-        throw new TripTrackingHandoffLockContentionError();
-      }
-      this.logger.debug(`Lock not acquired for FINALIZE ${vehicleId}`);
-      return;
+      throw new TripTrackingHandoffLockContentionError();
     }
 
     const startedMs = Date.now();

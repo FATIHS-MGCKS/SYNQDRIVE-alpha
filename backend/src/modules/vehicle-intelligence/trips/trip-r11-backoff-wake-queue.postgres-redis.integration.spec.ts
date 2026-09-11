@@ -243,7 +243,7 @@ if (REQUIRED && !LIVE) {
       const harness = await buildHarnessWithAbsentVls();
       const workers = createTripTrackingWorkers({
         connection: redisStack.connectionOptions,
-        runJob: harness.runJob,
+        runJob: (bullJob) => harness.runJob(bullJob.data),
         workerCount: 2,
         concurrency: 1,
       });

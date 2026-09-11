@@ -62,6 +62,19 @@ export type TripR11RedisStack = {
   connectionOptions: ConnectionOptions;
 };
 
+/** Monotonic ms for harness waits — safe while jest fake Date is frozen. */
+export function harnessMonotonicNowMs(): number {
+  return performance.now();
+}
+
+export function waitHarnessDeadlineMs(timeoutMs: number): number {
+  return harnessMonotonicNowMs() + timeoutMs;
+}
+
+export function isBeforeHarnessDeadline(deadlineMs: number): boolean {
+  return harnessMonotonicNowMs() < deadlineMs;
+}
+
 /** Fake Date for orchestration while leaving BullMQ/ioredis timers real. */
 export function useTripR11FrozenClock(now: Date): void {
   jest.useFakeTimers({
@@ -658,7 +671,7 @@ export async function drainTripTrackingQueue(params: {
 
 export function createTripTrackingWorkers(params: {
   connection: ConnectionOptions;
-  runJob: (job: TripTrackingJobData, jobId?: string) => Promise<void>;
+  runJob: (job: Job<TripTrackingJobData>) => Promise<void>;
   concurrency?: number;
   workerCount?: number;
 }): Worker[] {
@@ -668,7 +681,7 @@ export function createTripTrackingWorkers(params: {
     workers.push(
       new Worker<TripTrackingJobData>(
         QUEUE_NAMES.TRIP_TRACKING,
-        async (job: Job<TripTrackingJobData>) => params.runJob(job.data, job.id),
+        async (job: Job<TripTrackingJobData>) => params.runJob(job),
         {
           connection: params.connection,
           concurrency: params.concurrency ?? 1,
@@ -683,14 +696,27 @@ export async function closeTripTrackingWorkers(workers: Worker[]): Promise<void>
   await Promise.all(workers.map((w) => w.close().catch(() => undefined)));
 }
 
+export async function waitForHarnessCondition(
+  predicate: () => Promise<boolean>,
+  timeoutMs = 30_000,
+  label = 'waitForHarnessCondition',
+): Promise<void> {
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
+    if (await predicate()) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`${label} timed out after ${timeoutMs}ms`);
+}
+
 export async function waitForTripTrackingJobState(
   queue: Queue<TripTrackingJobData>,
   jobId: string,
   expectedState: string,
   timeoutMs = 10_000,
 ): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
     const job = await queue.getJob(jobId);
     if (job && (await job.getState()) === expectedState) return;
     await new Promise((r) => setTimeout(r, 50));
@@ -722,4 +748,115 @@ export async function countTripTrackingJobs(
 ): Promise<number> {
   const jobs = await queue.getJobs(states, 0, 500);
   return jobs.length;
+}
+
+/** Remove jobs scheduled during synchronous harness steps (e.g. ACTIVE_TICK → delayed PEC). */
+export async function purgeTripTrackingQueueJobs(
+  queue: Queue<TripTrackingJobData>,
+): Promise<number> {
+  const states = ['waiting', 'delayed', 'active', 'prioritized', 'paused'] as const;
+  let removed = 0;
+  for (const state of states) {
+    const jobs = await queue.getJobs([state], 0, 100);
+    for (const job of jobs) {
+      await job.remove().catch(() => undefined);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+export async function promoteDelayedTripTrackingJobs(
+  queue: Queue<TripTrackingJobData>,
+): Promise<number> {
+  const jobs = await queue.getJobs(['delayed'], 0, 50);
+  let promoted = 0;
+  for (const job of jobs) {
+    await job.promote().catch(() => undefined);
+    promoted += 1;
+  }
+  return promoted;
+}
+
+export async function waitForTripTerminalStateNatural(params: {
+  prisma: PrismaClient;
+  fixture: TripR11PostgresFixture;
+  trackingQueue: Queue<TripTrackingJobData>;
+  timeoutMs?: number;
+}): Promise<{ manualPromoteCount: number }> {
+  const timeoutMs = params.timeoutMs ?? 60_000;
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
+    const trip = await params.prisma.vehicleTrip.findUnique({
+      where: { id: params.fixture.trip.id },
+    });
+    const det = await params.prisma.vehicleTripDetectionState.findUnique({
+      where: { vehicleId: params.fixture.vehicle.id },
+    });
+    if (
+      trip?.tripStatus === TripStatus.COMPLETED &&
+      det?.state === TripDetectionState.RESTING &&
+      det.activeTripId === null
+    ) {
+      return { manualPromoteCount: 0 };
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const trip = await params.prisma.vehicleTrip.findUnique({
+    where: { id: params.fixture.trip.id },
+  });
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.fixture.vehicle.id },
+  });
+  const runs = await params.prisma.vehicleTripTrackingRun.findMany({
+    where: { tripId: params.fixture.trip.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  throw new Error(
+    `Trip terminal natural wait timed out: tripStatus=${trip?.tripStatus} detState=${det?.state} ` +
+      `activeTripId=${det?.activeTripId} queueJobs=${await countTripTrackingJobs(params.trackingQueue)} ` +
+      `runs=${JSON.stringify(runs.map((r) => ({ type: r.runType, summary: r.resultSummary })))}`,
+  );
+}
+
+export async function waitForTripTerminalState(params: {
+  prisma: PrismaClient;
+  fixture: TripR11PostgresFixture;
+  trackingQueue: Queue<TripTrackingJobData>;
+  timeoutMs?: number;
+}): Promise<void> {
+  const timeoutMs = params.timeoutMs ?? 30_000;
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
+    await promoteDelayedTripTrackingJobs(params.trackingQueue);
+    const trip = await params.prisma.vehicleTrip.findUnique({
+      where: { id: params.fixture.trip.id },
+    });
+    const det = await params.prisma.vehicleTripDetectionState.findUnique({
+      where: { vehicleId: params.fixture.vehicle.id },
+    });
+    if (
+      trip?.tripStatus === TripStatus.COMPLETED &&
+      det?.state === TripDetectionState.RESTING &&
+      det.activeTripId === null
+    ) {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const trip = await params.prisma.vehicleTrip.findUnique({
+    where: { id: params.fixture.trip.id },
+  });
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.fixture.vehicle.id },
+  });
+  const runs = await params.prisma.vehicleTripTrackingRun.findMany({
+    where: { tripId: params.fixture.trip.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  throw new Error(
+    `Trip terminal wait timed out: tripStatus=${trip?.tripStatus} detState=${det?.state} ` +
+      `activeTripId=${det?.activeTripId} queueJobs=${await countTripTrackingJobs(params.trackingQueue)} ` +
+      `runs=${JSON.stringify(runs.map((r) => ({ type: r.runType, summary: r.resultSummary })))}`,
+  );
 }

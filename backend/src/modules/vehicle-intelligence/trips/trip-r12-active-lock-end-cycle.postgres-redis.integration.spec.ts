@@ -1,5 +1,5 @@
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
-import { Queue } from 'bullmq';
+import { Queue, type Job } from 'bullmq';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
@@ -17,10 +17,12 @@ import {
   createTripR11ActiveTripFixture,
   createTripTrackingWorkers,
   probeTripR11Postgres,
+  promoteDelayedTripTrackingJobs,
   restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
   useTripR11FrozenClock,
+  waitForHarnessCondition,
   waitForTripTrackingJobState,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
@@ -124,13 +126,15 @@ if (REQUIRED) {
       });
 
       const runJobWithActiveHold = async (
-        job: TripTrackingJobData,
-        jobId?: string,
+        bullJob: Job<TripTrackingJobData>,
       ): Promise<void> => {
-        if (job.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION && jobId === evPrimaryId) {
+        if (
+          bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION &&
+          bullJob.id === evPrimaryId
+        ) {
           await evHold;
         }
-        await harness.runJob(job);
+        await harness.runJob(bullJob.data);
       };
 
       useTripR11FrozenClock(endCycleAt);
@@ -201,7 +205,14 @@ if (REQUIRED) {
           expect(det?.possibleEndEnteredAt).toBeNull();
           expect(det?.possibleEndAt).toBeNull();
           expect(resolveEndCycleToken(det!)).toBeNull();
-          expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
+          await waitForHarnessCondition(
+            async () => {
+              await promoteDelayedTripTrackingJobs(trackingQueue);
+              return (await countTripTrackingJobs(trackingQueue)) === 0;
+            },
+            15_000,
+            'queue drain after terminal',
+          );
         } finally {
           releaseEvHold?.();
           await closeTripTrackingWorkers(workers);
