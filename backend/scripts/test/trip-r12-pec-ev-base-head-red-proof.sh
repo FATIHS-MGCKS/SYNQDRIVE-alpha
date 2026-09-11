@@ -145,6 +145,7 @@ echo "=== HEAD probe @ ${HEAD_SHA} (expect=HEAD) ==="
 HEAD_OUT="$(install_and_run_probe "$HEAD_DIR" HEAD HEAD)"
 echo "$HEAD_OUT"
 
+set +e
 VALIDATION="$(node -e "
 const fs = require('fs');
 
@@ -215,6 +216,8 @@ if (base.missing) console.log('BASE_METRICS_LOAD_ERROR=' + JSON.stringify(base.r
 if (head.missing) console.log('HEAD_METRICS_LOAD_ERROR=' + JSON.stringify(head.reason ?? 'missing'));
 process.exit(baseOk && headOk ? 0 : 1);
 " BASE_OUT="$BASE_OUT" HEAD_OUT="$HEAD_OUT")"
+validation_exit=$?
+set -e
 
 echo "$VALIDATION"
 
@@ -227,11 +230,8 @@ BASE_PROBE_RUN_ID=${BASE_PROBE_RUN_ID}
 HEAD_PROBE_RUN_ID=${HEAD_PROBE_RUN_ID}
 EOF
 
-echo "$VALIDATION" | rg '^(BASE_|HEAD_|BASE_RED|HEAD_GREEN)' || true
+echo "$VALIDATION"
 
-if ! echo "$VALIDATION" | rg -q '^BASE_RED_REPRODUCED=YES$'; then
-  exit 1
-fi
-if ! echo "$VALIDATION" | rg -q '^HEAD_GREEN_PROVEN=YES$'; then
-  exit 1
+if [[ "$validation_exit" -ne 0 ]]; then
+  exit "$validation_exit"
 fi
