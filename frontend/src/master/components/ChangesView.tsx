@@ -43,9 +43,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Read-only Production audit for DIMO Ruptela LTE_R1 primary vehicle KS MX 2024 (token 187336).',
       'Verified ~24 h strict source advances (86,563–86,581 s) during post-trip standby; 6 h cadence not observed.',
       'Poll SUCCESS : strict source advance ratio ~343:1 over 3.75 d stationary window.',
-      '24 h threshold jitter quantified: 163–181 s transient signal_delayed window per cycle (VDC-Q-011).',
+      '24 h threshold: 163–181 s potential classification windows per cycle; Sep cycles THEORETICAL_WINDOW_ONLY (no persisted alerts).',
       'IO174 not exposed in signalsLatest ingest; GT-R1-UNPLUG-001 ground-truth protocol prepared (not executed).',
-      'Authority remains AUDIT_IN_PROGRESS — no runtime/threshold changes.',
+      'No Production or connectivity-runtime behavior changes; no thresholds, services, databases, or provider configuration were mutated.',
     ],
     reason:
       'Phase 2 gate: establish empirical Production truth for Vehicle & Device Connectivity before Phase 3 reconciliation.',

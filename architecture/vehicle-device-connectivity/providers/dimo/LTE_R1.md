@@ -15,6 +15,8 @@
 | Standby source cadence | ~24 h strict source advances (86,563–86,581 s observed) | PRODUCTION_OBSERVATION |
 | 6 h standby cadence | **Not observed** | CONTRADICTED for this vehicle |
 | Poll vs source | ~343:1 SUCCESS poll : strict advance during stationary window | PRODUCTION_OBSERVATION |
+| 24 h threshold windows | +163 to +181 s **potential** classification windows; Sep cycles **THEORETICAL_WINDOW_ONLY** (no persisted SOFT_OFFLINE) | PRODUCTION_OBSERVATION |
+| Unplug delivery vs canonicalization | Provider inbox ~4 s; SynqDrive canonicalization ~100 min (Aug 2025, `enqueue_failed` + retry) | PRODUCTION_OBSERVATION |
 | Per-signal timestamps | Fuel/ECT may remain at trip-end while LV/GNSS advance on wake | PRODUCTION_OBSERVATION |
 | IO174 / Ruptela raw IO | Not exposed in `signalsLatest` ingest | IO174_NOT_EXPOSED_BY_CURRENT_INGEST |
 | Heartbeat / 0x10 | Not observed in SynqDrive persistence | UNKNOWN at protocol layer |

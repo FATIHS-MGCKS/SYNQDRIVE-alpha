@@ -16,7 +16,8 @@
 | **Active release path** | `/opt/synqdrive/releases/20260911190214_v4994` | `readlink -f /opt/synqdrive/current` → same path |
 | **Deployed Git SHA** | `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` | `git rev-parse HEAD` in release tree |
 | **origin/main SHA (audit workspace)** | `f952234ecce3b4892c667ba26a35fabbbaeda516` | `git rev-parse origin/main` at audit time |
-| **Repo/Production drift** | **YES** — Production behind `origin/main` | Phase 1 VDC precision hardening merged on `main` after last VPS deploy |
+| **Repo/Production drift** | **YES** — Production behind `origin/main` | Phase 1 VDC authority docs merged on `main` after last VPS deploy |
+| **VDC_RUNTIME_SEMANTIC_DRIFT** | **NONE_OBSERVED** | `git diff adef555..f952234` — zero changes under connectivity runtime paths (see below) |
 | **Public health** | `{"status":"ok"}` | `GET https://app.synqdrive.eu/api/v1/health` @ 2026-09-11T23:05:56Z |
 
 ## Process/runtime footprint (connectivity-relevant)
@@ -47,6 +48,24 @@
 | G3 Deduplicated source timeline | **PASS** — ClickHouse distinct `recorded_at` |
 | G4 Hypothesis matrix updated | **PASS** — see [LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](./LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | G5 Evidence committed | **PASS** — this file + forensics artifact |
+
+## VDC runtime semantic drift check
+
+Compared Production SHA `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` vs Phase-2 `origin/main` `f952234ecce3b4892c667ba26a35fabbbaeda516`.
+
+| Path group | Diff result |
+|------------|-------------|
+| `backend/src/modules/dimo/vls-monotonic-merge.util.ts` | **No change** |
+| `backend/src/workers/processors/dimo-snapshot.processor.ts` | **No change** |
+| `backend/src/modules/vehicles/connectivity/**` | **No change** |
+| `backend/src/modules/vehicles/telemetry-freshness.resolver.ts` | **No change** |
+| `backend/src/modules/vehicles/vehicle-state-interpreter.ts` | **No change** |
+| `backend/src/modules/dimo/device-connection*` | **No change** |
+| `backend/src/modules/dimo/connectivity-alert/**` | **No change** |
+| `backend/src/modules/clickhouse/clickhouse-telemetry.service.ts` | **No change** |
+| `backend/prisma/schema.prisma` (connectivity tables) | **No change** |
+
+**Only** `architecture/vehicle-device-connectivity/**` differs between SHAs (authority docs). Production and main are **not** globally equivalent, but **VDC_RUNTIME_SEMANTIC_DRIFT = NONE_OBSERVED** for connectivity interpretation paths used in Phase 2.
 
 ## Related evidence
 

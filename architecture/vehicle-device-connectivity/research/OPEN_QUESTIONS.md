@@ -12,4 +12,6 @@
 | **VDC-Q-008** | What retention policy applies to device_connection_episodes and webhook inbox? | 3 | UNKNOWN | Open |
 | **VDC-Q-009** | Does equal `sourceTimestamp` replay (**VDC-CX-010**) cause duplicate VLS/episode/trip side effects beyond ClickHouse `skipped_duplicate`? | 2 | PRODUCTION_OBSERVATION | **Partial** — high churn MATERIAL; no erroneous Sep episodes |
 | **VDC-Q-010** | Multi-replica ClickHouse duplicate insert rate at equal `recorded_at`? | 2 | PRODUCTION_OBSERVATION | **Observed** — up to 11,293 duplicate rows at one timestamp (historical) |
-| **VDC-Q-011** | LTE_R1 jitter around 86,400 s and false `signal_delayed` / SOFT_OFFLINE? | 2 | PRODUCTION_OBSERVATION | **Answered** — +163 to +181 s jitter; transient soft-delayed window per cycle |
+| **VDC-Q-011** | LTE_R1 jitter around 86,400 s and false `signal_delayed` / SOFT_OFFLINE? | 2 | PRODUCTION_OBSERVATION | **Answered** — +163 to +181 s **potential** windows; Sep cycles **THEORETICAL_WINDOW_ONLY** (no persisted alerts) |
+| **VDC-Q-012** | What causes historical ClickHouse duplicate `recorded_at` rows at equal source timestamps? | 2 | UNKNOWN | **Open** — duplicates CONFIRMED; causal link to VDC-CX-010 equality upserts, multi-replica race, or replay **not proven** |
+| **VDC-Q-013** | What caused Aug 2025 KS MX 2024 device-connection inbox `enqueue_failed` and ~100 min canonicalization delay? | 2 | PARTIAL | **Partial** — `enqueue_failed` + scheduler retry at 22:22:30Z evidenced; full root cause (worker/deploy/replay) **not proven** from retained logs |

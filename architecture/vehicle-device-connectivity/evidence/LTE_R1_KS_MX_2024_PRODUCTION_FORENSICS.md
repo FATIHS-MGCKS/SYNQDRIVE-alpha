@@ -69,21 +69,37 @@ Deduplicated from ClickHouse `telemetry_snapshots.recorded_at` (mirrors `signals
 
 **Wording:** OBSERVED ~24 h strict DIMO source advances. STRONGLY_SUPPORTED periodic standby source behavior. **NOT YET PROVEN:** Ruptela IO174 physical timer wake.
 
-## 4. VDC-Q-011 — 24 h threshold false-positive analysis
+## 4. VDC-Q-011 — 24 h threshold analysis (theoretical vs actual evaluation)
 
 Runtime thresholds (unchanged in Phase 2): `standby` < 24 h; `signal_delayed` ≥ 24 h and < 48 h.
 
-For each observed standby cycle, the vehicle remains in `signal_delayed` classification for the interval between crossing 86,400 s and the next strict source advance:
+### 4a. Potential transient classification windows (theoretical)
 
-| Cycle end advance | Interval (s) | Transient `signal_delayed` window (s) | Runtime would classify before advance? |
-|-------------------|-------------|---------------------------------------|----------------------------------------|
-| 2026-09-09T05:04:58Z | 86,563 | **163** | Yes — ≥24 h, <48 h |
-| 2026-09-10T05:07:59Z | 86,581 | **181** | Yes |
-| 2026-09-11T05:10:42Z | 86,563 | **163** | Yes |
+If freshness were evaluated continuously, each cycle would cross the 86,400 s boundary before the next strict source advance:
 
-At audit capture (~18 h after 2026-09-11T05:10:42Z), runtime classified `telemetryState: standby` (not yet `signal_delayed`). Poll cadence ~5.5 min does not change source age; it only refreshes `providerFetchedAt`.
+| Cycle | Previous strict source | Threshold crossing (prev + 86,400 s) | Next strict advance | Potential window (s) |
+|-------|------------------------|----------------------------------------|---------------------|----------------------|
+| C1 | 2026-09-08T05:02:15Z | 2026-09-09T05:02:15Z | 2026-09-09T05:04:58Z | **163** |
+| C2 | 2026-09-09T05:04:58Z | 2026-09-10T05:04:58Z | 2026-09-10T05:07:59Z | **181** |
+| C3 | 2026-09-10T05:07:59Z | 2026-09-11T05:07:59Z | 2026-09-11T05:10:42Z | **163** |
 
-**TELEMETRY_SOFT_OFFLINE policy:** Historical notification `TELEMETRY_SOFT_OFFLINE` opened 2026-08-27 (resolved same day) — predates current 3-day stationary window; not attributed to the Sep 8–11 ~24 h cycle without further correlation. **INFERRED** prior incident may relate to older SIM/provider stale episode (Aug 2026 architecture notes).
+These are **potential transient classification windows**, not demonstrated false positives.
+
+### 4b. Actual Production evaluation per cycle
+
+**Method:** Query `dimo_poll_logs` (SNAPSHOT) in `[threshold crossing, next strict advance)`, plus `notifications` / `notification_occurrences` for `TELEMETRY_SOFT_OFFLINE` and `TELEMETRY_OFFLINE`. Alert sync runs only via `VehicleConnectivityRuntimeProjectionService.projectForVehicle()` (demand-driven) — **not** on every snapshot poll (`dimo-snapshot.processor` has no `projectForVehicle` call). CODE.
+
+| Cycle | Polls in window | SUCCESS / FAILURE | Alerts in window | Classification |
+|-------|-----------------|-------------------|------------------|----------------|
+| C1 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
+| C2 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
+| C3 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
+
+**Expanded context (±10 min):** Nearest polls were ~5 min **before** threshold crossing (source still `< 24 h` → `standby`). No poll occurred inside the 163–181 s windows because scheduled SNAPSHOT cadence (~5.5 min) exceeds window duration. C2 had a poll at `2026-09-10T05:06:51Z` (inside expanded range, before advance) that would imply `signal_delayed` **if** `syncRuntimeAlerts` had run — but **no** `TELEMETRY_SOFT_OFFLINE` notification was persisted in that interval.
+
+**Conclusion:** Sep 8–11 ~24 h cycles produced **no observed `signal_delayed` alert false positives**. Windows are real classification-risk intervals under continuous evaluation, but Production did not persist or emit soft-offline alerts during them.
+
+**Historical note:** `TELEMETRY_SOFT_OFFLINE` on 2026-08-27 (resolved same day) predates the Sep stationary cycles and is **not** attributed to these windows without further correlation.
 
 ## 5. Poll success vs strict source advance (VDC-HYP-003)
 
@@ -109,7 +125,7 @@ Stationary window: 2026-09-08T05:02:15Z → audit (~3.75 days).
 | Equality upserts occur at high frequency during standby | ~1,027 SUCCESS polls vs 3 strict advances | **MATERIAL** |
 | Full VLS upsert path executes on equality (code) | Phase 1 repo audit | CODE |
 | CH ingest dedupes equal `recorded_at` per vehicle | Post-trip: 1 row per distinct source timestamp | PRODUCTION_OBSERVATION |
-| Historical CH duplicate `recorded_at` rows | Max 11,293 rows at one timestamp (Jun–Jul 2026) | **MATERIAL** — multi-replica / replay |
+| Historical CH duplicate `recorded_at` rows | Max 11,293 rows at one timestamp (Jun–Jul 2026) | **CONFIRMED** duplicates exist; causal link to VDC-CX-010 **UNKNOWN** (VDC-Q-012) |
 | Downstream episode/trip on equality | No new episodes in Sep 8–11 window; trip FSM resting | PRODUCTION_OBSERVATION |
 | Runtime at audit | `providerReachable: true`, `observationAgeMs` ~18 h, `providerFetchAgeMs` ~2 min | PRODUCTION_OBSERVATION |
 
@@ -145,25 +161,47 @@ No separate Ruptela heartbeat, 0x10, or keepalive event surface observed in Prod
 
 ## 10. Unplug / plug webhook evidence
 
-### Historical events (all time)
+### Timestamp semantics (CODE — verified against Production schema)
 
-| Type | observed_at UTC | received_at (inbox) | received_at (canonical event) | Episode |
-|------|-----------------|---------------------|-------------------------------|---------|
-| OBD_DEVICE_UNPLUGGED | 2026-08-25T20:41:54Z | 2026-08-25T20:41:58Z (+4 s) | 2026-08-25T22:22:30Z (+6036 s) | Opened |
-| OBD_DEVICE_UNPLUGGED | 2026-08-25T20:42:02Z | 2026-08-25T20:42:06Z (+4 s) | 2026-08-25T22:22:30Z (+6028 s) | Duplicate bucket |
+| Field | Table | Meaning |
+|-------|-------|---------|
+| `observedAt` | inbox + canonical | Provider-reported event instant from webhook payload |
+| `receivedAt` | inbox | SynqDrive HTTP intake instant (`new Date()` in `device-connection-webhook-inbox.service`) |
+| `processedAt` | inbox | Inbox row processing completion |
+| `receivedAt` | canonical | SynqDrive canonicalization instant when `persistDeviceConnectionEvent` runs (`new Date()` — **not** copied from inbox) |
+| `processedAt` | canonical | Episode lifecycle completion after persist |
+| `openedAt` | episode | Episode open instant (aligned to canonical `observedAt` for webhook-opened episodes) |
 
-**Episode:** OPENED 2026-08-25T20:41:54Z → RESOLVED 2026-08-26T11:58:27Z via `SNAPSHOT_PLUG_SIGNAL` (no `OBD_DEVICE_PLUGGED_IN` webhook in canonical events).
+### Aug 2025 sequence (reconstructed)
 
-### Recovery layer separation (Aug 2026 sequence)
+| Step | Timestamp UTC | Metric |
+|------|---------------|--------|
+| Provider `observedAt` | 2026-08-25T20:41:54.000Z | Provider event time |
+| Inbox `receivedAt` | 2026-08-25T20:41:58.738Z | **PROVIDER_DELIVERY_LATENCY = +4.7 s** |
+| Inbox `createdAt` | 2026-08-25T20:41:58.742Z | Row persisted |
+| Inbox `lastErrorCode` | `enqueue_failed` | Initial processing failure (PRODUCTION_OBSERVATION) |
+| Inbox `processedAt` | 2026-08-25T22:22:30.067Z | **INBOX_PROCESSING_DELAY = +6,031 s (~100.5 min)** from inbox receipt |
+| Canonical `receivedAt` | 2026-08-25T22:22:30.039Z | **SYNQDRIVE_CANONICALIZATION_DELAY = +6,031 s** from inbox receipt |
+| Canonical `processedAt` | 2026-08-25T22:22:30.047Z | Lifecycle complete (+8 ms) |
+| Episode `openedAt` | 2026-08-25T20:41:54.000Z | Uses provider `observedAt` |
+| Episode `resolvedAt` | 2026-08-26T11:58:27.000Z | `SNAPSHOT_PLUG_SIGNAL` |
 
-| Stage | Timestamp | Layer |
-|-------|-----------|-------|
-| PHYSICAL_UNPLUG | 2026-08-25 ~20:41 UTC | INFERRED from webhook |
-| Provider webhook (inbox) | +4 s latency | PRODUCTION_OBSERVATION |
-| Episode open | 2026-08-25T20:41:54Z | PRODUCTION_OBSERVATION |
-| PHYSICAL_REPLUG / plug signal | 2026-08-26T11:58:27Z | SNAPSHOT evidence — not webhook |
-| TELEMETRY_RESUMED | After replug (strict source advanced subsequently) | INFERRED |
-| FULL_CONNECTIVITY_RECOVERED | CONNECTED + plugged + fresh source at audit | PRODUCTION_OBSERVATION (current) |
+Duplicate unplug at `20:42:02Z` shares the same canonicalization delay pattern (+6,028 s inbox → canonical).
+
+**Root cause:** **Partially evidenced, not fully proven.** Inbox rows show `lastErrorCode: enqueue_failed` with `processingAttempts: 1`, then successful `processedAt` at 22:22:30Z — consistent with scheduler retry after enqueue failure (supporting repo note: natural scheduler retry processed stuck inbox rows at 22:22:30Z). Worker unavailability, deployment timing, or other factors **not independently proven** from retained logs in this audit. See **VDC-Q-013**.
+
+Fast provider delivery (~4 s) did **not** imply fast SynqDrive disconnect detection (~100 min to canonical event).
+
+### Recovery layer separation (Aug 2026 — epistemic precision)
+
+| Stage | Evidence class | Notes |
+|-------|----------------|-------|
+| Provider unplug signal | **OBSERVED** | Webhook `observedAt` 2026-08-25T20:41:54Z |
+| Episode open | **OBSERVED** | `openedAt` aligned to provider `observedAt` |
+| Snapshot plug signal | **OBSERVED** | `SNAPSHOT_PLUG_SIGNAL` at 2026-08-26T11:58:27Z; `obdIsPluggedIn=true` in snapshot path |
+| Physical replug | **INFERRED** | Likely device reinserted/present again — **not** human-observed in this incident |
+| Strict source advance after recovery | **INFERRED** | Subsequent telemetry resumed; exact first strict-advance instant not reconstructed here |
+| Full connectivity healthy at audit | **OBSERVED** (2026-09-11) | Current state only — **not** the historical recovery instant |
 
 No unplug/plug webhooks in Sep 8–11 stationary window.
 
@@ -189,8 +227,9 @@ Ground-truth controlled unplug (**GT-R1-UNPLUG-001**) still required for authori
 | `obdIsPluggedIn` | 1 | Plugged |
 | `telemetryState` | standby | |
 | `physicalDeviceState` | PLUGGED_INFERRED | |
+| `providerLinkState` | **UNKNOWN** | vs DIMO `connectionStatus` CONNECTED — **VDC-CX-011** |
 
-**Observed combination:** CONNECTED + successful poll + stale source + plugged + standby — healthy sleeping LTE_R1 signature.
+**Observed combination:** CONNECTED + successful poll + stale source + plugged + standby + `providerLinkState: UNKNOWN` — healthy sleeping LTE_R1 signature with provider-link projection contradiction.
 
 ## 13. Alert behavior
 
@@ -238,7 +277,7 @@ No `TELEMETRY_OFFLINE` or device unplug alerts open at audit time.
 
 ## 17. Phase 3 recommendations
 
-1. **Do not change thresholds in Phase 2** — document 163–181 s false `signal_delayed` window per ~24 h cycle (VDC-Q-011).
+1. **Do not change thresholds in Phase 2** — document 163–181 s **potential** classification windows; verify alert emission under continuous evaluation in Phase 3 (VDC-Q-011).
 2. **GT-R1-UNPLUG-001** — execute controlled physical test when authorized.
 3. **VDC-CX-010** — design equality short-circuit (metadata-only path) before promotion to `AUTHORITY_ACTIVE`.
 4. **CH duplicate `recorded_at`** — investigate multi-replica mirror idempotency (VDC-Q-010).

@@ -61,6 +61,6 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 
 ## NEXT_GATE
 
-1. Phase 3 reconciliation of contradictions (VDC-CX-001..010) with Production evidence.
+1. Phase 3 reconciliation of contradictions (VDC-CX-001..011) with Production evidence.
 2. GT-R1-UNPLUG-001 controlled ground-truth test (when authorized).
 3. HM runtime integration design (VDC-GAP-009).
