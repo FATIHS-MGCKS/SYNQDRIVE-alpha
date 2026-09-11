@@ -150,6 +150,8 @@ function refreshOrchestrationProtoBindings(
   o.scheduleEndValidation = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
   o.scheduleFinalize = TripDetectionOrchestrationService.prototype.scheduleFinalize;
 }
+
+function buildPossibleEndCheckJob(
   fixture: TripR11PostgresFixture,
   requestedAt: Date,
 ): TripTrackingJobData {
