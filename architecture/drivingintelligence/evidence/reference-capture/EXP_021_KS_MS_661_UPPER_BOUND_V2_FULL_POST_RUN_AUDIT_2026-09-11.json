@@ -1,0 +1,394 @@
+{
+  "generatedAtUtc": "2026-09-11T20:33:16.191Z",
+  "run": {
+    "sessionId": "d633da9d-e32c-461c-8a27-8c0c6bfff209",
+    "experimentUuid": "c99b7959-1511-4bb9-9f13-12ea75eb2821",
+    "cadenceMs": [
+      180000,
+      120000,
+      60000,
+      30000
+    ]
+  },
+  "postRunSettlementMature": "YES",
+  "pendingMandatorySchedules": 0,
+  "identity": {
+    "rcSessionId": "d633da9d-e32c-461c-8a27-8c0c6bfff209",
+    "calibrationSeriesId": "6b45b3c9-6601-4a23-aadc-7df8d36344a1",
+    "settlementExperimentId": "exp-021-d633da9d-37dfdb23",
+    "settlementExperimentUuid": "c99b7959-1511-4bb9-9f13-12ea75eb2821",
+    "productionSha": "adef555430eee7d53e0b3e90c4154ec5fdcd18ad"
+  },
+  "physical": {
+    "physicalT0": "2026-09-11T19:42:19.000Z",
+    "systemPdiPhysicalEnd": "2026-09-11T20:05:08.000Z",
+    "pdiConfirmationAt": "2026-09-11T20:07:34.929Z",
+    "operatorReportedPhysicalEnd": "2026-09-11T20:15:00.000Z",
+    "physicalEndAuthority": "CONTRADICTED_UNDER_INVESTIGATION",
+    "physicalDurationSec": 1369,
+    "orchestrationState": "PHYSICAL_RUN_ENDED_EARLY",
+    "movementAfterPdiBoundaryConfirmed": "NO",
+    "movementAfterPdiConfirmationConfirmed": "UNKNOWN"
+  },
+  "slotAudit": {
+    "180s": {
+      "intendedSlots": 5,
+      "persistedSlots": 0,
+      "providerRequestCount": 5,
+      "slotRows": []
+    },
+    "120s": {
+      "intendedSlots": 5,
+      "persistedSlots": 0,
+      "providerRequestCount": 3,
+      "slotRows": []
+    },
+    "60s": {
+      "intendedSlots": 5,
+      "persistedSlots": 0,
+      "providerRequestCount": 0,
+      "slotRows": []
+    },
+    "30s": {
+      "intendedSlots": 6,
+      "persistedSlots": 0,
+      "slotRows": []
+    }
+  },
+  "slotTotals": {
+    "expectedSlots": 21,
+    "reservedSlots": 0,
+    "issuedSlots": 0,
+    "successfulSlots": 0,
+    "zeroResultSlots": 0,
+    "failedSlots": 0,
+    "skippedSlots": 0,
+    "unslottedHfRequests": "UNKNOWN_UNPROVABLE",
+    "duplicateSlotExecutions": "UNKNOWN_UNPROVABLE",
+    "silentlyLostSlots": "UNKNOWN_UNPROVABLE",
+    "unslottedHfRequestsRawAggregate": 8
+  },
+  "phaseReports": {
+    "180s": {
+      "phase": "180s",
+      "start": "2026-09-11T19:42:19.000Z",
+      "end": "2026-09-11T19:57:25.857Z",
+      "wallDurationSec": 906.857,
+      "validMovementDurationSec": null,
+      "status": "DEGRADED_LOW_MOVEMENT",
+      "scientificValidity": "DEGRADED_LOW_MOVEMENT",
+      "providerRequestCount": 5,
+      "providerSuccessCount": 5,
+      "native": {
+        "nativeBucketCount": 60,
+        "firstBucket": "2026-09-11T19:44:14.202Z",
+        "lastBucket": "2026-09-11T19:54:02.451Z",
+        "dtP50Ms": 4000,
+        "dtP90Ms": 20000,
+        "dtP95Ms": 25802,
+        "dtP99Ms": 90000,
+        "dtMaxMs": 90000,
+        "gapsGe10": 21,
+        "gapsGe20": 7,
+        "gapsGe30": 2,
+        "gapsGe60": 2,
+        "largest10GapsMs": [
+          {
+            "rank": 1,
+            "durationMs": 90000,
+            "gapStartIso": "2026-09-11T19:51:31.451Z",
+            "gapEndIso": "2026-09-11T19:53:01.451Z"
+          },
+          {
+            "rank": 2,
+            "durationMs": 84000,
+            "gapStartIso": "2026-09-11T19:46:20.343Z",
+            "gapEndIso": "2026-09-11T19:47:44.343Z"
+          },
+          {
+            "rank": 3,
+            "durationMs": 25802,
+            "gapStartIso": "2026-09-11T19:45:09.541Z",
+            "gapEndIso": "2026-09-11T19:45:35.343Z"
+          },
+          {
+            "rank": 4,
+            "durationMs": 21000,
+            "gapStartIso": "2026-09-11T19:48:40.709Z",
+            "gapEndIso": "2026-09-11T19:49:01.709Z"
+          },
+          {
+            "rank": 5,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:49:01.709Z",
+            "gapEndIso": "2026-09-11T19:49:21.709Z"
+          },
+          {
+            "rank": 6,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:49:01.709Z",
+            "gapEndIso": "2026-09-11T19:49:21.709Z"
+          },
+          {
+            "rank": 7,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:49:01.709Z",
+            "gapEndIso": "2026-09-11T19:49:21.709Z"
+          },
+          {
+            "rank": 8,
+            "durationMs": 19000,
+            "gapStartIso": "2026-09-11T19:44:14.202Z",
+            "gapEndIso": "2026-09-11T19:44:33.202Z"
+          },
+          {
+            "rank": 9,
+            "durationMs": 19000,
+            "gapStartIso": "2026-09-11T19:44:14.202Z",
+            "gapEndIso": "2026-09-11T19:44:33.202Z"
+          },
+          {
+            "rank": 10,
+            "durationMs": 19000,
+            "gapStartIso": "2026-09-11T19:44:14.202Z",
+            "gapEndIso": "2026-09-11T19:44:33.202Z"
+          }
+        ]
+      },
+      "gapSummary": {
+        "nativeGapsTotal": 21,
+        "nativeGapsExactlySettlementComparable": 19,
+        "nativeGapsNotAssessableNoOverlap": 2,
+        "liveMissingBucketsTotal": 467,
+        "liveMissingBucketsRecoveredLater": 0,
+        "liveMissingBucketsNeverSeenBy600": 295,
+        "liveMissingBucketsUnknown": 172
+      }
+    },
+    "120s": {
+      "phase": "120s",
+      "start": "2026-09-11T19:57:25.857Z",
+      "end": "2026-09-11T20:07:32.719Z",
+      "wallDurationSec": 606.862,
+      "validMovementDurationSec": 666.064,
+      "status": "DEGRADED_INSUFFICIENT_REQUESTS",
+      "scientificValidity": "DEGRADED_INSUFFICIENT_REQUESTS",
+      "providerRequestCount": 3,
+      "providerSuccessCount": 3,
+      "native": {
+        "nativeBucketCount": 49,
+        "firstBucket": "2026-09-11T19:59:16.908Z",
+        "lastBucket": "2026-09-11T20:05:07.727Z",
+        "dtP50Ms": 3000,
+        "dtP90Ms": 20000,
+        "dtP95Ms": 21000,
+        "dtP99Ms": 21000,
+        "dtMaxMs": 21000,
+        "gapsGe10": 16,
+        "gapsGe20": 7,
+        "gapsGe30": 0,
+        "gapsGe60": 0,
+        "largest10GapsMs": [
+          {
+            "rank": 1,
+            "durationMs": 21000,
+            "gapStartIso": "2026-09-11T20:01:32.366Z",
+            "gapEndIso": "2026-09-11T20:01:53.366Z"
+          },
+          {
+            "rank": 2,
+            "durationMs": 21000,
+            "gapStartIso": "2026-09-11T20:01:32.366Z",
+            "gapEndIso": "2026-09-11T20:01:53.366Z"
+          },
+          {
+            "rank": 3,
+            "durationMs": 21000,
+            "gapStartIso": "2026-09-11T20:01:32.366Z",
+            "gapEndIso": "2026-09-11T20:01:53.366Z"
+          },
+          {
+            "rank": 4,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:59:42.908Z",
+            "gapEndIso": "2026-09-11T20:00:02.908Z"
+          },
+          {
+            "rank": 5,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:59:42.908Z",
+            "gapEndIso": "2026-09-11T20:00:02.908Z"
+          },
+          {
+            "rank": 6,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:59:42.908Z",
+            "gapEndIso": "2026-09-11T20:00:02.908Z"
+          },
+          {
+            "rank": 7,
+            "durationMs": 20000,
+            "gapStartIso": "2026-09-11T19:59:42.908Z",
+            "gapEndIso": "2026-09-11T20:00:02.908Z"
+          },
+          {
+            "rank": 8,
+            "durationMs": 19000,
+            "gapStartIso": "2026-09-11T20:00:42.908Z",
+            "gapEndIso": "2026-09-11T20:01:01.908Z"
+          },
+          {
+            "rank": 9,
+            "durationMs": 18000,
+            "gapStartIso": "2026-09-11T20:02:06.366Z",
+            "gapEndIso": "2026-09-11T20:02:24.366Z"
+          },
+          {
+            "rank": 10,
+            "durationMs": 16458,
+            "gapStartIso": "2026-09-11T20:01:11.908Z",
+            "gapEndIso": "2026-09-11T20:01:28.366Z"
+          }
+        ]
+      },
+      "gapSummary": {
+        "nativeGapsTotal": 16,
+        "nativeGapsExactlySettlementComparable": 16,
+        "nativeGapsNotAssessableNoOverlap": 0,
+        "liveMissingBucketsTotal": 255,
+        "liveMissingBucketsRecoveredLater": 0,
+        "liveMissingBucketsNeverSeenBy600": 255,
+        "liveMissingBucketsUnknown": 0
+      }
+    },
+    "60s": {
+      "phase": "60s",
+      "start": "2026-09-11T20:07:32.719Z",
+      "end": "2026-09-11T20:05:08.000Z",
+      "wallDurationSec": null,
+      "validMovementDurationSec": null,
+      "status": "DEGRADED_INSUFFICIENT_REQUESTS",
+      "scientificValidity": "DEGRADED_INSUFFICIENT_REQUESTS",
+      "providerRequestCount": 0,
+      "providerSuccessCount": 0,
+      "native": {
+        "nativeBucketCount": 0,
+        "firstBucket": null,
+        "lastBucket": null,
+        "dtP50Ms": null,
+        "dtP90Ms": null,
+        "dtP95Ms": null,
+        "dtP99Ms": null,
+        "dtMaxMs": null,
+        "gapsGe10": 0,
+        "gapsGe20": 0,
+        "gapsGe30": 0,
+        "gapsGe60": 0,
+        "largest10GapsMs": []
+      }
+    },
+    "30s": {
+      "phase": "30s",
+      "wallDurationSec": null,
+      "validMovementDurationSec": null,
+      "native": {
+        "nativeBucketCount": 0,
+        "firstBucket": null,
+        "lastBucket": null,
+        "dtP50Ms": null,
+        "dtP90Ms": null,
+        "dtP95Ms": null,
+        "dtP99Ms": null,
+        "dtMaxMs": null,
+        "gapsGe10": 0,
+        "gapsGe20": 0,
+        "gapsGe30": 0,
+        "gapsGe60": 0,
+        "largest10GapsMs": []
+      }
+    }
+  },
+  "gapGlobal": {
+    "nativeGapsGe10Total": 37,
+    "assessableGaps": 35,
+    "notAssessableGaps": 2,
+    "nativeAbsentIdentitiesTotal": 722,
+    "settlementPresentLater": 0,
+    "settlementAbsentThrough600": 550,
+    "notAssessableIdentities": 172,
+    "gapAssessabilityPct": 94.5945945945946
+  },
+  "settlement": {
+    "expectedSourceWindows": 62,
+    "createdSourceWindows": 57,
+    "expectedObservations": 372,
+    "createdObservations": 372,
+    "fixedIntervalObservationsCompleted": 342,
+    "schedulesCompleted": 357,
+    "schedulesSkipped": 15,
+    "completedObservations": 342,
+    "zeroResultObservations": 0,
+    "failedObservations": 0,
+    "missingObservations": 0,
+    "scheduleStatusCounts": {
+      "COMPLETED": 357,
+      "SKIPPED": 15
+    }
+  },
+  "crossAge": {
+    "global": {
+      "allProbesBucketStableBy30": "YES",
+      "allProbesBucketStableBy60": "YES",
+      "allProbesValueStableBy30": "NO",
+      "allProbesValueStableBy60": "NO"
+    },
+    "bucketsAddedAfter": {
+      "30": 10,
+      "60": 5,
+      "120": 0,
+      "180": 0,
+      "300": 0
+    },
+    "valueRevisedTotal": 51,
+    "valueRevisedAt": {
+      "60": 13,
+      "120": 5,
+      "180": 2,
+      "300": 2,
+      "600": 2
+    },
+    "bucketStructureStableFromAge": "+120",
+    "bucketStructureStableFromAgePriorIncorrect": "+30",
+    "bucketIdentitiesAddedAt60": 10,
+    "bucketIdentitiesAddedAt120": 5,
+    "bucketIdentitiesAddedAt180": 0,
+    "bucketIdentitiesAddedAt300": 0,
+    "bucketIdentitiesAddedAt600": 0,
+    "firstAgeAfterWhichNoMoreBucketIdentitiesAdded": "+120",
+    "valuesStableFromAge": "REVISED",
+    "firstAgeAfterWhichNoMoreValueRevisions": null
+  },
+  "completeness": {
+    "allFourPhasesReached": "NO",
+    "allFourPhasesSealed": "NO",
+    "allFourPhasesWithValidMovement": "NO",
+    "reachedPhases": [
+      180,
+      120,
+      60
+    ],
+    "validPhases": []
+  },
+  "terminalization": {
+    "rcFinalState": "COMPLETED",
+    "calibrationFinalState": "SERIES_CLOSED",
+    "settlementFinalState": "ACTIVE",
+    "settlementExperimentOrphaned": true
+  },
+  "correction": {
+    "evidencePr": 1605,
+    "runtimeCorrectionPr": 1606,
+    "provisionalConfirmBypassesFinalParkedGate": "YES",
+    "physicalEndRootCause": "orchestrator physicalEndEarly on PDI CONFIRMED (120s) bypassing finalParkedMs (600s)"
+  }
+}
