@@ -36,27 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'trip-fsm-r12-pec-ev-lock-defer-2026-09-11',
-    version: '4.9.1102',
-    title: 'Trip FSM R12 — defer END_VALIDATION until PEC worker-lock release',
-    summary: [
-      'POST-#1600 KS MS 661 drive fc93f98f: 15× EV enqueue/pickup, 0× EV tracking runs; PE clocks durable.',
-      'Primary fix: capture deferred END_VALIDATION intent in PEC; schedule only after releaseWorkerLock in finally (early try/return safe).',
-      'Secondary: non-handoff END_VALIDATION lock miss throws TripTrackingHandoffLockContentionError → processor moveToDelayed.',
-      'Integration: trip-r12-pec-ev-lock-collision (lock-order + concurrent BullMQ completion); unit lock-miss regression.',
-      'Production trip fc93f98f untouched; NOT deployed.',
-    ],
-    reason:
-      'Production-proven race: PEC held per-vehicle worker lock while zero-delay END_VALIDATION ran on concurrent worker, failed lock acquire, returned silently, job removed on complete.',
-    previousBehavior:
-      'processPossibleEndCheck called scheduleEndValidation inside try while lock held; processEndValidation returned on lock miss without durable retry.',
-    details:
-      'architecture/trip-detection-lifecycle/evidence/KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md; trip-detection-orchestration.service.ts processPossibleEndCheck/processEndValidation.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-11T12:55:00.000Z',
-  },
-  {
     id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
     version: '4.9.1101',
     title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',
