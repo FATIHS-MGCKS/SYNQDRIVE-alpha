@@ -494,3 +494,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Defects | Slot ledger not persisted; phase-180 movement summary mismatch; phase-60 negative wall; settlement ACTIVE orphan |
 | Cadence decision | **READY_TO_CHOOSE_PRODUCTION_CADENCE=NO** (60/30 not executed) |
 | Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md`; `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json` |
+
+## EXP-021 — False physical-end interpretive correction (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **EVIDENCE CORRECTED** — raw PDI preserved; interpretive layer updated on PR #1605 |
+| Authority | SYSTEM_PDI `20:05:08Z` vs operator ≈`20:15Z` → **CONTRADICTED** |
+| Root cause (code) | `physicalEndEarly` bypass of `finalParkedMs` — runtime fix PR #1606 |
+| Corrections | UNSLOTTED/SILENTLY_LOST → UNKNOWN_UNPROVABLE; bucket stable from +120; settlement counter names clarified |
+| Runtime PR | #1606 — **NO MERGE** |
