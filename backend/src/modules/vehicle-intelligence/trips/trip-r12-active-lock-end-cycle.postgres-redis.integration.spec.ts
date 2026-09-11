@@ -123,8 +123,11 @@ if (REQUIRED) {
         releaseEvHold = resolve;
       });
 
-      const runJobWithActiveHold = async (job: TripTrackingJobData): Promise<void> => {
-        if (job.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
+      const runJobWithActiveHold = async (
+        job: TripTrackingJobData,
+        jobId?: string,
+      ): Promise<void> => {
+        if (job.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION && jobId === evPrimaryId) {
           await evHold;
         }
         await harness.runJob(job);
