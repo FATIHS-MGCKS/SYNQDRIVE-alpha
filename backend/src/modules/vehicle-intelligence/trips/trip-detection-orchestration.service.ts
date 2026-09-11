@@ -3541,11 +3541,7 @@ export class TripDetectionOrchestrationService {
     const { vehicleId, organizationId } = data;
     const lock = await this.acquireWorkerLock(vehicleId);
     if (!lock.acquired) {
-      if (isTripTrackingHandoffJob(data)) {
-        throw new TripTrackingHandoffLockContentionError();
-      }
-      this.logger.debug(`Lock not acquired for FINALIZE ${vehicleId}`);
-      return;
+      throw new TripTrackingHandoffLockContentionError();
     }
 
     const startedMs = Date.now();
