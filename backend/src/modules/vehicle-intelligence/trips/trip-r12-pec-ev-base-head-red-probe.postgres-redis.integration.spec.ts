@@ -273,8 +273,53 @@ async function waitForNaturalTerminal(params: {
         const pecNow = new Date('2026-09-08T05:04:30.000Z');
         useTripR11FrozenClock(pecNow);
 
-        const evJobId = buildTripTrackingJobId('ev', fixture.vehicle.id, fixture.trip.id);
+        let pecWorkerLockDepth = 0;
+        let processingTrigger: TripTrackingJobData['trigger'] | null = null;
+
         const scheduleProto = TripDetectionOrchestrationService.prototype.scheduleEndValidation;
+        const acquireProto = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
+        const releaseProto = TripDetectionOrchestrationService.prototype.releaseWorkerLock;
+
+        jest
+          .spyOn(TripDetectionOrchestrationService.prototype, 'releaseWorkerLock')
+          .mockImplementation(async function (
+            this: TripDetectionOrchestrationService,
+            vehicleId: string,
+            runToken: string,
+          ) {
+            const stack = new Error().stack ?? '';
+            await releaseProto.call(this, vehicleId, runToken);
+            if (stack.includes('processPossibleEndCheck')) {
+              pecWorkerLockDepth = Math.max(0, pecWorkerLockDepth - 1);
+            }
+          });
+
+        jest
+          .spyOn(TripDetectionOrchestrationService.prototype, 'acquireWorkerLock')
+          .mockImplementation(async function (
+            this: TripDetectionOrchestrationService,
+            vehicleId: string,
+            ttlMs?: number,
+          ) {
+            const stack = new Error().stack ?? '';
+            const fromPec = stack.includes('processPossibleEndCheck');
+            const fromEv =
+              processingTrigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION ||
+              stack.includes('processEndValidation');
+            const fromFinalize = stack.includes('processFinalize');
+            const result = await acquireProto.call(this, vehicleId, ttlMs);
+            if (fromPec && result.acquired) {
+              pecWorkerLockDepth += 1;
+            }
+            if (fromEv) {
+              if (!result.acquired) evLockMiss = true;
+            }
+            if (fromFinalize && result.acquired) {
+              finalizeProcessorEntry = true;
+            }
+            return result;
+          });
+
         jest
           .spyOn(TripDetectionOrchestrationService.prototype, 'scheduleEndValidation')
           .mockImplementation(async function (
@@ -284,67 +329,45 @@ async function waitForNaturalTerminal(params: {
             dimoTokenId: number,
             delayMs?: number,
           ) {
-            const det = await prisma.vehicleTripDetectionState.findUnique({
-              where: { vehicleId },
-              select: { workerRunToken: true, workerLockedUntil: true },
-            });
-            const lockedByDb =
-              det?.workerRunToken != null &&
-              det.workerLockedUntil != null &&
-              det.workerLockedUntil.getTime() > Date.now();
-
-            if (lockedByDb) {
+            if (pecWorkerLockDepth > 0) {
               scheduleWhilePecLockHeld = true;
             }
 
             await scheduleProto.call(this, vehicleId, organizationId, dimoTokenId, delayMs);
 
-            // BASE: hold the PEC stack (worker lock) until EV is picked up concurrently.
-            if (PROBE_EXPECT === 'BASE' && lockedByDb) {
-              await probeWaitForCondition(async () => {
-                if (evProcessorEntry || evLockMiss) return true;
-                const evJob = await trackingQueue.getJob(evJobId);
-                if (!evJob) return false;
-                const state = await evJob.getState();
-                return state === 'active' || state === 'completed';
-              }, 15_000, 'BASE EV pickup while PEC scheduleEndValidation in flight');
+            // BASE: keep PEC worker-lock held until EV is picked up concurrently.
+            if (PROBE_EXPECT === 'BASE' && pecWorkerLockDepth > 0) {
+              await probeWaitForCondition(
+                async () => evProcessorEntry && pecWorkerLockDepth > 0,
+                15_000,
+                'BASE EV processor entry while PEC worker lock held',
+              );
+              await probeWaitForCondition(
+                async () => evLockMiss,
+                15_000,
+                'BASE EV lock miss while PEC worker lock held',
+              );
             }
 
             return;
-          });
-
-        const acquireProto = TripDetectionOrchestrationService.prototype.acquireWorkerLock;
-        jest
-          .spyOn(TripDetectionOrchestrationService.prototype, 'acquireWorkerLock')
-          .mockImplementation(async function (
-            this: TripDetectionOrchestrationService,
-            vehicleId: string,
-            ttlMs?: number,
-          ) {
-            const stack = new Error().stack ?? '';
-            const fromEndValidation = stack.includes('processEndValidation');
-            const fromFinalize = stack.includes('processFinalize');
-            const result = await acquireProto.call(this, vehicleId, ttlMs);
-            if (fromEndValidation) {
-              if (!result.acquired) evLockMiss = true;
-            }
-            if (fromFinalize && result.acquired) {
-              finalizeProcessorEntry = true;
-            }
-            return result;
           });
 
         const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
         const workers = createProbeWorkers({
           connection: redisStack.connectionOptions,
           processor: async (bullJob) => {
-            if (bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
-              evProcessorEntry = true;
+            processingTrigger = bullJob.data.trigger;
+            try {
+              if (bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
+                evProcessorEntry = true;
+              }
+              if (bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.FINALIZE) {
+                finalizeProcessorEntry = true;
+              }
+              await runJobLikeTripTrackingProcessor(harness, bullJob);
+            } finally {
+              processingTrigger = null;
             }
-            if (bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.FINALIZE) {
-              finalizeProcessorEntry = true;
-            }
-            await runJobLikeTripTrackingProcessor(harness, bullJob);
           },
           workerCount: 2,
           concurrency: 1,
@@ -379,11 +402,7 @@ async function waitForNaturalTerminal(params: {
               timeoutMs: 60_000,
             });
           } else {
-            await probeWaitForCondition(
-              async () => evProcessorEntry || evLockMiss,
-              15_000,
-              'BASE EV processor entry or lock miss',
-            );
+            await probePurgeQueueJobs(trackingQueue);
             restoreTripR11Clock();
           }
         } finally {
