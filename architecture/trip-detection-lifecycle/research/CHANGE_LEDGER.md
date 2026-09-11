@@ -44,6 +44,7 @@ Append-only record for this authority directory.
 | 2026-09-10 | PR #1600 R12 end-cycle lock contention + PE clock durability hardening — family arbitration, fail-closed trust, no workerNow token fabrication; KS MS 661 acceptance failure forensics | Trip FSM R12 PR #1600 | [KS_MS_661_R12_PHYSICAL_ACCEPTANCE_FAILURE_2026-09-10.md](../evidence/KS_MS_661_R12_PHYSICAL_ACCEPTANCE_FAILURE_2026-09-10.md) |
 | 2026-09-10 | PR #1600 follow-up — `readTrustedStopBoundaryFromEvidence` uses canonical authority inference when `stopBoundaryTrust` absent; explicit false/malformed still fail-closed; restores R11 Scenario C/J completion-chain reconcile | Trip FSM R12 PR #1600 | Same evidence doc |
 | 2026-09-10 | PR #1600 follow-up — R11 postgres integration harness drains queue jobs before `runJob` (matches BullMQ ACTIVE semantics; fixes stable-slot `skip_queued_primary` false skips) | Trip FSM R12 PR #1600 | Same evidence doc |
+| 2026-09-11 | PR #1600 pre-merge hardening — repository-wide clock writer audit (root cause UNRESOLVED / recovery PROVEN); strict R12 recovery trust (`stopBoundaryTrust === true` required); `test:trip-r12:hardening` CI job; real BullMQ two-worker ACTIVE-lock integration regression | Trip FSM R12 PR #1600 | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

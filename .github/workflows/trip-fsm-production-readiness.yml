@@ -125,6 +125,22 @@ jobs:
       - run: npm run test:trip-r11:unit
         working-directory: backend
 
+  backend-r12-hardening-unit:
+    name: Backend R12 hardening unit tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:trip-r12:hardening
+        working-directory: backend
+
   backend-trip-r11-postgres-redis:
     name: Backend R11 postgres+redis integration
     needs: install-lockfile
@@ -168,7 +184,8 @@ jobs:
       - install-lockfile
       - backend-r10-unit
       - backend-r11-unit
+      - backend-r12-hardening-unit
       - backend-trip-finalize-postgres
       - backend-trip-r11-postgres-redis
     steps:
-      - run: echo "Trip FSM CI gates passed (R10/R11 unit + postgres/redis integration)."
+      - run: echo "Trip FSM CI gates passed (R10/R11/R12 hardening unit + postgres/redis integration)."

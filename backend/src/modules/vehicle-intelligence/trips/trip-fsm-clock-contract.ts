@@ -282,6 +282,39 @@ function readTrustedStopBoundaryFromEvidence(
   return boundaryAt;
 }
 
+/**
+ * R12 recovery-only stop boundary reader (stricter than anchor resolution).
+ *
+ * RECOVERY boundary may be restored only when:
+ * - stopBoundaryTrust === true (explicit boolean; missing does NOT infer)
+ * - clock authority is trusted (not WORKER_TIME)
+ * - timestamp is valid provider event time
+ */
+export function readR12RecoveryTrustedStopBoundaryFromEvidence(
+  summary: unknown,
+  workerNow: Date,
+): Date | null {
+  const boundaryAt = readEvidenceIsoDate(summary, 'stopBoundaryAt');
+  if (!boundaryAt) return null;
+  if (!isValidProviderEventTimestamp(boundaryAt, workerNow)) return null;
+
+  if (!summary || typeof summary !== 'object') return null;
+  const record = summary as Record<string, unknown>;
+  if (record.stopBoundaryTrust !== true) return null;
+
+  const source =
+    typeof record.stopBoundarySource === 'string'
+      ? record.stopBoundarySource
+      : 'legacy_unspecified';
+  const clockAuthority =
+    typeof record.stopBoundaryClockAuthority === 'string'
+      ? (record.stopBoundaryClockAuthority as StopBoundaryClockAuthority)
+      : classifyStopBoundarySourceClockAuthority(source);
+  if (!isTrustedStopBoundaryAuthority(clockAuthority)) return null;
+
+  return boundaryAt;
+}
+
 /** Worker-time FSM entry anchor persisted in evidence when DB column is missing. */
 export function readPossibleEndEnteredAtFromEvidence(summary: unknown): Date | null {
   return readEvidenceIsoDate(summary, 'possibleEndEnteredAt');
@@ -313,7 +346,10 @@ export function reconcilePossibleEndClockColumns(params: {
   const summary = params.lastEvidenceSummary;
   const patch: { possibleEndAt?: Date; possibleEndEnteredAt?: Date } = {};
   if (!params.possibleEndAt) {
-    const boundary = readTrustedStopBoundaryFromEvidence(summary, params.workerNow);
+    const boundary = readR12RecoveryTrustedStopBoundaryFromEvidence(
+      summary,
+      params.workerNow,
+    );
     if (boundary) patch.possibleEndAt = boundary;
   }
   if (!params.possibleEndEnteredAt) {

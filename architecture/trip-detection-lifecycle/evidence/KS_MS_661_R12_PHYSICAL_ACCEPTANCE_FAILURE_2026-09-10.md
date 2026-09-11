@@ -20,17 +20,35 @@
 
 | Layer | Cause | Confidence |
 |-------|-------|------------|
-| Queue | `enqueueEndCycleTripTrackingJob` recycled slots via `Job.remove()` on **active** primary | CONFIRMED |
-| Clock | No direct writer nulls PE columns while staying `POSSIBLE_END`; NULL shape = never-reconciled columns + evidence-only durability | CONFIRMED (writer audit) |
-| Dwell | Missing columns + pre-R12 sliding `updatedAt` / fabricated `workerNow` in reconcile | CONFIRMED |
+| Queue | `enqueueEndCycleTripTrackingJob` recycled slots via `Job.remove()` on **active** primary | **CONFIRMED** |
+| Clock loss writer | No **current** repository writer clears both PE columns while `state` stays `POSSIBLE_END`; canonical entry always writes both clocks | **CONFIRMED** (writer audit) |
+| Clock loss sequence | **How** Production row reached `POSSIBLE_END` + both NULL — not reproduced from committed code | **UNRESOLVED** |
+| Recovery | `reconcilePossibleEndClockColumns` + evidence anchors restore durable clocks without `workerNow` fabrication | **PROVEN** |
+| Dwell (pre-R12) | Missing columns + sliding `updatedAt` / fabricated `workerNow` in old reconcile | **CONFIRMED** (historical) |
+
+### Clock loss classification (pre-merge audit 2026-09-11)
+
+```
+CLOCK_LOSS_DIRECT_WRITER_WHILE_POSSIBLE_END = NONE (current repo)
+CLOCK_LOSS_ROOT_CAUSE = UNRESOLVED
+RECOVERY_HARDENING = PROVEN
+```
+
+Plausible **unproven** historical sequences (not demonstrated as single writer in git):
+
+- Pre-R12 deployment gap: evidence durable in JSON but DB columns never persisted or were lost externally
+- R1 migration `20260906120000`: `possible_end_entered_at` added without backfill (typically one NULL, not both)
+- Manual / out-of-band DB mutation
+- Removed pre-audit code path no longer present at `2f1b4f53d`
 
 ## #1600 fix scope (follow-up hardening)
 
 - Stable-slot **family** arbitration `{primary, primary__succ}` — at most one future end-cycle authority.
 - Never `remove()` active / waiting-children jobs.
 - `reconcilePossibleEndClockColumns`: restore from evidence only; **no** `workerNow` episode token fabrication.
-- `readTrustedStopBoundaryFromEvidence`: `stopBoundaryTrust === true` + trusted clock authority required.
+- **R12 recovery trust (strict):** `readR12RecoveryTrustedStopBoundaryFromEvidence` requires **`stopBoundaryTrust === true`** (explicit boolean) **and** trusted clock authority **and** valid timestamp. Missing trust does **not** grant recovery authority (unlike global anchor `readTrustedStopBoundaryFromEvidence` inference).
 - PEC evidence scheduling uses `readPossibleEndEnteredAtFromEvidence` only for episode token (not dwell anchor).
+- Real BullMQ two-worker ACTIVE-lock integration regression in CI (`trip-r12-active-lock-end-cycle`).
 
 ## Explicit non-actions
 
@@ -42,8 +60,9 @@
 
 ```bash
 cd backend
-npm test -- trip-r12-stable-slot-family trip-r12-clock-writer-audit trip-r12-end-cycle-lock-contention
+npm run test:trip-r12:hardening
 npm run test:trip-r11:unit
+npm run test:trip-r11:postgres-redis:ci
 npm test -- trip-fsm-motor-off-pause-r10
 bash ../architecture/scripts/validate-module-registry.sh
 ```

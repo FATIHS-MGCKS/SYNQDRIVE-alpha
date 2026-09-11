@@ -683,6 +683,25 @@ export async function closeTripTrackingWorkers(workers: Worker[]): Promise<void>
   await Promise.all(workers.map((w) => w.close().catch(() => undefined)));
 }
 
+export async function waitForTripTrackingJobState(
+  queue: Queue<TripTrackingJobData>,
+  jobId: string,
+  expectedState: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const job = await queue.getJob(jobId);
+    if (job && (await job.getState()) === expectedState) return;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  const job = await queue.getJob(jobId);
+  const actual = job ? await job.getState() : 'absent';
+  throw new Error(
+    `Job ${jobId} did not reach state=${expectedState} within ${timeoutMs}ms (actual=${actual})`,
+  );
+}
+
 export async function getActiveTickJobDelayMs(
   queue: Queue<TripTrackingJobData>,
   fixture: TripR11PostgresFixture,
