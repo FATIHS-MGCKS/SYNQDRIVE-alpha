@@ -131,14 +131,13 @@ cd backend && npm run test:trip-r12:postgres-redis:ci   # requires Postgres + Re
 bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 ```
 
-## CI status (2026-09-11)
+**CI status (2026-09-11)**
 
 | Run | Result | Notes |
 |-----|--------|-------|
-| Trip FSM 34602066031 | **FAIL** | `trip-r12-pec-ev-lock-collision` completion test timed out — stale delayed PEC from seed + worker-only drain gap; wait helpers used frozen `Date.now()` deadlines |
-| i18n 34602066051 | **FAIL** | PR touched Master `frontend/src/*` (SynqDrive Code) + bound P2.3.4 to live CI diff — Master UI reverted; i18n gate passes as NO_I18N_RELEVANT_CHANGES on backend-only diff |
-| Trip FSM 34610166236 | **FAIL** | Same integration file — completion/lock-miss tests hit Jest 120s timeout because harness waits used frozen `Date.now()` (fixed @ `4376748cf` follow-up) |
-| i18n 34610170529 | **FAIL** (then **PASS** @ `4376748cf`) | Governance test edit required authority label — reverted from trip PR |
-| Trip FSM 34614522784 | **PASS** @ `b09f1cab7` | Prior green — used manual promote in completion/lock-miss tests; superseded by natural-path proofs |
+| Trip FSM 34621495010 | **PASS** @ `b5af0df07` | Natural chain (no promote), EV natural 10s retry (~10005–10104 ms observed), FINALIZE lock-miss retry, `GREEN_REPEAT_COUNT=10` / `GREEN_REPEAT_FAILURES=0` |
+| i18n debt gate 34621495011 | **PASS** @ `b5af0df07` | NO_I18N_RELEVANT_CHANGES |
+| i18n authority 34621490796 | **PASS** @ `b5af0df07` | Workflow file unchanged from main (repeat wired via package.json) |
+| Module registry 34621495050 | **PASS** @ `b5af0df07` | — |
 
-**CI_PENDING** for final HEAD after quaternary FINALIZE hardening + natural retry + 10× repeat gate + portable BASE/HEAD probe.
+Historical failures preserved above (34602066031, 34610166236, 34619654930 workflow-authority false positive before revert).
