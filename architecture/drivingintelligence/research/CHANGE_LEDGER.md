@@ -498,3 +498,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Issue | `hardPhysicalEndEligible` delegated to `shouldAutoStopRecording` UNKNOWN shortcut |
 | Fix | Hard-end requires fresh `PARKED_CANDIDATE` sustained `>= finalParkedMs`; UNKNOWN never hard-ends |
 | Tests | STRONG_PARKED + long UNKNOWN + movement invalidation regression added |
+
+## EXP-021 — CANDIDATE_BRACKET_V3 prospective refocus (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE PLAN** on PR #1606 — no physical run |
+| New plan | `EXP021_CANDIDATE_BRACKET_V3` — 120→90→60, equal 10 min wall phases, 30 min nominal / 32 min max |
+| Historical preserved | `EXP021_UPPER_BOUND_V2` (180→120→60→30) and `EXP021_LOWER_BOUND_V1` unchanged |
+| 180s | Historical evidence only — no longer an active production-candidate calibration phase |
+| 90s | Added to `HF_POLL_CALIBRATION_CANDIDATES_MS`; epistemic `UNKNOWN` / `PROSPECTIVE` |
+| Settlement | 57 windows × 6 ages = 342 observations; full-phase overlapping for all WALL_CLOCK plans |
+| Reconstruction | Read-only analyzer scaffold; map-matching adapter documented as follow-up |
+| Selection | `EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3` — default remains `UPPER_BOUND_V2` |
+| Evidence | `EXP_021_CANDIDATE_BRACKET_V3_PROSPECTIVE_DESIGN_2026-09-11.md` |

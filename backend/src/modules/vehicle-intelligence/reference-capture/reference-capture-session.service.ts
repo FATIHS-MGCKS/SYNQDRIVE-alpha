@@ -611,7 +611,7 @@ export class ReferenceCaptureSessionService {
     }
     if (!isRecognizedCalibrationPollIntervalMs(intervalMs)) {
       throw new BadRequestException(
-        `effectivePollIntervalMs must be one of calibration candidates: 10000, 20000, 30000, 60000`,
+        `effectivePollIntervalMs must be one of calibration candidates: 10000, 20000, 30000, 60000, 90000, 120000, 180000`,
       );
     }
 

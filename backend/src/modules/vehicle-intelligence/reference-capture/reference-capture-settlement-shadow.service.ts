@@ -12,7 +12,6 @@ import {
   type HfCalibrationPhaseRecord,
 } from './reference-capture-hf-calibration-phase.policy';
 import {
-  EXP021_UPPER_BOUND_V2,
   resolveExp021CalibrationPlan,
   resolveNominalPhaseDurationMs,
 } from './reference-capture-exp021-calibration-plan.lib';
@@ -23,6 +22,7 @@ import {
   buildProspectiveProbeBForPhase,
   buildFullPhaseOverlappingSettlementProbesForPhase,
   buildProbeBForCompletedPhase,
+  usesFullPhaseOverlappingSettlementStrategy,
   buildScheduleIdempotencyKey,
   buildWholeTripProbeId,
   computeActualAgeMs,
@@ -399,7 +399,7 @@ export class ReferenceCaptureSettlementShadowService {
     if (!Number.isFinite(phaseStartedAtMs)) return;
 
     const plan = resolveExp021CalibrationPlan();
-    if (plan.planVersion === EXP021_UPPER_BOUND_V2.planVersion) {
+    if (usesFullPhaseOverlappingSettlementStrategy(plan)) {
       const nominalEndMs =
         phaseStartedAtMs + resolveNominalPhaseDurationMs(active.effectivePollIntervalMs);
       const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
