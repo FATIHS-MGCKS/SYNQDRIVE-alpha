@@ -490,11 +490,23 @@ export class PhysicalEndDetector {
   }
 
   /**
-   * Hard physical-end authority: sustained final parked evidence (finalParkedMs) or strong
-   * parked + UNKNOWN after provisional confirmation. Provisional CONFIRMED alone is NOT sufficient.
+   * EXP-021 hard physical-end authority (orchestrator terminalization only).
+   *
+   * Stricter than {@link shouldAutoStopRecording}: requires current fresh PARKED_CANDIDATE
+   * evidence sustained for finalParkedMs. UNKNOWN / stale telemetry never authorizes hard end.
+   * Provisional CONFIRMED and strongParkedEvidence remain evidence-only.
    */
   hardPhysicalEndEligible(nowMs: number, motionState: MotionState): boolean {
-    return this.shouldAutoStopRecording(nowMs, motionState);
+    if (!this.candidate || this.candidate.candidateStatus === 'INVALIDATED') {
+      return false;
+    }
+    if (motionState !== 'PARKED_CANDIDATE') {
+      return false;
+    }
+    return (
+      this.finalParkedSinceMs != null &&
+      nowMs - this.finalParkedSinceMs >= this.config.finalParkedMs
+    );
   }
 
   shouldAutoStopRecording(nowMs: number, motionState: MotionState): boolean {

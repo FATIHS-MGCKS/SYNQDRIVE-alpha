@@ -489,3 +489,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Fix | `hardPhysicalEndEligible` / `shouldAutoStop` only for early end; boundary-safe `finalizeCalibrationOnPhysicalEndEarly`; movement metrics to completing phase; durable `exp021RequestSlots` in phase summaries; settlement experiment `COMPLETED` convergence |
 | Physical drive | **NOT STARTED** |
 | Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md` (corrected interpretive layer) |
+
+## EXP-021 — Hard-end UNKNOWN fail-safe micro pass (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RUNTIME MICRO PASS** on PR #1606 |
+| Issue | `hardPhysicalEndEligible` delegated to `shouldAutoStopRecording` UNKNOWN shortcut |
+| Fix | Hard-end requires fresh `PARKED_CANDIDATE` sustained `>= finalParkedMs`; UNKNOWN never hard-ends |
+| Tests | STRONG_PARKED + long UNKNOWN + movement invalidation regression added |
