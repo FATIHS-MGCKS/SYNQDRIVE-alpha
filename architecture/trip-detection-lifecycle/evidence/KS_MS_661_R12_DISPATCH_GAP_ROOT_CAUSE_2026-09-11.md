@@ -136,7 +136,11 @@ bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 | Run | Result | Notes |
 |-----|--------|-------|
 | Trip FSM 34621495010 | **PASS** @ `b5af0df07` | Natural chain (no promote), EV natural 10s retry (~10005–10104 ms observed), FINALIZE lock-miss retry, `GREEN_REPEAT_COUNT=10` / `GREEN_REPEAT_FAILURES=0` |
-| Trip FSM 34647969555 | **PROBE_CAUSAL_PASS / VALIDATION_FAIL** @ `3a4312443` | BASE RED + HEAD GREEN metrics observed in worktrees; `BASE_RED_REPRODUCED=NO` only because node validation received metrics paths as argv (fixed `9f8078cd6`) |
+| Trip FSM 34647969555 | **PROBE_CAUSAL_PASS / VALIDATION_FAIL** @ `3a4312443` | BASE RED + HEAD GREEN metrics observed in worktrees; validation failed (metrics paths passed as node argv; fixed `9f8078cd6`) |
+| Trip FSM **34650475053** | **PASS** @ `c78dcfd21` | `BASE_RED_REPRODUCED=YES`, `HEAD_GREEN_PROVEN=YES`, `GREEN_REPEAT_COUNT=10` / `GREEN_REPEAT_FAILURES=0` |
+| i18n debt gate 34650475100 | **PASS** @ `c78dcfd21` | NO_I18N_RELEVANT_CHANGES |
+| i18n authority 34650472803 | **PASS** @ `c78dcfd21` | — |
+| Module registry 34650475056 | **PASS** @ `c78dcfd21` | — |
 | i18n debt gate 34621495011 | **PASS** @ `b5af0df07` | NO_I18N_RELEVANT_CHANGES |
 | i18n authority 34621490796 | **PASS** @ `b5af0df07` | Workflow file unchanged from main (repeat wired via package.json) |
 | Module registry 34621495050 | **PASS** @ `b5af0df07` | — |
