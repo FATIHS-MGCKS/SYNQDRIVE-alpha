@@ -1,5 +1,5 @@
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
-import { Queue } from 'bullmq';
+import { DelayedError, Queue, type Job } from 'bullmq';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
@@ -20,14 +20,19 @@ import {
   createTripR11ActiveTripFixture,
   createTripTrackingWorkers,
   probeTripR11Postgres,
+  promoteDelayedTripTrackingJobs,
+  purgeTripTrackingQueueJobs,
   restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
   useTripR11FrozenClock,
+  waitForTripTerminalState,
+  type TripR11OrchestrationHarness,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
 import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 import { resolveEndCycleToken } from './trip-end-cycle-reset';
+import { TripTrackingHandoffLockContentionError } from './trip-tracking-lock-contention';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
@@ -67,6 +72,24 @@ async function waitForCondition(
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error('waitForCondition timed out');
+}
+
+async function runJobLikeTripTrackingProcessor(
+  queue: Queue<TripTrackingJobData>,
+  harness: TripR11OrchestrationHarness,
+  bullJob: Job<TripTrackingJobData>,
+): Promise<void> {
+  try {
+    await harness.runJob(bullJob.data);
+  } catch (err) {
+    if (err instanceof TripTrackingHandoffLockContentionError) {
+      const token = bullJob.token;
+      if (!token) throw err;
+      await bullJob.moveToDelayed(Date.now() + err.delayMs, token);
+      throw new DelayedError(err.message);
+    }
+    throw err;
+  }
 }
 
 (LIVE ? describe : describe.skip)(
@@ -130,6 +153,8 @@ async function waitForCondition(
       } finally {
         restoreTripR11Clock();
       }
+
+      await purgeTripTrackingQueueJobs(trackingQueue);
 
       const afterPe = await prisma.vehicleTripDetectionState.findUnique({
         where: { vehicleId: fixture.vehicle.id },
@@ -259,11 +284,15 @@ async function waitForCondition(
 
       const workers = createTripTrackingWorkers({
         connection: redisStack.connectionOptions,
-        runJob: async (job) => {
-          if (job.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
+        runJob: async (jobData, jobId) => {
+          if (jobData.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
             evProcessorEntered += 1;
           }
-          await harness.runJob(job);
+          const bullJob = await trackingQueue.getJob(jobId ?? '');
+          if (!bullJob) {
+            throw new Error(`missing BullMQ job ${jobId ?? '(no id)'}`);
+          }
+          await runJobLikeTripTrackingProcessor(trackingQueue, harness, bullJob);
         },
         workerCount: 1,
         concurrency: 2,
@@ -279,19 +308,12 @@ async function waitForCondition(
           },
         );
 
-        await waitForCondition(async () => {
-          const trip = await prisma.vehicleTrip.findUnique({
-            where: { id: fixture.trip.id },
-          });
-          const det = await prisma.vehicleTripDetectionState.findUnique({
-            where: { vehicleId: fixture.vehicle.id },
-          });
-          return (
-            trip?.tripStatus === TripStatus.COMPLETED &&
-            det?.state === TripDetectionState.RESTING &&
-            det.activeTripId === null
-          );
-        }, 60_000);
+        await waitForTripTerminalState({
+          prisma,
+          fixture,
+          trackingQueue,
+          timeoutMs: 30_000,
+        });
       } finally {
         acquireSpy.mockRestore();
         await closeTripTrackingWorkers(workers);
@@ -320,6 +342,85 @@ async function waitForCondition(
 
       const evJob = await trackingQueue.getJob(evJobId);
       expect(evJob).toBeNull();
+    }, 120_000);
+
+    it('END_VALIDATION lock miss — processor moveToDelayed preserves authority and retries', async () => {
+      const pecNow = await seedPossibleEndWithStableDwell();
+      useTripR11FrozenClock(pecNow);
+
+      const segments = buildTripR11SegmentsMock(fixture.expectedEndTime);
+      const detectorRegistry = buildTripR11DetectorMock(fixture.expectedEndTime);
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        segments,
+        detectorRegistry,
+      );
+
+      const evJobId = buildTripTrackingJobId('ev', fixture.vehicle.id, fixture.trip.id);
+      const heldLock = await TripDetectionOrchestrationService.prototype.acquireWorkerLock.call(
+        harness.orchestration,
+        fixture.vehicle.id,
+      );
+      expect(heldLock.acquired).toBe(true);
+
+      await TripDetectionOrchestrationService.prototype.scheduleEndValidation.call(
+        harness.orchestration,
+        fixture.vehicle.id,
+        fixture.org.id,
+        fixture.vehicle.dimoTokenId,
+      );
+
+      const evJobBefore = await trackingQueue.getJob(evJobId);
+      expect(evJobBefore).not.toBeNull();
+
+      const workers = createTripTrackingWorkers({
+        connection: redisStack.connectionOptions,
+        runJob: async (jobData, jobId) => {
+          const bullJob = await trackingQueue.getJob(jobId ?? '');
+          if (!bullJob) throw new Error(`missing bull job ${jobId}`);
+          await runJobLikeTripTrackingProcessor(trackingQueue, harness, bullJob);
+        },
+        workerCount: 1,
+        concurrency: 1,
+      });
+
+      try {
+        await waitForCondition(async () => {
+          const job = await trackingQueue.getJob(evJobId);
+          if (!job) return false;
+          const state = await job.getState();
+          return state === 'delayed';
+        }, 15_000);
+
+        const delayedJob = await trackingQueue.getJob(evJobId);
+        expect(delayedJob).not.toBeNull();
+        expect(await delayedJob!.getState()).toBe('delayed');
+
+        await TripDetectionOrchestrationService.prototype.releaseWorkerLock.call(
+          harness.orchestration,
+          fixture.vehicle.id,
+          heldLock.runToken!,
+        );
+
+        await promoteDelayedTripTrackingJobs(trackingQueue);
+
+        await waitForTripTerminalState({
+          prisma,
+          fixture,
+          trackingQueue,
+          timeoutMs: 30_000,
+        });
+
+        const evRuns = await prisma.vehicleTripTrackingRun.count({
+          where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
+        });
+        expect(evRuns).toBeGreaterThanOrEqual(1);
+      } finally {
+        await closeTripTrackingWorkers(workers);
+        restoreTripR11Clock();
+      }
     }, 120_000);
   },
 );

@@ -723,3 +723,72 @@ export async function countTripTrackingJobs(
   const jobs = await queue.getJobs(states, 0, 500);
   return jobs.length;
 }
+
+/** Remove jobs scheduled during synchronous harness steps (e.g. ACTIVE_TICK → delayed PEC). */
+export async function purgeTripTrackingQueueJobs(
+  queue: Queue<TripTrackingJobData>,
+): Promise<number> {
+  const states = ['waiting', 'delayed', 'active', 'prioritized', 'paused'] as const;
+  let removed = 0;
+  for (const state of states) {
+    const jobs = await queue.getJobs([state], 0, 100);
+    for (const job of jobs) {
+      await job.remove().catch(() => undefined);
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
+export async function promoteDelayedTripTrackingJobs(
+  queue: Queue<TripTrackingJobData>,
+): Promise<number> {
+  const jobs = await queue.getJobs(['delayed'], 0, 50);
+  let promoted = 0;
+  for (const job of jobs) {
+    await job.promote().catch(() => undefined);
+    promoted += 1;
+  }
+  return promoted;
+}
+
+export async function waitForTripTerminalState(params: {
+  prisma: PrismaClient;
+  fixture: TripR11PostgresFixture;
+  trackingQueue: Queue<TripTrackingJobData>;
+  timeoutMs?: number;
+}): Promise<void> {
+  const deadline = Date.now() + (params.timeoutMs ?? 30_000);
+  while (Date.now() < deadline) {
+    await promoteDelayedTripTrackingJobs(params.trackingQueue);
+    const trip = await params.prisma.vehicleTrip.findUnique({
+      where: { id: params.fixture.trip.id },
+    });
+    const det = await params.prisma.vehicleTripDetectionState.findUnique({
+      where: { vehicleId: params.fixture.vehicle.id },
+    });
+    if (
+      trip?.tripStatus === TripStatus.COMPLETED &&
+      det?.state === TripDetectionState.RESTING &&
+      det.activeTripId === null
+    ) {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const trip = await params.prisma.vehicleTrip.findUnique({
+    where: { id: params.fixture.trip.id },
+  });
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.fixture.vehicle.id },
+  });
+  const runs = await params.prisma.vehicleTripTrackingRun.findMany({
+    where: { tripId: params.fixture.trip.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  throw new Error(
+    `Trip terminal wait timed out: tripStatus=${trip?.tripStatus} detState=${det?.state} ` +
+      `activeTripId=${det?.activeTripId} queueJobs=${await countTripTrackingJobs(params.trackingQueue)} ` +
+      `runs=${JSON.stringify(runs.map((r) => ({ type: r.runType, summary: r.resultSummary })))}`,
+  );
+}
