@@ -86,7 +86,7 @@ read_metrics() {
     const m = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
     const p = process.argv[2];
     const fields = [
-      'PROBE_EXECUTED','PROBE_INFRASTRUCTURE_ERROR','SCHEDULE_WHILE_PEC_LOCK_HELD',
+      'PROBE_EXECUTED','PROBE_INFRASTRUCTURE_ERROR','PROBE_EXPECT','SCHEDULE_WHILE_PEC_LOCK_HELD',
       'EV_PROCESSOR_ENTRY','EV_LOCK_MISS','EV_LOCK_ACQUIRED','EV_TRACKING_RUN_COUNT',
       'FINALIZE_REACHED','TRIP_COMPLETED','RESTING','TERMINAL_STATE'
     ];
@@ -128,12 +128,12 @@ install_and_run_probe() {
   TRIP_R12_PROBE_METRICS_FILE="$metrics_file" \
   TRIP_R12_PROBE_EXPECT="$expect" \
   npx jest "$(basename "$PROBE_REL")" \
-    --runInBand --forceExit --verbose 2>&1 | tee "$log"
-  local exit_code="${PIPESTATUS[0]}"
+    --runInBand --forceExit --verbose > "$log" 2>&1
+  local exit_code=$?
   set -e
 
-  echo "${label}_PROBE_EXIT=$exit_code" | tee -a "$log"
-  echo "${label}_METRICS_FILE=$metrics_file" | tee -a "$log"
+  echo "${label}_PROBE_EXIT=$exit_code"
+  echo "${label}_METRICS_FILE=$metrics_file"
   read_metrics "$metrics_file" "$label" || true
 }
 
@@ -152,9 +152,9 @@ function loadMetrics(label) {
   const marker = label + '_METRICS_FILE=';
   const out = process.env[label + '_OUT'] || '';
   const line = out.split('\n').find((l) => l.startsWith(marker));
-  if (!line) return { missing: true };
-  const file = line.slice(marker.length);
-  if (!fs.existsSync(file)) return { missing: true, file };
+  if (!line) return { missing: true, reason: 'metrics_file_line_missing' };
+  const file = line.slice(marker.length).trim();
+  if (!fs.existsSync(file)) return { missing: true, reason: 'metrics_file_missing', file };
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
@@ -211,6 +211,8 @@ const headOk =
 
 console.log('BASE_RED_REPRODUCED=' + (baseOk ? 'YES' : 'NO'));
 console.log('HEAD_GREEN_PROVEN=' + (headOk ? 'YES' : 'NO'));
+if (base.missing) console.log('BASE_METRICS_LOAD_ERROR=' + JSON.stringify(base.reason ?? 'missing'));
+if (head.missing) console.log('HEAD_METRICS_LOAD_ERROR=' + JSON.stringify(head.reason ?? 'missing'));
 process.exit(baseOk && headOk ? 0 : 1);
 " BASE_OUT="$BASE_OUT" HEAD_OUT="$HEAD_OUT")"
 
