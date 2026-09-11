@@ -193,6 +193,7 @@ export async function createTripR11ActiveTripFixture(
         lastProviderActivityAt: lastMovementAt.toISOString(),
         stopBoundaryAt: stopBoundaryAt.toISOString(),
         stopBoundarySource,
+        stopBoundaryTrust: true,
       },
     },
   });
@@ -512,6 +513,7 @@ export function buildTripR11OrchestrationHarness(
     acquireWorkerLock: proto.acquireWorkerLock,
     releaseWorkerLock: proto.releaseWorkerLock,
     maybeRecoverLifecycleInvariant: async () => 'continue' as const,
+    ensurePossibleEndClockDurability: proto.ensurePossibleEndClockDurability,
     logTrackingRun: proto.logTrackingRun,
     enqueueTripTrackingJob: proto.enqueueTripTrackingJob,
     tripTrackingJobId: proto.tripTrackingJobId,
@@ -615,8 +617,9 @@ export async function drainTripTrackingQueue(params: {
   queue: Queue<TripTrackingJobData>;
   runJob: (job: TripTrackingJobData) => Promise<void>;
   maxSteps?: number;
-}): Promise<number> {
+}): Promise<{ steps: number; triggers: TripTrackingJobData['trigger'][] }> {
   let steps = 0;
+  const triggers: TripTrackingJobData['trigger'][] = [];
   const maxSteps = params.maxSteps ?? 20;
 
   const jobPhasePriority = (jobId: string | undefined): number => {
@@ -641,16 +644,21 @@ export async function drainTripTrackingQueue(params: {
     if (state === 'delayed') {
       await job.promote();
     }
-    await params.runJob(job.data);
+    const jobData = job.data;
+    // Remove before runJob so nested schedule* calls do not see this job as
+    // queued primary (BullMQ workers hold ACTIVE during processing; manual drain
+    // otherwise leaves WAITING and stable-slot enqueue returns skipped).
     await job.remove().catch(() => undefined);
+    await params.runJob(jobData);
+    triggers.push(jobData.trigger);
     steps += 1;
   }
-  return steps;
+  return { steps, triggers };
 }
 
 export function createTripTrackingWorkers(params: {
   connection: ConnectionOptions;
-  runJob: (job: TripTrackingJobData) => Promise<void>;
+  runJob: (job: TripTrackingJobData, jobId?: string) => Promise<void>;
   concurrency?: number;
   workerCount?: number;
 }): Worker[] {
@@ -660,7 +668,7 @@ export function createTripTrackingWorkers(params: {
     workers.push(
       new Worker<TripTrackingJobData>(
         QUEUE_NAMES.TRIP_TRACKING,
-        async (job: Job<TripTrackingJobData>) => params.runJob(job.data),
+        async (job: Job<TripTrackingJobData>) => params.runJob(job.data, job.id),
         {
           connection: params.connection,
           concurrency: params.concurrency ?? 1,
@@ -673,6 +681,25 @@ export function createTripTrackingWorkers(params: {
 
 export async function closeTripTrackingWorkers(workers: Worker[]): Promise<void> {
   await Promise.all(workers.map((w) => w.close().catch(() => undefined)));
+}
+
+export async function waitForTripTrackingJobState(
+  queue: Queue<TripTrackingJobData>,
+  jobId: string,
+  expectedState: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const job = await queue.getJob(jobId);
+    if (job && (await job.getState()) === expectedState) return;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  const job = await queue.getJob(jobId);
+  const actual = job ? await job.getState() : 'absent';
+  throw new Error(
+    `Job ${jobId} did not reach state=${expectedState} within ${timeoutMs}ms (actual=${actual})`,
+  );
 }
 
 export async function getActiveTickJobDelayMs(

@@ -6,6 +6,7 @@ import {
   isTrustedStopBoundaryAuthority,
   isValidProviderEventTimestamp,
   resolveOperationalNoCoreInactivityAnchor,
+  reconcilePossibleEndClockColumns,
   resolvePossibleEndBoundaryAnchor,
   resolvePossibleEndBoundaryCandidate,
   resolvePossibleEndFsmDwellAnchor,
@@ -178,6 +179,79 @@ describe('R1 — trip FSM clock contract', () => {
         updatedAt: T0_31m,
       };
       expect(resolvePossibleEndFsmDwellAnchor(legacy, T0_31m)).toEqual(T0);
+    });
+
+    it('R12: modern PE dwell uses evidence possibleEndEnteredAt before updatedAt', () => {
+      const workerNow = new Date('2026-09-10T20:35:00.000Z');
+      const enteredAt = new Date('2026-09-10T20:04:37.793Z');
+      const det = {
+        possibleEndAt: new Date('2026-09-10T20:01:15.000Z'),
+        possibleEndEnteredAt: null,
+        updatedAt: workerNow,
+        lastEvidenceSummary: {
+          stopBoundaryAt: '2026-09-10T20:01:15.000Z',
+          stopBoundaryTrust: true,
+          possibleEndEnteredAt: enteredAt.toISOString(),
+        },
+      };
+      expect(resolvePossibleEndFsmDwellAnchor(det, workerNow)).toEqual(enteredAt);
+      expect(
+        workerNow.getTime() - resolvePossibleEndFsmDwellAnchor(det, workerNow).getTime(),
+      ).toBeGreaterThanOrEqual(30 * 60_000);
+    });
+
+    it('R12: boundary anchor falls back to trusted stopBoundaryAt in evidence', () => {
+      const workerNow = new Date('2026-09-10T20:20:00.000Z');
+      const stopBoundary = new Date('2026-09-10T20:01:15.000Z');
+      expect(
+        resolvePossibleEndBoundaryAnchor(
+          {
+            possibleEndAt: null,
+            lastEvidenceSummary: {
+              stopBoundaryAt: stopBoundary.toISOString(),
+              stopBoundaryTrust: true,
+              stopBoundarySource: 'provider_stationary_vls',
+            },
+          },
+          workerNow,
+        ),
+      ).toEqual(stopBoundary);
+    });
+
+    it('R12: dwell anchor may use endValidationScheduledAt but not as episode token', () => {
+      const workerNow = new Date('2026-09-10T20:35:00.000Z');
+      const scheduledAt = new Date('2026-09-10T20:16:37.000Z');
+      const det = {
+        possibleEndAt: new Date('2026-09-10T20:01:15.000Z'),
+        possibleEndEnteredAt: null,
+        updatedAt: workerNow,
+        lastEvidenceSummary: {
+          endValidationScheduledAt: scheduledAt.toISOString(),
+        },
+      };
+      expect(resolvePossibleEndFsmDwellAnchor(det, workerNow)).toEqual(scheduledAt);
+    });
+
+    it('reconcilePossibleEndClockColumns restores durable anchors for POSSIBLE_END', () => {
+      const enteredAt = new Date('2026-09-10T20:04:37.793Z');
+      const stopBoundary = new Date('2026-09-10T20:01:15.000Z');
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          possibleEndEnteredAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: true,
+            stopBoundarySource: 'provider_stationary_vls',
+            possibleEndEnteredAt: enteredAt.toISOString(),
+          },
+          workerNow: new Date('2026-09-10T20:20:00.000Z'),
+        }),
+      ).toEqual({
+        possibleEndAt: stopBoundary,
+        possibleEndEnteredAt: enteredAt,
+      });
     });
 
     it('legacy POSSIBLE_END recovery eligible when dwell age exceeds 30 min', () => {
@@ -447,6 +521,147 @@ describe('R1 — trip FSM clock contract', () => {
           workerNow,
         })?.toISOString(),
       ).toBe(ts);
+    });
+  });
+
+  describe('R12 trusted boundary recovery fail-closed', () => {
+    const workerNow = new Date('2026-09-10T20:20:00.000Z');
+    const stopBoundary = new Date('2026-09-10T20:01:15.000Z');
+
+    it('trusted=true with provider authority → boundary recovered', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          possibleEndEnteredAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: true,
+            stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toEqual({ possibleEndAt: stopBoundary });
+    });
+
+    it('trusted=false → rejected (no possibleEndAt patch)', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: false,
+            stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('trust missing on trusted provider source → rejected for R12 recovery (no inference)', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('explicit true + WORKER_TIME authority → rejected for R12 recovery', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: true,
+            stopBoundarySource: 'idle_within_trip_worker_now',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('unknown source with explicit true → rejected for R12 recovery', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: true,
+            stopBoundarySource: 'legacy_unspecified',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('trust missing on untrusted worker-time source → rejected', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundarySource: 'idle_within_trip_worker_now',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('malformed trust → rejected', () => {
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: stopBoundary.toISOString(),
+            stopBoundaryTrust: 'yes',
+            stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('future/invalid timestamp → rejected', () => {
+      const future = new Date(workerNow.getTime() + TRIP_FSM_MAX_FUTURE_SKEW_MS + 60_000);
+      expect(
+        reconcilePossibleEndClockColumns({
+          state: 'POSSIBLE_END',
+          possibleEndAt: null,
+          lastEvidenceSummary: {
+            stopBoundaryAt: future.toISOString(),
+            stopBoundaryTrust: true,
+            stopBoundarySource: 'provider_stationary_vls',
+          },
+          workerNow,
+        }),
+      ).toBeNull();
+    });
+
+    it('untrusted stale boundary does not become authoritative anchor', () => {
+      expect(
+        resolvePossibleEndBoundaryAnchor(
+          {
+            possibleEndAt: null,
+            lastEvidenceSummary: {
+              stopBoundaryAt: stopBoundary.toISOString(),
+              stopBoundaryTrust: false,
+              stopBoundarySource: 'stale_snapshot',
+            },
+          },
+          workerNow,
+        ),
+      ).toEqual(workerNow);
     });
   });
 
