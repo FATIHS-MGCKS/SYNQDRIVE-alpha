@@ -1849,43 +1849,38 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
     }
   });
 
-  function createModuleAuthorityBootstrapParityFixture() {
-    const dir = mkdtempSync(join(tmpdir(), 'i18n-module-bootstrap-parity-'));
-    const runGit = (...args: string[]) =>
-      execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
-    runGit('init', '-b', 'main');
-    runGit('config', 'user.email', 'parity@test.local');
-    runGit('config', 'user.name', 'Parity Test');
-    mkdirSync(join(dir, 'architecture/internationalization'), { recursive: true });
-    writeFileSync(join(dir, 'README.md'), 'base\n');
-    runGit('add', '.');
-    runGit('commit', '-m', 'pr-base');
-    const baseSha = runGit('rev-parse', 'HEAD').trim();
+  let cachedPrResolution: ReturnType<typeof resolveEffectivePrChangedPaths> | null = null;
 
-    runGit('checkout', '-b', 'feature/module-authority-bootstrap');
-    writeFileSync(
-      join(dir, 'architecture/internationalization/CURRENT_STATE.md'),
-      '# Internationalization module authority\n',
-    );
-    runGit('add', 'architecture/internationalization/CURRENT_STATE.md');
-    runGit('commit', '-m', 'module authority bootstrap');
-    const headSha = runGit('rev-parse', 'HEAD').trim();
-
-    return {
-      dir,
-      baseSha,
-      headSha,
-      resolved: resolveEffectivePrChangedPaths({
-        repoRoot: dir,
-        baseSha,
-        headSha,
-        source: 'module_authority_bootstrap_parity_fixture',
-      }),
-    };
+  function resolveCurrentPrChangedPathsOnce() {
+    if (!cachedPrResolution) {
+      const hasCiBoundary =
+        process.env.GITHUB_EVENT_PATH ||
+        process.env.GITHUB_BASE_SHA ||
+        process.env.I18N_PR_BASE_SHA;
+      if (hasCiBoundary) {
+        cachedPrResolution = resolveEffectivePrChangedPaths({ repoRoot });
+      } else {
+        const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        const baseSha = execFileSync('git', ['merge-base', 'origin/main', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        cachedPrResolution = resolveEffectivePrChangedPaths({
+          repoRoot,
+          baseSha,
+          headSha,
+          source: 'local_merge_base_fallback',
+        });
+      }
+    }
+    return cachedPrResolution;
   }
 
-  it('resolves module authority bootstrap paths via base...head (isolated parity fixture)', () => {
-    const { resolved } = createModuleAuthorityBootstrapParityFixture();
+  it('resolves current PR changed paths via base...head (module authority bootstrap)', () => {
+    const resolved = resolveCurrentPrChangedPathsOnce();
     expect(resolved.changedPaths.length).toBeGreaterThan(0);
     expect(
       resolved.changedPaths.some((path) => path.startsWith('architecture/internationalization/')),
