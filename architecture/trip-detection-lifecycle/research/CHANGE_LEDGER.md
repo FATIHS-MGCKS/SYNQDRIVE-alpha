@@ -53,6 +53,8 @@ Append-only record for this authority directory.
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
+| 2026-09-11 | R12 PEC/EV BASE/HEAD causal proof — portable probe + worktree script; validation env-path fix `9f8078cd6`; causal BASE RED observed CI run 34647969555 | Trip FSM R12 PR #1603 | [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md), [KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md](../evidence/KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md) |
+
 ## Planned later phases (Standard 1.0)
 
 - Phase 3: Reconciliation and classification (ongoing)
