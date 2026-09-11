@@ -26,7 +26,13 @@ import {
   computeRequestRates,
   findPhaseSpecByCadence,
   resolveExp021CalibrationPlan,
+  resolveNominalPhaseDurationMs,
+  type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
+import {
+  initializeRequestSlotsForActivePhase,
+  type Exp021RequestSlotRecord,
+} from './reference-capture-exp021-request-slots.lib';
 import {
   buildNativeTemporalEvidenceV1,
   type Exp021NativeTemporalEvidenceV1,
@@ -113,6 +119,18 @@ export type HfCalibrationPhaseRuntimeCounters = {
   transitionWindowCount: number;
   nativeUniqueTemporalBucketStarts: string[];
   nativeMaxIntraResponseTemporalGapMs: number | null;
+  /** Orchestrator/runtime movement authority sealed at phase boundary. */
+  validMovementDurationMs?: number | null;
+  uncertainMovementDurationMs?: number | null;
+  /** Deterministic EXP-021 HF request slot ledger for the active phase. */
+  exp021RequestSlots?: Exp021RequestSlotRecord[] | null;
+};
+
+export type HfCalibrationSkippedPhasePlan = {
+  cadenceMs: number;
+  phaseSequence: number;
+  skipReason: 'PHYSICAL_RUN_ENDED_EARLY' | 'NOT_RUN';
+  skippedAt: string;
 };
 
 export type HfCalibrationCancelledPhaseRequest = HfCalibrationPendingPhaseRequest & {
@@ -151,6 +169,7 @@ export type HfCalibrationSeriesState = {
   completedPhaseSummaries: HfCalibrationPhaseSummary[];
   pendingPhaseRequest: HfCalibrationPendingPhaseRequest | null;
   cancelledPhaseRequests?: HfCalibrationCancelledPhaseRequest[];
+  skippedPhasePlans?: HfCalibrationSkippedPhasePlan[];
   terminalFinalizationAt: string | null;
   lastPhaseBoundaryAt: string | null;
   seriesStartedAt: string;
@@ -193,6 +212,7 @@ export function normalizeHfCalibrationSeriesState(
     completedPhaseSummaries: (raw.completedPhaseSummaries ?? []).map((s) => ({ ...s })),
     pendingPhaseRequest: raw.pendingPhaseRequest ? { ...raw.pendingPhaseRequest } : null,
     cancelledPhaseRequests: (raw.cancelledPhaseRequests ?? []).map((c) => ({ ...c })),
+    skippedPhasePlans: (raw.skippedPhasePlans ?? []).map((s) => ({ ...s })),
     terminalFinalizationAt: raw.terminalFinalizationAt ?? null,
     lastPhaseBoundaryAt: raw.lastPhaseBoundaryAt ?? null,
     seriesStartedAt: raw.seriesStartedAt,
@@ -337,7 +357,7 @@ export function buildEffectiveConfigSnapshot(args: {
   };
 }
 
-function emptyPhaseCounters(phaseId: string): HfCalibrationPhaseRuntimeCounters {
+export function emptyPhaseCounters(phaseId: string): HfCalibrationPhaseRuntimeCounters {
   return {
     calibrationPhaseId: phaseId,
     allRequestCount: 0,
@@ -356,6 +376,30 @@ function emptyPhaseCounters(phaseId: string): HfCalibrationPhaseRuntimeCounters 
     transitionWindowCount: 0,
     nativeUniqueTemporalBucketStarts: [],
     nativeMaxIntraResponseTemporalGapMs: null,
+    validMovementDurationMs: null,
+    uncertainMovementDurationMs: null,
+    exp021RequestSlots: null,
+  };
+}
+
+export function buildInitialPhaseCounters(args: {
+  calibrationPhaseId: string;
+  phaseEffectiveStartMs: number;
+  cadenceMs: number;
+  phaseProvenance?: HfCalibrationPhaseProvenance;
+}): HfCalibrationPhaseRuntimeCounters {
+  const base = emptyPhaseCounters(args.calibrationPhaseId);
+  if (args.phaseProvenance === 'PRE_ROLL') {
+    return base;
+  }
+  const phaseDurationMs = resolveNominalPhaseDurationMs(args.cadenceMs);
+  return {
+    ...base,
+    exp021RequestSlots: initializeRequestSlotsForActivePhase({
+      phaseEffectiveStartMs: args.phaseEffectiveStartMs,
+      cadenceMs: args.cadenceMs,
+      phaseDurationMs,
+    }),
   };
 }
 
@@ -413,7 +457,8 @@ export function finalizePhaseSummary(args: {
   const wallDurationMs = Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0;
   const plan = args.calibrationPlan ?? resolveExp021CalibrationPlan();
   const phaseSpec = findPhaseSpecByCadence(plan, args.phase.effectivePollIntervalMs);
-  const validMovementDurationMs = args.validMovementDurationMs ?? 0;
+  const validMovementDurationMs =
+    args.validMovementDurationMs ?? args.counters.validMovementDurationMs ?? 0;
   const scientificStatus = phaseSpec
     ? classifyPhaseScientificStatus({
         plan,
@@ -532,6 +577,7 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
           phase: closedPhase,
           counters: countersToUse,
           phaseEndedAtMs: args.effectiveAtMs,
+          validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
         }),
       );
     }
@@ -597,11 +643,17 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
     controlPlaneRevision: (series?.controlPlaneRevision ?? 0) + 1,
   };
 
+  const phaseProvenance = draftPhase.phaseProvenance ?? args.pending.phaseProvenance;
   return {
     series: nextSeries,
     applied: true,
     resetLastHfHistoricalPollAt: true,
-    activePhaseCounters: emptyPhaseCounters(phaseId),
+    activePhaseCounters: buildInitialPhaseCounters({
+      calibrationPhaseId: phaseId,
+      phaseEffectiveStartMs: args.effectiveAtMs,
+      cadenceMs: intervalMs,
+      phaseProvenance,
+    }),
   };
 }
 
@@ -875,6 +927,7 @@ export function finalizeTerminalCalibrationSeries(args: {
         phase: closedPhase,
         counters: countersToUse,
         phaseEndedAtMs: args.terminalAtMs,
+        validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
       })
     : null;
   const completedPhaseSummaries = terminalSummary
@@ -899,6 +952,95 @@ export function finalizeTerminalCalibrationSeries(args: {
 }
 
 /** Session-scoped override uses EFFECTIVE active phase only (not pending). */
+export function finalizeCalibrationOnPhysicalEndEarly(args: {
+  series: HfCalibrationSeriesState | null;
+  counters: HfCalibrationPhaseRuntimeCounters | null;
+  physicalEndMs: number;
+  plan?: Exp021CalibrationPlan;
+}): {
+  series: HfCalibrationSeriesState | null;
+  applied: boolean;
+  terminalSummary: HfCalibrationPhaseSummary | null;
+} {
+  if (!args.series) {
+    return { series: null, applied: false, terminalSummary: null };
+  }
+  if (args.series.terminalFinalizationAt) {
+    return { series: args.series, applied: false, terminalSummary: null };
+  }
+
+  const plan = args.plan ?? resolveExp021CalibrationPlan();
+  const physicalEndIso = new Date(args.physicalEndMs).toISOString();
+  let series = args.series;
+  let terminalSummary: HfCalibrationPhaseSummary | null = null;
+
+  if (series.activePhase) {
+    const countersToUse =
+      args.counters?.calibrationPhaseId === series.activePhase.calibrationPhaseId
+        ? args.counters
+        : emptyPhaseCounters(series.activePhase.calibrationPhaseId);
+    const closedPhase: HfCalibrationPhaseRecord = {
+      ...series.activePhase,
+      phaseEndedAt: physicalEndIso,
+    };
+    terminalSummary = closedPhase.effectiveConfig
+      ? finalizePhaseSummary({
+          phase: closedPhase,
+          counters: countersToUse,
+          phaseEndedAtMs: args.physicalEndMs,
+          calibrationPlan: plan,
+          validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
+        })
+      : null;
+    series = {
+      ...series,
+      activePhase: null,
+      completedPhases: [...series.completedPhases, closedPhase],
+      completedPhaseSummaries: terminalSummary
+        ? [...series.completedPhaseSummaries, terminalSummary]
+        : series.completedPhaseSummaries,
+      lastPhaseBoundaryAt: physicalEndIso,
+    };
+  }
+
+  let cancelledPhaseRequests = [...(series.cancelledPhaseRequests ?? [])];
+  if (series.pendingPhaseRequest) {
+    cancelledPhaseRequests.push({
+      ...series.pendingPhaseRequest,
+      cancelledAt: physicalEndIso,
+      cancelReason: 'PHYSICAL_RUN_ENDED_EARLY',
+      neverEffective: true,
+    });
+  }
+
+  const completedCadences = new Set(series.completedPhases.map((phase) => phase.effectivePollIntervalMs));
+  const skippedPhasePlans = [...(series.skippedPhasePlans ?? [])];
+  let nextSequence = series.completedPhases.length + skippedPhasePlans.length + 1;
+  for (const phaseSpec of plan.phases) {
+    if (completedCadences.has(phaseSpec.cadenceMs)) continue;
+    skippedPhasePlans.push({
+      cadenceMs: phaseSpec.cadenceMs,
+      phaseSequence: nextSequence,
+      skipReason: 'PHYSICAL_RUN_ENDED_EARLY',
+      skippedAt: physicalEndIso,
+    });
+    nextSequence += 1;
+  }
+
+  return {
+    series: {
+      ...series,
+      pendingPhaseRequest: null,
+      cancelledPhaseRequests,
+      skippedPhasePlans,
+      terminalFinalizationAt: physicalEndIso,
+      controlPlaneRevision: series.controlPlaneRevision + 1,
+    },
+    applied: true,
+    terminalSummary,
+  };
+}
+
 export function resolveEffectiveHfPollIntervalMs(
   config: HfRecoveryPolicyV2Config,
   calibration: HfCalibrationSeriesState | null | undefined,

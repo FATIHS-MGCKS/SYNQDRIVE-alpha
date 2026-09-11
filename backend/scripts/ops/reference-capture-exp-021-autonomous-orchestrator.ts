@@ -208,6 +208,69 @@ async function waitForRecordingCycles(
   throw new Error('recording cycles not observed');
 }
 
+async function completePhysicalRunAndStop(args: {
+  sessionService: ReferenceCaptureSessionService;
+  settlementShadow: ReferenceCaptureSettlementShadowService;
+  prisma: PrismaService;
+  config: Exp021RuntimeConfig;
+  sessionId: string;
+  phaseTracker: PhysicalDrivePhaseTracker;
+  physicalEndDetector: PhysicalEndDetector;
+  physicalDriveEndCandidateId: string | null;
+  physicalDriveStartedAt: Date | null;
+  nowMs: number;
+  reason: 'AUTO_STOP' | 'FINAL_PHASE_WALL_CLOCK' | 'PHYSICAL_RUN_ENDED_EARLY';
+}): Promise<void> {
+  const endCandidate = args.physicalEndDetector.getCandidate();
+  const sealMs =
+    args.reason === 'PHYSICAL_RUN_ENDED_EARLY' && endCandidate?.candidateBoundaryAt
+      ? endCandidate.candidateBoundaryAt.getTime()
+      : args.nowMs;
+  const finalPhase = args.phaseTracker.markPhysicalDriveEnded(sealMs);
+  if (
+    endCandidate &&
+    args.physicalDriveEndCandidateId &&
+    endCandidate.candidateStatus !== 'CONFIRMED'
+  ) {
+    await args.settlementShadow.confirmPhysicalDriveIntervalCandidate({
+      sessionId: args.sessionId,
+      candidateId: args.physicalDriveEndCandidateId,
+      reason: `${args.reason.toLowerCase()}_terminalization`,
+    });
+  }
+  const physicalEndAt =
+    endCandidate?.candidateBoundaryAt ??
+    (args.reason === 'PHYSICAL_RUN_ENDED_EARLY' ? new Date(sealMs) : null);
+  if (args.physicalDriveStartedAt && physicalEndAt) {
+    await args.settlementShadow.persistPhysicalDriveIntervalAuthority({
+      sessionId: args.sessionId,
+      physicalStartAt: args.physicalDriveStartedAt,
+      physicalEndAt,
+      candidateId: endCandidate?.candidateId,
+      source: endCandidate ? 'PDI_CANDIDATE' : 'ORCHESTRATOR_CONFIRMED',
+    });
+  }
+  if (finalPhase) {
+    await args.sessionService.persistExp021ActivePhaseMovementMetrics(
+      args.config.organizationId,
+      args.sessionId,
+      {
+        validMovementDurationMs: finalPhase.validMovementDurationMs,
+        uncertainMovementDurationMs: finalPhase.uncertainMovementDurationMs,
+      },
+    );
+  }
+  if (args.reason === 'PHYSICAL_RUN_ENDED_EARLY' && physicalEndAt) {
+    await args.sessionService.terminalizeExp021PhysicalEndEarly(
+      args.config.organizationId,
+      args.sessionId,
+      physicalEndAt,
+    );
+  } else {
+    await args.sessionService.stopRecording(args.config.organizationId, args.sessionId);
+  }
+}
+
 async function waitPhaseEffective(
   sessionRepo: ReferenceCaptureSessionRepository,
   config: Exp021RuntimeConfig,
@@ -798,6 +861,16 @@ async function main(): Promise<void> {
               next,
               resolvePhaseAdvancementForIndex(config, nextIndex),
             );
+            if (completed) {
+              await sessionService!.persistExp021ActivePhaseMovementMetrics(
+                config.organizationId,
+                sessionId,
+                {
+                  validMovementDurationMs: completed.validMovementDurationMs,
+                  uncertainMovementDurationMs: completed.uncertainMovementDurationMs,
+                },
+              );
+            }
             await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
             currentPhaseIndex += 1;
             phaseActivatedAtMs = effectiveAt.getTime();
@@ -876,38 +949,38 @@ async function main(): Promise<void> {
           });
         }
 
-        if (physicalDriveStarted && endObservation.shouldAutoStop) {
+        const lastPhaseIndex = config.cadencePhaseOrderMs.length - 1;
+        const finalPhaseWallClockExpired =
+          !physicalDriveEnded &&
+          currentPhaseIndex === lastPhaseIndex &&
+          phaseTracker.shouldAdvancePhase(nowMs);
+        const physicalEndCandidate = physicalEndDetector.getCandidate();
+        const physicalEndEarly =
+          physicalDriveStarted &&
+          !physicalDriveEnded &&
+          physicalEndCandidate?.candidateStatus === 'CONFIRMED' &&
+          physicalEndCandidate.candidateBoundaryAt.getTime() <= nowMs;
+
+        if (physicalDriveStarted && (endObservation.shouldAutoStop || finalPhaseWallClockExpired || physicalEndEarly)) {
           physicalDriveEnded = true;
-          const finalPhase = phaseTracker.markPhysicalDriveEnded(nowMs);
-          const endCandidate = physicalEndDetector.getCandidate();
-          if (
-            endCandidate &&
-            physicalDriveEndCandidateId &&
-            endCandidate.candidateStatus !== 'CONFIRMED'
-          ) {
-            await settlementShadow!.confirmPhysicalDriveIntervalCandidate({
-              sessionId,
-              candidateId: physicalDriveEndCandidateId,
-              reason: 'final_auto_stop_terminalization',
-            });
-          }
-          if (physicalDriveStartedAt && endCandidate?.candidateBoundaryAt) {
-            await settlementShadow!.persistPhysicalDriveIntervalAuthority({
-              sessionId,
-              physicalStartAt: physicalDriveStartedAt,
-              physicalEndAt: endCandidate.candidateBoundaryAt,
-              candidateId: endCandidate.candidateId,
-              source: 'PDI_CANDIDATE',
-            });
-          } else if (physicalDriveStartedAt) {
-            await settlementShadow!.persistPhysicalDriveIntervalAuthority({
-              sessionId,
-              physicalStartAt: physicalDriveStartedAt,
-              physicalEndAt: new Date(nowMs),
-              source: 'ORCHESTRATOR_CONFIRMED',
-            });
-          }
-          await sessionService!.stopRecording(config.organizationId, sessionId);
+          const stopReason = physicalEndEarly
+            ? 'PHYSICAL_RUN_ENDED_EARLY'
+            : finalPhaseWallClockExpired
+              ? 'FINAL_PHASE_WALL_CLOCK'
+              : 'AUTO_STOP';
+          await completePhysicalRunAndStop({
+            sessionService: sessionService!,
+            settlementShadow: settlementShadow!,
+            prisma: prisma!,
+            config,
+            sessionId,
+            phaseTracker,
+            physicalEndDetector,
+            physicalDriveEndCandidateId,
+            physicalDriveStartedAt,
+            nowMs,
+            reason: stopReason,
+          });
           const final = await sessionRepo!.findById(config.organizationId, sessionId);
           const canonicalWholeTrip = await prisma!.referenceCaptureSettlementShadowSchedule.count({
             where: { sessionId, probeType: 'WHOLE_TRIP', phase: null },
@@ -917,10 +990,10 @@ async function main(): Promise<void> {
           });
           log(config, 'AUTO_STOP_RECORDING', {
             physicalDriveEnded: true,
+            STOP_REASON: stopReason,
             SESSION_STATUS: final?.status,
             CANONICAL_WHOLE_TRIP_COUNT: canonicalWholeTrip,
             PDI_COUNT: pdiSchedules,
-            finalPhase,
             EXP021_RUN_COMPLETENESS: phaseTracker.computeRunCompleteness(
               config.cadencePhaseOrderMs.length,
             ),

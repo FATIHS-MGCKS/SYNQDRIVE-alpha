@@ -1,0 +1,1024 @@
+{
+  "canonicalT0": "2026-09-11T04:37:26.000Z",
+  "phaseForensics": {
+    "60": {
+      "summary": {
+        "phaseStartedAt": "2026-09-11T05:02:50.035Z",
+        "phaseEndedAt": "2026-09-11T05:08:08.349Z",
+        "validMovementDurationMs": 0,
+        "nativeMaxGapMs": null
+      },
+      "gapStats": null
+    },
+    "120": {
+      "summary": {
+        "phaseStartedAt": "2026-09-11T04:52:32.888Z",
+        "phaseEndedAt": "2026-09-11T05:02:50.035Z",
+        "validMovementDurationMs": 0,
+        "nativeMaxGapMs": 32590
+      },
+      "gapStats": {
+        "nativeBucketCount": 29,
+        "firstNativeBucketTs": "2026-09-11T04:54:47.488Z",
+        "lastNativeBucketTs": "2026-09-11T05:00:10.504Z",
+        "medianNativeDt": 8000,
+        "p90NativeDt": 22000,
+        "p95NativeDt": 26000,
+        "maxNativeDt": 32590,
+        "gapsGe5s": 19,
+        "gapsGe10s": 14,
+        "gapsGe20s": 8,
+        "gapsGe30s": 1,
+        "gapsGe60s": 0,
+        "gapsGe100s": 0,
+        "top20Gaps": [
+          {
+            "gapId": "gap-19",
+            "previousBucketTimestamp": "2026-09-11T04:58:16.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:49.504Z",
+            "gapDurationMs": 32590
+          },
+          {
+            "gapId": "gap-1",
+            "previousBucketTimestamp": "2026-09-11T04:54:47.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:13.488Z",
+            "gapDurationMs": 26000
+          },
+          {
+            "gapId": "gap-8",
+            "previousBucketTimestamp": "2026-09-11T04:55:46.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:08.488Z",
+            "gapDurationMs": 22000
+          },
+          {
+            "gapId": "gap-7",
+            "previousBucketTimestamp": "2026-09-11T04:55:25.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:46.488Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-14",
+            "previousBucketTimestamp": "2026-09-11T04:56:56.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:17.914Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-18",
+            "previousBucketTimestamp": "2026-09-11T04:57:56.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:16.914Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-21",
+            "previousBucketTimestamp": "2026-09-11T04:58:57.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:17.504Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-25",
+            "previousBucketTimestamp": "2026-09-11T04:59:28.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:48.504Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-9",
+            "previousBucketTimestamp": "2026-09-11T04:56:08.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:26.488Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-17",
+            "previousBucketTimestamp": "2026-09-11T04:57:38.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:56.914Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-10",
+            "previousBucketTimestamp": "2026-09-11T04:56:26.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:41.914Z",
+            "gapDurationMs": 15426
+          },
+          {
+            "gapId": "gap-15",
+            "previousBucketTimestamp": "2026-09-11T04:57:17.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:30.914Z",
+            "gapDurationMs": 13000
+          },
+          {
+            "gapId": "gap-11",
+            "previousBucketTimestamp": "2026-09-11T04:56:41.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:53.914Z",
+            "gapDurationMs": 12000
+          },
+          {
+            "gapId": "gap-26",
+            "previousBucketTimestamp": "2026-09-11T04:59:48.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:59.504Z",
+            "gapDurationMs": 11000
+          },
+          {
+            "gapId": "gap-16",
+            "previousBucketTimestamp": "2026-09-11T04:57:30.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:38.914Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-20",
+            "previousBucketTimestamp": "2026-09-11T04:58:49.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:57.504Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-2",
+            "previousBucketTimestamp": "2026-09-11T04:55:13.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:20.488Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-27",
+            "previousBucketTimestamp": "2026-09-11T04:59:59.504Z",
+            "nextBucketTimestamp": "2026-09-11T05:00:06.504Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-22",
+            "previousBucketTimestamp": "2026-09-11T04:59:17.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:23.504Z",
+            "gapDurationMs": 6000
+          }
+        ],
+        "allGaps": [
+          {
+            "gapId": "gap-1",
+            "previousBucketTimestamp": "2026-09-11T04:54:47.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:13.488Z",
+            "gapDurationMs": 26000
+          },
+          {
+            "gapId": "gap-2",
+            "previousBucketTimestamp": "2026-09-11T04:55:13.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:20.488Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-7",
+            "previousBucketTimestamp": "2026-09-11T04:55:25.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:55:46.488Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-8",
+            "previousBucketTimestamp": "2026-09-11T04:55:46.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:08.488Z",
+            "gapDurationMs": 22000
+          },
+          {
+            "gapId": "gap-9",
+            "previousBucketTimestamp": "2026-09-11T04:56:08.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:26.488Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-10",
+            "previousBucketTimestamp": "2026-09-11T04:56:26.488Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:41.914Z",
+            "gapDurationMs": 15426
+          },
+          {
+            "gapId": "gap-11",
+            "previousBucketTimestamp": "2026-09-11T04:56:41.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:56:53.914Z",
+            "gapDurationMs": 12000
+          },
+          {
+            "gapId": "gap-14",
+            "previousBucketTimestamp": "2026-09-11T04:56:56.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:17.914Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-15",
+            "previousBucketTimestamp": "2026-09-11T04:57:17.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:30.914Z",
+            "gapDurationMs": 13000
+          },
+          {
+            "gapId": "gap-16",
+            "previousBucketTimestamp": "2026-09-11T04:57:30.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:38.914Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-17",
+            "previousBucketTimestamp": "2026-09-11T04:57:38.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:57:56.914Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-18",
+            "previousBucketTimestamp": "2026-09-11T04:57:56.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:16.914Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-19",
+            "previousBucketTimestamp": "2026-09-11T04:58:16.914Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:49.504Z",
+            "gapDurationMs": 32590
+          },
+          {
+            "gapId": "gap-20",
+            "previousBucketTimestamp": "2026-09-11T04:58:49.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:58:57.504Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-21",
+            "previousBucketTimestamp": "2026-09-11T04:58:57.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:17.504Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-22",
+            "previousBucketTimestamp": "2026-09-11T04:59:17.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:23.504Z",
+            "gapDurationMs": 6000
+          },
+          {
+            "gapId": "gap-25",
+            "previousBucketTimestamp": "2026-09-11T04:59:28.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:48.504Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-26",
+            "previousBucketTimestamp": "2026-09-11T04:59:48.504Z",
+            "nextBucketTimestamp": "2026-09-11T04:59:59.504Z",
+            "gapDurationMs": 11000
+          },
+          {
+            "gapId": "gap-27",
+            "previousBucketTimestamp": "2026-09-11T04:59:59.504Z",
+            "nextBucketTimestamp": "2026-09-11T05:00:06.504Z",
+            "gapDurationMs": 7000
+          }
+        ]
+      }
+    },
+    "180": {
+      "summary": {
+        "phaseStartedAt": "2026-09-11T04:37:26.000Z",
+        "phaseEndedAt": "2026-09-11T04:52:32.888Z",
+        "validMovementDurationMs": 0,
+        "nativeMaxGapMs": 39000
+      },
+      "gapStats": {
+        "nativeBucketCount": 77,
+        "firstNativeBucketTs": "2026-09-11T04:38:03.649Z",
+        "lastNativeBucketTs": "2026-09-11T04:50:05.321Z",
+        "medianNativeDt": 7000,
+        "p90NativeDt": 20000,
+        "p95NativeDt": 21000,
+        "maxNativeDt": 39000,
+        "gapsGe5s": 46,
+        "gapsGe10s": 30,
+        "gapsGe20s": 14,
+        "gapsGe30s": 1,
+        "gapsGe60s": 0,
+        "gapsGe100s": 0,
+        "top20Gaps": [
+          {
+            "gapId": "gap-67",
+            "previousBucketTimestamp": "2026-09-11T04:47:55.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:48:34.321Z",
+            "gapDurationMs": 39000
+          },
+          {
+            "gapId": "gap-69",
+            "previousBucketTimestamp": "2026-09-11T04:48:36.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:48:59.321Z",
+            "gapDurationMs": 23000
+          },
+          {
+            "gapId": "gap-1",
+            "previousBucketTimestamp": "2026-09-11T04:38:03.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:38:24.649Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-31",
+            "previousBucketTimestamp": "2026-09-11T04:41:33.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:41:54.806Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-52",
+            "previousBucketTimestamp": "2026-09-11T04:44:55.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:16.752Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-75",
+            "previousBucketTimestamp": "2026-09-11T04:49:29.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:49:50.321Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-49",
+            "previousBucketTimestamp": "2026-09-11T04:43:56.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:17.752Z",
+            "gapDurationMs": 20946
+          },
+          {
+            "gapId": "gap-7",
+            "previousBucketTimestamp": "2026-09-11T04:38:48.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:08.649Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-27",
+            "previousBucketTimestamp": "2026-09-11T04:40:33.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:40:53.649Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-30",
+            "previousBucketTimestamp": "2026-09-11T04:41:13.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:41:33.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-40",
+            "previousBucketTimestamp": "2026-09-11T04:42:41.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:01.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-48",
+            "previousBucketTimestamp": "2026-09-11T04:43:36.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:56.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-51",
+            "previousBucketTimestamp": "2026-09-11T04:44:35.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:55.752Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-64",
+            "previousBucketTimestamp": "2026-09-11T04:47:22.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:42.321Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-53",
+            "previousBucketTimestamp": "2026-09-11T04:45:16.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:35.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-54",
+            "previousBucketTimestamp": "2026-09-11T04:45:35.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:54.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-57",
+            "previousBucketTimestamp": "2026-09-11T04:46:10.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:29.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-60",
+            "previousBucketTimestamp": "2026-09-11T04:46:51.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:10.321Z",
+            "gapDurationMs": 18569
+          },
+          {
+            "gapId": "gap-35",
+            "previousBucketTimestamp": "2026-09-11T04:42:03.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:42:21.806Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-50",
+            "previousBucketTimestamp": "2026-09-11T04:44:17.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:35.752Z",
+            "gapDurationMs": 18000
+          }
+        ],
+        "allGaps": [
+          {
+            "gapId": "gap-1",
+            "previousBucketTimestamp": "2026-09-11T04:38:03.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:38:24.649Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-2",
+            "previousBucketTimestamp": "2026-09-11T04:38:24.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:38:29.649Z",
+            "gapDurationMs": 5000
+          },
+          {
+            "gapId": "gap-5",
+            "previousBucketTimestamp": "2026-09-11T04:38:32.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:38:40.649Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-6",
+            "previousBucketTimestamp": "2026-09-11T04:38:40.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:38:48.649Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-7",
+            "previousBucketTimestamp": "2026-09-11T04:38:48.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:08.649Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-18",
+            "previousBucketTimestamp": "2026-09-11T04:39:22.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:30.649Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-19",
+            "previousBucketTimestamp": "2026-09-11T04:39:30.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:36.649Z",
+            "gapDurationMs": 6000
+          },
+          {
+            "gapId": "gap-20",
+            "previousBucketTimestamp": "2026-09-11T04:39:36.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:42.649Z",
+            "gapDurationMs": 6000
+          },
+          {
+            "gapId": "gap-21",
+            "previousBucketTimestamp": "2026-09-11T04:39:42.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:39:50.649Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-22",
+            "previousBucketTimestamp": "2026-09-11T04:39:50.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:40:07.649Z",
+            "gapDurationMs": 17000
+          },
+          {
+            "gapId": "gap-23",
+            "previousBucketTimestamp": "2026-09-11T04:40:07.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:40:15.649Z",
+            "gapDurationMs": 8000
+          },
+          {
+            "gapId": "gap-24",
+            "previousBucketTimestamp": "2026-09-11T04:40:15.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:40:29.649Z",
+            "gapDurationMs": 14000
+          },
+          {
+            "gapId": "gap-27",
+            "previousBucketTimestamp": "2026-09-11T04:40:33.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:40:53.649Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-28",
+            "previousBucketTimestamp": "2026-09-11T04:40:53.649Z",
+            "nextBucketTimestamp": "2026-09-11T04:41:10.806Z",
+            "gapDurationMs": 17157
+          },
+          {
+            "gapId": "gap-30",
+            "previousBucketTimestamp": "2026-09-11T04:41:13.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:41:33.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-31",
+            "previousBucketTimestamp": "2026-09-11T04:41:33.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:41:54.806Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-35",
+            "previousBucketTimestamp": "2026-09-11T04:42:03.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:42:21.806Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-36",
+            "previousBucketTimestamp": "2026-09-11T04:42:21.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:42:31.806Z",
+            "gapDurationMs": 10000
+          },
+          {
+            "gapId": "gap-37",
+            "previousBucketTimestamp": "2026-09-11T04:42:31.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:42:38.806Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-40",
+            "previousBucketTimestamp": "2026-09-11T04:42:41.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:01.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-43",
+            "previousBucketTimestamp": "2026-09-11T04:43:07.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:18.806Z",
+            "gapDurationMs": 11000
+          },
+          {
+            "gapId": "gap-45",
+            "previousBucketTimestamp": "2026-09-11T04:43:20.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:27.806Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-46",
+            "previousBucketTimestamp": "2026-09-11T04:43:27.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:33.806Z",
+            "gapDurationMs": 6000
+          },
+          {
+            "gapId": "gap-48",
+            "previousBucketTimestamp": "2026-09-11T04:43:36.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:43:56.806Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-49",
+            "previousBucketTimestamp": "2026-09-11T04:43:56.806Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:17.752Z",
+            "gapDurationMs": 20946
+          },
+          {
+            "gapId": "gap-50",
+            "previousBucketTimestamp": "2026-09-11T04:44:17.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:35.752Z",
+            "gapDurationMs": 18000
+          },
+          {
+            "gapId": "gap-51",
+            "previousBucketTimestamp": "2026-09-11T04:44:35.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:44:55.752Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-52",
+            "previousBucketTimestamp": "2026-09-11T04:44:55.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:16.752Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-53",
+            "previousBucketTimestamp": "2026-09-11T04:45:16.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:35.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-54",
+            "previousBucketTimestamp": "2026-09-11T04:45:35.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:45:54.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-55",
+            "previousBucketTimestamp": "2026-09-11T04:45:54.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:03.752Z",
+            "gapDurationMs": 9000
+          },
+          {
+            "gapId": "gap-56",
+            "previousBucketTimestamp": "2026-09-11T04:46:03.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:10.752Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-57",
+            "previousBucketTimestamp": "2026-09-11T04:46:10.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:29.752Z",
+            "gapDurationMs": 19000
+          },
+          {
+            "gapId": "gap-58",
+            "previousBucketTimestamp": "2026-09-11T04:46:29.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:36.752Z",
+            "gapDurationMs": 7000
+          },
+          {
+            "gapId": "gap-59",
+            "previousBucketTimestamp": "2026-09-11T04:46:36.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:46:51.752Z",
+            "gapDurationMs": 15000
+          },
+          {
+            "gapId": "gap-60",
+            "previousBucketTimestamp": "2026-09-11T04:46:51.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:10.321Z",
+            "gapDurationMs": 18569
+          },
+          {
+            "gapId": "gap-62",
+            "previousBucketTimestamp": "2026-09-11T04:47:10.752Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:16.321Z",
+            "gapDurationMs": 5569
+          },
+          {
+            "gapId": "gap-63",
+            "previousBucketTimestamp": "2026-09-11T04:47:16.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:22.321Z",
+            "gapDurationMs": 6000
+          },
+          {
+            "gapId": "gap-64",
+            "previousBucketTimestamp": "2026-09-11T04:47:22.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:42.321Z",
+            "gapDurationMs": 20000
+          },
+          {
+            "gapId": "gap-65",
+            "previousBucketTimestamp": "2026-09-11T04:47:42.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:47:53.321Z",
+            "gapDurationMs": 11000
+          },
+          {
+            "gapId": "gap-67",
+            "previousBucketTimestamp": "2026-09-11T04:47:55.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:48:34.321Z",
+            "gapDurationMs": 39000
+          },
+          {
+            "gapId": "gap-69",
+            "previousBucketTimestamp": "2026-09-11T04:48:36.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:48:59.321Z",
+            "gapDurationMs": 23000
+          },
+          {
+            "gapId": "gap-73",
+            "previousBucketTimestamp": "2026-09-11T04:49:05.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:49:17.321Z",
+            "gapDurationMs": 12000
+          },
+          {
+            "gapId": "gap-74",
+            "previousBucketTimestamp": "2026-09-11T04:49:17.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:49:29.321Z",
+            "gapDurationMs": 12000
+          },
+          {
+            "gapId": "gap-75",
+            "previousBucketTimestamp": "2026-09-11T04:49:29.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:49:50.321Z",
+            "gapDurationMs": 21000
+          },
+          {
+            "gapId": "gap-76",
+            "previousBucketTimestamp": "2026-09-11T04:49:50.321Z",
+            "nextBucketTimestamp": "2026-09-11T04:50:05.321Z",
+            "gapDurationMs": 15000
+          }
+        ]
+      }
+    },
+    "30_CONTROL": {
+      "summary": {
+        "active": true,
+        "phaseStartedAt": "2026-09-11T05:08:08.349Z",
+        "scientificallyValid": false,
+        "note": "active phase with zero native buckets (vehicle stopped)",
+        "hfCalibrationActiveCounters": {
+          "allRequestCount": 28,
+          "calibrationPhaseId": "114517e2-f7dd-46db-8c95-5d9211a6d167",
+          "transitionWindowCount": 2,
+          "transitionRequestCount": 2,
+          "recoveredLateBucketCount": 0,
+          "recoverySweepRequestCount": 0,
+          "nativeFastLoopRequestCount": 26,
+          "nativeFastLoopNewBucketCount": 0,
+          "transitionProviderBucketCount": 0,
+          "nativeFastLoopProviderErrorCount": 0,
+          "nativeUniqueTemporalBucketStarts": [],
+          "nativeFastLoopProviderBucketCount": 0,
+          "nativeFastLoopRevisionBucketCount": 0,
+          "nativeFastLoopDuplicateBucketCount": 0,
+          "nativeFastLoopProviderSuccessCount": 0,
+          "nativeMaxIntraResponseTemporalGapMs": null,
+          "nativeFastLoopProviderZeroResultCount": 26
+        }
+      },
+      "gapStats": null
+    }
+  },
+  "gapSettlement": {
+    "60": {
+      "status": "NO_NATIVE_LEDGER"
+    },
+    "120": {
+      "matrixRowCount": 257,
+      "summary": {
+        "nativeGapsTotal": 14,
+        "nativeGapsExactlySettlementComparable": 2,
+        "nativeGapsNotAssessableNoOverlap": 12,
+        "liveMissingBucketsTotal": 257,
+        "liveMissingBucketsRecoveredLater": 0,
+        "liveMissingBucketsNeverSeenBy600": 57,
+        "liveMissingBucketsUnknown": 200
+      },
+      "topGaps": [
+        {
+          "gapDurationMs": 32590,
+          "gapStartIso": "2026-09-11T04:58:16.914Z",
+          "gapEndIso": "2026-09-11T04:58:49.504Z",
+          "interiorBucketCount": 32,
+          "classifications": {
+            "NEVER_SEEN_BY_600": 32
+          }
+        },
+        {
+          "gapDurationMs": 26000,
+          "gapStartIso": "2026-09-11T04:54:47.488Z",
+          "gapEndIso": "2026-09-11T04:55:13.488Z",
+          "interiorBucketCount": 25,
+          "classifications": {
+            "NEVER_SEEN_BY_600": 25
+          }
+        },
+        {
+          "gapDurationMs": 22000,
+          "gapStartIso": "2026-09-11T04:55:46.488Z",
+          "gapEndIso": "2026-09-11T04:56:08.488Z",
+          "interiorBucketCount": 21,
+          "classifications": {
+            "NOT_ASSESSABLE": 21
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:55:25.488Z",
+          "gapEndIso": "2026-09-11T04:55:46.488Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:56:56.914Z",
+          "gapEndIso": "2026-09-11T04:57:17.914Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:57:56.914Z",
+          "gapEndIso": "2026-09-11T04:58:16.914Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:58:57.504Z",
+          "gapEndIso": "2026-09-11T04:59:17.504Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:59:28.504Z",
+          "gapEndIso": "2026-09-11T04:59:48.504Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        },
+        {
+          "gapDurationMs": 18000,
+          "gapStartIso": "2026-09-11T04:56:08.488Z",
+          "gapEndIso": "2026-09-11T04:56:26.488Z",
+          "interiorBucketCount": 17,
+          "classifications": {
+            "NOT_ASSESSABLE": 17
+          }
+        },
+        {
+          "gapDurationMs": 18000,
+          "gapStartIso": "2026-09-11T04:57:38.914Z",
+          "gapEndIso": "2026-09-11T04:57:56.914Z",
+          "interiorBucketCount": 17,
+          "classifications": {
+            "NOT_ASSESSABLE": 17
+          }
+        }
+      ]
+    },
+    "180": {
+      "matrixRowCount": 524,
+      "summary": {
+        "nativeGapsTotal": 30,
+        "nativeGapsExactlySettlementComparable": 2,
+        "nativeGapsNotAssessableNoOverlap": 28,
+        "liveMissingBucketsTotal": 524,
+        "liveMissingBucketsRecoveredLater": 0,
+        "liveMissingBucketsNeverSeenBy600": 34,
+        "liveMissingBucketsUnknown": 490
+      },
+      "topGaps": [
+        {
+          "gapDurationMs": 39000,
+          "gapStartIso": "2026-09-11T04:47:55.321Z",
+          "gapEndIso": "2026-09-11T04:48:34.321Z",
+          "interiorBucketCount": 38,
+          "classifications": {
+            "NOT_ASSESSABLE": 38
+          }
+        },
+        {
+          "gapDurationMs": 23000,
+          "gapStartIso": "2026-09-11T04:48:36.321Z",
+          "gapEndIso": "2026-09-11T04:48:59.321Z",
+          "interiorBucketCount": 22,
+          "classifications": {
+            "NOT_ASSESSABLE": 22
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:38:03.649Z",
+          "gapEndIso": "2026-09-11T04:38:24.649Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:41:33.806Z",
+          "gapEndIso": "2026-09-11T04:41:54.806Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:44:55.752Z",
+          "gapEndIso": "2026-09-11T04:45:16.752Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 21000,
+          "gapStartIso": "2026-09-11T04:49:29.321Z",
+          "gapEndIso": "2026-09-11T04:49:50.321Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 20946,
+          "gapStartIso": "2026-09-11T04:43:56.806Z",
+          "gapEndIso": "2026-09-11T04:44:17.752Z",
+          "interiorBucketCount": 20,
+          "classifications": {
+            "NOT_ASSESSABLE": 20
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:38:48.649Z",
+          "gapEndIso": "2026-09-11T04:39:08.649Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:40:33.649Z",
+          "gapEndIso": "2026-09-11T04:40:53.649Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        },
+        {
+          "gapDurationMs": 20000,
+          "gapStartIso": "2026-09-11T04:41:13.806Z",
+          "gapEndIso": "2026-09-11T04:41:33.806Z",
+          "interiorBucketCount": 19,
+          "classifications": {
+            "NOT_ASSESSABLE": 19
+          }
+        }
+      ]
+    },
+    "30_CONTROL": {
+      "status": "NO_NATIVE_LEDGER"
+    }
+  },
+  "crossAge": {
+    "allProbesBucketStableBy30": "YES",
+    "allProbesBucketStableBy60": "YES",
+    "allProbesValueStableBy30": "NO",
+    "allProbesValueStableBy60": "YES"
+  },
+  "wholeTrip": [
+    {
+      "probeId": "PDI-30",
+      "scheduledAgeMs": 30000,
+      "status": "SUCCESS",
+      "rawRows": 228,
+      "bucketCount": 678,
+      "valueSnapshotCount": 678
+    },
+    {
+      "probeId": "PDI-30",
+      "scheduledAgeMs": 30000,
+      "status": "SUCCESS",
+      "rawRows": 724,
+      "bucketCount": 1934,
+      "valueSnapshotCount": 1934
+    },
+    {
+      "probeId": "PDI-30",
+      "scheduledAgeMs": 30000,
+      "status": "SUCCESS",
+      "rawRows": 937,
+      "bucketCount": 2444,
+      "valueSnapshotCount": 2444
+    },
+    {
+      "probeId": "PDI-30",
+      "scheduledAgeMs": 30000,
+      "status": "SUCCESS",
+      "rawRows": 1022,
+      "bucketCount": 2686,
+      "valueSnapshotCount": 2686
+    },
+    {
+      "probeId": "PDI-30",
+      "scheduledAgeMs": 30000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    },
+    {
+      "probeId": "PDI-60",
+      "scheduledAgeMs": 60000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    },
+    {
+      "probeId": "PDI-120",
+      "scheduledAgeMs": 120000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    },
+    {
+      "probeId": "PDI-180",
+      "scheduledAgeMs": 180000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    },
+    {
+      "probeId": "PDI-300",
+      "scheduledAgeMs": 300000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    },
+    {
+      "probeId": "PDI-600",
+      "scheduledAgeMs": 600000,
+      "status": "SUCCESS",
+      "rawRows": 1483,
+      "bucketCount": 3854,
+      "valueSnapshotCount": 3854
+    }
+  ]
+}

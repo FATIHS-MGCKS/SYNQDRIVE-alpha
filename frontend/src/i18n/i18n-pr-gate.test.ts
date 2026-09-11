@@ -1848,6 +1848,124 @@ describe('P2.3.4 authority path contract — parsed workflow structural parity',
       expect(isParsedWorkflowProductOrPresentationPath(path, contract)).toBe(false);
     }
   });
+
+  let cachedPrResolution: ReturnType<typeof resolveEffectivePrChangedPaths> | null = null;
+
+  function resolveCurrentPrChangedPathsOnce() {
+    if (!cachedPrResolution) {
+      const hasCiBoundary =
+        process.env.GITHUB_EVENT_PATH ||
+        process.env.GITHUB_BASE_SHA ||
+        process.env.I18N_PR_BASE_SHA;
+      if (hasCiBoundary) {
+        cachedPrResolution = resolveEffectivePrChangedPaths({ repoRoot });
+      } else {
+        const headSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        const baseSha = execFileSync('git', ['merge-base', 'origin/main', 'HEAD'], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        }).trim();
+        cachedPrResolution = resolveEffectivePrChangedPaths({
+          repoRoot,
+          baseSha,
+          headSha,
+          source: 'local_merge_base_fallback',
+        });
+      }
+    }
+    return cachedPrResolution;
+  }
+
+  it('resolves current PR changed paths via base...head (module authority bootstrap)', () => {
+    const resolved = resolveCurrentPrChangedPathsOnce();
+    expect(resolved.changedPaths.length).toBeGreaterThan(0);
+
+    const hasI18nAuthorityPaths = resolved.changedPaths.some((path) =>
+      path.startsWith('architecture/internationalization/'),
+    );
+    if (!hasI18nAuthorityPaths) {
+      // Non-i18n-bootstrap PRs (e.g. backend/reference-capture) must not fail this fixture.
+      return;
+    }
+
+    expect(
+      resolved.changedPaths.some((path) => path.startsWith('architecture/trip-detection-lifecycle/')),
+    ).toBe(false);
+    expect(resolved.changedPaths.some((path) => path.startsWith('backend/'))).toBe(false);
+  });
+});
+
+describe('P2.3.4 authority path contract — governance boundary negative regressions', () => {
+  const I18N_MODULE_AUTHORITY_PATH = 'architecture/internationalization/CURRENT_STATE.md';
+  const MASTER_CHANGES_VIEW = 'frontend/src/master/components/ChangesView.tsx';
+  const MASTER_ARCHITEKTUR_VIEW = 'frontend/src/master/components/ArchitekturView.tsx';
+  const CENTRAL_REGISTRY = 'architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md';
+  const REGISTRY_VALIDATOR = 'architecture/scripts/validate-module-registry.mjs';
+  const RENTAL_PRODUCT_PATH = 'frontend/src/rental/components/TopBar.tsx';
+
+  it('A: module-owned internationalization authority path is canonical governance authority', () => {
+    expect(isCanonicalGovernanceAuthorityPath(I18N_MODULE_AUTHORITY_PATH)).toBe(true);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(I18N_MODULE_AUTHORITY_PATH, contract)).toBe(true);
+    expect(isParsedWorkflowProductOrPresentationPath(I18N_MODULE_AUTHORITY_PATH, contract)).toBe(
+      false,
+    );
+  });
+
+  it('B: Master ChangesView.tsx is not i18n governance authority', () => {
+    expect(isCanonicalGovernanceAuthorityPath(MASTER_CHANGES_VIEW)).toBe(false);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(MASTER_CHANGES_VIEW, contract)).toBe(false);
+    expect(isParsedWorkflowProductOrPresentationPath(MASTER_CHANGES_VIEW, contract)).toBe(true);
+  });
+
+  it('C: Master ArchitekturView.tsx is not i18n governance authority', () => {
+    expect(isCanonicalGovernanceAuthorityPath(MASTER_ARCHITEKTUR_VIEW)).toBe(false);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(MASTER_ARCHITEKTUR_VIEW, contract)).toBe(false);
+    expect(isParsedWorkflowProductOrPresentationPath(MASTER_ARCHITEKTUR_VIEW, contract)).toBe(true);
+  });
+
+  it('D: module authority plus Master ChangesView triggers mixed authority/product policy', () => {
+    const partitioned = partitionChangedPaths(
+      [I18N_MODULE_AUTHORITY_PATH, MASTER_CHANGES_VIEW],
+      isScannerEligibleRelativePath,
+    );
+    expect(partitioned.authorityPaths).toContain(I18N_MODULE_AUTHORITY_PATH);
+    expect(partitioned.governedProductionPaths).toContain(MASTER_CHANGES_VIEW);
+    const policy = evaluateGovernanceAuthorityPolicy({
+      authorityPaths: partitioned.authorityPaths,
+      governedProductionPaths: partitioned.governedProductionPaths,
+      authorityApproved: false,
+    });
+    expect(policy.governanceAuthorityChanged).toBe(true);
+    expect(policy.mixedAuthorityProductChange).toBe(true);
+    expect(policy.reason).toBe('MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE');
+  });
+
+  it('E: unrelated Rental production TSX is product/presentation under Layer 0', () => {
+    expect(isCanonicalGovernanceAuthorityPath(RENTAL_PRODUCT_PATH)).toBe(false);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(RENTAL_PRODUCT_PATH, contract)).toBe(false);
+    expect(isParsedWorkflowProductOrPresentationPath(RENTAL_PRODUCT_PATH, contract)).toBe(true);
+  });
+
+  it('shared central registry path is not i18n-specific governance authority', () => {
+    expect(isCanonicalGovernanceAuthorityPath(CENTRAL_REGISTRY)).toBe(false);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(CENTRAL_REGISTRY, contract)).toBe(false);
+    expect(isParsedWorkflowProductOrPresentationPath(CENTRAL_REGISTRY, contract)).toBe(false);
+  });
+
+  it('shared registry validator path is not i18n-specific governance authority', () => {
+    expect(isCanonicalGovernanceAuthorityPath(REGISTRY_VALIDATOR)).toBe(false);
+    const contract = loadParsedWorkflowAuthorityContract(authorityProtectionWorkflowPath);
+    expect(isParsedWorkflowAuthorityPath(REGISTRY_VALIDATOR, contract)).toBe(false);
+    expect(isParsedWorkflowProductOrPresentationPath(REGISTRY_VALIDATOR, contract)).toBe(false);
+  });
 });
 
 describe('P2.3.3 PR gate — scanner eligibility helper', () => {

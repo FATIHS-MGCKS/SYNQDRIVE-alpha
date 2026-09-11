@@ -33,6 +33,9 @@ export { EXP021_LOWER_BOUND_V1, EXP021_DEFAULT_CALIBRATION_PLAN };
 export const EXP021_WHOLE_TRIP_AGES_MS = EXP021_MANDATORY_AGES_MS;
 export const EXP021_FIXED_INTERVAL_PROBE_COUNT = 8;
 export const EXP021_MANDATORY_SETTLEMENT_OBSERVATIONS = 48;
+/** Legacy fixed-interval design: 2 probes × 4 phases × 6 ages. */
+export const EXP021_LEGACY_FIXED_INTERVAL_QUERY_COUNT =
+  EXP021_FIXED_INTERVAL_PROBE_COUNT * EXP021_MANDATORY_AGES_MS.length;
 export const EXP021_WHOLE_TRIP_SHADOW_OBSERVATIONS = 6;
 
 export type SettlementShadowProbePlan = {
@@ -227,6 +230,144 @@ export function computeScheduleTimingProjection(args: {
     expectedActualAgeMsAtCreation,
     expectedScheduleDriftMsAtCreation,
     executableOnTime,
+  };
+}
+
+export function buildTiledSettlementProbeId(pollIntervalMs: number, tileIndex: number): string {
+  return `SP-${pollIntervalMs / 1000}-T${tileIndex}`;
+}
+
+/** Legacy stabilized tiling (A/B era) — retained for historical evidence parsing only. */
+export const EXP021_LEGACY_STABILIZED_TILE_STEP_MS = EXP021_PRIMARY_PROBE_DURATION_MS;
+
+/**
+ * Full-phase overlapping 60s source windows from phase start (no stabilization offset).
+ * Settlement ages (+30…+600) are independent of source-window position; stabilization
+ * exclusion applied only to legacy A/B comparative probes.
+ */
+export const EXP021_FULL_PHASE_TILE_DURATION_MS = EXP021_PRIMARY_PROBE_DURATION_MS;
+export const EXP021_FULL_PHASE_TILE_STEP_MS = 30_000;
+
+export function buildLegacyStabilizedTiledSettlementProbesForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndMs: number;
+}): SettlementShadowProbePlan[] {
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  const probes: SettlementShadowProbePlan[] = [];
+  let tileIndex = 0;
+  for (
+    let start = snapToSecondBoundaryMs(args.phaseStartedAtMs + EXP021_PHASE_STABILIZATION_MS);
+    start + EXP021_PRIMARY_PROBE_DURATION_MS <= args.phaseEndMs;
+    start += EXP021_PRIMARY_PROBE_DURATION_MS
+  ) {
+    const end = start + EXP021_PRIMARY_PROBE_DURATION_MS;
+    probes.push({
+      probeId: buildTiledSettlementProbeId(args.phasePollIntervalMs, tileIndex),
+      probeType: 'FIXED_INTERVAL',
+      phaseLabel,
+      phasePollIntervalMs: args.phasePollIntervalMs,
+      sourceIntervalStartMs: start,
+      sourceIntervalEndMs: end,
+      queryFromMs: start,
+      queryToMs: end,
+    });
+    tileIndex += 1;
+  }
+  return probes;
+}
+
+export function buildFullPhaseOverlappingSettlementProbesForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndMs: number;
+  tileDurationMs?: number;
+  tileStepMs?: number;
+}): SettlementShadowProbePlan[] {
+  const tileDurationMs = args.tileDurationMs ?? EXP021_FULL_PHASE_TILE_DURATION_MS;
+  const tileStepMs = args.tileStepMs ?? EXP021_FULL_PHASE_TILE_STEP_MS;
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  const probes: SettlementShadowProbePlan[] = [];
+  let tileIndex = 0;
+  for (
+    let start = snapToSecondBoundaryMs(args.phaseStartedAtMs);
+    start + tileDurationMs <= args.phaseEndMs;
+    start += tileStepMs
+  ) {
+    const end = start + tileDurationMs;
+    probes.push({
+      probeId: buildTiledSettlementProbeId(args.phasePollIntervalMs, tileIndex),
+      probeType: 'FIXED_INTERVAL',
+      phaseLabel,
+      phasePollIntervalMs: args.phasePollIntervalMs,
+      sourceIntervalStartMs: start,
+      sourceIntervalEndMs: end,
+      queryFromMs: start,
+      queryToMs: end,
+    });
+    tileIndex += 1;
+  }
+  return probes;
+}
+
+/** @deprecated Use buildFullPhaseOverlappingSettlementProbesForPhase for UPPER_BOUND_V2. */
+export function buildTiledSettlementProbesForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndMs: number;
+}): SettlementShadowProbePlan[] {
+  return buildFullPhaseOverlappingSettlementProbesForPhase(args);
+}
+
+export function countFullPhaseOverlappingTilesForNominalPhase(args: {
+  nominalPhaseDurationMs: number;
+  tileDurationMs?: number;
+  tileStepMs?: number;
+}): number {
+  const tileDurationMs = args.tileDurationMs ?? EXP021_FULL_PHASE_TILE_DURATION_MS;
+  const tileStepMs = args.tileStepMs ?? EXP021_FULL_PHASE_TILE_STEP_MS;
+  if (args.nominalPhaseDurationMs < tileDurationMs) return 0;
+  return Math.floor((args.nominalPhaseDurationMs - tileDurationMs) / tileStepMs) + 1;
+}
+
+export function computeUpperBoundV2SettlementQueryBudget(
+  plan = EXP021_DEFAULT_CALIBRATION_PLAN,
+): {
+  tileCount: number;
+  expectedSettlementQueryCount: number;
+  maxSettlementQueryCount: number;
+  legacyStabilizedTileCount: number;
+  fullPhaseTileCount: number;
+  nominalPhaseMinutes: number;
+  legacyStabilizedCoverageMinutes: number;
+} {
+  let fullPhaseTileCount = 0;
+  let legacyStabilizedTileCount = 0;
+  let nominalPhaseMinutes = 0;
+  let legacyStabilizedCoverageMinutes = 0;
+  for (const phase of plan.phases) {
+    nominalPhaseMinutes += phase.targetDurationMs / 60_000;
+    fullPhaseTileCount += countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: phase.targetDurationMs,
+    });
+    const legacyTiles = buildLegacyStabilizedTiledSettlementProbesForPhase({
+      phasePollIntervalMs: phase.cadenceMs,
+      phaseStartedAtMs: 0,
+      phaseEndMs: phase.targetDurationMs,
+    });
+    legacyStabilizedTileCount += legacyTiles.length;
+    legacyStabilizedCoverageMinutes +=
+      (legacyTiles.length * EXP021_PRIMARY_PROBE_DURATION_MS) / 60_000;
+  }
+  const expectedSettlementQueryCount = fullPhaseTileCount * EXP021_MANDATORY_AGES_MS.length;
+  return {
+    tileCount: fullPhaseTileCount,
+    expectedSettlementQueryCount,
+    maxSettlementQueryCount: expectedSettlementQueryCount,
+    legacyStabilizedTileCount,
+    fullPhaseTileCount,
+    nominalPhaseMinutes,
+    legacyStabilizedCoverageMinutes,
   };
 }
 
