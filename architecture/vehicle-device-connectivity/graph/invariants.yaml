@@ -1,4 +1,4 @@
-# Vehicle & Device Connectivity — Invariants (bootstrap)
+# Vehicle & Device Connectivity — Invariants (Phase 1)
 
 invariants:
   - id: VDC-INV-001
@@ -6,15 +6,19 @@ invariants:
     title: Poll time is not source time
     epistemic_status: CONFIRMED
     statement: providerFetchedAt and DimoPollLog success do not prove a new device/source snapshot.
+    evidence:
+      - VDC-EVID-REPO-PHASE1-001
     source_paths:
       - backend/src/workers/processors/dimo-snapshot.processor.ts
-      - architecture/vehicle-device-connectivity/AGENT_CONTRACT.md
+      - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md
 
   - id: VDC-INV-002
     kind: CONFIRMED_INVARIANT
-    title: Monotonic sourceTimestamp guard
+    title: Monotonic sourceTimestamp strict-less-than guard
     epistemic_status: CONFIRMED
-    statement: Incoming signalsLatest.lastSeen older than stored sourceTimestamp is stale; VLS telemetry fields are not updated.
+    statement: Incoming lastSeen strictly older than stored sourceTimestamp skips VLS telemetry update; providerFetchedAt still updates.
+    evidence:
+      - VDC-EVID-REPO-PHASE1-001
     source_paths:
       - backend/src/modules/dimo/vls-monotonic-merge.util.ts
 
@@ -26,3 +30,24 @@ invariants:
     source_paths:
       - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
       - backend/src/modules/ai/evidence/ai-evidence-telemetry.mapper.ts
+
+  - id: VDC-INV-004
+    kind: CANDIDATE_INVARIANT
+    title: Three frequency layers must not be conflated
+    epistemic_status: CONFIRMED
+    statement: SynqDrive poll frequency, provider source update frequency, and physical device transmission frequency are distinct evidence layers.
+    evidence:
+      - VDC-EVID-REPO-PHASE1-001
+    source_paths:
+      - architecture/vehicle-device-connectivity/operations/POLLING_AND_SCHEDULERS.md
+
+  - id: VDC-INV-005
+    kind: CONFIRMED_INVARIANT
+    title: Equal sourceTimestamp is not treated as stale
+    epistemic_status: CONFIRMED
+    statement: Monotonic guard accepts incoming == existing; full VLS upsert proceeds. ClickHouse may skip duplicate recorded_at.
+    evidence:
+      - VDC-EVID-REPO-PHASE1-001
+    source_paths:
+      - backend/src/modules/dimo/vls-monotonic-merge.util.ts
+      - architecture/vehicle-device-connectivity/signals/SIGNAL_AUTHORITY.md

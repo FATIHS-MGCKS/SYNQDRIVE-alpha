@@ -1,11 +1,15 @@
-# Vehicle & Device Connectivity — Knowledge Graph Edges (bootstrap)
+# Vehicle & Device Connectivity — Knowledge Graph Edges (Phase 1)
 
 edges:
+  - from: VDC-PIPE-SNAPSHOT-001
+    relation: upstream_of
+    to: VDC-STATE-FRESHNESS-001
+
   - from: VDC-STATE-FRESHNESS-001
     relation: upstream_of
     to: VDC-RES-FRESHNESS-001
 
-  - from: VDC-STATE-FRESHNESS-001
+  - from: VDC-RES-FRESHNESS-001
     relation: upstream_of
     to: VDC-ORCH-RUNTIME-001
 
@@ -13,9 +17,33 @@ edges:
     relation: governs
     to: VDC-ORCH-RUNTIME-001
 
+  - from: VDC-ORCH-RUNTIME-001
+    relation: projects_to
+    to: VDC-API-FLEET-001
+
+  - from: VDC-API-FLEET-001
+    relation: consumed_by
+    to: VDC-CONS-FE-001
+
+  - from: VDC-ORCH-RUNTIME-001
+    relation: downstream_of
+    to: VDC-POL-ALERT-001
+
+  - from: VDC-PERSIST-VLS-001
+    relation: upstream_of
+    to: VDC-PIPE-SNAPSHOT-001
+
+  - from: VDC-PERSIST-CH-001
+    relation: downstream_of
+    to: VDC-PIPE-SNAPSHOT-001
+
   - from: VDC-PROF-LTE-R1-001
     relation: enables
     to: VDC-AUTH-SEMANTICS-001
+
+  - from: VDC-EVID-REPO-PHASE1-001
+    relation: supports
+    to: VDC-DOM-CONNECTIVITY-001
 
   - from: VDC-EVID-LTE-R1-PENDING-001
     relation: supports
@@ -29,3 +57,8 @@ edges:
     relation: contradicts
     to: VDC-EVID-LTE-R1-PENDING-001
     notes: Production reconstruction not yet performed
+
+  - from: VDC-CX-001
+    relation: contradicts
+    to: VDC-POL-ALERT-001
+    notes: Policy colocated under DIMO module vs proposed VDC semantic ownership

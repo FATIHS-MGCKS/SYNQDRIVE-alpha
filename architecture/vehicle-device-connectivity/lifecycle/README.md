@@ -1,14 +1,8 @@
-# Connectivity Lifecycle (Vehicle & Device Connectivity)
+# Vehicle & Device Connectivity — Lifecycle
 
-**Status:** Scaffold only — canonical lifecycle states **not** finalized.
+Phase 1 current-state documentation:
 
-## Intended semantic dimensions (proposed)
+- [CURRENT_SEMANTIC_MAP.md](./CURRENT_SEMANTIC_MAP.md) — every connectivity label used in code today
+- [EVIDENCE_HIERARCHY.md](./EVIDENCE_HIERARCHY.md) — evidence classes and precedence chains
 
-- **Provider link** — consent, binding, DIMO `connectionStatus` mirror
-- **Source freshness** — `sourceTimestamp` age buckets (live / standby / delayed / offline)
-- **Physical device** — OBD plug, episodes, unplug webhooks
-- **Fault class** — sleep vs disconnect vs provider vs permission vs CAN absence
-
-Full state machine documentation awaits Phase 1–2 audit.
-
-See [../research/OPEN_HYPOTHESES.md](../research/OPEN_HYPOTHESES.md) (VDC-HYP-005, VDC-HYP-006).
+Target lifecycle design is **not** defined in Phase 1 — repository truth only.
