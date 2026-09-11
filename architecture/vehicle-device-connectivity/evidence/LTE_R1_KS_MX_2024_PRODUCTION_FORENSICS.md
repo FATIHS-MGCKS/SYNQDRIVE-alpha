@@ -85,19 +85,55 @@ If freshness were evaluated continuously, each cycle would cross the 86,400 s bo
 
 These are **potential transient classification windows**, not demonstrated false positives.
 
-### 4b. Actual Production evaluation per cycle
+### 4b. Production evidence per cycle — polling vs runtime evaluation (separate stages)
 
-**Method:** Query `dimo_poll_logs` (SNAPSHOT) in `[threshold crossing, next strict advance)`, plus `notifications` / `notification_occurrences` for `TELEMETRY_SOFT_OFFLINE` and `TELEMETRY_OFFLINE`. Alert sync runs only via `VehicleConnectivityRuntimeProjectionService.projectForVehicle()` (demand-driven) — **not** on every snapshot poll (`dimo-snapshot.processor` has no `projectForVehicle` call). CODE.
+**Epistemic rule:** A SNAPSHOT job completing is **not** equivalent to `VehicleConnectivityRuntimeProjectionService.projectForVehicle()` executing. Runtime projection is demand-driven (fleet/vehicle-detail reads, operational projection, episode-resolution outbox) and has **no persistence table** (CODE). Diagnostic transitions are in-memory only (`ConnectivityDiagnosticTransitionTracker`). Retained PM2 logs for Sep 9–11 05:02–05:11 UTC contained **no** vehicle-scoped `projectForVehicle` / `syncRuntimeAlerts` / `signal_delayed` lines for KS MX 2024.
 
-| Cycle | Polls in window | SUCCESS / FAILURE | Alerts in window | Classification |
-|-------|-----------------|-------------------|------------------|----------------|
-| C1 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
-| C2 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
-| C3 | **0** | — | **0** | **THEORETICAL_WINDOW_ONLY** |
+#### Stage-evidence matrix (C1/C2/C3)
 
-**Expanded context (±10 min):** Nearest polls were ~5 min **before** threshold crossing (source still `< 24 h` → `standby`). No poll occurred inside the 163–181 s windows because scheduled SNAPSHOT cadence (~5.5 min) exceeds window duration. C2 had a poll at `2026-09-10T05:06:51Z` (inside expanded range, before advance) that would imply `signal_delayed` **if** `syncRuntimeAlerts` had run — but **no** `TELEMETRY_SOFT_OFFLINE` notification was persisted in that interval.
+| Stage | What it means | C1 | C2 | C3 |
+|-------|---------------|----|----|-----|
+| **1** | Freshness threshold mathematically crossed (prev strict source + 86,400 s) | **EVIDENCED** | **EVIDENCED** | **EVIDENCED** |
+| **2** | Provider/scheduler SNAPSHOT job `startedAt` inside `[crossing, next advance)` | **NOT IN WINDOW** (0) | **NOT IN WINDOW** (0) | **NOT IN WINDOW** (0) |
+| **3** | `projectForVehicle` executed during window | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** |
+| **4** | Telemetry freshness classified at that instant | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** |
+| **5** | `syncRuntimeAlerts` executed during window | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** | **RUNTIME_EVALUATION_NOT_PROVEN** |
+| **6** | `TELEMETRY_SOFT_OFFLINE` / `TELEMETRY_OFFLINE` persisted or emitted | **NOT EVIDENCED** (0 rows) | **NOT EVIDENCED** (0 rows) | **NOT EVIDENCED** (0 rows) |
 
-**Conclusion:** Sep 8–11 ~24 h cycles produced **no observed `signal_delayed` alert false positives**. Windows are real classification-risk intervals under continuous evaluation, but Production did not persist or emit soft-offline alerts during them.
+Stage **6** negative evidence does **not** prove stages **3–5** never ran — only that no alert was persisted. Stage **2** absence does **not** prove stages **3–5** never ran (other consumers can invoke projection). CODE establishes call-path **possibility**; Production retained evidence does **not** establish actual execution during the 163–181 s windows.
+
+**Per-cycle SNAPSHOT poll summary** (`dimo_poll_logs`, exact window `[crossing, next advance)`):
+
+| Cycle | SNAPSHOT polls in window | Alerts in window | Window classification |
+|-------|--------------------------|------------------|------------------------|
+| C1 | **0** | **0** | Potential classification window; SNAPSHOT job not in window; runtime evaluation **not proven** |
+| C2 | **0** | **0** | Potential classification window; SNAPSHOT job not in window; runtime evaluation **not proven** |
+| C3 | **0** | **0** | Potential classification window; SNAPSHOT job not in window; runtime evaluation **not proven** |
+
+Nearest SNAPSHOT jobs bracketing each window (all job types; ±10 min context): scheduled cadence ~5.5 min exceeds 163–181 s window duration, so no SNAPSHOT `startedAt` falls inside any exact window. C2 nearest before window: `2026-09-10T05:03:20.378Z` (98 s before crossing); next after window: `2026-09-10T05:33:50.404Z`.
+
+#### C2 contradiction resolution — raw `dimo_poll_logs` (Production re-query 2026-09-11)
+
+**Query range:** `2026-09-10T05:00:00Z` through `2026-09-10T05:12:00Z` (all `jobType`).
+
+| id | jobType | startedAt | finishedAt | status | durationMs | errorCode |
+|----|---------|-----------|------------|--------|------------|-----------|
+| `6702afa7-86e1-497a-9c9c-4039c10d8ce8` | SNAPSHOT | `2026-09-10T05:03:20.378Z` | `2026-09-10T05:03:20.630Z` | SUCCESS | 252 | — |
+
+No other rows in range. Exact C2 window `[2026-09-10T05:04:58Z, 2026-09-10T05:07:59Z)`: **0 rows** (any job type).
+
+**Explicit answers (C2 / `05:06:51Z` narrative):**
+
+| Q | Answer |
+|---|--------|
+| **A)** Does a row at/about `05:06:51Z` exist? | **No** — zero `dimo_poll_logs` rows with `startedAt` in `[05:06:40Z, 05:07:00Z]` (any job type). |
+| **B)** What `jobType`? | **N/A** — no such row. |
+| **C)** Is it SNAPSHOT? | **N/A** |
+| **D)** Is `startedAt` inside `[05:04:58Z, 05:07:59Z)`? | **N/A** — no row at `05:06:51Z`. The only row in `05:00–05:12` is SNAPSHOT at `05:03:20Z`, which is **before** the C2 threshold crossing. |
+| **E)** Was the previous “0 SNAPSHOT polls in C2 window” result correct? | **Yes** — confirmed by raw Production query. |
+| **F)** Why did the narrative mention `05:06:51Z`? | **Documentation error** in the prior hardening draft — no matching `dimo_poll_logs` row. Likely conflation with the next strict source advance at `2026-09-10T05:07:59Z` (ClickHouse `recorded_at`, not a poll `startedAt`). Removed from authority. |
+
+**Conclusion:** Sep 8–11 cycles have **quantified potential classification windows** (163–181 s). **No** persisted `TELEMETRY_SOFT_OFFLINE` / `TELEMETRY_OFFLINE` during those windows. **No** retained evidence proves runtime freshness evaluation or alert sync ran inside the windows. Do **not** describe these as demonstrated false positives or `signal_delayed` emissions.
 
 **Historical note:** `TELEMETRY_SOFT_OFFLINE` on 2026-08-27 (resolved same day) predates the Sep stationary cycles and is **not** attributed to these windows without further correlation.
 
@@ -172,7 +208,7 @@ No separate Ruptela heartbeat, 0x10, or keepalive event surface observed in Prod
 | `processedAt` | canonical | Episode lifecycle completion after persist |
 | `openedAt` | episode | Episode open instant (aligned to canonical `observedAt` for webhook-opened episodes) |
 
-### Aug 2025 sequence (reconstructed)
+### Aug 2026 sequence (reconstructed)
 
 | Step | Timestamp UTC | Metric |
 |------|---------------|--------|
@@ -188,7 +224,15 @@ No separate Ruptela heartbeat, 0x10, or keepalive event surface observed in Prod
 
 Duplicate unplug at `20:42:02Z` shares the same canonicalization delay pattern (+6,028 s inbox → canonical).
 
-**Root cause:** **Partially evidenced, not fully proven.** Inbox rows show `lastErrorCode: enqueue_failed` with `processingAttempts: 1`, then successful `processedAt` at 22:22:30Z — consistent with scheduler retry after enqueue failure (supporting repo note: natural scheduler retry processed stuck inbox rows at 22:22:30Z). Worker unavailability, deployment timing, or other factors **not independently proven** from retained logs in this audit. See **VDC-Q-013**.
+**Processing delay epistemics:**
+
+| Class | Facts |
+|-------|-------|
+| **CONFIRMED** | Provider `observedAt`; inbox `receivedAt`; **~4.7 s** provider delivery; `lastErrorCode = enqueue_failed`; later successful inbox `processedAt` / canonical `receivedAt`; **~100.5 min** SynqDrive canonicalization delay from inbox receipt |
+| **CODE-SUPPORTED / INFERRED** (not execution-log proven) | Later processing at 22:22:30Z is **consistent with** the scheduler retry path for stuck inbox rows (repo ChangesView note on deploy `655f9dbe`) |
+| **UNKNOWN** | Why enqueue initially failed; worker availability; deployment interaction; replay/restart involvement |
+
+No retained execution log proves the scheduler itself processed the row at 22:22:30Z. See **VDC-Q-013**.
 
 Fast provider delivery (~4 s) did **not** imply fast SynqDrive disconnect detection (~100 min to canonical event).
 

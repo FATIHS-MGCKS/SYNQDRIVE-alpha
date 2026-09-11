@@ -26,7 +26,7 @@ Phase 2 (Production, KS MX 2024 LTE_R1) confirms:
 
 - **~24 h strict source advances** during standby (86,563–86,581 s; n=3) — VDC-HYP-001 STRONGLY_SUPPORTED.
 - **Poll success ≠ source advance** at ~343:1 during 3.75 d stationary window — VDC-HYP-003 CONFIRMED.
-- **24 h threshold jitter** produces 163–181 s **potential** classification windows per cycle; Sep cycles **THEORETICAL_WINDOW_ONLY** (no persisted alerts) — VDC-Q-011 answered.
+- **24 h threshold jitter** produces 163–181 s **potential** classification windows per cycle (VDC-Q-003 partial); Sep cycles: 0 SNAPSHOT jobs in exact windows, 0 persisted alerts, **RUNTIME_EVALUATION_NOT_PROVEN** for projection/alert sync — VDC-Q-011 answered (window geometry).
 - **DIMO CONNECTED vs `providerLinkState` UNKNOWN** observed on same vehicle — VDC-CX-011.
 - **VDC_RUNTIME_SEMANTIC_DRIFT** between Production and main SHAs: **NONE_OBSERVED** for connectivity code paths.
 - **IO174 not exposed** in signalsLatest ingest — VDC-HYP-002 STRONGLY_SUPPORTED.

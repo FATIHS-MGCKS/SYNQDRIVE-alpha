@@ -43,7 +43,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Read-only Production audit for DIMO Ruptela LTE_R1 primary vehicle KS MX 2024 (token 187336).',
       'Verified ~24 h strict source advances (86,563–86,581 s) during post-trip standby; 6 h cadence not observed.',
       'Poll SUCCESS : strict source advance ratio ~343:1 over 3.75 d stationary window.',
-      '24 h threshold: 163–181 s potential classification windows per cycle; Sep cycles THEORETICAL_WINDOW_ONLY (no persisted alerts).',
+      '24 h threshold: 163–181 s potential classification windows per cycle; Sep cycles: 0 SNAPSHOT in exact windows, 0 persisted alerts, runtime evaluation not proven.',
       'IO174 not exposed in signalsLatest ingest; GT-R1-UNPLUG-001 ground-truth protocol prepared (not executed).',
       'No Production or connectivity-runtime behavior changes; no thresholds, services, databases, or provider configuration were mutated.',
     ],
