@@ -9,7 +9,7 @@ SPEC="trip-r12-pec-ev-lock-collision.postgres-redis.integration.spec.ts"
 FAILURES=0
 SUCCESSES=0
 
-cd "$ROOT/backend"
+cd "$ROOT"
 
 for i in $(seq 1 "$REPEAT"); do
   echo "=== iteration $i/$REPEAT ==="
