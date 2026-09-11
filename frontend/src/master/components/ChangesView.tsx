@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-post-run-hardening-upper-bound-v2-2026-09-11',
+    version: '4.9.1102',
+    title: 'EXP-021 — UPPER_BOUND_V2 post-run hardening (2026-09-11 KS MS 661)',
+    summary: [
+      'Evidence freeze for session 26a8554c — UPPER_BOUND_V2 physical run (~26.2 min early stop).',
+      'Deterministic HF request slots (5/5/5/6) + T0 lastHfHistoricalPollAt reset — fixes ~4 polls/phase.',
+      'Physical-end-early + final-phase wall-clock terminalization; validMovementDurationMs persisted from counters.',
+      'Tiled 60s settlement coverage (~25 probes × 6 ages = 150 queries) for ≥90% native gap assessability target.',
+      'Trip FSM explicitly excluded from this workstream.',
+    ],
+    reason:
+      '2026-09-11 physical run produced useful evidence but exposed scheduler, terminalization, movement persistence, and settlement coverage defects before the next clean 180→120→60→30 rerun.',
+    previousBehavior:
+      '30s CONTROL could remain ACTIVE under stale telemetry; PRE_ROLL poll anchor suppressed phase-start HF slot; validMovementDurationMs sealed as 0; only 2 fixed probes/phase (~35% coverage).',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MS_661_UPPER_BOUND_V2_EVIDENCE_FREEZE_2026-09-11.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-11T14:00:00.000Z',
+  },
+  {
     id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
     version: '4.9.1101',
     title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',

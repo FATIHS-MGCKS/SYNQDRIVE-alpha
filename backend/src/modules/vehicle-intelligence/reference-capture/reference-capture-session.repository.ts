@@ -14,6 +14,8 @@ import {
 } from './reference-capture-exp-021-physical-authority.lib';
 import {
   buildCycleReleaseAcquisitionState,
+  buildInitialPhaseCounters,
+  finalizeCalibrationOnPhysicalEndEarly,
   finalizeTerminalCalibrationSeries,
   normalizeHfCalibrationSeriesState,
   reanchorPhysicalCalibrationPhaseAtT0,
@@ -476,6 +478,15 @@ export class ReferenceCaptureSessionRepository {
       const nextState: ReferenceCaptureAcquisitionState = {
         ...current,
         hfCalibrationSeries: reanchor.series,
+        lastHfHistoricalPollAt: reanchor.reanchored ? null : current.lastHfHistoricalPollAt ?? null,
+        hfCalibrationActiveCounters: reanchor.reanchored
+          ? buildInitialPhaseCounters({
+              calibrationPhaseId: reanchor.activePhase.calibrationPhaseId,
+              phaseEffectiveStartMs: canonicalT0Ms,
+              cadenceMs: input.effectivePollIntervalMs,
+              phaseProvenance: 'PHYSICAL_T0',
+            })
+          : current.hfCalibrationActiveCounters ?? null,
         acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
       };
 
@@ -581,6 +592,100 @@ export class ReferenceCaptureSessionRepository {
           controlPlaneRevision: transition.series.controlPlaneRevision,
         },
       };
+    });
+  }
+
+  async persistExp021ActivePhaseMovementAtomic(input: {
+    organizationId: string;
+    sessionId: string;
+    validMovementDurationMs: number;
+    uncertainMovementDurationMs?: number;
+  }): Promise<ReferenceCaptureSession | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const active = current.hfCalibrationSeries?.activePhase;
+      if (!active) return session;
+
+      const counters = current.hfCalibrationActiveCounters;
+      const nextCounters =
+        counters?.calibrationPhaseId === active.calibrationPhaseId
+          ? {
+              ...counters,
+              validMovementDurationMs: input.validMovementDurationMs,
+              uncertainMovementDurationMs:
+                input.uncertainMovementDurationMs ?? counters.uncertainMovementDurationMs ?? null,
+            }
+          : {
+              ...buildInitialPhaseCounters({
+                calibrationPhaseId: active.calibrationPhaseId,
+                phaseEffectiveStartMs: Date.parse(active.phaseStartedAt),
+                cadenceMs: active.effectivePollIntervalMs,
+                phaseProvenance: active.phaseProvenance,
+              }),
+              validMovementDurationMs: input.validMovementDurationMs,
+              uncertainMovementDurationMs: input.uncertainMovementDurationMs ?? null,
+            };
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationActiveCounters: nextCounters,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
+
+      return tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: { acquisitionStateJson: nextState as object },
+      });
+    });
+  }
+
+  async finalizePhysicalEndEarlyAtomic(input: {
+    organizationId: string;
+    sessionId: string;
+    physicalEndMs: number;
+  }): Promise<ReferenceCaptureSession | null> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockSessionRow(tx, input.organizationId, input.sessionId);
+      const session = await tx.referenceCaptureSession.findFirst({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+      });
+      if (!session) return null;
+
+      const current = parseAcquisitionState(session.acquisitionStateJson);
+      const finalized = finalizeCalibrationOnPhysicalEndEarly({
+        series: current.hfCalibrationSeries ?? null,
+        counters: current.hfCalibrationActiveCounters ?? null,
+        physicalEndMs: input.physicalEndMs,
+      });
+      if (!finalized.applied) return session;
+
+      const authority = parseExp021PhysicalAuthority(session.preflightJson);
+      const preflightJson = mergeExp021PhysicalAuthority(session.preflightJson, {
+        ...authority,
+        orchestrationState: 'PHYSICAL_RUN_ENDED_EARLY',
+        physicalRunEndedEarlyAt: new Date(input.physicalEndMs).toISOString(),
+      });
+
+      const nextState: ReferenceCaptureAcquisitionState = {
+        ...current,
+        hfCalibrationSeries: finalized.series,
+        hfCalibrationActiveCounters: null,
+        acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
+      };
+
+      return tx.referenceCaptureSession.update({
+        where: { id: input.sessionId, organizationId: input.organizationId },
+        data: {
+          acquisitionStateJson: nextState as object,
+          preflightJson: preflightJson as object,
+        },
+      });
     });
   }
 

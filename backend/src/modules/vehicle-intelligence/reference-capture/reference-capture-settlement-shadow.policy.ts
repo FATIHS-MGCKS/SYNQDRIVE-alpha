@@ -33,6 +33,9 @@ export { EXP021_LOWER_BOUND_V1, EXP021_DEFAULT_CALIBRATION_PLAN };
 export const EXP021_WHOLE_TRIP_AGES_MS = EXP021_MANDATORY_AGES_MS;
 export const EXP021_FIXED_INTERVAL_PROBE_COUNT = 8;
 export const EXP021_MANDATORY_SETTLEMENT_OBSERVATIONS = 48;
+/** Legacy fixed-interval design: 2 probes × 4 phases × 6 ages. */
+export const EXP021_LEGACY_FIXED_INTERVAL_QUERY_COUNT =
+  EXP021_FIXED_INTERVAL_PROBE_COUNT * EXP021_MANDATORY_AGES_MS.length;
 export const EXP021_WHOLE_TRIP_SHADOW_OBSERVATIONS = 6;
 
 export type SettlementShadowProbePlan = {
@@ -227,6 +230,78 @@ export function computeScheduleTimingProjection(args: {
     expectedActualAgeMsAtCreation,
     expectedScheduleDriftMsAtCreation,
     executableOnTime,
+  };
+}
+
+export function buildTiledSettlementProbeId(pollIntervalMs: number, tileIndex: number): string {
+  return `SP-${pollIntervalMs / 1000}-T${tileIndex}`;
+}
+
+/**
+ * Phase-wide tiled 60s source windows after stabilization — Reference Capture EXP-021 only.
+ * Prospective scheduling uses nominal phase duration; completed phases may use actual end.
+ */
+export function buildTiledSettlementProbesForPhase(args: {
+  phasePollIntervalMs: number;
+  phaseStartedAtMs: number;
+  phaseEndMs: number;
+}): SettlementShadowProbePlan[] {
+  const phaseLabel = formatPhaseLabel(args.phasePollIntervalMs);
+  const probes: SettlementShadowProbePlan[] = [];
+  let tileIndex = 0;
+  for (
+    let start = snapToSecondBoundaryMs(args.phaseStartedAtMs + EXP021_PHASE_STABILIZATION_MS);
+    start + EXP021_PRIMARY_PROBE_DURATION_MS <= args.phaseEndMs;
+    start += EXP021_PRIMARY_PROBE_DURATION_MS
+  ) {
+    const end = start + EXP021_PRIMARY_PROBE_DURATION_MS;
+    probes.push({
+      probeId: buildTiledSettlementProbeId(args.phasePollIntervalMs, tileIndex),
+      probeType: 'FIXED_INTERVAL',
+      phaseLabel,
+      phasePollIntervalMs: args.phasePollIntervalMs,
+      sourceIntervalStartMs: start,
+      sourceIntervalEndMs: end,
+      queryFromMs: start,
+      queryToMs: end,
+    });
+    tileIndex += 1;
+  }
+  return probes;
+}
+
+export function countTiledProbesForNominalPhase(args: {
+  phasePollIntervalMs: number;
+  nominalPhaseDurationMs: number;
+}): number {
+  const phaseStartedAtMs = 0;
+  const phaseEndMs = phaseStartedAtMs + args.nominalPhaseDurationMs;
+  return buildTiledSettlementProbesForPhase({
+    phasePollIntervalMs: args.phasePollIntervalMs,
+    phaseStartedAtMs,
+    phaseEndMs,
+  }).length;
+}
+
+export function computeUpperBoundV2SettlementQueryBudget(
+  plan = EXP021_DEFAULT_CALIBRATION_PLAN,
+): {
+  tileCount: number;
+  expectedSettlementQueryCount: number;
+  maxSettlementQueryCount: number;
+} {
+  let tileCount = 0;
+  for (const phase of plan.phases) {
+    tileCount += countTiledProbesForNominalPhase({
+      phasePollIntervalMs: phase.cadenceMs,
+      nominalPhaseDurationMs: phase.targetDurationMs,
+    });
+  }
+  const expectedSettlementQueryCount = tileCount * EXP021_MANDATORY_AGES_MS.length;
+  return {
+    tileCount,
+    expectedSettlementQueryCount,
+    maxSettlementQueryCount: expectedSettlementQueryCount,
   };
 }
 

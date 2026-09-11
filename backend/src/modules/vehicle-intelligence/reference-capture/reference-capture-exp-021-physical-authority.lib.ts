@@ -10,7 +10,8 @@ export type Exp021OrchestrationState =
   | 'T0_CONFIRMED'
   | 'DRIVING'
   | 'DEGRADED'
-  | 'COMPLETE';
+  | 'COMPLETE'
+  | 'PHYSICAL_RUN_ENDED_EARLY';
 
 export type Exp021PhysicalAuthority = {
   canonicalT0At: string;
@@ -21,6 +22,7 @@ export type Exp021PhysicalAuthority = {
   physicalPhase60StartedAt?: string | null;
   degradedReason?: string | null;
   degradedAt?: string | null;
+  physicalRunEndedEarlyAt?: string | null;
 };
 
 export type HfCalibrationPhaseProvenance = 'PRE_ROLL' | 'PHYSICAL_T0' | 'PHYSICAL_TRANSITION';

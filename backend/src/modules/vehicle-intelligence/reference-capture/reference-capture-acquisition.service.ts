@@ -51,6 +51,11 @@ import {
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
 import {
+  finalizeRequestSlotOutcome,
+  isExp021RequestSlotPollDue,
+  markRequestSlotIssued,
+} from './reference-capture-exp021-request-slots.lib';
+import {
   accumulatePhaseQueryMetrics,
   applyHfPolicyWithSessionPollOverride,
   buildCalibrationPhaseContext,
@@ -309,14 +314,37 @@ export class ReferenceCaptureAcquisitionService {
       }
 
       if (surfacePlan.surface === 'HF_HISTORICAL') {
-        const pollDue = isHfHistoricalPollDue({
-          nowMs: Date.now(),
-          lastHfHistoricalPollAt,
-          pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
-          policyMode: hfPolicyEffective.mode,
-        });
+        const nowMs = Date.now();
+        const activeSlots = hfCalibrationActiveCounters?.exp021RequestSlots ?? null;
+        const pollDue =
+          activeSlots?.length
+            ? isExp021RequestSlotPollDue({
+                nowMs,
+                slots: activeSlots,
+                lastHfHistoricalPollAt,
+                pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
+                policyMode: hfPolicyEffective.mode,
+              })
+            : isHfHistoricalPollDue({
+                nowMs,
+                lastHfHistoricalPollAt,
+                pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
+                policyMode: hfPolicyEffective.mode,
+              });
         if (!pollDue) {
           continue;
+        }
+
+        let issuedSlotIndex: number | null = null;
+        if (activeSlots?.length && hfCalibrationActiveCounters) {
+          const issued = markRequestSlotIssued(activeSlots, nowMs);
+          if (issued.slotIndex != null) {
+            issuedSlotIndex = issued.slotIndex;
+            hfCalibrationActiveCounters = {
+              ...hfCalibrationActiveCounters,
+              exp021RequestSlots: issued.slots,
+            };
+          }
         }
 
         const hfResult = await this.captureHistoricalSurface({
@@ -362,6 +390,26 @@ export class ReferenceCaptureAcquisitionService {
               },
               hfCalibrationSeries.activePhase.calibrationPhaseId,
             );
+            if (
+              issuedSlotIndex != null &&
+              hfCalibrationActiveCounters?.exp021RequestSlots?.length
+            ) {
+              const record = hfResult.queryProvenanceRecord;
+              const slotOutcome =
+                record.status === 'SUCCESS'
+                  ? record.resultBucketCount > 0
+                    ? 'SUCCESS'
+                    : 'ZERO_RESULT'
+                  : 'FAILURE';
+              hfCalibrationActiveCounters = {
+                ...hfCalibrationActiveCounters,
+                exp021RequestSlots: finalizeRequestSlotOutcome(
+                  hfCalibrationActiveCounters.exp021RequestSlots!,
+                  issuedSlotIndex,
+                  slotOutcome,
+                ),
+              };
+            }
           }
         }
         if (hfResult.observabilitySnapshot) {
