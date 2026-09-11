@@ -108,6 +108,7 @@ read_metrics() {
 install_and_run_probe() {
   local dir="$1"
   local label="$2"
+  local expect="$3"
   local metrics_file="$METRICS_ROOT/${label,,}-metrics.json"
   local log="/tmp/trip-r12-red-probe-${label}.log"
 
@@ -123,6 +124,7 @@ install_and_run_probe() {
   TRIP_R12_POSTGRES_REDIS_INTEGRATION=1 \
   TRIP_R12_POSTGRES_REDIS_REQUIRED=1 \
   TRIP_R12_PROBE_METRICS_FILE="$metrics_file" \
+  TRIP_R12_PROBE_EXPECT="$expect" \
   npx jest "$(basename "$PROBE_REL")" \
     --runInBand --forceExit --verbose 2>&1 | tee "$log"
   local exit_code="${PIPESTATUS[0]}"
@@ -133,72 +135,84 @@ install_and_run_probe() {
   read_metrics "$metrics_file" "$label" || true
 }
 
-echo "=== BASE probe @ ${BASE_SHA} ==="
-BASE_OUT="$(install_and_run_probe "$BASE_DIR" BASE)"
+echo "=== BASE probe @ ${BASE_SHA} (expect=BASE) ==="
+BASE_OUT="$(install_and_run_probe "$BASE_DIR" BASE BASE)"
 echo "$BASE_OUT"
 
-echo "=== HEAD probe @ ${HEAD_SHA} ==="
-HEAD_OUT="$(install_and_run_probe "$HEAD_DIR" HEAD)"
+echo "=== HEAD probe @ ${HEAD_SHA} (expect=HEAD) ==="
+HEAD_OUT="$(install_and_run_probe "$HEAD_DIR" HEAD HEAD)"
 echo "$HEAD_OUT"
 
-parse_field() {
-  local out="$1"
-  local key="$2"
-  echo "$out" | sed -n "s/^${key}=//p" | tail -1
+VALIDATION="$(node -e "
+const fs = require('fs');
+
+function loadMetrics(label) {
+  const marker = label + '_METRICS_FILE=';
+  const out = process.env[label + '_OUT'] || '';
+  const line = out.split('\n').find((l) => l.startsWith(marker));
+  if (!line) return { missing: true };
+  const file = line.slice(marker.length);
+  if (!fs.existsSync(file)) return { missing: true, file };
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-BASE_PROBE_EXECUTED="$(parse_field "$BASE_OUT" BASE_PROBE_EXECUTED)"
-BASE_TEST_INFRASTRUCTURE_ERROR="$(parse_field "$BASE_OUT" BASE_PROBE_INFRASTRUCTURE_ERROR)"
-BASE_SCHEDULE_WHILE_PEC_LOCK_HELD="$(parse_field "$BASE_OUT" BASE_SCHEDULE_WHILE_PEC_LOCK_HELD)"
-BASE_EV_PROCESSOR_ENTRY="$(parse_field "$BASE_OUT" BASE_EV_PROCESSOR_ENTRY)"
-BASE_EV_LOCK_MISS="$(parse_field "$BASE_OUT" BASE_EV_LOCK_MISS)"
-BASE_EV_TRACKING_RUN_COUNT="$(parse_field "$BASE_OUT" BASE_EV_TRACKING_RUN_COUNT)"
-BASE_FINALIZE_REACHED="$(parse_field "$BASE_OUT" BASE_FINALIZE_REACHED)"
-BASE_TRIP_COMPLETED="$(parse_field "$BASE_OUT" BASE_TRIP_COMPLETED)"
-BASE_RESTING="$(parse_field "$BASE_OUT" BASE_RESTING)"
-BASE_TERMINAL_STATE="$(parse_field "$BASE_OUT" BASE_TERMINAL_STATE)"
+const base = loadMetrics('BASE');
+const head = loadMetrics('HEAD');
 
-HEAD_PROBE_EXECUTED="$(parse_field "$HEAD_OUT" HEAD_PROBE_EXECUTED)"
-HEAD_TEST_INFRASTRUCTURE_ERROR="$(parse_field "$HEAD_OUT" HEAD_PROBE_INFRASTRUCTURE_ERROR)"
-HEAD_SCHEDULE_WHILE_PEC_LOCK_HELD="$(parse_field "$HEAD_OUT" HEAD_SCHEDULE_WHILE_PEC_LOCK_HELD)"
-HEAD_EV_PROCESSOR_ENTRY="$(parse_field "$HEAD_OUT" HEAD_EV_PROCESSOR_ENTRY)"
-HEAD_EV_LOCK_MISS="$(parse_field "$HEAD_OUT" HEAD_EV_LOCK_MISS)"
-HEAD_EV_LOCK_ACQUIRED="$(parse_field "$HEAD_OUT" HEAD_EV_LOCK_ACQUIRED)"
-HEAD_EV_TRACKING_RUN_COUNT="$(parse_field "$HEAD_OUT" HEAD_EV_TRACKING_RUN_COUNT)"
-HEAD_FINALIZE_REACHED="$(parse_field "$HEAD_OUT" HEAD_FINALIZE_REACHED)"
-HEAD_TRIP_COMPLETED="$(parse_field "$HEAD_OUT" HEAD_TRIP_COMPLETED)"
-HEAD_RESTING="$(parse_field "$HEAD_OUT" HEAD_RESTING)"
-HEAD_TERMINAL_STATE="$(parse_field "$HEAD_OUT" HEAD_TERMINAL_STATE)"
+function emit(prefix, m) {
+  if (m.missing) {
+    console.log(prefix + '_PROBE_EXECUTED=NO');
+    console.log(prefix + '_TEST_INFRASTRUCTURE_ERROR=YES');
+    return;
+  }
+  const fields = [
+    'PROBE_EXECUTED','PROBE_INFRASTRUCTURE_ERROR','SCHEDULE_WHILE_PEC_LOCK_HELD',
+    'EV_PROCESSOR_ENTRY','EV_LOCK_MISS','EV_LOCK_ACQUIRED','EV_TRACKING_RUN_COUNT',
+    'FINALIZE_REACHED','TRIP_COMPLETED','RESTING','TERMINAL_STATE'
+  ];
+  for (const f of fields) {
+    const v = m[f];
+    console.log(prefix + '_' + f + '=' + (v === undefined || v === null ? 'UNKNOWN' : JSON.stringify(v)));
+    if (f === 'PROBE_INFRASTRUCTURE_ERROR') {
+      console.log(prefix + '_TEST_INFRASTRUCTURE_ERROR=' + JSON.stringify(v ?? true));
+    }
+  }
+}
 
-BASE_RED_OK=NO
-HEAD_GREEN_OK=NO
+emit('BASE', base);
+emit('HEAD', head);
 
-if [[ "$BASE_PROBE_EXECUTED" == "true" && "$BASE_TEST_INFRASTRUCTURE_ERROR" == "false" ]]; then
-  if [[ "$BASE_SCHEDULE_WHILE_PEC_LOCK_HELD" == "true" \
-     && "$BASE_EV_PROCESSOR_ENTRY" == "true" \
-     && "$BASE_EV_LOCK_MISS" == "true" \
-     && "$BASE_EV_TRACKING_RUN_COUNT" == "0" \
-     && "$BASE_FINALIZE_REACHED" == "false" \
-     && "$BASE_TRIP_COMPLETED" == "false" \
-     && "$BASE_RESTING" == "false" \
-     && "$BASE_TERMINAL_STATE" == "NONTERMINAL" ]]; then
-    BASE_RED_OK=YES
-  fi
-fi
+const baseOk =
+  base.PROBE_EXECUTED === true &&
+  base.PROBE_INFRASTRUCTURE_ERROR === false &&
+  base.SCHEDULE_WHILE_PEC_LOCK_HELD === true &&
+  base.EV_PROCESSOR_ENTRY === true &&
+  base.EV_LOCK_MISS === true &&
+  base.EV_TRACKING_RUN_COUNT === 0 &&
+  base.FINALIZE_REACHED === false &&
+  base.TRIP_COMPLETED === false &&
+  base.RESTING === false &&
+  base.TERMINAL_STATE === 'NONTERMINAL';
 
-if [[ "$HEAD_PROBE_EXECUTED" == "true" && "$HEAD_TEST_INFRASTRUCTURE_ERROR" == "false" ]]; then
-  if [[ "$HEAD_SCHEDULE_WHILE_PEC_LOCK_HELD" == "false" \
-     && "$HEAD_EV_PROCESSOR_ENTRY" == "true" \
-     && "$HEAD_EV_LOCK_ACQUIRED" == "true" \
-     && "$HEAD_EV_LOCK_MISS" == "false" \
-     && "${HEAD_EV_TRACKING_RUN_COUNT:-0}" -ge 1 \
-     && "$HEAD_FINALIZE_REACHED" == "true" \
-     && "$HEAD_TRIP_COMPLETED" == "true" \
-     && "$HEAD_RESTING" == "true" \
-     && "$HEAD_TERMINAL_STATE" == "TERMINAL" ]]; then
-    HEAD_GREEN_OK=YES
-  fi
-fi
+const headOk =
+  head.PROBE_EXECUTED === true &&
+  head.PROBE_INFRASTRUCTURE_ERROR === false &&
+  head.SCHEDULE_WHILE_PEC_LOCK_HELD === false &&
+  head.EV_PROCESSOR_ENTRY === true &&
+  head.EV_LOCK_ACQUIRED === true &&
+  head.EV_LOCK_MISS === false &&
+  Number(head.EV_TRACKING_RUN_COUNT ?? 0) >= 1 &&
+  head.FINALIZE_REACHED === true &&
+  head.TRIP_COMPLETED === true &&
+  head.RESTING === true &&
+  head.TERMINAL_STATE === 'TERMINAL';
+
+console.log('BASE_RED_REPRODUCED=' + (baseOk ? 'YES' : 'NO'));
+console.log('HEAD_GREEN_PROVEN=' + (headOk ? 'YES' : 'NO'));
+process.exit(baseOk && headOk ? 0 : 1);
+" BASE_OUT="$BASE_OUT" HEAD_OUT="$HEAD_OUT")"
+
+echo "$VALIDATION"
 
 cat <<EOF
 BASE_SHA=${BASE_SHA}
@@ -206,31 +220,14 @@ HEAD_SHA=${HEAD_SHA}
 BASE_COMMIT_AVAILABLE=${BASE_COMMIT_AVAILABLE}
 HEAD_COMMIT_AVAILABLE=${HEAD_COMMIT_AVAILABLE}
 BASE_PROBE_RUN_ID=${BASE_PROBE_RUN_ID}
-BASE_PROBE_EXECUTED=${BASE_PROBE_EXECUTED:-UNKNOWN}
-BASE_TEST_INFRASTRUCTURE_ERROR=${BASE_TEST_INFRASTRUCTURE_ERROR:-UNKNOWN}
-BASE_SCHEDULE_WHILE_PEC_LOCK_HELD=${BASE_SCHEDULE_WHILE_PEC_LOCK_HELD:-UNKNOWN}
-BASE_EV_PROCESSOR_ENTRY=${BASE_EV_PROCESSOR_ENTRY:-UNKNOWN}
-BASE_EV_LOCK_MISS=${BASE_EV_LOCK_MISS:-UNKNOWN}
-BASE_EV_TRACKING_RUN_COUNT=${BASE_EV_TRACKING_RUN_COUNT:-UNKNOWN}
-BASE_FINALIZE_REACHED=${BASE_FINALIZE_REACHED:-UNKNOWN}
-BASE_TRIP_COMPLETED=${BASE_TRIP_COMPLETED:-UNKNOWN}
-BASE_RESTING=${BASE_RESTING:-UNKNOWN}
-BASE_TERMINAL_STATE=${BASE_TERMINAL_STATE:-UNKNOWN}
-HEAD_PROBE_EXECUTED=${HEAD_PROBE_EXECUTED:-UNKNOWN}
-HEAD_TEST_INFRASTRUCTURE_ERROR=${HEAD_TEST_INFRASTRUCTURE_ERROR:-UNKNOWN}
-HEAD_SCHEDULE_WHILE_PEC_LOCK_HELD=${HEAD_SCHEDULE_WHILE_PEC_LOCK_HELD:-UNKNOWN}
-HEAD_EV_PROCESSOR_ENTRY=${HEAD_EV_PROCESSOR_ENTRY:-UNKNOWN}
-HEAD_EV_LOCK_ACQUIRED=${HEAD_EV_LOCK_ACQUIRED:-UNKNOWN}
-HEAD_EV_LOCK_MISS=${HEAD_EV_LOCK_MISS:-UNKNOWN}
-HEAD_EV_TRACKING_RUN_COUNT=${HEAD_EV_TRACKING_RUN_COUNT:-UNKNOWN}
-HEAD_FINALIZE_REACHED=${HEAD_FINALIZE_REACHED:-UNKNOWN}
-HEAD_TRIP_COMPLETED=${HEAD_TRIP_COMPLETED:-UNKNOWN}
-HEAD_RESTING=${HEAD_RESTING:-UNKNOWN}
-HEAD_TERMINAL_STATE=${HEAD_TERMINAL_STATE:-UNKNOWN}
-BASE_RED_REPRODUCED=${BASE_RED_OK}
-HEAD_GREEN_PROVEN=${HEAD_GREEN_OK}
+HEAD_PROBE_RUN_ID=${HEAD_PROBE_RUN_ID}
 EOF
 
-if [[ "$BASE_RED_OK" != "YES" || "$HEAD_GREEN_OK" != "YES" ]]; then
+echo "$VALIDATION" | rg '^(BASE_|HEAD_|BASE_RED|HEAD_GREEN)' || true
+
+if ! echo "$VALIDATION" | rg -q '^BASE_RED_REPRODUCED=YES$'; then
+  exit 1
+fi
+if ! echo "$VALIDATION" | rg -q '^HEAD_GREEN_PROVEN=YES$'; then
   exit 1
 fi
