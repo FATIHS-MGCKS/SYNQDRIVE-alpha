@@ -1,8 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { execSync } from 'child_process';
-
 import {
   clearPossibleEndClockFields,
   readR12RecoveryTrustedStopBoundaryFromEvidence,
@@ -19,15 +17,31 @@ const BACKEND_ROOT = path.join(__dirname, '..', '..', '..', '..');
 const BACKEND_SRC = path.join(BACKEND_ROOT, 'src');
 const ORCHESTRATION = path.join(__dirname, 'trip-detection-orchestration.service.ts');
 
-function rg(pattern: string, glob = '*.ts'): string {
-  try {
-    return execSync(`rg -n --glob '${glob}' --glob '!**/*.spec.ts' "${pattern}" "${BACKEND_SRC}"`, {
-      encoding: 'utf8',
-      maxBuffer: 4 * 1024 * 1024,
-    }).trim();
-  } catch {
-    return '';
+function walkTsFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+      walkTsFiles(full, out);
+      continue;
+    }
+    if (!entry.name.endsWith('.ts') || entry.name.endsWith('.spec.ts')) continue;
+    out.push(full);
   }
+  return out;
+}
+
+function searchBackendSource(pattern: RegExp): string {
+  const lines: string[] = [];
+  for (const file of walkTsFiles(BACKEND_SRC)) {
+    const rel = path.relative(BACKEND_SRC, file);
+    const content = fs.readFileSync(file, 'utf8');
+    for (const match of content.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+      const lineNum = content.slice(0, match.index ?? 0).split('\n').length;
+      lines.push(`${rel}:${lineNum}:${match[0]}`);
+    }
+  }
+  return lines.join('\n');
 }
 
 describe('R12 clock writer audit (repository-wide)', () => {
@@ -144,9 +158,9 @@ describe('R12 clock writer audit (repository-wide)', () => {
     );
   });
 
-  it('repository-wide rg — production writers are bounded to trip FSM module', () => {
-    const possibleEndAtHits = rg('possibleEndAt\\s*:', '**/*.ts');
-    const clearHits = rg('clearPossibleEndClockFields', '**/*.ts');
+  it('repository-wide source scan — production writers are bounded to trip FSM module', () => {
+    const possibleEndAtHits = searchBackendSource(/possibleEndAt\s*:/);
+    const clearHits = searchBackendSource(/clearPossibleEndClockFields/);
     expect(possibleEndAtHits).toContain('trip-detection-orchestration.service.ts');
     expect(clearHits).toContain('trip-fsm-clock-contract.ts');
     expect(clearHits).toContain('trip-end-cycle-reset.ts');
@@ -154,8 +168,8 @@ describe('R12 clock writer audit (repository-wide)', () => {
     expect(possibleEndAtHits).not.toMatch(/scripts\//);
   });
 
-  it('repository-wide rg — no raw SQL UPDATE mutating possible_end columns', () => {
-    const updateHits = rg('UPDATE[\\s\\S]*possible_end_(at|entered_at)', '**/*.{ts,sql}');
+  it('repository-wide source scan — no raw SQL UPDATE mutating possible_end columns', () => {
+    const updateHits = searchBackendSource(/UPDATE[\s\S]*possible_end_(at|entered_at)/);
     expect(updateHits).toBe('');
     const schema = fs.readFileSync(
       path.join(BACKEND_ROOT, 'prisma', 'schema.prisma'),

@@ -24,8 +24,8 @@ import {
   waitForTripTrackingJobState,
   type TripR11PostgresFixture,
 } from './testing/trip-r11-postgres-redis.integration.harness';
+import { buildTripTrackingSuccessorJobId } from './trip-tracking-queue.util';
 import {
-  buildTripTrackingSuccessorJobId,
   inspectStableSlotFamily,
   stableSlotFamilyHasFutureAuthority,
 } from './trip-tracking-stable-slot-family';
