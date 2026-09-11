@@ -5,7 +5,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 BASE_SHA="${BASE_SHA:-24c2632a1bad2d72a97442d45285ddb6c530def9}"
-HEAD_SHA="${HEAD_SHA:-$(git -C "$ROOT" rev-parse HEAD)}"
+DEFAULT_HEAD="$(git -C "$ROOT" rev-parse HEAD)"
+if [[ -z "${HEAD_SHA:-}" && -f "${GITHUB_EVENT_PATH:-}" ]]; then
+  HEAD_SHA="$(node -e "
+    const fs = require('fs');
+    const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+    const head = event.pull_request?.head?.sha || event.workflow_dispatch?.inputs?.head_sha || '';
+    process.stdout.write(head);
+  " 2>/dev/null || true)"
+fi
+HEAD_SHA="${HEAD_SHA:-$DEFAULT_HEAD}"
 WORKTREE_ROOT="${TMPDIR:-/tmp}/trip-r12-pec-ev-red-proof-$$"
 BASE_DIR="$WORKTREE_ROOT/base"
 HEAD_DIR="$WORKTREE_ROOT/head"
