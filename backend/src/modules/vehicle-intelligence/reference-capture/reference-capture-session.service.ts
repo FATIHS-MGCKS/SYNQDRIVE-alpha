@@ -545,6 +545,41 @@ export class ReferenceCaptureSessionService {
     };
   }
 
+  async persistExp021ActivePhaseMovementMetrics(
+    organizationId: string,
+    sessionId: string,
+    body: { validMovementDurationMs: number; uncertainMovementDurationMs?: number },
+  ): Promise<void> {
+    this.assertEnabled();
+    await this.requireSession(organizationId, sessionId);
+    await this.sessionRepository.persistExp021ActivePhaseMovementAtomic({
+      organizationId,
+      sessionId,
+      validMovementDurationMs: body.validMovementDurationMs,
+      uncertainMovementDurationMs: body.uncertainMovementDurationMs,
+    });
+  }
+
+  async terminalizeExp021PhysicalEndEarly(
+    organizationId: string,
+    sessionId: string,
+    physicalEndAt: Date,
+  ): Promise<ReferenceCaptureSessionView> {
+    this.assertEnabled();
+    const session = await this.requireSession(organizationId, sessionId);
+    if (session.status !== ReferenceCaptureSessionStatus.RECORDING) {
+      throw new BadRequestException(
+        `Cannot terminalize physical-end-early from status ${session.status}`,
+      );
+    }
+    await this.sessionRepository.finalizePhysicalEndEarlyAtomic({
+      organizationId,
+      sessionId,
+      physicalEndMs: physicalEndAt.getTime(),
+    });
+    return this.stopRecording(organizationId, sessionId);
+  }
+
   async markExp021OrchestrationDegraded(
     organizationId: string,
     sessionId: string,

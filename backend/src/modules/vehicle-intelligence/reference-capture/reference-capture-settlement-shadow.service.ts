@@ -11,12 +11,17 @@ import {
   isPhaseEligibleForPhysicalSettlement,
   type HfCalibrationPhaseRecord,
 } from './reference-capture-hf-calibration-phase.policy';
-import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
+import {
+  EXP021_UPPER_BOUND_V2,
+  resolveExp021CalibrationPlan,
+  resolveNominalPhaseDurationMs,
+} from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
   buildProspectiveProbeAForPhase,
   buildProspectiveProbeBForPhase,
+  buildFullPhaseOverlappingSettlementProbesForPhase,
   buildProbeBForCompletedPhase,
   buildScheduleIdempotencyKey,
   buildWholeTripProbeId,
@@ -318,6 +323,24 @@ export class ReferenceCaptureSettlementShadowService {
 
     const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
     if (!Number.isFinite(phaseStartedAtMs)) return;
+
+    const plan = resolveExp021CalibrationPlan();
+    if (plan.planVersion === EXP021_UPPER_BOUND_V2.planVersion) {
+      const nominalEndMs =
+        phaseStartedAtMs + resolveNominalPhaseDurationMs(active.effectivePollIntervalMs);
+      const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
+        phasePollIntervalMs: active.effectivePollIntervalMs,
+        phaseStartedAtMs,
+        phaseEndMs: nominalEndMs,
+      });
+      for (const probe of probes) {
+        await this.scheduleProbeObservations({
+          experiment: args.experiment,
+          probe,
+        });
+      }
+      return;
+    }
 
     const probeA = buildProspectiveProbeAForPhase({
       phasePollIntervalMs: active.effectivePollIntervalMs,

@@ -51,6 +51,10 @@ import {
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
 import {
+  finalizeRequestSlotOutcome,
+  resolveExp021HfHistoricalPollDecision,
+} from './reference-capture-exp021-request-slots.lib';
+import {
   accumulatePhaseQueryMetrics,
   applyHfPolicyWithSessionPollOverride,
   buildCalibrationPhaseContext,
@@ -309,14 +313,34 @@ export class ReferenceCaptureAcquisitionService {
       }
 
       if (surfacePlan.surface === 'HF_HISTORICAL') {
-        const pollDue = isHfHistoricalPollDue({
-          nowMs: Date.now(),
+        const nowMs = Date.now();
+        const pollDecision = resolveExp021HfHistoricalPollDecision({
+          nowMs,
+          slots: hfCalibrationActiveCounters?.exp021RequestSlots ?? null,
           lastHfHistoricalPollAt,
           pollIntervalMs: hfPolicyEffective.hfHistoricalPollIntervalMs,
           policyMode: hfPolicyEffective.mode,
         });
-        if (!pollDue) {
+        if (!pollDecision.pollAllowed) {
           continue;
+        }
+
+        let issuedSlotIndex: number | null = pollDecision.slotIndex;
+        if (
+          pollDecision.mode === 'DETERMINISTIC_SLOTS' &&
+          pollDecision.pollAllowed &&
+          hfCalibrationActiveCounters
+        ) {
+          hfCalibrationActiveCounters = {
+            ...hfCalibrationActiveCounters,
+            exp021RequestSlots: pollDecision.slots,
+          };
+          await this.sessionRepository.persistCalibrationCountersDuringCycle(
+            input.organizationId,
+            input.sessionId,
+            input.cycleJobId,
+            hfCalibrationActiveCounters,
+          );
         }
 
         const hfResult = await this.captureHistoricalSurface({
@@ -362,6 +386,26 @@ export class ReferenceCaptureAcquisitionService {
               },
               hfCalibrationSeries.activePhase.calibrationPhaseId,
             );
+            if (
+              issuedSlotIndex != null &&
+              hfCalibrationActiveCounters?.exp021RequestSlots?.length
+            ) {
+              const record = hfResult.queryProvenanceRecord;
+              const slotOutcome =
+                record.status === 'SUCCESS'
+                  ? record.resultBucketCount > 0
+                    ? 'SUCCESS'
+                    : 'ZERO_RESULT'
+                  : 'FAILURE';
+              hfCalibrationActiveCounters = {
+                ...hfCalibrationActiveCounters,
+                exp021RequestSlots: finalizeRequestSlotOutcome(
+                  hfCalibrationActiveCounters.exp021RequestSlots!,
+                  issuedSlotIndex,
+                  slotOutcome,
+                ),
+              };
+            }
           }
         }
         if (hfResult.observabilitySnapshot) {
