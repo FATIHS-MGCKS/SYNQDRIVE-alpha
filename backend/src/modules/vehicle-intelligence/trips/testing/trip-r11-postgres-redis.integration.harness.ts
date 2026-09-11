@@ -778,6 +778,47 @@ export async function promoteDelayedTripTrackingJobs(
   return promoted;
 }
 
+export async function waitForTripTerminalStateNatural(params: {
+  prisma: PrismaClient;
+  fixture: TripR11PostgresFixture;
+  trackingQueue: Queue<TripTrackingJobData>;
+  timeoutMs?: number;
+}): Promise<{ manualPromoteCount: number }> {
+  const timeoutMs = params.timeoutMs ?? 60_000;
+  const deadline = waitHarnessDeadlineMs(timeoutMs);
+  while (isBeforeHarnessDeadline(deadline)) {
+    const trip = await params.prisma.vehicleTrip.findUnique({
+      where: { id: params.fixture.trip.id },
+    });
+    const det = await params.prisma.vehicleTripDetectionState.findUnique({
+      where: { vehicleId: params.fixture.vehicle.id },
+    });
+    if (
+      trip?.tripStatus === TripStatus.COMPLETED &&
+      det?.state === TripDetectionState.RESTING &&
+      det.activeTripId === null
+    ) {
+      return { manualPromoteCount: 0 };
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const trip = await params.prisma.vehicleTrip.findUnique({
+    where: { id: params.fixture.trip.id },
+  });
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.fixture.vehicle.id },
+  });
+  const runs = await params.prisma.vehicleTripTrackingRun.findMany({
+    where: { tripId: params.fixture.trip.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  throw new Error(
+    `Trip terminal natural wait timed out: tripStatus=${trip?.tripStatus} detState=${det?.state} ` +
+      `activeTripId=${det?.activeTripId} queueJobs=${await countTripTrackingJobs(params.trackingQueue)} ` +
+      `runs=${JSON.stringify(runs.map((r) => ({ type: r.runType, summary: r.resultSummary })))}`,
+  );
+}
+
 export async function waitForTripTerminalState(params: {
   prisma: PrismaClient;
   fixture: TripR11PostgresFixture;
