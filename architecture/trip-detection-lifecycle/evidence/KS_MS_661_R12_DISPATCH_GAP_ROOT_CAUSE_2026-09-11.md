@@ -99,4 +99,14 @@ Invariant: `END_VALIDATION_LOCK_MISS_CAN_SILENTLY_DESTROY_AUTHORITY = NO`.
 cd backend && npm run test:trip-r12:hardening
 cd backend && npm run test:trip-r11:unit
 cd backend && npm run test:trip-r12:postgres-redis:ci   # requires Postgres + Redis
+bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 ```
+
+## CI status (2026-09-11)
+
+| Run | Result | Notes |
+|-----|--------|-------|
+| Trip FSM 34602066031 | **FAIL** | `trip-r12-pec-ev-lock-collision` completion test timed out — stale delayed PEC from seed + worker-only drain gap |
+| i18n 34602066051 | **FAIL** | P2.3.4 bound to CI PR diff instead of isolated fixture — corrected in PR #1603 follow-up |
+
+**CI_PENDING** until green re-run after fixture + i18n gate corrections.
