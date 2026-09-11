@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REPEAT="${REPEAT:-10}"
 SPEC="trip-r12-pec-ev-lock-collision.postgres-redis.integration.spec.ts"
 FAILURES=0
+SUCCESSES=0
 
 cd "$ROOT/backend"
 
@@ -15,6 +16,7 @@ for i in $(seq 1 "$REPEAT"); do
   if TRIP_R12_POSTGRES_REDIS_INTEGRATION=1 TRIP_R12_POSTGRES_REDIS_REQUIRED=1 \
     npx jest "$SPEC" --runInBand --forceExit --verbose; then
     echo "iteration_${i}=PASS"
+    SUCCESSES=$((SUCCESSES + 1))
   else
     echo "iteration_${i}=FAIL"
     FAILURES=$((FAILURES + 1))
@@ -22,6 +24,6 @@ for i in $(seq 1 "$REPEAT"); do
   fi
 done
 
-echo "GREEN_REPEAT_COUNT=$((i - FAILURES))"
+echo "GREEN_REPEAT_COUNT=$SUCCESSES"
 echo "GREEN_REPEAT_FAILURES=$FAILURES"
 exit "$FAILURES"
