@@ -671,7 +671,7 @@ export async function drainTripTrackingQueue(params: {
 
 export function createTripTrackingWorkers(params: {
   connection: ConnectionOptions;
-  runJob: (job: TripTrackingJobData, jobId?: string) => Promise<void>;
+  runJob: (job: Job<TripTrackingJobData>) => Promise<void>;
   concurrency?: number;
   workerCount?: number;
 }): Worker[] {
@@ -681,7 +681,7 @@ export function createTripTrackingWorkers(params: {
     workers.push(
       new Worker<TripTrackingJobData>(
         QUEUE_NAMES.TRIP_TRACKING,
-        async (job: Job<TripTrackingJobData>) => params.runJob(job.data, job.id),
+        async (job: Job<TripTrackingJobData>) => params.runJob(job),
         {
           connection: params.connection,
           concurrency: params.concurrency ?? 1,

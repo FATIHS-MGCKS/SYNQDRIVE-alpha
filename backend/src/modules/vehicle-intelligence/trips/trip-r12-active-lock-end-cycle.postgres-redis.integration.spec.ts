@@ -1,5 +1,5 @@
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
-import { Queue } from 'bullmq';
+import { Queue, type Job } from 'bullmq';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
@@ -124,13 +124,15 @@ if (REQUIRED) {
       });
 
       const runJobWithActiveHold = async (
-        job: TripTrackingJobData,
-        jobId?: string,
+        bullJob: Job<TripTrackingJobData>,
       ): Promise<void> => {
-        if (job.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION && jobId === evPrimaryId) {
+        if (
+          bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION &&
+          bullJob.id === evPrimaryId
+        ) {
           await evHold;
         }
-        await harness.runJob(job);
+        await harness.runJob(bullJob.data);
       };
 
       useTripR11FrozenClock(endCycleAt);

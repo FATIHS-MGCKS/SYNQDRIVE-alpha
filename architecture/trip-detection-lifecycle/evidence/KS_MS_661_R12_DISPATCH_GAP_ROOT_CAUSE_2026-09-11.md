@@ -79,6 +79,12 @@ Non-handoff END_VALIDATION lock miss throws `TripTrackingHandoffLockContentionEr
 
 Invariant: `END_VALIDATION_LOCK_MISS_CAN_SILENTLY_DESTROY_AUTHORITY = NO`.
 
+### Tertiary — END_VALIDATION → FINALIZE lock ordering (R12 integration closure)
+
+`processEndValidation` must defer `scheduleFinalize` until **after** `releaseWorkerLock` in `finally` (same class as PEC→EV: concurrent BullMQ workers with concurrency ≥2 could otherwise pick FINALIZE while END_VALIDATION still holds the lock; non-handoff FINALIZE then silent-returned on lock miss).
+
+Invariant: `SCHEDULE_FINALIZE_WHILE_EV_WORKER_LOCK_HELD = NO`.
+
 ## Tests
 
 | ID | File | Claim |

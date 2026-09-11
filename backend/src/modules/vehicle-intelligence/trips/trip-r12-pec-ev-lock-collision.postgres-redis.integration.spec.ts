@@ -201,7 +201,7 @@ async function runJobLikeTripTrackingProcessor(
       const pecJobId = buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id);
       const workers = createTripTrackingWorkers({
         connection: redisStack.connectionOptions,
-        runJob: (job) => harness.runJob(job),
+        runJob: (job) => harness.runJob(job.data),
         workerCount: 2,
         concurrency: 1,
       });
@@ -273,13 +273,9 @@ async function runJobLikeTripTrackingProcessor(
 
       const workers = createTripTrackingWorkers({
         connection: redisStack.connectionOptions,
-        runJob: async (jobData, jobId) => {
-          if (jobData.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
+        runJob: async (bullJob) => {
+          if (bullJob.data.trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION) {
             evProcessorEntered += 1;
-          }
-          const bullJob = await trackingQueue.getJob(jobId ?? '');
-          if (!bullJob) {
-            throw new Error(`missing BullMQ job ${jobId ?? '(no id)'}`);
           }
           await runJobLikeTripTrackingProcessor(trackingQueue, harness, bullJob);
         },
@@ -384,9 +380,7 @@ async function runJobLikeTripTrackingProcessor(
 
       const workers = createTripTrackingWorkers({
         connection: redisStack.connectionOptions,
-        runJob: async (jobData, jobId) => {
-          const bullJob = await trackingQueue.getJob(jobId ?? '');
-          if (!bullJob) throw new Error(`missing bull job ${jobId}`);
+        runJob: async (bullJob) => {
           await runJobLikeTripTrackingProcessor(trackingQueue, harness, bullJob);
         },
         workerCount: 1,

@@ -3200,6 +3200,11 @@ export class TripDetectionOrchestrationService {
     let det: Awaited<ReturnType<typeof this.getOrCreateDetectionState>> | undefined;
     let validationStartedAt: Date | null = null;
     let priorSummaryForFailure: Record<string, unknown> = {};
+    let deferredFinalize: {
+      vehicleId: string;
+      organizationId: string | null;
+      dimoTokenId: number;
+    } | null = null;
 
     try {
       det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -3244,7 +3249,7 @@ export class TripDetectionOrchestrationService {
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId,
@@ -3445,7 +3450,7 @@ export class TripDetectionOrchestrationService {
         });
 
         resultState = TripDetectionState.RESTING;
-        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+        deferredFinalize = { vehicleId, organizationId, dimoTokenId };
 
         await this.logTrackingRun({
           vehicleId, organizationId,
@@ -3516,6 +3521,15 @@ export class TripDetectionOrchestrationService {
       ).catch(() => {});
     } finally {
       await this.releaseWorkerLock(vehicleId, lock.runToken);
+      // Must run inside finally: schedule after lock release so concurrent BullMQ
+      // workers cannot pick FINALIZE while END_VALIDATION still holds the lock.
+      if (deferredFinalize) {
+        await this.scheduleFinalize(
+          deferredFinalize.vehicleId,
+          deferredFinalize.organizationId,
+          deferredFinalize.dimoTokenId,
+        );
+      }
     }
   }
 
