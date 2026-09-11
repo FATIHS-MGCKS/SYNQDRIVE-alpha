@@ -489,6 +489,26 @@ export class PhysicalEndDetector {
     this.candidate = { ...this.candidate, scheduleCreatedAt };
   }
 
+  /**
+   * EXP-021 hard physical-end authority (orchestrator terminalization only).
+   *
+   * Stricter than {@link shouldAutoStopRecording}: requires current fresh PARKED_CANDIDATE
+   * evidence sustained for finalParkedMs. UNKNOWN / stale telemetry never authorizes hard end.
+   * Provisional CONFIRMED and strongParkedEvidence remain evidence-only.
+   */
+  hardPhysicalEndEligible(nowMs: number, motionState: MotionState): boolean {
+    if (!this.candidate || this.candidate.candidateStatus === 'INVALIDATED') {
+      return false;
+    }
+    if (motionState !== 'PARKED_CANDIDATE') {
+      return false;
+    }
+    return (
+      this.finalParkedSinceMs != null &&
+      nowMs - this.finalParkedSinceMs >= this.config.finalParkedMs
+    );
+  }
+
   shouldAutoStopRecording(nowMs: number, motionState: MotionState): boolean {
     if (!this.candidate || this.candidate.candidateStatus === 'INVALIDATED') {
       return false;
@@ -635,7 +655,8 @@ export class PhysicalDrivePhaseTracker {
       this.uncertainMovementDurationMs += Math.max(0, boundaryMs - this.lastTickMs);
     }
     const advancement = this.advancement;
-    const wallDurationMs = boundaryMs - this.phaseStartedAtMs;
+    const effectiveBoundaryMs = Math.max(this.phaseStartedAtMs, boundaryMs);
+    const wallDurationMs = effectiveBoundaryMs - this.phaseStartedAtMs;
     let satisfied = false;
     let scientificallyValid = false;
     if (advancement?.mode === 'WALL_CLOCK') {
@@ -659,7 +680,7 @@ export class PhysicalDrivePhaseTracker {
     const record: PhaseValidityRecord = {
       phasePollIntervalMs: this.currentPhasePollMs,
       phaseStartedAtMs: this.phaseStartedAtMs,
-      phaseEndedAtMs: boundaryMs,
+      phaseEndedAtMs: effectiveBoundaryMs,
       wallDurationMs,
       validMovementDurationMs: this.movementAccumulatedMs,
       uncertainMovementDurationMs: this.uncertainMovementDurationMs,
@@ -708,6 +729,10 @@ export class PhysicalDrivePhaseTracker {
   markPhysicalDriveEnded(nowMs: number): PhaseValidityRecord | null {
     this.physicalDriveEnded = true;
     return this.sealActivePhaseAtBoundary(nowMs, 'DRIVE_END');
+  }
+
+  getActivePhaseStartedAtMs(): number | null {
+    return this.phaseStartedAtMs;
   }
 
   getCompletedPhases(): PhaseValidityRecord[] {

@@ -478,3 +478,37 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Load | ~113 total requests (59 cadence + 48 shadow + 6 post-trip) |
 | Policy | PRODUCTION_HF_POLICY_CHANGE_AUTHORIZED=NO; shadow tooling NOT deployed |
 | Evidence | `EXP_021_SETTLEMENT_SHADOW_EXPERIMENT_DESIGN_2026-09-07.md`; `EXP_021_PROVIDER_IDEMPOTENCE_PREFLIGHT_2026-09-07.md` |
+
+## EXP-021 — False physical-end authority correction (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RUNTIME CORRECTION DRAFT** — PR from `main`; evidence correction on #1605 branch |
+| Session | `d633da9d-…` · KS MS 661 UPPER_BOUND_V2 |
+| Root cause | Orchestrator `physicalEndEarly` terminated on provisional PDI CONFIRMED (120s) bypassing `finalParkedMs` (600s); boundary race sealed phase 60 with negative wall duration |
+| Fix | `hardPhysicalEndEligible` / `shouldAutoStop` only for early end; boundary-safe `finalizeCalibrationOnPhysicalEndEarly`; movement metrics to completing phase; durable `exp021RequestSlots` in phase summaries; settlement experiment `COMPLETED` convergence |
+| Physical drive | **NOT STARTED** |
+| Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md` (corrected interpretive layer) |
+
+## EXP-021 — Hard-end UNKNOWN fail-safe micro pass (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **RUNTIME MICRO PASS** on PR #1606 |
+| Issue | `hardPhysicalEndEligible` delegated to `shouldAutoStopRecording` UNKNOWN shortcut |
+| Fix | Hard-end requires fresh `PARKED_CANDIDATE` sustained `>= finalParkedMs`; UNKNOWN never hard-ends |
+| Tests | STRONG_PARKED + long UNKNOWN + movement invalidation regression added |
+
+## EXP-021 — CANDIDATE_BRACKET_V3 prospective refocus (2026-09-11)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE PLAN** on PR #1606 — no physical run |
+| New plan | `EXP021_CANDIDATE_BRACKET_V3` — 120→90→60, equal 10 min wall phases, 30 min nominal / 32 min max |
+| Historical preserved | `EXP021_UPPER_BOUND_V2` (180→120→60→30) and `EXP021_LOWER_BOUND_V1` unchanged |
+| 180s | Historical evidence only — no longer an active production-candidate calibration phase |
+| 90s | Added to `HF_POLL_CALIBRATION_CANDIDATES_MS`; epistemic `UNKNOWN` / `PROSPECTIVE` |
+| Settlement | 57 windows × 6 ages = 342 observations; full-phase overlapping for all WALL_CLOCK plans |
+| Reconstruction | Read-only analyzer scaffold; map-matching adapter documented as follow-up |
+| Selection | `EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3` — default remains `UPPER_BOUND_V2` |
+| Evidence | `EXP_021_CANDIDATE_BRACKET_V3_PROSPECTIVE_DESIGN_2026-09-11.md` |

@@ -27,6 +27,7 @@ export const HF_POLL_CALIBRATION_CANDIDATES_MS = [
   20_000,
   30_000,
   60_000,
+  90_000,
   120_000,
   180_000,
 ] as const;

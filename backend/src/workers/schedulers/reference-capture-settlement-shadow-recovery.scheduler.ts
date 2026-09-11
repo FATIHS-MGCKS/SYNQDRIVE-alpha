@@ -28,9 +28,18 @@ export class ReferenceCaptureSettlementShadowRecoveryScheduler implements OnModu
       return;
     }
 
-    const reconciled = await this.settlementShadowService.reconcileAbortedSessionSettlementExperiments();
-    if (reconciled > 0) {
-      this.logger.warn(`Reconciled ${reconciled} aborted-session active settlement experiment(s)`);
+    const reconciledAborted =
+      await this.settlementShadowService.reconcileAbortedSessionSettlementExperiments();
+    if (reconciledAborted > 0) {
+      this.logger.warn(`Reconciled ${reconciledAborted} aborted-session active settlement experiment(s)`);
+    }
+
+    const reconciledCompleted =
+      await this.settlementShadowService.reconcileCompletedSessionSettlementExperiments();
+    if (reconciledCompleted > 0) {
+      this.logger.log(
+        `Reconciled ${reconciledCompleted} completed-session active settlement experiment(s)`,
+      );
     }
 
     if (!this.config.isSettlementShadowEnabled()) return;

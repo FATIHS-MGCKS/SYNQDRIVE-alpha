@@ -178,6 +178,37 @@ export function classifyOrchestratorFailure(error: Error): OrchestratorFailureCl
   return 'integrity_fatal';
 }
 
+/**
+ * Resolve seal timestamp for physical-end terminalization.
+ * Never seal an active phase using a boundary that predates its start (boundary race).
+ */
+export function resolvePhysicalEndSealMs(args: {
+  nowMs: number;
+  physicalEndBoundaryMs: number | null;
+  activePhaseStartedAtMs: number | null;
+}): number {
+  if (args.physicalEndBoundaryMs == null) {
+    return args.nowMs;
+  }
+  if (
+    args.activePhaseStartedAtMs != null &&
+    args.physicalEndBoundaryMs < args.activePhaseStartedAtMs
+  ) {
+    return args.nowMs;
+  }
+  return args.physicalEndBoundaryMs;
+}
+
+/** Active phase cannot be sealed when physical end predates its start. */
+export function shouldSkipActivePhaseOnPhysicalEndEarly(args: {
+  physicalEndMs: number;
+  activePhaseStartedAtMs: number | null;
+}): boolean {
+  return (
+    args.activePhaseStartedAtMs != null && args.physicalEndMs < args.activePhaseStartedAtMs
+  );
+}
+
 export function isLatePlus30MisclassifiedAsActualPlus30(args: {
   scheduledAgeMs: number;
   actualAgeMs: number;

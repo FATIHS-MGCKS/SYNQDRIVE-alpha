@@ -548,13 +548,18 @@ export class ReferenceCaptureSessionService {
   async persistExp021ActivePhaseMovementMetrics(
     organizationId: string,
     sessionId: string,
-    body: { validMovementDurationMs: number; uncertainMovementDurationMs?: number },
+    body: {
+      calibrationPhaseId?: string;
+      validMovementDurationMs: number;
+      uncertainMovementDurationMs?: number;
+    },
   ): Promise<void> {
     this.assertEnabled();
     await this.requireSession(organizationId, sessionId);
     await this.sessionRepository.persistExp021ActivePhaseMovementAtomic({
       organizationId,
       sessionId,
+      calibrationPhaseId: body.calibrationPhaseId,
       validMovementDurationMs: body.validMovementDurationMs,
       uncertainMovementDurationMs: body.uncertainMovementDurationMs,
     });
@@ -606,7 +611,7 @@ export class ReferenceCaptureSessionService {
     }
     if (!isRecognizedCalibrationPollIntervalMs(intervalMs)) {
       throw new BadRequestException(
-        `effectivePollIntervalMs must be one of calibration candidates: 10000, 20000, 30000, 60000`,
+        `effectivePollIntervalMs must be one of calibration candidates: 10000, 20000, 30000, 60000, 90000, 120000, 180000`,
       );
     }
 
@@ -828,5 +833,7 @@ export class ReferenceCaptureSessionService {
       sessionStartedAt: args.sessionStartedAt,
       sessionStoppedAt: args.sessionStoppedAt,
     });
+
+    await this.settlementShadowService.tryCompleteSettlementExperimentForSession(args.sessionId);
   }
 }

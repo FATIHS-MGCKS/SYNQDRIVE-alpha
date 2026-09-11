@@ -4,9 +4,10 @@ import {
   computeActualAgeMs,
   computeScheduleDriftMs,
   computeScheduleTimingProjection,
+  countFullPhaseOverlappingTilesForNominalPhase,
+  EXP021_MANDATORY_AGES_MS,
   EXP021_PHASE_STABILIZATION_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
-  resolveProbeBStartOffsetMs,
 } from './reference-capture-settlement-shadow.policy';
 import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
@@ -185,7 +186,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
     );
   });
 
-  it('runtime lifecycle: prospective A/B schedules created before early-age deadlines (nominal 300s phase)', async () => {
+  it('runtime lifecycle: full-phase overlapping schedules created before early-age deadlines (UPPER_BOUND_V2 180s)', async () => {
     const { service, scheduleRows } = buildSettlementMocks();
     const scheduleCreatedAtMs = phaseStartMs + 60_000;
 
@@ -202,9 +203,7 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
     jest.spyOn(Date, 'now').mockRestore();
 
     const nominalDurationMs = resolveNominalPhaseDurationMs(180_000);
-    const probeAEndMs = phaseStartMs + EXP021_PHASE_STABILIZATION_MS + EXP021_PRIMARY_PROBE_DURATION_MS;
-    const probeBEndMs =
-      phaseStartMs + resolveProbeBStartOffsetMs(nominalDurationMs) + EXP021_PRIMARY_PROBE_DURATION_MS;
+    const tile0EndMs = phaseStartMs + EXP021_PRIMARY_PROBE_DURATION_MS;
 
     const assertOnTime = (probeId: string, ageMs: number, sourceEndMs: number) => {
       const row = scheduleRows.find((r) => r.probeId === probeId && r.scheduledAgeMs === ageMs);
@@ -218,12 +217,17 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       expect(row!.scheduledAt.getTime()).toBe(sourceEndMs + ageMs);
     };
 
-    assertOnTime('SP-180-A', 30_000, probeAEndMs);
-    assertOnTime('SP-180-A', 60_000, probeAEndMs);
-    assertOnTime('SP-180-B', 30_000, probeBEndMs);
-    assertOnTime('SP-180-B', 60_000, probeBEndMs);
+    assertOnTime('SP-180-T0', 30_000, tile0EndMs);
+    assertOnTime('SP-180-T0', 60_000, tile0EndMs);
+    assertOnTime('SP-180-T1', 30_000, tile0EndMs + 30_000);
+    assertOnTime('SP-180-T1', 60_000, tile0EndMs + 30_000);
 
-    expect(scheduleRows.filter((r) => r.probeId.startsWith('SP-180-')).length).toBe(12);
+    const tileCount = countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: nominalDurationMs,
+    });
+    expect(scheduleRows.filter((r) => r.probeId.startsWith('SP-180-')).length).toBe(
+      tileCount * EXP021_MANDATORY_AGES_MS.length,
+    );
   });
 
   it('prospective schedule creation is idempotent across repeated sync calls', async () => {
@@ -239,10 +243,17 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
       });
     }
 
-    expect(scheduleRows).toHaveLength(12);
+    const nominalDurationMs = resolveNominalPhaseDurationMs(180_000);
+    const tileCount = countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: nominalDurationMs,
+    });
+    const expectedRows = tileCount * EXP021_MANDATORY_AGES_MS.length;
+    expect(scheduleRows).toHaveLength(expectedRows);
     expect(repository.createSchedulesIfAbsent).toHaveBeenCalled();
     const lastCall = (repository.createSchedulesIfAbsent as jest.Mock).mock.results.at(-1)?.value;
-    await expect(lastCall).resolves.toEqual(expect.objectContaining({ created: 0, skipped: 6 }));
+    await expect(lastCall).resolves.toEqual(
+      expect.objectContaining({ created: 0, skipped: EXP021_MANDATORY_AGES_MS.length }),
+    );
   });
 
   it('executeScheduledObservation records actualAgeMs and scheduleDriftMs within tolerance at due time', async () => {

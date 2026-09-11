@@ -9,6 +9,7 @@ import type { HfCalibrationPhaseProvenance } from './reference-capture-exp-021-p
 import {
   Exp021PhaseIdentityConflictError,
   isPhysicalPhaseProvenance,
+  shouldSkipActivePhaseOnPhysicalEndEarly,
 } from './reference-capture-exp-021-physical-authority.lib';
 import {
   clampHfPollIntervalMs,
@@ -99,6 +100,8 @@ export type HfCalibrationPhaseSummary = {
   requestRatePerWallMinute?: number | null;
   requestRatePerMovingMinute?: number | null;
   successRatePerWallMinute?: number | null;
+  /** Durable per-slot HF request ledger frozen at phase seal (forensic). */
+  exp021RequestSlots?: Exp021RequestSlotRecord[] | null;
 };
 
 export type HfCalibrationPhaseRuntimeCounters = {
@@ -453,7 +456,10 @@ export function finalizePhaseSummary(args: {
   calibrationPlan?: ReturnType<typeof resolveExp021CalibrationPlan>;
 }): HfCalibrationPhaseSummary {
   const startedMs = Date.parse(args.phase.phaseStartedAt);
-  const endedMs = args.phaseEndedAtMs;
+  const endedMs = Math.max(
+    Number.isFinite(startedMs) ? startedMs : args.phaseEndedAtMs,
+    args.phaseEndedAtMs,
+  );
   const wallDurationMs = Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0;
   const plan = args.calibrationPlan ?? resolveExp021CalibrationPlan();
   const phaseSpec = findPhaseSpecByCadence(plan, args.phase.effectivePollIntervalMs);
@@ -518,6 +524,9 @@ export function finalizePhaseSummary(args: {
     requestRatePerWallMinute: requestRates.requestRatePerWallMinute,
     requestRatePerMovingMinute: requestRates.requestRatePerMovingMinute,
     successRatePerWallMinute: requestRates.successRatePerWallMinute,
+    exp021RequestSlots: args.counters.exp021RequestSlots
+      ? args.counters.exp021RequestSlots.map((slot) => ({ ...slot }))
+      : null,
   };
 }
 
@@ -975,32 +984,47 @@ export function finalizeCalibrationOnPhysicalEndEarly(args: {
   let terminalSummary: HfCalibrationPhaseSummary | null = null;
 
   if (series.activePhase) {
-    const countersToUse =
-      args.counters?.calibrationPhaseId === series.activePhase.calibrationPhaseId
-        ? args.counters
-        : emptyPhaseCounters(series.activePhase.calibrationPhaseId);
-    const closedPhase: HfCalibrationPhaseRecord = {
-      ...series.activePhase,
-      phaseEndedAt: physicalEndIso,
-    };
-    terminalSummary = closedPhase.effectiveConfig
-      ? finalizePhaseSummary({
-          phase: closedPhase,
-          counters: countersToUse,
-          phaseEndedAtMs: args.physicalEndMs,
-          calibrationPlan: plan,
-          validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
-        })
-      : null;
-    series = {
-      ...series,
-      activePhase: null,
-      completedPhases: [...series.completedPhases, closedPhase],
-      completedPhaseSummaries: terminalSummary
-        ? [...series.completedPhaseSummaries, terminalSummary]
-        : series.completedPhaseSummaries,
-      lastPhaseBoundaryAt: physicalEndIso,
-    };
+    const activePhaseStartMs = Date.parse(series.activePhase.phaseStartedAt);
+    const skipActivePhase = shouldSkipActivePhaseOnPhysicalEndEarly({
+      physicalEndMs: args.physicalEndMs,
+      activePhaseStartedAtMs: Number.isFinite(activePhaseStartMs) ? activePhaseStartMs : null,
+    });
+
+    if (!skipActivePhase) {
+      const countersToUse =
+        args.counters?.calibrationPhaseId === series.activePhase.calibrationPhaseId
+          ? args.counters
+          : emptyPhaseCounters(series.activePhase.calibrationPhaseId);
+      const sealMs = Math.max(
+        Number.isFinite(activePhaseStartMs) ? activePhaseStartMs : args.physicalEndMs,
+        args.physicalEndMs,
+      );
+      const sealIso = new Date(sealMs).toISOString();
+      const closedPhase: HfCalibrationPhaseRecord = {
+        ...series.activePhase,
+        phaseEndedAt: sealIso,
+      };
+      terminalSummary = closedPhase.effectiveConfig
+        ? finalizePhaseSummary({
+            phase: closedPhase,
+            counters: countersToUse,
+            phaseEndedAtMs: sealMs,
+            calibrationPlan: plan,
+            validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
+          })
+        : null;
+      series = {
+        ...series,
+        activePhase: null,
+        completedPhases: [...series.completedPhases, closedPhase],
+        completedPhaseSummaries: terminalSummary
+          ? [...series.completedPhaseSummaries, terminalSummary]
+          : series.completedPhaseSummaries,
+        lastPhaseBoundaryAt: sealIso,
+      };
+    } else {
+      series = { ...series, activePhase: null };
+    }
   }
 
   let cancelledPhaseRequests = [...(series.cancelledPhaseRequests ?? [])];

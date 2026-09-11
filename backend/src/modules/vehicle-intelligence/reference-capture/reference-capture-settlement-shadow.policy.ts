@@ -4,6 +4,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   cadenceSequenceFromPlan,
+  type Exp021CalibrationPlan,
   EXP021_DEFAULT_CALIBRATION_PLAN,
   EXP021_LEGACY_CADENCE_PHASE_ORDER_MS,
   EXP021_LOWER_BOUND_V1,
@@ -23,10 +24,17 @@ export const EXP021_PROBE_B_START_OFFSET_MS = resolveProbeBStartOffsetMs(
   EXP021_NOMINAL_PHASE_DURATION_MS,
 );
 export const EXP021_MANDATORY_AGES_MS = [30_000, 60_000, 120_000, 180_000, 300_000, 600_000] as const;
-/** Active prospective cadence sequence (defaults to UPPER_BOUND_V2). */
+/** Active default-plan cadence sequence (UPPER_BOUND_V2: 180→120→60→30). */
 export const EXP021_CADENCE_PHASE_ORDER_MS = cadenceSequenceFromPlan(
   EXP021_DEFAULT_CALIBRATION_PLAN,
 ) as [number, number, number, number];
+
+/** WALL_CLOCK plans use full-phase overlapping settlement tiles (not legacy A/B probes). */
+export function usesFullPhaseOverlappingSettlementStrategy(
+  plan: Exp021CalibrationPlan,
+): boolean {
+  return plan.advancementMode === 'WALL_CLOCK';
+}
 /** Historical 60→30→20→10 sequence — preserved for evidence parsing. */
 export { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS };
 export { EXP021_LOWER_BOUND_V1, EXP021_DEFAULT_CALIBRATION_PLAN };
@@ -330,7 +338,10 @@ export function countFullPhaseOverlappingTilesForNominalPhase(args: {
   return Math.floor((args.nominalPhaseDurationMs - tileDurationMs) / tileStepMs) + 1;
 }
 
-export function computeUpperBoundV2SettlementQueryBudget(
+/** @deprecated Prefer computeExp021SettlementQueryBudget — name retained for historical imports. */
+export const computeUpperBoundV2SettlementQueryBudget = computeExp021SettlementQueryBudget;
+
+export function computeExp021SettlementQueryBudget(
   plan = EXP021_DEFAULT_CALIBRATION_PLAN,
 ): {
   tileCount: number;

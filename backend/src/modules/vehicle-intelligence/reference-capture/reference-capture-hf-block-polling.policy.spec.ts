@@ -149,7 +149,7 @@ describe('reference-capture-hf-block-polling.policy', () => {
       HF_HISTORICAL_POLL_INTERVAL_MS: '999999',
       HF_RECOVERY_POLICY_V2_CANARY_ONLY: 'false',
     });
-    expect(high.hfHistoricalPollIntervalMs).toBe(120_000);
+    expect(high.hfHistoricalPollIntervalMs).toBe(180_000);
   });
 
   it('observability records effective poll cadence', () => {
@@ -205,8 +205,16 @@ describe('reference-capture-hf-block-polling.policy', () => {
     expect(computeFleetStaggerOffsetMs(187336, 30_000)).toBe(187336 % 30_000);
   });
 
-  it('calibration candidate matrix includes 10/20/30/60s', () => {
-    expect(HF_POLL_CALIBRATION_CANDIDATES_MS).toEqual([10_000, 20_000, 30_000, 60_000]);
+  it('calibration candidate matrix includes controlled cadences through 180s', () => {
+    expect(HF_POLL_CALIBRATION_CANDIDATES_MS).toEqual([
+      10_000,
+      20_000,
+      30_000,
+      60_000,
+      90_000,
+      120_000,
+      180_000,
+    ]);
     expect(PROVISIONAL_HF_POLL_INTERVAL_MS).toBe(30_000);
   });
 

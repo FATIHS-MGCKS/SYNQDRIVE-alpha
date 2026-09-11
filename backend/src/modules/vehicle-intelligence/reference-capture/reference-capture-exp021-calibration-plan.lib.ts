@@ -2,7 +2,8 @@
  * EXP-021 — canonical calibration plan authority (Reference Capture experimental scope).
  *
  * Plans are versioned; historical LOWER_BOUND_V1 (60→30→20→10) remains parseable.
- * Prospective physical runs default to UPPER_BOUND_V2 (180→120→60→30 CONTROL).
+ * Default env resolution remains UPPER_BOUND_V2 (180→120→60→30 CONTROL).
+ * Next prospective sweet-spot run: CANDIDATE_BRACKET_V3 (120→90→60) via explicit env.
  */
 export const EXP021_CALIBRATION_PLAN_SCHEMA = 'EXP021_CALIBRATION_PLAN_v1';
 
@@ -84,7 +85,7 @@ export const EXP021_LOWER_BOUND_V1: Exp021CalibrationPlan = Object.freeze({
   legacyMovementRequirementMs: 300_000,
 });
 
-/** Prospective upper-bound design (180→120→60→30 CONTROL, ~33 min nominal). */
+/** Historical upper-bound design (180→120→60→30 CONTROL, ~33 min nominal). */
 export const EXP021_UPPER_BOUND_V2: Exp021CalibrationPlan = Object.freeze({
   schemaVersion: EXP021_CALIBRATION_PLAN_SCHEMA,
   planVersion: 'EXP021_UPPER_BOUND_V2',
@@ -92,6 +93,41 @@ export const EXP021_UPPER_BOUND_V2: Exp021CalibrationPlan = Object.freeze({
   advancementMode: 'WALL_CLOCK',
   phases: UPPER_BOUND_V2_PHASES,
   maxTotalDurationMs: 35 * 60_000,
+  totalGraceBudgetMs: 2 * 60_000,
+});
+
+const CANDIDATE_BRACKET_V3_PHASES: readonly Exp021CalibrationPhaseSpec[] = [
+  {
+    cadenceMs: 120_000,
+    targetDurationMs: 10 * 60_000,
+    role: 'EXPERIMENTAL',
+    minSuccessfulRequests: 5,
+  },
+  {
+    cadenceMs: 90_000,
+    targetDurationMs: 10 * 60_000,
+    role: 'EXPERIMENTAL',
+    minSuccessfulRequests: 5,
+  },
+  {
+    cadenceMs: 60_000,
+    targetDurationMs: 10 * 60_000,
+    role: 'EXPERIMENTAL',
+    minSuccessfulRequests: 5,
+  },
+];
+
+/**
+ * Prospective sweet-spot bracket (120→90→60, equal 10 min wall phases, ~30 min nominal).
+ * Select explicitly via EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3 — not the default.
+ */
+export const EXP021_CANDIDATE_BRACKET_V3: Exp021CalibrationPlan = Object.freeze({
+  schemaVersion: EXP021_CALIBRATION_PLAN_SCHEMA,
+  planVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+  planId: 'candidate_bracket_v3',
+  advancementMode: 'WALL_CLOCK',
+  phases: CANDIDATE_BRACKET_V3_PHASES,
+  maxTotalDurationMs: 32 * 60_000,
   totalGraceBudgetMs: 2 * 60_000,
 });
 
@@ -104,6 +140,7 @@ export const EXP021_LEGACY_CADENCE_PHASE_ORDER_MS = EXP021_LOWER_BOUND_V1.phases
 
 const PLAN_REGISTRY: Record<string, Exp021CalibrationPlan> = {
   UPPER_BOUND_V2: EXP021_UPPER_BOUND_V2,
+  CANDIDATE_BRACKET_V3: EXP021_CANDIDATE_BRACKET_V3,
   LOWER_BOUND_V1: EXP021_LOWER_BOUND_V1,
   '60_30_20_10': EXP021_LOWER_BOUND_V1,
 };

@@ -305,11 +305,11 @@ describe('reference-capture-settlement-shadow (EXP-021A dry-run)', () => {
       },
     });
 
-    expect(scheduleRows.some((r) => r.probeId === 'SP-180-A' && r.scheduledAgeMs === 30_000)).toBe(true);
-    expect(scheduleRows.some((r) => r.probeId === 'SP-180-B' && r.scheduledAgeMs === 30_000)).toBe(true);
-    const plus30A = scheduleRows.find((r) => r.probeId === 'SP-180-A' && r.scheduledAgeMs === 30_000);
-    const plus30B = scheduleRows.find((r) => r.probeId === 'SP-180-B' && r.scheduledAgeMs === 30_000);
-    expect(plus30A?.scheduledAt.toISOString()).toBe('2026-09-07T10:03:30.000Z');
-    expect(plus30B?.scheduledAt.toISOString()).toBe('2026-09-07T10:09:45.000Z');
+    expect(scheduleRows.some((r) => r.probeId === 'SP-180-T0' && r.scheduledAgeMs === 30_000)).toBe(true);
+    expect(scheduleRows.some((r) => r.probeId === 'SP-180-T1' && r.scheduledAgeMs === 30_000)).toBe(true);
+    const plus30T0 = scheduleRows.find((r) => r.probeId === 'SP-180-T0' && r.scheduledAgeMs === 30_000);
+    const plus30T1 = scheduleRows.find((r) => r.probeId === 'SP-180-T1' && r.scheduledAgeMs === 30_000);
+    expect(plus30T0?.scheduledAt.toISOString()).toBe('2026-09-07T10:01:30.000Z');
+    expect(plus30T1?.scheduledAt.toISOString()).toBe('2026-09-07T10:02:00.000Z');
   });
 });

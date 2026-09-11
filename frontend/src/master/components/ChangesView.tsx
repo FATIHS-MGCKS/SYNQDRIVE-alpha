@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp-021-candidate-bracket-v3-prospective-2026-09-11',
+    version: '4.9.1103',
+    title: 'EXP-021 — CANDIDATE_BRACKET_V3 prospective sweet-spot plan (120→90→60)',
+    summary: [
+      'New plan EXP021_CANDIDATE_BRACKET_V3: 120→90→60, equal 10 min wall phases, 30 min nominal / 32 min max.',
+      '90s added to HF_POLL_CALIBRATION_CANDIDATES_MS; 22 deterministic request slots (5/7/10).',
+      'Settlement: 57 full-phase overlapping windows × 6 ages = 342 observations.',
+      'Read-only reconstruction-quality analyzer scaffold; map-matching adapter documented.',
+      'UPPER_BOUND_V2 and LOWER_BOUND_V1 historical plans unchanged; default env remains UPPER_BOUND_V2.',
+    ],
+    reason:
+      '180s accumulated adverse evidence; next physical run should compare 120/90/60 sweet spot under equal wall time.',
+    previousBehavior:
+      'Prospective default plan UPPER_BOUND_V2 (180→120→60→30 CONTROL); no 90s candidate; no equal-duration bracket.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-exp021-candidate-bracket-v3.spec.ts; reference-capture-exp021-reconstruction-quality-analyzer.ts; EXP_021_CANDIDATE_BRACKET_V3_PROSPECTIVE_DESIGN_2026-09-11.md. Select via EXP021_CALIBRATION_PLAN=CANDIDATE_BRACKET_V3.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-11T22:30:00.000Z',
+  },
+  {
     id: 'exp-021-native-temporal-persistence-micro-pass-2026-09-10',
     version: '4.9.1101',
     title: 'EXP-021 — Native temporal bucket persistence for post-run gap reconstruction',

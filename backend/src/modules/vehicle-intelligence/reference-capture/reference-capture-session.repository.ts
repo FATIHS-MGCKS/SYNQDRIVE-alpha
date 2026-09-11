@@ -629,6 +629,7 @@ export class ReferenceCaptureSessionRepository {
   async persistExp021ActivePhaseMovementAtomic(input: {
     organizationId: string;
     sessionId: string;
+    calibrationPhaseId?: string;
     validMovementDurationMs: number;
     uncertainMovementDurationMs?: number;
   }): Promise<ReferenceCaptureSession | null> {
@@ -641,30 +642,53 @@ export class ReferenceCaptureSessionRepository {
 
       const current = parseAcquisitionState(session.acquisitionStateJson);
       const active = current.hfCalibrationSeries?.activePhase;
-      if (!active) return session;
+      const targetPhaseId = input.calibrationPhaseId ?? active?.calibrationPhaseId;
+      if (!targetPhaseId) return session;
 
+      const series = current.hfCalibrationSeries;
+      const completedPhase = series?.completedPhases.find(
+        (phase) => phase.calibrationPhaseId === targetPhaseId,
+      );
+      const isActiveTarget = active?.calibrationPhaseId === targetPhaseId;
       const counters = current.hfCalibrationActiveCounters;
-      const nextCounters =
-        counters?.calibrationPhaseId === active.calibrationPhaseId
-          ? {
-              ...counters,
-              validMovementDurationMs: input.validMovementDurationMs,
-              uncertainMovementDurationMs:
-                input.uncertainMovementDurationMs ?? counters.uncertainMovementDurationMs ?? null,
-            }
-          : {
-              ...buildInitialPhaseCounters({
-                calibrationPhaseId: active.calibrationPhaseId,
-                phaseEffectiveStartMs: Date.parse(active.phaseStartedAt),
-                cadenceMs: active.effectivePollIntervalMs,
-                phaseProvenance: active.phaseProvenance,
-              }),
-              validMovementDurationMs: input.validMovementDurationMs,
-              uncertainMovementDurationMs: input.uncertainMovementDurationMs ?? null,
-            };
+
+      let nextCounters = counters;
+      let nextSeries = series;
+
+      if (completedPhase && !isActiveTarget && series) {
+        const completedPhaseSummaries = series.completedPhaseSummaries.map((summary) =>
+          summary.calibrationPhaseId === targetPhaseId
+            ? {
+                ...summary,
+                validMovementDurationMs: input.validMovementDurationMs,
+              }
+            : summary,
+        );
+        nextSeries = { ...series, completedPhaseSummaries };
+      } else if (isActiveTarget) {
+        nextCounters =
+          counters?.calibrationPhaseId === targetPhaseId
+            ? {
+                ...counters,
+                validMovementDurationMs: input.validMovementDurationMs,
+                uncertainMovementDurationMs:
+                  input.uncertainMovementDurationMs ?? counters.uncertainMovementDurationMs ?? null,
+              }
+            : {
+                ...buildInitialPhaseCounters({
+                  calibrationPhaseId: targetPhaseId,
+                  phaseEffectiveStartMs: Date.parse(active!.phaseStartedAt),
+                  cadenceMs: active!.effectivePollIntervalMs,
+                  phaseProvenance: active!.phaseProvenance,
+                }),
+                validMovementDurationMs: input.validMovementDurationMs,
+                uncertainMovementDurationMs: input.uncertainMovementDurationMs ?? null,
+              };
+      }
 
       const nextState: ReferenceCaptureAcquisitionState = {
         ...current,
+        hfCalibrationSeries: nextSeries,
         hfCalibrationActiveCounters: nextCounters,
         acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
       };
