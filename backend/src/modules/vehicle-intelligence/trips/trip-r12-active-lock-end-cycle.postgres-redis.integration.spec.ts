@@ -17,6 +17,7 @@ import {
   createTripR11ActiveTripFixture,
   createTripTrackingWorkers,
   probeTripR11Postgres,
+  promoteDelayedTripTrackingJobs,
   restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
@@ -205,7 +206,10 @@ if (REQUIRED) {
           expect(det?.possibleEndAt).toBeNull();
           expect(resolveEndCycleToken(det!)).toBeNull();
           await waitForHarnessCondition(
-            async () => (await countTripTrackingJobs(trackingQueue)) === 0,
+            async () => {
+              await promoteDelayedTripTrackingJobs(trackingQueue);
+              return (await countTripTrackingJobs(trackingQueue)) === 0;
+            },
             15_000,
             'queue drain after terminal',
           );

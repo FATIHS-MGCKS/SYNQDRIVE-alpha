@@ -118,3 +118,5 @@ bash backend/scripts/test/trip-r12-pec-ev-base-head-red-proof.sh
 | i18n 34610170529 | **FAIL** (then **PASS** @ `4376748cf`) | Governance test edit required authority label — reverted from trip PR |
 
 **CI_PENDING** until green Trip FSM re-run after monotonic wait + worker-slot fixture fix.
+
+| Trip FSM 34614522784 | **PASS** @ `b09f1cab7` | All `trip-r12-pec-ev-lock-collision` tests green (lock-order 443ms, completion 192ms, lock-miss 275ms); tertiary `scheduleFinalize` defer fix |
