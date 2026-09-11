@@ -45,6 +45,7 @@ Append-only record for this authority directory.
 | 2026-09-10 | PR #1600 follow-up — `readTrustedStopBoundaryFromEvidence` uses canonical authority inference when `stopBoundaryTrust` absent; explicit false/malformed still fail-closed; restores R11 Scenario C/J completion-chain reconcile | Trip FSM R12 PR #1600 | Same evidence doc |
 | 2026-09-10 | PR #1600 follow-up — R11 postgres integration harness drains queue jobs before `runJob` (matches BullMQ ACTIVE semantics; fixes stable-slot `skip_queued_primary` false skips) | Trip FSM R12 PR #1600 | Same evidence doc |
 | 2026-09-11 | PR #1600 pre-merge hardening — repository-wide clock writer audit (root cause UNRESOLVED / recovery PROVEN); strict R12 recovery trust (`stopBoundaryTrust === true` required); `test:trip-r12:hardening` CI job; real BullMQ two-worker ACTIVE-lock integration regression | Trip FSM R12 PR #1600 | Same evidence doc |
+| 2026-09-11 | KS MS 661 R12 physical acceptance audit (read-only) — first post-#1600 drive `fc93f98f…` @ `51394e16…`; PE clocks durable; END_VALIDATION 0×; verdict **FAIL** | R12 physical acceptance (read-only) | [KS_MS_661_R12_PHYSICAL_ACCEPTANCE_2026-09-11.md](../evidence/KS_MS_661_R12_PHYSICAL_ACCEPTANCE_2026-09-11.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
