@@ -8,7 +8,7 @@
 | **origin/main SHA** | `a21bff2b68888c9aedb86452758109d22b64e22b` (PR #1614 merged) |
 | **Session (UTC)** | 2026-09-12T03:39:02Z – 2026-09-12T03:39:04Z |
 | **Target vehicle** | KS MX 2024 — `a60c0749-a7cd-494e-b5b9-dea3c6b97d63` / tokenId **187336** |
-| **Ops script** | `backend/scripts/ops/gt-r1-unplug-webhook-recovery.mjs` |
+| **Ops script** | `backend/scripts/ops/gt-r1-unplug-webhook-recovery.mjs` (hardened safe-by-default post-recovery; original execution was manual authorized session) |
 | **Cross-ref** | [GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md](./GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md), [DIM webhook ops](../../dimo-integration/operations/WEBHOOK_OPERATIONS.md) |
 
 ## Epistemic banner
@@ -114,8 +114,10 @@
 | Check | Result | Classification |
 |-------|--------|----------------|
 | `GET https://app.synqdrive.eu/api/v1/health` | HTTP 200 `{"status":"ok"}` @ 2026-09-12T03:39:08Z | **VERIFIED** |
-| PUT HTTP 200 + success message | Provider accepted update | **VERIFIED** — implies callback verification passed at provider |
-| PM2 `DimoWebhookController` verification log @ 03:39:03Z | Not found in retained log window | **NOT RECONSTRUCTABLE FROM RETAINED LOGS** |
+| PUT HTTP 200 + `"Webhook updated successfully"` | Provider accepted webhook update | **VERIFIED** |
+| Resulting `status=enabled` after immediate GET | Observed post-PUT | **VERIFIED** |
+| DIMO callback verification handshake at PUT instant (`DimoWebhookController`) | Not found in retained PM2 log window | **NOT INDEPENDENTLY OBSERVED** / **NOT RECONSTRUCTABLE FROM RETAINED LOGS** |
+| Successful PUT consistent with successful callback verification | DIMO update API semantics | **INFERRED** / **PROVIDER-SEMANTICALLY SUPPORTED** — not independently verified without direct callback log evidence |
 
 ---
 

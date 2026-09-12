@@ -1,31 +1,34 @@
 /**
- * GT-R1 authorized UNPLUG webhook recovery — single PUT enable on existing UUID.
- * Reads credentials from /opt/synqdrive/shared/backend.env (VPS) or process.env.
- * Outputs redacted JSON to stdout; never prints secrets.
+ * GT-R1 UNPLUG webhook recovery ops script — SAFE-BY-DEFAULT.
+ *
+ * Default (read-only):
+ *   node backend/scripts/ops/gt-r1-unplug-webhook-recovery.mjs
+ *
+ * Authorized mutation (requires fresh operator authorization OUTSIDE this script):
+ *   node backend/scripts/ops/gt-r1-unplug-webhook-recovery.mjs \
+ *     --execute \
+ *     --confirm-webhook=49438f51-3ca5-4808-81d5-3598336c53a3
+ *
+ * Script existence is NOT authorization. Never rerun PUT without explicit operator approval.
  */
 import fs from 'fs';
 import crypto from 'crypto';
 import axios from 'axios';
 import { Wallet } from 'ethers';
+import {
+  UNPLUG_ID,
+  EXPECTED_STABLE,
+  PLUG_STABLE,
+  R9_SPEED_STABLE,
+  R9_IGN_STABLE,
+  TOKEN_187336,
+  EXPECTED_SEMANTICS,
+  parseCliArgs,
+  resolveExecutionMode,
+} from './gt-r1-unplug-webhook-recovery.lib.mjs';
 
-const UNPLUG_ID = '49438f51-3ca5-4808-81d5-3598336c53a3';
-const EXPECTED_STABLE = 'a257daa23ee5';
-const PLUG_STABLE = 'b977124a025a';
-const R9_SPEED_STABLE = '9eeb7158afee';
-const R9_IGN_STABLE = '5d611d470eab';
-const TOKEN_187336 = 187336;
 const API = 'https://vehicle-triggers-api.dimo.zone';
 const AUTH_URL = 'https://auth.dimo.zone';
-
-const EXPECTED_SEMANTICS = {
-  service: 'signals',
-  metricName: 'vss.obdIsPluggedIn',
-  condition: 'valueNumber == 0',
-  coolDownPeriod: 0,
-  displayName: 'OBD Device unplugged',
-  description: 'Driver unplugged OBD Device',
-  targetURL: 'https://app.synqdrive.eu/api/v1/webhooks/dimo',
-};
 
 function loadEnv(path) {
   const env = { ...process.env };
@@ -144,78 +147,110 @@ function subscriptionsToTokenIds(assetDids) {
     .sort((a, b) => a - b);
 }
 
+async function collectPreflight(headers, contract) {
+  const webhooks = await listWebhooks(headers);
+  const byStable = new Map(webhooks.map((w) => [stableId(w.id), w]));
+  const unplug = byStable.get(EXPECTED_STABLE);
+  const plug = byStable.get(PLUG_STABLE);
+
+  if (!unplug || unplug.id !== UNPLUG_ID) {
+    return { abort: true, reason: 'unplug_uuid_mismatch_or_missing' };
+  }
+  if (stableId(unplug.id) !== EXPECTED_STABLE) {
+    return { abort: true, reason: 'stable_id_mismatch' };
+  }
+  if (!semanticsMatch(unplug)) {
+    return {
+      abort: true,
+      reason: 'semantics_mismatch',
+      before: { unplug: pickWebhookFields(unplug) },
+    };
+  }
+
+  const subs = await getSubscriptions(headers, UNPLUG_ID);
+  const tokenIds = subscriptionsToTokenIds(subs);
+  const token187336Subscribed = await vehicleHasWebhook(headers, contract, TOKEN_187336, UNPLUG_ID)
+    || tokenIds.includes(TOKEN_187336);
+  const plugDisabled = plug?.status === 'disabled';
+
+  if (!token187336Subscribed) {
+    return { abort: true, reason: 'token_187336_not_subscribed', before: { unplug: pickWebhookFields(unplug) } };
+  }
+  if (!plugDisabled) {
+    return { abort: true, reason: 'plug_not_disabled', before: { unplug: pickWebhookFields(unplug), plug: pickWebhookFields(plug) } };
+  }
+
+  return {
+    abort: false,
+    before: {
+      unplug: pickWebhookFields(unplug),
+      plug: pickWebhookFields(plug),
+      r9Speed: pickWebhookFields(byStable.get(R9_SPEED_STABLE)),
+      r9Ignition: pickWebhookFields(byStable.get(R9_IGN_STABLE)),
+      subscriptionAssetDidCount: subs.length,
+      subscriptionTokenIds: tokenIds,
+      token187336Subscribed,
+      plugDisabled,
+    },
+    subs,
+    tokenIds,
+    unplug,
+    plug,
+    r9SpeedBefore: pickWebhookFields(byStable.get(R9_SPEED_STABLE)),
+    r9IgnBefore: pickWebhookFields(byStable.get(R9_IGN_STABLE)),
+  };
+}
+
+const cli = parseCliArgs(process.argv.slice(2));
+const execution = resolveExecutionMode(cli);
+
 const envPath = process.env.BACKEND_ENV_PATH || '/opt/synqdrive/shared/backend.env';
 const env = loadEnv(envPath);
 const contract = env.DIMO_VEHICLE_NFT_CONTRACT || '0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF';
-const verificationToken = env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
-if (!verificationToken) {
-  console.log(JSON.stringify({ abort: true, reason: 'DIMO_WEBHOOK_VERIFICATION_TOKEN missing' }));
-  process.exit(1);
-}
 
 const out = {
   sessionUtc: new Date().toISOString(),
-  phase: null,
+  mode: execution.mode,
+  executionGate: {
+    executeFlag: cli.execute,
+    confirmWebhook: cli.confirmWebhook,
+    authorized: execution.authorized,
+    gateReason: execution.reason ?? null,
+  },
   abort: false,
   before: null,
   put: null,
   after: null,
 };
 
+console.error(`MODE=${execution.mode}`);
+
 try {
   const headers = await authenticate(env);
-  const webhooks = await listWebhooks(headers);
-  const byStable = new Map(webhooks.map((w) => [stableId(w.id), w]));
-  const unplugBefore = byStable.get(EXPECTED_STABLE);
-  const plugBefore = byStable.get(PLUG_STABLE);
-  const r9SpeedBefore = pickWebhookFields(byStable.get(R9_SPEED_STABLE));
-  const r9IgnBefore = pickWebhookFields(byStable.get(R9_IGN_STABLE));
+  const preflight = await collectPreflight(headers, contract);
 
-  if (!unplugBefore || unplugBefore.id !== UNPLUG_ID) {
+  if (preflight.abort) {
     out.abort = true;
-    out.reason = 'unplug_uuid_mismatch_or_missing';
-    console.log(JSON.stringify(out));
-    process.exit(1);
-  }
-  if (stableId(unplugBefore.id) !== EXPECTED_STABLE) {
-    out.abort = true;
-    out.reason = 'stable_id_mismatch';
-    console.log(JSON.stringify(out));
-    process.exit(1);
-  }
-  if (!semanticsMatch(unplugBefore)) {
-    out.abort = true;
-    out.reason = 'semantics_mismatch_before_put';
-    out.before = { unplug: pickWebhookFields(unplugBefore) };
-    console.log(JSON.stringify(out));
+    out.reason = preflight.reason;
+    if (preflight.before) out.before = preflight.before;
+    console.log(JSON.stringify(out, null, 2));
     process.exit(1);
   }
 
-  const subsBefore = await getSubscriptions(headers, UNPLUG_ID);
-  const tokenIdsBefore = subscriptionsToTokenIds(subsBefore);
-  const token187336Before = await vehicleHasWebhook(headers, contract, TOKEN_187336, UNPLUG_ID);
+  out.before = preflight.before;
 
-  out.before = {
-    unplug: pickWebhookFields(unplugBefore),
-    plug: pickWebhookFields(plugBefore),
-    r9Speed: r9SpeedBefore,
-    r9Ignition: r9IgnBefore,
-    subscriptionAssetDidCount: subsBefore.length,
-    subscriptionTokenIds: tokenIdsBefore,
-    token187336Subscribed: token187336Before || tokenIdsBefore.includes(TOKEN_187336),
-    plugDisabled: plugBefore?.status === 'disabled',
-  };
-
-  if (!out.before.token187336Subscribed) {
-    out.abort = true;
-    out.reason = 'token_187336_not_subscribed_before';
-    console.log(JSON.stringify(out));
-    process.exit(1);
+  if (!execution.authorized) {
+    out.readOnlyComplete = true;
+    out.message = 'Preflight complete. No provider mutation performed. Use --execute --confirm-webhook=<uuid> only with fresh operator authorization.';
+    console.log(JSON.stringify(out, null, 2));
+    process.exit(0);
   }
-  if (!out.before.plugDisabled) {
+
+  const verificationToken = env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+  if (!verificationToken) {
     out.abort = true;
-    out.reason = 'plug_not_disabled_before';
-    console.log(JSON.stringify(out));
+    out.reason = 'DIMO_WEBHOOK_VERIFICATION_TOKEN missing';
+    console.log(JSON.stringify(out, null, 2));
     process.exit(1);
   }
 
@@ -231,7 +266,7 @@ try {
   } catch (e) {
     out.abort = true;
     out.put = { startedUtc: putStarted, error: e.message };
-    console.log(JSON.stringify(out));
+    console.log(JSON.stringify(out, null, 2));
     process.exit(1);
   }
 
@@ -247,7 +282,7 @@ try {
   if (putRes.status < 200 || putRes.status >= 300) {
     out.abort = true;
     out.reason = 'put_non_2xx';
-    console.log(JSON.stringify(out));
+    console.log(JSON.stringify(out, null, 2));
     process.exit(1);
   }
 
@@ -261,6 +296,7 @@ try {
   const tokenIdsAfter = subscriptionsToTokenIds(subsAfter);
   const token187336After = await vehicleHasWebhook(headers, contract, TOKEN_187336, UNPLUG_ID);
 
+  const { subs: subsBefore, tokenIds: tokenIdsBefore, r9SpeedBefore, r9IgnBefore, unplug: unplugBefore } = preflight;
   const semanticsPreserved = semanticsMatch(unplugAfter);
   const failureCountBefore = unplugBefore.failureCount;
   const failureCountAfter = unplugAfter?.failureCount;
@@ -303,6 +339,6 @@ try {
 } catch (e) {
   out.abort = true;
   out.error = e.message;
-  console.log(JSON.stringify(out));
+  console.log(JSON.stringify(out, null, 2));
   process.exit(1);
 }

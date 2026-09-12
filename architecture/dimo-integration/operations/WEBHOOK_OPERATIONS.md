@@ -24,7 +24,19 @@
 | Production callback | `https://app.synqdrive.eu/api/v1/webhooks/dimo` |
 | **Authorization gate** | Provider mutations require **explicit operator authorization** per task |
 
-Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe).
+### Safe-by-default mutation scripts (mandatory)
+
+| Rule | Detail |
+|------|--------|
+| **Default mode** | Provider mutation helper scripts are **READ-ONLY by default** |
+| **Script ≠ authorization** | A script existing in the repository is **NOT** authorization to execute a mutation |
+| **Fresh authorization** | Every provider mutation requires **fresh explicit operator authorization** in the task/chat |
+| **Explicit mutation mode** | Mutation must be explicitly selected via documented CLI flags (e.g. `--execute` + `--confirm-webhook=<uuid>`) |
+| **Never auto-rerun** | Do not repeat PUT/create/delete because a prior session succeeded |
+
+Example: `gt-r1-unplug-webhook-recovery.mjs` — default prints `MODE=READ_ONLY` and performs GET preflight only; PUT requires `--execute --confirm-webhook=49438f51-3ca5-4808-81d5-3598336c53a3`.
+
+Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe), `gt-r1-unplug-webhook-recovery.mjs` (read-only default; mutation gated).
 
 ## Authentication (VERIFIED)
 
@@ -80,9 +92,16 @@ Pattern used in R9 canary and GT-R1 preflight:
 }
 ```
 
-### Callback verification (VERIFIED)
+### Callback verification
 
-On create/update, DIMO probes `targetURL` with verification handshake. Production PM2 logs showed `DimoWebhookController` URL verification success during R9 create window.
+On create/update, DIMO probes `targetURL` with a verification handshake ([DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api)).
+
+| Claim | Classification | Evidence |
+|-------|----------------|----------|
+| R9 create window showed `DimoWebhookController` URL verification success in PM2 logs | **VERIFIED** | R9 canary session |
+| UNPLUG recovery PUT instant showed `DimoWebhookController` verification in retained logs | **NOT INDEPENDENTLY OBSERVED** | VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
+| PUT HTTP 200 on update | **VERIFIED** | GT-R1 recovery session |
+| PUT success implies callback verification passed | **INFERRED** / **PROVIDER-SEMANTICALLY SUPPORTED** — not independently verified without direct callback log |
 
 ## Post-mutation discipline (VERIFIED pattern)
 
