@@ -1115,12 +1115,15 @@ nodes:
 
   - id: EED-OQ-013
     type: open_question
-    title: Physical refuel identity implementation rollout
+    title: Physical refuel identity vs dimoSegmentId
     epistemic_status: UNKNOWN
     summary: >
-      G1.2c finality + ambiguity closure complete (EED-EV-0030); G2 runtime wiring pending.
+      RESOLVED (design, F1.2): RawRefuelCandidate.id + candidateIdentityKey + semantic rediscovery
+      matcher + G2 physical identity; dimoSegmentId is upsert compatibility key only.
+      IMPLEMENTATION_PROOF_PENDING F2 (schema/rediscovery/idempotency) and F5 (G2 convergence).
+      EED-DEC-RFRF-005 supersedes Option C.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0029, EED-EV-0030]
+    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0042, EED-DEC-RFRF-005]
 
   - id: EED-EV-0029
     type: evidence
@@ -1367,3 +1370,96 @@ nodes:
       Late SAME or INSUFFICIENT sibling vs any prior FINAL_* blocks enrichment for the late
       component (singleton or external), not only same-component membership. G2 recovery deferred.
     evidence: [EED-EV-0030, EED-EV-0031]
+
+  - id: EED-EV-0041
+    type: evidence
+    title: RFRF F1 — Raw Fuel Refuel Fallback architecture discovery
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f1-architecture-2026-09-12.md
+    summary: >
+      F1 design-only contract for SynqDrive raw-fuel REFUEL fallback parallel to DIMO native
+      segments. Provider-neutral candidate model, STABLE_PRE→RISING→STABLE_POST detector,
+      Option C identity (superseded by F1.1 Option D), G2 handoff, fail-closed policy,
+      observability/SLO proposal. No production implementation.
+    verified_at: "2026-09-12"
+
+  - id: EED-EV-0042
+    type: evidence
+    title: RFRF F1.1 — Architecture hardening + pre-F2 closure
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md
+      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture.ts
+      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-synthetic.fixture.ts
+    summary: >
+      F1.1–F1.2 hardening: WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; RawRefuelCandidate.id +
+      candidateIdentityKey + evidenceRevisionFingerprint + semantic rediscovery matcher;
+      Option D lifecycle; EED-OQ-013 resolved (design); dimoSegmentId audit NOT_PROVEN (F2/F5);
+      KS MS 661 fixture split; threshold labels corrected. F2_START_AUTHORIZED=YES;
+      IMPLEMENTATION_IDEMPOTENCY_PROOF=PENDING_F2.
+    verified_at: "2026-09-12"
+
+  - id: EED-DEC-RFRF-001
+    type: decision
+    title: RFRF — SynqDrive raw-fuel fallback authority
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO native REFUEL must not remain single point of failure. Add parallel
+      SYNQDRIVE_RAW_FUEL_FALLBACK path to VehicleEnergyEvent before G2. Fail closed.
+    evidence: [EED-EV-0040, EED-EV-0041]
+
+  - id: EED-DEC-RFRF-002
+    type: decision
+    title: RFRF — VehicleEnergyEvent identity Option C
+    decision_status: SUPERSEDED
+    epistemic_status: CONFIRMED
+    summary: >
+      F1 proposal: detectionSource + sourceEventKey; retain dimoSegmentId unique compatibility.
+      SUPERSEDED by EED-DEC-RFRF-005 (Option D staging table) after F1.1 identity audit.
+    evidence: [EED-EV-0041, EED-EV-0042]
+
+  - id: EED-DEC-RFRF-003
+    type: decision
+    title: RFRF — Raw rise detector STABLE_PRE→RISING→STABLE_POST
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Local plateau rise detector over ordered samples; not window first→last delta.
+      Absolute-only supported with capability gating.
+    evidence: [EED-EV-0041]
+
+  - id: EED-DEC-RFRF-004
+    type: decision
+    title: RFRF — Native/fallback convergence via G2 matcher
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-candidate SAME/DISTINCT/INSUFFICIENT via physical-refuel identity matcher;
+      no global fallback disable on unrelated native segments.
+    evidence: [EED-EV-0041, EED-EV-0042]
+
+  - id: EED-DEC-RFRF-005
+    type: decision
+    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Staging table: id (DB), candidateIdentityKey (immutable after assignment),
+      evidenceRevisionFingerprint (mutable), semantic rediscovery matcher under per-vehicle lock.
+      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design);
+      implementation proof pending F2/F5.
+    evidence: [EED-EV-0042]
+
+  - id: EED-OQ-014
+    type: open_question
+    title: RFRF threshold fleet calibration
+    epistemic_status: INFERRED
+    summary: >
+      PROVISIONAL rise/plateau thresholds require fleet calibration before production rollout.
+      KS MS 661 positive fixture alone is insufficient for fleet-wide constants.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0041]

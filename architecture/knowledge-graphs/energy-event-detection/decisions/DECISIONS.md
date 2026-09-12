@@ -262,3 +262,72 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Would invalidate** | Counterexample where semantic matcher false-merges distinct refuels at fleet scale |
 | **Related nodes** | EED-OQ-013, EED-EV-0026 |
 | **Related invariants** | — |
+
+---
+
+## EED-DEC-RFRF-001 — Raw-fuel REFUEL fallback authority (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-001 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Question** | How to prevent DIMO native RefuelDetector from being single point of failure? |
+| **Decision** | Add parallel `SYNQDRIVE_RAW_FUEL_FALLBACK` path producing `VehicleEnergyEvent` before G2; fail closed. |
+| **Evidence** | EED-EV-0040, EED-EV-0041 |
+| **Related nodes** | EED-DEC-RFRF-002, EED-DEC-RFRF-003, EED-DEC-RFRF-004 |
+
+---
+
+## EED-DEC-RFRF-002 — VehicleEnergyEvent identity Option C (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-002 |
+| **Status** | **SUPERSEDED** by EED-DEC-RFRF-005 (F1.1) |
+| **Date** | 2026-09-12 |
+| **Decision** | Add `detectionSource` + `sourceEventKey`; retain `dimoSegmentId` unique with namespaced fallback IDs. |
+| **Evidence** | EED-EV-0041 |
+
+---
+
+## EED-DEC-RFRF-005 — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-005 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Question** | How to keep fallback candidate identity stable under delayed telemetry without conflating evidence revision? |
+| **Decision** | `RawRefuelCandidate` staging table with lifecycle (INSUFFICIENT→OBSERVED→SETTLING→READY_FOR_PERSIST→REJECTED). Four-way separation: `id` (DB surrogate), `candidateIdentityKey` (immutable after assignment), `evidenceRevisionFingerprint` (mutable), physical candidate matcher (semantic rediscovery). Under per-vehicle lock: search non-terminal rows by vehicle/channel/detector/temporal neighborhood/pre-plateau; reuse row on overlap; insert only when no overlap. Promote to `VehicleEnergyEvent` with `sourceEventKey = candidateIdentityKey`. Supersedes Option C. |
+| **Why** | Hash-only identity fails when delayed telemetry shifts rise-onset bucket; semantic rediscovery required (F1.2 case C). |
+| **Alternatives** | Option C hybrid (rejected F1.1); hash-only upsert (rejected F1.2) |
+| **Evidence** | EED-EV-0042 |
+| **Consequences** | F2 implements schema + rediscovery + idempotency proof; F5 proves G2 native↔fallback; `dimoSegmentId` compatibility NOT_PROVEN until F2/F5 |
+| **Related nodes** | EED-DEC-RFRF-002, EED-OQ-013, EED-OQ-014 |
+
+---
+
+## EED-DEC-RFRF-003 — STABLE_PRE→RISING→STABLE_POST detector (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-003 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Decision** | Local plateau rise detector; absolute-only supported with capability gating. |
+| **Evidence** | EED-EV-0041 |
+| **Related nodes** | EED-OQ-014 |
+
+---
+
+## EED-DEC-RFRF-004 — Native/fallback convergence via G2 matcher (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-004 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Decision** | Per-candidate SAME/DISTINCT/INSUFFICIENT; no global fallback disable on unrelated native segments. |
+| **Evidence** | EED-EV-0041 |
+| **Related nodes** | EED-OQ-013 |

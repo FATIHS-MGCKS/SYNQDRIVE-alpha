@@ -36,6 +36,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f1-1-hardening-2026-09-12',
+    version: '4.9.1109',
+    title: 'RFRF F1.1 — Architecture hardening + pre-F2 closure',
+    summary: [
+      'Corrects F1 window-level native suppression contradiction; per-candidate convergence required.',
+      'Separates candidateIdentityKey (stable) from evidenceRevisionFingerprint (mutable).',
+      'Recommends Option D RawRefuelCandidate lifecycle; supersedes Option C; closes EED-OQ-013 at design level.',
+      'dimoSegmentId consumer audit: SYNTHETIC_DIMO_SEGMENT_ID_COMPATIBLE=NOT_PROVEN.',
+      'KS MS 661 fixture split (observed vs synthetic); production IDs removed; threshold labels corrected.',
+      'F2_START_AUTHORIZED=YES; F2_IMPLEMENTATION_COMPLETE=NO; semantic candidate rediscovery under delayed telemetry.',
+    ],
+    reason:
+      'Independent F1 review found four material design/evidence issues blocking F2 implementation.',
+    previousBehavior: 'F1 proposed Option C identity and window-level fallback gating; mixed inferred fixture samples.',
+    details:
+      'docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md; EED-EV-0042; EED-DEC-RFRF-005; FST-EVID-RFRF-F1-1-2026-09-12-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f1-architecture-2026-09-12',
+    version: '4.9.1108',
+    title: 'RFRF F1 — Raw Fuel Refuel Fallback architecture discovery',
+    summary: [
+      'Design-only contract for SynqDrive raw-fuel REFUEL fallback parallel to DIMO native segments.',
+      'Current path requires native DIMO segment (YES); KS MS 661 +24L absolute rise missed.',
+      'Proposed STABLE_PRE→RISING→STABLE_POST detector; Option C identity (detectionSource+sourceEventKey).',
+      'G2 handoff via existing PhysicalRefuelReconciliationRuntime; OSM never hard gate.',
+      'KS MS 661 offline positive fixture created; F2–F10 implementation plan; flags default OFF.',
+    ],
+    reason:
+      'PR #1616 proved DIMO native RefuelDetector single point of failure; SynqDrive has no raw-signal fallback.',
+    previousBehavior: 'REFUEL creation only from DIMO segments(mechanism:refuel); raw fuel used for enrichment only.',
+    details:
+      'docs/audits/eed-rfrf-f1-architecture-2026-09-12.md; EED-EV-0041; EED-DEC-RFRF-001..004; FST-EVID-RFRF-F1-2026-09-12-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T11:30:00.000Z',
+  },
+  {
     id: 'refuel-production-incident-ks-ms-661-2026-09-06',
     version: '4.9.1107',
     title: 'Production REFUEL incident forensics — KS MS 661 (Esso Kassel 2026-09-06)',

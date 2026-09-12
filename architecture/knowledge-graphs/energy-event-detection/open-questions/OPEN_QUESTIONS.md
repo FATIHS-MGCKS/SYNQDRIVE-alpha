@@ -26,7 +26,8 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-010 | ClickHouse fuel sample mirror? | **OUT_OF_SCOPE** | Analytics authority | NO | NO |
 | EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
-| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **OPEN** | Sept04 incident; terminal-state fingerprint design | NO | HIGH |
+| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
+| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
 
 ## Deferred (reference only)
 
@@ -41,12 +42,13 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 |--------|------:|
 | Total discovery questions | 12 |
 | RESOLVED (policy) | 1 (OQ-002) |
+| RESOLVED (design) | 1 (OQ-013) |
 | PARTIALLY_RESOLVED | 1 (OQ-006) |
-| OPEN | 9 |
+| OPEN | 8 |
 | OUT_OF_SCOPE | 2 |
 | Current-state facts extracted | 3 (scheduler coupling — not counted as open) |
 
-**OPEN_QUESTIONS_RESOLVED:** 1  
+**OPEN_QUESTIONS_RESOLVED:** 2  
 **OPEN_QUESTIONS_PARTIALLY_RESOLVED:** 1  
 **OPEN_QUESTIONS_REMAINING:** 10 (8 OPEN + 2 OUT_OF_SCOPE)
 

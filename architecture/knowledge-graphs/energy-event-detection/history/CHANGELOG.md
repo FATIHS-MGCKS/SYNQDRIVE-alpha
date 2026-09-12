@@ -1,5 +1,40 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F1.2 final architecture closure
+
+- F1.1 addendum §14: semantic candidate rediscovery; four-way identity separation
+- F2 readiness decoupled: `F2_START_AUTHORIZED=YES`; `F2_IMPLEMENTATION_COMPLETE=NO`
+- EED-OQ-013 remains RESOLVED (design); `IMPLEMENTATION_PROOF_PENDING` F2/F5
+- `dimoSegmentId` compatibility ownership: F2 schema/promotion; F5 G2 proof
+
+**Verdict:** RFRF_F1_FINAL_CLOSURE=PASS — PR #1619 merge authorized (architecture/fixtures only)
+
+---
+
+## 2026-09-12 — RFRF F1.1 architecture hardening
+
+- Added `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md` (pre-F2 closure addendum)
+- Evidence `EED-EV-0042`; decision `EED-DEC-RFRF-005` (Option D; supersedes Option C / EED-DEC-RFRF-002)
+- Closed `EED-OQ-013` at design level (identity = candidateIdentityKey + G2 matcher)
+- KS MS 661 fixture split: observed vs synthetic; production IDs removed from executable fixtures
+- FST cross-ref `FST-EVID-RFRF-F1-1-2026-09-12-001`
+
+**Verdict:** F1.1 PASS — F2_IMPLEMENTATION_READY=NO (Option D schema + dimoSegmentId compatibility proof)
+
+---
+
+## 2026-09-12 — RFRF F1 architecture discovery
+
+- Added `docs/audits/eed-rfrf-f1-architecture-2026-09-12.md` (design-only raw-fuel fallback contract)
+- Evidence `EED-EV-0041`; decisions `EED-DEC-RFRF-001` … `EED-DEC-RFRF-004`; open question `EED-OQ-014`
+- Motivated by production incident `EED-EV-0040` (KS MS 661)
+- KS MS 661 offline positive fixture for F3 detector tests
+- FST cross-ref `FST-EVID-RFRF-F1-2026-09-12-001`
+
+**Verdict:** F1 complete — F2 blocked pending F1.1 hardening (see F1.1 addendum)
+
+---
+
 ## 2026-09-01 — Phase 2B.2 final authority closure
 
 - Merged `origin/main` @ `814a7e009` (P1.8.3.1 scaling #1487) — no EED runtime delta
