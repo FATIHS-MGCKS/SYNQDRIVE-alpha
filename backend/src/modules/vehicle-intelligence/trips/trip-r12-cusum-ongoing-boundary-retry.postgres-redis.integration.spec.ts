@@ -4,7 +4,7 @@ import type { TripTrackingJobData } from './trip-detection.types';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
-import { END_DETECTION_MODES, TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
+import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import {
   buildActiveTickJob,
   buildTripR11OrchestrationHarness,
@@ -425,27 +425,9 @@ async function seedPossibleEndFromEmptyCore(params: {
         stopMock,
         detectorRegistry,
       );
-
-      let evDecisionCalls = 0;
-      harness.evaluateEndCandidate.mockImplementation(() => {
-        evDecisionCalls += 1;
-        if (evDecisionCalls === 1) {
-          return {
-            shouldReopen: true,
-            shouldEnd: false,
-            endMode: 'CUSUM_ONGOING',
-            reason: 'CUSUM indicates trip is still active',
-          };
-        }
-        return {
-          shouldEnd: true,
-          shouldReopen: false,
-          detectedEndAt: STOP_BOUNDARY,
-          confidence: 'MEDIUM',
-          endMode: END_DETECTION_MODES.CUSUM_VALIDATED,
-          reason: 'integration_cusum_end',
-        };
-      });
+      // Harness defaults evaluateEndCandidate to immediate CUSUM_VALIDATED; use real engine
+      // so ChangePointEndDetector findings drive cusum_still_ongoing → ACTIVE reopen.
+      jest.spyOn(harness.decisionEngine, 'evaluateEndCandidate').mockRestore();
 
       await seedPossibleEndFromEmptyCore({ prisma, harness, fixture });
       await assertNaturalPossibleEndCheckQueued({
@@ -479,6 +461,13 @@ async function seedPossibleEndFromEmptyCore(params: {
         where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
       });
       expect(evRunsAfter1).toBe(1);
+      const evRunAfter1 = await prisma.vehicleTripTrackingRun.findFirst({
+        where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect((evRunAfter1?.resultSummary as Record<string, unknown>)?.reason).toBe(
+        'cusum_still_ongoing',
+      );
 
       harness.segments.fetchRawTripCoreData = emptyMock.fetchRawTripCoreData;
       harness.segments.fetchRouteEnrichment = emptyMock.fetchRouteEnrichment;
