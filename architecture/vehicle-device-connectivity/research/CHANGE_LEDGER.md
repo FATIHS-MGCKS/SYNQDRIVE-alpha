@@ -11,3 +11,4 @@
 | 2026-09-11 | Phase 2 narrow correction — C2 `05:06:51Z` contradiction resolved (no such poll row); stage-evidence matrix; VDC-Q-003/Q-011 epistemics; Aug 2026 year fix; scheduler retry wording softened | Vehicle & Device Connectivity Phase 2 |
 | 2026-09-11 | Phase 3 reconciliation — CX-001..011 disposition, VDC-DEC-002..010, evidence hierarchy, target semantic model, remediation backlog, gap/hypothesis/question triage | Vehicle & Device Connectivity Phase 3 |
 | 2026-09-12 | Phase 3 hardening — VDC-DEC-010 recovery fast-path, VDC-DEC-002 per-signal gate, VDC-DEC-011 adaptive polling, VDC-RB-018, VDC-Q-014, GT-before-RB-001 workstream order | Vehicle & Device Connectivity Phase 3 |
+| 2026-09-12 | GT-R1-UNPLUG-001 read-only preflight — live DIMO webhook/subscription baseline for tokenId 187336; Production ingest readiness; operator watch queries (VDC-EVID-GT-R1-PREFLIGHT-001) | Vehicle & Device Connectivity GT preflight |
