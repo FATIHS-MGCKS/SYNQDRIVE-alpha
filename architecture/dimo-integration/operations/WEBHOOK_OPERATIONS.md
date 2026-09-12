@@ -28,15 +28,16 @@
 
 | Rule | Detail |
 |------|--------|
-| **Default mode** | Provider mutation helper scripts are **READ-ONLY by default** |
+| **Default mode** | Provider mutation helper scripts are **READ-ONLY by default** — auth handshake (POST) + GET inspection only; **no** Vehicle Triggers webhook mutation |
+| **READ_ONLY means** | No PUT webhook update, no POST webhook create, no DELETE webhook, no subscribe/unsubscribe mutation; authentication calls and GET inspection are allowed |
 | **Script ≠ authorization** | A script existing in the repository is **NOT** authorization to execute a mutation |
 | **Fresh authorization** | Every provider mutation requires **fresh explicit operator authorization** in the task/chat |
 | **Explicit mutation mode** | Mutation must be explicitly selected via documented CLI flags (e.g. `--execute` + `--confirm-webhook=<uuid>`) |
 | **Never auto-rerun** | Do not repeat PUT/create/delete because a prior session succeeded |
 
-Example: `gt-r1-unplug-webhook-recovery.mjs` — default prints `MODE=READ_ONLY` and performs GET preflight only; PUT requires `--execute --confirm-webhook=49438f51-3ca5-4808-81d5-3598336c53a3`.
+Example: `gt-r1-unplug-webhook-recovery.mjs` — default prints `MODE=READ_ONLY` and performs read-only provider inspection (auth handshake + GET inspection only; no webhook mutation); PUT requires `--execute --confirm-webhook=49438f51-3ca5-4808-81d5-3598336c53a3`.
 
-Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe), `gt-r1-unplug-webhook-recovery.mjs` (read-only default; mutation gated).
+Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe), `gt-r1-unplug-webhook-recovery.mjs` (READ_ONLY default: auth + GET inspection; mutation gated).
 
 ## Authentication (VERIFIED)
 

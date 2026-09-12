@@ -1,7 +1,7 @@
 /**
  * GT-R1 UNPLUG webhook recovery ops script — SAFE-BY-DEFAULT.
  *
- * Default (read-only):
+ * Default (READ_ONLY provider inspection — auth handshake + GET inspection only; no webhook mutation):
  *   node backend/scripts/ops/gt-r1-unplug-webhook-recovery.mjs
  *
  * Authorized mutation (requires fresh operator authorization OUTSIDE this script):
@@ -241,7 +241,8 @@ try {
 
   if (!execution.authorized) {
     out.readOnlyComplete = true;
-    out.message = 'Preflight complete. No provider mutation performed. Use --execute --confirm-webhook=<uuid> only with fresh operator authorization.';
+    out.message =
+      'Read-only provider inspection complete (auth handshake + GET inspection only). No Vehicle Triggers webhook mutation performed. Use --execute --confirm-webhook=<uuid> only with fresh operator authorization.';
     console.log(JSON.stringify(out, null, 2));
     process.exit(0);
   }

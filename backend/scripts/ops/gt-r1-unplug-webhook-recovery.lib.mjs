@@ -1,6 +1,7 @@
 /**
  * GT-R1 UNPLUG webhook recovery — CLI gate + shared constants.
- * SAFE-BY-DEFAULT: mutation requires --execute AND --confirm-webhook=<exact-uuid>.
+ * SAFE-BY-DEFAULT: READ_ONLY = auth handshake + GET inspection only (no webhook mutation).
+ * Mutation requires --execute AND --confirm-webhook=<exact-uuid>.
  */
 
 export const UNPLUG_ID = '49438f51-3ca5-4808-81d5-3598336c53a3';
