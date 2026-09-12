@@ -22,7 +22,7 @@ import {
 const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
 
 describe('trip-end-cycle-reset (R5)', () => {
-  it('buildPossibleEndToActiveReset clears all end-cycle fields', () => {
+  it('buildPossibleEndToActiveReset clears all end-cycle fields on ACTIVITY resume', () => {
     const reset = buildPossibleEndToActiveReset({
       workerNow: WORKER_NOW,
       priorSummary: {
@@ -31,6 +31,7 @@ describe('trip-end-cycle-reset (R5)', () => {
         completedEndValidationAttempt: 2,
         startEvidence: 'preserve-me',
       },
+      reopenReason: 'ACTIVITY_RESUMED',
     });
 
     expect(reset.possibleEndAt).toBeNull();
@@ -217,6 +218,26 @@ describe('trip-end-cycle-reset (R5)', () => {
   it('validateCusumMovementEventTime accepts within-skew future timestamp', () => {
     const within = new Date(WORKER_NOW.getTime() + 30_000);
     expect(validateCusumMovementEventTime(within, WORKER_NOW)).toEqual(within);
+  });
+
+  it('buildPossibleEndToActiveReset preserves trusted boundary on CUSUM still-ongoing', () => {
+    const workerNow = new Date('2026-09-12T05:11:03.781Z');
+    const boundaryAt = new Date('2026-09-12T05:06:59.000Z');
+    const reset = buildPossibleEndToActiveReset({
+      workerNow,
+      lastMeaningfulMovementAt: new Date('2026-09-12T05:06:52.636Z'),
+      priorSummary: {
+        stopBoundaryAt: boundaryAt.toISOString(),
+        stopBoundarySource: 'provider_stationary_vls',
+        stopBoundaryClockAuthority: 'PROVIDER_EVENT_TIME',
+        stopBoundaryTrust: true,
+        endValidationScheduledAt: 'y',
+      },
+      reopenReason: 'CUSUM_STILL_ONGOING',
+    });
+    const summary = reset.lastEvidenceSummary as Record<string, unknown>;
+    expect(summary.stopBoundaryAt).toBe(boundaryAt.toISOString());
+    expect(summary.endValidationScheduledAt).toBeUndefined();
   });
 
   it('stripEndCycleEvidenceForActiveReopen removes known transient keys only', () => {
