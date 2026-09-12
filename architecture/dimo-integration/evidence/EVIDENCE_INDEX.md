@@ -23,6 +23,7 @@
 | DIM-EV-R9-CANARY-001 | PRODUCTION_OBSERVATION | Authorized five-vehicle R9 canary + GET audit | Provider wiring **PASS** — 5/5 speed+ignition; stableIds `9eeb7158afee`, `5d611d470eab`; 190497 excluded | CONFIRMED_AT_PRODUCTION_RELEASE @ `0ba96e03…` | Natural wake **not validated** — [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](R9_FIVE_VEHICLE_CANARY_2026-09-07.md) |
 | DIM-EV-KS-MS-661-R9-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_2026-09-08.md](KS_MS_661_R9_WAKE_2026-09-08.md) | **First** natural R9 trigger delivery observed (tokenId 187361); 22 webhook logs window A on replica A; 19:53:24 **not** proven ignition-off | CONFIRMED_AT_PRODUCTION_RELEASE @ `684950419…` | Cross-ref TDL-EVID-KS-MS-661-001; payload archive gap |
 | DIM-EV-KS-MS-661-R9-002 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_R11_2026-09-09.md](KS_MS_661_R9_WAKE_R11_2026-09-09.md) | **Second** natural start wake @ R11 `f7eb94cb…`; FSM `DIMO_TRIGGER`/`IGNITION_ON` @ 04:38:17Z; replica A | CONFIRMED_AT_PRODUCTION_RELEASE @ `f7eb94cb…` | Start wake only; end-path wake not observed |
+| DIM-EV-WEBHOOK-OPS-001 | OPERATIONS_RUNBOOK | [operations/WEBHOOK_OPERATIONS.md](../operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (auth, list, create, subscribe, rollback); UNPLUG recovery PUT designed not executed | CONFIRMED | Cross-ref VDC-EVID-GT-R1-UNPLUG-FAILURE-001 |
 
 ## Cross-reference
 

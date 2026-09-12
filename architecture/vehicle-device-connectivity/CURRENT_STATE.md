@@ -10,7 +10,7 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-11 |
+| **Last updated** | 2026-09-12 |
 
 ## Executive summary
 
@@ -42,7 +42,7 @@ Phase 3 (reconciliation) establishes:
 - **Recovery fast-path:** PLUG webhook optional (VDC-DEC-010); **adaptive polling** principle (VDC-DEC-011); **RB-001 GT-gated** per-signal safety.
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
-- **GT-R1-UNPLUG-001** remains prepared, not executed — blocks some recovery/false-positive conclusions.
+- **GT-R1-UNPLUG-001** preflight + webhook failure forensics complete — UNPLUG provider `failed` traced to **2026-08-25 SynqDrive `enqueue_failed` → HTTP 5xx**; callback healthy now (R9 control); **authorized PUT enable proposed, not executed**; GT-R1 **not executed**.
 - **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
 
 ## Component hierarchy
@@ -185,11 +185,11 @@ VDC-HYP-001..007 classified in [research/OPEN_HYPOTHESES.md](research/OPEN_HYPOT
 - HM connectivity parity (VDC-GAP-009)
 - Historical `FULL_CONNECTIVITY_RECOVERED` instant (GT required)
 - CH duplicate root cause (VDC-Q-012)
-- Aug 2026 enqueue_failed root cause (VDC-Q-013 partial)
+- Aug 2026 enqueue_failed mechanism — **CONFIRMED** (BullMQ `jobId` colon bug; VDC-EVID-GT-R1-UNPLUG-FAILURE-001); provider `failed` auto-recovery **UNKNOWN** (VDC-Q-015)
 
 ## Next workstream (Phase 3 hardened order)
 
-1. Merge Phase 3 architecture (incl. hardening).
+1. **Authorize UNPLUG webhook remediation** (`PUT` enable `49438f51-3ca5-4808-81d5-3598336c53a3`) — see VDC-EVID-GT-R1-UNPLUG-FAILURE-001 + DIM webhook ops runbook.
 2. **GT-R1-UNPLUG-001** on current behavior — before VDC-RB-001 (recovery baseline).
 3. Finalize per-signal-safe equality design for **VDC-RB-001** (VDC-DEC-002 gate).
 4. Implement **VDC-RB-001** + **VDC-RB-017**.

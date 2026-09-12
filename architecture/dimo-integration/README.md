@@ -48,6 +48,12 @@ Bootstrap triggered by **R9 pre-merge governance correction** — substantive we
 
 Flat `architecture/DIMO_*.md` files are **supporting evidence**, not routing authority.
 
+## Operations runbooks
+
+| Document | Role |
+|----------|------|
+| [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (R9-proven); webhook recovery design |
+
 ## Validation
 
 ```bash
