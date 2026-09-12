@@ -44,9 +44,9 @@ export interface PhysicalStateReconcileScope {
 export interface PhysicalStateReconcileInput extends PhysicalStateReconcileScope {
   evidence: IncomingPhysicalStateEvidence;
   receivedAt?: Date;
-  /** When true, PLUG transitions do not open retroactive lifecycle side effects. */
+  /** When true, APPLIED PLUG transitions do not emit lifecycle side-effect intents. */
   selfHeal?: boolean;
-  /** Canonical webhook event id when evidence source is WEBHOOK. */
+  /** Canonical webhook event id when evidence source is WEBHOOK (Phase 2 outbox). */
   canonicalEventId?: string | null;
 }
 
@@ -59,6 +59,23 @@ export type PhysicalStateEpisodeAction =
 
 export type PhysicalStateAlertAction = 'none' | 'emit_unplug' | 'resolve_unplug';
 
+/**
+ * Reconciliation decision audit context — distinct from projection-only fields.
+ * Transition log stores all decisions (DUPLICATE/STALE/CONFLICT/APPLIED/…).
+ */
+export interface PhysicalStateReconcileContext {
+  previousState: PhysicalEffectiveState | null;
+  candidateState: PhysicalEffectiveState;
+  resultingState: PhysicalEffectiveState | null;
+  previousEvidenceAt: Date | null;
+  candidateEvidenceAt: Date;
+  incomingEvidenceSource: PhysicalEvidenceSource;
+  stateVersionBefore: number | null;
+  stateVersionAfter: number | null;
+  selfHeal: boolean;
+  evidenceReferenceId: string;
+}
+
 export interface PhysicalStateReconcileResult {
   enabled: boolean;
   decision: PhysicalTransitionDecision | 'DISABLED';
@@ -66,6 +83,7 @@ export interface PhysicalStateReconcileResult {
   transitionId: string | null;
   episodeAction: PhysicalStateEpisodeAction;
   alertAction: PhysicalStateAlertAction;
+  context: PhysicalStateReconcileContext;
   reason?: string;
 }
 

@@ -114,6 +114,42 @@ jobs:
       - run: npm run test:vehicle-detail:security
         working-directory: backend
 
+  backend-physical-state-postgres:
+    name: Backend VDC physical-state PostgreSQL tests
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+      - run: npm run test:physical-state:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+          PHYSICAL_STATE_POSTGRES_INTEGRATION: '1'
+          PHYSICAL_STATE_POSTGRES_REQUIRED: '1'
+
   backend-boundary-postgres:
     name: Backend boundary repair PostgreSQL tests
     needs: install-lockfile
@@ -258,6 +294,7 @@ jobs:
       - backend-unit
       - backend-security
       - backend-boundary-postgres
+      - backend-physical-state-postgres
       - frontend-component
       - playwright-e2e
       - accessibility

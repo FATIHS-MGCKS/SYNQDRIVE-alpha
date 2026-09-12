@@ -1,4 +1,4 @@
-import type { PhysicalTransitionDecision } from './device-connection-physical-state.types';
+import type { PhysicalStateReconcileResult } from './device-connection-physical-state.types';
 
 type PhysicalStateMetricSink = {
   connectivityPhysicalStateTransitionAppliedTotal?: { inc: (labels: Record<string, string>) => void };
@@ -16,42 +16,47 @@ export function bindPhysicalStateMetricSink(sink: PhysicalStateMetricSink): void
   metricSink = sink;
 }
 
-export function recordPhysicalStateReconcileDecision(
-  decision: PhysicalTransitionDecision,
-  input: {
-    source: string;
-    previousState: string | null;
-    nextState: string | null;
-  },
-): void {
-  if (!metricSink) return;
+export function recordPhysicalStateReconcileDecision(result: PhysicalStateReconcileResult): void {
+  if (!metricSink || result.decision === 'DISABLED') return;
 
-  switch (decision) {
+  const ctx = result.context;
+  const source = ctx.incomingEvidenceSource;
+  const transition = `${ctx.previousState ?? 'NONE'}_TO_${ctx.resultingState ?? 'NONE'}`;
+
+  switch (result.decision) {
     case 'APPLIED':
+      metricSink.connectivityPhysicalStateTransitionAppliedTotal?.inc({ source, transition });
+      if (
+        ctx.selfHeal &&
+        ctx.previousState === 'UNPLUGGED' &&
+        ctx.resultingState === 'PLUGGED'
+      ) {
+        metricSink.connectivityPhysicalStateSelfHealTotal?.inc({
+          source,
+          outcome: 'projection_self_heal',
+        });
+      }
+      break;
     case 'ESTABLISHED':
       metricSink.connectivityPhysicalStateTransitionAppliedTotal?.inc({
-        source: input.source,
-        transition: `${input.previousState ?? 'NONE'}_TO_${input.nextState ?? 'NONE'}`,
+        source,
+        transition: `NONE_TO_${ctx.resultingState ?? 'NONE'}`,
       });
       break;
     case 'STALE':
-      metricSink.connectivityPhysicalStateEvidenceStaleTotal?.inc({ source: input.source });
+      metricSink.connectivityPhysicalStateEvidenceStaleTotal?.inc({ source });
       break;
     case 'CONFLICT':
-      metricSink.connectivityPhysicalStateEvidenceConflictTotal?.inc({ source: input.source });
+      metricSink.connectivityPhysicalStateEvidenceConflictTotal?.inc({ source });
       break;
     case 'DUPLICATE':
-      metricSink.connectivityPhysicalStateDuplicateTransitionSuppressedTotal?.inc({
-        source: input.source,
-      });
+      metricSink.connectivityPhysicalStateDuplicateTransitionSuppressedTotal?.inc({ source });
       break;
     case 'PROVENANCE_REFRESH':
-      if (input.previousState === input.nextState) {
-        metricSink.connectivityPhysicalStateSelfHealTotal?.inc({
-          source: input.source,
-          outcome: 'provenance_refresh',
-        });
-      }
+      metricSink.connectivityPhysicalStateSelfHealTotal?.inc({
+        source,
+        outcome: 'provenance_refresh',
+      });
       break;
     default:
       break;

@@ -2,9 +2,6 @@
 /**
  * READ-ONLY fleet drift detector for canonical physical OBD plug state.
  *
- * Detects vehicles where last canonical webhook OBD event disagrees with newer
- * per-signal VLS obdIsPluggedIn evidence (GT-R1 class drift).
- *
  * Dry-run only — no repairs, no projection mutations.
  */
 import { Prisma, PrismaClient, DimoDeviceConnectionEventType } from '@prisma/client';
@@ -18,6 +15,7 @@ type DriftRow = {
   vls_obd_value: boolean;
   vls_obd_timestamp: Date;
   projection_state: string | null;
+  projection_binding_key: string | null;
   projection_evidence_at: Date | null;
   drift_kind: string;
 };
@@ -72,6 +70,16 @@ async function main(): Promise<void> {
       WHERE vls.raw_payload_json ? 'obdIsPluggedIn'
         AND vls.raw_payload_json->'obdIsPluggedIn' ? 'timestamp'
         AND vls.raw_payload_json->'obdIsPluggedIn' ? 'value'
+    ),
+    latest_projection AS (
+      SELECT DISTINCT ON (dps.vehicle_id, dps.provider)
+        dps.vehicle_id,
+        dps.provider,
+        dps.effective_state::text AS projection_state,
+        dps.binding_key AS projection_binding_key,
+        dps.evidence_observed_at AS projection_evidence_at
+      FROM device_connection_physical_states dps
+      ORDER BY dps.vehicle_id, dps.provider, dps.evidence_observed_at DESC
     )
     SELECT
       v.id AS vehicle_id,
@@ -81,8 +89,9 @@ async function main(): Promise<void> {
       loe.last_event_observed_at,
       vo.obd_value AS vls_obd_value,
       vo.obd_timestamp AS vls_obd_timestamp,
-      dps.effective_state::text AS projection_state,
-      dps.evidence_observed_at AS projection_evidence_at,
+      lp.projection_state,
+      lp.projection_binding_key,
+      lp.projection_evidence_at,
       CASE
         WHEN loe.event_type = ${DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED}
           AND vo.obd_value = true
@@ -97,8 +106,8 @@ async function main(): Promise<void> {
     FROM vehicles v
     INNER JOIN last_obd_events loe ON loe.vehicle_id = v.id
     INNER JOIN vls_obd vo ON vo.vehicle_id = v.id
-    LEFT JOIN device_connection_physical_states dps
-      ON dps.vehicle_id = v.id AND dps.provider = 'DIMO'
+    LEFT JOIN latest_projection lp
+      ON lp.vehicle_id = v.id AND lp.provider = 'DIMO'
     WHERE vo.obd_timestamp IS NOT NULL
       AND (
         (loe.event_type = ${DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED}
@@ -132,6 +141,7 @@ async function main(): Promise<void> {
         vlsObdValue: row.vls_obd_value,
         vlsObdTimestamp: row.vls_obd_timestamp?.toISOString(),
         projectionState: row.projection_state,
+        projectionBindingKey: row.projection_binding_key,
         projectionEvidenceAt: row.projection_evidence_at?.toISOString() ?? null,
       }),
     );

@@ -4,7 +4,6 @@ import dimoConfig from '@config/dimo.config';
 import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import deviceConnectionWebhookInboxConfig from '@config/device-connection-webhook-inbox.config';
 import connectivityRecoveryConfig from '@config/connectivity-recovery.config';
-import connectivityPhysicalStateConfig from '@config/connectivity-physical-state.config';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
@@ -48,8 +47,7 @@ import { DimoConnectivityLifecycleDiModule } from './dimo-connectivity-lifecycle
 import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-link.service';
 import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget.module';
 import { SnapshotWakeModule } from '@workers/snapshot-wake/snapshot-wake.module';
-import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state/device-connection-physical-state.repository';
-import { DeviceConnectionPhysicalStateService } from './device-connection-physical-state/device-connection-physical-state.service';
+import { DeviceConnectionPhysicalStateModule } from './device-connection-physical-state/device-connection-physical-state.module';
 
 @Module({
   imports: [
@@ -58,10 +56,10 @@ import { DeviceConnectionPhysicalStateService } from './device-connection-physic
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(deviceConnectionEpisodeResolutionOutboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
-    ConfigModule.forFeature(connectivityPhysicalStateConfig),
     DimoProviderBudgetModule,
     SnapshotWakeModule,
     DimoConnectivityLifecycleDiModule,
+    DeviceConnectionPhysicalStateModule,
     EventTripAssociationModule,
     ActivityLogModule,
     SharedGuardsModule,
@@ -101,8 +99,6 @@ import { DeviceConnectionPhysicalStateService } from './device-connection-physic
     DimoVehicleDataSourceLinkService,
     RpmWebhookCandidateService,
     RpmWebhookQueryService,
-    DeviceConnectionPhysicalStateRepository,
-    DeviceConnectionPhysicalStateService,
   ],
   exports: [
     DimoProviderGateway,
@@ -124,8 +120,7 @@ import { DeviceConnectionPhysicalStateService } from './device-connection-physic
     DeviceConnectionWebhookConfigurationService,
     DimoTriggerRegistryService,
     DimoVehicleDataSourceLinkService,
-    DeviceConnectionPhysicalStateService,
-    DeviceConnectionPhysicalStateRepository,
+    DeviceConnectionPhysicalStateModule,
   ],
 })
 export class DimoModule {}

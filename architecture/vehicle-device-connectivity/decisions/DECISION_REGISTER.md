@@ -196,7 +196,9 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **WHY** | Split authority made genuine newer UNPLUG webhooks classify as `no_state_change`, blocking episodes/alerts after snapshot-only replug recovery |
 | **EVIDENCE** | VDC-EVID-GT-R1-EXECUTION-001 |
 | **CANONICAL_PRINCIPLE** | A durable, provider-neutral **effective physical-device-state projection** is the canonical authority for physical plug/unplug deduplication and ordering. Webhook event history is evidence/history — **not** the effective physical-state authority. |
-| **PROJECTION** | `device_connection_physical_states` — one row per `(organizationId, vehicleId, provider, bindingKey)`; `bindingKey` non-null (`{provider}:binding:{id}` or `{provider}:device:{hash}`) |
+| **PROJECTION** | `device_connection_physical_states` — one row per `(organizationId, vehicleId, provider, bindingKey)`; `bindingKey` non-null and **always** `{PROVIDER}:device:{providerDeviceIdHash}`; `deviceBindingId` is enrichment metadata only |
+| **CONCURRENCY** | `pg_advisory_xact_lock` per binding + `SELECT … FOR UPDATE` + `INSERT … ON CONFLICT DO NOTHING` (no catch-and-continue inside aborted transactions) |
+| **SIDE_EFFECTS** | Phase 1 returns episode/alert intents only; durable outbox execution deferred to Phase 2 |
 | **TRANSITION_LOG** | Append-only `device_connection_physical_state_transitions` with explicit decisions: ESTABLISHED, APPLIED, DUPLICATE, STALE, CONFLICT, INSUFFICIENT_EVIDENCE, PROVENANCE_REFRESH |
 | **TIMESTAMP_AUTHORITY** | Physical ordering uses `evidenceObservedAt` from provider-observed webhook time or per-signal `obdIsPluggedIn.timestamp` — never `providerFetchedAt`, poll completion, or `receivedAt` |
 | **INITIALIZATION** | Snapshot self-heal may establish/repair projection without retroactive user-visible lifecycle events or fabricated PLUG webhooks |
