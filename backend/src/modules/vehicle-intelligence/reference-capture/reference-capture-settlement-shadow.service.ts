@@ -12,9 +12,13 @@ import {
   type HfCalibrationPhaseRecord,
 } from './reference-capture-hf-calibration-phase.policy';
 import {
+  calibrationPlanAuthorityFromPlan,
   resolveExp021CalibrationPlan,
+  resolveExp021CalibrationPlanFromAuthority,
   resolveNominalPhaseDurationMs,
+  type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
+import { resolveExp021CalibrationPlanForSeries } from './reference-capture-hf-calibration-phase.policy';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
@@ -312,10 +316,15 @@ export class ReferenceCaptureSettlementShadowService {
     vehicleId: string;
     tokenId: number;
     calibrationSeriesId?: string | null;
+    calibrationPlan?: Exp021CalibrationPlan;
   }) {
     if (!this.isEnabled()) return null;
     const existing = await this.repository.findExperimentBySessionId(args.sessionId);
     if (existing) return existing;
+
+    const planAuthority = args.calibrationPlan
+      ? calibrationPlanAuthorityFromPlan(args.calibrationPlan)
+      : null;
 
     return this.repository.createExperiment({
       experimentId: buildExperimentId(args.sessionId),
@@ -328,7 +337,33 @@ export class ReferenceCaptureSettlementShadowService {
         channel: 'SETTLEMENT_SHADOW',
         primaryProbeDurationMs: EXP021_PRIMARY_PROBE_DURATION_MS,
         mandatoryAgesMs: [...EXP021_MANDATORY_AGES_MS],
+        ...(planAuthority
+          ? {
+              calibrationPlanId: planAuthority.planId,
+              calibrationPlanVersion: planAuthority.planVersion,
+            }
+          : {}),
       },
+    });
+  }
+
+  private resolveSettlementCalibrationPlan(args: {
+    series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
+    experimentMetadata?: unknown;
+  }): Exp021CalibrationPlan {
+    const fromSeries = resolveExp021CalibrationPlanForSeries(args.series);
+    if (args.series.calibrationPlanId || args.series.calibrationPlanVersion) {
+      return fromSeries;
+    }
+    const meta =
+      args.experimentMetadata &&
+      typeof args.experimentMetadata === 'object' &&
+      !Array.isArray(args.experimentMetadata)
+        ? (args.experimentMetadata as Record<string, unknown>)
+        : null;
+    return resolveExp021CalibrationPlanFromAuthority({
+      calibrationPlanId: meta?.calibrationPlanId as string | undefined,
+      calibrationPlanVersion: meta?.calibrationPlanVersion as string | undefined,
     });
   }
 
@@ -346,15 +381,24 @@ export class ReferenceCaptureSettlementShadowService {
       const series = state.hfCalibrationSeries;
       if (!series) return;
 
+      const calibrationPlan = resolveExp021CalibrationPlanForSeries(series);
       const experiment = await this.ensureExperiment({
         sessionId: args.sessionId,
         organizationId: args.organizationId,
         vehicleId: args.vehicleId,
         tokenId: series.tokenId ?? args.tokenId,
         calibrationSeriesId: series.calibrationSeriesId,
+        calibrationPlan,
       });
       if (!experiment) return;
       if (!this.isExperimentActive(experiment.status)) return;
+
+      if (series.calibrationPlanId || series.calibrationPlanVersion) {
+        await this.repository.mergeExperimentMetadataJson(
+          experiment.id,
+          calibrationPlanAuthorityFromPlan(calibrationPlan),
+        );
+      }
 
       await this.syncProspectiveProbesForActivePhase({
         experiment,
@@ -370,6 +414,7 @@ export class ReferenceCaptureSettlementShadowService {
           await this.validateCompletedPhaseProbeGeometry({
             experiment,
             phase,
+            calibrationPlan,
           });
         }
         await this.repository.updateLastSyncedPhaseCount(experiment.id, completed.length);
@@ -388,7 +433,15 @@ export class ReferenceCaptureSettlementShadowService {
    * so schedule +30/+60 observations before phase completion.
    */
   private async syncProspectiveProbesForActivePhase(args: {
-    experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
+    experiment: {
+      id: string;
+      experimentId: string;
+      sessionId: string;
+      organizationId: string;
+      vehicleId: string;
+      tokenId: number;
+      metadataJson?: unknown;
+    };
     series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
   }): Promise<void> {
     const active = args.series.activePhase;
@@ -398,10 +451,14 @@ export class ReferenceCaptureSettlementShadowService {
     const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
     if (!Number.isFinite(phaseStartedAtMs)) return;
 
-    const plan = resolveExp021CalibrationPlan();
+    const plan = this.resolveSettlementCalibrationPlan({
+      series: args.series,
+      experimentMetadata: args.experiment.metadataJson,
+    });
     if (usesFullPhaseOverlappingSettlementStrategy(plan)) {
       const nominalEndMs =
-        phaseStartedAtMs + resolveNominalPhaseDurationMs(active.effectivePollIntervalMs);
+        phaseStartedAtMs +
+        resolveNominalPhaseDurationMs(active.effectivePollIntervalMs, plan);
       const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
         phasePollIntervalMs: active.effectivePollIntervalMs,
         phaseStartedAtMs,
@@ -423,7 +480,10 @@ export class ReferenceCaptureSettlementShadowService {
     const probeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: active.effectivePollIntervalMs,
       phaseStartedAtMs,
-      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(active.effectivePollIntervalMs),
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(
+        active.effectivePollIntervalMs,
+        plan,
+      ),
     });
 
     if (probeA) {
@@ -443,6 +503,7 @@ export class ReferenceCaptureSettlementShadowService {
   private async validateCompletedPhaseProbeGeometry(args: {
     experiment: { id: string; experimentId: string; sessionId: string; organizationId: string; vehicleId: string; tokenId: number };
     phase: HfCalibrationPhaseRecord;
+    calibrationPlan: Exp021CalibrationPlan;
   }) {
     const phaseStartedAtMs = Date.parse(args.phase.phaseStartedAt);
     const phaseEndedAtMs = Date.parse(args.phase.phaseEndedAt ?? '');
@@ -465,7 +526,10 @@ export class ReferenceCaptureSettlementShadowService {
     const prospectiveProbeB = buildProspectiveProbeBForPhase({
       phasePollIntervalMs: args.phase.effectivePollIntervalMs,
       phaseStartedAtMs,
-      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(args.phase.effectivePollIntervalMs),
+      nominalPhaseDurationMs: resolveNominalPhaseDurationMs(
+        args.phase.effectivePollIntervalMs,
+        args.calibrationPlan,
+      ),
     });
     if (!prospectiveProbeB) return;
 

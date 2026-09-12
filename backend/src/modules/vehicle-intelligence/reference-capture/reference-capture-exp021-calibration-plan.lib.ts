@@ -25,6 +25,12 @@ export type Exp021CalibrationPhaseSpec = {
   minSuccessfulRequests: number;
 };
 
+/** Immutable experiment identity persisted at arm time — not transient process.env. */
+export type Exp021CalibrationPlanAuthority = {
+  planId: string;
+  planVersion: string;
+};
+
 export type Exp021CalibrationPlan = {
   schemaVersion: typeof EXP021_CALIBRATION_PLAN_SCHEMA;
   planVersion: string;
@@ -145,6 +151,52 @@ const PLAN_REGISTRY: Record<string, Exp021CalibrationPlan> = {
   '60_30_20_10': EXP021_LOWER_BOUND_V1,
 };
 
+const ALL_KNOWN_CALIBRATION_PLANS: readonly Exp021CalibrationPlan[] = [
+  EXP021_LOWER_BOUND_V1,
+  EXP021_UPPER_BOUND_V2,
+  EXP021_CANDIDATE_BRACKET_V3,
+];
+
+export function calibrationPlanAuthorityFromPlan(
+  plan: Exp021CalibrationPlan,
+): Exp021CalibrationPlanAuthority {
+  return { planId: plan.planId, planVersion: plan.planVersion };
+}
+
+export function resolveExp021CalibrationPlanByIdentity(
+  authority: Partial<Exp021CalibrationPlanAuthority> | null | undefined,
+): Exp021CalibrationPlan | null {
+  if (!authority) return null;
+  if (authority.planVersion) {
+    const byVersion = ALL_KNOWN_CALIBRATION_PLANS.find(
+      (plan) => plan.planVersion === authority.planVersion,
+    );
+    if (byVersion) return byVersion;
+  }
+  if (authority.planId) {
+    const byId = ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planId === authority.planId);
+    if (byId) return byId;
+  }
+  return null;
+}
+
+/**
+ * Resolve calibration plan from durable authority first; fall back to env only when
+ * no persisted experiment identity exists (new experiments before arm).
+ */
+export function resolveExp021CalibrationPlanFromAuthority(args: {
+  calibrationPlanId?: string | null;
+  calibrationPlanVersion?: string | null;
+  env?: NodeJS.ProcessEnv;
+}): Exp021CalibrationPlan {
+  const durable = resolveExp021CalibrationPlanByIdentity({
+    planId: args.calibrationPlanId ?? undefined,
+    planVersion: args.calibrationPlanVersion ?? undefined,
+  });
+  if (durable) return durable;
+  return resolveExp021CalibrationPlan(args.env);
+}
+
 export function resolveExp021CalibrationPlan(
   env: NodeJS.ProcessEnv = process.env,
 ): Exp021CalibrationPlan {
@@ -204,12 +256,15 @@ export function classifyPhaseScientificStatus(args: {
   plan: Exp021CalibrationPlan;
   phaseSpec: Exp021CalibrationPhaseSpec;
   providerSuccessCount: number;
-  validMovementDurationMs: number;
+  validMovementDurationMs: number | null;
   wallDurationMs: number;
   runtimeFailure?: boolean;
-}): Exp021PhaseScientificStatus {
+}): Exp021PhaseScientificStatus | null {
   if (args.runtimeFailure) {
     return 'INVALID_RUNTIME_FAILURE';
+  }
+  if (args.validMovementDurationMs == null) {
+    return null;
   }
   if (args.providerSuccessCount < args.phaseSpec.minSuccessfulRequests) {
     return 'DEGRADED_INSUFFICIENT_REQUESTS';

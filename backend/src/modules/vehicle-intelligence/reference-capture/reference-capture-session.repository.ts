@@ -15,16 +15,20 @@ import {
 import {
   buildCycleReleaseAcquisitionState,
   buildInitialPhaseCounters,
+  emptyPhaseCounters,
   finalizeCalibrationOnPhysicalEndEarly,
   finalizeTerminalCalibrationSeries,
   normalizeHfCalibrationSeriesState,
   reanchorPhysicalCalibrationPhaseAtT0,
+  recomputePhaseSummaryDerivedFields,
   requestHfCalibrationPhase,
+  resolveExp021CalibrationPlanForSeries,
   type HfCalibrationPhaseRequestResult,
   type HfCalibrationPhaseRuntimeCounters,
   type ReanchorPhysicalCalibrationPhaseResult,
   type TerminalCalibrationFinalizationReason,
 } from './reference-capture-hf-calibration-phase.policy';
+import { resolveExp021CalibrationPlan } from './reference-capture-exp021-calibration-plan.lib';
 import type { HfRecoveryPolicyV2Config } from './reference-capture-hf-recovery-v2.policy';
 import type { HfCalibrationPhaseProvenance } from './reference-capture-exp-021-physical-authority.lib';
 
@@ -466,6 +470,7 @@ export class ReferenceCaptureSessionRepository {
 
       const canonicalT0Ms = resolvePersistedCanonicalT0Ms(session.preflightJson);
       const current = parseAcquisitionState(session.acquisitionStateJson);
+      const calibrationPlan = resolveExp021CalibrationPlan();
       const reanchor = reanchorPhysicalCalibrationPhaseAtT0({
         existing: current.hfCalibrationSeries ?? null,
         vehicleId: input.vehicleId,
@@ -474,6 +479,7 @@ export class ReferenceCaptureSessionRepository {
         effectivePollIntervalMs: input.effectivePollIntervalMs,
         hfPolicy: input.hfPolicy,
         nowMs: input.nowMs,
+        calibrationPlan,
       });
 
       const nextState: ReferenceCaptureAcquisitionState = {
@@ -486,6 +492,7 @@ export class ReferenceCaptureSessionRepository {
               phaseEffectiveStartMs: canonicalT0Ms,
               cadenceMs: input.effectivePollIntervalMs,
               phaseProvenance: 'PHYSICAL_T0',
+              calibrationPlan,
             })
           : current.hfCalibrationActiveCounters ?? null,
         acquisitionStateVersion: (current.acquisitionStateVersion ?? 0) + 1,
@@ -656,12 +663,19 @@ export class ReferenceCaptureSessionRepository {
       let nextSeries = series;
 
       if (completedPhase && !isActiveTarget && series) {
+        const calibrationPlan = resolveExp021CalibrationPlanForSeries(series);
+        const countersForSummary =
+          counters?.calibrationPhaseId === targetPhaseId
+            ? counters
+            : emptyPhaseCounters(targetPhaseId);
         const completedPhaseSummaries = series.completedPhaseSummaries.map((summary) =>
           summary.calibrationPhaseId === targetPhaseId
-            ? {
-                ...summary,
+            ? recomputePhaseSummaryDerivedFields({
+                summary,
+                counters: countersForSummary,
                 validMovementDurationMs: input.validMovementDurationMs,
-              }
+                calibrationPlan,
+              })
             : summary,
         );
         nextSeries = { ...series, completedPhaseSummaries };
@@ -680,6 +694,7 @@ export class ReferenceCaptureSessionRepository {
                   phaseEffectiveStartMs: Date.parse(active!.phaseStartedAt),
                   cadenceMs: active!.effectivePollIntervalMs,
                   phaseProvenance: active!.phaseProvenance,
+                  calibrationPlan: resolveExp021CalibrationPlanForSeries(series),
                 }),
                 validMovementDurationMs: input.validMovementDurationMs,
                 uncertainMovementDurationMs: input.uncertainMovementDurationMs ?? null,

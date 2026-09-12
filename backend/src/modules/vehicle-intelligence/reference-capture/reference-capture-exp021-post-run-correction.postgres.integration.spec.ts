@@ -8,7 +8,10 @@ import {
   emptyPhaseCounters,
   finalizePhaseSummary,
 } from './reference-capture-hf-calibration-phase.policy';
-import { EXP021_UPPER_BOUND_V2 } from './reference-capture-exp021-calibration-plan.lib';
+import {
+  EXP021_CANDIDATE_BRACKET_V3,
+  EXP021_UPPER_BOUND_V2,
+} from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExp021RequestSlotsForPhase,
   markRequestSlotIssued,
@@ -187,6 +190,93 @@ const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
         expect(summary?.validMovementDurationMs).not.toBe(0);
 
         await reloadedPrisma.$disconnect();
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
+    });
+
+    it('LATE_MOVEMENT_RECOMPUTE: completed summary gets VALID after movement patch', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix);
+      const wallDurationMs = 612_400;
+      const movementMs = 454_698;
+      const phaseEndMs = t0Ms + wallDurationMs;
+      const counters = {
+        ...emptyPhaseCounters('phase-120'),
+        nativeFastLoopRequestCount: 5,
+        nativeFastLoopProviderSuccessCount: 5,
+      };
+      const completedPhase = {
+        calibrationPhaseId: 'phase-120',
+        phaseSequence: 1,
+        effectivePollIntervalMs: 120_000,
+        phaseStartedAt: new Date(t0Ms).toISOString(),
+        phaseEndedAt: new Date(phaseEndMs).toISOString(),
+        phaseProvenance: 'PHYSICAL_T0' as const,
+        canonicalT0At: new Date(t0Ms).toISOString(),
+      };
+      const summary = finalizePhaseSummary({
+        phase: {
+          ...completedPhase,
+          effectiveConfig: {
+            calibrationSeriesId: 'series-v3',
+            calibrationPhaseId: 'phase-120',
+            phaseSequence: 1,
+            vehicleId: seed.vehicleId,
+            tokenId: seed.tokenId,
+            effectivePollIntervalMs: 120_000,
+            settlementDelayMs: 8000,
+            recoveryOverlapMs: 6000,
+            policyVersion: 'HF_RECOVERY_V2_2026-09-04',
+            policyMode: 'V2' as const,
+            effectiveAt: new Date(t0Ms).toISOString(),
+          },
+        },
+        counters,
+        phaseEndedAtMs: phaseEndMs,
+        calibrationPlan: EXP021_CANDIDATE_BRACKET_V3,
+      });
+      expect(summary.scientificStatus).toBeNull();
+
+      const state = emptyDataPlane(t0Ms);
+      state.hfCalibrationSeries = {
+        calibrationSeriesId: 'series-v3',
+        vehicleId: seed.vehicleId,
+        tokenId: seed.tokenId,
+        calibrationPlanId: 'candidate_bracket_v3',
+        calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        phaseOrder: [120_000],
+        activePhase: null,
+        completedPhases: [completedPhase],
+        completedPhaseSummaries: [summary],
+        pendingPhaseRequest: null,
+        cancelledPhaseRequests: [],
+        terminalFinalizationAt: new Date(phaseEndMs).toISOString(),
+        lastPhaseBoundaryAt: new Date(phaseEndMs).toISOString(),
+        seriesStartedAt: new Date(t0Ms).toISOString(),
+        controlPlaneRevision: 1,
+      };
+      state.hfCalibrationActiveCounters = counters;
+
+      await prisma.referenceCaptureSession.update({
+        where: { id: seed.sessionId },
+        data: { acquisitionStateJson: state as object },
+      });
+
+      try {
+        await repo.persistExp021ActivePhaseMovementAtomic({
+          organizationId: seed.organizationId,
+          sessionId: seed.sessionId,
+          calibrationPhaseId: 'phase-120',
+          validMovementDurationMs: movementMs,
+        });
+
+        const session = await repo.findById(seed.organizationId, seed.sessionId);
+        const reloaded = parseAcquisitionState(session?.acquisitionStateJson);
+        const patched = reloaded.hfCalibrationSeries?.completedPhaseSummaries?.[0];
+        expect(patched?.validMovementDurationMs).toBe(movementMs);
+        expect(patched?.scientificStatus).toBe('VALID');
+        expect(patched?.calibrationPlanVersion).toBe('EXP021_CANDIDATE_BRACKET_V3');
       } finally {
         await cleanupReferenceCaptureSeed(prisma, seed);
       }

@@ -160,6 +160,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-11T23:20:00.000Z',
   },
   {
+    id: 'exp-021-durable-plan-correction-2026-09-12',
+    version: '4.9.1104',
+    title: 'EXP-021 — Durable plan authority + V3 slot/settlement/scientific-status correction',
+    summary: [
+      'Persist calibrationPlanId/calibrationPlanVersion on hfCalibrationSeries at physical arm.',
+      'buildInitialPhaseCounters and settlement shadow use durable plan — not transient process.env.',
+      'Fix EXPECTED_SLOTS_NEVER_CREATED (V3: 5/7/10 slots) and settlement 19/19/19 windows.',
+      'scientificStatus=null when movement unknown; recompute on late movement patch (120s VALID regression).',
+      'Frozen PR #1618 V3 evidence unchanged; deploy required before next physical run.',
+    ],
+    reason:
+      'KS MS 661 CANDIDATE_BRACKET_V3 run (2026-09-12) proved transient plan fallback caused mixed provenance, wrong slot/settlement geometry, and stale DEGRADED_LOW_MOVEMENT.',
+    previousBehavior:
+      'resolveExp021CalibrationPlan() from env at each call site; unknown movement coerced to 0; late movement patch did not recompute scientificStatus.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-hf-calibration-phase.policy.ts; reference-capture-session.repository.ts; reference-capture-settlement-shadow.service.ts; reference-capture-exp021-durable-plan-correction.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T12:50:00.000Z',
+  },
+  {
     id: 'exp-021-candidate-bracket-v3-prospective-2026-09-11',
     version: '4.9.1103',
     title: 'EXP-021 — CANDIDATE_BRACKET_V3 prospective sweet-spot plan (120→90→60)',
