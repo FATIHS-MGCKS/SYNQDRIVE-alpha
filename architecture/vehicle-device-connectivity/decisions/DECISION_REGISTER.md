@@ -194,7 +194,7 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **DATE** | 2026-09-12 |
 | **BEFORE** | Webhook canonicalization deduped physical plug/unplug from last `dimo_device_connection_events.event_type` only; snapshot `obdIsPluggedIn` could prove newer physical state without updating that authority (GT-R1) |
 | **WHY** | Split authority made genuine newer UNPLUG webhooks classify as `no_state_change`, blocking episodes/alerts after snapshot-only replug recovery |
-| **EVIDENCE** | VDC-EVID-GT-R1-EXECUTION-001; VDC-EVID-GT-R1-WEBHOOK-RECOVERY-001 |
+| **EVIDENCE** | VDC-EVID-GT-R1-EXECUTION-001 |
 | **CANONICAL_PRINCIPLE** | A durable, provider-neutral **effective physical-device-state projection** is the canonical authority for physical plug/unplug deduplication and ordering. Webhook event history is evidence/history — **not** the effective physical-state authority. |
 | **PROJECTION** | `device_connection_physical_states` — one row per `(organizationId, vehicleId, provider, bindingKey)`; `bindingKey` non-null (`{provider}:binding:{id}` or `{provider}:device:{hash}`) |
 | **TRANSITION_LOG** | Append-only `device_connection_physical_state_transitions` with explicit decisions: ESTABLISHED, APPLIED, DUPLICATE, STALE, CONFLICT, INSUFFICIENT_EVIDENCE, PROVENANCE_REFRESH |
