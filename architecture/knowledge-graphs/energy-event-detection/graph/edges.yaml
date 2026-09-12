@@ -474,6 +474,34 @@ edges:
     relation: REFERENCES
     to: EED-EV-0013
 
+  - from: EED-EV-0040
+    relation: REFERENCES
+    to: EED-DEC-RFRF-001
+
+  - from: EED-EV-0041
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-001
+
+  - from: EED-EV-0041
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-002
+
+  - from: EED-EV-0041
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-003
+
+  - from: EED-EV-0041
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-004
+
+  - from: EED-DEC-RFRF-003
+    relation: REFERENCES
+    to: EED-OQ-014
+
+  - from: EED-DEC-RFRF-004
+    relation: REFERENCES
+    to: EED-OQ-013
+
   - from: EED-EV-0027
     relation: REFERENCES
     to: EED-OQ-013

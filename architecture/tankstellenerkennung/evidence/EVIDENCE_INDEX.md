@@ -35,6 +35,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g22-production-cutover-2026-09-04.md | G2.2 direct production cutover (no shadow); integration gate PASS; flag activation |
 | FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001 | PRODUCTION_OBSERVATION | docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md | G2.2 post-cutover T+60 read-only production audit; runtime stability PASS; zero natural REFUEL |
 | FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001 | PRODUCTION_INCIDENT | docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md | KS MS 661 Esso refuel invisible ~6d; DIMO 0 segments; abs +24L; rel NULL; no raw fallback; internal DIMO mechanism UNKNOWN; P1 |
+| FST-EVID-RFRF-F1-2026-09-12-001 | DESIGN | docs/audits/eed-rfrf-f1-architecture-2026-09-12.md | RFRF F1 EED raw-fuel fallback contract; G2 downstream dependency; OSM soft confidence only |
 
 ## Phase memos (supporting, not graph authority)
 

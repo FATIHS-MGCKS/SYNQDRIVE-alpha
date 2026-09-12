@@ -1367,3 +1367,68 @@ nodes:
       Late SAME or INSUFFICIENT sibling vs any prior FINAL_* blocks enrichment for the late
       component (singleton or external), not only same-component membership. G2 recovery deferred.
     evidence: [EED-EV-0030, EED-EV-0031]
+
+  - id: EED-EV-0041
+    type: evidence
+    title: RFRF F1 — Raw Fuel Refuel Fallback architecture discovery
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f1-architecture-2026-09-12.md
+      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel.fixture.ts
+    summary: >
+      F1 design-only contract for SynqDrive raw-fuel REFUEL fallback parallel to DIMO native
+      segments. Provider-neutral candidate model, STABLE_PRE→RISING→STABLE_POST detector,
+      Option C identity (detectionSource+sourceEventKey), G2 handoff, fail-closed policy,
+      observability/SLO proposal. No production implementation.
+    verified_at: "2026-09-12"
+
+  - id: EED-DEC-RFRF-001
+    type: decision
+    title: RFRF — SynqDrive raw-fuel fallback authority
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO native REFUEL must not remain single point of failure. Add parallel
+      SYNQDRIVE_RAW_FUEL_FALLBACK path to VehicleEnergyEvent before G2. Fail closed.
+    evidence: [EED-EV-0040, EED-EV-0041]
+
+  - id: EED-DEC-RFRF-002
+    type: decision
+    title: RFRF — VehicleEnergyEvent identity Option C
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Add detectionSource + sourceEventKey; retain dimoSegmentId unique compatibility with
+      namespaced fallback IDs until semantic cleanup phase.
+    evidence: [EED-EV-0041]
+
+  - id: EED-DEC-RFRF-003
+    type: decision
+    title: RFRF — Raw rise detector STABLE_PRE→RISING→STABLE_POST
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Local plateau rise detector over ordered samples; not window first→last delta.
+      Absolute-only supported with capability gating.
+    evidence: [EED-EV-0041]
+
+  - id: EED-DEC-RFRF-004
+    type: decision
+    title: RFRF — Native/fallback convergence via G2 matcher
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-candidate SAME/DISTINCT/INSUFFICIENT via physical-refuel identity matcher;
+      no global fallback disable on unrelated native segments.
+    evidence: [EED-EV-0041]
+
+  - id: EED-OQ-014
+    type: open_question
+    title: RFRF threshold fleet calibration
+    epistemic_status: INFERRED
+    summary: >
+      PROVISIONAL rise/plateau thresholds require fleet calibration before production rollout.
+      KS MS 661 positive fixture alone is insufficient for fleet-wide constants.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0041]

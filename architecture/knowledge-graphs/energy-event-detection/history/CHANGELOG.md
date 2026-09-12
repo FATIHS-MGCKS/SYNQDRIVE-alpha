@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F1 architecture discovery
+
+- Added `docs/audits/eed-rfrf-f1-architecture-2026-09-12.md` (design-only raw-fuel fallback contract)
+- Evidence `EED-EV-0041`; decisions `EED-DEC-RFRF-001` … `EED-DEC-RFRF-004`; open question `EED-OQ-014`
+- Motivated by production incident `EED-EV-0040` (KS MS 661)
+- KS MS 661 offline positive fixture for F3 detector tests
+- FST cross-ref `FST-EVID-RFRF-F1-2026-09-12-001`
+
+**Verdict:** F1 complete — F2 implementation ready (flags default OFF)
+
+---
+
 ## 2026-09-01 — Phase 2B.2 final authority closure
 
 - Merged `origin/main` @ `814a7e009` (P1.8.3.1 scaling #1487) — no EED runtime delta

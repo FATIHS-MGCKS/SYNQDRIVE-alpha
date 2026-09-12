@@ -262,3 +262,55 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Would invalidate** | Counterexample where semantic matcher false-merges distinct refuels at fleet scale |
 | **Related nodes** | EED-OQ-013, EED-EV-0026 |
 | **Related invariants** | — |
+
+---
+
+## EED-DEC-RFRF-001 — Raw-fuel REFUEL fallback authority (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-001 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Question** | How to prevent DIMO native RefuelDetector from being single point of failure? |
+| **Decision** | Add parallel `SYNQDRIVE_RAW_FUEL_FALLBACK` path producing `VehicleEnergyEvent` before G2; fail closed. |
+| **Evidence** | EED-EV-0040, EED-EV-0041 |
+| **Related nodes** | EED-DEC-RFRF-002, EED-DEC-RFRF-003, EED-DEC-RFRF-004 |
+
+---
+
+## EED-DEC-RFRF-002 — VehicleEnergyEvent identity Option C (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-002 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Decision** | Add `detectionSource` + `sourceEventKey`; retain `dimoSegmentId` unique with namespaced fallback IDs. |
+| **Evidence** | EED-EV-0041 |
+
+---
+
+## EED-DEC-RFRF-003 — STABLE_PRE→RISING→STABLE_POST detector (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-003 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Decision** | Local plateau rise detector; absolute-only supported with capability gating. |
+| **Evidence** | EED-EV-0041 |
+| **Related nodes** | EED-OQ-014 |
+
+---
+
+## EED-DEC-RFRF-004 — Native/fallback convergence via G2 matcher (F1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-004 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Decision** | Per-candidate SAME/DISTINCT/INSUFFICIENT; no global fallback disable on unrelated native segments. |
+| **Evidence** | EED-EV-0041 |
+| **Related nodes** | EED-OQ-013 |

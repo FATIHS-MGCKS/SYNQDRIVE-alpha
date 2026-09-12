@@ -1003,6 +1003,17 @@ nodes:
     source_paths:
       - docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md
 
+  - id: FST-EVID-RFRF-F1-2026-09-12-001
+    type: evidence
+    title: RFRF F1 cross-domain dependency — raw fallback before G2
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: >
+      EED RFRF F1 defines raw-fuel fallback VehicleEnergyEvent creation required before
+      Physical Refuel G2 / station enrichment can run. OSM not hard gate. Downstream consumer only.
+    source_paths:
+      - docs/audits/eed-rfrf-f1-architecture-2026-09-12.md
+
   - id: FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001
     type: evidence
     title: KS MS 661 production REFUEL incident — Esso Ysenburgstraße 2026-09-06
