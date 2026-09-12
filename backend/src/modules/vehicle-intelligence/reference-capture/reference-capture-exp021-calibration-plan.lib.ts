@@ -4,6 +4,7 @@
  * Plans are versioned; historical LOWER_BOUND_V1 (60→30→20→10) remains parseable.
  * Default env resolution remains UPPER_BOUND_V2 (180→120→60→30 CONTROL).
  * Next prospective sweet-spot run: CANDIDATE_BRACKET_V3 (120→90→60) via explicit env.
+ * Dedicated short A/B: CANDIDATE_SHORT_AB_90_60 (90→60 only) via explicit env.
  */
 export const EXP021_CALIBRATION_PLAN_SCHEMA = 'EXP021_CALIBRATION_PLAN_v1';
 
@@ -137,6 +138,25 @@ export const EXP021_CANDIDATE_BRACKET_V3: Exp021CalibrationPlan = Object.freeze(
   totalGraceBudgetMs: 2 * 60_000,
 });
 
+/** 90s and 60s phase specs — identical to CANDIDATE_BRACKET_V3 phases[1] and phases[2]. */
+const CANDIDATE_SHORT_AB_90_60_PHASES: readonly Exp021CalibrationPhaseSpec[] =
+  CANDIDATE_BRACKET_V3_PHASES.slice(1);
+
+/**
+ * Dedicated corrected short A/B (90→60, equal 10 min wall phases, ~20 min nominal).
+ * Select explicitly via EXP021_CALIBRATION_PLAN=CANDIDATE_SHORT_AB_90_60 — not the default.
+ * Omits the 120s anchor already evidenced by frozen PR #1618 forensic authority.
+ */
+export const EXP021_CANDIDATE_SHORT_AB_90_60: Exp021CalibrationPlan = Object.freeze({
+  schemaVersion: EXP021_CALIBRATION_PLAN_SCHEMA,
+  planVersion: 'EXP021_CANDIDATE_SHORT_AB_90_60',
+  planId: 'candidate_short_ab_90_60',
+  advancementMode: 'WALL_CLOCK',
+  phases: CANDIDATE_SHORT_AB_90_60_PHASES,
+  maxTotalDurationMs: 22 * 60_000,
+  totalGraceBudgetMs: 2 * 60_000,
+});
+
 export const EXP021_DEFAULT_CALIBRATION_PLAN = EXP021_UPPER_BOUND_V2;
 
 /** @deprecated Historical alias — KS MS 661 physical run sequence. */
@@ -147,6 +167,7 @@ export const EXP021_LEGACY_CADENCE_PHASE_ORDER_MS = EXP021_LOWER_BOUND_V1.phases
 const PLAN_REGISTRY: Record<string, Exp021CalibrationPlan> = {
   UPPER_BOUND_V2: EXP021_UPPER_BOUND_V2,
   CANDIDATE_BRACKET_V3: EXP021_CANDIDATE_BRACKET_V3,
+  CANDIDATE_SHORT_AB_90_60: EXP021_CANDIDATE_SHORT_AB_90_60,
   LOWER_BOUND_V1: EXP021_LOWER_BOUND_V1,
   '60_30_20_10': EXP021_LOWER_BOUND_V1,
 };
@@ -155,6 +176,7 @@ const ALL_KNOWN_CALIBRATION_PLANS: readonly Exp021CalibrationPlan[] = [
   EXP021_LOWER_BOUND_V1,
   EXP021_UPPER_BOUND_V2,
   EXP021_CANDIDATE_BRACKET_V3,
+  EXP021_CANDIDATE_SHORT_AB_90_60,
 ];
 
 export function calibrationPlanAuthorityFromPlan(

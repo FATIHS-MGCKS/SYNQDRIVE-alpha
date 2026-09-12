@@ -49,8 +49,9 @@
 
 ## GT-R1-UNPLUG-001 — Controlled physical unplug/replug (LTE_R1)
 
-**Status:** Prepared in Phase 2 — **NOT EXECUTED** (read-only audit phase).
+**Status:** **EXECUTED** 2026-09-12 — KS MX 2024 / tokenId 187336 (see execution evidence).
 **Preflight (read-only):** [../evidence/GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md](../evidence/GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md) — live provider + Production baseline for KS MX 2024 / tokenId 187336.
+**Execution:** [../evidence/GT_R1_UNPLUG_EXECUTION_2026-09-12.md](../evidence/GT_R1_UNPLUG_EXECUTION_2026-09-12.md) — VDC-EVID-GT-R1-EXECUTION-001.
 
 ### Preconditions
 
