@@ -1437,8 +1437,35 @@ nodes:
       single-step provider rises, stepped coalescence via provisionalPostContinuationGraceMs
       (separate from riseMaxDurationMs), local post plateau, TRUSTED→relative fallback,
       wobble fail-closed, nullable native-segment metric. 62 unit tests; 4/4 real isolated PG
-      F2 handoff proofs. No production wiring. F4_START_AUTHORIZED=NO until main sync review.
+      F2 handoff proofs. No production wiring. Merged PR #1623 on main 4d95c16a9.
     verified_at: "2026-09-12"
+
+  - id: EED-EV-0045
+    type: evidence
+    title: RFRF F4 — Scope + runtime boundary (pre-implementation)
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md
+    summary: >
+      F4 Option B phase boundary: dark detectEnergyEvents integration through candidate staging;
+      promotion service implementable but VehicleEnergyEvent execution blocked until F5 convergence gate.
+      Capability gate case 22; duplicate safety matrix; minimum diagnostics; PR plan F4-PR1..4.
+      No runtime code. F4_SCOPE_DEFINED=YES; F4_IMPLEMENTATION_NOT_STARTED=YES.
+    verified_at: "2026-09-13"
+
+  - id: EED-DEC-RFRF-006
+    type: decision
+    title: RFRF F4 — Option B phase boundary (dark staging; promotion execution F5-gated)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      F4 wires scheduler/detectEnergyEvents → fuel fetch → capability gate → F3 → F2 persist → READY
+      evaluation and promotion service code. Actual VehicleEnergyEvent upsert from fallback remains
+      unreachable until F5 native/fallback convergence gate is implemented and proven. Preserves
+      WINDOW_LEVEL_NATIVE_SUPPRESSION=FORBIDDEN and PER_CANDIDATE_NATIVE_FALLBACK_CONVERGENCE=REQUIRED.
+    evidence: [EED-EV-0045]
+    verified_at: "2026-09-13"
 
   - id: EED-DEC-RFRF-001
     type: decision

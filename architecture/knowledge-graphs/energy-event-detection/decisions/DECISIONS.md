@@ -331,3 +331,19 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Decision** | Per-candidate SAME/DISTINCT/INSUFFICIENT; no global fallback disable on unrelated native segments. |
 | **Evidence** | EED-EV-0041 |
 | **Related nodes** | EED-OQ-013 |
+
+---
+
+## EED-DEC-RFRF-006 — F4 Option B phase boundary (2026-09-13)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-006 |
+| **Status** | **PROPOSED** (pending human review) |
+| **Date** | 2026-09-13 |
+| **Question** | Where does F4 end and F5 begin given promotion/convergence ordering hazard? |
+| **Decision** | **Option B:** F4 implements dark runtime through candidate staging plus promotion service/mapping/schema, but **VehicleEnergyEvent promotion execution remains F5-gated** until native/fallback convergence is implemented and integration-matrix proven. F4 does not enable production flags. |
+| **Evidence** | EED-EV-0045 |
+| **Alternatives rejected** | Option A (no promotion code in F4 — delays schema/service integration); Option C (merge F5 into F4 — scope/rollback blur) |
+| **Consequences** | F4-PR1..4 plan; READY_FOR_PERSIST rows may remain staged safely; KS MS 661 user-visible fix requires F5 promotion enablement after convergence proof |
+| **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-005, EED-EV-0044, EED-EV-0043 |

@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-13 — RFRF F4 scope + runtime boundary (pre-implementation)
+
+- Scope audit resolves F1/F2/F3 phase-boundary contradiction: F4 Option B (dark runtime through candidate staging; promotion execution blocked until F5)
+- `detectEnergyEvents` parallel path design; WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; no new scheduler
+- Capability gate case 22 scope; minimum F4 diagnostics; duplicate safety matrix (10 scenarios)
+- Decision `EED-DEC-RFRF-006`; evidence `EED-EV-0045`
+- F4_SCOPE_DEFINED=YES; F4_IMPLEMENTATION_NOT_STARTED=YES; no runtime code
+
+**Verdict:** RFRF_F4_SCOPE_DEFINED=PASS — F4_IMPLEMENTATION_START_READY=YES (pending human review)
+
+---
+
 ## 2026-09-12 — RFRF F3.2 final semantic closure
 
 - provisionalPostContinuationGraceMs separate from riseMaxDurationMs; finalized post = event boundary

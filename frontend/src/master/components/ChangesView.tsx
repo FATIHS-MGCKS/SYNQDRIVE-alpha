@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f4-scope-boundary-2026-09-13',
+    version: '4.9.1118',
+    title: 'RFRF F4 — Scope + runtime boundary (pre-implementation audit)',
+    summary: [
+      'Resolves F1/F2/F3 phase-boundary contradiction: F4 Option B (dark staging; promotion execution F5-gated).',
+      'detectEnergyEvents parallel path design; WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; no new scheduler.',
+      'Capability gate case 22 scope; duplicate safety matrix (10 scenarios); minimum F4 diagnostics.',
+      'EED-DEC-RFRF-006 + EED-EV-0045; no runtime code; flags remain default false.',
+    ],
+    reason:
+      'F3 merged (PR #1623); F4 authorized but requires rigorous scope closure before implementation.',
+    previousBehavior:
+      'Overlapping F4/F5 language risked unsafe VehicleEnergyEvent promotion before native/fallback convergence.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md; EED-EV-0045; EED-DEC-RFRF-006.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T00:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f3-2-semantic-closure-2026-09-12',
     version: '4.9.1117',
     title: 'RFRF F3.2 — Final semantic closure (finality + channel fallback + real PG)',
