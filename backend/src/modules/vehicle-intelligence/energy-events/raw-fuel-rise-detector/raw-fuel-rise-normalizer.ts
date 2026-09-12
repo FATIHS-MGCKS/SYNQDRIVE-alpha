@@ -14,7 +14,7 @@ export type NormalizeRawFuelSamplesResult =
  * They are NOT treated as trustworthy absence. See `NON_FINITE_SAMPLE_POLICY`.
  */
 export const NON_FINITE_SAMPLE_POLICY =
-  'INVALID_CHANNEL_SAMPLE_EXCLUDED_WITH_EXPLICIT_DIAGNOSTIC' as const;
+  'INVALID_CHANNEL_SAMPLE_EXCLUDED_PER_CHANNEL' as const;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);

@@ -29,6 +29,8 @@ echo "MIGRATION_MECHANISM=prisma migrate deploy"
 cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+# Ephemeral test DB may lag schema.prisma on column drift; db push applies columns before index conflicts.
+npx prisma db push --accept-data-loss --skip-generate || true
 
 RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1 npm test -- \
   raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts \

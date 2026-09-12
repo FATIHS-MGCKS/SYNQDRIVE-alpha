@@ -258,7 +258,7 @@ PR_1623_STILL_DRAFT = YES
 
 ### 14.3 Non-finite sample policy
 
-`INVALID_CHANNEL_SAMPLE_EXCLUDED_WITH_EXPLICIT_DIAGNOSTIC` — NaN/±Infinity excluded per channel; never silently treated as trustworthy absence.
+`INVALID_CHANNEL_SAMPLE_EXCLUDED_PER_CHANNEL` — NaN/±Infinity excluded per channel (converted to null for that channel); never treated as trustworthy numeric evidence; alternate valid channel may remain usable. Dedicated runtime non-finite diagnostic counters are **not** wired in F3 (owner: F4).
 
 ### 14.4 Negative matrix epistemics
 
@@ -282,4 +282,54 @@ CAPABILITY_GATE_CASE = DEFERRED_TO_F4
 F4_START_AUTHORIZED = NO
 PR_1623_READY_FOR_FINAL_MAIN_SYNC = YES
 PR_1623_STILL_DRAFT = YES
+```
+
+---
+
+## 15. Final main sync + exact-head merge closure (2026-09-12)
+
+### 15.1 Sync record
+
+| Field | Value |
+|-------|-------|
+| PRE_SYNC_RFRF_HEAD | `773a29fc1b0b2cf58dbafa4084b266c8d763f31e` |
+| SYNCED_MAIN_SHA | `7cb184ffc5926521429f75524a1dcb65579769f6` |
+| POST_SYNC_HEAD | `recorded at commit` — see §15.5 final gate |
+
+### 15.2 Main delta classification (`067af8f` → `7cb184ffc`)
+
+| Commit / area | Classification |
+|---------------|----------------|
+| VDC GT-R1 unplug evidence (#1622) | NO_MATERIAL_RFRF_IMPACT |
+| EXP-021 short AB plan (#1624) | NO_MATERIAL_RFRF_IMPACT |
+| `reference-capture-exp021-*` backend | SHARED_MODULE_IMPACT (no RFRF file overlap) |
+| VDC / drivingintelligence KG | KG_GOVERNANCE_IMPACT (no EED conflict) |
+| `ChangesView.tsx` EXP-021 entry | DIRECT_FILE_CONFLICT — auto-merged; RFRF 4.9.1115–1117 preserved |
+
+No migration impact on RFRF path. Merge strategy: merge commit (not rebase).
+
+### 15.3 P2 epistemic wording correction
+
+Policy string corrected to `INVALID_CHANNEL_SAMPLE_EXCLUDED_PER_CHANNEL`. Behavior unchanged; dedicated non-finite runtime diagnostics deferred to F4.
+
+### 15.4 Epistemic level
+
+F3 remains **PROVEN_BY_INTEGRATION_TEST** — not PROVEN_IN_PRODUCTION. No production wiring, deploy, or feature enablement in this workstream.
+
+### 15.5 Final exact-head gate (post-sync)
+
+```
+PRE_SYNC_RFRF_HEAD = 773a29fc1b0b2cf58dbafa4084b266c8d763f31e
+SYNCED_MAIN_SHA = 7cb184ffc5926521429f75524a1dcb65579769f6
+MAIN_DELTA_REVIEW = PASS
+MAIN_SYNC = PASS
+RFRF_FILE_SURVIVAL = PASS
+NON_FINITE_SAMPLE_BEHAVIOR_CHANGED = NO
+NON_FINITE_SAMPLE_EPISTEMICS_CORRECT = YES
+DEDICATED_NON_FINITE_RUNTIME_DIAGNOSTIC = NO
+NON_FINITE_RUNTIME_DIAGNOSTIC_OWNER = F4
+F3_TEST_COUNT = 62
+REAL_PG_F3_F2_HANDOFF = PASS (4/4 executed, 0 skip)
+F2_UNIT_REGRESSION = PASS (25)
+RFRF_F3_COMPLETE = YES (pending merge)
 ```

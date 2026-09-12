@@ -242,7 +242,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
   describe('non-finite sample policy', () => {
     it('NON_FINITE_SAMPLE_POLICY_DEFINED', () => {
       expect(NON_FINITE_SAMPLE_POLICY).toBe(
-        'INVALID_CHANNEL_SAMPLE_EXCLUDED_WITH_EXPLICIT_DIAGNOSTIC',
+        'INVALID_CHANNEL_SAMPLE_EXCLUDED_PER_CHANNEL',
       );
     });
 
