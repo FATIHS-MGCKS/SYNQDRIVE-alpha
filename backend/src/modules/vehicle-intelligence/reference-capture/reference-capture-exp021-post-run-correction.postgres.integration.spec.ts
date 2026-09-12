@@ -7,6 +7,7 @@ import {
   buildInitialPhaseCounters,
   emptyPhaseCounters,
   finalizePhaseSummary,
+  type HfCalibrationPhaseSummary,
 } from './reference-capture-hf-calibration-phase.policy';
 import {
   EXP021_CANDIDATE_BRACKET_V3,
@@ -190,6 +191,221 @@ const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
         expect(summary?.validMovementDurationMs).not.toBe(0);
 
         await reloadedPrisma.$disconnect();
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
+    });
+
+    function buildKsMs661Phase120Summary(args: {
+      vehicleId: string;
+      tokenId: number;
+      wallDurationMs: number;
+    }): HfCalibrationPhaseSummary {
+      const phaseEndMs = t0Ms + args.wallDurationMs;
+      const counters = {
+        ...emptyPhaseCounters('phase-120'),
+        nativeFastLoopRequestCount: 5,
+        nativeFastLoopProviderSuccessCount: 5,
+      };
+      return finalizePhaseSummary({
+        phase: {
+          calibrationPhaseId: 'phase-120',
+          phaseSequence: 1,
+          effectivePollIntervalMs: 120_000,
+          phaseStartedAt: new Date(t0Ms).toISOString(),
+          phaseEndedAt: new Date(phaseEndMs).toISOString(),
+          phaseProvenance: 'PHYSICAL_T0',
+          canonicalT0At: new Date(t0Ms).toISOString(),
+          effectiveConfig: {
+            calibrationSeriesId: 'series-v3',
+            calibrationPhaseId: 'phase-120',
+            phaseSequence: 1,
+            vehicleId: args.vehicleId,
+            tokenId: args.tokenId,
+            effectivePollIntervalMs: 120_000,
+            settlementDelayMs: 8000,
+            recoveryOverlapMs: 6000,
+            policyVersion: 'HF_RECOVERY_V2_2026-09-04',
+            policyMode: 'V2' as const,
+            effectiveAt: new Date(t0Ms).toISOString(),
+          },
+        },
+        counters,
+        phaseEndedAtMs: phaseEndMs,
+        calibrationPlan: EXP021_CANDIDATE_BRACKET_V3,
+      });
+    }
+
+    it('REALISTIC_POST_TRANSITION_LATE_MOVEMENT: 120s completed, 90s active, 90s counters', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix);
+      const wallDurationMs = 612_400;
+      const movementMs = 454_698;
+      const phase120EndMs = t0Ms + wallDurationMs;
+      const phase90StartMs = phase120EndMs;
+
+      const completedPhase120 = {
+        calibrationPhaseId: 'phase-120',
+        phaseSequence: 1,
+        effectivePollIntervalMs: 120_000,
+        phaseStartedAt: new Date(t0Ms).toISOString(),
+        phaseEndedAt: new Date(phase120EndMs).toISOString(),
+        phaseProvenance: 'PHYSICAL_T0' as const,
+        canonicalT0At: new Date(t0Ms).toISOString(),
+      };
+      const summary120 = buildKsMs661Phase120Summary({
+        vehicleId: seed.vehicleId,
+        tokenId: seed.tokenId,
+        wallDurationMs,
+      });
+      expect(summary120.scientificStatus).toBeNull();
+      expect(summary120.providerRequestCount).toBe(5);
+      expect(summary120.providerSuccessCount).toBe(5);
+
+      const activePhase90 = {
+        calibrationPhaseId: 'phase-90',
+        phaseSequence: 2,
+        effectivePollIntervalMs: 90_000,
+        phaseStartedAt: new Date(phase90StartMs).toISOString(),
+        phaseEndedAt: null,
+        phaseProvenance: 'PHYSICAL_TRANSITION' as const,
+        canonicalT0At: new Date(t0Ms).toISOString(),
+        effectiveConfig: {
+          calibrationSeriesId: 'series-v3',
+          calibrationPhaseId: 'phase-90',
+          phaseSequence: 2,
+          vehicleId: seed.vehicleId,
+          tokenId: seed.tokenId,
+          effectivePollIntervalMs: 90_000,
+          settlementDelayMs: 8000,
+          recoveryOverlapMs: 6000,
+          policyVersion: 'HF_RECOVERY_V2_2026-09-04',
+          policyMode: 'V2' as const,
+          effectiveAt: new Date(phase90StartMs).toISOString(),
+        },
+      };
+      const counters90 = buildInitialPhaseCounters({
+        calibrationPhaseId: 'phase-90',
+        phaseEffectiveStartMs: phase90StartMs,
+        cadenceMs: 90_000,
+        phaseProvenance: 'PHYSICAL_TRANSITION',
+        calibrationPlan: EXP021_CANDIDATE_BRACKET_V3,
+      });
+
+      const state = emptyDataPlane(t0Ms);
+      state.hfCalibrationSeries = {
+        calibrationSeriesId: 'series-v3',
+        vehicleId: seed.vehicleId,
+        tokenId: seed.tokenId,
+        calibrationPlanId: 'candidate_bracket_v3',
+        calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        phaseOrder: [120_000, 90_000],
+        activePhase: activePhase90,
+        completedPhases: [completedPhase120],
+        completedPhaseSummaries: [summary120],
+        pendingPhaseRequest: null,
+        cancelledPhaseRequests: [],
+        terminalFinalizationAt: null,
+        lastPhaseBoundaryAt: new Date(phase120EndMs).toISOString(),
+        seriesStartedAt: new Date(t0Ms).toISOString(),
+        controlPlaneRevision: 2,
+      };
+      state.hfCalibrationActiveCounters = counters90;
+
+      await prisma.referenceCaptureSession.update({
+        where: { id: seed.sessionId },
+        data: { acquisitionStateJson: state as object },
+      });
+
+      try {
+        await repo.persistExp021ActivePhaseMovementAtomic({
+          organizationId: seed.organizationId,
+          sessionId: seed.sessionId,
+          calibrationPhaseId: 'phase-120',
+          validMovementDurationMs: movementMs,
+        });
+
+        const session = await repo.findById(seed.organizationId, seed.sessionId);
+        const reloaded = parseAcquisitionState(session?.acquisitionStateJson);
+        const patched120 = reloaded.hfCalibrationSeries?.completedPhaseSummaries?.[0];
+        expect(patched120?.providerRequestCount).toBe(5);
+        expect(patched120?.providerSuccessCount).toBe(5);
+        expect(patched120?.validMovementDurationMs).toBe(movementMs);
+        expect(patched120?.scientificStatus).toBe('VALID');
+        expect(patched120?.calibrationPlanVersion).toBe('EXP021_CANDIDATE_BRACKET_V3');
+        expect(patched120?.scientificStatus).not.toBe('DEGRADED_INSUFFICIENT_REQUESTS');
+
+        const activeCounters = reloaded.hfCalibrationActiveCounters;
+        expect(activeCounters?.calibrationPhaseId).toBe('phase-90');
+        expect(activeCounters).toEqual(counters90);
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
+    });
+
+    it('REALISTIC_POST_TRANSITION_NULL_COUNTERS: recompute from summary evidence only', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix);
+      const wallDurationMs = 612_400;
+      const movementMs = 454_698;
+      const phase120EndMs = t0Ms + wallDurationMs;
+
+      const completedPhase120 = {
+        calibrationPhaseId: 'phase-120',
+        phaseSequence: 1,
+        effectivePollIntervalMs: 120_000,
+        phaseStartedAt: new Date(t0Ms).toISOString(),
+        phaseEndedAt: new Date(phase120EndMs).toISOString(),
+        phaseProvenance: 'PHYSICAL_T0' as const,
+        canonicalT0At: new Date(t0Ms).toISOString(),
+      };
+      const summary120 = buildKsMs661Phase120Summary({
+        vehicleId: seed.vehicleId,
+        tokenId: seed.tokenId,
+        wallDurationMs,
+      });
+
+      const state = emptyDataPlane(t0Ms);
+      state.hfCalibrationSeries = {
+        calibrationSeriesId: 'series-v3',
+        vehicleId: seed.vehicleId,
+        tokenId: seed.tokenId,
+        calibrationPlanId: 'candidate_bracket_v3',
+        calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        phaseOrder: [120_000],
+        activePhase: null,
+        completedPhases: [completedPhase120],
+        completedPhaseSummaries: [summary120],
+        pendingPhaseRequest: null,
+        cancelledPhaseRequests: [],
+        terminalFinalizationAt: new Date(phase120EndMs).toISOString(),
+        lastPhaseBoundaryAt: new Date(phase120EndMs).toISOString(),
+        seriesStartedAt: new Date(t0Ms).toISOString(),
+        controlPlaneRevision: 1,
+      };
+      state.hfCalibrationActiveCounters = null;
+
+      await prisma.referenceCaptureSession.update({
+        where: { id: seed.sessionId },
+        data: { acquisitionStateJson: state as object },
+      });
+
+      try {
+        await repo.persistExp021ActivePhaseMovementAtomic({
+          organizationId: seed.organizationId,
+          sessionId: seed.sessionId,
+          calibrationPhaseId: 'phase-120',
+          validMovementDurationMs: movementMs,
+        });
+
+        const session = await repo.findById(seed.organizationId, seed.sessionId);
+        const reloaded = parseAcquisitionState(session?.acquisitionStateJson);
+        const patched120 = reloaded.hfCalibrationSeries?.completedPhaseSummaries?.[0];
+        expect(patched120?.providerRequestCount).toBe(5);
+        expect(patched120?.providerSuccessCount).toBe(5);
+        expect(patched120?.validMovementDurationMs).toBe(movementMs);
+        expect(patched120?.scientificStatus).toBe('VALID');
+        expect(reloaded.hfCalibrationActiveCounters).toBeNull();
       } finally {
         await cleanupReferenceCaptureSeed(prisma, seed);
       }

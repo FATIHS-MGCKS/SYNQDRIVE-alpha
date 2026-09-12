@@ -15,7 +15,6 @@ import {
 import {
   buildCycleReleaseAcquisitionState,
   buildInitialPhaseCounters,
-  emptyPhaseCounters,
   finalizeCalibrationOnPhysicalEndEarly,
   finalizeTerminalCalibrationSeries,
   normalizeHfCalibrationSeriesState,
@@ -664,15 +663,10 @@ export class ReferenceCaptureSessionRepository {
 
       if (completedPhase && !isActiveTarget && series) {
         const calibrationPlan = resolveExp021CalibrationPlanForSeries(series);
-        const countersForSummary =
-          counters?.calibrationPhaseId === targetPhaseId
-            ? counters
-            : emptyPhaseCounters(targetPhaseId);
         const completedPhaseSummaries = series.completedPhaseSummaries.map((summary) =>
           summary.calibrationPhaseId === targetPhaseId
             ? recomputePhaseSummaryDerivedFields({
                 summary,
-                counters: countersForSummary,
                 validMovementDurationMs: input.validMovementDurationMs,
                 calibrationPlan,
               })

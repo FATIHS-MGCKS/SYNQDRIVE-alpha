@@ -14,6 +14,8 @@ import {
 import {
   classifyPhaseScientificStatus,
   EXP021_CANDIDATE_BRACKET_V3,
+  Exp021CalibrationPlanAuthorityConflictError,
+  Exp021CalibrationPlanAuthorityInvalidError,
   EXP021_LOWER_BOUND_V1,
   EXP021_UPPER_BOUND_V2,
   findPhaseSpecByCadence,
@@ -112,7 +114,6 @@ describe('EXP-021 durable plan authority correction', () => {
       });
       const patched = recomputePhaseSummaryDerivedFields({
         summary: initial,
-        counters,
         validMovementDurationMs,
         calibrationPlan: v3Plan,
       });
@@ -128,6 +129,79 @@ describe('EXP-021 durable plan authority correction', () => {
           wallDurationMs,
         }),
       ).toBe('VALID');
+    });
+
+    it('stage C post-transition: recompute uses summary evidence, not active 90s counters', () => {
+      const counters120 = {
+        ...emptyPhaseCounters('phase-120'),
+        nativeFastLoopRequestCount: 5,
+        nativeFastLoopProviderSuccessCount: providerSuccessCount,
+      };
+      const initial = finalizePhaseSummary({
+        phase: {
+          calibrationPhaseId: 'phase-120',
+          phaseSequence: 1,
+          effectivePollIntervalMs: 120_000,
+          phaseStartedAt: new Date(t0Ms).toISOString(),
+          phaseEndedAt: new Date(t0Ms + wallDurationMs).toISOString(),
+          phaseProvenance: 'PHYSICAL_T0',
+          canonicalT0At: new Date(t0Ms).toISOString(),
+          effectiveConfig: buildEffectiveConfig('phase-120', 120_000, 1),
+        },
+        counters: counters120,
+        phaseEndedAtMs: t0Ms + wallDurationMs,
+        calibrationPlan: v3Plan,
+      });
+      expect(initial.providerRequestCount).toBe(5);
+      expect(initial.providerSuccessCount).toBe(5);
+
+      const patched = recomputePhaseSummaryDerivedFields({
+        summary: initial,
+        validMovementDurationMs,
+        calibrationPlan: v3Plan,
+      });
+      expect(patched.providerRequestCount).toBe(5);
+      expect(patched.providerSuccessCount).toBe(5);
+      expect(patched.scientificStatus).toBe('VALID');
+      expect(patched.scientificStatus).not.toBe('DEGRADED_INSUFFICIENT_REQUESTS');
+    });
+
+    it('late movement patch preserves non-movement summary evidence', () => {
+      const counters = {
+        ...emptyPhaseCounters('phase-120'),
+        nativeFastLoopRequestCount: 5,
+        nativeFastLoopProviderSuccessCount: 5,
+        nativeFastLoopProviderZeroResultCount: 1,
+        nativeFastLoopProviderErrorCount: 0,
+        nativeFastLoopProviderBucketCount: 57,
+      };
+      const initial = finalizePhaseSummary({
+        phase: {
+          calibrationPhaseId: 'phase-120',
+          phaseSequence: 1,
+          effectivePollIntervalMs: 120_000,
+          phaseStartedAt: new Date(t0Ms).toISOString(),
+          phaseEndedAt: new Date(t0Ms + wallDurationMs).toISOString(),
+          phaseProvenance: 'PHYSICAL_T0',
+          canonicalT0At: new Date(t0Ms).toISOString(),
+          effectiveConfig: buildEffectiveConfig('phase-120', 120_000, 1),
+        },
+        counters,
+        phaseEndedAtMs: t0Ms + wallDurationMs,
+        calibrationPlan: v3Plan,
+      });
+      const patched = recomputePhaseSummaryDerivedFields({
+        summary: initial,
+        validMovementDurationMs,
+        calibrationPlan: v3Plan,
+      });
+      expect(patched.providerRequestCount).toBe(initial.providerRequestCount);
+      expect(patched.providerSuccessCount).toBe(initial.providerSuccessCount);
+      expect(patched.providerZeroResultCount).toBe(initial.providerZeroResultCount);
+      expect(patched.providerErrorCount).toBe(initial.providerErrorCount);
+      expect(patched.providerBucketCount).toBe(initial.providerBucketCount);
+      expect(patched.exp021RequestSlots).toEqual(initial.exp021RequestSlots);
+      expect(patched.nativeTemporalEvidence).toEqual(initial.nativeTemporalEvidence);
     });
   });
 
@@ -289,6 +363,56 @@ describe('EXP-021 durable plan authority correction', () => {
         env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
       });
       expect(recovered).toBe(v3Plan);
+    });
+  });
+
+  describe('fail-closed durable plan authority', () => {
+    it('resolves matching planId and planVersion to V3', () => {
+      expect(
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'candidate_bracket_v3',
+          calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        }),
+      ).toBe(EXP021_CANDIDATE_BRACKET_V3);
+    });
+
+    it('throws on conflicting planId and planVersion', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'candidate_bracket_v3',
+          calibrationPlanVersion: 'EXP021_UPPER_BOUND_V2',
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityConflictError);
+    });
+
+    it('throws on unknown planId with env present', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'unknown_plan',
+          calibrationPlanVersion: null,
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('throws on unknown planVersion with env present', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: null,
+          calibrationPlanVersion: 'UNKNOWN_VERSION',
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('allows env fallback only when both authority fields are absent', () => {
+      expect(
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: null,
+          calibrationPlanVersion: null,
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toBe(EXP021_UPPER_BOUND_V2);
     });
   });
 

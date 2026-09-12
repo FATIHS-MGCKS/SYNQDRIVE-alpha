@@ -163,38 +163,123 @@ export function calibrationPlanAuthorityFromPlan(
   return { planId: plan.planId, planVersion: plan.planVersion };
 }
 
+/** Durable planId and planVersion identify different known plans — fail closed. */
+export class Exp021CalibrationPlanAuthorityConflictError extends Error {
+  readonly code = 'EXP021_CALIBRATION_PLAN_AUTHORITY_CONFLICT';
+
+  constructor(
+    public readonly planId: string,
+    public readonly planVersion: string,
+    public readonly planIdResolvesTo: string,
+    public readonly planVersionResolvesTo: string,
+  ) {
+    super(
+      `EXP-021 calibration plan authority conflict: planId=${planId} (${planIdResolvesTo}) vs planVersion=${planVersion} (${planVersionResolvesTo})`,
+    );
+    this.name = 'Exp021CalibrationPlanAuthorityConflictError';
+  }
+}
+
+/** Persisted durable authority is present but cannot be resolved — fail closed. */
+export class Exp021CalibrationPlanAuthorityInvalidError extends Error {
+  readonly code = 'EXP021_CALIBRATION_PLAN_AUTHORITY_INVALID';
+
+  constructor(
+    public readonly planId: string | null,
+    public readonly planVersion: string | null,
+  ) {
+    super(
+      `EXP-021 calibration plan authority invalid or unrecognized: planId=${planId ?? 'null'} planVersion=${planVersion ?? 'null'}`,
+    );
+    this.name = 'Exp021CalibrationPlanAuthorityInvalidError';
+  }
+}
+
+function resolvePlanById(planId: string): Exp021CalibrationPlan | null {
+  return ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planId === planId) ?? null;
+}
+
+function resolvePlanByVersion(planVersion: string): Exp021CalibrationPlan | null {
+  return ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planVersion === planVersion) ?? null;
+}
+
+function normalizeAuthorityField(
+  value: string | null | undefined,
+): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Resolve by durable identity when one or both fields are present.
+ * Returns null only when both fields are absent.
+ * Throws on conflict or unrecognized authority (fail-closed).
+ */
 export function resolveExp021CalibrationPlanByIdentity(
   authority: Partial<Exp021CalibrationPlanAuthority> | null | undefined,
 ): Exp021CalibrationPlan | null {
   if (!authority) return null;
-  if (authority.planVersion) {
-    const byVersion = ALL_KNOWN_CALIBRATION_PLANS.find(
-      (plan) => plan.planVersion === authority.planVersion,
-    );
-    if (byVersion) return byVersion;
+
+  const planId = normalizeAuthorityField(authority.planId);
+  const planVersion = normalizeAuthorityField(authority.planVersion);
+
+  if (!planId && !planVersion) return null;
+
+  const byId = planId ? resolvePlanById(planId) : null;
+  const byVersion = planVersion ? resolvePlanByVersion(planVersion) : null;
+
+  if (planId && planVersion) {
+    if (!byId && !byVersion) {
+      throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+    }
+    if (byId && byVersion && byId.planId !== byVersion.planId) {
+      throw new Exp021CalibrationPlanAuthorityConflictError(
+        planId,
+        planVersion,
+        byId.planVersion,
+        byVersion.planVersion,
+      );
+    }
+    return byId ?? byVersion;
   }
-  if (authority.planId) {
-    const byId = ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planId === authority.planId);
-    if (byId) return byId;
+
+  if (planId) {
+    if (!byId) throw new Exp021CalibrationPlanAuthorityInvalidError(planId, null);
+    return byId;
   }
-  return null;
+
+  if (!byVersion) {
+    throw new Exp021CalibrationPlanAuthorityInvalidError(null, planVersion);
+  }
+  return byVersion;
 }
 
 /**
  * Resolve calibration plan from durable authority first; fall back to env only when
  * no persisted experiment identity exists (new experiments before arm).
+ * Once durable fields are present, env is never authority (fail-closed on conflict/corruption).
  */
 export function resolveExp021CalibrationPlanFromAuthority(args: {
   calibrationPlanId?: string | null;
   calibrationPlanVersion?: string | null;
   env?: NodeJS.ProcessEnv;
 }): Exp021CalibrationPlan {
-  const durable = resolveExp021CalibrationPlanByIdentity({
-    planId: args.calibrationPlanId ?? undefined,
-    planVersion: args.calibrationPlanVersion ?? undefined,
+  const planId = normalizeAuthorityField(args.calibrationPlanId);
+  const planVersion = normalizeAuthorityField(args.calibrationPlanVersion);
+
+  if (!planId && !planVersion) {
+    return resolveExp021CalibrationPlan(args.env);
+  }
+
+  const resolved = resolveExp021CalibrationPlanByIdentity({
+    planId: planId ?? undefined,
+    planVersion: planVersion ?? undefined,
   });
-  if (durable) return durable;
-  return resolveExp021CalibrationPlan(args.env);
+  if (!resolved) {
+    throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+  }
+  return resolved;
 }
 
 export function resolveExp021CalibrationPlan(

@@ -556,10 +556,12 @@ export function finalizePhaseSummary(args: {
   };
 }
 
-/** Recompute movement-dependent derived fields when authoritative movement arrives after seal. */
+/**
+ * Recompute movement-dependent derived fields when authoritative movement arrives after seal.
+ * Uses persisted summary request/provider evidence — never current active-phase counters.
+ */
 export function recomputePhaseSummaryDerivedFields(args: {
   summary: HfCalibrationPhaseSummary;
-  counters: HfCalibrationPhaseRuntimeCounters;
   validMovementDurationMs: number;
   calibrationPlan: Exp021CalibrationPlan;
   runtimeFailure?: boolean;
@@ -569,19 +571,21 @@ export function recomputePhaseSummaryDerivedFields(args: {
     args.summary.effectivePollIntervalMs,
   );
   const wallDurationMs = args.summary.durationMs;
+  const providerRequestCount = args.summary.providerRequestCount;
+  const providerSuccessCount = args.summary.providerSuccessCount;
   const scientificStatus = phaseSpec
     ? classifyPhaseScientificStatus({
         plan: args.calibrationPlan,
         phaseSpec,
-        providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+        providerSuccessCount,
         validMovementDurationMs: args.validMovementDurationMs,
         wallDurationMs,
         runtimeFailure: args.runtimeFailure,
       })
     : null;
   const requestRates = computeRequestRates({
-    providerRequestCount: args.counters.nativeFastLoopRequestCount,
-    providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+    providerRequestCount,
+    providerSuccessCount,
     wallDurationMs,
     validMovementDurationMs: args.validMovementDurationMs,
   });
