@@ -98,4 +98,5 @@ Phase 3 classification: [../reconciliation/PHASE3_RECONCILIATION.md](../reconcil
 | **Evidence** | Aug 2026 recovery resolved episode via snapshot plug signal; Sep window shows poll success without source advance for ~18 h while still "healthy standby" |
 | **Epistemic state** | PRODUCTION_OBSERVATION + CODE (VDC-CX-010) |
 | **Validation status** | PRODUCTION_VALIDATED |
-| **Phase 3** | **Promoted** to recovery rule VDC-DEC-010; GT-R1 required for historical instant proof |
+| **GT-R1 result** | **PARTIALLY_VALIDATED** — replug strict source advance `14:27:47`→`15:02:29` without PLUG webhook; no TELEMETRY/FULL recovery notifications in capture window |
+| **Phase 3** | **Promoted** to recovery rule VDC-DEC-010; GT-R1 snapshot replug path **CONFIRMED** (VDC-EVID-GT-R1-EXECUTION-001) |

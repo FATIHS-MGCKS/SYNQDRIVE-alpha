@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
-| **Related protocol** | GT-R1-UNPLUG-001 — **physical execution NOT STARTED** |
+| **Related protocol** | GT-R1-UNPLUG-001 — physical execution **COMPLETE** (see [GT_R1_UNPLUG_EXECUTION_2026-09-12.md](./GT_R1_UNPLUG_EXECUTION_2026-09-12.md)) |
 | **Authorization scope** | **Single** authorized mutation: `PUT /v1/webhooks/49438f51-3ca5-4808-81d5-3598336c53a3` with `status: enabled` |
 | **origin/main SHA** | `a21bff2b68888c9aedb86452758109d22b64e22b` (PR #1614 merged) |
 | **Session (UTC)** | 2026-09-12T03:39:02Z – 2026-09-12T03:39:04Z |
@@ -137,8 +137,6 @@
 
 | Item | Value |
 |------|-------|
-| **GT-R1-UNPLUG-001 physical execution** | **NOT STARTED** |
-| **Provider gate** | **CLEARED** — UNPLUG webhook `enabled`, `failureCount=0` |
-| **Next step** | Operator initiates physical unplug per GT-R1 protocol when ready |
-
-**HARD STOP:** Do not proceed to physical unplug until operator explicitly confirms vehicle has been unplugged.
+| **GT-R1-UNPLUG-001 physical execution** | **COMPLETE** — see [GT_R1_UNPLUG_EXECUTION_2026-09-12.md](./GT_R1_UNPLUG_EXECUTION_2026-09-12.md) |
+| **Provider gate** | **CLEARED** — live UNPLUG delivery **CONFIRMED** during GT-R1 |
+| **Next step** | VDC-RB-001 + canonical plug-state repair policy (VDC-Q-016) |

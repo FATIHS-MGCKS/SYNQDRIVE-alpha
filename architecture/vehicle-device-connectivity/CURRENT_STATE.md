@@ -10,7 +10,7 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-12 |
+| **Last updated** | 2026-09-12 (GT-R1-UNPLUG-001 executed) |
 
 ## Executive summary
 
@@ -42,7 +42,7 @@ Phase 3 (reconciliation) establishes:
 - **Recovery fast-path:** PLUG webhook optional (VDC-DEC-010); **adaptive polling** principle (VDC-DEC-011); **RB-001 GT-gated** per-signal safety.
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
-- **GT-R1-UNPLUG-001** provider gate **cleared** — authorized `PUT` recovery 2026-09-12: UNPLUG `failed`→`enabled`, `failureCount` 11→0, 7 subscriptions preserved (VDC-EVID-GT-R1-UNPLUG-RECOVERY-001); **physical GT not started**.
+- **GT-R1-UNPLUG-001** **executed** 2026-09-12 on KS MX 2024: UNPLUG webhook **delivered** post-recovery but **ignored** (`no_state_change` — stale canonical last-event); snapshot unplug/replug **confirmed**; **no episode/alert**; PLUG webhook **absent** (disabled); snapshot-only replug recovery **confirmed** (VDC-EVID-GT-R1-EXECUTION-001).
 - **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
 
 ## Component hierarchy
@@ -183,14 +183,14 @@ VDC-HYP-001..007 classified in [research/OPEN_HYPOTHESES.md](research/OPEN_HYPOT
 - Fleet-wide LTE_R1 gap distribution (VDC-Q-001 partial)
 - Physical Ruptela IO174 timer mechanism
 - HM connectivity parity (VDC-GAP-009)
-- Historical `FULL_CONNECTIVITY_RECOVERED` instant (GT required)
+- Historical `FULL_CONNECTIVITY_RECOVERED` instant — GT-R1 replug did not emit TELEMETRY/FULL recovery notifications in capture window (VDC-EVID-GT-R1-EXECUTION-001)
 - CH duplicate root cause (VDC-Q-012)
 - Aug 2026 enqueue_failed mechanism — **CONFIRMED** (BullMQ `jobId` colon bug; VDC-EVID-GT-R1-UNPLUG-FAILURE-001); provider `failed` auto-recovery without `PUT` **UNKNOWN**; `PUT` enable recovery **VERIFIED** (VDC-Q-015 partial)
 
 ## Next workstream (Phase 3 hardened order)
 
-1. **GT-R1-UNPLUG-001 physical execution** — provider gate cleared; await operator unplug.
-2. **VDC-RB-001** per-signal-safe equality — after GT-R1.
+1. **VDC-RB-001** per-signal-safe equality — GT-R1 complete; design/rollout authorized.
+2. **Canonical plug-state repair** when PLUG webhook disabled and last event is UNPLUGGED — GT-R1 exposed `no_state_change` gap (VDC-EVID-GT-R1-EXECUTION-001 §6.1).
 3. Finalize per-signal-safe equality design for **VDC-RB-001** (VDC-DEC-002 gate).
 4. Implement **VDC-RB-001** + **VDC-RB-017**.
 5. **VDC-RB-018** adaptive polling (VDC-DEC-011, VDC-Q-014).
