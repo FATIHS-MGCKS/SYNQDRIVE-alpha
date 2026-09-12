@@ -27,18 +27,20 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | Field | Value |
 |-------|-------|
 | **STATUS** | PROPOSED |
-| **DATE** | 2026-09-11 (Phase 3) |
+| **DATE** | 2026-09-11 (Phase 3); hardened 2026-09-12 |
 | **BEFORE** | `incoming == existing` performs full VLS upsert and downstream side effects; ~1,027:3 equality:advance ratio in KS MX 2024 stationary window |
 | **WHY** | Material churn; weak source-advance proof; CH duplicate rows exist (causality unproven) |
 | **EVIDENCE** | VDC-EVID-PHASE2-001 |
-| **ALTERNATIVES** | A) complete no-op — rejected (loses providerFetchedAt). B) **metadata-only update** — PROPOSED. C) conditional signal merge — deferred. D) current full upsert — rejected as canonical |
-| **CHANGE** | On equality: update `providerFetchedAt`, poll metadata, reachability fields only; skip full telemetry/CH/episode side effects unless signal-level newer evidence (future) |
-| **EXPECTED_EFFECT** | Reduced CH churn and duplicate risk; preserved provider reachability evidence |
-| **VALIDATION** | Unit/integration processor tests; Production churn ratio comparison on KS MX 2024 profile |
+| **ALTERNATIVES** | A) complete no-op — rejected (loses providerFetchedAt). B) **metadata-only update** — PROPOSED **with per-signal safety gate**. C) conditional signal merge — preferred when equality + newer per-signal evidence. D) current full upsert — rejected as canonical |
+| **CHANGE** | On equality: update `providerFetchedAt`, poll metadata, reachability fields only; skip full telemetry/CH/episode side effects **unless** objectively newer per-signal/device evidence is detected |
+| **IMPLEMENTATION_PREREQUISITE** | **Equality short-circuit must preserve objectively newer per-signal/device evidence.** `incoming top-level sourceTimestamp == existing` does **not** prove no signal contains newer evidence (VDC-HYP-004). Protected signals include at minimum: `obdIsPluggedIn`, ignition, speed, physical-device evidence, and any per-signal timestamp newer than stored evidence. **VDC-RB-001 MUST NOT** ship as unconditional `equal top-level timestamp → discard payload` until this is proven safe or per-signal comparison is implemented. |
+| **GT_GATE** | **GT-R1-UNPLUG-001 MUST precede RB-001 production rollout** unless implementation independently proves replug/recovery evidence cannot be suppressed |
+| **EXPECTED_EFFECT** | Reduced CH churn; preserved reachability; no replug evidence loss |
+| **VALIDATION** | Unit/integration processor tests; GT-R1 recovery ordering; per-signal heterogeneity fixtures |
 | **OBSERVED_EFFECT** | N/A — not implemented |
 | **NON_EFFECTS** | Strict advance path (`incoming > existing`) unchanged |
-| **TRADEOFFS** | May delay detection of payload changes without timestamp advance |
-| **REMAINING_UNKNOWNS** | CH duplicate root cause (VDC-Q-012); per-signal merge rules |
+| **TRADEOFFS** | Per-signal merge adds complexity; metadata-only alone insufficient without safety gate |
+| **REMAINING_UNKNOWNS** | CH duplicate root cause (VDC-Q-012); safe per-signal comparison in current VLS persistence shape |
 | **OWNING_MODULE** | VDC semantics; DIMO snapshot processor implementation |
 
 ---
@@ -171,11 +173,36 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | Field | Value |
 |-------|-------|
 | **STATUS** | VALIDATED (architecture) |
-| **DATE** | 2026-09-11 (Phase 3) |
-| **BEFORE** | Colloquial PHYSICAL_REPLUG / FULL_CONNECTIVITY_RECOVERED without epistemic precision |
-| **WHY** | Phase 2 proved snapshot plug signal without human-observed replug |
+| **DATE** | 2026-09-11 (Phase 3); hardened 2026-09-12 |
+| **BEFORE** | Colloquial PHYSICAL_REPLUG / FULL_CONNECTIVITY_RECOVERED without epistemic precision; implicit PLUG webhook dependency risk |
+| **WHY** | Phase 2 proved snapshot plug signal without human-observed replug; Aug 2026 had **no** canonical PLUG webhook |
 | **EVIDENCE** | VDC-EVID-PHASE2-001 |
-| **CHANGE** | Adopt vocabulary table in TARGET_SEMANTIC_MODEL.md; `FULL_CONNECTIVITY_RECOVERED` requires strict source advance |
-| **EXPECTED_EFFECT** | Consistent episode resolution documentation |
-| **GROUND_TRUTH_REQUIRED** | Historical instant reconstruction; GT-R1 for proof |
+| **CHANGE** | Adopt vocabulary in TARGET_SEMANTIC_MODEL.md; `FULL_CONNECTIVITY_RECOVERED` requires strict source advance; **PLUG webhook = optional fast-path, not mandatory recovery dependency** |
+| **RECOVERY_FAST_PATH** | PLUG webhook may accelerate `PHYSICAL_DEVICE_PRESENT` / replug inference. **FULL_CONNECTIVITY_RECOVERED MUST NOT depend on PLUG webhook.** Provider-neutral: PLUG webhook **OR** fresh snapshot physical evidence **OR** other sufficiently strong provider/device evidence (per profile) may establish physical presence. **Never sufficient alone:** poll SUCCESS, `providerFetchedAt` advance, equal stale snapshot |
+| **GT-R1_LTE_R1** | Must determine: PLUG webhook emission; `obdIsPluggedIn=true` vs strict top-level source advance ordering; per-signal timestamp independence; recovery without PLUG webhook; exact recovery ordering |
+| **EXPECTED_EFFECT** | Recovery paths work when webhooks are absent; no false dependency on PLUG delivery |
+| **GROUND_TRUTH_REQUIRED** | GT-R1-UNPLUG-001 before claiming provider recovery SLA |
 | **OWNING_MODULE** | VDC |
+
+---
+
+## VDC-DEC-011 — Adaptive / information-gain provider polling
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **DATE** | 2026-09-12 (Phase 3 hardening) |
+| **BEFORE** | Fixed tier polling (~5 min RESTING_STANDBY) produced ~1,030 SUCCESS polls vs 3 strict source advances (KS MX 2024); VDC-DEC-002 reduces processing churn but not API poll volume |
+| **WHY** | Fixed frequent polling of healthy stationary vehicles is not a scalable canonical design; provider cost and queue load grow with fleet size independent of information gain |
+| **EVIDENCE** | VDC-EVID-PHASE2-001 |
+| **CANONICAL_PRINCIPLE** | **Polling cadence follows expected information gain and vehicle/device state, not elapsed wall-clock time alone.** |
+| **POLLING_POLICY_INPUTS** (not connectivity runtime states): `ACTIVE_DRIVING`, `POST_TRIP_SETTLING`, `CONFIRMED_STANDBY`, `LONG_IDLE`, `DISCONNECTED_UNPLUGGED`, `RECOVERY`, `EVENT_TRIGGERED_REFRESH` |
+| **REQUIREMENTS** | High frequency while driving; relatively frequent post-trip settling; progressive backoff on repeated equal `sourceTimestamp`; sparse watchdog for confirmed healthy standby; native/provider events trigger targeted refresh; strict source advance may reset cadence; jitter against thundering herd; respect provider rate limits/budgets; missing webhooks must not leave vehicle permanently unpolled; profiles may override (LTE_R1 ~24h is profile evidence, **not** universal 24h poll rule; Smart5/HM may differ) |
+| **ALTERNATIVES** | Keep fixed 5 min standby polling — rejected as canonical fleet design |
+| **CHANGE** | Define provider-neutral adaptive polling policy (VDC); implement via VDC-RB-018 with DIMO acquisition + Scaling Process execution |
+| **EXPECTED_EFFECT** | Lower provider/API load per stationary vehicle; preserved trip-start/disconnect/recovery detection latency (calibrated via VDC-Q-014 + GT) |
+| **VALIDATION** | Metrics in VDC-RB-018; fleet pilot; GT-R1 recovery latency |
+| **NON_EFFECTS** | Does not change canonical 15m/24h/48h freshness thresholds |
+| **TRADEOFFS** | Adaptive policy complexity; per-profile calibration required |
+| **REMAINING_UNKNOWNS** | Safe backoff intervals per profile (VDC-Q-014); final storage shape for `nextPollAt` |
+| **OWNING_MODULE** | VDC (semantic policy); DIMO Integration (API acquisition); Scaling Process (scheduler mechanics only) |

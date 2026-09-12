@@ -50,7 +50,9 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 
 ## NEXT_GATE
 
-1. Implement prioritized remediation backlog (VDC-RB-001..017) in separate workstreams.
-2. Execute GT-R1-UNPLUG-001 when authorized.
-3. HM runtime integration design + implementation (VDC-GAP-009).
-4. Re-assess `AUTHORITY_ACTIVE` promotion after GT + P0/P1 remediation.
+1. Execute **GT-R1-UNPLUG-001** on current behavior (before VDC-RB-001 equality changes).
+2. Finalize per-signal-safe **VDC-RB-001** design; implement with **VDC-RB-017**.
+3. **VDC-RB-018** adaptive polling (VDC-DEC-011, VDC-Q-014).
+4. Webhook/event-processing remediation (VDC-RB-002/004/005).
+5. HM runtime integration (VDC-GAP-009 / VDC-RB-015).
+6. Re-assess `AUTHORITY_ACTIVE` after GT + P0/P1 remediation.

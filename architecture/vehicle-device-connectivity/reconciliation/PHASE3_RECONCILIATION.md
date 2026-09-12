@@ -272,7 +272,16 @@ See [TARGET_SEMANTIC_MODEL.md](TARGET_SEMANTIC_MODEL.md) § HM portability. DIMO
 
 ---
 
-## 10. Related artifacts
+## 10. Phase 3 hardening addendum (2026-09-12)
+
+| Topic | Decision / item |
+|-------|-----------------|
+| Recovery fast-path | VDC-DEC-010 — PLUG webhook optional; not mandatory for FULL_CONNECTIVITY_RECOVERED |
+| Equality safety | VDC-DEC-002 / VDC-RB-001 — per-signal evidence gate; GT before rollout |
+| Adaptive polling | VDC-DEC-011, VDC-RB-018, VDC-Q-014 |
+| Workstream order | GT-R1 → RB-001 design → RB-001+017 → RB-018 → webhook remediation |
+
+## 11. Related artifacts
 
 - [REMEDIATION_BACKLOG.md](REMEDIATION_BACKLOG.md)
 - [GROUND_TRUTH_GATES.md](GROUND_TRUTH_GATES.md)

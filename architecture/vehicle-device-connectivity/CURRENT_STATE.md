@@ -38,7 +38,8 @@ Phase 2 (Production, KS MX 2024 LTE_R1) confirms:
 Phase 3 (reconciliation) establishes:
 
 - **11 contradictions** dispositioned — 4 RESOLVED_IN_ARCHITECTURE; 7 ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING (see [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md)).
-- **9 Phase-3 decisions** VDC-DEC-002..010 + bootstrap — see [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
+- **11 Phase-3 decisions** VDC-DEC-002..011 + bootstrap — see [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
+- **Recovery fast-path:** PLUG webhook optional (VDC-DEC-010); **adaptive polling** principle (VDC-DEC-011); **RB-001 GT-gated** per-signal safety.
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **17-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
 - **GT-R1-UNPLUG-001** remains prepared, not executed — blocks some recovery/false-positive conclusions.
@@ -186,13 +187,17 @@ VDC-HYP-001..007 classified in [research/OPEN_HYPOTHESES.md](research/OPEN_HYPOT
 - CH duplicate root cause (VDC-Q-012)
 - Aug 2026 enqueue_failed root cause (VDC-Q-013 partial)
 
-## Next workstream (Phase 3 recommendation)
+## Next workstream (Phase 3 hardened order)
 
-1. **VDC-RB-001** — equality upsert metadata-only (VDC-DEC-002)
-2. **VDC-RB-002/004/005** — webhook/event-processing taxonomy (VDC-DEC-006)
-3. **VDC-RB-003** — provider mirror vs authorization (VDC-DEC-003)
-4. **GT-R1-UNPLUG-001** when authorized
-5. HM runtime adapter program (VDC-RB-015) — parallel track
+1. Merge Phase 3 architecture (incl. hardening).
+2. **GT-R1-UNPLUG-001** on current behavior — before VDC-RB-001 (recovery baseline).
+3. Finalize per-signal-safe equality design for **VDC-RB-001** (VDC-DEC-002 gate).
+4. Implement **VDC-RB-001** + **VDC-RB-017**.
+5. **VDC-RB-018** adaptive polling (VDC-DEC-011, VDC-Q-014).
+6. Webhook remediation — VDC-RB-002/004/005.
+7. Remaining provider/runtime — RB-003, RB-015 (HM).
+
+**Principles (hardening):** PLUG webhook optional for recovery (VDC-DEC-010); fixed standby polling not scalable (VDC-DEC-011).
 
 ## Related entry documents
 

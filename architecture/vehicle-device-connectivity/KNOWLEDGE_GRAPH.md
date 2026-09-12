@@ -21,7 +21,7 @@ Phase 3 reconciliation expanded decisions, resolved GAP-002, added Phase 2 evide
 | VDC-GAP- | 12 | Knowledge gaps (1 RESOLVED, 3 PARTIAL) |
 | VDC-CX- | 11 | Contradictions (4 arch-resolved, 7 runtime-pending) |
 | VDC-EVID- | 4 | Evidence artifacts (repo, prod baseline, phase2, pending) |
-| VDC-DEC- | 10 | Decisions (bootstrap + Phase 3) |
+| VDC-DEC- | 11 | Decisions (bootstrap + Phase 3 + hardening) |
 | VDC-PROF- | 1 | LTE_R1 profile |
 
 Machine-readable: [graph/nodes.yaml](graph/nodes.yaml), [graph/edges.yaml](graph/edges.yaml), [graph/invariants.yaml](graph/invariants.yaml).
@@ -46,7 +46,10 @@ Machine-readable: [graph/nodes.yaml](graph/nodes.yaml), [graph/edges.yaml](graph
 | VDC-DEC-007 | PROPOSED | Episode evidence reliability |
 | VDC-DEC-008 | VALIDATED | Diagnostic non-authoritative |
 | VDC-DEC-009 | PROPOSED | Alert semantic ownership |
-| VDC-DEC-010 | VALIDATED | Recovery vocabulary |
+| VDC-DEC-010 | VALIDATED | Recovery vocabulary; PLUG webhook optional |
+| VDC-DEC-011 | PROPOSED | Adaptive information-gain polling |
+
+Remediation backlog: **18 items** (VDC-RB-001..018). Open questions: **14** (VDC-Q-001..014).
 
 Full register: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
 

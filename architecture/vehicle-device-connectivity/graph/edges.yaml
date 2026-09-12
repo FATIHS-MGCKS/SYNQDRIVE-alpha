@@ -75,6 +75,15 @@ edges:
     to: VDC-CX-011
     notes: Phase 3 PROPOSED authorization vs mirror semantics — runtime pending
 
+  - from: VDC-DEC-011
+    relation: governs
+    to: VDC-PIPE-SNAPSHOT-001
+    notes: Adaptive polling policy PROPOSED — VDC-RB-018 runtime pending
+
+  - from: VDC-EVID-PHASE2-001
+    relation: supports
+    to: VDC-DEC-011
+
   - from: VDC-CX-001
     relation: contradicts
     to: VDC-POL-ALERT-001

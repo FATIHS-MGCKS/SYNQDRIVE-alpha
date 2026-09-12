@@ -18,3 +18,4 @@ Phase 3 triage: [../reconciliation/PHASE3_RECONCILIATION.md](../reconciliation/P
 | **VDC-Q-011** | LTE_R1 jitter and false SOFT_OFFLINE? | 2 | PRODUCTION_OBSERVATION | **PARTIALLY_ANSWERED** | Window geometry; 0 SNAPSHOT in windows; runtime eval not proven | VDC-DEC-005; GT | VDC + GT |
 | **VDC-Q-012** | CH duplicate root cause? | 2 | UNKNOWN | **OPEN** | Causality to CX-010 not proven | VDC-RB-017 | VDC |
 | **VDC-Q-013** | Aug 2026 enqueue_failed + ~100 min delay? | 2 | PARTIAL | **PARTIALLY_ANSWERED** | 4.7s delivery confirmed; delay confirmed; actor unknown | VDC-DEC-006 | VDC/ops |
+| **VDC-Q-014** | Safe adaptive polling/backoff intervals per provider/device profile preserving trip-start, disconnect, recovery latency? | 3 | UNKNOWN | **OPEN** | VDC-DEC-011 principle only; LTE_R1 n=1 ~24h source advance — **do not** hardcode 24h poll | VDC-RB-018; GT-R1 + fleet evidence | VDC |

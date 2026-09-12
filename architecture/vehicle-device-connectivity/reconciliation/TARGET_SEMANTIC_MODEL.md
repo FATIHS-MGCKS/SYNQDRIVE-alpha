@@ -42,6 +42,7 @@ Expose mirror state as a **separate optional field** on runtime projection for D
 | `PHYSICAL_UNPLUG_OBSERVED` | Provider webhook or confirmed snapshot unplug | Yes (with policy) | No | Yes (provider-reported) | No | No |
 | `PHYSICAL_REPLUG_OBSERVED` | Human-observed replug | No alone | Yes (with GT) | Yes (human) | No | No |
 | `SNAPSHOT_PLUG_SIGNAL` | `obdIsPluggedIn=true` in snapshot path | No | Yes (observed Aug 2026) | Inferred present | No | No |
+| `PLUG_WEBHOOK` | Provider plug/unplug webhook (plug event) | No | May accelerate | Provider-reported | No | No |
 | `PHYSICAL_DEVICE_PRESENT` | Sustained positive physical evidence | No | Contributes | Yes | No | No |
 | `PROVIDER_EVENT_RECEIVED` | Inbox row received | No | No | No | No | No |
 | `PROVIDER_EVENT_CANONICALIZED` | Canonical domain event persisted | Triggers lifecycle | Enables resolution | No | No | No |
@@ -49,6 +50,24 @@ Expose mirror state as a **separate optional field** on runtime projection for D
 | `FULL_CONNECTIVITY_RECOVERED` | Strict source advance + healthy dimensions | No | Yes (composite) | Partial | Yes | **Yes** (target) |
 
 **Invariant (PROPOSED):** `connected ≠ fresh telemetry`; `fresh providerFetchedAt ≠ new source data`; `long telemetry silence ≠ disconnected`; `plugged ≠ full connectivity recovered`; `successful poll ≠ source advance`; `absence of episode ≠ uninterrupted connection`.
+
+### Recovery fast-path (VDC-DEC-010 — explicit)
+
+**PLUG webhook = optional fast-path, not mandatory recovery dependency.**
+
+| Principle | Rule |
+|-----------|------|
+| PLUG webhook | **Optional** — may accelerate `PHYSICAL_DEVICE_PRESENT` / replug inference |
+| Snapshot physical evidence | **Valid** recovery path (observed Aug 2026: `SNAPSHOT_PLUG_SIGNAL`) |
+| Other strong provider/device evidence | Profile-dependent (per VDC-DEC-010) |
+| `FULL_CONNECTIVITY_RECOVERED` | **MUST NOT** depend on PLUG webhook; requires strict source advance + healthy dimensions |
+| **Never sufficient for recovery** | Poll SUCCESS alone; `providerFetchedAt` advance alone; equal stale snapshot alone |
+
+**GT-R1-UNPLUG-001 (LTE_R1)** must determine: PLUG webhook emission; `obdIsPluggedIn=true` vs strict top-level source advance ordering; per-signal timestamp independence; recovery without PLUG webhook; exact recovery ordering.
+
+### Adaptive polling (VDC-DEC-011 — policy inputs, not runtime states)
+
+Fixed frequent polling of healthy stationary vehicles is **not** the scalable canonical design. Polling cadence follows **expected information gain** and vehicle/device state. See [REMEDIATION_BACKLOG.md](REMEDIATION_BACKLOG.md) VDC-RB-018 and VDC-Q-014.
 
 ## Threshold taxonomy (unchanged values)
 

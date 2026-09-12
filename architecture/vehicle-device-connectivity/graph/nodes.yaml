@@ -468,6 +468,16 @@ nodes:
     title: Recovery evidence vocabulary
     epistemic_status: CONFIRMED
     decision_status: VALIDATED
-    summary: Precise unplug/replug/resume/recovered layers; strict advance for full recovery.
+    summary: Precise unplug/replug/resume/recovered layers; PLUG webhook optional fast-path; strict advance for full recovery.
     source_paths:
       - architecture/vehicle-device-connectivity/reconciliation/TARGET_SEMANTIC_MODEL.md
+
+  - id: VDC-DEC-011
+    type: decision
+    title: Adaptive information-gain provider polling
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Polling cadence follows information gain not wall-clock; VDC-RB-018; not fixed 5min standby canonical.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-device-connectivity/operations/POLLING_AND_SCHEDULERS.md

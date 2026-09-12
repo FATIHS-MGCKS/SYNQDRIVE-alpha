@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-phase3-hardening-2026-09-12',
+    version: '4.9.1106',
+    title: 'VDC Phase 3 hardening — recovery fast-path & adaptive polling',
+    summary: [
+      'PLUG webhook = optional fast-path; FULL_CONNECTIVITY_RECOVERED must not depend on PLUG webhook (VDC-DEC-010).',
+      'VDC-RB-001 gated: equality short-circuit must preserve per-signal/device evidence; GT-R1 before rollout.',
+      'VDC-DEC-011 adaptive information-gain polling; VDC-RB-018 P1 backlog item.',
+      'VDC-Q-014 open for per-profile backoff calibration; do not hardcode 24h poll from LTE_R1 n=1.',
+      'No runtime or Production changes.',
+    ],
+    reason:
+      'Operator requirements: recovery without mandatory PLUG webhook; fixed standby polling not scalable.',
+    previousBehavior: 'Phase 3 reconciliation without explicit fast-path or adaptive polling decisions.',
+    details:
+      'architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md; reconciliation/REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:10:00.000Z',
+  },
+  {
     id: 'vdc-phase3-reconciliation-2026-09-11',
     version: '4.9.1105',
     title: 'VDC Phase 3 — Reconciliation & classification',
