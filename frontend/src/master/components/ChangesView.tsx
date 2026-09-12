@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-physical-state-foundation-phase1-2026-09-12',
+    version: '4.9.1115',
+    title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',
+    summary: [
+      'Additive Prisma models: device_connection_physical_states + device_connection_physical_state_transitions with non-null bindingKey uniqueness.',
+      'Pure transition policy, repository (SELECT FOR UPDATE + stateVersion), service layer, CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED flag (default OFF).',
+      'GT-R1 regression fixtures: snapshot self-heal PLUG without episode; newer webhook UNPLUG accepted once.',
+      'Read-only fleet drift detector script; Prometheus metrics for applied/stale/conflict/self-heal/duplicate decisions.',
+      'VDC-DEC-012 + VDC-RB-019 authority; no live webhook/snapshot cutover in this PR.',
+    ],
+    reason:
+      'GT-R1 proved split authority: webhook dedupe from last dimo_device_connection_events while newer snapshot OBD evidence can show PLUGGED — blocking genuine UNPLUG webhooks.',
+    previousBehavior:
+      'Physical plug/unplug dedupe used last canonical webhook event only; snapshot obdIsPluggedIn could disagree without durable effective-state projection.',
+    details:
+      'backend/src/modules/dimo/device-connection-physical-state/*; migration 20260912200000_device_connection_physical_state; scripts/ops/vdc-physical-state-drift-detect.ts; architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md VDC-DEC-012.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
     version: '4.9.1114',
     title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',

@@ -47,6 +47,18 @@
 
 ---
 
+## Physical-state reconciliation tests (VDC-RB-019 Phase 1)
+
+| Layer | Path | Coverage |
+|-------|------|----------|
+| Pure policy | `device-connection-physical-state.policy.spec.ts` | baseline, duplicate, stale, conflict, provenance refresh, webhook/snapshot ordering, RB-001 per-signal timestamp guard |
+| PostgreSQL integration | `device-connection-physical-state.postgres.integration.spec.ts` | authority row, concurrent writers, GT-R1 self-heal + webhook unplug, snapshot-unplug episode deferred, stale-after-newer |
+| Drift detector (read-only) | `backend/scripts/ops/vdc-physical-state-drift-detect.ts` | EVENT_UNPLUGGED vs newer VLS `obdIsPluggedIn` dry-run |
+
+**Flag:** tests may enable `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED=true` in isolated environments only — Production remains OFF until Phase 2 cutover.
+
+---
+
 ## GT-R1-UNPLUG-001 — Controlled physical unplug/replug (LTE_R1)
 
 **Status:** **EXECUTED** 2026-09-12 — KS MX 2024 / tokenId 187336 (see execution evidence).

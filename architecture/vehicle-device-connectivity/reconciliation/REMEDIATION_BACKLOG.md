@@ -24,6 +24,7 @@ Priority: P0 (correctness) → P3 (debt).
 | VDC-RB-016 | P2 | VDC-GAP-011, VDC-Q-008 | Episode/webhook retention | VDC-Q-008 | Prisma, ops | TTL/partition | Medium | Migration | Storage | Data platform | No |
 | VDC-RB-017 | P2 | VDC-Q-012 | CH duplicate root cause | VDC-DEC-002 | CH service, processor | Prove/disprove CX-010 causality | Medium | CH tests | Historical replay | ClickHouse | Partial |
 | VDC-RB-018 | P1 | VDC-DEC-011, Phase 2 | Adaptive provider/device polling scheduler | VDC-DEC-011 | `dimo-snapshot.scheduler.ts`, tier config, profile layer | Information-gain cadence; `nextPollAt` concept; backoff on equality streak; event-triggered refresh; jitter | Medium-High | Pilot metrics | Poll:advance ratio; latency SLAs | DIMO + Scaling Process | No |
+| VDC-RB-019 | P0 | VDC-DEC-012, GT-R1 | Canonical physical-device-state reconciliation | VDC-DEC-012 | `device-connection-physical-state/*`, webhook + snapshot writers (Phase 2 cutover) | Durable projection + transition log; multi-source ordering; idempotency; self-heal; GT-R1 regression | **High** if enabled without cutover discipline | Unit + PG integration + GT-R1 | Flag-gated pilot; drift detector dry-run | DIMO, Notifications, Vehicles | Partial (Phase 1 foundation only) |
 
 ### VDC-RB-018 — future inputs (conceptual)
 
@@ -38,6 +39,14 @@ Provider requests per stationary vehicle/day; poll : strict-source-advance ratio
 > **Equality short-circuit must preserve objectively newer per-signal/device evidence.**
 
 Do **not** implement unconditional `equal top-level timestamp → discard payload`. Protect at minimum: `obdIsPluggedIn`, ignition, speed, physical-device evidence, any per-signal timestamp newer than stored evidence.
+
+---
+
+### VDC-RB-019 — Phase 1 foundation (2026-09-12)
+
+**Shipped (dark):** schema, policy, repository, service, metrics, tests, drift detector. **Deferred:** live webhook gate replacement, snapshot writer cutover, Production backfill, flag enablement.
+
+**GT-R1 regression target:** self-heal PLUG from snapshot without episode → accept newer webhook UNPLUG exactly once.
 
 ---
 
