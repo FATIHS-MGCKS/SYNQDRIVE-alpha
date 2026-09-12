@@ -1,5 +1,53 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F2.2a final merge closure (PR #1620)
+
+- Rediscovery window: evidence timestamps only anchor min/max; `serviceNow` fallback when no evidence exists
+- Delayed telemetry unit cases (24h, 6d) prove evidence-local ±6h bounds
+- Migration proof: hard post-schema assertions (indexes by name, FKs, pre-F2 sentinels, zero seed rows)
+- Evidence `EED-EV-0043` updated; 25 unit + 19 isolated PostgreSQL integration tests PASS
+
+**Verdict:** RFRF_F2_2A_FINAL_MERGE_CLOSURE=PASS — PR_1620_READY_TO_MERGE=YES; F3_START_AUTHORIZED=YES
+
+---
+
+## 2026-09-12 — RFRF F2.2 final closure (PR #1620)
+
+- Corrected PostgreSQL epistemic labels: separated F2 migration SQL proof, schema proof, integration tests, and full historical chain (`FAIL_PRE_EXISTING`)
+- F2 migration SQL proof via `prove-rfrf-f2-migration-sql.sh` on pre-F2 baseline (`503416c82`)
+- Historical chain defect recorded: `20260413230000_add_composite_indexes_batch_c` (`CREATE INDEX CONCURRENTLY` in Prisma transaction)
+- Nest DI: `@Injectable()` `RawRefuelCandidateService` with `PrismaService` only; static test clock helpers
+- Bounded rediscovery: 6-hour lookback window; SAME+INSUFFICIENT fail-closed ambiguity policy
+- Evidence `EED-EV-0043` updated; 21 unit + 19 isolated PostgreSQL integration tests PASS
+
+**Verdict:** RFRF_F2_2_FINAL_CLOSURE=PASS — PR_1620_READY_TO_MERGE=YES; F3_START_AUTHORIZED=YES
+
+---
+
+## 2026-09-12 — RFRF F2.1 candidate persistence hardening
+
+- F2.1 hardening on PR #1620: service-owned clocks, org/vehicle integrity, nullable identity key,
+  terminal rediscovery, lifecycle fail-closed, merged fingerprint, promotion time mapping fix
+- VehicleEnergyEvent `detection_source` / `source_event_key` deferred from F2 migration to F4
+- Evidence `EED-EV-0043` updated; 18 unit + 17 isolated PostgreSQL integration tests PASS
+- Full historical `prisma migrate deploy` blocked by pre-F2 `CREATE INDEX CONCURRENTLY` migration;
+  F2 schema verified via `prisma db push` on isolated localhost:5433 test database
+
+**Verdict:** RFRF_F2_1_HARDENING=PASS — IMPLEMENTATION_IDEMPOTENCY_PROOF=PASS; F3_START_AUTHORIZED=YES
+
+---
+
+## 2026-09-12 — RFRF F2 candidate persistence
+
+- Added `docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md`
+- Evidence `EED-EV-0043`; updated `EED-DEC-RFRF-005` with F2 implementation proof (idempotency PARTIAL)
+- `raw_refuel_candidates` schema+migration; `RawRefuelCandidateService` semantic rediscovery under `pg_advisory_xact_lock64`
+- Promotion contract design only; no detector wiring; flags remain OFF; KS MS 661 not detected by F2
+
+**Verdict:** RFRF_F2_CANDIDATE_PERSISTENCE=PASS — F2_IMPLEMENTATION_COMPLETE=YES; F3_START_AUTHORIZED=YES; FALLBACK_RUNTIME_READY=NO
+
+---
+
 ## 2026-09-12 — RFRF F1.2 final architecture closure
 
 - F1.1 addendum §14: semantic candidate rediscovery; four-way identity separation

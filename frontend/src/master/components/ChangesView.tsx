@@ -36,6 +36,93 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
+    version: '4.9.1114',
+    title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',
+    summary: [
+      'Rediscovery window anchors on evidence timestamps only; serviceNow is fallback when no evidence exists.',
+      'Delayed telemetry (24h/6d) no longer stretches DB lookup from evidence time to processing time.',
+      'F2 migration proof script uses hard post-schema assertions (indexes by name, FKs, pre-F2 sentinels).',
+      '25 unit + 19 PostgreSQL integration tests PASS; ambiguity policy unchanged.',
+    ],
+    reason:
+      'Independent F2.2a review found serviceNow incorrectly included in rediscovery anchor set and migration proof verification too soft.',
+    previousBehavior:
+      'F2.2: rediscovery window min/max included serviceNow, stretching lookup on late telemetry; migration proof printed values without hard fail.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2a; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T20:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-2-final-closure-2026-09-12',
+    version: '4.9.1113',
+    title: 'RFRF F2.2 — Final closure: migration proof, Nest DI, bounded rediscovery',
+    summary: [
+      'Corrected PostgreSQL epistemic labels: F2 migration SQL proof vs schema proof vs full historical chain (FAIL_PRE_EXISTING).',
+      'Actual F2 migration.sql executed on pre-F2 baseline via prove-rfrf-f2-migration-sql.sh.',
+      'Historical CONCURRENTLY migration defect documented (20260413230000_add_composite_indexes_batch_c).',
+      '@Injectable RawRefuelCandidateService with PrismaService-only Nest DI + provider resolution test.',
+      'Bounded 6-hour rediscovery window; SAME+INSUFFICIENT ambiguity fail-closed hold policy.',
+      '21/21 unit + 19/19 opt-in PostgreSQL integration tests PASS on isolated localhost:5433.',
+    ],
+    reason:
+      'Independent F2.2 review required migration SQL proof, Nest DI contract, bounded rediscovery, and ambiguity policy before PR #1620 merge authorization.',
+    previousBehavior:
+      'F2.1: unbounded vehicle-lifetime rediscovery scan; ambiguous SAME+INSUFFICIENT unresolved; REAL_POSTGRES_MIGRATION overclaimed; Nest DI unproven.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2; docs/audits/prisma-migration-chain-concurrently-defect-2026-09-12.md; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T18:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-1-hardening-2026-09-12',
+    version: '4.9.1112',
+    title: 'RFRF F2.1 — Candidate persistence hardening + real PostgreSQL proof',
+    summary: [
+      'Service-owned firstObservedAt/lastObservedAt via injectable clock; removed caller observedAt.',
+      'Org/vehicle integrity enforced inside transaction; fail-closed on mismatch.',
+      'Nullable candidateIdentityKey until sufficient evidence; INSUFFICIENT rows persistable.',
+      'Terminal PROMOTED/REJECTED rediscovery; multiple SAME ambiguity fail-closed.',
+      'Recursive fingerprint canonicalization from merged persisted evidence state.',
+      'Lifecycle terminal safety: invalid transitions throw; PROMOTED not caller-controlled.',
+      'VehicleEnergyEvent detection_source/source_event_key deferred to F4 (smaller F2 migration).',
+      '17/17 opt-in PostgreSQL integration tests PASS on isolated localhost:5433 database.',
+    ],
+    reason:
+      'Independent F2 review found correctness gaps in clock authority, integrity, insufficient persistence, terminal rediscovery, fingerprint, and real PG proof.',
+    previousBehavior:
+      'F2 initial implementation: caller observedAt, non-null identity key at insert, no terminal rediscovery, unsafe lifecycle bypass, fingerprint before merge.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.1; EED-EV-0043 updated; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f2-candidate-persistence-2026-09-12',
+    version: '4.9.1111',
+    title: 'RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery',
+    summary: [
+      'Implements Option D staging: raw_refuel_candidates schema+migration + lifecycle states.',
+      'Semantic overlap matcher rediscovers candidates under per-vehicle pg_advisory_xact_lock64.',
+      'Immutable candidateIdentityKey; mutable evidenceRevisionFingerprint; firstObservedAt preserved.',
+      'Promotion contract design only — no VehicleEnergyEvent runtime; flags remain OFF.',
+      'Does NOT detect KS MS 661 or enable production fallback. F3 detector next.',
+      'Idempotency matrix A–L: unit tests PASS; Postgres integration opt-in (RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1).',
+    ],
+    reason:
+      'F1.1 authorized F2 to implement Option D candidate persistence before detector/runtime wiring.',
+    previousBehavior: 'No RawRefuelCandidate table; identity/rediscovery design-only (F1.1).',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md; EED-EV-0043; EED-DEC-RFRF-005 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f1-1-hardening-2026-09-12',
     version: '4.9.1109',
     title: 'RFRF F1.1 — Architecture hardening + pre-F2 closure',

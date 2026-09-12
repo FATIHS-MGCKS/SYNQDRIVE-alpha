@@ -1402,6 +1402,27 @@ nodes:
       IMPLEMENTATION_IDEMPOTENCY_PROOF=PENDING_F2.
     verified_at: "2026-09-12"
 
+  - id: EED-EV-0043
+    type: evidence
+    title: RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md
+      - backend/prisma/migrations/20260912123000_rfrf_f2_raw_refuel_candidates/migration.sql
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate.postgres.integration.spec.ts
+    summary: >
+      F2/F2.1/F2.2 implements Option D staging: raw_refuel_candidates schema+migration, lifecycle states,
+      semantic overlap matcher, per-vehicle pg_advisory_xact_lock64 (raw_refuel_candidate:{vehicleId}),
+      service-owned firstObservedAt/lastObservedAt, nullable candidateIdentityKey until assigned,
+      bounded 6h rediscovery window, terminal rediscovery, SAME+INSUFFICIENT fail-closed ambiguity,
+      merged evidence fingerprint, org/vehicle integrity, Nest DI (@Injectable PrismaService-only),
+      actual F2 migration.sql proof on pre-F2 baseline. Does NOT detect KS MS 661 or enable production
+      fallback. IMPLEMENTATION_IDEMPOTENCY_PROOF=PASS (21 unit + 19 isolated PostgreSQL integration tests).
+      FULL_REPOSITORY_MIGRATION_CHAIN=FAIL_PRE_EXISTING (historical CONCURRENTLY defect documented).
+    verified_at: "2026-09-12"
+
   - id: EED-DEC-RFRF-001
     type: decision
     title: RFRF — SynqDrive raw-fuel fallback authority
@@ -1444,15 +1465,16 @@ nodes:
 
   - id: EED-DEC-RFRF-005
     type: decision
-    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
+    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F2)
     decision_status: PROPOSED
     epistemic_status: CONFIRMED
     summary: >
       Staging table: id (DB), candidateIdentityKey (immutable after assignment),
       evidenceRevisionFingerprint (mutable), semantic rediscovery matcher under per-vehicle lock.
-      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design);
-      implementation proof pending F2/F5.
-    evidence: [EED-EV-0042]
+      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design).
+      F2/F2.1 implements persistence+rediscovery (EED-EV-0043); IMPLEMENTATION_IDEMPOTENCY_PROOF=PASS
+      (unit tests + opt-in Postgres integration); G2 native↔fallback proof remains F5.
+    evidence: [EED-EV-0042, EED-EV-0043]
 
   - id: EED-OQ-014
     type: open_question
