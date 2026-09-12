@@ -440,6 +440,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Tests | `sync lifecycle precedence: metadata V3 wins over env V2 when series authority absent` in `reference-capture-settlement-shadow-runtime.spec.ts` |
 | CI | Vehicle Detail backend `tsc --noEmit` OOM at ~4GB heap (run 34698104670) — infrastructure, not PR TS defect; attempted workflow heap modification reverted; natural rerun on final head passed; Vehicle Detail Typecheck PASS; final required GitHub CI green; no workflow mitigation retained |
 
+## EXP-021 — CANDIDATE_SHORT_AB_90_60 dedicated plan + WOB L 7503 pre-drive audit (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE DESIGN IMPLEMENTED** — no physical run; no deploy |
+| Authority | Frozen PR #1618: minimum next experiment = corrected 90 vs 60 short A/B (two 10 min wall phases); **not** full 120→90→60 rerun |
+| Plan | `EXP021_CANDIDATE_SHORT_AB_90_60` — `candidate_short_ab_90_60`; registry `CANDIDATE_SHORT_AB_90_60`; phases **90→60** only; exact V3 90s/60s semantics |
+| Geometry | 7/10 slots; 19/19 FIXED_INTERVAL windows; 228 settlement observations; 20 min nominal / 22 min max |
+| Target vehicle | **WOB L 7503** (`19fedd4b-c4e8-4de8-a125-dab293326e7e`, token **192922**) — KS MS 661 historical only |
+| Blockers | Stale WOB L 7503 telemetry (~23h at audit); 6 pending KS MS 661 WHOLE_TRIP schedules on COMPLETED experiment; plan not deployed |
+| Evidence | `EXP_021_CANDIDATE_SHORT_AB_90_60_PROSPECTIVE_DESIGN_2026-09-12.md` |
+| Tests | `reference-capture-exp021-candidate-short-ab-90-60.spec.ts` — registry, geometry, durable arm, restart recovery, lifecycle |
+
 ## EXP-021 — PR #1621 micro-pass: post-transition late-movement + fail-closed authority (2026-09-12)
 
 | Event | Detail |

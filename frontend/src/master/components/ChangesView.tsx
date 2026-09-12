@@ -247,6 +247,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-11T23:20:00.000Z',
   },
   {
+    id: 'exp-021-candidate-short-ab-90-60-2026-09-12',
+    version: '4.9.1106',
+    title: 'EXP-021 — CANDIDATE_SHORT_AB_90_60 dedicated 90→60 plan (WOB L 7503 next run)',
+    summary: [
+      'New plan EXP021_CANDIDATE_SHORT_AB_90_60: 90→60 only, equal 10 min wall phases, 20 min nominal / 22 min max.',
+      'Exact V3 90s/60s semantics — omits 120s anchor per frozen PR #1618 forensic authority.',
+      '7/10 slots; 19/19 FIXED_INTERVAL settlement windows; 228 observations.',
+      'Durable plan authority at arm; restart recovery; lifecycle regression tests.',
+      'Next physical target: WOB L 7503 (not KS MS 661). Not deployed — PR only.',
+    ],
+    reason:
+      'Frozen PR #1618 requires corrected 90 vs 60 short A/B as minimum remaining experiment — not another full 120→90→60 drive.',
+    previousBehavior:
+      'Only CANDIDATE_BRACKET_V3 (120→90→60) registered for sweet-spot bracket; no dedicated short A/B plan.',
+    details:
+      'reference-capture-exp021-calibration-plan.lib.ts; reference-capture-exp021-candidate-short-ab-90-60.spec.ts; EXP_021_CANDIDATE_SHORT_AB_90_60_PROSPECTIVE_DESIGN_2026-09-12.md. Select via EXP021_CALIBRATION_PLAN=CANDIDATE_SHORT_AB_90_60.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T19:30:00.000Z',
+  },
+  {
     id: 'exp-021-settlement-lifecycle-precedence-2026-09-12',
     version: '4.9.1105',
     title: 'EXP-021 — Settlement lifecycle single canonical plan precedence (PR #1621)',
