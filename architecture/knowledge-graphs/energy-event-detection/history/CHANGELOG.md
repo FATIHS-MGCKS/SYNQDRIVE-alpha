@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F3 raw fuel rise detector
+
+- Pure STABLE_PRE→RISING→STABLE_POST detector; unit isolation; primary channel authority
+- KS MS 661 observed material rise detected; synthetic READY_FOR_PERSIST
+- Evidence `EED-EV-0044`; 27 unit tests + F2 test-only handoff PG proof
+- No production wiring; F4_START_AUTHORIZED=YES
+
+**Verdict:** RFRF_F3=PASS — detector algorithm complete
+
+---
+
 ## 2026-09-12 — RFRF F2.2a final merge closure (PR #1620)
 
 - Rediscovery window: evidence timestamps only anchor min/max; `serviceNow` fallback when no evidence exists

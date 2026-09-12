@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f3-raw-rise-detector-2026-09-12',
+    version: '4.9.1115',
+    title: 'RFRF F3 — Raw fuel rise detector (STABLE_PRE→RISING→STABLE_POST)',
+    summary: [
+      'Pure deterministic detector converts normalized fuel telemetry to RawRefuelCandidateObservation[].',
+      'Local state machine — no global min/max authority; absolute/relative unit isolation enforced.',
+      'Primary channel authority: one physical candidate per rise; corroboration only on secondary channel.',
+      'KS MS 661 observed material rise detected (7→31 L, OBSERVED); synthetic READY_FOR_PERSIST.',
+      '27 unit tests + test-only F2 handoff PostgreSQL proof; no production wiring.',
+    ],
+    reason:
+      'F3 authorized after F2 merge; implements algorithm-only raw refuel detection before F4 runtime wiring.',
+    previousBehavior:
+      'No raw-rise detector; legacy refuel-fuel-rise.ts uses global min/max and mixed sampleValue() units.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md; EED-EV-0044; detectionVersion=rfrf-rise-v1.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
     version: '4.9.1114',
     title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',
