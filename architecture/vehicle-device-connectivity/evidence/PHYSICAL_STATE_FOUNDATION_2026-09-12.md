@@ -31,7 +31,20 @@
 
 ## Transition audit semantics
 
-`device_connection_physical_state_transitions` is a **reconciliation decision audit** (DUPLICATE/STALE/CONFLICT/APPLIED/…), not only applied physical transitions.
+`device_connection_physical_state_transitions` is an **idempotent evidence-decision ledger** — one persisted row per unique evidence idempotency key, **not** one row per reconcile invocation.
+
+Each row is self-describing for forensics:
+
+| Column | Meaning |
+|--------|---------|
+| `previous_state` | Projection effective state before evaluation |
+| `candidate_state` | Incoming physical state evaluated (always persisted) |
+| `effective_state` | Resulting effective state when accepted (`null` for STALE/CONFLICT/INSUFFICIENT_EVIDENCE) |
+| `decision` | ESTABLISHED / APPLIED / DUPLICATE / STALE / CONFLICT / … |
+| `evidence_*` | Observed-at, source, reference for the evaluated evidence |
+| `parent_state_version` / `applied_state_version` | Version lineage when applicable |
+
+Exact repeated evidence collapses to the existing audit row (DUPLICATE). Do not parse `idempotency_key` for forensic meaning — use `candidate_state` and evidence columns.
 
 Idempotency key includes `candidateState` so pathological same-ref/time/source conflicts cannot hide behind a prior row.
 

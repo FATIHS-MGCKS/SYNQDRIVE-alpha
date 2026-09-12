@@ -43,6 +43,7 @@ type PhysicalStateRow = {
 type TransitionAuditRow = {
   id: string;
   decision: DeviceConnectionPhysicalTransitionDecision;
+  candidate_state: DeviceConnectionPhysicalEffectiveState;
   effective_state: DeviceConnectionPhysicalEffectiveState | null;
 };
 
@@ -138,8 +139,8 @@ export class DeviceConnectionPhysicalStateRepository {
     const lockedRows = await tx.$queryRaw<PhysicalStateRow[]>`
       SELECT *
       FROM device_connection_physical_states
-      WHERE organization_id = ${input.organizationId}::uuid
-        AND vehicle_id = ${input.vehicleId}::uuid
+      WHERE organization_id = ${input.organizationId}
+        AND vehicle_id = ${input.vehicleId}
         AND provider = ${provider}
         AND binding_key = ${bindingKey}
       FOR UPDATE
@@ -247,8 +248,8 @@ export class DeviceConnectionPhysicalStateRepository {
         const retryRows = await tx.$queryRaw<PhysicalStateRow[]>`
           SELECT *
           FROM device_connection_physical_states
-          WHERE organization_id = ${input.organizationId}::uuid
-            AND vehicle_id = ${input.vehicleId}::uuid
+          WHERE organization_id = ${input.organizationId}
+            AND vehicle_id = ${input.vehicleId}
             AND provider = ${provider}
             AND binding_key = ${bindingKey}
           FOR UPDATE
@@ -262,27 +263,87 @@ export class DeviceConnectionPhysicalStateRepository {
           current: winnerProjection,
           incoming: input.evidence,
         });
-        const context = buildContext({
+
+        if (!retryEval.mutateProjection) {
+          const context = buildContext({
+            previous: winnerProjection,
+            evidence: input.evidence,
+            resulting: winnerProjection,
+            selfHeal,
+          });
+          return {
+            enabled: true,
+            decision: auditResult.duplicate
+              ? DeviceConnectionPhysicalTransitionDecision.DUPLICATE
+              : retryEval.decision,
+            projection: {
+              effectiveState: winnerProjection.effectiveState,
+              evidenceObservedAt: winnerProjection.evidenceObservedAt,
+              evidenceSource: winnerProjection.evidenceSource,
+              evidenceReferenceId: winnerProjection.evidenceReferenceId,
+              stateVersion: winnerProjection.stateVersion,
+            },
+            transitionId: auditResult.transitionId,
+            episodeAction: 'none',
+            alertAction: 'none',
+            context,
+            reason: retryEval.reason ?? 'projection_insert_race_re_evaluated',
+          };
+        }
+
+        const raceNextVersion = winnerProjection.stateVersion + 1;
+        const raceUpdated = await tx.deviceConnectionPhysicalState.update({
+          where: { id: winner.id },
+          data: {
+            effectiveState: retryEval.nextState!,
+            evidenceObservedAt: input.evidence.evidenceObservedAt,
+            evidenceSource: input.evidence.evidenceSource,
+            evidenceReferenceId: input.evidence.evidenceReferenceId,
+            stateVersion: raceNextVersion,
+            deviceBindingId: input.binding.deviceBindingId ?? winner.device_binding_id,
+            providerDeviceIdHash: input.binding.providerDeviceIdHash,
+          },
+        });
+        projection = {
+          effectiveState: raceUpdated.effectiveState,
+          evidenceObservedAt: raceUpdated.evidenceObservedAt,
+          evidenceSource: raceUpdated.evidenceSource,
+          evidenceReferenceId: raceUpdated.evidenceReferenceId,
+          stateVersion: raceUpdated.stateVersion,
+        };
+
+        if (auditResult.transitionId && isAcceptedPhysicalTransition(retryEval.decision)) {
+          await tx.deviceConnectionPhysicalStateTransition.update({
+            where: { id: auditResult.transitionId },
+            data: { appliedStateVersion: projection.stateVersion },
+          });
+        }
+
+        const raceLogicalChange =
+          retryEval.decision === DeviceConnectionPhysicalTransitionDecision.APPLIED &&
+          winnerProjection.effectiveState !== retryEval.nextState;
+        const raceEpisodeAction = this.resolveEpisodeAction({
+          logicalChange: raceLogicalChange,
+          selfHeal,
+          evidenceSource: input.evidence.evidenceSource,
+          previousState: winnerProjection.effectiveState,
+          nextState: retryEval.nextState,
+        });
+        const raceContext = buildContext({
           previous: winnerProjection,
           evidence: input.evidence,
-          resulting: winnerProjection,
+          resulting: projection,
           selfHeal,
         });
         return {
           enabled: true,
           decision: retryEval.decision,
-          projection: {
-            effectiveState: winnerProjection.effectiveState,
-            evidenceObservedAt: winnerProjection.evidenceObservedAt,
-            evidenceSource: winnerProjection.evidenceSource,
-            evidenceReferenceId: winnerProjection.evidenceReferenceId,
-            stateVersion: winnerProjection.stateVersion,
-          },
+          projection,
           transitionId: auditResult.transitionId,
-          episodeAction: 'none',
-          alertAction: 'none',
-          context,
-          reason: retryEval.reason ?? 'projection_insert_race_re_evaluated',
+          episodeAction: raceEpisodeAction,
+          alertAction: this.resolveAlertAction(raceEpisodeAction),
+          context: raceContext,
+          reason: retryEval.reason ?? 'projection_insert_race_applied',
         };
       }
       projection = inserted;
@@ -397,8 +458,8 @@ export class DeviceConnectionPhysicalStateRepository {
         updated_at
       ) VALUES (
         gen_random_uuid(),
-        ${input.organizationId}::uuid,
-        ${input.vehicleId}::uuid,
+        ${input.organizationId},
+        ${input.vehicleId},
         ${input.provider},
         ${input.bindingKey},
         ${input.deviceBindingId},
@@ -481,6 +542,7 @@ export class DeviceConnectionPhysicalStateRepository {
         provider,
         binding_key,
         previous_state,
+        candidate_state,
         effective_state,
         evidence_observed_at,
         evidence_source,
@@ -493,11 +555,12 @@ export class DeviceConnectionPhysicalStateRepository {
         created_at
       ) VALUES (
         gen_random_uuid(),
-        ${input.organizationId}::uuid,
-        ${input.vehicleId}::uuid,
+        ${input.organizationId},
+        ${input.vehicleId},
         ${input.provider},
         ${input.bindingKey},
         ${input.previousState}::"DeviceConnectionPhysicalEffectiveState",
+        ${input.evidence.candidateState}::"DeviceConnectionPhysicalEffectiveState",
         ${input.effectiveState}::"DeviceConnectionPhysicalEffectiveState",
         ${input.evidence.evidenceObservedAt},
         ${input.evidence.evidenceSource}::"DeviceConnectionPhysicalEvidenceSource",
@@ -510,7 +573,7 @@ export class DeviceConnectionPhysicalStateRepository {
         NOW()
       )
       ON CONFLICT (idempotency_key) DO NOTHING
-      RETURNING id, decision, effective_state
+      RETURNING id, decision, candidate_state, effective_state
     `;
 
     if (inserted[0]) {
@@ -518,7 +581,7 @@ export class DeviceConnectionPhysicalStateRepository {
     }
 
     const existing = await tx.$queryRaw<TransitionAuditRow[]>`
-      SELECT id, decision, effective_state
+      SELECT id, decision, candidate_state, effective_state
       FROM device_connection_physical_state_transitions
       WHERE idempotency_key = ${idempotencyKey}
       LIMIT 1
@@ -530,8 +593,7 @@ export class DeviceConnectionPhysicalStateRepository {
     }
 
     const conflictingCandidate =
-      row.effective_state != null &&
-      input.evidence.candidateState !== row.effective_state;
+      input.evidence.candidateState !== row.candidate_state;
 
     return {
       transitionId: row.id,

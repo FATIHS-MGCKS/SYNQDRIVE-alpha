@@ -104,9 +104,11 @@ describePg('DeviceConnectionPhysicalStateRepository (postgres)', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('3. different concurrent first writers — serialized, one winner row', async () => {
-    const unplug = baseInput(webhookEvidence('2026-09-12T14:27:51.000Z', 'UNPLUGGED', 'wh-a'));
-    const plug = baseInput(webhookEvidence('2026-09-12T14:27:52.000Z', 'PLUGGED', 'wh-b'));
+  it('3. different concurrent first writers — newest physical-time evidence wins', async () => {
+    const t1 = '2026-09-12T14:27:51.000Z';
+    const t2 = '2026-09-12T14:27:52.000Z';
+    const unplug = baseInput(webhookEvidence(t1, 'UNPLUGGED', 'wh-a'));
+    const plug = baseInput(webhookEvidence(t2, 'PLUGGED', 'wh-b'));
     const [a, b] = await Promise.all([
       repository.reconcileEvidence(unplug),
       repository.reconcileEvidence(plug),
@@ -115,28 +117,53 @@ describePg('DeviceConnectionPhysicalStateRepository (postgres)', () => {
       where: { vehicleId: fixture.vehicle.id },
     });
     expect(rows).toHaveLength(1);
+    expect(rows[0]?.effectiveState).toBe('PLUGGED');
+    expect(rows[0]?.evidenceReferenceId).toBe('wh-b');
+    expect(rows[0]?.evidenceObservedAt.toISOString()).toBe(new Date(t2).toISOString());
+    expect(rows[0]?.stateVersion).toBeGreaterThanOrEqual(1);
     const decisions = new Set([a.decision, b.decision]);
     expect(decisions.has('ESTABLISHED') || decisions.has('APPLIED')).toBe(true);
   });
 
-  it('4. concurrent opposing-state updates on existing projection', async () => {
+  it('4. concurrent opposing-state updates on existing projection — T2 PLUG wins', async () => {
+    const tBase = '2026-09-12T14:00:00.000Z';
+    const t1 = '2026-09-12T15:00:00.000Z';
+    const t2 = '2026-09-12T15:00:01.000Z';
     await repository.reconcileEvidence(
-      baseInput(webhookEvidence('2026-09-12T14:00:00.000Z', 'PLUGGED', 'wh-base')),
+      baseInput(webhookEvidence(tBase, 'PLUGGED', 'wh-base')),
     );
+    const baseVersion = (
+      await prisma.deviceConnectionPhysicalState.findFirst({
+        where: { vehicleId: fixture.vehicle.id },
+      })
+    )?.stateVersion;
+    expect(baseVersion).toBe(1);
+
     const [toUnplug, toPlug] = await Promise.all([
       repository.reconcileEvidence(
-        baseInput(webhookEvidence('2026-09-12T15:00:00.000Z', 'UNPLUGGED', 'wh-unplug')),
+        baseInput(webhookEvidence(t1, 'UNPLUGGED', 'wh-unplug')),
       ),
       repository.reconcileEvidence(
-        baseInput(webhookEvidence('2026-09-12T15:00:01.000Z', 'PLUGGED', 'wh-plug')),
+        baseInput(webhookEvidence(t2, 'PLUGGED', 'wh-plug')),
       ),
     ]);
     const row = await prisma.deviceConnectionPhysicalState.findFirst({
       where: { vehicleId: fixture.vehicle.id },
     });
     expect(row).toBeTruthy();
-    expect([toUnplug.decision, toPlug.decision]).toContain('APPLIED');
-    expect(row!.stateVersion).toBeGreaterThanOrEqual(2);
+    expect(row!.effectiveState).toBe('PLUGGED');
+    expect(row!.evidenceReferenceId).toBe('wh-plug');
+    expect(row!.evidenceObservedAt.toISOString()).toBe(new Date(t2).toISOString());
+    expect(row!.stateVersion).toBeGreaterThan(baseVersion!);
+    const decisions = [toUnplug.decision, toPlug.decision];
+    expect(decisions).toContain('APPLIED');
+    expect(decisions.some((d) => d === 'STALE' || d === 'DUPLICATE' || d === 'PROVENANCE_REFRESH')).toBe(
+      true,
+    );
+    const authorityRows = await prisma.deviceConnectionPhysicalState.findMany({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+    expect(authorityRows).toHaveLength(1);
   });
 
   it('5-6. loser re-evaluated after winner commits', async () => {
@@ -308,6 +335,117 @@ describePg('DeviceConnectionPhysicalStateRepository (postgres)', () => {
       where: { vehicleId: fixture.vehicle.id },
     });
     expect(episodes).toHaveLength(0);
+  });
+
+  it('16. TEXT organization/vehicle identifiers work without UUID casts', async () => {
+    const textOrgId = `org-text-${fixture.suffix}`;
+    const textVehicleId = `veh-text-${fixture.suffix}`;
+    const textOrg = await prisma.organization.create({
+      data: {
+        id: textOrgId,
+        companyName: `TEXT ID org ${fixture.suffix}`,
+        businessType: 'RENTAL',
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+    const textVehicle = await prisma.vehicle.create({
+      data: {
+        id: textVehicleId,
+        organizationId: textOrg.id,
+        vin: `TXT${fixture.suffix}`.slice(0, 17).padEnd(17, '1'),
+        licensePlate: `TX-${fixture.suffix}`.slice(0, 12),
+        make: 'Test',
+        model: 'TextId',
+        year: 2024,
+        fuelType: 'GASOLINE',
+        status: 'AVAILABLE',
+        hardwareType: 'LTE_R1',
+      },
+      select: { id: true },
+    });
+    const textBinding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId: fixture.tokenId + 1,
+    });
+    const result = await repository.reconcileEvidence({
+      organizationId: textOrg.id,
+      vehicleId: textVehicle.id,
+      tokenId: fixture.tokenId + 1,
+      binding: textBinding,
+      evidence: webhookEvidence('2026-09-12T14:27:51.000Z', 'UNPLUGGED', 'text-id-wh'),
+    });
+    expect(result.decision).toBe('ESTABLISHED');
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: textVehicle.id, organizationId: textOrg.id },
+    });
+    expect(row?.organizationId).toBe(textOrgId);
+    expect(row?.vehicleId).toBe(textVehicleId);
+
+    await prisma.deviceConnectionPhysicalStateTransition.deleteMany({
+      where: { vehicleId: textVehicle.id },
+    });
+    await prisma.deviceConnectionPhysicalState.deleteMany({
+      where: { vehicleId: textVehicle.id },
+    });
+    await prisma.vehicle.delete({ where: { id: textVehicle.id } });
+    await prisma.organization.delete({ where: { id: textOrg.id } });
+  });
+
+  it('17. STALE/CONFLICT audit rows persist candidate_state', async () => {
+    await repository.reconcileEvidence(
+      baseInput(webhookEvidence('2026-09-12T15:00:00.000Z', 'PLUGGED', 'snap'), {
+        evidence: {
+          candidateState: 'PLUGGED',
+          evidenceObservedAt: new Date('2026-09-12T15:00:00.000Z'),
+          evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+          evidenceReferenceId: 'snap',
+        },
+      }),
+    );
+    const stale = await repository.reconcileEvidence(
+      baseInput(webhookEvidence('2026-09-12T14:00:00.000Z', 'UNPLUGGED', 'wh-old')),
+    );
+    expect(stale.decision).toBe('STALE');
+    const staleAudit = await prisma.deviceConnectionPhysicalStateTransition.findFirst({
+      where: { vehicleId: fixture.vehicle.id, decision: 'STALE' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(staleAudit?.candidateState).toBe('UNPLUGGED');
+    expect(staleAudit?.effectiveState).toBeNull();
+
+    const conflict = await repository.reconcileEvidence(
+      baseInput(webhookEvidence('2026-09-12T15:00:00.000Z', 'UNPLUGGED', 'wh-conflict'), {
+        evidence: {
+          candidateState: 'UNPLUGGED',
+          evidenceObservedAt: new Date('2026-09-12T15:00:00.000Z'),
+          evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+          evidenceReferenceId: 'wh-conflict',
+        },
+      }),
+    );
+    expect(conflict.decision).toBe('CONFLICT');
+    const conflictAudit = await prisma.deviceConnectionPhysicalStateTransition.findFirst({
+      where: { vehicleId: fixture.vehicle.id, decision: 'CONFLICT' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(conflictAudit?.candidateState).toBe('UNPLUGGED');
+    expect(conflictAudit?.effectiveState).toBeNull();
+  });
+
+  it('18. exact-retry evidence collapses to one audit row (idempotent ledger)', async () => {
+    const input = baseInput(webhookEvidence('2026-09-12T14:27:51.000Z', 'UNPLUGGED', 'ledger-dup'));
+    await repository.reconcileEvidence(input);
+    await repository.reconcileEvidence(input);
+    await repository.reconcileEvidence(input);
+    const audits = await prisma.deviceConnectionPhysicalStateTransition.findMany({
+      where: {
+        vehicleId: fixture.vehicle.id,
+        evidenceReferenceId: 'ledger-dup',
+      },
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]?.candidateState).toBe('UNPLUGGED');
   });
 
   it('snapshot-only UNPLUG does not emit episode intent (phase 1 deferred)', async () => {

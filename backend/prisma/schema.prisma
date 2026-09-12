@@ -8104,6 +8104,7 @@ model DeviceConnectionPhysicalStateTransition {
   provider             String                                    @default("DIMO")
   bindingKey           String                                    @map("binding_key")
   previousState          DeviceConnectionPhysicalEffectiveState?   @map("previous_state")
+  candidateState         DeviceConnectionPhysicalEffectiveState    @map("candidate_state")
   effectiveState       DeviceConnectionPhysicalEffectiveState?   @map("effective_state")
   evidenceObservedAt     DateTime                                  @map("evidence_observed_at")
   evidenceSource       DeviceConnectionPhysicalEvidenceSource      @map("evidence_source")

@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   console.log('No mutations will be performed.\n');
 
   const orgFilter = orgId
-    ? Prisma.sql`AND v.organization_id = ${orgId}::uuid`
+    ? Prisma.sql`AND v.organization_id = ${orgId}`
     : Prisma.empty;
 
   const rows = await prisma.$queryRaw<DriftRow[]>`

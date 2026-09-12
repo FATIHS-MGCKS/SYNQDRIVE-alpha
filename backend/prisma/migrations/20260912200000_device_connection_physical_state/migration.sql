@@ -43,6 +43,7 @@ CREATE TABLE "device_connection_physical_state_transitions" (
     "provider" TEXT NOT NULL DEFAULT 'DIMO',
     "binding_key" TEXT NOT NULL,
     "previous_state" "DeviceConnectionPhysicalEffectiveState",
+    "candidate_state" "DeviceConnectionPhysicalEffectiveState" NOT NULL,
     "effective_state" "DeviceConnectionPhysicalEffectiveState",
     "evidence_observed_at" TIMESTAMP(3) NOT NULL,
     "evidence_source" "DeviceConnectionPhysicalEvidenceSource" NOT NULL,
