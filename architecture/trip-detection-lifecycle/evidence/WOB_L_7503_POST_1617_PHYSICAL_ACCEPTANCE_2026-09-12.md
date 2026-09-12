@@ -116,7 +116,7 @@ PM2 `TRIP_END_TIMELINE` on replica A confirms repeating `possible_end_entered` /
 | POSSIBLE_END_REENTERED | **YES** (after every CUSUM reopen) |
 | NEXT_END_VALIDATION_REACHED | **YES** (13 sequential EV cycles) |
 | NEXT_END_VALIDATION_AT (last) | `2026-09-12T20:29:32.889Z` |
-| CREDIBLE_POST_BOUNDARY_MOVEMENT_OCCURCED | **NO** (`lastMeaningfulMovementAt` frozen at 19:53:02; post-stop `speed=16` / ignition ON in evidence carries `vlsObservationAgeMs` > 30 min — stale provider read, not boundary retirement) |
+| CREDIBLE_POST_BOUNDARY_MOVEMENT_OCCURRED | **NO** (`lastMeaningfulMovementAt` frozen at 19:53:02; post-stop `speed=16` / ignition ON in evidence carries `vlsObservationAgeMs` > 30 min — stale provider read, not boundary retirement) |
 | BOUNDARY_RETIREMENT_IF_MOVEMENT | NOT_APPLICABLE |
 | PR_1617_PHYSICAL_PATH_VALIDATED | **YES** (preserve + re-entry mechanics exercised); **terminal acceptance still FAIL** (CUSUM never confirms change point; no FINALIZE) |
 
