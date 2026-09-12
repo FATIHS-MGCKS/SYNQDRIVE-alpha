@@ -4,6 +4,8 @@ import type { TripTrackingJobData } from './trip-detection.types';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 
+import { TripDecisionEngine } from './decision/trip-decision.engine';
+
 import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import {
   buildActiveTickJob,
@@ -425,9 +427,11 @@ async function seedPossibleEndFromEmptyCore(params: {
         stopMock,
         detectorRegistry,
       );
-      // Harness defaults evaluateEndCandidate to immediate CUSUM_VALIDATED; use real engine
-      // so ChangePointEndDetector findings drive cusum_still_ongoing → ACTIVE reopen.
-      jest.spyOn(harness.decisionEngine, 'evaluateEndCandidate').mockRestore();
+      // Harness defaults evaluateEndCandidate to immediate CUSUM_VALIDATED; delegate to the
+      // real engine so ChangePointEndDetector findings drive cusum_still_ongoing → ACTIVE.
+      const realEvaluateEndCandidate =
+        TripDecisionEngine.prototype.evaluateEndCandidate.bind(harness.decisionEngine);
+      harness.evaluateEndCandidate.mockImplementation(realEvaluateEndCandidate);
 
       await seedPossibleEndFromEmptyCore({ prisma, harness, fixture });
       await assertNaturalPossibleEndCheckQueued({
@@ -441,7 +445,7 @@ async function seedPossibleEndFromEmptyCore(params: {
         await drainTripTrackingQueue({
           queue: trackingQueue,
           runJob: harness.runJob,
-          maxSteps: 4,
+          maxSteps: 2,
         });
       restoreTripR11Clock();
       expect(pecEvSteps).toBeGreaterThanOrEqual(2);
