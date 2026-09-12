@@ -37,7 +37,8 @@ const STALE_VLS = new Date('2026-09-12T05:06:59.000Z');
 const POSSIBLE_END_AT = new Date('2026-09-12T05:09:02.763Z');
 const EV_ATTEMPT_1_AT = new Date('2026-09-12T05:11:03.781Z');
 const POST_REOPEN_ACTIVE_AT = new Date('2026-09-12T05:11:33.000Z');
-const END_CYCLE_2_AT = new Date('2026-09-12T05:13:00.000Z');
+/** Must satisfy TRIP_END_STABILITY_WINDOW_MS (90s) after POST_REOPEN ACTIVE → POSSIBLE_END re-entry. */
+const END_CYCLE_2_AT = new Date('2026-09-12T05:13:30.000Z');
 
 /** Phase A — proven CI root cause at 842aaa67b (pecEvSteps=0). */
 const CI_ZERO_STEPS_CAUSE = 'TEST_PURGED_NATURAL_PEC';
