@@ -56,3 +56,23 @@ export function derivePrePlateauBucketFromObservation(input: {
   if (input.preFuelRelativePercent == null) return null;
   return bucketPrePlateauLevel(input.signalChannel, input.preFuelRelativePercent);
 }
+
+export function tryBuildCandidateIdentityKeyFromEvidence(input: {
+  vehicleId: string;
+  detectionVersion: string;
+  signalChannel: RawRefuelCandidateSignalChannel;
+  riseOnsetAt?: Date | null;
+  preFuelAbsoluteLiters?: number | null;
+  preFuelRelativePercent?: number | null;
+}): string | null {
+  if (!input.riseOnsetAt) return null;
+  const prePlateauBucket = derivePrePlateauBucketFromObservation(input);
+  if (prePlateauBucket == null) return null;
+  return buildCandidateIdentityKey({
+    vehicleId: input.vehicleId,
+    detectionVersion: input.detectionVersion,
+    signalChannel: input.signalChannel,
+    prePlateauBucket,
+    riseOnsetAt: input.riseOnsetAt,
+  });
+}

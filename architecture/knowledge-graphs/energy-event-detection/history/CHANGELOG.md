@@ -1,5 +1,18 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F2.1 candidate persistence hardening
+
+- F2.1 hardening on PR #1620: service-owned clocks, org/vehicle integrity, nullable identity key,
+  terminal rediscovery, lifecycle fail-closed, merged fingerprint, promotion time mapping fix
+- VehicleEnergyEvent `detection_source` / `source_event_key` deferred from F2 migration to F4
+- Evidence `EED-EV-0043` updated; 18 unit + 17 isolated PostgreSQL integration tests PASS
+- Full historical `prisma migrate deploy` blocked by pre-F2 `CREATE INDEX CONCURRENTLY` migration;
+  F2 schema verified via `prisma db push` on isolated localhost:5433 test database
+
+**Verdict:** RFRF_F2_1_HARDENING=PASS — IMPLEMENTATION_IDEMPOTENCY_PROOF=PASS; F3_START_AUTHORIZED=YES
+
+---
+
 ## 2026-09-12 — RFRF F2 candidate persistence
 
 - Added `docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md`

@@ -1,4 +1,5 @@
 import type { RawRefuelCandidate } from '@prisma/client';
+import { RawRefuelCandidateLifecycleValidationError } from './raw-refuel-candidate.errors';
 
 /**
  * F2 promotion contract — structure/mapping only; no runtime promotion caller in F2.
@@ -34,20 +35,35 @@ export function buildSyntheticDimoSegmentIdPlaceholder(
 export function mapRawRefuelCandidateToPromotionDraft(
   candidate: RawRefuelCandidate,
 ): RawRefuelCandidatePromotionDraft {
-  const startTime = candidate.riseOnsetAt ?? candidate.physicalEvidenceStart ?? candidate.firstObservedAt;
+  if (!candidate.candidateIdentityKey) {
+    throw new RawRefuelCandidateLifecycleValidationError(
+      'Cannot map candidate to promotion draft without candidateIdentityKey',
+    );
+  }
+
+  const startTime =
+    candidate.riseOnsetAt ??
+    candidate.physicalEvidenceStart ??
+    candidate.firstObservedAt;
   const endTime =
     candidate.riseEndAt ??
     candidate.physicalEvidenceEnd ??
-    candidate.postFuelAbsoluteLiters != null
+    (candidate.postFuelAbsoluteLiters != null ||
+    candidate.postFuelRelativePercent != null
       ? candidate.lastObservedAt
-      : candidate.firstObservedAt;
+      : candidate.firstObservedAt);
   const durationSeconds = Math.max(
     1,
     Math.round((endTime.getTime() - startTime.getTime()) / 1000),
   );
   const riseDurationSeconds =
     candidate.riseOnsetAt && candidate.riseEndAt
-      ? Math.max(0, Math.round((candidate.riseEndAt.getTime() - candidate.riseOnsetAt.getTime()) / 1000))
+      ? Math.max(
+          0,
+          Math.round(
+            (candidate.riseEndAt.getTime() - candidate.riseOnsetAt.getTime()) / 1000,
+          ),
+        )
       : null;
 
   return {

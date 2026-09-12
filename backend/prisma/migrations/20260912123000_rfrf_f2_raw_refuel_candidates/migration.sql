@@ -1,9 +1,4 @@
--- RFRF F2 — RawRefuelCandidate staging + additive VehicleEnergyEvent source metadata.
-
-CREATE TYPE "VehicleEnergyEventDetectionSource" AS ENUM (
-  'DIMO_NATIVE',
-  'SYNQDRIVE_RAW_FUEL_FALLBACK'
-);
+-- RFRF F2 — RawRefuelCandidate staging (VehicleEnergyEvent source metadata deferred to F4).
 
 CREATE TYPE "RawRefuelCandidateLifecycleState" AS ENUM (
   'INSUFFICIENT',
@@ -41,18 +36,11 @@ CREATE TYPE "RawRefuelCandidateRejectionReason" AS ENUM (
   'NON_FUEL_POWERTRAIN'
 );
 
-ALTER TABLE "vehicle_energy_events"
-  ADD COLUMN "detection_source" "VehicleEnergyEventDetectionSource",
-  ADD COLUMN "source_event_key" TEXT;
-
-CREATE UNIQUE INDEX "vehicle_energy_events_vehicle_id_source_event_key_key"
-  ON "vehicle_energy_events"("vehicle_id", "source_event_key");
-
 CREATE TABLE "raw_refuel_candidates" (
   "id" TEXT NOT NULL,
   "organization_id" TEXT NOT NULL,
   "vehicle_id" TEXT NOT NULL,
-  "candidate_identity_key" TEXT NOT NULL,
+  "candidate_identity_key" TEXT,
   "detection_version" TEXT NOT NULL,
   "detector_version" TEXT NOT NULL,
   "signal_channel" "RawRefuelCandidateSignalChannel" NOT NULL,

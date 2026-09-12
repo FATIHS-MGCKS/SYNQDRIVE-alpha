@@ -36,6 +36,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f2-1-hardening-2026-09-12',
+    version: '4.9.1112',
+    title: 'RFRF F2.1 — Candidate persistence hardening + real PostgreSQL proof',
+    summary: [
+      'Service-owned firstObservedAt/lastObservedAt via injectable clock; removed caller observedAt.',
+      'Org/vehicle integrity enforced inside transaction; fail-closed on mismatch.',
+      'Nullable candidateIdentityKey until sufficient evidence; INSUFFICIENT rows persistable.',
+      'Terminal PROMOTED/REJECTED rediscovery; multiple SAME ambiguity fail-closed.',
+      'Recursive fingerprint canonicalization from merged persisted evidence state.',
+      'Lifecycle terminal safety: invalid transitions throw; PROMOTED not caller-controlled.',
+      'VehicleEnergyEvent detection_source/source_event_key deferred to F4 (smaller F2 migration).',
+      '17/17 opt-in PostgreSQL integration tests PASS on isolated localhost:5433 database.',
+    ],
+    reason:
+      'Independent F2 review found correctness gaps in clock authority, integrity, insufficient persistence, terminal rediscovery, fingerprint, and real PG proof.',
+    previousBehavior:
+      'F2 initial implementation: caller observedAt, non-null identity key at insert, no terminal rediscovery, unsafe lifecycle bypass, fingerprint before merge.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.1; EED-EV-0043 updated; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-candidate-persistence-2026-09-12',
     version: '4.9.1111',
     title: 'RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery',

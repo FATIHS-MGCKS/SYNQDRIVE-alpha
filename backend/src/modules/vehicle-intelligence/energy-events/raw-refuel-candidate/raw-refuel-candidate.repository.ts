@@ -1,10 +1,55 @@
 import type { Prisma, RawRefuelCandidate, RawRefuelCandidateSignalChannel } from '@prisma/client';
-import { RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES } from './raw-refuel-candidate.constants';
+import {
+  RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES,
+  RAW_REFUEL_CANDIDATE_TERMINAL_LIFECYCLE_STATES,
+} from './raw-refuel-candidate.constants';
+import type { MergedRawRefuelCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
+import {
+  RawRefuelCandidateOrgVehicleIntegrityError,
+  RawRefuelCandidateVehicleNotFoundError,
+} from './raw-refuel-candidate.errors';
 import type { RawRefuelCandidateObservation } from './raw-refuel-candidate.types';
 
 type TxClient = Prisma.TransactionClient;
 
 export class RawRefuelCandidateRepository {
+  async resolveAuthoritativeOrganizationId(
+    tx: TxClient,
+    vehicleId: string,
+    assertedOrganizationId?: string,
+  ): Promise<string> {
+    const vehicle = await tx.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) {
+      throw new RawRefuelCandidateVehicleNotFoundError(vehicleId);
+    }
+    if (assertedOrganizationId && assertedOrganizationId !== vehicle.organizationId) {
+      throw new RawRefuelCandidateOrgVehicleIntegrityError(
+        vehicleId,
+        vehicle.organizationId,
+        assertedOrganizationId,
+      );
+    }
+    return vehicle.organizationId;
+  }
+
+  async findByIdentityKey(
+    tx: TxClient,
+    vehicleId: string,
+    candidateIdentityKey: string,
+  ): Promise<RawRefuelCandidate | null> {
+    return tx.rawRefuelCandidate.findUnique({
+      where: {
+        vehicleId_candidateIdentityKey: {
+          vehicleId,
+          candidateIdentityKey,
+        },
+      },
+    });
+  }
+
   async findNonTerminalByVehicle(
     tx: TxClient,
     vehicleId: string,
@@ -15,6 +60,21 @@ export class RawRefuelCandidateRepository {
         vehicleId,
         signalChannel,
         lifecycleState: { in: [...RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES] },
+      },
+      orderBy: [{ firstObservedAt: 'asc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async findTerminalByVehicle(
+    tx: TxClient,
+    vehicleId: string,
+    signalChannel: RawRefuelCandidateSignalChannel,
+  ): Promise<RawRefuelCandidate[]> {
+    return tx.rawRefuelCandidate.findMany({
+      where: {
+        vehicleId,
+        signalChannel,
+        lifecycleState: { in: [...RAW_REFUEL_CANDIDATE_TERMINAL_LIFECYCLE_STATES] },
       },
       orderBy: [{ firstObservedAt: 'asc' }, { createdAt: 'asc' }],
     });
@@ -33,14 +93,15 @@ export class RawRefuelCandidateRepository {
     data: {
       organizationId: string;
       vehicleId: string;
-      candidateIdentityKey: string;
+      candidateIdentityKey: string | null;
       evidenceRevisionFingerprint: string;
       observation: RawRefuelCandidateObservation;
+      mergedEvidence: MergedRawRefuelCandidateEvidence;
       firstObservedAt: Date;
       lastObservedAt: Date;
     },
   ): Promise<RawRefuelCandidate> {
-    const { observation } = data;
+    const { observation, mergedEvidence } = data;
     return tx.rawRefuelCandidate.create({
       data: {
         organizationId: data.organizationId,
@@ -52,29 +113,29 @@ export class RawRefuelCandidateRepository {
         lifecycleState: observation.lifecycleState,
         rejectionReason: observation.rejectionReason ?? null,
         evidenceRevisionFingerprint: data.evidenceRevisionFingerprint,
-        physicalEvidenceStart: observation.physicalEvidenceStart ?? null,
-        physicalEvidenceEnd: observation.physicalEvidenceEnd ?? null,
-        riseOnsetAt: observation.riseOnsetAt ?? null,
-        riseEndAt: observation.riseEndAt ?? null,
-        preFuelAbsoluteLiters: observation.preFuelAbsoluteLiters ?? null,
-        postFuelAbsoluteLiters: observation.postFuelAbsoluteLiters ?? null,
-        deltaAbsoluteLiters: observation.deltaAbsoluteLiters ?? null,
-        preFuelRelativePercent: observation.preFuelRelativePercent ?? null,
-        postFuelRelativePercent: observation.postFuelRelativePercent ?? null,
-        deltaRelativePercent: observation.deltaRelativePercent ?? null,
-        prePlateauSampleCount: observation.prePlateauSampleCount ?? null,
-        postPlateauSampleCount: observation.postPlateauSampleCount ?? null,
-        totalSampleCount: observation.totalSampleCount ?? null,
-        maxSampleGapSeconds: observation.maxSampleGapSeconds ?? null,
-        absoluteSignalTrust: observation.absoluteSignalTrust ?? null,
-        relativeSignalAvailable: observation.relativeSignalAvailable ?? null,
-        routeEvidenceAvailable: observation.routeEvidenceAvailable ?? null,
-        stationaryEvidenceAvailable: observation.stationaryEvidenceAvailable ?? null,
-        scanWindowStart: observation.scanWindowStart ?? null,
-        scanWindowEnd: observation.scanWindowEnd ?? null,
-        signalProvider: observation.signalProvider ?? null,
-        evidenceMeta: observation.evidenceMeta ?? undefined,
-        qualityMeta: observation.qualityMeta ?? undefined,
+        physicalEvidenceStart: mergedEvidence.physicalEvidenceStart,
+        physicalEvidenceEnd: mergedEvidence.physicalEvidenceEnd,
+        riseOnsetAt: mergedEvidence.riseOnsetAt,
+        riseEndAt: mergedEvidence.riseEndAt,
+        preFuelAbsoluteLiters: mergedEvidence.preFuelAbsoluteLiters,
+        postFuelAbsoluteLiters: mergedEvidence.postFuelAbsoluteLiters,
+        deltaAbsoluteLiters: mergedEvidence.deltaAbsoluteLiters,
+        preFuelRelativePercent: mergedEvidence.preFuelRelativePercent,
+        postFuelRelativePercent: mergedEvidence.postFuelRelativePercent,
+        deltaRelativePercent: mergedEvidence.deltaRelativePercent,
+        prePlateauSampleCount: mergedEvidence.prePlateauSampleCount,
+        postPlateauSampleCount: mergedEvidence.postPlateauSampleCount,
+        totalSampleCount: mergedEvidence.totalSampleCount,
+        maxSampleGapSeconds: mergedEvidence.maxSampleGapSeconds,
+        absoluteSignalTrust: mergedEvidence.absoluteSignalTrust,
+        relativeSignalAvailable: mergedEvidence.relativeSignalAvailable,
+        routeEvidenceAvailable: mergedEvidence.routeEvidenceAvailable,
+        stationaryEvidenceAvailable: mergedEvidence.stationaryEvidenceAvailable,
+        scanWindowStart: mergedEvidence.scanWindowStart,
+        scanWindowEnd: mergedEvidence.scanWindowEnd,
+        signalProvider: mergedEvidence.signalProvider,
+        evidenceMeta: (mergedEvidence.evidenceMeta ?? undefined) as Prisma.InputJsonValue | undefined,
+        qualityMeta: (mergedEvidence.qualityMeta ?? undefined) as Prisma.InputJsonValue | undefined,
         firstObservedAt: data.firstObservedAt,
         lastObservedAt: data.lastObservedAt,
       },
@@ -85,59 +146,58 @@ export class RawRefuelCandidateRepository {
     tx: TxClient,
     existing: RawRefuelCandidate,
     data: {
+      candidateIdentityKey: string | null;
       evidenceRevisionFingerprint: string;
-      observation: RawRefuelCandidateObservation;
+      mergedEvidence: MergedRawRefuelCandidateEvidence;
       lastObservedAt: Date;
       lifecycleState: RawRefuelCandidate['lifecycleState'];
+      rejectionReason: RawRefuelCandidate['rejectionReason'];
     },
   ): Promise<RawRefuelCandidate> {
-    const { observation } = data;
+    const { mergedEvidence } = data;
     return tx.rawRefuelCandidate.update({
       where: { id: existing.id },
       data: {
+        candidateIdentityKey: data.candidateIdentityKey,
         lifecycleState: data.lifecycleState,
-        rejectionReason: observation.rejectionReason ?? null,
+        rejectionReason: data.rejectionReason,
         evidenceRevisionFingerprint: data.evidenceRevisionFingerprint,
-        physicalEvidenceStart: minDate(existing.physicalEvidenceStart, observation.physicalEvidenceStart),
-        physicalEvidenceEnd: maxDate(existing.physicalEvidenceEnd, observation.physicalEvidenceEnd),
-        riseOnsetAt: minDate(existing.riseOnsetAt, observation.riseOnsetAt),
-        riseEndAt: maxDate(existing.riseEndAt, observation.riseEndAt),
-        preFuelAbsoluteLiters: observation.preFuelAbsoluteLiters ?? existing.preFuelAbsoluteLiters,
-        postFuelAbsoluteLiters: observation.postFuelAbsoluteLiters ?? existing.postFuelAbsoluteLiters,
-        deltaAbsoluteLiters: observation.deltaAbsoluteLiters ?? existing.deltaAbsoluteLiters,
-        preFuelRelativePercent: observation.preFuelRelativePercent ?? existing.preFuelRelativePercent,
-        postFuelRelativePercent: observation.postFuelRelativePercent ?? existing.postFuelRelativePercent,
-        deltaRelativePercent: observation.deltaRelativePercent ?? existing.deltaRelativePercent,
-        prePlateauSampleCount: observation.prePlateauSampleCount ?? existing.prePlateauSampleCount,
-        postPlateauSampleCount: observation.postPlateauSampleCount ?? existing.postPlateauSampleCount,
-        totalSampleCount: observation.totalSampleCount ?? existing.totalSampleCount,
-        maxSampleGapSeconds: observation.maxSampleGapSeconds ?? existing.maxSampleGapSeconds,
-        absoluteSignalTrust: observation.absoluteSignalTrust ?? existing.absoluteSignalTrust,
-        relativeSignalAvailable:
-          observation.relativeSignalAvailable ?? existing.relativeSignalAvailable,
-        routeEvidenceAvailable:
-          observation.routeEvidenceAvailable ?? existing.routeEvidenceAvailable,
-        stationaryEvidenceAvailable:
-          observation.stationaryEvidenceAvailable ?? existing.stationaryEvidenceAvailable,
-        scanWindowStart: observation.scanWindowStart ?? existing.scanWindowStart,
-        scanWindowEnd: observation.scanWindowEnd ?? existing.scanWindowEnd,
-        signalProvider: observation.signalProvider ?? existing.signalProvider,
-        evidenceMeta: observation.evidenceMeta ?? existing.evidenceMeta ?? undefined,
-        qualityMeta: observation.qualityMeta ?? existing.qualityMeta ?? undefined,
+        physicalEvidenceStart: mergedEvidence.physicalEvidenceStart,
+        physicalEvidenceEnd: mergedEvidence.physicalEvidenceEnd,
+        riseOnsetAt: mergedEvidence.riseOnsetAt,
+        riseEndAt: mergedEvidence.riseEndAt,
+        preFuelAbsoluteLiters: mergedEvidence.preFuelAbsoluteLiters,
+        postFuelAbsoluteLiters: mergedEvidence.postFuelAbsoluteLiters,
+        deltaAbsoluteLiters: mergedEvidence.deltaAbsoluteLiters,
+        preFuelRelativePercent: mergedEvidence.preFuelRelativePercent,
+        postFuelRelativePercent: mergedEvidence.postFuelRelativePercent,
+        deltaRelativePercent: mergedEvidence.deltaRelativePercent,
+        prePlateauSampleCount: mergedEvidence.prePlateauSampleCount,
+        postPlateauSampleCount: mergedEvidence.postPlateauSampleCount,
+        totalSampleCount: mergedEvidence.totalSampleCount,
+        maxSampleGapSeconds: mergedEvidence.maxSampleGapSeconds,
+        absoluteSignalTrust: mergedEvidence.absoluteSignalTrust,
+        relativeSignalAvailable: mergedEvidence.relativeSignalAvailable,
+        routeEvidenceAvailable: mergedEvidence.routeEvidenceAvailable,
+        stationaryEvidenceAvailable: mergedEvidence.stationaryEvidenceAvailable,
+        scanWindowStart: mergedEvidence.scanWindowStart,
+        scanWindowEnd: mergedEvidence.scanWindowEnd,
+        signalProvider: mergedEvidence.signalProvider,
+        evidenceMeta: (mergedEvidence.evidenceMeta ?? undefined) as Prisma.InputJsonValue | undefined,
+        qualityMeta: (mergedEvidence.qualityMeta ?? undefined) as Prisma.InputJsonValue | undefined,
         lastObservedAt: data.lastObservedAt,
       },
     });
   }
-}
 
-function minDate(current: Date | null, incoming: Date | null | undefined): Date | null {
-  if (!incoming) return current;
-  if (!current) return incoming;
-  return incoming < current ? incoming : current;
-}
-
-function maxDate(current: Date | null, incoming: Date | null | undefined): Date | null {
-  if (!incoming) return current;
-  if (!current) return incoming;
-  return incoming > current ? incoming : current;
+  async touchLastObservedAt(
+    tx: TxClient,
+    existing: RawRefuelCandidate,
+    lastObservedAt: Date,
+  ): Promise<RawRefuelCandidate> {
+    return tx.rawRefuelCandidate.update({
+      where: { id: existing.id },
+      data: { lastObservedAt },
+    });
+  }
 }

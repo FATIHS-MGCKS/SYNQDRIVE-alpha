@@ -29,7 +29,6 @@ export function buildTestObservation(
     scanWindowStart: new Date('2026-09-06T08:30:00.000Z'),
     scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
     signalProvider: 'DIMO',
-    observedAt: new Date('2026-09-06T10:00:00.000Z'),
     ...overrides,
   };
 }

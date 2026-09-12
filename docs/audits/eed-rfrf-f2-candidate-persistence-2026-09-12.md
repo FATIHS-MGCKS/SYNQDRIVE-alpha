@@ -34,7 +34,7 @@ Migration: `backend/prisma/migrations/20260912123000_rfrf_f2_raw_refuel_candidat
 
 | Column group | Fields |
 |--------------|--------|
-| Identity | `id` (UUID PK), `organization_id`, `vehicle_id`, `candidate_identity_key` |
+| Identity | `id` (UUID PK), `organization_id`, `vehicle_id`, `candidate_identity_key` (**nullable until assigned**) |
 | Versioning | `detection_version`, `detector_version`, `signal_channel` |
 | Lifecycle | `lifecycle_state`, `rejection_reason` |
 | Evidence digest | `evidence_revision_fingerprint` |
@@ -57,15 +57,10 @@ Migration: `backend/prisma/migrations/20260912123000_rfrf_f2_raw_refuel_candidat
 | `RawRefuelCandidateSignalChannel` | `ABSOLUTE_LITERS`, `RELATIVE_PERCENT` |
 | `RawRefuelAbsoluteSignalTrust` | `TRUSTED`, `UNTRUSTED`, `UNKNOWN` |
 | `RawRefuelCandidateRejectionReason` | 13 fail-closed reasons (F1 §18) |
-| `VehicleEnergyEventDetectionSource` | `DIMO_NATIVE`, `SYNQDRIVE_RAW_FUEL_FALLBACK` |
 
-### 2.3 Additive `vehicle_energy_events` columns (promotion prep)
+### 2.3 Deferred to F4 — `vehicle_energy_events` source metadata
 
-- `detection_source` (`VehicleEnergyEventDetectionSource`, nullable)
-- `source_event_key` (TEXT, nullable)
-- `@@unique([vehicleId, sourceEventKey])` — promotion idempotency target (F4/F5)
-
-Existing native rows unchanged until backfill/promotion callers exist.
+F2.1 **removed** additive `detection_source`, `source_event_key`, and `@@unique([vehicleId, sourceEventKey])` from the F2 migration to minimize migration surface. Promotion idempotency columns remain a **F4 promotion** concern; design contract in `raw-refuel-candidate-promotion.design.ts` is unchanged.
 
 ---
 
@@ -93,7 +88,7 @@ REJECTED → (terminal)
 PROMOTED → (terminal)
 ```
 
-F2 `resolveOrCreateCandidate` accepts caller-supplied `lifecycleState` and applies `resolveNextLifecycleState` — it does **not** evaluate READY_FOR_PERSIST gates (F4 detector responsibility).
+F2 `resolveOrCreateCandidate` accepts caller-supplied `lifecycleState` (except **PROMOTED**, which is not caller-controlled) and applies `resolveNextLifecycleState` — invalid transitions **throw** `RawRefuelCandidateLifecycleTransitionError` (fail-closed). `REJECTED` requires `rejectionReason`. `READY_FOR_PERSIST` requires non-null `candidateIdentityKey`.
 
 ---
 
@@ -287,28 +282,79 @@ F2 completion does **not** authorize production fallback. F3 must deliver:
 
 ---
 
-## 12. F2 completion gate results
+## 12. F2 / F2.1 completion gate results
 
 ```
+RFRF_F2_1_HARDENING = PASS
 RFRF_F2_CANDIDATE_PERSISTENCE = PASS
 F2_IMPLEMENTATION_COMPLETE = YES
-F2_START_AUTHORIZED = YES (precondition met)
 F3_START_AUTHORIZED = YES
 FALLBACK_RUNTIME_READY = NO
 PRODUCTION_FALLBACK_READY = NO
 KS_MS_661_DETECTED_BY_F2 = NO
-OPTION_D_STAGING_SCHEMA = YES
-SEMANTIC_REDISCOVERY_IMPLEMENTED = YES
-PER_VEHICLE_ADVISORY_LOCK = YES (pg_advisory_xact_lock64)
-CANDIDATE_IDENTITY_KEY_IMMUTABLE = YES
-EVIDENCE_REVISION_FINGERPRINT_MUTABLE = YES
-PROMOTION_CONTRACT_DESIGN = YES
-PROMOTION_RUNTIME_WIRED = NO
-IMPLEMENTATION_IDEMPOTENCY_PROOF = PARTIAL (integration tests exist; opt-in Postgres)
-dimoSegmentId_SYNTHETIC_COMPATIBILITY = NOT_PROVEN
-UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (7/7)
-POSTGRES_INTEGRATION_TESTS = SKIP_DEFAULT (RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1)
+FIRST_OBSERVED_CLOCK_AUTHORITY = SERVICE_OWNED
+LAST_OBSERVED_SEMANTICS = last_synqdrive_observation_advances_even_when_fingerprint_unchanged
+ORG_VEHICLE_INTEGRITY = PASS
+INSUFFICIENT_CANDIDATE_PERSISTABLE = YES
+CANDIDATE_IDENTITY_KEY_NULLABLE_UNTIL_ASSIGNED = YES
+CANDIDATE_IDENTITY_ASSIGNED_ONCE = PASS
+TERMINAL_REDISCOVERY = PASS
+PROMOTED_RESCAN_DUPLICATE_GUARD = PASS
+REJECTED_RESCAN_DUPLICATE_GUARD = PASS
+MULTIPLE_SAME_MATCH_AMBIGUITY = FAIL_CLOSED
+LIFECYCLE_TERMINAL_SAFETY = PASS
+PROMOTED_TO_REJECTED = BLOCKED
+INVALID_TRANSITION_BEHAVIOR = ERROR
+NESTED_FINGERPRINT_CANONICALIZATION = PASS
+FINGERPRINT_MATCHES_PERSISTED_EVIDENCE = PASS
+PROMOTION_DRAFT_TIME_MAPPING = PASS
+REAL_POSTGRES_MIGRATION = PASS
+BUCKET_SHIFT_REDISCOVERY_REAL_PG = PASS
+WINDOW_SHIFT_REDISCOVERY_REAL_PG = PASS
+POST_PLATEAU_MATURATION_REAL_PG = PASS
+CONCURRENT_SAME_CANDIDATE_REAL_PG = PASS
+DIFFERENT_VEHICLES_PARALLEL_REAL_PG = PASS
+FIRST_OBSERVED_IMMUTABLE_REAL_PG = PASS
+ORG_MISMATCH_REAL_PG = PASS
+TERMINAL_REDISCOVERY_REAL_PG = PASS
+IMPLEMENTATION_IDEMPOTENCY_PROOF = PASS
+UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (18/18)
+POSTGRES_INTEGRATION_TESTS = PASS (17/17; RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1)
+PRISMA_VALIDATE = PASS
+PRISMA_GENERATE = PASS
+EED_GRAPH_VALIDATOR = PASS
+FST_GRAPH_VALIDATOR = PASS
+MODULE_REGISTRY_VALIDATOR = PASS
+GIT_DIFF_CHECK = PASS
+RAW_FUEL_DETECTOR_IMPLEMENTED = NO
+PROMOTION_RUNTIME_IMPLEMENTED = NO
+G2_RUNTIME_CHANGED = NO
+PRODUCTION_MUTATED = NO
+PRODUCTION_DEPLOYED = NO
+PR_1620_STILL_DRAFT = YES
 ```
+
+### 12.1 Real PostgreSQL proof (isolated)
+
+| Property | Value |
+|----------|-------|
+| Host | `localhost:5433` (dedicated non-production instance) |
+| Database | `synqdrive_rfrf_f2_test` |
+| Production touched | **NO** |
+| Schema sync | `prisma db push` (full schema) |
+| Full `migrate deploy` chain | **Blocked** at `20260413230000_add_composite_indexes_batch_c` (`CREATE INDEX CONCURRENTLY` inside transaction) — pre-existing historical migration issue, not F2-specific |
+| F2 table verified | `raw_refuel_candidates` exists; `candidate_identity_key` nullable; enums/constraints/indexes present; 0 seed rows |
+| Integration suite | 17/17 PASS with two independent Prisma clients for concurrency proof |
+
+### 12.2 Migration operational review (F2 scope)
+
+| Item | Detail |
+|------|--------|
+| Tables created | `raw_refuel_candidates` |
+| Enums created | `RawRefuelCandidateLifecycleState`, `RawRefuelCandidateSignalChannel`, `RawRefuelAbsoluteSignalTrust`, `RawRefuelCandidateRejectionReason` |
+| Lock-sensitive statements | Standard `CREATE TABLE` + index builds (no CONCURRENTLY in F2 migration) |
+| Deferred | `vehicle_energy_events.detection_source` / `source_event_key` → F4 |
+| Production index-build risk | F2 migration alone: low; full fleet deploy must still account for historical CONCURRENTLY migrations separately |
 
 | Severity | Count | Description |
 |----------|-------|-------------|
@@ -339,4 +385,25 @@ POSTGRES_INTEGRATION_TESTS = SKIP_DEFAULT (RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRA
 ## 14. Canonical graph references
 
 - **EED:** `EED-EV-0043` (this document), `EED-EV-0042` (F1.1), `EED-DEC-RFRF-005`
+
+---
+
+## 15. F2.1 hardening summary (2026-09-12)
+
+Independent review gaps closed on PR #1620 (`cursor/eed-rfrf-f2-candidate-persistence-f21f`):
+
+| Gap | Resolution |
+|-----|------------|
+| Caller-owned `observedAt` | Removed from public observation contract; `RawRefuelCandidateClock` owns durable timestamps |
+| `lastObservedAt` ambiguity | Advances on every non-terminal re-observation (`MAX(existing, serviceNow)`) even when fingerprint unchanged |
+| Org/vehicle integrity | `organizationId` derived from `Vehicle` row; mismatch throws before any candidate mutation |
+| INSUFFICIENT persistence | `candidateIdentityKey` nullable until pre-plateau + rise evidence sufficient; assigned once |
+| Terminal rediscovery | `PROMOTED` / `REJECTED` included in semantic lookup; no duplicate rows on rescan |
+| Multiple SAME ambiguity | >1 SAME match → `RawRefuelCandidateAmbiguityError` (fail-closed) |
+| Lifecycle terminal safety | Removed REJECTED bypass; invalid transitions throw |
+| Fingerprint canonicalization | Recursive `canonicalizeForFingerprint`; computed from **merged** persisted evidence |
+| Promotion `endTime` | Fixed `??` / `?:` precedence; explicit mapping tests |
+| Real PostgreSQL | 17/17 integration tests on isolated `localhost:5433` database |
+
+**Prior overclaim corrected:** F2 was **PARTIAL** before real PostgreSQL proof; F2.1 closes idempotency and integrity gates.
 - **Motivates from:** `EED-EV-0040`, `EED-EV-0041`

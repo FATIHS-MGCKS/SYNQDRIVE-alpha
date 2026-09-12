@@ -1,4 +1,5 @@
 import type { RawRefuelCandidateLifecycleState } from '@prisma/client';
+import { RawRefuelCandidateLifecycleTransitionError } from './raw-refuel-candidate.errors';
 
 const FORWARD_TRANSITIONS: Record<
   RawRefuelCandidateLifecycleState,
@@ -31,10 +32,7 @@ export function resolveNextLifecycleState(
   if (isValidRawRefuelCandidateLifecycleTransition(current, requested)) {
     return requested;
   }
-  if (requested === 'REJECTED') {
-    return 'REJECTED';
-  }
-  return current;
+  throw new RawRefuelCandidateLifecycleTransitionError(current, requested);
 }
 
 export function isRawRefuelCandidateTerminal(

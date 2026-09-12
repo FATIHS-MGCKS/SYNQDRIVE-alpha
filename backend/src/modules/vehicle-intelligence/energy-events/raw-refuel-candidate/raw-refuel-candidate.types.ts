@@ -42,8 +42,6 @@ export interface RawRefuelCandidateObservation {
   signalProvider?: string | null;
   evidenceMeta?: Record<string, unknown> | null;
   qualityMeta?: Record<string, unknown> | null;
-  /** SynqDrive durable observation clock — defaults to now when omitted. */
-  observedAt?: Date;
 }
 
 export interface RawRefuelCandidateEvidenceSlice {
@@ -78,7 +76,7 @@ export interface RawRefuelCandidateEvidenceSlice {
 
 export interface RawRefuelCandidateResolveResult {
   candidateId: string;
-  candidateIdentityKey: string;
+  candidateIdentityKey: string | null;
   evidenceRevisionFingerprint: string;
   lifecycleState: RawRefuelCandidateLifecycleState;
   created: boolean;

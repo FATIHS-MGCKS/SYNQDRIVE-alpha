@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonicalJsonString } from './raw-refuel-candidate-canonical-json';
 import type { RawRefuelCandidateEvidenceSlice } from './raw-refuel-candidate.types';
 
 function iso(value: Date | null | undefined): string | null {
@@ -44,7 +45,7 @@ export function buildEvidenceRevisionFingerprint(
     qualityMeta: evidence.qualityMeta ?? null,
   };
 
-  const canonical = JSON.stringify(payload, Object.keys(payload).sort());
+  const canonical = canonicalJsonString(payload);
   return createHash('sha256').update(canonical).digest('hex');
 }
 
