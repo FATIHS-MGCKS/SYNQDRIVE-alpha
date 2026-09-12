@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f3-2-semantic-closure-2026-09-12',
+    version: '4.9.1117',
+    title: 'RFRF F3.2 — Final semantic closure (finality + channel fallback + real PG)',
+    summary: [
+      'provisionalPostContinuationGraceMs (10 min) separate from riseMaxDurationMs — finalized post creates event boundary.',
+      'Two refuels within 45 minutes now correctly yield 2 candidates when post is finalized.',
+      'TRUSTED absolute sparse samples fall back to relative primary channel.',
+      'Non-finite samples excluded per channel with explicit documented policy.',
+      'Real isolated PostgreSQL F3→F2 handoff 4/4 PASS; 21 negative behavioral cases.',
+    ],
+    reason:
+      'Independent review found two remaining P1 semantic gaps before PR #1623 main sync.',
+    previousBehavior:
+      '45m rise neighborhood could merge separate refuels; TRUSTED absolute blocked relative fallback.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §14; backend/scripts/test/rfrf-f3-f2-handoff-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T23:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f3-1-detector-hardening-2026-09-12',
     version: '4.9.1116',
     title: 'RFRF F3.1 — Raw rise detector hardening',

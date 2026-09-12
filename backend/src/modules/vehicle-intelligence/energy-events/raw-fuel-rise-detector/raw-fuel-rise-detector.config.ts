@@ -22,6 +22,8 @@ export const RAW_FUEL_RISE_DETECTOR_CONFIG_V1 = {
   },
   riseMinDurationMs: 30 * 1000,
   riseMaxDurationMs: 45 * 60 * 1000,
+  /** F3.2 — coalescence grace from last peak update; NOT same-event finality as riseMaxDurationMs. */
+  provisionalPostContinuationGraceMs: 10 * 60 * 1000,
   relativeValidRange: { min: 0, max: 100 },
   thresholdProvenance: {
     materialRiseLiters: 'PROVISIONAL',
@@ -36,6 +38,7 @@ export const RAW_FUEL_RISE_DETECTOR_CONFIG_V1 = {
     postPlateauMinPersistenceMs: 'INFERRED',
     riseMinDurationMs: 'INFERRED_FROM_EXISTING_CODE',
     riseMaxDurationMs: 'PROVISIONAL',
+    provisionalPostContinuationGraceMs: 'PROVISIONAL',
   },
 } as const;
 

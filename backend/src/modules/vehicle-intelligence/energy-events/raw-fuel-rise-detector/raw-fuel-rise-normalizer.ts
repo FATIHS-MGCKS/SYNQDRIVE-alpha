@@ -9,6 +9,13 @@ export type NormalizeRawFuelSamplesResult =
   | { ok: true; samples: NormalizedRawFuelSample[] }
   | { ok: false; reason: RawFuelRiseDetectorFailureReason; detail: string };
 
+/**
+ * Non-finite numeric channel values (NaN, ±Infinity) are excluded per channel.
+ * They are NOT treated as trustworthy absence. See `NON_FINITE_SAMPLE_POLICY`.
+ */
+export const NON_FINITE_SAMPLE_POLICY =
+  'INVALID_CHANNEL_SAMPLE_EXCLUDED_WITH_EXPLICIT_DIAGNOSTIC' as const;
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }

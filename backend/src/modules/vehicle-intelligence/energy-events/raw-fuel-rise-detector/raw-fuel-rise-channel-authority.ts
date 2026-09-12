@@ -19,7 +19,13 @@ export function selectPrimarySignalChannel(
     if (absoluteSeries.length >= config.absolute.prePlateauMinSamples) {
       return { ok: true, channel: 'ABSOLUTE_LITERS' };
     }
-    return { ok: false, reason: 'insufficient_channel_samples' };
+  } else if (
+    context.relativeSignalAvailable &&
+    relativeSeries.length >= config.relative.prePlateauMinSamples
+  ) {
+    return { ok: true, channel: 'RELATIVE_PERCENT' };
+  } else {
+    return { ok: false, reason: 'no_trusted_channel' };
   }
 
   if (
@@ -27,6 +33,10 @@ export function selectPrimarySignalChannel(
     relativeSeries.length >= config.relative.prePlateauMinSamples
   ) {
     return { ok: true, channel: 'RELATIVE_PERCENT' };
+  }
+
+  if (absoluteSeries.length > 0 || relativeSeries.length > 0) {
+    return { ok: false, reason: 'insufficient_channel_samples' };
   }
 
   return { ok: false, reason: 'no_trusted_channel' };

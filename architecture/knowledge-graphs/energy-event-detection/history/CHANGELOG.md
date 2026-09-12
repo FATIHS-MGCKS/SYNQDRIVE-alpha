@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F3.2 final semantic closure
+
+- provisionalPostContinuationGraceMs separate from riseMaxDurationMs; finalized post = event boundary
+- TRUSTED absolute sparse → relative fallback; non-finite sample policy documented
+- 21 negative behavioral cases; case 22 deferred to F4
+- Real isolated PG F3→F2 handoff 4/4 PASS
+- F4_START_AUTHORIZED=NO until main sync + merge review
+
+**Verdict:** RFRF_F3_2_FINAL_SEMANTIC_CLOSURE=PASS
+
+---
+
 ## 2026-09-12 — RFRF F3.1 detector hardening
 
 - Strict plateau final-median invariant; single-step provider rises; stepped-refuel coalescence

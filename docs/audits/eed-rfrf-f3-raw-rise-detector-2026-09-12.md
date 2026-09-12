@@ -149,9 +149,11 @@ Bugfix/threshold tuning changes `detectorVersion` only unless physical identity 
 | `raw-fuel-rise-detector-negative.spec.ts` | negative/hold matrix (22 cases) | **PASS** |
 | `raw-fuel-rise-detector-invariance.spec.ts` | window/order/duplicate | **PASS** |
 | F2 unit regression (`raw-refuel-candidate`) | 25 | **PASS** |
-| F2 handoff PG (`RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1`) | 4 | **PASS** |
+| `raw-fuel-rise-detector-f3-2.spec.ts` | F3.2 finality + channel fallback + non-finite | **PASS** |
+| F2 handoff PG (`RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1`) | 4 executed on isolated PG | **PASS** |
 
-**Total F3 unit tests:** 50 (F3 + F3.1 + negative + invariance + fixtures + positive)
+**Total F3 unit tests:** 62 (excluding 4 PG integration proofs)
+**Negative behavioral cases executed:** 21 (case 22 deferred to F4)
 
 ---
 
@@ -239,6 +241,45 @@ Repeated strong regressions no longer reset on intermediate peaks.
 
 ```
 RFRF_F3_1_HARDENING = PASS
-F4_START_AUTHORIZED = YES
+PR_1623_STILL_DRAFT = YES
+```
+
+---
+
+## 14. F3.2 — Final semantic closure (2026-09-12)
+
+### 14.1 riseMaxDurationMs ≠ same-event finality
+
+`riseMaxDurationMs` bounds one **unresolved rise episode** only. Stepped coalescence uses separate `provisionalPostContinuationGraceMs` (10 min, PROVISIONAL) measured from **last peak update**, not rise onset. Finalized post creates an event boundary; later material rises become second candidates even within 45 minutes.
+
+### 14.2 Primary channel fallback
+
+`absoluteSignalTrust=TRUSTED` means absolute may be authoritative **when usable** — sparse absolute no longer suppresses valid relative fallback.
+
+### 14.3 Non-finite sample policy
+
+`INVALID_CHANNEL_SAMPLE_EXCLUDED_WITH_EXPLICIT_DIAGNOSTIC` — NaN/±Infinity excluded per channel; never silently treated as trustworthy absence.
+
+### 14.4 Negative matrix epistemics
+
+21 behavioral negative cases executed (PASS). Case 22 (EV/non-fuel capability gate) **DEFERRED_TO_F4** — not counted as behavioral proof.
+
+### 14.5 Real PostgreSQL F3→F2 handoff
+
+Executed on isolated localhost PostgreSQL (`rfrf_f3_handoff_test`, port 5432) via `prisma migrate deploy` (resilient) + `RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1`. **4/4 PASS**, 0 skip, 0 fail.
+
+Gate script: `backend/scripts/test/rfrf-f3-f2-handoff-postgres-gate.sh`
+
+### 14.6 F3.2 completion gate
+
+```
+RFRF_F3_2_FINAL_SEMANTIC_CLOSURE = PASS
+PROVISIONAL_POST_STATE_IMPLEMENTED = YES
+CONTINUATION_GRACE_SEPARATE_FROM_RISE_MAX_DURATION = YES
+REAL_PG_F3_F2_HANDOFF_EXECUTED = YES
+NEGATIVE_CASES_EXECUTED = 21
+CAPABILITY_GATE_CASE = DEFERRED_TO_F4
+F4_START_AUTHORIZED = NO
+PR_1623_READY_FOR_FINAL_MAIN_SYNC = YES
 PR_1623_STILL_DRAFT = YES
 ```

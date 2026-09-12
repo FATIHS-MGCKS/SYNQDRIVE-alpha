@@ -159,10 +159,12 @@ function findLocalPostPlateauAfterRise(
 
     if (series[i].value < preMedian + material) continue;
     if (series[i].value < peakValue - tolerance) continue;
+    if (series[i].value > peakValue + tolerance) continue;
 
     const window: ChannelPoint[] = [series[i]];
     for (let j = i + 1; j < series.length; j++) {
       if (series[j].value < peakValue - tolerance) break;
+      if (series[j].value > peakValue + tolerance) break;
 
       const interSampleGapMs =
         series[j].timestamp.getTime() - series[j - 1].timestamp.getTime();
@@ -172,12 +174,38 @@ function findLocalPostPlateauAfterRise(
       const { valid } = validatePlateauWindow(candidateValues, tolerance);
       if (!valid) break;
       window.push(series[j]);
+
+      if (window.length >= minSamples) {
+        const values = window.map((p) => p.value);
+        const { valid: windowValid, median: center } = validatePlateauWindow(
+          values,
+          tolerance,
+        );
+        if (
+          windowValid &&
+          center >= peakValue - tolerance &&
+          center <= peakValue + tolerance
+        ) {
+          const persistenceMs =
+            window[window.length - 1].timestamp.getTime() - window[0].timestamp.getTime();
+          if (persistenceMs >= minPersistenceMs) {
+            return {
+              startIdx: i,
+              endIdx: j,
+              median: center,
+              samples: [...window],
+            };
+          }
+        }
+      }
     }
 
     if (window.length >= minSamples) {
       const values = window.map((p) => p.value);
       const { valid, median: center } = validatePlateauWindow(values, tolerance);
-      if (!valid || center < peakValue - tolerance) continue;
+      if (!valid || center < peakValue - tolerance || center > peakValue + tolerance) {
+        continue;
+      }
 
       const persistenceMs =
         window[window.length - 1].timestamp.getTime() - window[0].timestamp.getTime();
@@ -195,11 +223,12 @@ function findLocalPostPlateauAfterRise(
 }
 
 /**
- * Scan the physical rise neighborhood, absorbing stepped/quantized continuations
- * into one rise before searching for a local post plateau.
+ * Resolve RISING with provisional-post continuation grace.
  *
- * Provider sample spacing != physical fueling duration — single-step material
- * jumps are valid when post evidence supports them.
+ * riseMaxDurationMs bounds one unresolved rise episode only.
+ * provisionalPostContinuationGraceMs bounds stepped coalescence from the last peak update.
+ * A later material rise outside that grace becomes a separate physical refuel even if
+ * it occurs within riseMaxDurationMs of the original rise onset.
  */
 function scanPhysicalRiseNeighborhood(
   series: ChannelPoint[],
@@ -216,6 +245,8 @@ function scanPhysicalRiseNeighborhood(
   const material = materialThreshold(channel, config);
   const wobble = negativeWobbleTolerance(channel, config);
   const platTol = plateauTolerance(channel, config);
+  const postTol = postPlateauTolerance(channel, config);
+  const continuationGraceMs = config.provisionalPostContinuationGraceMs;
   const startSearch = pre.endIdx + 1;
   if (startSearch >= series.length) return null;
 
@@ -228,22 +259,37 @@ function scanPhysicalRiseNeighborhood(
   }
   if (riseStartIdx == null) return null;
 
-  const neighborhoodEndMs =
-    series[riseStartIdx].timestamp.getTime() + config.riseMaxDurationMs;
+  const riseOnsetMs = series[riseStartIdx].timestamp.getTime();
+  const unresolvedRiseEndMs = riseOnsetMs + config.riseMaxDurationMs;
 
   let peakIdx = riseStartIdx;
   let peakValue = series[riseStartIdx].value;
+  let lastPeakUpdateMs = series[riseStartIdx].timestamp.getTime();
   let strongRegressionCount = 0;
   let returnedToBaseline = false;
   let sensorResetSuspected = false;
 
   for (let i = riseStartIdx + 1; i < series.length; i++) {
     const point = series[i];
-    if (point.timestamp.getTime() > neighborhoodEndMs) break;
+    if (point.timestamp.getTime() > unresolvedRiseEndMs) break;
+
+    const msSinceLastPeak = point.timestamp.getTime() - lastPeakUpdateMs;
+    if (msSinceLastPeak > continuationGraceMs) break;
+
+    if (point.value > peakValue + postTol) {
+      if (msSinceLastPeak <= continuationGraceMs && strongRegressionCount === 0) {
+        peakValue = point.value;
+        peakIdx = i;
+        lastPeakUpdateMs = point.timestamp.getTime();
+        continue;
+      }
+      break;
+    }
 
     if (point.value > peakValue) {
       peakValue = point.value;
       peakIdx = i;
+      lastPeakUpdateMs = point.timestamp.getTime();
     }
 
     if (point.value < peakValue) {
@@ -269,6 +315,10 @@ function scanPhysicalRiseNeighborhood(
   }
 
   if (peakValue - pre.median < material) return null;
+
+  if (strongRegressionCount > 0) {
+    returnedToBaseline = true;
+  }
 
   const riseDurationMs =
     series[peakIdx].timestamp.getTime() - series[riseStartIdx].timestamp.getTime();
@@ -481,6 +531,7 @@ export function draftToObservationFields(
       primaryChannel: draft.channel,
       thresholdProvenance: config.thresholdProvenance,
       providerSampleSpacingNotPhysicalDuration: true,
+      provisionalPostContinuationGraceMs: config.provisionalPostContinuationGraceMs,
     },
     qualityMeta: {
       maxSampleGapSeconds: draft.maxSampleGapSeconds,

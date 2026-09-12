@@ -237,8 +237,6 @@ describe('raw-fuel-rise-detector negative matrix', () => {
       true,
     );
   });
-
-  it('22 — non-fuel / EV capability gate deferred to F4', () => {
-    expect(true).toBe(true);
-  });
 });
+
+/** Case 22 (non-fuel / EV capability gate) deferred to F4 — no F3 detector authority. */
