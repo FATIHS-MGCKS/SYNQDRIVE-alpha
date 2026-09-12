@@ -1581,6 +1581,7 @@ model Organization {
   stations                               Station[]
   vehicleStationTransfers                VehicleStationTransfer[]
   vehicles                               Vehicle[]
+  rawRefuelCandidates                    RawRefuelCandidate[]
   brakeComponentInstallations            BrakeComponentInstallation[]
   brakeServiceApplications               BrakeServiceApplication[]
   brakeServiceOutbox                     BrakeServiceOutbox[]
@@ -2980,6 +2981,7 @@ model Vehicle {
   misuseCases                            MisuseCase[]
   tripRepairs                            TripRepair[]
   energyEvents                           VehicleEnergyEvent[]
+  rawRefuelCandidates                    RawRefuelCandidate[]
   logbookConfig                          VehicleLogbookConfig?
   documentExtractions                    VehicleDocumentExtraction[]
   vendorVehicles                         VendorVehicle[]
@@ -9954,6 +9956,10 @@ model VehicleEnergyEvent {
   odometerEndKm      Float?                @map("odometer_end_km")
   confidence         EnergyEventConfidence @default(MEDIUM)
   rawDetectionMeta   Json?                 @map("raw_detection_meta")
+  /// Provider-neutral detection provenance (nullable for legacy DIMO-native rows).
+  detectionSource    VehicleEnergyEventDetectionSource? @map("detection_source")
+  /// Stable logical event key (e.g. RawRefuelCandidate.candidateIdentityKey on fallback promotion).
+  sourceEventKey     String?               @map("source_event_key")
   /// REFUEL only: observed material fuel-level transition window (not pump/nozzle duration).
   fuelLevelRiseStart        DateTime? @map("fuel_level_rise_start")
   fuelLevelRiseEnd          DateTime? @map("fuel_level_rise_end")
@@ -9970,6 +9976,7 @@ model VehicleEnergyEvent {
   @@index([vehicleId, kind, startTime])
   @@index([vehicleId, kind, createdAt])
   @@index([kind])
+  @@unique([vehicleId, sourceEventKey])
   @@map("vehicle_energy_events")
 }
 
@@ -10020,6 +10027,99 @@ model VehicleEnergyEventRefuelReconciliation {
   @@index([nextCoordinateRetryAt])
   @@index([reconciliationGroupId])
   @@map("vehicle_energy_event_refuel_reconciliations")
+}
+
+/// RFRF F2 — raw fuel refuel fallback candidate staging (Option D).
+enum VehicleEnergyEventDetectionSource {
+  DIMO_NATIVE
+  SYNQDRIVE_RAW_FUEL_FALLBACK
+}
+
+enum RawRefuelCandidateLifecycleState {
+  INSUFFICIENT
+  OBSERVED
+  SETTLING
+  READY_FOR_PERSIST
+  REJECTED
+  PROMOTED
+}
+
+enum RawRefuelCandidateSignalChannel {
+  ABSOLUTE_LITERS
+  RELATIVE_PERCENT
+}
+
+enum RawRefuelAbsoluteSignalTrust {
+  TRUSTED
+  UNTRUSTED
+  UNKNOWN
+}
+
+enum RawRefuelCandidateRejectionReason {
+  INSUFFICIENT_PRE_PLATEAU
+  INSUFFICIENT_POST_PLATEAU
+  RISE_TOO_SMALL
+  SAMPLE_GAP_TOO_LARGE
+  RISE_NOT_STABLE
+  SENSOR_RESET_SUSPECTED
+  UNIT_NOT_TRUSTED
+  VEHICLE_CAPABILITY_UNSUPPORTED
+  MOTION_EVIDENCE_CONFLICT
+  DUPLICATE_NATIVE_EVIDENCE
+  EVIDENCE_STILL_SETTLING
+  DUPLICATE_FALLBACK_EVIDENCE
+  NON_FUEL_POWERTRAIN
+}
+
+model RawRefuelCandidate {
+  id                         String                           @id @default(uuid())
+  organizationId             String                           @map("organization_id")
+  vehicleId                  String                           @map("vehicle_id")
+  candidateIdentityKey       String                           @map("candidate_identity_key")
+  detectionVersion           String                           @map("detection_version")
+  detectorVersion            String                           @map("detector_version")
+  signalChannel              RawRefuelCandidateSignalChannel  @map("signal_channel")
+  lifecycleState             RawRefuelCandidateLifecycleState @map("lifecycle_state")
+  rejectionReason            RawRefuelCandidateRejectionReason? @map("rejection_reason")
+  evidenceRevisionFingerprint String                          @map("evidence_revision_fingerprint")
+  physicalEvidenceStart      DateTime?                        @map("physical_evidence_start")
+  physicalEvidenceEnd        DateTime?                        @map("physical_evidence_end")
+  riseOnsetAt                DateTime?                        @map("rise_onset_at")
+  riseEndAt                  DateTime?                        @map("rise_end_at")
+  preFuelAbsoluteLiters      Float?                           @map("pre_fuel_absolute_liters")
+  postFuelAbsoluteLiters     Float?                           @map("post_fuel_absolute_liters")
+  deltaAbsoluteLiters        Float?                           @map("delta_absolute_liters")
+  preFuelRelativePercent     Float?                           @map("pre_fuel_relative_percent")
+  postFuelRelativePercent    Float?                           @map("post_fuel_relative_percent")
+  deltaRelativePercent       Float?                           @map("delta_relative_percent")
+  prePlateauSampleCount      Int?                             @map("pre_plateau_sample_count")
+  postPlateauSampleCount     Int?                             @map("post_plateau_sample_count")
+  totalSampleCount           Int?                             @map("total_sample_count")
+  maxSampleGapSeconds        Int?                             @map("max_sample_gap_seconds")
+  absoluteSignalTrust        RawRefuelAbsoluteSignalTrust?    @map("absolute_signal_trust")
+  relativeSignalAvailable    Boolean?                         @map("relative_signal_available")
+  routeEvidenceAvailable     Boolean?                         @map("route_evidence_available")
+  stationaryEvidenceAvailable Boolean?                        @map("stationary_evidence_available")
+  scanWindowStart            DateTime?                        @map("scan_window_start")
+  scanWindowEnd              DateTime?                        @map("scan_window_end")
+  signalProvider             String?                          @map("signal_provider")
+  evidenceMeta               Json?                            @map("evidence_meta")
+  qualityMeta                Json?                            @map("quality_meta")
+  firstObservedAt            DateTime                         @map("first_observed_at")
+  lastObservedAt             DateTime                         @map("last_observed_at")
+  createdAt                  DateTime                         @default(now()) @map("created_at")
+  updatedAt                  DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, candidateIdentityKey])
+  @@index([organizationId])
+  @@index([vehicleId, lifecycleState])
+  @@index([vehicleId, physicalEvidenceStart])
+  @@index([vehicleId, firstObservedAt])
+  @@index([lifecycleState, updatedAt])
+  @@map("raw_refuel_candidates")
 }
 
 /// Async OSM fuel-station resolution for persisted REFUEL energy events (Phase D).
