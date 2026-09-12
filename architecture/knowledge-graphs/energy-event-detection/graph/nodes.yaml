@@ -1423,6 +1423,23 @@ nodes:
       FULL_REPOSITORY_MIGRATION_CHAIN=FAIL_PRE_EXISTING (historical CONCURRENTLY defect documented).
     verified_at: "2026-09-12"
 
+  - id: EED-EV-0044
+    type: evidence
+    title: RFRF F3 — Raw fuel rise detector (STABLE_PRE→RISING→STABLE_POST)
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-detector.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-detector-fixtures.spec.ts
+    summary: >
+      F3 pure detector with F3.1 hardening and F3.2 semantic closure: strict plateau invariant,
+      single-step provider rises, stepped coalescence via provisionalPostContinuationGraceMs
+      (separate from riseMaxDurationMs), local post plateau, TRUSTED→relative fallback,
+      wobble fail-closed, nullable native-segment metric. 62 unit tests; 4/4 real isolated PG
+      F2 handoff proofs. No production wiring. F4_START_AUTHORIZED=NO until main sync review.
+    verified_at: "2026-09-12"
+
   - id: EED-DEC-RFRF-001
     type: decision
     title: RFRF — SynqDrive raw-fuel fallback authority

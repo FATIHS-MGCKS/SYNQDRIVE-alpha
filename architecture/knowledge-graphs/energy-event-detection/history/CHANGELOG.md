@@ -1,5 +1,39 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F3.2 final semantic closure
+
+- provisionalPostContinuationGraceMs separate from riseMaxDurationMs; finalized post = event boundary
+- TRUSTED absolute sparse → relative fallback; non-finite sample policy documented
+- 21 negative behavioral cases; case 22 deferred to F4
+- Real isolated PG F3→F2 handoff 4/4 PASS
+- F4_START_AUTHORIZED=NO until main sync + merge review
+
+**Verdict:** RFRF_F3_2_FINAL_SEMANTIC_CLOSURE=PASS
+
+---
+
+## 2026-09-12 — RFRF F3.1 detector hardening
+
+- Strict plateau final-median invariant; single-step provider rises; stepped-refuel coalescence
+- Local post plateau; wobble fail-closed; `rawRiseWithoutNativeSegmentTotal=null`
+- 50 unit tests; 4 F2 handoff PG proofs (opt-in)
+- Evidence `EED-EV-0044` updated; F4_START_AUTHORIZED=YES
+
+**Verdict:** RFRF_F3_1_HARDENING=PASS
+
+---
+
+## 2026-09-12 — RFRF F3 raw fuel rise detector
+
+- Pure STABLE_PRE→RISING→STABLE_POST detector; unit isolation; primary channel authority
+- KS MS 661 observed material rise detected; synthetic READY_FOR_PERSIST
+- Evidence `EED-EV-0044`; 27 unit tests + F2 test-only handoff PG proof
+- No production wiring; F4_START_AUTHORIZED=YES
+
+**Verdict:** RFRF_F3=PASS — detector algorithm complete
+
+---
+
 ## 2026-09-12 — RFRF F2.2a final merge closure (PR #1620)
 
 - Rediscovery window: evidence timestamps only anchor min/max; `serviceNow` fallback when no evidence exists
