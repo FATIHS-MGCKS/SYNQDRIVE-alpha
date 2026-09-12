@@ -50,10 +50,11 @@ Append-only record for this authority directory.
 | 2026-09-11 | PR #1603 CI follow-up — integration fixture purges stale delayed PEC after seed; worker wrapper mirrors processor moveToDelayed; i18n P2.3.4 uses isolated bootstrap fixture (not CI PR diff) | Trip FSM R12 PR #1603 | Same dispatch-gap evidence doc |
 | 2026-09-11 | PR #1603 — defer `scheduleFinalize` until END_VALIDATION `releaseWorkerLock` (tertiary lock-order fix); harness monotonic waits under fake Date; i18n governance test removed from trip-only PR | Trip FSM R12 PR #1603 | KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md |
 | 2026-09-11 | PR #1603 concurrency proof closure — portable BASE/HEAD probe rewritten for BASE harness compatibility; JSON metrics; CI wired via package.json | Trip FSM R12 PR #1603 | Same dispatch-gap evidence doc |
+| 2026-09-11 | R12 PEC/EV BASE/HEAD causal proof — portable probe + worktree script; validation env-path fix `9f8078cd6`; causal BASE RED observed CI run 34647969555 | Trip FSM R12 PR #1603 | [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md), [KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md](../evidence/KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md) |
+| 2026-09-12 | KS MS 661 POST-#1603 physical drive read-only acceptance — trip `a05fa903…` @ deploy `f6f5eaa3a…`; #1603 lock-order class not reproduced; CUSUM 1/3 → ACTIVE revert; **FAIL_PENDING_FIX** after follow-up | Read-only acceptance audit | [KS_MS_661_R12_POST_1603_PHYSICAL_ACCEPTANCE_2026-09-12.md](../evidence/KS_MS_661_R12_POST_1603_PHYSICAL_ACCEPTANCE_2026-09-12.md) |
+| 2026-09-12 | KS MS 661 POST-#1603 CUSUM retry fix — `ActiveReopenReason` + CUSUM-only trusted boundary preservation; RED/GREEN tests; PR #1617 | Fix branch (not deployed) | [KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md](../evidence/KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
-
-| 2026-09-11 | R12 PEC/EV BASE/HEAD causal proof — portable probe + worktree script; validation env-path fix `9f8078cd6`; causal BASE RED observed CI run 34647969555 | Trip FSM R12 PR #1603 | [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md), [KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md](../evidence/KS_MS_661_R12_DISPATCH_GAP_ROOT_CAUSE_2026-09-11.md) |
 
 ## Planned later phases (Standard 1.0)
 

@@ -240,25 +240,35 @@ describe('R5 — processEndValidation', () => {
     jest.useRealTimers();
   });
 
-  it('2/10 — CUSUM ongoing reopen clears end-cycle fields and resets attempts', async () => {
+  it('2/10 — CUSUM ongoing reopen clears end-cycle fields, preserves trusted boundary', async () => {
+    const stopBoundaryAt = new Date(WORKER_NOW.getTime() - 130_000);
     const h = buildOrchestrationHarness({
       endDetectionMode: END_DETECTION_MODES.COMPOSITE_INACTIVITY,
       endConfidence: DetectionConfidence.MEDIUM,
       endValidationAttempts: 1,
-      lastEvidenceSummary: { endValidationScheduledAt: WORKER_NOW.toISOString() },
+      lastEvidenceSummary: {
+        endValidationScheduledAt: WORKER_NOW.toISOString(),
+        stopBoundaryAt: stopBoundaryAt.toISOString(),
+        stopBoundarySource: 'provider_stationary_vls',
+        stopBoundaryClockAuthority: 'PROVIDER_EVENT_TIME',
+        stopBoundaryTrust: true,
+      },
     });
     h.runAll.mockResolvedValue([
       {
         detectorName: 'ChangePointEndDetector',
         verdict: 'NOT_TRIGGERED',
-        evidence: { cusumLastMovementAt: new Date(WORKER_NOW.getTime() - 10_000).toISOString() },
+        evidence: {
+          cusumLastMovementAt: new Date(WORKER_NOW.getTime() - 140_000).toISOString(),
+          appearsOngoing: true,
+        },
       },
     ]);
     h.evaluateEndCandidate.mockReturnValue({
       shouldReopen: true,
       shouldEnd: false,
-      endMode: 'COMPOSITE_INACTIVITY',
-      reason: 'still_moving',
+      endMode: 'CUSUM_ONGOING',
+      reason: 'CUSUM indicates trip is still active',
     });
 
     await TripDetectionOrchestrationService.prototype.processEndValidation.call(
@@ -266,7 +276,12 @@ describe('R5 — processEndValidation', () => {
       jobData(TRIP_TRACKING_TRIGGERS.END_VALIDATION),
     );
 
-    expectEndCycleResetPayload(h.transitionState.mock.calls[1][2]);
+    const payload = h.transitionState.mock.calls[1][2];
+    expect(payload.possibleEndAt).toBeNull();
+    expect(payload.endValidationAttempts).toBe(0);
+    const summary = payload.lastEvidenceSummary as Record<string, unknown>;
+    expect(summary.stopBoundaryAt).toBe(stopBoundaryAt.toISOString());
+    expect(summary.endValidationScheduledAt).toBeUndefined();
     expect(h.scheduleActiveTick).toHaveBeenCalled();
   });
 

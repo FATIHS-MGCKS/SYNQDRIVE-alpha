@@ -2968,6 +2968,7 @@ export class TripDetectionOrchestrationService {
               workerNow: now,
               lastMeaningfulMovementAt: resumedMovementAt,
               priorSummary,
+              reopenReason: 'ACTIVITY_RESUMED',
             }),
           });
           await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
@@ -3379,6 +3380,7 @@ export class TripDetectionOrchestrationService {
             workerNow: now,
             lastMeaningfulMovementAt: lastMovementAt,
             priorSummary,
+            reopenReason: 'CUSUM_STILL_ONGOING',
           }),
         });
         await this.cancelPendingEndCycleJobs(vehicleId, det.activeTripId);
@@ -4148,6 +4150,7 @@ export class TripDetectionOrchestrationService {
       ...buildPossibleEndToActiveReset({
         workerNow: params.now,
         priorSummary: params.priorSummary,
+        reopenReason: 'ACTIVITY_RESUMED',
       }),
     });
     await this.cancelPendingEndCycleJobs(

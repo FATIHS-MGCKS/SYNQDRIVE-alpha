@@ -2,8 +2,13 @@ import {
   clearPossibleEndClockFields,
   isValidProviderEventTimestamp,
   readPossibleEndEnteredAtFromEvidence,
+  type StopBoundaryProvenance,
 } from './trip-fsm-clock-contract';
 import type { EmptyCoreForensics } from './trip-empty-core-end-gate';
+import { readStopBoundaryProvenance } from './trip-fsm-evidence-state';
+
+/** Why POSSIBLE_END → ACTIVE reopen occurred — controls stop-boundary strip semantics. */
+export type ActiveReopenReason = 'ACTIVITY_RESUMED' | 'CUSUM_STILL_ONGOING';
 
 export type PecResumeCheckOutcome =
   | 'RESUMED'
@@ -37,6 +42,20 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
   'completedAttemptCount',
   'pendingFinalizeCycleToken',
   'pendingFinalizeScheduledAt',
+] as const;
+
+/**
+ * Stop-boundary evidence restored ONLY on CUSUM_STILL_ONGOING reopen when the prior
+ * boundary is trusted and not invalidated by post-boundary movement.
+ */
+export const CUSUM_RETRY_PRESERVE_STOP_BOUNDARY_KEYS = [
+  'stopBoundaryAt',
+  'stopBoundarySource',
+  'stopBoundaryClockAuthority',
+  'stopBoundaryTrust',
+  'stopBoundaryEvidenceState',
+  'stopBoundaryCandidateReason',
+  'stopBoundaryContradictions',
 ] as const;
 
 /** Stable token for one POSSIBLE_END episode (worker-entered clock). */
@@ -202,12 +221,61 @@ function withClearedAttemptLocalState(
 /** @deprecated use END_CYCLE_REOPEN_STRIP_KEYS */
 export const END_CYCLE_TRANSIENT_EVIDENCE_KEYS = END_CYCLE_REOPEN_STRIP_KEYS;
 
+/**
+ * Trusted stop boundary eligible for CUSUM-only ACTIVE reopen preservation.
+ * Does not invent boundaries — reads existing provenance only.
+ */
+export function resolveTrustedStopBoundaryForCusumRetry(
+  summary: Record<string, unknown> | null | undefined,
+  workerNow: Date,
+  lastMeaningfulMovementAt?: Date | null,
+): StopBoundaryProvenance | null {
+  const provenance = readStopBoundaryProvenance(summary);
+  if (!provenance?.trust) return null;
+  if (!isValidProviderEventTimestamp(provenance.boundaryAt, workerNow)) return null;
+  if (
+    lastMeaningfulMovementAt &&
+    isValidProviderEventTimestamp(lastMeaningfulMovementAt, workerNow) &&
+    lastMeaningfulMovementAt.getTime() > provenance.boundaryAt.getTime()
+  ) {
+    return null;
+  }
+  return provenance;
+}
+
+function copyCusumRetryStopBoundaryFields(
+  source: Record<string, unknown>,
+  target: Record<string, unknown>,
+): void {
+  for (const key of CUSUM_RETRY_PRESERVE_STOP_BOUNDARY_KEYS) {
+    if (source[key] !== undefined) {
+      target[key] = source[key];
+    }
+  }
+}
+
 export function stripEndCycleEvidenceForActiveReopen(
   summary: Record<string, unknown> | null | undefined,
+  options?: {
+    reopenReason?: ActiveReopenReason;
+    workerNow?: Date;
+    lastMeaningfulMovementAt?: Date | null;
+  },
 ): Record<string, unknown> {
-  const base = { ...(summary ?? {}) };
+  const prior = summary ?? {};
+  const base = { ...prior };
   for (const key of END_CYCLE_REOPEN_STRIP_KEYS) {
     delete base[key];
+  }
+  if (options?.reopenReason === 'CUSUM_STILL_ONGOING' && options.workerNow) {
+    const preserved = resolveTrustedStopBoundaryForCusumRetry(
+      prior,
+      options.workerNow,
+      options.lastMeaningfulMovementAt,
+    );
+    if (preserved) {
+      copyCusumRetryStopBoundaryFields(prior, base);
+    }
   }
   return base;
 }
@@ -235,7 +303,9 @@ export function buildPossibleEndToActiveReset(params: {
   workerNow: Date;
   lastMeaningfulMovementAt?: Date | null;
   priorSummary?: Record<string, unknown> | null;
+  reopenReason?: ActiveReopenReason;
 }) {
+  const reopenReason = params.reopenReason ?? 'ACTIVITY_RESUMED';
   const reset: Record<string, unknown> = {
     ...clearPossibleEndClockFields(),
     endDetectionMode: null,
@@ -246,7 +316,11 @@ export function buildPossibleEndToActiveReset(params: {
     cusumSegmentEnd: null,
     lastActivityAt: params.workerNow,
     lastCoreProcessedAt: params.workerNow,
-    lastEvidenceSummary: stripEndCycleEvidenceForActiveReopen(params.priorSummary),
+    lastEvidenceSummary: stripEndCycleEvidenceForActiveReopen(params.priorSummary, {
+      reopenReason,
+      workerNow: params.workerNow,
+      lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+    }),
   };
   if (params.lastMeaningfulMovementAt) {
     reset.lastMeaningfulMovementAt = params.lastMeaningfulMovementAt;

@@ -122,6 +122,14 @@ Invariant: `FINALIZE_LOCK_MISS_CAN_SILENTLY_DESTROY_AUTHORITY = NO`.
 - Did **not** mutate Production Redis/DB/PM2.
 - **NEW_PHYSICAL_DRIVE_REQUIRED** after deploy for acceptance.
 
+## POST-#1603 follow-up (2026-09-12)
+
+First POST-#1603 physical drive on KS MS 661 (`a05fa903…`, deploy `f6f5eaa3a…`) documented in [KS_MS_661_R12_POST_1603_PHYSICAL_ACCEPTANCE_2026-09-12.md](KS_MS_661_R12_POST_1603_PHYSICAL_ACCEPTANCE_2026-09-12.md):
+
+- **#1603 lock-order failure class not reproduced** (END_VALIDATION tracking run count **1**, not 0).
+- Full natural terminal chain **PENDING** (CUSUM attempt 1/3 → ACTIVE revert; no FINALIZE/RESTING at audit).
+- Trip `fc93f98f…` remains unrepaired historical record for this defect class.
+
 ## Validation commands
 
 ```bash
