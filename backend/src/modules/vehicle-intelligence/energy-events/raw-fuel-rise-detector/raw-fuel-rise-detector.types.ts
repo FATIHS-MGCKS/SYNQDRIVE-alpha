@@ -26,7 +26,8 @@ export interface RawFuelRiseDetectionDiagnostics {
     rawRefuelScanRunsTotal: 1;
     rawRefuelRiseDetectedTotal: number;
     rawRefuelCandidateRejectedTotalByReason: Record<string, number>;
-    rawRiseWithoutNativeSegmentTotal: number;
+    /** Not evaluable in F3 — requires native DIMO segment context (F4+). */
+    rawRiseWithoutNativeSegmentTotal: number | null;
   };
 }
 

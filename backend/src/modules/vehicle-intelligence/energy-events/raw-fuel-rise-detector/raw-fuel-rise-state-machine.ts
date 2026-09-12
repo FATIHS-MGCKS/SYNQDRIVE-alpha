@@ -41,6 +41,19 @@ interface DetectedRiseDraft {
   returnedToBaselineBeforePost: boolean;
 }
 
+/** F3.1 — every sample must lie within tolerance of the final robust median. */
+export function validatePlateauWindow(
+  values: number[],
+  tolerance: number,
+): { valid: boolean; median: number } {
+  if (values.length === 0) {
+    return { valid: false, median: NaN };
+  }
+  const center = median(values);
+  const valid = values.every((value) => withinTolerance(value, center, tolerance));
+  return { valid, median: center };
+}
+
 function channelConfig(
   channel: RawRefuelCandidateSignalChannel,
   config: RawFuelRiseDetectorConfig,
@@ -97,55 +110,20 @@ function findPlateauFrom(
   for (let i = startIdx; i <= series.length - minSamples; i++) {
     const window: ChannelPoint[] = [series[i]];
     for (let j = i + 1; j < series.length; j++) {
-      const values = window.map((p) => p.value);
-      const center = median([...values, series[j].value]);
-      if (!withinTolerance(series[j].value, center, tolerance)) break;
+      const candidateValues = [...window.map((p) => p.value), series[j].value];
+      const { valid } = validatePlateauWindow(candidateValues, tolerance);
+      if (!valid) break;
       window.push(series[j]);
     }
+
     if (window.length >= minSamples) {
       const values = window.map((p) => p.value);
-      return {
-        startIdx: i,
-        endIdx: i + window.length - 1,
-        median: median(values),
-        samples: window,
-      };
-    }
-  }
-  return null;
-}
-
-function findPostPlateauAfterRise(
-  series: ChannelPoint[],
-  riseStartIdx: number,
-  preMedian: number,
-  channel: RawRefuelCandidateSignalChannel,
-  config: RawFuelRiseDetectorConfig,
-): PlateauSegment | null {
-  const cfg = channelConfig(channel, config);
-  const tolerance = postPlateauTolerance(channel, config);
-  const minSamples = cfg.postPlateauMinSamples;
-  const minPersistenceMs = cfg.postPlateauMinPersistenceMs;
-  const material = materialThreshold(channel, config);
-
-  for (let i = riseStartIdx; i < series.length; i++) {
-    if (series[i].value < preMedian + material * 0.5) continue;
-    const window: ChannelPoint[] = [series[i]];
-    for (let j = i + 1; j < series.length; j++) {
-      if (series[j].value < preMedian + material * 0.5) break;
-      const values = window.map((p) => p.value);
-      const center = median([...values, series[j].value]);
-      if (!withinTolerance(series[j].value, center, tolerance)) break;
-      window.push(series[j]);
-    }
-    if (window.length >= minSamples) {
-      const persistenceMs =
-        window[window.length - 1].timestamp.getTime() - window[0].timestamp.getTime();
-      if (persistenceMs >= minPersistenceMs) {
+      const { valid, median: center } = validatePlateauWindow(values, tolerance);
+      if (valid) {
         return {
           startIdx: i,
           endIdx: i + window.length - 1,
-          median: median(window.map((p) => p.value)),
+          median: center,
           samples: window,
         };
       }
@@ -154,81 +132,157 @@ function findPostPlateauAfterRise(
   return null;
 }
 
-function detectRiseSegment(
+/**
+ * Post plateau must be LOCAL to the rise peak — distant consumption must not
+ * become post-refuel authority.
+ */
+function findLocalPostPlateauAfterRise(
+  series: ChannelPoint[],
+  searchStartIdx: number,
+  peakIdx: number,
+  preMedian: number,
+  peakValue: number,
+  channel: RawRefuelCandidateSignalChannel,
+  config: RawFuelRiseDetectorConfig,
+): PlateauSegment | null {
+  const cfg = channelConfig(channel, config);
+  const tolerance = postPlateauTolerance(channel, config);
+  const minSamples = cfg.postPlateauMinSamples;
+  const minPersistenceMs = cfg.postPlateauMinPersistenceMs;
+  const material = materialThreshold(channel, config);
+  const peakTimeMs = series[peakIdx].timestamp.getTime();
+  const maxLocalSearchMs = cfg.maxSampleGapMs;
+
+  for (let i = Math.max(searchStartIdx, peakIdx); i < series.length; i++) {
+    const gapFromPeakMs = series[i].timestamp.getTime() - peakTimeMs;
+    if (gapFromPeakMs > maxLocalSearchMs) break;
+
+    if (series[i].value < preMedian + material) continue;
+    if (series[i].value < peakValue - tolerance) continue;
+
+    const window: ChannelPoint[] = [series[i]];
+    for (let j = i + 1; j < series.length; j++) {
+      if (series[j].value < peakValue - tolerance) break;
+
+      const interSampleGapMs =
+        series[j].timestamp.getTime() - series[j - 1].timestamp.getTime();
+      if (interSampleGapMs > maxLocalSearchMs) break;
+
+      const candidateValues = [...window.map((p) => p.value), series[j].value];
+      const { valid } = validatePlateauWindow(candidateValues, tolerance);
+      if (!valid) break;
+      window.push(series[j]);
+    }
+
+    if (window.length >= minSamples) {
+      const values = window.map((p) => p.value);
+      const { valid, median: center } = validatePlateauWindow(values, tolerance);
+      if (!valid || center < peakValue - tolerance) continue;
+
+      const persistenceMs =
+        window[window.length - 1].timestamp.getTime() - window[0].timestamp.getTime();
+      if (persistenceMs >= minPersistenceMs) {
+        return {
+          startIdx: i,
+          endIdx: i + window.length - 1,
+          median: center,
+          samples: window,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Scan the physical rise neighborhood, absorbing stepped/quantized continuations
+ * into one rise before searching for a local post plateau.
+ *
+ * Provider sample spacing != physical fueling duration — single-step material
+ * jumps are valid when post evidence supports them.
+ */
+function scanPhysicalRiseNeighborhood(
   series: ChannelPoint[],
   pre: PlateauSegment,
   channel: RawRefuelCandidateSignalChannel,
   config: RawFuelRiseDetectorConfig,
 ): {
   riseStartIdx: number;
-  riseEndIdx: number;
+  peakIdx: number;
   risePoints: ChannelPoint[];
   returnedToBaseline: boolean;
   sensorResetSuspected: boolean;
 } | null {
   const material = materialThreshold(channel, config);
   const wobble = negativeWobbleTolerance(channel, config);
+  const platTol = plateauTolerance(channel, config);
   const startSearch = pre.endIdx + 1;
   if (startSearch >= series.length) return null;
 
   let riseStartIdx: number | null = null;
-  let peakValue = pre.median;
-  let peakIdx = startSearch;
-  let wobbleCount = 0;
+  for (let i = startSearch; i < series.length; i++) {
+    if (series[i].value >= pre.median + material) {
+      riseStartIdx = i;
+      break;
+    }
+  }
+  if (riseStartIdx == null) return null;
+
+  const neighborhoodEndMs =
+    series[riseStartIdx].timestamp.getTime() + config.riseMaxDurationMs;
+
+  let peakIdx = riseStartIdx;
+  let peakValue = series[riseStartIdx].value;
+  let strongRegressionCount = 0;
   let returnedToBaseline = false;
   let sensorResetSuspected = false;
 
-  for (let i = startSearch; i < series.length; i++) {
+  for (let i = riseStartIdx + 1; i < series.length; i++) {
     const point = series[i];
-    if (riseStartIdx == null) {
-      if (point.value >= pre.median + material) {
-        riseStartIdx = i;
-        peakValue = point.value;
-        peakIdx = i;
-      }
-      continue;
-    }
+    if (point.timestamp.getTime() > neighborhoodEndMs) break;
 
     if (point.value > peakValue) {
       peakValue = point.value;
       peakIdx = i;
-      wobbleCount = 0;
-    } else {
+    }
+
+    if (point.value < peakValue) {
       const regression = peakValue - point.value;
       if (regression > wobble) {
-        wobbleCount += 1;
-        if (wobbleCount > 1) {
-          if (point.value <= pre.median + plateauTolerance(channel, config)) {
-            returnedToBaseline = true;
-          }
+        strongRegressionCount += 1;
+        if (point.value <= pre.median + platTol) {
+          returnedToBaseline = true;
+          break;
+        }
+        if (strongRegressionCount > 1) {
+          returnedToBaseline = true;
           break;
         }
       }
-      if (point.value < pre.median - wobble) {
-        sensorResetSuspected = true;
-        returnedToBaseline = true;
-        break;
-      }
     }
 
-    const riseDurationMs =
-      point.timestamp.getTime() - series[riseStartIdx].timestamp.getTime();
-    if (riseDurationMs > config.riseMaxDurationMs) break;
+    if (point.value < pre.median - wobble) {
+      sensorResetSuspected = true;
+      returnedToBaseline = true;
+      break;
+    }
   }
 
-  if (riseStartIdx == null) return null;
+  if (peakValue - pre.median < material) return null;
 
-  const riseEndIdx = Math.max(riseStartIdx, peakIdx);
   const riseDurationMs =
-    series[riseEndIdx].timestamp.getTime() - series[riseStartIdx].timestamp.getTime();
-  if (riseDurationMs < config.riseMinDurationMs) {
+    series[peakIdx].timestamp.getTime() - series[riseStartIdx].timestamp.getTime();
+  const singleStepMaterial =
+    riseStartIdx === peakIdx && peakValue >= pre.median + material;
+
+  if (!singleStepMaterial && riseDurationMs < config.riseMinDurationMs) {
     return null;
   }
 
   return {
     riseStartIdx,
-    riseEndIdx,
-    risePoints: series.slice(riseStartIdx, riseEndIdx + 1),
+    peakIdx,
+    risePoints: series.slice(riseStartIdx, peakIdx + 1),
     returnedToBaseline,
     sensorResetSuspected,
   };
@@ -304,16 +358,19 @@ export function detectChannelRises(
     const pre = findPlateauFrom(series, cursor, channel, config);
     if (!pre) break;
 
-    const rise = detectRiseSegment(series, pre, channel, config);
+    const rise = scanPhysicalRiseNeighborhood(series, pre, channel, config);
     if (!rise) {
       cursor = pre.startIdx + 1;
       continue;
     }
 
-    const post = findPostPlateauAfterRise(
+    const peakValue = Math.max(...rise.risePoints.map((p) => p.value));
+    const post = findLocalPostPlateauAfterRise(
       series,
-      rise.riseEndIdx + 1,
+      rise.peakIdx + 1,
+      rise.peakIdx,
       pre.median,
+      peakValue,
       channel,
       config,
     );
@@ -326,7 +383,7 @@ export function detectChannelRises(
       riseOnsetAt: series[rise.riseStartIdx].timestamp,
       riseEndAt: post
         ? post.samples[0].timestamp
-        : series[rise.riseEndIdx].timestamp,
+        : series[rise.peakIdx].timestamp,
       sensorResetSuspected: rise.sensorResetSuspected,
       returnedToBaselineBeforePost: rise.returnedToBaseline,
     };
@@ -344,7 +401,7 @@ export function detectChannelRises(
       maxSampleGapSeconds: maxGapSeconds(criticalPath),
     });
 
-    cursor = post ? post.endIdx + 1 : rise.riseEndIdx + 1;
+    cursor = post ? post.endIdx + 1 : rise.peakIdx + 1;
   }
 
   return drafts;
@@ -423,6 +480,7 @@ export function draftToObservationFields(
       detectorModel: 'STABLE_PRE_RISING_STABLE_POST',
       primaryChannel: draft.channel,
       thresholdProvenance: config.thresholdProvenance,
+      providerSampleSpacingNotPhysicalDuration: true,
     },
     qualityMeta: {
       maxSampleGapSeconds: draft.maxSampleGapSeconds,

@@ -145,12 +145,13 @@ Bugfix/threshold tuning changes `detectorVersion` only unless physical identity 
 |-------|-------|--------|
 | `raw-fuel-rise-detector.spec.ts` | positive + mixed-unit guard | **PASS** |
 | `raw-fuel-rise-detector-fixtures.spec.ts` | KS MS 661 + multi-refuel | **PASS** |
-| `raw-fuel-rise-detector-negative.spec.ts` | negative/hold matrix | **PASS** |
+| `raw-fuel-rise-detector-f3-1.spec.ts` | F3.1 P1 hardening gates | **PASS** |
+| `raw-fuel-rise-detector-negative.spec.ts` | negative/hold matrix (22 cases) | **PASS** |
 | `raw-fuel-rise-detector-invariance.spec.ts` | window/order/duplicate | **PASS** |
 | F2 unit regression (`raw-refuel-candidate`) | 25 | **PASS** |
-| F2 handoff PG (`RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1`) | 1 | **PASS** |
+| F2 handoff PG (`RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1`) | 4 | **PASS** |
 
-**Total F3 unit tests:** 27
+**Total F3 unit tests:** 50 (F3 + F3.1 + negative + invariance + fixtures + positive)
 
 ---
 
@@ -198,3 +199,46 @@ F4_START_AUTHORIZED = YES
 2. Sensor reset vs refuel not always distinguishable by shape alone  
 3. No production metrics wiring (contract defined in diagnostics only)  
 4. Relative-only path less exercised in production fixtures than absolute  
+
+---
+
+## 13. F3.1 — Detector hardening (2026-09-12)
+
+Independent review closed three P1 correctness gaps without redesigning F2.
+
+### 13.1 Epistemic correction — provider sample spacing
+
+Provider telemetry transition duration **≠** physical fueling duration. A persistent single-step material update (`10,10,10 → 30,30,30`) is a valid physical refuel candidate when post evidence supports it; the prior 30 s minimum rise duration blocked these cases.
+
+### 13.2 Strict plateau final-median invariant
+
+Both `STABLE_PRE` and `STABLE_POST` plateaus require **every** sample to satisfy `abs(sample − median(all)) ≤ tolerance`.
+
+### 13.3 Single-step persistent provider rises
+
+| Case | Expected |
+|------|----------|
+| `10,10,10 → 30,30,30,30` | exactly one candidate |
+| single 30 spike → back to 10 | no READY candidate |
+| `10 → 30` without stable post | OBSERVED/SETTLING |
+| single-step with >6 min evidence gap | fail-closed, not READY |
+
+### 13.4 Stepped-refuel coalescence
+
+Temporary intermediate plateaus within one physical rise neighborhood (`10 → 16 → 30`) are absorbed before post search. Post plateau is local to peak; distant consumption cannot become post authority.
+
+### 13.5 Wobble fail-closed
+
+Repeated strong regressions no longer reset on intermediate peaks.
+
+### 13.6 Diagnostic metric epistemic fix
+
+`rawRiseWithoutNativeSegmentTotal` is **`null`** in F3 — requires native segment context (F4+).
+
+### 13.7 F3.1 completion gate
+
+```
+RFRF_F3_1_HARDENING = PASS
+F4_START_AUTHORIZED = YES
+PR_1623_STILL_DRAFT = YES
+```

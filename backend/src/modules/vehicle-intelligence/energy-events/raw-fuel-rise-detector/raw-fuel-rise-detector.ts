@@ -98,7 +98,7 @@ export function detectRawFuelRises(
         rawRefuelScanRunsTotal: 1,
         rawRefuelRiseDetectedTotal: candidates.length,
         rawRefuelCandidateRejectedTotalByReason: rejectedCounts,
-        rawRiseWithoutNativeSegmentTotal: candidates.length,
+        rawRiseWithoutNativeSegmentTotal: null,
       },
     },
     context,
@@ -121,7 +121,7 @@ function emptyDiagnostics(
       rawRefuelScanRunsTotal: 1,
       rawRefuelRiseDetectedTotal: detected,
       rawRefuelCandidateRejectedTotalByReason: {},
-      rawRiseWithoutNativeSegmentTotal: detected,
+      rawRiseWithoutNativeSegmentTotal: null,
     },
   };
 }

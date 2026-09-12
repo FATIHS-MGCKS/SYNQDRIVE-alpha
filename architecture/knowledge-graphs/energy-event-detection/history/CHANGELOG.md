@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F3.1 detector hardening
+
+- Strict plateau final-median invariant; single-step provider rises; stepped-refuel coalescence
+- Local post plateau; wobble fail-closed; `rawRiseWithoutNativeSegmentTotal=null`
+- 50 unit tests; 4 F2 handoff PG proofs (opt-in)
+- Evidence `EED-EV-0044` updated; F4_START_AUTHORIZED=YES
+
+**Verdict:** RFRF_F3_1_HARDENING=PASS
+
+---
+
 ## 2026-09-12 — RFRF F3 raw fuel rise detector
 
 - Pure STABLE_PRE→RISING→STABLE_POST detector; unit isolation; primary channel authority

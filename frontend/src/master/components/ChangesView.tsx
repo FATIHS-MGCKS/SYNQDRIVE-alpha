@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f3-1-detector-hardening-2026-09-12',
+    version: '4.9.1116',
+    title: 'RFRF F3.1 — Raw rise detector hardening',
+    summary: [
+      'Strict plateau final-median invariant for STABLE_PRE and STABLE_POST.',
+      'Persistent single-step provider rises supported; provider spacing ≠ physical duration.',
+      'Stepped-refuel coalescence absorbs temporary intermediate plateaus into one candidate.',
+      'Local post plateau authority; distant consumption cannot become post evidence.',
+      'rawRiseWithoutNativeSegmentTotal=null (F3 cannot know native DIMO segments).',
+      '50 unit tests + 4 F2 handoff PG proofs; PR #1623 draft.',
+    ],
+    reason:
+      'Independent review found three P1 correctness gaps in F3 detector before F4 runtime wiring.',
+    previousBehavior:
+      'Incremental plateau checks; 30s rise minimum blocked single-step updates; intermediate plateaus could split one refuel.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §13; EED-EV-0044 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f3-raw-rise-detector-2026-09-12',
     version: '4.9.1115',
     title: 'RFRF F3 — Raw fuel rise detector (STABLE_PRE→RISING→STABLE_POST)',
