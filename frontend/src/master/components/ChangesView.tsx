@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f2-candidate-persistence-2026-09-12',
+    version: '4.9.1111',
+    title: 'RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery',
+    summary: [
+      'Implements Option D staging: raw_refuel_candidates schema+migration + lifecycle states.',
+      'Semantic overlap matcher rediscovers candidates under per-vehicle pg_advisory_xact_lock64.',
+      'Immutable candidateIdentityKey; mutable evidenceRevisionFingerprint; firstObservedAt preserved.',
+      'Promotion contract design only — no VehicleEnergyEvent runtime; flags remain OFF.',
+      'Does NOT detect KS MS 661 or enable production fallback. F3 detector next.',
+      'Idempotency matrix A–L: unit tests PASS; Postgres integration opt-in (RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1).',
+    ],
+    reason:
+      'F1.1 authorized F2 to implement Option D candidate persistence before detector/runtime wiring.',
+    previousBehavior: 'No RawRefuelCandidate table; identity/rediscovery design-only (F1.1).',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md; EED-EV-0043; EED-DEC-RFRF-005 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T14:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f1-1-hardening-2026-09-12',
     version: '4.9.1109',
     title: 'RFRF F1.1 — Architecture hardening + pre-F2 closure',

@@ -291,7 +291,7 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 
 ---
 
-## EED-DEC-RFRF-005 — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
+## EED-DEC-RFRF-005 — RawRefuelCandidate lifecycle + Option D identity (F1.1–F2)
 
 | Field | Value |
 |-------|-------|
@@ -299,11 +299,11 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Status** | PROPOSED |
 | **Date** | 2026-09-12 |
 | **Question** | How to keep fallback candidate identity stable under delayed telemetry without conflating evidence revision? |
-| **Decision** | `RawRefuelCandidate` staging table with lifecycle (INSUFFICIENT→OBSERVED→SETTLING→READY_FOR_PERSIST→REJECTED). Four-way separation: `id` (DB surrogate), `candidateIdentityKey` (immutable after assignment), `evidenceRevisionFingerprint` (mutable), physical candidate matcher (semantic rediscovery). Under per-vehicle lock: search non-terminal rows by vehicle/channel/detector/temporal neighborhood/pre-plateau; reuse row on overlap; insert only when no overlap. Promote to `VehicleEnergyEvent` with `sourceEventKey = candidateIdentityKey`. Supersedes Option C. |
+| **Decision** | `RawRefuelCandidate` staging table with lifecycle (INSUFFICIENT→OBSERVED→SETTLING→READY_FOR_PERSIST→REJECTED/PROMOTED). Four-way separation: `id` (DB surrogate), `candidateIdentityKey` (immutable after assignment), `evidenceRevisionFingerprint` (mutable), physical candidate matcher (semantic rediscovery). Under per-vehicle `pg_advisory_xact_lock64` on `raw_refuel_candidate:{vehicleId}`: search non-terminal rows by vehicle/channel/detector/temporal neighborhood/pre-plateau; reuse row on overlap; insert only when no overlap. Promote to `VehicleEnergyEvent` with `sourceEventKey = candidateIdentityKey` (promotion runtime F4). Supersedes Option C. |
 | **Why** | Hash-only identity fails when delayed telemetry shifts rise-onset bucket; semantic rediscovery required (F1.2 case C). |
 | **Alternatives** | Option C hybrid (rejected F1.1); hash-only upsert (rejected F1.2) |
-| **Evidence** | EED-EV-0042 |
-| **Consequences** | F2 implements schema + rediscovery + idempotency proof; F5 proves G2 native↔fallback; `dimoSegmentId` compatibility NOT_PROVEN until F2/F5 |
+| **Evidence** | EED-EV-0042, EED-EV-0043 |
+| **Consequences** | F2 **complete** for candidate persistence+rediscovery (`F2_IMPLEMENTATION_COMPLETE=YES`); `IMPLEMENTATION_IDEMPOTENCY_PROOF=PARTIAL` (7 unit tests PASS; 8 opt-in Postgres integration tests). F3 detector, F4 runtime wiring, F5 G2 native↔fallback proof remain. `dimoSegmentId` compatibility NOT_PROVEN. Does **not** detect KS MS 661 or enable production fallback. |
 | **Related nodes** | EED-DEC-RFRF-002, EED-OQ-013, EED-OQ-014 |
 
 ---

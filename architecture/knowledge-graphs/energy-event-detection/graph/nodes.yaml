@@ -1402,6 +1402,25 @@ nodes:
       IMPLEMENTATION_IDEMPOTENCY_PROOF=PENDING_F2.
     verified_at: "2026-09-12"
 
+  - id: EED-EV-0043
+    type: evidence
+    title: RFRF F2 — RawRefuelCandidate persistence + semantic rediscovery
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md
+      - backend/prisma/migrations/20260912123000_rfrf_f2_raw_refuel_candidates/migration.sql
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate.postgres.integration.spec.ts
+    summary: >
+      F2 implements Option D staging: raw_refuel_candidates schema+migration, lifecycle states,
+      semantic overlap matcher, per-vehicle pg_advisory_xact_lock64 (raw_refuel_candidate:{vehicleId}),
+      immutable candidateIdentityKey + mutable evidenceRevisionFingerprint, promotion design contract.
+      Does NOT detect KS MS 661 or enable production fallback. IMPLEMENTATION_IDEMPOTENCY_PROOF=PARTIAL
+      (7 unit tests PASS; 8 opt-in Postgres integration tests require
+      RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1 + DATABASE_URL).
+    verified_at: "2026-09-12"
+
   - id: EED-DEC-RFRF-001
     type: decision
     title: RFRF — SynqDrive raw-fuel fallback authority
@@ -1444,15 +1463,16 @@ nodes:
 
   - id: EED-DEC-RFRF-005
     type: decision
-    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
+    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F2)
     decision_status: PROPOSED
     epistemic_status: CONFIRMED
     summary: >
       Staging table: id (DB), candidateIdentityKey (immutable after assignment),
       evidenceRevisionFingerprint (mutable), semantic rediscovery matcher under per-vehicle lock.
-      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design);
-      implementation proof pending F2/F5.
-    evidence: [EED-EV-0042]
+      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design).
+      F2 implements persistence+rediscovery (EED-EV-0043); IMPLEMENTATION_IDEMPOTENCY_PROOF=PARTIAL
+      (unit tests + opt-in Postgres integration); G2 native↔fallback proof remains F5.
+    evidence: [EED-EV-0042, EED-EV-0043]
 
   - id: EED-OQ-014
     type: open_question

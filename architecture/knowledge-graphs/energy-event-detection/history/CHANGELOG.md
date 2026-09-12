@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F2 candidate persistence
+
+- Added `docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md`
+- Evidence `EED-EV-0043`; updated `EED-DEC-RFRF-005` with F2 implementation proof (idempotency PARTIAL)
+- `raw_refuel_candidates` schema+migration; `RawRefuelCandidateService` semantic rediscovery under `pg_advisory_xact_lock64`
+- Promotion contract design only; no detector wiring; flags remain OFF; KS MS 661 not detected by F2
+
+**Verdict:** RFRF_F2_CANDIDATE_PERSISTENCE=PASS — F2_IMPLEMENTATION_COMPLETE=YES; F3_START_AUTHORIZED=YES; FALLBACK_RUNTIME_READY=NO
+
+---
+
 ## 2026-09-12 — RFRF F1.2 final architecture closure
 
 - F1.1 addendum §14: semantic candidate rediscovery; four-way identity separation
