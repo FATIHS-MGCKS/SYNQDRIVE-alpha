@@ -37,7 +37,7 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'vdc-physical-state-foundation-phase1-2026-09-12',
-    version: '4.9.1115',
+    version: '4.9.1118',
     title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',
     summary: [
       'Additive Prisma models: device_connection_physical_states + device_connection_physical_state_transitions (candidate_state on audit ledger) with TEXT org/vehicle ids.',
@@ -56,6 +56,70 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
     createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-2-semantic-closure-2026-09-12',
+    version: '4.9.1117',
+    title: 'RFRF F3.2 — Final semantic closure (finality + channel fallback + real PG)',
+    summary: [
+      'provisionalPostContinuationGraceMs (10 min) separate from riseMaxDurationMs — finalized post creates event boundary.',
+      'Two refuels within 45 minutes now correctly yield 2 candidates when post is finalized.',
+      'TRUSTED absolute sparse samples fall back to relative primary channel.',
+      'Non-finite samples excluded per channel with explicit documented policy.',
+      'Real isolated PostgreSQL F3→F2 handoff 4/4 PASS; 21 negative behavioral cases.',
+    ],
+    reason:
+      'Independent review found two remaining P1 semantic gaps before PR #1623 main sync.',
+    previousBehavior:
+      '45m rise neighborhood could merge separate refuels; TRUSTED absolute blocked relative fallback.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §14; backend/scripts/test/rfrf-f3-f2-handoff-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T23:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-1-detector-hardening-2026-09-12',
+    version: '4.9.1116',
+    title: 'RFRF F3.1 — Raw rise detector hardening',
+    summary: [
+      'Strict plateau final-median invariant for STABLE_PRE and STABLE_POST.',
+      'Persistent single-step provider rises supported; provider spacing ≠ physical duration.',
+      'Stepped-refuel coalescence absorbs temporary intermediate plateaus into one candidate.',
+      'Local post plateau authority; distant consumption cannot become post evidence.',
+      'rawRiseWithoutNativeSegmentTotal=null (F3 cannot know native DIMO segments).',
+      '50 unit tests + 4 F2 handoff PG proofs; PR #1623 draft.',
+    ],
+    reason:
+      'Independent review found three P1 correctness gaps in F3 detector before F4 runtime wiring.',
+    previousBehavior:
+      'Incremental plateau checks; 30s rise minimum blocked single-step updates; intermediate plateaus could split one refuel.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md §13; EED-EV-0044 updated.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f3-raw-rise-detector-2026-09-12',
+    version: '4.9.1115',
+    title: 'RFRF F3 — Raw fuel rise detector (STABLE_PRE→RISING→STABLE_POST)',
+    summary: [
+      'Pure deterministic detector converts normalized fuel telemetry to RawRefuelCandidateObservation[].',
+      'Local state machine — no global min/max authority; absolute/relative unit isolation enforced.',
+      'Primary channel authority: one physical candidate per rise; corroboration only on secondary channel.',
+      'KS MS 661 observed material rise detected (7→31 L, OBSERVED); synthetic READY_FOR_PERSIST.',
+      '27 unit tests + test-only F2 handoff PostgreSQL proof; no production wiring.',
+    ],
+    reason:
+      'F3 authorized after F2 merge; implements algorithm-only raw refuel detection before F4 runtime wiring.',
+    previousBehavior:
+      'No raw-rise detector; legacy refuel-fuel-rise.ts uses global min/max and mixed sampleValue() units.',
+    details:
+      'docs/audits/eed-rfrf-f3-raw-rise-detector-2026-09-12.md; EED-EV-0044; detectionVersion=rfrf-rise-v1.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T22:00:00.000Z',
   },
   {
     id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
