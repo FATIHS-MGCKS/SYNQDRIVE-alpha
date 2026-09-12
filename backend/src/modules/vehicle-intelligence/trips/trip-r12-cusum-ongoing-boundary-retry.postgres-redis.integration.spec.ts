@@ -13,7 +13,6 @@ import {
   countTripTrackingJobs,
   drainTripTrackingQueue,
   probeTripR11Postgres,
-  purgeTripTrackingQueueJobs,
   restoreTripR11Clock,
   startTripR11RedisStack,
   stopTripR11RedisStack,
@@ -24,7 +23,6 @@ import {
 } from './testing/trip-r11-postgres-redis.integration.harness';
 import { readStopBoundaryAt } from './trip-fsm-evidence-state';
 import { resolveEndCycleToken } from './trip-end-cycle-reset';
-import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
@@ -39,6 +37,9 @@ const EV_ATTEMPT_1_AT = new Date('2026-09-12T05:11:03.781Z');
 const POST_REOPEN_ACTIVE_AT = new Date('2026-09-12T05:11:33.000Z');
 const END_CYCLE_2_AT = new Date('2026-09-12T05:13:00.000Z');
 
+/** Phase A — proven CI root cause at 842aaa67b (pecEvSteps=0). */
+const CI_ZERO_STEPS_CAUSE = 'TEST_PURGED_NATURAL_PEC';
+
 if (REQUIRED) {
   if (!LIVE) {
     throw new Error(
@@ -49,6 +50,84 @@ if (REQUIRED) {
   if (!url.includes('127.0.0.1') && !url.includes('localhost')) {
     throw new Error('Trip R12 integration requires CI-local DATABASE_URL');
   }
+}
+
+type TripTrackingQueueSnapshot = {
+  fsmState: TripDetectionState | null;
+  jobCount: number;
+  jobs: Array<{
+    id: string | undefined;
+    name: string;
+    bullState: string;
+    trigger: TripTrackingJobData['trigger'];
+    endCycleToken?: string;
+  }>;
+};
+
+async function snapshotTripTrackingQueue(params: {
+  prisma: PrismaClient;
+  queue: Queue<TripTrackingJobData>;
+  vehicleId: string;
+}): Promise<TripTrackingQueueSnapshot> {
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.vehicleId },
+    select: { state: true },
+  });
+  const states = ['waiting', 'delayed', 'active', 'prioritized', 'paused'] as const;
+  const jobs: TripTrackingQueueSnapshot['jobs'] = [];
+  for (const state of states) {
+    const batch = await params.queue.getJobs([state], 0, 50);
+    for (const job of batch) {
+      jobs.push({
+        id: job.id,
+        name: job.name,
+        bullState: state,
+        trigger: job.data.trigger,
+        endCycleToken: job.data.endCycleToken,
+      });
+    }
+  }
+  return {
+    fsmState: det?.state ?? null,
+    jobCount: jobs.length,
+    jobs,
+  };
+}
+
+async function assertNaturalPossibleEndCheckQueued(params: {
+  prisma: PrismaClient;
+  queue: Queue<TripTrackingJobData>;
+  fixture: TripR11PostgresFixture;
+}): Promise<TripTrackingQueueSnapshot> {
+  const snapshot = await snapshotTripTrackingQueue({
+    prisma: params.prisma,
+    queue: params.queue,
+    vehicleId: params.fixture.vehicle.id,
+  });
+
+  expect(snapshot.fsmState).toBe(TripDetectionState.POSSIBLE_END);
+
+  const pecJobId = buildTripTrackingJobId(
+    'pec',
+    params.fixture.vehicle.id,
+    params.fixture.trip.id,
+  );
+  const pecJob = await params.queue.getJob(pecJobId);
+  expect(pecJob).not.toBeNull();
+
+  const pecEntry = snapshot.jobs.find((j) => j.id === pecJobId);
+  expect(pecEntry).toBeDefined();
+  expect(pecEntry?.trigger).toBe(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK);
+  expect(['waiting', 'delayed', 'prioritized']).toContain(pecEntry?.bullState);
+
+  const det = await params.prisma.vehicleTripDetectionState.findUnique({
+    where: { vehicleId: params.fixture.vehicle.id },
+  });
+  expect(det?.activeTripId).toBe(params.fixture.trip.id);
+  expect(det?.possibleEndEnteredAt).not.toBeNull();
+  expect(resolveEndCycleToken(det!)).toBe(det?.possibleEndEnteredAt?.toISOString());
+
+  return snapshot;
 }
 
 async function createPost1603Ks661Fixture(
@@ -219,19 +298,6 @@ function buildCusumOngoingDetectorMock() {
   };
 }
 
-function buildPossibleEndCheckJob(
-  fixture: TripR11PostgresFixture,
-  requestedAt: Date,
-): TripTrackingJobData {
-  return {
-    vehicleId: fixture.vehicle.id,
-    organizationId: fixture.org.id,
-    dimoTokenId: fixture.vehicle.dimoTokenId,
-    trigger: TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK,
-    requestedAt: requestedAt.toISOString(),
-  };
-}
-
 async function seedPossibleEndFromEmptyCore(params: {
   prisma: PrismaClient;
   harness: TripR11OrchestrationHarness;
@@ -316,6 +382,36 @@ async function seedPossibleEndFromEmptyCore(params: {
       if (redisStack) await stopTripR11RedisStack(redisStack);
     }, 60_000);
 
+    it('Phase A — natural POSSIBLE_END_CHECK is queued before any drain', async () => {
+      const stopMock = buildStopCoreMock();
+      const emptyMock = buildEmptyStaleMock();
+      stopMock.fetchEndValidationWindow = emptyMock.fetchEndValidationWindow;
+
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        stopMock,
+        buildCusumOngoingDetectorMock(),
+      );
+
+      await seedPossibleEndFromEmptyCore({ prisma, harness, fixture });
+      const snapshot = await assertNaturalPossibleEndCheckQueued({
+        prisma,
+        queue: trackingQueue,
+        fixture,
+      });
+
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          CI_ZERO_STEPS_CAUSE,
+          NATURAL_PEC_JOB_PRESENT_AFTER_POSSIBLE_END: true,
+          queueSnapshot: snapshot,
+        }),
+      );
+    }, 120_000);
+
     it('GREEN — CUSUM still-ongoing preserves boundary and completes terminal chain', async () => {
       const stopMock = buildStopCoreMock();
       const emptyMock = buildEmptyStaleMock();
@@ -352,24 +448,23 @@ async function seedPossibleEndFromEmptyCore(params: {
       });
 
       await seedPossibleEndFromEmptyCore({ prisma, harness, fixture });
-      await purgeTripTrackingQueueJobs(trackingQueue);
+      await assertNaturalPossibleEndCheckQueued({
+        prisma,
+        queue: trackingQueue,
+        fixture,
+      });
 
       useTripR11FrozenClock(EV_ATTEMPT_1_AT);
-      await trackingQueue.add(
-        'trip-tracking',
-        buildPossibleEndCheckJob(fixture, EV_ATTEMPT_1_AT),
-        {
-          jobId: buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id),
-          ...buildTripTrackingJobOptions(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK),
-        },
-      );
-      const { steps: pecEvSteps } = await drainTripTrackingQueue({
-        queue: trackingQueue,
-        runJob: harness.runJob,
-        maxSteps: 4,
-      });
+      const { steps: pecEvSteps, triggers: firstDrainTriggers } =
+        await drainTripTrackingQueue({
+          queue: trackingQueue,
+          runJob: harness.runJob,
+          maxSteps: 4,
+        });
       restoreTripR11Clock();
       expect(pecEvSteps).toBeGreaterThanOrEqual(2);
+      expect(firstDrainTriggers).toContain(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK);
+      expect(firstDrainTriggers).toContain(TRIP_TRACKING_TRIGGERS.END_VALIDATION);
 
       const afterEv1 = await prisma.vehicleTripDetectionState.findUnique({
         where: { vehicleId: fixture.vehicle.id },
@@ -397,20 +492,32 @@ async function seedPossibleEndFromEmptyCore(params: {
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(afterReentry?.state).toBe(TripDetectionState.POSSIBLE_END);
+      await assertNaturalPossibleEndCheckQueued({
+        prisma,
+        queue: trackingQueue,
+        fixture,
+      });
 
       useTripR11FrozenClock(END_CYCLE_2_AT);
-      const { steps: terminalSteps } = await drainTripTrackingQueue({
-        queue: trackingQueue,
-        runJob: harness.runJob,
-        maxSteps: 6,
-      });
+      const { steps: terminalSteps, triggers: terminalTriggers } =
+        await drainTripTrackingQueue({
+          queue: trackingQueue,
+          runJob: harness.runJob,
+          maxSteps: 6,
+        });
       restoreTripR11Clock();
       expect(terminalSteps).toBeGreaterThanOrEqual(2);
+      expect(terminalTriggers).toContain(TRIP_TRACKING_TRIGGERS.END_VALIDATION);
 
       const evRunsTotal = await prisma.vehicleTripTrackingRun.count({
         where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
       });
       expect(evRunsTotal).toBeGreaterThanOrEqual(2);
+
+      const finRuns = await prisma.vehicleTripTrackingRun.count({
+        where: { tripId: fixture.trip.id, runType: 'FINALIZATION_CHECK' },
+      });
+      expect(finRuns).toBeGreaterThanOrEqual(1);
 
       const trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
       const det = await prisma.vehicleTripDetectionState.findUnique({
@@ -423,6 +530,8 @@ async function seedPossibleEndFromEmptyCore(params: {
       expect(await countTripTrackingJobs(trackingQueue)).toBe(0);
 
       const metrics = {
+        CI_ZERO_STEPS_CAUSE,
+        BLANKET_PURGE_REMOVED_FROM_CHAIN: true,
         POST_FIX_BOUNDARY_DURABLE: readStopBoundaryAt(afterEv1Summary) != null,
         POST_FIX_POSSIBLE_END_REENTRY: afterReentry?.state === TripDetectionState.POSSIBLE_END,
         POST_FIX_LATER_END_VALIDATION_REACHED: evRunsTotal >= 2,
