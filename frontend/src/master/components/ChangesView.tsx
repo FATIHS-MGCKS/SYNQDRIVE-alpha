@@ -160,6 +160,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-11T23:20:00.000Z',
   },
   {
+    id: 'exp-021-settlement-lifecycle-precedence-2026-09-12',
+    version: '4.9.1105',
+    title: 'EXP-021 — Settlement lifecycle single canonical plan precedence (PR #1621)',
+    summary: [
+      'syncCompletedPhasesFromSession loads experiment metadata before plan resolution.',
+      'One canonical calibrationPlan per sync: series → metadata → env; shared across prospective + completed validation.',
+      'Regression: series absent + metadata V3 + env V2 resolves V3 (19/19 windows, 10 min nominal).',
+      'Vehicle Detail CI typecheck OOM mitigated with NODE_OPTIONS heap increase.',
+    ],
+    reason:
+      'Lifecycle path still resolved plan from series/env before metadata — completed-phase validation could use UPPER_BOUND_V2 while prospective sync used metadata V3.',
+    previousBehavior:
+      'resolveExp021CalibrationPlanForSeries(series) before experiment metadata; duplicate plan resolution inside syncProspectiveProbesForActivePhase.',
+    details:
+      'reference-capture-settlement-shadow.service.ts; reference-capture-settlement-shadow-runtime.spec.ts; vehicle-detail-production-readiness.yml.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T15:00:00.000Z',
+  },
+  {
     id: 'exp-021-durable-plan-correction-2026-09-12',
     version: '4.9.1104',
     title: 'EXP-021 — Durable plan authority + V3 slot/settlement/scientific-status correction',
