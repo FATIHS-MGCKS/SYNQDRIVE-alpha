@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Vehicle Detail critical PostgreSQL gate: boundary repair + VDC physical-state proof.
+# Invoked by backend-boundary-postgres job via npm run test:boundary-repair:postgres.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
