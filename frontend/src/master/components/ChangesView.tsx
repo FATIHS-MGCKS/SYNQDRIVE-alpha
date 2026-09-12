@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
+    version: '4.9.1114',
+    title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',
+    summary: [
+      'Rediscovery window anchors on evidence timestamps only; serviceNow is fallback when no evidence exists.',
+      'Delayed telemetry (24h/6d) no longer stretches DB lookup from evidence time to processing time.',
+      'F2 migration proof script uses hard post-schema assertions (indexes by name, FKs, pre-F2 sentinels).',
+      '25 unit + 19 PostgreSQL integration tests PASS; ambiguity policy unchanged.',
+    ],
+    reason:
+      'Independent F2.2a review found serviceNow incorrectly included in rediscovery anchor set and migration proof verification too soft.',
+    previousBehavior:
+      'F2.2: rediscovery window min/max included serviceNow, stretching lookup on late telemetry; migration proof printed values without hard fail.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2a; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T20:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-2-final-closure-2026-09-12',
     version: '4.9.1113',
     title: 'RFRF F2.2 — Final closure: migration proof, Nest DI, bounded rediscovery',

@@ -6,29 +6,43 @@ export interface RawRefuelCandidateRediscoveryWindow {
   end: Date;
 }
 
-/**
- * Bounded semantic search window for rediscovery queries.
- * Anchored on observation physical/rise/scan evidence with symmetric lookback.
- */
-export function computeRawRefuelCandidateRediscoveryWindow(
+function collectEvidenceAnchorTimes(
   observation: RawRefuelCandidateObservation,
-  serviceNow: Date,
-): RawRefuelCandidateRediscoveryWindow {
-  const anchorTimes = [
+): Date[] {
+  return [
     observation.riseOnsetAt,
     observation.riseEndAt,
     observation.physicalEvidenceStart,
     observation.physicalEvidenceEnd,
     observation.scanWindowStart,
     observation.scanWindowEnd,
-    serviceNow,
   ].filter((value): value is Date => value instanceof Date);
+}
 
-  const earliest = new Date(Math.min(...anchorTimes.map((value) => value.getTime())));
-  const latest = new Date(Math.max(...anchorTimes.map((value) => value.getTime())));
+/**
+ * Bounded semantic search window for rediscovery queries.
+ * Anchored on observation physical/rise/scan evidence only; serviceNow is fallback
+ * when no evidence timestamp exists.
+ */
+export function computeRawRefuelCandidateRediscoveryWindow(
+  observation: RawRefuelCandidateObservation,
+  serviceNow: Date,
+): RawRefuelCandidateRediscoveryWindow {
+  const evidenceAnchors = collectEvidenceAnchorTimes(observation);
+
+  const earliest =
+    evidenceAnchors.length > 0
+      ? new Date(Math.min(...evidenceAnchors.map((value) => value.getTime())))
+      : serviceNow;
+  const latest =
+    evidenceAnchors.length > 0
+      ? new Date(Math.max(...evidenceAnchors.map((value) => value.getTime())))
+      : serviceNow;
 
   return {
     start: new Date(earliest.getTime() - RAW_REFUEL_CANDIDATE_REDISCOVERY_LOOKBACK_MS),
     end: new Date(latest.getTime() + RAW_REFUEL_CANDIDATE_REDISCOVERY_LOOKBACK_MS),
   };
 }
+
+export { collectEvidenceAnchorTimes };

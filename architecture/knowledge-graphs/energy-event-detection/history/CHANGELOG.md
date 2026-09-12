@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F2.2a final merge closure (PR #1620)
+
+- Rediscovery window: evidence timestamps only anchor min/max; `serviceNow` fallback when no evidence exists
+- Delayed telemetry unit cases (24h, 6d) prove evidence-local ±6h bounds
+- Migration proof: hard post-schema assertions (indexes by name, FKs, pre-F2 sentinels, zero seed rows)
+- Evidence `EED-EV-0043` updated; 25 unit + 19 isolated PostgreSQL integration tests PASS
+
+**Verdict:** RFRF_F2_2A_FINAL_MERGE_CLOSURE=PASS — PR_1620_READY_TO_MERGE=YES; F3_START_AUTHORIZED=YES
+
+---
+
 ## 2026-09-12 — RFRF F2.2 final closure (PR #1620)
 
 - Corrected PostgreSQL epistemic labels: separated F2 migration SQL proof, schema proof, integration tests, and full historical chain (`FAIL_PRE_EXISTING`)

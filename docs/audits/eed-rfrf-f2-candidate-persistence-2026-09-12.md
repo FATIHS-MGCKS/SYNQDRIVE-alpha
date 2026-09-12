@@ -131,11 +131,14 @@ COMMIT
 
 **Matcher** (`classifyRawRefuelCandidateOverlap`): tri-state `SAME_PHYSICAL_RISE | DISTINCT_PHYSICAL_RISE | INSUFFICIENT_EVIDENCE`. Does **not** compare `candidateIdentityKey` or 5-minute buckets alone.
 
-**Bounded lookup (F2.2):**
+**Bounded lookup (F2.2 / F2.2a):**
 
 - Lookback: `RAW_REFUEL_CANDIDATE_REDISCOVERY_LOOKBACK_MS = 6 hours`
-- Window anchor: min/max of observation `riseOnsetAt`, `riseEndAt`, physical envelope, scan window, and `serviceNow`, expanded symmetrically by lookback
-- Rationale: covers 45-minute same-rise neighborhood, 5-minute bucket shifts, warm reconciliation scan windows (~3.5 h in fixtures), and delayed telemetry without scanning vehicle lifetime
+- **Evidence anchors (authoritative):** min/max of observation `riseOnsetAt`, `riseEndAt`, `physicalEvidenceStart`, `physicalEvidenceEnd`, `scanWindowStart`, `scanWindowEnd`
+- **`serviceNow` is excluded** from anchor min/max when any evidence timestamp exists — delayed telemetry does **not** stretch the DB lookup from evidence time to processing time
+- **Fallback only:** when no evidence timestamp exists, anchor on `serviceNow` (±6h)
+- Resulting window: `[earliestEvidence − 6h, latestEvidence + 6h]` (evidence-local even if telemetry arrives hours or days late)
+- Rationale: covers 45-minute same-rise neighborhood, bucket shifts, warm reconciliation scan windows, and delayed telemetry without scanning vehicle lifetime
 - Exact `candidateIdentityKey` lookup remains an additional guard outside the temporal window
 
 **Ambiguity policy (fail-closed):**
@@ -226,7 +229,7 @@ Maps F1.1 delayed-telemetry cases (A–G) plus F2 integration scenarios (H–L).
 
 | Field | Value |
 |-------|-------|
-| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PASS** — 21 unit + 19 real-PG integration tests |
+| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PASS** — 25 unit + 19 real-PG integration tests |
 | **MULTI_REPLICA_STRATEGY_DEFINED** | **YES** (design + lock) |
 | **MULTI_REPLICA_PROOF_IN_CI** | **NO** — requires `RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1` |
 
@@ -247,10 +250,10 @@ cd backend && npm test -- --testPathPattern=raw-refuel-candidate --testPathIgnor
 | `raw-refuel-candidate-evidence-fingerprint.spec.ts` | fingerprint + merge parity | **PASS** |
 | `raw-refuel-candidate-promotion.design.spec.ts` | promotion draft mapping | **PASS** |
 | `raw-refuel-candidate-lifecycle.spec.ts` | terminal transition safety | **PASS** |
-| `raw-refuel-candidate-rediscovery-window.spec.ts` | bounded window math | **PASS** |
+| `raw-refuel-candidate-rediscovery-window.spec.ts` | evidence-local bounded window + delayed telemetry | **PASS** |
 | `raw-refuel-candidate.nest-di.spec.ts` | Nest provider resolution | **PASS** |
 
-**Total:** 7 suites, 21 tests — **PASS**
+**Total:** 7 suites, 25 tests — **PASS**
 
 ### 9.2 PostgreSQL integration tests (opt-in)
 
@@ -326,6 +329,7 @@ F2 completion does **not** authorize production fallback. F3 must deliver:
 ## 12. F2 / F2.1 / F2.2 completion gate results
 
 ```
+RFRF_F2_2A_FINAL_MERGE_CLOSURE = PASS
 RFRF_F2_2_FINAL_CLOSURE = PASS
 RFRF_F2_1_HARDENING = PASS
 RFRF_F2_CANDIDATE_PERSISTENCE = PASS
@@ -348,7 +352,13 @@ MULTIPLE_SAME_POLICY = FAIL_CLOSED
 SAME_PLUS_INSUFFICIENT_POLICY = FAIL_CLOSED_HOLD
 ZERO_SAME_PLUS_INSUFFICIENT_POLICY = RECONCILE_SINGLE_INSUFFICIENT_ROW
 REDISCOVERY_LOOKUP_BOUNDED = YES
+REDISCOVERY_WINDOW_TRULY_BOUNDED = PASS
+REDISCOVERY_EVIDENCE_ANCHORED = YES
+SERVICE_NOW_FALLBACK_ONLY = YES
 REDISCOVERY_LOOKBACK = 6h
+DELAYED_TELEMETRY_24H_BOUND = PASS
+DELAYED_TELEMETRY_6D_BOUND = PASS
+NO_EVIDENCE_SERVICE_NOW_FALLBACK = PASS
 LIFECYCLE_TERMINAL_SAFETY = PASS
 PROMOTED_TO_REJECTED = BLOCKED
 INVALID_TRANSITION_BEHAVIOR = ERROR
@@ -356,6 +366,11 @@ NESTED_FINGERPRINT_CANONICALIZATION = PASS
 FINGERPRINT_MATCHES_PERSISTED_EVIDENCE = PASS
 PROMOTION_DRAFT_TIME_MAPPING = PASS
 F2_MIGRATION_SQL_REAL_POSTGRES = PASS
+F2_MIGRATION_SCHEMA_ASSERTIONS = PASS
+F2_MIGRATION_REQUIRED_INDEXES = PASS
+F2_MIGRATION_FOREIGN_KEYS = PASS
+F2_MIGRATION_ZERO_SEED_ROWS = PASS
+PRE_F2_SCHEMA_SENTINELS_PRESERVED = PASS
 REAL_POSTGRES_SCHEMA_PROOF = PASS
 REAL_POSTGRES_INTEGRATION_TESTS = PASS
 FULL_REPOSITORY_MIGRATION_CHAIN = FAIL_PRE_EXISTING
@@ -372,7 +387,7 @@ FIRST_OBSERVED_IMMUTABLE_REAL_PG = PASS
 ORG_MISMATCH_REAL_PG = PASS
 TERMINAL_REDISCOVERY_REAL_PG = PASS
 IMPLEMENTATION_IDEMPOTENCY_PROOF = PASS
-UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (21/21)
+UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (25/25)
 REAL_PG_TEST_COUNT = 19
 NEST_PROVIDER_TEST = PASS
 PRISMA_VALIDATE = PASS
@@ -388,7 +403,7 @@ G2_RUNTIME_CHANGED = NO
 PRODUCTION_MUTATED = NO
 PRODUCTION_DEPLOYED = NO
 PR_1620_STILL_DRAFT = YES
-KNOWN_P0_BLOCKERS = 0
+KNOWN_P0_F2_BLOCKERS = 0
 KNOWN_P1_F2_BLOCKERS = 0
 ```
 
@@ -399,6 +414,7 @@ KNOWN_P1_F2_BLOCKERS = 0
 | `REAL_POSTGRES_SCHEMA_PROOF` | Isolated PG objects match expected F2 schema | **PASS** |
 | `REAL_POSTGRES_INTEGRATION_TESTS` | Service integration suite on isolated PG | **PASS** (19/19) |
 | `F2_MIGRATION_SQL_REAL_POSTGRES` | Actual `20260912123000_.../migration.sql` executed on pre-F2 baseline | **PASS** |
+| `F2_MIGRATION_SCHEMA_ASSERTIONS` | Hard post-migration assertions (table, nullable key, enums, indexes by name, FKs, zero rows, pre-F2 sentinels) | **PASS** |
 | `FULL_REPOSITORY_MIGRATION_CHAIN` | Full `prisma migrate deploy` over all historical migrations | **FAIL_PRE_EXISTING** |
 
 `prisma db push` is used **only** to establish pre-F2 baseline schema (from `503416c82`) and integration-test schema bootstrap. It is **not** claimed as migration execution proof.
@@ -423,7 +439,7 @@ Script: `backend/scripts/ops/prove-rfrf-f2-migration-sql.sh`
 | B. Pre-F2 schema from `503416c82` via `prisma db push` (baseline only) | **PASS** |
 | C. `raw_refuel_candidates` absent before F2 SQL | **PASS** |
 | D. Execute actual `migration.sql` via `psql -f` (not db push) | **PASS** |
-| E. Table nullable key, 4 enums, 7 indexes, FKs, 0 seed rows, base tables preserved | **PASS** |
+| E. Table nullable key, 4 enums, 6 required indexes by exact name, 2 FKs, 0 seed rows, pre-F2 sentinels (organizations, vehicles, vehicle_energy_events, vehicle_trips) | **PASS** (hard assertions; non-zero exit on mismatch) |
 
 ### 12.4 Migration operational review (F2 scope)
 
@@ -500,3 +516,16 @@ Independent review gaps closed on PR #1620:
 | Audit consistency | Sections 5, 6, 8, 9, 12 rewritten to match implemented algorithm |
 
 - **Motivates from:** `EED-EV-0040`, `EED-EV-0041`
+
+---
+
+## 17. F2.2a final merge closure summary (2026-09-12)
+
+| Gap | Resolution |
+|-----|------------|
+| Rediscovery window stretched by `serviceNow` | Evidence timestamps only anchor min/max; `serviceNow` fallback when no evidence exists |
+| Delayed telemetry unproven | Unit cases A–E: 24h/6d delay, no-evidence fallback, multi-hour scan envelope |
+| Migration proof soft verification | Hard assertions with non-zero exit; indexes by exact name; FK + sentinel checks |
+| Assertion harness fail-closed | `RFRF_F2_MIGRATION_PROOF_SELF_CHECK=1` negative probe |
+
+- **Motivates from:** F2.2 independent review (`serviceNow` anchor defect)
