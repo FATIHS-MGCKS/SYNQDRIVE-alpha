@@ -11,7 +11,7 @@
 | **Vehicle** | KS MS 661 — Audi A4; `vehicleId` `c10351f8-b6a2-4258-947f-631aeaa6d359`; DIMO `tokenId` **187361** |
 | **Canonical tripId** | `a05fa903-9ea7-4f20-8281-5cf185233c1a` |
 | **dimo_segment_id** | `dimo-seg-187361-1789187460000` |
-| **Classification** | **PENDING** — first POST-#1603 drive; #1603 lock-order failure class **not reproduced**; full natural end-cycle **not yet terminal** |
+| **Classification** | **FAIL_PENDING_FIX** — superseded by [CUSUM retry root-cause audit](KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md); #1603 lock-order class **not reproduced** |
 
 ## Operator ground truth (Europe/Berlin CEST = UTC+02:00)
 
@@ -190,17 +190,17 @@ Latencies:
 ## Phase 10 — verdict
 
 ```
-R12_PHYSICAL_ACCEPTANCE_VERDICT=PENDING
-CONFIDENCE=HIGH (forensic snapshot; bounded read-only queries)
+R12_PHYSICAL_ACCEPTANCE_VERDICT=FAIL_PENDING_FIX
+CONFIDENCE=HIGH (forensic snapshot + follow-up @ 05:31Z; bounded read-only queries)
 ```
 
-**Why PENDING (not PASS/FAIL):**
+**Verdict (updated after follow-up @ ~05:20–05:31Z):**
 
 - **PASS criteria not met:** trip not COMPLETED, FSM not RESTING, no FINALIZE, no natural terminal chain.
-- **FAIL for #1603 lock-order class not warranted:** END_VALIDATION **executed** (1 tracking run); no silent lock-miss authority loss; not stuck POSSIBLE_END with 0 EV runs.
-- **Expected next bounded events:** CUSUM policy allows up to **3** attempts (`maxAttempts=3` in PEC summary); only **1** completed (`completedAttempt=1`). Evidence shows `emptyCoreNextCheckDelayMs≈567273` (~9.5 min) — next end-path evaluation may occur ~`05:20Z` onward if empty-core / inactivity gates re-open. Re-audit after that window without polling.
+- **#1603 lock-order class not reproduced:** END_VALIDATION **executed** (1 tracking run); no silent lock-miss authority loss.
+- **New POST-#1603 defect class confirmed:** CUSUM attempt 1 → `cusum_still_ongoing` → ACTIVE reopen strips `stopBoundaryAt` → empty-core KEEP_OPEN under stale VLS → no POSSIBLE_END re-entry → CUSUM attempts 2–3 never occur. See [KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md](KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md).
 
-**#1603 historical failure classes:** `#1600` PE clock loss on stop, `#1603` PEC-held zero-delay EV silent lock miss — **neither reproduced** on this drive at audit time.
+**#1603 historical failure classes:** `#1600` PE clock loss on stop, `#1603` PEC-held zero-delay EV silent lock miss — **neither reproduced** on this drive.
 
 ## Explicit non-actions
 
