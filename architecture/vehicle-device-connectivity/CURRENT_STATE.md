@@ -41,7 +41,7 @@ Phase 3 (reconciliation) establishes:
 - **11 Phase-3 decisions** VDC-DEC-002..011 + bootstrap — see [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
 - **Recovery fast-path:** PLUG webhook optional (VDC-DEC-010); **adaptive polling** principle (VDC-DEC-011); **RB-001 GT-gated** per-signal safety.
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
-- **17-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
+- **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
 - **GT-R1-UNPLUG-001** remains prepared, not executed — blocks some recovery/false-positive conclusions.
 - **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
 
