@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F1.1 architecture hardening
+
+- Added `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md` (pre-F2 closure addendum)
+- Evidence `EED-EV-0042`; decision `EED-DEC-RFRF-005` (Option D; supersedes Option C / EED-DEC-RFRF-002)
+- Closed `EED-OQ-013` at design level (identity = candidateIdentityKey + G2 matcher)
+- KS MS 661 fixture split: observed vs synthetic; production IDs removed from executable fixtures
+- FST cross-ref `FST-EVID-RFRF-F1-1-2026-09-12-001`
+
+**Verdict:** F1.1 PASS — F2_IMPLEMENTATION_READY=NO (Option D schema + dimoSegmentId compatibility proof)
+
+---
+
 ## 2026-09-12 — RFRF F1 architecture discovery
 
 - Added `docs/audits/eed-rfrf-f1-architecture-2026-09-12.md` (design-only raw-fuel fallback contract)
@@ -8,7 +20,7 @@
 - KS MS 661 offline positive fixture for F3 detector tests
 - FST cross-ref `FST-EVID-RFRF-F1-2026-09-12-001`
 
-**Verdict:** F1 complete — F2 implementation ready (flags default OFF)
+**Verdict:** F1 complete — F2 blocked pending F1.1 hardening (see F1.1 addendum)
 
 ---
 

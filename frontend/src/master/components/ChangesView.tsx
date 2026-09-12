@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f1-1-hardening-2026-09-12',
+    version: '4.9.1109',
+    title: 'RFRF F1.1 — Architecture hardening + pre-F2 closure',
+    summary: [
+      'Corrects F1 window-level native suppression contradiction; per-candidate convergence required.',
+      'Separates candidateIdentityKey (stable) from evidenceRevisionFingerprint (mutable).',
+      'Recommends Option D RawRefuelCandidate lifecycle; supersedes Option C; closes EED-OQ-013 at design level.',
+      'dimoSegmentId consumer audit: SYNTHETIC_DIMO_SEGMENT_ID_COMPATIBLE=NOT_PROVEN.',
+      'KS MS 661 fixture split (observed vs synthetic); production IDs removed; threshold labels corrected.',
+      'F2_IMPLEMENTATION_READY=NO until Option D schema + compatibility proof.',
+    ],
+    reason:
+      'Independent F1 review found four material design/evidence issues blocking F2 implementation.',
+    previousBehavior: 'F1 proposed Option C identity and window-level fallback gating; mixed inferred fixture samples.',
+    details:
+      'docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md; EED-EV-0042; EED-DEC-RFRF-005; FST-EVID-RFRF-F1-1-2026-09-12-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T12:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f1-architecture-2026-09-12',
     version: '4.9.1108',
     title: 'RFRF F1 — Raw Fuel Refuel Fallback architecture discovery',

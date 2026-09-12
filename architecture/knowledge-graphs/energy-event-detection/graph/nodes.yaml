@@ -1115,12 +1115,14 @@ nodes:
 
   - id: EED-OQ-013
     type: open_question
-    title: Physical refuel identity implementation rollout
+    title: Physical refuel identity vs dimoSegmentId
     epistemic_status: UNKNOWN
     summary: >
-      G1.2c finality + ambiguity closure complete (EED-EV-0030); G2 runtime wiring pending.
+      RESOLVED (design, F1.1): physical identity = candidateIdentityKey + G2 semantic matcher;
+      dimoSegmentId is upsert compatibility key only (native provider id or namespaced promotion id).
+      EED-DEC-RFRF-005 supersedes Option C. Production proof pending F2 Option D implementation.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0029, EED-EV-0030]
+    evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0042, EED-DEC-RFRF-005]
 
   - id: EED-EV-0029
     type: evidence
@@ -1371,16 +1373,31 @@ nodes:
   - id: EED-EV-0041
     type: evidence
     title: RFRF F1 — Raw Fuel Refuel Fallback architecture discovery
-    epistemic_status: CONFIRMED
+    epistemic_status: INFERRED
     source_type: ARCHITECTURE_DOC
     source_paths:
       - docs/audits/eed-rfrf-f1-architecture-2026-09-12.md
-      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel.fixture.ts
     summary: >
       F1 design-only contract for SynqDrive raw-fuel REFUEL fallback parallel to DIMO native
       segments. Provider-neutral candidate model, STABLE_PRE→RISING→STABLE_POST detector,
-      Option C identity (detectionSource+sourceEventKey), G2 handoff, fail-closed policy,
+      Option C identity (superseded by F1.1 Option D), G2 handoff, fail-closed policy,
       observability/SLO proposal. No production implementation.
+    verified_at: "2026-09-12"
+
+  - id: EED-EV-0042
+    type: evidence
+    title: RFRF F1.1 — Architecture hardening + pre-F2 closure
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md
+      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture.ts
+      - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-synthetic.fixture.ts
+    summary: >
+      F1.1 hardening: WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; candidateIdentityKey vs
+      evidenceRevisionFingerprint; Option D RawRefuelCandidate lifecycle; EED-OQ-013 closed at
+      design level; dimoSegmentId consumer audit NOT_PROVEN; KS MS 661 observed/synthetic fixture
+      split; threshold epistemic labels corrected. F2_IMPLEMENTATION_READY=NO.
     verified_at: "2026-09-12"
 
   - id: EED-DEC-RFRF-001
@@ -1396,12 +1413,12 @@ nodes:
   - id: EED-DEC-RFRF-002
     type: decision
     title: RFRF — VehicleEnergyEvent identity Option C
-    decision_status: PROPOSED
+    decision_status: SUPERSEDED
     epistemic_status: CONFIRMED
     summary: >
-      Add detectionSource + sourceEventKey; retain dimoSegmentId unique compatibility with
-      namespaced fallback IDs until semantic cleanup phase.
-    evidence: [EED-EV-0041]
+      F1 proposal: detectionSource + sourceEventKey; retain dimoSegmentId unique compatibility.
+      SUPERSEDED by EED-DEC-RFRF-005 (Option D staging table) after F1.1 identity audit.
+    evidence: [EED-EV-0041, EED-EV-0042]
 
   - id: EED-DEC-RFRF-003
     type: decision
@@ -1421,7 +1438,18 @@ nodes:
     summary: >
       Per-candidate SAME/DISTINCT/INSUFFICIENT via physical-refuel identity matcher;
       no global fallback disable on unrelated native segments.
-    evidence: [EED-EV-0041]
+    evidence: [EED-EV-0041, EED-EV-0042]
+
+  - id: EED-DEC-RFRF-005
+    type: decision
+    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Staging table with candidateIdentityKey at OBSERVED lock and mutable
+      evidenceRevisionFingerprint; promote to VehicleEnergyEvent on READY_FOR_PERSIST.
+      Supersedes Option C. Closes EED-OQ-013 at design level.
+    evidence: [EED-EV-0042]
 
   - id: EED-OQ-014
     type: open_question

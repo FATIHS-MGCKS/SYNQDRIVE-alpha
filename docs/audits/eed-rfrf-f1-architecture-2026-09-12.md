@@ -208,28 +208,21 @@ Fallback has **no natural DIMO segment ID**.
 | **C** Add `detectionSource` + `sourceEventKey`; keep `dimoSegmentId` required with namespaced fallback IDs | MEDIUM-HIGH | MEDIUM | GOOD | HIGH | MEDIUM |
 | **D** Separate `RawRefuelCandidate` table + promotion | HIGH | HIGH | GOOD (two-phase) | MEDIUM | MEDIUM |
 
-### 5.3 Recommendation
+### 5.3 Recommendation (superseded by F1.1 — see addendum)
 
-**RECOMMENDED_EVENT_IDENTITY_MODEL = OPTION_C (phased semantic identity)**
+**F1 original:** Option C. **F1.1 revision:** **Option D** — see `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md` §3.
 
-Add to `VehicleEnergyEvent`:
+F1.1 recommends **`RawRefuelCandidate` lifecycle table → promote to `VehicleEnergyEvent`** because:
 
-- `detectionSource` enum: `DIMO_NATIVE` | `SYNQDRIVE_RAW_FUEL_FALLBACK`
-- `sourceEventKey` string: canonical identity (unique with `vehicleId`)
-- Keep `dimoSegmentId` required + unique for backward compatibility:
-  - Native: unchanged
-  - Fallback: `synqdrive-rfrf-{vehicleId}-{evidenceFingerprint}` (stored in `dimoSegmentId` until Phase F2+ migration can deprecate misnomer)
+- SETTLING / OBSERVED states require persistence before promotion
+- `candidateIdentityKey` must be immutable while `evidenceRevisionFingerprint` matures
+- Synthetic `dimoSegmentId` compatibility is **NOT_PROVEN** repo-wide (legacy sibling regex)
 
-Unique constraints (F2 migration):
+Promotion still adds to `VehicleEnergyEvent`:
 
-- `@@unique([vehicleId, sourceEventKey])`
-- retain `dimoSegmentId @unique`
-
-| Field | Value |
-|-------|-------|
-| **DIMO_SEGMENT_ID_SCHEMA_CHANGE_REQUIRED** | **YES** (add columns + indexes; `dimoSegmentId` retained) |
-
-Phase F10 may migrate toward Option B semantics (nullable provider segment id) once all readers use `sourceEventKey`.
+- `detectionSource` = `SYNQDRIVE_RAW_FUEL_FALLBACK`
+- `sourceEventKey` = stable `candidateIdentityKey`
+- `dimoSegmentId` = `synqdrive-rfrf-{vehicleId}-{hash(candidateIdentityKey)}` (upsert key only; derived from **stable** identity, never from revision fingerprint)
 
 ---
 
@@ -251,10 +244,10 @@ INSUFFICIENT → STABLE_PRE → RISING → STABLE_POST → CANDIDATE_READY
 | Minimum relative rise (when available) | ≥ 5 % | **PROVISIONAL** |
 | Minimum pre-plateau samples | ≥ 3 consecutive within ±0.5 L | **INFERRED** |
 | Minimum post-plateau samples | ≥ 3 consecutive within ±0.5 L | **INFERRED** |
-| Maximum sample gap in rise corridor | ≤ 6 min | **CALIBRATED** (KS MS 661 max gap ~4.5 min) |
+| Maximum sample gap in rise corridor | ≤ 6 min | **PROVISIONAL / INCIDENT_ANCHORED** (KS MS 661 max gap ~4.5 min — not fleet-calibrated) |
 | Maximum intra-rise negative wobble | ≤ 1 L single-step | **INFERRED** |
 | Minimum post-rise persistence | post plateau ≥ 2 min | **INFERRED** |
-| Minimum rise duration | ≥ 30 s | **CONFIRMED** (matches `refuel-fuel-rise.ts`) |
+| Minimum rise duration | ≥ 30 s | **INFERRED_FROM_EXISTING_CODE** (`refuel-fuel-rise.ts` constant; not independently validated for fallback) |
 | Maximum rise duration | ≤ 45 min | **PROVISIONAL** |
 | Quantized gauge step tolerance | ±1 L | **INFERRED** |
 
@@ -279,21 +272,19 @@ Relative fuel may increase confidence but is **not mandatory**.
 
 ---
 
-## 7. Absolute fuel unit contract
+## 7. Absolute fuel unit vs signal trust (F1.1 separated)
 
-SynqDrive code treats `powertrainFuelSystemAbsoluteLevel` as **liters**:
+| Claim | Field | Status |
+|-------|-------|--------|
+| DIMO GraphQL `powertrainFuelSystemAbsoluteLevel` semantic unit | `ABSOLUTE_FUEL_UNIT` | **LITERS** (SynqDrive mapping) |
+| Vehicle/OEM reliable absolute signal for fallback | `ABSOLUTE_SIGNAL_TRUST` | **TRUSTED \| UNTRUSTED \| UNKNOWN** per capability profile |
 
-- `vehicles.service.ts` documents liters
-- `DimoFuelLevelSample.absoluteLiters` maps directly from GraphQL field
-- Trip enrichment computes L/100km from absolute delta
-
-Fleet-wide universal OEM proof is **not** established in authority.
+**UNKNOWN → fail closed.** Liters unit ≠ trusted vehicle signal.
 
 | Field | Value |
 |-------|-------|
-| **ABSOLUTE_FUEL_UNIT_CONTRACT** | **CONFIRMED_LITERS** (SynqDrive mapping + KS MS 661 liter-scale values) |
-
-**Capability gating required:** vehicles with `UNKNOWN` or conflicting unit semantics must not receive absolute-liter fallback until validated per vehicle/integration profile.
+| **ABSOLUTE_FUEL_UNIT_CONTRACT** | **CONFIRMED_LITERS** (signal field semantics) |
+| **ABSOLUTE_FUEL_UNIT_SEPARATED_FROM_SIGNAL_TRUST** | **YES** |
 
 ---
 
@@ -346,23 +337,28 @@ G2 continues to select coordinates from route evidence; fallback supplies tempor
 
 ---
 
-## 11. KS MS 661 offline positive fixture
+## 11. KS MS 661 offline fixtures (F1.1 split)
 
-**Created:** `backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel.fixture.ts`
+| File | Kind |
+|------|------|
+| `ks-ms-661-2026-09-06-refuel-observed.fixture.ts` | **OBSERVED** — audit-confirmed samples only |
+| `ks-ms-661-2026-09-06-refuel-synthetic.fixture.ts` | **SYNTHETIC** — interpolated rise for algorithm tests |
 
-Audit-confirmed anchors:
+Observed anchors (audit §6):
 
-- Pre plateau ~7 L (09:28:30–09:35:00Z)
-- First post-rise 16.4 L @ 09:39:30Z
-- Peak 31 L @ 09:43–09:47Z
-- Relative NULL throughout
-- Native segments: []
-- Forecourt dwell ~31 m Esso Ysenburgstraße
+- Pre plateau 7 L (09:28:30–09:35:00Z, 30 s cadence)
+- 16.4 L @ 09:39:30Z
+- 31 L @ 09:43:00Z and 09:47:00Z
+- ~4.5 min gap (no fabricated fill)
+- Relative NULL; native segments []
+
+Production incident evaluation uses **observed fixture only**. Synthetic fixture is for F3 state-machine unit tests.
+
+Synthetic fixture IDs only — provenance via `EED-EV-0040` constants.
 
 | Field | Value |
 |-------|-------|
-| **KS_MS_661_OFFLINE_POSITIVE_FIXTURE** | **CREATED** |
-| **Expected** | `RAW_REFUEL_CANDIDATE = DETECTED` under proposed detector |
+| **KS_MS_661_OFFLINE_POSITIVE_FIXTURE** | **CREATED** (observed + synthetic split) |
 
 ---
 
@@ -465,15 +461,31 @@ Fallback persist must populate equivalent fields from candidate; `detectionMecha
 
 ---
 
-## 16. Recovery / scheduling
+## 16. Recovery / scheduling (F1.1 corrected)
 
 ### 16.1 Recommendation
 
-**Primary:** extend existing `detectEnergyEvents` window processing (reconciliation Step 5) with fallback scan **after** native segment fetch returns zero persistable refuel segments for the window.
+```
+WINDOW_LEVEL_NATIVE_SUPPRESSION = FORBIDDEN
+PER_CANDIDATE_NATIVE_FALLBACK_CONVERGENCE = REQUIRED
+```
 
-**Secondary:** reuse fast repair (15 min) and warm reconciliation (4 h) windows — no new scheduler in F1.
+**Primary flow:**
 
-**Optional F7:** observation-only mode scans before persist flag enabled.
+```
+fetch native REFUEL candidates
++
+fetch raw fuel samples
+→ detect raw candidates (all rises)
+→ per-candidate SAME / DISTINCT / INSUFFICIENT vs native + persisted
+→ promote READY_FOR_PERSIST only
+```
+
+Raw fallback scan runs for fuel-capable vehicles under RFRF flag — **never** gated on `nativePersistableCount === 0` for the window.
+
+Reuse reconciliation Step 5 windows (fast 15 min / warm 4 h) — no new scheduler in F1.
+
+See F1.1 addendum §1 for counterexample proof.
 
 ### 16.2 Cost estimate (PROVISIONAL)
 
@@ -491,20 +503,34 @@ Fallback persist must populate equivalent fields from candidate; `detectionMecha
 
 ---
 
-## 17. Delayed telemetry lifecycle
+## 17. Delayed telemetry lifecycle (F1.1 corrected)
 
-Stable `evidenceFingerprint` from:
+Two concepts — **never conflate**:
+
+| Concept | Role |
+|---------|------|
+| **`candidateIdentityKey`** | Stable logical identity; assigned at OBSERVED lock; used for upsert/promotion |
+| **`evidenceRevisionFingerprint`** | Mutable digest of current sample maturity; audit + SETTLING detection |
+
+**candidateIdentityKey (stable inputs only):**
 
 ```
-hash(vehicleId, detectionVersion, prePlateauMedian, postPlateauMedian, riseStartBucket, riseEndBucket)
+hash(vehicleId, detectionVersion, signalChannel,
+     prePlateauBucket, riseOnsetBucketUtc)
 ```
 
-Re-evaluation on new samples:
+**NOT included:** post-plateau median/peak, rise end, scan window bounds.
 
-- Same fingerprint → idempotent upsert (no duplicate row)
-- Fingerprint maturity upgrade (e.g. INSUFFICIENT_POST → READY) → same `sourceEventKey` if plateau anchors unchanged; version bump if anchors shift materially
+**evidenceRevisionFingerprint (mutable):**
 
-State: `EVIDENCE_STILL_SETTLING` until post-plateau minimum satisfied.
+```
+hash(orderedSampleDigest, prePlateauMedian, postPlateauMedian,
+     riseStart, riseEnd, sampleCount, maxGap, detectionVersion)
+```
+
+Re-evaluation on new samples: same `candidateIdentityKey` → update fingerprint + lifecycle state; no duplicate promotion.
+
+Full worked examples: F1.1 addendum §2.4.
 
 ---
 
@@ -629,10 +655,10 @@ See §12 negative matrix +:
 | | |
 |--|--|
 | **OPTIONS** | A synthetic dimoSegmentId / B nullable / C hybrid / D staging table |
-| **PROS** | C balances migration risk + semantics |
-| **CONS** | Misnamed column until Phase F10 cleanup |
+| **PROS** | D provides SETTLING lifecycle + stable `candidateIdentityKey` before promotion |
+| **CONS** | Extra table + promotion contract; synthetic `dimoSegmentId` compatibility NOT_PROVEN fleet-wide |
 | **RISK** | MEDIUM |
-| **RECOMMENDATION** | **Option C** |
+| **RECOMMENDATION** | **Option D** (F1.1 supersedes F1 Option C) |
 | **EPISTEMIC STATUS** | PROPOSED |
 
 ### C. Raw rise algorithm
@@ -705,11 +731,11 @@ See §12 negative matrix +:
 
 | | |
 |--|--|
-| **OPTIONS** | Option C additive migration |
-| **PROS** | Native rows unchanged |
-| **CONS** | Requires coordinated F2 deploy |
+| **OPTIONS** | Option D staging table + promotion fields on VehicleEnergyEvent |
+| **PROS** | Native rows unchanged; identity stable across delayed telemetry |
+| **CONS** | Requires coordinated F2 deploy + G2 compatibility proof |
 | **RISK** | MEDIUM |
-| **RECOMMENDATION** | **Additive F2 migration per §23** |
+| **RECOMMENDATION** | **Additive F2 migration per §23 + F1.1 §3** |
 | **EPISTEMIC STATUS** | PROPOSED |
 
 ### J. Observability/SLO
@@ -729,10 +755,10 @@ See §12 negative matrix +:
 
 | Phase | Scope |
 |-------|-------|
-| **F2** | Schema contract: `detectionSource`, `sourceEventKey`, indexes; flag scaffolding |
-| **F3** | Pure raw-rise detector + KS MS 661 positive + negative fixture unit tests |
+| **F2** | `raw_refuel_candidates` lifecycle table + promotion contract; `detectionSource`, `sourceEventKey`; flag scaffolding |
+| **F3** | Pure raw-rise detector + KS MS 661 observed + synthetic fixture unit tests |
 | **F4** | Fallback candidate persistence path in `detectEnergyEvents` (flag-gated) |
-| **F5** | Native/fallback convergence via G2 matcher + late sibling policy |
+| **F5** | Native/fallback convergence via G2 matcher + late sibling policy + integration matrix |
 | **F6** | G2 handoff validation; populate `rawDetectionMeta` compatibility |
 | **F7** | Recovery integration (fast/warm windows); observation-only mode |
 | **F8** | Observability metrics + alert rules |
@@ -741,7 +767,7 @@ See §12 negative matrix +:
 
 | Field | Value |
 |-------|-------|
-| **F2_IMPLEMENTATION_READY** | **YES** |
+| **F2_IMPLEMENTATION_READY** | **NO** (see F1.1 addendum §12 — Option D schema + `dimoSegmentId` compatibility proof required) |
 
 ---
 
@@ -749,8 +775,8 @@ See §12 negative matrix +:
 
 | Severity | Count | Description |
 |----------|-------|-------------|
-| P0 | 0 | No design contradictions blocking F2 start |
-| P1 | 1 | Missing raw fallback in production (KS MS 661) — motivator, addressed by RFRF roadmap |
+| P0 | 0 | — |
+| P1 | 1 | Missing raw fallback in production (KS MS 661) — motivator; F2 blocked on Option D + synthetic id proof |
 
 ---
 
@@ -758,7 +784,9 @@ See §12 negative matrix +:
 
 | Field | Value |
 |-------|-------|
-| RUNTIME_CODE_CHANGED | NO (fixture + docs only; detector not wired) |
+| RUNTIME_BEHAVIOR_CHANGED | NO |
+| BACKEND_SOURCE_TREE_CHANGED | YES (fixture files only) |
+| FIXTURE_ONLY | YES |
 | PRODUCTION_MUTATED | NO |
 | PRODUCTION_DEPLOYED | NO |
 
@@ -766,6 +794,26 @@ See §12 negative matrix +:
 
 ## 29. Canonical graph references
 
-- **EED:** `EED-EV-0041` (this F1 document), `EED-DEC-RFRF-001` … `EED-DEC-RFRF-004`
+- **EED:** `EED-EV-0041` (this F1 document), `EED-EV-0042` (F1.1 hardening), `EED-DEC-RFRF-001` … `EED-DEC-RFRF-005`
 - **Motivates from:** `EED-EV-0040`
-- **FST cross-ref:** `FST-EVID-RFRF-F1-2026-09-12-001`
+- **FST cross-ref:** `FST-EVID-RFRF-F1-2026-09-12-001`, `FST-EVID-RFRF-F1-1-2026-09-12-001`
+
+---
+
+## 30. F1.1 hardening addendum (2026-09-12)
+
+Independent review closure — **design / documentation / test-fixture only**:
+
+| Correction | Reference |
+|------------|-----------|
+| Window-level native suppression forbidden | F1.1 §1 |
+| `candidateIdentityKey` vs `evidenceRevisionFingerprint` | F1.1 §2 |
+| Option D recommended (Option C superseded) | F1.1 §3 |
+| EED-OQ-013 closed at design level | F1.1 §4 |
+| `dimoSegmentId` consumer audit | F1.1 §5 |
+| G2 native↔fallback matching | F1.1 §6 |
+| READY_FOR_PERSIST lifecycle authority | F1.1 §7 |
+| Threshold epistemic labels | F1.1 §9 |
+| KS MS 661 fixture split (observed vs synthetic) | F1.1 §10 |
+
+**Canonical addendum:** `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md`

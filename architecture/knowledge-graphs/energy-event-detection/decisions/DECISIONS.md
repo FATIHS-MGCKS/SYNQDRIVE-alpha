@@ -284,10 +284,27 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | Field | Value |
 |-------|-------|
 | **ID** | EED-DEC-RFRF-002 |
-| **Status** | PROPOSED |
+| **Status** | **SUPERSEDED** by EED-DEC-RFRF-005 (F1.1) |
 | **Date** | 2026-09-12 |
 | **Decision** | Add `detectionSource` + `sourceEventKey`; retain `dimoSegmentId` unique with namespaced fallback IDs. |
 | **Evidence** | EED-EV-0041 |
+
+---
+
+## EED-DEC-RFRF-005 — RawRefuelCandidate lifecycle + Option D identity (F1.1)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-005 |
+| **Status** | PROPOSED |
+| **Date** | 2026-09-12 |
+| **Question** | How to keep fallback candidate identity stable under delayed telemetry without conflating evidence revision? |
+| **Decision** | `RawRefuelCandidate` staging table with lifecycle (INSUFFICIENT→OBSERVED→SETTLING→READY_FOR_PERSIST→REJECTED). Assign immutable `candidateIdentityKey` at OBSERVED lock; mutable `evidenceRevisionFingerprint` per scan. Promote to `VehicleEnergyEvent` with `sourceEventKey = candidateIdentityKey`. Supersedes Option C direct-to-VehicleEnergyEvent. |
+| **Why** | Mutable fingerprint in Option C would duplicate events on delayed telemetry; legacy `refuel-sibling-reconciliation.ts` regex breaks on `synqdrive-rfrf-*` ids (NOT_PROVEN fleet-wide). |
+| **Alternatives** | Option C hybrid (rejected F1.1); Option B nullable dimoSegmentId (F10 target) |
+| **Evidence** | EED-EV-0042 |
+| **Consequences** | F2 must implement staging table before production fallback; F5 must prove G2 native↔fallback matching |
+| **Related nodes** | EED-DEC-RFRF-002, EED-OQ-013, EED-OQ-014 |
 
 ---
 

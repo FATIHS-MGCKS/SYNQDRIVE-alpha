@@ -364,6 +364,12 @@ edges:
     to: FST-EVID-RFRF-F1-2026-09-12-001
   - from: FST-EVID-RFRF-F1-2026-09-12-001
     relation: supports
+    to: FST-EVID-RFRF-F1-1-2026-09-12-001
+  - from: FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001
+    relation: supports
+    to: FST-EVID-RFRF-F1-1-2026-09-12-001
+  - from: FST-EVID-RFRF-F1-2026-09-12-001
+    relation: supports
     to: FST-GAP-REAL-POST-CUTOVER-REFUEL-001
   - from: FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001
     relation: validates
