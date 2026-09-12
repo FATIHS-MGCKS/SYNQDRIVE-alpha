@@ -8,6 +8,7 @@ import {
   RawRefuelCandidateOrgVehicleIntegrityError,
   RawRefuelCandidateVehicleNotFoundError,
 } from './raw-refuel-candidate.errors';
+import type { RawRefuelCandidateRediscoveryWindow } from './raw-refuel-candidate-rediscovery-window';
 import type { RawRefuelCandidateObservation } from './raw-refuel-candidate.types';
 
 type TxClient = Prisma.TransactionClient;
@@ -48,6 +49,69 @@ export class RawRefuelCandidateRepository {
         },
       },
     });
+  }
+
+  async findRediscoveryCandidatesInWindow(
+    tx: TxClient,
+    vehicleId: string,
+    signalChannel: RawRefuelCandidateSignalChannel,
+    window: RawRefuelCandidateRediscoveryWindow,
+  ): Promise<RawRefuelCandidate[]> {
+    const temporalOverlap = {
+      OR: [
+        {
+          riseOnsetAt: {
+            gte: window.start,
+            lte: window.end,
+          },
+        },
+        {
+          physicalEvidenceStart: {
+            gte: window.start,
+            lte: window.end,
+          },
+        },
+        {
+          physicalEvidenceEnd: {
+            gte: window.start,
+            lte: window.end,
+          },
+        },
+        {
+          scanWindowStart: { lte: window.end },
+          scanWindowEnd: { gte: window.start },
+        },
+        {
+          firstObservedAt: {
+            gte: window.start,
+            lte: window.end,
+          },
+        },
+      ],
+    };
+
+    const [nonTerminal, terminal] = await Promise.all([
+      tx.rawRefuelCandidate.findMany({
+        where: {
+          vehicleId,
+          signalChannel,
+          lifecycleState: { in: [...RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES] },
+          ...temporalOverlap,
+        },
+        orderBy: [{ firstObservedAt: 'asc' }, { createdAt: 'asc' }],
+      }),
+      tx.rawRefuelCandidate.findMany({
+        where: {
+          vehicleId,
+          signalChannel,
+          lifecycleState: { in: [...RAW_REFUEL_CANDIDATE_TERMINAL_LIFECYCLE_STATES] },
+          ...temporalOverlap,
+        },
+        orderBy: [{ firstObservedAt: 'asc' }, { createdAt: 'asc' }],
+      }),
+    ]);
+
+    return [...nonTerminal, ...terminal];
   }
 
   async findNonTerminalByVehicle(

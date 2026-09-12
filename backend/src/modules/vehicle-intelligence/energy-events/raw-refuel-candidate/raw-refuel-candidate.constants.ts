@@ -25,6 +25,13 @@ export const RAW_REFUEL_CANDIDATE_TERMINAL_LIFECYCLE_STATES = [
 /** Max temporal distance for same physical rise rediscovery (conservative). */
 export const RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS = 45 * 60 * 1000;
 
+/**
+ * Bounded DB lookback for semantic rediscovery candidate queries.
+ * Covers delayed telemetry, bucket shift, warm reconciliation scan windows,
+ * and the 45-minute same-rise neighborhood without scanning vehicle lifetime.
+ */
+export const RAW_REFUEL_CANDIDATE_REDISCOVERY_LOOKBACK_MS = 6 * 60 * 60 * 1000;
+
 export const RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_LITERS = 0.5;
 export const RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_PERCENT = 1.0;
 export const RAW_REFUEL_CANDIDATE_POST_PLATEAU_TOLERANCE_LITERS = 1.0;

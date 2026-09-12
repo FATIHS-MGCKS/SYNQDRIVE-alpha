@@ -105,30 +105,52 @@ F2 `resolveOrCreateCandidate` accepts caller-supplied `lifecycleState` (except *
 
 ---
 
-## 5. Semantic rediscovery contract
+## 5. Semantic rediscovery contract (F2.1 / F2.2)
 
-Entry point: `RawRefuelCandidateService.resolveOrCreateCandidate`.
+Entry point: `@Injectable()` `RawRefuelCandidateService.resolveOrCreateCandidate`.
 
 ```
 BEGIN TRANSACTION
   pg_advisory_xact_lock64("raw_refuel_candidate:{vehicleId}")
-  load non-terminal rows for (vehicleId, signalChannel)
-  for each existing row:
-    classifyRawRefuelCandidateOverlap(observation, row)
-    if SAME_PHYSICAL_RISE → reuse row (preserve candidateIdentityKey)
-  if match:
-    update evidenceRevisionFingerprint + evidence envelope + lifecycle
-    skip insert
-  else:
-    require riseOnsetAt + pre-plateau bucket
-    assign candidateIdentityKey (hash at insert time only)
-    INSERT new row
+  resolveAuthoritativeOrganizationId(vehicleId, assertedOrgId)  # fail-closed on mismatch
+  window = computeRawRefuelCandidateRediscoveryWindow(observation, serviceNow)
+  candidates = findRediscoveryCandidatesInWindow(vehicleId, signalChannel, window)
+    # bounded non-terminal + terminal rows only
+  classify each candidate → SAME | INSUFFICIENT | DISTINCT
+  if SAME count > 1 → RawRefuelCandidateAmbiguityError (MULTIPLE_SAME_PHYSICAL_RISE)
+  if SAME count = 1 and INSUFFICIENT neighbors > 0 → AmbiguityError (SAME_WITH_INSUFFICIENT_NEIGHBOR)
+  if SAME count = 1 → reconcileExistingCandidate (terminal rows: return without mutation)
+  if SAME count = 0 and INSUFFICIENT count > 1 → AmbiguityError (MULTIPLE_INSUFFICIENT_NEIGHBORS)
+  if SAME count = 0 and INSUFFICIENT count = 1 → reconcile that INSUFFICIENT row (maturation)
+  if exact candidateIdentityKey lookup hits → reconcile (includes out-of-window terminal guard)
+  else INSERT new row (candidateIdentityKey nullable when evidence insufficient)
+  merge evidence → canonical fingerprint from merged state → persist atomically
+  lastObservedAt = MAX(existing, serviceNow) even when fingerprint unchanged (non-terminal)
 COMMIT
 ```
 
 **Matcher** (`classifyRawRefuelCandidateOverlap`): tri-state `SAME_PHYSICAL_RISE | DISTINCT_PHYSICAL_RISE | INSUFFICIENT_EVIDENCE`. Does **not** compare `candidateIdentityKey` or 5-minute buckets alone.
 
-**Neighborhood constants (PROVISIONAL):**
+**Bounded lookup (F2.2):**
+
+- Lookback: `RAW_REFUEL_CANDIDATE_REDISCOVERY_LOOKBACK_MS = 6 hours`
+- Window anchor: min/max of observation `riseOnsetAt`, `riseEndAt`, physical envelope, scan window, and `serviceNow`, expanded symmetrically by lookback
+- Rationale: covers 45-minute same-rise neighborhood, 5-minute bucket shifts, warm reconciliation scan windows (~3.5 h in fixtures), and delayed telemetry without scanning vehicle lifetime
+- Exact `candidateIdentityKey` lookup remains an additional guard outside the temporal window
+
+**Ambiguity policy (fail-closed):**
+
+| Condition | Policy |
+|-----------|--------|
+| >1 SAME | Throw `MULTIPLE_SAME_PHYSICAL_RISE` |
+| 1 SAME + ≥1 INSUFFICIENT neighbor | Throw `SAME_WITH_INSUFFICIENT_NEIGHBOR` |
+| 0 SAME + >1 INSUFFICIENT | Throw `MULTIPLE_INSUFFICIENT_NEIGHBORS` |
+| 0 SAME + 1 INSUFFICIENT | Reconcile the single INSUFFICIENT row |
+| 0 SAME + 0 INSUFFICIENT | Insert new row (or exact-key reconcile) |
+| DISTINCT neighbors | Ignored (do not block) |
+| Distant terminal outside window | Ignored by bounded query |
+
+**Neighborhood constants (matcher):**
 
 - Rise neighborhood: 45 min (`RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS`)
 - Pre-plateau tolerance: ±0.5 L / ±1.0 %
@@ -141,23 +163,25 @@ COMMIT
 | Concept | Storage | Mutability | F2 role |
 |---------|---------|------------|---------|
 | `RawRefuelCandidate.id` | UUID PK | Immutable | DB row identity |
-| `candidateIdentityKey` | SHA-256 of `vehicleId\|detectionVersion\|signalChannel\|prePlateauBucket\|riseOnsetBucketUtc` | Immutable after first insert | Auditable key; promotion `sourceEventKey` |
-| `evidenceRevisionFingerprint` | SHA-256 of canonical evidence JSON | Updates each pass | Idempotent no-op detection |
+| `candidateIdentityKey` | SHA-256 of `vehicleId\|detectionVersion\|signalChannel\|prePlateauBucket\|riseOnsetBucketUtc` | **Nullable until sufficient evidence; assigned once; immutable thereafter** | Auditable key; promotion `sourceEventKey` |
+| `evidenceRevisionFingerprint` | SHA-256 of recursive canonical merged evidence JSON | Updates when merged evidence changes | Idempotent no-op detection (except `lastObservedAt` advance) |
 | Semantic matcher | Algorithm | N/A | Rediscovery when bucket/hash would differ |
 
-**Rediscovery rule:** `candidateIdentityKey` is assigned only on **insert** after semantic search fails. Delayed telemetry that shifts the 5-minute rise bucket must rediscover via matcher, not re-hash.
+**Assignment rule:** `candidateIdentityKey` is assigned when rise onset **and** pre-plateau bucket become sufficient — either on first insert or on maturation of an existing INSUFFICIENT row. It is **not** required for INSUFFICIENT persistence.
+
+**Service-owned clocks:** `firstObservedAt` and `lastObservedAt` are set from `RawRefuelCandidateClock` (production default: system UTC). Caller `observedAt` is **not** accepted.
 
 **Immutable audit fields on rediscovery:**
 
-- `candidateIdentityKey` — preserved
-- `firstObservedAt` — preserved (SynqDrive first durable observation; not physical refuel time)
+- `candidateIdentityKey` — preserved after first assignment
+- `firstObservedAt` — preserved
 
 **Mutable envelope fields on rediscovery:**
 
 - `physicalEvidenceStart` — min(existing, incoming)
 - `physicalEvidenceEnd`, `riseEndAt` — max(existing, incoming)
 - `riseOnsetAt` — min(existing, incoming)
-- post-plateau levels, sample counts, fingerprints
+- post-plateau levels, sample counts, fingerprints, `lastObservedAt`
 
 ---
 
@@ -193,12 +217,16 @@ Maps F1.1 delayed-telemetry cases (A–G) plus F2 integration scenarios (H–L).
 | **H** | Concurrent identical observation (2 connections) | Single row under advisory lock | **PASS** — `concurrent same observation yields one row` integration test |
 | **I** | Parallel different vehicles | Independent rows | **PASS** — `different vehicles process in parallel` integration test |
 | **J** | `firstObservedAt` on rediscovery | Immutable | **PASS** — `firstObservedAt remains immutable` integration test |
-| **K** | Identical fingerprint + lifecycle → no-op update | Skip write | **PASS** — service early return in `resolveOrCreateCandidate` |
+| **K** | Identical fingerprint + lifecycle → `lastObservedAt` still advances | Touch `lastObservedAt` only | **PASS** — `lastObservedAt advances on unchanged evidence` integration test |
 | **L** | Promotion draft mapping | Stable `sourceEventKey` + placeholder segment id | **PASS** — `raw-refuel-candidate-promotion.design.spec.ts` |
+| **M** | INSUFFICIENT without pre-plateau persisted | Row with null key | **PASS** — integration test |
+| **N** | Terminal PROMOTED/REJECTED rediscovery | No duplicate insert | **PASS** — integration tests |
+| **O** | SAME + INSUFFICIENT neighbor ambiguity | Fail closed | **PASS** — integration test |
+| **P** | Bounded lookup ignores distant terminal | Reuse in-window SAME | **PASS** — integration test |
 
 | Field | Value |
 |-------|-------|
-| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PARTIAL** — unit + opt-in Postgres integration; not CI-default |
+| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PASS** — 21 unit + 19 real-PG integration tests |
 | **MULTI_REPLICA_STRATEGY_DEFINED** | **YES** (design + lock) |
 | **MULTI_REPLICA_PROOF_IN_CI** | **NO** — requires `RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1` |
 
@@ -212,14 +240,17 @@ Maps F1.1 delayed-telemetry cases (A–G) plus F2 integration scenarios (H–L).
 cd backend && npm test -- --testPathPattern=raw-refuel-candidate --testPathIgnorePatterns=postgres.integration
 ```
 
-| Suite | Tests | Result (2026-09-12) |
-|-------|-------|---------------------|
+| Suite | Tests | Result (2026-09-12 F2.2) |
+|-------|-------|---------------------------|
 | `raw-refuel-candidate.matcher.spec.ts` | overlap classification | **PASS** |
 | `raw-refuel-candidate-identity-key.spec.ts` | bucket + hash stability | **PASS** |
-| `raw-refuel-candidate-evidence-fingerprint.spec.ts` | fingerprint mutability | **PASS** |
+| `raw-refuel-candidate-evidence-fingerprint.spec.ts` | fingerprint + merge parity | **PASS** |
 | `raw-refuel-candidate-promotion.design.spec.ts` | promotion draft mapping | **PASS** |
+| `raw-refuel-candidate-lifecycle.spec.ts` | terminal transition safety | **PASS** |
+| `raw-refuel-candidate-rediscovery-window.spec.ts` | bounded window math | **PASS** |
+| `raw-refuel-candidate.nest-di.spec.ts` | Nest provider resolution | **PASS** |
 
-**Total:** 4 suites, 7 tests — **PASS**
+**Total:** 7 suites, 21 tests — **PASS**
 
 ### 9.2 PostgreSQL integration tests (opt-in)
 
@@ -229,7 +260,7 @@ File: `raw-refuel-candidate.postgres.integration.spec.ts`
 
 ```bash
 export RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1
-export DATABASE_URL='postgresql://...'   # reachable Postgres with migration applied
+export DATABASE_URL='postgresql://postgres@localhost:5433/synqdrive_rfrf_f2_test?schema=public'
 cd backend && npm test -- raw-refuel-candidate.postgres.integration
 ```
 
@@ -240,11 +271,21 @@ cd backend && npm test -- raw-refuel-candidate.postgres.integration
 | post-plateau maturation | Case A |
 | two close refuels distinct | Case G |
 | identical observation idempotent | Case E |
-| concurrent same observation | Case H |
+| concurrent same observation (2 Prisma clients) | Case H |
 | different vehicles parallel | Case I |
-| firstObservedAt immutable | Case J |
+| firstObservedAt immutable (service clock) | Case J |
+| lastObservedAt advances unchanged evidence | F2.1 |
+| org/vehicle mismatch rejected | F2.1 |
+| INSUFFICIENT persist + key maturation | M |
+| terminal rediscovery | N |
+| multiple SAME ambiguity | O |
+| SAME + INSUFFICIENT ambiguity | O |
+| distant terminal outside bounded window | P |
+| merged fingerprint parity | F2.1 |
 
-**CI agent VM note:** `npm run infra:up` (Docker Compose Postgres) is **unavailable** in the Cloud Agent VM. Integration tests are **skipped by default** (`describe.skip` unless `RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1`). They require an externally reachable `DATABASE_URL` with the F2 migration applied.
+**Total:** 19 integration tests — **PASS** on isolated localhost PostgreSQL.
+
+**Schema bootstrap note:** integration tests use `prisma db push` on the current schema for convenience. This is **schema proof**, not migration execution proof. Actual F2 `migration.sql` proof is separate (§12.3).
 
 ---
 
@@ -282,13 +323,15 @@ F2 completion does **not** authorize production fallback. F3 must deliver:
 
 ---
 
-## 12. F2 / F2.1 completion gate results
+## 12. F2 / F2.1 / F2.2 completion gate results
 
 ```
+RFRF_F2_2_FINAL_CLOSURE = PASS
 RFRF_F2_1_HARDENING = PASS
 RFRF_F2_CANDIDATE_PERSISTENCE = PASS
 F2_IMPLEMENTATION_COMPLETE = YES
 F3_START_AUTHORIZED = YES
+PR_1620_READY_TO_MERGE = YES
 FALLBACK_RUNTIME_READY = NO
 PRODUCTION_FALLBACK_READY = NO
 KS_MS_661_DETECTED_BY_F2 = NO
@@ -301,14 +344,25 @@ CANDIDATE_IDENTITY_ASSIGNED_ONCE = PASS
 TERMINAL_REDISCOVERY = PASS
 PROMOTED_RESCAN_DUPLICATE_GUARD = PASS
 REJECTED_RESCAN_DUPLICATE_GUARD = PASS
-MULTIPLE_SAME_MATCH_AMBIGUITY = FAIL_CLOSED
+MULTIPLE_SAME_POLICY = FAIL_CLOSED
+SAME_PLUS_INSUFFICIENT_POLICY = FAIL_CLOSED_HOLD
+ZERO_SAME_PLUS_INSUFFICIENT_POLICY = RECONCILE_SINGLE_INSUFFICIENT_ROW
+REDISCOVERY_LOOKUP_BOUNDED = YES
+REDISCOVERY_LOOKBACK = 6h
 LIFECYCLE_TERMINAL_SAFETY = PASS
 PROMOTED_TO_REJECTED = BLOCKED
 INVALID_TRANSITION_BEHAVIOR = ERROR
 NESTED_FINGERPRINT_CANONICALIZATION = PASS
 FINGERPRINT_MATCHES_PERSISTED_EVIDENCE = PASS
 PROMOTION_DRAFT_TIME_MAPPING = PASS
-REAL_POSTGRES_MIGRATION = PASS
+F2_MIGRATION_SQL_REAL_POSTGRES = PASS
+REAL_POSTGRES_SCHEMA_PROOF = PASS
+REAL_POSTGRES_INTEGRATION_TESTS = PASS
+FULL_REPOSITORY_MIGRATION_CHAIN = FAIL_PRE_EXISTING
+HISTORICAL_MIGRATION_CHAIN_DEFECT_RECORDED = YES
+RAW_REFUEL_CANDIDATE_NEST_DI = PASS
+SYSTEM_CLOCK_PRODUCTION_DEFAULT = YES
+TEST_CLOCK_DETERMINISTIC = YES
 BUCKET_SHIFT_REDISCOVERY_REAL_PG = PASS
 WINDOW_SHIFT_REDISCOVERY_REAL_PG = PASS
 POST_PLATEAU_MATURATION_REAL_PG = PASS
@@ -318,35 +372,60 @@ FIRST_OBSERVED_IMMUTABLE_REAL_PG = PASS
 ORG_MISMATCH_REAL_PG = PASS
 TERMINAL_REDISCOVERY_REAL_PG = PASS
 IMPLEMENTATION_IDEMPOTENCY_PROOF = PASS
-UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (18/18)
-POSTGRES_INTEGRATION_TESTS = PASS (17/17; RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1)
+UNIT_TESTS_RAW_REFUEL_CANDIDATE = PASS (21/21)
+REAL_PG_TEST_COUNT = 19
+NEST_PROVIDER_TEST = PASS
 PRISMA_VALIDATE = PASS
 PRISMA_GENERATE = PASS
 EED_GRAPH_VALIDATOR = PASS
 FST_GRAPH_VALIDATOR = PASS
 MODULE_REGISTRY_VALIDATOR = PASS
 GIT_DIFF_CHECK = PASS
+AUDIT_INTERNAL_CONSISTENCY = PASS
 RAW_FUEL_DETECTOR_IMPLEMENTED = NO
 PROMOTION_RUNTIME_IMPLEMENTED = NO
 G2_RUNTIME_CHANGED = NO
 PRODUCTION_MUTATED = NO
 PRODUCTION_DEPLOYED = NO
 PR_1620_STILL_DRAFT = YES
+KNOWN_P0_BLOCKERS = 0
+KNOWN_P1_F2_BLOCKERS = 0
 ```
 
-### 12.1 Real PostgreSQL proof (isolated)
+### 12.1 Real PostgreSQL epistemic labels (corrected F2.2)
+
+| Label | Meaning | Result |
+|-------|---------|--------|
+| `REAL_POSTGRES_SCHEMA_PROOF` | Isolated PG objects match expected F2 schema | **PASS** |
+| `REAL_POSTGRES_INTEGRATION_TESTS` | Service integration suite on isolated PG | **PASS** (19/19) |
+| `F2_MIGRATION_SQL_REAL_POSTGRES` | Actual `20260912123000_.../migration.sql` executed on pre-F2 baseline | **PASS** |
+| `FULL_REPOSITORY_MIGRATION_CHAIN` | Full `prisma migrate deploy` over all historical migrations | **FAIL_PRE_EXISTING** |
+
+`prisma db push` is used **only** to establish pre-F2 baseline schema (from `503416c82`) and integration-test schema bootstrap. It is **not** claimed as migration execution proof.
+
+Historical chain defect: `docs/audits/prisma-migration-chain-concurrently-defect-2026-09-12.md`
+
+### 12.2 Integration test environment (isolated)
 
 | Property | Value |
 |----------|-------|
 | Host | `localhost:5433` (dedicated non-production instance) |
 | Database | `synqdrive_rfrf_f2_test` |
 | Production touched | **NO** |
-| Schema sync | `prisma db push` (full schema) |
-| Full `migrate deploy` chain | **Blocked** at `20260413230000_add_composite_indexes_batch_c` (`CREATE INDEX CONCURRENTLY` inside transaction) — pre-existing historical migration issue, not F2-specific |
-| F2 table verified | `raw_refuel_candidates` exists; `candidate_identity_key` nullable; enums/constraints/indexes present; 0 seed rows |
-| Integration suite | 17/17 PASS with two independent Prisma clients for concurrency proof |
 
-### 12.2 Migration operational review (F2 scope)
+### 12.3 F2 migration SQL proof (isolated)
+
+Script: `backend/scripts/ops/prove-rfrf-f2-migration-sql.sh`
+
+| Step | Result |
+|------|--------|
+| A. Fresh DB `synqdrive_rfrf_f2_migration_proof` | **PASS** |
+| B. Pre-F2 schema from `503416c82` via `prisma db push` (baseline only) | **PASS** |
+| C. `raw_refuel_candidates` absent before F2 SQL | **PASS** |
+| D. Execute actual `migration.sql` via `psql -f` (not db push) | **PASS** |
+| E. Table nullable key, 4 enums, 7 indexes, FKs, 0 seed rows, base tables preserved | **PASS** |
+
+### 12.4 Migration operational review (F2 scope)
 
 | Item | Detail |
 |------|--------|
@@ -378,7 +457,9 @@ PR_1620_STILL_DRAFT = YES
 | Lock util | `raw-refuel-candidate-lock.util.ts` |
 | Promotion design | `raw-refuel-candidate-promotion.design.ts` |
 | Module wiring | `vehicle-intelligence.module.ts` (`RawRefuelCandidateService`) |
-| Integration tests | `raw-refuel-candidate.postgres.integration.spec.ts` |
+| Migration proof script | `backend/scripts/ops/prove-rfrf-f2-migration-sql.sh` |
+| Nest DI test | `raw-refuel-candidate.nest-di.spec.ts` |
+| Rediscovery window | `raw-refuel-candidate-rediscovery-window.ts` |
 
 ---
 
@@ -390,7 +471,7 @@ PR_1620_STILL_DRAFT = YES
 
 ## 15. F2.1 hardening summary (2026-09-12)
 
-Independent review gaps closed on PR #1620 (`cursor/eed-rfrf-f2-candidate-persistence-f21f`):
+Independent review gaps closed on PR #1620:
 
 | Gap | Resolution |
 |-----|------------|
@@ -399,11 +480,23 @@ Independent review gaps closed on PR #1620 (`cursor/eed-rfrf-f2-candidate-persis
 | Org/vehicle integrity | `organizationId` derived from `Vehicle` row; mismatch throws before any candidate mutation |
 | INSUFFICIENT persistence | `candidateIdentityKey` nullable until pre-plateau + rise evidence sufficient; assigned once |
 | Terminal rediscovery | `PROMOTED` / `REJECTED` included in semantic lookup; no duplicate rows on rescan |
-| Multiple SAME ambiguity | >1 SAME match → `RawRefuelCandidateAmbiguityError` (fail-closed) |
+| Multiple SAME ambiguity | >1 SAME match → fail-closed |
 | Lifecycle terminal safety | Removed REJECTED bypass; invalid transitions throw |
-| Fingerprint canonicalization | Recursive `canonicalizeForFingerprint`; computed from **merged** persisted evidence |
-| Promotion `endTime` | Fixed `??` / `?:` precedence; explicit mapping tests |
-| Real PostgreSQL | 17/17 integration tests on isolated `localhost:5433` database |
+| Fingerprint canonicalization | Recursive canonical JSON from merged persisted evidence |
+| Promotion `endTime` | Fixed operator precedence; explicit mapping tests |
 
-**Prior overclaim corrected:** F2 was **PARTIAL** before real PostgreSQL proof; F2.1 closes idempotency and integrity gates.
+---
+
+## 16. F2.2 final closure summary (2026-09-12)
+
+| Gap | Resolution |
+|-----|------------|
+| Postgres epistemic overclaim | Separated `F2_MIGRATION_SQL_REAL_POSTGRES`, `REAL_POSTGRES_SCHEMA_PROOF`, `REAL_POSTGRES_INTEGRATION_TESTS`, `FULL_REPOSITORY_MIGRATION_CHAIN=FAIL_PRE_EXISTING` |
+| F2 migration SQL proof | `prove-rfrf-f2-migration-sql.sh` executes actual `migration.sql` on pre-F2 baseline (`503416c82`) |
+| Historical chain defect | Recorded in `prisma-migration-chain-concurrently-defect-2026-09-12.md` |
+| Nest DI | `@Injectable()` service with `PrismaService` only; `withClock`/`withFixedClock` static test helpers |
+| Bounded rediscovery | 6-hour lookback window query; distant terminals excluded |
+| SAME + INSUFFICIENT policy | Fail-closed hold when SAME coexists with INSUFFICIENT neighbors; reconcile single INSUFFICIENT when zero SAME |
+| Audit consistency | Sections 5, 6, 8, 9, 12 rewritten to match implemented algorithm |
+
 - **Motivates from:** `EED-EV-0040`, `EED-EV-0041`

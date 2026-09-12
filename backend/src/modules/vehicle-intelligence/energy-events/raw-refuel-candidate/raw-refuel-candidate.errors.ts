@@ -1,5 +1,10 @@
 import type { RawRefuelCandidateLifecycleState } from '@prisma/client';
 
+export type RawRefuelCandidateAmbiguityReason =
+  | 'MULTIPLE_SAME_PHYSICAL_RISE'
+  | 'SAME_WITH_INSUFFICIENT_NEIGHBOR'
+  | 'MULTIPLE_INSUFFICIENT_NEIGHBORS';
+
 export class RawRefuelCandidateOrgVehicleIntegrityError extends Error {
   readonly code = 'ORG_VEHICLE_INTEGRITY_MISMATCH';
 
@@ -25,14 +30,15 @@ export class RawRefuelCandidateVehicleNotFoundError extends Error {
 }
 
 export class RawRefuelCandidateAmbiguityError extends Error {
-  readonly code = 'MULTIPLE_SAME_PHYSICAL_RISE';
+  readonly code = 'RAW_REFUEL_CANDIDATE_REDISCOVERY_AMBIGUITY';
 
   constructor(
+    readonly reason: RawRefuelCandidateAmbiguityReason,
     readonly vehicleId: string,
     readonly candidateIds: string[],
   ) {
     super(
-      `Ambiguous raw refuel candidate rediscovery for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+      `Ambiguous raw refuel candidate rediscovery (${reason}) for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
     );
     this.name = 'RawRefuelCandidateAmbiguityError';
   }

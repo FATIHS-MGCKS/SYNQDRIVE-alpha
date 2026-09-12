@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f2-2-final-closure-2026-09-12',
+    version: '4.9.1113',
+    title: 'RFRF F2.2 — Final closure: migration proof, Nest DI, bounded rediscovery',
+    summary: [
+      'Corrected PostgreSQL epistemic labels: F2 migration SQL proof vs schema proof vs full historical chain (FAIL_PRE_EXISTING).',
+      'Actual F2 migration.sql executed on pre-F2 baseline via prove-rfrf-f2-migration-sql.sh.',
+      'Historical CONCURRENTLY migration defect documented (20260413230000_add_composite_indexes_batch_c).',
+      '@Injectable RawRefuelCandidateService with PrismaService-only Nest DI + provider resolution test.',
+      'Bounded 6-hour rediscovery window; SAME+INSUFFICIENT ambiguity fail-closed hold policy.',
+      '21/21 unit + 19/19 opt-in PostgreSQL integration tests PASS on isolated localhost:5433.',
+    ],
+    reason:
+      'Independent F2.2 review required migration SQL proof, Nest DI contract, bounded rediscovery, and ambiguity policy before PR #1620 merge authorization.',
+    previousBehavior:
+      'F2.1: unbounded vehicle-lifetime rediscovery scan; ambiguous SAME+INSUFFICIENT unresolved; REAL_POSTGRES_MIGRATION overclaimed; Nest DI unproven.',
+    details:
+      'docs/audits/eed-rfrf-f2-candidate-persistence-2026-09-12.md §F2.2; docs/audits/prisma-migration-chain-concurrently-defect-2026-09-12.md; EED-EV-0043; PR #1620 draft.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T18:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-1-hardening-2026-09-12',
     version: '4.9.1112',
     title: 'RFRF F2.1 — Candidate persistence hardening + real PostgreSQL proof',

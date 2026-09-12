@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import type { Prisma, RawRefuelCandidate } from '@prisma/client';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -19,28 +20,43 @@ import {
 } from './raw-refuel-candidate-lifecycle';
 import { buildRawRefuelCandidateLockKey } from './raw-refuel-candidate-lock.util';
 import { classifyRawRefuelCandidateOverlap } from './raw-refuel-candidate.matcher';
+import { computeRawRefuelCandidateRediscoveryWindow } from './raw-refuel-candidate-rediscovery-window';
 import { RawRefuelCandidateRepository } from './raw-refuel-candidate.repository';
 import type {
   RawRefuelCandidateObservation,
+  RawRefuelCandidateOverlapClassification,
   RawRefuelCandidateResolveResult,
 } from './raw-refuel-candidate.types';
 
+@Injectable()
 export class RawRefuelCandidateService {
   private readonly repository = new RawRefuelCandidateRepository();
+  private readonly clock: RawRefuelCandidateClock;
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly clock: RawRefuelCandidateClock = new SystemRawRefuelCandidateClock(),
-  ) {}
-
-  withClock(clock: RawRefuelCandidateClock): RawRefuelCandidateService {
-    return new RawRefuelCandidateService(this.prisma, clock);
+  constructor(private readonly prisma: PrismaService) {
+    this.clock = new SystemRawRefuelCandidateClock();
   }
 
-  withFixedClock(isoTimestamp: string | Date): RawRefuelCandidateService {
+  /** Deterministic clock for unit/integration tests without changing Nest DI contract. */
+  static withClock(
+    prisma: PrismaService,
+    clock: RawRefuelCandidateClock,
+  ): RawRefuelCandidateService {
+    const service = new RawRefuelCandidateService(prisma);
+    (service as unknown as { clock: RawRefuelCandidateClock }).clock = clock;
+    return service;
+  }
+
+  static withFixedClock(
+    prisma: PrismaService,
+    isoTimestamp: string | Date,
+  ): RawRefuelCandidateService {
     const fixed =
       isoTimestamp instanceof Date ? isoTimestamp : new Date(isoTimestamp);
-    return this.withClock(new FixedRawRefuelCandidateClock(fixed));
+    return RawRefuelCandidateService.withClock(
+      prisma,
+      new FixedRawRefuelCandidateClock(fixed),
+    );
   }
 
   async resolveOrCreateCandidate(
@@ -61,23 +77,53 @@ export class RawRefuelCandidateService {
         observation.organizationId,
       );
 
-      const candidates = await loadRediscoveryCandidates(
-        this.repository,
+      const window = computeRawRefuelCandidateRediscoveryWindow(observation, serviceNow);
+      const candidates = await this.repository.findRediscoveryCandidatesInWindow(
         tx,
-        observation,
+        observation.vehicleId,
+        observation.signalChannel,
+        window,
       );
-      const sameMatches = collectSamePhysicalRiseMatches(observation, candidates, organizationId);
-      if (sameMatches.length > 1) {
+      const classified = classifyRediscoveryCandidates(observation, candidates, organizationId);
+
+      if (classified.same.length > 1) {
         throw new RawRefuelCandidateAmbiguityError(
+          'MULTIPLE_SAME_PHYSICAL_RISE',
           observation.vehicleId,
-          sameMatches.map((row) => row.id),
+          classified.same.map((row) => row.id),
         );
       }
 
-      if (sameMatches.length === 1) {
+      if (classified.same.length === 1 && classified.insufficient.length > 0) {
+        throw new RawRefuelCandidateAmbiguityError(
+          'SAME_WITH_INSUFFICIENT_NEIGHBOR',
+          observation.vehicleId,
+          [...classified.same, ...classified.insufficient].map((row) => row.id),
+        );
+      }
+
+      if (classified.same.length === 1) {
         return this.reconcileExistingCandidate(
           tx,
-          sameMatches[0],
+          classified.same[0],
+          observation,
+          organizationId,
+          serviceNow,
+        );
+      }
+
+      if (classified.insufficient.length > 1) {
+        throw new RawRefuelCandidateAmbiguityError(
+          'MULTIPLE_INSUFFICIENT_NEIGHBORS',
+          observation.vehicleId,
+          classified.insufficient.map((row) => row.id),
+        );
+      }
+
+      if (classified.insufficient.length === 1) {
+        return this.reconcileExistingCandidate(
+          tx,
+          classified.insufficient[0],
           observation,
           organizationId,
           serviceNow,
@@ -191,27 +237,46 @@ export class RawRefuelCandidateService {
   }
 }
 
-async function loadRediscoveryCandidates(
-  repository: RawRefuelCandidateRepository,
-  tx: Prisma.TransactionClient,
-  observation: RawRefuelCandidateObservation,
-): Promise<RawRefuelCandidate[]> {
-  const [nonTerminal, terminal] = await Promise.all([
-    repository.findNonTerminalByVehicle(tx, observation.vehicleId, observation.signalChannel),
-    repository.findTerminalByVehicle(tx, observation.vehicleId, observation.signalChannel),
-  ]);
-  return [...nonTerminal, ...terminal];
+interface RediscoveryClassification {
+  same: RawRefuelCandidate[];
+  insufficient: RawRefuelCandidate[];
+  distinct: RawRefuelCandidate[];
 }
 
-function collectSamePhysicalRiseMatches(
+function classifyRediscoveryCandidates(
   observation: RawRefuelCandidateObservation,
   candidates: RawRefuelCandidate[],
   organizationId: string,
-): RawRefuelCandidate[] {
+): RediscoveryClassification {
   const slice = { ...observation, organizationId };
-  return candidates.filter(
-    (row) => classifyRawRefuelCandidateOverlap(slice, row) === 'SAME_PHYSICAL_RISE',
-  );
+  const classified: RediscoveryClassification = {
+    same: [],
+    insufficient: [],
+    distinct: [],
+  };
+
+  for (const row of candidates) {
+    const overlap = classifyRawRefuelCandidateOverlap(slice, row);
+    bucketClassification(classified, overlap, row);
+  }
+
+  return classified;
+}
+
+function bucketClassification(
+  classified: RediscoveryClassification,
+  overlap: RawRefuelCandidateOverlapClassification,
+  row: RawRefuelCandidate,
+): void {
+  if (overlap === 'SAME_PHYSICAL_RISE') {
+    classified.same.push(row);
+    return;
+  }
+  if (overlap === 'INSUFFICIENT_EVIDENCE') {
+    classified.insufficient.push(row);
+    return;
+  }
+  classified.distinct.push(row);
 }
 
 function resolveAssignedIdentityKey(

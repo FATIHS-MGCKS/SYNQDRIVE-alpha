@@ -1,5 +1,18 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F2.2 final closure (PR #1620)
+
+- Corrected PostgreSQL epistemic labels: separated F2 migration SQL proof, schema proof, integration tests, and full historical chain (`FAIL_PRE_EXISTING`)
+- F2 migration SQL proof via `prove-rfrf-f2-migration-sql.sh` on pre-F2 baseline (`503416c82`)
+- Historical chain defect recorded: `20260413230000_add_composite_indexes_batch_c` (`CREATE INDEX CONCURRENTLY` in Prisma transaction)
+- Nest DI: `@Injectable()` `RawRefuelCandidateService` with `PrismaService` only; static test clock helpers
+- Bounded rediscovery: 6-hour lookback window; SAME+INSUFFICIENT fail-closed ambiguity policy
+- Evidence `EED-EV-0043` updated; 21 unit + 19 isolated PostgreSQL integration tests PASS
+
+**Verdict:** RFRF_F2_2_FINAL_CLOSURE=PASS — PR_1620_READY_TO_MERGE=YES; F3_START_AUTHORIZED=YES
+
+---
+
 ## 2026-09-12 — RFRF F2.1 candidate persistence hardening
 
 - F2.1 hardening on PR #1620: service-owned clocks, org/vehicle integrity, nullable identity key,
