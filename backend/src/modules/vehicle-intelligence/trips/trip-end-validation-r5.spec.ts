@@ -278,7 +278,7 @@ describe('R5 — processEndValidation', () => {
 
     const payload = h.transitionState.mock.calls[1][2];
     expect(payload.possibleEndAt).toBeNull();
-    expect(payload.endValidationAttempts).toBe(0);
+    expect(payload.endValidationAttempts).toBe(2);
     const summary = payload.lastEvidenceSummary as Record<string, unknown>;
     expect(summary.stopBoundaryAt).toBe(stopBoundaryAt.toISOString());
     expect(summary.endValidationScheduledAt).toBeUndefined();

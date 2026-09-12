@@ -234,10 +234,45 @@ describe('trip-end-cycle-reset (R5)', () => {
         endValidationScheduledAt: 'y',
       },
       reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 2,
     });
     const summary = reset.lastEvidenceSummary as Record<string, unknown>;
     expect(summary.stopBoundaryAt).toBe(boundaryAt.toISOString());
     expect(summary.endValidationScheduledAt).toBeUndefined();
+    expect(reset.endValidationAttempts).toBe(2);
+  });
+
+  it('buildPossibleEndToActiveReset resets retry budget on ACTIVITY resume even when prior attempts exist', () => {
+    const reset = buildPossibleEndToActiveReset({
+      workerNow: WORKER_NOW,
+      priorSummary: {
+        completedEndValidationAttempt: 3,
+        stopBoundaryAt: '2026-09-12T05:06:59.000Z',
+        stopBoundaryTrust: true,
+      },
+      reopenReason: 'ACTIVITY_RESUMED',
+      completedEndValidationAttempts: 3,
+    });
+    expect(reset.endValidationAttempts).toBe(0);
+  });
+
+  it('buildPossibleEndToActiveReset drops CUSUM retry budget when boundary is invalidated by movement', () => {
+    const boundaryAt = new Date('2026-09-12T05:06:59.000Z');
+    const postMovement = new Date('2026-09-12T05:08:00.000Z');
+    const reset = buildPossibleEndToActiveReset({
+      workerNow: WORKER_NOW,
+      lastMeaningfulMovementAt: postMovement,
+      priorSummary: {
+        stopBoundaryAt: boundaryAt.toISOString(),
+        stopBoundaryTrust: true,
+      },
+      reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 2,
+    });
+    expect(reset.endValidationAttempts).toBe(0);
+    expect(
+      (reset.lastEvidenceSummary as Record<string, unknown>).stopBoundaryAt,
+    ).toBeUndefined();
   });
 
   it('stripEndCycleEvidenceForActiveReopen removes known transient keys only', () => {
