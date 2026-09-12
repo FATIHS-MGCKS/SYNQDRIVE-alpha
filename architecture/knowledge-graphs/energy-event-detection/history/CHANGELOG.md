@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-12 — RFRF F1.2 final architecture closure
+
+- F1.1 addendum §14: semantic candidate rediscovery; four-way identity separation
+- F2 readiness decoupled: `F2_START_AUTHORIZED=YES`; `F2_IMPLEMENTATION_COMPLETE=NO`
+- EED-OQ-013 remains RESOLVED (design); `IMPLEMENTATION_PROOF_PENDING` F2/F5
+- `dimoSegmentId` compatibility ownership: F2 schema/promotion; F5 G2 proof
+
+**Verdict:** RFRF_F1_FINAL_CLOSURE=PASS — PR #1619 merge authorized (architecture/fixtures only)
+
+---
+
 ## 2026-09-12 — RFRF F1.1 architecture hardening
 
 - Added `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md` (pre-F2 closure addendum)

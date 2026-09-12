@@ -26,7 +26,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-010 | ClickHouse fuel sample mirror? | **OUT_OF_SCOPE** | Analytics authority | NO | NO |
 | EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
-| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.1: identity = `candidateIdentityKey` + G2 matcher; `dimoSegmentId` upsert key only; EED-DEC-RFRF-005 | NO | HIGH |
+| EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
 | EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
 
 ## Deferred (reference only)

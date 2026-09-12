@@ -45,7 +45,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Recommends Option D RawRefuelCandidate lifecycle; supersedes Option C; closes EED-OQ-013 at design level.',
       'dimoSegmentId consumer audit: SYNTHETIC_DIMO_SEGMENT_ID_COMPATIBLE=NOT_PROVEN.',
       'KS MS 661 fixture split (observed vs synthetic); production IDs removed; threshold labels corrected.',
-      'F2_IMPLEMENTATION_READY=NO until Option D schema + compatibility proof.',
+      'F2_START_AUTHORIZED=YES; F2_IMPLEMENTATION_COMPLETE=NO; semantic candidate rediscovery under delayed telemetry.',
     ],
     reason:
       'Independent F1 review found four material design/evidence issues blocking F2 implementation.',

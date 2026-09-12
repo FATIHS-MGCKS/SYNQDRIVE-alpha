@@ -1118,9 +1118,10 @@ nodes:
     title: Physical refuel identity vs dimoSegmentId
     epistemic_status: UNKNOWN
     summary: >
-      RESOLVED (design, F1.1): physical identity = candidateIdentityKey + G2 semantic matcher;
-      dimoSegmentId is upsert compatibility key only (native provider id or namespaced promotion id).
-      EED-DEC-RFRF-005 supersedes Option C. Production proof pending F2 Option D implementation.
+      RESOLVED (design, F1.2): RawRefuelCandidate.id + candidateIdentityKey + semantic rediscovery
+      matcher + G2 physical identity; dimoSegmentId is upsert compatibility key only.
+      IMPLEMENTATION_PROOF_PENDING F2 (schema/rediscovery/idempotency) and F5 (G2 convergence).
+      EED-DEC-RFRF-005 supersedes Option C.
     authority_class: EED_OWNS
     evidence: [EED-EV-0026, EED-EV-0027, EED-EV-0028, EED-EV-0042, EED-DEC-RFRF-005]
 
@@ -1394,10 +1395,11 @@ nodes:
       - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture.ts
       - backend/src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-synthetic.fixture.ts
     summary: >
-      F1.1 hardening: WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; candidateIdentityKey vs
-      evidenceRevisionFingerprint; Option D RawRefuelCandidate lifecycle; EED-OQ-013 closed at
-      design level; dimoSegmentId consumer audit NOT_PROVEN; KS MS 661 observed/synthetic fixture
-      split; threshold epistemic labels corrected. F2_IMPLEMENTATION_READY=NO.
+      F1.1–F1.2 hardening: WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; RawRefuelCandidate.id +
+      candidateIdentityKey + evidenceRevisionFingerprint + semantic rediscovery matcher;
+      Option D lifecycle; EED-OQ-013 resolved (design); dimoSegmentId audit NOT_PROVEN (F2/F5);
+      KS MS 661 fixture split; threshold labels corrected. F2_START_AUTHORIZED=YES;
+      IMPLEMENTATION_IDEMPOTENCY_PROOF=PENDING_F2.
     verified_at: "2026-09-12"
 
   - id: EED-DEC-RFRF-001
@@ -1442,13 +1444,14 @@ nodes:
 
   - id: EED-DEC-RFRF-005
     type: decision
-    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1)
+    title: RFRF — RawRefuelCandidate lifecycle + Option D identity (F1.1–F1.2)
     decision_status: PROPOSED
     epistemic_status: CONFIRMED
     summary: >
-      Staging table with candidateIdentityKey at OBSERVED lock and mutable
-      evidenceRevisionFingerprint; promote to VehicleEnergyEvent on READY_FOR_PERSIST.
-      Supersedes Option C. Closes EED-OQ-013 at design level.
+      Staging table: id (DB), candidateIdentityKey (immutable after assignment),
+      evidenceRevisionFingerprint (mutable), semantic rediscovery matcher under per-vehicle lock.
+      Promote on READY_FOR_PERSIST. Supersedes Option C. EED-OQ-013 resolved (design);
+      implementation proof pending F2/F5.
     evidence: [EED-EV-0042]
 
   - id: EED-OQ-014

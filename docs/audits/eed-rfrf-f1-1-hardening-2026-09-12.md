@@ -58,16 +58,20 @@ Fallback scanning runs for **fuel-capable vehicles** whenever `RAW_FUEL_REFUEL_F
 
 F1 §17 proposed a single `evidenceFingerprint` including mutable fields (`postPlateauMedian`, `riseEndBucket`). Delayed telemetry would change the fingerprint → new `sourceEventKey` / `dimoSegmentId` → duplicate events.
 
-### 2.2 Two explicit concepts
+### 2.2 Four explicit concepts (F1.2)
 
 | Concept | Purpose | Mutability |
 |---------|---------|------------|
-| **`candidateIdentityKey`** | Stable logical candidate identity across rescans, window shifts, delayed telemetry | **Immutable once assigned** at first OBSERVED lock |
+| **`RawRefuelCandidate.id`** | Database surrogate row identity | **Immutable** (UUID/cuid assigned at insert) |
+| **`candidateIdentityKey`** | Deterministic auditable candidate key; assigned at first row lock | **Immutable once assigned** |
 | **`evidenceRevisionFingerprint`** | Audit/debug digest of current evidence maturity | **Updates** on every reconciliation pass |
+| **Physical candidate matcher** | Semantic rediscovery / convergence logic | **Algorithm** — not a stored hash |
 
-**Rule:** `candidateIdentityKey` MUST NOT include post-plateau peak, rise end time, or post-plateau median.
+**Rule:** Do not overload one hash with all four responsibilities.
 
-### 2.3 Proposed `candidateIdentityKey` algorithm (F2 design)
+**Rediscovery rule (F1.2):** `candidateIdentityKey` MUST NOT be the sole mechanism for deciding whether to create a new row. New rows require failed semantic overlap search against existing non-terminal candidates.
+
+### 2.3 `candidateIdentityKey` algorithm (assigned at first OBSERVED lock)
 
 Inputs at first **OBSERVED** lock (after rise onset detected, pre-plateau stable):
 
@@ -83,26 +87,62 @@ candidateIdentityKey = hash(
 
 **NOT included:** post-plateau level, rise end, sample count, window bounds.
 
+**Important:** If delayed telemetry would change `riseOnsetBucketUtc`, the row is **rediscovered by semantic matcher**, not by recomputing hash equality alone.
+
+### 2.4 Option D rediscovery flow (F1.2)
+
+Under **per-vehicle transaction / advisory lock**:
+
+```
+1. Detect provisional raw rise from current evidence
+2. Search existing non-terminal RawRefuelCandidate rows for same:
+     - vehicleId
+     - signalChannel
+     - detector family/version compatibility
+     - bounded temporal neighborhood around physical rise
+     - compatible pre-fuel plateau / transition evidence
+3. If semantic overlap → REUSE row (preserve candidateIdentityKey)
+4. Update only: evidenceRevisionFingerprint, evidence envelope,
+   maturity state, post plateau, latest observation metadata
+5. INSERT new row only when no existing candidate satisfies overlap contract
+6. Two genuinely separate rises remain DISTINCT
+```
+
+```
+candidateIdentityKey     = immutable identity AFTER candidate row assignment
+evidenceRevisionFingerprint = mutable evidence digest
+candidate rediscovery    = semantic lookup, NOT blind hash equality
+```
+
 **Promotion mapping (Option D):**
 
-- `RawRefuelCandidate.candidateIdentityKey` — assigned at OBSERVED lock, never changes
+- `RawRefuelCandidate.id` — DB lifecycle identity
+- `RawRefuelCandidate.candidateIdentityKey` — assigned at OBSERVED lock, never changes on rediscovery
 - `RawRefuelCandidate.evidenceRevisionFingerprint` — updated each scan
 - On promotion: `VehicleEnergyEvent.sourceEventKey = candidateIdentityKey`
-- `VehicleEnergyEvent.dimoSegmentId = synqdrive-rfrf-{vehicleId}-{hash(candidateIdentityKey)}` (opaque upsert key only)
+- `VehicleEnergyEvent.dimoSegmentId = synqdrive-rfrf-{vehicleId}-{hash(candidateIdentityKey)}` (opaque upsert key only; compatibility proof pending F2/F5)
 
-### 2.4 Delayed telemetry worked examples
+### 2.5 Delayed telemetry worked examples (F1.2)
 
-| # | Scenario | candidateIdentityKey | evidenceRevisionFingerprint |
-|---|----------|---------------------|----------------------------|
-| 1 | Post plateau extends 29 L → 31 L | **SAME** (post level excluded) | CHANGES |
-| 2 | Rise end moves +6 min | **SAME** | CHANGES |
-| 3 | Earlier raw sample arrives (shifts rise onset <5 min bucket) | **SAME** if onset stays in same 5-min bucket; **DIFFER** if bucket changes (rare; hold SETTLING until bucket stable) | CHANGES |
-| 4 | Reconcile window shifts +15 min | **SAME** (identity independent of scan window) | may CHANGE |
-| 5 | Duplicate raw samples arrive | **SAME** (dedupe before hash) | unchanged if identical |
-| 6 | Same refuel seen by fast + warm reconciliation | **SAME** (upsert by candidateIdentityKey) | may CHANGE |
-| 7 | Two refuels 45 min apart | **DIFFER** (different riseOnsetBucketUtc) | independent |
+| # | Scenario | Rediscovery | candidateIdentityKey | evidenceRevisionFingerprint |
+|---|----------|-------------|---------------------|----------------------------|
+| A | Post plateau 29 L → 31 L | EXISTING | **UNCHANGED** | CHANGES |
+| B | Rise end shifts +6 min | EXISTING | **UNCHANGED** | CHANGES |
+| C | Earlier sample shifts rise onset into previous 5-min bucket | **EXISTING CANDIDATE REDISCOVERED** | **UNCHANGED** | CHANGES |
+| D | Reconcile window shifts +15 min | EXISTING | **UNCHANGED** | may CHANGE |
+| E | Duplicate raw samples arrive | EXISTING (dedupe before matcher) | **UNCHANGED** | unchanged if identical |
+| F | Same refuel: fast pass then warm pass | EXISTING | **UNCHANGED** | may CHANGE |
+| G | Two refuels 45 min apart | NEW row (no overlap) | **DIFFER** (separate rows) | independent |
 
-**Verdict:** `DELAYED_TELEMETRY_IDENTITY_STABILITY = PASS` **only with Option D staging table** that assigns `candidateIdentityKey` at OBSERVED lock before promotion. Direct-to-VehicleEnergyEvent without staging **FAILS** example 3 edge cases.
+**Case C contract:** Semantic matcher finds same physical rise despite bucket boundary shift → reuse row; do **not** auto-create duplicate.
+
+| Field | Value |
+|-------|-------|
+| **CANDIDATE_REDISCOVERY_DESIGN** | **PASS** |
+| **DELAYED_TELEMETRY_IDENTITY_DESIGN** | **PASS** |
+| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PENDING_F2** |
+
+Do **not** call runtime identity stability PROVEN until F2 implements rediscovery under lock.
 
 ---
 
@@ -129,19 +169,20 @@ Option B semantics remain the F10 target for nullable provider segment id.
 
 | Field | Value |
 |-------|-------|
-| **EED_OQ_013_STATUS** | **CLOSED (design)** |
+| **EED_OQ_013_STATUS** | **RESOLVED (design)** |
+| **IMPLEMENTATION_PROOF_PENDING** | **F2 / F5** |
 
 **Resolution:** Physical refuel identity is **not** `dimoSegmentId`. Canonical identity is:
 
-1. **`candidateIdentityKey`** for raw fallback lifecycle (Option D)
-2. **`sourceEventKey`** on promoted `VehicleEnergyEvent`
-3. **G2 `classifyPhysicalRefuelSibling`** for native↔fallback convergence using fuel transition + time evidence (not segment id format)
+1. **`RawRefuelCandidate.id`** — DB lifecycle surrogate
+2. **`candidateIdentityKey`** — immutable after first row assignment (Option D)
+3. **Semantic rediscovery matcher** — finds existing row under delayed telemetry (F1.2 §2.4)
+4. **`sourceEventKey`** on promoted `VehicleEnergyEvent`
+5. **G2 `classifyPhysicalRefuelSibling`** for native↔fallback convergence (fuel transition + time; not segment id format)
 
-`dimoSegmentId` remains an **upsert compatibility key** (native provider id or namespaced promotion id). Legacy `refuel-sibling-reconciliation.ts` regex is **not** identity authority when G2 V2 enabled.
+Design resolution ≠ runtime proof. F2 must implement Option D + rediscovery; F5 proves G2 native↔fallback convergence.
 
-Evidence: this document §2–§3, §6, `EED-DEC-RFRF-005`.
-
-**Note:** Design closure ≠ production implementation. F2 must implement Option D before operational identity is proven.
+Evidence: this document §2–§3, §6, §14; `EED-DEC-RFRF-005`.
 
 ---
 
@@ -172,7 +213,16 @@ Full-repo search (backend runtime + scripts + frontend API types). Classificatio
 2. G2 matcher extensions verified for fallback↔native pairs, **and**
 3. Legacy reconcile disabled or updated to use `sourceEventKey`
 
-Until F2 implements and tests this, synthetic ids are **not** globally safe.
+Until F2/F5 implement and test promotion + G2 paths, synthetic ids are **not** globally safe.
+
+**Ownership (F1.2 — not a blocker to START F2):**
+
+| Phase | Responsibility |
+|-------|----------------|
+| **F2** | Schema/promotion compatibility contract; idempotency under advisory lock |
+| **F5** | Fallback↔native integration / G2 proof matrix |
+
+Blockers for **PROMOTION_RUNTIME_READY** and **PRODUCTION_ENABLEMENT** only — not F2 start.
 
 ---
 
@@ -276,26 +326,40 @@ Removed: monolithic fixture with inferred production IDs and interpolated values
 
 ---
 
-## 12. F2 readiness gate
+## 12. Readiness semantics (F1.2 corrected)
+
+F1.1 used `F2_IMPLEMENTATION_READY = NO` circularly — implementing Option D schema **is** F2's purpose. Separate:
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| **F1_ARCHITECTURE_COMPLETE** | **YES** | F1 + F1.1 + F1.2 design closure sufficient |
+| **F2_START_AUTHORIZED** | **YES** | F2 may begin; architecture target defined |
+| **F2_IMPLEMENTATION_COMPLETE** | **NO** | Schema, lifecycle, promotion not built |
+| **FALLBACK_RUNTIME_READY** | **NO** | No detector wiring / runtime path |
+| **PRODUCTION_FALLBACK_READY** | **NO** | No rollout / flags remain OFF |
+
+**F2 completion still requires:**
+
+- `raw_refuel_candidates` schema + lifecycle states
+- Concurrency / idempotency proof under per-vehicle lock
+- Semantic rediscovery contract (§2.4)
+- Promotion contract to `VehicleEnergyEvent`
+- `dimoSegmentId` compatibility strategy + migration tests
+
+**F5** proves native↔fallback G2 convergence. Do not imply production readiness.
 
 | Gate | Status |
 |------|--------|
-| WINDOW_LEVEL_NATIVE_SUPPRESSION = FORBIDDEN | **PASS** (design corrected) |
-| candidateIdentityKey defined + delayed telemetry examples | **PASS** (design) |
-| evidenceRevisionFingerprint separated | **PASS** |
-| EED-OQ-013 closed at design level | **PASS** |
-| dimoSegmentId synthetic compatibility | **FAIL** (NOT_PROVEN) |
+| WINDOW_LEVEL_NATIVE_SUPPRESSION = FORBIDDEN | **PASS** |
+| Option D staging lifecycle defined | **PASS** |
+| candidateIdentityKey + evidenceRevisionFingerprint separated | **PASS** |
+| Candidate rediscovery design (semantic, not hash-only) | **PASS** |
+| `RawRefuelCandidate.id` DB identity separated | **PASS** |
+| EED-OQ-013 resolved (design) | **PASS** |
+| dimoSegmentId synthetic compatibility | **NOT_PROVEN** (F2/F5 ownership) |
 | KS MS 661 observed fixture clean | **PASS** |
-| Production identifiers sanitized | **PASS** |
 | Threshold labels corrected | **PASS** |
-| G2 matching contract | **SUPPORTED** (needs F5 tests) |
-| Option D staging table designed | **PASS** |
-
-| Field | Value |
-|-------|-------|
-| **F2_IMPLEMENTATION_READY** | **NO** |
-
-**Blockers:** Implement Option D schema + prove dimoSegmentId/sibling-reconcile compatibility in F2 integration tests.
+| G2 matching contract | **SUPPORTED** (F5 tests) |
 
 | Severity | Count | Description |
 |----------|-------|-------------|
@@ -311,3 +375,32 @@ Removed: monolithic fixture with inferred production IDs and interpolated values
 | **F2** | Schema detectionSource + sourceEventKey | **`raw_refuel_candidates` table + lifecycle + promotion contract** |
 | **F3** | Pure detector | Unchanged; use synthetic fixture for unit tests, observed for incident regression |
 | **F5** | Convergence | **Mandatory** fallback↔native G2 integration matrix |
+
+---
+
+## 14. F1.2 final closure (2026-09-12)
+
+Small addendum merged with F1.1 — no new top-level audit document.
+
+| Correction | Result |
+|------------|--------|
+| F2 readiness semantics decoupled from F2 work itself | `F2_START_AUTHORIZED=YES`; `F2_IMPLEMENTATION_COMPLETE=NO` |
+| Semantic candidate rediscovery under delayed telemetry | `CANDIDATE_REDISCOVERY_DESIGN=PASS` |
+| `RawRefuelCandidate.id` vs key vs fingerprint vs matcher | Four-way separation explicit |
+| Case C (bucket boundary shift) | EXISTING row rediscovered; key unchanged |
+| EED-OQ-013 | `RESOLVED (design)`; `IMPLEMENTATION_PROOF_PENDING=F2/F5` |
+| `dimoSegmentId` compatibility | `NOT_PROVEN`; F2 schema / F5 G2 proof ownership |
+
+**Merge gate (PR #1619):**
+
+```
+RFRF_F1_FINAL_CLOSURE = PASS
+F1_ARCHITECTURE_COMPLETE = YES
+F2_START_AUTHORIZED = YES
+OPTION_D_STAGING_LIFECYCLE_DEFINED = YES
+CANDIDATE_REDISCOVERY_DESIGN = PASS
+CANDIDATE_DB_IDENTITY_SEPARATED = YES
+IMPLEMENTATION_IDEMPOTENCY_PROOF = PENDING_F2
+FALLBACK_RUNTIME_READY = NO
+PRODUCTION_FALLBACK_READY = NO
+```

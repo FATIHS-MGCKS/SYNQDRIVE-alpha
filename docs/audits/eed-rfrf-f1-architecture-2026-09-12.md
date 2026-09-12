@@ -503,34 +503,20 @@ See F1.1 addendum §1 for counterexample proof.
 
 ---
 
-## 17. Delayed telemetry lifecycle (F1.1 corrected)
+## 17. Delayed telemetry lifecycle (F1.2 corrected)
 
-Two concepts — **never conflate**:
+Four concepts — **never conflate**:
 
 | Concept | Role |
 |---------|------|
-| **`candidateIdentityKey`** | Stable logical identity; assigned at OBSERVED lock; used for upsert/promotion |
+| **`RawRefuelCandidate.id`** | DB surrogate row identity (immutable UUID/cuid) |
+| **`candidateIdentityKey`** | Deterministic auditable key; assigned at first OBSERVED lock; immutable thereafter |
 | **`evidenceRevisionFingerprint`** | Mutable digest of current sample maturity; audit + SETTLING detection |
+| **Physical candidate matcher** | Semantic rediscovery under delayed telemetry (not hash equality alone) |
 
-**candidateIdentityKey (stable inputs only):**
+**Rediscovery (F1.2):** Under per-vehicle lock, search non-terminal rows by vehicle, channel, detector compatibility, temporal neighborhood, and compatible pre-plateau evidence. Reuse row on semantic overlap; preserve `candidateIdentityKey`. Insert only when no overlap.
 
-```
-hash(vehicleId, detectionVersion, signalChannel,
-     prePlateauBucket, riseOnsetBucketUtc)
-```
-
-**NOT included:** post-plateau median/peak, rise end, scan window bounds.
-
-**evidenceRevisionFingerprint (mutable):**
-
-```
-hash(orderedSampleDigest, prePlateauMedian, postPlateauMedian,
-     riseStart, riseEnd, sampleCount, maxGap, detectionVersion)
-```
-
-Re-evaluation on new samples: same `candidateIdentityKey` → update fingerprint + lifecycle state; no duplicate promotion.
-
-Full worked examples: F1.1 addendum §2.4.
+Full contract + worked examples: F1.1 addendum §2.4–§2.5, §14.
 
 ---
 
@@ -544,17 +530,20 @@ Weak evidence must not become fabricated REFUEL.
 
 ## 19. Multi-replica / idempotency
 
-Reuse patterns from G2:
+Reuse patterns from G2 + F1.2 rediscovery:
 
-- Deterministic `sourceEventKey` / `evidenceFingerprint`
-- PostgreSQL advisory locks per `(vehicleId, reconciliation|detection scope)` during persist
-- `upsert` by unique key (same as native `dimoSegmentId` pattern)
+- **`RawRefuelCandidate.id`** — DB row identity
+- **`candidateIdentityKey`** — immutable after first assignment (not sole insert gate)
+- **Semantic rediscovery matcher** — prevents duplicate rows under delayed telemetry
+- PostgreSQL advisory locks per `(vehicleId, reconciliation|detection scope)` during detect/persist
+- Promotion upsert by `sourceEventKey` / namespaced `dimoSegmentId` (compatibility proof pending F2/F5)
 - No cross-vehicle merge
 - BullMQ job idempotency via existing enrichment fingerprint gates
 
 | Field | Value |
 |-------|-------|
-| **MULTI_REPLICA_STRATEGY_DEFINED** | **YES** |
+| **MULTI_REPLICA_STRATEGY_DEFINED** | **YES** (design) |
+| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PENDING_F2** |
 
 ---
 
@@ -767,7 +756,13 @@ See §12 negative matrix +:
 
 | Field | Value |
 |-------|-------|
-| **F2_IMPLEMENTATION_READY** | **NO** (see F1.1 addendum §12 — Option D schema + `dimoSegmentId` compatibility proof required) |
+| **F1_ARCHITECTURE_COMPLETE** | **YES** |
+| **F2_START_AUTHORIZED** | **YES** |
+| **F2_IMPLEMENTATION_COMPLETE** | **NO** |
+| **FALLBACK_RUNTIME_READY** | **NO** |
+| **PRODUCTION_FALLBACK_READY** | **NO** |
+
+See F1.1 addendum §12–§14 for readiness semantics (F1.2 decouples F2 start from F2 completion).
 
 ---
 
@@ -776,7 +771,7 @@ See §12 negative matrix +:
 | Severity | Count | Description |
 |----------|-------|-------------|
 | P0 | 0 | — |
-| P1 | 1 | Missing raw fallback in production (KS MS 661) — motivator; F2 blocked on Option D + synthetic id proof |
+| P1 | 1 | Missing raw fallback in production (KS MS 661) — F2 authorized to implement Option D |
 
 ---
 
@@ -809,11 +804,21 @@ Independent review closure — **design / documentation / test-fixture only**:
 | Window-level native suppression forbidden | F1.1 §1 |
 | `candidateIdentityKey` vs `evidenceRevisionFingerprint` | F1.1 §2 |
 | Option D recommended (Option C superseded) | F1.1 §3 |
-| EED-OQ-013 closed at design level | F1.1 §4 |
-| `dimoSegmentId` consumer audit | F1.1 §5 |
-| G2 native↔fallback matching | F1.1 §6 |
-| READY_FOR_PERSIST lifecycle authority | F1.1 §7 |
-| Threshold epistemic labels | F1.1 §9 |
-| KS MS 661 fixture split (observed vs synthetic) | F1.1 §10 |
+| EED-OQ-013 resolved (design) | F1.1 §4 |
+| Candidate semantic rediscovery | F1.1 §2.4–§2.5, §14 |
+| F2 readiness semantics decoupled | F1.1 §12, §14 |
 
 **Canonical addendum:** `docs/audits/eed-rfrf-f1-1-hardening-2026-09-12.md`
+
+---
+
+## 31. F1.2 final closure (2026-09-12)
+
+Merged in PR #1619 — architecture/fixtures only; no runtime implementation.
+
+| Field | Value |
+|-------|-------|
+| **RFRF_F1_FINAL_CLOSURE** | **PASS** |
+| **CANDIDATE_REDISCOVERY_DESIGN** | **PASS** |
+| **DELAYED_TELEMETRY_IDENTITY_DESIGN** | **PASS** |
+| **IMPLEMENTATION_IDEMPOTENCY_PROOF** | **PENDING_F2** |
