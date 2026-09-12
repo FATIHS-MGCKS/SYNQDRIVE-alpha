@@ -280,6 +280,7 @@ function buildCusumOngoingDetectorMock() {
           {
             detectorName: 'ChangePointEndDetector',
             verdict: 'TRIGGERED',
+            detectedAt: STOP_BOUNDARY,
             evidence: {
               cusumLastMovementAt: STOP_BOUNDARY.toISOString(),
               segmentEnd: STOP_BOUNDARY.toISOString(),
