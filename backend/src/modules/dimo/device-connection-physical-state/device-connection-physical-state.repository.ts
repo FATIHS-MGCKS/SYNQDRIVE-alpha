@@ -40,11 +40,8 @@ type PhysicalStateRow = {
   state_version: number;
 };
 
-type TransitionAuditRow = {
+type TransitionAuditInsertRow = {
   id: string;
-  decision: DeviceConnectionPhysicalTransitionDecision;
-  candidate_state: DeviceConnectionPhysicalEffectiveState;
-  effective_state: DeviceConnectionPhysicalEffectiveState | null;
 };
 
 function mapRow(row: PhysicalStateRow): CurrentPhysicalStateProjection & {
@@ -167,33 +164,6 @@ export class DeviceConnectionPhysicalStateRepository {
       decision: evaluation.decision,
       metadataJson: evaluation.reason ? { reason: evaluation.reason } : undefined,
     });
-
-    if (auditResult.conflictingCandidate) {
-      const context = buildContext({
-        previous: current,
-        evidence: input.evidence,
-        resulting: current,
-        selfHeal,
-      });
-      return {
-        enabled: true,
-        decision: DeviceConnectionPhysicalTransitionDecision.CONFLICT,
-        projection: current
-          ? {
-              effectiveState: current.effectiveState,
-              evidenceObservedAt: current.evidenceObservedAt,
-              evidenceSource: current.evidenceSource,
-              evidenceReferenceId: current.evidenceReferenceId,
-              stateVersion: current.stateVersion,
-            }
-          : null,
-        transitionId: auditResult.transitionId,
-        episodeAction: 'none',
-        alertAction: 'none',
-        context,
-        reason: 'idempotency_key_candidate_state_conflict',
-      };
-    }
 
     if (!evaluation.mutateProjection) {
       const context = buildContext({
@@ -522,7 +492,7 @@ export class DeviceConnectionPhysicalStateRepository {
   private async appendTransitionAudit(
     tx: Prisma.TransactionClient,
     input: PhysicalStateTransitionLogInput,
-  ): Promise<{ transitionId: string | null; duplicate: boolean; conflictingCandidate: boolean }> {
+  ): Promise<{ transitionId: string | null; duplicate: boolean }> {
     const idempotencyKey = buildPhysicalStateIdempotencyKey({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -534,7 +504,7 @@ export class DeviceConnectionPhysicalStateRepository {
       candidateState: input.evidence.candidateState,
     });
 
-    const inserted = await tx.$queryRaw<TransitionAuditRow[]>`
+    const inserted = await tx.$queryRaw<TransitionAuditInsertRow[]>`
       INSERT INTO device_connection_physical_state_transitions (
         id,
         organization_id,
@@ -573,32 +543,24 @@ export class DeviceConnectionPhysicalStateRepository {
         NOW()
       )
       ON CONFLICT (idempotency_key) DO NOTHING
-      RETURNING id, decision, candidate_state, effective_state
+      RETURNING id
     `;
 
     if (inserted[0]) {
-      return { transitionId: inserted[0].id, duplicate: false, conflictingCandidate: false };
+      return { transitionId: inserted[0].id, duplicate: false };
     }
 
-    const existing = await tx.$queryRaw<TransitionAuditRow[]>`
-      SELECT id, decision, candidate_state, effective_state
+    const existing = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id
       FROM device_connection_physical_state_transitions
       WHERE idempotency_key = ${idempotencyKey}
       LIMIT 1
     `;
 
     const row = existing[0];
-    if (!row) {
-      return { transitionId: null, duplicate: true, conflictingCandidate: false };
-    }
-
-    const conflictingCandidate =
-      input.evidence.candidateState !== row.candidate_state;
-
     return {
-      transitionId: row.id,
-      duplicate: !conflictingCandidate,
-      conflictingCandidate,
+      transitionId: row?.id ?? null,
+      duplicate: true,
     };
   }
 }
