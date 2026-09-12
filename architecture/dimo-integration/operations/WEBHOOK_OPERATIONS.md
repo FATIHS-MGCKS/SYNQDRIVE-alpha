@@ -57,7 +57,7 @@ Pattern used in R9 canary and GT-R1 preflight:
 | Operation | Method | Path | Evidence |
 |-----------|--------|------|----------|
 | Create definition | POST | `/v1/webhooks` | R9 canary `2026-09-07` |
-| Update definition | PUT | `/v1/webhooks/{webhookId}` | [DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api) — **not executed in SynqDrive production yet** |
+| Update definition | PUT | `/v1/webhooks/{webhookId}` | [DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api); **VERIFIED** GT-R1 UNPLUG recovery 2026-09-12 |
 | Delete definition | DELETE | `/v1/webhooks/{webhookId}` | R9 rollback — requires unsubscribe all first |
 | Subscribe vehicle | POST | `/v1/webhooks/{webhookId}/subscribe/{assetDID}` | R9 canary (empty body) |
 | Unsubscribe vehicle | DELETE | `/v1/webhooks/{webhookId}/unsubscribe/{assetDID}` | R9 rollback |
@@ -92,19 +92,29 @@ On create/update, DIMO probes `targetURL` with verification handshake. Productio
 4. Record evidence artifact; append CHANGE_LEDGER
 5. Rollback plan documented **before** mutation
 
-## Recovery — UNPLUG `failed` state (DESIGNED, NOT EXECUTED)
+## Recovery — UNPLUG `failed` state (VERIFIED 2026-09-12)
 
-Context: [VDC GT-R1 unplug failure forensics](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md)
+Context: [VDC GT-R1 unplug failure forensics](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md), [recovery evidence](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md)
 
 | Field | Value |
 |-------|-------|
 | Webhook UUID | `49438f51-3ca5-4808-81d5-3598336c53a3` |
 | stableId | `a257daa23ee5` |
-| Before | `status=failed`, `failureCount=11` |
-| Proposed | `PUT` with **unchanged** semantic fields + `status: "enabled"` |
-| PLUG webhook | **DO NOT MODIFY** (`b977124a025a` must stay `disabled`) |
+| Before (2026-09-12) | `status=failed`, `failureCount=11` |
+| After (2026-09-12) | `status=enabled`, `failureCount=0` — **VERIFIED** |
+| Subscriptions | 7 vehicles — **unchanged** after `PUT` |
+| PLUG webhook | **DO NOT MODIFY** (`b977124a025a` must stay `disabled`) — verified still disabled |
 
-**Proposed call (NOT EXECUTED):**
+**Verified behaviors from execution:**
+
+| Behavior | Status |
+|----------|--------|
+| `PUT` with unchanged semantics recovers `failed` → `enabled` | **VERIFIED** |
+| `failureCount` resets to `0` on successful `PUT` | **VERIFIED** |
+| Vehicle subscriptions survive `PUT` | **VERIFIED** |
+| Auto-recovery without `PUT` after callback fix | **UNKNOWN** — stale `failed` persisted until authorized `PUT` |
+
+**Reference call shape (executed 2026-09-12):**
 
 ```
 PUT https://vehicle-triggers-api.dimo.zone/v1/webhooks/49438f51-3ca5-4808-81d5-3598336c53a3
@@ -126,8 +136,8 @@ Content-Type: application/json
 
 | Aspect | Expectation |
 |--------|-------------|
-| Subscriptions | **Should survive** — PUT updates definition, not subscription table (INFERRED; verify GET) |
-| failureCount reset | **UNKNOWN** — verify GET after PUT |
+| Subscriptions | **Survive** — VERIFIED 7/7 unchanged (GT-R1 recovery 2026-09-12) |
+| failureCount reset | **Resets to 0** — VERIFIED on successful `PUT` enable |
 | Rollback | Authorized `PUT` with `status: "disabled"` **or** operator-console equivalent — document before/after GET |
 | Risks | Wrong webhook UUID; accidental PLUG enable; verification token mismatch |
 
@@ -141,3 +151,4 @@ Content-Type: application/json
 | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) | Rollback discipline |
 | [GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md) | Live baseline |
 | [GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md) | Failure analysis |
+| [GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md) | Authorized recovery execution |
