@@ -199,7 +199,7 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **PROJECTION** | `device_connection_physical_states` — one row per `(organizationId, vehicleId, provider, bindingKey)`; `bindingKey` non-null and **always** `{PROVIDER}:device:{providerDeviceIdHash}`; `deviceBindingId` is enrichment metadata only |
 | **CONCURRENCY** | `pg_advisory_xact_lock` per binding + `SELECT … FOR UPDATE` + `INSERT … ON CONFLICT DO NOTHING` (no catch-and-continue inside aborted transactions) |
 | **SIDE_EFFECTS** | Phase 1 returns episode/alert intents only; durable outbox execution deferred to Phase 2 |
-| **TRANSITION_LOG** | Append-only `device_connection_physical_state_transitions` with explicit decisions: ESTABLISHED, APPLIED, DUPLICATE, STALE, CONFLICT, INSUFFICIENT_EVIDENCE, PROVENANCE_REFRESH |
+| **TRANSITION_LOG** | Idempotent evidence-decision ledger `device_connection_physical_state_transitions` with `previous_state`, `candidate_state`, `effective_state`, explicit decisions (ESTABLISHED, APPLIED, DUPLICATE, STALE, CONFLICT, INSUFFICIENT_EVIDENCE, PROVENANCE_REFRESH); one row per idempotency key, not per reconcile invocation |
 | **TIMESTAMP_AUTHORITY** | Physical ordering uses `evidenceObservedAt` from provider-observed webhook time or per-signal `obdIsPluggedIn.timestamp` — never `providerFetchedAt`, poll completion, or `receivedAt` |
 | **INITIALIZATION** | Snapshot self-heal may establish/repair projection without retroactive user-visible lifecycle events or fabricated PLUG webhooks |
 | **EPISODE_BOUNDARY** | Physical projection transition ≠ episode/alert policy; snapshot-only UNPLUG episode opening remains deferred (Phase 1) |
