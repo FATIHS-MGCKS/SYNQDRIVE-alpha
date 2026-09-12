@@ -24,6 +24,7 @@ import {
 } from './testing/trip-r11-postgres-redis.integration.harness';
 import { readStopBoundaryAt } from './trip-fsm-evidence-state';
 import { resolveEndCycleToken } from './trip-end-cycle-reset';
+import { buildTripTrackingJobOptions } from './trip-tracking-queue.util';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
@@ -218,6 +219,19 @@ function buildCusumOngoingDetectorMock() {
   };
 }
 
+function buildPossibleEndCheckJob(
+  fixture: TripR11PostgresFixture,
+  requestedAt: Date,
+): TripTrackingJobData {
+  return {
+    vehicleId: fixture.vehicle.id,
+    organizationId: fixture.org.id,
+    dimoTokenId: fixture.vehicle.dimoTokenId,
+    trigger: TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK,
+    requestedAt: requestedAt.toISOString(),
+  };
+}
+
 async function seedPossibleEndFromEmptyCore(params: {
   prisma: PrismaClient;
   harness: TripR11OrchestrationHarness;
@@ -341,6 +355,14 @@ async function seedPossibleEndFromEmptyCore(params: {
       await purgeTripTrackingQueueJobs(trackingQueue);
 
       useTripR11FrozenClock(EV_ATTEMPT_1_AT);
+      await trackingQueue.add(
+        'trip-tracking',
+        buildPossibleEndCheckJob(fixture, EV_ATTEMPT_1_AT),
+        {
+          jobId: buildTripTrackingJobId('pec', fixture.vehicle.id, fixture.trip.id),
+          ...buildTripTrackingJobOptions(TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK),
+        },
+      );
       const { steps: pecEvSteps } = await drainTripTrackingQueue({
         queue: trackingQueue,
         runJob: harness.runJob,
