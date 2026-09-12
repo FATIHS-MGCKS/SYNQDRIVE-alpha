@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-production-incident-ks-ms-661-2026-09-06',
+    version: '4.9.1107',
+    title: 'Production REFUEL incident forensics — KS MS 661 (Esso Kassel 2026-09-06)',
+    summary: [
+      'User refuel ~11:38 CEST not visible in UI after ~6 days (vehicle KS MS 661).',
+      'Direct DIMO probe: 0 native refuel segments; absolute fuel 7L→31L; relative fuel NULL all day.',
+      'Esso Ysenburgstraße dwell ~31m corroborated; no VehicleEnergyEvent ever persisted.',
+      'LOSS_LAYER=DIMO_NATIVE_REFUEL_DETECTOR; P1 — not UI/API/G2 defect.',
+      'Read-only forensics only; no production mutation.',
+    ],
+    reason: 'Six-day invisible real refuel is a production incident requiring full pipeline forensics.',
+    previousBehavior: 'Assumed provider latency; WOB L 7503 forensics showed upstream pending pattern.',
+    details:
+      'docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md; EED-EV-0040; FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T05:20:00.000Z',
+  },
+  {
     id: 'vdc-phase3-hardening-2026-09-12',
     version: '4.9.1106',
     title: 'VDC Phase 3 hardening — recovery fast-path & adaptive polling',

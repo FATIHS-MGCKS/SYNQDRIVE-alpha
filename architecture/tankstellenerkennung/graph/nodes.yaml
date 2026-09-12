@@ -1003,6 +1003,18 @@ nodes:
     source_paths:
       - docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md
 
+  - id: FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001
+    type: evidence
+    title: KS MS 661 production REFUEL incident — Esso Ysenburgstraße 2026-09-06
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: >
+      Physical refuel ~11:38 CEST not visible after ~6 days. Esso dwell ~31m corroborated;
+      DIMO 0 native refuel segments; absolute fuel +24L; relative NULL. No SynqDrive event.
+      P1 DIMO_NATIVE_REFUEL_DETECTOR loss layer.
+    source_paths:
+      - docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md
+
   - id: FST-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE system observation time

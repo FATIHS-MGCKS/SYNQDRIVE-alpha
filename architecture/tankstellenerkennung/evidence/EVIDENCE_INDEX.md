@@ -34,6 +34,7 @@ Canonical evidence nodes (`FST-EVID-*`, `FST-TEST-*`). See also `graph/nodes.yam
 | FST-EVID-G21D-FINAL-PRE-SHADOW-INTEGRATION-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g21d-final-integration-pre-shadow-gate-2026-09-04.md | G2.1d-FINAL isolated Postgres+Redis integration, multi-replica E2E, pre-G2.2 gate |
 | FST-EVID-G22-PRODUCTION-CUTOVER-2026-09-04-001 | CURRENT_TEST | docs/audits/refuel-g22-production-cutover-2026-09-04.md | G2.2 direct production cutover (no shadow); integration gate PASS; flag activation |
 | FST-EVID-G22-PRODUCTION-POST-CUTOVER-T60-2026-09-04-001 | PRODUCTION_OBSERVATION | docs/audits/refuel-g22-production-post-cutover-t60-2026-09-04.md | G2.2 post-cutover T+60 read-only production audit; runtime stability PASS; zero natural REFUEL |
+| FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001 | PRODUCTION_INCIDENT | docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md | KS MS 661 Esso refuel invisible ~6d; DIMO 0 segments; abs +24L; rel NULL; P1 |
 
 ## Phase memos (supporting, not graph authority)
 

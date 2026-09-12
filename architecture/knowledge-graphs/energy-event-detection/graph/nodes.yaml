@@ -1320,6 +1320,19 @@ nodes:
       source_type (time-bounded snapshot); does not downgrade factual confirmation.
     verified_at: "2026-09-04"
 
+  - id: EED-EV-0040
+    type: evidence
+    title: KS MS 661 production REFUEL incident — 2026-09-06 Esso Kassel
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md
+    summary: >
+      User refuel ~09:38Z invisible in UI after ~6 days. Direct DIMO probe: 0 native refuel
+      segments; absolute fuel 7L→31L; relative fuel NULL all day. No VehicleEnergyEvent ever.
+      LOSS_LAYER=DIMO_NATIVE_REFUEL_DETECTOR. P1 production incident.
+    verified_at: "2026-09-12"
+
   - id: EED-DEC-SETTLEMENT-OBSERVATION-TIME-001
     type: decision
     title: Settlement clock uses SYNQDRIVE firstObservedAt
