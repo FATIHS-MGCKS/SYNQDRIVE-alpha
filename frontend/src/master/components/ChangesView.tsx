@@ -41,9 +41,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Production REFUEL incident forensics — KS MS 661 (Esso Kassel 2026-09-06)',
     summary: [
       'User refuel ~11:38 CEST not visible in UI after ~6 days (vehicle KS MS 661).',
-      'Direct DIMO probe: 0 native refuel segments; absolute fuel 7L→31L; relative fuel NULL all day.',
-      'Esso Ysenburgstraße dwell ~31m corroborated; no VehicleEnergyEvent ever persisted.',
-      'LOSS_LAYER=DIMO_NATIVE_REFUEL_DETECTOR; P1 — not UI/API/G2 defect.',
+      'Direct DIMO probe: 0 native refuel segments (production + default config); absolute fuel 7L→31L; relative fuel NULL all day.',
+      'Esso Ysenburgstraße dwell ~31m corroborated; no VehicleEnergyEvent ever persisted; no SynqDrive raw-signal fallback.',
+      'Exact internal DIMO RefuelDetector mechanism not observable; LOSS_LAYER=DIMO_NATIVE_REFUEL_DETECTOR; P1 — not UI/API/G2 defect.',
       'Read-only forensics only; no production mutation.',
     ],
     reason: 'Six-day invisible real refuel is a production incident requiring full pipeline forensics.',

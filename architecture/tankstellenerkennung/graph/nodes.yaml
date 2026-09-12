@@ -1010,8 +1010,9 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     summary: >
       Physical refuel ~11:38 CEST not visible after ~6 days. Esso dwell ~31m corroborated;
-      DIMO 0 native refuel segments; absolute fuel +24L; relative NULL. No SynqDrive event.
-      P1 DIMO_NATIVE_REFUEL_DETECTOR loss layer.
+      DIMO 0 native refuel segments (production and default config); absolute fuel +24L;
+      relative NULL. No SynqDrive event; no raw-signal fallback. Exact DIMO internal mechanism
+      UNKNOWN. P1 DIMO_NATIVE_REFUEL_DETECTOR loss layer.
     source_paths:
       - docs/audits/refuel-production-incident-ks-ms-661-2026-09-06.md
 

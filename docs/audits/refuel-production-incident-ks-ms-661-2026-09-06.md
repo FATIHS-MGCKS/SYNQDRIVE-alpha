@@ -23,7 +23,9 @@ Forensics prove the loss occurs **before SynqDrive persistence** — at the **DI
 | G2 / enrichment / API / UI | **NOT REACHED** |
 
 **Primary classification:** `LOSS_LAYER = DIMO_NATIVE_REFUEL_DETECTOR`  
-**Root cause:** DIMO RefuelDetector published zero refuel segments despite observable absolute fuel rise; relative fuel telemetry entirely NULL in DIMO `signals()` API on 2026-09-06, preventing production `minIncreasePercent: 5` detection. SynqDrive EED ingests only native DIMO segments — no fallback path exists.
+**Root cause:** DIMO native RefuelDetector emitted zero REFUEL segments despite a confirmed +24 L absolute fuel rise at the Esso forecourt. Relative fuel telemetry was entirely absent during the relevant period. The exact internal DIMO detector failure mechanism is **not observable from SynqDrive**. Because SynqDrive has no raw-signal REFUEL fallback when native DIMO segments are absent, the physical refuel never entered `VehicleEnergyEvent` persistence.
+
+**Epistemic boundary:** Direct DIMO probe returned **zero** refuel segments both with production `{ minIncreasePercent: 5 }` **and** with default config (no override). Missing relative fuel is **confirmed** but is **not proven** to be the internal RefuelDetector causal mechanism.
 
 **Product severity:** **P1** — not ordinary latency; six-day recovery window exhausted with provider still returning zero segments.
 
@@ -150,7 +152,7 @@ Focused window `09:00`–`10:30`: same pattern — absolute rise visible, **rela
 | **RAW_FUEL_RISE_PRESENT** | **YES** (absolute liters) |
 | Relative fuel rise | **NOT AVAILABLE** (signal absent) |
 
-**CASE A applies:** raw fuel rise YES + DIMO native refuel NO → **`DIMO_NATIVE_REFUEL_DETECTOR_MISS`** with **`PROVIDER_FUEL_OBSERVABILITY_FAILURE`** component (relative channel missing).
+**CASE A applies:** raw fuel rise YES + DIMO native refuel NO → **`DIMO_NATIVE_REFUEL_DETECTOR_MISS`**. Relative fuel channel absent (**confirmed**). **`EXACT_DIMO_INTERNAL_FAILURE_MECHANISM = UNKNOWN`** — relative-channel absence is correlated context, not a proven internal RefuelDetector cause.
 
 ---
 
@@ -279,31 +281,54 @@ detectEnergyEvents
 
 ---
 
-## 14. Required final classification
+## 14. Technical cause vs product defect
+
+| Classification | Description |
+|----------------|-------------|
+| **TECHNICAL_PROVIDER_FAILURE** | DIMO native REFUEL segment missing despite raw absolute fuel evidence (+24 L at Esso forecourt dwell). |
+| **SYNQDRIVE_ARCHITECTURE_GAP** | No independent raw-fuel fallback exists when native DIMO `segments(refuel)` is absent. |
+| **PRODUCT_IMPACT** | Real refuel invisible for ~6 days; API/UI/G2/BullMQ never reached. |
+
+**P1** is a SynqDrive **product readiness** classification even though the first missing canonical event belongs to the DIMO provider layer.
+
+| Epistemic claim | Status |
+|-----------------|--------|
+| Physical refuel occurred | **CONFIRMED** |
+| Absolute fuel 7 L → 31 L (+24 L) | **CONFIRMED** |
+| Relative fuel absent (0 samples) | **CONFIRMED** |
+| DIMO native refuel segments = 0 | **CONFIRMED** (incl. default-config probe) |
+| SynqDrive raw-signal REFUEL fallback | **ABSENT** (confirmed in code) |
+| Exact DIMO internal RefuelDetector failure mechanism | **UNKNOWN** |
+
+---
+
+## 15. Required final classification
 
 | Field | Value |
 |-------|-------|
 | **LOSS_LAYER** | **DIMO_NATIVE_REFUEL_DETECTOR** |
-| **ROOT_CAUSE** | DIMO native RefuelDetector emitted zero `segments(refuel)` despite +24 L absolute fuel rise at Esso forecourt; relative fuel signal entirely NULL in DIMO telemetry on 2026-09-06 preventing `minIncreasePercent: 5` detection; SynqDrive has no non-segment fallback so REFUEL never reached DB/API/UI |
+| **ROOT_CAUSE** | DIMO native RefuelDetector emitted zero REFUEL segments despite +24 L absolute fuel rise at Esso forecourt. Relative fuel absent. Exact internal DIMO mechanism not observable. SynqDrive has no raw-signal fallback → REFUEL never reached DB/API/UI. |
+| **SYNQDRIVE_RAW_REFUEL_FALLBACK_EXISTS** | **NO** |
+| **EXACT_DIMO_INTERNAL_FAILURE_MECHANISM** | **UNKNOWN** |
 
 ---
 
-## 15. Comparison note (KS MX 2024 / Esso Ysenburgstraße)
+## 16. Comparison note (KS MX 2024 / Esso Ysenburgstraße)
 
 Prior architecture reference confirms **Esso Ysenburgstraße** exists in production OSM (~31 m from this dwell). Station dataset absence is **ruled out**. This incident differs from KS MX sibling/coalesce issues — here **zero** native segment and **zero** DB row.
 
 ---
 
-## 16. Recommended follow-up (documentation only — not executed)
+## 17. Recommended follow-up (documentation only — not executed)
 
-1. DIMO escalation: RefuelDetector + relative fuel NULL for token 187361 on 2026-09-06.
+1. DIMO escalation: zero native REFUEL segments for token 187361 on 2026-09-06 despite +24 L absolute rise; include relative-fuel absence as **context** (not asserted internal cause).
 2. Product architecture review: fallback ingestion when absolute fuel rise + forecourt dwell corroborated but native segment absent.
-3. Observability: alert when relative fuel NULL rate high for ICE fleet.
+3. Observability: alert when relative fuel NULL rate high for ICE fleet (fleet health signal; not proven per-incident root cause).
 4. Do **not** manually backfill without operator authorization.
 
 ---
 
-## 17. Canonical evidence nodes
+## 18. Canonical evidence nodes
 
 - **EED:** `EED-EV-0040`
 - **FST:** `FST-EVID-KS-MS-661-PRODUCTION-REFUEL-INCIDENT-2026-09-06-001`
