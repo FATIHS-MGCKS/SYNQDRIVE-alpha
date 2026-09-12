@@ -79,7 +79,7 @@ jobs:
             frontend/package-lock.json
       - run: npm ci && npx tsc --noEmit -p tsconfig.json
         working-directory: backend
-      - run: npm ci && NODE_OPTIONS='--max-old-space-size=8192' npx tsc -b
+      - run: npm ci && npx tsc -b
         working-directory: frontend
 
   backend-unit:

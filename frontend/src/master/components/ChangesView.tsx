@@ -167,7 +167,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'syncCompletedPhasesFromSession loads experiment metadata before plan resolution.',
       'One canonical calibrationPlan per sync: series → metadata → env; shared across prospective + completed validation.',
       'Regression: series absent + metadata V3 + env V2 resolves V3 (19/19 windows, 10 min nominal).',
-      'Vehicle Detail CI typecheck OOM mitigated with NODE_OPTIONS heap increase.',
+      'Vehicle Detail backend typecheck OOM documented as infra/flaky (rerun).',
     ],
     reason:
       'Lifecycle path still resolved plan from series/env before metadata — completed-phase validation could use UPPER_BOUND_V2 while prospective sync used metadata V3.',
