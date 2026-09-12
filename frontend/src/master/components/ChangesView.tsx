@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-phase3-reconciliation-2026-09-11',
+    version: '4.9.1105',
+    title: 'VDC Phase 3 — Reconciliation & classification',
+    summary: [
+      'Reconciled Phase 1 repository + Phase 2 Production evidence into canonical decision model.',
+      'Dispositioned VDC-CX-001..011 (4 RESOLVED_IN_ARCHITECTURE; 7 runtime-pending).',
+      'Created VDC-DEC-002..010: equality upsert design, provider auth vs mirror, evidence hierarchy, webhook taxonomy.',
+      'Prioritized remediation backlog VDC-RB-001..017 — no runtime implementation in Phase 3.',
+      'Registry remains AUDIT_IN_PROGRESS; AUTHORITY_ACTIVE promotion deferred.',
+      'No Production or connectivity-runtime behavior changes.',
+    ],
+    reason:
+      'Phase 3 gate: classify contradictions, gaps, and hypotheses before implementation workstreams.',
+    previousBehavior:
+      'Phase 2 forensics complete but contradictions lacked unified disposition and remediation ordering.',
+    details:
+      'architecture/vehicle-device-connectivity/reconciliation/PHASE3_RECONCILIATION.md; TARGET_SEMANTIC_MODEL.md; REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:05:00.000Z',
+  },
+  {
     id: 'vdc-phase2-production-lte-r1-forensics-2026-09-11',
     version: '4.9.1104',
     title: 'VDC Phase 2 — LTE_R1 Production read-only forensics (KS MX 2024)',

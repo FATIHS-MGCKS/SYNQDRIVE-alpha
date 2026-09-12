@@ -5,8 +5,11 @@
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
 | **Phase 1 completed** | 2026-09-11 (repository current-state audit) |
 | **Phase 2 completed** | 2026-09-11 (Production read-only LTE_R1 forensics) |
+| **Phase 3 completed** | 2026-09-11 (reconciliation & classification) |
 | **Production baseline** | **VERIFIED_READ_ONLY** — see [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) |
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
+| **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
+| **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
 | **Last updated** | 2026-09-11 |
 
 ## Executive summary
@@ -31,6 +34,15 @@ Phase 2 (Production, KS MX 2024 LTE_R1) confirms:
 - **VDC_RUNTIME_SEMANTIC_DRIFT** between Production and main SHAs: **NONE_OBSERVED** for connectivity code paths.
 - **IO174 not exposed** in signalsLatest ingest — VDC-HYP-002 STRONGLY_SUPPORTED.
 - **VDC-CX-010** equality upserts MATERIAL in Production churn; not fixed in Phase 2.
+
+Phase 3 (reconciliation) establishes:
+
+- **11 contradictions** dispositioned — 4 RESOLVED_IN_ARCHITECTURE; 7 ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING (see [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md)).
+- **9 Phase-3 decisions** VDC-DEC-002..010 + bootstrap — see [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
+- **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
+- **17-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
+- **GT-R1-UNPLUG-001** remains prepared, not executed — blocks some recovery/false-positive conclusions.
+- **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
 
 ## Component hierarchy
 
@@ -161,29 +173,26 @@ Bounded audit: [providers/high-mobility/REPOSITORY_AUDIT.md](providers/high-mobi
 
 [contradictions/KNOWLEDGE_GAPS.md](contradictions/KNOWLEDGE_GAPS.md) — VDC-GAP-001 through VDC-GAP-012.
 
-## Hypotheses (unchanged status)
+## Hypotheses (Phase 3)
 
-VDC-HYP-001 through VDC-HYP-007 remain **PROPOSED** — not promoted. LTE_R1 ~24h observation stays pending Production reconstruction.
+VDC-HYP-001..007 classified in [research/OPEN_HYPOTHESES.md](research/OPEN_HYPOTHESES.md). Several **PRODUCTION_VALIDATED** (single-vehicle LTE_R1); physical IO174 timer **not** confirmed. Promotions: VDC-INV-003, VDC-INV-004, VDC-DEC-010.
 
 ## Explicit non-claims
 
-- Production-validated LTE_R1 sleep/wake cadence
-- IO174 visibility in ingest
-- HM connectivity parity
-- Canonical promotion of KS MX 2024 forensic numbers
-- Physical device transmission frequency (requires Phase 2)
+- Fleet-wide LTE_R1 gap distribution (VDC-Q-001 partial)
+- Physical Ruptela IO174 timer mechanism
+- HM connectivity parity (VDC-GAP-009)
+- Historical `FULL_CONNECTIVITY_RECOVERED` instant (GT required)
+- CH duplicate root cause (VDC-Q-012)
+- Aug 2026 enqueue_failed root cause (VDC-Q-013 partial)
 
-## Phase 2 Production questions
+## Next workstream (Phase 3 recommendation)
 
-1. Deduplicated `source_timestamp` series vs `dimo_poll_logs` SUCCESS rate (VDC-HYP-003).
-2. Post-trip LTE_R1 gap distribution (VDC-HYP-001).
-3. Per-signal timestamp heterogeneity on standby wakes (VDC-HYP-004).
-4. IO174 / raw IO in Production payloads (VDC-HYP-002).
-5. Episode vs physical-unplug without episode incidence rate (VDC-CX-007).
-6. Operator false-positive rate for standby vs offline at 24h/48h boundaries.
-7. **LTE_R1 stationary periodic-source jitter around 86,400 s:** what is normal jitter, and does the current 24 h standby boundary (`standby` < 24 h; `signal_delayed` ≥ 24 h and < 48 h) produce transient false `SOFT_OFFLINE` / `signal_delayed` for healthy devices? (VDC-Q-011)
-8. Multi-replica duplicate snapshot insert rate in ClickHouse at equal `recorded_at` (VDC-Q-009, **VDC-CX-010**).
-9. Webhook delivery latency vs poll-only **TELEMETRY_RESUMED** / strict source-advance detection.
+1. **VDC-RB-001** — equality upsert metadata-only (VDC-DEC-002)
+2. **VDC-RB-002/004/005** — webhook/event-processing taxonomy (VDC-DEC-006)
+3. **VDC-RB-003** — provider mirror vs authorization (VDC-DEC-003)
+4. **GT-R1-UNPLUG-001** when authorized
+5. HM runtime adapter program (VDC-RB-015) — parallel track
 
 ## Related entry documents
 

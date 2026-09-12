@@ -53,10 +53,27 @@ edges:
     relation: supports
     to: VDC-HYP-003
 
-  - from: VDC-GAP-002
-    relation: contradicts
-    to: VDC-EVID-LTE-R1-PENDING-001
-    notes: Production reconstruction not yet performed
+  - from: VDC-EVID-PHASE2-001
+    relation: supports
+    to: VDC-HYP-001
+
+  - from: VDC-EVID-PHASE2-001
+    relation: supports
+    to: VDC-HYP-003
+
+  - from: VDC-EVID-PHASE2-001
+    relation: supports
+    to: VDC-HYP-005
+
+  - from: VDC-DEC-002
+    relation: governs
+    to: VDC-CX-010
+    notes: Phase 3 PROPOSED canonical equality behavior — runtime pending
+
+  - from: VDC-DEC-003
+    relation: governs
+    to: VDC-CX-011
+    notes: Phase 3 PROPOSED authorization vs mirror semantics — runtime pending
 
   - from: VDC-CX-001
     relation: contradicts

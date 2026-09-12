@@ -1,17 +1,21 @@
 # Vehicle & Device Connectivity — Open Contradictions
 
-Preserve both sides with evidence. Do not resolve by preference in Phase 1.
+Preserve both sides with evidence. Phase 3 adds **disposition** per contradiction — contradictions are **not deleted** when architecturally addressed.
 
-| ID | Topic | Epistemic | Description |
-|----|-------|-----------|-------------|
-| **VDC-CX-001** | Connectivity alert code location | CONTRADICTED | **Proposed:** VDC owns connectivity alert-policy semantics. **Observed:** `backend/src/modules/dimo/connectivity-alert/` — policy is pure/provider-neutral but delivery registry `producerModule: 'dimo'`. No VDC module copy. |
-| **VDC-CX-002** | Webhook failure type naming | CONTRADICTED | Types define `WEBHOOK_PROCESSING_FAILED`; service emits `WEBHOOK_FAILURE`; runtime builder uses `WEBHOOK_PROCESSING_FAILED` reason code. |
-| **VDC-CX-003** | Unused dedupe helper | CONTRADICTED | `buildConnectivityAlertDedupeKey` in `connectivity-alert.dedupe.ts` unused; service uses notification fingerprints instead. |
-| **VDC-CX-004** | Admin DIMO debug thresholds | CONTRADICTED | `dimo.controller.ts` uses 15m online / 24h standby / offline ≥24h. Canonical interpreter uses 48h `signal_delayed` before hard offline. |
-| **VDC-CX-005** | Stale snapshot metric vs freshness | CONTRADICTED | Processor Prometheus stale counter threshold **5 min** ≠ canonical live threshold **15 min**. |
-| **VDC-CX-006** | Episode evidence reliability default | CONTRADICTED | `buildDeviceConnectionSummary` defaults `episodeEvidenceReliable: false` → interruption knowledge stays `unknown` unless caller opts in. |
-| **VDC-CX-007** | Physical episode vs physical evidence | CONTRADICTED | `interruption-knowledge.ts`: absence of open episode ≠ no interruption; physical unplug without episode possible. |
-| **VDC-CX-008** | Webhook failure alert mapping | CONTRADICTED | `syncConnectivityAlerts` sets `webhookProcessingFailed` when `providerLink.state === 'ERROR'` — conflates link error with webhook processing failure. |
-| **VDC-CX-009** | Diagnostic tracker scope | CONTRADICTED | `ConnectivityDiagnosticTransitionTracker` is process-local, demand-driven, not authoritative monitor; multi-instance double-count risk documented in code. |
-| **VDC-CX-010** | Equal sourceTimestamp accepted as full VLS upsert | CONTRADICTED | `isIncomingVlsSourceTimestampStale` rejects only `incoming < existing`. Equality performs full VLS upsert and may execute downstream side effects without source-time advance. **Phase 2 Production:** ~1,027 equal-timestamp polls vs 3 strict advances (KS MX 2024). CH duplicate `recorded_at` rows exist historically; **causal link to CX-010 UNKNOWN** (VDC-Q-012). Impact **MATERIAL** for churn; **LOW** for erroneous Sep episodes. **Not fixed.** |
-| **VDC-CX-011** | DIMO CONNECTED vs runtime providerLinkState UNKNOWN | CONTRADICTED | **Production (KS MX 2024 audit):** `dimo_vehicles.connectionStatus = CONNECTED`, fresh `providerFetchedAt`, `telemetryState = standby`, but `providerLinkState = UNKNOWN` in runtime projection. CODE: `ProviderLinkStateBuilder` may emit UNKNOWN when consent/authorization chain is ambiguous despite live DIMO mirror status. See [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) §12. **Not fixed.** |
+**Reconciliation:** [reconciliation/PHASE3_RECONCILIATION.md](../reconciliation/PHASE3_RECONCILIATION.md)
+
+| ID | Topic | Epistemic | Description | Phase-3 disposition | Linked VDC-DEC | Implementation | Validation |
+|----|-------|-----------|-------------|---------------------|----------------|----------------|------------|
+| **VDC-CX-001** | Connectivity alert code location | CONTRADICTED | **Proposed:** VDC owns alert-policy semantics. **Observed:** `dimo/connectivity-alert/` — policy provider-neutral but `producerModule: 'dimo'`. | CHANGE_REQUIRED — ownership debt | VDC-DEC-009 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | VALIDATED (repo) |
+| **VDC-CX-002** | Webhook failure type naming | CONTRADICTED | Types: `WEBHOOK_PROCESSING_FAILED`; service/registry: `WEBHOOK_FAILURE`. | FIX_REQUIRED — naming alignment | VDC-DEC-006 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | PROPOSED |
+| **VDC-CX-003** | Unused dedupe helper | CONTRADICTED | `buildConnectivityAlertDedupeKey` unused; fingerprints used. | REMOVE_DEAD_PATH | — | RESOLVED_IN_ARCHITECTURE (remove recommended) | PROPOSED |
+| **VDC-CX-004** | Admin DIMO debug thresholds | CONTRADICTED | Admin offline ≥24h vs canonical `signal_delayed` until 48h. | DOCUMENTATION_ONLY → CHANGE_REQUIRED | VDC-DEC-005 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | VALIDATED |
+| **VDC-CX-005** | Stale snapshot metric vs freshness | CONTRADICTED | Prometheus stale counter **5 min** ≠ domain live **15 min**. | KEEP_AS_IS — observability vs domain | VDC-DEC-008 | RESOLVED_IN_ARCHITECTURE | VALIDATED |
+| **VDC-CX-006** | Episode evidence reliability default | CONTRADICTED | `episodeEvidenceReliable` default `false` → interruption UNKNOWN. | GROUND_TRUTH_REQUIRED for UX; conservative default kept | VDC-DEC-007 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | PROPOSED |
+| **VDC-CX-007** | Physical episode vs physical evidence | CONTRADICTED | Absence of open episode ≠ no interruption; unplug without episode possible. | DOCUMENTATION_ONLY — promote invariant | VDC-DEC-004, VDC-DEC-007 | RESOLVED_IN_ARCHITECTURE | VALIDATED |
+| **VDC-CX-008** | Webhook failure alert mapping | CONTRADICTED | `webhookProcessingFailed` when `providerLink.state === 'ERROR'`. | FIX_REQUIRED | VDC-DEC-006 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | PROPOSED |
+| **VDC-CX-009** | Diagnostic tracker scope | CONTRADICTED | Process-local, demand-driven, not authoritative; multi-replica double-count. | KEEP_AS_IS — best-effort diagnostic | VDC-DEC-008 | RESOLVED_IN_ARCHITECTURE | VALIDATED |
+| **VDC-CX-010** | Equal sourceTimestamp full VLS upsert | CONTRADICTED | Equality full upsert; ~1,027:3 ratio KS MX 2024; CH duplicates exist; causality UNKNOWN. | CHANGE_REQUIRED — metadata-only canonical | VDC-DEC-002 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | PRODUCTION_VALIDATED (impact); PROPOSED (fix) |
+| **VDC-CX-011** | DIMO CONNECTED vs providerLinkState UNKNOWN | CONTRADICTED | Production: CONNECTED + fresh fetch + standby + UNKNOWN link. Builder: authorization chain. | DOCUMENTATION_ONLY + additive mirror field | VDC-DEC-003 | ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING | PRODUCTION_VALIDATED (observation); PROPOSED (fix) |
+
+**Counts:** 11 contradictions — 4 RESOLVED_IN_ARCHITECTURE; 7 ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING; 0 RESOLVED_IN_RUNTIME.

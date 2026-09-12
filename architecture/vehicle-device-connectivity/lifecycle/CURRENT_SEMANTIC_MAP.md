@@ -1,6 +1,22 @@
-# Vehicle & Device Connectivity — Current Semantic Map (Phase 1)
+# Vehicle & Device Connectivity — Current Semantic Map
 
-**Scope:** States and labels **actually used in code today** — not target design.
+**Current runtime (Phase 1):** States and labels **actually used in code today**.  
+**Target model (Phase 3):** [../reconciliation/TARGET_SEMANTIC_MODEL.md](../reconciliation/TARGET_SEMANTIC_MODEL.md) — PROPOSED, not implemented.
+
+## Threshold classification (Phase 3 — VDC-DEC-005)
+
+| Surface | Class | Threshold | Disposition |
+|---------|-------|-----------|-------------|
+| `vehicle-state-interpreter` / `telemetryState` | DOMAIN CONNECTIVITY SEMANTIC | 15m / 24h / 48h | Canonical — unchanged |
+| `onlineStatus` 3-state | LEGACY SEMANTIC | OFFLINE ≥24h | SUPERSEDE_LEGACY_PATH |
+| Admin DIMO debug status | LEGACY SEMANTIC | offline ≥24h | DOCUMENTATION_ONLY → align |
+| Admin/FE "Live" label | UI PRESENTATION SEMANTIC | ~5m | DOCUMENTATION_ONLY |
+| `synqdrive_stale_snapshots_total` | OBSERVABILITY METRIC | 5m | KEEP_AS_IS |
+| LTE_R1 jitter window | PROVIDER PROFILE OBSERVATION | +163–181s | Potential classification window only |
+
+---
+
+## Current runtime map (Phase 1 baseline)
 
 ## Telemetry freshness (`TelemetryFreshness`)
 

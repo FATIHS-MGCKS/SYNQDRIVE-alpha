@@ -23,13 +23,26 @@ invariants:
       - backend/src/modules/dimo/vls-monotonic-merge.util.ts
 
   - id: VDC-INV-003
-    kind: CANDIDATE_INVARIANT
+    kind: CONFIRMED_INVARIANT
     title: Standby silence tolerance
-    epistemic_status: INFERRED
+    epistemic_status: CONFIRMED
     statement: A healthy LTE_R1 may remain source-silent for many hours without implying disconnect.
+    evidence:
+      - VDC-EVID-PHASE2-001
     source_paths:
       - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
       - backend/src/modules/ai/evidence/ai-evidence-telemetry.mapper.ts
+
+  - id: VDC-INV-006
+    kind: CONFIRMED_INVARIANT
+    title: Absence of episode does not prove uninterrupted connection
+    epistemic_status: CONFIRMED
+    statement: Missing or closed device-connection episode MUST NOT be interpreted as proof of uninterrupted physical connection.
+    evidence:
+      - VDC-EVID-REPO-PHASE1-001
+    source_paths:
+      - backend/src/modules/dimo/interruption-knowledge.ts
+      - architecture/vehicle-device-connectivity/contradictions/OPEN_CONTRADICTIONS.md
 
   - id: VDC-INV-004
     kind: CANDIDATE_INVARIANT
