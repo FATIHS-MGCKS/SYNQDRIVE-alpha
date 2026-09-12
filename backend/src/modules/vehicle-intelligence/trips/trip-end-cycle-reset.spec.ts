@@ -17,6 +17,7 @@ import {
   isEndCycleTokenStale,
   resolveEndCycleToken,
   evaluateEndCycleJobAdmission,
+  resolveEndValidationAttemptsOnPossibleEndReentry,
 } from './trip-end-cycle-reset';
 
 const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
@@ -254,6 +255,44 @@ describe('trip-end-cycle-reset (R5)', () => {
       completedEndValidationAttempts: 3,
     });
     expect(reset.endValidationAttempts).toBe(0);
+  });
+
+  it('resolveEndValidationAttemptsOnPossibleEndReentry preserves budget on ACTIVE re-entry', () => {
+    const workerNow = new Date('2026-09-12T05:13:30.000Z');
+    const boundaryAt = new Date('2026-09-12T05:06:59.000Z');
+    const attempts = resolveEndValidationAttemptsOnPossibleEndReentry({
+      priorState: 'ACTIVE_TRIP',
+      endValidationAttempts: 2,
+      priorSummary: {
+        stopBoundaryAt: boundaryAt.toISOString(),
+        stopBoundarySource: 'provider_stationary_vls',
+        stopBoundaryClockAuthority: 'PROVIDER_EVENT_TIME',
+        stopBoundaryTrust: true,
+      },
+      workerNow,
+      lastMeaningfulMovementAt: new Date('2026-09-12T05:06:52.636Z'),
+      candidateStopBoundary: {
+        boundaryAt,
+        source: 'provider_stationary_vls',
+        clockAuthority: 'PROVIDER_EVENT_TIME',
+        trust: true,
+      },
+    });
+    expect(attempts).toBe(2);
+  });
+
+  it('resolveEndValidationAttemptsOnPossibleEndReentry resets on first POSSIBLE_END from IDLE', () => {
+    expect(
+      resolveEndValidationAttemptsOnPossibleEndReentry({
+        priorState: 'IDLE_WITHIN_TRIP',
+        endValidationAttempts: 2,
+        priorSummary: {
+          stopBoundaryAt: '2026-09-12T05:06:59.000Z',
+          stopBoundaryTrust: true,
+        },
+        workerNow: WORKER_NOW,
+      }),
+    ).toBe(0);
   });
 
   it('buildPossibleEndToActiveReset drops CUSUM retry budget when boundary is invalidated by movement', () => {

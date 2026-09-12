@@ -159,6 +159,7 @@ import {
   extractR5EndForensicsForPersistence,
   mapEndCycleStaleFinalizeReason,
   resolveEndCycleToken,
+  resolveEndValidationAttemptsOnPossibleEndReentry,
   type PecResumeCheckOutcome,
   validateCusumMovementEventTime,
 } from './trip-end-cycle-reset';
@@ -1906,7 +1907,15 @@ export class TripDetectionOrchestrationService {
           await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
             possibleEndAt: endBoundary.boundaryAt,
             possibleEndEnteredAt: now,
-            endValidationAttempts: 0,
+            endValidationAttempts: resolveEndValidationAttemptsOnPossibleEndReentry({
+              priorState: det.state,
+              endValidationAttempts: det.endValidationAttempts,
+              priorSummary:
+                (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {},
+              workerNow: now,
+              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+              candidateStopBoundary: emptyCoreGateStopBoundaryProvenance,
+            }),
             cusumValidatedAt: null,
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
@@ -2764,7 +2773,14 @@ export class TripDetectionOrchestrationService {
                 ...stateUpdateBase,
                 possibleEndAt: endBoundary.boundaryAt,
                 possibleEndEnteredAt: enteredAt,
-                endValidationAttempts: 0,
+                endValidationAttempts: resolveEndValidationAttemptsOnPossibleEndReentry({
+                  priorState: det.state,
+                  endValidationAttempts: det.endValidationAttempts,
+                  priorSummary: continuityEvidencePatch,
+                  workerNow: now,
+                  lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+                  candidateStopBoundary: persistedStopBoundaryProvenance,
+                }),
                 endDetectionMode:
                   effectiveContinuityDecision.endMode ?? END_DETECTION_MODES.COMPOSITE_INACTIVITY,
                 endConfidence:
