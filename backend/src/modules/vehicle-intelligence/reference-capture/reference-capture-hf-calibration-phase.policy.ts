@@ -23,10 +23,12 @@ import {
 } from './reference-capture-hf-recovery-v2.policy';
 import { canonicalizeBucketTimestamp } from './reference-capture-hf-aggregate-bucket-analysis';
 import {
+  calibrationPlanAuthorityFromPlan,
   classifyPhaseScientificStatus,
   computeRequestRates,
   findPhaseSpecByCadence,
   resolveExp021CalibrationPlan,
+  resolveExp021CalibrationPlanFromAuthority,
   resolveNominalPhaseDurationMs,
   type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
@@ -166,6 +168,9 @@ export type HfCalibrationSeriesState = {
   calibrationSeriesId: string;
   vehicleId: string;
   tokenId: number;
+  /** Durable experiment plan identity — set at physical arm; survives restart without env. */
+  calibrationPlanId?: string | null;
+  calibrationPlanVersion?: string | null;
   phaseOrder: number[];
   activePhase: HfCalibrationPhaseRecord | null;
   completedPhases: HfCalibrationPhaseRecord[];
@@ -178,6 +183,20 @@ export type HfCalibrationSeriesState = {
   seriesStartedAt: string;
   controlPlaneRevision: number;
 };
+
+export function resolveExp021CalibrationPlanForSeries(
+  series: Pick<
+    HfCalibrationSeriesState,
+    'calibrationPlanId' | 'calibrationPlanVersion'
+  > | null | undefined,
+  env?: NodeJS.ProcessEnv,
+): Exp021CalibrationPlan {
+  return resolveExp021CalibrationPlanFromAuthority({
+    calibrationPlanId: series?.calibrationPlanId,
+    calibrationPlanVersion: series?.calibrationPlanVersion,
+    env,
+  });
+}
 
 export type HfCalibrationPhaseContext = {
   calibrationSeriesId: string;
@@ -209,6 +228,8 @@ export function normalizeHfCalibrationSeriesState(
     calibrationSeriesId: raw.calibrationSeriesId,
     vehicleId: raw.vehicleId,
     tokenId: raw.tokenId,
+    calibrationPlanId: raw.calibrationPlanId ?? null,
+    calibrationPlanVersion: raw.calibrationPlanVersion ?? null,
     phaseOrder: [...(raw.phaseOrder ?? [])],
     activePhase: raw.activePhase ? { ...raw.activePhase } : null,
     completedPhases: (raw.completedPhases ?? []).map((p) => ({ ...p })),
@@ -390,12 +411,14 @@ export function buildInitialPhaseCounters(args: {
   phaseEffectiveStartMs: number;
   cadenceMs: number;
   phaseProvenance?: HfCalibrationPhaseProvenance;
+  calibrationPlan?: Exp021CalibrationPlan;
 }): HfCalibrationPhaseRuntimeCounters {
   const base = emptyPhaseCounters(args.calibrationPhaseId);
   if (args.phaseProvenance === 'PRE_ROLL') {
     return base;
   }
-  const phaseDurationMs = resolveNominalPhaseDurationMs(args.cadenceMs);
+  const plan = args.calibrationPlan ?? resolveExp021CalibrationPlan();
+  const phaseDurationMs = resolveNominalPhaseDurationMs(args.cadenceMs, plan);
   return {
     ...base,
     exp021RequestSlots: initializeRequestSlotsForActivePhase({
@@ -463,23 +486,26 @@ export function finalizePhaseSummary(args: {
   const wallDurationMs = Number.isFinite(startedMs) ? Math.max(0, endedMs - startedMs) : 0;
   const plan = args.calibrationPlan ?? resolveExp021CalibrationPlan();
   const phaseSpec = findPhaseSpecByCadence(plan, args.phase.effectivePollIntervalMs);
-  const validMovementDurationMs =
-    args.validMovementDurationMs ?? args.counters.validMovementDurationMs ?? 0;
-  const scientificStatus = phaseSpec
-    ? classifyPhaseScientificStatus({
-        plan,
-        phaseSpec,
-        providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
-        validMovementDurationMs,
-        wallDurationMs,
-        runtimeFailure: args.runtimeFailure,
-      })
-    : null;
+  const movementAuthority =
+    args.validMovementDurationMs !== undefined
+      ? args.validMovementDurationMs
+      : args.counters.validMovementDurationMs ?? null;
+  const scientificStatus =
+    phaseSpec && movementAuthority != null
+      ? classifyPhaseScientificStatus({
+          plan,
+          phaseSpec,
+          providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
+          validMovementDurationMs: movementAuthority,
+          wallDurationMs,
+          runtimeFailure: args.runtimeFailure,
+        })
+      : null;
   const requestRates = computeRequestRates({
     providerRequestCount: args.counters.nativeFastLoopRequestCount,
     providerSuccessCount: args.counters.nativeFastLoopProviderSuccessCount,
     wallDurationMs,
-    validMovementDurationMs,
+    validMovementDurationMs: movementAuthority ?? 0,
   });
   const nativeTemporalEvidence = buildNativeTemporalEvidenceV1({
     phase: args.phase,
@@ -520,13 +546,58 @@ export function finalizePhaseSummary(args: {
     calibrationPlanVersion: plan.planVersion,
     phaseRole: phaseSpec?.role ?? null,
     scientificStatus,
-    validMovementDurationMs,
+    validMovementDurationMs: movementAuthority,
     requestRatePerWallMinute: requestRates.requestRatePerWallMinute,
     requestRatePerMovingMinute: requestRates.requestRatePerMovingMinute,
     successRatePerWallMinute: requestRates.successRatePerWallMinute,
     exp021RequestSlots: args.counters.exp021RequestSlots
       ? args.counters.exp021RequestSlots.map((slot) => ({ ...slot }))
       : null,
+  };
+}
+
+/**
+ * Recompute movement-dependent derived fields when authoritative movement arrives after seal.
+ * Uses persisted summary request/provider evidence — never current active-phase counters.
+ */
+export function recomputePhaseSummaryDerivedFields(args: {
+  summary: HfCalibrationPhaseSummary;
+  validMovementDurationMs: number;
+  calibrationPlan: Exp021CalibrationPlan;
+  runtimeFailure?: boolean;
+}): HfCalibrationPhaseSummary {
+  const phaseSpec = findPhaseSpecByCadence(
+    args.calibrationPlan,
+    args.summary.effectivePollIntervalMs,
+  );
+  const wallDurationMs = args.summary.durationMs;
+  const providerRequestCount = args.summary.providerRequestCount;
+  const providerSuccessCount = args.summary.providerSuccessCount;
+  const scientificStatus = phaseSpec
+    ? classifyPhaseScientificStatus({
+        plan: args.calibrationPlan,
+        phaseSpec,
+        providerSuccessCount,
+        validMovementDurationMs: args.validMovementDurationMs,
+        wallDurationMs,
+        runtimeFailure: args.runtimeFailure,
+      })
+    : null;
+  const requestRates = computeRequestRates({
+    providerRequestCount,
+    providerSuccessCount,
+    wallDurationMs,
+    validMovementDurationMs: args.validMovementDurationMs,
+  });
+  return {
+    ...args.summary,
+    validMovementDurationMs: args.validMovementDurationMs,
+    scientificStatus,
+    calibrationPlanVersion: args.calibrationPlan.planVersion,
+    phaseRole: phaseSpec?.role ?? args.summary.phaseRole,
+    requestRatePerWallMinute: requestRates.requestRatePerWallMinute,
+    requestRatePerMovingMinute: requestRates.requestRatePerMovingMinute,
+    successRatePerWallMinute: requestRates.successRatePerWallMinute,
   };
 }
 
@@ -571,6 +642,7 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
   let completedPhases = [...(series?.completedPhases ?? [])];
   let completedSummaries = [...(series?.completedPhaseSummaries ?? [])];
   let counters = args.counters;
+  const calibrationPlan = resolveExp021CalibrationPlanForSeries(series);
 
   if (series?.activePhase) {
     const countersToUse =
@@ -587,6 +659,7 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
           counters: countersToUse,
           phaseEndedAtMs: args.effectiveAtMs,
           validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
+          calibrationPlan,
         }),
       );
     }
@@ -662,6 +735,7 @@ export function applyPendingCalibrationPhaseAtBoundary(args: {
       phaseEffectiveStartMs: args.effectiveAtMs,
       cadenceMs: intervalMs,
       phaseProvenance,
+      calibrationPlan: resolveExp021CalibrationPlanForSeries(nextSeries),
     }),
   };
 }
@@ -937,6 +1011,7 @@ export function finalizeTerminalCalibrationSeries(args: {
         counters: countersToUse,
         phaseEndedAtMs: args.terminalAtMs,
         validMovementDurationMs: countersToUse.validMovementDurationMs ?? undefined,
+        calibrationPlan: resolveExp021CalibrationPlanForSeries(args.series),
       })
     : null;
   const completedPhaseSummaries = terminalSummary
@@ -1162,6 +1237,7 @@ export function reanchorPhysicalCalibrationPhaseAtT0(args: {
   effectivePollIntervalMs: number;
   hfPolicy: HfRecoveryPolicyV2Config;
   nowMs: number;
+  calibrationPlan: Exp021CalibrationPlan;
   idFactory?: () => string;
 }): ReanchorPhysicalCalibrationPhaseResult {
   const intervalMs = clampHfPollIntervalMs(args.effectivePollIntervalMs);
@@ -1281,10 +1357,13 @@ export function reanchorPhysicalCalibrationPhaseAtT0(args: {
   });
 
   const activePhase: HfCalibrationPhaseRecord = { ...draftPhase, effectiveConfig };
+  const planAuthority = calibrationPlanAuthorityFromPlan(args.calibrationPlan);
   const series: HfCalibrationSeriesState = {
     ...baseSeries,
     vehicleId: args.vehicleId,
     tokenId: args.tokenId,
+    calibrationPlanId: planAuthority.planId,
+    calibrationPlanVersion: planAuthority.planVersion,
     phaseOrder,
     activePhase,
     completedPhases,

@@ -14,7 +14,12 @@ import {
   switchHfCalibrationPhase,
 } from './reference-capture-hf-calibration-phase.policy';
 import { parseHfRecoveryPolicyV2ConfigFromEnv } from './reference-capture-hf-recovery-v2.policy';
-import { EXP021_LEGACY_CADENCE_PHASE_ORDER_MS } from './reference-capture-exp021-calibration-plan.lib';
+import {
+  EXP021_LEGACY_CADENCE_PHASE_ORDER_MS,
+  EXP021_LOWER_BOUND_V1,
+} from './reference-capture-exp021-calibration-plan.lib';
+
+const T0_HARDENING_PLAN = EXP021_LOWER_BOUND_V1;
 import {
   PhysicalDrivePhaseTracker,
   PhysicalEndDetector,
@@ -85,6 +90,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       effectivePollIntervalMs: 60000,
       hfPolicy: HF_POLICY,
       nowMs: t0Ms + 1000,
+      calibrationPlan: T0_HARDENING_PLAN,
     });
     expect(reanchored.reanchored).toBe(true);
     expect(reanchored.activePhase.phaseProvenance).toBe('PHYSICAL_T0');
@@ -111,6 +117,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       effectivePollIntervalMs: 60000,
       hfPolicy: HF_POLICY,
       nowMs: t0Ms,
+      calibrationPlan: T0_HARDENING_PLAN,
     });
     const second = reanchorPhysicalCalibrationPhaseAtT0({
       existing: first.series,
@@ -120,6 +127,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       effectivePollIntervalMs: 60000,
       hfPolicy: HF_POLICY,
       nowMs: t0Ms + 1000,
+      calibrationPlan: T0_HARDENING_PLAN,
     });
     expect(second.reanchored).toBe(false);
     expect(second.activePhase.calibrationPhaseId).toBe(first.activePhase.calibrationPhaseId);
@@ -216,6 +224,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       effectivePollIntervalMs: 60000,
       hfPolicy: HF_POLICY,
       nowMs: t0Ms,
+      calibrationPlan: T0_HARDENING_PLAN,
     });
     expect(() =>
       reanchorPhysicalCalibrationPhaseAtT0({
@@ -226,6 +235,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
         effectivePollIntervalMs: 60000,
         hfPolicy: HF_POLICY,
         nowMs: t0Ms + 60_000,
+        calibrationPlan: T0_HARDENING_PLAN,
       }),
     ).toThrow(Exp021PhaseIdentityConflictError);
   });
@@ -248,6 +258,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
         effectivePollIntervalMs: 60000,
         hfPolicy: HF_POLICY,
         nowMs: t0Ms + 120_000,
+        calibrationPlan: T0_HARDENING_PLAN,
       }),
     ).toThrow(Exp021PhaseIdentityConflictError);
   });
@@ -308,6 +319,7 @@ describe('EXP-021 T0 / phase / settlement hardening', () => {
       effectivePollIntervalMs: 60000,
       hfPolicy: HF_POLICY,
       nowMs: confirmation.startConfirmedAt.getTime(),
+      calibrationPlan: T0_HARDENING_PLAN,
     }).series;
 
     const tracker = new PhysicalDrivePhaseTracker();

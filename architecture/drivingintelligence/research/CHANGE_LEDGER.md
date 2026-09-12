@@ -420,6 +420,50 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
 | Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
 
+## EXP-021 — PR #1621 authority micro-pass: asymmetric corruption + settlement precedence (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **AUTHORITY MICRO-PASS** on draft PR #1621 |
+| Defect A | Both plan fields present but one unrecognized still resolved via `byId ?? byVersion` — asymmetric corruption silently ignored |
+| Fix A | When both fields supplied, both must resolve or `Exp021CalibrationPlanAuthorityInvalidError` |
+| Defect B | Settlement could consult env before experiment metadata when series authority absent |
+| Fix B | `resolveExp021CalibrationPlanFromSources`: series → metadata → env (each persisted layer fail-closed) |
+
+## EXP-021 — PR #1621 lifecycle precedence closure: single canonical plan per sync (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **LIFECYCLE PRECEDENCE CLOSURE** on draft PR #1621 |
+| Defect | `syncCompletedPhasesFromSession` resolved plan via `resolveExp021CalibrationPlanForSeries(series)` before loading experiment metadata — env could win over persisted metadata V3; `validateCompletedPhaseProbeGeometry` received wrong plan while prospective sync later resolved correctly |
+| Fix | Load existing experiment first; resolve ONE canonical `calibrationPlan` via `resolveSettlementCalibrationPlan` (series → metadata → env); pass same plan to `ensureExperiment`, prospective sync, completed-phase validation, and metadata merge |
+| Tests | `sync lifecycle precedence: metadata V3 wins over env V2 when series authority absent` in `reference-capture-settlement-shadow-runtime.spec.ts` |
+| CI | Vehicle Detail backend `tsc --noEmit` OOM at ~4GB heap (run 34698104670) — infrastructure, not PR TS defect; attempted workflow heap modification reverted; natural rerun on final head passed; Vehicle Detail Typecheck PASS; final required GitHub CI green; no workflow mitigation retained |
+
+## EXP-021 — PR #1621 micro-pass: post-transition late-movement + fail-closed authority (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **MICRO-PASS** on draft PR #1621 |
+| Defect | `recomputePhaseSummaryDerivedFields` used active-phase counters for completed phases — post 120→90 transition, empty 90s counters could yield `DEGRADED_INSUFFICIENT_REQUESTS` |
+| Fix | Recompute uses persisted `summary.providerRequestCount` / `summary.providerSuccessCount`; movement patch preserves all non-movement summary evidence |
+| Authority | `resolveExp021CalibrationPlanFromAuthority` fail-closed when durable fields present but conflicted/unrecognized — env fallback only when both fields absent |
+| Tests | `REALISTIC_POST_TRANSITION_LATE_MOVEMENT` PostgreSQL fixture; authority conflict/corruption unit tests |
+
+## EXP-021 — CANDIDATE_BRACKET_V3 durable plan authority correction (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **CORRECTION PASS** — code defects confirmed from frozen KS MS 661 V3 run (PR #1618 evidence); frozen artifacts **unchanged** |
+| Defect A | **Durable plan authority** — post-arm subsystems fell back to `EXP021_UPPER_BOUND_V2` via transient `process.env`; mixed `calibrationPlanVersion` across phases |
+| Defect B | **EXPECTED_SLOTS_NEVER_CREATED** — `buildInitialPhaseCounters` used default 5-min geometry for 90s/60s (expected 7/10, got 4/5); 8 slots never instantiated |
+| Defect C | **Settlement geometry** — `syncProspectiveProbesForActivePhase` resolved 9 windows for 90s/60s instead of 19 (V3 10-min phases) |
+| Defect D | **Stale scientific status** — `finalizePhaseSummary` coerced unknown movement to 0 → `DEGRADED_LOW_MOVEMENT`; late `persistExp021ActivePhaseMovementAtomic` patched movement but not status (120s: 454.7s movement vs 150s threshold should be **VALID**) |
+| Fix | Persist `calibrationPlanId`/`calibrationPlanVersion` on series at arm; `resolveExp021CalibrationPlanFromAuthority`; pass durable plan to slot init, settlement, scientific classification; `recomputePhaseSummaryDerivedFields` on late movement |
+| Terminology | **EXPECTED_SLOTS_NEVER_CREATED** ≠ **SILENTLY_LOST_SLOTS** (never instantiated vs issued then lost) |
+| Evidence | Frozen run `EXP_021_KS_MS_661_CANDIDATE_BRACKET_V3_*_2026-09-12.md` (PR #1618) — not mutated |
+| Tests | `reference-capture-exp021-durable-plan-correction.spec.ts` — 120s false-low-movement regression, full V3 5/7/10 + 19/19/19 + restart recovery |
+
 ## EXP-021 — Post-run hardening scientific correction pass (2026-09-11, PR #1604)
 
 | Event | Detail |

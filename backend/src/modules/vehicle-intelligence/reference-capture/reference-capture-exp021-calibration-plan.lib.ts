@@ -25,6 +25,12 @@ export type Exp021CalibrationPhaseSpec = {
   minSuccessfulRequests: number;
 };
 
+/** Immutable experiment identity persisted at arm time — not transient process.env. */
+export type Exp021CalibrationPlanAuthority = {
+  planId: string;
+  planVersion: string;
+};
+
 export type Exp021CalibrationPlan = {
   schemaVersion: typeof EXP021_CALIBRATION_PLAN_SCHEMA;
   planVersion: string;
@@ -145,6 +151,172 @@ const PLAN_REGISTRY: Record<string, Exp021CalibrationPlan> = {
   '60_30_20_10': EXP021_LOWER_BOUND_V1,
 };
 
+const ALL_KNOWN_CALIBRATION_PLANS: readonly Exp021CalibrationPlan[] = [
+  EXP021_LOWER_BOUND_V1,
+  EXP021_UPPER_BOUND_V2,
+  EXP021_CANDIDATE_BRACKET_V3,
+];
+
+export function calibrationPlanAuthorityFromPlan(
+  plan: Exp021CalibrationPlan,
+): Exp021CalibrationPlanAuthority {
+  return { planId: plan.planId, planVersion: plan.planVersion };
+}
+
+/** Durable planId and planVersion identify different known plans — fail closed. */
+export class Exp021CalibrationPlanAuthorityConflictError extends Error {
+  readonly code = 'EXP021_CALIBRATION_PLAN_AUTHORITY_CONFLICT';
+
+  constructor(
+    public readonly planId: string,
+    public readonly planVersion: string,
+    public readonly planIdResolvesTo: string,
+    public readonly planVersionResolvesTo: string,
+  ) {
+    super(
+      `EXP-021 calibration plan authority conflict: planId=${planId} (${planIdResolvesTo}) vs planVersion=${planVersion} (${planVersionResolvesTo})`,
+    );
+    this.name = 'Exp021CalibrationPlanAuthorityConflictError';
+  }
+}
+
+/** Persisted durable authority is present but cannot be resolved — fail closed. */
+export class Exp021CalibrationPlanAuthorityInvalidError extends Error {
+  readonly code = 'EXP021_CALIBRATION_PLAN_AUTHORITY_INVALID';
+
+  constructor(
+    public readonly planId: string | null,
+    public readonly planVersion: string | null,
+  ) {
+    super(
+      `EXP-021 calibration plan authority invalid or unrecognized: planId=${planId ?? 'null'} planVersion=${planVersion ?? 'null'}`,
+    );
+    this.name = 'Exp021CalibrationPlanAuthorityInvalidError';
+  }
+}
+
+function resolvePlanById(planId: string): Exp021CalibrationPlan | null {
+  return ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planId === planId) ?? null;
+}
+
+function resolvePlanByVersion(planVersion: string): Exp021CalibrationPlan | null {
+  return ALL_KNOWN_CALIBRATION_PLANS.find((plan) => plan.planVersion === planVersion) ?? null;
+}
+
+function normalizeAuthorityField(
+  value: string | null | undefined,
+): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Resolve by durable identity when one or both fields are present.
+ * Returns null only when both fields are absent.
+ * Throws on conflict or unrecognized authority (fail-closed).
+ */
+export function resolveExp021CalibrationPlanByIdentity(
+  authority: Partial<Exp021CalibrationPlanAuthority> | null | undefined,
+): Exp021CalibrationPlan | null {
+  if (!authority) return null;
+
+  const planId = normalizeAuthorityField(authority.planId);
+  const planVersion = normalizeAuthorityField(authority.planVersion);
+
+  if (!planId && !planVersion) return null;
+
+  const byId = planId ? resolvePlanById(planId) : null;
+  const byVersion = planVersion ? resolvePlanByVersion(planVersion) : null;
+
+  if (planId && planVersion) {
+    if (!byId && !byVersion) {
+      throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+    }
+    if (!byId || !byVersion) {
+      throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+    }
+    if (byId.planId !== byVersion.planId) {
+      throw new Exp021CalibrationPlanAuthorityConflictError(
+        planId,
+        planVersion,
+        byId.planVersion,
+        byVersion.planVersion,
+      );
+    }
+    return byId;
+  }
+
+  if (planId) {
+    if (!byId) throw new Exp021CalibrationPlanAuthorityInvalidError(planId, null);
+    return byId;
+  }
+
+  if (!byVersion) {
+    throw new Exp021CalibrationPlanAuthorityInvalidError(null, planVersion);
+  }
+  return byVersion;
+}
+
+/**
+ * Resolve calibration plan from durable authority first; fall back to env only when
+ * no persisted experiment identity exists (new experiments before arm).
+ * Once durable fields are present, env is never authority (fail-closed on conflict/corruption).
+ */
+/**
+ * Settlement/recovery precedence: series authority → experiment metadata → env/default.
+ * Each persisted source is fail-closed when its fields are present.
+ */
+export function resolveExp021CalibrationPlanFromSources(args: {
+  seriesPlanId?: string | null;
+  seriesPlanVersion?: string | null;
+  metadataPlanId?: string | null;
+  metadataPlanVersion?: string | null;
+  env?: NodeJS.ProcessEnv;
+}): Exp021CalibrationPlan {
+  const seriesPlanId = normalizeAuthorityField(args.seriesPlanId);
+  const seriesPlanVersion = normalizeAuthorityField(args.seriesPlanVersion);
+  if (seriesPlanId || seriesPlanVersion) {
+    return resolveExp021CalibrationPlanFromAuthority({
+      calibrationPlanId: seriesPlanId,
+      calibrationPlanVersion: seriesPlanVersion,
+    });
+  }
+
+  const metadataPlanId = normalizeAuthorityField(args.metadataPlanId);
+  const metadataPlanVersion = normalizeAuthorityField(args.metadataPlanVersion);
+  if (metadataPlanId || metadataPlanVersion) {
+    return resolveExp021CalibrationPlanFromAuthority({
+      calibrationPlanId: metadataPlanId,
+      calibrationPlanVersion: metadataPlanVersion,
+    });
+  }
+
+  return resolveExp021CalibrationPlan(args.env);
+}
+
+export function resolveExp021CalibrationPlanFromAuthority(args: {
+  calibrationPlanId?: string | null;
+  calibrationPlanVersion?: string | null;
+  env?: NodeJS.ProcessEnv;
+}): Exp021CalibrationPlan {
+  const planId = normalizeAuthorityField(args.calibrationPlanId);
+  const planVersion = normalizeAuthorityField(args.calibrationPlanVersion);
+
+  if (!planId && !planVersion) {
+    return resolveExp021CalibrationPlan(args.env);
+  }
+
+  const resolved = resolveExp021CalibrationPlanByIdentity({
+    planId: planId ?? undefined,
+    planVersion: planVersion ?? undefined,
+  });
+  if (!resolved) {
+    throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+  }
+  return resolved;
+}
+
 export function resolveExp021CalibrationPlan(
   env: NodeJS.ProcessEnv = process.env,
 ): Exp021CalibrationPlan {
@@ -204,12 +376,15 @@ export function classifyPhaseScientificStatus(args: {
   plan: Exp021CalibrationPlan;
   phaseSpec: Exp021CalibrationPhaseSpec;
   providerSuccessCount: number;
-  validMovementDurationMs: number;
+  validMovementDurationMs: number | null;
   wallDurationMs: number;
   runtimeFailure?: boolean;
-}): Exp021PhaseScientificStatus {
+}): Exp021PhaseScientificStatus | null {
   if (args.runtimeFailure) {
     return 'INVALID_RUNTIME_FAILURE';
+  }
+  if (args.validMovementDurationMs == null) {
+    return null;
   }
   if (args.providerSuccessCount < args.phaseSpec.minSuccessfulRequests) {
     return 'DEGRADED_INSUFFICIENT_REQUESTS';
