@@ -11,18 +11,17 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **AUDIT_STARTED_AT** | `2026-09-11T22:15:00Z` |
 | **PHASE_1_COMPLETED_AT** | `2026-09-11T22:29:15Z` |
 | **PHASE_2_COMPLETED_AT** | `2026-09-11T23:15:18Z` |
-| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` (Phase 3 reconciliation pending) |
+| **PHASE_3_COMPLETED_AT** | `2026-09-11T23:58:52Z` |
+| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` (promotion gate not met) |
 | **REGISTRY_STATUS_AT_START** | `NOT_STARTED` (module absent from registry) |
 | **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
-| **ORIGIN_MAIN_SHA** | `d6ce9c104033afcfa55678c8de6e9eef2397e12a` (Phase 1 audit) |
-| **AUDIT_BRANCH_SHA** | recorded at Phase 1 commit |
-| **BOOTSTRAP_ON_MAIN** | Yes — authority path exists on `origin/main` via PR #1607 branch |
+| **PHASE_3_MAIN_SHA** | `8ca186875250ec678447732334e18ae1202ff4ed` |
+| **PHASE_3_BRANCH** | `cursor/vdc-phase3-reconciliation-dafe` |
 | **PRODUCTION_AUDITED_AT** | `2026-09-11T23:15:18Z` |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA** | `adef555430eee7d53e0b3e90c4154ec5fdcd18ad` |
-| **REPO_PRODUCTION_DRIFT** | `YES` — Production behind `origin/main` (`f952234ec…`) |
 | **RUNTIME_FOOTPRINT** | vehicles/connectivity, dimo device-connection + alerts, snapshot polling, fleet/frontend projection |
 | **AUDIT_MODE** | `READ_ONLY` (documentation only) |
 | **VALIDATION_STATUS** | Run validators before merge |
@@ -33,34 +32,27 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
 | **1 — Repository current-state audit** | **Complete** (2026-09-11) |
-| **2 — Production read-only audit** | **Complete** (2026-09-11) |
-| **3 — Reconciliation** | **Not started** — next gate |
-| **4 — Authority construction** | **In progress** (Phase 1–2 artifacts) |
+| **2 — Production read-only audit** | **Complete** (2026-09-11) — PR #1610 |
+| **3 — Reconciliation** | **Complete** (2026-09-11) |
+| **4 — Authority construction** | **In progress** — decisions + backlog defined; runtime remediation pending |
 | **5 — Promotion gate** | **Not eligible** — remains `AUDIT_IN_PROGRESS` |
+
+## Promotion blockers (Phase 3)
+
+- GT-R1-UNPLUG-001 not executed
+- VDC-GAP-009 HM runtime integration open
+- 7 contradictions ARCHITECTURALLY_ADDRESSED_RUNTIME_PENDING
+- VDC-Q-003, Q-011, Q-012, Q-013 partially open
 
 ## Mutations performed
 
 **None** to application runtime, Production, databases, or deployment.
 
-## Audit coverage matrix (Phase 1)
-
-| Surface | Inspected | Evidence | Result |
-|---------|-----------|----------|--------|
-| Central registry | Yes | `SYNQDRIVE_RENTAL_ARCHITECTURE.md` | VDC row present |
-| Neighbor DIMO Integration | Yes | `architecture/dimo-integration/*` | Boundaries recorded |
-| Neighbor Trip Detection | Yes | snapshot-wake, FSM boundary | Documented |
-| Neighbor Scaling Process | Yes | scheduler-leader reference | No ownership duplication |
-| Backend vehicles/connectivity | Yes | Full file read + tests index | **RECONSTRUCTED** |
-| Backend DIMO connectivity | Yes | connectivity-alert, episodes, webhooks, processor | **RECONSTRUCTED** |
-| Frontend projection | Yes | telemetryFreshness, operational-projection, detail UI | **RECONSTRUCTED** |
-| Prisma / ClickHouse | Yes | schema + services | **RECONSTRUCTED** |
-| High Mobility | Yes | bounded | **PARTIAL** — see HM audit doc |
-| AI telemetry mapper | Yes | standby semantics | **RECONSTRUCTED** |
-| Polling / schedulers | Yes | tiers, wake, leader guards | **RECONSTRUCTED** |
-| Production VPS | Yes | `evidence/PRODUCTION_BASELINE.md`, `evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md` | **RECONSTRUCTED** |
-
 ## NEXT_GATE
 
-1. Phase 3 reconciliation of contradictions (VDC-CX-001..011) with Production evidence.
-2. GT-R1-UNPLUG-001 controlled ground-truth test (when authorized).
-3. HM runtime integration design (VDC-GAP-009).
+1. Execute **GT-R1-UNPLUG-001** on current behavior (before VDC-RB-001 equality changes).
+2. Finalize per-signal-safe **VDC-RB-001** design; implement with **VDC-RB-017**.
+3. **VDC-RB-018** adaptive polling (VDC-DEC-011, VDC-Q-014).
+4. Webhook/event-processing remediation (VDC-RB-002/004/005).
+5. HM runtime integration (VDC-GAP-009 / VDC-RB-015).
+6. Re-assess `AUTHORITY_ACTIVE` after GT + P0/P1 remediation.

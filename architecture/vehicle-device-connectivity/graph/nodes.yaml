@@ -64,7 +64,7 @@ nodes:
     type: hypothesis
     title: ~24h stationary source update
     epistemic_status: INFERRED
-    summary: LTE_R1 may emit periodic source updates ~24h while parked — pending independent Production reconstruction.
+    summary: LTE_R1 may emit periodic source updates ~24h while parked — PRODUCTION_VALIDATED single-vehicle (Phase 2).
     source_paths:
       - architecture/vehicle-device-connectivity/research/OPEN_HYPOTHESES.md
 
@@ -127,8 +127,8 @@ nodes:
   - id: VDC-GAP-002
     type: gap
     title: Production baseline not established
-    epistemic_status: UNKNOWN
-    summary: Phase 2 read-only Production audit not performed in bootstrap.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED Phase 2 — VERIFIED_READ_ONLY Production baseline established.
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
 
@@ -380,3 +380,104 @@ nodes:
     summary: Frontend map-fleet-map-to-canonical and vehicle detail presentation consume connectivityRuntime.
     source_paths:
       - frontend/src/rental/lib/operational-projection/map-fleet-map-to-canonical.ts
+
+  - id: VDC-EVID-PHASE2-001
+    type: evidence
+    title: Phase 2 Production LTE_R1 forensics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: KS MX 2024 read-only Production audit 2026-09-11.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md
+      - architecture/vehicle-device-connectivity/evidence/PRODUCTION_BASELINE.md
+
+  - id: VDC-DEC-002
+    type: decision
+    title: Equal sourceTimestamp metadata-only canonical behavior
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC-CX-010 — equality updates metadata only; skip full upsert side effects.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-003
+    type: decision
+    title: Provider authorization vs mirror connection semantics
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC-CX-011 — separate authorization confidence from adapter mirror health.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-004
+    type: decision
+    title: Canonical multi-dimensional evidence hierarchy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Seven independent evidence dimensions; no flattened boolean.
+    source_paths:
+      - architecture/vehicle-device-connectivity/lifecycle/EVIDENCE_HIERARCHY.md
+
+  - id: VDC-DEC-005
+    type: decision
+    title: Freshness threshold taxonomy
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Domain vs UI vs observability vs legacy classification; 15m/24h/48h unchanged.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-006
+    type: decision
+    title: Webhook and event-processing failure taxonomy
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Separate provider link, delivery, processing, enqueue, canonicalization delay.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-007
+    type: decision
+    title: Episode evidence reliability semantics
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Default false conservative; no-episode invariant; GT for UX.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-008
+    type: decision
+    title: Diagnostic observability non-authoritative guarantee
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: 5m metric and process-local tracker are best-effort only.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-009
+    type: decision
+    title: Connectivity alert semantic ownership
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VDC owns policy; provider modules own delivery adapters.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+
+  - id: VDC-DEC-010
+    type: decision
+    title: Recovery evidence vocabulary
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Precise unplug/replug/resume/recovered layers; PLUG webhook optional fast-path; strict advance for full recovery.
+    source_paths:
+      - architecture/vehicle-device-connectivity/reconciliation/TARGET_SEMANTIC_MODEL.md
+
+  - id: VDC-DEC-011
+    type: decision
+    title: Adaptive information-gain provider polling
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Polling cadence follows information gain not wall-clock; VDC-RB-018; not fixed 5min standby canonical.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-device-connectivity/operations/POLLING_AND_SCHEDULERS.md

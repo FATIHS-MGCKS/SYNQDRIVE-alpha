@@ -1,6 +1,33 @@
-# Vehicle & Device Connectivity — Polling & Schedulers (Phase 1)
+# Vehicle & Device Connectivity — Polling & Schedulers
 
-**Leader election ownership:** [Scaling Process](../../scaling-process/) — reference only (`scheduler-leader-guard.service.ts`).
+**Phase 1 baseline** below documents **current** behavior.  
+**Target policy (Phase 3 hardening):** [VDC-DEC-011](../decisions/DECISION_REGISTER.md), [REMEDIATION_BACKLOG.md](../reconciliation/REMEDIATION_BACKLOG.md) VDC-RB-018.
+
+## Ownership boundary
+
+| Module | Owns |
+|--------|------|
+| **Vehicle & Device Connectivity** | Semantic polling policy; provider/device profile expectations; when information is useful to request; adaptive/backoff rules; information-gain principle |
+| **DIMO Integration** | Executes DIMO API acquisition; provider-specific adapter details |
+| **Scaling Process** | Leader election; replica safety; scheduler execution mechanics; distributed scheduling/idempotency infrastructure |
+
+Do **not** duplicate Scaling Process ownership here.
+
+## Adaptive polling principle (PROPOSED — VDC-DEC-011)
+
+**Current problem (Phase 2):** ~1,030 SUCCESS stationary polls vs 3 strict source advances (KS MX 2024). Fixed ~5 min RESTING_STANDBY tier is not scalable canonical design.
+
+**Canonical principle:** Polling cadence follows **expected information gain** and vehicle/device state, not wall-clock alone.
+
+**Policy input tiers** (polling scheduler inputs — **not** connectivity runtime states):
+
+`ACTIVE_DRIVING` · `POST_TRIP_SETTLING` · `CONFIRMED_STANDBY` · `LONG_IDLE` · `DISCONNECTED_UNPLUGGED` · `RECOVERY` · `EVENT_TRIGGERED_REFRESH`
+
+**Requirements (summary):** high frequency while driving; frequent post-trip settling; backoff on repeated equal `sourceTimestamp`; sparse watchdog for confirmed healthy standby; event-triggered refresh; jitter; rate-limit respect; never permanently stop polling due to missing webhooks; profile overrides (LTE_R1 ~24h source advance is **profile evidence**, not universal 24h poll interval).
+
+**Calibration:** VDC-Q-014 + GT-R1 — do not hardcode final intervals in architecture.
+
+**Leader election:** [Scaling Process](../../scaling-process/) — `scheduler-leader-guard.service.ts`.
 
 ## Three frequency layers (VDC invariant candidate)
 

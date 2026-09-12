@@ -2,7 +2,10 @@
 
 Falsifiable questions — each hypothesis has a graph node `VDC-HYP-*`.
 
-Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md).
+Phase 2 Production results: [../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](../evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md).  
+Phase 3 classification: [../reconciliation/PHASE3_RECONCILIATION.md](../reconciliation/PHASE3_RECONCILIATION.md) §4.
+
+**Rule:** Hypothesis IDs are **retained** when facts are promoted to invariants or decisions — status trail preserved.
 
 ---
 
@@ -15,7 +18,8 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | KS MX 2024: 3 post-trip intervals 86,563–86,581 s (2026-09-08 → 2026-09-11) |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED (single vehicle, 3 samples) |
-| **Remaining gap** | Physical IO174 timer not proven |
+| **Remaining falsifier** | Physical IO174 timer not proven; fleet distribution (VDC-Q-001) |
+| **Phase 3** | Retained as hypothesis; partial promotion to profile observation |
 
 ---
 
@@ -29,6 +33,7 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Classification** | IO174_NOT_EXPOSED_BY_CURRENT_INGEST |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED |
+| **Phase 3** | Retained; IO174_NOT_EXPOSED_BY_CURRENT_INGEST promoted to gap fact |
 
 ---
 
@@ -41,6 +46,7 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | 1,030 SUCCESS polls vs 3 strict source advances (~343:1) in 3.75 d stationary window |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED |
+| **Phase 3** | **Promoted** to VDC-INV-004 (three frequency layers); hypothesis ID retained |
 
 ---
 
@@ -53,6 +59,7 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | Fuel/ECT frozen at trip end; LV/GNSS on latest wake; odometer partial Sep 9 wake |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED (latest payload only; per-wake archive limited) |
+| **Phase 3** | Retained; per-wake archive limitation (VDC-GAP-003) |
 
 ---
 
@@ -65,6 +72,7 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | CONNECTED + plugged + standby at 18 h source age; polls succeeding |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED |
+| **Phase 3** | **Promoted** to VDC-INV-003 (standby silence tolerance confirmed) |
 
 ---
 
@@ -77,6 +85,7 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | Observed CONNECTED + stale source + fresh poll + standby simultaneously |
 | **Epistemic state** | PRODUCTION_OBSERVATION |
 | **Validation status** | PRODUCTION_VALIDATED |
+| **Phase 3** | Retained as design principle; supports VDC-DEC-004 target model |
 
 ---
 
@@ -89,3 +98,4 @@ Phase 2 Production results appended 2026-09-11. See [../evidence/LTE_R1_KS_MX_20
 | **Evidence** | Aug 2026 recovery resolved episode via snapshot plug signal; Sep window shows poll success without source advance for ~18 h while still "healthy standby" |
 | **Epistemic state** | PRODUCTION_OBSERVATION + CODE (VDC-CX-010) |
 | **Validation status** | PRODUCTION_VALIDATED |
+| **Phase 3** | **Promoted** to recovery rule VDC-DEC-010; GT-R1 required for historical instant proof |

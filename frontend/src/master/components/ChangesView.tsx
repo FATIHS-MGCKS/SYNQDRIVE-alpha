@@ -36,6 +36,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-phase3-hardening-2026-09-12',
+    version: '4.9.1106',
+    title: 'VDC Phase 3 hardening — recovery fast-path & adaptive polling',
+    summary: [
+      'PLUG webhook = optional fast-path; FULL_CONNECTIVITY_RECOVERED must not depend on PLUG webhook (VDC-DEC-010).',
+      'VDC-RB-001 gated: equality short-circuit must preserve per-signal/device evidence; GT-R1 before rollout.',
+      'VDC-DEC-011 adaptive information-gain polling; VDC-RB-018 P1 backlog item.',
+      'VDC-Q-014 open for per-profile backoff calibration; do not hardcode 24h poll from LTE_R1 n=1.',
+      'No runtime or Production changes.',
+    ],
+    reason:
+      'Operator requirements: recovery without mandatory PLUG webhook; fixed standby polling not scalable.',
+    previousBehavior: 'Phase 3 reconciliation without explicit fast-path or adaptive polling decisions.',
+    details:
+      'architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md; reconciliation/REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:10:00.000Z',
+  },
+  {
+    id: 'vdc-phase3-reconciliation-2026-09-11',
+    version: '4.9.1105',
+    title: 'VDC Phase 3 — Reconciliation & classification',
+    summary: [
+      'Reconciled Phase 1 repository + Phase 2 Production evidence into canonical decision model.',
+      'Dispositioned VDC-CX-001..011 (4 RESOLVED_IN_ARCHITECTURE; 7 runtime-pending).',
+      'Created VDC-DEC-002..010: equality upsert design, provider auth vs mirror, evidence hierarchy, webhook taxonomy.',
+      'Prioritized remediation backlog VDC-RB-001..017 — no runtime implementation in Phase 3.',
+      'Registry remains AUDIT_IN_PROGRESS; AUTHORITY_ACTIVE promotion deferred.',
+      'No Production or connectivity-runtime behavior changes.',
+    ],
+    reason:
+      'Phase 3 gate: classify contradictions, gaps, and hypotheses before implementation workstreams.',
+    previousBehavior:
+      'Phase 2 forensics complete but contradictions lacked unified disposition and remediation ordering.',
+    details:
+      'architecture/vehicle-device-connectivity/reconciliation/PHASE3_RECONCILIATION.md; TARGET_SEMANTIC_MODEL.md; REMEDIATION_BACKLOG.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-12T00:05:00.000Z',
+  },
+  {
     id: 'vdc-phase2-production-lte-r1-forensics-2026-09-11',
     version: '4.9.1104',
     title: 'VDC Phase 2 — LTE_R1 Production read-only forensics (KS MX 2024)',

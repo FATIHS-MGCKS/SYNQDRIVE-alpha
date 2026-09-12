@@ -1,11 +1,11 @@
-# Vehicle & Device Connectivity — Knowledge Graph (Phase 1)
+# Vehicle & Device Connectivity — Knowledge Graph
 
 **Registry status:** `AUDIT_IN_PROGRESS`  
 **Graph validator:** `bash architecture/vehicle-device-connectivity/scripts/validate-graph.sh`
 
 ## Overview
 
-Phase 1 expanded the bootstrap graph with repository-discovered components: snapshot pipeline, VLS/ClickHouse persistence, fleet API, frontend consumer, alert policy, and 8 additional contradictions / 5 gaps.
+Phase 3 reconciliation expanded decisions, resolved GAP-002, added Phase 2 evidence node, and linked CX-010/011 to PROPOSED decisions.
 
 ## Node inventory (summary)
 
@@ -17,20 +17,41 @@ Phase 1 expanded the bootstrap graph with repository-discovered components: snap
 | VDC-PIPE- / VDC-PERSIST- | 3 | Ingest + storage |
 | VDC-POL- | 1 | Alert policy |
 | VDC-API- / VDC-CONS- | 2 | API + frontend consumer |
-| VDC-HYP- | 7 | Open hypotheses (unchanged) |
-| VDC-GAP- | 12 | Knowledge gaps |
-| VDC-CX- | 11 | Contradictions |
-| VDC-EVID- | 3 | Evidence artifacts |
-| VDC-DEC- | 1 | Bootstrap decision |
+| VDC-HYP- | 7 | Hypotheses (several PRODUCTION_VALIDATED) |
+| VDC-GAP- | 12 | Knowledge gaps (1 RESOLVED, 3 PARTIAL) |
+| VDC-CX- | 11 | Contradictions (4 arch-resolved, 7 runtime-pending) |
+| VDC-EVID- | 4 | Evidence artifacts (repo, prod baseline, phase2, pending) |
+| VDC-DEC- | 11 | Decisions (bootstrap + Phase 3 + hardening) |
 | VDC-PROF- | 1 | LTE_R1 profile |
 
 Machine-readable: [graph/nodes.yaml](graph/nodes.yaml), [graph/edges.yaml](graph/edges.yaml), [graph/invariants.yaml](graph/invariants.yaml).
+
+## Phase 3 artifacts
+
+- [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md)
+- [reconciliation/TARGET_SEMANTIC_MODEL.md](reconciliation/TARGET_SEMANTIC_MODEL.md)
+- [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md)
+- [reconciliation/GROUND_TRUTH_GATES.md](reconciliation/GROUND_TRUTH_GATES.md)
 
 ## Decision register
 
 | ID | Status | Summary |
 |----|--------|---------|
-| VDC-DEC-BOOTSTRAP-001 | PROPOSED | Bootstrap authority scope; remains AUDIT_IN_PROGRESS |
+| VDC-DEC-BOOTSTRAP-001 | PROPOSED | Bootstrap authority scope |
+| VDC-DEC-002 | PROPOSED | Equality upsert metadata-only (CX-010) |
+| VDC-DEC-003 | PROPOSED | Authorization vs mirror (CX-011) |
+| VDC-DEC-004 | VALIDATED | Evidence hierarchy |
+| VDC-DEC-005 | VALIDATED | Threshold taxonomy |
+| VDC-DEC-006 | PROPOSED | Webhook failure taxonomy |
+| VDC-DEC-007 | PROPOSED | Episode evidence reliability |
+| VDC-DEC-008 | VALIDATED | Diagnostic non-authoritative |
+| VDC-DEC-009 | PROPOSED | Alert semantic ownership |
+| VDC-DEC-010 | VALIDATED | Recovery vocabulary; PLUG webhook optional |
+| VDC-DEC-011 | PROPOSED | Adaptive information-gain polling |
+
+Remediation backlog: **18 items** (VDC-RB-001..018). Open questions: **14** (VDC-Q-001..014).
+
+Full register: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md).
 
 ## Key edges (runtime flow)
 
@@ -38,21 +59,11 @@ Machine-readable: [graph/nodes.yaml](graph/nodes.yaml), [graph/edges.yaml](graph
 VDC-PIPE-SNAPSHOT-001 → VDC-STATE-FRESHNESS-001 → VDC-RES-FRESHNESS-001
   → VDC-ORCH-RUNTIME-001 → VDC-API-FLEET-001 → VDC-CONS-FE-001
 VDC-POL-ALERT-001 derives_from VDC-ORCH-RUNTIME-001 (VDC-CX-001 tension)
+VDC-DEC-002 resolves VDC-CX-010 (runtime pending)
+VDC-DEC-003 resolves VDC-CX-011 (runtime pending)
+VDC-EVID-PHASE2-001 supports VDC-HYP-001, VDC-HYP-003, VDC-HYP-005
 ```
 
 ## Invariants
 
-| ID | Kind | Title |
-|----|------|-------|
-| VDC-INV-001 | CONFIRMED | Poll time ≠ source time |
-| VDC-INV-002 | CONFIRMED | Strict-less-than monotonic guard |
-| VDC-INV-003 | CANDIDATE | Standby silence tolerance |
-| VDC-INV-004 | CANDIDATE | Three frequency layers |
-| VDC-INV-005 | CONFIRMED | Equal timestamp not stale (see VDC-CX-010) |
-
-## Mandatory cross-references
-
-- [CURRENT_STATE.md](CURRENT_STATE.md) — Phase 1 repository baseline
-- [signals/SIGNAL_AUTHORITY.md](signals/SIGNAL_AUTHORITY.md) — timestamp matrix
-- [lifecycle/CURRENT_SEMANTIC_MAP.md](lifecycle/CURRENT_SEMANTIC_MAP.md) — state map
-- [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.md)
+6 invariants — see [graph/invariants.yaml](graph/invariants.yaml). Phase 3 promoted VDC-INV-003; added VDC-INV-006.

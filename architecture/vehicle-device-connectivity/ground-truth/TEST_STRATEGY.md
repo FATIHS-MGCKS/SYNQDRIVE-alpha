@@ -18,7 +18,7 @@
 | Prolonged parking | Source silence duration; standby wakes | Tolerance calibration |
 | Expected standby source update | New `lastSeen` without trip | VDC-HYP-001 |
 | OBD/R1 physically unplugged | `obdIsPluggedIn`, device connection episodes/webhooks | Physical fault class |
-| R1 plugged back in | New strict source advance + plug signal after unplug | **PHYSICAL_REPLUG** + optional **TELEMETRY_RESUMED** — not **FULL_CONNECTIVITY_RECOVERED** unless all dimensions align |
+| R1 plugged back in | New strict source advance + plug signal after unplug | **PHYSICAL_REPLUG** + optional **TELEMETRY_RESUMED** — not **FULL_CONNECTIVITY_RECOVERED** unless all dimensions align; **PLUG webhook optional** (VDC-DEC-010) |
 | LTE/network loss | Provider vs device divergence | If observable |
 | Provider/API outage | Poll failures vs stale success | VDC-HYP-006 |
 | DIMO permission/auth failure | Consent/link status vs telemetry | Separate from sleep |
@@ -65,10 +65,20 @@
 4. **Capture episode/alert** — `device_connection_episodes`, `notifications` (DEVICE_UNPLUGGED / TELEMETRY_*)
 5. **Wait** — observe telemetry stall (expect stale `sourceTimestamp`, continued polls)
 6. **Physical replug** — operator reinserts R1
-7. **Capture plug path** — webhook and/or snapshot plug signal
-8. **Wait for strict source advance** — `incoming > existing` on `sourceTimestamp`
-9. **Confirm TELEMETRY_RESUMED** — fresh source + operational signals
-10. **Confirm FULL_CONNECTIVITY_RECOVERED** — all runtime dimensions aligned
+7. **Capture plug path** — PLUG webhook **if emitted** and/or snapshot `obdIsPluggedIn=true` (both paths recorded; neither assumed mandatory)
+8. **Record per-signal timestamps** — compare top-level `sourceTimestamp` vs individual signal `.timestamp` fields (VDC-HYP-004)
+9. **Wait for strict source advance** — `incoming > existing` on top-level `sourceTimestamp`
+10. **Confirm recovery without PLUG webhook** — if no webhook, document snapshot-only recovery path
+11. **Confirm TELEMETRY_RESUMED** — fresh source + operational signals
+12. **Confirm FULL_CONNECTIVITY_RECOVERED** — strict source advance + healthy dimensions (**must not** require PLUG webhook)
+
+### GT-R1 must determine (LTE_R1)
+
+- Whether PLUG webhook is emitted
+- Whether `obdIsPluggedIn=true` appears before/with/after strict top-level source advance
+- Whether per-signal timestamps advance independently
+- Whether fresh telemetry can restore recovery without PLUG webhook
+- Exact recovery ordering (webhook → snapshot → strict advance)
 
 ### Timestamps to record (UTC + Europe/Berlin)
 
