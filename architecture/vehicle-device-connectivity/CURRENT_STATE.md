@@ -42,7 +42,7 @@ Phase 3 (reconciliation) establishes:
 - **Recovery fast-path:** PLUG webhook optional (VDC-DEC-010); **adaptive polling** principle (VDC-DEC-011); **RB-001 GT-gated** per-signal safety.
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
-- **GT-R1-UNPLUG-001** preflight + webhook failure forensics complete — UNPLUG provider `failed` traced to **2026-08-25 SynqDrive `enqueue_failed` → HTTP 5xx**; callback healthy now (R9 control); **authorized PUT enable proposed, not executed**; GT-R1 **not executed**.
+- **GT-R1-UNPLUG-001** provider gate **cleared** — authorized `PUT` recovery 2026-09-12: UNPLUG `failed`→`enabled`, `failureCount` 11→0, 7 subscriptions preserved (VDC-EVID-GT-R1-UNPLUG-RECOVERY-001); **physical GT not started**.
 - **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
 
 ## Component hierarchy
@@ -185,12 +185,12 @@ VDC-HYP-001..007 classified in [research/OPEN_HYPOTHESES.md](research/OPEN_HYPOT
 - HM connectivity parity (VDC-GAP-009)
 - Historical `FULL_CONNECTIVITY_RECOVERED` instant (GT required)
 - CH duplicate root cause (VDC-Q-012)
-- Aug 2026 enqueue_failed mechanism — **CONFIRMED** (BullMQ `jobId` colon bug; VDC-EVID-GT-R1-UNPLUG-FAILURE-001); provider `failed` auto-recovery **UNKNOWN** (VDC-Q-015)
+- Aug 2026 enqueue_failed mechanism — **CONFIRMED** (BullMQ `jobId` colon bug; VDC-EVID-GT-R1-UNPLUG-FAILURE-001); provider `failed` auto-recovery without `PUT` **UNKNOWN**; `PUT` enable recovery **VERIFIED** (VDC-Q-015 partial)
 
 ## Next workstream (Phase 3 hardened order)
 
-1. **Authorize UNPLUG webhook remediation** (`PUT` enable `49438f51-3ca5-4808-81d5-3598336c53a3`) — see VDC-EVID-GT-R1-UNPLUG-FAILURE-001 + DIM webhook ops runbook.
-2. **GT-R1-UNPLUG-001** on current behavior — before VDC-RB-001 (recovery baseline).
+1. **GT-R1-UNPLUG-001 physical execution** — provider gate cleared; await operator unplug.
+2. **VDC-RB-001** per-signal-safe equality — after GT-R1.
 3. Finalize per-signal-safe equality design for **VDC-RB-001** (VDC-DEC-002 gate).
 4. Implement **VDC-RB-001** + **VDC-RB-017**.
 5. **VDC-RB-018** adaptive polling (VDC-DEC-011, VDC-Q-014).

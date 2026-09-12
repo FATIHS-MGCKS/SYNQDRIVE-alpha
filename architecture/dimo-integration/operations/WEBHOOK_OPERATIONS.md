@@ -24,7 +24,20 @@
 | Production callback | `https://app.synqdrive.eu/api/v1/webhooks/dimo` |
 | **Authorization gate** | Provider mutations require **explicit operator authorization** per task |
 
-Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe).
+### Safe-by-default mutation scripts (mandatory)
+
+| Rule | Detail |
+|------|--------|
+| **Default mode** | Provider mutation helper scripts are **READ-ONLY by default** — auth handshake (POST) + GET inspection only; **no** Vehicle Triggers webhook mutation |
+| **READ_ONLY means** | No PUT webhook update, no POST webhook create, no DELETE webhook, no subscribe/unsubscribe mutation; authentication calls and GET inspection are allowed |
+| **Script ≠ authorization** | A script existing in the repository is **NOT** authorization to execute a mutation |
+| **Fresh authorization** | Every provider mutation requires **fresh explicit operator authorization** in the task/chat |
+| **Explicit mutation mode** | Mutation must be explicitly selected via documented CLI flags (e.g. `--execute` + `--confirm-webhook=<uuid>`) |
+| **Never auto-rerun** | Do not repeat PUT/create/delete because a prior session succeeded |
+
+Example: `gt-r1-unplug-webhook-recovery.mjs` — default prints `MODE=READ_ONLY` and performs read-only provider inspection (auth handshake + GET inspection only; no webhook mutation); PUT requires `--execute --confirm-webhook=49438f51-3ca5-4808-81d5-3598336c53a3`.
+
+Reference scripts (ops, not auto-run): `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs` (mutations), `r9-webhook-status-probe.mjs` (create+delete probe), `gt-r1-unplug-webhook-recovery.mjs` (READ_ONLY default: auth + GET inspection; mutation gated).
 
 ## Authentication (VERIFIED)
 
@@ -57,7 +70,7 @@ Pattern used in R9 canary and GT-R1 preflight:
 | Operation | Method | Path | Evidence |
 |-----------|--------|------|----------|
 | Create definition | POST | `/v1/webhooks` | R9 canary `2026-09-07` |
-| Update definition | PUT | `/v1/webhooks/{webhookId}` | [DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api) — **not executed in SynqDrive production yet** |
+| Update definition | PUT | `/v1/webhooks/{webhookId}` | [DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api); **VERIFIED** GT-R1 UNPLUG recovery 2026-09-12 |
 | Delete definition | DELETE | `/v1/webhooks/{webhookId}` | R9 rollback — requires unsubscribe all first |
 | Subscribe vehicle | POST | `/v1/webhooks/{webhookId}/subscribe/{assetDID}` | R9 canary (empty body) |
 | Unsubscribe vehicle | DELETE | `/v1/webhooks/{webhookId}/unsubscribe/{assetDID}` | R9 rollback |
@@ -80,9 +93,16 @@ Pattern used in R9 canary and GT-R1 preflight:
 }
 ```
 
-### Callback verification (VERIFIED)
+### Callback verification
 
-On create/update, DIMO probes `targetURL` with verification handshake. Production PM2 logs showed `DimoWebhookController` URL verification success during R9 create window.
+On create/update, DIMO probes `targetURL` with a verification handshake ([DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api)).
+
+| Claim | Classification | Evidence |
+|-------|----------------|----------|
+| R9 create window showed `DimoWebhookController` URL verification success in PM2 logs | **VERIFIED** | R9 canary session |
+| UNPLUG recovery PUT instant showed `DimoWebhookController` verification in retained logs | **NOT INDEPENDENTLY OBSERVED** | VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
+| PUT HTTP 200 on update | **VERIFIED** | GT-R1 recovery session |
+| PUT success implies callback verification passed | **INFERRED** / **PROVIDER-SEMANTICALLY SUPPORTED** — not independently verified without direct callback log |
 
 ## Post-mutation discipline (VERIFIED pattern)
 
@@ -92,19 +112,29 @@ On create/update, DIMO probes `targetURL` with verification handshake. Productio
 4. Record evidence artifact; append CHANGE_LEDGER
 5. Rollback plan documented **before** mutation
 
-## Recovery — UNPLUG `failed` state (DESIGNED, NOT EXECUTED)
+## Recovery — UNPLUG `failed` state (VERIFIED 2026-09-12)
 
-Context: [VDC GT-R1 unplug failure forensics](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md)
+Context: [VDC GT-R1 unplug failure forensics](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md), [recovery evidence](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md)
 
 | Field | Value |
 |-------|-------|
 | Webhook UUID | `49438f51-3ca5-4808-81d5-3598336c53a3` |
 | stableId | `a257daa23ee5` |
-| Before | `status=failed`, `failureCount=11` |
-| Proposed | `PUT` with **unchanged** semantic fields + `status: "enabled"` |
-| PLUG webhook | **DO NOT MODIFY** (`b977124a025a` must stay `disabled`) |
+| Before (2026-09-12) | `status=failed`, `failureCount=11` |
+| After (2026-09-12) | `status=enabled`, `failureCount=0` — **VERIFIED** |
+| Subscriptions | 7 vehicles — **unchanged** after `PUT` |
+| PLUG webhook | **DO NOT MODIFY** (`b977124a025a` must stay `disabled`) — verified still disabled |
 
-**Proposed call (NOT EXECUTED):**
+**Verified behaviors from execution:**
+
+| Behavior | Status |
+|----------|--------|
+| `PUT` with unchanged semantics recovers `failed` → `enabled` | **VERIFIED** |
+| `failureCount` resets to `0` on successful `PUT` | **VERIFIED** |
+| Vehicle subscriptions survive `PUT` | **VERIFIED** |
+| Auto-recovery without `PUT` after callback fix | **UNKNOWN** — stale `failed` persisted until authorized `PUT` |
+
+**Reference call shape (executed 2026-09-12):**
 
 ```
 PUT https://vehicle-triggers-api.dimo.zone/v1/webhooks/49438f51-3ca5-4808-81d5-3598336c53a3
@@ -126,8 +156,8 @@ Content-Type: application/json
 
 | Aspect | Expectation |
 |--------|-------------|
-| Subscriptions | **Should survive** — PUT updates definition, not subscription table (INFERRED; verify GET) |
-| failureCount reset | **UNKNOWN** — verify GET after PUT |
+| Subscriptions | **Survive** — VERIFIED 7/7 unchanged (GT-R1 recovery 2026-09-12) |
+| failureCount reset | **Resets to 0** — VERIFIED on successful `PUT` enable |
 | Rollback | Authorized `PUT` with `status: "disabled"` **or** operator-console equivalent — document before/after GET |
 | Risks | Wrong webhook UUID; accidental PLUG enable; verification token mismatch |
 
@@ -141,3 +171,4 @@ Content-Type: application/json
 | [R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md](../evidence/R9_SCOPED_TRIGGER_BOOTSTRAP_2026-09-07.md) | Rollback discipline |
 | [GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_PREFLIGHT_2026-09-12.md) | Live baseline |
 | [GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md) | Failure analysis |
+| [GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md](../../vehicle-device-connectivity/evidence/GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md) | Authorized recovery execution |
