@@ -9,7 +9,11 @@ import {
   EXP021_PHASE_STABILIZATION_MS,
   EXP021_PRIMARY_PROBE_DURATION_MS,
 } from './reference-capture-settlement-shadow.policy';
-import { resolveNominalPhaseDurationMs } from './reference-capture-exp021-calibration-plan.lib';
+import {
+  EXP021_CANDIDATE_BRACKET_V3,
+  EXP021_UPPER_BOUND_V2,
+  resolveNominalPhaseDurationMs,
+} from './reference-capture-exp021-calibration-plan.lib';
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture-settlement-shadow-runner.service';
 import { ReferenceCaptureSettlementShadowService } from './reference-capture-settlement-shadow.service';
@@ -228,6 +232,158 @@ describe('reference-capture-settlement-shadow runtime (EXP-021 hardening)', () =
     expect(scheduleRows.filter((r) => r.probeId.startsWith('SP-180-')).length).toBe(
       tileCount * EXP021_MANDATORY_AGES_MS.length,
     );
+  });
+
+  it('sync lifecycle precedence: metadata V3 wins over env V2 when series authority absent', async () => {
+    const prevEnv = process.env.EXP021_CALIBRATION_PLAN;
+    process.env.EXP021_CALIBRATION_PLAN = 'UPPER_BOUND_V2';
+
+    const phase120StartIso = '2026-09-12T04:36:36.000Z';
+    const phase120EndIso = '2026-09-12T04:46:48.400Z';
+    const phase90StartIso = phase120EndIso;
+
+    const scheduleRows: Array<{
+      probeId: string;
+      scheduledAgeMs: number;
+      scheduledAt: Date;
+      sourceIntervalEnd: Date;
+      idempotencyKey: string;
+    }> = [];
+
+    const repository = {
+      findExperimentBySessionId: jest.fn().mockResolvedValue({
+        id: 'exp-db-v3',
+        experimentId: 'exp-021-v3',
+        sessionId: 'sess-v3',
+        status: 'ACTIVE',
+        lastSyncedPhaseCount: 0,
+        metadataJson: {
+          channel: 'SETTLEMENT_SHADOW',
+          calibrationPlanId: 'candidate_bracket_v3',
+          calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        },
+      }),
+      createExperiment: jest.fn(),
+      createSchedulesIfAbsent: jest.fn(
+        async (
+          rows: Array<{
+            probeId: string;
+            scheduledAgeMs: number;
+            scheduledAt: Date;
+            sourceIntervalEnd: Date;
+            idempotencyKey: string;
+          }>,
+        ) => {
+          let created = 0;
+          for (const row of rows) {
+            if (scheduleRows.some((s) => s.idempotencyKey === row.idempotencyKey)) continue;
+            scheduleRows.push(row);
+            created += 1;
+          }
+          return { created, skipped: rows.length - created };
+        },
+      ),
+      updateLastSyncedPhaseCount: jest.fn(),
+    } as unknown as ReferenceCaptureSettlementShadowRepository;
+
+    const service = new ReferenceCaptureSettlementShadowService(
+      config,
+      repository,
+      { enqueueSchedule: jest.fn() } as never,
+      { queryGraphQLWithIngressTiming: jest.fn() } as never,
+      { getVehicleJwt: jest.fn() } as never,
+      {
+        referenceCaptureSettlementShadowSchedule: { findMany: jest.fn().mockResolvedValue([]) },
+        referenceCaptureSettlementShadowObservation: { findMany: jest.fn() },
+        vehicleTrip: { findMany: jest.fn() },
+      } as never,
+    );
+
+    const validateCompletedSpy = jest.spyOn(
+      service as unknown as { validateCompletedPhaseProbeGeometry: (...args: unknown[]) => Promise<void> },
+      'validateCompletedPhaseProbeGeometry',
+    );
+
+    await service.syncCompletedPhasesFromSession({
+      sessionId: 'sess-v3',
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tokenId: 187361,
+      acquisitionStateJson: {
+        hfCalibrationSeries: {
+          calibrationSeriesId: 'series-v3',
+          vehicleId: 'veh-1',
+          tokenId: 187361,
+          seriesStartedAt: phase120StartIso,
+          phaseOrder: [120_000, 90_000, 60_000],
+          activePhase: {
+            phaseStartedAt: phase90StartIso,
+            effectivePollIntervalMs: 90_000,
+            calibrationPhaseId: 'phase-90',
+            phaseSequence: 2,
+            phaseEndedAt: null,
+            phaseProvenance: 'PHYSICAL_T0',
+          },
+          completedPhases: [
+            {
+              phaseStartedAt: phase120StartIso,
+              effectivePollIntervalMs: 120_000,
+              calibrationPhaseId: 'phase-120',
+              phaseSequence: 1,
+              phaseEndedAt: phase120EndIso,
+              phaseProvenance: 'PHYSICAL_T0',
+            },
+          ],
+          completedPhaseSummaries: [],
+          pendingPhaseRequest: null,
+          terminalFinalizationAt: null,
+          lastPhaseBoundaryAt: phase90StartIso,
+          controlPlaneRevision: 2,
+        },
+      },
+    });
+
+    const nominal90Ms = resolveNominalPhaseDurationMs(90_000, EXP021_CANDIDATE_BRACKET_V3);
+    const nominal60Ms = resolveNominalPhaseDurationMs(60_000, EXP021_CANDIDATE_BRACKET_V3);
+    const windows90 = countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: nominal90Ms,
+    });
+    const windows60 = countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: nominal60Ms,
+    });
+
+    expect(nominal90Ms).toBe(600_000);
+    expect(nominal60Ms).toBe(600_000);
+    expect(windows90).toBe(19);
+    expect(windows60).toBe(19);
+
+    const sp90Rows = scheduleRows.filter((r) => r.probeId.startsWith('SP-90-'));
+    expect(sp90Rows.length).toBe(windows90 * EXP021_MANDATORY_AGES_MS.length);
+
+    const envWrongNominal90 = resolveNominalPhaseDurationMs(90_000, EXP021_UPPER_BOUND_V2);
+    const envWrongWindows90 = countFullPhaseOverlappingTilesForNominalPhase({
+      nominalPhaseDurationMs: envWrongNominal90,
+    });
+    expect(envWrongWindows90).not.toBe(19);
+    expect(sp90Rows.length).not.toBe(envWrongWindows90 * EXP021_MANDATORY_AGES_MS.length);
+
+    expect(validateCompletedSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        calibrationPlan: EXP021_CANDIDATE_BRACKET_V3,
+        phase: expect.objectContaining({
+          calibrationPhaseId: 'phase-120',
+          effectivePollIntervalMs: 120_000,
+        }),
+      }),
+    );
+    expect(repository.createExperiment).not.toHaveBeenCalled();
+
+    validateCompletedSpy.mockRestore();
+    if (prevEnv === undefined) {
+      delete process.env.EXP021_CALIBRATION_PLAN;
+    } else {
+      process.env.EXP021_CALIBRATION_PLAN = prevEnv;
+    }
   });
 
   it('prospective schedule creation is idempotent across repeated sync calls', async () => {

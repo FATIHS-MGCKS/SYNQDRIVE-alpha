@@ -17,7 +17,6 @@ import {
   resolveNominalPhaseDurationMs,
   type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
-import { resolveExp021CalibrationPlanForSeries } from './reference-capture-hf-calibration-phase.policy';
 import {
   buildExperimentId,
   buildFixedIntervalProbesForPhase,
@@ -378,7 +377,11 @@ export class ReferenceCaptureSettlementShadowService {
       const series = state.hfCalibrationSeries;
       if (!series) return;
 
-      const calibrationPlan = resolveExp021CalibrationPlanForSeries(series);
+      const existingExperiment = await this.repository.findExperimentBySessionId(args.sessionId);
+      const calibrationPlan = this.resolveSettlementCalibrationPlan({
+        series,
+        experimentMetadata: existingExperiment?.metadataJson,
+      });
       const experiment = await this.ensureExperiment({
         sessionId: args.sessionId,
         organizationId: args.organizationId,
@@ -400,6 +403,7 @@ export class ReferenceCaptureSettlementShadowService {
       await this.syncProspectiveProbesForActivePhase({
         experiment,
         series,
+        calibrationPlan,
       });
 
       const completed: HfCalibrationPhaseRecord[] = series.completedPhases ?? [];
@@ -440,6 +444,7 @@ export class ReferenceCaptureSettlementShadowService {
       metadataJson?: unknown;
     };
     series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
+    calibrationPlan: Exp021CalibrationPlan;
   }): Promise<void> {
     const active = args.series.activePhase;
     if (!active?.phaseStartedAt) return;
@@ -448,10 +453,7 @@ export class ReferenceCaptureSettlementShadowService {
     const phaseStartedAtMs = Date.parse(active.phaseStartedAt);
     if (!Number.isFinite(phaseStartedAtMs)) return;
 
-    const plan = this.resolveSettlementCalibrationPlan({
-      series: args.series,
-      experimentMetadata: args.experiment.metadataJson,
-    });
+    const plan = args.calibrationPlan;
     if (usesFullPhaseOverlappingSettlementStrategy(plan)) {
       const nominalEndMs =
         phaseStartedAtMs +
