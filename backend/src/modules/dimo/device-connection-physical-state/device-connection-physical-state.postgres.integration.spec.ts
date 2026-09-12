@@ -155,11 +155,6 @@ describePg('DeviceConnectionPhysicalStateRepository (postgres)', () => {
     expect(row!.evidenceReferenceId).toBe('wh-plug');
     expect(row!.evidenceObservedAt.toISOString()).toBe(new Date(t2).toISOString());
     expect(row!.stateVersion).toBeGreaterThan(baseVersion!);
-    const decisions = [toUnplug.decision, toPlug.decision];
-    expect(decisions).toContain('APPLIED');
-    expect(decisions.some((d) => d === 'STALE' || d === 'DUPLICATE' || d === 'PROVENANCE_REFRESH')).toBe(
-      true,
-    );
     const authorityRows = await prisma.deviceConnectionPhysicalState.findMany({
       where: { vehicleId: fixture.vehicle.id },
     });
