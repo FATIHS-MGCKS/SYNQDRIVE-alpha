@@ -307,43 +307,57 @@ SECONDARY_ROOT_CAUSE_CLASS=C RETRY_ORCHESTRATION_DEFECT (maxAttempts=3 condition
 
 ---
 
-## Phase 11 — fix design only (NOT IMPLEMENTED)
+## Phase 11 — fix implementation (PR #1617, NOT DEPLOYED)
 
-### 1. Minimal safe correction
+### Narrow correction shipped in code
 
-Remove `stopBoundaryAt`, `stopBoundarySource`, and related provenance keys from `END_CYCLE_REOPEN_STRIP_KEYS` **only for trusted provider boundaries** (or preserve via `lastPauseBoundaryAt` / durable latch not cleared on CUSUM reopen).
+Introduced explicit **`ActiveReopenReason`**: `ACTIVITY_RESUMED` | `CUSUM_STILL_ONGOING`.
 
-- **Behavior:** After `cusum_still_ongoing`, ACTIVE empty-core can still invoke boundary-backed silence under stale VLS.
-- **Invariants:** Does not force COMPLETED; does not bypass CUSUM; stale fresh inference still blocked.
-- **#1600 interaction:** Preserves PE clock clearing on reopen; unrelated to clock durability fix.
-- **#1603 interaction:** No lock-order change.
-- **Risk:** Low — aligns with R12 K1 unit contract; may retain boundary if trip truly resumed (mitigated by post-boundary movement retire path).
+| Path | Caller | Boundary on reopen |
+|------|--------|-------------------|
+| **ACTIVITY_RESUMED** | PEC activity resumed (`processPossibleEndCheck`), `cancelPossibleEndForResumedActivity` | **Strip** (unchanged) |
+| **CUSUM_STILL_ONGOING** | `processEndValidation` when `shouldReopen && endMode !== CUSUM_VALIDATED` | **Preserve** trusted provenance only |
 
-### 2. Architecture-preferred correction
+**Implementation files:**
 
-Introduce **`durableTrustedStopBoundary`** evidence namespace written at first qualified latch, **never stripped** on CUSUM reopen (only retired on credible post-boundary movement). Empty-core + `readR12RecoveryTrustedStopBoundaryFromEvidence` consume durable namespace.
+- `trip-end-cycle-reset.ts` — `resolveTrustedStopBoundaryForCusumRetry`, `stripEndCycleEvidenceForActiveReopen({ reopenReason, workerNow, lastMeaningfulMovementAt })`, `buildPossibleEndToActiveReset({ reopenReason })`
+- `trip-detection-orchestration.service.ts` — pass `reopenReason: 'CUSUM_STILL_ONGOING'` on CUSUM reopen; `ACTIVITY_RESUMED` on movement resume paths
 
-- **Terminal chain:** Reopen → ACTIVE → boundary-backed empty-core → POSSIBLE_END → PEC attempts 2–3 → EV/FINALIZE → RESTING.
+**Preservation guard (fail-closed):**
 
-### 3. Defense-in-depth
+- Requires `readStopBoundaryProvenance` with `trust === true`
+- Requires valid provider event timestamp vs `workerNow`
+- **Rejects** preservation when `lastMeaningfulMovementAt` is strictly after boundary (credible post-boundary movement)
+- Does **not** remove `stopBoundaryAt` / `stopBoundarySource` from global `END_CYCLE_REOPEN_STRIP_KEYS`
 
-On CUSUM ongoing reopen, if episode had trusted boundary and `completedAttempt < maxAttempts`, schedule delayed PEC (not only ACTIVE tick) using preserved boundary token — explicit retry orchestration without weakening stale VLS rules globally.
+**Attempt counter semantics:** **UNCHANGED** — `endValidationAttempts` reset to `0` on reopen; attempt 2+ requires new `POSSIBLE_END` episode (R12 policy).
 
-| Option | Regression risk |
-|--------|-----------------|
-| Minimal | Low — narrow strip-list change + RED integration test |
-| Architecture | Medium — new evidence contract + reader migration |
-| Defense-in-depth | Medium — new scheduling path; must not reintroduce #1603 lock-order |
+### RED / GREEN tests
+
+| Test | Role |
+|------|------|
+| `trip-r12-cusum-ongoing-boundary-retry.spec.ts` | Unit contract: CUSUM preserve vs ACTIVITY strip vs movement invalidation |
+| `trip-r12-cusum-ongoing-boundary-retry.postgres-redis.integration.spec.ts` | KS MS 661 POST-#1603 lifecycle: EV1 ongoing → boundary durable → POSSIBLE_END re-entry → EV2 → FINALIZE → RESTING |
+| `trip-end-cycle-reset.spec.ts` | CUSUM preserve unit |
+| `trip-end-validation-r5.spec.ts` | Updated test 2/10 for boundary preservation |
+
+**BASE RED signature (pre-fix):** `stripEndCycleEvidenceForActiveReopen` deleted `stopBoundaryAt` on all reopen paths → `BASE_CUSUM_ONGOING_REOPEN_STRIPS_BOUNDARY=YES`, `BASE_REENTRY_TO_POSSIBLE_END=NO`.
+
+**POST-FIX GREEN (integration):** asserts `POST_FIX_BOUNDARY_DURABLE=YES`, `POST_FIX_POSSIBLE_END_REENTRY=YES`, `POST_FIX_LATER_END_VALIDATION_REACHED=YES`, terminal COMPLETED + RESTING.
+
+### #1603 non-regression
+
+No changes to PEC→EV lock deferral, `TripTrackingHandoffLockContentionError`, or FINALIZE lock-miss paths. Existing `trip-r12-pec-ev-lock-collision.postgres-redis.integration.spec.ts` remains in CI matrix.
 
 ---
 
 ## Mandatory closure fields
 
 ```
-R12_PHYSICAL_ACCEPTANCE_STATUS=FAIL_PENDING_FIX
+R12_PHYSICAL_ACCEPTANCE_STATUS=FAIL_PENDING_FIX (Production drive unrepaired; fix in PR #1617 only)
 PRODUCTION_MUTATED=NO
 FAILED_TRIP_REPAIRED=NO
-CODE_CHANGED=NO
+CODE_CHANGED=YES (PR #1617 fix branch)
 DEPLOYED=NO
 ```
 
