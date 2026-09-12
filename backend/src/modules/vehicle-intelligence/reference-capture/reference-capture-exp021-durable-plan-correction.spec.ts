@@ -20,6 +20,7 @@ import {
   EXP021_UPPER_BOUND_V2,
   findPhaseSpecByCadence,
   resolveExp021CalibrationPlanFromAuthority,
+  resolveExp021CalibrationPlanFromSources,
   resolveNominalPhaseDurationMs,
 } from './reference-capture-exp021-calibration-plan.lib';
 import { countIntendedSlotsForCadence } from './reference-capture-exp021-request-slots.lib';
@@ -410,6 +411,92 @@ describe('EXP-021 durable plan authority correction', () => {
         resolveExp021CalibrationPlanFromAuthority({
           calibrationPlanId: null,
           calibrationPlanVersion: null,
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toBe(EXP021_UPPER_BOUND_V2);
+    });
+
+    it('VALID_ID_UNKNOWN_VERSION_FAILS_CLOSED: asymmetric corruption throws invalid', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'candidate_bracket_v3',
+          calibrationPlanVersion: 'UNKNOWN_VERSION',
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('UNKNOWN_ID_VALID_VERSION_FAILS_CLOSED: asymmetric corruption throws invalid', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'unknown_plan',
+          calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('UNKNOWN_ID_UNKNOWN_VERSION_FAILS_CLOSED: both fields unrecognized throws invalid', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'unknown_plan',
+          calibrationPlanVersion: 'UNKNOWN_VERSION',
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('MATCHING_ID_VERSION_RESOLVES: both fields present and consistent', () => {
+      expect(
+        resolveExp021CalibrationPlanFromAuthority({
+          calibrationPlanId: 'candidate_bracket_v3',
+          calibrationPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+        }),
+      ).toBe(EXP021_CANDIDATE_BRACKET_V3);
+    });
+  });
+
+  describe('settlement plan authority precedence', () => {
+    it('SERIES_AUTHORITY_ABSENT_METADATA_V3_ENV_WRONG: metadata V3 wins over env', () => {
+      expect(
+        resolveExp021CalibrationPlanFromSources({
+          seriesPlanId: null,
+          seriesPlanVersion: null,
+          metadataPlanId: 'candidate_bracket_v3',
+          metadataPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toBe(EXP021_CANDIDATE_BRACKET_V3);
+    });
+
+    it('SERIES_AUTHORITY_ABSENT_METADATA_INVALID: corrupt metadata fails closed', () => {
+      expect(() =>
+        resolveExp021CalibrationPlanFromSources({
+          seriesPlanId: null,
+          seriesPlanVersion: null,
+          metadataPlanId: 'unknown_plan',
+          metadataPlanVersion: null,
+          env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
+        }),
+      ).toThrow(Exp021CalibrationPlanAuthorityInvalidError);
+    });
+
+    it('series authority takes precedence over metadata when both present', () => {
+      expect(
+        resolveExp021CalibrationPlanFromSources({
+          seriesPlanId: 'candidate_bracket_v3',
+          seriesPlanVersion: 'EXP021_CANDIDATE_BRACKET_V3',
+          metadataPlanId: 'upper_bound_v2',
+          metadataPlanVersion: 'EXP021_UPPER_BOUND_V2',
+          env: { EXP021_CALIBRATION_PLAN: 'LOWER_BOUND_V1' },
+        }),
+      ).toBe(EXP021_CANDIDATE_BRACKET_V3);
+    });
+
+    it('env fallback only when series and metadata authority are both absent', () => {
+      expect(
+        resolveExp021CalibrationPlanFromSources({
+          seriesPlanId: null,
+          seriesPlanVersion: null,
+          metadataPlanId: null,
+          metadataPlanVersion: null,
           env: { EXP021_CALIBRATION_PLAN: 'UPPER_BOUND_V2' },
         }),
       ).toBe(EXP021_UPPER_BOUND_V2);

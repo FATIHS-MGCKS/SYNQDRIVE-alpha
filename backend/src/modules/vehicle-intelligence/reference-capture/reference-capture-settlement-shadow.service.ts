@@ -13,8 +13,7 @@ import {
 } from './reference-capture-hf-calibration-phase.policy';
 import {
   calibrationPlanAuthorityFromPlan,
-  resolveExp021CalibrationPlan,
-  resolveExp021CalibrationPlanFromAuthority,
+  resolveExp021CalibrationPlanFromSources,
   resolveNominalPhaseDurationMs,
   type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
@@ -351,19 +350,17 @@ export class ReferenceCaptureSettlementShadowService {
     series: NonNullable<ReturnType<typeof parseAcquisitionState>['hfCalibrationSeries']>;
     experimentMetadata?: unknown;
   }): Exp021CalibrationPlan {
-    const fromSeries = resolveExp021CalibrationPlanForSeries(args.series);
-    if (args.series.calibrationPlanId || args.series.calibrationPlanVersion) {
-      return fromSeries;
-    }
     const meta =
       args.experimentMetadata &&
       typeof args.experimentMetadata === 'object' &&
       !Array.isArray(args.experimentMetadata)
         ? (args.experimentMetadata as Record<string, unknown>)
         : null;
-    return resolveExp021CalibrationPlanFromAuthority({
-      calibrationPlanId: meta?.calibrationPlanId as string | undefined,
-      calibrationPlanVersion: meta?.calibrationPlanVersion as string | undefined,
+    return resolveExp021CalibrationPlanFromSources({
+      seriesPlanId: args.series.calibrationPlanId,
+      seriesPlanVersion: args.series.calibrationPlanVersion,
+      metadataPlanId: meta?.calibrationPlanId as string | undefined,
+      metadataPlanVersion: meta?.calibrationPlanVersion as string | undefined,
     });
   }
 

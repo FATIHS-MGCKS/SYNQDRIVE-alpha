@@ -233,7 +233,10 @@ export function resolveExp021CalibrationPlanByIdentity(
     if (!byId && !byVersion) {
       throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
     }
-    if (byId && byVersion && byId.planId !== byVersion.planId) {
+    if (!byId || !byVersion) {
+      throw new Exp021CalibrationPlanAuthorityInvalidError(planId, planVersion);
+    }
+    if (byId.planId !== byVersion.planId) {
       throw new Exp021CalibrationPlanAuthorityConflictError(
         planId,
         planVersion,
@@ -241,7 +244,7 @@ export function resolveExp021CalibrationPlanByIdentity(
         byVersion.planVersion,
       );
     }
-    return byId ?? byVersion;
+    return byId;
   }
 
   if (planId) {
@@ -260,6 +263,38 @@ export function resolveExp021CalibrationPlanByIdentity(
  * no persisted experiment identity exists (new experiments before arm).
  * Once durable fields are present, env is never authority (fail-closed on conflict/corruption).
  */
+/**
+ * Settlement/recovery precedence: series authority → experiment metadata → env/default.
+ * Each persisted source is fail-closed when its fields are present.
+ */
+export function resolveExp021CalibrationPlanFromSources(args: {
+  seriesPlanId?: string | null;
+  seriesPlanVersion?: string | null;
+  metadataPlanId?: string | null;
+  metadataPlanVersion?: string | null;
+  env?: NodeJS.ProcessEnv;
+}): Exp021CalibrationPlan {
+  const seriesPlanId = normalizeAuthorityField(args.seriesPlanId);
+  const seriesPlanVersion = normalizeAuthorityField(args.seriesPlanVersion);
+  if (seriesPlanId || seriesPlanVersion) {
+    return resolveExp021CalibrationPlanFromAuthority({
+      calibrationPlanId: seriesPlanId,
+      calibrationPlanVersion: seriesPlanVersion,
+    });
+  }
+
+  const metadataPlanId = normalizeAuthorityField(args.metadataPlanId);
+  const metadataPlanVersion = normalizeAuthorityField(args.metadataPlanVersion);
+  if (metadataPlanId || metadataPlanVersion) {
+    return resolveExp021CalibrationPlanFromAuthority({
+      calibrationPlanId: metadataPlanId,
+      calibrationPlanVersion: metadataPlanVersion,
+    });
+  }
+
+  return resolveExp021CalibrationPlan(args.env);
+}
+
 export function resolveExp021CalibrationPlanFromAuthority(args: {
   calibrationPlanId?: string | null;
   calibrationPlanVersion?: string | null;

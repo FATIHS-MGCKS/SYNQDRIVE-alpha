@@ -420,6 +420,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Readiness | `READY_FOR_EXP021_COMPLETION_RUN=YES` when native list + settlement value snapshots both persist |
 | Historical | `HISTORICAL_KS_MS_661_NATIVE_GAP_LEDGER_RECOVERABLE=NO` |
 
+## EXP-021 — PR #1621 authority micro-pass: asymmetric corruption + settlement precedence (2026-09-12)
+
+| Event | Detail |
+|-------|--------|
+| Status | **AUTHORITY MICRO-PASS** on draft PR #1621 |
+| Defect A | Both plan fields present but one unrecognized still resolved via `byId ?? byVersion` — asymmetric corruption silently ignored |
+| Fix A | When both fields supplied, both must resolve or `Exp021CalibrationPlanAuthorityInvalidError` |
+| Defect B | Settlement could consult env before experiment metadata when series authority absent |
+| Fix B | `resolveExp021CalibrationPlanFromSources`: series → metadata → env (each persisted layer fail-closed) |
+
 ## EXP-021 — PR #1621 micro-pass: post-transition late-movement + fail-closed authority (2026-09-12)
 
 | Event | Detail |
