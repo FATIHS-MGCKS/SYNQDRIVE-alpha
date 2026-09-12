@@ -6,7 +6,7 @@
 ## Mandatory read-first sequence
 
 1. [README.md](README.md), [AUDIT_MANIFEST.md](AUDIT_MANIFEST.md), [CURRENT_STATE.md](CURRENT_STATE.md)
-2. [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md), [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md)
+2. [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md), [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md), [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) (provider webhook mutations)
 3. [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md) — includes **DIM-R9-001**
 4. Neighbor: [Trip Detection & Lifecycle](../trip-detection-lifecycle/README.md) for R9 wake boundary
 
