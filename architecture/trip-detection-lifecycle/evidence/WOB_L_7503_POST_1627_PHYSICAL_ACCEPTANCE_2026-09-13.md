@@ -168,6 +168,251 @@ Next scheduled event @ audit was empty-core `ACTIVE_TICK` deferral (~`632828ms`)
 
 ---
 
+## Root-cause forensics — END_CANDIDATE admission liveness (PR #1634 addendum)
+
+**Mode:** read-only code + Production tracking-run forensics @ `9a32685d529bcc55e7163a8f0903ebdec358ebaf`. **No runtime changes.**
+
+### Phase A — Both real stops compared
+
+#### Trip 1 (`6c88e275…`) — physical stop ~`08:54Z`
+
+| Phase | First observation | Blocking predicate |
+|-------|-------------------|-------------------|
+| `08:49Z–08:56Z` | Core motion ticks; `stopBoundaryAt=null` | No provider stationary boundary latched during drive |
+| `08:56:51Z` | First empty-core tick | `operational_inactivity_below_threshold` (119s < 120s); VLS **ACTIVE** @ `08:54:53Z` |
+| `08:57:18Z`+ | Empty-core streak | **`vls_stale_provider_observation`** + **`stopBoundaryAt=null`** → KEEP_OPEN |
+| `08:57Z–10:04Z` | Deferral streak **1→43** | Same branch every ~30s–10min; operational silence **>1h**; still ACTIVE_TRIP |
+| `10:06:21Z` | **`live_mid_trip_gap_split`** | Trip 1 closed only when Trip 2 movement detected — **not** POSSIBLE_END |
+
+**TRIP_1_FAILURE_BRANCH:** `processActiveTick` empty-core path → `assessSuccessfulEmptyCoreEndEligibility` → reject @ `vls_stale_provider_observation` with **no trusted stop boundary** → unbounded KEEP_OPEN deferral until accidental gap-split recovery.
+
+#### Trip 2 (`aaedd4a5…`) — physical stop `10:23:00Z`
+
+| Time (UTC) | FSM | Decision | Key forensics |
+|------------|-----|----------|---------------|
+| `10:12:10Z` | IDLE | boundary latched | `stopBoundaryAt=10:12:10.623Z`, trusted EVENT_TIME |
+| `10:15:00Z` | ACTIVE | boundary **retired** | post-boundary movement @ `10:15:21Z` (correct #1617 behavior) |
+| `10:16Z–10:23Z` | ACTIVE | `motion_detected` | `stopBoundaryAt=null`; no new boundary |
+| `10:24:51Z` | ACTIVE | KEEP_OPEN | `operational_inactivity_below_threshold` (79s); VLS **ACTIVE** @ `10:23:33Z` |
+| `10:26:20Z` | ACTIVE | **First indefinite block** | `operationalInactiveMs≥120s` BUT `innerGateReason=vls_stale_provider_observation`, **`stopBoundaryAt=null`**, streak **1** |
+| `10:26Z–12:06Z`+ | ACTIVE | KEEP_OPEN repeat | streak **1→63+** @ extended read; still 0× POSSIBLE_END |
+
+**TRIP_2_FAILURE_BRANCH:** Identical gate branch after final stop — stale VLS without a **current** trusted boundary.
+
+| Field | Value |
+|-------|-------|
+| TRIP_1_FAILURE_BRANCH | `assessSuccessfulEmptyCoreEndEligibility` → `vls_stale_provider_observation` + no trusted boundary |
+| TRIP_2_FAILURE_BRANCH | Same (after boundary retirement @ `10:15Z`) |
+| SAME_FAILURE_CLASS | **YES** |
+
+Trip 2 stale-VLS anchor after final stop:
+
+| Field | Value |
+|-------|-------|
+| LAST_FRESH_VLS_AT | `2026-09-13T10:23:33.000Z` |
+| LAST_FRESH_VLS_VALUE | persisted row; last sample before age-out (speed ~0, ICE profile) |
+| STALE_VLS_AT_FIRST_EMPTY_CORE_AFTER_STOP | `2026-09-13T10:26:20.876Z` (`vlsObservationAgeMs=167617` > 120000) |
+| STALE_VLS_VALUE | same frozen row @ `10:23:33Z` — classified UNKNOWN, **not** promoted to INACTIVE |
+
+---
+
+### Phase B — POSSIBLE_END admission contract (code truth table)
+
+All ACTIVE→POSSIBLE_END paths route through `TripDetectionOrchestrationService.processActiveTick` @ `9a32685d…`.
+
+| ADMISSION_PATH | REQUIRED_DATA | FRESHNESS | BOUNDARY | MOVEMENT | CLOCK | EMPTY_CORE | STALE_VLS |
+|----------------|---------------|-----------|----------|----------|-------|------------|-----------|
+| **A — Empty-core corroborated inactivity** | Fresh VLS **INACTIVE** + no perf/route contradiction | VLS age ≤ 120s | Optional | No post-boundary contradiction | PROVIDER_EVENT_TIME | **Yes** | Must **not** be stale UNKNOWN |
+| **B — R12 boundary-backed provider silence** | Trusted boundary + operational silence ≥120s | Stale UNKNOWN (`vls_stale_provider_observation`) allowed | **Trusted boundary required** | No post-boundary movement | EVENT_TIME / PROVIDER | **Yes** | Stale OK **only with** latched trusted boundary |
+| **C — Continuity assessment (core present)** | Scoped core points stopped + ignition off / resting freq | Core in window | `resumeAfterStopAt` if boundary exists | No scoped motion | Provider/core | **No** | N/A |
+| **D — ClickHouse end assist** | CH segment end + inactivity | CH + VLS rules | CH segment end | Stationary | Mixed | Can run empty | Separate guard |
+| **E — Motor-off pause path** | Perf stop → IDLE | Core/perf | May set idle boundary | — | Mixed | Partial | — |
+| **F — Recovery / reconciliation** | STALE_ONGOING @ ~2h | — | — | — | — | — | — |
+
+**Trip 1 evaluation:**
+
+| Path | Result |
+|------|--------|
+| A | **BLOCKED** — VLS goes stale UNKNOWN; never fresh INACTIVE after stop |
+| B | **BLOCKED** — `stopBoundaryAt` never latched (no fresh ignition-off stationary VLS during empty-core) |
+| C | **BLOCKED** — core stream empty (no continuity points) |
+| D | **NOT_OBSERVED** on Production forensics |
+| E | **NOT_OBSERVED** — perf IDLE not reached before empty-core dominance |
+| F | Not reached before gap-split @ 70 min |
+
+**Trip 2 evaluation (after `10:23Z` stop only):**
+
+| Path | Result |
+|------|--------|
+| A | **BLOCKED** — only stale sample @ `10:23:33Z`; line 417–418 reject |
+| B | **BLOCKED** — prior boundary @ `10:12:10Z` **retired** @ `10:15Z`; no replacement boundary |
+| C | **BLOCKED** — empty core after stop |
+| D | **NOT_OBSERVED** |
+| E | Brief IDLE @ `10:13–10:14` superseded by movement before final stop |
+| F | Not reached @ audit (+21 min); would fire @ ~2h ONGOING |
+
+---
+
+### Phase C — Empty-core deferral policy (proven)
+
+Decision site: `trip-detection-orchestration.service.ts` ~1988–2014 + `trip-empty-core-end-gate.ts` `reject()` ~362–418.
+
+| Question | Answer |
+|----------|--------|
+| Evidence to stop deferring? | Gate `eligible=true` (path A or B above) **or** non-empty-core path (continuity/CH assist) |
+| Max streak / time budget? | **No** — streak increments unboundedly on VLS-related rejects |
+| Branch after budget exhaustion? | **None** — only capped **delay** (`computeEmptyCoreBackoffMs`, max **600s**) |
+| ACTIVE_TRIP open indefinitely? | **YES** — proven Trip 1 streak **43** over **~70 min**; Trip 2 streak **63+** over **~100 min+** |
+| Delay increases forever? | **No** — caps at ~600s ± jitter; but **decision** never changes |
+| Watchdog for real stop + empty core? | **Only** `STALE_ONGOING` repair (~2h) and `live_mid_trip_gap_split` (new drive) |
+| Stale VLS treatment | **UNKNOWN / absent corroboration** — explicit veto on path A; path B requires pre-existing boundary |
+
+| Field | Value |
+|-------|-------|
+| EMPTY_CORE_DEFERRAL_BOUNDED | **NO** (decision-wise) |
+| EMPTY_CORE_MAX_STREAK | **none** |
+| EMPTY_CORE_MAX_DURATION | **none** |
+| EMPTY_CORE_TERMINAL_FALLBACK_EXISTS | **NO** (within empty-core gate) |
+| UNBOUNDED_ACTIVE_KEEP_OPEN_POSSIBLE | **YES** |
+
+---
+
+### Phase D — Stale VLS semantics
+
+Classifier: `classifyEmptyCoreVlsInactivity` (`trip-empty-core-end-gate.ts` **136–142**) — age > `maxObservationAgeMs` (120s) → `UNKNOWN` / `vls_stale_provider_observation`. **Does not coerce to INACTIVE.**
+
+| Field | Value |
+|-------|-------|
+| STALE_VLS_BLOCKS_POSSIBLE_END | **YES** when `stopBoundaryAt=null` (reject @ **417–418**) |
+| STALE_VLS_IS_NEGATIVE_END_EVIDENCE | **NO** — not proof of movement; explicitly non-coercive |
+| STALE_VLS_IS_MERELY_ABSENT_EVIDENCE | **YES** — UNKNOWN = insufficient corroboration |
+
+**Why silence still cannot admit end:** R12 path B requires a **trusted boundary that survived** through the silence window. After movement retires the boundary, only path A remains — which requires a **fresh** INACTIVE VLS sample. LTE sleep after stop provides **neither** fresh INACTIVE nor a latched boundary → permanent KEEP_OPEN loop.
+
+---
+
+### Phase E — Stop boundary reconstruction gap
+
+| Field | Value |
+|-------|-------|
+| NEW_BOUNDARY_AFTER_FINAL_STOP_CREATED | **NO** |
+| IF_NO_EXACT_BLOCKING_PREDICATE | `resolveProviderStopBoundaryCandidate` requires **fresh** ignition-off stationary VLS (`maxFreshObservationAgeMs=120s`); after `10:23:33Z` sample ages out, candidate stays `null` — see `trip-fsm-r12-stop-boundary-end-liveness.spec.ts` **“stale stationary VLS does not establish a new active boundary”** |
+| POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_EXISTS | **YES** |
+
+**Dead zone predicate chain (Trip 2 after final stop):**
+
+1. Credible movement @ `10:15Z` → correctly retires boundary (`retireActiveStopBoundaryAfterMovement`).
+2. Final stop @ `10:23Z` → core empty; last provider activity @ `10:23:32Z`.
+3. No fresh ignition-off stationary VLS arrives → **no new trusted boundary**.
+4. VLS ages past 120s → `vls_stale_provider_observation`.
+5. `assessSuccessfulEmptyCoreEndEligibility` @ **417–418** rejects UNKNOWN without boundary-backed escape.
+6. Deferral repeats forever (delay capped, **decision not**).
+
+**First broken lifecycle condition (Trip 2, after `10:23Z`):** @ `2026-09-13T10:26:20.876Z` — first tick with `operationalInactiveMs≥120s` **and** `stopBoundaryAt=null` **and** `innerGateReason=vls_stale_provider_observation`.
+
+---
+
+### Phase F — Gap-split as accidental recovery
+
+| Field | Value |
+|-------|-------|
+| TRIP_1_NATURAL_END_FAILED | **YES** (0× POSSIBLE_END) |
+| TRIP_1_GAP_SPLIT_RECOVERED_OPEN_TRIP | **YES** @ `10:06:21Z` |
+| TRIP_1_WOULD_REMAIN_OPEN_WITHOUT_NEW_DRIVE | **PROVEN** — deferral streak **43** over **~70 min** with no POSSIBLE_END; only exit paths = gap-split, STALE_ONGOING (~2h), or manual repair |
+
+Gap-split comment @ `trip-detection-orchestration.service.ts` **2041–2049** explicitly describes parked-engine-off restart — acts as **accidental inter-trip recovery**, not end-cycle admission.
+
+---
+
+### Phase G — Historical comparison
+
+| Field | Value |
+|-------|-------|
+| SAME_CLASS_SEEN_PREVIOUSLY | **YES** |
+| EARLIEST_KNOWN_PRODUCTION_EVIDENCE | KS MS 661 @ `684950419…` / `f7eb94cb…` — `vls_stale_provider_observation` + `no_core_data_keep_open` + 0× POSSIBLE_END (TDL-EVID-KS-MS-661-001, TDL-EVID-KS-MS-661-R11-NATURAL-001) |
+| MASKED_BY_DOWNSTREAM_DEFECTS | **YES** on WOB POST-#1617 drive — 17× END_VALIDATION loop masked that the **same empty-core admission class** would have blocked re-entry after CUSUM reopen without boundary; POST-#1603 KS MS 661 reached POSSIBLE_END once then lost boundary on CUSUM reopen |
+
+This WOB POST-#1627 case **isolates** the admission defect because #1627 path never ran.
+
+---
+
+### Phase H — Test gap + RED design (not implemented)
+
+| Field | Value |
+|-------|-------|
+| EXISTING_TEST_COVERS_THIS | **NO** (partial only) |
+
+**Partial coverage:**
+
+- `trip-fsm-r12-stop-boundary-end-liveness.spec.ts` **K5** — stale UNKNOWN, no boundary → KEEP_OPEN (unit).
+- `trip-r11-empty-core-completion-chain.postgres-redis.integration.spec.ts` **C** — requires **pre-seeded** trusted boundary.
+- **Missing:** integration path = movement → boundary retirement → final stop → stale VLS → prolonged silence → **still ACTIVE_TRIP**.
+
+**RED Postgres+Redis integration test design** (`trip-r12-post-stop-telemetry-silence-dead-zone.postgres-redis.integration.spec.ts` — **design only**):
+
+1. Seed ACTIVE_TRIP with recent movement + `lastProviderActivityAt` at stop.
+2. Inject final motion tick; retire any latched boundary via post-boundary movement fixture.
+3. Stop core stream (`SUCCESS_EMPTY`); freeze VLS row @ stop timestamp.
+4. Advance deterministic clock past 120s inactivity + multiple ACTIVE_TICK cycles with backoff.
+5. Assert HEAD @ `9a32685d…` behavior:
+
+```
+RED_EMPTY_CORE_KEEP_OPEN_REPEATS=YES
+RED_STALE_VLS_PRESENT=YES
+RED_NO_POST_STOP_MOVEMENT=YES
+RED_POSSIBLE_END_REACHED=NO
+RED_ACTIVE_TRIP_REMAINS_OPEN=YES
+```
+
+---
+
+### Phase I — Root-cause classification
+
+| Field | Value |
+|-------|-------|
+| PRIMARY_ROOT_CAUSE_CLASS | **POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE** |
+| PRIMARY_ROOT_CAUSE_FILE | `backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts` |
+| PRIMARY_ROOT_CAUSE_FUNCTION | `assessSuccessfulEmptyCoreEndEligibility` |
+| PRIMARY_ROOT_CAUSE_LINES | **417–418** (UNKNOWN reject when no trusted boundary); architectural coupling **379–414** (boundary-backed silence requires **pre-existing** trusted boundary — cannot reconstruct after retirement + telemetry silence) |
+| PRIMARY_ROOT_CAUSE_PROVEN | **YES** (Production tracking runs + code + unit K5) |
+| SECONDARY_CONTRIBUTOR | **EMPTY_CORE_DEFERRAL_UNBOUNDED** — no terminal admission fallback after repeated KEEP_OPEN; **STOP_BOUNDARY_RECONSTRUCTION_GAP** — `resolveProviderStopBoundaryCandidate` cannot latch boundary from stale VLS |
+
+**PR #1627 status:** **NOT_EXERCISED** — not implicated.
+
+---
+
+### Phase J — Fix design options (NOT implemented)
+
+#### 1. MINIMAL FIX — “Final-stop silence latch”
+
+After credible final stop (operational silence ≥120s, empty core, stale VLS, no post-stop movement), allow **one-shot** trusted boundary at **`lastProviderActivityAt`** or **`lastMeaningfulMovementAt`** with `EVENT_TIME` authority **only when** no active boundary exists and VLS is stale-not-ACTIVE.
+
+- **Admission authority:** empty-core gate path B extension — boundary sourced from last known provider activity, not stale VLS sample.
+- **Timestamp authority:** last fresh provider event time (not worker clock).
+- **False-end risk:** mitigated by movement invalidation + same retirement rules.
+- **Stale-as-fresh protection:** stale VLS still not coerced to INACTIVE; boundary uses last **event-time anchor**, not stale speed/ignition reread.
+- **Bounded liveness:** operational silence threshold already 120s; add max deferral streak → force POSSIBLE_END with LOW confidence flag.
+- **#1617/#1627:** unchanged — retry budget only after POSSIBLE_END reached.
+- **Rollback risk:** low — narrow predicate on telemetry-silence dead zone.
+
+#### 2. ARCHITECTURAL FIX — “Provider silence episode FSM”
+
+Introduce explicit sub-state `PROVIDER_SILENCE_EPISODE` between ACTIVE and POSSIBLE_END with bounded timers, CH assist, and structured fallbacks (R11 proposal `KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md` aligned).
+
+- **Admission authority:** dedicated episode controller owns POSSIBLE_END candidacy.
+- **Timestamp authority:** provider anchor registry (movement, boundary, last observation).
+- **False-end risk:** lower long-term; higher implementation surface.
+- **Bounded liveness:** first-class episode timeout + observability.
+- **#1617/#1627:** preserved behind episode → POSSIBLE_END → END_VALIDATION chain.
+- **Rollback risk:** medium — touches orchestration + tests + metrics.
+
+| Field | Value |
+|-------|-------|
+| PREFERRED_FIX_DESIGN | **MINIMAL FIX** first (silence latch + optional deferral streak cap), then architectural episode FSM if fleet validation requires |
+| READY_FOR_FIX_DESIGN | **YES** |
+
+---
+
 ## Superseded initial audit chronology (preserved — do not delete)
 
 > **Historical record @ `2026-09-13T10:44:09Z` before operator ground-truth correction.**
