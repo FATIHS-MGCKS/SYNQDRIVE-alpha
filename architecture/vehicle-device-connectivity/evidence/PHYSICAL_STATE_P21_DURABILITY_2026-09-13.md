@@ -5,7 +5,7 @@
 | **ID** | VDC-EVID-RB019-P21-DURABILITY-001 |
 | **Date** | 2026-09-13 |
 | **Subphase** | P2.1 |
-| **Epistemic** | `P2_1_IMPLEMENTATION_PRESENT` — pending CI `P2_1_POSTGRES_VALIDATED` / `P2_1_FINAL_CI_VALIDATED` on claim-fencing final head |
+| **Epistemic** | `P2_1_POSTGRES_VALIDATED` + `P2_1_FINAL_CI_VALIDATED` (Vehicle Detail CI `34756137541` on `4f20d37dc`) |
 | **Production** | **NOT_DEPLOYED** — flags OFF; coordinator dark/unwired |
 
 ## Scope delivered
@@ -146,7 +146,14 @@ Explicit rollback proofs:
 
 Prior head `965a17a7` claimed `P2_1_EXIT_GATE = PASS` / `MERGE_READY = YES` prematurely: lease expiry existed without claim ownership fencing, permitting stale-worker / ABA races after lease expiry.
 
-Claim fencing hardening closes that blocker. Exit gate / merge readiness restored only after PG proof + final-head CI on the fencing commit.
+Claim fencing hardening closes that blocker. Exit gate / merge readiness restored after PG proof + final-head CI on `4f20d37dc` (Vehicle Detail CI run `34756137541`: 47/47 physical-state PG tests PASS).
+
+| Gate | Status |
+|------|--------|
+| `P2_1_EXIT_GATE` | **PASS** |
+| `MERGE_READY` | **YES** (draft PR; human merge decision) |
+| `P2_2_START_READY` | **YES** |
+| `REMAINING_P2_1_BLOCKERS` | **NONE** |
 
 ## Safety invariants preserved
 
