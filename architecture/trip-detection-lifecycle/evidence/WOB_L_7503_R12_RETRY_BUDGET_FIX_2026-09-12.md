@@ -5,9 +5,10 @@
 | **Evidence ID** | TDL-EVID-R12-WOB7503-RETRY-BUDGET-001 |
 | **Source type** | PRODUCTION_OBSERVATION + CODE + TEST |
 | **Forensic authority** | Draft PR #1625 — [WOB_L_7503_POST_1617_PHYSICAL_ACCEPTANCE_2026-09-12.md](WOB_L_7503_POST_1617_PHYSICAL_ACCEPTANCE_2026-09-12.md) |
-| **Fix branch** | `cursor/r12-cusum-retry-budget-fix-64c8` (draft; **not merged / not deployed**) |
+| **Fix branch** | `cursor/r12-cusum-retry-budget-fix-64c8` — **merged #1627** @ `9a32685d529bcc55e7163a8f0903ebdec358ebaf` |
 | **BASE_MAIN_SHA** | `7cb184ffc5926521429f75524a1dcb65579769f6` |
 | **PRODUCTION_SHA (failure)** | `a8320f2cabccf7dbeb38cab5afdfc6ee00abdea0` @ `20260912194023_v4994` |
+| **POST-#1627 acceptance** | [WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md](WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md) — **FAIL** (0× EV; end cycle never entered) |
 | **Vehicle** | WOB L 7503 — canonical trip `4083e24c-fc8f-4f56-8d95-a27d517169dc` |
 | **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_VALIDATED** on PR #1627 HEAD @ `1c6dcf3dd` (Trip FSM run `34741464230`) |
 | **Historical forensic BASE** | `7cb184ffc5926521429f75524a1dcb65579769f6` (pre-fix main @ WOB audit) |
