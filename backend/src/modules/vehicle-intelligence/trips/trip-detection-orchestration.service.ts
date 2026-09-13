@@ -1938,6 +1938,7 @@ export class TripDetectionOrchestrationService {
               workerNow: now,
               lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
               candidateStopBoundary: emptyCoreGateStopBoundaryProvenance,
+              candidateProviderSilence: silenceEndCandidate,
             }),
             cusumValidatedAt: null,
             cusumSegmentStart: null,

@@ -61,6 +61,32 @@ describe('R12 — CUSUM still-ongoing boundary retry contract', () => {
     expect(reset.endValidationAttempts).toBe(0);
   });
 
+  it('CUSUM_STILL_ONGOING preserves retry budget for same provider-silence candidate', () => {
+    const silenceAnchor = new Date('2026-09-13T10:23:00.000Z');
+    const workerNow = new Date('2026-09-13T10:28:00.000Z');
+    const reset = buildPossibleEndToActiveReset({
+      workerNow,
+      lastMeaningfulMovementAt: new Date('2026-09-13T10:14:00.000Z'),
+      priorSummary: {
+        providerSilenceCandidateAt: silenceAnchor.toISOString(),
+        providerSilenceCandidateSource: 'provider_silence_candidate',
+        providerSilenceCandidateClockAuthority: 'PROVIDER_EVENT_TIME',
+        providerSilenceCandidateTrust: false,
+        providerSilenceAdmissionEligible: true,
+        lastProviderActivityAt: silenceAnchor.toISOString(),
+        endValidationScheduledAt: '2026-09-12T05:11:00.000Z',
+      },
+      reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 2,
+    });
+    const summary = reset.lastEvidenceSummary as Record<string, unknown>;
+    expect(readStopBoundaryAt(summary)).toBeNull();
+    expect(summary.providerSilenceCandidateAt).toBe(silenceAnchor.toISOString());
+    expect(summary.providerSilenceCandidateTrust).toBe(false);
+    expect(summary.stopBoundaryTrust).toBeUndefined();
+    expect(reset.endValidationAttempts).toBe(2);
+  });
+
   it('ACTIVITY_RESUMED reopen resets retry budget to zero', () => {
     const reset = buildPossibleEndToActiveReset({
       workerNow: WORKER_NOW,

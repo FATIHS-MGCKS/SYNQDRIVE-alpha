@@ -407,4 +407,80 @@ describe('trip-end-cycle-reset (R5)', () => {
       }),
     ).toBe('ok');
   });
+
+  it('buildPossibleEndToActiveReset preserves provider-silence retry budget on CUSUM still-ongoing', () => {
+    const workerNow = new Date('2026-09-13T10:28:00.000Z');
+    const silenceAnchor = new Date('2026-09-13T10:23:00.000Z');
+    const reset = buildPossibleEndToActiveReset({
+      workerNow,
+      lastMeaningfulMovementAt: new Date('2026-09-13T10:14:00.000Z'),
+      priorSummary: {
+        providerSilenceCandidateAt: silenceAnchor.toISOString(),
+        providerSilenceCandidateSource: 'provider_silence_candidate',
+        providerSilenceCandidateClockAuthority: 'PROVIDER_EVENT_TIME',
+        providerSilenceCandidateTrust: false,
+        lastProviderActivityAt: silenceAnchor.toISOString(),
+      },
+      reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 2,
+    });
+    const summary = reset.lastEvidenceSummary as Record<string, unknown>;
+    expect(summary.providerSilenceCandidateTrust).toBe(false);
+    expect(summary.stopBoundaryTrust).toBeUndefined();
+    expect(summary.lastProviderActivityAt).toBe(silenceAnchor.toISOString());
+    expect(reset.endValidationAttempts).toBe(2);
+  });
+
+  it('resolveEndValidationAttemptsOnPossibleEndReentry preserves budget for provider-silence re-entry', () => {
+    const workerNow = new Date('2026-09-13T10:30:00.000Z');
+    const silenceAnchor = new Date('2026-09-13T10:23:00.000Z');
+    const candidate = {
+      anchorAt: silenceAnchor,
+      source: 'provider_silence_candidate' as const,
+      clockAuthority: 'PROVIDER_EVENT_TIME' as const,
+      trust: false as const,
+    };
+    expect(
+      resolveEndValidationAttemptsOnPossibleEndReentry({
+        priorState: 'ACTIVE_TRIP',
+        endValidationAttempts: 2,
+        priorSummary: {
+          providerSilenceCandidateAt: silenceAnchor.toISOString(),
+          providerSilenceCandidateSource: 'provider_silence_candidate',
+          providerSilenceCandidateClockAuthority: 'PROVIDER_EVENT_TIME',
+          providerSilenceCandidateTrust: false,
+          lastProviderActivityAt: silenceAnchor.toISOString(),
+        },
+        workerNow,
+        lastMeaningfulMovementAt: new Date('2026-09-13T10:14:00.000Z'),
+        candidateProviderSilence: candidate,
+      }),
+    ).toBe(2);
+  });
+
+  it('resolveEndValidationAttemptsOnPossibleEndReentry resets when silence episode changes', () => {
+    const workerNow = new Date('2026-09-13T10:30:00.000Z');
+    const oldAnchor = new Date('2026-09-13T10:23:00.000Z');
+    const newAnchor = new Date('2026-09-13T10:25:00.000Z');
+    expect(
+      resolveEndValidationAttemptsOnPossibleEndReentry({
+        priorState: 'ACTIVE_TRIP',
+        endValidationAttempts: 2,
+        priorSummary: {
+          providerSilenceCandidateAt: oldAnchor.toISOString(),
+          providerSilenceCandidateSource: 'provider_silence_candidate',
+          providerSilenceCandidateClockAuthority: 'PROVIDER_EVENT_TIME',
+          providerSilenceCandidateTrust: false,
+        },
+        workerNow,
+        lastMeaningfulMovementAt: new Date('2026-09-13T10:14:00.000Z'),
+        candidateProviderSilence: {
+          anchorAt: newAnchor,
+          source: 'provider_silence_candidate',
+          clockAuthority: 'PROVIDER_EVENT_TIME',
+          trust: false,
+        },
+      }),
+    ).toBe(0);
+  });
 });
