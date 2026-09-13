@@ -12,6 +12,7 @@
 | VDC-EVID-GT-R1-EXECUTION-001 | GT-R1-UNPLUG-001 controlled physical unplug/replug — KS MX 2024 LTE_R1 live observation | PRODUCTION_OBSERVATION + CODE | CONFIRMED | [GT_R1_UNPLUG_EXECUTION_2026-09-12.md](./GT_R1_UNPLUG_EXECUTION_2026-09-12.md) |
 | VDC-EVID-PHYSICAL-STATE-FOUNDATION-001 | Phase 1 canonical physical-device-state reconciliation foundation (dark deploy) | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT / POSTGRES_VALIDATED / FINAL_CI_VALIDATED | [PHYSICAL_STATE_FOUNDATION_2026-09-12.md](./PHYSICAL_STATE_FOUNDATION_2026-09-12.md) |
 | VDC-EVID-RB019-PHASE2-SCOPE-001 | RB-019 Phase 2 runtime cutover scope & readiness audit (no implementation) | AUDIT_DOCUMENT | SCOPED_NOT_IMPLEMENTED | [../../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md) |
+| VDC-EVID-RB019-P21-DURABILITY-001 | RB-019 Phase 2 P2.1 durability foundation (outbox + authority latch + coordinator tx) | CURRENT_CODE + TEST | P2_1_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md](./PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md) |
 
 ## Code evidence (repository — bootstrap index)
 

@@ -529,3 +529,13 @@ nodes:
     summary: SCOPED_NOT_IMPLEMENTED — architecture/readiness audit only; not implementation proof.
     source_paths:
       - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md
+
+  - id: VDC-EVID-RB019-P21-DURABILITY-001
+    type: evidence
+    title: RB-019 Phase 2 P2.1 durability foundation
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Outbox + authority latch schema, coordinator outer tx, claim-token CAS fencing; flags OFF; dark.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md
+      - backend/src/modules/dimo/device-connection-physical-state/

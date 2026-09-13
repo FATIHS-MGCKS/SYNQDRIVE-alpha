@@ -17,6 +17,6 @@ PHYSICAL_STATE_MIGRATION_EPHEMERAL=1 bash scripts/test/physical-state-migration-
 
 log "Step 3/3: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
 PHYSICAL_STATE_POSTGRES_INTEGRATION=1 PHYSICAL_STATE_POSTGRES_REQUIRED=1 \
-  npx jest device-connection-physical-state.postgres.integration --runInBand --verbose
+  npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\.integration' --runInBand --verbose
 
 log "boundary-repair-postgres-ci completed successfully"

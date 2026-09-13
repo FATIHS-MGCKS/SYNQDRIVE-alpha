@@ -115,7 +115,11 @@ export class DeviceConnectionPhysicalStateRepository {
     throw new Error('physical_state_reconcile exhausted transaction retries');
   }
 
-  private async reconcileInTransaction(
+  /**
+   * Transaction-scoped reconcile entry point for Phase-2 coordinator composition.
+   * MUST be called inside an outer `prisma.$transaction` — never nests its own transaction.
+   */
+  async reconcileInTransaction(
     tx: Prisma.TransactionClient,
     input: PhysicalStateReconcileInput,
   ): Promise<PhysicalStateReconcileResult> {
