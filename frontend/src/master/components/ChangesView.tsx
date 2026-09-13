@@ -2203,6 +2203,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-03T07:50:00.000Z',
   },
   {
+    id: 'p1-8-3-11-recurring-0501z-pm2-restart-root-cause-audit-2026-09-09',
+    version: '4.9.1034',
+    title: 'P1.8.3.11 — recurring ~05:01Z PM2 cold-restart root-cause audit',
+    summary: [
+      'Read-only forensic audit of ~05:01Z PM2 cold restarts Sep 7–8 2026.',
+      'Sep 8 OQ-28 break: HIGH confidence Cloud Agent deploy of 7b9a7857 (#1570) via vps-deploy-release.sh; pm2-pre-deploy at 05:01:20Z.',
+      'NOT cron/systemd/PM2-internal/host-OOM. OPERATIONS_BOUNDARY — not N2 architecture defect.',
+      'Sep 7 05:01Z: agent SSH proximate; no deploy artifacts; causal chain incomplete. OQ-28 candidate still continuous from 17:40:39Z.',
+    ],
+    reason:
+      'Determine WHO/WHAT initiated recurring ~05:01Z PM2 cold restarts and whether they represent a scaling defect.',
+    previousBehavior:
+      'P1.8.3.10: Sep 8 05:01:28Z break cause listed UNAVAILABLE; pattern noted mirroring Sep 7.',
+    details:
+      'architecture/P1_8_3_11_RECURRING_0501Z_PM2_COLD_RESTART_ROOT_CAUSE_AUDIT_2026-09-09.md; architecture/scaling-process/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-09T02:45:00.000Z',
+  },
+  {
     id: 'p1-8-3-10-oq28-certification-gate-2026-09-09',
     version: '4.9.1033',
     title: 'P1.8.3.10 — OQ-28 continuity recheck (24h gate)',

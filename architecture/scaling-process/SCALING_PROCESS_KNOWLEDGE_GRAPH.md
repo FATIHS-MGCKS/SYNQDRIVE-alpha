@@ -45,7 +45,7 @@ Scaling Process
 │   ├── Deploy single-replica restart → SUPERSEDED by #1472
 │   ├── Deploy leader-timing false-abort → INC-06 (P1.8.3) — **CLOSED** P1.8.3.1 prod validation
 │   ├── Deploy bootstrap stale-current → OQ-18 — **CLOSED** (P1.8.3.5 DEC-016 full invariant verified)
-│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.10 certification gate broke at 05:01:28Z after 22431s; current segment from 2026-09-08T17:40:39Z)
+│   ├── N=2 continuous 24h soak → OQ-28 — PARTIAL (P1.8.3.11: Sep 8 05:01Z break = Cloud Agent deploy 7b9a7857; OPERATIONS_BOUNDARY; current segment from 2026-09-08T17:40:39Z)
 │   ├── INC-07 trip reconciliation idempotency → **CLOSED** (P1.8.3.8 CASE B combined reachability proof)
 │   ├── OQ-30 INTRA_TRIP_GAP_SPLIT idempotency → **CLOSED** (P1.8.3.8)
 │   ├── Trip reconciliation duplicate rows → INC-07 — **CLOSED** (P1.8.3.8; HISTORICAL P1.8.3.6.2 MODERATE / FIX_DEPLOYED_PRODUCTION_VALIDATION_IN_PROGRESS superseded)
