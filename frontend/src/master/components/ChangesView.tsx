@@ -37,7 +37,7 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'vdc-physical-state-foundation-phase1-2026-09-12',
-    version: '4.9.1118',
+    version: '4.9.1120',
     title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',
     summary: [
       'Additive Prisma models: device_connection_physical_states + device_connection_physical_state_transitions (candidate_state on audit ledger) with TEXT org/vehicle ids.',
@@ -56,6 +56,47 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
     createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-0-scope-hardening-2026-09-13',
+    version: '4.9.1119',
+    title: 'RFRF F4.0 — Final scope hardening before implementation',
+    summary: [
+      'Flag truth table: master owns scan; persist owns F2 staging only; never VEE promotion.',
+      'fuelCapability vs absoluteSignalTrust split; trust authority NOT_YET_AVAILABLE — fail closed.',
+      'RawRefuelPromotionEligibility orthogonal to F2 lifecycle; no F4 terminal REJECTED for F5 absence.',
+      'Native overlap advisory-only in F4; detectionSource NULL = legacy native; sourceEventKey canonical.',
+      'F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; cutover enforcement deferred to F6+.',
+    ],
+    reason:
+      'Five contract ambiguities remained after initial F4 scope audit — must close before F4-PR1.',
+    previousBehavior:
+      'Overlapping F4/F5 language; capability/trust conflated; scheduler coverage stated as proven.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md §25; EED-DEC-RFRF-006 expanded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T01:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-scope-boundary-2026-09-13',
+    version: '4.9.1118',
+    title: 'RFRF F4 — Scope + runtime boundary (pre-implementation audit)',
+    summary: [
+      'Resolves F1/F2/F3 phase-boundary contradiction: F4 Option B (dark staging; promotion execution F5-gated).',
+      'detectEnergyEvents parallel path design; WINDOW_LEVEL_NATIVE_SUPPRESSION forbidden; no new scheduler.',
+      'Capability gate case 22 scope; duplicate safety matrix (10 scenarios); minimum F4 diagnostics.',
+      'EED-DEC-RFRF-006 + EED-EV-0045; no runtime code; flags remain default false.',
+    ],
+    reason:
+      'F3 merged (PR #1623); F4 authorized but requires rigorous scope closure before implementation.',
+    previousBehavior:
+      'Overlapping F4/F5 language risked unsafe VehicleEnergyEvent promotion before native/fallback convergence.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md; EED-EV-0045; EED-DEC-RFRF-006.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T00:00:00.000Z',
   },
   {
     id: 'eed-rfrf-f3-2-semantic-closure-2026-09-12',
