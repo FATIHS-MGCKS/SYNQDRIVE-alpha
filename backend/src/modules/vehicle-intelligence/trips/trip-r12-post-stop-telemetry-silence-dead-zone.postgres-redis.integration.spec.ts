@@ -29,7 +29,7 @@ import {
   type TripR11PostgresFixture,
   type TripR11SegmentsMock,
 } from './testing/trip-r11-postgres-redis.integration.harness';
-import { readStopBoundaryAt } from './trip-fsm-evidence-state';
+import { readStopBoundaryAt, readStopBoundaryProvenance } from './trip-fsm-evidence-state';
 import { resolveEndCycleToken } from './trip-end-cycle-reset';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
@@ -325,10 +325,10 @@ async function runEmptyCoreTick(params: {
           : null;
 
       const baseStaleVls = firstBoundSummary.vlsEvidenceState === 'UNKNOWN';
-      const baseNoBoundary =
-        readStopBoundaryAt(
+      const baseNoTrustedBoundary =
+        readStopBoundaryProvenance(
           detAfterBound?.lastEvidenceSummary as Record<string, unknown> | null,
-        ) == null;
+        )?.trust !== true;
       const baseKeepOpenRepeats =
         PROBE_EXPECT === 'BASE' &&
         detAfterRepeat?.state === TripDetectionState.ACTIVE_TRIP &&
@@ -395,7 +395,7 @@ async function runEmptyCoreTick(params: {
       const metrics: SilenceDeadZoneMetrics = {
         PROBE_EXPECT,
         BASE_STALE_VLS: baseStaleVls,
-        BASE_ACTIVE_BOUNDARY_PRESENT: !baseNoBoundary,
+        BASE_ACTIVE_BOUNDARY_PRESENT: !baseNoTrustedBoundary,
         BASE_NO_POST_STOP_MOVEMENT: true,
         BASE_EMPTY_CORE_KEEP_OPEN_REPEATS: baseKeepOpenRepeats,
         BASE_POSSIBLE_END_REACHED: basePossibleEnd,
@@ -406,7 +406,7 @@ async function runEmptyCoreTick(params: {
         BASE_RED_REPRODUCED:
           PROBE_EXPECT === 'BASE' &&
           baseStaleVls &&
-          baseNoBoundary &&
+          baseNoTrustedBoundary &&
           !basePossibleEnd &&
           detAfterRepeat?.state === TripDetectionState.ACTIVE_TRIP,
         HEAD_SILENCE_ADMISSION_REACHED: headSilenceAdmission,
