@@ -9,7 +9,9 @@
 | **BASE_MAIN_SHA** | `7cb184ffc5926521429f75524a1dcb65579769f6` |
 | **PRODUCTION_SHA (failure)** | `a8320f2cabccf7dbeb38cab5afdfc6ee00abdea0` @ `20260912194023_v4994` |
 | **Vehicle** | WOB L 7503 — canonical trip `4083e24c-fc8f-4f56-8d95-a27d517169dc` |
-| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI GREEN on fix branch** |
+| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_VALIDATED** on PR #1627 HEAD @ `11e95d4d1` (Trip FSM run `34726519989`) |
+| **Historical forensic BASE** | `7cb184ffc5926521429f75524a1dcb65579769f6` (pre-fix main @ WOB audit) |
+| **Merge-base BASE (current main)** | `4d95c16a9b8181255097f13cc845afd414345c1e` |
 
 ## Production failure (read-only, not repaired)
 
@@ -24,7 +26,10 @@
 | #1617 boundary preservation | **YES** — trusted `stopBoundaryAt` preserved across reopen |
 | #1603 PEC→EV lock order | **NOT reproduced** — EV tracking runs persist |
 
-**Primary root cause:** `END_VALIDATION_RETRY_BUDGET_RESET_LOOP` — `buildPossibleEndToActiveReset()` always wrote `endValidationAttempts: 0` on CUSUM still-ongoing reopen, so PEC Step 4 never reached Step 5 `max_completed_cusum_attempts_fallback`.
+**Primary root cause:** `END_VALIDATION_RETRY_BUDGET_RESET_LOOP` — two-part:
+
+1. `buildPossibleEndToActiveReset()` always wrote `endValidationAttempts: 0` on CUSUM still-ongoing reopen.
+2. ACTIVE→POSSIBLE_END re-entry (empty-core / continuity) also reset `endValidationAttempts: 0`, wiping budget after each cycle.
 
 **Out of scope (separate tracks):**
 
@@ -40,7 +45,7 @@
 
 Implementation:
 
-- `trip-end-cycle-reset.ts` — optional `completedEndValidationAttempts`; preserve only when `resolveTrustedStopBoundaryForCusumRetry` succeeds
+- `trip-end-cycle-reset.ts` — optional `completedEndValidationAttempts`; preserve only when `resolveTrustedStopBoundaryForCusumRetry` succeeds; `resolveEndValidationAttemptsOnPossibleEndReentry` preserves budget on ACTIVE→POSSIBLE_END re-entry for same trusted stop episode
 - `trip-detection-orchestration.service.ts` — pass `completedAttempt` on CUSUM ongoing path; log actual `persistedAttemptsAfterReset`
 
 **Does not change:** CUSUM thresholds/tail, maxAttempts=3, #1603 lock deferral, #1617 boundary strip/preserve semantics.
@@ -52,7 +57,7 @@ Implementation:
 | Integration | [`trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts`](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts) |
 | BASE/HEAD worktree script | [`trip-r12-cusum-retry-budget-base-head-red-proof.sh`](../../../backend/scripts/test/trip-r12-cusum-retry-budget-base-head-red-proof.sh) |
 
-### Expected BASE shape (@ `7cb184ff…`)
+### Expected BASE shape (@ merge-base `4d95c16a…`; historical `7cb184ff…` identical defect class)
 
 | Field | Expected |
 |-------|----------|
@@ -75,7 +80,18 @@ Implementation:
 
 ## Physical acceptance status
 
-**Physical acceptance remains FAIL** until a fresh Production drive after deploy of this fix. This artifact proves repository/CI bounded behavior only.
+**Physical acceptance remains FAIL** until a fresh Production drive after deploy of this fix.
+
+### Observed CI proof (Trip FSM run `34726519989`)
+
+| Probe | BASE (`4d95c16a…`) | HEAD (`11e95d4d1…`) |
+|-------|-------------------|---------------------|
+| EV runs | **4** | **3** |
+| completedAttempt seq | `1,1,1,1` | `1,2,3` |
+| persistedAttempts seq | `0,0,0,0` | `1,2,3` |
+| max fallback | NO | YES |
+| FINALIZE | NO | YES |
+| Verdict | `BASE_RED_REPRODUCED=YES` | `HEAD_GREEN_PROVEN=YES` |
 
 ## Related decisions preserved
 
