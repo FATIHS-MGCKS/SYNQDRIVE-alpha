@@ -7,11 +7,12 @@
 | **origin/main (historical @ evidence auth)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 |
 | **origin/main (at R11 deploy)** | `0b91dcd96f68164282a38458242fe8489e0b3b82` — **not deployed** (frozen target used) |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
-| **Production baseline (current known — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` (R12 deploy 2026-09-09) — **does not include #1594 hardening** |
+| **Production baseline (current @ POST-#1627 deploy)** | `9a32685d529bcc55e7163a8f0903ebdec358ebaf` @ `/opt/synqdrive/releases/20260913074250_v4994` (#1627 merged 2026-09-13) |
+| **Production baseline (historical — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` (R12 deploy 2026-09-09) — **does not include #1594 hardening** |
 | **Pre-R12 Production (historical)** | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994` (R11 deploy 2026-09-09) |
 | **Pre-R11 Production (historical)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` (R10 deploy 2026-09-08) |
 | **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
-| **Last verified Production evidence** | `2026-09-09T19:26:03Z` (R12 pre-hardening deploy TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…`); KS MS 661 R11 natural drive @ `f7eb94cb…` remains historical |
+| **Last verified Production evidence** | `2026-09-13T10:44:09Z` (POST-#1627 WOB L 7503 acceptance TDL-EVID-R12-WOB7503-POST-1627-001 @ `9a32685d…` — **FAIL**); prior R12 pre-hardening deploy @ `157b3c722…` remains historical |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Authority axes (mandatory separation — do not conflate)
@@ -246,7 +247,10 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - TDL-DEC-R12-001 — **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** @ `157b3c722…` (`20260909190912_v4994`, TDL-EV-R12-PROD-DEPLOY-001); **CI_VALIDATED** (run 34387586390); **POST_DEPLOY_HEALTH_CONFIRMED**; **NOT PRODUCTION_BEHAVIOR_VALIDATED**; KS MS 661 post-deploy T0 **PHYSICAL_TEST_READY=NO**
 - TDL-DEC-R12 pre-drive hardening (#1594) — **R12_HARDENED_CODE_ON_MAIN** @ `f4109e34…` **MERGED**; **CI_VALIDATED** (main push run 34424546044); closes AUD-002/003/004/007; **R12_HARDENED_PRODUCTION_DEPLOYED = NOT YET CONFIRMED**; **R12_HARDENED_PRODUCTION_BEHAVIOR_VALIDATED = NOT YET CONFIRMED**
 - PR #1600 end-cycle hardening — **MERGED**; PE clock durability **PRODUCTION_PROVEN** on drive `fc93f98f…`; POST-#1600 defect class documented (TDL-EVID-R12-KS661-DISPATCH-GAP-001); trip `fc93f98f…` **NOT repaired**
-- PR #1603 PEC→EV lock-order fix — **MERGED** @ `9e3a5a19c`; **DEPLOYED** @ `f6f5eaa3a…` (`20260911234818_v4994`, `2026-09-11T23:58:46Z`); **#1603 failure class NOT reproduced** on KS MS 661 drive `a05fa903…`; **#1617** CUSUM boundary preservation **DEPLOYED** @ `a8320f2ca…`; WOB L 7503 POST-#1617 drive **FAIL** — `END_VALIDATION_RETRY_BUDGET_RESET_LOOP` (17× EV, 0× FINALIZE); retry-budget fix **draft** (references forensic PR #1625); Production **FAIL** unrepaired
+- PR #1603 PEC→EV lock-order fix — **MERGED** @ `9e3a5a19c`; **DEPLOYED** @ `9a32685d…` (`20260913074250_v4994`); **#1603 failure class NOT reproduced** on POST-#1627 WOB drive (0× EV — end cycle never entered)
+- PR #1617 CUSUM boundary preservation — **DEPLOYED** @ `9a32685d…`; **NOT exercised** on POST-#1627 WOB drive (no CUSUM runs)
+- PR #1627 retry-budget preservation — **MERGED + DEPLOYED** @ `9a32685d…` (`20260913074250_v4994`, TDL-EV-R12-PROD-DEPLOY-002); **CI_VALIDATED**; **POST-#1627 physical acceptance FAIL** on WOB L 7503 (TDL-EVID-R12-WOB7503-POST-1627-001): 0× END_VALIDATION; trip `aaedd4a5…` **ONGOING** @ audit; `live_mid_trip_gap_split` **reproduced**; empty-core/stale-VLS blocked end entry — **#1627 retry budget not physically proven**
+- WOB L 7503 POST-#1617 drive (historical) — **FAIL** @ `a8320f2ca…` — `END_VALIDATION_RETRY_BUDGET_RESET_LOOP` (17× EV, 0× FINALIZE); trip `4083e24c…` **STALE_ONGOING** repaired 2026-09-12 — preserved unchanged
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
