@@ -172,7 +172,14 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
       WHERE o.id IN (
         SELECT id
         FROM device_connection_physical_state_action_outbox
-        WHERE status::text = ANY(ARRAY[${Prisma.join(CLAIMABLE_STATUSES)}]::text[])
+        WHERE (
+            status::text = ANY(ARRAY[${Prisma.join(CLAIMABLE_STATUSES)}]::text[])
+            OR (
+              status = ${DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING}::"DeviceConnectionPhysicalStateActionOutboxStatus"
+              AND processing_lease_expires_at IS NOT NULL
+              AND processing_lease_expires_at <= ${now}
+            )
+          )
           AND (next_retry_at IS NULL OR next_retry_at <= ${now})
           AND (
             processing_lease_expires_at IS NULL
@@ -196,11 +203,18 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
         processing_lease_expires_at = ${leaseExpiresAt},
         updated_at = NOW()
       WHERE o.id = ${id}
-        AND status::text = ANY(ARRAY[${Prisma.join(CLAIMABLE_STATUSES)}]::text[])
+        AND (
+          status::text = ANY(ARRAY[${Prisma.join(CLAIMABLE_STATUSES)}]::text[])
+          OR (
+            status = ${DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING}::"DeviceConnectionPhysicalStateActionOutboxStatus"
+            AND o.processing_lease_expires_at IS NOT NULL
+            AND o.processing_lease_expires_at <= ${now}
+          )
+        )
         AND (next_retry_at IS NULL OR next_retry_at <= ${now})
         AND (
-          processing_lease_expires_at IS NULL
-          OR processing_lease_expires_at <= ${now}
+          o.processing_lease_expires_at IS NULL
+          OR o.processing_lease_expires_at <= ${now}
         )
       RETURNING o.*
     `;

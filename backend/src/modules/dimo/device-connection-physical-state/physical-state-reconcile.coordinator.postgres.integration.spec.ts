@@ -241,7 +241,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
 
     expect(first.reconcile.decision).toBe('APPLIED');
     expect(second.reconcile.decision).toBe('DUPLICATE');
-    expect(second.outboxDuplicate).toBe(true);
+    expect(second.outboxId).toBeNull();
 
     const outboxCount = await prisma.deviceConnectionPhysicalStateActionOutbox.count({
       where: { vehicleId: fixture.vehicle.id },
