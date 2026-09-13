@@ -5,13 +5,20 @@ import deviceConnectionPhysicalStateActionOutboxConfig from '@config/device-conn
 import {
   computePhysicalStateActionOutboxBackoffMs,
   DeviceConnectionPhysicalStateActionOutboxRepository,
+  type PhysicalStateActionOutboxClaimedRow,
 } from './device-connection-physical-state-action-outbox.repository';
 
 export type PhysicalStateActionOutboxProcessOutcome =
   | 'completed'
   | 'retry_scheduled'
   | 'dead_letter'
+  | 'ownership_lost'
   | 'skipped';
+
+export type PhysicalStateActionOutboxProcessorTestSeam = {
+  beforeAck?: () => Promise<void> | void;
+  throwOnAck?: boolean | (() => Error);
+};
 
 /**
  * P2.1 skeleton processor — manages outbox row lifecycle only.
@@ -29,7 +36,10 @@ export class DeviceConnectionPhysicalStateActionOutboxProcessorService {
     private readonly outboxRepo: DeviceConnectionPhysicalStateActionOutboxRepository,
   ) {}
 
-  async processOutboxId(outboxId: string): Promise<PhysicalStateActionOutboxProcessOutcome> {
+  async processOutboxId(
+    outboxId: string,
+    testSeam?: PhysicalStateActionOutboxProcessorTestSeam,
+  ): Promise<PhysicalStateActionOutboxProcessOutcome> {
     const existing = await this.outboxRepo.findById(outboxId);
     if (!existing) return 'skipped';
 
@@ -49,7 +59,7 @@ export class DeviceConnectionPhysicalStateActionOutboxProcessorService {
     const claimed = await this.outboxRepo.claimForProcessing(outboxId, now, leaseExpiresAt);
     if (!claimed) return 'skipped';
 
-    return this.acknowledgeClaimedRow(claimed);
+    return this.acknowledgeClaimedRow(claimed, testSeam);
   }
 
   async processPendingBatch(limit = this.config.pollBatchSize): Promise<number> {
@@ -72,50 +82,76 @@ export class DeviceConnectionPhysicalStateActionOutboxProcessorService {
     );
     let recovered = 0;
     for (const row of rows) {
-      const released = await this.outboxRepo.releaseExpiredLease(row.id, new Date());
-      if (released) recovered += 1;
+      if (!row.processingClaimToken || !row.processingLeaseExpiresAt) continue;
+      const released = await this.outboxRepo.releaseExpiredLease(
+        row.id,
+        row.processingClaimToken,
+        staleBefore,
+        new Date(),
+      );
+      if (released.updated) recovered += 1;
     }
     return recovered;
   }
 
   private async acknowledgeClaimedRow(
-    row: Awaited<ReturnType<DeviceConnectionPhysicalStateActionOutboxRepository['claimForProcessing']>>,
+    row: PhysicalStateActionOutboxClaimedRow,
+    testSeam?: PhysicalStateActionOutboxProcessorTestSeam,
   ): Promise<PhysicalStateActionOutboxProcessOutcome> {
-    if (!row) return 'skipped';
-
     try {
+      if (testSeam?.beforeAck) {
+        await testSeam.beforeAck();
+      }
+
+      if (testSeam?.throwOnAck) {
+        const error =
+          typeof testSeam.throwOnAck === 'function'
+            ? testSeam.throwOnAck()
+            : new Error('processor_test_seam_throw_on_ack');
+        throw error;
+      }
+
       // P2.1: no episode/alert/notification side effects — row lifecycle only.
-      await this.outboxRepo.markCompleted(row.id);
+      const ack = await this.outboxRepo.markCompleted(row.id, row.processingClaimToken);
+      if (!ack.updated) return 'ownership_lost';
       return 'completed';
     } catch (error) {
-      return this.handleProcessingFailure(row.id, row.processingAttempts, error);
+      return this.handleProcessingFailure(row, error);
     }
   }
 
   private async handleProcessingFailure(
-    outboxId: string,
-    attempt: number,
+    row: PhysicalStateActionOutboxClaimedRow,
     error: unknown,
   ): Promise<PhysicalStateActionOutboxProcessOutcome> {
     const errorCode = error instanceof Error ? error.name : 'processing_error';
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (attempt >= this.config.maxAttempts) {
-      await this.outboxRepo.markDeadLetter(outboxId, { errorCode, errorMessage });
+    if (row.processingAttempts >= this.config.maxAttempts) {
+      const deadLetter = await this.outboxRepo.markDeadLetter(row.id, row.processingClaimToken, {
+        errorCode,
+        errorMessage,
+      });
+      if (!deadLetter.updated) return 'ownership_lost';
       this.logger.warn(
-        `physical_state_action_outbox dead_letter id=${outboxId} attempts=${attempt}`,
+        `physical_state_action_outbox dead_letter id=${row.id} attempts=${row.processingAttempts}`,
       );
       return 'dead_letter';
     }
 
     const nextRetryAt = new Date(
-      Date.now() + computePhysicalStateActionOutboxBackoffMs(this.config.baseBackoffMs, attempt),
+      Date.now() +
+        computePhysicalStateActionOutboxBackoffMs(
+          this.config.baseBackoffMs,
+          row.processingAttempts,
+        ),
     );
-    await this.outboxRepo.markRetryableFailed(outboxId, {
+    const retry = await this.outboxRepo.markRetryableFailed(row.id, row.processingClaimToken, {
       errorCode,
       errorMessage,
       nextRetryAt,
     });
+    if (!retry.updated) return 'ownership_lost';
     return 'retry_scheduled';
   }
 }

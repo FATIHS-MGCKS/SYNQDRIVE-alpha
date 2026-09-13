@@ -69,6 +69,15 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
     };
   }
 
+  async function claimOne(outboxId: string) {
+    const now = new Date();
+    return repository.claimForProcessing(
+      outboxId,
+      now,
+      new Date(now.getTime() + config.processingLeaseMs),
+    );
+  }
+
   it('A. idempotent insert — concurrent same idempotencyKey yields one row', async () => {
     const input = enqueueInput();
     const results = await Promise.all(
@@ -94,8 +103,6 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
             bindingKey: `DIMO:device:hash-${i}`,
             transitionId: `transition-${i}`,
             stateVersion: i + 1,
-            episodeAction: 'open_unplug',
-            alertAction: 'emit_unplug',
           }),
         ),
       );
@@ -119,15 +126,14 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
     const { outboxId } = await prisma.$transaction((tx) =>
       repository.enqueueInTransaction(tx, enqueueInput()),
     );
-    expect(outboxId).toBeTruthy();
+    const firstClaim = await claimOne(outboxId!);
+    expect(firstClaim?.processingClaimToken).toBeTruthy();
 
     const now = new Date();
     const expiredLease = new Date(now.getTime() - 1_000);
     await prisma.deviceConnectionPhysicalStateActionOutbox.update({
       where: { id: outboxId! },
       data: {
-        status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
-        processingAttempts: 1,
         processingLeaseExpiresAt: expiredLease,
       },
     });
@@ -138,34 +144,34 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
       new Date(now.getTime() + config.processingLeaseMs),
     );
     expect(reclaimed?.id).toBe(outboxId);
+    expect(reclaimed?.processingClaimToken).not.toBe(firstClaim?.processingClaimToken);
   });
 
   it('D. completed row is never reclaimable', async () => {
     const { outboxId } = await prisma.$transaction((tx) =>
       repository.enqueueInTransaction(tx, enqueueInput()),
     );
-    await repository.markCompleted(outboxId!);
+    const claimed = await claimOne(outboxId!);
+    await repository.markCompleted(outboxId!, claimed!.processingClaimToken);
 
     const now = new Date();
-    const claimed = await repository.claimForProcessing(
+    const nextClaim = await repository.claimForProcessing(
       outboxId!,
       now,
       new Date(now.getTime() + config.processingLeaseMs),
     );
-    expect(claimed).toBeNull();
+    expect(nextClaim).toBeNull();
   });
 
   it('E. retry increments attempts and respects nextRetryAt', async () => {
     const { outboxId } = await prisma.$transaction((tx) =>
       repository.enqueueInTransaction(tx, enqueueInput()),
     );
-    const now = new Date();
-    const leaseExpiresAt = new Date(now.getTime() + config.processingLeaseMs);
-    const claimed = await repository.claimForProcessing(outboxId!, now, leaseExpiresAt);
+    const claimed = await claimOne(outboxId!);
     expect(claimed?.processingAttempts).toBe(1);
 
     const futureRetry = new Date(Date.now() + 60_000);
-    await repository.markRetryableFailed(outboxId!, {
+    await repository.markRetryableFailed(outboxId!, claimed!.processingClaimToken, {
       errorCode: 'test_error',
       errorMessage: 'retry later',
       nextRetryAt: futureRetry,
@@ -197,6 +203,7 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.DEAD_LETTER,
         processingAttempts: config.maxAttempts,
         deadLetteredAt: new Date(),
+        processingClaimToken: null,
       },
     });
 
@@ -218,5 +225,236 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
     const row = await repository.findById(outboxId!);
     expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.COMPLETED);
     expect(row?.completedAt).not.toBeNull();
+    expect(row?.processingClaimToken).toBeNull();
+  });
+
+  it('H. STALE_WORKER_COMPLETE_FENCING', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimA = await claimOne(outboxId!);
+    const tokenA = claimA!.processingClaimToken;
+
+    const now = new Date();
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { processingLeaseExpiresAt: new Date(now.getTime() - 1_000) },
+    });
+
+    const claimB = await repository.claimForProcessing(
+      outboxId!,
+      now,
+      new Date(now.getTime() + config.processingLeaseMs),
+    );
+    const tokenB = claimB!.processingClaimToken;
+    expect(tokenA).not.toBe(tokenB);
+
+    const staleAck = await repository.markCompleted(outboxId!, tokenA);
+    expect(staleAck.updated).toBe(false);
+
+    const rowMid = await repository.findById(outboxId!);
+    expect(rowMid?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING);
+    expect(rowMid?.processingClaimToken).toBe(tokenB);
+
+    const freshAck = await repository.markCompleted(outboxId!, tokenB);
+    expect(freshAck.updated).toBe(true);
+  });
+
+  it('I. STALE_WORKER_FAILURE_FENCING', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimA = await claimOne(outboxId!);
+    const tokenA = claimA!.processingClaimToken;
+
+    const now = new Date();
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { processingLeaseExpiresAt: new Date(now.getTime() - 1_000) },
+    });
+
+    const claimB = await claimOne(outboxId!);
+    const tokenB = claimB!.processingClaimToken;
+
+    const staleRetry = await repository.markRetryableFailed(outboxId!, tokenA, {
+      errorCode: 'stale',
+      errorMessage: 'stale worker',
+      nextRetryAt: new Date(Date.now() + 60_000),
+    });
+    expect(staleRetry.updated).toBe(false);
+
+    const staleDlq = await repository.markDeadLetter(outboxId!, tokenA, {
+      errorCode: 'stale',
+      errorMessage: 'stale worker',
+    });
+    expect(staleDlq.updated).toBe(false);
+
+    const row = await repository.findById(outboxId!);
+    expect(row?.processingClaimToken).toBe(tokenB);
+    expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING);
+  });
+
+  it('J. REAPER_VS_RECLAIM_RACE', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimA = await claimOne(outboxId!);
+    const tokenA = claimA!.processingClaimToken;
+    const staleBefore = new Date();
+
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { processingLeaseExpiresAt: new Date(staleBefore.getTime() - 1_000) },
+    });
+
+    const staleRows = await repository.findStaleProcessingBatch(staleBefore, 10);
+    expect(staleRows.some((r) => r.id === outboxId && r.processingClaimToken === tokenA)).toBe(true);
+
+    const claimB = await claimOne(outboxId!);
+    const tokenB = claimB!.processingClaimToken;
+    expect(tokenB).not.toBe(tokenA);
+
+    const observed = staleRows.find((r) => r.id === outboxId)!;
+    const recovery = await repository.releaseExpiredLease(
+      outboxId!,
+      observed.processingClaimToken!,
+      staleBefore,
+      new Date(),
+    );
+    expect(recovery.updated).toBe(false);
+
+    const row = await repository.findById(outboxId!);
+    expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING);
+    expect(row?.processingClaimToken).toBe(tokenB);
+  });
+
+  it('K. CURRENT_LEASE_RECOVERY', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimA = await claimOne(outboxId!);
+    const tokenA = claimA!.processingClaimToken;
+    const staleBefore = new Date();
+
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { processingLeaseExpiresAt: new Date(staleBefore.getTime() - 1_000) },
+    });
+
+    const recovery = await repository.releaseExpiredLease(
+      outboxId!,
+      tokenA,
+      staleBefore,
+      new Date(),
+    );
+    expect(recovery.updated).toBe(true);
+
+    const row = await repository.findById(outboxId!);
+    expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.RETRYABLE_FAILED);
+    expect(row?.processingClaimToken).toBeNull();
+  });
+
+  it('L. CLAIM_TOKEN_ROTATION', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimA = await claimOne(outboxId!);
+    const tokenA = claimA!.processingClaimToken;
+
+    const now = new Date();
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { processingLeaseExpiresAt: new Date(now.getTime() - 1_000) },
+    });
+
+    const claimB = await claimOne(outboxId!);
+    expect(claimB?.processingClaimToken).not.toBe(tokenA);
+  });
+
+  it('M. ACK_IDEMPOTENCY', async () => {
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+    const claimed = await claimOne(outboxId!);
+    const token = claimed!.processingClaimToken;
+
+    const first = await repository.markCompleted(outboxId!, token);
+    expect(first.updated).toBe(true);
+
+    const second = await repository.markCompleted(outboxId!, token);
+    expect(second.updated).toBe(false);
+  });
+
+  it('N. MULTI_WORKER_STRESS — disjoint rows and unique claim tokens', async () => {
+    for (let i = 0; i < 8; i += 1) {
+      await prisma.$transaction((tx) =>
+        repository.enqueueInTransaction(
+          tx,
+          enqueueInput({
+            bindingKey: `DIMO:device:stress-${i}`,
+            transitionId: `transition-stress-${i}`,
+            stateVersion: i + 1,
+          }),
+        ),
+      );
+    }
+
+    const now = new Date();
+    const leaseExpiresAt = new Date(now.getTime() + config.processingLeaseMs);
+    const [batchA, batchB] = await Promise.all([
+      repository.claimBatchWithSkipLocked(10, now, leaseExpiresAt),
+      repository.claimBatchWithSkipLocked(10, now, leaseExpiresAt),
+    ]);
+
+    const allClaims = [...batchA, ...batchB];
+    expect(allClaims).toHaveLength(8);
+    const tokens = allClaims.map((r) => r.processingClaimToken);
+    expect(new Set(tokens).size).toBe(8);
+    for (const row of allClaims) {
+      expect(row.processingClaimToken).toBeTruthy();
+      expect(row.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING);
+    }
+  });
+
+  it('O. RETRY_TO_DLQ_REAL_PATH', async () => {
+    const retryConfig = {
+      ...config,
+      maxAttempts: 2,
+      baseBackoffMs: 1,
+    };
+    const failingProcessor = new DeviceConnectionPhysicalStateActionOutboxProcessorService(
+      retryConfig,
+      repository,
+    );
+
+    const { outboxId } = await prisma.$transaction((tx) =>
+      repository.enqueueInTransaction(tx, enqueueInput()),
+    );
+
+    const first = await failingProcessor.processOutboxId(outboxId!, { throwOnAck: true });
+    expect(first).toBe('retry_scheduled');
+
+    let row = await repository.findById(outboxId!);
+    expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.RETRYABLE_FAILED);
+    expect(row?.processingClaimToken).toBeNull();
+
+    await prisma.deviceConnectionPhysicalStateActionOutbox.update({
+      where: { id: outboxId! },
+      data: { nextRetryAt: new Date(Date.now() - 1) },
+    });
+
+    const second = await failingProcessor.processOutboxId(outboxId!, { throwOnAck: true });
+    expect(second).toBe('dead_letter');
+
+    row = await repository.findById(outboxId!);
+    expect(row?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.DEAD_LETTER);
+    expect(row?.processingClaimToken).toBeNull();
+
+    const reclaim = await repository.claimForProcessing(
+      outboxId!,
+      new Date(),
+      new Date(Date.now() + config.processingLeaseMs),
+    );
+    expect(reclaim).toBeNull();
   });
 });

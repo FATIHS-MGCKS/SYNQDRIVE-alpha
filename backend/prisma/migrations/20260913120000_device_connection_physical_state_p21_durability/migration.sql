@@ -43,6 +43,7 @@ CREATE TABLE "device_connection_physical_state_action_outbox" (
     "idempotency_key" TEXT NOT NULL,
     "status" "DeviceConnectionPhysicalStateActionOutboxStatus" NOT NULL DEFAULT 'PENDING',
     "processing_attempts" INTEGER NOT NULL DEFAULT 0,
+    "processing_claim_token" TEXT,
     "processing_lease_expires_at" TIMESTAMP(3),
     "next_retry_at" TIMESTAMP(3),
     "last_error_code" TEXT,

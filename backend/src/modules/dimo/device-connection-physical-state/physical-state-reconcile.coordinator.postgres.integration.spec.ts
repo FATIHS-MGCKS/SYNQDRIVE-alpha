@@ -82,6 +82,18 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     };
   }
 
+  function webhookUpsert(observedAt: string) {
+    return {
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      provider: 'DIMO',
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+      observedAt: new Date(observedAt),
+      rawPayloadJson: {},
+    };
+  }
+
   async function counts() {
     const [projections, audits, events, outbox] = await Promise.all([
       prisma.deviceConnectionPhysicalState.count({ where: { vehicleId: fixture.vehicle.id } }),
@@ -117,15 +129,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     const before = await counts();
     const result = await coordinator.reconcileInOuterTransaction({
       reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-1')),
-      webhookEventUpsert: {
-        organizationId: fixture.org.id,
-        vehicleId: fixture.vehicle.id,
-        tokenId: fixture.tokenId,
-        provider: 'DIMO',
-        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
-        observedAt: new Date('2026-01-01T11:00:00.000Z'),
-        rawPayloadJson: { test: true },
-      },
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
     });
     const after = await counts();
 
@@ -142,15 +146,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
 
     const result = await coordinator.reconcileInOuterTransaction({
       reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-2')),
-      webhookEventUpsert: {
-        organizationId: fixture.org.id,
-        vehicleId: fixture.vehicle.id,
-        tokenId: fixture.tokenId,
-        provider: 'DIMO',
-        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
-        observedAt: new Date('2026-01-01T11:00:00.000Z'),
-        rawPayloadJson: {},
-      },
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
     });
 
     expect(result.outboxId).toBeTruthy();
@@ -161,7 +157,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     expect(outbox?.canonicalEventId).toBe(result.canonicalEventId);
   });
 
-  it('4. failure after projection rolls back all durable state', async () => {
+  it('4. failure after reconcile phase rolls back projection + audit together', async () => {
     const before = await counts();
     await expect(
       coordinator.reconcileInOuterTransaction(
@@ -171,17 +167,17 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
         {
           testSeam: {
             afterReconcile: async () => {
-              throw new Error('inject_after_projection');
+              throw new Error('inject_after_reconcile_phase');
             },
           },
         },
       ),
-    ).rejects.toThrow('inject_after_projection');
+    ).rejects.toThrow('inject_after_reconcile_phase');
     const after = await counts();
     expect(after).toEqual(before);
   });
 
-  it('5-7. failure after event/outbox rolls back projection + audit + event + outbox', async () => {
+  it('5. failure after webhook event-history upsert rolls back all durable state', async () => {
     await coordinator.reconcileInOuterTransaction({
       reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-2')),
     });
@@ -190,16 +186,37 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     await expect(
       coordinator.reconcileInOuterTransaction(
         {
-          reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'fail-2')),
-          webhookEventUpsert: {
-            organizationId: fixture.org.id,
-            vehicleId: fixture.vehicle.id,
-            tokenId: fixture.tokenId,
-            provider: 'DIMO',
-            eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
-            observedAt: new Date('2026-01-01T11:00:00.000Z'),
-            rawPayloadJson: {},
+          reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'fail-event')),
+          webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+        },
+        {
+          testSeam: {
+            afterWebhookEventUpsert: async () => {
+              throw new Error('inject_after_event_history');
+            },
           },
+        },
+      ),
+    ).rejects.toThrow('inject_after_event_history');
+
+    const after = await counts();
+    expect(after.projections).toBe(before.projections);
+    expect(after.audits).toBe(before.audits);
+    expect(after.events).toBe(before.events);
+    expect(after.outbox).toBe(before.outbox);
+  });
+
+  it('6. failure after outbox insert rolls back projection + audit + event + outbox', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-3')),
+    });
+
+    const before = await counts();
+    await expect(
+      coordinator.reconcileInOuterTransaction(
+        {
+          reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'fail-outbox')),
+          webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
         },
         {
           testSeam: {
@@ -218,22 +235,14 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     expect(after.outbox).toBe(before.outbox);
   });
 
-  it('8. duplicate retry does not duplicate projection transition or outbox', async () => {
+  it('7. duplicate retry does not duplicate projection transition or outbox', async () => {
     await coordinator.reconcileInOuterTransaction({
-      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-3')),
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-4')),
     });
 
     const input = {
       reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'dup-1')),
-      webhookEventUpsert: {
-        organizationId: fixture.org.id,
-        vehicleId: fixture.vehicle.id,
-        tokenId: fixture.tokenId,
-        provider: 'DIMO',
-        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
-        observedAt: new Date('2026-01-01T11:00:00.000Z'),
-        rawPayloadJson: {},
-      },
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
     };
 
     const first = await coordinator.reconcileInOuterTransaction(input);
@@ -249,7 +258,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     expect(outboxCount).toBe(1);
   });
 
-  it('11. tenant mismatch rolls back everything', async () => {
+  it('8. tenant mismatch rolls back everything', async () => {
     const before = await counts();
     await expect(
       coordinator.reconcileInOuterTransaction({

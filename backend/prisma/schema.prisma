@@ -8174,6 +8174,7 @@ model DeviceConnectionPhysicalStateActionOutbox {
   idempotencyKey             String                                          @unique @map("idempotency_key")
   status                     DeviceConnectionPhysicalStateActionOutboxStatus @default(PENDING)
   processingAttempts         Int                                             @default(0) @map("processing_attempts")
+  processingClaimToken       String?                                         @map("processing_claim_token")
   processingLeaseExpiresAt   DateTime?                                       @map("processing_lease_expires_at")
   nextRetryAt                DateTime?                                       @map("next_retry_at")
   lastErrorCode              String?                                         @map("last_error_code")

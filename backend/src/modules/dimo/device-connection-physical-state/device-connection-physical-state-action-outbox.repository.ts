@@ -28,6 +28,34 @@ export type PhysicalStateActionOutboxEnqueueInput = {
   alertAction: PhysicalStateAlertAction;
 };
 
+export type PhysicalStateActionOutboxClaimedRow = {
+  id: string;
+  organizationId: string;
+  vehicleId: string;
+  provider: string;
+  bindingKey: string;
+  transitionId: string;
+  stateVersion: number;
+  evidenceReferenceId: string;
+  canonicalEventId: string | null;
+  episodeAction: string;
+  alertAction: string;
+  idempotencyKey: string;
+  status: DeviceConnectionPhysicalStateActionOutboxStatus;
+  processingAttempts: number;
+  processingClaimToken: string;
+  processingLeaseExpiresAt: Date;
+  nextRetryAt: Date | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+  deadLetteredAt: Date | null;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type OutboxMutationResult = { updated: boolean };
+
 type OutboxRow = {
   id: string;
   organization_id: string;
@@ -43,6 +71,7 @@ type OutboxRow = {
   idempotency_key: string;
   status: DeviceConnectionPhysicalStateActionOutboxStatus;
   processing_attempts: number;
+  processing_claim_token: string | null;
   processing_lease_expires_at: Date | null;
   next_retry_at: Date | null;
   last_error_code: string | null;
@@ -53,7 +82,10 @@ type OutboxRow = {
   updated_at: Date;
 };
 
-function mapOutboxRow(row: OutboxRow) {
+function mapOutboxRow(row: OutboxRow): PhysicalStateActionOutboxClaimedRow {
+  if (!row.processing_claim_token || !row.processing_lease_expires_at) {
+    throw new Error('physical_state_action_outbox_claim_missing_fencing_fields');
+  }
   return {
     id: row.id,
     organizationId: row.organization_id,
@@ -69,6 +101,7 @@ function mapOutboxRow(row: OutboxRow) {
     idempotencyKey: row.idempotency_key,
     status: row.status,
     processingAttempts: row.processing_attempts,
+    processingClaimToken: row.processing_claim_token,
     processingLeaseExpiresAt: row.processing_lease_expires_at,
     nextRetryAt: row.next_retry_at,
     lastErrorCode: row.last_error_code,
@@ -161,12 +194,13 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
     limit: number,
     now: Date,
     leaseExpiresAt: Date,
-  ) {
+  ): Promise<PhysicalStateActionOutboxClaimedRow[]> {
     const rows = await this.prisma.$queryRaw<OutboxRow[]>`
       UPDATE device_connection_physical_state_action_outbox AS o
       SET
         status = ${DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING}::"DeviceConnectionPhysicalStateActionOutboxStatus",
         processing_attempts = o.processing_attempts + 1,
+        processing_claim_token = gen_random_uuid()::text,
         processing_lease_expires_at = ${leaseExpiresAt},
         updated_at = NOW()
       WHERE o.id IN (
@@ -194,12 +228,17 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
     return rows.map(mapOutboxRow);
   }
 
-  async claimForProcessing(id: string, now: Date, leaseExpiresAt: Date) {
+  async claimForProcessing(
+    id: string,
+    now: Date,
+    leaseExpiresAt: Date,
+  ): Promise<PhysicalStateActionOutboxClaimedRow | null> {
     const rows = await this.prisma.$queryRaw<OutboxRow[]>`
       UPDATE device_connection_physical_state_action_outbox AS o
       SET
         status = ${DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING}::"DeviceConnectionPhysicalStateActionOutboxStatus",
         processing_attempts = o.processing_attempts + 1,
+        processing_claim_token = gen_random_uuid()::text,
         processing_lease_expires_at = ${leaseExpiresAt},
         updated_at = NOW()
       WHERE o.id = ${id}
@@ -222,40 +261,61 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
     return row ? mapOutboxRow(row) : null;
   }
 
-  async markCompleted(id: string) {
-    return this.prisma.deviceConnectionPhysicalStateActionOutbox.update({
-      where: { id },
+  async markCompleted(id: string, claimToken: string): Promise<OutboxMutationResult> {
+    const result = await this.prisma.deviceConnectionPhysicalStateActionOutbox.updateMany({
+      where: {
+        id,
+        status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
+        processingClaimToken: claimToken,
+      },
       data: {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.COMPLETED,
         completedAt: new Date(),
         processingLeaseExpiresAt: null,
+        processingClaimToken: null,
         nextRetryAt: null,
         lastErrorCode: null,
         lastErrorMessage: null,
       },
     });
+    return { updated: result.count > 0 };
   }
 
   async markRetryableFailed(
     id: string,
+    claimToken: string,
     input: { errorCode: string; errorMessage: string; nextRetryAt: Date },
-  ) {
-    return this.prisma.deviceConnectionPhysicalStateActionOutbox.update({
-      where: { id },
+  ): Promise<OutboxMutationResult> {
+    const result = await this.prisma.deviceConnectionPhysicalStateActionOutbox.updateMany({
+      where: {
+        id,
+        status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
+        processingClaimToken: claimToken,
+      },
       data: {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.RETRYABLE_FAILED,
         lastErrorCode: input.errorCode,
         lastErrorMessage: input.errorMessage,
         nextRetryAt: input.nextRetryAt,
         processingLeaseExpiresAt: null,
+        processingClaimToken: null,
       },
     });
+    return { updated: result.count > 0 };
   }
 
-  async markDeadLetter(id: string, input: { errorCode: string; errorMessage: string }) {
+  async markDeadLetter(
+    id: string,
+    claimToken: string,
+    input: { errorCode: string; errorMessage: string },
+  ): Promise<OutboxMutationResult> {
     const deadLetteredAt = new Date();
-    return this.prisma.deviceConnectionPhysicalStateActionOutbox.update({
-      where: { id },
+    const result = await this.prisma.deviceConnectionPhysicalStateActionOutbox.updateMany({
+      where: {
+        id,
+        status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
+        processingClaimToken: claimToken,
+      },
       data: {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.DEAD_LETTER,
         lastErrorCode: input.errorCode,
@@ -263,15 +323,24 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
         deadLetteredAt,
         nextRetryAt: null,
         processingLeaseExpiresAt: null,
+        processingClaimToken: null,
       },
     });
+    return { updated: result.count > 0 };
   }
 
-  async releaseExpiredLease(id: string, nextRetryAt: Date) {
+  async releaseExpiredLease(
+    id: string,
+    observedClaimToken: string,
+    staleBefore: Date,
+    nextRetryAt: Date,
+  ): Promise<OutboxMutationResult> {
     const result = await this.prisma.deviceConnectionPhysicalStateActionOutbox.updateMany({
       where: {
         id,
         status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
+        processingClaimToken: observedClaimToken,
+        processingLeaseExpiresAt: { lte: staleBefore },
       },
       data: {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.RETRYABLE_FAILED,
@@ -279,20 +348,26 @@ export class DeviceConnectionPhysicalStateActionOutboxRepository {
         lastErrorMessage: 'processing lease expired before ack',
         nextRetryAt,
         processingLeaseExpiresAt: null,
+        processingClaimToken: null,
       },
     });
-    return result.count > 0;
+    return { updated: result.count > 0 };
   }
 
   findStaleProcessingBatch(staleBefore: Date, limit: number) {
     return this.prisma.deviceConnectionPhysicalStateActionOutbox.findMany({
       where: {
         status: DeviceConnectionPhysicalStateActionOutboxStatus.PROCESSING,
-        processingLeaseExpiresAt: { lt: staleBefore },
+        processingLeaseExpiresAt: { lte: staleBefore },
+        processingClaimToken: { not: null },
       },
       orderBy: { createdAt: 'asc' },
       take: limit,
-      select: { id: true },
+      select: {
+        id: true,
+        processingClaimToken: true,
+        processingLeaseExpiresAt: true,
+      },
     });
   }
 }

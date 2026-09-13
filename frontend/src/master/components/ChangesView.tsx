@@ -42,9 +42,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Prisma: device_connection_physical_authority_cutover + device_connection_physical_state_action_outbox.',
       'reconcileInTransaction(tx) refactor; PhysicalStateReconcileCoordinator owns outer PostgreSQL transaction.',
-      'Outbox processor skeleton: FOR UPDATE SKIP LOCKED claim, lease, retry, DLQ — no episode/alert execution.',
+      'Outbox processor skeleton: FOR UPDATE SKIP LOCKED claim, lease, claim-token CAS fencing, retry, DLQ — no episode/alert execution.',
       'Authority scope UNIQUE (organizationId, vehicleId, provider); default LEGACY; flags OFF; unwired.',
-      'PG integration tests: latch, outbox concurrency, coordinator atomicity matrix.',
+      'PG integration tests: latch, outbox concurrency + stale-worker/reaper fencing, coordinator atomicity matrix, retry→DLQ lifecycle.',
     ],
     reason:
       'P2.1 infrastructure per VDC-DEC-013: durable side-effect outbox + forward-only authority latch persistence before shadow/writer cutover.',
