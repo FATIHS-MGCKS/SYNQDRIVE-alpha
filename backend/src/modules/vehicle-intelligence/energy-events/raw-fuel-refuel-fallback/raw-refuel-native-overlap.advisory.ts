@@ -68,27 +68,29 @@ export function classifyRawRefuelNativeOverlapAdvisory(
     }
   }
 
+  const relevantSiblingCount = siblingAssessments.length;
+
   let advisoryClassification: RawRefuelNativeOverlapAdvisoryClassification;
   let detail: string;
 
-  if (input.nativeRefuelRows.length === 0) {
+  if (relevantSiblingCount === 0) {
     advisoryClassification = 'NO_NATIVE_SIBLINGS';
     detail = 'no_native_refuel_neighbors';
   } else if (sameNativeEventIds.length > 1) {
     advisoryClassification = 'AMBIGUOUS_MULTIPLE_SAME';
     detail = 'multiple_same_native_siblings';
+  } else if (sameNativeEventIds.length === 1 && insufficientNativeEventIds.length > 0) {
+    advisoryClassification = 'INSUFFICIENT_EVIDENCE';
+    detail = 'same_with_insufficient_native_siblings';
   } else if (sameNativeEventIds.length === 1) {
     advisoryClassification = 'SAME';
     detail = 'single_same_native_sibling';
-  } else if (
-    insufficientNativeEventIds.length > 0 &&
-    distinctNativeEventIds.length === 0
-  ) {
+  } else if (insufficientNativeEventIds.length > 0) {
     advisoryClassification = 'INSUFFICIENT_EVIDENCE';
-    detail = 'native_neighbors_insufficient_evidence';
-  } else if (sameNativeEventIds.length === 0 && insufficientNativeEventIds.length > 0) {
-    advisoryClassification = 'INSUFFICIENT_EVIDENCE';
-    detail = 'mixed_insufficient_native_neighbors';
+    detail =
+      distinctNativeEventIds.length === 0
+        ? 'native_neighbors_insufficient_evidence'
+        : 'mixed_insufficient_native_neighbors';
   } else {
     advisoryClassification = 'DISTINCT';
     detail = 'native_neighbors_distinct';

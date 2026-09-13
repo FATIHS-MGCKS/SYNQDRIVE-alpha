@@ -85,4 +85,21 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
     });
     expect(result.status).toBe('AMBIGUOUS');
   });
+
+  it('INSUFFICIENT native overlap (including SAME+INSUFFICIENT aggregate) => AMBIGUOUS fail closed', () => {
+    const result = evaluateRawRefuelPromotionEligibility(ready, {
+      capability: 'FUEL_CAPABLE',
+      absoluteDetectionAdmissibility: 'ADMISSIBLE',
+      absoluteSignalTrust: 'TRUSTED',
+      nativeOverlap: {
+        ...noOverlap,
+        advisoryClassification: 'INSUFFICIENT_EVIDENCE',
+        sameNativeEventIds: ['native-same'],
+        insufficientNativeEventIds: ['native-insufficient'],
+        detail: 'same_with_insufficient_native_siblings',
+      },
+    });
+    expect(result.status).toBe('AMBIGUOUS');
+    expect(result.blockedPendingF5).toBe(true);
+  });
 });

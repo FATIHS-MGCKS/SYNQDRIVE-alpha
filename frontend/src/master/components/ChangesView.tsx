@@ -99,6 +99,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14',
+    version: '4.9.1123',
+    title: 'RFRF F4-PR3.1 — SAME+INSUFFICIENT advisory fail-closed micro-closure',
+    summary: [
+      'Fixed aggregate native-overlap advisory: exactly one SAME plus any INSUFFICIENT sibling now fails closed to INSUFFICIENT_EVIDENCE (not clean SAME).',
+      'Foreign-vehicle-only rows aggregate to NO_NATIVE_SIBLINGS after vehicle filter.',
+      'Unit matrix A–I + real PG scenarios S/T; promotion eligibility remains AMBIGUOUS fail-closed; zero fallback VEE; F5 not implemented.',
+      'Blocker taxonomy corrected: KNOWN_P1_F4_PR3_BLOCKERS=0; KNOWN_P1_F5_ENTRY_BLOCKERS=3.',
+    ],
+    reason:
+      'Independent review found insufficient fail-closed semantics when SAME and INSUFFICIENT native siblings coexist in F4 advisory aggregate.',
+    previousBehavior:
+      'classifyRawRefuelNativeOverlapAdvisory returned SAME when exactly one SAME sibling existed, ignoring coexisting INSUFFICIENT siblings.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14.md; EED-EV-0050; raw-refuel-native-overlap.advisory.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T00:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13',
     version: '4.9.1122',
     title: 'RFRF F4-PR3 — Ready evaluator + promotion eligibility + F5 gate stub',

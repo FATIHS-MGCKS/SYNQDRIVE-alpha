@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient, FuelType } from '@prisma/client';
+import { PrismaClient, FuelType, type RawRefuelCandidate } from '@prisma/client';
 import {
   KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES,
   KS_MS_661_OBSERVED_DETECTION_WINDOW,
@@ -102,6 +102,72 @@ async function countPromoted(prisma: PrismaClient, vehicleId: string): Promise<n
   return prisma.rawRefuelCandidate.count({
     where: { vehicleId, lifecycleState: 'PROMOTED' },
   });
+}
+
+function candidateMatcherWindow(candidate: RawRefuelCandidate): { start: Date; end: Date } {
+  const start =
+    candidate.riseOnsetAt ??
+    candidate.physicalEvidenceStart ??
+    candidate.firstObservedAt;
+  const end =
+    candidate.riseEndAt ??
+    candidate.physicalEvidenceEnd ??
+    (candidate.postFuelAbsoluteLiters != null || candidate.postFuelRelativePercent != null
+      ? candidate.lastObservedAt
+      : candidate.firstObservedAt);
+  return { start, end };
+}
+
+function nativeSameSiblingFromCandidate(candidate: RawRefuelCandidate, suffix: string) {
+  const { start, end } = candidateMatcherWindow(candidate);
+  return {
+    vehicleId: candidate.vehicleId,
+    dimoSegmentId: `dimo-same-${suffix}`,
+    kind: 'REFUEL' as const,
+    detectionMechanism: 'refuel',
+    startTime: start,
+    endTime: end,
+    durationSeconds: Math.max(1, Math.round((end.getTime() - start.getTime()) / 1000)),
+    fuelDeltaLiters: candidate.deltaAbsoluteLiters,
+    rawDetectionMeta: {
+      fuelStartLiters: candidate.preFuelAbsoluteLiters,
+      fuelEndLiters: candidate.postFuelAbsoluteLiters,
+    },
+  };
+}
+
+function nativeInsufficientSiblingFromCandidate(candidate: RawRefuelCandidate, suffix: string) {
+  const { end } = candidateMatcherWindow(candidate);
+  const start = new Date(end.getTime() - 7 * 60 * 1000);
+  return {
+    vehicleId: candidate.vehicleId,
+    dimoSegmentId: `dimo-insuff-${suffix}`,
+    detectionSource: 'DIMO_NATIVE' as const,
+    kind: 'REFUEL' as const,
+    detectionMechanism: 'refuel',
+    startTime: start,
+    endTime: end,
+    durationSeconds: Math.max(1, Math.round((end.getTime() - start.getTime()) / 1000)),
+    rawDetectionMeta: {},
+  };
+}
+
+function nativeDistinctSiblingFromCandidate(candidate: RawRefuelCandidate, suffix: string) {
+  const { end } = candidateMatcherWindow(candidate);
+  const start = new Date(end.getTime() + 2 * 60 * 60 * 1000);
+  const distinctEnd = new Date(start.getTime() + 30 * 60 * 1000);
+  return {
+    vehicleId: candidate.vehicleId,
+    dimoSegmentId: `dimo-distinct-${suffix}`,
+    detectionSource: 'DIMO_NATIVE' as const,
+    kind: 'REFUEL' as const,
+    detectionMechanism: 'refuel',
+    startTime: start,
+    endTime: distinctEnd,
+    durationSeconds: 1800,
+    fuelDeltaLiters: 20,
+    rawDetectionMeta: { fuelStartLiters: 20, fuelEndLiters: 40 },
+  };
 }
 
 function buildService(
@@ -401,6 +467,100 @@ function ksMs661Samples() {
         expect(result.created).toBe(1);
         expect(result.rawFuelFallback?.skipReason).toBe('sample_fetch_failed');
         expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('S — SAME + INSUFFICIENT native siblings fail closed (not clean SAME)', async () => {
+      const restore = setRfrfFlags(true, true);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const service = buildService(
+          prisma,
+          jest.fn().mockResolvedValue(syntheticRiseSamples()),
+          jest.fn().mockResolvedValue({ segments: [], outcomes: [] }),
+        );
+        await service.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        const persisted = await prisma.rawRefuelCandidate.findFirst({
+          where: { vehicleId: vehicle.id },
+        });
+        expect(persisted).not.toBeNull();
+
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeSameSiblingFromCandidate(persisted!, suffix),
+        });
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeInsufficientSiblingFromCandidate(persisted!, suffix),
+        });
+
+        const preparation = new RawRefuelPromotionPreparationService(
+          prisma as unknown as PrismaService,
+        );
+        const result = await preparation.preparePromotion(persisted!, {
+          capability: 'FUEL_CAPABLE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          absoluteSignalTrust: 'TRUSTED',
+        });
+
+        expect(result.nativeOverlap.advisoryClassification).toBe('INSUFFICIENT_EVIDENCE');
+        expect(result.nativeOverlap.advisoryClassification).not.toBe('SAME');
+        expect(result.eligibility.status).toBe('AMBIGUOUS');
+        expect(result.canCreateFallbackVehicleEnergyEvent).toBe(false);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        const after = await prisma.rawRefuelCandidate.findUnique({ where: { id: persisted!.id } });
+        expect(after?.lifecycleState).toBe(persisted!.lifecycleState);
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('T — SAME + DISTINCT without INSUFFICIENT remains clean SAME advisory', async () => {
+      const restore = setRfrfFlags(true, true);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const service = buildService(
+          prisma,
+          jest.fn().mockResolvedValue(syntheticRiseSamples()),
+          jest.fn().mockResolvedValue({ segments: [], outcomes: [] }),
+        );
+        await service.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        const persisted = await prisma.rawRefuelCandidate.findFirst({
+          where: { vehicleId: vehicle.id },
+        });
+        expect(persisted).not.toBeNull();
+
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeSameSiblingFromCandidate(persisted!, suffix),
+        });
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeDistinctSiblingFromCandidate(persisted!, suffix),
+        });
+
+        const preparation = new RawRefuelPromotionPreparationService(
+          prisma as unknown as PrismaService,
+        );
+        const result = await preparation.preparePromotion(persisted!, {
+          capability: 'FUEL_CAPABLE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          absoluteSignalTrust: 'TRUSTED',
+        });
+
+        expect(result.nativeOverlap.advisoryClassification).toBe('SAME');
+        expect(result.eligibility.status).toBe('BLOCKED_NATIVE_OVERLAP_REVIEW');
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
       } finally {
         restore();
         await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);

@@ -1529,6 +1529,23 @@ nodes:
       KS MS 661 path executed; F5 not implemented.
     verified_at: "2026-09-13"
 
+  - id: EED-EV-0050
+    type: evidence
+    title: RFRF F4-PR3.1 — SAME+INSUFFICIENT advisory fail-closed micro-closure
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-overlap.advisory.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-overlap.advisory.spec.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime-pr3.postgres.integration.spec.ts
+    summary: >
+      F4-PR3.1 closes aggregate advisory gap: exactly one SAME plus any INSUFFICIENT native sibling
+      fails closed to INSUFFICIENT_EVIDENCE (not clean SAME); foreign-only rows aggregate to
+      NO_NATIVE_SIBLINGS; unit matrix A–I + real PG S/T; promotion eligibility AMBIGUOUS fail-closed;
+      zero fallback VEE; F5 not implemented; KNOWN_P1_F4_PR3_BLOCKERS=0.
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-007
     type: decision
     title: RFRF F4.1 — Separate detection admissibility from promotion trust
