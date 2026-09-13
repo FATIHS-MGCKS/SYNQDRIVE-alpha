@@ -93,7 +93,7 @@ install_and_run_probe() {
   read_metrics "$metrics_file" "$label" || true
 }
 
-PRE_FIX_METRICS_JSON="$METRICS_ROOT/pre-fix-metrics.json"
+PRE_FIX_METRICS_JSON="$METRICS_ROOT/pre_fix-metrics.json"
 HEAD_METRICS_JSON="$METRICS_ROOT/head-metrics.json"
 
 install_and_run_probe "$PRE_FIX_DIR" PRE_FIX PRE_FIX > "$METRICS_ROOT/pre-fix-out.txt"
