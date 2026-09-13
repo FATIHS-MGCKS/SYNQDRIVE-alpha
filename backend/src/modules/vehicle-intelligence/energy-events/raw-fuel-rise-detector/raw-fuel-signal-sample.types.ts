@@ -12,6 +12,8 @@ export interface RawFuelRiseDetectionContext {
   scanWindowStart: Date;
   scanWindowEnd: Date;
   absoluteSignalTrust: 'TRUSTED' | 'UNTRUSTED' | 'UNKNOWN';
+  /** F4.1: whether absolute liters may be selected as F3 primary channel (not promotion trust). */
+  absoluteDetectionAdmissibility: 'ADMISSIBLE' | 'INADMISSIBLE' | 'UNKNOWN';
   relativeSignalAvailable: boolean;
   signalProvider?: string | null;
   detectionVersion: string;

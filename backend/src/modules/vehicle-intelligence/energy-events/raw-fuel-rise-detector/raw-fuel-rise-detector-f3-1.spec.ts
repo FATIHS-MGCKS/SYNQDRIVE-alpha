@@ -2,13 +2,14 @@ import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import { validatePlateauWindow } from './raw-fuel-rise-state-machine';
 import {
   buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   sampleAt,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
 
 describe('raw-fuel-rise-detector F3.1 hardening', () => {
-  const context = buildDetectionContext();
+  const context = buildDetectorPhysicsContext();
 
   describe('plateau final median invariant', () => {
     it('PRE_PLATEAU_FINAL_MEDIAN_INVARIANT — rejects 10.0, 10.9, 10.9 at ±0.5 L', () => {
@@ -110,7 +111,7 @@ describe('raw-fuel-rise-detector F3.1 hardening', () => {
         ...stablePlateauSamples('2026-09-06T10:28:00.000Z', 40, 4, 120),
       ];
       const result = detectRawFuelRises({
-        context: buildDetectionContext({
+        context: buildDetectorPhysicsContext({
           scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
           scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
         }),

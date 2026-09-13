@@ -1,5 +1,18 @@
 # KG-EED Changelog
 
+## 2026-09-13 — RFRF F4.1 signal trust × F3 detection boundary closure
+
+- Cross-contract P1 closed: F3 channel selector used promotion `absoluteSignalTrust=TRUSTED`; runtime resolver returns UNKNOWN
+- Option B: `absoluteDetectionAdmissibility` separate from promotion trust; F3 uses ADMISSIBLE for absolute primary channel
+- KS MS 661 observed absolute-only +24 L stages candidate under runtime trust; promotion remains fail-closed
+- Test epistemics: runtime-faithful vs physics contexts; F4.1 negative safety matrix
+- Evidence EED-EV-0047; decision EED-DEC-RFRF-007 PROPOSED
+- No detectEnergyEvents wiring; F4-PR2 not started
+
+**Verdict:** RFRF_F4_1_SIGNAL_TRUST_CLOSURE=PASS — F4_PR2_START_AUTHORIZED=YES
+
+---
+
 ## 2026-09-13 — RFRF F4-PR1.1 source-identity CHECK hardening
 
 - `vehicle_energy_events_source_identity_check` with IS NOT NULL guards (PostgreSQL CHECK NULL-pass semantics)

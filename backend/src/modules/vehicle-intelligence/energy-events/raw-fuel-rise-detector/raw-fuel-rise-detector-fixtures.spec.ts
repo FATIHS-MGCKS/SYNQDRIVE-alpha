@@ -10,29 +10,33 @@ import {
   KS_MS_661_SYNTHETIC_RFRF_EXPECTED,
 } from '@modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-synthetic.fixture';
 import { detectRawFuelRises } from './raw-fuel-rise-detector';
-import { buildDetectionContext, sampleAt } from './testing/raw-fuel-rise-detector-test.util';
 import {
-  stablePlateauSamples,
+  buildDetectorPhysicsContext,
+  buildRuntimeDetectionContextFromTrust,
   linearRiseSamples,
+  sampleAt,
+  stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
 
 describe('raw-fuel-rise-detector fixtures', () => {
   it('KS MS 661 observed — material local rise detected without native DIMO', () => {
-    const context = buildDetectionContext({
-      organizationId: KS_MS_661_FIXTURE_ORGANIZATION_ID,
-      vehicleId: KS_MS_661_FIXTURE_VEHICLE_ID,
-      scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
-      scanWindowEnd: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.to),
-      relativeSignalAvailable: false,
-    });
-    const result = detectRawFuelRises({
-      context,
-      samples: KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES.map((s) => ({
-        timestamp: new Date(s.timestamp),
-        absoluteLiters: s.absoluteLiters,
-        relativePercent: s.relativePercent,
-      })),
-    });
+    const samples = KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES.map((s) => ({
+      timestamp: new Date(s.timestamp),
+      absoluteLiters: s.absoluteLiters,
+      relativePercent: s.relativePercent,
+    }));
+    const context = buildRuntimeDetectionContextFromTrust(
+      {
+        samples,
+        scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
+        scanWindowEnd: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.to),
+      },
+      {
+        organizationId: KS_MS_661_FIXTURE_ORGANIZATION_ID,
+        vehicleId: KS_MS_661_FIXTURE_VEHICLE_ID,
+      },
+    );
+    const result = detectRawFuelRises({ context, samples });
 
     expect(result.candidates).toHaveLength(1);
     const candidate = result.candidates[0];
@@ -51,7 +55,7 @@ describe('raw-fuel-rise-detector fixtures', () => {
   });
 
   it('KS MS 661 synthetic — full lifecycle READY_FOR_PERSIST', () => {
-    const context = buildDetectionContext({
+    const context = buildDetectorPhysicsContext({
       organizationId: KS_MS_661_FIXTURE_ORGANIZATION_ID,
       vehicleId: KS_MS_661_FIXTURE_VEHICLE_ID,
       scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
@@ -77,7 +81,7 @@ describe('raw-fuel-rise-detector fixtures', () => {
   });
 
   it('two separate refuels in one large window', () => {
-    const context = buildDetectionContext({
+    const context = buildDetectorPhysicsContext({
       scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
       scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
     });
@@ -96,7 +100,7 @@ describe('raw-fuel-rise-detector fixtures', () => {
   });
 
   it('refuel followed by hours of consumption retains detected plateau', () => {
-    const context = buildDetectionContext();
+    const context = buildDetectorPhysicsContext();
     const samples = [
       ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 20, 3, 300),
       ...linearRiseSamples('2026-09-06T08:16:00.000Z', [25, 32, 38, 40], 120),

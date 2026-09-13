@@ -334,6 +334,24 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 
 ---
 
+---
+
+## EED-DEC-RFRF-007 — F4.1 detection admissibility vs promotion trust (2026-09-13)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-007 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-13 |
+| **Question** | F3 channel selector conflated promotion `absoluteSignalTrust` with detection evidence admissibility — KS MS 661 would fail at F4-PR2 wiring with `no_trusted_channel`. |
+| **Decision** | **Option B:** Introduce `absoluteDetectionAdmissibility` (ADMISSIBLE/INADMISSIBLE/UNKNOWN) for F3 primary channel selection. Promotion `absoluteSignalTrust` remains UNKNOWN until fleet-wide authority exists. Staged candidate ≠ promotion authorized. |
+| **Evidence** | EED-EV-0047 |
+| **Alternatives rejected** | Option A (no real authority today); Option C (fail-closed detection leaves KS MS 661 unsupported); deriving TRUSTED from sample presence or fuelType |
+| **Consequences** | F3 semantic adjustment (channel authority + context field); F4-PR2 may stage candidates; F5 retains promotion authority |
+| **Related nodes** | EED-DEC-RFRF-006, EED-EV-0046, EED-EV-0044 |
+
+---
+
 ## EED-DEC-RFRF-006 — F4 Option B phase boundary (2026-09-13)
 
 | Field | Value |

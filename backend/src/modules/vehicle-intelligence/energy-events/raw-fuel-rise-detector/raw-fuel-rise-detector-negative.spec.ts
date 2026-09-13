@@ -1,13 +1,14 @@
 import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import {
   buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   sampleAt,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
 
 describe('raw-fuel-rise-detector negative matrix', () => {
-  const context = buildDetectionContext();
+  const context = buildDetectorPhysicsContext();
 
   it('1 — single-sample spike then baseline', () => {
     const samples = [
@@ -149,19 +150,26 @@ describe('raw-fuel-rise-detector negative matrix', () => {
     expect(result.rejectedOrHeld[0]?.reason).toBe('invalid_sample');
   });
 
-  it('15 — absolute signal UNKNOWN fails closed', () => {
+  it('15 — absolute detection INADMISSIBLE blocks absolute channel', () => {
     const samples = stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300);
     const result = detectRawFuelRises({
-      context: buildDetectionContext({ absoluteSignalTrust: 'UNKNOWN', relativeSignalAvailable: false }),
+      context: buildDetectionContext({
+        absoluteSignalTrust: 'UNKNOWN',
+        absoluteDetectionAdmissibility: 'INADMISSIBLE',
+        relativeSignalAvailable: false,
+      }),
       samples,
     });
     expect(result.candidates).toHaveLength(0);
     expect(result.rejectedOrHeld[0]?.reason).toBe('no_trusted_channel');
   });
 
-  it('16 — absolute signal UNTRUSTED fails closed', () => {
+  it('16 — absolute detection INADMISSIBLE with UNTRUSTED promotion trust', () => {
     const result = detectRawFuelRises({
-      context: buildDetectionContext({ absoluteSignalTrust: 'UNTRUSTED' }),
+      context: buildDetectionContext({
+        absoluteSignalTrust: 'UNTRUSTED',
+        absoluteDetectionAdmissibility: 'INADMISSIBLE',
+      }),
       samples: stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300),
     });
     expect(result.rejectedOrHeld[0]?.reason).toBe('no_trusted_channel');

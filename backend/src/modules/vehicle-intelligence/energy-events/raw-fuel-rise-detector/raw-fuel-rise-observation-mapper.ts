@@ -40,6 +40,9 @@ export function mapDraftToObservation(
     scanWindowEnd: context.scanWindowEnd,
     signalProvider: context.signalProvider ?? null,
     evidenceMeta: fields.evidenceMeta,
-    qualityMeta: fields.qualityMeta,
+    qualityMeta: {
+      ...(fields.qualityMeta ?? {}),
+      absoluteDetectionAdmissibility: context.absoluteDetectionAdmissibility,
+    },
   };
 }

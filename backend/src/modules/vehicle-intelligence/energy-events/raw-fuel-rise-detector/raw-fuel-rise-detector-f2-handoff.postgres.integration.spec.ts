@@ -12,7 +12,7 @@ import {
   RFRF_RISE_DETECTOR_VERSION,
 } from './raw-fuel-rise-detector.config';
 import {
-  buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
@@ -92,6 +92,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
           scanWindowEnd: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.to),
           absoluteSignalTrust: 'TRUSTED' as const,
+          absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
           relativeSignalAvailable: false,
           signalProvider: 'DIMO',
           detectionVersion: RFRF_RISE_DETECTION_VERSION,
@@ -127,7 +128,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
         const narrow = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
             scanWindowStart: new Date('2026-09-06T08:00:00.000Z'),
@@ -136,7 +137,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           samples,
         });
         const wide = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
             scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
@@ -170,7 +171,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...partialSamples,
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
-        const ctx = buildDetectionContext({
+        const ctx = buildDetectorPhysicsContext({
           organizationId: org.id,
           vehicleId: vehicle.id,
         });
@@ -201,7 +202,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
         const detection = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
           }),

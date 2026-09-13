@@ -1474,6 +1474,35 @@ nodes:
       PASS; DETECT_ENERGY_EVENTS_RAW_PATH_WIRED=NO; F4_VEE_UPSERT_REACHABLE=NO.
     verified_at: "2026-09-13"
 
+  - id: EED-EV-0047
+    type: evidence
+    title: RFRF F4.1 — Signal trust × F3 detection boundary closure
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-1-signal-trust-detection-boundary-2026-09-13.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-channel-authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-f4-1-signal-trust-detection-boundary.spec.ts
+    summary: >
+      F4.1 pre-PR2 contract closure: absoluteDetectionAdmissibility separate from promotion trust;
+      F3 channel selector uses ADMISSIBLE not TRUSTED; KS MS 661 observed fixture stages candidate
+      under runtime UNKNOWN promotion trust; canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion
+      remains false; no schema change; DETECT_ENERGY_EVENTS_RAW_PATH_WIRED=NO.
+    verified_at: "2026-09-13"
+
+  - id: EED-DEC-RFRF-007
+    type: decision
+    title: RFRF F4.1 — Separate detection admissibility from promotion trust
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      F3 absolute primary channel gated by absoluteDetectionAdmissibility=ADMISSIBLE, not promotion
+      absoluteSignalTrust=TRUSTED. Promotion trust stays UNKNOWN until authoritative fleet-wide
+      contract exists. STAGED_CANDIDATE != PROMOTION_AUTHORIZED.
+    evidence: [EED-EV-0047]
+    verified_at: "2026-09-13"
+
   - id: EED-DEC-RFRF-006
     type: decision
     title: RFRF F4 — Option B phase boundary (dark staging; promotion execution F5-gated)

@@ -21,14 +21,14 @@ describe('RawFuelSignalTrustResolver', () => {
     }
   });
 
-  it('does not derive TRUSTED from absolute sample presence alone', () => {
-    expect(
-      resolveRawFuelSignalTrust({
-        samples: [{ timestamp: new Date('2026-09-13T08:00:00.000Z'), absoluteLiters: 42.5 }],
-        scanWindowStart: new Date('2026-09-13T07:00:00.000Z'),
-        scanWindowEnd: new Date('2026-09-13T09:00:00.000Z'),
-      }).absoluteSignalTrust,
-    ).toBe('UNKNOWN');
+  it('does not derive promotion TRUSTED from absolute sample presence alone', () => {
+    const result = resolveRawFuelSignalTrust({
+      samples: [{ timestamp: new Date('2026-09-13T08:00:00.000Z'), absoluteLiters: 42.5 }],
+      scanWindowStart: new Date('2026-09-13T07:00:00.000Z'),
+      scanWindowEnd: new Date('2026-09-13T09:00:00.000Z'),
+    });
+    expect(result.absoluteSignalTrust).toBe('UNKNOWN');
+    expect(result.absoluteDetectionAdmissibility).toBe('ADMISSIBLE');
   });
 
   it('relative availability is separate and requires semantically valid relative samples', () => {
@@ -43,6 +43,7 @@ describe('RawFuelSignalTrustResolver', () => {
       }),
     ).toEqual({
       absoluteSignalTrust: 'UNKNOWN',
+      absoluteDetectionAdmissibility: 'UNKNOWN',
       relativeSignalAvailable: true,
     });
 
@@ -62,6 +63,17 @@ describe('RawFuelSignalTrustResolver', () => {
       scanWindowEnd: new Date('2026-09-13T09:00:00.000Z'),
     });
     expect(result.relativeSignalAvailable).toBe(true);
+    expect(result.absoluteSignalTrust).toBe('UNKNOWN');
+    expect(result.absoluteDetectionAdmissibility).toBe('UNKNOWN');
+  });
+
+  it('negative absolute liters are INADMISSIBLE not ADMISSIBLE', () => {
+    const result = resolveRawFuelSignalTrust({
+      samples: [{ timestamp: new Date('2026-09-13T08:00:00.000Z'), absoluteLiters: -1 }],
+      scanWindowStart: new Date('2026-09-13T07:00:00.000Z'),
+      scanWindowEnd: new Date('2026-09-13T09:00:00.000Z'),
+    });
+    expect(result.absoluteDetectionAdmissibility).toBe('INADMISSIBLE');
     expect(result.absoluteSignalTrust).toBe('UNKNOWN');
   });
 });
