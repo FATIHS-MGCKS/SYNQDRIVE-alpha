@@ -10,6 +10,7 @@
 | VDC-EVID-GT-R1-UNPLUG-FAILURE-001 | OBD UNPLUG webhook provider `failed` forensics + remediation design | PROVIDER_API + PRODUCTION_OBSERVATION + CODE | CONFIRMED | [GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md](./GT_R1_UNPLUG_WEBHOOK_FAILURE_FORENSICS_2026-09-12.md) |
 | VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 | Authorized UNPLUG webhook `PUT` recovery — `failed`→`enabled`, subscriptions preserved | PROVIDER_API | CONFIRMED | [GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md](./GT_R1_UNPLUG_WEBHOOK_RECOVERY_2026-09-12.md) |
 | VDC-EVID-GT-R1-EXECUTION-001 | GT-R1-UNPLUG-001 controlled physical unplug/replug — KS MX 2024 LTE_R1 live observation | PRODUCTION_OBSERVATION + CODE | CONFIRMED | [GT_R1_UNPLUG_EXECUTION_2026-09-12.md](./GT_R1_UNPLUG_EXECUTION_2026-09-12.md) |
+| VDC-EVID-PHYSICAL-STATE-FOUNDATION-001 | Phase 1 canonical physical-device-state reconciliation foundation (dark deploy) | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT / PG_VALIDATION_PENDING | [PHYSICAL_STATE_FOUNDATION_2026-09-12.md](./PHYSICAL_STATE_FOUNDATION_2026-09-12.md) |
 
 ## Code evidence (repository — bootstrap index)
 
@@ -20,3 +21,4 @@
 | Freshness resolver | `backend/src/modules/vehicles/telemetry-freshness.resolver.ts` |
 | Runtime builder | `backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts` |
 | Connectivity alerts (DIMO module) | `backend/src/modules/dimo/connectivity-alert/` |
+| Physical-state reconciliation (Phase 1) | `backend/src/modules/dimo/device-connection-physical-state/` |

@@ -481,3 +481,32 @@ nodes:
     source_paths:
       - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
       - architecture/vehicle-device-connectivity/operations/POLLING_AND_SCHEDULERS.md
+
+  - id: VDC-DEC-012
+    type: decision
+    title: Durable effective physical-device-state projection
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Provider-neutral effective OBD plug authority; webhook history is evidence not dedupe authority; flag OFF Phase 1.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-EVID-GT-R1-EXECUTION-001
+    type: evidence
+    title: GT-R1-UNPLUG-001 physical execution
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: KS MX 2024 unplug/replug; webhook no_state_change after snapshot replug.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/GT_R1_UNPLUG_EXECUTION_2026-09-12.md
+
+  - id: VDC-EVID-PHYSICAL-STATE-FOUNDATION-001
+    type: evidence
+    title: Physical-state reconciliation Phase 1 foundation
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Dark-deploy schema, policy, repository, service, tests.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_FOUNDATION_2026-09-12.md
+      - backend/src/modules/dimo/device-connection-physical-state/
