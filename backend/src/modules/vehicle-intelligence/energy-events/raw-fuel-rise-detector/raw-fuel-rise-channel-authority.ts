@@ -15,7 +15,7 @@ export function selectPrimarySignalChannel(
   const absoluteSeries = extractChannelSeries(samples, 'ABSOLUTE_LITERS');
   const relativeSeries = extractChannelSeries(samples, 'RELATIVE_PERCENT');
 
-  if (context.absoluteSignalTrust === 'TRUSTED') {
+  if (context.absoluteDetectionAdmissibility === 'ADMISSIBLE') {
     if (absoluteSeries.length >= config.absolute.prePlateauMinSamples) {
       return { ok: true, channel: 'ABSOLUTE_LITERS' };
     }

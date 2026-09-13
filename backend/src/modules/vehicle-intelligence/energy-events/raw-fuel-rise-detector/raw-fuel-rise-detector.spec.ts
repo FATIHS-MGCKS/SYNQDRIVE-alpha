@@ -2,6 +2,7 @@ import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import { extractChannelSeries } from './raw-fuel-rise-normalizer';
 import {
   buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   sampleAt,
   stablePlateauSamples,
@@ -9,7 +10,7 @@ import {
 
 describe('raw-fuel-rise-detector positive paths', () => {
   it('A — trusted ABSOLUTE_ONLY refuel', () => {
-    const context = buildDetectionContext();
+    const context = buildDetectorPhysicsContext();
     const samples = [
       ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 7, 3, 300),
       ...linearRiseSamples('2026-09-06T08:16:00.000Z', [12, 18, 24, 29], 120),
@@ -44,7 +45,7 @@ describe('raw-fuel-rise-detector positive paths', () => {
   });
 
   it('C — absolute primary with relative corroboration only (single candidate)', () => {
-    const context = buildDetectionContext({ relativeSignalAvailable: true });
+    const context = buildDetectorPhysicsContext({ relativeSignalAvailable: true });
     const samples = [
       ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 7, 3, 300).map((s) => ({
         ...s,
@@ -65,7 +66,7 @@ describe('raw-fuel-rise-detector positive paths', () => {
   });
 
   it('H — sparse but acceptable telemetry gap', () => {
-    const context = buildDetectionContext();
+    const context = buildDetectorPhysicsContext();
     const samples = [
       sampleAt('2026-09-06T08:00:00.000Z', 7),
       sampleAt('2026-09-06T08:05:00.000Z', 7),
@@ -81,7 +82,7 @@ describe('raw-fuel-rise-detector positive paths', () => {
   });
 
   it('I — delayed post plateau', () => {
-    const context = buildDetectionContext();
+    const context = buildDetectorPhysicsContext();
     const samples = [
       ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300),
       sampleAt('2026-09-06T08:16:00.000Z', 16),
@@ -95,7 +96,7 @@ describe('raw-fuel-rise-detector positive paths', () => {
   });
 
   it('J — quantized gauge rise', () => {
-    const context = buildDetectionContext();
+    const context = buildDetectorPhysicsContext();
     const samples = [
       ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 8, 3, 300),
       sampleAt('2026-09-06T08:16:00.000Z', 14),

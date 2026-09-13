@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f4-1-signal-trust-closure-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4.1 — Signal trust × F3 detection boundary closure',
+    summary: [
+      'Cross-contract P1: F3 required promotion TRUSTED; runtime resolver returns UNKNOWN — KS MS 661 would fail with no_trusted_channel.',
+      'Option B: absoluteDetectionAdmissibility separate from promotion trust; F3 absolute primary uses ADMISSIBLE.',
+      'KS MS 661 observed +24 L absolute-only stages candidate; promotion remains fail-closed (F5 gate).',
+      'Test epistemics hardened: runtime-faithful vs physics contexts; F4.1 negative safety matrix.',
+      'No detectEnergyEvents wiring; F4-PR2 entry authorized; no schema/flag changes.',
+    ],
+    reason:
+      'Naive F4-PR2 runtime composition would hide the canonical production incident that motivated RFRF unless detection admissibility and promotion trust are separated.',
+    previousBehavior:
+      'F3 channel selector required absoluteSignalTrust=TRUSTED; test helper defaulted TRUSTED, hiding runtime gap.',
+    details:
+      'docs/audits/eed-rfrf-f4-1-signal-trust-detection-boundary-2026-09-13.md; EED-DEC-RFRF-007; EED-EV-0047.',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-13T10:45:00.000Z',
+  },
+  {
     id: 'vdc-rb019-phase2-cutover-scope-audit-2026-09-13',
     version: '4.9.1121',
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
