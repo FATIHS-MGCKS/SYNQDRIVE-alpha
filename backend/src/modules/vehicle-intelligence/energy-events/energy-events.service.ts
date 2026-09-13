@@ -26,6 +26,8 @@ import {
   type RefuelEventWindow,
 } from './refuel-sibling-reconciliation';
 import { PhysicalRefuelReconciliationRuntimeService } from './physical-refuel-reconciliation-runtime.service';
+import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
+import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.types';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -42,6 +44,8 @@ export interface DetectEnergyEventsResult {
   reconciledRefuelSiblings: number;
   events: EnergyEventDto[];
   mechanismOutcomes?: EnergyMechanismFetchOutcome[];
+  /** Dark RFRF branch summary — present when runtime service is wired; native path unchanged. */
+  rawFuelFallback?: RawFuelRefuelFallbackScanResult;
 }
 
 /**
@@ -59,6 +63,8 @@ export class EnergyEventsService {
     private readonly fuelStationEnrichmentProducer?: FuelStationEnrichmentProducerService,
     @Optional()
     private readonly physicalRefuelReconciliationRuntime?: PhysicalRefuelReconciliationRuntimeService,
+    @Optional()
+    private readonly rawFuelRefuelFallbackRuntime?: RawFuelRefuelFallbackRuntimeService,
   ) {}
 
   async listEnergyEvents(
@@ -204,6 +210,18 @@ export class EnergyEventsService {
       Date.now() - startedAt,
     );
 
+    const rawFuelFallback = await this.runRawFuelFallbackBranch({
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      tokenId,
+      windowFrom: options.from,
+      windowTo: options.to,
+      fuelType: vehicle.fuelType,
+      dimoPowertrainType: vehicle.dimoVehicle?.powertrainType ?? null,
+      dimoFuelType: vehicle.dimoVehicle?.fuelType ?? null,
+      requestContext,
+    });
+
     return {
       fetched: segments.length,
       created,
@@ -214,7 +232,44 @@ export class EnergyEventsService {
       reconciledRefuelSiblings,
       events: persistedRows.map(toEnergyEventDto),
       mechanismOutcomes,
+      rawFuelFallback,
     };
+  }
+
+  private async runRawFuelFallbackBranch(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    windowFrom: Date;
+    windowTo: Date;
+    fuelType: import('@prisma/client').FuelType | null;
+    dimoPowertrainType: string | null;
+    dimoFuelType: string | null;
+    requestContext: { organizationId: string; vehicleId: string; tokenId: number };
+  }): Promise<RawFuelRefuelFallbackScanResult | undefined> {
+    if (!this.rawFuelRefuelFallbackRuntime) return undefined;
+    try {
+      return await this.rawFuelRefuelFallbackRuntime.scanIfEnabled(input);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `RFRF dark branch outer isolation vehicle=${input.vehicleId}: ${message}`,
+      );
+      return {
+        invoked: true,
+        masterEnabled: true,
+        persistEnabled: false,
+        samplesFetched: 0,
+        detectorInvoked: false,
+        observationsEmitted: 0,
+        persistAttempted: 0,
+        candidatesCreated: 0,
+        candidatesRediscovered: 0,
+        persistSkippedBecauseFlagOff: 0,
+        candidateOutcomes: [],
+        branchError: message,
+      };
+    }
   }
 
   async buildTripsTimeline(
