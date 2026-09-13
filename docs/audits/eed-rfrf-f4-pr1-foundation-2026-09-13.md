@@ -1,8 +1,8 @@
 # EED RFRF F4-PR1 — Foundation implementation audit
 
-**Date:** 2026-09-13  
-**Phase:** F4-PR1 only (schema + flags + capability/trust resolvers)  
-**Predecessor:** PR #1628 merged (`ca16ca034809a9bad2c47a0f06f3b908f83bfaf9`)  
+**Date:** 2026-09-13
+**Phase:** F4-PR1 only (schema + flags + capability/trust resolvers)
+**Predecessor:** PR #1628 merged (`ca16ca034809a9bad2c47a0f06f3b908f83bfaf9`)
 **Canonical boundary:** `docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md` (EED-DEC-RFRF-006, EED-EV-0045)
 
 ---
@@ -14,7 +14,7 @@
 | **BASE_MAIN_SHA** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` (PR #1628 merge) |
 | **Branch base includes** | `defe85a91` — ci(vehicle-detail): backend typecheck heap (#1629) |
 | **Branch** | `cursor/eed-rfrf-f4-pr1-foundation-f21f` |
-| **FINAL_HEAD** | _(set at commit — see PR)_ |
+| **FINAL_HEAD** | `a4e9e374b` (PR1.1 micro-closure incl. Legal Documents CI heap fix) |
 
 ---
 
@@ -206,7 +206,7 @@ No runtime writes in F4-PR1.
 
 - Absolute signal trust authority not yet available fleet-wide — fail closed by design.
 - Synthetic `dimoSegmentId` fallback compatibility remains F5-owned / NOT_PROVEN.
-- Full migration chain on **empty** DB verified via `prove-rfrf-f4-pr1-full-migration-chain.sh`; other environments may still hit pre-RFRF historical migration defects unrelated to F4-PR1.
+- Full migration chain on **empty** DB: `FAIL_PRE_EXISTING` at historical `20260413230000_add_composite_indexes_batch_c` (pre-RFRF CREATE INDEX CONCURRENTLY defect); F4-PR1 isolated proof unaffected.
 - F4-PR2 (dark runtime wiring) not started.
 
 ---
