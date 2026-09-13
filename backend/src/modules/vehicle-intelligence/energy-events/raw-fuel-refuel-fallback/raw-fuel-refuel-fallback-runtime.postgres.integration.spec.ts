@@ -143,7 +143,31 @@ function buildEnergyEventsService(
   fetchFuelLevelSamples: jest.Mock,
   fetchEnergyEventSegments: jest.Mock,
 ) {
-  const dimoSegments = { fetchFuelLevelSamples, fetchEnergyEventSegments };
+  const fetchFuelLevelSamplesWithOutcome = jest.fn(async (...args: unknown[]) => {
+    try {
+      const result = await fetchFuelLevelSamples(...args);
+      if (
+        result &&
+        typeof result === 'object' &&
+        'status' in (result as Record<string, unknown>)
+      ) {
+        return result;
+      }
+      return { status: 'SUCCESS', samples: result };
+    } catch (error) {
+      return {
+        status: 'ERROR',
+        samples: [],
+        errorClass: 'PROVIDER_QUERY_FAILED',
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+  const dimoSegments = {
+    fetchFuelLevelSamples,
+    fetchFuelLevelSamplesWithOutcome,
+    fetchEnergyEventSegments,
+  };
   const candidateService = RawRefuelCandidateService.withFixedClock(
     prisma as unknown as PrismaService,
     '2026-09-06T10:00:00.000Z',

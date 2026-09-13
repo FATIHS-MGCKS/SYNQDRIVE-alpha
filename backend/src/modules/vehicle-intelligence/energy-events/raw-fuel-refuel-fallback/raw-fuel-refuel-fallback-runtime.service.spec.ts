@@ -28,21 +28,21 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
   ];
 
   function createService(overrides: {
-    fetchFuelLevelSamples?: jest.Mock;
+    fetchFuelLevelSamplesWithOutcome?: jest.Mock;
     resolveOrCreateCandidate?: jest.Mock;
     config?: { masterEnabled: boolean; persistEnabled: boolean };
   } = {}) {
-    const dimoSegments = {
-      fetchFuelLevelSamples:
-        overrides.fetchFuelLevelSamples ??
-        jest.fn().mockResolvedValue(
-          riseSamples.map((s) => ({
-            timestamp: s.timestamp,
-            absoluteLiters: s.absoluteLiters ?? null,
-            relativePercent: s.relativePercent ?? null,
-          })),
-        ),
-    };
+    const fetchFuelLevelSamplesWithOutcome =
+      overrides.fetchFuelLevelSamplesWithOutcome ??
+      jest.fn().mockResolvedValue({
+        status: 'SUCCESS',
+        samples: riseSamples.map((s) => ({
+          timestamp: s.timestamp,
+          absoluteLiters: s.absoluteLiters ?? null,
+          relativePercent: s.relativePercent ?? null,
+        })),
+      });
+    const dimoSegments = { fetchFuelLevelSamplesWithOutcome };
     const rawRefuelCandidateService = {
       resolveOrCreateCandidate:
         overrides.resolveOrCreateCandidate ??
@@ -69,7 +69,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
     });
     const result = await service.scanIfEnabled(baseInput);
     expect(result.skipReason).toBe('master_disabled');
-    expect(dimoSegments.fetchFuelLevelSamples).not.toHaveBeenCalled();
+    expect(dimoSegments.fetchFuelLevelSamplesWithOutcome).not.toHaveBeenCalled();
   });
 
   it('master=false persist=true fails closed', async () => {
@@ -78,7 +78,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
     });
     const result = await service.scanIfEnabled(baseInput);
     expect(result.skipReason).toBe('persist_without_master');
-    expect(dimoSegments.fetchFuelLevelSamples).not.toHaveBeenCalled();
+    expect(dimoSegments.fetchFuelLevelSamplesWithOutcome).not.toHaveBeenCalled();
   });
 
   it('master=true persist=false detects but does not persist', async () => {
@@ -98,7 +98,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       fuelType: FuelType.OTHER,
     });
     expect(result.skipReason).toBe('capability_unknown');
-    expect(dimoSegments.fetchFuelLevelSamples).not.toHaveBeenCalled();
+    expect(dimoSegments.fetchFuelLevelSamplesWithOutcome).not.toHaveBeenCalled();
   });
 
   it('preserves F4.1 UNKNOWN promotion trust with ADMISSIBLE detection', async () => {
@@ -119,12 +119,30 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
     expect(result.candidatesCreated).toBe(1);
   });
 
-  it('isolates sample fetch failure without throwing', async () => {
+  it('SUCCESS empty telemetry => no_samples', async () => {
     const { service } = createService({
-      fetchFuelLevelSamples: jest.fn().mockRejectedValue(new Error('fetch boom')),
+      fetchFuelLevelSamplesWithOutcome: jest.fn().mockResolvedValue({
+        status: 'SUCCESS',
+        samples: [],
+      }),
+    });
+    const result = await service.scanIfEnabled(baseInput);
+    expect(result.skipReason).toBe('no_samples');
+    expect(result.fetchErrorClass).toBeUndefined();
+  });
+
+  it('PROVIDER error outcome => sample_fetch_failed without throwing', async () => {
+    const { service } = createService({
+      fetchFuelLevelSamplesWithOutcome: jest.fn().mockResolvedValue({
+        status: 'ERROR',
+        samples: [],
+        errorClass: 'PROVIDER_QUERY_FAILED',
+        message: 'fetch boom',
+      }),
     });
     const result = await service.scanIfEnabled(baseInput);
     expect(result.skipReason).toBe('sample_fetch_failed');
+    expect(result.fetchErrorClass).toBe('PROVIDER_QUERY_FAILED');
     expect(result.branchError).toBeUndefined();
   });
 
@@ -146,13 +164,14 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
     ];
     const svc = new RawFuelRefuelFallbackRuntimeService(
       {
-        fetchFuelLevelSamples: jest.fn().mockResolvedValue(
-          twoRefuelSamples.map((s) => ({
+        fetchFuelLevelSamplesWithOutcome: jest.fn().mockResolvedValue({
+          status: 'SUCCESS',
+          samples: twoRefuelSamples.map((s) => ({
             timestamp: s.timestamp,
             absoluteLiters: s.absoluteLiters ?? null,
             relativePercent: s.relativePercent ?? null,
           })),
-        ),
+        }),
       } as never,
       { resolveOrCreateCandidate } as never,
       undefined,

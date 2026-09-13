@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-13 — RFRF F4-PR2.1 micro-closure (typed fetch + observability + PG gate)
+
+- `fetchFuelLevelSamplesWithOutcome()` distinguishes SUCCESS empty vs ERROR (AUTH_UNAVAILABLE / PROVIDER_QUERY_FAILED)
+- Legacy `fetchFuelLevelSamples()` delegates; compatibility preserved
+- Full minimum dark metrics contract (`synqdrive_rfrf_*` dedicated counters)
+- PG gate: removed silent `|| true` on db push; explicit TEST_SCHEMA_BOOTSTRAP_MODE + localhost isolation checks
+
+**Verdict:** RFRF_F4_PR2_1_MICRO_CLOSURE=PASS
+
+---
+
 ## 2026-09-13 — RFRF F4-PR2 dark raw-fuel runtime wiring
 
 - Parallel dark branch wired into `detectEnergyEvents()` after native path completes

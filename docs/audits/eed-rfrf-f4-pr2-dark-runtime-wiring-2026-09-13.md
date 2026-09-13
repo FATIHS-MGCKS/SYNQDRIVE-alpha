@@ -14,7 +14,7 @@
 | Parallel raw branch wired into `detectEnergyEvents()` | YES |
 | F4-PR1 flag reader (master / persist fail-closed) | YES |
 | `RawFuelCapabilityResolver` gate | YES |
-| Raw fuel sample fetch via `DimoSegmentsService.fetchFuelLevelSamples` | YES |
+| Raw fuel sample fetch via `DimoSegmentsService.fetchFuelLevelSamplesWithOutcome` | YES |
 | F4.1 detection admissibility preserved | YES |
 | F3 `detectRawFuelRises()` invocation | YES |
 | F3→F2 observation mapping + `RawRefuelCandidateService` persistence | YES |
@@ -61,7 +61,7 @@ detectEnergyEvents()
       → loadRawFuelRefuelFallbackConfig()
       → fail-closed: persist without master
       → resolveRawFuelCapability()
-      → fetchFuelLevelSamples(window)
+      → fetchFuelLevelSamplesWithOutcome(window)
       → resolveRawFuelSignalTrust() [F4.1 admissibility]
       → detectRawFuelRises()
       → per observation: RawRefuelCandidateService.resolveOrCreateCandidate()
@@ -139,20 +139,66 @@ Call-graph search: no `vehicleEnergyEvent.create/upsert` in `raw-fuel-refuel-fal
 
 ---
 
-## 9. Dark observability
+## 9. Dark observability (F4-PR2.1 minimum contract)
 
-Prometheus counters (no high-cardinality vehicle labels):
+Prometheus counters (no high-cardinality vehicle/VIN/coordinate/sourceEventKey labels):
 
-- `synqdrive_rfrf_scan_total{outcome,capability}`
-- `synqdrive_rfrf_observations_total{lifecycle}`
-- `synqdrive_rfrf_candidate_persist_total{result}`
-- `synqdrive_rfrf_candidate_errors_total`
+| Contract item | Metric |
+|---------------|--------|
+| Branch invocation | `synqdrive_rfrf_branch_invocation_total` |
+| Master disabled | `synqdrive_rfrf_master_disabled_total` |
+| Persist without master | `synqdrive_rfrf_persist_without_master_total` |
+| Capability skip | `synqdrive_rfrf_capability_skip_total{capability}` |
+| Sample fetch success | `synqdrive_rfrf_sample_fetch_success_total` |
+| Sample fetch failure | `synqdrive_rfrf_sample_fetch_failure_total{error_class}` |
+| Detector invocation | `synqdrive_rfrf_detector_invocation_total` |
+| Zero observations | `synqdrive_rfrf_zero_observations_total` |
+| Observations emitted | `synqdrive_rfrf_observations_total{lifecycle}` |
+| Persist attempt | `synqdrive_rfrf_persist_attempt_total` |
+| Persist created | `synqdrive_rfrf_persist_created_total` |
+| Persist rediscovered | `synqdrive_rfrf_persist_rediscovered_total` |
+| Persist skipped (flag off) | `synqdrive_rfrf_persist_skipped_flag_off_total` |
+| Per-candidate error | `synqdrive_rfrf_candidate_errors_total` |
+| Branch error | `synqdrive_rfrf_branch_error_total` |
+| Non-finite exclusion (when F3 surfaces invalid_sample) | `synqdrive_rfrf_non_finite_sample_exclusion_total` |
 
 Structured logs on isolated failures (vehicleId in log line per existing conventions).
 
 ---
 
-## 10. Remaining F5 / production blockers
+## 10. F4-PR2.1 — Typed fuel fetch semantics
+
+### Problem closed
+
+Legacy `fetchFuelLevelSamples()` returned `[]` for both provider failures and legitimate empty telemetry, making RFRF `sample_fetch_failed` vs `no_samples` epistemically ambiguous when using the legacy API.
+
+### Solution
+
+`fetchFuelLevelSamplesWithOutcome()` on `DimoSegmentsService`:
+
+| Outcome | Meaning | RFRF skipReason |
+|---------|---------|-----------------|
+| `{ status: 'SUCCESS', samples: [] }` | Provider query succeeded; zero usable rows | `no_samples` |
+| `{ status: 'ERROR', errorClass: 'PROVIDER_QUERY_FAILED' }` | GraphQL/transport failure | `sample_fetch_failed` |
+| `{ status: 'ERROR', errorClass: 'AUTH_UNAVAILABLE' }` | No vehicle JWT | `sample_fetch_failed` |
+
+Legacy `fetchFuelLevelSamples()` delegates to the typed API and **preserves** `[]` on ERROR for existing native/refuel-rise callers.
+
+**PROVIDER_ERROR ≠ SUCCESS_EMPTY**
+
+Auth unavailable is classified as **ERROR / AUTH_UNAVAILABLE**, not SUCCESS empty.
+
+### PG gate bootstrap (F4-PR2.1)
+
+| Field | Value |
+|-------|-------|
+| `TEST_SCHEMA_BOOTSTRAP_MODE` | `RESILIENT_EPHEMERAL_RECOVERY` + explicit `DB_PUSH_TEST_ONLY` drift sync |
+| `PG_GATE_SCHEMA_FAILURE_MASKED` | NO — removed `\|\| true` on `prisma db push` |
+| `PG_GATE_TEST_DB_ISOLATION` | Dedicated `rfrf_f4_pr2_*` on localhost only |
+
+---
+
+## 11. Remaining F5 / production blockers
 
 - F5 native↔fallback convergence authorization
 - Fallback VEE promotion execution (`SYNQDRIVE_RAW_FUEL_FALLBACK` + `sourceEventKey`)
@@ -163,7 +209,7 @@ Structured logs on isolated failures (vehicleId in log line per existing convent
 
 ---
 
-## 11. Test regression summary
+## 12. Test regression summary
 
 | Gate | Result |
 |------|--------|
@@ -179,7 +225,7 @@ Structured logs on isolated failures (vehicleId in log line per existing convent
 
 ---
 
-## 12. Epistemic labels
+## 13. Epistemic labels
 
 | Label | Value |
 |-------|-------|
@@ -190,3 +236,4 @@ Structured logs on isolated failures (vehicleId in log line per existing convent
 | PROVEN_IN_PRODUCTION | **NOT used** (no production change) |
 
 **RFRF_F4_PR2 = PASS**
+**RFRF_F4_PR2_1_MICRO_CLOSURE = PASS**

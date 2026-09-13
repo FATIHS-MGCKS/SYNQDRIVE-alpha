@@ -1498,15 +1498,16 @@ nodes:
     source_type: CODE
     source_paths:
       - docs/audits/eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13.md
+      - backend/src/modules/dimo/dimo-segments.service.ts
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service.ts
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service.ts
       - backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh
     summary: >
-      F4-PR2 dark parallel branch in detectEnergyEvents: capability gate → fuel fetch → F4.1 trust
-      → F3 detectRawFuelRises → F2 RawRefuelCandidateService persist when flags allow; native path
-      unchanged; failure isolated; 41/41 real PG gate PASS; KS MS 661 one candidate zero VEE;
-      F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; flags default OFF; IMPLEMENTED_AND_INTEGRATION_PROVEN not production.
+      F4-PR2 dark parallel branch in detectEnergyEvents: capability gate → fetchFuelLevelSamplesWithOutcome
+      → F4.1 trust → F3 → F2 persist when flags allow; typed SUCCESS empty vs ERROR; full minimum dark
+      metrics contract; PG gate without silent db push failure masking; 41/41 real PG gate PASS;
+      F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; flags default OFF; PROVEN_BY_INTEGRATION_TEST not production.
     verified_at: "2026-09-13"
 
   - id: EED-DEC-RFRF-007

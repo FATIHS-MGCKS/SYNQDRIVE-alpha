@@ -41,6 +41,7 @@ export interface RawFuelRefuelFallbackScanResult {
   persistEnabled: boolean;
   skipReason?: RawFuelRefuelFallbackSkipReason;
   capability?: RawFuelCapability;
+  fetchErrorClass?: 'AUTH_UNAVAILABLE' | 'PROVIDER_QUERY_FAILED';
   samplesFetched: number;
   detectorInvoked: boolean;
   observationsEmitted: number;

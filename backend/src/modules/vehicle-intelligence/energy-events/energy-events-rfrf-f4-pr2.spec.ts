@@ -82,7 +82,13 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
       fetchFuelLevelSamples: jest.fn().mockImplementation(async () => {
         fuelFetchCalls += 1;
         if (fuelFetchCalls === 1) return [];
-        throw new Error('raw fetch failed');
+        throw new Error('legacy should not be used for raw branch');
+      }),
+      fetchFuelLevelSamplesWithOutcome: jest.fn().mockResolvedValue({
+        status: 'ERROR',
+        samples: [],
+        errorClass: 'PROVIDER_QUERY_FAILED',
+        message: 'raw fetch failed',
       }),
     };
     const store = {
@@ -129,6 +135,7 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
         outcomes: [],
       }),
       fetchFuelLevelSamples: jest.fn(),
+      fetchFuelLevelSamplesWithOutcome: jest.fn(),
     };
     const store = {
       vehicles: [
@@ -155,5 +162,6 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
     const result = await service.detectEnergyEvents(VEHICLE_ID, { from: FROM, to: TO });
     expect(result.rawFuelFallback?.skipReason).toBe('master_disabled');
     expect(dimoSegments.fetchFuelLevelSamples).not.toHaveBeenCalled();
+    expect(dimoSegments.fetchFuelLevelSamplesWithOutcome).not.toHaveBeenCalled();
   });
 });

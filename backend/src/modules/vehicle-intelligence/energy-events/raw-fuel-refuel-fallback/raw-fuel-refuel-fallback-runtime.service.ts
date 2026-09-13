@@ -1,8 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import {
-  DimoSegmentsService,
-  type DimoFuelLevelSample,
-} from '@modules/dimo/dimo-segments.service';
+import { DimoSegmentsService } from '@modules/dimo/dimo-segments.service';
 import {
   loadRawFuelRefuelFallbackConfig,
   type RawFuelRefuelFallbackConfig,
@@ -73,7 +70,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     const config = this.configLoader(env);
 
     if (!config.masterEnabled && config.persistEnabled) {
-      this.metrics?.recordScan('skipped_persist_without_master');
+      this.metrics?.recordPersistWithoutMaster();
       this.logger.warn(
         `RFRF persist flag set without master — fail closed vehicle=${input.vehicleId}`,
       );
@@ -85,7 +82,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     }
 
     if (!config.masterEnabled) {
-      this.metrics?.recordScan('skipped_master_off');
+      this.metrics?.recordMasterDisabled();
       return emptyResult({
         masterEnabled: false,
         persistEnabled: config.persistEnabled,
@@ -100,7 +97,7 @@ export class RawFuelRefuelFallbackRuntimeService {
       this.logger.warn(
         `RFRF dark branch isolated failure vehicle=${input.vehicleId}: ${message}`,
       );
-      this.metrics?.recordScan('branch_error');
+      this.metrics?.recordBranchError();
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
@@ -114,8 +111,9 @@ export class RawFuelRefuelFallbackRuntimeService {
     input: RawFuelRefuelFallbackScanInput,
     config: RawFuelRefuelFallbackConfig,
   ): Promise<RawFuelRefuelFallbackScanResult> {
+    this.metrics?.recordBranchInvocation();
+
     if (input.tokenId <= 0) {
-      this.metrics?.recordScan('skipped_no_token');
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
@@ -131,7 +129,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     });
 
     if (capability === 'NON_FUEL_CAPABLE') {
-      this.metrics?.recordScan('skipped_capability', capability);
+      this.metrics?.recordCapabilitySkip(capability);
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
@@ -142,7 +140,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     }
 
     if (capability === 'UNKNOWN') {
-      this.metrics?.recordScan('skipped_capability', capability);
+      this.metrics?.recordCapabilitySkip(capability);
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
@@ -152,31 +150,32 @@ export class RawFuelRefuelFallbackRuntimeService {
       });
     }
 
-    let samples: DimoFuelLevelSample[];
-    try {
-      samples = await this.dimoSegments.fetchFuelLevelSamples(
-        input.tokenId,
-        input.windowFrom,
-        input.windowTo,
-        input.requestContext,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+    const fetchOutcome = await this.dimoSegments.fetchFuelLevelSamplesWithOutcome(
+      input.tokenId,
+      input.windowFrom,
+      input.windowTo,
+      input.requestContext,
+    );
+
+    if (fetchOutcome.status === 'ERROR') {
       this.logger.warn(
-        `RFRF fuel sample fetch failed vehicle=${input.vehicleId}: ${message}`,
+        `RFRF fuel sample fetch failed vehicle=${input.vehicleId} class=${fetchOutcome.errorClass}: ${fetchOutcome.message}`,
       );
-      this.metrics?.recordScan('skipped_fetch', capability);
+      this.metrics?.recordSampleFetchFailure(fetchOutcome.errorClass);
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
         invoked: true,
         skipReason: 'sample_fetch_failed',
         capability,
+        fetchErrorClass: fetchOutcome.errorClass,
       });
     }
 
+    this.metrics?.recordSampleFetchSuccess();
+    const samples = fetchOutcome.samples;
+
     if (samples.length === 0) {
-      this.metrics?.recordScan('skipped_no_samples', capability);
       return emptyResult({
         masterEnabled: true,
         persistEnabled: config.persistEnabled,
@@ -215,7 +214,16 @@ export class RawFuelRefuelFallbackRuntimeService {
       stationaryEvidenceAvailable: false,
     };
 
+    this.metrics?.recordDetectorInvocation();
     const detection = detectRawFuelRises({ context, samples: mappedSamples });
+
+    const invalidSampleRejections =
+      detection.rejectedOrHeld.filter((item) => item.reason === 'invalid_sample').length;
+    this.metrics?.recordNonFiniteSampleExclusion(invalidSampleRejections);
+
+    if (detection.candidates.length === 0) {
+      this.metrics?.recordZeroObservations();
+    }
 
     const result = emptyResult({
       masterEnabled: true,
@@ -233,7 +241,6 @@ export class RawFuelRefuelFallbackRuntimeService {
       await this.persistObservation(observation, config, result, i);
     }
 
-    this.metrics?.recordScan('success', capability);
     return result;
   }
 
@@ -245,7 +252,7 @@ export class RawFuelRefuelFallbackRuntimeService {
   ): Promise<void> {
     if (!config.persistEnabled) {
       result.persistSkippedBecauseFlagOff += 1;
-      this.metrics?.recordPersist('skipped_flag_off');
+      this.metrics?.recordPersistSkippedFlagOff();
       result.candidateOutcomes.push({
         observationIndex,
         lifecycleState: observation.lifecycleState,
@@ -268,16 +275,17 @@ export class RawFuelRefuelFallbackRuntimeService {
     }
 
     result.persistAttempted += 1;
+    this.metrics?.recordPersistAttempt();
 
     try {
       const resolved =
         await this.rawRefuelCandidateService.resolveOrCreateCandidate(observation);
       if (resolved.created) {
         result.candidatesCreated += 1;
-        this.metrics?.recordPersist('created');
+        this.metrics?.recordPersistCreated();
       } else {
         result.candidatesRediscovered += 1;
-        this.metrics?.recordPersist('rediscovered');
+        this.metrics?.recordPersistRediscovered();
       }
       result.candidateOutcomes.push({
         observationIndex,

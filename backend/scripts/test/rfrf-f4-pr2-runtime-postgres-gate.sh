@@ -4,10 +4,81 @@ set -euo pipefail
 
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GATE_ID="rfrf_f4_pr2_$(date +%s)"
+PG_HOST="${TEST_POSTGRES_HOST:-localhost}"
 PG_PORT="${TEST_POSTGRES_PORT:-5432}"
 PG_DB="rfrf_f4_pr2_${GATE_ID//-/_}"
-PG_USER="rfrf_f4_pr2_test"
+PG_USER="rfrf_f4_pr2_${GATE_ID//-/_}_u"
 PG_PASS="rfrf_f4_pr2_${GATE_ID}_local"
+
+assert_test_db_isolation() {
+  case "${PG_HOST}" in
+    localhost|127.0.0.1) ;;
+    *)
+      echo "Refusing: TEST_POSTGRES_HOST must be localhost or 127.0.0.1 (got ${PG_HOST})" >&2
+      exit 1
+      ;;
+  esac
+  if [[ "${PG_DB}" != rfrf_f4_pr2_* ]]; then
+    echo "Refusing: database name must match rfrf_f4_pr2_* (got ${PG_DB})" >&2
+    exit 1
+  fi
+  if [[ "${DATABASE_URL}" == *"app.synqdrive"* || "${DATABASE_URL}" == *"production"* ]]; then
+    echo "Refusing: production-like DATABASE_URL detected" >&2
+    exit 1
+  fi
+}
+
+verify_rfrf_schema() {
+  node <<'NODE'
+const { PrismaClient } = require('@prisma/client');
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$queryRaw`SELECT 1 FROM "raw_refuel_candidates" LIMIT 0`;
+    await prisma.$queryRaw`SELECT "detection_source" FROM "vehicle_energy_events" LIMIT 0`;
+    await prisma.$queryRaw`SELECT "front_weight_distribution_pct" FROM "vehicles" LIMIT 0`;
+  } finally {
+    await prisma.$disconnect();
+  }
+  console.log('RFRF schema verification OK');
+})().catch((error) => {
+  console.error('RFRF schema verification failed:', error.message);
+  process.exit(1);
+});
+NODE
+}
+
+sync_schema_drift_if_needed() {
+  if verify_rfrf_schema 2>/dev/null; then
+    echo "TEST_SCHEMA_DRIFT_SYNC=NONE"
+    return 0
+  fi
+
+  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH_TEST_ONLY"
+  local log
+  log="$(mktemp /tmp/rfrf-f4-pr2-dbpush.XXXXXX.log)"
+  set +e
+  npx prisma db push --accept-data-loss --skip-generate 2>&1 | tee "$log"
+  local db_push_exit=${PIPESTATUS[0]}
+  set -e
+
+  if verify_rfrf_schema; then
+    if [[ "$db_push_exit" -ne 0 ]]; then
+      if grep -Eq 'already exists|duplicate' "$log"; then
+        echo "TEST_SCHEMA_DRIFT_SYNC_NOTE=db_push exit=${db_push_exit} with duplicate-object noise; Prisma/client drift columns resolved"
+      else
+        echo "db push failed and schema verification still failing (exit=${db_push_exit})" >&2
+        cat "$log" >&2
+        exit "$db_push_exit"
+      fi
+    fi
+    return 0
+  fi
+
+  echo "schema drift unresolved after db push (exit=${db_push_exit})" >&2
+  cat "$log" >&2
+  exit 1
+}
 
 cleanup() {
   su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${PG_DB};\"" 2>/dev/null || true
@@ -18,17 +89,20 @@ trap cleanup EXIT
 su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';\""
 su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\""
 
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}?schema=public"
+export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
+assert_test_db_isolation
 
-echo "TEST_POSTGRES_HOST=localhost"
+echo "TEST_POSTGRES_HOST=${PG_HOST}"
 echo "TEST_POSTGRES_PORT=${PG_PORT}"
 echo "TEST_POSTGRES_DATABASE=${PG_DB}"
 echo "TEST_POSTGRES_IS_PRODUCTION=NO"
+echo "TEST_SCHEMA_BOOTSTRAP_MODE=RESILIENT_EPHEMERAL_RECOVERY"
 
 cd "${BACKEND_ROOT}"
 npx prisma generate
+
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
-npx prisma db push --accept-data-loss --skip-generate || true
+sync_schema_drift_if_needed
 
 export RAW_FUEL_REFUEL_F4_PR2_INTEGRATION=1
 export RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1
