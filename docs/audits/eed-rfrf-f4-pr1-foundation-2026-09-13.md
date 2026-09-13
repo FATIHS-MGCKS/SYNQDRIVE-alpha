@@ -14,7 +14,7 @@
 | **BASE_MAIN_SHA** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` (PR #1628 merge) |
 | **Branch base includes** | `defe85a91` — ci(vehicle-detail): backend typecheck heap (#1629) |
 | **Branch** | `cursor/eed-rfrf-f4-pr1-foundation-f21f` |
-| **FINAL_HEAD** | `b8a6459e1` (PR1.1 micro-closure incl. `.npmrc` typecheck heap) |
+| **FINAL_HEAD** | `c1fb84272` (PR1.1 micro-closure incl. `.npmrc` typecheck heap) |
 
 ---
 
