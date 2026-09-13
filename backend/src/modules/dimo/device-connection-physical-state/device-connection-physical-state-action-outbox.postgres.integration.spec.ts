@@ -121,8 +121,8 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
     );
     expect(outboxId).toBeTruthy();
 
-    const past = new Date(Date.now() - 60_000);
-    const expiredLease = new Date(Date.now() - 1_000);
+    const now = new Date();
+    const expiredLease = new Date(now.getTime() - 1_000);
     await prisma.deviceConnectionPhysicalStateActionOutbox.update({
       where: { id: outboxId! },
       data: {
@@ -132,7 +132,11 @@ describePg('DeviceConnectionPhysicalStateActionOutbox (postgres)', () => {
       },
     });
 
-    const reclaimed = await repository.claimForProcessing(outboxId!, past, new Date());
+    const reclaimed = await repository.claimForProcessing(
+      outboxId!,
+      now,
+      new Date(now.getTime() + config.processingLeaseMs),
+    );
     expect(reclaimed?.id).toBe(outboxId);
   });
 
