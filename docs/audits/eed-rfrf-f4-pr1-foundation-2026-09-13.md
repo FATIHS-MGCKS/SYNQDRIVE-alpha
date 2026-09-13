@@ -14,7 +14,7 @@
 | **BASE_MAIN_SHA** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` (PR #1628 merge) |
 | **Branch base includes** | `defe85a91` — ci(vehicle-detail): backend typecheck heap (#1629) |
 | **Branch** | `cursor/eed-rfrf-f4-pr1-foundation-f21f` |
-| **FINAL_HEAD** | `a4e9e374b` (PR1.1 micro-closure incl. Legal Documents CI heap fix) |
+| **FINAL_HEAD** | `cedc3056f` (PR1.1 micro-closure incl. Legal Documents CI heap fix) |
 
 ---
 
@@ -126,6 +126,7 @@ F4-PR1 isolated proof remains: pre-F4 baseline + single migration SQL (`F4_PR1_M
 | Extended PG proof A–H | Contract regression harness |
 | Signal trust tautology removed | Explicit fail-closed `absoluteSignalTrust = 'UNKNOWN'` |
 | Main sync (`ee97eae3b` VDC #1626) | Resolve PR #1630 merge conflict (ChangesView only) |
+| `backend/.npmrc` node-options heap | Legal Documents/Vehicle Detail typecheck parity without workflow authority-path conflict |
 
 **MAIN_SHA at sync:** `ee97eae3b` — VDC physical-state foundation; no F4 contract conflict (orthogonal module).
 
