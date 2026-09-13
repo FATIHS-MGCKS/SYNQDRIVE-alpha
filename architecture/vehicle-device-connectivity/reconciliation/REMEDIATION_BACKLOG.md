@@ -55,7 +55,7 @@ Do **not** implement unconditional `equal top-level timestamp → discard payloa
 | Subphase | Deliverable | Status |
 |----------|-------------|--------|
 | P2.1 | Outbox + authority latch schema; `reconcileInTransaction`; coordinator outer tx; processor skeleton; PG tests | **IMPLEMENTED (dark)** — [evidence](../evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md) |
-| P2.2 | Shadow dual-evaluation + drift metrics | Not started |
+| P2.2 | Shadow dual-evaluation + authority state machine + drift metrics | **IMPLEMENTED (dark)** — [evidence](../evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md) |
 | P2.3 | Webhook + snapshot evidence writers (pre-monotonic snapshot insert) |
 | P2.4 | Pre-seed tooling (dry-run + execute) |
 | P2.5 | Webhook authority gate cutover |

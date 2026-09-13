@@ -539,3 +539,14 @@ nodes:
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md
       - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-EVID-RB019-P22-SHADOW-001
+    type: evidence
+    title: RB-019 Phase 2 P2.2 shadow + authority infrastructure
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Authority state machine, effective flag resolver, compare-only shadow comparator, adjudication taxonomy, metrics; no writers; flags OFF.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-shadow-comparator.ts
+      - backend/src/config/connectivity-physical-state-runtime.config.ts
