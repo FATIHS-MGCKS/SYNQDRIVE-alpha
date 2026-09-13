@@ -3,6 +3,7 @@
 ## 2026-09-13 — RFRF F4.0 final scope hardening (PR #1628)
 
 - Expanded EED-DEC-RFRF-006: flag truth table; fuelCapability vs absoluteSignalTrust split; RawRefuelPromotionEligibility orthogonal to F2 lifecycle; advisory-only native overlap in F4; detectionSource NULL legacy semantics; sourceEventKey canonical identity; F2/F3 tolerance hard gate; blocker reclassification
+- F4.0 micro-closure: §20 F5-PR1 persist-flag contradiction resolved; §7 raw-branch isolation clarified
 - Evidence EED-EV-0045 updated; no runtime code
 
 **Verdict:** RFRF_F4_0_SCOPE_HARDENING=PASS — PR_1628_READY_FOR_FINAL_REVIEW=YES; F4_IMPLEMENTATION_START_READY=YES; PR remains draft

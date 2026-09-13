@@ -17,7 +17,7 @@ F4_0_SCOPE_HARDENING = YES
 F4_IMPLEMENTATION_NOT_STARTED = YES
 F4_PHASE_BOUNDARY_RECOMMENDATION = B
 F4_VEE_UPSERT_REACHABLE = NO
-F5_PROMOTION_EXECUTION_AUTHORITY = YES
+F5_PROMOTION_EXECUTION_AUTHORITY = SEPARATE_F5_CONVERGENCE_AUTHORIZATION
 F4_IMPLEMENTATION_START_READY = YES (after PR #1628 final review)
 RUNTIME_CODE_CHANGED = NO
 PRODUCTION_MUTATED = NO
@@ -70,7 +70,7 @@ F1 labels F4 narrowly as “persistence path,” while F2/F3 expand F4 to full r
 
 | Layer | Owner | Meaning |
 |-------|-------|---------|
-| **F4** | Runtime wiring (dark) | `detectEnergyEvents` parallel path → capability gate → fuel samples → F3 → F2 persist → READY evaluation → promotion **service code** |
+| **F4** | Runtime wiring (dark) | `detectEnergyEvents` parallel path → capability gate → fuel samples → F3 → F2 persist → promotion eligibility + promotion **substrate** |
 | **F4 execution stop** | Hard gate | **No `VehicleEnergyEvent` upsert from fallback** until F5 convergence authorization constant/test gate passes |
 | **F5** | Convergence + promotion execution proof | Full 10-scenario matrix; late native sibling policy; synthetic ID fleet proof; production promotion enablement review |
 
@@ -180,9 +180,9 @@ detectEnergyEvents(vehicleId, {from, to})
 detectEnergyEvents(vehicleId, {from, to})
   ├─ [EXISTING] native DIMO segment path (unchanged)
   └─ [F4, if RAW_FUEL_REFUEL_FALLBACK_ENABLED]
-        try {
+        try {  // raw helper / branch only — native path above already completed
           capability = resolveCapability(vehicle, window)
-          if capability fail-closed → metric + return
+          if capability fail-closed → metric + skipRawBranch  // returnFromRawHelper only
           samples = fetchFuelLevelSamples(tokenId, from, to)
           observations = detectRawFuelRises({ samples, context, window })
           for each observation:
@@ -193,6 +193,13 @@ detectEnergyEvents(vehicleId, {from, to})
           log + metric; DO NOT rethrow — native path already completed
         }
 ```
+
+```
+RAW_BRANCH_FAIL_CLOSED_ABORTS_NATIVE_PATH = NO
+RAW_BRANCH_FAILURE_ISOLATED_FROM_NATIVE = YES
+```
+
+Capability fail-closed means **stop/skip only the raw-fallback branch/helper** (`skipRawBranch` / `returnFromRawHelper`). It must **not** prematurely return from or abort existing native `detectEnergyEvents` processing. Native path semantics remain unchanged.
 
 ### WINDOW_LEVEL_NATIVE_SUPPRESSION = FORBIDDEN
 
@@ -302,7 +309,7 @@ Stored as runtime assessment metadata (e.g. JSON on candidate row or separate as
 
 ```
 F4_VEE_UPSERT_REACHABLE = NO
-F5_PROMOTION_EXECUTION_AUTHORITY = YES
+F5_PROMOTION_EXECUTION_AUTHORITY = SEPARATE_F5_CONVERGENCE_AUTHORIZATION
 F4_NATIVE_OVERLAP_CLASSIFICATION = ADVISORY_ONLY
 F4_NATIVE_OVERLAP_TERMINAL_REJECTION = NO
 F5_NATIVE_FALLBACK_CONVERGENCE_AUTHORITY = YES
@@ -522,7 +529,19 @@ Reuse `rfrf-f3-f2-handoff-postgres-gate.sh` pattern for F4 gate script (isolated
 | **F4-PR3** | Promotion eligibility assessor; promotion substrate (mapping only); advisory overlap recording; F5 gate stub; PG tests incl. tolerance boundary gate | PR2 |
 | **F4-PR4** | Audit closure + KG update marking `F4_IMPLEMENTATION_COMPLETE`; SynqDrive Code entries | PR3 |
 
-**F5-PR1** (separate phase): Convergence gate implementation + integration matrix + promotion execution enablement behind persist flag (still default off).
+**F5-PR1** (separate phase):
+
+- Convergence gate implementation (`RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED` — conceptual F5 authority; env name TBD at F5; **not introduced in this docs turn**)
+- Native↔fallback integration matrix proof
+- Late-native sibling policy
+- Promotion execution behind **separate F5 convergence authorization gate** — **not** behind `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED`
+- Candidate-persist flag remains **staging-only** (`CANDIDATE_PERSIST_FLAG_OWNS_VEE_PROMOTION = NO`)
+- Default: promotion execution unreachable until F5 audit closes
+
+```
+F5_PROMOTION_EXECUTION_AUTHORITY = SEPARATE_F5_CONVERGENCE_AUTHORIZATION
+F5_PROMOTION_GATE_SEPARATE = YES
+```
 
 ---
 
@@ -609,4 +628,25 @@ ARCHITECTURE_GOVERNANCE
  registry_status_before: AUTHORITY_ACTIVE
  registry_status_after: AUTHORITY_ACTIVE
  reason: F4.0 contract hardening only; no registry metadata change
+```
+
+---
+
+## 26. F4.0 final doc-contract micro-closure (2026-09-13)
+
+Corrects two remaining doc-contract ambiguities without scope expansion.
+
+| Fix | Resolution |
+|-----|------------|
+| §20 F5-PR1 vs persist flag | **RESOLVED** — F5 promotion execution uses separate F5 convergence authorization; persist flag staging-only |
+| §7 raw-branch return semantics | **RESOLVED** — fail-closed skips raw helper only (`skipRawBranch` / `returnFromRawHelper`); native path unaffected |
+
+```
+RFRF_F4_0_FINAL_DOC_CLOSURE = PASS
+STARTING_HEAD = 717c96957e5d9a5930f7d629c7b328d515cf5b76
+SECTION_20_PROMOTION_AUTHORITY_CONTRADICTION = RESOLVED
+RAW_BRANCH_FAIL_CLOSED_ABORTS_NATIVE_PATH = NO
+RAW_BRANCH_FAILURE_ISOLATED_FROM_NATIVE = YES
+OPEN_DOC_CONTRACT_CONTRADICTIONS = 0
+PR_1628_STILL_DRAFT = YES
 ```
