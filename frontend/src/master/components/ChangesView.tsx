@@ -99,6 +99,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4-PR2 — Dark raw-fuel runtime wiring in detectEnergyEvents',
+    summary: [
+      'Parallel fail-isolated raw branch after native DIMO path: capability → fuel fetch → F4.1 admissibility → F3 → F2 persist.',
+      'RawFuelRefuelFallbackRuntimeService + synqdrive_rfrf_* dark metrics; flags default OFF; persist never authorizes VEE.',
+      'Native path unchanged; window-level native suppression forbidden; native A + missed raw B coexistence proven.',
+      'Real PG gate 41/41 PASS (F4-PR2 matrix + F2 + F3→F2); KS MS 661 one candidate zero fallback VEE.',
+      'F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; F5 convergence NOT implemented.',
+    ],
+    reason:
+      'F4 Option B PR2 per EED-DEC-RFRF-006: make candidate staging runtime-reachable under test flags without promotion or production enablement.',
+    previousBehavior:
+      'detectEnergyEvents had no raw-fuel branch; F3/F2 reachable only via direct test harness.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13.md; EED-EV-0048; backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T13:20:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-pr1-foundation-2026-09-13',
     version: '4.9.1121',
     title: 'RFRF F4-PR1 — Schema, flags, capability/trust foundation',
