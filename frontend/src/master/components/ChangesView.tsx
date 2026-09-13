@@ -40,11 +40,10 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1121',
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
     summary: [
-      'Architecture-only audit (hardened): STATEFUL_SHADOW required; coordinator-owned atomic tx (Option A).',
-      'Snapshot APPLIED PLUG must emit resolve_plug (separate from projection selfHeal); snapshot UNPLUG never opens episode.',
-      'Legacy tryResolveOpenEpisodeFromSnapshot retired when sideEffects on; no-double-resolve proof required.',
-      'Drift gate: UNEXPLAINED divergences = 0; EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT is not a blocker.',
-      'Master flag + four sub-dimensions; event history APPLIED-only; full 15-row crash matrix in audit doc.',
+      'Architecture-only audit (final hardening): authorityMode LEGACY/PHYSICAL with one-way cutover latch; POST_CUTOVER master=false never reverts to legacy gate.',
+      'P2.2 shadow infra only; P2.3 writers + STATEFUL_SHADOW GT-R1 sequence proof (cycle removed).',
+      'Snapshot APPLIED PLUG emits resolve_plug; DB-enforced episode/alert idempotency (no check-then-write).',
+      'Coordinator atomic tx Option A; event history APPLIED-only; full 15-row crash matrix in audit doc.',
       'VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
     ],
     reason:

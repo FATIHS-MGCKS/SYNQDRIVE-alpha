@@ -19,3 +19,4 @@
 | 2026-09-13 | Phase 1 evidence correction — POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626, CI 34741055482) | Vehicle & Device Connectivity evidence |
 | 2026-09-13 | RB-019 Phase 2 runtime cutover scope audit — VDC-DEC-013, subphases P2.1–P2.7, no implementation (VDC-EVID-RB019-PHASE2-SCOPE-001) | Vehicle & Device Connectivity remediation |
 | 2026-09-13 | RB-019 Phase 2 audit hardening — snapshot PLUG resolve_plug contract, atomic tx Option A, full crash matrix, shadow adjudication, STATEFUL_SHADOW, flag semantics, event-history APPLIED-only (PR #1631) | Vehicle & Device Connectivity remediation |
+| 2026-09-13 | RB-019 Phase 2 audit final hardening — authorityMode latch (forward-only), P2.2/P2.3 cycle fix, DB-enforced effect idempotency, precise PR file inventory (PR #1631) | Vehicle & Device Connectivity remediation |

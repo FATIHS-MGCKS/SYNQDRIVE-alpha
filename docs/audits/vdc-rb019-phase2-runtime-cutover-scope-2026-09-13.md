@@ -75,38 +75,56 @@ Unchanged from initial audit — see prior table in decision register VDC-DEC-01
 | Entry | Phase 1 merged; this audit hardened |
 | Exit | PG tests: coordinator atomic commit; multi-worker claim; no nested tx |
 
-### P2.2 — Shadow infrastructure (stateful required)
+### P2.2 — Shadow / flag / classification infrastructure only
 
-**Implement:** dual-path evaluator; drift classification with adjudication; **STATEFUL_SHADOW** mode.
+**Implement (no writers yet):**
+
+- Dual-path evaluator (compare-only; no projection dependency)
+- Adjudication taxonomy (`EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT`, etc.)
+- Metrics / structured logging
+- Effective-flag resolver including **authority mode** types (§13a)
+- Authority-mode latch schema/types (persisted; not yet set in Production)
 
 | Gate | Criterion |
 |------|-----------|
 | Entry | P2.1 exit |
-| Exit | GT-R1 sequence provable: UNPLUG → snapshot PLUG → webhook UNPLUG with `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT` logged; zero side effects |
+| Exit | Unit tests: classification + flag equations + authority-mode state machine; **no** GT-R1 sequence proof required |
 
-**STATEFUL_SHADOW requires:** `master=true`, `projectionWrite=true`, `shadowCompare=true`, `authorityGate=false`, `sideEffects=false`.
+**Not in P2.2:** webhook/snapshot writers, projection mutations, STATEFUL_SHADOW sequence proof.
 
-`EVALUATION_ONLY_SHADOW` (no projection writes) is diagnostic-only — **insufficient** for authority-cutover proof.
+### P2.3 — Evidence writers + STATEFUL_SHADOW proof
 
-### P2.3 — Evidence writers (stateful shadow path)
+**Implement:**
 
-**Implement:** webhook + snapshot writers; snapshot reconcile **before** VLS monotonic early return; unified OBD extractor.
+- Unified OBD extractor (live signals)
+- Webhook evidence writer (coordinator path; projection write when enabled)
+- Snapshot writer **before** VLS monotonic early return
+- **STATEFUL_SHADOW:** `authorityMode=LEGACY`, `projectionWrite=true`, `shadowCompare=true`, `sideEffects=false`
 
 | Gate | Criterion |
 |------|-----------|
 | Entry | P2.2 exit |
-| Exit | Monotonic-guard regression PASS; concurrent webhook/snapshot PASS; master OFF ⇒ zero writes |
+| Exit | **STATEFUL_SHADOW GT-R1 sequence proof:** UNPLUG → snapshot PLUG → webhook UNPLUG → `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT` logged; correct physical projection retained; **zero lifecycle side effects**; monotonic-guard regression PASS; concurrent webhook/snapshot PASS; `master=false` PRE_CUTOVER ⇒ zero writes |
+
+`EVALUATION_ONLY_SHADOW` (no projection writes) remains diagnostic-only — **insufficient** for authority-cutover proof.
 
 ### P2.4 — Pre-seed tooling
 
-Unchanged intent. Evidence selection by **greatest `evidenceObservedAt`** only — source type never overrides time.
+| Gate | Criterion |
+|------|-----------|
+| Entry | **P2.3 exit** (STATEFUL_SHADOW sequence proof complete) |
+| Exit | Pre-seed dry-run + PG idempotency tests; ESTABLISHED only; no episodes/alerts |
 
-### P2.5 — Authority gate cutover
+Evidence selection by **greatest `evidenceObservedAt`** only — source type never overrides time.
+
+### P2.5 — Authority mode cutover (LEGACY → PHYSICAL latch)
+
+**Implement:** one-way cutover latch per pilot scope (org or binding); webhook path reads **latched authority mode**, not reversible flags.
 
 | Gate | Criterion |
 |------|-----------|
-| Entry | STATEFUL_SHADOW complete for pilot; pre-seed dry-run PASS; **UNEXPLAINED** correctness-critical divergences = 0; mixed-replica gate PASS |
-| Exit | GT-R1 PG suite PASS with `authorityGate=true`, `sideEffects=false` |
+| Entry | P2.4 pre-seed dry-run PASS; **UNEXPLAINED** correctness-critical divergences = 0; mixed-replica gate PASS |
+| Exit | GT-R1 PG suite with `authorityMode=PHYSICAL` latched, `sideEffects=false`; legacy `shouldPersistObdPlugStateChange` **never** invoked when latched |
 
 **Removed:** vague "MATCH rate ≥ threshold" as correctness substitute. Every correctness-critical divergence must be **adjudicated**.
 
@@ -251,7 +269,7 @@ PhysicalStateReconcileCoordinator.reconcileWebhookInTransaction(prisma, input):
 
 | Consumer | Role | Post-cutover reads for authority? |
 |----------|------|-----------------------------------|
-| `device-connection-webhook.service` `evaluateStateChangeGate` | Plug-state dedupe gate | **No** when `authorityGate=true` |
+| `device-connection-webhook.service` `evaluateStateChangeGate` | Plug-state dedupe gate | **No** when `authorityMode=PHYSICAL` (latched) |
 | `device-connection-webhook.service` `persistDeviceConnectionEvent` | Upsert history | Write path only |
 | `device-connection-webhook-inbox-scheduler` `reconcileUnprocessedCanonicalEvents` | Orphan lifecycle repair | Repair only; must use physical path post-cutover |
 | `device-connection-episode.service` | Episode open/resolve triggers | Via outbox, not gate |
@@ -273,7 +291,7 @@ PhysicalStateReconcileCoordinator.reconcileWebhookInTransaction(prisma, input):
 | **INSUFFICIENT_EVIDENCE** | **NO** | Fail closed |
 | Pre-cutover policy ignore | **NO** | Inbox `IGNORED_BY_POLICY` |
 
-**Authority rule:** After `authorityGate=true`, no reader may use last event row for plug-state dedupe.
+**Authority rule:** After `authorityMode=PHYSICAL` latched, no reader may use last event row for plug-state dedupe.
 
 ---
 
@@ -295,67 +313,153 @@ See §5–6 for PLUG recovery and legacy retirement.
 
 **`NEW_PHYSICAL_STATE_ACTION_OUTBOX`** — unchanged decision.
 
-### Outbox idempotency contract (two layers)
+### Outbox idempotency contract (three layers — do not conflate)
 
-| Layer | Mechanism | Purpose |
-|-------|-----------|---------|
-| **DB delivery idempotency** | Unique `idempotency_key` on outbox row; `ON CONFLICT DO NOTHING` | Prevent duplicate outbox enqueue on reconcile retry |
-| **External effect idempotency** | Consumer checks episode state + alert dedupe keys before mutating | Prevent duplicate episode/alert on outbox retry after partial success |
+#### 1. OUTBOX DELIVERY IDEMPOTENCY
 
-**Do not conflate.** DB idempotency does not imply external side effects are safe without consumer guards.
+- Unique DB constraint on `physical_state_action_outbox.idempotency_key`
+- Reconcile path: `INSERT … ON CONFLICT DO NOTHING`
+- Key: `physical:{org}:{vehicle}:{bindingKey}:{stateVersion}:{episodeAction}:{alertAction}`
 
-**DB key:** `physical:{org}:{vehicle}:{bindingKey}:{stateVersion}:{episodeAction}:{alertAction}`
+#### 2. EPISODE EFFECT IDEMPOTENCY (DB-enforced)
 
-**External keys:** episode open keyed by binding+unplug evidence; resolution keyed by `evidenceReferenceId` / `resolutionSnapshotId` family (same as legacy `SNAPSHOT_PLUG_SIGNAL`).
+Consumer must **not** rely on non-atomic `SELECT-then-INSERT`.
+
+Required invariant: episode open/resolve keyed to canonical physical transition identity survives:
+
+```
+external episode mutation committed
+→ worker crashes before outbox ACK
+→ lease expires
+→ second worker retries same outbox row
+→ exactly one episode state transition
+```
+
+**Implementation options (P2.6):** unique constraint on `(organization_id, binding_key, physical_transition_id, effect_type)` or atomic `INSERT … ON CONFLICT` into episode-resolution audit table before episode row mutation; episode state transition guarded by version/status predicate in same SQL statement.
+
+**Identity source:** `transitionId` / `stateVersion` + `evidenceReferenceId` from outbox payload.
+
+#### 3. ALERT EFFECT IDEMPOTENCY (DB-enforced)
+
+Same crash scenario must yield **exactly one** alert effect.
+
+**Implementation options:** unique constraint on alert dedupe identity (`org`, `vehicle`, `alert_type`, `physical_transition_id`) or transactional upsert into notification/alert state table.
+
+**Forbidden:** check-then-write without DB uniqueness or equivalent serializable atomic upsert.
+
+#### P2.6 required test
+
+1. Execute external episode/alert mutation
+2. Simulate crash before outbox ACK
+3. Expire lease; retry from second worker
+4. Assert: exactly one episode transition, exactly one alert effect, outbox `COMPLETED`
 
 ---
 
-## 13. Feature flag effective semantics (BLOCKER 9)
+## 13. Feature flag + authority mode semantics (BLOCKER 9 + forward-only)
 
-### Master kill switch (retained)
+### 13a. Authority mode model (enforces FORWARD_ONLY)
 
-`CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` = **MASTER**. Phase 1 flag retained; not deprecated in Phase 2.
+Boolean flags alone cannot express forward-only cutover. Phase 2 introduces a **persisted authority mode** with a **one-way cutover latch**.
 
-### Sub-dimensions (new env vars, all default OFF)
+| `authorityMode` | Meaning |
+|-----------------|---------|
+| **LEGACY** | Webhook plug-state gate uses `evaluateStateChangeGate()` → `shouldPersistObdPlugStateChange(lastEvent)` |
+| **PHYSICAL** | Webhook plug-state gate uses `device_connection_physical_states` projection (per bindingKey) |
+
+**Transition:** `LEGACY → PHYSICAL` only (P2.5 cutover operation sets latch). **`PHYSICAL → LEGACY` is forbidden** — rejected at config API and runtime.
+
+**`CUTOVER_LATCH` persistence:** `device_connection_physical_authority_cutover` (or equivalent) keyed by `(organizationId, bindingKey)` or pilot-scoped org row — stores `authorityMode`, `latchedAt`, `latchedBy`, `evidenceSnapshot`. Once `PHYSICAL`, latch survives deploys/restarts.
+
+**Runtime resolution order:**
+
+```
+1. Read latched authorityMode for scope (org/binding)
+2. If PHYSICAL → always physical gate path (never legacy last-event)
+3. If LEGACY → legacy gate path; optional shadow compare if enabled
+```
+
+Sub-flags control **capabilities around** the latched mode — they **must not** silently revert canonical authority after cutover.
+
+### Master kill switch (retained — pre-cutover primary; post-cutover auxiliary)
+
+`CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` = **MASTER**.
+
+### Sub-dimensions (env vars, default OFF)
 
 - `CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED`
 - `CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED`
-- `CONNECTIVITY_PHYSICAL_STATE_AUTHORITY_GATE_ENABLED`
+- `CONNECTIVITY_PHYSICAL_STATE_AUTHORITY_CUTOVER_ENABLED` (replaces ambiguous `AUTHORITY_GATE` — triggers latch transition in P2.5)
 - `CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED`
 
-### Effective equations
+### PRE_CUTOVER effective equations (`authorityMode = LEGACY`)
 
 ```
 master = CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED
 
 projectionWrite = master AND PROJECTION_WRITE_ENABLED
 shadowCompare   = master AND SHADOW_COMPARE_ENABLED
-authorityGate   = master AND AUTHORITY_GATE_ENABLED
-sideEffects     = master AND SIDE_EFFECTS_ENABLED
+cutoverEnable   = master AND AUTHORITY_CUTOVER_ENABLED   // allows P2.5 latch operation
+sideEffects     = master AND SIDE_EFFECTS_ENABLED        // must remain false until latched PHYSICAL
 
-statefulShadow  = projectionWrite AND shadowCompare AND NOT authorityGate AND NOT sideEffects
+canonicalWebhookGate = LEGACY path (shouldPersistObdPlugStateChange)
+
+statefulShadow = authorityMode=LEGACY
+              AND projectionWrite AND shadowCompare
+              AND NOT sideEffects
 ```
 
-**`master=false` ⇒ all dimensions false** regardless of sub-flag values.
+**`master=false` (PRE_CUTOVER):** all auxiliary dimensions off; legacy unchanged; zero projection writes.
 
-**`master=true` ⇒ sub-flags independently gated.**
+### POST_CUTOVER effective equations (`authorityMode = PHYSICAL` latched)
+
+```
+canonicalWebhookGate = PHYSICAL path (projection) — IMMUTABLE by flags
+
+sideEffects     = master AND SIDE_EFFECTS_ENABLED
+shadowCompare   = master AND SHADOW_COMPARE_ENABLED      // safe to disable
+projectionWrite = master AND PROJECTION_WRITE_ENABLED    // safe to disable (pause new writes)
+
+// master=false POST_CUTOVER:
+//   - sideEffects=false, shadowCompare=false, projectionWrite=false
+//   - canonicalWebhookGate REMAINS PHYSICAL (latched)
+//   - NEVER falls back to shouldPersistObdPlugStateChange(lastEvent)
+```
+
+**`authorityCutover=false` POST_CUTOVER:** does **not** revert authority — latch already set. Flag only meaningful PRE_CUTOVER.
+
+### SAFE_EMERGENCY_PAUSE (POST_CUTOVER)
+
+1. `sideEffects=false` — stop outbox consumer / lifecycle mutations (**safe**)
+2. Optionally `projectionWrite=false`, `shadowCompare=false` — pause auxiliary processing (**safe**)
+3. `master=false` — pauses auxiliary dimensions only; **physical authority remains selected**
+
+### FORBIDDEN_ROLLBACK_PATHS (UNSAFE)
+
+| Action | Why forbidden |
+|--------|----------------|
+| `authorityMode := LEGACY` after latch | Reintroduces GT-R1 split authority |
+| `authorityCutover=false` interpreted as legacy fallback | Same |
+| `master=false` selecting legacy webhook gate post-cutover | Same |
+| Deploy old binary without physical gate path while latched | Mixed-authority — blocked by replica gate |
+| `shouldPersistObdPlugStateChange(lastEvent)` when `authorityMode=PHYSICAL` | Hard invariant violation |
 
 ### Enablement order
 
-1. `master` + `projectionWrite` + `shadowCompare` (STATEFUL_SHADOW)
+1. P2.3 STATEFUL_SHADOW (`LEGACY` + projection write + shadow compare)
 2. Pre-seed dry-run / execute
-3. `authorityGate` (pilot)
-4. `sideEffects` (pilot)
+3. P2.5 latch `LEGACY → PHYSICAL` for pilot scope
+4. P2.6 `sideEffects=true`
 
-### Rollback
+### Required tests (authority mode)
 
-1. **Emergency:** `sideEffects=false` first (pause lifecycle mutations)
-2. Then `authorityGate=false` (stop reading projection as gate — only if forward-only policy allows pausing new writes)
-3. **`master=false`** forces full dark mode
+- PRE_CUTOVER `master=false` / no projection write ⇒ legacy unchanged
+- POST_CUTOVER `sideEffects=false` ⇒ physical authority retained
+- POST_CUTOVER `master=false` ⇒ **never** legacy authority
+- Attempted `PHYSICAL → LEGACY` transition rejected
+- Mixed-replica / cutover-mode mismatch blocks enablement
 
-**Do not** revert to `shouldPersistObdPlugStateChange(lastEvent)` after authority cutover.
-
-Sub-flag removal / master deprecation: **LATER_PHASE** after fleet-stable cutover.
+**`AUTHORITY_CUTOVER_IS_FORWARD_ONLY` = YES** — enforced by latch, not flag wording alone.
 
 ---
 
@@ -404,10 +508,10 @@ List order in docs is **not** priority — **time wins**.
 | 7 | After webhook history upsert, before COMMIT | open | **Rollback — none** | Full tx retry | None | None | Reconcile restarts |
 | 8 | After COMMIT, before inbox `processedAt` | committed | Projection+audit+event+outbox durable; inbox not terminal | Inbox retry → reconcile DUPLICATE | Low | None | Transition idempotency |
 | 9 | After inbox `processedAt` | committed | Terminal inbox | None required | None | None | Complete |
-| 10 | During episode open (consumer) | n/a | Outbox PROCESSING | Lease timeout → retry | Medium without consumer guard | Low | Consumer idempotency |
-| 11 | During episode resolve (consumer) | n/a | Outbox PROCESSING | Lease timeout → retry | Medium | Low | `already_resolved` path |
-| 12 | During alert creation (consumer) | n/a | Outbox PROCESSING | Retry | Medium | Low | Alert dedupe keys |
-| 13 | After external effect, before outbox ACK | n/a | Effect may exist; outbox not COMPLETED | Retry consumer | **High** without guard | None | Consumer suppresses duplicate |
+| 10 | During episode open (consumer) | n/a | Outbox PROCESSING | Lease timeout → retry | None if DB unique | Low | Episode effect unique constraint / atomic upsert |
+| 11 | During episode resolve (consumer) | n/a | Outbox PROCESSING | Lease timeout → retry | None if DB unique | Low | Resolution audit idempotency |
+| 12 | During alert creation (consumer) | n/a | Outbox PROCESSING | Retry | None if DB unique | Low | Alert dedupe unique constraint |
+| 13 | After external effect, before outbox ACK | n/a | Effect may exist; outbox not COMPLETED | Retry consumer | None if DB-enforced | None | P2.6 crash/retry test required |
 | 14 | Concurrent snapshot + webhook | open/serial | Advisory lock serializes | Second waits/retries | None | None | Newest evidence wins |
 | 15 | Duplicate webhook + snapshot race | open/serial | One wins per binding lock | Loser may get DUPLICATE/STALE | None | None | Policy + idempotency keys |
 
@@ -419,32 +523,40 @@ List order in docs is **not** priority — **time wins**.
 - **SNAPSHOT UNPLUG:** never `open_unplug`
 - **Legacy resolver off:** when `sideEffects=true`, no `SNAPSHOT_PLUG_SIGNAL` resolution row from legacy path
 - **No double-resolve:** single resolution audit for GT-R1 sequence
-- **STATEFUL_SHADOW:** sequence GT-R1 without side effects
+- **STATEFUL_SHADOW (P2.3 exit):** full GT-R1 sequence without side effects; projection retains snapshot PLUG
 - **Transaction rollback:** inject failure before COMMIT ⇒ zero durable rows
-- **Flag master off:** all dimensions inert
+- **PRE_CUTOVER master off:** legacy unchanged; zero projection writes
+- **POST_CUTOVER master off:** physical authority retained; never legacy gate
+- **Authority latch:** PHYSICAL→LEGACY rejected; mixed-replica gate
 - **EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT:** classified correctly in shadow report
+- **P2.6 crash/retry:** external effect + crash before ACK ⇒ exactly one episode + one alert
 
-(Plus prior matrix: unit, PG concurrency, monotonic guard, binding replacement, mixed version gate.)
+(Plus prior matrix: unit, PG concurrency, monotonic guard, binding replacement.)
 
 ---
 
 ## 18. Open blockers (rebuilt)
 
-### P0
+### P0 (design — resolved in this hardening pass)
 
-1. **Atomic transaction composition** — Option A coordinator + `reconcileInTransaction(tx)` refactor (P2.1 scope)
-2. **Snapshot PLUG recovery semantics** — separate `lifecycleResolutionEligible` from `projectionSelfHeal` (documented; code in P2.1/P2.6)
-3. **OBD extractor unification** — single live-signal extractor before snapshot writer (P2.3)
-4. **Deterministic event-history contract** — APPLIED-only YES table (§9)
-5. **Flag compatibility** — master + sub-dimension effective equations (§13)
+1. Atomic transaction composition — Option A coordinator (§8)
+2. Snapshot PLUG `resolve_plug` semantics (§5)
+3. Forward-only authority mode + cutover latch (§13a)
+4. P2.2/P2.3 sequencing decoupled (§4)
+5. DB-enforced external effect idempotency contract (§12)
+6. Deterministic event-history APPLIED-only (§9)
+
+### P0 (implementation — remains for P2.1+)
+
+1. Outbox + latch schema definition (P2.1 / P2.2 types)
+2. OBD extractor unification (P2.3)
 
 ### P1
 
 1. Open-episode vs pre-seed baseline mismatch recovery (VDC-Q-018)
 2. Sustained telemetry recovery vs physical outbox interaction (defer consolidation)
 3. Operator visibility for ESTABLISHED-without-event-history (UI reads transition ledger)
-
-**Not listed:** Legal Documents CI typecheck heap — orthogonal; separate workflow concern.
+4. Exact episode/alert unique-constraint schema (P2.6 implementation detail)
 
 ---
 
@@ -452,12 +564,12 @@ List order in docs is **not** priority — **time wins**.
 
 | PR | Scope |
 |----|-------|
-| PR-1 | Outbox schema + `reconcileInTransaction` refactor + coordinator skeleton + PG atomic/rollback tests |
-| PR-2 | Shadow comparator + adjudication classes + flag dimensions + STATEFUL_SHADOW |
-| PR-3 | Unified OBD extractor + snapshot/webhook writers (pre-monotonic) |
+| PR-1 | Outbox schema + authority latch schema + `reconcileInTransaction` refactor + coordinator skeleton + PG atomic/rollback tests |
+| PR-2 | Shadow evaluator + adjudication taxonomy + flag/authority-mode resolver (infra only; no writers) |
+| PR-3 | Unified OBD extractor + snapshot/webhook writers + **STATEFUL_SHADOW GT-R1 sequence proof** |
 | PR-4 | Pre-seed CLI + time-wins selection |
-| PR-5 | Authority gate + APPLIED-only event history |
-| PR-6 | Side-effect consumer + snapshot PLUG `resolve_plug` + legacy resolver off + GT-R1 |
+| PR-5 | Authority mode latch (`LEGACY→PHYSICAL`) + APPLIED-only event history + forward-only gate routing |
+| PR-6 | Side-effect consumer + DB-enforced episode/alert idempotency + legacy resolver off + GT-R1 + crash/retry test |
 | PR-7 | Pilot gates + mixed-replica check |
 
 ---
@@ -468,5 +580,15 @@ List order in docs is **not** priority — **time wins**.
 |-------|-------|
 | RB-019 Phase 1 | MERGED_VALIDATED_DARK |
 | RB-019 Phase 2 | **SCOPED_NOT_IMPLEMENTED** |
-| PHASE2_IMPLEMENTATION_START_READY | **YES** — design dependencies for P2.1 resolved in this hardening |
-| EXACT_NEXT_ACTION | Begin P2.1: outbox schema + coordinator transaction refactor + PG rollback tests (flags OFF) |
+| PHASE2_IMPLEMENTATION_START_READY | **YES** — P2.1 may begin; authority mode + latch schema included in P2.1; forward-only model decided |
+| EXACT_NEXT_ACTION | Begin P2.1: outbox + authority latch schema + coordinator `reconcileInTransaction` + PG rollback tests (flags OFF; `authorityMode=LEGACY` everywhere) |
+
+### PR #1631 file inventory (precision)
+
+| Metric | Value |
+|--------|-------|
+| **TOTAL_PR_CHANGED_FILES** | 11 (cumulative on branch vs `main`) |
+| **FUNCTIONAL_RUNTIME_BEHAVIOR_CHANGED** | **NO** |
+| **BACKEND_RUNTIME_CHANGED** | **NO** |
+| **PRISMA_CHANGED** | **NO** |
+| **PRESENTATION_CHANGELOG_CHANGED** | **YES** (`ChangesView.tsx` executable changelog entries) |
