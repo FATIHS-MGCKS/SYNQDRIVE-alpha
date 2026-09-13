@@ -58,6 +58,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       dimoSegments as never,
       rawRefuelCandidateService as never,
       undefined,
+      undefined,
       () => ({ ...config, cutoverAt: null }),
     );
     return { service, dimoSegments, rawRefuelCandidateService };
@@ -174,6 +175,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
         }),
       } as never,
       { resolveOrCreateCandidate } as never,
+      undefined,
       undefined,
       () => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }),
     );

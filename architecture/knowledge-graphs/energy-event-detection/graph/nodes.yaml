@@ -1510,6 +1510,25 @@ nodes:
       F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; flags default OFF; PROVEN_BY_INTEGRATION_TEST not production.
     verified_at: "2026-09-13"
 
+  - id: EED-EV-0049
+    type: evidence
+    title: RFRF F4-PR3 — Ready evaluator + promotion eligibility + F5 gate stub
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-candidate-readiness.evaluator.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-eligibility.evaluator.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-overlap.advisory.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service.ts
+      - backend/scripts/test/rfrf-f4-pr3-ready-promotion-gate.sh
+    summary: >
+      F4-PR3 pre-promotion control plane after F2 persist: runtime READY evaluator, orthogonal promotion
+      eligibility, advisory native overlap via classifyPhysicalRefuelSibling, promotion draft mapping,
+      F5 convergence gate stub (always false); zero fallback VEE; 48/48 real PG gate; F3/F2 tolerance PASS;
+      KS MS 661 path executed; F5 not implemented.
+    verified_at: "2026-09-13"
+
   - id: EED-DEC-RFRF-007
     type: decision
     title: RFRF F4.1 — Separate detection admissibility from promotion trust

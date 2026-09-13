@@ -1,4 +1,5 @@
 import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
+import type { RawRefuelPromotionPreparationResult } from './raw-refuel-promotion-preparation.types';
 
 export type RawFuelRefuelFallbackSkipReason =
   | 'master_disabled'
@@ -33,6 +34,8 @@ export interface RawFuelRefuelFallbackCandidateOutcome {
   rediscovered: boolean;
   candidateId?: string;
   error?: string;
+  promotionPreparation?: RawRefuelPromotionPreparationResult;
+  promotionPreparationError?: string;
 }
 
 export interface RawFuelRefuelFallbackScanResult {
@@ -49,6 +52,9 @@ export interface RawFuelRefuelFallbackScanResult {
   candidatesCreated: number;
   candidatesRediscovered: number;
   persistSkippedBecauseFlagOff: number;
+  promotionPreparationAttempted: number;
+  promotionDraftsConstructed: number;
+  promotionBlockedByF5Gate: number;
   candidateOutcomes: RawFuelRefuelFallbackCandidateOutcome[];
   branchError?: string;
 }

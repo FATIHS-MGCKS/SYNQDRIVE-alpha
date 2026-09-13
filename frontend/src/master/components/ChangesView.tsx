@@ -78,6 +78,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4-PR3 — Ready evaluator + promotion eligibility + F5 gate stub',
+    summary: [
+      'Pre-promotion control plane after F2 persist: runtime READY evaluator, orthogonal promotion eligibility, advisory native overlap.',
+      'Promotion draft mapping from persisted candidate; sourceEventKey = candidateIdentityKey stable across evidence maturation.',
+      'F5 convergence gate stub always false — zero fallback VehicleEnergyEvent; no PROMOTED; no G2/BullMQ.',
+      'Extended synqdrive_rfrf_* metrics; F3/F2 tolerance integration PASS; real PG gate 48/48 PASS.',
+    ],
+    reason:
+      'F4 Option B PR3 per EED-DEC-RFRF-006: pre-promotion substrate without promotion execution authority.',
+    previousBehavior:
+      'F4-PR2 stopped after F2 candidate persist; no runtime readiness/eligibility/overlap/draft evaluation.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr3-ready-promotion-gate-2026-09-13.md; EED-EV-0049; backend/scripts/test/rfrf-f4-pr3-ready-promotion-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T21:55:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13',
     version: '4.9.1122',
     title: 'RFRF F4-PR2 — Dark raw-fuel runtime wiring in detectEnergyEvents',
