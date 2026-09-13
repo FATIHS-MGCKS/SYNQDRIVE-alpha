@@ -19,6 +19,9 @@ export {
   isRawFuelRefuelFallbackMasterEnabled,
   isRawFuelRefuelFallbackPersistEnabled,
   canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion,
+  isRfrfNativeFallbackConvergenceAuthorized,
+  canCreateFallbackVehicleEnergyEvent,
+  RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV,
 } from './raw-fuel-refuel-fallback.config';
 export type { RawFuelRefuelFallbackConfig } from './raw-fuel-refuel-fallback.config';
 export { default as documentsConfig } from './documents.config';

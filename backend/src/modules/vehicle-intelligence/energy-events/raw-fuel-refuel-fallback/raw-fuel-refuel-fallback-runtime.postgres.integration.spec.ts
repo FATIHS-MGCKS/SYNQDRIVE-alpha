@@ -12,6 +12,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { EnergyEventsService } from '../energy-events.service';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
+import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
 import {
   linearRiseSamples,
   stablePlateauSamples,
@@ -172,9 +173,13 @@ function buildEnergyEventsService(
     prisma as unknown as PrismaService,
     '2026-09-06T10:00:00.000Z',
   );
+  const promotionPreparation = new RawRefuelPromotionPreparationService(
+    prisma as unknown as PrismaService,
+  );
   const rawRuntime = new RawFuelRefuelFallbackRuntimeService(
     dimoSegments as never,
     candidateService,
+    promotionPreparation,
   );
   return new EnergyEventsService(
     prisma as unknown as PrismaService,

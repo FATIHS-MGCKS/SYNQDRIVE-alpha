@@ -20,6 +20,19 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly candidateErrorsTotal: Counter<string>;
   readonly branchErrorTotal: Counter<string>;
   readonly nonFiniteSampleExclusionTotal: Counter<string>;
+  readonly readinessEvaluatedTotal: Counter<string>;
+  readonly candidateReadyTotal: Counter<string>;
+  readonly candidateNotReadyTotal: Counter<string>;
+  readonly promotionEligibilityEvaluatedTotal: Counter<string>;
+  readonly promotionBlockedTotal: Counter<string>;
+  readonly nativeOverlapSameTotal: Counter<string>;
+  readonly nativeOverlapDistinctTotal: Counter<string>;
+  readonly nativeOverlapInsufficientEvidenceTotal: Counter<string>;
+  readonly nativeOverlapAmbiguousTotal: Counter<string>;
+  readonly promotionDraftConstructedTotal: Counter<string>;
+  readonly promotionBlockedByF5GateTotal: Counter<string>;
+  readonly promotionPreparationErrorTotal: Counter<string>;
+  readonly forbiddenPromotionExecutionTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -122,6 +135,86 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F3 normalizer invalid_sample exclusions surfaced from dark runtime',
       registers: [register],
     });
+
+    this.readinessEvaluatedTotal = new Counter({
+      name: 'synqdrive_rfrf_readiness_evaluated_total',
+      help: 'F4 persisted candidate readiness evaluations',
+      registers: [register],
+    });
+
+    this.candidateReadyTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_ready_total',
+      help: 'F4 candidates evaluated READY by runtime evaluator',
+      registers: [register],
+    });
+
+    this.candidateNotReadyTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_not_ready_total',
+      help: 'F4 candidates not ready by reason code',
+      labelNames: ['reason'],
+      registers: [register],
+    });
+
+    this.promotionEligibilityEvaluatedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_eligibility_evaluated_total',
+      help: 'F4 promotion eligibility evaluations',
+      registers: [register],
+    });
+
+    this.promotionBlockedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_blocked_total',
+      help: 'F4 promotion blocked by eligibility status',
+      labelNames: ['status'],
+      registers: [register],
+    });
+
+    this.nativeOverlapSameTotal = new Counter({
+      name: 'synqdrive_rfrf_native_overlap_same_total',
+      help: 'F4 advisory native overlap SAME classifications',
+      registers: [register],
+    });
+
+    this.nativeOverlapDistinctTotal = new Counter({
+      name: 'synqdrive_rfrf_native_overlap_distinct_total',
+      help: 'F4 advisory native overlap DISTINCT classifications',
+      registers: [register],
+    });
+
+    this.nativeOverlapInsufficientEvidenceTotal = new Counter({
+      name: 'synqdrive_rfrf_native_overlap_insufficient_evidence_total',
+      help: 'F4 advisory native overlap INSUFFICIENT_EVIDENCE classifications',
+      registers: [register],
+    });
+
+    this.nativeOverlapAmbiguousTotal = new Counter({
+      name: 'synqdrive_rfrf_native_overlap_ambiguous_total',
+      help: 'F4 advisory native overlap ambiguous/multiple SAME classifications',
+      registers: [register],
+    });
+
+    this.promotionDraftConstructedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_draft_constructed_total',
+      help: 'F4 promotion drafts constructed from persisted candidates',
+      registers: [register],
+    });
+
+    this.promotionBlockedByF5GateTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_blocked_f5_gate_total',
+      help: 'F4 promotion preparation blocked by F5 convergence gate stub',
+      registers: [register],
+    });
+
+    this.promotionPreparationErrorTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_preparation_error_total',
+      help: 'F4 promotion preparation isolated failures',
+      registers: [register],
+    });
+
+    this.forbiddenPromotionExecutionTotal = new Counter({
+      name: 'synqdrive_rfrf_forbidden_promotion_execution_total',
+      help: 'Attempted forbidden fallback VehicleEnergyEvent promotion execution — must remain zero',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -186,5 +279,57 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordNonFiniteSampleExclusion(count = 1): void {
     if (count > 0) this.nonFiniteSampleExclusionTotal.inc(count);
+  }
+
+  recordReadinessEvaluated(): void {
+    this.readinessEvaluatedTotal.inc();
+  }
+
+  recordCandidateReady(): void {
+    this.candidateReadyTotal.inc();
+  }
+
+  recordCandidateNotReady(reason: string): void {
+    this.candidateNotReadyTotal.inc({ reason });
+  }
+
+  recordPromotionEligibilityEvaluated(): void {
+    this.promotionEligibilityEvaluatedTotal.inc();
+  }
+
+  recordPromotionBlocked(status: string): void {
+    this.promotionBlockedTotal.inc({ status });
+  }
+
+  recordNativeOverlapSame(): void {
+    this.nativeOverlapSameTotal.inc();
+  }
+
+  recordNativeOverlapDistinct(): void {
+    this.nativeOverlapDistinctTotal.inc();
+  }
+
+  recordNativeOverlapInsufficientEvidence(): void {
+    this.nativeOverlapInsufficientEvidenceTotal.inc();
+  }
+
+  recordNativeOverlapAmbiguous(): void {
+    this.nativeOverlapAmbiguousTotal.inc();
+  }
+
+  recordPromotionDraftConstructed(): void {
+    this.promotionDraftConstructedTotal.inc();
+  }
+
+  recordPromotionBlockedByF5Gate(): void {
+    this.promotionBlockedByF5GateTotal.inc();
+  }
+
+  recordPromotionPreparationError(): void {
+    this.promotionPreparationErrorTotal.inc();
+  }
+
+  recordForbiddenPromotionExecution(): void {
+    this.forbiddenPromotionExecutionTotal.inc();
   }
 }

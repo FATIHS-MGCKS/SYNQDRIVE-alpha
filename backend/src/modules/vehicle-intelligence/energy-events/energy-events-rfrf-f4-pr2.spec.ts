@@ -109,6 +109,7 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
       dimoSegments as never,
       {} as never,
       undefined,
+      undefined,
       () => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }),
     );
 
