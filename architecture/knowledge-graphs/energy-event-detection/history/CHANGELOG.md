@@ -1,6 +1,14 @@
 # KG-EED Changelog
 
-## 2026-09-13 — RFRF F4-PR1 foundation implementation
+## 2026-09-13 — RFRF F4-PR1.1 source-identity CHECK hardening
+
+- `vehicle_energy_events_source_identity_check` with IS NOT NULL guards (PostgreSQL CHECK NULL-pass semantics)
+- Extended PG proof A–H; empty-chain epistemics corrected to FAIL_PRE_EXISTING
+- Signal trust tautology removed; VEE DTO test fixtures aligned
+
+**Verdict:** RFRF_F4_PR1_1=PASS — on PR #1630 head
+
+---
 
 - Evidence EED-EV-0046: VehicleEnergyEvent detectionSource/sourceEventKey schema+migration; fail-closed flag reader; RawFuelCapabilityResolver + RawFuelSignalTrustResolver; isolated PG migration proof; F2/F3 regression PASS
 - EED-DEC-RFRF-006 promoted PROPOSED → VALIDATED (PR #1628 merge approval)
