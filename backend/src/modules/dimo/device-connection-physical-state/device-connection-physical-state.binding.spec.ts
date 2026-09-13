@@ -1,6 +1,7 @@
 import {
   buildBindingScopeFromToken,
   buildDeviceConnectionBindingKey,
+  buildPhysicalStateActionOutboxIdempotencyKey,
   normalizeConnectivityProvider,
 } from './device-connection-physical-state.binding';
 
@@ -31,6 +32,19 @@ describe('device-connection-physical-state.binding', () => {
     expect(withoutLink.bindingKey).toBe(withLink.bindingKey);
     expect(withLink.deviceBindingId).toBe('link-uuid-123');
     expect(withoutLink.providerDeviceIdHash).toBe(withLink.providerDeviceIdHash);
+  });
+
+  it('builds canonical physical-state action outbox idempotency key', () => {
+    expect(
+      buildPhysicalStateActionOutboxIdempotencyKey({
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        bindingKey: 'DIMO:device:hash',
+        stateVersion: 2,
+        episodeAction: 'open_unplug',
+        alertAction: 'emit_unplug',
+      }),
+    ).toBe('physical:org-1:veh-1:DIMO:device:hash:2:open_unplug:emit_unplug');
   });
 
   it('distinguishes device replacement via new token hash', () => {

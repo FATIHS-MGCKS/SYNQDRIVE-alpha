@@ -2999,6 +2999,8 @@ model Vehicle {
   deviceConnectionEpisodes               DeviceConnectionEpisode[]
   deviceConnectionPhysicalStates         DeviceConnectionPhysicalState[]
   deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
+  deviceConnectionPhysicalAuthorityCutovers DeviceConnectionPhysicalAuthorityCutover[]
+  deviceConnectionPhysicalStateActionOutbox DeviceConnectionPhysicalStateActionOutbox[]
   tripDetectionState                     VehicleTripDetectionState?
   tripTrackingRuns                       VehicleTripTrackingRun[]
   tripBehaviorEvents                     TripBehaviorEvent[]
@@ -8121,6 +8123,74 @@ model DeviceConnectionPhysicalStateTransition {
   @@index([vehicleId, createdAt])
   @@index([organizationId, vehicleId])
   @@map("device_connection_physical_state_transitions")
+}
+
+enum DeviceConnectionPhysicalAuthorityMode {
+  LEGACY
+  PHYSICAL
+}
+
+model DeviceConnectionPhysicalAuthorityCutover {
+  id               String                                @id @default(uuid())
+  organizationId   String                                @map("organization_id")
+  vehicleId        String                                @map("vehicle_id")
+  provider         String                                @default("DIMO")
+  authorityMode    DeviceConnectionPhysicalAuthorityMode @default(LEGACY) @map("authority_mode")
+  latchedAt        DateTime?                             @map("latched_at")
+  latchedBy        String?                               @map("latched_by")
+  evidenceSnapshot Json?                                 @map("evidence_snapshot")
+  createdAt        DateTime                              @default(now()) @map("created_at")
+  updatedAt        DateTime                              @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, provider], map: "device_connection_physical_authority_scope_key")
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@map("device_connection_physical_authority_cutover")
+}
+
+enum DeviceConnectionPhysicalStateActionOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYABLE_FAILED
+  DEAD_LETTER
+}
+
+model DeviceConnectionPhysicalStateActionOutbox {
+  id                         String                                          @id @default(uuid())
+  organizationId             String                                          @map("organization_id")
+  vehicleId                  String                                          @map("vehicle_id")
+  provider                   String                                          @default("DIMO")
+  bindingKey                 String                                          @map("binding_key")
+  transitionId               String                                          @map("transition_id")
+  stateVersion               Int                                             @map("state_version")
+  evidenceReferenceId        String                                          @map("evidence_reference_id")
+  canonicalEventId           String?                                         @map("canonical_event_id")
+  episodeAction              String                                          @map("episode_action")
+  alertAction                String                                          @map("alert_action")
+  idempotencyKey             String                                          @unique @map("idempotency_key")
+  status                     DeviceConnectionPhysicalStateActionOutboxStatus @default(PENDING)
+  processingAttempts         Int                                             @default(0) @map("processing_attempts")
+  processingLeaseExpiresAt   DateTime?                                       @map("processing_lease_expires_at")
+  nextRetryAt                DateTime?                                       @map("next_retry_at")
+  lastErrorCode              String?                                         @map("last_error_code")
+  lastErrorMessage           String?                                         @map("last_error_message")
+  deadLetteredAt             DateTime?                                       @map("dead_lettered_at")
+  completedAt                DateTime?                                       @map("completed_at")
+  createdAt                  DateTime                                        @default(now()) @map("created_at")
+  updatedAt                  DateTime                                        @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([status, nextRetryAt])
+  @@index([status, processingLeaseExpiresAt])
+  @@map("device_connection_physical_state_action_outbox")
 }
 
 model DeviceConnectionEpisodeResolutionAudit {

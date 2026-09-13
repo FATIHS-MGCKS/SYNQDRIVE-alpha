@@ -7,7 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-MIGRATION_NAME="20260912200000_device_connection_physical_state"
+PHASE1_MIGRATION_NAME="20260912200000_device_connection_physical_state"
+P21_MIGRATION_NAME="20260913120000_device_connection_physical_state_p21_durability"
 TEMP_DB="vdc_phys_mig_${RANDOM}_$(date +%s)"
 
 log() { printf '[physical-state-migration-ephemeral] %s\n' "$*"; }
@@ -61,18 +62,20 @@ DATABASE_URL="${MIGRATION_DATABASE_URL}" \
   PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
   bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-log "Verifying migration ${MIGRATION_NAME} is recorded as applied"
-applied_count="$(psql_atc "
-  SELECT COUNT(*)::text
-  FROM _prisma_migrations
-  WHERE migration_name = '${MIGRATION_NAME}'
-    AND finished_at IS NOT NULL;
-")"
-applied_count="$(echo "${applied_count}" | tr -d '[:space:]')"
-if [[ "${applied_count}" != "1" ]]; then
-  echo "Expected exactly one applied row for ${MIGRATION_NAME}, got: ${applied_count}" >&2
-  exit 1
-fi
+log "Verifying migrations are recorded as applied"
+for mig in "${PHASE1_MIGRATION_NAME}" "${P21_MIGRATION_NAME}"; do
+  applied_count="$(psql_atc "
+    SELECT COUNT(*)::text
+    FROM _prisma_migrations
+    WHERE migration_name = '${mig}'
+      AND finished_at IS NOT NULL;
+  ")"
+  applied_count="$(echo "${applied_count}" | tr -d '[:space:]')"
+  if [[ "${applied_count}" != "1" ]]; then
+    echo "Expected exactly one applied row for ${mig}, got: ${applied_count}" >&2
+    exit 1
+  fi
+done
 
 log "Verifying physical-state tables and TEXT identifier columns"
 psql_atc "
@@ -83,6 +86,12 @@ BEGIN
   END IF;
   IF to_regclass('public.device_connection_physical_state_transitions') IS NULL THEN
     RAISE EXCEPTION 'missing table device_connection_physical_state_transitions';
+  END IF;
+  IF to_regclass('public.device_connection_physical_authority_cutover') IS NULL THEN
+    RAISE EXCEPTION 'missing table device_connection_physical_authority_cutover';
+  END IF;
+  IF to_regclass('public.device_connection_physical_state_action_outbox') IS NULL THEN
+    RAISE EXCEPTION 'missing table device_connection_physical_state_action_outbox';
   END IF;
 
   IF (
@@ -117,4 +126,4 @@ BEGIN
 END \$\$;
 "
 
-log "Ephemeral migration validation PASS (${MIGRATION_NAME}) on database ${TEMP_DB}"
+log "Ephemeral migration validation PASS (${PHASE1_MIGRATION_NAME}, ${P21_MIGRATION_NAME}) on database ${TEMP_DB}"
