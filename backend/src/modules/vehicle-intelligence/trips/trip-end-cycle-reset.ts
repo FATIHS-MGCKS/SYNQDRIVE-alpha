@@ -297,7 +297,7 @@ function hasMatchingProviderSilenceCandidate(
   preserved: ProviderSilenceCandidateProvenance,
   candidate: ProviderSilenceCandidateProvenance | null | undefined,
 ): boolean {
-  if (!candidate) return true;
+  if (!candidate) return false;
   return (
     preserved.anchorAt.getTime() === candidate.anchorAt.getTime() &&
     preserved.source === candidate.source &&

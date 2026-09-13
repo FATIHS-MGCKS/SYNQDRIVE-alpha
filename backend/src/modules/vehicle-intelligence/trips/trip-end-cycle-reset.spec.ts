@@ -458,6 +458,26 @@ describe('trip-end-cycle-reset (R5)', () => {
     ).toBe(2);
   });
 
+  it('resolveEndValidationAttemptsOnPossibleEndReentry resets when current silence candidate omitted', () => {
+    const workerNow = new Date('2026-09-13T10:30:00.000Z');
+    const silenceAnchor = new Date('2026-09-13T10:23:00.000Z');
+    expect(
+      resolveEndValidationAttemptsOnPossibleEndReentry({
+        priorState: 'ACTIVE_TRIP',
+        endValidationAttempts: 2,
+        priorSummary: {
+          providerSilenceCandidateAt: silenceAnchor.toISOString(),
+          providerSilenceCandidateSource: 'provider_silence_candidate',
+          providerSilenceCandidateClockAuthority: 'PROVIDER_EVENT_TIME',
+          providerSilenceCandidateTrust: false,
+          lastProviderActivityAt: silenceAnchor.toISOString(),
+        },
+        workerNow,
+        lastMeaningfulMovementAt: new Date('2026-09-13T10:14:00.000Z'),
+      }),
+    ).toBe(0);
+  });
+
   it('resolveEndValidationAttemptsOnPossibleEndReentry resets when silence episode changes', () => {
     const workerNow = new Date('2026-09-13T10:30:00.000Z');
     const oldAnchor = new Date('2026-09-13T10:23:00.000Z');
