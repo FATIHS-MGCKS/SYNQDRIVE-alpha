@@ -192,9 +192,10 @@ Auth unavailable is classified as **ERROR / AUTH_UNAVAILABLE**, not SUCCESS empt
 
 | Field | Value |
 |-------|-------|
-| `TEST_SCHEMA_BOOTSTRAP_MODE` | `RESILIENT_EPHEMERAL_RECOVERY` + explicit `DB_PUSH_TEST_ONLY` drift sync |
-| `PG_GATE_SCHEMA_FAILURE_MASKED` | NO — removed `\|\| true` on `prisma db push` |
-| `PG_GATE_TEST_DB_ISOLATION` | Dedicated `rfrf_f4_pr2_*` on localhost only |
+| `TEST_SCHEMA_BOOTSTRAP_MODE` | `RESILIENT_EPHEMERAL_RECOVERY` (migrate deploy authoritative) |
+| `TEST_SCHEMA_DRIFT_SYNC` | `NONE` when verification passes; else explicit `DB_PUSH_TEST_ONLY` on dedicated DB |
+| `PG_GATE_SCHEMA_FAILURE_MASKED` | NO — no `\|\| true`; failures fail unless post-push verification passes with documented duplicate-object drift |
+| `PG_GATE_TEST_DB_ISOLATION` | localhost-only + `rfrf_f4_pr2_*` database + per-run role |
 
 ---
 
