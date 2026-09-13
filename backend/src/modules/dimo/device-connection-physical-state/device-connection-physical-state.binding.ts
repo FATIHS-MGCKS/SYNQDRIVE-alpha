@@ -65,6 +65,28 @@ export function buildPhysicalStateBindingLockKey(input: {
   ].join('|');
 }
 
+/**
+ * Canonical physical-state action outbox idempotency key (VDC-DEC-013 §12).
+ */
+export function buildPhysicalStateActionOutboxIdempotencyKey(input: {
+  organizationId: string;
+  vehicleId: string;
+  bindingKey: string;
+  stateVersion: number;
+  episodeAction: string;
+  alertAction: string;
+}): string {
+  return [
+    'physical',
+    input.organizationId,
+    input.vehicleId,
+    input.bindingKey,
+    String(input.stateVersion),
+    input.episodeAction,
+    input.alertAction,
+  ].join(':');
+}
+
 export function buildPhysicalStateIdempotencyKey(input: {
   organizationId: string;
   vehicleId: string;

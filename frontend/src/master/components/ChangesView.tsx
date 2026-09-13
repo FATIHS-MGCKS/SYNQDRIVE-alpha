@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p21-durability-foundation-2026-09-13',
+    version: '4.9.1122',
+    title: 'VDC RB-019 Phase 2 P2.1 — durability + transaction foundation (dark)',
+    summary: [
+      'Prisma: device_connection_physical_authority_cutover + device_connection_physical_state_action_outbox.',
+      'reconcileInTransaction(tx) refactor; PhysicalStateReconcileCoordinator owns outer PostgreSQL transaction.',
+      'Outbox processor skeleton: FOR UPDATE SKIP LOCKED claim, lease, retry, DLQ — no episode/alert execution.',
+      'Authority scope UNIQUE (organizationId, vehicleId, provider); default LEGACY; flags OFF; unwired.',
+      'PG integration tests: latch, outbox concurrency, coordinator atomicity matrix.',
+    ],
+    reason:
+      'P2.1 infrastructure per VDC-DEC-013: durable side-effect outbox + forward-only authority latch persistence before shadow/writer cutover.',
+    previousBehavior:
+      'Phase 1 repository owned nested transaction; no outbox or authority latch tables; no coordinator composition.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md; backend/src/modules/dimo/device-connection-physical-state/.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T08:30:00.000Z',
+  },
+  {
     id: 'vdc-rb019-phase2-cutover-scope-audit-2026-09-13',
     version: '4.9.1121',
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',

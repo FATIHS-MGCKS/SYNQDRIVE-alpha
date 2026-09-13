@@ -10,7 +10,7 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-13 (RB-019 Phase 1 merged; Phase 2 cutover scoped) |
+| **Last updated** | 2026-09-13 (RB-019 P2.1 durability foundation implemented — dark) |
 
 ## Executive summary
 
@@ -44,7 +44,8 @@ Phase 3 (reconciliation) establishes:
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
 - **GT-R1-UNPLUG-001** **executed** 2026-09-12 on KS MX 2024: UNPLUG webhook **delivered** post-recovery but **ignored** (`no_state_change` — stale canonical last-event); snapshot unplug/replug **confirmed**; **no episode/alert**; PLUG webhook **absent** (disabled); snapshot-only replug recovery **confirmed** (VDC-EVID-GT-R1-EXECUTION-001).
 - **Physical-state reconciliation Phase 1 (dark, merged):** VDC-DEC-012 + VDC-RB-019 — durable `device_connection_physical_states` projection, transition log, pure policy, repository (`SELECT FOR UPDATE`), service layer, `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` (**OFF**); **POSTGRES_VALIDATED / FINAL_CI_VALIDATED** (PR #1626, head `3df9f58a`, CI `34741055482`); **no** live webhook/snapshot cutover.
-- **RB-019 Phase 2 (scoped, not implemented):** runtime cutover architecture — shadow → pre-seed → authority gate → durable side-effect outbox; see [docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
+- **RB-019 Phase 2 P2.1 (implemented, dark):** durability infrastructure — `device_connection_physical_authority_cutover` + `device_connection_physical_state_action_outbox` schemas; `reconcileInTransaction(tx)` refactor; `PhysicalStateReconcileCoordinator` outer transaction; outbox processor skeleton (row lifecycle only). **Flags OFF; unwired.** Evidence: [evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md](evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md).
+- **RB-019 Phase 2 P2.2+ (not implemented):** shadow infra, writers, pre-seed, authority cutover, side effects — see [docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
 - **AUTHORITY_ACTIVE promotion deferred** — HM gap, runtime cutover, Production backfill pending.
 
 ## Component hierarchy
