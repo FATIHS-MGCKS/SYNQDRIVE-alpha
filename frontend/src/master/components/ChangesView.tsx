@@ -163,6 +163,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-12T22:00:00.000Z',
   },
   {
+    id: 'tdl-r12-cusum-retry-budget-fix-2026-09-12',
+    version: '4.9.1118',
+    title: 'R12 — CUSUM END_VALIDATION retry-budget durability (POST-#1617 / WOB L 7503)',
+    summary: [
+      'Production WOB L 7503: 17× END_VALIDATION with persistedAttemptsAfterReset=0 — bounded max-attempt fallback unreachable.',
+      'Fix: preserve endValidationAttempts on CUSUM_STILL_ONGOING reopen when trusted stop boundary remains valid (#1617 preserved).',
+      'ACTIVITY_RESUMED and post-boundary movement still reset budget to 0; no CUSUM detector/threshold changes.',
+      'Deterministic Postgres+BullMQ BASE/HEAD proof: ≥4 EV on BASE vs 3 EV + max fallback terminal chain on HEAD.',
+      'Forensic authority: PR #1625. Physical acceptance remains FAIL until post-deploy Production drive.',
+    ],
+    reason:
+      'buildPossibleEndToActiveReset always zeroed endValidationAttempts on cusum_still_ongoing reopen, defeating TRIP_END_VALIDATION_MAX_ATTEMPTS=3 fallback contract.',
+    previousBehavior:
+      'Each CUSUM ongoing cycle completed attempt=1 but persistedAttemptsAfterReset=0 → infinite POSSIBLE_END/EV loop despite #1617 boundary preservation.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md; references PR #1625; trip-end-cycle-reset.ts + orchestration CUSUM path.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-12T21:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f2-2a-merge-closure-2026-09-12',
     version: '4.9.1114',
     title: 'RFRF F2.2a — Evidence-local rediscovery window + migration assertion hardening',

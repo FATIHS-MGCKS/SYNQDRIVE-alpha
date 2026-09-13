@@ -40,12 +40,47 @@ describe('R12 — CUSUM still-ongoing boundary retry contract', () => {
       lastMeaningfulMovementAt: LAST_MOVEMENT,
       priorSummary: TRUSTED_BOUNDARY_SUMMARY,
       reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 2,
     });
     const summary = reset.lastEvidenceSummary as Record<string, unknown>;
     expect(readStopBoundaryAt(summary)?.toISOString()).toBe(STOP_BOUNDARY.toISOString());
     expect(summary.stopBoundaryTrust).toBe(true);
     expect(summary.endValidationScheduledAt).toBeUndefined();
     expect(summary.emptyCoreDeferralStreak).toBeUndefined();
+    expect(reset.endValidationAttempts).toBe(2);
+  });
+
+  it('CUSUM_STILL_ONGOING without trusted boundary does not preserve retry budget', () => {
+    const reset = buildPossibleEndToActiveReset({
+      workerNow: WORKER_NOW,
+      lastMeaningfulMovementAt: POST_MOVEMENT,
+      priorSummary: TRUSTED_BOUNDARY_SUMMARY,
+      reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 3,
+    });
+    expect(reset.endValidationAttempts).toBe(0);
+  });
+
+  it('ACTIVITY_RESUMED reopen resets retry budget to zero', () => {
+    const reset = buildPossibleEndToActiveReset({
+      workerNow: WORKER_NOW,
+      priorSummary: TRUSTED_BOUNDARY_SUMMARY,
+      reopenReason: 'ACTIVITY_RESUMED',
+      completedEndValidationAttempts: 3,
+    });
+    expect(reset.endValidationAttempts).toBe(0);
+  });
+
+  it('new stop episode after movement cannot inherit prior CUSUM retry budget', () => {
+    const reset = buildPossibleEndToActiveReset({
+      workerNow: WORKER_NOW,
+      lastMeaningfulMovementAt: POST_MOVEMENT,
+      priorSummary: TRUSTED_BOUNDARY_SUMMARY,
+      reopenReason: 'CUSUM_STILL_ONGOING',
+      completedEndValidationAttempts: 3,
+    });
+    expect(reset.endValidationAttempts).toBe(0);
+    expect(readStopBoundaryAt(reset.lastEvidenceSummary as Record<string, unknown>)).toBeNull();
   });
 
   it('CUSUM reopen rejects preservation when movement is after boundary', () => {

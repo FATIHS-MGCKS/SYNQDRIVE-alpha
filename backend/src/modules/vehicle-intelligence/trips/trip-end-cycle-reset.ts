@@ -243,6 +243,39 @@ export function resolveTrustedStopBoundaryForCusumRetry(
   return provenance;
 }
 
+/**
+ * Preserve completed END_VALIDATION budget when ACTIVE_TRIP re-enters POSSIBLE_END
+ * for the same trusted stop episode (CUSUM retry loop). New episodes still start at 0.
+ */
+export function resolveEndValidationAttemptsOnPossibleEndReentry(params: {
+  priorState: string;
+  endValidationAttempts?: number | null;
+  priorSummary?: Record<string, unknown> | null;
+  workerNow: Date;
+  lastMeaningfulMovementAt?: Date | null;
+  candidateStopBoundary?: StopBoundaryProvenance | null;
+}): number {
+  const priorAttempts = params.endValidationAttempts ?? 0;
+  if (priorAttempts <= 0) return 0;
+  if (params.priorState !== 'ACTIVE_TRIP') return 0;
+
+  const trusted = resolveTrustedStopBoundaryForCusumRetry(
+    params.priorSummary,
+    params.workerNow,
+    params.lastMeaningfulMovementAt,
+  );
+  if (!trusted) return 0;
+
+  if (
+    params.candidateStopBoundary &&
+    trusted.boundaryAt.getTime() !== params.candidateStopBoundary.boundaryAt.getTime()
+  ) {
+    return 0;
+  }
+
+  return priorAttempts;
+}
+
 function copyCusumRetryStopBoundaryFields(
   source: Record<string, unknown>,
   target: Record<string, unknown>,
@@ -304,13 +337,30 @@ export function buildPossibleEndToActiveReset(params: {
   lastMeaningfulMovementAt?: Date | null;
   priorSummary?: Record<string, unknown> | null;
   reopenReason?: ActiveReopenReason;
+  /** Completed END_VALIDATION count for this stop episode — preserved only on CUSUM_STILL_ONGOING when trusted boundary remains valid. */
+  completedEndValidationAttempts?: number;
 }) {
   const reopenReason = params.reopenReason ?? 'ACTIVITY_RESUMED';
+  let endValidationAttempts = 0;
+  if (
+    reopenReason === 'CUSUM_STILL_ONGOING' &&
+    typeof params.completedEndValidationAttempts === 'number' &&
+    params.completedEndValidationAttempts >= 0
+  ) {
+    const preservedBoundary = resolveTrustedStopBoundaryForCusumRetry(
+      params.priorSummary ?? {},
+      params.workerNow,
+      params.lastMeaningfulMovementAt,
+    );
+    if (preservedBoundary) {
+      endValidationAttempts = params.completedEndValidationAttempts;
+    }
+  }
   const reset: Record<string, unknown> = {
     ...clearPossibleEndClockFields(),
     endDetectionMode: null,
     endConfidence: null,
-    endValidationAttempts: 0,
+    endValidationAttempts,
     cusumValidatedAt: null,
     cusumSegmentStart: null,
     cusumSegmentEnd: null,
