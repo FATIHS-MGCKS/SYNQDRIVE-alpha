@@ -331,3 +331,19 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Decision** | Per-candidate SAME/DISTINCT/INSUFFICIENT; no global fallback disable on unrelated native segments. |
 | **Evidence** | EED-EV-0041 |
 | **Related nodes** | EED-OQ-013 |
+
+---
+
+## EED-DEC-RFRF-006 — F4 Option B phase boundary (2026-09-13)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-006 |
+| **Status** | **PROPOSED** (pending human review) |
+| **Date** | 2026-09-13 |
+| **Question** | Where does F4 end and F5 begin given promotion/convergence ordering hazard? |
+| **Decision** | **Option B (F4.0 hardened):** F4 implements dark runtime through candidate staging + promotion **substrate**. `F4_VEE_UPSERT_REACHABLE=NO`. F5 owns first reachable fallback VEE execution via separate promotion gate (not substitutable by persist flag). `fuelCapability` (Vehicle metadata) separate from `absoluteSignalTrust` (NOT_YET_AVAILABLE — fail closed). `RawRefuelPromotionEligibility` orthogonal to F2 lifecycle — no terminal REJECTED solely for F5 absence. Native overlap advisory-only in F4. `detectionSource=NULL` = legacy native-era only. `sourceEventKey=candidateIdentityKey` canonical. |
+| **Evidence** | EED-EV-0045 |
+| **Alternatives rejected** | Option A; Option C; cutover filtering in F4; deriving trust from fuelType/sample presence; F4 terminal overlap rejection |
+| **Consequences** | F4-PR1..4 plan; F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; PR #1628 draft for final review |
+| **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-005, EED-EV-0044, EED-EV-0043 |

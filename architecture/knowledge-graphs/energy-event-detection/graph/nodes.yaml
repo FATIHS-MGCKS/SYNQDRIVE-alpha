@@ -1437,8 +1437,38 @@ nodes:
       single-step provider rises, stepped coalescence via provisionalPostContinuationGraceMs
       (separate from riseMaxDurationMs), local post plateau, TRUSTED→relative fallback,
       wobble fail-closed, nullable native-segment metric. 62 unit tests; 4/4 real isolated PG
-      F2 handoff proofs. No production wiring. F4_START_AUTHORIZED=NO until main sync review.
+      F2 handoff proofs. No production wiring. Merged PR #1623 on main 4d95c16a9.
     verified_at: "2026-09-12"
+
+  - id: EED-EV-0045
+    type: evidence
+    title: RFRF F4 — Scope + runtime boundary (pre-implementation)
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md
+    summary: >
+      F4 Option B (EED-DEC-RFRF-006): dark detectEnergyEvents through candidate staging;
+      F4_VEE_UPSERT_REACHABLE=NO; F5 promotion execution authority; flag truth table;
+      fuelCapability vs absoluteSignalTrust split; RawRefuelPromotionEligibility orthogonal
+      to F2 lifecycle; native overlap advisory-only in F4; detectionSource NULL=legacy native;
+      sourceEventKey canonical; F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate. F4.0 hardened.
+      No runtime code.
+    verified_at: "2026-09-13"
+
+  - id: EED-DEC-RFRF-006
+    type: decision
+    title: RFRF F4 — Option B phase boundary (dark staging; promotion execution F5-gated)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      F4 wires scheduler/detectEnergyEvents → fuel fetch → capability gate → F3 → F2 persist →
+      promotion eligibility assessment and promotion substrate. F4_VEE_UPSERT_REACHABLE=NO.
+      VehicleEnergyEvent upsert unreachable until F5 convergence authority
+      (RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED conceptual gate). Persist flag never
+      authorizes promotion. Native overlap advisory-only in F4. F4.0 contract hardened.
+    evidence: [EED-EV-0045]
+    verified_at: "2026-09-13"
 
   - id: EED-DEC-RFRF-001
     type: decision
