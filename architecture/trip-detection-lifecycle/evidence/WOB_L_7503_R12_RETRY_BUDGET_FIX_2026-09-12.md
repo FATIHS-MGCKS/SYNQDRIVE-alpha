@@ -9,15 +9,9 @@
 | **BASE_MAIN_SHA** | `7cb184ffc5926521429f75524a1dcb65579769f6` |
 | **PRODUCTION_SHA (failure)** | `a8320f2cabccf7dbeb38cab5afdfc6ee00abdea0` @ `20260912194023_v4994` |
 | **Vehicle** | WOB L 7503 — canonical trip `4083e24c-fc8f-4f56-8d95-a27d517169dc` |
-<<<<<<< Updated upstream
-| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_VALIDATED** on PR #1627 HEAD @ `11e95d4d1` (Trip FSM run `34726519989`) |
+| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_PENDING** on PR #1627 post-sync HEAD (await Trip FSM run on `ca16ca034` merge-base) |
 | **Historical forensic BASE** | `7cb184ffc5926521429f75524a1dcb65579769f6` (pre-fix main @ WOB audit) |
-| **Merge-base BASE (current main)** | `4d95c16a9b8181255097f13cc845afd414345c1e` |
-=======
-| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_PENDING** on fix branch (PR #1627) |
-| **Historical forensic BASE** | `7cb184ffc5926521429f75524a1dcb65579769f6` (pre-fix main @ WOB audit) |
-| **Merge-base BASE (current main)** | `4d95c16a9b8181255097f13cc845afd414345c1e` — used for merge-readiness BASE/HEAD proof |
->>>>>>> Stashed changes
+| **Merge-base BASE (current main)** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` — used for merge-readiness BASE/HEAD proof |
 
 ## Production failure (read-only, not repaired)
 
@@ -63,11 +57,7 @@ Implementation:
 | Integration | [`trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts`](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts) |
 | BASE/HEAD worktree script | [`trip-r12-cusum-retry-budget-base-head-red-proof.sh`](../../../backend/scripts/test/trip-r12-cusum-retry-budget-base-head-red-proof.sh) |
 
-<<<<<<< Updated upstream
-### Expected BASE shape (@ merge-base `4d95c16a…`; historical `7cb184ff…` identical defect class)
-=======
-### Expected BASE shape (@ merge-base `4d95c16a…` or historical `7cb184ff…`)
->>>>>>> Stashed changes
+### Expected BASE shape (@ merge-base `ca16ca034…`; historical `7cb184ff…` identical defect class)
 
 | Field | Expected |
 |-------|----------|
@@ -90,22 +80,9 @@ Implementation:
 
 ## Physical acceptance status
 
-<<<<<<< Updated upstream
 **Physical acceptance remains FAIL** until a fresh Production drive after deploy of this fix.
 
-### Observed CI proof (Trip FSM run `34726519989`)
-
-| Probe | BASE (`4d95c16a…`) | HEAD (`11e95d4d1…`) |
-|-------|-------------------|---------------------|
-| EV runs | **4** | **3** |
-| completedAttempt seq | `1,1,1,1` | `1,2,3` |
-| persistedAttempts seq | `0,0,0,0` | `1,2,3` |
-| max fallback | NO | YES |
-| FINALIZE | NO | YES |
-| Verdict | `BASE_RED_REPRODUCED=YES` | `HEAD_GREEN_PROVEN=YES` |
-=======
-**Physical acceptance remains FAIL** until a fresh Production drive after deploy of this fix. Repository proof requires **PENDING_CI** Trip FSM Production Readiness on PR #1627 HEAD — do not claim CI green until observed.
->>>>>>> Stashed changes
+**CI_STATUS=PENDING** — Trip FSM Production Readiness must pass on post-sync HEAD before recording observed BASE/HEAD metrics here. Prior runs on pre-sync SHAs (`34726519989`, `34728076738`, `34729611225`) are superseded by main sync to `ca16ca034`.
 
 ## Related decisions preserved
 

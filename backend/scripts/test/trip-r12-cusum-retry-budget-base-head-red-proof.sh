@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-BASE_SHA="${BASE_SHA:-4d95c16a9b8181255097f13cc845afd414345c1e}"
+BASE_SHA="${BASE_SHA:-ca16ca034809a9bad2c47a0f06f3b908f83bfaf9}"
 DEFAULT_HEAD="$(git -C "$ROOT" rev-parse HEAD)"
 HEAD_SHA="${HEAD_SHA:-$DEFAULT_HEAD}"
 WORKTREE_ROOT="${TMPDIR:-/tmp}/trip-r12-retry-budget-red-proof-$$"
