@@ -107,24 +107,55 @@ describe('R12 provider stop boundary candidate', () => {
 });
 
 describe('R12 boundary-backed empty-core silence', () => {
-  it('K5 — stale UNKNOWN without boundary remains KEEP_OPEN', () => {
-    const gate = assessSuccessfulEmptyCoreEndEligibility({
-      operationalInactiveMs: MIN_INACTIVITY + 5_000,
+  it('K5 — stale UNKNOWN without boundary remains KEEP_OPEN until provider silence bound', () => {
+    const vlsAt = new Date('2026-09-09T05:07:00.000Z');
+    const belowBoundNow = new Date(vlsAt.getTime() + MIN_INACTIVITY - 10_000);
+    const gateBelowBound = assessSuccessfulEmptyCoreEndEligibility({
+      operationalInactiveMs: MIN_INACTIVITY - 10_000,
       minInactivityBeforeCusumMs: MIN_INACTIVITY,
       telemetry: {
         isIgnitionOn: false,
         speedKmh: 0,
         engineLoad: 39.6,
-        sourceTimestamp: new Date('2026-09-09T05:07:00.000Z'),
+        sourceTimestamp: vlsAt,
+      },
+      perfReadings: [],
+      routePoints: [],
+      profile: 'ICE',
+      workerNow: belowBoundNow,
+      stopBoundaryAt: null,
+      providerSilenceAnchorAt: vlsAt,
+      lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
+    });
+    expect(gateBelowBound.eligible).toBe(false);
+    expect(gateBelowBound.forensics.innerGateReason).toBe(
+      'operational_inactivity_below_threshold',
+    );
+
+    const gate = assessSuccessfulEmptyCoreEndEligibility({
+      operationalInactiveMs: WORKER_NOW.getTime() - vlsAt.getTime(),
+      minInactivityBeforeCusumMs: MIN_INACTIVITY,
+      telemetry: {
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 39.6,
+        sourceTimestamp: vlsAt,
       },
       perfReadings: [],
       routePoints: [],
       profile: 'ICE',
       workerNow: WORKER_NOW,
       stopBoundaryAt: null,
+      providerSilenceAnchorAt: vlsAt,
+      lastMeaningfulMovementAt: new Date('2026-09-09T05:06:49.562Z'),
     });
-    expect(gate.eligible).toBe(false);
-    expect(gate.forensics.innerGateReason).toBe('vls_stale_provider_observation');
+    expect(gate.eligible).toBe(true);
+    expect(gate.forensics.innerGateReason).toBe('provider_silence_empty_core_admission');
+    expect(gate.forensics.providerSilenceCandidateAt).toBe(vlsAt.toISOString());
+    expect(gate.forensics.providerSilenceCandidateSource).toBe(
+      'provider_silence_candidate',
+    );
+    expect(gate.forensics.providerSilenceCandidateTrust).toBe(false);
   });
 
   it('K1 — stale UNKNOWN with trusted boundary + silence allows POSSIBLE_END', () => {

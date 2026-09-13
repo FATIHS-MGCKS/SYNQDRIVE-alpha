@@ -5,7 +5,12 @@ import {
   type StopBoundaryProvenance,
 } from './trip-fsm-clock-contract';
 import type { EmptyCoreForensics } from './trip-empty-core-end-gate';
-import { readStopBoundaryProvenance } from './trip-fsm-evidence-state';
+import {
+  readLastProviderActivityAt,
+  readProviderSilenceCandidateProvenance,
+  readStopBoundaryProvenance,
+  type ProviderSilenceCandidateProvenance,
+} from './trip-fsm-evidence-state';
 
 /** Why POSSIBLE_END → ACTIVE reopen occurred — controls stop-boundary strip semantics. */
 export type ActiveReopenReason = 'ACTIVITY_RESUMED' | 'CUSUM_STILL_ONGOING';
@@ -56,6 +61,15 @@ export const CUSUM_RETRY_PRESERVE_STOP_BOUNDARY_KEYS = [
   'stopBoundaryEvidenceState',
   'stopBoundaryCandidateReason',
   'stopBoundaryContradictions',
+] as const;
+
+/** Same provider-silence end episode — low-trust candidate, not a physical stop boundary. */
+export const CUSUM_RETRY_PRESERVE_PROVIDER_SILENCE_KEYS = [
+  'providerSilenceCandidateAt',
+  'providerSilenceCandidateSource',
+  'providerSilenceCandidateClockAuthority',
+  'providerSilenceCandidateTrust',
+  'providerSilenceAdmissionEligible',
 ] as const;
 
 /** Stable token for one POSSIBLE_END episode (worker-entered clock). */
@@ -244,8 +258,80 @@ export function resolveTrustedStopBoundaryForCusumRetry(
 }
 
 /**
+ * Low-trust provider-silence end candidate eligible for CUSUM-only retry continuity.
+ * Does not promote to trusted stop boundary semantics.
+ */
+export function resolveProviderSilenceCandidateForCusumRetry(
+  summary: Record<string, unknown> | null | undefined,
+  workerNow: Date,
+  lastMeaningfulMovementAt?: Date | null,
+): ProviderSilenceCandidateProvenance | null {
+  const provenance = readProviderSilenceCandidateProvenance(summary, workerNow);
+  if (!provenance) return null;
+  if (
+    lastMeaningfulMovementAt &&
+    isValidProviderEventTimestamp(lastMeaningfulMovementAt, workerNow) &&
+    lastMeaningfulMovementAt.getTime() > provenance.anchorAt.getTime()
+  ) {
+    return null;
+  }
+  return provenance;
+}
+
+function copyCusumRetryProviderSilenceFields(
+  source: Record<string, unknown>,
+  target: Record<string, unknown>,
+): void {
+  for (const key of CUSUM_RETRY_PRESERVE_PROVIDER_SILENCE_KEYS) {
+    if (source[key] !== undefined) {
+      target[key] = source[key];
+    }
+  }
+  const priorActivity = readLastProviderActivityAt(source);
+  if (priorActivity) {
+    target.lastProviderActivityAt = priorActivity.toISOString();
+  }
+}
+
+function hasMatchingProviderSilenceCandidate(
+  preserved: ProviderSilenceCandidateProvenance,
+  candidate: ProviderSilenceCandidateProvenance | null | undefined,
+): boolean {
+  if (!candidate) return false;
+  return (
+    preserved.anchorAt.getTime() === candidate.anchorAt.getTime() &&
+    preserved.source === candidate.source &&
+    preserved.clockAuthority === candidate.clockAuthority &&
+    preserved.trust === candidate.trust
+  );
+}
+
+function resolveCusumRetryBudgetContinuity(params: {
+  priorSummary?: Record<string, unknown> | null;
+  workerNow: Date;
+  lastMeaningfulMovementAt?: Date | null;
+}): {
+  trustedBoundary: StopBoundaryProvenance | null;
+  providerSilence: ProviderSilenceCandidateProvenance | null;
+} {
+  return {
+    trustedBoundary: resolveTrustedStopBoundaryForCusumRetry(
+      params.priorSummary,
+      params.workerNow,
+      params.lastMeaningfulMovementAt,
+    ),
+    providerSilence: resolveProviderSilenceCandidateForCusumRetry(
+      params.priorSummary,
+      params.workerNow,
+      params.lastMeaningfulMovementAt,
+    ),
+  };
+}
+
+/**
  * Preserve completed END_VALIDATION budget when ACTIVE_TRIP re-enters POSSIBLE_END
- * for the same trusted stop episode (CUSUM retry loop). New episodes still start at 0.
+ * for the same trusted stop episode OR same provider-silence end candidate.
+ * New episodes still start at 0.
  */
 export function resolveEndValidationAttemptsOnPossibleEndReentry(params: {
   priorState: string;
@@ -254,26 +340,42 @@ export function resolveEndValidationAttemptsOnPossibleEndReentry(params: {
   workerNow: Date;
   lastMeaningfulMovementAt?: Date | null;
   candidateStopBoundary?: StopBoundaryProvenance | null;
+  candidateProviderSilence?: ProviderSilenceCandidateProvenance | null;
 }): number {
   const priorAttempts = params.endValidationAttempts ?? 0;
   if (priorAttempts <= 0) return 0;
   if (params.priorState !== 'ACTIVE_TRIP') return 0;
 
-  const trusted = resolveTrustedStopBoundaryForCusumRetry(
-    params.priorSummary,
-    params.workerNow,
-    params.lastMeaningfulMovementAt,
-  );
-  if (!trusted) return 0;
+  const continuity = resolveCusumRetryBudgetContinuity({
+    priorSummary: params.priorSummary,
+    workerNow: params.workerNow,
+    lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+  });
 
-  if (
-    params.candidateStopBoundary &&
-    trusted.boundaryAt.getTime() !== params.candidateStopBoundary.boundaryAt.getTime()
-  ) {
-    return 0;
+  if (continuity.trustedBoundary) {
+    if (
+      params.candidateStopBoundary &&
+      continuity.trustedBoundary.boundaryAt.getTime() !==
+        params.candidateStopBoundary.boundaryAt.getTime()
+    ) {
+      return 0;
+    }
+    return priorAttempts;
   }
 
-  return priorAttempts;
+  if (continuity.providerSilence) {
+    if (
+      !hasMatchingProviderSilenceCandidate(
+        continuity.providerSilence,
+        params.candidateProviderSilence,
+      )
+    ) {
+      return 0;
+    }
+    return priorAttempts;
+  }
+
+  return 0;
 }
 
 function copyCusumRetryStopBoundaryFields(
@@ -301,13 +403,15 @@ export function stripEndCycleEvidenceForActiveReopen(
     delete base[key];
   }
   if (options?.reopenReason === 'CUSUM_STILL_ONGOING' && options.workerNow) {
-    const preserved = resolveTrustedStopBoundaryForCusumRetry(
-      prior,
-      options.workerNow,
-      options.lastMeaningfulMovementAt,
-    );
-    if (preserved) {
+    const continuity = resolveCusumRetryBudgetContinuity({
+      priorSummary: prior,
+      workerNow: options.workerNow,
+      lastMeaningfulMovementAt: options.lastMeaningfulMovementAt,
+    });
+    if (continuity.trustedBoundary) {
       copyCusumRetryStopBoundaryFields(prior, base);
+    } else if (continuity.providerSilence) {
+      copyCusumRetryProviderSilenceFields(prior, base);
     }
   }
   return base;
@@ -347,12 +451,12 @@ export function buildPossibleEndToActiveReset(params: {
     typeof params.completedEndValidationAttempts === 'number' &&
     params.completedEndValidationAttempts >= 0
   ) {
-    const preservedBoundary = resolveTrustedStopBoundaryForCusumRetry(
-      params.priorSummary ?? {},
-      params.workerNow,
-      params.lastMeaningfulMovementAt,
-    );
-    if (preservedBoundary) {
+    const continuity = resolveCusumRetryBudgetContinuity({
+      priorSummary: params.priorSummary,
+      workerNow: params.workerNow,
+      lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+    });
+    if (continuity.trustedBoundary || continuity.providerSilence) {
       endValidationAttempts = params.completedEndValidationAttempts;
     }
   }
