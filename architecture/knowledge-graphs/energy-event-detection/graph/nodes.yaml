@@ -1491,6 +1491,24 @@ nodes:
       remains false; no schema change; DETECT_ENERGY_EVENTS_RAW_PATH_WIRED=NO.
     verified_at: "2026-09-13"
 
+  - id: EED-EV-0048
+    type: evidence
+    title: RFRF F4-PR2 — Dark raw-fuel runtime wiring
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13.md
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service.ts
+      - backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh
+    summary: >
+      F4-PR2 dark parallel branch in detectEnergyEvents: capability gate → fuel fetch → F4.1 trust
+      → F3 detectRawFuelRises → F2 RawRefuelCandidateService persist when flags allow; native path
+      unchanged; failure isolated; 41/41 real PG gate PASS; KS MS 661 one candidate zero VEE;
+      F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; flags default OFF; IMPLEMENTED_AND_INTEGRATION_PROVEN not production.
+    verified_at: "2026-09-13"
+
   - id: EED-DEC-RFRF-007
     type: decision
     title: RFRF F4.1 — Separate detection admissibility from promotion trust
