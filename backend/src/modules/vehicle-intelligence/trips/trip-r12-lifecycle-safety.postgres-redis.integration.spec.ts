@@ -169,16 +169,6 @@ if (REQUIRED) {
       expect(readActiveStopBoundaryAt(resumeSummary)).toBeNull();
       expect(readLastPauseBoundaryAt(resumeSummary)?.toISOString()).toBe(b1At.toISOString());
 
-      await prisma.vehicleLatestState.update({
-        where: { vehicleId: fixture.vehicle.id },
-        data: {
-          isIgnitionOn: false,
-          speedKmh: 0,
-          engineLoad: 42,
-          sourceTimestamp: staleObsAt,
-          updatedAt: staleObsAt,
-        },
-      });
       harness.segments.fetchRawTripCoreData = jest.fn().mockResolvedValue([]);
       harness.segments.fetchRouteEnrichment = jest.fn().mockResolvedValue([]);
 
@@ -195,6 +185,16 @@ if (REQUIRED) {
         readActiveStopBoundaryAt(det?.lastEvidenceSummary as Record<string, unknown>),
       ).toBeNull();
 
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 42,
+          sourceTimestamp: staleObsAt,
+          updatedAt: staleObsAt,
+        },
+      });
       await prisma.vehicleLatestState.update({
         where: { vehicleId: fixture.vehicle.id },
         data: {

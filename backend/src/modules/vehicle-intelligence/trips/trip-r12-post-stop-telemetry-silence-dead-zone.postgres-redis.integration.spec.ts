@@ -285,6 +285,19 @@ async function runEmptyCoreTick(params: {
       });
       expect(belowSummary.innerGateReason).toBe('operational_inactivity_below_threshold');
 
+      if (PROBE_EXPECT === 'HEAD') {
+        await prisma.vehicleTripDetectionState.update({
+          where: { vehicleId: fixture.vehicle.id },
+          data: {
+            lastEvidenceSummary: {
+              lastProviderActivityAt: PROVIDER_ANCHOR.toISOString(),
+              lastPauseBoundaryAt: RETIRED_BOUNDARY.toISOString(),
+              stopBoundaryRetiredByMovementAt: RETIRED_BY_MOVEMENT_AT.toISOString(),
+            },
+          },
+        });
+      }
+
       const firstBoundSummary = await runEmptyCoreTick({
         harness,
         fixture,
