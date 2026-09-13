@@ -1,6 +1,7 @@
 import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import {
   buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
@@ -17,14 +18,14 @@ describe('raw-fuel-rise-detector invariance', () => {
   it('window invariance — narrow vs wide scan window', () => {
     const samples = buildRefuelSeries();
     const narrow = detectRawFuelRises({
-      context: buildDetectionContext({
+      context: buildDetectorPhysicsContext({
         scanWindowStart: new Date('2026-09-06T08:00:00.000Z'),
         scanWindowEnd: new Date('2026-09-06T09:00:00.000Z'),
       }),
       samples,
     });
     const wide = detectRawFuelRises({
-      context: buildDetectionContext({
+      context: buildDetectorPhysicsContext({
         scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
         scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
       }),
@@ -43,15 +44,15 @@ describe('raw-fuel-rise-detector invariance', () => {
   it('input order invariance', () => {
     const samples = buildRefuelSeries();
     const chronological = detectRawFuelRises({
-      context: buildDetectionContext(),
+      context: buildDetectorPhysicsContext(),
       samples,
     });
     const reversed = detectRawFuelRises({
-      context: buildDetectionContext(),
+      context: buildDetectorPhysicsContext(),
       samples: [...samples].reverse(),
     });
     const shuffled = detectRawFuelRises({
-      context: buildDetectionContext(),
+      context: buildDetectorPhysicsContext(),
       samples: [...samples].sort(() => 0.5 - Math.random()),
     });
     expect(chronological.candidates[0].deltaAbsoluteLiters).toBe(
@@ -64,9 +65,9 @@ describe('raw-fuel-rise-detector invariance', () => {
 
   it('exact duplicate invariance', () => {
     const samples = buildRefuelSeries();
-    const base = detectRawFuelRises({ context: buildDetectionContext(), samples });
+    const base = detectRawFuelRises({ context: buildDetectorPhysicsContext(), samples });
     const duplicated = detectRawFuelRises({
-      context: buildDetectionContext(),
+      context: buildDetectorPhysicsContext(),
       samples: [...samples, ...samples],
     });
     expect(base.candidates).toHaveLength(1);
@@ -79,7 +80,7 @@ describe('raw-fuel-rise-detector invariance', () => {
       { timestamp: new Date('2026-09-06T08:01:00.000Z'), absoluteLiters: 12, relativePercent: null },
       { timestamp: new Date('2026-09-06T08:02:00.000Z'), absoluteLiters: 20, relativePercent: 40 },
     ];
-    const result = detectRawFuelRises({ context: buildDetectionContext(), samples });
+    const result = detectRawFuelRises({ context: buildDetectorPhysicsContext(), samples });
     expect(result.diagnostics.primaryChannel).toBe('ABSOLUTE_LITERS');
     expect(result.candidates.length).toBeLessThanOrEqual(1);
   });

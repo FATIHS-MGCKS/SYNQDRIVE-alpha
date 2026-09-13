@@ -1,5 +1,42 @@
 # KG-EED Changelog
 
+## 2026-09-13 — RFRF F4-PR2.1 micro-closure (typed fetch + observability + PG gate)
+
+- `fetchFuelLevelSamplesWithOutcome()` distinguishes SUCCESS empty vs ERROR (AUTH_UNAVAILABLE / PROVIDER_QUERY_FAILED)
+- Legacy `fetchFuelLevelSamples()` delegates; compatibility preserved
+- Full minimum dark metrics contract (`synqdrive_rfrf_*` dedicated counters)
+- PG gate: removed silent `|| true` on db push; explicit TEST_SCHEMA_BOOTSTRAP_MODE + localhost isolation checks
+
+**Verdict:** RFRF_F4_PR2_1_MICRO_CLOSURE=PASS
+
+---
+
+## 2026-09-13 — RFRF F4-PR2 dark raw-fuel runtime wiring
+
+- Parallel dark branch wired into `detectEnergyEvents()` after native path completes
+- `RawFuelRefuelFallbackRuntimeService`: capability → fetch → F4.1 trust → F3 → F2 persist
+- Fail-isolated from native DIMO path; flags default OFF; persist never authorizes VEE
+- Dark metrics: `synqdrive_rfrf_*` counters
+- Real PG gate 41/41 PASS (F4-PR2 + F2 + F3→F2 handoff); KS MS 661 runtime one candidate zero VEE
+- Evidence EED-EV-0048; F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; F5 not started
+
+**Verdict:** RFRF_F4_PR2=PASS — F4_PR3_START_AUTHORIZED=YES (after merge review)
+
+---
+
+## 2026-09-13 — RFRF F4.1 signal trust × F3 detection boundary closure
+
+- Cross-contract P1 closed: F3 channel selector used promotion `absoluteSignalTrust=TRUSTED`; runtime resolver returns UNKNOWN
+- Option B: `absoluteDetectionAdmissibility` separate from promotion trust; F3 uses ADMISSIBLE for absolute primary channel
+- KS MS 661 observed absolute-only +24 L stages candidate under runtime trust; promotion remains fail-closed
+- Test epistemics: runtime-faithful vs physics contexts; F4.1 negative safety matrix
+- Evidence EED-EV-0047; decision EED-DEC-RFRF-007 PROPOSED
+- No detectEnergyEvents wiring; F4-PR2 not started
+
+**Verdict:** RFRF_F4_1_SIGNAL_TRUST_CLOSURE=PASS — F4_PR2_START_AUTHORIZED=YES
+
+---
+
 ## 2026-09-13 — RFRF F4-PR1.1 source-identity CHECK hardening
 
 - `vehicle_energy_events_source_identity_check` with IS NOT NULL guards (PostgreSQL CHECK NULL-pass semantics)

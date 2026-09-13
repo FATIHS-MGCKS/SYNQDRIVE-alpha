@@ -14,6 +14,12 @@ export interface RawFuelCapabilityInput {
 
 export type RawFuelAbsoluteSignalTrust = 'TRUSTED' | 'UNTRUSTED' | 'UNKNOWN';
 
+/** F4.1: detection channel admissibility — orthogonal to promotion trust. */
+export type RawFuelAbsoluteDetectionAdmissibility =
+  | 'ADMISSIBLE'
+  | 'INADMISSIBLE'
+  | 'UNKNOWN';
+
 export interface RawFuelSignalTrustInput {
   /** Sample window under evaluation — relative availability only. */
   samples?: Array<{
@@ -30,7 +36,10 @@ export interface RawFuelSignalTrustInput {
 }
 
 export interface RawFuelSignalTrustResult {
+  /** Promotion-authority axis — fail-closed UNKNOWN until fleet authority exists. */
   absoluteSignalTrust: RawFuelAbsoluteSignalTrust;
+  /** Detection-admissibility axis — may be ADMISSIBLE while promotion trust stays UNKNOWN. */
+  absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
   relativeSignalAvailable: boolean;
 }
 

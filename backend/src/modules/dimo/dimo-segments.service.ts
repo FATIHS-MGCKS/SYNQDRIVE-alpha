@@ -101,6 +101,20 @@ export interface DimoFuelLevelSample {
   absoluteLiters: number | null;
 }
 
+/** Typed provider outcome for RFRF / dark-runtime consumers — distinguishes ERROR from SUCCESS empty. */
+export type DimoFuelLevelSampleFetchErrorClass =
+  | 'AUTH_UNAVAILABLE'
+  | 'PROVIDER_QUERY_FAILED';
+
+export type DimoFuelLevelSamplesOutcome =
+  | { status: 'SUCCESS'; samples: DimoFuelLevelSample[] }
+  | {
+      status: 'ERROR';
+      samples: [];
+      errorClass: DimoFuelLevelSampleFetchErrorClass;
+      message: string;
+    };
+
 export interface CrankDataPoint {
   timestamp: string;
   voltage: number | null;
@@ -1410,6 +1424,7 @@ export class DimoSegmentsService {
 
   /**
    * Ordered fuel-level telemetry samples for REFUEL fuel-rise derivation.
+   * Legacy callers: provider/auth failures return [] (unchanged compatibility).
    */
   async fetchFuelLevelSamples(
     tokenId: number,
@@ -1417,8 +1432,35 @@ export class DimoSegmentsService {
     to: Date,
     requestContext?: DimoProviderRequestContext,
   ): Promise<DimoFuelLevelSample[]> {
+    const outcome = await this.fetchFuelLevelSamplesWithOutcome(
+      tokenId,
+      from,
+      to,
+      requestContext,
+    );
+    if (outcome.status === 'ERROR') return [];
+    return outcome.samples;
+  }
+
+  /**
+   * Production-shaped fuel sample fetch with explicit SUCCESS vs ERROR semantics.
+   * SUCCESS with [] = legitimate empty telemetry; ERROR = auth/transport/query failure.
+   */
+  async fetchFuelLevelSamplesWithOutcome(
+    tokenId: number,
+    from: Date,
+    to: Date,
+    requestContext?: DimoProviderRequestContext,
+  ): Promise<DimoFuelLevelSamplesOutcome> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
-    if (!jwt) return [];
+    if (!jwt) {
+      return {
+        status: 'ERROR',
+        samples: [],
+        errorClass: 'AUTH_UNAVAILABLE',
+        message: `vehicle JWT unavailable for tokenId=${tokenId}`,
+      };
+    }
 
     const query = `
       query RefuelFuelLevelSamples {
@@ -1439,14 +1481,20 @@ export class DimoSegmentsService {
     try {
       const result = await this.queryGraphQLWithContext(jwt, query, tokenId, requestContext);
       signals = Array.isArray(result?.data?.signals) ? result.data.signals : [];
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(
-        `Fuel level sample fetch failed for tokenId=${tokenId}: ${err.message}`,
+        `Fuel level sample fetch failed for tokenId=${tokenId}: ${message}`,
       );
-      return [];
+      return {
+        status: 'ERROR',
+        samples: [],
+        errorClass: 'PROVIDER_QUERY_FAILED',
+        message,
+      };
     }
 
-    return signals
+    const samples = signals
       .filter((s: any) => typeof s?.timestamp === 'string')
       .map((s: any) => ({
         timestamp: new Date(s.timestamp),
@@ -1463,6 +1511,8 @@ export class DimoSegmentsService {
         (s) => s.relativePercent != null || s.absoluteLiters != null,
       )
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+    return { status: 'SUCCESS', samples };
   }
 
   /**

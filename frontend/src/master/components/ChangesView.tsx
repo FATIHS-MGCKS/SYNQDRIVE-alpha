@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f4-1-signal-trust-closure-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4.1 — Signal trust × F3 detection boundary closure',
+    summary: [
+      'Cross-contract P1: F3 required promotion TRUSTED; runtime resolver returns UNKNOWN — KS MS 661 would fail with no_trusted_channel.',
+      'Option B: absoluteDetectionAdmissibility separate from promotion trust; F3 absolute primary uses ADMISSIBLE.',
+      'KS MS 661 observed +24 L absolute-only stages candidate; promotion remains fail-closed (F5 gate).',
+      'Test epistemics hardened: runtime-faithful vs physics contexts; F4.1 negative safety matrix.',
+      'No detectEnergyEvents wiring; F4-PR2 entry authorized; no schema/flag changes.',
+    ],
+    reason:
+      'Naive F4-PR2 runtime composition would hide the canonical production incident that motivated RFRF unless detection admissibility and promotion trust are separated.',
+    previousBehavior:
+      'F3 channel selector required absoluteSignalTrust=TRUSTED; test helper defaulted TRUSTED, hiding runtime gap.',
+    details:
+      'docs/audits/eed-rfrf-f4-1-signal-trust-detection-boundary-2026-09-13.md; EED-DEC-RFRF-007; EED-EV-0047.',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-13T10:45:00.000Z',
+  },
+  {
     id: 'vdc-rb019-phase2-cutover-scope-audit-2026-09-13',
     version: '4.9.1121',
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
@@ -55,6 +76,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
     createdAt: '2026-09-13T06:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13',
+    version: '4.9.1122',
+    title: 'RFRF F4-PR2 — Dark raw-fuel runtime wiring in detectEnergyEvents',
+    summary: [
+      'Parallel fail-isolated raw branch after native DIMO path: capability → fuel fetch → F4.1 admissibility → F3 → F2 persist.',
+      'RawFuelRefuelFallbackRuntimeService + synqdrive_rfrf_* dark metrics; flags default OFF; persist never authorizes VEE.',
+      'Native path unchanged; window-level native suppression forbidden; native A + missed raw B coexistence proven.',
+      'Real PG gate 41/41 PASS (F4-PR2 matrix + F2 + F3→F2); KS MS 661 one candidate zero fallback VEE.',
+      'F4_FALLBACK_VEE_UPSERT_REACHABLE=NO; F5 convergence NOT implemented.',
+    ],
+    reason:
+      'F4 Option B PR2 per EED-DEC-RFRF-006: make candidate staging runtime-reachable under test flags without promotion or production enablement.',
+    previousBehavior:
+      'detectEnergyEvents had no raw-fuel branch; F3/F2 reachable only via direct test harness.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr2-dark-runtime-wiring-2026-09-13.md; EED-EV-0048; backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T13:20:00.000Z',
   },
   {
     id: 'eed-rfrf-f4-pr1-foundation-2026-09-13',

@@ -2,13 +2,14 @@ import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import { NON_FINITE_SAMPLE_POLICY } from './raw-fuel-rise-normalizer';
 import {
   buildDetectionContext,
+  buildDetectorPhysicsContext,
   linearRiseSamples,
   sampleAt,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
 
 describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
-  const context = buildDetectionContext({
+  const context = buildDetectorPhysicsContext({
     scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
     scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
   });
@@ -143,6 +144,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
       const result = detectRawFuelRises({
         context: buildDetectionContext({
           absoluteSignalTrust: 'TRUSTED',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
           relativeSignalAvailable: true,
         }),
         samples: relativeRefuelSamples,
@@ -169,6 +171,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
       const result = detectRawFuelRises({
         context: buildDetectionContext({
           absoluteSignalTrust: 'TRUSTED',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
           relativeSignalAvailable: true,
         }),
         samples,
@@ -181,6 +184,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
       const result = detectRawFuelRises({
         context: buildDetectionContext({
           absoluteSignalTrust: 'TRUSTED',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
           relativeSignalAvailable: true,
         }),
         samples: [
@@ -196,6 +200,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
       const result = detectRawFuelRises({
         context: buildDetectionContext({
           absoluteSignalTrust: 'TRUSTED',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
           relativeSignalAvailable: true,
         }),
         samples: [
@@ -273,6 +278,7 @@ describe('raw-fuel-rise-detector F3.2 final semantic closure', () => {
       const relativeOnlyFromNonFiniteAbsolute = detectRawFuelRises({
         context: buildDetectionContext({
           absoluteSignalTrust: 'TRUSTED',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
           relativeSignalAvailable: true,
         }),
         samples: [
