@@ -334,12 +334,30 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 
 ---
 
+---
+
+## EED-DEC-RFRF-007 — F4.1 detection admissibility vs promotion trust (2026-09-13)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-007 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-13 |
+| **Question** | F3 channel selector conflated promotion `absoluteSignalTrust` with detection evidence admissibility — KS MS 661 would fail at F4-PR2 wiring with `no_trusted_channel`. |
+| **Decision** | **Option B:** Introduce `absoluteDetectionAdmissibility` (ADMISSIBLE/INADMISSIBLE/UNKNOWN) for F3 primary channel selection. Promotion `absoluteSignalTrust` remains UNKNOWN until fleet-wide authority exists. Staged candidate ≠ promotion authorized. |
+| **Evidence** | EED-EV-0047 |
+| **Alternatives rejected** | Option A (no real authority today); Option C (fail-closed detection leaves KS MS 661 unsupported); deriving TRUSTED from sample presence or fuelType |
+| **Consequences** | F3 semantic adjustment (channel authority + context field); F4-PR2 may stage candidates; F5 retains promotion authority |
+| **Related nodes** | EED-DEC-RFRF-006, EED-EV-0046, EED-EV-0044 |
+
+---
+
 ## EED-DEC-RFRF-006 — F4 Option B phase boundary (2026-09-13)
 
 | Field | Value |
 |-------|-------|
 | **ID** | EED-DEC-RFRF-006 |
-| **Status** | **PROPOSED** (pending human review) |
+| **Status** | **VALIDATED** (approved via PR #1628 merge) |
 | **Date** | 2026-09-13 |
 | **Question** | Where does F4 end and F5 begin given promotion/convergence ordering hazard? |
 | **Decision** | **Option B (F4.0 hardened):** F4 implements dark runtime through candidate staging + promotion **substrate**. `F4_VEE_UPSERT_REACHABLE=NO`. F5 owns first reachable fallback VEE execution via separate promotion gate (not substitutable by persist flag). `fuelCapability` (Vehicle metadata) separate from `absoluteSignalTrust` (NOT_YET_AVAILABLE — fail closed). `RawRefuelPromotionEligibility` orthogonal to F2 lifecycle — no terminal REJECTED solely for F5 absence. Native overlap advisory-only in F4. `detectionSource=NULL` = legacy native-era only. `sourceEventKey=candidateIdentityKey` canonical. |

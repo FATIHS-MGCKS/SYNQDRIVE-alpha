@@ -1,10 +1,15 @@
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import {
+  KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES,
   KS_MS_661_OBSERVED_DETECTION_WINDOW,
 } from '@modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture';
 import { KS_MS_661_SYNTHETIC_ABSOLUTE_FUEL_SAMPLES } from '@modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-synthetic.fixture';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildEvidenceRevisionFingerprint,
+  observationToEvidenceSlice,
+} from '../raw-refuel-candidate/raw-refuel-candidate-evidence-fingerprint';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import {
@@ -12,7 +17,8 @@ import {
   RFRF_RISE_DETECTOR_VERSION,
 } from './raw-fuel-rise-detector.config';
 import {
-  buildDetectionContext,
+  buildDetectorPhysicsContext,
+  buildRuntimeDetectionContextFromTrust,
   linearRiseSamples,
   stablePlateauSamples,
 } from './testing/raw-fuel-rise-detector-test.util';
@@ -83,6 +89,95 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
       await prisma?.$disconnect().catch(() => undefined);
     });
 
+    it('F4_1_RUNTIME_ADMISSIBILITY_F3_F2 — UNKNOWN trust ADMISSIBLE refuel idempotent one row', async () => {
+      const { org, vehicle } = await createTestOrgVehicle(prisma);
+      try {
+        const samples = [
+          ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300),
+          ...linearRiseSamples('2026-09-06T08:16:00.000Z', [15, 22, 28, 30], 120),
+          ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
+        ];
+        const trustInput = {
+          samples,
+          scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
+          scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
+        };
+        const context = buildRuntimeDetectionContextFromTrust(trustInput, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+        });
+        expect(context.absoluteSignalTrust).toBe('UNKNOWN');
+        expect(context.absoluteDetectionAdmissibility).toBe('ADMISSIBLE');
+
+        const detection = detectRawFuelRises({ context, samples });
+        expect(detection.candidates).toHaveLength(1);
+        const candidate = detection.candidates[0];
+        expect(candidate.absoluteSignalTrust).toBe('UNKNOWN');
+        expect(candidate.qualityMeta?.absoluteDetectionAdmissibility).toBe('ADMISSIBLE');
+
+        const first = await service.resolveOrCreateCandidate(candidate);
+        const second = await service.resolveOrCreateCandidate(candidate);
+        expect(first.created).toBe(true);
+        expect(second.created).toBe(false);
+        expect(second.candidateId).toBe(first.candidateId);
+        expect(second.candidateIdentityKey).toBe(first.candidateIdentityKey);
+        expect(second.evidenceRevisionFingerprint).toBe(first.evidenceRevisionFingerprint);
+
+        const row = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: first.candidateId },
+        });
+        const qualityMeta = row.qualityMeta as Record<string, unknown> | null;
+        expect(qualityMeta?.absoluteDetectionAdmissibility).toBe('ADMISSIBLE');
+        expect(row.absoluteSignalTrust).toBe('UNKNOWN');
+        expect(
+          buildEvidenceRevisionFingerprint(observationToEvidenceSlice(candidate)),
+        ).toBe(first.evidenceRevisionFingerprint);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(
+          1,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('F4_1_KS_MS_661_OBSERVED_RUNTIME_F3_F2 — one physical candidate, no VEE', async () => {
+      const { org, vehicle } = await createTestOrgVehicle(prisma);
+      try {
+        const samples = KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES.map((row) => ({
+          timestamp: new Date(row.timestamp),
+          absoluteLiters: row.absoluteLiters,
+          relativePercent: row.relativePercent,
+        }));
+        const trustInput = {
+          samples,
+          scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
+          scanWindowEnd: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.to),
+        };
+        const context = buildRuntimeDetectionContextFromTrust(trustInput, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+        });
+        expect(context.absoluteSignalTrust).toBe('UNKNOWN');
+        expect(context.absoluteDetectionAdmissibility).toBe('ADMISSIBLE');
+        expect(context.relativeSignalAvailable).toBe(false);
+
+        const detection = detectRawFuelRises({ context, samples });
+        expect(detection.candidates.length).toBeGreaterThanOrEqual(1);
+
+        const first = await service.resolveOrCreateCandidate(detection.candidates[0]);
+        const second = await service.resolveOrCreateCandidate(detection.candidates[0]);
+        expect(second.candidateId).toBe(first.candidateId);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(
+          1,
+        );
+        expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBe(
+          0,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('F3_F2_REPEAT_IDEMPOTENCY — same detection twice yields one row', async () => {
       const { org, vehicle } = await createTestOrgVehicle(prisma);
       try {
@@ -92,6 +187,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           scanWindowStart: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.from),
           scanWindowEnd: new Date(KS_MS_661_OBSERVED_DETECTION_WINDOW.to),
           absoluteSignalTrust: 'TRUSTED' as const,
+          absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
           relativeSignalAvailable: false,
           signalProvider: 'DIMO',
           detectionVersion: RFRF_RISE_DETECTION_VERSION,
@@ -127,7 +223,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
         const narrow = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
             scanWindowStart: new Date('2026-09-06T08:00:00.000Z'),
@@ -136,7 +232,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           samples,
         });
         const wide = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
             scanWindowStart: new Date('2026-09-06T07:00:00.000Z'),
@@ -170,7 +266,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...partialSamples,
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
-        const ctx = buildDetectionContext({
+        const ctx = buildDetectorPhysicsContext({
           organizationId: org.id,
           vehicleId: vehicle.id,
         });
@@ -201,7 +297,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, orgId: string) {
           ...stablePlateauSamples('2026-09-06T08:28:00.000Z', 30, 4, 120),
         ];
         const detection = detectRawFuelRises({
-          context: buildDetectionContext({
+          context: buildDetectorPhysicsContext({
             organizationId: org.id,
             vehicleId: vehicle.id,
           }),
