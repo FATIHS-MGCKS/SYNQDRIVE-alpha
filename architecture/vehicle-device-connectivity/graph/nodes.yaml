@@ -525,7 +525,7 @@ nodes:
     type: evidence
     title: RB-019 Phase 2 cutover scope audit
     source_type: AUDIT_DOCUMENT
-    epistemic_status: CONFIRMED
-    summary: Readiness audit 2026-09-13; no runtime implementation.
+    epistemic_status: INFERRED
+    summary: SCOPED_NOT_IMPLEMENTED — architecture/readiness audit only; not implementation proof.
     source_paths:
       - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md

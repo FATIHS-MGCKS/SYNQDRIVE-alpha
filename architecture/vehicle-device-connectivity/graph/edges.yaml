@@ -97,9 +97,9 @@ edges:
     to: VDC-DEC-013
 
   - from: VDC-DEC-013
-    relation: governs
+    relation: downstream_of
     to: VDC-DEC-012
-    notes: Phase 2 cutover sequencing — scoped not implemented
+    notes: Phase 2 cutover sequencing implements Phase 1 foundation — scoped not implemented
 
   - from: VDC-CX-001
     relation: contradicts

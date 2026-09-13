@@ -40,11 +40,11 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1121',
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
     summary: [
-      'Architecture-only audit: shadow → pre-seed → authority gate → durable physical-state action outbox → pilot rollout.',
-      'Snapshot physical reconcile must run BEFORE VLS monotonic early return (per-signal obdIsPluggedIn.timestamp authority).',
-      'Event history becomes evidence-only after cutover; NEW action outbox (not episode-resolution outbox reuse).',
-      'Minimum four flag dimensions (write, shadow, authority, side-effects), all default OFF; AUTHORITY_CUTOVER_IS_FORWARD_ONLY.',
-      'Phase 1 evidence corrected to POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626, CI 34741055482).',
+      'Architecture-only audit (hardened): STATEFUL_SHADOW required; coordinator-owned atomic tx (Option A).',
+      'Snapshot APPLIED PLUG must emit resolve_plug (separate from projection selfHeal); snapshot UNPLUG never opens episode.',
+      'Legacy tryResolveOpenEpisodeFromSnapshot retired when sideEffects on; no-double-resolve proof required.',
+      'Drift gate: UNEXPLAINED divergences = 0; EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT is not a blocker.',
+      'Master flag + four sub-dimensions; event history APPLIED-only; full 15-row crash matrix in audit doc.',
       'VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
     ],
     reason:
