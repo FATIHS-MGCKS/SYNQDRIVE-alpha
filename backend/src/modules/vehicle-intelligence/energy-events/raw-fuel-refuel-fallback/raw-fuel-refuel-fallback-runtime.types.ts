@@ -1,0 +1,54 @@
+import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
+
+export type RawFuelRefuelFallbackSkipReason =
+  | 'master_disabled'
+  | 'persist_without_master'
+  | 'no_dimo_token'
+  | 'capability_non_fuel'
+  | 'capability_unknown'
+  | 'sample_fetch_failed'
+  | 'no_samples';
+
+export interface RawFuelRefuelFallbackScanInput {
+  organizationId: string;
+  vehicleId: string;
+  tokenId: number;
+  windowFrom: Date;
+  windowTo: Date;
+  fuelType: import('@prisma/client').FuelType | null;
+  dimoPowertrainType?: string | null;
+  dimoFuelType?: string | null;
+  requestContext: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+  };
+}
+
+export interface RawFuelRefuelFallbackCandidateOutcome {
+  observationIndex: number;
+  lifecycleState: string;
+  persisted: boolean;
+  created: boolean;
+  rediscovered: boolean;
+  candidateId?: string;
+  error?: string;
+}
+
+export interface RawFuelRefuelFallbackScanResult {
+  invoked: boolean;
+  masterEnabled: boolean;
+  persistEnabled: boolean;
+  skipReason?: RawFuelRefuelFallbackSkipReason;
+  capability?: RawFuelCapability;
+  fetchErrorClass?: 'AUTH_UNAVAILABLE' | 'PROVIDER_QUERY_FAILED';
+  samplesFetched: number;
+  detectorInvoked: boolean;
+  observationsEmitted: number;
+  persistAttempted: number;
+  candidatesCreated: number;
+  candidatesRediscovered: number;
+  persistSkippedBecauseFlagOff: number;
+  candidateOutcomes: RawFuelRefuelFallbackCandidateOutcome[];
+  branchError?: string;
+}
