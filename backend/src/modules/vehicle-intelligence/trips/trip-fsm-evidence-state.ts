@@ -117,6 +117,39 @@ export function readLastProviderActivityAt(
   return readIsoDate(summary, 'lastProviderActivityAt');
 }
 
+/** Low-trust end-candidate authority — not a proven physical stop boundary. */
+export type ProviderSilenceCandidateProvenance = {
+  anchorAt: Date;
+  source: 'provider_silence_candidate';
+  clockAuthority: 'PROVIDER_EVENT_TIME';
+  trust: false;
+};
+
+export function readProviderSilenceCandidateProvenance(
+  summary: TripFsmEvidenceSummary | null | undefined,
+  workerNow: Date,
+): ProviderSilenceCandidateProvenance | null {
+  const anchorAt = readIsoDate(summary, 'providerSilenceCandidateAt');
+  if (!anchorAt || !isValidProviderEventTimestamp(anchorAt, workerNow)) {
+    return null;
+  }
+  if (summary?.providerSilenceCandidateSource !== 'provider_silence_candidate') {
+    return null;
+  }
+  if (summary?.providerSilenceCandidateClockAuthority !== 'PROVIDER_EVENT_TIME') {
+    return null;
+  }
+  if (summary?.providerSilenceCandidateTrust !== false) {
+    return null;
+  }
+  return {
+    anchorAt,
+    source: 'provider_silence_candidate',
+    clockAuthority: 'PROVIDER_EVENT_TIME',
+    trust: false,
+  };
+}
+
 export function readEmptyCoreDeferralStreak(
   summary: TripFsmEvidenceSummary | null | undefined,
 ): number {

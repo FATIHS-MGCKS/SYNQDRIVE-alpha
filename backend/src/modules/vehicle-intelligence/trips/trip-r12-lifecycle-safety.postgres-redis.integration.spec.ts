@@ -88,7 +88,9 @@ if (REQUIRED) {
       const pauseTickAt = new Date('2026-09-08T19:59:56.000Z');
       const resumeTickAt = new Date('2026-09-08T20:00:30.000Z');
       const resumeMovementAt = new Date('2026-09-08T20:00:15.000Z');
-      const silenceTickAt = new Date('2026-09-08T20:04:00.000Z');
+      // Below TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS post-resume — provider-silence
+      // liveness is covered by dedicated R12 integration probes, not this B1-retirement gate.
+      const silenceTickAt = new Date('2026-09-08T20:02:10.000Z');
       const staleObsAt = new Date('2026-09-08T20:01:30.000Z');
       const b2At = new Date('2026-09-08T20:05:00.000Z');
       const finalEmptyTickAt = new Date('2026-09-08T20:08:00.000Z');
@@ -167,16 +169,6 @@ if (REQUIRED) {
       expect(readActiveStopBoundaryAt(resumeSummary)).toBeNull();
       expect(readLastPauseBoundaryAt(resumeSummary)?.toISOString()).toBe(b1At.toISOString());
 
-      await prisma.vehicleLatestState.update({
-        where: { vehicleId: fixture.vehicle.id },
-        data: {
-          isIgnitionOn: false,
-          speedKmh: 0,
-          engineLoad: 42,
-          sourceTimestamp: staleObsAt,
-          updatedAt: staleObsAt,
-        },
-      });
       harness.segments.fetchRawTripCoreData = jest.fn().mockResolvedValue([]);
       harness.segments.fetchRouteEnrichment = jest.fn().mockResolvedValue([]);
 
@@ -193,6 +185,16 @@ if (REQUIRED) {
         readActiveStopBoundaryAt(det?.lastEvidenceSummary as Record<string, unknown>),
       ).toBeNull();
 
+      await prisma.vehicleLatestState.update({
+        where: { vehicleId: fixture.vehicle.id },
+        data: {
+          isIgnitionOn: false,
+          speedKmh: 0,
+          engineLoad: 42,
+          sourceTimestamp: staleObsAt,
+          updatedAt: staleObsAt,
+        },
+      });
       await prisma.vehicleLatestState.update({
         where: { vehicleId: fixture.vehicle.id },
         data: {
