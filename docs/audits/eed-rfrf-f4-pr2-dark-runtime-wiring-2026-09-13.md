@@ -1,8 +1,8 @@
 # EED RFRF F4-PR2 — Dark raw-fuel runtime wiring
 
-**Date:** 2026-09-13  
-**Phase:** F4-PR2 only (dark runtime wiring; no promotion; no production enablement)  
-**Base main:** `4ab15335ac93e88f8f3823f23fd4e6ac049b189e` (PR #1633 / F4.1 merge)  
+**Date:** 2026-09-13
+**Phase:** F4-PR2 only (dark runtime wiring; no promotion; no production enablement)
+**Base main:** `4ab15335ac93e88f8f3823f23fd4e6ac049b189e` (PR #1633 / F4.1 merge)
 **Branch:** `cursor/eed-rfrf-f4-pr2-dark-runtime-wiring-f21f`
 
 ---
