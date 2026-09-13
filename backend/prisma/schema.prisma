@@ -9935,12 +9935,22 @@ enum EnergyEventConfidence {
   LOW
 }
 
+/// RFRF F4 — explicit native vs fallback detection source (NULL = legacy native-era).
+enum VehicleEnergyEventDetectionSource {
+  DIMO_NATIVE
+  SYNQDRIVE_RAW_FUEL_FALLBACK
+}
+
 model VehicleEnergyEvent {
-  id                           String                @id @default(uuid())
-  vehicleId                    String                @map("vehicle_id")
-  dimoSegmentId                String                @unique @map("dimo_segment_id")
+  id                           String                             @id @default(uuid())
+  vehicleId                    String                             @map("vehicle_id")
+  dimoSegmentId                String                             @unique @map("dimo_segment_id")
+  /// NULL = legacy native-era row; never means raw fallback (F4 contract).
+  detectionSource              VehicleEnergyEventDetectionSource? @map("detection_source")
+  /// Canonical fallback idempotency key (candidateIdentityKey); NULL for legacy/native.
+  sourceEventKey               String?                            @map("source_event_key") @db.VarChar(512)
   kind                         EnergyEventKind
-  detectionMechanism           String                @map("detection_mechanism")
+  detectionMechanism           String                             @map("detection_mechanism")
   startTime                    DateTime              @map("start_time")
   endTime                      DateTime              @map("end_time")
   durationSeconds              Int                   @map("duration_seconds")
@@ -9967,11 +9977,13 @@ model VehicleEnergyEvent {
   fuelStationEnrichment VehicleEnergyEventFuelStationEnrichment?
   refuelReconciliation  VehicleEnergyEventRefuelReconciliation?
 
+  @@unique([vehicleId, sourceEventKey])
   @@index([vehicleId])
   @@index([vehicleId, startTime])
   @@index([vehicleId, kind, startTime])
   @@index([vehicleId, kind, createdAt])
   @@index([kind])
+  @@index([detectionSource])
   @@map("vehicle_energy_events")
 }
 

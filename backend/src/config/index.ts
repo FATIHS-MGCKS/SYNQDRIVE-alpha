@@ -9,6 +9,18 @@ export { default as storageConfig } from './storage.config';
 export { default as documentExtractionConfig } from './document-extraction.config';
 export { default as fuelStationEnrichmentConfig } from './fuel-station-enrichment.config';
 export { default as physicalRefuelReconciliationConfig } from './physical-refuel-reconciliation.config';
+export {
+  default as rawFuelRefuelFallbackConfig,
+  RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
+  RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV,
+  RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT_ENV,
+  loadRawFuelRefuelFallbackConfig,
+  parseRawFuelRefuelFallbackBoolean,
+  isRawFuelRefuelFallbackMasterEnabled,
+  isRawFuelRefuelFallbackPersistEnabled,
+  canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion,
+} from './raw-fuel-refuel-fallback.config';
+export type { RawFuelRefuelFallbackConfig } from './raw-fuel-refuel-fallback.config';
 export { default as documentsConfig } from './documents.config';
 export { default as whatsappConfig } from './whatsapp.config';
 export { default as diditConfig, DIDIT_WORKFLOWS } from './didit.config';
