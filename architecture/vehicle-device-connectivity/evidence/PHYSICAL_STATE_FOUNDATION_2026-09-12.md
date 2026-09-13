@@ -4,7 +4,10 @@
 |-------|-------|
 | **ID** | VDC-EVID-PHYSICAL-STATE-FOUNDATION-001 |
 | **Date** | 2026-09-12 |
-| **Epistemic** | IMPLEMENTATION_PRESENT — PG_VALIDATION_PENDING until CI/local PostgreSQL suite passes |
+| **Epistemic** | IMPLEMENTATION_PRESENT / POSTGRES_VALIDATED / FINAL_CI_VALIDATED |
+| **Merged main** | `ee97eae3b4ccd4d2053598e6c47f171cad8c76f9` (PR #1626) |
+| **Final proof head** | `3df9f58a52705befdb8ad70e107f21978644d2e2` |
+| **Final CI** | Vehicle Detail run `34741055482` PASS; PG 17/17; GT-R1 PASS |
 | **Decision** | VDC-DEC-012 |
 | **Backlog** | VDC-RB-019 (Phase 1 foundation) |
 
