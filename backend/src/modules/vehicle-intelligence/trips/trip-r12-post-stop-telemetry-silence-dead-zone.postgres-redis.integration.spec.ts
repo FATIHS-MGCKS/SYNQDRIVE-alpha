@@ -324,7 +324,9 @@ async function runEmptyCoreTick(params: {
             })
           : null;
 
-      const baseStaleVls = firstBoundSummary.vlsEvidenceState === 'UNKNOWN';
+      const baseStaleVls =
+        firstBoundSummary.innerGateReason === 'vls_stale_provider_observation' ||
+        firstBoundSummary.vlsEvidenceState === 'UNKNOWN';
       const baseNoTrustedBoundary =
         readStopBoundaryProvenance(
           detAfterBound?.lastEvidenceSummary as Record<string, unknown> | null,
