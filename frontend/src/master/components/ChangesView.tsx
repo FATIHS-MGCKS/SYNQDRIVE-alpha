@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-phase2-cutover-scope-audit-2026-09-13',
+    version: '4.9.1121',
+    title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
+    summary: [
+      'Architecture-only audit: shadow → pre-seed → authority gate → durable physical-state action outbox → pilot rollout.',
+      'Snapshot physical reconcile must run BEFORE VLS monotonic early return (per-signal obdIsPluggedIn.timestamp authority).',
+      'Event history becomes evidence-only after cutover; NEW action outbox (not episode-resolution outbox reuse).',
+      'Minimum four flag dimensions (write, shadow, authority, side-effects), all default OFF; AUTHORITY_CUTOVER_IS_FORWARD_ONLY.',
+      'Phase 1 evidence corrected to POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626, CI 34741055482).',
+      'VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
+    ],
+    reason:
+      'Phase 1 dark foundation merged; Phase 2 requires explicit cutover sequencing to prevent GT-R1-class split authority, crash windows, and duplicate lifecycle effects.',
+    previousBehavior:
+      'Phase 1 implementation present with flag OFF; no documented Phase 2 subphase gates or transaction boundaries for runtime cutover.',
+    details:
+      'docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md; architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md VDC-DEC-013.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T06:30:00.000Z',
+  },
+  {
     id: 'vdc-physical-state-foundation-phase1-2026-09-12',
     version: '4.9.1120',
     title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',

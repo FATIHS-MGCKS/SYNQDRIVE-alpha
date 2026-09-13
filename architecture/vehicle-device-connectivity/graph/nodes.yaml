@@ -506,7 +506,26 @@ nodes:
     title: Physical-state reconciliation Phase 1 foundation
     source_type: CURRENT_CODE
     epistemic_status: CONFIRMED
-    summary: Dark-deploy schema, policy, repository, service, tests.
+    summary: Merged dark foundation; POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626).
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_FOUNDATION_2026-09-12.md
       - backend/src/modules/dimo/device-connection-physical-state/
+
+  - id: VDC-DEC-013
+    type: decision
+    title: RB-019 Phase 2 runtime cutover sequencing
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: Shadow, pre-seed, authority gate, new action outbox; forward-only authority; scoped not implemented.
+    source_paths:
+      - architecture/vehicle-device-connectivity/decisions/DECISION_REGISTER.md
+      - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md
+
+  - id: VDC-EVID-RB019-PHASE2-SCOPE-001
+    type: evidence
+    title: RB-019 Phase 2 cutover scope audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Readiness audit 2026-09-13; no runtime implementation.
+    source_paths:
+      - docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md

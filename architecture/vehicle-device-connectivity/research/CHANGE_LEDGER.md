@@ -16,3 +16,5 @@
 | 2026-09-12 | Authorized UNPLUG webhook recovery — `PUT` enable `49438f51-…`; `failed`→`enabled`; failureCount 11→0; 7 subscriptions preserved; GT physical NOT started (VDC-EVID-GT-R1-UNPLUG-RECOVERY-001) | Vehicle & Device Connectivity GT recovery |
 | 2026-09-12 | GT-R1-UNPLUG-001 physical execution — operator unplug 16:27:04 / replug 17:01:20 Berlin; UNPLUG webhook delivered but `no_state_change` ignored; snapshot unplug/replug confirmed; no episode/alert; PLUG webhook absent (VDC-EVID-GT-R1-EXECUTION-001) | Vehicle & Device Connectivity GT execution |
 | 2026-09-12 | Physical-state reconciliation Phase 1 foundation — VDC-DEC-012, VDC-RB-019, schema + policy + repository + service (flag OFF), unit/PG tests, drift detector (VDC-EVID-PHYSICAL-STATE-FOUNDATION-001) | Vehicle & Device Connectivity remediation |
+| 2026-09-13 | Phase 1 evidence correction — POSTGRES_VALIDATED / FINAL_CI_VALIDATED (PR #1626, CI 34741055482) | Vehicle & Device Connectivity evidence |
+| 2026-09-13 | RB-019 Phase 2 runtime cutover scope audit — VDC-DEC-013, subphases P2.1–P2.7, no implementation (VDC-EVID-RB019-PHASE2-SCOPE-001) | Vehicle & Device Connectivity remediation |
