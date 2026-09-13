@@ -41,10 +41,10 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'VDC RB-019 Phase 2 — runtime cutover scope & readiness audit (no implementation)',
     summary: [
       'Architecture-only audit (final hardening): authorityMode LEGACY/PHYSICAL with one-way cutover latch; POST_CUTOVER master=false never reverts to legacy gate.',
-      'P2.2 shadow infra only; P2.3 writers + STATEFUL_SHADOW GT-R1 sequence proof (cycle removed).',
+      'P2.1 owns outbox + authority latch schema; P2.2 shadow/flag infra only; P2.3 writers + STATEFUL_SHADOW GT-R1 proof.',
+      'Authority scope frozen: UNIQUE (organizationId, vehicleId, provider); device replacement inherits authorityMode.',
       'Snapshot APPLIED PLUG emits resolve_plug; DB-enforced episode/alert idempotency (no check-then-write).',
-      'Coordinator atomic tx Option A; event history APPLIED-only; full 15-row crash matrix in audit doc.',
-      'VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
+      'Merge #1631 before P2.1 implementation; VDC-DEC-013; RB-019 Phase 2 SCOPED_NOT_IMPLEMENTED.',
     ],
     reason:
       'Phase 1 dark foundation merged; Phase 2 requires explicit cutover sequencing to prevent GT-R1-class split authority, crash windows, and duplicate lifecycle effects.',

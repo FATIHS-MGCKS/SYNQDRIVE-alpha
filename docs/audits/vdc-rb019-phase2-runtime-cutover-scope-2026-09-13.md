@@ -65,32 +65,33 @@ Unchanged from initial audit — see prior table in decision register VDC-DEC-01
 
 **Implement:**
 
-- `device_connection_physical_state_action_outbox` table
-- Claim/lease/retry/DLQ processor skeleton
+- `device_connection_physical_state_action_outbox` table (schema + claim/lease/retry/DLQ processor skeleton)
+- **`device_connection_physical_authority_cutover` latch persistence schema** (§13a — `UNIQUE (organizationId, vehicleId, provider)`; default `authorityMode=LEGACY`; not yet latched in Production)
 - **Refactor:** repository `reconcileInTransaction(tx, …)` (no nested `$transaction`)
 - Phase-2 coordinator owns **one** outer `prisma.$transaction`
+- PG tests: coordinator atomic commit/rollback; multi-worker outbox claim; latch row default + uniqueness
 
 | Gate | Criterion |
 |------|-----------|
 | Entry | Phase 1 merged; this audit hardened |
-| Exit | PG tests: coordinator atomic commit; multi-worker claim; no nested tx |
+| Exit | PG tests: coordinator atomic commit; multi-worker claim; no nested tx; latch schema migrations applied; default `LEGACY` row per `(organizationId, vehicleId, provider)` |
 
 ### P2.2 — Shadow / flag / classification infrastructure only
 
-**Implement (no writers yet):**
+**Implement (no writers yet; latch schema already exists from P2.1):**
 
-- Dual-path evaluator (compare-only; no projection dependency)
+- Authority state-machine logic/types **over the P2.1 latch table** (read/write helpers; no schema fork)
+- Effective-flag resolver including **authority mode** resolution (§13a)
+- Dual-path shadow comparator (compare-only; no projection dependency)
 - Adjudication taxonomy (`EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT`, etc.)
 - Metrics / structured logging
-- Effective-flag resolver including **authority mode** types (§13a)
-- Authority-mode latch schema/types (persisted; not yet set in Production)
 
 | Gate | Criterion |
 |------|-----------|
-| Entry | P2.1 exit |
-| Exit | Unit tests: classification + flag equations + authority-mode state machine; **no** GT-R1 sequence proof required |
+| Entry | P2.1 exit (outbox + latch schema + coordinator tx refactor complete) |
+| Exit | Unit tests: classification + flag equations + authority-mode state machine over persisted latch; **no** GT-R1 sequence proof required |
 
-**Not in P2.2:** webhook/snapshot writers, projection mutations, STATEFUL_SHADOW sequence proof.
+**Not in P2.2:** latch persistence schema/migrations, webhook/snapshot writers, projection mutations, STATEFUL_SHADOW sequence proof.
 
 ### P2.3 — Evidence writers + STATEFUL_SHADOW proof
 
@@ -119,7 +120,7 @@ Evidence selection by **greatest `evidenceObservedAt`** only — source type nev
 
 ### P2.5 — Authority mode cutover (LEGACY → PHYSICAL latch)
 
-**Implement:** one-way cutover latch per pilot scope (org or binding); webhook path reads **latched authority mode**, not reversible flags.
+**Implement:** one-way cutover latch per **`(organizationId, vehicleId, provider)`** authority scope (§13a); webhook path reads **latched authority mode**, not reversible flags. New `bindingKey` after device replacement **inherits** existing vehicle/provider authority — does not reset to `LEGACY`.
 
 | Gate | Criterion |
 |------|-----------|
@@ -369,14 +370,46 @@ Boolean flags alone cannot express forward-only cutover. Phase 2 introduces a **
 
 **Transition:** `LEGACY → PHYSICAL` only (P2.5 cutover operation sets latch). **`PHYSICAL → LEGACY` is forbidden** — rejected at config API and runtime.
 
-**`CUTOVER_LATCH` persistence:** `device_connection_physical_authority_cutover` (or equivalent) keyed by `(organizationId, bindingKey)` or pilot-scoped org row — stores `authorityMode`, `latchedAt`, `latchedBy`, `evidenceSnapshot`. Once `PHYSICAL`, latch survives deploys/restarts.
+#### Authority scope identity (frozen — no schema-choice fork)
+
+| Concept | Definition |
+|---------|------------|
+| **`AUTHORITY_SCOPE`** | `(organizationId, vehicleId, provider)` |
+| **`AUTHORITY_UNIQUE_KEY`** | `UNIQUE (organizationId, vehicleId, provider)` |
+| **DIMO provider value** | `provider = 'DIMO'` |
+| **Projection identity** | Remains **binding-scoped** (`bindingKey` on `device_connection_physical_states`) |
+| **Authority identity** | **Vehicle/provider-scoped** — not binding-scoped |
+
+**Rationale:** authority belongs to the vehicle/provider gate; `bindingKey` identifies the physical device incarnation. Device/token replacement intentionally creates a new `bindingKey`. Replacing the physical device **must not** silently revert an already `PHYSICAL` vehicle back to `LEGACY`. New binding rows **inherit** the vehicle/provider `authorityMode`.
+
+**`CUTOVER_LATCH` persistence:** table `device_connection_physical_authority_cutover` (schema owned by **P2.1**).
+
+| Field | Type / notes |
+|-------|----------------|
+| `organizationId` | tenant scope |
+| `vehicleId` | vehicle scope |
+| `provider` | e.g. `DIMO` |
+| `authorityMode` | `LEGACY` \| `PHYSICAL` |
+| `latchedAt` | nullable until cutover |
+| `latchedBy` | nullable actor/metadata |
+| `evidenceSnapshot` | justification metadata (JSON or equivalent) |
+| `createdAt` | row creation |
+| `updatedAt` | last mutation |
+
+**Invariants:**
+
+- `LEGACY → PHYSICAL` allowed exactly once per authority scope
+- `PHYSICAL → LEGACY` forbidden
+- New `bindingKey` / device replacement **does not** reset `authorityMode`
+- Once `PHYSICAL`, latch survives deploys/restarts
 
 **Runtime resolution order:**
 
 ```
-1. Read latched authorityMode for scope (org/binding)
+1. Read latched authorityMode for (organizationId, vehicleId, provider)
 2. If PHYSICAL → always physical gate path (never legacy last-event)
 3. If LEGACY → legacy gate path; optional shadow compare if enabled
+4. Apply projection reads/writes at bindingKey scope under the latched authority mode
 ```
 
 Sub-flags control **capabilities around** the latched mode — they **must not** silently revert canonical authority after cutover.
@@ -448,16 +481,22 @@ projectionWrite = master AND PROJECTION_WRITE_ENABLED    // safe to disable (pau
 
 1. P2.3 STATEFUL_SHADOW (`LEGACY` + projection write + shadow compare)
 2. Pre-seed dry-run / execute
-3. P2.5 latch `LEGACY → PHYSICAL` for pilot scope
+3. P2.5 latch `LEGACY → PHYSICAL` per `(organizationId, vehicleId, provider)` pilot scope
 4. P2.6 `sideEffects=true`
 
-### Required tests (authority mode)
+### Required tests (authority mode — P2.1 schema / P2.5 cutover)
 
-- PRE_CUTOVER `master=false` / no projection write ⇒ legacy unchanged
-- POST_CUTOVER `sideEffects=false` ⇒ physical authority retained
-- POST_CUTOVER `master=false` ⇒ **never** legacy authority
-- Attempted `PHYSICAL → LEGACY` transition rejected
-- Mixed-replica / cutover-mode mismatch blocks enablement
+1. Default authority = `LEGACY` for new `(organizationId, vehicleId, provider)` row
+2. `LEGACY → PHYSICAL` succeeds exactly once
+3. `PHYSICAL → LEGACY` rejected at API and runtime
+4. Restart/deploy retains `PHYSICAL`
+5. New `bindingKey` after device replacement retains `PHYSICAL` authority (vehicle/provider row unchanged)
+6. `organizationId` / `vehicleId` / `provider` tenant mismatch rejected
+7. Concurrent latch attempts converge to one `PHYSICAL` authority row
+8. PRE_CUTOVER `master=false` / no projection write ⇒ legacy unchanged
+9. POST_CUTOVER `sideEffects=false` ⇒ physical authority retained
+10. POST_CUTOVER `master=false` ⇒ **never** legacy authority
+11. Mixed-replica / cutover-mode mismatch blocks enablement
 
 **`AUTHORITY_CUTOVER_IS_FORWARD_ONLY` = YES** — enforced by latch, not flag wording alone.
 
@@ -548,7 +587,7 @@ List order in docs is **not** priority — **time wins**.
 
 ### P0 (implementation — remains for P2.1+)
 
-1. Outbox + latch schema definition (P2.1 / P2.2 types)
+1. Outbox + authority latch schema + coordinator tx refactor (P2.1)
 2. OBD extractor unification (P2.3)
 
 ### P1
@@ -565,7 +604,7 @@ List order in docs is **not** priority — **time wins**.
 | PR | Scope |
 |----|-------|
 | PR-1 | Outbox schema + authority latch schema + `reconcileInTransaction` refactor + coordinator skeleton + PG atomic/rollback tests |
-| PR-2 | Shadow evaluator + adjudication taxonomy + flag/authority-mode resolver (infra only; no writers) |
+| PR-2 | Shadow evaluator + adjudication taxonomy + flag/authority-mode resolver over P2.1 latch (infra only; no writers; no latch schema) |
 | PR-3 | Unified OBD extractor + snapshot/webhook writers + **STATEFUL_SHADOW GT-R1 sequence proof** |
 | PR-4 | Pre-seed CLI + time-wins selection |
 | PR-5 | Authority mode latch (`LEGACY→PHYSICAL`) + APPLIED-only event history + forward-only gate routing |
@@ -580,8 +619,9 @@ List order in docs is **not** priority — **time wins**.
 |-------|-------|
 | RB-019 Phase 1 | MERGED_VALIDATED_DARK |
 | RB-019 Phase 2 | **SCOPED_NOT_IMPLEMENTED** |
-| PHASE2_IMPLEMENTATION_START_READY | **YES** — P2.1 may begin; authority mode + latch schema included in P2.1; forward-only model decided |
-| EXACT_NEXT_ACTION | Begin P2.1: outbox + authority latch schema + coordinator `reconcileInTransaction` + PG rollback tests (flags OFF; `authorityMode=LEGACY` everywhere) |
+| PHASE2_IMPLEMENTATION_START_READY | **YES** — forward-only authority model + latch granularity frozen; merge this scope PR before P2.1 implementation |
+| EXACT_NEXT_ACTION | Merge PR #1631 after review; then begin P2.1 implementation PR: outbox schema + authority latch schema (`UNIQUE (organizationId, vehicleId, provider)`) + coordinator `reconcileInTransaction` + PG atomic rollback/claim tests (flags OFF; default `authorityMode=LEGACY`) |
+| PR_MERGE_SEQUENCE | **Merge #1631 (this scope/authority record) before starting P2.1 implementation PR** — P2.1 depends on this audit, not vice versa |
 
 ### PR #1631 file inventory (precision)
 

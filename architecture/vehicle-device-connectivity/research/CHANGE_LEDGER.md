@@ -20,3 +20,4 @@
 | 2026-09-13 | RB-019 Phase 2 runtime cutover scope audit — VDC-DEC-013, subphases P2.1–P2.7, no implementation (VDC-EVID-RB019-PHASE2-SCOPE-001) | Vehicle & Device Connectivity remediation |
 | 2026-09-13 | RB-019 Phase 2 audit hardening — snapshot PLUG resolve_plug contract, atomic tx Option A, full crash matrix, shadow adjudication, STATEFUL_SHADOW, flag semantics, event-history APPLIED-only (PR #1631) | Vehicle & Device Connectivity remediation |
 | 2026-09-13 | RB-019 Phase 2 audit final hardening — authorityMode latch (forward-only), P2.2/P2.3 cycle fix, DB-enforced effect idempotency, precise PR file inventory (PR #1631) | Vehicle & Device Connectivity remediation |
+| 2026-09-13 | RB-019 Phase 2 audit micro-closure — P2.1 owns latch schema; authority scope frozen `UNIQUE (organizationId, vehicleId, provider)`; device replacement inherits authority; merge #1631 before P2.1 (PR #1631) | Vehicle & Device Connectivity remediation |
