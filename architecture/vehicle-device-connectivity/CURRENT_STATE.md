@@ -10,7 +10,7 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-12 (GT-R1-UNPLUG-001 executed) |
+| **Last updated** | 2026-09-12 (physical-state reconciliation Phase 1 foundation) |
 
 ## Executive summary
 
@@ -43,7 +43,8 @@ Phase 3 (reconciliation) establishes:
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
 - **GT-R1-UNPLUG-001** **executed** 2026-09-12 on KS MX 2024: UNPLUG webhook **delivered** post-recovery but **ignored** (`no_state_change` — stale canonical last-event); snapshot unplug/replug **confirmed**; **no episode/alert**; PLUG webhook **absent** (disabled); snapshot-only replug recovery **confirmed** (VDC-EVID-GT-R1-EXECUTION-001).
-- **AUTHORITY_ACTIVE promotion deferred** — open GT, HM gap, runtime remediation pending.
+- **Physical-state reconciliation Phase 1 (dark):** VDC-DEC-012 + VDC-RB-019 — durable `device_connection_physical_states` projection, transition log, pure policy, repository (`SELECT FOR UPDATE`), service layer, `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` (**OFF**); **no** live webhook/snapshot cutover yet.
+- **AUTHORITY_ACTIVE promotion deferred** — HM gap, runtime cutover, Production backfill pending.
 
 ## Component hierarchy
 

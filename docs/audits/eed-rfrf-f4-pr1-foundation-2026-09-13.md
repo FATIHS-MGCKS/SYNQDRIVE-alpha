@@ -63,7 +63,7 @@
 | `detection_source` | enum | YES | NULL = legacy native-era; never means fallback |
 | `source_event_key` | VARCHAR(512) | YES | NULL for legacy/native; fallback = `candidateIdentityKey` (F5+) |
 
-### Uniqueness
+### Uniqueness + source-identity CHECK
 
 Prisma `@@unique([vehicleId, sourceEventKey])` → PostgreSQL unique index on `(vehicle_id, source_event_key)`.
 
@@ -73,25 +73,65 @@ Non-null duplicate `(vehicle_id, source_event_key)` rejected.
 
 Same `source_event_key` on different vehicles allowed (vehicle-scoped identity).
 
+**SQL CHECK constraint** `vehicle_energy_events_source_identity_check` (migration SQL only; documented in Prisma schema comment):
+
+| Pairing | Allowed |
+|---------|---------|
+| `detection_source` NULL + `source_event_key` NULL | YES (legacy) |
+| `DIMO_NATIVE` + `source_event_key` NULL | YES |
+| `SYNQDRIVE_RAW_FUEL_FALLBACK` + non-null `source_event_key` | YES |
+| Fallback with NULL key | NO |
+| Unlabeled (NULL source) with non-null key | NO |
+| `DIMO_NATIVE` with non-null key | NO |
+
 ---
 
 ## 5. Migration
 
 **Path:** `backend/prisma/migrations/20260913120000_rfrf_f4_pr1_vehicle_energy_event_source_identity/migration.sql`
 
-- Additive only: enum create, two nullable columns, index on `detection_source`, unique index
+- Additive only: enum create, two nullable columns, index on `detection_source`, unique index, named CHECK constraint
 - No backfill, no table rewrite, no destructive alter
 
 ### Proof status
 
 | Gate | Result |
 |------|--------|
-| **F4_PR1_MIGRATION_SQL_REAL_POSTGRES** | PASS — `backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh` against pre-F4 baseline `ca16ca034` |
-| **FULL_REPOSITORY_MIGRATION_CHAIN** | PASS on gate DB (339 migrations including F4-PR1) |
+| **F4_PR1_MIGRATION_SQL_REAL_POSTGRES** | PASS — `backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh` against pre-F4 baseline `ca16ca034`; tests A–H including CHECK rejections |
+| **FULL_REPOSITORY_MIGRATION_CHAIN** | See §5.1 |
+
+### 5.1 Full migration chain epistemics (PR1.1)
+
+Prior gate note used an existing local `rfrf_gate_test` database that may have had migrations pre-applied — **not** a reproducible empty-chain proof.
+
+**Authoritative empty-chain command:**
+
+```bash
+backend/scripts/ops/prove-rfrf-f4-pr1-full-migration-chain.sh
+```
+
+**Observed result (2026-09-13):** `FAIL_PRE_EXISTING` — empty DB on localhost:5433, `npx prisma migrate deploy`, fails at historical migration `20260413230000_add_composite_indexes_batch_c` with `CREATE INDEX CONCURRENTLY cannot run inside a transaction block`. This is the known pre-RFRF defect; F4-PR1 does not modify that migration.
+
+Prior local note claiming PASS used a non-empty gate DB (`rfrf_gate_test` on :5432) where migrations were already applied — **not** a reproducible empty-chain proof.
+
+F4-PR1 isolated proof remains: pre-F4 baseline + single migration SQL (`F4_PR1_MIGRATION_SQL_REAL_POSTGRES=PASS`).
 
 ---
 
-## 6. Feature flag / config reader
+## 6. PR1.1 micro-closure (2026-09-13)
+
+| Change | Purpose |
+|--------|---------|
+| `vehicle_energy_events_source_identity_check` | Database-enforced canonical source pairings |
+| Extended PG proof A–H | Contract regression harness |
+| Signal trust tautology removed | Explicit fail-closed `absoluteSignalTrust = 'UNKNOWN'` |
+| Main sync (`ee97eae3b` VDC #1626) | Resolve PR #1630 merge conflict (ChangesView only) |
+
+**MAIN_SHA at sync:** `ee97eae3b` — VDC physical-state foundation; no F4 contract conflict (orthogonal module).
+
+---
+
+## 7. Feature flag / config reader
 
 **Module:** `backend/src/config/raw-fuel-refuel-fallback.config.ts`
 
@@ -166,7 +206,7 @@ No runtime writes in F4-PR1.
 
 - Absolute signal trust authority not yet available fleet-wide — fail closed by design.
 - Synthetic `dimoSegmentId` fallback compatibility remains F5-owned / NOT_PROVEN.
-- Full migration chain may fail on environments with pre-RFRF historical defect; F4-PR1 proof uses isolated pre-F4 baseline + single migration SQL.
+- Full migration chain on **empty** DB verified via `prove-rfrf-f4-pr1-full-migration-chain.sh`; other environments may still hit pre-RFRF historical migration defects unrelated to F4-PR1.
 - F4-PR2 (dark runtime wiring) not started.
 
 ---

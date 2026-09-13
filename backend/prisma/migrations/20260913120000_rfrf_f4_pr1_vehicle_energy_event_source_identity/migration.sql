@@ -16,3 +16,26 @@ CREATE INDEX "vehicle_energy_events_detection_source_idx"
 
 CREATE UNIQUE INDEX "vehicle_energy_events_vehicle_id_source_event_key_key"
   ON "vehicle_energy_events"("vehicle_id", "source_event_key");
+
+-- Canonical source-identity pairings (SQL-only; Prisma schema documents intent).
+-- Legacy/native: both NULL. Explicit native: DIMO_NATIVE + NULL key. Fallback: non-NULL key required.
+ALTER TABLE "vehicle_energy_events"
+  ADD CONSTRAINT "vehicle_energy_events_source_identity_check"
+  CHECK (
+    (
+      "detection_source" IS NULL
+      AND "source_event_key" IS NULL
+    )
+    OR
+    (
+      "detection_source" IS NOT NULL
+      AND "detection_source" = 'DIMO_NATIVE'::"VehicleEnergyEventDetectionSource"
+      AND "source_event_key" IS NULL
+    )
+    OR
+    (
+      "detection_source" IS NOT NULL
+      AND "detection_source" = 'SYNQDRIVE_RAW_FUEL_FALLBACK'::"VehicleEnergyEventDetectionSource"
+      AND "source_event_key" IS NOT NULL
+    )
+  );

@@ -53,9 +53,7 @@ export function resolveRawFuelSignalTrust(
   void input.fuelType;
   void input.samplePresenceOnly;
 
-  const absoluteSignalTrust: RawFuelAbsoluteSignalTrust = ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE
-    ? 'UNKNOWN'
-    : 'UNKNOWN';
+  const absoluteSignalTrust: RawFuelAbsoluteSignalTrust = 'UNKNOWN';
 
   return {
     absoluteSignalTrust,

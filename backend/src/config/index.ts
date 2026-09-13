@@ -49,6 +49,12 @@ export { default as workflowShadowConfig } from './workflow-shadow.config';
 export { default as workflowRuntimeRolloutConfig } from './workflow-runtime-rollout.config';
 export { default as deviceConnectionWebhookInboxConfig } from './device-connection-webhook-inbox.config';
 export { default as connectivityRecoveryConfig } from './connectivity-recovery.config';
+export { default as connectivityPhysicalStateConfig } from './connectivity-physical-state.config';
+export {
+  CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV,
+  isConnectivityPhysicalStateReconciliationEnabled,
+  loadConnectivityPhysicalStateConfig,
+} from './connectivity-physical-state.config';
 export {
   CONNECTIVITY_EPISODE_RECOVERY_ENABLED_ENV,
   CONNECTIVITY_RECONCILIATION_APPLY_ENABLED_ENV,
