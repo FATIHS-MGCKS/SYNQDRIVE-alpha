@@ -57,6 +57,7 @@ Append-only record for this authority directory.
 | 2026-09-13 | R12 retry-budget POSSIBLE_END re-entry fix — `resolveEndValidationAttemptsOnPossibleEndReentry`; CI green run `34726519989` | Fix branch PR #1627 | [WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md](../evidence/WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md) |
 | 2026-09-13 | WOB L 7503 POST-#1627 forensic audit — two physical drives; `POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE` proven; draft PR #1634 (read-only) | Read-only Production audit | [WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md](../evidence/WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md) |
 | 2026-09-13 | R12 provider-silence empty-core liveness — `assessProviderSilenceEmptyCoreAdmission`; bounded by `TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`; references forensic #1634 | Fix branch (draft) | [R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md](../evidence/R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md) |
+| 2026-09-13 | R12 provider-silence × #1627 retry continuity — preserve CUSUM budget via low-trust `provider_silence_candidate` episode fields without promoting trust | Fix branch PR #1635 | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

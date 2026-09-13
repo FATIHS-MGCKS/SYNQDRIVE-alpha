@@ -20,7 +20,8 @@ Introduced `assessProviderSilenceEmptyCoreAdmission` in `trip-empty-core-end-gat
 - After bounded provider silence with stale UNKNOWN VLS, no trusted boundary, and no post-stop contradictions → conservative `POSSIBLE_END` via `provider_silence_empty_core_admission`.
 - Silence end candidate: `provider_silence_candidate` @ `lastProviderActivityAt` / last VLS `sourceTimestamp` (EVENT_TIME, **trust=false**). Does **not** fabricate stop from `workerNow` or `lastMeaningfulMovementAt`.
 - Orchestration passes `silenceEndCandidate` into `resolvePossibleEndBoundaryCandidate` before movement fallback.
-- Normal `POSSIBLE_END_CHECK → END_VALIDATION → FINALIZE` chain unchanged; #1603 / #1617 / #1627 paths preserved.
+- **#1627 interoperability:** `resolveProviderSilenceCandidateForCusumRetry` + `CUSUM_RETRY_PRESERVE_PROVIDER_SILENCE_KEYS` preserve completed END_VALIDATION attempts across CUSUM_STILL_ONGOING reopens for the **same** low-trust silence episode (without `stopBoundaryTrust=true`).
+- Normal `POSSIBLE_END_CHECK → END_VALIDATION → FINALIZE` chain unchanged; #1603 / #1617 trusted-boundary paths preserved.
 
 ## Safety constraints honored
 
@@ -38,7 +39,9 @@ Introduced `assessProviderSilenceEmptyCoreAdmission` in `trip-empty-core-end-gat
 |-------|------|
 | RED/GREEN portable probe | `backend/scripts/test/trip-r12-post-stop-telemetry-silence-dead-zone-base-head-red-proof.sh` |
 | Integration | `trip-r12-post-stop-telemetry-silence-dead-zone.postgres-redis.integration.spec.ts` |
+| #1627 interoperability | `trip-r12-provider-silence-cusum-retry-budget.postgres-redis.integration.spec.ts` |
 | Unit defenses | `trip-fsm-r12-provider-silence-empty-core-admission.spec.ts` |
+| PRE_FIX/HEAD proof | `scripts/test/trip-r12-provider-silence-cusum-retry-budget-base-head-red-proof.sh` |
 
 ## Remaining gaps
 
