@@ -2,6 +2,8 @@ import {
   DeviceConnectionPhysicalEffectiveState,
   DeviceConnectionPhysicalEvidenceSource,
   DeviceConnectionPhysicalTransitionDecision,
+  DimoDeviceConnectionEventType,
+  Prisma,
 } from '@prisma/client';
 
 export type PhysicalEffectiveState = DeviceConnectionPhysicalEffectiveState;
@@ -86,6 +88,35 @@ export interface PhysicalStateReconcileResult {
   context: PhysicalStateReconcileContext;
   reason?: string;
 }
+
+export interface PhysicalStateWebhookEventUpsertInput {
+  organizationId: string;
+  vehicleId: string;
+  tokenId: number;
+  provider: string;
+  eventType: DimoDeviceConnectionEventType;
+  observedAt: Date;
+  receivedAt?: Date;
+  rawPayloadJson: Prisma.InputJsonValue;
+}
+
+export interface PhysicalStateCoordinatorInput {
+  reconcile: PhysicalStateReconcileInput;
+  webhookEventUpsert?: PhysicalStateWebhookEventUpsertInput | null;
+}
+
+export interface PhysicalStateCoordinatorResult {
+  reconcile: PhysicalStateReconcileResult;
+  canonicalEventId: string | null;
+  outboxId: string | null;
+  outboxDuplicate: boolean;
+}
+
+export type PhysicalStateCoordinatorTestSeam = {
+  afterReconcile?: () => Promise<void> | void;
+  afterWebhookEventUpsert?: () => Promise<void> | void;
+  afterOutboxEnqueue?: () => Promise<void> | void;
+};
 
 export interface PhysicalStateTransitionLogInput {
   organizationId: string;

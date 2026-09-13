@@ -61,6 +61,12 @@ export async function cleanupPhysicalStatePostgresFixture(
   prisma: PrismaClient,
   fixture: PhysicalStatePostgresFixture,
 ): Promise<void> {
+  await prisma.deviceConnectionPhysicalStateActionOutbox.deleteMany({
+    where: { vehicleId: fixture.vehicle.id },
+  });
+  await prisma.deviceConnectionPhysicalAuthorityCutover.deleteMany({
+    where: { vehicleId: fixture.vehicle.id },
+  });
   await prisma.deviceConnectionPhysicalStateTransition.deleteMany({
     where: { vehicleId: fixture.vehicle.id },
   });

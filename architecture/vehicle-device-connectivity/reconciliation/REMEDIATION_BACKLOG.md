@@ -48,14 +48,14 @@ Do **not** implement unconditional `equal top-level timestamp → discard payloa
 
 **GT-R1 regression target:** self-heal PLUG from snapshot without episode → accept newer webhook UNPLUG exactly once.
 
-### VDC-RB-019 — Phase 2 runtime cutover (2026-09-13) — SCOPED
+### VDC-RB-019 — Phase 2 runtime cutover (2026-09-13) — IN PROGRESS
 
-**Status:** architecture/readiness only — [audit](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
+**Scope audit:** [audit](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
 
-| Subphase | Deliverable |
-|----------|-------------|
-| P2.1 | New `device_connection_physical_state_action_outbox` + processor |
-| P2.2 | Shadow dual-evaluation + drift metrics |
+| Subphase | Deliverable | Status |
+|----------|-------------|--------|
+| P2.1 | Outbox + authority latch schema; `reconcileInTransaction`; coordinator outer tx; processor skeleton; PG tests | **IMPLEMENTED (dark)** — [evidence](../evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md) |
+| P2.2 | Shadow dual-evaluation + drift metrics | Not started |
 | P2.3 | Webhook + snapshot evidence writers (pre-monotonic snapshot insert) |
 | P2.4 | Pre-seed tooling (dry-run + execute) |
 | P2.5 | Webhook authority gate cutover |

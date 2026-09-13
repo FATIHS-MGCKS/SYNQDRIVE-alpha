@@ -1,0 +1,274 @@
+import {
+  DeviceConnectionPhysicalEvidenceSource,
+  DeviceConnectionPhysicalStateActionOutboxStatus,
+  DimoDeviceConnectionEventType,
+  PrismaClient,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
+import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
+import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
+import {
+  cleanupPhysicalStatePostgresFixture,
+  createPhysicalStatePostgresFixture,
+  type PhysicalStatePostgresFixture,
+} from './testing/physical-state-postgres.integration.harness';
+
+const LIVE =
+  process.env.PHYSICAL_STATE_POSTGRES_INTEGRATION === '1' && Boolean(process.env.DATABASE_URL);
+const REQUIRED = process.env.PHYSICAL_STATE_POSTGRES_REQUIRED === '1';
+const describePg = LIVE ? describe : describe.skip;
+
+if (REQUIRED && !LIVE) {
+  throw new Error(
+    'PHYSICAL_STATE_POSTGRES_REQUIRED=1 but DATABASE_URL / PHYSICAL_STATE_POSTGRES_INTEGRATION not configured',
+  );
+}
+
+describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
+  let prisma: PrismaClient;
+  let coordinator: PhysicalStateReconcileCoordinator;
+  let fixture: PhysicalStatePostgresFixture;
+  let binding: ReturnType<typeof buildBindingScopeFromToken>;
+
+  beforeAll(async () => {
+    prisma = new PrismaClient();
+    await prisma.$executeRawUnsafe('SELECT 1');
+    const prismaService = prisma as unknown as PrismaService;
+    coordinator = new PhysicalStateReconcileCoordinator(
+      prismaService,
+      new DeviceConnectionPhysicalStateRepository(prismaService),
+      new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+    );
+  });
+
+  beforeEach(async () => {
+    fixture = await createPhysicalStatePostgresFixture(prisma);
+    binding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId: fixture.tokenId,
+    });
+  });
+
+  afterEach(async () => {
+    await cleanupPhysicalStatePostgresFixture(prisma, fixture);
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  function evidence(at: string, state: 'PLUGGED' | 'UNPLUGGED', ref: string) {
+    return {
+      candidateState: state,
+      evidenceObservedAt: new Date(at),
+      evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+      evidenceReferenceId: ref,
+    };
+  }
+
+  function baseReconcile(
+    ev: ReturnType<typeof evidence>,
+    overrides: Record<string, unknown> = {},
+  ) {
+    return {
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: ev,
+      ...overrides,
+    };
+  }
+
+  function webhookUpsert(observedAt: string) {
+    return {
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      provider: 'DIMO',
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+      observedAt: new Date(observedAt),
+      rawPayloadJson: {},
+    };
+  }
+
+  async function counts() {
+    const [projections, audits, events, outbox] = await Promise.all([
+      prisma.deviceConnectionPhysicalState.count({ where: { vehicleId: fixture.vehicle.id } }),
+      prisma.deviceConnectionPhysicalStateTransition.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+      prisma.dimoDeviceConnectionEvent.count({ where: { vehicleId: fixture.vehicle.id } }),
+      prisma.deviceConnectionPhysicalStateActionOutbox.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+    ]);
+    return { projections, audits, events, outbox };
+  }
+
+  it('1. normal ESTABLISHED commit', async () => {
+    const before = await counts();
+    const result = await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-1')),
+    });
+    const after = await counts();
+    expect(result.reconcile.decision).toBe('ESTABLISHED');
+    expect(after.projections).toBe(before.projections + 1);
+    expect(after.audits).toBe(before.audits + 1);
+    expect(after.events).toBe(before.events);
+    expect(after.outbox).toBe(before.outbox);
+  });
+
+  it('2. normal APPLIED webhook commit with event history', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-1')),
+    });
+
+    const before = await counts();
+    const result = await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-1')),
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+    });
+    const after = await counts();
+
+    expect(result.reconcile.decision).toBe('APPLIED');
+    expect(result.canonicalEventId).toBeTruthy();
+    expect(after.events).toBe(before.events + 1);
+    expect(after.outbox).toBe(before.outbox + 1);
+  });
+
+  it('3. action-bearing APPLIED creates outbox atomically', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-1')),
+    });
+
+    const result = await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-2')),
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+    });
+
+    expect(result.outboxId).toBeTruthy();
+    const outbox = await prisma.deviceConnectionPhysicalStateActionOutbox.findUnique({
+      where: { id: result.outboxId! },
+    });
+    expect(outbox?.status).toBe(DeviceConnectionPhysicalStateActionOutboxStatus.PENDING);
+    expect(outbox?.canonicalEventId).toBe(result.canonicalEventId);
+  });
+
+  it('4. failure after reconcile phase rolls back projection + audit together', async () => {
+    const before = await counts();
+    await expect(
+      coordinator.reconcileInOuterTransaction(
+        {
+          reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'fail-1')),
+        },
+        {
+          testSeam: {
+            afterReconcile: async () => {
+              throw new Error('inject_after_reconcile_phase');
+            },
+          },
+        },
+      ),
+    ).rejects.toThrow('inject_after_reconcile_phase');
+    const after = await counts();
+    expect(after).toEqual(before);
+  });
+
+  it('5. failure after webhook event-history upsert rolls back all durable state', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-2')),
+    });
+
+    const before = await counts();
+    await expect(
+      coordinator.reconcileInOuterTransaction(
+        {
+          reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'fail-event')),
+          webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+        },
+        {
+          testSeam: {
+            afterWebhookEventUpsert: async () => {
+              throw new Error('inject_after_event_history');
+            },
+          },
+        },
+      ),
+    ).rejects.toThrow('inject_after_event_history');
+
+    const after = await counts();
+    expect(after.projections).toBe(before.projections);
+    expect(after.audits).toBe(before.audits);
+    expect(after.events).toBe(before.events);
+    expect(after.outbox).toBe(before.outbox);
+  });
+
+  it('6. failure after outbox insert rolls back projection + audit + event + outbox', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-3')),
+    });
+
+    const before = await counts();
+    await expect(
+      coordinator.reconcileInOuterTransaction(
+        {
+          reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'fail-outbox')),
+          webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+        },
+        {
+          testSeam: {
+            afterOutboxEnqueue: async () => {
+              throw new Error('inject_after_outbox');
+            },
+          },
+        },
+      ),
+    ).rejects.toThrow('inject_after_outbox');
+
+    const after = await counts();
+    expect(after.projections).toBe(before.projections);
+    expect(after.audits).toBe(before.audits);
+    expect(after.events).toBe(before.events);
+    expect(after.outbox).toBe(before.outbox);
+  });
+
+  it('7. duplicate retry does not duplicate projection transition or outbox', async () => {
+    await coordinator.reconcileInOuterTransaction({
+      reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-4')),
+    });
+
+    const input = {
+      reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'dup-1')),
+      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+    };
+
+    const first = await coordinator.reconcileInOuterTransaction(input);
+    const second = await coordinator.reconcileInOuterTransaction(input);
+
+    expect(first.reconcile.decision).toBe('APPLIED');
+    expect(second.reconcile.decision).toBe('DUPLICATE');
+    expect(second.outboxId).toBeNull();
+
+    const outboxCount = await prisma.deviceConnectionPhysicalStateActionOutbox.count({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+    expect(outboxCount).toBe(1);
+  });
+
+  it('8. tenant mismatch rolls back everything', async () => {
+    const before = await counts();
+    await expect(
+      coordinator.reconcileInOuterTransaction({
+        reconcile: {
+          ...baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'tenant-fail')),
+          organizationId: 'wrong-org',
+        },
+      }),
+    ).rejects.toThrow(/tenant_mismatch/);
+    const after = await counts();
+    expect(after).toEqual(before);
+  });
+});

@@ -96,6 +96,10 @@ edges:
     relation: supports
     to: VDC-DEC-013
 
+  - from: VDC-EVID-RB019-P21-DURABILITY-001
+    relation: supports
+    to: VDC-DEC-013
+
   - from: VDC-DEC-013
     relation: downstream_of
     to: VDC-DEC-012
