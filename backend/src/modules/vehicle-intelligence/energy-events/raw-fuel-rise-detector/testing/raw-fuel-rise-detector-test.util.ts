@@ -6,7 +6,15 @@ import {
   RFRF_RISE_DETECTION_VERSION,
   RFRF_RISE_DETECTOR_VERSION,
 } from '../raw-fuel-rise-detector.config';
+import type { RawFuelSignalTrustInput } from '../../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback.types';
+import {
+  resolveRawFuelSignalTrust,
+} from '../../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
 
+/**
+ * Runtime-faithful defaults (F4.1): promotion trust UNKNOWN, admissibility UNKNOWN.
+ * Do not use for F3 physics-only tests — use buildDetectorPhysicsContext().
+ */
 export function buildDetectionContext(
   overrides: Partial<RawFuelRiseDetectionContext> = {},
 ): RawFuelRiseDetectionContext {
@@ -15,7 +23,8 @@ export function buildDetectionContext(
     vehicleId: 'veh-test',
     scanWindowStart: new Date('2026-09-06T08:00:00.000Z'),
     scanWindowEnd: new Date('2026-09-06T12:00:00.000Z'),
-    absoluteSignalTrust: 'TRUSTED',
+    absoluteSignalTrust: 'UNKNOWN',
+    absoluteDetectionAdmissibility: 'UNKNOWN',
     relativeSignalAvailable: false,
     signalProvider: 'DIMO',
     detectionVersion: RFRF_RISE_DETECTION_VERSION,
@@ -24,6 +33,32 @@ export function buildDetectionContext(
     stationaryEvidenceAvailable: false,
     ...overrides,
   };
+}
+
+/** F3 detector physics tests — explicit channel authority, not runtime trust resolver. */
+export function buildDetectorPhysicsContext(
+  overrides: Partial<RawFuelRiseDetectionContext> = {},
+): RawFuelRiseDetectionContext {
+  return buildDetectionContext({
+    absoluteSignalTrust: 'TRUSTED',
+    absoluteDetectionAdmissibility: 'ADMISSIBLE',
+    ...overrides,
+  });
+}
+
+export function buildRuntimeDetectionContextFromTrust(
+  trustInput: RawFuelSignalTrustInput,
+  overrides: Partial<RawFuelRiseDetectionContext> = {},
+): RawFuelRiseDetectionContext {
+  const trust = resolveRawFuelSignalTrust(trustInput);
+  return buildDetectionContext({
+    scanWindowStart: trustInput.scanWindowStart,
+    scanWindowEnd: trustInput.scanWindowEnd,
+    absoluteSignalTrust: trust.absoluteSignalTrust,
+    absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
+    relativeSignalAvailable: trust.relativeSignalAvailable,
+    ...overrides,
+  });
 }
 
 export function sampleAt(
