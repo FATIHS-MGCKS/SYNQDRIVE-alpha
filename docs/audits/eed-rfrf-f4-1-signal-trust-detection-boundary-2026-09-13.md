@@ -124,14 +124,41 @@ F5 retains promotion authority. F4-PR2 may stage raw candidates when flags enabl
 
 ---
 
+## 7.1 F4.1a downstream F2 contract (2026-09-13)
+
+F4.1 adds `qualityMeta.absoluteDetectionAdmissibility` to observations. F2 evidence revision fingerprinting includes `qualityMeta`; candidate identity key does **not**.
+
+| Finding | Value |
+|---------|-------|
+| `ABSOLUTE_DETECTION_ADMISSIBILITY_IN_IDENTITY_KEY` | **NO** |
+| `ABSOLUTE_DETECTION_ADMISSIBILITY_IN_EVIDENCE_FINGERPRINT` | **YES** |
+| Physical candidate identity | Unchanged — same `candidateIdentityKey` with or without F4.1 qualityMeta |
+| Evidence revision | Updates when F4.1 provenance added; identical replay idempotent |
+
+`STAGED_CANDIDATE != PROMOTION_AUTHORIZED` — unchanged.
+
+Proof artifacts:
+
+- `raw-fuel-f4-1-f3-f2-downstream-contract.spec.ts` (unit trace)
+- `raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts` — `F4_1_RUNTIME_ADMISSIBILITY_F3_F2`, `F4_1_KS_MS_661_OBSERVED_RUNTIME_F3_F2`
+
+---
+
 ## 8. Validation
 
 | Gate | Result |
 |------|--------|
 | F4.1 boundary spec + KS MS 661 runtime test | PASS |
+| F4.1 F3→F2 downstream contract (unit + real PG) | PASS |
 | F3.1 / F3.2 / negative matrix | PASS |
-| F2 regression | PASS (unchanged schema) |
+| F2 regression (unit + real PG integration) | PASS |
+| Real PG F3→F2 handoff (6 tests, skip 0) | PASS |
 | Backend build | PASS |
+| Prisma validate | PASS |
+| EED graph validator | PASS |
+| Module registry validator | PASS |
+
+**Governance note:** `EED-DEC-RFRF-007` remains **PROPOSED** until PR #1633 human merge. `F4_PR2_START_AUTHORIZED_PRE_MERGE = NO`.
 
 ---
 
