@@ -1330,6 +1330,28 @@ enum DeviceConnectionWebhookBindingMappingStatus {
   UNKNOWN_BINDING
 }
 
+enum DeviceConnectionPhysicalEffectiveState {
+  PLUGGED
+  UNPLUGGED
+}
+
+enum DeviceConnectionPhysicalEvidenceSource {
+  WEBHOOK
+  SNAPSHOT_OBD
+  MANUAL
+  RECONCILIATION
+}
+
+enum DeviceConnectionPhysicalTransitionDecision {
+  ESTABLISHED
+  APPLIED
+  DUPLICATE
+  STALE
+  CONFLICT
+  INSUFFICIENT_EVIDENCE
+  PROVENANCE_REFRESH
+}
+
 enum DeviceConnectionEpisodeStatus {
   OPEN
   RESOLVED
@@ -2975,6 +2997,8 @@ model Vehicle {
   brakingEventLedgerEntries              BrakingEventLedger[]
   dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
   deviceConnectionEpisodes               DeviceConnectionEpisode[]
+  deviceConnectionPhysicalStates         DeviceConnectionPhysicalState[]
+  deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
   tripDetectionState                     VehicleTripDetectionState?
   tripTrackingRuns                       VehicleTripTrackingRun[]
   tripBehaviorEvents                     TripBehaviorEvent[]
@@ -8043,6 +8067,60 @@ model DeviceConnectionEpisode {
   @@index([openedAt])
   @@index([vehicleId, provider, status])
   @@map("device_connection_episodes")
+}
+
+// ------------------------------------------------
+// DEVICE CONNECTION PHYSICAL STATE (provider-neutral effective OBD plug authority)
+// ------------------------------------------------
+model DeviceConnectionPhysicalState {
+  id                   String                                 @id @default(uuid())
+  organizationId       String                                 @map("organization_id")
+  vehicleId            String                                 @map("vehicle_id")
+  provider             String                                 @default("DIMO")
+  bindingKey           String                                 @map("binding_key")
+  deviceBindingId      String?                                @map("device_binding_id")
+  providerDeviceIdHash String?                                @map("provider_device_id_hash")
+  effectiveState       DeviceConnectionPhysicalEffectiveState @map("effective_state")
+  evidenceObservedAt   DateTime                               @map("evidence_observed_at")
+  evidenceSource       DeviceConnectionPhysicalEvidenceSource @map("evidence_source")
+  evidenceReferenceId  String                                 @map("evidence_reference_id")
+  stateVersion         Int                                    @default(1) @map("state_version")
+  createdAt            DateTime                               @default(now()) @map("created_at")
+  updatedAt            DateTime                               @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, provider, bindingKey], map: "device_connection_physical_state_binding_key")
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([evidenceObservedAt])
+  @@map("device_connection_physical_states")
+}
+
+model DeviceConnectionPhysicalStateTransition {
+  id                   String                                    @id @default(uuid())
+  organizationId       String                                    @map("organization_id")
+  vehicleId            String                                    @map("vehicle_id")
+  provider             String                                    @default("DIMO")
+  bindingKey           String                                    @map("binding_key")
+  previousState          DeviceConnectionPhysicalEffectiveState?   @map("previous_state")
+  candidateState         DeviceConnectionPhysicalEffectiveState    @map("candidate_state")
+  effectiveState       DeviceConnectionPhysicalEffectiveState?   @map("effective_state")
+  evidenceObservedAt     DateTime                                  @map("evidence_observed_at")
+  evidenceSource       DeviceConnectionPhysicalEvidenceSource      @map("evidence_source")
+  evidenceReferenceId    String                                    @map("evidence_reference_id")
+  parentStateVersion     Int?                                      @map("parent_state_version")
+  appliedStateVersion    Int?                                      @map("applied_state_version")
+  decision               DeviceConnectionPhysicalTransitionDecision
+  idempotencyKey         String                                    @unique @map("idempotency_key")
+  metadataJson           Json?                                     @map("metadata_json")
+  createdAt              DateTime                                  @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, createdAt])
+  @@index([organizationId, vehicleId])
+  @@map("device_connection_physical_state_transitions")
 }
 
 model DeviceConnectionEpisodeResolutionAudit {

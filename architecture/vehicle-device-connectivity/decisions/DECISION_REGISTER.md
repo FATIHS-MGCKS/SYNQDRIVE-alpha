@@ -186,6 +186,30 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 
 ---
 
+## VDC-DEC-012 — Durable effective physical-device-state projection
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED (Phase 1 foundation implemented — flag OFF) |
+| **DATE** | 2026-09-12 |
+| **BEFORE** | Webhook canonicalization deduped physical plug/unplug from last `dimo_device_connection_events.event_type` only; snapshot `obdIsPluggedIn` could prove newer physical state without updating that authority (GT-R1) |
+| **WHY** | Split authority made genuine newer UNPLUG webhooks classify as `no_state_change`, blocking episodes/alerts after snapshot-only replug recovery |
+| **EVIDENCE** | VDC-EVID-GT-R1-EXECUTION-001 |
+| **CANONICAL_PRINCIPLE** | A durable, provider-neutral **effective physical-device-state projection** is the canonical authority for physical plug/unplug deduplication and ordering. Webhook event history is evidence/history — **not** the effective physical-state authority. |
+| **PROJECTION** | `device_connection_physical_states` — one row per `(organizationId, vehicleId, provider, bindingKey)`; `bindingKey` non-null and **always** `{PROVIDER}:device:{providerDeviceIdHash}`; `deviceBindingId` is enrichment metadata only |
+| **CONCURRENCY** | `pg_advisory_xact_lock` per binding + `SELECT … FOR UPDATE` + `INSERT … ON CONFLICT DO NOTHING` (no catch-and-continue inside aborted transactions) |
+| **SIDE_EFFECTS** | Phase 1 returns episode/alert intents only; durable outbox execution deferred to Phase 2 |
+| **TRANSITION_LOG** | Idempotent evidence-decision ledger `device_connection_physical_state_transitions` with `previous_state`, `candidate_state`, `effective_state`, explicit decisions (ESTABLISHED, APPLIED, DUPLICATE, STALE, CONFLICT, INSUFFICIENT_EVIDENCE, PROVENANCE_REFRESH); one row per idempotency key, not per reconcile invocation |
+| **TIMESTAMP_AUTHORITY** | Physical ordering uses `evidenceObservedAt` from provider-observed webhook time or per-signal `obdIsPluggedIn.timestamp` — never `providerFetchedAt`, poll completion, or `receivedAt` |
+| **INITIALIZATION** | Snapshot self-heal may establish/repair projection without retroactive user-visible lifecycle events or fabricated PLUG webhooks |
+| **EPISODE_BOUNDARY** | Physical projection transition ≠ episode/alert policy; snapshot-only UNPLUG episode opening remains deferred (Phase 1) |
+| **ROLLOUT** | `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` default **OFF**; do not enable with mixed old/new replicas |
+| **IMPLEMENTATION** | `backend/src/modules/dimo/device-connection-physical-state/*`; migration `20260912200000_device_connection_physical_state` |
+| **VALIDATION** | Policy unit tests; PostgreSQL integration (concurrency, GT-R1 regression); drift detector dry-run |
+| **OWNING_MODULE** | VDC |
+
+---
+
 ## VDC-DEC-011 — Adaptive / information-gain provider polling
 
 | Field | Value |

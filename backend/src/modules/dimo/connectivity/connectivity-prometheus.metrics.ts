@@ -156,3 +156,38 @@ export function recordConnectivityReconciliationConflict(
 ): void {
   metrics.connectivityReconciliationConflictTotal.inc(input);
 }
+
+export function recordConnectivityPhysicalStateTransitionApplied(
+  metrics: TripMetricsService,
+  input: { source: string; transition: string },
+): void {
+  metrics.connectivityPhysicalStateTransitionAppliedTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateEvidenceStale(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateEvidenceStaleTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateEvidenceConflict(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateEvidenceConflictTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateSelfHeal(
+  metrics: TripMetricsService,
+  input: { source: string; outcome: string },
+): void {
+  metrics.connectivityPhysicalStateSelfHealTotal.inc(input);
+}
+
+export function recordConnectivityPhysicalStateDuplicateSuppressed(
+  metrics: TripMetricsService,
+  input: { source: string },
+): void {
+  metrics.connectivityPhysicalStateDuplicateTransitionSuppressedTotal.inc(input);
+}

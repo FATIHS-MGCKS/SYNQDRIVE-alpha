@@ -7,6 +7,7 @@ import {
   collectDefaultMetrics,
 } from 'prom-client';
 import { RuntimeStatusRegistry } from './runtime-status.registry';
+import { bindPhysicalStateMetricSink } from '@modules/dimo/device-connection-physical-state/device-connection-physical-state.observability';
 
 /**
  * TripMetricsService
@@ -236,6 +237,11 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityAlertResolvedTotal: Counter<string>;
   readonly connectivityCoverageRatio: Gauge<string>;
   readonly connectivityReconciliationConflictTotal: Counter<string>;
+  readonly connectivityPhysicalStateTransitionAppliedTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceStaleTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceConflictTotal: Counter<string>;
+  readonly connectivityPhysicalStateSelfHealTotal: Counter<string>;
+  readonly connectivityPhysicalStateDuplicateTransitionSuppressedTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -1908,6 +1914,41 @@ export class TripMetricsService implements OnModuleInit {
       labelNames: ['classification'],
       registers: [this.registry],
     });
+
+    this.connectivityPhysicalStateTransitionAppliedTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_transition_applied_total',
+      help: 'Canonical physical device state transitions applied',
+      labelNames: ['source', 'transition'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceStaleTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_stale_total',
+      help: 'Stale physical device state evidence rejected',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceConflictTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_conflict_total',
+      help: 'Conflicting physical device state evidence at equal timestamps',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateSelfHealTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_self_heal_total',
+      help: 'Physical device state projection self-heal or provenance refresh events',
+      labelNames: ['source', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateDuplicateTransitionSuppressedTotal = new Counter({
+      name: 'synqdrive_connectivity_duplicate_transition_suppressed_total',
+      help: 'Duplicate physical device state evidence suppressed',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
   }
 
   async onModuleInit(): Promise<void> {
@@ -1916,6 +1957,7 @@ export class TripMetricsService implements OnModuleInit {
     );
     this.hfMirrorEnabled.set(process.env.HF_MIRROR_ENABLED === 'true' ? 1 : 0);
     this.clickHouseSchemaStatus.set(0);
+    bindPhysicalStateMetricSink(this);
   }
 
   /** Returns the Prometheus metrics text for the /metrics endpoint. */
