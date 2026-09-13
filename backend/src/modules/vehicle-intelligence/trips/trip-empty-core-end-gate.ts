@@ -45,6 +45,18 @@ export type EmptyCoreForensics = {
   stopBoundaryTrust?: boolean;
   operationalAnchorSource?: string;
   boundaryBackedSilenceEligible?: boolean;
+  providerSilenceAdmissionEligible?: boolean;
+  providerSilenceCandidateAt?: string | null;
+  providerSilenceCandidateSource?: string | null;
+  providerSilenceCandidateClockAuthority?: string | null;
+  providerSilenceCandidateTrust?: boolean;
+};
+
+export type ProviderSilenceEndCandidate = {
+  anchorAt: Date;
+  source: 'provider_silence_candidate';
+  clockAuthority: StopBoundaryProvenance['clockAuthority'];
+  trust: false;
 };
 
 export function hasRouteMotionAboveThreshold(
@@ -287,6 +299,70 @@ export function assessBoundaryBackedEmptyCoreSilence(params: {
 }
 
 /**
+ * R12 bounded liveness when empty-core succeeds but provider telemetry goes stale
+ * without a surviving trusted stop boundary. Uses last provider event time as a
+ * conservative silence anchor — not a proven physical stop boundary.
+ */
+export function assessProviderSilenceEmptyCoreAdmission(params: {
+  operationalInactiveMs: number;
+  minInactivityBeforeCusumMs: number;
+  vlsEvidence: EmptyCoreVlsEvidence;
+  performanceActivity: boolean;
+  routeMotion: boolean;
+  hasCrediblePostMovement: boolean;
+  trustedStopBoundaryPresent: boolean;
+  providerSilenceAnchorAt: Date | null;
+  lastMeaningfulMovementAt?: Date | null;
+  workerNow: Date;
+}): { eligible: boolean; reason: string; silenceCandidate?: ProviderSilenceEndCandidate } {
+  if (params.trustedStopBoundaryPresent) {
+    return { eligible: false, reason: 'trusted_stop_boundary_present' };
+  }
+  if (params.operationalInactiveMs < params.minInactivityBeforeCusumMs) {
+    return { eligible: false, reason: 'operational_inactivity_below_threshold' };
+  }
+  if (
+    params.vlsEvidence.state !== 'UNKNOWN' ||
+    params.vlsEvidence.reason !== 'vls_stale_provider_observation'
+  ) {
+    return { eligible: false, reason: 'vls_not_stale_provider_silence' };
+  }
+  if (params.performanceActivity || params.routeMotion) {
+    return { eligible: false, reason: 'post_stop_positive_contradiction' };
+  }
+  if (params.hasCrediblePostMovement) {
+    return { eligible: false, reason: 'post_stop_movement_detected' };
+  }
+
+  const anchor = params.providerSilenceAnchorAt;
+  if (!anchor || !isValidProviderEventTimestamp(anchor, params.workerNow)) {
+    return { eligible: false, reason: 'provider_silence_anchor_missing' };
+  }
+  if (
+    params.lastMeaningfulMovementAt &&
+    anchor.getTime() < params.lastMeaningfulMovementAt.getTime()
+  ) {
+    return { eligible: false, reason: 'provider_silence_anchor_before_movement' };
+  }
+
+  const silenceSinceAnchorMs = params.workerNow.getTime() - anchor.getTime();
+  if (silenceSinceAnchorMs < params.minInactivityBeforeCusumMs) {
+    return { eligible: false, reason: 'provider_silence_below_liveness_bound' };
+  }
+
+  return {
+    eligible: true,
+    reason: 'provider_silence_empty_core_admission',
+    silenceCandidate: {
+      anchorAt: anchor,
+      source: 'provider_silence_candidate',
+      clockAuthority: 'PROVIDER_EVENT_TIME',
+      trust: false,
+    },
+  };
+}
+
+/**
  * Successful empty core [] is absence of core stream — not proof of inactivity.
  * Requires explicit, fresh VLS INACTIVE + no performance/route contradiction,
  * OR R12 boundary-backed provider silence when a trusted stop boundary exists.
@@ -306,6 +382,8 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
   stopBoundaryTrust?: boolean | null;
   operationalAnchorSource?: string;
   hasCrediblePostBoundaryMovement?: boolean;
+  providerSilenceAnchorAt?: Date | null;
+  lastMeaningfulMovementAt?: Date | null;
 }): { eligible: boolean; forensics: EmptyCoreForensics } {
   const stopBoundaryProvenance =
     params.stopBoundaryProvenance ??
@@ -412,6 +490,43 @@ export function assessSuccessfulEmptyCoreEndEligibility(params: {
     ) {
       return reject('stop_boundary_untrusted_worker_time');
     }
+  }
+
+  const trustedStopBoundaryPresent =
+    stopBoundaryProvenance?.trust === true &&
+    isTrustedStopBoundaryAuthority(stopBoundaryProvenance.clockAuthority);
+  const providerSilenceAnchorAt =
+    params.providerSilenceAnchorAt ?? vlsEvidence.providerObservedAt;
+  const silenceAdmission = assessProviderSilenceEmptyCoreAdmission({
+    operationalInactiveMs: params.operationalInactiveMs,
+    minInactivityBeforeCusumMs: params.minInactivityBeforeCusumMs,
+    vlsEvidence,
+    performanceActivity,
+    routeMotion,
+    hasCrediblePostMovement: params.hasCrediblePostBoundaryMovement ?? false,
+    trustedStopBoundaryPresent,
+    providerSilenceAnchorAt,
+    lastMeaningfulMovementAt: params.lastMeaningfulMovementAt,
+    workerNow: params.workerNow,
+  });
+  if (silenceAdmission.eligible && silenceAdmission.silenceCandidate) {
+    return {
+      eligible: true,
+      forensics: {
+        ...baseForensics,
+        decision: 'POSSIBLE_END',
+        reason: silenceAdmission.reason,
+        innerGateReason: silenceAdmission.reason,
+        outerReason: 'no_core_data_corroborated_to_possible_end',
+        providerSilenceAdmissionEligible: true,
+        providerSilenceCandidateAt:
+          silenceAdmission.silenceCandidate.anchorAt.toISOString(),
+        providerSilenceCandidateSource: silenceAdmission.silenceCandidate.source,
+        providerSilenceCandidateClockAuthority:
+          silenceAdmission.silenceCandidate.clockAuthority,
+        providerSilenceCandidateTrust: false,
+      },
+    };
   }
 
   if (vlsEvidence.state === 'UNKNOWN') {

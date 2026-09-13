@@ -30,6 +30,7 @@ const STOP_BOUNDARY_SOURCE_CLOCK_AUTHORITY: Record<string, StopBoundaryClockAuth
     idle_within_trip_movement: 'EVENT_TIME',
     idle_within_trip_stationary_vls: 'PROVIDER_EVENT_TIME',
     provider_stationary_vls: 'PROVIDER_EVENT_TIME',
+    provider_silence_candidate: 'PROVIDER_EVENT_TIME',
     idle_within_trip_last_movement: 'EVENT_TIME',
     idle_within_trip_last_activity: 'WORKER_TIME',
     idle_within_trip_worker_now: 'WORKER_TIME',
@@ -359,12 +360,21 @@ export function reconcilePossibleEndClockColumns(params: {
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
+export type ProviderSilenceEndCandidate = {
+  anchorAt: Date;
+  source: 'provider_silence_candidate';
+  clockAuthority: StopBoundaryClockAuthority;
+  /** Explicitly not a proven physical stop boundary. */
+  trust: false;
+};
+
 export function resolvePossibleEndBoundaryCandidate(params: {
   stopBoundaryProvenance?: StopBoundaryProvenance | null;
   stopBoundaryAt?: Date | null;
   stopBoundarySource?: string | null;
   stopBoundaryClockAuthority?: StopBoundaryClockAuthority | null;
   stopBoundaryTrust?: boolean | null;
+  silenceEndCandidate?: ProviderSilenceEndCandidate | null;
   lastMeaningfulMovementAt?: Date | null;
   lastActivityAt?: Date | null;
   workerNow: Date;
@@ -401,6 +411,20 @@ export function resolvePossibleEndBoundaryCandidate(params: {
         provenance.clockAuthority === 'WORKER_TIME'
           ? 'WORKER_FALLBACK'
           : 'PROVIDER_EVENT_TIME',
+    };
+  }
+
+  if (
+    params.silenceEndCandidate?.source === 'provider_silence_candidate' &&
+    params.silenceEndCandidate.trust === false &&
+    isValidProviderEventTimestamp(
+      params.silenceEndCandidate.anchorAt,
+      params.workerNow,
+    )
+  ) {
+    return {
+      boundaryAt: params.silenceEndCandidate.anchorAt,
+      clockSource: 'PROVIDER_EVENT_TIME',
     };
   }
 

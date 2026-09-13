@@ -137,6 +137,7 @@ import {
   mergeStopBoundaryAt,
   mergeProviderStopBoundaryCandidate,
   readActiveStopBoundaryAt,
+  readLastProviderActivityAt,
   resolveIdleStopBoundaryAt,
   resolveProviderStopBoundaryCandidate,
   readEmptyCoreDeferralStreak,
@@ -1833,14 +1834,23 @@ export class TripDetectionOrchestrationService {
             : { anchorAt: operationalAnchor, anchorSource: operationalAnchorSource };
         const inactiveMs =
           now.getTime() - effectiveOperationalAnchor.anchorAt.getTime();
+        const movementInvalidationAnchor =
+          emptyCoreGateStopBoundary ??
+          (isValidProviderEventTimestamp((det as any).lastMeaningfulMovementAt, now)
+            ? ((det as any).lastMeaningfulMovementAt as Date)
+            : null);
         const hasCrediblePostBoundaryMovement =
-          emptyCoreGateStopBoundary != null
+          movementInvalidationAnchor != null
             ? hasCrediblePostBoundaryRouteMotion(
                 routePoints,
                 profile,
-                emptyCoreGateStopBoundary,
+                movementInvalidationAnchor,
               )
             : false;
+        const providerSilenceAnchorAt =
+          readLastProviderActivityAt(evidencePatch) ??
+          emptyCoreVlsTelemetry?.sourceTimestamp ??
+          null;
         const emptyCoreGateStopBoundaryProvenance =
           emptyCoreGateStopBoundary != null
             ? emptyCoreStopCandidate
@@ -1863,6 +1873,8 @@ export class TripDetectionOrchestrationService {
           stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
           operationalAnchorSource: effectiveOperationalAnchor.anchorSource,
           hasCrediblePostBoundaryMovement,
+          providerSilenceAnchorAt,
+          lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
         });
 
         if (
@@ -1897,11 +1909,22 @@ export class TripDetectionOrchestrationService {
         }
 
         if (emptyCoreGate.eligible) {
+          const silenceEndCandidate =
+            emptyCoreGate.forensics.providerSilenceAdmissionEligible &&
+            emptyCoreGate.forensics.providerSilenceCandidateAt
+              ? {
+                  anchorAt: new Date(emptyCoreGate.forensics.providerSilenceCandidateAt),
+                  source: 'provider_silence_candidate' as const,
+                  clockAuthority: 'PROVIDER_EVENT_TIME' as const,
+                  trust: false as const,
+                }
+              : null;
           const endBoundary = resolvePossibleEndBoundaryCandidate({
             stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
             lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
             lastActivityAt: det.lastActivityAt,
             workerNow: now,
+            silenceEndCandidate,
           });
           resultState = TripDetectionState.POSSIBLE_END;
           await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
@@ -1928,6 +1951,16 @@ export class TripDetectionOrchestrationService {
               innerGateReason: emptyCoreGate.forensics.innerGateReason,
               boundaryBackedSilenceEligible:
                 emptyCoreGate.forensics.boundaryBackedSilenceEligible,
+              providerSilenceAdmissionEligible:
+                emptyCoreGate.forensics.providerSilenceAdmissionEligible,
+              providerSilenceCandidateAt:
+                emptyCoreGate.forensics.providerSilenceCandidateAt,
+              providerSilenceCandidateSource:
+                emptyCoreGate.forensics.providerSilenceCandidateSource,
+              providerSilenceCandidateClockAuthority:
+                emptyCoreGate.forensics.providerSilenceCandidateClockAuthority,
+              providerSilenceCandidateTrust:
+                emptyCoreGate.forensics.providerSilenceCandidateTrust,
               vlsEvidenceState: emptyCoreGate.forensics.vlsEvidenceState,
               vlsProviderObservedAt: emptyCoreGate.forensics.vlsProviderObservedAt,
               vlsObservationAgeMs: emptyCoreGate.forensics.vlsObservationAgeMs,
