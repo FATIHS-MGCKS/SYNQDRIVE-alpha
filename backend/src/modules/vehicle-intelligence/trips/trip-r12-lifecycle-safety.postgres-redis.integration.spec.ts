@@ -88,7 +88,9 @@ if (REQUIRED) {
       const pauseTickAt = new Date('2026-09-08T19:59:56.000Z');
       const resumeTickAt = new Date('2026-09-08T20:00:30.000Z');
       const resumeMovementAt = new Date('2026-09-08T20:00:15.000Z');
-      const silenceTickAt = new Date('2026-09-08T20:04:00.000Z');
+      // Below TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS post-resume — provider-silence
+      // liveness is covered by dedicated R12 integration probes, not this B1-retirement gate.
+      const silenceTickAt = new Date('2026-09-08T20:02:10.000Z');
       const staleObsAt = new Date('2026-09-08T20:01:30.000Z');
       const b2At = new Date('2026-09-08T20:05:00.000Z');
       const finalEmptyTickAt = new Date('2026-09-08T20:08:00.000Z');
