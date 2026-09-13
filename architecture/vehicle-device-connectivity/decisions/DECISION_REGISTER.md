@@ -205,7 +205,25 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **EPISODE_BOUNDARY** | Physical projection transition ≠ episode/alert policy; snapshot-only UNPLUG episode opening remains deferred (Phase 1) |
 | **ROLLOUT** | `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` default **OFF**; do not enable with mixed old/new replicas |
 | **IMPLEMENTATION** | `backend/src/modules/dimo/device-connection-physical-state/*`; migration `20260912200000_device_connection_physical_state` |
-| **VALIDATION** | Policy unit tests; PostgreSQL integration (concurrency, GT-R1 regression); drift detector dry-run |
+| **VALIDATION** | Policy unit tests; PostgreSQL integration (concurrency, GT-R1 regression); drift detector dry-run; final CI run `34741055482` PASS |
+| **PHASE1_STATUS** | MERGED_VALIDATED_DARK on `main` (`ee97eae3`, PR #1626) |
+| **PHASE2_STATUS** | SCOPED_NOT_IMPLEMENTED — [Phase 2 cutover audit](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md) |
+| **OWNING_MODULE** | VDC |
+
+---
+
+## VDC-DEC-013 — RB-019 Phase 2 runtime cutover sequencing (scope only)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED (scoped 2026-09-13 — not implemented) |
+| **DATE** | 2026-09-13 |
+| **BEFORE** | Phase 1 dark foundation; live webhook gate still uses last `dimo_device_connection_events` row |
+| **WHY** | GT-R1 proved split authority; Phase 2 must cut over without lost transitions, duplicate episodes/alerts, or crash windows |
+| **EVIDENCE** | VDC-EVID-RB019-PHASE2-SCOPE-001; VDC-EVID-GT-R1-EXECUTION-001 |
+| **CHANGE** | Adopt subphases P2.1–P2.7: coordinator-owned atomic tx (Option A); new physical-state action outbox; **P2.1 owns** authority latch persistence schema (`UNIQUE (organizationId, vehicleId, provider)`; DIMO `provider='DIMO'`); **P2.2 owns** state-machine/resolver/shadow infra over existing latch; P2.3 writers + STATEFUL_SHADOW proof; pre-seed; P2.5 latch cutover; side-effect execution with DB-enforced episode/alert idempotency. Authority identity vehicle/provider-scoped; projection binding-scoped; device replacement inherits `authorityMode`. Snapshot APPLIED PLUG emits `resolve_plug` even under selfHeal. Event history **APPLIED-only**. POST_CUTOVER `master=false` pauses auxiliary processing only — **never** legacy last-event fallback. Drift: UNEXPLAINED divergences = 0. **AUTHORITY_CUTOVER_IS_FORWARD_ONLY** enforced by latch. Merge scope PR #1631 before P2.1 implementation. |
+| **EXCLUDES** | VDC-RB-001, VDC-RB-018, Production enablement, AUTHORITY_ACTIVE promotion |
+| **VALIDATION** | Phase 2 test matrix in audit doc; GT-R1 under authority+side-effects |
 | **OWNING_MODULE** | VDC |
 
 ---
