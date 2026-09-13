@@ -342,8 +342,8 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Status** | **PROPOSED** (pending human review) |
 | **Date** | 2026-09-13 |
 | **Question** | Where does F4 end and F5 begin given promotion/convergence ordering hazard? |
-| **Decision** | **Option B:** F4 implements dark runtime through candidate staging plus promotion service/mapping/schema, but **VehicleEnergyEvent promotion execution remains F5-gated** until native/fallback convergence is implemented and integration-matrix proven. F4 does not enable production flags. |
+| **Decision** | **Option B (F4.0 hardened):** F4 implements dark runtime through candidate staging + promotion **substrate**. `F4_VEE_UPSERT_REACHABLE=NO`. F5 owns first reachable fallback VEE execution via separate promotion gate (not substitutable by persist flag). `fuelCapability` (Vehicle metadata) separate from `absoluteSignalTrust` (NOT_YET_AVAILABLE — fail closed). `RawRefuelPromotionEligibility` orthogonal to F2 lifecycle — no terminal REJECTED solely for F5 absence. Native overlap advisory-only in F4. `detectionSource=NULL` = legacy native-era only. `sourceEventKey=candidateIdentityKey` canonical. |
 | **Evidence** | EED-EV-0045 |
-| **Alternatives rejected** | Option A (no promotion code in F4 — delays schema/service integration); Option C (merge F5 into F4 — scope/rollback blur) |
-| **Consequences** | F4-PR1..4 plan; READY_FOR_PERSIST rows may remain staged safely; KS MS 661 user-visible fix requires F5 promotion enablement after convergence proof |
+| **Alternatives rejected** | Option A; Option C; cutover filtering in F4; deriving trust from fuelType/sample presence; F4 terminal overlap rejection |
+| **Consequences** | F4-PR1..4 plan; F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; PR #1628 draft for final review |
 | **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-005, EED-EV-0044, EED-EV-0043 |

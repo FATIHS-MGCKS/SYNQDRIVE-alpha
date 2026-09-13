@@ -1,8 +1,8 @@
 # RFRF F4 — Scope + Runtime Boundary (Pre-Implementation Audit)
 
 **Workstream:** Raw Fuel Refuel Fallback (RFRF)  
-**Phase:** F4 — Scope + dependency closure **ONLY** (no runtime implementation in this artifact)  
-**Date:** 2026-09-13  
+**Phase:** F4 — Scope + dependency closure + **F4.0 contract hardening** (no runtime implementation)
+**Date:** 2026-09-13 (F4.0 hardening appended same date)
 **Mode:** ARCHITECTURE AUDIT — no production wiring, deploy, flag enablement, backfill, or VehicleEnergyEvent promotion execution  
 **Canonical baseline main:** `4d95c16a9b8181255097f13cc845afd414345c1e` (merged PR #1623 — RFRF F3 complete)  
 **Predecessor audits:** F1, F1.1, F2, F3 (`docs/audits/eed-rfrf-f*-2026-09-12.md`)
@@ -13,17 +13,21 @@
 
 ```
 F4_SCOPE_DEFINED = YES
+F4_0_SCOPE_HARDENING = YES
 F4_IMPLEMENTATION_NOT_STARTED = YES
 F4_PHASE_BOUNDARY_RECOMMENDATION = B
-F4_IMPLEMENTATION_START_READY = YES (after human review of this document)
+F4_VEE_UPSERT_REACHABLE = NO
+F5_PROMOTION_EXECUTION_AUTHORITY = YES
+F4_IMPLEMENTATION_START_READY = YES (after PR #1628 final review)
 RUNTIME_CODE_CHANGED = NO
 PRODUCTION_MUTATED = NO
 FEATURE_FLAGS_ENABLED = NO
+PR_1628_STILL_DRAFT = YES
 ```
 
-**Canonical F4:** Dark runtime integration of raw-fuel fallback into existing `detectEnergyEvents()` / Trip Reconciliation Step 5 — through **candidate staging only**, plus **promotion service implementation that remains execution-blocked** until F5 native/fallback convergence gate is present and proven.
+**Canonical F4:** Dark runtime integration through **candidate staging** and promotion **substrate** (mapping/schema/service code). **No fallback `VehicleEnergyEvent` upsert is reachable in F4.**
 
-**Canonical F5:** Native↔fallback convergence proof matrix, late-native sibling policy, fleet-wide synthetic `dimoSegmentId` safety, and authorization to **execute** promotion into `VehicleEnergyEvent` in production.
+**Canonical F5:** Native↔fallback convergence authority, late-native policy, promotion execution authorization, `VehicleEnergyEvent` upsert, `PROMOTED` lifecycle transition, G2 post-persist execution proof.
 
 This resolves the F1/F2/F3 phase-boundary contradiction without pulling the full F5 matrix into F4 and without allowing unsafe duplicate `VehicleEnergyEvent` rows.
 
@@ -112,9 +116,9 @@ RFRF failure must NOT break native REFUEL path (best-effort isolation in Step 5 
 | **C. vehicle capability gate** | **F4** | Case 22; narrow resolver — see §7 |
 | **D. F3 detection** | **ALREADY_IMPLEMENTED** | F3 complete; F4 calls only |
 | **E. F2 candidate persistence / rediscovery** | **ALREADY_IMPLEMENTED** | F4 wires caller; advisory lock + semantic rediscovery unchanged |
-| **F. lifecycle maturation** | **F4** (runtime orchestration) | F3 classifies per observation; F4 service evaluates READY gates + runtime rejection reasons |
-| **G. READY_FOR_PERSIST eligibility** | **F4** | Service-layer gate beyond F3 detector classification (F1.1 §7 minimums, DUPLICATE_NATIVE pre-check design) |
-| **H. VehicleEnergyEvent promotion implementation** | **F4** | Service + schema migration + mapping; **code only** |
+| **F. lifecycle maturation** | **F3 + F2** | F3 proposes observation lifecycle; F2 persists/rediscovers — no second lifecycle authority in F4 |
+| **G. READY_FOR_PERSIST eligibility** | **F3 + F2** | Lifecycle states unchanged; F4 adds orthogonal promotion eligibility only |
+| **H. VehicleEnergyEvent promotion substrate** | **F4** | Service + schema migration + mapping; no upsert execution |
 | **I. actual promotion execution** | **F5** | Blocked in F4; requires convergence gate |
 | **J. native/fallback convergence** | **F5** (proof) | Minimal pre-promotion G2 check **designed in F4**, **proven in F5** |
 | **K. G2 handoff post-promotion** | **F5** (with promotion execution) | Hook exists for native refuels; reuse after F5 enables promotion |
@@ -131,14 +135,14 @@ RFRF failure must NOT break native REFUEL path (best-effort isolation in Step 5 
 1. **`RawFuelFallbackRuntimeService`** (or equivalent) orchestrating per-vehicle scan inside reconciliation window.
 2. **`detectEnergyEvents()` extension:** after native DIMO fetch, **parallel** raw path when `RAW_FUEL_REFUEL_FALLBACK_ENABLED` (org/vehicle scoped config reader — default false).
 3. **Fuel sample fetch** for `[from, to]` via existing `DimoSegmentsService.fetchFuelLevelSamples()`.
-4. **`RawFuelCapabilityResolver`** — derives eligibility class; fail-closed on UNKNOWN / NO_RELIABLE_FUEL_SIGNAL.
-5. **Context builder** for `RawFuelRiseDetectionContext` (trust, relative availability) from capability + samples.
+4. **`RawFuelCapabilityResolver`** — `fuelCapability` only (`FUEL_CAPABLE` \| `NON_FUEL_CAPABLE` \| `UNKNOWN`); separate from signal trust — see §8 / §25.3.
+5. **`RawFuelSignalTrustResolver`** (or equivalent) — `absoluteSignalTrust`, `relativeSignalAvailable`; **not** derived from `fuelType` or sample presence alone.
 6. **`detectRawFuelRises()` → `RawRefuelCandidateService.resolveOrCreateCandidate()`** per observation.
-7. **Runtime READY gate evaluator** — applies F1.1 minimums, sets rejection reasons; does not promote.
-8. **Prisma migration:** additive `VehicleEnergyEvent.detectionSource`, `sourceEventKey`, optional unique `(vehicleId, sourceEventKey)` — deferred from F2.
-9. **`RawRefuelCandidatePromotionService`** — maps READY rows via existing design; **does not call upsert** until F5 gate.
-10. **Minimum dark metrics** (§14).
-11. **Integration + PG tests** behind flags in test env only (§18).
+7. **`RawRefuelPromotionEligibility` assessor** — orthogonal to F2 lifecycle; **must not** irreversibly REJECT candidates because F5 is absent.
+8. **Prisma migration (isolated/test):** additive `detectionSource`, `sourceEventKey` — no production deploy in F4 implementation PRs.
+9. **`RawRefuelCandidatePromotionService`** — maps READY rows; **F4_VEE_UPSERT_REACHABLE = NO**.
+10. **Minimum dark metrics** (§15).
+11. **Integration + PG tests** including `F2_MATCHER_F3_TOLERANCE_BOUNDARY` hard gate (§19).
 
 ---
 
@@ -182,10 +186,9 @@ detectEnergyEvents(vehicleId, {from, to})
           samples = fetchFuelLevelSamples(tokenId, from, to)
           observations = detectRawFuelRises({ samples, context, window })
           for each observation:
-            RawRefuelCandidateService.resolveOrCreateCandidate(...)
-          evaluateReadyGates(nonTerminal candidates in window)  // no promotion
-          if F5_GATE && PERSIST_FLAG:
-            // UNREACHABLE IN F4 — stub throws or no-op
+            if PERSIST_FLAG: RawRefuelCandidateService.resolveOrCreateCandidate(...)
+            assessPromotionEligibility(...)  // orthogonal; no lifecycle REJECTED for F5 absence
+          // F4_VEE_UPSERT_REACHABLE = NO — no promotion execution path
         } catch (e) {
           log + metric; DO NOT rethrow — native path already completed
         }
@@ -197,72 +200,131 @@ Raw scan runs **regardless of native segment count** in the same window. Example
 
 ### Integration location
 
-**Inside `EnergyEventsService.detectEnergyEvents()`** after native processing (or interleaved fetch — native first to preserve current ordering). Trip Reconciliation Step 5 already invokes this method — **NEW_RFRF_SCHEDULER_REQUIRED = NO**.
+**Inside `EnergyEventsService.detectEnergyEvents()`** after native processing. Trip Reconciliation Step 5 invokes this method.
+
+```
+SCHEDULER_COVERAGE_STATUS = PROOF_PENDING_F4_IMPLEMENTATION
+NEW_RFRF_SCHEDULER_REQUIRED = NO_CURRENT_EVIDENCE
+```
+
+F4 implementation must trace actual callers (fast/warm/cold/manual/API) and test relevant paths. No new RFRF scheduler unless callgraph proof demonstrates a gap.
 
 ---
 
-## 8. Capability gate (negative case 22)
+## 8. Capability gate (negative case 22) — F4.0 split
 
-### CAPABILITY_GATE_AUTHORITY
+### fuelCapability (vehicle-level)
 
-**No fleet-wide capability authority exists today.** Closest surfaces:
+```
+FUEL_CAPABILITY_AUTHORITY = Vehicle.fuelType + Vehicle.powertrainType/powertrainProfile (heuristic only)
+```
 
-| Source | Use in F4 |
-|--------|-----------|
-| `Vehicle.fuelType` (Prisma `FuelType` enum) | Exclude `ELECTRIC` (BEV) → `NO_RELIABLE_FUEL_SIGNAL` |
-| `Vehicle.powertrainType` / `powertrainProfile` (nullable strings) | Heuristic exclude BEV labels; UNKNOWN → fail closed |
-| `DimoSegmentsService.fetchFuelLevelSamples()` window result | Derive ABSOLUTE_ONLY / RELATIVE_ONLY / ABSOLUTE_AND_RELATIVE from sample presence |
-| `RawFuelRiseDetectionContext.absoluteSignalTrust` | TRUSTED / UNTRUSTED / UNKNOWN from signal quality rules (not hardcoded IDs) |
-
-**Do not invent** org/vehicle/KS MS 661 hardcodes.
-
-### Eligibility classes
-
-| Class | F4 behavior |
-|-------|-------------|
-| `ABSOLUTE_AND_RELATIVE` | Full detector |
-| `ABSOLUTE_ONLY` | Absolute channel path |
-| `RELATIVE_ONLY` | Relative path if relative samples present |
-| `NO_RELIABLE_FUEL_SIGNAL` | Skip scan; metric |
+| `fuelCapability` | F4 behavior |
+|------------------|-------------|
+| `FUEL_CAPABLE` | Raw path may be considered (subject to flags + signal trust) |
+| `NON_FUEL_CAPABLE` | Raw fuel path **skipped** (e.g. `FuelType.ELECTRIC` BEV) |
 | `UNKNOWN` | **Fail closed** — skip scan; metric |
+
+`fuelCapability` answers **whether the vehicle class may have fuel telemetry at all**. It does **not** answer signal trust.
+
+### absoluteSignalTrust (signal-level — separate axis)
+
+```
+ABSOLUTE_SIGNAL_TRUST_AUTHORITY = NOT_YET_AVAILABLE
+ABSOLUTE_SIGNAL_TRUST_DERIVED_FROM_FUEL_TYPE = NO
+ABSOLUTE_SIGNAL_TRUST_DERIVED_FROM_SAMPLE_PRESENCE = NO
+```
+
+No authoritative runtime source for fleet-wide absolute signal trust exists today. F4 implementation must **fail closed** for absolute-only promotion eligibility until an explicit trust policy/authority is established.
+
+| Rule | Value |
+|------|-------|
+| `absoluteSignalTrust = UNKNOWN` | Absolute-only evidence **must not** be treated as trusted for promotion eligibility |
+| `ABSOLUTE_SIGNAL_TRUST_UNKNOWN_FAILS_CLOSED_FOR_ABSOLUTE` | **YES** |
+| `RELATIVE_FALLBACK_WHEN_ABSOLUTE_UNKNOWN` | **YES** — per existing F3 channel policy when relative samples are semantically valid |
+| Numeric absolute sample present | **Does not** imply TRUSTED |
+
+### Channel eligibility (detector input — not capability)
+
+From window samples (not vehicle metadata):
+
+| Class | Meaning |
+|-------|---------|
+| `ABSOLUTE_AND_RELATIVE` | Both channels usable for detection context |
+| `ABSOLUTE_ONLY` | Relative absent in window |
+| `RELATIVE_ONLY` | Absolute absent in window |
+
+**Do not hardcode** vehicle IDs, organization IDs, KS MS 661, or DIMO token IDs.
 
 ### CAPABILITY_GATE_CASE_22_IMPLEMENTATION_SCOPE
 
-F4 must implement `RawFuelCapabilityResolver.resolve(vehicle, samples, window)` returning class + trust fields for F3 context. Reject with `VEHICLE_CAPABILITY_UNSUPPORTED` / `NON_FUEL_POWERTRAIN` lifecycle reasons when applicable. Unit tests for EV, hybrid-with-fuel, unknown metadata, empty samples.
+F4 implements **two resolvers**:
+
+1. `RawFuelCapabilityResolver` → `fuelCapability`
+2. `RawFuelSignalTrustResolver` → `absoluteSignalTrust`, `relativeSignalAvailable` (fail-closed where authority absent)
+
+Promotion eligibility may record `BLOCKED_CAPABILITY` without mutating F2 lifecycle to terminal REJECTED solely because F5 is unavailable.
 
 ---
 
-## 9. Candidate lifecycle ownership
+## 9. Candidate lifecycle ownership — F4.0 corrected
 
-| Transition / decision | Owner | Phase |
-|----------------------|-------|-------|
-| INSUFFICIENT / OBSERVED / SETTLING from detector | F3 `classifyLifecycle()` | Implemented |
-| Persist observation → row | F2 `resolveOrCreateCandidate()` | Implemented |
-| Semantic rediscovery | F2 matcher | Implemented |
-| READY_FOR_PERSIST assignment | F3 proposes; **F4 runtime gate confirms** (F1.1 minimums, conflicts) | F4 |
-| REJECTED (runtime reasons) | F4 gate evaluator | F4 |
-| PROMOTED | F5 promotion executor (after convergence) | F5 |
-| `candidateIdentityKey` assignment | F2 on first READY-capable evidence | Implemented |
-| `evidenceRevisionFingerprint` mutation | F2 merge on rediscovery | Implemented |
-| Crash after candidate persist | F2 idempotent rediscovery on retry | Implemented |
-| Crash after VehicleEnergyEvent insert | F5 concern (promotion idempotency by sourceEventKey) | F5 |
+```
+F4_CANDIDATE_LIFECYCLE_RECLASSIFICATION = NO
+F4_PROMOTION_ELIGIBILITY_SEPARATE_FROM_LIFECYCLE = YES
+```
 
-**Invariant:** Rows may sit in `READY_FOR_PERSIST` safely while F5 gate absent. No auto-promotion timer.
+| Concern | Owner | Phase |
+|---------|-------|-------|
+| Physical rise detection + observation lifecycle proposal | **F3** | Implemented |
+| Persist / rediscover / merge identity + evidence | **F2** | Implemented |
+| Runtime integration + **promotion eligibility assessment** | **F4** | Future |
+| Native↔fallback convergence + `PROMOTED` + VEE execution | **F5** | Future |
+
+F4 **must not** create a second physical-candidate lifecycle authority. F4 **must not** irreversibly mutate a valid physical candidate to `REJECTED` merely because promotion cannot yet be authorized.
+
+### RawRefuelPromotionEligibility (orthogonal to F2 lifecycle)
+
+| Value | Meaning |
+|-------|---------|
+| `ELIGIBLE_PENDING_F5` | Candidate physically ready; awaiting F5 convergence + promotion authority |
+| `NOT_READY` | Lifecycle/evidence not yet promotion-ready |
+| `BLOCKED_CAPABILITY` | fuelCapability or signal-trust fail-closed |
+| `NATIVE_OVERLAP_PENDING_F5` | Advisory overlap evidence recorded; F5 decides |
+| `AMBIGUOUS` | Insufficient convergence evidence pre-F5 |
+| `ERROR_FAIL_CLOSED` | Integration error; no promotion side effects |
+
+Stored as runtime assessment metadata (e.g. JSON on candidate row or separate assessment record) — **not** a replacement for F2 lifecycle enum transitions driven by F3/F2.
 
 ---
 
-## 10. Promotion runtime boundary
+## 10. Promotion runtime boundary — F4.0 corrected
+
+```
+F4_VEE_UPSERT_REACHABLE = NO
+F5_PROMOTION_EXECUTION_AUTHORITY = YES
+F4_NATIVE_OVERLAP_CLASSIFICATION = ADVISORY_ONLY
+F4_NATIVE_OVERLAP_TERMINAL_REJECTION = NO
+F5_NATIVE_FALLBACK_CONVERGENCE_AUTHORITY = YES
+```
 
 | Component | F4 | F5 |
 |-----------|----|----|
-| `mapRawRefuelCandidateToPromotionDraft()` | Wire into service | Execute upsert |
-| Synthetic `dimoSegmentIdPlaceholder` | Generate in draft | Use on upsert |
-| Pre-promotion native overlap (G2 matcher) | **Implement check** | **Prove matrix** |
-| `DUPLICATE_NATIVE_EVIDENCE` rejection | Set on SAME match | Integration tests |
-| Lifecycle → PROMOTED | Forbidden in F4 | F5 only |
-| G2 `reconcileAndEnqueueAfterPersist` | N/A until promotion | Reuse existing hook |
+| `mapRawRefuelCandidateToPromotionDraft()` | Implement mapping/substrate | Execute upsert |
+| `sourceEventKey = candidateIdentityKey` | Design + test idempotency contract | Use on first VEE write |
+| Synthetic `dimoSegmentIdPlaceholder` | Map in draft only; **not emitted by F4 runtime** | Use on upsert if schema requires |
+| `classifyPhysicalRefuelSibling()` overlap | **Advisory evidence only** | Final SAME/DISTINCT ownership |
+| Lifecycle → `PROMOTED` | **Forbidden** | F5 only |
+| G2 `reconcileAndEnqueueAfterPersist` | N/A in F4 | After F5 promotion |
 
-**F5 execution gate constant (proposed):** `RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED` — false until F5 audit closes; promotion service checks before upsert.
+### F5 promotion execution gate (conceptual — separate from persist flag)
+
+```
+F5_PROMOTION_GATE_SEPARATE = YES
+CANDIDATE_PERSIST_FLAG_OWNS_VEE_PROMOTION = NO
+```
+
+Conceptual authority (env name TBD at F5): `RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED` — must be **false** during all F4 work; checked immediately before any fallback VEE upsert. Not substitutable by `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED`.
 
 ---
 
@@ -279,50 +341,56 @@ F4 may implement the **mechanism** (load native neighbors, call `classifyPhysica
 
 ---
 
-## 12. VehicleEnergyEvent schema impact (F4 migration)
+## 12. VehicleEnergyEvent schema impact — F4.0 detectionSource semantics
 
-Additive columns (deferred from F2):
+```
+DETECTION_SOURCE_LEGACY_NULL_SEMANTICS_DEFINED = YES
+LEGACY_NATIVE_ROWS_BACKFILLED_IN_F4 = NO
+NULL_DETECTION_SOURCE_MEANS_FALLBACK = NO
+NEW_NATIVE_WRITES_DIMO_NATIVE_AFTER_DEPLOY = YES
+P1_4_PRODUCTION_DEPLOY_OWNER = F6_OR_LATER
+```
 
-| Column | Purpose |
-|--------|---------|
-| `detectionSource` | `DIMO_NATIVE` \| `SYNQDRIVE_RAW_FUEL_FALLBACK` |
-| `sourceEventKey` | `candidateIdentityKey` for fallback; nullable for native |
-| `@@unique([vehicleId, sourceEventKey])` | Promotion idempotency (partial — native rows null) |
+| Row class | `detectionSource` | `sourceEventKey` |
+|-----------|-------------------|------------------|
+| Existing legacy rows | `NULL` | `NULL` |
+| Meaning of `NULL` | **LEGACY / UNLABELED NATIVE-ERA EVENT** | — |
+| New native rows (post F6+ production deploy) | `DIMO_NATIVE` | `NULL` |
+| Authorized fallback VEE (F5+) | `SYNQDRIVE_RAW_FUEL_FALLBACK` | `candidateIdentityKey` |
 
-Native rows: `detectionSource = DIMO_NATIVE` (or null + backfill in deploy step — **forward only**, no historical rewrite requirement in F4 scope doc).
+**NULL must never mean raw fallback.** No historical rewrite/backfill in F4. F4 may create/test additive schema/migration in **isolated environments only**. Production deploy hygiene for native labeling is **F6+** rollout ownership.
 
-`rawDetectionMeta` JSON already exists — populate on fallback promotion (F5 execution).
+Canonical fallback idempotency identity:
+
+```
+SOURCE_EVENT_KEY_CANONICAL_FALLBACK_IDENTITY = YES
+sourceEventKey = candidateIdentityKey
+```
+
+Stable across window expansion, delayed telemetry, `evidenceRevisionFingerprint` changes, repeat processing.
 
 ---
 
-## 13. Synthetic dimoSegmentId status
+## 13. Synthetic dimoSegmentId status — F4.0 corrected
 
 ```
 SYNTHETIC_DIMO_SEGMENT_ID_COMPATIBLE = NOT_PROVEN
+SYNTHETIC_DIMO_SEGMENT_ID_EMITTED_BY_F4_RUNTIME = NO
+SYNTHETIC_DIMO_COMPATIBILITY_OWNER = F5
 ```
 
-| Consumer | Risk |
-|----------|------|
-| Upsert by `dimoSegmentId` unique | **Works** if placeholder stable |
-| G2 matcher | **Safe** — does not parse ID format |
-| Legacy sibling regex | **Inert** for `synqdrive-rfrf-*` |
-| Coalesced sub-segment prune | **Safe** — RFRF IDs not in native coalesce sets |
-| Ops/recovery scripts assuming `dimo-refuel-*` | **UNKNOWN / NOT_PROVEN** |
-| Frontend DTO | Pass-through only |
-
-F1.1 assigns fleet proof to **F5**. F4 may use placeholder in dark tests only.
+Synthetic `dimoSegmentId` is a **schema-compatibility placeholder only** — **not** canonical fallback identity (`sourceEventKey` is canonical). F4 may design/map/test compatibility in isolated environments. F5 owns fleet proof before **first** fallback VEE execution. Do not use synthetic `dimoSegmentId` to bypass `sourceEventKey` design.
 
 ---
 
-## 14. Scheduler wiring result
+## 14. Scheduler wiring result — F4.0 proof obligation
 
 ```
-NEW_RFRF_SCHEDULER_REQUIRED = NO
+SCHEDULER_COVERAGE_STATUS = PROOF_PENDING_F4_IMPLEMENTATION
+NEW_RFRF_SCHEDULER_REQUIRED = NO_CURRENT_EVIDENCE
 ```
 
-`TripReconciliationScheduler` → `reconcileWindow()` Step 5 → `detectEnergyEvents()` covers fast (15m), warm (4h), cold (daily), manual sync, and on-demand API.
-
-RFRF inherits tier windows. Recovery-window expansion remains **F7**.
+Design intent: integration inside `detectEnergyEvents()` should inherit Trip Reconciliation Step 5 (fast/warm/cold/manual/API). This is **not yet proven** — F4 implementation must trace callgraph and test relevant paths.
 
 ---
 
@@ -355,43 +423,75 @@ SLO alerts, fleet calibration dashboards, `rawRiseWithoutNativeSegmentTotal` (re
 | Fuel signal fetch failure | Skip raw path; log + metric; native complete | **BEST_EFFORT** |
 | Capability UNKNOWN | Skip raw path | **FAIL_CLOSED** |
 | Detector exception | Catch inside raw branch; native unaffected | **BEST_EFFORT** |
-| F2 persist failure | Per-candidate error; continue others; metric | **BEST_EFFORT** |
+| F2 persist failure (one candidate) | Log + metric; **continue other candidates** | **BEST_EFFORT** per-candidate |
 | Native DIMO path failure | Existing behavior (may abort native) | unchanged |
 | Promotion in F4 | **Must not run** | **FAIL_CLOSED** (gate) |
 | Process crash after candidate persist | Retry via reconciliation rediscovery | **TRANSACTIONAL** (F2 proven) |
 | Process crash after VEE insert | F5 idempotency by sourceEventKey | **F5** |
-| Concurrent replicas | Per-vehicle advisory lock on F2 (existing) | **TRANSACTIONAL** |
+| Concurrent replicas | Per-vehicle advisory lock on F2 (existing) — **do not duplicate lock logic** | **TRANSACTIONAL** |
+
+```
+PER_CANDIDATE_FAILURE_ISOLATION_REQUIRED = YES
+```
+
+If observation B persist fails, observations A and C must not be lost unless an explicit all-or-nothing transaction is deliberate and documented.
 
 ---
 
-## 17. Feature flag model
+## 17. Feature flag model — F4.0 truth table
 
-| Flag | FLAG_EXISTS | FLAG_RUNTIME_READ (F4) | FLAG_DEFAULT | FLAG_PRODUCTION_VALUE | FLAG_ROLLOUT |
-|------|-------------|------------------------|--------------|----------------------|--------------|
-| `RAW_FUEL_REFUEL_FALLBACK_ENABLED` | YES (constants) | F4 implements | `false` | `false` | F6+ |
-| `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED` | YES | F4 implements (no-op until F5) | `false` | `false` | F6+ |
-| `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT` | YES | F4 implements | `null` | `null` | F6+ |
+```
+FLAG_TRUTH_TABLE_DEFINED = YES
+MASTER_FLAG_OWNS_SCAN = YES
+CANDIDATE_PERSIST_FLAG_OWNS_F2_STAGING = YES
+CANDIDATE_PERSIST_FLAG_OWNS_VEE_PROMOTION = NO
+F5_PROMOTION_GATE_SEPARATE = YES
+CUTOVER_RUNTIME_ENFORCEMENT_OWNER = F6_OR_LATER
+DELAYED_EVIDENCE_FILTERED_BY_CUTOVER_IN_F4 = NO
+```
 
-**Sub-flag recommendation:** **YES — keep dual flags.** Rollback requires isolating “scan + stage candidates” from “promote to VehicleEnergyEvent.” Do not add a third flag unless F5 introduces a separate convergence canary.
+### Master flag — `RAW_FUEL_REFUEL_FALLBACK_ENABLED`
 
-**F4 scoping task:** MUST NOT enable any flag in production.
+| Value | Authority |
+|-------|-----------|
+| `false` (default) | No raw scan; no raw candidate persistence; no fallback VEE |
+| `true` | F4 raw scan **may** execute; persistence still requires candidate-persist flag |
+
+### Staging flag — `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED`
+
+| Value | Authority |
+|-------|-----------|
+| `false` (default) | Detector/diagnostics may run (if master true); **no** `RawRefuelCandidate` DB mutation |
+| `true` | F2 candidate persistence/staging allowed; **no** fallback `VehicleEnergyEvent` |
+
+**The candidate-persist flag must never authorize promotion.**
+
+### Cutover — `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT`
+
+F4 uses **evidence-bounded detection semantics** only. Cutover must **not** truncate physical evidence or filter delayed telemetry in F4. F4 may parse/configure the constant if required by existing code structure, but must **not** use cutover time as physical-candidate evidence authority.
+
+### F5 promotion gate (conceptual — not implemented in F4 docs turn)
+
+Separate from all F4 flags. Owns first reachable fallback VEE execution path. Default: unreachable.
+
+**F4 scoping/hardening turns:** MUST NOT enable any flag in production.
 
 ---
 
-## 18. Duplicate safety matrix (mandatory)
+## 18. Duplicate safety matrix — F4.0 hardened
 
-| # | Scenario | Scanned | Candidate rows | VEE write? | Dedupe authority | Failure mode | Phase |
-|---|----------|---------|----------------|------------|------------------|--------------|-------|
-| 1 | Native only | Native path | None | Native only | dimoSegmentId | — | Current |
-| 2 | Fallback only | Raw path | 1+ staged | **F5** only | sourceEventKey | — | F4 stage / F5 promote |
-| 3 | Native + fallback same fill, same pass | Both | Staged READY | **Blocked F5 gate in F4**; F5 SAME→reject | G2 matcher | DUPLICATE_NATIVE | F5 |
-| 4 | Fallback first, native later | Both passes | Staged then native VEE | Native VEE; candidate REJECTED or F5 merge policy | F5 late-native policy | INSUFFICIENT until F5 | F5 |
-| 5 | Native first, fallback rediscovered | Both | Rediscovery merges candidate | **No duplicate if F5 rejects SAME** | G2 + F2 rediscovery | DUPLICATE_NATIVE | F5 |
-| 6 | Native A + missed B same window | Both | 2 candidates | Native A VEE; B staged | Per-candidate | — | F4 proves window invariant |
-| 7 | Two distinct refuels close | Both | 2 candidates | F5 promotes both if DISTINCT | G2 DISTINCT | — | F3 proven / F5 promote |
-| 8 | Delayed evidence matures candidate | Raw rescan | Same row updated | F5 when READY stable | F2 fingerprint | — | F2 proven |
-| 9 | READY but F5 gate absent | Raw | READY row | **NO VEE** | F5 gate | Staged safely | F4 |
-| 10 | Concurrent scheduler + manual | Both paths | Lock serializes F2 | Same as above | pg_advisory_xact_lock | — | F2 proven |
+| # | Scenario | F4 candidate | F4 fallback VEE | Final owner |
+|---|----------|--------------|-----------------|-------------|
+| 1 | Native only | None | None | Native VEE only (current) |
+| 2 | Fallback only | Staged | **Zero** | F5 promotes |
+| 3 | Same physical native+raw | May stage | **Zero** | F5 convergence |
+| 4 | Fallback first, native later | Stage; **no terminal F4 reject/promote** | **Zero** | F5 late-native policy |
+| 5 | Native first, fallback rediscovered | F2 rediscovery | **Zero** | F5 convergence |
+| 6 | Native A + missed raw B | B discoverable; window suppression **forbidden** | Native A VEE; B staged | F4 + F5 |
+| 7 | Two distinct raw refuels | Two candidates | **Zero** | F3 proven; F5 promotes |
+| 8 | Delayed evidence | Same row updated | **Zero** | F2 proven |
+| 9 | READY + F5 absent | READY may persist | **Zero** | F4 safe staging |
+| 10 | Concurrent scheduler/manual | F2 lock/idempotency | **Zero** | F2 proven |
 
 ---
 
@@ -400,7 +500,8 @@ SLO alerts, fleet calibration dashboards, `rawRiseWithoutNativeSegmentTotal` (re
 | Category | Tests |
 |----------|-------|
 | **Unit** | Capability resolver (5 classes); context builder; READY gate; promotion service mapping; F5 gate blocks upsert |
-| **PostgreSQL** | detectEnergyEvents integration: candidate rows created; no VEE from fallback; idempotent rescan |
+| **PostgreSQL** | detectEnergyEvents integration: candidate rows when persist flag; **zero fallback VEE**; idempotent rescan |
+| **F2/F3 tolerance** | **`F2_MATCHER_F3_TOLERANCE_BOUNDARY = PASS`** — real PG tests at 0.49/0.50/0.51/0.99/1.00/1.01 L boundaries; shifted post evidence; expanded window; delayed telemetry; nearby distinct rise |
 | **Concurrency** | Parallel reconcile same vehicle — one candidate row |
 | **Idempotency** | Same window twice — no duplicate candidates |
 | **Capability** | Case 22 EV skip; UNKNOWN fail-closed |
@@ -418,32 +519,52 @@ Reuse `rfrf-f3-f2-handoff-postgres-gate.sh` pattern for F4 gate script (isolated
 |----|-------|------------|
 | **F4-PR1** | Schema migration (`detectionSource`, `sourceEventKey`); flag config reader; capability resolver + unit tests | — |
 | **F4-PR2** | `RawFuelFallbackRuntimeService`; `detectEnergyEvents` parallel path (master flag); sample fetch; F3→F2 wire; dark metrics | PR1 |
-| **F4-PR3** | READY gate evaluator; rejection reasons; promotion service (mapping only); F5 execution gate stub; PG integration tests | PR2 |
+| **F4-PR3** | Promotion eligibility assessor; promotion substrate (mapping only); advisory overlap recording; F5 gate stub; PG tests incl. tolerance boundary gate | PR2 |
 | **F4-PR4** | Audit closure + KG update marking `F4_IMPLEMENTATION_COMPLETE`; SynqDrive Code entries | PR3 |
 
 **F5-PR1** (separate phase): Convergence gate implementation + integration matrix + promotion execution enablement behind persist flag (still default off).
 
 ---
 
-## 21. Open P0 blockers (for F4 implementation start)
+## 21. F4 start blockers
 
-| ID | Blocker | Status |
-|----|---------|--------|
-| — | None identified | **0 P0** |
-
-Scope is defined; substrate complete; integration point confirmed.
+| Class | Count | Notes |
+|-------|-------|-------|
+| **P0 F4 start** | **0** | Scope + contract hardened |
+| **P1 F4 start** | **0** | P1-5 is an **integration hard gate during F4**, not a scope-start blocker |
 
 ---
 
-## 22. Open P1 blockers (for production promotion — not F4 start)
+## 22. F5 entry blockers and production rollout blockers
+
+### F5 entry blockers (block promotion execution authorization)
 
 | ID | Blocker | Owner |
 |----|---------|-------|
-| P1-1 | Synthetic `dimoSegmentId` fleet compatibility NOT_PROVEN | F5 |
-| P1-2 | Native↔fallback G2 integration matrix not executed | F5 |
-| P1-3 | Late native sibling policy not implemented | F5 |
-| P1-4 | `detectionSource` backfill for existing native rows (deploy hygiene) | F4 deploy step / ops — forward-only |
-| P1-5 | Detector vs F2 matcher post-plateau tolerance skew (0.5 L vs 1.0 L) | Monitor in F4/F5 tests |
+| P1-1 | Synthetic `dimoSegmentId` fleet compatibility NOT_PROVEN | **F5** |
+| P1-2 | Native↔fallback G2 integration matrix not executed | **F5** |
+| P1-3 | Late native sibling policy not implemented | **F5** |
+
+### F4 integration hard gate (during F4 implementation — not scope-start)
+
+| ID | Gate | Owner |
+|----|------|-------|
+| P1-5 | `F2_MATCHER_F3_TOLERANCE_BOUNDARY = PASS` at listed boundaries | **F4_INTEGRATION_HARD_GATE** |
+
+```
+P1_5_MONITOR_ONLY = NO
+P1_5_F4_INTEGRATION_HARD_GATE = YES
+```
+
+If tolerance gate fails: **STOP F4 closure** and perform targeted semantic correction — do not tune thresholds to force green tests.
+
+### Production rollout blockers (F6+)
+
+| ID | Blocker | Owner |
+|----|---------|-------|
+| P1-4 | Native `detectionSource` production deploy hygiene | **F6_OR_LATER** |
+| — | Feature flag production enablement | **F6+** |
+| — | Historical backfill / mass reprocess | **Forbidden** |
 
 ---
 
@@ -457,14 +578,35 @@ Scope is defined; substrate complete; integration point confirmed.
 
 ## 24. Exact next action
 
-**Human review of this scope audit.** Upon approval, begin **F4-PR1** (schema + capability resolver) on a feature branch — still with all flags default false and no production enablement.
+**Human final review of PR #1628** (draft). Upon merge approval, begin **F4-PR1** — still with all flags default false, `F4_VEE_UPSERT_REACHABLE = NO`, no production enablement.
+
+---
+
+## 25. F4.0 final scope hardening gate (2026-09-13)
+
+This section records the F4.0 contract-hardening turn. Supersedes ambiguous wording in §1–§24 where noted.
 
 ```
-RUNTIME_CODE_CHANGED = NO
-PRODUCTION_MUTATED = NO
-PRODUCTION_DEPLOYED = NO
-FEATURE_FLAGS_ENABLED = NO
-F4_IMPLEMENTED = NO
-F5_IMPLEMENTED = NO
-F4_START_AUTHORIZED = YES (scope phase complete; implementation authorized after review)
+RFRF_F4_0_SCOPE_HARDENING = PASS
+STARTING_HEAD = 64e8dfe0b9d49ebd93d398b6dc93cac7e9624c1e
+OPTION_B_PHASE_BOUNDARY = PASS
+PR_1628_DOCS_ONLY = YES
+PR_1628_READY_FOR_FINAL_REVIEW = YES
+F4_IMPLEMENTATION_START_READY = YES
+PR_1628_STILL_DRAFT = YES
+```
+
+Full gate block matches §0 executive verdict plus §8–§22 hardened contracts. **Do not merge PR #1628 in the F4.0 turn. Do not start F4-PR1 until review completes.**
+
+```
+ARCHITECTURE_GOVERNANCE
+- substantive_change: YES
+- affected_modules: Energy Event Detection (EED)
+- authority_updates: this audit §25; EED-DEC-RFRF-006 expanded; EED-EV-0045; KG changelog; SynqDrive Code
+- registry_review:
+ - module: Energy Event Detection (EED)
+ result: UNCHANGED
+ registry_status_before: AUTHORITY_ACTIVE
+ registry_status_after: AUTHORITY_ACTIVE
+ reason: F4.0 contract hardening only; no registry metadata change
 ```

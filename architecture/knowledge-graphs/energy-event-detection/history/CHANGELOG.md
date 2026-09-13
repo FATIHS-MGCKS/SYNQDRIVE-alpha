@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-09-13 — RFRF F4.0 final scope hardening (PR #1628)
+
+- Expanded EED-DEC-RFRF-006: flag truth table; fuelCapability vs absoluteSignalTrust split; RawRefuelPromotionEligibility orthogonal to F2 lifecycle; advisory-only native overlap in F4; detectionSource NULL legacy semantics; sourceEventKey canonical identity; F2/F3 tolerance hard gate; blocker reclassification
+- Evidence EED-EV-0045 updated; no runtime code
+
+**Verdict:** RFRF_F4_0_SCOPE_HARDENING=PASS — PR_1628_READY_FOR_FINAL_REVIEW=YES; F4_IMPLEMENTATION_START_READY=YES; PR remains draft
+
+---
+
 ## 2026-09-13 — RFRF F4 scope + runtime boundary (pre-implementation)
 
 - Scope audit resolves F1/F2/F3 phase-boundary contradiction: F4 Option B (dark runtime through candidate staging; promotion execution blocked until F5)

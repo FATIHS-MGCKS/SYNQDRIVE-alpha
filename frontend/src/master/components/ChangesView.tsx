@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f4-0-scope-hardening-2026-09-13',
+    version: '4.9.1119',
+    title: 'RFRF F4.0 — Final scope hardening before implementation',
+    summary: [
+      'Flag truth table: master owns scan; persist owns F2 staging only; never VEE promotion.',
+      'fuelCapability vs absoluteSignalTrust split; trust authority NOT_YET_AVAILABLE — fail closed.',
+      'RawRefuelPromotionEligibility orthogonal to F2 lifecycle; no F4 terminal REJECTED for F5 absence.',
+      'Native overlap advisory-only in F4; detectionSource NULL = legacy native; sourceEventKey canonical.',
+      'F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; cutover enforcement deferred to F6+.',
+    ],
+    reason:
+      'Five contract ambiguities remained after initial F4 scope audit — must close before F4-PR1.',
+    previousBehavior:
+      'Overlapping F4/F5 language; capability/trust conflated; scheduler coverage stated as proven.',
+    details:
+      'docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md §25; EED-DEC-RFRF-006 expanded.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T01:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-scope-boundary-2026-09-13',
     version: '4.9.1118',
     title: 'RFRF F4 — Scope + runtime boundary (pre-implementation audit)',

@@ -1448,10 +1448,12 @@ nodes:
     source_paths:
       - docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md
     summary: >
-      F4 Option B phase boundary: dark detectEnergyEvents integration through candidate staging;
-      promotion service implementable but VehicleEnergyEvent execution blocked until F5 convergence gate.
-      Capability gate case 22; duplicate safety matrix; minimum diagnostics; PR plan F4-PR1..4.
-      No runtime code. F4_SCOPE_DEFINED=YES; F4_IMPLEMENTATION_NOT_STARTED=YES.
+      F4 Option B (EED-DEC-RFRF-006): dark detectEnergyEvents through candidate staging;
+      F4_VEE_UPSERT_REACHABLE=NO; F5 promotion execution authority; flag truth table;
+      fuelCapability vs absoluteSignalTrust split; RawRefuelPromotionEligibility orthogonal
+      to F2 lifecycle; native overlap advisory-only in F4; detectionSource NULL=legacy native;
+      sourceEventKey canonical; F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate. F4.0 hardened.
+      No runtime code.
     verified_at: "2026-09-13"
 
   - id: EED-DEC-RFRF-006
@@ -1460,10 +1462,11 @@ nodes:
     decision_status: PROPOSED
     epistemic_status: CONFIRMED
     summary: >
-      F4 wires scheduler/detectEnergyEvents → fuel fetch → capability gate → F3 → F2 persist → READY
-      evaluation and promotion service code. Actual VehicleEnergyEvent upsert from fallback remains
-      unreachable until F5 native/fallback convergence gate is implemented and proven. Preserves
-      WINDOW_LEVEL_NATIVE_SUPPRESSION=FORBIDDEN and PER_CANDIDATE_NATIVE_FALLBACK_CONVERGENCE=REQUIRED.
+      F4 wires scheduler/detectEnergyEvents → fuel fetch → capability gate → F3 → F2 persist →
+      promotion eligibility assessment and promotion substrate. F4_VEE_UPSERT_REACHABLE=NO.
+      VehicleEnergyEvent upsert unreachable until F5 convergence authority
+      (RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED conceptual gate). Persist flag never
+      authorizes promotion. Native overlap advisory-only in F4. F4.0 contract hardened.
     evidence: [EED-EV-0045]
     verified_at: "2026-09-13"
 
