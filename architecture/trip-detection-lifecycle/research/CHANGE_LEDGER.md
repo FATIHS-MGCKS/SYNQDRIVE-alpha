@@ -55,6 +55,9 @@ Append-only record for this authority directory.
 | 2026-09-12 | KS MS 661 POST-#1603 CUSUM retry fix — `ActiveReopenReason` + CUSUM-only trusted boundary preservation; RED/GREEN tests; PR #1617 | Fix branch (not deployed) | [KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md](../evidence/KS_MS_661_R12_POST_1603_CUSUM_RETRY_FAILURE_2026-09-12.md) |
 | 2026-09-12 | WOB L 7503 POST-#1617 physical acceptance read-only audit — 17× EV / 0× FINALIZE; retry budget reset loop proven; forensic PR #1625 | Read-only Production audit | [WOB_L_7503_POST_1617_PHYSICAL_ACCEPTANCE_2026-09-12.md](../evidence/WOB_L_7503_POST_1617_PHYSICAL_ACCEPTANCE_2026-09-12.md) (PR #1625 branch) |
 | 2026-09-13 | R12 retry-budget POSSIBLE_END re-entry fix — `resolveEndValidationAttemptsOnPossibleEndReentry`; CI green run `34726519989` | Fix branch PR #1627 | [WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md](../evidence/WOB_L_7503_R12_RETRY_BUDGET_FIX_2026-09-12.md) |
+| 2026-09-13 | WOB L 7503 POST-#1627 physical acceptance read-only audit — deploy `9a32685d…`; 0× END_VALIDATION; gap split; trip ONGOING @ audit; #1627 not exercised | Read-only Production audit | [WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md](../evidence/WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md) |
+| 2026-09-13 | PR #1634 ground-truth correction — operator: two physical drives (~1 h pause); false-split claim withdrawn; #1627 reclassified NOT_EXERCISED; Trip 2 fail = end-candidate admission upstream | Audit correction (docs only) | Same artifact § Ground-truth correction |
+| 2026-09-13 | POST-#1627 root-cause forensics — POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE proven; same class as KS MS 661; empty-core deferral unbounded; RED test designed (not implemented) | Read-only forensic addendum PR #1634 | Same artifact § Root-cause forensics |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
