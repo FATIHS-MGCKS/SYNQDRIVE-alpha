@@ -1,0 +1,241 @@
+# EED RFRF F4-PR1 — Foundation implementation audit
+
+**Date:** 2026-09-13
+**Phase:** F4-PR1 only (schema + flags + capability/trust resolvers)
+**Predecessor:** PR #1628 merged (`ca16ca034809a9bad2c47a0f06f3b908f83bfaf9`)
+**Canonical boundary:** `docs/audits/eed-rfrf-f4-scope-and-runtime-boundary-2026-09-13.md` (EED-DEC-RFRF-006, EED-EV-0045)
+
+---
+
+## 1. Base and head SHAs
+
+| Field | Value |
+|-------|-------|
+| **BASE_MAIN_SHA** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` (PR #1628 merge) |
+| **Branch base includes** | `defe85a91` — ci(vehicle-detail): backend typecheck heap (#1629) |
+| **Branch** | `cursor/eed-rfrf-f4-pr1-foundation-f21f` |
+| **FINAL_HEAD** | `c1fb84272` (PR1.1 micro-closure incl. `.npmrc` typecheck heap) |
+
+---
+
+## 2. Scope delivered (F4-PR1)
+
+| Item | Status |
+|------|--------|
+| VehicleEnergyEvent `detectionSource` enum + column | YES |
+| VehicleEnergyEvent `sourceEventKey` column | YES |
+| `@@unique([vehicleId, sourceEventKey])` (PostgreSQL NULL-safe) | YES |
+| Additive forward-only migration | YES |
+| Runtime flag/config reader (fail-closed) | YES |
+| `RawFuelCapabilityResolver` | YES |
+| `RawFuelSignalTrustResolver` | YES |
+| Source semantics contract (types/docs) | YES |
+
+---
+
+## 3. Explicit non-actions (verified)
+
+| Gate | Result |
+|------|--------|
+| `detectRawFuelRises()` wired in `detectEnergyEvents()` | NO |
+| `RawRefuelCandidateService` from live detect path | NO |
+| Fallback `VehicleEnergyEvent` creation | NO |
+| F5 convergence / promotion execution | NO |
+| Production deploy | NO |
+| Production mutation | NO |
+| Feature flags enabled in repo/env | NO |
+| Historical VEE backfill | NO |
+| F4-PR2 started | NO |
+
+---
+
+## 4. Schema changes
+
+### Enum `VehicleEnergyEventDetectionSource`
+
+- `DIMO_NATIVE` — future explicit native writes (F6+ deploy hygiene)
+- `SYNQDRIVE_RAW_FUEL_FALLBACK` — future authorized fallback promotion (F5+)
+
+### Columns on `vehicle_energy_events`
+
+| Column | Type | Nullable | Semantics |
+|--------|------|----------|-----------|
+| `detection_source` | enum | YES | NULL = legacy native-era; never means fallback |
+| `source_event_key` | VARCHAR(512) | YES | NULL for legacy/native; fallback = `candidateIdentityKey` (F5+) |
+
+### Uniqueness + source-identity CHECK
+
+Prisma `@@unique([vehicleId, sourceEventKey])` → PostgreSQL unique index on `(vehicle_id, source_event_key)`.
+
+PostgreSQL treats NULL as distinct in unique indexes → **multiple legacy rows with NULL `source_event_key` per vehicle remain valid**.
+
+Non-null duplicate `(vehicle_id, source_event_key)` rejected.
+
+Same `source_event_key` on different vehicles allowed (vehicle-scoped identity).
+
+**SQL CHECK constraint** `vehicle_energy_events_source_identity_check` (migration SQL only; documented in Prisma schema comment):
+
+| Pairing | Allowed |
+|---------|---------|
+| `detection_source` NULL + `source_event_key` NULL | YES (legacy) |
+| `DIMO_NATIVE` + `source_event_key` NULL | YES |
+| `SYNQDRIVE_RAW_FUEL_FALLBACK` + non-null `source_event_key` | YES |
+| Fallback with NULL key | NO |
+| Unlabeled (NULL source) with non-null key | NO |
+| `DIMO_NATIVE` with non-null key | NO |
+
+---
+
+## 5. Migration
+
+**Path:** `backend/prisma/migrations/20260913120000_rfrf_f4_pr1_vehicle_energy_event_source_identity/migration.sql`
+
+- Additive only: enum create, two nullable columns, index on `detection_source`, unique index, named CHECK constraint
+- No backfill, no table rewrite, no destructive alter
+
+### Proof status
+
+| Gate | Result |
+|------|--------|
+| **F4_PR1_MIGRATION_SQL_REAL_POSTGRES** | PASS — `backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh` against pre-F4 baseline `ca16ca034`; tests A–H including CHECK rejections |
+| **FULL_REPOSITORY_MIGRATION_CHAIN** | See §5.1 |
+
+### 5.1 Full migration chain epistemics (PR1.1)
+
+Prior gate note used an existing local `rfrf_gate_test` database that may have had migrations pre-applied — **not** a reproducible empty-chain proof.
+
+**Authoritative empty-chain command:**
+
+```bash
+backend/scripts/ops/prove-rfrf-f4-pr1-full-migration-chain.sh
+```
+
+**Observed result (2026-09-13):** `FAIL_PRE_EXISTING` — empty DB on localhost:5433, `npx prisma migrate deploy`, fails at historical migration `20260413230000_add_composite_indexes_batch_c` with `CREATE INDEX CONCURRENTLY cannot run inside a transaction block`. This is the known pre-RFRF defect; F4-PR1 does not modify that migration.
+
+Prior local note claiming PASS used a non-empty gate DB (`rfrf_gate_test` on :5432) where migrations were already applied — **not** a reproducible empty-chain proof.
+
+F4-PR1 isolated proof remains: pre-F4 baseline + single migration SQL (`F4_PR1_MIGRATION_SQL_REAL_POSTGRES=PASS`).
+
+---
+
+## 6. PR1.1 micro-closure (2026-09-13)
+
+| Change | Purpose |
+|--------|---------|
+| `vehicle_energy_events_source_identity_check` | Database-enforced canonical source pairings |
+| Extended PG proof A–H | Contract regression harness |
+| Signal trust tautology removed | Explicit fail-closed `absoluteSignalTrust = 'UNKNOWN'` |
+| Main sync (`ee97eae3b` VDC #1626) | Resolve PR #1630 merge conflict (ChangesView only) |
+| `backend/.npmrc` node-options heap | Legal Documents/Vehicle Detail typecheck parity without workflow authority-path conflict |
+
+**MAIN_SHA at sync:** `ee97eae3b` — VDC physical-state foundation; no F4 contract conflict (orthogonal module).
+
+---
+
+## 7. Feature flag / config reader
+
+**Module:** `backend/src/config/raw-fuel-refuel-fallback.config.ts`
+
+| Env | Semantics | Default |
+|-----|-----------|---------|
+| `RAW_FUEL_REFUEL_FALLBACK_ENABLED` | Master raw scan gate | false |
+| `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED` | F2 staging only — **never VEE promotion** | false |
+| `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT` | Parsed ISO; F4 does not filter evidence by cutover | null |
+
+Malformed boolean → fail closed (false). Persist flag independent of master. `canRawFuelRefuelFallbackAuthorizeVehicleEnergyEventPromotion()` is structurally `false`.
+
+---
+
+## 7. Capability resolver
+
+**Module:** `raw-fuel-capability.resolver.ts`
+
+Authority: `Vehicle.fuelType` (required enum); optional DIMO `powertrainType` / `fuelType` strings for contradiction detection only.
+
+| Input | Output |
+|-------|--------|
+| `ELECTRIC` | `NON_FUEL_CAPABLE` |
+| `GASOLINE`, `DIESEL`, `HYBRID`, `PLUGIN_HYBRID` | `FUEL_CAPABLE` |
+| `OTHER`, missing, contradictory metadata | `UNKNOWN` (fail closed) |
+
+No inference from samples, segments, fleet IDs, or org hardcoding.
+
+---
+
+## 8. Signal trust resolver
+
+**Module:** `raw-fuel-signal-trust.resolver.ts`
+
+| Axis | F4-PR1 behavior |
+|------|-----------------|
+| `absoluteSignalTrust` | Always `UNKNOWN` — `ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE = false` |
+| `relativeSignalAvailable` | Semantically valid relative % in scan window (0–100, finite) |
+
+Does **not** derive TRUSTED from `fuelType` or sample presence alone.
+
+---
+
+## 9. Source semantics contract
+
+Documented in `raw-fuel-refuel-fallback.types.ts` → `VEHICLE_ENERGY_EVENT_SOURCE_SEMANTICS`:
+
+| Row class | detectionSource | sourceEventKey |
+|-----------|-----------------|----------------|
+| Legacy pre-migration | NULL | NULL |
+| New native (post deploy) | DIMO_NATIVE | NULL |
+| Fallback promotion (F5+) | SYNQDRIVE_RAW_FUEL_FALLBACK | candidateIdentityKey |
+
+No runtime writes in F4-PR1.
+
+---
+
+## 10. Tests executed
+
+| Suite | Result |
+|-------|--------|
+| `raw-fuel-refuel-fallback.config.spec.ts` | PASS |
+| `raw-fuel-capability.resolver.spec.ts` | PASS |
+| `raw-fuel-signal-trust.resolver.spec.ts` | PASS |
+| F2 `raw-refuel-candidate*` (13 suites) | PASS |
+| F3 `raw-fuel-rise-detector*` (13 suites) | PASS |
+| `prisma validate` / `prisma generate` | PASS |
+| `npm run build` | PASS |
+
+---
+
+## 11. Known limitations
+
+- Absolute signal trust authority not yet available fleet-wide — fail closed by design.
+- Synthetic `dimoSegmentId` fallback compatibility remains F5-owned / NOT_PROVEN.
+- Full migration chain on **empty** DB: `FAIL_PRE_EXISTING` at historical `20260413230000_add_composite_indexes_batch_c` (pre-RFRF CREATE INDEX CONCURRENTLY defect); F4-PR1 isolated proof unaffected.
+- F4-PR2 (dark runtime wiring) not started.
+
+---
+
+## 12. Governance
+
+- EED-EV-0046 added (this audit + implementation evidence)
+- EED-DEC-RFRF-006 promoted **PROPOSED → VALIDATED** (human approval via PR #1628 merge)
+- SynqDrive Code → Changes / Architektur updated
+
+---
+
+## ARCHITECTURE_GOVERNANCE
+
+```
+ARCHITECTURE_GOVERNANCE
+- substantive_change: YES
+- affected_modules: Energy Event Detection (EED)
+- authority_updates: EED KG evidence EED-EV-0046; DEC-RFRF-006 VALIDATED; changelog; this audit
+- registry_review:
+ - module: Energy Event Detection (EED)
+ result: UNCHANGED
+ registry_status_before: AUTHORITY_ACTIVE
+ registry_status_after: AUTHORITY_ACTIVE
+ reason: F4-PR1 foundation implementation; no registry metadata field changes
+- cross_module_authorities_reviewed: none (EED-only substrate)
+- authority_validators: EED graph validator PASS
+- central_registry_validator: PASS
+- SynqDrive Code → Changes: entry eed-rfrf-f4-pr1-foundation-2026-09-13
+- SynqDrive Code → Architektur: RFRF F4-PR1 foundation row
+```

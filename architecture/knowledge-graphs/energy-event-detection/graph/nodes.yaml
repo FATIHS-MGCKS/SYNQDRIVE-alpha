@@ -1456,10 +1456,28 @@ nodes:
       No runtime code.
     verified_at: "2026-09-13"
 
+  - id: EED-EV-0046
+    type: evidence
+    title: RFRF F4-PR1 — Schema, flags, capability/trust foundation
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-pr1-foundation-2026-09-13.md
+      - backend/prisma/migrations/20260913120000_rfrf_f4_pr1_vehicle_energy_event_source_identity/migration.sql
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-capability.resolver.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver.ts
+    summary: >
+      F4-PR1 foundation: VehicleEnergyEvent detectionSource/sourceEventKey with PostgreSQL
+      NULL-safe unique (vehicleId, sourceEventKey); fail-closed flag reader; capability resolver
+      from fuelType; signal trust absolute UNKNOWN; isolated PG migration proof; F2/F3 regression
+      PASS; DETECT_ENERGY_EVENTS_RAW_PATH_WIRED=NO; F4_VEE_UPSERT_REACHABLE=NO.
+    verified_at: "2026-09-13"
+
   - id: EED-DEC-RFRF-006
     type: decision
     title: RFRF F4 — Option B phase boundary (dark staging; promotion execution F5-gated)
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
       F4 wires scheduler/detectEnergyEvents → fuel fetch → capability gate → F3 → F2 persist →

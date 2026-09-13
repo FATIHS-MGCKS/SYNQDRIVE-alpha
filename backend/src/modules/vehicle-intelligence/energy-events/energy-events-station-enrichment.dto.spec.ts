@@ -45,6 +45,8 @@ function baseEnergyEvent(overrides: Record<string, unknown> = {}) {
     id: 'evt-1',
     vehicleId: 'veh-1',
     dimoSegmentId: 'dimo-1',
+    detectionSource: null,
+    sourceEventKey: null,
     kind: 'REFUEL' as const,
     detectionMechanism: 'refuel',
     startTime: new Date('2026-08-31T19:50:00.000Z'),

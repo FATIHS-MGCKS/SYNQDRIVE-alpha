@@ -57,6 +57,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f4-pr1-foundation-2026-09-13',
+    version: '4.9.1121',
+    title: 'RFRF F4-PR1 — Schema, flags, capability/trust foundation',
+    summary: [
+      'VehicleEnergyEvent detectionSource + sourceEventKey substrate; PostgreSQL NULL-safe unique (vehicleId, sourceEventKey).',
+      'Source-identity CHECK constraint (vehicle_energy_events_source_identity_check) enforces canonical NULL/non-null pairings.',
+      'Fail-closed runtime flag reader (master/persist/cutover); persist never authorizes VEE promotion.',
+      'RawFuelCapabilityResolver (fuelType authority) + RawFuelSignalTrustResolver (absolute UNKNOWN; relative separate).',
+      'Isolated PG migration proof PASS; F2/F3 regression PASS; no detectEnergyEvents raw wiring.',
+    ],
+    reason:
+      'F4 Option B implementation PR1 per EED-DEC-RFRF-006 / PR #1628; foundation before dark runtime (F4-PR2).',
+    previousBehavior:
+      'No VEE source identity columns; RFRF flags compile-time constants only; no capability/trust resolvers.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr1-foundation-2026-09-13.md; EED-EV-0046; backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-13T06:00:00.000Z',
+  },
+  {
     id: 'vdc-physical-state-foundation-phase1-2026-09-12',
     version: '4.9.1120',
     title: 'VDC Phase 1 — canonical physical device state reconciliation foundation (dark)',
