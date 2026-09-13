@@ -9,7 +9,7 @@
 | **BASE_MAIN_SHA** | `7cb184ffc5926521429f75524a1dcb65579769f6` |
 | **PRODUCTION_SHA (failure)** | `a8320f2cabccf7dbeb38cab5afdfc6ee00abdea0` @ `20260912194023_v4994` |
 | **Vehicle** | WOB L 7503 — canonical trip `4083e24c-fc8f-4f56-8d95-a27d517169dc` |
-| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_PENDING** on PR #1627 post-sync HEAD (await Trip FSM run on `ca16ca034` merge-base) |
+| **Classification** | **FAIL on Production** — bounded fallback unreachable; **CI_VALIDATED** on PR #1627 HEAD @ `1c6dcf3dd` (Trip FSM run `34741464230`) |
 | **Historical forensic BASE** | `7cb184ffc5926521429f75524a1dcb65579769f6` (pre-fix main @ WOB audit) |
 | **Merge-base BASE (current main)** | `ca16ca034809a9bad2c47a0f06f3b908f83bfaf9` — used for merge-readiness BASE/HEAD proof |
 
@@ -82,7 +82,16 @@ Implementation:
 
 **Physical acceptance remains FAIL** until a fresh Production drive after deploy of this fix.
 
-**CI_STATUS=PENDING** — Trip FSM Production Readiness must pass on post-sync HEAD before recording observed BASE/HEAD metrics here. Prior runs on pre-sync SHAs (`34726519989`, `34728076738`, `34729611225`) are superseded by main sync to `ca16ca034`.
+### Observed CI proof (Trip FSM run `34741464230`, HEAD `1c6dcf3dd`)
+
+| Probe | BASE (`ca16ca034…`) | HEAD (`1c6dcf3dd…`) |
+|-------|---------------------|---------------------|
+| EV runs | **4** | **3** |
+| completedAttempt seq | `1,1,1,1` | `1,2,3` |
+| persistedAttempts seq | `0,0,0,0` | `1,2,3` |
+| max fallback | NO | YES (`max_completed_cusum_attempts_fallback`) |
+| FINALIZE | NO | YES |
+| Verdict | `BASE_RED_REPRODUCED=YES` | `HEAD_GREEN_PROVEN=YES` |
 
 ## Related decisions preserved
 
