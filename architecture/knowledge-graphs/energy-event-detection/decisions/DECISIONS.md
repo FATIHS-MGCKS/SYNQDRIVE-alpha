@@ -339,7 +339,7 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | Field | Value |
 |-------|-------|
 | **ID** | EED-DEC-RFRF-006 |
-| **Status** | **PROPOSED** (pending human review) |
+| **Status** | **VALIDATED** (approved via PR #1628 merge) |
 | **Date** | 2026-09-13 |
 | **Question** | Where does F4 end and F5 begin given promotion/convergence ordering hazard? |
 | **Decision** | **Option B (F4.0 hardened):** F4 implements dark runtime through candidate staging + promotion **substrate**. `F4_VEE_UPSERT_REACHABLE=NO`. F5 owns first reachable fallback VEE execution via separate promotion gate (not substitutable by persist flag). `fuelCapability` (Vehicle metadata) separate from `absoluteSignalTrust` (NOT_YET_AVAILABLE — fail closed). `RawRefuelPromotionEligibility` orthogonal to F2 lifecycle — no terminal REJECTED solely for F5 absence. Native overlap advisory-only in F4. `detectionSource=NULL` = legacy native-era only. `sourceEventKey=candidateIdentityKey` canonical. |
