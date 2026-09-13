@@ -43,6 +43,17 @@ describe('RawFuelRefuelFallbackMetricsService minimum contract', () => {
     metrics.recordCandidateError();
     metrics.recordBranchError();
     metrics.recordNonFiniteSampleExclusion(2);
+    metrics.recordReadinessEvaluated();
+    metrics.recordCandidateReady();
+    metrics.recordCandidateNotReady('CANDIDATE_SETTLING');
+    metrics.recordPromotionEligibilityEvaluated();
+    metrics.recordPromotionBlocked('BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED');
+    metrics.recordNativeOverlapSame();
+    metrics.recordNativeOverlapDistinct();
+    metrics.recordNativeOverlapInsufficientEvidence();
+    metrics.recordNativeOverlapAmbiguous();
+    metrics.recordPromotionDraftConstructed();
+    metrics.recordPromotionBlockedByF5Gate();
 
     expect(await counterValue('synqdrive_rfrf_branch_invocation_total')).toBe(1);
     expect(await counterValue('synqdrive_rfrf_master_disabled_total')).toBe(1);
@@ -60,5 +71,12 @@ describe('RawFuelRefuelFallbackMetricsService minimum contract', () => {
     expect(await counterValue('synqdrive_rfrf_candidate_errors_total')).toBe(1);
     expect(await counterValue('synqdrive_rfrf_branch_error_total')).toBe(1);
     expect(await counterValue('synqdrive_rfrf_non_finite_sample_exclusion_total')).toBe(2);
+    expect(await counterValue('synqdrive_rfrf_readiness_evaluated_total')).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_candidate_ready_total')).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_candidate_not_ready_total', { reason: 'CANDIDATE_SETTLING' })).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_promotion_eligibility_evaluated_total')).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_promotion_blocked_total', { status: 'BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED' })).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_native_overlap_same_total')).toBe(1);
+    expect(await counterValue('synqdrive_rfrf_promotion_blocked_f5_gate_total')).toBe(1);
   });
 });

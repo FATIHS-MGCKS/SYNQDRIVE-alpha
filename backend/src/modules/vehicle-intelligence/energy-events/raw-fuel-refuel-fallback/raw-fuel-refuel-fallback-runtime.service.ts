@@ -15,10 +15,13 @@ import type { RawFuelRiseDetectionContext } from '../raw-fuel-rise-detector/raw-
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import type { RawRefuelCandidateObservation } from '../raw-refuel-candidate/raw-refuel-candidate.types';
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
+import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
 import type {
   RawFuelRefuelFallbackScanInput,
   RawFuelRefuelFallbackScanResult,
 } from './raw-fuel-refuel-fallback-runtime.types';
+import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
+import type { RawFuelAbsoluteDetectionAdmissibility } from './raw-fuel-refuel-fallback.types';
 
 function emptyResult(
   partial: Partial<RawFuelRefuelFallbackScanResult> &
@@ -33,6 +36,9 @@ function emptyResult(
     candidatesCreated: 0,
     candidatesRediscovered: 0,
     persistSkippedBecauseFlagOff: 0,
+    promotionPreparationAttempted: 0,
+    promotionDraftsConstructed: 0,
+    promotionBlockedByF5Gate: 0,
     candidateOutcomes: [],
     ...partial,
   };
@@ -45,6 +51,7 @@ export class RawFuelRefuelFallbackRuntimeService {
   constructor(
     private readonly dimoSegments: DimoSegmentsService,
     private readonly rawRefuelCandidateService: RawRefuelCandidateService,
+    @Optional() private readonly promotionPreparation?: RawRefuelPromotionPreparationService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
     private readonly configLoader: (
       env?: NodeJS.ProcessEnv,
@@ -58,6 +65,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     return new RawFuelRefuelFallbackRuntimeService(
       this.dimoSegments,
       this.rawRefuelCandidateService,
+      this.promotionPreparation,
       this.metrics,
       loader,
     );
@@ -238,7 +246,14 @@ export class RawFuelRefuelFallbackRuntimeService {
     for (let i = 0; i < detection.candidates.length; i++) {
       const observation = detection.candidates[i];
       this.metrics?.recordObservation(observation.lifecycleState);
-      await this.persistObservation(observation, config, result, i);
+      await this.persistObservation(
+        observation,
+        config,
+        result,
+        i,
+        capability,
+        trust.absoluteDetectionAdmissibility,
+      );
     }
 
     return result;
@@ -249,6 +264,8 @@ export class RawFuelRefuelFallbackRuntimeService {
     config: RawFuelRefuelFallbackConfig,
     result: RawFuelRefuelFallbackScanResult,
     observationIndex: number,
+    capability: RawFuelCapability,
+    absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
   ): Promise<void> {
     if (!config.persistEnabled) {
       result.persistSkippedBecauseFlagOff += 1;
@@ -295,6 +312,14 @@ export class RawFuelRefuelFallbackRuntimeService {
         rediscovered: !resolved.created,
         candidateId: resolved.candidateId,
       });
+      await this.runPromotionPreparationIfPersisted(
+        resolved.candidateId,
+        result,
+        observationIndex,
+        capability,
+        absoluteDetectionAdmissibility,
+        observation.absoluteSignalTrust ?? null,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
@@ -309,6 +334,53 @@ export class RawFuelRefuelFallbackRuntimeService {
         rediscovered: false,
         error: message,
       });
+    }
+  }
+
+  private async runPromotionPreparationIfPersisted(
+    candidateId: string,
+    result: RawFuelRefuelFallbackScanResult,
+    observationIndex: number,
+    capability: RawFuelCapability,
+    absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
+    absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+  ): Promise<void> {
+    if (!this.promotionPreparation) {
+      return;
+    }
+
+    result.promotionPreparationAttempted += 1;
+    const outcome = result.candidateOutcomes.find(
+      (item) => item.observationIndex === observationIndex,
+    );
+    if (!outcome) {
+      return;
+    }
+
+    try {
+      const preparation = await this.promotionPreparation.preparePromotionById(candidateId, {
+        capability,
+        absoluteDetectionAdmissibility,
+        absoluteSignalTrust,
+      });
+      if (!preparation) {
+        outcome.promotionPreparationError = 'candidate_not_found_after_persist';
+        return;
+      }
+      outcome.promotionPreparation = preparation;
+
+      if (preparation.promotionDraft) {
+        result.promotionDraftsConstructed += 1;
+      }
+      if (preparation.blockedByF5Gate) {
+        result.promotionBlockedByF5Gate += 1;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `RFRF promotion preparation isolated failure candidate=${candidateId}: ${message}`,
+      );
+      outcome.promotionPreparationError = message;
     }
   }
 }

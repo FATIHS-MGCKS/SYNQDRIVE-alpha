@@ -1,5 +1,29 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F4-PR3.1 SAME+INSUFFICIENT advisory fail-closed micro-closure
+
+- `classifyRawRefuelNativeOverlapAdvisory`: one SAME + any INSUFFICIENT → `INSUFFICIENT_EVIDENCE` (not clean SAME)
+- Foreign-vehicle-only rows → `NO_NATIVE_SIBLINGS` after vehicle filter
+- Unit matrix A–I; real PG scenarios S/T; promotion eligibility remains fail-closed
+- Blocker taxonomy: `KNOWN_P1_F4_PR3_BLOCKERS=0`; `KNOWN_P1_F5_ENTRY_BLOCKERS=3`
+- Evidence EED-EV-0050; F5 not started
+
+**Verdict:** RFRF_F4_PR3_1=PASS — F4_PR4 after PR #1637 merge; F5 not started
+
+---
+
+## 2026-09-13 — RFRF F4-PR3 ready evaluator + promotion eligibility + F5 gate stub
+
+- `RawRefuelPromotionPreparationService` after F2 persist: readiness, eligibility, advisory overlap, draft
+- F5 gate stub: `isRfrfNativeFallbackConvergenceAuthorized()` and `canCreateFallbackVehicleEnergyEvent()` always false
+- Extended `synqdrive_rfrf_*` metrics for readiness/eligibility/overlap/F5-blocked
+- Real PG gate 48/48 PASS; F3/F2 tolerance integration PASS; zero fallback VEE
+- Evidence EED-EV-0049; F5 not started
+
+**Verdict:** RFRF_F4_PR3=PASS — F4_PR4_CLOSURE_START_AUTHORIZED_AFTER_MERGE=YES; F5 not started
+
+---
+
 ## 2026-09-13 — RFRF F4-PR2.1 micro-closure (typed fetch + observability + PG gate)
 
 - `fetchFuelLevelSamplesWithOutcome()` distinguishes SUCCESS empty vs ERROR (AUTH_UNAVAILABLE / PROVIDER_QUERY_FAILED)

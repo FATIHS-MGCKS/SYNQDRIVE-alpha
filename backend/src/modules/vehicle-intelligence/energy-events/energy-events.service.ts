@@ -266,6 +266,9 @@ export class EnergyEventsService {
         candidatesCreated: 0,
         candidatesRediscovered: 0,
         persistSkippedBecauseFlagOff: 0,
+        promotionPreparationAttempted: 0,
+        promotionDraftsConstructed: 0,
+        promotionBlockedByF5Gate: 0,
         candidateOutcomes: [],
         branchError: message,
       };

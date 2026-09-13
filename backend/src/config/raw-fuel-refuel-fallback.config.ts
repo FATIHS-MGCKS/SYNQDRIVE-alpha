@@ -76,3 +76,24 @@ export function isRawFuelRefuelFallbackPersistEnabled(
 export function canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion(): false {
   return false;
 }
+
+/**
+ * F5 convergence authorization gate (conceptual env reserved for F5).
+ * MUST remain false for all F4 work — not a production flag in F4-PR3.
+ */
+export const RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV =
+  'RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED';
+
+/** F4-PR3 stub — always false until F5 implements and proves convergence. */
+export function isRfrfNativeFallbackConvergenceAuthorized(
+  _env: NodeJS.ProcessEnv = process.env,
+): false {
+  return false;
+}
+
+/** Hard authority boundary — fallback VehicleEnergyEvent creation unreachable from F4. */
+export function canCreateFallbackVehicleEnergyEvent(
+  _env: NodeJS.ProcessEnv = process.env,
+): false {
+  return false;
+}
