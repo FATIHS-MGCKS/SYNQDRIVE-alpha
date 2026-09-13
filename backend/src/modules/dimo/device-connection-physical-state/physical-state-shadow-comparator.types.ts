@@ -30,7 +30,6 @@ export type PhysicalStateShadowComparisonInput = {
   legacyDecision: ShadowLegacyGateDecision;
   physicalDecision: ShadowPhysicalGateDecision;
   legacyEffectivePlugState?: 'plugged' | 'unplugged' | 'unknown' | null;
-  physicalEffectiveState?: PhysicalEffectiveState | null;
   evidenceObservedAt?: Date | string | null;
   legacyEvidenceObservedAt?: Date | string | null;
   correlationId?: string | null;

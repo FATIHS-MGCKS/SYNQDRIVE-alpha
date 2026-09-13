@@ -42,7 +42,9 @@
 
 - `physical-state-shadow-comparator.ts` — pure, no persistence side effects
 - Canonical classification taxonomy per Phase-2 audit §14
-- GT-R1 `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT` semantics preserved (`no_state_change` legacy reject + physical accept)
+- GT-R1 `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT` requires `provenExpectedFix=true` (independent proof bit); legacy reason text is diagnostic metadata only
+- Classification precedence: BOTH_ACCEPT state divergence before timestamp divergence; BOTH_REJECT differing reasons → MATCH
+- Canonical physical effective state: `physicalDecision.effectiveState` only (no duplicate top-level input source)
 
 ### Observability
 
