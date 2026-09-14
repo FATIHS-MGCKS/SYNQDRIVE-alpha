@@ -645,14 +645,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
 | Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |
 
-### EXP-021 — autonomous orchestrator short A/B regression harness (2026-09-14)
+### EXP-021 — canonical autonomous lifecycle driver + real-path regression (2026-09-14, PR #1649)
 
 | Event | Detail |
 |-------|--------|
-| Scope | Test + canonical lifecycle driver extraction; behavior-preserving testability refactor |
-| Driver | `reference-capture-exp-021-autonomous-lifecycle.driver.ts` — shared production + regression lifecycle |
-| Matrix | Clean run, durable restart, duplicate lock, ZERO_RESULT, Trip FSM isolation audit |
-| Postgres | `reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration.spec.ts` |
-| Gate | `scripts/validate-exp021-short-ab-autonomous-gate.sh` |
-| Authority | `EXP_021_AUTONOMOUS_ORCHESTRATOR_SHORT_AB_REGRESSION_2026-09-14.md` |
-| PR #1645 | **MERGED** — KS MX 2024 forensic evidence frozen; no reinterpretation |
+| Scope | Behavior-preserving extraction of production lifecycle driver; remove parallel in-memory harness |
+| Driver | `reference-capture-exp-021-autonomous-lifecycle.driver.ts` — shared by orchestrator + `driver.spec.ts` |
+| Removed | `reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts` (reimplemented control flow — insufficient) |
+| Assertions | `reference-capture-exp021-short-ab-geometry.assertions.ts` (geometry only, no lifecycle simulation) |
+| Matrix | Full 90→60 driver path, durable restart B–E, duplicate lock, ZERO_RESULT, Trip FSM read-only audit |
+| Postgres | `reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration.spec.ts` — `finalizeTerminalCalibrationAtomic` return-type fix |
+| Gate | `scripts/validate-exp021-short-ab-autonomous-gate.sh` — targets driver spec (55 tests PASS) |
+| Authority | `EXP_021_AUTONOMOUS_ORCHESTRATOR_SHORT_AB_REGRESSION_2026-09-14.md` — evidence levels separated |
+| PR #1645 | **MERGED** @ `20269b9e7` — KS MX 2024 forensic evidence frozen; no reinterpretation |

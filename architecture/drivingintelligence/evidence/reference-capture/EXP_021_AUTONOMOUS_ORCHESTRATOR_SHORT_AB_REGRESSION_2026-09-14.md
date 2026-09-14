@@ -1,14 +1,40 @@
 # EXP-021 — Autonomous Orchestrator Short A/B Regression Authority
 
-**Date:** 2026-09-14  
+**Date:** 2026-09-14 (updated 2026-09-14 post PR #1645 merge)  
 **Plan:** `candidate_short_ab_90_60` / `EXP021_CANDIDATE_SHORT_AB_90_60`  
 **Canonical owner:** `reference-capture-exp-021-autonomous-orchestrator.ts`  
+**Canonical lifecycle driver:** `reference-capture-exp-021-autonomous-lifecycle.driver.ts`  
 **Ownership model:** `AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER`
 
 **Frozen evidence (do not mutate):**
 
-- PR #1645 — KS MX 2024 incomplete run forensic authority
+- PR #1645 — KS MX 2024 incomplete run forensic authority (**MERGED** to `main` @ `20269b9e73e4ede5160bdf5eeac5945280cafab7`)
 - PR #1618 — KS MS 661 defective 90s reference
+- Historical physical-run runtime authority: `PHYSICAL_RUN_PRODUCTION_SHA = d1501d171c1cc6dc4b83b2720e3a96549ef24185`
+
+**Immutable scientific conclusions from #1645:**
+
+| Conclusion | Status |
+|------------|--------|
+| VALID_T0_EVIDENCE | YES |
+| VALID_90_OPERATIONAL_EVIDENCE | YES |
+| VALID_90_SCIENTIFIC_EVIDENCE | PARTIAL |
+| VALID_90_VS_60_COMPARISON | NO |
+| VALID_FOR_PRODUCTION_CADENCE_SELECTION | NO |
+
+---
+
+## Evidence levels (do not collapse)
+
+| Level | What it proves | Status |
+|-------|----------------|--------|
+| **UNIT POLICY TEST** | Calibration plan geometry, slot counts, settlement budget, orchestrator lib locks | **PASS** (`candidate-short-ab-90-60.spec`, `orchestrator.lib.spec`) |
+| **POSTGRES PERSISTENCE INTEGRATION** | Repository atomic methods (`persistExp021CanonicalT0Atomic`, `activatePhysicalPhaseAtT0Atomic`, `requestHfCalibrationPhaseAtomic`, `finalizeTerminalCalibrationAtomic`) | **OPT-IN** (`REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`) — compile fix applied; runtime requires isolated test DB |
+| **CANONICAL DRIVER REAL-PATH TEST** | Production `Exp021AutonomousLifecycleDriver` owns T0 → 90s → wall transition → 60s → terminal without test manual phase calls | **PASS** (`reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts`) |
+| **DURABLE RESTART TEST** | Driver `tryResumeFromRecordingSession` + controlled-time restart scenarios B–E, terminal guard | **PASS** (driver spec; simulated persisted authority via canonical preflight shape) |
+| **PHYSICAL PRODUCTION RUN** | End-to-end on vehicle with DIMO telemetry | **NOT AUTHORIZED** — no deploy, no physical run from this PR |
+
+**Removed (insufficient):** parallel in-memory harness `reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts` — reimplemented orchestrator control flow; **not** production path proof.
 
 ---
 
@@ -25,59 +51,43 @@ MANUAL PRE-ARM
 
 ---
 
-## Canonical autonomous lifecycle (code trace)
+## Canonical autonomous lifecycle (production path)
+
+```
+reference-capture-exp-021-autonomous-orchestrator.ts (process shell)
+        │
+        ▼
+Exp021AutonomousLifecycleDriver (shared lifecycle state machine)
+        ▲
+        │
+reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts (controlled-time regression)
+```
 
 | Step | Implementation |
 |------|----------------|
 | 1. Create RC session | `orchestrator.ts:main` → `ReferenceCaptureSessionService.createSession` |
-| 2. Stamp `exp021AutonomousOrchestrator.runId` | `orchestrator.ts:656-667` → `preflightJson[EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY]` |
+| 2. Stamp `exp021AutonomousOrchestrator.runId` | `preflightJson[EXP021_ORCHESTRATOR_RUN_OWNERSHIP_KEY]` |
 | 3. Start recording | `sessionService.startRecording` after telemetry ready |
-| 4. Detect physical T0 | `PhysicalStartDetector` in `reference-capture-exp-021-motion.lib.ts` |
-| 5. Persist `exp021CanonicalT0` | `persistExp021CanonicalT0` → `persistExp021CanonicalT0Atomic` |
-| 6. Create `calibrationSeriesId` | `reanchorPhysicalCalibrationPhaseAtT0` at T0 arm |
-| 7. Create settlement experiment | `SettlementShadowService.ensureExperiment` (`experimentId = buildExperimentId(sessionId)`) |
-| 8. Initialize 90s phase | `activatePhysicalPhaseAtT0` with `cadencePhaseOrderMs[0]=90000` |
-| 9. Create 7 deterministic 90s slots | `buildInitialPhaseCounters` → `initializeRequestSlotsForActivePhase` |
-| 10. Detect 90s wall expiry | `PhysicalDrivePhaseTracker.shouldAdvancePhase` (WALL_CLOCK) |
-| 11. Seal 90s phase | `applyPendingCalibrationPhaseAtBoundary` at cycle release |
-| 12. Invoke `switchHfCalibrationPhase` | `sessionService.switchHfCalibrationPhase` → pending request |
-| 13. Initialize 60s phase | boundary apply creates new active phase |
-| 14. Create 10 deterministic 60s slots | `buildInitialPhaseCounters` at 60s boundary |
-| 15. Detect second wall boundary | `finalPhaseWallClockExpired` at T0+20min |
-| 16. Seal physical end | `completePhysicalRunAndStop` / `finalizeTerminalCalibrationSeries` |
-| 17. RC terminal completion | `stopRecording` → `finalizeTerminalCalibrationAtomic` → `COMPLETED` |
-| 18. Settlement attached to plan | `syncCompletedPhasesFromSession` uses series `calibrationPlanId/Version` |
-| 19. Restart recovery | `ATTACH_EXISTING_RECORDING` + `activatePhysicalPhaseFromPersistedAuthority` |
-| 20. Multi-replica guard | Redis orchestrator lock + `isOrchestratorOwnedRecordingSession` + DB row locks |
+| 4. Detect physical T0 | `PhysicalStartDetector` → `lifecycleDriver.handleWaitMovement` |
+| 5. Persist canonical T0 | `persistExp021CanonicalT0` → `exp021PhysicalAuthority` |
+| 6. Initialize 90s phase | `activatePhysicalPhaseAtT0` via driver |
+| 7. 7 deterministic 90s slots | policy `buildInitialPhaseCounters` |
+| 8. 90s wall expiry | `PhysicalDrivePhaseTracker.shouldAdvancePhase` |
+| 9. `switchHfCalibrationPhase` | driver `tickDriving` (not test manual) |
+| 10. 60s phase + 10 slots | boundary apply via session service |
+| 11. Final wall + terminal | `completeExp021PhysicalRunAndStop` → `stopRecording` |
+| 12. Restart recovery | `tryResumeFromRecordingSession` + `activatePhysicalPhaseFromPersistedAuthority` |
+| 13. Multi-replica guard | Redis lock + ownership stamp |
 
 ---
 
-## Gap classification (Phase 1)
+## Regression artifacts
 
-| Component | Status |
-|-----------|--------|
-| Ownership stamp | **PROVEN_EXISTING** |
-| T0 persistence | **PROVEN_EXISTING** |
-| Wall-clock phase progression | **PROVEN_EXISTING** |
-| 90→60 transition | **PROVEN_EXISTING** (policy); **TEST_GAP** (orchestrator `main()` loop) |
-| Slot geometry 7/10 | **PROVEN_EXISTING** |
-| Settlement 19+19 windows | **PROVEN_EXISTING** |
-| Terminal session state | **PROVEN_EXISTING** |
-| Trip FSM isolation | **PROVEN_EXISTING** (read-only observation) |
-| Orchestrator `main()` E2E | **TEST_GAP** → addressed by controlled-time harness |
-| Postgres 90s-first recovery | **PARTIALLY_PROVEN** → new integration spec (opt-in) |
+**Canonical driver (controlled time):**
 
-**Runtime code change required:** **NO** for canonical autonomous path.  
-**Mixed manual path:** guardrails still required (`CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES`).
-
----
-
-## Regression harness
-
-**Unit harness (controlled time, no 20-minute wall wait):**
-
-- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts`
-- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp021-autonomous-short-ab-lifecycle.harness.spec.ts`
+- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-autonomous-lifecycle.driver.ts`
+- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts`
+- `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp021-short-ab-geometry.assertions.ts`
 
 **PostgreSQL integration (optional, `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`):**
 
@@ -104,31 +114,24 @@ bash architecture/drivingintelligence/evidence/reference-capture/scripts/validat
 | `calibrationPlanVersion` | `EXP021_CANDIDATE_SHORT_AB_90_60` |
 | 120s phase | **must not exist** |
 
-Authority recovery precedence: **series → experiment metadata → env** (fail closed on conflict).
-
 ---
 
-## Canonical next physical run procedure (gate — not yet authorized)
+## Ready for next physical run
 
-1. Set `EXP021_CALIBRATION_PLAN=CANDIDATE_SHORT_AB_90_60` in backend.env **before** orchestrator boot.
-2. Read-only preflight (vehicle telemetry fresh, policy gate V2).
-3. Start orchestrator as **sole lifecycle owner**:
+**READY_FOR_NEXT_PHYSICAL_90_60_RUN:** **NO** (until human sign-off after PR #1649 review)
 
-   ```bash
-   node backend/scripts/ops/reference-capture-exp-021-autonomous-orchestrator.ts --confirm-exp021-autonomous
-   ```
+Prerequisites met by this PR branch:
 
-4. **Do not** run manual FAST GO, detached T0 watcher, or manual `switchHfCalibrationPhase`.
-5. Drive normally ≥20 minutes after PHYSICAL_T0.
-6. Orchestrator completes 90→60 wall transitions and terminalizes session.
-7. Forensic review after run.
+- PR #1645 merged (evidence authority frozen)
+- Canonical driver extracted; orchestrator delegates lifecycle
+- Parallel harness removed
+- Autonomous regression gate **PASS** (55 unit tests)
+- Postgres integration compile fix applied
 
-**PRE-ARM:** Orchestrator performs policy precheck internally; separate manual PRE-ARM is **not required** when using autonomous sole-owner path (orchestrator creates session + preflight + recording).
+Blockers for **YES**:
 
-**Ready for next physical run:** **NO** until:
-
-- PR #1645 merged to `main` (evidence authority)
-- Autonomous regression gate passes on CI
-- Autonomous-orchestrator regression / pre-run validation sign-off
+- Isolated Postgres integration must pass in CI/agent environment with test DB
+- Human review of PR #1649
+- Explicit authorization for next physical run (no cadence decision from this PR)
 
 **NO DEPLOY. NO PHYSICAL RUN. NO CADENCE DECISION.**
