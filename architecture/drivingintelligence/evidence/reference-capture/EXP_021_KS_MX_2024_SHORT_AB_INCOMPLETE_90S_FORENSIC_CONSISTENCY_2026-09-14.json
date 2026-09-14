@@ -1,0 +1,201 @@
+{
+  "generatedAtUtc": "2026-09-14T16:52:30.730Z",
+  "freezeVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4",
+  "PERCENTILE_METHOD": "NEAREST_RANK",
+  "productionSha": "d1501d171c1cc6dc4b83b2720e3a96549ef24185",
+  "metricCorrections": [],
+  "rcObservationPartition": {
+    "inclusionRules": {
+      "preT0": "[first observation, PHYSICAL_T0)",
+      "A": "[PHYSICAL_T0, NOMINAL_END)",
+      "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
+      "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
+      "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
+      "note": "PRE_T0 + A + B + C + D = TOTAL"
+    },
+    "RC_TOTAL_PERSISTED": 11413,
+    "RC_PRE_T0": 365,
+    "RC_A": 1058,
+    "RC_B": 938,
+    "RC_C": 8792,
+    "RC_D": 260,
+    "RC_PARTITION_ARITHMETIC_VALID": true,
+    "byKindTotal": {
+      "SESSION_METADATA": 1,
+      "SIGNAL_POINT": 11412
+    },
+    "note": "PRE_T0+A+B+C+D=TOTAL. Prior error conflated PRE_T0 into A (1423=365+1058)."
+  },
+  "providerCounts": {
+    "TOTAL_REQUESTS": 7,
+    "TOTAL_SUCCESS": 5,
+    "TOTAL_FAILURE": 2,
+    "SUCCESS_RATE_EXACT": "71.428571%",
+    "W1": {
+      "requests": 4,
+      "success": 2,
+      "failure": 2
+    },
+    "W2": {
+      "requests": 3,
+      "success": 3,
+      "failure": 0
+    }
+  },
+  "nativeHfBuckets": {
+    "count": 25,
+    "INTER_BUCKET_INTERVAL_COUNT": 24,
+    "PERCENTILE_METHOD": "NEAREST_RANK",
+    "interBucketPercentiles": {
+      "p50": 15000,
+      "p75": 20000,
+      "p90": 21000,
+      "p95": 37868,
+      "p99": 40918,
+      "max": 40918
+    },
+    "interBucketOnly": {
+      "INTER_BUCKET_GAPS_GTE_10": 17,
+      "INTER_BUCKET_GAPS_GTE_20": 7,
+      "INTER_BUCKET_GAPS_GTE_30": 2,
+      "INTER_BUCKET_GAPS_GTE_60": 0,
+      "INTER_BUCKET_MAX": 40918
+    },
+    "windowEdgeGaps": {
+      "START_EDGE_GAP_MS": 159544,
+      "END_EDGE_GAP_MS": 66799
+    },
+    "fullWindowCoverage": {
+      "FULL_WINDOW_MAX_UNOBSERVED_GAP_MS": 159544,
+      "FULL_WINDOW_GAPS_GTE_10": 19,
+      "FULL_WINDOW_GAPS_GTE_20": 9,
+      "FULL_WINDOW_GAPS_GTE_30": 4,
+      "FULL_WINDOW_GAPS_GTE_60": 2
+    },
+    "fullPreFreeze": {
+      "count": 25,
+      "HF_CONTINUITY_AFTER_NOMINAL_WINDOW": "NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED",
+      "note": "Bucket inventory only — no nominal-window edge metrics"
+    },
+    "GAP_LIST_HAS_DUPLICATES": false
+  },
+  "postNominalHf": {
+    "POST_10_MIN_HF_DETERMINISTIC_REQUESTS": 0,
+    "POST_10_MIN_NATIVE_HF_BUCKETS": 0,
+    "POST_10_MIN_RC_CAPTURE_CONTINUED": "YES",
+    "POST_10_MIN_RC_SOURCE": "RC_ACQUISITION_RUNNER_CYCLE",
+    "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+    "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO"
+  },
+  "movement": {
+    "CANONICAL_VALID_MOVEMENT_DURATION": null,
+    "VALID_MOVEMENT_DURATION_BEHAVIOR": "NOT_ASSESSED",
+    "T0_TO_TRIP_END_WALL_DURATION_MS": 1222000,
+    "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED"
+  },
+  "settlement": {
+    "NOMINAL_SETTLEMENT_WINDOWS": 19,
+    "SETTLEMENT_AGES": 6,
+    "SETTLEMENT_EXPECTED_ROWS": 114,
+    "SETTLEMENT_ACTUAL_ROWS": 114,
+    "SUCCESS": 114,
+    "SETTLEMENT_STRUCTURAL_COMPLETENESS": "PASS",
+    "VALUE_REVISIONS": "NOT_ASSESSED",
+    "GAP_RECONSTRUCTABILITY": "NOT_PROVEN",
+    "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO",
+    "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+    "lastSettlementAt": "2026-09-14T12:03:53.325Z",
+    "tripPhysicalEnd": "2026-09-14T12:04:15.000Z"
+  },
+  "scientificClassification": {
+    "VALID_T0_EVIDENCE": "YES",
+    "VALID_90_OPERATIONAL_EVIDENCE": "YES",
+    "VALID_90_SCIENTIFIC_EVIDENCE": "PARTIAL",
+    "VALID_90_VS_60_COMPARISON": "NO",
+    "VALID_FOR_PRODUCTION_CADENCE_SELECTION": "NO",
+    "1621_SLOT_FIX_PHYSICAL_ACCEPTANCE": "PASS",
+    "1621_SETTLEMENT_GEOMETRY_PHYSICAL_ACCEPTANCE": "PASS"
+  },
+  "recorderRepair": {
+    "RECORDER_FAILURE_CLASS": "OWNERSHIP_GAP",
+    "90_TO_60_BLOCKED_BY_TELEMETRY": "NO",
+    "RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN": "NO",
+    "CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH": "YES",
+    "CANONICAL_NEXT_RUN_PATH": "AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER",
+    "SUPPORTED_COMPLETE_LIFECYCLE_OWNER": "reference-capture-exp-021-autonomous-orchestrator.ts"
+  },
+  "slots": [
+    {
+      "slotIndex": 0,
+      "scheduledOffsetFromT0": 0,
+      "scheduledAt": "2026-09-14T11:43:53.000Z",
+      "issuedAt": "2026-09-14T11:46:32.519Z",
+      "issueLagMs": 159519,
+      "status": "FAILURE",
+      "failureRootCause": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 0
+    },
+    {
+      "slotIndex": 1,
+      "scheduledOffsetFromT0": 90000,
+      "scheduledAt": "2026-09-14T11:45:23.000Z",
+      "issuedAt": "2026-09-14T11:46:38.489Z",
+      "issueLagMs": 75489,
+      "status": "SUCCESS",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 5
+    },
+    {
+      "slotIndex": 2,
+      "scheduledOffsetFromT0": 180000,
+      "scheduledAt": "2026-09-14T11:46:53.000Z",
+      "issuedAt": "2026-09-14T11:46:56.384Z",
+      "issueLagMs": 3384,
+      "status": "FAILURE",
+      "failureRootCause": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 0
+    },
+    {
+      "slotIndex": 3,
+      "scheduledOffsetFromT0": 270000,
+      "scheduledAt": "2026-09-14T11:48:23.000Z",
+      "issuedAt": "2026-09-14T11:48:24.310Z",
+      "issueLagMs": 1310,
+      "status": "SUCCESS",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 5
+    },
+    {
+      "slotIndex": 4,
+      "scheduledOffsetFromT0": 360000,
+      "scheduledAt": "2026-09-14T11:49:53.000Z",
+      "issuedAt": "2026-09-14T11:49:57.205Z",
+      "issueLagMs": 4205,
+      "status": "SUCCESS",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 5
+    },
+    {
+      "slotIndex": 5,
+      "scheduledOffsetFromT0": 450000,
+      "scheduledAt": "2026-09-14T11:51:23.000Z",
+      "issuedAt": "2026-09-14T11:51:26.175Z",
+      "issueLagMs": 3175,
+      "status": "SUCCESS",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 5
+    },
+    {
+      "slotIndex": 6,
+      "scheduledOffsetFromT0": 540000,
+      "scheduledAt": "2026-09-14T11:52:23.000Z",
+      "issuedAt": "2026-09-14T11:52:53.753Z",
+      "issueLagMs": 30753,
+      "status": "SUCCESS",
+      "durabilityClass": "UNPROVEN",
+      "nativeBucketCount": 5
+    }
+  ]
+}
