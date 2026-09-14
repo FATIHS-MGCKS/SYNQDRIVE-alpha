@@ -16,6 +16,7 @@
 | VDC-EVID-RB019-P22-SHADOW-001 | RB-019 Phase 2 P2.2 shadow + authority state-machine infrastructure (compare-only) | CURRENT_CODE + TEST | P2_2_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md](./PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md) |
 | VDC-EVID-RB019-P23-WRITERS-001 | RB-019 Phase 2 P2.3 evidence writers + STATEFUL_SHADOW GT-R1 proof | CURRENT_CODE + TEST | P2_3_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md](./PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md) |
 | VDC-EVID-RB019-P24-PRESEED-001 | RB-019 Phase 2 P2.4 physical-state pre-seed tooling | CURRENT_CODE + TEST | P2_4_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P24_PRESEED_2026-09-14.md](./PHYSICAL_STATE_P24_PRESEED_2026-09-14.md) |
+| VDC-EVID-RB019-P25-ENTRY-GATE-001 | RB-019 Phase 2 P2.5 entry-gate / cutover-readiness audit (no implementation) | AUDIT_DOCUMENT | P2_5_ENTRY_GATE_AUDIT_COMPLETE | [../../../docs/audits/vdc-rb019-p25-entry-gate-readiness-2026-09-14.md](../../../docs/audits/vdc-rb019-p25-entry-gate-readiness-2026-09-14.md) |
 
 ## Code evidence (repository — bootstrap index)
 
