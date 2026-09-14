@@ -18,7 +18,11 @@ import {
   extractWebhookObdPhysicalEvidence,
 } from './device-connection-physical-state.obd-evidence';
 import { recordPhysicalStateReconcileDecision } from './device-connection-physical-state.observability';
-import { isAcceptedPhysicalTransition } from './device-connection-physical-state.policy';
+import {
+  evaluatePhysicalStateTransition,
+  isAcceptedPhysicalTransition,
+} from './device-connection-physical-state.policy';
+import type { CurrentPhysicalStateProjection } from './device-connection-physical-state.types';
 import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-authority.types';
 import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
 import { isProvenExpectedFix, type GtR1ExpectedFixProof } from './physical-state-gt-r1-proof';
@@ -65,40 +69,70 @@ export class PhysicalStateEvidenceWriterService {
     });
   }
 
+  async readAuthorityModeForRouting(scope: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+  }): Promise<DeviceConnectionPhysicalAuthorityMode> {
+    return this.authorityCutoverRepository.readAuthorityModeWithoutMutation(scope);
+  }
+
   async resolveRuntimePolicy(scope: {
     organizationId: string;
     vehicleId: string;
     provider: string;
   }): Promise<EffectivePhysicalStateRuntimePolicy> {
     const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
+    const authorityMode = await this.readAuthorityModeForRouting(scope);
+
     if (!flags.masterEnabled) {
+      if (authorityMode === DeviceConnectionPhysicalAuthorityMode.PHYSICAL) {
+        return resolveEffectivePhysicalStateRuntimePolicy({
+          authorityMode,
+          flags: {
+            masterEnabled: false,
+            projectionWriteEnabled: false,
+            shadowCompareEnabled: false,
+            authorityCutoverEnabled: false,
+            sideEffectsEnabled: false,
+          },
+        });
+      }
       return this.resolveRuntimePolicyWithoutDb();
     }
 
-    const authorityMode = await this.prisma.$transaction(async (tx) => {
+    const ensuredMode = await this.prisma.$transaction(async (tx) => {
       const row = await this.authorityCutoverRepository.ensureAuthorityRow(tx, scope);
       return row.authorityMode;
     });
     return resolveEffectivePhysicalStateRuntimePolicy({
-      authorityMode,
+      authorityMode: ensuredMode,
       flags,
     });
+  }
+
+  async shouldRoutePhysicalAuthority(scope: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+  }): Promise<boolean> {
+    const policy = await this.resolveRuntimePolicy(scope);
+    return policy.physicalGateAuthoritative;
   }
 
   async writeWebhookEvidence(
     input: WebhookEvidenceWriterInput,
   ): Promise<PhysicalEvidenceWriterResult> {
-    const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
-    if (!flags.masterEnabled) {
-      return this.disabledResult(input.legacyShadow);
-    }
-
     const scope = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       provider: input.provider,
     };
     const policy = await this.resolveRuntimePolicy(scope);
+
+    if (!policy.physicalGateAuthoritative && !policy.statefulShadow && !policy.masterEnabled) {
+      return this.disabledResult(input.legacyShadow);
+    }
 
     const extracted = extractWebhookObdPhysicalEvidence({
       provider: input.provider,
@@ -123,6 +157,9 @@ export class PhysicalStateEvidenceWriterService {
     }
 
     let coordinatorResult = null;
+    let readOnlyDecision: DeviceConnectionPhysicalTransitionDecision | null = null;
+    let readOnlyReason: string | undefined;
+
     if (policy.projectionWriteEnabled) {
       const eventType = input.pluggedIn
         ? DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN
@@ -168,12 +205,19 @@ export class PhysicalStateEvidenceWriterService {
         coordinatorResult.reconcile.decision,
         policy,
       );
+    } else if (policy.physicalGateAuthoritative) {
+      const evaluation = await this.evaluateWebhookEvidenceReadOnly(
+        input,
+        extracted,
+      );
+      readOnlyDecision = evaluation.decision;
+      readOnlyReason = evaluation.reason;
     }
 
     const rawPhysicalDecision =
       coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
         ? coordinatorResult.reconcile.decision
-        : null;
+        : readOnlyDecision;
     const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
@@ -188,7 +232,7 @@ export class PhysicalStateEvidenceWriterService {
       physicalReason:
         coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
           ? coordinatorResult.reconcile.reason
-          : undefined,
+          : readOnlyReason,
       physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,
@@ -211,17 +255,16 @@ export class PhysicalStateEvidenceWriterService {
   async writeSnapshotEvidence(
     input: SnapshotEvidenceWriterInput,
   ): Promise<PhysicalEvidenceWriterResult> {
-    const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
-    if (!flags.masterEnabled) {
-      return this.disabledResult(input.legacyShadow);
-    }
-
     const scope = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       provider: 'DIMO',
     };
     const policy = await this.resolveRuntimePolicy(scope);
+
+    if (!policy.physicalGateAuthoritative && !policy.statefulShadow && !policy.masterEnabled) {
+      return this.disabledResult(input.legacyShadow);
+    }
 
     const extracted = extractSnapshotObdPhysicalEvidenceFromSignals({
       organizationId: input.organizationId,
@@ -246,6 +289,9 @@ export class PhysicalStateEvidenceWriterService {
     }
 
     let coordinatorResult = null;
+    let readOnlyDecision: DeviceConnectionPhysicalTransitionDecision | null = null;
+    let readOnlyReason: string | undefined;
+
     if (policy.projectionWriteEnabled) {
       const projectionSelfHeal =
         input.projectionSelfHeal ?? extracted.candidateState === 'PLUGGED';
@@ -279,12 +325,16 @@ export class PhysicalStateEvidenceWriterService {
         coordinatorResult.reconcile.decision,
         policy,
       );
+    } else if (policy.physicalGateAuthoritative) {
+      const evaluation = await this.evaluateSnapshotEvidenceReadOnly(input, extracted);
+      readOnlyDecision = evaluation.decision;
+      readOnlyReason = evaluation.reason;
     }
 
     const rawPhysicalDecision =
       coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
         ? coordinatorResult.reconcile.decision
-        : null;
+        : readOnlyDecision;
     const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
@@ -299,7 +349,7 @@ export class PhysicalStateEvidenceWriterService {
       physicalReason:
         coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
           ? coordinatorResult.reconcile.reason
-          : undefined,
+          : readOnlyReason,
       physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,
@@ -316,6 +366,81 @@ export class PhysicalStateEvidenceWriterService {
       legacyShadow: input.legacyShadow,
       physicalAccepted,
       physicalDecision: rawPhysicalDecision,
+    };
+  }
+
+  private async evaluateWebhookEvidenceReadOnly(
+    input: WebhookEvidenceWriterInput,
+    extracted: {
+      binding: { bindingKey: string };
+      candidateState: 'PLUGGED' | 'UNPLUGGED';
+      evidenceObservedAt: Date;
+      evidenceReferenceId: string;
+    },
+  ) {
+    const projection = await this.loadProjection(
+      input.vehicleId,
+      input.provider,
+      extracted.binding.bindingKey,
+    );
+    return evaluatePhysicalStateTransition({
+      current: projection,
+      incoming: {
+        candidateState: extracted.candidateState,
+        evidenceObservedAt: extracted.evidenceObservedAt,
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: extracted.evidenceReferenceId,
+      },
+    });
+  }
+
+  private async evaluateSnapshotEvidenceReadOnly(
+    input: SnapshotEvidenceWriterInput,
+    extracted: {
+      binding: { bindingKey: string };
+      candidateState: 'PLUGGED' | 'UNPLUGGED';
+      evidenceObservedAt: Date;
+      evidenceReferenceId: string;
+    },
+  ) {
+    const projection = await this.loadProjection(
+      input.vehicleId,
+      'DIMO',
+      extracted.binding.bindingKey,
+    );
+    return evaluatePhysicalStateTransition({
+      current: projection,
+      incoming: {
+        candidateState: extracted.candidateState,
+        evidenceObservedAt: extracted.evidenceObservedAt,
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+        evidenceReferenceId: extracted.evidenceReferenceId,
+      },
+    });
+  }
+
+  private async loadProjection(
+    vehicleId: string,
+    provider: string,
+    bindingKey: string,
+  ): Promise<CurrentPhysicalStateProjection | null> {
+    const row = await this.prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId, provider, bindingKey },
+      select: {
+        effectiveState: true,
+        evidenceObservedAt: true,
+        evidenceSource: true,
+        evidenceReferenceId: true,
+        stateVersion: true,
+      },
+    });
+    if (!row) return null;
+    return {
+      effectiveState: row.effectiveState,
+      evidenceObservedAt: row.evidenceObservedAt,
+      evidenceSource: row.evidenceSource,
+      evidenceReferenceId: row.evidenceReferenceId,
+      stateVersion: row.stateVersion,
     };
   }
 

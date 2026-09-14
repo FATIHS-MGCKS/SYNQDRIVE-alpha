@@ -74,6 +74,12 @@ describe('connectivity recovery kill switch behavior', () => {
         }),
         update: jest.fn().mockResolvedValue({}),
       },
+      deviceConnectionPhysicalState: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
     };
     const episodeService = {
       openFromUnplugEvent: jest.fn(),

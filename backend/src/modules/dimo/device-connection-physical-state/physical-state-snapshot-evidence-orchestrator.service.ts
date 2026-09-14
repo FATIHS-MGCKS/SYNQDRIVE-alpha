@@ -43,7 +43,16 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
   async applyPhysicalSnapshotEvidence(
     input: SnapshotPhysicalEvidenceInput,
   ): Promise<PhysicalEvidenceWriterResult | null> {
-    if (!this.physicalEvidenceWriter.isWriterCapable()) return null;
+    const scope = {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: 'DIMO',
+    };
+    const routePhysical =
+      await this.physicalEvidenceWriter.shouldRoutePhysicalAuthority(scope);
+    if (!routePhysical && !this.physicalEvidenceWriter.isWriterCapable()) {
+      return null;
+    }
 
     const obd = extractObdPlugSignalFromSignals(input.signals);
     if (!obd) return null;

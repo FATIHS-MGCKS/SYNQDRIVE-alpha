@@ -83,6 +83,8 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       undefined, // episodeService
       resolutionOutboxProcessor as never,
       undefined, // snapshotWakeCoordinator
+      undefined, // snapshotPhysicalEvidenceOrchestrator
+      undefined, // physicalAuthorityCutover
     );
 
     const job = {

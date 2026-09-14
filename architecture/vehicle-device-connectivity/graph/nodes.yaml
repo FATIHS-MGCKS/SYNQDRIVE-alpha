@@ -567,8 +567,20 @@ nodes:
     title: RB-019 Phase 2 P2.4 physical-state pre-seed tooling
     source_type: CURRENT_CODE
     epistemic_status: INFERRED
-    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; transactional SKIP_NON_LEGACY_AUTHORITY guard; real metrics DI; PG P24-A..L (78/78); flags OFF; authority LEGACY; P2.5 not started.
+    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; transactional SKIP_NON_LEGACY_AUTHORITY guard; real metrics DI; PG P24-A..L (78/78); flags OFF; authority LEGACY.
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P24_PRESEED_2026-09-14.md
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.service.ts
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.planner.ts
+
+  - id: VDC-EVID-RB019-P25-CUTOVER-RUNTIME-001
+    type: evidence
+    title: RB-019 Phase 2 P2.5 authority cutover runtime foundation
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Authority latch service + eligibility gates + mixed-replica interlock; webhook/snapshot PHYSICAL routing; legacy OBD write exclusion; P25-A..R PG suite; flags OFF; cutover activation NOT_PROVEN.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-authority-cutover.service.ts
+      - backend/src/modules/dimo/device-connection-physical-state/device-connection-physical-authority-cutover.repository.ts
+      - backend/src/workers/processors/dimo-snapshot.processor.ts

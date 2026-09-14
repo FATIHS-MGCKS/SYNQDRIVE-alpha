@@ -1,5 +1,5 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { DimoDeviceConnectionEventType } from '@prisma/client';
+import { DeviceConnectionPhysicalAuthorityMode, DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import { ConnectivityLifecycleRuntimePolicyService } from './connectivity/connectivity-lifecycle-runtime-policy.service';
@@ -13,6 +13,7 @@ import { buildBindingScopeFromToken } from './device-connection-physical-state/d
 import { buildWebhookStaleLegacyGateGtR1Proof } from './device-connection-physical-state/physical-state-gt-r1-proof';
 import { buildLegacyWebhookShadowDecision } from './device-connection-physical-state/physical-state-legacy-shadow-decision';
 import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state/device-connection-physical-state.types';
+import { isLegacyObdPersistenceExcludedByAuthority } from './device-connection-physical-state/physical-state-authority-cutover.types';
 import { PhysicalStateEvidenceWriterService } from './device-connection-physical-state/physical-state-evidence-writer.service';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
@@ -152,9 +153,21 @@ export class DeviceConnectionWebhookService {
     );
     const evidenceReferenceId = `webhook:${input.vehicle.id}:${input.observedAt.toISOString()}:${input.pluggedIn ? 'plug' : 'unplug'}`;
 
+    const scope = {
+      organizationId: input.vehicle.organizationId,
+      vehicleId: input.vehicle.id,
+      provider: 'DIMO',
+    };
+
+    const routePhysicalAuthority =
+      this.physicalEvidenceWriter != null &&
+      (await this.physicalEvidenceWriter.shouldRoutePhysicalAuthority(scope));
+
+    const writerCapable = this.physicalEvidenceWriter?.isWriterCapable() === true;
+
     const writerResult =
-      this.physicalEvidenceWriter?.isWriterCapable() === true
-        ? await this.physicalEvidenceWriter.writeWebhookEvidence({
+      routePhysicalAuthority || writerCapable
+        ? await this.physicalEvidenceWriter!.writeWebhookEvidence({
             organizationId: input.vehicle.organizationId,
             vehicleId: input.vehicle.id,
             provider: 'DIMO',
@@ -169,6 +182,10 @@ export class DeviceConnectionWebhookService {
             gtR1Proof: legacyContext.gtR1Proof,
           })
         : null;
+
+    if (writerResult?.policy?.physicalGateAuthoritative) {
+      return this.resolvePhysicalWebhookOutcome(writerResult, eventType);
+    }
 
     if (writerResult?.policy?.statefulShadow) {
       if (!writerResult.physicalAccepted) {
@@ -221,6 +238,46 @@ export class DeviceConnectionWebhookService {
       ...input,
       eventType,
     });
+  }
+
+  private resolvePhysicalWebhookOutcome(
+    writerResult: NonNullable<Awaited<ReturnType<PhysicalStateEvidenceWriterService['writeWebhookEvidence']>>>,
+    eventType: DimoDeviceConnectionEventType,
+  ): DeviceConnectionDomainResult {
+    if (!writerResult.physicalAccepted) {
+      this.logger.debug(
+        `Physical authority rejected webhook: ${writerResult.physicalDecision}`,
+      );
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason:
+          writerResult.coordinatorResult &&
+          isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+            ? writerResult.coordinatorResult.reconcile.reason ?? 'physical_reject'
+            : 'physical_reject',
+      };
+    }
+
+    const canonicalEventId =
+      writerResult.coordinatorResult &&
+      isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+        ? writerResult.coordinatorResult.canonicalEventId
+        : null;
+
+    if (canonicalEventId) {
+      return {
+        outcome: 'created',
+        eventId: canonicalEventId,
+        eventType,
+      };
+    }
+
+    return {
+      outcome: 'ignored_by_policy',
+      eventType,
+      policyReason: 'physical_applied_without_event_history',
+    };
   }
 
   /**
@@ -422,6 +479,25 @@ export class DeviceConnectionWebhookService {
     },
   ): Promise<DeviceConnectionDomainResult> {
     const { vehicle, tokenId, observedAt, rawPayload, eventType, inboxId } = input;
+
+    const authorityMode = this.physicalEvidenceWriter
+      ? await this.physicalEvidenceWriter.readAuthorityModeForRouting({
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          provider: 'DIMO',
+        })
+      : DeviceConnectionPhysicalAuthorityMode.LEGACY;
+    if (isLegacyObdPersistenceExcludedByAuthority(authorityMode)) {
+      this.logger.error(
+        `Legacy OBD persistence blocked for vehicle ${vehicle.id}: persisted authority is PHYSICAL`,
+      );
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: 'legacy_write_excluded_under_physical_authority',
+      };
+    }
+
     const receivedAt = new Date();
     const dedupBucket = DeviceConnectionWebhookService.dedupBucket(observedAt);
 
