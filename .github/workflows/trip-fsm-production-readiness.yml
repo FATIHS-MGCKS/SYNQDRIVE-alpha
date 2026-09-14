@@ -177,6 +177,42 @@ jobs:
           TRIP_R11_POSTGRES_REDIS_INTEGRATION: '1'
           TRIP_R11_POSTGRES_REDIS_REQUIRED: '1'
 
+  backend-trip-fsm-shadow-postgres-redis:
+    name: Backend Trip FSM shadow postgres+redis integration
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:trip-fsm-shadow:postgres-redis:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TRIP_FSM_SHADOW_POSTGRES_REDIS_INTEGRATION: '1'
+          TRIP_FSM_SHADOW_POSTGRES_REDIS_REQUIRED: '1'
+
   ci-gate:
     name: CI gate (Trip FSM critical jobs)
     runs-on: ubuntu-latest
@@ -187,5 +223,6 @@ jobs:
       - backend-r12-hardening-unit
       - backend-trip-finalize-postgres
       - backend-trip-r11-postgres-redis
+      - backend-trip-fsm-shadow-postgres-redis
     steps:
-      - run: echo "Trip FSM CI gates passed (R10/R11/R12 hardening unit + postgres/redis integration)."
+      - run: echo "Trip FSM CI gates passed (R10/R11/R12 hardening unit + postgres/redis integration + shadow observability integration)."
