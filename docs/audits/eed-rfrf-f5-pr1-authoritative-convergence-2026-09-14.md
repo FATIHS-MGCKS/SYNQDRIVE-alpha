@@ -120,3 +120,42 @@ HISTORICAL_BACKFILL = NO
 - `raw-fuel-refuel-fallback-runtime.service.ts` (F5 wiring)
 - `raw-refuel-candidate-lifecycle.ts` + constants
 - Tests: evaluator unit + `raw-fuel-refuel-fallback-f5-pr1-convergence.postgres.integration.spec.ts`
+
+---
+
+## 8. F5-PR1.1 Micro-Closure (2026-09-14)
+
+**Epistemic note:** F5-PR1.1 closes pre-merge review gaps on top of F5-PR1. It does **not** start F5-PR2 or change production flags.
+
+### 8.1 Bounded authoritative sibling query (P1-A)
+
+- `MAX_AUTHORITATIVE_NATIVE_SIBLINGS = 32`
+- Sentinel query `take: 33` (`AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE`)
+- If loaded count > 32 → **fail closed** with detail `native_sibling_limit_exceeded`
+- Metric: `synqdrive_rfrf_convergence_native_sibling_overflow_total`
+- Non-authoritative `SYNQDRIVE_RAW_FUEL_FALLBACK` rows excluded from authoritative count (query filter unchanged)
+
+### 8.2 True automatic runtime E2E (P1-B)
+
+Real PG proof via **`detectEnergyEvents()` only** (no direct `RawRefuelConvergenceService` call):
+
+1. First scan persists candidate (convergence off)
+2. Seed native SAME (or SAME+INSUFFICIENT for fail-closed case)
+3. Second scan with convergence `true` → automatic F4→F5 → `CONVERGED_NATIVE` or fail-closed
+
+Removed prior misleading test that manually invoked convergence after detect.
+
+### 8.3 Strict F5 authority flag (P1-C)
+
+Dedicated `parseRfrfNativeFallbackConvergenceAuthorized()` — only canonical `true` (case/whitespace tolerant). Rejects `1`, `yes`, `on`, `enabled`, malformed values. General permissive RFRF parser unchanged for master/persist flags.
+
+### 8.4 Metrics single ownership (P1-C)
+
+- `RawRefuelConvergenceService` owns `recordConvergenceSkippedNotAuthorized()`
+- Runtime increments scan aggregate `convergenceSkippedNotAuthorized` only — no duplicate domain metric
+
+### 8.5 F5-PR1.1 evidence
+
+- **EED-EV-0054** — this micro-closure
+- Real PG gate: **19/19** tests (was 15/15 before P1-A/B additions)
+- `PRISMA_SCHEMA_CHANGED = NO`

@@ -698,6 +698,14 @@ edges:
     relation: REFERENCES
     to: EED-EV-0049
 
+  - from: EED-EV-0054
+    relation: REFERENCES
+    to: EED-EV-0053
+
+  - from: EED-EV-0054
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-009
+
   - from: EED-DEC-RFRF-008
     relation: REFERENCES
     to: EED-DEC-RFRF-005

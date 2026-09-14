@@ -120,6 +120,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr1-1-micro-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'RFRF F5-PR1.1 — Pre-merge micro-closure',
+    summary: [
+      'Bounded native sibling MAX+1 sentinel overflow fail-closed (native_sibling_limit_exceeded).',
+      'Strict true-only F5 convergence authority reader; SKIPPED_NOT_AUTHORIZED metric single owner.',
+      'True automatic detectEnergyEvents F4→F5 real PG E2E; 19/19 PG gate; no schema change.',
+    ],
+    reason:
+      'Independent review found silent truncation, non-automatic runtime proof, permissive authority parsing, and metric double-counting before merge.',
+    previousBehavior:
+      'take:32 without overflow detection; manual convergence call in runtime wiring test; permissive 1/yes/on authority; duplicate SKIPPED_NOT_AUTHORIZED metric.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §8; EED-EV-0054',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T10:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14',
     version: '4.9.1126',
     title: 'RFRF F5-PR1 — Authoritative pre-promotion convergence',

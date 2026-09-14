@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR1.1 micro-closure
+
+- EED-EV-0054: bounded native sibling overflow fail-closed; strict F5 authority reader; metrics single ownership; true automatic runtime PG E2E
+- Real PG gate 19/19; no schema change; F5-PR2 not started
+
+**Verdict:** RFRF_F5_PR1_1_MICRO_CLOSURE=PASS
+
+---
+
 ## 2026-09-14 — RFRF F5-PR1 authoritative convergence
 
 - EED-EV-0053: CONVERGED_NATIVE lifecycle; G2 authoritative pre-promotion wrapper; fail-closed config reader

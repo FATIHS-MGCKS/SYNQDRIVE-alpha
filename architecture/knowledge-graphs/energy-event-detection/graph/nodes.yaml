@@ -1603,6 +1603,22 @@ nodes:
       PROMOTED/G2/BullMQ unreachable; F5-PR2 not started.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0054
+    type: evidence
+    title: RFRF F5-PR1.1 — Pre-merge micro-closure
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-convergence.evaluator.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence-metrics.spec.ts
+    summary: >
+      F5-PR1.1: MAX+1 sentinel native sibling overflow fail-closed (native_sibling_limit_exceeded);
+      strict true-only parseRfrfNativeFallbackConvergenceAuthorized; SKIPPED_NOT_AUTHORIZED metric single
+      owner; automatic detectEnergyEvents F4→F5 real PG E2E; 19/19 PG gate; no schema change.
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-010
     type: decision
     title: RFRF F5.0 — Late-native sibling policy
