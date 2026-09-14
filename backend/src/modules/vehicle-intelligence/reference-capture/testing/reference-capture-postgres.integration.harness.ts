@@ -290,6 +290,7 @@ export async function requestAndActivatePhase(
   intervalMs: number,
   nowMs: number,
   hfPolicy: HfRecoveryPolicyV2Config,
+  phaseProvenance: 'PRE_ROLL' | 'PHYSICAL_T0' | 'PHYSICAL_TRANSITION' = 'PHYSICAL_TRANSITION',
 ): Promise<ReferenceCaptureSession> {
   const atomic = await repo.requestHfCalibrationPhaseAtomic({
     organizationId: seed.organizationId,
@@ -298,6 +299,7 @@ export async function requestAndActivatePhase(
     tokenId: seed.tokenId,
     effectivePollIntervalMs: intervalMs,
     nowMs,
+    phaseProvenance,
   });
   if (!atomic) throw new Error('Phase request returned null');
 

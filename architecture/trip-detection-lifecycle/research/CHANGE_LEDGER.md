@@ -58,6 +58,9 @@ Append-only record for this authority directory.
 | 2026-09-13 | WOB L 7503 POST-#1627 forensic audit — two physical drives; `POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE` proven; draft PR #1634 (read-only) | Read-only Production audit | [WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md](../evidence/WOB_L_7503_POST_1627_PHYSICAL_ACCEPTANCE_2026-09-13.md) |
 | 2026-09-13 | R12 provider-silence empty-core liveness — `assessProviderSilenceEmptyCoreAdmission`; bounded by `TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS`; references forensic #1634 | Fix branch (draft) | [R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md](../evidence/R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md) |
 | 2026-09-13 | R12 provider-silence × #1627 retry continuity — preserve CUSUM budget via low-trust `provider_silence_candidate` episode fields without promoting trust | Fix branch PR #1635 | Same evidence doc |
+| 2026-09-14 | Shadow end + pause observability layer — non-authoritative counterfactual #1635 + pause/resume classification; default disabled; read-only audit command | Draft PR shadow observability | [SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md](../evidence/SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md) |
+| 2026-09-14 | Shadow closure review — fail-closed allowlist, generation isolation, audit timestamp authority, cross-trip correlation, authority non-consumption proofs | PR #1648 closure | Same evidence doc |
+| 2026-09-14 | Shadow orchestration regression fix — module-level fail-open wrapper preserves R10/R5/R7 harness `.call()` compatibility | PR #1648 CI differential | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

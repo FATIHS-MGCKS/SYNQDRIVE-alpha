@@ -94,6 +94,16 @@ export default registerAs('worker', () => ({
     10,
   ),
 
+  // ── Trip FSM shadow observability (non-authoritative counterfactual / pause audit) ──
+  tripFsmShadowObservabilityEnabled: parseBoolEnv(
+    process.env.TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED,
+    false,
+  ),
+  tripFsmShadowVehicleIds: (process.env.TRIP_FSM_SHADOW_VEHICLE_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean),
+
   // ── Repair suppression: containment-aware coverage rollout ──
   // legacy  — binary overlap decides, exactly as before.
   // shadow  — binary overlap still decides; the coverage verdict is computed
