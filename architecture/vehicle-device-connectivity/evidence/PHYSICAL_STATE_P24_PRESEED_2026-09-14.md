@@ -5,7 +5,7 @@
 | **Date** | 2026-09-14 |
 | **Authority** | Vehicle & Device Connectivity (`AUDIT_IN_PROGRESS`) |
 | **Baseline main** | `84ef68944c403c0b042cd9cec0076296fe085bd0` (post-#1640; includes EED F5-PR1 #1643) |
-| **Epistemic** | **P2_4_IMPLEMENTATION_PRESENT** — pre-cutover; flags default OFF |
+| **Epistemic** | **P2_4_MICRO_CLOSURE_COMPLETE** — pre-cutover; flags default OFF |
 | **Production** | **NOT_DEPLOYED / NOT_ENABLED** |
 
 ## Explicit non-claims
@@ -36,7 +36,20 @@ P2.5 requires pre-seeded projections for active bindings. P2.4 provides determin
 | Metrics | `physical-state-preseed.metrics.ts` |
 | PG proof | `physical-state-preseed.postgres.integration.spec.ts` |
 
-Apply path uses `PhysicalStateReconcileCoordinator.reconcileInOuterTransaction()` with `sideEffectsEnabled: false` and **no** `webhookEventUpsert`.
+Apply path uses `PhysicalStateReconcileCoordinator.reconcileInOuterTransaction()` with `sideEffectsEnabled: false`, `requireLegacyAuthorityForPreseed: true`, and **no** `webhookEventUpsert`.
+
+### Pre-cutover authority guard (P2.4 micro-closure)
+
+Before reconcile mutates projection state, coordinator acquires:
+
+1. `pg_advisory_xact_lock` on vehicle/provider authority scope (`buildPhysicalStateAuthorityLockKey`)
+2. `SELECT authority_mode … FOR UPDATE` on existing authority row (missing row = LEGACY)
+
+If authority mode ≠ LEGACY → `SKIP_NON_LEGACY_AUTHORITY` with **zero** projection/transition/episode/alert/outbox/event-history/authority writes. P2.4 never calls `ensureAuthorityRow` on apply.
+
+### Metrics DI (P2.4 micro-closure)
+
+`PhysicalStatePreseedService` requires runtime-injected `TripMetricsService` (no `import type` + `@Optional`). Unit proof: `physical-state-preseed.service.spec.ts` asserts `connectivityPhysicalStatePreseedTotal.inc({ result, provider, dry_run })`.
 
 ## EVIDENCE SOURCES (admissible)
 
@@ -94,7 +107,7 @@ Successful establishment asserts:
 
 ## PG RESULTS
 
-Cases P24-A through P24-K in `physical-state-preseed.postgres.integration.spec.ts`:
+Cases P24-A through P24-L in `physical-state-preseed.postgres.integration.spec.ts`:
 
 | Case | Intent |
 |------|--------|
@@ -109,8 +122,9 @@ Cases P24-A through P24-K in `physical-state-preseed.postgres.integration.spec.t
 | P24-I | Unknown binding / insufficient |
 | P24-J | Master off; authority LEGACY |
 | P24-K | Concurrent duplicate seed |
+| P24-L | Authority already PHYSICAL → SKIP_NON_LEGACY_AUTHORITY / zero writes |
 
-Full physical-state PG suite must remain green (prior 66 + 11 P2.4 = 77 expected).
+Full physical-state PG suite must remain green (prior 66 + 12 P2.4 = 78 expected).
 
 ## CI RUN IDs
 

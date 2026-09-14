@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
@@ -40,6 +41,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       prismaService,
       new DeviceConnectionPhysicalStateRepository(prismaService),
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
     );
   });
 

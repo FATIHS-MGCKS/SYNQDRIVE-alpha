@@ -28,6 +28,7 @@ export interface PhysicalStatePreseedCandidate {
 
 export type PhysicalStatePreseedDecision =
   | 'SKIP_EXISTING_PROJECTION'
+  | 'SKIP_NON_LEGACY_AUTHORITY'
   | 'INSUFFICIENT_EVIDENCE'
   | 'AMBIGUOUS_EQUAL_TIME_CONFLICT'
   | 'WOULD_ESTABLISH'

@@ -567,7 +567,7 @@ nodes:
     title: RB-019 Phase 2 P2.4 physical-state pre-seed tooling
     source_type: CURRENT_CODE
     epistemic_status: INFERRED
-    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; zero lifecycle side effects; PG P24-A..K; flags OFF; authority LEGACY; P2.5 not started.
+    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; transactional SKIP_NON_LEGACY_AUTHORITY guard; real metrics DI; PG P24-A..L (78/78); flags OFF; authority LEGACY; P2.5 not started.
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P24_PRESEED_2026-09-14.md
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.service.ts

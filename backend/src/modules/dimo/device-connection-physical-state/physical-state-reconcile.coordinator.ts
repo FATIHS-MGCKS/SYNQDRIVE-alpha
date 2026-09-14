@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  DeviceConnectionPhysicalAuthorityMode,
   DeviceConnectionPhysicalEvidenceSource,
   DeviceConnectionPhysicalTransitionDecision,
   DimoDeviceConnectionEventType,
@@ -7,6 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeConnectivityProvider } from './device-connection-physical-state.binding';
+import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
 import type {
@@ -58,6 +60,7 @@ export class PhysicalStateReconcileCoordinator {
     private readonly prisma: PrismaService,
     private readonly physicalStateRepository: DeviceConnectionPhysicalStateRepository,
     private readonly actionOutboxRepository: DeviceConnectionPhysicalStateActionOutboxRepository,
+    private readonly authorityCutoverRepository: DeviceConnectionPhysicalAuthorityCutoverRepository,
   ) {}
 
   async reconcileInOuterTransaction(
@@ -65,6 +68,7 @@ export class PhysicalStateReconcileCoordinator {
     options?: {
       testSeam?: PhysicalStateCoordinatorTestSeam;
       sideEffectsEnabled?: boolean;
+      requireLegacyAuthorityForPreseed?: boolean;
     },
   ): Promise<PhysicalStateCoordinatorResult> {
     for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
@@ -73,6 +77,7 @@ export class PhysicalStateReconcileCoordinator {
           this.reconcileInOuterTransactionTx(tx, input, {
             testSeam: options?.testSeam,
             sideEffectsEnabled: options?.sideEffectsEnabled ?? false,
+            requireLegacyAuthorityForPreseed: options?.requireLegacyAuthorityForPreseed ?? false,
           }),
         );
       } catch (error) {
@@ -94,9 +99,27 @@ export class PhysicalStateReconcileCoordinator {
     options: {
       testSeam?: PhysicalStateCoordinatorTestSeam;
       sideEffectsEnabled: boolean;
+      requireLegacyAuthorityForPreseed: boolean;
     },
   ): Promise<PhysicalStateCoordinatorResult> {
-    const { testSeam, sideEffectsEnabled } = options;
+    const { testSeam, sideEffectsEnabled, requireLegacyAuthorityForPreseed } = options;
+
+    if (requireLegacyAuthorityForPreseed) {
+      const provider = normalizeConnectivityProvider(input.reconcile.binding.provider);
+      const authorityMode = await this.authorityCutoverRepository.lockAuthorityScopeAndReadMode(
+        tx,
+        {
+          organizationId: input.reconcile.organizationId,
+          vehicleId: input.reconcile.vehicleId,
+          provider,
+        },
+      );
+
+      if (authorityMode !== DeviceConnectionPhysicalAuthorityMode.LEGACY) {
+        return this.buildPreCutoverAuthorityBlockedResult(authorityMode, input);
+      }
+    }
+
     const reconcile = await this.physicalStateRepository.reconcileInTransaction(
       tx,
       input.reconcile,
@@ -152,6 +175,46 @@ export class PhysicalStateReconcileCoordinator {
     };
   }
 
+  private buildPreCutoverAuthorityBlockedResult(
+    authorityMode: DeviceConnectionPhysicalAuthorityMode,
+    input?: PhysicalStateCoordinatorInput,
+  ): PhysicalStateCoordinatorResult {
+    const context = input
+      ? buildBlockedReconcileContext(input)
+      : {
+          previousState: null,
+          candidateState: 'UNPLUGGED' as const,
+          resultingState: null,
+          previousEvidenceAt: null,
+          candidateEvidenceAt: new Date(0),
+          incomingEvidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+          stateVersionBefore: null,
+          stateVersionAfter: null,
+          selfHeal: false,
+          evidenceReferenceId: 'blocked',
+        };
+
+    return {
+      reconcile: {
+        enabled: true,
+        decision: DeviceConnectionPhysicalTransitionDecision.DUPLICATE,
+        projection: null,
+        transitionId: null,
+        episodeAction: 'none',
+        alertAction: 'none',
+        context,
+        reason: 'SKIP_NON_LEGACY_AUTHORITY',
+      },
+      canonicalEventId: null,
+      outboxId: null,
+      outboxDuplicate: false,
+      preCutoverAuthorityBlocked: {
+        reason: 'SKIP_NON_LEGACY_AUTHORITY',
+        authorityMode,
+      },
+    };
+  }
+
   private async upsertWebhookEventHistory(
     tx: Prisma.TransactionClient,
     input: PhysicalStateCoordinatorInput['webhookEventUpsert'] & object,
@@ -191,4 +254,21 @@ export class PhysicalStateReconcileCoordinator {
 
 function dedupBucketFromObservedAt(observedAt: Date): bigint {
   return dedupBucket(observedAt);
+}
+
+function buildBlockedReconcileContext(
+  input: PhysicalStateCoordinatorInput,
+): PhysicalStateReconcileResult['context'] {
+  return {
+    previousState: null,
+    candidateState: input.reconcile.evidence.candidateState,
+    resultingState: null,
+    previousEvidenceAt: null,
+    candidateEvidenceAt: input.reconcile.evidence.evidenceObservedAt,
+    incomingEvidenceSource: input.reconcile.evidence.evidenceSource,
+    stateVersionBefore: null,
+    stateVersionAfter: null,
+    selfHeal: input.reconcile.selfHeal === true,
+    evidenceReferenceId: input.reconcile.evidence.evidenceReferenceId,
+  };
 }

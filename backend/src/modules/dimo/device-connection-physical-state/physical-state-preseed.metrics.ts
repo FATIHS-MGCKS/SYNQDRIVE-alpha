@@ -1,4 +1,4 @@
-import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 
 export type PreseedMetricDimensions = {
   result: string;

@@ -69,15 +69,17 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
     writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
-      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
+      authorityRepository,
     );
   });
 

@@ -10,6 +10,7 @@ import { buildBindingScopeFromToken } from './device-connection-physical-state.b
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { PhysicalStatePreseedService } from './physical-state-preseed.service';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import type { PhysicalStatePreseedScope } from './physical-state-preseed.types';
@@ -113,12 +114,17 @@ describePg('PhysicalStatePreseedService (postgres)', () => {
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     const repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
-    preseed = new PhysicalStatePreseedService(prismaService, coordinator);
+    const metrics = {
+      connectivityPhysicalStatePreseedTotal: { inc: jest.fn() },
+    } as unknown as TripMetricsService;
+    preseed = new PhysicalStatePreseedService(prismaService, coordinator, metrics);
     writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
@@ -351,6 +357,56 @@ describePg('PhysicalStatePreseedService (postgres)', () => {
     expect(result.decision).toBe('ESTABLISHED');
     expect(await preseed.readAuthorityMode(scope())).toBe(
       DeviceConnectionPhysicalAuthorityMode.LEGACY,
+    );
+  });
+
+  it('P24-L — authority already PHYSICAL => fail closed / zero writes', async () => {
+    await prisma.deviceConnectionPhysicalAuthorityCutover.create({
+      data: {
+        organizationId: fixture.org.id,
+        vehicleId: fixture.vehicle.id,
+        provider: 'DIMO',
+        authorityMode: DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
+      },
+    });
+
+    await createWebhookEvent({
+      tokenId: fixture.tokenId,
+      eventType: 'OBD_DEVICE_UNPLUGGED',
+      observedAt: T2,
+    });
+
+    const before = await countSideEffectArtifacts();
+    const transitionsBefore = await prisma.deviceConnectionPhysicalStateTransition.count({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+
+    const result = await preseed.applyPhysicalStatePreseed(scope());
+
+    expect(result.decision).toBe('SKIP_NON_LEGACY_AUTHORITY');
+    expect(result.reason).toBe('authority_not_legacy');
+    expect(result.reconcileDecision).toBeNull();
+    expect(result.wouldWrite.projection).toBe(false);
+    expect(result.wouldWrite.transition).toBe(false);
+
+    expect(
+      await prisma.deviceConnectionPhysicalState.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.deviceConnectionPhysicalStateTransition.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+    ).toBe(transitionsBefore);
+
+    const after = await countSideEffectArtifacts();
+    expect(after.authority).toBe(before.authority + 1);
+    expect(after.episodes).toBe(before.episodes);
+    expect(after.outbox).toBe(before.outbox);
+    expect(after.events).toBe(before.events);
+    expect(await preseed.readAuthorityMode(scope())).toBe(
+      DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
     );
   });
 

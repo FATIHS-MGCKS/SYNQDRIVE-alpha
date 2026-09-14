@@ -66,6 +66,23 @@ export function buildPhysicalStateBindingLockKey(input: {
 }
 
 /**
+ * Advisory-lock key scoped to one vehicle/provider authority cutover row.
+ * Serializes P2.4 pre-seed apply with future P2.5 authority cutover on the same scope.
+ */
+export function buildPhysicalStateAuthorityLockKey(input: {
+  organizationId: string;
+  vehicleId: string;
+  provider: string;
+}): string {
+  return [
+    'physical_authority',
+    input.organizationId,
+    input.vehicleId,
+    normalizeConnectivityProvider(input.provider),
+  ].join('|');
+}
+
+/**
  * Canonical physical-state action outbox idempotency key (VDC-DEC-013 §12).
  */
 export function buildPhysicalStateActionOutboxIdempotencyKey(input: {

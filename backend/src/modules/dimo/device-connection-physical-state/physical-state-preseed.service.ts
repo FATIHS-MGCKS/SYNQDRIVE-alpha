@@ -1,10 +1,10 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   DeviceConnectionPhysicalAuthorityMode,
   DeviceConnectionPhysicalTransitionDecision,
 } from '@prisma/client';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { buildBindingScopeFromToken, normalizeConnectivityProvider } from './device-connection-physical-state.binding';
 import type { CurrentPhysicalStateProjection } from './device-connection-physical-state.types';
 import { discoverPhysicalStatePreseedCandidates } from './physical-state-preseed-evidence.discovery';
@@ -27,7 +27,7 @@ export class PhysicalStatePreseedService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly coordinator: PhysicalStateReconcileCoordinator,
-    @Optional() private readonly metrics?: TripMetricsService,
+    private readonly metrics: TripMetricsService,
   ) {}
 
   async planPhysicalStatePreseed(scope: PhysicalStatePreseedScope): Promise<PhysicalStatePreseedPlan> {
@@ -107,8 +107,34 @@ export class PhysicalStatePreseedService {
         },
         webhookEventUpsert: null,
       },
-      { sideEffectsEnabled: false },
+      { sideEffectsEnabled: false, requireLegacyAuthorityForPreseed: true },
     );
+
+    if (coordinatorResult.preCutoverAuthorityBlocked) {
+      const blockedResult = this.toExecutionResult(plan, {
+        dryRun: false,
+        reconcileDecision: null,
+        episodeAction: null,
+        alertAction: null,
+        projectionStateVersion: plan.existingProjection?.stateVersion ?? null,
+      });
+      const result: PhysicalStatePreseedExecutionResult = {
+        ...blockedResult,
+        decision: 'SKIP_NON_LEGACY_AUTHORITY',
+        reason: 'authority_not_legacy',
+        wouldWrite: {
+          projection: false,
+          transition: false,
+          outbox: false,
+          episode: false,
+          alert: false,
+          authorityMode: false,
+          eventHistory: false,
+        },
+      };
+      this.recordMetrics(result);
+      return result;
+    }
 
     const reconcile = coordinatorResult.reconcile;
     const projectionExists = Boolean(reconcile.projection);
@@ -217,7 +243,6 @@ export class PhysicalStatePreseedService {
   }
 
   private recordMetrics(result: PhysicalStatePreseedExecutionResult): void {
-    if (!this.metrics) return;
     recordPhysicalStatePreseedResult(this.metrics, {
       result: result.decision,
       provider: normalizeConnectivityProvider(result.scope.provider),

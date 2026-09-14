@@ -37,14 +37,14 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'vdc-rb019-p24-preseed-tooling-2026-09-14',
-    version: '4.9.1129',
+    version: '4.9.1130',
     title: 'VDC RB-019 Phase 2 P2.4 — physical-state pre-seed tooling (dark)',
     summary: [
       'PhysicalStatePreseedService: discover persisted webhook + VLS OBD evidence per binding scope.',
       'Semantic winner = greatest evidenceObservedAt only; source type never overrides time.',
       'Dry-run reports WOULD_ESTABLISH with zero episode/alert/outbox/authority side effects.',
-      'Apply path uses coordinator reconcile → ESTABLISHED only; idempotent + concurrent-safe PG proof (P24-A..K).',
-      'Flags OFF; authority LEGACY; P2.5 cutover not started.',
+      'Apply path uses coordinator reconcile → ESTABLISHED only; transactional SKIP_NON_LEGACY_AUTHORITY pre-cutover guard.',
+      'Real TripMetricsService DI; PG proof P24-A..L (78/78 physical-state suite); flags OFF; authority LEGACY; P2.5 not started.',
     ],
     reason:
       'P2.4 prepares missing physical projections before P2.5 authority cutover without enabling live writers or lifecycle side effects.',

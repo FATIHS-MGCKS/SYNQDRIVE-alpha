@@ -67,15 +67,17 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
     const writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
-      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
+      authorityRepository,
     );
     orchestrator = new PhysicalStateSnapshotEvidenceOrchestrator(prismaService, writer);
     webhookService = new DeviceConnectionWebhookService(

@@ -1,4 +1,5 @@
 import {
+  DeviceConnectionPhysicalAuthorityMode,
   DeviceConnectionPhysicalEffectiveState,
   DeviceConnectionPhysicalEvidenceSource,
   DeviceConnectionPhysicalTransitionDecision,
@@ -105,11 +106,17 @@ export interface PhysicalStateCoordinatorInput {
   webhookEventUpsert?: PhysicalStateWebhookEventUpsertInput | null;
 }
 
+export type PhysicalStatePreCutoverAuthorityBlockReason = 'SKIP_NON_LEGACY_AUTHORITY';
+
 export interface PhysicalStateCoordinatorResult {
   reconcile: PhysicalStateReconcileResult;
   canonicalEventId: string | null;
   outboxId: string | null;
   outboxDuplicate: boolean;
+  preCutoverAuthorityBlocked?: {
+    reason: PhysicalStatePreCutoverAuthorityBlockReason;
+    authorityMode: DeviceConnectionPhysicalAuthorityMode;
+  };
 }
 
 export type PhysicalStateCoordinatorTestSeam = {
