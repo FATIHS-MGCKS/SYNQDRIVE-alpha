@@ -264,4 +264,24 @@ export class RawRefuelCandidateRepository {
       data: { lastObservedAt },
     });
   }
+
+  /**
+   * Promotion TRANSACTION A row lock — must follow rfrf_promote advisory lock acquisition.
+   * Lock order: pg_advisory_xact_lock64(rfrf_promote:{vehicleId}) → candidate FOR UPDATE.
+   */
+  async findByIdForUpdate(
+    tx: TxClient,
+    candidateId: string,
+  ): Promise<RawRefuelCandidate | null> {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM raw_refuel_candidates
+      WHERE id = ${candidateId}
+      FOR UPDATE
+    `;
+    if (!locked.length) {
+      return null;
+    }
+    return tx.rawRefuelCandidate.findUnique({ where: { id: candidateId } });
+  }
 }

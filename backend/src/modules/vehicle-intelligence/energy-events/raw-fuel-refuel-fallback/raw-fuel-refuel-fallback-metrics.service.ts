@@ -45,6 +45,16 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly convergenceInsufficientTotal: Counter<string>;
   readonly convergenceAmbiguousTotal: Counter<string>;
   readonly convergenceNativeSiblingOverflowTotal: Counter<string>;
+  readonly promotionAttemptedTotal: Counter<string>;
+  readonly promotionSkippedNotAuthorizedTotal: Counter<string>;
+  readonly promotionBlockedByCutoverTotal: Counter<string>;
+  readonly promotionBlockedByConvergenceTotal: Counter<string>;
+  readonly promotionBlockedByTrustTotal: Counter<string>;
+  readonly promotionCommittedTotal: Counter<string>;
+  readonly promotionIdempotentReplayTotal: Counter<string>;
+  readonly promotionTransactionFailureTotal: Counter<string>;
+  readonly promotionSourceIdentityCollisionTotal: Counter<string>;
+  readonly promotionSyntheticIdCollisionTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -299,6 +309,66 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F5-PR1 authoritative native sibling bounded query overflow (fail closed)',
       registers: [register],
     });
+
+    this.promotionAttemptedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_attempted_total',
+      help: 'F5-PR2 fallback promotion transaction attempts',
+      registers: [register],
+    });
+
+    this.promotionSkippedNotAuthorizedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_skipped_not_authorized_total',
+      help: 'Promotion skipped because execution authority is false',
+      registers: [register],
+    });
+
+    this.promotionBlockedByCutoverTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_blocked_cutover_total',
+      help: 'Promotion blocked by RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT boundary',
+      registers: [register],
+    });
+
+    this.promotionBlockedByConvergenceTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_blocked_convergence_total',
+      help: 'Promotion blocked by authoritative convergence fail-closed',
+      registers: [register],
+    });
+
+    this.promotionBlockedByTrustTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_blocked_trust_total',
+      help: 'Promotion blocked because promotion trust is not TRUSTED',
+      registers: [register],
+    });
+
+    this.promotionCommittedTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_committed_total',
+      help: 'Successful atomic fallback VEE + PROMOTED commits',
+      registers: [register],
+    });
+
+    this.promotionIdempotentReplayTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_idempotent_replay_total',
+      help: 'Promotion replays resolved to existing PROMOTED state or VEE',
+      registers: [register],
+    });
+
+    this.promotionTransactionFailureTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_transaction_failure_total',
+      help: 'Promotion transaction failures (rolled back)',
+      registers: [register],
+    });
+
+    this.promotionSourceIdentityCollisionTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_source_identity_collision_total',
+      help: 'Promotion fail-closed on sourceEventKey identity collision',
+      registers: [register],
+    });
+
+    this.promotionSyntheticIdCollisionTotal = new Counter({
+      name: 'synqdrive_rfrf_promotion_synthetic_id_collision_total',
+      help: 'Promotion fail-closed on synthetic dimoSegmentId collision',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -463,5 +533,45 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordConvergenceNativeSiblingOverflow(): void {
     this.convergenceNativeSiblingOverflowTotal.inc();
+  }
+
+  recordPromotionAttempted(): void {
+    this.promotionAttemptedTotal.inc();
+  }
+
+  recordPromotionSkippedNotAuthorized(): void {
+    this.promotionSkippedNotAuthorizedTotal.inc();
+  }
+
+  recordPromotionBlockedByCutover(): void {
+    this.promotionBlockedByCutoverTotal.inc();
+  }
+
+  recordPromotionBlockedByConvergence(): void {
+    this.promotionBlockedByConvergenceTotal.inc();
+  }
+
+  recordPromotionBlockedByTrust(): void {
+    this.promotionBlockedByTrustTotal.inc();
+  }
+
+  recordPromotionCommitted(): void {
+    this.promotionCommittedTotal.inc();
+  }
+
+  recordPromotionIdempotentReplay(): void {
+    this.promotionIdempotentReplayTotal.inc();
+  }
+
+  recordPromotionTransactionFailure(): void {
+    this.promotionTransactionFailureTotal.inc();
+  }
+
+  recordPromotionSourceIdentityCollision(): void {
+    this.promotionSourceIdentityCollisionTotal.inc();
+  }
+
+  recordPromotionSyntheticIdCollision(): void {
+    this.promotionSyntheticIdCollisionTotal.inc();
   }
 }

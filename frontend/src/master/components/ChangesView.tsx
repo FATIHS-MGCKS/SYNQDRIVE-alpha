@@ -204,6 +204,44 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr2-1-micro-closure-2026-09-14',
+    version: '4.9.1131',
+    title: 'RFRF F5-PR2.1 — Pre-merge micro-closure',
+    summary: [
+      'Promotion requires BOTH convergence and promotion execution authorities at RawRefuelPromotionService.',
+      'TRANSACTION A uses real SELECT FOR UPDATE on candidate row; promotionAttempted metric single owner.',
+      'Real PG P24–P29: authority conjunction, row-lock concurrency, thrown promotion isolation; 29/29 gate.',
+    ],
+    reason:
+      'Close independent pre-merge gaps A–E on PR #1647 without F5 redesign or F5-PR3 start.',
+    previousBehavior:
+      'Promotion execution flag alone could reach service paths; findUnique without row lock; double promotionAttempted metric; cutover-only failure isolation evidence.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr2-atomic-promotion-2026-09-14.md §9; EED-EV-0057; STARTING_HEAD d8ce3eda',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T18:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr2-atomic-promotion-2026-09-14',
+    version: '4.9.1130',
+    title: 'RFRF F5-PR2 — Atomic fallback promotion transaction',
+    summary: [
+      'TRANSACTION A: atomic fallback VehicleEnergyEvent + PROMOTED under pg_advisory_xact_lock64.',
+      'RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED separate from convergence/persist/master; cutover on physical evidence end.',
+      'Real PG gate 23/23 P1–P21 + KS MS 661 synthetic lifecycle; detectEnergyEvents runtime E2E; zero G2/BullMQ.',
+    ],
+    reason:
+      'First executable F5 promotion primitive: one eligible raw refuel → one fallback VEE → same candidate PROMOTED atomically.',
+    previousBehavior:
+      'F5-PR1 convergence only; canCreateFallbackVehicleEnergyEvent hard-coded false; PROMOTED unreachable.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr2-atomic-promotion-2026-09-14.md; EED-EV-0056; BASE_MAIN 84ef68944',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T16:50:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-pr1-2-main-sync-2026-09-14',
     version: '4.9.1129',
     title: 'RFRF F5-PR1.2 — Final main sync / #1642 DI survival',
