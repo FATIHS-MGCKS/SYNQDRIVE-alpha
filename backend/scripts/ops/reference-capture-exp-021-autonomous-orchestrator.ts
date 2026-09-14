@@ -29,28 +29,24 @@ import {
   loadBackendEnvFile,
   releaseOrchestratorLock,
   resolveFatalSessionCleanupMode,
-  resolvePhaseAdvancementForIndex,
   type Exp021RuntimeConfig,
   type OrchestratorLockHandle,
 } from './reference-capture-exp-021-autonomous-orchestrator.lib';
 import {
   classifyMotionState,
   EXP021_DEFAULT_PHYSICAL_END,
-  EXP021_DEFAULT_PHYSICAL_START,
   EXP021_DEFAULT_TELEMETRY_FRESHNESS,
   EXP021_PHYSICAL_DRIVE_INTERVAL_CHANNEL,
   parseSpeedSampleFromSignalsLatest,
   EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT,
-  PhysicalDrivePhaseTracker,
-  PhysicalEndDetector,
-  PhysicalStartDetector,
   PreDeployMovementGate,
 } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-motion.lib';
-import { resolvePhysicalEndSealMs } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-physical-authority.lib';
+import { classifyOrchestratorFailure } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-physical-authority.lib';
 import {
-  classifyOrchestratorFailure,
-  parseExp021PhysicalAuthority,
-} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-physical-authority.lib';
+  createDefaultWaitPhaseEffective,
+  Exp021AutonomousLifecycleDriver,
+  waitExp021RecordingCycles,
+} from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-autonomous-lifecycle.driver';
 
 type Phase =
   | 'WAIT_DEPLOY'
@@ -178,124 +174,6 @@ async function queryMotionSample(
   return { ...sample, liveReady };
 }
 
-async function syncSettlement(
-  settlementShadow: ReferenceCaptureSettlementShadowService,
-  sessionRepo: ReferenceCaptureSessionRepository,
-  config: Exp021RuntimeConfig,
-  sessionId: string,
-): Promise<void> {
-  const s = await sessionRepo.findById(config.organizationId, sessionId);
-  await settlementShadow.syncCompletedPhasesFromSession({
-    sessionId,
-    organizationId: config.organizationId,
-    vehicleId: config.vehicleId,
-    tokenId: config.tokenId,
-    acquisitionStateJson: s?.acquisitionStateJson,
-  });
-}
-
-async function waitForRecordingCycles(
-  sessionRepo: ReferenceCaptureSessionRepository,
-  config: Exp021RuntimeConfig,
-  sessionId: string,
-): Promise<void> {
-  for (let i = 0; i < 60; i++) {
-    await sleep(2000);
-    const s = await sessionRepo.findById(config.organizationId, sessionId);
-    const st = parseAcquisitionState(s?.acquisitionStateJson);
-    if (s?.status === 'RECORDING' && (st.cycleCount ?? 0) >= 1) return;
-    if (s?.status === 'FAILED' || s?.status === 'ABORTED') throw new Error(`session terminal ${s?.status}`);
-  }
-  throw new Error('recording cycles not observed');
-}
-
-async function completePhysicalRunAndStop(args: {
-  sessionService: ReferenceCaptureSessionService;
-  settlementShadow: ReferenceCaptureSettlementShadowService;
-  prisma: PrismaService;
-  config: Exp021RuntimeConfig;
-  sessionId: string;
-  phaseTracker: PhysicalDrivePhaseTracker;
-  physicalEndDetector: PhysicalEndDetector;
-  physicalDriveEndCandidateId: string | null;
-  physicalDriveStartedAt: Date | null;
-  nowMs: number;
-  reason: 'AUTO_STOP' | 'FINAL_PHASE_WALL_CLOCK' | 'PHYSICAL_RUN_ENDED_EARLY';
-}): Promise<void> {
-  const endCandidate = args.physicalEndDetector.getCandidate();
-  const activePhaseStartedAtMs = args.phaseTracker.getActivePhaseStartedAtMs();
-  const boundaryMs =
-    args.reason === 'PHYSICAL_RUN_ENDED_EARLY' && endCandidate?.candidateBoundaryAt
-      ? endCandidate.candidateBoundaryAt.getTime()
-      : null;
-  const sealMs = resolvePhysicalEndSealMs({
-    nowMs: args.nowMs,
-    physicalEndBoundaryMs: boundaryMs,
-    activePhaseStartedAtMs,
-  });
-  const finalPhase = args.phaseTracker.markPhysicalDriveEnded(sealMs);
-  if (
-    endCandidate &&
-    args.physicalDriveEndCandidateId &&
-    endCandidate.candidateStatus !== 'CONFIRMED'
-  ) {
-    await args.settlementShadow.confirmPhysicalDriveIntervalCandidate({
-      sessionId: args.sessionId,
-      candidateId: args.physicalDriveEndCandidateId,
-      reason: `${args.reason.toLowerCase()}_terminalization`,
-    });
-  }
-  const physicalEndAt =
-    endCandidate?.candidateBoundaryAt ??
-    (args.reason === 'PHYSICAL_RUN_ENDED_EARLY' ? new Date(sealMs) : null);
-  if (args.physicalDriveStartedAt && physicalEndAt) {
-    await args.settlementShadow.persistPhysicalDriveIntervalAuthority({
-      sessionId: args.sessionId,
-      physicalStartAt: args.physicalDriveStartedAt,
-      physicalEndAt,
-      candidateId: endCandidate?.candidateId,
-      source: endCandidate ? 'PDI_CANDIDATE' : 'ORCHESTRATOR_CONFIRMED',
-    });
-  }
-  if (finalPhase) {
-    await args.sessionService.persistExp021ActivePhaseMovementMetrics(
-      args.config.organizationId,
-      args.sessionId,
-      {
-        validMovementDurationMs: finalPhase.validMovementDurationMs,
-        uncertainMovementDurationMs: finalPhase.uncertainMovementDurationMs,
-      },
-    );
-  }
-  if (args.reason === 'PHYSICAL_RUN_ENDED_EARLY' && physicalEndAt) {
-    await args.sessionService.terminalizeExp021PhysicalEndEarly(
-      args.config.organizationId,
-      args.sessionId,
-      physicalEndAt,
-    );
-  } else {
-    await args.sessionService.stopRecording(args.config.organizationId, args.sessionId);
-  }
-}
-
-async function waitPhaseEffective(
-  sessionRepo: ReferenceCaptureSessionRepository,
-  config: Exp021RuntimeConfig,
-  sessionId: string,
-  pollMs: number,
-): Promise<Date> {
-  for (let i = 0; i < 90; i++) {
-    await sleep(2000);
-    const s = await sessionRepo.findById(config.organizationId, sessionId);
-    const st = parseAcquisitionState(s?.acquisitionStateJson);
-    const ap = st.hfCalibrationSeries?.activePhase;
-    if (ap?.effectivePollIntervalMs === pollMs && ap?.phaseStartedAt) {
-      return new Date(ap.phaseStartedAt);
-    }
-  }
-  throw new Error(`phase ${pollMs}ms not effective`);
-}
-
 async function terminalizeSessionAfterFatal(
   organizationId: string,
   sessionId: string,
@@ -363,28 +241,10 @@ async function main(): Promise<void> {
     ...EXP021_DEFAULT_PRE_DEPLOY_MOVEMENT,
     movementSpeedKmh: config.movementSpeedKmh,
   });
-  let physicalDriveStarted = false;
-  let physicalDriveEnded = false;
   let orchestrationDegraded = false;
   let preRollStarted = false;
-  let currentPhaseIndex = -1;
-  let phaseActivatedAtMs: number | null = null;
-  let physicalDriveStartedAt: Date | null = null;
-  let physicalDriveEndCandidateId: string | null = null;
-  let pendingT0PhaseActivation = false;
-  const physicalStartDetector = new PhysicalStartDetector({
-    ...EXP021_DEFAULT_PHYSICAL_START,
-    movementSpeedKmh: config.movementSpeedKmh,
-  });
-  const physicalEndDetector = new PhysicalEndDetector({
-    ...EXP021_DEFAULT_PHYSICAL_END,
-    parkedSpeedKmh: config.parkedSpeedKmh,
-    movementSpeedKmh: config.movementSpeedKmh,
-    provisionalConfirmMs: config.driveEndCandidateParkedSec * 1000,
-    finalParkedMs: config.driveEndParkedSec * 1000,
-  });
-  const phaseTracker = new PhysicalDrivePhaseTracker();
   let fatalError: Error | null = null;
+  let lifecycleDriver: Exp021AutonomousLifecycleDriver | undefined;
 
   type AppContext = Awaited<ReturnType<typeof NestFactory.createApplicationContext>>;
   let app: AppContext | undefined;
@@ -403,46 +263,29 @@ async function main(): Promise<void> {
     sessionRepo = app.get(ReferenceCaptureSessionRepository);
     settlementShadow = app.get(ReferenceCaptureSettlementShadowService);
     rcConfig = app.get(ReferenceCaptureConfig);
-  }
-
-  async function activatePhysicalPhaseFromPersistedAuthority(
-    recoveryMode: 'T0_RECOVERY' | 'T0_CONFIRM',
-  ): Promise<void> {
-    if (!sessionId || !sessionService) {
-      throw new Error('missing session context for physical phase activation');
+    if (!lifecycleDriver) {
+      lifecycleDriver = new Exp021AutonomousLifecycleDriver(
+        {
+          config,
+          sessionService: sessionService!,
+          sessionRepo: sessionRepo!,
+          settlementShadow: settlementShadow!,
+          prisma,
+        },
+        {
+          nowMs: () => Date.now(),
+          sleep,
+          waitPhaseEffective: createDefaultWaitPhaseEffective(
+            { sleep },
+            sessionRepo!,
+            config,
+          ),
+          waitForRecordingCycles: (sid) =>
+            waitExp021RecordingCycles({ sleep }, sessionRepo!, config, sid),
+          log: (event, payload = {}) => log(config, event, payload),
+        },
+      );
     }
-    const firstCadenceMs = config.cadencePhaseOrderMs[0];
-    const activation = await sessionService.activatePhysicalPhaseAtT0(
-      config.organizationId,
-      sessionId,
-      { effectivePollIntervalMs: firstCadenceMs },
-    );
-    const phase60EffectiveAt = new Date(activation.phaseStartedAt);
-    await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
-    currentPhaseIndex = 0;
-    phaseActivatedAtMs = phase60EffectiveAt.getTime();
-    phaseTracker.beginPhase(
-      firstCadenceMs,
-      phase60EffectiveAt.getTime(),
-      resolvePhaseAdvancementForIndex(config, 0),
-    );
-    phase = 'DRIVING';
-    pendingT0PhaseActivation = false;
-    log(config, 'PHYSICAL_PHASE_60_REANCHORED_AT_T0', {
-      PHASE_60_EFFECTIVE: 'YES',
-      CALIBRATION_PLAN: config.calibrationPlan.planVersion,
-      FIRST_CADENCE_MS: firstCadenceMs,
-      REANCHORED: activation.reanchored ? 'YES' : 'NO',
-      SEALED_PRE_ROLL_PHASE_ID: activation.sealedPreRollPhaseId,
-      EFFECTIVE_AT: activation.phaseStartedAt,
-      CANONICAL_T0_AT: activation.canonicalT0At,
-      RECOVERY_MODE: recoveryMode,
-      CANONICAL_T0_SOURCE: 'PERSISTED_AUTHORITY',
-    });
-    log(config, 'PHASE_60_PHYSICAL_BOUNDARY', {
-      PHASE_60_EFFECTIVE: 'YES',
-      EFFECTIVE_AT: phase60EffectiveAt.toISOString(),
-    });
   }
 
   let running = true;
@@ -482,9 +325,10 @@ async function main(): Promise<void> {
 
       if (!deployReady) {
         if (!deployRunning && sha === config.targetDeploySha && r3001 && r3002 && ext && redisHealthy()) {
-          physicalStartDetector.reset();
+          lifecycleDriver?.physicalStartDetector.reset();
           preDeployMovementGate.reset();
           deployConvergedAtMs = Date.now();
+          if (lifecycleDriver) lifecycleDriver.deployConvergedAtMs = deployConvergedAtMs;
           deployReady = true;
           log(config, 'DEPLOY_CONVERGED', {
             DEPLOY_PROCESS_FINISHED: 'YES',
@@ -586,40 +430,14 @@ async function main(): Promise<void> {
           sessionId = recording.id;
           sessionStarted = true;
           preRollStarted = true;
-          const authority = parseExp021PhysicalAuthority(recording.preflightJson);
-          if (authority?.canonicalT0At) {
-            physicalDriveStarted = true;
-            physicalDriveStartedAt = new Date(authority.canonicalT0At);
-            orchestrationDegraded = authority.orchestrationState === 'DEGRADED';
-            const st = parseAcquisitionState(recording.acquisitionStateJson);
-            const ap = st.hfCalibrationSeries?.activePhase;
-            if (ap?.phaseProvenance === 'PHYSICAL_T0' || ap?.phaseProvenance === 'PHYSICAL_TRANSITION') {
-              currentPhaseIndex = Math.max(
-                0,
-                (config.cadencePhaseOrderMs as readonly number[]).indexOf(
-                  ap.effectivePollIntervalMs,
-                ),
-              );
-              phaseActivatedAtMs = ap.phaseStartedAt ? Date.parse(ap.phaseStartedAt) : null;
-              phaseTracker.beginPhase(
-                ap.effectivePollIntervalMs,
-                phaseActivatedAtMs ?? Date.now(),
-                resolvePhaseAdvancementForIndex(config, currentPhaseIndex),
-              );
+          if (lifecycleDriver) {
+            lifecycleDriver.sessionId = sessionId;
+            const resume = lifecycleDriver.tryResumeFromRecordingSession(recording);
+            orchestrationDegraded = lifecycleDriver.orchestrationDegraded;
+            if (resume === 'driving') {
               phase = 'DRIVING';
-              log(config, 'T0_RECOVERY_RESUME_DRIVING', {
-                canonicalT0At: authority.canonicalT0At,
-                orchestrationDegraded,
-                activePhaseMs: ap.effectivePollIntervalMs,
-              });
             } else {
-              pendingT0PhaseActivation = true;
               phase = 'WAIT_MOVEMENT';
-              log(config, 'RECOVER_T0_PHASE_ACTIVATION', {
-                RECOVER_T0_PHASE_ACTIVATION: 'YES',
-                canonicalT0At: authority.canonicalT0At,
-                SECOND_T0_DETECTION_REQUIRED: 'NO',
-              });
             }
           } else {
             phase = 'WAIT_MOVEMENT';
@@ -653,6 +471,7 @@ async function main(): Promise<void> {
         const preflight = await sessionService!.runPreflight(config.organizationId, created.id);
         if (preflight.status !== 'READY') throw new Error(`preflight not READY: ${preflight.status}`);
         sessionId = created.id;
+        if (lifecycleDriver) lifecycleDriver.sessionId = sessionId;
         await prisma!.referenceCaptureSession.update({
           where: { id: sessionId },
           data: {
@@ -713,7 +532,11 @@ async function main(): Promise<void> {
 
         await sessionService!.startRecording(config.organizationId, sessionId);
         sessionStarted = true;
-        await waitForRecordingCycles(sessionRepo!, config, sessionId);
+        if (lifecycleDriver?.ports.waitForRecordingCycles) {
+          await lifecycleDriver.ports.waitForRecordingCycles(sessionId);
+        } else {
+          await waitExp021RecordingCycles({ sleep }, sessionRepo!, config, sessionId);
+        }
         preRollStarted = true;
         log(config, 'AUTO_START_RECORDING_CALLED', {
           AUTO_START_RECORDING_CALLED: 'YES',
@@ -730,268 +553,39 @@ async function main(): Promise<void> {
       }
 
       if (phase === 'WAIT_MOVEMENT') {
-        if (!sessionId) throw new Error('missing sessionId');
-        if (pendingT0PhaseActivation && physicalDriveStarted) {
-          try {
-            await activatePhysicalPhaseFromPersistedAuthority('T0_RECOVERY');
-          } catch (phaseError) {
-            orchestrationDegraded = true;
-            await sessionService!.markExp021OrchestrationDegraded(
-              config.organizationId,
-              sessionId,
-              phaseError instanceof Error ? phaseError.message : String(phaseError),
-            );
-            phase = 'DRIVING';
-            log(config, 'ORCHESTRATION_DEGRADED', {
-              ORCHESTRATION_STATE: 'DEGRADED',
-              RAW_RC_CONTINUES: 'YES',
-              PHASE_60_EFFECTIVE: 'NO',
-              RECOVERY_RETRY_PENDING: pendingT0PhaseActivation ? 'YES' : 'NO',
-              reason: phaseError instanceof Error ? phaseError.message : String(phaseError),
-            });
-          }
-          await sleep(config.pollMs);
-          continue;
-        }
+        if (!sessionId || !lifecycleDriver) throw new Error('missing sessionId or lifecycle driver');
+        lifecycleDriver.sessionId = sessionId;
         if (!motion) {
           await sleep(config.pollMs);
           continue;
         }
-        const nowMs = Date.now();
-        const motionState = classifyMotionState(
-          motion,
-          config.parkedSpeedKmh,
-          config.movementSpeedKmh,
-        );
-        if (!physicalDriveStarted) {
-          physicalStartDetector.record(motion, nowMs, motionState);
-        }
-        if (!physicalDriveStarted && physicalStartDetector.isConfirmed()) {
-          const confirmation = physicalStartDetector.getConfirmation();
-          if (
-            deployConvergedAtMs != null &&
-            confirmation &&
-            confirmation.firstQualifyingMovementAt.getTime() < deployConvergedAtMs
-          ) {
-            phase = 'SKIPPED';
-            log(config, 'EXP021_RUN_SKIPPED', {
-              EXP021_RUN_SKIPPED_REASON: 'PHYSICAL_START_BEFORE_DEPLOY_CONVERGENCE',
-              DRIVE_STARTED_BEFORE_DEPLOY_FAILS_CLOSED: 'YES',
-              firstQualifyingMovementAt: confirmation.firstQualifyingMovementAt.toISOString(),
-              deployConvergedAt: new Date(deployConvergedAtMs).toISOString(),
-            });
-            running = false;
-            break;
-          }
-          const firstQualifyingMovementAt =
-            confirmation?.firstQualifyingMovementAt ?? new Date(nowMs);
-          const startConfirmedAt = confirmation?.startConfirmedAt ?? new Date(nowMs);
-
-          const t0Persist = await sessionService!.persistExp021CanonicalT0(
-            config.organizationId,
-            sessionId,
-            { firstQualifyingMovementAt, startConfirmedAt, nowMs },
-          );
-
-          log(config, 'PHYSICAL_DRIVE_START_DETECTED', {
-            PHYSICAL_DRIVE_START_DETECTED: 'YES',
-            CANONICAL_T0_DURABLY_PERSISTED: 'YES',
-            T0_PERSIST_CREATED: t0Persist.created ? 'YES' : 'NO',
-            FIRST_QUALIFYING_MOVEMENT_AT: firstQualifyingMovementAt.toISOString(),
-            START_CONFIRMED_AT: startConfirmedAt.toISOString(),
-            START_DETECTION_LATENCY_MS: confirmation?.startDetectionLatencyMs,
-            speedKmh: motion.speedKmh,
-            SPEED_PROVIDER_FIELD: motion.speedProviderField,
-            SPEED_TIMESTAMP: motion.speedTimestamp,
-            SPEED_AGE_MS: motion.speedAgeMs,
-            distinctMovingSamples: physicalStartDetector.getQualifyingSampleCount(),
+        const waitResult = await lifecycleDriver.handleWaitMovement(motion);
+        orchestrationDegraded = lifecycleDriver.orchestrationDegraded;
+        if (waitResult.status === 'skipped') {
+          phase = 'SKIPPED';
+          log(config, 'EXP021_RUN_SKIPPED', {
+            EXP021_RUN_SKIPPED_REASON: waitResult.reason,
           });
-
-          physicalDriveStarted = true;
-          physicalDriveStartedAt = new Date(t0Persist.authority.canonicalT0At);
-
-          try {
-            await activatePhysicalPhaseFromPersistedAuthority('T0_CONFIRM');
-          } catch (phaseError) {
-            orchestrationDegraded = true;
-            pendingT0PhaseActivation = true;
-            await sessionService!.markExp021OrchestrationDegraded(
-              config.organizationId,
-              sessionId,
-              phaseError instanceof Error ? phaseError.message : String(phaseError),
-            );
-            phase = 'DRIVING';
-            log(config, 'ORCHESTRATION_DEGRADED', {
-              ORCHESTRATION_STATE: 'DEGRADED',
-              RAW_RC_CONTINUES: 'YES',
-              PHASE_60_EFFECTIVE: 'NO',
-              RECOVERY_RETRY_PENDING: 'YES',
-              reason: phaseError instanceof Error ? phaseError.message : String(phaseError),
-            });
-          }
-          physicalStartDetector.reset();
+          running = false;
+          break;
+        }
+        if (waitResult.status === 't0_confirmed' || lifecycleDriver.physicalDriveStarted) {
+          phase = 'DRIVING';
         }
         await sleep(config.pollMs);
         continue;
       }
 
       if (phase === 'DRIVING') {
-        if (!sessionId) throw new Error('missing sessionId');
+        if (!sessionId || !lifecycleDriver) throw new Error('missing sessionId or lifecycle driver');
+        lifecycleDriver.sessionId = sessionId;
         if (!motion) {
           await sleep(config.pollMs);
           continue;
         }
-        const nowMs = Date.now();
-        const motionState = classifyMotionState(
-          motion,
-          config.parkedSpeedKmh,
-          config.movementSpeedKmh,
-        );
-        phaseTracker.tick(motionState, nowMs);
-
-        if (
-          !physicalDriveEnded &&
-          currentPhaseIndex >= 0 &&
-          currentPhaseIndex < config.cadencePhaseOrderMs.length - 1 &&
-          phaseTracker.shouldAdvancePhase(nowMs)
-        ) {
-          const nextIndex = currentPhaseIndex + 1;
-          const next = config.cadencePhaseOrderMs[nextIndex];
-          try {
-            const sessionBefore = await sessionRepo!.findById(config.organizationId, sessionId);
-            const completingPhaseId =
-              parseAcquisitionState(sessionBefore?.acquisitionStateJson).hfCalibrationSeries
-                ?.activePhase?.calibrationPhaseId ?? null;
-            await sessionService!.switchHfCalibrationPhase(config.organizationId, sessionId, {
-              effectivePollIntervalMs: next,
-              phaseProvenance: 'PHYSICAL_TRANSITION',
-            });
-            const effectiveAt = await waitPhaseEffective(sessionRepo!, config, sessionId, next);
-            const completed = phaseTracker.advancePhaseAtEffectiveBoundary(
-              effectiveAt.getTime(),
-              next,
-              resolvePhaseAdvancementForIndex(config, nextIndex),
-            );
-            if (completed && completingPhaseId) {
-              await sessionService!.persistExp021ActivePhaseMovementMetrics(
-                config.organizationId,
-                sessionId,
-                {
-                  calibrationPhaseId: completingPhaseId,
-                  validMovementDurationMs: completed.validMovementDurationMs,
-                  uncertainMovementDurationMs: completed.uncertainMovementDurationMs,
-                },
-              );
-            }
-            await syncSettlement(settlementShadow!, sessionRepo!, config, sessionId);
-            currentPhaseIndex += 1;
-            phaseActivatedAtMs = effectiveAt.getTime();
-            log(config, 'PHASE_TRANSITION', {
-              phaseIndex: currentPhaseIndex,
-              effectivePollIntervalMs: next,
-              effectivePhaseStartedAt: effectiveAt.toISOString(),
-              completedPhase: completed,
-              TRACKER_PHASE_START_EQUALS_EFFECTIVE_PHASE_START: 'YES',
-            });
-          } catch (transitionError) {
-            orchestrationDegraded = true;
-            await sessionService!.markExp021OrchestrationDegraded(
-              config.organizationId,
-              sessionId,
-              transitionError instanceof Error ? transitionError.message : String(transitionError),
-            );
-            log(config, 'ORCHESTRATION_DEGRADED', {
-              ORCHESTRATION_STATE: 'DEGRADED',
-              RAW_RC_CONTINUES: 'YES',
-              PHASE_TRANSITION_FAILED: 'YES',
-              reason:
-                transitionError instanceof Error ? transitionError.message : String(transitionError),
-            });
-          }
-        }
-
-        const endObservation = physicalEndDetector.observe(motion, motionState, nowMs);
-        if (endObservation.candidateInvalidated && physicalDriveEndCandidateId) {
-          await settlementShadow!.invalidatePhysicalDriveIntervalCandidate({
-            sessionId,
-            candidateId: physicalDriveEndCandidateId,
-            reason: 'movement_resumed_after_end_candidate',
-          });
-          physicalDriveEndCandidateId = null;
-        }
-
-        if (endObservation.candidateConfirmed && physicalDriveEndCandidateId) {
-          await settlementShadow!.confirmPhysicalDriveIntervalCandidate({
-            sessionId,
-            candidateId: physicalDriveEndCandidateId,
-            reason: 'sustained_distinct_parked_evidence',
-          });
-        }
-
-        if (
-          endObservation.newProvisionalCandidate &&
-          physicalDriveStartedAt &&
-          sessionId
-        ) {
-          const candidate = endObservation.newProvisionalCandidate;
-          physicalDriveEndCandidateId = candidate.candidateId;
-          const scheduleCreatedAt = new Date(nowMs);
-          await settlementShadow!.schedulePhysicalDriveIntervalShadow({
-            sessionId,
-            organizationId: config.organizationId,
-            vehicleId: config.vehicleId,
-            tokenId: config.tokenId,
-            driveStartedAt: physicalDriveStartedAt,
-            driveEndedAt: candidate.candidateBoundaryAt,
-            candidateId: candidate.candidateId,
-            candidateBoundaryAt: candidate.candidateBoundaryAt,
-            candidateStatus: candidate.candidateStatus,
-            scheduleCreatedAt,
-          });
-          physicalEndDetector.markSchedulesCreated(scheduleCreatedAt);
-          log(config, 'PHYSICAL_DRIVE_END_CANDIDATE', {
-            candidateId: candidate.candidateId,
-            candidateBoundaryAt: candidate.candidateBoundaryAt.toISOString(),
-            candidateDetectedAt: candidate.candidateDetectedAt.toISOString(),
-            scheduleCreatedAt: scheduleCreatedAt.toISOString(),
-            PDI_30_SCHEDULE_CREATED_BEFORE_DEADLINE:
-              scheduleCreatedAt.getTime() <= candidate.candidateBoundaryAt.getTime() + 30_000
-                ? 'YES'
-                : 'NO',
-          });
-        }
-
-        const lastPhaseIndex = config.cadencePhaseOrderMs.length - 1;
-        const finalPhaseWallClockExpired =
-          !physicalDriveEnded &&
-          currentPhaseIndex === lastPhaseIndex &&
-          phaseTracker.shouldAdvancePhase(nowMs);
-        const hardPhysicalEndEligible = physicalEndDetector.hardPhysicalEndEligible(
-          nowMs,
-          motionState,
-        );
-
-        if (
-          physicalDriveStarted &&
-          (hardPhysicalEndEligible || finalPhaseWallClockExpired)
-        ) {
-          physicalDriveEnded = true;
-          const stopReason = finalPhaseWallClockExpired
-            ? 'FINAL_PHASE_WALL_CLOCK'
-            : 'PHYSICAL_RUN_ENDED_EARLY';
-          await completePhysicalRunAndStop({
-            sessionService: sessionService!,
-            settlementShadow: settlementShadow!,
-            prisma: prisma!,
-            config,
-            sessionId,
-            phaseTracker,
-            physicalEndDetector,
-            physicalDriveEndCandidateId,
-            physicalDriveStartedAt,
-            nowMs,
-            reason: stopReason,
-          });
+        const tickResult = await lifecycleDriver.tickDriving(motion);
+        orchestrationDegraded = lifecycleDriver.orchestrationDegraded;
+        if (tickResult.status === 'done') {
           const final = await sessionRepo!.findById(config.organizationId, sessionId);
           const canonicalWholeTrip = await prisma!.referenceCaptureSettlementShadowSchedule.count({
             where: { sessionId, probeType: 'WHOLE_TRIP', phase: null },
@@ -1001,15 +595,15 @@ async function main(): Promise<void> {
           });
           log(config, 'AUTO_STOP_RECORDING', {
             physicalDriveEnded: true,
-            STOP_REASON: stopReason,
+            STOP_REASON: tickResult.stopReason,
             SESSION_STATUS: final?.status,
             CANONICAL_WHOLE_TRIP_COUNT: canonicalWholeTrip,
             PDI_COUNT: pdiSchedules,
-            EXP021_RUN_COMPLETENESS: phaseTracker.computeRunCompleteness(
+            EXP021_RUN_COMPLETENESS: lifecycleDriver.phaseTracker.computeRunCompleteness(
               config.cadencePhaseOrderMs.length,
             ),
             CALIBRATION_PLAN: config.calibrationPlan.planVersion,
-            completedPhases: phaseTracker.getCompletedPhases(),
+            completedPhases: lifecycleDriver.phaseTracker.getCompletedPhases(),
           });
           phase = 'DONE';
           running = false;
@@ -1018,14 +612,16 @@ async function main(): Promise<void> {
 
         log(config, 'DRIVING_TICK', {
           speedKmh: motion.speedKmh,
-          motionState,
+          motionState: lifecycleDriver.classifyMotion(motion),
           SPEED_PROVIDER_FIELD: motion.speedProviderField,
           SPEED_TIMESTAMP: motion.speedTimestamp,
           SPEED_AGE_MS: motion.speedAgeMs,
-          currentPhaseIndex,
+          currentPhaseIndex: lifecycleDriver.currentPhaseIndex,
           phaseMs:
-            currentPhaseIndex >= 0 ? config.cadencePhaseOrderMs[currentPhaseIndex] : null,
-          endCandidateStatus: physicalEndDetector.getCandidate()?.candidateStatus ?? null,
+            lifecycleDriver.currentPhaseIndex >= 0
+              ? config.cadencePhaseOrderMs[lifecycleDriver.currentPhaseIndex]
+              : null,
+          endCandidateStatus: lifecycleDriver.physicalEndDetector.getCandidate()?.candidateStatus ?? null,
         });
         await sleep(config.pollMs);
       }
@@ -1065,8 +661,8 @@ async function main(): Promise<void> {
     if (phase === 'DONE') {
       log(config, 'ORCHESTRATOR_COMPLETE', {
         sessionId,
-        physicalDriveStarted,
-        physicalDriveEnded,
+        physicalDriveStarted: lifecycleDriver?.physicalDriveStarted ?? false,
+        physicalDriveEnded: lifecycleDriver?.physicalDriveEnded ?? false,
         preRollStarted,
       });
     }
