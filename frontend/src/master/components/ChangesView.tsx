@@ -36,6 +36,90 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p23-binding-identity-closure-2026-09-14',
+    version: '4.9.1128',
+    title: 'VDC RB-019 Phase 2 P2.3 — binding-identity micro-closure (legacy event token)',
+    summary: [
+      'resolveLegacyBindingKey: episode providerDeviceIdHash → persisted DIMO event tokenId → null; never from current physical token.',
+      'GT-R1 snapshot EXPECTED_FIX requires legacyBindingKey === physicalBindingScope.bindingKey (fail-closed on mismatch/null).',
+      'Comparator: explicit legacyBindingKey=null does not substitute physical binding; undefined retains compatibility fallback.',
+      'CASE A/B/C orchestrator PG regressions: old-token/new-token → BINDING_DIVERGENCE; same-token control → EXPECTED_FIX; unknown binding → fail-closed.',
+      '66/66 physical-state PostgreSQL integration tests PASS; P2.3 semantic correctness closure complete (dark, flags OFF).',
+    ],
+    reason:
+      'Final P2.3 correctness gap: no_open_episode GT-R1 proof could vacuously align when episode=null and legacy binding fell back to current physical binding.',
+    previousBehavior:
+      'Last legacy event loaded without tokenId; legacyBindingKey derived only from episode hash; comparator substituted bindingKey when legacyBindingKey was null.',
+    details:
+      'physical-state-legacy-shadow-decision.ts, physical-state-gt-r1-proof.ts, physical-state-shadow-comparator.ts, physical-state-snapshot-evidence-orchestrator.service.ts; evidence PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md; no deploy/flags.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T22:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-semantic-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'VDC RB-019 Phase 2 P2.3 — semantic closure (snapshot proof + real legacy binding)',
+    summary: [
+      'Snapshot GT-R1 proof admissibility: only no_open_episode with verified physical/source/binding preconditions.',
+      'Hard rejects (binding/security/synthetic/time) never establish EXPECTED_FIX.',
+      'Legacy snapshot shadow uses persisted episode binding + last event state (never physical candidate substitution).',
+      'PhysicalStateSnapshotEvidenceOrchestrator — production call graph shared with DimoSnapshotProcessor.',
+      'Real snapshot call-site PG suite (GT-R1, stale, conflict, binding divergence, master-off).',
+    ],
+    reason:
+      'Final P2.3 semantic gaps: narrow EXPECTED_FIX proof, real legacy binding capture, genuine snapshot processor call-site proof.',
+    previousBehavior:
+      'Snapshot proof inferred from legacyAccepted=false + UNPLUGGED projection; legacy bindingKey copied from current physical binding.',
+    details:
+      'physical-state-snapshot-evidence-orchestrator.service.ts; merged origin/main #1639 (EED F4) without rebase.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T20:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-correctness-hardening-2026-09-14',
+    version: '4.9.1126',
+    title: 'VDC RB-019 Phase 2 P2.3 — independent correctness hardening (PR #1640)',
+    summary: [
+      'MASTER OFF short-circuits before ensureAuthorityRow — zero authority/projection/transition/event/outbox writes.',
+      'Canonical GtR1ExpectedFixProof contract — legacy diagnostic reasons never establish EXPECTED_FIX alone.',
+      'LegacyShadowDecision captures real legacy effectivePlugState, evidenceObservedAt, bindingKey for shadow compare.',
+      'Real call-site GT-R1 PG proof: webhook + snapshot orchestration through proof builders to writer/comparator.',
+    ],
+    reason:
+      'Independent review blockers A–D: fail-closed master gate, independent GT-R1 proof, real legacy shadow evidence, call-site wiring proof.',
+    previousBehavior:
+      'resolveRuntimePolicy could INSERT authority row when master=false; legacy reason strings inferred EXPECTED_FIX; shadow synthesized legacy state from physical candidate.',
+    details:
+      'physical-state-gt-r1-proof.ts, physical-state-legacy-shadow-decision.ts, physical-state-evidence-writer.service.ts; flags still OFF; no deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T12:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p23-evidence-writers-2026-09-14',
+    version: '4.9.1125',
+    title: 'VDC RB-019 Phase 2 P2.3 — evidence writers + STATEFUL_SHADOW proof (dark)',
+    summary: [
+      'Unified OBD physical evidence extractor (snapshot + webhook + VLS payload; per-signal timestamp only).',
+      'Webhook + snapshot evidence writers via PhysicalStateEvidenceWriterService + coordinator path.',
+      'STATEFUL_SHADOW: LEGACY authority + projectionWrite + shadowCompare + sideEffects=false.',
+      'GT-R1 persisted PG proof: UNPLUG → snapshot PLUG → webhook UNPLUG; EXPECTED_FIX classification.',
+      'Snapshot writer runs before VLS monotonic guard; APPLIED-only webhook event history contract.',
+      'Writer metrics: evidence_writer_total, stateful_shadow_evaluation_total, gt_r1_expected_fix_total.',
+    ],
+    reason:
+      'P2.3 proves physical projection sequencing and shadow adjudication before P2.4 pre-seed and P2.5 authority cutover.',
+    previousBehavior:
+      'P2.2 compare-only shadow infra with no live webhook/snapshot writers; snapshot PLUG self-heal suppressed resolve_plug intent.',
+    details:
+      'Flags default OFF (master disabled). No production deploy. No PHYSICAL authority latch. No lifecycle side effects in STATEFUL_SHADOW.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T00:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p22-shadow-authority-infra-2026-09-13',
     version: '4.9.1124',
     title: 'VDC RB-019 Phase 2 P2.2 — shadow + authority infrastructure (dark)',

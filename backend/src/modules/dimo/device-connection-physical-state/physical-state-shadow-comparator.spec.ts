@@ -336,6 +336,33 @@ describe('physical-state shadow comparator', () => {
     expect(result.correctnessBlocking).toBe(true);
   });
 
+  it('14b. explicit null legacyBindingKey does not substitute bindingKey fallback', () => {
+    const result = comparePhysicalStateShadowDecisions(
+      baseInput({
+        bindingKey: 'binding-b',
+        legacyBindingKey: null,
+        physicalBindingKey: 'binding-b',
+        legacyDecision: {
+          accepted: false,
+          reason: 'no_open_episode',
+          gate: PhysicalStateCanonicalGate.LEGACY,
+        },
+        physicalDecision: {
+          accepted: true,
+          reason: null,
+          gate: PhysicalStateCanonicalGate.PHYSICAL,
+          transitionDecision: DeviceConnectionPhysicalTransitionDecision.APPLIED,
+          effectiveState: DeviceConnectionPhysicalEffectiveState.PLUGGED,
+        },
+        provenExpectedFix: false,
+      }),
+    );
+    expect(result.classification).not.toBe(PhysicalStateShadowClassification.BINDING_DIVERGENCE);
+    expect(result.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
   it('15. explained binding divergence -> non-blocking', () => {
     const result = comparePhysicalStateShadowDecisions(
       baseInput({

@@ -28,6 +28,7 @@ import {
   buildSnapshotReferenceId,
   extractObdPlugSignalFromSnapshot,
 } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { PhysicalStateSnapshotEvidenceOrchestrator } from '../../modules/dimo/device-connection-physical-state/physical-state-snapshot-evidence-orchestrator.service';
 import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
 import {
   DeviceConnectionEpisodeService,
@@ -76,6 +77,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
     @Optional()
     private readonly snapshotWakeCoordinator?: SnapshotWakeCoordinatorService,
+    @Optional()
+    private readonly snapshotPhysicalEvidenceOrchestrator?: PhysicalStateSnapshotEvidenceOrchestrator,
   ) {
     super();
   }
@@ -237,6 +240,18 @@ export class DimoSnapshotProcessor extends WorkerHost {
         jobDataWithWake.wakeContext,
         fetchedAt,
       );
+
+      await this.applyPhysicalSnapshotEvidence({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId: dimoTokenId,
+        signals,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        hardwareType: vehicle.hardwareType,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        fetchedAt,
+        vehicleLatestStateId: previousState?.id ?? `pending:${vehicleId}`,
+      });
 
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
       if (
@@ -487,6 +502,20 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
+  }
+
+  private async applyPhysicalSnapshotEvidence(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    signals: Record<string, unknown>;
+    providerBindingId: string | null;
+    hardwareType: string;
+    sourceSubtype: string | null;
+    fetchedAt: Date;
+    vehicleLatestStateId: string;
+  }): Promise<void> {
+    await this.snapshotPhysicalEvidenceOrchestrator?.applyPhysicalSnapshotEvidence(input);
   }
 
   private async tryResolveOpenEpisodeFromSnapshot(input: {

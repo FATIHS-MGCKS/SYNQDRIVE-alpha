@@ -151,37 +151,4 @@ export function buildSnapshotReferenceId(input: {
   return `vls:${input.vehicleLatestStateId}:obd:${input.providerObservedAt.toISOString()}`;
 }
 
-export function extractObdPlugSignalFromSnapshot(
-  signals: Record<string, unknown> | null | undefined,
-): { obdIsPluggedIn: boolean | null; providerObservedAt: Date | null } {
-  if (!signals || typeof signals !== 'object') {
-    return { obdIsPluggedIn: null, providerObservedAt: null };
-  }
-
-  const field = signals.obdIsPluggedIn;
-  if (field == null) {
-    return { obdIsPluggedIn: null, providerObservedAt: null };
-  }
-
-  let obdIsPluggedIn: boolean | null = null;
-  if (typeof field === 'boolean') {
-    obdIsPluggedIn = field;
-  } else if (typeof field === 'object' && field !== null && 'value' in field) {
-    const value = (field as { value?: unknown }).value;
-    if (typeof value === 'boolean') obdIsPluggedIn = value;
-    else if (typeof value === 'number' && Number.isFinite(value)) {
-      obdIsPluggedIn = value >= 0.5;
-    }
-  }
-
-  let providerObservedAt: Date | null = null;
-  if (typeof field === 'object' && field !== null && 'timestamp' in field) {
-    const ts = (field as { timestamp?: unknown }).timestamp;
-    if (typeof ts === 'number' || typeof ts === 'string') {
-      const parsed = new Date(ts);
-      if (!Number.isNaN(parsed.getTime())) providerObservedAt = parsed;
-    }
-  }
-
-  return { obdIsPluggedIn, providerObservedAt };
-}
+export { extractObdPlugSignalFromSnapshot } from '../device-connection-physical-state/device-connection-physical-state.obd-evidence';

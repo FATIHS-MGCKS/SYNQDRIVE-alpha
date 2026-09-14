@@ -52,6 +52,9 @@ function emptyResult(
 @Injectable()
 export class RawFuelRefuelFallbackRuntimeService {
   private readonly logger = new Logger(RawFuelRefuelFallbackRuntimeService.name);
+  private configLoader: (
+    env?: NodeJS.ProcessEnv,
+  ) => RawFuelRefuelFallbackConfig = loadRawFuelRefuelFallbackConfig;
 
   constructor(
     private readonly dimoSegments: DimoSegmentsService,
@@ -59,23 +62,21 @@ export class RawFuelRefuelFallbackRuntimeService {
     @Optional() private readonly promotionPreparation?: RawRefuelPromotionPreparationService,
     @Optional() private readonly convergenceService?: RawRefuelConvergenceService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
-    private readonly configLoader: (
-      env?: NodeJS.ProcessEnv,
-    ) => RawFuelRefuelFallbackConfig = loadRawFuelRefuelFallbackConfig,
   ) {}
 
   /** Test hook — inject config without mutating process.env. */
   withConfigLoader(
     loader: (env?: NodeJS.ProcessEnv) => RawFuelRefuelFallbackConfig,
   ): RawFuelRefuelFallbackRuntimeService {
-    return new RawFuelRefuelFallbackRuntimeService(
+    const service = new RawFuelRefuelFallbackRuntimeService(
       this.dimoSegments,
       this.rawRefuelCandidateService,
       this.promotionPreparation,
       this.convergenceService,
       this.metrics,
-      loader,
     );
+    service.configLoader = loader;
+    return service;
   }
 
   async scanIfEnabled(

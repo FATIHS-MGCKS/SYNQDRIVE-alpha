@@ -281,7 +281,7 @@ describePg('DeviceConnectionPhysicalStateRepository (postgres)', () => {
       selfHeal: true,
     });
     expect(selfHeal.decision).toBe('APPLIED');
-    expect(selfHeal.episodeAction).toBe('none');
+    expect(selfHeal.episodeAction).toBe('resolve_plug');
     expect(selfHeal.context.selfHeal).toBe(true);
 
     const unplug = await repository.reconcileEvidence(

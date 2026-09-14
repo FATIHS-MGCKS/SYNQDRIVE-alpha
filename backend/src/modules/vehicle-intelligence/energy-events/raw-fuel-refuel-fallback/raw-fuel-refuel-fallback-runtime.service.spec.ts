@@ -60,8 +60,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       undefined,
       undefined,
       undefined,
-      () => ({ ...config, cutoverAt: null }),
-    );
+    ).withConfigLoader(() => ({ ...config, cutoverAt: null }));
     return { service, dimoSegments, rawRefuelCandidateService };
   }
 
@@ -179,8 +178,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       undefined,
       undefined,
       undefined,
-      () => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }),
-    );
+    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
     const result = await svc.scanIfEnabled(baseInput);
     expect(result.observationsEmitted).toBe(2);
     expect(result.candidateOutcomes.some((o) => o.error)).toBe(true);
