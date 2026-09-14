@@ -120,6 +120,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-0-convergence-architecture-2026-09-14',
+    version: '4.9.1125',
+    title: 'RFRF F5.0 — Convergence architecture + policy closure',
+    summary: [
+      'Closes three F5 entry blockers: NAMESPACED_SYNTHETIC dimoSegmentId policy; authoritative native↔fallback convergence matrix A–Q; late-native sibling policy L1–L8.',
+      'Canonical fallback identity = detectionSource + sourceEventKey; promotion idempotency (vehicleId, sourceEventKey); G2 handoff + transaction/crash model defined.',
+      'F5-PR1..4 phasing + real PostgreSQL test matrix designed; zero fallback VEE; F5_PR1_START_AUTHORIZED=YES.',
+      'No runtime promotion, no production flags, no backfill — architecture + policy only.',
+    ],
+    reason:
+      'F4 complete; F5 promotion blocked until convergence/identity/late-native policies are implementation-grade.',
+    previousBehavior:
+      'F4 advisory overlap only; dimoSegmentId compatibility NOT_PROVEN; three KNOWN_P1_F5_ENTRY_BLOCKERS documented.',
+    details:
+      'docs/audits/eed-rfrf-f5-0-convergence-architecture-and-policy-2026-09-14.md; EED-EV-0052; EED-DEC-RFRF-008/009/010',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T02:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-pr4-final-closure-2026-09-14',
     version: '4.9.1124',
     title: 'RFRF F4-PR4 — Final F4 implementation closure audit',
