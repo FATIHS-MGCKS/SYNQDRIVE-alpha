@@ -101,15 +101,16 @@ Run: `PHYSICAL_STATE_POSTGRES_INTEGRATION=1 npm test -- physical-state-evidence-
 
 ## Validation ledger (hardening)
 
-| Check | Local agent | CI (PR #1640) |
-|-------|-------------|---------------|
-| P2.3 unit (gt-r1-proof, shadow-orchestration, obd-evidence, shadow-comparator) | PASS | pending HEAD push |
-| P2.2 shadow regression | PASS | pending |
-| `npx tsc --noEmit` | PASS | pending |
-| Prisma validate | PASS | pending |
-| Module registry validator | PASS | pending |
-| VDC graph validator | PASS | pending |
-| Physical-state PostgreSQL suite | **BLOCKED** — no DATABASE_URL/Docker in agent VM | required for P2_3_EXIT_GATE |
+| Check | Local agent | CI (PR #1640 HEAD `5a619fdf0`) |
+|-------|-------------|----------------------------------|
+| P2.3 unit (gt-r1-proof, shadow-orchestration, obd-evidence, shadow-comparator) | PASS | PASS (Backend unit tests, run `34794611457`) |
+| P2.2 shadow regression | PASS | PASS (included in unit tests) |
+| `npx tsc --noEmit` | PASS | PASS (Typecheck, run `34794611457`) |
+| Prisma validate | PASS | PASS (run `34794611468`) |
+| Module registry validator | PASS | PASS (run `34793889717`) |
+| VDC graph validator | PASS | PASS (local) |
+| Physical-state PostgreSQL suite | **BLOCKED** — no DATABASE_URL/Docker in agent VM | PASS (Backend boundary repair PostgreSQL, run `34794611457`, 56 tests) |
+| CI gate (all critical jobs) | — | PASS (run `34794611457`) |
 
 ## Safety invariants (verified by design)
 
