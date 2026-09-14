@@ -120,6 +120,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14',
+    version: '4.9.1126',
+    title: 'RFRF F5-PR1 — Authoritative pre-promotion convergence',
+    summary: [
+      'CONVERGED_NATIVE terminal lifecycle; G2 classifyPhysicalRefuelSibling authoritative wrapper.',
+      'RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED fail-closed reader; zero fallback VEE; PROMOTED unreachable.',
+      'Real PG matrix T4/T6/T8–T10 + replay/concurrent/source-filter; F5-PR2 not started.',
+    ],
+    reason:
+      'First executable F5 primitive: prove native SAME before promotion without creating fallback VehicleEnergyEvent.',
+    previousBehavior:
+      'F4 advisory overlap only; F5 convergence gate stub always false; no CONVERGED_NATIVE lifecycle.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md; EED-EV-0053; EED-DEC-RFRF-009 subset',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T12:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-0-convergence-architecture-2026-09-14',
     version: '4.9.1125',
     title: 'RFRF F5.0 — Convergence architecture + policy closure',

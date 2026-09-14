@@ -1,5 +1,15 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR1 authoritative convergence
+
+- EED-EV-0053: CONVERGED_NATIVE lifecycle; G2 authoritative pre-promotion wrapper; fail-closed config reader
+- Real PG gate `rfrf-f5-pr1-authoritative-convergence-gate.sh`; zero fallback VEE; PROMOTED unreachable
+- Implements EED-DEC-RFRF-009 matrix subset (T4/T6/T8–T10 + extras); F5-PR2 not started
+
+**Verdict:** RFRF_F5_PR1=PASS (integration proven; not production)
+
+---
+
 ## 2026-09-14 — RFRF F5.0b authority consistency
 
 - EED-DEC-RFRF-010 Consequences: late-native PG test scope corrected L1–L8 → L1–L11
