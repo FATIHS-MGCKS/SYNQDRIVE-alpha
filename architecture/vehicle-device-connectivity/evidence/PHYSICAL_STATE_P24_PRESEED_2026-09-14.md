@@ -128,7 +128,15 @@ Full physical-state PG suite must remain green (prior 66 + 12 P2.4 = 78 expected
 
 ## CI RUN IDs
 
-Recorded in PR closure report `FINAL_GITHUB_CI` on actual final HEAD.
+| Field | Value |
+|-------|-------|
+| **Final HEAD** | `21f60a834e0dfb0b86df321ba29e16357e3fa8e5` |
+| **Vehicle Detail CI** | `34879276955` (CI gate PASS) |
+| **Physical-state PG** | **78/78 PASS** (`test:boundary-repair:postgres`) |
+| **Module registry** | `34879277104` PASS |
+| **Deploy** | NO |
+| **Flags** | OFF |
+| **Production authority** | LEGACY (unchanged) |
 
 ## KNOWN LIMITATIONS
 
