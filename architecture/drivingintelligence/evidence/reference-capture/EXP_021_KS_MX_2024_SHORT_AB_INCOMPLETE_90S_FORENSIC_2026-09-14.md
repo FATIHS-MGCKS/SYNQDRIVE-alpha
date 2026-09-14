@@ -16,11 +16,27 @@
 
 **Companion artifacts:**
 
-- Machine JSON: `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json`
+- Machine JSON (v1): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json`
+- Machine JSON (v2, 116-min scope): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`
 - Pre-abort snapshot: `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md`
-- VPS: `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic.json`
+- VPS: `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic-v2.json`
 
 **Do not use for:** cadence selection · 90 vs 60 comparison · retrospective 60s evidence
+
+---
+
+## Temporal authority (corrected)
+
+| Timestamp | Value | Authority |
+|-----------|-------|-----------|
+| `PHYSICAL_T0` | `2026-09-14T11:43:53.000Z` | Persisted |
+| `90_NOMINAL_END` | `2026-09-14T11:53:53.000Z` | T0 + 600,000 ms |
+| Trip physical end | `2026-09-14T12:04:15.000Z` | Persisted `vehicle_trips.end_time` |
+| Pre-abort forensic freeze | `2026-09-14T13:40:26.693Z` | **Timeline authority** |
+| `90_ACTUAL_WALL_DURATION_AT_FREEZE` | **6,993,693 ms (~116.6 min)** | Pre-abort freeze |
+| Abort `completedPhaseSummary` | **7,158,588 ms (~119.3 min)** | **Artifact only — NOT valid phase seal** |
+
+The 90s phase remained `ACTIVE_UNSEALED` for the **full ~116.6 minutes** from T0 to pre-abort freeze — not ~25.5 minutes. The ~25.5 min figure was an early observer snapshot only. The abort-generated `completedPhaseSummary` must **not** replace the pre-abort forensic timeline.
 
 ---
 
@@ -28,11 +44,12 @@
 
 | Window | Start | End | Duration | Movement class |
 |--------|-------|-----|----------|----------------|
-| **A — Nominal** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms | MOVING |
-| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms | MOVING |
-| **C — Post-trip tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms | STATIONARY |
+| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | MOVING |
+| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | MOVING |
+| **C — Post-trip active tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms (~96.2 min) | STATIONARY |
+| **D — Abort artifact** | `2026-09-14T13:40:26.693Z` | `2026-09-14T13:43:11.614Z` | 164,921 ms (~2.7 min) | STATIONARY |
 
-**Observer note:** At `2026-09-14T12:09Z` the 90s phase was still `ACTIVE_UNSEALED` (~25.5 min after T0). Phase remained active until controlled abort at `13:43:11Z` (~116 min total). Scientific analysis treats **Window A** as the only protocol-comparable 90s slice.
+Scientific 90s analysis uses **Window A only**. Windows B–D are operational/orphaned-phase evidence, not cadence-comparison evidence.
 
 ---
 
@@ -61,9 +78,11 @@ Chronological event ledger (millisecond where available):
 | `12:03:46.789` | Trip FSM → IDLE_WITHIN_TRIP | Run monitor |
 | `12:04:15.000` | Trip physical end (DB) | `endTime` persisted |
 | `12:05:47.469` | Trip FSM → POSSIBLE_END | |
+| `12:03:53.325` | Last settlement observation completed | All 114/114 SUCCESS |
 | `12:06:47.848` | Trip FSM → RESTING / COMPLETED | |
-| `13:40:26.693` | Forensic freeze (pre-abort) | Phase still RECORDING |
-| `13:43:11.614` | Controlled session abort | `ABORTED` |
+| `12:04:15`–`13:40:26` | **Post-trip orphaned phase** | ~96 min; RC cycles continue; 8,792 obs |
+| `13:40:26.693` | Forensic freeze (pre-abort) | `cycleCount=1215`; phase still RECORDING |
+| `13:43:11.614` | Controlled session abort | `ABORTED`; abort summary artifact created |
 
 **Ordering anomalies:** None material. T0 watcher started **before** server T0_ACTIVATED (expected — polls until confirmation). All 7 slots issued in burst after late T0 activation (~2.5 min after canonical T0). Trip FSM completed naturally while RC session remained RECORDING.
 
@@ -120,11 +139,13 @@ Chronological event ledger (millisecond where available):
 
 ---
 
-## Phase 4 — Native telemetry (full active phase)
+## Phase 4 — Native HF buckets vs RC observations (full ~116 min active phase)
 
-| Metric | Window A (0–10 min) | Window B (overrun) | Window C (tail) | Full pre-freeze |
-|--------|---------------------|--------------------|-----------------|-----------------|
-| Native buckets | **25** | 0 | 0 | 25 |
+### Native HF temporal buckets (25 total — NOT 11,413)
+
+| Metric | Window A | Window B | Window C | Full pre-freeze |
+|--------|----------|----------|----------|-----------------|
+| **Native HF buckets** | **25** | **0** | **0** | **25** |
 | Buckets/min | 2.5 | 0 | 0 | 0.21* |
 | First bucket | `11:46:32.544` | — | — | same |
 | Last bucket | `11:52:46.201` | — | — | same |
@@ -136,10 +157,23 @@ Chronological event ledger (millisecond where available):
 
 \*Full pre-freeze buckets/min diluted by 116 min unsealed phase wall time.
 
-**POST_10_MIN_DATA_SOURCE:** `RC_ACQUISITION_RUNNER_HEARTBEAT_ONLY`  
+### Reference-capture observations (11,413 total — distinct from native HF buckets)
+
+| Window | RC observations | % of total | Primary kind |
+|--------|-----------------|------------|--------------|
+| Pre-T0 (recording→T0) | 625 | 5.5% | SIGNAL_POINT |
+| **A — Nominal** | **1,423** | 12.5% | SIGNAL_POINT |
+| **B — Moving overrun** | **938** | 8.2% | SIGNAL_POINT |
+| **C — Post-trip tail** | **8,792** | **77.0%** | SIGNAL_POINT |
+| **D — Abort artifact** | 260 | 2.3% | SIGNAL_POINT |
+| **Total** | **11,413** | 100% | |
+
+**Reconciliation:** 25 native HF buckets = unique temporal bucket starts from 5 successful HF historical polls. 11,413 RC rows = ~1,215 acquisition cycles × ~9.4 obs/cycle over ~119 min RECORDING. RC runner (~10 cycles/min) continued throughout the entire orphaned phase; HF deterministic slots stopped after slot 6.
+
+**POST_10_MIN_DATA_SOURCE:** `RC_ACQUISITION_RUNNER_CYCLE` (LATEST_LIVE + SIGNAL_POINT per ~3s cycle)  
 **POST_10_MIN_REQUEST_MECHANISM:** No additional HF deterministic slots — all 7 terminal by T0+9m  
 **POST_10_MIN_NATIVE_BUCKETS:** 0  
-**SETTLEMENT_CONTINUED:** YES (maturation through +600s ages)
+**SETTLEMENT_DURING_TAIL:** **NO** — all 114 observations completed by `12:03:53Z` (before trip end)
 
 ---
 
@@ -153,18 +187,22 @@ Per-window `SIGNAL_POINT` canonicalKey query returned 0 rows — signals stored 
 
 ---
 
-## Phase 6 — Five-minute windows
+## Phase 6 — Extended time slices (full ~116 min active phase)
 
-| Window | Wall | Class | Native | Bkt/min | P50 gap | P95 gap | Max gap | Gaps≥10s | HF req | Success | Fail |
-|--------|------|-------|--------|---------|---------|---------|---------|----------|--------|---------|------|
-| W1 (0–5m) | 5 min | MOVING | 6 | 1.2 | 21s | 40.9s | 40.9s | 5 | 3 | 1 | 2 |
-| W2 (5–10m) | 5 min | MOVING | 19 | 3.8 | 10s | 21s | 21s | 11 | 4 | 4 | 0 |
-| W3 (10–15m) | 5 min | MOVING | 0 | 0 | — | — | — | 0 | 0 | 0 | 0 |
-| W4 (15–20m) | 5 min | MOVING | 0 | 0 | — | — | — | 0 | 0 | 0 | 0 |
-| W5 (20–25m) | 5 min | STATIONARY | 0 | 0 | — | — | — | 0 | 0 | 0 | 0 |
-| W6 (25m+) | 91.6 min | STATIONARY | 0 | 0 | — | — | — | 0 | 0 | 0 | 0 |
+| Slice | Wall | Class | Native HF | RC obs | RC obs/min | Notes |
+|-------|------|-------|-----------|--------|------------|-------|
+| W1 (0–5m) | 5 min | MOVING | 6 | 487 | 97.4 | HF slots firing |
+| W2 (5–10m) | 5 min | MOVING | 19 | 571 | 114.2 | Peak HF + RC density |
+| W3 (10–15m) | 5 min | MOVING | 0 | 452 | 90.4 | Overrun; no HF slots |
+| W4 (15–20m) | 5 min | MOVING | 0 | 466 | 93.2 | Overrun |
+| W5 (20–25m) | 5 min | MIXED | 0 | 442 | 88.4 | Trip ending |
+| W6 (25–30m) | 5 min | STATIONARY | 0 | 471 | 94.2 | Post-trip tail begins |
+| W7 (30–45m) | 15 min | STATIONARY | 0 | 1,365 | 91.0 | Orphaned phase |
+| W8 (45–60m) | 15 min | STATIONARY | 0 | 1,355 | 90.3 | Steady RC capture |
+| W9 (60–90m) | 30 min | STATIONARY | 0 | 2,754 | 91.8 | Steady RC capture |
+| W10 (90m→freeze) | 26.6 min | STATIONARY | 0 | 2,425 | 91.3 | Until pre-abort freeze |
 
-**Trend:** Telemetry density improved W1→W2 (late slot burst after T0 activation). No degradation signal in Windows B/C because no HF polls occurred.
+**Trend:** Native HF buckets confined to W1–W2 (Window A). RC observation rate remains **~90–115/min** throughout the entire ~96 min post-trip tail — stable, not degrading. The orphaned phase caused continuous RC broad capture, not additional HF slot polls.
 
 ---
 
@@ -198,18 +236,38 @@ No provider degradation observable; acquisition architecture simply did not sche
 
 ---
 
-## Phase 9 — Post-trip tail
+## Phase 9 — Post-trip tail (~96 min orphaned phase)
 
 | Metric | Value |
 |--------|-------|
 | `TRIP_END_AT` | `2026-09-14T12:04:15.000Z` |
-| `PHASE_STILL_ACTIVE_UNTIL` | `2026-09-14T13:40:26.693Z` (freeze) |
-| `POST_TRIP_ACTIVE_DURATION` | 5,771,693 ms (~96 min) |
-| `POST_TRIP_NATIVE_BUCKETS` | 0 |
-| `POST_TRIP_FALSE_MOVEMENT` | **NO** (`validMovementDurationMs` = null, never accumulated) |
+| `PHASE_STILL_ACTIVE_UNTIL` | `2026-09-14T13:40:26.693Z` (pre-abort freeze authority) |
+| `POST_TRIP_ACTIVE_DURATION` | 5,771,693 ms (~96.2 min) |
+| `POST_TRIP_NATIVE_HF_BUCKETS` | **0** |
+| `POST_TRIP_RC_OBSERVATIONS` | **8,792** (77% of all 11,413) |
+| `POST_TRIP_RC_RATE` | ~91 obs/min (stable) |
+| `POST_TRIP_FALSE_MOVEMENT` | **NO** (`validMovementDurationMs` = null throughout) |
 | `POST_TRIP_FALSE_TRIP_ACTIVITY` | **NO** |
-| `POST_TRIP_TELEMETRY_BEHAVIOR` | Vehicle telemetry continues; speed 0; no HF slots; settlement maturation only |
-| `TAIL_INTEGRITY` | **PASS** |
+| `POST_TRIP_SETTLEMENT` | **NONE** — all 114 completed by `12:03:53Z` |
+| `POST_TRIP_TELEMETRY_BEHAVIOR` | RC broad capture continues (stationary SIGNAL_POINT); no HF slots |
+| `TAIL_INTEGRITY` | **PASS** (no false movement/trip); phase seal **FAIL** (ownership gap) |
+
+---
+
+## Ten critical questions (116-min scope correction)
+
+| # | Question | Answer |
+|---|----------|--------|
+| 1 | Did RC observations continue during ~96 min post-trip tail? | **YES** — 8,792 rows (77% of total) |
+| 2 | Observation partition of 11,413? | A: 1,423 · B: 938 · C: 8,792 · D: 260 (+ 625 pre-T0) |
+| 3 | Did `validMovementDuration` stop correctly? | **YES** — remained `null`; no false accumulation |
+| 4 | Provider HF requests after 7 slots? | **NO** — last slot ~`11:52:53Z`; RC cycles continued |
+| 5 | Settlement during tail? | **NO** — 67 in A + 47 in B = 114; last at `12:03:53Z` |
+| 6 | Trip FSM RESTING while EXP-021 active? | **YES** — RESTING from `12:06:47Z`; RC RECORDING until abort |
+| 7 | Orphaned phase anomalies? | No dupes/false movement/trip reopen; RC queue grew linearly (~1215 cycles) |
+| 8 | Native HF vs RC observations? | **Distinct:** 25 native buckets vs 11,413 RC rows |
+| 9 | Why 25 buckets vs 11,413 obs? | HF: 5 successes → 25 starts; RC: ~9.4 obs/cycle × 1215 cycles |
+| 10 | Classification preserved? | `VALID_90_VS_60=NO` · `VALID_FOR_CADENCE_SELECTION=NO` |
 
 ---
 
@@ -222,6 +280,10 @@ No provider degradation observable; acquisition architecture simply did not sche
 | `EXPECTED_TOTAL_OBSERVATIONS` | **114** (19 × 6) |
 | `ACTUAL_TOTAL_OBSERVATIONS` | **114** |
 | Status breakdown | 114 SUCCESS · 0 ZERO_RESULT · 0 FAILURE |
+| Execution window A (nominal) | 67 observations |
+| Execution window B (overrun) | 47 observations |
+| Execution window C (tail) | **0** — all completed before trip end |
+| Last settlement completed | `2026-09-14T12:03:53.325Z` |
 
 **Why 114:** WALL_CLOCK full-phase overlapping tiles — 60s windows every 30s from phase start × 6 mandatory ages. Confirmed independently; not assumed.
 
@@ -380,13 +442,16 @@ RC_SESSION_ID = 332c1549-622d-4535-afd9-867962003280
 PHYSICAL_T0 = 2026-09-14T11:43:53.000Z
 TRIP_PHYSICAL_END = 2026-09-14T12:04:15.000Z
 FORENSIC_FREEZE_AT = 2026-09-14T13:40:26.693Z
-90_PHASE_ACTIVE_DURATION = 6,993,693 ms (pre-freeze) / 7,158,614 ms (to abort)
-ACTUAL_MOVING_DURATION = 1,222,000 ms
-POST_TRIP_ACTIVE_TAIL_DURATION = 5,771,693 ms
+90_PHASE_ACTIVE_DURATION_AT_FREEZE = 6,993,693 ms (~116.6 min)  [AUTHORITY]
+ABORT_SUMMARY_DURATION = 7,158,588 ms (~119.3 min)  [ARTIFACT ONLY]
+ACTUAL_MOVING_DURATION = 1,222,000 ms (~20.4 min)
+POST_TRIP_ACTIVE_TAIL_DURATION = 5,771,693 ms (~96.2 min)
 
-NOMINAL_0_10_MIN: buckets=25, bkt/min=2.5, provider 5/7, gaps≥10s=17, STATUS=DEGRADED
+NATIVE_HF_BUCKETS = 25 (all Window A)
+RC_OBSERVATIONS = 11,413 (A:1423, B:938, C:8792, D:260)
+NOMINAL_0_10_MIN: native=25, provider 5/7, STATUS=DEGRADED
 SLOTS: 7/7 issued, 5 SUCCESS, 2 FAILURE (ZERO_RESULT)
-SETTLEMENT: 19 windows × 6 ages = 114 SUCCESS
+SETTLEMENT: 114/114 SUCCESS (completed before trip end)
 1621_SLOT_FIX = PASS | 1621_SETTLEMENT_GEOMETRY = PASS
 PHASE_OVERRUN_ROOT_CAUSE = OWNERSHIP_GAP
 90_TO_60_BLOCKED_BY_BAD_TELEMETRY = NO
@@ -394,10 +459,10 @@ PHASE_OVERRUN_ROOT_CAUSE = OWNERSHIP_GAP
 
 ### Top findings
 
-1. **#1621 corrections validated physically** — 7/7 slots and 19/19 settlement windows vs KS MS 661's 4/7 and 9/19.
-2. **All native HF telemetry confined to nominal Window A** — zero buckets in moving overrun or post-trip tail; post-10min data is settlement maturation + RC heartbeat only.
-3. **Two isolated ZERO_RESULT slot failures** (slots 0, 2) — 71% provider success; transient, not systematic.
-4. **Phase overrun is ownership gap, not telemetry** — orchestrator never started; `90_TO_60` blocked by missing lifecycle owner.
-5. **Post-trip integrity PASS** — no false movement accumulation; Trip FSM completed independently while RC stayed RECORDING.
+1. **90s phase active ~116.6 min** (not ~25.5 min) — pre-abort freeze is timeline authority; abort summary is artifact only.
+2. **#1621 corrections validated** — 7/7 slots, 19/19 settlement windows vs KS MS 661's 4/7 and 9/19.
+3. **25 native HF buckets ≠ 11,413 RC observations** — HF slots stopped at T0+9m; RC runner continued ~91 obs/min for entire orphaned tail (8,792 stationary rows).
+4. **Settlement completed before trip end** — all 114 by `12:03:53Z`; no settlement during 96 min post-trip tail.
+5. **Post-trip integrity PASS** — no false movement/trip reopen; orphaned phase is ownership failure, not telemetry corruption.
 
 **NO CADENCE DECISION. NO RETROSPECTIVE 60s DATA. NO SCIENTIFIC NUMBER MUTATION.**

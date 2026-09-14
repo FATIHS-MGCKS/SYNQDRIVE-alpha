@@ -1,8 +1,8 @@
 # EXP-021 — KS MX 2024 Short A/B Incomplete 90s Evidence Freeze
 
-**Frozen at:** 2026-09-14T14:00:47Z (deep forensic generation)  
-**Pre-abort snapshot:** 2026-09-14T13:40:26Z  
-**Controlled stop:** 2026-09-14T13:43:11Z
+**Frozen at:** 2026-09-14T14:30:42Z (v2 deep forensic — 116-min scope correction)  
+**Pre-abort snapshot:** 2026-09-14T13:40:26Z (**timeline authority**)  
+**Controlled stop:** 2026-09-14T13:43:11Z (abort artifact only for duration seal)
 
 ## Run identity
 
@@ -20,7 +20,11 @@
 | `PLAN_VERSION` | `EXP021_CANDIDATE_SHORT_AB_90_60` |
 | `PRODUCTION_SHA` | `d1501d171c1cc6dc4b83b2720e3a96549ef24185` |
 | `PHYSICAL_T0` | `2026-09-14T11:43:53.000Z` |
+| `90_NOMINAL_END` | `2026-09-14T11:53:53.000Z` |
 | `TRIP_PHYSICAL_END` | `2026-09-14T12:04:15.000Z` |
+| `FORENSIC_FREEZE_AT` | `2026-09-14T13:40:26.693Z` |
+| `90_ACTUAL_WALL_DURATION_AT_FREEZE` | **6,993,693 ms (~116.6 min)** |
+| `ABORT_COMPLETED_PHASE_SUMMARY_MS` | 7,158,588 ms (~119.3 min) — **artifact only, NOT valid phase seal** |
 | `PHYSICAL_END` | **NULL** (no orchestrated seal) |
 | `RC_FINAL_STATUS` | `ABORTED` |
 
@@ -33,15 +37,28 @@
 | `VALID_FOR_CADENCE_SELECTION` | **NO** |
 | `ANOTHER_PHYSICAL_RUN_REQUIRED` | **YES** |
 
+## Window partition (mandatory)
+
+| Window | Duration | Native HF buckets | RC observations |
+|--------|----------|-------------------|-----------------|
+| **A — Nominal** (T0 → T0+10m) | 10 min | **25** | **1,423** |
+| **B — Moving overrun** | ~10.4 min | **0** | **938** |
+| **C — Post-trip tail** (trip end → freeze) | ~96.2 min | **0** | **8,792** |
+| **D — Abort artifact** | ~2.7 min | **0** | **260** |
+
+**Critical distinction:** 25 native HF buckets ≠ 11,413 RC observation rows. HF deterministic slots stopped after slot 6 (~`11:52:53Z`); RC acquisition runner continued ~91 obs/min through the orphaned tail.
+
 ## Authoritative evidence documents
 
-1. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md` — full 20-phase human forensic
-2. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json` — machine-readable metrics
-3. `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md` — pre-abort lifecycle freeze
+1. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md` — full 20-phase human forensic (v2 corrected)
+2. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json` — machine-readable metrics (v1)
+3. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json` — 116-min scope machine metrics
+4. `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md` — pre-abort lifecycle freeze
 
 ## VPS production paths
 
 - `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic.json`
+- `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic-v2.json`
 - `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-incomplete-short-ab-forensic-freeze.json`
 - `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-t0-watcher.jsonl`
 - `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-run-monitor.jsonl`

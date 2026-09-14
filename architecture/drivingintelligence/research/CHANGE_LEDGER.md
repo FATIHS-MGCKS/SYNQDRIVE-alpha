@@ -595,3 +595,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Overrun | `OWNERSHIP_GAP` — orchestrator not started; `90_TO_60_BLOCKED_BY_BAD_TELEMETRY=NO` |
 | Classification | `VALID_90_STANDALONE=YES`; `VALID_90_VS_60=NO`; `VALID_FOR_CADENCE_SELECTION=NO` |
 | Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md`; `.json`; `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_EVIDENCE_FREEZE_2026-09-14.md` |
+
+### EXP-021 — KS MX 2024 deep 90s forensic v2 temporal correction (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Correction | 90s phase active **~116.6 min** at pre-abort freeze (not ~25.5 min); abort `completedPhaseSummary` (~119.3 min) is artifact only |
+| Windows | A nominal 1,423 RC obs / 25 native HF · B overrun 938 / 0 · C post-trip tail **8,792** / 0 · D abort 260 |
+| Settlement | 114/114 SUCCESS — 67 in A, 47 in B, **0 in C**; last at `12:03:53Z` |
+| Orphaned tail | RC runner ~91 obs/min continued; `validMovementDurationMs` null; Trip FSM RESTING while EXP-021 active |
+| Classification | `VALID_90_VS_60=NO` · `VALID_FOR_CADENCE_SELECTION=NO` preserved |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`; updated MD + evidence freeze |

@@ -1,0 +1,408 @@
+{
+  "generatedAtUtc": "2026-09-14T14:30:42.441Z",
+  "freezeVersion": "EXP-021-KS-MX-2024-DEEP-90S-FORENSIC-v2",
+  "correctionNote": "Full ~116.6 min pre-abort active phase; abort completedPhaseSummary is artifact only",
+  "authoritativeTimestamps": {
+    "PHYSICAL_T0": "2026-09-14T11:43:53.000Z",
+    "NOMINAL_END": "2026-09-14T11:53:53.000Z",
+    "TRIP_PHYSICAL_END": "2026-09-14T12:04:15.000Z",
+    "FORENSIC_FREEZE_AT": "2026-09-14T13:40:26.693Z",
+    "CONTROLLED_STOP_AT": "2026-09-14T13:43:11.614Z",
+    "ACTUAL_WALL_DURATION_AT_FREEZE_MS": 6993693,
+    "ABORT_COMPLETED_PHASE_SUMMARY_MS": 7158588,
+    "ABORT_SUMMARY_IS_VALID_SEAL": false
+  },
+  "windows": {
+    "A_nominal": {
+      "start": "2026-09-14T11:43:53.000Z",
+      "end": "2026-09-14T11:53:53.000Z",
+      "durationMs": 600000,
+      "label": "Nominal protocol window"
+    },
+    "B_movingOverrun": {
+      "start": "2026-09-14T11:53:53.000Z",
+      "end": "2026-09-14T12:04:15.000Z",
+      "durationMs": 622000,
+      "label": "Moving overrun"
+    },
+    "C_postTripTail": {
+      "start": "2026-09-14T12:04:15.000Z",
+      "end": "2026-09-14T13:40:26.693Z",
+      "durationMs": 5771693,
+      "label": "Post-trip active tail (pre-abort)"
+    },
+    "D_abortArtifact": {
+      "start": "2026-09-14T13:40:26.693Z",
+      "end": "2026-09-14T13:43:11.614Z",
+      "durationMs": 164921,
+      "label": "Abort/terminalization artifact only"
+    }
+  },
+  "nativeHfBuckets": {
+    "count": 25,
+    "first": "2026-09-14T11:46:32.544Z",
+    "last": "2026-09-14T11:52:46.201Z",
+    "byWindow": {
+      "A_nominal": 25,
+      "B_movingOverrun": 0,
+      "C_postTripTail": 0
+    },
+    "distinctFromRcObservations": "NATIVE_HF_BUCKETS are temporal bucket starts from 7 HF slot successes only; NOT the same as reference_capture_observations rows"
+  },
+  "referenceCaptureObservations": {
+    "totalPreserved": 11413,
+    "firstAt": "2026-09-14T11:40:13.333Z",
+    "lastAt": "2026-09-14T13:43:11.191Z",
+    "byWindow": {
+      "A_nominal": 1423,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260
+    },
+    "byKindByWindow": {
+      "A_nominal": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 1422
+      },
+      "B_movingOverrun": {
+        "SIGNAL_POINT": 938
+      },
+      "C_postTripTail": {
+        "SIGNAL_POINT": 8792
+      },
+      "D_abortArtifact": {
+        "SIGNAL_POINT": 260
+      }
+    },
+    "hourlyHistogram": [
+      {
+        "hour": "2026-09-14T11",
+        "count": 1983
+      },
+      {
+        "hour": "2026-09-14T12",
+        "count": 5488
+      },
+      {
+        "hour": "2026-09-14T13",
+        "count": 3942
+      }
+    ],
+    "reconciliation": {
+      "explanation": "RC runner executes ~3s acquisition cycles (LATEST_LIVE + NATIVE_EVENT_INCREMENTAL surfaces), writing many SIGNAL_POINT and NATIVE_EVENT rows per cycle. HF deterministic slots (7 total) produce native temporal bucket list (25 unique starts from 5 successes). The 11,413 rows are continuous reference capture, not 11,413 HF buckets.",
+      "preAbortCycleCount": 1215,
+      "approxCyclesPerMinute": 10.15505190150909,
+      "avgObsPerCycle": 9.393415637860082
+    }
+  },
+  "settlementShadow": {
+    "totalObservations": 114,
+    "byExecutionWindow": [
+      {
+        "window_key": "A_nominal",
+        "phase": "90s",
+        "provider_request_status": "SUCCESS",
+        "cnt": 67
+      },
+      {
+        "window_key": "B_movingOverrun",
+        "phase": "90s",
+        "provider_request_status": "SUCCESS",
+        "cnt": 47
+      }
+    ],
+    "lastExecutedAt": "2026-09-14T12:03:53.325Z",
+    "continuedDuringTail": false,
+    "timelineSample": [
+      {
+        "probeId": "SP-90-T9",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T11:59:23.000Z",
+        "executedAt": "2026-09-14T11:59:23.257Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T10",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T11:59:53.000Z",
+        "executedAt": "2026-09-14T11:59:53.299Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T11",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:00:23.000Z",
+        "executedAt": "2026-09-14T12:00:23.426Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T12",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:00:53.000Z",
+        "executedAt": "2026-09-14T12:00:53.465Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T13",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:01:23.000Z",
+        "executedAt": "2026-09-14T12:01:23.344Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T14",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:01:53.000Z",
+        "executedAt": "2026-09-14T12:01:53.315Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T15",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:02:23.000Z",
+        "executedAt": "2026-09-14T12:02:23.448Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T16",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:02:53.000Z",
+        "executedAt": "2026-09-14T12:02:53.274Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T17",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:03:23.000Z",
+        "executedAt": "2026-09-14T12:03:23.355Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      },
+      {
+        "probeId": "SP-90-T18",
+        "phase": "90s",
+        "scheduledAt": "2026-09-14T12:03:53.000Z",
+        "executedAt": "2026-09-14T12:03:53.325Z",
+        "status": "COMPLETED",
+        "window": "B_movingOverrun"
+      }
+    ]
+  },
+  "preAbortSessionState": {
+    "cycleCount": 1215,
+    "lastCycleAt": "2026-09-14T13:40:24.035Z",
+    "validMovementDurationMs": null,
+    "nativeBucketCount": 25,
+    "hfSlotsTerminal": 7,
+    "hfSlotSuccess": 5,
+    "hfSlotFailure": 2
+  },
+  "postAbortArtifact": {
+    "completedPhaseSummary": {
+      "wallDurationMs": 7158588,
+      "durationMs": 7158588,
+      "scientificStatus": null,
+      "nativeBucketCount": 25,
+      "IS_VALID_PHASE_SEAL": false,
+      "note": "Abort at 13:43:11 created summary with ~119.3 min duration — NOT valid 10-min seal; use pre-abort freeze for timeline authority"
+    },
+    "sessionFinalStatus": "ABORTED"
+  },
+  "extendedTimeSlices": {
+    "other": {
+      "rcObservations": 625,
+      "byKind": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0
+    },
+    "W1": {
+      "rcObservations": 487,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 6,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 97.4,
+      "movementClass": "MOVING"
+    },
+    "W2": {
+      "rcObservations": 571,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 19,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 114.2,
+      "movementClass": "MOVING"
+    },
+    "W3": {
+      "rcObservations": 452,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 90.4,
+      "movementClass": "MOVING"
+    },
+    "W4": {
+      "rcObservations": 466,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 93.2,
+      "movementClass": "MOVING"
+    },
+    "W5": {
+      "rcObservations": 442,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 88.4,
+      "movementClass": "MIXED"
+    },
+    "W6": {
+      "rcObservations": 471,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 300000,
+      "rcObsPerMin": 94.2,
+      "movementClass": "STATIONARY"
+    },
+    "W7": {
+      "rcObservations": 1365,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 900000,
+      "rcObsPerMin": 91,
+      "movementClass": "STATIONARY"
+    },
+    "W8": {
+      "rcObservations": 1355,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 900000,
+      "rcObsPerMin": 90.33333333333333,
+      "movementClass": "STATIONARY"
+    },
+    "W9": {
+      "rcObservations": 2754,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 1800000,
+      "rcObsPerMin": 91.8,
+      "movementClass": "STATIONARY"
+    },
+    "W10": {
+      "rcObservations": 2425,
+      "byKind": {
+        "SIGNAL_POINT": 1
+      },
+      "nativeHfBuckets": 0,
+      "wallDurationMs": 1593693,
+      "rcObsPerMin": 91.29738287110503,
+      "movementClass": "STATIONARY"
+    }
+  },
+  "tenCriticalQuestions": {
+    "Q1_observationsContinuedDuringTail": {
+      "answer": "YES",
+      "C_postTripTail_count": 8792
+    },
+    "Q2_observationPartition": {
+      "A_nominal": 1423,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260,
+      "total": 11413
+    },
+    "Q3_validMovementStopped": {
+      "answer": "YES — validMovementDurationMs remained null throughout; no false accumulation",
+      "preAbort": null
+    },
+    "Q4_providerRequestsAfterSlots": {
+      "answer": "NO additional HF deterministic slot requests after slot 6 (~11:52:53Z)",
+      "hfSlotsTotal": 7,
+      "nativeBucketsAfterSlot6": 0,
+      "rcCyclesContinued": "YES — acquisition runner cycles continued (not HF slot polls)"
+    },
+    "Q5_settlementDuringTail": {
+      "answer": "PARTIAL",
+      "detail": [
+        {
+          "window_key": "A_nominal",
+          "phase": "90s",
+          "provider_request_status": "SUCCESS",
+          "cnt": 67
+        },
+        {
+          "window_key": "B_movingOverrun",
+          "phase": "90s",
+          "provider_request_status": "SUCCESS",
+          "cnt": 47
+        }
+      ]
+    },
+    "Q6_tripFsmWhileExp021Active": {
+      "tripStatus": "COMPLETED",
+      "tripEnd": "2026-09-14T12:04:15.000Z",
+      "tripFsmAtTail": "RESTING/COMPLETED from ~12:06:47Z while RC RECORDING until 13:43:11Z",
+      "answer": "YES — Trip FSM RESTING/COMPLETED while EXP-021 phase incorrectly remained active"
+    },
+    "Q7_orphanedPhaseAnomalies": {
+      "duplicateObservations": "NO evidence of duplicate slot/settlement execution",
+      "queueGrowth": "RC runner continued (~1215 cycles pre-freeze) — expected for RECORDING session",
+      "memoryGrowth": "UNKNOWN — not measured; cycleCount linear with wall time",
+      "duplicateExecution": "NO — settlement idempotency keys unique (114 rows)",
+      "schedulerAnomalies": "NO split-brain; single session runner",
+      "staleTelemetryAsFresh": "RC cycles ingest latest live signals — stationary vehicle yields low-velocity readings, not misclassified as movement",
+      "falseMovement": "NO — validMovementDurationMs null",
+      "falseTripReopening": "NO — Trip FSM stayed RESTING"
+    },
+    "Q8_nativeVsRcObservations": {
+      "NATIVE_HF_BUCKETS": 25,
+      "RC_OBSERVATIONS_PRESERVED": 11413,
+      "areDistinct": true,
+      "ratio": "25 native bucket starts vs 11413 RC observation rows"
+    },
+    "Q9_reconciliation25vs11413": {
+      "nativeBuckets": 25,
+      "rcObservations": 11413,
+      "explanation": "25 = unique native temporal bucket starts from 5 successful HF historical polls (slots 1,3,4,5,6). 11,413 = all reference capture rows from ~1215 acquisition cycles (SIGNAL_POINT + NATIVE_EVENT per ~3s cycle over ~119 min recording). HF slots stopped after slot 6; RC broad capture continued.",
+      "cyclesPreFreeze": 1215,
+      "avgObsPerCycle": 9
+    },
+    "Q10_classificationPreserved": {
+      "VALID_90_VS_60_COMPARISON": "NO",
+      "VALID_FOR_CADENCE_SELECTION": "NO"
+    }
+  },
+  "classification": {
+    "RUN_CLASSIFICATION": "INCOMPLETE_SHORT_AB_PARTIAL_OPERATIONAL_EVIDENCE",
+    "VALID_90_STANDALONE_EVIDENCE": "YES",
+    "VALID_90_VS_60_COMPARISON": "NO",
+    "VALID_FOR_CADENCE_SELECTION": "NO"
+  }
+}
