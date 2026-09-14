@@ -420,8 +420,10 @@ async function findOrchestratorAttachableRecording(
 
         clock = finalWallMs;
         const done = await driver2.tickDriving(EXP021_PG_MOVING_SAMPLE);
-        expect(done.status).toBe('done');
-        expect(done.stopReason).toBe('FINAL_PHASE_WALL_CLOCK');
+        expect(done).toEqual({
+          status: 'done',
+          stopReason: 'FINAL_PHASE_WALL_CLOCK',
+        });
 
         const terminalRow = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
         const terminalState = parseAcquisitionState(terminalRow.acquisitionStateJson);
