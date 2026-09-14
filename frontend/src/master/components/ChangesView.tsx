@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p23-semantic-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'VDC RB-019 Phase 2 P2.3 — semantic closure (snapshot proof + real legacy binding)',
+    summary: [
+      'Snapshot GT-R1 proof admissibility: only no_open_episode with verified physical/source/binding preconditions.',
+      'Hard rejects (binding/security/synthetic/time) never establish EXPECTED_FIX.',
+      'Legacy snapshot shadow uses persisted episode binding + last event state (never physical candidate substitution).',
+      'PhysicalStateSnapshotEvidenceOrchestrator — production call graph shared with DimoSnapshotProcessor.',
+      'Real snapshot call-site PG suite (GT-R1, stale, conflict, binding divergence, master-off).',
+    ],
+    reason:
+      'Final P2.3 semantic gaps: narrow EXPECTED_FIX proof, real legacy binding capture, genuine snapshot processor call-site proof.',
+    previousBehavior:
+      'Snapshot proof inferred from legacyAccepted=false + UNPLUGGED projection; legacy bindingKey copied from current physical binding.',
+    details:
+      'physical-state-snapshot-evidence-orchestrator.service.ts; merged origin/main #1639 (EED F4) without rebase.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T20:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p23-correctness-hardening-2026-09-14',
     version: '4.9.1126',
     title: 'VDC RB-019 Phase 2 P2.3 — independent correctness hardening (PR #1640)',
