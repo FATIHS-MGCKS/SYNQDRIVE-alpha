@@ -7,9 +7,10 @@
 | **Authority** | Vehicle & Device Connectivity (`AUDIT_IN_PROGRESS`) |
 | **Decisions** | VDC-DEC-012, VDC-DEC-013 |
 | **TASK_START_MAIN_SHA** | `1ceb3dba478ca1689ff3c71b59fdbc6a291fcb04` |
-| **FINAL_OBSERVED_MAIN_SHA** | `1ceb3dba478ca1689ff3c71b59fdbc6a291fcb04` |
-| **MAIN_MOVED_DURING_TASK** | NO |
-| **P2.4 merge (#1646)** | Present on `origin/main` HEAD — merge commit is current main |
+| **FINAL_OBSERVED_MAIN_SHA** | `1ceb3dba478ca1689ff3c71b59fdbc6a291fcb04` (initial audit); micro-closure merged `origin/main` at `87347ec80` |
+| **MAIN_MOVED_DURING_TASK** | YES (micro-closure: #1648, #1649) |
+| **P2.4 merge (#1646)** | Present on `origin/main` — merge commit is ancestor of current main |
+| **Micro-closure** | 2026-09-14 — two-stage gate terminology; no runtime changes |
 
 ## Explicit non-claims
 
@@ -62,7 +63,9 @@ From `docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md` §4 P2.5
 | Authority identity | `(organizationId, vehicleId, provider)` — **not** `bindingKey` |
 | Projection identity | Binding-scoped (`bindingKey` on `device_connection_physical_states`) |
 | Device replacement | New `bindingKey` **inherits** latched `authorityMode`; does not reset to LEGACY |
-| Entry gates (scope doc) | (1) P2.4 pre-seed dry-run PASS; (2) correctness-critical `UNEXPLAINED_*` divergences = 0; (3) mixed-replica gate PASS |
+| Implementation entry gate | Allows P2.5 **code development** — satisfied by P2.4 merged foundation, frozen lock contract, forward-only state machine, coordinator tx primitives (**PASS / READY**) |
+| Cutover activation gate | Allows `LEGACY → PHYSICAL` latch on a scope — requires P2.5 implementation + P25-A..R tests **and** operational proofs below (**NOT_PROVEN**) |
+| Cutover activation requirements (mandatory, unchanged) | (1) representative target/pilot pre-seed dry-run PASS; (2) correctness-critical `UNEXPLAINED_*` divergences = 0; (3) mixed-replica activation gate PASS |
 | Exit gate | GT-R1 PG with `authorityMode=PHYSICAL` latched + `sideEffects=false`; legacy `shouldPersistObdPlugStateChange` **never** invoked when latched |
 
 ### 2.2 P2.5 shared authority-lock contract (P2.4 freeze)
@@ -83,16 +86,50 @@ Pre-cutover guard: `DeviceConnectionPhysicalAuthorityCutoverRepository.lockAutho
 
 **P2.5 cutover mutation code does not exist yet** — only read/guard primitives and test-direct `updateMany` in PG specs.
 
-### 2.3 Gate lifecycle split (circular-gate analysis)
+### 2.3 Two-stage gate lifecycle (authoritative — supersedes ambiguous “entry” wording)
 
-**Finding:** `MIXED_REPLICA_GATE` full runtime PASS cannot exist before P2.5 implementation exists, because the interlock requires P2.5-capable routing + cutover serialization code on all replicas.
+The Phase-2 scope doc originally listed a single P2.5 **Entry** row combining pre-seed, UNEXPLAINED, and mixed-replica conditions. Independent audit (#1650) established those three conditions are **cutover activation** requirements — not blockers to **beginning** P2.5 implementation.
 
-This does **not** block P2.5 **implementation**.
+#### A. P2.5 IMPLEMENTATION ENTRY GATE
 
-| Gate | Meaning | This audit |
-|------|---------|------------|
-| `P2_5_IMPLEMENTATION_START_READY` | Safe to begin P2.5 code (latch mutation + routing) | **YES** |
-| `P2_5_CUTOVER_ACTIVATION_READY` | Safe to latch PHYSICAL in any environment | **NO / NOT_PROVEN** |
+**Purpose:** authorize development of P2.5 runtime code on a fresh branch.
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| P2.4 merged on main | **PASS** | #1646 @ `1ceb3dba` |
+| P2.4 pre-seed code/CI gate | **PASS** | 75/75 unit; 78/78 PG on main CI `34896598216` |
+| Shared authority-lock contract frozen | **PASS** | `buildPhysicalStateAuthorityLockKey` + `lockAuthorityScopeAndReadMode` |
+| Forward-only state machine | **PASS** | `physical-state-authority.state-machine.ts` + unit tests |
+| Coordinator outer-transaction primitive | **PASS** | P2.1/P2.4 coordinator |
+| Latch schema present | **PASS** | P2.1 `device_connection_physical_authority_cutover` |
+
+| Field | Value |
+|-------|-------|
+| `P2_5_IMPLEMENTATION_START_READY` | **YES** |
+| `REMAINING_P2_5_IMPLEMENTATION_ENTRY_BLOCKERS` | **NONE** |
+
+**Explicit non-interpretation:** mixed-replica proof, operational UNEXPLAINED=0, and target-data dry-run do **not** block P2.5 code development.
+
+#### B. P2.5 CUTOVER ACTIVATION GATE
+
+**Purpose:** authorize an actual `LEGACY → PHYSICAL` authority latch transition on any scope (pilot or Production).
+
+| Requirement | Status |
+|-------------|--------|
+| P2.5 runtime implemented + P25-A..R tests PASS | **NOT MET** (not implemented) |
+| Representative target/pilot pre-seed dry-run PASS | **NOT_PROVEN** |
+| Operational correctness-critical `UNEXPLAINED_*` = 0 | **NOT_PROVEN** |
+| Mixed-replica activation interlock + proof | **NOT_PROVEN** |
+
+| Field | Value |
+|-------|-------|
+| `P2_5_CUTOVER_ACTIVATION_READY` | **NO / NOT_PROVEN** |
+
+**Explicit non-interpretation:** passing P2.5 implementation unit/PG tests alone does **not** satisfy this gate. Operational proofs remain mandatory.
+
+#### Circular-gate resolution
+
+`MIXED_REPLICA_GATE` full runtime PASS cannot exist before P2.5-capable code exists. That constrains **activation**, not **implementation entry**.
 
 ---
 
@@ -347,7 +384,7 @@ Required:
 | P25-O | Lock identity org+vehicle+provider | Not bindingKey |
 | P25-P | Crash before cutover commit → LEGACY | Tx rollback |
 | P25-Q | Committed PHYSICAL survives restart | DB durability |
-| P25-R | No duplicate episode/alert/outbox during P2.5 | sideEffects remain false |
+| P25-R | No duplicate episode/alert/outbox lifecycle effects during P2.5 | `sideEffects=false` must suppress episode/alert/outbox side effects even when authority is PHYSICAL |
 
 ---
 
@@ -392,21 +429,34 @@ Required:
 |-------|-------|
 | `P25_ENTRY_CONTRACT_RESULT` | **VERIFIED** — matches scope doc + DEC-013; implementation absent |
 | `P2_5_IMPLEMENTATION_START_READY` | **YES** |
+| `REMAINING_P2_5_IMPLEMENTATION_ENTRY_BLOCKERS` | **NONE** |
 | `P2_5_CUTOVER_ACTIVATION_READY` | **NO / NOT_PROVEN** |
 | `P2_5_IMPLEMENTED` | **NO** |
 | `P2_5_CUTOVER_EXECUTED` | **NO** |
 
-### Remaining P2.5 entry blockers (activation)
+### Remaining P2.5 implementation entry blockers
 
-1. P2.5 implementation (latch mutation + webhook/snapshot PHYSICAL routing)
-2. P24 target-data dry-run at representative scale — NOT_PROVEN
-3. Operational UNEXPLAINED correctness-critical divergences = 0 — NOT_PROVEN
-4. Mixed-replica activation interlock + MR-1..MR-7 proof — NOT_PROVEN
-5. P25-A..R test matrix execution
+**NONE** — `P2_5_IMPLEMENTATION_START_READY=YES`.
+
+### Remaining P2.5 cutover activation blockers
+
+1. P2.5 runtime must exist and pass test matrix **P25-A..R** (including **P25-R**: no duplicate episode/alert/outbox lifecycle effects while `sideEffects=false`)
+2. Representative target/pilot pre-seed dry-run proof — **NOT_PROVEN**
+3. Operational correctness-critical `UNEXPLAINED_*` divergences = 0 — **NOT_PROVEN**
+4. Mixed-replica activation interlock + MR-1..MR-7 proof — **NOT_PROVEN**
+5. Complete P25 activation/exit test evidence (GT-R1 with latched PHYSICAL + `sideEffects=false`) — **NOT MET**
 
 ### Exact next action
 
-**Implement P2.5 PR-5 scope:** authority latch mutation service using frozen lock contract; webhook/snapshot `physicalGateAuthoritative` routing; PG tests P25-A..Q; **do not activate in Production** until UNEXPLAINED + mixed-replica + target dry-run gates pass.
+**After PR #1650 merges:** implement P2.5 runtime on a **fresh branch** from then-current `main`:
+
+- one-way authority latch mutation (shared `buildPhysicalStateAuthorityLockKey` + `FOR UPDATE` contract)
+- webhook `physicalGateAuthoritative` routing (exclude `shouldPersistObdPlugStateChange` when latched PHYSICAL)
+- snapshot PHYSICAL authority routing (no legacy fallback when latched)
+- legacy authority exclusion when latched
+- PG/unit tests **P25-A..R**
+
+**Do not** activate any `LEGACY → PHYSICAL` authority scope in Production until the **CUTOVER_ACTIVATION_GATE** is fully proven (target dry-run, operational UNEXPLAINED=0, mixed-replica interlock). Passing implementation tests alone is insufficient.
 
 ---
 
