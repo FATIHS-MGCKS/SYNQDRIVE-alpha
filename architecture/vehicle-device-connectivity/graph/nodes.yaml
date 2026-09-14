@@ -556,7 +556,7 @@ nodes:
     title: RB-019 Phase 2 P2.3 evidence writers + STATEFUL_SHADOW proof
     source_type: CURRENT_CODE
     epistemic_status: INFERRED
-    summary: Unified OBD extractor; webhook + snapshot writers; STATEFUL_SHADOW orchestration; GT-R1 PG proof; flags OFF; pre-cutover.
+    summary: Unified OBD extractor; webhook + snapshot writers; STATEFUL_SHADOW orchestration; GT-R1 PG proof; legacy binding identity micro-closure (resolveLegacyBindingKey, explicit-null comparator, CASE A/B/C PG); semantic correctness closure complete; flags OFF; pre-cutover.
     source_paths:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service.ts

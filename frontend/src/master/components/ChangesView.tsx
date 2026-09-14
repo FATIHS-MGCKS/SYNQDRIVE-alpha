@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p23-binding-identity-closure-2026-09-14',
+    version: '4.9.1128',
+    title: 'VDC RB-019 Phase 2 P2.3 — binding-identity micro-closure (legacy event token)',
+    summary: [
+      'resolveLegacyBindingKey: episode providerDeviceIdHash → persisted DIMO event tokenId → null; never from current physical token.',
+      'GT-R1 snapshot EXPECTED_FIX requires legacyBindingKey === physicalBindingScope.bindingKey (fail-closed on mismatch/null).',
+      'Comparator: explicit legacyBindingKey=null does not substitute physical binding; undefined retains compatibility fallback.',
+      'CASE A/B/C orchestrator PG regressions: old-token/new-token → BINDING_DIVERGENCE; same-token control → EXPECTED_FIX; unknown binding → fail-closed.',
+      '66/66 physical-state PostgreSQL integration tests PASS; P2.3 semantic correctness closure complete (dark, flags OFF).',
+    ],
+    reason:
+      'Final P2.3 correctness gap: no_open_episode GT-R1 proof could vacuously align when episode=null and legacy binding fell back to current physical binding.',
+    previousBehavior:
+      'Last legacy event loaded without tokenId; legacyBindingKey derived only from episode hash; comparator substituted bindingKey when legacyBindingKey was null.',
+    details:
+      'physical-state-legacy-shadow-decision.ts, physical-state-gt-r1-proof.ts, physical-state-shadow-comparator.ts, physical-state-snapshot-evidence-orchestrator.service.ts; evidence PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md; no deploy/flags.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T22:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p23-semantic-closure-2026-09-14',
     version: '4.9.1127',
     title: 'VDC RB-019 Phase 2 P2.3 — semantic closure (snapshot proof + real legacy binding)',
