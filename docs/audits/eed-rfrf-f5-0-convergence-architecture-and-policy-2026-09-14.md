@@ -284,6 +284,7 @@ For **fallback finalized + enriched → late native SAME**:
 
 ```
 LATE_NATIVE_POLICY_DEFINED = YES
+LATE_NATIVE_POLICY_SCOPE = L1–L11
 LATE_NATIVE_AFTER_FALLBACK_VEE_POLICY_DEFINED = YES
 LATE_NATIVE_AFTER_ENRICHMENT_POLICY_DEFINED = YES
 LATE_NATIVE_L4_DEFINED = YES
@@ -530,6 +531,18 @@ Narrow documentation closure on PR #1641 before human review:
 ```
 RFRF_F5_0A_POLICY_MICRO_CLOSURE = PASS
 EXACT_HEAD_EVIDENCE_CONTRADICTION_RESOLVED = YES
+```
+
+---
+
+## 16. F5.0b authority consistency (2026-09-14)
+
+Corrected stale `EED-DEC-RFRF-010` Consequences scope (`L1–L8` → `L1–L11`). Authoritative late-native policy scope:
+
+```
+LATE_NATIVE_POLICY_SCOPE = L1–L11
+RFRF_F5_0B_AUTHORITY_CONSISTENCY = PASS
+STALE_L1_L8_CURRENT_AUTHORITY_REFERENCES = 0
 ```
 
 ---

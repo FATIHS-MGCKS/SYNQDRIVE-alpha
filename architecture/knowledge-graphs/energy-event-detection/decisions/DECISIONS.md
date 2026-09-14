@@ -408,5 +408,5 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Question** | Deterministic behavior when native DIMO refuel arrives after fallback candidate/VEE? |
 | **Decision** | Reuse G2 `hasLateSiblingFinalizationConflict`, finality states, and enrichment eligibility. Never delete forensic rows. **COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES:** late SAME after successful enrichment does not transfer ownership or recompute station/fuel. L1 block pre-promotion; L2–L3 pre-completion re-reconcile; L4/L8/L9 sticky post-enrichment (`lateSiblingConflict`, `enrichmentEligibleId=null`); L10 prior enrichment failure → pre-completion path; L11 multi-late fail-closed. Physical canonical pointer (`chooseCanonicalRefuel`) may differ from enrichment owner. |
 | **Evidence** | EED-EV-0052, EED-EV-0031 |
-| **Consequences** | F5-PR3 implements late-native execution + PG tests L1–L8 |
+| **Consequences** | F5-PR3 implements late-native execution + PG tests L1–L11 |
 | **Related nodes** | EED-DEC-RFRF-009 |

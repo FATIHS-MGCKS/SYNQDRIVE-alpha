@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5.0b authority consistency
+
+- EED-DEC-RFRF-010 Consequences: late-native PG test scope corrected L1–L8 → L1–L11
+- Audit: explicit `LATE_NATIVE_POLICY_SCOPE = L1–L11`; stale current-authority L1–L8 references = 0
+
+**Verdict:** RFRF_F5_0B_AUTHORITY_CONSISTENCY=PASS
+
+---
+
 ## 2026-09-14 — RFRF F5.0a policy micro-closure
 
 - F5.0a on PR #1641: exact-head SHA terminology (`F5_0_BASE_MAIN_SHA` / `STARTING_HEAD` / `FINAL_HEAD`)
