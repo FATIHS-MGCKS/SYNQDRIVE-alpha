@@ -4,7 +4,14 @@
  */
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { parseExp021PhysicalAuthority } from './reference-capture-exp-021-physical-authority.lib';
 import { parseAcquisitionState } from './reference-capture-session.repository';
+import {
+  expectNo120Phase,
+  expectPhaseOrder,
+  expectPlanAuthority,
+} from './reference-capture-exp021-short-ab-geometry.assertions';
+import type { Exp021RequestSlotRecord } from './reference-capture-exp021-request-slots.lib';
 import { requestAndActivatePhase } from './testing/reference-capture-postgres.integration.harness';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
@@ -28,6 +35,50 @@ import { countIntendedSlotsForCadence } from './reference-capture-exp021-request
 const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.REFERENCE_CAPTURE_POSTGRES_REQUIRED === '1';
 const TEN_MIN_MS = 10 * 60_000;
+
+type Mid60RestartSnapshot = {
+  canonicalT0: string | null;
+  calibrationSeriesId: string | null;
+  active60PhaseId: string | null;
+  active60PhaseStartedAt: string | null;
+  phaseOrder: number[] | null;
+  slotIdentities: string[];
+};
+
+function slotIdentitySet(slots: Exp021RequestSlotRecord[] | null | undefined): string[] {
+  return (slots ?? []).map((slot) => `${slot.slotIndex}:${slot.offsetMs}:${slot.dueAtMs}`);
+}
+
+function captureMid60RestartSnapshot(
+  sessionRow: { preflightJson: unknown; acquisitionStateJson: unknown },
+): Mid60RestartSnapshot {
+  const authority = parseExp021PhysicalAuthority(sessionRow.preflightJson);
+  const st = parseAcquisitionState(sessionRow.acquisitionStateJson);
+  const series = st.hfCalibrationSeries;
+  return {
+    canonicalT0: authority?.canonicalT0At ?? null,
+    calibrationSeriesId: series?.calibrationSeriesId ?? null,
+    active60PhaseId: series?.activePhase?.calibrationPhaseId ?? null,
+    active60PhaseStartedAt: series?.activePhase?.phaseStartedAt ?? null,
+    phaseOrder: series?.phaseOrder ?? null,
+    slotIdentities: slotIdentitySet(st.hfCalibrationActiveCounters?.exp021RequestSlots),
+  };
+}
+
+async function findOrchestratorAttachableRecording(
+  prisma: PrismaClient,
+  organizationId: string,
+  vehicleId: string,
+) {
+  return prisma.referenceCaptureSession.findFirst({
+    where: {
+      organizationId,
+      vehicleId,
+      status: 'RECORDING',
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
 
 (LIVE ? describe : describe.skip)(
   'EXP-021 short A/B autonomous lifecycle PostgreSQL integration',
@@ -277,6 +328,148 @@ const TEN_MIN_MS = 10 * 60_000;
 
         const st = parseAcquisitionState(reloaded.acquisitionStateJson);
         expect(st.hfCalibrationActiveCounters?.exp021RequestSlots?.length).toBe(10);
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
+    });
+
+    it('REAL_DB_DRIVER_RESTART_60_TO_TERMINAL: mid-60s PostgreSQL restart completes via canonical driver wall', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix, { tokenId: 192_922 });
+      const restartClockMs = t0Ms + 15 * 60_000;
+      const finalWallMs = t0Ms + 2 * TEN_MIN_MS;
+      let clock = restartClockMs;
+      try {
+        await prisma.referenceCaptureSession.update({
+          where: { id: seed.sessionId },
+          data: { acquisitionStateJson: emptyDataPlane(t0Ms - 60_000) as object },
+        });
+        await armShortAb90PhaseFromPersistedT0({
+          repo,
+          seed,
+          hfPolicy,
+          t0Ms,
+          cadence90Ms: cadences[0],
+        });
+        await requestAndActivatePhase(
+          repo,
+          seed,
+          cadences[1],
+          t0Ms + TEN_MIN_MS,
+          hfPolicy,
+          'PHYSICAL_TRANSITION',
+        );
+
+        const beforeRestart = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
+        const preState = parseAcquisitionState(beforeRestart.acquisitionStateJson);
+        const series = preState.hfCalibrationSeries;
+        expect(series?.calibrationPlanId).toBe('candidate_short_ab_90_60');
+        expect(series?.phaseOrder).toEqual([90_000, 60_000]);
+        expect(series?.activePhase?.effectivePollIntervalMs).toBe(60_000);
+        expect(series?.activePhase?.phaseProvenance).toBe('PHYSICAL_TRANSITION');
+        expect(preState.hfCalibrationActiveCounters?.exp021RequestSlots?.length).toBe(10);
+        expect(restartClockMs).toBeGreaterThan(t0Ms + TEN_MIN_MS);
+        expect(restartClockMs).toBeLessThan(finalWallMs);
+
+        const beforeSnapshot = captureMid60RestartSnapshot(beforeRestart);
+        expect(beforeSnapshot.canonicalT0).toBeTruthy();
+        expect(beforeSnapshot.calibrationSeriesId).toBeTruthy();
+        expect(beforeSnapshot.active60PhaseId).toBeTruthy();
+        expect(beforeSnapshot.active60PhaseStartedAt).toBeTruthy();
+        expect(beforeSnapshot.slotIdentities.length).toBe(10);
+
+        const driver1 = createPostgresExp021Driver({
+          repo,
+          seed,
+          hfPolicy,
+          getNowMs: () => clock,
+          sessionId: seed.sessionId,
+        });
+        driver1.tryResumeFromRecordingSession(beforeRestart);
+        void driver1;
+
+        const reloaded = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
+        const driver2 = createPostgresExp021Driver({
+          repo,
+          seed,
+          hfPolicy,
+          getNowMs: () => clock,
+          sessionId: seed.sessionId,
+        });
+        const resume = driver2.tryResumeFromRecordingSession(reloaded);
+        expect(resume).toBe('driving');
+        expect(driver2.currentPhaseIndex).toBe(1);
+
+        const afterResumeRow = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
+        const afterResumeSnapshot = captureMid60RestartSnapshot(afterResumeRow);
+        expect(afterResumeSnapshot.canonicalT0).toBe(beforeSnapshot.canonicalT0);
+        expect(afterResumeSnapshot.calibrationSeriesId).toBe(beforeSnapshot.calibrationSeriesId);
+        expect(afterResumeSnapshot.active60PhaseId).toBe(beforeSnapshot.active60PhaseId);
+        expect(afterResumeSnapshot.active60PhaseStartedAt).toBe(beforeSnapshot.active60PhaseStartedAt);
+        expect(afterResumeSnapshot.phaseOrder).toEqual(beforeSnapshot.phaseOrder);
+        expect(afterResumeSnapshot.slotIdentities).toEqual(beforeSnapshot.slotIdentities);
+
+        const duplicateT0 = await repo.persistExp021CanonicalT0Atomic({
+          organizationId: seed.organizationId,
+          sessionId: seed.sessionId,
+          firstQualifyingMovementAt: new Date(t0Ms),
+          startConfirmedAt: new Date(t0Ms + 1_000),
+          nowMs: clock,
+        });
+        expect(duplicateT0?.created).toBe(false);
+
+        clock = finalWallMs;
+        const done = await driver2.tickDriving(EXP021_PG_MOVING_SAMPLE);
+        expect(done.status).toBe('done');
+        expect(done.stopReason).toBe('FINAL_PHASE_WALL_CLOCK');
+
+        const terminalRow = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
+        const terminalState = parseAcquisitionState(terminalRow.acquisitionStateJson);
+        const terminalSeries = terminalState.hfCalibrationSeries;
+        expect(terminalSeries).toBeTruthy();
+        if (!terminalSeries) throw new Error('missing hfCalibrationSeries after terminal');
+        expectPlanAuthority(terminalSeries);
+        expectPhaseOrder(terminalSeries);
+        expectNo120Phase(terminalSeries);
+        expect(terminalSeries.terminalFinalizationAt).toBeTruthy();
+        expect(terminalSeries.pendingPhaseRequest).toBeNull();
+        expect(terminalSeries.activePhase).toBeNull();
+        expect(terminalSeries.completedPhaseSummaries?.length).toBe(2);
+        expect(terminalSeries.completedPhases?.map((p) => p.effectivePollIntervalMs)).toEqual([
+          90_000,
+          60_000,
+        ]);
+        expect(
+          terminalSeries.completedPhaseSummaries?.map((s) => s.effectivePollIntervalMs),
+        ).toEqual([90_000, 60_000]);
+        expect(countIntendedSlotsForCadence(90_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(7);
+        expect(countIntendedSlotsForCadence(60_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(10);
+
+        const terminalSnapshot = captureMid60RestartSnapshot(terminalRow);
+        expect(terminalSnapshot.canonicalT0).toBe(beforeSnapshot.canonicalT0);
+        expect(terminalSnapshot.calibrationSeriesId).toBe(beforeSnapshot.calibrationSeriesId);
+        expect(terminalSnapshot.phaseOrder).toEqual([90_000, 60_000]);
+
+        const allSlotIdentities = new Set<string>(beforeSnapshot.slotIdentities);
+        expect(allSlotIdentities.size).toBe(10);
+
+        const attachable = await findOrchestratorAttachableRecording(
+          prisma,
+          seed.organizationId,
+          seed.vehicleId,
+        );
+        expect(attachable).toBeNull();
+        expect(terminalRow.status).toBe('COMPLETED');
+
+        const terminalDriver = createPostgresExp021Driver({
+          repo,
+          seed,
+          hfPolicy,
+          getNowMs: () => clock,
+          sessionId: seed.sessionId,
+        });
+        const terminalResume = terminalDriver.tryResumeFromRecordingSession(terminalRow);
+        expect(terminalResume).toBe('wait_movement');
       } finally {
         await cleanupReferenceCaptureSeed(prisma, seed);
       }

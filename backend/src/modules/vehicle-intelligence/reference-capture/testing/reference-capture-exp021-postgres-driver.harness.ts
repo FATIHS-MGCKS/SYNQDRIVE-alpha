@@ -141,12 +141,18 @@ export function createPostgresDriverSessionServiceAdapter(args: {
         nowMs: getNowMs(),
       });
     },
-    stopRecording: async (_org: string, sid: string) => {
-      const finalized = await repo.finalizeTerminalCalibrationAtomic(seed.organizationId, sid, {
-        terminalAtMs: getNowMs(),
+    stopRecording: async (org: string, sid: string) => {
+      const terminalAtMs = getNowMs();
+      const finalized = await repo.finalizeTerminalCalibrationAtomic(org, sid, {
+        terminalAtMs,
         reason: 'STOP',
       });
       if (!finalized) throw new Error('finalizeTerminalCalibrationAtomic returned null');
+      const completedAt = new Date(terminalAtMs);
+      await repo.updateStatus(org, sid, 'COMPLETED', {
+        stoppedAt: completedAt,
+        completedAt,
+      });
       return { status: 'COMPLETED' };
     },
     terminalizeExp021PhysicalEndEarly: async () => {

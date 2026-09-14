@@ -654,7 +654,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Removed | `reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts` (reimplemented control flow — insufficient) |
 | Assertions | `reference-capture-exp021-short-ab-geometry.assertions.ts` (geometry only, no lifecycle simulation) |
 | Matrix | Full 90→60 driver path, durable restart B–E, duplicate lock, ZERO_RESULT, Trip FSM read-only audit |
-| Postgres | `reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration.spec.ts` — CI PASS @ `e2bdd94ee` (6/6); `PHYSICAL_TRANSITION` provenance via `requestAndActivatePhase` |
+| Postgres | `REAL_DB_DRIVER_RESTART_60_TO_TERMINAL` — mid-60s PG reload → canonical driver `FINAL_PHASE_WALL_CLOCK` terminalization (7/7 CI) |
 | Gate | `scripts/validate-exp021-short-ab-autonomous-gate.sh` — unit gate (55 tests) |
 | CI | `.github/workflows/exp021-autonomous-orchestrator-ci.yml` — unit + isolated Postgres (`synqdrive_exp021_pr1649_test`) |
 | Postgres driver | `testing/reference-capture-exp021-postgres-driver.harness.ts` — repo atomic bridge (not lifecycle duplicate) |

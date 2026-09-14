@@ -32,7 +32,7 @@
 | **POSTGRES PERSISTENCE INTEGRATION** | Repository atomic methods (`persistExp021CanonicalT0Atomic`, `activatePhysicalPhaseAtT0Atomic`, `requestHfCalibrationPhaseAtomic`, `activatePendingPhaseAtBoundary`, `finalizeTerminalCalibrationAtomic`) | **PASS** (CI ephemeral DB `synqdrive_exp021_pr1649_test`, `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`) |
 | **CANONICAL DRIVER REAL-PATH TEST** | Production `Exp021AutonomousLifecycleDriver` owns T0 → 90s → wall transition → 60s → terminal without test manual phase calls | **PASS** (`reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts`) |
 | **SIMULATED PERSISTED STATE RESTART** | Driver restart scenarios with in-memory maps (not PostgreSQL reload) | **PASS** (driver spec B–E; **not** durable persistence proof) |
-| **POSTGRES PERSISTENCE RESTART** | Driver `tryResumeFromRecordingSession` after `reloadSessionRow` from real PostgreSQL | **PASS** (CI — 90 / boundary / after-transition / after-terminal cases; mid-60s-to-terminal not separately proven) |
+| **POSTGRES PERSISTENCE RESTART** | Driver `tryResumeFromRecordingSession` after `reloadSessionRow` from real PostgreSQL | **PASS** (CI — 90 / boundary / after-transition / mid-60s-to-terminal / after-terminal; 7/7 postgres tests) |
 | **PHYSICAL PRODUCTION RUN** | End-to-end on vehicle with DIMO telemetry | **NOT AUTHORIZED** — no deploy, no physical run from this PR |
 
 **Removed (insufficient):** parallel in-memory harness `reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts` — reimplemented orchestrator control flow; **not** production path proof.
@@ -103,7 +103,7 @@ reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts (controlled-time r
 | RESTART_90 | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
 | RESTART_90_BOUNDARY | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
 | RESTART_AFTER_TRANSITION | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
-| RESTART_60 | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | **NOT_PROVEN** (driver spec only; no dedicated mid-60s Postgres restart-to-terminal case) |
+| RESTART_60 | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER (**PASS** — `REAL_DB_DRIVER_RESTART_60_TO_TERMINAL`) |
 | RESTART_AFTER_TERMINAL | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
 | DUPLICATE_ORCHESTRATOR | PURE_UNIT (Redis lock lib) | NOT_APPLICABLE |
 | MULTI_REPLICA | PURE_UNIT (ownership stamp lib) | NOT_APPLICABLE |
@@ -137,13 +137,13 @@ bash architecture/drivingintelligence/evidence/reference-capture/scripts/validat
 
 **READY_FOR_NEXT_PHYSICAL_90_60_RUN:** **NO** (human sign-off + governance label still required)
 
-Prerequisites met by this PR branch (@ `e2bdd94ee`):
+Prerequisites met by this PR branch (pending final HEAD freeze):
 
 - PR #1645 merged (evidence authority frozen; frozen forensic files untouched)
 - Canonical driver extracted; orchestrator delegates lifecycle (`STRUCTURAL_RUNTIME_REFACTOR=YES`, `INTENDED_RUNTIME_BEHAVIOR_CHANGE=NO`)
 - Parallel harness removed
 - Autonomous regression gate **PASS** (55 unit tests)
-- Isolated Postgres integration **PASS** (CI service container `synqdrive_exp021_pr1649_test`, 6/6 tests)
+- Isolated Postgres integration **PASS** (CI service container `synqdrive_exp021_pr1649_test`, 7/7 tests incl. mid-60s restart-to-terminal)
 - Phase transitions use `PHYSICAL_TRANSITION` provenance so slot materialization and driver resume match production path
 
 Remaining blockers for **YES**:
@@ -151,6 +151,6 @@ Remaining blockers for **YES**:
 - Human review / merge approval of PR #1649 (do not merge from agent)
 - `i18n-governance-authority-change` label on PR (new workflow file triggers authority protection)
 - Explicit authorization for next physical run (no cadence decision from this PR)
-- Optional: dedicated Postgres proof for mid-60s restart-to-terminal (`RESTART_60_DURABLE`)
+- `i18n-governance-authority-change` label from trusted human authority (workflow file addition)
 
 **NO DEPLOY. NO PHYSICAL RUN. NO CADENCE DECISION.**
