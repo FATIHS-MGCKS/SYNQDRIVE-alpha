@@ -386,6 +386,8 @@ describePg('PhysicalStatePreseedService (postgres)', () => {
     expect(result.decision).toBe('SKIP_NON_LEGACY_AUTHORITY');
     expect(result.reason).toBe('authority_not_legacy');
     expect(result.reconcileDecision).toBeNull();
+    expect(result.reconcileDecision).not.toBe('DUPLICATE');
+    expect(result.reconcileDecision).not.toBe(DeviceConnectionPhysicalTransitionDecision.DUPLICATE);
     expect(result.wouldWrite.projection).toBe(false);
     expect(result.wouldWrite.transition).toBe(false);
 

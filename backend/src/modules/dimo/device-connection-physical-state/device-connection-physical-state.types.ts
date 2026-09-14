@@ -108,15 +108,34 @@ export interface PhysicalStateCoordinatorInput {
 
 export type PhysicalStatePreCutoverAuthorityBlockReason = 'SKIP_NON_LEGACY_AUTHORITY';
 
-export interface PhysicalStateCoordinatorResult {
+export interface PhysicalStateCoordinatorReconciledResult {
+  kind: 'reconciled';
   reconcile: PhysicalStateReconcileResult;
   canonicalEventId: string | null;
   outboxId: string | null;
   outboxDuplicate: boolean;
-  preCutoverAuthorityBlocked?: {
-    reason: PhysicalStatePreCutoverAuthorityBlockReason;
-    authorityMode: DeviceConnectionPhysicalAuthorityMode;
-  };
+}
+
+export interface PhysicalStateCoordinatorPreCutoverBlockedResult {
+  kind: 'pre_cutover_authority_blocked';
+  reason: PhysicalStatePreCutoverAuthorityBlockReason;
+  authorityMode: DeviceConnectionPhysicalAuthorityMode;
+}
+
+export type PhysicalStateCoordinatorResult =
+  | PhysicalStateCoordinatorReconciledResult
+  | PhysicalStateCoordinatorPreCutoverBlockedResult;
+
+export function isPhysicalStateCoordinatorReconciled(
+  result: PhysicalStateCoordinatorResult,
+): result is PhysicalStateCoordinatorReconciledResult {
+  return result.kind === 'reconciled';
+}
+
+export function getCoordinatorReconcile(
+  result: PhysicalStateCoordinatorResult | null | undefined,
+): PhysicalStateReconcileResult | null {
+  return result && isPhysicalStateCoordinatorReconciled(result) ? result.reconcile : null;
 }
 
 export type PhysicalStateCoordinatorTestSeam = {

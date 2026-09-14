@@ -13,6 +13,8 @@ import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-co
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
 import type {
   PhysicalStateCoordinatorInput,
+  PhysicalStateCoordinatorPreCutoverBlockedResult,
+  PhysicalStateCoordinatorReconciledResult,
   PhysicalStateCoordinatorResult,
   PhysicalStateCoordinatorTestSeam,
   PhysicalStateReconcileResult,
@@ -116,7 +118,7 @@ export class PhysicalStateReconcileCoordinator {
       );
 
       if (authorityMode !== DeviceConnectionPhysicalAuthorityMode.LEGACY) {
-        return this.buildPreCutoverAuthorityBlockedResult(authorityMode, input);
+        return this.buildPreCutoverAuthorityBlockedResult(authorityMode);
       }
     }
 
@@ -168,6 +170,7 @@ export class PhysicalStateReconcileCoordinator {
     }
 
     return {
+      kind: 'reconciled',
       reconcile,
       canonicalEventId,
       outboxId,
@@ -177,41 +180,11 @@ export class PhysicalStateReconcileCoordinator {
 
   private buildPreCutoverAuthorityBlockedResult(
     authorityMode: DeviceConnectionPhysicalAuthorityMode,
-    input?: PhysicalStateCoordinatorInput,
-  ): PhysicalStateCoordinatorResult {
-    const context = input
-      ? buildBlockedReconcileContext(input)
-      : {
-          previousState: null,
-          candidateState: 'UNPLUGGED' as const,
-          resultingState: null,
-          previousEvidenceAt: null,
-          candidateEvidenceAt: new Date(0),
-          incomingEvidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
-          stateVersionBefore: null,
-          stateVersionAfter: null,
-          selfHeal: false,
-          evidenceReferenceId: 'blocked',
-        };
-
+  ): PhysicalStateCoordinatorPreCutoverBlockedResult {
     return {
-      reconcile: {
-        enabled: true,
-        decision: DeviceConnectionPhysicalTransitionDecision.DUPLICATE,
-        projection: null,
-        transitionId: null,
-        episodeAction: 'none',
-        alertAction: 'none',
-        context,
-        reason: 'SKIP_NON_LEGACY_AUTHORITY',
-      },
-      canonicalEventId: null,
-      outboxId: null,
-      outboxDuplicate: false,
-      preCutoverAuthorityBlocked: {
-        reason: 'SKIP_NON_LEGACY_AUTHORITY',
-        authorityMode,
-      },
+      kind: 'pre_cutover_authority_blocked',
+      reason: 'SKIP_NON_LEGACY_AUTHORITY',
+      authorityMode,
     };
   }
 
@@ -254,21 +227,4 @@ export class PhysicalStateReconcileCoordinator {
 
 function dedupBucketFromObservedAt(observedAt: Date): bigint {
   return dedupBucket(observedAt);
-}
-
-function buildBlockedReconcileContext(
-  input: PhysicalStateCoordinatorInput,
-): PhysicalStateReconcileResult['context'] {
-  return {
-    previousState: null,
-    candidateState: input.reconcile.evidence.candidateState,
-    resultingState: null,
-    previousEvidenceAt: null,
-    candidateEvidenceAt: input.reconcile.evidence.evidenceObservedAt,
-    incomingEvidenceSource: input.reconcile.evidence.evidenceSource,
-    stateVersionBefore: null,
-    stateVersionAfter: null,
-    selfHeal: input.reconcile.selfHeal === true,
-    evidenceReferenceId: input.reconcile.evidence.evidenceReferenceId,
-  };
 }

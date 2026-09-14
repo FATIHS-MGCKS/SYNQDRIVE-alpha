@@ -81,6 +81,7 @@ describe('PhysicalStatePreseedService metrics DI', () => {
     ] as never);
 
     jest.spyOn(coordinator, 'reconcileInOuterTransaction').mockResolvedValue({
+      kind: 'reconciled',
       reconcile: {
         enabled: true,
         decision: DeviceConnectionPhysicalTransitionDecision.ESTABLISHED,

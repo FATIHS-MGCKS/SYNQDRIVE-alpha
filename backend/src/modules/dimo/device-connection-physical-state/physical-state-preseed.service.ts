@@ -18,6 +18,7 @@ import type {
   PhysicalStatePreseedPlan,
   PhysicalStatePreseedScope,
 } from './physical-state-preseed.types';
+import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 
 @Injectable()
@@ -110,7 +111,7 @@ export class PhysicalStatePreseedService {
       { sideEffectsEnabled: false, requireLegacyAuthorityForPreseed: true },
     );
 
-    if (coordinatorResult.preCutoverAuthorityBlocked) {
+    if (coordinatorResult.kind === 'pre_cutover_authority_blocked') {
       const blockedResult = this.toExecutionResult(plan, {
         dryRun: false,
         reconcileDecision: null,
@@ -134,6 +135,10 @@ export class PhysicalStatePreseedService {
       };
       this.recordMetrics(result);
       return result;
+    }
+
+    if (!isPhysicalStateCoordinatorReconciled(coordinatorResult)) {
+      throw new Error('preseed_expected_reconciled_coordinator_result');
     }
 
     const reconcile = coordinatorResult.reconcile;
