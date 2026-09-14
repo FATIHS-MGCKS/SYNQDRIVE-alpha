@@ -31,7 +31,8 @@
 | **UNIT POLICY TEST** | Calibration plan geometry, slot counts, settlement budget, orchestrator lib locks | **PASS** (`candidate-short-ab-90-60.spec`, `orchestrator.lib.spec`) |
 | **POSTGRES PERSISTENCE INTEGRATION** | Repository atomic methods (`persistExp021CanonicalT0Atomic`, `activatePhysicalPhaseAtT0Atomic`, `requestHfCalibrationPhaseAtomic`, `finalizeTerminalCalibrationAtomic`) | **OPT-IN** (`REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`) — compile fix applied; runtime requires isolated test DB |
 | **CANONICAL DRIVER REAL-PATH TEST** | Production `Exp021AutonomousLifecycleDriver` owns T0 → 90s → wall transition → 60s → terminal without test manual phase calls | **PASS** (`reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts`) |
-| **DURABLE RESTART TEST** | Driver `tryResumeFromRecordingSession` + controlled-time restart scenarios B–E, terminal guard | **PASS** (driver spec; simulated persisted authority via canonical preflight shape) |
+| **SIMULATED PERSISTED STATE RESTART** | Driver restart scenarios with in-memory maps (not PostgreSQL reload) | **PASS** (driver spec B–E; **not** durable persistence proof) |
+| **POSTGRES PERSISTENCE RESTART** | Driver `tryResumeFromRecordingSession` after `reloadSessionRow` from real PostgreSQL | **CI** (`reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration.spec.ts`) |
 | **PHYSICAL PRODUCTION RUN** | End-to-end on vehicle with DIMO telemetry | **NOT AUTHORIZED** — no deploy, no physical run from this PR |
 
 **Removed (insufficient):** parallel in-memory harness `reference-capture-exp021-autonomous-short-ab-lifecycle.harness.ts` — reimplemented orchestrator control flow; **not** production path proof.
@@ -89,9 +90,25 @@ reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts (controlled-time r
 - `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp-021-autonomous-lifecycle.driver.spec.ts`
 - `backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp021-short-ab-geometry.assertions.ts`
 
-**PostgreSQL integration (optional, `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`):**
+**PostgreSQL integration (CI + optional local, `REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1`):**
 
 - `reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration.spec.ts`
+- Isolated DB: `synqdrive_exp021_pr1649_test` (ephemeral CI service container)
+- CI workflow: `.github/workflows/exp021-autonomous-orchestrator-ci.yml`
+
+**Restart evidence classification:**
+
+| Case | Driver spec | Postgres integration |
+|------|-------------|----------------------|
+| RESTART_90 | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
+| RESTART_90_BOUNDARY | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
+| RESTART_AFTER_TRANSITION | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
+| RESTART_60 | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
+| RESTART_AFTER_TERMINAL | SIMULATED_PERSISTED_STATE + CANONICAL_DRIVER | POSTGRES_PERSISTENCE + CANONICAL_DRIVER |
+| DUPLICATE_ORCHESTRATOR | PURE_UNIT (Redis lock lib) | NOT_APPLICABLE |
+| MULTI_REPLICA | PURE_UNIT (ownership stamp lib) | NOT_APPLICABLE |
+
+**Structural refactor note:** production orchestrator delegates lifecycle to `Exp021AutonomousLifecycleDriver` — `STRUCTURAL_RUNTIME_REFACTOR=YES`, `INTENDED_RUNTIME_BEHAVIOR_CHANGE=NO`.
 
 **Gate:**
 
