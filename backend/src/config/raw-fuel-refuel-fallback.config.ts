@@ -165,3 +165,67 @@ export function canExecuteFallbackVehicleEnergyEventPromotion(
 ): boolean {
   return evaluateFallbackPromotionAuthority(env).authorized;
 }
+
+/** F5-PR3 post-commit G2 handoff authority — separate from promotion execution. */
+export const RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED_ENV =
+  'RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED';
+
+/**
+ * Strict authority reader for F5-PR3 G2 handoff — only canonical `true`.
+ * Does NOT accept 1/yes/on like the general permissive RFRF flag parser.
+ */
+export function parseRfrfFallbackG2HandoffAuthorized(value: string | undefined): boolean {
+  if (value == null || value.trim() === '') return false;
+  return value.trim().toLowerCase() === 'true';
+}
+
+/** F5-PR3 fail-closed reader — authorizes post-commit fallback G2 handoff only. */
+export function isRfrfFallbackG2HandoffAuthorized(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return parseRfrfFallbackG2HandoffAuthorized(env[RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED_ENV]);
+}
+
+export interface FallbackG2HandoffAuthorityEvaluation {
+  authorized: boolean;
+  detail:
+    | 'authorized'
+    | 'handoff_not_authorized'
+    | 'promotion_execution_not_authorized'
+    | 'convergence_not_authorized';
+}
+
+/**
+ * F5-PR3 authoritative G2 handoff gate — requires convergence, promotion execution,
+ * and handoff flags. No individual flag may authorize fallback G2 participation.
+ */
+export function evaluateFallbackG2HandoffAuthority(
+  env: NodeJS.ProcessEnv = process.env,
+): FallbackG2HandoffAuthorityEvaluation {
+  if (!isRfrfFallbackG2HandoffAuthorized(env)) {
+    return { authorized: false, detail: 'handoff_not_authorized' };
+  }
+  if (!isRfrfFallbackPromotionExecutionAuthorized(env)) {
+    return { authorized: false, detail: 'promotion_execution_not_authorized' };
+  }
+  if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
+    return { authorized: false, detail: 'convergence_not_authorized' };
+  }
+  return { authorized: true, detail: 'authorized' };
+}
+
+/** Convenience boolean for tests and call sites that need full handoff conjunction. */
+export function canExecuteFallbackG2Handoff(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return evaluateFallbackG2HandoffAuthority(env).authorized;
+}
+
+export const SYNQDRIVE_RAW_FUEL_FALLBACK_DETECTION_SOURCE =
+  'SYNQDRIVE_RAW_FUEL_FALLBACK' as const;
+
+export function isSynqdriveRawFuelFallbackDetectionSource(
+  detectionSource: string | null | undefined,
+): boolean {
+  return detectionSource === SYNQDRIVE_RAW_FUEL_FALLBACK_DETECTION_SOURCE;
+}

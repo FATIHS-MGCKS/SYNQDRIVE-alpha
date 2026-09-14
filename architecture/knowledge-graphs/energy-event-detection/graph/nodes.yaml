@@ -1636,6 +1636,23 @@ nodes:
       zero G2/BullMQ/enrichment; F5-PR3 not started.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0058
+    type: evidence
+    title: RFRF F5-PR3 — Post-commit G2 handoff
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f5-pr3-g2-handoff-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-g2-handoff.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-g2-participation.policy.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+      - backend/scripts/test/rfrf-f5-pr3-g2-handoff-gate.sh
+    summary: >
+      RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED strict conjunction; post-commit handoff only after TRANSACTION A;
+      G2 participation defence-in-depth; recovery bypass closed; 30/30 real PG gate P1–P29;
+      late-native policy proofs; production flags OFF.
+    verified_at: "2026-09-14"
+
   - id: EED-EV-0057
     type: evidence
     title: RFRF F5-PR2.1 — Pre-merge micro-closure

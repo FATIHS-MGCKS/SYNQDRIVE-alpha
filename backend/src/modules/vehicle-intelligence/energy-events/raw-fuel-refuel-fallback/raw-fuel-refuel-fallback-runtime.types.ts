@@ -42,6 +42,8 @@ export interface RawFuelRefuelFallbackCandidateOutcome {
   convergenceApplyError?: string;
   promotionApply?: RawRefuelPromotionApplyResult;
   promotionApplyError?: string;
+  g2Handoff?: import('./raw-refuel-g2-handoff.types').RawRefuelG2HandoffResult;
+  g2HandoffError?: string;
 }
 
 export interface RawFuelRefuelFallbackScanResult {
@@ -70,6 +72,13 @@ export interface RawFuelRefuelFallbackScanResult {
   promotionFailClosed: number;
   promotionSkippedNotAuthorized: number;
   promotionBlockedByCutover: number;
+  g2HandoffAttempted: number;
+  g2HandoffCompleted: number;
+  g2HandoffHeld: number;
+  g2HandoffDeferred: number;
+  g2HandoffDeduped: number;
+  g2HandoffFailed: number;
+  g2HandoffSkippedNotAuthorized: number;
   candidateOutcomes: RawFuelRefuelFallbackCandidateOutcome[];
   branchError?: string;
 }
