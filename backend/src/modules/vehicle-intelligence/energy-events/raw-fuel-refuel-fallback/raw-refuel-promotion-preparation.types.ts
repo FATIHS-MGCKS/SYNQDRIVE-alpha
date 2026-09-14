@@ -10,8 +10,8 @@ export interface RawRefuelPromotionPreparationResult {
   promotionDraft: RawRefuelCandidatePromotionDraft | null;
   /** F5 convergence authority flag — authorizes evaluation only, not VEE insert. */
   f5ConvergenceAuthorized: boolean;
-  /** Always false in F5-PR1 — no fallback VehicleEnergyEvent upsert reachable. */
-  canCreateFallbackVehicleEnergyEvent: false;
-  /** True when fallback VEE promotion remains blocked (always true in F5-PR1). */
+  /** F5-PR2 promotion execution authority — separate from convergence; default false. */
+  canCreateFallbackVehicleEnergyEvent: boolean;
+  /** True when fallback VEE promotion remains blocked by missing promotion execution authority. */
   blockedByF5Gate: boolean;
 }

@@ -33,6 +33,7 @@ function buildEligibility(
 export function evaluateRawRefuelPromotionEligibility(
   readiness: RawRefuelCandidateReadinessResult,
   context: RawRefuelPromotionEligibilityContext,
+  env: NodeJS.ProcessEnv = process.env,
 ): RawRefuelPromotionEligibilityResult {
   if (!readiness.ready) {
     return buildEligibility('NOT_READY', false, readiness.detail);
@@ -78,7 +79,7 @@ export function evaluateRawRefuelPromotionEligibility(
     }
   }
 
-  if (!isRfrfNativeFallbackConvergenceAuthorized()) {
+  if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
     return buildEligibility(
       'BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED',
       true,
@@ -86,7 +87,7 @@ export function evaluateRawRefuelPromotionEligibility(
     );
   }
 
-  if (!canCreateFallbackVehicleEnergyEvent()) {
+  if (!canCreateFallbackVehicleEnergyEvent(env)) {
     return buildEligibility(
       'BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED',
       true,

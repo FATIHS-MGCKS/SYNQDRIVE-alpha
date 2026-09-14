@@ -18,14 +18,15 @@ describe('raw-fuel-refuel-fallback.config F4-PR3 F5 gate stub', () => {
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
   });
 
-  it('master + persist flags cannot authorize VEE promotion or F5 convergence', () => {
+  it('master + persist + convergence flags cannot authorize VEE promotion alone', () => {
     process.env.RAW_FUEL_REFUEL_FALLBACK_ENABLED = 'true';
     process.env.RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED = 'true';
     process.env.RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED = 'true';
+    delete process.env.RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED;
 
     expect(isRawFuelRefuelFallbackMasterEnabled()).toBe(true);
     expect(isRawFuelRefuelFallbackPersistEnabled()).toBe(true);
-    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
     expect(canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion()).toBe(false);
   });

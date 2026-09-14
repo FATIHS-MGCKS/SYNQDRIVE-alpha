@@ -2,14 +2,17 @@ import {
   RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT_ENV,
   RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
   RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV,
+  RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
   RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV,
   canCreateFallbackVehicleEnergyEvent,
   canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion,
   isRawFuelRefuelFallbackMasterEnabled,
   isRawFuelRefuelFallbackPersistEnabled,
+  isRfrfFallbackPromotionExecutionAuthorized,
   isRfrfNativeFallbackConvergenceAuthorized,
   loadRawFuelRefuelFallbackConfig,
   parseRawFuelRefuelFallbackBoolean,
+  parseRfrfFallbackPromotionExecutionAuthorized,
   parseRfrfNativeFallbackConvergenceAuthorized,
 } from './raw-fuel-refuel-fallback.config';
 
@@ -74,14 +77,30 @@ describe('raw-fuel-refuel-fallback.config', () => {
     expect(cfg.persistEnabled).toBe(false);
   });
 
-  it('F5 convergence authority defaults false and does not authorize VEE', () => {
+  it('F5 convergence authority defaults false and does not authorize VEE alone', () => {
     delete process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV];
+    delete process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV];
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
+    expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
+  });
+
+  it('F5 promotion execution authority is separate from convergence', () => {
     process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = 'true';
-    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
-    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = ' TRUE ';
+    delete process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV];
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
+
+    process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV] = 'true';
+    expect(isRfrfFallbackPromotionExecutionAuthorized()).toBe(true);
+    expect(canCreateFallbackVehicleEnergyEvent()).toBe(true);
+  });
+
+  it('F5 promotion execution authority rejects non-canonical truthy values', () => {
+    for (const value of ['1', 'yes', 'on', 'enabled', '0', 'false', '']) {
+      process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV] = value;
+      expect(isRfrfFallbackPromotionExecutionAuthorized()).toBe(false);
+    }
+    expect(parseRfrfFallbackPromotionExecutionAuthorized('true')).toBe(true);
   });
 
   it('F5 convergence authority rejects non-canonical truthy values', () => {

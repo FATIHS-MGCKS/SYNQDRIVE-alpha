@@ -104,9 +104,33 @@ export function isRfrfNativeFallbackConvergenceAuthorized(
   );
 }
 
-/** Hard authority boundary — fallback VehicleEnergyEvent creation unreachable from F4. */
+/** F5-PR2 promotion execution authority — separate from convergence authorization. */
+export const RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV =
+  'RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED';
+
+/**
+ * Strict authority reader for F5-PR2 promotion execution — only canonical `true`.
+ * Does NOT accept 1/yes/on like the general permissive RFRF flag parser.
+ */
+export function parseRfrfFallbackPromotionExecutionAuthorized(
+  value: string | undefined,
+): boolean {
+  if (value == null || value.trim() === '') return false;
+  return value.trim().toLowerCase() === 'true';
+}
+
+/** F5-PR2 fail-closed reader — authorizes fallback VehicleEnergyEvent insert only. */
+export function isRfrfFallbackPromotionExecutionAuthorized(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return parseRfrfFallbackPromotionExecutionAuthorized(
+    env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV],
+  );
+}
+
+/** Hard authority boundary — fallback VehicleEnergyEvent creation gated by F5-PR2 promotion execution flag. */
 export function canCreateFallbackVehicleEnergyEvent(
-  _env: NodeJS.ProcessEnv = process.env,
-): false {
-  return false;
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isRfrfFallbackPromotionExecutionAuthorized(env);
 }

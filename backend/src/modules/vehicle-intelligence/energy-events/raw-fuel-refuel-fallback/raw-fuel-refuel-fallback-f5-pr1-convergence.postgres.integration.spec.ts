@@ -9,6 +9,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
 import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
+import { RawRefuelPromotionService } from './raw-refuel-promotion.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
 import { EnergyEventsService } from '../energy-events.service';
 import {
@@ -225,11 +226,13 @@ function buildRuntimeStack(prisma: PrismaClient, fetchFuelLevelSamples: jest.Moc
     prisma as unknown as PrismaService,
   );
   const convergence = new RawRefuelConvergenceService(prisma as unknown as PrismaService);
+  const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
   const rawRuntime = new RawFuelRefuelFallbackRuntimeService(
     dimoSegments as never,
     candidateService,
     promotionPreparation,
     convergence,
+    promotion,
   );
   const energyEvents = new EnergyEventsService(
     prisma as unknown as PrismaService,

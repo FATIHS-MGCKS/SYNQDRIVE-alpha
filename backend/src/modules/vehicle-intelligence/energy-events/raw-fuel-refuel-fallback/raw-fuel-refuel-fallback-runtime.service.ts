@@ -17,12 +17,22 @@ import type { RawRefuelCandidateObservation } from '../raw-refuel-candidate/raw-
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
 import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
+import { RawRefuelPromotionService } from './raw-refuel-promotion.service';
 import type {
   RawFuelRefuelFallbackScanInput,
   RawFuelRefuelFallbackScanResult,
 } from './raw-fuel-refuel-fallback-runtime.types';
 import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
 import type { RawFuelAbsoluteDetectionAdmissibility } from './raw-fuel-refuel-fallback.types';
+
+function resolveRuntimePromotionTrust(
+  observationTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+): RawRefuelCandidateObservation['absoluteSignalTrust'] | undefined {
+  if (observationTrust == null || observationTrust === 'UNKNOWN') {
+    return undefined;
+  }
+  return observationTrust;
+}
 
 function emptyResult(
   partial: Partial<RawFuelRefuelFallbackScanResult> &
@@ -44,6 +54,11 @@ function emptyResult(
     convergenceConvergedNative: 0,
     convergenceFailClosed: 0,
     convergenceSkippedNotAuthorized: 0,
+    promotionExecutionAttempted: 0,
+    promotionCommitted: 0,
+    promotionFailClosed: 0,
+    promotionSkippedNotAuthorized: 0,
+    promotionBlockedByCutover: 0,
     candidateOutcomes: [],
     ...partial,
   };
@@ -61,6 +76,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     private readonly rawRefuelCandidateService: RawRefuelCandidateService,
     @Optional() private readonly promotionPreparation?: RawRefuelPromotionPreparationService,
     @Optional() private readonly convergenceService?: RawRefuelConvergenceService,
+    @Optional() private readonly promotionService?: RawRefuelPromotionService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
   ) {}
 
@@ -73,6 +89,7 @@ export class RawFuelRefuelFallbackRuntimeService {
       this.rawRefuelCandidateService,
       this.promotionPreparation,
       this.convergenceService,
+      this.promotionService,
       this.metrics,
     );
     service.configLoader = loader;
@@ -374,7 +391,7 @@ export class RawFuelRefuelFallbackRuntimeService {
       const preparation = await this.promotionPreparation.preparePromotionById(candidateId, {
         capability,
         absoluteDetectionAdmissibility,
-        absoluteSignalTrust,
+        absoluteSignalTrust: resolveRuntimePromotionTrust(absoluteSignalTrust),
       });
       if (!preparation) {
         outcome.promotionPreparationError = 'candidate_not_found_after_persist';
@@ -395,7 +412,16 @@ export class RawFuelRefuelFallbackRuntimeService {
         observationIndex,
         capability,
         absoluteDetectionAdmissibility,
-        absoluteSignalTrust,
+        resolveRuntimePromotionTrust(absoluteSignalTrust),
+        env,
+      );
+      await this.runPromotionExecutionIfPrepared(
+        candidateId,
+        result,
+        observationIndex,
+        capability,
+        absoluteDetectionAdmissibility,
+        resolveRuntimePromotionTrust(absoluteSignalTrust),
         env,
       );
     } catch (error) {
@@ -462,6 +488,71 @@ export class RawFuelRefuelFallbackRuntimeService {
         `RFRF convergence isolated failure candidate=${candidateId}: ${message}`,
       );
       outcome.convergenceApplyError = message;
+    }
+  }
+
+  private async runPromotionExecutionIfPrepared(
+    candidateId: string,
+    result: RawFuelRefuelFallbackScanResult,
+    observationIndex: number,
+    capability: RawFuelCapability,
+    absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
+    absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<void> {
+    if (!this.promotionService) {
+      return;
+    }
+
+    const outcome = result.candidateOutcomes.find(
+      (item) => item.observationIndex === observationIndex,
+    );
+    if (!outcome?.promotionPreparation?.readiness.ready) {
+      return;
+    }
+
+    result.promotionExecutionAttempted += 1;
+    this.metrics?.recordPromotionAttempted();
+
+    try {
+      const applyResult = await this.promotionService.evaluateAndApplyPromotionById(
+        candidateId,
+        {
+          capability,
+          absoluteDetectionAdmissibility,
+          absoluteSignalTrust,
+        },
+        env,
+      );
+      outcome.promotionApply = applyResult;
+
+      switch (applyResult.status) {
+        case 'PROMOTED':
+          result.promotionCommitted += 1;
+          break;
+        case 'FAIL_CLOSED':
+        case 'BLOCKED_PROMOTION_TRUST':
+          result.promotionFailClosed += 1;
+          break;
+        case 'BLOCKED_CUTOVER':
+          result.promotionFailClosed += 1;
+          result.promotionBlockedByCutover += 1;
+          break;
+        case 'SKIPPED_NOT_AUTHORIZED':
+          result.promotionSkippedNotAuthorized += 1;
+          break;
+        case 'CONVERGED_NATIVE':
+          result.convergenceConvergedNative += 1;
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `RFRF promotion isolated failure candidate=${candidateId}: ${message}`,
+      );
+      outcome.promotionApplyError = message;
     }
   }
 }

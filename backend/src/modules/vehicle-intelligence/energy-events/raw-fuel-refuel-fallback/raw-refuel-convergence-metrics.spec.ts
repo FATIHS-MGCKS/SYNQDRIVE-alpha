@@ -55,6 +55,7 @@ describe('RFRF F5 convergence metrics single ownership', () => {
       {} as never,
       promotionPreparation,
       convergenceService,
+      undefined,
       metrics,
     );
 
@@ -66,6 +67,11 @@ describe('RFRF F5 convergence metrics single ownership', () => {
       convergenceConvergedNative: 0,
       convergenceFailClosed: 0,
       convergenceSkippedNotAuthorized: 0,
+      promotionExecutionAttempted: 0,
+      promotionCommitted: 0,
+      promotionFailClosed: 0,
+      promotionSkippedNotAuthorized: 0,
+      promotionBlockedByCutover: 0,
       candidateOutcomes: [
         {
           observationIndex: 0,
