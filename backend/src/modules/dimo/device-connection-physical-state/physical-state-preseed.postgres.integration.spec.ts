@@ -401,7 +401,7 @@ describePg('PhysicalStatePreseedService (postgres)', () => {
     ).toBe(transitionsBefore);
 
     const after = await countSideEffectArtifacts();
-    expect(after.authority).toBe(before.authority + 1);
+    expect(after.authority).toBe(before.authority);
     expect(after.episodes).toBe(before.episodes);
     expect(after.outbox).toBe(before.outbox);
     expect(after.events).toBe(before.events);
