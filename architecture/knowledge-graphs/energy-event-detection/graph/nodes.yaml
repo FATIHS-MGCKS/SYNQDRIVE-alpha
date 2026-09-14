@@ -1566,6 +1566,63 @@ nodes:
       F5_START_AUTHORIZED=YES; F5 not started; production untouched.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0052
+    type: evidence
+    title: RFRF F5.0 — Convergence architecture + policy closure
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - docs/audits/eed-rfrf-f5-0-convergence-architecture-and-policy-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate-promotion.design.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation.design.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/physical-refuel-identity.matcher.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+    summary: >
+      F5.0 policy closure on main@c81629ee: NAMESPACED_SYNTHETIC dimoSegmentId with sourceEventKey
+      authoritative (VEHICLE_GLOBAL scope); authoritative native↔fallback convergence matrix A–Q;
+      late-native L1–L11 with COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY; promotion idempotency;
+      post-commit G2 handoff; TRANSACTION A atomicity; F5.0a micro-closure fixes exact-head SHA
+      terminology and removes impossible crash states; POLICY_DEFINED only; zero fallback VEE.
+    verified_at: "2026-09-14"
+
+  - id: EED-DEC-RFRF-010
+    type: decision
+    title: RFRF F5.0 — Late-native sibling policy
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Reuse G2 hasLateSiblingFinalizationConflict and finality states. L1 block fallback before
+      promotion; L2–L3 re-reconcile before enrichment completion; L4/L8/L9 sticky enrichment
+      (COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES): late SAME after enriched fallback sets
+      lateSiblingConflict, enrichmentEligibleId=null, no ownership transfer; L10 enrichment failure
+      follows pre-completion path; L11 multi-late fail-closed. Forensic retention mandatory.
+    evidence: [EED-EV-0052]
+    verified_at: "2026-09-14"
+
+  - id: EED-DEC-RFRF-009
+    type: decision
+    title: RFRF F5.0 — Authoritative native↔fallback convergence matrix
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      F4 advisory superseded at F5 by G2 matcher. SAME → single enrichmentEligible owner;
+      INSUFFICIENT fail-closed promotion; DISTINCT independent VEEs. CONVERGED_NATIVE terminal
+      when native SAME before promotion. No competing identity engine.
+    evidence: [EED-EV-0052]
+    verified_at: "2026-09-14"
+
+  - id: EED-DEC-RFRF-008
+    type: decision
+    title: RFRF F5.0 — Synthetic dimoSegmentId policy (NAMESPACED_SYNTHETIC)
+    decision_status: PROPOSED
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical fallback identity = detectionSource + sourceEventKey (candidateIdentityKey).
+      dimoSegmentId = synqdrive-rfrf-{vehicleId}-{keyPrefix16} storage surrogate only; MUST NOT
+      masquerade as DIMO provider id or provider query key. DIMO_SEGMENT_ID_FLEET_COMPATIBILITY=PASS.
+    evidence: [EED-EV-0052]
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-007
     type: decision
     title: RFRF F4.1 — Separate detection admissibility from promotion trust

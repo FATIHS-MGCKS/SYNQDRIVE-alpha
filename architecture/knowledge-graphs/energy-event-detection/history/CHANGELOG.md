@@ -8,9 +8,41 @@
 - **Regression:** `raw-fuel-refuel-fallback-runtime.di.spec.ts` + `SYNQDRIVE_BOOT_CHECK=1` module graph proof
 - **RFRF semantics unchanged:** flags default off; F5 gate stub unchanged; no VEE upsert path opened
 - Migrations applied during failed deploy (`device_connection_physical_state_p21_durability`, `rfrf_f4_pr1_vehicle_energy_event_source_identity`) audited additive/backward-compatible vs running prod SHA `9a32685d…`
-- Evidence EED-EV-0052; production **not** promoted
+- Evidence EED-EV-0053 (boot DI fix; distinct from EED-EV-0052 F5.0 policy on #1641); production **not** promoted
 
 **Verdict:** RFRF_BOOT_DI_FIX=PASS — redeploy blocked until merge; Trip FSM #1635 unchanged
+
+---
+
+## 2026-09-14 — RFRF F5.0b authority consistency
+
+- EED-DEC-RFRF-010 Consequences: late-native PG test scope corrected L1–L8 → L1–L11
+- Audit: explicit `LATE_NATIVE_POLICY_SCOPE = L1–L11`; stale current-authority L1–L8 references = 0
+
+**Verdict:** RFRF_F5_0B_AUTHORITY_CONSISTENCY=PASS
+
+---
+
+## 2026-09-14 — RFRF F5.0a policy micro-closure
+
+- F5.0a on PR #1641: exact-head SHA terminology (`F5_0_BASE_MAIN_SHA` / `STARTING_HEAD` / `FINAL_HEAD`)
+- Late-native post-enrichment: COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES; L4/L8/L9/L10/L11 deterministic
+- Transaction boundary: TRANSACTION A (VEE+PROMOTED) vs post-commit G2/BullMQ; removed impossible C2 split
+- SOURCE_EVENT_KEY_SCOPE=VEHICLE_GLOBAL; SYNTHETIC_ID_COLLISION_BEHAVIOR=FAIL_CLOSED
+- EED-EV-0052 summary updated; EED-DEC-RFRF-010 expanded; POLICY_DEFINED only
+
+**Verdict:** RFRF_F5_0A_POLICY_MICRO_CLOSURE=PASS
+
+---
+
+## 2026-09-14 — RFRF F5.0 convergence architecture + policy closure
+
+- Policy closure on main@c81629ee (PR #1639 merge); no post-merge delta
+- Closes three F5 entry blockers: synthetic dimoSegmentId, authoritative convergence matrix, late-native policy
+- Decisions EED-DEC-RFRF-008 (NAMESPACED_SYNTHETIC), 009 (convergence matrix), 010 (late-native)
+- Evidence EED-EV-0052; F5_STARTED=YES; F5_PR1_START_AUTHORIZED=YES; zero fallback VEE in F5.0
+
+**Verdict:** RFRF_F5_0_CONVERGENCE_POLICY_CLOSURE=PASS — F5-PR1 authorized; promotion still unreachable
 
 ---
 
