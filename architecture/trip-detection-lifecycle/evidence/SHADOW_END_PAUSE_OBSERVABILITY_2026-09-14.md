@@ -49,9 +49,13 @@ npm run trip:shadow:audit -- --vehicle-id=<uuid> --since=2026-09-01T00:00:00.000
 npm run trip:shadow:audit -- --fixtures-only
 ```
 
+Real audit requires `DATABASE_URL`, `--vehicle-id`, `--since`, and `--until`. Missing `DATABASE_URL` without `--fixtures-only` exits non-zero.
+
 ## Canary strategy (initial)
 
-Enable globally or via allowlist for test vehicles by **stable vehicle ID** (not registration plate):
+Fail-closed: `ENABLED=true` with an **empty** allowlist enables shadow for nobody. Explicit vehicle UUIDs required.
+
+Enable for test vehicles by **stable vehicle ID** (not registration plate):
 
 - KS MX 2024 — `a60c0749-a7cd-494e-b5b9-dea3c6b97d63`
 - WOB L 7503 — configure via dashboard secret/env
@@ -73,7 +77,18 @@ TRIP_FSM_SHADOW_VEHICLE_IDS=a60c0749-a7cd-494e-b5b9-dea3c6b97d63
 | Pause/resume tracker | `trip-fsm-shadow-summary.builder.ts` |
 | Orchestration hooks | `trip-detection-orchestration.service.ts` (observability-only) |
 | Unit tests | `trip-fsm-shadow-observability.spec.ts` |
-| Audit script | `scripts/ops/audit-trip-fsm-shadow-observability.ts` |
+| Audit script / domain | `scripts/ops/audit-trip-fsm-shadow-observability.ts`, `trip-fsm-shadow-audit.domain.ts` |
+| Authority non-consumption tests | `trip-fsm-shadow-authority-non-consumption.spec.ts` |
+| Postgres integration | `trip-fsm-shadow-observability.postgres-redis.integration.spec.ts` |
+
+## Closure review (2026-09-14)
+
+- **Canary fail-closed:** `ENABLED=true` + empty allowlist disables shadow for all vehicles.
+- **Generation isolation:** shadow stores `candidateEndCycleGeneration` / `candidateTripId`; reuse compares stored vs current orchestration token.
+- **Cross-trip pause correlation:** read-only audit layer (`correlateConsecutiveTripPauses`) correlates Trip A terminal timestamps with Trip B start — never influences Trip B creation.
+- **Audit timestamp authority:** `REAL_END_AT`, `REAL_COMPLETED_AT` (`endRecognizedAt`), `REAL_RESTING_AT` (RESTING tracking run) — never synthesized from `endTime` alone.
+- **Forensic fields derived:** `SHADOW_CROSS_TRIP_LEAK_OBSERVED`, `SHADOW_FALSE_END_RISK_OBSERVED`, `SHADOW_PROVIDER_SILENCE_COMPETED_WITH_STRONGER_PATH`, `PROVIDER_SILENCE_COUNTERFACTUAL_STATUS` — no hardcoded PASS/NO.
+- **Audit CLI fail-closed:** missing `DATABASE_URL` without `--fixtures-only` exits non-zero; real audit requires bounded `--vehicle-id` + `--since` + `--until`.
 
 ## Historical evidence preserved
 

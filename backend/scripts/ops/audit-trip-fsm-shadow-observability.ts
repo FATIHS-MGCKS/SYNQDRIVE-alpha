@@ -1,16 +1,18 @@
 /**
  * Read-only audit for Trip FSM shadow observability payloads.
- *
- * Usage:
- *   cd backend
- *   npm run trip:shadow:audit -- --vehicle-id=<uuid> --since=2026-09-01T00:00:00.000Z --until=2026-09-15T00:00:00.000Z
- *
- * Dry-run fixtures (no DATABASE_URL):
- *   npm run trip:shadow:audit -- --fixtures-only
  */
+import {
+  aggregateShadowAuditRows,
+  correlateConsecutiveTripPauses,
+  extractTripLifecycleTimestamps,
+  formatShadowAuditRow,
+  validateShadowAuditCliArgs,
+  type ShadowAuditTripInput,
+} from '../../src/modules/vehicle-intelligence/trips/trip-fsm-shadow-audit.domain';
 import type { ShadowTerminalSummary } from '../../src/modules/vehicle-intelligence/trips/trip-fsm-shadow-observability.types';
+import { TripTrackingRunType } from '@prisma/client';
 
-const AUDIT_VERSION = 'trip-fsm-shadow-audit-v1';
+const AUDIT_VERSION = 'trip-fsm-shadow-audit-v2';
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -28,126 +30,149 @@ function readShadowFromRawMeta(raw: unknown): ShadowTerminalSummary | null {
   return shadow as ShadowTerminalSummary;
 }
 
-function buildFixtureRows() {
+function buildFixtureRows(): ShadowAuditTripInput[] {
   return [
     {
-      tripId: 'fixture-trip-1',
-      startAt: '2026-09-13T10:00:00.000Z',
-      endAt: '2026-09-13T11:00:00.000Z',
+      vehicleId: 'vehicle-fixture-a',
+      tripId: 'fixture-trip-a',
+      startAt: new Date('2026-09-13T10:00:00.000Z'),
+      endTime: new Date('2026-09-13T10:01:15.000Z'),
+      tripStatus: 'COMPLETED',
       rawDetectionMeta: {
         endTimeSource: 'CLICKHOUSE_END_ASSIST',
+        endRecognizedAt: '2026-09-13T10:01:20.000Z',
         shadowObservability: {
           providerSilence: {
             everEvaluated: true,
-            everEligible: true,
-            firstEligibleAt: '2026-09-13T10:25:00.000Z',
-            candidateAt: '2026-09-13T10:23:00.000Z',
+            everEligible: false,
+            firstEligibleAt: null,
+            candidateAt: '2026-09-13T10:00:30.000Z',
             candidateSource: 'provider_silence_candidate',
             trust: false,
             clockAuthority: 'PROVIDER_EVENT_TIME',
             realWinningEndPath: 'CLICKHOUSE_END_ASSIST',
             invalidatedByMovement: false,
-            blockedReasons: [],
+            blockedReasons: ['provider_silence_below_liveness_bound'],
+            counterfactualStatus: 'NOT_REACHED_BEFORE_TERMINAL',
+            candidateEndCycleGeneration: 'token-a',
+            candidateTripId: 'fixture-trip-a',
           },
           pauses: {
             episodeCount: 1,
-            resumedEpisodeCount: 1,
-            longestPauseMs: 90_000,
-            outcomes: ['SAME_TRIP_RESUME'],
-            sameTripResumeCount: 1,
+            resumedEpisodeCount: 0,
+            longestPauseMs: 0,
+            outcomes: ['NO_RESUME_OBSERVED'],
+            sameTripResumeCount: 0,
             newTripAfterTerminalCount: 0,
             ambiguousCount: 0,
+            episodes: [
+              {
+                pauseEpisodeId: 'pause-a',
+                vehicleId: 'vehicle-fixture-a',
+                tripId: 'fixture-trip-a',
+                episodeStartedAt: '2026-09-13T10:00:10.000Z',
+                episodeStartSource: 'fixture',
+                bestObservedStopAnchorAt: '2026-09-13T10:00:10.000Z',
+                realFsmStateAtPauseStart: 'IDLE_WITHIN_TRIP',
+                possibleEndAt: null,
+                completedAt: null,
+                restingAt: null,
+                activeTripIdAtPauseStart: 'fixture-trip-a',
+                shadowPauseOutcome: 'NO_RESUME_OBSERVED',
+              },
+            ],
           },
         },
       },
-      completedAt: '2026-09-13T11:00:00.000Z',
-      restingAt: '2026-09-13T11:00:05.000Z',
+      restingObservedAt: new Date('2026-09-13T10:01:25.000Z'),
+    },
+    {
+      vehicleId: 'vehicle-fixture-a',
+      tripId: 'fixture-trip-b',
+      startAt: new Date('2026-09-13T10:05:00.000Z'),
+      endTime: null,
+      tripStatus: 'ONGOING',
+      rawDetectionMeta: {
+        shadowObservability: {
+          providerSilence: {
+            everEvaluated: false,
+            everEligible: false,
+            firstEligibleAt: null,
+            candidateAt: null,
+            candidateSource: null,
+            trust: null,
+            clockAuthority: null,
+            realWinningEndPath: null,
+            invalidatedByMovement: false,
+            blockedReasons: [],
+            counterfactualStatus: null,
+            candidateEndCycleGeneration: null,
+            candidateTripId: null,
+          },
+          pauses: {
+            episodeCount: 0,
+            resumedEpisodeCount: 0,
+            longestPauseMs: 0,
+            outcomes: [],
+            sameTripResumeCount: 0,
+            newTripAfterTerminalCount: 0,
+            ambiguousCount: 0,
+            episodes: [],
+          },
+        },
+      },
+      restingObservedAt: null,
     },
   ];
 }
 
-function formatRow(trip: {
-  tripId: string;
-  startAt: string;
-  endAt: string | null;
-  rawDetectionMeta: unknown;
-  completedAt: string | null;
-  restingAt: string | null;
-}) {
-  const shadow = readShadowFromRawMeta(trip.rawDetectionMeta);
-  const ps = shadow?.providerSilence;
-  const pa = shadow?.pauses;
-  return {
-    TRIP_ID: trip.tripId,
-    START_AT: trip.startAt,
-    END_AT: trip.endAt,
-    REAL_END_PATH:
-      (trip.rawDetectionMeta as Record<string, unknown> | null)?.endTimeSource ??
-      null,
-    REAL_COMPLETED_AT: trip.completedAt,
-    REAL_RESTING_AT: trip.restingAt,
-    SHADOW_PROVIDER_SILENCE_EVALUATED: ps?.everEvaluated ?? false,
-    SHADOW_PROVIDER_SILENCE_ELIGIBLE: ps?.everEligible ?? false,
-    SHADOW_PROVIDER_SILENCE_FIRST_ELIGIBLE_AT: ps?.firstEligibleAt ?? null,
-    SHADOW_PROVIDER_SILENCE_BLOCKED_BY: ps?.blockedReasons?.join('|') ?? null,
-    SHADOW_PROVIDER_SILENCE_TRUST: ps?.trust ?? null,
-    SHADOW_PROVIDER_SILENCE_CLOCK_AUTHORITY: ps?.clockAuthority ?? null,
-    PAUSE_EPISODE_COUNT: pa?.episodeCount ?? 0,
-    LONGEST_PAUSE_SECONDS: pa?.longestPauseMs
-      ? Math.round(pa.longestPauseMs / 1000)
-      : 0,
-    RESUME_COUNT: pa?.resumedEpisodeCount ?? 0,
-    SAME_TRIP_RESUME_COUNT: pa?.sameTripResumeCount ?? 0,
-    NEW_TRIP_AFTER_TERMINAL_COUNT: pa?.newTripAfterTerminalCount ?? 0,
-    AMBIGUOUS_PAUSE_COUNT: pa?.ambiguousCount ?? 0,
-    SHADOW_FALSE_END_RISK_OBSERVED:
-      ps?.everEligible === true &&
-      ps?.realWinningEndPath != null &&
-      !String(ps.realWinningEndPath).includes('provider_silence'),
-    SHADOW_CROSS_TRIP_LEAK_OBSERVED: false,
-  };
-}
-
-function aggregate(rows: ReturnType<typeof formatRow>[]) {
-  return {
-    TOTAL_TRIPS: rows.length,
-    PROVIDER_SILENCE_WOULD_HAVE_BEEN_NEEDED: rows.filter(
-      (r) => r.SHADOW_PROVIDER_SILENCE_ELIGIBLE,
-    ).length,
-    PROVIDER_SILENCE_WOULD_HAVE_ADMITTED: rows.filter(
-      (r) =>
-        r.SHADOW_PROVIDER_SILENCE_ELIGIBLE &&
-        r.SHADOW_PROVIDER_SILENCE_TRUST === false,
-    ).length,
-    PROVIDER_SILENCE_CORRECTLY_BLOCKED_BY_MOVEMENT: rows.filter((r) =>
-      (r.SHADOW_PROVIDER_SILENCE_BLOCKED_BY ?? '').includes('movement'),
-    ).length,
-    SAME_TRIP_SHORT_PAUSES: rows.filter((r) => r.SAME_TRIP_RESUME_COUNT > 0)
-      .length,
-    NEW_TRIP_AFTER_TERMINAL: rows.filter(
-      (r) => r.NEW_TRIP_AFTER_TERMINAL_COUNT > 0,
-    ).length,
-    AMBIGUOUS_EPISODES: rows.filter((r) => r.AMBIGUOUS_PAUSE_COUNT > 0).length,
-  };
+async function loadRestingObservedAtByTrip(
+  prisma: import('@prisma/client').PrismaClient,
+  tripIds: string[],
+): Promise<Map<string, Date>> {
+  const runs = await prisma.vehicleTripTrackingRun.findMany({
+    where: {
+      tripId: { in: tripIds },
+      resultState: 'RESTING',
+      runType: TripTrackingRunType.FINALIZATION_CHECK,
+    },
+    select: { tripId: true, createdAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  const map = new Map<string, Date>();
+  for (const run of runs) {
+    if (run.tripId && !map.has(run.tripId)) {
+      map.set(run.tripId, run.createdAt);
+    }
+  }
+  return map;
 }
 
 async function main(): Promise<void> {
+  const fixturesOnly = hasFlag('--fixtures-only');
+  const allowUnbounded = hasFlag('--allow-unbounded');
   const vehicleId = parseArg('--vehicle-id');
   const sinceRaw = parseArg('--since');
   const untilRaw = parseArg('--until');
   const since = sinceRaw ? new Date(sinceRaw) : undefined;
   const until = untilRaw ? new Date(untilRaw) : undefined;
 
-  let trips: Array<{
-    tripId: string;
-    startAt: string;
-    endAt: string | null;
-    rawDetectionMeta: unknown;
-    completedAt: string | null;
-    restingAt: string | null;
-  }>;
+  const validation = validateShadowAuditCliArgs({
+    fixturesOnly,
+    databaseUrl: process.env.DATABASE_URL,
+    vehicleId,
+    since,
+    until,
+    allowUnbounded,
+  });
+  if (!validation.ok) {
+    console.error(validation.message);
+    process.exit(1);
+  }
 
-  if (hasFlag('--fixtures-only') || !process.env.DATABASE_URL) {
+  let trips: ShadowAuditTripInput[];
+
+  if (fixturesOnly) {
     trips = buildFixtureRows();
   } else {
     const { NestFactory } = await import('@nestjs/core');
@@ -160,18 +185,15 @@ async function main(): Promise<void> {
       const prisma = app.get(PrismaService);
       const dbTrips = await prisma.vehicleTrip.findMany({
         where: {
-          ...(vehicleId ? { vehicleId } : {}),
-          ...(since || until
-            ? {
-                startTime: {
-                  ...(since ? { gte: since } : {}),
-                  ...(until ? { lte: until } : {}),
-                },
-              }
-            : {}),
+          vehicleId: vehicleId!,
+          startTime: {
+            gte: since!,
+            lte: until!,
+          },
         },
         select: {
           id: true,
+          vehicleId: true,
           startTime: true,
           endTime: true,
           rawDetectionMeta: true,
@@ -180,34 +202,57 @@ async function main(): Promise<void> {
         orderBy: { startTime: 'asc' },
         take: 500,
       });
+      const restingMap = await loadRestingObservedAtByTrip(
+        prisma,
+        dbTrips.map((t) => t.id),
+      );
       trips = dbTrips
         .filter((t) => t.rawDetectionMeta != null)
         .map((t) => ({
+          vehicleId: t.vehicleId,
           tripId: t.id,
-          startAt: t.startTime.toISOString(),
-          endAt: t.endTime?.toISOString() ?? null,
+          startAt: t.startTime,
+          endTime: t.endTime,
+          tripStatus: t.tripStatus,
           rawDetectionMeta: t.rawDetectionMeta,
-          completedAt: t.endTime?.toISOString() ?? null,
-          restingAt:
-            t.tripStatus === 'COMPLETED' ? t.endTime?.toISOString() ?? null : null,
+          restingObservedAt: restingMap.get(t.id) ?? null,
         }));
     } finally {
       await app.close();
     }
   }
 
-  const rows = trips.map(formatRow);
-  const totals = aggregate(rows);
+  const enriched = trips.map((trip) => ({
+    ...trip,
+    lifecycle: extractTripLifecycleTimestamps(trip),
+    shadow: readShadowFromRawMeta(trip.rawDetectionMeta),
+  }));
+
+  const rows = enriched.map((trip, index) => {
+    const prior = index > 0 ? enriched[index - 1] : null;
+    return formatShadowAuditRow(trip, trip.lifecycle, prior
+      ? {
+          tripId: prior.tripId,
+          vehicleId: prior.vehicleId,
+          shadow: prior.shadow,
+        }
+      : null);
+  });
+
+  const crossTripCorrelations = correlateConsecutiveTripPauses(enriched);
+  const totals = aggregateShadowAuditRows(rows);
 
   console.log(
     JSON.stringify(
       {
         auditVersion: AUDIT_VERSION,
         readOnly: true,
+        fixturesOnly,
         vehicleId: vehicleId ?? null,
         since: since?.toISOString() ?? null,
         until: until?.toISOString() ?? null,
         rows,
+        crossTripCorrelations,
         aggregates: totals,
       },
       null,

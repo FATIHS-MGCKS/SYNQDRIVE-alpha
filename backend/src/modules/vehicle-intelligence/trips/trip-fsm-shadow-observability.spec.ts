@@ -65,6 +65,42 @@ describe('trip-fsm-shadow-observability', () => {
       expect(allowlist.has(VEHICLE_B)).toBe(true);
     });
 
+    it('ENABLED=false => no shadow anywhere', () => {
+      expect(
+        isTripFsmShadowObservabilityEnabledForVehicle(
+          VEHICLE_A,
+          withShadowEnv({
+            TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED: 'false',
+            TRIP_FSM_SHADOW_VEHICLE_IDS: VEHICLE_A,
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it('ENABLED=true + allowlisted vehicle => shadow enabled', () => {
+      expect(
+        isTripFsmShadowObservabilityEnabledForVehicle(
+          VEHICLE_A,
+          withShadowEnv({
+            TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED: 'true',
+            TRIP_FSM_SHADOW_VEHICLE_IDS: VEHICLE_A,
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('ENABLED=true + empty allowlist => shadow disabled for all vehicles', () => {
+      expect(
+        isTripFsmShadowObservabilityEnabledForVehicle(
+          VEHICLE_A,
+          withShadowEnv({
+            TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED: 'true',
+            TRIP_FSM_SHADOW_VEHICLE_IDS: '',
+          }),
+        ),
+      ).toBe(false);
+    });
+
     it('vehicle not allowlisted → zero shadow evaluation', () => {
       const enabled = isTripFsmShadowObservabilityEnabledForVehicle(
         VEHICLE_B,
@@ -122,6 +158,53 @@ describe('trip-fsm-shadow-observability', () => {
     beforeEach(() => {
       process.env.TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED = 'true';
       process.env.TRIP_FSM_SHADOW_VEHICLE_IDS = VEHICLE_A;
+    });
+
+    it('stores generation with candidate and rejects stale generation reuse', () => {
+      const priorPatch = runShadowActiveTickObservation({
+        vehicleId: VEHICLE_A,
+        tripId: 'trip-1',
+        activeTripId: 'trip-1',
+        fsmState: TripDetectionState.ACTIVE_TRIP,
+        workerNow: WORKER_NOW,
+        operationalInactiveMs: MIN_INACTIVITY + 10_000,
+        minInactivityBeforeCusumMs: MIN_INACTIVITY,
+        telemetry: staleTelemetry(),
+        profile: 'ICE',
+        performanceActivity: false,
+        routeMotion: false,
+        hasCrediblePostMovement: false,
+        providerSilenceAnchorAt: PROVIDER_ANCHOR,
+        endCycleGeneration: 'token-a',
+        priorSummary: {},
+        evaluateProviderSilence: true,
+      });
+      const state = readShadowObservabilityState(priorPatch ?? undefined);
+      expect(state.providerSilence.candidateEndCycleGeneration).toBe('token-a');
+
+      const stalePatch = runShadowActiveTickObservation({
+        vehicleId: VEHICLE_A,
+        tripId: 'trip-1',
+        activeTripId: 'trip-1',
+        fsmState: TripDetectionState.POSSIBLE_END,
+        workerNow: WORKER_NOW,
+        operationalInactiveMs: MIN_INACTIVITY + 10_000,
+        minInactivityBeforeCusumMs: MIN_INACTIVITY,
+        telemetry: staleTelemetry(),
+        profile: 'ICE',
+        performanceActivity: false,
+        routeMotion: false,
+        hasCrediblePostMovement: false,
+        providerSilenceAnchorAt: PROVIDER_ANCHOR,
+        endCycleGeneration: 'token-b',
+        priorSummary: priorPatch ?? {},
+        evaluateProviderSilence: true,
+      });
+      const staleState = readShadowObservabilityState(stalePatch ?? undefined);
+      expect(staleState.providerSilence.lastEvaluation?.blockedBy).toBe(
+        'old_end_cycle_generation',
+      );
+      expect(staleState.providerSilence.candidateEndCycleGeneration).toBe('token-a');
     });
 
     it('1. silence >=120s, stale UNKNOWN, valid anchor, no movement → eligible trust=false PROVIDER_EVENT_TIME', () => {
@@ -252,14 +335,36 @@ describe('trip-fsm-shadow-observability', () => {
         providerSilenceAnchorAt: PROVIDER_ANCHOR,
         activeTripId: 'trip-1',
         observedTripId: 'trip-1',
-        endCycleGeneration: 'token-a',
-        observedEndCycleGeneration: 'token-b',
+        currentEndCycleGeneration: 'token-b',
+        storedCandidateEndCycleGeneration: 'token-a',
       });
       expect(evaluation.eligible).toBe(false);
       expect(evaluation.blockedBy).toBe('old_end_cycle_generation');
     });
 
-    it('8. real ClickHouse wins — counterfactual still observed separately', () => {
+    it('8. real ClickHouse wins — counterfactual status NOT_REACHED_BEFORE_TERMINAL when threshold not met', () => {
+      const terminalAt = new Date(PROVIDER_ANCHOR.getTime() + 75_000);
+      const evaluation = evaluateProviderSilenceShadow({
+        operationalInactiveMs: 75_000,
+        minInactivityBeforeCusumMs: MIN_INACTIVITY,
+        telemetry: staleTelemetry(),
+        profile: 'ICE',
+        workerNow: terminalAt,
+        performanceActivity: false,
+        routeMotion: false,
+        hasCrediblePostMovement: false,
+        providerSilenceAnchorAt: PROVIDER_ANCHOR,
+        activeTripId: 'trip-1',
+        observedTripId: 'trip-1',
+        realWinningEndPath: 'CLICKHOUSE_END_ASSIST',
+        terminalObservedAt: terminalAt,
+      });
+      expect(evaluation.counterfactualStatus).toBe('NOT_REACHED_BEFORE_TERMINAL');
+      expect(evaluation.competedWithStrongerPath).toBe(false);
+      expect(evaluation.falseEndRiskObserved).toBe(false);
+    });
+
+    it('8b. real ClickHouse wins after threshold — counterfactual can be OBSERVED_ELIGIBLE', () => {
       const evaluation = evaluateProviderSilenceShadow({
         operationalInactiveMs: MIN_INACTIVITY + 10_000,
         minInactivityBeforeCusumMs: MIN_INACTIVITY,
@@ -275,7 +380,9 @@ describe('trip-fsm-shadow-observability', () => {
         realWinningEndPath: 'CLICKHOUSE_END_ASSIST',
       });
       expect(evaluation.eligible).toBe(true);
-      expect(evaluation.realWinningEndPath).toBe('CLICKHOUSE_END_ASSIST');
+      expect(evaluation.counterfactualStatus).toBe('OBSERVED_ELIGIBLE');
+      expect(evaluation.competedWithStrongerPath).toBe(true);
+      expect(evaluation.falseEndRiskObserved).toBe(false);
     });
 
     it('9. trusted boundary wins — real path unchanged, counterfactual observed', () => {
@@ -307,6 +414,7 @@ describe('trip-fsm-shadow-observability', () => {
   describe('pause / resume shadow', () => {
     beforeEach(() => {
       process.env.TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED = 'true';
+      process.env.TRIP_FSM_SHADOW_VEHICLE_IDS = VEHICLE_A;
     });
 
     it('10. 90-second pause + resumed movement → SAME_TRIP_RESUME', () => {
@@ -493,6 +601,7 @@ describe('trip-fsm-shadow-observability', () => {
   describe('terminal summary', () => {
     beforeEach(() => {
       process.env.TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED = 'true';
+      process.env.TRIP_FSM_SHADOW_VEHICLE_IDS = VEHICLE_A;
     });
 
     it('builds finalize terminal shadow summary', () => {

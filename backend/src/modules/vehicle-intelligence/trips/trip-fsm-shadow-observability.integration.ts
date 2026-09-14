@@ -37,6 +37,7 @@ export type ShadowActiveTickContext = {
   endCycleGeneration?: string | null;
   priorSummary: Record<string, unknown> | null | undefined;
   evaluateProviderSilence?: boolean;
+  terminalObservedAt?: Date | null;
 };
 
 export type ShadowPauseStartContext = {
@@ -79,6 +80,9 @@ export function runShadowActiveTickObservation(
   let state = readShadowObservabilityState(ctx.priorSummary);
 
   if (ctx.evaluateProviderSilence) {
+    const storedGeneration =
+      state.providerSilence.candidateEndCycleGeneration ?? null;
+    const storedTripId = state.providerSilence.candidateTripId ?? null;
     const evaluation = evaluateProviderSilenceShadow({
       operationalInactiveMs: ctx.operationalInactiveMs,
       minInactivityBeforeCusumMs: ctx.minInactivityBeforeCusumMs,
@@ -96,8 +100,10 @@ export function runShadowActiveTickObservation(
       realWinningEndPath: ctx.realWinningEndPath,
       activeTripId: ctx.activeTripId,
       observedTripId: ctx.tripId,
-      endCycleGeneration: ctx.endCycleGeneration,
-      observedEndCycleGeneration: ctx.endCycleGeneration,
+      currentEndCycleGeneration: ctx.endCycleGeneration ?? null,
+      storedCandidateEndCycleGeneration: storedGeneration,
+      storedCandidateTripId: storedTripId,
+      terminalObservedAt: ctx.terminalObservedAt ?? null,
     });
     state = applyProviderSilenceShadowEvaluation(state, evaluation);
   }

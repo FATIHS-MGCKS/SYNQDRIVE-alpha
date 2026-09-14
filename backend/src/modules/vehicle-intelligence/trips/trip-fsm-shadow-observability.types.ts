@@ -20,6 +20,12 @@ export type ShadowPauseDurationBucket =
   | '30-60min'
   | '>=60min';
 
+export type ProviderSilenceCounterfactualStatus =
+  | 'OBSERVED_ELIGIBLE'
+  | 'OBSERVED_BLOCKED'
+  | 'NOT_REACHED_BEFORE_TERMINAL'
+  | 'UNKNOWN';
+
 export type ShadowProviderSilenceEvaluation = {
   evaluated: true;
   eligible: boolean;
@@ -34,6 +40,12 @@ export type ShadowProviderSilenceEvaluation = {
   postCandidateMovementObserved: boolean;
   realWinningEndPath: string | null;
   observedAt: string;
+  counterfactualStatus: ProviderSilenceCounterfactualStatus;
+  candidateEndCycleGeneration: string | null;
+  candidateTripId: string | null;
+  currentEndCycleGeneration: string | null;
+  competedWithStrongerPath: boolean;
+  falseEndRiskObserved: boolean;
 };
 
 export type ShadowPauseEpisode = {
@@ -83,6 +95,9 @@ export type ShadowObservabilityState = {
     blockedReasons: string[];
     lastEvaluation: ShadowProviderSilenceEvaluation | null;
     evaluationCount: number;
+    candidateEndCycleGeneration: string | null;
+    candidateTripId: string | null;
+    counterfactualStatus: ProviderSilenceCounterfactualStatus | null;
   };
   pause: {
     activeEpisodeId: string | null;
@@ -106,6 +121,8 @@ export type ShadowTerminalSummary = {
     sameTripResumeCount: number;
     newTripAfterTerminalCount: number;
     ambiguousCount: number;
+    /** Terminal audit may correlate cross-trip pauses from persisted episode anchors. */
+    episodes?: ShadowPauseEpisode[];
   };
 };
 

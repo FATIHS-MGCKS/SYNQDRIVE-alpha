@@ -5,7 +5,10 @@ import {
   type EmptyCoreVlsTelemetry,
 } from './trip-empty-core-end-gate';
 import type { StopBoundaryProvenance } from './trip-fsm-clock-contract';
-import type { ShadowProviderSilenceEvaluation } from './trip-fsm-shadow-observability.types';
+import type {
+  ProviderSilenceCounterfactualStatus,
+  ShadowProviderSilenceEvaluation,
+} from './trip-fsm-shadow-observability.types';
 
 export type EvaluateProviderSilenceShadowParams = {
   operationalInactiveMs: number;
@@ -20,15 +23,14 @@ export type EvaluateProviderSilenceShadowParams = {
   providerSilenceAnchorAt: Date | null;
   lastMeaningfulMovementAt?: Date | null;
   lastProviderActivityAt?: Date | null;
-  /** Authoritative empty-core forensics from the same tick — observation only. */
   emptyCoreForensics?: EmptyCoreForensics | null;
-  /** When real FSM already chose a stronger end path this tick. */
   realWinningEndPath?: string | null;
-  /** Trip/end-cycle isolation — shadow must not reuse stale candidates. */
+  currentEndCycleGeneration?: string | null;
+  storedCandidateEndCycleGeneration?: string | null;
+  storedCandidateTripId?: string | null;
   activeTripId: string | null;
   observedTripId: string | null;
-  endCycleGeneration?: string | null;
-  observedEndCycleGeneration?: string | null;
+  terminalObservedAt?: Date | null;
 };
 
 function resolveRealWinningEndPathFromForensics(
@@ -47,10 +49,36 @@ function resolveRealWinningEndPathFromForensics(
   return null;
 }
 
-/**
- * Counterfactual #1635 provider-silence observation.
- * Reuses the authoritative admission contract — never mutates inputs or FSM state.
- */
+function isStrongerNonProviderSilencePath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  return !path.includes('provider_silence');
+}
+
+function deriveCounterfactualStatus(input: {
+  eligible: boolean;
+  blockedBy: string | null;
+  realWinningEndPath: string | null;
+  providerSilenceAnchorAt: Date | null;
+  minInactivityBeforeCusumMs: number;
+  observationNow: Date;
+  terminalObservedAt?: Date | null;
+}): ProviderSilenceCounterfactualStatus {
+  const observationInstant = input.terminalObservedAt ?? input.observationNow;
+  if (
+    input.providerSilenceAnchorAt &&
+    isStrongerNonProviderSilencePath(input.realWinningEndPath)
+  ) {
+    const silenceMs =
+      observationInstant.getTime() - input.providerSilenceAnchorAt.getTime();
+    if (silenceMs < input.minInactivityBeforeCusumMs) {
+      return 'NOT_REACHED_BEFORE_TERMINAL';
+    }
+  }
+  if (input.eligible) return 'OBSERVED_ELIGIBLE';
+  if (input.blockedBy) return 'OBSERVED_BLOCKED';
+  return 'UNKNOWN';
+}
+
 export function evaluateProviderSilenceShadow(
   params: EvaluateProviderSilenceShadowParams,
 ): ShadowProviderSilenceEvaluation {
@@ -75,9 +103,15 @@ export function evaluateProviderSilenceShadow(
   ) {
     blockedBy = 'old_trip_candidate';
   } else if (
-    params.endCycleGeneration &&
-    params.observedEndCycleGeneration &&
-    params.endCycleGeneration !== params.observedEndCycleGeneration
+    params.storedCandidateTripId &&
+    params.observedTripId &&
+    params.storedCandidateTripId !== params.observedTripId
+  ) {
+    blockedBy = 'old_trip_candidate';
+  } else if (
+    params.currentEndCycleGeneration &&
+    params.storedCandidateEndCycleGeneration &&
+    params.currentEndCycleGeneration !== params.storedCandidateEndCycleGeneration
   ) {
     blockedBy = 'old_end_cycle_generation';
   }
@@ -104,13 +138,34 @@ export function evaluateProviderSilenceShadow(
     params.realWinningEndPath ??
     resolveRealWinningEndPathFromForensics(params.emptyCoreForensics);
 
+  const eligible = blockedBy ? false : admission.eligible;
+  const counterfactualStatus = deriveCounterfactualStatus({
+    eligible,
+    blockedBy,
+    realWinningEndPath,
+    providerSilenceAnchorAt: params.providerSilenceAnchorAt,
+    minInactivityBeforeCusumMs: params.minInactivityBeforeCusumMs,
+    observationNow: workerNow,
+    terminalObservedAt: params.terminalObservedAt,
+  });
+
+  const competedWithStrongerPath =
+    eligible && isStrongerNonProviderSilencePath(realWinningEndPath);
+
+  const falseEndRiskObserved =
+    params.hasCrediblePostMovement ||
+    blockedBy === 'post_stop_movement_detected' ||
+    blockedBy === 'post_stop_positive_contradiction';
+
+  const generationForCandidate = eligible
+    ? params.currentEndCycleGeneration ?? null
+    : params.storedCandidateEndCycleGeneration ?? null;
+
   return {
     evaluated: true,
-    eligible: blockedBy ? false : admission.eligible,
+    eligible,
     wouldAdmitAt:
-      !blockedBy && admission.eligible && candidate
-        ? candidate.anchorAt.toISOString()
-        : null,
+      eligible && candidate ? candidate.anchorAt.toISOString() : null,
     candidateAt: candidate?.anchorAt.toISOString() ?? null,
     candidateSource: candidate?.source ?? null,
     clockAuthority:
@@ -124,5 +179,13 @@ export function evaluateProviderSilenceShadow(
     postCandidateMovementObserved: params.hasCrediblePostMovement,
     realWinningEndPath,
     observedAt: workerNow.toISOString(),
+    counterfactualStatus,
+    candidateEndCycleGeneration: generationForCandidate,
+    candidateTripId: eligible
+      ? params.observedTripId
+      : params.storedCandidateTripId ?? null,
+    currentEndCycleGeneration: params.currentEndCycleGeneration ?? null,
+    competedWithStrongerPath,
+    falseEndRiskObserved,
   };
 }

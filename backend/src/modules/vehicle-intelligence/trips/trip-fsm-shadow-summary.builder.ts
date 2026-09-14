@@ -22,6 +22,9 @@ export function createEmptyShadowObservabilityState(): ShadowObservabilityState 
       blockedReasons: [],
       lastEvaluation: null,
       evaluationCount: 0,
+      candidateEndCycleGeneration: null,
+      candidateTripId: null,
+      counterfactualStatus: null,
     },
     pause: {
       activeEpisodeId: null,
@@ -327,6 +330,15 @@ export function applyProviderSilenceShadowEvaluation(
         evaluation.clockAuthority ?? state.providerSilence.clockAuthority,
       realWinningEndPath:
         evaluation.realWinningEndPath ?? state.providerSilence.realWinningEndPath,
+      candidateEndCycleGeneration: evaluation.eligible
+        ? evaluation.candidateEndCycleGeneration
+        : state.providerSilence.candidateEndCycleGeneration,
+      candidateTripId: evaluation.eligible
+        ? evaluation.candidateTripId
+        : state.providerSilence.candidateTripId,
+      counterfactualStatus:
+        evaluation.counterfactualStatus ??
+        state.providerSilence.counterfactualStatus,
       blockedReasons,
       lastEvaluation: evaluation,
       evaluationCount: state.providerSilence.evaluationCount + 1,
@@ -351,6 +363,7 @@ export function buildShadowTerminalSummary(
       sameTripResumeCount: state.pause.sameTripResumeCount,
       newTripAfterTerminalCount: state.pause.newTripAfterTerminalCount,
       ambiguousCount: state.pause.ambiguousCount,
+      episodes: state.pause.episodes,
     },
   };
 }

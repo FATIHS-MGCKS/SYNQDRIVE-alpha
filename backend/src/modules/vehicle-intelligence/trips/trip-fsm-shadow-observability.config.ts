@@ -40,6 +40,7 @@ export function isTripFsmShadowObservabilityEnabledForVehicle(
   const allowlist = parseTripFsmShadowVehicleAllowlist(
     env[TRIP_FSM_SHADOW_VEHICLE_IDS_ENV],
   );
-  if (allowlist.size === 0) return true;
+  // Fail closed: enabled without an explicit allowlist enables shadow for nobody.
+  if (allowlist.size === 0) return false;
   return allowlist.has(vehicleId);
 }
