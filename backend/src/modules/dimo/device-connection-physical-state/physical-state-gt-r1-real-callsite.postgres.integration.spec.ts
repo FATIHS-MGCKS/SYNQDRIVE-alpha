@@ -9,19 +9,15 @@ import {
   CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
 } from '@config/connectivity-physical-state-runtime.config';
 import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
-import { evaluateSnapshotPlugResolution } from '../device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
 import { evaluateOrphanReconciliationEligibility } from '../connectivity/connectivity-lifecycle-runtime.policy';
-import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
-import { extractObdPlugSignalFromSignals } from './device-connection-physical-state.obd-evidence';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
-import { buildSnapshotPlugRepairGtR1Proof } from './physical-state-gt-r1-proof';
-import { buildLegacySnapshotShadowDecision } from './physical-state-legacy-shadow-decision';
 import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-writer.service';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
+import { PhysicalStateSnapshotEvidenceOrchestrator } from './physical-state-snapshot-evidence-orchestrator.service';
 import { PhysicalStateShadowClassification } from './physical-state-shadow.classification';
 import {
   cleanupPhysicalStatePostgresFixture,
@@ -57,7 +53,7 @@ function disableStatefulShadowEnv(): void {
 describePg('GT-R1 real call-site orchestration (postgres)', () => {
   let prisma: PrismaClient;
   let webhookService: DeviceConnectionWebhookService;
-  let writer: PhysicalStateEvidenceWriterService;
+  let orchestrator: PhysicalStateSnapshotEvidenceOrchestrator;
   let repository: DeviceConnectionPhysicalStateRepository;
   let fixture: PhysicalStatePostgresFixture;
   let binding: ReturnType<typeof buildBindingScopeFromToken>;
@@ -76,11 +72,12 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
     );
-    writer = new PhysicalStateEvidenceWriterService(
+    const writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
       new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
     );
+    orchestrator = new PhysicalStateSnapshotEvidenceOrchestrator(prismaService, writer);
     webhookService = new DeviceConnectionWebhookService(
       prismaService,
       { openFromUnplugEvent: jest.fn(), resolveFromExplicitPlugEvent: jest.fn() } as never,
@@ -113,7 +110,7 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
     await prisma.$disconnect();
   });
 
-  it('GT-R1: snapshot orchestration builders + webhook service call-site', async () => {
+  it('GT-R1: snapshot orchestrator call-site + webhook service call-site', async () => {
     await repository.reconcileEvidence({
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
@@ -141,59 +138,22 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
       },
     });
 
-    const signals = { obdIsPluggedIn: { value: true, timestamp: T2 } };
-    const obd = extractObdPlugSignalFromSignals(signals)!;
-    const snapshotReferenceId = `snapshot-obd:${fixture.vehicle.id}:${T2}`;
-    const legacyEval = evaluateSnapshotPlugResolution(
-      {
-        organizationId: fixture.org.id,
-        vehicleId: fixture.vehicle.id,
-        provider: 'DIMO',
-        hardwareType: 'LTE_R1',
-        obdIsPluggedIn: obd.obdIsPluggedIn,
-        providerObservedAt: obd.evidenceObservedAt,
-        receivedAt: new Date(T2),
-        snapshotSource: 'dimo',
-        providerBindingId: null,
-        providerDeviceIdHash: hashProviderDeviceId('DIMO', fixture.tokenId),
-        snapshotReferenceId,
-        sourceSubtype: null,
-      },
-      null,
-    );
-    const legacyShadow = buildLegacySnapshotShadowDecision({
-      evaluation: legacyEval,
-      obdIsPluggedIn: obd.obdIsPluggedIn,
-      providerObservedAt: obd.evidenceObservedAt,
-      bindingKey: binding.bindingKey,
-    });
-    const projectionBefore = await prisma.deviceConnectionPhysicalState.findFirst({
-      where: { vehicleId: fixture.vehicle.id, bindingKey: binding.bindingKey },
-    });
-    const gtR1Proof = buildSnapshotPlugRepairGtR1Proof({
-      physicalProjectionState: projectionBefore?.effectiveState ?? null,
-      physicalProjectionEvidenceAt: projectionBefore?.evidenceObservedAt ?? null,
-      snapshotCandidatePlugged: true,
-      snapshotEvidenceObservedAt: obd.evidenceObservedAt,
-      legacyAccepted: legacyShadow.accepted,
-      evidenceReferenceId: snapshotReferenceId,
-    });
-
-    const snapshotResult = await writer.writeSnapshotEvidence({
+    const snapshotResult = await orchestrator.applyPhysicalSnapshotEvidence({
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
       tokenId: fixture.tokenId,
-      signals,
-      evidenceReferenceId: snapshotReferenceId,
-      legacyShadow,
-      gtR1Proof,
-      projectionSelfHeal: true,
+      signals: { obdIsPluggedIn: { value: true, timestamp: T2 } },
+      providerBindingId: null,
+      hardwareType: 'LTE_R1',
+      sourceSubtype: null,
+      fetchedAt: new Date(T2),
+      vehicleLatestStateId: 'vls-gt-r1-webhook-callsite',
     });
 
-    expect(snapshotResult.shadowComparison?.classification).toBe(
+    expect(snapshotResult?.shadowComparison?.classification).toBe(
       PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
     );
-    expect(snapshotResult.coordinatorResult?.reconcile.projection?.effectiveState).toBe('PLUGGED');
+    expect(snapshotResult?.coordinatorResult?.reconcile.projection?.effectiveState).toBe('PLUGGED');
 
     const webhookOutcome = await webhookService.processValidatedWebhookEvent({
       vehicle: { id: fixture.vehicle.id, organizationId: fixture.org.id },

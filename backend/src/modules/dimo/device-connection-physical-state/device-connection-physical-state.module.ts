@@ -11,6 +11,7 @@ import { DeviceConnectionPhysicalStateService } from './device-connection-physic
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import { PhysicalStateShadowObservabilityService } from './physical-state-shadow-observability.service';
 import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-writer.service';
+import { PhysicalStateSnapshotEvidenceOrchestrator } from './physical-state-snapshot-evidence-orchestrator.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-wr
     PhysicalStateReconcileCoordinator,
     PhysicalStateShadowObservabilityService,
     PhysicalStateEvidenceWriterService,
+    PhysicalStateSnapshotEvidenceOrchestrator,
   ],
   exports: [
     DeviceConnectionPhysicalStateService,
@@ -37,6 +39,7 @@ import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-wr
     PhysicalStateReconcileCoordinator,
     PhysicalStateShadowObservabilityService,
     PhysicalStateEvidenceWriterService,
+    PhysicalStateSnapshotEvidenceOrchestrator,
   ],
 })
 export class DeviceConnectionPhysicalStateModule {}

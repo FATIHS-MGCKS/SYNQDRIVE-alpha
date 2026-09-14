@@ -1,5 +1,9 @@
-import type { DimoDeviceConnectionEventType } from '@prisma/client';
+import type { DeviceConnectionEpisode, DimoDeviceConnectionEventType } from '@prisma/client';
 import type { SnapshotPlugEvaluationOutcome } from '../device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import {
+  buildDeviceConnectionBindingKey,
+  normalizeConnectivityProvider,
+} from './device-connection-physical-state.binding';
 import {
   inferObdPlugStateFromLastEvent,
   type ObdPlugState,
@@ -18,9 +22,25 @@ export type LegacyShadowDecision = {
   bindingKey: string | null;
 };
 
+export type LegacyPersistedEvent = {
+  eventType: DimoDeviceConnectionEventType;
+  observedAt: Date;
+};
+
+export function buildLegacyBindingKeyFromEpisode(
+  episode: DeviceConnectionEpisode | null,
+  provider = 'DIMO',
+): string | null {
+  if (!episode?.providerDeviceIdHash) return null;
+  return buildDeviceConnectionBindingKey({
+    provider: normalizeConnectivityProvider(provider),
+    providerDeviceIdHash: episode.providerDeviceIdHash,
+  });
+}
+
 export function buildLegacyWebhookShadowDecision(input: {
   gate: { persist: boolean; reason?: string };
-  lastEvent: { eventType: DimoDeviceConnectionEventType; observedAt: Date } | null;
+  lastEvent: LegacyPersistedEvent | null;
   incomingPluggedIn: boolean;
   incomingObservedAt: Date;
   bindingKey: string | null;
@@ -47,40 +67,55 @@ export function buildLegacyWebhookShadowDecision(input: {
   };
 }
 
+function resolvePersistedLegacyPlugState(input: {
+  lastLegacyEvent: LegacyPersistedEvent | null;
+  episode: DeviceConnectionEpisode | null;
+}): ObdPlugState | null {
+  const fromEvent = inferObdPlugStateFromLastEvent(input.lastLegacyEvent?.eventType);
+  if (fromEvent !== 'unknown') return fromEvent;
+  if (input.episode?.status === 'OPEN') return 'unplugged';
+  return null;
+}
+
 export function buildLegacySnapshotShadowDecision(input: {
   evaluation: SnapshotPlugEvaluationOutcome;
-  obdIsPluggedIn: boolean;
-  providerObservedAt: Date;
-  bindingKey: string | null;
+  episode: DeviceConnectionEpisode | null;
+  lastLegacyEvent: LegacyPersistedEvent | null;
 }): LegacyShadowDecision {
+  const legacyBindingKey = buildLegacyBindingKeyFromEpisode(input.episode);
+
   if (input.evaluation.action === 'resolve') {
     return {
       accepted: true,
       diagnosticReason: null,
       effectivePlugState: 'plugged',
       evidenceObservedAt: input.evaluation.providerObservedAt,
-      bindingKey: input.bindingKey,
+      bindingKey: legacyBindingKey,
     };
   }
+
+  const persistedLegacyState = resolvePersistedLegacyPlugState({
+    lastLegacyEvent: input.lastLegacyEvent,
+    episode: input.episode,
+  });
+  const legacyEvidenceObservedAt =
+    input.lastLegacyEvent?.observedAt ?? input.episode?.openedAt ?? null;
 
   if (input.evaluation.action === 'noop') {
     return {
       accepted: false,
       diagnosticReason: input.evaluation.reason,
-      effectivePlugState: input.obdIsPluggedIn ? 'plugged' : 'unplugged',
-      evidenceObservedAt: input.providerObservedAt,
-      bindingKey: input.bindingKey,
+      effectivePlugState: persistedLegacyState,
+      evidenceObservedAt: legacyEvidenceObservedAt,
+      bindingKey: legacyBindingKey,
     };
   }
-
-  const effectivePlugState: ObdPlugState | null =
-    input.obdIsPluggedIn === false ? 'unplugged' : input.obdIsPluggedIn === true ? 'plugged' : null;
 
   return {
     accepted: false,
     diagnosticReason: input.evaluation.reason,
-    effectivePlugState,
-    evidenceObservedAt: input.providerObservedAt,
-    bindingKey: input.bindingKey,
+    effectivePlugState: persistedLegacyState,
+    evidenceObservedAt: legacyEvidenceObservedAt,
+    bindingKey: legacyBindingKey,
   };
 }

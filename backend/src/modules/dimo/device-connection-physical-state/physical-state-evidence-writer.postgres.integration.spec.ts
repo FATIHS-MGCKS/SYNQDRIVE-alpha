@@ -153,7 +153,12 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       physicalProjectionEvidenceAt: new Date(T1),
       snapshotCandidatePlugged: true,
       snapshotEvidenceObservedAt: new Date(T2),
-      legacyAccepted: false,
+      legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
+      physicalBindingScope: binding,
+      episode: null,
+      hardwareType: 'LTE_R1',
+      snapshotSource: 'dimo',
+      sourceSubtype: null,
       evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
     });
 

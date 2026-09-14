@@ -1,5 +1,15 @@
-import type { DeviceConnectionPhysicalEffectiveState } from '@prisma/client';
+import type {
+  DeviceConnectionEpisode,
+  DeviceConnectionPhysicalEffectiveState,
+} from '@prisma/client';
+import {
+  isPhysicalObdHardware,
+  isPhysicalObdSnapshotSource,
+  type SnapshotPlugEvaluationOutcome,
+  type SnapshotPlugRejectReason,
+} from '../device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
 import type { ObdPlugState } from '../device-connection-webhook.service';
+import type { PhysicalStateBindingScope } from './device-connection-physical-state.types';
 
 /**
  * Canonical independent GT-R1 expected-fix proof contract.
@@ -17,6 +27,27 @@ export type GtR1ExpectedFixProof = {
   legacyEvidenceObservedAt: Date | null;
 };
 
+/** Only these typed legacy reject outcomes may contribute to snapshot GT-R1 proof. */
+export const SNAPSHOT_GT_R1_ADMISSIBLE_LEGACY_REJECT_REASONS: ReadonlySet<SnapshotPlugRejectReason> =
+  new Set(['no_open_episode']);
+
+/** Hard reject families — NEVER establish EXPECTED_FIX for snapshot path. */
+export const SNAPSHOT_HARD_REJECT_GT_R1_REASONS: ReadonlySet<SnapshotPlugRejectReason> =
+  new Set([
+    'binding_mismatch',
+    'token_binding_mismatch',
+    'organization_mismatch',
+    'provider_mismatch',
+    'non_physical_obd_hardware',
+    'non_physical_snapshot_source',
+    'synthetic_snapshot_source',
+    'observed_before_unplug',
+    'received_before_unplug',
+    'historical_backfill',
+    'obd_null',
+    'obd_false',
+  ]);
+
 export function isProvenExpectedFix(
   proof: GtR1ExpectedFixProof | null | undefined,
 ): boolean {
@@ -26,23 +57,91 @@ export function isProvenExpectedFix(
   return Number.isFinite(proof.physicalEvidenceObservedAt.getTime());
 }
 
+export function isSnapshotHardRejectGtR1Reason(
+  reason: SnapshotPlugRejectReason,
+): boolean {
+  return SNAPSHOT_HARD_REJECT_GT_R1_REASONS.has(reason);
+}
+
+export function isSnapshotGtR1AdmissibleLegacyReject(
+  evaluation: SnapshotPlugEvaluationOutcome,
+): boolean {
+  if (evaluation.action !== 'reject') return false;
+  return SNAPSHOT_GT_R1_ADMISSIBLE_LEGACY_REJECT_REASONS.has(evaluation.reason);
+}
+
+export function isSnapshotBindingAlignedWithEpisode(input: {
+  episode: DeviceConnectionEpisode | null;
+  physicalBindingScope: PhysicalStateBindingScope;
+}): boolean {
+  const episode = input.episode;
+  if (!episode) return true;
+
+  if (
+    episode.providerDeviceIdHash != null &&
+    episode.providerDeviceIdHash !== input.physicalBindingScope.providerDeviceIdHash
+  ) {
+    return false;
+  }
+
+  if (
+    episode.deviceBindingId != null &&
+    input.physicalBindingScope.deviceBindingId != null &&
+    episode.deviceBindingId !== input.physicalBindingScope.deviceBindingId
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
- * Snapshot PLUG repair: physical UNPLUGGED baseline, newer snapshot PLUG, legacy path rejected.
- * Independent of legacy reason strings (e.g. no_open_episode).
+ * Snapshot PLUG repair: physical UNPLUGGED baseline, newer snapshot PLUG, legacy path rejected
+ * only for the canonical GT-R1 stale/absence condition (no_open_episode) with independently
+ * verified physical/source/binding preconditions.
  */
 export function buildSnapshotPlugRepairGtR1Proof(input: {
   physicalProjectionState: DeviceConnectionPhysicalEffectiveState | null;
   physicalProjectionEvidenceAt: Date | null;
   snapshotCandidatePlugged: boolean;
   snapshotEvidenceObservedAt: Date;
-  legacyAccepted: boolean;
+  legacyEvaluation: SnapshotPlugEvaluationOutcome;
+  physicalBindingScope: PhysicalStateBindingScope;
+  episode: DeviceConnectionEpisode | null;
+  hardwareType: string | null;
+  snapshotSource: string | null;
+  sourceSubtype: string | null;
   evidenceReferenceId: string;
 }): GtR1ExpectedFixProof | null {
-  if (input.legacyAccepted) return null;
   if (!input.snapshotCandidatePlugged) return null;
+  if (!isPhysicalObdHardware(input.hardwareType)) return null;
+  if (
+    !isPhysicalObdSnapshotSource({
+      snapshotSource: input.snapshotSource,
+      sourceSubtype: input.sourceSubtype,
+    })
+  ) {
+    return null;
+  }
+  if (
+    !isSnapshotBindingAlignedWithEpisode({
+      episode: input.episode,
+      physicalBindingScope: input.physicalBindingScope,
+    })
+  ) {
+    return null;
+  }
   if (input.physicalProjectionState !== 'UNPLUGGED') return null;
   if (!input.physicalProjectionEvidenceAt) return null;
   if (input.snapshotEvidenceObservedAt.getTime() <= input.physicalProjectionEvidenceAt.getTime()) {
+    return null;
+  }
+  if (!isSnapshotGtR1AdmissibleLegacyReject(input.legacyEvaluation)) return null;
+  if (
+    input.legacyEvaluation.action === 'reject' &&
+    input.legacyEvaluation.reason === 'no_open_episode' &&
+    input.episode != null
+  ) {
     return null;
   }
 
