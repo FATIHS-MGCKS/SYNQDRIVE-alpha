@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F4-PR4 final F4 implementation closure
+
+- Independent exact-main integration audit on `22e0dd251` (PR #1637 merge)
+- F4-PR1 through F4-PR3.1 verified; call-graph stops before VEE/PROMOTED/G2/BullMQ
+- Real PG: 50 PR3 + 41 PR2 + 6 F3-F2 + F4-PR1 migration SQL — all PASS
+- 212 targeted unit regressions PASS; zero F4 P0/P1 blockers
+- Evidence EED-EV-0051; F4_IMPLEMENTATION_COMPLETE=YES; F5_START_AUTHORIZED=YES; F5 not started
+
+**Verdict:** RFRF_F4_PR4_FINAL_CLOSURE=PASS — F5 entry authorized; production untouched
+
+---
+
 ## 2026-09-14 — RFRF F4-PR3.1 SAME+INSUFFICIENT advisory fail-closed micro-closure
 
 - `classifyRawRefuelNativeOverlapAdvisory`: one SAME + any INSUFFICIENT → `INSUFFICIENT_EVIDENCE` (not clean SAME)
