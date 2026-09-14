@@ -14,6 +14,7 @@
 | VDC-EVID-RB019-PHASE2-SCOPE-001 | RB-019 Phase 2 runtime cutover scope & readiness audit (no implementation) | AUDIT_DOCUMENT | SCOPED_NOT_IMPLEMENTED | [../../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md) |
 | VDC-EVID-RB019-P21-DURABILITY-001 | RB-019 Phase 2 P2.1 durability foundation (outbox + authority latch + coordinator tx) | CURRENT_CODE + TEST | P2_1_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md](./PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md) |
 | VDC-EVID-RB019-P22-SHADOW-001 | RB-019 Phase 2 P2.2 shadow + authority state-machine infrastructure (compare-only) | CURRENT_CODE + TEST | P2_2_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md](./PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md) |
+| VDC-EVID-RB019-P23-WRITERS-001 | RB-019 Phase 2 P2.3 evidence writers + STATEFUL_SHADOW GT-R1 proof | CURRENT_CODE + TEST | P2_3_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md](./PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md) |
 
 ## Code evidence (repository — bootstrap index)
 

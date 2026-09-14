@@ -9,6 +9,8 @@ import {
   shouldIgnorePlugImpulseAfterUnplug,
   type DeviceConnectionConnectivityAnchor,
 } from './device-connection-read-model';
+import { PhysicalStateEvidenceWriterService } from './device-connection-physical-state/physical-state-evidence-writer.service';
+import { isGtR1ExpectedFixLegacyReason } from './device-connection-physical-state/physical-state-shadow-comparator';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
@@ -89,6 +91,8 @@ export class DeviceConnectionWebhookService {
     private readonly episodeService: DeviceConnectionEpisodeService,
     private readonly lifecyclePolicy: ConnectivityLifecycleRuntimePolicyService,
     @Optional() private readonly recoveryPolicy?: ConnectivityRecoveryPolicyService,
+    @Optional()
+    private readonly physicalEvidenceWriter?: PhysicalStateEvidenceWriterService,
   ) {}
 
   /** True when the webhook signal/metric is the OBD plug state. */
@@ -142,6 +146,50 @@ export class DeviceConnectionWebhookService {
       input.pluggedIn,
       input.observedAt,
     );
+
+    const writerResult = await this.physicalEvidenceWriter?.writeWebhookEvidence({
+      organizationId: input.vehicle.organizationId,
+      vehicleId: input.vehicle.id,
+      provider: 'DIMO',
+      tokenId: input.tokenId,
+      pluggedIn: input.pluggedIn,
+      observedAt: input.observedAt,
+      receivedAt: new Date(),
+      rawPayload: input.rawPayload,
+      evidenceReferenceId: `webhook:${input.vehicle.id}:${input.observedAt.toISOString()}:${input.pluggedIn ? 'plug' : 'unplug'}`,
+      inboxId: input.inboxId,
+      legacyGate: { accepted: gate.persist, reason: gate.reason },
+      provenExpectedFix: isGtR1ExpectedFixLegacyReason(gate.reason),
+    });
+
+    if (writerResult?.policy?.statefulShadow) {
+      if (!writerResult.physicalAccepted) {
+        this.logger.debug(
+          `Physical-state STATEFUL_SHADOW rejected webhook for vehicle ${input.vehicle.id}: ${writerResult.physicalDecision}`,
+        );
+        return {
+          outcome: 'ignored_by_policy',
+          eventType,
+          policyReason: writerResult.coordinatorResult?.reconcile.reason ?? 'physical_reject',
+        };
+      }
+
+      const canonicalEventId = writerResult.coordinatorResult?.canonicalEventId;
+      if (canonicalEventId) {
+        return {
+          outcome: 'created',
+          eventId: canonicalEventId,
+          eventType,
+        };
+      }
+
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: 'physical_applied_without_event_history',
+      };
+    }
+
     if (!gate.persist) {
       this.logger.debug(
         `Device connection ignored by policy for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,

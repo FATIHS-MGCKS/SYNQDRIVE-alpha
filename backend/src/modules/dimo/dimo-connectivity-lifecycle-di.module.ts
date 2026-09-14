@@ -13,6 +13,7 @@ import { DeviceConnectionWebhookInboxEnqueueService } from './device-connection-
 import { DeviceConnectionWebhookProcessingService } from './device-connection-webhook-processing.service';
 import { DeviceConnectionWebhookQueueProducer } from './device-connection-webhook-queue.producer';
 import { DeviceConnectionWebhookInboxSchedulerService } from './device-connection-webhook-inbox-scheduler.service';
+import { DeviceConnectionPhysicalStateModule } from './device-connection-physical-state/device-connection-physical-state.module';
 
 /**
  * Canonical Nest submodule for connectivity lifecycle webhook processing.
@@ -23,6 +24,7 @@ import { DeviceConnectionWebhookInboxSchedulerService } from './device-connectio
     ConfigModule.forFeature(deviceConnectionWebhookInboxConfig),
     ConfigModule.forFeature(connectivityRecoveryConfig),
     BullModule.registerQueue({ name: QUEUE_NAMES.CONNECTIVITY_WEBHOOK_PROCESS }),
+    DeviceConnectionPhysicalStateModule,
   ],
   providers: [
     ConnectivityLifecycleRuntimePolicyService,

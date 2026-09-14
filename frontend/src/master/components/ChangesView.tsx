@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p23-evidence-writers-2026-09-14',
+    version: '4.9.1125',
+    title: 'VDC RB-019 Phase 2 P2.3 — evidence writers + STATEFUL_SHADOW proof (dark)',
+    summary: [
+      'Unified OBD physical evidence extractor (snapshot + webhook + VLS payload; per-signal timestamp only).',
+      'Webhook + snapshot evidence writers via PhysicalStateEvidenceWriterService + coordinator path.',
+      'STATEFUL_SHADOW: LEGACY authority + projectionWrite + shadowCompare + sideEffects=false.',
+      'GT-R1 persisted PG proof: UNPLUG → snapshot PLUG → webhook UNPLUG; EXPECTED_FIX classification.',
+      'Snapshot writer runs before VLS monotonic guard; APPLIED-only webhook event history contract.',
+      'Writer metrics: evidence_writer_total, stateful_shadow_evaluation_total, gt_r1_expected_fix_total.',
+    ],
+    reason:
+      'P2.3 proves physical projection sequencing and shadow adjudication before P2.4 pre-seed and P2.5 authority cutover.',
+    previousBehavior:
+      'P2.2 compare-only shadow infra with no live webhook/snapshot writers; snapshot PLUG self-heal suppressed resolve_plug intent.',
+    details:
+      'Flags default OFF (master disabled). No production deploy. No PHYSICAL authority latch. No lifecycle side effects in STATEFUL_SHADOW.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T00:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p22-shadow-authority-infra-2026-09-13',
     version: '4.9.1124',
     title: 'VDC RB-019 Phase 2 P2.2 — shadow + authority infrastructure (dark)',

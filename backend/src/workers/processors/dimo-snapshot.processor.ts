@@ -26,8 +26,11 @@ import {
 import { DeviceConnectionEpisodeResolutionService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.service';
 import {
   buildSnapshotReferenceId,
+  evaluateSnapshotPlugResolution,
   extractObdPlugSignalFromSnapshot,
 } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { PhysicalStateEvidenceWriterService } from '../../modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service';
+import { extractObdPlugSignalFromSignals } from '../../modules/dimo/device-connection-physical-state/device-connection-physical-state.obd-evidence';
 import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
 import {
   DeviceConnectionEpisodeService,
@@ -76,6 +79,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly resolutionOutboxProcessor?: DeviceConnectionEpisodeResolutionOutboxProcessorService,
     @Optional()
     private readonly snapshotWakeCoordinator?: SnapshotWakeCoordinatorService,
+    @Optional()
+    private readonly physicalEvidenceWriter?: PhysicalStateEvidenceWriterService,
   ) {
     super();
   }
@@ -237,6 +242,18 @@ export class DimoSnapshotProcessor extends WorkerHost {
         jobDataWithWake.wakeContext,
         fetchedAt,
       );
+
+      await this.applyPhysicalSnapshotEvidence({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId: dimoTokenId,
+        signals,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        hardwareType: vehicle.hardwareType,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        fetchedAt,
+        vehicleLatestStateId: previousState?.id ?? `pending:${vehicleId}`,
+      });
 
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
       if (
@@ -487,6 +504,79 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
+  }
+
+  private async applyPhysicalSnapshotEvidence(input: {
+    organizationId: string;
+    vehicleId: string;
+    tokenId: number;
+    signals: Record<string, unknown>;
+    providerBindingId: string | null;
+    hardwareType: string;
+    sourceSubtype: string | null;
+    fetchedAt: Date;
+    vehicleLatestStateId: string;
+  }): Promise<void> {
+    if (!this.physicalEvidenceWriter?.isWriterCapable()) return;
+
+    const obd = extractObdPlugSignalFromSignals(input.signals);
+    if (!obd) return;
+
+    const snapshotReferenceId = buildSnapshotReferenceId({
+      vehicleLatestStateId: input.vehicleLatestStateId,
+      providerObservedAt: obd.evidenceObservedAt,
+    });
+
+    const openEpisode = await this.prisma.deviceConnectionEpisode.findFirst({
+      where: {
+        vehicleId: input.vehicleId,
+        provider: 'DIMO',
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+    });
+
+    const legacyEval = evaluateSnapshotPlugResolution(
+      {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider: 'DIMO',
+        hardwareType: input.hardwareType,
+        obdIsPluggedIn: obd.obdIsPluggedIn,
+        providerObservedAt: obd.evidenceObservedAt,
+        receivedAt: input.fetchedAt,
+        snapshotSource: 'dimo',
+        providerBindingId: input.providerBindingId,
+        providerDeviceIdHash: hashProviderDeviceId('DIMO', input.tokenId),
+        snapshotReferenceId,
+        sourceSubtype: input.sourceSubtype,
+      },
+      openEpisode,
+    );
+
+    const legacyAccepted = legacyEval.action === 'resolve';
+    const legacyReason =
+      legacyEval.action === 'reject' ? legacyEval.reason : legacyEval.action === 'noop' ? legacyEval.reason : null;
+
+    try {
+      await this.physicalEvidenceWriter.writeSnapshotEvidence({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tokenId: input.tokenId,
+        deviceBindingId: input.providerBindingId,
+        signals: input.signals,
+        evidenceReferenceId: snapshotReferenceId,
+        legacyGate: { accepted: legacyAccepted, reason: legacyReason },
+        provenExpectedFix: !legacyAccepted && obd.obdIsPluggedIn === true && legacyReason === 'no_open_episode',
+        projectionSelfHeal: obd.obdIsPluggedIn === true,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Physical snapshot evidence writer skipped for ${input.vehicleId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   private async tryResolveOpenEpisodeFromSnapshot(input: {
