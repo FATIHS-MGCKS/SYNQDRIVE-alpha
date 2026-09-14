@@ -21,7 +21,7 @@ G2_FALLBACK_HANDOFF_REACHABLE = NO
 BULLMQ_FALLBACK_ENQUEUE_REACHABLE = NO
 ```
 
-**Verified HEAD (F5-PR2.1):** rebinding after push — see PR #1647 exact final HEAD CI.
+**Verified HEAD (F5-PR2.1):** `5cd9c94dc160bde247607c686957df734033f6a8` — exact-head CI PASS (28 checks).
 
 ---
 
