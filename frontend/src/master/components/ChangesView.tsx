@@ -204,6 +204,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr1-2-main-sync-2026-09-14',
+    version: '4.9.1129',
+    title: 'RFRF F5-PR1.2 — Final main sync / #1642 DI survival',
+    summary: [
+      'Merged main #1642 Nest DI boot fix into PR #1643 without regressing F5 convergence wiring.',
+      'configLoader off injectable ctor surface; convergenceService DI-safe; withConfigLoader preserves both.',
+      'Post-sync gates: DI bootstrap + F5 PG 19/19 + full F4/F3/F2 regression matrix; PR merge-ready pending CI.',
+    ],
+    reason:
+      'Main advanced after F5-PR1.1; #1642 and PR #1643 both touched raw-fuel-refuel-fallback-runtime.service.ts causing merge conflict.',
+    previousBehavior:
+      'PR branch had function-typed configLoader on Nest ctor (DI boot blocker); main had #1642 fix without F5 convergence.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §9; EED-EV-0055; POST_SYNC_HEAD 3b2db1156',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T15:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-pr1-1-micro-closure-2026-09-14',
     version: '4.9.1127',
     title: 'RFRF F5-PR1.1 — Pre-merge micro-closure',

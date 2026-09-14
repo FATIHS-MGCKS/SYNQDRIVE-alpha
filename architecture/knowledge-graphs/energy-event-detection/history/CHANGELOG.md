@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR1.2 final main sync / #1642 DI survival
+
+- Merged `origin/main` @ `d7a9f7a21` (#1642 Nest DI boot fix + #1640 VDC) into PR #1643
+- Conflict resolution: preserve #1642 `configLoader` off Nest ctor surface + F5 `convergenceService` wiring
+- Post-sync HEAD gate re-run: DI bootstrap, F5 PG 19/19, F4/F3/F2 regressions; zero production mutation
+- Evidence EED-EV-0055 (#1642 DI fix renumbered); F5-PR1.2 sync proof in audit §9
+
+**Verdict:** RFRF_F5_PR1_2_FINAL_MAIN_SYNC=PASS (pending CI on post-sync HEAD)
+
+---
+
 ## 2026-09-14 — RFRF runtime Nest DI boot blocker (deploy gate)
 
 - Production deploy of `main` @ `c81629ee4` (contains Trip FSM #1635) **aborted at boot-check**: `RawFuelRefuelFallbackRuntimeService` argument at index `[4]` (`Function` config loader) unresolved in `VehicleIntelligenceModule`

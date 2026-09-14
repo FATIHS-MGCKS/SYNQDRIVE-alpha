@@ -159,3 +159,52 @@ Dedicated `parseRfrfNativeFallbackConvergenceAuthorized()` — only canonical `t
 - **EED-EV-0054** — this micro-closure
 - Real PG gate: **19/19** tests (was 15/15 before P1-A/B additions)
 - `PRISMA_SCHEMA_CHANGED = NO`
+
+---
+
+## 9. F5-PR1.2 — Final Main Sync / #1642 DI Survival (2026-09-14)
+
+**Epistemic note:** F5-PR1.2 merges current `origin/main` into PR #1643, preserving #1642 Nest DI boot fix while keeping all F5-PR1/F5-PR1.1 semantics. No F5-PR2, no production flags, no deploy.
+
+| Field | Value |
+|-------|-------|
+| **PRE_SYNC_PR_HEAD** | `f2c4d438fb28a21daa180ddca1e29a26da0506e3` |
+| **SYNCED_MAIN_SHA** | `d7a9f7a21ab4249b40633f28dfa7d6aae62772aa` |
+| **POST_SYNC_HEAD** | `3b2db11561cda45dad249f94fe27d478f5a7f0ff` |
+| **PR #1643 base (F5.0)** | `014b8c6d2866a08948e2b8583b83ec8b9d07be9d` |
+
+### 9.1 Main delta review
+
+Commits on `main` since PR base `014b8c6d`:
+
+| SHA | PR | Classification |
+|-----|-----|----------------|
+| `d1501d171` | #1642 | **MATERIAL_CONFLICT** — same `raw-fuel-refuel-fallback-runtime.service.ts`; resolved by preserving #1642 DI-safe `configLoader` property + F5 convergence ctor wiring |
+| `d7a9f7a21` | #1640 | **NO_MATERIAL_RFRF_IMPACT** — VDC P2.3 evidence writers only |
+
+No architectural incompatibility beyond #1642.
+
+### 9.2 Conflict resolution strategy
+
+**Critical file:** `raw-fuel-refuel-fallback-runtime.service.ts`
+
+- **Preserved #1642:** `configLoader` as ordinary private class property (NOT Nest constructor dependency); `withConfigLoader()` assigns `service.configLoader = loader` without expanding injectable surface
+- **Preserved F5-PR1/1.1:** `@Optional() convergenceService`, `runConvergenceEvaluationIfPrepared()`, env propagation, convergence scan aggregates
+- **Final constructor shape:** `(dimoSegments, rawRefuelCandidateService, promotionPreparation?, convergenceService?, metrics?)` — no function-typed loader
+- **Spec alignment:** all manual test construction uses `.withConfigLoader()` pattern from #1642
+
+### 9.3 Nest DI boot proof
+
+- Regression: `raw-fuel-refuel-fallback-runtime.di.spec.ts` (#1642)
+- `RawRefuelConvergenceService` registered in `VehicleIntelligenceModule` providers
+- `CONFIG_LOADER_ON_NEST_CONSTRUCTOR_SURFACE = NO`
+
+### 9.4 F5-PR1.1 semantics survival
+
+P1-A overflow, P1-B automatic `detectEnergyEvents()` E2E, P1-C strict authority + single SKIPPED_NOT_AUTHORIZED metric owner — re-run on post-sync HEAD; no design reopen.
+
+### 9.5 Evidence
+
+- **EED-EV-0055** — #1642 Nest DI boot fix (renumbered from main registry collision with EED-EV-0053 F5-PR1)
+- F5-PR1.2 sync proof appended here; CI on new exact HEAD required (not reusable from `f2c4d438`)
+- `PRODUCTION_MUTATED = NO`
