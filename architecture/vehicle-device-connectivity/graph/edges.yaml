@@ -118,6 +118,15 @@ edges:
     to: VDC-EVID-RB019-P22-SHADOW-001
     notes: P2.3 wires evidence writers + STATEFUL_SHADOW proof on P2.2 shadow infra
 
+  - from: VDC-EVID-RB019-P24-PRESEED-001
+    relation: supports
+    to: VDC-DEC-013
+
+  - from: VDC-EVID-RB019-P24-PRESEED-001
+    relation: downstream_of
+    to: VDC-EVID-RB019-P23-WRITERS-001
+    notes: P2.4 pre-seed tooling reuses P2.3 evidence/binding semantics and P2.1 coordinator tx
+
   - from: VDC-DEC-013
     relation: downstream_of
     to: VDC-DEC-012

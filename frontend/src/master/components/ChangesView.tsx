@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p24-preseed-tooling-2026-09-14',
+    version: '4.9.1129',
+    title: 'VDC RB-019 Phase 2 P2.4 — physical-state pre-seed tooling (dark)',
+    summary: [
+      'PhysicalStatePreseedService: discover persisted webhook + VLS OBD evidence per binding scope.',
+      'Semantic winner = greatest evidenceObservedAt only; source type never overrides time.',
+      'Dry-run reports WOULD_ESTABLISH with zero episode/alert/outbox/authority side effects.',
+      'Apply path uses coordinator reconcile → ESTABLISHED only; idempotent + concurrent-safe PG proof (P24-A..K).',
+      'Flags OFF; authority LEGACY; P2.5 cutover not started.',
+    ],
+    reason:
+      'P2.4 prepares missing physical projections before P2.5 authority cutover without enabling live writers or lifecycle side effects.',
+    previousBehavior:
+      'No operator/service path to establish missing device_connection_physical_states rows from persisted evidence.',
+    details:
+      'physical-state-preseed.service.ts, physical-state-preseed.planner.ts, physical-state-preseed-evidence.discovery.ts; evidence PHYSICAL_STATE_P24_PRESEED_2026-09-14.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T23:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p23-binding-identity-closure-2026-09-14',
     version: '4.9.1128',
     title: 'VDC RB-019 Phase 2 P2.3 — binding-identity micro-closure (legacy event token)',

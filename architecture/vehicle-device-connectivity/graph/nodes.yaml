@@ -561,3 +561,14 @@ nodes:
       - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service.ts
       - backend/src/workers/processors/dimo-snapshot.processor.ts
+
+  - id: VDC-EVID-RB019-P24-PRESEED-001
+    type: evidence
+    title: RB-019 Phase 2 P2.4 physical-state pre-seed tooling
+    source_type: CURRENT_CODE
+    epistemic_status: INFERRED
+    summary: Pre-seed discovery + time-wins planner + dry-run/apply via coordinator; ESTABLISHED-only; zero lifecycle side effects; PG P24-A..K; flags OFF; authority LEGACY; P2.5 not started.
+    source_paths:
+      - architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P24_PRESEED_2026-09-14.md
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.service.ts
+      - backend/src/modules/dimo/device-connection-physical-state/physical-state-preseed.planner.ts
