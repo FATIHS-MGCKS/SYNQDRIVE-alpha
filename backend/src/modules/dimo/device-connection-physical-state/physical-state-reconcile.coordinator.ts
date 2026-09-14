@@ -42,7 +42,11 @@ function shouldUpsertWebhookEventHistory(
   return reconcile.context.incomingEvidenceSource === DeviceConnectionPhysicalEvidenceSource.WEBHOOK;
 }
 
-function shouldEnqueueActionOutbox(reconcile: PhysicalStateReconcileResult): boolean {
+function shouldEnqueueActionOutbox(
+  reconcile: PhysicalStateReconcileResult,
+  sideEffectsEnabled: boolean,
+): boolean {
+  if (!sideEffectsEnabled) return false;
   return reconcile.episodeAction !== 'none' || reconcile.alertAction !== 'none';
 }
 
@@ -58,12 +62,18 @@ export class PhysicalStateReconcileCoordinator {
 
   async reconcileInOuterTransaction(
     input: PhysicalStateCoordinatorInput,
-    options?: { testSeam?: PhysicalStateCoordinatorTestSeam },
+    options?: {
+      testSeam?: PhysicalStateCoordinatorTestSeam;
+      sideEffectsEnabled?: boolean;
+    },
   ): Promise<PhysicalStateCoordinatorResult> {
     for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
       try {
         return await this.prisma.$transaction((tx) =>
-          this.reconcileInOuterTransactionTx(tx, input, options?.testSeam),
+          this.reconcileInOuterTransactionTx(tx, input, {
+            testSeam: options?.testSeam,
+            sideEffectsEnabled: options?.sideEffectsEnabled ?? false,
+          }),
         );
       } catch (error) {
         if (isSerializationFailure(error) && attempt < MAX_TRANSACTION_ATTEMPTS) {
@@ -81,8 +91,12 @@ export class PhysicalStateReconcileCoordinator {
   private async reconcileInOuterTransactionTx(
     tx: Prisma.TransactionClient,
     input: PhysicalStateCoordinatorInput,
-    testSeam?: PhysicalStateCoordinatorTestSeam,
+    options: {
+      testSeam?: PhysicalStateCoordinatorTestSeam;
+      sideEffectsEnabled: boolean;
+    },
   ): Promise<PhysicalStateCoordinatorResult> {
+    const { testSeam, sideEffectsEnabled } = options;
     const reconcile = await this.physicalStateRepository.reconcileInTransaction(
       tx,
       input.reconcile,
@@ -105,7 +119,7 @@ export class PhysicalStateReconcileCoordinator {
     let outboxDuplicate = false;
 
     if (
-      shouldEnqueueActionOutbox(reconcile) &&
+      shouldEnqueueActionOutbox(reconcile, sideEffectsEnabled) &&
       reconcile.transitionId &&
       reconcile.projection
     ) {

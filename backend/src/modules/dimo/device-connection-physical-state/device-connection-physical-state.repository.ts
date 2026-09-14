@@ -298,7 +298,7 @@ export class DeviceConnectionPhysicalStateRepository {
           winnerProjection.effectiveState !== retryEval.nextState;
         const raceEpisodeAction = this.resolveEpisodeAction({
           logicalChange: raceLogicalChange,
-          selfHeal,
+          projectionSelfHeal: selfHeal,
           evidenceSource: input.evidence.evidenceSource,
           previousState: winnerProjection.effectiveState,
           nextState: retryEval.nextState,
@@ -357,7 +357,7 @@ export class DeviceConnectionPhysicalStateRepository {
 
     const episodeAction = this.resolveEpisodeAction({
       logicalChange,
-      selfHeal,
+      projectionSelfHeal: selfHeal,
       evidenceSource: input.evidence.evidenceSource,
       previousState: current?.effectiveState ?? null,
       nextState: evaluation.nextState,
@@ -462,14 +462,19 @@ export class DeviceConnectionPhysicalStateRepository {
     };
   }
 
+  /**
+   * Lifecycle resolution eligibility is separate from projection self-heal (P2.3).
+   * Snapshot APPLIED PLUG must emit resolve_plug even when projectionSelfHeal=true.
+   */
   private resolveEpisodeAction(input: {
     logicalChange: boolean;
-    selfHeal: boolean;
+    projectionSelfHeal: boolean;
     evidenceSource: PhysicalEvidenceSource;
     previousState: DeviceConnectionPhysicalEffectiveState | null;
     nextState: DeviceConnectionPhysicalEffectiveState | null;
   }): PhysicalStateReconcileResult['episodeAction'] {
-    if (!input.logicalChange || input.selfHeal) return 'none';
+    if (!input.logicalChange) return 'none';
+
     if (
       input.nextState === DeviceConnectionPhysicalEffectiveState.UNPLUGGED &&
       input.evidenceSource === 'SNAPSHOT_OBD'

@@ -127,10 +127,13 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     });
 
     const before = await counts();
-    const result = await coordinator.reconcileInOuterTransaction({
-      reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-1')),
-      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
-    });
+    const result = await coordinator.reconcileInOuterTransaction(
+      {
+        reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-1')),
+        webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+      },
+      { sideEffectsEnabled: true },
+    );
     const after = await counts();
 
     expect(result.reconcile.decision).toBe('APPLIED');
@@ -144,10 +147,13 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-1')),
     });
 
-    const result = await coordinator.reconcileInOuterTransaction({
-      reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-2')),
-      webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
-    });
+    const result = await coordinator.reconcileInOuterTransaction(
+      {
+        reconcile: baseReconcile(evidence('2026-01-01T11:00:00.000Z', 'UNPLUGGED', 'wh-2')),
+        webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
+      },
+      { sideEffectsEnabled: true },
+    );
 
     expect(result.outboxId).toBeTruthy();
     const outbox = await prisma.deviceConnectionPhysicalStateActionOutbox.findUnique({
@@ -195,6 +201,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
               throw new Error('inject_after_event_history');
             },
           },
+          sideEffectsEnabled: true,
         },
       ),
     ).rejects.toThrow('inject_after_event_history');
@@ -224,6 +231,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
               throw new Error('inject_after_outbox');
             },
           },
+          sideEffectsEnabled: true,
         },
       ),
     ).rejects.toThrow('inject_after_outbox');
@@ -245,8 +253,8 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       webhookEventUpsert: webhookUpsert('2026-01-01T11:00:00.000Z'),
     };
 
-    const first = await coordinator.reconcileInOuterTransaction(input);
-    const second = await coordinator.reconcileInOuterTransaction(input);
+    const first = await coordinator.reconcileInOuterTransaction(input, { sideEffectsEnabled: true });
+    const second = await coordinator.reconcileInOuterTransaction(input, { sideEffectsEnabled: true });
 
     expect(first.reconcile.decision).toBe('APPLIED');
     expect(second.reconcile.decision).toBe('DUPLICATE');

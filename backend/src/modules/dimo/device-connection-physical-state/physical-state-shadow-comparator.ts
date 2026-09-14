@@ -71,11 +71,26 @@ export function isGtR1ExpectedFixLegacyReason(reason: string | null | undefined)
   return normalized != null && LEGACY_STALE_LAST_EVENT_REASONS.has(normalized);
 }
 
+function resolveComparatorLegacyBinding(
+  input: PhysicalStateShadowComparisonInput,
+): string | null {
+  if (input.legacyBindingKey !== undefined) {
+    return input.legacyBindingKey;
+  }
+  return input.bindingKey ?? null;
+}
+
+function resolveComparatorPhysicalBinding(
+  input: PhysicalStateShadowComparisonInput,
+): string | null {
+  return input.physicalBindingKey ?? input.bindingKey ?? null;
+}
+
 function classifyBindingDivergence(
   input: PhysicalStateShadowComparisonInput,
 ): PhysicalStateShadowClassification | null {
-  const legacyBinding = input.legacyBindingKey ?? input.bindingKey ?? null;
-  const physicalBinding = input.physicalBindingKey ?? input.bindingKey ?? null;
+  const legacyBinding = resolveComparatorLegacyBinding(input);
+  const physicalBinding = resolveComparatorPhysicalBinding(input);
   if (legacyBinding && physicalBinding && legacyBinding !== physicalBinding) {
     return PhysicalStateShadowClassification.BINDING_DIVERGENCE;
   }

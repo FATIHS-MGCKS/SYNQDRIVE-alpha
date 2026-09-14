@@ -10,7 +10,7 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-13 (RB-019 P2.2 shadow + authority infra implemented — dark) |
+| **Last updated** | 2026-09-14 (RB-019 P2.3 semantic correctness closure complete — dark, flags OFF, pre-cutover) |
 
 ## Executive summary
 
@@ -46,7 +46,8 @@ Phase 3 (reconciliation) establishes:
 - **Physical-state reconciliation Phase 1 (dark, merged):** VDC-DEC-012 + VDC-RB-019 — durable `device_connection_physical_states` projection, transition log, pure policy, repository (`SELECT FOR UPDATE`), service layer, `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` (**OFF**); **POSTGRES_VALIDATED / FINAL_CI_VALIDATED** (PR #1626, head `3df9f58a`, CI `34741055482`); **no** live webhook/snapshot cutover.
 - **RB-019 Phase 2 P2.1 (implemented, dark):** durability infrastructure — `device_connection_physical_authority_cutover` + `device_connection_physical_state_action_outbox` schemas; `reconcileInTransaction(tx)` refactor; `PhysicalStateReconcileCoordinator` outer transaction; outbox processor skeleton with `processing_claim_token` CAS fencing (row lifecycle only). **Flags OFF; unwired.** Evidence: [evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md](evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md).
 - **RB-019 Phase 2 P2.2 (implemented, dark):** authority state-machine + effective flag resolver + compare-only shadow comparator + adjudication taxonomy + shadow metrics/logging. **No writers; flags OFF; unwired.** Evidence: [evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md](evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md).
-- **RB-019 Phase 2 P2.3+ (not implemented):** writers, STATEFUL_SHADOW GT-R1 proof, pre-seed, authority cutover, side effects — see [docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
+- **RB-019 Phase 2 P2.3 (implemented, dark — semantic correctness closure complete):** unified OBD extractor; webhook + snapshot evidence writers; `PhysicalStateSnapshotEvidenceOrchestrator` production call graph; STATEFUL_SHADOW orchestration; canonical GT-R1 proof contract; legacy binding identity via `resolveLegacyBindingKey` (episode hash → persisted event `tokenId` → null; **never** from current physical token); comparator explicit-null semantics; GT-R1 snapshot proof requires `legacyBindingKey === physicalBindingScope.bindingKey`; 66/66 physical-state PG tests incl. CASE A/B/C orchestrator regressions. **Flags OFF; authority LEGACY; side effects suppressed; pre-cutover; P2.4 NOT STARTED.** Evidence: [evidence/PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md](evidence/PHYSICAL_STATE_P23_EVIDENCE_WRITERS_2026-09-14.md). Accepted runtime HEAD: `6658634e9a3a884ed3b415b8a79f2ff8b3028cf4`.
+- **RB-019 Phase 2 P2.4+ (not implemented):** pre-seed, authority cutover, side effects — see [docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md](../../docs/audits/vdc-rb019-phase2-runtime-cutover-scope-2026-09-13.md).
 - **AUTHORITY_ACTIVE promotion deferred** — HM gap, runtime cutover, Production backfill pending.
 
 ## Component hierarchy

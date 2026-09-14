@@ -245,6 +245,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityPhysicalStateShadowEvaluationTotal: Counter<string>;
   readonly connectivityPhysicalStateShadowClassificationTotal: Counter<string>;
   readonly connectivityPhysicalStateShadowCorrectnessBlockerTotal: Counter<string>;
+  readonly connectivityPhysicalStateEvidenceWriterTotal: Counter<string>;
+  readonly connectivityPhysicalStateStatefulShadowEvaluationTotal: Counter<string>;
+  readonly connectivityPhysicalStateGtR1ExpectedFixTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -1992,6 +1995,27 @@ export class TripMetricsService implements OnModuleInit {
         'physical_decision',
         'correctness_blocking',
       ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateEvidenceWriterTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_evidence_writer_total',
+      help: 'Physical-state evidence writer reconcile results by source and decision',
+      labelNames: ['source', 'decision', 'mode'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateStatefulShadowEvaluationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_stateful_shadow_evaluation_total',
+      help: 'STATEFUL_SHADOW mode evidence evaluations',
+      labelNames: ['mode'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateGtR1ExpectedFixTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_gt_r1_expected_fix_total',
+      help: 'GT-R1 EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT shadow classifications',
+      labelNames: ['source'],
       registers: [this.registry],
     });
   }
