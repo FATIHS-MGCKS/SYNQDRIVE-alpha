@@ -343,8 +343,63 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       }),
     ]);
 
-    expect(staleSnapshot.coordinatorResult?.reconcile.decision).toBe('STALE');
-    expect(freshWebhook.coordinatorResult?.reconcile.decision).toBe('APPLIED');
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+    expect(row).toBeTruthy();
+    expect(row!.effectiveState).toBe('PLUGGED');
+    expect(row!.evidenceReferenceId).toBe('wh-fresh');
+    expect(row!.evidenceObservedAt.toISOString()).toBe(new Date(tNew).toISOString());
+
+    const decisions = new Set([
+      staleSnapshot.coordinatorResult?.reconcile.decision,
+      freshWebhook.coordinatorResult?.reconcile.decision,
+    ]);
+    expect(decisions.has(DeviceConnectionPhysicalTransitionDecision.APPLIED)).toBe(true);
+  });
+
+  it('stale overwrite rejected after winner commits', async () => {
+    await writer.writeWebhookEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      provider: 'DIMO',
+      tokenId: fixture.tokenId,
+      pluggedIn: true,
+      observedAt: new Date('2026-09-12T16:00:00.000Z'),
+      rawPayload: {},
+      evidenceReferenceId: 'wh-new',
+      legacyShadow: {
+        accepted: true,
+        diagnosticReason: null,
+        effectivePlugState: 'plugged',
+        evidenceObservedAt: new Date('2026-09-12T16:00:00.000Z'),
+        bindingKey: binding.bindingKey,
+      },
+    });
+
+    const stale = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: false, timestamp: '2026-09-12T14:00:00.000Z' } },
+      evidenceReferenceId: 'snap-old',
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'obd_false',
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date('2026-09-12T14:00:00.000Z'),
+        bindingKey: binding.bindingKey,
+      },
+    });
+
+    expect(stale.coordinatorResult?.reconcile.decision).toBe(
+      DeviceConnectionPhysicalTransitionDecision.STALE,
+    );
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+    expect(row?.effectiveState).toBe('PLUGGED');
+    expect(row?.evidenceReferenceId).toBe('wh-new');
   });
 
   it('equal-time opposing states => CONFLICT without projection overwrite', async () => {
