@@ -4,7 +4,10 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { normalizeConnectivityProvider } from './device-connection-physical-state.binding';
+import {
+  buildPhysicalStateAuthorityLockKey,
+  normalizeConnectivityProvider,
+} from './device-connection-physical-state.binding';
 
 export type PhysicalAuthorityScope = {
   organizationId: string;
@@ -74,6 +77,38 @@ export class DeviceConnectionPhysicalAuthorityCutoverRepository {
       select: { authorityMode: true },
     });
     return row?.authorityMode ?? null;
+  }
+
+  /**
+   * Transaction-scoped authority read for pre-cutover mutation guards.
+   * Acquires an advisory lock on the vehicle/provider authority scope, then
+   * locks any existing authority row with SELECT FOR UPDATE.
+   * Missing row semantically means LEGACY. Does not insert or mutate authority.
+   */
+  async lockAuthorityScopeAndReadMode(
+    tx: Prisma.TransactionClient,
+    scope: PhysicalAuthorityScope,
+  ): Promise<DeviceConnectionPhysicalAuthorityMode> {
+    const provider = normalizeConnectivityProvider(scope.provider);
+    await this.assertVehicleTenantScope(tx, scope.organizationId, scope.vehicleId);
+
+    const lockKey = buildPhysicalStateAuthorityLockKey({
+      organizationId: scope.organizationId,
+      vehicleId: scope.vehicleId,
+      provider,
+    });
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+    const rows = await tx.$queryRaw<{ authority_mode: DeviceConnectionPhysicalAuthorityMode }[]>`
+      SELECT authority_mode
+      FROM device_connection_physical_authority_cutover
+      WHERE organization_id = ${scope.organizationId}
+        AND vehicle_id = ${scope.vehicleId}
+        AND provider = ${provider}
+      FOR UPDATE
+    `;
+
+    return rows[0]?.authority_mode ?? DeviceConnectionPhysicalAuthorityMode.LEGACY;
   }
 
   private async assertVehicleTenantScope(

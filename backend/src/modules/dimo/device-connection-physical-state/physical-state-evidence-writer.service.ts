@@ -23,6 +23,7 @@ import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-autho
 import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
 import { isProvenExpectedFix, type GtR1ExpectedFixProof } from './physical-state-gt-r1-proof';
 import type { LegacyShadowDecision } from './physical-state-legacy-shadow-decision';
+import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import { comparePhysicalStateShadowDecisions } from './physical-state-shadow-comparator';
 import { PhysicalStateShadowObservabilityService } from './physical-state-shadow-observability.service';
@@ -157,6 +158,10 @@ export class PhysicalStateEvidenceWriterService {
         { sideEffectsEnabled: policy.sideEffectsEnabled },
       );
 
+      if (!isPhysicalStateCoordinatorReconciled(coordinatorResult)) {
+        throw new Error('evidence_writer_unexpected_pre_cutover_authority_block');
+      }
+
       recordPhysicalStateReconcileDecision(coordinatorResult.reconcile);
       this.recordWriterMetrics(
         'WEBHOOK',
@@ -165,7 +170,10 @@ export class PhysicalStateEvidenceWriterService {
       );
     }
 
-    const rawPhysicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const rawPhysicalDecision =
+      coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+        ? coordinatorResult.reconcile.decision
+        : null;
     const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
@@ -177,7 +185,10 @@ export class PhysicalStateEvidenceWriterService {
       physicalBindingKey: extracted.binding.bindingKey,
       physicalDecision,
       physicalAccepted,
-      physicalReason: coordinatorResult?.reconcile.reason,
+      physicalReason:
+        coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+          ? coordinatorResult.reconcile.reason
+          : undefined,
       physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,
@@ -258,6 +269,10 @@ export class PhysicalStateEvidenceWriterService {
         { sideEffectsEnabled: policy.sideEffectsEnabled },
       );
 
+      if (!isPhysicalStateCoordinatorReconciled(coordinatorResult)) {
+        throw new Error('evidence_writer_unexpected_pre_cutover_authority_block');
+      }
+
       recordPhysicalStateReconcileDecision(coordinatorResult.reconcile);
       this.recordWriterMetrics(
         'SNAPSHOT_OBD',
@@ -266,7 +281,10 @@ export class PhysicalStateEvidenceWriterService {
       );
     }
 
-    const rawPhysicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const rawPhysicalDecision =
+      coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+        ? coordinatorResult.reconcile.decision
+        : null;
     const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
@@ -278,7 +296,10 @@ export class PhysicalStateEvidenceWriterService {
       physicalBindingKey: extracted.binding.bindingKey,
       physicalDecision,
       physicalAccepted,
-      physicalReason: coordinatorResult?.reconcile.reason,
+      physicalReason:
+        coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+          ? coordinatorResult.reconcile.reason
+          : undefined,
       physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,

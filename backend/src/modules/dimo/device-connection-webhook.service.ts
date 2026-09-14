@@ -12,6 +12,7 @@ import {
 import { buildBindingScopeFromToken } from './device-connection-physical-state/device-connection-physical-state.binding';
 import { buildWebhookStaleLegacyGateGtR1Proof } from './device-connection-physical-state/physical-state-gt-r1-proof';
 import { buildLegacyWebhookShadowDecision } from './device-connection-physical-state/physical-state-legacy-shadow-decision';
+import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state/device-connection-physical-state.types';
 import { PhysicalStateEvidenceWriterService } from './device-connection-physical-state/physical-state-evidence-writer.service';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
@@ -177,11 +178,19 @@ export class DeviceConnectionWebhookService {
         return {
           outcome: 'ignored_by_policy',
           eventType,
-          policyReason: writerResult.coordinatorResult?.reconcile.reason ?? 'physical_reject',
+          policyReason:
+            writerResult.coordinatorResult &&
+            isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+              ? writerResult.coordinatorResult.reconcile.reason ?? 'physical_reject'
+              : 'physical_reject',
         };
       }
 
-      const canonicalEventId = writerResult.coordinatorResult?.canonicalEventId;
+      const canonicalEventId =
+        writerResult.coordinatorResult &&
+        isPhysicalStateCoordinatorReconciled(writerResult.coordinatorResult)
+          ? writerResult.coordinatorResult.canonicalEventId
+          : null;
       if (canonicalEventId) {
         return {
           outcome: 'created',
