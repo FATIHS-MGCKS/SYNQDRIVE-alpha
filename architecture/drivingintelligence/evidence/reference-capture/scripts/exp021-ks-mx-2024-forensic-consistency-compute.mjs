@@ -8,6 +8,7 @@ const evidenceDir = join(__dirname, '..');
 const v1 = JSON.parse(readFileSync(join(evidenceDir, 'EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json'), 'utf8'));
 const v2 = JSON.parse(readFileSync(join(evidenceDir, 'EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json'), 'utf8'));
 
+const PERCENTILE_METHOD = 'NEAREST_RANK';
 const RC = v1.rcObservationAccounting;
 const T0_MS = Date.parse('2026-09-14T11:43:53.000Z');
 const T0_END_MS = T0_MS + 600_000;
@@ -17,7 +18,7 @@ const timestamps = v1.phase4_nativeTelemetry.byWindow.A_nominal.timestamps.map((
 const gaps = [];
 for (let i = 1; i < timestamps.length; i++) gaps.push(timestamps[i] - timestamps[i - 1]);
 const sortedGaps = [...gaps].sort((a, b) => a - b);
-const pct = (p) => sortedGaps[Math.min(sortedGaps.length - 1, Math.floor((p / 100) * sortedGaps.length))];
+const nearestRank = (p) => sortedGaps[Math.ceil(p * sortedGaps.length) - 1];
 const startEdge = timestamps[0] - T0_MS;
 const endEdge = T0_END_MS - timestamps[timestamps.length - 1];
 const fullGaps = [startEdge, ...gaps, endEdge];
@@ -31,6 +32,7 @@ const slots = v1.phase3_slotLedgerPreAbortFreeze.map((s) => ({
 const out = {
   generatedAtUtc: new Date().toISOString(),
   freezeVersion: 'EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4',
+  PERCENTILE_METHOD,
   productionSha: 'd1501d171c1cc6dc4b83b2720e3a96549ef24185',
   metricCorrections: v1.rcObservationAccounting?.corrections ?? [],
   rcObservationPartition: {
@@ -56,6 +58,15 @@ const out = {
   nativeHfBuckets: {
     count: 25,
     INTER_BUCKET_INTERVAL_COUNT: 24,
+    PERCENTILE_METHOD,
+    interBucketPercentiles: {
+      p50: nearestRank(0.5),
+      p75: nearestRank(0.75),
+      p90: nearestRank(0.9),
+      p95: nearestRank(0.95),
+      p99: nearestRank(0.99),
+      max: sortedGaps[sortedGaps.length - 1],
+    },
     interBucketOnly: {
       INTER_BUCKET_GAPS_GTE_10: gaps.filter((g) => g >= 10_000).length,
       INTER_BUCKET_GAPS_GTE_20: gaps.filter((g) => g >= 20_000).length,
@@ -71,10 +82,24 @@ const out = {
       FULL_WINDOW_GAPS_GTE_30: fullGaps.filter((g) => g >= 30_000).length,
       FULL_WINDOW_GAPS_GTE_60: fullGaps.filter((g) => g >= 60_000).length,
     },
+    fullPreFreeze: {
+      count: 25,
+      HF_CONTINUITY_AFTER_NOMINAL_WINDOW: 'NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED',
+      note: 'Bucket inventory only — no nominal-window edge metrics',
+    },
     GAP_LIST_HAS_DUPLICATES: false,
+  },
+  postNominalHf: {
+    POST_10_MIN_HF_DETERMINISTIC_REQUESTS: 0,
+    POST_10_MIN_NATIVE_HF_BUCKETS: 0,
+    POST_10_MIN_RC_CAPTURE_CONTINUED: 'YES',
+    POST_10_MIN_RC_SOURCE: 'RC_ACQUISITION_RUNNER_CYCLE',
+    SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END: 'YES',
+    SETTLEMENT_DURING_POST_TRIP_TAIL: 'NO',
   },
   movement: {
     CANONICAL_VALID_MOVEMENT_DURATION: null,
+    VALID_MOVEMENT_DURATION_BEHAVIOR: 'NOT_ASSESSED',
     T0_TO_TRIP_END_WALL_DURATION_MS: TRIP_END_MS - T0_MS,
     POST_TRIP_FALSE_MOVEMENT: 'NOT_ASSESSED',
   },
@@ -87,6 +112,10 @@ const out = {
     SETTLEMENT_STRUCTURAL_COMPLETENESS: 'PASS',
     VALUE_REVISIONS: 'NOT_ASSESSED',
     GAP_RECONSTRUCTABILITY: 'NOT_PROVEN',
+    SETTLEMENT_DURING_POST_TRIP_TAIL: 'NO',
+    SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END: 'YES',
+    lastSettlementAt: '2026-09-14T12:03:53.325Z',
+    tripPhysicalEnd: '2026-09-14T12:04:15.000Z',
   },
   scientificClassification: {
     VALID_T0_EVIDENCE: 'YES',
@@ -110,4 +139,4 @@ const out = {
 
 writeFileSync(join(evidenceDir, 'EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json'), JSON.stringify(out, null, 2) + '\n');
 writeFileSync(join(evidenceDir, 'EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json'), JSON.stringify({ ...v2, consistency: out }, null, 2) + '\n');
-console.log(JSON.stringify({ RC_PARTITION_VALID: RC.RC_PARTITION_ARITHMETIC_VALID }, null, 2));
+console.log(JSON.stringify({ RC_PARTITION_VALID: RC.RC_PARTITION_ARITHMETIC_VALID, PERCENTILE_METHOD, p50: nearestRank(0.5) }, null, 2));

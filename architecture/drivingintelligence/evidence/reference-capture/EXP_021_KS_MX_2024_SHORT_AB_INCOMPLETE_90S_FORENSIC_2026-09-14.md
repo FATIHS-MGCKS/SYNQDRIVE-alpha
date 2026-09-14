@@ -18,7 +18,7 @@
 
 - Machine JSON (v1): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json`
 - Machine JSON (v2, 116-min scope): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`
-- Consistency JSON (v3 derived): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json`
+- Consistency JSON (v4 derived): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json`
 - Pre-abort snapshot: `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md`
 - VPS: `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic-v2.json`
 
@@ -43,12 +43,12 @@ The 90s phase remained `ACTIVE_UNSEALED` for the **full ~116.6 minutes** from T0
 
 ## Window partition (mandatory)
 
-| Window | Start | End | Duration | Movement class |
-|--------|-------|-----|----------|----------------|
-| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | CONFIRMED_MOVEMENT_PRESENT |
-| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | UNKNOWN_WITH_ACTIVE_TRIP |
-| **C — Post-trip active tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms (~96.2 min) | STATIONARY |
-| **D — Abort artifact** | `2026-09-14T13:40:26.693Z` | `2026-09-14T13:43:11.614Z` | 164,921 ms (~2.7 min) | STATIONARY |
+| Window | Start | End | Duration | Trip state class | Physical movement class |
+|--------|-------|-----|----------|------------------|-------------------------|
+| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | ACTIVE_TRIP | CONFIRMED_MOVEMENT_PRESENT |
+| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | ACTIVE_TRIP | NOT_ASSESSED |
+| **C — Post-trip active tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms (~96.2 min) | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED |
+| **D — Abort artifact** | `2026-09-14T13:40:26.693Z` | `2026-09-14T13:43:11.614Z` | 164,921 ms (~2.7 min) | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED |
 
 `CANONICAL_VALID_MOVEMENT_DURATION = null` · `T0_TO_TRIP_END_WALL_DURATION = 1,222,000 ms (~20.4 min)`
 
@@ -219,12 +219,13 @@ Chronological event ledger (millisecond where available):
 | Buckets/min | 2.5 | 0 | 0 | 0.21* |
 | First bucket | `11:46:32.544` | — | — | same |
 | Last bucket | `11:52:46.201` | — | — | same |
-| Inter-bucket P50 / P90 / P95 / max | 15s / 21s / 37.9s / **40.9s** | — | — | same |
+| Inter-bucket P50 / P75 / P90 / P95 / P99 / max (`NEAREST_RANK`) | 15s / 20s / 21s / 37.9s / 40.9s / **40.9s** | — | — | inventory only |
 | Inter-bucket gaps ≥10s / ≥20s / ≥30s / ≥60s | 17 / 7 / 2 / 0 | 0 | 0 | 17 / 7 / 2 / 0 |
 | **Start edge gap** (T0 → first bucket) | **159,544 ms** | — | — | — |
 | **End edge gap** (last bucket → T0+10m) | **66,799 ms** | — | — | — |
 | **Full-window max unobserved gap** | **159,544 ms** | — | — | — |
 | Full-window gaps ≥10s / ≥20s / ≥30s / ≥60s | **19 / 9 / 4 / 2** | — | — | — |
+| `HF_CONTINUITY_AFTER_NOMINAL_WINDOW` | — | — | — | **NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED** |
 | First→last bucket span | **373,657 ms (62.3% of nominal window)** | — | — | — |
 | `GAP_LIST_HAS_DUPLICATES` | **NO** (24 unique inter-bucket intervals) | — | — | — |
 
@@ -243,10 +244,12 @@ Chronological event ledger (millisecond where available):
 
 **Reconciliation:** 25 native HF buckets = unique temporal bucket starts from 5 successful HF historical polls. 11,413 RC rows = ~1,215 acquisition cycles × ~9.4 obs/cycle over ~119 min RECORDING. RC runner (~10 cycles/min) continued throughout the entire orphaned phase; HF deterministic slots stopped after slot 6.
 
-**POST_10_MIN_DATA_SOURCE:** `RC_ACQUISITION_RUNNER_CYCLE` (LATEST_LIVE + SIGNAL_POINT per ~3s cycle)  
-**POST_10_MIN_REQUEST_MECHANISM:** No additional HF deterministic slots — all 7 terminal by T0+9m  
-**POST_10_MIN_NATIVE_BUCKETS:** 0  
-**SETTLEMENT_DURING_TAIL:** **NO** — all 114 observations completed by `12:03:53Z` (before trip end)
+**POST_10_MIN_HF_DETERMINISTIC_REQUESTS:** 0  
+**POST_10_MIN_NATIVE_HF_BUCKETS:** 0  
+**POST_10_MIN_RC_CAPTURE_CONTINUED:** YES  
+**POST_10_MIN_RC_SOURCE:** `RC_ACQUISITION_RUNNER_CYCLE` (ReferenceCaptureObservation SIGNAL_POINT rows per ~3s cycle)  
+**SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END:** **YES** (last at `12:03:53Z`)  
+**SETTLEMENT_DURING_POST_TRIP_TAIL:** **NO** — all 114 observations completed before trip end (`12:04:15Z`)
 
 ---
 
@@ -268,18 +271,18 @@ Prior canonicalKey lookup returned 0 rows because signals are stored under provi
 
 ## Phase 6 — Extended time slices (full ~116 min active phase)
 
-| Slice | Wall | Class | Native HF | RC obs | RC obs/min | Notes |
-|-------|------|-------|-----------|--------|------------|-------|
-| W1 (0–5m) | 5 min | CONFIRMED_MOVEMENT_PRESENT | 6 | 487 | 97.4 | HF slots 0–3 (4 req, 2 ok) |
-| W2 (5–10m) | 5 min | CONFIRMED_MOVEMENT_PRESENT | 19 | 571 | 114.2 | HF slots 4–6 (3 ok) |
-| W3 (10–15m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 452 | 90.4 | Overrun; no HF slots |
-| W4 (15–20m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 466 | 93.2 | Overrun |
-| W5 (20–25m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 442 | 88.4 | Trip ending |
-| W6 (25–30m) | 5 min | STATIONARY | 0 | 471 | 94.2 | Post-trip tail begins |
-| W7 (30–45m) | 15 min | STATIONARY | 0 | 1,365 | 91.0 | Orphaned phase |
-| W8 (45–60m) | 15 min | STATIONARY | 0 | 1,355 | 90.3 | Steady RC capture |
-| W9 (60–90m) | 30 min | STATIONARY | 0 | 2,754 | 91.8 | Steady RC capture |
-| W10 (90m→freeze) | 26.6 min | STATIONARY | 0 | 2,425 | 91.3 | Until pre-abort freeze |
+| Slice | Wall | Trip state | Physical movement | Native HF | RC obs | RC obs/min | Notes |
+|-------|------|------------|-------------------|-----------|--------|------------|-------|
+| W1 (0–5m) | 5 min | ACTIVE_TRIP | CONFIRMED_MOVEMENT_PRESENT | 6 | 487 | 97.4 | HF slots 0–3 (4 req, 2 ok) |
+| W2 (5–10m) | 5 min | ACTIVE_TRIP | CONFIRMED_MOVEMENT_PRESENT | 19 | 571 | 114.2 | HF slots 4–6 (3 ok) |
+| W3 (10–15m) | 5 min | ACTIVE_TRIP | NOT_ASSESSED | 0 | 452 | 90.4 | Overrun; no HF slots |
+| W4 (15–20m) | 5 min | ACTIVE_TRIP | NOT_ASSESSED | 0 | 466 | 93.2 | Overrun |
+| W5 (20–25m) | 5 min | ACTIVE_TRIP | NOT_ASSESSED | 0 | 442 | 88.4 | Trip ends at 12:04:15 within slice |
+| W6 (25–30m) | 5 min | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED | 0 | 471 | 94.2 | Post-trip tail |
+| W7 (30–45m) | 15 min | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED | 0 | 1,365 | 91.0 | Orphaned phase |
+| W8 (45–60m) | 15 min | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED | 0 | 1,355 | 90.3 | Steady RC capture |
+| W9 (60–90m) | 30 min | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED | 0 | 2,754 | 91.8 | Steady RC capture |
+| W10 (90m→freeze) | 26.6 min | POST_TRIP_RESTING_COMPLETED | NOT_ASSESSED | 0 | 2,425 | 91.3 | Until pre-abort freeze |
 
 **Trend:** Native HF buckets confined to W1–W2 (Window A). RC observation rate remains **~90–115/min** throughout the entire ~96 min post-trip tail — stable, not degrading. The orphaned phase caused continuous RC broad capture, not additional HF slot polls.
 
@@ -328,7 +331,7 @@ No provider degradation observable; acquisition architecture simply did not sche
 | `POST_TRIP_FALSE_MOVEMENT` | **NOT_ASSESSED** (`validMovementDurationMs` = null; no signal-level false-movement audit) |
 | `POST_TRIP_FALSE_TRIP_ACTIVITY` | **NO** |
 | `POST_TRIP_SETTLEMENT` | **NONE** — all 114 completed by `12:03:53Z` |
-| `POST_TRIP_TELEMETRY_BEHAVIOR` | RC broad capture continues (stationary SIGNAL_POINT); no HF slots |
+| `POST_TRIP_TELEMETRY_BEHAVIOR` | RC broad capture continues (SIGNAL_POINT rows); no HF slots; physical movement **NOT_ASSESSED** |
 | `TAIL_INTEGRITY` | **PASS** (no new HF slots / trip reopen / duplicate work); false movement **NOT_ASSESSED**; phase seal **FAIL** |
 
 ---
@@ -339,7 +342,7 @@ No provider degradation observable; acquisition architecture simply did not sche
 |---|----------|--------|
 | 1 | Did RC observations continue during ~96 min post-trip tail? | **YES** — 8,792 rows (77% of total) |
 | 2 | Observation partition of 11,413? | PRE_T0: 365 · A: 1,058 · B: 938 · C: 8,792 · D: 260 |
-| 3 | Did `validMovementDuration` stop correctly? | **YES** — remained `null`; false movement **NOT_ASSESSED** |
+| 3 | Did `validMovementDuration` stop correctly? | **NOT_ASSESSED** — tracker never produced canonical duration; `validMovementDurationMs` remained `null` throughout |
 | 4 | Provider HF requests after 7 slots? | **NO** — last slot ~`11:52:53Z`; RC cycles continued |
 | 5 | Settlement during tail? | **NO** — 67 in A + 47 in B = 114; last at `12:03:53Z` |
 | 6 | Trip FSM RESTING while EXP-021 active? | **YES** — RESTING from `12:06:47Z`; RC RECORDING until abort |
@@ -489,7 +492,7 @@ Code/execution improvement proven; vehicle/provider variation remains uncontroll
 
 ---
 
-## Phase 17 — Recorder ownership chain (deployed code `d1501d17`)
+## Phase 19 — Recorder ownership chain (deployed code `d1501d17`)
 
 | Lifecycle step | Owner this run | Expected owner (orchestrator path) |
 |----------------|----------------|-------------------------------------|
@@ -510,7 +513,7 @@ Mixed manual FAST GO + detached T0 watcher left no owner for wall-clock phase tr
 
 ---
 
-## Phase 18 — Autonomous orchestrator authority (next run design)
+## Phase 20 — Autonomous orchestrator authority (next run design)
 
 | Question | Answer |
 |----------|--------|
@@ -523,7 +526,7 @@ Mixed manual FAST GO + detached T0 watcher left no owner for wall-clock phase tr
 
 ---
 
-## Phase 19 — Recorder repair requirement (spec only — NOT implemented)
+## Phase 21 — Recorder repair requirement (spec only — NOT implemented)
 
 | Proposition | Answer |
 |-------------|--------|
@@ -544,7 +547,7 @@ Deployed orchestrator implements the full lifecycle when started as **sole owner
 
 ---
 
-## Phase 20 — Required regression spec (before next physical drive)
+## Phase 22 — Required regression spec (before next physical drive)
 
 | Field | Value |
 |-------|-------|
@@ -554,7 +557,7 @@ Deployed orchestrator implements the full lifecycle when started as **sole owner
 
 ---
 
-## Phase 21 — Three data layers (no conflation)
+## Phase 23 — Three data layers (no conflation)
 
 | Layer | Count | Producer | Persistence | Continues after HF slots? |
 |-------|-------|----------|-------------|-------------------------|
@@ -564,7 +567,7 @@ Deployed orchestrator implements the full lifecycle when started as **sole owner
 
 ---
 
-## Phase 22 — Scientific classification
+## Phase 24 — Scientific classification
 
 | Field | Value |
 |-------|-------|

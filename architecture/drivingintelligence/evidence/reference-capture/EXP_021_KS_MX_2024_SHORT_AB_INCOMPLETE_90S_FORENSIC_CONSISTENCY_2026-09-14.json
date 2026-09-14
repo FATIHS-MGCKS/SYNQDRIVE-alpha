@@ -1,31 +1,17 @@
 {
-  "generatedAtUtc": "2026-09-14T16:19:22.799Z",
+  "generatedAtUtc": "2026-09-14T16:52:30.730Z",
   "freezeVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4",
+  "PERCENTILE_METHOD": "NEAREST_RANK",
   "productionSha": "d1501d171c1cc6dc4b83b2720e3a96549ef24185",
-  "metricCorrections": [
-    {
-      "field": "RC_A",
-      "OLD_VALUE": 1423,
-      "NEW_VALUE": 1058,
-      "REASON": "1423 conflated PRE_T0+A; DB disjoint partition",
-      "RAW_AUTHORITY": "reference_capture_observations WHERE session_id=332c1549-... production DB 2026-09-14"
-    },
-    {
-      "field": "RC_PRE_T0",
-      "OLD_VALUE": 625,
-      "NEW_VALUE": 365,
-      "REASON": "Stale derived count; production DB recount",
-      "RAW_AUTHORITY": "reference_capture_observations WHERE session_id=332c1549-... production DB 2026-09-14"
-    }
-  ],
+  "metricCorrections": [],
   "rcObservationPartition": {
     "inclusionRules": {
-      "preT0": "[first observation, PHYSICAL_T0) — disjoint pre-roll slice",
+      "preT0": "[first observation, PHYSICAL_T0)",
       "A": "[PHYSICAL_T0, NOMINAL_END)",
       "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
       "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
       "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
-      "note": "PRE_T0 + A + B + C + D = TOTAL. A is NOT inclusive of PRE_T0."
+      "note": "PRE_T0 + A + B + C + D = TOTAL"
     },
     "RC_TOTAL_PERSISTED": 11413,
     "RC_PRE_T0": 365,
@@ -59,6 +45,15 @@
   "nativeHfBuckets": {
     "count": 25,
     "INTER_BUCKET_INTERVAL_COUNT": 24,
+    "PERCENTILE_METHOD": "NEAREST_RANK",
+    "interBucketPercentiles": {
+      "p50": 15000,
+      "p75": 20000,
+      "p90": 21000,
+      "p95": 37868,
+      "p99": 40918,
+      "max": 40918
+    },
     "interBucketOnly": {
       "INTER_BUCKET_GAPS_GTE_10": 17,
       "INTER_BUCKET_GAPS_GTE_20": 7,
@@ -77,10 +72,24 @@
       "FULL_WINDOW_GAPS_GTE_30": 4,
       "FULL_WINDOW_GAPS_GTE_60": 2
     },
+    "fullPreFreeze": {
+      "count": 25,
+      "HF_CONTINUITY_AFTER_NOMINAL_WINDOW": "NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED",
+      "note": "Bucket inventory only — no nominal-window edge metrics"
+    },
     "GAP_LIST_HAS_DUPLICATES": false
+  },
+  "postNominalHf": {
+    "POST_10_MIN_HF_DETERMINISTIC_REQUESTS": 0,
+    "POST_10_MIN_NATIVE_HF_BUCKETS": 0,
+    "POST_10_MIN_RC_CAPTURE_CONTINUED": "YES",
+    "POST_10_MIN_RC_SOURCE": "RC_ACQUISITION_RUNNER_CYCLE",
+    "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+    "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO"
   },
   "movement": {
     "CANONICAL_VALID_MOVEMENT_DURATION": null,
+    "VALID_MOVEMENT_DURATION_BEHAVIOR": "NOT_ASSESSED",
     "T0_TO_TRIP_END_WALL_DURATION_MS": 1222000,
     "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED"
   },
@@ -92,7 +101,11 @@
     "SUCCESS": 114,
     "SETTLEMENT_STRUCTURAL_COMPLETENESS": "PASS",
     "VALUE_REVISIONS": "NOT_ASSESSED",
-    "GAP_RECONSTRUCTABILITY": "NOT_PROVEN"
+    "GAP_RECONSTRUCTABILITY": "NOT_PROVEN",
+    "SETTLEMENT_DURING_POST_TRIP_TAIL": "NO",
+    "SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END": "YES",
+    "lastSettlementAt": "2026-09-14T12:03:53.325Z",
+    "tripPhysicalEnd": "2026-09-14T12:04:15.000Z"
   },
   "scientificClassification": {
     "VALID_T0_EVIDENCE": "YES",

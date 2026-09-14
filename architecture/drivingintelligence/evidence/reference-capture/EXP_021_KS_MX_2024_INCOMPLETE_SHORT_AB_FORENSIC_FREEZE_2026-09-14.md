@@ -33,7 +33,7 @@
 | Valid 90 vs 60 comparison | **NO** |
 | Valid for production cadence selection | **NO** |
 
-The 90s phase remained active ~116 minutes past nominal 10-minute wall. Do **not** treat the abort-terminalized phase summary as a valid 10-minute candidate window.
+The 90s phase remained active **~116.6 minutes total from T0**, **~106.6 minutes beyond the nominal 10-minute end**. Do **not** treat the abort-terminalized phase summary as a valid 10-minute candidate window.
 
 ---
 
@@ -126,7 +126,7 @@ Trip FSM remained `RESTING` / `COMPLETED` — not altered.
 ## Next-run requirement
 
 **Another physical run required:** YES  
-**Ready to arm another run:** NO (pending ownership/runbook fix)
+**Ready to arm another physical run:** NO — pending autonomous-orchestrator regression / pre-run validation
 
 **Supported ownership model (current code):** Autonomous orchestrator full lifecycle (`--confirm-exp021-autonomous`) — creates session, stamps ownership, starts recording, detects T0, advances 90→60, physical end, terminal stop.
 

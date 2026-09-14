@@ -613,7 +613,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | Scope | PR #1645 derived-evidence correction only; no runtime/test/workflow changes |
 | Fixes | Provider counts 7/5/2; deduped gap lists; full-window max gap 159,544 ms; ZERO_RESULT unproven transient; VALUE_REVISIONS/GAP_RECONSTRUCTABILITY NOT_ASSESSED/NOT_PROVEN |
-| Recorder | `RECORDER_CODE_CHANGE_REQUIRED=NO`; orchestrator sole-owner runbook; regression spec defined |
+| Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES`; orchestrator sole-owner runbook; regression spec defined |
 | Validation | `scripts/validate-exp021-ks-mx-forensic-invariants.sh` |
 | Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json` |
 
@@ -628,3 +628,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Settlement | STRUCTURAL PASS; GAP_RECONSTRUCTABILITY=NOT_PROVEN |
 | Recorder | Canonical next run NO code change; mixed manual path YES guardrails needed |
 | Validation | Expanded `validate-exp021-ks-mx-forensic-invariants.sh` |
+
+### EXP-021 — KS MX 2024 derived-evidence integrity fix (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Scope | PR #1645 evidence-only; no runtime/production mutation |
+| Gap tuples | Rebuilt adjacent-interval tuples (`durationMs === end − start`); no filtered-index corruption |
+| Percentiles | `PERCENTILE_METHOD=NEAREST_RANK` (P50=15000 ms from 24 intervals); cross-file equality enforced |
+| Signal completeness | Removed per-signal `availabilityPct=0` placeholders → `NOT_ASSESSED` |
+| Movement | Separated `TRIP_STATE_CLASS` vs `PHYSICAL_MOVEMENT_CLASS`; no ACTIVE_TRIP after trip end (W6–W10) |
+| Settlement | `SETTLEMENT_DURING_POST_TRIP_TAIL=NO`; `SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END=YES` |
+| Post-10min | `POST_10_MIN_RC_SOURCE=RC_ACQUISITION_RUNNER_CYCLE`; removed HEARTBEAT_ONLY wording |
+| full_pre_freeze | Bucket inventory only; `HF_CONTINUITY_AFTER_NOMINAL_WINDOW=NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED` |
+| Consistency | `EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4`; phase renumbering 19–24 |
+| Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
+| Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |
