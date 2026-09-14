@@ -5,7 +5,7 @@
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { parseAcquisitionState } from './reference-capture-session.repository';
-import { activatePendingPhaseAtBoundary } from './testing/reference-capture-postgres.integration.harness';
+import { requestAndActivatePhase } from './testing/reference-capture-postgres.integration.harness';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
   cleanupReferenceCaptureSeed,
@@ -114,20 +114,13 @@ const TEN_MIN_MS = 10 * 60_000;
         const st90 = parseAcquisitionState(armed90?.session.acquisitionStateJson);
         expect(st90.hfCalibrationActiveCounters?.exp021RequestSlots?.length).toBe(7);
 
-        await repo.requestHfCalibrationPhaseAtomic({
-          organizationId: seed.organizationId,
-          sessionId: seed.sessionId,
-          vehicleId: seed.vehicleId,
-          tokenId: seed.tokenId,
-          effectivePollIntervalMs: cadences[1],
-          nowMs: t0Ms + TEN_MIN_MS - 1,
-        });
-        const atBoundary = await activatePendingPhaseAtBoundary(
+        const atBoundary = await requestAndActivatePhase(
           repo,
-          seed.organizationId,
-          seed.sessionId,
-          hfPolicy,
+          seed,
+          cadences[1],
           t0Ms + TEN_MIN_MS,
+          hfPolicy,
+          'PHYSICAL_TRANSITION',
         );
         const st60 = parseAcquisitionState(atBoundary.acquisitionStateJson);
         expect(st60.hfCalibrationSeries?.activePhase?.effectivePollIntervalMs).toBe(60_000);
@@ -261,20 +254,13 @@ const TEN_MIN_MS = 10 * 60_000;
           t0Ms,
           cadence90Ms: cadences[0],
         });
-        await repo.requestHfCalibrationPhaseAtomic({
-          organizationId: seed.organizationId,
-          sessionId: seed.sessionId,
-          vehicleId: seed.vehicleId,
-          tokenId: seed.tokenId,
-          effectivePollIntervalMs: cadences[1],
-          nowMs: t0Ms + TEN_MIN_MS - 1,
-        });
-        await activatePendingPhaseAtBoundary(
+        await requestAndActivatePhase(
           repo,
-          seed.organizationId,
-          seed.sessionId,
-          hfPolicy,
+          seed,
+          cadences[1],
           t0Ms + TEN_MIN_MS,
+          hfPolicy,
+          'PHYSICAL_TRANSITION',
         );
 
         const reloaded = await reloadSessionRow(prisma, repo, seed.organizationId, seed.sessionId);
@@ -312,20 +298,13 @@ const TEN_MIN_MS = 10 * 60_000;
           t0Ms,
           cadence90Ms: cadences[0],
         });
-        await repo.requestHfCalibrationPhaseAtomic({
-          organizationId: seed.organizationId,
-          sessionId: seed.sessionId,
-          vehicleId: seed.vehicleId,
-          tokenId: seed.tokenId,
-          effectivePollIntervalMs: cadences[1],
-          nowMs: t0Ms + TEN_MIN_MS - 1,
-        });
-        await activatePendingPhaseAtBoundary(
+        await requestAndActivatePhase(
           repo,
-          seed.organizationId,
-          seed.sessionId,
-          hfPolicy,
+          seed,
+          cadences[1],
           t0Ms + TEN_MIN_MS,
+          hfPolicy,
+          'PHYSICAL_TRANSITION',
         );
         await repo.finalizeTerminalCalibrationAtomic(seed.organizationId, seed.sessionId, {
           terminalAtMs: clock,
