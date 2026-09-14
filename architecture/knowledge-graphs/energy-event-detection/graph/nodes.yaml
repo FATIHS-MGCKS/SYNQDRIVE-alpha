@@ -1579,9 +1579,10 @@ nodes:
       - backend/src/config/raw-fuel-refuel-fallback.config.ts
     summary: >
       F5.0 policy closure on main@c81629ee: NAMESPACED_SYNTHETIC dimoSegmentId with sourceEventKey
-      authoritative; authoritative native↔fallback convergence matrix A–Q; late-native L1–L8;
-      promotion idempotency (vehicleId, sourceEventKey); G2 handoff + transaction/crash model;
-      F5-PR1..4 phasing + PG test matrix design; zero fallback VEE; F5_PR1_START_AUTHORIZED=YES.
+      authoritative (VEHICLE_GLOBAL scope); authoritative native↔fallback convergence matrix A–Q;
+      late-native L1–L11 with COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY; promotion idempotency;
+      post-commit G2 handoff; TRANSACTION A atomicity; F5.0a micro-closure fixes exact-head SHA
+      terminology and removes impossible crash states; POLICY_DEFINED only; zero fallback VEE.
     verified_at: "2026-09-14"
 
   - id: EED-DEC-RFRF-010
@@ -1591,9 +1592,10 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       Reuse G2 hasLateSiblingFinalizationConflict and finality states. L1 block fallback before
-      promotion; L2–L4 re-reconcile without deleting rows; L5 INSUFFICIENT never proves sameness;
-      L8 post-enrichment SAME sets lateSiblingConflict and suppresses duplicate enrichment.
-      Forensic retention mandatory.
+      promotion; L2–L3 re-reconcile before enrichment completion; L4/L8/L9 sticky enrichment
+      (COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES): late SAME after enriched fallback sets
+      lateSiblingConflict, enrichmentEligibleId=null, no ownership transfer; L10 enrichment failure
+      follows pre-completion path; L11 multi-late fail-closed. Forensic retention mandatory.
     evidence: [EED-EV-0052]
     verified_at: "2026-09-14"
 

@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5.0a policy micro-closure
+
+- F5.0a on PR #1641: exact-head SHA terminology (`F5_0_BASE_MAIN_SHA` / `STARTING_HEAD` / `FINAL_HEAD`)
+- Late-native post-enrichment: COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES; L4/L8/L9/L10/L11 deterministic
+- Transaction boundary: TRANSACTION A (VEE+PROMOTED) vs post-commit G2/BullMQ; removed impossible C2 split
+- SOURCE_EVENT_KEY_SCOPE=VEHICLE_GLOBAL; SYNTHETIC_ID_COLLISION_BEHAVIOR=FAIL_CLOSED
+- EED-EV-0052 summary updated; EED-DEC-RFRF-010 expanded; POLICY_DEFINED only
+
+**Verdict:** RFRF_F5_0A_POLICY_MICRO_CLOSURE=PASS
+
+---
+
 ## 2026-09-14 — RFRF F5.0 convergence architecture + policy closure
 
 - Policy closure on main@c81629ee (PR #1639 merge); no post-merge delta
