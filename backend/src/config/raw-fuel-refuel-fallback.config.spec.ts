@@ -10,6 +10,7 @@ import {
   isRfrfNativeFallbackConvergenceAuthorized,
   loadRawFuelRefuelFallbackConfig,
   parseRawFuelRefuelFallbackBoolean,
+  parseRfrfNativeFallbackConvergenceAuthorized,
 } from './raw-fuel-refuel-fallback.config';
 
 describe('raw-fuel-refuel-fallback.config', () => {
@@ -78,7 +79,20 @@ describe('raw-fuel-refuel-fallback.config', () => {
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
     process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = 'true';
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = ' TRUE ';
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
+  });
+
+  it('F5 convergence authority rejects non-canonical truthy values', () => {
+    for (const value of ['1', 'yes', 'on', 'enabled', '0', 'false', '']) {
+      process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = value;
+      expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
+    }
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('1')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('yes')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('on')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('true')).toBe(true);
   });
 
   it('malformed F5 convergence authority => fail closed', () => {

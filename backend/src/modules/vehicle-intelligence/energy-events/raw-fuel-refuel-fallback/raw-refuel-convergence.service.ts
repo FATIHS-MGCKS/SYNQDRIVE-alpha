@@ -13,8 +13,12 @@ import { evaluateRawRefuelCandidateReadiness } from './raw-refuel-candidate-read
 import type { RawRefuelPromotionPreparationContext } from './raw-refuel-promotion-preparation.service';
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import {
+  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
   buildAuthoritativeNativeRefuelSiblingWhere,
+  buildNativeSiblingLimitExceededEvaluation,
+  detectAuthoritativeNativeSiblingLimitExceeded,
   evaluateRawRefuelNativeFallbackConvergence,
+  NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
 } from './raw-refuel-native-fallback-convergence.evaluator';
 import type { RawRefuelConvergenceApplyResult } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
@@ -169,8 +173,22 @@ export class RawRefuelConvergenceService {
         const nativeRows = await tx.vehicleEnergyEvent.findMany({
           where: buildAuthoritativeNativeRefuelSiblingWhere(locked, window),
           orderBy: { startTime: 'asc' },
-          take: 32,
+          take: AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
         });
+
+        if (detectAuthoritativeNativeSiblingLimitExceeded(nativeRows.length)) {
+          const evaluation = buildNativeSiblingLimitExceededEvaluation();
+          this.metrics?.recordConvergenceNativeSiblingOverflow();
+          this.metrics?.recordConvergenceFailClosed();
+          this.metrics?.recordConvergenceAmbiguous();
+          return {
+            status: 'FAIL_CLOSED',
+            evaluation,
+            candidateId: locked.id,
+            convergedNativeEventId: null,
+            detail: NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
+          };
+        }
 
         const evaluation = evaluateRawRefuelNativeFallbackConvergence({
           candidate: locked,

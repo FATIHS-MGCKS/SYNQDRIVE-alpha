@@ -44,6 +44,7 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly convergenceDistinctTotal: Counter<string>;
   readonly convergenceInsufficientTotal: Counter<string>;
   readonly convergenceAmbiguousTotal: Counter<string>;
+  readonly convergenceNativeSiblingOverflowTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -292,6 +293,12 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F5-PR1 authoritative evaluations classifying AMBIGUOUS',
       registers: [register],
     });
+
+    this.convergenceNativeSiblingOverflowTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_native_sibling_overflow_total',
+      help: 'F5-PR1 authoritative native sibling bounded query overflow (fail closed)',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -452,5 +459,9 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordConvergenceAmbiguous(): void {
     this.convergenceAmbiguousTotal.inc();
+  }
+
+  recordConvergenceNativeSiblingOverflow(): void {
+    this.convergenceNativeSiblingOverflowTotal.inc();
   }
 }

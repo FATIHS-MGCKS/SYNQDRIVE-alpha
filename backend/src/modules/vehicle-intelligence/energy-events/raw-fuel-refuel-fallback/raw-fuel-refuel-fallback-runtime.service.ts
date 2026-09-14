@@ -451,7 +451,6 @@ export class RawFuelRefuelFallbackRuntimeService {
           break;
         case 'SKIPPED_NOT_AUTHORIZED':
           result.convergenceSkippedNotAuthorized += 1;
-          this.metrics?.recordConvergenceSkippedNotAuthorized();
           break;
         default:
           break;

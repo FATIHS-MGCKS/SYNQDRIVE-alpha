@@ -42,7 +42,7 @@ function setRfrfFlags(
   process.env[RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV] = master ? '1' : '0';
   process.env[RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV] = persist ? '1' : '0';
   if (convergence !== undefined) {
-    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = convergence ? '1' : '0';
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = convergence ? 'true' : 'false';
   }
   return () => {
     if (prevMaster === undefined) delete process.env[RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV];
@@ -578,8 +578,120 @@ const convergenceContext = {
       }
     });
 
-    it('runtime wiring — convergence after preparation without fallback VEE', async () => {
+    it('P1-A — >MAX authoritative native siblings fail closed with native_sibling_limit_exceeded', async () => {
       const restore = setRfrfFlags(true, true, true);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id, org.id);
+        const { start, end } = candidateMatcherWindow(candidate);
+        for (let i = 0; i < 33; i += 1) {
+          await prisma.vehicleEnergyEvent.create({
+            data: {
+              vehicleId: vehicle.id,
+              dimoSegmentId: `dimo-overflow-${suffix}-${i}`,
+              detectionSource: 'DIMO_NATIVE',
+              kind: 'REFUEL',
+              detectionMechanism: 'refuel',
+              startTime: new Date(start.getTime() + i * 1000),
+              endTime: end,
+              durationSeconds: 60,
+              rawDetectionMeta: {},
+            },
+          });
+        }
+        const { convergence } = buildRuntimeStack(prisma, jest.fn());
+        const result = await convergence.evaluateAndApplyConvergence(candidate, convergenceContext, process.env);
+        expect(result.status).toBe('FAIL_CLOSED');
+        expect(result.detail).toBe('native_sibling_limit_exceeded');
+        expect(result.evaluation?.detail).toBe('native_sibling_limit_exceeded');
+        expect(await countConvergedNative(prisma, vehicle.id)).toBe(0);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        const after = await prisma.rawRefuelCandidate.findUnique({ where: { id: candidate.id } });
+        expect(after?.lifecycleState).toBe('READY_FOR_PERSIST');
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P1-A — overflow replay remains fail-closed', async () => {
+      const restore = setRfrfFlags(true, true, true);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id, org.id);
+        const { start, end } = candidateMatcherWindow(candidate);
+        for (let i = 0; i < 33; i += 1) {
+          await prisma.vehicleEnergyEvent.create({
+            data: {
+              vehicleId: vehicle.id,
+              dimoSegmentId: `dimo-overflow-replay-${suffix}-${i}`,
+              detectionSource: 'DIMO_NATIVE',
+              kind: 'REFUEL',
+              detectionMechanism: 'refuel',
+              startTime: new Date(start.getTime() + i * 1000),
+              endTime: end,
+              durationSeconds: 60,
+              rawDetectionMeta: {},
+            },
+          });
+        }
+        const { convergence } = buildRuntimeStack(prisma, jest.fn());
+        const first = await convergence.evaluateAndApplyConvergence(candidate, convergenceContext, process.env);
+        const second = await convergence.evaluateAndApplyConvergenceById(
+          candidate.id,
+          convergenceContext,
+          process.env,
+        );
+        expect(first.detail).toBe('native_sibling_limit_exceeded');
+        expect(second.detail).toBe('native_sibling_limit_exceeded');
+        expect(await countConvergedNative(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P1-A — non-authoritative fallback rows do not contribute to authoritative limit', async () => {
+      const restore = setRfrfFlags(true, true, true);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id, org.id);
+        const { start, end } = candidateMatcherWindow(candidate);
+        for (let i = 0; i < 40; i += 1) {
+          await prisma.vehicleEnergyEvent.create({
+            data: {
+              vehicleId: vehicle.id,
+              dimoSegmentId: `dimo-fallback-noise-${suffix}-${i}`,
+              detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK',
+              sourceEventKey: `fallback-noise-${suffix}-${i}`,
+              kind: 'REFUEL',
+              detectionMechanism: 'refuel',
+              startTime: new Date(start.getTime() + i * 1000),
+              endTime: end,
+              durationSeconds: 60,
+              rawDetectionMeta: {},
+            },
+          });
+        }
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeSameSiblingFromCandidate(candidate, suffix),
+        });
+        const { convergence } = buildRuntimeStack(prisma, jest.fn());
+        const result = await convergence.evaluateAndApplyConvergence(candidate, convergenceContext, process.env);
+        expect(result.status).toBe('CONVERGED_NATIVE');
+        expect(result.detail).not.toBe('native_sibling_limit_exceeded');
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P1-B — automatic runtime F4→F5 converges via detectEnergyEvents only', async () => {
+      const restoreFlags = setRfrfFlags(true, true, false);
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
       try {
@@ -587,7 +699,7 @@ const convergenceContext = {
           prisma,
           jest.fn().mockResolvedValue(syntheticRiseSamples()),
         );
-        const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
+        await energyEvents.detectEnergyEvents(vehicle.id, {
           from: new Date('2026-09-06T07:00:00.000Z'),
           to: new Date('2026-09-06T12:00:00.000Z'),
         });
@@ -596,17 +708,70 @@ const convergenceContext = {
         await prisma.vehicleEnergyEvent.create({
           data: nativeSameSiblingFromCandidate(candidate!, suffix),
         });
-        const { convergence } = buildRuntimeStack(
+
+        restoreFlags();
+        const restoreConvergence = setRfrfFlags(true, true, true);
+        const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+
+        expect(detect.rawFuelFallback?.convergenceEvaluationAttempted).toBeGreaterThan(0);
+        expect(detect.rawFuelFallback?.convergenceConvergedNative).toBeGreaterThan(0);
+        const outcome = detect.rawFuelFallback?.candidateOutcomes.find((o) => o.candidateId === candidate!.id);
+        expect(outcome?.convergenceApply?.status).toBe('CONVERGED_NATIVE');
+        expect(await countConvergedNative(prisma, vehicle.id)).toBe(1);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+        restoreConvergence();
+      } finally {
+        restoreFlags();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P1-B — automatic runtime fail-closed on SAME + INSUFFICIENT via detectEnergyEvents only', async () => {
+      const restoreFlags = setRfrfFlags(true, true, false);
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const { energyEvents } = buildRuntimeStack(
           prisma,
           jest.fn().mockResolvedValue(syntheticRiseSamples()),
         );
-        await convergence.evaluateAndApplyConvergenceById(candidate!.id, convergenceContext, process.env);
-        expect(detect.rawFuelFallback?.promotionPreparationAttempted).toBeGreaterThan(0);
+        await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        const candidate = await prisma.rawRefuelCandidate.findFirst({ where: { vehicleId: vehicle.id } });
+        expect(candidate).not.toBeNull();
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeSameSiblingFromCandidate(candidate!, suffix),
+        });
+        await prisma.vehicleEnergyEvent.create({
+          data: nativeInsufficientSiblingFromCandidate(candidate!, suffix),
+        });
+
+        restoreFlags();
+        const restoreConvergence = setRfrfFlags(true, true, true);
+        const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+
+        expect(detect.rawFuelFallback?.convergenceEvaluationAttempted).toBeGreaterThan(0);
+        expect(detect.rawFuelFallback?.convergenceFailClosed).toBeGreaterThan(0);
+        const outcome = detect.rawFuelFallback?.candidateOutcomes.find((o) => o.candidateId === candidate!.id);
+        expect(outcome?.convergenceApply?.status).toBe('FAIL_CLOSED');
+        expect(await countConvergedNative(prisma, vehicle.id)).toBe(0);
         expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
         expect(await countPromoted(prisma, vehicle.id)).toBe(0);
-        expect(await countConvergedNative(prisma, vehicle.id)).toBe(1);
+        const after = await prisma.rawRefuelCandidate.findUnique({ where: { id: candidate!.id } });
+        expect(after?.lifecycleState).toBe('READY_FOR_PERSIST');
+        restoreConvergence();
       } finally {
-        restore();
+        restoreFlags();
         await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
       }
     });

@@ -7,6 +7,34 @@ import {
 } from './raw-refuel-native-overlap.advisory';
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 
+/** Bounded authoritative native sibling load — overflow MUST fail closed (F5-PR1.1). */
+export const MAX_AUTHORITATIVE_NATIVE_SIBLINGS = 32;
+
+export const NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL = 'native_sibling_limit_exceeded';
+
+/** Sentinel query size: load MAX+1 to detect overflow without silent truncation. */
+export const AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE =
+  MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1;
+
+export function detectAuthoritativeNativeSiblingLimitExceeded(
+  loadedAuthoritativeRowCount: number,
+): boolean {
+  return loadedAuthoritativeRowCount > MAX_AUTHORITATIVE_NATIVE_SIBLINGS;
+}
+
+export function buildNativeSiblingLimitExceededEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'AMBIGUOUS',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: true,
+  });
+}
+
 /**
  * F5 authoritative native↔fallback convergence — uses G2 classifyPhysicalRefuelSibling().
  * NOT the F4 advisory aggregate.

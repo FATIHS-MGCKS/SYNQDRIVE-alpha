@@ -1,7 +1,14 @@
 import type { RawRefuelCandidate } from '@prisma/client';
 import { classifyPhysicalRefuelSibling } from '../physical-refuel-identity.matcher';
 import type { RefuelRowForMatcher } from '../physical-refuel-identity.matcher';
-import { evaluateRawRefuelNativeFallbackConvergence } from './raw-refuel-native-fallback-convergence.evaluator';
+import {
+  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
+  buildNativeSiblingLimitExceededEvaluation,
+  detectAuthoritativeNativeSiblingLimitExceeded,
+  evaluateRawRefuelNativeFallbackConvergence,
+  MAX_AUTHORITATIVE_NATIVE_SIBLINGS,
+  NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
+} from './raw-refuel-native-fallback-convergence.evaluator';
 
 function candidate(overrides: Partial<RawRefuelCandidate> = {}): RawRefuelCandidate {
   return {
@@ -173,5 +180,30 @@ describe('evaluateRawRefuelNativeFallbackConvergence (F5 authoritative)', () => 
   it('foreign vehicle rows are ignored', () => {
     const result = evaluate([foreignVehicleRow]);
     expect(result.classification).toBe('NO_NATIVE_SIBLINGS');
+  });
+});
+
+describe('authoritative native sibling bounded overflow (F5-PR1.1)', () => {
+  it('sentinel take is MAX+1', () => {
+    expect(AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE).toBe(
+      MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1,
+    );
+  });
+
+  it('0..MAX rows do not trigger overflow detection', () => {
+    expect(detectAuthoritativeNativeSiblingLimitExceeded(0)).toBe(false);
+    expect(detectAuthoritativeNativeSiblingLimitExceeded(32)).toBe(false);
+  });
+
+  it('>MAX rows trigger overflow detection', () => {
+    expect(detectAuthoritativeNativeSiblingLimitExceeded(33)).toBe(true);
+  });
+
+  it('overflow evaluation fails closed with explicit detail', () => {
+    const evaluation = buildNativeSiblingLimitExceededEvaluation();
+    expect(evaluation.failClosed).toBe(true);
+    expect(evaluation.shouldConvergeToNative).toBe(false);
+    expect(evaluation.detail).toBe(NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL);
+    expect(evaluation.classification).toBe('AMBIGUOUS');
   });
 });
