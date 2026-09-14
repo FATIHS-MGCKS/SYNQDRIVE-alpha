@@ -3,7 +3,7 @@
  * Delegates sessionService calls to repository atomic methods — not a lifecycle reimplementation.
  */
 import type { PrismaClient } from '@prisma/client';
-import { buildExp021RuntimeConfig } from '../../../../scripts/ops/reference-capture-exp-021-autonomous-orchestrator.lib';
+import { buildExp021RuntimeConfig } from '../../../../../scripts/ops/reference-capture-exp-021-autonomous-orchestrator.lib';
 import { Exp021AutonomousLifecycleDriver } from '../reference-capture-exp-021-autonomous-lifecycle.driver';
 import type { ReferenceCaptureSessionService } from '../reference-capture-session.service';
 import type { ReferenceCaptureSettlementShadowService } from '../reference-capture-settlement-shadow.service';
@@ -48,7 +48,11 @@ export function createPostgresDriverSessionServiceAdapter(args: {
 }): ReferenceCaptureSessionService {
   const { repo, seed, hfPolicy, getNowMs } = args;
   return {
-    persistExp021CanonicalT0: async (_org, sid, body) => {
+    persistExp021CanonicalT0: async (
+      _org: string,
+      sid: string,
+      body: { firstQualifyingMovementAt: Date; startConfirmedAt: Date; nowMs: number },
+    ) => {
       const result = await repo.persistExp021CanonicalT0Atomic({
         organizationId: seed.organizationId,
         sessionId: sid,
@@ -59,7 +63,11 @@ export function createPostgresDriverSessionServiceAdapter(args: {
       if (!result) throw new Error('persistExp021CanonicalT0Atomic returned null');
       return result;
     },
-    activatePhysicalPhaseAtT0: async (_org, sid, body) => {
+    activatePhysicalPhaseAtT0: async (
+      _org: string,
+      sid: string,
+      body: { effectivePollIntervalMs: number },
+    ) => {
       const result = await repo.activatePhysicalPhaseAtT0Atomic({
         organizationId: seed.organizationId,
         sessionId: sid,
@@ -78,7 +86,14 @@ export function createPostgresDriverSessionServiceAdapter(args: {
         calibrationPhaseId: result.activePhase.calibrationPhaseId,
       };
     },
-    switchHfCalibrationPhase: async (_org, sid, body) => {
+    switchHfCalibrationPhase: async (
+      _org: string,
+      sid: string,
+      body: {
+        effectivePollIntervalMs: number;
+        phaseProvenance?: 'PRE_ROLL' | 'PHYSICAL_T0' | 'PHYSICAL_TRANSITION';
+      },
+    ) => {
       const atomic = await repo.requestHfCalibrationPhaseAtomic({
         organizationId: seed.organizationId,
         sessionId: sid,
@@ -101,7 +116,15 @@ export function createPostgresDriverSessionServiceAdapter(args: {
       }
       return { pending: false };
     },
-    persistExp021ActivePhaseMovementMetrics: async (_org, sid, body) => {
+    persistExp021ActivePhaseMovementMetrics: async (
+      _org: string,
+      sid: string,
+      body: {
+        calibrationPhaseId?: string;
+        validMovementDurationMs: number;
+        uncertainMovementDurationMs?: number;
+      },
+    ) => {
       await repo.persistExp021ActivePhaseMovementAtomic({
         organizationId: seed.organizationId,
         sessionId: sid,
@@ -110,7 +133,7 @@ export function createPostgresDriverSessionServiceAdapter(args: {
         uncertainMovementDurationMs: body.uncertainMovementDurationMs,
       });
     },
-    markExp021OrchestrationDegraded: async (_org, sid, reason) => {
+    markExp021OrchestrationDegraded: async (_org: string, sid: string, reason: string) => {
       await repo.markExp021OrchestrationDegradedAtomic({
         organizationId: seed.organizationId,
         sessionId: sid,
@@ -118,7 +141,7 @@ export function createPostgresDriverSessionServiceAdapter(args: {
         nowMs: getNowMs(),
       });
     },
-    stopRecording: async (_org, sid) => {
+    stopRecording: async (_org: string, sid: string) => {
       const finalized = await repo.finalizeTerminalCalibrationAtomic(seed.organizationId, sid, {
         terminalAtMs: getNowMs(),
         reason: 'STOP',
