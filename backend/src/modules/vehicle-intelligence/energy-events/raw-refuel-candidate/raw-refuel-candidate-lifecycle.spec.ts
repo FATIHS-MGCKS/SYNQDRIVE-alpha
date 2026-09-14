@@ -20,6 +20,18 @@ describe('raw-refuel-candidate-lifecycle', () => {
     expect(resolveNextLifecycleState('SETTLING', 'READY_FOR_PERSIST')).toBe('READY_FOR_PERSIST');
   });
 
+  it('allows READY_FOR_PERSIST → CONVERGED_NATIVE', () => {
+    expect(resolveNextLifecycleState('READY_FOR_PERSIST', 'CONVERGED_NATIVE')).toBe(
+      'CONVERGED_NATIVE',
+    );
+  });
+
+  it('blocks CONVERGED_NATIVE → PROMOTED', () => {
+    expect(() => resolveNextLifecycleState('CONVERGED_NATIVE', 'PROMOTED')).toThrow(
+      RawRefuelCandidateLifecycleTransitionError,
+    );
+  });
+
   it('blocks PROMOTED → REJECTED', () => {
     expect(() => resolveNextLifecycleState('PROMOTED', 'REJECTED')).toThrow(
       RawRefuelCandidateLifecycleTransitionError,

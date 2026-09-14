@@ -59,6 +59,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       rawRefuelCandidateService as never,
       undefined,
       undefined,
+      undefined,
     ).withConfigLoader(() => ({ ...config, cutoverAt: null }));
     return { service, dimoSegments, rawRefuelCandidateService };
   }
@@ -174,6 +175,7 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
         }),
       } as never,
       { resolveOrCreateCandidate } as never,
+      undefined,
       undefined,
       undefined,
     ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));

@@ -2,11 +2,15 @@ import {
   RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT_ENV,
   RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
   RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV,
+  RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV,
+  canCreateFallbackVehicleEnergyEvent,
   canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion,
   isRawFuelRefuelFallbackMasterEnabled,
   isRawFuelRefuelFallbackPersistEnabled,
+  isRfrfNativeFallbackConvergenceAuthorized,
   loadRawFuelRefuelFallbackConfig,
   parseRawFuelRefuelFallbackBoolean,
+  parseRfrfNativeFallbackConvergenceAuthorized,
 } from './raw-fuel-refuel-fallback.config';
 
 describe('raw-fuel-refuel-fallback.config', () => {
@@ -68,5 +72,31 @@ describe('raw-fuel-refuel-fallback.config', () => {
     const cfg = loadRawFuelRefuelFallbackConfig({});
     expect(cfg.masterEnabled).toBe(false);
     expect(cfg.persistEnabled).toBe(false);
+  });
+
+  it('F5 convergence authority defaults false and does not authorize VEE', () => {
+    delete process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV];
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = 'true';
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = ' TRUE ';
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
+    expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
+  });
+
+  it('F5 convergence authority rejects non-canonical truthy values', () => {
+    for (const value of ['1', 'yes', 'on', 'enabled', '0', 'false', '']) {
+      process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = value;
+      expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
+    }
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('1')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('yes')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('on')).toBe(false);
+    expect(parseRfrfNativeFallbackConvergenceAuthorized('true')).toBe(true);
+  });
+
+  it('malformed F5 convergence authority => fail closed', () => {
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = 'maybe';
+    expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
   });
 });

@@ -15,6 +15,7 @@ import type { RawFuelRiseDetectionContext } from '../raw-fuel-rise-detector/raw-
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import type { RawRefuelCandidateObservation } from '../raw-refuel-candidate/raw-refuel-candidate.types';
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
+import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
 import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
 import type {
   RawFuelRefuelFallbackScanInput,
@@ -39,6 +40,10 @@ function emptyResult(
     promotionPreparationAttempted: 0,
     promotionDraftsConstructed: 0,
     promotionBlockedByF5Gate: 0,
+    convergenceEvaluationAttempted: 0,
+    convergenceConvergedNative: 0,
+    convergenceFailClosed: 0,
+    convergenceSkippedNotAuthorized: 0,
     candidateOutcomes: [],
     ...partial,
   };
@@ -55,6 +60,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     private readonly dimoSegments: DimoSegmentsService,
     private readonly rawRefuelCandidateService: RawRefuelCandidateService,
     @Optional() private readonly promotionPreparation?: RawRefuelPromotionPreparationService,
+    @Optional() private readonly convergenceService?: RawRefuelConvergenceService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
   ) {}
 
@@ -66,6 +72,7 @@ export class RawFuelRefuelFallbackRuntimeService {
       this.dimoSegments,
       this.rawRefuelCandidateService,
       this.promotionPreparation,
+      this.convergenceService,
       this.metrics,
     );
     service.configLoader = loader;
@@ -100,7 +107,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     }
 
     try {
-      return await this.executeScan(input, config);
+      return await this.executeScan(input, config, env);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
@@ -119,6 +126,7 @@ export class RawFuelRefuelFallbackRuntimeService {
   private async executeScan(
     input: RawFuelRefuelFallbackScanInput,
     config: RawFuelRefuelFallbackConfig,
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<RawFuelRefuelFallbackScanResult> {
     this.metrics?.recordBranchInvocation();
 
@@ -254,6 +262,7 @@ export class RawFuelRefuelFallbackRuntimeService {
         i,
         capability,
         trust.absoluteDetectionAdmissibility,
+        env,
       );
     }
 
@@ -267,6 +276,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     observationIndex: number,
     capability: RawFuelCapability,
     absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<void> {
     if (!config.persistEnabled) {
       result.persistSkippedBecauseFlagOff += 1;
@@ -320,6 +330,7 @@ export class RawFuelRefuelFallbackRuntimeService {
         capability,
         absoluteDetectionAdmissibility,
         observation.absoluteSignalTrust ?? null,
+        env,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -345,6 +356,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     capability: RawFuelCapability,
     absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
     absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<void> {
     if (!this.promotionPreparation) {
       return;
@@ -376,12 +388,80 @@ export class RawFuelRefuelFallbackRuntimeService {
       if (preparation.blockedByF5Gate) {
         result.promotionBlockedByF5Gate += 1;
       }
+
+      await this.runConvergenceEvaluationIfPrepared(
+        candidateId,
+        result,
+        observationIndex,
+        capability,
+        absoluteDetectionAdmissibility,
+        absoluteSignalTrust,
+        env,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `RFRF promotion preparation isolated failure candidate=${candidateId}: ${message}`,
       );
       outcome.promotionPreparationError = message;
+    }
+  }
+
+  private async runConvergenceEvaluationIfPrepared(
+    candidateId: string,
+    result: RawFuelRefuelFallbackScanResult,
+    observationIndex: number,
+    capability: RawFuelCapability,
+    absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
+    absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<void> {
+    if (!this.convergenceService) {
+      return;
+    }
+
+    const outcome = result.candidateOutcomes.find(
+      (item) => item.observationIndex === observationIndex,
+    );
+    if (!outcome?.promotionPreparation?.readiness.ready) {
+      return;
+    }
+
+    result.convergenceEvaluationAttempted += 1;
+    this.metrics?.recordConvergenceEvaluationAttempted();
+
+    try {
+      const applyResult = await this.convergenceService.evaluateAndApplyConvergenceById(
+        candidateId,
+        {
+          capability,
+          absoluteDetectionAdmissibility,
+          absoluteSignalTrust,
+        },
+        env,
+      );
+      outcome.convergenceApply = applyResult;
+
+      switch (applyResult.status) {
+        case 'CONVERGED_NATIVE':
+          result.convergenceConvergedNative += 1;
+          break;
+        case 'FAIL_CLOSED':
+        case 'FAIL_CLOSED_TERMINAL_PROMOTED':
+          result.convergenceFailClosed += 1;
+          break;
+        case 'SKIPPED_NOT_AUTHORIZED':
+          result.convergenceSkippedNotAuthorized += 1;
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `RFRF convergence isolated failure candidate=${candidateId}: ${message}`,
+      );
+      outcome.convergenceApplyError = message;
     }
   }
 }

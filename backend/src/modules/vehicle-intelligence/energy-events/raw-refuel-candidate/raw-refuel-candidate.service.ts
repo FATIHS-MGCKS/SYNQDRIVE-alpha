@@ -295,6 +295,11 @@ function validateObservationLifecycleRequest(observation: RawRefuelCandidateObse
       'PROMOTED transition is not caller-controlled in F2 candidate persistence',
     );
   }
+  if (observation.lifecycleState === 'CONVERGED_NATIVE') {
+    throw new RawRefuelCandidateLifecycleValidationError(
+      'CONVERGED_NATIVE transition is not caller-controlled in F2 candidate persistence',
+    );
+  }
   if (observation.lifecycleState === 'REJECTED' && !observation.rejectionReason) {
     throw new RawRefuelCandidateLifecycleValidationError(
       'REJECTED lifecycle requires rejectionReason',

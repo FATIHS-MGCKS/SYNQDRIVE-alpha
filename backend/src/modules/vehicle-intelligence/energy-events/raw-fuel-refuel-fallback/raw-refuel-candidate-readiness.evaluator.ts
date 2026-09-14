@@ -76,6 +76,14 @@ export function evaluateRawRefuelCandidateReadiness(
   if (lifecycle === 'PROMOTED') {
     return buildResult(candidate, false, 'TERMINAL_PROMOTED', 'candidate_lifecycle_promoted');
   }
+  if (lifecycle === 'CONVERGED_NATIVE') {
+    return buildResult(
+      candidate,
+      false,
+      'TERMINAL_CONVERGED_NATIVE',
+      'candidate_lifecycle_converged_native',
+    );
+  }
 
   if (context.capability === 'NON_FUEL_CAPABLE') {
     return buildResult(candidate, false, 'CAPABILITY_NOT_SUPPORTED', 'capability_non_fuel');

@@ -29,6 +29,7 @@ describe('RFRF F4-PR2.1 fetch outcome integration', () => {
       { resolveOrCreateCandidate: jest.fn() } as never,
       undefined,
       undefined,
+      undefined,
     ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: false, cutoverAt: null }));
   }
 

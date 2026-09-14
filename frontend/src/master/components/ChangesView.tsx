@@ -204,6 +204,63 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr1-2-main-sync-2026-09-14',
+    version: '4.9.1129',
+    title: 'RFRF F5-PR1.2 — Final main sync / #1642 DI survival',
+    summary: [
+      'Merged main #1642 Nest DI boot fix into PR #1643 without regressing F5 convergence wiring.',
+      'configLoader off injectable ctor surface; convergenceService DI-safe; withConfigLoader preserves both.',
+      'Post-sync gates: DI bootstrap + F5 PG 19/19 + full F4/F3/F2 regression matrix; PR merge-ready pending CI.',
+    ],
+    reason:
+      'Main advanced after F5-PR1.1; #1642 and PR #1643 both touched raw-fuel-refuel-fallback-runtime.service.ts causing merge conflict.',
+    previousBehavior:
+      'PR branch had function-typed configLoader on Nest ctor (DI boot blocker); main had #1642 fix without F5 convergence.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §9; EED-EV-0055; POST_SYNC_HEAD 3b2db1156',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T15:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr1-1-micro-closure-2026-09-14',
+    version: '4.9.1127',
+    title: 'RFRF F5-PR1.1 — Pre-merge micro-closure',
+    summary: [
+      'Bounded native sibling MAX+1 sentinel overflow fail-closed (native_sibling_limit_exceeded).',
+      'Strict true-only F5 convergence authority reader; SKIPPED_NOT_AUTHORIZED metric single owner.',
+      'True automatic detectEnergyEvents F4→F5 real PG E2E; 19/19 PG gate; no schema change.',
+    ],
+    reason:
+      'Independent review found silent truncation, non-automatic runtime proof, permissive authority parsing, and metric double-counting before merge.',
+    previousBehavior:
+      'take:32 without overflow detection; manual convergence call in runtime wiring test; permissive 1/yes/on authority; duplicate SKIPPED_NOT_AUTHORIZED metric.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md §8; EED-EV-0054',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T10:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14',
+    version: '4.9.1126',
+    title: 'RFRF F5-PR1 — Authoritative pre-promotion convergence',
+    summary: [
+      'CONVERGED_NATIVE terminal lifecycle; G2 classifyPhysicalRefuelSibling authoritative wrapper.',
+      'RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED fail-closed reader; zero fallback VEE; PROMOTED unreachable.',
+      'Real PG matrix T4/T6/T8–T10 + replay/concurrent/source-filter; F5-PR2 not started.',
+    ],
+    reason:
+      'First executable F5 primitive: prove native SAME before promotion without creating fallback VehicleEnergyEvent.',
+    previousBehavior:
+      'F4 advisory overlap only; F5 convergence gate stub always false; no CONVERGED_NATIVE lifecycle.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md; EED-EV-0053; EED-DEC-RFRF-009 subset',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T12:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-0-convergence-architecture-2026-09-14',
     version: '4.9.1125',
     title: 'RFRF F5.0 — Convergence architecture + policy closure',

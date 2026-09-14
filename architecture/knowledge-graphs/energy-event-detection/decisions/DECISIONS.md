@@ -393,7 +393,7 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Question** | What authoritative semantics replace F4 advisory-only overlap at promotion time? |
 | **Decision** | G2 `classifyPhysicalRefuelSibling` / `reconcilePhysicalRefuelBatch` is authoritative. SAME → single enrichment owner; INSUFFICIENT → fail-closed promotion; DISTINCT → independent VEEs. Introduce `CONVERGED_NATIVE` candidate terminal when native SAME exists before fallback VEE. Scenarios A–Q defined in F5.0 audit. |
 | **Evidence** | EED-EV-0052 |
-| **Consequences** | F5-PR1 implements authoritative pre-promotion wrapper; no competing identity engine |
+| **Consequences** | F5-PR1 implements authoritative pre-promotion wrapper; no competing identity engine. **EED-EV-0053** proves pre-promotion subset (CONVERGED_NATIVE); F5-PR2 promotion not started. |
 | **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-006, EED-DEC-RFRF-010 |
 
 ---

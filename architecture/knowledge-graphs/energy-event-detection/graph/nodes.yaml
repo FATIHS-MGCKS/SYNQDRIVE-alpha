@@ -1585,6 +1585,40 @@ nodes:
       terminology and removes impossible crash states; POLICY_DEFINED only; zero fallback VEE.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0053
+    type: evidence
+    title: RFRF F5-PR1 — Authoritative pre-promotion convergence
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-convergence.evaluator.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence.service.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+      - backend/scripts/test/rfrf-f5-pr1-authoritative-convergence-gate.sh
+    summary: >
+      F5-PR1 on main@014b8c6d: CONVERGED_NATIVE terminal lifecycle; G2 classifyPhysicalRefuelSibling
+      authoritative wrapper; atomic idempotent transition; fail-closed RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED;
+      real PG matrix T4/T6/T8–T10 plus replay/concurrent/foreign/source-filter cases; zero fallback VEE;
+      PROMOTED/G2/BullMQ unreachable; F5-PR2 not started.
+    verified_at: "2026-09-14"
+
+  - id: EED-EV-0054
+    type: evidence
+    title: RFRF F5-PR1.1 — Pre-merge micro-closure
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f5-pr1-authoritative-convergence-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-convergence.evaluator.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence-metrics.spec.ts
+    summary: >
+      F5-PR1.1: MAX+1 sentinel native sibling overflow fail-closed (native_sibling_limit_exceeded);
+      strict true-only parseRfrfNativeFallbackConvergenceAuthorized; SKIPPED_NOT_AUTHORIZED metric single
+      owner; automatic detectEnergyEvents F4→F5 real PG E2E; 19/19 PG gate; no schema change.
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-010
     type: decision
     title: RFRF F5.0 — Late-native sibling policy

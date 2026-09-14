@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR1.2 final main sync / #1642 DI survival
+
+- Merged `origin/main` @ `d7a9f7a21` (#1642 Nest DI boot fix + #1640 VDC) into PR #1643
+- Conflict resolution: preserve #1642 `configLoader` off Nest ctor surface + F5 `convergenceService` wiring
+- Post-sync HEAD gate re-run: DI bootstrap, F5 PG 19/19, F4/F3/F2 regressions; zero production mutation
+- Evidence EED-EV-0055 (#1642 DI fix renumbered); F5-PR1.2 sync proof in audit §9
+
+**Verdict:** RFRF_F5_PR1_2_FINAL_MAIN_SYNC=PASS (pending CI on post-sync HEAD)
+
+---
+
 ## 2026-09-14 — RFRF runtime Nest DI boot blocker (deploy gate)
 
 - Production deploy of `main` @ `c81629ee4` (contains Trip FSM #1635) **aborted at boot-check**: `RawFuelRefuelFallbackRuntimeService` argument at index `[4]` (`Function` config loader) unresolved in `VehicleIntelligenceModule`
@@ -8,9 +19,28 @@
 - **Regression:** `raw-fuel-refuel-fallback-runtime.di.spec.ts` + `SYNQDRIVE_BOOT_CHECK=1` module graph proof
 - **RFRF semantics unchanged:** flags default off; F5 gate stub unchanged; no VEE upsert path opened
 - Migrations applied during failed deploy (`device_connection_physical_state_p21_durability`, `rfrf_f4_pr1_vehicle_energy_event_source_identity`) audited additive/backward-compatible vs running prod SHA `9a32685d…`
-- Evidence EED-EV-0053 (boot DI fix; distinct from EED-EV-0052 F5.0 policy on #1641); production **not** promoted
+- Evidence EED-EV-0055 (boot DI fix on main #1642; distinct from EED-EV-0052 F5.0 policy and EED-EV-0053 F5-PR1); production **not** promoted
 
 **Verdict:** RFRF_BOOT_DI_FIX=PASS — redeploy blocked until merge; Trip FSM #1635 unchanged
+
+---
+
+## 2026-09-14 — RFRF F5-PR1.1 micro-closure
+
+- EED-EV-0054: bounded native sibling overflow fail-closed; strict F5 authority reader; metrics single ownership; true automatic runtime PG E2E
+- Real PG gate 19/19; no schema change; F5-PR2 not started
+
+**Verdict:** RFRF_F5_PR1_1_MICRO_CLOSURE=PASS
+
+---
+
+## 2026-09-14 — RFRF F5-PR1 authoritative convergence
+
+- EED-EV-0053: CONVERGED_NATIVE lifecycle; G2 authoritative pre-promotion wrapper; fail-closed config reader
+- Real PG gate `rfrf-f5-pr1-authoritative-convergence-gate.sh`; zero fallback VEE; PROMOTED unreachable
+- Implements EED-DEC-RFRF-009 matrix subset (T4/T6/T8–T10 + extras); F5-PR2 not started
+
+**Verdict:** RFRF_F5_PR1=PASS (integration proven; not production)
 
 ---
 

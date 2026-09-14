@@ -110,6 +110,7 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
       {} as never,
       undefined,
       undefined,
+      undefined,
     ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
 
     const service = new EnergyEventsService(

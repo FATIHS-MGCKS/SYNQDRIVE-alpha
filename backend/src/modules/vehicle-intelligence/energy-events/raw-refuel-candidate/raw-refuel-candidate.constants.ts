@@ -20,6 +20,7 @@ export const RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES = [
 export const RAW_REFUEL_CANDIDATE_TERMINAL_LIFECYCLE_STATES = [
   'REJECTED',
   'PROMOTED',
+  'CONVERGED_NATIVE',
 ] as const;
 
 /** Max temporal distance for same physical rise rediscovery (conservative). */

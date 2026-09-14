@@ -196,6 +196,7 @@ import { EnergyEventsService } from './energy-events/energy-events.service';
 import { RawRefuelCandidateService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate.service';
 import { RawFuelRefuelFallbackRuntimeService } from './energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import { RawRefuelPromotionPreparationService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service';
+import { RawRefuelConvergenceService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence.service';
 import { PhysicalRefuelCoordinateRuntimeService } from './energy-events/physical-refuel-coordinate-runtime.service';
 import { PhysicalRefuelReconciliationRuntimeService } from './energy-events/physical-refuel-reconciliation-runtime.service';
 import { DimoModule } from '../dimo/dimo.module';
@@ -502,6 +503,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     RawRefuelCandidateService,
     RawFuelRefuelFallbackRuntimeService,
     RawRefuelPromotionPreparationService,
+    RawRefuelConvergenceService,
     // ── New refactored providers ──
     TripDecisionEngine,
     TripDetectionPolicyResolver,

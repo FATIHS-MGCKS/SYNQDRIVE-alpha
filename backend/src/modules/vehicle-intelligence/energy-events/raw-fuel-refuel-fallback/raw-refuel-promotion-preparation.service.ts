@@ -100,7 +100,7 @@ export class RawRefuelPromotionPreparationService {
 
     const f5Authorized = isRfrfNativeFallbackConvergenceAuthorized();
     const canCreateVee = canCreateFallbackVehicleEnergyEvent();
-    const blockedByF5Gate = !f5Authorized || !canCreateVee;
+    const blockedByF5Gate = !canCreateVee;
 
     if (blockedByF5Gate) {
       this.metrics?.recordPromotionBlockedByF5Gate();
@@ -111,7 +111,7 @@ export class RawRefuelPromotionPreparationService {
       eligibility,
       nativeOverlap,
       promotionDraft,
-      f5ConvergenceAuthorized: false,
+      f5ConvergenceAuthorized: f5Authorized,
       canCreateFallbackVehicleEnergyEvent: false,
       blockedByF5Gate,
     };

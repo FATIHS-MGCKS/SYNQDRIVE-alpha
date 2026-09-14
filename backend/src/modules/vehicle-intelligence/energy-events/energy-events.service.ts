@@ -269,6 +269,10 @@ export class EnergyEventsService {
         promotionPreparationAttempted: 0,
         promotionDraftsConstructed: 0,
         promotionBlockedByF5Gate: 0,
+        convergenceEvaluationAttempted: 0,
+        convergenceConvergedNative: 0,
+        convergenceFailClosed: 0,
+        convergenceSkippedNotAuthorized: 0,
         candidateOutcomes: [],
         branchError: message,
       };

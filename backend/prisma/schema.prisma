@@ -10194,6 +10194,8 @@ enum RawRefuelCandidateLifecycleState {
   READY_FOR_PERSIST
   REJECTED
   PROMOTED
+  /// F5 — authoritative native SAME convergence; no fallback VEE created.
+  CONVERGED_NATIVE
 }
 
 enum RawRefuelCandidateSignalChannel {
