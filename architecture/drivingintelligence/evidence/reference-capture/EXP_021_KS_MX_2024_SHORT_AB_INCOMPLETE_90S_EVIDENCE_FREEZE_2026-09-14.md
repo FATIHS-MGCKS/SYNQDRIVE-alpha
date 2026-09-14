@@ -32,10 +32,14 @@
 
 | Question | Answer |
 |----------|--------|
-| `VALID_90_STANDALONE_EVIDENCE` | **YES** |
+| `VALID_T0_EVIDENCE` | **YES** |
+| `VALID_90_OPERATIONAL_EVIDENCE` | **YES** |
+| `VALID_90_SCIENTIFIC_EVIDENCE` | **PARTIAL** |
+| `VALID_90_STANDALONE_EVIDENCE` | **YES** (operational; scientific partial) |
 | `VALID_90_VS_60_COMPARISON` | **NO** |
 | `VALID_FOR_CADENCE_SELECTION` | **NO** |
 | `ANOTHER_PHYSICAL_RUN_REQUIRED` | **YES** |
+| `RECORDER_CODE_CHANGE_REQUIRED` | **NO** (orchestrator path exists; runbook gap caused failure) |
 
 ## Window partition (mandatory)
 
@@ -53,7 +57,8 @@
 1. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md` — full 20-phase human forensic (v2 corrected)
 2. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json` — machine-readable metrics (v1)
 3. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json` — 116-min scope machine metrics
-4. `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md` — pre-abort lifecycle freeze
+4. `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json` — cross-file consistency + repair spec
+5. `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md` — pre-abort lifecycle freeze
 
 ## VPS production paths
 

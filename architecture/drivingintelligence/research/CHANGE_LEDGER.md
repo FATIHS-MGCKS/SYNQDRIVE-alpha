@@ -606,3 +606,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Orphaned tail | RC runner ~91 obs/min continued; `validMovementDurationMs` null; Trip FSM RESTING while EXP-021 active |
 | Classification | `VALID_90_VS_60=NO` · `VALID_FOR_CADENCE_SELECTION=NO` preserved |
 | Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`; updated MD + evidence freeze |
+
+### EXP-021 — KS MX 2024 forensic consistency + recorder repair spec (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Scope | PR #1645 derived-evidence correction only; no runtime/test/workflow changes |
+| Fixes | Provider counts 7/5/2; deduped gap lists; full-window max gap 159,544 ms; ZERO_RESULT unproven transient; VALUE_REVISIONS/GAP_RECONSTRUCTABILITY NOT_ASSESSED/NOT_PROVEN |
+| Recorder | `RECORDER_CODE_CHANGE_REQUIRED=NO`; orchestrator sole-owner runbook; regression spec defined |
+| Validation | `scripts/validate-exp021-ks-mx-forensic-invariants.sh` |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json` |

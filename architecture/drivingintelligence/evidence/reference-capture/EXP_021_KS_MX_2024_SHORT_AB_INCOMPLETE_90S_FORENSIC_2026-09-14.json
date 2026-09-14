@@ -89,24 +89,77 @@
   ],
   "phase3_slotLedger": [],
   "phase3_slotLedgerPreAbortFreeze": [
-    {"slotIndex":0,"scheduledOffsetFromT0":0,"scheduledAt":"2026-09-14T11:43:53.000Z","issuedAt":"2026-09-14T11:46:32.519Z","issueLagMs":159519,"status":"FAILURE","failureRootCause":"ZERO_RESULT","durabilityClass":"TRANSIENT_PROVIDER"},
-    {"slotIndex":1,"scheduledOffsetFromT0":90000,"scheduledAt":"2026-09-14T11:45:23.000Z","issuedAt":"2026-09-14T11:46:38.489Z","issueLagMs":75489,"status":"SUCCESS"},
-    {"slotIndex":2,"scheduledOffsetFromT0":180000,"scheduledAt":"2026-09-14T11:46:53.000Z","issuedAt":"2026-09-14T11:46:56.384Z","issueLagMs":3384,"status":"FAILURE","failureRootCause":"ZERO_RESULT","durabilityClass":"TRANSIENT_PROVIDER"},
-    {"slotIndex":3,"scheduledOffsetFromT0":270000,"scheduledAt":"2026-09-14T11:48:23.000Z","issuedAt":"2026-09-14T11:48:24.310Z","issueLagMs":1310,"status":"SUCCESS"},
-    {"slotIndex":4,"scheduledOffsetFromT0":360000,"scheduledAt":"2026-09-14T11:49:53.000Z","issuedAt":"2026-09-14T11:49:57.205Z","issueLagMs":4205,"status":"SUCCESS"},
-    {"slotIndex":5,"scheduledOffsetFromT0":450000,"scheduledAt":"2026-09-14T11:51:23.000Z","issuedAt":"2026-09-14T11:51:26.175Z","issueLagMs":3175,"status":"SUCCESS"},
-    {"slotIndex":6,"scheduledOffsetFromT0":540000,"scheduledAt":"2026-09-14T11:52:23.000Z","issuedAt":"2026-09-14T11:52:53.753Z","issueLagMs":30753,"status":"SUCCESS"}
+    {
+      "slotIndex": 0,
+      "scheduledOffsetFromT0": 0,
+      "scheduledAt": "2026-09-14T11:43:53.000Z",
+      "issuedAt": "2026-09-14T11:46:32.519Z",
+      "issueLagMs": 159519,
+      "status": "FAILURE",
+      "failureRootCause": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN"
+    },
+    {
+      "slotIndex": 1,
+      "scheduledOffsetFromT0": 90000,
+      "scheduledAt": "2026-09-14T11:45:23.000Z",
+      "issuedAt": "2026-09-14T11:46:38.489Z",
+      "issueLagMs": 75489,
+      "status": "SUCCESS"
+    },
+    {
+      "slotIndex": 2,
+      "scheduledOffsetFromT0": 180000,
+      "scheduledAt": "2026-09-14T11:46:53.000Z",
+      "issuedAt": "2026-09-14T11:46:56.384Z",
+      "issueLagMs": 3384,
+      "status": "FAILURE",
+      "failureRootCause": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN"
+    },
+    {
+      "slotIndex": 3,
+      "scheduledOffsetFromT0": 270000,
+      "scheduledAt": "2026-09-14T11:48:23.000Z",
+      "issuedAt": "2026-09-14T11:48:24.310Z",
+      "issueLagMs": 1310,
+      "status": "SUCCESS"
+    },
+    {
+      "slotIndex": 4,
+      "scheduledOffsetFromT0": 360000,
+      "scheduledAt": "2026-09-14T11:49:53.000Z",
+      "issuedAt": "2026-09-14T11:49:57.205Z",
+      "issueLagMs": 4205,
+      "status": "SUCCESS"
+    },
+    {
+      "slotIndex": 5,
+      "scheduledOffsetFromT0": 450000,
+      "scheduledAt": "2026-09-14T11:51:23.000Z",
+      "issuedAt": "2026-09-14T11:51:26.175Z",
+      "issueLagMs": 3175,
+      "status": "SUCCESS"
+    },
+    {
+      "slotIndex": 6,
+      "scheduledOffsetFromT0": 540000,
+      "scheduledAt": "2026-09-14T11:52:23.000Z",
+      "issuedAt": "2026-09-14T11:52:53.753Z",
+      "issueLagMs": 30753,
+      "status": "SUCCESS"
+    }
   ],
   "phase3_failureAnalysis": {
     "slot0": {
       "probeDetail": null,
-      "classification": "EXPECTED_ZERO_RESULT",
-      "durabilityClass": "TRANSIENT_PROVIDER"
+      "classification": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN"
     },
     "slot2": {
       "probeDetail": null,
-      "classification": "EXPECTED_ZERO_RESULT",
-      "durabilityClass": "TRANSIENT_PROVIDER"
+      "classification": "ZERO_RESULT",
+      "durabilityClass": "UNPROVEN"
     },
     "note": "FAILURE status maps to ZERO_RESULT in counters (nativeFastLoopProviderZeroResultCount=2, errorCount=0)"
   },
@@ -125,8 +178,8 @@
           "p99": 40918,
           "max": 40918
         },
-        "gapsGte10s": 17,
-        "gapsGte20s": 7,
+        "gapsGte10s": 10,
+        "gapsGte20s": 4,
         "gapsGte30s": 2,
         "gapsGte60s": 0,
         "gapList10s": [
@@ -161,19 +214,9 @@
             "end": "2026-09-14T11:48:54.330Z"
           },
           {
-            "durationMs": 15000,
-            "start": "2026-09-14T11:48:39.330Z",
-            "end": "2026-09-14T11:48:54.330Z"
-          },
-          {
             "durationMs": 20000,
             "start": "2026-09-14T11:49:29.330Z",
             "end": "2026-09-14T11:49:49.330Z"
-          },
-          {
-            "durationMs": 10000,
-            "start": "2026-09-14T11:47:48.412Z",
-            "end": "2026-09-14T11:47:58.412Z"
           },
           {
             "durationMs": 18000,
@@ -181,34 +224,9 @@
             "end": "2026-09-14T11:50:37.222Z"
           },
           {
-            "durationMs": 20000,
-            "start": "2026-09-14T11:49:29.330Z",
-            "end": "2026-09-14T11:49:49.330Z"
-          },
-          {
-            "durationMs": 10000,
-            "start": "2026-09-14T11:47:48.412Z",
-            "end": "2026-09-14T11:47:58.412Z"
-          },
-          {
             "durationMs": 19979,
             "start": "2026-09-14T11:51:07.222Z",
             "end": "2026-09-14T11:51:27.201Z"
-          },
-          {
-            "durationMs": 21000,
-            "start": "2026-09-14T11:47:10.412Z",
-            "end": "2026-09-14T11:47:31.412Z"
-          },
-          {
-            "durationMs": 19000,
-            "start": "2026-09-14T11:51:48.201Z",
-            "end": "2026-09-14T11:52:07.201Z"
-          },
-          {
-            "durationMs": 20000,
-            "start": "2026-09-14T11:49:29.330Z",
-            "end": "2026-09-14T11:49:49.330Z"
           },
           {
             "durationMs": 19000,
@@ -244,7 +262,18 @@
           "2026-09-14T11:52:46.201Z"
         ],
         "wallDurationMs": 600000,
-        "bucketsPerMin": 2.5
+        "bucketsPerMin": 2.5,
+        "windowEdgeGaps": {
+          "START_EDGE_GAP_MS": 159544,
+          "END_EDGE_GAP_MS": 66799
+        },
+        "fullWindowCoverage": {
+          "FULL_WINDOW_MAX_UNOBSERVED_GAP_MS": 159544,
+          "FULL_WINDOW_GAPS_GTE_10": 19,
+          "FULL_WINDOW_GAPS_GTE_20": 9,
+          "FULL_WINDOW_GAPS_GTE_30": 4,
+          "FULL_WINDOW_GAPS_GTE_60": 2
+        }
       },
       "B_overrun": {
         "count": 0,
@@ -300,8 +329,8 @@
           "p99": 40918,
           "max": 40918
         },
-        "gapsGte10s": 17,
-        "gapsGte20s": 7,
+        "gapsGte10s": 10,
+        "gapsGte20s": 4,
         "gapsGte30s": 2,
         "gapsGte60s": 0,
         "gapList10s": [
@@ -336,19 +365,9 @@
             "end": "2026-09-14T11:48:54.330Z"
           },
           {
-            "durationMs": 15000,
-            "start": "2026-09-14T11:48:39.330Z",
-            "end": "2026-09-14T11:48:54.330Z"
-          },
-          {
             "durationMs": 20000,
             "start": "2026-09-14T11:49:29.330Z",
             "end": "2026-09-14T11:49:49.330Z"
-          },
-          {
-            "durationMs": 10000,
-            "start": "2026-09-14T11:47:48.412Z",
-            "end": "2026-09-14T11:47:58.412Z"
           },
           {
             "durationMs": 18000,
@@ -356,34 +375,9 @@
             "end": "2026-09-14T11:50:37.222Z"
           },
           {
-            "durationMs": 20000,
-            "start": "2026-09-14T11:49:29.330Z",
-            "end": "2026-09-14T11:49:49.330Z"
-          },
-          {
-            "durationMs": 10000,
-            "start": "2026-09-14T11:47:48.412Z",
-            "end": "2026-09-14T11:47:58.412Z"
-          },
-          {
             "durationMs": 19979,
             "start": "2026-09-14T11:51:07.222Z",
             "end": "2026-09-14T11:51:27.201Z"
-          },
-          {
-            "durationMs": 21000,
-            "start": "2026-09-14T11:47:10.412Z",
-            "end": "2026-09-14T11:47:31.412Z"
-          },
-          {
-            "durationMs": 19000,
-            "start": "2026-09-14T11:51:48.201Z",
-            "end": "2026-09-14T11:52:07.201Z"
-          },
-          {
-            "durationMs": 20000,
-            "start": "2026-09-14T11:49:29.330Z",
-            "end": "2026-09-14T11:49:49.330Z"
           },
           {
             "durationMs": 19000,
@@ -421,7 +415,8 @@
         "wallDurationMs": 6993693,
         "bucketsPerMin": 0.21447895982851978
       }
-    }
+    },
+    "GAP_LIST_HAS_DUPLICATES": "NO"
   },
   "post10MinAcquisition": {
     "POST_10_MIN_DATA_SOURCE": "RC_ACQUISITION_RUNNER_HEARTBEAT_ONLY",
@@ -864,7 +859,7 @@
     "PHASE_STILL_ACTIVE_UNTIL": "2026-09-14T13:40:26.693Z",
     "POST_TRIP_ACTIVE_DURATION_MS": 5771693,
     "POST_TRIP_NATIVE_BUCKETS": 0,
-    "POST_TRIP_FALSE_MOVEMENT": "CHECK",
+    "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED",
     "POST_TRIP_FALSE_TRIP_ACTIVITY": "NO",
     "POST_TRIP_TELEMETRY_BEHAVIOR": "VEHICLE_TELEMETRY_CONTINUES_STATIONARY_NO_HF_SLOTS"
   },
@@ -884,7 +879,7 @@
       "SUCCESS": 114
     },
     "LATE_IDENTITY_ADDITIONS": 148,
-    "VALUE_REVISIONS": 0,
+    "VALUE_REVISIONS": "NOT_ASSESSED",
     "SETTLEMENT_RECOVERY_RATE": "STRUCTURALLY_COMPLETE_ALL_PROBES",
     "matrix": [
       {
@@ -1622,10 +1617,10 @@
     "EXP021_INTERFERED_WITH_TRIP_FSM": "NO"
   },
   "phase14_provider": {
-    "TOTAL_REQUESTS": 0,
-    "TOTAL_SUCCESS": 0,
-    "TOTAL_FAILURE": 0,
-    "SUCCESS_RATE": null,
+    "TOTAL_REQUESTS": 7,
+    "TOTAL_SUCCESS": 5,
+    "TOTAL_FAILURE": 2,
+    "SUCCESS_RATE_EXACT": "71.428571%",
     "P50_LATENCY": null,
     "P95_LATENCY": null,
     "MAX_LATENCY": null,
@@ -1692,5 +1687,15 @@
     "scientificStatus": null,
     "nativeBucketCount": 25,
     "note": "Abort-terminalized summary NOT valid 10-min seal"
-  }
+  },
+  "phase7_nominal10min": {
+    "90_NOMINAL_PROVIDER_REQUEST_COUNT": 7,
+    "90_NOMINAL_PROVIDER_SUCCESS_COUNT": 5,
+    "90_NOMINAL_PROVIDER_FAILURE_COUNT": 2,
+    "90_NOMINAL_PROVIDER_SUCCESS_RATE_EXACT": "71.428571%"
+  },
+  "phase11_gapRecovery": {
+    "GAP_RECONSTRUCTABILITY": "NOT_PROVEN"
+  },
+  "correctionNote": "v1 base + consistency pass 2026-09-14: provider counts, deduped gaps, full-window edge gaps, unproven ZERO_RESULT classification"
 }

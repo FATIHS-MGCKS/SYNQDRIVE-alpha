@@ -18,6 +18,7 @@
 
 - Machine JSON (v1): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.json`
 - Machine JSON (v2, 116-min scope): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`
+- Consistency JSON (v3 derived): `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json`
 - Pre-abort snapshot: `EXP_021_KS_MX_2024_INCOMPLETE_SHORT_AB_FORENSIC_FREEZE_2026-09-14.md`
 - VPS: `/opt/synqdrive/shared/reference-evidence/exp-021-ks-mx-2024-deep-90s-forensic-v2.json`
 
@@ -44,12 +45,50 @@ The 90s phase remained `ACTIVE_UNSEALED` for the **full ~116.6 minutes** from T0
 
 | Window | Start | End | Duration | Movement class |
 |--------|-------|-----|----------|----------------|
-| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | MOVING |
-| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | MOVING |
+| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | CONFIRMED_MOVING |
+| **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | UNKNOWN_WITH_ACTIVE_TRIP |
 | **C — Post-trip active tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms (~96.2 min) | STATIONARY |
 | **D — Abort artifact** | `2026-09-14T13:40:26.693Z` | `2026-09-14T13:43:11.614Z` | 164,921 ms (~2.7 min) | STATIONARY |
 
+`CANONICAL_VALID_MOVEMENT_DURATION = null` · `T0_TO_TRIP_END_WALL_DURATION = 1,222,000 ms (~20.4 min)`
+
 Scientific 90s analysis uses **Window A only**. Windows B–D are operational/orphaned-phase evidence, not cadence-comparison evidence.
+
+**RC partition rule:** `synq_received_at` with `[start, end)` for A/B/C; `[freeze, abort]` inclusive for D. Sum **1,423 + 938 + 8,792 + 260 = 11,413** (verified against production DB via v2 recompute).
+
+---
+
+## Phase 0 — Raw-evidence authority map
+
+| Finding | Raw authority |
+|---------|---------------|
+| Slot ledger (7/7, 5 SUCCESS, 2 ZERO_RESULT) | Pre-abort freeze `phase90.slots` + `phase90.counters` |
+| Provider counts (7/5/2) | Freeze `nativeFastLoopProvider*Count` / `allRequestCount` |
+| Native HF buckets (25 timestamps) | Freeze `phase90.nativeBuckets.bucketTimestamps` |
+| Settlement 114/114 SUCCESS | `reference_capture_settlement_shadow_observations` + v1 `phase10_settlement.matrix` |
+| RC observations (11,413 partition) | `reference_capture_observations.synq_received_at` (v2 DB query) |
+| Trip FSM RESTING/COMPLETED | Run-monitor jsonl + `vehicle_trips.end_time` |
+| T0 timeline | `exp-021-ks-mx-2024-t0-watcher.jsonl` + `T0_ACTIVATED` event |
+| Orchestrator not started | Incomplete-short-ab freeze lifecycle section + absence of `exp021AutonomousOrchestrator` in preflight |
+| Production SHA | Deploy record `d1501d171c1cc6dc4b83b2720e3a96549ef24185` |
+
+Derived JSON/Markdown in this PR **never outrank** the raw sources above.
+
+---
+
+## Forensic corrections (derived-evidence pass)
+
+| Field | OLD | NEW | RAW authority |
+|-------|-----|-----|---------------|
+| Inter-bucket max reported as window max | 40,918 ms | **40,918 ms inter-bucket only** | Bucket timestamps |
+| Full-window max unobserved gap | (omitted / implied 40.9s) | **159,544 ms** (T0 → first bucket) | T0 + bucket timestamps |
+| Provider TOTAL_REQUESTS (v1 JSON slices) | 0 | **7** (5 success, 2 failure) | `phase90.counters` |
+| Slot 0/2 durability class | TRANSIENT_PROVIDER | **UNPROVEN** | No probeDetail in freeze |
+| `VALUE_REVISIONS` | 0 | **NOT_ASSESSED** | No value-snapshot diff performed |
+| `GAP_RECONSTRUCTABILITY` | qualitative "majority" | **NOT_PROVEN** | No identity-level gap mapping |
+| `POST_TRIP_FALSE_MOVEMENT` | NO | **NOT_ASSESSED** | `validMovementDurationMs=null` ≠ signal proof |
+| Gap list duplicates | YES (v1 JSON) | **NO** (deduped) | Unique timestamp pairs |
+| `VALID_90_SCIENTIFIC_EVIDENCE` | (implicit full) | **PARTIAL** | Unsealed phase, no 60s, catch-up, 2/7 ZERO_RESULT |
 
 ---
 
@@ -88,7 +127,20 @@ Chronological event ledger (millisecond where available):
 
 ---
 
-## Phase 2 — T0 quality forensic
+## Phase 2 — T0 quality forensic (separated timestamps)
+
+**Do not collapse these into a single "T0 creation time".**
+
+| Concept | Timestamp (UTC) | Source |
+|---------|-----------------|--------|
+| `T0_EFFECTIVE_AT` | `2026-09-14T11:43:53.000Z` | Reanchored canonical authority |
+| `T0_FIRST_OBSERVED_AT` | `2026-09-14T11:44:08.526Z` | Watcher poll i=0 |
+| `T0_CONFIRMATION_STARTED_AT` | `2026-09-14T11:44:08.031Z` | Watcher start |
+| `T0_CONFIRMED_AT` | `2026-09-14T11:46:25.216Z` | Watcher poll i=13 `confirmed=true` |
+| `T0_PERSISTED_AT` / `PHYSICAL_PHASE_ACTIVATED_AT` | `2026-09-14T11:46:27.198Z` | Server `T0_ACTIVATED` |
+| `T0_ACTIVATION_LAG_MS` | **154,198** | `T0_PERSISTED_AT − T0_EFFECTIVE_AT` |
+
+**Deployed reanchor rule:** After 4 qualifying movement samples (≥8 km/h, fresh), `firstQualifyingMovementAt` is backdated to `canonicalT0At` and persisted as immutable physical authority. HF slots schedule from canonical T0, but server activation lags by ~154 s — causing catch-up issuance.
 
 **Deployed criteria:** min speed 8 km/h · 4 samples · ≥3 distinct timestamps · freshness ≤120s · confirmation window 180s · parking reset 90s below threshold
 
@@ -120,9 +172,9 @@ Chronological event ledger (millisecond where available):
 
 | slot | offset | scheduledAt | issuedAt | issueLagMs | status | root cause |
 |------|--------|-------------|----------|------------|--------|------------|
-| 0 | 0s | `11:43:53` | `11:46:32.519` | +159,519 | FAILURE | **ZERO_RESULT** — transient provider |
-| 1 | 90s | `11:45:23` | `11:46:38.489` | +75,489 | SUCCESS | |
-| 2 | 180s | `11:46:53` | `11:46:56.384` | +3,384 | FAILURE | **ZERO_RESULT** — transient provider |
+| 0 | 0s | `11:43:53` | `11:46:32.519` | +159,519 | FAILURE | **ZERO_RESULT** (catch-up; interval historical at issue) |
+| 1 | 90s | `11:45:23` | `11:46:38.489` | +75,489 | SUCCESS | 5 native buckets |
+| 2 | 180s | `11:46:53` | `11:46:56.384` | +3,384 | FAILURE | **ZERO_RESULT** (provider empty; not HTTP/auth/timeout) |
 | 3 | 270s | `11:48:23` | `11:48:24.310` | +1,310 | SUCCESS | |
 | 4 | 360s | `11:49:53` | `11:49:57.205` | +4,205 | SUCCESS | |
 | 5 | 450s | `11:51:23` | `11:51:26.175` | +3,175 | SUCCESS | |
@@ -135,7 +187,11 @@ Chronological event ledger (millisecond where available):
 | `nativeFastLoopProviderZeroResultCount` | 2 |
 | `nativeFastLoopProviderErrorCount` | 0 |
 
-**Failure independence:** Slots 0 and 2 are separate ZERO_RESULT events (not HTTP/auth/timeout). Slot 1 succeeded between them → **TRANSIENT_PROVIDER**, not systematic.
+**Slot 0 forensics:** Issued **159,519 ms** after `scheduledAt`; entire provider interval was historical relative to server activation (**154,198 ms** after canonical T0). `SLOT_0_ZERO_RESULT_CAUSE=PROVIDER_ZERO_RESULT`; `SLOT_0_CATCHUP_CONTRIBUTION=YES`; `SLOT_0_PROVIDER_TRANSIENT_PROVEN=NO` (no probeDetail in freeze).
+
+**Slot 2 forensics:** Issued **3,384 ms** late (26 s after activation). `SLOT_2_ZERO_RESULT_CAUSE=PROVIDER_ZERO_RESULT`; `SLOT_2_CATCHUP_CONTRIBUTION=MARGINAL`; `SLOT_2_PROVIDER_TRANSIENT_PROVEN=NO`.
+
+**Failure independence:** Slots 0 and 2 are separate ZERO_RESULT events (not HTTP/auth/timeout). Slot 1 succeeded between them — systematic provider failure **not proven**.
 
 ---
 
@@ -149,11 +205,14 @@ Chronological event ledger (millisecond where available):
 | Buckets/min | 2.5 | 0 | 0 | 0.21* |
 | First bucket | `11:46:32.544` | — | — | same |
 | Last bucket | `11:52:46.201` | — | — | same |
-| P50 gap | 15s | — | — | 15s |
-| P90 gap | 21s | — | — | 21s |
-| P95 gap | 37.9s | — | — | 37.9s |
-| Max gap | 40.9s | — | — | 40.9s |
-| Gaps ≥10s / ≥20s / ≥30s | 17 / 7 / 2 | 0 | 0 | 17 / 7 / 2 |
+| Inter-bucket P50 / P90 / P95 / max | 15s / 21s / 37.9s / **40.9s** | — | — | same |
+| Inter-bucket gaps ≥10s / ≥20s / ≥30s / ≥60s | 17 / 7 / 2 / 0 | 0 | 0 | 17 / 7 / 2 / 0 |
+| **Start edge gap** (T0 → first bucket) | **159,544 ms** | — | — | — |
+| **End edge gap** (last bucket → T0+10m) | **66,799 ms** | — | — | — |
+| **Full-window max unobserved gap** | **159,544 ms** | — | — | — |
+| Full-window gaps ≥10s / ≥20s / ≥30s / ≥60s | **19 / 9 / 4 / 2** | — | — | — |
+| First→last bucket span | **373,657 ms (62.3% of nominal window)** | — | — | — |
+| `GAP_LIST_HAS_DUPLICATES` | **NO** (24 unique inter-bucket intervals) | — | — | — |
 
 \*Full pre-freeze buckets/min diluted by 116 min unsealed phase wall time.
 
@@ -181,7 +240,13 @@ Chronological event ledger (millisecond where available):
 
 Native HF fast-loop buckets carry speed/GPS within provider payloads. Reference capture ingested **11,413** observations total (continuous reference capture path separate from 7 HF slots).
 
-Per-window `SIGNAL_POINT` canonicalKey query returned 0 rows — signals stored under provider-field paths, not platform canonical keys. Native bucket timestamps confirm speed-bearing telemetry in Window A only.
+| Assessment | Status |
+|------------|--------|
+| `CANONICAL_KEY_AVAILABILITY` | **NOT_ASSESSED** |
+| `PROVIDER_FIELD_PATH_AVAILABILITY` | **NOT_ASSESSED** |
+| `SIGNAL_LEVEL_ASSESSABILITY` | **NOT_ASSESSED** |
+
+Prior canonicalKey lookup returned 0 rows because signals are stored under provider-field paths — **not** proof of physical signal absence.
 
 **Mercedes/DIMO behavior:** Dense buckets during active driving (W2: 19 buckets in 5 min); zero HF acquisition after slot 6 despite continued driving (Window B) — architectural (no slots scheduled), not provider degradation.
 
@@ -246,7 +311,7 @@ No provider degradation observable; acquisition architecture simply did not sche
 | `POST_TRIP_NATIVE_HF_BUCKETS` | **0** |
 | `POST_TRIP_RC_OBSERVATIONS` | **8,792** (77% of all 11,413) |
 | `POST_TRIP_RC_RATE` | ~91 obs/min (stable) |
-| `POST_TRIP_FALSE_MOVEMENT` | **NO** (`validMovementDurationMs` = null throughout) |
+| `POST_TRIP_FALSE_MOVEMENT` | **NOT_ASSESSED** (`validMovementDurationMs` = null; no signal-level false-movement audit) |
 | `POST_TRIP_FALSE_TRIP_ACTIVITY` | **NO** |
 | `POST_TRIP_SETTLEMENT` | **NONE** — all 114 completed by `12:03:53Z` |
 | `POST_TRIP_TELEMETRY_BEHAVIOR` | RC broad capture continues (stationary SIGNAL_POINT); no HF slots |
@@ -264,7 +329,7 @@ No provider degradation observable; acquisition architecture simply did not sche
 | 4 | Provider HF requests after 7 slots? | **NO** — last slot ~`11:52:53Z`; RC cycles continued |
 | 5 | Settlement during tail? | **NO** — 67 in A + 47 in B = 114; last at `12:03:53Z` |
 | 6 | Trip FSM RESTING while EXP-021 active? | **YES** — RESTING from `12:06:47Z`; RC RECORDING until abort |
-| 7 | Orphaned phase anomalies? | No dupes/false movement/trip reopen; RC queue grew linearly (~1215 cycles) |
+| 7 | Orphaned phase anomalies? | No dupes/trip reopen/duplicate scheduler work; RC queue grew linearly (~1215 cycles); false movement **NOT_ASSESSED** |
 | 8 | Native HF vs RC observations? | **Distinct:** 25 native buckets vs 11,413 RC rows |
 | 9 | Why 25 buckets vs 11,413 obs? | HF: 5 successes → 25 starts; RC: ~9.4 obs/cycle × 1215 cycles |
 | 10 | Classification preserved? | `VALID_90_VS_60=NO` · `VALID_FOR_CADENCE_SELECTION=NO` |
@@ -289,9 +354,10 @@ No provider degradation observable; acquisition architecture simply did not sche
 
 | Maturation | Value |
 |------------|-------|
-| `LATE_IDENTITY_ADDITIONS` | 148 (identity growth across ages — normal maturation) |
-| `VALUE_REVISIONS` | 0 (value snapshots not compared on this run) |
-| `SETTLEMENT_RECOVERY_RATE` | All 19 probes structurally complete through +600s |
+| `LATE_IDENTITY_ADDITIONS` | 148 (identity growth across ages — verified from settlement matrix) |
+| `VALUE_REVISIONS` | **NOT_ASSESSED** (no value-snapshot comparison performed) |
+| Terminal status breakdown | **114 SUCCESS · 0 ZERO_RESULT · 0 FAILURE · 0 SKIPPED · 0 PENDING** |
+| Structural acceptance | All 19 windows × 6 ages present and terminal SUCCESS |
 
 Edge probes SP-90-T17/T18 show lower rawRowCount at +30s (25–26 rows) — partial window at phase edge, not failure.
 
@@ -299,13 +365,9 @@ Edge probes SP-90-T17/T18 show lower rawRowCount at +30s (25–26 rows) — part
 
 ## Phase 11 — Gap recovery / reconstructability
 
-| Category | Window A | Window B | Window C |
-|----------|----------|----------|----------|
-| `NATIVE_GAPS_10S` | 17 | 0 | 0 |
-| Assessable via settlement | 17 | N/A | N/A |
-| Fully recovered | Majority via +120/+600 maturation | — | — |
-| Unrecovered | Small number of edge gaps | — | — |
-| Post-trip / non-driving | — | — | N/A |
+`GAP_RECONSTRUCTABILITY = **NOT_PROVEN**`
+
+No identity-level mapping was performed between each native gap ≥10s and settlement observation payloads. Inter-bucket gap count in Window A = **17**; full-window unobserved segments ≥10s = **19** (includes start/end edges). Settlement structural completeness (114/114) is **distinct** from per-gap scientific recovery proof.
 
 Route geometry artifacts: **NOT_AVAILABLE** (no orchestrated physical-end seal).
 
@@ -345,7 +407,7 @@ Deployed #1617/#1627 semantics: no interference; EXP-021 prolonged active phase 
 | `TOTAL_REQUESTS` | 7 |
 | `TOTAL_SUCCESS` | 5 |
 | `TOTAL_FAILURE` | 2 |
-| `SUCCESS_RATE` | 71.4% |
+| `SUCCESS_RATE` | **71.428571%** (5/7) |
 | Failure breakdown | 2× ZERO_RESULT · 0× HTTP · 0× timeout · 0× auth |
 
 Failures isolated to slots 0 and 2; slots 1 and 3–6 succeeded — not broad instability.
@@ -413,24 +475,89 @@ Code/execution improvement proven; vehicle/provider variation remains uncontroll
 
 ---
 
-## Phase 19 — Phase overrun root cause
+## Phase 17 — Recorder ownership chain (deployed code `d1501d17`)
 
-| Field | Value |
-|-------|-------|
-| `PHASE_OVERRUN_ROOT_CAUSE` | **OWNERSHIP_GAP** |
-| Detail | Manual PRE-ARM + FAST GO + one-shot T0 watcher; autonomous orchestrator never started; no `switchHfCalibrationPhase(PHYSICAL_TRANSITION)` owner |
-| `90_TO_60_BLOCKED_BY_BAD_TELEMETRY` | **NO** — wall-clock transition is orchestrator-owned, not telemetry-gated |
+| Lifecycle step | Owner this run | Expected owner (orchestrator path) |
+|----------------|----------------|-------------------------------------|
+| PRE-ARM | MANUAL_OPERATOR | Orchestrator PREP (or manual prearm if runbook requires) |
+| FAST GO | MANUAL_OPERATOR | Orchestrator session start |
+| T0 | MANUAL_ONE_SHOT_WATCHER | Orchestrator `activatePhysicalPhaseAtT0` |
+| 90s slot execution | RC_ACQUISITION_SERVICE | RC_ACQUISITION_SERVICE (under orchestrator-owned session) |
+| 90s wall seal | **NONE** | Orchestrator `phaseTracker.shouldAdvancePhase` → `switchHfCalibrationPhase` |
+| 90 → 60 | **NONE** | Orchestrator (same) |
+| 60s init / execution | **NONE** | Orchestrator + acquisition |
+| 60s wall seal | **NONE** | Orchestrator |
+| PHYSICAL_END | **NONE** | Orchestrator `PhysicalEndDetector` |
+| Session terminalization | MANUAL_ABORT | Orchestrator DONE / terminalize |
+
+`RECORDER_FAILURE_CLASS = **OWNERSHIP_GAP**` · `90_TO_60_BLOCKED_BY_TELEMETRY = **NO**`
+
+Mixed manual FAST GO + detached T0 watcher left no owner for wall-clock phase transitions. Orchestrator `isOrchestratorOwnedRecordingSession` requires `exp021AutonomousOrchestrator.runId` — manual path does not stamp this.
 
 ---
 
-## Phase 20 — Evidence freeze classification
+## Phase 18 — Autonomous orchestrator authority (next run design)
+
+| Question | Answer |
+|----------|--------|
+| `SUPPORTED_COMPLETE_LIFECYCLE_OWNER` | `reference-capture-exp-021-autonomous-orchestrator.ts` |
+| `AUTONOMOUS_ORCHESTRATOR_CAN_OWN_FROM_START` | **YES** (deployed at physical-run SHA) |
+| `MANUAL_FAST_GO_REQUIRED` | **NO** when orchestrator is sole entry path |
+| `MANUAL_T0_WATCHER_REQUIRED` | **NO** when orchestrator is sole entry path |
+| `MANUAL_PHASE_TRANSITION_REQUIRED` | **NO** |
+| Mixed manual + orchestrator safe? | **NO** — orchestrator refuses attach without ownership stamp |
+
+---
+
+## Phase 19 — Recorder repair requirement (spec only — NOT implemented)
+
+`RECORDER_CODE_CHANGE_REQUIRED = **NO**`
+
+Deployed orchestrator already implements the full lifecycle when started as **sole owner**. Today's failure was operator runbook: manual PRE-ARM + FAST GO + detached T0 watcher without starting the orchestrator.
+
+**Canonical next-run procedure:**
+
+1. PRE-ARM if required by deploy gate (orchestrator PREP may subsume).
+2. Start `reference-capture-exp-021-autonomous-orchestrator.ts` as **only** lifecycle owner.
+3. Do **not** run manual FAST GO or detached T0 watcher on the same session.
+4. Let orchestrator own: movement confirmation → durable T0 → 90s (7 slots) → 10m wall seal → 90→60 → 60s (10 slots) → 10m wall seal → PHYSICAL_END → terminalization.
+
+**Optional future hardening (not blocking if runbook enforced):** reject manual FAST GO when EXP-021 plan active without orchestrator ownership.
+
+---
+
+## Phase 20 — Required regression spec (before next physical drive)
 
 | Field | Value |
 |-------|-------|
-| `RUN_CLASSIFICATION` | `INCOMPLETE_SHORT_AB_PARTIAL_OPERATIONAL_EVIDENCE` |
-| `VALID_90_STANDALONE_EVIDENCE` | **YES** |
+| `REQUIRED_REGRESSION_NAME` | `candidate_short_ab_90_60 autonomous wall-clock phase seal without operator` |
+| `REQUIRED_REGRESSION_SCOPE` | At T0: plan persists, 90 phase + 7 slots init. Advance wall clock 10m → 90 seals exactly once, 60 inits exactly once (no operator command). Advance 10m more → 60 seals, PHYSICAL_END persists, RC session + calibration series terminalize, settlement coherent, no duplicate slot jobs / stale cycle jobs / stale Redis locks. |
+| `RESTART_RECOVERY_COVERED` | **PARTIAL** — existing specs cover plan/T0 recovery; full restart matrix at T0, pre-90→60, post-90→60 not yet complete |
+
+---
+
+## Phase 21 — Three data layers (no conflation)
+
+| Layer | Count | Producer | Persistence | Continues after HF slots? |
+|-------|-------|----------|-------------|-------------------------|
+| **Native HF buckets** | 25 | HF deterministic slot historical polls (5 successes) | `acquisitionState` temporal bucket starts | **NO** (stopped after slot 6) |
+| **Settlement shadow rows** | 114 | Settlement scheduler (19 windows × 6 ages) | `reference_capture_settlement_shadow_observations` | Completed before trip end |
+| **RC observations** | 11,413 | RC acquisition runner (~3s cycles) | `reference_capture_observations` | **YES** (~91 obs/min through tail) |
+
+---
+
+## Phase 22 — Scientific classification
+
+| Field | Value |
+|-------|-------|
+| `VALID_T0_EVIDENCE` | **YES** |
+| `VALID_90_OPERATIONAL_EVIDENCE` | **YES** |
+| `VALID_90_SCIENTIFIC_EVIDENCE` | **PARTIAL** (unsealed phase, no 60s, catch-up geometry, 2/7 ZERO_RESULT, `validMovementDuration` not computed) |
 | `VALID_90_VS_60_COMPARISON` | **NO** |
-| `VALID_FOR_CADENCE_SELECTION` | **NO** |
+| `VALID_FOR_PRODUCTION_CADENCE_SELECTION` | **NO** |
+| `1621_SLOT_FIX_PHYSICAL_ACCEPTANCE` | **PASS** |
+| `1621_SETTLEMENT_GEOMETRY_PHYSICAL_ACCEPTANCE` | **PASS** |
+| `RUN_CLASSIFICATION` | `INCOMPLETE_SHORT_AB_PARTIAL_OPERATIONAL_EVIDENCE` |
 | `ANOTHER_PHYSICAL_RUN_REQUIRED` | **YES** |
 
 ---
@@ -463,6 +590,10 @@ PHASE_OVERRUN_ROOT_CAUSE = OWNERSHIP_GAP
 2. **#1621 corrections validated** — 7/7 slots, 19/19 settlement windows vs KS MS 661's 4/7 and 9/19.
 3. **25 native HF buckets ≠ 11,413 RC observations** — HF slots stopped at T0+9m; RC runner continued ~91 obs/min for entire orphaned tail (8,792 stationary rows).
 4. **Settlement completed before trip end** — all 114 by `12:03:53Z`; no settlement during 96 min post-trip tail.
-5. **Post-trip integrity PASS** — no false movement/trip reopen; orphaned phase is ownership failure, not telemetry corruption.
+5. **Post-trip tail integrity PASS** for scheduler/trip boundaries — no new HF slots, no trip reopen, no duplicate experiment work; false movement **NOT_ASSESSED**.
+6. **Full-window max unobserved gap = 159,544 ms** (start-edge), not 40.9 s inter-bucket max.
+7. **Recorder repair:** code change **not required** — orchestrator path exists; next run must use it as sole owner.
 
-**NO CADENCE DECISION. NO RETROSPECTIVE 60s DATA. NO SCIENTIFIC NUMBER MUTATION.**
+`PROVIDER_COUNTS_CONSISTENT = YES` · `FORENSIC_EVIDENCE_CONSISTENT = YES` · `READY_TO_FINALIZE_PR1645 = YES`
+
+**NO CADENCE DECISION. NO RETROSPECTIVE 60s DATA. NO SCIENTIFIC NUMBER MUTATION. DO NOT MERGE.**
