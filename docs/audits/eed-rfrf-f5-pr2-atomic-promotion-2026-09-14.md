@@ -21,7 +21,7 @@ G2_FALLBACK_HANDOFF_REACHABLE = NO
 BULLMQ_FALLBACK_ENQUEUE_REACHABLE = NO
 ```
 
-**Verified HEAD (F5-PR2.1):** `5cd9c94dc160bde247607c686957df734033f6a8` — exact-head CI PASS (28 checks).
+**Verified HEAD (F5-PR2.1):** `53f7d5b7dba9addbb70bf51021646a5f12e972b6` — exact-head CI PASS (28 checks).
 
 ---
 
