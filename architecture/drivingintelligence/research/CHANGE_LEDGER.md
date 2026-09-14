@@ -582,3 +582,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Cadence decision | **READY_TO_CHOOSE_PRODUCTION_CADENCE=NO** — 60/30 not executed; runtime defect (fixed #1606) |
 | Supersedes | PR **#1605** (obsolete mixed runtime branch — do not merge) |
 | Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md`; `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json` |
+
+## EXP-021 — KS MX 2024 incomplete short A/B deep 90s forensic (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Status | **EVIDENCE FREEZE** — read-only forensic; no code/deploy; session `ABORTED` |
+| Session | `332c1549-622d-4535-afd9-867962003280` · KS MX 2024 · `EXP021_CANDIDATE_SHORT_AB_90_60` |
+| Windows | A nominal 10 min (25 native buckets, 5/7 HF success) · B moving overrun (0 HF) · C post-trip tail (integrity PASS) |
+| Settlement | **114/114** SUCCESS (19×6); #1621 geometry fix **PASS** |
+| Slots | **7/7** issued; #1621 slot fix **PASS** vs KS MS 661 V3 (4/7) |
+| Overrun | `OWNERSHIP_GAP` — orchestrator not started; `90_TO_60_BLOCKED_BY_BAD_TELEMETRY=NO` |
+| Classification | `VALID_90_STANDALONE=YES`; `VALID_90_VS_60=NO`; `VALID_FOR_CADENCE_SELECTION=NO` |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md`; `.json`; `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_EVIDENCE_FREEZE_2026-09-14.md` |
