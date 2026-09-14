@@ -6,6 +6,7 @@ import { hashProviderDeviceId } from '../device-connection-episode.service';
 import {
   buildLegacyBindingKeyFromEpisode,
   buildLegacySnapshotShadowDecision,
+  resolveLegacyBindingKey,
 } from './physical-state-legacy-shadow-decision';
 
 describe('physical-state-legacy-shadow-decision (snapshot)', () => {
@@ -105,6 +106,8 @@ describe('physical-state-legacy-shadow-decision (snapshot)', () => {
       lastLegacyEvent: {
         eventType: 'OBD_DEVICE_UNPLUGGED',
         observedAt: new Date('2026-09-12T14:00:00.000Z'),
+        tokenId: 100001,
+        provider: 'DIMO',
       },
     });
     expect(legacyShadow.bindingKey).toBe(oldBindingKey);
@@ -116,6 +119,19 @@ describe('physical-state-legacy-shadow-decision (snapshot)', () => {
       physicalTs: '2026-09-12T15:00:00.000Z',
     });
     expect(result.classification).toBe(PhysicalStateShadowClassification.BINDING_DIVERGENCE);
+  });
+
+  it('C. legacy binding derived from persisted event token when no episode', () => {
+    const bindingKey = resolveLegacyBindingKey({
+      episode: null,
+      lastLegacyEvent: {
+        eventType: 'OBD_DEVICE_UNPLUGGED',
+        observedAt: new Date('2026-09-12T14:00:00.000Z'),
+        tokenId: 100001,
+        provider: 'DIMO',
+      },
+    });
+    expect(bindingKey).toBe(oldBindingKey);
   });
 
   it('E. unknown legacy state remains null and is never synthesized from candidate', () => {

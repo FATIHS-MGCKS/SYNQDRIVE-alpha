@@ -1,5 +1,6 @@
 import type { DeviceConnectionEpisode, DimoDeviceConnectionEventType } from '@prisma/client';
 import type { SnapshotPlugEvaluationOutcome } from '../device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { hashProviderDeviceId } from '../device-connection-episode.service';
 import {
   buildDeviceConnectionBindingKey,
   normalizeConnectivityProvider,
@@ -25,6 +26,8 @@ export type LegacyShadowDecision = {
 export type LegacyPersistedEvent = {
   eventType: DimoDeviceConnectionEventType;
   observedAt: Date;
+  tokenId: number;
+  provider: string;
 };
 
 export function buildLegacyBindingKeyFromEpisode(
@@ -38,9 +41,38 @@ export function buildLegacyBindingKeyFromEpisode(
   });
 }
 
+/**
+ * Canonical legacy binding resolution — never derive from incoming/current physical token.
+ *
+ * A. episode.providerDeviceIdHash when present
+ * B. last legacy DIMO event tokenId -> hashProviderDeviceId -> buildDeviceConnectionBindingKey
+ * C. else null
+ */
+export function resolveLegacyBindingKey(input: {
+  episode: DeviceConnectionEpisode | null;
+  lastLegacyEvent: LegacyPersistedEvent | null;
+  provider?: string;
+}): string | null {
+  const fromEpisode = buildLegacyBindingKeyFromEpisode(
+    input.episode,
+    input.lastLegacyEvent?.provider ?? input.provider,
+  );
+  if (fromEpisode) return fromEpisode;
+
+  if (input.lastLegacyEvent?.tokenId != null) {
+    const provider = normalizeConnectivityProvider(
+      input.lastLegacyEvent.provider ?? input.provider ?? 'DIMO',
+    );
+    const providerDeviceIdHash = hashProviderDeviceId(provider, input.lastLegacyEvent.tokenId);
+    return buildDeviceConnectionBindingKey({ provider, providerDeviceIdHash });
+  }
+
+  return null;
+}
+
 export function buildLegacyWebhookShadowDecision(input: {
   gate: { persist: boolean; reason?: string };
-  lastEvent: LegacyPersistedEvent | null;
+  lastEvent: Pick<LegacyPersistedEvent, 'eventType' | 'observedAt'> | null;
   incomingPluggedIn: boolean;
   incomingObservedAt: Date;
   bindingKey: string | null;
@@ -82,7 +114,10 @@ export function buildLegacySnapshotShadowDecision(input: {
   episode: DeviceConnectionEpisode | null;
   lastLegacyEvent: LegacyPersistedEvent | null;
 }): LegacyShadowDecision {
-  const legacyBindingKey = buildLegacyBindingKeyFromEpisode(input.episode);
+  const legacyBindingKey = resolveLegacyBindingKey({
+    episode: input.episode,
+    lastLegacyEvent: input.lastLegacyEvent,
+  });
 
   if (input.evaluation.action === 'resolve') {
     return {

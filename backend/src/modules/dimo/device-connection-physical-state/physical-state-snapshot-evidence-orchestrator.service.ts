@@ -8,7 +8,10 @@ import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { extractObdPlugSignalFromSignals } from './device-connection-physical-state.obd-evidence';
 import { buildSnapshotPlugRepairGtR1Proof } from './physical-state-gt-r1-proof';
-import { buildLegacySnapshotShadowDecision } from './physical-state-legacy-shadow-decision';
+import {
+  buildLegacySnapshotShadowDecision,
+  resolveLegacyBindingKey,
+} from './physical-state-legacy-shadow-decision';
 import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-writer.service';
 import type { PhysicalEvidenceWriterResult } from './physical-state-evidence-writer.types';
 
@@ -62,7 +65,7 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
       this.prisma.dimoDeviceConnectionEvent.findFirst({
         where: { vehicleId: input.vehicleId, provider: 'DIMO' },
         orderBy: { observedAt: 'desc' },
-        select: { eventType: true, observedAt: true },
+        select: { eventType: true, observedAt: true, tokenId: true, provider: true },
       }),
     ]);
 
@@ -108,6 +111,11 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
       },
     });
 
+    const legacyBindingKey = resolveLegacyBindingKey({
+      episode: openEpisode,
+      lastLegacyEvent: lastLegacyEvent,
+    });
+
     const gtR1Proof = buildSnapshotPlugRepairGtR1Proof({
       physicalProjectionState: projection?.effectiveState ?? null,
       physicalProjectionEvidenceAt: projection?.evidenceObservedAt ?? null,
@@ -115,6 +123,7 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
       snapshotEvidenceObservedAt: obd.evidenceObservedAt,
       legacyEvaluation: legacyEval,
       physicalBindingScope,
+      legacyBindingKey,
       episode: openEpisode,
       hardwareType: input.hardwareType,
       snapshotSource: 'dimo',

@@ -107,6 +107,7 @@ export function buildSnapshotPlugRepairGtR1Proof(input: {
   snapshotEvidenceObservedAt: Date;
   legacyEvaluation: SnapshotPlugEvaluationOutcome;
   physicalBindingScope: PhysicalStateBindingScope;
+  legacyBindingKey: string | null;
   episode: DeviceConnectionEpisode | null;
   hardwareType: string | null;
   snapshotSource: string | null;
@@ -129,6 +130,9 @@ export function buildSnapshotPlugRepairGtR1Proof(input: {
       physicalBindingScope: input.physicalBindingScope,
     })
   ) {
+    return null;
+  }
+  if (input.legacyBindingKey !== input.physicalBindingScope.bindingKey) {
     return null;
   }
   if (input.physicalProjectionState !== 'UNPLUGGED') return null;

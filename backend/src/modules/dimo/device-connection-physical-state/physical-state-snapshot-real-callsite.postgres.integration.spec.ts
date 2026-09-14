@@ -315,6 +315,114 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     expect(await prisma.deviceConnectionEpisode.count({ where: { vehicleId: fixture.vehicle.id } })).toBe(0);
   });
 
+  it('CASE A — old event token, no episode, new physical token => BINDING_DIVERGENCE', async () => {
+    const oldTokenId = fixture.tokenId + 88_888;
+    const oldBinding = buildBindingScopeFromToken({ provider: 'DIMO', tokenId: oldTokenId });
+
+    await prisma.dimoDeviceConnectionEvent.create({
+      data: {
+        organizationId: fixture.org.id,
+        vehicleId: fixture.vehicle.id,
+        tokenId: oldTokenId,
+        provider: 'DIMO',
+        eventType: 'OBD_DEVICE_UNPLUGGED',
+        observedAt: new Date(T1),
+        receivedAt: new Date(T1),
+        dedupBucket: BigInt(Math.floor(new Date(T1).getTime() / 30_000)),
+        rawPayloadJson: {},
+      },
+    });
+
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'UNPLUGGED',
+        evidenceObservedAt: new Date(T1),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh-new-token',
+      },
+    });
+
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.bindingKey).toBe(oldBinding.bindingKey);
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.BINDING_DIVERGENCE,
+    );
+    expect(result?.shadowComparison?.classification).not.toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(await prisma.deviceConnectionEpisode.count({ where: { vehicleId: fixture.vehicle.id } })).toBe(0);
+    expect(await prisma.deviceConnectionPhysicalStateActionOutbox.count({ where: { vehicleId: fixture.vehicle.id } })).toBe(0);
+  });
+
+  it('CASE B — same token control => EXPECTED_FIX remains valid', async () => {
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'UNPLUGGED',
+        evidenceObservedAt: new Date(T1),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh-same-token',
+      },
+    });
+    await prisma.dimoDeviceConnectionEvent.create({
+      data: {
+        organizationId: fixture.org.id,
+        vehicleId: fixture.vehicle.id,
+        tokenId: fixture.tokenId,
+        provider: 'DIMO',
+        eventType: 'OBD_DEVICE_UNPLUGGED',
+        observedAt: new Date(T1),
+        receivedAt: new Date(T1),
+        dedupBucket: BigInt(Math.floor(new Date(T1).getTime() / 30_000)),
+        rawPayloadJson: {},
+      },
+    });
+
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.bindingKey).toBe(binding.bindingKey);
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
+  it('CASE C — unknown legacy binding => fail closed (no EXPECTED_FIX)', async () => {
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'UNPLUGGED',
+        evidenceObservedAt: new Date(T1),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh-no-legacy-event',
+      },
+    });
+
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.bindingKey).toBeNull();
+    expect(result?.shadowComparison?.classification).not.toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.classification).not.toBe(PhysicalStateShadowClassification.MATCH);
+  });
+
   it('7. master=false => zero P2.3 DB mutations', async () => {
     disableStatefulShadowEnv();
     const before = await countArtifacts();

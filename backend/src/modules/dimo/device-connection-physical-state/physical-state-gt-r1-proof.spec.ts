@@ -20,6 +20,7 @@ describe('physical-state-gt-r1-proof', () => {
     snapshotEvidenceObservedAt: T2,
     legacyEvaluation: { action: 'reject' as const, reason: 'no_open_episode' as const },
     physicalBindingScope: binding,
+    legacyBindingKey: binding.bindingKey,
     episode: null,
     hardwareType: 'LTE_R1',
     snapshotSource: 'dimo',
@@ -155,6 +156,25 @@ describe('physical-state-gt-r1-proof', () => {
           createdAt: T1,
           updatedAt: T1,
         },
+      }),
+    ).toBeNull();
+  });
+
+  it('mismatched legacy binding key cannot establish EXPECTED_FIX', () => {
+    const otherBinding = buildBindingScopeFromToken({ provider: 'DIMO', tokenId: 999001 });
+    expect(
+      buildSnapshotPlugRepairGtR1Proof({
+        ...admissibleBase,
+        legacyBindingKey: otherBinding.bindingKey,
+      }),
+    ).toBeNull();
+  });
+
+  it('null legacy binding cannot establish EXPECTED_FIX (fail closed)', () => {
+    expect(
+      buildSnapshotPlugRepairGtR1Proof({
+        ...admissibleBase,
+        legacyBindingKey: null,
       }),
     ).toBeNull();
   });

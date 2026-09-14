@@ -155,6 +155,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       snapshotEvidenceObservedAt: new Date(T2),
       legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
       physicalBindingScope: binding,
+      legacyBindingKey: binding.bindingKey,
       episode: null,
       hardwareType: 'LTE_R1',
       snapshotSource: 'dimo',
