@@ -83,6 +83,8 @@ TRIP_FSM_SHADOW_VEHICLE_IDS=a60c0749-a7cd-494e-b5b9-dea3c6b97d63
 
 ## Closure review (2026-09-14)
 
+- **Regression fix:** shadow hooks use module-level `runShadowObservabilitySafely()` so prototype `.call(harness)` unit tests (R10/R5/R7) retain authoritative finalize behavior.
+
 - **Canary fail-closed:** `ENABLED=true` + empty allowlist disables shadow for all vehicles.
 - **Generation isolation:** shadow stores `candidateEndCycleGeneration` / `candidateTripId`; reuse compares stored vs current orchestration token.
 - **Cross-trip pause correlation:** read-only audit layer (`correlateConsecutiveTripPauses`) correlates Trip A terminal timestamps with Trip B start — never influences Trip B creation.

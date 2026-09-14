@@ -208,6 +208,30 @@ import {
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
+/** Non-authoritative shadow layer — module-level so prototype `.call(harness)` tests still work. */
+function runShadowObservabilitySafely<T>(
+  logger: { warn: (message: string) => void } | undefined,
+  name: string,
+  fn: () => T,
+): T | undefined {
+  let result: T | undefined;
+  runTripObservabilitySafely(logger, name, () => {
+    result = fn();
+  });
+  return result;
+}
+
+function mergeShadowEvidencePatch(
+  prior: Record<string, unknown>,
+  shadowPatch: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!shadowPatch?.shadowObservability) return prior;
+  return {
+    ...prior,
+    shadowObservability: shadowPatch.shadowObservability,
+  };
+}
+
 @Injectable()
 export class TripDetectionOrchestrationService {
   private readonly logger = new Logger(TripDetectionOrchestrationService.name);
@@ -338,29 +362,6 @@ export class TripDetectionOrchestrationService {
         `timeoutMs=${this.TRIP_END_TIMEOUT_MS} ` +
         `chEndAssistMinStationaryMs=${this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS}`,
     );
-  }
-
-  /** Non-authoritative shadow layer — failures must never affect FSM decisions. */
-  private runShadowObservabilitySafely<T>(
-    name: string,
-    fn: () => T,
-  ): T | undefined {
-    let result: T | undefined;
-    runTripObservabilitySafely(this.logger, name, () => {
-      result = fn();
-    });
-    return result;
-  }
-
-  private mergeShadowEvidencePatch(
-    prior: Record<string, unknown>,
-    shadowPatch: Record<string, unknown> | null | undefined,
-  ): Record<string, unknown> {
-    if (!shadowPatch?.shadowObservability) return prior;
-    return {
-      ...prior,
-      shadowObservability: shadowPatch.shadowObservability,
-    };
   }
 
   private dimoProviderContext(
@@ -1907,7 +1908,7 @@ export class TripDetectionOrchestrationService {
           lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
         });
 
-        const shadowEmptyCorePatch = this.runShadowObservabilitySafely(
+        const shadowEmptyCorePatch = runShadowObservabilitySafely(this.logger, 
           'shadow_provider_silence_empty_core',
           () =>
             runShadowActiveTickObservation({
@@ -1942,7 +1943,7 @@ export class TripDetectionOrchestrationService {
             }),
         );
         if (shadowEmptyCorePatch) {
-          evidencePatch = this.mergeShadowEvidencePatch(
+          evidencePatch = mergeShadowEvidencePatch(
             evidencePatch,
             shadowEmptyCorePatch,
           );
@@ -1983,7 +1984,7 @@ export class TripDetectionOrchestrationService {
           readPauseDetectedAt(evidencePatch) &&
           !readPauseDetectedAt(priorSummary)
         ) {
-          const pauseShadowPatch = this.runShadowObservabilitySafely(
+          const pauseShadowPatch = runShadowObservabilitySafely(this.logger, 
             'shadow_pause_start_empty_core',
             () =>
               runShadowPauseStartObservation({
@@ -2001,7 +2002,7 @@ export class TripDetectionOrchestrationService {
               }),
           );
           if (pauseShadowPatch) {
-            evidencePatch = this.mergeShadowEvidencePatch(
+            evidencePatch = mergeShadowEvidencePatch(
               evidencePatch,
               pauseShadowPatch,
             );
@@ -2825,7 +2826,7 @@ export class TripDetectionOrchestrationService {
       let continuityEvidencePatch = priorSummaryForCore;
       if (movementEventAt) {
         if (readPauseDetectedAt(continuityEvidencePatch)) {
-          const resumeShadowPatch = this.runShadowObservabilitySafely(
+          const resumeShadowPatch = runShadowObservabilitySafely(this.logger, 
             'shadow_pause_resume_active_continuity',
             () =>
               runShadowResumeObservation({
@@ -2839,7 +2840,7 @@ export class TripDetectionOrchestrationService {
               }),
           );
           if (resumeShadowPatch) {
-            continuityEvidencePatch = this.mergeShadowEvidencePatch(
+            continuityEvidencePatch = mergeShadowEvidencePatch(
               continuityEvidencePatch,
               resumeShadowPatch,
             );
@@ -2902,7 +2903,7 @@ export class TripDetectionOrchestrationService {
               idleEvidence,
               idleBoundaryProvenance.boundaryAt,
             );
-            const idlePauseShadowPatch = this.runShadowObservabilitySafely(
+            const idlePauseShadowPatch = runShadowObservabilitySafely(this.logger, 
               'shadow_pause_start_idle_within_trip',
               () =>
                 runShadowPauseStartObservation({
@@ -2920,7 +2921,7 @@ export class TripDetectionOrchestrationService {
                 }),
             );
             if (idlePauseShadowPatch) {
-              idleEvidence = this.mergeShadowEvidencePatch(
+              idleEvidence = mergeShadowEvidencePatch(
                 idleEvidence,
                 idlePauseShadowPatch,
               );
@@ -3947,7 +3948,7 @@ export class TripDetectionOrchestrationService {
               endDetectionMode: det.endDetectionMode ?? null,
               endConfidence: det.endConfidence ?? null,
             });
-            const shadowFinalize = this.runShadowObservabilitySafely(
+            const shadowFinalize = runShadowObservabilitySafely(this.logger, 
               'shadow_finalize_terminal_summary',
               () =>
                 runShadowFinalizeObservation({

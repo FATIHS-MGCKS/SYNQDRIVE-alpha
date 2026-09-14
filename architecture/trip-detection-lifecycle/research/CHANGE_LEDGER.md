@@ -60,6 +60,7 @@ Append-only record for this authority directory.
 | 2026-09-13 | R12 provider-silence × #1627 retry continuity — preserve CUSUM budget via low-trust `provider_silence_candidate` episode fields without promoting trust | Fix branch PR #1635 | Same evidence doc |
 | 2026-09-14 | Shadow end + pause observability layer — non-authoritative counterfactual #1635 + pause/resume classification; default disabled; read-only audit command | Draft PR shadow observability | [SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md](../evidence/SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md) |
 | 2026-09-14 | Shadow closure review — fail-closed allowlist, generation isolation, audit timestamp authority, cross-trip correlation, authority non-consumption proofs | PR #1648 closure | Same evidence doc |
+| 2026-09-14 | Shadow orchestration regression fix — module-level fail-open wrapper preserves R10/R5/R7 harness `.call()` compatibility | PR #1648 CI differential | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
