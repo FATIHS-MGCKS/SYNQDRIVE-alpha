@@ -14,6 +14,7 @@ import { evaluateOrphanReconciliationEligibility } from '../connectivity/connect
 import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { getCoordinatorReconcile } from './device-connection-physical-state.types';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
@@ -70,15 +71,17 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
     const writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
-      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
+      authorityRepository,
     );
     orchestrator = new PhysicalStateSnapshotEvidenceOrchestrator(prismaService, writer);
     webhookService = new DeviceConnectionWebhookService(
@@ -203,7 +206,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     const stale = await orchestrator.applyPhysicalSnapshotEvidence(
       snapshotInput({ obdIsPluggedIn: { value: false, timestamp: T1 } }, T1),
     );
-    expect(stale?.coordinatorResult?.reconcile.decision).toBe(
+    expect(getCoordinatorReconcile(stale?.coordinatorResult)?.decision).toBe(
       DeviceConnectionPhysicalTransitionDecision.STALE,
     );
     const row = await prisma.deviceConnectionPhysicalState.findFirst({
@@ -229,7 +232,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     const conflict = await orchestrator.applyPhysicalSnapshotEvidence(
       snapshotInput({ obdIsPluggedIn: { value: false, timestamp: ts } }, ts),
     );
-    expect(conflict?.coordinatorResult?.reconcile.decision).toBe(
+    expect(getCoordinatorReconcile(conflict?.coordinatorResult)?.decision).toBe(
       DeviceConnectionPhysicalTransitionDecision.CONFLICT,
     );
   });

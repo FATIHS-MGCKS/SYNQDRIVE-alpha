@@ -12,6 +12,7 @@ import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/
 import { evaluateOrphanReconciliationEligibility } from '../connectivity/connectivity-lifecycle-runtime.policy';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { getCoordinatorReconcile } from './device-connection-physical-state.types';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
@@ -67,15 +68,17 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
     const writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
-      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
+      authorityRepository,
     );
     orchestrator = new PhysicalStateSnapshotEvidenceOrchestrator(prismaService, writer);
     webhookService = new DeviceConnectionWebhookService(
@@ -153,7 +156,9 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
     expect(snapshotResult?.shadowComparison?.classification).toBe(
       PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
     );
-    expect(snapshotResult?.coordinatorResult?.reconcile.projection?.effectiveState).toBe('PLUGGED');
+    expect(getCoordinatorReconcile(snapshotResult?.coordinatorResult)?.projection?.effectiveState).toBe(
+      'PLUGGED',
+    );
 
     const webhookOutcome = await webhookService.processValidatedWebhookEvent({
       vehicle: { id: fixture.vehicle.id, organizationId: fixture.org.id },

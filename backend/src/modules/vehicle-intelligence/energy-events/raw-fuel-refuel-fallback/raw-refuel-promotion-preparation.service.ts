@@ -112,7 +112,7 @@ export class RawRefuelPromotionPreparationService {
       nativeOverlap,
       promotionDraft,
       f5ConvergenceAuthorized: f5Authorized,
-      canCreateFallbackVehicleEnergyEvent: false,
+      canCreateFallbackVehicleEnergyEvent: canCreateVee,
       blockedByF5Gate,
     };
   }

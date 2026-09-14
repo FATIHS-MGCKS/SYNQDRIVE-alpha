@@ -6,8 +6,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
+import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import {
   cleanupPhysicalStatePostgresFixture,
@@ -40,6 +42,7 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       prismaService,
       new DeviceConnectionPhysicalStateRepository(prismaService),
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
     );
   });
 
@@ -114,7 +117,10 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       reconcile: baseReconcile(evidence('2026-01-01T10:00:00.000Z', 'PLUGGED', 'est-1')),
     });
     const after = await counts();
-    expect(result.reconcile.decision).toBe('ESTABLISHED');
+    expect(result.kind).toBe('reconciled');
+    expect(isPhysicalStateCoordinatorReconciled(result) && result.reconcile.decision).toBe(
+      'ESTABLISHED',
+    );
     expect(after.projections).toBe(before.projections + 1);
     expect(after.audits).toBe(before.audits + 1);
     expect(after.events).toBe(before.events);
@@ -136,8 +142,9 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     );
     const after = await counts();
 
-    expect(result.reconcile.decision).toBe('APPLIED');
-    expect(result.canonicalEventId).toBeTruthy();
+    expect(result.kind).toBe('reconciled');
+    expect(isPhysicalStateCoordinatorReconciled(result) && result.reconcile.decision).toBe('APPLIED');
+    expect(isPhysicalStateCoordinatorReconciled(result) && result.canonicalEventId).toBeTruthy();
     expect(after.events).toBe(before.events + 1);
     expect(after.outbox).toBe(before.outbox + 1);
   });
@@ -155,6 +162,10 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
       { sideEffectsEnabled: true },
     );
 
+    expect(result.kind).toBe('reconciled');
+    if (!isPhysicalStateCoordinatorReconciled(result)) {
+      throw new Error('expected_reconciled_coordinator_result');
+    }
     expect(result.outboxId).toBeTruthy();
     const outbox = await prisma.deviceConnectionPhysicalStateActionOutbox.findUnique({
       where: { id: result.outboxId! },
@@ -256,9 +267,13 @@ describePg('PhysicalStateReconcileCoordinator (postgres)', () => {
     const first = await coordinator.reconcileInOuterTransaction(input, { sideEffectsEnabled: true });
     const second = await coordinator.reconcileInOuterTransaction(input, { sideEffectsEnabled: true });
 
-    expect(first.reconcile.decision).toBe('APPLIED');
-    expect(second.reconcile.decision).toBe('DUPLICATE');
-    expect(second.outboxId).toBeNull();
+    expect(first.kind).toBe('reconciled');
+    expect(second.kind).toBe('reconciled');
+    expect(isPhysicalStateCoordinatorReconciled(first) && first.reconcile.decision).toBe('APPLIED');
+    expect(isPhysicalStateCoordinatorReconciled(second) && second.reconcile.decision).toBe(
+      'DUPLICATE',
+    );
+    expect(isPhysicalStateCoordinatorReconciled(second) && second.outboxId).toBeNull();
 
     const outboxCount = await prisma.deviceConnectionPhysicalStateActionOutbox.count({
       where: { vehicleId: fixture.vehicle.id },

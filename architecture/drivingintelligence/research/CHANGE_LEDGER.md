@@ -582,3 +582,65 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Cadence decision | **READY_TO_CHOOSE_PRODUCTION_CADENCE=NO** — 60/30 not executed; runtime defect (fixed #1606) |
 | Supersedes | PR **#1605** (obsolete mixed runtime branch — do not merge) |
 | Evidence | `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_FORENSIC_2026-09-11.md`; `EXP_021_KS_MS_661_UPPER_BOUND_V2_FULL_POST_RUN_AUDIT_2026-09-11.json` |
+
+## EXP-021 — KS MX 2024 incomplete short A/B deep 90s forensic (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Status | **EVIDENCE FREEZE** — read-only forensic; no code/deploy; session `ABORTED` |
+| Session | `332c1549-622d-4535-afd9-867962003280` · KS MX 2024 · `EXP021_CANDIDATE_SHORT_AB_90_60` |
+| Windows | A nominal 10 min (25 native buckets, 5/7 HF success) · B moving overrun (0 HF) · C post-trip tail (integrity PASS) |
+| Settlement | **114/114** SUCCESS (19×6); #1621 geometry fix **PASS** |
+| Slots | **7/7** issued; #1621 slot fix **PASS** vs KS MS 661 V3 (4/7) |
+| Overrun | `OWNERSHIP_GAP` — orchestrator not started; `90_TO_60_BLOCKED_BY_BAD_TELEMETRY=NO` |
+| Classification | `VALID_90_STANDALONE=YES`; `VALID_90_VS_60=NO`; `VALID_FOR_CADENCE_SELECTION=NO` |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_2026-09-14.md`; `.json`; `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_EVIDENCE_FREEZE_2026-09-14.md` |
+
+### EXP-021 — KS MX 2024 deep 90s forensic v2 temporal correction (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Correction | 90s phase active **~116.6 min** at pre-abort freeze (not ~25.5 min); abort `completedPhaseSummary` (~119.3 min) is artifact only |
+| Windows | A nominal 1,423 RC obs / 25 native HF · B overrun 938 / 0 · C post-trip tail **8,792** / 0 · D abort 260 |
+| Settlement | 114/114 SUCCESS — 67 in A, 47 in B, **0 in C**; last at `12:03:53Z` |
+| Orphaned tail | RC runner ~91 obs/min continued; `validMovementDurationMs` null; Trip FSM RESTING while EXP-021 active |
+| Classification | `VALID_90_VS_60=NO` · `VALID_FOR_CADENCE_SELECTION=NO` preserved |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_V2_2026-09-14.json`; updated MD + evidence freeze |
+
+### EXP-021 — KS MX 2024 forensic consistency + recorder repair spec (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Scope | PR #1645 derived-evidence correction only; no runtime/test/workflow changes |
+| Fixes | Provider counts 7/5/2; deduped gap lists; full-window max gap 159,544 ms; ZERO_RESULT unproven transient; VALUE_REVISIONS/GAP_RECONSTRUCTABILITY NOT_ASSESSED/NOT_PROVEN |
+| Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES`; orchestrator sole-owner runbook; regression spec defined |
+| Validation | `scripts/validate-exp021-ks-mx-forensic-invariants.sh` |
+| Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json` |
+
+### EXP-021 — KS MX 2024 final cross-file closure (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| RC partition fix | PRE_T0=365, A=1058, B=938, C=8792, D=260; total 11413 (was A=1423 conflating PRE_T0+A) |
+| Provider | All representations 7/5/2; W1=4/2/2, W2=3/3/0 from slot issuedAt |
+| Gaps | Regenerated from 25 unique timestamps; full-window max 159544 ms |
+| Movement | POST_TRIP_FALSE_MOVEMENT=NOT_ASSESSED; T0_TO_TRIP_END_WALL_DURATION label |
+| Settlement | STRUCTURAL PASS; GAP_RECONSTRUCTABILITY=NOT_PROVEN |
+| Recorder | Canonical next run NO code change; mixed manual path YES guardrails needed |
+| Validation | Expanded `validate-exp021-ks-mx-forensic-invariants.sh` |
+
+### EXP-021 — KS MX 2024 derived-evidence integrity fix (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| Scope | PR #1645 evidence-only; no runtime/production mutation |
+| Gap tuples | Rebuilt adjacent-interval tuples (`durationMs === end − start`); no filtered-index corruption |
+| Percentiles | `PERCENTILE_METHOD=NEAREST_RANK` (P50=15000 ms from 24 intervals); cross-file equality enforced |
+| Signal completeness | Removed per-signal `availabilityPct=0` placeholders → `NOT_ASSESSED` |
+| Movement | Separated `TRIP_STATE_CLASS` vs `PHYSICAL_MOVEMENT_CLASS`; no ACTIVE_TRIP after trip end (W6–W10) |
+| Settlement | `SETTLEMENT_DURING_POST_TRIP_TAIL=NO`; `SETTLEMENT_CONTINUED_AFTER_NOMINAL_10MIN_END=YES` |
+| Post-10min | `POST_10_MIN_RC_SOURCE=RC_ACQUISITION_RUNNER_CYCLE`; removed HEARTBEAT_ONLY wording |
+| full_pre_freeze | Bucket inventory only; `HF_CONTINUITY_AFTER_NOMINAL_WINDOW=NOT_APPLICABLE_NO_HF_SLOTS_SCHEDULED` |
+| Consistency | `EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4`; phase renumbering 19–24 |
+| Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
+| Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |

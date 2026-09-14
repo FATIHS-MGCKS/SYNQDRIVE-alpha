@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
+  DeviceConnectionPhysicalAuthorityMode,
   DeviceConnectionPhysicalEvidenceSource,
   DeviceConnectionPhysicalTransitionDecision,
   DimoDeviceConnectionEventType,
@@ -7,10 +8,13 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { normalizeConnectivityProvider } from './device-connection-physical-state.binding';
+import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
 import type {
   PhysicalStateCoordinatorInput,
+  PhysicalStateCoordinatorPreCutoverBlockedResult,
+  PhysicalStateCoordinatorReconciledResult,
   PhysicalStateCoordinatorResult,
   PhysicalStateCoordinatorTestSeam,
   PhysicalStateReconcileResult,
@@ -58,6 +62,7 @@ export class PhysicalStateReconcileCoordinator {
     private readonly prisma: PrismaService,
     private readonly physicalStateRepository: DeviceConnectionPhysicalStateRepository,
     private readonly actionOutboxRepository: DeviceConnectionPhysicalStateActionOutboxRepository,
+    private readonly authorityCutoverRepository: DeviceConnectionPhysicalAuthorityCutoverRepository,
   ) {}
 
   async reconcileInOuterTransaction(
@@ -65,6 +70,7 @@ export class PhysicalStateReconcileCoordinator {
     options?: {
       testSeam?: PhysicalStateCoordinatorTestSeam;
       sideEffectsEnabled?: boolean;
+      requireLegacyAuthorityForPreseed?: boolean;
     },
   ): Promise<PhysicalStateCoordinatorResult> {
     for (let attempt = 1; attempt <= MAX_TRANSACTION_ATTEMPTS; attempt += 1) {
@@ -73,6 +79,7 @@ export class PhysicalStateReconcileCoordinator {
           this.reconcileInOuterTransactionTx(tx, input, {
             testSeam: options?.testSeam,
             sideEffectsEnabled: options?.sideEffectsEnabled ?? false,
+            requireLegacyAuthorityForPreseed: options?.requireLegacyAuthorityForPreseed ?? false,
           }),
         );
       } catch (error) {
@@ -94,9 +101,27 @@ export class PhysicalStateReconcileCoordinator {
     options: {
       testSeam?: PhysicalStateCoordinatorTestSeam;
       sideEffectsEnabled: boolean;
+      requireLegacyAuthorityForPreseed: boolean;
     },
   ): Promise<PhysicalStateCoordinatorResult> {
-    const { testSeam, sideEffectsEnabled } = options;
+    const { testSeam, sideEffectsEnabled, requireLegacyAuthorityForPreseed } = options;
+
+    if (requireLegacyAuthorityForPreseed) {
+      const provider = normalizeConnectivityProvider(input.reconcile.binding.provider);
+      const authorityMode = await this.authorityCutoverRepository.lockAuthorityScopeAndReadMode(
+        tx,
+        {
+          organizationId: input.reconcile.organizationId,
+          vehicleId: input.reconcile.vehicleId,
+          provider,
+        },
+      );
+
+      if (authorityMode !== DeviceConnectionPhysicalAuthorityMode.LEGACY) {
+        return this.buildPreCutoverAuthorityBlockedResult(authorityMode);
+      }
+    }
+
     const reconcile = await this.physicalStateRepository.reconcileInTransaction(
       tx,
       input.reconcile,
@@ -145,10 +170,21 @@ export class PhysicalStateReconcileCoordinator {
     }
 
     return {
+      kind: 'reconciled',
       reconcile,
       canonicalEventId,
       outboxId,
       outboxDuplicate,
+    };
+  }
+
+  private buildPreCutoverAuthorityBlockedResult(
+    authorityMode: DeviceConnectionPhysicalAuthorityMode,
+  ): PhysicalStateCoordinatorPreCutoverBlockedResult {
+    return {
+      kind: 'pre_cutover_authority_blocked',
+      reason: 'SKIP_NON_LEGACY_AUTHORITY',
+      authorityMode,
     };
   }
 

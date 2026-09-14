@@ -248,6 +248,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityPhysicalStateEvidenceWriterTotal: Counter<string>;
   readonly connectivityPhysicalStateStatefulShadowEvaluationTotal: Counter<string>;
   readonly connectivityPhysicalStateGtR1ExpectedFixTotal: Counter<string>;
+  readonly connectivityPhysicalStatePreseedTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -2016,6 +2017,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_connectivity_physical_state_gt_r1_expected_fix_total',
       help: 'GT-R1 EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT shadow classifications',
       labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStatePreseedTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_preseed_total',
+      help: 'Physical-state pre-seed planner/apply outcomes',
+      labelNames: ['result', 'provider', 'dry_run'],
       registers: [this.registry],
     });
   }

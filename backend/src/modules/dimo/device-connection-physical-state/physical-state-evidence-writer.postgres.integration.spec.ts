@@ -12,6 +12,7 @@ import {
 } from '@config/connectivity-physical-state-runtime.config';
 import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
+import { getCoordinatorReconcile, isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
@@ -69,15 +70,17 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     await prisma.$executeRawUnsafe('SELECT 1');
     const prismaService = prisma as unknown as PrismaService;
     repository = new DeviceConnectionPhysicalStateRepository(prismaService);
+    const authorityRepository = new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService);
     const coordinator = new PhysicalStateReconcileCoordinator(
       prismaService,
       repository,
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
+      authorityRepository,
     );
     writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
-      new DeviceConnectionPhysicalAuthorityCutoverRepository(prismaService),
+      authorityRepository,
     );
   });
 
@@ -216,7 +219,12 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     });
 
     expect(webhookResult.physicalAccepted).toBe(true);
-    expect(webhookResult.coordinatorResult?.canonicalEventId).toBeTruthy();
+    expect(
+      webhookResult.coordinatorResult &&
+        isPhysicalStateCoordinatorReconciled(webhookResult.coordinatorResult)
+        ? webhookResult.coordinatorResult.canonicalEventId
+        : null,
+    ).toBeTruthy();
 
     const finalProjection = await prisma.deviceConnectionPhysicalState.findFirst({
       where: { vehicleId: fixture.vehicle.id },
@@ -394,7 +402,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       },
     });
 
-    expect(stale.coordinatorResult?.reconcile.decision).toBe(
+    expect(getCoordinatorReconcile(stale.coordinatorResult)?.decision).toBe(
       DeviceConnectionPhysicalTransitionDecision.STALE,
     );
     const row = await prisma.deviceConnectionPhysicalState.findFirst({
@@ -437,7 +445,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       },
     });
 
-    expect(conflict.coordinatorResult?.reconcile.decision).toBe('CONFLICT');
+    expect(getCoordinatorReconcile(conflict.coordinatorResult)?.decision).toBe('CONFLICT');
   });
 
   it('APPLIED-only webhook event history contract', async () => {
@@ -472,8 +480,13 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       },
     });
 
-    expect(duplicate.coordinatorResult?.reconcile.decision).toBe('DUPLICATE');
-    expect(duplicate.coordinatorResult?.canonicalEventId).toBeNull();
+    expect(getCoordinatorReconcile(duplicate.coordinatorResult)?.decision).toBe('DUPLICATE');
+    expect(
+      duplicate.coordinatorResult &&
+        isPhysicalStateCoordinatorReconciled(duplicate.coordinatorResult)
+        ? duplicate.coordinatorResult.canonicalEventId
+        : null,
+    ).toBeNull();
   });
 
   it('sideEffects=false does not enqueue outbox despite open_unplug intent', async () => {
@@ -508,7 +521,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       },
     });
 
-    expect(result.coordinatorResult?.reconcile.episodeAction).toBe('open_unplug');
+    expect(getCoordinatorReconcile(result.coordinatorResult)?.episodeAction).toBe('open_unplug');
     const outbox = await prisma.deviceConnectionPhysicalStateActionOutbox.findMany({
       where: { vehicleId: fixture.vehicle.id },
     });

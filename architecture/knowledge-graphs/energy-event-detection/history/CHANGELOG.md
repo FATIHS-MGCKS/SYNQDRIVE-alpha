@@ -1,5 +1,22 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR2.1 pre-merge micro-closure
+
+- EED-EV-0057: authority conjunction; real candidate FOR UPDATE; metric single ownership; thrown promotion isolation
+- Real PG gate extended P24–P29 (29/29); F5-PR3 not started; production untouched
+
+## 2026-09-14 — RFRF F5-PR2 atomic promotion transaction
+
+- EED-EV-0056: TRANSACTION A atomic fallback VehicleEnergyEvent + PROMOTED lifecycle
+- `RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED` separate from convergence/persist/master flags
+- `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT` enforced on physical evidence end
+- Real PG gate 23/23 (P1–P21 + KS MS 661 synthetic lifecycle); detectEnergyEvents runtime E2E
+- Zero G2/BullMQ/enrichment reachability; F5-PR3 not started; production untouched
+
+**Verdict:** RFRF_F5_PR2=PASS (pending CI on final HEAD)
+
+---
+
 ## 2026-09-14 — RFRF F5-PR1.2 final main sync / #1642 DI survival
 
 - Merged `origin/main` @ `d7a9f7a21` (#1642 Nest DI boot fix + #1640 VDC) into PR #1643
