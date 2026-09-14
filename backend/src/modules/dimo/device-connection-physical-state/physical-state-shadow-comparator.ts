@@ -1,0 +1,170 @@
+import {
+  DeviceConnectionPhysicalAuthorityMode,
+  DeviceConnectionPhysicalTransitionDecision,
+} from '@prisma/client';
+import { defaultAuthorityMode } from './physical-state-authority.state-machine';
+import type { PhysicalEffectiveState } from './device-connection-physical-state.types';
+import {
+  isShadowClassificationCorrectnessBlocking,
+  PhysicalStateShadowClassification,
+} from './physical-state-shadow.classification';
+import type {
+  PhysicalStateShadowComparisonInput,
+  PhysicalStateShadowComparisonResult,
+} from './physical-state-shadow-comparator.types';
+
+const EXPECTED_PHYSICAL_REJECT_DECISIONS: ReadonlySet<DeviceConnectionPhysicalTransitionDecision> =
+  new Set([
+    DeviceConnectionPhysicalTransitionDecision.DUPLICATE,
+    DeviceConnectionPhysicalTransitionDecision.STALE,
+    DeviceConnectionPhysicalTransitionDecision.CONFLICT,
+    DeviceConnectionPhysicalTransitionDecision.INSUFFICIENT_EVIDENCE,
+  ]);
+
+const LEGACY_STALE_LAST_EVENT_REASONS: ReadonlySet<string> = new Set([
+  'no_state_change',
+  'baseline_already_plugged',
+]);
+
+function normalizeReason(reason: string | null | undefined): string | null {
+  if (reason == null) return null;
+  const trimmed = reason.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function toIso(value: Date | string | null | undefined): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
+}
+
+function timestampsDiffer(input: PhysicalStateShadowComparisonInput): boolean {
+  const legacyTs = toIso(input.legacyEvidenceObservedAt);
+  const physicalTs = toIso(input.evidenceObservedAt);
+  return Boolean(legacyTs && physicalTs && legacyTs !== physicalTs);
+}
+
+/**
+ * Canonical physical effective-state source: physicalDecision.effectiveState only.
+ */
+export function resolvePhysicalEffectiveState(
+  input: PhysicalStateShadowComparisonInput,
+): PhysicalEffectiveState | null {
+  return input.physicalDecision.effectiveState ?? null;
+}
+
+function plugStatesAlign(
+  legacy: 'plugged' | 'unplugged' | 'unknown' | null | undefined,
+  physical: PhysicalEffectiveState | null,
+): boolean {
+  if (!legacy || !physical) return legacy == null && physical == null;
+  if (legacy === 'unknown') return false;
+  const mapped =
+    physical === 'PLUGGED' ? 'plugged' : physical === 'UNPLUGGED' ? 'unplugged' : null;
+  return mapped === legacy;
+}
+
+/** Diagnostic helper — legacy reason metadata only; does not establish independent proof. */
+export function isGtR1ExpectedFixLegacyReason(reason: string | null | undefined): boolean {
+  const normalized = normalizeReason(reason);
+  return normalized != null && LEGACY_STALE_LAST_EVENT_REASONS.has(normalized);
+}
+
+function classifyBindingDivergence(
+  input: PhysicalStateShadowComparisonInput,
+): PhysicalStateShadowClassification | null {
+  const legacyBinding = input.legacyBindingKey ?? input.bindingKey ?? null;
+  const physicalBinding = input.physicalBindingKey ?? input.bindingKey ?? null;
+  if (legacyBinding && physicalBinding && legacyBinding !== physicalBinding) {
+    return PhysicalStateShadowClassification.BINDING_DIVERGENCE;
+  }
+  return null;
+}
+
+function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): PhysicalStateShadowClassification {
+  const legacyAccepted = input.legacyDecision.accepted;
+  const physicalAccepted = input.physicalDecision.accepted;
+  const physicalEffectiveState = resolvePhysicalEffectiveState(input);
+
+  // 1. Equal-time opposing state
+  if (input.equalTimeOpposingState) {
+    return PhysicalStateShadowClassification.CONFLICT;
+  }
+
+  // 2. Binding mismatch
+  const bindingClassification = classifyBindingDivergence(input);
+  if (bindingClassification) {
+    return bindingClassification;
+  }
+
+  // 3. Decision pair differs
+  if (!legacyAccepted && physicalAccepted) {
+    if (input.provenExpectedFix === true) {
+      return PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT;
+    }
+    return PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT;
+  }
+
+  if (legacyAccepted && !physicalAccepted) {
+    const transitionDecision = input.physicalDecision.transitionDecision;
+    if (
+      transitionDecision &&
+      EXPECTED_PHYSICAL_REJECT_DECISIONS.has(transitionDecision)
+    ) {
+      return PhysicalStateShadowClassification.OLD_ACCEPT_NEW_REJECT_EXPECTED;
+    }
+    return PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT;
+  }
+
+  // 4. Both accept — state correctness before timestamp metadata
+  if (legacyAccepted && physicalAccepted) {
+    if (!plugStatesAlign(input.legacyEffectivePlugState, physicalEffectiveState)) {
+      return PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN;
+    }
+    if (timestampsDiffer(input)) {
+      return PhysicalStateShadowClassification.TIMESTAMP_DIVERGENCE;
+    }
+    return PhysicalStateShadowClassification.MATCH;
+  }
+
+  // 5. Both reject — outcome agreement; differing reason text is forensic metadata only
+  if (timestampsDiffer(input)) {
+    return PhysicalStateShadowClassification.TIMESTAMP_DIVERGENCE;
+  }
+
+  return PhysicalStateShadowClassification.MATCH;
+}
+
+/**
+ * Pure, side-effect-free shadow comparator.
+ * OLD (legacy) decision remains authoritative during P2.2.
+ */
+export function comparePhysicalStateShadowDecisions(
+  input: PhysicalStateShadowComparisonInput,
+): PhysicalStateShadowComparisonResult {
+  const classification = classifyDecisionPair(input);
+  const physicalEffectiveState = resolvePhysicalEffectiveState(input);
+  const correctnessBlocking = isShadowClassificationCorrectnessBlocking(classification, {
+    bindingDivergenceUnexplained: input.bindingDivergenceExplained !== true,
+  });
+
+  return {
+    classification,
+    correctnessBlocking,
+    authorityMode: input.authorityMode ?? defaultAuthorityMode(),
+    legacyDecision: input.legacyDecision,
+    physicalDecision: input.physicalDecision,
+    scope: input.scope,
+    bindingKey: input.bindingKey ?? input.physicalBindingKey ?? input.legacyBindingKey ?? null,
+    legacyReason: normalizeReason(input.legacyDecision.reason),
+    physicalReason: normalizeReason(input.physicalDecision.reason),
+    legacyEffectivePlugState: input.legacyEffectivePlugState ?? null,
+    physicalEffectiveState,
+    evidenceObservedAt: toIso(input.evidenceObservedAt),
+    legacyEvidenceObservedAt: toIso(input.legacyEvidenceObservedAt),
+    correlationId: input.correlationId ?? null,
+    evidenceReferenceId: input.evidenceReferenceId ?? null,
+    observedAt: new Date().toISOString(),
+  };
+}

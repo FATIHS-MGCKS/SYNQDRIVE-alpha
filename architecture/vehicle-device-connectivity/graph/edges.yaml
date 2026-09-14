@@ -100,6 +100,15 @@ edges:
     relation: supports
     to: VDC-DEC-013
 
+  - from: VDC-EVID-RB019-P22-SHADOW-001
+    relation: supports
+    to: VDC-DEC-013
+
+  - from: VDC-EVID-RB019-P22-SHADOW-001
+    relation: downstream_of
+    to: VDC-EVID-RB019-P21-DURABILITY-001
+    notes: P2.2 consumes P2.1 authority latch; compare-only shadow infra
+
   - from: VDC-DEC-013
     relation: downstream_of
     to: VDC-DEC-012

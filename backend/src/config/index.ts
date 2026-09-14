@@ -59,6 +59,17 @@ export {
   loadConnectivityPhysicalStateConfig,
 } from './connectivity-physical-state.config';
 export {
+  default as connectivityPhysicalStateRuntimeConfig,
+  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV,
+  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV,
+  CONNECTIVITY_PHYSICAL_STATE_AUTHORITY_CUTOVER_ENABLED_ENV,
+  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
+  loadConnectivityPhysicalStateRuntimeFlagConfig,
+  resolveEffectivePhysicalStateRuntimePolicy,
+  resolveEffectivePhysicalStateRuntimePolicyFromEnv,
+} from './connectivity-physical-state-runtime.config';
+export type { ConnectivityPhysicalStateRuntimeFlagConfig } from './connectivity-physical-state-runtime.config';
+export {
   CONNECTIVITY_EPISODE_RECOVERY_ENABLED_ENV,
   CONNECTIVITY_RECONCILIATION_APPLY_ENABLED_ENV,
   loadConnectivityRecoveryConfig,

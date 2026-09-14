@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p22-shadow-authority-infra-2026-09-13',
+    version: '4.9.1124',
+    title: 'VDC RB-019 Phase 2 P2.2 — shadow + authority infrastructure (dark)',
+    summary: [
+      'Authority state machine over P2.1 latch: LEGACY/PHYSICAL canonical gates; forward-only transition validator.',
+      'Effective runtime policy resolver: master + projection/shadow/cutover/side-effects sub-flags (all default OFF).',
+      'Compare-only shadow comparator + frozen adjudication taxonomy (GT-R1 EXPECTED_FIX class preserved).',
+      'Shadow Prometheus counters + structured logging (low-cardinality labels only).',
+      'No webhook/snapshot writers; no projection mutations; no authority cutover; flags OFF.',
+    ],
+    reason:
+      'P2.2 infrastructure per VDC-DEC-013: shadow comparison and authority-mode semantics before P2.3 writers and STATEFUL_SHADOW proof.',
+    previousBehavior:
+      'P2.1 latch/outbox/coordinator only; no authority state machine, shadow comparator, or effective flag resolver.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md; backend/src/config/connectivity-physical-state-runtime.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-13T22:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-1-signal-trust-closure-2026-09-13',
     version: '4.9.1122',
     title: 'RFRF F4.1 — Signal trust × F3 detection boundary closure',

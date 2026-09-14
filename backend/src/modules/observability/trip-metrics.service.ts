@@ -242,6 +242,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityPhysicalStateEvidenceConflictTotal: Counter<string>;
   readonly connectivityPhysicalStateSelfHealTotal: Counter<string>;
   readonly connectivityPhysicalStateDuplicateTransitionSuppressedTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowEvaluationTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowClassificationTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowCorrectnessBlockerTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -1947,6 +1950,48 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_connectivity_duplicate_transition_suppressed_total',
       help: 'Duplicate physical device state evidence suppressed',
       labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowEvaluationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_evaluation_total',
+      help: 'Physical-state shadow comparisons evaluated (compare-only)',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowClassificationTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_classification_total',
+      help: 'Physical-state shadow adjudication classifications',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowCorrectnessBlockerTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_correctness_blocker_total',
+      help: 'Physical-state shadow correctness-blocking divergences',
+      labelNames: [
+        'classification',
+        'authority_mode',
+        'provider',
+        'legacy_decision',
+        'physical_decision',
+        'correctness_blocking',
+      ],
       registers: [this.registry],
     });
   }
