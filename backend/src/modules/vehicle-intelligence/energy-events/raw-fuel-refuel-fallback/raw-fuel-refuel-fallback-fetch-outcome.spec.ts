@@ -29,8 +29,7 @@ describe('RFRF F4-PR2.1 fetch outcome integration', () => {
       { resolveOrCreateCandidate: jest.fn() } as never,
       undefined,
       undefined,
-      () => ({ masterEnabled: true, persistEnabled: false, cutoverAt: null }),
-    );
+    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: false, cutoverAt: null }));
   }
 
   it('SUCCESS empty telemetry => no_samples (not sample_fetch_failed)', async () => {

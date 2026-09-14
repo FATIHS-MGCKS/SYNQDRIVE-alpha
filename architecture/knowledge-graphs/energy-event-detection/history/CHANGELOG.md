@@ -1,5 +1,19 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF runtime Nest DI boot blocker (deploy gate)
+
+- Production deploy of `main` @ `c81629ee4` (contains Trip FSM #1635) **aborted at boot-check**: `RawFuelRefuelFallbackRuntimeService` argument at index `[4]` (`Function` config loader) unresolved in `VehicleIntelligenceModule`
+- **Root cause:** TypeScript default parameter on a function-typed constructor arg is still a Nest DI dependency; no `@Optional()` / inject token
+- **Fix:** Move `loadRawFuelRefuelFallbackConfig` off the injectable constructor surface; retain `withConfigLoader()` for tests
+- **Regression:** `raw-fuel-refuel-fallback-runtime.di.spec.ts` + `SYNQDRIVE_BOOT_CHECK=1` module graph proof
+- **RFRF semantics unchanged:** flags default off; F5 gate stub unchanged; no VEE upsert path opened
+- Migrations applied during failed deploy (`device_connection_physical_state_p21_durability`, `rfrf_f4_pr1_vehicle_energy_event_source_identity`) audited additive/backward-compatible vs running prod SHA `9a32685d…`
+- Evidence EED-EV-0052; production **not** promoted
+
+**Verdict:** RFRF_BOOT_DI_FIX=PASS — redeploy blocked until merge; Trip FSM #1635 unchanged
+
+---
+
 ## 2026-09-14 — RFRF F4-PR4 final F4 implementation closure
 
 - Independent exact-main integration audit on `22e0dd251` (PR #1637 merge)
