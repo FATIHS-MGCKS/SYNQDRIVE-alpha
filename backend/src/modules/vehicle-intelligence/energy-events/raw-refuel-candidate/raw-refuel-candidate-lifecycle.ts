@@ -8,9 +8,10 @@ const FORWARD_TRANSITIONS: Record<
   INSUFFICIENT: new Set(['OBSERVED', 'REJECTED']),
   OBSERVED: new Set(['SETTLING', 'READY_FOR_PERSIST', 'REJECTED']),
   SETTLING: new Set(['READY_FOR_PERSIST', 'REJECTED']),
-  READY_FOR_PERSIST: new Set(['PROMOTED', 'SETTLING', 'REJECTED']),
+  READY_FOR_PERSIST: new Set(['PROMOTED', 'SETTLING', 'REJECTED', 'CONVERGED_NATIVE']),
   REJECTED: new Set([]),
   PROMOTED: new Set([]),
+  CONVERGED_NATIVE: new Set([]),
 };
 
 /**
@@ -38,5 +39,5 @@ export function resolveNextLifecycleState(
 export function isRawRefuelCandidateTerminal(
   state: RawRefuelCandidateLifecycleState,
 ): boolean {
-  return state === 'REJECTED' || state === 'PROMOTED';
+  return state === 'REJECTED' || state === 'PROMOTED' || state === 'CONVERGED_NATIVE';
 }

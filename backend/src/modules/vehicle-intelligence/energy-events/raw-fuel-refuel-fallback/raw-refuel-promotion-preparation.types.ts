@@ -8,9 +8,10 @@ export interface RawRefuelPromotionPreparationResult {
   eligibility: RawRefuelPromotionEligibilityResult;
   nativeOverlap: RawRefuelNativeOverlapAdvisoryResult;
   promotionDraft: RawRefuelCandidatePromotionDraft | null;
-  /** Always false in F4 — F5 convergence gate stub. */
-  f5ConvergenceAuthorized: false;
-  /** Always false in F4 — no fallback VehicleEnergyEvent upsert reachable. */
+  /** F5 convergence authority flag — authorizes evaluation only, not VEE insert. */
+  f5ConvergenceAuthorized: boolean;
+  /** Always false in F5-PR1 — no fallback VehicleEnergyEvent upsert reachable. */
   canCreateFallbackVehicleEnergyEvent: false;
+  /** True when fallback VEE promotion remains blocked (always true in F5-PR1). */
   blockedByF5Gate: boolean;
 }

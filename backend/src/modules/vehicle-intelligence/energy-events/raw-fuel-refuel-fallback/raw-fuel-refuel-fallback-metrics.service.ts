@@ -33,6 +33,17 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly promotionBlockedByF5GateTotal: Counter<string>;
   readonly promotionPreparationErrorTotal: Counter<string>;
   readonly forbiddenPromotionExecutionTotal: Counter<string>;
+  readonly convergenceEvaluationAttemptedTotal: Counter<string>;
+  readonly convergenceConvergedNativeTotal: Counter<string>;
+  readonly convergenceFailClosedTotal: Counter<string>;
+  readonly convergenceSkippedNotAuthorizedTotal: Counter<string>;
+  readonly convergenceAlreadyConvergedTotal: Counter<string>;
+  readonly convergenceErrorTotal: Counter<string>;
+  readonly convergenceSameNativeTotal: Counter<string>;
+  readonly convergenceNoNativeTotal: Counter<string>;
+  readonly convergenceDistinctTotal: Counter<string>;
+  readonly convergenceInsufficientTotal: Counter<string>;
+  readonly convergenceAmbiguousTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -215,6 +226,72 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'Attempted forbidden fallback VehicleEnergyEvent promotion execution — must remain zero',
       registers: [register],
     });
+
+    this.convergenceEvaluationAttemptedTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_evaluation_attempted_total',
+      help: 'F5-PR1 authoritative convergence evaluation attempts',
+      registers: [register],
+    });
+
+    this.convergenceConvergedNativeTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_converged_native_total',
+      help: 'F5-PR1 candidates transitioned to CONVERGED_NATIVE',
+      registers: [register],
+    });
+
+    this.convergenceFailClosedTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_fail_closed_total',
+      help: 'F5-PR1 convergence fail-closed outcomes (ambiguous/insufficient/multiple SAME)',
+      registers: [register],
+    });
+
+    this.convergenceSkippedNotAuthorizedTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_skipped_not_authorized_total',
+      help: 'F5-PR1 convergence skipped because authority flag is off',
+      registers: [register],
+    });
+
+    this.convergenceAlreadyConvergedTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_already_converged_total',
+      help: 'F5-PR1 idempotent replay on already CONVERGED_NATIVE candidates',
+      registers: [register],
+    });
+
+    this.convergenceErrorTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_error_total',
+      help: 'F5-PR1 convergence isolated transaction failures',
+      registers: [register],
+    });
+
+    this.convergenceSameNativeTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_same_native_total',
+      help: 'F5-PR1 authoritative evaluations classifying SAME_NATIVE',
+      registers: [register],
+    });
+
+    this.convergenceNoNativeTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_no_native_total',
+      help: 'F5-PR1 authoritative evaluations with no native siblings',
+      registers: [register],
+    });
+
+    this.convergenceDistinctTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_distinct_total',
+      help: 'F5-PR1 authoritative evaluations classifying DISTINCT_FROM_NATIVE',
+      registers: [register],
+    });
+
+    this.convergenceInsufficientTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_insufficient_total',
+      help: 'F5-PR1 authoritative evaluations classifying INSUFFICIENT_EVIDENCE',
+      registers: [register],
+    });
+
+    this.convergenceAmbiguousTotal = new Counter({
+      name: 'synqdrive_rfrf_convergence_ambiguous_total',
+      help: 'F5-PR1 authoritative evaluations classifying AMBIGUOUS',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -331,5 +408,49 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordForbiddenPromotionExecution(): void {
     this.forbiddenPromotionExecutionTotal.inc();
+  }
+
+  recordConvergenceEvaluationAttempted(): void {
+    this.convergenceEvaluationAttemptedTotal.inc();
+  }
+
+  recordConvergedNative(): void {
+    this.convergenceConvergedNativeTotal.inc();
+  }
+
+  recordConvergenceFailClosed(): void {
+    this.convergenceFailClosedTotal.inc();
+  }
+
+  recordConvergenceSkippedNotAuthorized(): void {
+    this.convergenceSkippedNotAuthorizedTotal.inc();
+  }
+
+  recordConvergenceAlreadyConverged(): void {
+    this.convergenceAlreadyConvergedTotal.inc();
+  }
+
+  recordConvergenceError(): void {
+    this.convergenceErrorTotal.inc();
+  }
+
+  recordConvergenceSameNative(): void {
+    this.convergenceSameNativeTotal.inc();
+  }
+
+  recordConvergenceNoNative(): void {
+    this.convergenceNoNativeTotal.inc();
+  }
+
+  recordConvergenceDistinct(): void {
+    this.convergenceDistinctTotal.inc();
+  }
+
+  recordConvergenceInsufficient(): void {
+    this.convergenceInsufficientTotal.inc();
+  }
+
+  recordConvergenceAmbiguous(): void {
+    this.convergenceAmbiguousTotal.inc();
   }
 }

@@ -14,6 +14,7 @@ export type RawRefuelCandidateReadinessReasonCode =
   | 'INVALID_EVIDENCE'
   | 'TERMINAL_REJECTED'
   | 'TERMINAL_PROMOTED'
+  | 'TERMINAL_CONVERGED_NATIVE'
   | 'MISSING_IDENTITY_KEY';
 
 export interface RawRefuelCandidateReadinessResult {

@@ -84,11 +84,13 @@ export function canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion(): fals
 export const RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV =
   'RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED';
 
-/** F4-PR3 stub — always false until F5 implements and proves convergence. */
+/** F5-PR1 fail-closed reader — authorizes convergence evaluation only, never VEE insert. */
 export function isRfrfNativeFallbackConvergenceAuthorized(
-  _env: NodeJS.ProcessEnv = process.env,
-): false {
-  return false;
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return parseRawFuelRefuelFallbackBoolean(
+    env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV],
+  );
 }
 
 /** Hard authority boundary — fallback VehicleEnergyEvent creation unreachable from F4. */

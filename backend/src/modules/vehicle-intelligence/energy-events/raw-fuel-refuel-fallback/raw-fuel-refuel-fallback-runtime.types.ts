@@ -1,5 +1,6 @@
 import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
 import type { RawRefuelPromotionPreparationResult } from './raw-refuel-promotion-preparation.types';
+import type { RawRefuelConvergenceApplyResult } from './raw-refuel-native-fallback-convergence.types';
 
 export type RawFuelRefuelFallbackSkipReason =
   | 'master_disabled'
@@ -36,6 +37,8 @@ export interface RawFuelRefuelFallbackCandidateOutcome {
   error?: string;
   promotionPreparation?: RawRefuelPromotionPreparationResult;
   promotionPreparationError?: string;
+  convergenceApply?: RawRefuelConvergenceApplyResult;
+  convergenceApplyError?: string;
 }
 
 export interface RawFuelRefuelFallbackScanResult {
@@ -55,6 +58,10 @@ export interface RawFuelRefuelFallbackScanResult {
   promotionPreparationAttempted: number;
   promotionDraftsConstructed: number;
   promotionBlockedByF5Gate: number;
+  convergenceEvaluationAttempted: number;
+  convergenceConvergedNative: number;
+  convergenceFailClosed: number;
+  convergenceSkippedNotAuthorized: number;
   candidateOutcomes: RawFuelRefuelFallbackCandidateOutcome[];
   branchError?: string;
 }
