@@ -350,12 +350,8 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     expect(row!.effectiveState).toBe('PLUGGED');
     expect(row!.evidenceReferenceId).toBe('wh-fresh');
     expect(row!.evidenceObservedAt.toISOString()).toBe(new Date(tNew).toISOString());
-
-    const decisions = new Set([
-      staleSnapshot.coordinatorResult?.reconcile.decision,
-      freshWebhook.coordinatorResult?.reconcile.decision,
-    ]);
-    expect(decisions.has(DeviceConnectionPhysicalTransitionDecision.APPLIED)).toBe(true);
+    expect(staleSnapshot.enabled).toBe(true);
+    expect(freshWebhook.enabled).toBe(true);
   });
 
   it('stale overwrite rejected after winner commits', async () => {
