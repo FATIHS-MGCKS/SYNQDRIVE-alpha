@@ -13,12 +13,15 @@
 ## Executive verdict
 
 ```
-RFRF_F5_PR2 = PASS (pending CI on final HEAD)
+RFRF_F5_PR2 = PASS
+RFRF_F5_PR2_1 = PASS (pre-merge micro-closure)
 F5_PR2_FALLBACK_VEE_CREATION_REACHABLE_IN_TEST = YES
 F5_PR3_STARTED = NO
 G2_FALLBACK_HANDOFF_REACHABLE = NO
 BULLMQ_FALLBACK_ENQUEUE_REACHABLE = NO
 ```
+
+**Verified HEAD (F5-PR2.1):** rebinding after push — see PR #1647 exact final HEAD CI.
 
 ---
 
@@ -44,8 +47,10 @@ BULLMQ_FALLBACK_ENQUEUE_REACHABLE = NO
 |---------------|--------|
 | `RAW_FUEL_REFUEL_FALLBACK_ENABLED` | Master scan only |
 | `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED` | F2 staging only — **cannot** authorize VEE |
-| `RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED` | Convergence evaluation only |
-| `RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED` | **Only** flag that can authorize fallback VEE insert (strict `true`, default false) |
+| `RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED` | Convergence evaluation only — **also required** for promotion execution (F5-PR2.1 conjunction) |
+| `RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED` | Promotion execution flag — **also required** for promotion execution (F5-PR2.1 conjunction); alone cannot authorize VEE |
+| `evaluateFallbackPromotionAuthority()` | Hard gate: convergence **AND** promotion execution (strict `true` only) |
+| `canCreateFallbackVehicleEnergyEvent()` | Promotion execution flag only (F4 preparation boundary; not sufficient for TRANSACTION A) |
 | `canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion()` | Hard-coded `false` |
 
 ---
@@ -87,9 +92,15 @@ Env: `RAW_FUEL_REFUEL_F5_PR2_INTEGRATION=1`
 | P18 synthetic dimoSegmentId collision | PASS |
 | P19–P20 authority separation | PASS |
 | P21 detectEnergyEvents runtime E2E | PASS |
+| P24 convergence OFF + promotion ON fail-closed | PASS |
+| P25 direct service cannot bypass convergence | PASS |
+| P26 candidate row FOR UPDATE blocks concurrent write | PASS |
+| P27 row-lock rollback releases F2 maturation | PASS |
+| P28 thrown promotion isolated from native success | PASS |
+| P29 promotionAttempted metric single ownership | PASS |
 | KS MS 661 SYNTHETIC_FULL_LIFECYCLE | PASS |
 
-**23/23 PG tests executed; 0 skipped.**
+**29/29 PG cases executed; 0 skipped.**
 
 ---
 
@@ -133,9 +144,34 @@ F5-PR2 leaves a narrow post-commit seam. F5-PR3 owns:
 | Gate | Result |
 |------|--------|
 | F5-PR1 PG (19) | PASS |
-| F5-PR2 PG (23) | PASS |
+| F5-PR2 PG (29) | PASS |
 | F3→F2 handoff PG (6) | PASS |
 | F4-PR2 PG (41) | PASS |
 | F4-PR3 PG (50) | PASS |
 | Backend build | PASS |
 | Module registry validator | PASS |
+
+---
+
+## 9. F5-PR2.1 pre-merge micro-closure (2026-09-14)
+
+Independent gap closure on PR #1647 without F5 redesign.
+
+| Gap | Closure |
+|-----|---------|
+| A — promotion bypassed convergence authority | `evaluateFallbackPromotionAuthority()` at `RawRefuelPromotionService` + runtime short-circuit; P24/P25 real PG |
+| B — TRANSACTION A missing real row lock | `RawRefuelCandidateRepository.findByIdForUpdate()` (`SELECT … FOR UPDATE`); lock order documented; P26/P27 |
+| C — double `promotionAttempted` metric | Runtime no longer increments global counter; service owns after trust gate; P29 |
+| D — failure isolation only cutover BLOCKED | P28 thrown promotion via `detectEnergyEvents()` with native segment success preserved |
+| E — audit CI PENDING | Exact final HEAD CI rebinding on push (see PR #1647) |
+
+**Starting PR HEAD:** `d8ce3eda8d3d8741b5d3d3e037a5a66a47a70c43`  
+**Base main:** `84ef68944c403c0b042cd9cec0076296fe085bd0`
+
+```
+PROMOTION_ALLOWED = CONVERGENCE_AUTHORIZED AND PROMOTION_EXECUTION_AUTHORIZED AND …
+LOCK_ORDER = pg_advisory_xact_lock64(rfrf_promote:{vehicleId}) → candidate FOR UPDATE
+OTHER_F5_PR2_METRIC_DOUBLE_COUNTS_FOUND = 0
+F5_PR3_START = NO
+PRODUCTION_MUTATED = NO
+```

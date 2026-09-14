@@ -22,6 +22,8 @@ export interface RawRefuelPromotionApplyResult {
 }
 
 export interface RawRefuelPromotionTransactionHooks {
+  /** Invoked after candidate row FOR UPDATE is acquired — test-only concurrency hold point. */
+  afterCandidateRowLock?: () => void | Promise<void>;
   beforeVeeInsert?: () => void | Promise<void>;
   afterVeeInsertBeforeLifecycleUpdate?: () => void | Promise<void>;
 }

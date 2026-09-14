@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR2.1 pre-merge micro-closure
+
+- EED-EV-0057: authority conjunction; real candidate FOR UPDATE; metric single ownership; thrown promotion isolation
+- Real PG gate extended P24–P29 (29/29); F5-PR3 not started; production untouched
+
 ## 2026-09-14 — RFRF F5-PR2 atomic promotion transaction
 
 - EED-EV-0056: TRANSACTION A atomic fallback VehicleEnergyEvent + PROMOTED lifecycle

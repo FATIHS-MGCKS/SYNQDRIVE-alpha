@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DimoSegmentsService } from '@modules/dimo/dimo-segments.service';
 import {
   loadRawFuelRefuelFallbackConfig,
+  evaluateFallbackPromotionAuthority,
   type RawFuelRefuelFallbackConfig,
 } from '@config/raw-fuel-refuel-fallback.config';
 import { resolveRawFuelCapability } from './raw-fuel-capability.resolver';
@@ -511,8 +512,21 @@ export class RawFuelRefuelFallbackRuntimeService {
       return;
     }
 
+    const authority = evaluateFallbackPromotionAuthority(env);
+    if (!authority.authorized) {
+      result.promotionSkippedNotAuthorized += 1;
+      outcome.promotionApply = {
+        status: 'SKIPPED_NOT_AUTHORIZED',
+        evaluation: null,
+        candidateId,
+        fallbackVehicleEnergyEventId: null,
+        convergedNativeEventId: null,
+        detail: authority.detail,
+      };
+      return;
+    }
+
     result.promotionExecutionAttempted += 1;
-    this.metrics?.recordPromotionAttempted();
 
     try {
       const applyResult = await this.promotionService.evaluateAndApplyPromotionById(

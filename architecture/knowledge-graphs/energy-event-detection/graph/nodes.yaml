@@ -1636,6 +1636,23 @@ nodes:
       zero G2/BullMQ/enrichment; F5-PR3 not started.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0057
+    type: evidence
+    title: RFRF F5-PR2.1 — Pre-merge micro-closure
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f5-pr2-atomic-promotion-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate.repository.ts
+      - backend/src/config/raw-fuel-refuel-fallback.config.ts
+    summary: >
+      F5-PR2.1: promotion requires convergence AND promotion execution authorities;
+      real candidate SELECT FOR UPDATE; promotionAttempted single metric owner;
+      thrown promotion failure isolated from native path; F2 row-lock concurrency proofs P24–P29;
+      29/29 real PG gate; F5-PR3 not started.
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-010
     type: decision
     title: RFRF F5.0 — Late-native sibling policy

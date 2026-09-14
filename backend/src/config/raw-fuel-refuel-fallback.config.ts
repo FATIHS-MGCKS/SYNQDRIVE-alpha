@@ -134,3 +134,34 @@ export function canCreateFallbackVehicleEnergyEvent(
 ): boolean {
   return isRfrfFallbackPromotionExecutionAuthorized(env);
 }
+
+export interface FallbackPromotionAuthorityEvaluation {
+  authorized: boolean;
+  detail:
+    | 'authorized'
+    | 'promotion_execution_not_authorized'
+    | 'convergence_not_authorized';
+}
+
+/**
+ * F5-PR2 authoritative promotion gate — requires BOTH convergence and promotion execution.
+ * Neither flag alone may authorize fallback VehicleEnergyEvent insert.
+ */
+export function evaluateFallbackPromotionAuthority(
+  env: NodeJS.ProcessEnv = process.env,
+): FallbackPromotionAuthorityEvaluation {
+  if (!isRfrfFallbackPromotionExecutionAuthorized(env)) {
+    return { authorized: false, detail: 'promotion_execution_not_authorized' };
+  }
+  if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
+    return { authorized: false, detail: 'convergence_not_authorized' };
+  }
+  return { authorized: true, detail: 'authorized' };
+}
+
+/** Convenience boolean for tests and call sites that need conjunction only. */
+export function canExecuteFallbackVehicleEnergyEventPromotion(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return evaluateFallbackPromotionAuthority(env).authorized;
+}

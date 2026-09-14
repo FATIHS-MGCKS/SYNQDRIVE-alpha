@@ -5,7 +5,9 @@ import {
   RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
   RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV,
   canCreateFallbackVehicleEnergyEvent,
+  canExecuteFallbackVehicleEnergyEventPromotion,
   canRawRefuelFallbackAuthorizeVehicleEnergyEventPromotion,
+  evaluateFallbackPromotionAuthority,
   isRawFuelRefuelFallbackMasterEnabled,
   isRawFuelRefuelFallbackPersistEnabled,
   isRfrfFallbackPromotionExecutionAuthorized,
@@ -89,10 +91,26 @@ describe('raw-fuel-refuel-fallback.config', () => {
     delete process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV];
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(true);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
+    expect(canExecuteFallbackVehicleEnergyEventPromotion()).toBe(false);
 
     process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV] = 'true';
     expect(isRfrfFallbackPromotionExecutionAuthorized()).toBe(true);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(true);
+    expect(canExecuteFallbackVehicleEnergyEventPromotion()).toBe(true);
+  });
+
+  it('F5 promotion requires BOTH convergence and promotion execution authorities', () => {
+    delete process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV];
+    delete process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV];
+    expect(evaluateFallbackPromotionAuthority().detail).toBe(
+      'promotion_execution_not_authorized',
+    );
+
+    process.env[RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV] = 'true';
+    expect(evaluateFallbackPromotionAuthority().detail).toBe('convergence_not_authorized');
+
+    process.env[RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV] = 'true';
+    expect(evaluateFallbackPromotionAuthority().authorized).toBe(true);
   });
 
   it('F5 promotion execution authority rejects non-canonical truthy values', () => {

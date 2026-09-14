@@ -1,13 +1,14 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma, RawRefuelCandidate } from '@prisma/client';
 import {
-  canCreateFallbackVehicleEnergyEvent,
+  evaluateFallbackPromotionAuthority,
   loadRawFuelRefuelFallbackConfig,
   RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
 } from '@config/raw-fuel-refuel-fallback.config';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { vehicleEnergyEventToRefuelRow } from '../physical-refuel-row.mapper';
+import { RawRefuelCandidateRepository } from '../raw-refuel-candidate/raw-refuel-candidate.repository';
 import { mapRawRefuelCandidateToPromotionDraft } from '../raw-refuel-candidate/raw-refuel-candidate-promotion.design';
 import { resolveNextLifecycleState } from '../raw-refuel-candidate/raw-refuel-candidate-lifecycle';
 import { evaluateRawRefuelCandidateReadiness } from './raw-refuel-candidate-readiness.evaluator';
@@ -34,6 +35,7 @@ import { mapPromotionDraftToVehicleEnergyEventCreateInput } from './raw-refuel-p
 @Injectable()
 export class RawRefuelPromotionService {
   private readonly logger = new Logger(RawRefuelPromotionService.name);
+  private readonly candidateRepository = new RawRefuelCandidateRepository();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -46,7 +48,8 @@ export class RawRefuelPromotionService {
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
   ): Promise<RawRefuelPromotionApplyResult> {
-    if (!canCreateFallbackVehicleEnergyEvent(env)) {
+    const authority = evaluateFallbackPromotionAuthority(env);
+    if (!authority.authorized) {
       this.metrics?.recordPromotionSkippedNotAuthorized();
       return {
         status: 'SKIPPED_NOT_AUTHORIZED',
@@ -54,7 +57,7 @@ export class RawRefuelPromotionService {
         candidateId,
         fallbackVehicleEnergyEventId: null,
         convergedNativeEventId: null,
-        detail: 'promotion_execution_not_authorized',
+        detail: authority.detail,
       };
     }
 
@@ -81,7 +84,8 @@ export class RawRefuelPromotionService {
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
   ): Promise<RawRefuelPromotionApplyResult> {
-    if (!canCreateFallbackVehicleEnergyEvent(env)) {
+    const authority = evaluateFallbackPromotionAuthority(env);
+    if (!authority.authorized) {
       this.metrics?.recordPromotionSkippedNotAuthorized();
       return {
         status: 'SKIPPED_NOT_AUTHORIZED',
@@ -89,7 +93,7 @@ export class RawRefuelPromotionService {
         candidateId: candidate.id,
         fallbackVehicleEnergyEventId: null,
         convergedNativeEventId: null,
-        detail: 'promotion_execution_not_authorized',
+        detail: authority.detail,
       };
     }
 
@@ -117,15 +121,11 @@ export class RawRefuelPromotionService {
       };
     }
 
-    this.metrics?.recordPromotionAttempted();
-
     try {
       return await this.prisma.$transaction(async (tx) => {
         await acquirePgAdvisoryXactLock64(tx, buildRfrfPromotionLockKey(candidate.vehicleId));
 
-        const locked = await tx.rawRefuelCandidate.findUnique({
-          where: { id: candidate.id },
-        });
+        const locked = await this.candidateRepository.findByIdForUpdate(tx, candidate.id);
         if (!locked) {
           return {
             status: 'SKIPPED_NO_ACTION',
@@ -135,6 +135,10 @@ export class RawRefuelPromotionService {
             convergedNativeEventId: null,
             detail: 'candidate_not_found_in_transaction',
           };
+        }
+
+        if (hooks?.afterCandidateRowLock) {
+          await hooks.afterCandidateRowLock();
         }
 
         if (locked.lifecycleState === 'CONVERGED_NATIVE') {
@@ -199,6 +203,8 @@ export class RawRefuelPromotionService {
             detail: 'promotion_trust_not_trusted',
           };
         }
+
+        this.metrics?.recordPromotionAttempted();
 
         if (!locked.candidateIdentityKey) {
           return {
@@ -377,7 +383,7 @@ export class RawRefuelPromotionService {
           convergedNativeEventId: null,
           detail: 'promotion_committed',
         };
-      });
+      }, { timeout: 20_000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(

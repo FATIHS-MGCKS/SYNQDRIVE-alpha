@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
+import { Registry } from 'prom-client';
 import { PrismaClient, FuelType, type RawRefuelCandidate } from '@prisma/client';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT_ENV,
   RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
@@ -15,7 +17,11 @@ import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
 import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
 import { RawRefuelPromotionService } from './raw-refuel-promotion.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
+import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import { EnergyEventsService } from '../energy-events.service';
+import { buildRefuelSegment } from '../energy-events.service.spec';
+import { candidateRowToEvidenceSlice } from '../raw-refuel-candidate/raw-refuel-candidate-evidence-merge';
+import { buildTestObservation } from '../raw-refuel-candidate/testing/raw-refuel-candidate-test.util';
 import {
   linearRiseSamples,
   stablePlateauSamples,
@@ -249,6 +255,9 @@ function buildRuntimeStack(
   prisma: PrismaClient,
   fetchFuelLevelSamples: jest.Mock,
   promotionService?: RawRefuelPromotionService,
+  stackOptions?: {
+    nativeRefuelSegments?: ReturnType<typeof buildRefuelSegment>[];
+  },
 ) {
   const fetchFuelLevelSamplesWithOutcome = jest.fn(async (...args: unknown[]) => {
     try {
@@ -266,10 +275,32 @@ function buildRuntimeStack(
       };
     }
   });
+  const nativeSegments = stackOptions?.nativeRefuelSegments ?? [];
   const dimoSegments = {
     fetchFuelLevelSamples,
     fetchFuelLevelSamplesWithOutcome,
-    fetchEnergyEventSegments: jest.fn().mockResolvedValue({ segments: [], outcomes: [] }),
+    fetchEnergyEventSegments: jest.fn(
+      async (tokenId: number, from: Date, to: Date) => ({
+        tokenId,
+        segments: nativeSegments,
+        outcomes: [
+          {
+            mechanism: 'refuel',
+            status: nativeSegments.length > 0 ? 'SUCCESS_WITH_EVENTS' : 'SUCCESS_EMPTY',
+            segments: nativeSegments.filter((segment) => segment.mechanism === 'refuel'),
+            windowFrom: from.toISOString(),
+            windowTo: to.toISOString(),
+          },
+          {
+            mechanism: 'recharge',
+            status: 'SUCCESS_EMPTY',
+            segments: [],
+            windowFrom: from.toISOString(),
+            windowTo: to.toISOString(),
+          },
+        ],
+      }),
+    ),
   };
   const candidateService = RawRefuelCandidateService.withFixedClock(
     prisma as unknown as PrismaService,
@@ -319,6 +350,71 @@ const promotionContext = {
   absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
   absoluteSignalTrust: 'TRUSTED' as const,
 };
+
+function buildRediscoveryObservation(
+  candidate: RawRefuelCandidate,
+  overrides: Partial<ReturnType<typeof buildTestObservation>> = {},
+) {
+  const slice = candidateRowToEvidenceSlice(candidate);
+  return buildTestObservation({
+    organizationId: candidate.organizationId,
+    vehicleId: candidate.vehicleId,
+    detectionVersion: candidate.detectionVersion,
+    lifecycleState: candidate.lifecycleState,
+    signalChannel: slice.signalChannel,
+    riseOnsetAt: slice.riseOnsetAt ?? undefined,
+    riseEndAt: slice.riseEndAt ?? undefined,
+    physicalEvidenceStart: slice.physicalEvidenceStart ?? undefined,
+    physicalEvidenceEnd: slice.physicalEvidenceEnd ?? undefined,
+    preFuelAbsoluteLiters: slice.preFuelAbsoluteLiters ?? undefined,
+    postFuelAbsoluteLiters: slice.postFuelAbsoluteLiters ?? undefined,
+    deltaAbsoluteLiters: slice.deltaAbsoluteLiters ?? undefined,
+    prePlateauSampleCount: slice.prePlateauSampleCount ?? undefined,
+    postPlateauSampleCount: slice.postPlateauSampleCount ?? undefined,
+    totalSampleCount: slice.totalSampleCount ?? undefined,
+    maxSampleGapSeconds: slice.maxSampleGapSeconds ?? undefined,
+    scanWindowStart: slice.scanWindowStart ?? undefined,
+    scanWindowEnd: slice.scanWindowEnd ?? undefined,
+    absoluteSignalTrust: slice.absoluteSignalTrust ?? undefined,
+    relativeSignalAvailable: slice.relativeSignalAvailable ?? undefined,
+    signalProvider: slice.signalProvider ?? undefined,
+    ...overrides,
+  });
+}
+
+function createPromotionRowLockGate() {
+  let releaseHold!: () => void;
+  const holdPromise = new Promise<void>((resolve) => {
+    releaseHold = resolve;
+  });
+  let acquired = false;
+  return {
+    hooks: {
+      afterCandidateRowLock: async () => {
+        acquired = true;
+        await holdPromise;
+      },
+    },
+    releaseHold: () => releaseHold(),
+    waitUntilAcquired: async (timeoutMs = 10_000) => {
+      const started = Date.now();
+      while (!acquired) {
+        if (Date.now() - started > timeoutMs) {
+          throw new Error('promotion row lock was not acquired in time');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    },
+  };
+}
+
+async function readPromotionAttemptedTotal(
+  registry: Registry,
+): Promise<number> {
+  const metrics = await registry.getMetricsAsJSON();
+  const metric = metrics.find((item) => item.name === 'synqdrive_rfrf_promotion_attempted_total');
+  return metric?.values[0]?.value ?? 0;
+}
 
 (LIVE ? describe : describe.skip)(
   'RFRF F5-PR2 atomic promotion (RAW_FUEL_REFUEL_F5_PR2_INTEGRATION=1)',
@@ -838,6 +934,326 @@ const promotionContext = {
         expect(await countPromoted(prisma, vehicle.id)).toBe(1);
         const outcome = detect.rawFuelFallback?.candidateOutcomes.find((o) => o.promotionApply);
         expect(outcome?.promotionApply?.status).toBe('PROMOTED');
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P24 — convergence OFF + promotion ON => zero VEE and fail-closed authority', async () => {
+      const restore = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: false,
+        promotion: true,
+        cutoverAt: DEFAULT_CUTOVER,
+      });
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id);
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { absoluteSignalTrust: 'TRUSTED' },
+        });
+        const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        const { promotion, energyEvents } = buildRuntimeStack(
+          prisma,
+          jest.fn().mockResolvedValue(syntheticRiseSamples()),
+        );
+        const direct = await promotion.evaluateAndApplyPromotion(
+          refreshed,
+          promotionContext,
+          process.env,
+        );
+        expect(direct.status).toBe('SKIPPED_NOT_AUTHORIZED');
+        expect(direct.detail).toBe('convergence_not_authorized');
+        const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        expect(detect.rawFuelFallback?.promotionSkippedNotAuthorized).toBeGreaterThan(0);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        expect(await countConvergedNative(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P25 — direct RawRefuelPromotionService cannot bypass convergence authority', async () => {
+      const restore = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: false,
+        promotion: true,
+        cutoverAt: DEFAULT_CUTOVER,
+      });
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id);
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { absoluteSignalTrust: 'TRUSTED' },
+        });
+        const { promotion } = buildRuntimeStack(prisma, jest.fn());
+        const byId = await promotion.evaluateAndApplyPromotionById(
+          candidate.id,
+          promotionContext,
+          process.env,
+        );
+        const byRow = await promotion.evaluateAndApplyPromotion(
+          await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } }),
+          promotionContext,
+          process.env,
+        );
+        expect(byId.status).toBe('SKIPPED_NOT_AUTHORIZED');
+        expect(byId.detail).toBe('convergence_not_authorized');
+        expect(byRow.status).toBe('SKIPPED_NOT_AUTHORIZED');
+        expect(byRow.detail).toBe('convergence_not_authorized');
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restore();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P26 — F2 rediscovery blocked while promotion holds candidate FOR UPDATE', async () => {
+      const restore = setPromotionEnv();
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      const prisma2 = new PrismaClient();
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id);
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { absoluteSignalTrust: 'TRUSTED' },
+        });
+        const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        const originalPostFuel = refreshed.postFuelAbsoluteLiters;
+        const { promotion } = buildRuntimeStack(prisma, jest.fn());
+        let rowLockHeld = false;
+        const promoted = await promotion.evaluateAndApplyPromotion(
+          refreshed,
+          promotionContext,
+          process.env,
+          {
+            afterCandidateRowLock: async () => {
+              rowLockHeld = true;
+              await expect(
+                prisma2.$queryRaw<Array<{ id: string }>>`
+                  SELECT id
+                  FROM raw_refuel_candidates
+                  WHERE id = ${candidate.id}
+                  FOR UPDATE NOWAIT
+                `,
+              ).rejects.toThrow(/could not obtain lock|55P03/i);
+            },
+          },
+        );
+        expect(rowLockHeld).toBe(true);
+        expect(promoted.status).toBe('PROMOTED');
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(1);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(1);
+        const terminal = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        expect(terminal.postFuelAbsoluteLiters).toBe(originalPostFuel);
+        expect(terminal.lifecycleState).toBe('PROMOTED');
+        const f2Service = RawRefuelCandidateService.withFixedClock(
+          prisma as unknown as PrismaService,
+          '2026-09-06T12:00:00.000Z',
+        );
+        const maturationObservation = buildRediscoveryObservation(refreshed, {
+          postFuelAbsoluteLiters: (originalPostFuel ?? 30) + 1,
+          deltaAbsoluteLiters: (refreshed.deltaAbsoluteLiters ?? 20) + 1,
+          lifecycleState: 'READY_FOR_PERSIST',
+        });
+        const f2Result = await f2Service.resolveOrCreateCandidate(maturationObservation);
+        expect(f2Result.candidateId).toBe(candidate.id);
+        expect(f2Result.updated).toBe(false);
+        expect(f2Result.created).toBe(false);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+      } finally {
+        restore();
+        await prisma2.$disconnect().catch(() => undefined);
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    }, 20_000);
+
+    it('P27 — promotion rollback after row lock releases competing F2 update', async () => {
+      const restore = setPromotionEnv();
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      const prisma2 = new PrismaClient();
+      try {
+        const candidate = await persistReadyCandidate(prisma, vehicle.id);
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { absoluteSignalTrust: 'TRUSTED' },
+        });
+        const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        const maturationObservation = buildRediscoveryObservation(refreshed, {
+          postFuelAbsoluteLiters: (refreshed.postFuelAbsoluteLiters ?? 30) + 1,
+          deltaAbsoluteLiters: (refreshed.deltaAbsoluteLiters ?? 20) + 1,
+          lifecycleState: 'READY_FOR_PERSIST',
+        });
+        const f2Service = RawRefuelCandidateService.withFixedClock(
+          prisma2 as unknown as PrismaService,
+          '2026-09-06T12:00:00.000Z',
+        );
+        const { promotion } = buildRuntimeStack(prisma, jest.fn());
+        let rowLockAcquired = false;
+        let releaseRowLockWait!: () => void;
+        const rowLockWait = new Promise<void>((resolve) => {
+          releaseRowLockWait = resolve;
+        });
+        const f2Promise = (async () => {
+          await rowLockWait;
+          return f2Service.resolveOrCreateCandidate(maturationObservation);
+        })();
+        await expect(
+          promotion.evaluateAndApplyPromotion(refreshed, promotionContext, process.env, {
+            afterCandidateRowLock: async () => {
+              rowLockAcquired = true;
+              releaseRowLockWait();
+              await new Promise((resolve) => setTimeout(resolve, 800));
+            },
+            beforeVeeInsert: () => {
+              throw new Error('P27_inject_promotion_rollback');
+            },
+          }),
+        ).rejects.toThrow('P27_inject_promotion_rollback');
+        expect(rowLockAcquired).toBe(true);
+        const f2Result = await f2Promise;
+        expect(f2Result.candidateId).toBe(candidate.id);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        const after = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        expect(after.lifecycleState).toBe('READY_FOR_PERSIST');
+        expect(after.postFuelAbsoluteLiters).toBe(maturationObservation.postFuelAbsoluteLiters);
+        expect(after.evidenceRevisionFingerprint).not.toBe(
+          refreshed.evidenceRevisionFingerprint,
+        );
+      } finally {
+        restore();
+        await prisma2.$disconnect().catch(() => undefined);
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    }, 20_000);
+
+    it('P28 — thrown promotion failure isolated from successful native path', async () => {
+      const restore = setPromotionEnv();
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, tokenId, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const nativeRefuel = buildRefuelSegment({
+          segmentId: `dimo-native-${suffix}`,
+          startTime: '2026-09-06T07:00:00.000Z',
+          endTime: '2026-09-06T07:30:00.000Z',
+        });
+        const fetchMock = jest.fn().mockResolvedValue(syntheticRiseSamples());
+        const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
+        const originalApply = promotion.evaluateAndApplyPromotion.bind(promotion);
+        jest.spyOn(promotion, 'evaluateAndApplyPromotion').mockImplementation(
+          (candidate, context, env, hooks) =>
+            originalApply(candidate, context, env, {
+              ...hooks,
+              beforeVeeInsert: () => {
+                throw new Error('P28_inject_promotion_throw');
+              },
+            }),
+        );
+        const { energyEvents } = buildRuntimeStack(prisma, fetchMock, promotion, {
+          nativeRefuelSegments: [nativeRefuel],
+        });
+        const first = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        expect(first.created).toBeGreaterThan(0);
+        expect(
+          await prisma.vehicleEnergyEvent.count({
+            where: { vehicleId: vehicle.id, dimoSegmentId: nativeRefuel.segmentId },
+          }),
+        ).toBeGreaterThan(0);
+        await prisma.rawRefuelCandidate.updateMany({
+          where: { vehicleId: vehicle.id },
+          data: {
+            absoluteSignalTrust: 'TRUSTED',
+            qualityMeta: { absoluteDetectionAdmissibility: 'ADMISSIBLE' },
+          },
+        });
+        const second = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        expect(
+          await prisma.vehicleEnergyEvent.count({
+            where: { vehicleId: vehicle.id, dimoSegmentId: nativeRefuel.segmentId },
+          }),
+        ).toBeGreaterThan(0);
+        expect(await countFallbackVee(prisma, vehicle.id)).toBe(0);
+        expect(await countPromoted(prisma, vehicle.id)).toBe(0);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+        const outcome = second.rawFuelFallback?.candidateOutcomes.find(
+          (item) => item.promotionApplyError || item.promotionApply,
+        );
+        expect(outcome?.promotionApplyError).toContain('P28_inject_promotion_throw');
+        void tokenId;
+      } finally {
+        restore();
+        jest.restoreAllMocks();
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('P29 — promotionAttempted metric single ownership on authorized automatic attempt', async () => {
+      const restore = setPromotionEnv();
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const registry = new Registry();
+        const metrics = new RawFuelRefuelFallbackMetricsService({
+          registry,
+        } as TripMetricsService);
+        const promotion = new RawRefuelPromotionService(
+          prisma as unknown as PrismaService,
+          metrics,
+        );
+        const fetchMock = jest.fn().mockResolvedValue(syntheticRiseSamples());
+        const { energyEvents } = buildRuntimeStack(prisma, fetchMock, promotion);
+        await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        await prisma.rawRefuelCandidate.updateMany({
+          where: { vehicleId: vehicle.id },
+          data: {
+            absoluteSignalTrust: 'TRUSTED',
+            qualityMeta: { absoluteDetectionAdmissibility: 'ADMISSIBLE' },
+          },
+        });
+        const before = await readPromotionAttemptedTotal(registry);
+        const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
+          from: new Date('2026-09-06T07:00:00.000Z'),
+          to: new Date('2026-09-06T12:00:00.000Z'),
+        });
+        const after = await readPromotionAttemptedTotal(registry);
+        expect(after - before).toBe(1);
+        expect(detect.rawFuelFallback?.promotionExecutionAttempted).toBe(1);
+        expect(detect.rawFuelFallback?.promotionCommitted).toBe(1);
       } finally {
         restore();
         await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
