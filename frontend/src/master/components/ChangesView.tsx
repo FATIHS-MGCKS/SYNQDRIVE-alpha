@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p23-correctness-hardening-2026-09-14',
+    version: '4.9.1126',
+    title: 'VDC RB-019 Phase 2 P2.3 — independent correctness hardening (PR #1640)',
+    summary: [
+      'MASTER OFF short-circuits before ensureAuthorityRow — zero authority/projection/transition/event/outbox writes.',
+      'Canonical GtR1ExpectedFixProof contract — legacy diagnostic reasons never establish EXPECTED_FIX alone.',
+      'LegacyShadowDecision captures real legacy effectivePlugState, evidenceObservedAt, bindingKey for shadow compare.',
+      'Real call-site GT-R1 PG proof: webhook + snapshot orchestration through proof builders to writer/comparator.',
+    ],
+    reason:
+      'Independent review blockers A–D: fail-closed master gate, independent GT-R1 proof, real legacy shadow evidence, call-site wiring proof.',
+    previousBehavior:
+      'resolveRuntimePolicy could INSERT authority row when master=false; legacy reason strings inferred EXPECTED_FIX; shadow synthesized legacy state from physical candidate.',
+    details:
+      'physical-state-gt-r1-proof.ts, physical-state-legacy-shadow-decision.ts, physical-state-evidence-writer.service.ts; flags still OFF; no deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T12:30:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p23-evidence-writers-2026-09-14',
     version: '4.9.1125',
     title: 'VDC RB-019 Phase 2 P2.3 — evidence writers + STATEFUL_SHADOW proof (dark)',

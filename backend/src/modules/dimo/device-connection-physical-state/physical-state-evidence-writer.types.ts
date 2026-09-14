@@ -1,24 +1,16 @@
 import type { DeviceConnectionPhysicalTransitionDecision, DimoDeviceConnectionEventType } from '@prisma/client';
 import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-authority.types';
 import type { PhysicalStateCoordinatorResult } from './device-connection-physical-state.types';
+import type { GtR1ExpectedFixProof } from './physical-state-gt-r1-proof';
+import type { LegacyShadowDecision } from './physical-state-legacy-shadow-decision';
 import type { PhysicalStateShadowComparisonResult } from './physical-state-shadow-comparator.types';
-
-export type LegacyWebhookGateResult = {
-  accepted: boolean;
-  reason?: string | null;
-};
-
-export type LegacySnapshotGateResult = {
-  accepted: boolean;
-  reason?: string | null;
-};
 
 export type PhysicalEvidenceWriterResult = {
   enabled: boolean;
   policy: EffectivePhysicalStateRuntimePolicy | null;
   coordinatorResult: PhysicalStateCoordinatorResult | null;
   shadowComparison: PhysicalStateShadowComparisonResult | null;
-  legacyGate: LegacyWebhookGateResult | LegacySnapshotGateResult | null;
+  legacyShadow: LegacyShadowDecision | null;
   physicalAccepted: boolean;
   physicalDecision: DeviceConnectionPhysicalTransitionDecision | 'DISABLED' | null;
   skippedReason?: string;
@@ -36,8 +28,8 @@ export type WebhookEvidenceWriterInput = {
   rawPayload: unknown;
   evidenceReferenceId: string;
   inboxId?: string;
-  legacyGate: LegacyWebhookGateResult;
-  provenExpectedFix?: boolean;
+  legacyShadow: LegacyShadowDecision;
+  gtR1Proof?: GtR1ExpectedFixProof | null;
 };
 
 export type SnapshotEvidenceWriterInput = {
@@ -47,8 +39,8 @@ export type SnapshotEvidenceWriterInput = {
   deviceBindingId?: string | null;
   signals: Record<string, unknown>;
   evidenceReferenceId: string;
-  legacyGate: LegacySnapshotGateResult;
-  provenExpectedFix?: boolean;
+  legacyShadow: LegacyShadowDecision;
+  gtR1Proof?: GtR1ExpectedFixProof | null;
   projectionSelfHeal?: boolean;
 };
 

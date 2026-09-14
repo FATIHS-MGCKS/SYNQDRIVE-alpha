@@ -29,8 +29,11 @@ import {
   evaluateSnapshotPlugResolution,
   extractObdPlugSignalFromSnapshot,
 } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
-import { PhysicalStateEvidenceWriterService } from '../../modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service';
+import { buildBindingScopeFromToken } from '../../modules/dimo/device-connection-physical-state/device-connection-physical-state.binding';
 import { extractObdPlugSignalFromSignals } from '../../modules/dimo/device-connection-physical-state/device-connection-physical-state.obd-evidence';
+import { buildSnapshotPlugRepairGtR1Proof } from '../../modules/dimo/device-connection-physical-state/physical-state-gt-r1-proof';
+import { buildLegacySnapshotShadowDecision } from '../../modules/dimo/device-connection-physical-state/physical-state-legacy-shadow-decision';
+import { PhysicalStateEvidenceWriterService } from '../../modules/dimo/device-connection-physical-state/physical-state-evidence-writer.service';
 import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
 import {
   DeviceConnectionEpisodeService,
@@ -554,9 +557,38 @@ export class DimoSnapshotProcessor extends WorkerHost {
       openEpisode,
     );
 
-    const legacyAccepted = legacyEval.action === 'resolve';
-    const legacyReason =
-      legacyEval.action === 'reject' ? legacyEval.reason : legacyEval.action === 'noop' ? legacyEval.reason : null;
+    const binding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId: input.tokenId,
+      deviceBindingId: input.providerBindingId,
+    });
+    const legacyShadow = buildLegacySnapshotShadowDecision({
+      evaluation: legacyEval,
+      obdIsPluggedIn: obd.obdIsPluggedIn,
+      providerObservedAt: obd.evidenceObservedAt,
+      bindingKey: binding.bindingKey,
+    });
+
+    const projection = await this.prisma.deviceConnectionPhysicalState.findFirst({
+      where: {
+        vehicleId: input.vehicleId,
+        provider: 'DIMO',
+        bindingKey: binding.bindingKey,
+      },
+      select: {
+        effectiveState: true,
+        evidenceObservedAt: true,
+      },
+    });
+
+    const gtR1Proof = buildSnapshotPlugRepairGtR1Proof({
+      physicalProjectionState: projection?.effectiveState ?? null,
+      physicalProjectionEvidenceAt: projection?.evidenceObservedAt ?? null,
+      snapshotCandidatePlugged: obd.obdIsPluggedIn === true,
+      snapshotEvidenceObservedAt: obd.evidenceObservedAt,
+      legacyAccepted: legacyShadow.accepted,
+      evidenceReferenceId: snapshotReferenceId,
+    });
 
     try {
       await this.physicalEvidenceWriter.writeSnapshotEvidence({
@@ -566,8 +598,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
         deviceBindingId: input.providerBindingId,
         signals: input.signals,
         evidenceReferenceId: snapshotReferenceId,
-        legacyGate: { accepted: legacyAccepted, reason: legacyReason },
-        provenExpectedFix: !legacyAccepted && obd.obdIsPluggedIn === true && legacyReason === 'no_open_episode',
+        legacyShadow,
+        gtR1Proof,
         projectionSelfHeal: obd.obdIsPluggedIn === true,
       });
     } catch (err) {

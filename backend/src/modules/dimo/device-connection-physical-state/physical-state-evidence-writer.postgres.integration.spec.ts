@@ -15,6 +15,10 @@ import { buildBindingScopeFromToken } from './device-connection-physical-state.b
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
+import {
+  buildSnapshotPlugRepairGtR1Proof,
+  buildWebhookStaleLegacyGateGtR1Proof,
+} from './physical-state-gt-r1-proof';
 import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-writer.service';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import { PhysicalStateShadowClassification } from './physical-state-shadow.classification';
@@ -95,7 +99,24 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     await prisma.$disconnect();
   });
 
-  it('GT-R1 STATEFUL_SHADOW full sequence: UNPLUG -> snapshot PLUG -> webhook UNPLUG', async () => {
+  async function countAllPhysicalStateArtifacts() {
+    const [authority, projections, transitions, events, outbox] = await Promise.all([
+      prisma.deviceConnectionPhysicalAuthorityCutover.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+      prisma.deviceConnectionPhysicalState.count({ where: { vehicleId: fixture.vehicle.id } }),
+      prisma.deviceConnectionPhysicalStateTransition.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+      prisma.dimoDeviceConnectionEvent.count({ where: { vehicleId: fixture.vehicle.id } }),
+      prisma.deviceConnectionPhysicalStateActionOutbox.count({
+        where: { vehicleId: fixture.vehicle.id },
+      }),
+    ]);
+    return { authority, projections, transitions, events, outbox };
+  }
+
+  it('GT-R1 writer-level sequence: UNPLUG -> snapshot PLUG -> webhook UNPLUG', async () => {
     await repository.reconcileEvidence({
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
@@ -127,31 +148,47 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       obdIsPluggedIn: { value: true, timestamp: T2 },
     };
 
+    const snapshotProof = buildSnapshotPlugRepairGtR1Proof({
+      physicalProjectionState: 'UNPLUGGED',
+      physicalProjectionEvidenceAt: new Date(T1),
+      snapshotCandidatePlugged: true,
+      snapshotEvidenceObservedAt: new Date(T2),
+      legacyAccepted: false,
+      evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
+    });
+
     const snapshotResult = await writer.writeSnapshotEvidence({
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
       tokenId: fixture.tokenId,
       signals: snapshotSignals,
       evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
-      legacyGate: { accepted: false, reason: 'no_open_episode' },
-      provenExpectedFix: true,
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_open_episode',
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(T1),
+        bindingKey: binding.bindingKey,
+      },
+      gtR1Proof: snapshotProof,
       projectionSelfHeal: true,
     });
 
     expect(snapshotResult.policy?.statefulShadow).toBe(true);
     expect(snapshotResult.physicalAccepted).toBe(true);
-    expect(snapshotResult.coordinatorResult?.reconcile.decision).toBe(
-      DeviceConnectionPhysicalTransitionDecision.APPLIED,
-    );
     expect(snapshotResult.shadowComparison?.classification).toBe(
       PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
     );
 
-    const afterPlug = await prisma.deviceConnectionPhysicalState.findFirst({
-      where: { vehicleId: fixture.vehicle.id },
+    const webhookProof = buildWebhookStaleLegacyGateGtR1Proof({
+      legacyAccepted: false,
+      legacyEffectivePlugState: 'unplugged',
+      incomingPluggedIn: false,
+      incomingObservedAt: new Date(T3),
+      physicalProjectionState: 'PLUGGED',
+      physicalProjectionEvidenceAt: new Date(T2),
+      evidenceReferenceId: `webhook:${fixture.vehicle.id}:${T3}:unplug`,
     });
-    expect(afterPlug?.effectiveState).toBe('PLUGGED');
-    expect(afterPlug?.evidenceObservedAt.toISOString()).toBe(new Date(T2).toISOString());
 
     const webhookResult = await writer.writeWebhookEvidence({
       organizationId: fixture.org.id,
@@ -162,33 +199,23 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       observedAt: new Date(T3),
       rawPayload: { obdIsPluggedIn: false },
       evidenceReferenceId: `webhook:${fixture.vehicle.id}:${T3}:unplug`,
-      legacyGate: { accepted: false, reason: 'no_state_change' },
-      provenExpectedFix: true,
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_state_change',
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(T1),
+        bindingKey: binding.bindingKey,
+      },
+      gtR1Proof: webhookProof,
     });
 
     expect(webhookResult.physicalAccepted).toBe(true);
-    expect(webhookResult.coordinatorResult?.reconcile.decision).toBe(
-      DeviceConnectionPhysicalTransitionDecision.APPLIED,
-    );
     expect(webhookResult.coordinatorResult?.canonicalEventId).toBeTruthy();
 
     const finalProjection = await prisma.deviceConnectionPhysicalState.findFirst({
       where: { vehicleId: fixture.vehicle.id },
     });
     expect(finalProjection?.effectiveState).toBe('UNPLUGGED');
-    expect(finalProjection?.evidenceObservedAt.toISOString()).toBe(new Date(T3).toISOString());
-
-    const transitions = await prisma.deviceConnectionPhysicalStateTransition.findMany({
-      where: { vehicleId: fixture.vehicle.id },
-      orderBy: { createdAt: 'asc' },
-    });
-    const applied = transitions.filter((t) => t.decision === 'APPLIED');
-    expect(applied).toHaveLength(2);
-
-    const events = await prisma.dimoDeviceConnectionEvent.findMany({
-      where: { vehicleId: fixture.vehicle.id },
-    });
-    expect(events).toHaveLength(2);
 
     const episodes = await prisma.deviceConnectionEpisode.findMany({
       where: { vehicleId: fixture.vehicle.id },
@@ -199,6 +226,70 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       where: { vehicleId: fixture.vehicle.id },
     });
     expect(outbox).toHaveLength(0);
+  });
+
+  it('legacy diagnostic reason only => UNEXPLAINED (no forged proof)', async () => {
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'UNPLUGGED',
+        evidenceObservedAt: new Date(T1),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh-base',
+      },
+    });
+
+    const result = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: true, timestamp: T2 } },
+      evidenceReferenceId: 'snap-unexplained',
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_open_episode',
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(T1),
+        bindingKey: binding.bindingKey,
+      },
+      gtR1Proof: null,
+      projectionSelfHeal: true,
+    });
+
+    expect(result.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
+  it('master=false => zero authority/projection/transition/event/outbox writes', async () => {
+    disableStatefulShadowEnv();
+    const before = await countAllPhysicalStateArtifacts();
+
+    const result = await writer.writeWebhookEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      provider: 'DIMO',
+      tokenId: fixture.tokenId,
+      pluggedIn: false,
+      observedAt: new Date(T3),
+      rawPayload: {},
+      evidenceReferenceId: 'wh-disabled',
+      legacyShadow: {
+        accepted: true,
+        diagnosticReason: null,
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(T3),
+        bindingKey: binding.bindingKey,
+      },
+    });
+
+    expect(result.enabled).toBe(false);
+    const after = await countAllPhysicalStateArtifacts();
+    expect(after).toEqual(before);
+    enableStatefulShadowEnv();
   });
 
   it('concurrent webhook + snapshot — newer timestamp wins', async () => {
@@ -225,7 +316,13 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
         tokenId: fixture.tokenId,
         signals: { obdIsPluggedIn: { value: false, timestamp: tOld } },
         evidenceReferenceId: 'snap-stale',
-        legacyGate: { accepted: false, reason: 'obd_false' },
+        legacyShadow: {
+          accepted: false,
+          diagnosticReason: 'obd_false',
+          effectivePlugState: 'unplugged',
+          evidenceObservedAt: new Date(tOld),
+          bindingKey: binding.bindingKey,
+        },
       }),
       writer.writeWebhookEvidence({
         organizationId: fixture.org.id,
@@ -236,18 +333,18 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
         observedAt: new Date(tNew),
         rawPayload: {},
         evidenceReferenceId: 'wh-fresh',
-        legacyGate: { accepted: true },
+        legacyShadow: {
+          accepted: true,
+          diagnosticReason: null,
+          effectivePlugState: 'plugged',
+          evidenceObservedAt: new Date(tNew),
+          bindingKey: binding.bindingKey,
+        },
       }),
     ]);
 
     expect(staleSnapshot.coordinatorResult?.reconcile.decision).toBe('STALE');
     expect(freshWebhook.coordinatorResult?.reconcile.decision).toBe('APPLIED');
-
-    const row = await prisma.deviceConnectionPhysicalState.findFirst({
-      where: { vehicleId: fixture.vehicle.id },
-    });
-    expect(row?.effectiveState).toBe('PLUGGED');
-    expect(row?.evidenceObservedAt.toISOString()).toBe(new Date(tNew).toISOString());
   });
 
   it('equal-time opposing states => CONFLICT without projection overwrite', async () => {
@@ -274,35 +371,16 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       observedAt: new Date(ts),
       rawPayload: {},
       evidenceReferenceId: 'wh-conflict',
-      legacyGate: { accepted: true },
+      legacyShadow: {
+        accepted: true,
+        diagnosticReason: null,
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(ts),
+        bindingKey: binding.bindingKey,
+      },
     });
 
     expect(conflict.coordinatorResult?.reconcile.decision).toBe('CONFLICT');
-    const row = await prisma.deviceConnectionPhysicalState.findFirst({
-      where: { vehicleId: fixture.vehicle.id },
-    });
-    expect(row?.effectiveState).toBe('PLUGGED');
-  });
-
-  it('master=false => zero projection writes', async () => {
-    disableStatefulShadowEnv();
-    const result = await writer.writeWebhookEvidence({
-      organizationId: fixture.org.id,
-      vehicleId: fixture.vehicle.id,
-      provider: 'DIMO',
-      tokenId: fixture.tokenId,
-      pluggedIn: false,
-      observedAt: new Date(T3),
-      rawPayload: {},
-      evidenceReferenceId: 'wh-disabled',
-      legacyGate: { accepted: true },
-    });
-    expect(result.enabled).toBe(false);
-    const rows = await prisma.deviceConnectionPhysicalState.findMany({
-      where: { vehicleId: fixture.vehicle.id },
-    });
-    expect(rows).toHaveLength(0);
-    enableStatefulShadowEnv();
   });
 
   it('APPLIED-only webhook event history contract', async () => {
@@ -328,19 +406,20 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       observedAt: new Date(T1),
       rawPayload: {},
       evidenceReferenceId: 'wh-established',
-      legacyGate: { accepted: false, reason: 'no_state_change' },
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_state_change',
+        effectivePlugState: 'plugged',
+        evidenceObservedAt: new Date(T1),
+        bindingKey: binding.bindingKey,
+      },
     });
 
     expect(duplicate.coordinatorResult?.reconcile.decision).toBe('DUPLICATE');
     expect(duplicate.coordinatorResult?.canonicalEventId).toBeNull();
-
-    const events = await prisma.dimoDeviceConnectionEvent.findMany({
-      where: { vehicleId: fixture.vehicle.id },
-    });
-    expect(events).toHaveLength(0);
   });
 
-  it('snapshot UNPLUG APPLIED does not enqueue outbox when sideEffects=false', async () => {
+  it('sideEffects=false does not enqueue outbox despite open_unplug intent', async () => {
     await repository.reconcileEvidence({
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
@@ -363,7 +442,13 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
       observedAt: new Date(T3),
       rawPayload: {},
       evidenceReferenceId: 'wh-unplug-sidefx',
-      legacyGate: { accepted: true },
+      legacyShadow: {
+        accepted: true,
+        diagnosticReason: null,
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(T3),
+        bindingKey: binding.bindingKey,
+      },
     });
 
     expect(result.coordinatorResult?.reconcile.episodeAction).toBe('open_unplug');

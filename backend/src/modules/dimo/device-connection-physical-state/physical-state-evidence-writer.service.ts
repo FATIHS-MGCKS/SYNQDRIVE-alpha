@@ -1,5 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
+  DeviceConnectionPhysicalAuthorityMode,
   DeviceConnectionPhysicalEvidenceSource,
   DeviceConnectionPhysicalTransitionDecision,
   DimoDeviceConnectionEventType,
@@ -20,6 +21,8 @@ import { recordPhysicalStateReconcileDecision } from './device-connection-physic
 import { isAcceptedPhysicalTransition } from './device-connection-physical-state.policy';
 import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-authority.types';
 import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
+import { isProvenExpectedFix, type GtR1ExpectedFixProof } from './physical-state-gt-r1-proof';
+import type { LegacyShadowDecision } from './physical-state-legacy-shadow-decision';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
 import { comparePhysicalStateShadowDecisions } from './physical-state-shadow-comparator';
 import { PhysicalStateShadowObservabilityService } from './physical-state-shadow-observability.service';
@@ -47,8 +50,18 @@ export class PhysicalStateEvidenceWriterService {
   ) {}
 
   isWriterCapable(): boolean {
+    return loadConnectivityPhysicalStateRuntimeFlagConfig().masterEnabled;
+  }
+
+  /**
+   * MASTER OFF => fail closed with LEGACY/disabled policy and zero DB mutations.
+   */
+  resolveRuntimePolicyWithoutDb(): EffectivePhysicalStateRuntimePolicy {
     const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
-    return flags.masterEnabled;
+    return resolveEffectivePhysicalStateRuntimePolicy({
+      authorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
+      flags,
+    });
   }
 
   async resolveRuntimePolicy(scope: {
@@ -56,29 +69,35 @@ export class PhysicalStateEvidenceWriterService {
     vehicleId: string;
     provider: string;
   }): Promise<EffectivePhysicalStateRuntimePolicy> {
+    const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
+    if (!flags.masterEnabled) {
+      return this.resolveRuntimePolicyWithoutDb();
+    }
+
     const authorityMode = await this.prisma.$transaction(async (tx) => {
       const row = await this.authorityCutoverRepository.ensureAuthorityRow(tx, scope);
       return row.authorityMode;
     });
     return resolveEffectivePhysicalStateRuntimePolicy({
       authorityMode,
-      flags: loadConnectivityPhysicalStateRuntimeFlagConfig(),
+      flags,
     });
   }
 
   async writeWebhookEvidence(
     input: WebhookEvidenceWriterInput,
   ): Promise<PhysicalEvidenceWriterResult> {
+    const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
+    if (!flags.masterEnabled) {
+      return this.disabledResult(input.legacyShadow);
+    }
+
     const scope = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       provider: input.provider,
     };
     const policy = await this.resolveRuntimePolicy(scope);
-
-    if (!policy.masterEnabled) {
-      return this.disabledResult(policy, input.legacyGate);
-    }
 
     const extracted = extractWebhookObdPhysicalEvidence({
       provider: input.provider,
@@ -95,7 +114,7 @@ export class PhysicalStateEvidenceWriterService {
         policy,
         coordinatorResult: null,
         shadowComparison: null,
-        legacyGate: input.legacyGate,
+        legacyShadow: input.legacyShadow,
         physicalAccepted: false,
         physicalDecision: DeviceConnectionPhysicalTransitionDecision.INSUFFICIENT_EVIDENCE,
         skippedReason: 'insufficient_webhook_evidence',
@@ -146,25 +165,23 @@ export class PhysicalStateEvidenceWriterService {
       );
     }
 
-    const physicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const rawPhysicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
-      physicalDecision != null &&
-      physicalDecision !== 'DISABLED' &&
-      isAcceptedPhysicalTransition(physicalDecision);
+      physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
     const shadowComparison = this.maybeRecordShadowComparison({
       policy,
       scope,
-      bindingKey: extracted.binding.bindingKey,
-      legacyGate: input.legacyGate,
-      physicalDecision:
-        physicalDecision === 'DISABLED' ? null : physicalDecision,
+      legacyShadow: input.legacyShadow,
+      physicalBindingKey: extracted.binding.bindingKey,
+      physicalDecision,
       physicalAccepted,
       physicalReason: coordinatorResult?.reconcile.reason,
-      candidateState: extracted.candidateState,
+      physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,
-      provenExpectedFix: input.provenExpectedFix,
+      gtR1Proof: input.gtR1Proof,
       equalTimeOpposingState:
         physicalDecision === DeviceConnectionPhysicalTransitionDecision.CONFLICT,
     });
@@ -174,25 +191,26 @@ export class PhysicalStateEvidenceWriterService {
       policy,
       coordinatorResult,
       shadowComparison,
-      legacyGate: input.legacyGate,
+      legacyShadow: input.legacyShadow,
       physicalAccepted,
-      physicalDecision,
+      physicalDecision: rawPhysicalDecision,
     };
   }
 
   async writeSnapshotEvidence(
     input: SnapshotEvidenceWriterInput,
   ): Promise<PhysicalEvidenceWriterResult> {
+    const flags = loadConnectivityPhysicalStateRuntimeFlagConfig();
+    if (!flags.masterEnabled) {
+      return this.disabledResult(input.legacyShadow);
+    }
+
     const scope = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       provider: 'DIMO',
     };
     const policy = await this.resolveRuntimePolicy(scope);
-
-    if (!policy.masterEnabled) {
-      return this.disabledResult(policy, input.legacyGate);
-    }
 
     const extracted = extractSnapshotObdPhysicalEvidenceFromSignals({
       organizationId: input.organizationId,
@@ -209,7 +227,7 @@ export class PhysicalStateEvidenceWriterService {
         policy,
         coordinatorResult: null,
         shadowComparison: null,
-        legacyGate: input.legacyGate,
+        legacyShadow: input.legacyShadow,
         physicalAccepted: false,
         physicalDecision: null,
         skippedReason: 'insufficient_snapshot_obd_evidence',
@@ -219,8 +237,7 @@ export class PhysicalStateEvidenceWriterService {
     let coordinatorResult = null;
     if (policy.projectionWriteEnabled) {
       const projectionSelfHeal =
-        input.projectionSelfHeal ??
-        (extracted.candidateState === 'PLUGGED');
+        input.projectionSelfHeal ?? extracted.candidateState === 'PLUGGED';
 
       coordinatorResult = await this.coordinator.reconcileInOuterTransaction(
         {
@@ -249,25 +266,23 @@ export class PhysicalStateEvidenceWriterService {
       );
     }
 
-    const physicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const rawPhysicalDecision = coordinatorResult?.reconcile.decision ?? null;
+    const physicalDecision = normalizeCoordinatorPhysicalDecision(rawPhysicalDecision);
     const physicalAccepted =
-      physicalDecision != null &&
-      physicalDecision !== 'DISABLED' &&
-      isAcceptedPhysicalTransition(physicalDecision);
+      physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
     const shadowComparison = this.maybeRecordShadowComparison({
       policy,
       scope,
-      bindingKey: extracted.binding.bindingKey,
-      legacyGate: input.legacyGate,
-      physicalDecision:
-        physicalDecision === 'DISABLED' ? null : physicalDecision,
+      legacyShadow: input.legacyShadow,
+      physicalBindingKey: extracted.binding.bindingKey,
+      physicalDecision,
       physicalAccepted,
       physicalReason: coordinatorResult?.reconcile.reason,
-      candidateState: extracted.candidateState,
+      physicalEffectiveState: physicalAccepted ? extracted.candidateState : null,
       evidenceObservedAt: extracted.evidenceObservedAt,
       evidenceReferenceId: extracted.evidenceReferenceId,
-      provenExpectedFix: input.provenExpectedFix,
+      gtR1Proof: input.gtR1Proof,
       equalTimeOpposingState:
         physicalDecision === DeviceConnectionPhysicalTransitionDecision.CONFLICT,
     });
@@ -277,22 +292,19 @@ export class PhysicalStateEvidenceWriterService {
       policy,
       coordinatorResult,
       shadowComparison,
-      legacyGate: input.legacyGate,
+      legacyShadow: input.legacyShadow,
       physicalAccepted,
-      physicalDecision,
+      physicalDecision: rawPhysicalDecision,
     };
   }
 
-  private disabledResult(
-    policy: EffectivePhysicalStateRuntimePolicy,
-    legacyGate: PhysicalEvidenceWriterResult['legacyGate'],
-  ): PhysicalEvidenceWriterResult {
+  private disabledResult(legacyShadow: LegacyShadowDecision): PhysicalEvidenceWriterResult {
     return {
       enabled: false,
-      policy,
+      policy: this.resolveRuntimePolicyWithoutDb(),
       coordinatorResult: null,
       shadowComparison: null,
-      legacyGate,
+      legacyShadow,
       physicalAccepted: false,
       physicalDecision: 'DISABLED',
       skippedReason: 'master_disabled',
@@ -302,15 +314,15 @@ export class PhysicalStateEvidenceWriterService {
   private maybeRecordShadowComparison(input: {
     policy: EffectivePhysicalStateRuntimePolicy;
     scope: { organizationId: string; vehicleId: string; provider: string };
-    bindingKey: string;
-    legacyGate: { accepted: boolean; reason?: string | null };
-    physicalDecision: DeviceConnectionPhysicalTransitionDecision | 'DISABLED' | null;
+    legacyShadow: LegacyShadowDecision;
+    physicalBindingKey: string;
+    physicalDecision: DeviceConnectionPhysicalTransitionDecision | null;
     physicalAccepted: boolean;
     physicalReason?: string;
-    candidateState: 'PLUGGED' | 'UNPLUGGED';
+    physicalEffectiveState: 'PLUGGED' | 'UNPLUGGED' | null;
     evidenceObservedAt: Date;
     evidenceReferenceId: string;
-    provenExpectedFix?: boolean;
+    gtR1Proof?: GtR1ExpectedFixProof | null;
     equalTimeOpposingState?: boolean;
   }) {
     if (!input.policy.shadowCompareEnabled) return null;
@@ -321,36 +333,29 @@ export class PhysicalStateEvidenceWriterService {
       });
     }
 
-    const physicalEffectiveState =
-      input.physicalAccepted && input.physicalDecision !== 'DISABLED'
-        ? input.candidateState
-        : null;
-
     const comparison = comparePhysicalStateShadowDecisions({
       scope: input.scope,
       authorityMode: input.policy.authorityMode,
-      bindingKey: input.bindingKey,
+      bindingKey: input.physicalBindingKey,
+      legacyBindingKey: input.legacyShadow.bindingKey,
+      physicalBindingKey: input.physicalBindingKey,
       legacyDecision: {
-        accepted: input.legacyGate.accepted,
-        reason: input.legacyGate.reason,
+        accepted: input.legacyShadow.accepted,
+        reason: input.legacyShadow.diagnosticReason,
         gate: PhysicalStateCanonicalGate.LEGACY,
       },
       physicalDecision: {
         accepted: input.physicalAccepted,
         reason: input.physicalReason,
         gate: PhysicalStateCanonicalGate.PHYSICAL,
-        transitionDecision:
-          input.physicalDecision === 'DISABLED' ? null : input.physicalDecision,
-        effectiveState: physicalEffectiveState,
+        transitionDecision: input.physicalDecision,
+        effectiveState: input.physicalEffectiveState,
       },
-      legacyEffectivePlugState: input.legacyGate.accepted
-        ? input.candidateState === 'PLUGGED'
-          ? 'plugged'
-          : 'unplugged'
-        : null,
+      legacyEffectivePlugState: input.legacyShadow.effectivePlugState,
+      legacyEvidenceObservedAt: input.legacyShadow.evidenceObservedAt,
       evidenceObservedAt: input.evidenceObservedAt,
       evidenceReferenceId: input.evidenceReferenceId,
-      provenExpectedFix: input.provenExpectedFix,
+      provenExpectedFix: isProvenExpectedFix(input.gtR1Proof),
       equalTimeOpposingState: input.equalTimeOpposingState,
     });
 
@@ -378,4 +383,11 @@ export class PhysicalStateEvidenceWriterService {
       mode,
     });
   }
+}
+
+function normalizeCoordinatorPhysicalDecision(
+  decision: DeviceConnectionPhysicalTransitionDecision | 'DISABLED' | null,
+): DeviceConnectionPhysicalTransitionDecision | null {
+  if (!decision || decision === 'DISABLED') return null;
+  return decision;
 }

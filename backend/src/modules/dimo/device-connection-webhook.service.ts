@@ -9,8 +9,10 @@ import {
   shouldIgnorePlugImpulseAfterUnplug,
   type DeviceConnectionConnectivityAnchor,
 } from './device-connection-read-model';
+import { buildBindingScopeFromToken } from './device-connection-physical-state/device-connection-physical-state.binding';
+import { buildWebhookStaleLegacyGateGtR1Proof } from './device-connection-physical-state/physical-state-gt-r1-proof';
+import { buildLegacyWebhookShadowDecision } from './device-connection-physical-state/physical-state-legacy-shadow-decision';
 import { PhysicalStateEvidenceWriterService } from './device-connection-physical-state/physical-state-evidence-writer.service';
-import { isGtR1ExpectedFixLegacyReason } from './device-connection-physical-state/physical-state-shadow-comparator';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
@@ -141,26 +143,31 @@ export class DeviceConnectionWebhookService {
     input: IngestDeviceConnectionInput,
   ): Promise<DeviceConnectionDomainResult> {
     const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
-    const gate = await this.evaluateStateChangeGate(
+    const legacyContext = await this.evaluateLegacyWebhookShadowContext(
       input.vehicle.id,
+      input.tokenId,
       input.pluggedIn,
       input.observedAt,
     );
+    const evidenceReferenceId = `webhook:${input.vehicle.id}:${input.observedAt.toISOString()}:${input.pluggedIn ? 'plug' : 'unplug'}`;
 
-    const writerResult = await this.physicalEvidenceWriter?.writeWebhookEvidence({
-      organizationId: input.vehicle.organizationId,
-      vehicleId: input.vehicle.id,
-      provider: 'DIMO',
-      tokenId: input.tokenId,
-      pluggedIn: input.pluggedIn,
-      observedAt: input.observedAt,
-      receivedAt: new Date(),
-      rawPayload: input.rawPayload,
-      evidenceReferenceId: `webhook:${input.vehicle.id}:${input.observedAt.toISOString()}:${input.pluggedIn ? 'plug' : 'unplug'}`,
-      inboxId: input.inboxId,
-      legacyGate: { accepted: gate.persist, reason: gate.reason },
-      provenExpectedFix: isGtR1ExpectedFixLegacyReason(gate.reason),
-    });
+    const writerResult =
+      this.physicalEvidenceWriter?.isWriterCapable() === true
+        ? await this.physicalEvidenceWriter.writeWebhookEvidence({
+            organizationId: input.vehicle.organizationId,
+            vehicleId: input.vehicle.id,
+            provider: 'DIMO',
+            tokenId: input.tokenId,
+            pluggedIn: input.pluggedIn,
+            observedAt: input.observedAt,
+            receivedAt: new Date(),
+            rawPayload: input.rawPayload,
+            evidenceReferenceId,
+            inboxId: input.inboxId,
+            legacyShadow: legacyContext.legacyShadow,
+            gtR1Proof: legacyContext.gtR1Proof,
+          })
+        : null;
 
     if (writerResult?.policy?.statefulShadow) {
       if (!writerResult.physicalAccepted) {
@@ -190,11 +197,15 @@ export class DeviceConnectionWebhookService {
       };
     }
 
-    if (!gate.persist) {
+    if (!legacyContext.gate.persist) {
       this.logger.debug(
-        `Device connection ignored by policy for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,
+        `Device connection ignored by policy for vehicle ${input.vehicle.id}: ${legacyContext.gate.reason} pluggedIn=${input.pluggedIn}`,
       );
-      return { outcome: 'ignored_by_policy', eventType, policyReason: gate.reason };
+      return {
+        outcome: 'ignored_by_policy',
+        eventType,
+        policyReason: legacyContext.gate.reason,
+      };
     }
 
     return this.persistDeviceConnectionEvent({
@@ -229,6 +240,61 @@ export class DeviceConnectionWebhookService {
     });
   }
 
+  private async evaluateLegacyWebhookShadowContext(
+    vehicleId: string,
+    tokenId: number,
+    incomingPluggedIn: boolean,
+    incomingObservedAt: Date,
+  ) {
+    const lastEvent = await this.prisma.dimoDeviceConnectionEvent.findFirst({
+      where: { vehicleId, provider: 'DIMO' },
+      orderBy: { observedAt: 'desc' },
+      select: { eventType: true, observedAt: true },
+    });
+    const gate = await this.evaluateStateChangeGateFromLastEvent(
+      incomingPluggedIn,
+      incomingObservedAt,
+      lastEvent,
+      vehicleId,
+    );
+    const binding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId,
+      deviceBindingId: null,
+    });
+    const legacyShadow = buildLegacyWebhookShadowDecision({
+      gate,
+      lastEvent,
+      incomingPluggedIn,
+      incomingObservedAt,
+      bindingKey: binding.bindingKey,
+    });
+
+    const projection = await this.prisma.deviceConnectionPhysicalState.findFirst({
+      where: {
+        vehicleId,
+        provider: 'DIMO',
+        bindingKey: binding.bindingKey,
+      },
+      select: {
+        effectiveState: true,
+        evidenceObservedAt: true,
+      },
+    });
+
+    const gtR1Proof = buildWebhookStaleLegacyGateGtR1Proof({
+      legacyAccepted: gate.persist,
+      legacyEffectivePlugState: legacyShadow.effectivePlugState,
+      incomingPluggedIn,
+      incomingObservedAt,
+      physicalProjectionState: projection?.effectiveState ?? null,
+      physicalProjectionEvidenceAt: projection?.evidenceObservedAt ?? null,
+      evidenceReferenceId: `webhook:${vehicleId}:${incomingObservedAt.toISOString()}:${incomingPluggedIn ? 'plug' : 'unplug'}`,
+    });
+
+    return { gate, lastEvent, legacyShadow, gtR1Proof, binding };
+  }
+
   private async evaluateStateChangeGate(
     vehicleId: string,
     incomingPluggedIn: boolean,
@@ -239,6 +305,20 @@ export class DeviceConnectionWebhookService {
       orderBy: { observedAt: 'desc' },
       select: { eventType: true, observedAt: true },
     });
+    return this.evaluateStateChangeGateFromLastEvent(
+      incomingPluggedIn,
+      incomingObservedAt,
+      lastEvent,
+      vehicleId,
+    );
+  }
+
+  private async evaluateStateChangeGateFromLastEvent(
+    incomingPluggedIn: boolean,
+    incomingObservedAt: Date,
+    lastEvent: { eventType: DimoDeviceConnectionEventType; observedAt: Date } | null,
+    vehicleId: string,
+  ): Promise<{ persist: boolean; reason?: string }> {
     const base = shouldPersistObdPlugStateChange(incomingPluggedIn, lastEvent?.eventType);
     if (!base.persist) return base;
 
