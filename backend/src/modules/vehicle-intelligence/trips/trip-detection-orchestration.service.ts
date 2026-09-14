@@ -190,6 +190,13 @@ import {
 } from './trip-fsm-forensics.util';
 import { runTripObservabilitySafely } from './trip-fsm-observability-safe.util';
 import {
+  attachShadowToResultSummary,
+  runShadowActiveTickObservation,
+  runShadowFinalizeObservation,
+  runShadowPauseStartObservation,
+  runShadowResumeObservation,
+} from './trip-fsm-shadow-observability.integration';
+import {
   observeEndBoundaryAdjustment,
   observeEndCandidateLatency,
   observeEndRecognitionLatency,
@@ -200,6 +207,30 @@ import {
 } from './trip-fsm-timing-observability.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
+
+/** Non-authoritative shadow layer — module-level so prototype `.call(harness)` tests still work. */
+function runShadowObservabilitySafely<T>(
+  logger: { warn: (message: string) => void } | undefined,
+  name: string,
+  fn: () => T,
+): T | undefined {
+  let result: T | undefined;
+  runTripObservabilitySafely(logger, name, () => {
+    result = fn();
+  });
+  return result;
+}
+
+function mergeShadowEvidencePatch(
+  prior: Record<string, unknown>,
+  shadowPatch: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  if (!shadowPatch?.shadowObservability) return prior;
+  return {
+    ...prior,
+    shadowObservability: shadowPatch.shadowObservability,
+  };
+}
 
 @Injectable()
 export class TripDetectionOrchestrationService {
@@ -1877,6 +1908,47 @@ export class TripDetectionOrchestrationService {
           lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
         });
 
+        const shadowEmptyCorePatch = runShadowObservabilitySafely(this.logger, 
+          'shadow_provider_silence_empty_core',
+          () =>
+            runShadowActiveTickObservation({
+              vehicleId,
+              tripId,
+              activeTripId: det.activeTripId,
+              fsmState: det.state,
+              workerNow: now,
+              operationalInactiveMs: inactiveMs,
+              minInactivityBeforeCusumMs:
+                this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+              telemetry: emptyCoreVlsTelemetry,
+              profile,
+              stopBoundaryProvenance: emptyCoreGateStopBoundaryProvenance,
+              performanceActivity: emptyCoreGate.forensics.performanceActivity,
+              routeMotion: emptyCoreGate.forensics.routeMotion,
+              hasCrediblePostMovement: hasCrediblePostBoundaryMovement,
+              providerSilenceAnchorAt,
+              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt,
+              lastProviderActivityAt: readLastProviderActivityAt(evidencePatch),
+              emptyCoreForensics: emptyCoreGate.forensics,
+              realWinningEndPath: emptyCoreGate.eligible
+                ? emptyCoreGate.forensics.providerSilenceAdmissionEligible
+                  ? 'provider_silence_admitted'
+                  : emptyCoreGate.forensics.boundaryBackedSilenceEligible
+                    ? 'trusted_boundary_backed_silence'
+                    : emptyCoreGate.forensics.reason
+                : null,
+              endCycleGeneration: resolveEndCycleToken(det),
+              priorSummary: evidencePatch,
+              evaluateProviderSilence: true,
+            }),
+        );
+        if (shadowEmptyCorePatch) {
+          evidencePatch = mergeShadowEvidencePatch(
+            evidencePatch,
+            shadowEmptyCorePatch,
+          );
+        }
+
         if (
           isPauseCorroborated({
             telemetry: emptyCoreVlsTelemetry,
@@ -1906,6 +1978,35 @@ export class TripDetectionOrchestrationService {
             emptyCoreStopCandidate.boundaryAt,
             'provider_stationary_vls',
           );
+        }
+
+        if (
+          readPauseDetectedAt(evidencePatch) &&
+          !readPauseDetectedAt(priorSummary)
+        ) {
+          const pauseShadowPatch = runShadowObservabilitySafely(this.logger, 
+            'shadow_pause_start_empty_core',
+            () =>
+              runShadowPauseStartObservation({
+                vehicleId,
+                tripId,
+                activeTripId: det.activeTripId,
+                fsmState: det.state,
+                workerNow: now,
+                episodeStartSource: 'empty_core_pause_detected',
+                stopAnchorAt: readStopBoundaryAt(evidencePatch),
+                possibleEndAt: det.possibleEndAt,
+                completedAt: null,
+                restingAt: null,
+                priorSummary: evidencePatch,
+              }),
+          );
+          if (pauseShadowPatch) {
+            evidencePatch = mergeShadowEvidencePatch(
+              evidencePatch,
+              pauseShadowPatch,
+            );
+          }
         }
 
         if (emptyCoreGate.eligible) {
@@ -2010,9 +2111,12 @@ export class TripDetectionOrchestrationService {
             routePointsCount: routePoints.length,
             drivingPointsCount: perfReadings.length,
             resultState,
-            resultSummary: buildEmptyCorePossibleEndSummary(
-              emptyCoreGate.forensics,
-              effectiveOperationalAnchor.anchorAt.toISOString(),
+            resultSummary: attachShadowToResultSummary(
+              buildEmptyCorePossibleEndSummary(
+                emptyCoreGate.forensics,
+                effectiveOperationalAnchor.anchorAt.toISOString(),
+              ),
+              shadowEmptyCorePatch ?? null,
             ),
             durationMs: Date.now() - startedMs,
           });
@@ -2058,15 +2162,18 @@ export class TripDetectionOrchestrationService {
           routePointsCount: routePoints.length,
           drivingPointsCount: perfReadings.length,
           resultState,
-          resultSummary: {
-            ...buildEmptyCoreKeepOpenSummary(
-              emptyCoreGate.forensics,
-              effectiveOperationalAnchor.anchorAt.toISOString(),
-            ),
-            fetchOutcome: 'SUCCESS_EMPTY' satisfies TripTelemetryFetchOutcome,
-            nextCheckDelayMs: nextDelayMs,
-            emptyCoreDeferralStreak: deferralStreak,
-          },
+          resultSummary: attachShadowToResultSummary(
+            {
+              ...buildEmptyCoreKeepOpenSummary(
+                emptyCoreGate.forensics,
+                effectiveOperationalAnchor.anchorAt.toISOString(),
+              ),
+              fetchOutcome: 'SUCCESS_EMPTY' satisfies TripTelemetryFetchOutcome,
+              nextCheckDelayMs: nextDelayMs,
+              emptyCoreDeferralStreak: deferralStreak,
+            },
+            shadowEmptyCorePatch ?? null,
+          ),
           durationMs: Date.now() - startedMs,
         });
         return;
@@ -2718,6 +2825,27 @@ export class TripDetectionOrchestrationService {
 
       let continuityEvidencePatch = priorSummaryForCore;
       if (movementEventAt) {
+        if (readPauseDetectedAt(continuityEvidencePatch)) {
+          const resumeShadowPatch = runShadowObservabilitySafely(this.logger, 
+            'shadow_pause_resume_active_continuity',
+            () =>
+              runShadowResumeObservation({
+                vehicleId,
+                tripId,
+                activeTripId: det.activeTripId,
+                fsmState: det.state,
+                workerNow: now,
+                movementEvidenceSource: 'active_continuity_meaningful_movement',
+                priorSummary: continuityEvidencePatch,
+              }),
+          );
+          if (resumeShadowPatch) {
+            continuityEvidencePatch = mergeShadowEvidencePatch(
+              continuityEvidencePatch,
+              resumeShadowPatch,
+            );
+          }
+        }
         continuityEvidencePatch = mergeLastProviderActivityAt(
           continuityEvidencePatch,
           movementEventAt,
@@ -2775,6 +2903,29 @@ export class TripDetectionOrchestrationService {
               idleEvidence,
               idleBoundaryProvenance.boundaryAt,
             );
+            const idlePauseShadowPatch = runShadowObservabilitySafely(this.logger, 
+              'shadow_pause_start_idle_within_trip',
+              () =>
+                runShadowPauseStartObservation({
+                  vehicleId,
+                  tripId,
+                  activeTripId: det.activeTripId,
+                  fsmState: TripDetectionState.IDLE_WITHIN_TRIP,
+                  workerNow: now,
+                  episodeStartSource: 'idle_within_trip_stop_boundary',
+                  stopAnchorAt: idleBoundaryProvenance.boundaryAt,
+                  possibleEndAt: det.possibleEndAt,
+                  completedAt: null,
+                  restingAt: null,
+                  priorSummary: idleEvidence,
+                }),
+            );
+            if (idlePauseShadowPatch) {
+              idleEvidence = mergeShadowEvidencePatch(
+                idleEvidence,
+                idlePauseShadowPatch,
+              );
+            }
             await this.transitionState(
               vehicleId,
               TripDetectionState.IDLE_WITHIN_TRIP,
@@ -3797,6 +3948,15 @@ export class TripDetectionOrchestrationService {
               endDetectionMode: det.endDetectionMode ?? null,
               endConfidence: det.endConfidence ?? null,
             });
+            const shadowFinalize = runShadowObservabilitySafely(this.logger, 
+              'shadow_finalize_terminal_summary',
+              () =>
+                runShadowFinalizeObservation({
+                  vehicleId,
+                  priorSummary: det.lastEvidenceSummary as Record<string, unknown> | null,
+                  realEndPath: chosenEndSource,
+                }),
+            );
             const finalizeLayer = {
               detectionProfile: det.detectionProfile,
               startDetectionMode: det.startDetectionMode,
@@ -3829,6 +3989,9 @@ export class TripDetectionOrchestrationService {
               endCoordinateObservedAt: endCoords.endCoordinateObservedAt,
               tripFsmForensics,
               ...r5EndForensics,
+              ...(shadowFinalize?.terminalSummary
+                ? { shadowObservability: shadowFinalize.terminalSummary }
+                : {}),
             };
             terminalLifecycleIntent = 'COMPLETE';
             terminalTripId = tripId;
