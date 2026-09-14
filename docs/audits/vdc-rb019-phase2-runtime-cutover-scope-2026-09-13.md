@@ -124,10 +124,21 @@ Evidence selection by **greatest `evidenceObservedAt`** only — source type nev
 
 | Gate | Criterion |
 |------|-----------|
-| Entry | P2.4 pre-seed dry-run PASS; **UNEXPLAINED** correctness-critical divergences = 0; mixed-replica gate PASS |
+| Entry *(historical single row — clarified 2026-09-14 audit #1650)* | P2.4 pre-seed dry-run PASS; **UNEXPLAINED** correctness-critical divergences = 0; mixed-replica gate PASS |
 | Exit | GT-R1 PG suite with `authorityMode=PHYSICAL` latched, `sideEffects=false`; legacy `shouldPersistObdPlugStateChange` **never** invoked when latched |
 
 **Removed:** vague "MATCH rate ≥ threshold" as correctness substitute. Every correctness-critical divergence must be **adjudicated**.
+
+#### P2.5 gate lifecycle (clarified 2026-09-14 — [P2.5 entry-gate audit](./vdc-rb019-p25-entry-gate-readiness-2026-09-14.md))
+
+The historical **Entry** row above named three conditions without distinguishing **implementation entry** from **cutover activation**. Both interpretations are now forbidden:
+
+| Stage | Purpose | Criterion | Current status |
+|-------|---------|-----------|----------------|
+| **A. Implementation entry gate** | Allows P2.5 **code development** | P2.4 exit complete; frozen shared authority-lock contract; forward-only state-machine + latch schema + coordinator tx primitives present | **PASS / READY** (`P2_5_IMPLEMENTATION_START_READY=YES`; `REMAINING_P2_5_IMPLEMENTATION_ENTRY_BLOCKERS=NONE`) |
+| **B. Cutover activation gate** | Allows `LEGACY → PHYSICAL` latch on a scope | P2.5 implementation complete + tests P25-A..R PASS; **and** representative target/pilot pre-seed dry-run PASS; **and** operational correctness-critical `UNEXPLAINED_*` = 0; **and** mixed-replica activation gate PASS | **NOT_PROVEN** (`P2_5_CUTOVER_ACTIVATION_READY=NO`) |
+
+**Safety contract preserved:** target/pilot pre-seed evidence, operational UNEXPLAINED=0, and mixed-replica safety remain **mandatory before any PHYSICAL latch** — they are activation requirements, not implementation-entry blockers. Mixed-replica full proof may require P2.5-capable code on all replicas but does **not** block beginning P2.5 implementation.
 
 ### P2.6 — Side-effect execution + legacy snapshot resolver retirement
 
