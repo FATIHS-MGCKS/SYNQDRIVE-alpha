@@ -120,6 +120,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f4-pr4-final-closure-2026-09-14',
+    version: '4.9.1124',
+    title: 'RFRF F4-PR4 — Final F4 implementation closure audit',
+    summary: [
+      'Independent exact-main integration audit: F4-PR1 through F4-PR3.1 verified on main@22e0dd251.',
+      'Call-graph hard-stop before fallback VEE, PROMOTED, G2, BullMQ; native path non-regression proven.',
+      '212 unit + real PG gates PASS (50 PR3, 41 PR2, 6 F3-F2, F4-PR1 migration SQL); zero F4 P0/P1 blockers.',
+      'F4_IMPLEMENTATION_COMPLETE=YES; F5_START_AUTHORIZED=YES; F5 not started; production untouched.',
+    ],
+    reason:
+      'F4 phase boundary closure per EED-DEC-RFRF-006 — prove integrated F4 substrate before F5 convergence work.',
+    previousBehavior:
+      'F4 phases landed incrementally (PR1–PR3.1); no single independent exact-main closure audit existed.',
+    details:
+      'docs/audits/eed-rfrf-f4-pr4-final-closure-2026-09-14.md; EED-EV-0051',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T01:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f4-pr3-1-semantic-micro-closure-2026-09-14',
     version: '4.9.1123',
     title: 'RFRF F4-PR3.1 — SAME+INSUFFICIENT advisory fail-closed micro-closure',

@@ -1546,6 +1546,26 @@ nodes:
       zero fallback VEE; F5 not implemented; KNOWN_P1_F4_PR3_BLOCKERS=0.
     verified_at: "2026-09-14"
 
+  - id: EED-EV-0051
+    type: evidence
+    title: RFRF F4-PR4 — Final F4 implementation closure audit
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - docs/audits/eed-rfrf-f4-pr4-final-closure-2026-09-14.md
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service.ts
+      - backend/scripts/test/rfrf-f4-pr3-ready-promotion-gate.sh
+      - backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh
+      - backend/scripts/ops/prove-rfrf-f4-pr1-migration-sql.sh
+    summary: >
+      Independent exact-main F4 closure audit on main@22e0dd251: F4-PR1 through F4-PR3.1 verified;
+      call-graph hard-stop before VEE/PROMOTED; 212 unit + real PG gates PASS (50 PR3, 41 PR2, 6 F3-F2,
+      F4-PR1 migration SQL); zero F4 P0/P1 blockers; F4_IMPLEMENTATION_COMPLETE=YES;
+      F5_START_AUTHORIZED=YES; F5 not started; production untouched.
+    verified_at: "2026-09-14"
+
   - id: EED-DEC-RFRF-007
     type: decision
     title: RFRF F4.1 — Separate detection admissibility from promotion trust
