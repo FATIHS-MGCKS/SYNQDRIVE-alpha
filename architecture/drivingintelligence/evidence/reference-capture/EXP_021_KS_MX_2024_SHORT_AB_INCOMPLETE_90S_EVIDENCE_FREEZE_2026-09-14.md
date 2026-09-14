@@ -39,18 +39,22 @@
 | `VALID_90_VS_60_COMPARISON` | **NO** |
 | `VALID_FOR_CADENCE_SELECTION` | **NO** |
 | `ANOTHER_PHYSICAL_RUN_REQUIRED` | **YES** |
-| `RECORDER_CODE_CHANGE_REQUIRED` | **NO** (orchestrator path exists; runbook gap caused failure) |
+| `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN` | **NO** |
+| `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH` | **YES** |
+| `CANONICAL_NEXT_RUN_PATH` | **AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER** |
 
 ## Window partition (mandatory)
 
 | Window | Duration | Native HF buckets | RC observations |
 |--------|----------|-------------------|-----------------|
-| **A — Nominal** (T0 → T0+10m) | 10 min | **25** | **1,423** |
+| **PRE_T0** `[first, T0)` | ~3 min | **0** | **365** |
+| **A — Nominal** `[T0, T0+10m)` | 10 min | **25** | **1,058** |
 | **B — Moving overrun** | ~10.4 min | **0** | **938** |
-| **C — Post-trip tail** (trip end → freeze) | ~96.2 min | **0** | **8,792** |
+| **C — Post-trip tail** | ~96.2 min | **0** | **8,792** |
 | **D — Abort artifact** | ~2.7 min | **0** | **260** |
+| **TOTAL** | | | **11,413** (= PRE_T0+A+B+C+D) |
 
-**Critical distinction:** 25 native HF buckets ≠ 11,413 RC observation rows. HF deterministic slots stopped after slot 6 (~`11:52:53Z`); RC acquisition runner continued ~91 obs/min through the orphaned tail.
+**Critical distinction:** 25 native HF buckets ≠ 11,413 RC observation rows. Prior A=1,423 incorrectly included PRE_T0 (365)+A (1,058).
 
 ## Authoritative evidence documents
 

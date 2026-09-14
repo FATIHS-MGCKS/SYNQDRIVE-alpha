@@ -616,3 +616,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Recorder | `RECORDER_CODE_CHANGE_REQUIRED=NO`; orchestrator sole-owner runbook; regression spec defined |
 | Validation | `scripts/validate-exp021-ks-mx-forensic-invariants.sh` |
 | Evidence | `EXP_021_KS_MX_2024_SHORT_AB_INCOMPLETE_90S_FORENSIC_CONSISTENCY_2026-09-14.json` |
+
+### EXP-021 — KS MX 2024 final cross-file closure (2026-09-14)
+
+| Event | Detail |
+|-------|--------|
+| RC partition fix | PRE_T0=365, A=1058, B=938, C=8792, D=260; total 11413 (was A=1423 conflating PRE_T0+A) |
+| Provider | All representations 7/5/2; W1=4/2/2, W2=3/3/0 from slot issuedAt |
+| Gaps | Regenerated from 25 unique timestamps; full-window max 159544 ms |
+| Movement | POST_TRIP_FALSE_MOVEMENT=NOT_ASSESSED; T0_TO_TRIP_END_WALL_DURATION label |
+| Settlement | STRUCTURAL PASS; GAP_RECONSTRUCTABILITY=NOT_PROVEN |
+| Recorder | Canonical next run NO code change; mixed manual path YES guardrails needed |
+| Validation | Expanded `validate-exp021-ks-mx-forensic-invariants.sh` |

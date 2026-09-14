@@ -45,7 +45,7 @@ The 90s phase remained `ACTIVE_UNSEALED` for the **full ~116.6 minutes** from T0
 
 | Window | Start | End | Duration | Movement class |
 |--------|-------|-----|----------|----------------|
-| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | CONFIRMED_MOVING |
+| **A — Nominal protocol** | `2026-09-14T11:43:53.000Z` | `2026-09-14T11:53:53.000Z` | 600,000 ms (10 min) | CONFIRMED_MOVEMENT_PRESENT |
 | **B — Moving overrun** | `2026-09-14T11:53:53.000Z` | `2026-09-14T12:04:15.000Z` | 622,000 ms (~10.4 min) | UNKNOWN_WITH_ACTIVE_TRIP |
 | **C — Post-trip active tail** | `2026-09-14T12:04:15.000Z` | `2026-09-14T13:40:26.693Z` | 5,771,693 ms (~96.2 min) | STATIONARY |
 | **D — Abort artifact** | `2026-09-14T13:40:26.693Z` | `2026-09-14T13:43:11.614Z` | 164,921 ms (~2.7 min) | STATIONARY |
@@ -54,7 +54,18 @@ The 90s phase remained `ACTIVE_UNSEALED` for the **full ~116.6 minutes** from T0
 
 Scientific 90s analysis uses **Window A only**. Windows B–D are operational/orphaned-phase evidence, not cadence-comparison evidence.
 
-**RC partition rule:** `synq_received_at` with `[start, end)` for A/B/C; `[freeze, abort]` inclusive for D. Sum **1,423 + 938 + 8,792 + 260 = 11,413** (verified against production DB via v2 recompute).
+**RC partition rule (disjoint):** `synq_received_at` with `[start, end)` for each slice; D is `[freeze, abort]` inclusive.
+
+| Slice | Count | Rule |
+|-------|-------|------|
+| PRE_T0 | **365** | `[first obs, PHYSICAL_T0)` |
+| A | **1,058** | `[PHYSICAL_T0, NOMINAL_END)` |
+| B | **938** | `[NOMINAL_END, TRIP_END)` |
+| C | **8,792** | `[TRIP_END, FREEZE)` |
+| D | **260** | `[FREEZE, ABORT]` |
+| **TOTAL** | **11,413** | **PRE_T0+A+B+C+D** |
+
+Prior error: **1,423 = 365 + 1,058** (PRE_T0 conflated into A). Do **not** add PRE_T0 to A+B+C+D.
 
 ---
 
@@ -80,15 +91,18 @@ Derived JSON/Markdown in this PR **never outrank** the raw sources above.
 
 | Field | OLD | NEW | RAW authority |
 |-------|-----|-----|---------------|
-| Inter-bucket max reported as window max | 40,918 ms | **40,918 ms inter-bucket only** | Bucket timestamps |
-| Full-window max unobserved gap | (omitted / implied 40.9s) | **159,544 ms** (T0 → first bucket) | T0 + bucket timestamps |
-| Provider TOTAL_REQUESTS (v1 JSON slices) | 0 | **7** (5 success, 2 failure) | `phase90.counters` |
-| Slot 0/2 durability class | TRANSIENT_PROVIDER | **UNPROVEN** | No probeDetail in freeze |
-| `VALUE_REVISIONS` | 0 | **NOT_ASSESSED** | No value-snapshot diff performed |
-| `GAP_RECONSTRUCTABILITY` | qualitative "majority" | **NOT_PROVEN** | No identity-level gap mapping |
-| `POST_TRIP_FALSE_MOVEMENT` | NO | **NOT_ASSESSED** | `validMovementDurationMs=null` ≠ signal proof |
-| Gap list duplicates | YES (v1 JSON) | **NO** (deduped) | Unique timestamp pairs |
-| `VALID_90_SCIENTIFIC_EVIDENCE` | (implicit full) | **PARTIAL** | Unsealed phase, no 60s, catch-up, 2/7 ZERO_RESULT |
+| `RC_PRE_T0` | 625 | **365** | Production DB `reference_capture_observations` |
+| `RC_A` (nominal window) | 1,423 | **1,058** | Same (1,423 conflated PRE_T0+A) |
+| Inter-bucket max | 40,918 ms (mislabeled as window max) | **40,918 ms inter-bucket only** | Bucket timestamps |
+| Full-window max unobserved gap | (omitted) | **159,544 ms** | T0 → first bucket |
+| Provider TOTAL_REQUESTS (v1 slices) | 0 | **7** (W1:4, W2:3) | Slot issuedAt timestamps |
+| Slot 0/2 durability | TRANSIENT_PROVIDER | **UNPROVEN** | No probeDetail in freeze |
+| `VALUE_REVISIONS` | 0 | **NOT_ASSESSED** | No value-snapshot diff |
+| `GAP_RECONSTRUCTABILITY` | "majority recovered" | **NOT_PROVEN** | No identity-level mapping |
+| `POST_TRIP_FALSE_MOVEMENT` | NO | **NOT_ASSESSED** | null validMovement ≠ signal proof |
+| Wall duration label | ACTUAL_MOVING_DURATION | **T0_TO_TRIP_END_WALL_DURATION** | Trip end − T0 |
+| Gap list duplicates | YES | **NO** | Unique timestamp pairs |
+| Settlement reconstructability verdict | YES | **STRUCTURAL PASS / GAP NOT_PROVEN** | 114/114 terminal SUCCESS |
 
 ---
 
@@ -220,12 +234,12 @@ Chronological event ledger (millisecond where available):
 
 | Window | RC observations | % of total | Primary kind |
 |--------|-----------------|------------|--------------|
-| Pre-T0 (recording→T0) | 625 | 5.5% | SIGNAL_POINT |
-| **A — Nominal** | **1,423** | 12.5% | SIGNAL_POINT |
-| **B — Moving overrun** | **938** | 8.2% | SIGNAL_POINT |
-| **C — Post-trip tail** | **8,792** | **77.0%** | SIGNAL_POINT |
-| **D — Abort artifact** | 260 | 2.3% | SIGNAL_POINT |
-| **Total** | **11,413** | 100% | |
+| **PRE_T0** `[first, T0)` | **365** | 3.2% | 1 SESSION_METADATA + 364 SIGNAL_POINT |
+| **A — Nominal** `[T0, T0+10m)` | **1,058** | 9.3% | SIGNAL_POINT |
+| **B — Overrun** | **938** | 8.2% | SIGNAL_POINT |
+| **C — Post-trip tail** | **8,792** | 77.0% | SIGNAL_POINT |
+| **D — Abort artifact** | **260** | 2.3% | SIGNAL_POINT |
+| **Total** | **11,413** | 100% | PRE_T0+A+B+C+D |
 
 **Reconciliation:** 25 native HF buckets = unique temporal bucket starts from 5 successful HF historical polls. 11,413 RC rows = ~1,215 acquisition cycles × ~9.4 obs/cycle over ~119 min RECORDING. RC runner (~10 cycles/min) continued throughout the entire orphaned phase; HF deterministic slots stopped after slot 6.
 
@@ -256,11 +270,11 @@ Prior canonicalKey lookup returned 0 rows because signals are stored under provi
 
 | Slice | Wall | Class | Native HF | RC obs | RC obs/min | Notes |
 |-------|------|-------|-----------|--------|------------|-------|
-| W1 (0–5m) | 5 min | MOVING | 6 | 487 | 97.4 | HF slots firing |
-| W2 (5–10m) | 5 min | MOVING | 19 | 571 | 114.2 | Peak HF + RC density |
-| W3 (10–15m) | 5 min | MOVING | 0 | 452 | 90.4 | Overrun; no HF slots |
-| W4 (15–20m) | 5 min | MOVING | 0 | 466 | 93.2 | Overrun |
-| W5 (20–25m) | 5 min | MIXED | 0 | 442 | 88.4 | Trip ending |
+| W1 (0–5m) | 5 min | CONFIRMED_MOVEMENT_PRESENT | 6 | 487 | 97.4 | HF slots 0–3 (4 req, 2 ok) |
+| W2 (5–10m) | 5 min | CONFIRMED_MOVEMENT_PRESENT | 19 | 571 | 114.2 | HF slots 4–6 (3 ok) |
+| W3 (10–15m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 452 | 90.4 | Overrun; no HF slots |
+| W4 (15–20m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 466 | 93.2 | Overrun |
+| W5 (20–25m) | 5 min | UNKNOWN_WITH_ACTIVE_TRIP | 0 | 442 | 88.4 | Trip ending |
 | W6 (25–30m) | 5 min | STATIONARY | 0 | 471 | 94.2 | Post-trip tail begins |
 | W7 (30–45m) | 15 min | STATIONARY | 0 | 1,365 | 91.0 | Orphaned phase |
 | W8 (45–60m) | 15 min | STATIONARY | 0 | 1,355 | 90.3 | Steady RC capture |
@@ -315,7 +329,7 @@ No provider degradation observable; acquisition architecture simply did not sche
 | `POST_TRIP_FALSE_TRIP_ACTIVITY` | **NO** |
 | `POST_TRIP_SETTLEMENT` | **NONE** — all 114 completed by `12:03:53Z` |
 | `POST_TRIP_TELEMETRY_BEHAVIOR` | RC broad capture continues (stationary SIGNAL_POINT); no HF slots |
-| `TAIL_INTEGRITY` | **PASS** (no false movement/trip); phase seal **FAIL** (ownership gap) |
+| `TAIL_INTEGRITY` | **PASS** (no new HF slots / trip reopen / duplicate work); false movement **NOT_ASSESSED**; phase seal **FAIL** |
 
 ---
 
@@ -324,8 +338,8 @@ No provider degradation observable; acquisition architecture simply did not sche
 | # | Question | Answer |
 |---|----------|--------|
 | 1 | Did RC observations continue during ~96 min post-trip tail? | **YES** — 8,792 rows (77% of total) |
-| 2 | Observation partition of 11,413? | A: 1,423 · B: 938 · C: 8,792 · D: 260 (+ 625 pre-T0) |
-| 3 | Did `validMovementDuration` stop correctly? | **YES** — remained `null`; no false accumulation |
+| 2 | Observation partition of 11,413? | PRE_T0: 365 · A: 1,058 · B: 938 · C: 8,792 · D: 260 |
+| 3 | Did `validMovementDuration` stop correctly? | **YES** — remained `null`; false movement **NOT_ASSESSED** |
 | 4 | Provider HF requests after 7 slots? | **NO** — last slot ~`11:52:53Z`; RC cycles continued |
 | 5 | Settlement during tail? | **NO** — 67 in A + 47 in B = 114; last at `12:03:53Z` |
 | 6 | Trip FSM RESTING while EXP-021 active? | **YES** — RESTING from `12:06:47Z`; RC RECORDING until abort |
@@ -431,7 +445,7 @@ Failures isolated to slots 0 and 2; slots 1 and 3–6 succeeded — not broad in
 |-------|-----------------|
 | A. First 10 minutes | **YES** (standalone 90s with degradation) |
 | B. Moving overrun | **LIMITED** (no additional HF data) |
-| C. Post-trip tail | **YES** (runtime integrity — no false movement) |
+| C. Post-trip tail | **YES** (scheduler/trip boundary integrity; false movement NOT_ASSESSED) |
 | D. 90 vs 60 comparison | **NO** (60s never ran) |
 
 ---
@@ -445,7 +459,7 @@ Failures isolated to slots 0 and 2; slots 1 and 3–6 succeeded — not broad in
 | 3 | Provider success sufficient? | **MARGINAL** (5/7 = 71%) |
 | 4 | Native telemetry density acceptable? | **MARGINAL** (2.5 bkt/min; max gap 41s) |
 | 5 | Gap behavior acceptable? | **MARGINAL** (17 gaps ≥10s in 10 min) |
-| 6 | Settlement improved reconstructability? | **YES** (114/114 SUCCESS) |
+| 6 | Settlement structural completeness? | **PASS** (114/114 SUCCESS); gap reconstructability **NOT_PROVEN** |
 | 7 | Long-duration 90s stable? | **INCONCLUSIVE** (no post-10min HF data) |
 | 8 | Excessive provider cost? | **NO** (only 7 requests) |
 | 9 | New defect from prolonged phase? | **YES** — ownership gap (no 90→60 seal) |
@@ -511,9 +525,13 @@ Mixed manual FAST GO + detached T0 watcher left no owner for wall-clock phase tr
 
 ## Phase 19 — Recorder repair requirement (spec only — NOT implemented)
 
-`RECORDER_CODE_CHANGE_REQUIRED = **NO**`
+| Proposition | Answer |
+|-------------|--------|
+| `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN` | **NO** |
+| `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH` | **YES** |
+| `CANONICAL_NEXT_RUN_PATH` | **AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER** |
 
-Deployed orchestrator already implements the full lifecycle when started as **sole owner**. Today's failure was operator runbook: manual PRE-ARM + FAST GO + detached T0 watcher without starting the orchestrator.
+Deployed orchestrator implements the full lifecycle when started as **sole owner**. Today's failure was operator runbook: manual PRE-ARM + FAST GO + detached T0 watcher without orchestrator ownership stamp.
 
 **Canonical next-run procedure:**
 
@@ -571,11 +589,11 @@ TRIP_PHYSICAL_END = 2026-09-14T12:04:15.000Z
 FORENSIC_FREEZE_AT = 2026-09-14T13:40:26.693Z
 90_PHASE_ACTIVE_DURATION_AT_FREEZE = 6,993,693 ms (~116.6 min)  [AUTHORITY]
 ABORT_SUMMARY_DURATION = 7,158,588 ms (~119.3 min)  [ARTIFACT ONLY]
-ACTUAL_MOVING_DURATION = 1,222,000 ms (~20.4 min)
+T0_TO_TRIP_END_WALL_DURATION = 1,222,000 ms (~20.4 min)
 POST_TRIP_ACTIVE_TAIL_DURATION = 5,771,693 ms (~96.2 min)
 
 NATIVE_HF_BUCKETS = 25 (all Window A)
-RC_OBSERVATIONS = 11,413 (A:1423, B:938, C:8792, D:260)
+RC_OBSERVATIONS = 11,413 (PRE_T0:365, A:1058, B:938, C:8792, D:260)
 NOMINAL_0_10_MIN: native=25, provider 5/7, STATUS=DEGRADED
 SLOTS: 7/7 issued, 5 SUCCESS, 2 FAILURE (ZERO_RESULT)
 SETTLEMENT: 114/114 SUCCESS (completed before trip end)
@@ -588,11 +606,11 @@ PHASE_OVERRUN_ROOT_CAUSE = OWNERSHIP_GAP
 
 1. **90s phase active ~116.6 min** (not ~25.5 min) — pre-abort freeze is timeline authority; abort summary is artifact only.
 2. **#1621 corrections validated** — 7/7 slots, 19/19 settlement windows vs KS MS 661's 4/7 and 9/19.
-3. **25 native HF buckets ≠ 11,413 RC observations** — HF slots stopped at T0+9m; RC runner continued ~91 obs/min for entire orphaned tail (8,792 stationary rows).
-4. **Settlement completed before trip end** — all 114 by `12:03:53Z`; no settlement during 96 min post-trip tail.
-5. **Post-trip tail integrity PASS** for scheduler/trip boundaries — no new HF slots, no trip reopen, no duplicate experiment work; false movement **NOT_ASSESSED**.
-6. **Full-window max unobserved gap = 159,544 ms** (start-edge), not 40.9 s inter-bucket max.
-7. **Recorder repair:** code change **not required** — orchestrator path exists; next run must use it as sole owner.
+3. **RC partition corrected** — PRE_T0=365, A=1,058 (not 1,423); total 11,413 = PRE_T0+A+B+C+D.
+4. **25 native HF buckets ≠ 11,413 RC observations** — HF slots stopped at T0+9m; RC runner continued through tail.
+5. **Settlement structural PASS** (114/114); gap reconstructability **NOT_PROVEN**.
+6. **Full-window max unobserved gap = 159,544 ms** (start-edge).
+7. **Recorder:** canonical next run = orchestrator sole owner (**no code change required**); mixed manual path would need guardrails (**yes**).
 
 `PROVIDER_COUNTS_CONSISTENT = YES` · `FORENSIC_EVIDENCE_CONSISTENT = YES` · `READY_TO_FINALIZE_PR1645 = YES`
 

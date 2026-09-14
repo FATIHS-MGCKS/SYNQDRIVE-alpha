@@ -53,16 +53,40 @@
     "totalPreserved": 11413,
     "firstAt": "2026-09-14T11:40:13.333Z",
     "lastAt": "2026-09-14T13:43:11.191Z",
+    "disjointPartition": {
+      "preT0": 365,
+      "A_nominal": 1058,
+      "B_movingOverrun": 938,
+      "C_postTripTail": 8792,
+      "D_abortArtifact": 260,
+      "sumEqualsTotal": true,
+      "inclusionRules": {
+        "preT0": "[first observation, PHYSICAL_T0) — disjoint pre-roll slice",
+        "A": "[PHYSICAL_T0, NOMINAL_END)",
+        "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
+        "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
+        "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
+        "note": "PRE_T0 + A + B + C + D = TOTAL. A is NOT inclusive of PRE_T0."
+      }
+    },
     "byWindow": {
-      "A_nominal": 1423,
+      "preT0": 365,
+      "A_nominal": 1058,
       "B_movingOverrun": 938,
       "C_postTripTail": 8792,
       "D_abortArtifact": 260
     },
+    "byKindTotal": {
+      "SESSION_METADATA": 1,
+      "SIGNAL_POINT": 11412
+    },
     "byKindByWindow": {
-      "A_nominal": {
+      "preT0": {
         "SESSION_METADATA": 1,
-        "SIGNAL_POINT": 1422
+        "SIGNAL_POINT": 364
+      },
+      "A_nominal": {
+        "SIGNAL_POINT": 1058
       },
       "B_movingOverrun": {
         "SIGNAL_POINT": 938
@@ -74,26 +98,7 @@
         "SIGNAL_POINT": 260
       }
     },
-    "hourlyHistogram": [
-      {
-        "hour": "2026-09-14T11",
-        "count": 1983
-      },
-      {
-        "hour": "2026-09-14T12",
-        "count": 5488
-      },
-      {
-        "hour": "2026-09-14T13",
-        "count": 3942
-      }
-    ],
-    "reconciliation": {
-      "explanation": "RC runner executes ~3s acquisition cycles (LATEST_LIVE + NATIVE_EVENT_INCREMENTAL surfaces), writing many SIGNAL_POINT and NATIVE_EVENT rows per cycle. HF deterministic slots (7 total) produce native temporal bucket list (25 unique starts from 5 successes). The 11,413 rows are continuous reference capture, not 11,413 HF buckets.",
-      "preAbortCycleCount": 1215,
-      "approxCyclesPerMinute": 10.15505190150909,
-      "avgObsPerCycle": 9.393415637860082
-    }
+    "note": "A+B+C+D=11048; PRE_T0+A+B+C+D=11413. Do not add PRE_T0 to A."
   },
   "settlementShadow": {
     "totalObservations": 114,
@@ -218,112 +223,74 @@
   },
   "extendedTimeSlices": {
     "other": {
-      "rcObservations": 625,
+      "rcObservations": 365,
       "byKind": {
         "SESSION_METADATA": 1,
-        "SIGNAL_POINT": 1
+        "SIGNAL_POINT": 364
       },
-      "nativeHfBuckets": 0
+      "BY_KIND_COUNTS": "ASSESSED",
+      "nativeHfBuckets": 0,
+      "movementClass": "PRE_ROLL_RECORDING"
     },
     "W1": {
       "rcObservations": 487,
       "byKind": {
-        "SIGNAL_POINT": 1
+        "SIGNAL_POINT": 487
       },
+      "BY_KIND_COUNTS": "ASSESSED",
       "nativeHfBuckets": 6,
-      "wallDurationMs": 300000,
       "rcObsPerMin": 97.4,
-      "movementClass": "MOVING"
+      "movementClass": "CONFIRMED_MOVEMENT_PRESENT"
     },
     "W2": {
       "rcObservations": 571,
       "byKind": {
-        "SIGNAL_POINT": 1
+        "SIGNAL_POINT": 571
       },
+      "BY_KIND_COUNTS": "ASSESSED",
       "nativeHfBuckets": 19,
-      "wallDurationMs": 300000,
       "rcObsPerMin": 114.2,
-      "movementClass": "MOVING"
+      "movementClass": "CONFIRMED_MOVEMENT_PRESENT"
     },
     "W3": {
-      "rcObservations": 452,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 300000,
-      "rcObsPerMin": 90.4,
-      "movementClass": "MOVING"
+      "movementClass": "UNKNOWN_WITH_ACTIVE_TRIP"
     },
     "W4": {
-      "rcObservations": 466,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 300000,
-      "rcObsPerMin": 93.2,
-      "movementClass": "MOVING"
+      "movementClass": "UNKNOWN_WITH_ACTIVE_TRIP"
     },
     "W5": {
-      "rcObservations": 442,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 300000,
-      "rcObsPerMin": 88.4,
-      "movementClass": "MIXED"
+      "movementClass": "UNKNOWN_WITH_ACTIVE_TRIP"
     },
     "W6": {
-      "rcObservations": 471,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 300000,
-      "rcObsPerMin": 94.2,
       "movementClass": "STATIONARY"
     },
     "W7": {
-      "rcObservations": 1365,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 900000,
-      "rcObsPerMin": 91,
       "movementClass": "STATIONARY"
     },
     "W8": {
-      "rcObservations": 1355,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 900000,
-      "rcObsPerMin": 90.33333333333333,
       "movementClass": "STATIONARY"
     },
     "W9": {
-      "rcObservations": 2754,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 1800000,
-      "rcObsPerMin": 91.8,
       "movementClass": "STATIONARY"
     },
     "W10": {
-      "rcObservations": 2425,
-      "byKind": {
-        "SIGNAL_POINT": 1
-      },
+      "BY_KIND_COUNTS": "NOT_ASSESSED",
       "nativeHfBuckets": 0,
-      "wallDurationMs": 1593693,
-      "rcObsPerMin": 91.29738287110503,
-      "movementClass": "STATIONARY"
+      "movementClass": "UNKNOWN_WITH_ACTIVE_TRIP"
     }
   },
   "tenCriticalQuestions": {
@@ -332,14 +299,16 @@
       "C_postTripTail_count": 8792
     },
     "Q2_observationPartition": {
-      "A_nominal": 1423,
+      "RC_PRE_T0": 365,
+      "A_nominal": 1058,
       "B_movingOverrun": 938,
       "C_postTripTail": 8792,
       "D_abortArtifact": 260,
-      "total": 11413
+      "total": 11413,
+      "arithmetic": "PRE_T0+A+B+C+D=11413"
     },
     "Q3_validMovementStopped": {
-      "answer": "YES — validMovementDurationMs remained null throughout; no false accumulation",
+      "answer": "validMovementDurationMs remained null throughout; false physical movement NOT_ASSESSED from null alone",
       "preAbort": null
     },
     "Q4_providerRequestsAfterSlots": {
@@ -374,12 +343,16 @@
     "Q7_orphanedPhaseAnomalies": {
       "duplicateObservations": "NO evidence of duplicate slot/settlement execution",
       "queueGrowth": "RC runner continued (~1215 cycles pre-freeze) — expected for RECORDING session",
-      "memoryGrowth": "UNKNOWN — not measured; cycleCount linear with wall time",
+      "memoryGrowth": "UNKNOWN",
       "duplicateExecution": "NO — settlement idempotency keys unique (114 rows)",
       "schedulerAnomalies": "NO split-brain; single session runner",
-      "staleTelemetryAsFresh": "RC cycles ingest latest live signals — stationary vehicle yields low-velocity readings, not misclassified as movement",
-      "falseMovement": "NO — validMovementDurationMs null",
-      "falseTripReopening": "NO — Trip FSM stayed RESTING"
+      "staleTelemetryAsFresh": "NOT_ASSESSED at signal level",
+      "falseMovement": "NOT_ASSESSED",
+      "falseTripReopening": "NO — Trip FSM stayed RESTING",
+      "POST_TRIP_NEW_HF_SLOT_EXECUTION": 0,
+      "POST_TRIP_NATIVE_HF_BUCKETS": 0,
+      "POST_TRIP_NEW_TRIP_OPENED": "NO",
+      "TRIP_FSM_RESTING_COMPLETED": "YES"
     },
     "Q8_nativeVsRcObservations": {
       "NATIVE_HF_BUCKETS": 25,
@@ -406,51 +379,117 @@
     "VALID_FOR_CADENCE_SELECTION": "NO"
   },
   "consistency": {
-    "generatedAtUtc": "2026-09-14T15:54:21.766Z",
-    "freezeVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v3",
+    "generatedAtUtc": "2026-09-14T16:19:22.799Z",
+    "freezeVersion": "EXP-021-KS-MX-2024-FORENSIC-CONSISTENCY-v4",
     "productionSha": "d1501d171c1cc6dc4b83b2720e3a96549ef24185",
-    "authorityMap": {
-      "slotLedger": "pre-abort forensic freeze JSON phase90.slots + v1 phase3_slotLedgerPreAbortFreeze",
-      "providerCounters": "pre-abort freeze phase90.counters (allRequestCount=7)",
-      "nativeHfBuckets": "pre-abort freeze phase90.nativeBuckets.bucketTimestamps (25)",
-      "settlementRows": "reference_capture_settlement_shadow_observations DB + v1 phase10_settlement matrix",
-      "rcObservations": "reference_capture_observations DB synq_received_at partition (v2)",
-      "tripFsm": "run-monitor jsonl + vehicle_trips.end_time",
-      "t0Timeline": "t0-watcher jsonl + T0_ACTIVATED event",
-      "orchestratorOwnership": "incomplete-short-ab forensic freeze lifecycle section + deployed orchestrator source"
-    },
-    "t0Timeline": {
-      "T0_EFFECTIVE_AT": "2026-09-14T11:43:53.000Z",
-      "T0_FIRST_OBSERVED_AT": "2026-09-14T11:44:08.526Z",
-      "T0_CONFIRMATION_STARTED_AT": "2026-09-14T11:44:08.031Z",
-      "T0_CONFIRMED_AT": "2026-09-14T11:46:25.216Z",
-      "T0_PERSISTED_AT": "2026-09-14T11:46:27.198Z",
-      "PHYSICAL_PHASE_ACTIVATED_AT": "2026-09-14T11:46:27.198Z",
-      "T0_ACTIVATION_LAG_MS": 154198,
-      "reanchorRule": "Deployed rule: firstQualifyingMovementAt backdated to canonicalT0At when 4+ qualifying samples confirm movement; persisted authority immutable after seal."
+    "metricCorrections": [
+      {
+        "field": "RC_A",
+        "OLD_VALUE": 1423,
+        "NEW_VALUE": 1058,
+        "REASON": "1423 conflated PRE_T0+A; DB disjoint partition",
+        "RAW_AUTHORITY": "reference_capture_observations WHERE session_id=332c1549-... production DB 2026-09-14"
+      },
+      {
+        "field": "RC_PRE_T0",
+        "OLD_VALUE": 625,
+        "NEW_VALUE": 365,
+        "REASON": "Stale derived count; production DB recount",
+        "RAW_AUTHORITY": "reference_capture_observations WHERE session_id=332c1549-... production DB 2026-09-14"
+      }
+    ],
+    "rcObservationPartition": {
+      "inclusionRules": {
+        "preT0": "[first observation, PHYSICAL_T0) — disjoint pre-roll slice",
+        "A": "[PHYSICAL_T0, NOMINAL_END)",
+        "B": "[NOMINAL_END, TRIP_PHYSICAL_END)",
+        "C": "[TRIP_PHYSICAL_END, FORENSIC_FREEZE)",
+        "D": "[FORENSIC_FREEZE, CONTROLLED_ABORT] inclusive",
+        "note": "PRE_T0 + A + B + C + D = TOTAL. A is NOT inclusive of PRE_T0."
+      },
+      "RC_TOTAL_PERSISTED": 11413,
+      "RC_PRE_T0": 365,
+      "RC_A": 1058,
+      "RC_B": 938,
+      "RC_C": 8792,
+      "RC_D": 260,
+      "RC_PARTITION_ARITHMETIC_VALID": true,
+      "byKindTotal": {
+        "SESSION_METADATA": 1,
+        "SIGNAL_POINT": 11412
+      },
+      "note": "PRE_T0+A+B+C+D=TOTAL. Prior error conflated PRE_T0 into A (1423=365+1058)."
     },
     "providerCounts": {
       "TOTAL_REQUESTS": 7,
       "TOTAL_SUCCESS": 5,
       "TOTAL_FAILURE": 2,
-      "SUCCESS_RATE_EXACT": 0.7142857142857143,
-      "SUCCESS_RATE_DISPLAY": "71.428571%",
-      "failures": [
-        {
-          "slotIndex": 0,
-          "cause": "ZERO_RESULT",
-          "httpError": false,
-          "authError": false,
-          "timeout": false
-        },
-        {
-          "slotIndex": 2,
-          "cause": "ZERO_RESULT",
-          "httpError": false,
-          "authError": false,
-          "timeout": false
-        }
-      ]
+      "SUCCESS_RATE_EXACT": "71.428571%",
+      "W1": {
+        "requests": 4,
+        "success": 2,
+        "failure": 2
+      },
+      "W2": {
+        "requests": 3,
+        "success": 3,
+        "failure": 0
+      }
+    },
+    "nativeHfBuckets": {
+      "count": 25,
+      "INTER_BUCKET_INTERVAL_COUNT": 24,
+      "interBucketOnly": {
+        "INTER_BUCKET_GAPS_GTE_10": 17,
+        "INTER_BUCKET_GAPS_GTE_20": 7,
+        "INTER_BUCKET_GAPS_GTE_30": 2,
+        "INTER_BUCKET_GAPS_GTE_60": 0,
+        "INTER_BUCKET_MAX": 40918
+      },
+      "windowEdgeGaps": {
+        "START_EDGE_GAP_MS": 159544,
+        "END_EDGE_GAP_MS": 66799
+      },
+      "fullWindowCoverage": {
+        "FULL_WINDOW_MAX_UNOBSERVED_GAP_MS": 159544,
+        "FULL_WINDOW_GAPS_GTE_10": 19,
+        "FULL_WINDOW_GAPS_GTE_20": 9,
+        "FULL_WINDOW_GAPS_GTE_30": 4,
+        "FULL_WINDOW_GAPS_GTE_60": 2
+      },
+      "GAP_LIST_HAS_DUPLICATES": false
+    },
+    "movement": {
+      "CANONICAL_VALID_MOVEMENT_DURATION": null,
+      "T0_TO_TRIP_END_WALL_DURATION_MS": 1222000,
+      "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED"
+    },
+    "settlement": {
+      "NOMINAL_SETTLEMENT_WINDOWS": 19,
+      "SETTLEMENT_AGES": 6,
+      "SETTLEMENT_EXPECTED_ROWS": 114,
+      "SETTLEMENT_ACTUAL_ROWS": 114,
+      "SUCCESS": 114,
+      "SETTLEMENT_STRUCTURAL_COMPLETENESS": "PASS",
+      "VALUE_REVISIONS": "NOT_ASSESSED",
+      "GAP_RECONSTRUCTABILITY": "NOT_PROVEN"
+    },
+    "scientificClassification": {
+      "VALID_T0_EVIDENCE": "YES",
+      "VALID_90_OPERATIONAL_EVIDENCE": "YES",
+      "VALID_90_SCIENTIFIC_EVIDENCE": "PARTIAL",
+      "VALID_90_VS_60_COMPARISON": "NO",
+      "VALID_FOR_PRODUCTION_CADENCE_SELECTION": "NO",
+      "1621_SLOT_FIX_PHYSICAL_ACCEPTANCE": "PASS",
+      "1621_SETTLEMENT_GEOMETRY_PHYSICAL_ACCEPTANCE": "PASS"
+    },
+    "recorderRepair": {
+      "RECORDER_FAILURE_CLASS": "OWNERSHIP_GAP",
+      "90_TO_60_BLOCKED_BY_TELEMETRY": "NO",
+      "RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN": "NO",
+      "CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH": "YES",
+      "CANONICAL_NEXT_RUN_PATH": "AUTONOMOUS_ORCHESTRATOR_SOLE_OWNER",
+      "SUPPORTED_COMPLETE_LIFECYCLE_OWNER": "reference-capture-exp-021-autonomous-orchestrator.ts"
     },
     "slots": [
       {
@@ -525,155 +564,6 @@
         "durabilityClass": "UNPROVEN",
         "nativeBucketCount": 5
       }
-    ],
-    "slotZeroResultForensics": {
-      "slot0": {
-        "SLOT_0_ZERO_RESULT_CAUSE": "PROVIDER_ZERO_RESULT",
-        "SLOT_0_CATCHUP_CONTRIBUTION": "YES",
-        "SLOT_0_PROVIDER_TRANSIENT_PROVEN": "NO",
-        "detail": "Slot 0 issued 159,519 ms after scheduledAt; HF activation lagged canonical T0 by 154,198 ms. Provider returned ZERO_RESULT (not HTTP/auth/timeout). Probe interval fully historical at issue time; catch-up timing plausibly contributory. Transient-provider classification NOT proven — probeDetail unavailable in freeze.",
-        "requestedIntervalHistoricalAtIssue": true,
-        "issueLagMs": 159519
-      },
-      "slot2": {
-        "SLOT_2_ZERO_RESULT_CAUSE": "PROVIDER_ZERO_RESULT",
-        "SLOT_2_CATCHUP_CONTRIBUTION": "MARGINAL",
-        "SLOT_2_PROVIDER_TRANSIENT_PROVEN": "NO",
-        "detail": "Slot 2 issued 3,384 ms after scheduledAt (26 s after server activation). ZERO_RESULT without HTTP/auth/timeout. Catch-up less severe than slot 0; independent provider empty result cannot be ruled transient without probe metadata.",
-        "issueLagMs": 3384
-      }
-    },
-    "nativeHfBuckets": {
-      "count": 25,
-      "UNIQUE_NATIVE_BUCKETS": 25,
-      "INTER_BUCKET_INTERVAL_COUNT": 24,
-      "EXPECTED_INTERVAL_COUNT": 24,
-      "GAP_LIST_HAS_DUPLICATES": false,
-      "interBucketOnly": {
-        "INTER_BUCKET_P50": 17000,
-        "INTER_BUCKET_P75": 20000,
-        "INTER_BUCKET_P90": 21000,
-        "INTER_BUCKET_P95": 37868,
-        "INTER_BUCKET_P99": 40918,
-        "INTER_BUCKET_MAX": 40918,
-        "INTER_BUCKET_GAPS_GTE_10": 17,
-        "INTER_BUCKET_GAPS_GTE_20": 7,
-        "INTER_BUCKET_GAPS_GTE_30": 2,
-        "INTER_BUCKET_GAPS_GTE_60": 0
-      },
-      "windowEdgeGaps": {
-        "START_EDGE_GAP_MS": 159544,
-        "END_EDGE_GAP_MS": 66799
-      },
-      "fullWindowCoverage": {
-        "FULL_WINDOW_MAX_UNOBSERVED_GAP_MS": 159544,
-        "FULL_WINDOW_GAPS_GTE_10": 19,
-        "FULL_WINDOW_GAPS_GTE_20": 9,
-        "FULL_WINDOW_GAPS_GTE_30": 4,
-        "FULL_WINDOW_GAPS_GTE_60": 2
-      },
-      "FIRST_TO_LAST_NATIVE_BUCKET_SPAN_MS": 373657,
-      "FIRST_TO_LAST_NATIVE_BUCKET_SPAN_PCT_OF_NOMINAL_WINDOW": 62.27616666666667,
-      "note": "Bucket timestamp span is NOT telemetry coverage; distinct from inter-bucket continuity and full-window unobserved edges."
-    },
-    "movement": {
-      "CANONICAL_VALID_MOVEMENT_DURATION": null,
-      "T0_TO_TRIP_END_WALL_DURATION_MS": 1222000,
-      "windowMovementClass": {
-        "A_nominal": "CONFIRMED_MOVING",
-        "B_movingOverrun": "UNKNOWN_WITH_ACTIVE_TRIP",
-        "C_postTripTail": "STATIONARY",
-        "D_abortArtifact": "STATIONARY"
-      },
-      "POST_TRIP_FALSE_MOVEMENT": "NOT_ASSESSED"
-    },
-    "postTripTail": {
-      "POST_TRIP_NEW_HF_SLOT_EXECUTION": 0,
-      "POST_TRIP_NATIVE_HF_BUCKETS": 0,
-      "POST_TRIP_NEW_TRIP_OPENED": "NO",
-      "POST_TRIP_TRIP_FSM_ACTIVITY": "RESTING/COMPLETED",
-      "POST_TRIP_SETTLEMENT_EXECUTION": 0,
-      "POST_TRIP_RC_OBSERVATIONS": 8792
-    },
-    "dataLayers": {
-      "HF_BUCKET_LAYER": "Producer: HF deterministic slot historical polls (5 successes). Persistence: acquisitionState native temporal bucket starts (25 unique). Cadence: per 90s slot success. Scientific role: native HF fast-loop density. Stops after slot 6.",
-      "SETTLEMENT_LAYER": "Producer: settlement shadow scheduler (19 WALL_CLOCK windows × 6 ages). Persistence: reference_capture_settlement_shadow_observations (114 rows). Scientific role: maturation/reconstructability probe. Completed before trip end.",
-      "RC_OBSERVATION_LAYER": "Producer: RC acquisition runner (~3s cycles, LATEST_LIVE + SIGNAL_POINT). Persistence: reference_capture_observations (11,413 rows). Lifecycle: continues through orphaned tail until abort."
-    },
-    "rcObservationPartition": {
-      "inclusionRule": "synq_received_at: [start, end) for A/B/C; [freeze, abort] inclusive for D",
-      "WINDOW_A_0_10MIN_RC_OBSERVATIONS": 1423,
-      "WINDOW_B_10MIN_TO_TRIP_END_RC_OBSERVATIONS": 938,
-      "WINDOW_C_TRIP_END_TO_FREEZE_RC_OBSERVATIONS": 8792,
-      "WINDOW_D_FREEZE_TO_ABORT_RC_OBSERVATIONS": 260,
-      "RC_OBSERVATIONS_TOTAL": 11413,
-      "RC_OBSERVATION_PARTITION_VALID": true
-    },
-    "signalCompleteness": {
-      "CANONICAL_KEY_AVAILABILITY": "NOT_ASSESSED",
-      "PROVIDER_FIELD_PATH_AVAILABILITY": "NOT_ASSESSED",
-      "SIGNAL_LEVEL_ASSESSABILITY": "NOT_ASSESSED"
-    },
-    "settlement": {
-      "NOMINAL_SETTLEMENT_WINDOWS": 19,
-      "SETTLEMENT_AGES": 6,
-      "SETTLEMENT_EXPECTED_ROWS": 114,
-      "SETTLEMENT_ACTUAL_ROWS": 114,
-      "SUCCESS": 114,
-      "ZERO_RESULT": 0,
-      "FAILURE": 0,
-      "SKIPPED": 0,
-      "PENDING": 0,
-      "LATE_IDENTITY_ADDITIONS": 148,
-      "VALUE_REVISIONS": "NOT_ASSESSED",
-      "GAP_RECONSTRUCTABILITY": "NOT_PROVEN"
-    },
-    "scientificClassification": {
-      "VALID_T0_EVIDENCE": "YES",
-      "VALID_90_OPERATIONAL_EVIDENCE": "YES",
-      "VALID_90_SCIENTIFIC_EVIDENCE": "PARTIAL",
-      "VALID_90_VS_60_COMPARISON": "NO",
-      "VALID_FOR_PRODUCTION_CADENCE_SELECTION": "NO",
-      "1621_SLOT_FIX_PHYSICAL_ACCEPTANCE": "PASS",
-      "1621_SETTLEMENT_GEOMETRY_PHYSICAL_ACCEPTANCE": "PASS"
-    },
-    "recorderOwnership": {
-      "OWNER_PREARM": "MANUAL_OPERATOR (reference-capture-lte-r1-prearm.ts)",
-      "OWNER_FAST_GO": "MANUAL_OPERATOR (reference-capture-lte-r1-fast-go.ts)",
-      "OWNER_T0": "MANUAL_ONE_SHOT_WATCHER (exp021-ks-mx-2024-t0-watcher-once.ts)",
-      "OWNER_90_SLOT_EXECUTION": "RC_ACQUISITION_SERVICE",
-      "OWNER_90_WALL_SEAL": "NONE",
-      "OWNER_90_TO_60": "NONE",
-      "OWNER_60_INIT": "NONE",
-      "OWNER_60_EXECUTION": "NONE",
-      "OWNER_60_WALL_SEAL": "NONE",
-      "OWNER_PHYSICAL_END": "NONE",
-      "OWNER_SESSION_TERMINALIZATION": "MANUAL_ABORT (reference-capture-exp-021-stuck-session-abort.ts)",
-      "RECORDER_FAILURE_CLASS": "OWNERSHIP_GAP",
-      "90_TO_60_BLOCKED_BY_TELEMETRY": "NO"
-    },
-    "orchestratorArchitecture": {
-      "SUPPORTED_COMPLETE_LIFECYCLE_OWNER": "reference-capture-exp-021-autonomous-orchestrator.ts",
-      "AUTONOMOUS_ORCHESTRATOR_CAN_OWN_FROM_START": "YES",
-      "MANUAL_FAST_GO_REQUIRED": "NO (when orchestrator is sole entry path)",
-      "MANUAL_T0_WATCHER_REQUIRED": "NO (when orchestrator is sole entry path)",
-      "MANUAL_PHASE_TRANSITION_REQUIRED": "NO",
-      "MIXED_MANUAL_ORCHESTRATOR_SAFE": "NO",
-      "gap": "This run used manual PRE-ARM + FAST GO + detached T0 watcher without orchestrator ownership stamp; orchestrator refused attach and never advanced phases."
-    },
-    "recorderRepair": {
-      "RECORDER_CODE_CHANGE_REQUIRED": "NO",
-      "rationale": "Deployed orchestrator at d1501d17 already implements full lifecycle (T0 through PHYSICAL_END) when started as sole owner. Failure was operator runbook: manual path without orchestrator.",
-      "CANONICAL_NEXT_RUN_START_PROCEDURE": "Start reference-capture-exp-021-autonomous-orchestrator.ts as sole lifecycle owner after PRE-ARM only if orchestrator PREP does not subsume it; do NOT mix manual FAST GO or detached T0 watcher with orchestrator-owned session.",
-      "REQUIRED_REGRESSION_NAME": "candidate_short_ab_90_60 autonomous wall-clock phase seal without operator",
-      "REQUIRED_REGRESSION_SCOPE": "Integration test: at T0 persist plan, init 90s+7 slots; advance wall clock 10m → 90 seals once, 60 inits once; advance 10m → 60 seals, PHYSICAL_END, session terminalizes; no duplicate jobs/locks; restart recovery at T0, pre-90→60, post-90→60.",
-      "RESTART_RECOVERY_COVERED": "PARTIAL — existing specs cover plan/T0 recovery; full restart matrix not yet present",
-      "guardrailRecommendation": "Optional future hardening (not required for repair if runbook enforced): reject manual FAST GO on sessions without orchestrator ownership when EXP021 plan active."
-    },
-    "crossFileInvariants": {
-      "7_eq_5_plus_2": true,
-      "19_x_6_eq_114": true,
-      "rcPartitionSum": 11413
-    }
+    ]
   }
 }
