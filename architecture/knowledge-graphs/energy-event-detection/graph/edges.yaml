@@ -662,6 +662,54 @@ edges:
     relation: REFERENCES
     to: EED-DEC-RFRF-006
 
+  - from: EED-EV-0052
+    relation: REFERENCES
+    to: EED-EV-0051
+
+  - from: EED-EV-0052
+    relation: REFERENCES
+    to: EED-EV-0045
+
+  - from: EED-EV-0052
+    relation: REFERENCES
+    to: EED-EV-0031
+
+  - from: EED-EV-0052
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-008
+
+  - from: EED-EV-0052
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-009
+
+  - from: EED-EV-0052
+    relation: PROVEN_BY
+    to: EED-DEC-RFRF-010
+
+  - from: EED-DEC-RFRF-008
+    relation: REFERENCES
+    to: EED-DEC-RFRF-005
+
+  - from: EED-DEC-RFRF-008
+    relation: REFERENCES
+    to: EED-DEC-RFRF-006
+
+  - from: EED-DEC-RFRF-009
+    relation: REFERENCES
+    to: EED-DEC-RFRF-004
+
+  - from: EED-DEC-RFRF-009
+    relation: REFERENCES
+    to: EED-DEC-RFRF-006
+
+  - from: EED-DEC-RFRF-010
+    relation: REFERENCES
+    to: EED-DEC-RFRF-009
+
+  - from: EED-DEC-RFRF-010
+    relation: REFERENCES
+    to: EED-EV-0031
+
   - from: EED-EV-0042
     relation: REFERENCES
     to: EED-EV-0043

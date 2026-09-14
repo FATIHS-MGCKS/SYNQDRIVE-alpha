@@ -365,3 +365,48 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Alternatives rejected** | Option A; Option C; cutover filtering in F4; deriving trust from fuelType/sample presence; F4 terminal overlap rejection |
 | **Consequences** | F4-PR1..4 plan; F2_MATCHER_F3_TOLERANCE_BOUNDARY hard gate; PR #1628 draft for final review |
 | **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-005, EED-EV-0044, EED-EV-0043 |
+
+---
+
+## EED-DEC-RFRF-008 — F5.0 synthetic dimoSegmentId policy (2026-09-14)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-008 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-14 |
+| **Question** | Is F4 `synqdrive-rfrf-*` dimoSegmentId fleet-compatible without masquerading as DIMO provider identity? |
+| **Decision** | **NAMESPACED_SYNTHETIC:** Canonical fallback identity = `(detectionSource=SYNQDRIVE_RAW_FUEL_FALLBACK, sourceEventKey=candidateIdentityKey)`. `dimoSegmentId` remains NOT NULL unique storage surrogate with explicit prefix; MUST NOT be used for provider API queries. Rejected NULL_FOR_FALLBACK (schema cost) and SOURCE_ID_ABSTRACTION (redundant with existing columns). |
+| **Evidence** | EED-EV-0052 |
+| **Consequences** | DIMO_SEGMENT_ID_FLEET_COMPATIBILITY=PASS; UI/ops must not label synthetic id as DIMO segment |
+| **Related nodes** | EED-DEC-RFRF-005, EED-DEC-RFRF-006 |
+
+---
+
+## EED-DEC-RFRF-009 — F5.0 authoritative native↔fallback convergence matrix (2026-09-14)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-009 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-14 |
+| **Question** | What authoritative semantics replace F4 advisory-only overlap at promotion time? |
+| **Decision** | G2 `classifyPhysicalRefuelSibling` / `reconcilePhysicalRefuelBatch` is authoritative. SAME → single enrichment owner; INSUFFICIENT → fail-closed promotion; DISTINCT → independent VEEs. Introduce `CONVERGED_NATIVE` candidate terminal when native SAME exists before fallback VEE. Scenarios A–Q defined in F5.0 audit. |
+| **Evidence** | EED-EV-0052 |
+| **Consequences** | F5-PR1 implements authoritative pre-promotion wrapper; no competing identity engine |
+| **Related nodes** | EED-DEC-RFRF-004, EED-DEC-RFRF-006, EED-DEC-RFRF-010 |
+
+---
+
+## EED-DEC-RFRF-010 — F5.0 late-native sibling policy (2026-09-14)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-RFRF-010 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-14 |
+| **Question** | Deterministic behavior when native DIMO refuel arrives after fallback candidate/VEE? |
+| **Decision** | Reuse G2 `hasLateSiblingFinalizationConflict`, finality states, and enrichment eligibility. Never delete forensic rows. **COMPLETED_ENRICHMENT_OWNERSHIP_IS_STICKY=YES:** late SAME after successful enrichment does not transfer ownership or recompute station/fuel. L1 block pre-promotion; L2–L3 pre-completion re-reconcile; L4/L8/L9 sticky post-enrichment (`lateSiblingConflict`, `enrichmentEligibleId=null`); L10 prior enrichment failure → pre-completion path; L11 multi-late fail-closed. Physical canonical pointer (`chooseCanonicalRefuel`) may differ from enrichment owner. |
+| **Evidence** | EED-EV-0052, EED-EV-0031 |
+| **Consequences** | F5-PR3 implements late-native execution + PG tests L1–L11 |
+| **Related nodes** | EED-DEC-RFRF-009 |
