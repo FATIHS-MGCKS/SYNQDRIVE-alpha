@@ -238,7 +238,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       'F5-PR2 atomic promotion only; zero G2/BullMQ reachability for fallback events; recovery could discover fallback orphans generically.',
     details:
-      'docs/audits/eed-rfrf-f5-pr3-g2-handoff-2026-09-14.md; EED-EV-0058; BASE_MAIN f18a2e39',
+      'docs/audits/eed-rfrf-f5-pr3-g2-handoff-2026-09-14.md; EED-EV-0058 F5-PR3.1; BASE_MAIN 5bd1b266c',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-14T22:00:00.000Z',

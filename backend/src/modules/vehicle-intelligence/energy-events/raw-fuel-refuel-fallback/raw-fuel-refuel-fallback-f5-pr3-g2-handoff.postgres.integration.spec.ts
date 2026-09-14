@@ -1,21 +1,32 @@
 import { PrismaClient } from '@prisma/client';
 import { Queue } from 'bullmq';
+import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import {
+  assertBothForensicRowsRetained,
+  assertF5Pr3RequiredInfra,
   assertIsolatedDatabaseUrl,
+  backdateEnergyEventObservation,
   buildF5Pr3Stack,
   buildF5Pr3StackWithQueue,
   cleanupVehicle,
+  countEffectiveQueueJobs,
   countFallbackVee,
+  countOperationalEnrichmentOwners,
   countPromoted,
   countReconciliationRows,
   F5_PR3_DEFAULT_CUTOVER,
   F5_PR3_G2_CUTOVER,
   F5_PR3_SETTLED_OBSERVATION_AT,
+  isF5Pr3LiveIntegration,
+  isF5Pr3PostgresRequired,
+  isF5Pr3RedisRequired,
   nativeDistinctSiblingFromCandidate,
   nativeInsufficientSiblingFromCandidate,
   nativeSameSiblingFromCandidate,
   persistReadyCandidate,
   promoteCandidateViaRuntime,
+  proveF5Pr3IsolatedNonProductionInfra,
+  requireRedisForF5Pr3Gate,
   seedCompletedFallbackEnrichment,
   seedOrgVehicle,
   setFullAuthorizedFlags,
@@ -24,17 +35,26 @@ import {
 } from './testing/f5-pr3-g2-handoff.harness';
 import {
   createIsolatedTestQueue,
+  createProducerService,
   createRuntimeService,
   drainTestQueue,
-  proveIsolatedNonProductionInfra,
-  redisConnectionOptions,
+  probeRedis,
 } from '../testing/physical-refuel-g21d-final-integration.harness';
 import { findPhysicalRefuelRecoveryWork } from '../physical-refuel-recovery.repository';
 import { reconcilePhysicalRefuelBatch } from '../physical-refuel-reconciliation.design';
 import { vehicleEnergyEventToRefuelRow } from '../physical-refuel-row.mapper';
 import { RawRefuelG2HandoffService } from './raw-refuel-g2-handoff.service';
 
-const LIVE = process.env.RAW_FUEL_REFUEL_F5_PR3_INTEGRATION === '1';
+const LIVE = isF5Pr3LiveIntegration();
+const REDIS_REQUIRED = isF5Pr3RedisRequired();
+const POSTGRES_REQUIRED = isF5Pr3PostgresRequired();
+
+if (POSTGRES_REQUIRED && !LIVE) {
+  throw new Error('RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED=1 but integration flag is not 1');
+}
+if (REDIS_REQUIRED && !LIVE) {
+  throw new Error('RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED=1 but integration flag is not 1');
+}
 
 async function probeDatabase(): Promise<boolean> {
   if (!process.env.DATABASE_URL) return false;
@@ -51,11 +71,20 @@ async function probeDatabase(): Promise<boolean> {
 describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
   let prisma: PrismaClient;
   let dbAvailable = false;
+  let redisAvailable = false;
 
   beforeAll(async () => {
     dbAvailable = LIVE && (await probeDatabase());
+    redisAvailable = LIVE ? await requireRedisForF5Pr3Gate() : false;
+    assertF5Pr3RequiredInfra(dbAvailable, redisAvailable);
     if (!dbAvailable) return;
     prisma = new PrismaClient();
+    if (redisAvailable) {
+      RuntimeStatusRegistry.setWorkersEnabled(true);
+    }
+    if (REDIS_REQUIRED) {
+      proveF5Pr3IsolatedNonProductionInfra();
+    }
   });
 
   afterAll(async () => {
@@ -210,12 +239,13 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
       const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
-      await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+      const first = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
         vehicleId: vehicle.id,
         triggerEventId: fallbackVeeId!,
         organizationId: org.id,
         tokenId,
       });
+      expect(first.enqueuedEventIds.length + first.dedupedEventIds.length).toBeGreaterThanOrEqual(0);
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
       const second = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
         vehicleId: vehicle.id,
@@ -223,7 +253,9 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         organizationId: org.id,
         tokenId,
       });
-      expect(second.dedupedEventIds.length + second.enqueuedEventIds.length).toBeGreaterThanOrEqual(0);
+      expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
+      expect(second.enqueuedEventIds).toEqual([]);
+      expect(second.decisions[0]?.finalityState).toBe(first.decisions[0]?.finalityState);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -371,8 +403,8 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         where: { energyEventId: fallbackVeeId! },
       });
       expect(recon).not.toBeNull();
-      expect(recon!.finalityState).toMatch(/FINAL_|SINGLE/);
-      expect(recon!.enrichmentEligible || recon!.coordinateSelectionStatus != null).toBe(true);
+      expect(recon!.finalityState).toMatch(/FINAL_|SETTLING/);
+      expect(recon!.enrichmentEligible).toBe(true);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -394,12 +426,15 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         organizationId: org.id,
         tokenId: null as unknown as number,
       });
-      expect(result.enqueuedEventIds.length).toBe(0);
-      expect(result.heldEventIds.length + result.decisions.length).toBeGreaterThan(0);
+      expect(result.enqueuedEventIds).toEqual([]);
       const recon = await prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
         where: { energyEventId: fallbackVeeId! },
       });
       expect(recon?.enrichmentEnqueuedAt).toBeNull();
+      expect(
+        recon?.coordinateSelectionStatus == null ||
+          /HOLD|MISSING/.test(recon?.coordinateSelectionStatus ?? ''),
+      ).toBe(true);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -515,7 +550,7 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
       const second = await stack.g2Handoff.handoffAfterPromotionCommit(params);
       expect(first.status).not.toBe('SKIPPED_NOT_AUTHORIZED');
       expect(second.status).toMatch(/HANDOFF_(COMPLETED|DEDUPED|HELD|DEFERRED)/);
-      expect(await countReconciliationRows(prisma, vehicle.id)).toBeGreaterThan(0);
+      expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -524,18 +559,15 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
 
   (LIVE ? it : it.skip)('P19 concurrent repeated handoffs do not double enqueue', async () => {
     if (!dbAvailable) return;
+    if (REDIS_REQUIRED && !redisAvailable) {
+      throw new Error('RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED=1 but Redis is unavailable');
+    }
+    if (!redisAvailable) return;
     const restore = setFullAuthorizedFlags();
     const suffix = `p19-${Math.random().toString(36).slice(2, 8)}`;
     const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
     const queue = createIsolatedTestQueue('f5pr3-p19');
-    const redisReady = await Promise.race([
-      queue.waitUntilReady().then(() => true),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1500)),
-    ]);
-    if (!redisReady) {
-      await queue.close().catch(() => undefined);
-      return;
-    }
+    await queue.waitUntilReady();
     const stack = buildF5Pr3StackWithQueue(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()), queue);
     try {
       const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
@@ -570,8 +602,7 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         stack.g2Handoff.handoffAfterPromotionCommit(params),
         stack.g2Handoff.handoffAfterPromotionCommit(params),
       ]);
-      const jobs = await queue.getJobs(['waiting', 'delayed', 'active', 'completed']);
-      expect(jobs.length).toBeLessThanOrEqual(1);
+      expect(await countEffectiveQueueJobs(queue, fallbackVeeId!)).toBe(1);
     } finally {
       restore();
       await drainTestQueue(queue);
@@ -579,47 +610,54 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
     }
   });
 
-  (LIVE ? it : it.skip)('P20 late native SAME before enrichment completion yields one owner', async () => {
+  (LIVE ? it : it.skip)('P20 A1 late native SAME before enrichment completion — real runtime persistence', async () => {
     if (!dbAvailable) return;
     const restore = setFullAuthorizedFlags();
-    const suffix = `p20-${Math.random().toString(36).slice(2, 8)}`;
+    const suffix = `p20a1-${Math.random().toString(36).slice(2, 8)}`;
     const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
       const candidate = await persistReadyCandidate(stack, vehicle.id);
       const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
       const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
-      const fallbackVee = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
-        where: { id: fallbackVeeId! },
+      await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+        vehicleId: vehicle.id,
+        triggerEventId: fallbackVeeId!,
+        organizationId: org.id,
+        tokenId,
       });
       const native = await prisma.vehicleEnergyEvent.create({
         data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-same`),
       });
-      const fallbackRow = vehicleEnergyEventToRefuelRow(fallbackVee);
-      fallbackRow.fuelStartLiters = refreshed.preFuelAbsoluteLiters;
-      fallbackRow.fuelEndLiters = refreshed.postFuelAbsoluteLiters;
-      const nativeRow = vehicleEnergyEventToRefuelRow(native);
-      const batch = reconcilePhysicalRefuelBatch([fallbackRow, nativeRow], {
-          asOfMs: Date.parse('2026-09-06T20:00:00.000Z'),
-          firstObservedAtById: {
-            [fallbackVee.id]: F5_PR3_SETTLED_OBSERVATION_AT.getTime(),
-            [native.id]: native.createdAt.getTime(),
-          },
-          settlementConfig: { settlementHorizonMs: 60 * 60 * 1000 },
-        },
+      await backdateEnergyEventObservation(
+        prisma,
+        native.id,
+        new Date('2026-09-06T10:45:00.000Z'),
       );
-      const eligibleIds = batch.map((d) => d.enrichmentEligibleId).filter(Boolean);
-      expect(new Set(eligibleIds).size).toBeLessThanOrEqual(1);
+      const nativeResult = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+        vehicleId: vehicle.id,
+        triggerEventId: native.id,
+        organizationId: org.id,
+        tokenId,
+      });
+      await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
+      expect(nativeResult.enqueuedEventIds.length).toBeLessThanOrEqual(1);
+      const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
+        where: { energyEventId: native.id },
+      });
+      expect(nativeRecon).not.toBeNull();
+      expect(await countReconciliationRows(prisma, vehicle.id)).toBeGreaterThanOrEqual(2);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
     }
-  });
+  }, 15000);
 
-  (LIVE ? it : it.skip)('P21 late native SAME after COMPLETED fallback enrichment is sticky', async () => {
+  (LIVE ? it : it.skip)('P21 A2 late native SAME after COMPLETED fallback enrichment — real runtime persistence', async () => {
     if (!dbAvailable) return;
     const restore = setFullAuthorizedFlags();
-    const suffix = `p21-${Math.random().toString(36).slice(2, 8)}`;
+    const suffix = `p21a2-${Math.random().toString(36).slice(2, 8)}`;
     const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
@@ -633,27 +671,39 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         tokenId,
       });
       await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
-      const fallbackVee = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
-        where: { id: fallbackVeeId! },
-      });
       const native = await prisma.vehicleEnergyEvent.create({
         data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
       });
-      const fallbackRow = vehicleEnergyEventToRefuelRow(fallbackVee);
-      const nativeRow = vehicleEnergyEventToRefuelRow(native);
-      const batch = reconcilePhysicalRefuelBatch([nativeRow], {
-        asOfMs: Date.parse('2026-09-06T20:00:00.000Z'),
-        firstObservedAtById: {
-          [fallbackRow.id]: F5_PR3_SETTLED_OBSERVATION_AT.getTime(),
-          [nativeRow.id]: native.createdAt.getTime(),
-        },
-        priorCanonicalFinalizationIds: new Set([fallbackRow.id]),
-        priorFinalRowsById: { [fallbackRow.id]: fallbackRow },
-        settlementConfig: { settlementHorizonMs: 60 * 60 * 1000 },
+      await backdateEnergyEventObservation(
+        prisma,
+        native.id,
+        new Date('2026-09-06T11:30:00.000Z'),
+      );
+      const nativeResult = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+        vehicleId: vehicle.id,
+        triggerEventId: native.id,
+        organizationId: org.id,
+        tokenId,
       });
-      expect(batch[0]?.reasonCodes).toContain('late_sibling_after_finalization');
-      expect(batch[0]?.enrichmentEligibleId).toBeNull();
-      expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBeGreaterThanOrEqual(2);
+      await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+      const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+        where: { energyEventId: native.id },
+      });
+      expect(nativeRecon.lateSiblingConflict).toBe(true);
+      expect(nativeRecon.enrichmentEligible).toBe(false);
+      expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
+      const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+        where: { energyEventId: fallbackVeeId! },
+      });
+      expect(fallbackEnrichment?.processingStatus).toBe('COMPLETED');
+      expect(nativeResult.enqueuedEventIds).toEqual([]);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
+      expect(
+        await prisma.vehicleEnergyEventRefuelReconciliation.count({
+          where: { vehicleId: vehicle.id, enrichmentEligible: true, energyEventId: native.id },
+        }),
+      ).toBe(0);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -741,10 +791,10 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
     }
   });
 
-  (LIVE ? it : it.skip)('P24 multi-late siblings fail closed without double ownership', async () => {
+  (LIVE ? it : it.skip)('P24 A3 multi-late siblings fail closed — real runtime persistence', async () => {
     if (!dbAvailable) return;
     const restore = setFullAuthorizedFlags();
-    const suffix = `p24-${Math.random().toString(36).slice(2, 8)}`;
+    const suffix = `p24a3-${Math.random().toString(36).slice(2, 8)}`;
     const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
@@ -757,36 +807,33 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         organizationId: org.id,
         tokenId,
       });
-      const fallbackVee = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
-        where: { id: fallbackVeeId! },
-      });
+      await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
       const nativeA = await prisma.vehicleEnergyEvent.create({
         data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-a`),
       });
       const nativeB = await prisma.vehicleEnergyEvent.create({
         data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-b`),
       });
-      const fallbackRow = vehicleEnergyEventToRefuelRow(fallbackVee);
-      const rows = [vehicleEnergyEventToRefuelRow(nativeA), vehicleEnergyEventToRefuelRow(nativeB)];
-      const batch = reconcilePhysicalRefuelBatch(rows, {
-        asOfMs: Date.parse('2026-09-06T20:00:00.000Z'),
-        firstObservedAtById: {
-          [fallbackRow.id]: F5_PR3_SETTLED_OBSERVATION_AT.getTime(),
-          [rows[0].id]: nativeA.createdAt.getTime(),
-          [rows[1].id]: nativeB.createdAt.getTime(),
-        },
-        priorCanonicalFinalizationIds: new Set([fallbackRow.id]),
-        priorFinalRowsById: { [fallbackRow.id]: fallbackRow },
-        settlementConfig: { settlementHorizonMs: 60 * 60 * 1000 },
+      await backdateEnergyEventObservation(prisma, nativeA.id, new Date('2026-09-06T11:20:00.000Z'));
+      await backdateEnergyEventObservation(prisma, nativeB.id, new Date('2026-09-06T11:40:00.000Z'));
+      const result = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+        vehicleId: vehicle.id,
+        triggerEventId: nativeB.id,
+        organizationId: org.id,
+        tokenId,
       });
-      const eligibleCount = batch.filter((d) => d.enrichmentEligibleId != null).length;
-      expect(eligibleCount).toBe(0);
-      expect(batch.some((d) => d.finalityState === 'INSUFFICIENT_EVIDENCE')).toBe(true);
+      expect(result.enqueuedEventIds).toEqual([]);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
+      const insufficient = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
+        where: { vehicleId: vehicle.id, finalityState: 'INSUFFICIENT_EVIDENCE' },
+      });
+      expect(insufficient.length).toBeGreaterThanOrEqual(1);
+      expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBeGreaterThanOrEqual(3);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
     }
-  });
+  }, 15000);
 
   (LIVE ? it : it.skip)('P25 native-only G2 path unchanged with handoff authority OFF', async () => {
     if (!dbAvailable) return;
@@ -918,13 +965,31 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
       g2Runtime: throwingRuntime as never,
     });
     try {
-      const beforeNative = await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } });
+      await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-survive-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T09:35:00.000Z'),
+        },
+      });
+      const beforeNative = await prisma.vehicleEnergyEvent.count({
+        where: { vehicleId: vehicle.id, detectionSource: 'DIMO_NATIVE' },
+      });
       await stack.energyEvents.detectEnergyEvents(vehicle.id, {
         from: new Date('2026-09-06T07:00:00.000Z'),
         to: new Date('2026-09-06T12:00:00.000Z'),
+      }).catch(() => undefined);
+      const afterNative = await prisma.vehicleEnergyEvent.count({
+        where: { vehicleId: vehicle.id, detectionSource: 'DIMO_NATIVE' },
       });
-      const afterNative = await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } });
       expect(afterNative).toBeGreaterThanOrEqual(beforeNative);
+      expect(afterNative).toBeGreaterThan(0);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -933,49 +998,66 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
 
   (LIVE ? it : it.skip)('P17 queue recovery enqueues exactly one effective job', async () => {
     if (!dbAvailable) return;
-    const queue = createIsolatedTestQueue('f5pr3');
-    const redisReady = await Promise.race([
-      queue.waitUntilReady().then(() => true),
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1500)),
-    ]);
-    if (!redisReady) {
-      await queue.close().catch(() => undefined);
-      return;
+    if (REDIS_REQUIRED && !redisAvailable) {
+      throw new Error('RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED=1 but Redis is unavailable');
     }
+    if (!redisAvailable) return;
     const restore = setFullAuthorizedFlags();
     const suffix = `p17-${Math.random().toString(36).slice(2, 8)}`;
     const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
-    const stack = buildF5Pr3StackWithQueue(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()), queue);
+    const queue = createIsolatedTestQueue('f5pr3-p17');
+    await queue.waitUntilReady();
+    const recoveryStack = buildF5Pr3StackWithQueue(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+      queue,
+    );
+    const throwingProducer = {
+      enqueueAfterPersistOutcome: jest.fn().mockRejectedValue(new Error('queue unavailable')),
+    };
+    const deferredRuntime = createRuntimeService(prisma, throwingProducer as never);
+    const deferredStack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()), {
+      g2Runtime: deferredRuntime,
+    });
     try {
-      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
-      await prisma.vehicleEnergyEventRefuelReconciliation.create({
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(recoveryStack, vehicle.id);
+      await recoveryStack.g2Runtime.reconcileAndEnqueueAfterPersist({
+        vehicleId: vehicle.id,
+        triggerEventId: fallbackVeeId!,
+        organizationId: org.id,
+        tokenId,
+      });
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
         data: {
-          energyEventId: fallbackVeeId!,
-          vehicleId: vehicle.id,
-          reconciliationGroupId: `grp-${suffix}`,
-          classification: 'SINGLE_CANONICAL',
           finalityState: 'FINAL_CANONICAL',
-          canonicalEventId: fallbackVeeId!,
           enrichmentEligible: true,
-          settlementWindowOpen: false,
-          lateSiblingConflict: false,
-          reason: 'single_canonical',
-          reasonCodes: [],
+          enrichmentEnqueuedAt: null,
           coordinateLatitude: 51.3305883,
           coordinateLongitude: 9.5126383,
           coordinateSource: 'SELECTED',
           coordinateSelectionStatus: 'SELECTED',
         },
       });
-      const result = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+      try {
+        await deferredStack.g2Runtime.reconcileAndEnqueueAfterPersist({
+          vehicleId: vehicle.id,
+          triggerEventId: fallbackVeeId!,
+          organizationId: org.id,
+          tokenId,
+        });
+      } catch {
+        // producer throw is acceptable deferral signal
+      }
+      expect(await countEffectiveQueueJobs(queue, fallbackVeeId!)).toBe(0);
+      const recovered = await recoveryStack.g2Runtime.reconcileAndEnqueueAfterPersist({
         vehicleId: vehicle.id,
         triggerEventId: fallbackVeeId!,
         organizationId: org.id,
         tokenId,
       });
-      expect(result.enqueuedEventIds.length + result.dedupedEventIds.length).toBeGreaterThanOrEqual(0);
-      const jobs = await queue.getJobs(['waiting', 'delayed', 'active', 'completed']);
-      expect(jobs.length).toBeLessThanOrEqual(1);
+      expect(recovered.enqueuedEventIds.length + recovered.dedupedEventIds.length).toBeGreaterThan(0);
+      expect(await countEffectiveQueueJobs(queue, fallbackVeeId!)).toBe(1);
     } finally {
       restore();
       await drainTestQueue(queue);

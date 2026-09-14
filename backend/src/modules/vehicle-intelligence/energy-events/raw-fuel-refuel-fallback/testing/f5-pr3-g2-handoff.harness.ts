@@ -26,9 +26,19 @@ import {
   createPhysicalRefuelConfig,
   createProducerService,
   createRuntimeService,
-  proveIsolatedNonProductionInfra,
+  probeRedis,
+  redisConnectionOptions,
 } from '../../testing/physical-refuel-g21d-final-integration.harness';
 import type { Queue } from 'bullmq';
+import {
+  buildFuelStationEnrichmentInputFingerprint,
+  buildFuelStationEnrichmentJobIdempotencyKey,
+} from '../../../fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util';
+import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
+
+export const RAW_FUEL_REFUEL_F5_PR3_INTEGRATION_ENV = 'RAW_FUEL_REFUEL_F5_PR3_INTEGRATION';
+export const RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV = 'RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED';
+export const RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED_ENV = 'RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED';
 
 export async function backdateEnergyEventObservation(
   prisma: PrismaClient,
@@ -55,6 +65,22 @@ export function assertIsolatedDatabaseUrl(): void {
   ) {
     throw new Error('Refusing production-like DATABASE_URL for F5-PR3 gate');
   }
+}
+
+export function proveF5Pr3IsolatedNonProductionInfra(): {
+  postgresIsProduction: false;
+  redisIsProduction: false;
+} {
+  assertIsolatedDatabaseUrl();
+  const redisHost = redisConnectionOptions().host;
+  const blockedHosts = ['srv1374778', 'app.synqdrive.eu', 'mein-vps', 'hstgr.cloud'];
+  if (blockedHosts.some((host) => redisHost.includes(host))) {
+    throw new Error(`Refusing non-isolated REDIS host: ${redisHost}`);
+  }
+  if (!['127.0.0.1', 'localhost'].includes(redisHost)) {
+    throw new Error(`F5-PR3 required Redis must be localhost (got ${redisHost})`);
+  }
+  return { postgresIsProduction: false, redisIsProduction: false };
 }
 
 export interface RfrfFlagOptions {
@@ -465,4 +491,97 @@ export async function countPromoted(prisma: PrismaClient, vehicleId: string): Pr
   return prisma.rawRefuelCandidate.count({
     where: { vehicleId, lifecycleState: 'PROMOTED' },
   });
+}
+
+export function isF5Pr3LiveIntegration(): boolean {
+  return process.env[RAW_FUEL_REFUEL_F5_PR3_INTEGRATION_ENV] === '1';
+}
+
+export function isF5Pr3RedisRequired(): boolean {
+  return process.env[RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV] === '1';
+}
+
+export function isF5Pr3PostgresRequired(): boolean {
+  return process.env[RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED_ENV] === '1';
+}
+
+export function assertF5Pr3RequiredInfra(dbAvailable: boolean, redisAvailable: boolean): void {
+  if (isF5Pr3PostgresRequired() && !dbAvailable) {
+    throw new Error(
+      `${RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED_ENV}=1 but isolated PostgreSQL is unavailable`,
+    );
+  }
+  if (isF5Pr3RedisRequired()) {
+    if (!isF5Pr3LiveIntegration()) {
+      throw new Error(
+        `${RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV}=1 but ${RAW_FUEL_REFUEL_F5_PR3_INTEGRATION_ENV} is not 1`,
+      );
+    }
+    if (!redisAvailable) {
+      throw new Error(
+        `${RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV}=1 but isolated Redis is unavailable`,
+      );
+    }
+    proveF5Pr3IsolatedNonProductionInfra();
+  }
+}
+
+export async function requireRedisForF5Pr3Gate(): Promise<boolean> {
+  if (!isF5Pr3RedisRequired()) {
+    return await probeRedis();
+  }
+  const ready = await probeRedis();
+  if (!ready) {
+    throw new Error(`${RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV}=1 but Redis probe failed`);
+  }
+  return true;
+}
+
+export function buildFuelEnrichmentDeterministicJobId(energyEventId: string): string {
+  const fingerprint = buildFuelStationEnrichmentInputFingerprint({
+    energyEventId,
+    latitude: 51.3305883,
+    longitude: 9.5126383,
+  });
+  const idempotencyKey = buildFuelStationEnrichmentJobIdempotencyKey({
+    energyEventId,
+    inputFingerprint: fingerprint,
+  });
+  return sanitizeBullMqJobId({ namespace: 'refuel-station', key: idempotencyKey });
+}
+
+export async function countEffectiveQueueJobs(
+  queue: Queue,
+  energyEventId: string,
+): Promise<number> {
+  const jobId = buildFuelEnrichmentDeterministicJobId(energyEventId);
+  const job = await queue.getJob(jobId);
+  if (job) return 1;
+  const jobs = await queue.getJobs(['waiting', 'delayed', 'active', 'prioritized', 'completed']);
+  return jobs.filter((row) => row.id === jobId).length;
+}
+
+export async function countOperationalEnrichmentOwners(
+  prisma: PrismaClient,
+  vehicleId: string,
+): Promise<number> {
+  const rows = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
+    where: { vehicleId, enrichmentEligible: true },
+    select: { energyEventId: true },
+  });
+  return rows.length;
+}
+
+export async function assertBothForensicRowsRetained(
+  prisma: PrismaClient,
+  vehicleId: string,
+  fallbackVeeId: string,
+  nativeVeeId: string,
+): Promise<void> {
+  const fallback = await prisma.vehicleEnergyEvent.findUnique({ where: { id: fallbackVeeId } });
+  const native = await prisma.vehicleEnergyEvent.findUnique({ where: { id: nativeVeeId } });
+  expect(fallback).not.toBeNull();
+  expect(native).not.toBeNull();
+  expect(fallback!.detectionSource).toBe('SYNQDRIVE_RAW_FUEL_FALLBACK');
+  expect(native!.detectionSource).toBe('DIMO_NATIVE');
 }
