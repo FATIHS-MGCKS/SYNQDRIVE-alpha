@@ -1339,15 +1339,17 @@ groups:
       - alert: PhysicalRefuelRecoverySchedulerStale
         expr: |
           synqdrive_physical_refuel_recovery_enabled == 1
-          and synqdrive_physical_refuel_recovery_last_success_unixtime > 0
-          and (time() - synqdrive_physical_refuel_recovery_last_success_unixtime) > 300
+          and (
+            synqdrive_physical_refuel_recovery_last_success_unixtime == 0
+            or (time() - synqdrive_physical_refuel_recovery_last_success_unixtime) > 300
+          )
         for: 5m
         labels:
           severity: warning
           owner: energy-events
         annotations:
           summary: Physical refuel recovery scheduler has not completed a successful tick recently
-          description: Enabled recovery has not recorded a successful tick for more than 300 seconds (~5 default 60s intervals).
+          description: Enabled recovery has never completed a successful tick, or last success is older than 300 seconds (~5 default 60s intervals).
           runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-c-scheduler-stale
           clear_condition: a successful recovery tick updates last_success_unixtime or recovery is intentionally disabled.
 

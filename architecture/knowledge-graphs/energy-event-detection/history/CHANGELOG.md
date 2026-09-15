@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F8.1 scheduler zero-success + actionable backlog closure
+
+- EED-EV-0061 extended: F8.1 closes scheduler stale blind spot before first success and actionable backlog parity for all six exported reasons
+- `onModuleInit()` publishes `recovery_enabled` + initializes `last_success_unixtime=0`; stale alert accepts zero-success after `for: 5m`
+- `countActionablePhysicalRefuelRecoveryReasons()` shared with canonical recovery where builders; inventory counts preserved
+
 ## 2026-09-15 — RFRF F8 operational telemetry + Prometheus alerting closure
 
 - EED-EV-0061: `PhysicalRefuelReconciliationMetricsService` on canonical TripMetricsService registry

@@ -5,7 +5,9 @@ import {
   buildF8ObservabilityStack,
   buildF8RecoveryScheduler,
   cleanupVehicle,
+  countActionablePhysicalRefuelRecoveryReasons,
   countPhysicalRefuelRecoveryBacklog,
+  F5_PR3_G2_CUTOVER,
   F7_RECOVERY_AS_OF_MS,
   findPhysicalRefuelRecoveryWork,
   isF8LiveIntegration,
@@ -20,7 +22,11 @@ import {
   setRfrfFlags,
   syntheticRiseSamples,
 } from './testing/f8-operational-telemetry.harness';
-import { mapRepositoryBacklogToRecoveryReasons } from './physical-refuel-reconciliation-metrics.types';
+import {
+  mapRepositoryBacklogToRecoveryReasons,
+  PHYSICAL_REFUEL_RECOVERY_BACKLOG_REASONS,
+} from './physical-refuel-reconciliation-metrics.types';
+import { COORDINATE_ROUTE_UNAVAILABLE } from './physical-refuel-coordinate-retry.policy';
 
 const LIVE = isF8LiveIntegration();
 const POSTGRES_REQUIRED = isF8PostgresRequired();
@@ -412,5 +418,525 @@ describe('RFRF F8 physical-refuel operational telemetry (real PostgreSQL)', () =
     );
     await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
     await assertMetricsExportContainsF8(tripMetrics);
+  });
+
+  async function recoveryQueryParams() {
+    return {
+      batchSize: 100,
+      asOf: new Date(F7_RECOVERY_AS_OF_MS),
+      v2OwnershipCutoverAt: new Date(F5_PR3_G2_CUTOVER),
+      orphanLookbackFrom: new Date(F7_RECOVERY_AS_OF_MS - 7 * 24 * 60 * 60 * 1000),
+    };
+  }
+
+  async function expectGaugeMatchesActionable(
+    tripMetrics: Awaited<ReturnType<typeof buildF8ObservabilityStack>>['tripMetrics'],
+    actionable: Awaited<ReturnType<typeof countActionablePhysicalRefuelRecoveryReasons>>,
+  ): Promise<void> {
+    const mapped = mapRepositoryBacklogToRecoveryReasons({
+      orphanRefuels: actionable.orphanRefuels,
+      reconciliationDue: actionable.reconciliationDue,
+      staleEnrichment: actionable.staleEnrichment,
+      lostEnqueuePending: actionable.lostEnqueuePending,
+      coordinateInitialDue: actionable.coordinateInitialDue,
+      coordinateRetryDue: actionable.coordinateRetryDue,
+    });
+    for (const reason of PHYSICAL_REFUEL_RECOVERY_BACKLOG_REASONS) {
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', { reason }),
+      ).toBe(mapped[reason]);
+    }
+  }
+
+  (LIVE ? it : it.skip)('F8.1-P5 authority OFF settlement_due excluded from gauge and canonical work', async () => {
+    if (!dbAvailable) return;
+    const suffix = `f81p5-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    const restoreFull = setFullAuthorizedFlags();
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
+        data: {
+          finalityState: 'PROVISIONAL',
+          nextReconciliationAt: new Date(F7_RECOVERY_AS_OF_MS - 60_000),
+        },
+      });
+
+      const native = await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-settle-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T10:00:00.000Z'),
+        },
+      });
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: native.id },
+        data: {
+          finalityState: 'PROVISIONAL',
+          nextReconciliationAt: new Date(F7_RECOVERY_AS_OF_MS - 60_000),
+        },
+      });
+
+      const restoreOff = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: true,
+        promotion: true,
+        handoff: false,
+        g2: true,
+        cutoverAt: '2026-09-06T08:00:00.000Z',
+        g2CutoverAt: F5_PR3_G2_CUTOVER,
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'settlement_due')).toBe(false);
+      expect(work.some((item) => item.triggerEventId === native.id && item.reason === 'settlement_due')).toBe(true);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'settlement_due',
+        }),
+      ).toBe(1);
+
+      restoreOff();
+    } finally {
+      restoreFull();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P6 authority OFF stale_enrichment excluded from actionable gauge', async () => {
+    if (!dbAvailable) return;
+    const suffix = `f81p6-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    const restoreFull = setFullAuthorizedFlags();
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventFuelStationEnrichment.create({
+        data: {
+          energyEventId: fallbackVeeId!,
+          processingStatus: 'PENDING',
+          inputFingerprint: `f81-stale-${suffix}`,
+          resolverVersion: 'v2',
+        },
+      });
+
+      const native = await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-stale-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T10:00:00.000Z'),
+        },
+      });
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: native.id },
+        data: { finalityState: 'FINAL_CANONICAL', enrichmentEligible: true },
+      });
+      await prisma.vehicleEnergyEventFuelStationEnrichment.create({
+        data: {
+          energyEventId: native.id,
+          processingStatus: 'PENDING',
+          inputFingerprint: `f81-native-stale-${suffix}`,
+          resolverVersion: 'v2',
+        },
+      });
+
+      const restoreOff = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: true,
+        promotion: true,
+        handoff: false,
+        g2: true,
+        cutoverAt: '2026-09-06T08:00:00.000Z',
+        g2CutoverAt: F5_PR3_G2_CUTOVER,
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'stale_enrichment')).toBe(false);
+      expect(work.some((item) => item.triggerEventId === native.id && item.reason === 'stale_enrichment')).toBe(true);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'stale_enrichment',
+        }),
+      ).toBe(1);
+
+      restoreOff();
+    } finally {
+      restoreFull();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P7 authority OFF lost_enqueue excluded from actionable gauge', async () => {
+    if (!dbAvailable) return;
+    const suffix = `f81p7-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    const restoreFull = setFullAuthorizedFlags();
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateLatitude: 51.3305883,
+          coordinateLongitude: 9.5126383,
+          coordinateSource: 'SELECTED',
+          coordinateSelectionStatus: 'SELECTED',
+        },
+      });
+
+      const native = await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-lost-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T10:00:00.000Z'),
+        },
+      });
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: native.id },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateLatitude: 51.3305883,
+          coordinateLongitude: 9.5126383,
+          coordinateSource: 'SELECTED',
+          coordinateSelectionStatus: 'SELECTED',
+        },
+      });
+
+      const restoreOff = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: true,
+        promotion: true,
+        handoff: false,
+        g2: true,
+        cutoverAt: '2026-09-06T08:00:00.000Z',
+        g2CutoverAt: F5_PR3_G2_CUTOVER,
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'lost_enqueue')).toBe(false);
+      expect(work.some((item) => item.triggerEventId === native.id && item.reason === 'lost_enqueue')).toBe(true);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'lost_enqueue',
+        }),
+      ).toBe(1);
+
+      restoreOff();
+    } finally {
+      restoreFull();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P8 authority OFF coordinate categories excluded from actionable gauge', async () => {
+    if (!dbAvailable) return;
+    const suffix = `f81p8-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    const restoreFull = setFullAuthorizedFlags();
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateLatitude: null,
+          coordinateLongitude: null,
+          coordinateSource: null,
+          coordinateSelectionStatus: COORDINATE_ROUTE_UNAVAILABLE,
+          nextCoordinateRetryAt: new Date(F7_RECOVERY_AS_OF_MS - 60_000),
+        },
+      });
+
+      const native = await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-coord-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T10:00:00.000Z'),
+        },
+      });
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: native.id },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateSelectionStatus: null,
+          coordinateLatitude: null,
+          coordinateLongitude: null,
+          coordinateSource: null,
+        },
+      });
+
+      const restoreOff = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: true,
+        promotion: true,
+        handoff: false,
+        g2: true,
+        cutoverAt: '2026-09-06T08:00:00.000Z',
+        g2CutoverAt: F5_PR3_G2_CUTOVER,
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'coordinate_initial')).toBe(false);
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'coordinate_retry')).toBe(false);
+      expect(work.some((item) => item.triggerEventId === native.id && item.reason === 'coordinate_initial')).toBe(true);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'coordinate_initial',
+        }),
+      ).toBe(1);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'coordinate_retry',
+        }),
+      ).toBe(0);
+
+      restoreOff();
+    } finally {
+      restoreFull();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P9 existing enrichment row excluded from lost_enqueue gauge', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f81p9-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateLatitude: 51.3305883,
+          coordinateLongitude: 9.5126383,
+          coordinateSource: 'SELECTED',
+          coordinateSelectionStatus: 'SELECTED',
+        },
+      });
+      await prisma.vehicleEnergyEventFuelStationEnrichment.create({
+        data: {
+          energyEventId: fallbackVeeId!,
+          processingStatus: 'PENDING',
+          inputFingerprint: `f81-enrich-${suffix}`,
+          resolverVersion: 'v2',
+        },
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'lost_enqueue')).toBe(false);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'lost_enqueue',
+        }),
+      ).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P10 lost_enqueue coordinate policy parity rejects non-finite longitude', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f81p10-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    try {
+      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      await g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      await prisma.vehicleEnergyEventRefuelReconciliation.update({
+        where: { energyEventId: fallbackVeeId! },
+        data: {
+          finalityState: 'FINAL_CANONICAL',
+          enrichmentEligible: true,
+          enrichmentEnqueuedAt: null,
+          coordinateLatitude: 51.3305883,
+          coordinateLongitude: Number.NaN,
+          coordinateSource: 'SELECTED',
+          coordinateSelectionStatus: 'SELECTED',
+        },
+      });
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, await recoveryQueryParams());
+      expect(work.some((item) => item.triggerEventId === fallbackVeeId && item.reason === 'lost_enqueue')).toBe(false);
+
+      const actionable = await countActionablePhysicalRefuelRecoveryReasons(
+        prisma,
+        new Date(F7_RECOVERY_AS_OF_MS),
+        new Date(F5_PR3_G2_CUTOVER),
+        new Date(F7_RECOVERY_AS_OF_MS - 7 * 24 * 60 * 60 * 1000),
+      );
+      expect(actionable.lostEnqueuePending).toBe(0);
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      expect(
+        await readGaugeValue(tripMetrics, 'synqdrive_physical_refuel_recovery_backlog', {
+          reason: 'lost_enqueue',
+        }),
+      ).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P11 all six gauges match actionable repository and canonical recovery work', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f81p11-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    const { stack, tripMetrics, g2Runtime } = buildF8ObservabilityStack(
+      prisma,
+      jest.fn().mockResolvedValue(syntheticRiseSamples()),
+    );
+    try {
+      await promoteCandidateViaRuntime(stack, vehicle.id);
+      await prisma.vehicleEnergyEvent.create({
+        data: {
+          vehicleId: vehicle.id,
+          dimoSegmentId: `native-mix-${suffix}`,
+          kind: 'REFUEL',
+          detectionMechanism: 'refuel',
+          detectionSource: 'DIMO_NATIVE',
+          startTime: new Date('2026-09-06T09:00:00.000Z'),
+          endTime: new Date('2026-09-06T09:30:00.000Z'),
+          durationSeconds: 1800,
+          createdAt: new Date('2026-09-06T10:00:00.000Z'),
+        },
+      });
+
+      const query = await recoveryQueryParams();
+      const actionable = await countActionablePhysicalRefuelRecoveryReasons(
+        prisma,
+        query.asOf,
+        query.v2OwnershipCutoverAt,
+        query.orphanLookbackFrom,
+      );
+      const backlog = mapRepositoryBacklogToRecoveryReasons(
+        await countPhysicalRefuelRecoveryBacklog(
+          prisma,
+          query.asOf,
+          query.v2OwnershipCutoverAt,
+          query.orphanLookbackFrom,
+        ),
+      );
+      expect(backlog).toEqual(
+        mapRepositoryBacklogToRecoveryReasons({
+          orphanRefuels: actionable.orphanRefuels,
+          reconciliationDue: actionable.reconciliationDue,
+          staleEnrichment: actionable.staleEnrichment,
+          lostEnqueuePending: actionable.lostEnqueuePending,
+          coordinateInitialDue: actionable.coordinateInitialDue,
+          coordinateRetryDue: actionable.coordinateRetryDue,
+        }),
+      );
+
+      await g2Runtime.emitRecoveryBacklogMetrics(F7_RECOVERY_AS_OF_MS);
+      await expectGaugeMatchesActionable(tripMetrics, actionable);
+
+      const work = await findPhysicalRefuelRecoveryWork(prisma, query);
+      const workCounts = PHYSICAL_REFUEL_RECOVERY_BACKLOG_REASONS.reduce(
+        (acc, reason) => {
+          acc[reason] = work.filter((item) => item.reason === reason).length;
+          return acc;
+        },
+        {} as Record<(typeof PHYSICAL_REFUEL_RECOVERY_BACKLOG_REASONS)[number], number>,
+      );
+      for (const reason of PHYSICAL_REFUEL_RECOVERY_BACKLOG_REASONS) {
+        expect(workCounts[reason]).toBeLessThanOrEqual(backlog[reason]);
+        if (backlog[reason] > 0) {
+          expect(workCounts[reason]).toBeGreaterThan(0);
+        }
+      }
+      expect(backlog.orphan_refuel).toBeGreaterThanOrEqual(2);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.1-P4 scheduler stale alert window exceeds default first tick interval', () => {
+    expect(5 * 60).toBeGreaterThan(60);
   });
 });

@@ -88,3 +88,55 @@ Env: `RAW_FUEL_REFUEL_F8_INTEGRATION=1`, `RAW_FUEL_REFUEL_F8_POSTGRES_REQUIRED=1
 | NEW_MIGRATION_REQUIRED | NO |
 | SECOND_METRICS_STACK_CREATED | NO |
 | PRODUCTION_MUTATED | NO |
+
+## F8.1 — scheduler zero-success + actionable-backlog semantic closure
+
+**Initial F8 head:** `f6b84bc055cc72ae9350bb8047b1a54db8857871`
+
+### Gaps closed
+
+| Gap | Before F8.1 | After F8.1 |
+|-----|-------------|------------|
+| Scheduler stale blind spot | `recovery_enabled` only emitted on tick; stale alert required `last_success_unixtime > 0` | `onModuleInit()` publishes `recovery_enabled` and initializes `last_success_unixtime=0`; stale alert fires on zero-success or aged success after `for: 5m` |
+| Actionable backlog mismatch | `countPhysicalRefuelRecoveryBacklog()` only authority-filtered orphans; other five reasons could count rows canonical recovery would refuse | Shared recovery where builders + `countActionablePhysicalRefuelRecoveryReasons()` align all six exported reason gauges with `findPhysicalRefuelRecoveryWork()` including fallback authority, enrichment-row guards, and `isV2CoordinateEligibleForEnrichment()` |
+
+### Scheduler lifecycle (F8.1-A)
+
+- Deliberately disabled recovery: `onModuleInit()` sets `recovery_enabled=0`, initializes last-success series to `0`, no timer.
+- Enabled recovery timer start: `onModuleInit()` sets `recovery_enabled=1`, initializes last-success to semantic `0`, starts interval unchanged (min 30s, default 60s).
+- No recovery batch executed merely for metrics.
+- `PhysicalRefuelRecoverySchedulerStale` expression:
+
+```promql
+synqdrive_physical_refuel_recovery_enabled == 1
+and (
+  synqdrive_physical_refuel_recovery_last_success_unixtime == 0
+  or (time() - synqdrive_physical_refuel_recovery_last_success_unixtime) > 300
+)
+```
+
+`for: 5m` — materially exceeds one default 60s first tick interval (F8.1-P4).
+
+### Actionable backlog (F8.1-B..E)
+
+- `countActionablePhysicalRefuelRecoveryReasons()` is the canonical actionable counter used by `countPhysicalRefuelRecoveryBacklog()` for the six exported reasons.
+- Inventory fields (`provisional`, `settling`, `insufficientEvidence`, `finalCanonical`, `finalDistinct`, `lateSiblingConflict`, `coordinateHold`) unchanged.
+- F8 zero-reset preserved: all six reason gauges explicitly set including zero.
+
+### F8.1 test matrix
+
+| Case | Scope | Result |
+|------|-------|--------|
+| F8.1-P1 | enabled at lifecycle startup | unit |
+| F8.1-P2 | deliberately disabled startup | unit |
+| F8.1-P3 | stale alert zero-success expression | prometheus-config static |
+| F8.1-P4 | first tick window vs `for: 5m` | static |
+| F8.1-P5 | authority OFF settlement_due | PG |
+| F8.1-P6 | authority OFF stale_enrichment | PG |
+| F8.1-P7 | authority OFF lost_enqueue | PG |
+| F8.1-P8 | authority OFF coordinate_initial/coordinate_retry | PG |
+| F8.1-P9 | lost_enqueue existing enrichment row | PG |
+| F8.1-P10 | lost_enqueue coordinate policy | PG |
+| F8.1-P11 | all six gauges vs actionable + canonical work | PG |
+
+Evidence: **EED-EV-0061** (extended, no new ID).

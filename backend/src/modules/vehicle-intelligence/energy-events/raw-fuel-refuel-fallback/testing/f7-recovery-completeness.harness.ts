@@ -28,7 +28,10 @@ export {
   redisConnectionOptions,
 } from '../../testing/physical-refuel-g21d-final-integration.harness';
 export { findPhysicalRefuelRecoveryWork } from '../../physical-refuel-recovery.repository';
-export { countPhysicalRefuelRecoveryBacklog } from '../../physical-refuel-recovery.repository';
+export {
+  countPhysicalRefuelRecoveryBacklog,
+  countActionablePhysicalRefuelRecoveryReasons,
+} from '../../physical-refuel-recovery.repository';
 
 export const RAW_FUEL_REFUEL_F7_INTEGRATION_ENV = 'RAW_FUEL_REFUEL_F7_INTEGRATION';
 export const RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED_ENV = 'RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED';

@@ -91,6 +91,11 @@ describe('PhysicalRefuelReconciliationMetricsService', () => {
     expect(await gaugeValue('synqdrive_physical_refuel_recovery_last_success_unixtime')).toBe(before);
   });
 
+  it('F8.1 initializes last-success series to semantic zero at lifecycle', async () => {
+    metrics.initializeRecoverySchedulerObservability();
+    expect(await gaugeValue('synqdrive_physical_refuel_recovery_last_success_unixtime')).toBe(0);
+  });
+
   it('maps repository backlog keys to bounded reason labels', () => {
     expect(
       mapRepositoryBacklogToRecoveryReasons({

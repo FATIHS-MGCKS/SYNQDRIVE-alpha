@@ -227,10 +227,11 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
     version: '4.9.1136',
-    title: 'RFRF F8 — Operational telemetry + Prometheus alerting closure',
+    title: 'RFRF F8/F8.1 — Operational telemetry + semantic closure',
     summary: [
       'PhysicalRefuelReconciliationMetricsService exports recovery backlog gauges on TripMetricsService.registry.',
-      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8 real PG gate 16/16.',
+      'F8.1: scheduler publishes recovery_enabled at lifecycle + zero-success stale alert; actionable backlog parity for all six reasons.',
+      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8/F8.1 real PG gate.',
       'No second metrics stack; RFRF G2 handoff counters preserved; no recovery science or schema changes.',
     ],
     reason:

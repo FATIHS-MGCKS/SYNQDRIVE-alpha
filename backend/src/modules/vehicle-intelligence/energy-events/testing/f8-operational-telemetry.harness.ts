@@ -3,6 +3,7 @@ export {
   buildF5Pr3Stack,
   cleanupVehicle,
   countPhysicalRefuelRecoveryBacklog,
+  countActionablePhysicalRefuelRecoveryReasons,
   F5_PR3_G2_CUTOVER,
   F5_PR3_SETTLED_OBSERVATION_AT,
   findPhysicalRefuelRecoveryWork,

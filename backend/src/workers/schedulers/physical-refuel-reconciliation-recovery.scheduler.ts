@@ -27,7 +27,14 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
   }
 
   onModuleInit(): void {
-    if (!this.shouldStartRecoveryTimer()) return;
+    if (!this.shouldStartRecoveryTimer()) {
+      this.metrics.setRecoveryEnabled(false);
+      this.metrics.initializeRecoverySchedulerObservability();
+      return;
+    }
+
+    this.metrics.setRecoveryEnabled(true);
+    this.metrics.initializeRecoverySchedulerObservability();
 
     const intervalMs = Math.max(30_000, this.config.recoveryIntervalMs);
     this.timer = setInterval(() => {

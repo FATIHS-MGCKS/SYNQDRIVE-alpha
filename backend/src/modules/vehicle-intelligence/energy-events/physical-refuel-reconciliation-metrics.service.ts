@@ -57,6 +57,10 @@ export class PhysicalRefuelReconciliationMetricsService {
     });
   }
 
+  initializeRecoverySchedulerObservability(): void {
+    this.recoveryLastSuccessUnixtime.set(0);
+  }
+
   setRecoveryEnabled(enabled: boolean): void {
     this.recoveryEnabled.set(enabled ? 1 : 0);
   }
