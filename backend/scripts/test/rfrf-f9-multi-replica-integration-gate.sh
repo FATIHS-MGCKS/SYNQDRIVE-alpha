@@ -1,29 +1,23 @@
 #!/usr/bin/env bash
 # RFRF F9 — independent-replica PostgreSQL + Redis integration closure gate.
-# Orchestrates net-new F9 proofs plus authoritative prior-phase regressions (no runtime changes).
+# Runs net-new F9 proofs, then orchestrates authoritative prior-phase gate scripts.
 set -euo pipefail
 
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REPO_ROOT="$(cd "${BACKEND_ROOT}/.." && pwd)"
-GATE_ID="rfrf_f9_$(date +%s)"
-PG_HOST="${TEST_POSTGRES_HOST:-127.0.0.1}"
-PG_PORT="${TEST_POSTGRES_PORT:-5432}"
-REDIS_PORT="${TEST_REDIS_PORT:-56379}"
-PG_DB="rfrf_f9_${GATE_ID//-/_}"
-PG_USER="rfrf_f9_${GATE_ID//-/_}_u"
-PG_PASS="rfrf_f9_${GATE_ID}_local"
-REDIS_STARTED=0
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 assert_test_db_isolation() {
-  case "${PG_HOST}" in
+  local pg_host="$1" pg_db="$2"
+  case "${pg_host}" in
     localhost|127.0.0.1) ;;
     *)
-      echo "Refusing: TEST_POSTGRES_HOST must be localhost or 127.0.0.1 (got ${PG_HOST})" >&2
+      echo "Refusing: TEST_POSTGRES_HOST must be localhost or 127.0.0.1 (got ${pg_host})" >&2
       exit 1
       ;;
   esac
-  if [[ "${PG_DB}" != rfrf_f9_* ]]; then
-    echo "Refusing: database name must match rfrf_f9_* (got ${PG_DB})" >&2
+  if [[ "${pg_db}" != rfrf_f9_* ]]; then
+    echo "Refusing: database name must match rfrf_f9_* (got ${pg_db})" >&2
     exit 1
   fi
   if [[ "${DATABASE_URL}" == *"app.synqdrive"* || "${DATABASE_URL}" == *"production"* ]]; then
@@ -87,103 +81,102 @@ sync_schema_drift_if_needed() {
   exit 1
 }
 
-cleanup() {
-  if [[ "${REDIS_STARTED}" == "1" ]]; then
-    redis-cli -p "${REDIS_PORT}" shutdown nosave 2>/dev/null || true
-  fi
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${PG_DB};\"" 2>/dev/null || true
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${PG_USER};\"" 2>/dev/null || true
+run_f9_independent_replica_tests() {
+  local gate_id="rfrf_f9_$(date +%s)"
+  local pg_host="${TEST_POSTGRES_HOST:-127.0.0.1}"
+  local pg_port="${TEST_POSTGRES_PORT:-5432}"
+  local redis_port="${TEST_REDIS_PORT:-56379}"
+  local pg_db="rfrf_f9_${gate_id//-/_}"
+  local pg_user="rfrf_f9_${gate_id//-/_}_u"
+  local pg_pass="rfrf_f9_${gate_id}_local"
+  local redis_started=0
+
+  cleanup_f9() {
+    if [[ "${redis_started}" == "1" ]]; then
+      redis-cli -p "${redis_port}" shutdown nosave 2>/dev/null || true
+    fi
+    su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${pg_db};\"" 2>/dev/null || true
+    su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${pg_user};\"" 2>/dev/null || true
+  }
+  trap cleanup_f9 EXIT
+
+  export TEST_POSTGRES_HOST="${pg_host}"
+  export TEST_POSTGRES_PORT="${pg_port}"
+  export TEST_POSTGRES_DATABASE="${pg_db}"
+  export TEST_REDIS_HOST="127.0.0.1"
+  export TEST_REDIS_PORT="${redis_port}"
+  export G21D_FINAL_POSTGRES_DATABASE="${pg_db}"
+  export G21D_FINAL_POSTGRES_USER="${pg_user}"
+  export G21D_FINAL_POSTGRES_PASSWORD="${pg_pass}"
+  export G21D_FINAL_REDIS_PORT="${redis_port}"
+  export G21D_FINAL_REDIS_DB="14"
+
+  echo "==> F9 net-new: isolated PostgreSQL on ${pg_host}:${pg_port}/${pg_db}"
+  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${pg_user} LOGIN PASSWORD '${pg_pass}';\""
+  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${pg_db} OWNER ${pg_user};\""
+
+  export DATABASE_URL="postgresql://${pg_user}:${pg_pass}@${pg_host}:${pg_port}/${pg_db}?schema=public"
+  assert_test_db_isolation "${pg_host}" "${pg_db}"
+
+  echo "==> F9 net-new: isolated Redis on 127.0.0.1:${redis_port}"
+  redis-server \
+    --port "${redis_port}" \
+    --bind 127.0.0.1 \
+    --save "" \
+    --appendonly no \
+    --daemonize yes \
+    --databases 16
+
+  for _ in $(seq 1 30); do
+    if redis-cli -p "${redis_port}" ping 2>/dev/null | grep -q PONG; then
+      break
+    fi
+    sleep 1
+  done
+  redis-cli -p "${redis_port}" ping
+  redis_started=1
+
+  cd "${BACKEND_ROOT}"
+  npx prisma generate
+  PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+  sync_schema_drift_if_needed
+
+  echo "==> F9-P1..P6 + P10: independent-replica integration"
+  export RAW_FUEL_REFUEL_F9_INTEGRATION=1
+  export RAW_FUEL_REFUEL_F9_POSTGRES_REQUIRED=1
+  export RAW_FUEL_REFUEL_F9_REDIS_REQUIRED=1
+  npm test -- --runInBand --forceExit \
+    --testPathPattern=raw-fuel-refuel-fallback-f9-multi-replica.postgres.integration.spec.ts
+
+  cleanup_f9
+  trap - EXIT
 }
-trap cleanup EXIT
 
-export TEST_POSTGRES_HOST="${PG_HOST}"
-export TEST_POSTGRES_PORT="${PG_PORT}"
-export TEST_POSTGRES_DATABASE="${PG_DB}"
-export TEST_REDIS_HOST="127.0.0.1"
-export TEST_REDIS_PORT="${REDIS_PORT}"
-export G21D_FINAL_POSTGRES_DATABASE="${PG_DB}"
-export G21D_FINAL_POSTGRES_USER="${PG_USER}"
-export G21D_FINAL_POSTGRES_PASSWORD="${PG_PASS}"
-export G21D_FINAL_REDIS_PORT="${REDIS_PORT}"
-export G21D_FINAL_REDIS_DB="14"
+run_f9_independent_replica_tests
 
-echo "==> F9 gate: isolated PostgreSQL on ${PG_HOST}:${PG_PORT}/${PG_DB}"
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';\""
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\""
+echo "==> F9-P7: existing multi-replica recovery gate (reference)"
+bash "${SCRIPT_DIR}/rfrf-f7-multi-replica-recovery-gate.sh"
 
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
-assert_test_db_isolation
+echo "==> F9-P8: F5-PR2 atomic promotion gate"
+bash "${SCRIPT_DIR}/rfrf-f5-pr2-atomic-promotion-gate.sh"
 
-echo "==> F9 gate: isolated Redis on 127.0.0.1:${REDIS_PORT}"
-redis-server \
-  --port "${REDIS_PORT}" \
-  --bind 127.0.0.1 \
-  --save "" \
-  --appendonly no \
-  --daemonize yes \
-  --databases 16
+echo "==> F9-P9: F5-PR3.1 post-commit G2 handoff gate"
+bash "${SCRIPT_DIR}/rfrf-f5-pr3-g2-handoff-gate.sh"
 
-for _ in $(seq 1 30); do
-  if redis-cli -p "${REDIS_PORT}" ping 2>/dev/null | grep -q PONG; then
-    break
-  fi
-  sleep 1
-done
-redis-cli -p "${REDIS_PORT}" ping
-REDIS_STARTED=1
+echo "==> F7 recovery completeness gate"
+bash "${SCRIPT_DIR}/rfrf-f7-recovery-completeness-gate.sh"
 
-cd "${BACKEND_ROOT}"
-npx prisma generate
-PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
-sync_schema_drift_if_needed
+echo "==> F6 G2 payload compatibility gate"
+bash "${SCRIPT_DIR}/rfrf-f6-g2-payload-compatibility-gate.sh"
 
-echo "==> F9-P1..P6 + P10: independent-replica integration"
-export RAW_FUEL_REFUEL_F9_INTEGRATION=1
-export RAW_FUEL_REFUEL_F9_POSTGRES_REQUIRED=1
-export RAW_FUEL_REFUEL_F9_REDIS_REQUIRED=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f9-multi-replica.postgres.integration.spec.ts
+echo "==> F5-PR1 convergence gate"
+bash "${SCRIPT_DIR}/rfrf-f5-pr1-authoritative-convergence-gate.sh"
 
-echo "==> F9-P7: existing multi-replica recovery regression (reference, not duplicated)"
-export PHYSICAL_REFUEL_MULTI_REPLICA_INTEGRATION=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
-
-echo "==> F9-P8: F5-PR2 atomic promotion regression"
-export RAW_FUEL_REFUEL_F5_PR2_INTEGRATION=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f5-pr2-promotion.postgres.integration.spec.ts
-
-echo "==> F9-P9: F5-PR3.1 post-commit G2 handoff regression"
-export RAW_FUEL_REFUEL_F5_PR3_INTEGRATION=1
-export RAW_FUEL_REFUEL_F5_PR3_POSTGRES_REQUIRED=1
-export RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts
-
-echo "==> F7 recovery completeness regression"
-export RAW_FUEL_REFUEL_F7_INTEGRATION=1
-export RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-fuel-refuel-fallback-f7-recovery.postgres.integration.spec.ts|physical-refuel-reconciliation-recovery.scheduler.spec.ts'
-
-echo "==> F6 G2 payload compatibility regression"
-export RAW_FUEL_REFUEL_F6_INTEGRATION=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f6-g2-payload.postgres.integration.spec.ts
-
-echo "==> F5-PR1 convergence regression"
-export RAW_FUEL_REFUEL_F5_PR1_INTEGRATION=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f5-pr1-convergence.postgres.integration.spec.ts
-
-echo "==> F8 operational telemetry regression"
-export RAW_FUEL_REFUEL_F8_INTEGRATION=1
-export RAW_FUEL_REFUEL_F8_POSTGRES_REQUIRED=1
-npm test -- --runInBand --forceExit \
-  --testPathPattern='physical-refuel-f8-observability.postgres.integration.spec.ts|physical-refuel-reconciliation-metrics.service.spec.ts|physical-refuel-recovery.lost-enqueue-count.spec.ts'
+echo "==> F8 operational telemetry gate"
+bash "${SCRIPT_DIR}/rfrf-f8-operational-telemetry-gate.sh"
 
 echo "==> G2.1b/c/d semantic recovery regression"
+cd "${BACKEND_ROOT}"
 npm test -- --runInBand --forceExit \
   --testPathPattern=physical-refuel-g21d-final-recovery-execution-closure.spec.ts
 
