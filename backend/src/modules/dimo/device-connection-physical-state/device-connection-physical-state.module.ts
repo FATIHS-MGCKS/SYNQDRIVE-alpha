@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import connectivityPhysicalStateConfig from '@config/connectivity-physical-state.config';
+import connectivityPhysicalStateCutoverEvidenceConfig from '@config/connectivity-physical-state-cutover-evidence.config';
 import connectivityPhysicalStateRuntimeConfig from '@config/connectivity-physical-state-runtime.config';
 import deviceConnectionPhysicalStateActionOutboxConfig from '@config/device-connection-physical-state-action-outbox.config';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
@@ -18,6 +19,7 @@ import { PhysicalStateSnapshotEvidenceOrchestrator } from './physical-state-snap
 @Module({
   imports: [
     ConfigModule.forFeature(connectivityPhysicalStateConfig),
+    ConfigModule.forFeature(connectivityPhysicalStateCutoverEvidenceConfig),
     ConfigModule.forFeature(connectivityPhysicalStateRuntimeConfig),
     ConfigModule.forFeature(deviceConnectionPhysicalStateActionOutboxConfig),
   ],

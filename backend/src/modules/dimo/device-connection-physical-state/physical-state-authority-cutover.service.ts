@@ -7,15 +7,13 @@ import {
   isLegacyObdPersistenceExcludedByAuthority,
   PhysicalStateAuthorityCutoverInput,
   PhysicalStateAuthorityLatchAttemptResult,
-  PhysicalStateCutoverActivationEvidence,
   PhysicalStateCutoverEligibilityResult,
   PhysicalStateCutoverEligibilityStatus,
 } from './physical-state-authority-cutover.types';
 import type { PhysicalAuthorityScope } from './device-connection-physical-authority-cutover.repository';
-import {
-  evaluateMixedReplicaCutoverInterlock,
-  loadMixedReplicaInterlockFromEnv,
-} from './physical-state-cutover-mixed-replica-interlock';
+import { deriveEvidenceSnapshotFromVerifiedBundle } from './physical-state-cutover-evidence.snapshot';
+import { verifyPhysicalStateCutoverEvidence } from './physical-state-cutover-evidence.verifier';
+import { PhysicalStateCutoverEvidenceVerificationStatus } from './physical-state-cutover-evidence.types';
 
 @Injectable()
 export class PhysicalStateAuthorityCutoverService {
@@ -40,15 +38,16 @@ export class PhysicalStateAuthorityCutoverService {
   evaluateCutoverEligibility(
     scope: PhysicalAuthorityScope,
     currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode,
-    activationEvidence?: PhysicalStateCutoverActivationEvidence,
+    signedEvidenceBundle?: PhysicalStateAuthorityCutoverInput['signedEvidenceBundle'],
   ): PhysicalStateCutoverEligibilityResult {
+    const evidenceVerification = verifyPhysicalStateCutoverEvidence({
+      scope,
+      bundle: signedEvidenceBundle,
+    });
     return evaluatePhysicalStateCutoverEligibility({
       scope,
       currentAuthorityMode,
-      activationEvidence,
-      mixedReplicaInterlock: evaluateMixedReplicaCutoverInterlock(
-        loadMixedReplicaInterlockFromEnv(),
-      ),
+      evidenceVerification,
     });
   }
 
@@ -56,11 +55,15 @@ export class PhysicalStateAuthorityCutoverService {
     input: PhysicalStateAuthorityCutoverInput,
   ): Promise<PhysicalStateAuthorityLatchAttemptResult> {
     const currentMode = await this.readAuthorityMode(input.scope);
-    const eligibility = this.evaluateCutoverEligibility(
-      input.scope,
-      currentMode,
-      input.activationEvidence,
-    );
+    const evidenceVerification = verifyPhysicalStateCutoverEvidence({
+      scope: input.scope,
+      bundle: input.signedEvidenceBundle,
+    });
+    const eligibility = evaluatePhysicalStateCutoverEligibility({
+      scope: input.scope,
+      currentAuthorityMode: currentMode,
+      evidenceVerification,
+    });
 
     if (eligibility.status !== PhysicalStateCutoverEligibilityStatus.ELIGIBLE) {
       if (eligibility.status === PhysicalStateCutoverEligibilityStatus.ALREADY_PHYSICAL) {
@@ -88,10 +91,23 @@ export class PhysicalStateAuthorityCutoverService {
       };
     }
 
+    if (evidenceVerification.status !== PhysicalStateCutoverEvidenceVerificationStatus.VALID) {
+      return {
+        outcome: 'BLOCKED',
+        scope: input.scope,
+        eligibility,
+      };
+    }
+
+    const derivedEvidenceSnapshot = deriveEvidenceSnapshotFromVerifiedBundle(
+      evidenceVerification.bundle,
+      evidenceVerification.payloadCanonicalSha256,
+    );
+
     const latch = await this.prisma.$transaction((tx) =>
       this.authorityRepository.latchLegacyToPhysicalInTransaction(tx, input.scope, {
         latchedBy: input.latchedBy ?? null,
-        evidenceSnapshot: input.evidenceSnapshot,
+        evidenceSnapshot: derivedEvidenceSnapshot,
       }),
     );
 

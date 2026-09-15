@@ -244,6 +244,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-15T10:15:00.000Z',
   },
   {
+    id: 'vdc-rb019-p25-trust-root-closure-2026-09-15',
+    version: '4.9.1136',
+    title: 'VDC RB-019 P2.5 — Trust-root closure (required artifact scope + ops parity)',
+    summary: [
+      'All five cutover proof artifacts require exact scope binding (org/vehicle/provider).',
+      'Ed25519 keyring enforces asymmetricKeyType=ed25519; shared ops-lib canonical + manifest validation.',
+      'CLI/runtime canonical parity + PROV-AS/KR/CLI regression proofs.',
+    ],
+    reason:
+      'Independent review: optional artifact.scope and divergent ops canonicalization weakened provenance trust root.',
+    previousBehavior:
+      'artifact.scope optional; ops CLI used separate stableStringify without semantic pre-sign validation.',
+    details:
+      'docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-15T12:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
     version: '4.9.1134',
     title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',

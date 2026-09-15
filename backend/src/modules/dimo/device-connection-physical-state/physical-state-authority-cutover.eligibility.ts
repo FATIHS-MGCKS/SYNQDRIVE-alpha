@@ -1,28 +1,49 @@
 import { DeviceConnectionPhysicalAuthorityMode } from '@prisma/client';
 import type { PhysicalAuthorityScope } from './device-connection-physical-authority-cutover.repository';
 import {
-  evaluateMixedReplicaCutoverInterlock,
-  loadMixedReplicaInterlockFromEnv,
-  type MixedReplicaInterlockResult,
-} from './physical-state-cutover-mixed-replica-interlock';
-import {
-  PhysicalStateCutoverActivationEvidence,
   PhysicalStateCutoverEligibilityResult,
   PhysicalStateCutoverEligibilityStatus,
 } from './physical-state-authority-cutover.types';
+import {
+  PhysicalStateCutoverEvidenceVerificationStatus,
+  type PhysicalStateCutoverEvidenceVerificationResult,
+} from './physical-state-cutover-evidence.types';
 
 export type EvaluateCutoverEligibilityInput = {
   scope: PhysicalAuthorityScope;
   currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode;
-  activationEvidence?: PhysicalStateCutoverActivationEvidence;
-  mixedReplicaInterlock?: MixedReplicaInterlockResult;
+  evidenceVerification: PhysicalStateCutoverEvidenceVerificationResult;
 };
+
+function mapVerificationStatusToEligibility(
+  status: Exclude<
+    PhysicalStateCutoverEvidenceVerificationStatus,
+    PhysicalStateCutoverEvidenceVerificationStatus.VALID
+  >,
+): PhysicalStateCutoverEligibilityStatus {
+  switch (status) {
+    case PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID:
+    case PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_STALE:
+    case PhysicalStateCutoverEvidenceVerificationStatus.TARGET_NOT_APPROVED:
+      return PhysicalStateCutoverEligibilityStatus.BLOCKED_TARGET_PRESEED_NOT_PROVEN;
+    case PhysicalStateCutoverEvidenceVerificationStatus.UNEXPLAINED_PROOF_INVALID:
+    case PhysicalStateCutoverEvidenceVerificationStatus.UNEXPLAINED_COUNT_NONZERO:
+    case PhysicalStateCutoverEvidenceVerificationStatus.OBSERVATION_WINDOW_INSUFFICIENT:
+      return PhysicalStateCutoverEligibilityStatus.BLOCKED_UNEXPLAINED_DIVERGENCES;
+    case PhysicalStateCutoverEvidenceVerificationStatus.MIXED_REPLICA_PROOF_INVALID:
+    case PhysicalStateCutoverEvidenceVerificationStatus.PEER_SET_MISMATCH:
+    case PhysicalStateCutoverEvidenceVerificationStatus.RUNTIME_INTERLOCK_UNSAFE:
+      return PhysicalStateCutoverEligibilityStatus.BLOCKED_MIXED_REPLICA;
+    case PhysicalStateCutoverEvidenceVerificationStatus.BUILD_MISMATCH:
+      return PhysicalStateCutoverEligibilityStatus.BLOCKED_RUNTIME_NOT_READY;
+    default:
+      return PhysicalStateCutoverEligibilityStatus.BLOCKED_EVIDENCE_PROVENANCE;
+  }
+}
 
 export function evaluatePhysicalStateCutoverEligibility(
   input: EvaluateCutoverEligibilityInput,
 ): PhysicalStateCutoverEligibilityResult {
-  const blockingReasons: string[] = [];
-
   if (input.currentAuthorityMode === DeviceConnectionPhysicalAuthorityMode.PHYSICAL) {
     return {
       status: PhysicalStateCutoverEligibilityStatus.ALREADY_PHYSICAL,
@@ -32,58 +53,24 @@ export function evaluatePhysicalStateCutoverEligibility(
     };
   }
 
-  const evidence: PhysicalStateCutoverActivationEvidence = {
-    targetPreseedDryRunProven: false,
-    unexplainedDivergencesZeroProven: false,
-    mixedReplicaGateProven: false,
-    runtimeReady: false,
-    ...input.activationEvidence,
-  };
-
-  if (!evidence.runtimeReady) {
-    blockingReasons.push('runtime_not_ready');
-  }
-  if (!evidence.targetPreseedDryRunProven) {
-    blockingReasons.push('target_preseed_dry_run_not_proven');
-  }
-  if (!evidence.unexplainedDivergencesZeroProven) {
-    blockingReasons.push('unexplained_divergences_not_proven_zero');
-  }
-
-  const interlock =
-    input.mixedReplicaInterlock ??
-    evaluateMixedReplicaCutoverInterlock(loadMixedReplicaInterlockFromEnv());
-
-  if (!evidence.mixedReplicaGateProven) {
-    blockingReasons.push('mixed_replica_gate_not_proven');
-  } else if (!interlock.safe) {
-    blockingReasons.push(...interlock.details);
-  }
-
-  if (blockingReasons.length === 0) {
+  if (input.evidenceVerification.status === PhysicalStateCutoverEvidenceVerificationStatus.VALID) {
     return {
       status: PhysicalStateCutoverEligibilityStatus.ELIGIBLE,
       scope: input.scope,
       currentAuthorityMode: input.currentAuthorityMode,
       blockingReasons: [],
+      evidenceVerificationStatus: input.evidenceVerification.status,
     };
   }
 
-  let status = PhysicalStateCutoverEligibilityStatus.BLOCKED_OTHER_SAFETY_GATE;
-  if (!evidence.targetPreseedDryRunProven) {
-    status = PhysicalStateCutoverEligibilityStatus.BLOCKED_TARGET_PRESEED_NOT_PROVEN;
-  } else if (!evidence.unexplainedDivergencesZeroProven) {
-    status = PhysicalStateCutoverEligibilityStatus.BLOCKED_UNEXPLAINED_DIVERGENCES;
-  } else if (!evidence.mixedReplicaGateProven || !interlock.safe) {
-    status = PhysicalStateCutoverEligibilityStatus.BLOCKED_MIXED_REPLICA;
-  } else if (!evidence.runtimeReady) {
-    status = PhysicalStateCutoverEligibilityStatus.BLOCKED_RUNTIME_NOT_READY;
-  }
+  const verification = input.evidenceVerification;
+  const status = mapVerificationStatusToEligibility(verification.status);
 
   return {
     status,
     scope: input.scope,
     currentAuthorityMode: input.currentAuthorityMode,
-    blockingReasons,
+    blockingReasons: verification.details,
+    evidenceVerificationStatus: verification.status,
   };
 }
