@@ -178,7 +178,7 @@ bash "${SCRIPT_DIR}/rfrf-f8-operational-telemetry-gate.sh"
 echo "==> G2.1b/c/d semantic recovery regression"
 cd "${BACKEND_ROOT}"
 npm test -- --runInBand --forceExit \
-  --testPathPattern=physical-refuel-g21d-final-recovery-execution-closure.spec.ts
+  --testPathPattern='physical-refuel-g21[bcd]'
 
 echo "==> RFRF metrics regression"
 npm test -- --runInBand --forceExit \
