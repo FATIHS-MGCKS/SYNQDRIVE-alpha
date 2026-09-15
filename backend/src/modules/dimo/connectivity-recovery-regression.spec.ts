@@ -138,6 +138,7 @@ describe('connectivity recovery regressions (A–G)', () => {
         {
           dimoDeviceConnectionEvent: { upsert, update, findFirst },
           vehicle: { findUnique: vehicleFindUnique },
+          deviceConnectionPhysicalState: { findFirst: jest.fn().mockResolvedValue(null) },
         } as never,
         mockEpisodeService() as never,
         mockLifecyclePolicy() as never,
