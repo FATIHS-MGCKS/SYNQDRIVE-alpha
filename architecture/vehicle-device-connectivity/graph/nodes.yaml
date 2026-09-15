@@ -584,3 +584,12 @@ nodes:
       - backend/src/modules/dimo/device-connection-physical-state/physical-state-authority-cutover.service.ts
       - backend/src/modules/dimo/device-connection-physical-state/device-connection-physical-authority-cutover.repository.ts
       - backend/src/workers/processors/dimo-snapshot.processor.ts
+
+  - id: VDC-EVID-RB019-P25-ACTIVATION-READINESS-001
+    type: evidence
+    title: RB-019 Phase 2 P2.5 cutover activation readiness audit
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: Real-data pre-seed dry-run PASS (4 Production scopes); final target/pilot activation proof NOT_PROVEN; UNEXPLAINED/mixed-replica/provenance NOT_PROVEN or FAIL; dry runbook + forward-only incident plan; no cutover executed.
+    source_paths:
+      - docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md

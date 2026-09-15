@@ -68,6 +68,8 @@ When persisted authority is `PHYSICAL`, disabling master/sub-flags does **not** 
 
 ## REMAINING ACTIVATION GATES (operational — NOT_PROVEN)
 
-- `P24_TARGET_DATA_DRY_RUN_GATE` — representative pilot pre-seed dry-run
-- `UNEXPLAINED_CORRECTNESS_CRITICAL_DIVERGENCES` — operational shadow observations
-- `MIXED_REPLICA_OPERATIONAL_PROOF` — full fleet replica uniformity at cutover time
+- `REAL_DATA_PRESEED_READINESS` — **PASS** (`REAL_DATA_PRESEED_DRY_RUN_EXECUTION_RESULT`; 2026-09-15 Production read-only, 4 scopes, zero mutations) — see [activation-readiness audit](../../../docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md) §2
+- `FINAL_TARGET_PILOT_ACTIVATION_PROOF` — **NOT_PROVEN** (`FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE`; cohort not approved; P2.5 not deployed; cutover-time revalidation required)
+- `UNEXPLAINED_CORRECTNESS_CRITICAL_DIVERGENCES` — operational shadow observations (**NOT_PROVEN** — STATEFUL_SHADOW not enabled)
+- `MIXED_REPLICA_OPERATIONAL_PROOF` — full fleet replica uniformity at cutover time (**NOT_PROVEN** — Production deploy behind main; no build identity env)
+- `ACTIVATION_EVIDENCE_PROVENANCE` — signed evidence bundle required (**FAIL** — caller-supplied booleans today; hard blocker)
