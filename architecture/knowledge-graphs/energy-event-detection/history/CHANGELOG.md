@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F7 recovery completeness + post-commit crash-window closure
+
+- EED-EV-0060: canonical production owner is existing `PhysicalRefuelReconciliationRecoveryScheduler` (G2.1a) — no second recovery stack
+- Post-commit crash window (TRANSACTION A committed, G2 handoff omitted/thrown) recoverable via `orphan_refuel` + `runRecoveryBatch()`
+- Minimal scheduler hardening: tick errors logged, do not kill future intervals
+- Real PG gate F7-P1..P12 + scheduler lifecycle P10 (18/18); F5-PR3 P17 regression-certified for BullMQ deferred enqueue
+- G2.1b/G2.1c/G2.1d test mocks aligned for F5-PR3 recovery authority `findUnique` filter
+- Candidate-level pre-PROMOTED retry explicitly out of F7 scope
+
 ## 2026-09-15 — RFRF F6.1 pre-merge main sync + R16 stale mock closure
 
 - Merged `origin/main` @ `fda8a218` (VDC #1652); ChangesView preserves both F6 + VDC entries

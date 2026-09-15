@@ -25,6 +25,7 @@ function mockRecoveryPrisma(overrides?: {
     },
     vehicleEnergyEvent: {
       findMany: jest.fn().mockResolvedValue(overrides?.orphans ?? []),
+      findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
     },
   };
 }

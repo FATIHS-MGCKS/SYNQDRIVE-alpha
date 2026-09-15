@@ -225,6 +225,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
+    version: '4.9.1135',
+    title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
+    summary: [
+      'Canonical G2.1a scheduler already owns runRecoveryBatch(); F7 proves orphan_refuel closes post-commit handoff crash window.',
+      'Minimal scheduler tick error isolation; real PG F7-P1..P12 (18/18); no second recovery engine or schema change.',
+      'F5-PR3 P17 regression-certified for BullMQ deferred enqueue; candidate-level pre-PROMOTED retry out of scope.',
+    ],
+    reason:
+      'F5-PR3 post-commit G2 handoff creates a real crash window after TRANSACTION A; F7 closes durable autonomous recovery without duplicating F5-PR3 recovery architecture.',
+    previousBehavior:
+      'Recovery runtime existed but F7 scope required conclusive production lifecycle proof and post-commit orphan recovery certification.',
+    details:
+      'docs/audits/eed-rfrf-f7-recovery-completeness-2026-09-15.md; EED-EV-0060; BASE_MAIN c310d752f',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T10:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
     version: '4.9.1134',
     title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',
