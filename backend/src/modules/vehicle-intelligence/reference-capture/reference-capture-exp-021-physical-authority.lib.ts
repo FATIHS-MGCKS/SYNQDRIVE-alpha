@@ -19,6 +19,12 @@ export type Exp021PhysicalAuthority = {
   startConfirmedAt: string;
   persistedAt: string;
   orchestrationState: Exp021OrchestrationState;
+  /** Order-neutral: first physical cadence phase start at canonical T0 (not cadence-specific). */
+  physicalFirstPhaseStartedAt?: string | null;
+  /**
+   * Legacy alias for historical first physical phase start.
+   * MUST NOT be interpreted as evidence that the cadence was 60s.
+   */
   physicalPhase60StartedAt?: string | null;
   degradedReason?: string | null;
   degradedAt?: string | null;
@@ -51,6 +57,47 @@ export class Exp021PhaseIdentityConflictError extends Error {
   }
 }
 
+export function assertPhysicalFirstPhaseAuthorityConsistency(
+  authority: Pick<
+    Exp021PhysicalAuthority,
+    'physicalFirstPhaseStartedAt' | 'physicalPhase60StartedAt'
+  >,
+): void {
+  const canonical = authority.physicalFirstPhaseStartedAt;
+  const legacy = authority.physicalPhase60StartedAt;
+  if (!canonical || !legacy) return;
+  const canonicalMs = Date.parse(canonical);
+  const legacyMs = Date.parse(legacy);
+  if (!Number.isFinite(canonicalMs) || !Number.isFinite(legacyMs)) {
+    throw new Exp021PhaseIdentityConflictError(
+      'physical first-phase authority timestamps are not parseable',
+    );
+  }
+  if (canonicalMs !== legacyMs) {
+    throw new Exp021PhaseIdentityConflictError(
+      `physical first-phase authority conflict: canonical=${canonical} legacy=${legacy}`,
+    );
+  }
+}
+
+export function resolvePhysicalFirstPhaseStartedAt(
+  authority: Exp021PhysicalAuthority | null | undefined,
+): string | null {
+  if (!authority) return null;
+  assertPhysicalFirstPhaseAuthorityConsistency(authority);
+  return authority.physicalFirstPhaseStartedAt ?? authority.physicalPhase60StartedAt ?? null;
+}
+
+export function buildPhysicalFirstPhaseAuthorityPatch(
+  phaseStartedAt: string,
+): Pick<Exp021PhysicalAuthority, 'physicalFirstPhaseStartedAt' | 'physicalPhase60StartedAt'> {
+  return {
+    physicalFirstPhaseStartedAt: phaseStartedAt,
+    // Legacy alias: historical first physical phase start — NOT evidence of 60s cadence.
+    physicalPhase60StartedAt: phaseStartedAt,
+  };
+}
+
 export function parseExp021PhysicalAuthority(preflightJson: unknown): Exp021PhysicalAuthority | null {
   if (!preflightJson || typeof preflightJson !== 'object' || Array.isArray(preflightJson)) {
     return null;
@@ -69,7 +116,9 @@ export function parseExp021PhysicalAuthority(preflightJson: unknown): Exp021Phys
   ) {
     return null;
   }
-  return authority as Exp021PhysicalAuthority;
+  const parsed = authority as Exp021PhysicalAuthority;
+  assertPhysicalFirstPhaseAuthorityConsistency(parsed);
+  return parsed;
 }
 
 export function buildExp021PhysicalAuthority(args: {

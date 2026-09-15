@@ -656,6 +656,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
 | Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |
 
+### EXP-021 — PR-B forensic slot persistence + first-phase authority (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Per-slot forensic persistence; order-neutral first physical phase authority; summary/ledger parity — no fleet coordinator |
+| Slots | `Exp021RequestSlotRecord` extended: `requestCompletedAtMs`, `bucketCount` (RAW_PROVIDER_BUCKET_COUNT), `providerCallAttempted`, `providerCallSucceeded`, `outcomeReason`, `effectivePollIntervalMs` |
+| Summary | `finalizePhaseSummary` derives `slotSuccessCount` / `slotZeroResultCount` / `slotFailureCount` / `slotSkippedCount` / `slotAccountedCount` from ledger |
+| Authority | `physicalFirstPhaseStartedAt` canonical; `physicalPhase60StartedAt` legacy alias with fail-closed conflict detection |
+| Logging | `PHYSICAL_FIRST_PHASE_REANCHORED_AT_T0` replaces legacy `PHYSICAL_PHASE_60_REANCHORED_AT_T0` |
+| Forensics | `reference-capture-exp021-forensic-extraction.lib.ts`; deep audit exposes `exp021SlotForensics` |
+| Settlement linkage | `PHASE_LEVEL_LINK` — no causal 1:1 slot↔settlement window |
+| Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
+| Postgres | Terminal slot forensic fields + first-phase authority survive reload |
+
 ### EXP-021 — canonical autonomous lifecycle driver + real-path regression (2026-09-14, PR #1649)
 
 | Event | Detail |
