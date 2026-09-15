@@ -518,7 +518,10 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([]),
         },
-        vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
+        vehicleEnergyEvent: {
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
+        },
       };
 
       await findPhysicalRefuelRecoveryWork(prisma as never, recoveryParams);
@@ -543,7 +546,10 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([{ vehicleId, energyEventId: 'retry-1' }]),
         },
-        vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
+        vehicleEnergyEvent: {
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
+        },
       };
 
       const work = await findPhysicalRefuelRecoveryWork(prisma as never, recoveryParams);
@@ -563,7 +569,10 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([{ vehicleId, energyEventId: 'initial-1' }])
             .mockResolvedValueOnce([]),
         },
-        vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
+        vehicleEnergyEvent: {
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
+        },
       };
 
       const work = await findPhysicalRefuelRecoveryWork(prisma as never, recoveryParams);
@@ -627,7 +636,10 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([]),
         },
-        vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([]) },
+        vehicleEnergyEvent: {
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
+        },
       };
 
       const work = await findPhysicalRefuelRecoveryWork(prisma as never, {
@@ -746,7 +758,10 @@ describe('G2.1c final recovery semantics closure', () => {
         startLongitude: 9.5,
       };
       const prisma = {
-        vehicleEnergyEvent: { findMany: jest.fn().mockResolvedValue([event]) },
+        vehicleEnergyEvent: {
+          findMany: jest.fn().mockResolvedValue([event]),
+          findUnique: jest.fn().mockResolvedValue({ detectionSource: 'DIMO_NATIVE' }),
+        },
         vehicleEnergyEventRefuelReconciliation: { findUnique: jest.fn().mockResolvedValue(null) },
       };
       const producer = { enqueueAfterPersistFromEvent: jest.fn().mockResolvedValue('job-legacy') };

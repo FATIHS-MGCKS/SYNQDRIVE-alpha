@@ -57,6 +57,14 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
       await this.runtime.emitRecoveryBacklogMetrics();
       const result = await this.runtime.runRecoveryBatch();
       return result.processedVehicles;
+    } catch (error) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'physical_refuel_recovery_tick_failed',
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      return 0;
     } finally {
       this.inProgress = false;
     }
