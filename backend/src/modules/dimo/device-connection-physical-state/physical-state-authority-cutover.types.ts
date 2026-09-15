@@ -1,8 +1,6 @@
-import {
-  DeviceConnectionPhysicalAuthorityMode,
-  Prisma,
-} from '@prisma/client';
+import { DeviceConnectionPhysicalAuthorityMode } from '@prisma/client';
 import type { PhysicalAuthorityScope } from './device-connection-physical-authority-cutover.repository';
+import type { SignedPhysicalStateCutoverEvidenceBundle } from './physical-state-cutover-evidence.types';
 
 /** Structural legacy OBD persistence exclusion when persisted authority is PHYSICAL. */
 export function isLegacyObdPersistenceExcludedByAuthority(
@@ -19,21 +17,16 @@ export enum PhysicalStateCutoverEligibilityStatus {
   BLOCKED_UNEXPLAINED_DIVERGENCES = 'BLOCKED_UNEXPLAINED_DIVERGENCES',
   BLOCKED_MIXED_REPLICA = 'BLOCKED_MIXED_REPLICA',
   BLOCKED_RUNTIME_NOT_READY = 'BLOCKED_RUNTIME_NOT_READY',
+  BLOCKED_EVIDENCE_PROVENANCE = 'BLOCKED_EVIDENCE_PROVENANCE',
   BLOCKED_OTHER_SAFETY_GATE = 'BLOCKED_OTHER_SAFETY_GATE',
 }
-
-export type PhysicalStateCutoverActivationEvidence = {
-  targetPreseedDryRunProven?: boolean;
-  unexplainedDivergencesZeroProven?: boolean;
-  mixedReplicaGateProven?: boolean;
-  runtimeReady?: boolean;
-};
 
 export type PhysicalStateCutoverEligibilityResult = {
   status: PhysicalStateCutoverEligibilityStatus;
   scope: PhysicalAuthorityScope;
   currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode;
   blockingReasons: string[];
+  evidenceVerificationStatus?: string;
 };
 
 export type PhysicalStateAuthorityLatchAttemptResult =
@@ -57,9 +50,12 @@ export type PhysicalStateAuthorityLatchAttemptResult =
       eligibility: PhysicalStateCutoverEligibilityResult;
     };
 
+/**
+ * Production cutover input — caller supplies a signed evidence bundle only.
+ * Boolean activation proof and caller-provided evidence snapshots are not accepted.
+ */
 export type PhysicalStateAuthorityCutoverInput = {
   scope: PhysicalAuthorityScope;
   latchedBy?: string | null;
-  evidenceSnapshot?: Prisma.InputJsonValue;
-  activationEvidence?: PhysicalStateCutoverActivationEvidence;
+  signedEvidenceBundle?: SignedPhysicalStateCutoverEvidenceBundle | null;
 };

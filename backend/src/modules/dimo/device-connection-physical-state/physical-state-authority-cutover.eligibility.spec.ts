@@ -1,6 +1,18 @@
 import { DeviceConnectionPhysicalAuthorityMode } from '@prisma/client';
 import { evaluatePhysicalStateCutoverEligibility } from './physical-state-authority-cutover.eligibility';
 import { PhysicalStateCutoverEligibilityStatus } from './physical-state-authority-cutover.types';
+import {
+  PhysicalStateCutoverEvidenceVerificationStatus,
+} from './physical-state-cutover-evidence.types';
+import { verifyPhysicalStateCutoverEvidence } from './physical-state-cutover-evidence.verifier';
+import {
+  buildValidSignedCutoverEvidenceBundleForScope,
+  configureP25TestEvidencePublicKeyring,
+  disableP25CutoverRuntimeEnv,
+  clearP25TestEvidencePublicKeyring,
+  enableP25CutoverRuntimeEnv,
+  P25_TEST_CUTOVER_BUILD,
+} from './testing/physical-state-cutover-evidence.test-fixtures';
 
 const scope = {
   organizationId: 'org-1',
@@ -8,31 +20,36 @@ const scope = {
   provider: 'DIMO',
 };
 
-const provenEvidence = {
-  targetPreseedDryRunProven: true,
-  unexplainedDivergencesZeroProven: true,
-  mixedReplicaGateProven: true,
-  runtimeReady: true,
-};
-
 describe('physical-state-authority-cutover.eligibility', () => {
-  it('defaults to blocked when activation evidence is absent', () => {
-    const result = evaluatePhysicalStateCutoverEligibility({
-      scope,
-      currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
-      mixedReplicaInterlock: { safe: true, reason: 'SAFE', details: [] },
-    });
-    expect(result.status).toBe(
-      PhysicalStateCutoverEligibilityStatus.BLOCKED_TARGET_PRESEED_NOT_PROVEN,
-    );
+  afterEach(() => {
+    disableP25CutoverRuntimeEnv();
+    clearP25TestEvidencePublicKeyring();
   });
 
-  it('returns ELIGIBLE when all gates are proven', () => {
+  it('defaults to blocked when signed evidence bundle is absent', () => {
+    enableP25CutoverRuntimeEnv(P25_TEST_CUTOVER_BUILD);
+    configureP25TestEvidencePublicKeyring();
     const result = evaluatePhysicalStateCutoverEligibility({
       scope,
       currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
-      activationEvidence: provenEvidence,
-      mixedReplicaInterlock: { safe: true, reason: 'SAFE', details: [] },
+      evidenceVerification: {
+        status: PhysicalStateCutoverEvidenceVerificationStatus.MISSING_BUNDLE,
+        details: ['signed_evidence_bundle_required'],
+      },
+    });
+    expect(result.status).toBe(PhysicalStateCutoverEligibilityStatus.BLOCKED_EVIDENCE_PROVENANCE);
+  });
+
+  it('returns ELIGIBLE when signed evidence verifies VALID', () => {
+    enableP25CutoverRuntimeEnv(P25_TEST_CUTOVER_BUILD);
+    const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope);
+    const verification = verifyPhysicalStateCutoverEvidence({ scope, bundle });
+    expect(verification.status).toBe(PhysicalStateCutoverEvidenceVerificationStatus.VALID);
+
+    const result = evaluatePhysicalStateCutoverEligibility({
+      scope,
+      currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
+      evidenceVerification: verification,
     });
     expect(result.status).toBe(PhysicalStateCutoverEligibilityStatus.ELIGIBLE);
   });
@@ -41,8 +58,10 @@ describe('physical-state-authority-cutover.eligibility', () => {
     const result = evaluatePhysicalStateCutoverEligibility({
       scope,
       currentAuthorityMode: DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
-      activationEvidence: {},
-      mixedReplicaInterlock: { safe: false, reason: 'BLOCKED_MIXED_REPLICA', details: [] },
+      evidenceVerification: {
+        status: PhysicalStateCutoverEvidenceVerificationStatus.MISSING_BUNDLE,
+        details: ['signed_evidence_bundle_required'],
+      },
     });
     expect(result.status).toBe(PhysicalStateCutoverEligibilityStatus.ALREADY_PHYSICAL);
   });

@@ -15,6 +15,13 @@ import { buildBindingScopeFromToken } from './device-connection-physical-state.b
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { PhysicalStateAuthorityCutoverService } from './physical-state-authority-cutover.service';
 import { PhysicalStateCutoverEligibilityStatus } from './physical-state-authority-cutover.types';
+import {
+  buildValidSignedCutoverEvidenceBundleForScope,
+  clearP25TestEvidencePublicKeyring,
+  configureP25TestEvidencePublicKeyring,
+  disableP25CutoverRuntimeEnv,
+  P25_TEST_CUTOVER_BUILD,
+} from './testing/physical-state-cutover-evidence.test-fixtures';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
 import { PhysicalStateEvidenceWriterService } from './physical-state-evidence-writer.service';
@@ -36,14 +43,11 @@ const LIVE =
 const REQUIRED = process.env.PHYSICAL_STATE_POSTGRES_REQUIRED === '1';
 const describePg = LIVE ? describe : describe.skip;
 
-const CUTOVER_BUILD = 'p25-test-build';
+const CUTOVER_BUILD = P25_TEST_CUTOVER_BUILD;
 
-const PROVEN_ACTIVATION = {
-  targetPreseedDryRunProven: true,
-  unexplainedDivergencesZeroProven: true,
-  mixedReplicaGateProven: true,
-  runtimeReady: true,
-};
+function signedBundleForScope() {
+  return buildValidSignedCutoverEvidenceBundleForScope(scope());
+}
 
 if (REQUIRED && !LIVE) {
   throw new Error(
@@ -58,6 +62,7 @@ function enableStatefulShadowEnv(): void {
   process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV] = 'false';
   process.env.CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID = CUTOVER_BUILD;
   process.env.SYNQDRIVE_BUILD_ID = CUTOVER_BUILD;
+  configureP25TestEvidencePublicKeyring();
 }
 
 function disableStatefulShadowEnv(): void {
@@ -65,8 +70,8 @@ function disableStatefulShadowEnv(): void {
   delete process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV];
   delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV];
   delete process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV];
-  delete process.env.CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID;
-  delete process.env.SYNQDRIVE_BUILD_ID;
+  disableP25CutoverRuntimeEnv();
+  clearP25TestEvidencePublicKeyring();
 }
 
 describePg('P2.5 authority cutover runtime (postgres)', () => {
@@ -142,16 +147,30 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     );
   });
 
-  it('P25-B — LEGACY -> PHYSICAL latch succeeds once with proven activation evidence', async () => {
+  it('P25-B — LEGACY -> PHYSICAL latch succeeds once with verified signed evidence', async () => {
+    const bundle = signedBundleForScope();
     const result = await cutoverService.attemptAuthorityCutover({
       scope: scope(),
       latchedBy: 'p25-test',
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: bundle,
     });
     expect(result.outcome).toBe('LATCHED');
     expect(await cutoverService.readAuthorityMode(scope())).toBe(
       DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
     );
+
+    const row = await prisma.deviceConnectionPhysicalAuthorityCutover.findFirstOrThrow({
+      where: {
+        organizationId: fixture.org.id,
+        vehicleId: fixture.vehicle.id,
+        provider: 'DIMO',
+      },
+      select: { evidenceSnapshot: true },
+    });
+    const snapshot = row.evidenceSnapshot as Record<string, unknown>;
+    expect(snapshot.bundleId).toBe(bundle.payload.bundleId);
+    expect(snapshot.payloadCanonicalSha256).toMatch(/^[a-f0-9]{64}$/i);
+    expect(snapshot.scope).toEqual(scope());
   });
 
   it('P25-C — PHYSICAL -> LEGACY rejected by state machine', () => {
@@ -168,13 +187,13 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   it('P25-D — repeated PHYSICAL cutover is idempotent', async () => {
     const first = await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
     expect(first.outcome).toBe('LATCHED');
 
     const second = await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
     expect(second.outcome).toBe('ALREADY_PHYSICAL');
 
@@ -189,7 +208,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
       Array.from({ length: 4 }, () =>
         cutoverService.attemptAuthorityCutover({
           scope: scope(),
-          activationEvidence: PROVEN_ACTIVATION,
+          signedEvidenceBundle: signedBundleForScope(),
         }),
       ),
     );
@@ -207,7 +226,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   it('P25-G — device replacement inherits PHYSICAL authority', async () => {
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
 
     const replacementBinding = buildBindingScopeFromToken({
@@ -236,7 +255,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     });
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
 
     const eventsBefore = await prisma.dimoDeviceConnectionEvent.count({
@@ -264,7 +283,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   it('P25-J — master=false after PHYSICAL retains physical gate', async () => {
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
     delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
 
@@ -290,7 +309,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     });
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
 
     await webhookService.processValidatedWebhookEvent({
@@ -335,7 +354,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
       }),
       cutoverService.attemptAuthorityCutover({
         scope: scope(),
-        activationEvidence: PROVEN_ACTIVATION,
+        signedEvidenceBundle: signedBundleForScope(),
       }),
     ]);
 
@@ -367,7 +386,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     });
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
     delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
 
@@ -417,7 +436,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     });
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
 
     const snapshotResult = await orchestrator.applyPhysicalSnapshotEvidence({
@@ -449,13 +468,18 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   });
 
   it('P25-M — mixed-replica interlock blocks cutover when peer builds diverge', async () => {
+    const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope(), {
+      fleetReplicaCount: 2,
+      peerBuildIds: [CUTOVER_BUILD],
+      skipEnvMutation: true,
+    });
     process.env.SYNQDRIVE_BUILD_ID = CUTOVER_BUILD;
     process.env.CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID = CUTOVER_BUILD;
     process.env.SYNQDRIVE_REPLICA_PEER_BUILD_IDS = `${CUTOVER_BUILD},stale-replica`;
 
     const blocked = await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: bundle,
     });
     expect(blocked.outcome).toBe('BLOCKED');
     if (blocked.outcome === 'BLOCKED') {
@@ -467,17 +491,20 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   });
 
   it('P25-N — stale replica build cannot pass mixed-replica interlock', async () => {
+    const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope(), {
+      skipEnvMutation: true,
+    });
     process.env.SYNQDRIVE_BUILD_ID = 'legacy-replica-build';
     process.env.CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID = CUTOVER_BUILD;
 
     const blocked = await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: bundle,
     });
     expect(blocked.outcome).toBe('BLOCKED');
     if (blocked.outcome === 'BLOCKED') {
       expect(blocked.eligibility.status).toBe(
-        PhysicalStateCutoverEligibilityStatus.BLOCKED_MIXED_REPLICA,
+        PhysicalStateCutoverEligibilityStatus.BLOCKED_RUNTIME_NOT_READY,
       );
     }
 
@@ -522,7 +549,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   it('P25-Q — committed PHYSICAL survives re-read', async () => {
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
     const freshService = new PhysicalStateAuthorityCutoverService(
       prismaService,
@@ -549,7 +576,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     });
     await cutoverService.attemptAuthorityCutover({
       scope: scope(),
-      activationEvidence: PROVEN_ACTIVATION,
+      signedEvidenceBundle: signedBundleForScope(),
     });
 
     await webhookService.processValidatedWebhookEvent({

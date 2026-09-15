@@ -225,6 +225,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'vdc-rb019-p25-activation-evidence-provenance-2026-09-15',
+    version: '4.9.1135',
+    title: 'VDC RB-019 P2.5 — Signed cutover activation evidence provenance',
+    summary: [
+      'Ed25519 signed evidence bundle v1 with deterministic canonical payload hashing.',
+      'PhysicalStateCutoverEvidenceVerifier fail-closed; raw boolean activation path removed.',
+      'Derived evidence snapshot persisted at latch; ops signing CLI; P25-PROV-A..R matrix.',
+    ],
+    reason:
+      'Close activation evidence provenance gap — caller-supplied booleans could not authorize cutover.',
+    previousBehavior:
+      'attemptAuthorityCutover accepted activationEvidence booleans and caller evidenceSnapshot JSON.',
+    details:
+      'docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md §5; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-15T10:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
     version: '4.9.1134',
     title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',

@@ -72,4 +72,26 @@ When persisted authority is `PHYSICAL`, disabling master/sub-flags does **not** 
 - `FINAL_TARGET_PILOT_ACTIVATION_PROOF` — **NOT_PROVEN** (`FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE`; cohort not approved; P2.5 not deployed; cutover-time revalidation required)
 - `UNEXPLAINED_CORRECTNESS_CRITICAL_DIVERGENCES` — operational shadow observations (**NOT_PROVEN** — STATEFUL_SHADOW not enabled)
 - `MIXED_REPLICA_OPERATIONAL_PROOF` — full fleet replica uniformity at cutover time (**NOT_PROVEN** — Production deploy behind main; no build identity env)
-- `ACTIVATION_EVIDENCE_PROVENANCE` — signed evidence bundle required (**FAIL** — caller-supplied booleans today; hard blocker)
+- `ACTIVATION_EVIDENCE_PROVENANCE` — signed evidence bundle + verifier (**IMPLEMENTATION PASS** — Ed25519 bundle v1; boolean injection removed); operational signed bundles for target pilot still **NOT_PROVEN**
+
+## P2.5 provenance hardening (2026-09-15)
+
+| Field | Value |
+|-------|-------|
+| `ACTIVATION_EVIDENCE_PROVENANCE_IMPLEMENTATION` | **PASS** |
+| `ARBITRARY_BOOLEAN_PROOF_INJECTION_POSSIBLE` | **NO** |
+| `CALLER_SUPPLIED_EVIDENCE_SNAPSHOT_POSSIBLE` | **NO** |
+| `P2_5_CUTOVER_ACTIVATION_READY` | **NOT_PROVEN** (unchanged) |
+
+**BEFORE:** `PhysicalStateCutoverActivationEvidence` accepted caller-supplied booleans; `evidenceSnapshot` was caller JSON.
+
+**AFTER:** `PhysicalStateAuthorityCutoverInput` requires `signedEvidenceBundle`; `PhysicalStateCutoverEvidenceVerifier` validates Ed25519 signature, scope binding, target approval, pre-seed revalidation (≤24h), UNEXPLAINED window (≥7d, comparisonCount>0), mixed-replica attestation + local interlock, and build binding. Latch persists **derived** provenance snapshot (bundleId, payload digest, artifact refs).
+
+| Component | Path |
+|-----------|------|
+| Evidence types + policy | `physical-state-cutover-evidence.types.ts`, `physical-state-cutover-evidence.policy.ts` |
+| Canonical serialization | `physical-state-cutover-evidence.canonical.ts` |
+| Verifier | `physical-state-cutover-evidence.verifier.ts` |
+| Public keyring config | `connectivity-physical-state-cutover-evidence.config.ts` |
+| Ops signer CLI | `backend/scripts/ops/sign-physical-state-cutover-evidence.mjs` |
+| P25-PROV proof matrix | `physical-state-cutover-evidence-provenance.spec.ts` |
