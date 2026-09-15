@@ -54,6 +54,10 @@ import {
 } from './physical-refuel-recovery.repository';
 import { FuelStationEnrichmentProducerService } from '../fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { PhysicalRefuelCoordinateRuntimeService } from './physical-refuel-coordinate-runtime.service';
+import {
+  canFallbackEventParticipateInG2Reconciliation,
+  filterAuthorizedRefuelCandidates,
+} from './raw-fuel-refuel-fallback/raw-refuel-g2-participation.policy';
 
 export interface ReconcileAfterPersistParams {
   vehicleId: string;
@@ -149,6 +153,23 @@ export class PhysicalRefuelReconciliationRuntimeService {
     for (const item of work) {
       recoveredReasons[item.reason] = (recoveredReasons[item.reason] ?? 0) + 1;
       try {
+        const trigger = await this.prisma.vehicleEnergyEvent.findUnique({
+          where: { id: item.triggerEventId },
+          select: { detectionSource: true },
+        });
+        if (trigger && !canFallbackEventParticipateInG2Reconciliation(trigger)) {
+          this.logger.debug(
+            JSON.stringify({
+              event: 'physical_refuel_recovery_fallback_skipped',
+              vehicleId: item.vehicleId,
+              triggerEventId: item.triggerEventId,
+              recoveryReason: item.reason,
+              detectionSource: trigger.detectionSource,
+            }),
+          );
+          continue;
+        }
+
         const organizationId = await this.resolveOrganizationId(item.vehicleId);
         const tokenId = await this.resolveVehicleTokenId(item.vehicleId);
 
@@ -277,6 +298,19 @@ export class PhysicalRefuelReconciliationRuntimeService {
           return { decisions: [], enqueuePlans: [] };
         }
 
+        if (!canFallbackEventParticipateInG2Reconciliation(trigger)) {
+          this.logger.debug(
+            JSON.stringify({
+              event: 'physical_refuel_fallback_g2_participation_denied',
+              vehicleId: params.vehicleId,
+              triggerEventId: params.triggerEventId,
+              detectionSource: trigger.detectionSource,
+              source: params.source ?? 'persist',
+            }),
+          );
+          return { decisions: [], enqueuePlans: [] };
+        }
+
         if (cutover && trigger.createdAt.getTime() < cutover.getTime()) {
           return { decisions: [], enqueuePlans: [] };
         }
@@ -294,8 +328,10 @@ export class PhysicalRefuelReconciliationRuntimeService {
         );
 
         const v2Candidates = cutover
-          ? candidates.filter((candidate) => isV2OwnedRefuelEvent(candidate, cutover))
-          : candidates;
+          ? filterAuthorizedRefuelCandidates(
+              candidates.filter((candidate) => isV2OwnedRefuelEvent(candidate, cutover)),
+            )
+          : filterAuthorizedRefuelCandidates(candidates);
 
         this.logger.debug(
           JSON.stringify({

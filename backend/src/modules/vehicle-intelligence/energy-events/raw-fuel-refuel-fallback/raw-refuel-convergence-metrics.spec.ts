@@ -56,6 +56,7 @@ describe('RFRF F5 convergence metrics single ownership', () => {
       promotionPreparation,
       convergenceService,
       undefined,
+      undefined,
       metrics,
     );
 

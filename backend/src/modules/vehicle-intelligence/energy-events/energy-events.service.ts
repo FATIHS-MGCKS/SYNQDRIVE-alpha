@@ -278,6 +278,13 @@ export class EnergyEventsService {
         promotionFailClosed: 0,
         promotionSkippedNotAuthorized: 0,
         promotionBlockedByCutover: 0,
+        g2HandoffAttempted: 0,
+        g2HandoffCompleted: 0,
+        g2HandoffHeld: 0,
+        g2HandoffDeferred: 0,
+        g2HandoffDeduped: 0,
+        g2HandoffFailed: 0,
+        g2HandoffSkippedNotAuthorized: 0,
         candidateOutcomes: [],
         branchError: message,
       };

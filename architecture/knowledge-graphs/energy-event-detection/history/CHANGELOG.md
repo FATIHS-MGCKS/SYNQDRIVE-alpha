@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-09-14 — RFRF F5-PR3 post-commit G2 handoff
+
+- EED-EV-0058: F5-PR3.1 micro-closure — real runtime late-native A1/A2/A3; required Redis P17/P19; prior-bridge fix for L8/L9; 30/30 PG+Redis gate
+- Post-commit `RawRefuelG2HandoffService` bridge into existing G2 reconciliation; TRANSACTION A unchanged
+- G2 participation policy + recovery orphan filter close fallback authority bypasses
+- Real PG gate 30/30 (P1–P29); late-native policy proofs via G2 design + PG rows (EED-DEC-RFRF-010)
+- Production untouched; all RFRF execution authorities default OFF
+
 ## 2026-09-14 — RFRF F5-PR2.1 pre-merge micro-closure
 
 - EED-EV-0057: authority conjunction; real candidate FOR UPDATE; metric single ownership; thrown promotion isolation

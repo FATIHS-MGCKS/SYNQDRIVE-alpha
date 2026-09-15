@@ -55,6 +55,14 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly promotionTransactionFailureTotal: Counter<string>;
   readonly promotionSourceIdentityCollisionTotal: Counter<string>;
   readonly promotionSyntheticIdCollisionTotal: Counter<string>;
+  readonly g2HandoffAttemptedTotal: Counter<string>;
+  readonly g2HandoffCompletedTotal: Counter<string>;
+  readonly g2HandoffHeldTotal: Counter<string>;
+  readonly g2HandoffDeferredTotal: Counter<string>;
+  readonly g2HandoffDedupedTotal: Counter<string>;
+  readonly g2HandoffFailedTotal: Counter<string>;
+  readonly g2HandoffSkippedNotAuthorizedTotal: Counter<string>;
+  readonly g2HandoffSkippedG2DisabledTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -369,6 +377,54 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'Promotion fail-closed on synthetic dimoSegmentId collision',
       registers: [register],
     });
+
+    this.g2HandoffAttemptedTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_attempted_total',
+      help: 'F5-PR3 post-commit fallback G2 handoff attempts',
+      registers: [register],
+    });
+
+    this.g2HandoffCompletedTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_completed_total',
+      help: 'F5-PR3 fallback G2 handoffs that completed reconciliation/enqueue path',
+      registers: [register],
+    });
+
+    this.g2HandoffHeldTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_held_total',
+      help: 'F5-PR3 fallback G2 handoffs held by coordinate/context policy',
+      registers: [register],
+    });
+
+    this.g2HandoffDeferredTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_deferred_total',
+      help: 'F5-PR3 fallback G2 handoffs deferred (queue unavailable or no-op boundary)',
+      registers: [register],
+    });
+
+    this.g2HandoffDedupedTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_deduped_total',
+      help: 'F5-PR3 fallback G2 handoff replays deduped by canonical producer',
+      registers: [register],
+    });
+
+    this.g2HandoffFailedTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_failed_total',
+      help: 'F5-PR3 fallback G2 handoff thrown failures (promotion remains committed)',
+      registers: [register],
+    });
+
+    this.g2HandoffSkippedNotAuthorizedTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_skipped_not_authorized_total',
+      help: 'F5-PR3 fallback G2 handoffs skipped because authority conjunction is false',
+      registers: [register],
+    });
+
+    this.g2HandoffSkippedG2DisabledTotal = new Counter({
+      name: 'synqdrive_rfrf_g2_handoff_skipped_g2_disabled_total',
+      help: 'F5-PR3 fallback G2 handoffs skipped because PHYSICAL_REFUEL_RECONCILIATION_V2 is off',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -573,5 +629,37 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordPromotionSyntheticIdCollision(): void {
     this.promotionSyntheticIdCollisionTotal.inc();
+  }
+
+  recordG2HandoffAttempted(): void {
+    this.g2HandoffAttemptedTotal.inc();
+  }
+
+  recordG2HandoffCompleted(count = 1): void {
+    if (count > 0) this.g2HandoffCompletedTotal.inc(count);
+  }
+
+  recordG2HandoffHeld(): void {
+    this.g2HandoffHeldTotal.inc();
+  }
+
+  recordG2HandoffDeferred(): void {
+    this.g2HandoffDeferredTotal.inc();
+  }
+
+  recordG2HandoffDeduped(): void {
+    this.g2HandoffDedupedTotal.inc();
+  }
+
+  recordG2HandoffFailed(): void {
+    this.g2HandoffFailedTotal.inc();
+  }
+
+  recordG2HandoffSkippedNotAuthorized(): void {
+    this.g2HandoffSkippedNotAuthorizedTotal.inc();
+  }
+
+  recordG2HandoffSkippedG2Disabled(): void {
+    this.g2HandoffSkippedG2DisabledTotal.inc();
   }
 }
