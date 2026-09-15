@@ -453,6 +453,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Evidence | `EXP_021_CANDIDATE_SHORT_AB_90_60_PROSPECTIVE_DESIGN_2026-09-12.md` |
 | Tests | `reference-capture-exp021-candidate-short-ab-90-60.spec.ts` — registry, geometry, durable arm, restart recovery, lifecycle |
 
+## EXP-021 — CANDIDATE_SHORT_AB_60_90 reversed-order plan (PR-A, 2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE PLAN REGISTERED** — no physical run; no deploy; no fleet automation |
+| Plan | `EXP021_CANDIDATE_SHORT_AB_60_90` — `candidate_short_ab_60_90`; registry `CANDIDATE_SHORT_AB_60_90`; phases **60→90**; pure order reversal of `CANDIDATE_SHORT_AB_90_60` |
+| Geometry | Cadence-value slot geometry unchanged (90s→7, 60s→10); settlement budget order-invariant (38 windows × 6 ages = 228); short-A/B assertions plan-parametric |
+| Unchanged | Default plan `UPPER_BOUND_V2`; existing `CANDIDATE_SHORT_AB_90_60` semantics; Run 1 frozen evidence (#1659) |
+| Blockers | Legacy `physicalPhase60StartedAt` naming (PR-B); no manual 60→90 physical run until PR-B + explicit arm |
+| Tests | `reference-capture-exp021-candidate-short-ab-60-90.spec.ts`; lifecycle driver 60→90 case; autonomous CI gate extended |
+
 ## EXP-021 — PR #1621 micro-pass: post-transition late-movement + fail-closed authority (2026-09-12)
 
 | Event | Detail |

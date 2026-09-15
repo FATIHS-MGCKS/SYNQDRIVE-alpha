@@ -430,8 +430,8 @@ async function findOrchestratorAttachableRecording(
         const terminalSeries = terminalState.hfCalibrationSeries;
         expect(terminalSeries).toBeTruthy();
         if (!terminalSeries) throw new Error('missing hfCalibrationSeries after terminal');
-        expectPlanAuthority(terminalSeries);
-        expectPhaseOrder(terminalSeries);
+        expectPlanAuthority(terminalSeries, EXP021_CANDIDATE_SHORT_AB_90_60);
+        expectPhaseOrder(terminalSeries, EXP021_CANDIDATE_SHORT_AB_90_60);
         expectNo120Phase(terminalSeries);
         expect(terminalSeries.terminalFinalizationAt).toBeTruthy();
         expect(terminalSeries.pendingPhaseRequest).toBeNull();
