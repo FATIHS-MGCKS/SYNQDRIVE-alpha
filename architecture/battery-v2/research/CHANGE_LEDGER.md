@@ -32,6 +32,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-08 — M3.2B first natural post-activation shutdown forensic probe (KS MX + KS MS)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Phase C PASS @ T0; 0 shadow rows; awaiting first natural post-T0 trip shutdown. |
+| **OBSERVATION** | Read-only probe @ `2026-09-08T05:10:44Z`: KS MX + KS MS each have one post-T0 trip with provisional `end_time` but `trip_status=ONGOING`; FSM `POSSIBLE_END` / `ACTIVE_TRIP`; 0 fleet-wide shadow contexts/observations. |
+| **WHY** | M3.2B context requires trip finalization; observations require `trip_status=COMPLETED` in capture window — lifecycle gate not yet satisfied. |
+| **VALIDATION** | Authoritative LIVE_VOLTAGE present (29 KS MX / 19 KS MS); provider patterns partially different; authoritative isolation preserved; shadow capture health PASS (0 errors). |
+| **OBSERVED_EFFECT** | `OVERALL_RESULT=INSUFFICIENT_EVIDENCE`; `CONFIRMED_POST_ENGINE_OFF_PRE_SLEEP_SAMPLE_EXISTS=NO`; not classified as capture defect. |
+| **NON_EFFECTS** | No production mutation; M3.2C not authorized; `PRODUCTION_VALIDATED` unchanged. |
+| **REMAINING_GAPS** | Re-probe after both trips finalize to `COMPLETED` and shadow layer executes. |
+| **EVIDENCE** | `M3_2B_FIRST_NATURAL_SHUTDOWN_EVIDENCE_PROBE_2026-09-08.md`. |
+
 ## CL-2026-09-08 — M3.2B Phase C controlled production shadow activation
 
 | Field | Content |
