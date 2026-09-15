@@ -19,6 +19,7 @@ export {
   setRfrfFlags,
   syntheticRiseSamples,
   assertBothForensicRowsRetained,
+  seedCompletedFallbackEnrichment,
 } from './f5-pr3-g2-handoff.harness';
 export {
   createIsolatedTestQueue,

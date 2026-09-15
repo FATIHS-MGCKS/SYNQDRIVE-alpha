@@ -230,8 +230,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
     summary: [
       'Canonical G2.1a scheduler already owns runRecoveryBatch(); F7 proves orphan_refuel closes post-commit handoff crash window.',
+      'F7.1 micro-closure: F4-PR3/PR2 + F3→F2 regressions PASS; real multi-replica PG+Redis 3/3; F7-P8 RECOVERY→COMPLETED→LATE NATIVE SAME.',
       'Minimal scheduler tick error isolation; real PG F7-P1..P12 (18/18); no second recovery engine or schema change.',
-      'F5-PR3 P17 regression-certified for BullMQ deferred enqueue; candidate-level pre-PROMOTED retry out of scope.',
     ],
     reason:
       'F5-PR3 post-commit G2 handoff creates a real crash window after TRANSACTION A; F7 closes durable autonomous recovery without duplicating F5-PR3 recovery architecture.',

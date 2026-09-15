@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { RawRefuelG2HandoffService } from './raw-refuel-g2-handoff.service';
 import {
   assertBothForensicRowsRetained,
+  seedCompletedFallbackEnrichment,
   assertIsolatedDatabaseUrl,
   backdateEnergyEventObservation,
   buildF5Pr3Stack,
@@ -160,11 +161,14 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       await stack.g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
       expect(await countFallbackVee(prisma, vehicle.id)).toBe(1);
+      expect(await countPromoted(prisma, vehicle.id)).toBe(1);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
 
       await stack.g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
       expect(await countFallbackVee(prisma, vehicle.id)).toBe(1);
       expect(await countPromoted(prisma, vehicle.id)).toBe(1);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
@@ -304,13 +308,15 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       ]);
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
       expect(await countFallbackVee(prisma, vehicle.id)).toBe(1);
+      expect(await countPromoted(prisma, vehicle.id)).toBe(1);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
     }
   });
 
-  (LIVE ? it : it.skip)('F7-P8 recovered fallback then late native SAME — F5 policy preserved', async () => {
+  (LIVE ? it : it.skip)('F7-P8 recovery → COMPLETED enrichment → late native SAME sticky ownership', async () => {
     if (!dbAvailable) return;
     const restore = setFullAuthorizedFlags();
     const suffix = `f7p8-${Math.random().toString(36).slice(2, 8)}`;
@@ -320,25 +326,86 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       const candidate = await persistReadyCandidate(stack, vehicle.id);
       const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
       const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      expect(await countReconciliationRows(prisma, vehicle.id)).toBe(0);
+
       await stack.g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
+      expect(await countReconciliationRows(prisma, vehicle.id)).toBe(1);
+
+      await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
+
+      const fallbackReconAfterCompleted =
+        await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+          where: { energyEventId: fallbackVeeId! },
+        });
+      expect(fallbackReconAfterCompleted.enrichmentEligible).toBe(true);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
+
       const native = await prisma.vehicleEnergyEvent.create({
-        data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-same`),
+        data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
       });
-      await backdateEnergyEventObservation(prisma, native.id, new Date('2026-09-06T10:45:00.000Z'));
+      await backdateEnergyEventObservation(
+        prisma,
+        native.id,
+        new Date('2026-09-06T11:30:00.000Z'),
+      );
       const nativeResult = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
         vehicleId: vehicle.id,
         triggerEventId: native.id,
         organizationId: org.id,
         tokenId,
       });
+
       await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+
+      const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+        where: { energyEventId: native.id },
+      });
+      expect(nativeRecon.lateSiblingConflict).toBe(true);
+      expect(nativeRecon.enrichmentEligible).toBe(false);
+      expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
+
+      const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+        where: { energyEventId: fallbackVeeId! },
+      });
+      expect(fallbackEnrichment?.processingStatus).toBe('COMPLETED');
+      expect(
+        await prisma.vehicleEnergyEventFuelStationEnrichment.count({
+          where: {
+            energyEvent: { vehicleId: vehicle.id },
+            processingStatus: 'COMPLETED',
+          },
+        }),
+      ).toBe(1);
+
+      expect(nativeResult.enqueuedEventIds).toEqual([]);
+
+      const fallbackReconAfterNative =
+        await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+          where: { energyEventId: fallbackVeeId! },
+        });
+      expect(fallbackReconAfterNative.enrichmentEnqueuedAt).not.toBeNull();
+      expect(
+        await prisma.vehicleEnergyEventFuelStationEnrichment.count({
+          where: { energyEventId: fallbackVeeId!, processingStatus: 'COMPLETED' },
+        }),
+      ).toBe(1);
       expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
-      expect(nativeResult.enqueuedEventIds.length).toBeLessThanOrEqual(1);
+      expect(
+        await prisma.vehicleEnergyEventRefuelReconciliation.count({
+          where: { vehicleId: vehicle.id, enrichmentEligible: true, energyEventId: fallbackVeeId! },
+        }),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        await prisma.vehicleEnergyEventRefuelReconciliation.count({
+          where: { vehicleId: vehicle.id, enrichmentEligible: true, energyEventId: native.id },
+        }),
+      ).toBe(0);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
     }
-  });
+  }, 15000);
 
   (LIVE ? it : it.skip)('F7-P9 forensic rows and identity fields retained after recovery', async () => {
     if (!dbAvailable) return;

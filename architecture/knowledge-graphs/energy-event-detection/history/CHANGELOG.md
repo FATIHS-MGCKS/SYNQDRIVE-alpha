@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F7.1 pre-merge micro-closure
+
+- EED-EV-0060 extended: F4-PR3/PR2 + F3→F2 regressions executed on final head; real multi-replica PG+Redis 3/3 (0 skips)
+- F7-P8 strengthened to RECOVERY → COMPLETED enrichment → LATE NATIVE SAME (F5-P21 A2 semantics)
+- F7-P3/F7-P7 strong persistent idempotency assertions; prior F7_COMPLETE=YES implication corrected
+
 ## 2026-09-15 — RFRF F7 recovery completeness + post-commit crash-window closure
 
 - EED-EV-0060: canonical production owner is existing `PhysicalRefuelReconciliationRecoveryScheduler` (G2.1a) — no second recovery stack

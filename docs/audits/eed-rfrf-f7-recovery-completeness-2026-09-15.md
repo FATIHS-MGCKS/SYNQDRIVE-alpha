@@ -1,7 +1,7 @@
 # RFRF F7 — Recovery completeness + post-commit crash-window closure
 
-**Date:** 2026-09-15  
-**Branch:** `cursor/eed-rfrf-f7-recovery-completeness-f21f`  
+**Date:** 2026-09-15
+**Branch:** `cursor/eed-rfrf-f7-recovery-completeness-f21f`
 **Base:** `main` @ `c310d752fbfd3d99f2b623f2a21e6dddfa039e83` (post F6 merge #1653 + VDC #1654 docs)
 
 ## Scope rebase after F5-PR3
@@ -52,8 +52,8 @@ No Prisma schema change. No new recovery repository. No RFRF-specific reconcilia
 
 ## Real PostgreSQL gate
 
-Script: `backend/scripts/test/rfrf-f7-recovery-completeness-gate.sh`  
-Env: `RAW_FUEL_REFUEL_F7_INTEGRATION=1`, `RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED=1`  
+Script: `backend/scripts/test/rfrf-f7-recovery-completeness-gate.sh`
+Env: `RAW_FUEL_REFUEL_F7_INTEGRATION=1`, `RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED=1`
 Isolated DB: `rfrf_f7_*` on localhost only.
 
 | Case | Status |
@@ -76,6 +76,56 @@ Isolated DB: `rfrf_f7_*` on localhost only.
 ## Queue / Redis
 
 F7 does not introduce a new scheduler-to-queue path. **F5-PR3 P17** remains authoritative BullMQ deferred-recovery proof (30/30 PG+Redis gate regression-certified).
+
+## F7.1 — Pre-merge micro-closure (2026-09-15)
+
+Prior F7 head `cf31a6695aa0b7b164a7b297f0137689a8efaf5d` closed implementation scope but **did not** satisfy merge gates: mandatory historical regressions were NOT_RUN, multi-replica PG+Redis was SKIPPED, and F7-P8 did not prove **RECOVERY → COMPLETED → LATE NATIVE SAME**. `F7_COMPLETE=YES` was therefore forbidden.
+
+| Item | Prior F7 head | F7.1 closure |
+|------|---------------|--------------|
+| F4-PR3 regression | NOT_RUN | PASS (50/50) |
+| F4-PR2 regression | NOT_RUN | PASS (41/41) |
+| F3→F2 regression | NOT_RUN | PASS (6/6) |
+| Multi-replica PG+Redis | SKIPPED | PASS (3/3, 0 skips) on final head |
+| F7-P8 completed-ownership | recovery → late native only | recovery → COMPLETED enrichment → late native SAME (F5-P21 A2 semantics) |
+| F7-P3 / F7-P7 idempotency | weak | strong persistent counts incl. operational owner = 1 where expected |
+| Main sync | `c310d752f` | unchanged at closure execution |
+| CI | pending on prior head | verified on exact final head (see closure report) |
+
+### Multi-replica real PG+Redis (F7.1 required)
+
+Script: `backend/scripts/test/rfrf-f7-multi-replica-recovery-gate.sh`
+Env: `PHYSICAL_REFUEL_MULTI_REPLICA_INTEGRATION=1`
+Infra: isolated localhost PostgreSQL (`rfrf_f7_mr_*`) + isolated localhost Redis (port 56379, db 14), real BullMQ.
+
+| Case | Result |
+|------|--------|
+| FULL_MULTI_REPLICA_RECOVERY_E2E | PASS — concurrent same-vehicle recovery converges; one deterministic BullMQ job |
+| MULTI_REPLICA_RECOVERY | PASS — different vehicles progress independently |
+| MULTI_REPLICA_SCHEDULER | PASS — two scheduler instances, no duplicate logical enqueue |
+
+**Suite:** 3 tests, 3 passed, 0 skipped.
+
+### F7-P8 strengthened sequence
+
+1. Real RFRF candidate → atomic promote (no post-commit handoff)
+2. `runRecoveryBatch()` recovery
+3. `seedCompletedFallbackEnrichment()` (F5-P21 helper)
+4. Assert operational enrichment owner count = **1** + fallback recon enrichmentEligible = true
+5. Late native SAME via real `reconcileAndEnqueueAfterPersist`
+6. Assert: both forensic rows retained; fallback COMPLETED enrichment sticky; native lateSiblingConflict + INSUFFICIENT_EVIDENCE + `late_sibling_after_finalization`; second enqueue = 0
+
+### Regression matrix (final head)
+
+| Gate | Result |
+|------|--------|
+| F7 real PG | 18/18 PASS |
+| F6 | 11/11 PASS |
+| F5-PR3.1 | 30/30 PASS |
+| F5-PR2 | 50/50 PASS |
+| F5-PR1 | 19/19 PASS |
+| G2 unit | 155/155 PASS |
+| G2 recovery (g21b/c/d) | 38/38 PASS |
 
 ## Closure flags
 
