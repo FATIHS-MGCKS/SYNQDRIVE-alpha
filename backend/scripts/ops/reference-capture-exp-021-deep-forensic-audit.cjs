@@ -105,6 +105,48 @@ function resolvePhysicalFirstPhaseStartedAt(authority) {
   return canonical ?? legacy ?? null;
 }
 
+function deriveForensicSlotCountsFromSummary(summary) {
+  const slots = summary.exp021RequestSlots ?? [];
+  if (slots.length > 0) {
+    const ledgerCounts = countExp021SlotStatuses(slots);
+    let slotLedgerParity = 'NOT_APPLICABLE';
+    if (summary.slotSuccessCount != null) {
+      const persisted = {
+        slotCount: summary.slotCount ?? slots.length,
+        slotSuccessCount: summary.slotSuccessCount,
+        slotZeroResultCount: summary.slotZeroResultCount ?? 0,
+        slotFailureCount: summary.slotFailureCount ?? 0,
+        slotSkippedCount: summary.slotSkippedCount ?? 0,
+        slotAccountedCount: summary.slotAccountedCount ?? 0,
+      };
+      slotLedgerParity =
+        persisted.slotSuccessCount === ledgerCounts.slotSuccessCount &&
+        persisted.slotZeroResultCount === ledgerCounts.slotZeroResultCount &&
+        persisted.slotFailureCount === ledgerCounts.slotFailureCount &&
+        persisted.slotSkippedCount === ledgerCounts.slotSkippedCount &&
+        persisted.slotAccountedCount === ledgerCounts.slotAccountedCount &&
+        persisted.slotCount === ledgerCounts.slotCount
+          ? 'YES'
+          : 'NO';
+    }
+    return { counts: ledgerCounts, slotLedgerParity };
+  }
+  if (summary.slotSuccessCount != null) {
+    return {
+      counts: {
+        slotCount: summary.slotCount ?? 0,
+        slotSuccessCount: summary.slotSuccessCount,
+        slotZeroResultCount: summary.slotZeroResultCount ?? 0,
+        slotFailureCount: summary.slotFailureCount ?? 0,
+        slotSkippedCount: summary.slotSkippedCount ?? 0,
+        slotAccountedCount: summary.slotAccountedCount ?? 0,
+      },
+      slotLedgerParity: 'NOT_APPLICABLE',
+    };
+  }
+  return { counts: countExp021SlotStatuses(slots), slotLedgerParity: 'NOT_APPLICABLE' };
+}
+
 function extractExp021SlotForensics(sessionRow, completedSummaries) {
   const authority =
     sessionRow?.preflightJson?.exp021PhysicalAuthority ??
@@ -113,27 +155,13 @@ function extractExp021SlotForensics(sessionRow, completedSummaries) {
   const physicalFirstPhase = resolvePhysicalFirstPhaseStartedAt(authority);
   const phases = (completedSummaries ?? []).map((summary) => {
     const slots = summary.exp021RequestSlots ?? [];
-    const derived =
-      summary.slotSuccessCount != null
-        ? {
-            slotCount: summary.slotCount ?? slots.length,
-            slotSuccessCount: summary.slotSuccessCount,
-            slotZeroResultCount: summary.slotZeroResultCount ?? 0,
-            slotFailureCount: summary.slotFailureCount ?? 0,
-            slotSkippedCount: summary.slotSkippedCount ?? 0,
-            slotAccountedCount: summary.slotAccountedCount ?? 0,
-          }
-        : countExp021SlotStatuses(slots);
+    const { counts, slotLedgerParity } = deriveForensicSlotCountsFromSummary(summary);
     return {
       calibrationPhaseId: summary.calibrationPhaseId,
       phaseSequence: summary.phaseSequence,
       effectivePollIntervalMs: summary.effectivePollIntervalMs,
-      ...derived,
-      slotLedgerParity:
-        derived.slotSuccessCount ===
-        slots.filter((s) => s.status === 'SUCCESS').length
-          ? 'YES'
-          : 'NO',
+      ...counts,
+      slotLedgerParity,
       slots: slots.map((slot) => buildForensicSlotView(slot, summary)),
     };
   });

@@ -4,6 +4,7 @@
 import {
   countExp021SlotStatuses,
   type Exp021RequestSlotRecord,
+  type Exp021SlotStatusCounts,
 } from './reference-capture-exp021-request-slots.lib';
 import type { HfCalibrationPhaseSummary } from './reference-capture-hf-calibration-phase.policy';
 import {
@@ -42,6 +43,7 @@ export type Exp021ForensicPhaseSlotSummary = {
   slotFailureCount: number;
   slotSkippedCount: number;
   slotAccountedCount: number;
+  slotLedgerParity: 'YES' | 'NO' | 'NOT_APPLICABLE';
   slots: Exp021ForensicSlotView[];
 };
 
@@ -80,23 +82,71 @@ export function buildForensicSlotView(
   };
 }
 
+function summaryCountersPresent(summary: HfCalibrationPhaseSummary): boolean {
+  return summary.slotSuccessCount != null;
+}
+
+function countsFromPersistedSummary(summary: HfCalibrationPhaseSummary): Exp021SlotStatusCounts {
+  return {
+    slotCount: summary.slotCount ?? 0,
+    slotSuccessCount: summary.slotSuccessCount ?? 0,
+    slotZeroResultCount: summary.slotZeroResultCount ?? 0,
+    slotFailureCount: summary.slotFailureCount ?? 0,
+    slotSkippedCount: summary.slotSkippedCount ?? 0,
+    slotAccountedCount: summary.slotAccountedCount ?? 0,
+    slotIntendedCount: 0,
+    slotIssuedCount: 0,
+  };
+}
+
+function compareLedgerParity(
+  summary: HfCalibrationPhaseSummary,
+  ledgerCounts: Exp021SlotStatusCounts,
+): 'YES' | 'NO' | 'NOT_APPLICABLE' {
+  if (!summaryCountersPresent(summary)) {
+    return 'NOT_APPLICABLE';
+  }
+  const persisted = countsFromPersistedSummary(summary);
+  const parity =
+    persisted.slotSuccessCount === ledgerCounts.slotSuccessCount &&
+    persisted.slotZeroResultCount === ledgerCounts.slotZeroResultCount &&
+    persisted.slotFailureCount === ledgerCounts.slotFailureCount &&
+    persisted.slotSkippedCount === ledgerCounts.slotSkippedCount &&
+    persisted.slotAccountedCount === ledgerCounts.slotAccountedCount &&
+    persisted.slotCount === ledgerCounts.slotCount;
+  return parity ? 'YES' : 'NO';
+}
+
+/** Ledger is authoritative whenever exp021RequestSlots is non-empty. */
+export function deriveForensicSlotCountsFromSummary(summary: HfCalibrationPhaseSummary): {
+  counts: Exp021SlotStatusCounts;
+  slotLedgerParity: 'YES' | 'NO' | 'NOT_APPLICABLE';
+} {
+  const slots = summary.exp021RequestSlots ?? [];
+  if (slots.length > 0) {
+    const ledgerCounts = countExp021SlotStatuses(slots);
+    return {
+      counts: ledgerCounts,
+      slotLedgerParity: compareLedgerParity(summary, ledgerCounts),
+    };
+  }
+  if (summaryCountersPresent(summary)) {
+    return {
+      counts: countsFromPersistedSummary(summary),
+      slotLedgerParity: 'NOT_APPLICABLE',
+    };
+  }
+  return {
+    counts: countExp021SlotStatuses(slots),
+    slotLedgerParity: 'NOT_APPLICABLE',
+  };
+}
+
 export function buildForensicPhaseSlotSummary(
   summary: HfCalibrationPhaseSummary,
 ): Exp021ForensicPhaseSlotSummary {
   const slots = summary.exp021RequestSlots ?? [];
-  const counts =
-    summary.slotSuccessCount != null
-      ? {
-          slotCount: summary.slotCount ?? slots.length,
-          slotSuccessCount: summary.slotSuccessCount,
-          slotZeroResultCount: summary.slotZeroResultCount ?? 0,
-          slotFailureCount: summary.slotFailureCount ?? 0,
-          slotSkippedCount: summary.slotSkippedCount ?? 0,
-          slotAccountedCount: summary.slotAccountedCount ?? 0,
-          slotIntendedCount: 0,
-          slotIssuedCount: 0,
-        }
-      : countExp021SlotStatuses(slots);
+  const { counts, slotLedgerParity } = deriveForensicSlotCountsFromSummary(summary);
   return {
     calibrationPhaseId: summary.calibrationPhaseId,
     phaseSequence: summary.phaseSequence,
@@ -107,6 +157,7 @@ export function buildForensicPhaseSlotSummary(
     slotFailureCount: counts.slotFailureCount,
     slotSkippedCount: counts.slotSkippedCount,
     slotAccountedCount: counts.slotAccountedCount,
+    slotLedgerParity,
     slots: slots.map((slot) => buildForensicSlotView(slot, summary)),
   };
 }
@@ -150,8 +201,15 @@ export function parseLegacyForensicSlotRecord(
       : requestCompletedAt
         ? Date.parse(requestCompletedAt)
         : null;
+  const offsetMs =
+    typeof raw.offsetMs === 'number'
+      ? raw.offsetMs
+      : Number.isFinite(dueAtMs) && scheduledAt
+        ? 0
+        : undefined;
   return {
     slotIndex: typeof raw.slotIndex === 'number' ? raw.slotIndex : undefined,
+    offsetMs,
     dueAtMs: Number.isFinite(dueAtMs) ? dueAtMs : undefined,
     issuedAtMs: Number.isFinite(legacyIssuedAtMs) ? legacyIssuedAtMs : null,
     requestCompletedAtMs: Number.isFinite(legacyRequestCompletedAtMs)
@@ -182,6 +240,31 @@ export function parseLegacyForensicSlotRecord(
           : null,
     skipReason: typeof raw.skipReason === 'string' ? raw.skipReason : null,
   };
+}
+
+export function mapLegacyFreezeSlotsToLedger(
+  rawSlots: Array<Record<string, unknown>>,
+): Exp021RequestSlotRecord[] {
+  return rawSlots.map((raw) => {
+    const partial = parseLegacyForensicSlotRecord(raw);
+    if (partial.slotIndex == null || partial.dueAtMs == null || !partial.status) {
+      throw new Error('legacy freeze slot missing required forensic identity fields');
+    }
+    return {
+      slotIndex: partial.slotIndex,
+      offsetMs: partial.offsetMs ?? 0,
+      dueAtMs: partial.dueAtMs,
+      status: partial.status,
+      issuedAtMs: partial.issuedAtMs ?? null,
+      skipReason: partial.skipReason ?? null,
+      requestCompletedAtMs: partial.requestCompletedAtMs ?? null,
+      bucketCount: partial.bucketCount ?? null,
+      providerCallAttempted: partial.providerCallAttempted ?? null,
+      providerCallSucceeded: partial.providerCallSucceeded ?? null,
+      outcomeReason: partial.outcomeReason ?? null,
+      effectivePollIntervalMs: partial.effectivePollIntervalMs ?? null,
+    };
+  });
 }
 
 function mapLegacyProviderStatusToSlotStatus(

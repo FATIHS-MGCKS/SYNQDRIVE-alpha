@@ -334,6 +334,42 @@ export function isTerminalRequestSlotStatus(status: Exp021RequestSlotStatus): bo
   return TERMINAL_SLOT_STATUSES.has(status);
 }
 
+/** Terminalize an ISSUED deterministic slot after HF_HISTORICAL capture completes. */
+export function finalizeIssuedRequestSlotAfterHfCapture(args: {
+  slots: Exp021RequestSlotRecord[];
+  issuedSlotIndex: number;
+  queryProvenanceRecord: HfQueryProvenanceRecord | null;
+  requestCompletedAtMs: number;
+  effectivePollIntervalMs: number;
+}): Exp021RequestSlotRecord[] {
+  if (args.queryProvenanceRecord) {
+    const derived = deriveRequestSlotForensicFromProvenance({
+      record: args.queryProvenanceRecord,
+      requestCompletedAtMs: args.requestCompletedAtMs,
+      effectivePollIntervalMs: args.effectivePollIntervalMs,
+    });
+    return finalizeRequestSlotOutcome(
+      args.slots,
+      args.issuedSlotIndex,
+      derived.terminalStatus,
+      derived.forensic,
+    );
+  }
+  return finalizeRequestSlotOutcome(
+    args.slots,
+    args.issuedSlotIndex,
+    'FAILURE',
+    {
+      requestCompletedAtMs: args.requestCompletedAtMs,
+      bucketCount: null,
+      providerCallAttempted: false,
+      providerCallSucceeded: false,
+      outcomeReason: 'PROVIDER_CALL_NOT_ATTEMPTED',
+      effectivePollIntervalMs: args.effectivePollIntervalMs,
+    },
+  );
+}
+
 export function finalizeRequestSlotOutcome(
   slots: Exp021RequestSlotRecord[],
   slotIndex: number,
