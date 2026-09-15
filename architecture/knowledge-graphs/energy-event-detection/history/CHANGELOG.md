@@ -1,5 +1,23 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F8.2 bounded lost_enqueue metric query + final regression closure
+
+- EED-EV-0061 extended: lost_enqueue actionable count uses PostgreSQL COUNT with isfinite/source/enrichment/authority predicates (no unbounded findMany)
+- G2.1b/c/d Jest recovery semantic suite executed on final head; main synced with EXP-021 evidence-only delta (#1659)
+
+## 2026-09-15 — RFRF F8.1 scheduler zero-success + actionable backlog closure
+
+- EED-EV-0061 extended: F8.1 closes scheduler stale blind spot before first success and actionable backlog parity for all six exported reasons
+- `onModuleInit()` publishes `recovery_enabled` + initializes `last_success_unixtime=0`; stale alert accepts zero-success after `for: 5m`
+- `countActionablePhysicalRefuelRecoveryReasons()` shared with canonical recovery where builders; inventory counts preserved
+
+## 2026-09-15 — RFRF F8 operational telemetry + Prometheus alerting closure
+
+- EED-EV-0061: `PhysicalRefuelReconciliationMetricsService` on canonical TripMetricsService registry
+- Recovery backlog gauges from `countPhysicalRefuelRecoveryBacklog()` with explicit zero reset; scheduler-owned run metrics
+- Physical-refuel alert group in `backend/monitoring/prometheus/alerts.yml`; F8-P1..P10 real PG gate (16/16)
+- No second metrics stack; RFRF G2 handoff counters unchanged; no recovery science changes
+
 ## 2026-09-15 — RFRF F7.1 pre-merge micro-closure
 
 - EED-EV-0060 extended: F4-PR3/PR2 + F3→F2 regressions executed on final head; real multi-replica PG+Redis 3/3 (0 skips)
