@@ -58,6 +58,7 @@ import {
   canFallbackEventParticipateInG2Reconciliation,
   filterAuthorizedRefuelCandidates,
 } from './raw-fuel-refuel-fallback/raw-refuel-g2-participation.policy';
+import { PhysicalRefuelReconciliationMetricsService } from './physical-refuel-reconciliation-metrics.service';
 
 export interface ReconcileAfterPersistParams {
   vehicleId: string;
@@ -93,6 +94,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
     private readonly fuelStationEnrichmentProducer?: FuelStationEnrichmentProducerService,
     @Optional()
     private readonly coordinateRuntime?: PhysicalRefuelCoordinateRuntimeService,
+    @Optional()
+    private readonly metrics?: PhysicalRefuelReconciliationMetricsService,
   ) {}
 
   isEnabled(): boolean {
@@ -217,6 +220,9 @@ export class PhysicalRefuelReconciliationRuntimeService {
           enqueuedCount: enqueuedEventIds.length,
         }),
       );
+      for (const [reason, count] of Object.entries(recoveredReasons)) {
+        this.metrics?.recordRecoveryRecovered(reason, count);
+      }
     }
 
     return {
@@ -227,6 +233,12 @@ export class PhysicalRefuelReconciliationRuntimeService {
   }
 
   async emitRecoveryBacklogMetrics(asOfMs: number = Date.now()): Promise<void> {
+    const recoveryEnabled =
+      this.isEnabled() &&
+      this.config.recoveryEnabled &&
+      this.resolveV2OwnershipCutoverAt() != null;
+    this.metrics?.setRecoveryEnabled(recoveryEnabled);
+
     if (!this.isEnabled()) return;
     const cutover = this.resolveV2OwnershipCutoverAt();
     if (!cutover) return;
@@ -236,6 +248,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
       new Date(asOfMs),
       cutover,
       new Date(asOfMs - this.config.recoveryOrphanLookbackMs),
+      FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS,
+      process.env,
     );
 
     this.logger.log(
@@ -244,6 +258,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
         ...counts,
       }),
     );
+
+    this.metrics?.setRecoveryBacklogFromRepository(counts);
   }
 
   private async resolveOrganizationId(vehicleId: string): Promise<string | null> {

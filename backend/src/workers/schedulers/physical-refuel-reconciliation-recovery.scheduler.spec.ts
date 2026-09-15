@@ -17,6 +17,13 @@ describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () 
       runRecoveryBatch?: jest.Mock;
     },
   ): PhysicalRefuelReconciliationRecoveryScheduler {
+    const metrics = {
+      setRecoveryEnabled: jest.fn(),
+      setRecoveryBacklogFromRepository: jest.fn(),
+      setRecoveryBacklog: jest.fn(),
+      recordRecoveryRun: jest.fn(),
+      recordRecoveryRecovered: jest.fn(),
+    };
     return new PhysicalRefuelReconciliationRecoveryScheduler(
       {
         enabled: config.enabled,
@@ -34,6 +41,7 @@ describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () 
             recoveredReasons: { orphan_refuel: 1 },
           }),
       } as never,
+      metrics as never,
     );
   }
 

@@ -1292,3 +1292,76 @@ groups:
           runbook_url: docs/operations/evaluations-observability-runbook.md#evaluationsforecastdriftcritical
           clear_condition: no critical drift for 12h.
 
+  - name: synqdrive_physical_refuel
+    rules:
+      - alert: PhysicalRefuelOrphanBacklogPersistent
+        expr: |
+          synqdrive_physical_refuel_recovery_enabled == 1
+          and synqdrive_physical_refuel_recovery_backlog{reason="orphan_refuel"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          owner: energy-events
+        annotations:
+          summary: Physical refuel orphan backlog persists while recovery is enabled
+          description: Committed REFUEL events remain unreconciled for more than 10 minutes (~10 recovery cycles at the 60s default interval).
+          runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-a-orphan-backlog
+          clear_condition: orphan_refuel backlog gauge is 0 for 15m or recovery is intentionally disabled.
+
+      - alert: PhysicalRefuelLostEnqueueBacklogPersistent
+        expr: |
+          synqdrive_physical_refuel_recovery_enabled == 1
+          and synqdrive_physical_refuel_recovery_backlog{reason="lost_enqueue"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          owner: energy-events
+        annotations:
+          summary: Physical refuel lost-enqueue backlog persists while recovery is enabled
+          description: Eligible refuel reconciliations remain without enrichment enqueue despite enabled recovery.
+          runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-b-lost-enqueue
+          clear_condition: lost_enqueue backlog gauge is 0 for 15m or recovery is intentionally disabled.
+
+      - alert: PhysicalRefuelStaleEnrichmentBacklogPersistent
+        expr: |
+          synqdrive_physical_refuel_recovery_enabled == 1
+          and synqdrive_physical_refuel_recovery_backlog{reason="stale_enrichment"} > 0
+        for: 15m
+        labels:
+          severity: warning
+          owner: energy-events
+        annotations:
+          summary: Physical refuel stale enrichment backlog persists while recovery is enabled
+          description: Fuel-station enrichment rows remain stale beyond processing SLA while recovery is enabled.
+          runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-b-stale-enrichment
+          clear_condition: stale_enrichment backlog gauge is 0 for 15m or recovery is intentionally disabled.
+
+      - alert: PhysicalRefuelRecoverySchedulerStale
+        expr: |
+          synqdrive_physical_refuel_recovery_enabled == 1
+          and synqdrive_physical_refuel_recovery_last_success_unixtime > 0
+          and (time() - synqdrive_physical_refuel_recovery_last_success_unixtime) > 300
+        for: 5m
+        labels:
+          severity: warning
+          owner: energy-events
+        annotations:
+          summary: Physical refuel recovery scheduler has not completed a successful tick recently
+          description: Enabled recovery has not recorded a successful tick for more than 300 seconds (~5 default 60s intervals).
+          runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-c-scheduler-stale
+          clear_condition: a successful recovery tick updates last_success_unixtime or recovery is intentionally disabled.
+
+      - alert: PhysicalRefuelRecoveryFailuresElevated
+        expr: |
+          synqdrive_physical_refuel_recovery_enabled == 1
+          and increase(synqdrive_physical_refuel_recovery_runs_total{result="failure"}[15m]) >= 3
+        for: 10m
+        labels:
+          severity: warning
+          owner: energy-events
+        annotations:
+          summary: Physical refuel recovery tick failures are elevated
+          description: At least three recovery scheduler failures occurred within 15 minutes while recovery remains enabled.
+          runbook_url: docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md#alert-d-recovery-failures
+          clear_condition: failure rate returns to zero for 30m or recovery is intentionally disabled.
+

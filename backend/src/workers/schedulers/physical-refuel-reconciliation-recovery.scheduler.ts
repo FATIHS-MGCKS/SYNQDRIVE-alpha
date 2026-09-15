@@ -3,6 +3,7 @@ import { ConfigType } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import physicalRefuelReconciliationConfig from '@config/physical-refuel-reconciliation.config';
 import { PhysicalRefuelReconciliationRuntimeService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-runtime.service';
+import { PhysicalRefuelReconciliationMetricsService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-metrics.service';
 
 /**
  * G2.1a durable reconciliation recovery: settlement due, orphan refuels, lost enqueue.
@@ -18,6 +19,7 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
     @Inject(physicalRefuelReconciliationConfig.KEY)
     private readonly config: ConfigType<typeof physicalRefuelReconciliationConfig>,
     private readonly runtime: PhysicalRefuelReconciliationRuntimeService,
+    private readonly metrics: PhysicalRefuelReconciliationMetricsService,
   ) {}
 
   shouldStartRecoveryTimer(): boolean {
@@ -48,16 +50,25 @@ export class PhysicalRefuelReconciliationRecoveryScheduler implements OnModuleIn
   }
 
   async runRecoveryTick(): Promise<number> {
-    if (!this.config.enabled || !this.config.recoveryEnabled) return 0;
-    if (this.inProgress) return 0;
+    if (!this.config.enabled || !this.config.recoveryEnabled) {
+      this.metrics.setRecoveryEnabled(false);
+      this.metrics.recordRecoveryRun('disabled');
+      return 0;
+    }
+    if (this.inProgress) {
+      this.metrics.recordRecoveryRun('overlap_skipped');
+      return 0;
+    }
 
     this.inProgress = true;
     try {
       this.logger.debug(JSON.stringify({ event: 'physical_refuel_recovery_tick' }));
       await this.runtime.emitRecoveryBacklogMetrics();
       const result = await this.runtime.runRecoveryBatch();
+      this.metrics.recordRecoveryRun('success');
       return result.processedVehicles;
     } catch (error) {
+      this.metrics.recordRecoveryRun('failure');
       this.logger.error(
         JSON.stringify({
           event: 'physical_refuel_recovery_tick_failed',

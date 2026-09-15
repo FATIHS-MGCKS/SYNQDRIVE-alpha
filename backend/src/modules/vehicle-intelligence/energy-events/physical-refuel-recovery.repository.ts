@@ -281,6 +281,7 @@ export async function countPhysicalRefuelRecoveryBacklog(
   v2OwnershipCutoverAt: Date,
   orphanLookbackFrom: Date,
   staleProcessingMs: number = FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<Record<string, number>> {
   const orphanCreatedAt = computeOrphanCreatedAtRange({
     v2OwnershipCutoverAt,
@@ -288,6 +289,7 @@ export async function countPhysicalRefuelRecoveryBacklog(
     asOf,
   });
   const staleBefore = new Date(asOf.getTime() - staleProcessingMs);
+  const fallbackG2Authorized = canExecuteFallbackG2Handoff(env);
 
   const [
     provisional,
@@ -341,6 +343,9 @@ export async function countPhysicalRefuelRecoveryBacklog(
         kind: EnergyEventKind.REFUEL,
         createdAt: orphanCreatedAt,
         refuelReconciliation: { is: null },
+        ...(fallbackG2Authorized
+          ? {}
+          : { NOT: { detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' as const } }),
       },
     }),
     prisma.vehicleEnergyEventRefuelReconciliation.count({
