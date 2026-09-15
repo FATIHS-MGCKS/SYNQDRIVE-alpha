@@ -225,6 +225,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f5-pr3-g2-handoff-2026-09-14',
+    version: '4.9.1132',
+    title: 'RFRF F5-PR3 — Post-commit G2 handoff, recovery + late-native convergence',
+    summary: [
+      'RFRF_FALLBACK_G2_HANDOFF_AUTHORIZED strict conjunction with convergence + promotion authorities.',
+      'Post-commit RawRefuelG2HandoffService bridge into existing G2 PhysicalRefuelReconciliationRuntimeService only.',
+      'G2 participation policy + recovery orphan filter close fallback authority bypasses; 30/30 real PG gate P1–P29.',
+    ],
+    reason:
+      'First executable post-promotion boundary: committed fallback VEE enters canonical G2 without widening TRANSACTION A.',
+    previousBehavior:
+      'F5-PR2 atomic promotion only; zero G2/BullMQ reachability for fallback events; recovery could discover fallback orphans generically.',
+    details:
+      'docs/audits/eed-rfrf-f5-pr3-g2-handoff-2026-09-14.md; EED-EV-0058 F5-PR3.1; BASE_MAIN 5bd1b266c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-14T22:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f5-pr2-1-micro-closure-2026-09-14',
     version: '4.9.1131',
     title: 'RFRF F5-PR2.1 — Pre-merge micro-closure',

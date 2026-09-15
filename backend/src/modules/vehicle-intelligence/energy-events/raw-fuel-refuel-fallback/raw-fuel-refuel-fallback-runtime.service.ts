@@ -19,6 +19,7 @@ import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-
 import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
 import { RawRefuelPromotionPreparationService } from './raw-refuel-promotion-preparation.service';
 import { RawRefuelPromotionService } from './raw-refuel-promotion.service';
+import { RawRefuelG2HandoffService } from './raw-refuel-g2-handoff.service';
 import type {
   RawFuelRefuelFallbackScanInput,
   RawFuelRefuelFallbackScanResult,
@@ -60,6 +61,13 @@ function emptyResult(
     promotionFailClosed: 0,
     promotionSkippedNotAuthorized: 0,
     promotionBlockedByCutover: 0,
+    g2HandoffAttempted: 0,
+    g2HandoffCompleted: 0,
+    g2HandoffHeld: 0,
+    g2HandoffDeferred: 0,
+    g2HandoffDeduped: 0,
+    g2HandoffFailed: 0,
+    g2HandoffSkippedNotAuthorized: 0,
     candidateOutcomes: [],
     ...partial,
   };
@@ -78,6 +86,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     @Optional() private readonly promotionPreparation?: RawRefuelPromotionPreparationService,
     @Optional() private readonly convergenceService?: RawRefuelConvergenceService,
     @Optional() private readonly promotionService?: RawRefuelPromotionService,
+    @Optional() private readonly g2HandoffService?: RawRefuelG2HandoffService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
   ) {}
 
@@ -91,6 +100,7 @@ export class RawFuelRefuelFallbackRuntimeService {
       this.promotionPreparation,
       this.convergenceService,
       this.promotionService,
+      this.g2HandoffService,
       this.metrics,
     );
     service.configLoader = loader;
@@ -280,6 +290,7 @@ export class RawFuelRefuelFallbackRuntimeService {
         i,
         capability,
         trust.absoluteDetectionAdmissibility,
+        input,
         env,
       );
     }
@@ -294,6 +305,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     observationIndex: number,
     capability: RawFuelCapability,
     absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
+    scanInput: RawFuelRefuelFallbackScanInput,
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<void> {
     if (!config.persistEnabled) {
@@ -348,6 +360,7 @@ export class RawFuelRefuelFallbackRuntimeService {
         capability,
         absoluteDetectionAdmissibility,
         observation.absoluteSignalTrust ?? null,
+        scanInput,
         env,
       );
     } catch (error) {
@@ -374,6 +387,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     capability: RawFuelCapability,
     absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
     absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+    scanInput: RawFuelRefuelFallbackScanInput,
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<void> {
     if (!this.promotionPreparation) {
@@ -423,6 +437,7 @@ export class RawFuelRefuelFallbackRuntimeService {
         capability,
         absoluteDetectionAdmissibility,
         resolveRuntimePromotionTrust(absoluteSignalTrust),
+        scanInput,
         env,
       );
     } catch (error) {
@@ -499,6 +514,7 @@ export class RawFuelRefuelFallbackRuntimeService {
     capability: RawFuelCapability,
     absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility,
     absoluteSignalTrust: RawRefuelCandidateObservation['absoluteSignalTrust'],
+    scanInput: RawFuelRefuelFallbackScanInput,
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<void> {
     if (!this.promotionService) {
@@ -561,12 +577,80 @@ export class RawFuelRefuelFallbackRuntimeService {
         default:
           break;
       }
+
+      await this.runG2HandoffIfPromoted(applyResult, scanInput, result, outcome, env);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `RFRF promotion isolated failure candidate=${candidateId}: ${message}`,
       );
       outcome.promotionApplyError = message;
+    }
+  }
+
+  private async runG2HandoffIfPromoted(
+    applyResult: import('./raw-refuel-promotion.types').RawRefuelPromotionApplyResult,
+    scanInput: RawFuelRefuelFallbackScanInput,
+    result: RawFuelRefuelFallbackScanResult,
+    outcome: import('./raw-fuel-refuel-fallback-runtime.types').RawFuelRefuelFallbackCandidateOutcome,
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<void> {
+    if (!this.g2HandoffService) {
+      return;
+    }
+    if (
+      applyResult.status !== 'PROMOTED' &&
+      applyResult.status !== 'ALREADY_PROMOTED'
+    ) {
+      return;
+    }
+    if (!applyResult.fallbackVehicleEnergyEventId) {
+      return;
+    }
+
+    result.g2HandoffAttempted += 1;
+
+    try {
+      const handoff = await this.g2HandoffService.handoffAfterPromotionCommit(
+        {
+          vehicleId: scanInput.vehicleId,
+          organizationId: scanInput.organizationId,
+          tokenId: scanInput.tokenId,
+          fallbackVehicleEnergyEventId: applyResult.fallbackVehicleEnergyEventId,
+          promotionStatus: applyResult.status,
+        },
+        env,
+      );
+      outcome.g2Handoff = handoff;
+      switch (handoff.status) {
+        case 'HANDOFF_COMPLETED':
+          result.g2HandoffCompleted += 1;
+          break;
+        case 'HANDOFF_HELD':
+          result.g2HandoffHeld += 1;
+          break;
+        case 'HANDOFF_DEFERRED':
+          result.g2HandoffDeferred += 1;
+          break;
+        case 'HANDOFF_DEDUPED':
+          result.g2HandoffDeduped += 1;
+          break;
+        case 'HANDOFF_FAILED':
+          result.g2HandoffFailed += 1;
+          break;
+        case 'SKIPPED_NOT_AUTHORIZED':
+          result.g2HandoffSkippedNotAuthorized += 1;
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      outcome.g2HandoffError = message;
+      result.g2HandoffFailed += 1;
+      this.logger.warn(
+        `RFRF G2 handoff isolated failure candidate=${applyResult.candidateId}: ${message}`,
+      );
     }
   }
 }

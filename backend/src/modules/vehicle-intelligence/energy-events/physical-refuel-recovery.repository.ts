@@ -3,6 +3,7 @@ import {
   PhysicalRefuelFinalityState,
   type PrismaClient,
 } from '@prisma/client';
+import { canExecuteFallbackG2Handoff } from '@config/raw-fuel-refuel-fallback.config';
 import { computeOrphanCreatedAtRange } from './physical-refuel-orphan-range.util';
 import { isV2CoordinateEligibleForEnrichment } from './physical-refuel-coordinate.policy';
 import { RETRYABLE_COORDINATE_STATUS_LIST } from './physical-refuel-coordinate-retry.policy';
@@ -62,6 +63,7 @@ export async function findPhysicalRefuelRecoveryWork(
     v2OwnershipCutoverAt: Date;
     orphanLookbackFrom: Date;
     staleProcessingMs?: number;
+    env?: NodeJS.ProcessEnv;
   },
 ): Promise<PhysicalRefuelRecoveryWorkItem[]> {
   const work: PhysicalRefuelRecoveryWorkItem[] = [];
@@ -70,10 +72,24 @@ export async function findPhysicalRefuelRecoveryWork(
   const staleBefore = new Date(
     params.asOf.getTime() - (params.staleProcessingMs ?? FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS),
   );
+  const env = params.env ?? process.env;
+  const fallbackG2Authorized = canExecuteFallbackG2Handoff(env);
 
-  const pushWork = (item: PhysicalRefuelRecoveryWorkItem) => {
+  const pushWork = async (item: PhysicalRefuelRecoveryWorkItem) => {
     if (seenVehicles.has(item.vehicleId)) return false;
     if (work.length >= params.batchSize) return false;
+
+    const trigger = await prisma.vehicleEnergyEvent.findUnique({
+      where: { id: item.triggerEventId },
+      select: { detectionSource: true },
+    });
+    if (
+      trigger?.detectionSource === 'SYNQDRIVE_RAW_FUEL_FALLBACK' &&
+      !fallbackG2Authorized
+    ) {
+      return false;
+    }
+
     seenVehicles.add(item.vehicleId);
     work.push(item);
     return true;
@@ -92,7 +108,7 @@ export async function findPhysicalRefuelRecoveryWork(
   });
 
   for (const row of dueReconciliations) {
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'settlement_due',
@@ -112,6 +128,11 @@ export async function findPhysicalRefuelRecoveryWork(
       kind: EnergyEventKind.REFUEL,
       createdAt: orphanCreatedAt,
       refuelReconciliation: { is: null },
+      ...(fallbackG2Authorized
+        ? {}
+        : {
+            NOT: { detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+          }),
     },
     orderBy: { createdAt: 'asc' },
     take: quota.orphanRefuel,
@@ -119,7 +140,7 @@ export async function findPhysicalRefuelRecoveryWork(
   });
 
   for (const row of orphans) {
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.id,
       reason: 'orphan_refuel',
@@ -152,7 +173,7 @@ export async function findPhysicalRefuelRecoveryWork(
   });
 
   for (const row of staleEnrichment) {
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'stale_enrichment',
@@ -193,7 +214,7 @@ export async function findPhysicalRefuelRecoveryWork(
     ) {
       continue;
     }
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'lost_enqueue',
@@ -218,7 +239,7 @@ export async function findPhysicalRefuelRecoveryWork(
   });
 
   for (const row of coordinateInitial) {
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'coordinate_initial',
@@ -244,7 +265,7 @@ export async function findPhysicalRefuelRecoveryWork(
   });
 
   for (const row of coordinateRetry) {
-    pushWork({
+    await pushWork({
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'coordinate_retry',

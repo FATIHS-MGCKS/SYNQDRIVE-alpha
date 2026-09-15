@@ -58,7 +58,9 @@ export async function loadPriorFinalizationBridgeContext(
   });
 
   for (const row of reconciledFinals) {
-    if (params.currentCandidateIds.has(row.energyEventId)) continue;
+    // Include FINAL reconciled rows in prior bridge even when they remain in the
+    // active candidate window — required for incremental late-native triggers (L8/L9)
+    // where the finalized owner and late sibling are reconciled in one batch.
     priorFinalRowsById[row.energyEventId] = vehicleEnergyEventToRefuelRow(row.energyEvent);
     if (row.finalityState === PhysicalRefuelFinalityState.FINAL_DISTINCT) {
       priorDistinctFinalizationIds.add(row.energyEventId);
