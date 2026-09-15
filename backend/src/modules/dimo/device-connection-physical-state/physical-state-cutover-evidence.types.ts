@@ -23,12 +23,15 @@ export type PhysicalStateCutoverTargetApprovalProofV1 = {
   status: 'APPROVED';
 };
 
+/** Cutover-compatible P2.4 dry-run decision — only WOULD_ESTABLISH may authorize latch. */
+export type PhysicalStateCutoverPreseedDecisionV1 = 'WOULD_ESTABLISH';
+
 export type PhysicalStateCutoverPreseedProofV1 = {
   scope: PhysicalAuthorityScope;
   dryRun: true;
   zeroMutation: true;
   conflictCount: 0;
-  decision: string;
+  decision: PhysicalStateCutoverPreseedDecisionV1;
   artifact: PhysicalStateCutoverEvidenceArtifactRef;
   executedAt: string;
 };

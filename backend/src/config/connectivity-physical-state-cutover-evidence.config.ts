@@ -1,3 +1,4 @@
+import { createPublicKey } from 'node:crypto';
 import { registerAs } from '@nestjs/config';
 
 /** Public keyring for signed P2.5 cutover activation evidence (Ed25519). */
@@ -14,6 +15,15 @@ export type CutoverEvidencePublicKeyring = {
   keys: CutoverEvidencePublicKeyEntry[];
 };
 
+function isValidEd25519PublicKeyPem(pem: string): boolean {
+  try {
+    createPublicKey(pem);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function parseCutoverEvidencePublicKeyring(
   raw: string | undefined,
 ): CutoverEvidencePublicKeyring | null {
@@ -25,6 +35,8 @@ export function parseCutoverEvidencePublicKeyring(
     }
     const keys = (parsed as CutoverEvidencePublicKeyring).keys;
     if (keys.length === 0) return null;
+
+    const seenKeyIds = new Set<string>();
     for (const entry of keys) {
       if (
         !entry ||
@@ -35,6 +47,13 @@ export function parseCutoverEvidencePublicKeyring(
         typeof entry.publicKey !== 'string' ||
         !entry.publicKey.trim()
       ) {
+        return null;
+      }
+      if (seenKeyIds.has(entry.keyId)) {
+        return null;
+      }
+      seenKeyIds.add(entry.keyId);
+      if (!isValidEd25519PublicKeyPem(entry.publicKey)) {
         return null;
       }
     }

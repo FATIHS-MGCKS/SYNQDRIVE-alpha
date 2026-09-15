@@ -1,21 +1,18 @@
 import { createHash } from 'node:crypto';
 import type { PhysicalAuthorityScope } from './device-connection-physical-authority-cutover.repository';
+import { CUTOVER_EVIDENCE_ARTIFACT_RESULT } from './physical-state-cutover-evidence.artifact-semantics';
 import {
   canonicalizeCutoverEvidencePayload,
   hashCanonicalCutoverEvidencePayload,
 } from './physical-state-cutover-evidence.canonical';
 import { signEd25519Payload } from './physical-state-cutover-evidence.crypto';
+import { computeCutoverReplicaPeerSetDigest } from './physical-state-cutover-evidence.peer-digest';
 import {
   PHYSICAL_STATE_CUTOVER_EVIDENCE_ALGORITHM,
   PHYSICAL_STATE_CUTOVER_EVIDENCE_SCHEMA_VERSION,
   PhysicalStateCutoverEvidencePayloadV1,
   SignedPhysicalStateCutoverEvidenceBundle,
 } from './physical-state-cutover-evidence.types';
-
-export function computeMixedReplicaPeerSetDigest(buildIds: readonly string[]): string {
-  const sorted = [...new Set(buildIds.map((id) => id.trim()).filter(Boolean))].sort();
-  return createHash('sha256').update(sorted.join('|'), 'utf8').digest('hex');
-}
 
 export function signPhysicalStateCutoverEvidenceBundle(input: {
   keyId: string;
@@ -43,7 +40,6 @@ export function buildDefaultCutoverEvidencePayload(
     issuedAt: Date;
     expiresAt: Date;
     capableBuildId: string;
-    peerBuildIds?: readonly string[];
     fleetReplicaCount?: number;
     preseedExecutedAt?: Date;
     unexplainedWindowStart?: Date;
@@ -65,8 +61,6 @@ export function buildDefaultCutoverEvidencePayload(
     role: 'REQUEST' as const,
     port: index === 0 ? 3001 : 3002,
   }));
-  const replicaBuildIds = replicas.map((replica) => replica.buildId);
-
   const artifact = (
     artifactId: string,
     observedAt: string,
@@ -87,7 +81,11 @@ export function buildDefaultCutoverEvidencePayload(
     scope,
     targetApproval: {
       scope,
-      artifact: artifact('target-pilot-approval', issuedAt, 'APPROVED'),
+      artifact: artifact(
+        'target-pilot-approval',
+        issuedAt,
+        CUTOVER_EVIDENCE_ARTIFACT_RESULT.TARGET_APPROVAL,
+      ),
       approvedAt: issuedAt,
       approvedBy: options.issuer,
       status: 'APPROVED',
@@ -98,7 +96,11 @@ export function buildDefaultCutoverEvidencePayload(
       zeroMutation: true,
       conflictCount: 0,
       decision: 'WOULD_ESTABLISH',
-      artifact: artifact('preseed-dry-run', preseedExecutedAt, 'PASS'),
+      artifact: artifact(
+        'preseed-dry-run',
+        preseedExecutedAt,
+        CUTOVER_EVIDENCE_ARTIFACT_RESULT.PRESEED_DRY_RUN,
+      ),
       executedAt: preseedExecutedAt,
     },
     unexplainedObservation: {
@@ -107,7 +109,11 @@ export function buildDefaultCutoverEvidencePayload(
       comparisonCount: options.comparisonCount ?? 42,
       correctnessBlockingCount: 0,
       classificationSummary: { MATCH: options.comparisonCount ?? 42 },
-      artifact: artifact('unexplained-metrics-export', windowEnd.toISOString(), 'PASS'),
+      artifact: artifact(
+        'unexplained-metrics-export',
+        windowEnd.toISOString(),
+        CUTOVER_EVIDENCE_ARTIFACT_RESULT.UNEXPLAINED_EXPORT,
+      ),
       generatedAt: windowEnd.toISOString(),
     },
     mixedReplica: {
@@ -115,14 +121,22 @@ export function buildDefaultCutoverEvidencePayload(
       capableBuildId: options.capableBuildId,
       verifiedAt: issuedAt,
       replicas,
-      peerSetDigest: computeMixedReplicaPeerSetDigest(replicaBuildIds),
+      peerSetDigest: computeCutoverReplicaPeerSetDigest(replicas),
       allReplicasCapable: true,
-      artifact: artifact('mixed-replica-deploy-verify', issuedAt, 'PASS'),
+      artifact: artifact(
+        'mixed-replica-deploy-verify',
+        issuedAt,
+        CUTOVER_EVIDENCE_ARTIFACT_RESULT.MIXED_REPLICA_VERIFY,
+      ),
     },
     runtimeBuild: {
       capableBuildId: options.capableBuildId,
       applicationBuildId: options.capableBuildId,
-      artifact: artifact('runtime-build-attestation', issuedAt, 'PASS'),
+      artifact: artifact(
+        'runtime-build-attestation',
+        issuedAt,
+        CUTOVER_EVIDENCE_ARTIFACT_RESULT.RUNTIME_BUILD,
+      ),
       verifiedAt: issuedAt,
     },
   };

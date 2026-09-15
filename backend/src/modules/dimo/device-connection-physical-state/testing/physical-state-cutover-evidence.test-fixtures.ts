@@ -62,9 +62,13 @@ export function buildValidSignedCutoverEvidenceBundleForScope(
   const keyMaterial = configureP25TestEvidencePublicKeyring();
   const now = options?.now ?? new Date();
   const capableBuildId = options?.capableBuildId ?? P25_TEST_CUTOVER_BUILD;
+  const fleetReplicaCount = options?.fleetReplicaCount ?? 1;
   if (!options?.skipEnvMutation) {
     enableP25CutoverRuntimeEnv(capableBuildId);
-    if (options?.peerBuildIds?.length) {
+    if (fleetReplicaCount > 1) {
+      const peerEntries = options?.peerBuildIds ?? Array.from({ length: fleetReplicaCount - 1 }, () => capableBuildId);
+      process.env.SYNQDRIVE_REPLICA_PEER_BUILD_IDS = peerEntries.join(',');
+    } else if (options?.peerBuildIds?.length) {
       process.env.SYNQDRIVE_REPLICA_PEER_BUILD_IDS = options.peerBuildIds.join(',');
     }
   }
@@ -75,8 +79,7 @@ export function buildValidSignedCutoverEvidenceBundleForScope(
     issuedAt: now,
     expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
     capableBuildId,
-    peerBuildIds: options?.peerBuildIds,
-    fleetReplicaCount: options?.fleetReplicaCount,
+    fleetReplicaCount,
     preseedExecutedAt: now,
     unexplainedWindowEnd: now,
     unexplainedWindowStart: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),

@@ -37,8 +37,13 @@ describe('P25-PROV activation evidence provenance', () => {
     clearP25TestEvidencePublicKeyring();
   });
 
-  it('P25-PROV-A — valid signed bundle with matching scope/build/interlock => VALID', () => {
-    const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, { now: NOW });
+  it('P25-PROV-A — valid multi-replica signed bundle with matching scope/build/interlock => VALID', () => {
+    const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, {
+      now: NOW,
+      fleetReplicaCount: 2,
+      peerBuildIds: [P25_TEST_CUTOVER_BUILD],
+    });
+    process.env.SYNQDRIVE_REPLICA_PEER_BUILD_IDS = P25_TEST_CUTOVER_BUILD;
     expect(verify(bundle).status).toBe(PhysicalStateCutoverEvidenceVerificationStatus.VALID);
   });
 
@@ -137,7 +142,7 @@ describe('P25-PROV activation evidence provenance', () => {
       payload: tampered.payload,
     });
     expect(verify(resigned).status).toBe(
-      PhysicalStateCutoverEvidenceVerificationStatus.TARGET_NOT_APPROVED,
+      PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA,
     );
   });
 
@@ -186,6 +191,10 @@ describe('P25-PROV activation evidence provenance', () => {
       unexplainedObservation: {
         ...bundle.payload.unexplainedObservation,
         correctnessBlockingCount: 2,
+        classificationSummary: {
+          MATCH: 40,
+          UNEXPLAINED_OLD_REJECT_NEW_ACCEPT: 2,
+        },
       },
     };
     const resignedBlocking = signPhysicalStateCutoverEvidenceBundle({
@@ -213,7 +222,7 @@ describe('P25-PROV activation evidence provenance', () => {
       payload: incompletePayload,
     });
     expect(verify(resigned).status).toBe(
-      PhysicalStateCutoverEvidenceVerificationStatus.MIXED_REPLICA_PROOF_INVALID,
+      PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA,
     );
   });
 

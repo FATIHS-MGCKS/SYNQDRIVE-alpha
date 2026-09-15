@@ -2,6 +2,7 @@ import {
   canonicalizeCutoverEvidencePayload,
   hashCanonicalCutoverEvidencePayload,
 } from './physical-state-cutover-evidence.canonical';
+import { validateCutoverEvidenceTimestamp } from './physical-state-cutover-evidence.timestamps';
 import { buildDefaultCutoverEvidencePayload } from './physical-state-cutover-evidence.signer';
 
 const scope = {
@@ -42,3 +43,11 @@ describe('physical-state-cutover-evidence.canonical', () => {
     );
   });
 });
+
+describe('physical-state-cutover-evidence.timestamps', () => {
+  it('rejects non-canonical timezone offset timestamps at verification', () => {
+    const result = validateCutoverEvidenceTimestamp('2026-09-15T12:00:00+00:00', Date.now());
+    expect(result.ok).toBe(false);
+  });
+});
+
