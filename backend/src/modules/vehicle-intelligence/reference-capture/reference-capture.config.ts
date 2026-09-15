@@ -139,4 +139,16 @@ export class ReferenceCaptureConfig {
       this.configService.get<boolean>('referenceCapture.settlementShadowEnabled') === true
     );
   }
+
+  isFleetCoordinatorEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetCoordinatorEnabled') === true;
+  }
+
+  isFleetDryRun(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetDryRun') !== false;
+  }
+
+  getFleetCoordinatorIntervalMs(): number {
+    return this.configService.get<number>('referenceCapture.fleetCoordinatorIntervalMs') ?? 45_000;
+  }
 }

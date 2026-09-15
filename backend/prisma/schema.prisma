@@ -1703,6 +1703,8 @@ model Organization {
   vehicleDrivingCapabilities                                VehicleDrivingCapability[]
   referenceCaptureSessions                                  ReferenceCaptureSession[]
   referenceCaptureObservations                              ReferenceCaptureObservation[]
+  exp021StudyEnrollments                                    Exp021StudyEnrollment[]
+  exp021StudyRuns                                           Exp021StudyRun[]
   tripAssessabilities                                       TripAssessability[]
   drivingEvidence                                           DrivingEvidence[]
   drivingAnalysisRuns                                       DrivingAnalysisRun[]
@@ -3034,6 +3036,9 @@ model Vehicle {
   vehicleDrivingCapabilities             VehicleDrivingCapability[]
   referenceCaptureSessions               ReferenceCaptureSession[]
   referenceCaptureObservations           ReferenceCaptureObservation[]
+  exp021StudyEnrollments                 Exp021StudyEnrollment[]
+  exp021StudyRuns                        Exp021StudyRun[]
+  exp021StudyVehicleOrderBalances        Exp021StudyVehicleOrderBalance[]
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
@@ -10861,6 +10866,138 @@ model ReferenceCaptureSettlementShadowObservation {
 
   @@index([experimentId])
   @@map("reference_capture_settlement_shadow_observations")
+}
+
+/// EXP-021 PR-C — durable fleet study control plane (enrollment allowlist + run ledger foundation).
+enum Exp021StudyStatus {
+  COLLECTING
+  PAUSED
+  MINIMUM_MATRIX_MET
+  PROVISIONAL_DECISION_READY
+  HIGH_CONFIDENCE_READY
+  CLOSED
+}
+
+enum Exp021StudyRunState {
+  PLANNED
+  ARMING
+  WAIT_TELEMETRY
+  WAIT_MOVEMENT
+  RUNNING
+  FINALIZING
+  COMPLETED
+  PARTIAL
+  INVALID
+  ABORTED
+  SKIPPED
+}
+
+model Exp021Study {
+  id         String            @id @default(uuid())
+  studyKey   String            @unique @map("study_key")
+  status     Exp021StudyStatus @default(COLLECTING)
+  dryRun     Boolean           @default(true) @map("dry_run")
+  configJson Json?             @map("config_json")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  enrollments          Exp021StudyEnrollment[]
+  runs                 Exp021StudyRun[]
+  orderBalances        Exp021StudyOrderBalance[]
+  vehicleOrderBalances Exp021StudyVehicleOrderBalance[]
+
+  @@map("exp021_studies")
+}
+
+model Exp021StudyEnrollment {
+  id              String    @id @default(uuid())
+  studyId         String    @map("study_id")
+  organizationId  String    @map("organization_id")
+  vehicleId       String    @map("vehicle_id")
+  enrolledTokenId Int       @map("enrolled_token_id")
+  enabled         Boolean   @default(true)
+  allowedPlans    String[]  @map("allowed_plans")
+  enrolledAt      DateTime  @default(now()) @map("enrolled_at")
+  enrolledBy      String?   @map("enrolled_by")
+  lastRunAt       DateTime? @map("last_run_at")
+  metadataJson    Json?     @map("metadata_json")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  study        Exp021Study  @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  runs         Exp021StudyRun[]
+
+  @@unique([studyId, organizationId, vehicleId])
+  @@index([studyId, enabled])
+  @@index([organizationId, vehicleId])
+  @@map("exp021_study_enrollments")
+}
+
+model Exp021StudyRun {
+  id                    String              @id @default(uuid())
+  runId                 String              @unique @default(uuid()) @map("run_id")
+  studyId               String              @map("study_id")
+  enrollmentId          String              @map("enrollment_id")
+  organizationId        String              @map("organization_id")
+  vehicleId             String              @map("vehicle_id")
+  tokenId               Int                 @map("token_id")
+  sessionId             String?             @map("session_id")
+  productionSha         String?             @map("production_sha")
+  assignedPhaseOrderMs  Json                @map("assigned_phase_order_ms")
+  planId                String              @map("plan_id")
+  planVersion           String              @map("plan_version")
+  state                 Exp021StudyRunState @default(PLANNED)
+  runClassification     String?             @map("run_classification")
+  canonicalT0At         DateTime?           @map("canonical_t0_at")
+  startedAt             DateTime?           @map("started_at")
+  completedAt           DateTime?           @map("completed_at")
+  terminalReason        String?             @map("terminal_reason")
+  rawEvidenceHash       String?             @map("raw_evidence_hash")
+  evidenceLocation      String?             @map("evidence_location")
+  scientificEligibility String?             @map("scientific_eligibility")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  study        Exp021Study           @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  enrollment   Exp021StudyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([studyId, state])
+  @@index([enrollmentId])
+  @@index([organizationId, vehicleId])
+  @@map("exp021_study_runs")
+}
+
+/// Committed order-balance ledger — updated only on real run assignment (not dry-run ticks).
+model Exp021StudyOrderBalance {
+  id             String   @id @default(uuid())
+  studyId        String   @map("study_id")
+  phaseOrderKey  String   @map("phase_order_key")
+  committedCount Int      @default(0) @map("committed_count")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  study Exp021Study @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@unique([studyId, phaseOrderKey])
+  @@map("exp021_study_order_balances")
+}
+
+model Exp021StudyVehicleOrderBalance {
+  id             String   @id @default(uuid())
+  studyId        String   @map("study_id")
+  vehicleId      String   @map("vehicle_id")
+  phaseOrderKey  String   @map("phase_order_key")
+  committedCount Int      @default(0) @map("committed_count")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  study   Exp021Study @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([studyId, vehicleId, phaseOrderKey])
+  @@map("exp021_study_vehicle_order_balances")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

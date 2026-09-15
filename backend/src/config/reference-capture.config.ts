@@ -58,6 +58,9 @@ export const HF_AVAILABILITY_CALIBRATION_ENABLED_ENV = 'HF_AVAILABILITY_CALIBRAT
 /** EXP-021 — settlement shadow experiment (forensic-only, default OFF). */
 export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV =
   'REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED';
+export const EXP021_FLEET_COORDINATOR_ENABLED_ENV = 'EXP021_FLEET_COORDINATOR_ENABLED';
+export const EXP021_FLEET_DRY_RUN_ENV = 'EXP021_FLEET_DRY_RUN';
+export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV = 'EXP021_FLEET_COORDINATOR_INTERVAL_MS';
 /** DI-EV-0035C.1 — HF_HISTORICAL block poll cadence (V2 only; provisional 30s NOT validated). */
 export const HF_HISTORICAL_POLL_INTERVAL_MS_ENV = 'HF_HISTORICAL_POLL_INTERVAL_MS';
 
@@ -152,4 +155,7 @@ export default registerAs('referenceCapture', () => ({
     process.env[REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV],
     false,
   ),
+  fleetCoordinatorEnabled: parseBooleanEnv(process.env[EXP021_FLEET_COORDINATOR_ENABLED_ENV], false),
+  fleetDryRun: parseBooleanEnv(process.env[EXP021_FLEET_DRY_RUN_ENV], true),
+  fleetCoordinatorIntervalMs: parseIntEnv(process.env[EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV], 45_000),
 }));

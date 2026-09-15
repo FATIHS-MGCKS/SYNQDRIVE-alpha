@@ -656,6 +656,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
 | Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |
 
+### EXP-021 — PR-C fleet study registry + dry-run coordinator (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Durable study/enrollment/run-ledger control plane; leader-gated DRY-RUN coordinator only — no physical execution |
+| Schema | `exp021_studies`, `exp021_study_enrollments`, `exp021_study_runs`, order-balance ledgers |
+| Enrollment | Explicit allowlist (`enabled=true`); `enrolledTokenId` audit snapshot; runtime identity = `organizationId` + `vehicleId` |
+| Coordinator | `EXP021_FLEET_COORDINATOR_ENABLED` default OFF; `EXP021_FLEET_DRY_RUN` default ON; leader-gated `@Interval` scheduler |
+| Allocator | `STRATIFIED_BLOCK_RANDOMIZATION_WITH_GLOBAL_BALANCE_LEDGER` (minimal); dry-run read-only |
+| Run 1 | `EXPLICIT_FUTURE_IMPORT` — no automatic backfill (`EXP021_FLEET_RUN1_REGISTRY_STRATEGY.md`) |
+| Safety | Dry-run never creates `ReferenceCaptureSession`, study runs, or acquires execution locks |
+| Next | PR-D required before execution capability; Stage-1 deploy gate separate |
+
 ### EXP-021 — PR-B forensic slot persistence + first-phase authority (2026-09-15)
 
 | Event | Detail |
