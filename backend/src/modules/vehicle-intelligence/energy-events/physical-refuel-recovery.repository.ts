@@ -1,6 +1,7 @@
 import {
   EnergyEventKind,
   PhysicalRefuelFinalityState,
+  Prisma,
   type PrismaClient,
 } from '@prisma/client';
 import { canExecuteFallbackG2Handoff } from '@config/raw-fuel-refuel-fallback.config';
@@ -55,6 +56,216 @@ export function computePhysicalRefuelRecoveryQuota(batchSize: number): PhysicalR
   };
 }
 
+function fallbackAuthorityEnergyEventFilter(
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventWhereInput | Record<string, never> {
+  if (fallbackG2Authorized) return {};
+  return {
+    OR: [
+      { detectionSource: null },
+      { detectionSource: { not: 'SYNQDRIVE_RAW_FUEL_FALLBACK' } },
+    ],
+  };
+}
+
+export function buildSettlementDueRecoveryWhere(
+  asOf: Date,
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    finalityState: {
+      in: [PhysicalRefuelFinalityState.PROVISIONAL, PhysicalRefuelFinalityState.SETTLING],
+    },
+    nextReconciliationAt: { lte: asOf },
+    energyEvent: fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
+  };
+}
+
+export function buildStaleEnrichmentRecoveryWhere(
+  staleBefore: Date,
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    enrichmentEligible: true,
+    finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
+    energyEvent: {
+      ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
+      fuelStationEnrichment: {
+        is: {
+          OR: [
+            { processingStatus: 'PENDING' },
+            {
+              processingStatus: 'PROCESSING',
+              lastAttemptAt: { lt: staleBefore },
+            },
+          ],
+        },
+      },
+    },
+  };
+}
+
+export function buildLostEnqueueRecoveryCandidateWhere(
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    enrichmentEligible: true,
+    enrichmentEnqueuedAt: null,
+    finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
+    coordinateLatitude: { not: null },
+    coordinateLongitude: { not: null },
+    coordinateSource: { not: null },
+    energyEvent: {
+      ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
+      fuelStationEnrichment: { is: null },
+    },
+  };
+}
+
+/** Structural marker: actionable lost_enqueue backlog uses DB-side COUNT, not findMany materialization. */
+export const LOST_ENQUEUE_ACTIONABLE_COUNT_USES_DB_AGGREGATE = true;
+
+export async function countActionableLostEnqueueRecovery(
+  prisma: PrismaClient,
+  fallbackG2Authorized: boolean,
+): Promise<number> {
+  const authorityClause = fallbackG2Authorized
+    ? Prisma.empty
+    : Prisma.sql`AND (vee.detection_source IS NULL OR vee.detection_source <> 'SYNQDRIVE_RAW_FUEL_FALLBACK')`;
+
+  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM vehicle_energy_event_refuel_reconciliations r
+    INNER JOIN vehicle_energy_events vee ON vee.id = r.energy_event_id
+    LEFT JOIN vehicle_energy_event_fuel_station_enrichments e ON e.energy_event_id = r.energy_event_id
+    WHERE r.enrichment_eligible = true
+      AND r.enrichment_enqueued_at IS NULL
+      AND r.finality_state IN ('FINAL_CANONICAL', 'FINAL_DISTINCT')
+      AND r.coordinate_latitude IS NOT NULL
+      AND r.coordinate_longitude IS NOT NULL
+      AND r.coordinate_source IS NOT NULL
+      AND r.coordinate_source <> ''
+      AND r.coordinate_latitude > '-Infinity'::float8
+      AND r.coordinate_latitude < 'Infinity'::float8
+      AND r.coordinate_longitude > '-Infinity'::float8
+      AND r.coordinate_longitude < 'Infinity'::float8
+      AND e.energy_event_id IS NULL
+      ${authorityClause}
+  `);
+
+  return Number(rows[0]?.count ?? 0n);
+}
+
+export function buildCoordinateInitialRecoveryWhere(
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    enrichmentEligible: true,
+    enrichmentEnqueuedAt: null,
+    finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
+    coordinateSelectionStatus: null,
+    energyEvent: {
+      ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
+      fuelStationEnrichment: { is: null },
+    },
+  };
+}
+
+export function buildCoordinateRetryRecoveryWhere(
+  asOf: Date,
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    enrichmentEligible: true,
+    enrichmentEnqueuedAt: null,
+    finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
+    coordinateSelectionStatus: { in: [...RETRYABLE_COORDINATE_STATUS_LIST] },
+    nextCoordinateRetryAt: { lte: asOf },
+    energyEvent: {
+      ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
+      fuelStationEnrichment: { is: null },
+    },
+  };
+}
+
+export function buildOrphanRefuelRecoveryWhere(
+  orphanCreatedAt: { gte: Date; lte: Date },
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventWhereInput {
+  return {
+    kind: EnergyEventKind.REFUEL,
+    createdAt: orphanCreatedAt,
+    refuelReconciliation: { is: null },
+    ...(fallbackG2Authorized
+      ? {}
+      : {
+          OR: [
+            { detectionSource: null },
+            { detectionSource: { not: 'SYNQDRIVE_RAW_FUEL_FALLBACK' } },
+          ],
+        }),
+  };
+}
+
+export async function countActionablePhysicalRefuelRecoveryReasons(
+  prisma: PrismaClient,
+  asOf: Date,
+  v2OwnershipCutoverAt: Date,
+  orphanLookbackFrom: Date,
+  staleProcessingMs: number = FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{
+  orphanRefuels: number;
+  reconciliationDue: number;
+  staleEnrichment: number;
+  lostEnqueuePending: number;
+  coordinateInitialDue: number;
+  coordinateRetryDue: number;
+}> {
+  const orphanCreatedAt = computeOrphanCreatedAtRange({
+    v2OwnershipCutoverAt,
+    orphanLookbackFrom,
+    asOf,
+  });
+  const staleBefore = new Date(asOf.getTime() - staleProcessingMs);
+  const fallbackG2Authorized = canExecuteFallbackG2Handoff(env);
+
+  const [
+    orphanRefuels,
+    reconciliationDue,
+    staleEnrichment,
+    lostEnqueuePending,
+    coordinateInitialDue,
+    coordinateRetryDue,
+  ] = await Promise.all([
+    prisma.vehicleEnergyEvent.count({
+      where: buildOrphanRefuelRecoveryWhere(orphanCreatedAt, fallbackG2Authorized),
+    }),
+    prisma.vehicleEnergyEventRefuelReconciliation.count({
+      where: buildSettlementDueRecoveryWhere(asOf, fallbackG2Authorized),
+    }),
+    prisma.vehicleEnergyEventRefuelReconciliation.count({
+      where: buildStaleEnrichmentRecoveryWhere(staleBefore, fallbackG2Authorized),
+    }),
+    countActionableLostEnqueueRecovery(prisma, fallbackG2Authorized),
+    prisma.vehicleEnergyEventRefuelReconciliation.count({
+      where: buildCoordinateInitialRecoveryWhere(fallbackG2Authorized),
+    }),
+    prisma.vehicleEnergyEventRefuelReconciliation.count({
+      where: buildCoordinateRetryRecoveryWhere(asOf, fallbackG2Authorized),
+    }),
+  ]);
+
+  return {
+    orphanRefuels,
+    reconciliationDue,
+    staleEnrichment,
+    lostEnqueuePending,
+    coordinateInitialDue,
+    coordinateRetryDue,
+  };
+}
+
 export async function findPhysicalRefuelRecoveryWork(
   prisma: PrismaClient,
   params: {
@@ -95,13 +306,14 @@ export async function findPhysicalRefuelRecoveryWork(
     return true;
   };
 
+  const orphanCreatedAt = computeOrphanCreatedAtRange({
+    v2OwnershipCutoverAt: params.v2OwnershipCutoverAt,
+    orphanLookbackFrom: params.orphanLookbackFrom,
+    asOf: params.asOf,
+  });
+
   const dueReconciliations = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: {
-      finalityState: {
-        in: [PhysicalRefuelFinalityState.PROVISIONAL, PhysicalRefuelFinalityState.SETTLING],
-      },
-      nextReconciliationAt: { lte: params.asOf },
-    },
+    where: buildSettlementDueRecoveryWhere(params.asOf, fallbackG2Authorized),
     orderBy: { nextReconciliationAt: 'asc' },
     take: quota.settlementDue,
     select: { vehicleId: true, energyEventId: true },
@@ -117,23 +329,8 @@ export async function findPhysicalRefuelRecoveryWork(
 
   if (work.length >= params.batchSize) return work;
 
-  const orphanCreatedAt = computeOrphanCreatedAtRange({
-    v2OwnershipCutoverAt: params.v2OwnershipCutoverAt,
-    orphanLookbackFrom: params.orphanLookbackFrom,
-    asOf: params.asOf,
-  });
-
   const orphans = await prisma.vehicleEnergyEvent.findMany({
-    where: {
-      kind: EnergyEventKind.REFUEL,
-      createdAt: orphanCreatedAt,
-      refuelReconciliation: { is: null },
-      ...(fallbackG2Authorized
-        ? {}
-        : {
-            NOT: { detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
-          }),
-    },
+    where: buildOrphanRefuelRecoveryWhere(orphanCreatedAt, fallbackG2Authorized),
     orderBy: { createdAt: 'asc' },
     take: quota.orphanRefuel,
     select: { id: true, vehicleId: true },
@@ -150,23 +347,7 @@ export async function findPhysicalRefuelRecoveryWork(
   if (work.length >= params.batchSize) return work;
 
   const staleEnrichment = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: {
-      enrichmentEligible: true,
-      finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      energyEvent: {
-        fuelStationEnrichment: {
-          is: {
-            OR: [
-              { processingStatus: 'PENDING' },
-              {
-                processingStatus: 'PROCESSING',
-                lastAttemptAt: { lt: staleBefore },
-              },
-            ],
-          },
-        },
-      },
-    },
+    where: buildStaleEnrichmentRecoveryWhere(staleBefore, fallbackG2Authorized),
     orderBy: { reconciledAt: 'asc' },
     take: quota.staleEnrichment,
     select: { vehicleId: true, energyEventId: true },
@@ -183,16 +364,7 @@ export async function findPhysicalRefuelRecoveryWork(
   if (work.length >= params.batchSize) return work;
 
   const lostEnqueue = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: {
-      enrichmentEligible: true,
-      enrichmentEnqueuedAt: null,
-      finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      coordinateLatitude: { not: null },
-      coordinateSource: { not: null },
-      energyEvent: {
-        fuelStationEnrichment: { is: null },
-      },
-    },
+    where: buildLostEnqueueRecoveryCandidateWhere(fallbackG2Authorized),
     orderBy: { reconciledAt: 'asc' },
     take: quota.lostEnqueue,
     select: {
@@ -224,15 +396,7 @@ export async function findPhysicalRefuelRecoveryWork(
   if (work.length >= params.batchSize) return work;
 
   const coordinateInitial = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: {
-      enrichmentEligible: true,
-      enrichmentEnqueuedAt: null,
-      finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      coordinateSelectionStatus: null,
-      energyEvent: {
-        fuelStationEnrichment: { is: null },
-      },
-    },
+    where: buildCoordinateInitialRecoveryWhere(fallbackG2Authorized),
     orderBy: { reconciledAt: 'asc' },
     take: quota.coordinateInitial,
     select: { vehicleId: true, energyEventId: true },
@@ -249,16 +413,7 @@ export async function findPhysicalRefuelRecoveryWork(
   if (work.length >= params.batchSize) return work;
 
   const coordinateRetry = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: {
-      enrichmentEligible: true,
-      enrichmentEnqueuedAt: null,
-      finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      coordinateSelectionStatus: { in: [...RETRYABLE_COORDINATE_STATUS_LIST] },
-      nextCoordinateRetryAt: { lte: params.asOf },
-      energyEvent: {
-        fuelStationEnrichment: { is: null },
-      },
-    },
+    where: buildCoordinateRetryRecoveryWhere(params.asOf, fallbackG2Authorized),
     orderBy: [{ nextCoordinateRetryAt: 'asc' }, { reconciledAt: 'asc' }],
     take: quota.coordinateRetry,
     select: { vehicleId: true, energyEventId: true },
@@ -281,29 +436,26 @@ export async function countPhysicalRefuelRecoveryBacklog(
   v2OwnershipCutoverAt: Date,
   orphanLookbackFrom: Date,
   staleProcessingMs: number = FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<Record<string, number>> {
-  const orphanCreatedAt = computeOrphanCreatedAtRange({
-    v2OwnershipCutoverAt,
-    orphanLookbackFrom,
-    asOf,
-  });
-  const staleBefore = new Date(asOf.getTime() - staleProcessingMs);
-
   const [
+    actionable,
     provisional,
     settling,
     insufficient,
     finalCanonical,
     finalDistinct,
-    due,
-    lostEnqueue,
-    orphans,
     lateSibling,
     coordinateHold,
-    coordinateInitialDue,
-    coordinateRetryDue,
-    staleEnrichment,
   ] = await Promise.all([
+    countActionablePhysicalRefuelRecoveryReasons(
+      prisma,
+      asOf,
+      v2OwnershipCutoverAt,
+      orphanLookbackFrom,
+      staleProcessingMs,
+      env,
+    ),
     prisma.vehicleEnergyEventRefuelReconciliation.count({
       where: { finalityState: PhysicalRefuelFinalityState.PROVISIONAL },
     }),
@@ -320,30 +472,6 @@ export async function countPhysicalRefuelRecoveryBacklog(
       where: { finalityState: PhysicalRefuelFinalityState.FINAL_DISTINCT },
     }),
     prisma.vehicleEnergyEventRefuelReconciliation.count({
-      where: {
-        finalityState: {
-          in: [PhysicalRefuelFinalityState.PROVISIONAL, PhysicalRefuelFinalityState.SETTLING],
-        },
-        nextReconciliationAt: { lte: asOf },
-      },
-    }),
-    prisma.vehicleEnergyEventRefuelReconciliation.count({
-      where: {
-        enrichmentEligible: true,
-        enrichmentEnqueuedAt: null,
-        coordinateLatitude: { not: null },
-        coordinateSource: { not: null },
-        finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      },
-    }),
-    prisma.vehicleEnergyEvent.count({
-      where: {
-        kind: EnergyEventKind.REFUEL,
-        createdAt: orphanCreatedAt,
-        refuelReconciliation: { is: null },
-      },
-    }),
-    prisma.vehicleEnergyEventRefuelReconciliation.count({
       where: { lateSiblingConflict: true },
     }),
     prisma.vehicleEnergyEventRefuelReconciliation.count({
@@ -351,42 +479,6 @@ export async function countPhysicalRefuelRecoveryBacklog(
         coordinateSelectionStatus: { not: null },
         enrichmentEligible: true,
         enrichmentEnqueuedAt: null,
-      },
-    }),
-    prisma.vehicleEnergyEventRefuelReconciliation.count({
-      where: {
-        enrichmentEligible: true,
-        enrichmentEnqueuedAt: null,
-        coordinateSelectionStatus: null,
-        finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      },
-    }),
-    prisma.vehicleEnergyEventRefuelReconciliation.count({
-      where: {
-        enrichmentEligible: true,
-        enrichmentEnqueuedAt: null,
-        coordinateSelectionStatus: { in: [...RETRYABLE_COORDINATE_STATUS_LIST] },
-        nextCoordinateRetryAt: { lte: asOf },
-        finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-      },
-    }),
-    prisma.vehicleEnergyEventRefuelReconciliation.count({
-      where: {
-        enrichmentEligible: true,
-        finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
-        energyEvent: {
-          fuelStationEnrichment: {
-            is: {
-              OR: [
-                { processingStatus: 'PENDING' },
-                {
-                  processingStatus: 'PROCESSING',
-                  lastAttemptAt: { lt: staleBefore },
-                },
-              ],
-            },
-          },
-        },
       },
     }),
   ]);
@@ -397,13 +489,13 @@ export async function countPhysicalRefuelRecoveryBacklog(
     insufficientEvidence: insufficient,
     finalCanonical,
     finalDistinct,
-    reconciliationDue: due,
-    lostEnqueuePending: lostEnqueue,
-    orphanRefuels: orphans,
+    reconciliationDue: actionable.reconciliationDue,
+    lostEnqueuePending: actionable.lostEnqueuePending,
+    orphanRefuels: actionable.orphanRefuels,
     lateSiblingConflict: lateSibling,
     coordinateHold,
-    coordinateInitialDue,
-    coordinateRetryDue,
-    staleEnrichment,
+    coordinateInitialDue: actionable.coordinateInitialDue,
+    coordinateRetryDue: actionable.coordinateRetryDue,
+    staleEnrichment: actionable.staleEnrichment,
   };
 }

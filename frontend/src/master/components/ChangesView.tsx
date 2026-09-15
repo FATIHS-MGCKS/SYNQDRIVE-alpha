@@ -225,6 +225,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
+    version: '4.9.1136',
+    title: 'RFRF F8/F8.1/F8.2 — Operational telemetry + semantic closure',
+    summary: [
+      'PhysicalRefuelReconciliationMetricsService exports recovery backlog gauges on TripMetricsService.registry.',
+      'F8.1: scheduler publishes recovery_enabled at lifecycle + zero-success stale alert; actionable backlog parity for all six reasons.',
+      'F8.2: lost_enqueue actionable count uses PostgreSQL COUNT (isfinite/source/enrichment/authority) — no unbounded findMany.',
+      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8/F8.1/F8.2 real PG gate.',
+      'No second metrics stack; RFRF G2 handoff counters preserved; no recovery science or schema changes.',
+    ],
+    reason:
+      'F7 closed durable recovery correctness; F8 closes the remaining operational visibility gap (backlog was log-only).',
+    previousBehavior:
+      'Recovery backlog and scheduler health were structured logs only — not exported to canonical Prometheus or alert rules.',
+    details:
+      'docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md; EED-EV-0061; BASE_MAIN ad8392d8c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T13:45:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
     version: '4.9.1135',
     title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
