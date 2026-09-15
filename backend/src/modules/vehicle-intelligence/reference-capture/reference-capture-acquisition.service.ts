@@ -51,6 +51,7 @@ import {
   isHfHistoricalPollDue,
 } from './reference-capture-hf-block-polling.policy';
 import {
+  deriveRequestSlotForensicFromProvenance,
   finalizeRequestSlotOutcome,
   resolveExp021HfHistoricalPollDecision,
 } from './reference-capture-exp021-request-slots.lib';
@@ -391,20 +392,42 @@ export class ReferenceCaptureAcquisitionService {
               hfCalibrationActiveCounters?.exp021RequestSlots?.length
             ) {
               const record = hfResult.queryProvenanceRecord;
-              const slotOutcome =
-                record.status === 'SUCCESS'
-                  ? record.resultBucketCount > 0
-                    ? 'SUCCESS'
-                    : 'ZERO_RESULT'
-                  : 'FAILURE';
-              hfCalibrationActiveCounters = {
-                ...hfCalibrationActiveCounters,
-                exp021RequestSlots: finalizeRequestSlotOutcome(
-                  hfCalibrationActiveCounters.exp021RequestSlots!,
-                  issuedSlotIndex,
-                  slotOutcome,
-                ),
-              };
+              const completedAtMs = Date.now();
+              const activeCadenceMs =
+                hfCalibrationSeries.activePhase.effectivePollIntervalMs;
+              if (record) {
+                const derived = deriveRequestSlotForensicFromProvenance({
+                  record,
+                  requestCompletedAtMs: completedAtMs,
+                  effectivePollIntervalMs: activeCadenceMs,
+                });
+                hfCalibrationActiveCounters = {
+                  ...hfCalibrationActiveCounters,
+                  exp021RequestSlots: finalizeRequestSlotOutcome(
+                    hfCalibrationActiveCounters.exp021RequestSlots!,
+                    issuedSlotIndex,
+                    derived.terminalStatus,
+                    derived.forensic,
+                  ),
+                };
+              } else {
+                hfCalibrationActiveCounters = {
+                  ...hfCalibrationActiveCounters,
+                  exp021RequestSlots: finalizeRequestSlotOutcome(
+                    hfCalibrationActiveCounters.exp021RequestSlots!,
+                    issuedSlotIndex,
+                    'FAILURE',
+                    {
+                      requestCompletedAtMs: completedAtMs,
+                      bucketCount: null,
+                      providerCallAttempted: false,
+                      providerCallSucceeded: false,
+                      outcomeReason: 'PROVIDER_CALL_NOT_ATTEMPTED',
+                      effectivePollIntervalMs: activeCadenceMs,
+                    },
+                  ),
+                };
+              }
             }
           }
         }

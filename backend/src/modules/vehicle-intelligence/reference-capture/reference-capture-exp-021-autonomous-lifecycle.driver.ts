@@ -320,14 +320,15 @@ export class Exp021AutonomousLifecycleDriver {
       resolvePhaseAdvancementForIndex(config, 0),
     );
     this.pendingT0PhaseActivation = false;
-    this.log('PHYSICAL_PHASE_60_REANCHORED_AT_T0', {
-      PHASE_60_EFFECTIVE: 'YES',
-      CALIBRATION_PLAN: config.calibrationPlan.planVersion,
-      FIRST_CADENCE_MS: firstCadenceMs,
+    this.log('PHYSICAL_FIRST_PHASE_REANCHORED_AT_T0', {
+      PHASE_INDEX: 0,
+      EFFECTIVE_POLL_INTERVAL_MS: firstCadenceMs,
+      PLAN_ID: config.calibrationPlan.planId,
+      PLAN_VERSION: config.calibrationPlan.planVersion,
+      CANONICAL_T0_AT: activation.canonicalT0At,
       REANCHORED: activation.reanchored ? 'YES' : 'NO',
       SEALED_PRE_ROLL_PHASE_ID: activation.sealedPreRollPhaseId,
       EFFECTIVE_AT: activation.phaseStartedAt,
-      CANONICAL_T0_AT: activation.canonicalT0At,
       RECOVERY_MODE: recoveryMode,
       CANONICAL_T0_SOURCE: 'PERSISTED_AUTHORITY',
     });

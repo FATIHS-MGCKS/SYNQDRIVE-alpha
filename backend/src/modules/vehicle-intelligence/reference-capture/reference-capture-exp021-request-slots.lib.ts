@@ -5,6 +5,7 @@
  * once; provider ZERO_RESULT still counts as an executed slot.
  */
 import { findPhaseSpecByCadence, resolveExp021CalibrationPlan } from './reference-capture-exp021-calibration-plan.lib';
+import type { HfQueryProvenanceRecord } from './reference-capture-hf-recovery-v2.policy';
 
 export type Exp021RequestSlotStatus =
   | 'INTENDED'
@@ -21,7 +22,47 @@ export type Exp021RequestSlotRecord = {
   status: Exp021RequestSlotStatus;
   issuedAtMs?: number | null;
   skipReason?: string | null;
+  /** Wall-clock ms when the slot attempt reached a terminal runtime outcome. */
+  requestCompletedAtMs?: number | null;
+  /**
+   * RAW_PROVIDER_BUCKET_COUNT from the individual HF provider response at request time
+   * (`HfQueryProvenanceRecord.resultBucketCount`). Null when no valid provider response exists.
+   */
+  bucketCount?: number | null;
+  providerCallAttempted?: boolean | null;
+  providerCallSucceeded?: boolean | null;
+  /** Provider status or lifecycle classification explaining the terminal slot outcome. */
+  outcomeReason?: string | null;
+  /** Phase cadence (ms) the slot belonged to — order-neutral forensic identity. */
+  effectivePollIntervalMs?: number | null;
 };
+
+export type Exp021RequestSlotForensicFinalizeInput = {
+  requestCompletedAtMs: number;
+  bucketCount: number | null;
+  providerCallAttempted: boolean;
+  providerCallSucceeded: boolean;
+  outcomeReason: string | null;
+  effectivePollIntervalMs?: number | null;
+};
+
+export type Exp021SlotStatusCounts = {
+  slotCount: number;
+  slotSuccessCount: number;
+  slotZeroResultCount: number;
+  slotFailureCount: number;
+  slotSkippedCount: number;
+  slotAccountedCount: number;
+  slotIntendedCount: number;
+  slotIssuedCount: number;
+};
+
+const TERMINAL_SLOT_STATUSES: ReadonlySet<Exp021RequestSlotStatus> = new Set([
+  'SUCCESS',
+  'ZERO_RESULT',
+  'FAILURE',
+  'SKIPPED_WITH_REASON',
+]);
 
 export function buildExp021IntendedSlotOffsets(args: {
   cadenceMs: number;
@@ -64,6 +105,89 @@ export function countIntendedSlotsForCadence(
     cadenceMs,
     phaseDurationMs: spec.targetDurationMs,
   }).length;
+}
+
+export function countExp021SlotStatuses(
+  slots: Exp021RequestSlotRecord[] | null | undefined,
+): Exp021SlotStatusCounts {
+  if (!slots?.length) {
+    return {
+      slotCount: 0,
+      slotSuccessCount: 0,
+      slotZeroResultCount: 0,
+      slotFailureCount: 0,
+      slotSkippedCount: 0,
+      slotAccountedCount: 0,
+      slotIntendedCount: 0,
+      slotIssuedCount: 0,
+    };
+  }
+  let slotSuccessCount = 0;
+  let slotZeroResultCount = 0;
+  let slotFailureCount = 0;
+  let slotSkippedCount = 0;
+  let slotIntendedCount = 0;
+  let slotIssuedCount = 0;
+  for (const slot of slots) {
+    if (slot.status === 'SUCCESS') slotSuccessCount += 1;
+    if (slot.status === 'ZERO_RESULT') slotZeroResultCount += 1;
+    if (slot.status === 'FAILURE') slotFailureCount += 1;
+    if (slot.status === 'SKIPPED_WITH_REASON') slotSkippedCount += 1;
+    if (slot.status === 'INTENDED') slotIntendedCount += 1;
+    if (slot.status === 'ISSUED') slotIssuedCount += 1;
+  }
+  const slotAccountedCount =
+    slotSuccessCount + slotZeroResultCount + slotFailureCount + slotSkippedCount;
+  return {
+    slotCount: slots.length,
+    slotSuccessCount,
+    slotZeroResultCount,
+    slotFailureCount,
+    slotSkippedCount,
+    slotAccountedCount,
+    slotIntendedCount,
+    slotIssuedCount,
+  };
+}
+
+export function deriveRequestSlotForensicFromProvenance(args: {
+  record: HfQueryProvenanceRecord;
+  requestCompletedAtMs: number;
+  effectivePollIntervalMs?: number | null;
+}): {
+  terminalStatus: 'SUCCESS' | 'ZERO_RESULT' | 'FAILURE';
+  forensic: Exp021RequestSlotForensicFinalizeInput;
+} {
+  const record = args.record;
+  const providerCallAttempted = true;
+  const providerCallSucceeded =
+    record.status === 'SUCCESS' || record.status === 'ZERO_RESULT';
+  let terminalStatus: 'SUCCESS' | 'ZERO_RESULT' | 'FAILURE';
+  let bucketCount: number | null;
+
+  if (record.status === 'SUCCESS') {
+    terminalStatus = record.resultBucketCount > 0 ? 'SUCCESS' : 'ZERO_RESULT';
+    bucketCount = record.resultBucketCount;
+  } else if (record.status === 'ZERO_RESULT') {
+    terminalStatus = 'ZERO_RESULT';
+    bucketCount = 0;
+  } else {
+    terminalStatus = 'FAILURE';
+    bucketCount = null;
+  }
+
+  return {
+    terminalStatus,
+    forensic: {
+      requestCompletedAtMs: args.requestCompletedAtMs,
+      bucketCount,
+      providerCallAttempted,
+      providerCallSucceeded,
+      outcomeReason: record.status,
+      effectivePollIntervalMs:
+        args.effectivePollIntervalMs ?? record.pollIntervalMs ?? null,
+    },
+  };
 }
 
 export function resolveNextDueRequestSlot(
@@ -206,14 +330,31 @@ export function countIssuedOrTerminalSlots(slots: Exp021RequestSlotRecord[]): nu
   return slots.filter((slot) => slot.status !== 'INTENDED').length;
 }
 
+export function isTerminalRequestSlotStatus(status: Exp021RequestSlotStatus): boolean {
+  return TERMINAL_SLOT_STATUSES.has(status);
+}
+
 export function finalizeRequestSlotOutcome(
   slots: Exp021RequestSlotRecord[],
   slotIndex: number,
   outcome: 'SUCCESS' | 'ZERO_RESULT' | 'FAILURE',
+  forensic?: Exp021RequestSlotForensicFinalizeInput,
 ): Exp021RequestSlotRecord[] {
-  return slots.map((slot) =>
-    slot.slotIndex === slotIndex ? { ...slot, status: outcome } : slot,
-  );
+  return slots.map((slot) => {
+    if (slot.slotIndex !== slotIndex) return slot;
+    const next: Exp021RequestSlotRecord = { ...slot, status: outcome };
+    if (forensic) {
+      next.requestCompletedAtMs = forensic.requestCompletedAtMs;
+      next.bucketCount = forensic.bucketCount;
+      next.providerCallAttempted = forensic.providerCallAttempted;
+      next.providerCallSucceeded = forensic.providerCallSucceeded;
+      next.outcomeReason = forensic.outcomeReason;
+      if (forensic.effectivePollIntervalMs != null) {
+        next.effectivePollIntervalMs = forensic.effectivePollIntervalMs;
+      }
+    }
+    return next;
+  });
 }
 
 export function initializeRequestSlotsForActivePhase(args: {

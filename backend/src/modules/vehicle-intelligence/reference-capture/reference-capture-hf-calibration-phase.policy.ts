@@ -33,6 +33,7 @@ import {
   type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
 import {
+  countExp021SlotStatuses,
   initializeRequestSlotsForActivePhase,
   type Exp021RequestSlotRecord,
 } from './reference-capture-exp021-request-slots.lib';
@@ -104,6 +105,13 @@ export type HfCalibrationPhaseSummary = {
   successRatePerWallMinute?: number | null;
   /** Durable per-slot HF request ledger frozen at phase seal (forensic). */
   exp021RequestSlots?: Exp021RequestSlotRecord[] | null;
+  /** Derived from exp021RequestSlots at seal — ledger is authoritative. */
+  slotCount?: number | null;
+  slotSuccessCount?: number | null;
+  slotZeroResultCount?: number | null;
+  slotFailureCount?: number | null;
+  slotSkippedCount?: number | null;
+  slotAccountedCount?: number | null;
 };
 
 export type HfCalibrationPhaseRuntimeCounters = {
@@ -515,6 +523,10 @@ export function finalizePhaseSummary(args: {
   const temporal = computeNativeTemporalCadenceStats(
     nativeTemporalEvidence.orderedNativeTemporalBucketStarts,
   );
+  const slotLedger = args.counters.exp021RequestSlots
+    ? args.counters.exp021RequestSlots.map((slot) => ({ ...slot }))
+    : null;
+  const slotCounts = countExp021SlotStatuses(slotLedger);
   return {
     calibrationPhaseId: args.phase.calibrationPhaseId,
     phaseSequence: args.phase.phaseSequence,
@@ -550,9 +562,13 @@ export function finalizePhaseSummary(args: {
     requestRatePerWallMinute: requestRates.requestRatePerWallMinute,
     requestRatePerMovingMinute: requestRates.requestRatePerMovingMinute,
     successRatePerWallMinute: requestRates.successRatePerWallMinute,
-    exp021RequestSlots: args.counters.exp021RequestSlots
-      ? args.counters.exp021RequestSlots.map((slot) => ({ ...slot }))
-      : null,
+    exp021RequestSlots: slotLedger,
+    slotCount: slotLedger ? slotCounts.slotCount : null,
+    slotSuccessCount: slotLedger ? slotCounts.slotSuccessCount : null,
+    slotZeroResultCount: slotLedger ? slotCounts.slotZeroResultCount : null,
+    slotFailureCount: slotLedger ? slotCounts.slotFailureCount : null,
+    slotSkippedCount: slotLedger ? slotCounts.slotSkippedCount : null,
+    slotAccountedCount: slotLedger ? slotCounts.slotAccountedCount : null,
   };
 }
 

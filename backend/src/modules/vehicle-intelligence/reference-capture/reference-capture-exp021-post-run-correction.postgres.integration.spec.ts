@@ -15,9 +15,15 @@ import {
 } from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExp021RequestSlotsForPhase,
+  finalizeRequestSlotOutcome,
   markRequestSlotIssued,
   resolveExp021HfHistoricalPollDecision,
 } from './reference-capture-exp021-request-slots.lib';
+import {
+  buildPhysicalFirstPhaseAuthorityPatch,
+  parseExp021PhysicalAuthority,
+  resolvePhysicalFirstPhaseStartedAt,
+} from './reference-capture-exp-021-physical-authority.lib';
 import { parseAcquisitionState } from './reference-capture-session.repository';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
@@ -53,6 +59,94 @@ const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
 
     afterAll(async () => {
       await prisma?.$disconnect().catch(() => undefined);
+    });
+
+    it('REQUEST_SLOT_FORENSIC_DURABILITY: terminal slot fields survive PostgreSQL reload', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix);
+      const slots = buildExp021RequestSlotsForPhase({
+        phaseEffectiveStartMs: t0Ms,
+        cadenceMs: 60_000,
+        phaseDurationMs: 5 * 60_000,
+      });
+      const issued = markRequestSlotIssued(slots, t0Ms);
+      const finalizedSlots = finalizeRequestSlotOutcome(
+        issued.slots,
+        issued.slotIndex!,
+        'SUCCESS',
+        {
+          requestCompletedAtMs: t0Ms + 2_000,
+          bucketCount: 7,
+          providerCallAttempted: true,
+          providerCallSucceeded: true,
+          outcomeReason: 'SUCCESS',
+          effectivePollIntervalMs: 60_000,
+        },
+      );
+      const counters = {
+        ...buildInitialPhaseCounters({
+          calibrationPhaseId: 'phase-60',
+          phaseEffectiveStartMs: t0Ms,
+          cadenceMs: 60_000,
+          phaseProvenance: 'PHYSICAL_T0',
+        }),
+        exp021RequestSlots: finalizedSlots,
+      };
+      const state = emptyDataPlane(t0Ms);
+      state.activeCycleJobId = `cycle-${suffix}`;
+      state.hfCalibrationActiveCounters = counters;
+
+      await prisma.referenceCaptureSession.update({
+        where: { id: seed.sessionId },
+        data: { acquisitionStateJson: state as object },
+      });
+
+      try {
+        const reloadedRepo = createRepository(new PrismaClient());
+        const session = await reloadedRepo.findById(seed.organizationId, seed.sessionId);
+        const reloaded = parseAcquisitionState(session?.acquisitionStateJson);
+        const slot = reloaded.hfCalibrationActiveCounters?.exp021RequestSlots?.[0];
+        expect(slot?.status).toBe('SUCCESS');
+        expect(slot?.bucketCount).toBe(7);
+        expect(slot?.providerCallAttempted).toBe(true);
+        expect(slot?.providerCallSucceeded).toBe(true);
+        expect(slot?.requestCompletedAtMs).toBe(t0Ms + 2_000);
+        expect(slot?.effectivePollIntervalMs).toBe(60_000);
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
+    });
+
+    it('PHYSICAL_FIRST_PHASE_AUTHORITY_DURABILITY: canonical + legacy fields survive reload', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const seed = await seedRecordingSession(prisma, suffix);
+      const phaseStartedAt = new Date(t0Ms).toISOString();
+      const patch = buildPhysicalFirstPhaseAuthorityPatch(phaseStartedAt);
+      await prisma.referenceCaptureSession.update({
+        where: { id: seed.sessionId },
+        data: {
+          preflightJson: {
+            exp021PhysicalAuthority: {
+              canonicalT0At: phaseStartedAt,
+              firstQualifyingMovementAt: phaseStartedAt,
+              startConfirmedAt: phaseStartedAt,
+              persistedAt: phaseStartedAt,
+              orchestrationState: 'DRIVING',
+              ...patch,
+            },
+          },
+        },
+      });
+      try {
+        const reloadedRepo = createRepository(new PrismaClient());
+        const session = await reloadedRepo.findById(seed.organizationId, seed.sessionId);
+        const authority = parseExp021PhysicalAuthority(session?.preflightJson);
+        expect(resolvePhysicalFirstPhaseStartedAt(authority)).toBe(phaseStartedAt);
+        expect(authority?.physicalFirstPhaseStartedAt).toBe(phaseStartedAt);
+        expect(authority?.physicalPhase60StartedAt).toBe(phaseStartedAt);
+      } finally {
+        await cleanupReferenceCaptureSeed(prisma, seed);
+      }
     });
 
     it('REQUEST_SLOT_DURABILITY: ISSUED slot survives reload and blocks duplicate issuance', async () => {
