@@ -95,3 +95,26 @@ When persisted authority is `PHYSICAL`, disabling master/sub-flags does **not** 
 | Public keyring config | `connectivity-physical-state-cutover-evidence.config.ts` |
 | Ops signer CLI | `backend/scripts/ops/sign-physical-state-cutover-evidence.mjs` |
 | P25-PROV proof matrix | `physical-state-cutover-evidence-provenance.spec.ts` |
+| Provenance security micro-closure (PROV-S/MR/T/C) | `physical-state-cutover-evidence-provenance-security.spec.ts` |
+
+### Provenance semantic micro-closure (2026-09-15)
+
+| Check | Result |
+|-------|--------|
+| Pre-seed `decision` strict (`WOULD_ESTABLISH` only) | **PASS** |
+| Single canonical cardinality-preserving peer digest | **PASS** |
+| Future/non-canonical timestamps fail closed | **PASS** |
+| Classification summary derivation vs blocking count | **PASS** |
+| Artifact scope/result semantics | **PASS** |
+| Malformed signed payload fail closed (no throw) | **PASS** |
+| Keyring duplicate keyId / malformed PEM fail closed | **PASS** |
+
+### Trust-root closure (2026-09-15)
+
+| Check | Result |
+|-------|--------|
+| All five artifact refs require exact scope binding | **PASS** |
+| Ed25519 keyring enforces `asymmetricKeyType === 'ed25519'` | **PASS** |
+| Shared ops-lib canonical + manifest validation (`ops-lib.cjs`) | **PASS** |
+| CLI/runtime canonical digest parity (PROV-CLI1..3) | **PASS** |
+| PROV-AS/KR artifact scope + key type regression | **PASS** |

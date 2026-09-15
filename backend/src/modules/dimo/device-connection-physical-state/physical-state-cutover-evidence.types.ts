@@ -8,7 +8,7 @@ export type PhysicalStateCutoverEvidenceArtifactRef = {
   sha256: string;
   observedAt: string;
   result: string;
-  scope?: {
+  scope: {
     organizationId: string;
     vehicleId: string;
     provider: string;

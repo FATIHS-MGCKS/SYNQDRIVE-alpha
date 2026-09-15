@@ -1,17 +1,16 @@
-import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import * as path from 'node:path';
 import type { PhysicalStateCutoverReplicaAttestationV1 } from './physical-state-cutover-evidence.types';
+
+const nodeRequire = createRequire(__filename);
+const opsLib = nodeRequire(path.join(__dirname, 'physical-state-cutover-evidence.ops-lib.cjs')) as {
+  computeCutoverReplicaPeerSetDigest: (
+    replicas: readonly PhysicalStateCutoverReplicaAttestationV1[],
+  ) => string;
+};
 
 /**
  * Canonical cardinality-preserving fleet peer-set digest.
- * Used by signer, verifier, ops tooling, and tests — single implementation only.
+ * Shared trust root with ops CLI (ops-lib.mjs).
  */
-export function computeCutoverReplicaPeerSetDigest(
-  replicas: readonly PhysicalStateCutoverReplicaAttestationV1[],
-): string {
-  const ordered = [...replicas].sort((left, right) => left.replicaId.localeCompare(right.replicaId));
-  const descriptors = ordered.map(
-    (replica) =>
-      `${replica.replicaId}:${replica.role}:${replica.buildId.trim()}:${replica.port ?? ''}`,
-  );
-  return createHash('sha256').update(descriptors.join('|'), 'utf8').digest('hex');
-}
+export const computeCutoverReplicaPeerSetDigest = opsLib.computeCutoverReplicaPeerSetDigest;

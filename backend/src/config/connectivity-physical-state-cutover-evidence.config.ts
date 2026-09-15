@@ -17,8 +17,8 @@ export type CutoverEvidencePublicKeyring = {
 
 function isValidEd25519PublicKeyPem(pem: string): boolean {
   try {
-    createPublicKey(pem);
-    return true;
+    const key = createPublicKey(pem);
+    return key.asymmetricKeyType === 'ed25519';
   } catch {
     return false;
   }

@@ -225,23 +225,42 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
-    id: 'vdc-rb019-p25-activation-evidence-provenance-2026-09-15',
+    id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
     version: '4.9.1135',
-    title: 'VDC RB-019 P2.5 — Signed cutover activation evidence provenance',
+    title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
     summary: [
-      'Ed25519 signed evidence bundle v1 with deterministic canonical payload hashing.',
-      'PhysicalStateCutoverEvidenceVerifier fail-closed; raw boolean activation path removed.',
-      'Derived evidence snapshot persisted at latch; ops signing CLI; P25-PROV-A..R matrix.',
+      'Canonical G2.1a scheduler already owns runRecoveryBatch(); F7 proves orphan_refuel closes post-commit handoff crash window.',
+      'F7.1 micro-closure: F4-PR3/PR2 + F3→F2 regressions PASS; real multi-replica PG+Redis 3/3; F7-P8 RECOVERY→COMPLETED→LATE NATIVE SAME.',
+      'Minimal scheduler tick error isolation; real PG F7-P1..P12 (18/18); no second recovery engine or schema change.',
     ],
     reason:
-      'Close activation evidence provenance gap — caller-supplied booleans could not authorize cutover.',
+      'F5-PR3 post-commit G2 handoff creates a real crash window after TRANSACTION A; F7 closes durable autonomous recovery without duplicating F5-PR3 recovery architecture.',
     previousBehavior:
-      'attemptAuthorityCutover accepted activationEvidence booleans and caller evidenceSnapshot JSON.',
+      'Recovery runtime existed but F7 scope required conclusive production lifecycle proof and post-commit orphan recovery certification.',
     details:
-      'docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md §5; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+      'docs/audits/eed-rfrf-f7-recovery-completeness-2026-09-15.md; EED-EV-0060; BASE_MAIN c310d752f',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T10:15:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-trust-root-closure-2026-09-15',
+    version: '4.9.1136',
+    title: 'VDC RB-019 P2.5 — Trust-root closure (required artifact scope + ops parity)',
+    summary: [
+      'All five cutover proof artifacts require exact scope binding (org/vehicle/provider).',
+      'Ed25519 keyring enforces asymmetricKeyType=ed25519; shared ops-lib canonical + manifest validation.',
+      'CLI/runtime canonical parity + PROV-AS/KR/CLI regression proofs.',
+    ],
+    reason:
+      'Independent review: optional artifact.scope and divergent ops canonicalization weakened provenance trust root.',
+    previousBehavior:
+      'artifact.scope optional; ops CLI used separate stableStringify without semantic pre-sign validation.',
+    details:
+      'docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
-    createdAt: '2026-09-15T10:15:00.000Z',
+    createdAt: '2026-09-15T12:30:00.000Z',
   },
   {
     id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',

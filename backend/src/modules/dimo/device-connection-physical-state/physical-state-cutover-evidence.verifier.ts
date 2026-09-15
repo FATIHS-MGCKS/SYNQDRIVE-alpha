@@ -22,6 +22,7 @@ import { validateCutoverEvidenceTimestamp } from './physical-state-cutover-evide
 import {
   PHYSICAL_STATE_CUTOVER_EVIDENCE_ALGORITHM,
   PHYSICAL_STATE_CUTOVER_EVIDENCE_SCHEMA_VERSION,
+  PhysicalStateCutoverEvidenceArtifactRef,
   PhysicalStateCutoverEvidenceVerificationStatus,
   PhysicalStateCutoverEvidenceVerificationResult,
   SignedPhysicalStateCutoverEvidenceBundle,
@@ -67,6 +68,36 @@ function validateArtifactSemantics(
     return `${label}_artifact_result_invalid:${result}`;
   }
   return null;
+}
+
+function validateArtifactScopeBinding(
+  artifact: PhysicalStateCutoverEvidenceArtifactRef,
+  expectedScope: PhysicalAuthorityScope,
+  label: string,
+): string | null {
+  if (!artifact.scope || typeof artifact.scope !== 'object') {
+    return `${label}_artifact_scope_missing`;
+  }
+  if (
+    !artifact.scope.organizationId?.trim() ||
+    !artifact.scope.vehicleId?.trim() ||
+    !artifact.scope.provider?.trim()
+  ) {
+    return `${label}_artifact_scope_malformed`;
+  }
+  if (!scopesEqual(artifact.scope, expectedScope)) {
+    return `${label}_artifact_scope_mismatch`;
+  }
+  return null;
+}
+
+function failArtifactScope(
+  detail: string,
+): PhysicalStateCutoverEvidenceVerificationResult {
+  if (detail.endsWith('_artifact_scope_mismatch')) {
+    return fail(PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH, [detail]);
+  }
+  return fail(PhysicalStateCutoverEvidenceVerificationStatus.ARTIFACT_REFERENCE_INVALID, [detail]);
 }
 
 export function verifyPhysicalStateCutoverEvidence(
@@ -141,13 +172,52 @@ export function verifyPhysicalStateCutoverEvidence(
 
     const payloadShape = validateSignedCutoverEvidencePayloadShape(bundle.payload);
     if (!payloadShape.ok) {
-      const hasPreseedDecisionError = payloadShape.errors.some((error) =>
-        error.startsWith('preseed_decision_invalid'),
-      );
-      if (hasPreseedDecisionError) {
-        return fail(PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID, payloadShape.errors);
+      const errors = payloadShape.errors;
+      if (
+        errors.some(
+          (error) =>
+            error === 'preseed_semantics_invalid' ||
+            error.startsWith('preseed_decision_invalid') ||
+            error === 'preseed_artifact_result_invalid',
+        )
+      ) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID, errors);
       }
-      return fail(PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA, payloadShape.errors);
+      if (errors.some((error) => error.startsWith('duplicate_replica_id:'))) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA, errors);
+      }
+      if (errors.some((error) => error === 'mixed_replica_peer_set_digest_mismatch')) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.PEER_SET_MISMATCH, errors);
+      }
+      if (
+        errors.some(
+          (error) =>
+            error === 'classification_blocking_count_mismatch' ||
+            error === 'classification_blocking_count_nonzero',
+        )
+      ) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.UNEXPLAINED_COUNT_NONZERO, errors);
+      }
+      if (
+        errors.some(
+          (error) =>
+            error === 'unexplained_shape_invalid' ||
+            error === 'classification_total_mismatch' ||
+            error.startsWith('unknown_classification:') ||
+            error.startsWith('classification_count_invalid:'),
+        )
+      ) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.UNEXPLAINED_PROOF_INVALID, errors);
+      }
+      const scopeMismatch = errors.find((error) => error.endsWith('_artifact_scope_mismatch'));
+      if (scopeMismatch) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH, errors);
+      }
+      const scopeMissing = errors.find((error) => error.endsWith('_artifact_scope_missing'));
+      if (scopeMissing) {
+        return fail(PhysicalStateCutoverEvidenceVerificationStatus.ARTIFACT_REFERENCE_INVALID, errors);
+      }
+      return fail(PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA, errors);
     }
 
     const payload = payloadShape.payload;
@@ -204,11 +274,18 @@ export function verifyPhysicalStateCutoverEvidence(
         targetArtifactError,
       ]);
     }
+    const targetArtifactScopeError = validateArtifactScopeBinding(
+      targetApproval.artifact,
+      input.scope,
+      'target_approval',
+    );
+    if (targetArtifactScopeError) {
+      return failArtifactScope(targetArtifactScopeError);
+    }
     if (
       targetApproval.status !== 'APPROVED' ||
       !targetApproval.approvedBy?.trim() ||
-      !scopesEqual(input.scope, targetApproval.scope) ||
-      (targetApproval.artifact.scope && !scopesEqual(input.scope, targetApproval.artifact.scope))
+      !scopesEqual(input.scope, targetApproval.scope)
     ) {
       return fail(PhysicalStateCutoverEvidenceVerificationStatus.TARGET_NOT_APPROVED, [
         'target_approval_missing_or_invalid',
@@ -246,13 +323,20 @@ export function verifyPhysicalStateCutoverEvidence(
         preseedArtifactError,
       ]);
     }
+    const preseedArtifactScopeError = validateArtifactScopeBinding(
+      preseed.artifact,
+      input.scope,
+      'preseed',
+    );
+    if (preseedArtifactScopeError) {
+      return failArtifactScope(preseedArtifactScopeError);
+    }
     if (
       preseed.decision !== 'WOULD_ESTABLISH' ||
       preseed.dryRun !== true ||
       preseed.zeroMutation !== true ||
       preseed.conflictCount !== 0 ||
-      !scopesEqual(input.scope, preseed.scope) ||
-      (preseed.artifact.scope && !scopesEqual(input.scope, preseed.artifact.scope))
+      !scopesEqual(input.scope, preseed.scope)
     ) {
       return fail(PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID, [
         'preseed_proof_semantics_invalid',
@@ -324,6 +408,14 @@ export function verifyPhysicalStateCutoverEvidence(
         unexplainedArtifactError,
       ]);
     }
+    const unexplainedArtifactScopeError = validateArtifactScopeBinding(
+      unexplained.artifact,
+      input.scope,
+      'unexplained',
+    );
+    if (unexplainedArtifactScopeError) {
+      return failArtifactScope(unexplainedArtifactScopeError);
+    }
 
     const mixedReplica = payload.mixedReplica;
     const mixedVerifiedAt = validateCutoverEvidenceTimestamp(mixedReplica.verifiedAt, nowMs, {
@@ -348,6 +440,14 @@ export function verifyPhysicalStateCutoverEvidence(
         mixedArtifactError,
       ]);
     }
+    const mixedArtifactScopeError = validateArtifactScopeBinding(
+      mixedReplica.artifact,
+      input.scope,
+      'mixed_replica',
+    );
+    if (mixedArtifactScopeError) {
+      return failArtifactScope(mixedArtifactScopeError);
+    }
 
     const runtimeBuild = payload.runtimeBuild;
     const runtimeVerifiedAt = validateCutoverEvidenceTimestamp(runtimeBuild.verifiedAt, nowMs);
@@ -370,6 +470,14 @@ export function verifyPhysicalStateCutoverEvidence(
       return fail(PhysicalStateCutoverEvidenceVerificationStatus.BUILD_MISMATCH, [
         runtimeArtifactError,
       ]);
+    }
+    const runtimeArtifactScopeError = validateArtifactScopeBinding(
+      runtimeBuild.artifact,
+      input.scope,
+      'runtime_build',
+    );
+    if (runtimeArtifactScopeError) {
+      return failArtifactScope(runtimeArtifactScopeError);
     }
 
     const requiredCapableBuildId =

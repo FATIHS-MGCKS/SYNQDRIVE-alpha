@@ -1,4 +1,4 @@
-import { createPublicKey } from 'node:crypto';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { parseCutoverEvidencePublicKeyring } from '@config/connectivity-physical-state-cutover-evidence.config';
 import { PhysicalStateShadowClassification } from './physical-state-shadow.classification';
 import { computeCutoverReplicaPeerSetDigest } from './physical-state-cutover-evidence.peer-digest';
@@ -105,7 +105,7 @@ describe('supplementary provenance security closure', () => {
       expect(verifyEnv(resigned, {
         SYNQDRIVE_BUILD_ID: P25_TEST_CUTOVER_BUILD,
         CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID: P25_TEST_CUTOVER_BUILD,
-      }).status).toBe(PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA);
+      }).status).toBe(PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID);
     });
 
     it('PROV-S4 — unknown decision string blocked', () => {
@@ -389,7 +389,7 @@ describe('supplementary provenance security closure', () => {
       };
       const resigned = resign(payload);
       expect(verifyEnv(resigned, baseEnv).status).toBe(
-        PhysicalStateCutoverEvidenceVerificationStatus.INVALID_SCHEMA,
+        PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH,
       );
     });
 
@@ -424,6 +424,140 @@ describe('supplementary provenance security closure', () => {
       expect(verifyEnv(resigned, baseEnv).status).toBe(
         PhysicalStateCutoverEvidenceVerificationStatus.PRESEED_PROOF_INVALID,
       );
+    });
+  });
+
+  describe('PROV-AS required artifact scope binding', () => {
+    const baseEnv = {
+      SYNQDRIVE_BUILD_ID: P25_TEST_CUTOVER_BUILD,
+      CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID: P25_TEST_CUTOVER_BUILD,
+    };
+
+    it('PROV-AS1 — target artifact missing scope => blocked', () => {
+      const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, { now: NOW });
+      const { scope: _removed, ...artifactWithoutScope } = bundle.payload.targetApproval.artifact;
+      const payload = {
+        ...bundle.payload,
+        targetApproval: {
+          ...bundle.payload.targetApproval,
+          artifact: artifactWithoutScope,
+        },
+      };
+      const resigned = resign(payload as PhysicalStateCutoverEvidencePayloadV1);
+      expect(verifyEnv(resigned, baseEnv).status).toBe(
+        PhysicalStateCutoverEvidenceVerificationStatus.ARTIFACT_REFERENCE_INVALID,
+      );
+    });
+
+    it('PROV-AS2 — preseed artifact wrong org => blocked', () => {
+      const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, { now: NOW });
+      const payload = {
+        ...bundle.payload,
+        preseedRevalidation: {
+          ...bundle.payload.preseedRevalidation,
+          artifact: {
+            ...bundle.payload.preseedRevalidation.artifact,
+            scope: { ...scope, organizationId: 'wrong-org' },
+          },
+        },
+      };
+      const resigned = resign(payload);
+      expect(verifyEnv(resigned, baseEnv).status).toBe(
+        PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH,
+      );
+    });
+
+    it('PROV-AS3 — UNEXPLAINED artifact wrong vehicle => blocked', () => {
+      const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, { now: NOW });
+      const payload = {
+        ...bundle.payload,
+        unexplainedObservation: {
+          ...bundle.payload.unexplainedObservation,
+          artifact: {
+            ...bundle.payload.unexplainedObservation.artifact,
+            scope: { ...scope, vehicleId: 'wrong-vehicle' },
+          },
+        },
+      };
+      const resigned = resign(payload);
+      expect(verifyEnv(resigned, baseEnv).status).toBe(
+        PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH,
+      );
+    });
+
+    it('PROV-AS4 — mixed-replica artifact wrong provider => blocked', () => {
+      const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, {
+        now: NOW,
+        fleetReplicaCount: 2,
+        peerBuildIds: [P25_TEST_CUTOVER_BUILD],
+      });
+      const payload = {
+        ...bundle.payload,
+        mixedReplica: {
+          ...bundle.payload.mixedReplica,
+          artifact: {
+            ...bundle.payload.mixedReplica.artifact,
+            scope: { ...scope, provider: 'OTHER' },
+          },
+        },
+      };
+      const resigned = resign(payload);
+      expect(verifyEnv(resigned, baseEnv).status).toBe(
+        PhysicalStateCutoverEvidenceVerificationStatus.SCOPE_MISMATCH,
+      );
+    });
+
+    it('PROV-AS5 — runtime-build artifact missing scope => blocked', () => {
+      const bundle = buildValidSignedCutoverEvidenceBundleForScope(scope, { now: NOW });
+      const { scope: _removed, ...artifactWithoutScope } = bundle.payload.runtimeBuild.artifact;
+      const payload = {
+        ...bundle.payload,
+        runtimeBuild: {
+          ...bundle.payload.runtimeBuild,
+          artifact: artifactWithoutScope,
+        },
+      };
+      const resigned = resign(payload as PhysicalStateCutoverEvidencePayloadV1);
+      expect(verifyEnv(resigned, baseEnv).status).toBe(
+        PhysicalStateCutoverEvidenceVerificationStatus.ARTIFACT_REFERENCE_INVALID,
+      );
+    });
+  });
+
+  describe('PROV-KR Ed25519 key type enforcement', () => {
+    it('PROV-KR1 — RSA PEM under Ed25519 config => keyring rejected', () => {
+      const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+      const rsaPem = rsa.publicKey.export({ type: 'spki', format: 'pem' });
+      expect(
+        parseCutoverEvidencePublicKeyring(
+          JSON.stringify({
+            keys: [{ keyId: 'rsa-key', algorithm: 'Ed25519', publicKey: rsaPem }],
+          }),
+        ),
+      ).toBeNull();
+    });
+
+    it('PROV-KR2 — EC PEM under Ed25519 config => keyring rejected', () => {
+      const ec = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+      const ecPem = ec.publicKey.export({ type: 'spki', format: 'pem' });
+      expect(
+        parseCutoverEvidencePublicKeyring(
+          JSON.stringify({
+            keys: [{ keyId: 'ec-key', algorithm: 'Ed25519', publicKey: ecPem }],
+          }),
+        ),
+      ).toBeNull();
+    });
+
+    it('valid Ed25519 PEM => accepted', () => {
+      const key = getP25TestEvidenceKeyMaterial();
+      const parsed = parseCutoverEvidencePublicKeyring(
+        JSON.stringify({
+          keys: [{ keyId: key.keyId, algorithm: 'Ed25519', publicKey: key.publicKeyPem }],
+        }),
+      );
+      expect(parsed).not.toBeNull();
+      expect(createPublicKey(key.publicKeyPem).asymmetricKeyType).toBe('ed25519');
     });
   });
 

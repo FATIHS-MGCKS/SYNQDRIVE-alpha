@@ -161,6 +161,14 @@ describe('G2.1d final recovery execution closure', () => {
       },
       vehicleEnergyEvent: {
         findMany: jest.fn(),
+        findUnique: jest.fn(async ({ where, select }: { where: { id: string }; select?: { detectionSource?: boolean } }) => {
+          const event = energyEvents.get(where.id) ?? null;
+          if (!event) return null;
+          if (select?.detectionSource) {
+            return { detectionSource: event.detectionSource ?? 'DIMO_NATIVE' };
+          }
+          return event;
+        }),
         count: jest.fn().mockResolvedValue(0),
       },
       vehicleEnergyEventRefuelReconciliation: {
