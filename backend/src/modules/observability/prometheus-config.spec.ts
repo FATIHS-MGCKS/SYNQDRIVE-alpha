@@ -198,9 +198,9 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('PhysicalRefuelRecoverySchedulerStale');
     expect(yaml).toContain('PhysicalRefuelRecoveryFailuresElevated');
     expect(yaml).toContain('synqdrive_physical_refuel_recovery_backlog{reason="orphan_refuel"}');
-    expect(yaml).toContain('synqdrive_physical_refuel_recovery_enabled == 1');
-    expect(yaml).toContain('synqdrive_physical_refuel_recovery_last_success_unixtime');
-    expect(yaml).toContain('synqdrive_physical_refuel_recovery_last_success_unixtime == 0');
+    expect(yaml).toContain('min(synqdrive_physical_refuel_recovery_enabled) == 1');
+    expect(yaml).toContain('max(synqdrive_physical_refuel_recovery_last_success_unixtime)');
+    expect(yaml).toContain('max(synqdrive_physical_refuel_recovery_last_success_unixtime) == 0');
     expect(yaml).not.toMatch(/synqdrive_physical_refuel_recovery_last_success_unixtime > 0/);
     expect(yaml).toContain('for: 5m');
     expect(yaml).toContain('synqdrive_physical_refuel_recovery_runs_total{result="failure"}');
