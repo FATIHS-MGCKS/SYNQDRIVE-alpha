@@ -5,6 +5,7 @@ import {
   buildF8ObservabilityStack,
   buildF8RecoveryScheduler,
   cleanupVehicle,
+  countActionableLostEnqueueRecovery,
   countActionablePhysicalRefuelRecoveryReasons,
   countPhysicalRefuelRecoveryBacklog,
   F5_PR3_G2_CUTOVER,
@@ -427,6 +428,78 @@ describe('RFRF F8 physical-refuel operational telemetry (real PostgreSQL)', () =
       v2OwnershipCutoverAt: new Date(F5_PR3_G2_CUTOVER),
       orphanLookbackFrom: new Date(F7_RECOVERY_AS_OF_MS - 7 * 24 * 60 * 60 * 1000),
     };
+  }
+
+  async function seedLostEnqueueReconciliationFixture(params: {
+    vehicleId: string;
+    suffix: string;
+    latitude: number;
+    longitude: number;
+    source: string;
+    detectionSource?: 'DIMO_NATIVE' | 'SYNQDRIVE_RAW_FUEL_FALLBACK' | null;
+    withEnrichment?: boolean;
+  }): Promise<string> {
+    const energyEventId = `evt-f82-${params.suffix}`;
+    const observedAt = new Date('2026-09-06T10:00:00.000Z');
+    await prisma.vehicleEnergyEvent.create({
+      data: {
+        id: energyEventId,
+        vehicleId: params.vehicleId,
+        dimoSegmentId: `seg-${params.suffix}`,
+        kind: 'REFUEL',
+        detectionMechanism: 'refuel',
+        detectionSource: params.detectionSource ?? 'DIMO_NATIVE',
+        startTime: observedAt,
+        endTime: observedAt,
+        durationSeconds: 600,
+        createdAt: observedAt,
+      },
+    });
+    await prisma.vehicleEnergyEventRefuelReconciliation.create({
+      data: {
+        energyEventId,
+        vehicleId: params.vehicleId,
+        reconciliationGroupId: `grp-${params.suffix}`,
+        classification: 'SINGLE_CANONICAL',
+        finalityState: 'FINAL_CANONICAL',
+        canonicalEventId: energyEventId,
+        enrichmentEligible: true,
+        settlementWindowOpen: false,
+        lateSiblingConflict: false,
+        reason: 'single_canonical',
+        reasonCodes: [],
+        coordinateLatitude: params.latitude,
+        coordinateLongitude: params.longitude,
+        coordinateSource: params.source,
+        coordinateSelectionStatus: 'SELECTED',
+        enrichmentEnqueuedAt: null,
+        reconciledAt: observedAt,
+      },
+    });
+    if (params.withEnrichment) {
+      await prisma.vehicleEnergyEventFuelStationEnrichment.create({
+        data: {
+          energyEventId,
+          processingStatus: 'PENDING',
+          inputFingerprint: `f82-${params.suffix}`,
+          resolverVersion: 'v2',
+        },
+      });
+    }
+    return energyEventId;
+  }
+
+  async function countLostEnqueueActionable(env: NodeJS.ProcessEnv = process.env): Promise<number> {
+    const query = await recoveryQueryParams();
+    const actionable = await countActionablePhysicalRefuelRecoveryReasons(
+      prisma,
+      query.asOf,
+      query.v2OwnershipCutoverAt,
+      query.orphanLookbackFrom,
+      undefined,
+      env,
+    );
+    return actionable.lostEnqueuePending;
   }
 
   async function expectGaugeMatchesActionable(
@@ -938,5 +1011,217 @@ describe('RFRF F8 physical-refuel operational telemetry (real PostgreSQL)', () =
 
   (LIVE ? it : it.skip)('F8.1-P4 scheduler stale alert window exceeds default first tick interval', () => {
     expect(5 * 60).toBeGreaterThan(60);
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P1 valid finite lost_enqueue actionable count = 1', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p1-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+      });
+      expect(await countLostEnqueueActionable()).toBe(1);
+      expect(await countActionableLostEnqueueRecovery(prisma, true)).toBe(1);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P2 existing fuelStationEnrichment row excluded from lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p2-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+        withEnrichment: true,
+      });
+      expect(await countLostEnqueueActionable()).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P3 fallback authority OFF excludes fallback lost_enqueue only', async () => {
+    if (!dbAvailable) return;
+    const restoreFull = setFullAuthorizedFlags();
+    const suffix = `f82p3-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix: `fb-${suffix}`,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+        detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK',
+      });
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix: `native-${suffix}`,
+        latitude: 51.331,
+        longitude: 9.513,
+        source: 'SELECTED',
+        detectionSource: 'DIMO_NATIVE',
+      });
+      const restoreOff = setRfrfFlags({
+        master: true,
+        persist: true,
+        convergence: true,
+        promotion: true,
+        handoff: false,
+        g2: true,
+        cutoverAt: '2026-09-06T08:00:00.000Z',
+        g2CutoverAt: F5_PR3_G2_CUTOVER,
+      });
+      expect(await countLostEnqueueActionable()).toBe(1);
+      restoreOff();
+    } finally {
+      restoreFull();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P4 NaN coordinate excluded from lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p4-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      const energyEventId = await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+      });
+      await prisma.$executeRaw`
+        UPDATE vehicle_energy_event_refuel_reconciliations
+        SET coordinate_latitude = 'NaN'::float8
+        WHERE energy_event_id = ${energyEventId}
+      `;
+      expect(await countLostEnqueueActionable()).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P5 +Infinity coordinate excluded from lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p5-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      const energyEventId = await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+      });
+      await prisma.$executeRaw`
+        UPDATE vehicle_energy_event_refuel_reconciliations
+        SET coordinate_longitude = 'Infinity'::float8
+        WHERE energy_event_id = ${energyEventId}
+      `;
+      expect(await countLostEnqueueActionable()).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P6 -Infinity coordinate excluded from lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p6-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      const energyEventId = await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+      });
+      await prisma.$executeRaw`
+        UPDATE vehicle_energy_event_refuel_reconciliations
+        SET coordinate_latitude = '-Infinity'::float8
+        WHERE energy_event_id = ${energyEventId}
+      `;
+      expect(await countLostEnqueueActionable()).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P7 empty coordinateSource excluded from lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p7-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: '',
+      });
+      expect(await countLostEnqueueActionable()).toBe(0);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
+  });
+
+  (LIVE ? it : it.skip)('F8.2-P8 multiple valid rows return exact DB-side lost_enqueue count', async () => {
+    if (!dbAvailable) return;
+    const restore = setFullAuthorizedFlags();
+    const suffix = `f82p8-${Math.random().toString(36).slice(2, 8)}`;
+    const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+    try {
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix: `a-${suffix}`,
+        latitude: 51.3305883,
+        longitude: 9.5126383,
+        source: 'SELECTED',
+      });
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix: `b-${suffix}`,
+        latitude: 51.331,
+        longitude: 9.513,
+        source: 'SELECTED',
+      });
+      await seedLostEnqueueReconciliationFixture({
+        vehicleId: vehicle.id,
+        suffix: `c-${suffix}`,
+        latitude: 51.332,
+        longitude: 9.514,
+        source: 'SELECTED',
+      });
+      expect(await countLostEnqueueActionable()).toBe(3);
+      expect(await countActionableLostEnqueueRecovery(prisma, true)).toBe(3);
+    } finally {
+      restore();
+      await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+    }
   });
 });

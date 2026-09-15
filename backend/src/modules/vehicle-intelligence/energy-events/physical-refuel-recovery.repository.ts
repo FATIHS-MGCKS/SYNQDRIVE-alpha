@@ -1,7 +1,7 @@
 import {
   EnergyEventKind,
   PhysicalRefuelFinalityState,
-  type Prisma,
+  Prisma,
   type PrismaClient,
 } from '@prisma/client';
 import { canExecuteFallbackG2Handoff } from '@config/raw-fuel-refuel-fallback.config';
@@ -113,12 +113,47 @@ export function buildLostEnqueueRecoveryCandidateWhere(
     enrichmentEnqueuedAt: null,
     finalityState: { in: [...FINAL_ELIGIBLE_STATES] },
     coordinateLatitude: { not: null },
+    coordinateLongitude: { not: null },
     coordinateSource: { not: null },
     energyEvent: {
       ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
       fuelStationEnrichment: { is: null },
     },
   };
+}
+
+/** Structural marker: actionable lost_enqueue backlog uses DB-side COUNT, not findMany materialization. */
+export const LOST_ENQUEUE_ACTIONABLE_COUNT_USES_DB_AGGREGATE = true;
+
+export async function countActionableLostEnqueueRecovery(
+  prisma: PrismaClient,
+  fallbackG2Authorized: boolean,
+): Promise<number> {
+  const authorityClause = fallbackG2Authorized
+    ? Prisma.empty
+    : Prisma.sql`AND (vee.detection_source IS NULL OR vee.detection_source <> 'SYNQDRIVE_RAW_FUEL_FALLBACK')`;
+
+  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM vehicle_energy_event_refuel_reconciliations r
+    INNER JOIN vehicle_energy_events vee ON vee.id = r.energy_event_id
+    LEFT JOIN vehicle_energy_event_fuel_station_enrichments e ON e.energy_event_id = r.energy_event_id
+    WHERE r.enrichment_eligible = true
+      AND r.enrichment_enqueued_at IS NULL
+      AND r.finality_state IN ('FINAL_CANONICAL', 'FINAL_DISTINCT')
+      AND r.coordinate_latitude IS NOT NULL
+      AND r.coordinate_longitude IS NOT NULL
+      AND r.coordinate_source IS NOT NULL
+      AND r.coordinate_source <> ''
+      AND r.coordinate_latitude > '-Infinity'::float8
+      AND r.coordinate_latitude < 'Infinity'::float8
+      AND r.coordinate_longitude > '-Infinity'::float8
+      AND r.coordinate_longitude < 'Infinity'::float8
+      AND e.energy_event_id IS NULL
+      ${authorityClause}
+  `);
+
+  return Number(rows[0]?.count ?? 0n);
 }
 
 export function buildCoordinateInitialRecoveryWhere(
@@ -170,28 +205,6 @@ export function buildOrphanRefuelRecoveryWhere(
           ],
         }),
   };
-}
-
-async function countActionableLostEnqueueRecovery(
-  prisma: PrismaClient,
-  fallbackG2Authorized: boolean,
-): Promise<number> {
-  const candidates = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
-    where: buildLostEnqueueRecoveryCandidateWhere(fallbackG2Authorized),
-    select: {
-      coordinateLatitude: true,
-      coordinateLongitude: true,
-      coordinateSource: true,
-    },
-  });
-
-  return candidates.filter((row) =>
-    isV2CoordinateEligibleForEnrichment({
-      latitude: row.coordinateLatitude,
-      longitude: row.coordinateLongitude,
-      source: row.coordinateSource,
-    }),
-  ).length;
 }
 
 export async function countActionablePhysicalRefuelRecoveryReasons(

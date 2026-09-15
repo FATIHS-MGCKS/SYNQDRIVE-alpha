@@ -4,6 +4,7 @@ export {
   cleanupVehicle,
   countPhysicalRefuelRecoveryBacklog,
   countActionablePhysicalRefuelRecoveryReasons,
+  countActionableLostEnqueueRecovery,
   F5_PR3_G2_CUTOVER,
   F5_PR3_SETTLED_OBSERVATION_AT,
   findPhysicalRefuelRecoveryWork,

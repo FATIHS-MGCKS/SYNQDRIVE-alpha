@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F8.2 bounded lost_enqueue metric query + final regression closure
+
+- EED-EV-0061 extended: lost_enqueue actionable count uses PostgreSQL COUNT with isfinite/source/enrichment/authority predicates (no unbounded findMany)
+- G2.1b/c/d Jest recovery semantic suite executed on final head; main synced with EXP-021 evidence-only delta (#1659)
+
 ## 2026-09-15 — RFRF F8.1 scheduler zero-success + actionable backlog closure
 
 - EED-EV-0061 extended: F8.1 closes scheduler stale blind spot before first success and actionable backlog parity for all six exported reasons

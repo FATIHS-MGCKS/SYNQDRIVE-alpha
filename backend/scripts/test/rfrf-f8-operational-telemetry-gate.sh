@@ -51,6 +51,6 @@ export RAW_FUEL_REFUEL_F8_INTEGRATION=1
 export RAW_FUEL_REFUEL_F8_POSTGRES_REQUIRED=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='physical-refuel-f8-observability.postgres.integration.spec.ts|physical-refuel-reconciliation-metrics.service.spec.ts'
+  --testPathPattern='physical-refuel-f8-observability.postgres.integration.spec.ts|physical-refuel-reconciliation-metrics.service.spec.ts|physical-refuel-recovery.lost-enqueue-count.spec.ts'
 
 echo "RFRF F8 operational telemetry gate PASS"

@@ -140,3 +140,42 @@ and (
 | F8.1-P11 | all six gauges vs actionable + canonical work | PG |
 
 Evidence: **EED-EV-0061** (extended, no new ID).
+
+## F8.2 — bounded lost_enqueue metric query + final regression closure
+
+**F8.1 head:** `7fb48d973de895ee7226c4b19e55d9bd31164b0a`
+
+### Changes
+
+| Item | F8.1 | F8.2 |
+|------|------|------|
+| lost_enqueue actionable count | `findMany()` + in-memory `filter(isV2CoordinateEligibleForEnrichment)` | PostgreSQL `COUNT(*)` with `isfinite()` + nonempty source + authority/enrichment joins |
+| Node row materialization | unbounded candidate set | scalar aggregate only |
+| G2 recovery regression | NOT_RUN (Docker gate unavailable) | Jest G2.1b/c/d semantic suite on final head |
+| main sync | at F8.1 base `ad8392d8c` | merged `origin/main` (EXP-021 evidence-only #1659) |
+
+### lost_enqueue DB predicate (matches runtime policy)
+
+- `enrichment_eligible = true`
+- `enrichment_enqueued_at IS NULL`
+- `finality_state IN ('FINAL_CANONICAL','FINAL_DISTINCT')`
+- coordinates present + finite float bounds (`> -Infinity` and `< Infinity`, excludes NaN/±Inf per IEEE754 PG semantics)
+- `coordinate_source IS NOT NULL AND coordinate_source <> ''`
+- no `vehicle_energy_event_fuel_station_enrichments` row
+- fallback authority: `(detection_source IS NULL OR detection_source <> 'SYNQDRIVE_RAW_FUEL_FALLBACK')` when handoff OFF
+
+### F8.2 test matrix
+
+| Case | Scope |
+|------|-------|
+| F8.2-P1 valid finite | PG |
+| F8.2-P2 existing enrichment | PG |
+| F8.2-P3 authority OFF fallback | PG |
+| F8.2-P4 NaN | PG |
+| F8.2-P5 +Infinity | PG |
+| F8.2-P6 -Infinity | PG |
+| F8.2-P7 empty source | PG |
+| F8.2-P8 multiple valid rows | PG |
+| F8.2-P9 no findMany materialization | unit source inspection |
+
+F8.1 scheduler zero-success closure preserved unchanged.
