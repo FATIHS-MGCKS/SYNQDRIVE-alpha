@@ -190,6 +190,8 @@ import { ReferenceCaptureFastGoService } from './reference-capture/reference-cap
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture/reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture/reference-capture-settlement-shadow-runner.service';
 import { ReferenceCaptureSettlementShadowService } from './reference-capture/reference-capture-settlement-shadow.service';
+import { ReferenceCaptureExp021FleetRepository } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet.repository';
+import { ReferenceCaptureExp021FleetCoordinatorService } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet-coordinator.service';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -471,6 +473,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureSettlementShadowRepository,
     ReferenceCaptureSettlementShadowRunnerService,
     ReferenceCaptureSettlementShadowService,
+    ReferenceCaptureExp021FleetRepository,
+    ReferenceCaptureExp021FleetCoordinatorService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
@@ -677,6 +681,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureRetentionService,
     ReferenceCaptureSettlementShadowService,
     ReferenceCaptureSettlementShadowRunnerService,
+    ReferenceCaptureExp021FleetCoordinatorService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,

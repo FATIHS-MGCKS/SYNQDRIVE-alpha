@@ -139,4 +139,21 @@ export class ReferenceCaptureConfig {
       this.configService.get<boolean>('referenceCapture.settlementShadowEnabled') === true
     );
   }
+
+  isFleetCoordinatorEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetCoordinatorEnabled') === true;
+  }
+
+  isFleetDryRun(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetDryRun') !== false;
+  }
+
+  getFleetCoordinatorIntervalMs(): number {
+    const raw = this.configService.get<number>('referenceCapture.fleetCoordinatorIntervalMs');
+    if (raw == null || !Number.isFinite(raw)) return 45_000;
+    const floored = Math.floor(raw);
+    if (floored < 5_000) return 5_000;
+    if (floored > 300_000) return 300_000;
+    return floored;
+  }
 }
