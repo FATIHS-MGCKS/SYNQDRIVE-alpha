@@ -64,7 +64,7 @@ When persisted authority is `PHYSICAL`, disabling master/sub-flags does **not** 
 | Prisma validate | PASS |
 | Module registry | PASS |
 | VDC graph validator | PASS |
-| P25 PG integration (P25-A..R) | **CI_REQUIRED** (`PHYSICAL_STATE_POSTGRES_INTEGRATION=1`) |
+| P25 PG integration (P25-A..R) | **PASS** — CI run `34910625008` @ `dfdfac9a`: 96/96 tests, 9/9 suites |
 
 ## REMAINING ACTIVATION GATES (operational — NOT_PROVEN)
 
