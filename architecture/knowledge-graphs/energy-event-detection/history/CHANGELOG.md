@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F9 independent-replica integration closure
+
+- EED-EV-0062: independent PrismaClient A/B + promotion/G2 runtime stacks prove DB lock authority across process boundaries
+- Net-new F9-P1..P6 + P10 real PG (+ Redis for P6); F9 gate orchestrates F7 multi-replica 3/3, F5-PR2, F5-PR3.1, F6, F7, F8, G2 Jest, metrics — no runtime/schema change
+
 ## 2026-09-15 — RFRF F8.2 bounded lost_enqueue metric query + final regression closure
 
 - EED-EV-0061 extended: lost_enqueue actionable count uses PostgreSQL COUNT with isfinite/source/enrichment/authority predicates (no unbounded findMany)

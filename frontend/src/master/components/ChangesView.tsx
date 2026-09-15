@@ -225,6 +225,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f9-multi-replica-integration-closure-2026-09-15',
+    version: '4.9.1137',
+    title: 'RFRF F9 — Independent-replica integration closure',
+    summary: [
+      'Closes remaining multi-replica gap at RFRF promotion/convergence boundary with independent PrismaClient A/B and service stacks.',
+      'F9-P1..P6 + P10 real PG (+ Redis P6); explicit replica identity assertions; consolidated rfrf-f9-multi-replica-integration-gate.sh.',
+      'Reuses F7 multi-replica recovery 3/3, F5-PR2, F5-PR3.1, F6, F7, F8, G2 Jest, metrics — no runtime or schema change.',
+    ],
+    reason:
+      'F5-PR2 P3 proved concurrent promotion on one stack; production replicas use independent clients/pools — F9 proves DB advisory lock survives that boundary.',
+    previousBehavior:
+      'Multi-replica integration evidence existed for recovery/schedulers and single-stack promotion/handoff concurrency, not independent promotion/G2 client boundaries.',
+    details:
+      'docs/audits/eed-rfrf-f9-multi-replica-integration-closure-2026-09-15.md; EED-EV-0062; BASE_MAIN bcd64c0a2',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T17:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
     version: '4.9.1136',
     title: 'RFRF F8/F8.1/F8.2 — Operational telemetry + semantic closure',
