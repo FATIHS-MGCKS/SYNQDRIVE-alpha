@@ -1,0 +1,165 @@
+path,component,type,producer,consumer,persistence,tenant_scope,derives_status,tests,risk,notes
+backend/src/modules/rental-health/rental-health.service.ts,RentalHealthService,service,no,yes,none,orgId_required,yes,rental-health.service.spec.ts,high,Central rental_blocked aggregator; 7 modules; consumption-only
+backend/src/modules/rental-health/rental-health.types.ts,"resolveRentalBlockedState, computeOverallState",util,no,yes,none,n/a,yes,rental-health.types.spec.ts,high,Canonical overall_state + blocking mapping
+backend/src/modules/rental-health/rental-health.controller.ts,RentalHealthController,controller,no,yes,none,OrgScopingGuard,no,rental-health.controller.spec.ts,low,GET /rental-health/* APIs
+backend/src/modules/rental-health/rental-health-fleet.service.ts,RentalHealthFleetService,service,no,yes,redis_cache,orgId_required,yes,rental-health-fleet.service.spec.ts,medium,Paginated fleet rental health
+backend/src/modules/rental-health/rental-health-summary.service.ts,RentalHealthSummaryService,service,no,yes,redis_cache,orgId_required,yes,rental-health-summary.service.spec.ts,medium,Fleet row projection
+backend/src/modules/rental-health/tire-rental-health.policy.ts,buildTireModuleHealth,policy,no,yes,none,n/a,yes,tire-rental-health.policy.spec.ts,high,Tire rental module + hard block rules
+backend/src/modules/rental-health/brake-rental-health.policy.ts,buildBrakeModuleHealth,policy,no,yes,none,n/a,yes,brake-rental-health.policy.spec.ts,high,Brake rental module + hard block rules
+backend/src/modules/rental-health/tire-rental-health-review.service.ts,TireRentalHealthReviewService,service,yes,yes,postgres,orgId_required,yes,none,medium,Manual tire override CRUD
+backend/src/modules/rental-health/brake-rental-health-review.service.ts,BrakeRentalHealthReviewService,service,yes,yes,postgres,orgId_required,yes,brake-rental-health-review.service.spec.ts,medium,Manual brake override CRUD
+backend/src/modules/vehicle-intelligence/battery-health/battery-readiness.policy.ts,evaluateBatteryReadiness,policy,yes,yes,none,param,yes,battery-readiness.policy.spec.ts,high,Battery blocksRental authority
+backend/src/modules/vehicle-intelligence/battery-health/canonical-battery-health.service.ts,CanonicalBatteryHealthService,service,yes,yes,postgres,orgId_required,yes,spec,high,Canonical battery read API
+backend/src/modules/vehicle-intelligence/battery-health/battery-v2.service.ts,BatteryV2Service,service,yes,yes,postgres,orgId_required,yes,integration,high,Battery V2 pipeline orchestration
+backend/src/modules/vehicle-intelligence/battery-health/battery-task.service.ts,BatteryTaskService,service,yes,yes,postgres,orgId_required,yes,spec,medium,Auto-task from battery readiness
+backend/src/modules/vehicle-intelligence/tires/tire-health.service.ts,TireHealthService,service,yes,yes,postgres,orgId_required,yes,regression,high,Tire health summary producer
+backend/src/modules/vehicle-intelligence/tires/tire-health-alert.service.ts,TireHealthAlertService,service,yes,yes,postgres,orgId_required,yes,tire-health-alert.spec.ts,medium,Sync tire alerts + notifications
+backend/src/modules/vehicle-intelligence/brakes/brake-health.service.ts,BrakeHealthService,service,yes,yes,postgres,orgId_required,yes,regression,high,Brake health summary producer
+backend/src/modules/vehicle-intelligence/brakes/brake-health-alert.service.ts,BrakeHealthAlertService,service,yes,yes,postgres,orgId_required,yes,spec,medium,Sync brake alerts
+backend/src/modules/vehicle-intelligence/dtc/dtc.service.ts,DtcService,service,yes,yes,postgres,orgId_required,yes,none,high,DTC ingest severity summary
+backend/src/modules/vehicle-intelligence/service-compliance/service-compliance.service.ts,ServiceComplianceService,service,yes,yes,postgres,orgId_required,yes,spec,high,TUV/BOKraft/service overdue
+backend/src/modules/vehicle-intelligence/dashboard-warning-lights/dashboard-warning-lights.service.ts,DashboardWarningLightsService,service,yes,yes,none,orgId_required,yes,spec,medium,OEM warning lights from telemetry
+backend/src/modules/vehicle-intelligence/health-summary/vehicle-health-tab-summary.service.ts,VehicleHealthTabSummaryService,service,no,yes,none,orgId_required,yes,spec,medium,UI health tab findings aggregator
+backend/src/modules/vehicle-intelligence/damages/damages.service.ts,DamagesService,service,yes,yes,postgres,orgId_required,yes,none,medium,Damage rentalImpact BLOCK_RENTAL
+backend/src/modules/vehicle-intelligence/misuse-cases/misuse-case-rules.service.ts,MisuseCaseRulesService,service,yes,yes,postgres,orgId_required,yes,spec,medium,Driving misuse findings
+backend/src/modules/technical-observations/technical-observations.service.ts,TechnicalObservationsService,service,yes,yes,postgres,orgId_required,yes,technical-observations.service.spec.ts,high,VehicleComplaint blocksRental
+backend/src/modules/technical-observations/technical-observations.controller.ts,TechnicalObservationsController,controller,no,yes,postgres,OrgScopingGuard,no,none,low,REST observations API
+backend/src/modules/service-cases/service-cases.service.ts,ServiceCasesService,service,yes,yes,postgres,orgId_required,yes,service-cases.service.spec.ts,high,ServiceCase.blocksRental
+backend/src/modules/service-cases/service-cases.controller.ts,ServiceCasesController,controller,no,yes,postgres,OrgScopingGuard,no,integration,low,REST service cases API
+backend/src/modules/vehicles/vehicle-state-interpreter.ts,classifyTelemetryFreshness,util,no,yes,none,n/a,yes,spec,high,Canonical telemetry freshness bands
+backend/src/modules/vehicles/telemetry-freshness.resolver.ts,TelemetryFreshnessResolver,service,no,yes,none,orgId_required,yes,spec,medium,Vehicle detail freshness DTO
+backend/src/modules/vehicles/operational/fleet-operational-state.util.ts,buildFleetOperationalStateDto,util,no,yes,none,n/a,yes,state-engine specs,medium,Booking-derived operational status
+backend/src/modules/vehicles/fleet-connectivity.util.ts,fleet-connectivity util,util,no,yes,none,orgId_required,yes,fleet-connectivity.util.spec.ts,medium,Fleet connectivity classification
+backend/src/modules/vehicles/connectivity/domain/vehicle-connectivity-runtime-state.builder.ts,VehicleConnectivityRuntimeStateBuilder,util,no,yes,none,orgId_required,yes,spec,high,Connectivity runtime SSOT
+backend/src/modules/vehicles/vehicles.service.ts,VehiclesService,service,no,yes,postgres+redis,orgId_required,yes,many specs,high,Composition root fleet/detail operationalState
+backend/src/modules/vehicles/vehicles.controller.ts,VehiclesController,controller,no,yes,none,OrgScopingGuard,no,spec,low,Fleet map vehicle detail APIs
+backend/src/modules/dimo/connectivity-alert/connectivity-alert.service.ts,ConnectivityAlertService,service,yes,yes,postgres,orgId_required,yes,spec,high,Offline/unplug notifications
+backend/src/modules/dimo/connectivity-alert/connectivity-alert.policy.ts,connectivity-alert policy,policy,no,yes,none,n/a,yes,spec,high,Alert open/resolve rules
+backend/src/modules/dimo/device-connection-episode.service.ts,DeviceConnectionEpisodeService,service,yes,yes,postgres,orgId_required,yes,specs,high,Connectivity episode persistence
+backend/src/modules/dimo/device-connection-episode-resolution/vehicle-connectivity-runtime-projection.service.ts,VehicleConnectivityRuntimeProjectionService,service,no,yes,none,orgId_required,yes,processor spec,high,Batch connectivity runtime projection
+backend/src/modules/business-insights/business-insights.service.ts,BusinessInsightsService,service,yes,yes,postgres,orgId_required,yes,many specs,high,Detectors to DashboardInsight + notifications
+backend/src/modules/business-insights/business-insights-scheduler.service.ts,BusinessInsightsSchedulerService,scheduler,yes,no,postgres,orgId_required,no,runtime spec,medium,Periodic insight runs
+backend/src/modules/business-insights/insight-task-bridge.service.ts,InsightTaskBridgeService,service,yes,yes,postgres,orgId_required,yes,none,high,Insights to OrgTask blocksVehicleAvailability
+backend/src/modules/business-insights/detectors/battery-critical.detector.ts,BatteryCriticalDetector,detector,yes,yes,postgres,orgId_required,yes,spec,medium,Battery critical insight
+backend/src/modules/business-insights/detectors/tire-critical.detector.ts,TireCriticalDetector,detector,yes,yes,postgres,orgId_required,yes,spec,medium,Tire critical insight
+backend/src/modules/business-insights/detectors/brake-critical.detector.ts,BrakeCriticalDetector,detector,yes,yes,postgres,orgId_required,yes,spec,medium,Brake critical insight
+backend/src/modules/business-insights/detectors/compliance-operational.detector.ts,ComplianceOperationalDetector,detector,yes,yes,postgres,orgId_required,yes,none,medium,Compliance operational insight
+backend/src/modules/business-insights/detectors/service-before-booking.detector.ts,ServiceBeforeBookingDetector,detector,yes,yes,postgres,orgId_required,yes,none,medium,Service window vs booking
+backend/src/modules/business-insights/detectors/return-needs-inspection.detector.ts,ReturnNeedsInspectionDetector,detector,yes,yes,postgres,orgId_required,yes,spec,low,Return inspection needed
+backend/src/modules/business-insights/detectors/driving-assessment-device-quality.detector.ts,DrivingAssessmentDeviceQualityDetector,detector,yes,yes,postgres,orgId_required,yes,none,medium,Device quality degradation
+backend/src/modules/business-insights/detectors/pickup-overdue.detector.ts,PickupOverdueDetector,detector,yes,yes,postgres,orgId_required,yes,none,low,Pickup overdue alert
+backend/src/modules/notifications/adapters/notification-producer.ingest.service.ts,NotificationProducerIngestService,service,yes,yes,postgres,orgId_required,yes,phase1 spec,medium,Domain events to Notification V2
+backend/src/modules/notifications/adapters/rental-health-notification.projector.ts,projectVehicleHealthWarnings,projector,no,yes,postgres,orgId_required,yes,rental-health-notification.spec.ts,medium,Rental health to notification candidates
+backend/src/modules/notifications/adapters/vehicle-health-notification.adapter.ts,VehicleHealthNotificationAdapter,adapter,no,yes,postgres,orgId_required,yes,none,medium,Health to Notification mapping
+backend/src/modules/notifications/adapters/technical-observation-notification.adapter.ts,TechnicalObservationNotificationAdapter,adapter,no,yes,postgres,orgId_required,yes,none,medium,Observation notifications
+backend/src/modules/notifications/runtime/notification-evaluation.service.ts,NotificationEvaluationService,service,yes,yes,postgres,orgId_required,yes,live integration,medium,Evaluate notification rules
+backend/src/modules/notifications/notification-core.service.ts,NotificationCoreService,service,yes,yes,postgres,orgId_required,yes,spec,medium,Core notification lifecycle
+backend/src/modules/notifications/api/notifications.controller.ts,NotificationsController,controller,no,yes,postgres,OrgScopingGuard,no,spec,low,Notifications V2 API
+backend/src/modules/notifications/notification-severity.policy.ts,notification-severity policy,policy,no,yes,none,n/a,yes,spec,low,Severity mapping
+backend/src/modules/bookings/booking-eligibility-gatekeeper/booking-eligibility-gatekeeper.service.ts,BookingEligibilityGatekeeperService,service,yes,yes,postgres,orgId_required,yes,many specs,high,Sole booking eligibility producer; calls isRentalBlocked
+backend/src/modules/bookings/booking-eligibility-gatekeeper/booking-eligibility-enforcement.service.ts,BookingEligibilityEnforcementService,service,no,yes,postgres,orgId_required,yes,spec,high,Enforce gate on transitions
+backend/src/modules/bookings/booking-rental-eligibility.service.ts,BookingRentalEligibilityService,service,yes,yes,postgres,orgId_required,yes,spec,medium,Customer/rules eligibility separate from health
+backend/src/modules/bookings/booking-pickup-gate/booking-pickup-gate.service.ts,BookingPickupGateService,service,no,yes,postgres,orgId_required,yes,integration,high,Pickup-time gate enforcement
+backend/src/modules/bookings/booking-eligibility-recheck/booking-eligibility-recheck.service.ts,BookingEligibilityRecheckService,service,yes,yes,postgres,orgId_required,yes,spec,high,Re-evaluate on health changes
+backend/src/modules/tasks/tasks.service.ts,TasksService,service,yes,yes,postgres,orgId_required,yes,tasks.service.spec.ts,high,OrgTask blocksVehicleAvailability
+backend/src/modules/tasks/automation/task-automation.service.ts,TaskAutomationService,service,yes,yes,postgres,orgId_required,yes,catalog spec,medium,Auto-create tasks from rules
+backend/src/modules/workers/processors/dimo-dtc.processor.ts,DimoDtcProcessor,worker,yes,no,postgres,orgId_required,yes,none,high,Poll DIMO DTCs
+backend/src/modules/workers/schedulers/dimo-dtc.scheduler.ts,DimoDtcScheduler,scheduler,yes,no,none,n/a,no,none,low,Schedule DTC poll
+backend/src/modules/workers/processors/tire-recalculation.processor.ts,TireRecalculationProcessor,worker,yes,no,postgres,orgId_required,yes,spec,medium,Tire health recalculation
+backend/src/modules/workers/processors/brake-recalculation.processor.ts,BrakeRecalculationProcessor,worker,yes,no,postgres,orgId_required,yes,spec,medium,Brake health recalculation
+backend/src/modules/workers/processors/battery-v2.processor.ts,BatteryV2Processor,worker,yes,no,postgres,orgId_required,yes,none,high,Battery V2 job handler
+backend/src/modules/workers/processors/device-connection-webhook.processor.ts,DeviceConnectionWebhookProcessor,worker,yes,no,postgres,orgId_required,no,none,medium,Async webhook processing
+backend/src/modules/workers/processors/notification-evaluation.processor.ts,NotificationEvaluationProcessor,worker,yes,no,postgres,orgId_required,no,none,low,Async notification evaluation
+backend/src/modules/workers/processors/dimo-snapshot.processor.ts,DimoSnapshotProcessor,worker,yes,no,postgres,orgId_required,no,none,medium,Telemetry snapshots freshness input
+backend/src/modules/ai/tools/get-vehicle-health-summary/ai-get-vehicle-health-summary.tool.ts,AiGetVehicleHealthSummaryTool,tool,no,yes,none,orgId_required,yes,spec,medium,Fleet AI health summary read-only
+backend/src/modules/ai/tools/get-vehicle-telemetry-status/ai-get-vehicle-telemetry-status.tool.ts,AiGetVehicleTelemetryStatusTool,tool,no,yes,none,orgId_required,yes,spec,medium,AI telemetry freshness/offline
+backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts,VehicleIntelligenceController,controller,no,yes,none,OrgScopingGuard,no,contract specs,low,Health module REST APIs
+backend/src/modules/whatsapp/whatsapp-ai-tools.service.ts,WhatsAppAiToolsService,tool,no,yes,none,orgId_required,no,none,low,WhatsApp AI context incl telemetry
+backend/src/modules/high-mobility/high-mobility-health-fetch.service.ts,HighMobilityHealthFetchService,service,yes,yes,postgres,orgId_required,yes,none,medium,HM health poll to HmLatestHealthState
+backend/src/modules/high-mobility/high-mobility-health-app-ingestion.service.ts,HighMobilityHealthAppIngestionService,service,yes,yes,postgres,orgId_required,yes,none,medium,HM MQTT health ingestion
+backend/src/modules/fleet-health-observability/fleet-health-observability.service.ts,FleetHealthObservabilityService,service,no,yes,prometheus,orgId_required,no,none,low,Prometheus metrics FHS
+backend/src/modules/fleet-health-observability/fleet-health-task-match.util.ts,fleet-health-task-match,util,no,yes,none,orgId_required,no,spec,low,Match health findings to tasks
+backend/monitoring/prometheus/alerts.yml,synqdrive_fleet_health alerts,monitoring,no,yes,none,n/a,no,none,low,Platform SLO alerts not per-vehicle
+backend/monitoring/grafana/dashboards/synqdrive-fleet-health-service.json,FHS Grafana dashboard,monitoring,no,yes,none,n/a,no,none,low,Ops dashboard
+backend/prisma/schema.prisma,TireHealthAlert,prisma_model,yes,yes,postgres,orgId_FK,yes,tire-health-alert.spec.ts,medium,Structured tire alerts OPEN/RESOLVED
+backend/prisma/schema.prisma,BrakeHealthAlert,prisma_model,yes,yes,postgres,orgId_FK,yes,brake-health-alert.spec.ts,medium,Structured brake alerts
+backend/prisma/schema.prisma,VehicleComplaint,prisma_model,yes,yes,postgres,orgId_FK,yes,technical-observations.service.spec.ts,high,blocksRental urgency impact
+backend/prisma/schema.prisma,VehicleDtcEvent,prisma_model,yes,yes,postgres,vehicle_FK,yes,none,high,DTC severity isActive
+backend/prisma/schema.prisma,Notification,prisma_model,yes,yes,postgres,orgId_FK,yes,notification specs,medium,V2 notification lifecycle
+backend/prisma/schema.prisma,DashboardInsight,prisma_model,yes,yes,postgres,orgId_FK,yes,detector specs,medium,Legacy insight feed migrating to Notification
+backend/prisma/schema.prisma,OrgTask,prisma_model,yes,yes,postgres,orgId_FK,yes,tasks.service.spec.ts,high,blocksVehicleAvailability
+backend/prisma/schema.prisma,ServiceCase,prisma_model,yes,yes,postgres,orgId_FK,yes,service-cases.service.spec.ts,high,blocksRental
+backend/prisma/schema.prisma,DeviceConnectionEpisode,prisma_model,yes,yes,postgres,orgId_FK,yes,episode specs,high,Connectivity episodes
+backend/prisma/schema.prisma,BookingEligibilityDecision,prisma_model,yes,yes,postgres,orgId_FK,yes,gatekeeper specs,high,blockingReasons vs warnings JSON
+backend/prisma/schema.prisma,VehicleDamage,prisma_model,yes,yes,postgres,orgId_FK,yes,none,medium,rentalImpact BLOCK_RENTAL
+backend/prisma/schema.prisma,HmLatestHealthState,prisma_model,yes,yes,postgres,vehicle_FK,yes,none,medium,HM MQTT warnings
+backend/prisma/schema.prisma,VehicleLatestState,prisma_model,yes,yes,postgres,vehicle_FK,no,none,medium,Telemetry anchor freshness
+backend/prisma/schema.prisma,Vehicle.healthStatus,prisma_model,yes,yes,postgres,vehicle_FK,yes,none,high,DEPRECATED use RentalHealthService
+frontend/src/rental/components/dashboard/runtime/vehicleRuntimeStateBuilder.ts,buildVehicleRuntimeStates,util,no,yes,none,fleet_scope,yes,vehicleRuntimeStateBuilder.test.ts,low,Primary dashboard runtime producer
+frontend/src/rental/components/dashboard/runtime/rentalReadiness.ts,deriveIsReadyForRenting,util,no,yes,none,n/a,yes,rentalReadiness.test.ts,low,Canonical rental readiness
+frontend/src/rental/components/dashboard/runtime/dashboardSliceBuilder.ts,buildDashboardSlices,util,no,yes,none,n/a,yes,dashboardRuntime.test.ts,low,Slices ready-to-rent critical-alerts blocked
+frontend/src/rental/components/dashboard/runtime/runtimeSliceConsistency.ts,canonicalTabCounts,util,no,yes,none,n/a,yes,runtimeSliceConsistency.test.ts,medium,Fleet Command tab counts from runtime
+frontend/src/rental/lib/telemetryFreshness.ts,resolveTelemetryFreshness,util,no,yes,none,n/a,yes,telemetryFreshness.test.ts,low,Canonical telemetry freshness
+frontend/src/rental/lib/fleetVisualState.ts,deriveFleetVisualState,util,no,yes,none,n/a,yes,fleetVisualState.test.ts,medium,Fleet map/command visual state parallel to runtime
+frontend/src/rental/lib/fleet-health-control-center.ts,deriveHealthSeverityBand,util,no,yes,none,n/a,yes,fleet-health-control-center.test.ts,medium,FHS severity bands from RentalHealth
+frontend/src/rental/lib/fleet-operator-panel.ts,resolveFleetCommandRowSeverity,util,no,yes,none,n/a,yes,fleet-operator-panel.test.ts,medium,Command row severity; health fallback scan
+frontend/src/rental/lib/operational-issues/normalizeOperationalIssues.ts,normalizeOperationalIssues,util,no,yes,none,vehiclesById,yes,operationalIssues.test.ts,low,Central operational issue normalizer
+frontend/src/rental/lib/operational-issues/operationalHealthModuleSeverity.ts,resolveRentalModuleOperationalSeverity,util,no,yes,none,n/a,yes,taxonomy tests,low,Module severity shared surfaces
+frontend/src/rental/lib/vehicle-operational-state/selectors.ts,selectOperationalStatus,selector,no,yes,none,n/a,yes,vehicle-operational-selectors.test.ts,low,Canonical operational status read-model
+frontend/src/rental/lib/booking-vehicle-preflight.ts,resolveBookingVehiclePreflight,util,no,yes,none,n/a,yes,booking-vehicle-preflight.test.ts,medium,Booking picker block separate from dashboard readiness
+frontend/src/rental/lib/fleetVehicleDisplay.ts,resolveFleetVehicleDisplayState,util,no,yes,none,n/a,yes,fleetVehicleDisplay.test.ts,medium,Display layer over fleetVisualState
+frontend/src/rental/FleetContext.tsx,statusFromRentalHealth,context,no,yes,memory,orgId_required,yes,hook tests,medium,4-state health simplification
+frontend/src/rental/lib/vehicle-overview-readiness.utils.ts,buildVehicleOverviewReadinessSummary,util,no,yes,none,n/a,yes,vehicle-overview-regression.test.ts,medium,Deprecated strip logic remains
+frontend/src/rental/components/dashboard/actionQueueBuilder.ts,buildUnifiedActionQueue,util,no,yes,none,fleet_scope,partial,actionQueueGrouping.test.ts,low,Notification engine hub OperationalIssue-first
+frontend/src/rental/components/dashboard/dashboardAttentionBuilder.ts,normalizeAttentionItems,util,no,yes,none,fleet_scope,no,dashboardAttentionBuilder.test.ts,low,Dashboard attention strip
+frontend/src/rental/components/dashboard/notificationEngineDedupe.ts,dedupeActionQueueBySemanticKey,util,no,yes,none,n/a,no,notificationEngineDedupe.test.ts,low,Semantic dedupe
+frontend/src/rental/lib/notifications/merge-v2-with-vehicle-health.ts,mergeV2NotificationsWithVehicleHealth,util,no,yes,none,orgId,no,merge test,medium,V2 + health cutover bridge
+frontend/src/rental/components/fleet-health-service/fleet-health-service.view-model.ts,buildFleetHealthServiceViewModel,util,no,yes,none,orgId,partial,view-model tests,low,FHS combined VM health+tasks+cases
+frontend/src/rental/components/dashboard/useDashboardViewModel.ts,useDashboardViewModel,hook,no,yes,none,orgId_required,partial,dashboard tests,low,Dashboard orchestrator runtime+queue
+frontend/src/rental/hooks/useVehicleHealth.ts,"useVehicleHealth, useFleetHealthMap",hook,no,yes,api_cache,orgId_required,no,useVehicleHealth.test.ts,low,RentalHealthV1 fetch
+frontend/src/rental/hooks/useNotifications.ts,useNotifications,hook,no,yes,api_cache,orgId_required,no,useNotifications.test.ts,low,Notifications V2
+frontend/src/rental/DashboardInsightsContext.tsx,DashboardInsightsProvider,context,no,yes,api_cache,orgId_required,no,implicit,low,Dashboard insights + health alerts feed
+frontend/src/rental/stores/useFleetMapStore.ts,useFleetMapStore,store,no,yes,api_cache,orgId_required,no,useFleetMapStore.test.ts,low,Fleet vehicle list
+frontend/src/rental/lib/vehicle-operational-query/keys.ts,vehicleOperationalQueryKeys,util,no,yes,none,org_scoped,no,vehicle-operational-query.test.ts,low,Invalidation key factory
+frontend/src/rental/components/DashboardView.tsx,DashboardView,component,no,yes,none,orgId,no,dashboardRuntimeUI.test.ts,low,Main dashboard shell
+frontend/src/rental/components/dashboard/ControlKpiStrip.tsx,ControlKpiStrip,component,no,yes,none,orgId,no,kpi tests,low,KPI ready blocked critical from runtime slices
+frontend/src/rental/components/dashboard/FleetStateBoard.tsx,FleetStateBoard,component,no,yes,none,orgId,no,fleet state tests,low,Fleet state board rows
+frontend/src/rental/components/dashboard/FleetBoardVehicleRow.tsx,FleetBoardVehicleRow,component,no,yes,none,orgId,no,none,low,Single fleet board row badges
+frontend/src/rental/components/dashboard/DashboardDrilldownDrawer.tsx,DashboardDrilldownDrawer,component,no,yes,none,orgId,no,drawer tests,low,Slice drilldown critical alerts
+frontend/src/rental/components/dashboard/ActionQueue.tsx,ActionQueue,component,no,yes,none,orgId,no,characterization tests,low,Action queue notification panel
+frontend/src/rental/components/dashboard/notifications/NotificationPanel.tsx,NotificationPanel,component,no,yes,none,orgId,no,notificationPanel.test.ts,low,V2 notification panel UI
+frontend/src/rental/components/dashboard/FleetReadinessScore.tsx,FleetReadinessScore,component,no,yes,none,orgId,no,none,medium,Fleet readiness score from runtime aggregates
+frontend/src/rental/components/fleet-operator/FleetCommandView.tsx,FleetCommandView,component,no,yes,none,orgId,no,e2e,medium,Fleet Command page canonical runtime counts
+frontend/src/rental/components/fleet-operator/FleetCommandPanel.tsx,FleetCommandPanel,component,no,yes,none,orgId,no,FleetCommandPanel.test.tsx,medium,Command tabs search rows
+frontend/src/rental/components/fleet-operator/FleetOperatorRow.tsx,FleetOperatorRow,component,no,yes,none,orgId,no,none,low,Command row severity chips
+frontend/src/rental/components/FleetView.tsx,FleetView,component,no,yes,none,orgId,no,e2e,low,Fleet hub map+command
+frontend/src/rental/components/fleet-health-service/FleetHealthServiceView.tsx,FleetHealthServiceView,component,no,yes,none,orgId,no,e2e a11y,low,Zustand & Service main view
+frontend/src/rental/components/fleet-health-service/FleetHealthServiceKpiStrip.tsx,FleetHealthServiceKpiStrip,component,no,yes,none,orgId,no,kpi.test.ts,low,FHS KPIs blocked critical
+frontend/src/rental/components/fleet-health-service/FleetHealthServicePrioritizedList.tsx,FleetHealthServicePrioritizedList,component,no,yes,none,orgId,no,scale test,low,Prioritized vehicle list
+frontend/src/rental/components/fleet-health-service/useFleetHealthServiceViewModel.ts,useFleetHealthServiceViewModel,hook,no,yes,none,orgId,no,integration test,low,FHS view model hook
+frontend/src/rental/components/FleetConditionView.tsx,FleetConditionView,component,no,yes,none,orgId,no,none,medium,Legacy fleet condition parallel to FHS
+frontend/src/rental/components/vehicle-detail/VehicleHealthBox.tsx,VehicleHealthBox,component,no,yes,none,orgId+vehicleId,no,mapper tests,low,Overview health box modules warning lights
+frontend/src/rental/components/vehicle-detail/VehicleDetailHeaderBadges.tsx,VehicleDetailHeaderBadges,component,no,yes,none,orgId+vehicleId,no,none,medium,Connection health OBD badges local freshness
+frontend/src/rental/components/vehicle-detail/vehicle-health-display.mapper.ts,vehicle-health-display mapper,util,no,yes,none,n/a,partial,test,low,Header badge severity mapping
+frontend/src/rental/components/rental-health/RentalHealthBadge.tsx,RentalHealthBadge,component,no,yes,none,n/a,no,none,low,Compact rental health badge
+frontend/src/rental/components/health/HealthVehicleDetailPanel.tsx,HealthVehicleDetailPanel,component,no,yes,none,orgId+vehicleId,no,none,low,Per-module health detail
+frontend/src/rental/components/health/TechnicalObservationsHealthModule.tsx,TechnicalObservationsHealthModule,component,no,yes,none,orgId+vehicleId,no,e2e,low,Complaints observations module
+frontend/src/rental/components/HealthErrorsView.tsx,HealthErrorsView,component,no,yes,none,orgId+vehicleId,no,none,low,DTC error codes surface
+frontend/src/rental/components/DashboardWarningLightsPanel.tsx,DashboardWarningLightsPanel,component,no,yes,none,orgId+vehicleId,no,none,low,Telltale warning lights panel
+frontend/src/rental/components/new-booking/VehiclePickerStep.tsx,VehiclePickerStep,component,no,yes,none,orgId,no,none,medium,Booking picker preflight rental_blocked offline
+frontend/src/rental/components/bookings/BookingRentalEligibilityCard.tsx,BookingRentalEligibilityCard,component,no,yes,none,orgId,no,none,high,Customer rules eligibility separate domain
+frontend/src/rental/components/vehicle-bookings/VehicleBookingReadinessStrip.tsx,VehicleBookingReadinessStrip,component,no,yes,none,orgId,no,none,high,Handover readiness not fleet readiness
+frontend/src/rental/lib/ai-chat/fleet-chat-response-display.ts,isWarningResponseType,util,no,yes,none,n/a,partial,fleet-chat-response-display.test.ts,medium,AI chat warning presentation
+frontend/src/rental/components/ai-chat/FleetChatResponseMetadata.tsx,FleetChatResponseMetadata,component,no,yes,none,n/a,no,none,low,Shows warnings freshness sources
+frontend/e2e/fleet-operational-flow.spec.ts,fleet-operational-flow,e2e,no,yes,none,test_org,no,self,low,Fleet Command tabs status rows
+frontend/e2e/fleet-health-service-flow.spec.ts,fleet-health-service-flow,e2e,no,yes,none,test_org,no,self,low,Zustand & Service tabs KPIs
+frontend/e2e/dashboard-notifications-v2.spec.ts,dashboard-notifications-v2,e2e,no,yes,none,test_org,no,self,low,Notification panel V2
+frontend/e2e/battery-health-flow.spec.ts,battery-health-flow,e2e,no,yes,none,test_org,no,self,low,Battery health surfaces
+scripts/audits/audit-fleet-connectivity-production-readiness.ts,FC audit orchestrator,script,no,yes,none,per-org,no,none,low,Read-only cross-surface consistency
+scripts/audits/audit-brake-health-production-readiness.ts,Brake audit orchestrator,script,no,yes,none,per-org,no,none,low,Read-only brake health audit
+scripts/audits/audit-tire-health-production-readiness.ts,Tire audit orchestrator,script,no,yes,none,per-org,no,none,low,Read-only tire health audit
+docs/operational-issue-normalization.md,Operational Issue Normalization,doc,no,yes,none,n/a,yes,operationalIssues.test.ts,low,Binding taxonomy baseline
+docs/architecture/fleet-health-service-domain-boundaries.md,FHS Domain Boundaries,doc,no,yes,none,n/a,no,none,low,Normative SSOT layers
+architecture/FLEET_CONNECTIVITY_RUNTIME_DOMAIN_2026-07-19.md,Fleet Connectivity Runtime,doc,no,yes,none,n/a,no,none,medium,Connectivity runtime SSOT spec
+architecture/DEVICE_CONNECTION_EPISODE_2026-07-19.md,Device Connection Episode,doc,no,yes,none,n/a,no,none,medium,Connectivity alerts episodes
+frontend/src/rental/components/fleet-health-service/FLEET_HEALTH_SERVICE_CONTRACT.md,FHS UI Contract,doc,no,yes,none,n/a,no,domain integration test,low,UI fachlicher contract
