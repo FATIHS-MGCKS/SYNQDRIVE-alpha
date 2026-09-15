@@ -23,14 +23,21 @@ rule_files:
   - /etc/prometheus/alerts-infra.yml
 
 scrape_configs:
+  # F10.1: scrape both PM2 replicas — recovery scheduler + RFRF metrics are per-process.
   - job_name: synqdrive-backend
     metrics_path: /api/v1/metrics
     scheme: http
     scrape_interval: 30s
+    bearer_token_file: /etc/prometheus/secrets/metrics_bearer_token
     static_configs:
       - targets:
           - '127.0.0.1:3001'
-    bearer_token_file: /etc/prometheus/secrets/metrics_bearer_token
+        labels:
+          replica: a
+      - targets:
+          - '127.0.0.1:3002'
+        labels:
+          replica: b
 
   - job_name: node
     scrape_interval: 30s

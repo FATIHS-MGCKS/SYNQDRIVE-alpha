@@ -1,5 +1,15 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F10.1.1 mergeability + operational safety micro-closure
+
+- EED-EV-0063 extended: PR ancestry reconciliation; Stage 1 proposed-cutover gate; explicit deploy SHA authority; monitoring apply fail-closed contract; live Prometheus gates; blast-radius fail-closed; expanded Stage 6 prerequisites; script-level fixture contract tests
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
+## 2026-09-15 — RFRF F10.1 operational production rollout closure
+
+- EED-EV-0063: operator runbook, read-only preflight, staged enablement + rollback tooling, blast-radius assessment, F8 alert verify/sync, dual-replica Prometheus scrape config
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated; Stage 5/6 blocked until observability topology complete + alerts loaded
+
 ## 2026-09-15 — RFRF F9 independent-replica integration closure
 
 - EED-EV-0062: independent PrismaClient A/B + promotion/G2 runtime stacks prove DB lock authority across process boundaries

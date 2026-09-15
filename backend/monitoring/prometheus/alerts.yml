@@ -1296,8 +1296,8 @@ groups:
     rules:
       - alert: PhysicalRefuelOrphanBacklogPersistent
         expr: |
-          synqdrive_physical_refuel_recovery_enabled == 1
-          and synqdrive_physical_refuel_recovery_backlog{reason="orphan_refuel"} > 0
+          min(synqdrive_physical_refuel_recovery_enabled) == 1
+          and max(synqdrive_physical_refuel_recovery_backlog{reason="orphan_refuel"}) > 0
         for: 10m
         labels:
           severity: warning
@@ -1310,8 +1310,8 @@ groups:
 
       - alert: PhysicalRefuelLostEnqueueBacklogPersistent
         expr: |
-          synqdrive_physical_refuel_recovery_enabled == 1
-          and synqdrive_physical_refuel_recovery_backlog{reason="lost_enqueue"} > 0
+          min(synqdrive_physical_refuel_recovery_enabled) == 1
+          and max(synqdrive_physical_refuel_recovery_backlog{reason="lost_enqueue"}) > 0
         for: 10m
         labels:
           severity: warning
@@ -1324,8 +1324,8 @@ groups:
 
       - alert: PhysicalRefuelStaleEnrichmentBacklogPersistent
         expr: |
-          synqdrive_physical_refuel_recovery_enabled == 1
-          and synqdrive_physical_refuel_recovery_backlog{reason="stale_enrichment"} > 0
+          min(synqdrive_physical_refuel_recovery_enabled) == 1
+          and max(synqdrive_physical_refuel_recovery_backlog{reason="stale_enrichment"}) > 0
         for: 15m
         labels:
           severity: warning
@@ -1338,10 +1338,10 @@ groups:
 
       - alert: PhysicalRefuelRecoverySchedulerStale
         expr: |
-          synqdrive_physical_refuel_recovery_enabled == 1
+          max(synqdrive_physical_refuel_recovery_enabled) == 1
           and (
-            synqdrive_physical_refuel_recovery_last_success_unixtime == 0
-            or (time() - synqdrive_physical_refuel_recovery_last_success_unixtime) > 300
+            max(synqdrive_physical_refuel_recovery_last_success_unixtime) == 0
+            or (time() - max(synqdrive_physical_refuel_recovery_last_success_unixtime)) > 300
           )
         for: 5m
         labels:
@@ -1355,8 +1355,8 @@ groups:
 
       - alert: PhysicalRefuelRecoveryFailuresElevated
         expr: |
-          synqdrive_physical_refuel_recovery_enabled == 1
-          and increase(synqdrive_physical_refuel_recovery_runs_total{result="failure"}[15m]) >= 3
+          max(synqdrive_physical_refuel_recovery_enabled) == 1
+          and sum(increase(synqdrive_physical_refuel_recovery_runs_total{result="failure"}[15m])) >= 3
         for: 10m
         labels:
           severity: warning
