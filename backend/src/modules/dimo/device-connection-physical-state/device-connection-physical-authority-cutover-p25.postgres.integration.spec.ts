@@ -45,10 +45,6 @@ const describePg = LIVE ? describe : describe.skip;
 
 const CUTOVER_BUILD = P25_TEST_CUTOVER_BUILD;
 
-function signedBundleForScope() {
-  return buildValidSignedCutoverEvidenceBundleForScope(scope());
-}
-
 if (REQUIRED && !LIVE) {
   throw new Error(
     'PHYSICAL_STATE_POSTGRES_REQUIRED=1 but DATABASE_URL / PHYSICAL_STATE_POSTGRES_INTEGRATION not configured',
@@ -91,6 +87,8 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
     vehicleId: fixture.vehicle.id,
     provider: 'DIMO',
   });
+
+  const signedBundleForScope = () => buildValidSignedCutoverEvidenceBundleForScope(scope());
 
   beforeAll(async () => {
     prisma = new PrismaClient();
