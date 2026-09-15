@@ -225,6 +225,44 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-1-1-micro-closure-2026-09-15',
+    version: '4.9.1139',
+    title: 'RFRF F10.1.1 — Mergeability + operational safety micro-closure',
+    summary: [
+      'Reconciles PR #1665 onto current main without duplicate F9 commits; preserves net F10 operational delta only.',
+      'Fixes fail-closed rollout gaps: Stage 1 proposed cutover, explicit deploy SHA, monitoring apply contract, live Prometheus gates, blast-radius enforcement, Stage 6 prerequisites.',
+      'Adds script-level fixture contract tests; no runtime/schema change; production not mutated.',
+    ],
+    reason:
+      'Independent review found PR #1665 merge-dirty and operational tooling gaps that could block safe staged production rollout.',
+    previousBehavior:
+      'F10.1 tooling existed but Stage 1 was unreachable, deploy SHA defaulted to stale F9 merge, monitoring apply could silently dry-run, and Prometheus verification was file-only.',
+    details:
+      'docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md (F10.1.1 section); backend/scripts/test/rfrf-f10-operational-script-contracts.sh; EED-EV-0063 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T22:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-1-operational-rollout-closure-2026-09-15',
+    version: '4.9.1138',
+    title: 'RFRF F10.1 — Operational production rollout closure',
+    summary: [
+      'Operator runbook + read-only preflight + staged enablement/rollback tooling for RFRF production rollout.',
+      'Blast-radius assessment gate before Stage 5; F8 alert verify/sync tooling; dual-replica Prometheus scrape config.',
+      'No runtime/schema change; production not mutated; Stage 5/6 blocked until observability topology complete.',
+    ],
+    reason:
+      'F10.0 audit BLOCKED production execution for missing runbook, enablement scripts, and loaded F8 alerts — F10.1 closes operational prerequisites only.',
+    previousBehavior:
+      'RFRF F1–F9 runtime proven in tests but no production-grade staged rollout control plane or operator runbook.',
+    details:
+      'docs/operations/rfrf-production-rollout-runbook-2026-09-15.md; docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md; EED-EV-0063',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T20:56:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f9-multi-replica-integration-closure-2026-09-15',
     version: '4.9.1137',
     title: 'RFRF F9 — Independent-replica integration closure',
