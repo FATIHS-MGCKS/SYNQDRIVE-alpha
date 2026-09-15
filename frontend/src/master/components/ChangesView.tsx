@@ -225,6 +225,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
+    version: '4.9.1136',
+    title: 'RFRF F8/F8.1/F8.2 — Operational telemetry + semantic closure',
+    summary: [
+      'PhysicalRefuelReconciliationMetricsService exports recovery backlog gauges on TripMetricsService.registry.',
+      'F8.1: scheduler publishes recovery_enabled at lifecycle + zero-success stale alert; actionable backlog parity for all six reasons.',
+      'F8.2: lost_enqueue actionable count uses PostgreSQL COUNT (isfinite/source/enrichment/authority) — no unbounded findMany.',
+      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8/F8.1/F8.2 real PG gate.',
+      'No second metrics stack; RFRF G2 handoff counters preserved; no recovery science or schema changes.',
+    ],
+    reason:
+      'F7 closed durable recovery correctness; F8 closes the remaining operational visibility gap (backlog was log-only).',
+    previousBehavior:
+      'Recovery backlog and scheduler health were structured logs only — not exported to canonical Prometheus or alert rules.',
+    details:
+      'docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md; EED-EV-0061; BASE_MAIN ad8392d8c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T13:45:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
     version: '4.9.1135',
     title: 'RFRF F7 — Recovery completeness + post-commit crash-window closure',
@@ -242,25 +263,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-15T10:15:00.000Z',
-  },
-  {
-    id: 'vdc-rb019-p25-runtime-asset-packaging-fix-2026-09-15',
-    version: '4.9.1137',
-    title: 'VDC RB-019 P2.5 — Runtime asset packaging fix (ops-lib.cjs dist copy)',
-    summary: [
-      'Nest CLI asset manifest now copies physical-state-cutover-evidence.ops-lib.cjs into dist (byte-identical).',
-      'Compiled schema-validation + verifier runtime import gate; CI production-build job enforces regression.',
-      'Documents PRE_PROMOTION_ABORT of authorized dark deploy ad8392d8 (boot-check MODULE_NOT_FOUND).',
-    ],
-    reason:
-      'Authorized Production dark deploy aborted at boot check: createRequire(__dirname) in compiled dist could not load ops-lib.cjs because Nest build omitted the shared CJS trust-root file.',
-    previousBehavior:
-      'nest-cli.json copied ClickHouse SQL assets only; dist lacked ops-lib.cjs → production boot check MODULE_NOT_FOUND before promotion.',
-    details:
-      'docs/audits/vdc-rb019-p25-production-boot-check-pre-promotion-abort-2026-09-15.md; FAILED_DEPLOY_CLASSIFICATION=PRE_PROMOTION_ABORT.',
-    affectsArchitecture: false,
-    module: 'Vehicle & Device Connectivity',
-    createdAt: '2026-09-15T16:45:00.000Z',
   },
   {
     id: 'vdc-rb019-p25-trust-root-closure-2026-09-15',
