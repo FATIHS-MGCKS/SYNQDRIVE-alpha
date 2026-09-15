@@ -39,31 +39,21 @@ recreate_db() {
   psql_admin -c "CREATE DATABASE \"${db}\";"
 }
 
-run_migrate_deploy() {
+run_canonical_bootstrap() {
   local db="$1"
-  DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}?schema=public" \
-    PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
-    bash scripts/test/prisma-migrate-deploy-resilient.sh
-}
-
-assert_pending_zero() {
-  local db="$1"
-  local pending
-  pending=$(DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}?schema=public" \
-    npx prisma migrate status 2>&1 | grep -c 'have not yet been applied' || true)
-  if [[ "${pending:-0}" -gt 0 ]]; then
-    echo "Expected zero pending migrations after deploy" >&2
-    DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}?schema=public" \
-      npx prisma migrate status >&2 || true
-    exit 1
-  fi
+  export EXP021_FLEET_MIGRATION_PG_HOST="$PG_HOST"
+  export EXP021_FLEET_MIGRATION_PG_PORT="$PG_PORT"
+  export EXP021_FLEET_MIGRATION_PG_USER="$PG_USER"
+  export EXP021_FLEET_MIGRATION_PG_PASSWORD="$PG_PASSWORD"
+  export EXP021_FLEET_MIGRATION_DB="$db"
+  export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${db}?schema=public"
+  bash scripts/test/exp021-canonical-postgres-bootstrap.sh
 }
 
 test_fresh_database() {
   echo "==> EXP-021 fleet migration test: fresh database"
   recreate_db "$FRESH_DB"
-  run_migrate_deploy "$FRESH_DB"
-  assert_pending_zero "$FRESH_DB"
+  run_canonical_bootstrap "$FRESH_DB"
   local count
   count=$(psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d "$FRESH_DB" -tAc \
     "SELECT COUNT(*) FROM _prisma_migrations WHERE finished_at IS NOT NULL;")
@@ -79,15 +69,11 @@ test_fresh_database() {
 test_existing_chain() {
   echo "==> EXP-021 fleet migration test: deploy after existing chain"
   recreate_db "$CHAIN_DB"
-  run_migrate_deploy "$CHAIN_DB"
-  assert_pending_zero "$CHAIN_DB"
+  run_canonical_bootstrap "$CHAIN_DB"
   echo "Existing-chain migration OK"
 }
 
 wait_for_postgres
-export DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_HOST}:${PG_PORT}/${FRESH_DB}?schema=public"
-npx prisma validate
-npx prisma generate
 
 case "${1:-all}" in
   fresh) test_fresh_database ;;

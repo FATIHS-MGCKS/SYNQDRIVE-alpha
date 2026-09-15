@@ -102,6 +102,7 @@
     "test:exp021:autonomous:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration --runInBand",
     "test:exp021:autonomous:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-short-ab-autonomous-lifecycle.postgres.integration --runInBand --verbose",
     "test:exp021:fleet:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-fleet.postgres.integration --runInBand",
+    "test:exp021:fleet:postgres:bootstrap": "bash scripts/test/exp021-canonical-postgres-bootstrap.sh",
     "test:exp021:fleet:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-fleet.postgres.integration --runInBand --verbose",
     "test:exp021:fleet:migration": "bash scripts/test/exp021-fleet-migration-test.sh all",
     "test:reference-capture:def019-gate": "bash scripts/ops/reference-capture-di-def-019-integration-gate.sh",

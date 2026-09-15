@@ -9,6 +9,7 @@ on:
       - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
       - 'backend/scripts/ops/reference-capture-exp-021*'
       - 'backend/scripts/test/exp021-fleet-migration-test.sh'
+      - 'backend/scripts/test/exp021-canonical-postgres-bootstrap.sh'
       - 'backend/prisma/migrations/*exp021*'
       - 'backend/prisma/schema.prisma'
       - 'architecture/drivingintelligence/evidence/reference-capture/**'
@@ -127,10 +128,31 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate && npx prisma migrate deploy
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+          case "$DATABASE_URL" in
+            *srv1374778*|*app.synqdrive.eu*|*hstgr.cloud*|*mein-vps*)
+              echo "DATABASE_URL must not reference production hosts"
+              exit 1
+              ;;
+          esac
+      - run: npm ci
+        working-directory: backend
+      - run: npm run test:exp021:fleet:postgres:bootstrap
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          EXP021_FLEET_MIGRATION_PG_USER: ${{ env.EXP021_PG_USER }}
+          EXP021_FLEET_MIGRATION_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          EXP021_FLEET_MIGRATION_DB: ${{ env.EXP021_PG_DB }}
       - run: npm run test:exp021:fleet:postgres:ci
         working-directory: backend
         env:
