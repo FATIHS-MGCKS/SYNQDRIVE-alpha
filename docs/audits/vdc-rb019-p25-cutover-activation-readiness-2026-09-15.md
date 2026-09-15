@@ -39,9 +39,34 @@ Audit branch: `cursor/vdc-rb019-p25-cutover-activation-readiness-dafe`
 
 ---
 
-## 2. Target / pilot pre-seed dry-run gate
+## 2. Pre-seed dry-run evidence — two distinct gates
 
-### 2.1 Data source
+**Do not conflate:**
+
+| Concept | Meaning | Status |
+|---------|---------|--------|
+| **A. `REAL_DATA_PRESEED_DRY_RUN_EXECUTION_RESULT`** | Production read-only dry-run executed successfully on real data | **PASS** |
+| **B. `FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE`** | Cutover-time authorization that target/pilot scopes are approved, P2.5-capable, and freshly revalidated | **NOT_PROVEN** |
+
+The 4-scope Production evidence (§2.2–2.3) is a **real-data readiness proof**. It is **not** the final, time-bound activation proof required immediately before `LEGACY → PHYSICAL` latch.
+
+| Field | Value |
+|-------|-------|
+| `REAL_DATA_PRESEED_READINESS` | **PASS** |
+| `FINAL_TARGET_PILOT_ACTIVATION_PROOF` | **NOT_PROVEN** |
+| `TARGET_PILOT_COHORT_FORMALLY_APPROVED` | **NO / NOT_PROVEN** |
+| `CUTOVER_TIME_PRESEED_REVALIDATION_REQUIRED` | **YES** |
+
+`FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE` remains **NOT_PROVEN** until:
+
+1. Pilot/target cohort is **explicitly approved** (signed charter).
+2. **P2.5-capable** deployment exists on Production.
+3. Selected target scopes are **re-run** through read-only pre-seed **immediately before cutover** per runbook.
+4. Revalidation result remains unambiguous and zero-mutation.
+
+---
+
+### 2.1 Data source (real-data execution)
 
 | Source | Authorization | Used |
 |--------|---------------|------|
@@ -73,21 +98,33 @@ Read-only dry-run executed on Production VPS using deployed `PhysicalStatePresee
 
 All scopes: `wouldWrite` intent = projection+transition only; episode/alert/outbox/authority/eventHistory = **false**; `dryRun: true`.
 
-### 2.4 Gate verdict
+### 2.4 Gate verdict — real-data execution (A)
 
 | Field | Value |
 |-------|-------|
-| `TARGET_DATASET_AVAILABLE` | **YES** |
-| `TARGET_DATA_SCOPE_COUNT` | **4** |
-| `TARGET_DATA_CONFLICT_COUNT` | **0** |
-| `TARGET_DATA_ZERO_MUTATION_RESULT` | **PASS** |
-| `TARGET_DATA_DRY_RUN_RESULT` | **PASS** |
+| `REAL_DATA_PRESEED_DRY_RUN_EXECUTION_RESULT` | **PASS** |
+| `REAL_DATA_SCOPE_COUNT` | **4** |
+| `REAL_DATA_CONFLICT_COUNT` | **0** |
+| `REAL_DATA_ZERO_MUTATION_RESULT` | **PASS** |
 
-**Caveats (do not inflate to activation PASS):**
+**Legacy alias (audit v1):** `TARGET_DATA_DRY_RUN_RESULT` = PASS — retained for traceability; semantics = **real-data execution only**, not final activation gate.
 
-- Pilot cohort is inferred from Production data shape, not a formally signed pilot charter.
-- Dry-run used **deployed** P2.4 code (`bd3fd78`), not yet-deployed P2.5 main (`fda8a218`).
-- VLS OBD won over older webhook events on all four scopes — expected per P2.4 semantics but should be reviewed before apply.
+### 2.5 Final target/pilot activation gate (B)
+
+| Field | Value |
+|-------|-------|
+| `FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE` | **NOT_PROVEN** |
+| `TARGET_PILOT_COHORT_FORMALLY_APPROVED` | **NO / NOT_PROVEN** |
+| `CUTOVER_TIME_PRESEED_REVALIDATION_REQUIRED` | **YES** |
+
+**Why B is NOT_PROVEN despite A = PASS:**
+
+- Pilot cohort was **inferred** from Production data shape — not formally approved.
+- Dry-run executed on **deployed P2.4** build (`bd3fd78`), not P2.5-capable main (`fda8a218`).
+- Cutover runbook requires a **fresh** read-only pre-seed dry-run immediately before latch; this audit does not satisfy that time-bound requirement.
+- VLS OBD won over older webhook events on all four scopes — expected per P2.4 semantics; must be re-reviewed at cutover time.
+
+**The 4-scope dry-run did not fail.** It succeeded as real-data readiness evidence. It simply cannot authorize cutover by itself.
 
 ---
 
@@ -298,11 +335,12 @@ If a defect is discovered **after** a future PHYSICAL latch:
 
 | Gate | Result |
 |------|--------|
-| Target pre-seed dry-run | **PASS** |
+| Real-data pre-seed dry-run execution (`REAL_DATA_PRESEED_DRY_RUN_EXECUTION_RESULT`) | **PASS** |
+| Final target/pilot pre-seed activation gate (`FINAL_TARGET_PILOT_PRESEED_ACTIVATION_GATE`) | **NOT_PROVEN** |
 | UNEXPLAINED operational = 0 | **NOT_PROVEN** |
 | Mixed-replica operational proof | **NOT_PROVEN** |
-| Activation evidence provenance | **FAIL** |
-| Cutover runbook | **PASS** |
+| Activation evidence provenance | **FAIL** (hard blocker — no cutover while FAIL) |
+| Cutover runbook (dry) | **PASS** |
 | Forward-only incident plan | **PASS** |
 
 ```
@@ -311,18 +349,49 @@ P2_5_CUTOVER_ACTIVATION_READY = NOT_PROVEN
 
 ### Remaining blockers
 
-1. **UNEXPLAINED gate** — zero operational shadow observations; STATEFUL_SHADOW not enabled on pilot.
-2. **Mixed-replica proof** — Production not on P2.5 build; no runtime build identity; peer list unset; MR-OP-3/4/7/8 FAIL.
-3. **Evidence provenance** — activation booleans injectable without auditable artifacts.
-4. **Deploy lag** — main contains P2.5 (`fda8a218`); Production deploy `bd3fd78` does not.
-5. **Formal pilot charter** — dry-run cohort inferred, not signed.
+1. **Operational UNEXPLAINED = 0** — **NOT_PROVEN** (zero shadow observations; STATEFUL_SHADOW not enabled).
+2. **Mixed-replica operational proof** — **NOT_PROVEN** (no build identity env; peer list unset; MR-OP-3/4/7/8 FAIL).
+3. **Activation evidence provenance** — **FAIL** (`ARBITRARY_BOOLEAN_PROOF_INJECTION_POSSIBLE = YES`; hard blocker).
+4. **P2.5-capable Production deployment** — **not present** (deployed `bd3fd78`; main `fda8a218` not deployed).
+5. **Formal target/pilot cohort** — **not approved** (cohort inferred from data shape).
+6. **Cutover-time pre-seed revalidation** — **not performed** (`CUTOVER_TIME_PRESEED_REVALIDATION_REQUIRED = YES`).
+
+The successful 4-scope Production dry-run (§2) is **not** listed as a failure. It is preserved as `REAL_DATA_PRESEED_READINESS = PASS`.
+
+### Workstream ordering
+
+| Step | Action | Authorization |
+|------|--------|---------------|
+| 1 | Merge PR #1654 audit after review | Review only |
+| 2 | Fresh PR: activation-evidence provenance implementation | Implementation workstream |
+| 3 | Independent review + PG regression on provenance PR | Review gate |
+| 4 | Separate explicit authorization for Production deployment | **Not automatic** |
+| 5 | Deploy P2.5-capable build + build-identity env contract | Requires step 4 |
+| 6 | Separately authorize pilot STATEFUL_SHADOW observation | **Not automatic** |
+| 7 | Collect operational UNEXPLAINED evidence | Requires step 6 |
+| 8 | Prove fleet-wide replica uniformity | Requires step 5 |
+| 9 | Approve pilot target cohort (signed charter) | Governance |
+| 10 | Fresh pre-cutover target dry-run on approved scopes | Cutover prep |
+| 11 | Re-run activation-readiness audit | Verification |
+| 12 | Consider `LEGACY → PHYSICAL` cutover | Only if all gates PASS |
+
+`NEXT_WORKSTREAM` = **activation-evidence provenance implementation** (step 2).
+
+`PRODUCTION_DEPLOYMENT_AUTHORIZED` = **NO**
+`STATEFUL_SHADOW_ENABLEMENT_AUTHORIZED` = **NO**
 
 ### EXACT_NEXT_ACTION
 
-1. Deploy P2.5 main (`fda8a218+`) to Production via standard VPS release (separate authorized change).
-2. Add `SYNQDRIVE_BUILD_ID` + `CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID` + complete `SYNQDRIVE_REPLICA_PEER_BUILD_IDS` to production env contract.
-3. Run pilot STATEFUL_SHADOW on agreed org scope; collect UNEXPLAINED metrics for defined window.
-4. Implement signed activation evidence bundle (replace raw booleans) before any cutover caller ships.
-5. Re-run this activation-readiness audit after operational proofs exist.
+1. Complete semantic closure on PR #1654 (this update).
+2. After PR #1654 merge: open a **fresh PR** implementing canonical activation-evidence provenance (signed evidence bundle; no arbitrary booleans).
+3. Independent review + PG regression on provenance implementation.
+4. **Do not** deploy or enable Production flags automatically — await separate explicit authorization.
+5. Only after provenance is merged: separately authorized Production deployment, pilot observation, fleet proof, cohort approval, cutover-time dry-run revalidation, and full audit re-run.
 
-**Do not execute Production `LEGACY → PHYSICAL` cutover until all gates PASS.**
+**Do not execute Production `LEGACY → PHYSICAL` cutover until `P2_5_CUTOVER_ACTIVATION_READY = YES`.**
+
+---
+
+## 9. Semantic micro-closure (2026-09-15)
+
+Clarifies audit v1 wording: `TARGET_DATA_DRY_RUN_RESULT = PASS` described real-data execution only. Final cutover-time target/pilot gate remains `NOT_PROVEN`. No runtime, Production, or flag changes.
