@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F6 canonical G2 rawDetectionMeta payload compatibility
+
+- EED-EV-0059: `buildFallbackRawDetectionMeta` single owner; canonical fuelStart/fuelEnd liters+percent on promoted fallback VEE
+- RFRF provenance fields preserved; pre/post aliases aligned and non-divergent
+- Real PG gate F6-P1..P10 (11/11); no schema migration; no G2 mapper special-case
+- F1 stationary-dwell metadata requirement superseded by G2 coordinate runtime; not fabricated
+- `detectionMechanism=raw_fuel_fallback` retained (historical F1 `synqdrive_raw_fuel_fallback` differs; no runtime consumer dependency)
+- Production untouched; all RFRF execution authorities default OFF
+
 ## 2026-09-14 — RFRF F5-PR3 post-commit G2 handoff
 
 - EED-EV-0058: F5-PR3.1 micro-closure — real runtime late-native A1/A2/A3; required Redis P17/P19; prior-bridge fix for L8/L9; 30/30 PG+Redis gate
