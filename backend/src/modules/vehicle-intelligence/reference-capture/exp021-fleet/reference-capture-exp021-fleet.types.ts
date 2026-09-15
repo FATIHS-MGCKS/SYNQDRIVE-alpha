@@ -15,7 +15,8 @@ export type Exp021FleetEligibilityReasonCode =
   | 'STUDY_EVIDENCE_CLOSED'
   | 'REFERENCE_CAPTURE_DISABLED'
   | 'FLEET_COORDINATOR_DISABLED'
-  | 'FLEET_DRY_RUN_REQUIRED';
+  | 'FLEET_DRY_RUN_REQUIRED'
+  | 'STUDY_DRY_RUN_REQUIRED';
 
 export type Exp021FleetTelemetryFreshnessState =
   | 'FRESH'
@@ -43,6 +44,7 @@ export type Exp021FleetStudyConfig = {
 
 export type Exp021FleetEligibilityInput = {
   studyStatus: Exp021StudyStatus;
+  studyDryRun: boolean;
   enrollmentEnabled: boolean;
   organizationId: string;
   vehicleId: string;

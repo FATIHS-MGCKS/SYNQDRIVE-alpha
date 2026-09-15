@@ -5,6 +5,7 @@ import { EXP021_SHORT_AB_PLAN_REGISTRY_KEYS } from './reference-capture-exp021-f
 describe('reference-capture-exp021-fleet-eligibility.lib', () => {
   const baseInput = {
     studyStatus: Exp021StudyStatus.COLLECTING,
+    studyDryRun: true,
     enrollmentEnabled: true,
     organizationId: 'org-1',
     vehicleId: 'veh-1',
@@ -66,6 +67,15 @@ describe('reference-capture-exp021-fleet-eligibility.lib', () => {
       { globalCounts: {}, vehicleCounts: {} },
     );
     expect(result.reasonCodes).toContain('TELEMETRY_UNAVAILABLE');
+  });
+
+  it('fails when study dryRun is false (PR-C requires study-level dry-run)', () => {
+    const result = evaluateExp021FleetEligibility(
+      { ...baseInput, studyDryRun: false },
+      { globalCounts: {}, vehicleCounts: {} },
+    );
+    expect(result.reasonCodes).toContain('STUDY_DRY_RUN_REQUIRED');
+    expect(result.eligible).toBe(false);
   });
 
   it('isStudyStatusEligibleForCollection only allows COLLECTING', () => {

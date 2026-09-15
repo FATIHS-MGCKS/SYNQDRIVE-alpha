@@ -40,6 +40,8 @@ export function buildProposedOrderFromPlan(
   };
 }
 
+export const EXP021_FLEET_ORDER_ALLOCATOR_ALGORITHM = 'DETERMINISTIC_STRATIFIED_GLOBAL_BALANCE';
+
 export function proposeBalancedPhaseOrder(args: {
   allowedPlans: readonly string[];
   vehicleId: string;

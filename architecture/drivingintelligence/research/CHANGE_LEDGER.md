@@ -669,6 +669,23 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Safety | Dry-run never creates `ReferenceCaptureSession`, study runs, or acquires execution locks |
 | Next | PR-D required before execution capability; Stage-1 deploy gate separate |
 
+### EXP-021 — PR-C control-plane correctness hardening (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Minimum matrix | Only `COMPLETED` + `COMPLETE_VALID` + not `INELIGIBLE` counts toward primary gate; `PARTIAL_VALID` preserved but excluded |
+| Config | `validateMinimumMatrixConfig()` fail-closed on malformed thresholds; `matrixMet` never true when config invalid |
+| Leader guard | Mandatory `SchedulerLeaderGuardService`; no `@Optional` fail-open follower path |
+| Interval | `getFleetCoordinatorIntervalMs()` wired via dynamic `setInterval` (5s–300s bounds) |
+| Dry-run authority | Requires global `EXP021_FLEET_DRY_RUN=true` AND `study.dryRun=true` (`STUDY_DRY_RUN_REQUIRED`) |
+| HF policy | Extracted `reference-capture-exp021-hf-policy-gate.lib.ts`; runtime no longer imports `scripts/ops` |
+| Run identity | `reserveStudyRunAssignment()` derives study/org/vehicle/token from enrollment inside Serializable tx |
+| Atomic assignment | Advisory lock + balance increment + PLANNED run creation in one transaction (PR-C coordinator does not call) |
+| Dry-run preview | Ephemeral per-tick shadow balance; durable ledger unchanged |
+| Allocator naming | `DETERMINISTIC_STRATIFIED_GLOBAL_BALANCE` (truthful; not block randomization) |
+| Retention | `Exp021StudyRun` FKs `ON DELETE RESTRICT` for study/enrollment/org/vehicle; enum `Exp021StudyRunClassification` |
+| CI | Fleet postgres integration, migration deploy test, fleet unit gate, production build in EXP-021 workflow |
+
 ### EXP-021 — PR-B forensic slot persistence + first-phase authority (2026-09-15)
 
 | Event | Detail |

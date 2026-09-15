@@ -1,10 +1,16 @@
 import {
+  EXP021_FLEET_ORDER_ALLOCATOR_ALGORITHM,
   EXP021_SHORT_AB_PLAN_REGISTRY_KEYS,
   phaseOrderKey,
   proposeBalancedPhaseOrder,
 } from './reference-capture-exp021-fleet-order-allocator.lib';
 
 describe('reference-capture-exp021-fleet-order-allocator.lib', () => {
+  it('uses truthful deterministic allocator naming (not block randomization)', () => {
+    expect(EXP021_FLEET_ORDER_ALLOCATOR_ALGORITHM).toBe('DETERMINISTIC_STRATIFIED_GLOBAL_BALANCE');
+    expect(EXP021_FLEET_ORDER_ALLOCATOR_ALGORITHM).not.toContain('RANDOM');
+  });
+
   const bothPlans = [
     EXP021_SHORT_AB_PLAN_REGISTRY_KEYS.ORDER_90_60,
     EXP021_SHORT_AB_PLAN_REGISTRY_KEYS.ORDER_60_90,

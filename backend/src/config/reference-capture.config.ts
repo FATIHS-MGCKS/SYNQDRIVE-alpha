@@ -61,6 +61,9 @@ export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV =
 export const EXP021_FLEET_COORDINATOR_ENABLED_ENV = 'EXP021_FLEET_COORDINATOR_ENABLED';
 export const EXP021_FLEET_DRY_RUN_ENV = 'EXP021_FLEET_DRY_RUN';
 export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV = 'EXP021_FLEET_COORDINATOR_INTERVAL_MS';
+export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_MIN = 5_000;
+export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_MAX = 300_000;
+export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_DEFAULT = 45_000;
 /** DI-EV-0035C.1 — HF_HISTORICAL block poll cadence (V2 only; provisional 30s NOT validated). */
 export const HF_HISTORICAL_POLL_INTERVAL_MS_ENV = 'HF_HISTORICAL_POLL_INTERVAL_MS';
 
@@ -157,5 +160,18 @@ export default registerAs('referenceCapture', () => ({
   ),
   fleetCoordinatorEnabled: parseBooleanEnv(process.env[EXP021_FLEET_COORDINATOR_ENABLED_ENV], false),
   fleetDryRun: parseBooleanEnv(process.env[EXP021_FLEET_DRY_RUN_ENV], true),
-  fleetCoordinatorIntervalMs: parseIntEnv(process.env[EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV], 45_000),
+  fleetCoordinatorIntervalMs: clampFleetCoordinatorIntervalMs(
+    parseIntEnv(
+      process.env[EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV],
+      EXP021_FLEET_COORDINATOR_INTERVAL_MS_DEFAULT,
+    ),
+  ),
 }));
+
+function clampFleetCoordinatorIntervalMs(value: number): number {
+  if (!Number.isFinite(value)) return EXP021_FLEET_COORDINATOR_INTERVAL_MS_DEFAULT;
+  const floored = Math.floor(value);
+  if (floored < EXP021_FLEET_COORDINATOR_INTERVAL_MS_MIN) return EXP021_FLEET_COORDINATOR_INTERVAL_MS_MIN;
+  if (floored > EXP021_FLEET_COORDINATOR_INTERVAL_MS_MAX) return EXP021_FLEET_COORDINATOR_INTERVAL_MS_MAX;
+  return floored;
+}

@@ -25,6 +25,7 @@ export function evaluateExp021FleetEligibility(
 
   if (!input.fleetCoordinatorEnabled) reasonCodes.push('FLEET_COORDINATOR_DISABLED');
   if (!input.fleetDryRun) reasonCodes.push('FLEET_DRY_RUN_REQUIRED');
+  if (!input.studyDryRun) reasonCodes.push('STUDY_DRY_RUN_REQUIRED');
   if (!input.referenceCaptureEnabled) reasonCodes.push('REFERENCE_CAPTURE_DISABLED');
   if (input.studyStatus !== Exp021StudyStatus.COLLECTING) reasonCodes.push('STUDY_NOT_COLLECTING');
   if (EVIDENCE_CLOSED_STATUSES.includes(input.studyStatus)) reasonCodes.push('STUDY_EVIDENCE_CLOSED');

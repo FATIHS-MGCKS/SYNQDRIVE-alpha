@@ -9,9 +9,15 @@ describe('ReferenceCaptureExp021FleetCoordinatorService dry-run safety', () => {
   const prismaCreateSession = jest.fn();
   const prismaCreateRun = jest.fn();
   let coordinator: ReferenceCaptureExp021FleetCoordinatorService;
+  let fleetRepository: {
+    reserveStudyRunAssignment: jest.Mock;
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    fleetRepository = {
+      reserveStudyRunAssignment: jest.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       providers: [
         ReferenceCaptureExp021FleetCoordinatorService,
@@ -32,6 +38,7 @@ describe('ReferenceCaptureExp021FleetCoordinatorService dry-run safety', () => {
               },
             ]),
             loadOrderBalanceSnapshot: jest.fn().mockResolvedValue({ globalCounts: {}, vehicleCounts: {} }),
+            ...fleetRepository,
           },
         },
         {
@@ -83,5 +90,6 @@ describe('ReferenceCaptureExp021FleetCoordinatorService dry-run safety', () => {
     expect(observations[0].dryRun).toBe(true);
     expect(prismaCreateSession).not.toHaveBeenCalled();
     expect(prismaCreateRun).not.toHaveBeenCalled();
+    expect(fleetRepository.reserveStudyRunAssignment).not.toHaveBeenCalled();
   });
 });

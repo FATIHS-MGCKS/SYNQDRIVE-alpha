@@ -149,6 +149,11 @@ export class ReferenceCaptureConfig {
   }
 
   getFleetCoordinatorIntervalMs(): number {
-    return this.configService.get<number>('referenceCapture.fleetCoordinatorIntervalMs') ?? 45_000;
+    const raw = this.configService.get<number>('referenceCapture.fleetCoordinatorIntervalMs');
+    if (raw == null || !Number.isFinite(raw)) return 45_000;
+    const floored = Math.floor(raw);
+    if (floored < 5_000) return 5_000;
+    if (floored > 300_000) return 300_000;
+    return floored;
   }
 }

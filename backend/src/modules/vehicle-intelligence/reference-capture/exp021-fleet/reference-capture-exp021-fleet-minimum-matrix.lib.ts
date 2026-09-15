@@ -2,8 +2,28 @@ import type { Exp021FleetMinimumMatrixConfig, Exp021FleetStudyConfig } from './r
 import { EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG } from './reference-capture-exp021-fleet.types';
 import { phaseOrderKey } from './reference-capture-exp021-fleet-order-allocator.lib';
 
+export const EXP021_STUDY_RUN_CLASSIFICATION = {
+  COMPLETE_VALID: 'COMPLETE_VALID',
+  PARTIAL_VALID: 'PARTIAL_VALID',
+  INVALID: 'INVALID',
+  ABORTED: 'ABORTED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export type Exp021StudyRunClassification =
+  (typeof EXP021_STUDY_RUN_CLASSIFICATION)[keyof typeof EXP021_STUDY_RUN_CLASSIFICATION];
+
+export type Exp021MinimumMatrixRunInput = {
+  vehicleId: string;
+  phaseOrderMs: number[];
+  state: string;
+  runClassification: string | null;
+  scientificEligibility: string | null;
+};
+
 export type Exp021MinimumMatrixEvaluation = {
   matrixMet: boolean;
+  configValid: boolean;
   sufficientForCadenceRecommendation: false;
   productionCadenceChangeAuthorized: false;
   details: {
@@ -14,17 +34,77 @@ export type Exp021MinimumMatrixEvaluation = {
   };
 };
 
-export function resolveMinimumMatrixConfig(
+export class Exp021InvalidMinimumMatrixConfigError extends Error {
+  readonly code = 'EXP021_INVALID_MINIMUM_MATRIX_CONFIG';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'Exp021InvalidMinimumMatrixConfigError';
+  }
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
+}
+
+export function validateMinimumMatrixConfig(
   config: Exp021FleetStudyConfig | null | undefined,
 ): Exp021FleetMinimumMatrixConfig {
-  return { ...EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG, ...(config?.minimumMatrix ?? {}) };
+  const raw = config?.minimumMatrix;
+  if (!raw) return EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG;
+
+  const fields: Array<[keyof Exp021FleetMinimumMatrixConfig, unknown]> = [
+    ['minValidCompleteRunsPerVehicle', raw.minValidCompleteRunsPerVehicle],
+    ['min9060Runs', raw.min9060Runs],
+    ['min6090Runs', raw.min6090Runs],
+    ['minDistinctVehicles', raw.minDistinctVehicles],
+  ];
+
+  for (const [name, value] of fields) {
+    if (value === undefined) continue;
+    if (!isPositiveInteger(value)) {
+      throw new Exp021InvalidMinimumMatrixConfigError(
+        `Invalid minimumMatrix.${name}: must be a finite positive integer`,
+      );
+    }
+  }
+
+  return {
+    minValidCompleteRunsPerVehicle: isPositiveInteger(raw.minValidCompleteRunsPerVehicle)
+      ? raw.minValidCompleteRunsPerVehicle
+      : EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG.minValidCompleteRunsPerVehicle,
+    min9060Runs: isPositiveInteger(raw.min9060Runs)
+      ? raw.min9060Runs
+      : EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG.min9060Runs,
+    min6090Runs: isPositiveInteger(raw.min6090Runs)
+      ? raw.min6090Runs
+      : EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG.min6090Runs,
+    minDistinctVehicles: isPositiveInteger(raw.minDistinctVehicles)
+      ? raw.minDistinctVehicles
+      : EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG.minDistinctVehicles,
+  };
+}
+
+export function countsTowardPrimaryMinimumMatrix(run: Exp021MinimumMatrixRunInput): boolean {
+  if (run.state !== 'COMPLETED') return false;
+  if (run.runClassification !== EXP021_STUDY_RUN_CLASSIFICATION.COMPLETE_VALID) return false;
+  if (run.scientificEligibility?.toUpperCase() === 'INELIGIBLE') return false;
+  return true;
 }
 
 export function evaluateMinimumMatrix(args: {
   config: Exp021FleetStudyConfig | null | undefined;
-  completedRuns: Array<{ vehicleId: string; phaseOrderMs: number[]; state: string }>;
+  completedRuns: Exp021MinimumMatrixRunInput[];
 }): Exp021MinimumMatrixEvaluation {
-  const thresholds = resolveMinimumMatrixConfig(args.config);
+  let thresholds: Exp021FleetMinimumMatrixConfig;
+  let configValid = true;
+  try {
+    thresholds = validateMinimumMatrixConfig(args.config);
+  } catch {
+    configValid = false;
+    thresholds = EXP021_DEFAULT_MINIMUM_MATRIX_CONFIG;
+  }
+
   const key9060 = phaseOrderKey([90_000, 60_000]);
   const key6090 = phaseOrderKey([60_000, 90_000]);
 
@@ -34,7 +114,7 @@ export function evaluateMinimumMatrix(args: {
   const vehicles = new Set<string>();
 
   for (const run of args.completedRuns) {
-    if (run.state !== 'COMPLETED' && run.state !== 'PARTIAL') continue;
+    if (!countsTowardPrimaryMinimumMatrix(run)) continue;
     vehicles.add(run.vehicleId);
     validCompleteRunsPerVehicle[run.vehicleId] = (validCompleteRunsPerVehicle[run.vehicleId] ?? 0) + 1;
     const orderKey = phaseOrderKey(run.phaseOrderMs);
@@ -46,6 +126,7 @@ export function evaluateMinimumMatrix(args: {
     (count) => count >= thresholds.minValidCompleteRunsPerVehicle,
   );
   const matrixMet =
+    configValid &&
     perVehicleOk &&
     vehicles.size >= thresholds.minDistinctVehicles &&
     global9060Runs >= thresholds.min9060Runs &&
@@ -53,6 +134,7 @@ export function evaluateMinimumMatrix(args: {
 
   return {
     matrixMet,
+    configValid,
     sufficientForCadenceRecommendation: false,
     productionCadenceChangeAuthorized: false,
     details: {

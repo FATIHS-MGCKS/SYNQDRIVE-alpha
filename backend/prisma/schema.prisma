@@ -10892,6 +10892,14 @@ enum Exp021StudyRunState {
   SKIPPED
 }
 
+enum Exp021StudyRunClassification {
+  COMPLETE_VALID
+  PARTIAL_VALID
+  INVALID
+  ABORTED
+  SKIPPED
+}
+
 model Exp021Study {
   id         String            @id @default(uuid())
   studyKey   String            @unique @map("study_key")
@@ -10949,7 +10957,7 @@ model Exp021StudyRun {
   planId                String              @map("plan_id")
   planVersion           String              @map("plan_version")
   state                 Exp021StudyRunState @default(PLANNED)
-  runClassification     String?             @map("run_classification")
+  runClassification     Exp021StudyRunClassification? @map("run_classification")
   canonicalT0At         DateTime?           @map("canonical_t0_at")
   startedAt             DateTime?           @map("started_at")
   completedAt           DateTime?           @map("completed_at")
@@ -10960,10 +10968,10 @@ model Exp021StudyRun {
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
 
-  study        Exp021Study           @relation(fields: [studyId], references: [id], onDelete: Cascade)
-  enrollment   Exp021StudyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  study        Exp021Study           @relation(fields: [studyId], references: [id], onDelete: Restrict)
+  enrollment   Exp021StudyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
 
   @@index([studyId, state])
   @@index([enrollmentId])

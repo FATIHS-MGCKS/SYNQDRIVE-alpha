@@ -1,12 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Exp021Study, Exp021StudyEnrollment } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { evaluateEffectivePolicyGate } from '../../../../../scripts/ops/reference-capture-exp-021-autonomous-orchestrator.lib';
+import { evaluateEffectivePolicyGate } from '../reference-capture-exp021-hf-policy-gate.lib';
 import { ACTIVE_REFERENCE_CAPTURE_BLOCKING_STATUSES } from '../reference-capture-prearm.policy';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { EXP021_DEFAULT_TELEMETRY_FRESHNESS } from '../reference-capture-exp-021-motion.lib';
 import { ReferenceCaptureExp021FleetRepository } from './reference-capture-exp021-fleet.repository';
 import { evaluateExp021FleetEligibility } from './reference-capture-exp021-fleet-eligibility.lib';
+import {
+  createTickShadowBalance,
+  mergeDurableAndTickShadowBalance,
+  recordTickShadowProposal,
+  type Exp021FleetTickShadowBalance,
+} from './reference-capture-exp021-fleet-tick-shadow-balance.lib';
+import { phaseOrderKey } from './reference-capture-exp021-fleet-order-allocator.lib';
 import type { Exp021FleetDryRunObservation, Exp021FleetTelemetryFreshnessState } from './reference-capture-exp021-fleet.types';
 
 @Injectable()
@@ -29,11 +36,14 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
     const studies = await this.fleetRepository.listCollectingStudies();
     const observations: Exp021FleetDryRunObservation[] = [];
     const nowIso = new Date().toISOString();
+    const tickShadowByStudy = new Map<string, Exp021FleetTickShadowBalance>();
 
     for (const study of studies) {
+      const shadow = createTickShadowBalance();
+      tickShadowByStudy.set(study.id, shadow);
       const enrollments = await this.fleetRepository.listEnabledEnrollmentsForStudy(study.id);
       for (const enrollment of enrollments) {
-        const observation = await this.evaluateEnrollmentDryRun(study, enrollment, nowIso);
+        const observation = await this.evaluateEnrollmentDryRun(study, enrollment, nowIso, shadow);
         observations.push(observation);
         this.logger.log({ msg: 'EXP021_FLEET_DRY_RUN_OBSERVATION', ...observation });
       }
@@ -46,6 +56,7 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
     study: Exp021Study,
     enrollment: Exp021StudyEnrollment,
     timestamp: string,
+    tickShadow: Exp021FleetTickShadowBalance,
   ): Promise<Exp021FleetDryRunObservation> {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: enrollment.vehicleId, organizationId: enrollment.organizationId },
@@ -79,11 +90,13 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const balance = await this.fleetRepository.loadOrderBalanceSnapshot(study.id, enrollment.vehicleId);
+    const durableBalance = await this.fleetRepository.loadOrderBalanceSnapshot(study.id, enrollment.vehicleId);
+    const balance = mergeDurableAndTickShadowBalance(durableBalance, tickShadow, enrollment.vehicleId);
 
     const eligibility = evaluateExp021FleetEligibility(
       {
         studyStatus: study.status,
+        studyDryRun: study.dryRun,
         enrollmentEnabled: enrollment.enabled,
         organizationId: enrollment.organizationId,
         vehicleId: enrollment.vehicleId,
@@ -100,6 +113,10 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
       },
       balance,
     );
+
+    if (eligibility.eligible && eligibility.proposedPhaseOrderMs) {
+      recordTickShadowProposal(tickShadow, enrollment.vehicleId, phaseOrderKey(eligibility.proposedPhaseOrderMs));
+    }
 
     return {
       studyId: study.id,
