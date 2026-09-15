@@ -225,6 +225,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-13T06:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
+    version: '4.9.1134',
+    title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',
+    summary: [
+      'buildFallbackRawDetectionMeta single owner maps canonical fuelStart/fuelEnd liters+percent from RawRefuelCandidate evidence.',
+      'Promoted fallback VehicleEnergyEvent exposes same G2 row-mapper contract as native DIMO without G2 special-casing.',
+      'Real PG F6-P1..P10 (11/11); RFRF provenance preserved; no schema change; F5 handoff unchanged.',
+    ],
+    reason:
+      'F5-PR3 G2 handoff assumed fallback rows participate in identity via vehicleEnergyEventToRefuelRow — F6 closes persisted metadata gap.',
+    previousBehavior:
+      'Promotion draft wrote preFuel/postFuel RFRF keys only; G2 row mapper read fuelStart/fuelEnd canonical keys → null fuel transition on persisted fallback VEE.',
+    details:
+      'docs/audits/eed-rfrf-f6-g2-payload-compatibility-2026-09-15.md; EED-EV-0059; BASE_MAIN 4f21c0c16',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T00:30:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-authority-cutover-runtime-2026-09-14',
     version: '4.9.1133',
     title: 'VDC RB-019 P2.5 — Authority cutover runtime foundation',

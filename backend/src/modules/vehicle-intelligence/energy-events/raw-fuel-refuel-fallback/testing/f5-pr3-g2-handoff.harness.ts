@@ -234,6 +234,7 @@ export async function cleanupVehicle(
 export interface F5Pr3Stack {
   energyEvents: EnergyEventsService;
   promotion: RawRefuelPromotionService;
+  convergence: RawRefuelConvergenceService;
   g2Handoff: RawRefuelG2HandoffService;
   g2Runtime: PhysicalRefuelReconciliationRuntimeService;
   prisma: PrismaClient;
@@ -313,7 +314,7 @@ export function buildF5Pr3Stack(
     rawRuntime,
   );
 
-  return { energyEvents, promotion, g2Handoff, g2Runtime, prisma };
+  return { energyEvents, promotion, convergence, g2Handoff, g2Runtime, prisma };
 }
 
 export function buildF5Pr3StackWithQueue(

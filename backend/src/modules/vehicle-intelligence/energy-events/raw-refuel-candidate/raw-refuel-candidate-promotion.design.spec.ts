@@ -87,4 +87,22 @@ describe('raw-refuel-candidate-promotion.design', () => {
     );
     expect(draft.endTime.toISOString()).toBe('2026-09-06T10:00:00.000Z');
   });
+
+  it('populates canonical G2 rawDetectionMeta fuel transition contract', () => {
+    const draft = mapRawRefuelCandidateToPromotionDraft(
+      baseCandidate({
+        preFuelRelativePercent: 18,
+        postFuelRelativePercent: 72,
+      }),
+    );
+    const meta = draft.rawDetectionMeta as Record<string, unknown>;
+    expect(meta.fuelStartLiters).toBe(7);
+    expect(meta.fuelEndLiters).toBe(31);
+    expect(meta.fuelStartPercent).toBe(18);
+    expect(meta.fuelEndPercent).toBe(72);
+    expect(meta.preFuelAbsoluteLiters).toBe(meta.fuelStartLiters);
+    expect(meta.postFuelAbsoluteLiters).toBe(meta.fuelEndLiters);
+    expect(meta.rawRefuelCandidateId).toBe('cand-1');
+    expect(meta.candidateIdentityKey).toBe('key-abc');
+  });
 });

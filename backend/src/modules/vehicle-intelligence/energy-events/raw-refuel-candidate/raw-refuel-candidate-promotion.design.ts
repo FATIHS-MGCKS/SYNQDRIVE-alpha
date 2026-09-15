@@ -1,4 +1,5 @@
 import type { RawRefuelCandidate } from '@prisma/client';
+import { buildFallbackRawDetectionMeta } from '../raw-fuel-refuel-fallback/fallback-raw-detection-meta.mapper';
 import { RawRefuelCandidateLifecycleValidationError } from './raw-refuel-candidate.errors';
 
 /**
@@ -84,17 +85,7 @@ export function mapRawRefuelCandidateToPromotionDraft(
     fuelLevelRiseStart: candidate.riseOnsetAt,
     fuelLevelRiseEnd: candidate.riseEndAt,
     fuelLevelRiseDurationSeconds: riseDurationSeconds,
-    rawDetectionMeta: {
-      rawRefuelCandidateId: candidate.id,
-      candidateIdentityKey: candidate.candidateIdentityKey,
-      evidenceRevisionFingerprint: candidate.evidenceRevisionFingerprint,
-      preFuelAbsoluteLiters: candidate.preFuelAbsoluteLiters,
-      postFuelAbsoluteLiters: candidate.postFuelAbsoluteLiters,
-      preFuelRelativePercent: candidate.preFuelRelativePercent,
-      postFuelRelativePercent: candidate.postFuelRelativePercent,
-      signalChannel: candidate.signalChannel,
-      detectorVersion: candidate.detectorVersion,
-    },
+    rawDetectionMeta: buildFallbackRawDetectionMeta(candidate),
     firstObservedAt: candidate.firstObservedAt,
   };
 }

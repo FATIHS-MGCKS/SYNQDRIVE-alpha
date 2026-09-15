@@ -296,6 +296,7 @@ describe('PhysicalRefuelReconciliationRuntimeService (G2.1 runtime R1–R14)', (
         }),
       },
       vehicleEnergyEvent: {
+        findUnique: jest.fn(async ({ where }: { where: { id: string } }) => findEnergyEvent(where)),
         findMany: tx.vehicleEnergyEvent.findMany,
         count: jest.fn().mockResolvedValue(0),
       },
