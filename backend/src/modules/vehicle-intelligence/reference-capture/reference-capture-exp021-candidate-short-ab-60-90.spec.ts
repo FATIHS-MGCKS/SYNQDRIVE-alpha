@@ -15,6 +15,8 @@ import {
   nominalTotalDurationMs,
   resolveExp021CalibrationPlan,
   resolveExp021CalibrationPlanFromAuthority,
+  type Exp021CalibrationPhaseSpec,
+  type Exp021CalibrationPlan,
 } from './reference-capture-exp021-calibration-plan.lib';
 import {
   buildExp021IntendedSlotOffsets,
@@ -24,18 +26,18 @@ import {
   buildFullPhaseOverlappingSettlementProbesForPhase,
   computeExp021SettlementQueryBudget,
   countFullPhaseOverlappingTilesForNominalPhase,
+  EXP021_MANDATORY_AGES_MS,
   usesFullPhaseOverlappingSettlementStrategy,
 } from './reference-capture-settlement-shadow.policy';
 import { PhysicalDrivePhaseTracker } from './reference-capture-exp-021-motion.lib';
 import {
-  expectNo120Phase,
   expectSettlementGeometry,
   expectShortAbPlanDefinition,
+  SHORT_AB_EXPECTED_SETTLEMENT_WINDOWS_PER_PHASE,
   SHORT_AB_EXPECTED_SLOT_COUNT_BY_CADENCE_MS,
   SHORT_AB_EXPECTED_TOTAL_SETTLEMENT_OBSERVATIONS,
   SHORT_AB_EXPECTED_TOTAL_SETTLEMENT_WINDOWS,
 } from './reference-capture-exp021-short-ab-geometry.assertions';
-import type { HfCalibrationSeriesState } from './reference-capture-hf-calibration-phase.policy';
 
 describe('EXP-021 CANDIDATE_SHORT_AB_60_90 reversed-order plan', () => {
   const plan = EXP021_CANDIDATE_SHORT_AB_60_90;
@@ -139,6 +141,31 @@ describe('EXP-021 CANDIDATE_SHORT_AB_60_90 reversed-order plan', () => {
       expect(budget60_90.nominalPhaseMinutes).toBe(budget90_60.nominalPhaseMinutes);
     });
 
+    it('mandatory ages, phase attribution, and overlapping strategy are order-invariant', () => {
+      for (const shortAbPlan of EXP021_CANDIDATE_SHORT_AB_PLANS) {
+        expect(usesFullPhaseOverlappingSettlementStrategy(shortAbPlan)).toBe(true);
+        const budget = computeExp021SettlementQueryBudget(shortAbPlan);
+        expect(budget.fullPhaseTileCount).toBe(SHORT_AB_EXPECTED_TOTAL_SETTLEMENT_WINDOWS);
+        expect(budget.expectedSettlementQueryCount).toBe(
+          budget.fullPhaseTileCount * EXP021_MANDATORY_AGES_MS.length,
+        );
+        expect(budget.expectedSettlementQueryCount).toBe(SHORT_AB_EXPECTED_TOTAL_SETTLEMENT_OBSERVATIONS);
+        for (const phase of shortAbPlan.phases) {
+          expect(
+            countFullPhaseOverlappingTilesForNominalPhase({
+              nominalPhaseDurationMs: phase.targetDurationMs,
+            }),
+          ).toBe(SHORT_AB_EXPECTED_SETTLEMENT_WINDOWS_PER_PHASE);
+          const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
+            phasePollIntervalMs: phase.cadenceMs,
+            phaseStartedAtMs: t0Ms,
+            phaseEndMs: t0Ms + phase.targetDurationMs,
+          });
+          expect(probes.every((probe) => probe.phasePollIntervalMs === phase.cadenceMs)).toBe(true);
+        }
+      }
+    });
+
     it('builds overlapping probes for each cadence within 10m wall', () => {
       for (const phase of plan.phases) {
         const probes = buildFullPhaseOverlappingSettlementProbesForPhase({
@@ -200,40 +227,51 @@ describe('EXP-021 CANDIDATE_SHORT_AB_60_90 reversed-order plan', () => {
       }
     });
 
-    it('rejects invalid short A/B cadence geometries at assertion layer', () => {
-      const invalidSeries = (phaseOrder: number[]): HfCalibrationSeriesState =>
-        ({
-          calibrationSeriesId: 'series-invalid',
-          calibrationPlanId: 'candidate_short_ab_90_60',
-          calibrationPlanVersion: 'EXP021_CANDIDATE_SHORT_AB_90_60',
-          vehicleId: 'veh-invalid',
-          tokenId: 1,
-          phaseOrder,
-          activePhase: null,
-          completedPhases: [],
-          completedPhaseSummaries: [],
-          pendingPhaseRequest: null,
-          skippedPhasePlans: [],
-          cancelledPhaseRequests: [],
-          terminalFinalizationAt: null,
-          lastPhaseBoundaryAt: null,
-          seriesStartedAt: new Date().toISOString(),
-          seriesEndedAt: null,
-          controlPlaneRevision: 0,
-        }) as HfCalibrationSeriesState;
-      expect(() =>
-        expectShortAbPlanDefinition({
-          ...plan90_60,
-          phases: [
-            { cadenceMs: 90_000, targetDurationMs: 600_000, role: 'EXPERIMENTAL', minSuccessfulRequests: 5 },
-            { cadenceMs: 90_000, targetDurationMs: 600_000, role: 'EXPERIMENTAL', minSuccessfulRequests: 5 },
-          ],
-        } as typeof plan90_60),
-      ).toThrow(/permitted cadences/);
-      expectNo120Phase(
-        invalidSeries([90_000, 60_000]),
-      );
-      expect(() => expectNo120Phase(invalidSeries([120_000, 60_000]))).toThrow(/120s phase present/);
+    describe('invalid phase-order regression matrix (fail-closed)', () => {
+      const phase90 = plan90_60.phases[0];
+      const phase60 = plan90_60.phases[1];
+      const phase120: Exp021CalibrationPhaseSpec = {
+        cadenceMs: 120_000,
+        targetDurationMs: 10 * 60_000,
+        role: 'EXPERIMENTAL',
+        minSuccessfulRequests: 5,
+      };
+
+      function mockShortAbPlanWithPhases(phases: readonly Exp021CalibrationPhaseSpec[]): Exp021CalibrationPlan {
+        return { ...plan90_60, phases } as Exp021CalibrationPlan;
+      }
+
+      it('rejects [90000,90000]', () => {
+        expect(() =>
+          expectShortAbPlanDefinition(mockShortAbPlanWithPhases([phase90, phase90])),
+        ).toThrow(/permitted cadences/);
+      });
+
+      it('rejects [60000,60000]', () => {
+        expect(() =>
+          expectShortAbPlanDefinition(mockShortAbPlanWithPhases([phase60, phase60])),
+        ).toThrow(/permitted cadences/);
+      });
+
+      it('rejects [120000,60000]', () => {
+        expect(() =>
+          expectShortAbPlanDefinition(mockShortAbPlanWithPhases([phase120, phase60])),
+        ).toThrow(/permitted cadences|120s phase present/);
+      });
+
+      it('rejects [60000,120000]', () => {
+        expect(() =>
+          expectShortAbPlanDefinition(mockShortAbPlanWithPhases([phase60, phase120])),
+        ).toThrow(/permitted cadences|120s phase present/);
+      });
+
+      it('accepts only canonical [90000,60000] and [60000,90000] registered plans', () => {
+        expectShortAbPlanDefinition(plan90_60);
+        expectShortAbPlanDefinition(plan);
+        expect(cadenceSequenceFromPlan(plan90_60)).toEqual([90_000, 60_000]);
+        expect(cadenceSequenceFromPlan(plan)).toEqual([60_000, 90_000]);
+        expect(EXP021_CANDIDATE_SHORT_AB_PLANS).toHaveLength(2);
+      });
     });
   });
 });
