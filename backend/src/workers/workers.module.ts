@@ -44,6 +44,7 @@ import { ReferenceCaptureProcessor } from './processors/reference-capture.proces
 import { ReferenceCaptureSettlementShadowProcessor } from './processors/reference-capture-settlement-shadow.processor';
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/reference-capture-settlement-shadow-recovery.scheduler';
+import { ReferenceCaptureExp021FleetCoordinatorScheduler } from './schedulers/reference-capture-exp021-fleet-coordinator.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
@@ -160,6 +161,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     PhysicalRefuelReconciliationRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
     ReferenceCaptureSettlementShadowRecoveryScheduler,
+    ReferenceCaptureExp021FleetCoordinatorScheduler,
   ],
 })
 export class WorkersModule {}

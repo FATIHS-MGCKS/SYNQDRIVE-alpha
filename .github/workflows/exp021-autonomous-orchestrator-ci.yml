@@ -4,8 +4,14 @@ on:
   pull_request:
     paths:
       - 'backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp*'
+      - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-fleet/**'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/testing/reference-capture-exp021*'
+      - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
       - 'backend/scripts/ops/reference-capture-exp-021*'
+      - 'backend/scripts/test/exp021-fleet-migration-test.sh'
+      - 'backend/scripts/test/exp021-canonical-postgres-bootstrap.sh'
+      - 'backend/prisma/migrations/*exp021*'
+      - 'backend/prisma/schema.prisma'
       - 'architecture/drivingintelligence/evidence/reference-capture/**'
       - 'architecture/drivingintelligence/research/CHANGE_LEDGER.md'
       - 'architecture/drivingintelligence/CURRENT_STATE.md'
@@ -98,11 +104,139 @@ jobs:
           REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
           REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
 
+  exp021-fleet-postgres-integration:
+    name: EXP-021 PR-C fleet PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: exp021_pr1649_test
+          POSTGRES_PASSWORD: exp021_pr1649_test_local
+          POSTGRES_DB: synqdrive_exp021_pr1649_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+          case "$DATABASE_URL" in
+            *srv1374778*|*app.synqdrive.eu*|*hstgr.cloud*|*mein-vps*)
+              echo "DATABASE_URL must not reference production hosts"
+              exit 1
+              ;;
+          esac
+      - run: npm ci
+        working-directory: backend
+      - run: npm run test:exp021:fleet:postgres:bootstrap
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          EXP021_FLEET_MIGRATION_PG_USER: ${{ env.EXP021_PG_USER }}
+          EXP021_FLEET_MIGRATION_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          EXP021_FLEET_MIGRATION_DB: ${{ env.EXP021_PG_DB }}
+      - run: npm run test:exp021:fleet:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TEST_POSTGRES_DATABASE: ${{ env.EXP021_PG_DB }}
+          RC_DEF019_POSTGRES_USER: ${{ env.EXP021_PG_USER }}
+          RC_DEF019_POSTGRES_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
+          REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
+
+  exp021-fleet-migration:
+    name: EXP-021 PR-C fleet migration deploy
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: exp021_pr1649_test
+          POSTGRES_PASSWORD: exp021_pr1649_test_local
+          POSTGRES_DB: synqdrive_exp021_pr1649_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run test:exp021:fleet:migration
+        working-directory: backend
+        env:
+          EXP021_FLEET_MIGRATION_PG_USER: ${{ env.EXP021_PG_USER }}
+          EXP021_FLEET_MIGRATION_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+
+  exp021-fleet-unit-gate:
+    name: EXP-021 PR-C fleet unit gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: >-
+          npx jest
+          reference-capture-exp021-fleet-
+          reference-capture-exp021-hf-policy-gate.lib.spec
+          reference-capture-exp021-fleet-coordinator.scheduler.spec
+          --runInBand --verbose
+        working-directory: backend
+
+  exp021-production-build:
+    name: EXP-021 backend production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npm run build
+        working-directory: backend
+
   exp021-ci-gate:
     name: EXP-021 CI gate
     runs-on: ubuntu-latest
     needs:
       - exp021-unit-gate
       - exp021-postgres-integration
+      - exp021-fleet-unit-gate
+      - exp021-fleet-postgres-integration
+      - exp021-fleet-migration
+      - exp021-production-build
     steps:
-      - run: echo "EXP-021 autonomous orchestrator CI gate passed (unit + isolated PostgreSQL)."
+      - run: echo "EXP-021 autonomous orchestrator CI gate passed (unit + fleet hardening + PostgreSQL + migration + build)."
