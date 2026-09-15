@@ -77,6 +77,7 @@
     "test:boundary-repair:postgres": "bash scripts/test/boundary-repair-postgres-ci.sh",
     "test:physical-state:postgres": "PHYSICAL_STATE_POSTGRES_INTEGRATION=1 jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\\.integration' --runInBand",
     "test:physical-state:migration": "bash scripts/test/physical-state-migration-test.sh",
+    "test:physical-state:runtime-assets": "bash scripts/test/physical-state-cutover-runtime-assets.sh",
     "test:physical-state:postgres:ci": "PHYSICAL_STATE_POSTGRES_INTEGRATION=1 PHYSYSICAL_STATE_POSTGRES_REQUIRED=1 jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\\.integration' --runInBand --verbose",
     "test:trip-finalize:postgres": "TRIP_FINALIZE_POSTGRES_INTEGRATION=1 jest trip-finalize-end-cycle.postgres.integration --runInBand",
     "test:trip-finalize:postgres:ci": "TRIP_FINALIZE_POSTGRES_INTEGRATION=1 TRIP_FINALIZE_POSTGRES_REQUIRED=1 jest trip-finalize-end-cycle.postgres.integration --runInBand --verbose",

@@ -228,6 +228,8 @@ jobs:
             frontend/package-lock.json
       - run: npm ci && npx prisma generate && npm run build
         working-directory: backend
+      - run: npm run test:physical-state:runtime-assets
+        working-directory: backend
       - run: npm ci && npm run build
         working-directory: frontend
 

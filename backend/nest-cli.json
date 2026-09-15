@@ -8,6 +8,10 @@
       {
         "include": "modules/clickhouse/migrations/*.sql",
         "outDir": "dist/src"
+      },
+      {
+        "include": "modules/dimo/device-connection-physical-state/physical-state-cutover-evidence.ops-lib.cjs",
+        "outDir": "dist/src"
       }
     ],
     "watchAssets": true
