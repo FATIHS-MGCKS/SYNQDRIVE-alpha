@@ -226,7 +226,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   },
   {
     id: 'eed-rfrf-f6-g2-payload-compatibility-2026-09-15',
-    version: '4.9.1133',
+    version: '4.9.1134',
     title: 'RFRF F6 — Canonical G2 rawDetectionMeta payload compatibility',
     summary: [
       'buildFallbackRawDetectionMeta single owner maps canonical fuelStart/fuelEnd liters+percent from RawRefuelCandidate evidence.',
@@ -242,6 +242,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-15T00:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-authority-cutover-runtime-2026-09-14',
+    version: '4.9.1133',
+    title: 'VDC RB-019 P2.5 — Authority cutover runtime foundation',
+    summary: [
+      'PhysicalStateAuthorityCutoverService: forward-only LEGACY→PHYSICAL latch with advisory lock + FOR UPDATE.',
+      'Fail-closed cutover eligibility; mixed-replica build interlock; flags ≠ persisted authority.',
+      'Webhook + snapshot PHYSICAL routing; structural legacy OBD write exclusion; P25-A..R PG proof suite.',
+    ],
+    reason:
+      'Make scoped authority cutover possible under frozen P2.4/#1650 contracts without Production activation.',
+    previousBehavior:
+      'No runtime latch path; webhook lacked physicalGateAuthoritative routing; legacy writers could still run after hypothetical PHYSICAL latch.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-14T23:50:00.000Z',
   },
   {
     id: 'eed-rfrf-f5-pr3-g2-handoff-2026-09-14',

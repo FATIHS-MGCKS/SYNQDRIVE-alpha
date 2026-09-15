@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-15 — RFRF F6.1 pre-merge main sync + R16 stale mock closure
+
+- Merged `origin/main` @ `fda8a218` (VDC #1652); ChangesView preserves both F6 + VDC entries
+- R16 pre-existing on F6 base `4f21c0c` and F6 head `ee6cd3642` — identical `findUnique` harness gap
+- Test-only fix: outer Prisma mock exposes `vehicleEnergyEvent.findUnique` via existing `findEnergyEvent`
+- G2 unit regression 58/58; F6 recertification unchanged; EED-EV-0059 extended (no new evidence ID)
+
 ## 2026-09-15 — RFRF F6 canonical G2 rawDetectionMeta payload compatibility
 
 - EED-EV-0059: `buildFallbackRawDetectionMeta` single owner; canonical fuelStart/fuelEnd liters+percent on promoted fallback VEE

@@ -91,6 +91,85 @@ Isolated DB: `rfrf_f6_*` on localhost only.
 | F6_COMPLETE | YES (pending CI on final HEAD) |
 | F7_START_AUTHORIZED_AFTER_MERGE | NO (await merge + explicit authorization) |
 
+## F6.1 — pre-merge main sync + R16 stale mock closure
+
+**Original F6 head:** `ee6cd3642fdda44cf5fbdb56cf95e8da96f015a1`
+**Synced main:** `fda8a218c1bdbc4dfd8dd734bcf0eea095ba5497` (PR #1652 VDC RB-019 P2.5)
+
+### Main delta review
+
+| Field | Value |
+|-------|-------|
+| MAIN_DELTA_EED_RUNTIME_OVERLAP | NO |
+| MAIN_DELTA_DOCUMENTATION_OVERLAP | YES — `frontend/src/master/components/ChangesView.tsx` only |
+| CHANGES_VIEW_BOTH_WORKSTREAMS_PRESERVED | YES — F6 @ 4.9.1134 + VDC P2.5 @ 4.9.1133 |
+
+No EED/RFRF/G2 runtime code overlap with #1652. Merge conflict resolved semantically; unrelated VDC work preserved.
+
+### R16 pre-existing failure proof
+
+Command (base and pre-fix F6 head):
+
+```bash
+npm test -- --runInBand --forceExit \
+  --testPathPattern='physical-refuel-reconciliation-runtime.service.spec' \
+  --testNamePattern='R16'
+```
+
+| Checkout | SHA | Result |
+|----------|-----|--------|
+| Base (F6 original main) | `4f21c0c167bd3ee87c1691016b12ee5d94ad44fd` | FAIL |
+| F6 head (pre-fix) | `ee6cd3642fdda44cf5fbdb56cf95e8da96f015a1` | FAIL (identical) |
+
+Failure:
+
+```
+TypeError: prisma.vehicleEnergyEvent.findUnique is not a function
+  at pushWork (physical-refuel-recovery.repository.ts:82:53)
+  at findPhysicalRefuelRecoveryWork (physical-refuel-recovery.repository.ts:111:11)
+  at PhysicalRefuelReconciliationRuntimeService.runRecoveryBatch (…:143:18)
+```
+
+Production/base runtime calls `prisma.vehicleEnergyEvent.findUnique()` since merged F5-PR3 recovery fallback participation guard. Outer harness mock exposed `findMany` + `count` only.
+
+| Classification | Value |
+|----------------|-------|
+| R16_FAILURE_INTRODUCED_BY_F6 | NO |
+| R16_FAILURE_PRE_EXISTING_ON_F6_BASE | YES |
+| PRE_EXISTING_G2_TEST_DEBT_FOUND | YES |
+
+### R16 repair (test harness only)
+
+Added to outer `prisma.vehicleEnergyEvent` mock in `physical-refuel-reconciliation-runtime.service.spec.ts`:
+
+```typescript
+findUnique: jest.fn(async ({ where }) => findEnergyEvent(where)),
+```
+
+Reuses existing in-memory `findEnergyEvent` helper (same as tx mock). No production runtime changes.
+
+| Field | Value |
+|-------|-------|
+| R16_REPAIR_RUNTIME_CODE_CHANGED | NO |
+| R16_REPAIR_TEST_HARNESS_ONLY | YES |
+| R16_FIND_UNIQUE_MOCK_ADDED | YES |
+| PRE_EXISTING_G2_TEST_DEBT_FIXED | YES |
+| G2 unit regression | 58/58 PASS |
+
+### Post-sync recertification
+
+F6 PostgreSQL gate 11/11, F5-PR3.1 30/30, F5-PR2/PR1, F4-PR3/PR2, F3→F2, backend build, validators — re-run on final HEAD after merge + R16 fix.
+
+### Blocker taxonomy (corrected)
+
+| Field | Value |
+|-------|-------|
+| KNOWN_P0_F6_BLOCKERS | 0 |
+| KNOWN_P1_F6_BLOCKERS | 0 |
+| F6_COMPLETE | YES |
+
+Prior closure incorrectly listed P1=1 alongside F6_COMPLETE=YES; R16 was pre-existing G2 test debt, not an F6 contract defect.
+
 ## Distinction from F5
 
 F5-PR3 proved post-commit G2 handoff and late-native runtime behavior assuming fallback rows would participate in G2 identity. F6 ensures the **persisted metadata contract** makes that participation work through the standard row mapper without test-side row mutation.

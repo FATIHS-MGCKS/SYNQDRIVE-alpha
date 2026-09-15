@@ -8,6 +8,7 @@ import {
   buildPhysicalStateAuthorityLockKey,
   normalizeConnectivityProvider,
 } from './device-connection-physical-state.binding';
+import { validateAuthorityTransition } from './physical-state-authority.state-machine';
 
 export type PhysicalAuthorityScope = {
   organizationId: string;
@@ -63,6 +64,21 @@ export class DeviceConnectionPhysicalAuthorityCutoverRepository {
     });
   }
 
+  async readAuthorityModeWithoutMutation(
+    scope: PhysicalAuthorityScope,
+  ): Promise<DeviceConnectionPhysicalAuthorityMode> {
+    const provider = normalizeConnectivityProvider(scope.provider);
+    const row = await this.prisma.deviceConnectionPhysicalAuthorityCutover.findFirst({
+      where: {
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        provider,
+      },
+      select: { authorityMode: true },
+    });
+    return row?.authorityMode ?? DeviceConnectionPhysicalAuthorityMode.LEGACY;
+  }
+
   async findAuthorityMode(
     tx: Prisma.TransactionClient,
     scope: PhysicalAuthorityScope,
@@ -109,6 +125,96 @@ export class DeviceConnectionPhysicalAuthorityCutoverRepository {
     `;
 
     return rows[0]?.authority_mode ?? DeviceConnectionPhysicalAuthorityMode.LEGACY;
+  }
+
+  /**
+   * P2.5 forward-only authority latch mutation.
+   * Caller must evaluate cutover eligibility before invoking.
+   */
+  async latchLegacyToPhysicalInTransaction(
+    tx: Prisma.TransactionClient,
+    scope: PhysicalAuthorityScope,
+    metadata?: {
+      latchedBy?: string | null;
+      evidenceSnapshot?: Prisma.InputJsonValue;
+    },
+  ): Promise<{
+    outcome: 'LATCHED' | 'ALREADY_PHYSICAL';
+    row: {
+      id: string;
+      authorityMode: DeviceConnectionPhysicalAuthorityMode;
+      latchedAt: Date | null;
+    };
+  }> {
+    const provider = normalizeConnectivityProvider(scope.provider);
+    await this.assertVehicleTenantScope(tx, scope.organizationId, scope.vehicleId);
+
+    const currentMode = await this.lockAuthorityScopeAndReadMode(tx, scope);
+    if (currentMode === DeviceConnectionPhysicalAuthorityMode.PHYSICAL) {
+      const existing = await tx.deviceConnectionPhysicalAuthorityCutover.findFirstOrThrow({
+        where: {
+          organizationId: scope.organizationId,
+          vehicleId: scope.vehicleId,
+          provider,
+        },
+        select: { id: true, authorityMode: true, latchedAt: true },
+      });
+      return { outcome: 'ALREADY_PHYSICAL', row: existing };
+    }
+
+    const transition = validateAuthorityTransition(
+      currentMode,
+      DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
+    );
+    if (!transition.allowed) {
+      throw new Error(`physical_authority_cutover_forbidden:${transition.reason}`);
+    }
+
+    await this.ensureAuthorityRow(tx, scope);
+    await this.lockAuthorityScopeAndReadMode(tx, scope);
+
+    const latchedAt = new Date();
+    const updated = await tx.deviceConnectionPhysicalAuthorityCutover.updateMany({
+      where: {
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        provider,
+        authorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
+      },
+      data: {
+        authorityMode: DeviceConnectionPhysicalAuthorityMode.PHYSICAL,
+        latchedAt,
+        latchedBy: metadata?.latchedBy ?? null,
+        evidenceSnapshot: metadata?.evidenceSnapshot ?? Prisma.JsonNull,
+        updatedAt: latchedAt,
+      },
+    });
+
+    if (updated.count !== 1) {
+      const row = await tx.deviceConnectionPhysicalAuthorityCutover.findFirstOrThrow({
+        where: {
+          organizationId: scope.organizationId,
+          vehicleId: scope.vehicleId,
+          provider,
+        },
+        select: { id: true, authorityMode: true, latchedAt: true },
+      });
+      if (row.authorityMode === DeviceConnectionPhysicalAuthorityMode.PHYSICAL) {
+        return { outcome: 'ALREADY_PHYSICAL', row };
+      }
+      throw new Error('physical_authority_cutover_latch_update_failed');
+    }
+
+    const row = await tx.deviceConnectionPhysicalAuthorityCutover.findFirstOrThrow({
+      where: {
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        provider,
+      },
+      select: { id: true, authorityMode: true, latchedAt: true },
+    });
+
+    return { outcome: 'LATCHED', row };
   }
 
   private async assertVehicleTenantScope(

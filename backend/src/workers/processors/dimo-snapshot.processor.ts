@@ -28,6 +28,7 @@ import {
   buildSnapshotReferenceId,
   extractObdPlugSignalFromSnapshot,
 } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution.snapshot-evaluator';
+import { PhysicalStateAuthorityCutoverService } from '../../modules/dimo/device-connection-physical-state/physical-state-authority-cutover.service';
 import { PhysicalStateSnapshotEvidenceOrchestrator } from '../../modules/dimo/device-connection-physical-state/physical-state-snapshot-evidence-orchestrator.service';
 import { buildTelemetrySnapshotReferenceId } from '../../modules/dimo/device-connection-episode-resolution/device-connection-telemetry-recovery.evaluator';
 import {
@@ -79,6 +80,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly snapshotWakeCoordinator?: SnapshotWakeCoordinatorService,
     @Optional()
     private readonly snapshotPhysicalEvidenceOrchestrator?: PhysicalStateSnapshotEvidenceOrchestrator,
+    @Optional()
+    private readonly physicalAuthorityCutover?: PhysicalStateAuthorityCutoverService,
   ) {
     super();
   }
@@ -331,32 +334,39 @@ export class DimoSnapshotProcessor extends WorkerHost {
 
       const providerDeviceIdHash = hashProviderDeviceId('DIMO', dimoTokenId);
 
-      await this.tryResolveOpenEpisodeFromSnapshot({
-        organizationId: vehicle.organizationId,
+      const legacyEpisodeResolutionExcluded = await this.isLegacySnapshotEpisodeResolutionExcluded(
+        vehicle.organizationId,
         vehicleId,
-        hardwareType: vehicle.hardwareType,
-        dimoTokenId,
-        fetchedAt,
-        signals,
-        vehicleLatestStateId: latestState.id,
-        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
-        providerDeviceIdHash,
-        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
-      });
+      );
 
-      await this.tryResolveOpenEpisodeFromSustainedTelemetry({
-        organizationId: vehicle.organizationId,
-        vehicleId,
-        hardwareType: vehicle.hardwareType,
-        fetchedAt,
-        normalized,
-        vehicleLatestStateId: latestState.id,
-        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
-        providerDeviceIdHash,
-        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
-        providerConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
-        signals,
-      });
+      if (!legacyEpisodeResolutionExcluded) {
+        await this.tryResolveOpenEpisodeFromSnapshot({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          hardwareType: vehicle.hardwareType,
+          dimoTokenId,
+          fetchedAt,
+          signals,
+          vehicleLatestStateId: latestState.id,
+          providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+          providerDeviceIdHash,
+          sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        });
+
+        await this.tryResolveOpenEpisodeFromSustainedTelemetry({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          hardwareType: vehicle.hardwareType,
+          fetchedAt,
+          normalized,
+          vehicleLatestStateId: latestState.id,
+          providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+          providerDeviceIdHash,
+          sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+          providerConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
+          signals,
+        });
+      }
 
       // Device-connection resolution outbox drain: non-trip subsystem running
       // ahead of evaluateTripStart. Row-level failures are already handled by
@@ -502,6 +512,20 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
+  }
+
+  private async isLegacySnapshotEpisodeResolutionExcluded(
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<boolean> {
+    if (!this.physicalAuthorityCutover) {
+      return false;
+    }
+    return this.physicalAuthorityCutover.isPhysicalAuthorityActive({
+      organizationId,
+      vehicleId,
+      provider: 'DIMO',
+    });
   }
 
   private async applyPhysicalSnapshotEvidence(input: {

@@ -118,6 +118,15 @@ edges:
     to: VDC-EVID-RB019-P22-SHADOW-001
     notes: P2.3 wires evidence writers + STATEFUL_SHADOW proof on P2.2 shadow infra
 
+  - from: VDC-EVID-RB019-P25-CUTOVER-RUNTIME-001
+    relation: supports
+    to: VDC-DEC-013
+
+  - from: VDC-EVID-RB019-P25-CUTOVER-RUNTIME-001
+    relation: downstream_of
+    to: VDC-EVID-RB019-P24-PRESEED-001
+    notes: P2.5 authority latch + routing builds on P2.4 pre-seed and shared lock contract
+
   - from: VDC-EVID-RB019-P24-PRESEED-001
     relation: supports
     to: VDC-DEC-013

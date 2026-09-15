@@ -48,6 +48,9 @@ function buildWebhookService(
         findUnique: prisma.findUnique,
       },
       vehicle: prisma.vehicle,
+      deviceConnectionPhysicalState: {
+        findFirst: prisma.physicalStateFindFirst,
+      },
     } as never,
     episodeService as never,
     lifecyclePolicy as never,
@@ -64,7 +67,15 @@ function mockPrisma(
   const upsert = jest.fn();
   const update = jest.fn().mockResolvedValue({});
   const findUnique = jest.fn();
-  return { upsert, update, findFirst, findUnique, vehicle: { findUnique: vehicleFindUnique } };
+  const physicalStateFindFirst = jest.fn().mockResolvedValue(null);
+  return {
+    upsert,
+    update,
+    findFirst,
+    findUnique,
+    physicalStateFindFirst,
+    vehicle: { findUnique: vehicleFindUnique },
+  };
 }
 
 function mockEpisodeService() {
@@ -173,7 +184,8 @@ describe('inferObdPlugStateFromLastEvent', () => {
 
 describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   it('creates a new unplug event when no prior state', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert } = prisma;
     const observedAt = new Date('2026-06-28T12:00:00Z');
     upsert.mockResolvedValue({
       id: 'evt-1',
@@ -181,14 +193,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       updatedAt: observedAt,
     });
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -203,20 +208,14 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores repeated plugged=true when already plugged', async () => {
-    const { upsert, update, findFirst } = mockPrisma(
+    const prisma = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
       }),
     );
+    const { upsert } = prisma;
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -230,16 +229,10 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores baseline plugged=true when no prior events', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert } = prisma;
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -253,7 +246,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('creates plug-in after prior unplug when DIMO confirms connected', async () => {
-    const { upsert, update, findFirst, vehicle } = mockPrisma(
+    const prisma = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T12:00:00Z'),
@@ -263,6 +256,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
         latestState: { rawPayloadJson: { obdIsPluggedIn: { value: true } } },
       }),
     );
+    const { upsert } = prisma;
     const observedAt = new Date('2026-06-28T12:05:00Z');
     upsert.mockResolvedValue({
       id: 'evt-plug',
@@ -270,14 +264,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       updatedAt: observedAt,
     });
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle,
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -292,7 +279,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('ignores short plug impulse after unplug when DIMO still disconnected', async () => {
-    const { upsert, update, findFirst, vehicle } = mockPrisma(
+    const prisma = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-07-06T13:13:34.000Z'),
@@ -302,15 +289,9 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
         latestState: { rawPayloadJson: null },
       }),
     );
+    const { upsert } = prisma;
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle,
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 189118,
@@ -324,7 +305,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('creates plug-in after prior unplug when outside impulse window', async () => {
-    const { upsert, update, findFirst, vehicle } = mockPrisma(
+    const prisma = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T11:00:00Z'),
@@ -334,6 +315,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
         latestState: { rawPayloadJson: null },
       }),
     );
+    const { upsert } = prisma;
     const observedAt = new Date('2026-06-28T12:05:00Z');
     upsert.mockResolvedValue({
       id: 'evt-plug',
@@ -341,14 +323,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       updatedAt: observedAt,
     });
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle,
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -363,7 +338,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('returns duplicate when upsert hits existing bucket', async () => {
-    const { upsert, update, findFirst, vehicle } = mockPrisma(
+    const prisma = mockPrisma(
       jest.fn().mockResolvedValue({
         eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
         observedAt: new Date('2026-06-28T11:00:00Z'),
@@ -373,6 +348,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
         latestState: { rawPayloadJson: { obdIsPluggedIn: { value: true } } },
       }),
     );
+    const { upsert, update } = prisma;
     const created = new Date('2026-06-28T12:05:00Z');
     const updated = new Date('2026-06-28T12:05:05Z');
     upsert.mockResolvedValue({
@@ -383,14 +359,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       receivedAt: created,
     });
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle,
-      } as never,
-      mockEpisodeService() as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma);
     const result = await service.ingestObdPlugStateChange({
       vehicle: { id: 'v1', organizationId: 'o1' },
       tokenId: 42,
@@ -404,7 +373,8 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('reconciles lifecycle when upsert hits existing unprocessed event', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert, update } = prisma;
     const observedAt = new Date('2026-06-28T12:00:00Z');
     const created = observedAt;
     const updated = new Date('2026-06-28T12:00:05Z');
@@ -417,14 +387,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     const episodeService = mockEpisodeService();
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
-      } as never,
-      episodeService as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma, episodeService);
 
     const result = await service.processValidatedWebhookEvent({
       vehicle: { id: 'v1', organizationId: 'o1' },
@@ -456,9 +419,11 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     const update = jest.fn();
     const episodeService = mockEpisodeService();
-    const prisma = { upsert: jest.fn(), update, findFirst: jest.fn(), findUnique, vehicle: { findUnique: jest.fn() } };
+    const prisma = mockPrisma();
+    prisma.findUnique = findUnique;
+    prisma.update = update;
 
-    const service = buildWebhookService(prisma as never, episodeService);
+    const service = buildWebhookService(prisma, episodeService);
 
     const result = await service.reconcilePersistedEventLifecycle('evt-july20');
     expect(result.outcome).toBe('historical_orphan');
@@ -467,7 +432,8 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('N9: duplicate delivery after cutover hitting historical event stays orphan', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert, update } = prisma;
     const observedAt = new Date('2026-07-20T11:05:00.000Z');
     const created = observedAt;
     const updated = new Date('2026-07-20T11:05:05.000Z');
@@ -479,10 +445,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
       receivedAt: new Date('2026-07-20T11:05:03.768Z'),
     });
     const episodeService = mockEpisodeService();
-    const service = buildWebhookService(
-      { upsert, update, findFirst, findUnique: jest.fn(), vehicle: { findUnique: jest.fn().mockResolvedValue(null) } } as never,
-      episodeService,
-    );
+    const service = buildWebhookService(prisma, episodeService);
 
     const result = await service.processValidatedWebhookEvent({
       vehicle: { id: 'v1', organizationId: 'o1' },
@@ -499,7 +462,8 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('N11: production fail-closed reconciliation does not block brand-new OBD_DEVICE_UNPLUGGED webhook', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert, update } = prisma;
     const observedAt = new Date('2026-08-26T12:00:00.000Z');
     upsert.mockResolvedValue({
       id: 'evt-brand-new',
@@ -510,11 +474,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     const episodeService = mockEpisodeService();
     const productionFailClosedPolicy = mockLifecyclePolicy(false, null);
-    const service = buildWebhookService(
-      { upsert, update, findFirst, findUnique: jest.fn(), vehicle: { findUnique: jest.fn().mockResolvedValue(null) } } as never,
-      episodeService,
-      productionFailClosedPolicy,
-    );
+    const service = buildWebhookService(prisma, episodeService, productionFailClosedPolicy);
 
     const result = await service.processValidatedWebhookEvent({
       vehicle: { id: 'v1', organizationId: 'o1' },
@@ -549,9 +509,11 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     });
     const update = jest.fn().mockResolvedValue({});
     const episodeService = mockEpisodeService();
-    const prisma = { upsert: jest.fn(), update, findFirst: jest.fn(), findUnique, vehicle: { findUnique: jest.fn() } };
+    const prisma = mockPrisma();
+    prisma.findUnique = findUnique;
+    prisma.update = update;
 
-    const service = buildWebhookService(prisma as never, episodeService);
+    const service = buildWebhookService(prisma, episodeService);
 
     const result = await service.reconcilePersistedEventLifecycle('evt-new-era');
     expect(result.outcome).toBe('reconciled');
@@ -589,7 +551,8 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
   });
 
   it('propagates episode sync failures instead of swallowing as ignored', async () => {
-    const { upsert, update, findFirst } = mockPrisma();
+    const prisma = mockPrisma();
+    const { upsert } = prisma;
     const observedAt = new Date('2026-06-28T12:00:00Z');
     upsert.mockResolvedValue({
       id: 'evt-1',
@@ -599,14 +562,7 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     const episodeService = mockEpisodeService();
     episodeService.openFromUnplugEvent.mockRejectedValue(new Error('episode db error'));
 
-    const service = new DeviceConnectionWebhookService(
-      {
-        dimoDeviceConnectionEvent: { upsert, update, findFirst },
-        vehicle: { findUnique: jest.fn().mockResolvedValue(null) },
-      } as never,
-      episodeService as never,
-      mockLifecyclePolicy() as never,
-    );
+    const service = buildWebhookService(prisma, episodeService);
 
     await expect(
       service.processValidatedWebhookEvent({
