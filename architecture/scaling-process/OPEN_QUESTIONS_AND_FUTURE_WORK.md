@@ -67,7 +67,8 @@ Do **not** treat items here as current production architecture.
 | ID | Topic | Category | Notes |
 |----|-------|----------|-------|
 | OQ-19 | nginx upstream auto-sync with PM2 | FUTURE_OPTION | Manual/config today |
-| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.10: certification gate from `2026-09-07T22:47:37Z` broke at `2026-09-08T05:01:28Z` after **22431s** (<86400); Sep 8 `17:40Z` deploy to `68495041`; current segment from `2026-09-08T17:40:39Z`; next 24h checkpoint `2026-09-09T17:40:39Z` |
+| OQ-28 | P1.8.3 post-scale retrospective / sustained N=2 soak | **PARTIAL** | P1.8.3.11 root cause: Sep 8 `05:01:28Z` break = Cloud Agent deploy `#1570`/`7b9a7857` (OPERATIONS_BOUNDARY, not N2 defect); candidate from `2026-09-08T17:40:39Z`; checkpoint `2026-09-09T17:40:39Z`; Sep 7 `05:01Z` restart mechanism incomplete |
+| OQ-31 | Deploy interlock during active OQ-28 FULL_N2 certification | OPEN_QUESTION | P1.8.3.11: Cloud Agent deploy can break soak without guard; governance gap documented — no remediation in P1.8.3.11 |
 | OQ-29 | Automated deploy CI for ops scripts | FUTURE_OPTION | Shell + unit tests exist; exact-SHA tests added |
 
 ---
