@@ -306,16 +306,25 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
   });
 
   it('durable shadow observation query supports scope/time window counts', async () => {
+    const observedAt = new Date('2026-09-12T13:00:00.000Z');
+    const binding = buildBindingScopeFromToken({
+      provider: 'DIMO',
+      tokenId: pilotFixture.tokenId,
+    });
     await writer.writeWebhookEvidence({
       organizationId: pilotFixture.org.id,
       vehicleId: pilotFixture.vehicle.id,
       provider: 'DIMO',
       tokenId: pilotFixture.tokenId,
       pluggedIn: true,
-      observedAt: new Date('2026-09-12T13:00:00.000Z'),
+      observedAt,
       rawPayload: { pluggedIn: true },
       evidenceReferenceId: 'wh-pilot-obs',
-      legacyShadow,
+      legacyShadow: {
+        ...legacyShadow,
+        bindingKey: binding.bindingKey,
+        evidenceObservedAt: observedAt,
+      },
     });
 
     const summary = await observationRepository.summarizeScopeWindow({
