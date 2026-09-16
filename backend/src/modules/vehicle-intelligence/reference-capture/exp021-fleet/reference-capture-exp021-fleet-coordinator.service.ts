@@ -4,9 +4,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { evaluateEffectivePolicyGate } from '../reference-capture-exp021-hf-policy-gate.lib';
 import { ACTIVE_REFERENCE_CAPTURE_BLOCKING_STATUSES } from '../reference-capture-prearm.policy';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
-import { EXP021_DEFAULT_TELEMETRY_FRESHNESS } from '../reference-capture-exp-021-motion.lib';
 import { ReferenceCaptureExp021FleetRepository } from './reference-capture-exp021-fleet.repository';
 import { evaluateExp021FleetEligibility } from './reference-capture-exp021-fleet-eligibility.lib';
+import {
+  parseSignalsLatestLastSeen,
+  resolveExp021FleetTelemetryFreshness,
+} from './reference-capture-exp021-fleet-freshness-resolver.lib';
 import {
   createTickShadowBalance,
   mergeDurableAndTickShadowBalance,
@@ -14,7 +17,7 @@ import {
   type Exp021FleetTickShadowBalance,
 } from './reference-capture-exp021-fleet-tick-shadow-balance.lib';
 import { phaseOrderKey } from './reference-capture-exp021-fleet-order-allocator.lib';
-import type { Exp021FleetDryRunObservation, Exp021FleetTelemetryFreshnessState } from './reference-capture-exp021-fleet.types';
+import type { Exp021FleetDryRunObservation } from './reference-capture-exp021-fleet.types';
 
 @Injectable()
 export class ReferenceCaptureExp021FleetCoordinatorService {
@@ -63,14 +66,17 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
       select: {
         id: true,
         dimoVehicle: { select: { tokenId: true, lastSignal: true } },
-        latestState: { select: { lastSeenAt: true } },
+        latestState: { select: { lastSeenAt: true, rawPayloadJson: true } },
       },
     });
 
     const resolvedTokenId = vehicle?.dimoVehicle?.tokenId ?? null;
-    const telemetryFreshness = assessTelemetryFreshness(
-      vehicle?.dimoVehicle?.lastSignal ?? vehicle?.latestState?.lastSeenAt ?? null,
-    );
+    const freshness = resolveExp021FleetTelemetryFreshness({
+      dimoLastSignal: vehicle?.dimoVehicle?.lastSignal ?? null,
+      latestStateLastSeenAt: vehicle?.latestState?.lastSeenAt ?? null,
+      signalsLatestLastSeen: parseSignalsLatestLastSeen(vehicle?.latestState?.rawPayloadJson),
+    });
+    const telemetryFreshness = freshness.telemetryFreshness;
 
     const hfGate =
       resolvedTokenId != null
@@ -127,6 +133,9 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
       eligible: eligibility.eligible,
       reasonCodes: eligibility.reasonCodes,
       telemetryFreshness,
+      freshnessTimestamp: freshness.freshnessTimestamp,
+      freshnessAuthority: freshness.freshnessAuthority,
+      freshnessAgeMs: freshness.freshnessAgeMs,
       hfPolicyAllowed: hfGate.allowed,
       hfPolicyBlocker: hfGate.blocker,
       activeSessionConflict: blockingSession != null,
@@ -137,12 +146,4 @@ export class ReferenceCaptureExp021FleetCoordinatorService {
       dryRun: true,
     };
   }
-}
-
-function assessTelemetryFreshness(lastSeen: Date | null): Exp021FleetTelemetryFreshnessState {
-  if (!lastSeen) return 'UNAVAILABLE';
-  const ageMs = Date.now() - lastSeen.getTime();
-  return ageMs <= EXP021_DEFAULT_TELEMETRY_FRESHNESS.vehicleTelemetryFreshThresholdMs
-    ? 'FRESH'
-    : 'STALE';
 }
