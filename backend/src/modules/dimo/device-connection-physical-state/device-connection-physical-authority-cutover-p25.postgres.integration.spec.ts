@@ -4,11 +4,6 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
-} from '@config/connectivity-physical-state-runtime.config';
 import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
@@ -35,6 +30,8 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import {
   cleanupPhysicalStatePostgresFixture,
   createPhysicalStatePostgresFixture,
+  disablePhysicalStateStatefulShadowEnv,
+  enablePhysicalStateStatefulShadowEnvForFixture,
   type PhysicalStatePostgresFixture,
 } from './testing/physical-state-postgres.integration.harness';
 
@@ -51,21 +48,15 @@ if (REQUIRED && !LIVE) {
   );
 }
 
-function enableStatefulShadowEnv(): void {
-  process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV] = 'false';
+function enableP25StatefulShadowEnv(fixture: PhysicalStatePostgresFixture): void {
+  enablePhysicalStateStatefulShadowEnvForFixture(fixture);
   process.env.CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID = CUTOVER_BUILD;
   process.env.SYNQDRIVE_BUILD_ID = CUTOVER_BUILD;
   configureP25TestEvidencePublicKeyring();
 }
 
-function disableStatefulShadowEnv(): void {
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV];
+function disableP25StatefulShadowEnv(): void {
+  disablePhysicalStateStatefulShadowEnv();
   disableP25CutoverRuntimeEnv();
   clearP25TestEvidencePublicKeyring();
 }
@@ -125,13 +116,13 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
   });
 
   beforeEach(async () => {
-    enableStatefulShadowEnv();
     fixture = await createPhysicalStatePostgresFixture(prisma);
+    enableP25StatefulShadowEnv(fixture);
     binding = buildBindingScopeFromToken({ provider: 'DIMO', tokenId: fixture.tokenId });
   });
 
   afterEach(async () => {
-    disableStatefulShadowEnv();
+    disableP25StatefulShadowEnv();
     await cleanupPhysicalStatePostgresFixture(prisma, fixture);
   });
 

@@ -12,6 +12,7 @@ import type {
   PhysicalStateShadowComparisonInput,
   PhysicalStateShadowComparisonResult,
 } from './physical-state-shadow-comparator.types';
+import { getShadowComparisonObservedAt } from './physical-state-shadow-comparison.clock';
 
 const EXPECTED_PHYSICAL_REJECT_DECISIONS: ReadonlySet<DeviceConnectionPhysicalTransitionDecision> =
   new Set([
@@ -180,6 +181,7 @@ export function comparePhysicalStateShadowDecisions(
     legacyEvidenceObservedAt: toIso(input.legacyEvidenceObservedAt),
     correlationId: input.correlationId ?? null,
     evidenceReferenceId: input.evidenceReferenceId ?? null,
-    observedAt: new Date().toISOString(),
+    observedAt:
+      toIso(input.comparisonObservedAt) ?? getShadowComparisonObservedAt().toISOString(),
   };
 }

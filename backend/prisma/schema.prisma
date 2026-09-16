@@ -3003,6 +3003,7 @@ model Vehicle {
   deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
   deviceConnectionPhysicalAuthorityCutovers DeviceConnectionPhysicalAuthorityCutover[]
   deviceConnectionPhysicalStateActionOutbox DeviceConnectionPhysicalStateActionOutbox[]
+  deviceConnectionPhysicalStateShadowObservations DeviceConnectionPhysicalStateShadowObservation[]
   tripDetectionState                     VehicleTripDetectionState?
   tripTrackingRuns                       VehicleTripTrackingRun[]
   tripBehaviorEvents                     TripBehaviorEvent[]
@@ -8162,6 +8163,29 @@ enum DeviceConnectionPhysicalStateActionOutboxStatus {
   FAILED
   RETRYABLE_FAILED
   DEAD_LETTER
+}
+
+model DeviceConnectionPhysicalStateShadowObservation {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  vehicleId           String   @map("vehicle_id")
+  provider            String   @default("DIMO")
+  classification      String
+  correctnessBlocking Boolean  @map("correctness_blocking")
+  authorityMode       String   @map("authority_mode")
+  legacyDecision      String   @map("legacy_decision")
+  physicalDecision    String   @map("physical_decision")
+  evidenceReferenceId String?  @map("evidence_reference_id")
+  bindingKey          String?  @map("binding_key")
+  observedAt          DateTime @map("observed_at")
+  evidenceObservedAt  DateTime? @map("evidence_observed_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, vehicleId, provider, observedAt], map: "device_connection_physical_state_shadow_obs_scope_observed_idx")
+  @@index([observedAt], map: "device_connection_physical_state_shadow_obs_observed_at_idx")
+  @@map("device_connection_physical_state_shadow_observations")
 }
 
 model DeviceConnectionPhysicalStateActionOutbox {

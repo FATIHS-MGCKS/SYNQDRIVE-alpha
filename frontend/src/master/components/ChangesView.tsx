@@ -36,6 +36,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16',
+    version: '4.9.1137',
+    title: 'VDC RB-019 P2.5 — STATEFUL_SHADOW pilot scope gate + scope-bound observability',
+    summary: [
+      'Fail-closed CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON allowlist (org + vehicle + normalized provider).',
+      'Pilot gate before ensureAuthorityRow and all physical durable writes on webhook + snapshot paths.',
+      'PHYSICAL authority bypasses pilot gate; non-pilot LEGACY scopes perform zero physical mutations when master ON.',
+      'Scope-bound shadow structured logs; low-cardinality pilot gate Prometheus counter (no org/vehicle labels).',
+      'Durable PostgreSQL shadow observations with dual clocks (comparison observedAt vs evidenceObservedAt); operational ≥7-day proof uses runtime comparison span only (PSG-TIME-1/2).',
+      'Leader-owned retention scheduler; persistence-failure metric/log without breaking legacy writer path; PSG-A..W unit + PG proof matrix.',
+    ],
+    reason:
+      'Global STATEFUL_SHADOW flags at deployed SHA would blast-radius all DIMO scopes; operational pilot proof requires scope-bound durable evidence.',
+    previousBehavior:
+      'Master + projection-write + shadow-compare applied to all eligible scopes; shadow logs/metrics lacked org/vehicle scope dimensions.',
+    details:
+      'docs/audits/vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16.md; STATEFUL_SHADOW_PILOT_ENABLEMENT_READY=NO; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-16T00:15:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p24-preseed-tooling-2026-09-14',
     version: '4.9.1130',
     title: 'VDC RB-019 Phase 2 P2.4 — physical-state pre-seed tooling (dark)',

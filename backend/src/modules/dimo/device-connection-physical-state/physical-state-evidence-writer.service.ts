@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { loadShadowPilotScopesFromEnv } from '@config/connectivity-physical-state-shadow-pilot-scope.config';
 import {
   loadConnectivityPhysicalStateRuntimeFlagConfig,
   resolveEffectivePhysicalStateRuntimePolicy,
@@ -36,6 +37,13 @@ import {
   recordPhysicalStateGtR1ExpectedFix,
   recordPhysicalStateStatefulShadowEvaluation,
 } from './physical-state-evidence-writer.metrics';
+import {
+  applyPilotGateToRuntimeFlags,
+  evaluateShadowPilotScopeGate,
+  isUnsafePilotShadowFlagConfiguration,
+} from './physical-state-shadow-pilot-scope';
+import { recordShadowPilotScopeGateObservability } from './physical-state-shadow-pilot-scope.observability';
+import type { ShadowPilotScopeGateDecision } from './physical-state-shadow-pilot-scope.types';
 import type {
   PhysicalEvidenceWriterResult,
   SnapshotEvidenceWriterInput,
@@ -66,6 +74,8 @@ export class PhysicalStateEvidenceWriterService {
     return resolveEffectivePhysicalStateRuntimePolicy({
       authorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
       flags,
+      pilotScopeAllowed: false,
+      pilotGateReason: 'DENIED_NOT_CONFIGURED',
     });
   }
 
@@ -96,18 +106,59 @@ export class PhysicalStateEvidenceWriterService {
             authorityCutoverEnabled: false,
             sideEffectsEnabled: false,
           },
+          pilotScopeAllowed: true,
+          pilotGateReason: 'BYPASSED_PHYSICAL_AUTHORITY',
         });
       }
       return this.resolveRuntimePolicyWithoutDb();
     }
 
-    const ensuredMode = await this.prisma.$transaction(async (tx) => {
-      const row = await this.authorityCutoverRepository.ensureAuthorityRow(tx, scope);
-      return row.authorityMode;
+    const pilotConfig = loadShadowPilotScopesFromEnv();
+    const pilotGate = evaluateShadowPilotScopeGate({
+      scope,
+      authorityMode,
+      pilotConfig,
     });
+    this.recordPilotGate(scope, pilotGate);
+
+    if (authorityMode === DeviceConnectionPhysicalAuthorityMode.PHYSICAL) {
+      const ensuredMode = await this.ensureAuthorityMode(scope);
+      return resolveEffectivePhysicalStateRuntimePolicy({
+        authorityMode: ensuredMode,
+        flags,
+        pilotScopeAllowed: true,
+        pilotGateReason: pilotGate.reason,
+      });
+    }
+
+    const unsafeFlagReason = isUnsafePilotShadowFlagConfiguration(flags);
+    if (unsafeFlagReason) {
+      return resolveEffectivePhysicalStateRuntimePolicy({
+        authorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
+        flags: applyPilotGateToRuntimeFlags(flags, {
+          allowed: false,
+          reason: unsafeFlagReason,
+        }),
+        pilotScopeAllowed: false,
+        pilotGateReason: unsafeFlagReason,
+      });
+    }
+
+    if (!pilotGate.allowed) {
+      return resolveEffectivePhysicalStateRuntimePolicy({
+        authorityMode: DeviceConnectionPhysicalAuthorityMode.LEGACY,
+        flags: applyPilotGateToRuntimeFlags(flags, pilotGate),
+        pilotScopeAllowed: false,
+        pilotGateReason: pilotGate.reason,
+      });
+    }
+
+    const ensuredMode = await this.ensureAuthorityMode(scope);
     return resolveEffectivePhysicalStateRuntimePolicy({
       authorityMode: ensuredMode,
       flags,
+      pilotScopeAllowed: true,
+      pilotGateReason: pilotGate.reason,
     });
   }
 
@@ -130,8 +181,8 @@ export class PhysicalStateEvidenceWriterService {
     };
     const policy = await this.resolveRuntimePolicy(scope);
 
-    if (!policy.physicalGateAuthoritative && !policy.statefulShadow && !policy.masterEnabled) {
-      return this.disabledResult(input.legacyShadow);
+    if (!this.isPhysicalWriterPathActive(policy)) {
+      return this.pilotOrDisabledResult(input.legacyShadow, policy);
     }
 
     const extracted = extractWebhookObdPhysicalEvidence({
@@ -222,7 +273,7 @@ export class PhysicalStateEvidenceWriterService {
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
-    const shadowComparison = this.maybeRecordShadowComparison({
+    const shadowComparison = await this.maybeRecordShadowComparison({
       policy,
       scope,
       legacyShadow: input.legacyShadow,
@@ -262,8 +313,8 @@ export class PhysicalStateEvidenceWriterService {
     };
     const policy = await this.resolveRuntimePolicy(scope);
 
-    if (!policy.physicalGateAuthoritative && !policy.statefulShadow && !policy.masterEnabled) {
-      return this.disabledResult(input.legacyShadow);
+    if (!this.isPhysicalWriterPathActive(policy)) {
+      return this.pilotOrDisabledResult(input.legacyShadow, policy);
     }
 
     const extracted = extractSnapshotObdPhysicalEvidenceFromSignals({
@@ -339,7 +390,7 @@ export class PhysicalStateEvidenceWriterService {
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
-    const shadowComparison = this.maybeRecordShadowComparison({
+    const shadowComparison = await this.maybeRecordShadowComparison({
       policy,
       scope,
       legacyShadow: input.legacyShadow,
@@ -444,6 +495,48 @@ export class PhysicalStateEvidenceWriterService {
     };
   }
 
+  private async ensureAuthorityMode(scope: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+  }): Promise<DeviceConnectionPhysicalAuthorityMode> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await this.authorityCutoverRepository.ensureAuthorityRow(tx, scope);
+      return row.authorityMode;
+    });
+  }
+
+  private recordPilotGate(
+    scope: { organizationId: string; vehicleId: string; provider: string },
+    decision: ShadowPilotScopeGateDecision,
+  ): void {
+    recordShadowPilotScopeGateObservability(this.metrics, scope, decision);
+  }
+
+  private isPhysicalWriterPathActive(policy: EffectivePhysicalStateRuntimePolicy): boolean {
+    return policy.physicalGateAuthoritative || policy.statefulShadow;
+  }
+
+  private pilotOrDisabledResult(
+    legacyShadow: LegacyShadowDecision,
+    policy: EffectivePhysicalStateRuntimePolicy,
+  ): PhysicalEvidenceWriterResult {
+    if (!policy.masterEnabled) {
+      return this.disabledResult(legacyShadow);
+    }
+
+    return {
+      enabled: false,
+      policy,
+      coordinatorResult: null,
+      shadowComparison: null,
+      legacyShadow,
+      physicalAccepted: false,
+      physicalDecision: 'DISABLED',
+      skippedReason: `pilot_scope_${policy.pilotGateReason.toLowerCase()}`,
+    };
+  }
+
   private disabledResult(legacyShadow: LegacyShadowDecision): PhysicalEvidenceWriterResult {
     return {
       enabled: false,
@@ -457,7 +550,7 @@ export class PhysicalStateEvidenceWriterService {
     };
   }
 
-  private maybeRecordShadowComparison(input: {
+  private async maybeRecordShadowComparison(input: {
     policy: EffectivePhysicalStateRuntimePolicy;
     scope: { organizationId: string; vehicleId: string; provider: string };
     legacyShadow: LegacyShadowDecision;
@@ -470,7 +563,7 @@ export class PhysicalStateEvidenceWriterService {
     evidenceReferenceId: string;
     gtR1Proof?: GtR1ExpectedFixProof | null;
     equalTimeOpposingState?: boolean;
-  }) {
+  }): Promise<ReturnType<typeof comparePhysicalStateShadowDecisions> | null> {
     if (!input.policy.shadowCompareEnabled) return null;
 
     if (input.policy.statefulShadow && this.metrics) {
@@ -505,7 +598,7 @@ export class PhysicalStateEvidenceWriterService {
       equalTimeOpposingState: input.equalTimeOpposingState,
     });
 
-    this.shadowObservability?.recordShadowComparison(comparison);
+    await this.shadowObservability?.recordShadowComparison(comparison);
 
     if (comparison.classification === 'EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT' && this.metrics) {
       recordPhysicalStateGtR1ExpectedFix(this.metrics, {

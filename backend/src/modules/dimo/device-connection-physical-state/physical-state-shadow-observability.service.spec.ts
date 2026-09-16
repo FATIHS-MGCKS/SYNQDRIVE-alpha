@@ -56,10 +56,23 @@ describe('PhysicalStateShadowObservabilityService', () => {
     };
   }
 
-  it('U. shadow metrics do not use high-cardinality vehicle/binding IDs as label dimensions', () => {
+  it('PSG-T shadow structured log is scope-bound', async () => {
     const metrics = createMetricsStub();
     const service = new PhysicalStateShadowObservabilityService(metrics);
-    service.recordShadowComparison(sampleResult());
+    const logSpy = jest.spyOn((service as unknown as { logger: { log: jest.Mock } }).logger, 'log');
+    await service.recordShadowComparison(sampleResult());
+    expect(logSpy).toHaveBeenCalled();
+    const payload = logSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload.event).toBe('physical_state_shadow_comparison');
+    expect(payload.organizationId).toBe('org-1');
+    expect(payload.vehicleId).toBe('veh-1');
+    expect(payload.provider).toBe('DIMO');
+  });
+
+  it('PSG-U shadow metrics do not use high-cardinality vehicle/binding IDs as label dimensions', async () => {
+    const metrics = createMetricsStub();
+    const service = new PhysicalStateShadowObservabilityService(metrics);
+    await service.recordShadowComparison(sampleResult());
 
     const labelKeys = new Set<string>();
     for (const call of metrics.evaluationInc.mock.calls) {
@@ -75,10 +88,10 @@ describe('PhysicalStateShadowObservabilityService', () => {
     expect(labelKeys.has('authority_mode')).toBe(true);
   });
 
-  it('records correctness blocker metric for blocking classifications', () => {
+  it('records correctness blocker metric for blocking classifications', async () => {
     const metrics = createMetricsStub();
     const service = new PhysicalStateShadowObservabilityService(metrics);
-    service.recordShadowComparison(
+    await service.recordShadowComparison(
       sampleResult({
         classification: PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
         correctnessBlocking: true,
@@ -86,5 +99,47 @@ describe('PhysicalStateShadowObservabilityService', () => {
     );
 
     expect(metrics.blockerInc).toHaveBeenCalled();
+  });
+
+  it('logs and metrics persistence failures without rethrowing', async () => {
+    const persistenceFailureInc = jest.fn();
+    const metrics = {
+      connectivityPhysicalStateShadowEvaluationTotal: { inc: jest.fn() },
+      connectivityPhysicalStateShadowClassificationTotal: { inc: jest.fn() },
+      connectivityPhysicalStateShadowCorrectnessBlockerTotal: { inc: jest.fn() },
+      connectivityPhysicalStateShadowObservationPersistenceFailureTotal: {
+        inc: persistenceFailureInc,
+      },
+    } as unknown as TripMetricsService;
+    const observationRepository = {
+      recordComparison: jest.fn().mockRejectedValue(new Error('insert failed')),
+    } as unknown as import('./physical-state-shadow-observation.repository').PhysicalStateShadowObservationRepository;
+    const service = new PhysicalStateShadowObservabilityService(metrics, observationRepository);
+    const errorSpy = jest.spyOn((service as unknown as { logger: { error: jest.Mock } }).logger, 'error');
+
+    const outcome = await service.recordShadowComparison(sampleResult());
+
+    expect(outcome).toEqual({ persisted: false });
+    expect(persistenceFailureInc).toHaveBeenCalledWith({ provider: 'DIMO' });
+    expect(errorSpy).toHaveBeenCalled();
+    const payload = errorSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload.event).toBe('physical_state_shadow_observation_persistence_failed');
+  });
+
+  it('PSG-U pilot gate metrics remain low-cardinality', () => {
+    const pilotGateInc = jest.fn();
+    const metrics = {
+      connectivityPhysicalStateShadowPilotScopeGateTotal: { inc: pilotGateInc },
+    } as unknown as TripMetricsService;
+    const { recordShadowPilotScopeGateObservability } = require('./physical-state-shadow-pilot-scope.observability');
+    recordShadowPilotScopeGateObservability(metrics, {
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      provider: 'DIMO',
+    }, { allowed: false, reason: 'DENIED_SCOPE_NOT_ALLOWLISTED' });
+    const labels = pilotGateInc.mock.calls[0]?.[0] as Record<string, string>;
+    expect(labels.organizationId).toBeUndefined();
+    expect(labels.vehicleId).toBeUndefined();
+    expect(labels.provider).toBe('DIMO');
   });
 });

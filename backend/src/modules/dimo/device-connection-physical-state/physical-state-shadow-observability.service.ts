@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   isExpectedFixClassification,
@@ -9,15 +9,21 @@ import {
   recordPhysicalStateShadowClassification,
   recordPhysicalStateShadowCorrectnessBlocker,
   recordPhysicalStateShadowEvaluation,
+  recordPhysicalStateShadowObservationPersistenceFailure,
 } from './physical-state-shadow.metrics';
+import { PhysicalStateShadowObservationRepository } from './physical-state-shadow-observation.repository';
 
 export type PhysicalStateShadowLogContext = {
+  organizationId: string;
+  vehicleId: string;
+  provider: string;
   classification: PhysicalStateShadowClassification;
   correctnessBlocking: boolean;
-  provider: string;
   authorityMode: string;
   legacyDecision: 'accept' | 'reject';
   physicalDecision: 'accept' | 'reject';
+  observedAt: string;
+  evidenceObservedAt?: string | null;
   legacyReason?: string | null;
   physicalReason?: string | null;
   correlationId?: string | null;
@@ -26,16 +32,22 @@ export type PhysicalStateShadowLogContext = {
 };
 
 /**
- * Structured shadow observability — compare-only; no persistence side effects.
+ * Structured shadow observability — compare-only durable pilot evidence.
  * Per-event identifiers may appear in logs but never as Prometheus label dimensions.
  */
 @Injectable()
 export class PhysicalStateShadowObservabilityService {
   private readonly logger = new Logger(PhysicalStateShadowObservabilityService.name);
 
-  constructor(private readonly metrics: TripMetricsService) {}
+  constructor(
+    private readonly metrics: TripMetricsService,
+    @Optional()
+    private readonly observationRepository?: PhysicalStateShadowObservationRepository,
+  ) {}
 
-  recordShadowComparison(result: PhysicalStateShadowComparisonResult): void {
+  async recordShadowComparison(
+    result: PhysicalStateShadowComparisonResult,
+  ): Promise<{ persisted: boolean }> {
     const metricDimensions = {
       classification: result.classification,
       authority_mode: result.authorityMode,
@@ -52,30 +64,64 @@ export class PhysicalStateShadowObservabilityService {
     }
 
     this.logComparison({
+      organizationId: result.scope.organizationId,
+      vehicleId: result.scope.vehicleId,
+      provider: result.scope.provider,
       classification: result.classification,
       correctnessBlocking: result.correctnessBlocking,
-      provider: result.scope.provider,
-      authorityMode: result.authorityMode,
+      authorityMode: String(result.authorityMode),
       legacyDecision: result.legacyDecision.accepted ? 'accept' : 'reject',
       physicalDecision: result.physicalDecision.accepted ? 'accept' : 'reject',
+      observedAt: result.observedAt,
+      evidenceObservedAt: result.evidenceObservedAt,
       legacyReason: result.legacyReason,
       physicalReason: result.physicalReason,
       correlationId: result.correlationId,
       evidenceReferenceId: result.evidenceReferenceId,
       bindingKey: result.bindingKey,
     });
+
+    if (!this.observationRepository) {
+      return { persisted: false };
+    }
+
+    try {
+      await this.observationRepository.recordComparison(result);
+      return { persisted: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      recordPhysicalStateShadowObservationPersistenceFailure(this.metrics, {
+        provider: result.scope.provider,
+      });
+      this.logger.error({
+        msg: 'physical_state_shadow_observation_persistence_failed',
+        event: 'physical_state_shadow_observation_persistence_failed',
+        organizationId: result.scope.organizationId,
+        vehicleId: result.scope.vehicleId,
+        provider: result.scope.provider,
+        evidenceReferenceId: result.evidenceReferenceId ?? undefined,
+        comparisonObservedAt: result.observedAt,
+        evidenceObservedAt: result.evidenceObservedAt ?? undefined,
+        error: message,
+      });
+      return { persisted: false };
+    }
   }
 
   logComparison(ctx: PhysicalStateShadowLogContext): void {
     const logPayload = {
       msg: this.resolveLogMessage(ctx.classification),
       event: 'physical_state_shadow_comparison',
+      organizationId: ctx.organizationId,
+      vehicleId: ctx.vehicleId,
+      provider: ctx.provider,
       classification: ctx.classification,
       correctnessBlocking: ctx.correctnessBlocking,
-      provider: ctx.provider,
       authorityMode: ctx.authorityMode,
       legacyDecision: ctx.legacyDecision,
       physicalDecision: ctx.physicalDecision,
+      observedAt: ctx.observedAt,
+      evidenceObservedAt: ctx.evidenceObservedAt ?? undefined,
       legacyReason: ctx.legacyReason ?? undefined,
       physicalReason: ctx.physicalReason ?? undefined,
       correlationId: ctx.correlationId ?? undefined,
