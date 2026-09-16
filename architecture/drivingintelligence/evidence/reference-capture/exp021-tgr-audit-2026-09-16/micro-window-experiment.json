@@ -1,0 +1,40 @@
+{
+  "evidenceId": "EXP-021-TGR-MICRO-WINDOW-EXPERIMENT",
+  "auditExecutedAt": "2026-09-16T09:59:44.184Z",
+  "mode": "READ_ONLY_DIMO_HISTORICAL",
+  "tokenId": 187336,
+  "field": "speed",
+  "interval": "1s",
+  "aggregation": "AVG",
+  "querySemantics": "buildBroadReferenceHistoricalSignalsQuery equivalent (speed(agg: AVG))",
+  "generalizationClaim": "NO — results apply only to tested Run 1 known-good HF control windows; do not generalize to all DIMO windows",
+  "MICRO_WINDOW_RECOVERY_EFFECT_OBSERVED": "NO",
+  "interpretation": "On tested historical known-good HF windows, subdividing the query did not increase the retrievable bucket-identity union",
+  "controls": {
+    "hf60": {
+      "controlId": "PC-HF60-NATIVE-SLOT2",
+      "windowFrom": "2026-09-15T11:50:02.945Z",
+      "windowTo": "2026-09-15T11:51:08.366Z",
+      "fullWindowBucketIdentityCount": 10,
+      "partitions": {
+        "30s": { "unionBucketIdentityCount": 10, "queryCount": 3, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "15s": { "unionBucketIdentityCount": 10, "queryCount": 5, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "10s": { "unionBucketIdentityCount": 10, "queryCount": 7, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "5s": { "unionBucketIdentityCount": 10, "queryCount": 14, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 }
+      }
+    },
+    "hf90": {
+      "controlId": "PC-HF90-NATIVE-SLOT4",
+      "windowFrom": "2026-09-15T11:43:22.504Z",
+      "windowTo": "2026-09-15T11:44:55.707Z",
+      "fullWindowBucketIdentityCount": 6,
+      "partitions": {
+        "30s": { "unionBucketIdentityCount": 6, "queryCount": 3, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "15s": { "unionBucketIdentityCount": 6, "queryCount": 5, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "10s": { "unionBucketIdentityCount": 6, "queryCount": 7, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 },
+        "5s": { "unionBucketIdentityCount": 6, "queryCount": 14, "classification": "SAME_COVERAGE", "unionExtraVsFull": 0 }
+      }
+    }
+  },
+  "sourceArtifact": "source/tgr-micro-window-results.json"
+}
