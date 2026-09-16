@@ -1,4 +1,5 @@
 import { DeviceConnectionPhysicalAuthorityMode } from '@prisma/client';
+import type { ShadowPilotScopeGateReason } from './physical-state-shadow-pilot-scope.types';
 
 /** Canonical gate path selected by latched authority mode — not by sub-flags. */
 export enum PhysicalStateCanonicalGate {
@@ -27,4 +28,7 @@ export type EffectivePhysicalStateRuntimePolicy = {
   statefulShadow: boolean;
   legacyGateAuthoritative: boolean;
   physicalGateAuthoritative: boolean;
+  /** LEGACY pilot allowlist decision — PHYSICAL scopes bypass via BYPASSED_PHYSICAL_AUTHORITY. */
+  pilotScopeAllowed: boolean;
+  pilotGateReason: ShadowPilotScopeGateReason;
 };

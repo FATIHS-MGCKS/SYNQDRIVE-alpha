@@ -59,6 +59,8 @@ export function loadConnectivityPhysicalStateRuntimeFlagConfig(
 export function resolveEffectivePhysicalStateRuntimePolicy(input: {
   authorityMode: DeviceConnectionPhysicalAuthorityMode;
   flags: ConnectivityPhysicalStateRuntimeFlagConfig;
+  pilotScopeAllowed?: boolean;
+  pilotGateReason?: EffectivePhysicalStateRuntimePolicy['pilotGateReason'];
 }): EffectivePhysicalStateRuntimePolicy {
   const canonicalGate = resolveCanonicalGate(input.authorityMode);
   const {
@@ -69,8 +71,12 @@ export function resolveEffectivePhysicalStateRuntimePolicy(input: {
     sideEffectsEnabled,
   } = input.flags;
 
+  const pilotScopeAllowed = input.pilotScopeAllowed ?? true;
+  const pilotGateReason = input.pilotGateReason ?? 'ALLOWED';
+
   const statefulShadow =
     input.authorityMode === DeviceConnectionPhysicalAuthorityMode.LEGACY &&
+    pilotScopeAllowed &&
     projectionWriteEnabled &&
     shadowCompareEnabled &&
     !sideEffectsEnabled;
@@ -86,6 +92,8 @@ export function resolveEffectivePhysicalStateRuntimePolicy(input: {
     statefulShadow,
     legacyGateAuthoritative: canonicalGate === PhysicalStateCanonicalGate.LEGACY,
     physicalGateAuthoritative: canonicalGate === PhysicalStateCanonicalGate.PHYSICAL,
+    pilotScopeAllowed,
+    pilotGateReason,
   };
 }
 

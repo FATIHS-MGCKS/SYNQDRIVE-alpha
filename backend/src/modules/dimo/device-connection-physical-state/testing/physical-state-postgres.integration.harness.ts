@@ -1,5 +1,18 @@
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import {
+  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV,
+  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV,
+  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
+} from '@config/connectivity-physical-state-runtime.config';
+import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
+import { CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON_ENV } from '@config/connectivity-physical-state-shadow-pilot-scope.config';
+
+export type PhysicalStatePilotScopeEntry = {
+  organizationId: string;
+  vehicleId: string;
+  provider: string;
+};
 
 export type PhysicalStatePostgresFixture = {
   suffix: string;
@@ -57,10 +70,51 @@ export async function createPhysicalStatePostgresFixture(
   return { suffix, org, vehicle, tokenId };
 }
 
+export function pilotScopeForFixture(
+  fixture: PhysicalStatePostgresFixture,
+  provider = 'DIMO',
+): PhysicalStatePilotScopeEntry {
+  return {
+    organizationId: fixture.org.id,
+    vehicleId: fixture.vehicle.id,
+    provider,
+  };
+}
+
+export function enablePhysicalStateStatefulShadowEnv(
+  pilotScopes: PhysicalStatePilotScopeEntry[] = [],
+): void {
+  process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV] = 'true';
+  process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV] = 'true';
+  process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV] = 'true';
+  process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV] = 'false';
+  process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON_ENV] = JSON.stringify(
+    pilotScopes,
+  );
+}
+
+export function enablePhysicalStateStatefulShadowEnvForFixture(
+  fixture: PhysicalStatePostgresFixture,
+  provider = 'DIMO',
+): void {
+  enablePhysicalStateStatefulShadowEnv([pilotScopeForFixture(fixture, provider)]);
+}
+
+export function disablePhysicalStateStatefulShadowEnv(): void {
+  delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
+  delete process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV];
+  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV];
+  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV];
+  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON_ENV];
+}
+
 export async function cleanupPhysicalStatePostgresFixture(
   prisma: PrismaClient,
   fixture: PhysicalStatePostgresFixture,
 ): Promise<void> {
+  await prisma.deviceConnectionPhysicalStateShadowObservation.deleteMany({
+    where: { vehicleId: fixture.vehicle.id },
+  });
   await prisma.deviceConnectionPhysicalStateActionOutbox.deleteMany({
     where: { vehicleId: fixture.vehicle.id },
   });

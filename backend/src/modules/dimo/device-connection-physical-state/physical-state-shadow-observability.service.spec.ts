@@ -56,7 +56,20 @@ describe('PhysicalStateShadowObservabilityService', () => {
     };
   }
 
-  it('U. shadow metrics do not use high-cardinality vehicle/binding IDs as label dimensions', () => {
+  it('PSG-T shadow structured log is scope-bound', () => {
+    const metrics = createMetricsStub();
+    const service = new PhysicalStateShadowObservabilityService(metrics);
+    const logSpy = jest.spyOn((service as unknown as { logger: { log: jest.Mock } }).logger, 'log');
+    service.recordShadowComparison(sampleResult());
+    expect(logSpy).toHaveBeenCalled();
+    const payload = logSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload.event).toBe('physical_state_shadow_comparison');
+    expect(payload.organizationId).toBe('org-1');
+    expect(payload.vehicleId).toBe('veh-1');
+    expect(payload.provider).toBe('DIMO');
+  });
+
+  it('PSG-U shadow metrics do not use high-cardinality vehicle/binding IDs as label dimensions', () => {
     const metrics = createMetricsStub();
     const service = new PhysicalStateShadowObservabilityService(metrics);
     service.recordShadowComparison(sampleResult());
@@ -86,5 +99,22 @@ describe('PhysicalStateShadowObservabilityService', () => {
     );
 
     expect(metrics.blockerInc).toHaveBeenCalled();
+  });
+
+  it('PSG-U pilot gate metrics remain low-cardinality', () => {
+    const pilotGateInc = jest.fn();
+    const metrics = {
+      connectivityPhysicalStateShadowPilotScopeGateTotal: { inc: pilotGateInc },
+    } as unknown as TripMetricsService;
+    const { recordShadowPilotScopeGateObservability } = require('./physical-state-shadow-pilot-scope.observability');
+    recordShadowPilotScopeGateObservability(metrics, {
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      provider: 'DIMO',
+    }, { allowed: false, reason: 'DENIED_SCOPE_NOT_ALLOWLISTED' });
+    const labels = pilotGateInc.mock.calls[0]?.[0] as Record<string, string>;
+    expect(labels.organizationId).toBeUndefined();
+    expect(labels.vehicleId).toBeUndefined();
+    expect(labels.provider).toBe('DIMO');
   });
 });

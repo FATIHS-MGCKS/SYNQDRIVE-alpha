@@ -19,6 +19,7 @@
 | VDC-EVID-RB019-P25-ENTRY-GATE-001 | RB-019 Phase 2 P2.5 entry-gate / cutover-readiness audit (no implementation) | AUDIT_DOCUMENT | P2_5_ENTRY_GATE_AUDIT_COMPLETE | [../../../docs/audits/vdc-rb019-p25-entry-gate-readiness-2026-09-14.md](../../../docs/audits/vdc-rb019-p25-entry-gate-readiness-2026-09-14.md) |
 | VDC-EVID-RB019-P25-CUTOVER-RUNTIME-001 | RB-019 Phase 2 P2.5 authority cutover runtime foundation | CURRENT_CODE + TEST | P2_5_IMPLEMENTATION_PRESENT / CUTOVER_ACTIVATION_NOT_PROVEN | [PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md](./PHYSICAL_STATE_P25_AUTHORITY_CUTOVER_RUNTIME_2026-09-14.md) |
 | VDC-EVID-RB019-P25-ACTIVATION-READINESS-001 | RB-019 Phase 2 P2.5 cutover activation readiness / operational proof audit | AUDIT_DOCUMENT + PRODUCTION_OBSERVATION | CUTOVER_ACTIVATION_NOT_PROVEN | [../../../docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md](../../../docs/audits/vdc-rb019-p25-cutover-activation-readiness-2026-09-15.md) |
+| VDC-EVID-RB019-P25-SHADOW-PILOT-GATE-001 | RB-019 Phase 2 P2.5 STATEFUL_SHADOW pilot scope gate + scope-bound observability | CURRENT_CODE + TEST | P2_5_SHADOW_PILOT_GATE_IMPLEMENTATION_PRESENT | [PHYSICAL_STATE_P25_SHADOW_PILOT_SCOPE_GATE_2026-09-16.md](./PHYSICAL_STATE_P25_SHADOW_PILOT_SCOPE_GATE_2026-09-16.md) |
 
 ## Code evidence (repository — bootstrap index)
 
