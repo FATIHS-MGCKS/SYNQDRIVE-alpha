@@ -24,6 +24,11 @@ export type Exp021FleetTelemetryFreshnessState =
   | 'UNAVAILABLE'
   | 'NOT_CHECKED';
 
+export type Exp021FleetFreshnessAuthority =
+  | 'DIMO_LAST_SIGNAL'
+  | 'LATEST_STATE_LAST_SEEN_AT'
+  | 'SIGNALS_LATEST_PROVIDER_TIMESTAMP';
+
 export type Exp021FleetMinimumMatrixConfig = {
   minValidCompleteRunsPerVehicle: number;
   min9060Runs: number;
@@ -80,6 +85,9 @@ export type Exp021FleetDryRunObservation = {
   eligible: boolean;
   reasonCodes: Exp021FleetEligibilityReasonCode[];
   telemetryFreshness: Exp021FleetTelemetryFreshnessState;
+  freshnessTimestamp: string | null;
+  freshnessAuthority: Exp021FleetFreshnessAuthority | null;
+  freshnessAgeMs: number | null;
   hfPolicyAllowed: boolean;
   hfPolicyBlocker?: string;
   activeSessionConflict: boolean;

@@ -732,6 +732,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Cadence authority | **NO** — `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
 | Runtime / prod | **NO CHANGES** |
 
+### EXP-021 — Stage-1A Path-B remediation: freshness authority + deploy capability guard (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Fix two independent Stage-1A blockers proven on KS MX 2024 first real drive (2026-09-16 11:42–12:05Z); **no production deploy**, **no auto-execution** |
+| Blocker A | Production redeployed `2c862b69` (PR-C coordinator) → `295635fc` (#1665) at ~07:56Z while `EXP021_FLEET_COORDINATOR_ENABLED=true` remained set — coordinator code absent from running artifact |
+| Blocker B | Fleet coordinator used `dimoVehicle.lastSignal ?? latestState.lastSeenAt`; stale non-null `lastSignal` masked fresher `vehicle_latest_states.last_seen_at` |
+| Freshness resolver | `resolveExp021FleetTelemetryFreshness()` — newest valid provider-backed timestamp among `LATEST_STATE_LAST_SEEN_AT`, `SIGNALS_LATEST_PROVIDER_TIMESTAMP`, `DIMO_LAST_SIGNAL`; fail-closed future skew via `DIAGNOSTIC_MAX_FUTURE_SKEW_MS` |
+| Provenance | Dry-run observations expose `freshnessTimestamp`, `freshnessAuthority`, `freshnessAgeMs` |
+| Deploy guard | `reference-capture-exp021-fleet-deploy-preflight.sh` + `evaluateExp021FleetDeployCapability()` — when coordinator enabled, require source+dist scheduler/service + workers.module registration; wired into `vps-deploy-release.sh` post-build |
+| Real-drive fixture | `lastSignal=2026-09-15T20:56:14Z`, `lastSeenAt=2026-09-16T12:05:15Z` → `FRESH` / `eligible=true` in dry-run (non-mutating) |
+| Run 1 / cadence | **UNCHANGED** — 90s 7/7, 60s 9/10; `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+| PR-D / auto-exec | **NOT IMPLEMENTED** |
+
 ### EXP-021 — canonical autonomous lifecycle driver + real-path regression (2026-09-14, PR #1649)
 
 | Event | Detail |

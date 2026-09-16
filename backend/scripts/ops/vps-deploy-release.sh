@@ -104,6 +104,9 @@ sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
 
+echo "==> EXP-021 fleet coordinator deploy capability preflight"
+bash "$RELEASE_DIR/backend/scripts/ops/reference-capture-exp021-fleet-deploy-preflight.sh" "$RELEASE_DIR"
+
 echo "==> Frontend install/build"
 cd "$RELEASE_DIR/frontend"
 npm ci
