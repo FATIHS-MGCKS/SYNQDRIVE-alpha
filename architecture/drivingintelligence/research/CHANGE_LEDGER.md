@@ -700,6 +700,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — Live Maturation Shadow design (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Design-only specification for live maturation shadow experiment (pre-TGR retry-age authority) |
+| Document | `architecture/drivingintelligence/research/EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Inputs | Frozen gap-replay + TGR audit evidence packages |
+| Lanes | HF_FAST_LOOP (preflight-resolved) + SETTLEMENT_SHADOW (manifest 33 fields) — separate curves |
+| Ages | Dense pilot: 8s policy + 30/40/45/50/55/60/90/120s |
+| Geometry | 60s + 90s query ranges (not cadence authority) |
+| Production | **NO** — `FUTURE_SHADOW_DEFAULT_ENABLED=NO`, `PRODUCTION_RETRY_AGE_SELECTED=NO` |
+| Runtime / Prisma | **NO CHANGES** |
+
 ### EXP-021 — TGR architecture audit evidence freeze (2026-09-16)
 
 | Event | Detail |
