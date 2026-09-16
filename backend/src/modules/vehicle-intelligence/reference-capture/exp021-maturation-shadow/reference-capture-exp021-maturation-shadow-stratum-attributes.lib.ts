@@ -1,5 +1,6 @@
 import type { Exp021MaturationShadowWindow } from '@prisma/client';
 import type { Exp021MaturationShadowStratumImmutableAttributes } from './reference-capture-exp021-maturation-shadow.types';
+import { jsonValuesSemanticallyEqual } from './reference-capture-exp021-maturation-shadow-validation.lib';
 
 const IMMUTABLE_STRATUM_ATTRIBUTE_KEYS: (keyof Exp021MaturationShadowStratumImmutableAttributes)[] = [
   'windowFrom',
@@ -16,6 +17,7 @@ const IMMUTABLE_STRATUM_ATTRIBUTE_KEYS: (keyof Exp021MaturationShadowStratumImmu
   'manifestIdentifier',
   'manifestHash',
   'runtimeBuildShaAtEnrollment',
+  'activityClassificationJson',
 ];
 
 function normalizeStringArray(values: string[]): string[] {
@@ -33,6 +35,9 @@ function valuesEqual(a: unknown, b: unknown): boolean {
     return left.every((value, index) => value === right[index]);
   }
   if (a === null || a === undefined) return b === null || b === undefined;
+  if (typeof a === 'object' || typeof b === 'object') {
+    return jsonValuesSemanticallyEqual(a, b);
+  }
   return a === b;
 }
 

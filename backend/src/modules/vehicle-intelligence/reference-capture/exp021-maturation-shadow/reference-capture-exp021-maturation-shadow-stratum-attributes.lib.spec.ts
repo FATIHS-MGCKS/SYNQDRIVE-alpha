@@ -49,4 +49,32 @@ describe('EXP-021 maturation shadow stratum immutable attributes', () => {
     const proposed = { ...existing };
     expect(findStratumImmutableAttributeMismatches(existing, proposed)).toEqual([]);
   });
+
+  it('treats activityClassificationJson with reversed key order as equal', () => {
+    const existing = extractStratumImmutableAttributes(
+      buildStratumRow({
+        activityClassificationJson: { class: 'ACTIVE_MOTION', source: 'X' },
+      }),
+    );
+    const proposed = {
+      ...existing,
+      activityClassificationJson: { source: 'X', class: 'ACTIVE_MOTION' },
+    };
+    expect(findStratumImmutableAttributeMismatches(existing, proposed)).toEqual([]);
+  });
+
+  it('detects materially changed activityClassificationJson', () => {
+    const existing = extractStratumImmutableAttributes(
+      buildStratumRow({
+        activityClassificationJson: { class: 'ACTIVE_MOTION', source: 'X' },
+      }),
+    );
+    const proposed = {
+      ...existing,
+      activityClassificationJson: { class: 'IDLE', source: 'X' },
+    };
+    expect(findStratumImmutableAttributeMismatches(existing, proposed)).toContain(
+      'activityClassificationJson',
+    );
+  });
 });

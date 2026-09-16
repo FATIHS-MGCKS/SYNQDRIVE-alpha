@@ -10,12 +10,17 @@ import {
   findStratumImmutableAttributeMismatches,
 } from './reference-capture-exp021-maturation-shadow-stratum-attributes.lib';
 import type {
-  Exp021MaturationShadowAttemptAnalyticalDerivatives,
   Exp021MaturationShadowAttemptRawFacts,
   Exp021MaturationShadowFamilyIdentity,
   Exp021MaturationShadowStratumIdentity,
   Exp021MaturationShadowStratumImmutableAttributes,
 } from './reference-capture-exp021-maturation-shadow.types';
+import {
+  assertAttemptParentAuthority,
+  assertFamilyScheduleMatchesPersisted,
+  assertPlannedAgeOnFamilySchedule,
+  assertProviderOutcomeConsistency,
+} from './reference-capture-exp021-maturation-shadow-validation.lib';
 
 function isUniqueConstraintViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
@@ -27,6 +32,14 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
 
   private client(tx?: Prisma.TransactionClient): PrismaService | Prisma.TransactionClient {
     return tx ?? this.prisma;
+  }
+
+  private resolveExistingFamilySchedule<T extends { plannedAgesMsExact: number[]; policyDelayProbeMs: number }>(
+    existing: T,
+    proposed: { plannedAgesMsExact: number[]; policyDelayProbeMs: number },
+  ): T {
+    assertFamilyScheduleMatchesPersisted(existing, proposed);
+    return existing;
   }
 
   /**
@@ -53,9 +66,14 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
       },
     };
 
+    const scheduleSemantics = {
+      plannedAgesMsExact: input.plannedAgesMsExact,
+      policyDelayProbeMs: input.policyDelayProbeMs,
+    };
+
     const existing = await db.exp021MaturationShadowWindowFamily.findUnique({ where: uniqueWhere });
     if (existing) {
-      return existing;
+      return this.resolveExistingFamilySchedule(existing, scheduleSemantics);
     }
 
     try {
@@ -80,7 +98,7 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
       if (!raced) {
         throw error;
       }
-      return raced;
+      return this.resolveExistingFamilySchedule(raced, scheduleSemantics);
     }
   }
 
@@ -176,6 +194,17 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
       return existing;
     }
 
+    const stratum = await db.exp021MaturationShadowWindow.findUnique({
+      where: { id: input.windowStratumId },
+      include: { family: true },
+    });
+    if (!stratum) {
+      throw new Exp021MaturationShadowStratumSemanticMismatchError(
+        `Window stratum not found: ${input.windowStratumId}`,
+      );
+    }
+    assertPlannedAgeOnFamilySchedule(stratum.family, input.plannedAgeMs);
+
     try {
       return await db.exp021MaturationShadowObservationSlot.create({
         data: {
@@ -203,16 +232,53 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
     input: {
       observationSlotId: string;
       rawFacts: Exp021MaturationShadowAttemptRawFacts;
-      analyticalDerivatives?: Exp021MaturationShadowAttemptAnalyticalDerivatives;
     },
     tx?: Prisma.TransactionClient,
   ) {
     const run = async (client: Prisma.TransactionClient) => {
+      const slot = await client.exp021MaturationShadowObservationSlot.findUnique({
+        where: { id: input.observationSlotId },
+        include: {
+          stratum: {
+            include: { family: true },
+          },
+        },
+      });
+      if (!slot) {
+        throw new Exp021MaturationShadowAttemptImmutabilityError(
+          `Observation slot not found: ${input.observationSlotId}`,
+        );
+      }
+
       await client.$executeRaw`
         SELECT id FROM exp021_maturation_shadow_observation_slots
         WHERE id = ${input.observationSlotId}
         FOR UPDATE
       `;
+
+      const providerBucketCount =
+        input.rawFacts.providerOutcomeClass === 'PROVIDER_ERROR'
+          ? null
+          : input.rawFacts.uniqueBucketLocusCount ?? null;
+
+      assertProviderOutcomeConsistency({
+        providerRequestSucceeded: input.rawFacts.providerRequestSucceeded,
+        providerOutcomeClass: input.rawFacts.providerOutcomeClass,
+        providerErrorClass: input.rawFacts.providerErrorClass,
+        uniqueBucketLocusCount: providerBucketCount,
+      });
+
+      const authority = assertAttemptParentAuthority({
+        slotPlannedAgeMs: slot.plannedAgeMs,
+        proposedPlannedAgeMs: input.rawFacts.plannedAgeMs,
+        stratumQuerySemanticsHash: slot.stratum.querySemanticsHash,
+        stratumSignalSetHash: slot.stratum.signalSetHash,
+        proposedQuerySemanticsHash: input.rawFacts.querySemanticsHash,
+        proposedSignalSetHash: input.rawFacts.signalSetHash,
+        requestStartedAt: input.rawFacts.requestStartedAt,
+        requestCompletedAt: input.rawFacts.requestCompletedAt,
+        windowTo: slot.stratum.windowTo,
+      });
 
       const maxOrdinal = await client.exp021MaturationShadowObservationAttempt.aggregate({
         where: { observationSlotId: input.observationSlotId },
@@ -224,19 +290,19 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
         data: {
           observationSlotId: input.observationSlotId,
           attemptOrdinal,
-          plannedAgeMs: input.rawFacts.plannedAgeMs,
-          actualAgeMs: input.rawFacts.actualAgeMs,
-          schedulerDriftMs: input.rawFacts.schedulerDriftMs,
+          plannedAgeMs: slot.plannedAgeMs,
+          actualAgeMs: authority.actualAgeMs,
+          schedulerDriftMs: authority.schedulerDriftMs,
           requestStartedAt: input.rawFacts.requestStartedAt,
           requestCompletedAt: input.rawFacts.requestCompletedAt ?? null,
           runtimeBuildSha: input.rawFacts.runtimeBuildSha,
-          querySemanticsHash: input.rawFacts.querySemanticsHash,
-          signalSetHash: input.rawFacts.signalSetHash,
+          querySemanticsHash: authority.querySemanticsHash,
+          signalSetHash: authority.signalSetHash,
           providerRequestSucceeded: input.rawFacts.providerRequestSucceeded,
           providerOutcomeClass: input.rawFacts.providerOutcomeClass,
           providerStatus: input.rawFacts.providerStatus ?? null,
           providerErrorClass: input.rawFacts.providerErrorClass ?? null,
-          uniqueBucketLocusCount: input.rawFacts.uniqueBucketLocusCount ?? null,
+          uniqueBucketLocusCount: providerBucketCount,
           uniqueTemporalBucketStartCount: input.rawFacts.uniqueTemporalBucketStartCount ?? null,
           perFieldRowCountJson: input.rawFacts.perFieldRowCountJson,
           perFieldBucketLocusCountJson: input.rawFacts.perFieldBucketLocusCountJson,
@@ -248,13 +314,10 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
           payloadRevisionCount: input.rawFacts.payloadRevisionCount ?? null,
           changedPayloadLocusCount: input.rawFacts.changedPayloadLocusCount ?? null,
           nearestPriorAgeBucketDeltaMs: input.rawFacts.nearestPriorAgeBucketDeltaMs ?? null,
-          newBucketLociVsPriorAge: input.analyticalDerivatives?.newBucketLociVsPriorAge ?? null,
-          missingPriorBucketLociAtThisAge:
-            input.analyticalDerivatives?.missingPriorBucketLociAtThisAge ?? null,
-          cumulativeBucketLocusUnionCount:
-            input.analyticalDerivatives?.cumulativeBucketLocusUnionCount ?? null,
-          bucketLocusCoverageRatioVsFinalObservedUnion:
-            input.analyticalDerivatives?.bucketLocusCoverageRatioVsFinalObservedUnion ?? null,
+          newBucketLociVsPriorAge: null,
+          missingPriorBucketLociAtThisAge: null,
+          cumulativeBucketLocusUnionCount: null,
+          bucketLocusCoverageRatioVsFinalObservedUnion: null,
           queryProvenanceJson: input.rawFacts.queryProvenanceJson,
         },
       });

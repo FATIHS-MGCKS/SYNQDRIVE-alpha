@@ -51,8 +51,6 @@ export type Exp021MaturationShadowStratumImmutableAttributes = {
 
 export type Exp021MaturationShadowAttemptRawFacts = {
   plannedAgeMs: number;
-  actualAgeMs: number;
-  schedulerDriftMs: number;
   requestStartedAt: Date;
   requestCompletedAt?: Date | null;
   runtimeBuildSha: string;
@@ -75,16 +73,6 @@ export type Exp021MaturationShadowAttemptRawFacts = {
   changedPayloadLocusCount?: number | null;
   nearestPriorAgeBucketDeltaMs?: number | null;
   queryProvenanceJson?: Prisma.InputJsonValue;
-};
-
-/**
- * Post-hoc analytical derivatives — nullable at insert; populated by future analysis only.
- */
-export type Exp021MaturationShadowAttemptAnalyticalDerivatives = {
-  newBucketLociVsPriorAge?: number | null;
-  missingPriorBucketLociAtThisAge?: number | null;
-  cumulativeBucketLocusUnionCount?: number | null;
-  bucketLocusCoverageRatioVsFinalObservedUnion?: number | null;
 };
 
 export type Exp021MaturationShadowConfig = {
