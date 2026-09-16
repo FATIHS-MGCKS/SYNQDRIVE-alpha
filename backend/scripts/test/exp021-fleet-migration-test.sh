@@ -88,4 +88,7 @@ case "${1:-all}" in
     ;;
 esac
 
+echo "==> EXP-021 fleet deploy guard shell contract"
+bash scripts/test/exp021-fleet-deploy-guard-contract.sh
+
 echo "EXP-021 fleet migration tests passed."
