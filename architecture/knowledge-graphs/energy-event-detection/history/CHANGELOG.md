@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-16 — RFRF F10.2.1 preflight dotenv safety micro-closure
+
+- EED-EV-0064: safe key-scoped dotenv reads for RFRF F10 ops scripts; remove `source backend.env`; preflight `--live-required`; readiness PORT diagnostic fix; fixture tests for literal `$share` / command substitution; hotfix base `295635fc`
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated in F10.2.1
+
 ## 2026-09-15 — RFRF F10.1.1 mergeability + operational safety micro-closure
 
 - EED-EV-0063 extended: PR ancestry reconciliation; Stage 1 proposed-cutover gate; explicit deploy SHA authority; monitoring apply fail-closed contract; live Prometheus gates; blast-radius fail-closed; expanded Stage 6 prerequisites; script-level fixture contract tests

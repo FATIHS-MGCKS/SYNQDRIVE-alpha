@@ -52,13 +52,50 @@ rfrf_rollout_fail() {
   return 1
 }
 
-rfrf_env_get() {
+# Safe dotenv key read — never sources the file as shell; no $ expansion or command substitution.
+rfrf_dotenv_get() {
   local file="$1" key="$2"
   if [[ ! -f "$file" ]]; then
     echo ""
     return 0
   fi
-  grep -E "^${key}=" "$file" 2>/dev/null | tail -n1 | cut -d= -f2- || true
+  node -e '
+    const fs = require("fs");
+    const file = process.argv[1];
+    const key = process.argv[2];
+    let found = "";
+    for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const m = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      if (!m || m[1] !== key) continue;
+      let v = m[2];
+      const dq = String.fromCharCode(34);
+      const sq = String.fromCharCode(39);
+      if (
+        (v.startsWith(dq) && v.endsWith(dq)) ||
+        (v.startsWith(sq) && v.endsWith(sq))
+      ) {
+        v = v.slice(1, -1);
+      }
+      found = v;
+    }
+    process.stdout.write(found);
+  ' "$file" "$key" 2>/dev/null || true
+}
+
+rfrf_env_get() {
+  rfrf_dotenv_get "$1" "$2"
+}
+
+rfrf_dotenv_database_url() {
+  local file="$1" url
+  url="$(rfrf_dotenv_get "$file" DATABASE_URL)"
+  if [[ -z "$url" ]]; then
+    echo ""
+    return 0
+  fi
+  rfrf_psql_url_strip_schema "$url"
 }
 
 rfrf_parse_permissive_bool() {
@@ -639,33 +676,47 @@ rfrf_verify_live_observability_gates() {
 
 rfrf_verify_worker_readiness() {
   local port="$1"
-  local body workers redis_ok
+  local body pass
   body="$(curl -sf "http://127.0.0.1:${port}/api/v1/health/readiness" 2>/dev/null || true)"
   if [[ -z "$body" ]]; then
+    echo "READINESS_${port}=BLOCKED"
+    echo "REDIS_${port}=unknown"
+    echo "WORKERS_${port}=unknown"
+    echo "WORKERS_ENABLED_${port}=no"
     echo "WORKER_READINESS_${port}=UNREACHABLE"
     return 1
   fi
-  workers="$(printf '%s' "$body" | node -e '
-    let raw="";
-    process.stdin.on("data",(c)=>{raw+=c});
-    process.stdin.on("end",()=>{
-      try{
-        const j=JSON.parse(raw);
-        const w=j.checks?.workers;
-        process.stdout.write(JSON.stringify({
-          status: w?.status || "missing",
-          workersEnabled: w?.details?.workersEnabled === true,
-          redis: j.checks?.redis?.status || "missing",
-        }));
-      }catch{process.stdout.write("{}");}
+  pass="$(PORT="$port" printf '%s' "$body" | node -e '
+    let raw = "";
+    process.stdin.on("data", (c) => { raw += c; });
+    process.stdin.on("end", () => {
+      const port = process.env.PORT;
+      try {
+        const j = JSON.parse(raw);
+        const readinessOk = j.status === "ok";
+        const redis = j.checks?.redis?.status || "unknown";
+        const workers = j.checks?.workers?.status || "unknown";
+        const workersEnabled = j.checks?.workers?.details?.workersEnabled === true ? "yes" : "no";
+        const gateOk = readinessOk && redis === "ok" && workers === "ok" && workersEnabled === "yes";
+        console.log(`READINESS_${port}=${readinessOk ? "PASS" : "BLOCKED"}`);
+        console.log(`REDIS_${port}=${redis}`);
+        console.log(`WORKERS_${port}=${workers}`);
+        console.log(`WORKERS_ENABLED_${port}=${workersEnabled}`);
+        console.log(`WORKER_READINESS_${port}=${gateOk ? "PASS" : "BLOCKED"}`);
+        process.stdout.write(gateOk ? "pass" : "blocked");
+      } catch {
+        console.log(`READINESS_${port}=BLOCKED`);
+        console.log(`REDIS_${port}=unknown`);
+        console.log(`WORKERS_${port}=unknown`);
+        console.log(`WORKERS_ENABLED_${port}=no`);
+        console.log(`WORKER_READINESS_${port}=BLOCKED`);
+        process.stdout.write("blocked");
+      }
     });
   ')"
-  workers="$(printf '%s' "$workers" | node -e 'let raw="";process.stdin.on("data",c=>raw+=c);process.stdin.on("end",()=>{try{const j=JSON.parse(raw);process.stdout.write(String(j.workersEnabled===true && j.status==="ok" && j.redis==="ok"));}catch{process.stdout.write("false");}})')"
-  if [[ "$workers" == "true" ]]; then
-    echo "WORKER_READINESS_${port}=PASS"
+  if [[ "$pass" == "pass" ]]; then
     return 0
   fi
-  echo "WORKER_READINESS_${port}=BLOCKED body=${body}"
   return 1
 }
 
@@ -723,10 +774,8 @@ rfrf_db_readonly_counts() {
     echo "DB_COUNTS=backend.env_missing"
     return 1
   fi
-  # shellcheck disable=SC1090
-  set -a && source "$backend_env" && set +a
   local url
-  url="$(rfrf_psql_url_strip_schema "${DATABASE_URL:-}")"
+  url="$(rfrf_dotenv_database_url "$backend_env")"
   if [[ -z "$url" ]]; then
     echo "DB_COUNTS=database_url_missing"
     return 1

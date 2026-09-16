@@ -29,12 +29,7 @@ if [[ ! -f "$BACKEND_ENV" ]]; then
   exit 1
 fi
 
-set +u
-set -a
-# shellcheck disable=SC1090
-source "$BACKEND_ENV"
-set +a
-url="$(rfrf_psql_url_strip_schema "${DATABASE_URL:-}")"
+url="$(rfrf_dotenv_database_url "$BACKEND_ENV")"
 
 if [[ -z "$url" ]] || ! command -v psql >/dev/null 2>&1; then
   echo "BLAST_RADIUS=BLOCKED database unavailable" >&2

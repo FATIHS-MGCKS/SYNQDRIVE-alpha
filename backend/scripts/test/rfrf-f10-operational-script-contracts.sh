@@ -199,4 +199,22 @@ fi
 [[ "$PROM_DIR" == "${TMP_DIR}/prometheus" ]] || fail "tests must use temp prom dir"
 pass "no production state touched by tests"
 
+# 16) preflight must not source backend.env (literal $share fixture)
+cat >"$BACKEND_ENV" <<EOF
+HM_HEALTH_APP_MQTT_TOPIC=\$share/synqdrive/health
+METRICS_BEARER_TOKEN=fixture-token
+DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:5432/fixture?schema=public
+PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_RECOVERY_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT=2026-09-04T12:00:00.000Z
+EOF
+preflight_out="$(bash "${OPS}/rfrf-production-preflight.sh" --check --live-required 2>&1 || true)"
+if [[ "$preflight_out" == *"backend.env:"* && "$preflight_out" == *"unbound variable"* ]]; then
+  fail "preflight sourced backend.env on literal \$share"
+fi
+if [[ "$preflight_out" != *"live_required=1"* ]]; then
+  fail "preflight missing live_required mode"
+fi
+pass "preflight dotenv-safe with live-required flag"
+
 echo "rfrf-f10-operational-script-contracts: OK"

@@ -12,6 +12,9 @@ bash scripts/ops/rfrf-production-rollout.selftest.sh
 echo "==> F10.1.1 script-level operational contracts"
 bash scripts/test/rfrf-f10-operational-script-contracts.sh
 
+echo "==> F10.2.1 dotenv safety tests"
+bash scripts/test/rfrf-f10-dotenv-safety-tests.sh
+
 echo "==> Shell syntax validation"
 for f in \
   scripts/ops/lib/rfrf-production-rollout.lib.sh \
@@ -24,6 +27,7 @@ for f in \
   bash -n "$f"
 done
 bash -n scripts/test/rfrf-f10-operational-script-contracts.sh
+bash -n scripts/test/rfrf-f10-dotenv-safety-tests.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   echo "==> shellcheck (ops scripts)"
@@ -64,3 +68,4 @@ echo "==> git diff --check"
 git diff --check
 
 echo "RFRF F10.1 operational tooling gate PASS"
+echo "RFRF F10.2.1 dotenv safety micro-closure gate PASS"
