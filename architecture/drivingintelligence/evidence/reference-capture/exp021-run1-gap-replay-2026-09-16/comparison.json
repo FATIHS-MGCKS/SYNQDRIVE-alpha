@@ -1,0 +1,68 @@
+{
+  "evidenceId": "EXP-021-RUN1-GAP-REPLAY-COMPARISON",
+  "aggregateMetrics": {
+    "TOTAL_PERSISTENT_EMPTY_WINDOWS": 5,
+    "TOTAL_OBJECTIVELY_IDENTIFIED_MISSING_BUCKET_TIMESTAMPS": 0,
+    "TOTAL_STILL_MISSING_BUCKETS": "NOT_DERIVABLE"
+  },
+  "taxonomyDistinction": {
+    "PERSISTENT_EMPTY_WINDOW": "Exact replay at present-day returns zero speed buckets for the full query window",
+    "OBJECTIVELY_MISSING_BUCKET_TIMESTAMP": "A specific bucket timestamp expected inside an otherwise-populated window but absent from provider response; requires per-bucket authority not present in frozen Run 1 evidence"
+  },
+  "gaps": [
+    {
+      "gapId": "GAP-60S-SLOT1-TRANSITION-HF",
+      "replayClassification": "PERSISTENT_EMPTY_WINDOW",
+      "refinedTaxonomyClass": "TRANSITION_WINDOW_PERSISTENT_EMPTY",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "persistentEmptyWindowAtReplay": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE"
+    },
+    {
+      "gapId": "GAP-SP-60-T0-30S-SETTLEMENT",
+      "replayClassification": "PERSISTENT_EMPTY_WINDOW",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "persistentEmptyWindowAtReplay": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Same query window succeeded at later settlement ages during Run 1; not a permanently empty provider window"
+    },
+    {
+      "gapId": "GAP-SP-90-T16-30S-SETTLEMENT",
+      "replayClassification": "PERSISTENT_EMPTY_WINDOW",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "persistentEmptyWindowAtReplay": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Same query window succeeded at later settlement ages during Run 1; not a permanently empty provider window"
+    },
+    {
+      "gapId": "GAP-SP-60-T17-30S-SETTLEMENT",
+      "replayClassification": "PERSISTENT_EMPTY_WINDOW",
+      "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "persistentEmptyWindowAtReplay": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Session geometry; mandatory +600s maturation horizon falls after session end — not missing buckets"
+    },
+    {
+      "gapId": "GAP-SP-60-T18-30S-SETTLEMENT",
+      "replayClassification": "PERSISTENT_EMPTY_WINDOW",
+      "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+      "originalBucketCount": 0,
+      "replayBucketCount": 0,
+      "persistentEmptyWindowAtReplay": true,
+      "objectivelyMissingBucketTimestamps": 0,
+      "stillMissingBuckets": "NOT_DERIVABLE",
+      "note": "Session geometry; mandatory +600s maturation horizon falls after session end — not missing buckets"
+    }
+  ]
+}

@@ -700,6 +700,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — Run 1 targeted gap replay evidence freeze (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Post-hoc read-only DIMO historical gap replay + positive-control closure for KS MX 2024 Run 1 |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-run1-gap-replay-2026-09-16/` |
+| Primary Run 1 | **UNCHANGED** — `EXP_021_KS_MX_2024_PHYSICAL_90_60_2026-09-15.json` SHA `99a1aa52…` |
+| Gaps replayed | 5 exact windows (1 HF transition + 4 settlement anomalies) |
+| Positive controls | HF60 native (10/10), HF90 native (6/6), settlement 90s+60s (non-zero) |
+| Validity | `GAP_REPLAY_EXPERIMENT_VALID=YES`; `PERSISTENT_EMPTY_WINDOW_SUPPORTED=YES` |
+| Taxonomy | Distinct classes: `TRANSITION_WINDOW_PERSISTENT_EMPTY`, `SETTLEMENT_EARLY_AGE_ZERO`, `STRUCTURAL_TERMINAL_TAIL` |
+| Run 1 metrics | **NOT REWRITTEN** — 90s 7/7, 60s 9/10 preserved |
+| Cadence authority | **NO** — `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+| Runtime / prod | **NO CHANGES** |
+
 ### EXP-021 — canonical autonomous lifecycle driver + real-path regression (2026-09-14, PR #1649)
 
 | Event | Detail |
