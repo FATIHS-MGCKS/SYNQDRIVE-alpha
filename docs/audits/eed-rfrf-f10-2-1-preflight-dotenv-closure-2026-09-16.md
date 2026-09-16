@@ -18,7 +18,7 @@ F10.2 production baseline alignment succeeded, but `POST_DEPLOY_PREFLIGHT=BLOCKE
 | Safe dotenv reader | `rfrf_dotenv_get()` — Node key-scoped parse; no `$` expansion, no `$(...)`, no backticks |
 | DB readonly access | `rfrf_db_readonly_counts()` + preflight schema checks use `rfrf_dotenv_database_url()` |
 | Blast-radius | Removed `source "$BACKEND_ENV"`; uses safe DATABASE_URL read |
-| Readiness diagnostic | `rfrf_verify_worker_readiness()` emits `READINESS_/REDIS_/WORKERS_/WORKERS_ENABLED_` per replica; reuses dual gate |
+| Readiness diagnostic | `rfrf_verify_worker_readiness()` emits per-replica labels; port via Node argv; gate uses exit status (F10.2.1.1) |
 | Live preflight mode | `rfrf-production-preflight.sh --check --live-required` adds live Prometheus + F8 rule health gates |
 
 ## Classification
@@ -73,17 +73,31 @@ Read-only VPS evidence (2026-09-16):
 ## Validation
 
 - `bash backend/scripts/test/rfrf-f10-dotenv-safety-tests.sh`
+- `bash backend/scripts/test/rfrf-f10-worker-readiness-contracts.sh`
 - `bash backend/scripts/test/rfrf-f10-operational-tooling-gate.sh`
 - Deterministic fixture proves `DOTENV_COMMAND_SUBSTITUTION_EXECUTED=NO`
 
 ## Deploy policy
 
-Hotfix head ancestry: `295635fc → F10.2.1 commit(s)`. Deploy **hotfix head**, not current `main`.
-After hotfix deploy to production, retry:
+| Role | SHA / reference |
+|------|-----------------|
+| **HOTFIX_BASE_SHA** | `295635fcfcb84dcaabf24f796a5827c66a0da2f8` — F10.1 approved runtime ancestry only |
+| **DEPLOY TARGET / PREFLIGHT REQUIRED SHA** | `<FINAL_F10_2_1_HOTFIX_HEAD>` — use the exact final hotfix head from PR #1667 closure report |
+
+Hotfix head ancestry: `295635fc → F10.2.1 → F10.2.1.1`. Deploy **final hotfix head**, not current `main`.
+
+After hotfix deploy to production, retry preflight with the **deployed hotfix head**, not the base:
 
 ```bash
-sudo RFRF_REQUIRED_GIT_SHA=295635fcfcb84dcaabf24f796a5827c66a0da2f8 \
+sudo RFRF_REQUIRED_GIT_SHA=<FINAL_F10_2_1_HOTFIX_HEAD> \
   bash /opt/synqdrive/current/backend/scripts/ops/rfrf-production-preflight.sh --check --live-required
 ```
+
+`295635fc…` remains valid only as **HOTFIX_BASE_REFERENCE** (ancestry / F10.1 runtime baseline context). It must **not** be used as `RFRF_REQUIRED_GIT_SHA` after the hotfix deploy.
+
+## F10.2.1.1 independent-review corrections (EED-EV-0064 extended)
+
+1. **Worker readiness diagnostic contract:** pipeline-scoped `PORT=` on `printf` did not reach Node; capturing multiline stdout into `$pass` made `[[ "$pass" == "pass" ]]` invalid. Fixed: port via Node `process.argv[1]`; gate uses Node exit status.
+2. **Post-deploy SHA authority:** documentation incorrectly used hotfix base `295635fc` as post-deploy `RFRF_REQUIRED_GIT_SHA`. Fixed: deploy/preflight target is `<FINAL_F10_2_1_HOTFIX_HEAD>`.
 
 `STAGE_1_START_AUTHORIZED=NO` until operator explicitly authorizes Stage 1 after preflight PASS.

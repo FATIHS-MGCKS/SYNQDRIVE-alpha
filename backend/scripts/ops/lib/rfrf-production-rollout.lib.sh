@@ -676,7 +676,7 @@ rfrf_verify_live_observability_gates() {
 
 rfrf_verify_worker_readiness() {
   local port="$1"
-  local body pass
+  local body
   body="$(curl -sf "http://127.0.0.1:${port}/api/v1/health/readiness" 2>/dev/null || true)"
   if [[ -z "$body" ]]; then
     echo "READINESS_${port}=BLOCKED"
@@ -686,11 +686,14 @@ rfrf_verify_worker_readiness() {
     echo "WORKER_READINESS_${port}=UNREACHABLE"
     return 1
   fi
-  pass="$(PORT="$port" printf '%s' "$body" | node -e '
+  if printf '%s' "$body" | node -e '
     let raw = "";
     process.stdin.on("data", (c) => { raw += c; });
     process.stdin.on("end", () => {
-      const port = process.env.PORT;
+      const port = process.argv[1];
+      if (!port) {
+        process.exit(2);
+      }
       try {
         const j = JSON.parse(raw);
         const readinessOk = j.status === "ok";
@@ -703,18 +706,17 @@ rfrf_verify_worker_readiness() {
         console.log(`WORKERS_${port}=${workers}`);
         console.log(`WORKERS_ENABLED_${port}=${workersEnabled}`);
         console.log(`WORKER_READINESS_${port}=${gateOk ? "PASS" : "BLOCKED"}`);
-        process.stdout.write(gateOk ? "pass" : "blocked");
+        process.exit(gateOk ? 0 : 1);
       } catch {
         console.log(`READINESS_${port}=BLOCKED`);
         console.log(`REDIS_${port}=unknown`);
         console.log(`WORKERS_${port}=unknown`);
         console.log(`WORKERS_ENABLED_${port}=no`);
         console.log(`WORKER_READINESS_${port}=BLOCKED`);
-        process.stdout.write("blocked");
+        process.exit(1);
       }
     });
-  ')"
-  if [[ "$pass" == "pass" ]]; then
+  ' "$port"; then
     return 0
   fi
   return 1

@@ -122,11 +122,16 @@ grep -q 'source "$BACKEND_ENV"' "${OPS}/rfrf-production-blast-radius-assessment.
 grep -q 'source "$backend_env"' "${OPS}/lib/rfrf-production-rollout.lib.sh" && fail "rollout lib still sources backend.env"
 pass "no unsafe backend.env source in RFRF F10 ops scripts"
 
-# PORT diagnostic: worker readiness helper must emit per-replica fields via node env PORT.
-if grep -q 'process.env.PORT' "${OPS}/lib/rfrf-production-rollout.lib.sh"; then
-  pass "readiness diagnostic uses PORT env for node"
+# PORT diagnostic: worker readiness passes port via Node argv and uses exit status.
+if grep -q 'process.argv\[1\]' "${OPS}/lib/rfrf-production-rollout.lib.sh"; then
+  pass "readiness diagnostic passes port via node argv"
 else
-  fail "readiness diagnostic missing PORT env wiring"
+  fail "readiness diagnostic missing node argv port wiring"
+fi
+if grep -q 'pass="\$(PORT=' "${OPS}/lib/rfrf-production-rollout.lib.sh"; then
+  fail "readiness diagnostic still captures multiline stdout into pass var"
+else
+  pass "readiness diagnostic does not capture stdout into pass var"
 fi
 
 echo "DOTENV_COMMAND_SUBSTITUTION_EXECUTED=NO"

@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-16 — RFRF F10.2.1.1 worker readiness + deploy SHA micro-closure
+
+- EED-EV-0064 extended: fix worker readiness gate (Node argv + exit status, not pipeline PORT / stdout capture); deploy/preflight required SHA is `<FINAL_F10_2_1_HOTFIX_HEAD>` not hotfix base; worker readiness contract tests + deploy SHA contract tests
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
 ## 2026-09-16 — RFRF F10.2.1 preflight dotenv safety micro-closure
 
 - EED-EV-0064: safe key-scoped dotenv reads for RFRF F10 ops scripts; remove `source backend.env`; preflight `--live-required`; readiness PORT diagnostic fix; fixture tests for literal `$share` / command substitution; hotfix base `295635fc`
