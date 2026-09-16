@@ -708,9 +708,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-run1-gap-replay-2026-09-16/` |
 | Primary Run 1 | **UNCHANGED** — `EXP_021_KS_MX_2024_PHYSICAL_90_60_2026-09-15.json` SHA `99a1aa52…` |
 | Gaps replayed | 5 exact windows (1 HF transition + 4 settlement anomalies) |
-| Positive controls | HF60 native (10/10), HF90 native (6/6), settlement 90s+60s (non-zero) |
-| Validity | `GAP_REPLAY_EXPERIMENT_VALID=YES`; `PERSISTENT_EMPTY_WINDOW_SUPPORTED=YES` |
-| Taxonomy | Distinct classes: `TRANSITION_WINDOW_PERSISTENT_EMPTY`, `SETTLEMENT_EARLY_AGE_ZERO`, `STRUCTURAL_TERMINAL_TAIL` |
+| Refined counts | `TOTAL_DIAGNOSTIC_ZERO_WINDOWS=5`; transition HF persistent empty=1; settlement early-age zero=2; structural terminal tail=2 |
+| Positive controls | HF60 (10/10 count-comparable), HF90 (6/6 count-comparable); settlement query-path non-zero (`SETTLEMENT_CONTROL_COUNT_COMPARABLE=NO`) |
+| Validity | `GAP_REPLAY_EXPERIMENT_VALID=YES`; `TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED=YES` |
+| Maturation | Split by class: `TRANSITION_HF_LATE_MATURATION_HYPOTHESIS=WEAKENED`; `SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES` (SP-60-T0, SP-90-T16 @ 60s+) |
+| Taxonomy | Distinct classes with recoverability: `TRANSITION_WINDOW_PERSISTENT_EMPTY`, `SETTLEMENT_EARLY_AGE_ZERO`, `STRUCTURAL_TERMINAL_TAIL` |
 | Run 1 metrics | **NOT REWRITTEN** — 90s 7/7, 60s 9/10 preserved |
 | Cadence authority | **NO** — `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
 | Runtime / prod | **NO CHANGES** |

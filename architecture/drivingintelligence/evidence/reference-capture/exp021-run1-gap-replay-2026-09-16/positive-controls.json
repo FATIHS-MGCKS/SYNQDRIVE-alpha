@@ -10,22 +10,29 @@
     "CONTROL_HF60_ORIGINAL_BUCKET_COUNT": 10,
     "CONTROL_HF60_REPLAY_BUCKET_COUNT": 10,
     "HF60_POSITIVE_CONTROL_VALID": "YES",
+    "HF60_COUNT_COMPARABLE": "YES",
     "CONTROL_HF90_ID": "PC-HF90-NATIVE-SLOT4",
     "CONTROL_HF90_ORIGINAL_BUCKET_COUNT": 6,
     "CONTROL_HF90_REPLAY_BUCKET_COUNT": 6,
     "HF90_POSITIVE_CONTROL_VALID": "YES",
+    "HF90_COUNT_COMPARABLE": "YES",
     "CONTROL_SETTLEMENT_IDS": [
       "PC-SETTLE-90-T0-30S",
       "PC-SETTLE-60-T1-30S"
     ],
     "CONTROL_SETTLEMENT_ORIGINAL_BUCKET_COUNTS": [60, 60],
     "CONTROL_SETTLEMENT_REPLAY_BUCKET_COUNTS": [18, 6],
-    "SETTLEMENT_POSITIVE_CONTROL_VALID": "YES",
+    "SETTLEMENT_QUERY_PATH_POSITIVE_CONTROL_VALID": "YES",
+    "SETTLEMENT_CONTROL_COUNT_COMPARABLE": "NO",
     "GAP_REPLAY_EXPERIMENT_VALID": "YES",
-    "PERSISTENT_EMPTY_WINDOW_SUPPORTED": "YES",
-    "TRANSITION_60S_PERSISTENT_EMPTY_SUPPORTED": "YES",
-    "LATE_MATURATION_HYPOTHESIS": "WEAKENED",
+    "TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED": "YES",
+    "TRANSITION_HF_LATE_MATURATION_HYPOTHESIS": "WEAKENED",
+    "SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED": "YES",
     "INTRINSIC_60S_FAILURE_HYPOTHESIS_RESULT": "WEAKENS_INTRINSIC_60S_FAILURE_HYPOTHESIS"
+  },
+  "metricSemantics": {
+    "hfControls": "originalBucketCount and replayBucketCount are both speed temporal bucket counts — directly count-comparable",
+    "settlementControls": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed temporal bucket count — NOT the same metric; controls validate query-path availability only (non-zero replay), not quantitative reproduction"
   },
   "controls": [
     {
@@ -37,20 +44,9 @@
       "queryEnd": "2026-09-15T11:51:08.366Z",
       "originalBucketCount": 10,
       "replayBucketCount": 10,
+      "countComparable": true,
       "providerHttpStatus": 200,
-      "controlClassification": "POSITIVE_CONTROL_REPRODUCED",
-      "returnedBucketTimestamps": [
-        "2026-09-15T11:50:27.945Z",
-        "2026-09-15T11:50:33.945Z",
-        "2026-09-15T11:50:34.945Z",
-        "2026-09-15T11:50:36.945Z",
-        "2026-09-15T11:50:37.945Z",
-        "2026-09-15T11:50:40.945Z",
-        "2026-09-15T11:50:42.945Z",
-        "2026-09-15T11:50:45.945Z",
-        "2026-09-15T11:50:46.945Z",
-        "2026-09-15T11:51:03.945Z"
-      ]
+      "controlClassification": "POSITIVE_CONTROL_REPRODUCED"
     },
     {
       "controlId": "PC-HF90-NATIVE-SLOT4",
@@ -61,16 +57,9 @@
       "queryEnd": "2026-09-15T11:44:55.707Z",
       "originalBucketCount": 6,
       "replayBucketCount": 6,
+      "countComparable": true,
       "providerHttpStatus": 200,
-      "controlClassification": "POSITIVE_CONTROL_REPRODUCED",
-      "returnedBucketTimestamps": [
-        "2026-09-15T11:43:45.504Z",
-        "2026-09-15T11:44:19.504Z",
-        "2026-09-15T11:44:21.504Z",
-        "2026-09-15T11:44:23.504Z",
-        "2026-09-15T11:44:24.504Z",
-        "2026-09-15T11:44:29.504Z"
-      ]
+      "controlClassification": "POSITIVE_CONTROL_REPRODUCED"
     },
     {
       "controlId": "PC-SETTLE-90-T0-30S",
@@ -82,9 +71,10 @@
       "queryEnd": "2026-09-15T11:40:01.000Z",
       "originalBucketCount": 60,
       "replayBucketCount": 18,
+      "countComparable": false,
       "providerHttpStatus": 200,
-      "controlClassification": "POSITIVE_CONTROL_REPRODUCED",
-      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count"
+      "controlClassification": "POSITIVE_CONTROL_NONZERO_QUERY_PATH_VALIDATED",
+      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count — not quantitative reproduction"
     },
     {
       "controlId": "PC-SETTLE-60-T1-30S",
@@ -96,9 +86,10 @@
       "queryEnd": "2026-09-15T11:50:42.000Z",
       "originalBucketCount": 60,
       "replayBucketCount": 6,
+      "countComparable": false,
       "providerHttpStatus": 200,
-      "controlClassification": "POSITIVE_CONTROL_REPRODUCED",
-      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count"
+      "controlClassification": "POSITIVE_CONTROL_NONZERO_QUERY_PATH_VALIDATED",
+      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count — not quantitative reproduction"
     }
   ]
 }

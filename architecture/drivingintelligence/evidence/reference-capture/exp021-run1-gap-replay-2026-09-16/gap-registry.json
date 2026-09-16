@@ -2,6 +2,7 @@
   {
     "gapId": "GAP-60S-SLOT1-TRANSITION-HF",
     "refinedTaxonomyClass": "TRANSITION_WINDOW_PERSISTENT_EMPTY",
+    "recoverability": "NOT_DEMONSTRATED",
     "cadenceMs": 60000,
     "phaseIndex": 1,
     "phaseLabel": "PHASE_60",
@@ -29,6 +30,7 @@
   {
     "gapId": "GAP-SP-60-T0-30S-SETTLEMENT",
     "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+    "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
     "cadenceMs": 60000,
     "phaseIndex": 1,
     "phaseLabel": "PHASE_60",
@@ -46,6 +48,7 @@
   {
     "gapId": "GAP-SP-60-T17-30S-SETTLEMENT",
     "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+    "recoverability": "NOT_APPLICABLE_STRUCTURAL",
     "cadenceMs": 60000,
     "phaseIndex": 1,
     "phaseLabel": "PHASE_60",
@@ -62,6 +65,7 @@
   {
     "gapId": "GAP-SP-60-T18-30S-SETTLEMENT",
     "refinedTaxonomyClass": "STRUCTURAL_TERMINAL_TAIL",
+    "recoverability": "NOT_APPLICABLE_STRUCTURAL",
     "cadenceMs": 60000,
     "phaseIndex": 1,
     "phaseLabel": "PHASE_60",
@@ -78,6 +82,7 @@
   {
     "gapId": "GAP-SP-90-T16-30S-SETTLEMENT",
     "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+    "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
     "cadenceMs": 90000,
     "phaseIndex": 0,
     "phaseLabel": "PHASE_90",

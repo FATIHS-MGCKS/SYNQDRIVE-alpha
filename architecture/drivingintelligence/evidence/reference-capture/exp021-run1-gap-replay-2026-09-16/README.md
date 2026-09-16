@@ -15,6 +15,12 @@
 | `RUNTIME_SEMANTICS_CHANGED` | **NO** |
 | `PRODUCTION_CHANGED` | **NO** |
 
+## Package hash authority
+
+`EVIDENCE_PACKAGE_SHA256` = SHA256(exact bytes of `SHA256SUMS`)
+
+Verify: `sha256sum -c SHA256SUMS` (all entries must PASS)
+
 ## Run 1 identity (unchanged primary authority)
 
 | Field | Value |
@@ -49,47 +55,94 @@ The replay does **not** convert 60s to 10/10.
 | `EXACT_REPLAY_REQUESTS` | 5 |
 | `NARROW_GAP_REQUESTS` | 1 |
 | `GAP_REPLAY_EXPERIMENT_VALID` | **YES** |
-| `PERSISTENT_EMPTY_WINDOW_SUPPORTED` | **YES** |
-| `TOTAL_PERSISTENT_EMPTY_WINDOWS` | **5** |
+| `TOTAL_DIAGNOSTIC_ZERO_WINDOWS` | **5** |
+| `TRANSITION_HF_PERSISTENT_EMPTY_WINDOWS` | **1** |
+| `SETTLEMENT_EARLY_AGE_ZERO_WINDOWS` | **2** |
+| `STRUCTURAL_TERMINAL_TAIL_WINDOWS` | **2** |
 | `TOTAL_OBJECTIVELY_IDENTIFIED_MISSING_BUCKET_TIMESTAMPS` | **0** |
 | `TOTAL_STILL_MISSING_BUCKETS` | **NOT_DERIVABLE** |
 
+**Note:** The five diagnostic zero windows belong to distinct semantic classes. Do not aggregate them as equivalent persistent-empty failures.
+
 ## Refined gap taxonomy
 
-| gapId | Refined class |
-|-------|---------------|
-| `GAP-60S-SLOT1-TRANSITION-HF` | `TRANSITION_WINDOW_PERSISTENT_EMPTY` |
-| `GAP-SP-60-T0-30S-SETTLEMENT` | `SETTLEMENT_EARLY_AGE_ZERO` |
-| `GAP-SP-90-T16-30S-SETTLEMENT` | `SETTLEMENT_EARLY_AGE_ZERO` |
-| `GAP-SP-60-T17-30S-SETTLEMENT` | `STRUCTURAL_TERMINAL_TAIL` |
-| `GAP-SP-60-T18-30S-SETTLEMENT` | `STRUCTURAL_TERMINAL_TAIL` |
+| gapId | Refined class | Recoverability |
+|-------|---------------|----------------|
+| `GAP-60S-SLOT1-TRANSITION-HF` | `TRANSITION_WINDOW_PERSISTENT_EMPTY` | `NOT_DEMONSTRATED` |
+| `GAP-SP-60-T0-30S-SETTLEMENT` | `SETTLEMENT_EARLY_AGE_ZERO` | `LATER_IN_RUN_DATA_OBSERVED` |
+| `GAP-SP-90-T16-30S-SETTLEMENT` | `SETTLEMENT_EARLY_AGE_ZERO` | `LATER_IN_RUN_DATA_OBSERVED` |
+| `GAP-SP-60-T17-30S-SETTLEMENT` | `STRUCTURAL_TERMINAL_TAIL` | `NOT_APPLICABLE_STRUCTURAL` |
+| `GAP-SP-60-T18-30S-SETTLEMENT` | `STRUCTURAL_TERMINAL_TAIL` | `NOT_APPLICABLE_STRUCTURAL` |
 
-**Distinction:** `PERSISTENT_EMPTY_WINDOW` (replay returns zero for full window) is separate from `OBJECTIVELY_MISSING_BUCKET_TIMESTAMP` (specific bucket holes inside populated windows — not derivable from frozen evidence).
+**Distinctions:**
+
+- `TRANSITION_WINDOW_PERSISTENT_EMPTY` — zero at Run 1 and again at present-day exact replay; not demonstrated recoverable.
+- `SETTLEMENT_EARLY_AGE_ZERO` — zero at 30s scheduled age but same query window succeeded at later ages during Run 1 (`EARLY_AGE_ZERO_WITH_LATER_IN_RUN_SUCCESS`); not persistent empty.
+- `STRUCTURAL_TERMINAL_TAIL` — session geometry; not a recoverable missing-data gap.
+- `OBJECTIVELY_MISSING_BUCKET_TIMESTAMP` — specific bucket holes inside populated windows; not derivable from frozen evidence.
+
+## Settlement maturation evidence
+
+See `settlement-maturation.json` for per-age authority from immutable primary Run 1 evidence.
+
+| Probe | First non-zero age | Success ages (ms) |
+|-------|-------------------|-------------------|
+| `SP-60-T0` | 60000 | 60000, 120000, 180000, 300000, 600000 |
+| `SP-90-T16` | 60000 | 60000, 120000, 180000, 300000, 600000 |
+
+`SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES` — descriptive evidence only; does not generalize timing to all future gaps.
 
 ## Positive-control closure
+
+### HF controls (count-comparable)
 
 | Control | Original | Replay | Valid |
 |---------|----------|--------|-------|
 | `PC-HF60-NATIVE-SLOT2` | 10 | 10 | YES |
 | `PC-HF90-NATIVE-SLOT4` | 6 | 6 | YES |
+
+### Settlement controls (query-path availability only)
+
+| Control | Original (rawRowCount) | Replay (speed buckets) | Valid |
+|---------|---------------------|------------------------|-------|
 | `PC-SETTLE-90-T0-30S` | 60 | 18 | YES |
 | `PC-SETTLE-60-T1-30S` | 60 | 6 | YES |
 
-Settlement controls: original count is `rawRowCount`; replay count is speed-bucket count. Non-zero replay confirms mechanism validity.
+`SETTLEMENT_QUERY_PATH_POSITIVE_CONTROL_VALID=YES`  
+`SETTLEMENT_CONTROL_COUNT_COMPARABLE=NO` — original and replay counts are different metrics; non-zero replay confirms query-path availability, not quantitative reproduction.
 
 ## Scientific interpretation (diagnostic only)
 
-- Replay mechanism is valid: known-good HF 60s, HF 90s, and settlement windows return historical data at replay time.
-- Targeted gap windows remain empty at replay time.
-- No evidence of late maturation filling the transition HF gap.
-- 60s transition failure remains transition-owned (`TRANSITION_BOUNDARY`, `cadenceIntrinsic=NO`), not demonstrated cadence-intrinsic failure.
-- Native 60s PHASE_NATIVE success (8/8 provider requests) remains separate evidence.
+### Maturation hypothesis (split by class)
+
+| Class | Authority |
+|-------|-----------|
+| HF transition window | `TRANSITION_HF_LATE_MATURATION_HYPOTHESIS=WEAKENED` — original zero, exact replay zero, 1s narrow replay zero; HF60/HF90 controls reproduce |
+| Settlement early-age windows | `SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES` — same query windows zero at 30s, non-zero at later ages during Run 1 |
+
+Do not combine these into one global maturation verdict.
+
+### Persistent empty scope
+
+`TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED=YES` — transition HF window only.
+
+Settlement early-age windows: `EARLY_AGE_ZERO_WITH_LATER_IN_RUN_SUCCESS`, not persistent empty.
+
+### Intrinsic 60s inference (combined evidence)
+
+`INTRINSIC_60S_FAILURE_HYPOTHESIS_RESULT=WEAKENS_INTRINSIC_60S_FAILURE_HYPOTHESIS`
+
+Inference from combined evidence, not replay-zero alone:
+
+- Failed request window classified `TRANSITION_WINDOW`
+- Gap owner `TRANSITION_BOUNDARY`; `cadenceIntrinsic=false`
+- Native 60s `PHASE_NATIVE` provider requests succeeded 8/8
+- HF60 positive-control replay succeeds 10/10
+- Transition exact replay remains zero
+- Transition narrow replay remains zero
 
 | Field | Value |
 |-------|-------|
-| `TRANSITION_60S_PERSISTENT_EMPTY_SUPPORTED` | **YES** |
-| `LATE_MATURATION_HYPOTHESIS` | **WEAKENED** |
-| `INTRINSIC_60S_FAILURE_HYPOTHESIS_RESULT` | **WEAKENS_INTRINSIC_60S_FAILURE_HYPOTHESIS** |
 | `OVERALL_DIRECTIONAL_SIGNAL` | **LEAN_60** |
 | `SUFFICIENT_FOR_CADENCE_RECOMMENDATION` | **NO** |
 | `RECOMMENDED_CADENCE_MS` | **NONE** |
@@ -99,11 +152,12 @@ Settlement controls: original count is `rawRowCount`; replay count is speed-buck
 
 | File | Role |
 |------|------|
-| `gap-registry.json` | Five objective gaps with refined taxonomy |
+| `gap-registry.json` | Five objective gaps with refined taxonomy and recoverability |
 | `exact-replay-results.json` | Present-day DIMO exact-window replay captures |
 | `narrow-gap-results.json` | Transition boundary narrow probe |
 | `positive-controls.json` | Positive-control selection + closure authority |
-| `comparison.json` | Gap replay comparison + aggregate metrics |
+| `settlement-maturation.json` | Per-age settlement maturation authority from primary Run 1 |
+| `comparison.json` | Gap replay comparison + refined aggregate metrics |
 | `human-readable-report.md` | Human-readable summary |
 | `SHA256SUMS` | Deterministic artifact hashes |
 

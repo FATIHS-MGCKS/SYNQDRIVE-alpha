@@ -1,0 +1,123 @@
+{
+  "evidenceId": "EXP-021-RUN1-SETTLEMENT-MATURATION-AUTHORITY",
+  "sessionId": "cd33ad31-c46d-4d9c-a9ee-676e7d2acdca",
+  "primaryRun1FreezeSha256": "99a1aa5205406071e2b23a96ee731b15a18e13dc0784c00748f212cf353b6d5c",
+  "sourceAuthority": "architecture/drivingintelligence/evidence/reference-capture/EXP_021_KS_MX_2024_PHYSICAL_90_60_2026-09-15.json",
+  "descriptiveOnly": true,
+  "generalizationClaim": "NO — timing observed in this Run 1 session only; not inferred to generalize to all future gaps",
+  "SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED": "YES",
+  "probes": [
+    {
+      "probeId": "SP-60-T0",
+      "phase": "60s",
+      "gapId": "GAP-SP-60-T0-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
+      "queryWindow": {
+        "start": "2026-09-15T11:49:12Z",
+        "end": "2026-09-15T11:50:12Z"
+      },
+      "scheduledAges": [
+        {
+          "scheduledAgeMs": 30000,
+          "providerRequestStatus": "ZERO_RESULT",
+          "rawRowCount": 0,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 60000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": true
+        },
+        {
+          "scheduledAgeMs": 120000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 180000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 300000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 600000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        }
+      ],
+      "firstNonZeroAgeMs": 60000,
+      "firstNonZeroObservedAt": null,
+      "firstNonZeroRawRowCount": 60,
+      "finalSuccessfulAgeMs": 600000,
+      "successAgesMs": [60000, 120000, 180000, 300000, 600000],
+      "zeroToNonzeroObserved": true,
+      "note": "firstNonZeroObservedAt not present in frozen primary evidence; only scheduledAgeMs and rawRowCount available"
+    },
+    {
+      "probeId": "SP-90-T16",
+      "phase": "90s",
+      "gapId": "GAP-SP-90-T16-30S-SETTLEMENT",
+      "refinedTaxonomyClass": "SETTLEMENT_EARLY_AGE_ZERO",
+      "recoverability": "LATER_IN_RUN_DATA_OBSERVED",
+      "queryWindow": {
+        "start": "2026-09-15T11:47:01Z",
+        "end": "2026-09-15T11:48:01Z"
+      },
+      "scheduledAges": [
+        {
+          "scheduledAgeMs": 30000,
+          "providerRequestStatus": "ZERO_RESULT",
+          "rawRowCount": 0,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 60000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": true
+        },
+        {
+          "scheduledAgeMs": 120000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 180000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 300000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        },
+        {
+          "scheduledAgeMs": 600000,
+          "providerRequestStatus": "SUCCESS",
+          "rawRowCount": 60,
+          "availabilityChangedZeroToNonzero": false
+        }
+      ],
+      "firstNonZeroAgeMs": 60000,
+      "firstNonZeroObservedAt": null,
+      "firstNonZeroRawRowCount": 60,
+      "finalSuccessfulAgeMs": 600000,
+      "successAgesMs": [60000, 120000, 180000, 300000, 600000],
+      "zeroToNonzeroObserved": true,
+      "note": "firstNonZeroObservedAt not present in frozen primary evidence; only scheduledAgeMs and rawRowCount available"
+    }
+  ]
+}
