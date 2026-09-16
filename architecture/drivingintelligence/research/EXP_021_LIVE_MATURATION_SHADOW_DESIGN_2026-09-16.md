@@ -1,7 +1,7 @@
 # EXP-021 — Live Maturation Shadow Design
 
 **Design date:** 2026-09-16  
-**Hardening revision:** 2026-09-16 (scientific identity + attempt provenance + sampling unit)  
+**Hardening revision:** 2026-09-16 (scientific identity + attempt provenance + sampling unit + uniqueness closure)  
 **Status:** DESIGN ONLY — no runtime implementation, no Prisma migration, no production activation  
 **Code authority:** `origin/main` @ `3930813b5310cfffc3d4d01d65ec997e4c16b80c`  
 **Frozen evidence inputs:**
@@ -46,6 +46,14 @@
 | `SAMPLE_SIZE_UNIT` | **WINDOW_FAMILY** |
 | `PER_STRATUM_N_REPORTED` | **YES** |
 | `FINAL_POLICY_POWER_ANALYSIS_DEFERRED` | **YES** |
+| `ENROLLMENT_EVENT_ID_IS_UNIQUENESS_COMPONENT` | **NO** |
+| `ENROLLMENT_EVENT_ID_IS_PROVENANCE_ONLY` | **YES** |
+| `SIGNAL_SET_HASH_IS_STRATUM_UNIQUENESS_COMPONENT` | **NO** |
+| `SIGNAL_SET_HASH_IS_IMMUTABLE_STRATUM_ATTRIBUTE` | **YES** |
+| `SEMANTIC_DRIFT_CREATES_NEW_STRATUM` | **NO** |
+| `TRANSPORT_RETRY_CREATES_NEW_SLOT` | **NO** |
+| `TRANSPORT_RETRY_CREATES_NEW_ATTEMPT` | **YES** |
+| `JOB_ID_DEPENDS_ON_ENROLLMENT_EVENT_ID` | **NO** |
 
 ---
 
@@ -368,8 +376,37 @@ Family authority (conceptual):
 | `vehicleId` | Vehicle |
 | `tokenId` | DIMO token |
 | `canonicalWindowTo` | Shared end anchor |
-| `shadowScheduleVersion` | Frozen age schedule |
-| `enrollmentEventId` | Deterministic enrollment provenance |
+| `shadowScheduleVersion` | Frozen age schedule / intentional re-experiment version |
+| `enrollmentEventId` | Enrollment provenance only — **not** a uniqueness component |
+
+### Canonical family scientific uniqueness
+
+Preferred conceptual constraint:
+
+```
+UNIQUE(
+  organizationId,
+  vehicleId,
+  tokenId,
+  canonicalWindowTo,
+  shadowScheduleVersion
+)
+```
+
+`enrollmentEventId` must **not** participate in the family unique constraint. A new enrollment event ID must **not** permit a duplicate scientific family for the same vehicle/window/schedule version.
+
+If duplicate family enrollment is attempted: return the existing canonical family or fail idempotently per future implementation contract. Never create a second scientific family merely because a new `enrollmentEventId` exists.
+
+**`ENROLLMENT_EVENT_ID_IS_UNIQUENESS_COMPONENT=NO`**  
+**`ENROLLMENT_EVENT_ID_IS_PROVENANCE_ONLY=YES`**
+
+### Intentional re-experiment versioning
+
+If the same physical historical anchor is intentionally studied again under different experimental semantics, do **not** bypass uniqueness with a new `enrollmentEventId`. Use explicit scientific version authority:
+
+- `shadowScheduleVersion` (required)
+
+Any such version must be deliberate and persisted. Do not add additional version fields unless a future design explicitly requires them.
 
 Within one family, create **strata**:
 
@@ -383,6 +420,33 @@ Within one family, create **strata**:
 (where enabled)
 
 Each stratum retains its own: `windowFrom`, `windowTo`, frozen signal snapshot, geometry, lane, observations.
+
+### Canonical stratum scientific uniqueness
+
+Preferred conceptual constraint:
+
+```
+UNIQUE(
+  windowFamilyId,
+  signalLane,
+  queryGeometryMs
+)
+```
+
+Do **not** allow a changed `signalSetHash` to create a second semantic stratum. Freeze as immutable scientific attributes on the stratum (set at enrollment, verified on every attempt):
+
+- `signalSetHash`
+- `querySemanticsHash`
+- `resolvedProviderFields`
+- `interval`
+- `aggregation`
+- boundary semantics
+
+If a later execution resolves a conflicting hash or semantics: **fail closed** as semantic drift. Do **not** create another stratum.
+
+**`SIGNAL_SET_HASH_IS_STRATUM_UNIQUENESS_COMPONENT=NO`**  
+**`SIGNAL_SET_HASH_IS_IMMUTABLE_STRATUM_ATTRIBUTE=YES`**  
+**`SEMANTIC_DRIFT_CREATES_NEW_STRATUM=NO`**
 
 **`WINDOW_FAMILY_REQUIRED=YES`**  
 **`PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`**  
@@ -557,15 +621,35 @@ Scientific observation must not be conflated with idempotent observation upsert 
 
 ```
 WindowFamily
-  └── WindowStratum (lane × geometry)
-        └── ObservationSlot (shadowWindowId + plannedAgeMs)
-              └── ObservationAttempt (immutable per provider call)
+  canonical scientific family identity
+  └── WindowStratum
+        one lane × geometry within family
+        └── ObservationSlot
+              one planned age within stratum
+              └── ObservationAttempt
+                    immutable provider call
 ```
+
+Provenance IDs (e.g. `enrollmentEventId`) never substitute for scientific identity.
 
 ### ObservationSlot identity
 
-- `shadowWindowId`
+Preferred conceptual constraint:
+
+```
+UNIQUE(
+  windowStratumId,
+  plannedAgeMs
+)
+```
+
+- `windowStratumId`
 - `plannedAgeMs`
+
+A transport retry must **not** create a second slot. It creates another immutable `ObservationAttempt` under the same slot.
+
+**`TRANSPORT_RETRY_CREATES_NEW_SLOT=NO`**  
+**`TRANSPORT_RETRY_CREATES_NEW_ATTEMPT=YES`**
 
 ### ObservationAttempt — immutable per provider call
 
@@ -760,21 +844,35 @@ No activation values required yet.
 
 **`Exp021MaturationShadowWindowFamily`**
 
-Unique authority prevents duplicate experiments for:
+Canonical scientific family identity. Unique constraint:
 
-- vehicle + token + `canonicalWindowTo` + `shadowScheduleVersion` + `enrollmentEventId`
+```
+UNIQUE(organizationId, vehicleId, tokenId, canonicalWindowTo, shadowScheduleVersion)
+```
+
+`enrollmentEventId` is provenance only — stored, not part of uniqueness.
 
 **`Exp021MaturationShadowWindow`** (stratum)
 
-Unique per family + signal lane + query geometry + frozen `signalSetHash`
+One lane × geometry within a family. Unique constraint:
+
+```
+UNIQUE(windowFamilyId, signalLane, queryGeometryMs)
+```
+
+Immutable stratum attributes (not uniqueness components): `signalSetHash`, `querySemanticsHash`, `resolvedProviderFields`, `interval`, `aggregation`, boundary semantics. Semantic drift → fail closed; do not create a new stratum.
 
 **`Exp021MaturationShadowObservationSlot`**
 
-Unique per: `shadowWindowId` + `plannedAgeMs`
+One planned age within a stratum. Unique constraint:
+
+```
+UNIQUE(windowStratumId, plannedAgeMs)
+```
 
 **`Exp021MaturationShadowObservationAttempt`**
 
-Immutable per provider call; multiple attempts per slot allowed for transport retry.
+Immutable per provider call; multiple attempts per slot allowed for transport retry. Transport retry creates a new attempt, not a new slot.
 
 ### Window state machine (conceptual)
 
@@ -798,10 +896,14 @@ Repository-native pattern aligned with existing `reference-capture-settlement-sh
 
 **`MULTI_REPLICA_DUPLICATE_EXECUTION_PREVENTED_BY=`**
 
-- deterministic BullMQ job IDs (family + stratum + plannedAge)
-- DB unique constraints on family, stratum, observation slot
+- deterministic BullMQ job IDs derived from canonical family identity + stratum lane + geometry + `plannedAgeMs` (or deterministic equivalent: `familyId` / `stratumId` / `plannedAgeMs`)
+- DB unique constraints on family, stratum, observation slot per §17
 - immutable attempt insert (no overwrite of failed attempts)
 - fail-closed on duplicate age execution beyond idempotent job replay
+
+Job IDs must **not** depend on `enrollmentEventId` or any random per-enrollment identifier.
+
+**`JOB_ID_DEPENDS_ON_ENROLLMENT_EVENT_ID=NO`**
 
 Do **not** reuse EXP-021 cadence allocation locks as shadow scientific authority unless proven semantically correct.
 
