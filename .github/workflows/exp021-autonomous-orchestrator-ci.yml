@@ -9,6 +9,10 @@ on:
       - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
       - 'backend/scripts/ops/reference-capture-exp-021*'
       - 'backend/scripts/test/exp021-fleet-migration-test.sh'
+      - 'backend/scripts/test/exp021-fleet-deploy-guard-contract.sh'
+      - 'backend/scripts/ops/lib/vps-exp021-fleet-deploy-guard.lib.sh'
+      - 'backend/scripts/ops/vps-deploy-release.sh'
+      - 'backend/scripts/ops/reference-capture-exp021-fleet-deploy-preflight.sh'
       - 'backend/scripts/test/exp021-canonical-postgres-bootstrap.sh'
       - 'backend/prisma/migrations/*exp021*'
       - 'backend/prisma/schema.prisma'
@@ -205,7 +209,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate
+      - run: npm ci && npx prisma generate && npm run build
+        working-directory: backend
+      - run: bash scripts/test/exp021-fleet-deploy-guard-contract.sh
         working-directory: backend
       - run: >-
           npx jest

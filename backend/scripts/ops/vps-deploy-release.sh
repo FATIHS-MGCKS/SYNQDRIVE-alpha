@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
+
 GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
 
@@ -104,8 +108,13 @@ sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
   -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
 
-echo "==> EXP-021 fleet coordinator deploy capability preflight"
-bash "$RELEASE_DIR/backend/scripts/ops/reference-capture-exp021-fleet-deploy-preflight.sh" "$RELEASE_DIR"
+echo "==> EXP-021 fleet coordinator deploy capability preflight (executing deploy authority)"
+vps_exp021_verify_target_fleet_capability "$RELEASE_DIR" "/opt/synqdrive/shared/backend.env"
+TARGET_PREFLIGHT="${RELEASE_DIR}/backend/scripts/ops/reference-capture-exp021-fleet-deploy-preflight.sh"
+if [[ -f "$TARGET_PREFLIGHT" ]]; then
+  echo "==> EXP-021 fleet coordinator target preflight helper present — supplemental check"
+  EXP021_FLEET_DEPLOY_PREFLIGHT_BACKEND_ENV="/opt/synqdrive/shared/backend.env" bash "$TARGET_PREFLIGHT" "$RELEASE_DIR"
+fi
 
 echo "==> Frontend install/build"
 cd "$RELEASE_DIR/frontend"
