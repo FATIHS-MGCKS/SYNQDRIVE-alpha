@@ -177,16 +177,18 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
     expect(after.projections - before.projections).toBeGreaterThanOrEqual(1);
     expect(after.transitions - before.transitions).toBeGreaterThanOrEqual(1);
     expect(after.outbox - before.outbox).toBe(0);
-    expect(result.physicalDecision).toBe(DeviceConnectionPhysicalTransitionDecision.APPLIED);
+    expect(result.physicalDecision).toBe(DeviceConnectionPhysicalTransitionDecision.ESTABLISHED);
+    expect(after.observations - before.observations).toBeGreaterThanOrEqual(1);
   });
 
   it('PSG-N pilot snapshot creates expected shadow durable rows with sideEffects=false', async () => {
     const before = await countArtifacts(prisma, pilotFixture.vehicle.id);
+    const observedAt = '2026-09-12T10:00:00.000Z';
     const result = await writer.writeSnapshotEvidence({
       organizationId: pilotFixture.org.id,
       vehicleId: pilotFixture.vehicle.id,
       tokenId: pilotFixture.tokenId,
-      signals: { obdIsPluggedIn: true },
+      signals: { obdIsPluggedIn: { value: true, timestamp: observedAt } },
       evidenceReferenceId: 'snap-pilot',
       legacyShadow,
     });
@@ -196,6 +198,7 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
     expect(after.authority - before.authority).toBeGreaterThanOrEqual(0);
     expect(after.projections - before.projections).toBeGreaterThanOrEqual(1);
     expect(after.outbox - before.outbox).toBe(0);
+    expect(after.observations - before.observations).toBeGreaterThanOrEqual(1);
   });
 
   it('PSG-J binding replacement remains pilot-allowed for same authority scope', async () => {

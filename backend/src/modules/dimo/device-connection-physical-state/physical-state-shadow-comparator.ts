@@ -180,6 +180,6 @@ export function comparePhysicalStateShadowDecisions(
     legacyEvidenceObservedAt: toIso(input.legacyEvidenceObservedAt),
     correlationId: input.correlationId ?? null,
     evidenceReferenceId: input.evidenceReferenceId ?? null,
-    observedAt: new Date().toISOString(),
+    observedAt: toIso(input.evidenceObservedAt) ?? new Date().toISOString(),
   };
 }

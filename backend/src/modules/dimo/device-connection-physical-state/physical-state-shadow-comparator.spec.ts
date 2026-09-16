@@ -42,6 +42,15 @@ function baseInput(
 }
 
 describe('physical-state shadow comparator', () => {
+  it('uses evidenceObservedAt for durable observedAt when provided', () => {
+    const result = comparePhysicalStateShadowDecisions(
+      baseInput({
+        evidenceObservedAt: '2026-09-12T10:00:00.000Z',
+      }),
+    );
+    expect(result.observedAt).toBe('2026-09-12T10:00:00.000Z');
+  });
+
   it('1. BOTH_ACCEPT same state / same timestamp -> MATCH', () => {
     const result = comparePhysicalStateShadowDecisions(
       baseInput({
