@@ -1705,6 +1705,7 @@ model Organization {
   referenceCaptureObservations                              ReferenceCaptureObservation[]
   exp021StudyEnrollments                                    Exp021StudyEnrollment[]
   exp021StudyRuns                                           Exp021StudyRun[]
+  exp021MaturationShadowWindowFamilies                      Exp021MaturationShadowWindowFamily[]
   tripAssessabilities                                       TripAssessability[]
   drivingEvidence                                           DrivingEvidence[]
   drivingAnalysisRuns                                       DrivingAnalysisRun[]
@@ -3040,6 +3041,7 @@ model Vehicle {
   exp021StudyEnrollments                 Exp021StudyEnrollment[]
   exp021StudyRuns                        Exp021StudyRun[]
   exp021StudyVehicleOrderBalances        Exp021StudyVehicleOrderBalance[]
+  exp021MaturationShadowWindowFamilies   Exp021MaturationShadowWindowFamily[]
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
@@ -11030,6 +11032,165 @@ model Exp021StudyVehicleOrderBalance {
 
   @@unique([studyId, vehicleId, phaseOrderKey])
   @@map("exp021_study_vehicle_order_balances")
+}
+
+/// EXP-021 Live Maturation Shadow — signal lane (PR-M1 persistence foundation).
+enum Exp021MaturationShadowSignalLane {
+  HF_FAST_LOOP
+  SETTLEMENT_SHADOW
+}
+
+/// EXP-021 Live Maturation Shadow — window family lifecycle (PR-M1).
+enum Exp021MaturationShadowWindowLifecycle {
+  ENROLLED
+  SCHEDULED
+  PROBING
+  TERMINAL
+}
+
+/// EXP-021 Live Maturation Shadow — terminal lifecycle state (PR-M1).
+enum Exp021MaturationShadowWindowTerminalState {
+  COMPLETE
+  PERSISTENT_EMPTY
+  ERROR_EXHAUSTED
+  INVALID
+  STRUCTURAL_EXCLUDED
+  MIXED_RUNTIME_SEMANTICS
+}
+
+/// EXP-021 Live Maturation Shadow — scientific terminal classification (PR-M1).
+enum Exp021MaturationShadowScientificClassification {
+  EVENTUAL_NONZERO
+  PERSISTENT_EMPTY_THROUGH_SHADOW_HORIZON
+  PROVIDER_ERROR_CONTAMINATED
+  STRUCTURAL_EXCLUDED
+  INVALID_IDENTITY
+  MIXED_RUNTIME_SEMANTICS
+  OTHER_FAIL_CLOSED
+}
+
+/// EXP-021 Live Maturation Shadow — provider outcome at attempt insert (PR-M1).
+enum Exp021MaturationShadowProviderOutcomeClass {
+  PROVIDER_SUCCESS_ZERO
+  PROVIDER_SUCCESS_NONZERO
+  PROVIDER_ERROR
+}
+
+/// EXP-021 Live Maturation Shadow — canonical window family (PR-M1).
+model Exp021MaturationShadowWindowFamily {
+  id                    String                              @id @default(uuid())
+  organizationId        String                              @map("organization_id")
+  vehicleId             String                              @map("vehicle_id")
+  tokenId               Int                                 @map("token_id")
+  canonicalWindowTo     DateTime                            @map("canonical_window_to")
+  shadowScheduleVersion String                              @map("shadow_schedule_version")
+  enrollmentEventId     String                              @map("enrollment_event_id")
+  plannedAgesMsExact    Int[]                               @map("planned_ages_ms_exact")
+  policyDelayProbeMs    Int                                 @map("policy_delay_probe_ms")
+  createdUnderRuntimeSha String                             @map("created_under_runtime_sha")
+  lifecycleState        Exp021MaturationShadowWindowLifecycle @default(ENROLLED) @map("lifecycle_state")
+  terminalState         Exp021MaturationShadowWindowTerminalState? @map("terminal_state")
+  scientificClassification Exp021MaturationShadowScientificClassification? @map("scientific_classification")
+  createdAt             DateTime                            @default(now()) @map("created_at")
+  updatedAt             DateTime                            @updatedAt @map("updated_at")
+
+  organization Organization                         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle                              @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  strata       Exp021MaturationShadowWindow[]
+
+  @@unique([organizationId, vehicleId, tokenId, canonicalWindowTo, shadowScheduleVersion])
+  @@index([organizationId, vehicleId])
+  @@map("exp021_maturation_shadow_window_families")
+}
+
+/// EXP-021 Live Maturation Shadow — window stratum (lane × geometry) (PR-M1).
+model Exp021MaturationShadowWindow {
+  id                               String                           @id @default(uuid())
+  windowFamilyId                   String                           @map("window_family_id")
+  signalLane                       Exp021MaturationShadowSignalLane   @map("signal_lane")
+  queryGeometryMs                  Int                              @map("query_geometry_ms")
+  windowFrom                       DateTime                         @map("window_from")
+  windowTo                         DateTime                         @map("window_to")
+  resolvedProviderFields           String[]                         @map("resolved_provider_fields")
+  resolvedProviderFieldsCanonicalSorted String[]                    @map("resolved_provider_fields_canonical_sorted")
+  signalSetHash                    String                           @map("signal_set_hash")
+  signalSetVersion                 String                           @map("signal_set_version")
+  querySemanticsHash               String                           @map("query_semantics_hash")
+  queryBuilderSemanticVersionOrHash String                          @map("query_builder_semantic_version_or_hash")
+  queryBoundarySemanticVersion     String                           @map("query_boundary_semantic_version")
+  interval                         String
+  aggregation                      String
+  manifestIdentifier               String?                          @map("manifest_identifier")
+  manifestHash                     String?                          @map("manifest_hash")
+  runtimeBuildShaAtEnrollment      String                           @map("runtime_build_sha_at_enrollment")
+  activityClassificationJson       Json?                            @map("activity_classification_json")
+  createdAt                        DateTime                         @default(now()) @map("created_at")
+  updatedAt                        DateTime                         @updatedAt @map("updated_at")
+
+  family Exp021MaturationShadowWindowFamily            @relation(fields: [windowFamilyId], references: [id], onDelete: Restrict)
+  slots  Exp021MaturationShadowObservationSlot[]
+
+  @@unique([windowFamilyId, signalLane, queryGeometryMs])
+  @@index([windowFamilyId])
+  @@map("exp021_maturation_shadow_windows")
+}
+
+/// EXP-021 Live Maturation Shadow — planned-age observation slot (PR-M1).
+model Exp021MaturationShadowObservationSlot {
+  id              String   @id @default(uuid())
+  windowStratumId String   @map("window_stratum_id")
+  plannedAgeMs    Int      @map("planned_age_ms")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  stratum  Exp021MaturationShadowWindow                    @relation(fields: [windowStratumId], references: [id], onDelete: Restrict)
+  attempts Exp021MaturationShadowObservationAttempt[]
+
+  @@unique([windowStratumId, plannedAgeMs])
+  @@index([windowStratumId])
+  @@map("exp021_maturation_shadow_observation_slots")
+}
+
+/// EXP-021 Live Maturation Shadow — immutable provider-call attempt ledger (PR-M1).
+model Exp021MaturationShadowObservationAttempt {
+  id                                      String                                    @id @default(uuid())
+  observationSlotId                       String                                    @map("observation_slot_id")
+  attemptOrdinal                          Int                                       @map("attempt_ordinal")
+  plannedAgeMs                            Int                                       @map("planned_age_ms")
+  actualAgeMs                             Int                                       @map("actual_age_ms")
+  schedulerDriftMs                        Int                                       @map("scheduler_drift_ms")
+  requestStartedAt                        DateTime                                  @map("request_started_at")
+  requestCompletedAt                      DateTime?                                 @map("request_completed_at")
+  runtimeBuildSha                         String                                    @map("runtime_build_sha")
+  querySemanticsHash                      String                                    @map("query_semantics_hash")
+  signalSetHash                           String                                    @map("signal_set_hash")
+  providerRequestSucceeded                Boolean                                   @map("provider_request_succeeded")
+  providerOutcomeClass                    Exp021MaturationShadowProviderOutcomeClass @map("provider_outcome_class")
+  providerStatus                          String?                                   @map("provider_status")
+  providerErrorClass                      String?                                   @map("provider_error_class")
+  uniqueBucketLocusCount                  Int?                                      @map("unique_bucket_locus_count")
+  uniqueTemporalBucketStartCount          Int?                                      @map("unique_temporal_bucket_start_count")
+  perFieldRowCountJson                    Json?                                     @map("per_field_row_count_json")
+  perFieldBucketLocusCountJson            Json?                                     @map("per_field_bucket_locus_count_json")
+  firstProviderTimestamp                  DateTime?                                 @map("first_provider_timestamp")
+  lastProviderTimestamp                   DateTime?                                 @map("last_provider_timestamp")
+  bucketLocusManifestJson                 Json?                                     @map("bucket_locus_manifest_json")
+  bucketLocusIdentityVersion              String?                                   @map("bucket_locus_identity_version")
+  duplicateCount                          Int?                                      @map("duplicate_count")
+  payloadRevisionCount                    Int?                                      @map("payload_revision_count")
+  changedPayloadLocusCount                Int?                                      @map("changed_payload_locus_count")
+  nearestPriorAgeBucketDeltaMs            Int?                                      @map("nearest_prior_age_bucket_delta_ms")
+  newBucketLociVsPriorAge                 Int?                                      @map("new_bucket_loci_vs_prior_age")
+  missingPriorBucketLociAtThisAge         Int?                                      @map("missing_prior_bucket_loci_at_this_age")
+  cumulativeBucketLocusUnionCount         Int?                                      @map("cumulative_bucket_locus_union_count")
+  bucketLocusCoverageRatioVsFinalObservedUnion Float?                                @map("bucket_locus_coverage_ratio_vs_final_observed_union")
+  queryProvenanceJson                     Json?                                     @map("query_provenance_json")
+  createdAt                               DateTime                                  @default(now()) @map("created_at")
+
+  slot Exp021MaturationShadowObservationSlot @relation(fields: [observationSlotId], references: [id], onDelete: Restrict)
+
+  @@unique([observationSlotId, attemptOrdinal])
+  @@index([observationSlotId])
+  @@map("exp021_maturation_shadow_observation_attempts")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

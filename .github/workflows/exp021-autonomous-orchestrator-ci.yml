@@ -5,10 +5,12 @@ on:
     paths:
       - 'backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp*'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-fleet/**'
+      - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/**'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/testing/reference-capture-exp021*'
       - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
       - 'backend/scripts/ops/reference-capture-exp-021*'
       - 'backend/scripts/test/exp021-fleet-migration-test.sh'
+      - 'backend/scripts/test/exp021-maturation-shadow-migration-test.sh'
       - 'backend/scripts/test/exp021-canonical-postgres-bootstrap.sh'
       - 'backend/prisma/migrations/*exp021*'
       - 'backend/prisma/schema.prisma'
@@ -162,6 +164,15 @@ jobs:
           RC_DEF019_POSTGRES_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
           REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
           REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
+      - run: npm run test:exp021:maturation-shadow:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TEST_POSTGRES_DATABASE: ${{ env.EXP021_PG_DB }}
+          RC_DEF019_POSTGRES_USER: ${{ env.EXP021_PG_USER }}
+          RC_DEF019_POSTGRES_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
+          REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
 
   exp021-fleet-migration:
     name: EXP-021 PR-C fleet migration deploy
@@ -194,6 +205,11 @@ jobs:
         env:
           EXP021_FLEET_MIGRATION_PG_USER: ${{ env.EXP021_PG_USER }}
           EXP021_FLEET_MIGRATION_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+      - run: npm run test:exp021:maturation-shadow:migration
+        working-directory: backend
+        env:
+          EXP021_SHADOW_MIGRATION_PG_USER: ${{ env.EXP021_PG_USER }}
+          EXP021_SHADOW_MIGRATION_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
 
   exp021-fleet-unit-gate:
     name: EXP-021 PR-C fleet unit gate
@@ -210,6 +226,7 @@ jobs:
       - run: >-
           npx jest
           reference-capture-exp021-fleet-
+          reference-capture-exp021-maturation-shadow-
           reference-capture-exp021-hf-policy-gate.lib.spec
           reference-capture-exp021-fleet-coordinator.scheduler.spec
           --runInBand --verbose

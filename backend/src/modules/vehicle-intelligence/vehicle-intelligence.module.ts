@@ -192,6 +192,7 @@ import { ReferenceCaptureSettlementShadowRunnerService } from './reference-captu
 import { ReferenceCaptureSettlementShadowService } from './reference-capture/reference-capture-settlement-shadow.service';
 import { ReferenceCaptureExp021FleetRepository } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet.repository';
 import { ReferenceCaptureExp021FleetCoordinatorService } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet-coordinator.service';
+import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.repository';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -475,6 +476,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureSettlementShadowService,
     ReferenceCaptureExp021FleetRepository,
     ReferenceCaptureExp021FleetCoordinatorService,
+    ReferenceCaptureExp021MaturationShadowRepository,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
