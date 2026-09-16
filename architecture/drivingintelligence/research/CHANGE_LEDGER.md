@@ -700,6 +700,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — TGR architecture audit evidence freeze (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Read-only TGR architecture audit + bounded DIMO historical micro-window experiments |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-tgr-audit-2026-09-16/` |
+| Primary Run 1 | **UNCHANGED** |
+| Gap replay package | **UNCHANGED** (`exp021-run1-gap-replay-2026-09-16/`) |
+| Micro-window | `MICRO_WINDOW_RECOVERY_EFFECT_OBSERVED=NO` on tested HF60/HF90 controls |
+| Transition | `TRANSITION_GAP_MICRO_FRAGMENTATION_RECOVERY=NO`; recoverability not demonstrated for canonical window |
+| Maturation | `SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES`; `PRODUCTION_RETRY_AGE_ESTABLISHED=NO` |
+| Architecture | `PREFERRED_TGR_ARCHITECTURE=OPTION_C`; lever = maturation-aware targeted requery |
+| Gap debt | `SEPARATE_GAP_DEBT_AUTHORITY_REQUIRED=YES` (design only, no schema) |
+| Runtime / prod | **NO CHANGES** — `TGR_RUNTIME_IMPLEMENTATION=NO` |
+
 ### EXP-021 — Run 1 targeted gap replay evidence freeze (2026-09-16)
 
 | Event | Detail |
