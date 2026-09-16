@@ -700,6 +700,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — Live Maturation Shadow uniqueness closure (2026-09-16, PR #1670)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Documentation-only micro closure: canonical scientific uniqueness for family, stratum, slot |
+| Family uniqueness | `UNIQUE(org, vehicle, token, canonicalWindowTo, shadowScheduleVersion)`; `enrollmentEventId` provenance only |
+| Stratum uniqueness | `UNIQUE(windowFamilyId, signalLane, queryGeometryMs)`; `signalSetHash` immutable attribute, not uniqueness component |
+| Slot uniqueness | `UNIQUE(windowStratumId, plannedAgeMs)`; transport retry → new attempt, not new slot |
+| Job IDs | Deterministic from family/stratum/plannedAge; `JOB_ID_DEPENDS_ON_ENROLLMENT_EVENT_ID=NO` |
+| Re-experiment | Intentional re-study via `shadowScheduleVersion` only — not new enrollment event ID |
+| Runtime / Prisma | **NO CHANGES** |
+
 ### EXP-021 — Live Maturation Shadow design hardening (2026-09-16, PR #1670)
 
 | Event | Detail |
