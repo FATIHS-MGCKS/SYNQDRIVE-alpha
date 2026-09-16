@@ -3,7 +3,8 @@
 **Design date:** 2026-09-16  
 **Hardening revision:** 2026-09-16 (scientific identity + attempt provenance + sampling unit + uniqueness closure)  
 **Status:** DESIGN ONLY — no runtime implementation, no Prisma migration, no production activation  
-**Code authority:** `origin/main` @ `3930813b5310cfffc3d4d01d65ec997e4c16b80c`  
+**Code authority (design-time):** `origin/main` @ `3930813b5310cfffc3d4d01d65ec997e4c16b80c`  
+**Rebase target (read-only chronology, post-design):** `origin/main` @ `102b3f917a53e95c374dce0fafc6e34a69d1b9aa` (#1671 Stage-1A freshness remediation + deploy capability guard merged; **does not** implement Maturation Shadow runtime)  
 **Frozen evidence inputs:**
 - `architecture/drivingintelligence/evidence/reference-capture/exp021-run1-gap-replay-2026-09-16/`
 - `architecture/drivingintelligence/evidence/reference-capture/exp021-tgr-audit-2026-09-16/`
