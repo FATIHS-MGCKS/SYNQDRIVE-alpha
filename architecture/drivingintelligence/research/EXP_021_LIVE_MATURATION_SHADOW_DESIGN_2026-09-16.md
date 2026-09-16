@@ -1,6 +1,7 @@
 # EXP-021 — Live Maturation Shadow Design
 
 **Design date:** 2026-09-16  
+**Hardening revision:** 2026-09-16 (scientific identity + attempt provenance + sampling unit)  
 **Status:** DESIGN ONLY — no runtime implementation, no Prisma migration, no production activation  
 **Code authority:** `origin/main` @ `3930813b5310cfffc3d4d01d65ec997e4c16b80c`  
 **Frozen evidence inputs:**
@@ -19,6 +20,32 @@
 | `PRODUCTION_RETRY_AGE_SELECTED` | **NO** |
 | `QUERY_GEOMETRY_IS_CADENCE_AUTHORITY` | **NO** |
 | `SUFFICIENT_FOR_CADENCE_RECOMMENDATION` | **NO** |
+| `SUFFICIENT_COMPLETENESS_THRESHOLD_DEFINED` | **NO** |
+| `P_SUFFICIENTLY_COMPLETE_ESTIMABLE_NOW` | **NO** |
+| `BUCKET_LOCUS_AND_PAYLOAD_REVISION_SEPARATED` | **YES** |
+| `COVERAGE_USES_BUCKET_LOCUS_IDENTITY` | **YES** |
+| `SIGNAL_SET_FROZEN_AT_WINDOW_ENROLLMENT` | **YES** |
+| `SIGNAL_SET_HASH_REQUIRED` | **YES** |
+| `QUERY_SEMANTICS_FROZEN_PER_WINDOW` | **YES** |
+| `MIXED_RUNTIME_WINDOW_FAILS_PRIMARY_CURVE_CLOSED` | **YES** |
+| `WINDOW_FAMILY_REQUIRED` | **YES** |
+| `PRIMARY_SAMPLING_UNIT` | **WINDOW_FAMILY** |
+| `PAIRED_GEOMETRY_ANALYSIS_REQUIRED` | **YES** |
+| `ACTIVITY_CLASSIFICATION_GEOMETRY_SPECIFIC` | **YES** |
+| `PROVIDER_ERROR_COUNTS_AS_ZERO` | **NO** |
+| `ERROR_AGE_NARROWS_TRANSITION_INTERVAL` | **NO** |
+| `IMMUTABLE_ATTEMPT_LEDGER_REQUIRED` | **YES** |
+| `FAILED_ATTEMPT_OVERWRITE_ALLOWED` | **NO** |
+| `CODE_DEFAULT_HF_SETTLEMENT_DELAY_MS` | **8000** |
+| `EFFECTIVE_RUNTIME_POLICY_DELAY_RESOLUTION_REQUIRED` | **YES** |
+| `AGE_SCHEDULE_FROZEN_PER_FAMILY` | **YES** |
+| `MATURATION_ORDER_USES_ACTUAL_AGE` | **YES** |
+| `DEDICATED_SHADOW_QUEUE_REQUIRED` | **YES** |
+| `CANONICAL_ACQUISITION_PRIORITY_PRESERVED` | **YES** |
+| `SHADOW_PROVIDER_CONCURRENCY_BOUNDED` | **YES** |
+| `SAMPLE_SIZE_UNIT` | **WINDOW_FAMILY** |
+| `PER_STRATUM_N_REPORTED` | **YES** |
+| `FINAL_POLICY_POWER_ANALYSIS_DEFERRED` | **YES** |
 
 ---
 
@@ -26,23 +53,55 @@
 
 ### Primary question
 
-> When does a **fixed** DIMO historical window become available and sufficiently complete after the end of that window?
+> When does a **fixed** DIMO historical window become available, and how does **bucket-locus information coverage** mature relative to the final shadow-observed union, after the end of that window?
 
 This experiment is required **before** choosing any production TGR retry age.
 
-### Two distinct estimands (must not be conflated)
+### Primary estimands (must not be conflated)
 
-1. **Availability:** P(non-zero data | actual window age)
-2. **Completeness / information maturation:** P(data sufficiently complete | actual window age)
+**Estimand A — Availability:**
 
-Non-zero availability ≠ completeness. A query may return some buckets at 30s but additional exact bucket identities at 40/45/50/55/60/90/120s.
+```
+P(non-zero provider data | actualAgeMs)
+```
+
+**Estimand B — Information maturation:**
+
+Distribution of `bucketLocusCoverageRatioVsFinalObservedUnion` by `actualAgeMs`, including:
+
+- median
+- P25
+- P75
+- new bucket-locus gain at age
+- per-field bucket-locus coverage
+
+Use **`FINAL_SHADOW_OBSERVED_UNION`** as observational denominator only.
+
+**`FINAL_SHADOW_OBSERVED_UNION_IS_GROUND_TRUTH=NO`** — provider data could theoretically change later.
+
+### Secondary estimand
+
+**Payload revision / stability** by `actualAgeMs` — detect provider payload evolution at the same bucket locus (see §2).
+
+### Explicitly deferred estimand
+
+A product/scientific threshold for "sufficiently complete" does **not** exist yet.
+
+| Flag | Value |
+|------|-------|
+| `SUFFICIENT_COMPLETENESS_THRESHOLD_DEFINED` | **NO** |
+| `P_SUFFICIENTLY_COMPLETE_ESTIMABLE_NOW` | **NO** |
+
+Future policy **may** later define `SUFFICIENT_COMPLETENESS_THRESHOLD` and transform information-coverage curves into a "sufficiently complete" probability. Do **not** encode 95%, 99%, 100%, or similar thresholds in this design.
+
+Non-zero availability ≠ information completeness. A query may return some bucket loci at 30s but additional bucket loci at 40/45/50/55/60/90/120s.
 
 ### Required measurements
 
 | Metric family | Description |
 |---------------|-------------|
-| `FIRST_NONZERO` | First planned/actual age where any field returns non-zero rows |
-| `CUMULATIVE_INFORMATION_MATURATION` | Growth of exact bucket-identity union across ages |
+| `FIRST_NONZERO` | First `actualAgeMs` where any field returns non-zero rows (provider success required) |
+| `CUMULATIVE_INFORMATION_MATURATION` | Growth of **bucket-locus** union across ages |
 
 Do **not** reduce maturation to boolean ZERO/SUCCESS only.
 
@@ -50,12 +109,12 @@ Do **not** reduce maturation to boolean ZERO/SUCCESS only.
 
 Historical settlement evidence interval-censors maturation:
 
-- 30s = observed zero
-- 60s = observed non-zero
+- 30s = observed zero (provider success)
+- 60s = observed non-zero (provider success)
 
 Therefore the true availability transition occurred **after 30s and at or before 60s** for those two settlement windows.
 
-If a future shadow shows 30s zero, 40s zero, 45s non-zero, the correct scientific statement is:
+If a future shadow shows 30s zero, 40s zero, 45s non-zero (all provider-success), the correct scientific statement is:
 
 > transition interval = **(40s, 45s]**
 
@@ -63,12 +122,36 @@ NOT: "data arrived at exactly 45s."
 
 **`INTERVAL_CENSORED_MATURATION_ANALYSIS_REQUIRED=YES`**
 
+### Provider error is not zero evidence
+
+A provider/network/auth/transport failure at an age does **not** imply `ZERO_RESULT` and does **not** provide negative availability evidence.
+
+For interval-censored transition:
+
+| Term | Definition |
+|------|------------|
+| `lastNegativeAge` | Latest earlier age with `providerRequestSucceeded=true` AND valid zero result |
+| `firstPositiveAge` | First later age with `providerRequestSucceeded=true` AND non-zero data |
+
+Example:
+
+| Age | Outcome |
+|-----|---------|
+| 30s | ZERO (success) |
+| 40s | provider error |
+| 45s | NONZERO (success) |
+
+Correct transition interval: **(30s, 45s]** — NOT **(40s, 45s]**.
+
+**`PROVIDER_ERROR_COUNTS_AS_ZERO=NO`**  
+**`ERROR_AGE_NARROWS_TRANSITION_INTERVAL=NO`**
+
 ### Independence constraints
 
 Maturation shadow must be separate from:
 
 - polling cadence
-- query-window size (except controlled geometry strata)
+- query-window size (except controlled geometry strata within a window family)
 - micro-window fragmentation
 - EXP-021 cadence allocation
 - recovery execution
@@ -78,7 +161,68 @@ Maturation shadow must be separate from:
 
 ---
 
-## 2. Canonical window age definition
+## 2. Bucket locus identity vs payload revision identity
+
+Current "exact bucket identity" language risks conflating:
+
+1. new temporal/provider coverage
+2. changed payload at the same provider field + timestamp
+
+Define **two distinct identities**.
+
+### A. Bucket locus identity
+
+Conceptual components:
+
+- `providerField`
+- `providerTimestamp`
+- `interval`
+- `aggregation`
+- `identityVersion`
+
+**NO normalized value** in locus identity.
+
+Purpose: temporal/information coverage maturation.
+
+### B. Payload revision identity
+
+Conceptual components:
+
+- `bucketLocusIdentity`
+- normalized/raw value fingerprint
+- revision semantics
+
+Purpose: detect provider payload evolution at the same locus.
+
+### Coverage authority
+
+Future completeness metrics **must** use:
+
+```
+UNIQUE_BUCKET_LOCUS_UNION
+```
+
+not payload-revision union.
+
+Persist separately:
+
+| Metric | Role |
+|--------|------|
+| `uniqueBucketLocusCount` | Per-age locus count |
+| `newBucketLociVsPriorAge` | Locus gain at age |
+| `cumulativeBucketLocusUnionCount` | Running union |
+| `bucketLocusCoverageRatioVsFinalObservedUnion` | Coverage vs final shadow-observed union |
+| `payloadRevisionCount` | Payload revisions detected |
+| `changedPayloadLocusCount` | Loci with changed payload at same timestamp |
+
+**`BUCKET_LOCUS_AND_PAYLOAD_REVISION_SEPARATED=YES`**  
+**`COVERAGE_USES_BUCKET_LOCUS_IDENTITY=YES`**
+
+Do **not** change canonical persistence identity in this design PR. Sub-second bucket alignment rules (§12) remain on exact locus identity for gap-detection authority; coverage maturation uses bucket-locus union.
+
+---
+
+## 3. Canonical window age definition
 
 ```
 WINDOW_AGE_MS = provider_request_started_at_ms - fixed_window_to_ms
@@ -98,22 +242,25 @@ If delayed-job scheduler drift occurs, **do not falsify** the observation. Store
 
 For analysis: use **`actualAgeMs`** as continuous authority; `plannedAgeMs` remains the intended stratum.
 
-**`CANONICAL_WINDOW_AGE_DEFINITION=provider_request_started_at_ms - fixed_window_to_ms`**
+Post-hoc maturation calculations must sort by **`actualAgeMs`**, not execution order, when computing `newBucketLociVsPriorAge` or interval-censored transitions. If two successful attempts have nearly equal or out-of-order ages, preserve both and apply deterministic analysis rules.
+
+**`CANONICAL_WINDOW_AGE_DEFINITION=provider_request_started_at_ms - fixed_window_to_ms`**  
+**`MATURATION_ORDER_USES_ACTUAL_AGE=YES`**
 
 ---
 
-## 3. Fixed query window invariant
+## 4. Fixed query window invariant
 
-For a single shadow window, **all** maturation observations use the exact same:
+For a single shadow **stratum** within a window family, **all** maturation observations use the exact same:
 
 - vehicle/token identity
 - `windowFrom`
 - `windowTo`
-- signal-set version (lane-specific)
+- frozen signal-set snapshot (lane-specific; see §5)
 - interval (`1s`)
 - aggregation (`AVG`)
-- provider method / query builder semantics
-- query boundary semantics
+- frozen provider method / query builder semantics
+- frozen query boundary semantics
 
 Only request time / age changes.
 
@@ -126,19 +273,50 @@ Example: fixed `[from, to]` queried at ages A, B, C, …
 
 ---
 
-## 4. Two signal lanes (never combine)
+## 5. Frozen signal set and query semantics per window
+
+The label `RUNTIME_PREFLIGHT_HF_HISTORICAL@enrollment` is **not** sufficient as immutable scientific identity.
+
+At shadow-window-family enrollment, **freeze** and persist:
+
+| Frozen field | Required |
+|--------------|----------|
+| `resolvedProviderFields` | YES |
+| `resolvedProviderFieldsCanonicalSorted` | YES |
+| `signalSetHash` | YES |
+| Signal registry version/hash | YES |
+| Manifest version/hash (SETTLEMENT_SHADOW) | where applicable |
+| Query `interval` | YES |
+| Query `aggregation` | YES |
+| Query-builder semantic version/hash | YES |
+| Query-boundary semantic version | YES |
+| `runtimeBuildShaAtEnrollment` | YES |
+
+For **SETTLEMENT_SHADOW** also freeze:
+
+- manifest identifier
+- manifest SHA/hash
+- exact canonical provider-field list
+
+All later age probes for one scientific stratum **must** use the frozen snapshot. Do **not** dynamically re-resolve signal fields for each age.
+
+If implementation cannot execute the frozen semantics after code drift: **fail the scientific window closed**. Do not silently substitute current semantics.
+
+**`SIGNAL_SET_FROZEN_AT_WINDOW_ENROLLMENT=YES`**  
+**`SIGNAL_SET_HASH_REQUIRED=YES`**  
+**`QUERY_SEMANTICS_FROZEN_PER_WINDOW=YES`**
 
 ### Lane A: HF_FAST_LOOP
 
 **Current-main resolution (not blind copy of Run 1):**
 
-At shadow window enrollment, resolve HF signal set from:
+At shadow window-family enrollment, resolve HF signal set from:
 
 1. Vehicle preflight `broadObservationFields`
 2. `buildAcquisitionCyclePlan()` → `HF_HISTORICAL` surface `providerFields`
 3. Filter: `temporalClass ∈ {WAVEFORM_DYNAMICS, POWERTRAIN_DYNAMIC}` AND `historicalSupported === true`
 
-Version-stamp the resolved field list on each shadow window record.
+Then freeze per §5 above. Run 1 field count is historical reference only.
 
 **Historical Run 1 reference set (for comparability only, not assumed current production):**
 
@@ -154,7 +332,7 @@ Run 1 used exactly 5 fields. Current main may resolve a different count at enrol
 
 | Authority | Value |
 |-----------|-------|
-| `HF_SIGNAL_SET_VERSION` | `RUNTIME_PREFLIGHT_HF_HISTORICAL@enrollment` |
+| `HF_SIGNAL_SET_VERSION` | Frozen `signalSetHash` at enrollment |
 | `HF_SIGNAL_COUNT` | dynamic at enrollment; Run 1 historical reference = **5** |
 
 ### Lane B: SETTLEMENT_SHADOW
@@ -174,9 +352,45 @@ Both lanes may share the same GraphQL query builder (`buildBroadReferenceHistori
 
 ---
 
-## 5. Query geometry (not cadence)
+## 6. Window family — primary sampling unit
 
-Compare fixed historical query-range geometries ending at the same canonical `windowTo` where feasible:
+60s and 90s query geometries ending at the same `windowTo`, and HF / Settlement lanes around the same vehicle-time anchor, are **correlated repeated measurements**. They must **not** be treated as independent biological/scientific sampling units.
+
+### Entity: `Exp021MaturationShadowWindowFamily`
+
+(or repository-consistent equivalent)
+
+Family authority (conceptual):
+
+| Field | Role |
+|-------|------|
+| `organizationId` | Tenant scope |
+| `vehicleId` | Vehicle |
+| `tokenId` | DIMO token |
+| `canonicalWindowTo` | Shared end anchor |
+| `shadowScheduleVersion` | Frozen age schedule |
+| `enrollmentEventId` | Deterministic enrollment provenance |
+
+Within one family, create **strata**:
+
+| Stratum | Geometry | Lane |
+|---------|----------|------|
+| HF × 60s | 60000 ms | HF_FAST_LOOP |
+| HF × 90s | 90000 ms | HF_FAST_LOOP |
+| SETTLEMENT × 60s | 60000 ms | SETTLEMENT_SHADOW |
+| SETTLEMENT × 90s | 90000 ms | SETTLEMENT_SHADOW |
+
+(where enabled)
+
+Each stratum retains its own: `windowFrom`, `windowTo`, frozen signal snapshot, geometry, lane, observations.
+
+**`WINDOW_FAMILY_REQUIRED=YES`**  
+**`PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`**  
+**`PAIRED_GEOMETRY_ANALYSIS_REQUIRED=YES`**
+
+Geometry/lane comparison within a family must use paired/repeated-measures interpretation.
+
+### Query geometry (not cadence)
 
 | Geometry | Duration |
 |----------|----------|
@@ -189,28 +403,48 @@ Compare fixed historical query-range geometries ending at the same canonical `wi
 Purpose: determine whether maturation behavior depends materially on query-range length.  
 **Do not** use geometry results for cadence selection.
 
-Each geometry is a separate result stratum (lane × geometry × activity cohort).
-
 ---
 
-## 6. Age schedule — dense 30→60 resolution
+## 7. Age schedule — dense 30→60 resolution
 
-### Current HF V2 settlement delay (verified current main)
+### Policy delay terminology
 
-`PROVISIONAL_SETTLEMENT_DELAY_MS = 8000` (engineering default; `HF_SETTLEMENT_DELAY_MS` env override).
+| Term | Value / rule |
+|------|----------------|
+| `CODE_DEFAULT_HF_SETTLEMENT_DELAY_MS` | **8000** (engineering default in `reference-capture-hf-recovery-v2.policy.ts`) |
+| `EFFECTIVE_RUNTIME_HF_SETTLEMENT_DELAY_MS` | **RESOLVE_AT_ACTIVATION** (`HF_SETTLEMENT_DELAY_MS` env override permitted in current code) |
+| `POLICY_DELAY_PROBE_MS` | Effective runtime policy value at activation/enrollment — freeze into schedule version / window family |
 
-Include **one** diagnostic early-age probe at current policy settlement delay.
+Do **not** claim production effective value is 8000 from code default alone.
 
-### Dense pilot planned ages (ms)
+**`EFFECTIVE_RUNTIME_POLICY_DELAY_RESOLUTION_REQUIRED=YES`**
+
+### Fixed scientific ages (ms)
 
 ```
-8000, 30000, 40000, 45000, 50000, 55000, 60000, 90000, 120000
+30000, 40000, 45000, 50000, 55000, 60000, 90000, 120000
 ```
 
-**`CURRENT_HF_SETTLEMENT_DELAY_MS=8000`**  
-**`DENSE_PILOT_AGES_MS=8000,30000,40000,45000,50000,55000,60000,90000,120000`**
+Plus **one** effective policy-delay probe at `POLICY_DELAY_PROBE_MS` if not duplicate of a fixed age.
+
+**`DENSE_PILOT_AGES_MS=POLICY_DELAY_PROBE_MS,30000,40000,45000,50000,55000,60000,90000,120000`**
 
 These are **experiment observation ages**, NOT candidate production retry constants.
+
+### Age schedule frozen per family
+
+Freeze on each window family:
+
+| Field | Role |
+|-------|------|
+| `scheduleVersion` | Immutable schedule identity |
+| `plannedAgesMsExact` | Exact planned ages for this family |
+| `policyDelayProbeMs` | Resolved effective policy delay at enrollment |
+| `createdUnderRuntimeSha` | Runtime SHA when schedule was created |
+
+Do not allow env changes during an active window family to alter later ages.
+
+**`AGE_SCHEDULE_FROZEN_PER_FAMILY=YES`**
 
 ### Why dense 30–60s
 
@@ -218,7 +452,7 @@ Historical evidence only bounds the transition between 30s (zero) and 60s (non-z
 
 ---
 
-## 7. Window selection — no cherry picking
+## 8. Window selection — no cherry picking
 
 **`DETERMINISTIC_WINDOW_SELECTION_REQUIRED=YES`**
 
@@ -239,9 +473,18 @@ Future implementation **must** resolve current token authority and **fail closed
 - Deterministic eligibility from independent runtime evidence
 - **Do not** use the historical query under test to decide enrollment for that same window (avoid selection-on-outcome)
 
-### Activity stratification
+### Activity stratification — geometry-aware
 
-**`ACTIVITY_STRATIFICATION_REQUIRED=YES`**
+A 90s window contains 30s more historical time than a 60s window. One generic family activity label may be misleading.
+
+Freeze independent activity metadata per geometry:
+
+- `activityClass60s`
+- `activityClass90s`
+
+—or derive cohort from each exact `[windowFrom, windowTo]`.
+
+Signal lane must **not** change activity classification for the same geometry. Use only independent movement authority. Do **not** use queried DIMO response-under-test to classify itself.
 
 | Cohort | Definition (design) |
 |--------|---------------------|
@@ -249,109 +492,196 @@ Future implementation **must** resolve current token authority and **fail closed
 | `ACTIVE_IDLE` | Vehicle active session but no sustained movement |
 | `UNKNOWN_ACTIVITY` | Movement authority unavailable or ambiguous |
 
-Use existing canonical physical/movement telemetry authority where available. Stratify maturation interpretation; do not silently mix cohorts.
+**`ACTIVITY_STRATIFICATION_REQUIRED=YES`**  
+**`ACTIVITY_CLASSIFICATION_GEOMETRY_SPECIFIC=YES`**
 
 ---
 
-## 8. All-zero window handling
+## 9. All-zero window handling
 
-A window may remain zero at every age. This is **not** automatically "slow maturation."
+A window may remain zero at every **provider-success** age. This is **not** automatically "slow maturation."
 
 ### Terminal classifications (after complete schedule)
 
 | Class | Meaning |
 |-------|---------|
-| `EVENTUAL_NONZERO` | At least one age returned data |
-| `PERSISTENT_EMPTY_THROUGH_SHADOW_HORIZON` | Zero through 120s |
+| `EVENTUAL_NONZERO` | At least one provider-success age returned data |
+| `PERSISTENT_EMPTY_THROUGH_SHADOW_HORIZON` | Zero through 120s on all provider-success ages |
 | `PROVIDER_ERROR_CONTAMINATED` | Errors dominate schedule |
 | `STRUCTURAL_EXCLUDED` | Session geometry / structural exclusion |
 | `INVALID_IDENTITY` | Token/vehicle mismatch |
+| `MIXED_RUNTIME_SEMANTICS` | Incompatible runtime/query semantics within window (see §10) |
 | `OTHER_FAIL_CLOSED` | Unclassified — fail closed |
 
 ### Dual denominators
 
 | Denominator | Use |
 |-------------|-----|
-| `ALL_ELIGIBLE_WINDOWS` | Unconditional availability curve |
-| `EVENTUAL_NONZERO_WINDOWS` | Conditional maturation curve |
+| `ALL_ELIGIBLE_WINDOW_FAMILIES` | Unconditional availability curve |
+| `EVENTUAL_NONZERO_WINDOW_FAMILIES` | Conditional maturation curve |
 
-Never silently discard all-zero windows. Never let them distort conditional distributions without labeling denominator.
+Never silently discard all-zero families. Never let them distort conditional distributions without labeling denominator.
 
 ---
 
-## 9. Observation schema (per age)
+## 10. Mixed runtime version semantics
 
-Each immutable age observation persists:
+A shadow schedule can last until 120s and may overlap deployment.
 
-### Identity
+Persist on **every** provider attempt:
+
+- `runtimeBuildSha`
+- `querySemanticsHash`
+- `signalSetHash`
+
+Primary curve eligibility requires all scientifically comparable age probes within a window stratum to use compatible frozen semantics.
+
+### Terminal / quality classification: `MIXED_RUNTIME_SEMANTICS`
+
+| Condition | Action |
+|-----------|--------|
+| Runtime SHA changes but query semantics and frozen signal/query semantics are provably byte/semantic equivalent | Retain observation with explicit provenance |
+| Semantic equivalence cannot be proven | Exclude the affected window stratum from primary maturation curves |
+
+Never rewrite or repair excluded windows.
+
+**`MIXED_RUNTIME_WINDOW_FAILS_PRIMARY_CURVE_CLOSED=YES`**
+
+---
+
+## 11. Immutable attempt ledger
+
+Scientific observation must not be conflated with idempotent observation upsert / transport retry.
+
+### Entity hierarchy (four levels)
+
+```
+WindowFamily
+  └── WindowStratum (lane × geometry)
+        └── ObservationSlot (shadowWindowId + plannedAgeMs)
+              └── ObservationAttempt (immutable per provider call)
+```
+
+### ObservationSlot identity
 
 - `shadowWindowId`
+- `plannedAgeMs`
+
+### ObservationAttempt — immutable per provider call
+
+Persist per attempt:
+
+| Field | Role |
+|-------|------|
+| `attemptId` | Unique attempt identity |
+| `observationSlotId` | Parent slot |
+| `attemptOrdinal` | 1, 2, … within slot |
+| `plannedAgeMs` | Intended schedule stratum |
+| `actualAgeMs` | Scientific authority |
+| `schedulerDriftMs` | Drift from plan |
+| `requestStartedAt` | Provider call start |
+| `requestCompletedAt` | Provider call end |
+| `runtimeBuildSha` | Runtime at attempt |
+| `querySemanticsHash` | Frozen semantics hash |
+| `signalSetHash` | Frozen signal set hash |
+| `providerRequestSucceeded` | Transport/provider success |
+| `providerStatus` | Provider status |
+| `providerErrorClass` | Error taxonomy |
+| Row/bucket/locus metrics | Per §2 |
+| `queryProvenance` | No secrets |
+
+Do **not** overwrite a failed first provider call with a later success.
+
+Transport retry: same `ObservationSlot`, new immutable `ObservationAttempt`. A successful transport retry may occur at a later `actualAgeMs`. Analysis must retain that truth.
+
+**`IMMUTABLE_ATTEMPT_LEDGER_REQUIRED=YES`**  
+**`FAILED_ATTEMPT_OVERWRITE_ALLOWED=NO`**
+
+### Retry scientific semantics
+
+A transport retry is **not** automatically a valid observation at the originally planned age.
+
+Example:
+
+| Attempt | plannedAgeMs | actualAgeMs | Outcome |
+|---------|--------------|-------------|---------|
+| 1 | 45000 | 45300 | network failure |
+| 2 | 45000 | 51000 | success / nonzero |
+
+Do **not** claim: 45s = nonzero.
+
+Scientific authority is `actualAgeMs` of the successful attempt. The failed 45.3s attempt contributes provider-reliability evidence but **not** availability-zero evidence.
+
+---
+
+## 12. Observation schema (per attempt)
+
+Each immutable attempt persists the fields in §11 plus:
+
+### Identity (stratum level)
+
+- `shadowWindowFamilyId`
+- `shadowWindowId` (stratum)
 - `organizationId`, `vehicleId`, `tokenId`
 - `signalLane` (`HF_FAST_LOOP` | `SETTLEMENT_SHADOW`)
-- `signalSetVersion`
+- `signalSetHash`, `signalSetVersion`
 - `queryGeometryMs`
 - `windowFrom`, `windowTo`
 
-### Age semantics
+### Bucket / locus metrics (per attempt)
 
-- `plannedAgeMs`, `actualAgeMs`, `schedulerDriftMs`
-- `requestStartedAt`, `requestCompletedAt`, `requestDurationMs`
-
-### Provider outcome
-
-- `providerRequestSucceeded`
-- `providerStatus`
-- `providerErrorClass`
-- `rawRowCount`
-
-### Bucket / identity metrics
-
-- `uniqueExactBucketIdentityCount`
+- `uniqueBucketLocusCount`
 - `uniqueTemporalBucketStartCount`
-- `perFieldRowCount`, `perFieldBucketCount`
+- `perFieldRowCount`, `perFieldBucketLocusCount`
 - `firstProviderTimestamp`, `lastProviderTimestamp`
-- `exactBucketIdentities` or deterministic hash/manifest
-- `newExactIdentitiesVsPriorAge`
-- `missingPriorIdentitiesAtThisAge`
-- `cumulativeUnionIdentityCount`
+- `bucketLocusManifest` or deterministic hash
+- `newBucketLociVsPriorAge` (computed post-hoc sorted by `actualAgeMs`)
+- `missingPriorBucketLociAtThisAge`
+- `cumulativeBucketLocusUnionCount`
+- `payloadRevisionCount`, `changedPayloadLocusCount`
 
 ### Quality
 
-- `payloadRevisionCount`, `duplicateCount`
+- `duplicateCount`
 - `nearestPriorAgeBucketDeltaMs` (per field, diagnostic)
-- `queryProvenance` (no secrets)
 
 ---
 
-## 10. Completeness / maturation metrics (window-level)
+## 13. Completeness / maturation metrics (stratum-level)
 
-After all age probes complete:
+After all age probes complete for a stratum:
 
 ### A. Availability
 
 - `firstObservedNonZeroPlannedAge`
 - `firstObservedNonZeroActualAge`
-- `nonZeroTransitionInterval` (interval-censored)
+- `nonZeroTransitionInterval` (interval-censored; provider errors excluded per §1)
 
 ### B. Information maturation
 
-- Union of all exact bucket identities across all ages = **`FINAL_SHADOW_OBSERVED_UNION`**
-- Per age: `exactIdentityCoverageRatioVsFinalObservedUnion`
-- Per age: `newIdentityGainAtAge`
+- Union of all bucket loci across all provider-success ages = **`FINAL_SHADOW_OBSERVED_UNION`**
+- Per age: `bucketLocusCoverageRatioVsFinalObservedUnion`
+- Per age: `newBucketLociVsPriorAge`
+- Distribution summaries: median, P25, P75 by `actualAgeMs`
 
-**`FINAL_SHADOW_OBSERVED_UNION_IS_GROUND_TRUTH=NO`** — provider data could theoretically change later.
+**`FINAL_SHADOW_OBSERVED_UNION_IS_GROUND_TRUTH=NO`**
 
 ### C. Per-field maturation
 
 Same calculations independently per `providerField`.
 
-### D. Stability
+### D. Payload stability (secondary)
 
-Whether new identities continue appearing after 60s / 90s / 120s.
+- `payloadRevisionCount` by age
+- `changedPayloadLocusCount` by age
+
+### E. Stability
+
+Whether new bucket loci continue appearing after 60s / 90s / 120s.
 
 ---
 
-## 11. Sub-second bucket alignment
+## 14. Sub-second bucket alignment
 
 Frozen TGR evidence: target `.945Z`, provider neighbor `.445Z`.
 
@@ -370,7 +700,7 @@ Capture `nearestPriorAgeBucketDeltaMs` per field across repeated age observation
 
 ---
 
-## 12. Shadow isolation from canonical store
+## 15. Shadow isolation from canonical store
 
 **Observational only.** Shadow queries must NOT:
 
@@ -394,26 +724,57 @@ Future implementation requires an **isolated shadow persistence path**.
 
 ---
 
-## 13. Durable shadow model (design only — no Prisma)
+## 16. Query load / canonical non-interference
+
+One fully enabled window family can produce:
+
+```
+2 lanes × 2 geometries × up to 9 age strata
+```
+
+before transport retries.
+
+Design future runtime isolation:
+
+| Requirement | Value |
+|-------------|-------|
+| Dedicated BullMQ shadow queue | **YES** |
+| Bounded worker concurrency | **YES** |
+| Bounded active window families | **YES** |
+| Separate provider request budget | **YES** |
+| Priority relative to canonical acquisition | lower or equal-safe |
+
+Shadow backlog must **never** delay canonical HF/reference-capture acquisition.
+
+No activation values required yet.
+
+**`DEDICATED_SHADOW_QUEUE_REQUIRED=YES`**  
+**`CANONICAL_ACQUISITION_PRIORITY_PRESERVED=YES`**  
+**`SHADOW_PROVIDER_CONCURRENCY_BOUNDED=YES`**
+
+---
+
+## 17. Durable shadow model (design only — no Prisma)
 
 ### Conceptual entities
 
-**`Exp021MaturationShadowWindow`**
+**`Exp021MaturationShadowWindowFamily`**
 
 Unique authority prevents duplicate experiments for:
 
-- vehicle + token + fixed window + signal lane + signal-set version + query geometry + shadow schedule version
+- vehicle + token + `canonicalWindowTo` + `shadowScheduleVersion` + `enrollmentEventId`
 
-**`Exp021MaturationShadowObservation`**
+**`Exp021MaturationShadowWindow`** (stratum)
+
+Unique per family + signal lane + query geometry + frozen `signalSetHash`
+
+**`Exp021MaturationShadowObservationSlot`**
 
 Unique per: `shadowWindowId` + `plannedAgeMs`
 
-If provider call fails transiently, define explicitly:
+**`Exp021MaturationShadowObservationAttempt`**
 
-| Retry type | Semantics |
-|------------|-----------|
-| Transport retry | Same scientific observation (idempotent) |
-| Second scientific observation | New row with explicit linkage — not blurred |
+Immutable per provider call; multiple attempts per slot allowed for transport retry.
 
 ### Window state machine (conceptual)
 
@@ -421,7 +782,7 @@ If provider call fails transiently, define explicitly:
 ENROLLED → SCHEDULED → PROBING → TERMINAL
 ```
 
-Terminal: `COMPLETE` | `PERSISTENT_EMPTY` | `ERROR_EXHAUSTED` | `INVALID` | `STRUCTURAL_EXCLUDED`
+Terminal: `COMPLETE` | `PERSISTENT_EMPTY` | `ERROR_EXHAUSTED` | `INVALID` | `STRUCTURAL_EXCLUDED` | `MIXED_RUNTIME_SEMANTICS`
 
 ### Retention
 
@@ -429,18 +790,18 @@ Shadow observations retained for evidence freeze and curve derivation; not merge
 
 ---
 
-## 14. Multi-replica safety
+## 18. Multi-replica safety
 
 **`PREFERRED_SHADOW_SCHEDULING_ARCHITECTURE=BullMQ deterministic delayed jobs + DB uniqueness constraints`**
 
-Repository-native pattern aligned with existing `reference-capture-settlement-shadow` BullMQ scheduling.
+Repository-native pattern aligned with existing `reference-capture-settlement-shadow` BullMQ scheduling, on a **dedicated shadow queue** (§16).
 
 **`MULTI_REPLICA_DUPLICATE_EXECUTION_PREVENTED_BY=`**
 
-- deterministic BullMQ job IDs (window + lane + geometry + plannedAge)
-- DB unique constraints on shadow window and observation
-- idempotent observation upsert
-- fail-closed on duplicate age execution beyond idempotent replay
+- deterministic BullMQ job IDs (family + stratum + plannedAge)
+- DB unique constraints on family, stratum, observation slot
+- immutable attempt insert (no overwrite of failed attempts)
+- fail-closed on duplicate age execution beyond idempotent job replay
 
 Do **not** reuse EXP-021 cadence allocation locks as shadow scientific authority unless proven semantically correct.
 
@@ -448,19 +809,21 @@ Do **not** reuse EXP-021 cadence allocation locks as shadow scientific authority
 
 ---
 
-## 15. Scheduler drift
+## 19. Scheduler drift
 
 Because planned ages differ by only 5s (40/45/50/55/60), scheduler accuracy matters.
 
-Store `plannedAgeMs`, `actualAgeMs`, `schedulerDriftMs` on every observation.
+Store `plannedAgeMs`, `actualAgeMs`, `schedulerDriftMs` on every attempt.
 
 Never assign an observation scientifically to 45s if it actually ran at 53s without retaining truth.
+
+If jobs execute out of planned order, do **not** silently compute `newBucketLociVsPriorAge` in execution order. Sort by `actualAgeMs` while preserving planned stratum.
 
 Assess BullMQ precision during pilot Stage 2. If insufficient, recommend alternative scheduling (e.g. tighter leader-scheduled tick with drift capture).
 
 ---
 
-## 16. Gap detection boundary (informs future TGR, not this experiment)
+## 20. Gap detection boundary (informs future TGR, not this experiment)
 
 | Level | Supported |
 |-------|-----------|
@@ -472,55 +835,61 @@ Assess BullMQ precision during pilot Stage 2. If insufficient, recommend alterna
 
 ---
 
-## 17. Empirical curve output (future run)
+## 21. Empirical curve output (future run)
 
-Per lane / geometry / activity cohort:
+Per lane / geometry / activity cohort (report **actual N per stratum**):
 
 | Output | Description |
 |--------|-------------|
 | `plannedAge` | Schedule stratum |
 | `median actualAge` | Executed age |
-| `N eligible` | Enrollment denominator |
-| `N provider-success` | HTTP/provider success |
-| `N nonzero` | Non-zero bucket count |
+| `N eligible window families` | Enrollment denominator |
+| `N provider-success attempts` | HTTP/provider success |
+| `N nonzero` | Non-zero bucket-locus count |
 | `nonzero proportion` | With 95% CI (Wilson or exact) |
-| `median exact bucket count` | |
-| `median cumulative union coverage` | vs final shadow-observed union |
-| `P25/P75 coverage` | |
-| `median new identities gained` | |
+| `median bucket-locus count` | |
+| `median cumulative locus coverage` | vs final shadow-observed union |
+| `P25/P75 locus coverage` | |
+| `median new bucket loci gained` | |
 | per-field summaries | |
-| interval-censored first availability | distribution |
+| interval-censored first availability | distribution (provider errors excluded) |
+| payload revision rate | secondary |
 
 **No ranking. No cadence selection.**
 
 ---
 
-## 18. Pilot sample size
+## 22. Pilot sample size
 
-Do not invent false precision.
+Do not invent false precision. Sample sizes are **window families**, not lane×geometry records.
 
 | Parameter | Recommendation |
 |-----------|----------------|
-| `PILOT_MIN_VALID_WINDOWS` | **30** — validate shadow mechanics |
-| `PILOT_TARGET_VALID_WINDOWS` | **60** — observe maturation shape |
-| `FLEET_VALIDATION_TARGET_WINDOWS` | **200** — later fleet validation phase |
+| `PILOT_MIN_VALID_WINDOW_FAMILIES` | **30** — validate shadow mechanics |
+| `PILOT_TARGET_VALID_WINDOW_FAMILIES` | **60** — observe maturation shape |
+| `FLEET_VALIDATION_TARGET_WINDOW_FAMILIES` | **200** — later fleet validation phase |
 
+These are **not** power-calculated final policy sample sizes. Activity/lane/geometry stratification reduces per-stratum N. Report actual N per stratum. Do **not** claim all strata have n=60 or n=200.
+
+**`SAMPLE_SIZE_UNIT=WINDOW_FAMILY`**  
+**`PER_STRATUM_N_REPORTED=YES`**  
+**`FINAL_POLICY_POWER_ANALYSIS_DEFERRED=YES`**  
 **`SAMPLE_SIZE_IS_FINAL_PRODUCTION_AUTHORITY=NO`**
 
 Pilot purpose: validate mechanics, observe maturation shape, detect gross age differences.  
-With n=60 and p=0.5, 95% CI width ≈ ±13pp — sufficient for shape, not production policy.
+With n=60 families and p=0.5, 95% CI width ≈ ±13pp — sufficient for shape exploration, not production policy.
 
-Fleet validation (200+ windows) enables narrower CIs for future retry-age decisions.
+Fleet validation (200+ window families) enables narrower CIs for future retry-age decisions after separate power analysis.
 
 ---
 
-## 19. Future retry-age rule (not in this design)
+## 23. Future retry-age rule (not in this design)
 
 After sufficient live shadow evidence, a **separate** decision may consider:
 
 - earliest age with acceptable P(non-zero)
-- acceptable fraction of final shadow-observed union
-- bounded later incremental gain
+- acceptable fraction of final shadow-observed bucket-locus union
+- bounded later incremental locus gain
 
 Do **not** encode thresholds (95%, 99%, 100%) without evidence/product requirement.
 
@@ -528,7 +897,7 @@ Do **not** encode thresholds (95%, 99%, 100%) without evidence/product requireme
 
 ---
 
-## 20. TGR Option C interaction
+## 24. TGR Option C interaction
 
 Future architecture remains:
 
@@ -547,7 +916,7 @@ Micro-window fragmentation remains optional for `PARTIAL_TEMPORAL_COVERAGE` only
 
 ---
 
-## 21. Fleet auto-sampler separation
+## 25. Fleet auto-sampler separation
 
 Shadow completely separate from:
 
@@ -563,21 +932,21 @@ Same vehicle may be observed by both systems; scientific identities and persiste
 
 ---
 
-## 22. Feature flags (design only)
+## 26. Feature flags (design only)
 
 | Flag | Default |
 |------|---------|
 | `EXP021_MATURATION_SHADOW_ENABLED` | `false` |
 | single-token allowlist | `187336` (KS MX 2024) when enabled |
 | per-lane enable flags | both off by default |
-| `max active windows` | bounded (e.g. 10 concurrent) |
+| `max active window families` | bounded (e.g. 10 concurrent) |
 | `schedule version` | `MATURATION_SHADOW_SCHEDULE_v1` |
 
 Do not add env variables in this PR.
 
 ---
 
-## 23. Canary rollout (design sequence only)
+## 27. Canary rollout (design sequence only)
 
 | Stage | Action |
 |-------|--------|
@@ -591,27 +960,29 @@ No activation in this task.
 
 ---
 
-## 24. Fail-closed conditions
+## 28. Fail-closed conditions
 
 | Condition | Action |
 |-----------|--------|
-| Token identity mismatch | Abort window |
-| Signal registry mismatch | Abort window |
-| Query builder mismatch | Abort window |
-| Duplicate shadow window authority | Reject enrollment |
+| Token identity mismatch | Abort window family |
+| Signal registry mismatch vs frozen snapshot | Abort stratum |
+| Query builder mismatch vs frozen semantics | Abort stratum |
+| Cannot execute frozen query semantics after drift | Fail stratum closed |
+| Duplicate shadow window family authority | Reject enrollment |
 | Duplicate age execution (non-idempotent) | Fail closed |
+| Failed attempt overwrite attempted | Hard fail |
 | Provider authentication failure | Mark contaminated |
 | Provider schema drift | Fail closed |
 | Canonical-store write attempt | Hard fail |
 | Canonical watermark change | Hard fail |
-| Scheduler age-order corruption | Flag + exclude from curves |
-| Mixed runtime version (if relevant) | Stratify or exclude |
+| Scheduler age-order corruption | Flag + sort by actualAgeMs |
+| Mixed runtime semantics (unprovable equivalence) | Exclude from primary curves |
 
 No hidden repair of observations.
 
 ---
 
-## 25. Future implementation sequence (not this PR)
+## 29. Future implementation sequence (not this PR)
 
 | PR | Scope | Default |
 |----|-------|---------|
@@ -626,20 +997,20 @@ No hidden repair of observations.
 
 ---
 
-## 26. Raw vs recovered science
+## 30. Raw vs recovered science
 
 **`RAW_AND_RECOVERED_METRICS_SEPARATE=YES`**
 
 ### RAW_BASELINE
 
-- `baselineBucketCount`
+- `baselineBucketLocusCount`
 - `baselineRequestCount`
 - `baselineZeroCount`
 - `baselineTemporalCoverage`
 
 ### RECOVERY (future TGR)
 
-- `recoveredBucketCount`
+- `recoveredBucketLocusCount`
 - `recoveryRequestCount`
 - `gapDebtCreatedCount`
 - `gapDebtRecoveredCount`
@@ -650,34 +1021,39 @@ Recovery must **never** rewrite original slot outcome/provenance.
 
 ---
 
-## 27. Architecture flow
+## 31. Architecture flow
 
 ```
 NORMAL VEHICLE ACTIVITY
         ↓
-DETERMINISTIC WINDOW ENROLLMENT
- (fail-closed identity, activity stratification)
+DETERMINISTIC WINDOW FAMILY ENROLLMENT
+ (fail-closed identity, geometry-specific activity stratification)
         ↓
-FIXED [windowFrom, windowTo]
- (same across all ages; geometry stratum 60s or 90s)
+FREEZE signal set + query semantics + age schedule per family
         ↓
-DELAYED SHADOW PROBES
- policy-delay(8s) / 30 / 40 / 45 / 50 / 55 / 60 / 90 / 120
+FOR EACH STRATUM (lane × geometry):
+  FIXED [windowFrom, windowTo]
+  (same across all ages)
+        ↓
+DELAYED SHADOW PROBES (dedicated queue, bounded concurrency)
+ policy-delay(effective) / 30 / 40 / 45 / 50 / 55 / 60 / 90 / 120
         ↓
 ┌───────────────────────┐     ┌────────────────────────┐
-│  HF_FAST_LOOP lane     │     │  SETTLEMENT_SHADOW lane │
-│  (preflight-resolved) │     │  (manifest 33 fields)   │
+│  HF_FAST_LOOP strata   │     │  SETTLEMENT_SHADOW strata │
+│  (preflight-frozen)   │     │  (manifest-frozen 33)    │
 └───────────┬───────────┘     └────────────┬───────────┘
             │                              │
             └──────────┬───────────────────┘
                        ↓
+    IMMUTABLE ATTEMPT LEDGER (per slot, per provider call)
+                       ↓
          ISOLATED SHADOW OBSERVATIONS
     (no canonical writes, no coverage advance)
                        ↓
-              TERMINAL SHADOW WINDOW
+              TERMINAL WINDOW FAMILY / STRATUM
                        ↓
-   availability + information-maturation analysis
-   (interval-censored, per-lane, per-geometry)
+   availability + bucket-locus information-maturation analysis
+   (interval-censored, per-lane, per-geometry, paired within family)
                        ↓
         NO canonical recovery
         NO cadence change
@@ -686,7 +1062,7 @@ DELAYED SHADOW PROBES
 
 ---
 
-## 28. Preserved scientific authorities (unchanged)
+## 32. Preserved scientific authorities (unchanged)
 
 | Field | Value |
 |-------|-------|
@@ -703,7 +1079,7 @@ Settlement maturation authority (SETTLEMENT_SHADOW only — do not generalize to
 
 ---
 
-## 29. Query coverage / gap debt (current main authority)
+## 33. Query coverage / gap debt (current main authority)
 
 A successful provider query + persistence commit advances **QUERY_COVERAGE**, including legitimate ZERO_RESULT.
 

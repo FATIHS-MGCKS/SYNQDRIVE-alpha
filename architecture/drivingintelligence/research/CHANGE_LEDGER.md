@@ -700,6 +700,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — Live Maturation Shadow design hardening (2026-09-16, PR #1670)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Design-only hardening: scientific identity, attempt provenance, window-family sampling unit |
+| Document | `architecture/drivingintelligence/research/EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Estimands | Primary A: P(non-zero \| actualAgeMs); Primary B: bucket-locus coverage distribution; `P_SUFFICIENTLY_COMPLETE_ESTIMABLE_NOW=NO` |
+| Identity | Bucket-locus vs payload-revision separated; coverage uses `UNIQUE_BUCKET_LOCUS_UNION` |
+| Signal freeze | `signalSetHash` + query semantics frozen at window-family enrollment; fail closed on drift |
+| Sampling unit | `PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`; pilot 30/60, fleet 200 families; paired geometry analysis |
+| Attempt ledger | Four-level hierarchy; immutable `ObservationAttempt`; `FAILED_ATTEMPT_OVERWRITE_ALLOWED=NO` |
+| Provider errors | `PROVIDER_ERROR_COUNTS_AS_ZERO=NO`; errors excluded from interval-censored transitions |
+| Policy delay | `CODE_DEFAULT_HF_SETTLEMENT_DELAY_MS=8000`; effective delay resolved at activation |
+| Production | **NO** — `FUTURE_SHADOW_DEFAULT_ENABLED=NO`, `PRODUCTION_RETRY_AGE_SELECTED=NO` |
+| Runtime / Prisma | **NO CHANGES** |
+
 ### EXP-021 — Live Maturation Shadow design (2026-09-16)
 
 | Event | Detail |
