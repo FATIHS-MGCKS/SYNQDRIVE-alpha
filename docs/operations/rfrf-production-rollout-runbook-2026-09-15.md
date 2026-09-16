@@ -101,13 +101,15 @@ Preflight **BLOCKs** if present.
 
 1. Set the **approved deploy SHA** explicitly (no silent default):
    ```bash
-   export RFRF_REQUIRED_GIT_SHA=<approved-main-sha-after-F10.1-merge>
+   export RFRF_REQUIRED_GIT_SHA=<FINAL_F10_2_1_HOTFIX_HEAD>
    ```
-2. Run read-only preflight:
+   Use the exact **FINAL_HOTFIX_HEAD** recorded in the PR #1667 closure report — not the hotfix base (`295635fc…`).
+2. Run read-only preflight (F10.2 closure requires live gates):
    ```bash
    sudo RFRF_REQUIRED_GIT_SHA="$RFRF_REQUIRED_GIT_SHA" \
-     bash /opt/synqdrive/current/backend/scripts/ops/rfrf-production-preflight.sh --check
+     bash /opt/synqdrive/current/backend/scripts/ops/rfrf-production-preflight.sh --check --live-required
    ```
+   Plain `--check` remains for generic/repo-only verification; **do not** use it alone for F10.2 final closure.
 3. Capture metrics baseline from both replicas (RFRF + physical refuel recovery series at zero before enablement).
 4. Verify monitoring:
    ```bash

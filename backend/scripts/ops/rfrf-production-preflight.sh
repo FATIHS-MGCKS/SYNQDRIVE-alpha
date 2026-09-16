@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Read-only RFRF production rollout preflight (F10.1).
+# Read-only RFRF production rollout preflight (F10.1 / F10.2.1).
 #
 # Default: non-mutating check mode.
 # Usage:
 #   sudo bash rfrf-production-preflight.sh
 #   sudo RFRF_REQUIRED_GIT_SHA=<sha> bash rfrf-production-preflight.sh --check
+#   sudo RFRF_REQUIRED_GIT_SHA=<sha> bash rfrf-production-preflight.sh --check --live-required
 #   DRY_RUN=1 bash rfrf-production-preflight.sh --check   # local fixture testing
 set -euo pipefail
 
@@ -18,15 +19,27 @@ BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 CURRENT="${SYNQDRIVE_CURRENT_LINK:-/opt/synqdrive/current}"
 HEALTH_URL="${SYNQDRIVE_EXTERNAL_HEALTH_URL:-https://app.synqdrive.eu/api/v1/health}"
 PROM_DIR="${PROM_DIR:-/opt/synqdrive/shared/prometheus}"
-MODE="${1:---check}"
+MODE="--check"
+LIVE_REQUIRED=0
 BLOCKED=0
 
-if [[ "$MODE" != "--check" && "$MODE" != "--dry-run" ]]; then
-  echo "Usage: $0 [--check|--dry-run]" >&2
-  exit 2
-fi
+while (($#)); do
+  case "$1" in
+    --check | --dry-run)
+      MODE="$1"
+      ;;
+    --live-required)
+      LIVE_REQUIRED=1
+      ;;
+    *)
+      echo "Usage: $0 [--check|--dry-run] [--live-required]" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
-echo "=== RFRF PRODUCTION PREFLIGHT mode=${MODE} ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+echo "=== RFRF PRODUCTION PREFLIGHT mode=${MODE} live_required=${LIVE_REQUIRED} ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 echo "RFRF_REQUIRED_GIT_SHA=${RFRF_REQUIRED_GIT_SHA}"
 
 mark_blocked() { BLOCKED=1; echo "$1=BLOCKED"; }
@@ -64,15 +77,16 @@ else
   mark_blocked "EXTERNAL_HEALTH"
 fi
 
-for port in "$SYNQDRIVE_REPLICA_A_PORT" "$SYNQDRIVE_REPLICA_B_PORT"; do
-  body="$(curl -sf "http://127.0.0.1:${port}/api/v1/health/readiness" 2>/dev/null || true)"
-  if [[ -n "$body" ]] && echo "$body" | grep -q '"status":"ok"'; then
-    echo "READINESS_${port}=PASS"
-    PORT="$port" printf '%s' "$body" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const j=JSON.parse(d);const p=process.env.PORT;console.log(`REDIS_${p}=${j.checks?.redis?.status||"unknown"}`);console.log(`WORKERS_${p}=${j.checks?.workers?.status||"unknown"}`);console.log(`WORKERS_ENABLED_${p}=${j.checks?.workers?.details?.workersEnabled===true?"yes":"no"}`)}catch{}})'
-  else
-    mark_blocked "READINESS_${port}"
-  fi
-done
+echo "--- REPLICA READINESS / REDIS / WORKERS ---"
+if ! rfrf_verify_worker_readiness "$SYNQDRIVE_REPLICA_A_PORT"; then
+  mark_blocked "REPLICA_READINESS_A"
+fi
+if ! rfrf_verify_worker_readiness "$SYNQDRIVE_REPLICA_B_PORT"; then
+  mark_blocked "REPLICA_READINESS_B"
+fi
+if ! rfrf_verify_dual_replica_worker_readiness; then
+  mark_blocked "DUAL_REPLICA_WORKER_GATE"
+fi
 
 echo "--- RFRF FLAG SNAPSHOT ---"
 if [[ ! -f "$BACKEND_ENV" ]]; then
@@ -92,12 +106,7 @@ fi
 echo "--- SCHEMA / DB READONLY ---"
 if [[ -f "$BACKEND_ENV" ]]; then
   rfrf_db_readonly_counts "$BACKEND_ENV" || mark_blocked "DB_READONLY"
-  set +u
-  set -a
-  # shellcheck disable=SC1090
-  source "$BACKEND_ENV"
-  set +a
-  url="$(rfrf_psql_url_strip_schema "${DATABASE_URL:-}")"
+  url="$(rfrf_dotenv_database_url "$BACKEND_ENV")"
   if [[ -n "$url" ]] && command -v psql >/dev/null 2>&1; then
     table="$(psql "$url" -Atqc "SELECT to_regclass('public.raw_refuel_candidates');" 2>/dev/null || true)"
     echo "RAW_REFUEL_CANDIDATES_TABLE=${table:-missing}"
@@ -139,6 +148,16 @@ if rfrf_verify_loaded_alerts "${PROM_DIR}/alerts.yml"; then
 else
   echo "LOADED_F8_ALERTS=NO"
   mark_blocked "LOADED_F8_ALERTS"
+fi
+
+if (( LIVE_REQUIRED )); then
+  echo "--- LIVE OBSERVABILITY (required) ---"
+  if ! rfrf_verify_live_observability_gates "${PROM_DIR}/prometheus.yml"; then
+    mark_blocked "LIVE_OBSERVABILITY"
+  fi
+  echo "LIVE_PROMETHEUS_TARGET_A_REQUIRED=YES"
+  echo "LIVE_PROMETHEUS_TARGET_B_REQUIRED=YES"
+  echo "LIVE_F8_RULES_REQUIRED=YES"
 fi
 
 echo "--- STAGE DERIVATION ---"

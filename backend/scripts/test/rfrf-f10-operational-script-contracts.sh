@@ -199,4 +199,61 @@ fi
 [[ "$PROM_DIR" == "${TMP_DIR}/prometheus" ]] || fail "tests must use temp prom dir"
 pass "no production state touched by tests"
 
+# 16) preflight must not source backend.env (literal $share fixture)
+cat >"$BACKEND_ENV" <<EOF
+HM_HEALTH_APP_MQTT_TOPIC=\$share/synqdrive/health
+METRICS_BEARER_TOKEN=fixture-token
+DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:5432/fixture?schema=public
+PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_RECOVERY_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT=2026-09-04T12:00:00.000Z
+EOF
+preflight_out="$(bash "${OPS}/rfrf-production-preflight.sh" --check --live-required 2>&1 || true)"
+if [[ "$preflight_out" == *"backend.env:"* && "$preflight_out" == *"unbound variable"* ]]; then
+  fail "preflight sourced backend.env on literal \$share"
+fi
+if [[ "$preflight_out" != *"live_required=1"* ]]; then
+  fail "preflight missing live_required mode"
+fi
+pass "preflight dotenv-safe with live-required flag"
+
+# 17) deploy SHA exact-match contract
+HOTFIX_BASE_SHA="295635fcfcb84dcaabf24f796a5827c66a0da2f8"
+FINAL_HOTFIX_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+MAIN_SHA="$(git -C "$REPO_ROOT" rev-parse origin/main 2>/dev/null || git -C "$REPO_ROOT" rev-parse main)"
+
+if rfrf_verify_deploy_sha "$REPO_ROOT" "$FINAL_HOTFIX_SHA" 2>/dev/null; then
+  pass "deploy sha hotfix head matches required hotfix head"
+else
+  fail "deploy sha hotfix head should pass against itself"
+fi
+
+if rfrf_verify_deploy_sha "$REPO_ROOT" "$HOTFIX_BASE_SHA" 2>/dev/null; then
+  fail "deploy sha hotfix head must not pass against hotfix base only"
+else
+  pass "deploy sha hotfix head blocks when required is base only"
+fi
+
+if rfrf_verify_deploy_sha "$REPO_ROOT" "$MAIN_SHA" 2>/dev/null; then
+  if [[ "$FINAL_HOTFIX_SHA" == "$MAIN_SHA" ]]; then
+    pass "deploy sha main matches when branch equals main"
+  else
+    fail "deploy sha main head must not pass when required is hotfix head"
+  fi
+else
+  pass "deploy sha main head blocks when required is hotfix head"
+fi
+
+export RFRF_REQUIRED_GIT_SHA=
+unset RFRF_FIXTURE_MODE
+unset DRY_RUN
+if rfrf_require_approved_deploy_sha 2>/dev/null; then
+  fail "missing required deploy sha must block"
+else
+  pass "missing required deploy sha blocks"
+fi
+export RFRF_FIXTURE_MODE=1
+export DRY_RUN=1
+export RFRF_REQUIRED_GIT_SHA="$FINAL_HOTFIX_SHA"
+
 echo "rfrf-f10-operational-script-contracts: OK"
