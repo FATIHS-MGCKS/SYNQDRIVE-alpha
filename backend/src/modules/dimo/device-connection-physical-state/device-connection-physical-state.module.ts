@@ -17,6 +17,7 @@ import { PhysicalStateAuthorityCutoverService } from './physical-state-authority
 import { PhysicalStatePreseedService } from './physical-state-preseed.service';
 import { PhysicalStateSnapshotEvidenceOrchestrator } from './physical-state-snapshot-evidence-orchestrator.service';
 import { PhysicalStateShadowObservationRepository } from './physical-state-shadow-observation.repository';
+import { PhysicalStateShadowObservationRetentionScheduler } from './physical-state-shadow-observation-retention.scheduler';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PhysicalStateShadowObservationRepository } from './physical-state-shado
     PhysicalStateReconcileCoordinator,
     PhysicalStateShadowObservabilityService,
     PhysicalStateShadowObservationRepository,
+    PhysicalStateShadowObservationRetentionScheduler,
     PhysicalStateEvidenceWriterService,
     PhysicalStateSnapshotEvidenceOrchestrator,
     PhysicalStatePreseedService,

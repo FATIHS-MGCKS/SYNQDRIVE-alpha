@@ -246,6 +246,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly connectivityPhysicalStateShadowClassificationTotal: Counter<string>;
   readonly connectivityPhysicalStateShadowCorrectnessBlockerTotal: Counter<string>;
   readonly connectivityPhysicalStateShadowPilotScopeGateTotal: Counter<string>;
+  readonly connectivityPhysicalStateShadowObservationPersistenceFailureTotal: Counter<string>;
   readonly connectivityPhysicalStateEvidenceWriterTotal: Counter<string>;
   readonly connectivityPhysicalStateStatefulShadowEvaluationTotal: Counter<string>;
   readonly connectivityPhysicalStateGtR1ExpectedFixTotal: Counter<string>;
@@ -2004,6 +2005,13 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_connectivity_physical_state_shadow_pilot_scope_gate_total',
       help: 'STATEFUL_SHADOW pilot scope gate decisions (low-cardinality)',
       labelNames: ['allowed', 'reason', 'provider'],
+      registers: [this.registry],
+    });
+
+    this.connectivityPhysicalStateShadowObservationPersistenceFailureTotal = new Counter({
+      name: 'synqdrive_connectivity_physical_state_shadow_observation_persistence_failure_total',
+      help: 'Shadow pilot observation durable persistence failures (compare-only evidence loss)',
+      labelNames: ['provider'],
       registers: [this.registry],
     });
 

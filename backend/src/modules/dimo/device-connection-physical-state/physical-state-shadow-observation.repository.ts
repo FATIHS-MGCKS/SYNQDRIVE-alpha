@@ -1,13 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { loadShadowObservationRetentionDaysFromEnv } from '@config/connectivity-physical-state-shadow-pilot-scope.config';
+import { CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS } from './physical-state-shadow-operational-evidence.constants';
 import type { PhysicalStateShadowComparisonResult } from './physical-state-shadow-comparator.types';
 
 export type ShadowObservationScopeWindowSummary = {
   comparisonCount: number;
   correctnessBlockerCount: number;
   classificationCounts: Record<string, number>;
+};
+
+export type ShadowOperationalCoverage = {
+  firstComparisonObservedAt: Date | null;
+  lastComparisonObservedAt: Date | null;
+  comparisonCount: number;
+  actualObservedSpanMs: number;
+  minimumOperationalObservationMs: number;
+  sevenDayOperationalWindowProven: boolean;
 };
 
 @Injectable()
@@ -28,10 +37,16 @@ export class PhysicalStateShadowObservationRepository {
         evidenceReferenceId: result.evidenceReferenceId,
         bindingKey: result.bindingKey,
         observedAt: new Date(result.observedAt),
+        evidenceObservedAt: result.evidenceObservedAt
+          ? new Date(result.evidenceObservedAt)
+          : null,
       },
     });
   }
 
+  /**
+   * Window queries use comparison/runtime observation time (`observedAt`), not source evidence time.
+   */
   async summarizeScopeWindow(input: {
     organizationId: string;
     vehicleId: string;
@@ -69,6 +84,53 @@ export class PhysicalStateShadowObservationRepository {
     };
   }
 
+  /**
+   * Operational pilot coverage proof uses persisted comparison/runtime timestamps only.
+   */
+  async getOperationalCoverage(input: {
+    organizationId: string;
+    vehicleId: string;
+    provider: string;
+    minimumOperationalObservationMs?: number;
+  }): Promise<ShadowOperationalCoverage> {
+    const minimumOperationalObservationMs =
+      input.minimumOperationalObservationMs ??
+      CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS;
+
+    const aggregate = await this.prisma.deviceConnectionPhysicalStateShadowObservation.aggregate({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        provider: input.provider,
+      },
+      _count: { _all: true },
+      _min: { observedAt: true },
+      _max: { observedAt: true },
+    });
+
+    const comparisonCount = aggregate._count._all;
+    const firstComparisonObservedAt = aggregate._min.observedAt;
+    const lastComparisonObservedAt = aggregate._max.observedAt;
+
+    const actualObservedSpanMs =
+      firstComparisonObservedAt && lastComparisonObservedAt
+        ? lastComparisonObservedAt.getTime() - firstComparisonObservedAt.getTime()
+        : 0;
+
+    const sevenDayOperationalWindowProven =
+      comparisonCount > 0 && actualObservedSpanMs >= minimumOperationalObservationMs;
+
+    return {
+      firstComparisonObservedAt,
+      lastComparisonObservedAt,
+      comparisonCount,
+      actualObservedSpanMs,
+      minimumOperationalObservationMs,
+      sevenDayOperationalWindowProven,
+    };
+  }
+
+  /** Retention pruning uses comparison/runtime observation time (`observedAt`). */
   async pruneExpiredObservations(now = new Date()): Promise<number> {
     const retentionDays = loadShadowObservationRetentionDaysFromEnv();
     const cutoff = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);

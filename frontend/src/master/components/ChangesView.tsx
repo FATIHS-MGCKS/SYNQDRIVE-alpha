@@ -44,7 +44,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Pilot gate before ensureAuthorityRow and all physical durable writes on webhook + snapshot paths.',
       'PHYSICAL authority bypasses pilot gate; non-pilot LEGACY scopes perform zero physical mutations when master ON.',
       'Scope-bound shadow structured logs; low-cardinality pilot gate Prometheus counter (no org/vehicle labels).',
-      'Durable PostgreSQL shadow observations for ≥7-day pilot evidence; PSG-A..W unit + PG proof matrix.',
+      'Durable PostgreSQL shadow observations with dual clocks (comparison observedAt vs evidenceObservedAt); operational ≥7-day proof uses runtime comparison span only (PSG-TIME-1/2).',
+      'Leader-owned retention scheduler; persistence-failure metric/log without breaking legacy writer path; PSG-A..W unit + PG proof matrix.',
     ],
     reason:
       'Global STATEFUL_SHADOW flags at deployed SHA would blast-radius all DIMO scopes; operational pilot proof requires scope-bound durable evidence.',

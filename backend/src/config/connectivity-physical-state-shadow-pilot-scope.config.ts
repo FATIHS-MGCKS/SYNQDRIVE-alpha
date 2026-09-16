@@ -12,9 +12,14 @@ export const CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS_ENV =
   'CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS';
 
 const DEFAULT_SHADOW_OBSERVATION_RETENTION_DAYS = 90;
+const PILOT_SCOPE_CANONICAL_KEYS = new Set(['organizationId', 'vehicleId', 'provider']);
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasOnlyCanonicalPilotScopeKeys(record: Record<string, unknown>): boolean {
+  return Object.keys(record).every((key) => PILOT_SCOPE_CANONICAL_KEYS.has(key));
 }
 
 function scopeIdentityKey(scope: ShadowPilotScopeConfigEntry): string {
@@ -48,6 +53,10 @@ export function parseShadowPilotScopesJson(
     }
 
     const record = entry as Record<string, unknown>;
+    if (!hasOnlyCanonicalPilotScopeKeys(record)) {
+      return { ok: false, scopes: [], configInvalid: true, reason: 'INVALID_ENTRY' };
+    }
+
     if (
       !isNonEmptyString(record.organizationId) ||
       !isNonEmptyString(record.vehicleId) ||
@@ -86,16 +95,27 @@ export function loadShadowPilotScopesFromEnv(
   return parseShadowPilotScopesJson(env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON_ENV]);
 }
 
-export function loadShadowObservationRetentionDaysFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
+export function parseShadowObservationRetentionDays(
+  raw: string | undefined,
 ): number {
-  const raw = env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS_ENV];
   if (!raw?.trim()) return DEFAULT_SHADOW_OBSERVATION_RETENTION_DAYS;
-  const parsed = Number.parseInt(raw, 10);
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    return DEFAULT_SHADOW_OBSERVATION_RETENTION_DAYS;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
   if (!Number.isFinite(parsed) || parsed < 7) {
     return DEFAULT_SHADOW_OBSERVATION_RETENTION_DAYS;
   }
   return parsed;
+}
+
+export function loadShadowObservationRetentionDaysFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): number {
+  return parseShadowObservationRetentionDays(
+    env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS_ENV],
+  );
 }
 
 export default registerAs('connectivityPhysicalStateShadowPilotScope', () => ({

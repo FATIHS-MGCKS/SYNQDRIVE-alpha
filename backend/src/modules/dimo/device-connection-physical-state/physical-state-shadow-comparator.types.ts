@@ -41,6 +41,8 @@ export type PhysicalStateShadowComparisonInput = {
   provenExpectedFix?: boolean;
   bindingDivergenceExplained?: boolean;
   equalTimeOpposingState?: boolean;
+  /** Runtime comparison timestamp; defaults to injectable wall clock when omitted. */
+  comparisonObservedAt?: Date | string | null;
 };
 
 export type PhysicalStateShadowComparisonResult = {

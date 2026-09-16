@@ -1,5 +1,6 @@
 import {
   CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON_ENV,
+  parseShadowObservationRetentionDays,
   parseShadowPilotScopesJson,
 } from './connectivity-physical-state-shadow-pilot-scope.config';
 
@@ -54,6 +55,20 @@ describe('connectivity-physical-state-shadow-pilot-scope.config', () => {
   it('deduplicates identical scopes', () => {
     const result = parseShadowPilotScopesJson(JSON.stringify([scope, scope]));
     expect(result.scopes).toHaveLength(1);
+  });
+
+  it('rejects unexpected structural keys on pilot scope entries', () => {
+    const result = parseShadowPilotScopesJson(
+      JSON.stringify([{ ...scope, bindingKey: 'should-not-be-here' }]),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.configInvalid).toBe(true);
+  });
+
+  it('parseShadowObservationRetentionDays rejects malformed suffix strings', () => {
+    expect(parseShadowObservationRetentionDays('90days')).toBe(90);
+    expect(parseShadowObservationRetentionDays('7foo')).toBe(90);
+    expect(parseShadowObservationRetentionDays('14')).toBe(14);
   });
 
   it('loadShadowPilotScopesFromEnv reads env key', () => {

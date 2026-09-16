@@ -15,6 +15,8 @@ import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.co
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { PhysicalStateShadowObservationRepository } from './physical-state-shadow-observation.repository';
 import { PhysicalStateShadowObservabilityService } from './physical-state-shadow-observability.service';
+import { setShadowComparisonClockForTests } from './physical-state-shadow-comparison.clock';
+import { CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS } from './physical-state-shadow-operational-evidence.constants';
 import {
   cleanupPhysicalStatePostgresFixture,
   createPhysicalStatePostgresFixture,
@@ -97,6 +99,7 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
   });
 
   afterEach(async () => {
+    setShadowComparisonClockForTests(null);
     disablePhysicalStateStatefulShadowEnv();
     await cleanupPhysicalStatePostgresFixture(prisma, pilotFixture);
     await cleanupPhysicalStatePostgresFixture(prisma, nonPilotFixture);
@@ -305,8 +308,10 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
     expect(nonPilotAfter.outbox - nonPilotBefore.outbox).toBe(0);
   });
 
-  it('durable shadow observation query supports scope/time window counts', async () => {
-    const observedAt = new Date('2026-09-12T13:00:00.000Z');
+  it('durable shadow observation query supports scope/time window counts on comparison runtime time', async () => {
+    const comparisonObservedAt = new Date('2026-09-16T13:00:00.000Z');
+    const evidenceObservedAt = new Date('2026-09-08T10:00:00.000Z');
+    setShadowComparisonClockForTests(() => comparisonObservedAt);
     const binding = buildBindingScopeFromToken({
       provider: 'DIMO',
       tokenId: pilotFixture.tokenId,
@@ -317,25 +322,122 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
       provider: 'DIMO',
       tokenId: pilotFixture.tokenId,
       pluggedIn: true,
-      observedAt,
+      observedAt: evidenceObservedAt,
       rawPayload: { pluggedIn: true },
       evidenceReferenceId: 'wh-pilot-obs',
       legacyShadow: {
         ...legacyShadow,
         bindingKey: binding.bindingKey,
-        evidenceObservedAt: observedAt,
+        evidenceObservedAt,
       },
     });
 
-    const summary = await observationRepository.summarizeScopeWindow({
+    const operationalWindow = await observationRepository.summarizeScopeWindow({
       organizationId: pilotFixture.org.id,
       vehicleId: pilotFixture.vehicle.id,
       provider: 'DIMO',
-      windowStart: new Date('2026-09-12T00:00:00.000Z'),
-      windowEnd: new Date('2026-09-13T00:00:00.000Z'),
+      windowStart: new Date('2026-09-16T00:00:00.000Z'),
+      windowEnd: new Date('2026-09-17T00:00:00.000Z'),
+    });
+    const evidenceTimeWindow = await observationRepository.summarizeScopeWindow({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: new Date('2026-09-08T00:00:00.000Z'),
+      windowEnd: new Date('2026-09-09T00:00:00.000Z'),
     });
 
-    expect(summary.comparisonCount).toBeGreaterThanOrEqual(1);
-    expect(summary.correctnessBlockerCount).toBe(0);
+    expect(operationalWindow.comparisonCount).toBeGreaterThanOrEqual(1);
+    expect(operationalWindow.correctnessBlockerCount).toBe(0);
+    expect(evidenceTimeWindow.comparisonCount).toBe(0);
+
+    const row = await prisma.deviceConnectionPhysicalStateShadowObservation.findFirst({
+      where: { vehicleId: pilotFixture.vehicle.id, evidenceReferenceId: 'wh-pilot-obs' },
+    });
+    expect(row?.observedAt.toISOString()).toBe(comparisonObservedAt.toISOString());
+    expect(row?.evidenceObservedAt?.toISOString()).toBe(evidenceObservedAt.toISOString());
+  });
+
+  it('PSG-TIME-1 historical evidence cannot backdate operational seven-day proof', async () => {
+    const comparisonNow = new Date('2026-09-16T12:00:00.000Z');
+    const oldEvidence = new Date('2026-09-08T10:00:00.000Z');
+    setShadowComparisonClockForTests(() => comparisonNow);
+
+    for (let i = 0; i < 3; i += 1) {
+      await writer.writeWebhookEvidence({
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        tokenId: pilotFixture.tokenId,
+        pluggedIn: true,
+        observedAt: oldEvidence,
+        rawPayload: { pluggedIn: true },
+        evidenceReferenceId: `wh-time1-${i}`,
+        legacyShadow: {
+          ...legacyShadow,
+          evidenceObservedAt: oldEvidence,
+        },
+      });
+    }
+
+    const coverage = await observationRepository.getOperationalCoverage({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+    });
+
+    expect(coverage.comparisonCount).toBeGreaterThanOrEqual(3);
+    expect(coverage.actualObservedSpanMs).toBeLessThan(
+      CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS,
+    );
+    expect(coverage.sevenDayOperationalWindowProven).toBe(false);
+  });
+
+  it('PSG-TIME-2 actual runtime comparison span can prove seven-day operational window', async () => {
+    const firstComparison = new Date('2026-09-01T00:00:00.000Z');
+    const lastComparison = new Date('2026-09-08T12:00:00.000Z');
+
+    setShadowComparisonClockForTests(() => firstComparison);
+    await writer.writeWebhookEvidence({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      tokenId: pilotFixture.tokenId,
+      pluggedIn: true,
+      observedAt: new Date('2026-08-20T10:00:00.000Z'),
+      rawPayload: { pluggedIn: true },
+      evidenceReferenceId: 'wh-time2-first',
+      legacyShadow: {
+        ...legacyShadow,
+        evidenceObservedAt: new Date('2026-08-20T10:00:00.000Z'),
+      },
+    });
+
+    setShadowComparisonClockForTests(() => lastComparison);
+    await writer.writeWebhookEvidence({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      tokenId: pilotFixture.tokenId,
+      pluggedIn: true,
+      observedAt: new Date('2026-08-25T10:00:00.000Z'),
+      rawPayload: { pluggedIn: true },
+      evidenceReferenceId: 'wh-time2-last',
+      legacyShadow: {
+        ...legacyShadow,
+        evidenceObservedAt: new Date('2026-08-25T10:00:00.000Z'),
+      },
+    });
+
+    const coverage = await observationRepository.getOperationalCoverage({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+    });
+
+    expect(coverage.actualObservedSpanMs).toBeGreaterThanOrEqual(
+      CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS,
+    );
+    expect(coverage.sevenDayOperationalWindowProven).toBe(true);
   });
 });

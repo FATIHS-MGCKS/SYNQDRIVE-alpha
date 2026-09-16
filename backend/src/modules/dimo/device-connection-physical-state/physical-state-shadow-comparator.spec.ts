@@ -11,6 +11,9 @@ import {
   resolvePhysicalEffectiveState,
 } from './physical-state-shadow-comparator';
 import type { PhysicalStateShadowComparisonInput } from './physical-state-shadow-comparator.types';
+import {
+  setShadowComparisonClockForTests,
+} from './physical-state-shadow-comparison.clock';
 
 const scope = {
   organizationId: 'org-1',
@@ -42,13 +45,31 @@ function baseInput(
 }
 
 describe('physical-state shadow comparator', () => {
-  it('uses evidenceObservedAt for durable observedAt when provided', () => {
+  afterEach(() => {
+    setShadowComparisonClockForTests(null);
+  });
+
+  it('uses comparisonObservedAt for durable observedAt and preserves evidenceObservedAt separately', () => {
     const result = comparePhysicalStateShadowDecisions(
       baseInput({
-        evidenceObservedAt: '2026-09-12T10:00:00.000Z',
+        comparisonObservedAt: '2026-09-16T12:00:00.000Z',
+        evidenceObservedAt: '2026-09-08T10:00:00.000Z',
       }),
     );
-    expect(result.observedAt).toBe('2026-09-12T10:00:00.000Z');
+    expect(result.observedAt).toBe('2026-09-16T12:00:00.000Z');
+    expect(result.evidenceObservedAt).toBe('2026-09-08T10:00:00.000Z');
+  });
+
+  it('does not backdate comparison observedAt from source evidence timestamps', () => {
+    setShadowComparisonClockForTests(() => new Date('2026-09-16T12:00:00.000Z'));
+    const result = comparePhysicalStateShadowDecisions(
+      baseInput({
+        evidenceObservedAt: '2026-09-01T10:00:00.000Z',
+        legacyEvidenceObservedAt: '2026-09-01T10:00:00.000Z',
+      }),
+    );
+    expect(result.observedAt).toBe('2026-09-16T12:00:00.000Z');
+    expect(result.evidenceObservedAt).toBe('2026-09-01T10:00:00.000Z');
   });
 
   it('1. BOTH_ACCEPT same state / same timestamp -> MATCH', () => {

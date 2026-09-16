@@ -9,6 +9,7 @@ import {
   recordPhysicalStateShadowClassification,
   recordPhysicalStateShadowCorrectnessBlocker,
   recordPhysicalStateShadowEvaluation,
+  recordPhysicalStateShadowObservationPersistenceFailure,
 } from './physical-state-shadow.metrics';
 import { PhysicalStateShadowObservationRepository } from './physical-state-shadow-observation.repository';
 
@@ -22,6 +23,7 @@ export type PhysicalStateShadowLogContext = {
   legacyDecision: 'accept' | 'reject';
   physicalDecision: 'accept' | 'reject';
   observedAt: string;
+  evidenceObservedAt?: string | null;
   legacyReason?: string | null;
   physicalReason?: string | null;
   correlationId?: string | null;
@@ -43,7 +45,9 @@ export class PhysicalStateShadowObservabilityService {
     private readonly observationRepository?: PhysicalStateShadowObservationRepository,
   ) {}
 
-  async recordShadowComparison(result: PhysicalStateShadowComparisonResult): Promise<void> {
+  async recordShadowComparison(
+    result: PhysicalStateShadowComparisonResult,
+  ): Promise<{ persisted: boolean }> {
     const metricDimensions = {
       classification: result.classification,
       authority_mode: result.authorityMode,
@@ -69,6 +73,7 @@ export class PhysicalStateShadowObservabilityService {
       legacyDecision: result.legacyDecision.accepted ? 'accept' : 'reject',
       physicalDecision: result.physicalDecision.accepted ? 'accept' : 'reject',
       observedAt: result.observedAt,
+      evidenceObservedAt: result.evidenceObservedAt,
       legacyReason: result.legacyReason,
       physicalReason: result.physicalReason,
       correlationId: result.correlationId,
@@ -76,8 +81,30 @@ export class PhysicalStateShadowObservabilityService {
       bindingKey: result.bindingKey,
     });
 
-    if (this.observationRepository) {
+    if (!this.observationRepository) {
+      return { persisted: false };
+    }
+
+    try {
       await this.observationRepository.recordComparison(result);
+      return { persisted: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      recordPhysicalStateShadowObservationPersistenceFailure(this.metrics, {
+        provider: result.scope.provider,
+      });
+      this.logger.error({
+        msg: 'physical_state_shadow_observation_persistence_failed',
+        event: 'physical_state_shadow_observation_persistence_failed',
+        organizationId: result.scope.organizationId,
+        vehicleId: result.scope.vehicleId,
+        provider: result.scope.provider,
+        evidenceReferenceId: result.evidenceReferenceId ?? undefined,
+        comparisonObservedAt: result.observedAt,
+        evidenceObservedAt: result.evidenceObservedAt ?? undefined,
+        error: message,
+      });
+      return { persisted: false };
     }
   }
 
@@ -94,6 +121,7 @@ export class PhysicalStateShadowObservabilityService {
       legacyDecision: ctx.legacyDecision,
       physicalDecision: ctx.physicalDecision,
       observedAt: ctx.observedAt,
+      evidenceObservedAt: ctx.evidenceObservedAt ?? undefined,
       legacyReason: ctx.legacyReason ?? undefined,
       physicalReason: ctx.physicalReason ?? undefined,
       correlationId: ctx.correlationId ?? undefined,

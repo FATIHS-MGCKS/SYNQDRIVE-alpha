@@ -13,6 +13,7 @@ CREATE TABLE "device_connection_physical_state_shadow_observations" (
     "evidence_reference_id" TEXT,
     "binding_key" TEXT,
     "observed_at" TIMESTAMP(3) NOT NULL,
+    "evidence_observed_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "device_connection_physical_state_shadow_observations_pkey" PRIMARY KEY ("id")

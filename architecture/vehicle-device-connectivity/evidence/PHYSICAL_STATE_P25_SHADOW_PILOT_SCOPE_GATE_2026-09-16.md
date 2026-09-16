@@ -16,7 +16,9 @@ Fail-closed LEGACY shadow pilot isolation and scope-bound operational evidence f
 - Pilot gate before `ensureAuthorityRow()` and all physical durable writes
 - PHYSICAL authority bypasses pilot gate
 - Scope-bound structured logs + low-cardinality Prometheus gate metrics
-- Durable PostgreSQL shadow observations for ≥7-day pilot evidence window
+- Durable PostgreSQL shadow observations with dual clocks (`observedAt` comparison/runtime, `evidenceObservedAt` source evidence)
+- Operational ≥7-day proof via `getOperationalCoverage()` on comparison timestamps only (PSG-TIME-1/2)
+- Leader-owned retention scheduler pruning by comparison/runtime time
 
 ## Key artifacts
 

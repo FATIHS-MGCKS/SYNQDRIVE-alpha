@@ -153,22 +153,33 @@ Existing shadow metrics **unchanged** — no `organizationId` / `vehicleId` labe
 
 ---
 
-## 9. Seven-day evidence durability
+## 9. Seven-day evidence durability (dual-clock contract)
 
 | Field | Value |
 |-------|-------|
 | `SEVEN_DAY_SCOPE_EVIDENCE_SOURCE` | PostgreSQL `device_connection_physical_state_shadow_observations` |
-| `SEVEN_DAY_RETENTION_PROVEN` | **YES** (default retention 90 days via `CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS`) |
+| `EVIDENCE_TIME_FIELD` | `evidenceObservedAt` (source DIMO/VLS evidence timestamp) |
+| `COMPARISON_RUNTIME_TIME_FIELD` | `observedAt` (shadow runtime comparison timestamp) |
+| `WINDOW_QUERY_TIME_BASIS` | `observedAt` (comparison/runtime only — **not** `evidenceObservedAt`) |
+| `RETENTION_TIME_BASIS` | `observedAt` (comparison/runtime) |
+| `RETENTION_POLICY_DAYS` | 90 default via `CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS` |
+| `RETENTION_CLEANUP_AUTOMATED` | **YES** — leader-owned daily cron `PhysicalStateShadowObservationRetentionScheduler` |
+| `SEVEN_DAY_RETENTION_PROVEN` | **YES** (policy + automated prune wired) |
+| `SEVEN_DAY_OPERATIONAL_WINDOW_PROVEN` | Requires `getOperationalCoverage()` span ≥ 7 elapsed days on **comparison** timestamps |
 
 **Why not PM2 logs alone:** Production logrotate (14-day retain, per-process files, no query API) does not guarantee restart-safe, replica-aggregated, scope-filtered retrieval across a complete ≥7-day pilot window.
 
 **Durable table contract:**
 
 - Pilot-only bounded storage of shadow comparison rows
-- Queryable by `organizationId + vehicleId + provider + observedAt` window
-- `summarizeScopeWindow()` for classification/blocker counts
-- `pruneExpiredObservations()` retention cleanup
-- Covered by PostgreSQL integration tests (PSG-W + durable query cases)
+- Stores both clocks: `observedAt` (comparison/runtime), `evidenceObservedAt` (source evidence), `createdAt` (insert time)
+- `summarizeScopeWindow()` filters on comparison/runtime `observedAt`
+- `getOperationalCoverage()` proves elapsed operational span: `lastComparisonObservedAt - firstComparisonObservedAt`
+- Historical source evidence timestamps **cannot** backdate operational observation windows (PSG-TIME-1)
+- `pruneExpiredObservations()` + daily leader scheduler prune by comparison/runtime `observedAt`
+- Persistence failure: logged + `synqdrive_connectivity_physical_state_shadow_observation_persistence_failure_total`; legacy writer path continues; cutover proof fails closed when observations missing
+
+**Operational coverage regression tests:** PSG-TIME-1 (old evidence, fresh comparisons → proof **NO**), PSG-TIME-2 (≥7-day comparison span → proof **can PASS**)
 
 ---
 
