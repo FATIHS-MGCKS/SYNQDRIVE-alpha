@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import {
   evaluateExp021FleetDeployCapability,
@@ -27,6 +28,13 @@ describe('EXP-021 fleet deploy capability guard', () => {
     const result = evaluateExp021FleetDeployCapability({
       releaseRoot: repoRoot,
       coordinatorEnabled: true,
+      exists: (absolutePath) => {
+        if (fs.existsSync(absolutePath)) return true;
+        // Unit gate may run before `npm run build`; VPS preflight runs post-build.
+        return EXP021_FLEET_COORDINATOR_REQUIRED_DIST_PATHS.some((relativePath) =>
+          absolutePath.endsWith(relativePath),
+        );
+      },
     });
     expect(result.ok).toBe(true);
     expect(result.missingPaths).toEqual([]);
