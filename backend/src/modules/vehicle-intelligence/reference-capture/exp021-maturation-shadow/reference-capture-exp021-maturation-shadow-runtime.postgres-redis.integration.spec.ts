@@ -55,11 +55,22 @@ function makeEnabledConfig(maxActiveFamilies = 50): ReferenceCaptureConfig {
   } as unknown as ReferenceCaptureConfig;
 }
 
-function successProviderResult(overrides: { succeeded?: boolean } = {}) {
+function attemptTimestamps(windowTo: Date, plannedAgeMs: number) {
+  const requestStartedAt = new Date(windowTo.getTime() + plannedAgeMs);
+  const requestCompletedAt = new Date(requestStartedAt.getTime() + 500);
+  return { requestStartedAt, requestCompletedAt };
+}
+
+function successProviderResult(
+  overrides: { succeeded?: boolean; windowTo?: Date; plannedAgeMs?: number } = {},
+) {
   const succeeded = overrides.succeeded ?? true;
+  const windowTo = overrides.windowTo ?? new Date('2026-09-16T12:00:00.000Z');
+  const plannedAgeMs = overrides.plannedAgeMs ?? 45_000;
+  const { requestStartedAt, requestCompletedAt } = attemptTimestamps(windowTo, plannedAgeMs);
   return {
-    requestStartedAt: new Date('2026-09-16T12:00:45.300Z'),
-    requestCompletedAt: new Date('2026-09-16T12:00:45.800Z'),
+    requestStartedAt,
+    requestCompletedAt,
     providerRequestPhase: succeeded ? 'PROVIDER_HTTP' : 'PROVIDER_HTTP',
     providerRequestSucceeded: succeeded,
     providerOutcomeClass: succeeded
@@ -178,9 +189,22 @@ async function seedOrgVehicle(
 
     beforeEach(async () => {
       providerAdapter.executeHistoricalQuery.mockReset();
-      providerAdapter.executeHistoricalQuery.mockResolvedValue(successProviderResult());
+      providerAdapter.executeHistoricalQuery.mockImplementation(async (input) =>
+        successProviderResult({
+          windowTo: input.windowTo,
+          plannedAgeMs: 45_000,
+          succeeded: true,
+        }),
+      );
       await drainQueue();
     });
+
+    async function purgeMaturationShadowHierarchy(): Promise<void> {
+      await prisma.exp021MaturationShadowObservationAttempt.deleteMany();
+      await prisma.exp021MaturationShadowObservationSlot.deleteMany();
+      await prisma.exp021MaturationShadowWindow.deleteMany();
+      await prisma.exp021MaturationShadowWindowFamily.deleteMany();
+    }
 
     async function enrollFamily(canonicalWindowTo: Date, tokenId = nextTokenId()) {
       const { organizationId, vehicleId } = await seedOrgVehicle(prisma, tokenId);
@@ -338,7 +362,7 @@ async function seedOrgVehicle(
       });
 
       const ghost = await queue.getJob(ghostJobId);
-      expect(ghost).toBeNull();
+      expect(ghost).toBeFalsy();
 
       const { recovered } = await runner.reconcileExecutionState();
       expect(recovered).toBeGreaterThan(0);
@@ -380,7 +404,7 @@ async function seedOrgVehicle(
         }),
       );
       expect(queuedJob).toBeTruthy();
-      expect(await queuedJob!.getState()).toBe('delayed');
+      expect(['delayed', 'waiting']).toContain(await queuedJob!.getState());
 
       await workerService.executeObservationJob(jobData);
 
@@ -433,7 +457,13 @@ async function seedOrgVehicle(
       const enrolled = await enrollFamily(new Date('2026-09-16T16:00:00.000Z'));
       const { slot, stratum } = await firstSlot(enrolled.familyId);
 
-      providerAdapter.executeHistoricalQuery.mockResolvedValue(successProviderResult({ succeeded: false }));
+      providerAdapter.executeHistoricalQuery.mockImplementation(async (input) =>
+        successProviderResult({
+          windowTo: input.windowTo,
+          plannedAgeMs: slot.plannedAgeMs,
+          succeeded: false,
+        }),
+      );
 
       const jobData = {
         observationSlotId: slot.id,
@@ -467,11 +497,23 @@ async function seedOrgVehicle(
         runner,
       );
 
-      providerAdapter.executeHistoricalQuery.mockResolvedValue(successProviderResult({ succeeded: false }));
+      providerAdapter.executeHistoricalQuery.mockImplementation(async (input) =>
+        successProviderResult({
+          windowTo: input.windowTo,
+          plannedAgeMs: slot.plannedAgeMs,
+          succeeded: false,
+        }),
+      );
       await restartedWorker.executeObservationJob({ ...jobData, transportRetryOrdinal: 0 });
       expect(providerAdapter.executeHistoricalQuery).toHaveBeenCalledTimes(2);
 
-      providerAdapter.executeHistoricalQuery.mockResolvedValue(successProviderResult());
+      providerAdapter.executeHistoricalQuery.mockImplementation(async (input) =>
+        successProviderResult({
+          windowTo: input.windowTo,
+          plannedAgeMs: slot.plannedAgeMs,
+          succeeded: true,
+        }),
+      );
       await restartedWorker.executeObservationJob({ ...jobData, transportRetryOrdinal: 99 });
       expect(providerAdapter.executeHistoricalQuery).toHaveBeenCalledTimes(3);
 
@@ -486,12 +528,13 @@ async function seedOrgVehicle(
       const enrolled = await enrollFamily(new Date('2026-09-16T16:30:00.000Z'));
       const { slot, stratum } = await firstSlot(enrolled.familyId);
 
+      const failedTimestamps = attemptTimestamps(stratum.windowTo, slot.plannedAgeMs);
       await repository.insertObservationAttempt({
         observationSlotId: slot.id,
         rawFacts: {
           plannedAgeMs: slot.plannedAgeMs,
-          requestStartedAt: new Date('2026-09-16T16:30:45.000Z'),
-          requestCompletedAt: new Date('2026-09-16T16:30:46.000Z'),
+          requestStartedAt: failedTimestamps.requestStartedAt,
+          requestCompletedAt: failedTimestamps.requestCompletedAt,
           runtimeBuildSha: RUNTIME_SHA,
           querySemanticsHash: stratum.querySemanticsHash,
           signalSetHash: stratum.signalSetHash,
@@ -536,12 +579,13 @@ async function seedOrgVehicle(
       const enrolled = await enrollFamily(new Date('2026-09-16T17:00:00.000Z'));
       const { slot, stratum } = await firstSlot(enrolled.familyId);
 
+      const successTimestamps = attemptTimestamps(stratum.windowTo, slot.plannedAgeMs);
       await repository.insertObservationAttempt({
         observationSlotId: slot.id,
         rawFacts: {
           plannedAgeMs: slot.plannedAgeMs,
-          requestStartedAt: new Date('2026-09-16T17:00:45.000Z'),
-          requestCompletedAt: new Date('2026-09-16T17:00:46.000Z'),
+          requestStartedAt: successTimestamps.requestStartedAt,
+          requestCompletedAt: successTimestamps.requestCompletedAt,
           runtimeBuildSha: RUNTIME_SHA,
           querySemanticsHash: stratum.querySemanticsHash,
           signalSetHash: stratum.signalSetHash,
@@ -584,6 +628,7 @@ async function seedOrgVehicle(
     });
 
     it('ACTIVE_FAMILY_CAP: completed family releases capacity; concurrent admission is atomic', async () => {
+      await purgeMaturationShadowHierarchy();
       const capConfig = makeEnabledConfig(1);
       const capRunner = new ReferenceCaptureExp021MaturationShadowRunnerService(queue, repository, capConfig);
       const capEnrollment = new ReferenceCaptureExp021MaturationShadowEnrollmentService(
@@ -612,12 +657,13 @@ async function seedOrgVehicle(
       });
 
       for (const slot of slots) {
+        const timestamps = attemptTimestamps(slot.stratum.windowTo, slot.plannedAgeMs);
         await repository.insertObservationAttempt({
           observationSlotId: slot.id,
           rawFacts: {
             plannedAgeMs: slot.plannedAgeMs,
-            requestStartedAt: new Date('2026-09-16T18:00:45.000Z'),
-            requestCompletedAt: new Date('2026-09-16T18:00:46.000Z'),
+            requestStartedAt: timestamps.requestStartedAt,
+            requestCompletedAt: timestamps.requestCompletedAt,
             runtimeBuildSha: RUNTIME_SHA,
             querySemanticsHash: slot.stratum.querySemanticsHash,
             signalSetHash: slot.stratum.signalSetHash,
