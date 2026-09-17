@@ -101,3 +101,64 @@ sudo RFRF_REQUIRED_GIT_SHA=<FINAL_F10_2_1_HOTFIX_HEAD> \
 2. **Post-deploy SHA authority:** documentation incorrectly used hotfix base `295635fc` as post-deploy `RFRF_REQUIRED_GIT_SHA`. Fixed: deploy/preflight target is `<FINAL_F10_2_1_HOTFIX_HEAD>`.
 
 `STAGE_1_START_AUTHORIZED=NO` until operator explicitly authorizes Stage 1 after preflight PASS.
+
+## F10.2 cross-workstream production preservation gate (EED-EV-0064 extended)
+
+**Date:** 2026-09-17
+**Production runtime SHA:** `3a2707b2966a4059478c1ac78f88451b9a50205d` (release `20260917213208_v4994`)
+**Branch:** `cursor/rfrf-f10-2-2-metrics-probe-f21f` (tooling only — **no deploy**)
+
+### Preservation gate (read-only VPS)
+
+| Workstream | Evidence | Status |
+|------------|----------|--------|
+| RFRF F10.2.1 (#1667) | merged dotenv/readiness tooling on production ancestry | PRESENT |
+| EXP-021 (#1671, #1677, #1678) | coordinator flag + study registry | PRESERVED |
+| VDC (#1679) | physical/shadow state | PRESERVED |
+| RFRF Stage 0 | all flags OFF; zero candidates | PASS |
+| Mixed runtime | replica A/B same SHA | NO |
+
+`CROSS_WORKSTREAM_PRODUCTION_GATE=PASS`
+`APPLICATION_DEPLOY_REQUIRED=NO`
+`PRODUCTION_MUTATED=NO`
+
+Runtime metrics and RFRF series are physically present on production `/api/v1/metrics`; manual curl was diagnostic only.
+
+### F10.2 blocker (tooling only)
+
+`rfrf_metrics_probe()` reported `METRICS_*_RFRF=NO` under `set -euo pipefail` despite live metrics containing required series.
+
+**Root cause:** `echo "$body" | grep -q 'synqdrive_rfrf_branch_invocation_total'` (and physical refuel twin). On large payloads with an early metric match, `grep -q` exits immediately → upstream `echo` receives SIGPIPE (141) → entire pipeline non-zero under `pipefail` → fail-closed preflight false-negative.
+
+`RFRF_F10_2_FINAL_CLOSURE=BLOCKED` (metrics-probe tooling bug only)
+
+## F10.2.2 metrics probe reliability micro-closure (EED-EV-0064 extended)
+
+### Fix (operational tooling only)
+
+| Change | Detail |
+|--------|--------|
+| `rfrf_metrics_body_has_metric()` | HELP/TYPE `grep -Fq <<<"$body"` + line-prefix series scan; **no** `producer \| grep -q` |
+| `rfrf_metrics_probe()` | Uses helper for RFRF + physical refuel required metrics; per-replica auth curl unchanged |
+| Regression tests | `rfrf-f10-metrics-probe-regression.sh` — large payload A–H + mocked `rfrf_metrics_probe()` fixture |
+| Pipefail audit | F10 ops scripts: 2 `POTENTIAL_SIGPIPE_FALSE_NEGATIVE` (metrics probe) → 0 after fix |
+
+### Post-merge F10.2 preflight retry design (no application redeploy)
+
+After tooling PR merge, run fixed preflight from an **isolated reviewed checkout** while production runtime remains untouched:
+
+```bash
+# Tooling checkout SHA = merged F10.2.2 head (not production runtime SHA)
+export SYNQDRIVE_CURRENT_LINK=/opt/synqdrive/current
+export RFRF_REQUIRED_GIT_SHA=3a2707b2966a4059478c1ac78f88451b9a50205d
+bash <tooling-checkout>/backend/scripts/ops/rfrf-production-preflight.sh --check --live-required
+```
+
+Do **not** replace `/opt/synqdrive/current`, restart PM2, or redeploy application code merely to validate tooling.
+
+| Field | Value |
+|-------|-------|
+| RFRF_RUNTIME_SEMANTICS_CHANGED | NO |
+| RFRF_F10_2_COMPLETE | NO (await post-merge tooling retry) |
+| STAGE_1_START_AUTHORIZED | NO |
+| PRODUCTION_DEPLOY_REQUIRED | NO |
