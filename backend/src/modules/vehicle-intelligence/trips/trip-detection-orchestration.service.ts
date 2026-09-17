@@ -154,6 +154,7 @@ import {
   buildEndValidationScheduledEvidence,
   buildEndValidationStartedEvidence,
   buildChSkipResumeRevalidationDeferredEvidence,
+  buildChSkipResumeRevalidationHandoffEvidence,
   buildMaxAttemptFallbackEvidence,
   buildPendingFinalizeScheduledEvidence,
   buildPossibleEndToActiveReset,
@@ -163,7 +164,9 @@ import {
   mapEndCycleStaleFinalizeReason,
   readChSkipResumeRevalidationDeferCount,
   resolveChSkipResumeRevalidationImmaturityBoundMs,
+  resolveChSkipResumeRevalidationHandoffReason,
   resolveChSkipResumeRevalidationMaxDeferCount,
+  resolveChSkipResumeRevalidationRelatchEnteredAt,
   resolveEndCycleToken,
   resolveEndValidationAttemptsOnPossibleEndReentry,
   type ChSkipResumeRevalidationOutcome,
@@ -3429,7 +3432,7 @@ export class TripDetectionOrchestrationService {
       const now = new Date();
       det = await this.ensurePossibleEndClockDurability(vehicleId, det, now);
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
-      const priorSummary =
+      let priorSummary =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
       priorSummaryForFailure = priorSummary;
 
@@ -3516,6 +3519,52 @@ export class TripDetectionOrchestrationService {
           return;
         }
 
+        if (chSkipRevalidation.outcome === 'HANDOFF_TO_CUSUM_VALIDATION') {
+          const dwellMs =
+            now.getTime() - chSkipRevalidation.relatchEnteredAt.getTime();
+          const handoffReason = resolveChSkipResumeRevalidationHandoffReason({
+            fetchUncertain: chSkipRevalidation.fetchUncertain,
+            immaturityElapsed: dwellMs >= chSkipRevalidation.immaturityBoundMs,
+            deferBudgetExhausted:
+              chSkipRevalidation.deferCount >=
+                resolveChSkipResumeRevalidationMaxDeferCount(
+                  this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+                ) &&
+              resolveChSkipResumeRevalidationMaxDeferCount(
+                this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+              ) > 0,
+          });
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            endDetectionMode: null,
+            lastEvidenceSummary: buildChSkipResumeRevalidationHandoffEvidence({
+              priorSummary,
+              workerNow: now,
+              candidateEndAt: validatedEndTime,
+              relatchEnteredAt: chSkipRevalidation.relatchEnteredAt,
+              handoffReason,
+              priorDeferCount: chSkipRevalidation.deferCount,
+            }),
+          });
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_handoff_cusum',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+              chSkipResumeRevalidationHandoffReason: handoffReason,
+              chSkipResumeRevalidationDeferCount: chSkipRevalidation.deferCount,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+          priorSummary =
+            (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+          priorSummaryForFailure = priorSummary;
+        } else {
         this.logTripEndTimeline('clickhouse_end_assist_confirmed', {
           vehicleId,
           tripId: det.activeTripId,
@@ -3548,6 +3597,7 @@ export class TripDetectionOrchestrationService {
           durationMs: Date.now() - startedMs,
         });
         return;
+        }
       }
 
       const scheduledAt = this.parseEvidenceTimestamp(
@@ -4411,13 +4461,16 @@ export class TripDetectionOrchestrationService {
     deferCount: number;
     relatchEnteredAt: Date;
     immaturityBoundMs: number;
+    fetchUncertain: boolean;
   }> {
     const profile =
       params.det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
-    const relatchEnteredAt =
-      params.det.possibleEndEnteredAt ??
-      readPossibleEndEnteredAtFromEvidence(params.priorSummary) ??
-      params.now;
+    const relatchEnteredAt = resolveChSkipResumeRevalidationRelatchEnteredAt({
+      detPossibleEndEnteredAt: params.det.possibleEndEnteredAt,
+      priorSummary: params.priorSummary,
+      fallbackNow: params.now,
+      endDetectionMode: params.det.endDetectionMode,
+    });
     const immaturityBoundMs = resolveChSkipResumeRevalidationImmaturityBoundMs({
       validationRetryMs: this.TRIP_END_VALIDATION_RETRY_MS,
       chAssistStabilityMs: this.TRIP_END_CH_ASSIST_STABILITY_MS,
@@ -4449,6 +4502,8 @@ export class TripDetectionOrchestrationService {
       immaturityBoundMs,
       resumeObserved,
       fetchUncertain,
+      priorDeferCount,
+      maxDeferCount,
     });
 
     const deferCount =
@@ -4461,6 +4516,7 @@ export class TripDetectionOrchestrationService {
       deferCount,
       relatchEnteredAt,
       immaturityBoundMs,
+      fetchUncertain,
     };
   }
 
@@ -4778,6 +4834,7 @@ export class TripDetectionOrchestrationService {
           ? {
               clickhouseEndAssistRelatchEmptyCore: true,
               noCoreStream: true,
+              chSkipResumeRevalidationRelatchEnteredAt: params.now.toISOString(),
             }
           : {}),
       },

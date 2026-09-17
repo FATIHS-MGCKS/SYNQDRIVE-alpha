@@ -11,6 +11,7 @@ import {
   readStopBoundaryProvenance,
   type ProviderSilenceCandidateProvenance,
 } from './trip-fsm-evidence-state';
+import { parseStrictEvidenceTimestamp } from './trip-fsm-forensics.util';
 
 /** Why POSSIBLE_END → ACTIVE reopen occurred — controls stop-boundary strip semantics. */
 export type ActiveReopenReason = 'ACTIVITY_RESUMED' | 'CUSUM_STILL_ONGOING';
@@ -49,6 +50,7 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
   'pendingFinalizeScheduledAt',
   'chSkipResumeRevalidationDeferCount',
   'chSkipResumeRevalidationLastDeferredAt',
+  'chSkipResumeRevalidationRelatchEnteredAt',
   'clickhouseEndAssistRelatchEmptyCore',
 ] as const;
 
@@ -57,7 +59,13 @@ export type ChSkipResumeRevalidationOutcome =
   | 'RESUME_CONFIRMED'
   | 'NO_RESUME_EVIDENCE_MATURE'
   | 'NO_RESUME_EVIDENCE_IMMATURE'
-  | 'FETCH_UNCERTAIN';
+  | 'FETCH_UNCERTAIN'
+  /** Resume fetch still uncertain or defer budget exhausted — existing CUSUM path owns next decision. */
+  | 'HANDOFF_TO_CUSUM_VALIDATION';
+
+export type ChSkipResumeRevalidationHandoffReason =
+  | 'fetch_uncertain_after_immaturity_bound'
+  | 'defer_budget_exhausted';
 
 /**
  * Immaturity bound for CH skip resume revalidation — reuses existing end-cycle clocks:
@@ -77,6 +85,39 @@ export function readChSkipResumeRevalidationDeferCount(
   return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 0;
 }
 
+/** Anchor immaturity dwell on CH empty-core re-latch, not an earlier POSSIBLE_END episode. */
+export function resolveChSkipResumeRevalidationRelatchEnteredAt(params: {
+  detPossibleEndEnteredAt?: Date | null;
+  priorSummary?: Record<string, unknown> | null;
+  fallbackNow: Date;
+  endDetectionMode?: string | null;
+}): Date {
+  const summary = params.priorSummary ?? {};
+  const relatchEvidenceAt = parseStrictEvidenceTimestamp(
+    summary.chSkipResumeRevalidationRelatchEnteredAt,
+  );
+  if (relatchEvidenceAt) {
+    return relatchEvidenceAt;
+  }
+  if (
+    params.endDetectionMode === 'CLICKHOUSE_END_ASSIST' &&
+    params.detPossibleEndEnteredAt
+  ) {
+    return params.detPossibleEndEnteredAt;
+  }
+  if (
+    summary.clickhouseEndAssistRelatchEmptyCore === true &&
+    params.detPossibleEndEnteredAt
+  ) {
+    return params.detPossibleEndEnteredAt;
+  }
+  const fromEvidence = readPossibleEndEnteredAtFromEvidence(summary);
+  if (fromEvidence && summary.clickhouseEndAssistRelatchEmptyCore !== true) {
+    return fromEvidence;
+  }
+  return params.detPossibleEndEnteredAt ?? params.fallbackNow;
+}
+
 export function resolveChSkipResumeRevalidationMaxDeferCount(
   validationMaxAttempts: number,
 ): number {
@@ -85,7 +126,8 @@ export function resolveChSkipResumeRevalidationMaxDeferCount(
 
 /**
  * Pure maturity gate — distinguishes "no movement yet" from "safe to terminalize".
- * Time-bound only: deferCount does not force early terminalization inside the window.
+ * Defer budget and immaturity bound are both enforced; persistent fetch uncertainty
+ * hands off to existing CUSUM validation rather than looping forever.
  */
 export function evaluateChSkipResumeRevalidationMaturity(params: {
   nowMs: number;
@@ -93,19 +135,59 @@ export function evaluateChSkipResumeRevalidationMaturity(params: {
   immaturityBoundMs: number;
   resumeObserved: boolean;
   fetchUncertain: boolean;
+  priorDeferCount: number;
+  maxDeferCount: number;
 }): ChSkipResumeRevalidationOutcome {
   if (params.resumeObserved) {
     return 'RESUME_CONFIRMED';
   }
   const dwellMs = params.nowMs - params.relatchEnteredAtMs;
-  const withinImmaturity =
-    params.fetchUncertain || dwellMs < params.immaturityBoundMs;
-  if (withinImmaturity) {
+  const immaturityElapsed = dwellMs >= params.immaturityBoundMs;
+  const deferBudgetExhausted =
+    params.maxDeferCount > 0 && params.priorDeferCount >= params.maxDeferCount;
+
+  if (deferBudgetExhausted || (params.fetchUncertain && immaturityElapsed)) {
+    return 'HANDOFF_TO_CUSUM_VALIDATION';
+  }
+  if (!immaturityElapsed) {
     return params.fetchUncertain
       ? 'FETCH_UNCERTAIN'
       : 'NO_RESUME_EVIDENCE_IMMATURE';
   }
   return 'NO_RESUME_EVIDENCE_MATURE';
+}
+
+export function resolveChSkipResumeRevalidationHandoffReason(params: {
+  fetchUncertain: boolean;
+  immaturityElapsed: boolean;
+  deferBudgetExhausted: boolean;
+}): ChSkipResumeRevalidationHandoffReason {
+  if (params.deferBudgetExhausted && !params.immaturityElapsed) {
+    return 'defer_budget_exhausted';
+  }
+  if (params.deferBudgetExhausted) {
+    return 'defer_budget_exhausted';
+  }
+  return 'fetch_uncertain_after_immaturity_bound';
+}
+
+export function buildChSkipResumeRevalidationHandoffEvidence(params: {
+  priorSummary?: Record<string, unknown> | null;
+  workerNow: Date;
+  candidateEndAt: Date;
+  relatchEnteredAt: Date;
+  handoffReason: ChSkipResumeRevalidationHandoffReason;
+  priorDeferCount: number;
+}): Record<string, unknown> {
+  return {
+    ...(params.priorSummary ?? {}),
+    chSkipResumeRevalidationOutcome: 'HANDOFF_TO_CUSUM_VALIDATION',
+    chSkipResumeRevalidationHandoffAt: params.workerNow.toISOString(),
+    chSkipResumeRevalidationHandoffReason: params.handoffReason,
+    chSkipResumeRevalidationCandidateEndAt: params.candidateEndAt.toISOString(),
+    chSkipResumeRevalidationRelatchEnteredAt: params.relatchEnteredAt.toISOString(),
+    chSkipResumeRevalidationDeferCount: params.priorDeferCount,
+  };
 }
 
 export function buildChSkipResumeRevalidationDeferredEvidence(params: {

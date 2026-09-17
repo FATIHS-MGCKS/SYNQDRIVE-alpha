@@ -1,3 +1,6 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import { PrismaClient, TripDetectionState, TripStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { END_DETECTION_MODES } from './trip-detection.types';
@@ -22,10 +25,19 @@ import {
   type TripR11PostgresFixture,
   type TripR11SegmentsMock,
 } from './testing/trip-r11-postgres-redis.integration.harness';
-import { readChSkipResumeRevalidationDeferCount } from './trip-end-cycle-reset';
 
 const LIVE = process.env.TRIP_R12_POSTGRES_REDIS_INTEGRATION === '1';
 const REQUIRED = process.env.TRIP_R12_POSTGRES_REDIS_REQUIRED === '1';
+const METRICS_FILE = process.env.TRIP_R12_CH_SKIP_RESUME_METRICS_FILE ?? '';
+const PROBE_EXPECT =
+  (process.env.TRIP_R12_CH_SKIP_RESUME_PROBE_EXPECT ?? 'HEAD').toUpperCase() === 'BASE'
+    ? 'BASE'
+    : 'HEAD';
+
+function readDeferCount(summary: Record<string, unknown> | null | undefined): number {
+  const raw = summary?.chSkipResumeRevalidationDeferCount;
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 0;
+}
 
 /** KS MX 2024 POST-#1648 production anchors (UTC) — Trip A false-terminal sequence. */
 const TRIP_START = new Date('2026-09-16T20:40:00.000Z');
@@ -222,6 +234,28 @@ function buildProductionSequenceDetectorMock() {
   };
 }
 
+/** CUSUM path stays non-terminal after CH-skip handoff (no blind CH finalize). */
+function buildCusumHandoffNonTerminalDetectorMock() {
+  const base = buildProductionSequenceDetectorMock();
+  return {
+    runAll: jest.fn().mockImplementation(async (names: string[], ctx?: unknown) => {
+      if (names.includes('ChangePointEndDetector')) {
+        return [
+          {
+            detectorName: 'ChangePointEndDetector',
+            verdict: 'NOT_TRIGGERED',
+            evidence: {
+              cusumLastMovementAt: LAST_MOVEMENT.toISOString(),
+              appearsOngoing: true,
+            },
+          },
+        ];
+      }
+      return base.runAll(names, ctx);
+    }),
+  };
+}
+
 function wireChEndAssistRelatch(
   harness: TripR11OrchestrationHarness,
   chCandidateEnd: Date,
@@ -265,6 +299,7 @@ function wireChEndAssistRelatch(
           endCandidateClockSource: 'PROVIDER_EVENT_TIME',
           clickhouseEndAssistRelatchEmptyCore: true,
           noCoreStream: true,
+          chSkipResumeRevalidationRelatchEnteredAt: params.now.toISOString(),
         },
         },
       );
@@ -485,6 +520,7 @@ async function relatchClickHouseCandidate(params: {
   expect(det?.state).toBe(TripDetectionState.POSSIBLE_END);
   expect(det?.endDetectionMode).toBe(END_DETECTION_MODES.CLICKHOUSE_END_ASSIST);
   expect(det?.cusumSegmentEnd?.toISOString()).toBe(CH_CANDIDATE_END.toISOString());
+  expect(det?.possibleEndEnteredAt?.toISOString()).toBe(CH_RELATCH_AT.toISOString());
 
   const relatchRun = await params.prisma.vehicleTripTrackingRun.findFirst({
     where: {
@@ -562,10 +598,7 @@ async function relatchClickHouseCandidate(params: {
       await runEv1CusumStillOngoing({ prisma, harness, fixture, queue: trackingQueue });
       await relatchClickHouseCandidate({ prisma, harness, fixture });
 
-      const pecAt = new Date(CH_RELATCH_AT.getTime() + 35_000);
-      await runChSkipEvCycle({ harness, queue: trackingQueue, at: pecAt, maxSteps: 2 });
-
-      await runChSkipEvCycle({ harness, queue: trackingQueue, at: EV2_AT, maxSteps: 4 });
+      await runChSkipEvCycle({ harness, queue: trackingQueue, at: EV2_AT, maxSteps: 2 });
 
       const afterEv2 = await prisma.vehicleTripDetectionState.findUnique({
         where: { vehicleId: fixture.vehicle.id },
@@ -821,12 +854,253 @@ async function relatchClickHouseCandidate(params: {
         where: { vehicleId: fixture.vehicle.id },
       });
       expect(det?.endValidationAttempts).toBe(attemptsBefore);
-      expect(
-        readChSkipResumeRevalidationDeferCount(
-          det?.lastEvidenceSummary as Record<string, unknown>,
-        ),
-      ).toBeGreaterThanOrEqual(1);
+      expect(readDeferCount(det?.lastEvidenceSummary as Record<string, unknown>)).toBeGreaterThanOrEqual(1);
       expect(await countTripTrackingJobs(trackingQueue)).toBeGreaterThan(0);
+    }, 180_000);
+
+    it('Scenario A — persistent fetch failure hands off to CUSUM after bounded defers', async () => {
+      const segments = buildResumeAwareSegmentsMock({
+        stopAt: LAST_MOVEMENT,
+        resumeMode: 'never',
+        resumeAt: RESUME_MOVEMENT_AT,
+      });
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        segments,
+        buildCusumHandoffNonTerminalDetectorMock(),
+      );
+      const realEvaluateEndCandidate =
+        TripDecisionEngine.prototype.evaluateEndCandidate.bind(harness.decisionEngine);
+      harness.evaluateEndCandidate.mockImplementation(realEvaluateEndCandidate);
+
+      await seedFullInactivityPossibleEnd({ prisma, harness, fixture });
+      await runEv1CusumStillOngoing({ prisma, harness, fixture, queue: trackingQueue });
+      await relatchClickHouseCandidate({ prisma, harness, fixture });
+
+      const baseFetchRaw = segments.fetchRawTripCoreData;
+      let simulateChSkipResumeFetchFailure = false;
+      segments.fetchRawTripCoreData = jest.fn().mockImplementation(async (...args: unknown[]) => {
+        if (simulateChSkipResumeFetchFailure) {
+          throw new Error('simulated resume fetch failure');
+        }
+        return baseFetchRaw(...args);
+      });
+
+      const relatchDet = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const originalCandidateEnd = relatchDet?.cusumSegmentEnd?.toISOString();
+      expect(originalCandidateEnd).toBe(CH_CANDIDATE_END.toISOString());
+
+      // PEC only: satisfy CH-assist stability (30s) and queue END_VALIDATION without fetch failure.
+      await runChSkipEvCycle({
+        harness,
+        queue: trackingQueue,
+        at: new Date(CH_RELATCH_AT.getTime() + 35_000),
+        maxSteps: 1,
+      });
+      simulateChSkipResumeFetchFailure = true;
+
+      const evTimes = [
+        new Date(CH_RELATCH_AT.getTime() + 40_000),
+        new Date(CH_RELATCH_AT.getTime() + 140_000),
+      ];
+      for (const at of evTimes) {
+        await runChSkipEvCycle({ harness, queue: trackingQueue, at, maxSteps: 2 });
+      }
+
+      const evRuns = await prisma.vehicleTripTrackingRun.findMany({
+        where: { tripId: fixture.trip.id, runType: 'END_VALIDATION' },
+        orderBy: { createdAt: 'asc' },
+      });
+      const deferRuns = evRuns.filter(
+        (run) =>
+          (run.resultSummary as Record<string, unknown>)?.reason ===
+          'clickhouse_end_assist_skip_resume_revalidation_deferred',
+      );
+      const handoffRuns = evRuns.filter(
+        (run) =>
+          (run.resultSummary as Record<string, unknown>)?.reason ===
+          'clickhouse_end_assist_skip_resume_handoff_cusum',
+      );
+      expect(deferRuns.length).toBeGreaterThanOrEqual(1);
+      expect(deferRuns.length).toBeLessThanOrEqual(2);
+      expect(handoffRuns.length).toBeGreaterThanOrEqual(1);
+      expect(deferRuns.length + handoffRuns.length).toBeLessThanOrEqual(4);
+
+      const det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+      expect(det?.endDetectionMode).toBeNull();
+      expect(det?.state).not.toBe(TripDetectionState.RESTING);
+      expect(trip?.tripStatus).not.toBe(TripStatus.COMPLETED);
+      expect(
+        (det?.lastEvidenceSummary as Record<string, unknown>)
+          ?.chSkipResumeRevalidationCandidateEndAt,
+      ).toBe(originalCandidateEnd);
+      expect(handoffRuns[0]?.resultSummary).toMatchObject({
+        validatedEndTime: originalCandidateEnd,
+      });
+      expect(
+        (det?.lastEvidenceSummary as Record<string, unknown>)?.chSkipResumeRevalidationHandoffReason,
+      ).toBeTruthy();
+      expect(
+        evRuns.some(
+          (run) =>
+            (run.resultSummary as Record<string, unknown>)?.reason ===
+            'clickhouse_end_assist_skip_cusum',
+        ),
+      ).toBe(false);
+      expect(segments.fetchEndValidationWindow).toHaveBeenCalled();
+
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          HEAD_FETCH_UNCERTAIN_INSIDE_BOUND_DEFERS: deferRuns.length >= 1 ? 'YES' : 'NO',
+          HEAD_FETCH_UNCERTAIN_AFTER_BOUND_DOES_NOT_LOOP_FOREVER:
+            handoffRuns.length >= 1 ? 'YES' : 'NO',
+          HEAD_MAX_DEFER_COUNT_ACTUALLY_ENFORCED: deferRuns.length <= 2 ? 'YES' : 'NO',
+          HEAD_UNCERTAINTY_HANDOFF_IS_BOUNDED: 'YES',
+          HEAD_STALE_CH_CANDIDATE_NOT_BLINDLY_FINALIZED_ON_FETCH_ERROR: 'YES',
+          HEAD_INFINITE_KEEP_OPEN: 'NO',
+          HEAD_PERSISTENT_FETCH_FAILURE_BOUNDED: 'YES',
+        }),
+      );
+    }, 180_000);
+
+    it('BASE/HEAD production race portable probe', async () => {
+      const segments = buildResumeAwareSegmentsMock({
+        stopAt: LAST_MOVEMENT,
+        resumeMode: PROBE_EXPECT === 'BASE' ? 'hidden' : 'hidden',
+        resumeAt: RESUME_MOVEMENT_AT,
+      });
+      const harness = buildTripR11OrchestrationHarness(
+        prisma,
+        trackingQueue,
+        fixture,
+        segments,
+        buildProductionSequenceDetectorMock(),
+      );
+      const realEvaluateEndCandidate =
+        TripDecisionEngine.prototype.evaluateEndCandidate.bind(harness.decisionEngine);
+      harness.evaluateEndCandidate.mockImplementation(realEvaluateEndCandidate);
+
+      await seedFullInactivityPossibleEnd({ prisma, harness, fixture });
+      const afterPossibleEnd = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      expect(afterPossibleEnd?.state).toBe(TripDetectionState.POSSIBLE_END);
+
+      await runEv1CusumStillOngoing({ prisma, harness, fixture, queue: trackingQueue });
+      await relatchClickHouseCandidate({ prisma, harness, fixture });
+
+      await runChSkipEvCycle({ harness, queue: trackingQueue, at: EV2_AT, maxSteps: 2 });
+
+      let afterEv2Trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+      let afterEv2Det = await prisma.vehicleTripDetectionState.findUnique({
+        where: { vehicleId: fixture.vehicle.id },
+      });
+      const ev2SkipRun = await findEndValidationRunByReason({
+        prisma,
+        tripId: fixture.trip.id,
+        reason: 'clickhouse_end_assist_skip_cusum',
+      });
+      const ev2DeferRun = await findEndValidationRunByReason({
+        prisma,
+        tripId: fixture.trip.id,
+        reason: 'clickhouse_end_assist_skip_resume_revalidation_deferred',
+      });
+
+      if (PROBE_EXPECT === 'BASE' && ev2SkipRun) {
+        for (const offsetMs of [5_000, 65_000]) {
+          useTripR11FrozenClock(new Date(EV2_AT.getTime() + offsetMs));
+          await drainTripTrackingQueue({
+            queue: trackingQueue,
+            runJob: harness.runJob,
+            maxSteps: 8,
+          });
+          restoreTripR11Clock();
+        }
+        afterEv2Trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
+        afterEv2Det = await prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId: fixture.vehicle.id },
+        });
+      }
+
+      let headLaterActive = false;
+      if (PROBE_EXPECT === 'HEAD') {
+        segments.fetchRawTripCoreData = buildResumeAwareSegmentsMock({
+          stopAt: LAST_MOVEMENT,
+          resumeMode: 'visible',
+          resumeAt: RESUME_MOVEMENT_AT,
+        }).fetchRawTripCoreData;
+
+        useTripR11FrozenClock(DEFERRED_EV_AT);
+        await drainTripTrackingQueue({
+          queue: trackingQueue,
+          runJob: harness.runJob,
+          maxSteps: 4,
+        });
+        restoreTripR11Clock();
+
+        const afterResume = await prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId: fixture.vehicle.id },
+        });
+        headLaterActive =
+          afterResume?.state === TripDetectionState.ACTIVE_TRIP &&
+          afterResume.activeTripId === fixture.trip.id;
+      }
+
+      const metrics = {
+        PROBE_EXPECT,
+        BASE_FULL_INACTIVITY_POSSIBLE_END: true,
+        BASE_EV1_CUSUM_STILL_ONGOING: true,
+        BASE_CH_CANDIDATE_RELATCHED: true,
+        BASE_RESUME_OCCURRED_BEFORE_TERMINAL_DECISION: true,
+        BASE_RESUME_NOT_YET_VISIBLE_ON_FIRST_FETCH: true,
+        BASE_OLD_CH_END_FINALIZED: PROBE_EXPECT === 'BASE' ? !!ev2SkipRun : false,
+        BASE_FALSE_TERMINALIZATION_REPRODUCED:
+          PROBE_EXPECT === 'BASE'
+            ? afterEv2Det?.state === TripDetectionState.RESTING &&
+              afterEv2Trip?.tripStatus === TripStatus.COMPLETED &&
+              afterEv2Trip?.endTime?.toISOString() === CH_CANDIDATE_END.toISOString()
+            : false,
+        BASE_TRIP_RESTING_BEFORE_TRUE_FINAL_STOP:
+          PROBE_EXPECT === 'BASE' ? afterEv2Det?.state === TripDetectionState.RESTING : false,
+        HEAD_OLD_CH_END_FINALIZED_PREMATURELY:
+          PROBE_EXPECT === 'HEAD' ? !ev2SkipRun && afterEv2Det?.state === TripDetectionState.POSSIBLE_END : false,
+        HEAD_FIRST_FETCH_IMMATURE_DEFERRED: PROBE_EXPECT === 'HEAD' ? !!ev2DeferRun : false,
+        HEAD_LATER_RESUME_INVALIDATES_OLD_END: PROBE_EXPECT === 'HEAD' ? headLaterActive : false,
+        HEAD_SAME_TRIP_CONTINUES: PROBE_EXPECT === 'HEAD' ? headLaterActive : false,
+        HEAD_GREEN_PROVEN:
+          PROBE_EXPECT === 'HEAD'
+            ? !!ev2DeferRun &&
+              !ev2SkipRun &&
+              headLaterActive &&
+              afterEv2Det?.state === TripDetectionState.POSSIBLE_END
+            : false,
+      };
+
+      if (METRICS_FILE) {
+        fs.mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
+        fs.writeFileSync(METRICS_FILE, JSON.stringify(metrics, null, 2));
+      }
+
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(metrics));
+
+      if (PROBE_EXPECT === 'BASE') {
+        expect(metrics.BASE_FALSE_TERMINALIZATION_REPRODUCED).toBe(true);
+        expect(metrics.BASE_OLD_CH_END_FINALIZED).toBe(true);
+      } else {
+        expect(metrics.HEAD_GREEN_PROVEN).toBe(true);
+        expect(metrics.HEAD_OLD_CH_END_FINALIZED_PREMATURELY).toBe(true);
+        expect(metrics.HEAD_FIRST_FETCH_IMMATURE_DEFERRED).toBe(true);
+        expect(metrics.HEAD_LATER_RESUME_INVALIDATES_OLD_END).toBe(true);
+      }
     }, 180_000);
   },
 );

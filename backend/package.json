@@ -89,6 +89,7 @@
     "test:trip-r12:cusum-retry-budget:base-head-red-proof": "bash scripts/test/trip-r12-cusum-retry-budget-base-head-red-proof.sh",
     "test:trip-r12:silence-dead-zone:base-head-red-proof": "bash scripts/test/trip-r12-post-stop-telemetry-silence-dead-zone-base-head-red-proof.sh",
     "test:trip-r12:silence-retry-budget:base-head-red-proof": "bash scripts/test/trip-r12-provider-silence-cusum-retry-budget-base-head-red-proof.sh",
+    "test:trip-r12:ch-assist-resume:base-head-red-proof": "bash scripts/test/trip-r12-ch-assist-resume-base-head-red-proof.sh",
     "test:trip-r12:hardening": "jest trip-r12-clock-writer-audit trip-r12-stable-slot-family trip-r12-end-cycle-lock-contention trip-r12-cusum-ongoing-boundary-retry trip-r12-ch-assist-resume-invalidation trip-end-cycle-reset trip-fsm-r12-stop-boundary-end-liveness trip-fsm-r12-provider-silence-empty-core-admission trip-fsm-r12-clock-authority trip-fsm-shadow-observability trip-fsm-shadow-audit.domain trip-fsm-shadow-authority-non-consumption --no-coverage",
     "test:trip-fsm-shadow:postgres-redis": "TRIP_FSM_SHADOW_POSTGRES_REDIS_INTEGRATION=1 jest trip-fsm-shadow-observability.postgres-redis.integration --runInBand --forceExit",
     "test:trip-fsm-shadow:postgres-redis:ci": "TRIP_FSM_SHADOW_POSTGRES_REDIS_INTEGRATION=1 TRIP_FSM_SHADOW_POSTGRES_REDIS_REQUIRED=1 jest trip-fsm-shadow-observability.postgres-redis.integration --runInBand --verbose --forceExit",

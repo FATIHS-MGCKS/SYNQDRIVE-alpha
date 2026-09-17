@@ -17,13 +17,15 @@ visible in the first live fetch.
 Immediately before CH skip terminal consumption in `processEndValidation()`:
 
 1. `checkDimoActivityResumed(resumeAfterAt=cusumSegmentEnd)` — visible resume → invalidate candidate, reopen ACTIVE.
-2. No resume but dwell since `possibleEndEnteredAt` < `TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS` → defer END_VALIDATION (preserve original candidate event time; separate `chSkipResumeRevalidationDeferCount`; do not consume #1627 attempt budget).
+2. No resume but dwell since CH re-latch anchor (`chSkipResumeRevalidationRelatchEnteredAt`) < `TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS` → defer END_VALIDATION (preserve original candidate event time; separate `chSkipResumeRevalidationDeferCount`; do not consume #1627 attempt budget).
 3. After immaturity window matures with no resume → existing CH skip finalize path unchanged (original provider event-time end preserved).
+4. **Closure (boundedness):** persistent fetch uncertainty after immaturity bound OR defer budget exhausted → `HANDOFF_TO_CUSUM_VALIDATION`: clear `endDetectionMode`, preserve candidate event time in evidence, fall through to existing CUSUM `#1627` retry-budget path — **never** infinite FETCH_UNCERTAIN defer loop and **never** blind CH skip finalize on fetch failure.
 
 ## Regression proof
 
-- Integration: `trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts` (Postgres + Redis/BullMQ)
+- Integration: `trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts` (Postgres + Redis/BullMQ) — includes Scenario A fetch-failure bounded handoff + portable BASE/HEAD probe (`test:trip-r12:ch-assist-resume:base-head-red-proof`)
 - Unit: `evaluateChSkipResumeRevalidationMaturity` in `trip-end-cycle-reset.spec.ts`
+- Literal BASE SHA `9580a3247a572191a4ead77b6a6c77ea2828855b` vs corrected HEAD via worktree proof harness
 
 ## Explicit non-goals
 

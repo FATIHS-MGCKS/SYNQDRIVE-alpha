@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'R12 — CH assist skip resume revalidation (KS MX 2024 false-terminal safety)',
     summary: [
       'Production KS MX 2024 POST-#1648: EV2 clickhouse_end_assist_skip_cusum finalized stale CH end while physical resume existed but was not yet visible in first fetch.',
-      'Fix: authoritative post-boundary resume/movement revalidation immediately before CH skip terminal consumption; visible resume invalidates candidate; immature window defers END_VALIDATION without consuming #1627 attempt budget.',
+      'Fix: authoritative post-boundary resume/movement revalidation immediately before CH skip terminal consumption; visible resume invalidates candidate; immature window defers END_VALIDATION without consuming #1627 attempt budget; persistent fetch uncertainty after immaturity bound hands off to existing CUSUM validation (bounded — no infinite KEEP_OPEN).',
       'Immaturity bound reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS (90s); original provider event-time end preserved on true final stop.',
       'Postgres+BullMQ integration reproduces Production causal sequence RED on BASE / GREEN on HEAD (5 scenarios).',
       'Forensic authority preserved in PR #1673 — this workstream is runtime implementation only; no Production mutation or historical repair.',

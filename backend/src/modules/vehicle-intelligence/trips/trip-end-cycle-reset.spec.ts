@@ -523,6 +523,8 @@ describe('trip-end-cycle-reset (R5)', () => {
         immaturityBoundMs,
         resumeObserved: false,
         fetchUncertain: false,
+        priorDeferCount: 0,
+        maxDeferCount: 2,
       }),
     ).toBe('NO_RESUME_EVIDENCE_IMMATURE');
     expect(
@@ -532,8 +534,63 @@ describe('trip-end-cycle-reset (R5)', () => {
         immaturityBoundMs,
         resumeObserved: false,
         fetchUncertain: false,
+        priorDeferCount: 0,
+        maxDeferCount: 2,
       }),
     ).toBe('NO_RESUME_EVIDENCE_MATURE');
+  });
+
+  it('evaluateChSkipResumeRevalidationMaturity defers FETCH_UNCERTAIN only inside bound', () => {
+    const relatchMs = Date.parse('2026-09-16T20:50:54.000Z');
+    const immaturityBoundMs = 90_000;
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: relatchMs + 30_000,
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs,
+        resumeObserved: false,
+        fetchUncertain: true,
+        priorDeferCount: 0,
+        maxDeferCount: 2,
+      }),
+    ).toBe('FETCH_UNCERTAIN');
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: relatchMs + immaturityBoundMs + 1,
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs,
+        resumeObserved: false,
+        fetchUncertain: true,
+        priorDeferCount: 0,
+        maxDeferCount: 2,
+      }),
+    ).toBe('HANDOFF_TO_CUSUM_VALIDATION');
+  });
+
+  it('evaluateChSkipResumeRevalidationMaturity enforces defer budget via CUSUM handoff', () => {
+    const relatchMs = Date.parse('2026-09-16T20:50:54.000Z');
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: relatchMs + 30_000,
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs: 90_000,
+        resumeObserved: false,
+        fetchUncertain: true,
+        priorDeferCount: 2,
+        maxDeferCount: 2,
+      }),
+    ).toBe('HANDOFF_TO_CUSUM_VALIDATION');
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: relatchMs + 30_000,
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs: 90_000,
+        resumeObserved: false,
+        fetchUncertain: true,
+        priorDeferCount: 0,
+        maxDeferCount: 0,
+      }),
+    ).toBe('FETCH_UNCERTAIN');
   });
 
   it('buildChSkipResumeRevalidationDeferredEvidence tracks defer count without touching attempt budget', () => {
