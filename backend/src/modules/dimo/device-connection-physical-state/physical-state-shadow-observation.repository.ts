@@ -85,23 +85,54 @@ export class PhysicalStateShadowObservationRepository {
   }
 
   /**
-   * Operational pilot coverage proof uses persisted comparison/runtime timestamps only.
+   * Operational pilot coverage proof uses persisted comparison/runtime timestamps only
+   * (`observedAt`), scoped to an explicit epoch window. Source evidence time
+   * (`evidenceObservedAt`) never contributes to span proof.
    */
   async getOperationalCoverage(input: {
     organizationId: string;
     vehicleId: string;
     provider: string;
+    windowStart: Date;
+    windowEnd?: Date;
     minimumOperationalObservationMs?: number;
   }): Promise<ShadowOperationalCoverage> {
     const minimumOperationalObservationMs =
       input.minimumOperationalObservationMs ??
       CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS;
 
+    const emptyCoverage = (): ShadowOperationalCoverage => ({
+      firstComparisonObservedAt: null,
+      lastComparisonObservedAt: null,
+      comparisonCount: 0,
+      actualObservedSpanMs: 0,
+      minimumOperationalObservationMs,
+      sevenDayOperationalWindowProven: false,
+    });
+
+    const windowStartMs = input.windowStart?.getTime();
+    if (!Number.isFinite(windowStartMs)) {
+      return emptyCoverage();
+    }
+
+    const observedAtFilter: { gte: Date; lte?: Date } = {
+      gte: input.windowStart,
+    };
+
+    if (input.windowEnd != null) {
+      const windowEndMs = input.windowEnd.getTime();
+      if (!Number.isFinite(windowEndMs) || windowEndMs < windowStartMs) {
+        return emptyCoverage();
+      }
+      observedAtFilter.lte = input.windowEnd;
+    }
+
     const aggregate = await this.prisma.deviceConnectionPhysicalStateShadowObservation.aggregate({
       where: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         provider: input.provider,
+        observedAt: observedAtFilter,
       },
       _count: { _all: true },
       _min: { observedAt: true },

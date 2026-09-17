@@ -358,6 +358,177 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
     expect(row?.evidenceObservedAt?.toISOString()).toBe(evidenceObservedAt.toISOString());
   });
 
+  it('PSG-TIME-0A old correctness-blocking observation before restart T0 excluded from new epoch summary', async () => {
+    const preRestartComparison = new Date('2026-09-16T20:17:48.000Z');
+    const postRestartComparison = new Date('2026-09-17T10:00:00.000Z');
+    const pilotRestartT0 = new Date('2026-09-17T00:00:00.000Z');
+
+    setShadowComparisonClockForTests(() => preRestartComparison);
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'UNEXPLAINED_OLD_REJECT_NEW_ACCEPT',
+        correctnessBlocking: true,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'reject',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'legacy-bootstrap-blocker',
+        bindingKey: 'DIMO:device:legacy-blocker',
+        observedAt: preRestartComparison,
+        evidenceObservedAt: new Date('2026-09-16T12:00:00.000Z'),
+      },
+    });
+
+    setShadowComparisonClockForTests(() => postRestartComparison);
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'post-restart-match',
+        bindingKey: 'DIMO:device:post-restart',
+        observedAt: postRestartComparison,
+        evidenceObservedAt: new Date('2026-09-17T09:00:00.000Z'),
+      },
+    });
+
+    const allTime = await observationRepository.summarizeScopeWindow({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: new Date('2026-09-16T00:00:00.000Z'),
+      windowEnd: new Date('2026-09-18T00:00:00.000Z'),
+    });
+    const newEpoch = await observationRepository.summarizeScopeWindow({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: pilotRestartT0,
+      windowEnd: new Date('2026-09-18T00:00:00.000Z'),
+    });
+
+    expect(allTime.correctnessBlockerCount).toBeGreaterThanOrEqual(1);
+    expect(newEpoch.correctnessBlockerCount).toBe(0);
+    expect(newEpoch.comparisonCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('PSG-TIME-0B old prefix cannot backdate new 7-day operational window', async () => {
+    const pilotRestartT0 = new Date('2026-09-17T00:00:00.000Z');
+    const oldComparison = new Date('2026-09-08T10:00:00.000Z');
+    const newComparison = new Date('2026-09-17T12:00:00.000Z');
+
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'old-prefix-observation',
+        bindingKey: 'DIMO:device:old-prefix',
+        observedAt: oldComparison,
+        evidenceObservedAt: new Date('2026-09-08T09:00:00.000Z'),
+      },
+    });
+
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'post-restart-observation',
+        bindingKey: 'DIMO:device:post-restart',
+        observedAt: newComparison,
+        evidenceObservedAt: new Date('2026-09-17T11:00:00.000Z'),
+      },
+    });
+
+    const coverage = await observationRepository.getOperationalCoverage({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: pilotRestartT0,
+    });
+
+    expect(coverage.comparisonCount).toBe(1);
+    expect(coverage.firstComparisonObservedAt?.toISOString()).toBe(newComparison.toISOString());
+    expect(coverage.firstComparisonObservedAt?.getTime()).toBeGreaterThanOrEqual(
+      pilotRestartT0.getTime(),
+    );
+    expect(coverage.actualObservedSpanMs).toBeLessThan(
+      CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS,
+    );
+    expect(coverage.sevenDayOperationalWindowProven).toBe(false);
+  });
+
+  it('PSG-TIME-0C post-restart observations spanning >=7 days prove operational window', async () => {
+    const pilotRestartT0 = new Date('2026-09-01T00:00:00.000Z');
+    const firstPostRestart = new Date('2026-09-02T00:00:00.000Z');
+    const lastPostRestart = new Date('2026-09-10T12:00:00.000Z');
+
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'epoch-first',
+        bindingKey: 'DIMO:device:epoch-first',
+        observedAt: firstPostRestart,
+        evidenceObservedAt: new Date('2026-09-02T00:00:00.000Z'),
+      },
+    });
+
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'epoch-last',
+        bindingKey: 'DIMO:device:epoch-last',
+        observedAt: lastPostRestart,
+        evidenceObservedAt: new Date('2026-09-10T12:00:00.000Z'),
+      },
+    });
+
+    const coverage = await observationRepository.getOperationalCoverage({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: pilotRestartT0,
+    });
+
+    expect(coverage.comparisonCount).toBe(2);
+    expect(coverage.actualObservedSpanMs).toBeGreaterThanOrEqual(
+      CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS,
+    );
+    expect(coverage.sevenDayOperationalWindowProven).toBe(true);
+  });
+
   it('PSG-TIME-1 historical evidence cannot backdate operational seven-day proof', async () => {
     const comparisonNow = new Date('2026-09-16T12:00:00.000Z');
     const oldEvidence = new Date('2026-09-08T10:00:00.000Z');
@@ -384,6 +555,7 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
       organizationId: pilotFixture.org.id,
       vehicleId: pilotFixture.vehicle.id,
       provider: 'DIMO',
+      windowStart: new Date('2026-09-16T00:00:00.000Z'),
     });
 
     expect(coverage.comparisonCount).toBeGreaterThanOrEqual(3);
@@ -433,11 +605,24 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
       organizationId: pilotFixture.org.id,
       vehicleId: pilotFixture.vehicle.id,
       provider: 'DIMO',
+      windowStart: firstComparison,
     });
 
     expect(coverage.actualObservedSpanMs).toBeGreaterThanOrEqual(
       CONNECTIVITY_PHYSICAL_STATE_SHADOW_MIN_OPERATIONAL_OBSERVATION_MS,
     );
     expect(coverage.sevenDayOperationalWindowProven).toBe(true);
+  });
+
+  it('PSG-TIME invalid operational window fails closed', async () => {
+    const coverage = await observationRepository.getOperationalCoverage({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: new Date('invalid'),
+    });
+
+    expect(coverage.comparisonCount).toBe(0);
+    expect(coverage.sevenDayOperationalWindowProven).toBe(false);
   });
 });

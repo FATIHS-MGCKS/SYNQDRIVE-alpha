@@ -1,6 +1,7 @@
 import type {
   DeviceConnectionEpisode,
   DeviceConnectionPhysicalEffectiveState,
+  DeviceConnectionPhysicalTransitionDecision,
 } from '@prisma/client';
 import {
   isPhysicalObdHardware,
@@ -17,6 +18,7 @@ import type { PhysicalStateBindingScope } from './device-connection-physical-sta
  */
 export type GtR1ExpectedFixProofScenario =
   | 'SNAPSHOT_PLUG_REPAIR_UNPLUGGED_BASELINE'
+  | 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT'
   | 'WEBHOOK_PHYSICAL_ORDERING_OVERRIDES_STALE_LEGACY_GATE';
 
 export type GtR1ExpectedFixProof = {
@@ -57,6 +59,22 @@ export function isProvenExpectedFix(
   return Number.isFinite(proof.physicalEvidenceObservedAt.getTime());
 }
 
+/**
+ * Fail-closed expected-fix gate at comparator invocation time.
+ * Bootstrap establishment proof requires the coordinator's actual transition to be ESTABLISHED
+ * so a stale pre-read projection cannot bless APPLIED/DUPLICATE/STALE/etc. outcomes.
+ */
+export function isProvenExpectedFixForPhysicalDecision(
+  proof: GtR1ExpectedFixProof | null | undefined,
+  physicalDecision: DeviceConnectionPhysicalTransitionDecision | null,
+): boolean {
+  if (!isProvenExpectedFix(proof)) return false;
+  if (proof!.scenario === 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT') {
+    return physicalDecision === 'ESTABLISHED';
+  }
+  return true;
+}
+
 export function isSnapshotHardRejectGtR1Reason(
   reason: SnapshotPlugRejectReason,
 ): boolean {
@@ -95,12 +113,7 @@ export function isSnapshotBindingAlignedWithEpisode(input: {
   return true;
 }
 
-/**
- * Snapshot PLUG repair: physical UNPLUGGED baseline, newer snapshot PLUG, legacy path rejected
- * only for the canonical GT-R1 stale/absence condition (no_open_episode) with independently
- * verified physical/source/binding preconditions.
- */
-export function buildSnapshotPlugRepairGtR1Proof(input: {
+export type SnapshotGtR1ProofInput = {
   physicalProjectionState: DeviceConnectionPhysicalEffectiveState | null;
   physicalProjectionEvidenceAt: Date | null;
   snapshotCandidatePlugged: boolean;
@@ -113,25 +126,50 @@ export function buildSnapshotPlugRepairGtR1Proof(input: {
   snapshotSource: string | null;
   sourceSubtype: string | null;
   evidenceReferenceId: string;
-}): GtR1ExpectedFixProof | null {
-  if (!input.snapshotCandidatePlugged) return null;
-  if (!isPhysicalObdHardware(input.hardwareType)) return null;
+};
+
+function isValidSnapshotEvidenceObservedAt(observedAt: Date): boolean {
+  return observedAt instanceof Date && Number.isFinite(observedAt.getTime());
+}
+
+function passesSharedSnapshotGtR1Admissibility(input: SnapshotGtR1ProofInput): boolean {
+  if (!input.snapshotCandidatePlugged) return false;
+  if (!isPhysicalObdHardware(input.hardwareType)) return false;
   if (
     !isPhysicalObdSnapshotSource({
       snapshotSource: input.snapshotSource,
       sourceSubtype: input.sourceSubtype,
     })
   ) {
-    return null;
+    return false;
   }
+  if (!isValidSnapshotEvidenceObservedAt(input.snapshotEvidenceObservedAt)) return false;
   if (
     !isSnapshotBindingAlignedWithEpisode({
       episode: input.episode,
       physicalBindingScope: input.physicalBindingScope,
     })
   ) {
-    return null;
+    return false;
   }
+  return true;
+}
+
+function isLegacyBindingAlignedForSnapshotProof(input: SnapshotGtR1ProofInput): boolean {
+  if (input.legacyBindingKey == null) return true;
+  return input.legacyBindingKey === input.physicalBindingScope.bindingKey;
+}
+
+/**
+ * Snapshot PLUG repair: physical UNPLUGGED baseline, newer snapshot PLUG, legacy path rejected
+ * only for the canonical GT-R1 stale/absence condition (no_open_episode) with independently
+ * verified physical/source/binding preconditions.
+ */
+export function buildSnapshotPlugRepairGtR1Proof(
+  input: SnapshotGtR1ProofInput,
+): GtR1ExpectedFixProof | null {
+  if (!passesSharedSnapshotGtR1Admissibility(input)) return null;
+  if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
   if (input.legacyBindingKey !== input.physicalBindingScope.bindingKey) {
     return null;
   }
@@ -156,6 +194,43 @@ export function buildSnapshotPlugRepairGtR1Proof(input: {
     physicalEvidenceObservedAt: input.snapshotEvidenceObservedAt,
     legacyEvidenceObservedAt: input.physicalProjectionEvidenceAt,
   };
+}
+
+/**
+ * Snapshot PLUG bootstrap: no prior physical projection, admissible SNAPSHOT_OBD PLUG evidence,
+ * legacy episode model rejects only for no_open_episode with aligned binding identity.
+ *
+ * Distinct from SNAPSHOT_PLUG_REPAIR_UNPLUGGED_BASELINE — never overloads repair semantics.
+ */
+export function buildSnapshotPlugInitialEstablishmentGtR1Proof(
+  input: SnapshotGtR1ProofInput,
+): GtR1ExpectedFixProof | null {
+  if (!passesSharedSnapshotGtR1Admissibility(input)) return null;
+  if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
+  if (input.physicalProjectionState != null) return null;
+  if (input.physicalProjectionEvidenceAt != null) return null;
+  if (input.episode != null) return null;
+  if (input.legacyEvaluation.action !== 'reject') return null;
+  if (input.legacyEvaluation.reason !== 'no_open_episode') return null;
+
+  return {
+    scenario: 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT',
+    proven: true,
+    evidenceReferenceId: input.evidenceReferenceId,
+    physicalEvidenceObservedAt: input.snapshotEvidenceObservedAt,
+    legacyEvidenceObservedAt: null,
+  };
+}
+
+/**
+ * Canonical snapshot GT-R1 proof resolver for production call-sites.
+ * Repair (UNPLUGGED baseline) takes precedence over bootstrap (absent projection).
+ */
+export function buildSnapshotGtR1Proof(input: SnapshotGtR1ProofInput): GtR1ExpectedFixProof | null {
+  return (
+    buildSnapshotPlugRepairGtR1Proof(input) ??
+    buildSnapshotPlugInitialEstablishmentGtR1Proof(input)
+  );
 }
 
 /**

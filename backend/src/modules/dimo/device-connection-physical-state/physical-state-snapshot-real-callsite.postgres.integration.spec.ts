@@ -9,6 +9,7 @@ import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { getCoordinatorReconcile } from './device-connection-physical-state.types';
+import { buildSnapshotPlugInitialEstablishmentGtR1Proof } from './physical-state-gt-r1-proof';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
@@ -38,6 +39,7 @@ if (REQUIRED && !LIVE) {
 describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)', () => {
   let prisma: PrismaClient;
   let orchestrator: PhysicalStateSnapshotEvidenceOrchestrator;
+  let writer: PhysicalStateEvidenceWriterService;
   let webhookService: DeviceConnectionWebhookService;
   let repository: DeviceConnectionPhysicalStateRepository;
   let fixture: PhysicalStatePostgresFixture;
@@ -60,7 +62,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
       authorityRepository,
     );
-    const writer = new PhysicalStateEvidenceWriterService(
+    writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
       authorityRepository,
@@ -406,6 +408,109 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
     );
     expect(result?.shadowComparison?.classification).not.toBe(PhysicalStateShadowClassification.MATCH);
+  });
+
+  it('BOOTSTRAP CASE A — absent projection + aligned PLUGGED SNAPSHOT_OBD => EXPECTED_FIX', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.accepted).toBe(false);
+    expect(result?.legacyShadow?.diagnosticReason).toBe('no_open_episode');
+    expect(getCoordinatorReconcile(result?.coordinatorResult)?.decision).toBe('ESTABLISHED');
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('BOOTSTRAP CASE B — existing PLUGGED projection + duplicate snapshot => steady-state MATCH', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    const second = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(second?.shadowComparison?.classification).toBe(PhysicalStateShadowClassification.MATCH);
+    expect(second?.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('BOOTSTRAP CASE C — PLUGGED baseline then valid UNPLUG snapshot transition', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    const transition = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: false, timestamp: T3 } }, T3),
+    );
+
+    expect(transition?.legacyShadow?.diagnosticReason).toBe('obd_false');
+    expect(transition?.shadowComparison?.classification).toBeDefined();
+  });
+
+  it('BOOTSTRAP-ACTUAL regression — stale bootstrap proof + DUPLICATE transition => UNEXPLAINED', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    const staleBootstrapProof = buildSnapshotPlugInitialEstablishmentGtR1Proof({
+      physicalProjectionState: null,
+      physicalProjectionEvidenceAt: null,
+      snapshotCandidatePlugged: true,
+      snapshotEvidenceObservedAt: new Date(T2),
+      legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
+      physicalBindingScope: binding,
+      legacyBindingKey: null,
+      episode: null,
+      hardwareType: 'LTE_R1',
+      snapshotSource: 'dimo',
+      sourceSubtype: null,
+      evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
+    });
+    expect(staleBootstrapProof?.scenario).toBe('SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT');
+
+    const duplicate = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: true, timestamp: T2 } },
+      evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_open_episode',
+        effectivePlugState: null,
+        evidenceObservedAt: null,
+        bindingKey: null,
+      },
+      gtR1Proof: staleBootstrapProof,
+      projectionSelfHeal: true,
+    });
+
+    const actualDecision = getCoordinatorReconcile(duplicate?.coordinatorResult)?.decision;
+    expect(actualDecision).not.toBe(DeviceConnectionPhysicalTransitionDecision.ESTABLISHED);
+    expect([DeviceConnectionPhysicalTransitionDecision.DUPLICATE, DeviceConnectionPhysicalTransitionDecision.PROVENANCE_REFRESH]).toContain(
+      actualDecision,
+    );
+    expect(duplicate?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(duplicate?.shadowComparison?.classification).not.toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
+  it('BOOTSTRAP CASE D — synthetic snapshot source invalidates bootstrap proof => UNEXPLAINED', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence({
+      ...snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      sourceSubtype: 'SYNTHETIC_TEST',
+    });
+
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(true);
   });
 
   it('7. master=false => zero P2.3 DB mutations', async () => {
