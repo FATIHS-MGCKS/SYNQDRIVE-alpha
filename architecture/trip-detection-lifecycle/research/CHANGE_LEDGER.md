@@ -61,6 +61,7 @@ Append-only record for this authority directory.
 | 2026-09-14 | Shadow end + pause observability layer — non-authoritative counterfactual #1635 + pause/resume classification; default disabled; read-only audit command | Draft PR shadow observability | [SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md](../evidence/SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md) |
 | 2026-09-14 | Shadow closure review — fail-closed allowlist, generation isolation, audit timestamp authority, cross-trip correlation, authority non-consumption proofs | PR #1648 closure | Same evidence doc |
 | 2026-09-14 | Shadow orchestration regression fix — module-level fail-open wrapper preserves R10/R5/R7 harness `.call()` compatibility | PR #1648 CI differential | Same evidence doc |
+| 2026-09-17 | KS MX 2024 CH assist skip resume revalidation — bounded post-boundary movement guard before `clickhouse_end_assist_skip_cusum` finalize; forensic authority PR #1673 preserved separately | Runtime safety implementation (draft) | [KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md](../evidence/KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

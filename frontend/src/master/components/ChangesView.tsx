@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tdl-r12-ch-assist-skip-resume-revalidation-2026-09-17',
+    version: '4.9.1138',
+    title: 'R12 — CH assist skip resume revalidation (KS MX 2024 false-terminal safety)',
+    summary: [
+      'Production KS MX 2024 POST-#1648: EV2 clickhouse_end_assist_skip_cusum finalized stale CH end while physical resume existed but was not yet visible in first fetch.',
+      'Fix: authoritative post-boundary resume/movement revalidation immediately before CH skip terminal consumption; visible resume invalidates candidate; immature window defers END_VALIDATION without consuming #1627 attempt budget.',
+      'Immaturity bound reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS (90s); original provider event-time end preserved on true final stop.',
+      'Postgres+BullMQ integration reproduces Production causal sequence RED on BASE / GREEN on HEAD (5 scenarios).',
+      'Forensic authority preserved in PR #1673 — this workstream is runtime implementation only; no Production mutation or historical repair.',
+    ],
+    reason:
+      'clickhouse_end_assist_skip_cusum terminal path lacked post-boundary resume revalidation, allowing false terminalization during ingestion/event-time race after CUSUM reopen + empty-core CH re-latch.',
+    previousBehavior:
+      'CH skip path finalized immediately when endDetectionMode=CLICKHOUSE_END_ASSIST and cusumSegmentEnd present — no distinction between immature absence of movement evidence and proven absence.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md; forensic PR #1673; trip-detection-orchestration.service.ts + trip-end-cycle-reset.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T06:30:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16',
     version: '4.9.1137',
     title: 'VDC RB-019 P2.5 — STATEFUL_SHADOW pilot scope gate + scope-bound observability',
