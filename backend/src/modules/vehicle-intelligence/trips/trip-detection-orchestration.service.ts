@@ -153,14 +153,23 @@ import {
   buildEndValidationFetchFailureEvidence,
   buildEndValidationScheduledEvidence,
   buildEndValidationStartedEvidence,
+  buildChSkipResumeRevalidationDeferredEvidence,
+  buildChSkipResumeRevalidationHandoffEvidence,
   buildMaxAttemptFallbackEvidence,
   buildPendingFinalizeScheduledEvidence,
   buildPossibleEndToActiveReset,
+  evaluateChSkipResumeRevalidationMaturity,
   evaluateEndCycleJobAdmission,
   extractR5EndForensicsForPersistence,
   mapEndCycleStaleFinalizeReason,
+  readChSkipResumeRevalidationDeferCount,
+  resolveChSkipResumeRevalidationImmaturityBoundMs,
+  resolveChSkipResumeRevalidationHandoffReason,
+  resolveChSkipResumeRevalidationMaxDeferCount,
+  resolveChSkipResumeRevalidationRelatchEnteredAt,
   resolveEndCycleToken,
   resolveEndValidationAttemptsOnPossibleEndReentry,
+  type ChSkipResumeRevalidationOutcome,
   type PecResumeCheckOutcome,
   validateCusumMovementEventTime,
 } from './trip-end-cycle-reset';
@@ -3423,7 +3432,7 @@ export class TripDetectionOrchestrationService {
       const now = new Date();
       det = await this.ensurePossibleEndClockDurability(vehicleId, det, now);
       const endCandidateAt = resolvePossibleEndBoundaryAnchor(det, now);
-      const priorSummary =
+      let priorSummary =
         (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
       priorSummaryForFailure = priorSummary;
 
@@ -3434,7 +3443,128 @@ export class TripDetectionOrchestrationService {
       ) {
         const validatedEndTime = det.cusumSegmentEnd;
         const endConfEnum = det.endConfidence ?? DetectionConfidence.MEDIUM;
+        const chSkipRevalidation = await this.evaluateClickHouseSkipResumeRevalidation({
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          det,
+          now,
+          candidateEndAt: validatedEndTime,
+          priorSummary,
+        });
 
+        if (chSkipRevalidation.outcome === 'RESUME_CONFIRMED') {
+          await this.cancelPossibleEndForResumedActivity({
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            now,
+            activeTripId: det.activeTripId,
+            priorSummary,
+          });
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultState: TripDetectionState.ACTIVE_TRIP,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_invalidated',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        if (
+          chSkipRevalidation.outcome === 'NO_RESUME_EVIDENCE_IMMATURE' ||
+          chSkipRevalidation.outcome === 'FETCH_UNCERTAIN'
+        ) {
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            lastEvidenceSummary: buildChSkipResumeRevalidationDeferredEvidence({
+              priorSummary,
+              workerNow: now,
+              deferCount: chSkipRevalidation.deferCount,
+              relatchEnteredAt: chSkipRevalidation.relatchEnteredAt,
+              candidateEndAt: validatedEndTime,
+              immaturityBoundMs: chSkipRevalidation.immaturityBoundMs,
+              outcome: chSkipRevalidation.outcome,
+            }),
+          });
+          await this.scheduleEndValidation(
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            this.TRIP_END_VALIDATION_RETRY_MS,
+          );
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_revalidation_deferred',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+              chSkipResumeRevalidationDeferCount: chSkipRevalidation.deferCount,
+              chSkipResumeRevalidationImmaturityBoundMs:
+                chSkipRevalidation.immaturityBoundMs,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
+        if (chSkipRevalidation.outcome === 'HANDOFF_TO_CUSUM_VALIDATION') {
+          const dwellMs =
+            now.getTime() - chSkipRevalidation.relatchEnteredAt.getTime();
+          const handoffReason = resolveChSkipResumeRevalidationHandoffReason({
+            fetchUncertain: chSkipRevalidation.fetchUncertain,
+            immaturityElapsed: dwellMs >= chSkipRevalidation.immaturityBoundMs,
+            deferBudgetExhausted:
+              chSkipRevalidation.deferCount >=
+                resolveChSkipResumeRevalidationMaxDeferCount(
+                  this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+                ) &&
+              resolveChSkipResumeRevalidationMaxDeferCount(
+                this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+              ) > 0,
+          });
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            endDetectionMode: null,
+            lastEvidenceSummary: buildChSkipResumeRevalidationHandoffEvidence({
+              priorSummary,
+              workerNow: now,
+              candidateEndAt: validatedEndTime,
+              relatchEnteredAt: chSkipRevalidation.relatchEnteredAt,
+              handoffReason,
+              priorDeferCount: chSkipRevalidation.deferCount,
+            }),
+          });
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId: det.activeTripId,
+            stateAtRun: TripDetectionState.POSSIBLE_END,
+            runType: TripTrackingRunType.END_VALIDATION,
+            resultSummary: {
+              reason: 'clickhouse_end_assist_skip_resume_handoff_cusum',
+              validatedEndTime: validatedEndTime.toISOString(),
+              chSkipResumeRevalidationOutcome: chSkipRevalidation.outcome,
+              chSkipResumeRevalidationHandoffReason: handoffReason,
+              chSkipResumeRevalidationDeferCount: chSkipRevalidation.deferCount,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          det = await this.getOrCreateDetectionState(vehicleId, organizationId);
+          priorSummary =
+            (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
+          priorSummaryForFailure = priorSummary;
+        } else {
         this.logTripEndTimeline('clickhouse_end_assist_confirmed', {
           vehicleId,
           tripId: det.activeTripId,
@@ -3467,6 +3597,7 @@ export class TripDetectionOrchestrationService {
           durationMs: Date.now() - startedMs,
         });
         return;
+        }
       }
 
       const scheduledAt = this.parseEvidenceTimestamp(
@@ -4313,6 +4444,83 @@ export class TripDetectionOrchestrationService {
   }
 
   /**
+   * Bounded post-boundary resume revalidation immediately before CH skip terminalization.
+   * Reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS immaturity bound
+   * and a separate defer counter so #1627 attempt budget is not consumed.
+   */
+  private async evaluateClickHouseSkipResumeRevalidation(params: {
+    vehicleId: string;
+    organizationId: string | null;
+    dimoTokenId: number;
+    det: DetState;
+    now: Date;
+    candidateEndAt: Date;
+    priorSummary: Record<string, unknown>;
+  }): Promise<{
+    outcome: ChSkipResumeRevalidationOutcome;
+    deferCount: number;
+    relatchEnteredAt: Date;
+    immaturityBoundMs: number;
+    fetchUncertain: boolean;
+  }> {
+    const profile =
+      params.det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
+    const relatchEnteredAt = resolveChSkipResumeRevalidationRelatchEnteredAt({
+      detPossibleEndEnteredAt: params.det.possibleEndEnteredAt,
+      priorSummary: params.priorSummary,
+      fallbackNow: params.now,
+      endDetectionMode: params.det.endDetectionMode,
+    });
+    const immaturityBoundMs = resolveChSkipResumeRevalidationImmaturityBoundMs({
+      validationRetryMs: this.TRIP_END_VALIDATION_RETRY_MS,
+      chAssistStabilityMs: this.TRIP_END_CH_ASSIST_STABILITY_MS,
+    });
+    const priorDeferCount = readChSkipResumeRevalidationDeferCount(
+      params.priorSummary,
+    );
+    const maxDeferCount = resolveChSkipResumeRevalidationMaxDeferCount(
+      this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
+    );
+
+    let resumeObserved = false;
+    let fetchUncertain = false;
+    try {
+      resumeObserved = await this.checkDimoActivityResumed({
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile,
+        now: params.now,
+        resumeAfterAt: params.candidateEndAt,
+      });
+    } catch {
+      fetchUncertain = true;
+    }
+
+    const outcome = evaluateChSkipResumeRevalidationMaturity({
+      nowMs: params.now.getTime(),
+      relatchEnteredAtMs: relatchEnteredAt.getTime(),
+      immaturityBoundMs,
+      resumeObserved,
+      fetchUncertain,
+      priorDeferCount,
+      maxDeferCount,
+    });
+
+    const deferCount =
+      outcome === 'NO_RESUME_EVIDENCE_IMMATURE' || outcome === 'FETCH_UNCERTAIN'
+        ? Math.min(priorDeferCount + 1, maxDeferCount)
+        : priorDeferCount;
+
+    return {
+      outcome,
+      deferCount,
+      relatchEnteredAt,
+      immaturityBoundMs,
+      fetchUncertain,
+    };
+  }
+
+  /**
    * DIMO recent-core resume check shared by CH end assist and POSSIBLE_END_CHECK.
    */
   private async checkDimoActivityResumed(params: {
@@ -4622,6 +4830,13 @@ export class TripDetectionOrchestrationService {
         dimoContinuityCorroborated:
           endDecision.evidencePath === 'DIMO_PLUS_CLICKHOUSE',
         endCandidateClockSource: 'PROVIDER_EVENT_TIME',
+        ...(params.corePoints.length === 0
+          ? {
+              clickhouseEndAssistRelatchEmptyCore: true,
+              noCoreStream: true,
+              chSkipResumeRevalidationRelatchEnteredAt: params.now.toISOString(),
+            }
+          : {}),
       },
     });
 

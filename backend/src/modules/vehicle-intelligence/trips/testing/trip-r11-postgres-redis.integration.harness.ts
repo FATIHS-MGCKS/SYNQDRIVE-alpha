@@ -542,6 +542,8 @@ export function buildTripR11OrchestrationHarness(
     processEndValidation: proto.processEndValidation,
     processFinalize: proto.processFinalize,
     checkDimoActivityResumed: proto.checkDimoActivityResumed,
+    cancelPossibleEndForResumedActivity: proto.cancelPossibleEndForResumedActivity,
+    evaluateClickHouseSkipResumeRevalidation: proto.evaluateClickHouseSkipResumeRevalidation,
     dimoProviderContext: jest.fn().mockReturnValue({}),
     tryApplyClickHouseAssistedEnd: jest.fn().mockResolvedValue(false),
     findMidTripGap: jest.fn().mockReturnValue(null),
