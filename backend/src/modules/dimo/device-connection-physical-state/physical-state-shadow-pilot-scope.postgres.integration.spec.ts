@@ -358,6 +358,67 @@ describePg('PhysicalState shadow pilot scope gate (postgres)', () => {
     expect(row?.evidenceObservedAt?.toISOString()).toBe(evidenceObservedAt.toISOString());
   });
 
+  it('PSG-TIME-0 pre-fix correctness blockers can be excluded from a new epoch via observedAt lower bound', async () => {
+    const preRestartComparison = new Date('2026-09-16T20:17:48.000Z');
+    const postRestartComparison = new Date('2026-09-17T10:00:00.000Z');
+    const pilotRestartT0 = new Date('2026-09-17T00:00:00.000Z');
+
+    setShadowComparisonClockForTests(() => preRestartComparison);
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'UNEXPLAINED_OLD_REJECT_NEW_ACCEPT',
+        correctnessBlocking: true,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'reject',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'legacy-bootstrap-blocker',
+        bindingKey: 'DIMO:device:legacy-blocker',
+        observedAt: preRestartComparison,
+        evidenceObservedAt: new Date('2026-09-16T12:00:00.000Z'),
+      },
+    });
+
+    setShadowComparisonClockForTests(() => postRestartComparison);
+    await prisma.deviceConnectionPhysicalStateShadowObservation.create({
+      data: {
+        organizationId: pilotFixture.org.id,
+        vehicleId: pilotFixture.vehicle.id,
+        provider: 'DIMO',
+        classification: 'MATCH',
+        correctnessBlocking: false,
+        authorityMode: 'LEGACY',
+        legacyDecision: 'accept',
+        physicalDecision: 'accept',
+        evidenceReferenceId: 'post-restart-match',
+        bindingKey: 'DIMO:device:post-restart',
+        observedAt: postRestartComparison,
+        evidenceObservedAt: new Date('2026-09-17T09:00:00.000Z'),
+      },
+    });
+
+    const allTime = await observationRepository.summarizeScopeWindow({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: new Date('2026-09-16T00:00:00.000Z'),
+      windowEnd: new Date('2026-09-18T00:00:00.000Z'),
+    });
+    const newEpoch = await observationRepository.summarizeScopeWindow({
+      organizationId: pilotFixture.org.id,
+      vehicleId: pilotFixture.vehicle.id,
+      provider: 'DIMO',
+      windowStart: pilotRestartT0,
+      windowEnd: new Date('2026-09-18T00:00:00.000Z'),
+    });
+
+    expect(allTime.correctnessBlockerCount).toBeGreaterThanOrEqual(1);
+    expect(newEpoch.correctnessBlockerCount).toBe(0);
+    expect(newEpoch.comparisonCount).toBeGreaterThanOrEqual(1);
+  });
+
   it('PSG-TIME-1 historical evidence cannot backdate operational seven-day proof', async () => {
     const comparisonNow = new Date('2026-09-16T12:00:00.000Z');
     const oldEvidence = new Date('2026-09-08T10:00:00.000Z');

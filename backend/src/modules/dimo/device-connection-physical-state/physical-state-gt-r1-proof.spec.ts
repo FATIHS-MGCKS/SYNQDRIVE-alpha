@@ -1,9 +1,12 @@
 import {
+  buildSnapshotGtR1Proof,
+  buildSnapshotPlugInitialEstablishmentGtR1Proof,
   buildSnapshotPlugRepairGtR1Proof,
   buildWebhookStaleLegacyGateGtR1Proof,
   isProvenExpectedFix,
   isSnapshotHardRejectGtR1Reason,
   SNAPSHOT_HARD_REJECT_GT_R1_REASONS,
+  type SnapshotGtR1ProofInput,
 } from './physical-state-gt-r1-proof';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 
@@ -13,12 +16,12 @@ describe('physical-state-gt-r1-proof', () => {
   const T3 = new Date('2026-09-12T16:27:51.000Z');
   const binding = buildBindingScopeFromToken({ provider: 'DIMO', tokenId: 187336 });
 
-  const admissibleBase = {
-    physicalProjectionState: 'UNPLUGGED' as const,
+  const admissibleBase: SnapshotGtR1ProofInput = {
+    physicalProjectionState: 'UNPLUGGED',
     physicalProjectionEvidenceAt: T1,
     snapshotCandidatePlugged: true,
     snapshotEvidenceObservedAt: T2,
-    legacyEvaluation: { action: 'reject' as const, reason: 'no_open_episode' as const },
+    legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
     physicalBindingScope: binding,
     legacyBindingKey: binding.bindingKey,
     episode: null,
@@ -26,6 +29,21 @@ describe('physical-state-gt-r1-proof', () => {
     snapshotSource: 'dimo',
     sourceSubtype: null,
     evidenceReferenceId: 'snap-gt-r1',
+  };
+
+  const bootstrapBase: SnapshotGtR1ProofInput = {
+    physicalProjectionState: null,
+    physicalProjectionEvidenceAt: null,
+    snapshotCandidatePlugged: true,
+    snapshotEvidenceObservedAt: T2,
+    legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
+    physicalBindingScope: binding,
+    legacyBindingKey: binding.bindingKey,
+    episode: null,
+    hardwareType: 'LTE_R1',
+    snapshotSource: 'dimo',
+    sourceSubtype: null,
+    evidenceReferenceId: 'snap-bootstrap',
   };
 
   it('legacy reason alone does not establish proof', () => {
@@ -177,6 +195,138 @@ describe('physical-state-gt-r1-proof', () => {
         legacyBindingKey: null,
       }),
     ).toBeNull();
+  });
+
+  it('bootstrap absent projection + no_open_episode -> SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT', () => {
+    const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof(bootstrapBase);
+    expect(proof?.scenario).toBe('SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT');
+    expect(isProvenExpectedFix(proof)).toBe(true);
+    expect(proof?.legacyEvidenceObservedAt).toBeNull();
+  });
+
+  it('buildSnapshotGtR1Proof prefers repair over bootstrap when UNPLUGGED baseline exists', () => {
+    const proof = buildSnapshotGtR1Proof(admissibleBase);
+    expect(proof?.scenario).toBe('SNAPSHOT_PLUG_REPAIR_UNPLUGGED_BASELINE');
+  });
+
+  it('buildSnapshotGtR1Proof uses bootstrap when projection absent', () => {
+    const proof = buildSnapshotGtR1Proof(bootstrapBase);
+    expect(proof?.scenario).toBe('SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT');
+  });
+
+  it('bootstrap proof does not apply when projection already PLUGGED', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        physicalProjectionState: 'PLUGGED',
+        physicalProjectionEvidenceAt: T1,
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply when projection already UNPLUGGED (repair path only)', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        physicalProjectionState: 'UNPLUGGED',
+        physicalProjectionEvidenceAt: T1,
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply for UNPLUGGED snapshot evidence', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        snapshotCandidatePlugged: false,
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply for non-no_open_episode legacy reject', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        legacyEvaluation: { action: 'reject', reason: 'obd_false' },
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply when open episode exists', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        episode: {
+          id: 'ep',
+          organizationId: 'org',
+          vehicleId: 'veh',
+          provider: 'DIMO',
+          deviceBindingId: null,
+          providerDeviceIdHash: binding.providerDeviceIdHash,
+          openedAt: T1,
+          openedByEventId: null,
+          openedReason: 'OBD_DEVICE_UNPLUGGED_WEBHOOK',
+          status: 'OPEN',
+          resolvedAt: null,
+          resolutionMethod: null,
+          resolutionEvidenceAt: null,
+          resolutionEventId: null,
+          resolutionSnapshotId: null,
+          reviewReasonCodes: [],
+          stateVersion: 1,
+          createdAt: T1,
+          updatedAt: T1,
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply on binding mismatch', () => {
+    const otherBinding = buildBindingScopeFromToken({ provider: 'DIMO', tokenId: 999001 });
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        legacyBindingKey: otherBinding.bindingKey,
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof allows null legacy binding when no legacy persisted identity exists', () => {
+    const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof({
+      ...bootstrapBase,
+      legacyBindingKey: null,
+    });
+    expect(proof?.scenario).toBe('SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT');
+    expect(isProvenExpectedFix(proof)).toBe(true);
+  });
+
+  it('bootstrap proof does not apply for synthetic snapshot source', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        sourceSubtype: 'SYNTHETIC_TEST',
+      }),
+    ).toBeNull();
+  });
+
+  it('bootstrap proof does not apply for invalid evidence timestamp', () => {
+    expect(
+      buildSnapshotPlugInitialEstablishmentGtR1Proof({
+        ...bootstrapBase,
+        snapshotEvidenceObservedAt: new Date('invalid'),
+      }),
+    ).toBeNull();
+  });
+
+  it('malformed proof object without scenario is rejected', () => {
+    expect(
+      isProvenExpectedFix({
+        proven: true,
+        evidenceReferenceId: 'x',
+        physicalEvidenceObservedAt: T2,
+        legacyEvidenceObservedAt: null,
+      } as never),
+    ).toBe(false);
   });
 
   it('no_open_episode with open episode present cannot establish EXPECTED_FIX', () => {

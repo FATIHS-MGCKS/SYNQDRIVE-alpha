@@ -1,5 +1,9 @@
 /**
  * Canonical P2.2 shadow adjudication taxonomy — frozen by VDC-DEC-013 / Phase-2 audit §14.
+ *
+ * Bootstrap initial ESTABLISHMENT (absent projection → PLUGGED via SNAPSHOT_OBD) reuses
+ * EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT when independently proven via
+ * SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT — no separate cosmetic category.
  */
 export enum PhysicalStateShadowClassification {
   MATCH = 'MATCH',

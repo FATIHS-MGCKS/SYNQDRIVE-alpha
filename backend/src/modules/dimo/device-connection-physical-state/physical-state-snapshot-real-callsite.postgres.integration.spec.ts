@@ -408,6 +408,58 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     expect(result?.shadowComparison?.classification).not.toBe(PhysicalStateShadowClassification.MATCH);
   });
 
+  it('BOOTSTRAP CASE A — absent projection + aligned PLUGGED SNAPSHOT_OBD => EXPECTED_FIX', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.accepted).toBe(false);
+    expect(result?.legacyShadow?.diagnosticReason).toBe('no_open_episode');
+    expect(getCoordinatorReconcile(result?.coordinatorResult)?.decision).toBe('ESTABLISHED');
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('BOOTSTRAP CASE B — existing PLUGGED projection + duplicate snapshot => steady-state MATCH', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    const second = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(second?.shadowComparison?.classification).toBe(PhysicalStateShadowClassification.MATCH);
+    expect(second?.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('BOOTSTRAP CASE C — PLUGGED baseline then valid UNPLUG snapshot transition', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    const transition = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: false, timestamp: T3 } }, T3),
+    );
+
+    expect(transition?.legacyShadow?.diagnosticReason).toBe('obd_false');
+    expect(transition?.shadowComparison?.classification).toBeDefined();
+  });
+
+  it('BOOTSTRAP CASE D — synthetic snapshot source invalidates bootstrap proof => UNEXPLAINED', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence({
+      ...snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      sourceSubtype: 'SYNTHETIC_TEST',
+    });
+
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(true);
+  });
+
   it('7. master=false => zero P2.3 DB mutations', async () => {
     disablePhysicalStateStatefulShadowEnv();
     const before = await countArtifacts();

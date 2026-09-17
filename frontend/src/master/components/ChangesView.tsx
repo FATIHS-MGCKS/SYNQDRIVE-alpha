@@ -99,6 +99,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-17T06:30:00.000Z',
   },
   {
+    id: 'vdc-rb019-p25-bootstrap-gt-r1-proof-2026-09-17',
+    version: '4.9.1138',
+    title: 'VDC RB-019 P2.5 — bootstrap GT-R1 expected-fix proof closure',
+    summary: [
+      'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT proof for absent projection → PLUGGED SNAPSHOT_OBD bootstrap.',
+      'buildSnapshotGtR1Proof() resolver: repair (UNPLUGGED baseline) precedence, then bootstrap.',
+      'Wired from PhysicalStateSnapshotEvidenceOrchestrator real call-site; comparator receives proof object.',
+      'Reuses EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); negative proof matrix + BOOTSTRAP CASE A–D PG proofs.',
+      'PSG-TIME-0: summarizeScopeWindow observedAt lower bound excludes pre-restart blockers without row deletion.',
+    ],
+    reason:
+      'Failed Production shadow pilot produced UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on first bootstrap because GT-R1 only covered UNPLUGGED-baseline repair, not absent projection establishment.',
+    previousBehavior:
+      'no_open_episode legacy reject + physical ESTABLISHED accept on empty projection classified UNEXPLAINED (correctness-blocking).',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_BOOTSTRAP_GT_R1_PROOF_2026-09-17.md; STATEFUL_SHADOW still OFF; five historical Production observations preserved.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-17T19:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16',
     version: '4.9.1137',
     title: 'VDC RB-019 P2.5 — STATEFUL_SHADOW pilot scope gate + scope-bound observability',

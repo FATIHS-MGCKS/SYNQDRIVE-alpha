@@ -7,7 +7,7 @@ import {
 import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { extractObdPlugSignalFromSignals } from './device-connection-physical-state.obd-evidence';
-import { buildSnapshotPlugRepairGtR1Proof } from './physical-state-gt-r1-proof';
+import { buildSnapshotGtR1Proof } from './physical-state-gt-r1-proof';
 import {
   buildLegacySnapshotShadowDecision,
   resolveLegacyBindingKey,
@@ -125,7 +125,7 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
       lastLegacyEvent: lastLegacyEvent,
     });
 
-    const gtR1Proof = buildSnapshotPlugRepairGtR1Proof({
+    const gtR1Proof = buildSnapshotGtR1Proof({
       physicalProjectionState: projection?.effectiveState ?? null,
       physicalProjectionEvidenceAt: projection?.evidenceObservedAt ?? null,
       snapshotCandidatePlugged: obd.obdIsPluggedIn === true,
