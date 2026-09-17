@@ -37,7 +37,8 @@ function makeEnabledConfig(maxActiveFamilies = 50): ReferenceCaptureConfig {
     isExp021MaturationShadowEnabled: () => true,
     isExp021MaturationShadowHfLaneEnabled: () => true,
     isExp021MaturationShadowSettlementLaneEnabled: () => true,
-    getExp021MaturationShadowAllowlistTokenIds: () => [187336, 187337, 187338, 187339, 187340],
+    getExp021MaturationShadowAllowlistTokenIds: () =>
+      Array.from({ length: 256 }, (_, index) => 187336 + index),
     getExp021MaturationShadowMaxActiveFamilies: () => maxActiveFamilies,
     getHfRecoveryPolicyConfig: () => ({
       mode: 'V2' as const,
@@ -124,8 +125,13 @@ async function seedOrgVehicle(
     let tokenCounter = 187336;
 
     function nextTokenId(): number {
+      const tokenId = tokenCounter;
       tokenCounter += 1;
-      return tokenCounter;
+      return tokenId;
+    }
+
+    async function drainQueue(): Promise<void> {
+      await queue.obliterate({ force: true });
     }
 
     beforeAll(async () => {
@@ -300,6 +306,7 @@ async function seedOrgVehicle(
 
     it('E: recovery reconciles DB slot without BullMQ job', async () => {
       const enrolled = await enrollFamily(new Date('2026-09-16T14:00:00.000Z'));
+      await drainQueue();
       await prisma.exp021MaturationShadowObservationSlot.updateMany({
         where: { stratum: { windowFamilyId: enrolled.familyId } },
         data: { bullJobId: null },
@@ -323,6 +330,7 @@ async function seedOrgVehicle(
         plannedAgeMs: slot.plannedAgeMs,
       });
 
+      await drainQueue();
       await prisma.exp021MaturationShadowObservationSlot.update({
         where: { id: slot.id },
         data: { bullJobId: ghostJobId },
