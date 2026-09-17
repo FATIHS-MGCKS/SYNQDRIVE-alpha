@@ -2,6 +2,7 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
+import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import {
   bootstrapExp021CanaryEnrollApplicationContext,
   bootstrapExp021CanaryEnrollApplicationContextDefective7779dd1,
