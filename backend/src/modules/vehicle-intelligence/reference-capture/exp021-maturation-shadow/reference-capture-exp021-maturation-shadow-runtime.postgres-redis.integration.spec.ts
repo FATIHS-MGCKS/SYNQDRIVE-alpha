@@ -694,7 +694,7 @@ async function seedOrgVehicle(
       expect(fingerprintsIdentical(before, after)).toBe(true);
 
       const shadowAttempts = await prisma.exp021MaturationShadowObservationAttempt.count({
-        where: { slot: { stratum: { familyId: enrolled.familyId } } },
+        where: { slot: { stratum: { windowFamilyId: enrolled.familyId } } },
       });
       expect(shadowAttempts).toBeGreaterThan(0);
     });
