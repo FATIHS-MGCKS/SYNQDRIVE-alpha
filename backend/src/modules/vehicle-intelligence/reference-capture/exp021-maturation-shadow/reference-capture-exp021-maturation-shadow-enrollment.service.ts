@@ -91,21 +91,6 @@ export class ReferenceCaptureExp021MaturationShadowEnrollmentService {
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
     };
 
-    const family = await this.repository.withActiveFamilyAdmissionLock(async (tx) => {
-      const exists = await this.repository.familyExistsForIdentity(familyIdentity, tx);
-      await this.repository.assertActiveFamilyCapacityForNewEnrollment(maxFamilies, exists, tx);
-      return this.repository.reserveOrGetWindowFamily(
-        {
-          ...familyIdentity,
-          enrollmentEventId: input.enrollmentEventId,
-          plannedAgesMsExact: schedule.plannedAgesMsExact,
-          policyDelayProbeMs: schedule.policyDelayProbeMs,
-          createdUnderRuntimeSha: runtimeSha,
-        },
-        tx,
-      );
-    });
-
     const lanes: Exp021MaturationShadowSignalLane[] = [];
     if (this.config.isExp021MaturationShadowHfLaneEnabled()) {
       lanes.push(Exp021MaturationShadowSignalLane.HF_FAST_LOOP);
@@ -130,55 +115,92 @@ export class ReferenceCaptureExp021MaturationShadowEnrollmentService {
       );
     }
 
-    let stratumCount = 0;
-    let slotCount = 0;
-    let enqueuedJobCount = 0;
+    const enrollmentArtifacts = await this.repository.withActiveFamilyAdmissionLock(async (tx) => {
+      const exists = await this.repository.familyExistsForIdentity(familyIdentity, tx);
+      await this.repository.assertActiveFamilyCapacityForNewEnrollment(maxFamilies, exists, tx);
+      const family = await this.repository.reserveOrGetWindowFamily(
+        {
+          ...familyIdentity,
+          enrollmentEventId: input.enrollmentEventId,
+          plannedAgesMsExact: schedule.plannedAgesMsExact,
+          policyDelayProbeMs: schedule.policyDelayProbeMs,
+          createdUnderRuntimeSha: runtimeSha,
+        },
+        tx,
+      );
 
-    for (const signalLane of lanes) {
-      for (const queryGeometryMs of EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS) {
-        const windowTo = input.canonicalWindowTo;
-        const windowFrom = new Date(windowTo.getTime() - queryGeometryMs);
-        const semantics = resolveFrozenStratumSemantics({
-          signalLane,
-          queryGeometryMs,
-          windowFrom,
-          windowTo,
-        });
-        const activity = activityByGeometry.get(queryGeometryMs)!;
+      let stratumCount = 0;
+      let slotCount = 0;
+      const pendingSlots: Array<{
+        observationSlotId: string;
+        windowStratumId: string;
+        plannedAgeMs: number;
+      }> = [];
 
-        const stratum = await this.repository.createWindowStratum({
-          windowFamilyId: family.id,
-          signalLane,
-          queryGeometryMs,
-          windowFrom,
-          windowTo,
-          ...semantics,
-          runtimeBuildShaAtEnrollment: runtimeSha,
-          activityClassificationJson: activity,
-        });
-        stratumCount += 1;
-
-        for (const plannedAgeMs of family.plannedAgesMsExact) {
-          const slot = await this.repository.createObservationSlot({
-            windowStratumId: stratum.id,
-            plannedAgeMs,
+      for (const signalLane of lanes) {
+        for (const queryGeometryMs of EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS) {
+          const windowTo = input.canonicalWindowTo;
+          const windowFrom = new Date(windowTo.getTime() - queryGeometryMs);
+          const semantics = resolveFrozenStratumSemantics({
+            signalLane,
+            queryGeometryMs,
+            windowFrom,
+            windowTo,
           });
-          slotCount += 1;
+          const activity = activityByGeometry.get(queryGeometryMs)!;
 
-          const jobId = await this.runner.enqueueObservationSlot({
-            observationSlotId: slot.id,
-            windowFamilyId: family.id,
-            windowStratumId: stratum.id,
-            plannedAgeMs,
-            canonicalWindowTo: family.canonicalWindowTo,
-            organizationId: family.organizationId,
-            vehicleId: family.vehicleId,
-            tokenId: family.tokenId,
-          });
-          if (jobId) {
-            enqueuedJobCount += 1;
+          const stratum = await this.repository.createWindowStratum(
+            {
+              windowFamilyId: family.id,
+              signalLane,
+              queryGeometryMs,
+              windowFrom,
+              windowTo,
+              ...semantics,
+              runtimeBuildShaAtEnrollment: runtimeSha,
+              activityClassificationJson: activity,
+            },
+            tx,
+          );
+          stratumCount += 1;
+
+          for (const plannedAgeMs of family.plannedAgesMsExact) {
+            const slot = await this.repository.createObservationSlot(
+              {
+                windowStratumId: stratum.id,
+                plannedAgeMs,
+              },
+              tx,
+            );
+            slotCount += 1;
+            pendingSlots.push({
+              observationSlotId: slot.id,
+              windowStratumId: stratum.id,
+              plannedAgeMs,
+            });
           }
         }
+      }
+
+      return { family, stratumCount, slotCount, pendingSlots };
+    });
+
+    const { family, stratumCount, slotCount, pendingSlots } = enrollmentArtifacts;
+    let enqueuedJobCount = 0;
+
+    for (const pending of pendingSlots) {
+      const jobId = await this.runner.enqueueObservationSlot({
+        observationSlotId: pending.observationSlotId,
+        windowFamilyId: family.id,
+        windowStratumId: pending.windowStratumId,
+        plannedAgeMs: pending.plannedAgeMs,
+        canonicalWindowTo: family.canonicalWindowTo,
+        organizationId: family.organizationId,
+        vehicleId: family.vehicleId,
+        tokenId: family.tokenId,
+      });
+      if (jobId) {
+        enqueuedJobCount += 1;
       }
     }
 

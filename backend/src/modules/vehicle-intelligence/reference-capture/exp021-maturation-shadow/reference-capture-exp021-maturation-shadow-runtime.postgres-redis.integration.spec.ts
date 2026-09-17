@@ -525,6 +525,7 @@ async function seedOrgVehicle(
     });
 
     it('RETRY_JOB_LOSS_RECONCILIATION: failed attempt + missing retry job recovers', async () => {
+      await purgeMaturationShadowHierarchy();
       const enrolled = await enrollFamily(new Date('2026-09-16T16:30:00.000Z'));
       const { slot, stratum } = await firstSlot(enrolled.familyId);
 
@@ -576,6 +577,7 @@ async function seedOrgVehicle(
     });
 
     it('COMPLETED_JOB_RECONCILIATION: successful attempt clears stale BullMQ linkage', async () => {
+      await purgeMaturationShadowHierarchy();
       const enrolled = await enrollFamily(new Date('2026-09-16T17:00:00.000Z'));
       const { slot, stratum } = await firstSlot(enrolled.familyId);
 
