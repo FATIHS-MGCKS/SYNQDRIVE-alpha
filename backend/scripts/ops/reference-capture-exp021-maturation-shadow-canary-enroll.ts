@@ -6,10 +6,11 @@
  * Default: DRY RUN (no DB writes, no BullMQ jobs, no provider calls).
  * Execute requires explicit --execute flag.
  */
-import { NestFactory } from '@nestjs/core';
 import { PrismaService } from '@shared/database/prisma.service';
-import { AppModule } from '../../src/app.module';
-import { ReferenceCaptureConfig } from '../../src/modules/vehicle-intelligence/reference-capture/reference-capture.config';
+import {
+  bootstrapExp021CanaryEnrollApplicationContext,
+  resolveExp021CanaryEnrollNestServices,
+} from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-bootstrap.lib';
 import {
   EXP021_CANARY_ACTIVITY_AUTHORITY,
   EXP021_CANARY_CANONICAL_WINDOW_TO_AUTHORITY,
@@ -29,8 +30,6 @@ import {
   type Exp021CanaryEnrollCliArgs,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.errors';
-import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-enrollment.service';
-import { ReferenceCaptureExp021MaturationShadowRepository } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.repository';
 
 function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
@@ -130,15 +129,12 @@ async function loadSpeedObservationsForWindow(
 
 async function main(): Promise<void> {
   const args = parseCliArgs();
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const app = await bootstrapExp021CanaryEnrollApplicationContext({
     logger: ['error', 'warn', 'log'],
   });
 
   try {
-    const config = app.get(ReferenceCaptureConfig);
-    const repository = app.get(ReferenceCaptureExp021MaturationShadowRepository);
-    const enrollment = app.get(ReferenceCaptureExp021MaturationShadowEnrollmentService);
-    const prisma = app.get(PrismaService);
+    const { config, repository, enrollment, prisma } = resolveExp021CanaryEnrollNestServices(app);
 
     const settlementShadowExperiments = await loadCanarySettlementShadowExperiments(prisma);
 
