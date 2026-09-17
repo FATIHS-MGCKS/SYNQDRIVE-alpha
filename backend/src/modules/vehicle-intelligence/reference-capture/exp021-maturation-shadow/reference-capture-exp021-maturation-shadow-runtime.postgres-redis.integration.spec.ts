@@ -4,7 +4,7 @@
  */
 import { randomUUID } from 'crypto';
 import IORedis from 'ioredis';
-import { Queue, Worker } from 'bullmq';
+import { Queue } from 'bullmq';
 import RedisMemoryServer from 'redis-memory-server';
 import {
   Exp021MaturationShadowProviderOutcomeClass,
@@ -176,9 +176,10 @@ async function seedOrgVehicle(
       await prisma?.$disconnect();
     });
 
-    beforeEach(() => {
+    beforeEach(async () => {
       providerAdapter.executeHistoricalQuery.mockReset();
       providerAdapter.executeHistoricalQuery.mockResolvedValue(successProviderResult());
+      await drainQueue();
     });
 
     async function enrollFamily(canonicalWindowTo: Date, tokenId = nextTokenId()) {
@@ -362,12 +363,6 @@ async function seedOrgVehicle(
         transportRetryOrdinal: 0,
       };
 
-      const worker = new Worker(
-        QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW,
-        async () => workerService.executeObservationJob(jobData),
-        { connection, concurrency: 1 },
-      );
-
       await queue.add('observe', jobData, {
         jobId: buildExp021MaturationShadowJobId({
           windowFamilyId: enrolled.familyId,
@@ -377,7 +372,16 @@ async function seedOrgVehicle(
         delay: 0,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      const queuedJob = await queue.getJob(
+        buildExp021MaturationShadowJobId({
+          windowFamilyId: enrolled.familyId,
+          windowStratumId: stratum.id,
+          plannedAgeMs: slot.plannedAgeMs,
+        }),
+      );
+      expect(queuedJob).toBeTruthy();
+      expect(await queuedJob!.getState()).toBe('delayed');
+
       await workerService.executeObservationJob(jobData);
 
       const attempts = await prisma.exp021MaturationShadowObservationAttempt.findMany({
@@ -392,8 +396,6 @@ async function seedOrgVehicle(
         where: { observationSlotId: slot.id },
       });
       expect(attemptsAfterDuplicate).toHaveLength(1);
-
-      await worker.close();
     });
 
     it('semantic drift before provider query — no provider call, no attempt', async () => {
