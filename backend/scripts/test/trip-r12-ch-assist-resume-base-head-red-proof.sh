@@ -128,13 +128,14 @@ const baseOk =
 const headOk =
   !head.missing &&
   head.HEAD_GREEN_PROVEN === true &&
-  head.HEAD_OLD_CH_END_FINALIZED_PREMATURELY === true &&
+  head.HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY === true &&
   head.HEAD_FIRST_FETCH_IMMATURE_DEFERRED === true &&
   head.HEAD_LATER_RESUME_INVALIDATES_OLD_END === true &&
   head.HEAD_SAME_TRIP_CONTINUES === true;
 
 console.log('BASE_RED_EXECUTED_LITERALLY=' + (baseOk ? 'YES' : 'NO'));
 console.log('BASE_FALSE_TERMINALIZATION_REPRODUCED=' + (baseOk ? 'YES' : 'NO'));
+console.log('HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY=' + (head.HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY === true ? 'YES' : 'NO'));
 console.log('HEAD_GREEN_PROVEN=' + (headOk ? 'YES' : 'NO'));
 process.exit(baseOk && headOk ? 0 : 1);
 ")"

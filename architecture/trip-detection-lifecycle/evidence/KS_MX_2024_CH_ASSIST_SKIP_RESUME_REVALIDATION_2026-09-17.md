@@ -27,6 +27,12 @@ Immediately before CH skip terminal consumption in `processEndValidation()`:
 - Unit: `evaluateChSkipResumeRevalidationMaturity` in `trip-end-cycle-reset.spec.ts`
 - Literal BASE SHA `9580a3247a572191a4ead77b6a6c77ea2828855b` vs corrected HEAD via worktree proof harness
 
+### Portable probe HEAD metrics (positive invariants)
+
+- `HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY=YES` — no `clickhouse_end_assist_skip_cusum` at immature EV2; FSM remains `POSSIBLE_END`
+- `HEAD_FIRST_FETCH_IMMATURE_DEFERRED=YES`, `HEAD_LATER_RESUME_INVALIDATES_OLD_END=YES`, `HEAD_SAME_TRIP_CONTINUES=YES`, `HEAD_GREEN_PROVEN=YES`
+- Do **not** use inverted `HEAD_OLD_CH_END_FINALIZED_PREMATURELY` (removed — prior `YES` meant *not* prematurely finalized)
+
 ## Explicit non-goals
 
 - No Production mutation / historical repair

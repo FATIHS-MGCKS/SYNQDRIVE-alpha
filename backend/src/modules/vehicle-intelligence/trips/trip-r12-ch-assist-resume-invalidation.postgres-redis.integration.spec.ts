@@ -1030,6 +1030,11 @@ async function relatchClickHouseCandidate(params: {
         });
       }
 
+      const headOldChEndNotFinalizedPrematurely =
+        PROBE_EXPECT === 'HEAD'
+          ? !ev2SkipRun && afterEv2Det?.state === TripDetectionState.POSSIBLE_END
+          : false;
+
       let headLaterActive = false;
       if (PROBE_EXPECT === 'HEAD') {
         segments.fetchRawTripCoreData = buildResumeAwareSegmentsMock({
@@ -1070,17 +1075,15 @@ async function relatchClickHouseCandidate(params: {
             : false,
         BASE_TRIP_RESTING_BEFORE_TRUE_FINAL_STOP:
           PROBE_EXPECT === 'BASE' ? afterEv2Det?.state === TripDetectionState.RESTING : false,
-        HEAD_OLD_CH_END_FINALIZED_PREMATURELY:
-          PROBE_EXPECT === 'HEAD' ? !ev2SkipRun && afterEv2Det?.state === TripDetectionState.POSSIBLE_END : false,
+        HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY: headOldChEndNotFinalizedPrematurely,
         HEAD_FIRST_FETCH_IMMATURE_DEFERRED: PROBE_EXPECT === 'HEAD' ? !!ev2DeferRun : false,
         HEAD_LATER_RESUME_INVALIDATES_OLD_END: PROBE_EXPECT === 'HEAD' ? headLaterActive : false,
         HEAD_SAME_TRIP_CONTINUES: PROBE_EXPECT === 'HEAD' ? headLaterActive : false,
         HEAD_GREEN_PROVEN:
           PROBE_EXPECT === 'HEAD'
             ? !!ev2DeferRun &&
-              !ev2SkipRun &&
-              headLaterActive &&
-              afterEv2Det?.state === TripDetectionState.POSSIBLE_END
+              headOldChEndNotFinalizedPrematurely &&
+              headLaterActive
             : false,
       };
 
@@ -1097,7 +1100,7 @@ async function relatchClickHouseCandidate(params: {
         expect(metrics.BASE_OLD_CH_END_FINALIZED).toBe(true);
       } else {
         expect(metrics.HEAD_GREEN_PROVEN).toBe(true);
-        expect(metrics.HEAD_OLD_CH_END_FINALIZED_PREMATURELY).toBe(true);
+        expect(metrics.HEAD_OLD_CH_END_NOT_FINALIZED_PREMATURELY).toBe(true);
         expect(metrics.HEAD_FIRST_FETCH_IMMATURE_DEFERRED).toBe(true);
         expect(metrics.HEAD_LATER_RESUME_INVALIDATES_OLD_END).toBe(true);
       }
