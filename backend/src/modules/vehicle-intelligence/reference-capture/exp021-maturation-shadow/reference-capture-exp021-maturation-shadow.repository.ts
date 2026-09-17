@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   Exp021MaturationShadowAttemptImmutabilityError,
+  Exp021MaturationShadowFamilyIdentityError,
   Exp021MaturationShadowStratumSemanticMismatchError,
 } from './reference-capture-exp021-maturation-shadow.errors';
 import {
@@ -371,5 +372,71 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
     throw new Exp021MaturationShadowAttemptImmutabilityError(
       'Observation attempts are immutable; create a new attempt instead',
     );
+  }
+
+  async findObservationSlotById(observationSlotId: string) {
+    return this.prisma.exp021MaturationShadowObservationSlot.findUnique({
+      where: { id: observationSlotId },
+      include: {
+        attempts: { orderBy: { attemptOrdinal: 'asc' } },
+        stratum: { include: { family: true } },
+      },
+    });
+  }
+
+  async linkBullJobIdIfAbsent(observationSlotId: string, bullJobId: string): Promise<boolean> {
+    const updated = await this.prisma.exp021MaturationShadowObservationSlot.updateMany({
+      where: {
+        id: observationSlotId,
+        bullJobId: null,
+      },
+      data: { bullJobId },
+    });
+    return updated.count > 0;
+  }
+
+  async clearBullJobId(observationSlotId: string): Promise<void> {
+    await this.prisma.exp021MaturationShadowObservationSlot.updateMany({
+      where: { id: observationSlotId },
+      data: { bullJobId: null },
+    });
+  }
+
+  async findSlotsMissingBullJob(limit = 500) {
+    return this.prisma.exp021MaturationShadowObservationSlot.findMany({
+      where: { bullJobId: null },
+      include: {
+        stratum: { include: { family: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+    });
+  }
+
+  async countActiveFamilies(): Promise<number> {
+    return this.prisma.exp021MaturationShadowWindowFamily.count();
+  }
+
+  async resolveAuthoritativeTokenId(
+    organizationId: string,
+    vehicleId: string,
+    expectedTokenId: number,
+  ): Promise<number> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+      select: { dimoVehicle: { select: { tokenId: true } } },
+    });
+    const authoritative = vehicle?.dimoVehicle?.tokenId;
+    if (authoritative == null) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        `No authoritative DIMO token for vehicle ${vehicleId}`,
+      );
+    }
+    if (authoritative !== expectedTokenId) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        `Token identity mismatch: expected ${expectedTokenId}, authoritative ${authoritative}`,
+      );
+    }
+    return authoritative;
   }
 }

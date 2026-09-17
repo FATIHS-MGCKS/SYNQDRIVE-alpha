@@ -140,6 +140,35 @@ export class ReferenceCaptureConfig {
     );
   }
 
+  isExp021MaturationShadowEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.exp021MaturationShadowEnabled') === true;
+  }
+
+  isExp021MaturationShadowHfLaneEnabled(): boolean {
+    return (
+      this.isExp021MaturationShadowEnabled() &&
+      this.configService.get<boolean>('referenceCapture.exp021MaturationShadowHfLaneEnabled') === true
+    );
+  }
+
+  isExp021MaturationShadowSettlementLaneEnabled(): boolean {
+    return (
+      this.isExp021MaturationShadowEnabled() &&
+      this.configService.get<boolean>('referenceCapture.exp021MaturationShadowSettlementLaneEnabled') ===
+        true
+    );
+  }
+
+  getExp021MaturationShadowAllowlistTokenIds(): number[] {
+    return this.configService.get<number[]>('referenceCapture.exp021MaturationShadowAllowlistTokenIds') ?? [];
+  }
+
+  getExp021MaturationShadowMaxActiveFamilies(): number {
+    const raw = this.configService.get<number>('referenceCapture.exp021MaturationShadowMaxActiveFamilies');
+    if (raw == null || !Number.isFinite(raw) || raw < 0) return 0;
+    return Math.floor(raw);
+  }
+
   isFleetCoordinatorEnabled(): boolean {
     return this.configService.get<boolean>('referenceCapture.fleetCoordinatorEnabled') === true;
   }

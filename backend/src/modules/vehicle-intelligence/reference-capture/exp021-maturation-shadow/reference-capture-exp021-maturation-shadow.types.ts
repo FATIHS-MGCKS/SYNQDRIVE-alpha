@@ -7,10 +7,16 @@ import type {
   Prisma,
 } from '@prisma/client';
 
-/** Default disabled — no runtime execution in PR-M1. */
+/** Default disabled — no runtime execution in PR-M1/M2. */
 export const EXP021_MATURATION_SHADOW_ENABLED_DEFAULT = false;
 
+export const EXP021_MATURATION_SHADOW_HF_LANE_ENABLED_DEFAULT = false;
+export const EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED_DEFAULT = false;
+
 export const EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 = 'MATURATION_SHADOW_SCHEDULE_v1';
+
+/** Bounded active window-family authority (design placeholder — default 0 = no cap when disabled). */
+export const EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES_DEFAULT = 0;
 
 export const EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS = [60_000, 90_000] as const;
 
@@ -77,13 +83,21 @@ export type Exp021MaturationShadowAttemptRawFacts = {
 
 export type Exp021MaturationShadowConfig = {
   enabled: boolean;
+  hfFastLoopLaneEnabled: boolean;
+  settlementShadowLaneEnabled: boolean;
   shadowScheduleVersion: string;
+  allowlistedTokenIds: number[];
+  maxActiveFamilies: number;
 };
 
 export function defaultExp021MaturationShadowConfig(): Exp021MaturationShadowConfig {
   return {
     enabled: EXP021_MATURATION_SHADOW_ENABLED_DEFAULT,
+    hfFastLoopLaneEnabled: EXP021_MATURATION_SHADOW_HF_LANE_ENABLED_DEFAULT,
+    settlementShadowLaneEnabled: EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED_DEFAULT,
     shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+    allowlistedTokenIds: [],
+    maxActiveFamilies: EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES_DEFAULT,
   };
 }
 
