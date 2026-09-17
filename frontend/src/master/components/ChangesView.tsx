@@ -43,7 +43,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Repository-native manual operator CLI to enroll exactly one KS MX 2024 maturation shadow window family — no HTTP API, no cron, no automatic fleet hook.',
       'Default DRY RUN; `--execute` required for DB/BullMQ writes. `--wait-next-window` polls authoritative physical drive interval close from settlement-shadow experiment metadata.',
       'Hard guards: token 187336, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly [187336], maxActiveFamilies=1, zero unfinished families.',
-      'Freshness guard preserves dense 30s–60s ages; enrollment creates zero provider calls (M2 worker executes observations later).',
+      'Safety micro-closure: authoritative token equality enforced; activity resolved only after canonicalWindowTo from geometry-specific RC observations; execute requires exact persisted physicalEndAt; strict token parse; wait-mode skips stale windows with lag diagnostics.',
+      'Freshness guard preserves dense 30s–60s ages; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (M2 worker executes observations later).',
     ],
     reason:
       'Production canary activation gate passed but automatic enrollment remains unwired — operator needs a bounded, fail-closed manual start path.',

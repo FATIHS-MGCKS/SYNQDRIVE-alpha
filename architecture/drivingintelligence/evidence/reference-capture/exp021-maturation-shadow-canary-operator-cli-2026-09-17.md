@@ -32,6 +32,35 @@ npm run exp021:maturation-shadow:canary:enroll -- \
   --canonical-window-to 2026-09-17T12:00:00.000Z
 ```
 
+## Safety micro-closure (2026-09-17)
+
+| Checkpoint | Head | Status |
+|------------|------|--------|
+| Initial operator CLI | `5055dff30088d0dc7a141f33f9c9501756d593ee` | superseded |
+| Safety micro-closure | `2d2a30107db23081e1fba4e57f50d9dcf87a0cb7` | **current** |
+
+| Requirement | Result |
+|-------------|--------|
+| `AUTHORITATIVE_TOKEN_EQUALITY_ENFORCED` | YES — `assertCanaryHardGuards` requires resolved token `=== 187336` |
+| `TOKEN_BINDING_MISMATCH_CAN_ENROLL` | NO |
+| `ACTIVITY_RESOLVED_AFTER_CANONICAL_WINDOW_TO` | YES — CLI loads `reference_capture_observations` only after window anchor frozen |
+| `GEOMETRY_60_ACTIVITY_WINDOW_SPECIFIC` | YES — `[canonicalWindowTo − 60s, canonicalWindowTo]` |
+| `GEOMETRY_90_ACTIVITY_WINDOW_SPECIFIC` | YES — independent 90s window (+ prefix/suffix split when suffix-only motion) |
+| `SINGLE_LATEST_SPEED_DUPLICATED_TO_BOTH_GEOMETRIES` | NO |
+| `UNRESOLVED_ACTIVITY_FAILS_TO_UNKNOWN` | YES |
+| `ARBITRARY_OPERATOR_TIMESTAMP_CAN_EXECUTE` | NO — execute requires exact persisted `physicalEndAt` |
+| `EXPLICIT_WINDOW_REQUIRES_AUTHORITY_MATCH` | YES — `ORCHESTRATOR_CONFIRMED` / `PDI_CANDIDATE` only |
+| `TOKEN_ARGUMENT_STRICT_PARSE` | YES — `/^\d+$/` decimal integer only |
+| `WAIT_MODE_EXITS_ON_FIRST_STALE_WINDOW` | NO — stale candidates skipped, polling continues |
+| `WAIT_MODE_CAN_CONTINUE_TO_NEXT_WINDOW` | YES |
+| `WINDOW_DETECTION_LAG_EXPORTED` | YES — `physicalEndAt`, `detectedAt`, `WINDOW_DETECTION_LAG_MS`, `freshnessGuardMs`, `remainingEnrollmentBudgetMs` |
+| `PROVIDER_CALL_ZERO_EVIDENCE_TRUTHFUL` | YES — `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (expectation, not observed counter) |
+
+### Tests
+
+- `reference-capture-exp021-maturation-shadow-canary-enroll.spec.ts` (23 cases)
+- `reference-capture-exp021-maturation-shadow-canary-activity.lib.spec.ts` (5 cases)
+
 ## Production execution status
 
 `PRODUCTION_EXECUTED=NO` — PR adds CLI only; no enrollment against Production in this workstream.

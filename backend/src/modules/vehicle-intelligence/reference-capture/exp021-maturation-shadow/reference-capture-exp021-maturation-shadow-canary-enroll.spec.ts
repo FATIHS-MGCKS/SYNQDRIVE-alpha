@@ -4,6 +4,7 @@ import {
   EXP021_CANARY_WINDOW_FRESHNESS_EXECUTION_SLACK_MS,
   EXP021_KS_MX_2024_CANARY,
 } from './reference-capture-exp021-maturation-shadow-canary-enroll.constants';
+import { classifyActivityForGeometry } from './reference-capture-exp021-maturation-shadow-activity-classification.lib';
 import {
   resolveGeometryActivityAuthorityByWindow,
   type Exp021CanarySpeedObservation,
@@ -355,6 +356,24 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
     ).rejects.toThrow('Active unfinished maturation shadow families must be 0');
 
     expect(enrollWindowFamily).toHaveBeenCalledTimes(1);
+  });
+
+  it('B) activity classification is anchored to resolved canonicalWindowTo not an earlier window', () => {
+    const resolvedWindowTo = new Date('2026-09-17T12:00:00.000Z');
+    const earlierWindowTo = new Date('2026-09-17T11:00:00.000Z');
+    const observations: Exp021CanarySpeedObservation[] = [
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
+        normalizedValueJson: 42,
+      },
+    ];
+
+    const forResolved = resolveGeometryActivityAuthorityByWindow(observations, resolvedWindowTo);
+    const forEarlier = resolveGeometryActivityAuthorityByWindow(observations, earlierWindowTo);
+
+    expect(classifyActivityForGeometry(60_000, forResolved[60_000]).class).toBe('ACTIVE_MOTION');
+    expect(classifyActivityForGeometry(60_000, forEarlier[60_000]).class).toBe('UNKNOWN_ACTIVITY');
   });
 
   it('C) geometry-specific activity from independent observations in production resolver path', () => {
