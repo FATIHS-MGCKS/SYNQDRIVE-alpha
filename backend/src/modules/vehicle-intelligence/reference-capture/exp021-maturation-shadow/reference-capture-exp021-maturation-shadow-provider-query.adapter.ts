@@ -7,6 +7,11 @@ import { buildBroadReferenceHistoricalSignalsQuery } from '../reference-capture-
 import { parseShadowSignalsResponse } from '../reference-capture-settlement-shadow-response.parser';
 import { CANONICAL_EXP021_BUCKET_IDENTITY } from '../reference-capture-settlement-shadow-bucket-identity';
 
+export type Exp021MaturationShadowProviderRequestPhase =
+  | 'QUERY_BUILD_ZERO'
+  | 'AUTH_PREFLIGHT_FAILED'
+  | 'PROVIDER_HTTP';
+
 export type Exp021MaturationShadowProviderQueryInput = {
   tokenId: number;
   organizationId: string;
@@ -20,6 +25,7 @@ export type Exp021MaturationShadowProviderQueryInput = {
 export type Exp021MaturationShadowProviderQueryResult = {
   requestStartedAt: Date;
   requestCompletedAt: Date;
+  providerRequestPhase: Exp021MaturationShadowProviderRequestPhase;
   providerRequestSucceeded: boolean;
   providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass;
   providerStatus: string | null;
@@ -51,7 +57,6 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
   async executeHistoricalQuery(
     input: Exp021MaturationShadowProviderQueryInput,
   ): Promise<Exp021MaturationShadowProviderQueryResult> {
-    const requestStartedAt = new Date();
     const query = buildBroadReferenceHistoricalSignalsQuery(
       input.tokenId,
       input.providerFields,
@@ -60,8 +65,8 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
       input.interval,
     );
 
-    const queryProvenanceJson = {
-      adapter: 'exp021_maturation_shadow_read_only_v1',
+    const queryProvenanceJson: Record<string, unknown> = {
+      adapter: 'exp021_maturation_shadow_read_only_v2',
       tokenId: input.tokenId,
       windowFrom: input.windowFrom.toISOString(),
       windowTo: input.windowTo.toISOString(),
@@ -70,10 +75,11 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
     };
 
     if (!query) {
-      const requestCompletedAt = new Date();
+      const completedAt = new Date();
       return {
-        requestStartedAt,
-        requestCompletedAt,
+        requestStartedAt: completedAt,
+        requestCompletedAt: completedAt,
+        providerRequestPhase: 'QUERY_BUILD_ZERO',
         providerRequestSucceeded: true,
         providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_ZERO,
         providerStatus: 'ZERO_RESULT',
@@ -89,12 +95,17 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
         duplicateCount: 0,
         payloadRevisionCount: 0,
         changedPayloadLocusCount: 0,
-        queryProvenanceJson,
+        queryProvenanceJson: {
+          ...queryProvenanceJson,
+          providerRequestPhase: 'QUERY_BUILD_ZERO',
+        },
       };
     }
 
     try {
+      const authStartedAt = new Date();
       const jwt = await this.dimoAuth.getVehicleJwt(input.tokenId);
+      const authCompletedAt = new Date();
       const providerContext = buildDimoProviderRequestContext(input.tokenId, {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
@@ -106,7 +117,6 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
         providerContext,
         'REFERENCE_CAPTURE',
       );
-      const requestCompletedAt = new Date();
       const rows = (timed.result?.data?.signals ?? []) as Array<Record<string, unknown>>;
       const parsed = parseShadowSignalsResponse({
         rows,
@@ -129,8 +139,9 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
           : Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_ZERO;
 
       return {
-        requestStartedAt,
-        requestCompletedAt,
+        requestStartedAt: timed.requestStartedAt,
+        requestCompletedAt: timed.requestCompletedAt,
+        providerRequestPhase: 'PROVIDER_HTTP',
         providerRequestSucceeded: true,
         providerOutcomeClass,
         providerStatus: uniqueBucketLocusCount > 0 ? 'SUCCESS' : 'ZERO_RESULT',
@@ -148,16 +159,21 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
         changedPayloadLocusCount: 0,
         queryProvenanceJson: {
           ...queryProvenanceJson,
-          requestStartedAt: timed.requestStartedAt.toISOString(),
-          requestCompletedAt: timed.requestCompletedAt.toISOString(),
+          providerRequestPhase: 'PROVIDER_HTTP',
+          authPreflightStartedAt: authStartedAt.toISOString(),
+          authPreflightCompletedAt: authCompletedAt.toISOString(),
+          providerIngressStartedAt: timed.requestStartedAt.toISOString(),
+          providerIngressCompletedAt: timed.requestCompletedAt.toISOString(),
         },
       };
     } catch (error) {
-      const requestCompletedAt = new Date();
+      const failedAt = new Date();
       const message = error instanceof Error ? error.message : String(error);
+      const authFailure = /jwt|auth|token|unauthorized/i.test(message);
       return {
-        requestStartedAt,
-        requestCompletedAt,
+        requestStartedAt: failedAt,
+        requestCompletedAt: failedAt,
+        providerRequestPhase: authFailure ? 'AUTH_PREFLIGHT_FAILED' : 'PROVIDER_HTTP',
         providerRequestSucceeded: false,
         providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_ERROR,
         providerStatus: 'ERROR',
@@ -175,6 +191,7 @@ export class ReferenceCaptureExp021MaturationShadowProviderQueryAdapter {
         changedPayloadLocusCount: 0,
         queryProvenanceJson: {
           ...queryProvenanceJson,
+          providerRequestPhase: authFailure ? 'AUTH_PREFLIGHT_FAILED' : 'PROVIDER_HTTP',
           error: message,
         },
       };

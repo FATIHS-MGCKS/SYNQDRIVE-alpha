@@ -5,14 +5,18 @@ import {
   Prisma,
 } from '@prisma/client';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
-import {
-  EXP021_MATURATION_SHADOW_MAX_TRANSPORT_RETRIES,
-} from './reference-capture-exp021-maturation-shadow.constants';
+import { assertExecutionSemanticsMatchStratum } from './reference-capture-exp021-maturation-shadow-execution-semantics.lib';
 import { Exp021MaturationShadowAttemptAuthorityError } from './reference-capture-exp021-maturation-shadow.errors';
 import type { Exp021MaturationShadowJobData } from './reference-capture-exp021-maturation-shadow-job.types';
 import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './reference-capture-exp021-maturation-shadow-provider-query.adapter';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture-exp021-maturation-shadow-runner.service';
+import {
+  deriveTransportRetryOrdinalFromAttempts,
+  hasSuccessfulObservationAttempt,
+  isTransportRetryExhausted,
+  shouldScheduleTransportRetry,
+} from './reference-capture-exp021-maturation-shadow-retry-authority.lib';
 import { resolveExp021MaturationShadowRuntimeBuildSha } from './reference-capture-exp021-maturation-shadow-runtime-sha.lib';
 
 @Injectable()
@@ -62,17 +66,24 @@ export class ReferenceCaptureExp021MaturationShadowWorkerService {
       );
     }
 
-    const priorSuccessful = slot.attempts.find(
-      (attempt) =>
-        attempt.providerRequestSucceeded &&
-        attempt.providerOutcomeClass !== Exp021MaturationShadowProviderOutcomeClass.PROVIDER_ERROR,
-    );
-    if (priorSuccessful && job.transportRetryOrdinal === 0) {
+    if (hasSuccessfulObservationAttempt(slot.attempts)) {
       this.logger.debug(
         `Duplicate delivery converged — successful attempt exists slot=${slot.id}`,
       );
       return;
     }
+
+    if (isTransportRetryExhausted(slot.attempts)) {
+      this.logger.debug(`Transport retry exhausted slot=${slot.id}`);
+      return;
+    }
+
+    const durableRetryOrdinal = deriveTransportRetryOrdinalFromAttempts(slot.attempts);
+    if (durableRetryOrdinal == null) {
+      return;
+    }
+
+    assertExecutionSemanticsMatchStratum(slot.stratum);
 
     const providerResult = await this.providerQuery.executeHistoricalQuery({
       tokenId: family.tokenId,
@@ -90,7 +101,7 @@ export class ReferenceCaptureExp021MaturationShadowWorkerService {
         plannedAgeMs: slot.plannedAgeMs,
         requestStartedAt: providerResult.requestStartedAt,
         requestCompletedAt: providerResult.requestCompletedAt,
-        runtimeBuildSha: resolveExp021MaturationShadowRuntimeBuildSha(),
+        runtimeBuildSha: resolveExp021MaturationShadowRuntimeBuildSha({ required: true }),
         querySemanticsHash: slot.stratum.querySemanticsHash,
         signalSetHash: slot.stratum.signalSetHash,
         providerRequestSucceeded: providerResult.providerRequestSucceeded,
@@ -108,26 +119,38 @@ export class ReferenceCaptureExp021MaturationShadowWorkerService {
         duplicateCount: providerResult.duplicateCount,
         payloadRevisionCount: providerResult.payloadRevisionCount,
         changedPayloadLocusCount: providerResult.changedPayloadLocusCount,
-        queryProvenanceJson: providerResult.queryProvenanceJson as Prisma.InputJsonValue,
+        queryProvenanceJson: {
+          ...(providerResult.queryProvenanceJson as Record<string, unknown>),
+          providerRequestPhase: providerResult.providerRequestPhase,
+          durableTransportRetryOrdinal: durableRetryOrdinal,
+          jobTransportRetryOrdinal: job.transportRetryOrdinal,
+        } as Prisma.InputJsonValue,
       },
     });
 
+    const refreshed = await this.repository.findObservationSlotById(slot.id);
+    if (!refreshed) {
+      return;
+    }
+
     if (
       !providerResult.providerRequestSucceeded &&
-      job.transportRetryOrdinal < EXP021_MATURATION_SHADOW_MAX_TRANSPORT_RETRIES
+      shouldScheduleTransportRetry(refreshed.attempts)
     ) {
-      const nextOrdinal = job.transportRetryOrdinal + 1;
-      await this.runner.enqueueObservationSlot({
-        observationSlotId: slot.id,
-        windowFamilyId: family.id,
-        windowStratumId: slot.stratum.id,
-        plannedAgeMs: slot.plannedAgeMs,
-        canonicalWindowTo: family.canonicalWindowTo,
-        organizationId: family.organizationId,
-        vehicleId: family.vehicleId,
-        tokenId: family.tokenId,
-        transportRetryOrdinal: nextOrdinal,
-      });
+      const nextOrdinal = deriveTransportRetryOrdinalFromAttempts(refreshed.attempts);
+      if (nextOrdinal != null) {
+        await this.runner.enqueueObservationSlot({
+          observationSlotId: slot.id,
+          windowFamilyId: family.id,
+          windowStratumId: slot.stratum.id,
+          plannedAgeMs: slot.plannedAgeMs,
+          canonicalWindowTo: family.canonicalWindowTo,
+          organizationId: family.organizationId,
+          vehicleId: family.vehicleId,
+          tokenId: family.tokenId,
+          transportRetryOrdinal: nextOrdinal,
+        });
+      }
     }
   }
 }

@@ -18,6 +18,11 @@ export type Exp021MaturationShadowActivityAuthority = {
   vehicleTelemetryFresh?: boolean;
 };
 
+/** Geometry-specific independent movement authority — never derived from historical DIMO query. */
+export type Exp021MaturationShadowActivityAuthorityByGeometry = Partial<
+  Record<60_000 | 90_000, Exp021MaturationShadowActivityAuthority>
+>;
+
 const ACTIVITY_CLASSIFICATION_SOURCE = 'exp021_motion_authority_v1';
 const PARKED_SPEED_KMH = 3;
 const MOVEMENT_SPEED_KMH = 10;

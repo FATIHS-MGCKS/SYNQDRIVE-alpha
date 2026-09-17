@@ -29,9 +29,11 @@ export class ReferenceCaptureExp021MaturationShadowRecoveryScheduler implements 
       return;
     }
 
-    const recovered = await this.runner.recoverMissingJobs();
-    if (recovered > 0) {
-      this.logger.log(`Recovered ${recovered} maturation shadow observation job(s)`);
+    const { recovered, cleared } = await this.runner.reconcileExecutionState();
+    if (recovered > 0 || cleared > 0) {
+      this.logger.log(
+        `Reconciled maturation shadow execution recovered=${recovered} cleared=${cleared}`,
+      );
     }
   }
 }

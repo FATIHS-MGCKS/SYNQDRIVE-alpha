@@ -10,6 +10,7 @@ import {
   extractStratumImmutableAttributes,
   findStratumImmutableAttributeMismatches,
 } from './reference-capture-exp021-maturation-shadow-stratum-attributes.lib';
+import { EXP021_MATURATION_SHADOW_MAX_TRANSPORT_RETRIES } from './reference-capture-exp021-maturation-shadow.constants';
 import type {
   Exp021MaturationShadowAttemptRawFacts,
   Exp021MaturationShadowFamilyIdentity,
@@ -29,6 +30,9 @@ import {
 function isUniqueConstraintViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
+
+const EXP021_ACTIVE_FAMILY_CAP_LOCK_KEY = 90210021;
+const MAX_PROVIDER_ATTEMPTS_PER_SLOT = 1 + EXP021_MATURATION_SHADOW_MAX_TRANSPORT_RETRIES;
 
 @Injectable()
 export class ReferenceCaptureExp021MaturationShadowRepository {
@@ -403,18 +407,121 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
   }
 
   async findSlotsMissingBullJob(limit = 500) {
+    return this.findSlotsForReconciliation(limit);
+  }
+
+  async findSlotsForReconciliation(limit = 500) {
+    const slotIds = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT s.id
+      FROM exp021_maturation_shadow_observation_slots s
+      JOIN exp021_maturation_shadow_windows w ON w.id = s.window_stratum_id
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM exp021_maturation_shadow_observation_attempts a
+        WHERE a.observation_slot_id = s.id
+          AND a.provider_request_succeeded = true
+          AND a.provider_outcome_class <> 'PROVIDER_ERROR'
+      )
+      AND (
+        SELECT COUNT(*)::int
+        FROM exp021_maturation_shadow_observation_attempts a2
+        WHERE a2.observation_slot_id = s.id
+      ) < ${MAX_PROVIDER_ATTEMPTS_PER_SLOT}
+      ORDER BY s.created_at ASC
+      LIMIT ${limit}
+    `;
+
+    if (slotIds.length === 0) {
+      return [];
+    }
+
     return this.prisma.exp021MaturationShadowObservationSlot.findMany({
-      where: { bullJobId: null },
+      where: { id: { in: slotIds.map((row) => row.id) } },
       include: {
+        attempts: { orderBy: { attemptOrdinal: 'asc' } },
         stratum: { include: { family: true } },
       },
       orderBy: { createdAt: 'asc' },
-      take: limit,
     });
   }
 
-  async countActiveFamilies(): Promise<number> {
-    return this.prisma.exp021MaturationShadowWindowFamily.count();
+  /**
+   * Active families = families with at least one non-terminal observation slot.
+   * Terminal slot: successful attempt OR transport retry budget exhausted.
+   */
+  async countUnfinishedFamilies(tx?: Prisma.TransactionClient): Promise<number> {
+    const db = this.client(tx);
+    const rows = await db.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(DISTINCT f.id)::bigint AS count
+      FROM exp021_maturation_shadow_window_families f
+      WHERE EXISTS (
+        SELECT 1
+        FROM exp021_maturation_shadow_windows w
+        JOIN exp021_maturation_shadow_observation_slots s ON s.window_stratum_id = w.id
+        WHERE w.window_family_id = f.id
+          AND NOT EXISTS (
+            SELECT 1
+            FROM exp021_maturation_shadow_observation_attempts a
+            WHERE a.observation_slot_id = s.id
+              AND a.provider_request_succeeded = true
+              AND a.provider_outcome_class <> 'PROVIDER_ERROR'
+          )
+          AND (
+            SELECT COUNT(*)::int
+            FROM exp021_maturation_shadow_observation_attempts a2
+            WHERE a2.observation_slot_id = s.id
+          ) < ${MAX_PROVIDER_ATTEMPTS_PER_SLOT}
+      )
+    `;
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  async assertActiveFamilyCapacityForNewEnrollment(
+    maxActiveFamilies: number,
+    familyAlreadyExists: boolean,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (familyAlreadyExists) {
+      return;
+    }
+    if (maxActiveFamilies <= 0) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        'maxActiveFamilies must be a positive integer when EXP-021 maturation shadow is enabled',
+      );
+    }
+    const active = await this.countUnfinishedFamilies(tx);
+    if (active >= maxActiveFamilies) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        `Active window-family cap reached (${maxActiveFamilies})`,
+      );
+    }
+  }
+
+  async withActiveFamilyAdmissionLock<T>(run: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${EXP021_ACTIVE_FAMILY_CAP_LOCK_KEY})`;
+      return run(tx);
+    });
+  }
+
+  async familyExistsForIdentity(
+    identity: Exp021MaturationShadowFamilyIdentity,
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const db = this.client(tx);
+    const existing = await db.exp021MaturationShadowWindowFamily.findUnique({
+      where: {
+        organizationId_vehicleId_tokenId_canonicalWindowTo_shadowScheduleVersion: {
+          organizationId: identity.organizationId,
+          vehicleId: identity.vehicleId,
+          tokenId: identity.tokenId,
+          canonicalWindowTo: identity.canonicalWindowTo,
+          shadowScheduleVersion: identity.shadowScheduleVersion,
+        },
+      },
+      select: { id: true },
+    });
+    return existing != null;
   }
 
   async resolveAuthoritativeTokenId(

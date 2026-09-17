@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Exp021MaturationShadowSignalLane } from '@prisma/client';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { Exp021MaturationShadowFamilyIdentityError } from './reference-capture-exp021-maturation-shadow.errors';
-import type { Exp021MaturationShadowActivityAuthority } from './reference-capture-exp021-maturation-shadow-activity-classification.lib';
+import type { Exp021MaturationShadowActivityAuthorityByGeometry } from './reference-capture-exp021-maturation-shadow-activity-classification.lib';
 import { classifyActivityForGeometry } from './reference-capture-exp021-maturation-shadow-activity-classification.lib';
 import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture-exp021-maturation-shadow-runner.service';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
@@ -15,6 +15,7 @@ import { resolveFrozenStratumSemantics } from './reference-capture-exp021-matura
 import {
   EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS,
   EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+  type Exp021MaturationShadowQueryGeometryMs,
 } from './reference-capture-exp021-maturation-shadow.types';
 
 export type Exp021MaturationShadowEnrollmentInput = {
@@ -23,7 +24,8 @@ export type Exp021MaturationShadowEnrollmentInput = {
   tokenId: number;
   canonicalWindowTo: Date;
   enrollmentEventId: string;
-  activityAuthority?: Exp021MaturationShadowActivityAuthority;
+  /** Geometry-specific independent movement authority — not derived from historical DIMO query. */
+  activityAuthorityByGeometry?: Exp021MaturationShadowActivityAuthorityByGeometry;
 };
 
 export type Exp021MaturationShadowEnrollmentResult = {
@@ -75,31 +77,33 @@ export class ReferenceCaptureExp021MaturationShadowEnrollmentService {
       input.tokenId,
     );
 
-    const maxFamilies = this.config.getExp021MaturationShadowMaxActiveFamilies();
-    if (maxFamilies > 0) {
-      const active = await this.repository.countActiveFamilies();
-      if (active >= maxFamilies) {
-        throw new Exp021MaturationShadowFamilyIdentityError(
-          `Active window-family cap reached (${maxFamilies})`,
-        );
-      }
-    }
-
     const hfPolicyBase = this.config.getHfRecoveryPolicyConfig();
     const policyDelayProbeMs = resolvePolicyDelayProbeMs(hfPolicyBase, authoritativeTokenId);
     const schedule = buildFrozenFamilySchedule(policyDelayProbeMs);
-    const runtimeSha = resolveExp021MaturationShadowRuntimeBuildSha();
+    const runtimeSha = resolveExp021MaturationShadowRuntimeBuildSha({ required: true });
+    const maxFamilies = this.config.getExp021MaturationShadowMaxActiveFamilies();
 
-    const family = await this.repository.reserveOrGetWindowFamily({
+    const familyIdentity = {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       tokenId: authoritativeTokenId,
       canonicalWindowTo: input.canonicalWindowTo,
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
-      enrollmentEventId: input.enrollmentEventId,
-      plannedAgesMsExact: schedule.plannedAgesMsExact,
-      policyDelayProbeMs: schedule.policyDelayProbeMs,
-      createdUnderRuntimeSha: runtimeSha,
+    };
+
+    const family = await this.repository.withActiveFamilyAdmissionLock(async (tx) => {
+      const exists = await this.repository.familyExistsForIdentity(familyIdentity, tx);
+      await this.repository.assertActiveFamilyCapacityForNewEnrollment(maxFamilies, exists, tx);
+      return this.repository.reserveOrGetWindowFamily(
+        {
+          ...familyIdentity,
+          enrollmentEventId: input.enrollmentEventId,
+          plannedAgesMsExact: schedule.plannedAgesMsExact,
+          policyDelayProbeMs: schedule.policyDelayProbeMs,
+          createdUnderRuntimeSha: runtimeSha,
+        },
+        tx,
+      );
     });
 
     const lanes: Exp021MaturationShadowSignalLane[] = [];
@@ -112,6 +116,17 @@ export class ReferenceCaptureExp021MaturationShadowEnrollmentService {
     if (lanes.length === 0) {
       throw new Exp021MaturationShadowFamilyIdentityError(
         'No maturation shadow signal lanes enabled',
+      );
+    }
+
+    const activityByGeometry = new Map<Exp021MaturationShadowQueryGeometryMs, ReturnType<typeof classifyActivityForGeometry>>();
+    for (const geometryMs of EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS) {
+      activityByGeometry.set(
+        geometryMs,
+        classifyActivityForGeometry(
+          geometryMs,
+          input.activityAuthorityByGeometry?.[geometryMs] ?? {},
+        ),
       );
     }
 
@@ -129,10 +144,7 @@ export class ReferenceCaptureExp021MaturationShadowEnrollmentService {
           windowFrom,
           windowTo,
         });
-        const activity = classifyActivityForGeometry(
-          queryGeometryMs,
-          input.activityAuthority ?? {},
-        );
+        const activity = activityByGeometry.get(queryGeometryMs)!;
 
         const stratum = await this.repository.createWindowStratum({
           windowFamilyId: family.id,
