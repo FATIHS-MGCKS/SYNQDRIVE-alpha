@@ -1,4 +1,10 @@
+import type { Exp021MaturationShadowProviderOutcomeClass } from '@prisma/client';
 import type { Exp021MaturationShadowM3AttemptInput } from './reference-capture-exp021-maturation-shadow-m3.types';
+
+type AttemptOutcomeFields = {
+  providerRequestSucceeded: boolean;
+  providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass;
+};
 
 /** Scientific ordering authority — actualAgeMs, never execution order. */
 export function sortAttemptsByActualAge(attempts: Exp021MaturationShadowM3AttemptInput[]): Exp021MaturationShadowM3AttemptInput[] {
@@ -8,20 +14,20 @@ export function sortAttemptsByActualAge(attempts: Exp021MaturationShadowM3Attemp
   });
 }
 
-export function isProviderErrorAttempt(attempt: Exp021MaturationShadowM3AttemptInput): boolean {
+export function isProviderErrorAttempt(attempt: AttemptOutcomeFields): boolean {
   return !attempt.providerRequestSucceeded || attempt.providerOutcomeClass === 'PROVIDER_ERROR';
 }
 
-export function isProviderSuccessAttempt(attempt: Exp021MaturationShadowM3AttemptInput): boolean {
+export function isProviderSuccessAttempt(attempt: AttemptOutcomeFields): boolean {
   return attempt.providerRequestSucceeded && attempt.providerOutcomeClass !== 'PROVIDER_ERROR';
 }
 
-export function isNegativeAvailabilitySuccess(attempt: Exp021MaturationShadowM3AttemptInput): boolean {
+export function isNegativeAvailabilitySuccess(attempt: AttemptOutcomeFields): boolean {
   return isProviderSuccessAttempt(attempt) && attempt.providerOutcomeClass === 'PROVIDER_SUCCESS_ZERO';
 }
 
 export function isPositiveAvailabilitySuccess(
-  attempt: Exp021MaturationShadowM3AttemptInput,
+  attempt: AttemptOutcomeFields,
   reconstructedUniqueCount: number,
 ): boolean {
   return isProviderSuccessAttempt(attempt) && reconstructedUniqueCount > 0;

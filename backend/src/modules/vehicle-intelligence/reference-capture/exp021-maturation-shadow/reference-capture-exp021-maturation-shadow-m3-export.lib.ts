@@ -39,6 +39,8 @@ export function serializeM3TransitionsCsv(analysis: Exp021MaturationShadowM3Anal
   const headers = [
     'windowFamilyId',
     'windowStratumId',
+    'eligible',
+    'exclusionReasons',
     'signalLane',
     'queryGeometryMs',
     'activityClass',
@@ -53,18 +55,24 @@ export function serializeM3TransitionsCsv(analysis: Exp021MaturationShadowM3Anal
   ];
 
   const rows = analysis.stratumAnalyses
-    .map((s) => s.availabilityTransition)
+    .map((s) => ({
+      transition: s.availabilityTransition,
+      eligible: s.eligible,
+      exclusionReasons: s.exclusions.map((e) => e.reason),
+    }))
     .sort((a, b) => {
-      const familyCmp = a.windowFamilyId.localeCompare(b.windowFamilyId);
+      const familyCmp = a.transition.windowFamilyId.localeCompare(b.transition.windowFamilyId);
       if (familyCmp !== 0) return familyCmp;
-      const laneCmp = a.signalLane.localeCompare(b.signalLane);
+      const laneCmp = a.transition.signalLane.localeCompare(b.transition.signalLane);
       if (laneCmp !== 0) return laneCmp;
-      return a.queryGeometryMs - b.queryGeometryMs;
+      return a.transition.queryGeometryMs - b.transition.queryGeometryMs;
     })
-    .map((t) =>
+    .map(({ transition: t, eligible, exclusionReasons }) =>
       [
         t.windowFamilyId,
         t.windowStratumId,
+        eligible,
+        JSON.stringify(exclusionReasons),
         t.signalLane,
         t.queryGeometryMs,
         t.activityClass,
@@ -78,6 +86,88 @@ export function serializeM3TransitionsCsv(analysis: Exp021MaturationShadowM3Anal
         JSON.stringify(t.providerErrorAgesMs),
       ].map(csvEscape).join(','),
     );
+
+  return `${headers.join(',')}\n${rows.join('\n')}\n`;
+}
+
+export function serializeM3EligibilityExclusionsCsv(analysis: Exp021MaturationShadowM3AnalysisResult): string {
+  const headers = ['scope', 'id', 'reason'];
+  const rows = analysis.eligibilityExclusions
+    .sort((a, b) => {
+      const scopeCmp = a.scope.localeCompare(b.scope);
+      if (scopeCmp !== 0) return scopeCmp;
+      return a.id.localeCompare(b.id);
+    })
+    .map((e) => [e.scope, e.id, e.reason].map(csvEscape).join(','));
+  return `${headers.join(',')}\n${rows.join('\n')}\n`;
+}
+
+export function serializeM3PlannedAgeSummariesCsv(analysis: Exp021MaturationShadowM3AnalysisResult): string {
+  const headers = [
+    'summaryType',
+    'signalLane',
+    'queryGeometryMs',
+    'activityClass',
+    'semanticCohortId',
+    'plannedAgeMs',
+    'nWindowFamilies',
+    'nLogicalSlots',
+    'nProviderSuccessObservations',
+    'nProviderErrors',
+    'nSuccessfulZero',
+    'nSuccessfulNonZero',
+    'availabilityNumerator',
+    'availabilityDenominator',
+    'wilson95Lower',
+    'wilson95Upper',
+    'coverageMedian',
+    'coverageP25',
+    'coverageP75',
+    'actualAgeMedian',
+    'actualAgeP25',
+    'actualAgeP75',
+    'actualAgeMin',
+    'actualAgeMax',
+    'schedulerDriftMedian',
+    'schedulerDriftP25',
+    'schedulerDriftP75',
+    'schedulerDriftMin',
+    'schedulerDriftMax',
+  ];
+
+  const rows = analysis.plannedAgeStratumSummaries.map((s) =>
+    [
+      s.summaryType,
+      s.signalLane,
+      s.queryGeometryMs,
+      s.activityClass,
+      s.semanticCohortId,
+      s.plannedAgeMs,
+      s.nWindowFamilies,
+      s.nLogicalSlots,
+      s.nProviderSuccessObservations,
+      s.nProviderErrors,
+      s.nSuccessfulZero,
+      s.nSuccessfulNonZero,
+      s.availabilityAmongProviderSuccesses.numerator,
+      s.availabilityAmongProviderSuccesses.denominator,
+      s.availabilityAmongProviderSuccesses.wilson95Lower,
+      s.availabilityAmongProviderSuccesses.wilson95Upper,
+      s.bucketLocusCoverageRatio.median,
+      s.bucketLocusCoverageRatio.p25,
+      s.bucketLocusCoverageRatio.p75,
+      s.actualAgeMsDistribution.median,
+      s.actualAgeMsDistribution.p25,
+      s.actualAgeMsDistribution.p75,
+      s.actualAgeMsDistribution.min,
+      s.actualAgeMsDistribution.max,
+      s.schedulerDriftMsDistribution.median,
+      s.schedulerDriftMsDistribution.p25,
+      s.schedulerDriftMsDistribution.p75,
+      s.schedulerDriftMsDistribution.min,
+      s.schedulerDriftMsDistribution.max,
+    ].map(csvEscape).join(','),
+  );
 
   return `${headers.join(',')}\n${rows.join('\n')}\n`;
 }

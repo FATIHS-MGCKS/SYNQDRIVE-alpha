@@ -1,14 +1,21 @@
 import { Exp021MaturationShadowProviderOutcomeClass, Exp021MaturationShadowSignalLane } from '@prisma/client';
 import { CANONICAL_EXP021_BUCKET_IDENTITY } from '../reference-capture-settlement-shadow-bucket-identity';
 import { analyzeExp021MaturationShadowM3 } from './reference-capture-exp021-maturation-shadow-m3-analyzer.lib';
-import { reconstructBucketLociFromAttempt } from './reference-capture-exp021-maturation-shadow-m3-bucket-locus.lib';
+import {
+  reconstructBucketLociFromAttempt,
+  validateCanonicalBucketLocusIdentity,
+} from './reference-capture-exp021-maturation-shadow-m3-bucket-locus.lib';
 import { Exp021MaturationShadowM3BucketLocusError } from './reference-capture-exp021-maturation-shadow-m3.errors';
 import {
   serializeM3AnalysisJson,
   serializeM3PairedGeometryCsv,
   serializeM3TransitionsCsv,
 } from './reference-capture-exp021-maturation-shadow-m3-export.lib';
-import { analyzeStratum, computePerFieldMaturation } from './reference-capture-exp021-maturation-shadow-m3-stratum-analysis.lib';
+import {
+  analyzeStratum,
+  computePerFieldMaturation,
+  deriveAvailabilityTransition,
+} from './reference-capture-exp021-maturation-shadow-m3-stratum-analysis.lib';
 import { medianP25P75, wilsonScoreInterval } from './reference-capture-exp021-maturation-shadow-m3-statistics.lib';
 import type {
   Exp021MaturationShadowM3AttemptInput,
@@ -429,6 +436,161 @@ describe('EXP-021 maturation shadow M3 analytics (PR-M3)', () => {
     const json1 = serializeM3AnalysisJson(result, { deterministicGeneratedAt: '1970-01-01T00:00:00.000Z' });
     const json2 = serializeM3AnalysisJson(result, { deterministicGeneratedAt: '1970-01-01T00:00:00.000Z' });
     expect(json1).toBe(json2);
+  });
+
+  describe('interval-censoring micro-closure', () => {
+    const baseStratum = stratum({ id: 's1', signalLane: Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW, queryGeometryMs: 60_000 }, []);
+
+    function transitionFromAttempts(
+      attempts: Array<{ actualAgeMs: number; uniqueCount: number; isError?: boolean }>,
+    ) {
+      return deriveAvailabilityTransition({
+        familyId: 'family-1',
+        stratum: baseStratum,
+        sortedSuccesses: attempts.map((a, index) => ({
+          attemptId: `a${index}`,
+          actualAgeMs: a.actualAgeMs,
+          uniqueCount: a.uniqueCount,
+          isError: a.isError ?? false,
+        })),
+        providerErrorAgesMs: attempts.filter((a) => a.isError).map((a) => a.actualAgeMs),
+      });
+    }
+
+    it('A) post-positive zero does not invert interval: 30 ZERO, 45 NONZERO, 60 ZERO => (30,45]', () => {
+      const t = transitionFromAttempts([
+        { actualAgeMs: 30_000, uniqueCount: 0 },
+        { actualAgeMs: 45_000, uniqueCount: 3 },
+        { actualAgeMs: 60_000, uniqueCount: 0 },
+      ]);
+      expect(t.censoringClass).toBe('INTERVAL_CENSORED');
+      expect(t.lowerBoundExclusiveMs).toBe(30_000);
+      expect(t.upperBoundInclusiveMs).toBe(45_000);
+      expect(t.lastNegativeAgeMs).toBe(30_000);
+      expect((t.lowerBoundExclusiveMs ?? 0) < (t.upperBoundInclusiveMs ?? 0)).toBe(true);
+    });
+
+    it('B) provider error between bounds ignored: 30 ZERO, 40 ERROR, 45 NONZERO, 60 ZERO => (30,45]', () => {
+      const t = transitionFromAttempts([
+        { actualAgeMs: 30_000, uniqueCount: 0 },
+        { actualAgeMs: 40_000, uniqueCount: 0, isError: true },
+        { actualAgeMs: 45_000, uniqueCount: 2 },
+        { actualAgeMs: 60_000, uniqueCount: 0 },
+      ]);
+      expect(t.censoringClass).toBe('INTERVAL_CENSORED');
+      expect(t.lowerBoundExclusiveMs).toBe(30_000);
+      expect(t.upperBoundInclusiveMs).toBe(45_000);
+      expect(t.providerErrorAgesMs).toEqual([40_000]);
+    });
+
+    it('C) first observation positive => LEFT_CENSORED; later zero cannot invert', () => {
+      const t = transitionFromAttempts([
+        { actualAgeMs: 30_000, uniqueCount: 2 },
+        { actualAgeMs: 45_000, uniqueCount: 0 },
+      ]);
+      expect(t.censoringClass).toBe('LEFT_CENSORED');
+      expect(t.firstPositiveAgeMs).toBe(30_000);
+      expect(t.lastNegativeAgeMs).toBeNull();
+      expect(t.upperBoundInclusiveMs).toBe(30_000);
+    });
+
+    it('D) all successful zero => RIGHT_CENSORED at latest zero', () => {
+      const t = transitionFromAttempts([
+        { actualAgeMs: 30_000, uniqueCount: 0 },
+        { actualAgeMs: 45_000, uniqueCount: 0 },
+      ]);
+      expect(t.censoringClass).toBe('RIGHT_CENSORED');
+      expect(t.firstPositiveAgeMs).toBeNull();
+      expect(t.lowerBoundExclusiveMs).toBe(45_000);
+    });
+  });
+
+  it('30) cross-family planned-age summaries do not inflate family N on retries', () => {
+    const f1 = {
+      ...family([
+        stratum({ id: 's1', windowFamilyId: 'family-1', signalLane: Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW, queryGeometryMs: 60_000 }, [
+          attempt({ id: 'a1', observationSlotId: 'slot-45-f1', actualAgeMs: 45_300, plannedAgeMs: 45_000, providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_ERROR, providerRequestSucceeded: false }),
+          attempt({ id: 'a2', observationSlotId: 'slot-45-f1', actualAgeMs: 51_000, plannedAgeMs: 45_000, attemptOrdinal: 2, providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_NONZERO }),
+        ]),
+      ]),
+      id: 'family-1',
+    };
+    const f2 = {
+      ...family([
+        stratum({ id: 's2', windowFamilyId: 'family-2', signalLane: Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW, queryGeometryMs: 60_000 }, [
+          attempt({ id: 'a3', observationSlotId: 'slot-45-f2', actualAgeMs: 45_100, plannedAgeMs: 45_000, providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_NONZERO }),
+        ]),
+      ]),
+      id: 'family-2',
+    };
+
+    const result = analyzeExp021MaturationShadowM3({
+      families: [f1, f2],
+      scope: { organizationId: 'org-1', vehicleId: 'veh-1' },
+    });
+
+    const summary = result.plannedAgeStratumSummaries.find((s) => s.plannedAgeMs === 45_000);
+    expect(summary).toBeDefined();
+    expect(summary?.summaryType).toBe('PLANNED_AGE_STRATUM');
+    expect(summary?.nWindowFamilies).toBe(2);
+    expect(summary?.nLogicalSlots).toBe(2);
+    expect(summary?.nProviderSuccessObservations).toBe(2);
+    expect(summary?.nProviderErrors).toBe(1);
+    expect(summary?.actualAgeMsDistribution.max).toBe(51_000);
+    expect(result.diagnosticDescriptiveByStratum['s1']).toBeDefined();
+    expect(Object.keys(result.diagnosticDescriptiveByStratum)).not.toContain('ineligible');
+  });
+
+  it('31) ineligible strata excluded from primary planned-age summaries', () => {
+    const f = family([
+      stratum({ id: 'eligible', signalLane: Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW, queryGeometryMs: 60_000 }, [
+        attempt({ id: 'a1', actualAgeMs: 45_000, providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_NONZERO }),
+      ]),
+      stratum(
+        {
+          id: 'ineligible',
+          signalLane: Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW,
+          queryGeometryMs: 90_000,
+          windowFrom: new Date(WINDOW_TO.getTime() - 30_000),
+          windowTo: WINDOW_TO,
+        },
+        [attempt({ id: 'a2', actualAgeMs: 45_000, providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_NONZERO })],
+      ),
+    ]);
+
+    const result = analyzeExp021MaturationShadowM3({
+      families: [f],
+      scope: { organizationId: 'org-1', vehicleId: 'veh-1' },
+    });
+
+    const ineligible = result.stratumAnalyses.find((s) => s.windowStratumId === 'ineligible');
+    expect(ineligible?.eligible).toBe(false);
+    expect(result.plannedAgeStratumSummaries.every((s) => s.nWindowFamilies <= 1)).toBe(true);
+    expect(result.diagnosticDescriptiveByStratum.ineligible).toBeUndefined();
+    expect(result.aggregateCounts.nWindowFamilies).toBe(1);
+  });
+
+  it('32) canonical bucket locus validation fails closed on malformed identities', () => {
+    expect(() => validateCanonicalBucketLocusIdentity('speed|not-a-date')).toThrow(
+      Exp021MaturationShadowM3BucketLocusError,
+    );
+    expect(() => validateCanonicalBucketLocusIdentity('|2026-09-16T11:59:30.000Z')).toThrow(
+      Exp021MaturationShadowM3BucketLocusError,
+    );
+    expect(() => validateCanonicalBucketLocusIdentity('speed|')).toThrow(Exp021MaturationShadowM3BucketLocusError);
+    expect(() => validateCanonicalBucketLocusIdentity('speed|2026-09-16T11:59:30.000Z|extra')).toThrow(
+      Exp021MaturationShadowM3BucketLocusError,
+    );
+    expect(() =>
+      reconstructBucketLociFromAttempt({
+        bucketLocusManifestJson: ['speed|2026-09-16T11:59:30Z'],
+        bucketLocusIdentityVersion: CANONICAL_EXP021_BUCKET_IDENTITY,
+        uniqueBucketLocusCount: 1,
+      }),
+    ).toThrow(Exp021MaturationShadowM3BucketLocusError);
+    expect(validateCanonicalBucketLocusIdentity('speed|2026-09-16T11:59:30.000Z')).toBe(
+      'speed|2026-09-16T11:59:30.000Z',
+    );
   });
 
   it('29) deterministic CSV ordering', () => {

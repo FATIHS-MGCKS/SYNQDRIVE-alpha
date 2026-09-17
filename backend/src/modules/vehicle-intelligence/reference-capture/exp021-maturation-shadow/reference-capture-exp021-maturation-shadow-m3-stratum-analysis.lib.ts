@@ -31,7 +31,7 @@ function unionLoci(existing: Set<string>, loci: string[]): Set<string> {
   return next;
 }
 
-function deriveAvailabilityTransition(input: {
+export function deriveAvailabilityTransition(input: {
   familyId: string;
   stratum: Exp021MaturationShadowM3StratumInput;
   sortedSuccesses: Array<{ attemptId: string; actualAgeMs: number; uniqueCount: number; isError: boolean }>;
@@ -41,17 +41,30 @@ function deriveAvailabilityTransition(input: {
   const activityClass = resolveActivityClassFromJson(stratum.activityClassificationJson);
   const semanticCohortId = buildSemanticCohortId(stratum);
 
-  let lastNegativeAgeMs: number | null = null;
+  const providerSuccesses = sortedSuccesses.filter((o) => !o.isError);
+
   let firstPositiveAgeMs: number | null = null;
   let firstNonZeroActualAgeMs: number | null = null;
+  for (const obs of providerSuccesses) {
+    if (obs.uniqueCount > 0) {
+      firstPositiveAgeMs = obs.actualAgeMs;
+      firstNonZeroActualAgeMs = obs.actualAgeMs;
+      break;
+    }
+  }
 
-  for (const obs of sortedSuccesses) {
-    if (obs.isError) continue;
-    if (obs.uniqueCount === 0) {
-      lastNegativeAgeMs = obs.actualAgeMs;
-    } else if (obs.uniqueCount > 0) {
-      if (firstPositiveAgeMs == null) firstPositiveAgeMs = obs.actualAgeMs;
-      if (firstNonZeroActualAgeMs == null) firstNonZeroActualAgeMs = obs.actualAgeMs;
+  let lastNegativeAgeMs: number | null = null;
+  if (firstPositiveAgeMs != null) {
+    for (const obs of providerSuccesses) {
+      if (obs.uniqueCount === 0 && obs.actualAgeMs < firstPositiveAgeMs) {
+        lastNegativeAgeMs = obs.actualAgeMs;
+      }
+    }
+  } else {
+    for (const obs of providerSuccesses) {
+      if (obs.uniqueCount === 0) {
+        lastNegativeAgeMs = obs.actualAgeMs;
+      }
     }
   }
 
@@ -59,17 +72,16 @@ function deriveAvailabilityTransition(input: {
   let lowerBoundExclusiveMs: number | null = null;
   let upperBoundInclusiveMs: number | null = null;
 
-  const hasProviderSuccess = sortedSuccesses.some((o) => !o.isError);
-  if (!hasProviderSuccess) {
+  if (providerSuccesses.length === 0) {
     censoringClass = 'NO_VALID_PROVIDER_EVIDENCE';
-  } else if (lastNegativeAgeMs != null && firstPositiveAgeMs != null) {
+  } else if (firstPositiveAgeMs != null && lastNegativeAgeMs != null) {
     censoringClass = 'INTERVAL_CENSORED';
     lowerBoundExclusiveMs = lastNegativeAgeMs;
     upperBoundInclusiveMs = firstPositiveAgeMs;
-  } else if (lastNegativeAgeMs == null && firstPositiveAgeMs != null) {
+  } else if (firstPositiveAgeMs != null && lastNegativeAgeMs == null) {
     censoringClass = 'LEFT_CENSORED';
     upperBoundInclusiveMs = firstPositiveAgeMs;
-  } else if (lastNegativeAgeMs != null && firstPositiveAgeMs == null) {
+  } else if (firstPositiveAgeMs == null && lastNegativeAgeMs != null) {
     censoringClass = 'RIGHT_CENSORED';
     lowerBoundExclusiveMs = lastNegativeAgeMs;
   } else {

@@ -9,7 +9,11 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { analyzeExp021MaturationShadowM3 } from './reference-capture-exp021-maturation-shadow-m3-analyzer.lib';
-import { proveM3ReadOnlyNonInterference } from './reference-capture-exp021-maturation-shadow-m3-fingerprint.lib';
+import {
+  captureM3ScientificFingerprint,
+  m3ScientificFingerprintsIdentical,
+  proveM3ReadOnlyNonInterference,
+} from './reference-capture-exp021-maturation-shadow-m3-fingerprint.lib';
 import { loadExp021MaturationShadowFamiliesForM3 } from './reference-capture-exp021-maturation-shadow-m3.repository';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import {
@@ -190,6 +194,62 @@ function attemptRawFacts(
 
     expect(proof.canonicalStateIdentical).toBe(true);
     expect(proof.scientificStateIdentical).toBe(true);
+
+    await cleanupShadowGraph(prisma, family.id);
+    await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;
+    await prisma.$executeRaw`DELETE FROM organizations WHERE id = ${organizationId}`;
+  });
+
+  it('31) content fingerprint detects in-place M1/M2 mutation but M3 analysis leaves it identical', async () => {
+    const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T22:30:00.000Z');
+    const family = await repository.reserveOrGetWindowFamily({
+      organizationId,
+      vehicleId,
+      tokenId: 187336,
+      canonicalWindowTo,
+      shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+      enrollmentEventId: 'enroll-m3-fingerprint',
+      plannedAgesMsExact: [45_000],
+      policyDelayProbeMs: 8000,
+      createdUnderRuntimeSha: 'sha-m3-fp',
+    });
+    const stratum = await repository.createWindowStratum(
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.SETTLEMENT_SHADOW, 60_000, canonicalWindowTo),
+    );
+    const slot45 = await repository.createObservationSlot({ windowStratumId: stratum.id, plannedAgeMs: 45_000 });
+    const inserted = await repository.insertObservationAttempt({
+      observationSlotId: slot45.id,
+      rawFacts: attemptRawFacts(stratum, {
+        plannedAgeMs: 45_000,
+        actualAgeOffsetMs: 45_400,
+        providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_SUCCESS_NONZERO,
+      }),
+    });
+
+    const scope = { organizationId, vehicleId };
+    const before = await captureM3ScientificFingerprint(prisma, scope);
+
+    await prisma.exp021MaturationShadowObservationAttempt.update({
+      where: { id: inserted.id },
+      data: { actualAgeMs: 46_000 },
+    });
+
+    const afterMutation = await captureM3ScientificFingerprint(prisma, scope);
+    expect(m3ScientificFingerprintsIdentical(before, afterMutation)).toBe(false);
+    expect(before.contentDigest).not.toBe(afterMutation.contentDigest);
+
+    await prisma.exp021MaturationShadowObservationAttempt.update({
+      where: { id: inserted.id },
+      data: { actualAgeMs: 45_400 },
+    });
+
+    const proof = await proveM3ReadOnlyNonInterference(prisma, scope, async () => {
+      const families = await loadExp021MaturationShadowFamiliesForM3(prisma, scope);
+      analyzeExp021MaturationShadowM3({ families, scope });
+    });
+    expect(proof.scientificStateIdentical).toBe(true);
+    expect(proof.canonicalStateIdentical).toBe(true);
 
     await cleanupShadowGraph(prisma, family.id);
     await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;

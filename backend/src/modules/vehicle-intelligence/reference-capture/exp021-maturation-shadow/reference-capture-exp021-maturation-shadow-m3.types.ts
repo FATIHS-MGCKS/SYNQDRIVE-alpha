@@ -201,6 +201,50 @@ export type Exp021MaturationShadowM3DescriptiveSummary = {
   };
 };
 
+export type Exp021MaturationShadowM3DistributionSummary = {
+  median: number | null;
+  p25: number | null;
+  p75: number | null;
+  min: number | null;
+  max: number | null;
+};
+
+export type Exp021MaturationShadowM3PlannedAgeStratumSummary = {
+  summaryType: 'PLANNED_AGE_STRATUM';
+  signalLane: Exp021MaturationShadowSignalLane;
+  queryGeometryMs: Exp021MaturationShadowQueryGeometryMs;
+  activityClass: Exp021MaturationShadowActivityCohort;
+  semanticCohortId: string;
+  plannedAgeMs: number;
+  nWindowFamilies: number;
+  nLogicalSlots: number;
+  nProviderSuccessObservations: number;
+  nProviderErrors: number;
+  nSuccessfulZero: number;
+  nSuccessfulNonZero: number;
+  availabilityAmongProviderSuccesses: Exp021MaturationShadowM3DescriptiveSummary['availabilityAmongProviderSuccesses'];
+  bucketLocusCoverageRatio: Exp021MaturationShadowM3DescriptiveSummary['bucketLocusCoverageRatio'];
+  actualAgeMsDistribution: Exp021MaturationShadowM3DistributionSummary;
+  schedulerDriftMsDistribution: Exp021MaturationShadowM3DistributionSummary;
+};
+
+export type Exp021MaturationShadowM3PlannedAgeAttemptRecord = {
+  windowFamilyId: string;
+  windowStratumId: string;
+  signalLane: Exp021MaturationShadowSignalLane;
+  queryGeometryMs: Exp021MaturationShadowQueryGeometryMs;
+  activityClass: Exp021MaturationShadowActivityCohort;
+  semanticCohortId: string;
+  plannedAgeMs: number;
+  observationSlotId: string;
+  actualAgeMs: number;
+  schedulerDriftMs: number;
+  providerRequestSucceeded: boolean;
+  providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass;
+  reconstructedUniqueBucketLocusCount: number;
+  bucketLocusCoverageRatioVsFinalObservedUnion: number | null;
+};
+
 export type Exp021MaturationShadowM3AnalysisResult = {
   exportSchemaVersion: string;
   generatedAt: string;
@@ -209,7 +253,10 @@ export type Exp021MaturationShadowM3AnalysisResult = {
   eligibilityExclusions: Exp021MaturationShadowM3EligibilityExclusion[];
   stratumAnalyses: Exp021MaturationShadowM3StratumAnalysis[];
   pairedGeometryObservations: Exp021MaturationShadowM3PairedGeometryObservation[];
-  descriptiveByStratum: Record<
+  /** Primary population maturation summaries — cross-family planned-age strata only. */
+  plannedAgeStratumSummaries: Exp021MaturationShadowM3PlannedAgeStratumSummary[];
+  /** Per-stratum diagnostic detail — not the primary population maturation curve. */
+  diagnosticDescriptiveByStratum: Record<
     string,
     Exp021MaturationShadowM3DescriptiveSummary & { perStratumN: Exp021MaturationShadowM3AggregateCounts }
   >;

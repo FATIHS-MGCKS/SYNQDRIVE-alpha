@@ -1,4 +1,8 @@
-import { CANONICAL_EXP021_BUCKET_IDENTITY } from '../reference-capture-settlement-shadow-bucket-identity';
+import {
+  buildExp021BucketIdentity,
+  CANONICAL_EXP021_BUCKET_IDENTITY,
+} from '../reference-capture-settlement-shadow-bucket-identity';
+import { canonicalizeBucketTimestamp } from '../reference-capture-hf-aggregate-bucket-analysis';
 import { Exp021MaturationShadowM3BucketLocusError } from './reference-capture-exp021-maturation-shadow-m3.errors';
 import type { Exp021MaturationShadowM3BucketLocusReconstruction } from './reference-capture-exp021-maturation-shadow-m3.types';
 
@@ -30,6 +34,41 @@ export function assertSupportedBucketLocusIdentityVersion(version: string | null
   return version;
 }
 
+export function validateCanonicalBucketLocusIdentity(locus: string): string {
+  const pipeIndex = locus.indexOf('|');
+  if (pipeIndex <= 0) {
+    throw new Exp021MaturationShadowM3BucketLocusError(`Malformed bucket locus identity: ${locus}`);
+  }
+  if (locus.indexOf('|', pipeIndex + 1) >= 0) {
+    throw new Exp021MaturationShadowM3BucketLocusError(`Malformed bucket locus identity: ${locus}`);
+  }
+
+  const providerField = locus.slice(0, pipeIndex);
+  const providerTimestamp = locus.slice(pipeIndex + 1);
+  if (!providerField) {
+    throw new Exp021MaturationShadowM3BucketLocusError(`Malformed bucket locus identity: ${locus}`);
+  }
+  if (!providerTimestamp) {
+    throw new Exp021MaturationShadowM3BucketLocusError(`Malformed bucket locus identity: ${locus}`);
+  }
+
+  let canonicalTimestamp: string;
+  try {
+    canonicalTimestamp = canonicalizeBucketTimestamp(providerTimestamp);
+  } catch {
+    throw new Exp021MaturationShadowM3BucketLocusError(`Invalid bucket locus timestamp: ${locus}`);
+  }
+
+  const roundTrip = buildExp021BucketIdentity(providerField, canonicalTimestamp);
+  if (roundTrip !== locus) {
+    throw new Exp021MaturationShadowM3BucketLocusError(
+      `Non-canonical bucket locus identity: ${locus}; expected ${roundTrip}`,
+    );
+  }
+
+  return locus;
+}
+
 export function dedupeBucketLoci(loci: string[]): string[] {
   return [...new Set(loci)].sort((a, b) => a.localeCompare(b));
 }
@@ -41,7 +80,7 @@ export function reconstructBucketLociFromAttempt(input: {
 }): Exp021MaturationShadowM3BucketLocusReconstruction {
   const identityVersion = assertSupportedBucketLocusIdentityVersion(input.bucketLocusIdentityVersion);
   const rawLoci = parseBucketLocusManifest(input.bucketLocusManifestJson ?? []);
-  const loci = dedupeBucketLoci(rawLoci);
+  const loci = dedupeBucketLoci(rawLoci.map((locus) => validateCanonicalBucketLocusIdentity(locus)));
   const uniqueCount = loci.length;
   const persistedUniqueCount = input.uniqueBucketLocusCount;
   const persistedCountConsistent =
@@ -57,11 +96,9 @@ export function reconstructBucketLociFromAttempt(input: {
 }
 
 export function fieldFromBucketLocus(locus: string): string {
-  const pipeIndex = locus.indexOf('|');
-  if (pipeIndex <= 0) {
-    throw new Exp021MaturationShadowM3BucketLocusError(`Malformed bucket locus identity: ${locus}`);
-  }
-  return locus.slice(0, pipeIndex);
+  const validated = validateCanonicalBucketLocusIdentity(locus);
+  const pipeIndex = validated.indexOf('|');
+  return validated.slice(0, pipeIndex);
 }
 
 export function groupBucketLociByField(loci: string[]): Record<string, string[]> {

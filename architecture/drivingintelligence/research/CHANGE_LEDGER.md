@@ -787,6 +787,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | M3 boundary | No maturation curves, Wilson CI, cadence recommendation, export/dashboard |
 | Runtime / prod | **NO CHANGES** — disabled by default |
 
+### EXP-021 — Live Maturation Shadow PR-M3 scientific micro-closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Previous head | `e6a7da259912ab4fcae2f165d92e8dd6c9800df4` |
+| Scope | Interval-censoring ordering fix; cross-family planned-age stratum summaries; eligibility-gated primary stats; content-based M1/M2 fingerprint; canonical bucket-locus round-trip validation |
+| Interval censoring | `firstPositiveAgeMs` = earliest success with loci>0; `lastNegativeAgeMs` = latest success zero strictly before first positive; post-positive zeros ignored for transition bounds |
+| Population summaries | `plannedAgeStratumSummaries` grouped by lane/geometry/activity/semantic cohort/plannedAgeMs with `nWindowFamilies` + `nLogicalSlots` (retries do not inflate family N) |
+| Eligibility | Primary stats exclude ineligible strata; transitions CSV includes `eligible` + `exclusionReasons`; separate exclusions CSV |
+| Fingerprint | Deterministic scientific content digest over family/stratum/slot/attempt fields detects in-place UPDATE |
+| Bucket locus | `validateCanonicalBucketLocusIdentity` round-trip via `buildExp021BucketIdentity` + canonical ISO ms |
+| Runtime / prod | **NO CHANGES** |
+
 ### EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export (2026-09-17)
 
 | Event | Detail |

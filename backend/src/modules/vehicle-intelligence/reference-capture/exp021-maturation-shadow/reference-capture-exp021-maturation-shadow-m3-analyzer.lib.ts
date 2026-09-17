@@ -7,12 +7,17 @@ import {
   detectSemanticCohortMismatchAcrossStrata,
 } from './reference-capture-exp021-maturation-shadow-m3-eligibility.lib';
 import { buildPairedGeometryObservations } from './reference-capture-exp021-maturation-shadow-m3-paired-geometry.lib';
+import {
+  buildPlannedAgeAttemptRecordsFromAnalyses,
+  buildPlannedAgeStratumSummaries,
+} from './reference-capture-exp021-maturation-shadow-m3-planned-age-summaries.lib';
 import { analyzeStratum } from './reference-capture-exp021-maturation-shadow-m3-stratum-analysis.lib';
 import { medianP25P75, wilsonScoreInterval } from './reference-capture-exp021-maturation-shadow-m3-statistics.lib';
 import type {
   Exp021MaturationShadowM3AggregateCounts,
   Exp021MaturationShadowM3AnalysisResult,
   Exp021MaturationShadowM3AnalysisScope,
+  Exp021MaturationShadowM3AttemptInput,
   Exp021MaturationShadowM3DescriptiveSummary,
   Exp021MaturationShadowM3FamilyInput,
 } from './reference-capture-exp021-maturation-shadow-m3.types';
@@ -28,16 +33,17 @@ function matchesScope(family: Exp021MaturationShadowM3FamilyInput, scope: Exp021
 }
 
 function aggregateCountsFromStrata(
-  families: Exp021MaturationShadowM3FamilyInput[],
   stratumAnalyses: ReturnType<typeof analyzeStratum>[],
 ): Exp021MaturationShadowM3AggregateCounts {
+  const eligibleAnalyses = stratumAnalyses.filter((s) => s.eligible);
+  const eligibleFamilyIds = new Set(eligibleAnalyses.map((s) => s.windowFamilyId));
+
   let nValidProviderSuccessObservations = 0;
   let nProviderErrors = 0;
   let nSuccessfulZeroObservations = 0;
   let nSuccessfulNonZeroObservations = 0;
 
-  for (const analysis of stratumAnalyses) {
-    if (!analysis.eligible) continue;
+  for (const analysis of eligibleAnalyses) {
     nValidProviderSuccessObservations += analysis.providerQuality.providerSuccesses;
     nProviderErrors += analysis.providerQuality.providerErrors;
     nSuccessfulZeroObservations += analysis.providerQuality.successfulZeroObservations;
@@ -46,8 +52,8 @@ function aggregateCountsFromStrata(
 
   return {
     primarySamplingUnit: PRIMARY_SAMPLING_UNIT,
-    nWindowFamilies: families.length,
-    nStrata: stratumAnalyses.filter((s) => s.eligible).length,
+    nWindowFamilies: eligibleFamilyIds.size,
+    nStrata: eligibleAnalyses.length,
     nValidProviderSuccessObservations,
     nProviderErrors,
     nSuccessfulZeroObservations,
@@ -55,7 +61,9 @@ function aggregateCountsFromStrata(
   };
 }
 
-function descriptiveForStratum(analysis: ReturnType<typeof analyzeStratum>): Exp021MaturationShadowM3DescriptiveSummary {
+function diagnosticDescriptiveForStratum(
+  analysis: ReturnType<typeof analyzeStratum>,
+): Exp021MaturationShadowM3DescriptiveSummary {
   const denominator = analysis.providerQuality.providerSuccesses;
   const numerator = analysis.providerQuality.successfulNonZeroObservations;
   const wilson = wilsonScoreInterval(numerator, denominator);
@@ -79,6 +87,18 @@ function descriptiveForStratum(analysis: ReturnType<typeof analyzeStratum>): Exp
       sampleCount: coverageRatios.length,
     },
   };
+}
+
+function buildAttemptsByStratumId(
+  families: Exp021MaturationShadowM3FamilyInput[],
+): Map<string, Exp021MaturationShadowM3AttemptInput[]> {
+  const map = new Map<string, Exp021MaturationShadowM3AttemptInput[]>();
+  for (const family of families) {
+    for (const stratum of family.strata) {
+      map.set(stratum.id, stratum.attempts);
+    }
+  }
+  return map;
 }
 
 export function analyzeExp021MaturationShadowM3(input: {
@@ -125,16 +145,34 @@ export function analyzeExp021MaturationShadowM3(input: {
   const eligibilityExclusions = stratumAnalyses.flatMap((s) => s.exclusions);
 
   const pairedGeometryObservations = scopedFamilies.flatMap((family) => {
-    const familyAnalyses = stratumAnalyses.filter((s) => s.windowFamilyId === family.id);
+    const familyAnalyses = stratumAnalyses.filter((s) => s.windowFamilyId === family.id && s.eligible);
     return buildPairedGeometryObservations(family.id, familyAnalyses);
   });
 
-  const aggregateCounts = aggregateCountsFromStrata(scopedFamilies, stratumAnalyses);
+  const aggregateCounts = aggregateCountsFromStrata(stratumAnalyses);
 
-  const descriptiveByStratum: Exp021MaturationShadowM3AnalysisResult['descriptiveByStratum'] = {};
+  const coverageByAttemptId = new Map<string, number | null>();
+  const reconstructedCountByAttemptId = new Map<string, number>();
   for (const analysis of stratumAnalyses) {
-    descriptiveByStratum[analysis.windowStratumId] = {
-      ...descriptiveForStratum(analysis),
+    for (const observation of analysis.maturationObservations) {
+      coverageByAttemptId.set(observation.attemptId, observation.bucketLocusCoverageRatioVsFinalObservedUnion);
+      reconstructedCountByAttemptId.set(observation.attemptId, observation.reconstructedUniqueBucketLocusCount);
+    }
+  }
+
+  const plannedAgeAttemptRecords = buildPlannedAgeAttemptRecordsFromAnalyses(
+    stratumAnalyses,
+    buildAttemptsByStratumId(scopedFamilies),
+    coverageByAttemptId,
+    reconstructedCountByAttemptId,
+  );
+  const plannedAgeStratumSummaries = buildPlannedAgeStratumSummaries(plannedAgeAttemptRecords);
+
+  const diagnosticDescriptiveByStratum: Exp021MaturationShadowM3AnalysisResult['diagnosticDescriptiveByStratum'] = {};
+  for (const analysis of stratumAnalyses) {
+    if (!analysis.eligible) continue;
+    diagnosticDescriptiveByStratum[analysis.windowStratumId] = {
+      ...diagnosticDescriptiveForStratum(analysis),
       perStratumN: {
         primarySamplingUnit: PRIMARY_SAMPLING_UNIT,
         nWindowFamilies: 1,
@@ -155,7 +193,8 @@ export function analyzeExp021MaturationShadowM3(input: {
     eligibilityExclusions,
     stratumAnalyses,
     pairedGeometryObservations,
-    descriptiveByStratum,
+    plannedAgeStratumSummaries,
+    diagnosticDescriptiveByStratum,
     semanticCohortMismatchBlocked: semanticBlocked,
     semanticCohortMismatchReason: semanticBlocked
       ? (cohortCheck.reason ?? combinedCohortCheck.reason)

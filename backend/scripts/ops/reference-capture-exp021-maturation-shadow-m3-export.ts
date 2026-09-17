@@ -9,7 +9,9 @@ import { PrismaClient } from '@prisma/client';
 import { analyzeExp021MaturationShadowM3 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3-analyzer.lib';
 import {
   serializeM3AnalysisJson,
+  serializeM3EligibilityExclusionsCsv,
   serializeM3PairedGeometryCsv,
+  serializeM3PlannedAgeSummariesCsv,
   serializeM3TransitionsCsv,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3-export.lib';
 import { loadExp021MaturationShadowFamiliesForM3 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3.repository';
@@ -49,6 +51,8 @@ async function main(): Promise<void> {
     mkdirSync(outputDir, { recursive: true });
     writeFileSync(join(outputDir, 'exp021-maturation-shadow-m3.json'), serializeM3AnalysisJson(analysis, { deterministicGeneratedAt }));
     writeFileSync(join(outputDir, 'exp021-maturation-shadow-m3-transitions.csv'), serializeM3TransitionsCsv(analysis));
+    writeFileSync(join(outputDir, 'exp021-maturation-shadow-m3-planned-age-summaries.csv'), serializeM3PlannedAgeSummariesCsv(analysis));
+    writeFileSync(join(outputDir, 'exp021-maturation-shadow-m3-eligibility-exclusions.csv'), serializeM3EligibilityExclusionsCsv(analysis));
     writeFileSync(join(outputDir, 'exp021-maturation-shadow-m3-paired-geometry.csv'), serializeM3PairedGeometryCsv(analysis));
 
     console.log(
