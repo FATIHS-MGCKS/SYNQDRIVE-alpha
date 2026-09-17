@@ -18,14 +18,13 @@ import {
   EXP021_KS_MX_2024_CANARY,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.constants';
 import { parseStrictCanaryTokenId } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-activity.lib';
+import { waitForNextCanaryWindowWithRefreshingDb } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-cli-wiring.lib';
 import {
   executeCanaryEnrollment,
   findAuthoritativePhysicalEndMatch,
   formatCanaryCliOutput,
   parseCanonicalWindowToIso,
-  readPhysicalDriveIntervalAuthority,
   resolveActivityAuthorityForCanonicalWindow,
-  waitForNextFreshAuthoritativeWindowClose,
   EXP021_CANARY_SPEED_PROVIDER_FIELDS,
   type Exp021CanaryEnrollCliArgs,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
@@ -159,25 +158,14 @@ async function main(): Promise<void> {
     let staleWindowsSkipped: number | undefined;
 
     if (args.waitNextWindow) {
-      let afterPhysicalEndMs = 0;
-      for (const experiment of settlementShadowExperiments) {
-        const physical = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
-        const endMs = physical?.physicalEndAt ? Date.parse(physical.physicalEndAt) : NaN;
-        if (Number.isFinite(endMs) && endMs > afterPhysicalEndMs) {
-          afterPhysicalEndMs = endMs;
-        }
-      }
-
-      const waited = await waitForNextFreshAuthoritativeWindowClose(
-        {
-          listSettlementShadowExperiments: async () => settlementShadowExperiments,
-          sleep,
-          now: () => new Date(),
-          config,
-          tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-        },
-        { afterPhysicalEndMs },
-      );
+      const waited = await waitForNextCanaryWindowWithRefreshingDb({
+        startupBaselineExperiments: settlementShadowExperiments,
+        loadSettlementShadowExperiments: () => loadCanarySettlementShadowExperiments(prisma),
+        sleep,
+        now: () => new Date(),
+        config,
+        tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
+      });
       canonicalWindowTo = waited.canonicalWindowTo;
       windowCloseAuthority = `${EXP021_CANARY_WINDOW_CLOSE_AUTHORITY}@${waited.physicalEndSource}`;
       authoritativeWindowMatch = true;

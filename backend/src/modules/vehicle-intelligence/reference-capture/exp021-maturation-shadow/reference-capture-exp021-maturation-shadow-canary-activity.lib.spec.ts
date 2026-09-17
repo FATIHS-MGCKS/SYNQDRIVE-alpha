@@ -17,7 +17,40 @@ describe('reference-capture-exp021-maturation-shadow-canary-activity.lib', () =>
     expect(() => parseStrictCanaryTokenId('')).toThrow('strict decimal integer');
   });
 
-  it('derives geometry-specific activity from independent speed observations', () => {
+  it('CASE 1: movement only within final 60s => both geometries ACTIVE_MOTION', () => {
+    const observations: Exp021CanarySpeedObservation[] = [
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
+        normalizedValueJson: 42,
+      },
+    ];
+
+    const byGeometry = resolveGeometryActivityAuthorityByWindow(observations, canonicalWindowTo);
+    expect(classifyActivityForGeometry(60_000, byGeometry[60_000]).class).toBe('ACTIVE_MOTION');
+    expect(classifyActivityForGeometry(90_000, byGeometry[90_000]).class).toBe('ACTIVE_MOTION');
+  });
+
+  it('CASE 2: movement only in 90s prefix with parked final 60s => 60s IDLE, 90s MOTION', () => {
+    const observations: Exp021CanarySpeedObservation[] = [
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:58:45.000Z'),
+        normalizedValueJson: 42,
+      },
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
+        normalizedValueJson: 0,
+      },
+    ];
+
+    const byGeometry = resolveGeometryActivityAuthorityByWindow(observations, canonicalWindowTo);
+    expect(classifyActivityForGeometry(60_000, byGeometry[60_000]).class).toBe('ACTIVE_IDLE');
+    expect(classifyActivityForGeometry(90_000, byGeometry[90_000]).class).toBe('ACTIVE_MOTION');
+  });
+
+  it('CASE 3: parked evidence throughout both windows => both ACTIVE_IDLE', () => {
     const observations: Exp021CanarySpeedObservation[] = [
       {
         providerField: 'speed',
@@ -27,17 +60,19 @@ describe('reference-capture-exp021-maturation-shadow-canary-activity.lib', () =>
       {
         providerField: 'speed',
         providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
-        normalizedValueJson: 42,
+        normalizedValueJson: 0,
       },
     ];
 
     const byGeometry = resolveGeometryActivityAuthorityByWindow(observations, canonicalWindowTo);
-    const motion60 = classifyActivityForGeometry(60_000, byGeometry[60_000]);
-    const idle90 = classifyActivityForGeometry(90_000, byGeometry[90_000]);
+    expect(classifyActivityForGeometry(60_000, byGeometry[60_000]).class).toBe('ACTIVE_IDLE');
+    expect(classifyActivityForGeometry(90_000, byGeometry[90_000]).class).toBe('ACTIVE_IDLE');
+  });
 
-    expect(motion60.class).toBe('ACTIVE_MOTION');
-    expect(idle90.class).toBe('ACTIVE_IDLE');
-    expect(byGeometry[60_000]).not.toEqual(byGeometry[90_000]);
+  it('CASE 4: insufficient evidence => UNKNOWN_ACTIVITY for both geometries', () => {
+    const authority = resolveGeometryActivityAuthorityByWindow([], canonicalWindowTo);
+    expect(classifyActivityForGeometry(60_000, authority[60_000]).class).toBe('UNKNOWN_ACTIVITY');
+    expect(classifyActivityForGeometry(90_000, authority[90_000]).class).toBe('UNKNOWN_ACTIVITY');
   });
 
   it('does not duplicate one latest speed sample to both geometries', () => {
@@ -64,10 +99,23 @@ describe('reference-capture-exp021-maturation-shadow-canary-activity.lib', () =>
     expect(only90.speedKmh).toBe(0);
   });
 
-  it('returns UNKNOWN_ACTIVITY when geometry window has no speed evidence', () => {
-    const authority = resolveGeometryActivityAuthorityByWindow([], canonicalWindowTo);
-    expect(classifyActivityForGeometry(60_000, authority[60_000]).class).toBe('UNKNOWN_ACTIVITY');
-    expect(classifyActivityForGeometry(90_000, authority[90_000]).class).toBe('UNKNOWN_ACTIVITY');
+  it('90s geometry uses full 90s window — final-60s motion cannot be masked as ACTIVE_IDLE', () => {
+    const observations: Exp021CanarySpeedObservation[] = [
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:58:45.000Z'),
+        normalizedValueJson: 0,
+      },
+      {
+        providerField: 'speed',
+        providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
+        normalizedValueJson: 42,
+      },
+    ];
+
+    const byGeometry = resolveGeometryActivityAuthorityByWindow(observations, canonicalWindowTo);
+    expect(classifyActivityForGeometry(60_000, byGeometry[60_000]).class).toBe('ACTIVE_MOTION');
+    expect(classifyActivityForGeometry(90_000, byGeometry[90_000]).class).toBe('ACTIVE_MOTION');
   });
 
   it('same geometry classification is lane-independent', () => {

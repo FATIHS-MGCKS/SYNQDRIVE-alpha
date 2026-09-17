@@ -161,21 +161,13 @@ function summarizeSpeedSlice(
   };
 }
 
-function sliceHasMovement(authority: Exp021MaturationShadowActivityAuthority): boolean {
-  const motion = classifyMotionState(
-    {
-      speedKmh: authority.speedKmh ?? null,
-      speedSignalFresh: authority.speedSignalFresh ?? false,
-    },
-    PARKED_SPEED_KMH,
-    MOVEMENT_SPEED_KMH,
-  );
-  return motion === 'MOVING';
-}
-
 /**
  * Geometry-specific independent movement authority from persisted reference-capture
  * speed observations — NOT from maturation-shadow DIMO historical query under test.
+ *
+ * Each geometry uses its full window:
+ * - 60s: [canonicalWindowTo − 60s, canonicalWindowTo]
+ * - 90s: [canonicalWindowTo − 90s, canonicalWindowTo]
  */
 export function resolveGeometryActivityAuthorityFromSpeedObservations(
   observations: Exp021CanarySpeedObservation[],
@@ -186,20 +178,6 @@ export function resolveGeometryActivityAuthorityFromSpeedObservations(
   const windowToMs = canonicalWindowTo.getTime();
   const windowFromMs = windowToMs - geometryMs;
   const fullSlice = collectSpeedSlice(observations, windowFromMs, windowToMs);
-
-  if (geometryMs === 90_000) {
-    const prefixSlice = collectSpeedSlice(observations, windowToMs - 90_000, windowToMs - 60_000);
-    const suffixSlice = collectSpeedSlice(observations, windowToMs - 60_000, windowToMs);
-    const prefixAuthority = summarizeSpeedSlice(prefixSlice, freshness);
-    const suffixAuthority = summarizeSpeedSlice(suffixSlice, freshness);
-    const prefixMoving = sliceHasMovement(prefixAuthority);
-    const suffixMoving = sliceHasMovement(suffixAuthority);
-
-    if (!prefixMoving && suffixMoving) {
-      return prefixAuthority;
-    }
-  }
-
   return summarizeSpeedSlice(fullSlice, freshness);
 }
 

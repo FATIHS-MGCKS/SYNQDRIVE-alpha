@@ -37,7 +37,8 @@ npm run exp021:maturation-shadow:canary:enroll -- \
 | Checkpoint | Head | Status |
 |------------|------|--------|
 | Initial operator CLI | `5055dff30088d0dc7a141f33f9c9501756d593ee` | superseded |
-| Safety micro-closure | `2d2a30107db23081e1fba4e57f50d9dcf87a0cb7` | **current** |
+| Safety micro-closure | `2d2a30107db23081e1fba4e57f50d9dcf87a0cb7` | superseded |
+| Runtime wiring + activity semantics | TBD final head | **current** |
 
 | Requirement | Result |
 |-------------|--------|
@@ -56,10 +57,21 @@ npm run exp021:maturation-shadow:canary:enroll -- \
 | `WINDOW_DETECTION_LAG_EXPORTED` | YES — `physicalEndAt`, `detectedAt`, `WINDOW_DETECTION_LAG_MS`, `freshnessGuardMs`, `remainingEnrollmentBudgetMs` |
 | `PROVIDER_CALL_ZERO_EVIDENCE_TRUTHFUL` | YES — `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (expectation, not observed counter) |
 
+## Runtime wiring + activity semantics closure (2026-09-17)
+
+| Requirement | Result |
+|-------------|--------|
+| `WAIT_MODE_DB_REFRESH_EACH_POLL` | YES — `loadSettlementShadowExperiments: () => loadCanarySettlementShadowExperiments(prisma)` |
+| `WAIT_MODE_USES_FROZEN_STARTUP_SNAPSHOT` | NO — startup snapshot used only for `afterPhysicalEndMs` baseline |
+| `ACTIVITY_60_USES_FULL_60S_WINDOW` | YES |
+| `ACTIVITY_90_USES_FULL_90S_WINDOW` | YES |
+| `ACTIVITY_90_PREFIX_SUBSTITUTION` | NO — removed artificial 30s-prefix override |
+
 ### Tests
 
-- `reference-capture-exp021-maturation-shadow-canary-enroll.spec.ts` (23 cases)
-- `reference-capture-exp021-maturation-shadow-canary-activity.lib.spec.ts` (5 cases)
+- `reference-capture-exp021-maturation-shadow-canary-enroll.spec.ts`
+- `reference-capture-exp021-maturation-shadow-canary-activity.lib.spec.ts` (CASE 1–4 coherent geometry)
+- `reference-capture-exp021-maturation-shadow-canary-cli-wiring.spec.ts` (actual CLI wait DB refresh wiring)
 
 ## Production execution status
 

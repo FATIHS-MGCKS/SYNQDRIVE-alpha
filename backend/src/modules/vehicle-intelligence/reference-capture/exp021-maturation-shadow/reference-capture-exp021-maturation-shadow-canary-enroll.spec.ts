@@ -121,11 +121,6 @@ function geometryObservations(): Exp021CanarySpeedObservation[] {
   return [
     {
       providerField: 'speed',
-      providerTimestamp: new Date('2026-09-17T11:58:45.000Z'),
-      normalizedValueJson: 0,
-    },
-    {
-      providerField: 'speed',
       providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
       normalizedValueJson: 42,
     },
@@ -292,7 +287,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
       familyId: expect.any(String),
       authoritativeWindowMatch: true,
       activityClassification60s: { class: 'ACTIVE_MOTION' },
-      activityClassification90s: { class: 'ACTIVE_IDLE' },
+      activityClassification90s: { class: 'ACTIVE_MOTION' },
     });
   });
 
@@ -394,8 +389,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
     });
 
     expect(plan.activityClassification60s.class).toBe('ACTIVE_MOTION');
-    expect(plan.activityClassification90s.class).toBe('ACTIVE_IDLE');
-    expect(authority[60_000]).not.toEqual(authority[90_000]);
+    expect(plan.activityClassification90s.class).toBe('ACTIVE_MOTION');
   });
 
   it('H) output uses EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT not fake observed counter', async () => {
