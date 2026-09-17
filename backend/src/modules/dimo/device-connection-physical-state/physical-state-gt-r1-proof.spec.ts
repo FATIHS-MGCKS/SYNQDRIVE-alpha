@@ -1,9 +1,11 @@
+import { DeviceConnectionPhysicalTransitionDecision } from '@prisma/client';
 import {
   buildSnapshotGtR1Proof,
   buildSnapshotPlugInitialEstablishmentGtR1Proof,
   buildSnapshotPlugRepairGtR1Proof,
   buildWebhookStaleLegacyGateGtR1Proof,
   isProvenExpectedFix,
+  isProvenExpectedFixForPhysicalDecision,
   isSnapshotHardRejectGtR1Reason,
   SNAPSHOT_HARD_REJECT_GT_R1_REASONS,
   type SnapshotGtR1ProofInput,
@@ -327,6 +329,60 @@ describe('physical-state-gt-r1-proof', () => {
         legacyEvidenceObservedAt: null,
       } as never),
     ).toBe(false);
+  });
+
+  it('BOOTSTRAP-ACTUAL-1 initial-establishment proof + ESTABLISHED => proven expected fix YES', () => {
+    const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof(bootstrapBase);
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.ESTABLISHED,
+      ),
+    ).toBe(true);
+  });
+
+  it('BOOTSTRAP-ACTUAL-2 initial-establishment proof + APPLIED => proven expected fix NO', () => {
+    const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof(bootstrapBase);
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.APPLIED,
+      ),
+    ).toBe(false);
+  });
+
+  it('BOOTSTRAP-ACTUAL-3 initial-establishment proof + PROVENANCE_REFRESH => proven expected fix NO', () => {
+    const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof(bootstrapBase);
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.PROVENANCE_REFRESH,
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    DeviceConnectionPhysicalTransitionDecision.DUPLICATE,
+    DeviceConnectionPhysicalTransitionDecision.STALE,
+    DeviceConnectionPhysicalTransitionDecision.CONFLICT,
+    DeviceConnectionPhysicalTransitionDecision.INSUFFICIENT_EVIDENCE,
+    null,
+  ])(
+    'BOOTSTRAP-ACTUAL-4 initial-establishment proof + %s => proven expected fix NO',
+    (decision) => {
+      const proof = buildSnapshotPlugInitialEstablishmentGtR1Proof(bootstrapBase);
+      expect(isProvenExpectedFixForPhysicalDecision(proof, decision)).toBe(false);
+    },
+  );
+
+  it('repair proof remains valid for APPLIED transition (not bootstrap-bound)', () => {
+    const proof = buildSnapshotPlugRepairGtR1Proof(admissibleBase);
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.APPLIED,
+      ),
+    ).toBe(true);
   });
 
   it('no_open_episode with open episode present cannot establish EXPECTED_FIX', () => {

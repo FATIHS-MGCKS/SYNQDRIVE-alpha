@@ -16,28 +16,50 @@ Initial STATEFUL_SHADOW bootstrap on empty physical projections produced `UNEXPL
 - `buildSnapshotGtR1Proof()` resolver: repair precedence, then bootstrap.
 - Wired from `PhysicalStateSnapshotEvidenceOrchestrator` real call-site.
 - Classification reuses `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT` (non-blocking) when bootstrap proof is valid.
-- PSG-TIME-0: `summarizeScopeWindow({ windowStart: NEW_PILOT_RESTART_T0 })` excludes pre-restart correctness blockers without row deletion.
+- **Bootstrap expected-fix is bound to actual coordinator transition:** `isProvenExpectedFixForPhysicalDecision()` requires `ESTABLISHED` for `SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT`; repair/webhook proofs unchanged. Fail-closed against stale pre-read / multi-replica races (PSG-TIME-0A, BOOTSTRAP-ACTUAL-1..4, PG regression).
+- **7-day epoch isolation:** new pilot epoch starts at `NEW_PILOT_RESTART_T0`. Both `summarizeScopeWindow({ windowStart })` and `getOperationalCoverage({ windowStart, windowEnd? })` use comparison/runtime `observedAt >= windowStart` only. Historical failed-pilot rows remain preserved in DB but cannot backdate or satisfy the restarted 7-day window (PSG-TIME-0A/0B/0C).
 
 ## Classification decision
 
 No new taxonomy bucket. Bootstrap establishment is semantically an expected legacy→physical improvement and maps to existing `EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT`.
 
+## Bootstrap expected-fix invariant
+
+```
+BOOTSTRAP_EXPECTED_FIX
+  = valid SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT proof
+  AND actual coordinator transition == ESTABLISHED
+```
+
+Stale pre-read projection (`physicalProjectionState == null` before reconcile) cannot bless `APPLIED`, `DUPLICATE`, `STALE`, `CONFLICT`, `INSUFFICIENT_EVIDENCE`, or `null`.
+
 ## New epoch evidence query (runbook)
 
 ```typescript
+const NEW_PILOT_RESTART_T0 = new Date('2026-09-17T00:00:00.000Z'); // captured at shadow re-enable
+
 observationRepository.summarizeScopeWindow({
   organizationId,
   vehicleId,
   provider: 'DIMO',
-  windowStart: NEW_PILOT_RESTART_T0, // ISO timestamp captured at shadow re-enable
+  windowStart: NEW_PILOT_RESTART_T0,
   windowEnd: now,
+});
+
+observationRepository.getOperationalCoverage({
+  organizationId,
+  vehicleId,
+  provider: 'DIMO',
+  windowStart: NEW_PILOT_RESTART_T0,
+  windowEnd: now, // optional
 });
 ```
 
-`getOperationalCoverage()` span proof must also use only comparisons with `observedAt >= NEW_PILOT_RESTART_T0` when restarting after a failed pilot.
+Both APIs use comparison/runtime `observedAt` only. `evidenceObservedAt` never contributes to elapsed-time proof. Invalid or inverted windows fail closed (zero count, `sevenDayOperationalWindowProven = false`).
 
 ## Non-effects
 
 - Does not mutate five historical Production shadow observations.
 - Does not re-enable STATEFUL_SHADOW.
 - Does not execute preseed APPLY or authority cutover.
+- Does not claim Production validation.

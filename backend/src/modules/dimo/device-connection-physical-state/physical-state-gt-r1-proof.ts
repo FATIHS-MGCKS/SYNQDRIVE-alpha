@@ -1,6 +1,7 @@
 import type {
   DeviceConnectionEpisode,
   DeviceConnectionPhysicalEffectiveState,
+  DeviceConnectionPhysicalTransitionDecision,
 } from '@prisma/client';
 import {
   isPhysicalObdHardware,
@@ -56,6 +57,22 @@ export function isProvenExpectedFix(
   if (!proof.scenario || !proof.evidenceReferenceId) return false;
   if (!(proof.physicalEvidenceObservedAt instanceof Date)) return false;
   return Number.isFinite(proof.physicalEvidenceObservedAt.getTime());
+}
+
+/**
+ * Fail-closed expected-fix gate at comparator invocation time.
+ * Bootstrap establishment proof requires the coordinator's actual transition to be ESTABLISHED
+ * so a stale pre-read projection cannot bless APPLIED/DUPLICATE/STALE/etc. outcomes.
+ */
+export function isProvenExpectedFixForPhysicalDecision(
+  proof: GtR1ExpectedFixProof | null | undefined,
+  physicalDecision: DeviceConnectionPhysicalTransitionDecision | null,
+): boolean {
+  if (!isProvenExpectedFix(proof)) return false;
+  if (proof!.scenario === 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT') {
+    return physicalDecision === 'ESTABLISHED';
+  }
+  return true;
 }
 
 export function isSnapshotHardRejectGtR1Reason(

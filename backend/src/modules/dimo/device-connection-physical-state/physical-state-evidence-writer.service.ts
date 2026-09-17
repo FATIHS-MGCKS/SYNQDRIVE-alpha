@@ -26,7 +26,10 @@ import {
 import type { CurrentPhysicalStateProjection } from './device-connection-physical-state.types';
 import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-authority.types';
 import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
-import { isProvenExpectedFix, type GtR1ExpectedFixProof } from './physical-state-gt-r1-proof';
+import {
+  isProvenExpectedFixForPhysicalDecision,
+  type GtR1ExpectedFixProof,
+} from './physical-state-gt-r1-proof';
 import type { LegacyShadowDecision } from './physical-state-legacy-shadow-decision';
 import { isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { PhysicalStateReconcileCoordinator } from './physical-state-reconcile.coordinator';
@@ -594,7 +597,10 @@ export class PhysicalStateEvidenceWriterService {
       legacyEvidenceObservedAt: input.legacyShadow.evidenceObservedAt,
       evidenceObservedAt: input.evidenceObservedAt,
       evidenceReferenceId: input.evidenceReferenceId,
-      provenExpectedFix: isProvenExpectedFix(input.gtR1Proof),
+      provenExpectedFix: isProvenExpectedFixForPhysicalDecision(
+        input.gtR1Proof,
+        input.physicalDecision,
+      ),
       equalTimeOpposingState: input.equalTimeOpposingState,
     });
 

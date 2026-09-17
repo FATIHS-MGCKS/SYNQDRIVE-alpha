@@ -107,7 +107,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'buildSnapshotGtR1Proof() resolver: repair (UNPLUGGED baseline) precedence, then bootstrap.',
       'Wired from PhysicalStateSnapshotEvidenceOrchestrator real call-site; comparator receives proof object.',
       'Reuses EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); negative proof matrix + BOOTSTRAP CASE A–D PG proofs.',
-      'PSG-TIME-0: summarizeScopeWindow observedAt lower bound excludes pre-restart blockers without row deletion.',
+      'Bootstrap expected-fix bound to actual ESTABLISHED transition (isProvenExpectedFixForPhysicalDecision); fail-closed vs stale pre-read.',
+      'Epoch-aware getOperationalCoverage({ windowStart }) + summarizeScopeWindow exclude pre-restart rows (PSG-TIME-0A/0B/0C); old prefix cannot fake 7-day window.',
     ],
     reason:
       'Failed Production shadow pilot produced UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on first bootstrap because GT-R1 only covered UNPLUGGED-baseline repair, not absent projection establishment.',
