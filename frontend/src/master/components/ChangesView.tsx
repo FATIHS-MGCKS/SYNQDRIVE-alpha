@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-live-maturation-shadow-pr-m3-analytics-export-2026-09-17',
+    version: '4.9.1139',
+    title: 'EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export',
+    summary: [
+      'Read-only M3 analysis layer over immutable M1/M2 scientific rows — no schema changes, no provider calls, no M1/M2 mutation.',
+      'Bucket-locus reconstruction, availability interval censoring (actualAgeMs authority), cumulative maturation vs final shadow-observed union (observational denominator only).',
+      'Per-field maturation, payload revision separate from locus coverage, scheduler drift + provider error diagnostics, paired 60s/90s family export.',
+      'Deterministic JSON/CSV export CLI (`npm run exp021:maturation-shadow:m3:export`) with explicit org+vehicle scope.',
+      'PostgreSQL read-only fingerprint proof; 29 unit tests + CI jobs `exp021-maturation-shadow-m3` + postgres integration.',
+    ],
+    reason:
+      'Scientific maturation evidence requires observational analytics over shadow pilot data without converting evidence into production retry policy.',
+    previousBehavior:
+      'M1 persistence + M2 scheduler/worker only — no deterministic maturation analysis or export layer.',
+    details:
+      'PR #1676; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-m3-2026-09-17.md; backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3-*.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T10:50:00.000Z',
+  },
+  {
     id: 'tdl-r12-ch-assist-skip-resume-revalidation-2026-09-17',
     version: '4.9.1138',
     title: 'R12 — CH assist skip resume revalidation (KS MX 2024 false-terminal safety)',

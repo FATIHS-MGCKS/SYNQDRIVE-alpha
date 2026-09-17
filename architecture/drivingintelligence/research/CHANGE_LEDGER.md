@@ -787,6 +787,40 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | M3 boundary | No maturation curves, Wilson CI, cadence recommendation, export/dashboard |
 | Runtime / prod | **NO CHANGES** — disabled by default |
 
+### EXP-021 — Live Maturation Shadow PR-M3 scientific micro-closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Previous head | `e6a7da259912ab4fcae2f165d92e8dd6c9800df4` |
+| Scope | Interval-censoring ordering fix; cross-family planned-age stratum summaries; eligibility-gated primary stats; content-based M1/M2 fingerprint; canonical bucket-locus round-trip validation |
+| Interval censoring | `firstPositiveAgeMs` = earliest success with loci>0; `lastNegativeAgeMs` = latest success zero strictly before first positive; post-positive zeros ignored for transition bounds |
+| Population summaries | `plannedAgeStratumSummaries` grouped by lane/geometry/activity/semantic cohort/plannedAgeMs with `nWindowFamilies` + `nLogicalSlots` (retries do not inflate family N) |
+| Eligibility | Primary stats exclude ineligible strata; transitions CSV includes `eligible` + `exclusionReasons`; separate exclusions CSV |
+| Fingerprint | Deterministic scientific content digest over family/stratum/slot/attempt fields detects in-place UPDATE |
+| Bucket locus | `validateCanonicalBucketLocusIdentity` round-trip via `buildExp021BucketIdentity` + canonical ISO ms |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `4b8c555e49d86f33af3e23ca918a3fa1349f85eb` (merged PR #1675) |
+| Scope | Read-only observational analytics + deterministic JSON/CSV export over immutable M1/M2 scientific rows — **no provider calls**, **no M1/M2 mutation**, **no production activation** |
+| Data contract audit | `M3_DATA_CONTRACT_AUDIT=PASS`; `M3_SCHEMA_CHANGE_REQUIRED=NO`; `M3_ATTEMPT_ROWS_MUTATED=NO` |
+| Bucket locus | Reconstruct from `bucketLocusManifestJson` + `bucketLocusIdentityVersion=FIELD_PIPE_CANONICAL_ISO_MS`; dedupe; payload value excluded from coverage identity |
+| Maturation order | `actualAgeMs` authority; cumulative union never shrinks; `FINAL_SHADOW_OBSERVED_UNION` observational denominator only (not ground truth) |
+| Availability | Provider success + reconstructed locus count; provider errors UNKNOWN; interval censoring `(lastNegative, firstPositive]` with errors excluded from bounds |
+| Retry truth | Retry success attributed to real `actualAgeMs`; no backdating to planned age |
+| Sampling unit | `PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`; per-stratum N reported |
+| Stratification | Separate HF_FAST_LOOP / SETTLEMENT_SHADOW; separate 60s/90s; activity cohorts; semantic cohort blending blocked for primary combined analysis |
+| Paired geometry | Family-level 60s vs 90s paired export — not independent samples |
+| Export | `EXP021_MATURATION_SHADOW_M3_EXPORT_v1`; CLI `npm run exp021:maturation-shadow:m3:export` requires explicit `organizationId` + `vehicleId` |
+| Read-only proof | PostgreSQL before/after fingerprint — canonical RC state + M1/M2 row counts unchanged |
+| CI | `test:exp021:maturation-shadow:m3` + `m3:postgres:ci`; wired into EXP-021 autonomous orchestrator CI |
+| Boundaries preserved | M2 scheduler/worker unchanged; no cadence recommendation; no completeness threshold; KS MX 2024 not armed; Stage-1A/Trip FSM/GAP_DEBT/TGR policy unchanged |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-m3-2026-09-17.md` |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
 ### EXP-021 — Live Maturation Shadow PR-M2 scientific hardening + CI closure (2026-09-17)
 
 | Event | Detail |
