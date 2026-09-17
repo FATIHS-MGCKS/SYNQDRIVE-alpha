@@ -800,6 +800,25 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Bucket locus | `validateCanonicalBucketLocusIdentity` round-trip via `buildExp021BucketIdentity` + canonical ISO ms |
 | Runtime / prod | **NO CHANGES** |
 
+### EXP-021 — KS MX 2024 canary single-family operator CLI (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `04bb817de85201a1017516e2e7bc5f5dd19c504d` |
+| Scope | Repository-native manual operator CLI for exactly one KS MX 2024 maturation shadow window family — **no automatic enrollment**, **no HTTP API**, **no production execution in PR** |
+| CLI | `npm run exp021:maturation-shadow:canary:enroll -- --token-id 187336 --canonical-window-to <ISO> [--execute]` or `--wait-next-window` |
+| Modes | Default DRY RUN (zero DB/BullMQ/provider writes); `--execute` required for enrollment |
+| Window authority | `REFERENCE_CAPTURE_PHYSICAL_DRIVE_INTERVAL.physicalEndAt` from settlement-shadow experiment metadata (`ORCHESTRATOR_CONFIRMED` / `PDI_CANDIDATE` only for `--wait-next-window`) |
+| Freshness guard | Fail closed when `windowAgeAtEnrollmentMs + 5000ms >= earliestPlannedAgeMs` (preserves 30s–60s dense ages) |
+| Hard guards | token `187336`, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly `[187336]`, `maxActiveFamilies=1`, zero unfinished families pre-enroll |
+| Activity | Independent telemetry via `parseSpeedSampleFromSignalsLatest`; defaults `UNKNOWN_ACTIVITY` when unresolved |
+| Provider calls | `PROVIDER_CALLS_DURING_ENROLLMENT=0` — enrollment creates family/strata/slots/delayed BullMQ jobs only |
+| Kill switch guidance | Printed: `EXP021_MATURATION_SHADOW_ENABLED=false` + rolling PM2 restart (not executed by CLI) |
+| Tests | 28-case canary suite (`canary-enroll.spec.ts` 23 + `canary-activity.lib.spec.ts` 5) |
+| Micro-closure (same PR) | Head `2d2a30107` — authoritative token equality enforced; activity resolved after `canonicalWindowTo`; geometry-specific RC observation windows; execute requires persisted physicalEndAt match; strict token parse; wait-mode skips stale windows; freshness lag diagnostics; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` |
+| Runtime wiring closure (same PR) | Wait-mode DB refresh each poll (no frozen startup snapshot in poll callback); CLI wiring regression test; removed 90s prefix substitution; coherent geometry CASE 1–4 activity fixtures |
+| Runtime / prod | **NO CHANGES** — operator must invoke CLI manually after merge/deploy |
+
 ### EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export (2026-09-17)
 
 | Event | Detail |

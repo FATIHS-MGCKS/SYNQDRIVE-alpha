@@ -64,6 +64,7 @@ Each item records what conclusions it **supports** and what it **does not** supp
 | DI-EVID-0035C1-BLOCK-001 | AUDIT+CODE | 2026-09-04–05 | Block polling + C.1a–e | `driving-intelligence-hf-block-polling-scalability-2026-09.md` | 0035C.1–C.1e | CONFIRMED | Testbed implementation | 30s density proof; live canary |
 | DI-TEST-HF-RECOVERY-001 | TEST | — | Recovery V2 unit tests | `reference-capture-hf-recovery-v2.policy.spec.ts` | 0035C | CONFIRMED | Policy semantics | Multi-replica prod |
 | DI-TEST-BLOCK-POLL-001 | TEST | — | Block poll + calibration tests | `reference-capture-hf-block-polling.policy.spec.ts` | C.1 | CONFIRMED | Phase lifecycle | Live 10/20/30/60 run |
+| DI-EVID-RC-EXP021-CANARY-CLI-001 | CODE+TEST | 2026-09-17 | KS MX 2024 canary operator CLI + safety micro-closure | `reference-capture/exp021-maturation-shadow-canary-operator-cli-2026-09-17.md` | EXP-021 | CONFIRMED | Manual single-family enrollment path; fail-closed guards | Production execution; automatic enrollment |
 
 ---
 

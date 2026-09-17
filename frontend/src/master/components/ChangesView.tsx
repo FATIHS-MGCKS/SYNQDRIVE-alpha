@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-ks-mx-2024-canary-operator-cli-2026-09-17',
+    version: '4.9.1140',
+    title: 'EXP-021 — KS MX 2024 canary single-family operator CLI',
+    summary: [
+      'Repository-native manual operator CLI to enroll exactly one KS MX 2024 maturation shadow window family — no HTTP API, no cron, no automatic fleet hook.',
+      'Default DRY RUN; `--execute` required for DB/BullMQ writes. `--wait-next-window` polls authoritative physical drive interval close from settlement-shadow experiment metadata.',
+      'Hard guards: token 187336, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly [187336], maxActiveFamilies=1, zero unfinished families.',
+      'Safety micro-closure: authoritative token equality enforced; activity resolved only after canonicalWindowTo from full geometry RC observation windows; execute requires exact persisted physicalEndAt; strict token parse; wait-mode refreshes DB each poll (startup snapshot only for baseline); stale windows skipped with lag diagnostics.',
+      'Freshness guard preserves dense 30s–60s ages; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (M2 worker executes observations later).',
+    ],
+    reason:
+      'Production canary activation gate passed but automatic enrollment remains unwired — operator needs a bounded, fail-closed manual start path.',
+    previousBehavior:
+      'ReferenceCaptureExp021MaturationShadowEnrollmentService callable only from tests/integration — no operator-facing CLI.',
+    details:
+      'npm run exp021:maturation-shadow:canary:enroll; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-canary-operator-cli-2026-09-17.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T14:00:00.000Z',
+  },
+  {
     id: 'exp021-live-maturation-shadow-pr-m3-analytics-export-2026-09-17',
     version: '4.9.1139',
     title: 'EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export',
