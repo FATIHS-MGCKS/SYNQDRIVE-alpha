@@ -11140,6 +11140,7 @@ model Exp021MaturationShadowObservationSlot {
   id              String   @id @default(uuid())
   windowStratumId String   @map("window_stratum_id")
   plannedAgeMs    Int      @map("planned_age_ms")
+  bullJobId       String?  @map("bull_job_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
   stratum  Exp021MaturationShadowWindow                    @relation(fields: [windowStratumId], references: [id], onDelete: Restrict)
@@ -11147,6 +11148,7 @@ model Exp021MaturationShadowObservationSlot {
 
   @@unique([windowStratumId, plannedAgeMs])
   @@index([windowStratumId])
+  @@index([bullJobId])
   @@map("exp021_maturation_shadow_observation_slots")
 }
 

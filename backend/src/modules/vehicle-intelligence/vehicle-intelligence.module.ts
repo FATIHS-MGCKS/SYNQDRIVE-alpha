@@ -193,6 +193,10 @@ import { ReferenceCaptureSettlementShadowService } from './reference-capture/ref
 import { ReferenceCaptureExp021FleetRepository } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet.repository';
 import { ReferenceCaptureExp021FleetCoordinatorService } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet-coordinator.service';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.repository';
+import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-runner.service';
+import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-enrollment.service';
+import { ReferenceCaptureExp021MaturationShadowWorkerService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-worker.service';
+import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-provider-query.adapter';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -292,6 +296,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
@@ -477,6 +482,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureExp021FleetRepository,
     ReferenceCaptureExp021FleetCoordinatorService,
     ReferenceCaptureExp021MaturationShadowRepository,
+    ReferenceCaptureExp021MaturationShadowProviderQueryAdapter,
+    ReferenceCaptureExp021MaturationShadowRunnerService,
+    ReferenceCaptureExp021MaturationShadowEnrollmentService,
+    ReferenceCaptureExp021MaturationShadowWorkerService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,

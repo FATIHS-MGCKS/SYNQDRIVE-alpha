@@ -42,8 +42,10 @@ import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-statio
 import { PhysicalRefuelReconciliationRecoveryScheduler } from './schedulers/physical-refuel-reconciliation-recovery.scheduler';
 import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
 import { ReferenceCaptureSettlementShadowProcessor } from './processors/reference-capture-settlement-shadow.processor';
+import { ReferenceCaptureExp021MaturationShadowProcessor } from './processors/reference-capture-exp021-maturation-shadow.processor';
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/reference-capture-settlement-shadow-recovery.scheduler';
+import { ReferenceCaptureExp021MaturationShadowRecoveryScheduler } from './schedulers/reference-capture-exp021-maturation-shadow-recovery.scheduler';
 import { ReferenceCaptureExp021FleetCoordinatorScheduler } from './schedulers/reference-capture-exp021-fleet-coordinator.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
@@ -94,6 +96,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
     DimoModule,
     SnapshotWakeModule,
@@ -136,6 +139,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     RefuelStationEnrichmentProcessor,
     ReferenceCaptureProcessor,
     ReferenceCaptureSettlementShadowProcessor,
+    ReferenceCaptureExp021MaturationShadowProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -161,6 +165,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     PhysicalRefuelReconciliationRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
     ReferenceCaptureSettlementShadowRecoveryScheduler,
+    ReferenceCaptureExp021MaturationShadowRecoveryScheduler,
     ReferenceCaptureExp021FleetCoordinatorScheduler,
   ],
 })

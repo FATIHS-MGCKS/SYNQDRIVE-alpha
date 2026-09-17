@@ -13,7 +13,7 @@ describe('EXP-021 maturation shadow runtime import boundaries (PR-M1)', () => {
       const source = fs.readFileSync(path.join(shadowDir, file), 'utf8');
       expect(source).not.toMatch(/@nestjs\/bullmq/);
       expect(source).not.toMatch(/reference-capture-acquisition/);
-      expect(source).not.toMatch(/dimo/i);
+      expect(source).not.toMatch(/@modules\/dimo/);
       expect(source).not.toMatch(/graphql/i);
     });
   }

@@ -58,6 +58,15 @@ export const HF_AVAILABILITY_CALIBRATION_ENABLED_ENV = 'HF_AVAILABILITY_CALIBRAT
 /** EXP-021 — settlement shadow experiment (forensic-only, default OFF). */
 export const REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV =
   'REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED';
+/** EXP-021 — live maturation shadow experiment (PR-M2, default OFF). */
+export const EXP021_MATURATION_SHADOW_ENABLED_ENV = 'EXP021_MATURATION_SHADOW_ENABLED';
+export const EXP021_MATURATION_SHADOW_HF_LANE_ENABLED_ENV = 'EXP021_MATURATION_SHADOW_HF_LANE_ENABLED';
+export const EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED_ENV =
+  'EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED';
+export const EXP021_MATURATION_SHADOW_ALLOWLIST_TOKEN_IDS_ENV =
+  'EXP021_MATURATION_SHADOW_ALLOWLIST_TOKEN_IDS';
+export const EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES_ENV =
+  'EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES';
 export const EXP021_FLEET_COORDINATOR_ENABLED_ENV = 'EXP021_FLEET_COORDINATOR_ENABLED';
 export const EXP021_FLEET_DRY_RUN_ENV = 'EXP021_FLEET_DRY_RUN';
 export const EXP021_FLEET_COORDINATOR_INTERVAL_MS_ENV = 'EXP021_FLEET_COORDINATOR_INTERVAL_MS';
@@ -157,6 +166,25 @@ export default registerAs('referenceCapture', () => ({
   settlementShadowEnabled: parseBooleanEnv(
     process.env[REFERENCE_CAPTURE_SETTLEMENT_SHADOW_ENABLED_ENV],
     false,
+  ),
+  exp021MaturationShadowEnabled: parseBooleanEnv(
+    process.env[EXP021_MATURATION_SHADOW_ENABLED_ENV],
+    false,
+  ),
+  exp021MaturationShadowHfLaneEnabled: parseBooleanEnv(
+    process.env[EXP021_MATURATION_SHADOW_HF_LANE_ENABLED_ENV],
+    false,
+  ),
+  exp021MaturationShadowSettlementLaneEnabled: parseBooleanEnv(
+    process.env[EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED_ENV],
+    false,
+  ),
+  exp021MaturationShadowAllowlistTokenIds: parseCanaryTokenIdList(
+    process.env[EXP021_MATURATION_SHADOW_ALLOWLIST_TOKEN_IDS_ENV],
+  ),
+  exp021MaturationShadowMaxActiveFamilies: parseIntEnv(
+    process.env[EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES_ENV],
+    0,
   ),
   fleetCoordinatorEnabled: parseBooleanEnv(process.env[EXP021_FLEET_COORDINATOR_ENABLED_ENV], false),
   fleetDryRun: parseBooleanEnv(process.env[EXP021_FLEET_DRY_RUN_ENV], true),

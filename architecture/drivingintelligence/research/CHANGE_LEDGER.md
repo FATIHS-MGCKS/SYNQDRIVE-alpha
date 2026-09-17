@@ -770,6 +770,41 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Post-hoc fields | Analytical derivatives removed from raw insert API; nullable columns remain null in PR-M1 |
 | Runtime / prod | **NO CHANGES** |
 
+### EXP-021 — Live Maturation Shadow PR-M2 scheduler and worker foundation (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `06bdba368057d8cfba6a6500768ffd36f783483c` (merged PR #1672) |
+| Scope | Dedicated BullMQ queue, deterministic enrollment/scheduling, bounded worker, read-only provider adapter, recovery — **default OFF**, no production activation |
+| Queue | `reference.capture.exp021-maturation-shadow` (`REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW`) |
+| Job ID contract | `rc-exp021-ms-{familyId}-{stratumId}-{plannedAgeMs}` — **no** `enrollmentEventId` |
+| Schedule version | `MATURATION_SHADOW_SCHEDULE_v1` |
+| Worker concurrency | `1` |
+| Feature defaults | `EXP021_MATURATION_SHADOW_ENABLED=false`, HF lane `false`, settlement lane `false`, empty token allowlist |
+| Provider path | `ReferenceCaptureExp021MaturationShadowProviderQueryAdapter` — DIMO GraphQL read-only, no canonical writes |
+| Multi-replica proof | PostgreSQL + Redis integration tests (family/stratum/slot idempotency, deterministic enqueue, recovery, duplicate delivery) |
+| Automatic production enrollment | **NOT WIRED** — `ReferenceCaptureExp021MaturationShadowEnrollmentService` callable; hook deferred to canary PR |
+| M3 boundary | No maturation curves, Wilson CI, cadence recommendation, export/dashboard |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
+### EXP-021 — Live Maturation Shadow PR-M2 scientific hardening + CI closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting M2 head | `91ac9662fb65a36ef4ed981c6291745886c06846` |
+| Scope | CI script fix, execution-time semantic drift revalidation, provider ingress timing authority, durable retry budget from attempt ledger, DB↔BullMQ reconciliation matrix, atomic active-family cap, geometry-specific activity authority, PostgreSQL canonical fingerprint non-interference, runtime SHA fail-closed when enabled |
+| CI | `test:exp021:maturation-shadow:m2` shell pipe fixed; `test:exp021:fleet:postgres:ci` chains `m2:postgres-redis:ci` with `EXP021_MATURATION_SHADOW_POSTGRES_REDIS_INTEGRATION=1` |
+| Execution semantics | `assertExecutionSemanticsMatchStratum` recomputes resolver authority before every provider request |
+| Timing | Successful GraphQL uses `queryGraphQLWithIngressTiming()` ingress timestamps; JWT preflight excluded from `requestStartedAt` |
+| Retry | `deriveTransportRetryOrdinalFromAttempts` — PostgreSQL attempt ledger is durable retry authority across restart/recovery |
+| Reconciliation | `reconcileExecutionState` handles missing `bullJobId`, missing Redis job, completed/failed jobs, retry job loss |
+| Active families | `countUnfinishedFamilies` + `pg_advisory_xact_lock(90210021)`; `maxActiveFamilies<=0` fails closed when enabled |
+| Activity | `activityAuthorityByGeometry` — independent 60s/90s classification shared across lanes per geometry |
+| Canonical proof | `captureCanonicalStateFingerprint` PostgreSQL integration — shadow writes do not mutate canonical RC/study/settlement state |
+| Runtime SHA | `resolveExp021MaturationShadowRuntimeBuildSha({ required: true })` when enabled — rejects `unknown-runtime-sha` |
+| Boundaries preserved | Queue unchanged, concurrency `1`, automatic production enrollment unwired, KS MX 2024 not armed, Stage-1A/Trip FSM unchanged |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
 ### EXP-021 — Live Maturation Shadow PR-M1 final scientific geometry + provider input closure (2026-09-17)
 
 | Event | Detail |
