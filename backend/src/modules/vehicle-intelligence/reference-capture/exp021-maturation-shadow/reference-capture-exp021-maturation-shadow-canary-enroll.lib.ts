@@ -3,8 +3,6 @@ import type { Prisma } from '@prisma/client';
 import type { ReferenceCaptureConfig } from '../reference-capture.config';
 import {
   EXP021_PHYSICAL_DRIVE_INTERVAL_METADATA_KEY,
-  EXP021_DEFAULT_TELEMETRY_FRESHNESS,
-  parseSpeedSampleFromSignalsLatest,
   type Exp021PhysicalDriveIntervalAuthority,
 } from '../reference-capture-exp-021-motion.lib';
 import {
@@ -12,6 +10,10 @@ import {
   type Exp021MaturationShadowActivityAuthorityByGeometry,
   type Exp021MaturationShadowActivityClassification,
 } from './reference-capture-exp021-maturation-shadow-activity-classification.lib';
+import {
+  resolveGeometryActivityAuthorityByWindow,
+  type Exp021CanarySpeedObservation,
+} from './reference-capture-exp021-maturation-shadow-canary-activity.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from './reference-capture-exp021-maturation-shadow.errors';
 import type { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
 import type { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
@@ -45,8 +47,17 @@ export type Exp021CanaryGuardSnapshot = {
   allowlistTokenIds: number[];
   maxActiveFamilies: number;
   runtimeSha: string;
-  authoritativeTokenId: number | null;
+  authoritativeTokenId: number;
   activeUnfinishedFamilies: number;
+};
+
+export type Exp021CanaryWindowFreshnessDiagnostic = {
+  physicalEndAt: string;
+  detectedAt: string;
+  windowDetectionLagMs: number;
+  freshnessGuardMs: number;
+  remainingEnrollmentBudgetMs: number;
+  stale: boolean;
 };
 
 export type Exp021CanaryDryRunPlan = {
@@ -56,6 +67,7 @@ export type Exp021CanaryDryRunPlan = {
   tokenId: number;
   canonicalWindowTo: Date;
   windowCloseAuthority: string;
+  authoritativeWindowMatch: boolean;
   windowAgeAtEnrollmentMs: number;
   staleWindow: boolean;
   policyDelayProbeMs: number;
@@ -67,6 +79,8 @@ export type Exp021CanaryDryRunPlan = {
   expectedStratumCount: number;
   expectedSlotCount: number;
   expectedEnqueuedJobCount: number;
+  windowFreshnessDiagnostic?: Exp021CanaryWindowFreshnessDiagnostic;
+  staleWindowsSkipped?: number;
 };
 
 export type Exp021CanaryEnrollSuccess = Exp021CanaryDryRunPlan & {
@@ -74,7 +88,6 @@ export type Exp021CanaryEnrollSuccess = Exp021CanaryDryRunPlan & {
   stratumCount: number;
   slotCount: number;
   enqueuedJobCount: number;
-  providerCallsDuringEnrollment: number;
 };
 
 const AUTHORITATIVE_PHYSICAL_END_SOURCES: ReadonlySet<Exp021PhysicalDriveIntervalAuthority['source']> =
@@ -123,45 +136,57 @@ export function evaluateWindowFreshness(
   stale: boolean;
   earliestPlannedAgeMs: number;
   freshnessGuardMs: number;
+  remainingEnrollmentBudgetMs: number;
 } {
   const windowAgeAtEnrollmentMs = Math.max(0, now.getTime() - canonicalWindowTo.getTime());
   const earliestPlannedAgeMs = Math.min(...plannedAgesMsExact);
   const freshnessGuardMs = earliestPlannedAgeMs - executionSlackMs;
   const stale = windowAgeAtEnrollmentMs >= freshnessGuardMs;
+  const remainingEnrollmentBudgetMs = freshnessGuardMs - windowAgeAtEnrollmentMs;
   return {
     windowAgeAtEnrollmentMs,
     stale,
     earliestPlannedAgeMs,
     freshnessGuardMs,
+    remainingEnrollmentBudgetMs,
   };
 }
 
-export function resolveActivityAuthorityFromSignalsLatest(
-  rawPayloadJson: unknown,
-  nowMs: number = Date.now(),
-): Exp021MaturationShadowActivityAuthorityByGeometry {
-  if (!rawPayloadJson || typeof rawPayloadJson !== 'object' || Array.isArray(rawPayloadJson)) {
-    return {};
+export function findAuthoritativePhysicalEndMatch(
+  canonicalWindowTo: Date,
+  experiments: Array<{ metadataJson: Prisma.JsonValue }>,
+): {
+  authoritativeWindowMatch: boolean;
+  physicalEndAt: string | null;
+  physicalEndSource: string | null;
+} {
+  const targetMs = canonicalWindowTo.getTime();
+  for (const experiment of experiments) {
+    const authority = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
+    if (!authority || !isAuthoritativePhysicalDriveInterval(authority)) {
+      continue;
+    }
+    const physicalEndMs = Date.parse(authority.physicalEndAt);
+    if (Number.isFinite(physicalEndMs) && physicalEndMs === targetMs) {
+      return {
+        authoritativeWindowMatch: true,
+        physicalEndAt: authority.physicalEndAt,
+        physicalEndSource: authority.source,
+      };
+    }
   }
-  const payload = rawPayloadJson as Record<string, unknown>;
-  const signalsLatest = (payload.signalsLatest ?? payload) as Record<
-    string,
-    { timestamp?: string; value?: unknown }
-  >;
-  const speedSample = parseSpeedSampleFromSignalsLatest(
-    signalsLatest,
-    nowMs,
-    EXP021_DEFAULT_TELEMETRY_FRESHNESS,
-  );
-  const authority = {
-    speedKmh: speedSample.speedKmh,
-    speedSignalFresh: speedSample.speedSignalFresh,
-    vehicleTelemetryFresh: speedSample.vehicleTelemetryFresh,
-  };
   return {
-    60_000: authority,
-    90_000: authority,
+    authoritativeWindowMatch: false,
+    physicalEndAt: null,
+    physicalEndSource: null,
   };
+}
+
+export function resolveActivityAuthorityForCanonicalWindow(
+  speedObservations: Exp021CanarySpeedObservation[],
+  canonicalWindowTo: Date,
+): Exp021MaturationShadowActivityAuthorityByGeometry {
+  return resolveGeometryActivityAuthorityByWindow(speedObservations, canonicalWindowTo);
 }
 
 export function buildCanaryDryRunPlan(input: {
@@ -174,6 +199,9 @@ export function buildCanaryDryRunPlan(input: {
   enrollmentEventId?: string;
   now?: Date;
   windowCloseAuthority?: string;
+  authoritativeWindowMatch?: boolean;
+  windowFreshnessDiagnostic?: Exp021CanaryWindowFreshnessDiagnostic;
+  staleWindowsSkipped?: number;
 }): Exp021CanaryDryRunPlan {
   const hfPolicyBase = input.config.getHfRecoveryPolicyConfig();
   const policyDelayProbeMs = resolvePolicyDelayProbeMs(hfPolicyBase, input.tokenId);
@@ -208,6 +236,7 @@ export function buildCanaryDryRunPlan(input: {
     tokenId: input.tokenId,
     canonicalWindowTo: input.canonicalWindowTo,
     windowCloseAuthority: input.windowCloseAuthority ?? 'OPERATOR_SUPPLIED.canonicalWindowTo',
+    authoritativeWindowMatch: input.authoritativeWindowMatch ?? false,
     windowAgeAtEnrollmentMs: freshness.windowAgeAtEnrollmentMs,
     staleWindow: freshness.stale,
     policyDelayProbeMs,
@@ -219,6 +248,8 @@ export function buildCanaryDryRunPlan(input: {
     expectedStratumCount,
     expectedSlotCount,
     expectedEnqueuedJobCount: expectedSlotCount,
+    windowFreshnessDiagnostic: input.windowFreshnessDiagnostic,
+    staleWindowsSkipped: input.staleWindowsSkipped,
   };
 }
 
@@ -258,10 +289,7 @@ export async function assertCanaryHardGuards(input: {
       'Settlement lane disabled (EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED=false)',
     );
   }
-  if (
-    allowlistTokenIds.length !== 1 ||
-    allowlistTokenIds[0] !== canary.tokenId
-  ) {
+  if (allowlistTokenIds.length !== 1 || allowlistTokenIds[0] !== canary.tokenId) {
     throw new Exp021MaturationShadowFamilyIdentityError(
       `Allowlist must contain exactly token ${canary.tokenId}, got [${allowlistTokenIds.join(', ')}]`,
     );
@@ -277,6 +305,12 @@ export async function assertCanaryHardGuards(input: {
     canary.vehicleId,
     canary.tokenId,
   );
+
+  if (authoritativeTokenId == null || authoritativeTokenId !== canary.tokenId) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      `Authoritative token binding mismatch: expected ${canary.tokenId}, resolved ${String(authoritativeTokenId)}`,
+    );
+  }
 
   const activeUnfinishedFamilies = await input.repository.countUnfinishedFamilies();
   if (activeUnfinishedFamilies >= 1) {
@@ -302,60 +336,154 @@ export async function assertCanaryHardGuards(input: {
   };
 }
 
-export async function resolveAuthoritativeCanonicalWindowToFromExperiment(
-  metadataJson: unknown,
-): Promise<Date | null> {
-  const authority = readPhysicalDriveIntervalAuthority(metadataJson);
-  if (!authority || !isAuthoritativePhysicalDriveInterval(authority)) {
-    return null;
-  }
-  const parsed = new Date(authority.physicalEndAt);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 export type Exp021CanaryWindowPollDeps = {
   listSettlementShadowExperiments: () => Promise<
     Array<{ id: string; metadataJson: Prisma.JsonValue; updatedAt: Date }>
   >;
   sleep: (ms: number) => Promise<void>;
   now: () => Date;
+  config: ReferenceCaptureConfig;
+  tokenId: number;
 };
 
-export async function waitForNextAuthoritativeWindowClose(
+export type Exp021CanaryWaitWindowResult = {
+  canonicalWindowTo: Date;
+  experimentId: string;
+  physicalEndSource: string;
+  physicalEndAt: string;
+  detectedAt: Date;
+  windowDetectionLagMs: number;
+  freshnessGuardMs: number;
+  remainingEnrollmentBudgetMs: number;
+  staleWindowsSkipped: number;
+};
+
+export async function waitForNextFreshAuthoritativeWindowClose(
   deps: Exp021CanaryWindowPollDeps,
   options: {
     afterPhysicalEndMs: number;
     timeoutMs?: number;
     pollMs?: number;
   },
-): Promise<{ canonicalWindowTo: Date; experimentId: string; physicalEndSource: string }> {
+): Promise<Exp021CanaryWaitWindowResult> {
   const timeoutMs = options.timeoutMs ?? EXP021_CANARY_WAIT_NEXT_WINDOW_TIMEOUT_MS;
   const pollMs = options.pollMs ?? EXP021_CANARY_WAIT_NEXT_WINDOW_POLL_MS;
   const startedMs = deps.now().getTime();
+  const rejectedPhysicalEndMs = new Set<number>();
+  let staleWindowsSkipped = 0;
+
+  const hfPolicyBase = deps.config.getHfRecoveryPolicyConfig();
+  const policyDelayProbeMs = resolvePolicyDelayProbeMs(hfPolicyBase, deps.tokenId);
+  const schedule = buildFrozenFamilySchedule(policyDelayProbeMs);
 
   while (deps.now().getTime() - startedMs < timeoutMs) {
     const experiments = await deps.listSettlementShadowExperiments();
+    const candidates: Array<{
+      experimentId: string;
+      physicalEndMs: number;
+      physicalEndAt: string;
+      physicalEndSource: string;
+    }> = [];
+
     for (const experiment of experiments) {
       const authority = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
       if (!authority || !isAuthoritativePhysicalDriveInterval(authority)) {
         continue;
       }
       const physicalEndMs = Date.parse(authority.physicalEndAt);
-      if (!Number.isFinite(physicalEndMs) || physicalEndMs <= options.afterPhysicalEndMs) {
+      if (
+        !Number.isFinite(physicalEndMs) ||
+        physicalEndMs <= options.afterPhysicalEndMs ||
+        rejectedPhysicalEndMs.has(physicalEndMs)
+      ) {
         continue;
       }
-      return {
-        canonicalWindowTo: new Date(physicalEndMs),
+      candidates.push({
         experimentId: experiment.id,
+        physicalEndMs,
+        physicalEndAt: authority.physicalEndAt,
         physicalEndSource: authority.source,
+      });
+    }
+
+    candidates.sort((a, b) => a.physicalEndMs - b.physicalEndMs);
+
+    for (const candidate of candidates) {
+      const detectedAt = deps.now();
+      const windowDetectionLagMs = Math.max(0, detectedAt.getTime() - candidate.physicalEndMs);
+      const freshness = evaluateWindowFreshness(
+        new Date(candidate.physicalEndMs),
+        schedule.plannedAgesMsExact,
+        detectedAt,
+      );
+
+      if (freshness.stale) {
+        staleWindowsSkipped += 1;
+        rejectedPhysicalEndMs.add(candidate.physicalEndMs);
+        continue;
+      }
+
+      return {
+        canonicalWindowTo: new Date(candidate.physicalEndMs),
+        experimentId: candidate.experimentId,
+        physicalEndSource: candidate.physicalEndSource,
+        physicalEndAt: candidate.physicalEndAt,
+        detectedAt,
+        windowDetectionLagMs,
+        freshnessGuardMs: freshness.freshnessGuardMs,
+        remainingEnrollmentBudgetMs: freshness.remainingEnrollmentBudgetMs,
+        staleWindowsSkipped,
       };
     }
+
     await deps.sleep(pollMs);
   }
 
   throw new Exp021MaturationShadowFamilyIdentityError(
-    'Timed out waiting for next authoritative KS MX 2024 physical drive window close',
+    `Timed out waiting for next fresh authoritative KS MX 2024 physical drive window close (staleWindowsSkipped=${staleWindowsSkipped})`,
   );
+}
+
+/** @deprecated Use waitForNextFreshAuthoritativeWindowClose */
+export async function waitForNextAuthoritativeWindowClose(
+  deps: Omit<Exp021CanaryWindowPollDeps, 'config' | 'tokenId'> & {
+    config?: ReferenceCaptureConfig;
+    tokenId?: number;
+  },
+  options: {
+    afterPhysicalEndMs: number;
+    timeoutMs?: number;
+    pollMs?: number;
+  },
+): Promise<{ canonicalWindowTo: Date; experimentId: string; physicalEndSource: string }> {
+  const result = await waitForNextFreshAuthoritativeWindowClose(
+    {
+      ...deps,
+      config:
+        deps.config ??
+        ({
+          getHfRecoveryPolicyConfig: () => ({
+            mode: 'V2' as const,
+            settlementDelayMs: 8_000,
+            recoveryOverlapMs: 6_000,
+            hfHistoricalPollIntervalMs: 30_000,
+            recoverySweepEnabled: false,
+            recoverySweepIntervalMs: 60_000,
+            recoverySweepLookbackMs: 300_000,
+            canaryOnly: false,
+            canaryTokenIds: [],
+            availabilityCalibrationEnabled: false,
+          }),
+        } as unknown as ReferenceCaptureConfig),
+      tokenId: deps.tokenId ?? EXP021_KS_MX_2024_CANARY.tokenId,
+    },
+    options,
+  );
+  return {
+    canonicalWindowTo: result.canonicalWindowTo,
+    experimentId: result.experimentId,
+    physicalEndSource: result.physicalEndSource,
+  };
 }
 
 export async function executeCanaryEnrollment(input: {
@@ -366,8 +494,11 @@ export async function executeCanaryEnrollment(input: {
   activityAuthorityByGeometry?: Exp021MaturationShadowActivityAuthorityByGeometry;
   canonicalWindowTo?: Date;
   windowCloseAuthority?: string;
-  providerCallsDuringEnrollment?: number;
+  authoritativeWindowMatch?: boolean;
   now?: Date;
+  windowFreshnessDiagnostic?: Exp021CanaryWindowFreshnessDiagnostic;
+  staleWindowsSkipped?: number;
+  settlementShadowExperiments?: Array<{ metadataJson: Prisma.JsonValue }>;
 }): Promise<Exp021CanaryDryRunPlan | Exp021CanaryEnrollSuccess> {
   const guards = await assertCanaryHardGuards({
     tokenId: input.args.tokenId,
@@ -375,12 +506,30 @@ export async function executeCanaryEnrollment(input: {
     repository: input.repository,
   });
 
-  let canonicalWindowTo = input.canonicalWindowTo;
-  let windowCloseAuthority = input.windowCloseAuthority ?? 'OPERATOR_SUPPLIED.canonicalWindowTo';
+  const canonicalWindowTo = input.canonicalWindowTo;
+  const windowCloseAuthority = input.windowCloseAuthority ?? 'OPERATOR_SUPPLIED.canonicalWindowTo';
 
   if (!canonicalWindowTo) {
     throw new Exp021MaturationShadowFamilyIdentityError(
       'canonicalWindowTo is required (use --canonical-window-to or --wait-next-window)',
+    );
+  }
+
+  let authoritativeWindowMatch = input.authoritativeWindowMatch ?? false;
+  if (input.settlementShadowExperiments) {
+    const match = findAuthoritativePhysicalEndMatch(
+      canonicalWindowTo,
+      input.settlementShadowExperiments,
+    );
+    authoritativeWindowMatch = match.authoritativeWindowMatch;
+    if (match.authoritativeWindowMatch && match.physicalEndSource) {
+      authoritativeWindowMatch = true;
+    }
+  }
+
+  if (input.args.execute && !input.args.waitNextWindow && !authoritativeWindowMatch) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      'Execute requires authoritative persisted physicalEndAt match for --canonical-window-to',
     );
   }
 
@@ -393,6 +542,9 @@ export async function executeCanaryEnrollment(input: {
     activityAuthorityByGeometry: input.activityAuthorityByGeometry,
     now: input.now,
     windowCloseAuthority,
+    authoritativeWindowMatch,
+    windowFreshnessDiagnostic: input.windowFreshnessDiagnostic,
+    staleWindowsSkipped: input.staleWindowsSkipped,
   });
 
   if (plan.staleWindow) {
@@ -427,7 +579,6 @@ export async function executeCanaryEnrollment(input: {
     stratumCount: result.stratumCount,
     slotCount: result.slotCount,
     enqueuedJobCount: result.enqueuedJobCount,
-    providerCallsDuringEnrollment: input.providerCallsDuringEnrollment ?? 0,
   };
 }
 
@@ -435,7 +586,7 @@ export function formatCanaryCliOutput(
   result: Exp021CanaryDryRunPlan | Exp021CanaryEnrollSuccess,
   mode: 'DRY_RUN' | 'EXECUTE',
 ): Record<string, unknown> {
-  const base = {
+  const base: Record<string, unknown> = {
     MODE: mode,
     organizationId: result.organizationId,
     vehicleId: result.vehicleId,
@@ -443,6 +594,7 @@ export function formatCanaryCliOutput(
     enrollmentEventId: result.enrollmentEventId,
     canonicalWindowTo: result.canonicalWindowTo.toISOString(),
     WINDOW_CLOSE_AUTHORITY: result.windowCloseAuthority,
+    AUTHORITATIVE_WINDOW_MATCH: result.authoritativeWindowMatch ? 'YES' : 'NO',
     WINDOW_AGE_AT_ENROLLMENT_MS: result.windowAgeAtEnrollmentMs,
     ENROLLMENT_REJECTED_STALE_WINDOW: result.staleWindow ? 'YES' : 'NO',
     scheduleVersion: result.scheduleVersion,
@@ -456,9 +608,22 @@ export function formatCanaryCliOutput(
     expectedStratumCount: result.expectedStratumCount,
     expectedSlotCount: result.expectedSlotCount,
     expectedEnqueuedJobCount: result.expectedEnqueuedJobCount,
+    EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT: 0,
     KILL_SWITCH_GUIDANCE:
       'Set EXP021_MATURATION_SHADOW_ENABLED=false and perform a rolling PM2 restart to halt shadow execution.',
   };
+
+  if (result.windowFreshnessDiagnostic) {
+    base.physicalEndAt = result.windowFreshnessDiagnostic.physicalEndAt;
+    base.detectedAt = result.windowFreshnessDiagnostic.detectedAt;
+    base.WINDOW_DETECTION_LAG_MS = result.windowFreshnessDiagnostic.windowDetectionLagMs;
+    base.freshnessGuardMs = result.windowFreshnessDiagnostic.freshnessGuardMs;
+    base.remainingEnrollmentBudgetMs = result.windowFreshnessDiagnostic.remainingEnrollmentBudgetMs;
+  }
+
+  if (result.staleWindowsSkipped != null) {
+    base.STALE_WINDOWS_SKIPPED = result.staleWindowsSkipped;
+  }
 
   if ('familyId' in result) {
     return {
@@ -467,12 +632,10 @@ export function formatCanaryCliOutput(
       stratumCount: result.stratumCount,
       slotCount: result.slotCount,
       enqueuedJobCount: result.enqueuedJobCount,
-      PROVIDER_CALLS_DURING_ENROLLMENT: result.providerCallsDuringEnrollment,
     };
   }
 
-  return {
-    ...base,
-    PROVIDER_CALLS_DURING_ENROLLMENT: 0,
-  };
+  return base;
 }
+
+export { EXP021_CANARY_SPEED_PROVIDER_FIELDS } from './reference-capture-exp021-maturation-shadow-canary-activity.lib';

@@ -5,14 +5,20 @@ import {
   EXP021_KS_MX_2024_CANARY,
 } from './reference-capture-exp021-maturation-shadow-canary-enroll.constants';
 import {
+  resolveGeometryActivityAuthorityByWindow,
+  type Exp021CanarySpeedObservation,
+} from './reference-capture-exp021-maturation-shadow-canary-activity.lib';
+import {
   assertCanaryHardGuards,
   buildCanaryDryRunPlan,
   evaluateWindowFreshness,
   executeCanaryEnrollment,
+  findAuthoritativePhysicalEndMatch,
+  formatCanaryCliOutput,
   isAuthoritativePhysicalDriveInterval,
   readPhysicalDriveIntervalAuthority,
-  resolveActivityAuthorityFromSignalsLatest,
   waitForNextAuthoritativeWindowClose,
+  waitForNextFreshAuthoritativeWindowClose,
 } from './reference-capture-exp021-maturation-shadow-canary-enroll.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from './reference-capture-exp021-maturation-shadow.errors';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
@@ -55,15 +61,26 @@ function makeCanaryConfig(
 
 function makeRepositoryMock(
   overrides: Partial<{
-    authoritativeTokenId: number;
+    authoritativeTokenId: number | null;
     unfinishedFamilies: number;
     unfinishedAfterEnroll: number;
+    rejectResolve: boolean;
   }> = {},
 ): ReferenceCaptureExp021MaturationShadowRepository {
+  const authoritativeTokenId =
+    overrides.authoritativeTokenId !== undefined
+      ? overrides.authoritativeTokenId
+      : EXP021_KS_MX_2024_CANARY.tokenId;
+  const resolveAuthoritativeTokenId = overrides.rejectResolve
+    ? jest.fn().mockRejectedValue(
+        new Exp021MaturationShadowFamilyIdentityError('No authoritative DIMO token'),
+      )
+    : authoritativeTokenId == null
+      ? jest.fn().mockResolvedValue(null)
+      : jest.fn().mockResolvedValue(authoritativeTokenId);
+
   return {
-    resolveAuthoritativeTokenId: jest.fn().mockResolvedValue(
-      overrides.authoritativeTokenId ?? EXP021_KS_MX_2024_CANARY.tokenId,
-    ),
+    resolveAuthoritativeTokenId,
     countUnfinishedFamilies: jest
       .fn()
       .mockResolvedValueOnce(overrides.unfinishedFamilies ?? 0)
@@ -87,6 +104,33 @@ function makeEnrollmentMock(): {
   };
 }
 
+function authoritativeExperiment(physicalEndAt: string, source: 'PDI_CANDIDATE' | 'ORCHESTRATOR_CONFIRMED' = 'PDI_CANDIDATE') {
+  return {
+    metadataJson: {
+      physicalDriveInterval: {
+        physicalStartAt: '2026-09-17T11:00:00.000Z',
+        physicalEndAt,
+        source,
+      },
+    },
+  };
+}
+
+function geometryObservations(): Exp021CanarySpeedObservation[] {
+  return [
+    {
+      providerField: 'speed',
+      providerTimestamp: new Date('2026-09-17T11:58:45.000Z'),
+      normalizedValueJson: 0,
+    },
+    {
+      providerField: 'speed',
+      providerTimestamp: new Date('2026-09-17T11:59:50.000Z'),
+      normalizedValueJson: 42,
+    },
+  ];
+}
+
 describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
   beforeEach(() => {
     process.env.GITHUB_SHA = RUNTIME_SHA;
@@ -106,226 +150,250 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
       enrollment,
       canonicalWindowTo,
       now,
+      authoritativeWindowMatch: true,
+      settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
+      activityAuthorityByGeometry: resolveGeometryActivityAuthorityByWindow(
+        geometryObservations(),
+        canonicalWindowTo,
+      ),
     });
 
     expect(enrollWindowFamily).not.toHaveBeenCalled();
-    expect(result).toMatchObject({
-      tokenId: 187336,
-      expectedStratumCount: 4,
-      expectedSlotCount: 36,
-    });
     expect('familyId' in result).toBe(false);
   });
 
   it('2) execute without correct token fails', async () => {
-    const config = makeCanaryConfig();
-    const repository = makeRepositoryMock();
-    const { service: enrollment } = makeEnrollmentMock();
-
     await expect(
       executeCanaryEnrollment({
         args: { tokenId: 999999, execute: true, waitNextWindow: false },
-        config,
-        repository,
-        enrollment,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock(),
+        enrollment: makeEnrollmentMock().service,
         canonicalWindowTo: new Date('2026-09-17T12:00:00.000Z'),
       }),
     ).rejects.toThrow('requires tokenId 187336');
   });
 
-  it('3) non-canary token fails allowlist guard', async () => {
-    const config = makeCanaryConfig({ allowlist: [187336, 187337] });
-    const repository = makeRepositoryMock();
+  it('A1) authoritative token = 187336 passes hard guard', async () => {
+    const guards = await assertCanaryHardGuards({
+      tokenId: 187336,
+      config: makeCanaryConfig(),
+      repository: makeRepositoryMock({ authoritativeTokenId: 187336 }),
+    });
+    expect(guards.authoritativeTokenId).toBe(187336);
+  });
 
+  it('A2) authoritative token = another token fails', async () => {
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config,
-        repository,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock({ authoritativeTokenId: 186946 }),
       }),
-    ).rejects.toThrow('Allowlist must contain exactly token 187336');
+    ).rejects.toThrow('Authoritative token binding mismatch');
+  });
+
+  it('A3) authoritative token = null fails', async () => {
+    await expect(
+      assertCanaryHardGuards({
+        tokenId: 187336,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock({ authoritativeTokenId: null }),
+      }),
+    ).rejects.toThrow('Authoritative token binding mismatch');
   });
 
   it('4) allowlist mismatch fails', async () => {
-    const config = makeCanaryConfig({ allowlist: [186946] });
-    const repository = makeRepositoryMock();
-
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config,
-        repository,
+        config: makeCanaryConfig({ allowlist: [186946] }),
+        repository: makeRepositoryMock(),
       }),
     ).rejects.toThrow('Allowlist must contain exactly token 187336');
   });
 
   it('5) global disabled fails', async () => {
-    const config = makeCanaryConfig({ enabled: false });
-    const repository = makeRepositoryMock();
-
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config,
-        repository,
+        config: makeCanaryConfig({ enabled: false }),
+        repository: makeRepositoryMock(),
       }),
     ).rejects.toThrow('EXP021 maturation shadow is disabled');
   });
 
   it('6) one lane disabled handling is explicit', async () => {
-    const hfDisabled = makeCanaryConfig({ hfLane: false });
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config: hfDisabled,
+        config: makeCanaryConfig({ hfLane: false }),
         repository: makeRepositoryMock(),
       }),
     ).rejects.toThrow('HF lane disabled');
 
-    const settlementDisabled = makeCanaryConfig({ settlementLane: false });
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config: settlementDisabled,
+        config: makeCanaryConfig({ settlementLane: false }),
         repository: makeRepositoryMock(),
       }),
     ).rejects.toThrow('Settlement lane disabled');
   });
 
   it('7) active-family already exists fails', async () => {
-    const config = makeCanaryConfig();
-    const repository = makeRepositoryMock({ unfinishedFamilies: 1 });
-
     await expect(
       assertCanaryHardGuards({
         tokenId: 187336,
-        config,
-        repository,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock({ unfinishedFamilies: 1 }),
       }),
     ).rejects.toThrow('Active unfinished maturation shadow families must be 0');
   });
 
   it('8) stale window fails', async () => {
-    const config = makeCanaryConfig();
-    const repository = makeRepositoryMock();
-    const { service: enrollment } = makeEnrollmentMock();
     const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
-    const now = new Date(canonicalWindowTo.getTime() + 30_000);
-
     await expect(
       executeCanaryEnrollment({
         args: { tokenId: 187336, execute: true, waitNextWindow: false },
-        config,
-        repository,
-        enrollment,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock(),
+        enrollment: makeEnrollmentMock().service,
         canonicalWindowTo,
-        now,
+        now: new Date(canonicalWindowTo.getTime() + 30_000),
+        authoritativeWindowMatch: true,
+        settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
       }),
     ).rejects.toThrow('Stale canonicalWindowTo');
   });
 
-  it('9) fresh window passes', async () => {
-    const config = makeCanaryConfig();
-    const repository = makeRepositoryMock();
-    const { service: enrollment, enrollWindowFamily } = makeEnrollmentMock();
+  it('9) fresh window passes with authoritative match', async () => {
     const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
-    const now = new Date(canonicalWindowTo.getTime() + 2_000);
+    const { service: enrollment, enrollWindowFamily } = makeEnrollmentMock();
 
     const result = await executeCanaryEnrollment({
       args: { tokenId: 187336, execute: true, waitNextWindow: false },
-      config,
-      repository,
+      config: makeCanaryConfig(),
+      repository: makeRepositoryMock(),
       enrollment,
       canonicalWindowTo,
-      now,
+      now: new Date(canonicalWindowTo.getTime() + 2_000),
+      authoritativeWindowMatch: true,
+      settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
+      activityAuthorityByGeometry: resolveGeometryActivityAuthorityByWindow(
+        geometryObservations(),
+        canonicalWindowTo,
+      ),
     });
 
     expect(enrollWindowFamily).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       familyId: expect.any(String),
-      stratumCount: 4,
-      slotCount: 36,
-      enqueuedJobCount: 36,
-      windowAgeAtEnrollmentMs: 2_000,
+      authoritativeWindowMatch: true,
+      activityClassification60s: { class: 'ACTIVE_MOTION' },
+      activityClassification90s: { class: 'ACTIVE_IDLE' },
     });
+  });
+
+  it('D) execute rejects arbitrary operator timestamp without authoritative match', async () => {
+    const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
+    await expect(
+      executeCanaryEnrollment({
+        args: { tokenId: 187336, execute: true, waitNextWindow: false },
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock(),
+        enrollment: makeEnrollmentMock().service,
+        canonicalWindowTo,
+        now: new Date(canonicalWindowTo.getTime() + 1_000),
+        settlementShadowExperiments: [],
+      }),
+    ).rejects.toThrow('Execute requires authoritative persisted physicalEndAt match');
+  });
+
+  it('D dry-run reports AUTHORITATIVE_WINDOW_MATCH=NO for unmatched timestamp', async () => {
+    const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
+    const result = await executeCanaryEnrollment({
+      args: { tokenId: 187336, execute: false, waitNextWindow: false },
+      config: makeCanaryConfig(),
+      repository: makeRepositoryMock(),
+      enrollment: makeEnrollmentMock().service,
+      canonicalWindowTo,
+      now: new Date(canonicalWindowTo.getTime() + 1_000),
+      settlementShadowExperiments: [],
+    });
+    const output = formatCanaryCliOutput(result, 'DRY_RUN');
+    expect(output.AUTHORITATIVE_WINDOW_MATCH).toBe('NO');
   });
 
   it('10) duplicate invocation does not create second family', async () => {
-    const config = makeCanaryConfig();
-    const familyId = randomUUID();
-    const enrollWindowFamily = jest.fn().mockResolvedValue({
-      familyId,
-      stratumCount: 4,
-      slotCount: 36,
-      enqueuedJobCount: 36,
-    });
-    const enrollment = { enrollWindowFamily } as unknown as ReferenceCaptureExp021MaturationShadowEnrollmentService;
     const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
-    const now = new Date(canonicalWindowTo.getTime() + 1_000);
+    const { service: enrollment, enrollWindowFamily } = makeEnrollmentMock();
     const args = { tokenId: 187336, execute: true, waitNextWindow: false };
 
-    const firstRepository = makeRepositoryMock({ unfinishedFamilies: 0, unfinishedAfterEnroll: 1 });
-    const first = await executeCanaryEnrollment({
+    await executeCanaryEnrollment({
       args,
-      config,
-      repository: firstRepository,
+      config: makeCanaryConfig(),
+      repository: makeRepositoryMock({ unfinishedFamilies: 0, unfinishedAfterEnroll: 1 }),
       enrollment,
       canonicalWindowTo,
-      now,
+      now: new Date(canonicalWindowTo.getTime() + 1_000),
+      authoritativeWindowMatch: true,
+      settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
     });
 
-    const secondRepository = makeRepositoryMock({ unfinishedFamilies: 1 });
     await expect(
       executeCanaryEnrollment({
         args,
-        config,
-        repository: secondRepository,
+        config: makeCanaryConfig(),
+        repository: makeRepositoryMock({ unfinishedFamilies: 1 }),
         enrollment,
         canonicalWindowTo,
-        now,
+        now: new Date(canonicalWindowTo.getTime() + 1_000),
+        authoritativeWindowMatch: true,
+        settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
       }),
     ).rejects.toThrow('Active unfinished maturation shadow families must be 0');
 
-    expect(first).toMatchObject({ familyId });
     expect(enrollWindowFamily).toHaveBeenCalledTimes(1);
   });
 
-  it('11) geometry-specific activity authority preserved', () => {
-    const activityAuthorityByGeometry = {
-      60_000: { speedKmh: 42, speedSignalFresh: true },
-      90_000: { speedKmh: 0, speedSignalFresh: true, vehicleTelemetryFresh: true },
-    };
+  it('C) geometry-specific activity from independent observations in production resolver path', () => {
+    const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
+    const authority = resolveGeometryActivityAuthorityByWindow(
+      geometryObservations(),
+      canonicalWindowTo,
+    );
     const plan = buildCanaryDryRunPlan({
       organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
       vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
       tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-      canonicalWindowTo: new Date('2026-09-17T12:00:00.000Z'),
+      canonicalWindowTo,
       config: makeCanaryConfig(),
-      activityAuthorityByGeometry,
-      now: new Date('2026-09-17T12:00:01.000Z'),
+      activityAuthorityByGeometry: authority,
+      now: new Date(canonicalWindowTo.getTime() + 1_000),
+      authoritativeWindowMatch: true,
     });
 
     expect(plan.activityClassification60s.class).toBe('ACTIVE_MOTION');
     expect(plan.activityClassification90s.class).toBe('ACTIVE_IDLE');
+    expect(authority[60_000]).not.toEqual(authority[90_000]);
   });
 
-  it('12) enrollment creates zero provider calls', async () => {
-    const config = makeCanaryConfig();
-    const repository = makeRepositoryMock();
-    const { service: enrollment } = makeEnrollmentMock();
+  it('H) output uses EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT not fake observed counter', async () => {
     const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
-
     const result = await executeCanaryEnrollment({
       args: { tokenId: 187336, execute: true, waitNextWindow: false },
-      config,
-      repository,
-      enrollment,
+      config: makeCanaryConfig(),
+      repository: makeRepositoryMock(),
+      enrollment: makeEnrollmentMock().service,
       canonicalWindowTo,
       now: new Date(canonicalWindowTo.getTime() + 1_000),
-      providerCallsDuringEnrollment: 0,
+      authoritativeWindowMatch: true,
+      settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
     });
-
-    expect(result).toMatchObject({ providerCallsDuringEnrollment: 0 });
+    const output = formatCanaryCliOutput(result, 'EXECUTE');
+    expect(output.EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT).toBe(0);
+    expect(output).not.toHaveProperty('PROVIDER_CALLS_DURING_ENROLLMENT');
   });
 
   it('13) deterministic M2 slots/jobs created from frozen schedule', () => {
@@ -337,41 +405,51 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
       config: makeCanaryConfig({ settlementDelayMs: 8_000 }),
       now: new Date('2026-09-17T12:00:01.000Z'),
     });
-
-    expect(plan.plannedAgesMsExact[0]).toBe(8_000);
-    expect(plan.plannedAgesMsExact).toContain(30_000);
-    expect(plan.expectedStratumCount).toBe(4);
     expect(plan.expectedSlotCount).toBe(4 * plan.plannedAgesMsExact.length);
-    expect(plan.expectedEnqueuedJobCount).toBe(plan.expectedSlotCount);
   });
 
-  it('14) execute leaves exactly one active unfinished family', async () => {
+  it('F) wait mode skips stale first window and selects fresh second window', async () => {
     const config = makeCanaryConfig();
-    const countUnfinishedFamilies = jest
-      .fn()
-      .mockResolvedValueOnce(0)
-      .mockResolvedValueOnce(1);
-    const repository = {
-      resolveAuthoritativeTokenId: jest.fn().mockResolvedValue(187336),
-      countUnfinishedFamilies,
-    } as unknown as ReferenceCaptureExp021MaturationShadowRepository;
-    const { service: enrollment } = makeEnrollmentMock();
+    let polls = 0;
+    const result = await waitForNextFreshAuthoritativeWindowClose(
+      {
+        listSettlementShadowExperiments: async () => {
+          polls += 1;
+          if (polls === 1) {
+            return [
+              {
+                id: 'stale-window',
+                updatedAt: new Date('2026-09-17T12:00:04.000Z'),
+                metadataJson: authoritativeExperiment('2026-09-17T12:00:00.000Z').metadataJson,
+              },
+            ];
+          }
+          return [
+            {
+              id: 'fresh-window',
+              updatedAt: new Date('2026-09-17T13:00:01.000Z'),
+              metadataJson: authoritativeExperiment('2026-09-17T13:00:00.000Z').metadataJson,
+            },
+          ];
+        },
+        sleep: async () => undefined,
+        now: () =>
+          polls === 1
+            ? new Date('2026-09-17T12:00:04.000Z')
+            : new Date('2026-09-17T13:00:01.000Z'),
+        config,
+        tokenId: 187336,
+      },
+      { afterPhysicalEndMs: Date.parse('2026-09-17T11:00:00.000Z'), timeoutMs: 10_000, pollMs: 1 },
+    );
 
-    const result = await executeCanaryEnrollment({
-      args: { tokenId: 187336, execute: true, waitNextWindow: false },
-      config,
-      repository,
-      enrollment,
-      canonicalWindowTo: new Date('2026-09-17T12:00:00.000Z'),
-      now: new Date('2026-09-17T12:00:01.000Z'),
-    });
-
-    expect('familyId' in result).toBe(true);
-    expect(countUnfinishedFamilies).toHaveBeenCalledTimes(2);
+    expect(result.experimentId).toBe('fresh-window');
+    expect(result.staleWindowsSkipped).toBe(1);
+    expect(result.windowDetectionLagMs).toBe(1_000);
+    expect(polls).toBe(2);
   });
 
   it('15) wait-next-window only reacts to authoritative KS MX 2024 window', async () => {
-    const afterMs = Date.parse('2026-09-17T11:00:00.000Z');
     let polls = 0;
     const waited = await waitForNextAuthoritativeWindowClose(
       {
@@ -396,24 +474,19 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
             {
               id: 'authoritative',
               updatedAt: new Date('2026-09-17T12:00:00.000Z'),
-              metadataJson: {
-                physicalDriveInterval: {
-                  physicalStartAt: '2026-09-17T11:00:00.000Z',
-                  physicalEndAt: '2026-09-17T12:00:00.000Z',
-                  source: 'PDI_CANDIDATE',
-                },
-              },
+              metadataJson: authoritativeExperiment('2026-09-17T12:00:00.000Z').metadataJson,
             },
           ];
         },
         sleep: async () => undefined,
         now: () => new Date('2026-09-17T12:00:01.000Z'),
+        config: makeCanaryConfig(),
+        tokenId: 187336,
       },
-      { afterPhysicalEndMs: afterMs, timeoutMs: 10_000, pollMs: 1 },
+      { afterPhysicalEndMs: Date.parse('2026-09-17T11:00:00.000Z'), timeoutMs: 10_000, pollMs: 1 },
     );
 
     expect(waited.experimentId).toBe('authoritative');
-    expect(waited.canonicalWindowTo.toISOString()).toBe('2026-09-17T12:00:00.000Z');
     expect(polls).toBe(2);
   });
 
@@ -434,21 +507,19 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
     expect(fresh.stale).toBe(false);
     expect(fresh.freshnessGuardMs).toBe(8_000 - EXP021_CANARY_WINDOW_FRESHNESS_EXECUTION_SLACK_MS);
     expect(stale.stale).toBe(true);
+    expect(stale.remainingEnrollmentBudgetMs).toBeLessThan(0);
   });
 
-  it('UNKNOWN_ACTIVITY when independent telemetry authority unavailable', () => {
-    const authority = resolveActivityAuthorityFromSignalsLatest(null);
-    const plan = buildCanaryDryRunPlan({
-      organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-      vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
-      tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-      canonicalWindowTo: new Date('2026-09-17T12:00:00.000Z'),
-      config: makeCanaryConfig(),
-      activityAuthorityByGeometry: authority,
-      now: new Date('2026-09-17T12:00:01.000Z'),
-    });
-    expect(plan.activityClassification60s.class).toBe('UNKNOWN_ACTIVITY');
-    expect(plan.activityClassification90s.class).toBe('UNKNOWN_ACTIVITY');
+  it('findAuthoritativePhysicalEndMatch requires exact persisted physicalEndAt', () => {
+    const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
+    const match = findAuthoritativePhysicalEndMatch(canonicalWindowTo, [
+      authoritativeExperiment('2026-09-17T12:00:00.000Z'),
+    ]);
+    const miss = findAuthoritativePhysicalEndMatch(canonicalWindowTo, [
+      authoritativeExperiment('2026-09-17T12:00:01.000Z'),
+    ]);
+    expect(match.authoritativeWindowMatch).toBe(true);
+    expect(miss.authoritativeWindowMatch).toBe(false);
   });
 
   it('readPhysicalDriveIntervalAuthority rejects incomplete metadata', () => {

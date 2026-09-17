@@ -10,7 +10,7 @@
 |-----------|------------|
 | `WINDOW_CLOSE_AUTHORITY` | `REFERENCE_CAPTURE_PHYSICAL_DRIVE_INTERVAL.physicalEndAt` persisted in settlement-shadow experiment `metadataJson` under key `physicalDriveInterval` |
 | `CANONICAL_WINDOW_TO_AUTHORITY` | Same physical-end anchor — operator enrollment uses `canonicalWindowTo = physicalEndAt` (never derived from DIMO historical query under test) |
-| `ACTIVITY_AUTHORITY` | Independent movement telemetry: `parseSpeedSampleFromSignalsLatest` on vehicle `latestState.rawPayloadJson` → `classifyActivityForGeometry` per 60s/90s |
+| `ACTIVITY_AUTHORITY` | Independent reference-capture speed observations in each geometry window (`reference_capture_observations`, not maturation-shadow DIMO historical query) → `classifyActivityForGeometry` per 60s/90s |
 | `POLICY_DELAY_AUTHORITY` | `resolvePolicyDelayProbeMs` via `resolveHfRecoveryPolicyForToken` from HF recovery V2 config at enrollment time |
 
 HF calibration `phaseEndedAt` and settlement schedule phase boundaries are **supporting** reference-capture lifecycle signals; the safest shared end anchor for maturation shadow enrollment is the persisted physical drive interval end.

@@ -815,6 +815,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Provider calls | `PROVIDER_CALLS_DURING_ENROLLMENT=0` — enrollment creates family/strata/slots/delayed BullMQ jobs only |
 | Kill switch guidance | Printed: `EXP021_MATURATION_SHADOW_ENABLED=false` + rolling PM2 restart (not executed by CLI) |
 | Tests | 18-case `reference-capture-exp021-maturation-shadow-canary-enroll.spec.ts` |
+| Micro-closure (same PR) | Authoritative token equality enforced; activity resolved after `canonicalWindowTo`; geometry-specific RC observation windows; execute requires persisted physicalEndAt match; strict token parse; wait-mode skips stale windows; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` |
 | Runtime / prod | **NO CHANGES** — operator must invoke CLI manually after merge/deploy |
 
 ### EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export (2026-09-17)

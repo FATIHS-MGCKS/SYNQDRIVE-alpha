@@ -17,13 +17,16 @@ import {
   EXP021_CANARY_WINDOW_CLOSE_AUTHORITY,
   EXP021_KS_MX_2024_CANARY,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.constants';
+import { parseStrictCanaryTokenId } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-activity.lib';
 import {
   executeCanaryEnrollment,
+  findAuthoritativePhysicalEndMatch,
   formatCanaryCliOutput,
   parseCanonicalWindowToIso,
   readPhysicalDriveIntervalAuthority,
-  resolveActivityAuthorityFromSignalsLatest,
-  waitForNextAuthoritativeWindowClose,
+  resolveActivityAuthorityForCanonicalWindow,
+  waitForNextFreshAuthoritativeWindowClose,
+  EXP021_CANARY_SPEED_PROVIDER_FIELDS,
   type Exp021CanaryEnrollCliArgs,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.errors';
@@ -50,9 +53,14 @@ function parseCliArgs(): Exp021CanaryEnrollCliArgs {
   if (!tokenIdRaw) {
     throw new Exp021MaturationShadowFamilyIdentityError('--token-id is required');
   }
-  const tokenId = Number.parseInt(tokenIdRaw, 10);
-  if (!Number.isFinite(tokenId)) {
-    throw new Exp021MaturationShadowFamilyIdentityError(`Invalid --token-id: ${tokenIdRaw}`);
+
+  let tokenId: number;
+  try {
+    tokenId = parseStrictCanaryTokenId(tokenIdRaw);
+  } catch (error) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      error instanceof Error ? error.message : 'Invalid --token-id',
+    );
   }
 
   const canonicalWindowToRaw = parseArgValue('--canonical-window-to');
@@ -83,6 +91,44 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function loadCanarySettlementShadowExperiments(prisma: PrismaService) {
+  return prisma.referenceCaptureSettlementShadowExperiment.findMany({
+    where: {
+      organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
+      vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
+      tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 50,
+    select: { id: true, metadataJson: true, updatedAt: true },
+  });
+}
+
+async function loadSpeedObservationsForWindow(
+  prisma: PrismaService,
+  canonicalWindowTo: Date,
+) {
+  const windowFrom = new Date(canonicalWindowTo.getTime() - 90_000);
+  return prisma.referenceCaptureObservation.findMany({
+    where: {
+      organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
+      vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
+      providerField: { in: [...EXP021_CANARY_SPEED_PROVIDER_FIELDS] },
+      providerTimestamp: {
+        gte: windowFrom,
+        lte: canonicalWindowTo,
+      },
+    },
+    orderBy: { providerTimestamp: 'asc' },
+    select: {
+      providerField: true,
+      providerTimestamp: true,
+      normalizedValueJson: true,
+      rawValueJson: true,
+    },
+  });
+}
+
 async function main(): Promise<void> {
   const args = parseCliArgs();
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -95,34 +141,26 @@ async function main(): Promise<void> {
     const enrollment = app.get(ReferenceCaptureExp021MaturationShadowEnrollmentService);
     const prisma = app.get(PrismaService);
 
-    const vehicle = await prisma.vehicle.findFirst({
-      where: {
-        id: EXP021_KS_MX_2024_CANARY.vehicleId,
-        organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-      },
-      select: { latestState: { select: { rawPayloadJson: true } } },
-    });
-    const activityAuthorityByGeometry = resolveActivityAuthorityFromSignalsLatest(
-      vehicle?.latestState?.rawPayloadJson,
-    );
+    const settlementShadowExperiments = await loadCanarySettlementShadowExperiments(prisma);
 
     let canonicalWindowTo = args.canonicalWindowTo;
     let windowCloseAuthority = EXP021_CANARY_CANONICAL_WINDOW_TO_AUTHORITY;
+    let authoritativeWindowMatch = false;
+    let windowFreshnessDiagnostic:
+      | {
+          physicalEndAt: string;
+          detectedAt: string;
+          windowDetectionLagMs: number;
+          freshnessGuardMs: number;
+          remainingEnrollmentBudgetMs: number;
+          stale: boolean;
+        }
+      | undefined;
+    let staleWindowsSkipped: number | undefined;
 
     if (args.waitNextWindow) {
-      const recent = await prisma.referenceCaptureSettlementShadowExperiment.findMany({
-        where: {
-          organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-          vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
-          tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-        },
-        orderBy: { updatedAt: 'desc' },
-        take: 20,
-        select: { id: true, metadataJson: true, updatedAt: true },
-      });
-
       let afterPhysicalEndMs = 0;
-      for (const experiment of recent) {
+      for (const experiment of settlementShadowExperiments) {
         const physical = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
         const endMs = physical?.physicalEndAt ? Date.parse(physical.physicalEndAt) : NaN;
         if (Number.isFinite(endMs) && endMs > afterPhysicalEndMs) {
@@ -130,27 +168,44 @@ async function main(): Promise<void> {
         }
       }
 
-      const waited = await waitForNextAuthoritativeWindowClose(
+      const waited = await waitForNextFreshAuthoritativeWindowClose(
         {
-          listSettlementShadowExperiments: async () =>
-            prisma.referenceCaptureSettlementShadowExperiment.findMany({
-              where: {
-                organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-                vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
-                tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-              },
-              orderBy: { updatedAt: 'desc' },
-              take: 20,
-              select: { id: true, metadataJson: true, updatedAt: true },
-            }),
+          listSettlementShadowExperiments: async () => settlementShadowExperiments,
           sleep,
           now: () => new Date(),
+          config,
+          tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
         },
         { afterPhysicalEndMs },
       );
       canonicalWindowTo = waited.canonicalWindowTo;
       windowCloseAuthority = `${EXP021_CANARY_WINDOW_CLOSE_AUTHORITY}@${waited.physicalEndSource}`;
+      authoritativeWindowMatch = true;
+      staleWindowsSkipped = waited.staleWindowsSkipped;
+      windowFreshnessDiagnostic = {
+        physicalEndAt: waited.physicalEndAt,
+        detectedAt: waited.detectedAt.toISOString(),
+        windowDetectionLagMs: waited.windowDetectionLagMs,
+        freshnessGuardMs: waited.freshnessGuardMs,
+        remainingEnrollmentBudgetMs: waited.remainingEnrollmentBudgetMs,
+        stale: false,
+      };
+    } else if (canonicalWindowTo) {
+      const match = findAuthoritativePhysicalEndMatch(
+        canonicalWindowTo,
+        settlementShadowExperiments,
+      );
+      authoritativeWindowMatch = match.authoritativeWindowMatch;
+      if (match.authoritativeWindowMatch && match.physicalEndSource) {
+        windowCloseAuthority = `${EXP021_CANARY_WINDOW_CLOSE_AUTHORITY}@${match.physicalEndSource}`;
+      }
     }
+
+    const speedObservations = await loadSpeedObservationsForWindow(prisma, canonicalWindowTo!);
+    const activityAuthorityByGeometry = resolveActivityAuthorityForCanonicalWindow(
+      speedObservations,
+      canonicalWindowTo!,
+    );
 
     const result = await executeCanaryEnrollment({
       args,
@@ -160,7 +215,10 @@ async function main(): Promise<void> {
       activityAuthorityByGeometry,
       canonicalWindowTo,
       windowCloseAuthority,
-      providerCallsDuringEnrollment: 0,
+      authoritativeWindowMatch,
+      settlementShadowExperiments,
+      windowFreshnessDiagnostic,
+      staleWindowsSkipped,
     });
 
     const output = {
