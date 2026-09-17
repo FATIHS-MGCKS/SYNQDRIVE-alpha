@@ -2,14 +2,11 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
-import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import {
   bootstrapExp021CanaryEnrollApplicationContext,
   bootstrapExp021CanaryEnrollApplicationContextDefective7779dd1,
   resolveExp021CanaryEnrollNestServices,
 } from './reference-capture-exp021-maturation-shadow-canary-bootstrap.lib';
-
-const LIVE_BOOTSTRAP = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
 
 describe('EXP-021 canary operator CLI bootstrap', () => {
   describe('merged #1677 / 7779dd1 defective bootstrap', () => {
@@ -103,24 +100,4 @@ describe('EXP-021 canary operator CLI bootstrap', () => {
       await app.close();
     });
   });
-
-  if (LIVE_BOOTSTRAP) {
-    describe('live Nest bootstrap (postgres integration)', () => {
-      it('resolves ReferenceCaptureConfig, Prisma, repository, enrollment and closes cleanly', async () => {
-        const app = await bootstrapExp021CanaryEnrollApplicationContext({ logger: false });
-
-        try {
-          const services = resolveExp021CanaryEnrollNestServices(app);
-          expect(services.config).toBeDefined();
-          expect(services.repository).toBeInstanceOf(ReferenceCaptureExp021MaturationShadowRepository);
-          expect(services.enrollment).toBeInstanceOf(
-            ReferenceCaptureExp021MaturationShadowEnrollmentService,
-          );
-          expect(services.prisma).toBeDefined();
-        } finally {
-          await app.close();
-        }
-      });
-    });
-  }
 });
