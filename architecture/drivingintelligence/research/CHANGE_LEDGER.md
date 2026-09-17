@@ -739,7 +739,48 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Ages | Dense pilot: 8s policy + 30/40/45/50/55/60/90/120s |
 | Geometry | 60s + 90s query ranges (not cadence authority) |
 | Production | **NO** — `FUTURE_SHADOW_DEFAULT_ENABLED=NO`, `PRODUCTION_RETRY_AGE_SELECTED=NO` |
-| Runtime / Prisma | **NO CHANGES** |
+| Runtime / Prisma | **NO CHANGES** (superseded for schema only by PR-M1 below) |
+
+### EXP-021 — Live Maturation Shadow PR-M1 persistence foundation (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Schema, domain types, and persistence repository only — **no runtime provider query**, **no scheduler**, **no recovery**, **no production activation**, **no cadence authority** |
+| Design authority | Merged #1670 `EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Models | `Exp021MaturationShadowWindowFamily` → `Exp021MaturationShadowWindow` → `Exp021MaturationShadowObservationSlot` → `Exp021MaturationShadowObservationAttempt` |
+| Family uniqueness | `(organizationId, vehicleId, tokenId, canonicalWindowTo, shadowScheduleVersion)` — `enrollmentEventId` provenance-only |
+| Stratum uniqueness | `(windowFamilyId, signalLane, queryGeometryMs)` — `signalSetHash` immutable attribute, not uniqueness component |
+| Slot uniqueness | `(windowStratumId, plannedAgeMs)` |
+| Attempt ledger | Immutable create-only rows; `UNIQUE(observationSlotId, attemptOrdinal)`; transport retry → new attempt, same slot |
+| Provider semantics | `PROVIDER_ERROR` distinct from `PROVIDER_SUCCESS_ZERO`; `PROVIDER_ERROR_COUNTS_AS_ZERO=NO` |
+| Stage-1A | **NO INTERFERENCE** — fleet coordinator / StudyRun paths do not write shadow tables |
+| Default | `EXP021_MATURATION_SHADOW_ENABLED=false` (type/config only; no execution wiring) |
+| Run 1 / cadence | **UNCHANGED** — 90s 7/7, 60s 9/10; `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+
+### EXP-021 — Live Maturation Shadow PR-M1 scientific integrity hardening (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Repository/persistence hardening only on draft PR #1672 — no runtime execution |
+| Family freeze | `plannedAgesMsExact` + `policyDelayProbeMs` fail closed on existing/raced family; `enrollmentEventId` remains provenance-only |
+| Stratum freeze | `activityClassificationJson` added to immutable semantic comparison (canonical JSON equality) |
+| Slot authority | `plannedAgeMs` must be in family `plannedAgesMsExact`; off-schedule slots rejected |
+| Attempt authority | Parent slot/stratum/family resolved; `actualAgeMs` + `schedulerDriftMs` derived from `requestStartedAt - windowTo`; hash fields must match stratum |
+| Provider outcomes | `PROVIDER_ERROR` / `PROVIDER_SUCCESS_ZERO` / `PROVIDER_SUCCESS_NONZERO` contradiction matrix enforced |
+| Post-hoc fields | Analytical derivatives removed from raw insert API; nullable columns remain null in PR-M1 |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — Live Maturation Shadow PR-M1 final scientific geometry + provider input closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Repository validation hardening only on draft PR #1672 — no runtime execution |
+| Provider input | `PROVIDER_ERROR` validates raw `uniqueBucketLocusCount` (null/undefined only); no pre-validation normalization |
+| Query geometry | `queryGeometryMs` typed and runtime-validated to `{60000,90000}` only |
+| Stratum windows | `windowTo` must equal family `canonicalWindowTo`; `windowFrom = windowTo - queryGeometryMs` (exact) |
+| Attempt age | `actualAgeMs < 0` rejected (`requestStartedAt` must not precede `windowTo`) |
+| Family schedule | Non-empty, positive integer ages; no duplicates; positive integer `policyDelayProbeMs` |
+| Runtime / prod | **NO CHANGES** |
 
 ### EXP-021 — TGR architecture audit evidence freeze (2026-09-16)
 
