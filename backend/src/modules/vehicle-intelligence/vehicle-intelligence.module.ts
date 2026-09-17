@@ -692,6 +692,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureRetentionService,
     ReferenceCaptureSettlementShadowService,
     ReferenceCaptureSettlementShadowRunnerService,
+    ReferenceCaptureExp021MaturationShadowWorkerService,
+    ReferenceCaptureExp021MaturationShadowRunnerService,
     ReferenceCaptureExp021FleetCoordinatorService,
     TripAssessabilityRepository,
     TripAssessabilityService,
