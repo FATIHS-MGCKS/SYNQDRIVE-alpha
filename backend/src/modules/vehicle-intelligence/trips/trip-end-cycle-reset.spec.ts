@@ -17,7 +17,12 @@ import {
   isEndCycleTokenStale,
   resolveEndCycleToken,
   evaluateEndCycleJobAdmission,
+  evaluateChSkipResumeRevalidationMaturity,
   resolveEndValidationAttemptsOnPossibleEndReentry,
+  resolveChSkipResumeRevalidationImmaturityBoundMs,
+  resolveChSkipResumeRevalidationMaxDeferCount,
+  readChSkipResumeRevalidationDeferCount,
+  buildChSkipResumeRevalidationDeferredEvidence,
 } from './trip-end-cycle-reset';
 
 const WORKER_NOW = new Date('2026-09-06T12:00:00.000Z');
@@ -502,5 +507,46 @@ describe('trip-end-cycle-reset (R5)', () => {
         },
       }),
     ).toBe(0);
+  });
+
+  it('evaluateChSkipResumeRevalidationMaturity defers within immaturity bound', () => {
+    const relatchMs = Date.parse('2026-09-16T20:50:54.000Z');
+    const immaturityBoundMs = resolveChSkipResumeRevalidationImmaturityBoundMs({
+      validationRetryMs: 60_000,
+      chAssistStabilityMs: 30_000,
+    });
+    expect(immaturityBoundMs).toBe(90_000);
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: Date.parse('2026-09-16T20:52:23.000Z'),
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs,
+        resumeObserved: false,
+        fetchUncertain: false,
+      }),
+    ).toBe('NO_RESUME_EVIDENCE_IMMATURE');
+    expect(
+      evaluateChSkipResumeRevalidationMaturity({
+        nowMs: Date.parse('2026-09-16T20:52:24.000Z'),
+        relatchEnteredAtMs: relatchMs,
+        immaturityBoundMs,
+        resumeObserved: false,
+        fetchUncertain: false,
+      }),
+    ).toBe('NO_RESUME_EVIDENCE_MATURE');
+  });
+
+  it('buildChSkipResumeRevalidationDeferredEvidence tracks defer count without touching attempt budget', () => {
+    const evidence = buildChSkipResumeRevalidationDeferredEvidence({
+      priorSummary: { endValidationAttempts: 0, completedEndValidationAttempt: 1 },
+      workerNow: new Date('2026-09-16T20:52:23.000Z'),
+      deferCount: 1,
+      relatchEnteredAt: new Date('2026-09-16T20:50:54.000Z'),
+      candidateEndAt: new Date('2026-09-16T20:48:03.000Z'),
+      immaturityBoundMs: 90_000,
+      outcome: 'NO_RESUME_EVIDENCE_IMMATURE',
+    });
+    expect(readChSkipResumeRevalidationDeferCount(evidence)).toBe(1);
+    expect(evidence.completedEndValidationAttempt).toBe(1);
   });
 });

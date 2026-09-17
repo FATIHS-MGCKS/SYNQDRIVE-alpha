@@ -47,7 +47,89 @@ export const END_CYCLE_REOPEN_STRIP_KEYS = [
   'completedAttemptCount',
   'pendingFinalizeCycleToken',
   'pendingFinalizeScheduledAt',
+  'chSkipResumeRevalidationDeferCount',
+  'chSkipResumeRevalidationLastDeferredAt',
+  'clickhouseEndAssistRelatchEmptyCore',
 ] as const;
+
+/** Bounded post-boundary resume revalidation outcomes for CH skip terminal path. */
+export type ChSkipResumeRevalidationOutcome =
+  | 'RESUME_CONFIRMED'
+  | 'NO_RESUME_EVIDENCE_MATURE'
+  | 'NO_RESUME_EVIDENCE_IMMATURE'
+  | 'FETCH_UNCERTAIN';
+
+/**
+ * Immaturity bound for CH skip resume revalidation — reuses existing end-cycle clocks:
+ * TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS.
+ */
+export function resolveChSkipResumeRevalidationImmaturityBoundMs(params: {
+  validationRetryMs: number;
+  chAssistStabilityMs: number;
+}): number {
+  return params.validationRetryMs + params.chAssistStabilityMs;
+}
+
+export function readChSkipResumeRevalidationDeferCount(
+  summary: Record<string, unknown> | null | undefined,
+): number {
+  const raw = summary?.chSkipResumeRevalidationDeferCount;
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 0;
+}
+
+export function resolveChSkipResumeRevalidationMaxDeferCount(
+  validationMaxAttempts: number,
+): number {
+  return Math.max(0, validationMaxAttempts - 1);
+}
+
+/**
+ * Pure maturity gate — distinguishes "no movement yet" from "safe to terminalize".
+ * Time-bound only: deferCount does not force early terminalization inside the window.
+ */
+export function evaluateChSkipResumeRevalidationMaturity(params: {
+  nowMs: number;
+  relatchEnteredAtMs: number;
+  immaturityBoundMs: number;
+  resumeObserved: boolean;
+  fetchUncertain: boolean;
+}): ChSkipResumeRevalidationOutcome {
+  if (params.resumeObserved) {
+    return 'RESUME_CONFIRMED';
+  }
+  const dwellMs = params.nowMs - params.relatchEnteredAtMs;
+  const withinImmaturity =
+    params.fetchUncertain || dwellMs < params.immaturityBoundMs;
+  if (withinImmaturity) {
+    return params.fetchUncertain
+      ? 'FETCH_UNCERTAIN'
+      : 'NO_RESUME_EVIDENCE_IMMATURE';
+  }
+  return 'NO_RESUME_EVIDENCE_MATURE';
+}
+
+export function buildChSkipResumeRevalidationDeferredEvidence(params: {
+  priorSummary?: Record<string, unknown> | null;
+  workerNow: Date;
+  deferCount: number;
+  relatchEnteredAt: Date;
+  candidateEndAt: Date;
+  immaturityBoundMs: number;
+  outcome: Extract<
+    ChSkipResumeRevalidationOutcome,
+    'NO_RESUME_EVIDENCE_IMMATURE' | 'FETCH_UNCERTAIN'
+  >;
+}): Record<string, unknown> {
+  return {
+    ...(params.priorSummary ?? {}),
+    chSkipResumeRevalidationDeferCount: params.deferCount,
+    chSkipResumeRevalidationLastDeferredAt: params.workerNow.toISOString(),
+    chSkipResumeRevalidationCandidateEndAt: params.candidateEndAt.toISOString(),
+    chSkipResumeRevalidationRelatchEnteredAt: params.relatchEnteredAt.toISOString(),
+    chSkipResumeRevalidationImmaturityBoundMs: params.immaturityBoundMs,
+    chSkipResumeRevalidationOutcome: params.outcome,
+  };
+}
 
 /**
  * Stop-boundary evidence restored ONLY on CUSUM_STILL_ONGOING reopen when the prior
