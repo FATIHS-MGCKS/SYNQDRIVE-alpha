@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/src/modules/vehicle-intelligence/reference-capture/reference-capture-exp*'
+      - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/**'
+      - 'backend/scripts/ops/reference-capture-exp021-maturation-shadow-m3-export.ts'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-fleet/**'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/testing/reference-capture-exp021*'
       - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
@@ -215,6 +217,59 @@ jobs:
           --runInBand --verbose
         working-directory: backend
 
+  exp021-maturation-shadow-m3:
+    name: EXP-021 maturation shadow PR-M3 analytics
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:exp021:maturation-shadow:m3
+        working-directory: backend
+
+  exp021-maturation-shadow-m3-postgres:
+    name: EXP-021 maturation shadow PR-M3 PostgreSQL read-only proof
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: exp021_pr1649_test
+          POSTGRES_PASSWORD: exp021_pr1649_test_local
+          POSTGRES_DB: synqdrive_exp021_pr1649_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:exp021:maturation-shadow:m3:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TEST_POSTGRES_DATABASE: ${{ env.EXP021_PG_DB }}
+          RC_DEF019_POSTGRES_USER: ${{ env.EXP021_PG_USER }}
+          RC_DEF019_POSTGRES_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
+          REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
+
   exp021-production-build:
     name: EXP-021 backend production build
     runs-on: ubuntu-latest
@@ -237,6 +292,8 @@ jobs:
       - exp021-fleet-unit-gate
       - exp021-fleet-postgres-integration
       - exp021-fleet-migration
+      - exp021-maturation-shadow-m3
+      - exp021-maturation-shadow-m3-postgres
       - exp021-production-build
     steps:
-      - run: echo "EXP-021 autonomous orchestrator CI gate passed (unit + fleet hardening + PostgreSQL + migration + build)."
+      - run: echo "EXP-021 autonomous orchestrator CI gate passed (unit + fleet hardening + M3 analytics + PostgreSQL + migration + build)."
