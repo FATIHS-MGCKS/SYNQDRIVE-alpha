@@ -17,7 +17,10 @@ import {
   Exp021MaturationShadowStratumSemanticMismatchError,
 } from './reference-capture-exp021-maturation-shadow.errors';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
-import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from './reference-capture-exp021-maturation-shadow.types';
+import {
+  EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+  type Exp021MaturationShadowQueryGeometryMs,
+} from './reference-capture-exp021-maturation-shadow.types';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
   proveIsolatedReferenceCapturePostgres,
@@ -61,16 +64,18 @@ async function cleanupShadowGraph(prisma: PrismaClient, familyId: string): Promi
 function baseStratumInput(
   windowFamilyId: string,
   signalLane: Exp021MaturationShadowSignalLane,
-  geometryMs: number,
+  geometryMs: Exp021MaturationShadowQueryGeometryMs,
+  canonicalWindowTo: Date,
   overrides: Partial<{
     activityClassificationJson: Record<string, string>;
     signalSetHash: string;
     querySemanticsHash: string;
+    windowFrom: Date;
     windowTo: Date;
   }> = {},
 ) {
-  const windowTo = overrides.windowTo ?? new Date('2026-09-16T20:34:00.000Z');
-  const windowFrom = new Date(windowTo.getTime() - geometryMs);
+  const windowTo = overrides.windowTo ?? canonicalWindowTo;
+  const windowFrom = overrides.windowFrom ?? new Date(windowTo.getTime() - geometryMs);
   return {
     windowFamilyId,
     signalLane,
@@ -222,11 +227,12 @@ function attemptRawFacts(
 
   it('D/E: activityClassificationJson key-order equal; material drift fails closed', async () => {
     const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T21:00:00.000Z');
     const family = await repository.reserveOrGetWindowFamily({
       organizationId,
       vehicleId,
       tokenId: 187336,
-      canonicalWindowTo: new Date('2026-09-16T21:00:00.000Z'),
+      canonicalWindowTo,
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
       enrollmentEventId: 'enroll-activity',
       plannedAgesMsExact: [45_000],
@@ -236,12 +242,12 @@ function attemptRawFacts(
 
     const activity = { class: 'ACTIVE_MOTION', source: 'X' };
     const stratum = await repository.createWindowStratum(
-      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, {
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo, {
         activityClassificationJson: activity,
       }),
     );
     const sameSemantics = await repository.createWindowStratum({
-      ...baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, {
+      ...baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo, {
         activityClassificationJson: { source: 'X', class: 'ACTIVE_MOTION' },
       }),
     });
@@ -249,7 +255,7 @@ function attemptRawFacts(
 
     await expect(
       repository.createWindowStratum({
-        ...baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, {
+        ...baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo, {
           activityClassificationJson: { class: 'IDLE', source: 'X' },
         }),
       }),
@@ -262,11 +268,12 @@ function attemptRawFacts(
 
   it('F: off-schedule slot rejected; on-schedule slot allowed', async () => {
     const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T21:05:00.000Z');
     const family = await repository.reserveOrGetWindowFamily({
       organizationId,
       vehicleId,
       tokenId: 187336,
-      canonicalWindowTo: new Date('2026-09-16T21:05:00.000Z'),
+      canonicalWindowTo,
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
       enrollmentEventId: 'enroll-slot',
       plannedAgesMsExact: [45_000, 50_000],
@@ -274,7 +281,7 @@ function attemptRawFacts(
       createdUnderRuntimeSha: 'sha',
     });
     const stratum = await repository.createWindowStratum(
-      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000),
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo),
     );
 
     await expect(
@@ -294,11 +301,12 @@ function attemptRawFacts(
 
   it('G-K/L: attempt parent authority, derived ages, provider outcomes, post-hoc nulls', async () => {
     const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T21:20:00.000Z');
     const family = await repository.reserveOrGetWindowFamily({
       organizationId,
       vehicleId,
       tokenId: 187336,
-      canonicalWindowTo: new Date('2026-09-16T21:20:00.000Z'),
+      canonicalWindowTo,
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
       enrollmentEventId: 'enroll-attempts',
       plannedAgesMsExact: [45_000],
@@ -306,7 +314,7 @@ function attemptRawFacts(
       createdUnderRuntimeSha: 'sha',
     });
     const stratum = await repository.createWindowStratum(
-      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000),
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo),
     );
     const slot = await repository.createObservationSlot({
       windowStratumId: stratum.id,
@@ -417,6 +425,7 @@ function attemptRawFacts(
       families[0].id,
       Exp021MaturationShadowSignalLane.HF_FAST_LOOP,
       60_000,
+      canonicalWindowTo,
     );
     const strata = await Promise.all(
       Array.from({ length: 8 }, () => repository.createWindowStratum(stratumInput)),
@@ -454,13 +463,114 @@ function attemptRawFacts(
     await prisma.$executeRaw`DELETE FROM organizations WHERE id = ${organizationId}`;
   });
 
-  it('RESTRICT retention prevents deleting family while attempts exist', async () => {
+  it('geometry, family-window alignment, provider-error input, negative age, invalid schedule', async () => {
     const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T22:00:00.000Z');
     const family = await repository.reserveOrGetWindowFamily({
       organizationId,
       vehicleId,
       tokenId: 187336,
-      canonicalWindowTo: new Date('2026-09-16T21:50:00.000Z'),
+      canonicalWindowTo,
+      shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+      enrollmentEventId: 'enroll-geometry',
+      plannedAgesMsExact: [45_000],
+      policyDelayProbeMs: 8000,
+      createdUnderRuntimeSha: 'sha',
+    });
+
+    const stratumBase = (geometryMs: Exp021MaturationShadowQueryGeometryMs) =>
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, geometryMs, canonicalWindowTo);
+
+    await expect(
+      repository.createWindowStratum({
+        ...stratumBase(60_000),
+        queryGeometryMs: 30_000 as Exp021MaturationShadowQueryGeometryMs,
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowStratumSemanticMismatchError);
+
+    await expect(
+      repository.createWindowStratum({
+        ...stratumBase(60_000),
+        windowTo: new Date(canonicalWindowTo.getTime() + 1000),
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowStratumSemanticMismatchError);
+
+    await expect(
+      repository.createWindowStratum({
+        ...stratumBase(60_000),
+        windowFrom: new Date(canonicalWindowTo.getTime() - 59_000),
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowStratumSemanticMismatchError);
+
+    const stratum90 = await repository.createWindowStratum(stratumBase(90_000));
+    expect(stratum90.queryGeometryMs).toBe(90_000);
+
+    const stratum60 = await repository.createWindowStratum(stratumBase(60_000));
+    const slot = await repository.createObservationSlot({
+      windowStratumId: stratum60.id,
+      plannedAgeMs: 45_000,
+    });
+
+    await expect(
+      repository.insertObservationAttempt({
+        observationSlotId: slot.id,
+        rawFacts: attemptRawFacts(stratum60, {
+          providerRequestSucceeded: false,
+          providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_ERROR,
+          providerErrorClass: 'NETWORK',
+          uniqueBucketLocusCount: 0,
+        }),
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowProviderOutcomeConsistencyError);
+
+    await expect(
+      repository.insertObservationAttempt({
+        observationSlotId: slot.id,
+        rawFacts: attemptRawFacts(stratum60, {
+          providerRequestSucceeded: false,
+          providerOutcomeClass: Exp021MaturationShadowProviderOutcomeClass.PROVIDER_ERROR,
+          providerErrorClass: 'NETWORK',
+          uniqueBucketLocusCount: 5,
+        }),
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowProviderOutcomeConsistencyError);
+
+    await expect(
+      repository.insertObservationAttempt({
+        observationSlotId: slot.id,
+        rawFacts: attemptRawFacts(stratum60, {
+          requestStartedAt: new Date(stratum60.windowTo.getTime() - 1),
+        }),
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowAttemptAuthorityError);
+
+    await expect(
+      repository.reserveOrGetWindowFamily({
+        organizationId,
+        vehicleId,
+        tokenId: 187337,
+        canonicalWindowTo: new Date('2026-09-16T22:05:00.000Z'),
+        shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+        enrollmentEventId: 'enroll-invalid',
+        plannedAgesMsExact: [],
+        policyDelayProbeMs: 8000,
+        createdUnderRuntimeSha: 'sha',
+      }),
+    ).rejects.toThrow(Exp021MaturationShadowFamilyIdentityError);
+
+    await cleanupShadowGraph(prisma, family.id);
+    await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;
+    await prisma.$executeRaw`DELETE FROM organizations WHERE id = ${organizationId}`;
+  });
+
+  it('RESTRICT retention prevents deleting family while attempts exist', async () => {
+    const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const canonicalWindowTo = new Date('2026-09-16T21:50:00.000Z');
+    const family = await repository.reserveOrGetWindowFamily({
+      organizationId,
+      vehicleId,
+      tokenId: 187336,
+      canonicalWindowTo,
       shadowScheduleVersion: EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
       enrollmentEventId: 'enroll-retain',
       plannedAgesMsExact: [45_000],
@@ -468,7 +578,7 @@ function attemptRawFacts(
       createdUnderRuntimeSha: 'sha',
     });
     const stratum = await repository.createWindowStratum(
-      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000),
+      baseStratumInput(family.id, Exp021MaturationShadowSignalLane.HF_FAST_LOOP, 60_000, canonicalWindowTo),
     );
     const slot = await repository.createObservationSlot({
       windowStratumId: stratum.id,

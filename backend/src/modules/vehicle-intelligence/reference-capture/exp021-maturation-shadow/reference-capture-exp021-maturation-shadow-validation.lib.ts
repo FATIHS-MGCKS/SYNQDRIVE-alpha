@@ -4,11 +4,89 @@ import {
   Exp021MaturationShadowFamilyIdentityError,
   Exp021MaturationShadowOffScheduleSlotError,
   Exp021MaturationShadowProviderOutcomeConsistencyError,
+  Exp021MaturationShadowStratumSemanticMismatchError,
 } from './reference-capture-exp021-maturation-shadow.errors';
+import {
+  EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS,
+  type Exp021MaturationShadowQueryGeometryMs,
+} from './reference-capture-exp021-maturation-shadow.types';
+
+function isFinitePositiveInteger(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value > 0;
+}
 
 export function plannedAgesMsExactEqual(left: number[], right: number[]): boolean {
   if (left.length !== right.length) return false;
   return left.every((value, index) => value === right[index]);
+}
+
+export function assertFamilyScheduleSemanticallyValid(input: {
+  plannedAgesMsExact: number[];
+  policyDelayProbeMs: number;
+}): void {
+  if (!Array.isArray(input.plannedAgesMsExact) || input.plannedAgesMsExact.length === 0) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      'plannedAgesMsExact must be a non-empty array',
+    );
+  }
+
+  const seen = new Set<number>();
+  for (const age of input.plannedAgesMsExact) {
+    if (!isFinitePositiveInteger(age)) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        'plannedAgesMsExact must contain only finite positive integers',
+      );
+    }
+    if (seen.has(age)) {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        'plannedAgesMsExact must not contain duplicate ages',
+      );
+    }
+    seen.add(age);
+  }
+
+  if (!isFinitePositiveInteger(input.policyDelayProbeMs)) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      'policyDelayProbeMs must be a finite positive integer',
+    );
+  }
+}
+
+export function isCanonicalQueryGeometryMs(
+  queryGeometryMs: number,
+): queryGeometryMs is Exp021MaturationShadowQueryGeometryMs {
+  return (EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS as readonly number[]).includes(queryGeometryMs);
+}
+
+export function assertCanonicalQueryGeometryMs(queryGeometryMs: number): Exp021MaturationShadowQueryGeometryMs {
+  if (!isCanonicalQueryGeometryMs(queryGeometryMs)) {
+    throw new Exp021MaturationShadowStratumSemanticMismatchError(
+      `queryGeometryMs ${queryGeometryMs} is not canonical; allowed values: ${EXP021_MATURATION_SHADOW_QUERY_GEOMETRIES_MS.join(', ')}`,
+    );
+  }
+  return queryGeometryMs;
+}
+
+export function assertStratumAlignsWithFamily(input: {
+  familyCanonicalWindowTo: Date;
+  queryGeometryMs: number;
+  windowFrom: Date;
+  windowTo: Date;
+}): void {
+  assertCanonicalQueryGeometryMs(input.queryGeometryMs);
+
+  if (input.windowTo.getTime() !== input.familyCanonicalWindowTo.getTime()) {
+    throw new Exp021MaturationShadowStratumSemanticMismatchError(
+      'Stratum windowTo must equal family canonicalWindowTo',
+    );
+  }
+
+  const expectedWindowFromMs = input.windowTo.getTime() - input.queryGeometryMs;
+  if (input.windowFrom.getTime() !== expectedWindowFromMs) {
+    throw new Exp021MaturationShadowStratumSemanticMismatchError(
+      'Stratum windowFrom must equal windowTo - queryGeometryMs',
+    );
+  }
 }
 
 export function assertFamilyScheduleMatchesPersisted(
@@ -100,6 +178,11 @@ export function assertAttemptParentAuthority(input: {
   assertRequestTimeOrder(input.requestStartedAt, input.requestCompletedAt);
 
   const actualAgeMs = deriveCanonicalActualAgeMs(input.requestStartedAt, input.windowTo);
+  if (actualAgeMs < 0) {
+    throw new Exp021MaturationShadowAttemptAuthorityError(
+      'actualAgeMs must be >= 0; requestStartedAt must not precede windowTo',
+    );
+  }
   const schedulerDriftMs = deriveSchedulerDriftMs(actualAgeMs, input.slotPlannedAgeMs);
 
   return {
@@ -135,9 +218,9 @@ export function assertProviderOutcomeConsistency(input: {
           'PROVIDER_ERROR requires non-empty providerErrorClass',
         );
       }
-      if (bucketCount != null && bucketCount !== 0) {
+      if (bucketCount != null) {
         throw new Exp021MaturationShadowProviderOutcomeConsistencyError(
-          'PROVIDER_ERROR must not persist zero-evidence bucket counts',
+          'PROVIDER_ERROR requires uniqueBucketLocusCount to be null or undefined',
         );
       }
       return;

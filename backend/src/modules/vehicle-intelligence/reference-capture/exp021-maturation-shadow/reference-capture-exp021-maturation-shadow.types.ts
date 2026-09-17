@@ -28,7 +28,7 @@ export type Exp021MaturationShadowFamilyIdentity = {
 export type Exp021MaturationShadowStratumIdentity = {
   windowFamilyId: string;
   signalLane: Exp021MaturationShadowSignalLane;
-  queryGeometryMs: number;
+  queryGeometryMs: Exp021MaturationShadowQueryGeometryMs;
 };
 
 export type Exp021MaturationShadowStratumImmutableAttributes = {

@@ -770,6 +770,18 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Post-hoc fields | Analytical derivatives removed from raw insert API; nullable columns remain null in PR-M1 |
 | Runtime / prod | **NO CHANGES** |
 
+### EXP-021 — Live Maturation Shadow PR-M1 final scientific geometry + provider input closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Repository validation hardening only on draft PR #1672 — no runtime execution |
+| Provider input | `PROVIDER_ERROR` validates raw `uniqueBucketLocusCount` (null/undefined only); no pre-validation normalization |
+| Query geometry | `queryGeometryMs` typed and runtime-validated to `{60000,90000}` only |
+| Stratum windows | `windowTo` must equal family `canonicalWindowTo`; `windowFrom = windowTo - queryGeometryMs` (exact) |
+| Attempt age | `actualAgeMs < 0` rejected (`requestStartedAt` must not precede `windowTo`) |
+| Family schedule | Non-empty, positive integer ages; no duplicates; positive integer `policyDelayProbeMs` |
+| Runtime / prod | **NO CHANGES** |
+
 ### EXP-021 — TGR architecture audit evidence freeze (2026-09-16)
 
 | Event | Detail |

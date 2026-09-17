@@ -17,9 +17,12 @@ import type {
 } from './reference-capture-exp021-maturation-shadow.types';
 import {
   assertAttemptParentAuthority,
+  assertCanonicalQueryGeometryMs,
   assertFamilyScheduleMatchesPersisted,
+  assertFamilyScheduleSemanticallyValid,
   assertPlannedAgeOnFamilySchedule,
   assertProviderOutcomeConsistency,
+  assertStratumAlignsWithFamily,
 } from './reference-capture-exp021-maturation-shadow-validation.lib';
 
 function isUniqueConstraintViolation(error: unknown): boolean {
@@ -71,6 +74,8 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
       policyDelayProbeMs: input.policyDelayProbeMs,
     };
 
+    assertFamilyScheduleSemanticallyValid(scheduleSemantics);
+
     const existing = await db.exp021MaturationShadowWindowFamily.findUnique({ where: uniqueWhere });
     if (existing) {
       return this.resolveExistingFamilySchedule(existing, scheduleSemantics);
@@ -110,23 +115,46 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
     tx?: Prisma.TransactionClient,
   ) {
     const db = this.client(tx);
+    const queryGeometryMs = assertCanonicalQueryGeometryMs(input.queryGeometryMs);
     const uniqueWhere = {
       windowFamilyId_signalLane_queryGeometryMs: {
         windowFamilyId: input.windowFamilyId,
         signalLane: input.signalLane,
-        queryGeometryMs: input.queryGeometryMs,
+        queryGeometryMs,
       },
     };
 
+    const family = await db.exp021MaturationShadowWindowFamily.findUnique({
+      where: { id: input.windowFamilyId },
+    });
+    if (!family) {
+      throw new Exp021MaturationShadowStratumSemanticMismatchError(
+        `Window family not found: ${input.windowFamilyId}`,
+      );
+    }
+
+    assertStratumAlignsWithFamily({
+      familyCanonicalWindowTo: family.canonicalWindowTo,
+      queryGeometryMs,
+      windowFrom: input.windowFrom,
+      windowTo: input.windowTo,
+    });
+
     const existing = await db.exp021MaturationShadowWindow.findUnique({ where: uniqueWhere });
     if (existing) {
+      assertStratumAlignsWithFamily({
+        familyCanonicalWindowTo: family.canonicalWindowTo,
+        queryGeometryMs: existing.queryGeometryMs,
+        windowFrom: existing.windowFrom,
+        windowTo: existing.windowTo,
+      });
       const mismatches = findStratumImmutableAttributeMismatches(
         extractStratumImmutableAttributes(existing),
         input,
       );
       if (mismatches.length > 0) {
         throw new Exp021MaturationShadowStratumSemanticMismatchError(
-          `Immutable stratum attribute mismatch for ${input.signalLane}/${input.queryGeometryMs}: ${mismatches.join(', ')}`,
+          `Immutable stratum attribute mismatch for ${input.signalLane}/${queryGeometryMs}: ${mismatches.join(', ')}`,
         );
       }
       return existing;
@@ -137,7 +165,7 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
         data: {
           windowFamilyId: input.windowFamilyId,
           signalLane: input.signalLane,
-          queryGeometryMs: input.queryGeometryMs,
+          queryGeometryMs,
           windowFrom: input.windowFrom,
           windowTo: input.windowTo,
           resolvedProviderFields: input.resolvedProviderFields,
@@ -164,13 +192,19 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
       if (!raced) {
         throw error;
       }
+      assertStratumAlignsWithFamily({
+        familyCanonicalWindowTo: family.canonicalWindowTo,
+        queryGeometryMs: raced.queryGeometryMs,
+        windowFrom: raced.windowFrom,
+        windowTo: raced.windowTo,
+      });
       const mismatches = findStratumImmutableAttributeMismatches(
         extractStratumImmutableAttributes(raced),
         input,
       );
       if (mismatches.length > 0) {
         throw new Exp021MaturationShadowStratumSemanticMismatchError(
-          `Immutable stratum attribute mismatch for ${input.signalLane}/${input.queryGeometryMs}: ${mismatches.join(', ')}`,
+          `Immutable stratum attribute mismatch for ${input.signalLane}/${queryGeometryMs}: ${mismatches.join(', ')}`,
         );
       }
       return raced;
@@ -256,17 +290,17 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
         FOR UPDATE
       `;
 
-      const providerBucketCount =
-        input.rawFacts.providerOutcomeClass === 'PROVIDER_ERROR'
-          ? null
-          : input.rawFacts.uniqueBucketLocusCount ?? null;
-
       assertProviderOutcomeConsistency({
         providerRequestSucceeded: input.rawFacts.providerRequestSucceeded,
         providerOutcomeClass: input.rawFacts.providerOutcomeClass,
         providerErrorClass: input.rawFacts.providerErrorClass,
-        uniqueBucketLocusCount: providerBucketCount,
+        uniqueBucketLocusCount: input.rawFacts.uniqueBucketLocusCount,
       });
+
+      const providerBucketCount =
+        input.rawFacts.providerOutcomeClass === 'PROVIDER_ERROR'
+          ? null
+          : input.rawFacts.uniqueBucketLocusCount ?? null;
 
       const authority = assertAttemptParentAuthority({
         slotPlannedAgeMs: slot.plannedAgeMs,
