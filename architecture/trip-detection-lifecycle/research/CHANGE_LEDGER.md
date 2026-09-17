@@ -62,6 +62,7 @@ Append-only record for this authority directory.
 | 2026-09-14 | Shadow closure review — fail-closed allowlist, generation isolation, audit timestamp authority, cross-trip correlation, authority non-consumption proofs | PR #1648 closure | Same evidence doc |
 | 2026-09-14 | Shadow orchestration regression fix — module-level fail-open wrapper preserves R10/R5/R7 harness `.call()` compatibility | PR #1648 CI differential | Same evidence doc |
 | 2026-09-16 | KS MX 2024 POST-#1648 Production shadow audit — two drives read-only @ `295635f…` / `102b3f9…`; Drive 1 lifecycle PASS; Drive 2 pause FAIL (live terminal during pause + reconciliation split); pause shadow NOT_EXERCISED | Read-only Production audit | [KS_MX_2024_POST_1648_PRODUCTION_SHADOW_AUDIT_2026-09-16.md](../evidence/KS_MX_2024_POST_1648_PRODUCTION_SHADOW_AUDIT_2026-09-16.md) |
+| 2026-09-16 | KS MX 2024 false terminalization root-cause — `full_inactivity_ignition_off` admission + CH skip_cusum without EV2 resume revalidation; resume ~20:52 not consumed; reconciliation correction | Read-only root-cause audit | [KS_MX_2024_POST_1648_FALSE_TERMINAL_ROOT_CAUSE_2026-09-16.md](../evidence/KS_MX_2024_POST_1648_FALSE_TERMINAL_ROOT_CAUSE_2026-09-16.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

@@ -91,9 +91,9 @@ Terminal shadow summary persisted on trip row (`raw_detection_meta.shadowObserva
 | DRIVE2_DB_TRIP_COUNT | **2** |
 | DRIVE2_CANONICAL_TRIP_ID (live authoritative) | `a1aab26a-b42e-4ea9-9c55-5350f9690152` |
 | DRIVE2_ADDITIONAL_TRIP_IDS | `064dfaf4-1e4a-44e2-a4d9-4989bf90aa46` |
-| FALSE_SPLIT_AT_PAUSE | **YES** |
+| FALSE_SPLIT_AT_PAUSE | **YES** (live premature terminalization during pause; reconciliation split later) |
 | PAUSE_CAUSED_TRIP_COMPLETION | **YES** (live FSM `RESTING` @ `20:52:23Z` during operator pause) |
-| PAUSE_CAUSED_NEW_TRIP_CREATION | **YES** — via **RECONCILIATION** (`INTRA_TRIP_GAP_SPLIT` @ `2026-09-17T00:20:27Z`), not live FSM trip birth |
+| PAUSE_CAUSED_NEW_TRIP_CREATION | **SUPERSEDED** — see [root-cause addendum](KS_MX_2024_POST_1648_FALSE_TERMINAL_ROOT_CAUSE_2026-09-16.md): **NO live trip at resume**; reconciliation synthetic Trip B @ `2026-09-17T00:20:27Z` only |
 
 #### Trip A — live FSM (`a1aab26a…`)
 
@@ -281,7 +281,11 @@ DRIVE2_DB_TRIP_COUNT=2
 DRIVE2_CANONICAL_TRIP_ID=a1aab26a-b42e-4ea9-9c55-5350f9690152
 FALSE_SPLIT_AT_PAUSE=YES
 PAUSE_CAUSED_TRIP_COMPLETION=YES
-PAUSE_CAUSED_NEW_TRIP_CREATION=YES
+PAUSE_CAUSED_NEW_TRIP_CREATION=NO
+
+# CORRECTION (2026-09-16 root-cause addendum): prior YES conflated reconciliation.
+# LIVE_NEW_TRIP_CREATED_AT_RESUME=NO
+# RECONCILIATION_SYNTHETIC_TRIP_CREATED_LATER=YES @ 2026-09-17T00:20:27Z
 
 PAUSE_EPISODE_COUNT=0
 PAUSE_DURATION_SECONDS=300
