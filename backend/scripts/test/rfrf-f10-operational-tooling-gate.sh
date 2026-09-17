@@ -18,6 +18,9 @@ bash scripts/test/rfrf-f10-dotenv-safety-tests.sh
 echo "==> F10.2.1.1 worker readiness contract tests"
 bash scripts/test/rfrf-f10-worker-readiness-contracts.sh
 
+echo "==> F10.2.2 metrics probe regression tests"
+bash scripts/test/rfrf-f10-metrics-probe-regression.sh
+
 echo "==> Shell syntax validation"
 for f in \
   scripts/ops/lib/rfrf-production-rollout.lib.sh \
@@ -32,6 +35,7 @@ done
 bash -n scripts/test/rfrf-f10-operational-script-contracts.sh
 bash -n scripts/test/rfrf-f10-dotenv-safety-tests.sh
 bash -n scripts/test/rfrf-f10-worker-readiness-contracts.sh
+bash -n scripts/test/rfrf-f10-metrics-probe-regression.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   echo "==> shellcheck (ops scripts)"
@@ -73,3 +77,4 @@ git diff --check
 
 echo "RFRF F10.1 operational tooling gate PASS"
 echo "RFRF F10.2.1 dotenv safety micro-closure gate PASS"
+echo "RFRF F10.2.2 metrics probe reliability gate PASS"

@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-17 — RFRF F10.2.2 metrics probe SIGPIPE/pipefail micro-closure
+
+- EED-EV-0064 extended: F10.2 cross-workstream preservation gate PASS on production `3a2707b`; F10.2 blocked only by `rfrf_metrics_probe()` false-negative (`echo|grep -q` + pipefail SIGPIPE 141 on large payloads)
+- Fix: `rfrf_metrics_body_has_metric()` — HELP/TYPE here-string grep + line-prefix series scan; large-payload regression + mocked probe fixture tests; F10 pipefail risk 2→0
+- Post-merge retry: run fixed tooling checkout against unchanged `/opt/synqdrive/current` with `RFRF_REQUIRED_GIT_SHA=3a2707b`; no application redeploy
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
 ## 2026-09-16 — RFRF F10.2.1.1 worker readiness + deploy SHA micro-closure
 
 - EED-EV-0064 extended: fix worker readiness gate (Node argv + exit status, not pipeline PORT / stdout capture); deploy/preflight required SHA is `<FINAL_F10_2_1_HOTFIX_HEAD>` not hotfix base; worker readiness contract tests + deploy SHA contract tests

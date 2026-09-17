@@ -820,6 +820,19 @@ rfrf_verify_deploy_sha() {
   return 1
 }
 
+rfrf_metrics_body_has_metric() {
+  local body="$1" metric="$2" line
+  # Fixed-string, in-memory checks only — no producer|grep -q pipelines under pipefail.
+  grep -Fq -- "# HELP ${metric} " <<<"$body" && return 0
+  grep -Fq -- "# TYPE ${metric} " <<<"$body" && return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == "${metric}{"* || "$line" == "${metric} "* ]]; then
+      return 0
+    fi
+  done <<<"$body"
+  return 1
+}
+
 rfrf_metrics_probe() {
   local backend_env="$1" port="$2"
   local token body
@@ -833,13 +846,13 @@ rfrf_metrics_probe() {
     echo "METRICS_${port}=unreachable"
     return 1
   fi
-  if echo "$body" | grep -q 'synqdrive_rfrf_branch_invocation_total'; then
+  if rfrf_metrics_body_has_metric "$body" 'synqdrive_rfrf_branch_invocation_total'; then
     echo "METRICS_${port}_RFRF=YES"
   else
     echo "METRICS_${port}_RFRF=NO"
     return 1
   fi
-  if echo "$body" | grep -q 'synqdrive_physical_refuel_recovery_backlog'; then
+  if rfrf_metrics_body_has_metric "$body" 'synqdrive_physical_refuel_recovery_backlog'; then
     echo "METRICS_${port}_PHYSICAL_REFUEL=YES"
   else
     echo "METRICS_${port}_PHYSICAL_REFUEL=NO"
