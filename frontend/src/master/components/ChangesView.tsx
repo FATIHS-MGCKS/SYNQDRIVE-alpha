@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p25-connectivity-freshness-fix-2026-09-18',
+    version: '4.9.1142',
+    title: 'VDC RB-019 P2.5 — snapshot connectivity freshness binding (Arteon stale-evidence fix)',
+    summary: [
+      'DimoSnapshotProcessor applies physical snapshot evidence only after VW-F-008 VLS monotonic guard + upsert.',
+      'Snapshot OBD eligibility: evidenceObservedAt must strictly advance stored VLS sourceTimestamp — cached replay cannot mutate projection.',
+      'GT-R1 UNPLUG proof: SNAPSHOT_UNPLUG_TRANSITION + SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT (legacy obd_false).',
+      'Fresh legacy/physical disagreements without proof remain UNEXPLAINED (correctness-blocking).',
+      'P2.5 shadow OFF; aborted T0 invalid; EXP-021 stopped; no Production deploy.',
+    ],
+    reason:
+      'Aborted P2.5 shadow restart applied stale cached obdIsPluggedIn before VLS stale guard, producing false PLUGGED→UNPLUGGED transition and UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on Arteon.',
+    previousBehavior:
+      'applyPhysicalSnapshotEvidence ran before VLS monotonic guard; equal-timestamp cached OBD replay could establish current connectivity transitions.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md; physical-state-snapshot-telemetry-eligibility.ts; dimo-snapshot.processor.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T07:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
     version: '4.9.1141',
     title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',
