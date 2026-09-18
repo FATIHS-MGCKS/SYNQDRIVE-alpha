@@ -71,6 +71,21 @@ RFRF_VDC_OBSOLETE_CONFIG_KEYS=(
   DEVICE_CONNECTION_PHYSICAL_PILOT_ENABLED
 )
 
+RFRF_EXP021_IMMEDIATE_DATA_KEYS=(
+  EXP021_STUDIES
+  EXP021_ENROLLMENTS
+  EXP021_RUNS
+  EXP021_GLOBAL_BALANCES
+  EXP021_VEHICLE_BALANCES
+)
+
+RFRF_VDC_IMMEDIATE_DATA_KEYS=(
+  VDC_PHYSICAL_STATES
+  VDC_SHADOW_OBS
+  VDC_AUTHORITY_MODE
+  VDC_PILOT_EPOCH
+)
+
 rfrf_rollout_log() {
   printf '[rfrf-rollout] %s\n' "$*"
 }
@@ -1027,6 +1042,137 @@ rfrf_cross_workstream_state_line() {
   printf '%s=%s\n' "$key" "$value"
 }
 
+rfrf_cross_workstream_can_synthesize_evidence() {
+  [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" && "${RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE:-0}" != "1" ]]
+}
+
+rfrf_cross_workstream_invalid_sentinel() {
+  local value="$1"
+  case "$value" in
+    "" | ERROR | SKIPPED | UNKNOWN | UNAVAILABLE | NULL | null | N/A) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+rfrf_cross_workstream_valid_numeric_data() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]]
+}
+
+rfrf_cross_workstream_valid_config_value() {
+  local value="$1"
+  [[ -n "$value" ]] && ! rfrf_cross_workstream_invalid_sentinel "$value"
+}
+
+rfrf_cross_workstream_valid_authority_mode() {
+  local value="$1"
+  [[ -n "$value" ]] && ! rfrf_cross_workstream_invalid_sentinel "$value"
+}
+
+rfrf_cross_workstream_valid_pilot_epoch() {
+  local value="$1"
+  [[ -n "$value" ]] && ! rfrf_cross_workstream_invalid_sentinel "$value"
+}
+
+rfrf_cross_workstream_required_field_count() {
+  local total
+  total=$((
+    ${#RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]} +
+    ${#RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]} +
+    ${#RFRF_EXP021_IMMEDIATE_DATA_KEYS[@]} +
+    ${#RFRF_VDC_IMMEDIATE_DATA_KEYS[@]}
+  ))
+  echo "$total"
+}
+
+rfrf_cross_workstream_field_present() {
+  local file="$1" key="$2"
+  grep -Eq "^${key}=" "$file" 2>/dev/null
+}
+
+rfrf_cross_workstream_state_get() {
+  local file="$1" key="$2"
+  if ! rfrf_cross_workstream_field_present "$file" "$key"; then
+    echo ""
+    return 1
+  fi
+  grep -E "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2-
+}
+
+rfrf_cross_workstream_inject_flag() {
+  local label="$1" suffix="$2"
+  local var="RFRF_TEST_INJECT_${label}_${suffix}"
+  printf '%s' "${!var:-0}"
+}
+
+rfrf_cross_workstream_missing_metric() {
+  local label="$1" configured
+  configured="$(rfrf_cross_workstream_inject_flag "$label" MISSING_METRIC)"
+  if [[ -z "$configured" || "$configured" == "0" ]]; then
+    echo "EXP021_STUDIES"
+  else
+    echo "$configured"
+  fi
+}
+
+rfrf_cross_workstream_should_omit_metric() {
+  local label="$1" metric="$2"
+  [[ "$(rfrf_cross_workstream_inject_flag "$label" FIELD_MISSING)" == "1" && "$(rfrf_cross_workstream_missing_metric "$label")" == "$metric" ]]
+}
+
+rfrf_cross_workstream_query_db_metric() {
+  local url="$1" label="$2" metric="$3" sql="$4"
+  local inject_value missing_metric line value
+
+  inject_value="$(rfrf_cross_workstream_inject_flag "$label" QUERY_ERROR)"
+  missing_metric="$(rfrf_cross_workstream_missing_metric "$label")"
+
+  if [[ "$inject_value" == "1" || "${RFRF_TEST_INJECT_QUERY_ERROR:-0}" == "1" ]]; then
+    return 1
+  fi
+  if [[ "$(rfrf_cross_workstream_inject_flag "$label" FIELD_MISSING)" == "1" && "$metric" == "$missing_metric" ]]; then
+    return 2
+  fi
+
+  line="$(psql "$url" -Atqc "$sql" 2>/dev/null || return 1)"
+  value="${line#${label}_${metric}=}"
+  if [[ -z "$value" ]]; then
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+
+rfrf_cross_workstream_finalize_state_file() {
+  local label="$1" state_file="$2" snapshot_ok="$3"
+  local required captured
+  required="$(rfrf_cross_workstream_required_field_count)"
+  captured=0
+
+  for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    rfrf_cross_workstream_field_present "$state_file" "${label}_CONFIG_${key}" && captured=$((captured + 1))
+  done
+  for key in "${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    rfrf_cross_workstream_field_present "$state_file" "${label}_CONFIG_${key}" && captured=$((captured + 1))
+  done
+  for metric in "${RFRF_EXP021_IMMEDIATE_DATA_KEYS[@]}"; do
+    rfrf_cross_workstream_field_present "$state_file" "${label}_${metric}" && captured=$((captured + 1))
+  done
+  for metric in "${RFRF_VDC_IMMEDIATE_DATA_KEYS[@]}"; do
+    rfrf_cross_workstream_field_present "$state_file" "${label}_${metric}" && captured=$((captured + 1))
+  done
+
+  rfrf_cross_workstream_state_line "${label}_REQUIRED_FIELD_COUNT" "$required" >>"$state_file"
+  rfrf_cross_workstream_state_line "${label}_CAPTURED_FIELD_COUNT" "$captured" >>"$state_file"
+  if (( snapshot_ok && captured == required )); then
+    rfrf_cross_workstream_state_line "${label}_SNAPSHOT_STATUS" "PASS" >>"$state_file"
+    echo "CROSS_WORKSTREAM_DB_SNAPSHOT_${label}=PASS"
+    return 0
+  fi
+  rfrf_cross_workstream_state_line "${label}_SNAPSHOT_STATUS" "FAIL" >>"$state_file"
+  echo "CROSS_WORKSTREAM_DB_SNAPSHOT_${label}=FAIL"
+  return 1
+}
+
 rfrf_cross_workstream_fixture_db_values() {
   local label="$1"
   local studies enrollments runs global_balances vehicle_balances physical_states shadow_obs authority_mode pilot_epoch
@@ -1054,6 +1200,28 @@ rfrf_cross_workstream_fixture_db_values() {
     if [[ "${RFRF_TEST_INJECT_VDC_SHADOW_DECREASE:-0}" == "1" ]]; then
       shadow_obs=$((shadow_obs - 1))
     fi
+    if [[ "${RFRF_TEST_INJECT_VDC_SHADOW_INCREASE:-0}" == "1" ]]; then
+      shadow_obs=$((shadow_obs + 1))
+    fi
+  fi
+
+  if [[ "$(rfrf_cross_workstream_inject_flag "$label" QUERY_ERROR)" == "1" || "${RFRF_TEST_INJECT_QUERY_ERROR:-0}" == "1" ]]; then
+    return 1
+  fi
+
+  if [[ "$(rfrf_cross_workstream_inject_flag "$label" FIELD_MISSING)" == "1" ]]; then
+    local missing
+    missing="$(rfrf_cross_workstream_missing_metric "$label")"
+    [[ "$missing" != "EXP021_STUDIES" ]] && rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "$studies"
+    [[ "$missing" != "EXP021_ENROLLMENTS" ]] && rfrf_cross_workstream_state_line "${label}_EXP021_ENROLLMENTS" "$enrollments"
+    [[ "$missing" != "EXP021_RUNS" ]] && rfrf_cross_workstream_state_line "${label}_EXP021_RUNS" "$runs"
+    [[ "$missing" != "EXP021_GLOBAL_BALANCES" ]] && rfrf_cross_workstream_state_line "${label}_EXP021_GLOBAL_BALANCES" "$global_balances"
+    [[ "$missing" != "EXP021_VEHICLE_BALANCES" ]] && rfrf_cross_workstream_state_line "${label}_EXP021_VEHICLE_BALANCES" "$vehicle_balances"
+    [[ "$missing" != "VDC_PHYSICAL_STATES" ]] && rfrf_cross_workstream_state_line "${label}_VDC_PHYSICAL_STATES" "$physical_states"
+    [[ "$missing" != "VDC_SHADOW_OBS" ]] && rfrf_cross_workstream_state_line "${label}_VDC_SHADOW_OBS" "$shadow_obs"
+    [[ "$missing" != "VDC_AUTHORITY_MODE" ]] && rfrf_cross_workstream_state_line "${label}_VDC_AUTHORITY_MODE" "$authority_mode"
+    [[ "$missing" != "VDC_PILOT_EPOCH" ]] && rfrf_cross_workstream_state_line "${label}_VDC_PILOT_EPOCH" "$pilot_epoch"
+    return 0
   fi
 
   rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "$studies"
@@ -1069,7 +1237,7 @@ rfrf_cross_workstream_fixture_db_values() {
 
 rfrf_cross_workstream_write_state_file() {
   local backend_env="$1" label="$2" state_file="$3"
-  local key val url
+  local key val url metric snapshot_ok=1 value
 
   : >"$state_file"
   for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
@@ -1081,48 +1249,271 @@ rfrf_cross_workstream_write_state_file() {
     rfrf_cross_workstream_state_line "${label}_CONFIG_${key}" "${val:-<absent>}" >>"$state_file"
   done
 
-  if [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
-    rfrf_cross_workstream_fixture_db_values "$label" >>"$state_file"
-    return 0
+  if rfrf_cross_workstream_can_synthesize_evidence; then
+    if ! rfrf_cross_workstream_fixture_db_values "$label" >>"$state_file"; then
+      snapshot_ok=0
+    fi
+    rfrf_cross_workstream_finalize_state_file "$label" "$state_file" "$snapshot_ok"
+    return $?
   fi
 
-  url="$(rfrf_dotenv_database_url "$backend_env")"
-  if [[ -z "$url" ]] || ! command -v psql >/dev/null 2>&1; then
-    rfrf_cross_workstream_state_line "${label}_DB_SNAPSHOT" "SKIPPED" >>"$state_file"
-    return 0
+  if [[ "${RFRF_TEST_INJECT_DATABASE_URL_MISSING:-0}" == "1" ]]; then
+    url=""
+  else
+    url="$(rfrf_dotenv_database_url "$backend_env")"
   fi
 
-  psql "$url" -Atqc "SELECT '${label}_EXP021_STUDIES='||COUNT(*) FROM exp021_studies;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_ENROLLMENTS='||COUNT(*) FROM exp021_study_enrollments;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_EXP021_ENROLLMENTS" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_RUNS='||COUNT(*) FROM exp021_study_runs;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_EXP021_RUNS" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_GLOBAL_BALANCES='||COUNT(*) FROM exp021_study_order_balances;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_EXP021_GLOBAL_BALANCES" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_VEHICLE_BALANCES='||COUNT(*) FROM exp021_study_vehicle_order_balances;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_EXP021_VEHICLE_BALANCES" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_VDC_PHYSICAL_STATES='||COUNT(*) FROM device_connection_physical_states;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_VDC_PHYSICAL_STATES" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_VDC_SHADOW_OBS='||COUNT(*) FROM device_connection_physical_state_shadow_observations;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_VDC_SHADOW_OBS" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_VDC_AUTHORITY_MODE='||COALESCE(string_agg(DISTINCT authority_mode::text, ',' ORDER BY authority_mode::text),'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_VDC_AUTHORITY_MODE" "ERROR" >>"$state_file"
-  psql "$url" -Atqc "SELECT '${label}_VDC_PILOT_EPOCH='||COALESCE(string_agg(COALESCE(to_char(latched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), 'null'), ',' ORDER BY latched_at NULLS FIRST), 'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null >>"$state_file" || \
-    rfrf_cross_workstream_state_line "${label}_VDC_PILOT_EPOCH" "ERROR" >>"$state_file"
+  if [[ -z "$url" ]]; then
+    rfrf_cross_workstream_state_line "${label}_DB_SNAPSHOT" "FAIL_DATABASE_URL_MISSING" >>"$state_file"
+    rfrf_cross_workstream_finalize_state_file "$label" "$state_file" 0
+    return 1
+  fi
+
+  if [[ "${RFRF_TEST_INJECT_PSQL_UNAVAILABLE:-0}" == "1" ]] || ! command -v psql >/dev/null 2>&1; then
+    rfrf_cross_workstream_state_line "${label}_DB_SNAPSHOT" "FAIL_PSQL_UNAVAILABLE" >>"$state_file"
+    rfrf_cross_workstream_finalize_state_file "$label" "$state_file" 0
+    return 1
+  fi
+
+  for metric in "${RFRF_EXP021_IMMEDIATE_DATA_KEYS[@]}"; do
+    case "$metric" in
+      EXP021_STUDIES)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM exp021_studies;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_should_omit_metric "$label" "$metric" || \
+            rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      EXP021_ENROLLMENTS)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM exp021_study_enrollments;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      EXP021_RUNS)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM exp021_study_runs;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      EXP021_GLOBAL_BALANCES)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM exp021_study_order_balances;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      EXP021_VEHICLE_BALANCES)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM exp021_study_vehicle_order_balances;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+    esac
+    if rfrf_cross_workstream_should_omit_metric "$label" "$metric"; then
+      snapshot_ok=0
+      continue
+    fi
+    rfrf_cross_workstream_state_line "${label}_${metric}" "$value" >>"$state_file"
+  done
+
+  for metric in "${RFRF_VDC_IMMEDIATE_DATA_KEYS[@]}"; do
+    case "$metric" in
+      VDC_PHYSICAL_STATES)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM device_connection_physical_states;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      VDC_SHADOW_OBS)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COUNT(*) FROM device_connection_physical_state_shadow_observations;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      VDC_AUTHORITY_MODE)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COALESCE(string_agg(DISTINCT authority_mode::text, ',' ORDER BY authority_mode::text),'none') FROM device_connection_physical_authority_cutover;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+      VDC_PILOT_EPOCH)
+        if ! value="$(rfrf_cross_workstream_query_db_metric "$url" "$label" "$metric" "SELECT '${label}_${metric}='||COALESCE(string_agg(COALESCE(to_char(latched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), 'null'), ',' ORDER BY latched_at NULLS FIRST), 'none') FROM device_connection_physical_authority_cutover;")"; then
+          snapshot_ok=0
+          rfrf_cross_workstream_state_line "${label}_${metric}" "ERROR" >>"$state_file"
+          continue
+        fi
+        ;;
+    esac
+    if rfrf_cross_workstream_should_omit_metric "$label" "$metric"; then
+      snapshot_ok=0
+      continue
+    fi
+    rfrf_cross_workstream_state_line "${label}_${metric}" "$value" >>"$state_file"
+  done
+
+  if (( snapshot_ok )); then
+    rfrf_cross_workstream_finalize_state_file "$label" "$state_file" 1
+    return 0
+  fi
+  rfrf_cross_workstream_finalize_state_file "$label" "$state_file" 0
+  return 1
 }
 
-rfrf_cross_workstream_state_get() {
-  local file="$1" key="$2"
-  grep -E "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2- || echo ""
+rfrf_validate_cross_workstream_snapshot() {
+  local label="$1" state_file="$2"
+  local key metric val required captured complete_ok=1 exp021_ok=1 vdc_ok=1
+
+  required="$(rfrf_cross_workstream_required_field_count)"
+  captured="$(rfrf_cross_workstream_state_get "$state_file" "${label}_CAPTURED_FIELD_COUNT")"
+  echo "${label}_REQUIRED_FIELD_COUNT=${required}"
+  echo "${label}_CAPTURED_FIELD_COUNT=${captured:-0}"
+
+  for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    if ! rfrf_cross_workstream_field_present "$state_file" "${label}_CONFIG_${key}"; then
+      echo "EXP021_CONFIG_NOT_CAPTURED key=${key}"
+      complete_ok=0
+      exp021_ok=0
+      continue
+    fi
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_CONFIG_${key}")"
+    if ! rfrf_cross_workstream_valid_config_value "$val"; then
+      echo "EXP021_CONFIG_INVALID key=${key} value=${val:-<missing>}"
+      complete_ok=0
+      exp021_ok=0
+    fi
+  done
+
+  for metric in "${RFRF_EXP021_IMMEDIATE_DATA_KEYS[@]}"; do
+    if ! rfrf_cross_workstream_field_present "$state_file" "${label}_${metric}"; then
+      echo "EXP021_DATA_NOT_CAPTURED metric=${metric}"
+      complete_ok=0
+      exp021_ok=0
+      continue
+    fi
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_${metric}")"
+    if ! rfrf_cross_workstream_valid_numeric_data "$val"; then
+      echo "EXP021_DATA_INVALID metric=${metric} value=${val:-<missing>}"
+      complete_ok=0
+      exp021_ok=0
+    fi
+  done
+
+  for key in "${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    if ! rfrf_cross_workstream_field_present "$state_file" "${label}_CONFIG_${key}"; then
+      echo "VDC_CONFIG_NOT_CAPTURED key=${key}"
+      complete_ok=0
+      vdc_ok=0
+      continue
+    fi
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_CONFIG_${key}")"
+    if ! rfrf_cross_workstream_valid_config_value "$val"; then
+      echo "VDC_CONFIG_INVALID key=${key} value=${val:-<missing>}"
+      complete_ok=0
+      vdc_ok=0
+    fi
+  done
+
+  for metric in VDC_PHYSICAL_STATES VDC_SHADOW_OBS; do
+    if ! rfrf_cross_workstream_field_present "$state_file" "${label}_${metric}"; then
+      echo "VDC_DATA_NOT_CAPTURED metric=${metric}"
+      complete_ok=0
+      vdc_ok=0
+      continue
+    fi
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_${metric}")"
+    if ! rfrf_cross_workstream_valid_numeric_data "$val"; then
+      echo "VDC_DATA_INVALID metric=${metric} value=${val:-<missing>}"
+      complete_ok=0
+      vdc_ok=0
+    fi
+  done
+
+  if rfrf_cross_workstream_field_present "$state_file" "${label}_VDC_AUTHORITY_MODE"; then
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_VDC_AUTHORITY_MODE")"
+    if ! rfrf_cross_workstream_valid_authority_mode "$val"; then
+      echo "VDC_DATA_INVALID metric=VDC_AUTHORITY_MODE value=${val:-<missing>}"
+      complete_ok=0
+      vdc_ok=0
+    fi
+  else
+    echo "VDC_DATA_NOT_CAPTURED metric=VDC_AUTHORITY_MODE"
+    complete_ok=0
+    vdc_ok=0
+  fi
+
+  if rfrf_cross_workstream_field_present "$state_file" "${label}_VDC_PILOT_EPOCH"; then
+    val="$(rfrf_cross_workstream_state_get "$state_file" "${label}_VDC_PILOT_EPOCH")"
+    if ! rfrf_cross_workstream_valid_pilot_epoch "$val"; then
+      echo "VDC_DATA_INVALID metric=VDC_PILOT_EPOCH value=${val:-<missing>}"
+      complete_ok=0
+      vdc_ok=0
+    fi
+  else
+    echo "VDC_DATA_NOT_CAPTURED metric=VDC_PILOT_EPOCH"
+    complete_ok=0
+    vdc_ok=0
+  fi
+
+  if [[ "$(rfrf_cross_workstream_state_get "$state_file" "${label}_SNAPSHOT_STATUS")" != "PASS" ]]; then
+    complete_ok=0
+  fi
+  if [[ "${captured:-0}" != "$required" ]]; then
+    complete_ok=0
+  fi
+
+  if (( exp021_ok )); then
+    echo "EXP021_EVIDENCE_COMPLETE=YES"
+  else
+    echo "EXP021_EVIDENCE_COMPLETE=NO"
+  fi
+  if (( vdc_ok )); then
+    echo "VDC_EVIDENCE_COMPLETE=YES"
+  else
+    echo "VDC_EVIDENCE_COMPLETE=NO"
+  fi
+
+  if (( complete_ok )); then
+    echo "${label}_REQUIRED_FIELDS_COMPLETE=YES"
+    echo "${label}_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES"
+    return 0
+  fi
+  echo "${label}_REQUIRED_FIELDS_COMPLETE=NO"
+  echo "${label}_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO"
+  return 1
 }
 
 rfrf_cross_workstream_immediate_gate() {
   local pre_file="$1" post_file="$2"
-  local exp021_ok=1 vdc_ok=1 key pre_val post_val
+  local exp021_ok=1 vdc_ok=1 gate_ok=1 key pre_val post_val metric
   local canonical_studies canonical_enrollments canonical_runs canonical_global canonical_vehicle
 
   echo "--- IMMEDIATE_RESTART_SURVIVAL_GATE ---"
+  echo "MISSING_EQUALS_MISSING_CAN_PASS=NO"
+  echo "ERROR_EQUALS_ERROR_CAN_PASS=NO"
+  echo "PRODUCTION_MODE_INCOMPLETE_EVIDENCE_FAILS_CLOSED=YES"
+  echo "FIXTURE_MODE_CAN_SYNTHESIZE_EVIDENCE=$([[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" && "${RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE:-0}" != "1" ]] && echo YES || echo NO)"
+
+  if ! rfrf_validate_cross_workstream_snapshot PRE "$pre_file"; then
+    echo "EXP021_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    echo "VDC_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    echo "IMMEDIATE_RESTART_SURVIVAL_GATE=FAIL"
+    return 1
+  fi
+  if ! rfrf_validate_cross_workstream_snapshot POST "$post_file"; then
+    echo "EXP021_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    echo "VDC_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    echo "IMMEDIATE_RESTART_SURVIVAL_GATE=FAIL"
+    return 1
+  fi
+
   for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
     pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_CONFIG_${key}")"
     post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_CONFIG_${key}")"
@@ -1132,9 +1523,14 @@ rfrf_cross_workstream_immediate_gate() {
     fi
   done
 
-  for metric in EXP021_STUDIES EXP021_ENROLLMENTS EXP021_RUNS EXP021_GLOBAL_BALANCES EXP021_VEHICLE_BALANCES; do
+  for metric in "${RFRF_EXP021_IMMEDIATE_DATA_KEYS[@]}"; do
     pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_${metric}")"
     post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_${metric}")"
+    if ! rfrf_cross_workstream_valid_numeric_data "$pre_val" || ! rfrf_cross_workstream_valid_numeric_data "$post_val"; then
+      echo "EXP021_DATA_INCOMPLETE metric=${metric}"
+      exp021_ok=0
+      continue
+    fi
     if [[ "$pre_val" != "$post_val" ]]; then
       echo "EXP021_DATA_DRIFT metric=${metric} pre=${pre_val} post=${post_val}"
       exp021_ok=0
@@ -1160,6 +1556,25 @@ rfrf_cross_workstream_immediate_gate() {
   for metric in VDC_PHYSICAL_STATES VDC_AUTHORITY_MODE VDC_PILOT_EPOCH; do
     pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_${metric}")"
     post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_${metric}")"
+    if [[ "$metric" == VDC_PHYSICAL_STATES ]]; then
+      if ! rfrf_cross_workstream_valid_numeric_data "$pre_val" || ! rfrf_cross_workstream_valid_numeric_data "$post_val"; then
+        echo "VDC_DATA_INCOMPLETE metric=${metric}"
+        vdc_ok=0
+        continue
+      fi
+    elif [[ "$metric" == VDC_AUTHORITY_MODE ]]; then
+      if ! rfrf_cross_workstream_valid_authority_mode "$pre_val" || ! rfrf_cross_workstream_valid_authority_mode "$post_val"; then
+        echo "VDC_DATA_INCOMPLETE metric=${metric}"
+        vdc_ok=0
+        continue
+      fi
+    else
+      if ! rfrf_cross_workstream_valid_pilot_epoch "$pre_val" || ! rfrf_cross_workstream_valid_pilot_epoch "$post_val"; then
+        echo "VDC_DATA_INCOMPLETE metric=${metric}"
+        vdc_ok=0
+        continue
+      fi
+    fi
     if [[ "$pre_val" != "$post_val" ]]; then
       echo "VDC_IMMUTABLE_DRIFT metric=${metric} pre=${pre_val} post=${post_val}"
       vdc_ok=0
@@ -1168,13 +1583,11 @@ rfrf_cross_workstream_immediate_gate() {
 
   pre_val="$(rfrf_cross_workstream_state_get "$pre_file" PRE_VDC_SHADOW_OBS)"
   post_val="$(rfrf_cross_workstream_state_get "$post_file" POST_VDC_SHADOW_OBS)"
-  if [[ "$pre_val" =~ ^[0-9]+$ && "$post_val" =~ ^[0-9]+$ ]]; then
-    if (( post_val < pre_val )); then
-      echo "VDC_MONOTONIC_VIOLATION metric=VDC_SHADOW_OBS pre=${pre_val} post=${post_val}"
-      vdc_ok=0
-    fi
-  elif [[ "$pre_val" != "$post_val" ]]; then
-    echo "VDC_SHADOW_OBS_DRIFT pre=${pre_val} post=${post_val}"
+  if ! rfrf_cross_workstream_valid_numeric_data "$pre_val" || ! rfrf_cross_workstream_valid_numeric_data "$post_val"; then
+    echo "VDC_DATA_INCOMPLETE metric=VDC_SHADOW_OBS"
+    vdc_ok=0
+  elif (( post_val < pre_val )); then
+    echo "VDC_MONOTONIC_VIOLATION metric=VDC_SHADOW_OBS pre=${pre_val} post=${post_val}"
     vdc_ok=0
   fi
 
@@ -1182,14 +1595,21 @@ rfrf_cross_workstream_immediate_gate() {
     echo "EXP021_IMMEDIATE_SURVIVAL_GATE=PASS"
   else
     echo "EXP021_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    gate_ok=0
   fi
   if (( vdc_ok )); then
     echo "VDC_IMMEDIATE_SURVIVAL_GATE=PASS"
   else
     echo "VDC_IMMEDIATE_SURVIVAL_GATE=FAIL"
+    gate_ok=0
   fi
 
-  (( exp021_ok && vdc_ok ))
+  if (( gate_ok )); then
+    echo "IMMEDIATE_RESTART_SURVIVAL_GATE=PASS"
+    return 0
+  fi
+  echo "IMMEDIATE_RESTART_SURVIVAL_GATE=FAIL"
+  return 1
 }
 
 rfrf_capture_cross_workstream_snapshot() {
@@ -1198,12 +1618,18 @@ rfrf_capture_cross_workstream_snapshot() {
   local tmp_state
   echo "--- CROSS_WORKSTREAM_SNAPSHOT_${label} ---"
   if [[ -n "$state_file" ]]; then
-    rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$state_file"
+    if ! rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$state_file"; then
+      return 1
+    fi
     cat "$state_file"
     return 0
   fi
   tmp_state="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-workstream-${label}.XXXXXX")"
-  rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$tmp_state"
+  if ! rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$tmp_state"; then
+    cat "$tmp_state"
+    rm -f "$tmp_state"
+    return 1
+  fi
   cat "$tmp_state"
   rm -f "$tmp_state"
 }
@@ -1215,7 +1641,9 @@ STAGE1_BUSINESS_PROCESSING_ENABLED=NO
 STAGE1_BOOLEAN_AUTHORITIES_REMAIN_OFF=YES
 STAGE1_CUTOVER_SELECTION=operator_supplied_RFRF_CUTOVER_AT_UTC_ISO_only
 STAGE1_NO_IMPLICIT_NOW=YES
-IMMEDIATE_RESTART_SURVIVAL_GATE=EXP021_and_VDC_PRE_POST_equality_during_stage1_restart_window
+IMMEDIATE_RESTART_SURVIVAL_GATE=EXP021_and_VDC_PRE_POST_equality_with_complete_evidence_required
+PRODUCTION_MODE_INCOMPLETE_EVIDENCE_FAILS_CLOSED=YES
+FIXTURE_MODE_CAN_SYNTHESIZE_EVIDENCE=YES_when_RFRF_STAGE_TEST_MODE_without_production_simulation
 POST_EXECUTION_4_TICK_SURVIVAL_GATE=observe_after_commit_not_blocking_controller
 SIGKILL_AND_POWER_LOSS_UNTRAPPABLE=YES
 --- EXP021_POST_RESTART_SURVIVAL_CONTRACT (observe after real restart) ---

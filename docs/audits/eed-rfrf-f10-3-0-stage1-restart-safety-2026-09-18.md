@@ -124,3 +124,57 @@ DB invariants: authority mode + pilot epoch fingerprint exact match; shadow obse
 | PRODUCTION_MUTATED | NO |
 | STAGE_1_EXECUTED | NO |
 | STAGE_1_START_AUTHORIZED | NO |
+
+---
+
+## F10.3.0.2 cross-workstream evidence completeness fail-closed (2026-09-18)
+
+Blocking review finding: immediate EXP-021/VDC gate could **fail open** when evidence was incomplete (`"" == ""`, `ERROR == ERROR`, `SKIPPED`, omitted keys).
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Required evidence contract | All `RFRF_EXP021_IMMEDIATE_CONFIG_KEYS` + data keys and `RFRF_VDC_IMMEDIATE_CONFIG_KEYS` + data keys must be explicitly captured PRE/POST; config absence represented as `<absent>` |
+| DB snapshot failure blocks | Production-simulation path: missing `DATABASE_URL`, missing `psql`, query failure, empty/non-numeric → `CROSS_WORKSTREAM_DB_SNAPSHOT_PRE\|POST=FAIL`; no `SKIPPED` |
+| PRE hard gate | `rfrf_capture_cross_workstream_snapshot PRE` + `rfrf_validate_cross_workstream_snapshot PRE` before backup/recovery arm/mutation; `PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES` required |
+| POST hard gate | POST capture + validate before comparison; incomplete POST → `rfrf_enable_stage_fail_closed cross_workstream_post_evidence_incomplete` |
+| Sentinel rejection | `""`, `ERROR`, `SKIPPED`, `UNKNOWN`, `UNAVAILABLE`, `NULL`, `null`, `N/A` invalid for required data; numeric fields require `^[0-9]+$` |
+| Comparison only after completeness | `MISSING_EQUALS_MISSING_CAN_PASS=NO`, `ERROR_EQUALS_ERROR_CAN_PASS=NO`; VDC shadow POST ≥ PRE; physical states exact equality |
+| Fixture vs production | `FIXTURE_MODE_CAN_SYNTHESIZE_EVIDENCE=YES` when `RFRF_STAGE_TEST_MODE=1` without `RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1`; production simulation never downgrades to SKIPPED |
+
+### New fixture tests (12)
+
+`PRE_DATABASE_URL_MISSING_TEST`, `PRE_PSQL_UNAVAILABLE_TEST`, `PRE_REQUIRED_QUERY_ERROR_TEST`, `PRE_REQUIRED_FIELD_MISSING_TEST`, `POST_REQUIRED_QUERY_ERROR_TEST`, `POST_REQUIRED_FIELD_MISSING_TEST`, `PRE_AND_POST_ERROR_EQUALITY_FAILS_TEST`, `PRE_AND_POST_MISSING_EQUALITY_FAILS_TEST`, `LEGITIMATE_CONFIG_ABSENT_EQUALITY_TEST`, `NUMERIC_VALIDATION_TEST`, `VDC_SHADOW_MONOTONIC_INCREASE_TEST`, `VDC_SHADOW_DECREASE_TEST`
+
+| Field | Value |
+|-------|-------|
+| RFRF_F10_3_0_2_EVIDENCE_COMPLETENESS | PASS (tooling) |
+| RFRF_RUNTIME_SEMANTICS_CHANGED | NO |
+| PRODUCTION_MUTATED | NO |
+| STAGE_1_START_AUTHORIZED | NO |
+
+---
+
+## F10.3.0.2 cross-workstream evidence completeness fail-closed (2026-09-18)
+
+Blocking review finding: immediate EXP-021/VDC gate could **fail open** when evidence was incomplete (`"" == ""`, `ERROR == ERROR`, `SKIPPED`, omitted keys).
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Required evidence contract | All `RFRF_EXP021_IMMEDIATE_CONFIG_KEYS` + data keys and `RFRF_VDC_IMMEDIATE_CONFIG_KEYS` + data keys must be explicitly captured PRE/POST; config absence represented as `<absent>` |
+| DB snapshot failure blocks | Production-simulation path: missing `DATABASE_URL`, missing `psql`, query failure, empty/non-numeric → `CROSS_WORKSTREAM_DB_SNAPSHOT_PRE\|POST=FAIL`; no `SKIPPED` |
+| PRE hard gate | `rfrf_capture_cross_workstream_snapshot PRE` + `rfrf_validate_cross_workstream_snapshot PRE` before backup/recovery arm/mutation; `PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES` required |
+| POST hard gate | POST capture + validate before comparison; incomplete POST → `rfrf_enable_stage_fail_closed cross_workstream_post_evidence_incomplete` |
+| Sentinel rejection | `""`, `ERROR`, `SKIPPED`, `UNKNOWN`, `UNAVAILABLE`, `NULL`, `null`, `N/A` invalid for required data; numeric fields require `^[0-9]+$` |
+| Comparison only after completeness | `MISSING_EQUALS_MISSING_CAN_PASS=NO`, `ERROR_EQUALS_ERROR_CAN_PASS=NO`; VDC shadow POST ≥ PRE; physical states exact equality |
+| Fixture vs production | `FIXTURE_MODE_CAN_SYNTHESIZE_EVIDENCE=YES` when `RFRF_STAGE_TEST_MODE=1` without `RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1`; production simulation never downgrades to SKIPPED |
+
+### New fixture tests (12)
+
+`PRE_DATABASE_URL_MISSING_TEST`, `PRE_PSQL_UNAVAILABLE_TEST`, `PRE_REQUIRED_QUERY_ERROR_TEST`, `PRE_REQUIRED_FIELD_MISSING_TEST`, `POST_REQUIRED_QUERY_ERROR_TEST`, `POST_REQUIRED_FIELD_MISSING_TEST`, `PRE_AND_POST_ERROR_EQUALITY_FAILS_TEST`, `PRE_AND_POST_MISSING_EQUALITY_FAILS_TEST`, `LEGITIMATE_CONFIG_ABSENT_EQUALITY_TEST`, `NUMERIC_VALIDATION_TEST`, `VDC_SHADOW_MONOTONIC_INCREASE_TEST`, `VDC_SHADOW_DECREASE_TEST`
+
+| Field | Value |
+|-------|-------|
+| RFRF_F10_3_0_2_EVIDENCE_COMPLETENESS | PASS (tooling) |
+| RFRF_RUNTIME_SEMANTICS_CHANGED | NO |
+| PRODUCTION_MUTATED | NO |
+| STAGE_1_START_AUTHORIZED | NO |

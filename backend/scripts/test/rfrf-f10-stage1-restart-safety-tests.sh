@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RFRF F10.3.0 / F10.3.0.1 Stage-1 transaction + recovery tests — fixtures only.
+# RFRF F10.3.0 / F10.3.0.1 / F10.3.0.2 Stage-1 transaction + evidence tests — fixtures only.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,6 +52,12 @@ run_stage1() {
   bash "${OPS}/rfrf-production-enable-stage.sh" 2>&1
 }
 
+run_stage1_production_evidence() {
+  export RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1
+  export DRY_RUN=0
+  run_stage1 "$@"
+}
+
 clear_inject_flags() {
   unset RFRF_TEST_INJECT_RESTART_A_FAIL RFRF_TEST_INJECT_RESTART_B_FAIL
   unset RFRF_TEST_INJECT_POST_VERIFY_FAIL RFRF_TEST_INJECT_BACKUP_RESTORE_FAIL
@@ -61,6 +67,13 @@ clear_inject_flags() {
   unset RFRF_TEST_INJECT_PAUSE_AFTER_MUTATION RFRF_TEST_SIGNAL_SENTINEL
   unset RFRF_TEST_INJECT_EXP021_DRIFT RFRF_TEST_INJECT_VDC_AUTHORITY_DRIFT
   unset RFRF_TEST_INJECT_VDC_EPOCH_RESET RFRF_TEST_INJECT_VDC_SHADOW_DECREASE
+  unset RFRF_TEST_INJECT_VDC_SHADOW_INCREASE
+  unset RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE
+  unset RFRF_TEST_INJECT_DATABASE_URL_MISSING RFRF_TEST_INJECT_PSQL_UNAVAILABLE
+  unset RFRF_TEST_INJECT_QUERY_ERROR RFRF_TEST_INJECT_PRE_QUERY_ERROR
+  unset RFRF_TEST_INJECT_POST_QUERY_ERROR RFRF_TEST_INJECT_PRE_FIELD_MISSING
+  unset RFRF_TEST_INJECT_POST_FIELD_MISSING RFRF_TEST_INJECT_PRE_MISSING_METRIC
+  unset RFRF_TEST_INJECT_POST_MISSING_METRIC
 }
 
 assert_stage0_final() {
@@ -383,6 +396,8 @@ after="$(rfrf_file_sha256 "$BACKEND_ENV")"
 [[ "$before" == "$after" ]] || fail "dry run mutated backend.env"
 pass "dry run zero mutation"
 echo "STAGE1_DRY_RUN_ZERO_MUTATION=PASS"
+export DRY_RUN=0
+export RFRF_ROLLOUT_ACK=YES
 
 # Backup checksum + atomic restore roundtrip
 reset_stage0_env
@@ -399,14 +414,228 @@ pass "backup checksum roundtrip"
 echo "BACKUP_CHECKSUM_VERIFIED=YES"
 echo "ATOMIC_RESTORE_EXACT_CHECKSUM_TEST=PASS"
 
-# Cross-workstream gate unit (PRE vs POST equality)
+# Cross-workstream gate unit (PRE vs POST equality with complete evidence)
 pre_state="${TMP_DIR}/pre.state"
 post_state="${TMP_DIR}/post.state"
 reset_stage0_env
 rfrf_cross_workstream_write_state_file "$BACKEND_ENV" PRE "$pre_state"
 rfrf_cross_workstream_write_state_file "$BACKEND_ENV" POST "$post_state"
+rfrf_validate_cross_workstream_snapshot PRE "$pre_state" >/dev/null || fail "PRE validate should pass in fixture"
+rfrf_validate_cross_workstream_snapshot POST "$post_state" >/dev/null || fail "POST validate should pass in fixture"
 rfrf_cross_workstream_immediate_gate "$pre_state" "$post_state" >/dev/null || fail "identical PRE/POST gate should pass"
 pass "cross-workstream gate unit pass"
+
+write_complete_fixture_state() {
+  local label="$1" file="$2"
+  local key
+  : >"$file"
+  for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    rfrf_cross_workstream_state_line "${label}_CONFIG_${key}" "<absent>" >>"$file"
+  done
+  for key in "${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    rfrf_cross_workstream_state_line "${label}_CONFIG_${key}" "<absent>" >>"$file"
+  done
+  rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "1" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_EXP021_ENROLLMENTS" "1" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_EXP021_RUNS" "0" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_EXP021_GLOBAL_BALANCES" "0" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_EXP021_VEHICLE_BALANCES" "0" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_VDC_PHYSICAL_STATES" "4" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_VDC_SHADOW_OBS" "5" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_VDC_AUTHORITY_MODE" "LEGACY" >>"$file"
+  rfrf_cross_workstream_state_line "${label}_VDC_PILOT_EPOCH" "none" >>"$file"
+  rfrf_cross_workstream_finalize_state_file "$label" "$file" 1 >/dev/null
+}
+
+# F10.3.0.2 evidence completeness tests
+reset_stage0_env
+clear_inject_flags
+unset DATABASE_URL
+export RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1
+export RFRF_TEST_INJECT_DATABASE_URL_MISSING=1
+set +e
+out="$(
+  env RFRF_STAGE=1 DRY_RUN=0 RFRF_ROLLOUT_ACK=YES \
+    RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1 \
+    RFRF_TEST_INJECT_DATABASE_URL_MISSING=1 \
+    bash "${OPS}/rfrf-production-enable-stage.sh" 2>&1
+)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "missing DATABASE_URL should block"
+echo "$out" | grep -q 'PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "missing DATABASE_URL missing PRE incomplete marker"
+echo "$out" | grep -q 'CROSS_WORKSTREAM_DB_SNAPSHOT_PRE=FAIL' || fail "missing DATABASE_URL missing DB snapshot fail"
+echo "$out" | grep -q 'RECOVERY_ARMED_BEFORE_FIRST_MUTATION=YES' && fail "missing DATABASE_URL must not arm recovery"
+[[ -z "$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")" ]] || fail "missing DATABASE_URL should not mutate"
+pass "PRE database url missing blocks before mutation"
+echo "PRE_DATABASE_URL_MISSING_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+cat >>"$BACKEND_ENV" <<'EOF'
+DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:5432/fixture?schema=public
+EOF
+export RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1
+export RFRF_TEST_INJECT_PSQL_UNAVAILABLE=1
+set +e
+out="$(
+  env RFRF_STAGE=1 DRY_RUN=0 RFRF_ROLLOUT_ACK=YES \
+    RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1 \
+    RFRF_TEST_INJECT_PSQL_UNAVAILABLE=1 \
+    bash "${OPS}/rfrf-production-enable-stage.sh" 2>&1
+)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "psql unavailable should block"
+echo "$out" | grep -q 'PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "psql unavailable missing PRE incomplete"
+[[ -z "$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")" ]] || fail "psql unavailable should not mutate"
+pass "PRE psql unavailable blocks before mutation"
+echo "PRE_PSQL_UNAVAILABLE_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+cat >>"$BACKEND_ENV" <<'EOF'
+DATABASE_URL=postgresql://fixture:fixture@127.0.0.1:5432/fixture?schema=public
+EOF
+export RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1
+export RFRF_TEST_INJECT_PRE_QUERY_ERROR=1
+set +e
+out="$(
+  env RFRF_STAGE=1 DRY_RUN=0 RFRF_ROLLOUT_ACK=YES \
+    RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE=1 \
+    RFRF_TEST_INJECT_PRE_QUERY_ERROR=1 \
+    bash "${OPS}/rfrf-production-enable-stage.sh" 2>&1
+)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "PRE query error should block"
+echo "$out" | grep -q 'PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "PRE query error missing incomplete marker"
+[[ -z "$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")" ]] || fail "PRE query error should not mutate"
+pass "PRE query error blocks before mutation"
+echo "PRE_REQUIRED_QUERY_ERROR_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+export RFRF_TEST_INJECT_PRE_FIELD_MISSING=1
+export RFRF_TEST_INJECT_PRE_MISSING_METRIC=EXP021_VEHICLE_BALANCES
+set +e
+out="$(run_stage1)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "PRE field missing should block"
+echo "$out" | grep -q 'PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "PRE field missing incomplete marker"
+[[ -z "$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")" ]] || fail "PRE field missing should not mutate"
+pass "PRE field missing blocks before mutation"
+echo "PRE_REQUIRED_FIELD_MISSING_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+export RFRF_TEST_INJECT_POST_QUERY_ERROR=1
+set +e
+out="$(run_stage1)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "POST query error should exit non-zero"
+echo "$out" | grep -q 'POST_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "POST query error missing incomplete marker"
+echo "$out" | grep -q 'BACKEND_ENV_RESTORED=YES' || fail "POST query error missing recovery"
+assert_stage0_final "$out"
+pass "POST query error auto-recovery"
+echo "POST_REQUIRED_QUERY_ERROR_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+export RFRF_TEST_INJECT_POST_FIELD_MISSING=1
+export RFRF_TEST_INJECT_POST_MISSING_METRIC=EXP021_VEHICLE_BALANCES
+set +e
+out="$(run_stage1)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "POST field missing should exit non-zero"
+echo "$out" | grep -q 'POST_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO' || fail "POST field missing incomplete marker"
+echo "$out" | grep -q 'BACKEND_ENV_RESTORED=YES' || fail "POST field missing missing recovery"
+assert_stage0_final "$out"
+pass "POST field missing auto-recovery"
+echo "POST_REQUIRED_FIELD_MISSING_TEST=PASS"
+
+err_pre="${TMP_DIR}/err-pre.state"
+err_post="${TMP_DIR}/err-post.state"
+write_complete_fixture_state PRE "$err_pre"
+write_complete_fixture_state POST "$err_post"
+rfrf_cross_workstream_state_line PRE_EXP021_STUDIES ERROR >"${err_pre}.tmp"
+grep -v '^PRE_EXP021_STUDIES=' "$err_pre" >>"${err_pre}.tmp"
+mv "${err_pre}.tmp" "$err_pre"
+rfrf_cross_workstream_state_line POST_EXP021_STUDIES ERROR >"${err_post}.tmp"
+grep -v '^POST_EXP021_STUDIES=' "$err_post" >>"${err_post}.tmp"
+mv "${err_post}.tmp" "$err_post"
+set +e
+rfrf_cross_workstream_immediate_gate "$err_pre" "$err_post" >/dev/null
+gate_rc=$?
+set -e
+(( gate_rc != 0 )) || fail "ERROR == ERROR must not pass gate"
+pass "ERROR equals ERROR fails closed"
+echo "PRE_AND_POST_ERROR_EQUALITY_FAILS_TEST=PASS"
+
+missing_pre="${TMP_DIR}/missing-pre.state"
+missing_post="${TMP_DIR}/missing-post.state"
+write_complete_fixture_state PRE "$missing_pre"
+write_complete_fixture_state POST "$missing_post"
+grep -v '^PRE_EXP021_STUDIES=' "$missing_pre" >"${missing_pre}.tmp"
+mv "${missing_pre}.tmp" "$missing_pre"
+grep -v '^POST_EXP021_STUDIES=' "$missing_post" >"${missing_post}.tmp"
+mv "${missing_post}.tmp" "$missing_post"
+set +e
+rfrf_cross_workstream_immediate_gate "$missing_pre" "$missing_post" >/dev/null
+gate_rc=$?
+set -e
+(( gate_rc != 0 )) || fail "missing == missing must not pass gate"
+pass "missing equals missing fails closed"
+echo "PRE_AND_POST_MISSING_EQUALITY_FAILS_TEST=PASS"
+
+abs_pre="${TMP_DIR}/abs-pre.state"
+abs_post="${TMP_DIR}/abs-post.state"
+write_complete_fixture_state PRE "$abs_pre"
+write_complete_fixture_state POST "$abs_post"
+rfrf_cross_workstream_immediate_gate "$abs_pre" "$abs_post" >/dev/null || fail "legitimate config absent should pass"
+pass "legitimate config absent equality"
+echo "LEGITIMATE_CONFIG_ABSENT_EQUALITY_TEST=PASS"
+
+bad_pre="${TMP_DIR}/bad-pre.state"
+write_complete_fixture_state PRE "$bad_pre"
+rfrf_cross_workstream_state_line PRE_EXP021_STUDIES "not-a-number" >"${bad_pre}.tmp"
+grep -v '^PRE_EXP021_STUDIES=' "$bad_pre" >>"${bad_pre}.tmp"
+mv "${bad_pre}.tmp" "$bad_pre"
+rfrf_validate_cross_workstream_snapshot PRE "$bad_pre" >/dev/null && fail "non-numeric should fail validation"
+pass "numeric validation fail closed"
+echo "NUMERIC_VALIDATION_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+export RFRF_TEST_INJECT_VDC_SHADOW_INCREASE=1
+set +e
+out="$(run_stage1)"
+rc=$?
+set -e
+(( rc == 0 )) || fail "VDC shadow monotonic increase should pass: ${out}"
+echo "$out" | grep -q 'VDC_IMMEDIATE_SURVIVAL_GATE=PASS' || fail "shadow increase missing VDC pass"
+pass "VDC shadow monotonic increase"
+echo "VDC_SHADOW_MONOTONIC_INCREASE_TEST=PASS"
+
+reset_stage0_env
+clear_inject_flags
+export RFRF_TEST_INJECT_VDC_SHADOW_DECREASE=1
+set +e
+out="$(run_stage1)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "VDC shadow decrease should fail"
+echo "$out" | grep -q 'VDC_IMMEDIATE_SURVIVAL_GATE=FAIL' || fail "shadow decrease missing VDC fail"
+echo "$out" | grep -q 'BACKEND_ENV_RESTORED=YES' || fail "shadow decrease missing recovery"
+assert_stage0_final "$out"
+pass "VDC shadow decrease recovery"
+echo "VDC_SHADOW_DECREASE_TEST=PASS"
+
+echo "PRODUCTION_MODE_INCOMPLETE_EVIDENCE_FAILS_CLOSED=YES"
+echo "FIXTURE_MODE_CAN_SYNTHESIZE_EVIDENCE=YES"
 
 echo "CANONICAL_VDC_AUTHORITY_KEYS=${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[*]}"
 echo "OBSOLETE_OR_UNUSED_VDC_KEYS=${RFRF_VDC_OBSOLETE_CONFIG_KEYS[*]}"

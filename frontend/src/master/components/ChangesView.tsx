@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
+    version: '4.9.1144',
+    title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',
+    summary: [
+      'Immediate EXP-021/VDC survival gate now fails closed on incomplete, skipped, errored, or sentinel evidence — no missing==missing or ERROR==ERROR pass paths.',
+      'PRE snapshot + completeness validation is a hard pre-mutation gate; POST snapshot + validation blocks COMMIT and triggers recovery when armed.',
+      'Twelve deterministic failure-injection tests; production simulation never emits SKIPPED; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.3.0.1 gate was directionally correct but could still pass when PRE/POST evidence was absent or carried ERROR/SKIPPED sentinels.',
+    previousBehavior:
+      'Cross-workstream state_get returned empty string for missing keys; equality checks could pass on ""=="" or ERROR==ERROR; DB snapshot could emit SKIPPED.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.2 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T09:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-3-0-1-transaction-closure-2026-09-18',
     version: '4.9.1143',
     title: 'RFRF F10.3.0.1 — Stage-1 transaction / recovery micro-closure',

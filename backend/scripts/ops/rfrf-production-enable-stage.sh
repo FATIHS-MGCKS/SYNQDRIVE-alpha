@@ -309,7 +309,17 @@ rfrf_stage1_run_transaction() {
   CROSS_WORKSTREAM_PRE_STATE="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-pre.XXXXXX")"
   CROSS_WORKSTREAM_POST_STATE="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-post.XXXXXX")"
 
-  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" PRE "$CROSS_WORKSTREAM_PRE_STATE"
+  if ! rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" PRE "$CROSS_WORKSTREAM_PRE_STATE"; then
+    echo "PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO"
+    rfrf_rollout_fail "PRE cross-workstream snapshot failed"
+    exit 1
+  fi
+  if ! rfrf_validate_cross_workstream_snapshot PRE "$CROSS_WORKSTREAM_PRE_STATE"; then
+    echo "PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO"
+    rfrf_rollout_fail "PRE cross-workstream evidence incomplete — mutation blocked"
+    exit 1
+  fi
+  echo "PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES"
 
   STAMP="$(date -u +%Y%m%d%H%M%S)"
   BACKUP_FILE="${BACKEND_ENV}.bak-rfrf-stage${STAGE}-${STAMP}"
@@ -335,13 +345,17 @@ rfrf_stage1_run_transaction() {
   rfrf_apply_stage_mutations "$STAGE" "$BACKEND_ENV" "$CUTOVER_AT"
   rfrf_stage1_set_tx_state MUTATED
 
-  rfrf_stage1_finalize_env_metadata
+  if ! rfrf_stage1_finalize_env_metadata; then
+    rfrf_enable_stage_fail_closed "finalize_env_metadata" "$target_sha"
+  fi
 
   if ! rfrf_verify_stage1_env_state "$BACKEND_ENV" "$CUTOVER_AT"; then
     rfrf_enable_stage_fail_closed "mutated_env_verify" "$target_sha"
   fi
 
-  rfrf_stage1_post_mutation_checkpoint
+  if ! rfrf_stage1_post_mutation_checkpoint; then
+    rfrf_enable_stage_fail_closed "post_mutation_checkpoint" "$target_sha"
+  fi
 
   echo "=== AFTER (file) ==="
   rfrf_read_flag_snapshot "$BACKEND_ENV"
@@ -362,7 +376,15 @@ rfrf_stage1_run_transaction() {
   echo "REPLICA_A_RUNNING_SHA=${REPLICA_A_SHA}"
   echo "REPLICA_B_RUNNING_SHA=${REPLICA_B_SHA}"
 
-  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" POST "$CROSS_WORKSTREAM_POST_STATE"
+  if ! rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" POST "$CROSS_WORKSTREAM_POST_STATE"; then
+    echo "POST_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO"
+    rfrf_enable_stage_fail_closed "cross_workstream_post_snapshot_failed" "$target_sha"
+  fi
+  if ! rfrf_validate_cross_workstream_snapshot POST "$CROSS_WORKSTREAM_POST_STATE"; then
+    echo "POST_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=NO"
+    rfrf_enable_stage_fail_closed "cross_workstream_post_evidence_incomplete" "$target_sha"
+  fi
+  echo "POST_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES"
   if ! rfrf_cross_workstream_immediate_gate "$CROSS_WORKSTREAM_PRE_STATE" "$CROSS_WORKSTREAM_POST_STATE"; then
     rfrf_enable_stage_fail_closed "cross_workstream_immediate_gate" "$target_sha"
   fi
@@ -488,7 +510,10 @@ if [[ "$ACK" != "YES" ]]; then
 fi
 
 if (( STAGE == 1 )); then
-  rfrf_stage1_run_transaction "$TARGET_SHA"
+  if ! rfrf_stage1_run_transaction "$TARGET_SHA"; then
+    echo "RFRF_STAGED_ENABLEMENT=BLOCKED"
+    exit 1
+  fi
   exit 0
 fi
 
