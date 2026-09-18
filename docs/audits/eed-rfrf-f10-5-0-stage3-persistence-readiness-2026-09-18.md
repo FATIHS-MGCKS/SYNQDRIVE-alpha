@@ -1,25 +1,38 @@
 # RFRF F10.5.0 / F10.5.0.1 — Stage-3 candidate persistence readiness & transaction safety
 
-**Evidence ID:** EED-EV-0069  
-**Class:** OPS+DOC  
-**Date:** 2026-09-18  
-**PR:** #1691 (draft)  
-**Authoritative head:** `9ce8cb2758f182fc51fd331acb641b2cdff3b10a` (+ F10.5.0.1 commits on same branch)
+**Evidence ID:** EED-EV-0069
+**Class:** OPS+DOC
+**Date:** 2026-09-18
+**PR:** #1691 (draft)
+**Authoritative head:** `f52afca5346d2b6340cefe3e9655b895bc9f405e` (PR #1691 branch)
+
+| Head role | SHA |
+|-----------|-----|
+| **STARTING_HEAD (F10.5.0 land)** | `9ce8cb2758f182fc51fd331acb641b2cdff3b10a` |
+| **FINAL_HEAD (F10.5.0.1)** | `f52afca5346d2b6340cefe3e9655b895bc9f405e` |
 
 ## F10.5.0.1 micro-closure status
 
 | Field | Value |
 |-------|-------|
-| **RFRF_F10_5_0_1_FINAL_MICRO_CLOSURE** | **PASS** after CI run `35381572805` PG gates green; workflow fix for `git diff --check` pushed (`1cbe956ab`) |
+| **RFRF_F10_5_0_1_FINAL_MICRO_CLOSURE** | **PASS** (structural/transactional/rebaseline/PG/cross-workstream/tooling) — **merge gate blocked** until i18n authority label (see CI) |
+| **READY_TO_MERGE_F10_5_0** | **NO** until `i18n-governance-authority-change` applied by trusted actor `FATIHS-MGCKS` on PR #1691 |
+| **READY_FOR_STAGE3_AUTHORIZATION_GATE** | **YES** (with observational readiness **NO**; Stage 3 **not** authorized here) |
 | **STAGE_3_EXECUTED** | NO |
 | **STAGE_3_START_AUTHORIZED** | NO |
 
-### CI (PR #1691 @ `9ce8cb275…` baseline)
+### CI (PR #1691 @ `f52afca5346d2b6340cefe3e9655b895bc9f405e`)
 
 | Metric | Value |
 |--------|-------|
-| **GitHub checks (repo-wide on PR head at F10.5.0 land)** | **28 / 28 SUCCESS** (0 failed, 0 pending) |
-| **Additional workflow** | `.github/workflows/rfrf-stage3-persistence-readiness.yml` — isolated PG + Redis + F10 gate (added F10.5.0.1) |
+| **CI_TOTAL** | 29 |
+| **CI_SUCCESS** | 28 |
+| **CI_FAILURE** | 1 |
+| **CI_PENDING** | 0 |
+| **Failed check** | `i18n-authority-protection` — `GOVERNANCE_AUTHORITY_CHANGE_REQUIRES_APPROVAL` on `.github/workflows/rfrf-stage3-persistence-readiness.yml` |
+| **Owner action** | Trusted actor applies label `i18n-governance-authority-change` (Layer-0 `labeled` event); re-run is automatic |
+| **RFRF Stage-3 persistence workflow** | Run `35385459930` — **SUCCESS** (F3/F4/F9 isolated PG+Redis + F10 operational gate + final check) |
+| **Stale blocker removed** | `KNOWN_P1_STAGE3_BLOCKERS=CI pending` is **obsolete** (was true before 28/28 on `9ce8cb275…`; superseded by i18n merge gate) |
 
 ### Blocker taxonomy (corrected)
 
@@ -55,10 +68,10 @@ Epistemic note to preserve in operator communications:
 | **PRODUCTION_REBASELINE_REQUIRED** | **NO** (after acceptance) |
 | **CURRENT_RFRF_STAGE** | 2 |
 | **Master / persist / conv / promo / G2** | true / false / false / false / false |
-| **Cutover** | `2026-09-18T10:25:41.000Z` unchanged |
+| **Cutover** | `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT=2026-09-18T10:25:41.000Z` (unchanged) |
 | **Candidates / fallback VEE** | 0 / 0 |
-| **Live preflight** | PASS (`RFRF_REQUIRED_GIT_SHA=0384adf…`) |
-| **Replicas** | Same SHA both replicas; MIXED_RUNTIME=NO |
+| **Live preflight** | PASS (`RFRF_REQUIRED_GIT_SHA=0384adf12bbb1407eb8e291726d3dac60323b8b6`) — re-verified read-only **2026-09-18T19:55Z** |
+| **Replicas** | Runtime git SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6` on current release; **MIXED_RUNTIME=NO** |
 
 ## EXP-021 #1689 rebaseline (read-only)
 
@@ -74,8 +87,8 @@ Epistemic note to preserve in operator communications:
 
 ## VDC canonical epoch (exact 4-scope population)
 
-**Population:** four scopes from `CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON` (Production env).  
-**T0:** `2026-09-18T09:33:25.000Z`  
+**Population:** four scopes from `CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON` (Production env).
+**T0:** `2026-09-18T09:33:25.000Z`
 **Filter:** `observed_at >= T0` AND `(organization_id, vehicle_id, provider)` in pilot cohort.
 
 | Metric | Count |
@@ -105,12 +118,13 @@ Isolated gates (never Production):
 | F4-PR2 runtime + candidate | `rfrf-f4-pr2-runtime-postgres-gate.sh` |
 | F9 multi-replica PG+Redis | `rfrf-f9-multi-replica-integration-gate.sh` |
 
-| **RFRF_F3_F2_HANDOFF_REAL_PG** | PASS (CI run 35381572805) |
+| **RFRF_F3_F2_HANDOFF_REAL_PG** | PASS (CI workflow run `35385459930`) |
 | **RFRF_F4_PR2_RUNTIME_REAL_PG** | PASS |
 | **RAW_REFUEL_CANDIDATE_REAL_PG** | PASS |
-| **RFRF_F9_MULTI_REPLICA_REAL_PG_REDIS** | PASS (F9 gate + orchestrated regressions in CI) |
+| **RFRF_F9_MULTI_REPLICA_REAL_PG_REDIS** | PASS |
 | **CANDIDATE_REAL_PG_TESTS** | PASS |
 | **MULTI_REPLICA_CANDIDATE_SAFETY** | PASS |
+| **Required tests skipped** | NONE |
 
 ## Stage-2 observation
 
@@ -123,10 +137,15 @@ Isolated gates (never Production):
 
 Unchanged — see prior F10.5.0 section in KG changelog / EED-EV-0069 registry row.
 
-## Local validation (agent)
+## Local validation (agent, F10.5.0.1)
 
 | Gate | Result |
 |------|--------|
-| F10 operational tooling gate | PASS (after `npx prisma generate`) |
-| Stage 1/2/3 fixture suites | PASS |
-| Isolated PG gates on agent VM | N/A (no PostgreSQL) — **CI workflow required** |
+| Stage 3 authority matrix | PASS |
+| Stage 3 transaction safety | PASS |
+| Stage 3 rollback fixtures (`STAGE3_ROLLBACK_TO_STAGE2_SAFE=YES`) | PASS |
+| Module registry validator | PASS |
+| Isolated PG gates on agent VM | N/A (no local PostgreSQL) — proven in CI workflow |
+| **KNOWN_P0_STAGE3_BLOCKERS** | **NONE** |
+| **KNOWN_P1_STAGE3_BLOCKERS** | i18n Layer-0 authority label required for new workflow file (expected; not RFRF structural) |
+| **KNOWN_P2_STAGE3_NOTES** | `STAGE3_OBSERVATIONAL_READINESS=NO` — epistemic only |
