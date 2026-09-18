@@ -133,6 +133,7 @@ describePg('GT-R1 real call-site orchestration (postgres)', () => {
       sourceSubtype: null,
       fetchedAt: new Date(T2),
       vehicleLatestStateId: 'vls-gt-r1-webhook-callsite',
+      existingVlsSourceTimestamp: new Date(T1),
     });
 
     expect(snapshotResult?.shadowComparison?.classification).toBe(
