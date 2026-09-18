@@ -14,5 +14,6 @@
 | 2026-09-12 | DIMO webhook operations runbook — verified R9 + preflight + forensics workflows; UNPLUG recovery PUT designed not executed (DIM-EV-WEBHOOK-OPS-001) | GT-R1 UNPLUG forensics cross-ref | [../operations/WEBHOOK_OPERATIONS.md](../operations/WEBHOOK_OPERATIONS.md), [../evidence/EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |
 | 2026-09-12 | UNPLUG webhook `PUT` recovery executed — `failed`→`enabled`; failureCount reset to 0; subscriptions survive (VERIFIED) | GT-R1 authorized provider mutation | Cross-ref VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
 | 2026-09-18 | Tesla Premium Connectivity Phase-A baseline — read-only production capture; T0 `2026-09-18T11:17:34Z`; start gate FAIL (EXP-021 operator confounder) | Tesla / DIMO experiment (separate from P2.5) | [../evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_2026-09-18.md](../evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_2026-09-18.md) |
+| 2026-09-18 | Phase-A recovery — invalid failed T0; EXP-021 operator cleared; authoritative T0 `2026-09-18T16:57:45Z`; recovery gate PASS | Tesla / DIMO experiment | [../evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_RECOVERY_2026-09-18.md](../evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_RECOVERY_2026-09-18.md) |
 
 No runtime code changes in governance correction commits.

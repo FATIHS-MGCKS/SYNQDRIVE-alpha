@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tesla-premium-connectivity-phase-a-recovery-2026-09-18',
+    version: '4.9.1146',
+    title: 'Tesla Premium Phase A — recovery after EXP-021 isolation (new authoritative T0)',
+    summary: [
+      'Invalidates failed candidate T0 2026-09-18T11:17:34Z (start gate FAIL); EXP-021 tmux operator on tokenId 187336 traced to Cloud Agent SSH + detached tmux; operator ended (wait timeout) with no auto-restart observed.',
+      'Authoritative Phase-A T0 reset to 2026-09-18T16:57:45Z (Premium OFF); zero baseline captured; shared DIMO/Bull interference during failed window classified YES; P2.5 untouched @ ca7bad882.',
+      'TESLA_PHASE_A_RECOVERY_START_GATE=PASS. Do not restart EXP-021 operator; Phase B not started.',
+    ],
+    reason: 'Phase A could not start while EXP-021 operator violated isolation; recovery requires fresh T0 after clean stop.',
+    previousBehavior: 'Candidate T0 11:17:34Z was documented despite EXP021_OPERATOR_RUNNING=YES.',
+    details:
+      'architecture/dimo-integration/evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_RECOVERY_2026-09-18.md; backend/scripts/ops/tesla-phase-a-zero-baseline-readonly.cjs',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-09-18T16:57:45.000Z',
+  },
+  {
     id: 'tesla-premium-connectivity-phase-a-baseline-2026-09-18',
     version: '4.9.1145',
     title: 'Tesla Premium Connectivity — Phase A baseline (Premium OFF, read-only)',

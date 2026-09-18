@@ -7,8 +7,10 @@
 | **Experiment** | PHASE A — Tesla Premium Connectivity **OFF** (7 complete days) |
 | **Production SHA** | `ca7bad8826871376a58efaa874f12992b88c4a04` |
 | **Baseline captured (UTC)** | `2026-09-18T11:15:50.569Z` (forensic) · `2026-09-18T11:17:33.796Z` (pre-T0 rollup) |
-| **Phase-A T0 (authoritative)** | `2026-09-18T11:17:34.000Z` |
-| **Phase-A end (T0 + 7d)** | `2026-09-25T11:17:34.000Z` |
+| **Phase-A T0 (authoritative)** | ~~`2026-09-18T11:17:34.000Z`~~ **INVALID** — see recovery |
+| **Phase-A end (T0 + 7d)** | ~~`2026-09-25T11:17:34.000Z`~~ **INVALID** |
+| **FAILED_TESLA_PHASE_A_T0** | `2026-09-18T11:17:34.000Z` (`FAILED_TESLA_PHASE_A_T0_VALID=NO`) |
+| **Recovery / authoritative T0** | [TESLA_PREMIUM_CONNECTIVITY_PHASE_A_RECOVERY_2026-09-18.md](TESLA_PREMIUM_CONNECTIVITY_PHASE_A_RECOVERY_2026-09-18.md) — T0 `2026-09-18T16:57:45.000Z` |
 | **Parallel P2.5 epoch** | **Untouched** — T0 `2026-09-18T09:33:25.000Z` → `2026-09-25T09:33:25.000Z` |
 
 ## Integration architecture (fixed)
