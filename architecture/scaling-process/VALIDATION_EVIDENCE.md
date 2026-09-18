@@ -343,3 +343,19 @@ Confidence: **HIGH** | **MEDIUM** | **LOW**
 | OQ-28 closure | P1.8.3.10 | — | >=86400s rule | PARTIAL | HIGH |
 | Current segment start | P1.8.3.10 | — | PM2 `created_at` | `2026-09-08T17:40:39Z` | HIGH |
 
+---
+
+## P1.8.3.11 — Recurring ~05:01Z PM2 cold-restart root-cause audit
+
+| Claim | Phase | PR/Commit | Evidence | Result | Confidence |
+|-------|-------|-----------|----------|--------|------------|
+| Sep 8 05:01Z OQ-28 break cause | P1.8.3.11 | #1570 `7b9a7857` | auth.log `04:50:25Z` deploy + pm2-pre-deploy `05:01:20Z` | Cloud Agent deploy rolling restart | HIGH |
+| pm2-pre-deploy creator | P1.8.3.11 | — | `vps_replica_capture_deploy_state()` | CONFIRMED call chain | HIGH |
+| Cron/systemd 05:01Z trigger | P1.8.3.11 | — | cron.d + timers | NOT causal | HIGH |
+| PM2 cron_restart / max_memory | P1.8.3.11 | — | `pm2 jlist` | NOT configured | HIGH |
+| Sep 7 05:01Z restart cause | P1.8.3.11 | — | auth.log + absent deploy artifacts | Agent SSH proximate; chain INCOMPLETE | MEDIUM |
+| ~05:01Z daily recurrence | P1.8.3.11 | — | 2 dates only | INSUFFICIENT_DATA | MEDIUM |
+| OQ-28 candidate continuity | P1.8.3.11 | — | PM2 `created_at` + health | YES at audit end | HIGH |
+| N2 architecture caused restart | P1.8.3.11 | — | causal chain | NO | HIGH |
+| OQ28 break cause class | P1.8.3.11 | — | classification | OPERATIONS_BOUNDARY | HIGH |
+
