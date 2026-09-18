@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| **RFRF_F10_5_0_1_FINAL_MICRO_CLOSURE** | See §Validation — **PASS** when GitHub `rfrf-stage3-persistence-readiness` job green; otherwise **BLOCKED** pending CI |
+| **RFRF_F10_5_0_1_FINAL_MICRO_CLOSURE** | **PASS** after CI run `35381572805` PG gates green; workflow fix for `git diff --check` pushed (`1cbe956ab`) |
 | **STAGE_3_EXECUTED** | NO |
 | **STAGE_3_START_AUTHORIZED** | NO |
 
@@ -105,9 +105,12 @@ Isolated gates (never Production):
 | F4-PR2 runtime + candidate | `rfrf-f4-pr2-runtime-postgres-gate.sh` |
 | F9 multi-replica PG+Redis | `rfrf-f9-multi-replica-integration-gate.sh` |
 
-Orchestrator: `rfrf-stage3-persistence-readiness-ci-gate.sh`  
-CI: `.github/workflows/rfrf-stage3-persistence-readiness.yml`  
-Portability: `lib/rfrf-isolated-postgres-admin.sh` (`RFRF_CI_POSTGRES_SUPERUSER_URL` on GitHub Actions; `su - postgres` on VPS-style hosts).
+| **RFRF_F3_F2_HANDOFF_REAL_PG** | PASS (CI run 35381572805) |
+| **RFRF_F4_PR2_RUNTIME_REAL_PG** | PASS |
+| **RAW_REFUEL_CANDIDATE_REAL_PG** | PASS |
+| **RFRF_F9_MULTI_REPLICA_REAL_PG_REDIS** | PASS (F9 gate + orchestrated regressions in CI) |
+| **CANDIDATE_REAL_PG_TESTS** | PASS |
+| **MULTI_REPLICA_CANDIDATE_SAFETY** | PASS |
 
 ## Stage-2 observation
 
