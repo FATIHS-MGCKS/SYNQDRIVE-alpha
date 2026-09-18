@@ -90,6 +90,26 @@ describe('physical-state-connectivity-freshness (GT-R1 UNPLUG matrix)', () => {
     ).toBe(true);
   });
 
+  it('FRESH reconnect via webhook establishes PLUGGED after UNPLUGGED baseline', () => {
+    const reconnect = evaluatePhysicalStateTransition({
+      current: {
+        effectiveState: 'UNPLUGGED',
+        evidenceObservedAt: T1,
+        evidenceSource: 'WEBHOOK',
+        evidenceReferenceId: 'wh-unplug',
+        stateVersion: 1,
+      },
+      incoming: {
+        candidateState: 'PLUGGED',
+        evidenceObservedAt: T2,
+        evidenceSource: 'WEBHOOK',
+        evidenceReferenceId: 'wh-reconnect',
+      },
+    });
+    expect(reconnect.decision).toBe(DeviceConnectionPhysicalTransitionDecision.APPLIED);
+    expect(reconnect.mutateProjection).toBe(true);
+  });
+
   it('CASE E — fresh reconnect remains PLUG proof path', () => {
     const proof = buildSnapshotGtR1Proof({
       physicalProjectionState: 'UNPLUGGED',
