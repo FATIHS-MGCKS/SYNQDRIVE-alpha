@@ -1,5 +1,9 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.5.0 Stage-3 persistence readiness (tooling)
+
+- EED-EV-0069: Stage-3 enable/recovery/rollback fixture closure (failure recovery → Stage 2, not Stage 1); authority matrix proves persist without VEE/convergence/promotion/G2; Production read-only audit found deploy drift to release `20260918174845_v4994` / SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6`; RFRF still Stage 2 with unchanged cutover; candidates 0; REAL_RAW_RISE under Stage 2 not proven; Stage 3 not executed; `PRODUCTION_REBASELINE_REQUIRED=YES`
+
 ## 2026-09-18 — RFRF F10.4.2 Stage-2 Production execution (evidence landing)
 
 - EED-EV-0068: authorized Production Stage 1→2 completed; `RAW_FUEL_REFUEL_FALLBACK_ENABLED=true`; persist/convergence/promotion/G2 remained OFF; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994`; tooling `b73d5cb2a81c7920691b8ab544909ab3a3666d70` executed from isolated `/tmp/rfrf-f1042-tooling` ops bundle (no application deploy); rolling restart A then B; EXP-021 immediate + final natural-tick survival (initial orchestrator poll OBSERVE_INCOMPLETE, leader log ≥4 dry-run observations); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 73; canonical epoch obs/blockers 67/67 pre-existing; candidates 0, fallback VEE 0
