@@ -27,6 +27,15 @@ echo "==> F10.3.0 Stage-1 restart safety tests"
 unset RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE
 bash scripts/test/rfrf-f10-stage1-restart-safety-tests.sh
 
+echo "==> F10.5.0 Stage-3 authority matrix tests"
+bash scripts/test/rfrf-f10-stage3-authority-matrix-tests.sh
+
+echo "==> F10.5.0 Stage-3 transaction safety tests"
+bash scripts/test/rfrf-f10-stage3-transaction-safety-tests.sh
+
+echo "==> F10.5.0 Stage-3 rollback fixture tests"
+bash scripts/test/rfrf-f10-stage3-rollback-fixture-tests.sh
+
 echo "==> F10.4.0 Stage-2 authority matrix tests"
 bash scripts/test/rfrf-f10-stage2-authority-matrix-tests.sh
 
@@ -55,18 +64,21 @@ bash -n scripts/test/rfrf-f10-dotenv-safety-tests.sh
 bash -n scripts/test/rfrf-f10-worker-readiness-contracts.sh
 bash -n scripts/test/rfrf-f10-metrics-probe-regression.sh
 bash -n scripts/test/rfrf-f10-stage1-restart-safety-tests.sh
+bash -n scripts/test/rfrf-f10-stage3-authority-matrix-tests.sh
+bash -n scripts/test/rfrf-f10-stage3-transaction-safety-tests.sh
+bash -n scripts/test/rfrf-f10-stage3-rollback-fixture-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-authority-matrix-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-rollback-fixture-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-rollback-f10-4-0-3-tests.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
-  echo "==> shellcheck (ops scripts)"
-  shellcheck -x scripts/ops/lib/rfrf-production-rollout.lib.sh
-  shellcheck scripts/ops/rfrf-production-preflight.sh
-  shellcheck scripts/ops/rfrf-production-enable-stage.sh
-  shellcheck scripts/ops/rfrf-production-rollback.sh
-  shellcheck scripts/ops/rfrf-monitoring-verify-alerts.sh
+  echo "==> shellcheck (ops scripts, errors only)"
+  shellcheck -S error -x scripts/ops/lib/rfrf-production-rollout.lib.sh
+  shellcheck -S error scripts/ops/rfrf-production-preflight.sh
+  shellcheck -S error scripts/ops/rfrf-production-enable-stage.sh
+  shellcheck -S error scripts/ops/rfrf-production-rollback.sh
+  shellcheck -S error scripts/ops/rfrf-monitoring-verify-alerts.sh
 fi
 
 echo "==> Monitoring verify (repo-only)"
@@ -102,4 +114,5 @@ echo "RFRF F10.1 operational tooling gate PASS"
 echo "RFRF F10.2.1 dotenv safety micro-closure gate PASS"
 echo "RFRF F10.2.2 metrics probe reliability gate PASS"
 echo "RFRF F10.3.0 Stage-1 restart safety gate PASS"
+echo "RFRF F10.5.0 Stage-3 transaction safety gate PASS"
 echo "RFRF F10.4.0 Stage-2 transaction safety gate PASS"

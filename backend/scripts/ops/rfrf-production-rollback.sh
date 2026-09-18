@@ -846,6 +846,12 @@ if [[ "$FROM_STAGE" == "2" ]]; then
     rfrf_rollout_fail "rollback stage 2 must preserve cutover" || true
     rfrf_rollback_finalize_failure_exit
   fi
+elif [[ "$FROM_STAGE" == "3" ]]; then
+  if ! rfrf_assert_cutover_immutable_across_mutation "$ROLLBACK_AUTHORITATIVE_CUTOVER" "$post_cutover"; then
+    rfrf_rollback_fail_closed "cutover_immutability" || true
+    rfrf_rollout_fail "rollback stage 3 must preserve cutover" || true
+    rfrf_rollback_finalize_failure_exit
+  fi
 fi
 
 if ! rfrf_rollback_post_mutation_checkpoint; then
@@ -897,4 +903,6 @@ echo "RFRF_ROLLBACK_TARGET_STAGE=${ROLLBACK_EXPECTED_AFTER_STAGE}"
 echo "RFRF_ROLLBACK=PASS"
 if [[ "$FROM_STAGE" == "2" ]]; then
   echo "STAGE2_ROLLBACK_PRODUCTION_SAFE=YES"
+elif [[ "$FROM_STAGE" == "3" ]]; then
+  echo "STAGE3_ROLLBACK_TO_STAGE2_SAFE=YES"
 fi

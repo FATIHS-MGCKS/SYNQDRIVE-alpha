@@ -6,6 +6,7 @@ set -euo pipefail
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REPO_ROOT="$(cd "${BACKEND_ROOT}/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/rfrf-isolated-postgres-admin.sh"
 
 assert_test_db_isolation() {
   local pg_host="$1" pg_db="$2"
@@ -92,11 +93,11 @@ run_f9_independent_replica_tests() {
   local redis_started=0
 
   cleanup_f9() {
-    if [[ "${redis_started}" == "1" ]]; then
+    if [[ "${redis_started:-0}" == "1" ]]; then
       redis-cli -p "${redis_port}" shutdown nosave 2>/dev/null || true
     fi
-    su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${pg_db};\"" 2>/dev/null || true
-    su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${pg_user};\"" 2>/dev/null || true
+    rfrf_test_psql_superuser_quiet "DROP DATABASE IF EXISTS ${pg_db};"
+    rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${pg_user};"
   }
   trap cleanup_f9 EXIT
 
@@ -112,8 +113,8 @@ run_f9_independent_replica_tests() {
   export G21D_FINAL_REDIS_DB="14"
 
   echo "==> F9 net-new: isolated PostgreSQL on ${pg_host}:${pg_port}/${pg_db}"
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${pg_user} LOGIN PASSWORD '${pg_pass}';\""
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${pg_db} OWNER ${pg_user};\""
+  rfrf_test_psql_superuser "CREATE ROLE ${pg_user} LOGIN PASSWORD '${pg_pass}';"
+  rfrf_test_psql_superuser "CREATE DATABASE ${pg_db} OWNER ${pg_user};"
 
   export DATABASE_URL="postgresql://${pg_user}:${pg_pass}@${pg_host}:${pg_port}/${pg_db}?schema=public"
   assert_test_db_isolation "${pg_host}" "${pg_db}"
