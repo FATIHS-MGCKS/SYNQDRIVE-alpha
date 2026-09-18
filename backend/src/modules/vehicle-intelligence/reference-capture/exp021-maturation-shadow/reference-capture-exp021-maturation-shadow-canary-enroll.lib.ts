@@ -91,7 +91,7 @@ export type Exp021CanaryEnrollSuccess = Exp021CanaryDryRunPlan & {
 };
 
 const AUTHORITATIVE_PHYSICAL_END_SOURCES: ReadonlySet<Exp021PhysicalDriveIntervalAuthority['source']> =
-  new Set(['ORCHESTRATOR_CONFIRMED', 'PDI_CANDIDATE']);
+  new Set(['ORCHESTRATOR_CONFIRMED', 'PDI_CANDIDATE', 'CANARY_VEHICLE_TRIP_CONFIRMED']);
 
 export function readPhysicalDriveIntervalAuthority(
   metadataJson: unknown,

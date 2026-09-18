@@ -61,7 +61,16 @@ EXP-021 maturation canary operator (--wait-next-window)
 
 - **Claim-before-side-effect:** `vehicle_trip_id` ledger row is inserted in `CLAIMED` before study run, session, preflight, or FAST GO.
 - **Side-effect idempotency:** `reserveStudyRunForCanaryActivation` binds one `exp021_study_runs.canary_activation_vehicle_trip_id` per trip (order balance increments once). Session id is preallocated on the ledger before `createSession(sessionId)`. `executeIdempotentCanaryArm` skips preflight/FAST GO when session is already READY/RECORDING. Finalize adopts `COMPLETED` without re-calling `stopRecording`. Persisted `STOPPING` resumes via `ReferenceCaptureSessionService.resumeRecordingStop` — ledger must not fail-closed on in-progress stop.
-- **PostgreSQL CI:** `reference-capture-exp021-canary-live-window-activation.postgres.integration.spec.ts` exercises RECORDING finalize, COMPLETED adoption, STOPPING recovery, settlement experiment + `physicalDriveInterval` authority (trip-aligned PDI, not fabricated).
+- **PostgreSQL CI:** `reference-capture-exp021-canary-live-window-activation.postgres.integration.spec.ts` exercises RECORDING finalize, COMPLETED adoption, STOPPING recovery, and **live-shaped** finalize that publishes `physicalDriveInterval` without manual `persistPhysicalDriveIntervalAuthority` injection.
+
+## Live canary PDI publication edge (2026-09-18 post–first-live forensic)
+
+| Topic | Record |
+|-------|--------|
+| **OLD_E2E_FALSE_CONFIDENCE_GAP** | Prior `CANARY_POSTGRES_END_TO_END` called `persistPhysicalDriveIntervalAuthority` manually before finalize — production canary path never did. |
+| **LIVE_CANARY_PDI_PUBLICATION_EDGE** | `finalizeCompletedTrip` → after successful RC stop → `publishCanaryLiveWindowPhysicalDriveInterval` (token `187336` hard guard, canonical `vehicle_trips` `start_time`/`end_time`, source `CANARY_VEHICLE_TRIP_CONFIRMED`). |
+| **NO_BACKFILL_CUTOVER_RULE** | PDI publish runs only when ledger is `RECORDING_STARTED` (first finalize). `TRIP_COMPLETED_SEEN` ledger cannot re-enter finalize. Trip `start_time` must be ≥ ledger `activation_not_before_at` **and** ≥ current env `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO`. Post-fix deploy: bump NOT_BEFORE to exclude failed 2026-09-18 drive (`a72fb179-…`). |
+| **PRODUCTION_SHAPED_E2E** | `CANARY_POSTGRES_LIVE_SHAPED` — arm ONGOING trip → RECORDING → COMPLETED → finalize asserts PDI + maturation `findAuthoritativePhysicalEndMatch`. |
 - **Restart recovery:** Partial rows resume without duplicating study run/session when state already records progress.
 - **Orphan guard:** Foreign blocking RC session (no ledger `session_id` match) blocks new arms; in-progress ledger for the same trip may resume despite blocking session when `session_id` matches.
 - **Scheduler:** Default poll `30_000` ms, min `10_000` ms; arms only on **ONGOING** `vehicle_trips` — trips completing faster than poll interval may be missed (`NO_LEDGER_MISS_NO_BACKFILL` on completion). **Canary procedure:** drive longer than ~2× scheduler interval after T0 (recommend ≥3 minutes moving).
