@@ -51,12 +51,25 @@ async function ensureCanaryVehicleGraph(prisma: PrismaClient): Promise<void> {
     )
     ON CONFLICT (id) DO NOTHING
   `;
-  const dimoId = randomUUID();
+  const externalId = `exp021-canary-${tokenId}`;
+  const dimo = await prisma.dimoVehicle.upsert({
+    where: { tokenId },
+    create: {
+      id: randomUUID(),
+      externalId,
+      tokenId,
+      connectionStatus: 'CONNECTED',
+    },
+    update: {},
+    select: { id: true },
+  });
   await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, vehicle_id, token_id, created_at, updated_at)
-    VALUES (${dimoId}, ${vehicleId}, ${tokenId}, NOW(), NOW())
-    ON CONFLICT DO NOTHING
-  `.catch(() => undefined);
+    UPDATE vehicles SET dimo_vehicle_id = NULL
+    WHERE dimo_vehicle_id = ${dimo.id} AND id <> ${vehicleId}
+  `;
+  await prisma.$executeRaw`
+    UPDATE vehicles SET dimo_vehicle_id = ${dimo.id} WHERE id = ${vehicleId}
+  `;
 }
 
 async function seedStudyEnrollment(
