@@ -10,7 +10,9 @@ import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { ReferenceCaptureFastGoService } from '../reference-capture-fast-go.service';
 import { ACTIVE_REFERENCE_CAPTURE_BLOCKING_STATUSES } from '../reference-capture-prearm.policy';
 import { ReferenceCaptureSessionService } from '../reference-capture-session.service';
+import { ReferenceCaptureSettlementShadowService } from '../reference-capture-settlement-shadow.service';
 import { ReferenceCaptureExp021FleetRepository } from '../exp021-fleet/reference-capture-exp021-fleet.repository';
+import { publishCanaryLiveWindowPhysicalDriveInterval } from './reference-capture-exp021-canary-live-window-pdi-publish.lib';
 import type { CanaryArmLedgerRow } from './reference-capture-exp021-canary-live-window-activation.arm.lib';
 import { mapPrismaLedgerState } from './reference-capture-exp021-canary-live-window-activation.claim.lib';
 import {
@@ -40,6 +42,7 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     private readonly sessionService: ReferenceCaptureSessionService,
     private readonly fastGoService: ReferenceCaptureFastGoService,
     private readonly fleetRepository: ReferenceCaptureExp021FleetRepository,
+    private readonly settlementShadowService: ReferenceCaptureSettlementShadowService,
   ) {}
 
   resolveConfigFromEnv(): ReturnType<typeof buildCanaryLiveWindowActivationConfig> {
@@ -150,7 +153,8 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       activeBlockingSessionId: blockingSession?.id ?? null,
       ports: {
         armOngoingTrip: (trip) => this.armOngoingTrip(trip, config.activationNotBeforeMs),
-        finalizeCompletedTrip: (args) => this.finalizeCompletedTrip(args.trip, args.ledger.sessionId!),
+        finalizeCompletedTrip: (args) =>
+          this.finalizeCompletedTrip(args.trip, args.ledger.sessionId!, config.activationNotBeforeMs),
       },
     });
 
@@ -273,7 +277,11 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     });
   }
 
-  async finalizeCompletedTrip(trip: CanaryLiveWindowTripSnapshot, sessionId: string): Promise<void> {
+  async finalizeCompletedTrip(
+    trip: CanaryLiveWindowTripSnapshot,
+    sessionId: string,
+    currentActivationNotBeforeMs: number,
+  ): Promise<void> {
     const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     const ledger = await this.prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
       where: { vehicleTripId: trip.tripId },
@@ -318,6 +326,42 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
         },
       });
       return;
+    }
+
+    const pdiResult = await publishCanaryLiveWindowPhysicalDriveInterval({
+      prisma: this.prisma,
+      settlementShadow: this.settlementShadowService,
+      currentActivationNotBeforeMs,
+      ctx: {
+        vehicleTripId: trip.tripId,
+        vehicleId: canary.vehicleId,
+        tokenId: canary.tokenId,
+        sessionId,
+        activationNotBeforeMs: ledger.activationNotBeforeAt.getTime(),
+      },
+    });
+    if (pdiResult.outcome === 'conflict') {
+      this.logger.error({
+        msg: 'EXP021_CANARY_PDI_AUTHORITY_CONFLICT',
+        vehicleTripId: trip.tripId,
+        sessionId,
+        reason: pdiResult.reason,
+        existing: pdiResult.existing,
+      });
+    } else if (pdiResult.outcome === 'skipped') {
+      this.logger.warn({
+        msg: 'EXP021_CANARY_PDI_PUBLISH_SKIPPED',
+        vehicleTripId: trip.tripId,
+        sessionId,
+        reason: pdiResult.reason,
+      });
+    } else if (pdiResult.outcome === 'published') {
+      this.logger.log({
+        msg: 'EXP021_CANARY_PDI_PUBLISHED',
+        vehicleTripId: trip.tripId,
+        sessionId,
+        source: pdiResult.source,
+      });
     }
 
     await this.prisma.exp021CanaryLiveWindowActivationLedger.update({
