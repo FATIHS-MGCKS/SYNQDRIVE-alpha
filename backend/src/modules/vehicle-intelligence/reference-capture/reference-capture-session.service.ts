@@ -353,6 +353,54 @@ export class ReferenceCaptureSessionService {
       { stoppedAt: new Date() },
     );
 
+    return this.completeRecordingStopLifecycle(organizationId, sessionId);
+  }
+
+  /**
+   * Resume stop/finalization after RECORDING→STOPPING was persisted (crash/restart safe).
+   * Does not re-enter RECORDING→STOPPING or duplicate cycle cancellation when already STOPPING.
+   */
+  async resumeRecordingStop(organizationId: string, sessionId: string): Promise<ReferenceCaptureSessionView> {
+    this.assertEnabled();
+    const session = await this.requireSession(organizationId, sessionId);
+
+    if (session.status === ReferenceCaptureSessionStatus.COMPLETED) {
+      return this.toView(
+        session,
+        session.massBindingJson as never,
+        session.preflightJson as never,
+        session.readinessJson as ReferenceCaptureReadinessReport | null,
+      );
+    }
+
+    if (session.status !== ReferenceCaptureSessionStatus.STOPPING) {
+      throw new BadRequestException(`Cannot resume recording stop from status ${session.status}`);
+    }
+
+    return this.completeRecordingStopLifecycle(organizationId, sessionId);
+  }
+
+  private async completeRecordingStopLifecycle(
+    organizationId: string,
+    sessionId: string,
+  ): Promise<ReferenceCaptureSessionView> {
+    const session = await this.requireSession(organizationId, sessionId);
+
+    if (session.status === ReferenceCaptureSessionStatus.COMPLETED) {
+      return this.toView(
+        session,
+        session.massBindingJson as never,
+        session.preflightJson as never,
+        session.readinessJson as ReferenceCaptureReadinessReport | null,
+      );
+    }
+
+    if (session.status !== ReferenceCaptureSessionStatus.STOPPING) {
+      throw new BadRequestException(
+        `Cannot complete recording stop from status ${session.status}`,
+      );
+    }
+
     await this.runnerService.cancelPendingCycleJob(organizationId, sessionId);
     await this.sessionRepository.updateRunnerJobId(organizationId, sessionId, null);
 

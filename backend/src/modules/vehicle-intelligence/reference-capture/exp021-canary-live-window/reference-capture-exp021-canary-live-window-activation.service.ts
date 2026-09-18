@@ -306,6 +306,7 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       sessionId,
       session,
       stopRecording: (org, sid) => this.sessionService.stopRecording(org, sid),
+      resumeRecordingStop: (org, sid) => this.sessionService.resumeRecordingStop(org, sid),
     });
 
     if (result.outcome === 'failed') {

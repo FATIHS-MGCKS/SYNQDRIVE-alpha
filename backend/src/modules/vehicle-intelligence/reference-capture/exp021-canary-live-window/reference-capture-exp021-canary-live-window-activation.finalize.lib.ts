@@ -21,6 +21,7 @@ export async function finalizeCanaryLiveWindowRecording(args: {
   sessionId: string;
   session: CanaryFinalizeSessionSnapshot;
   stopRecording: (organizationId: string, sessionId: string) => Promise<unknown>;
+  resumeRecordingStop: (organizationId: string, sessionId: string) => Promise<unknown>;
 }): Promise<CanaryFinalizeResult> {
   const { status } = args.session;
 
@@ -36,7 +37,8 @@ export async function finalizeCanaryLiveWindowRecording(args: {
   }
 
   if (status === ReferenceCaptureSessionStatus.STOPPING) {
-    return { outcome: 'failed', reason: 'session_stopping_in_progress' };
+    await args.resumeRecordingStop(args.organizationId, args.sessionId);
+    return { outcome: 'stopped' };
   }
 
   if (status === ReferenceCaptureSessionStatus.RECORDING) {

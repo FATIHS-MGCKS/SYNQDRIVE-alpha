@@ -7,13 +7,21 @@ import {
   Exp021CanaryLiveWindowActivationState,
   Exp021StudyRunState,
   PrismaClient,
+  ReferenceCaptureSessionStatus,
   TripStatus,
 } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureExp021FleetRepository } from '../exp021-fleet/reference-capture-exp021-fleet.repository';
+import { readPhysicalDriveIntervalAuthority } from '../exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
 import { EXP021_KS_MX_2024_CANARY } from '../exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.constants';
+import { ReferenceCaptureSettlementShadowRepository } from '../reference-capture-settlement-shadow.repository';
+import { ReferenceCaptureSettlementShadowService } from '../reference-capture-settlement-shadow.service';
+import { ReferenceCaptureSessionRepository } from '../reference-capture-session.repository';
+import { ReferenceCaptureSessionService } from '../reference-capture-session.service';
 import { ReferenceCaptureExp021CanaryLiveWindowActivationService } from './reference-capture-exp021-canary-live-window-activation.service';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
+  emptyDataPlane,
   proveIsolatedReferenceCapturePostgres,
   probeReferenceCapturePostgresDatabase,
 } from '../testing/reference-capture-postgres.integration.harness';
@@ -63,6 +71,86 @@ async function seedStudyEnrollment(
     allowedPlans: ['CANDIDATE_SHORT_AB_90_60'],
   });
   return { enrollmentId: enrollment.id, studyId: study.id };
+}
+
+function createPostgresReferenceCaptureSessionStack(prisma: PrismaClient): {
+  sessionService: ReferenceCaptureSessionService;
+  settlementShadow: ReferenceCaptureSettlementShadowService;
+  settlementRepo: ReferenceCaptureSettlementShadowRepository;
+} {
+  const config = {
+    isEnabled: () => true,
+    isSettlementShadowEnabled: () => true,
+    getCycleIntervalMs: () => 5000,
+    getSlowCycleEvery: () => 6,
+    getStopQuiescenceTimeoutMs: () => 15_000,
+    getStopQuiescencePollIntervalMs: () => 100,
+  };
+  const sessionRepo = new ReferenceCaptureSessionRepository(prisma as PrismaService);
+  const settlementRepo = new ReferenceCaptureSettlementShadowRepository(prisma as PrismaService);
+  const settlementRunner = { enqueueSchedule: jest.fn().mockResolvedValue(undefined) };
+  const settlementShadow = new ReferenceCaptureSettlementShadowService(
+    config as never,
+    settlementRepo,
+    settlementRunner as never,
+    {} as never,
+    {} as never,
+    prisma as PrismaService,
+  );
+  const runner = {
+    cancelPendingCycleJob: jest.fn().mockResolvedValue({ cancelled: false, jobId: null }),
+    stopRunner: jest.fn().mockResolvedValue(undefined),
+    startRunner: jest.fn(),
+    sessionRunnerKey: jest.fn(),
+  };
+  const writer = {
+    flush: jest.fn().mockResolvedValue(0),
+    clearSession: jest.fn(),
+    enqueueAndMaybeFlush: jest.fn(),
+  };
+  const sessionService = new ReferenceCaptureSessionService(
+    config as never,
+    sessionRepo,
+    { findBySession: jest.fn(), countBySession: jest.fn() } as never,
+    { resolveMassBinding: jest.fn() } as never,
+    { runPreflight: jest.fn() } as never,
+    { captureTick: jest.fn() } as never,
+    writer as never,
+    { assessSessionReadiness: jest.fn() } as never,
+    runner as never,
+    settlementShadow,
+    prisma as PrismaService,
+  );
+  return { sessionService, settlementShadow, settlementRepo };
+}
+
+async function cleanupCanaryFinalizeChain(
+  prisma: PrismaClient,
+  args: {
+    tripId: string;
+    sessionId: string;
+    studyRunId: string;
+    enrollmentId?: string;
+    studyId?: string;
+    includeStudyGraph?: boolean;
+  },
+): Promise<void> {
+  await prisma.referenceCaptureSettlementShadowSchedule.deleteMany({
+    where: { sessionId: args.sessionId },
+  });
+  await prisma.referenceCaptureSettlementShadowExperiment.deleteMany({
+    where: { sessionId: args.sessionId },
+  });
+  await prisma.referenceCaptureSession.deleteMany({ where: { id: args.sessionId } });
+  await prisma.exp021CanaryLiveWindowActivationLedger.deleteMany({ where: { vehicleTripId: args.tripId } });
+  await prisma.exp021StudyRun.deleteMany({ where: { id: args.studyRunId } });
+  await prisma.vehicleTrip.deleteMany({ where: { id: args.tripId } });
+  if (args.includeStudyGraph && args.studyId && args.enrollmentId) {
+    await prisma.exp021StudyOrderBalance.deleteMany({ where: { studyId: args.studyId } });
+    await prisma.exp021StudyVehicleOrderBalance.deleteMany({ where: { studyId: args.studyId } });
+    await prisma.exp021StudyEnrollment.delete({ where: { id: args.enrollmentId } }).catch(() => undefined);
+    await prisma.exp021Study.delete({ where: { id: args.studyId } }).catch(() => undefined);
+  }
 }
 
 (LIVE ? describe : describe.skip)(
@@ -277,6 +365,314 @@ async function seedStudyEnrollment(
       await prisma.exp021StudyVehicleOrderBalance.deleteMany({ where: { studyId } });
       await prisma.exp021StudyEnrollment.delete({ where: { id: enrollmentId } });
       await prisma.exp021Study.delete({ where: { id: studyId } });
+    });
+
+    it('CANARY_POSTGRES_END_TO_END: claim → study run → session → finalize → settlement PDI authority', async () => {
+      const { enrollmentId, studyId } = await seedStudyEnrollment(prisma, fleetRepo);
+      const canary = EXP021_KS_MX_2024_CANARY;
+      const tripId = randomUUID();
+      const sessionId = randomUUID();
+      const tripStart = new Date(T0_MS + 120_000);
+      const tripEnd = new Date(T0_MS + 600_000);
+
+      const runReserve = await fleetRepo.reserveStudyRunForCanaryActivation({
+        enrollmentId,
+        resolvedTokenId: canary.tokenId,
+        canaryActivationVehicleTripId: tripId,
+      });
+
+      await prisma.vehicleTrip.create({
+        data: {
+          id: tripId,
+          vehicleId: canary.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: tripStart,
+          endTime: tripEnd,
+        },
+      });
+
+      await prisma.exp021CanaryLiveWindowActivationLedger.create({
+        data: {
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          tokenId: canary.tokenId,
+          vehicleTripId: tripId,
+          studyRunId: runReserve.run.id,
+          sessionId,
+          state: Exp021CanaryLiveWindowActivationState.RECORDING_STARTED,
+          activationNotBeforeAt: new Date(T0_MS),
+          tripStartTime: tripStart,
+        },
+      });
+
+      await prisma.referenceCaptureSession.create({
+        data: {
+          id: sessionId,
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          connectionProfile: 'DIMO',
+          manifestId: `m-${sessionId.slice(0, 8)}`,
+          manifestVersion: '1',
+          recorderSoftwareVersion: 'test',
+          status: ReferenceCaptureSessionStatus.RECORDING,
+          startedAt: tripStart,
+          acquisitionStateJson: emptyDataPlane(tripStart.getTime()) as object,
+        },
+      });
+
+      const { sessionService, settlementShadow, settlementRepo } =
+        createPostgresReferenceCaptureSessionStack(prisma);
+
+      await settlementRepo.createExperiment({
+        experimentId: `exp-canary-pg-${sessionId.slice(0, 8)}`,
+        sessionId,
+        organizationId: canary.organizationId,
+        vehicleId: canary.vehicleId,
+        tokenId: canary.tokenId,
+      });
+
+      const pdiPersisted = await settlementShadow.persistPhysicalDriveIntervalAuthority({
+        sessionId,
+        physicalStartAt: tripStart,
+        physicalEndAt: tripEnd,
+        source: 'PDI_CANDIDATE',
+        candidateId: `pdi-${sessionId.slice(0, 8)}`,
+      });
+      expect(pdiPersisted).toBe(true);
+
+      const activationService = new ReferenceCaptureExp021CanaryLiveWindowActivationService(
+        prisma as never,
+        { isEnabled: () => true, isSettlementShadowEnabled: () => true } as never,
+        sessionService,
+        { executeFastGo: jest.fn() } as never,
+        fleetRepo,
+      );
+
+      const tripSnapshot = {
+        tripId,
+        vehicleId: canary.vehicleId,
+        organizationId: canary.organizationId,
+        tokenId: canary.tokenId,
+        tripStatus: 'COMPLETED' as const,
+        startTimeMs: tripStart.getTime(),
+        endTimeMs: tripEnd.getTime(),
+      };
+
+      const finalize = (activationService as unknown as {
+        finalizeCompletedTrip: (t: typeof tripSnapshot, sid: string) => Promise<void>;
+      }).finalizeCompletedTrip.bind(activationService);
+
+      await finalize(tripSnapshot, sessionId);
+
+      expect(await prisma.exp021CanaryLiveWindowActivationLedger.count({ where: { vehicleTripId: tripId } })).toBe(1);
+      expect(await prisma.exp021StudyRun.count({ where: { id: runReserve.run.id } })).toBe(1);
+      expect(await prisma.referenceCaptureSession.count({ where: { id: sessionId } })).toBe(1);
+      expect(
+        await prisma.referenceCaptureSettlementShadowExperiment.count({ where: { sessionId } }),
+      ).toBe(1);
+
+      const ledger = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
+        where: { vehicleTripId: tripId },
+      });
+      expect(ledger?.state).not.toBe(Exp021CanaryLiveWindowActivationState.FAILED);
+      expect(ledger?.state).toBe(Exp021CanaryLiveWindowActivationState.TRIP_COMPLETED_SEEN);
+
+      const sessionRow = await prisma.referenceCaptureSession.findUnique({ where: { id: sessionId } });
+      expect(sessionRow?.status).toBe(ReferenceCaptureSessionStatus.COMPLETED);
+
+      const experiment = await prisma.referenceCaptureSettlementShadowExperiment.findFirst({
+        where: { sessionId },
+      });
+      const authority = readPhysicalDriveIntervalAuthority(experiment?.metadataJson);
+      expect(authority).not.toBeNull();
+      expect(authority?.physicalEndAt).toBe(tripEnd.toISOString());
+      expect(authority?.physicalStartAt).toBe(tripStart.toISOString());
+
+      await cleanupCanaryFinalizeChain(prisma, {
+        tripId,
+        sessionId,
+        studyRunId: runReserve.run.id,
+        enrollmentId,
+        studyId,
+        includeStudyGraph: true,
+      });
+    });
+
+    it('CANARY_POSTGRES_FINALIZE: COMPLETED adoption and STOPPING recovery without ledger FAILED', async () => {
+      const { enrollmentId, studyId } = await seedStudyEnrollment(prisma, fleetRepo);
+      const canary = EXP021_KS_MX_2024_CANARY;
+      const tripStart = new Date(T0_MS + 180_000);
+      const tripEnd = new Date(T0_MS + 660_000);
+
+      const tripCompletedId = randomUUID();
+      const sessionCompletedId = randomUUID();
+      const runCompleted = await fleetRepo.reserveStudyRunForCanaryActivation({
+        enrollmentId,
+        resolvedTokenId: canary.tokenId,
+        canaryActivationVehicleTripId: tripCompletedId,
+      });
+      await prisma.vehicleTrip.create({
+        data: {
+          id: tripCompletedId,
+          vehicleId: canary.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: tripStart,
+          endTime: tripEnd,
+        },
+      });
+      await prisma.exp021CanaryLiveWindowActivationLedger.create({
+        data: {
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          tokenId: canary.tokenId,
+          vehicleTripId: tripCompletedId,
+          studyRunId: runCompleted.run.id,
+          sessionId: sessionCompletedId,
+          state: Exp021CanaryLiveWindowActivationState.RECORDING_STARTED,
+          activationNotBeforeAt: new Date(T0_MS),
+          tripStartTime: tripStart,
+        },
+      });
+      await prisma.referenceCaptureSession.create({
+        data: {
+          id: sessionCompletedId,
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          connectionProfile: 'DIMO',
+          manifestId: 'm-completed',
+          manifestVersion: '1',
+          recorderSoftwareVersion: 'test',
+          status: ReferenceCaptureSessionStatus.COMPLETED,
+          startedAt: tripStart,
+          stoppedAt: tripEnd,
+          completedAt: tripEnd,
+          acquisitionStateJson: emptyDataPlane(tripStart.getTime()) as object,
+        },
+      });
+
+      const { sessionService } = createPostgresReferenceCaptureSessionStack(prisma);
+      const activationService = new ReferenceCaptureExp021CanaryLiveWindowActivationService(
+        prisma as never,
+        { isEnabled: () => true, isSettlementShadowEnabled: () => true } as never,
+        sessionService,
+        { executeFastGo: jest.fn() } as never,
+        fleetRepo,
+      );
+      const finalize = (activationService as unknown as {
+        finalizeCompletedTrip: (t: {
+          tripId: string;
+          vehicleId: string;
+          organizationId: string;
+          tokenId: number;
+          tripStatus: 'COMPLETED';
+          startTimeMs: number;
+          endTimeMs: number;
+        }, sid: string) => Promise<void>;
+      }).finalizeCompletedTrip.bind(activationService);
+
+      const tripSnap = {
+        tripId: tripCompletedId,
+        vehicleId: canary.vehicleId,
+        organizationId: canary.organizationId,
+        tokenId: canary.tokenId,
+        tripStatus: 'COMPLETED' as const,
+        startTimeMs: tripStart.getTime(),
+        endTimeMs: tripEnd.getTime(),
+      };
+
+      const stopSpy = jest.spyOn(sessionService, 'stopRecording');
+      const resumeSpy = jest.spyOn(sessionService, 'resumeRecordingStop');
+      await finalize(tripSnap, sessionCompletedId);
+      expect(stopSpy).not.toHaveBeenCalled();
+      expect(resumeSpy).not.toHaveBeenCalled();
+      const ledgerCompleted = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
+        where: { vehicleTripId: tripCompletedId },
+      });
+      expect(ledgerCompleted?.state).toBe(Exp021CanaryLiveWindowActivationState.TRIP_COMPLETED_SEEN);
+
+      const tripStoppingId = randomUUID();
+      const sessionStoppingId = randomUUID();
+      const runStopping = await fleetRepo.reserveStudyRunForCanaryActivation({
+        enrollmentId,
+        resolvedTokenId: canary.tokenId,
+        canaryActivationVehicleTripId: tripStoppingId,
+      });
+      await prisma.vehicleTrip.create({
+        data: {
+          id: tripStoppingId,
+          vehicleId: canary.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: tripStart,
+          endTime: tripEnd,
+        },
+      });
+      await prisma.exp021CanaryLiveWindowActivationLedger.create({
+        data: {
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          tokenId: canary.tokenId,
+          vehicleTripId: tripStoppingId,
+          studyRunId: runStopping.run.id,
+          sessionId: sessionStoppingId,
+          state: Exp021CanaryLiveWindowActivationState.RECORDING_STARTED,
+          activationNotBeforeAt: new Date(T0_MS),
+          tripStartTime: tripStart,
+        },
+      });
+      await prisma.referenceCaptureSession.create({
+        data: {
+          id: sessionStoppingId,
+          organizationId: canary.organizationId,
+          vehicleId: canary.vehicleId,
+          connectionProfile: 'DIMO',
+          manifestId: 'm-stopping',
+          manifestVersion: '1',
+          recorderSoftwareVersion: 'test',
+          status: ReferenceCaptureSessionStatus.STOPPING,
+          startedAt: tripStart,
+          stoppedAt: tripEnd,
+          acquisitionStateJson: emptyDataPlane(tripStart.getTime()) as object,
+        },
+      });
+
+      stopSpy.mockClear();
+      resumeSpy.mockClear();
+      await finalize(
+        {
+          ...tripSnap,
+          tripId: tripStoppingId,
+        },
+        sessionStoppingId,
+      );
+      expect(stopSpy).not.toHaveBeenCalled();
+      expect(resumeSpy).toHaveBeenCalledTimes(1);
+
+      const ledgerStopping = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
+        where: { vehicleTripId: tripStoppingId },
+      });
+      expect(ledgerStopping?.state).not.toBe(Exp021CanaryLiveWindowActivationState.FAILED);
+      expect(ledgerStopping?.state).toBe(Exp021CanaryLiveWindowActivationState.TRIP_COMPLETED_SEEN);
+      const sessionStoppingRow = await prisma.referenceCaptureSession.findUnique({
+        where: { id: sessionStoppingId },
+      });
+      expect(sessionStoppingRow?.status).toBe(ReferenceCaptureSessionStatus.COMPLETED);
+
+      stopSpy.mockRestore();
+      resumeSpy.mockRestore();
+
+      await cleanupCanaryFinalizeChain(prisma, {
+        tripId: tripCompletedId,
+        sessionId: sessionCompletedId,
+        studyRunId: runCompleted.run.id,
+      });
+      await cleanupCanaryFinalizeChain(prisma, {
+        tripId: tripStoppingId,
+        sessionId: sessionStoppingId,
+        studyRunId: runStopping.run.id,
+        enrollmentId,
+        studyId,
+        includeStudyGraph: true,
+      });
     });
 
     it('disabled activation config yields zero coordinator effects', async () => {

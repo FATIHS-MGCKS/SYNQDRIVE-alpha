@@ -201,6 +201,7 @@ describe('canary live window idempotency', () => {
 
   it('finalize retry with COMPLETED session converges without second stop', async () => {
     let stopCalls = 0;
+    let resumeCalls = 0;
     const result = await finalizeCanaryLiveWindowRecording({
       organizationId: 'org',
       sessionId: 'sess-1',
@@ -208,9 +209,13 @@ describe('canary live window idempotency', () => {
       stopRecording: async () => {
         stopCalls += 1;
       },
+      resumeRecordingStop: async () => {
+        resumeCalls += 1;
+      },
     });
     expect(result.outcome).toBe('adopted_completed');
     expect(stopCalls).toBe(0);
+    expect(resumeCalls).toBe(0);
     expect(ledgerStateAfterCanaryFinalize(Exp021CanaryLiveWindowActivationState.RECORDING_STARTED)).toBe(
       Exp021CanaryLiveWindowActivationState.TRIP_COMPLETED_SEEN,
     );
@@ -225,8 +230,57 @@ describe('canary live window idempotency', () => {
       stopRecording: async () => {
         stopCalls += 1;
       },
+      resumeRecordingStop: async () => undefined,
     });
     expect(result.outcome).toBe('stopped');
     expect(stopCalls).toBe(1);
+  });
+
+  it('STOPPING session resumes stop lifecycle without failing closed', async () => {
+    let stopCalls = 0;
+    let resumeCalls = 0;
+    const result = await finalizeCanaryLiveWindowRecording({
+      organizationId: 'org',
+      sessionId: 'sess-1',
+      session: { id: 'sess-1', status: ReferenceCaptureSessionStatus.STOPPING },
+      stopRecording: async () => {
+        stopCalls += 1;
+      },
+      resumeRecordingStop: async () => {
+        resumeCalls += 1;
+      },
+    });
+    expect(result.outcome).toBe('stopped');
+    expect(result).not.toEqual({ outcome: 'failed', reason: 'session_stopping_in_progress' });
+    expect(stopCalls).toBe(0);
+    expect(resumeCalls).toBe(1);
+  });
+
+  it('STOPPING retry converges without duplicate stopRecording', async () => {
+    let resumeCalls = 0;
+    const resume = async () => {
+      resumeCalls += 1;
+    };
+    const first = await finalizeCanaryLiveWindowRecording({
+      organizationId: 'org',
+      sessionId: 'sess-1',
+      session: { id: 'sess-1', status: ReferenceCaptureSessionStatus.STOPPING },
+      stopRecording: async () => {
+        throw new Error('must_not_call_stop_from_stopping');
+      },
+      resumeRecordingStop: resume,
+    });
+    const second = await finalizeCanaryLiveWindowRecording({
+      organizationId: 'org',
+      sessionId: 'sess-1',
+      session: { id: 'sess-1', status: ReferenceCaptureSessionStatus.COMPLETED },
+      stopRecording: async () => {
+        throw new Error('must_not_call_stop_when_completed');
+      },
+      resumeRecordingStop: resume,
+    });
+    expect(first.outcome).toBe('stopped');
+    expect(second.outcome).toBe('adopted_completed');
+    expect(resumeCalls).toBe(1);
   });
 });
