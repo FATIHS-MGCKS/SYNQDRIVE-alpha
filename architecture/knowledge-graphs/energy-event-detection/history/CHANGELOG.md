@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.4.2 Stage-2 Production execution (evidence landing)
+
+- EED-EV-0068: authorized Production Stage 1→2 completed; `RAW_FUEL_REFUEL_FALLBACK_ENABLED=true`; persist/convergence/promotion/G2 remained OFF; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994`; tooling `b73d5cb2a81c7920691b8ab544909ab3a3666d70` executed from isolated `/tmp/rfrf-f1042-tooling` ops bundle (no application deploy); rolling restart A then B; EXP-021 immediate + final natural-tick survival (initial orchestrator poll OBSERVE_INCOMPLETE, leader log ≥4 dry-run observations); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 73; canonical epoch obs/blockers 67/67 pre-existing; candidates 0, fallback VEE 0
+- `STAGE_2_EXECUTION_ACCEPTED=YES`; `REAL_RAW_RISE_OBSERVED_UNDER_STAGE2=NOT_PROVEN`; `STAGE_3_START_AUTHORIZED=NO`
+- F10.4.3 documents Production release worktree untracked ops/upload paths (not cleaned); Stage 2 did not change release symlink
+- RUNTIME_SEMANTICS_CHANGED=NO in this evidence PR (governance/docs only)
+
 ## 2026-09-18 — RFRF F10.4.0 Stage-2 transaction / recovery safety (tooling)
 
 - EED-EV-0067: generic `rfrf_stage_transaction_run` for stages 1–6; Stage-2 failure recovery restores Stage 1; cutover immutability on Stage-2 enable; production-grade `--from-stage 2` rollback; fixture tests + master-only runtime authority matrix; Stage 2 not executed; Production remains Stage 1 / `ca7bad…`
