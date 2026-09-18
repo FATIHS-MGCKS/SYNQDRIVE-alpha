@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tesla-premium-connectivity-phase-a-baseline-2026-09-18',
+    version: '4.9.1145',
+    title: 'Tesla Premium Connectivity — Phase A baseline (Premium OFF, read-only)',
+    summary: [
+      'Authoritative Phase-A experiment start for KS FH 660E (Tesla Model 3, DIMO tokenId 186946): Premium Connectivity OFF per operator ground truth; 7-day window T0 2026-09-18T11:17:34Z.',
+      'Frozen production DIMO polling baseline @ ca7bad882; true freshness authority = vehicle_latest_states.source_timestamp; pre-T0 14d reference captured (2445/0 SNAPSHOT polls; stale source since 2026-09-15).',
+      'P2.5 epoch untouched. TESLA_PHASE_A_START_GATE=FAIL: EXP-021 operator running on tokenId 187336 (confounder). No production deploy; no Premium enable.',
+    ],
+    reason:
+      'Controlled experiment to measure whether Tesla Premium Connectivity changes DIMO-delivered data freshness/availability; requires documented baseline before observation.',
+    previousBehavior: 'No registered Tesla Premium A/B experiment evidence in DIMO integration authority.',
+    details:
+      'architecture/dimo-integration/evidence/TESLA_PREMIUM_CONNECTIVITY_PHASE_A_2026-09-18.md; backend/scripts/ops/tesla-premium-phase-a-pre-t0-readonly.cjs',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-09-18T11:17:34.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
     version: '4.9.1144',
     title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',
