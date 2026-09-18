@@ -47,6 +47,7 @@ import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-captu
 import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/reference-capture-settlement-shadow-recovery.scheduler';
 import { ReferenceCaptureExp021MaturationShadowRecoveryScheduler } from './schedulers/reference-capture-exp021-maturation-shadow-recovery.scheduler';
 import { ReferenceCaptureExp021FleetCoordinatorScheduler } from './schedulers/reference-capture-exp021-fleet-coordinator.scheduler';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationScheduler } from './schedulers/reference-capture-exp021-canary-live-window-activation.scheduler';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
@@ -167,6 +168,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     ReferenceCaptureSettlementShadowRecoveryScheduler,
     ReferenceCaptureExp021MaturationShadowRecoveryScheduler,
     ReferenceCaptureExp021FleetCoordinatorScheduler,
+    ReferenceCaptureExp021CanaryLiveWindowActivationScheduler,
   ],
 })
 export class WorkersModule {}

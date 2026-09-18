@@ -1705,6 +1705,7 @@ model Organization {
   referenceCaptureObservations                              ReferenceCaptureObservation[]
   exp021StudyEnrollments                                    Exp021StudyEnrollment[]
   exp021StudyRuns                                           Exp021StudyRun[]
+  exp021CanaryLiveWindowActivationLedgers                   Exp021CanaryLiveWindowActivationLedger[]
   exp021MaturationShadowWindowFamilies                      Exp021MaturationShadowWindowFamily[]
   tripAssessabilities                                       TripAssessability[]
   drivingEvidence                                           DrivingEvidence[]
@@ -3042,6 +3043,7 @@ model Vehicle {
   exp021StudyRuns                        Exp021StudyRun[]
   exp021StudyVehicleOrderBalances        Exp021StudyVehicleOrderBalance[]
   exp021MaturationShadowWindowFamilies   Exp021MaturationShadowWindowFamily[]
+  exp021CanaryLiveWindowActivationLedgers Exp021CanaryLiveWindowActivationLedger[]
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
@@ -11193,6 +11195,40 @@ model Exp021MaturationShadowObservationAttempt {
   @@unique([observationSlotId, attemptOrdinal])
   @@index([observationSlotId])
   @@map("exp021_maturation_shadow_observation_attempts")
+}
+
+/// EXP-021 — KS MX 2024 canary-only live window activation ledger (one row per armed trip).
+enum Exp021CanaryLiveWindowActivationState {
+  CLAIMED
+  STUDY_RUN_RESERVED
+  SESSION_CREATED
+  RECORDING_STARTED
+  TRIP_COMPLETED_SEEN
+  FINALIZED
+  FAILED
+}
+
+model Exp021CanaryLiveWindowActivationLedger {
+  id                    String                               @id @default(uuid())
+  organizationId        String                               @map("organization_id")
+  vehicleId             String                               @map("vehicle_id")
+  tokenId               Int                                  @map("token_id")
+  vehicleTripId         String                               @unique @map("vehicle_trip_id")
+  studyRunId            String?                              @map("study_run_id")
+  sessionId             String?                              @unique @map("session_id")
+  state                 Exp021CanaryLiveWindowActivationState  @default(CLAIMED)
+  failureReason         String?                              @map("failure_reason")
+  activationNotBeforeAt DateTime                             @map("activation_not_before_at")
+  tripStartTime         DateTime                             @map("trip_start_time")
+  tripEndTime           DateTime?                            @map("trip_end_time")
+  createdAt             DateTime                             @default(now()) @map("created_at")
+  updatedAt             DateTime                             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, state])
+  @@map("exp021_canary_live_window_activation_ledgers")
 }
 
 /// Per-dimension trip analysis gate (Driving Intelligence V2 P14).

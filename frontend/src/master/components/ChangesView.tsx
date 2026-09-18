@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-canary-live-window-activation-hardening-2026-09-18',
+    version: '4.9.1147',
+    title: 'EXP-021 — KS MX 2024 canary live window activation hardening (PR #1689)',
+    summary: [
+      'Claim-before-side-effect ledger state machine; resumable arm path; orphan-session deadlock guards; PostgreSQL integration proof.',
+      'Leader scheduler arms ONGOING trips after NOT_BEFORE; durable CLAIMED before StudyRun/session; no completed-trip backfill.',
+      'Post-merge requires PM2 restart for env + new maturation operator SHA aligned to deployed production.',
+    ],
+    reason:
+      'PR #1689 closure required exactly-once claim authority and restart recovery before merge — fleet dry-run path unchanged.',
+    previousBehavior:
+      'Ledger row created after StudyRun/session/FAST GO — insufficient multi-replica and crash recovery evidence.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_CANARY_LIVE_WINDOW_AUTHORITY_CLOSURE_2026-09-18.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T14:30:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
     version: '4.9.1146',
     title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
