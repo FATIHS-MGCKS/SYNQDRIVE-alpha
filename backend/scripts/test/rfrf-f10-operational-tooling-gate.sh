@@ -36,6 +36,9 @@ bash scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh
 echo "==> F10.4.0 Stage-2 rollback fixture tests"
 bash scripts/test/rfrf-f10-stage2-rollback-fixture-tests.sh
 
+echo "==> F10.4.0.3 rollback verified-stop / mutation-boundary tests"
+bash scripts/test/rfrf-f10-stage2-rollback-f10-4-0-3-tests.sh
+
 echo "==> Shell syntax validation"
 for f in \
   scripts/ops/lib/rfrf-production-rollout.lib.sh \
@@ -55,6 +58,7 @@ bash -n scripts/test/rfrf-f10-stage1-restart-safety-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-authority-matrix-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-rollback-fixture-tests.sh
+bash -n scripts/test/rfrf-f10-stage2-rollback-f10-4-0-3-tests.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   echo "==> shellcheck (ops scripts)"

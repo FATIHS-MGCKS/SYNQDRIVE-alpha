@@ -106,6 +106,15 @@ Stage 2 **NOT executed**. Stage 2 **NOT authorized**.
 
 Fixture coverage: recovery restart A/B failures, backup restore failure, signal TERM/INT/HUP, production-style dry-run SHA block/pass matrix.
 
+## F10.4.0.3 verified fail-closed finalization (same evidence record)
+
+| Finding | Fix |
+|---------|-----|
+| Mutation boundary race | `ROLLBACK_MUTATION_MAY_HAVE_STARTED` before first env-changing op; recovery uses backup path when may-have-started |
+| Unverified stop | `vps_replica_stop_verified` with bounded PM2 offline + port-not-listening proof |
+| Contradictory evidence | One final operational-state block; explicit proof states; success `SUCCESS_ROLLBACK_*` markers |
+| CI signal strictness | Linux CI requires TERM/INT/HUP PASS (`CI_SIGNAL_SKIP_ALLOWED=NO`) |
+
 - **EED-EV-0066** — Stage-1 Production execution  
 - **EED-EV-0065** — Stage-1 transaction / evidence completeness  
 

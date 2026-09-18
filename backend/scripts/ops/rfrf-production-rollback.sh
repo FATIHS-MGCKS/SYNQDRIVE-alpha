@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reverse-order RFRF authority shutdown (fail-closed rollback helper).
-# F10.4.0 / F10.4.0.1 / F10.4.0.2 — convergence, signals, production dry-run SHA authority.
+# F10.4.0 / F10.4.0.1 / F10.4.0.2 / F10.4.0.3 — convergence, signals, verified stop, proof states.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,8 +12,13 @@ source "${SCRIPT_DIR}/vps-production-replica-topology.config.sh"
 source "${SCRIPT_DIR}/lib/vps-production-replica.lib.sh"
 
 ROLLBACK_MUTATION_APPLIED=0
+ROLLBACK_MUTATION_MAY_HAVE_STARTED=0
 ROLLBACK_REPLICA_A_CONVERGED=0
 ROLLBACK_REPLICA_B_CONVERGED=0
+ROLLBACK_PROOF_A="UNKNOWN"
+ROLLBACK_PROOF_B="UNKNOWN"
+ROLLBACK_PROVEN_A_STAGE=""
+ROLLBACK_PROVEN_B_STAGE=""
 ROLLBACK_BACKUP_FILE=""
 ROLLBACK_ENV_SHA256_BEFORE=""
 ROLLBACK_AUTHORITATIVE_CUTOVER=""
@@ -33,6 +38,8 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
   RFRF_TEST_ROLLBACK_REPLICA_B_STOPPED=0
   RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE=-1
   RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE=-1
+  RFRF_TEST_ROLLBACK_REPLICA_A_SERVING=1
+  RFRF_TEST_ROLLBACK_REPLICA_B_SERVING=1
   vps_replica_ensure_registered() { return 0; }
   vps_replica_restart_one() {
     local name=$1
@@ -44,6 +51,8 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
           return 1
         fi
         RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE="$FROM_STAGE"
+        ROLLBACK_PROOF_A="PROVEN_PRE_STAGE"
+        ROLLBACK_PROVEN_A_STAGE="$FROM_STAGE"
         return 0
       fi
       if [[ "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
@@ -53,6 +62,8 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
           return 1
         fi
         RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE="$FROM_STAGE"
+        ROLLBACK_PROOF_B="PROVEN_PRE_STAGE"
+        ROLLBACK_PROVEN_B_STAGE="$FROM_STAGE"
         return 0
       fi
       return 0
@@ -64,6 +75,9 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
         return 1
       fi
       RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE="$ROLLBACK_EXPECTED_AFTER_STAGE"
+      ROLLBACK_PROOF_A="PROVEN_TARGET_STAGE"
+      ROLLBACK_PROVEN_A_STAGE="$ROLLBACK_EXPECTED_AFTER_STAGE"
+      RFRF_TEST_ROLLBACK_REPLICA_A_SERVING=1
       return 0
     fi
     if [[ "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
@@ -73,6 +87,9 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
         return 1
       fi
       RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE="$ROLLBACK_EXPECTED_AFTER_STAGE"
+      ROLLBACK_PROOF_B="PROVEN_TARGET_STAGE"
+      ROLLBACK_PROVEN_B_STAGE="$ROLLBACK_EXPECTED_AFTER_STAGE"
+      RFRF_TEST_ROLLBACK_REPLICA_B_SERVING=1
       return 0
     fi
     return 0
@@ -94,12 +111,34 @@ if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
     if [[ "${1:-}" == "stop" ]]; then
       local target="${2:-}"
       if [[ "$target" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" ]]; then
+        if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_A_FAIL:-0}" == "1" ]]; then
+          echo "INJECTED_FAILURE=stop_a_command"
+          return 1
+        fi
+        if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_A_FAKE_OK:-0}" == "1" ]]; then
+          echo "INJECTED_FAILURE=stop_a_fake_success"
+          return 0
+        fi
         RFRF_TEST_ROLLBACK_REPLICA_A_STOPPED=1
         RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE=-1
+        RFRF_TEST_ROLLBACK_REPLICA_A_SERVING=0
+        ROLLBACK_PROOF_A="STOPPED"
+        ROLLBACK_PROVEN_A_STAGE=""
       fi
       if [[ "$target" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
+        if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_B_FAIL:-0}" == "1" ]]; then
+          echo "INJECTED_FAILURE=stop_b_command"
+          return 1
+        fi
+        if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_B_FAKE_OK:-0}" == "1" ]]; then
+          echo "INJECTED_FAILURE=stop_b_fake_success"
+          return 0
+        fi
         RFRF_TEST_ROLLBACK_REPLICA_B_STOPPED=1
         RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE=-1
+        RFRF_TEST_ROLLBACK_REPLICA_B_SERVING=0
+        ROLLBACK_PROOF_B="STOPPED"
+        ROLLBACK_PROVEN_B_STAGE=""
       fi
       return 0
     fi
@@ -149,43 +188,98 @@ rfrf_rollout_run_preflight() {
   bash "${SCRIPT_DIR}/rfrf-production-preflight.sh" --check --live-required
 }
 
+rfrf_rollback_mutation_started_or_applied() {
+  [[ "$ROLLBACK_MUTATION_APPLIED" == "1" || "$ROLLBACK_MUTATION_MAY_HAVE_STARTED" == "1" ]]
+}
+
 rfrf_rollback_replica_effective_stage() {
   local replica="$1"
-  if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
-    if [[ "$replica" == "A" ]]; then
-      if [[ "${RFRF_TEST_ROLLBACK_REPLICA_A_STOPPED:-0}" == "1" ]]; then
-        echo "STOPPED"
-        return 0
-      fi
-      echo "${RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE}"
+  local proof stage
+  if [[ "$replica" == "A" ]]; then
+    proof="$ROLLBACK_PROOF_A"
+    stage="$ROLLBACK_PROVEN_A_STAGE"
+  else
+    proof="$ROLLBACK_PROOF_B"
+    stage="$ROLLBACK_PROVEN_B_STAGE"
+  fi
+  case "$proof" in
+    PROVEN_TARGET_STAGE|PROVEN_PRE_STAGE)
+      echo "${stage}"
       return 0
-    fi
-    if [[ "${RFRF_TEST_ROLLBACK_REPLICA_B_STOPPED:-0}" == "1" ]]; then
+      ;;
+    STOPPED)
       echo "STOPPED"
       return 0
-    fi
-    echo "${RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE}"
-    return 0
-  fi
-  echo "UNKNOWN"
+      ;;
+    *)
+      if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
+        if [[ "$replica" == "A" ]]; then
+          if [[ "${RFRF_TEST_ROLLBACK_REPLICA_A_STOPPED:-0}" == "1" ]]; then
+            echo "STOPPED"
+            return 0
+          fi
+          echo "${RFRF_TEST_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE}"
+          return 0
+        fi
+        if [[ "${RFRF_TEST_ROLLBACK_REPLICA_B_STOPPED:-0}" == "1" ]]; then
+          echo "STOPPED"
+          return 0
+        fi
+        echo "${RFRF_TEST_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE}"
+        return 0
+      fi
+      echo "UNKNOWN"
+      ;;
+  esac
 }
 
 rfrf_rollback_replica_is_proven_at_stage() {
   local replica="$1" env_stage="$2"
-  local effective
-  effective="$(rfrf_rollback_replica_effective_stage "$replica")"
-  [[ "$effective" == "$env_stage" ]]
+  local proof stage eff
+  if [[ "$replica" == "A" ]]; then
+    proof="$ROLLBACK_PROOF_A"
+    stage="$ROLLBACK_PROVEN_A_STAGE"
+  else
+    proof="$ROLLBACK_PROOF_B"
+    stage="$ROLLBACK_PROVEN_B_STAGE"
+  fi
+  if [[ "$proof" == "PROVEN_TARGET_STAGE" || "$proof" == "PROVEN_PRE_STAGE" ]]; then
+    [[ "$stage" == "$env_stage" ]]
+    return $?
+  fi
+  if [[ "$proof" == "STOPPED" ]]; then
+    return 0
+  fi
+  eff="$(rfrf_rollback_replica_effective_stage "$replica")"
+  [[ "$eff" == "$env_stage" ]]
 }
 
 rfrf_rollback_replica_serving_label() {
   local replica="$1" env_stage="$2"
-  local effective
+  local proof effective
+  if [[ "$replica" == "A" ]]; then
+    proof="$ROLLBACK_PROOF_A"
+  else
+    proof="$ROLLBACK_PROOF_B"
+  fi
+  if [[ "$proof" == "STOPPED" ]]; then
+    echo "NO"
+    return 0
+  fi
+  if [[ "$proof" == "PROVEN_TARGET_STAGE" || "$proof" == "PROVEN_PRE_STAGE" ]]; then
+    if [[ "$(rfrf_rollback_replica_effective_stage "$replica")" == "$env_stage" ]]; then
+      echo "YES"
+    else
+      echo "UNKNOWN"
+    fi
+    return 0
+  fi
   effective="$(rfrf_rollback_replica_effective_stage "$replica")"
   if [[ "$effective" == "STOPPED" ]]; then
     echo "NO"
     return 0
   fi
-  if [[ "$effective" == "UNKNOWN" ]]; then
+  if [[ "$effective" == "UNKNOWN" || "$effective" == "-1" ]]; then
     echo "UNKNOWN"
     return 0
   fi
@@ -196,62 +290,148 @@ rfrf_rollback_replica_serving_label() {
   echo "UNKNOWN"
 }
 
-rfrf_rollback_stop_replica_fail_closed() {
-  local name="$1"
+rfrf_rollback_verify_replica_stopped() {
+  local name="$1" port="$2" replica="$3"
+  if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
+    if [[ "$replica" == "A" ]]; then
+      if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_A_FAKE_OK:-0}" == "1" ]]; then
+        return 1
+      fi
+      [[ "${RFRF_TEST_ROLLBACK_REPLICA_A_STOPPED:-0}" == "1" ]]
+      return $?
+    fi
+    if [[ "${RFRF_TEST_INJECT_ROLLBACK_STOP_B_FAKE_OK:-0}" == "1" ]]; then
+      return 1
+    fi
+    [[ "${RFRF_TEST_ROLLBACK_REPLICA_B_STOPPED:-0}" == "1" ]]
+    return $?
+  fi
+  vps_replica_verify_stopped "$name" "$port"
+}
+
+rfrf_rollback_stop_replica_verified() {
+  local replica="$1" name="$2" port="$3"
+  echo "VERIFIED_STOP_REQUIRED=YES"
   echo "ROLLBACK_DEGRADED_STOP_REPLICA=${name}"
   if [[ "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]; then
-    pm2 stop "$name" || true
+    if ! pm2 stop "$name"; then
+      echo "ROLLBACK_STOP_VERIFY_FAILED=${name}"
+      return 1
+    fi
   else
-    pm2 stop "$name" --update-env 2>/dev/null || pm2 stop "$name" || true
+    if ! vps_replica_stop_verified "$name" "$port"; then
+      echo "ROLLBACK_STOP_VERIFY_FAILED=${name}"
+      return 1
+    fi
   fi
+  if ! rfrf_rollback_verify_replica_stopped "$name" "$port" "$replica"; then
+    echo "ROLLBACK_STOP_VERIFY_FAILED=${name}"
+    return 1
+  fi
+  if [[ "$replica" == "A" ]]; then
+    ROLLBACK_PROOF_A="STOPPED"
+    ROLLBACK_PROVEN_A_STAGE=""
+    ROLLBACK_REPLICA_A_CONVERGED=0
+  else
+    ROLLBACK_PROOF_B="STOPPED"
+    ROLLBACK_PROVEN_B_STAGE=""
+    ROLLBACK_REPLICA_B_CONVERGED=0
+  fi
+  return 0
+}
+
+rfrf_rollback_count_unproven_serving() {
+  local env_stage="$1"
+  local count=0
+  local a_srv b_srv
+  a_srv="$(rfrf_rollback_replica_serving_label A "$env_stage")"
+  b_srv="$(rfrf_rollback_replica_serving_label B "$env_stage")"
+  if [[ "$a_srv" == "UNKNOWN" ]]; then
+    count=$((count + 1))
+  fi
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    if [[ "$b_srv" == "UNKNOWN" ]]; then
+      count=$((count + 1))
+    fi
+  fi
+  echo "$count"
 }
 
 rfrf_rollback_stop_all_unproven_replicas() {
   local env_stage="$1"
-  local unproven=0
+  local stop_failed=0
 
   if ! rfrf_rollback_replica_is_proven_at_stage "A" "$env_stage"; then
-    unproven=$((unproven + 1))
-    rfrf_rollback_stop_replica_fail_closed "${SYNQDRIVE_REPLICA_A_PM2_NAME}"
-    ROLLBACK_REPLICA_A_CONVERGED=0
+    if [[ "$(rfrf_rollback_replica_serving_label A "$env_stage")" != "NO" ]]; then
+      if ! rfrf_rollback_stop_replica_verified "A" "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}"; then
+        stop_failed=1
+      fi
+    fi
   fi
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
     if ! rfrf_rollback_replica_is_proven_at_stage "B" "$env_stage"; then
-      unproven=$((unproven + 1))
-      rfrf_rollback_stop_replica_fail_closed "${SYNQDRIVE_REPLICA_B_PM2_NAME}"
-      ROLLBACK_REPLICA_B_CONVERGED=0
+      if [[ "$(rfrf_rollback_replica_serving_label B "$env_stage")" != "NO" ]]; then
+        if ! rfrf_rollback_stop_replica_verified "B" "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}"; then
+          stop_failed=1
+        fi
+      fi
     fi
+  fi
+
+  local unproven
+  unproven="$(rfrf_rollback_count_unproven_serving "$env_stage")"
+  if [[ "$stop_failed" == "1" ]]; then
+    echo "UNVERIFIED_STOP_CAN_REPORT_ZERO_UNPROVEN=NO"
+    echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=${unproven}"
+    return 1
+  fi
+  unproven="$(rfrf_rollback_count_unproven_serving "$env_stage")"
+  if [[ "$unproven" != "0" ]]; then
+    echo "UNVERIFIED_STOP_CAN_REPORT_ZERO_UNPROVEN=NO"
+    echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=${unproven}"
+    return 1
   fi
   echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
   return 0
 }
 
-rfrf_rollback_emit_operational_state() {
+rfrf_rollback_compute_mixed_authority() {
   local env_stage="$1"
-  local a_eff b_eff a_srv b_srv mixed=NO
+  local a_eff b_eff a_srv b_srv
 
   a_eff="$(rfrf_rollback_replica_effective_stage A)"
   b_eff="$(rfrf_rollback_replica_effective_stage B)"
   a_srv="$(rfrf_rollback_replica_serving_label A "$env_stage")"
   b_srv="$(rfrf_rollback_replica_serving_label B "$env_stage")"
 
-  if [[ "$a_srv" == "YES" && "$b_srv" == "YES" && "$a_eff" == "$b_eff" ]]; then
-    mixed=NO
-  elif [[ "$a_srv" == "NO" && "$b_srv" == "NO" ]]; then
-    mixed=NO
-  elif [[ "$a_srv" == "YES" && "$b_srv" == "NO" ]]; then
-    mixed=NO
-  elif [[ "$a_srv" == "NO" && "$b_srv" == "YES" ]]; then
-    mixed=NO
-  elif [[ "$a_srv" == "UNKNOWN" || "$b_srv" == "UNKNOWN" ]]; then
-    mixed=YES
-  elif [[ "$a_eff" != "$b_eff" && "$a_eff" != "STOPPED" && "$b_eff" != "STOPPED" ]]; then
-    mixed=YES
-  elif [[ "$a_srv" == "YES" && "$a_eff" != "$env_stage" ]]; then
-    mixed=YES
-  elif [[ "$b_srv" == "YES" && "$b_eff" != "$env_stage" ]]; then
-    mixed=YES
+  if [[ "$a_srv" == "UNKNOWN" || "$b_srv" == "UNKNOWN" ]]; then
+    echo "UNKNOWN"
+    return 0
   fi
+  if [[ "$a_srv" == "YES" && "$b_srv" == "YES" && "$a_eff" == "$b_eff" ]]; then
+    echo "NO"
+    return 0
+  fi
+  if [[ "$a_srv" == "NO" || "$b_srv" == "NO" ]]; then
+    echo "NO"
+    return 0
+  fi
+  if [[ "$a_eff" != "$b_eff" ]]; then
+    echo "YES"
+    return 0
+  fi
+  echo "NO"
+}
+
+rfrf_rollback_emit_final_operational_state() {
+  local env_stage="$1"
+  local a_eff b_eff a_srv b_srv mixed
+
+  a_eff="$(rfrf_rollback_replica_effective_stage A)"
+  b_eff="$(rfrf_rollback_replica_effective_stage B)"
+  a_srv="$(rfrf_rollback_replica_serving_label A "$env_stage")"
+  b_srv="$(rfrf_rollback_replica_serving_label B "$env_stage")"
+  mixed="$(rfrf_rollback_compute_mixed_authority "$env_stage")"
 
   echo "ROLLBACK_FINAL_ENV_STAGE=${env_stage}"
   echo "ROLLBACK_REPLICA_A_EFFECTIVE_STAGE=${a_eff}"
@@ -259,6 +439,31 @@ rfrf_rollback_emit_operational_state() {
   echo "ROLLBACK_REPLICA_A_SERVING=${a_srv}"
   echo "ROLLBACK_REPLICA_B_SERVING=${b_srv}"
   echo "ROLLBACK_MIXED_AUTHORITY_PRESENT=${mixed}"
+  echo "ROLLBACK_FINAL_STATE_SINGLE_AUTHORITY_BLOCK=YES"
+  echo "ROLLBACK_CONTRADICTORY_FINAL_FIELDS=0"
+}
+
+rfrf_rollback_mark_replica_proven() {
+  local replica="$1" stage="$2" kind="${3:-TARGET}"
+  local proof="PROVEN_TARGET_STAGE"
+  if [[ "$kind" == "PRE" ]]; then
+    proof="PROVEN_PRE_STAGE"
+  fi
+  if [[ "$replica" == "A" ]]; then
+    ROLLBACK_PROOF_A="$proof"
+    ROLLBACK_PROVEN_A_STAGE="$stage"
+  else
+    ROLLBACK_PROOF_B="$proof"
+    ROLLBACK_PROVEN_B_STAGE="$stage"
+  fi
+}
+
+rfrf_rollback_mark_replica_proven_target() {
+  rfrf_rollback_mark_replica_proven "$1" "$2" "TARGET"
+}
+
+rfrf_rollback_emit_operational_state() {
+  rfrf_rollback_emit_final_operational_state "$1"
 }
 
 rfrf_rollback_restore_pre_mutation_env() {
@@ -307,38 +512,53 @@ rfrf_rollback_convergence_restore_pre_mutation() {
 
 rfrf_rollback_fail_closed() {
   local reason="$1"
-  local env_stage
+  local env_stage stop_ok=1
   env_stage="$(rfrf_detect_stage_from_flags "$BACKEND_ENV")"
 
   echo "ROLLBACK_FAILURE=${reason}"
-  echo "ROLLBACK_FAIL_CLOSED=YES"
 
-  if [[ "$ROLLBACK_MUTATION_APPLIED" != "1" ]]; then
-    rfrf_rollback_emit_operational_state "$env_stage"
+  if ! rfrf_rollback_mutation_started_or_applied; then
+    echo "ROLLBACK_FAIL_CLOSED=YES"
+    rfrf_rollback_emit_final_operational_state "$env_stage"
     echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
     return 1
   fi
 
+  echo "ROLLBACK_FAIL_CLOSED=YES"
+
   if [[ "$ROLLBACK_REPLICA_A_CONVERGED" != "1" && "$ROLLBACK_REPLICA_B_CONVERGED" != "1" ]]; then
     if ! rfrf_rollback_convergence_restore_pre_mutation "$FROM_STAGE"; then
       env_stage="$(rfrf_detect_stage_from_flags "$BACKEND_ENV")"
-      rfrf_rollback_stop_all_unproven_replicas "$env_stage"
+      if ! rfrf_rollback_stop_all_unproven_replicas "$env_stage"; then
+        stop_ok=0
+      fi
       echo "ROLLBACK_RECOVERY_FAILURE_MIXED_AUTHORITY_PREVENTED=YES"
     fi
   elif [[ "$ROLLBACK_REPLICA_A_CONVERGED" == "1" && "$ROLLBACK_REPLICA_B_CONVERGED" != "1" ]]; then
-    rfrf_rollback_stop_replica_fail_closed "${SYNQDRIVE_REPLICA_B_PM2_NAME}"
-    echo "ROLLBACK_MIXED_AUTHORITY_PREVENTED=YES"
-    echo "ROLLBACK_DEGRADED_MODE=SINGLE_REPLICA_A_SERVING"
-    echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
+    if ! rfrf_rollback_stop_replica_verified "B" "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}"; then
+      stop_ok=0
+    else
+      echo "ROLLBACK_MIXED_AUTHORITY_PREVENTED=YES"
+      echo "ROLLBACK_DEGRADED_MODE=SINGLE_REPLICA_A_SERVING"
+    fi
   elif [[ "$ROLLBACK_REPLICA_A_CONVERGED" != "1" && "$ROLLBACK_REPLICA_B_CONVERGED" == "1" ]]; then
-    rfrf_rollback_stop_replica_fail_closed "${SYNQDRIVE_REPLICA_A_PM2_NAME}"
-    echo "ROLLBACK_MIXED_AUTHORITY_PREVENTED=YES"
-    echo "ROLLBACK_DEGRADED_MODE=SINGLE_REPLICA_B_SERVING"
-    echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
+    if ! rfrf_rollback_stop_replica_verified "A" "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}"; then
+      stop_ok=0
+    else
+      echo "ROLLBACK_MIXED_AUTHORITY_PREVENTED=YES"
+      echo "ROLLBACK_DEGRADED_MODE=SINGLE_REPLICA_B_SERVING"
+    fi
   fi
 
   env_stage="$(rfrf_detect_stage_from_flags "$BACKEND_ENV")"
-  rfrf_rollback_emit_operational_state "$env_stage"
+  if [[ "$stop_ok" != "1" ]]; then
+    echo "ROLLBACK_FAIL_CLOSED=NO"
+    rfrf_rollback_emit_final_operational_state "$env_stage"
+    echo "UNVERIFIED_STOP_CAN_REPORT_ZERO_UNPROVEN=NO"
+    echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=$(rfrf_rollback_count_unproven_serving "$env_stage")"
+    return 1
+  fi
+  rfrf_rollback_emit_final_operational_state "$env_stage"
   echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
   return 1
 }
@@ -426,6 +646,24 @@ rfrf_rollback_post_mutation_checkpoint() {
   return 0
 }
 
+rfrf_rollback_pre_apply_checkpoint() {
+  if [[ "${RFRF_TEST_INJECT_ROLLBACK_SIGNAL_AT:-}" == "before_apply" ]]; then
+    rfrf_rollback_post_mutation_checkpoint
+  fi
+  return 0
+}
+
+rfrf_rollback_post_atomic_checkpoint() {
+  if [[ "${RFRF_TEST_INJECT_ROLLBACK_POST_ATOMIC_ERROR:-0}" == "1" ]]; then
+    echo "INJECTED_FAILURE=post_atomic_error"
+    return 1
+  fi
+  if [[ "${RFRF_TEST_INJECT_ROLLBACK_SIGNAL_AT:-}" == "after_atomic" ]]; then
+    rfrf_rollback_post_mutation_checkpoint
+  fi
+  return 0
+}
+
 rfrf_rollback_rolling_restart_all() {
   local target_sha="$1"
   cd "${SYNQDRIVE_CURRENT_LINK}/backend"
@@ -435,12 +673,18 @@ rfrf_rollback_rolling_restart_all() {
   fi
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
   ROLLBACK_REPLICA_A_CONVERGED=1
+  local proof_kind="TARGET"
+  if [[ "${RFRF_ROLLBACK_CONVERGENCE_RESTORE:-0}" == "1" ]]; then
+    proof_kind="PRE"
+  fi
+  rfrf_rollback_mark_replica_proven "A" "$(rfrf_detect_stage_from_flags "$BACKEND_ENV")" "$proof_kind"
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
     if ! vps_replica_restart_one "${SYNQDRIVE_REPLICA_B_PM2_NAME}"; then
       return 1
     fi
     vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
     ROLLBACK_REPLICA_B_CONVERGED=1
+    rfrf_rollback_mark_replica_proven "B" "$(rfrf_detect_stage_from_flags "$BACKEND_ENV")" "$proof_kind"
   else
     ROLLBACK_REPLICA_B_CONVERGED=1
   fi
@@ -460,6 +704,7 @@ rfrf_rollback_rolling_restart() {
   fi
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
   ROLLBACK_REPLICA_A_CONVERGED=1
+  rfrf_rollback_mark_replica_proven_target "A" "$ROLLBACK_EXPECTED_AFTER_STAGE"
 
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
     if ! vps_replica_restart_one "${SYNQDRIVE_REPLICA_B_PM2_NAME}"; then
@@ -467,6 +712,7 @@ rfrf_rollback_rolling_restart() {
     fi
     vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
     ROLLBACK_REPLICA_B_CONVERGED=1
+    rfrf_rollback_mark_replica_proven_target "B" "$ROLLBACK_EXPECTED_AFTER_STAGE"
   else
     ROLLBACK_REPLICA_B_CONVERGED=1
   fi
@@ -577,15 +823,27 @@ echo "BACKUP_CHECKSUM_VERIFIED=YES"
 
 rfrf_rollback_arm_recovery
 
+echo "ROLLBACK_MUTATION_MAY_HAVE_STARTED_SET_BEFORE_MUTATION=YES"
+ROLLBACK_MUTATION_MAY_HAVE_STARTED=1
+
+rfrf_rollback_pre_apply_checkpoint
+
 rfrf_apply_rollback_stage "$FROM_STAGE" "$BACKEND_ENV"
-chmod 600 "$BACKEND_ENV"
 ROLLBACK_MUTATION_APPLIED=1
+
+if ! rfrf_rollback_post_atomic_checkpoint; then
+  rfrf_rollback_fail_closed "post_atomic_checkpoint" || true
+  rfrf_rollout_fail "rollback post-atomic checkpoint failed" || true
+  rfrf_rollback_finalize_failure_exit
+fi
+
+chmod 600 "$BACKEND_ENV"
 
 post_cutover="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
 if [[ "$FROM_STAGE" == "2" ]]; then
   if ! rfrf_assert_cutover_immutable_across_mutation "$ROLLBACK_AUTHORITATIVE_CUTOVER" "$post_cutover"; then
     rfrf_rollback_fail_closed "cutover_immutability" || true
-    rfrf_rollout_fail "rollback stage 2 must preserve cutover"
+    rfrf_rollout_fail "rollback stage 2 must preserve cutover" || true
     rfrf_rollback_finalize_failure_exit
   fi
 fi
@@ -596,41 +854,44 @@ fi
 
 if [[ "${RFRF_TEST_INJECT_ROLLBACK_STAGE_VERIFY_FAIL:-0}" == "1" ]]; then
   rfrf_rollback_fail_closed "stage_env_verify" || true
-  rfrf_rollout_fail "rollback env verify failed (injected)"
+  rfrf_rollout_fail "rollback env verify failed (injected)" || true
   rfrf_rollback_finalize_failure_exit
 fi
 
 if ! rfrf_verify_stage_env_state "$ROLLBACK_EXPECTED_AFTER_STAGE" "$BACKEND_ENV" "$ROLLBACK_AUTHORITATIVE_CUTOVER"; then
   rfrf_rollback_fail_closed "stage_env_verify" || true
-  rfrf_rollout_fail "rollback env verify failed for stage ${ROLLBACK_EXPECTED_AFTER_STAGE}"
+  rfrf_rollout_fail "rollback env verify failed for stage ${ROLLBACK_EXPECTED_AFTER_STAGE}" || true
   rfrf_rollback_finalize_failure_exit
 fi
 
 echo "=== Rolling restart target SHA ${ROLLBACK_TARGET_SHA} (rollback) ==="
 if ! rfrf_rollback_rolling_restart "$ROLLBACK_TARGET_SHA"; then
   rfrf_rollback_fail_closed "rolling_restart" || true
-  rfrf_rollout_fail "rollback rolling restart failed"
+  rfrf_rollout_fail "rollback rolling restart failed" || true
   rfrf_rollback_finalize_failure_exit
 fi
 
 if ! vps_replica_verify_post_deploy "$CURRENT" "$ROLLBACK_TARGET_SHA"; then
   rfrf_rollback_fail_closed "post_deploy_verify" || true
-  rfrf_rollout_fail "rollback post-deploy verify failed"
+  rfrf_rollout_fail "rollback post-deploy verify failed" || true
   rfrf_rollback_finalize_failure_exit
 fi
 
 if ! rfrf_verify_stage_env_state "$ROLLBACK_EXPECTED_AFTER_STAGE" "$BACKEND_ENV" "$ROLLBACK_AUTHORITATIVE_CUTOVER"; then
   rfrf_rollback_fail_closed "post_restart_stage_verify" || true
-  rfrf_rollout_fail "rollback post-restart stage verify failed"
+  rfrf_rollout_fail "rollback post-restart stage verify failed" || true
   rfrf_rollback_finalize_failure_exit
 fi
 
 rfrf_rollback_disarm_recovery
-rfrf_rollback_emit_operational_state "$ROLLBACK_EXPECTED_AFTER_STAGE"
+rfrf_rollback_emit_final_operational_state "$ROLLBACK_EXPECTED_AFTER_STAGE"
 echo "ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0"
-echo "ROLLBACK_MIXED_AUTHORITY_PRESENT=NO"
 echo "ROLLBACK_FAIL_CLOSED=NO"
 echo "ROLLBACK_MIXED_AUTHORITY_PREVENTED=YES"
+echo "SUCCESS_ROLLBACK_FINAL_ENV_STAGE=${ROLLBACK_EXPECTED_AFTER_STAGE}"
+echo "SUCCESS_ROLLBACK_REPLICA_A_EFFECTIVE_STAGE=${ROLLBACK_EXPECTED_AFTER_STAGE}"
+echo "SUCCESS_ROLLBACK_REPLICA_B_EFFECTIVE_STAGE=${ROLLBACK_EXPECTED_AFTER_STAGE}"
+echo "SUCCESS_ROLLBACK_MIXED_AUTHORITY_PRESENT=NO"
 echo "RFRF_ROLLBACK_FROM_STAGE_${FROM_STAGE}=YES"
 echo "RFRF_ROLLBACK_TARGET_STAGE=${ROLLBACK_EXPECTED_AFTER_STAGE}"
 echo "RFRF_ROLLBACK=PASS"

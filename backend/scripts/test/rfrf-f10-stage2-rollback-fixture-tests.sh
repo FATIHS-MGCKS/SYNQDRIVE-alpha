@@ -70,8 +70,15 @@ assert_no_production_safe() {
 assert_fail_closed_no_mixed() {
   local out="$1"
   echo "$out" | grep -q 'ROLLBACK_FAIL_CLOSED=YES' || fail "missing ROLLBACK_FAIL_CLOSED=YES"
-  echo "$out" | grep -q 'ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=0' || fail "missing unproven count zero"
-  echo "$out" | grep -q 'ROLLBACK_MIXED_AUTHORITY_PRESENT=NO' || fail "mixed authority must be NO after fail-closed"
+  local mixed_count
+  mixed_count="$(echo "$out" | grep -c '^ROLLBACK_MIXED_AUTHORITY_PRESENT=' || true)"
+  [[ "$mixed_count" == "1" ]] || fail "expected single MIXED marker, got ${mixed_count}"
+  local mixed
+  mixed="$(echo "$out" | grep '^ROLLBACK_MIXED_AUTHORITY_PRESENT=' | tail -1 | cut -d= -f2)"
+  [[ "$mixed" == "NO" ]] || fail "mixed authority must be NO after fail-closed"
+  local unproven
+  unproven="$(echo "$out" | grep '^ROLLBACK_UNPROVEN_SERVING_REPLICA_COUNT=' | tail -1 | cut -d= -f2)"
+  [[ "$unproven" == "0" ]] || fail "missing unproven count zero (got ${unproven})"
 }
 
 # A — Stage 2 source + dry-run PASS, zero mutation
@@ -223,7 +230,7 @@ pass "recovery env restore failure"
 echo "STAGE2_ROLLBACK_RECOVERY_ENV_RESTORE_FAILURE_TEST=PASS"
 echo "ROLLBACK_RECOVERY_FAILURE_MIXED_AUTHORITY_PREVENTED=YES"
 
-# signal safety (TERM / INT / HUP)
+# signal safety (TERM / INT / HUP) — strict on Linux / CI
 for sig in TERM INT HUP; do
   write_stage2_env
   clear_inject
@@ -237,10 +244,15 @@ for sig in TERM INT HUP; do
     assert_fail_closed_no_mixed "$out"
     assert_no_production_safe "$out"
     echo "ROLLBACK_SIGNAL_${sig}_TEST=PASS"
-  else
+  elif [[ "$(uname -s)" == "Linux" ]]; then
+    fail "${sig} signal must PASS on Linux (output missing ${sig}_RECOVERY_COVERED)"
+  elif [[ "${RFRF_ROLLBACK_SIGNAL_TEST_ALLOW_SKIP:-0}" == "1" ]]; then
     echo "ROLLBACK_SIGNAL_${sig}_TEST=NOT_PORTABLE_WITH_EXPLANATION"
+  else
+    fail "${sig} signal failed"
   fi
 done
+echo "CI_SIGNAL_SKIP_ALLOWED=NO"
 
 # Production-style rollback dry-run SHA authority (no fixture flags)
 PROD_DRY_ENV="${TMP_DIR}/prod-dry-backend.env"
@@ -306,6 +318,9 @@ clear_inject
 out="$(run_rollback)"
 echo "$out" | grep -q 'RFRF_ROLLBACK=PASS' || fail "rollback should pass: ${out}"
 echo "$out" | grep -q 'STAGE2_ROLLBACK_PRODUCTION_SAFE=YES' || fail "missing production safe marker"
+mixed_count="$(echo "$out" | grep -c '^ROLLBACK_MIXED_AUTHORITY_PRESENT=' || true)"
+[[ "$mixed_count" == "1" ]] || fail "success transcript must have single MIXED marker"
+echo "$out" | grep -q 'ROLLBACK_FINAL_STATE_SINGLE_AUTHORITY_BLOCK=YES' || fail "missing single authority block"
 rfrf_verify_stage_env_state 1 "$BACKEND_ENV" "$CUTOVER" || fail "post-rollback not stage 1"
 pass "stage2 rollback success"
 echo "STAGE2_ROLLBACK_PRODUCTION_SAFE=YES"
