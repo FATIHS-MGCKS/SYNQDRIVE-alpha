@@ -162,3 +162,72 @@ Do **not** replace `/opt/synqdrive/current`, restart PM2, or redeploy applicatio
 | RFRF_F10_2_COMPLETE | NO (await post-merge tooling retry) |
 | STAGE_1_START_AUTHORIZED | NO |
 | PRODUCTION_DEPLOY_REQUIRED | NO |
+
+## F10.2 final closure — tooling-only live preflight (EED-EV-0064 extended)
+
+**Date:** 2026-09-18
+**PR:** #1680 merged @ `ca0aa0f934af24e513bea7d3e40e3d8b98a6c307`
+**Production runtime (unchanged):** `3a2707b2966a4059478c1ac78f88451b9a50205d` (`20260917213208_v4994`)
+
+### Execution model
+
+Isolated tooling checkout `/tmp/rfrf-f10-2-final-tooling` @ `ca0aa0f…` executed read-only preflight against `/opt/synqdrive/current` @ `3a2707b…`. **No deploy, restart, env, DB, or Prometheus mutation.**
+
+Operator command (authoritative):
+
+```bash
+sudo SYNQDRIVE_CURRENT_LINK=/opt/synqdrive/current \
+  RFRF_REQUIRED_GIT_SHA=3a2707b2966a4059478c1ac78f88451b9a50205d \
+  bash /tmp/rfrf-f10-2-final-tooling/backend/scripts/ops/rfrf-production-preflight.sh \
+  --check --live-required
+```
+
+Note: `sudo -E` must **not** be used — inherited `PM2_HOME` from non-root user yields empty `pm2 jlist` and false `PM2_REPLICAS=BLOCKED`.
+
+### Cross-workstream preservation (pre/post)
+
+| Workstream | Pre | Post | Unchanged |
+|------------|-----|------|-----------|
+| EXP-021 coordinator | enabled=true, dry_run=true | same | YES |
+| EXP-021 data | studies=1, enrollments=1, runs=0, balances=0 | same | YES |
+| VDC | authority=LEGACY, physical=4, shadow_obs=5 | same | YES |
+| RFRF Stage 0 | flags OFF/absent, candidates=0, fallback VEE=0 | same | YES |
+| Production SHA | `3a2707b…` | `3a2707b…` | YES |
+
+### Automated live preflight result (2026-09-18T00:02:19Z)
+
+| Gate | Result |
+|------|--------|
+| `DEPLOY_GIT_SHA_MATCH` | YES |
+| PM2 replicas | synqdrive + synqdrive-b **online** |
+| External health | PASS |
+| Worker readiness A/B | PASS |
+| `REDIS_WORKER_READINESS_GATE` | PASS |
+| RFRF Stage 0 flags | all OFF / cutover unset |
+| DB readonly + migrations | PASS |
+| `METRICS_3001_RFRF` / `METRICS_3002_RFRF` | **YES** |
+| `METRICS_3001_PHYSICAL_REFUEL` / `METRICS_3002_PHYSICAL_REFUEL` | **YES** |
+| Prometheus live targets A/B | UP |
+| F8 live rules (5) | all ok |
+| `AUTOMATED_FINAL_PREFLIGHT_EXIT_CODE` | **0** |
+| `RFRF_PRODUCTION_PREFLIGHT` | **PASS** |
+
+### F10.2.2 metrics probe regression closure on real Production
+
+10 consecutive read-only `rfrf_metrics_probe()` runs (both replicas): **0 failures**. No exit 141, no false-negative.
+
+`REAL_PRODUCTION_METRICS_PROBE_RUN_COUNT=10`
+`REAL_PRODUCTION_METRICS_PROBE_FAILURE_COUNT=0`
+
+### Final verdict
+
+| Field | Value |
+|-------|-------|
+| `RFRF_F10_2_FINAL_CLOSURE` | **PASS** |
+| `F10_2_COMPLETE` | **YES** |
+| `STAGE_1_TECHNICALLY_READY` | **YES** |
+| `STAGE_1_START_AUTHORIZED` | **NO** (operator authorization still required) |
+| `APPLICATION_DEPLOY_PERFORMED` | **NO** |
+| `PRODUCTION_MUTATED` | **NO** |
+
+Evidence log (VPS): `/tmp/rfrf-f10-2-final-closure-20260918T000126Z.log`

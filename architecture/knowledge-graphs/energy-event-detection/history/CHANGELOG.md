@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.2 final closure (tooling-only live preflight)
+
+- EED-EV-0064 extended: #1680 merged @ ca0aa0f; isolated tooling checkout executed live preflight against unchanged production 3a2707b; `RFRF_PRODUCTION_PREFLIGHT=PASS` exit 0; METRICS_*_RFRF=YES both replicas; 10/10 real probe stability; cross-workstream preservation PASS; no deploy/mutation
+- `RFRF_F10_2_FINAL_CLOSURE=PASS`; `STAGE_1_START_AUTHORIZED=NO`
+- Operator note: use `sudo` with explicit env vars, not `sudo -E` (PM2_HOME false-negative)
+
 ## 2026-09-17 — RFRF F10.2.2 metrics probe SIGPIPE/pipefail micro-closure
 
 - EED-EV-0064 extended: F10.2 cross-workstream preservation gate PASS on production `3a2707b`; F10.2 blocked only by `rfrf_metrics_probe()` false-negative (`echo|grep -q` + pipefail SIGPIPE 141 on large payloads)
