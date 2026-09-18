@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f10-3-0-1-transaction-closure-2026-09-18',
+    version: '4.9.1143',
+    title: 'RFRF F10.3.0.1 — Stage-1 transaction / recovery micro-closure',
+    summary: [
+      'Arms recovery before first backend.env mutation; ERR/TERM/INT/HUP fail-closed traps with idempotent single recovery handler.',
+      'Same-filesystem atomic rename for env upsert + restore; byte-identical backup checksum contract; PRE/POST EXP-021/VDC immediate survival gates.',
+      'Expanded failure-injection matrix (chmod/post-mutation/signal/cross-workstream drift); Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'Independent review of F10.3.0 found recovery armed too late, non-atomic restore, and cross-workstream snapshots without enforcement gates.',
+    previousBehavior:
+      'Recovery keyed off STAGE_MUTATION_APPLIED after chmod; cp-based restore; PRE/POST snapshots printed but not compared before PASS.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.1 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T08:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18',
     version: '4.9.1142',
     title: 'RFRF F10.3.0 — Stage-1 restart safety micro-closure',

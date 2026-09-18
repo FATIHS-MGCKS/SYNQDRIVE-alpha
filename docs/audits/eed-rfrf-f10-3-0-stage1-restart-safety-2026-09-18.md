@@ -80,3 +80,47 @@ After this PR merges, Stage 1 still requires:
 3. Post-restart EXP-021 tick observation (4 ticks) + VDC survival checks per documented contracts
 
 `READY_FOR_STAGE1_FINAL_AUTHORIZATION_AFTER_MERGE=YES` (tooling readiness only)
+
+---
+
+## F10.3.0.1 transaction / recovery micro-closure (2026-09-18)
+
+Independent review blocking gaps corrected (ops tooling only):
+
+| Finding | Fix |
+|---------|-----|
+| Recovery armed too late | `RECOVERY_ARMED=1` before first mutation; transaction states `PRE_MUTATION` → `RECOVERY_ARMED` → `MUTATED` → … → `COMMITTED`; idempotent single recovery handler |
+| Non-atomic restore | Same-directory temp + `mv` promotion for upsert and restore; `BACKEND_ENV_RESTORED_BYTE_IDENTICAL=YES` |
+| Snapshots not gates | Normalized PRE/POST state files; `rfrf_cross_workstream_immediate_gate` enforces EXP-021 config/data equality + VDC immutable/monotonic invariants before COMMIT |
+
+### Signal / untrappable limits
+
+- ERR, TERM, INT, HUP routed through single idempotent recovery path after recovery armed
+- SIGKILL and host power loss documented as untrappable (`SIGKILL_LIMITATION_DOCUMENTED=YES`)
+- Atomic same-filesystem rename minimizes partial-write exposure even on untrappable interruption
+
+### Canonical VDC authority keys (Production #1679 / RB-019 P2.5)
+
+**Enforced:** `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED`, `CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED`, `CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED`, `CONNECTIVITY_PHYSICAL_STATE_AUTHORITY_CUTOVER_ENABLED`, `CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED`, `CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON`, `CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS`, `CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID`
+
+**Obsolete (not enforced):** `DEVICE_CONNECTION_PHYSICAL_AUTHORITY_MODE`, `DEVICE_CONNECTION_PHYSICAL_SHADOW_COMPARE_ENABLED`, `DEVICE_CONNECTION_PHYSICAL_PILOT_ENABLED`
+
+DB invariants: authority mode + pilot epoch fingerprint exact match; shadow observation count monotonic (POST ≥ PRE).
+
+### Gate distinction
+
+| Gate | When |
+|------|------|
+| `IMMEDIATE_RESTART_SURVIVAL_GATE` | Synchronous PRE vs POST during Stage-1 controller (blocking before COMMIT) |
+| `POST_EXECUTION_4_TICK_SURVIVAL_GATE` | After commit — observe ≥4 coordinator ticks; not blocking controller |
+
+### New fixture tests
+
+`MUTATION_SUCCEEDS_CHMOD_FAILS_TEST`, `POST_MUTATION_UNEXPECTED_COMMAND_FAIL_TEST`, signal recovery tests, EXP-021/VDC drift tests, `RECOVERY_HANDLER_EXACTLY_ONCE_TEST`, `SUCCESS_PATH_ZERO_RECOVERY_TEST`, `ATOMIC_RESTORE_EXACT_CHECKSUM_TEST`
+
+| Field | Value |
+|-------|-------|
+| RFRF_RUNTIME_SEMANTICS_CHANGED | NO |
+| PRODUCTION_MUTATED | NO |
+| STAGE_1_EXECUTED | NO |
+| STAGE_1_START_AUTHORIZED | NO |

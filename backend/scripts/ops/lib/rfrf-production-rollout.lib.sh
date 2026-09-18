@@ -42,6 +42,35 @@ RFRF_REQUIRED_MIGRATIONS=(
   20260914120000_rfrf_f5_pr1_converged_native_lifecycle
 )
 
+# EXP-021 coordinator/canary authorities — canonical config from reference-capture.config.ts
+RFRF_EXP021_IMMEDIATE_CONFIG_KEYS=(
+  EXP021_FLEET_COORDINATOR_ENABLED
+  EXP021_FLEET_DRY_RUN
+  EXP021_FLEET_COORDINATOR_INTERVAL_MS
+  EXP021_MATURATION_SHADOW_ENABLED
+  EXP021_MATURATION_SHADOW_HF_LANE_ENABLED
+  EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED
+)
+
+# VDC physical-state authorities — canonical config from connectivity-physical-state*.config.ts
+RFRF_VDC_IMMEDIATE_CONFIG_KEYS=(
+  CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED
+  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED
+  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED
+  CONNECTIVITY_PHYSICAL_STATE_AUTHORITY_CUTOVER_ENABLED
+  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED
+  CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON
+  CONNECTIVITY_PHYSICAL_STATE_SHADOW_OBSERVATION_RETENTION_DAYS
+  CONNECTIVITY_PHYSICAL_STATE_CUTOVER_CAPABLE_BUILD_ID
+)
+
+# Obsolete env names from pre-VDC-RB-019 tooling drafts — not enforced
+RFRF_VDC_OBSOLETE_CONFIG_KEYS=(
+  DEVICE_CONNECTION_PHYSICAL_AUTHORITY_MODE
+  DEVICE_CONNECTION_PHYSICAL_SHADOW_COMPARE_ENABLED
+  DEVICE_CONNECTION_PHYSICAL_PILOT_ENABLED
+)
+
 rfrf_rollout_log() {
   printf '[rfrf-rollout] %s\n' "$*"
 }
@@ -355,21 +384,57 @@ rfrf_forbidden_test_env_present() {
   return 1
 }
 
+rfrf_same_dir_temp() {
+  local file="$1"
+  local dir base
+  dir="$(dirname "$file")"
+  base="$(basename "$file")"
+  mktemp "${dir}/.${base}.rfrf.XXXXXX"
+}
+
+rfrf_env_file_metadata() {
+  local file="$1"
+  RFRF_ENV_META_MODE="600"
+  RFRF_ENV_META_OWNER=""
+  if [[ -f "$file" ]]; then
+    RFRF_ENV_META_MODE="$(stat -c '%a' "$file" 2>/dev/null || stat -f '%OLp' "$file" 2>/dev/null || echo 600)"
+    RFRF_ENV_META_OWNER="$(stat -c '%u:%g' "$file" 2>/dev/null || stat -f '%u:%g' "$file" 2>/dev/null || echo "")"
+  fi
+}
+
+rfrf_atomic_promote_env_file() {
+  local tmp="$1" target="$2" label="${3:-mutation}"
+  local mode="${RFRF_ENV_META_MODE:-600}"
+  local owner="${RFRF_ENV_META_OWNER:-}"
+  chmod "$mode" "$tmp"
+  if [[ -n "$owner" ]]; then
+    chown "$owner" "$tmp" 2>/dev/null || true
+  fi
+  mv "$tmp" "$target"
+  if [[ "$label" == "restore" ]]; then
+    echo "STAGE1_RESTORE_SAME_FILESYSTEM_ATOMIC_RENAME=YES"
+  else
+    echo "STAGE1_MUTATION_SAME_FILESYSTEM_ATOMIC_RENAME=YES"
+  fi
+}
+
 rfrf_upsert_env() {
   local file="$1" key="$2" value="$3"
   local tmp
-  tmp="$(mktemp)"
+  rfrf_env_file_metadata "$file"
+  tmp="$(rfrf_same_dir_temp "$file")"
   grep -v -E "^${key}=" "$file" >"$tmp" || true
   echo "${key}=${value}" >>"$tmp"
-  mv "$tmp" "$file"
+  rfrf_atomic_promote_env_file "$tmp" "$file" mutation
 }
 
 rfrf_remove_env_key() {
   local file="$1" key="$2"
   local tmp
-  tmp="$(mktemp)"
+  rfrf_env_file_metadata "$file"
+  tmp="$(rfrf_same_dir_temp "$file")"
   grep -v -E "^${key}=" "$file" >"$tmp" || true
-  mv "$tmp" "$file"
+  rfrf_atomic_promote_env_file "$tmp" "$file" mutation
 }
 
 rfrf_apply_stage_mutations() {
@@ -888,7 +953,7 @@ rfrf_create_verified_backend_env_backup() {
 
 rfrf_restore_backend_env_atomic() {
   local target="$1" backup="$2" expected_sha256="$3"
-  local backup_sha after
+  local backup_sha after tmp
   if [[ "${RFRF_TEST_INJECT_BACKUP_RESTORE_FAIL:-0}" == "1" ]]; then
     echo "BACKEND_ENV_RESTORED=NO"
     return 1
@@ -899,16 +964,24 @@ rfrf_restore_backend_env_atomic() {
     echo "BACKEND_ENV_RESTORED=NO"
     return 1
   fi
-  cp "$backup" "$target"
-  chmod 600 "$target"
+  rfrf_env_file_metadata "$target"
+  tmp="$(rfrf_same_dir_temp "$target")"
+  cp "$backup" "$tmp"
+  chmod 600 "$tmp"
+  if [[ -n "${RFRF_ENV_META_OWNER:-}" ]]; then
+    chown "${RFRF_ENV_META_OWNER}" "$tmp" 2>/dev/null || true
+  fi
+  rfrf_atomic_promote_env_file "$tmp" "$target" restore
   after="$(rfrf_file_sha256 "$target")"
   echo "BACKEND_ENV_SHA256_AFTER_RECOVERY=${after}"
   if [[ "$after" != "$expected_sha256" ]]; then
     echo "RESTORE_CHECKSUM_MISMATCH=YES"
     echo "BACKEND_ENV_RESTORED=NO"
+    echo "BACKEND_ENV_RESTORED_BYTE_IDENTICAL=NO"
     return 1
   fi
   echo "BACKEND_ENV_RESTORED=YES"
+  echo "BACKEND_ENV_RESTORED_BYTE_IDENTICAL=YES"
   return 0
 }
 
@@ -949,48 +1022,190 @@ rfrf_verify_stage1_env_state() {
   return 0
 }
 
-rfrf_capture_cross_workstream_snapshot() {
-  local backend_env="$1" label="$2"
-  local url
-  echo "--- CROSS_WORKSTREAM_SNAPSHOT_${label} ---"
-  for key in \
-    EXP021_FLEET_COORDINATOR_ENABLED \
-    EXP021_FLEET_DRY_RUN \
-    EXP021_FLEET_COORDINATOR_INTERVAL_MS \
-    DEVICE_CONNECTION_PHYSICAL_AUTHORITY_MODE \
-    DEVICE_CONNECTION_PHYSICAL_SHADOW_COMPARE_ENABLED \
-    DEVICE_CONNECTION_PHYSICAL_PILOT_ENABLED; do
-    local val
+rfrf_cross_workstream_state_line() {
+  local key="$1" value="$2"
+  printf '%s=%s\n' "$key" "$value"
+}
+
+rfrf_cross_workstream_fixture_db_values() {
+  local label="$1"
+  local studies enrollments runs global_balances vehicle_balances physical_states shadow_obs authority_mode pilot_epoch
+
+  studies="${RFRF_FIXTURE_EXP021_STUDIES:-1}"
+  enrollments="${RFRF_FIXTURE_EXP021_ENROLLMENTS:-1}"
+  runs="${RFRF_FIXTURE_EXP021_RUNS:-0}"
+  global_balances="${RFRF_FIXTURE_EXP021_GLOBAL_BALANCES:-0}"
+  vehicle_balances="${RFRF_FIXTURE_EXP021_VEHICLE_BALANCES:-0}"
+  physical_states="${RFRF_FIXTURE_VDC_PHYSICAL_STATES:-4}"
+  shadow_obs="${RFRF_FIXTURE_VDC_SHADOW_OBS:-5}"
+  authority_mode="${RFRF_FIXTURE_VDC_AUTHORITY_MODE:-LEGACY}"
+  pilot_epoch="${RFRF_FIXTURE_VDC_PILOT_EPOCH:-epoch-2026-09-14T00:00:00.000Z}"
+
+  if [[ "$label" == "POST" ]]; then
+    if [[ "${RFRF_TEST_INJECT_EXP021_DRIFT:-0}" == "1" ]]; then
+      runs=$((runs + 1))
+    fi
+    if [[ "${RFRF_TEST_INJECT_VDC_AUTHORITY_DRIFT:-0}" == "1" ]]; then
+      authority_mode="PHYSICAL"
+    fi
+    if [[ "${RFRF_TEST_INJECT_VDC_EPOCH_RESET:-0}" == "1" ]]; then
+      pilot_epoch="epoch-reset-injected"
+    fi
+    if [[ "${RFRF_TEST_INJECT_VDC_SHADOW_DECREASE:-0}" == "1" ]]; then
+      shadow_obs=$((shadow_obs - 1))
+    fi
+  fi
+
+  rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "$studies"
+  rfrf_cross_workstream_state_line "${label}_EXP021_ENROLLMENTS" "$enrollments"
+  rfrf_cross_workstream_state_line "${label}_EXP021_RUNS" "$runs"
+  rfrf_cross_workstream_state_line "${label}_EXP021_GLOBAL_BALANCES" "$global_balances"
+  rfrf_cross_workstream_state_line "${label}_EXP021_VEHICLE_BALANCES" "$vehicle_balances"
+  rfrf_cross_workstream_state_line "${label}_VDC_PHYSICAL_STATES" "$physical_states"
+  rfrf_cross_workstream_state_line "${label}_VDC_SHADOW_OBS" "$shadow_obs"
+  rfrf_cross_workstream_state_line "${label}_VDC_AUTHORITY_MODE" "$authority_mode"
+  rfrf_cross_workstream_state_line "${label}_VDC_PILOT_EPOCH" "$pilot_epoch"
+}
+
+rfrf_cross_workstream_write_state_file() {
+  local backend_env="$1" label="$2" state_file="$3"
+  local key val url
+
+  : >"$state_file"
+  for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
     val="$(rfrf_env_get "$backend_env" "$key")"
-    echo "${label}_${key}=${val:-<absent>}"
+    rfrf_cross_workstream_state_line "${label}_CONFIG_${key}" "${val:-<absent>}" >>"$state_file"
+  done
+  for key in "${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    val="$(rfrf_env_get "$backend_env" "$key")"
+    rfrf_cross_workstream_state_line "${label}_CONFIG_${key}" "${val:-<absent>}" >>"$state_file"
   done
 
   if [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
-    echo "${label}_EXP021_STUDIES=${RFRF_FIXTURE_EXP021_STUDIES:-1}"
-    echo "${label}_EXP021_ENROLLMENTS=${RFRF_FIXTURE_EXP021_ENROLLMENTS:-1}"
-    echo "${label}_EXP021_RUNS=${RFRF_FIXTURE_EXP021_RUNS:-0}"
-    echo "${label}_EXP021_GLOBAL_BALANCES=${RFRF_FIXTURE_EXP021_GLOBAL_BALANCES:-0}"
-    echo "${label}_EXP021_VEHICLE_BALANCES=${RFRF_FIXTURE_EXP021_VEHICLE_BALANCES:-0}"
-    echo "${label}_VDC_PHYSICAL_STATES=${RFRF_FIXTURE_VDC_PHYSICAL_STATES:-4}"
-    echo "${label}_VDC_SHADOW_OBS=${RFRF_FIXTURE_VDC_SHADOW_OBS:-5}"
-    echo "${label}_VDC_AUTHORITY_MODE=${RFRF_FIXTURE_VDC_AUTHORITY_MODE:-LEGACY}"
+    rfrf_cross_workstream_fixture_db_values "$label" >>"$state_file"
     return 0
   fi
 
   url="$(rfrf_dotenv_database_url "$backend_env")"
   if [[ -z "$url" ]] || ! command -v psql >/dev/null 2>&1; then
-    echo "${label}_DB_SNAPSHOT=SKIPPED"
+    rfrf_cross_workstream_state_line "${label}_DB_SNAPSHOT" "SKIPPED" >>"$state_file"
     return 0
   fi
 
-  psql "$url" -Atqc "SELECT '${label}_EXP021_STUDIES='||COUNT(*) FROM exp021_studies;" 2>/dev/null || echo "${label}_EXP021_STUDIES=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_ENROLLMENTS='||COUNT(*) FROM exp021_study_enrollments;" 2>/dev/null || echo "${label}_EXP021_ENROLLMENTS=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_RUNS='||COUNT(*) FROM exp021_study_runs;" 2>/dev/null || echo "${label}_EXP021_RUNS=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_GLOBAL_BALANCES='||COUNT(*) FROM exp021_study_order_balances;" 2>/dev/null || echo "${label}_EXP021_GLOBAL_BALANCES=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_EXP021_VEHICLE_BALANCES='||COUNT(*) FROM exp021_study_vehicle_order_balances;" 2>/dev/null || echo "${label}_EXP021_VEHICLE_BALANCES=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_VDC_PHYSICAL_STATES='||COUNT(*) FROM device_connection_physical_states;" 2>/dev/null || echo "${label}_VDC_PHYSICAL_STATES=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_VDC_SHADOW_OBS='||COUNT(*) FROM device_connection_physical_state_shadow_observations;" 2>/dev/null || echo "${label}_VDC_SHADOW_OBS=ERROR"
-  psql "$url" -Atqc "SELECT '${label}_VDC_AUTHORITY_MODE='||COALESCE(string_agg(DISTINCT authority_mode::text, ','),'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null || echo "${label}_VDC_AUTHORITY_MODE=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_STUDIES='||COUNT(*) FROM exp021_studies;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_EXP021_STUDIES" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_ENROLLMENTS='||COUNT(*) FROM exp021_study_enrollments;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_EXP021_ENROLLMENTS" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_RUNS='||COUNT(*) FROM exp021_study_runs;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_EXP021_RUNS" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_GLOBAL_BALANCES='||COUNT(*) FROM exp021_study_order_balances;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_EXP021_GLOBAL_BALANCES" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_VEHICLE_BALANCES='||COUNT(*) FROM exp021_study_vehicle_order_balances;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_EXP021_VEHICLE_BALANCES" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_VDC_PHYSICAL_STATES='||COUNT(*) FROM device_connection_physical_states;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_VDC_PHYSICAL_STATES" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_VDC_SHADOW_OBS='||COUNT(*) FROM device_connection_physical_state_shadow_observations;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_VDC_SHADOW_OBS" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_VDC_AUTHORITY_MODE='||COALESCE(string_agg(DISTINCT authority_mode::text, ',' ORDER BY authority_mode::text),'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_VDC_AUTHORITY_MODE" "ERROR" >>"$state_file"
+  psql "$url" -Atqc "SELECT '${label}_VDC_PILOT_EPOCH='||COALESCE(string_agg(COALESCE(to_char(latched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), 'null'), ',' ORDER BY latched_at NULLS FIRST), 'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null >>"$state_file" || \
+    rfrf_cross_workstream_state_line "${label}_VDC_PILOT_EPOCH" "ERROR" >>"$state_file"
+}
+
+rfrf_cross_workstream_state_get() {
+  local file="$1" key="$2"
+  grep -E "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2- || echo ""
+}
+
+rfrf_cross_workstream_immediate_gate() {
+  local pre_file="$1" post_file="$2"
+  local exp021_ok=1 vdc_ok=1 key pre_val post_val
+  local canonical_studies canonical_enrollments canonical_runs canonical_global canonical_vehicle
+
+  echo "--- IMMEDIATE_RESTART_SURVIVAL_GATE ---"
+  for key in "${RFRF_EXP021_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_CONFIG_${key}")"
+    post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_CONFIG_${key}")"
+    if [[ "$pre_val" != "$post_val" ]]; then
+      echo "EXP021_CONFIG_DRIFT key=${key} pre=${pre_val} post=${post_val}"
+      exp021_ok=0
+    fi
+  done
+
+  for metric in EXP021_STUDIES EXP021_ENROLLMENTS EXP021_RUNS EXP021_GLOBAL_BALANCES EXP021_VEHICLE_BALANCES; do
+    pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_${metric}")"
+    post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_${metric}")"
+    if [[ "$pre_val" != "$post_val" ]]; then
+      echo "EXP021_DATA_DRIFT metric=${metric} pre=${pre_val} post=${post_val}"
+      exp021_ok=0
+    fi
+  done
+
+  canonical_studies="$(rfrf_cross_workstream_state_get "$pre_file" PRE_EXP021_STUDIES)"
+  canonical_enrollments="$(rfrf_cross_workstream_state_get "$pre_file" PRE_EXP021_ENROLLMENTS)"
+  canonical_runs="$(rfrf_cross_workstream_state_get "$pre_file" PRE_EXP021_RUNS)"
+  canonical_global="$(rfrf_cross_workstream_state_get "$pre_file" PRE_EXP021_GLOBAL_BALANCES)"
+  canonical_vehicle="$(rfrf_cross_workstream_state_get "$pre_file" PRE_EXP021_VEHICLE_BALANCES)"
+  echo "EXP021_CANONICAL_BASELINE studies=${canonical_studies} enrollments=${canonical_enrollments} runs=${canonical_runs} global_balances=${canonical_global} vehicle_balances=${canonical_vehicle}"
+
+  for key in "${RFRF_VDC_IMMEDIATE_CONFIG_KEYS[@]}"; do
+    pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_CONFIG_${key}")"
+    post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_CONFIG_${key}")"
+    if [[ "$pre_val" != "$post_val" ]]; then
+      echo "VDC_CONFIG_DRIFT key=${key} pre=${pre_val} post=${post_val}"
+      vdc_ok=0
+    fi
+  done
+
+  for metric in VDC_PHYSICAL_STATES VDC_AUTHORITY_MODE VDC_PILOT_EPOCH; do
+    pre_val="$(rfrf_cross_workstream_state_get "$pre_file" "PRE_${metric}")"
+    post_val="$(rfrf_cross_workstream_state_get "$post_file" "POST_${metric}")"
+    if [[ "$pre_val" != "$post_val" ]]; then
+      echo "VDC_IMMUTABLE_DRIFT metric=${metric} pre=${pre_val} post=${post_val}"
+      vdc_ok=0
+    fi
+  done
+
+  pre_val="$(rfrf_cross_workstream_state_get "$pre_file" PRE_VDC_SHADOW_OBS)"
+  post_val="$(rfrf_cross_workstream_state_get "$post_file" POST_VDC_SHADOW_OBS)"
+  if [[ "$pre_val" =~ ^[0-9]+$ && "$post_val" =~ ^[0-9]+$ ]]; then
+    if (( post_val < pre_val )); then
+      echo "VDC_MONOTONIC_VIOLATION metric=VDC_SHADOW_OBS pre=${pre_val} post=${post_val}"
+      vdc_ok=0
+    fi
+  elif [[ "$pre_val" != "$post_val" ]]; then
+    echo "VDC_SHADOW_OBS_DRIFT pre=${pre_val} post=${post_val}"
+    vdc_ok=0
+  fi
+
+  if (( exp021_ok )); then
+    echo "EXP021_IMMEDIATE_SURVIVAL_GATE=PASS"
+  else
+    echo "EXP021_IMMEDIATE_SURVIVAL_GATE=FAIL"
+  fi
+  if (( vdc_ok )); then
+    echo "VDC_IMMEDIATE_SURVIVAL_GATE=PASS"
+  else
+    echo "VDC_IMMEDIATE_SURVIVAL_GATE=FAIL"
+  fi
+
+  (( exp021_ok && vdc_ok ))
+}
+
+rfrf_capture_cross_workstream_snapshot() {
+  local backend_env="$1" label="$2"
+  local state_file="${3:-}"
+  local tmp_state
+  echo "--- CROSS_WORKSTREAM_SNAPSHOT_${label} ---"
+  if [[ -n "$state_file" ]]; then
+    rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$state_file"
+    cat "$state_file"
+    return 0
+  fi
+  tmp_state="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-workstream-${label}.XXXXXX")"
+  rfrf_cross_workstream_write_state_file "$backend_env" "$label" "$tmp_state"
+  cat "$tmp_state"
+  rm -f "$tmp_state"
 }
 
 rfrf_print_stage1_execution_contracts() {
@@ -1000,6 +1215,9 @@ STAGE1_BUSINESS_PROCESSING_ENABLED=NO
 STAGE1_BOOLEAN_AUTHORITIES_REMAIN_OFF=YES
 STAGE1_CUTOVER_SELECTION=operator_supplied_RFRF_CUTOVER_AT_UTC_ISO_only
 STAGE1_NO_IMPLICIT_NOW=YES
+IMMEDIATE_RESTART_SURVIVAL_GATE=EXP021_and_VDC_PRE_POST_equality_during_stage1_restart_window
+POST_EXECUTION_4_TICK_SURVIVAL_GATE=observe_after_commit_not_blocking_controller
+SIGKILL_AND_POWER_LOSS_UNTRAPPABLE=YES
 --- EXP021_POST_RESTART_SURVIVAL_CONTRACT (observe after real restart) ---
 EXP021_MIN_COORDINATOR_TICKS_AFTER_RESTART=4
 EXP021_FOLLOWER_OBSERVATION_COUNT_REQUIRED=0

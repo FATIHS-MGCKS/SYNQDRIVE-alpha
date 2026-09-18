@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Staged RFRF production enablement — one stage per invocation (F10.1 / F10.1.1 / F10.3.0).
+# Staged RFRF production enablement — one stage per invocation (F10.1 / F10.1.1 / F10.3.0 / F10.3.0.1).
 #
 # Stage 1 semantics: set RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT only; all boolean authorities OFF;
 # rolling restart both replicas at the SAME runtime SHA (no code deploy).
@@ -26,6 +26,7 @@ source "${SCRIPT_DIR}/lib/vps-production-replica.lib.sh"
 if [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
   RFRF_TEST_ROLLING_RESTART_CALLS=0
   RFRF_TEST_RECOVERY_RESTART_CALLS=0
+  RFRF_TEST_RECOVERY_HANDLER_CALLS=0
   vps_replica_ensure_registered() { return 0; }
   vps_replica_restart_one() {
     local name=$1
@@ -51,24 +52,52 @@ DRY_RUN="${DRY_RUN:-0}"
 STAGE="${RFRF_STAGE:-}"
 ACK="${RFRF_ROLLOUT_ACK:-0}"
 CUTOVER_AT="${RFRF_CUTOVER_AT:-}"
-STAGE_MUTATION_APPLIED=0
+
+STAGE1_TX_STATE=PRE_MUTATION
+RECOVERY_ARMED=0
+RECOVERY_IN_PROGRESS=0
+RECOVERY_COMPLETED=0
+STAGE1_TX_COMMITTED=0
+ORIGINAL_EXIT_CODE=1
 BACKEND_ENV_SHA256_BEFORE=""
 BACKUP_FILE=""
+BACKUP_SHA256=""
+CROSS_WORKSTREAM_PRE_STATE=""
+CROSS_WORKSTREAM_POST_STATE=""
 
-if [[ -z "$STAGE" ]]; then
-  echo "ERROR: set RFRF_STAGE=0..6 (one stage per invocation; no enable-all path)" >&2
-  exit 2
-fi
+rfrf_stage1_set_tx_state() {
+  STAGE1_TX_STATE="$1"
+  echo "STAGE1_TX_STATE=${STAGE1_TX_STATE}"
+}
 
-if [[ "$STAGE" == "all" || "$STAGE" == "*" ]]; then
-  echo "ERROR: enable-all shortcut forbidden" >&2
-  exit 2
-fi
+rfrf_stage1_install_recovery_traps() {
+  trap 'rfrf_stage1_on_err' ERR
+  trap 'rfrf_stage1_on_signal TERM' TERM
+  trap 'rfrf_stage1_on_signal INT' INT
+  trap 'rfrf_stage1_on_signal HUP' HUP
+}
 
-if ! [[ "$STAGE" =~ ^[0-6]$ ]]; then
-  echo "ERROR: invalid RFRF_STAGE=${STAGE}" >&2
-  exit 2
-fi
+rfrf_stage1_remove_recovery_traps() {
+  trap - ERR TERM INT HUP
+}
+
+rfrf_stage1_arm_recovery() {
+  RECOVERY_ARMED=1
+  rfrf_stage1_set_tx_state RECOVERY_ARMED
+  echo "RECOVERY_ARMED_BEFORE_FIRST_MUTATION=YES"
+  echo "RECOVERY_ARMED=1"
+  echo "GLOBAL_TRANSACTION_RECOVERY_GUARD=YES"
+  rfrf_stage1_install_recovery_traps
+}
+
+rfrf_stage1_disarm_recovery() {
+  RECOVERY_ARMED=0
+  rfrf_stage1_remove_recovery_traps
+  STAGE1_TX_COMMITTED=1
+  rfrf_stage1_set_tx_state COMMITTED
+  echo "RECOVERY_ARMED=0"
+  echo "STAGE1_TRANSACTION_COMMITTED=YES"
+}
 
 rfrf_enable_run_preflight() {
   if [[ "${RFRF_TEST_INJECT_PREFLIGHT_FAIL:-0}" == "1" ]]; then
@@ -115,7 +144,13 @@ rfrf_enable_stage_rolling_restart() {
     vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
   fi
 
-  pm2 save
+  if [[ "$phase" == "recovery" && "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
+    RFRF_TEST_RECOVERY_RESTART_CALLS=$((RFRF_TEST_RECOVERY_RESTART_CALLS + 1))
+  fi
+
+  if [[ "${RFRF_STAGE_TEST_MODE:-0}" != "1" ]]; then
+    pm2 save
+  fi
   return 0
 }
 
@@ -177,20 +212,190 @@ rfrf_enable_stage_automatic_recovery() {
   return 0
 }
 
+rfrf_stage1_execute_recovery() {
+  local reason="$1" target_sha="$2"
+  if [[ "$RECOVERY_COMPLETED" == "1" || "$RECOVERY_IN_PROGRESS" == "1" ]]; then
+    echo "RECOVERY_HANDLER_IDEMPOTENT_SKIP=YES"
+    return 0
+  fi
+  if [[ "$RECOVERY_ARMED" != "1" || "$STAGE1_TX_COMMITTED" == "1" ]]; then
+    return 0
+  fi
+
+  RECOVERY_IN_PROGRESS=1
+  if [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
+    RFRF_TEST_RECOVERY_HANDLER_CALLS=$((RFRF_TEST_RECOVERY_HANDLER_CALLS + 1))
+  fi
+  rfrf_stage1_remove_recovery_traps
+  rfrf_stage1_set_tx_state RECOVERING
+  echo "RECOVERY_HANDLER_INVOKED=YES reason=${reason}"
+
+  if rfrf_enable_stage_automatic_recovery "$reason" "$target_sha"; then
+    rfrf_stage1_set_tx_state RECOVERED
+    RECOVERY_COMPLETED=1
+    RECOVERY_IN_PROGRESS=0
+    return 0
+  fi
+
+  rfrf_stage1_set_tx_state UNKNOWN
+  RECOVERY_COMPLETED=1
+  RECOVERY_IN_PROGRESS=0
+  return 1
+}
+
+rfrf_stage1_on_err() {
+  local ec=$?
+  ORIGINAL_EXIT_CODE=$ec
+  if [[ "$RECOVERY_ARMED" == "1" && "$STAGE1_TX_COMMITTED" != "1" && "$RECOVERY_IN_PROGRESS" != "1" ]]; then
+    rfrf_stage1_execute_recovery "ERR" "${TARGET_SHA:-unknown}" || true
+    echo "ERR_RECOVERY_COVERED=YES"
+    echo "RFRF_STAGED_ENABLEMENT=BLOCKED"
+    exit "$ORIGINAL_EXIT_CODE"
+  fi
+  return "$ec"
+}
+
+rfrf_stage1_on_signal() {
+  local sig="$1"
+  ORIGINAL_EXIT_CODE=128
+  if [[ "$RECOVERY_ARMED" == "1" && "$STAGE1_TX_COMMITTED" != "1" && "$RECOVERY_IN_PROGRESS" != "1" ]]; then
+    rfrf_stage1_execute_recovery "SIGNAL_${sig}" "${TARGET_SHA:-unknown}" || true
+    echo "${sig}_RECOVERY_COVERED=YES"
+    echo "RFRF_STAGED_ENABLEMENT=BLOCKED"
+    exit 128
+  fi
+  exit 128
+}
+
 rfrf_enable_stage_fail_closed() {
   local reason="$1" target_sha="$2"
-  if [[ "$STAGE_MUTATION_APPLIED" == "1" ]]; then
-    rfrf_enable_stage_automatic_recovery "$reason" "$target_sha" || true
-    echo "RFRF_STAGED_ENABLEMENT=BLOCKED"
-    exit 1
+  if [[ "$RECOVERY_ARMED" == "1" && "$STAGE1_TX_COMMITTED" != "1" ]]; then
+    rfrf_stage1_execute_recovery "$reason" "$target_sha" || true
   fi
   echo "RFRF_STAGED_ENABLEMENT=BLOCKED"
   exit 1
 }
 
+rfrf_stage1_finalize_env_metadata() {
+  if [[ "${RFRF_TEST_INJECT_CHMOD_FAIL:-0}" == "1" ]]; then
+    echo "INJECTED_FAILURE=chmod_after_mutation"
+    return 1
+  fi
+  chmod 600 "$BACKEND_ENV"
+  return 0
+}
+
+rfrf_stage1_post_mutation_checkpoint() {
+  if [[ "${RFRF_TEST_INJECT_POST_MUTATION_FAIL:-0}" == "1" ]]; then
+    echo "INJECTED_FAILURE=post_mutation_command"
+    return 1
+  fi
+  if [[ "${RFRF_TEST_INJECT_SIGNAL_SELF:-}" == "TERM" ]]; then
+    kill -TERM "$$" || true
+  elif [[ "${RFRF_TEST_INJECT_SIGNAL_SELF:-}" == "INT" ]]; then
+    kill -INT "$$" || true
+  elif [[ "${RFRF_TEST_INJECT_SIGNAL_SELF:-}" == "HUP" ]]; then
+    kill -HUP "$$" || true
+  fi
+  if [[ "${RFRF_TEST_INJECT_PAUSE_AFTER_MUTATION:-0}" == "1" ]]; then
+    echo "TEST_PAUSE_AFTER_MUTATION=1"
+    : >"${RFRF_TEST_SIGNAL_SENTINEL:-/tmp/rfrf-test-mutated.marker}"
+  fi
+  return 0
+}
+
+rfrf_stage1_run_transaction() {
+  local target_sha="$1"
+  CROSS_WORKSTREAM_PRE_STATE="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-pre.XXXXXX")"
+  CROSS_WORKSTREAM_POST_STATE="$(mktemp "${TMPDIR:-/tmp}/rfrf-cross-post.XXXXXX")"
+
+  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" PRE "$CROSS_WORKSTREAM_PRE_STATE"
+
+  STAMP="$(date -u +%Y%m%d%H%M%S)"
+  BACKUP_FILE="${BACKEND_ENV}.bak-rfrf-stage${STAGE}-${STAMP}"
+  if ! rfrf_create_verified_backend_env_backup "$BACKEND_ENV" "$BACKUP_FILE"; then
+    rfrf_rollout_fail "backup checksum verification failed"
+    exit 1
+  fi
+  BACKEND_ENV_SHA256_BEFORE="$(rfrf_file_sha256 "$BACKEND_ENV")"
+  BACKUP_SHA256="$(rfrf_file_sha256 "$BACKUP_FILE")"
+  echo "BACKUP_FILE=${BACKUP_FILE}"
+  if [[ "$BACKEND_ENV_SHA256_BEFORE" != "$BACKUP_SHA256" ]]; then
+    echo "BACKUP_CHECKSUM_VERIFIED=NO"
+    rfrf_rollout_fail "backup checksum mismatch before mutation"
+    exit 1
+  fi
+  echo "BACKUP_CHECKSUM_VERIFIED=YES"
+
+  echo "=== BEFORE ==="
+  rfrf_read_flag_snapshot "$BACKEND_ENV"
+
+  rfrf_stage1_arm_recovery
+
+  rfrf_apply_stage_mutations "$STAGE" "$BACKEND_ENV" "$CUTOVER_AT"
+  rfrf_stage1_set_tx_state MUTATED
+
+  rfrf_stage1_finalize_env_metadata
+
+  if ! rfrf_verify_stage1_env_state "$BACKEND_ENV" "$CUTOVER_AT"; then
+    rfrf_enable_stage_fail_closed "mutated_env_verify" "$target_sha"
+  fi
+
+  rfrf_stage1_post_mutation_checkpoint
+
+  echo "=== AFTER (file) ==="
+  rfrf_read_flag_snapshot "$BACKEND_ENV"
+
+  echo "=== Rolling restart target SHA ${target_sha} (no code deploy) ==="
+  rfrf_stage1_set_tx_state RESTARTING
+  if ! rfrf_enable_stage_rolling_restart "$target_sha" primary; then
+    rfrf_enable_stage_fail_closed "rolling_restart" "$target_sha"
+  fi
+
+  rfrf_stage1_set_tx_state VERIFYING
+  if ! rfrf_enable_stage_post_restart_verify "$target_sha" primary; then
+    rfrf_enable_stage_fail_closed "post_restart_verify" "$target_sha"
+  fi
+
+  REPLICA_A_SHA="$(git -C "$CURRENT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  REPLICA_B_SHA="$REPLICA_A_SHA"
+  echo "REPLICA_A_RUNNING_SHA=${REPLICA_A_SHA}"
+  echo "REPLICA_B_RUNNING_SHA=${REPLICA_B_SHA}"
+
+  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" POST "$CROSS_WORKSTREAM_POST_STATE"
+  if ! rfrf_cross_workstream_immediate_gate "$CROSS_WORKSTREAM_PRE_STATE" "$CROSS_WORKSTREAM_POST_STATE"; then
+    rfrf_enable_stage_fail_closed "cross_workstream_immediate_gate" "$target_sha"
+  fi
+
+  if ! rfrf_verify_stage1_env_state "$BACKEND_ENV" "$CUTOVER_AT"; then
+    rfrf_enable_stage_fail_closed "stage1_env_verify" "$target_sha"
+  fi
+
+  rfrf_stage1_disarm_recovery
+  echo "STAGE1_FINAL_STATE=STAGE${STAGE}"
+  echo "RFRF_STAGE_${STAGE}_ENABLED=YES"
+  echo "RFRF_STAGED_ENABLEMENT=PASS"
+}
+
+if [[ -z "$STAGE" ]]; then
+  echo "ERROR: set RFRF_STAGE=0..6 (one stage per invocation; no enable-all path)" >&2
+  exit 2
+fi
+
+if [[ "$STAGE" == "all" || "$STAGE" == "*" ]]; then
+  echo "ERROR: enable-all shortcut forbidden" >&2
+  exit 2
+fi
+
+if ! [[ "$STAGE" =~ ^[0-6]$ ]]; then
+  echo "ERROR: invalid RFRF_STAGE=${STAGE}" >&2
+  exit 2
+fi
+
 echo "=== RFRF STAGED ENABLE stage=${STAGE} dry_run=${DRY_RUN} ==="
 echo "NO_CODE_DEPLOY_IN_STAGE1=YES"
 echo "EXACT_RUNTIME_SHA_PRESERVED=YES"
+echo "SIGKILL_LIMITATION_DOCUMENTED=YES"
 
 rfrf_require_approved_deploy_sha || exit 1
 
@@ -283,7 +488,8 @@ if [[ "$ACK" != "YES" ]]; then
 fi
 
 if (( STAGE == 1 )); then
-  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" PRE
+  rfrf_stage1_run_transaction "$TARGET_SHA"
+  exit 0
 fi
 
 STAMP="$(date -u +%Y%m%d%H%M%S)"
@@ -300,30 +506,19 @@ rfrf_read_flag_snapshot "$BACKEND_ENV"
 
 rfrf_apply_stage_mutations "$STAGE" "$BACKEND_ENV" "$CUTOVER_AT"
 chmod 600 "$BACKEND_ENV"
-STAGE_MUTATION_APPLIED=1
 
 echo "=== AFTER (file) ==="
 rfrf_read_flag_snapshot "$BACKEND_ENV"
 
 echo "=== Rolling restart target SHA ${TARGET_SHA} (no code deploy) ==="
 if ! rfrf_enable_stage_rolling_restart "$TARGET_SHA" primary; then
-  rfrf_enable_stage_fail_closed "rolling_restart" "$TARGET_SHA"
+  rfrf_rollout_fail "rolling restart failed"
+  exit 1
 fi
 
 if ! rfrf_enable_stage_post_restart_verify "$TARGET_SHA" primary; then
-  rfrf_enable_stage_fail_closed "post_restart_verify" "$TARGET_SHA"
-fi
-
-REPLICA_A_SHA="$(git -C "$CURRENT" rev-parse HEAD 2>/dev/null || echo unknown)"
-REPLICA_B_SHA="$REPLICA_A_SHA"
-echo "REPLICA_A_RUNNING_SHA=${REPLICA_A_SHA}"
-echo "REPLICA_B_RUNNING_SHA=${REPLICA_B_SHA}"
-
-if (( STAGE == 1 )); then
-  rfrf_capture_cross_workstream_snapshot "$BACKEND_ENV" POST
-  if ! rfrf_verify_stage1_env_state "$BACKEND_ENV" "$CUTOVER_AT"; then
-    rfrf_enable_stage_fail_closed "stage1_env_verify" "$TARGET_SHA"
-  fi
+  rfrf_rollout_fail "post restart verify failed"
+  exit 1
 fi
 
 echo "STAGE1_FINAL_STATE=STAGE${STAGE}"
