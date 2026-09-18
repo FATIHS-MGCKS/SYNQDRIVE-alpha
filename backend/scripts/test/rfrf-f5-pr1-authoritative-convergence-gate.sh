@@ -2,6 +2,10 @@
 # RFRF F5-PR1 authoritative convergence gate — isolated localhost PostgreSQL only.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/rfrf-isolated-postgres-admin.sh"
+
+
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GATE_ID="rfrf_f5_pr1_$(date +%s)"
 PG_HOST="${TEST_POSTGRES_HOST:-localhost}"
@@ -83,13 +87,13 @@ sync_schema_drift_if_needed() {
 }
 
 cleanup() {
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${PG_DB};\"" 2>/dev/null || true
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${PG_USER};\"" 2>/dev/null || true
+  rfrf_test_psql_superuser_quiet "DROP DATABASE IF EXISTS ${PG_DB};"
+  rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${PG_USER};"
 }
 trap cleanup EXIT
 
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';\""
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\""
+rfrf_test_psql_superuser "CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';"
+rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
 assert_test_db_isolation

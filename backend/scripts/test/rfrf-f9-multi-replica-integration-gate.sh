@@ -6,6 +6,7 @@ set -euo pipefail
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REPO_ROOT="$(cd "${BACKEND_ROOT}/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/rfrf-isolated-postgres-admin.sh"
 
 assert_test_db_isolation() {
   local pg_host="$1" pg_db="$2"

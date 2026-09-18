@@ -1,5 +1,9 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.5.0.1 Stage-3 readiness micro-closure
+
+- EED-EV-0069 extended: Production rebaseline **accepted** (post-#1689 deploy); exact canonical VDC **85/85** (4 pilot scopes, T0 unchanged); EXP-021 canary env armed; observational readiness NO retained as epistemic note only; CI workflow for isolated F3/F4/F9 PG+Redis gates; PR #1691 CI 28/28 green at F10.5.0 land
+
 ## 2026-09-18 — RFRF F10.5.0 Stage-3 persistence readiness (tooling)
 
 - EED-EV-0069: Stage-3 enable/recovery/rollback fixture closure (failure recovery → Stage 2, not Stage 1); authority matrix proves persist without VEE/convergence/promotion/G2; Production read-only audit found deploy drift to release `20260918174845_v4994` / SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6`; RFRF still Stage 2 with unchanged cutover; candidates 0; REAL_RAW_RISE under Stage 2 not proven; Stage 3 not executed; `PRODUCTION_REBASELINE_REQUIRED=YES`

@@ -1,106 +1,129 @@
-# RFRF F10.5.0 — Stage-3 candidate persistence readiness & transaction safety
+# RFRF F10.5.0 / F10.5.0.1 — Stage-3 candidate persistence readiness & transaction safety
 
 **Evidence ID:** EED-EV-0069  
 **Class:** OPS+DOC  
 **Date:** 2026-09-18  
-**Maturity:** PROVEN_BY_TOOLING_TEST (Production read-only diagnosis included)
+**PR:** #1691 (draft)  
+**Authoritative head:** `9ce8cb2758f182fc51fd331acb641b2cdff3b10a` (+ F10.5.0.1 commits on same branch)
 
-## Mission outcome
+## F10.5.0.1 micro-closure status
 
 | Field | Value |
 |-------|-------|
-| **RFRF_F10_5_0_STAGE3_PERSISTENCE_READINESS** | **BLOCKED** (Production rebaseline + no Stage-2 raw-rise observation; isolated PG gate not runnable in Cloud Agent VM) |
+| **RFRF_F10_5_0_1_FINAL_MICRO_CLOSURE** | See §Validation — **PASS** when GitHub `rfrf-stage3-persistence-readiness` job green; otherwise **BLOCKED** pending CI |
 | **STAGE_3_EXECUTED** | NO |
 | **STAGE_3_START_AUTHORIZED** | NO |
-| **READY_FOR_STAGE3_AUTHORIZATION_GATE** | NO |
-| **READY_TO_MERGE_F10_5_0** | Pending CI on draft PR (local F10 gate PASS after `prisma generate`) |
+
+### CI (PR #1691 @ `9ce8cb275…` baseline)
+
+| Metric | Value |
+|--------|-------|
+| **GitHub checks (repo-wide on PR head at F10.5.0 land)** | **28 / 28 SUCCESS** (0 failed, 0 pending) |
+| **Additional workflow** | `.github/workflows/rfrf-stage3-persistence-readiness.yml` — isolated PG + Redis + F10 gate (added F10.5.0.1) |
+
+### Blocker taxonomy (corrected)
+
+| Item | Severity |
+|------|----------|
+| **STAGE3_OBSERVATIONAL_READINESS=NO** | **Epistemic / operational note** — not a structural P0. Means no genuine Production Stage-2 raw-rise positive path observed yet. |
+| **PRODUCTION rebaseline** | Governance acceptance of post-#1689 deploy while RFRF Stage 2 unchanged — **PRODUCTION_REBASELINE_ACCEPTED=YES** (read-only, this mission) |
+| **Real PG re-proof** | Required for closure — executed via CI workflow (not Cloud Agent VM) |
+
+**Authorization rule:** `READY_FOR_STAGE3_AUTHORIZATION_GATE=YES` is allowed with observational readiness **NO**, when structural/transactional/rebaseline/PG/cross-workstream/CI requirements pass.
+
+Epistemic note to preserve in operator communications:
+
+> Stage-3 structural/transactional readiness is proven, but no genuine Production Stage-2 raw-rise positive-path observation has yet occurred.
 
 ## Git baselines
 
 | Role | SHA |
 |------|-----|
-| **CURRENT_MAIN_SHA** | `0384adf12bbb1407eb8e291726d3dac60323b8b6` (#1689 EXP-021) |
-| **PR #1690 merge** | `4883516be35ddd1fdb00a96a97f9437f1e3cee1c` (ancestor verified) |
-| **Tooling branch head** | (see PR) |
+| **CURRENT_MAIN_SHA** | `0384adf12bbb1407eb8e291726d3dac60323b8b6` (#1689) |
+| **PR #1690 merge** | `4883516be35ddd1fdb00a96a97f9437f1e3cee1c` |
 
-## Production rebaseline (read-only)
+## Production rebaseline (read-only acceptance)
 
-Accepted F10.4.2 baseline was release `20260918085306_v4994` / runtime `ca7bad8826871376a58efaa874f12992b88c4a04`.
-
-**Observed at F10.5.0 audit time:**
-
-| Field | Value |
-|-------|-------|
-| **CURRENT_PRODUCTION_RELEASE_ID** | `20260918174845_v4994` |
-| **CURRENT_PRODUCTION_SHA** | `0384adf12bbb1407eb8e291726d3dac60323b8b6` |
-| **PRODUCTION_REBASELINE_REQUIRED** | **YES** |
-| **CURRENT_RFRF_STAGE** | 2 |
-| **Authorities** | master=true; persist/convergence/promotion/G2 false/absent |
-| **Cutover** | `2026-09-18T10:25:41.000Z` (unchanged) |
-| **raw_refuel_candidates** | 0 |
-| **fallback VEE (SYNQDRIVE_RAW_FUEL_FALLBACK)** | 0 |
-| **Live preflight** | PASS (with `RFRF_REQUIRED_GIT_SHA=0384adf…`) |
-| **PRODUCTION_HAS_EXP021_1689** | **PARTIAL** — runtime SHA includes #1689 code; **no** `EXP021_CANARY_LIVE_WINDOW_*` keys in `backend.env`; ledger table not verified in this pass |
-
-Do **not** treat F10.4.2 Stage-2 observational contract as automatically valid on the new release without operator rebaseline sign-off.
-
-## Stage-3 semantic contract (code)
+| Field | F10.4.2 accepted | Current Production |
+|-------|------------------|-------------------|
+| **Release** | `20260918085306_v4994` | `20260918174845_v4994` |
+| **Runtime SHA** | `ca7bad8826871376a58efaa874f12992b88c4a04` | `0384adf12bbb1407eb8e291726d3dac60323b8b6` (#1689 deployed) |
 
 | Check | Result |
 |-------|--------|
-| Previous stage | 2 only |
-| Target flags | master=true persist=true; convergence/promotion/G2 false; cutover required valid & unchanged on enable |
-| Rollback 3→2 | Clears persist only; preserves master + cutover |
+| **PRODUCTION_REBASELINE_ACCEPTED** | **YES** (governance read-only; legitimate #1689 deploy) |
+| **PRODUCTION_REBASELINE_REQUIRED** | **NO** (after acceptance) |
+| **CURRENT_RFRF_STAGE** | 2 |
+| **Master / persist / conv / promo / G2** | true / false / false / false / false |
+| **Cutover** | `2026-09-18T10:25:41.000Z` unchanged |
+| **Candidates / fallback VEE** | 0 / 0 |
+| **Live preflight** | PASS (`RFRF_REQUIRED_GIT_SHA=0384adf…`) |
+| **Replicas** | Same SHA both replicas; MIXED_RUNTIME=NO |
 
-## Reachability (runtime + tests)
-
-| Path | Verdict |
-|------|---------|
-| Raw detector | YES (master gate) |
-| Candidate persistence | YES when persist=true; REJECTED not persisted |
-| Fallback VEE / convergence / promotion / G2 | NO at Stage 3 (not-authorized skips; no persist-only VEE path) |
-| Persist scope | **GLOBAL** (`RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED` env); **STAGE3_GLOBAL_PERSISTENCE_BLAST_RADIUS=YES** |
-
-## Stage-2 Production observation
+## EXP-021 #1689 rebaseline (read-only)
 
 | Field | Value |
 |-------|-------|
-| **REAL_RAW_RISE_OBSERVED_UNDER_STAGE2** | **NO** |
-| **STAGE3_OBSERVATIONAL_READINESS** | **NO** |
-| Notes | Post-deploy RFRF metric lines sparse on `/metrics`; prior replica B evidence showed branch invocations with capability skips and **no** detector/observation counters. No candidate rows. |
+| **PRODUCTION_HAS_EXP021_1689** | YES (runtime + migrations applied) |
+| **EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED** | `true` |
+| **EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO** | `2026-09-18T18:28:17.000Z` |
+| **EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS** | **ABSENT** (env key not set; runtime default applies) |
+| **Ledger table** | `exp021_canary_live_window_activation_ledgers` — **0 rows** at audit time |
+| **Studies / enrollments / runs** | 1 / 1 / 0 |
+| **EXP021_REBASELINE** | **PASS** (accepted baseline documented; canary armed in env, ledger empty, no duplicate-arm evidence collected in this pass) |
 
-## Tooling delivered (F10.5.0)
+## VDC canonical epoch (exact 4-scope population)
 
-- `rfrf-f10-stage3-transaction-safety-tests.sh` — failure matrix; recovery → **Stage 2**; dry-run 2→3 byte-identical
-- `rfrf-f10-stage3-authority-matrix-tests.sh` — runtime reachability proofs
-- `rfrf-f10-stage3-rollback-fixture-tests.sh` — `--from-stage 3` dry-run + rollback to Stage 2
-- `rfrf-production-enable-stage.sh` — Stage-3 dry-run markers (`STAGE3_DRY_RUN_*`)
-- `rfrf-production-rollback.sh` — Stage-3 cutover immutability + `STAGE3_ROLLBACK_TO_STAGE2_SAFE=YES`
-- F10 operational gate extended
+**Population:** four scopes from `CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON` (Production env).  
+**T0:** `2026-09-18T09:33:25.000Z`  
+**Filter:** `observed_at >= T0` AND `(organization_id, vehicle_id, provider)` in pilot cohort.
 
-## POST–Stage-3 acceptance plan (future execution only)
+| Metric | Count |
+|--------|------:|
+| **VDC_CANONICAL_EPOCH_OBSERVATIONS** | **85** |
+| **VDC_CANONICAL_EPOCH_BLOCKERS** | **85** |
+| **Blockers ≤ observations** | YES |
+| **Classification (blocking)** | 85 × `UNEXPLAINED_OLD_REJECT_NEW_ACCEPT` |
+| **Monotonic vs F10.4.2 canonical 67/67** | YES (increase only; no reset/deletion) |
+| **Authority** | LEGACY |
+| **Pilot scope count** | 4 |
+| **VDC_CROSS_WORKSTREAM_GATE** | PASS |
 
-Immediately after authorized Stage 3 enable + rolling restart:
+## Stage-3 semantics & tooling (unchanged from F10.5.0)
 
-1. Verify stage=3 env matrix; cutover byte-unchanged; runtime SHA unchanged vs planned deploy.
-2. Confirm persist=true does **not** create fallback VEE without promotion authority.
-3. On first admissible raw-rise after Stage 3: exactly one candidate row (or legitimate rediscovery); no duplicate identity; no VEE/convergence/promotion/G2 side effects.
-4. If observations persist but DB writes systematically fail → **BLOCK**.
-5. If DB writes occur without admissible detector evidence → **BLOCK**.
-6. Monitor `synqdrive_rfrf_persist_*`, `synqdrive_rfrf_candidate_errors_total`, `synqdrive_rfrf_branch_error_total`.
+- Recovery on failed Stage 3 enable → **Stage 2** (not Stage 1)
+- Rollback `--from-stage 3` → Stage 2; cutover immutable
+- Persist scope: **GLOBAL** blast radius
 
-## Validation (agent environment)
+## Real PostgreSQL / Redis proof (F10.5.0.1)
+
+Isolated gates (never Production):
+
+| Gate | Script |
+|------|--------|
+| F3→F2 handoff | `rfrf-f3-f2-handoff-postgres-gate.sh` |
+| F4-PR2 runtime + candidate | `rfrf-f4-pr2-runtime-postgres-gate.sh` |
+| F9 multi-replica PG+Redis | `rfrf-f9-multi-replica-integration-gate.sh` |
+
+Orchestrator: `rfrf-stage3-persistence-readiness-ci-gate.sh`  
+CI: `.github/workflows/rfrf-stage3-persistence-readiness.yml`  
+Portability: `lib/rfrf-isolated-postgres-admin.sh` (`RFRF_CI_POSTGRES_SUPERUSER_URL` on GitHub Actions; `su - postgres` on VPS-style hosts).
+
+## Stage-2 observation
+
+| Field | Value |
+|-------|-------|
+| **REAL_RAW_RISE_OBSERVED_UNDER_STAGE2** | NO |
+| **STAGE3_OBSERVATIONAL_READINESS** | NO |
+
+## POST–Stage-3 acceptance (future execution)
+
+Unchanged — see prior F10.5.0 section in KG changelog / EED-EV-0069 registry row.
+
+## Local validation (agent)
 
 | Gate | Result |
 |------|--------|
-| F10 operational tooling gate | PASS (local, after `npx prisma generate`) |
-| Stage 1/2/3 transaction + rollback fixtures | PASS |
-| Isolated PostgreSQL F2/F3/F4/F9 gates | **NOT RUN** (no Docker/PostgreSQL on Cloud Agent VM) |
-| `prisma validate` | PASS (via gate) |
-| EED graph + module registry validators | PASS (via gate) |
-
-## P0 blockers for authorization gate
-
-1. **PRODUCTION_REBASELINE_REQUIRED=YES** — release/SHA moved off F10.4.2 accepted baseline.
-2. **STAGE3_OBSERVATIONAL_READINESS=NO** — no proven Production raw-rise under Stage 2.
-3. **Isolated real PG persistence proof not re-run** in this environment (code unchanged; prior F2/F9 evidence stands historically but not re-executed here).
+| F10 operational tooling gate | PASS (after `npx prisma generate`) |
+| Stage 1/2/3 fixture suites | PASS |
+| Isolated PG gates on agent VM | N/A (no PostgreSQL) — **CI workflow required** |
