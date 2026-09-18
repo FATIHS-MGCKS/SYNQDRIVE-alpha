@@ -192,6 +192,7 @@ import { ReferenceCaptureSettlementShadowRunnerService } from './reference-captu
 import { ReferenceCaptureSettlementShadowService } from './reference-capture/reference-capture-settlement-shadow.service';
 import { ReferenceCaptureExp021FleetRepository } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet.repository';
 import { ReferenceCaptureExp021FleetCoordinatorService } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet-coordinator.service';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationService } from './reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-activation.service';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.repository';
 import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-runner.service';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-enrollment.service';
@@ -481,6 +482,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureSettlementShadowService,
     ReferenceCaptureExp021FleetRepository,
     ReferenceCaptureExp021FleetCoordinatorService,
+    ReferenceCaptureExp021CanaryLiveWindowActivationService,
     ReferenceCaptureExp021MaturationShadowRepository,
     ReferenceCaptureExp021MaturationShadowProviderQueryAdapter,
     ReferenceCaptureExp021MaturationShadowRunnerService,
@@ -695,6 +697,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureExp021MaturationShadowWorkerService,
     ReferenceCaptureExp021MaturationShadowRunnerService,
     ReferenceCaptureExp021FleetCoordinatorService,
+    ReferenceCaptureExp021CanaryLiveWindowActivationService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,

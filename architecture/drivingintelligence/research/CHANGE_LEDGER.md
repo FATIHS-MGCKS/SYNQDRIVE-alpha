@@ -700,6 +700,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
 | Postgres | Terminal slot forensic fields + first-phase authority survive reload |
 
+### EXP-021 — Canary live window activation (PR-D canary slice) (2026-09-18)
+
+| Event | Detail |
+|-------|--------|
+| Scope | KS MX 2024 token `187336` only — closes missing upstream RC/settlement path without fleet-wide live execution |
+| Root cause | Fleet coordinator dry-run only; `EXP021_FLEET_DRY_RUN=false` refuses evaluation; no trip-bound session start |
+| Ledger | `exp021_canary_live_window_activation_ledgers` — unique `vehicle_trip_id`, optional `session_id` / `study_run_id` |
+| Trigger | Leader scheduler arms on ONGOING trip (post `NOT_BEFORE_ISO`); finalizes on COMPLETED trip (`stopRecording`) |
+| Env | `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED` default OFF; `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO` required when enabled |
+| Safety | No historical backfill; missed 2026-09-18 drive excluded when `NOT_BEFORE` set after that trip; PDI still from existing settlement/motion authority only |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/EXP_021_CANARY_LIVE_WINDOW_AUTHORITY_CLOSURE_2026-09-18.md` |
+| Production | **NOT ACTIVATED** in this change — code + tests only |
+
 ### EXP-021 — Live Maturation Shadow uniqueness closure (2026-09-16, PR #1670)
 
 | Event | Detail |

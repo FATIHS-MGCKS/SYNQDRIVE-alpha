@@ -99,6 +99,7 @@ export class ReferenceCaptureSessionRepository {
   }
 
   create(input: {
+    id?: string;
     organizationId: string;
     vehicleId: string;
     connectionProfile: string;
@@ -112,6 +113,7 @@ export class ReferenceCaptureSessionRepository {
   }): Promise<ReferenceCaptureSession> {
     return this.prisma.referenceCaptureSession.create({
       data: {
+        id: input.id,
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         connectionProfile: input.connectionProfile,

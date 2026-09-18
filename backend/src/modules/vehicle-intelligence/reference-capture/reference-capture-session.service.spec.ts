@@ -370,7 +370,7 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
 
   it('stop cancels pending cycle without requiring active job removal', async () => {
     const { service, sessionRepo, writer, runner } = makeService();
-    sessionRepo.findById.mockResolvedValue({
+    const recordingSession = {
       id: 's1',
       organizationId: 'org',
       vehicleId: 'veh',
@@ -391,14 +391,75 @@ describe('ReferenceCaptureSessionService lifecycle', () => {
       completedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+      acquisitionStateJson: {},
+    };
+    const stoppingSession = {
+      ...recordingSession,
+      status: ReferenceCaptureSessionStatus.STOPPING,
+      stoppedAt: new Date(),
+    };
+    sessionRepo.findById
+      .mockResolvedValueOnce(recordingSession)
+      .mockResolvedValueOnce(stoppingSession)
+      .mockResolvedValueOnce(stoppingSession);
     sessionRepo.updateStatus.mockResolvedValue({
-      ...sessionRepo.findById.mock.results[0]?.value,
+      ...stoppingSession,
       status: ReferenceCaptureSessionStatus.COMPLETED,
+      completedAt: new Date(),
     });
 
     await service.stopRecording('org', 's1');
     expect(sessionRepo.updateStatus).toHaveBeenCalledWith(
+      'org',
+      's1',
+      ReferenceCaptureSessionStatus.STOPPING,
+      expect.any(Object),
+    );
+    expect(runner.cancelPendingCycleJob).toHaveBeenCalledWith('org', 's1');
+    expect(writer.flush).toHaveBeenCalledWith('s1');
+  });
+
+  it('resumeRecordingStop continues from STOPPING without re-entering STOPPING', async () => {
+    const { service, sessionRepo, writer, runner } = makeService();
+    const baseSession = {
+      id: 's1',
+      organizationId: 'org',
+      vehicleId: 'veh',
+      status: ReferenceCaptureSessionStatus.STOPPING,
+      massBindingJson: {},
+      preflightJson: {},
+      readinessJson: {},
+      manifestVersion: '1.1.0',
+      connectionProfile: 'DIMO_LTE_R1',
+      powertrainProfile: null,
+      hardwareProfile: null,
+      manifestId: 'DIMO_LTE_R1_REFERENCE_MANIFEST',
+      recorderSoftwareVersion: '3A.1.0',
+      broadObservationFieldCount: 10,
+      failureReason: null,
+      startedAt: new Date(),
+      stoppedAt: new Date(),
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      acquisitionStateJson: {},
+    };
+    sessionRepo.findById
+      .mockResolvedValueOnce(baseSession)
+      .mockResolvedValueOnce(baseSession)
+      .mockResolvedValueOnce({
+        ...baseSession,
+        status: ReferenceCaptureSessionStatus.COMPLETED,
+        completedAt: new Date(),
+      });
+    sessionRepo.updateStatus.mockResolvedValue({
+      ...baseSession,
+      status: ReferenceCaptureSessionStatus.COMPLETED,
+      completedAt: new Date(),
+    });
+
+    await service.resumeRecordingStop('org', 's1');
+    expect(sessionRepo.updateStatus).not.toHaveBeenCalledWith(
       'org',
       's1',
       ReferenceCaptureSessionStatus.STOPPING,

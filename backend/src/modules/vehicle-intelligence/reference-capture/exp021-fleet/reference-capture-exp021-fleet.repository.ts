@@ -163,6 +163,112 @@ export class ReferenceCaptureExp021FleetRepository {
    * PR-D boundary: atomically reserve one PLANNED run and commit balance counters.
    * PR-C coordinator MUST NOT call this.
    */
+  /**
+   * Canary live-window activation only — one PLANNED run per vehicle trip (durable idempotency).
+   */
+  async reserveStudyRunForCanaryActivation(input: {
+    enrollmentId: string;
+    resolvedTokenId: number;
+    canaryActivationVehicleTripId: string;
+  }) {
+    const existing = await this.prisma.exp021StudyRun.findFirst({
+      where: { canaryActivationVehicleTripId: input.canaryActivationVehicleTripId },
+    });
+    if (existing) {
+      return { run: existing, proposed: null, adoptedExisting: true as const };
+    }
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`exp021_canary_trip:${input.canaryActivationVehicleTripId}`}))`;
+
+            const raced = await tx.exp021StudyRun.findFirst({
+              where: { canaryActivationVehicleTripId: input.canaryActivationVehicleTripId },
+            });
+            if (raced) {
+              return { run: raced, proposed: null, adoptedExisting: true as const };
+            }
+
+            const enrollment = await tx.exp021StudyEnrollment.findUnique({
+              where: { id: input.enrollmentId },
+              include: { study: true },
+            });
+            if (!enrollment) {
+              throw new Exp021FleetRunIdentityError('Enrollment not found');
+            }
+            if (!enrollment.enabled) {
+              throw new Exp021FleetRunIdentityError('Enrollment disabled');
+            }
+            if (enrollment.study.status !== Exp021StudyStatus.COLLECTING) {
+              throw new Exp021FleetRunIdentityError(`Study status not COLLECTING: ${enrollment.study.status}`);
+            }
+            if (enrollment.enrolledTokenId !== input.resolvedTokenId) {
+              throw new Exp021FleetRunIdentityError('Resolved token does not match enrollment authority');
+            }
+
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${enrollment.studyId}))`;
+
+            const balance = await this.loadOrderBalanceSnapshotInTx(
+              tx,
+              enrollment.studyId,
+              enrollment.vehicleId,
+            );
+            const proposed = proposeBalancedPhaseOrder({
+              allowedPlans: enrollment.allowedPlans,
+              vehicleId: enrollment.vehicleId,
+              balance,
+            });
+            if (!proposed) {
+              throw new Exp021FleetAssignmentError('No assignable phase order for enrollment');
+            }
+
+            const run = await tx.exp021StudyRun.create({
+              data: {
+                studyId: enrollment.studyId,
+                enrollmentId: enrollment.id,
+                organizationId: enrollment.organizationId,
+                vehicleId: enrollment.vehicleId,
+                tokenId: enrollment.enrolledTokenId,
+                assignedPhaseOrderMs: proposed.phaseOrderMs,
+                planId: proposed.planId,
+                planVersion: proposed.planVersion,
+                state: Exp021StudyRunState.PLANNED,
+                canaryActivationVehicleTripId: input.canaryActivationVehicleTripId,
+              },
+            });
+
+            await this.commitOrderBalanceIncrementInTx(tx, {
+              studyId: enrollment.studyId,
+              vehicleId: enrollment.vehicleId,
+              phaseOrderKey: proposed.phaseOrderKey,
+            });
+
+            return { run, proposed, adoptedExisting: false as const };
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const adopted = await this.prisma.exp021StudyRun.findFirst({
+            where: { canaryActivationVehicleTripId: input.canaryActivationVehicleTripId },
+          });
+          if (adopted) {
+            return { run: adopted, proposed: null, adoptedExisting: true as const };
+          }
+        }
+        if (attempt < maxAttempts && this.isSerializationFailure(error)) continue;
+        throw error;
+      }
+    }
+    throw new Exp021FleetAssignmentError('Canary activation study run reservation failed after retries');
+  }
+
   async reserveStudyRunAssignment(input: {
     enrollmentId: string;
     resolvedTokenId: number;
