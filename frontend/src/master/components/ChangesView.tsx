@@ -36,27 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-    id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
-    version: '4.9.1141',
-    title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',
-    summary: [
-      'Fixes rfrf_metrics_probe() false-negative under set -euo pipefail when Prometheus bodies are large: echo|grep -q SIGPIPE (141) despite metric present.',
-      'Adds rfrf_metrics_body_has_metric() — HELP/TYPE grep -Fq here-string plus line-prefix series scan; no producer|grep -q pipeline.',
-      'Large-payload regression + real probe fixture tests; F10.2 still blocked until post-merge tooling retry against unchanged production runtime 3a2707b.',
-    ],
-    reason:
-      'F10.2 cross-workstream preservation gate PASS on production 3a2707b but live preflight reported METRICS_*_RFRF=NO due to operational tooling bug, not missing runtime metrics.',
-    previousBehavior:
-      'rfrf_metrics_probe used echo "$body" | grep -q on multi-MB exposition payloads; grep -q early exit SIGPIPE upstream under pipefail.',
-    details:
-      'docs/audits/eed-rfrf-f10-2-1-preflight-dotenv-closure-2026-09-16.md (F10.2.2 section); backend/scripts/test/rfrf-f10-metrics-probe-regression.sh; EED-EV-0064 extended',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-17T23:30:00.000Z',
-=======
     id: 'vdc-rb019-p25-connectivity-freshness-fix-2026-09-18',
     version: '4.9.1141',
     title: 'VDC RB-019 P2.5 — snapshot connectivity freshness binding (Arteon stale-evidence fix)',
@@ -76,10 +55,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
     createdAt: '2026-09-18T07:30:00.000Z',
->>>>>>> 86eb26098 (fix(vdc): P2.5 snapshot connectivity freshness binding)
   },
   {
->>>>>>> 7ad0e1174 (fix(vdc): P2.5 snapshot connectivity freshness binding)
     id: 'exp021-ks-mx-2024-canary-operator-cli-2026-09-17',
     version: '4.9.1140',
     title: 'EXP-021 — KS MX 2024 canary single-family operator CLI',
