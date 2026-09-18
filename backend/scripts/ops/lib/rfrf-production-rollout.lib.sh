@@ -1080,6 +1080,58 @@ rfrf_assert_cutover_immutable_across_mutation() {
   return 0
 }
 
+# F10.4.0.1 — exact source-stage matrix before any env backup/mutation.
+rfrf_assert_exact_pre_stage_before_mutation() {
+  local pre_stage="$1" file="$2" expected_cutover="${3:-}"
+
+  echo "EXACT_PRE_STAGE_GATE_DEFINED=YES"
+  if (( pre_stage == 0 )); then
+    if ! rfrf_verify_stage0_env_state "$file"; then
+      echo "EXACT_PRE_STAGE_VERIFY=FAIL pre_stage=${pre_stage}"
+      return 1
+    fi
+  else
+    if ! rfrf_verify_stage_env_state "$pre_stage" "$file" "$expected_cutover"; then
+      echo "EXACT_PRE_STAGE_VERIFY=FAIL pre_stage=${pre_stage}"
+      return 1
+    fi
+  fi
+  echo "EXACT_PRE_STAGE_VERIFY=PASS pre_stage=${pre_stage}"
+  return 0
+}
+
+# Rollback dry-run / preflight: exact current stage must match --from-stage.
+rfrf_rollback_assert_exact_source_stage() {
+  local from_stage="$1" file="$2"
+  local cutover_raw=""
+
+  if [[ ! -f "$file" ]]; then
+    rfrf_rollout_fail "rollback requires existing backend.env"
+    return 1
+  fi
+
+  if (( from_stage >= 1 )); then
+    cutover_raw="$(rfrf_env_get "$file" "$RFRF_FLAG_CUTOVER")"
+    if (( from_stage >= 2 )); then
+      if [[ -z "$cutover_raw" || "$(rfrf_parse_iso_cutover "$cutover_raw")" != "valid" ]]; then
+        rfrf_rollout_fail "rollback from stage ${from_stage} requires valid persisted cutover"
+        return 1
+      fi
+    fi
+    if ! rfrf_verify_stage_env_state "$from_stage" "$file" "$cutover_raw"; then
+      rfrf_rollout_fail "rollback source stage ${from_stage} env matrix invalid or mismatched"
+      return 1
+    fi
+  else
+    rfrf_rollout_fail "rollback --from-stage must be 1..6"
+    return 1
+  fi
+
+  echo "ROLLBACK_SOURCE_STAGE_VERIFIED=YES"
+  echo "ROLLBACK_SOURCE_STAGE=${from_stage}"
+  return 0
+}
+
 rfrf_cross_workstream_state_line() {
   local key="$1" value="$2"
   printf '%s=%s\n' "$key" "$value"

@@ -185,10 +185,18 @@ else
   fail "failed assessment must block stage5 even with operator pass"
 fi
 
-# 14) rollback dry-run non-destructive
+# 14) rollback dry-run non-destructive (stage-2 source required)
+cat >"$BACKEND_ENV" <<EOF
+PHYSICAL_REFUEL_RECONCILIATION_V2_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_RECOVERY_ENABLED=true
+PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT=2026-09-04T12:00:00.000Z
+METRICS_BEARER_TOKEN=fixture-token
+RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT=2026-09-15T20:00:00.000Z
+RAW_FUEL_REFUEL_FALLBACK_ENABLED=true
+EOF
 export DRY_RUN=1
 rollback_out="$(bash "${OPS}/rfrf-production-rollback.sh" --from-stage 2 2>&1 || true)"
-if [[ "$rollback_out" == *"RFRF_ROLLBACK_DRY_RUN=PASS"* ]]; then
+if [[ "$rollback_out" == *"RFRF_ROLLBACK_DRY_RUN=PASS"* && "$rollback_out" == *"ROLLBACK_DRY_RUN_SOURCE_STAGE_VERIFIED=YES"* ]]; then
   pass "rollback dry-run non-destructive"
 else
   fail "rollback dry-run"

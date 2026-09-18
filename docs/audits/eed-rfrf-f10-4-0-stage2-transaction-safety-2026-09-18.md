@@ -84,7 +84,16 @@ No live Production boundary audit performed in F10.4.0.
 - `backend/scripts/test/rfrf-f10-stage2-rollback-fixture-tests.sh` — PASS  
 - F10 operational tooling gate — run in PR CI  
 
-## Related evidence
+## F10.4.0.1 review corrections (same evidence record)
+
+| Finding | Fix |
+|---------|-----|
+| Stage-2 dry-run test vacuous | PRE/POST env SHA captured before/after dry-run; backup/restart markers |
+| Rollback dry-run skipped source-stage verify | Dry-run validates exact `--from-stage` matrix before PASS |
+| Rollback partial restart mixed authority | Fail-closed convergence: restore pre-mutation when no replica converged; stop stale replica when one converged |
+| Exact PRE stage gate | `rfrf_assert_exact_pre_stage_before_mutation` before backup/mutation (stages 1–6) |
+
+Stage 2 **NOT executed**. Stage 2 **NOT authorized**.
 
 - **EED-EV-0066** — Stage-1 Production execution  
 - **EED-EV-0065** — Stage-1 transaction / evidence completeness  

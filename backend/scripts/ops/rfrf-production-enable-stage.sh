@@ -364,6 +364,20 @@ rfrf_stage_transaction_run() {
   echo "PRE_CROSS_WORKSTREAM_EVIDENCE_COMPLETE=YES"
   echo "PRE_CROSS_WORKSTREAM_GATE_DEFINED=YES"
 
+  if (( TARGET_STAGE >= 2 )); then
+    PRE_CUTOVER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
+    AUTHORITATIVE_CUTOVER="$PRE_CUTOVER"
+    verify_cutover="$PRE_CUTOVER"
+    rfrf_emit_stage2_boundary_audit_contract "$PRE_CUTOVER"
+  elif (( TARGET_STAGE == 1 )); then
+    AUTHORITATIVE_CUTOVER=""
+  fi
+
+  if ! rfrf_assert_exact_pre_stage_before_mutation "$PRE_STAGE" "$BACKEND_ENV" "$AUTHORITATIVE_CUTOVER"; then
+    rfrf_rollout_fail "exact PRE stage ${PRE_STAGE} verification failed — mutation blocked"
+    exit 1
+  fi
+
   STAMP="$(date -u +%Y%m%d%H%M%S)"
   BACKUP_FILE="${BACKEND_ENV}.bak-rfrf-stage${STAGE}-${STAMP}"
   if ! rfrf_create_verified_backend_env_backup "$BACKEND_ENV" "$BACKUP_FILE"; then
@@ -384,13 +398,6 @@ rfrf_stage_transaction_run() {
 
   echo "=== BEFORE ==="
   rfrf_read_flag_snapshot "$BACKEND_ENV"
-
-  if (( TARGET_STAGE >= 2 )); then
-    PRE_CUTOVER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
-    AUTHORITATIVE_CUTOVER="$PRE_CUTOVER"
-    verify_cutover="$PRE_CUTOVER"
-    rfrf_emit_stage2_boundary_audit_contract "$PRE_CUTOVER"
-  fi
 
   rfrf_stage1_arm_recovery
 
@@ -562,9 +569,22 @@ if [[ "$TARGET_SHA" != "$RFRF_REQUIRED_GIT_SHA" && "$TARGET_SHA" != "unknown" ]]
 fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
+  PRE_STAGE=$((STAGE - 1))
+  TARGET_STAGE="$STAGE"
+  if (( STAGE >= 2 )); then
+    AUTHORITATIVE_CUTOVER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
+  elif (( STAGE == 1 )); then
+    AUTHORITATIVE_CUTOVER=""
+  fi
+  if (( STAGE >= 1 )); then
+    rfrf_assert_exact_pre_stage_before_mutation "$PRE_STAGE" "$BACKEND_ENV" "$AUTHORITATIVE_CUTOVER" || exit 1
+  fi
   echo "STAGE1_DRY_RUN_ZERO_MUTATION=PASS"
   echo "STAGE_TX_DRY_RUN_ZERO_MUTATION=PASS"
   echo "DRY_RUN=1 - zero mutation, zero restart"
+  echo "STAGE2_DRY_RUN_BACKUP_CREATED=NO"
+  echo "STAGE2_DRY_RUN_RESTART_CALLS=0"
+  echo "STAGE2_DRY_RUN_PM2_MUTATION_PATH=NO"
   echo "PROPOSED_CUTOVER=${CUTOVER_AT:-<persisted>}"
   echo "CURRENT_RUNTIME_SHA=${TARGET_SHA}"
   echo "STAGE_TRANSITION=$(rfrf_detect_stage_from_flags "$BACKEND_ENV") -> ${STAGE}"

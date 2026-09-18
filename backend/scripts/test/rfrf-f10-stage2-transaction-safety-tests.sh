@@ -313,20 +313,61 @@ rfrf_verify_stage_env_state 2 "$BACKEND_ENV" "$PRODUCTION_CUTOVER" || fail "stag
 pass "successful stage2"
 echo "STAGE2_SUCCESS_FIXTURE_TEST=PASS"
 
-# dry-run 1->2
+# dry-run 1->2 (byte-identical proof before/after)
 reset_stage1_env
 clear_inject_flags
 export DRY_RUN=1
 unset RFRF_ROLLOUT_ACK
+PRE_DRY_RUN_ENV_SHA="$(rfrf_file_sha256 "$BACKEND_ENV")"
+PRE_DRY_RUN_CUTOVER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
+PRE_DRY_RUN_MASTER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_MASTER")"
+shopt -s nullglob
+pre_backups=( "${BACKEND_ENV}".bak-rfrf-* )
+shopt -u nullglob
 out="$(run_stage2)"
+POST_DRY_RUN_ENV_SHA="$(rfrf_file_sha256 "$BACKEND_ENV")"
+POST_DRY_RUN_CUTOVER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
+POST_DRY_RUN_MASTER="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_MASTER")"
+echo "PRE_DRY_RUN_ENV_SHA=${PRE_DRY_RUN_ENV_SHA}"
+echo "POST_DRY_RUN_ENV_SHA=${POST_DRY_RUN_ENV_SHA}"
+[[ "$PRE_DRY_RUN_ENV_SHA" == "$POST_DRY_RUN_ENV_SHA" ]] || fail "dry run env sha mismatch"
+[[ "$PRE_DRY_RUN_CUTOVER" == "$POST_DRY_RUN_CUTOVER" ]] || fail "dry run cutover changed"
+[[ "$PRE_DRY_RUN_MASTER" == "$POST_DRY_RUN_MASTER" ]] || fail "dry run master flag changed"
+shopt -s nullglob
+post_backups=( "${BACKEND_ENV}".bak-rfrf-* )
+shopt -u nullglob
+(( ${#pre_backups[@]} == ${#post_backups[@]} )) || fail "dry run created backup file"
 echo "$out" | grep -q 'STAGE2_DRY_RUN_ZERO_MUTATION=PASS' || fail "dry run missing zero mutation"
+echo "$out" | grep -q 'STAGE2_DRY_RUN_RESTART_CALLS=0' || fail "dry run missing restart calls marker"
+echo "$out" | grep -q 'STAGE2_DRY_RUN_BACKUP_CREATED=NO' || fail "dry run missing backup marker"
 echo "$out" | grep -q 'Would set RAW_FUEL_REFUEL_FALLBACK_ENABLED=true' || fail "dry run missing master=true proposal"
-before="$(rfrf_file_sha256 "$BACKEND_ENV")"
-after="$(rfrf_file_sha256 "$BACKEND_ENV")"
-[[ "$before" == "$after" ]] || fail "dry run mutated env"
-pass "dry run 1->2"
+pass "dry run 1->2 byte identical"
+echo "STAGE2_DRY_RUN_BYTE_IDENTICAL_PROOF=PASS"
+echo "STAGE2_DRY_RUN_RESTART_CALLS=0"
+echo "STAGE2_DRY_RUN_BACKUP_CREATED=NO"
 echo "STAGE2_DRY_RUN_ZERO_MUTATION=PASS"
 echo "STAGE2_DRY_RUN_TRANSITION=1->2"
+export DRY_RUN=0
+export RFRF_ROLLOUT_ACK=YES
+
+# malformed PRE stage (persist=true) must block before mutation
+reset_stage1_env
+echo "RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED=true" >>"$BACKEND_ENV"
+clear_inject_flags
+before_malformed_sha="$(rfrf_file_sha256 "$BACKEND_ENV")"
+set +e
+out="$(run_stage2)"
+rc=$?
+set -e
+(( rc != 0 )) || fail "malformed pre-stage should block"
+after_malformed_sha="$(rfrf_file_sha256 "$BACKEND_ENV")"
+[[ "$before_malformed_sha" == "$after_malformed_sha" ]] || fail "malformed pre-stage mutated env"
+echo "$out" | grep -q 'BACKUP_FILE=' && fail "malformed pre-stage should not create backup"
+echo "$out" | grep -q 'RECOVERY_ARMED_BEFORE_FIRST_MUTATION=YES' && fail "malformed pre-stage must not arm recovery"
+pass "malformed pre-stage blocked"
+echo "MALFORMED_PRE_STAGE_BLOCKED_BEFORE_MUTATION=YES"
+echo "PRE_STAGE_FAILURE_MUTATION_COUNT=0"
+echo "PRE_STAGE_FAILURE_RESTART_COUNT=0"
 
 echo "STAGE2_RECOVERY_TARGET_STAGE=1"
 echo "RECOVERY_RESTORES_PREVIOUS_STAGE=YES"
