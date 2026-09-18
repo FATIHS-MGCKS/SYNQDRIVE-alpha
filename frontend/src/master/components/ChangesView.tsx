@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18',
+    version: '4.9.1142',
+    title: 'RFRF F10.3.0 — Stage-1 restart safety micro-closure',
+    summary: [
+      'Hardens Stage-1 enable controller before first production execution: verified SHA256 backup, automatic env restore + dual-replica restart on failure, live-required preflight gate.',
+      'Documents EXP-021/VDC post-restart survival contracts and explicit operator-supplied cutover (no implicit now).',
+      'Failure-injection fixture tests; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.2 PASS exposed that Stage-1 could leave shared env mutated with only one replica restarted — fail-closed automatic recovery required before authorization.',
+    previousBehavior:
+      'enable-stage mutated backend.env then rolling-restarted; no automatic restore/restart on failure; preflight used --check only.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T07:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
     version: '4.9.1141',
     title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',

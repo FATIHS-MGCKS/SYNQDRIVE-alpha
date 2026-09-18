@@ -864,3 +864,157 @@ rfrf_rollout_has_enable_all_path() {
   # Guard: no script may accept STAGE=all or ENABLE_ALL.
   return 1
 }
+
+rfrf_file_sha256() {
+  local file="$1"
+  sha256sum "$file" | awk '{print $1}'
+}
+
+rfrf_create_verified_backend_env_backup() {
+  local src="$1" dest="$2"
+  local before backup_sha
+  before="$(rfrf_file_sha256 "$src")"
+  echo "BACKEND_ENV_SHA256_BEFORE=${before}"
+  cp "$src" "$dest"
+  backup_sha="$(rfrf_file_sha256 "$dest")"
+  echo "BACKUP_SHA256=${backup_sha}"
+  if [[ "$before" != "$backup_sha" ]]; then
+    echo "BACKUP_CHECKSUM_VERIFIED=NO"
+    return 1
+  fi
+  echo "BACKUP_CHECKSUM_VERIFIED=YES"
+  return 0
+}
+
+rfrf_restore_backend_env_atomic() {
+  local target="$1" backup="$2" expected_sha256="$3"
+  local backup_sha after
+  if [[ "${RFRF_TEST_INJECT_BACKUP_RESTORE_FAIL:-0}" == "1" ]]; then
+    echo "BACKEND_ENV_RESTORED=NO"
+    return 1
+  fi
+  backup_sha="$(rfrf_file_sha256 "$backup")"
+  if [[ "$backup_sha" != "$expected_sha256" ]]; then
+    echo "BACKUP_CHECKSUM_MISMATCH=YES"
+    echo "BACKEND_ENV_RESTORED=NO"
+    return 1
+  fi
+  cp "$backup" "$target"
+  chmod 600 "$target"
+  after="$(rfrf_file_sha256 "$target")"
+  echo "BACKEND_ENV_SHA256_AFTER_RECOVERY=${after}"
+  if [[ "$after" != "$expected_sha256" ]]; then
+    echo "RESTORE_CHECKSUM_MISMATCH=YES"
+    echo "BACKEND_ENV_RESTORED=NO"
+    return 1
+  fi
+  echo "BACKEND_ENV_RESTORED=YES"
+  return 0
+}
+
+rfrf_verify_stage0_env_state() {
+  local file="$1"
+  local stage master persist convergence promotion g2 cutover_raw
+  stage="$(rfrf_detect_stage_from_flags "$file")"
+  master="$(rfrf_parse_permissive_bool "$(rfrf_env_get "$file" "$RFRF_FLAG_MASTER")")"
+  persist="$(rfrf_parse_permissive_bool "$(rfrf_env_get "$file" "$RFRF_FLAG_PERSIST")")"
+  convergence="$(rfrf_parse_strict_true "$(rfrf_env_get "$file" "$RFRF_FLAG_CONVERGENCE")")"
+  promotion="$(rfrf_parse_strict_true "$(rfrf_env_get "$file" "$RFRF_FLAG_PROMOTION")")"
+  g2="$(rfrf_parse_strict_true "$(rfrf_env_get "$file" "$RFRF_FLAG_G2_HANDOFF")")"
+  cutover_raw="$(rfrf_env_get "$file" "$RFRF_FLAG_CUTOVER")"
+
+  echo "STAGE0_VERIFY_STAGE=${stage}"
+  echo "STAGE0_VERIFY_MASTER=${master}"
+  echo "STAGE0_VERIFY_PERSIST=${persist}"
+  echo "STAGE0_VERIFY_CONVERGENCE=${convergence}"
+  echo "STAGE0_VERIFY_PROMOTION=${promotion}"
+  echo "STAGE0_VERIFY_G2=${g2}"
+  echo "STAGE0_VERIFY_CUTOVER_SET=$([[ -n "$cutover_raw" ]] && echo yes || echo no)"
+
+  [[ "$stage" == "0" ]] || return 1
+  [[ "$master" == "false" && "$persist" == "false" && "$convergence" == "false" && "$promotion" == "false" && "$g2" == "false" ]] || return 1
+  [[ -z "$cutover_raw" ]] || return 1
+  return 0
+}
+
+rfrf_verify_stage1_env_state() {
+  local file="$1" expected_cutover="$2"
+  local stage master cutover_raw
+  stage="$(rfrf_detect_stage_from_flags "$file")"
+  master="$(rfrf_parse_permissive_bool "$(rfrf_env_get "$file" "$RFRF_FLAG_MASTER")")"
+  cutover_raw="$(rfrf_env_get "$file" "$RFRF_FLAG_CUTOVER")"
+  [[ "$stage" == "1" ]] || return 1
+  [[ "$master" == "false" ]] || return 1
+  [[ "$cutover_raw" == "$expected_cutover" ]] || return 1
+  return 0
+}
+
+rfrf_capture_cross_workstream_snapshot() {
+  local backend_env="$1" label="$2"
+  local url
+  echo "--- CROSS_WORKSTREAM_SNAPSHOT_${label} ---"
+  for key in \
+    EXP021_FLEET_COORDINATOR_ENABLED \
+    EXP021_FLEET_DRY_RUN \
+    EXP021_FLEET_COORDINATOR_INTERVAL_MS \
+    DEVICE_CONNECTION_PHYSICAL_AUTHORITY_MODE \
+    DEVICE_CONNECTION_PHYSICAL_SHADOW_COMPARE_ENABLED \
+    DEVICE_CONNECTION_PHYSICAL_PILOT_ENABLED; do
+    local val
+    val="$(rfrf_env_get "$backend_env" "$key")"
+    echo "${label}_${key}=${val:-<absent>}"
+  done
+
+  if [[ "${RFRF_STAGE_TEST_MODE:-0}" == "1" ]]; then
+    echo "${label}_EXP021_STUDIES=${RFRF_FIXTURE_EXP021_STUDIES:-1}"
+    echo "${label}_EXP021_ENROLLMENTS=${RFRF_FIXTURE_EXP021_ENROLLMENTS:-1}"
+    echo "${label}_EXP021_RUNS=${RFRF_FIXTURE_EXP021_RUNS:-0}"
+    echo "${label}_EXP021_GLOBAL_BALANCES=${RFRF_FIXTURE_EXP021_GLOBAL_BALANCES:-0}"
+    echo "${label}_EXP021_VEHICLE_BALANCES=${RFRF_FIXTURE_EXP021_VEHICLE_BALANCES:-0}"
+    echo "${label}_VDC_PHYSICAL_STATES=${RFRF_FIXTURE_VDC_PHYSICAL_STATES:-4}"
+    echo "${label}_VDC_SHADOW_OBS=${RFRF_FIXTURE_VDC_SHADOW_OBS:-5}"
+    echo "${label}_VDC_AUTHORITY_MODE=${RFRF_FIXTURE_VDC_AUTHORITY_MODE:-LEGACY}"
+    return 0
+  fi
+
+  url="$(rfrf_dotenv_database_url "$backend_env")"
+  if [[ -z "$url" ]] || ! command -v psql >/dev/null 2>&1; then
+    echo "${label}_DB_SNAPSHOT=SKIPPED"
+    return 0
+  fi
+
+  psql "$url" -Atqc "SELECT '${label}_EXP021_STUDIES='||COUNT(*) FROM exp021_studies;" 2>/dev/null || echo "${label}_EXP021_STUDIES=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_ENROLLMENTS='||COUNT(*) FROM exp021_study_enrollments;" 2>/dev/null || echo "${label}_EXP021_ENROLLMENTS=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_RUNS='||COUNT(*) FROM exp021_study_runs;" 2>/dev/null || echo "${label}_EXP021_RUNS=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_GLOBAL_BALANCES='||COUNT(*) FROM exp021_study_order_balances;" 2>/dev/null || echo "${label}_EXP021_GLOBAL_BALANCES=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_EXP021_VEHICLE_BALANCES='||COUNT(*) FROM exp021_study_vehicle_order_balances;" 2>/dev/null || echo "${label}_EXP021_VEHICLE_BALANCES=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_VDC_PHYSICAL_STATES='||COUNT(*) FROM device_connection_physical_states;" 2>/dev/null || echo "${label}_VDC_PHYSICAL_STATES=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_VDC_SHADOW_OBS='||COUNT(*) FROM device_connection_physical_state_shadow_observations;" 2>/dev/null || echo "${label}_VDC_SHADOW_OBS=ERROR"
+  psql "$url" -Atqc "SELECT '${label}_VDC_AUTHORITY_MODE='||COALESCE(string_agg(DISTINCT authority_mode::text, ','),'none') FROM device_connection_physical_authority_cutover;" 2>/dev/null || echo "${label}_VDC_AUTHORITY_MODE=ERROR"
+}
+
+rfrf_print_stage1_execution_contracts() {
+  cat <<'EOF'
+STAGE1_EXPLICIT_CUTOVER_REQUIRED=YES
+STAGE1_BUSINESS_PROCESSING_ENABLED=NO
+STAGE1_BOOLEAN_AUTHORITIES_REMAIN_OFF=YES
+STAGE1_CUTOVER_SELECTION=operator_supplied_RFRF_CUTOVER_AT_UTC_ISO_only
+STAGE1_NO_IMPLICIT_NOW=YES
+--- EXP021_POST_RESTART_SURVIVAL_CONTRACT (observe after real restart) ---
+EXP021_MIN_COORDINATOR_TICKS_AFTER_RESTART=4
+EXP021_FOLLOWER_OBSERVATION_COUNT_REQUIRED=0
+EXP021_MULTI_LEADER_PRESENT=NO
+EXP021_DUPLICATE_TICK_FOR_SAME_INTERVAL=NO
+EXP021_FRESHNESS_PROVENANCE_REQUIRED=YES
+EXP021_NO_NEW_STUDYRUN=YES
+EXP021_NO_COORDINATOR_CAPTURE=YES
+EXP021_NO_COORDINATOR_EXECUTION_LOCK=YES
+--- VDC_POST_RESTART_SURVIVAL_CONTRACT (observe after real restart) ---
+VDC_RUNTIME_PRESENT=YES
+VDC_AUTHORITY_MODE_UNCHANGED=YES
+VDC_PILOT_EPOCH_UNCHANGED=YES
+VDC_SHADOW_STATE_PRESERVED=YES
+VDC_NO_PILOT_RESET=YES
+VDC_NO_AUTHORITY_PROMOTION=YES
+EOF
+}

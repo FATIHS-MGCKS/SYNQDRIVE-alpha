@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.3.0 Stage-1 restart safety micro-closure
+
+- EED-EV-0065: F10.2 complete → Stage 1 planning; failure window (env mutated before restart, no auto-recovery, partial replica env possible); automatic backup restore + dual-replica restart recovery; live-required preflight before enable; SHA256 backup integrity; failure-injection tests; EXP-021/VDC post-restart survival contracts documented
+- Stage 1 **not executed**; `STAGE_1_START_AUTHORIZED=NO`; production remains `3a2707b`
+- RUNTIME_SEMANTICS_CHANGED=NO
+
 ## 2026-09-18 — RFRF F10.2 final closure (tooling-only live preflight)
 
 - EED-EV-0064 extended: #1680 merged @ ca0aa0f; isolated tooling checkout executed live preflight against unchanged production 3a2707b; `RFRF_PRODUCTION_PREFLIGHT=PASS` exit 0; METRICS_*_RFRF=YES both replicas; 10/10 real probe stability; cross-workstream preservation PASS; no deploy/mutation
