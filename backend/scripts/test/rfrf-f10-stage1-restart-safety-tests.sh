@@ -13,9 +13,11 @@ TMP_DIR="$(mktemp -d)"
 cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT
 
+unset RFRF_TEST_SIMULATE_PRODUCTION_EVIDENCE
+
 export RFRF_STAGE_TEST_MODE=1
 export RFRF_FIXTURE_MODE=1
-export RFRF_REQUIRED_GIT_SHA="${RFRF_REQUIRED_GIT_SHA:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
+export RFRF_REQUIRED_GIT_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 export SYNQDRIVE_CURRENT_LINK="$REPO_ROOT"
 export BACKEND_ENV="${TMP_DIR}/backend.env"
 export DRY_RUN=0
