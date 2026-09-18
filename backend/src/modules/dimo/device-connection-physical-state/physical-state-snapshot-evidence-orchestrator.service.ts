@@ -8,6 +8,7 @@ import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { extractObdPlugSignalFromSignals } from './device-connection-physical-state.obd-evidence';
 import { buildSnapshotGtR1Proof } from './physical-state-gt-r1-proof';
+import { isSnapshotObdEvidenceTelemetryEligible } from './physical-state-snapshot-telemetry-eligibility';
 import {
   buildLegacySnapshotShadowDecision,
   resolveLegacyBindingKey,
@@ -25,6 +26,8 @@ export type SnapshotPhysicalEvidenceInput = {
   sourceSubtype: string | null;
   fetchedAt: Date;
   vehicleLatestStateId: string;
+  /** Pre-upsert VLS sourceTimestamp — connectivity epoch authority for snapshot OBD eligibility. */
+  existingVlsSourceTimestamp: Date | null;
 };
 
 /**
@@ -56,6 +59,15 @@ export class PhysicalStateSnapshotEvidenceOrchestrator {
 
     const obd = extractObdPlugSignalFromSignals(input.signals);
     if (!obd) return null;
+
+    if (
+      !isSnapshotObdEvidenceTelemetryEligible(
+        obd.evidenceObservedAt,
+        input.existingVlsSourceTimestamp,
+      )
+    ) {
+      return null;
+    }
 
     const snapshotReferenceId = buildSnapshotReferenceId({
       vehicleLatestStateId: input.vehicleLatestStateId,

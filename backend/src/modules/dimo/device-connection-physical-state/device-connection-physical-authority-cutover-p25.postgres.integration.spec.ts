@@ -389,6 +389,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
       sourceSubtype: null,
       fetchedAt: new Date('2026-09-12T15:02:29.000Z'),
       vehicleLatestStateId: 'vls-p25-i',
+      existingVlsSourceTimestamp: new Date('2026-08-01T10:00:00.000Z'),
     });
 
     expect(snapshotResult).not.toBeNull();
@@ -438,6 +439,7 @@ describePg('P2.5 authority cutover runtime (postgres)', () => {
       sourceSubtype: null,
       fetchedAt: new Date('2026-09-12T15:02:29.000Z'),
       vehicleLatestStateId: 'vls-p25-l',
+      existingVlsSourceTimestamp: new Date('2026-08-01T10:00:00.000Z'),
     });
 
     expect(snapshotResult?.shadowComparison?.classification).toBe(
