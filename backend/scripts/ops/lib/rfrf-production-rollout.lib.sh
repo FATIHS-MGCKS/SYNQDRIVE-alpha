@@ -282,6 +282,11 @@ rfrf_is_fixture_mode() {
   [[ "${RFRF_FIXTURE_MODE:-0}" == "1" || "${DRY_RUN:-0}" == "1" ]]
 }
 
+# F10.4.0.2 — DRY_RUN alone does not imply fixture; rollback dry-run SHA rules use this.
+rfrf_is_rollback_fixture_context() {
+  [[ "${RFRF_FIXTURE_MODE:-0}" == "1" || "${RFRF_ROLLBACK_TEST_MODE:-0}" == "1" ]]
+}
+
 rfrf_require_approved_deploy_sha() {
   if [[ -n "${RFRF_REQUIRED_GIT_SHA:-}" ]]; then
     return 0

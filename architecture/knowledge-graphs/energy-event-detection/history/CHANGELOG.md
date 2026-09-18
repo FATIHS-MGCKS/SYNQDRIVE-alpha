@@ -4,6 +4,7 @@
 
 - EED-EV-0067: generic `rfrf_stage_transaction_run` for stages 1–6; Stage-2 failure recovery restores Stage 1; cutover immutability on Stage-2 enable; production-grade `--from-stage 2` rollback; fixture tests + master-only runtime authority matrix; Stage 2 not executed; Production remains Stage 1 / `ca7bad…`
 - EED-EV-0067 (F10.4.0.1 micro-closure): dry-run byte-identical proof; rollback dry-run source-stage verify; rollback fail-closed convergence; exact PRE-stage gate before mutation
+- EED-EV-0067 (F10.4.0.2): rollback recovery-of-recovery fail-closed; rollback signal traps; stage-verify injection test; production dry-run exact SHA authority
 
 ## 2026-09-18 — RFRF F10.3.2 Stage-1 Production execution (evidence landing)
 

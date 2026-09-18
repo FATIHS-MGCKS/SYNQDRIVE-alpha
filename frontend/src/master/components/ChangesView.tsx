@@ -82,7 +82,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'RFRF F10.4.0 — Stage-2 transaction / recovery safety closure',
     summary: [
       'Generic rfrf_stage_transaction_run covers stages 1–6; recovery restores PRE_STAGE (Stage-2 failure → Stage 1, not Stage 0).',
-      'Stage-2 enables master-only with cutover immutability; hardened --from-stage 2 rollback; 18+ fixture failure-injection tests.',
+      'F10.4.0.2: rollback fail-closed recovery-of-recovery, signal traps, production dry-run SHA gate, expanded rollback fixture injections.',
+      'Stage-2 enables master-only with cutover immutability; hardened --from-stage 2 rollback; 30+ fixture failure-injection tests.',
       'Stage 2 not executed; Production remains Stage 1 at ca7bad…; F10.4.1 48s boundary audit required before authorization.',
     ],
     reason:

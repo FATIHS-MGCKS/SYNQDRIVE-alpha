@@ -95,6 +95,17 @@ No live Production boundary audit performed in F10.4.0.
 
 Stage 2 **NOT executed**. Stage 2 **NOT authorized**.
 
+## F10.4.0.2 rollback fail-closed closure (same evidence record)
+
+| Finding | Fix |
+|---------|-----|
+| Recovery-of-recovery ignored failures | Convergence recovery failures stop all unproven replicas; explicit `ROLLBACK_RECOVERY_CONVERGENCE_*` and serving labels; never `STAGE2_ROLLBACK_PRODUCTION_SAFE=YES` on failed rollback |
+| Rollback signal safety | ERR/TERM/INT/HUP traps armed before first mutation; idempotent handler invokes same fail-closed convergence |
+| Stage verify injection untested | `RFRF_TEST_INJECT_ROLLBACK_STAGE_VERIFY_FAIL` fixture scenario |
+| Production dry-run SHA | `rfrf_is_rollback_fixture_context()` — `DRY_RUN=1` alone is not fixture; production dry-run requires explicit `RFRF_REQUIRED_GIT_SHA` match |
+
+Fixture coverage: recovery restart A/B failures, backup restore failure, signal TERM/INT/HUP, production-style dry-run SHA block/pass matrix.
+
 - **EED-EV-0066** — Stage-1 Production execution  
 - **EED-EV-0065** — Stage-1 transaction / evidence completeness  
 
