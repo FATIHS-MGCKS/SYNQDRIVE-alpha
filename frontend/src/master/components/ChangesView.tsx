@@ -77,6 +77,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-18T09:03:22.000Z',
   },
   {
+    id: 'eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18',
+    version: '4.9.1145',
+    title: 'RFRF F10.4.0 — Stage-2 transaction / recovery safety closure',
+    summary: [
+      'Generic rfrf_stage_transaction_run covers stages 1–6; recovery restores PRE_STAGE (Stage-2 failure → Stage 1, not Stage 0).',
+      'Stage-2 enables master-only with cutover immutability; hardened --from-stage 2 rollback; 18+ fixture failure-injection tests.',
+      'Stage 2 not executed; Production remains Stage 1 at ca7bad…; F10.4.1 48s boundary audit required before authorization.',
+    ],
+    reason:
+      'Stages 2–6 previously used non-transactional enable path without recovery-to-previous-stage guarantees — unacceptable before master-detector activation.',
+    previousBehavior:
+      'Only Stage 1 used full transaction; Stages 2–6 were backup → mutate → restart without PRE/POST gates or PRE_STAGE recovery verification.',
+    details:
+      'docs/audits/eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh; EED-EV-0067',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T12:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
     version: '4.9.1144',
     title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',

@@ -1027,13 +1027,56 @@ rfrf_verify_stage0_env_state() {
 
 rfrf_verify_stage1_env_state() {
   local file="$1" expected_cutover="$2"
-  local stage master cutover_raw
-  stage="$(rfrf_detect_stage_from_flags "$file")"
-  master="$(rfrf_parse_permissive_bool "$(rfrf_env_get "$file" "$RFRF_FLAG_MASTER")")"
-  cutover_raw="$(rfrf_env_get "$file" "$RFRF_FLAG_CUTOVER")"
-  [[ "$stage" == "1" ]] || return 1
-  [[ "$master" == "false" ]] || return 1
-  [[ "$cutover_raw" == "$expected_cutover" ]] || return 1
+  rfrf_verify_stage_env_state 1 "$file" "$expected_cutover"
+}
+
+# F10.4.0 — canonical stage authority verification (stages 0–6).
+rfrf_verify_stage_env_state() {
+  local stage="$1" file="$2" expected_cutover="${3:-}"
+  local cutover_raw detected
+
+  if ! rfrf_stage_matches_file "$stage" "$file"; then
+    echo "STAGE${stage}_ENV_VERIFY=FAIL"
+    return 1
+  fi
+
+  detected="$(rfrf_detect_stage_from_flags "$file")"
+  if [[ "$detected" != "$stage" ]]; then
+    echo "STAGE${stage}_ENV_VERIFY=FAIL"
+    return 1
+  fi
+
+  if (( stage >= 1 )); then
+    cutover_raw="$(rfrf_env_get "$file" "$RFRF_FLAG_CUTOVER")"
+    if [[ -n "$expected_cutover" && "$cutover_raw" != "$expected_cutover" ]]; then
+      echo "STAGE${stage}_ENV_VERIFY=FAIL"
+      return 1
+    fi
+  fi
+
+  echo "STAGE${stage}_ENV_VERIFY=PASS"
+  return 0
+}
+
+# F10.4.1 read-only authorization gate inputs (tooling contract only — no live audit here).
+rfrf_emit_stage2_boundary_audit_contract() {
+  local cutover_at="${1:-}"
+  echo "STAGE2_BOUNDARY_AUDIT_REQUIRED=YES"
+  echo "CUTOVER_AT=${cutover_at}"
+  echo "CUTOVER_AGE_AT_STAGE1_MUTATION_SECONDS=48"
+  echo "STAGE2_CUTOVER_MUTATION_ALLOWED=NO"
+}
+
+rfrf_assert_cutover_immutable_across_mutation() {
+  local pre_cutover="$1" post_cutover="$2"
+  echo "PRE_CUTOVER=${pre_cutover}"
+  echo "POST_CUTOVER=${post_cutover}"
+  if [[ "$pre_cutover" != "$post_cutover" ]]; then
+    echo "CUTOVER_IMMUTABILITY_VIOLATION=YES"
+    echo "STAGE2_PRESERVES_STAGE1_CUTOVER=NO"
+    return 1
+  fi
+  echo "STAGE2_PRESERVES_STAGE1_CUTOVER=YES"
   return 0
 }
 

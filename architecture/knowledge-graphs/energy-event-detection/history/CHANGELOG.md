@@ -1,5 +1,9 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.4.0 Stage-2 transaction / recovery safety (tooling)
+
+- EED-EV-0067: generic `rfrf_stage_transaction_run` for stages 1–6; Stage-2 failure recovery restores Stage 1; cutover immutability on Stage-2 enable; production-grade `--from-stage 2` rollback; fixture tests + master-only runtime authority matrix; Stage 2 not executed; Production remains Stage 1 / `ca7bad…`
+
 ## 2026-09-18 — RFRF F10.3.2 Stage-1 Production execution (evidence landing)
 
 - EED-EV-0066: authorized Production Stage 0→1 completed; `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT=2026-09-18T10:25:41.000Z`; all RFRF boolean authorities remained OFF; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994` preserved; rolling restart A then B; EXP-021 immediate + post-restart 4-tick survival (7 natural ticks, follower 0); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 6→6, new-epoch blockers 0; candidates 0, fallback VEE 0
