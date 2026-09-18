@@ -36,6 +36,63 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
+    version: '4.9.1144',
+    title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',
+    summary: [
+      'Immediate EXP-021/VDC survival gate now fails closed on incomplete, skipped, errored, or sentinel evidence — no missing==missing or ERROR==ERROR pass paths.',
+      'PRE snapshot + completeness validation is a hard pre-mutation gate; POST snapshot + validation blocks COMMIT and triggers recovery when armed.',
+      'Twelve deterministic failure-injection tests; production simulation never emits SKIPPED; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.3.0.1 gate was directionally correct but could still pass when PRE/POST evidence was absent or carried ERROR/SKIPPED sentinels.',
+    previousBehavior:
+      'Cross-workstream state_get returned empty string for missing keys; equality checks could pass on ""=="" or ERROR==ERROR; DB snapshot could emit SKIPPED.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.2 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T09:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-1-transaction-closure-2026-09-18',
+    version: '4.9.1143',
+    title: 'RFRF F10.3.0.1 — Stage-1 transaction / recovery micro-closure',
+    summary: [
+      'Arms recovery before first backend.env mutation; ERR/TERM/INT/HUP fail-closed traps with idempotent single recovery handler.',
+      'Same-filesystem atomic rename for env upsert + restore; byte-identical backup checksum contract; PRE/POST EXP-021/VDC immediate survival gates.',
+      'Expanded failure-injection matrix (chmod/post-mutation/signal/cross-workstream drift); Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'Independent review of F10.3.0 found recovery armed too late, non-atomic restore, and cross-workstream snapshots without enforcement gates.',
+    previousBehavior:
+      'Recovery keyed off STAGE_MUTATION_APPLIED after chmod; cp-based restore; PRE/POST snapshots printed but not compared before PASS.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.1 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T08:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18',
+    version: '4.9.1142',
+    title: 'RFRF F10.3.0 — Stage-1 restart safety micro-closure',
+    summary: [
+      'Hardens Stage-1 enable controller before first production execution: verified SHA256 backup, automatic env restore + dual-replica restart on failure, live-required preflight gate.',
+      'Documents EXP-021/VDC post-restart survival contracts and explicit operator-supplied cutover (no implicit now).',
+      'Failure-injection fixture tests; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.2 PASS exposed that Stage-1 could leave shared env mutated with only one replica restarted — fail-closed automatic recovery required before authorization.',
+    previousBehavior:
+      'enable-stage mutated backend.env then rolling-restarted; no automatic restore/restart on failure; preflight used --check only.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T07:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
     version: '4.9.1141',
     title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',
