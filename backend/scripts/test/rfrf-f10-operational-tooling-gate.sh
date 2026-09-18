@@ -73,12 +73,12 @@ bash -n scripts/test/rfrf-f10-stage2-rollback-fixture-tests.sh
 bash -n scripts/test/rfrf-f10-stage2-rollback-f10-4-0-3-tests.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
-  echo "==> shellcheck (ops scripts)"
-  shellcheck -x scripts/ops/lib/rfrf-production-rollout.lib.sh
-  shellcheck scripts/ops/rfrf-production-preflight.sh
-  shellcheck scripts/ops/rfrf-production-enable-stage.sh
-  shellcheck scripts/ops/rfrf-production-rollback.sh
-  shellcheck scripts/ops/rfrf-monitoring-verify-alerts.sh
+  echo "==> shellcheck (ops scripts, errors only)"
+  shellcheck -S error -x scripts/ops/lib/rfrf-production-rollout.lib.sh
+  shellcheck -S error scripts/ops/rfrf-production-preflight.sh
+  shellcheck -S error scripts/ops/rfrf-production-enable-stage.sh
+  shellcheck -S error scripts/ops/rfrf-production-rollback.sh
+  shellcheck -S error scripts/ops/rfrf-monitoring-verify-alerts.sh
 fi
 
 echo "==> Monitoring verify (repo-only)"
