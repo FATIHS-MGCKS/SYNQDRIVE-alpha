@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-18 — RFRF F10.3.2 Stage-1 Production execution (evidence landing)
+
+- EED-EV-0066: authorized Production Stage 0→1 completed; `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT=2026-09-18T10:25:41.000Z`; all RFRF boolean authorities remained OFF; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994` preserved; rolling restart A then B; EXP-021 immediate + post-restart 4-tick survival (7 natural ticks, follower 0); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 6→6, new-epoch blockers 0; candidates 0, fallback VEE 0
+- `STAGE1_EXECUTION_ACCEPTED=YES`; `STAGE_2_START_AUTHORIZED=NO`; `STAGE2_BOUNDARY_AUDIT_REQUIRED=YES` (48s cutover-to-mutation interval — non-blocking Stage-2 prerequisite)
+- Does **not** prove VDC seven-day window completion or Stage 2 readiness
+- RUNTIME_SEMANTICS_CHANGED=NO in this evidence PR (governance/docs only)
+
 ## 2026-09-18 — RFRF F10.3.0 Stage-1 restart safety micro-closure
 
 - EED-EV-0065: F10.2 complete → Stage 1 planning; failure window (env mutated before restart, no auto-recovery, partial replica env possible); automatic backup restore + dual-replica restart recovery; live-required preflight before enable; SHA256 backup integrity; failure-injection tests; EXP-021/VDC post-restart survival contracts documented
