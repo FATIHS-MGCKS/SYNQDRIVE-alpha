@@ -3,6 +3,8 @@ import {
   buildSnapshotGtR1Proof,
   buildSnapshotPlugInitialEstablishmentGtR1Proof,
   buildSnapshotPlugRepairGtR1Proof,
+  buildSnapshotUnplugInitialEstablishmentGtR1Proof,
+  buildSnapshotUnplugTransitionGtR1Proof,
   buildWebhookStaleLegacyGateGtR1Proof,
   isProvenExpectedFix,
   isProvenExpectedFixForPhysicalDecision,
@@ -383,6 +385,49 @@ describe('physical-state-gt-r1-proof', () => {
         DeviceConnectionPhysicalTransitionDecision.APPLIED,
       ),
     ).toBe(true);
+  });
+
+  it('UNPLUG transition: PLUGGED baseline + newer UNPLUG + obd_false => SNAPSHOT_UNPLUG_TRANSITION', () => {
+    const proof = buildSnapshotUnplugTransitionGtR1Proof({
+      ...admissibleBase,
+      physicalProjectionState: 'PLUGGED',
+      snapshotCandidatePlugged: false,
+      snapshotEvidenceObservedAt: T3,
+      legacyEvaluation: { action: 'reject', reason: 'obd_false' },
+    });
+    expect(proof?.scenario).toBe('SNAPSHOT_UNPLUG_TRANSITION');
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.APPLIED,
+      ),
+    ).toBe(true);
+  });
+
+  it('UNPLUG bootstrap: absent projection + UNPLUG + obd_false => SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT', () => {
+    const proof = buildSnapshotUnplugInitialEstablishmentGtR1Proof({
+      ...bootstrapBase,
+      snapshotCandidatePlugged: false,
+      legacyEvaluation: { action: 'reject', reason: 'obd_false' },
+    });
+    expect(proof?.scenario).toBe('SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT');
+    expect(
+      isProvenExpectedFixForPhysicalDecision(
+        proof,
+        DeviceConnectionPhysicalTransitionDecision.ESTABLISHED,
+      ),
+    ).toBe(true);
+  });
+
+  it('buildSnapshotGtR1Proof resolves UNPLUG transition when PLUGGED baseline exists', () => {
+    const proof = buildSnapshotGtR1Proof({
+      ...admissibleBase,
+      physicalProjectionState: 'PLUGGED',
+      snapshotCandidatePlugged: false,
+      snapshotEvidenceObservedAt: T3,
+      legacyEvaluation: { action: 'reject', reason: 'obd_false' },
+    });
+    expect(proof?.scenario).toBe('SNAPSHOT_UNPLUG_TRANSITION');
   });
 
   it('no_open_episode with open episode present cannot establish EXPECTED_FIX', () => {

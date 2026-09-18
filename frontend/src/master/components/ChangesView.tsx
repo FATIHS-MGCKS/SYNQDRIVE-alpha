@@ -36,6 +36,47 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
+    version: '4.9.1146',
+    title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
+    summary: [
+      'Production `backend.env`: RECONCILIATION + PROJECTION_WRITE + SHADOW_COMPARE ON for 4 authorized pilot scopes; AUTHORITY_CUTOVER and SIDE_EFFECTS remain OFF; authority LEGACY.',
+      'Canonical operational T0 `2026-09-18T09:33:25.000Z` → seven-day window end `2026-09-25T09:33:25.000Z`; invalid aborted T0 `2026-09-18T00:02:53.207Z` archived.',
+      'Rolling restart only (no application deploy); runtime SHA unchanged at `ca7bad8826871376a58efaa874f12992b88c4a04`.',
+      'Seven-day operational completion NOT_PROVEN; RFRF Stage 1 later survived restart with pilot T0 unchanged (EED-EV-0066).',
+    ],
+    reason:
+      'After freshness deploy, controlled pilot activation required a fresh epoch-bound shadow proof window without authority cutover or side effects.',
+    previousBehavior:
+      'P2.5 shadow compare OFF in Production after freshness deploy; failed T0 epoch invalid; no running seven-day clock.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md (controlled restart section); architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:33:25.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-connectivity-freshness-production-2026-09-18',
+    version: '4.9.1145',
+    title: 'VDC RB-019 P2.5 — snapshot connectivity freshness binding (Production deploy)',
+    summary: [
+      'DimoSnapshotProcessor applies physical snapshot evidence only after VW-F-008 VLS monotonic guard + upsert.',
+      'Snapshot OBD eligibility: evidenceObservedAt must strictly advance stored VLS sourceTimestamp — cached replay cannot mutate projection.',
+      'GT-R1 UNPLUG proof: SNAPSHOT_UNPLUG_TRANSITION + SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT (legacy obd_false).',
+      'Production deploy `ca7bad8826871376a58efaa874f12992b88c4a04`; post-deploy Arteon stale cached OBD replay did not create false transitions.',
+      'Controlled STATEFUL_SHADOW pilot activated separately after deploy (see 4.9.1146 entry).',
+    ],
+    reason:
+      'Aborted P2.5 shadow restart applied stale cached obdIsPluggedIn before VLS stale guard, producing false PLUGGED→UNPLUGGED transition and UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on Arteon.',
+    previousBehavior:
+      'applyPhysicalSnapshotEvidence ran before VLS monotonic guard; equal-timestamp cached OBD replay could establish current connectivity transitions.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md; physical-state-snapshot-telemetry-eligibility.ts; dimo-snapshot.processor.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:03:22.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
     version: '4.9.1144',
     title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',

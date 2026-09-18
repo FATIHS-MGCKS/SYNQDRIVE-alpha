@@ -244,18 +244,6 @@ export class DimoSnapshotProcessor extends WorkerHost {
         fetchedAt,
       );
 
-      await this.applyPhysicalSnapshotEvidence({
-        organizationId: vehicle.organizationId,
-        vehicleId,
-        tokenId: dimoTokenId,
-        signals,
-        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
-        hardwareType: vehicle.hardwareType,
-        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
-        fetchedAt,
-        vehicleLatestStateId: previousState?.id ?? `pending:${vehicleId}`,
-      });
-
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
       if (
         previousState &&
@@ -312,6 +300,19 @@ export class DimoSnapshotProcessor extends WorkerHost {
           providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
           ...normalized,
         },
+      });
+
+      await this.applyPhysicalSnapshotEvidence({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId: dimoTokenId,
+        signals,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        hardwareType: vehicle.hardwareType,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        fetchedAt,
+        vehicleLatestStateId: latestState.id,
+        existingVlsSourceTimestamp: previousState?.sourceTimestamp ?? null,
       });
 
       if (this.episodeService) {
@@ -538,6 +539,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     sourceSubtype: string | null;
     fetchedAt: Date;
     vehicleLatestStateId: string;
+    existingVlsSourceTimestamp: Date | null;
   }): Promise<void> {
     await this.snapshotPhysicalEvidenceOrchestrator?.applyPhysicalSnapshotEvidence(input);
   }
