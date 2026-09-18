@@ -19,6 +19,8 @@ import type { PhysicalStateBindingScope } from './device-connection-physical-sta
 export type GtR1ExpectedFixProofScenario =
   | 'SNAPSHOT_PLUG_REPAIR_UNPLUGGED_BASELINE'
   | 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT'
+  | 'SNAPSHOT_UNPLUG_TRANSITION'
+  | 'SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT'
   | 'WEBHOOK_PHYSICAL_ORDERING_OVERRIDES_STALE_LEGACY_GATE';
 
 export type GtR1ExpectedFixProof = {
@@ -69,8 +71,14 @@ export function isProvenExpectedFixForPhysicalDecision(
   physicalDecision: DeviceConnectionPhysicalTransitionDecision | null,
 ): boolean {
   if (!isProvenExpectedFix(proof)) return false;
-  if (proof!.scenario === 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT') {
+  if (
+    proof!.scenario === 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT' ||
+    proof!.scenario === 'SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT'
+  ) {
     return physicalDecision === 'ESTABLISHED';
+  }
+  if (proof!.scenario === 'SNAPSHOT_UNPLUG_TRANSITION') {
+    return physicalDecision === 'APPLIED';
   }
   return true;
 }
@@ -133,7 +141,6 @@ function isValidSnapshotEvidenceObservedAt(observedAt: Date): boolean {
 }
 
 function passesSharedSnapshotGtR1Admissibility(input: SnapshotGtR1ProofInput): boolean {
-  if (!input.snapshotCandidatePlugged) return false;
   if (!isPhysicalObdHardware(input.hardwareType)) return false;
   if (
     !isPhysicalObdSnapshotSource({
@@ -160,6 +167,16 @@ function isLegacyBindingAlignedForSnapshotProof(input: SnapshotGtR1ProofInput): 
   return input.legacyBindingKey === input.physicalBindingScope.bindingKey;
 }
 
+function passesSharedSnapshotPlugGtR1Admissibility(input: SnapshotGtR1ProofInput): boolean {
+  if (!input.snapshotCandidatePlugged) return false;
+  return passesSharedSnapshotGtR1Admissibility(input);
+}
+
+function passesSharedSnapshotUnplugGtR1Admissibility(input: SnapshotGtR1ProofInput): boolean {
+  if (input.snapshotCandidatePlugged) return false;
+  return passesSharedSnapshotGtR1Admissibility(input);
+}
+
 /**
  * Snapshot PLUG repair: physical UNPLUGGED baseline, newer snapshot PLUG, legacy path rejected
  * only for the canonical GT-R1 stale/absence condition (no_open_episode) with independently
@@ -168,7 +185,7 @@ function isLegacyBindingAlignedForSnapshotProof(input: SnapshotGtR1ProofInput): 
 export function buildSnapshotPlugRepairGtR1Proof(
   input: SnapshotGtR1ProofInput,
 ): GtR1ExpectedFixProof | null {
-  if (!passesSharedSnapshotGtR1Admissibility(input)) return null;
+  if (!passesSharedSnapshotPlugGtR1Admissibility(input)) return null;
   if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
   if (input.legacyBindingKey !== input.physicalBindingScope.bindingKey) {
     return null;
@@ -205,7 +222,7 @@ export function buildSnapshotPlugRepairGtR1Proof(
 export function buildSnapshotPlugInitialEstablishmentGtR1Proof(
   input: SnapshotGtR1ProofInput,
 ): GtR1ExpectedFixProof | null {
-  if (!passesSharedSnapshotGtR1Admissibility(input)) return null;
+  if (!passesSharedSnapshotPlugGtR1Admissibility(input)) return null;
   if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
   if (input.physicalProjectionState != null) return null;
   if (input.physicalProjectionEvidenceAt != null) return null;
@@ -223,13 +240,65 @@ export function buildSnapshotPlugInitialEstablishmentGtR1Proof(
 }
 
 /**
+ * Snapshot UNPLUG transition: physical PLUGGED baseline, newer snapshot UNPLUG,
+ * legacy path rejects only for the canonical obd_false condition with independently
+ * verified physical/source/binding preconditions.
+ */
+export function buildSnapshotUnplugTransitionGtR1Proof(
+  input: SnapshotGtR1ProofInput,
+): GtR1ExpectedFixProof | null {
+  if (!passesSharedSnapshotUnplugGtR1Admissibility(input)) return null;
+  if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
+  if (input.physicalProjectionState !== 'PLUGGED') return null;
+  if (!input.physicalProjectionEvidenceAt) return null;
+  if (input.snapshotEvidenceObservedAt.getTime() <= input.physicalProjectionEvidenceAt.getTime()) {
+    return null;
+  }
+  if (input.legacyEvaluation.action !== 'reject') return null;
+  if (input.legacyEvaluation.reason !== 'obd_false') return null;
+
+  return {
+    scenario: 'SNAPSHOT_UNPLUG_TRANSITION',
+    proven: true,
+    evidenceReferenceId: input.evidenceReferenceId,
+    physicalEvidenceObservedAt: input.snapshotEvidenceObservedAt,
+    legacyEvidenceObservedAt: input.physicalProjectionEvidenceAt,
+  };
+}
+
+/**
+ * Snapshot UNPLUG bootstrap: no prior physical projection, admissible SNAPSHOT_OBD UNPLUG evidence,
+ * legacy episode model rejects only for obd_false with aligned binding identity.
+ */
+export function buildSnapshotUnplugInitialEstablishmentGtR1Proof(
+  input: SnapshotGtR1ProofInput,
+): GtR1ExpectedFixProof | null {
+  if (!passesSharedSnapshotUnplugGtR1Admissibility(input)) return null;
+  if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
+  if (input.physicalProjectionState != null) return null;
+  if (input.physicalProjectionEvidenceAt != null) return null;
+  if (input.legacyEvaluation.action !== 'reject') return null;
+  if (input.legacyEvaluation.reason !== 'obd_false') return null;
+
+  return {
+    scenario: 'SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT',
+    proven: true,
+    evidenceReferenceId: input.evidenceReferenceId,
+    physicalEvidenceObservedAt: input.snapshotEvidenceObservedAt,
+    legacyEvidenceObservedAt: null,
+  };
+}
+
+/**
  * Canonical snapshot GT-R1 proof resolver for production call-sites.
  * Repair (UNPLUGGED baseline) takes precedence over bootstrap (absent projection).
  */
 export function buildSnapshotGtR1Proof(input: SnapshotGtR1ProofInput): GtR1ExpectedFixProof | null {
   return (
     buildSnapshotPlugRepairGtR1Proof(input) ??
-    buildSnapshotPlugInitialEstablishmentGtR1Proof(input)
+    buildSnapshotPlugInitialEstablishmentGtR1Proof(input) ??
+    buildSnapshotUnplugTransitionGtR1Proof(input) ??
+    buildSnapshotUnplugInitialEstablishmentGtR1Proof(input)
   );
 }
 
