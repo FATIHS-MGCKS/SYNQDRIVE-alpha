@@ -12,20 +12,20 @@ CREATE TYPE "Exp021CanaryLiveWindowActivationState" AS ENUM (
 );
 
 CREATE TABLE "exp021_canary_live_window_activation_ledgers" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
-  "organization_id" UUID NOT NULL,
-  "vehicle_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
+  "vehicle_id" TEXT NOT NULL,
   "token_id" INTEGER NOT NULL,
-  "vehicle_trip_id" UUID NOT NULL,
-  "study_run_id" UUID,
-  "session_id" UUID,
+  "vehicle_trip_id" TEXT NOT NULL,
+  "study_run_id" TEXT,
+  "session_id" TEXT,
   "state" "Exp021CanaryLiveWindowActivationState" NOT NULL DEFAULT 'CLAIMED',
   "failure_reason" TEXT,
-  "activation_not_before_at" TIMESTAMPTZ NOT NULL,
-  "trip_start_time" TIMESTAMPTZ NOT NULL,
-  "trip_end_time" TIMESTAMPTZ,
-  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "activation_not_before_at" TIMESTAMP(3) NOT NULL,
+  "trip_start_time" TIMESTAMP(3) NOT NULL,
+  "trip_end_time" TIMESTAMP(3),
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "exp021_canary_live_window_activation_ledgers_pkey" PRIMARY KEY ("id")
 );
 
@@ -36,7 +36,7 @@ CREATE UNIQUE INDEX "exp021_canary_live_window_activation_ledgers_session_id_key
   ON "exp021_canary_live_window_activation_ledgers"("session_id")
   WHERE "session_id" IS NOT NULL;
 
-CREATE INDEX "exp021_canary_live_window_activation_ledgers_vehicle_state_idx"
+CREATE INDEX "exp021_canary_live_window_activation_ledgers_vehicle_id_state_idx"
   ON "exp021_canary_live_window_activation_ledgers"("vehicle_id", "state");
 
 ALTER TABLE "exp021_canary_live_window_activation_ledgers"
