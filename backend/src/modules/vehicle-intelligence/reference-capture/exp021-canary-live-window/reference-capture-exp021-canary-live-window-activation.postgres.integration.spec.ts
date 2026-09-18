@@ -145,9 +145,9 @@ async function seedStudyEnrollment(
       };
       let sessionCreateCount = 0;
       const mockSession = {
-        createSession: jest.fn(async () => {
+        createSession: jest.fn(async (input: { sessionId?: string }) => {
           sessionCreateCount += 1;
-          const id = randomUUID();
+          const id = input.sessionId ?? randomUUID();
           await prisma.referenceCaptureSession.create({
             data: {
               id,

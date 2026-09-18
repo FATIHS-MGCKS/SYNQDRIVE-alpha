@@ -1,15 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Exp021CanaryLiveWindowActivationState, Prisma, TripStatus } from '@prisma/client';
+import {
+  Exp021CanaryLiveWindowActivationState,
+  Prisma,
+  ReferenceCaptureSessionStatus,
+  TripStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { ReferenceCaptureFastGoService } from '../reference-capture-fast-go.service';
 import { ACTIVE_REFERENCE_CAPTURE_BLOCKING_STATUSES } from '../reference-capture-prearm.policy';
 import { ReferenceCaptureSessionService } from '../reference-capture-session.service';
 import { ReferenceCaptureExp021FleetRepository } from '../exp021-fleet/reference-capture-exp021-fleet.repository';
-import {
-  resumeCanaryArmFromLedger,
-  type CanaryArmLedgerRow,
-} from './reference-capture-exp021-canary-live-window-activation.arm.lib';
+import type { CanaryArmLedgerRow } from './reference-capture-exp021-canary-live-window-activation.arm.lib';
 import { mapPrismaLedgerState } from './reference-capture-exp021-canary-live-window-activation.claim.lib';
 import {
   buildCanaryLiveWindowActivationConfig,
@@ -22,6 +24,11 @@ import {
   EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO_ENV,
   EXP021_CANARY_LIVE_WINDOW_CANARY,
 } from './reference-capture-exp021-canary-live-window-activation.constants';
+import {
+  finalizeCanaryLiveWindowRecording,
+  ledgerStateAfterCanaryFinalize,
+} from './reference-capture-exp021-canary-live-window-activation.finalize.lib';
+import { executeIdempotentCanaryArm } from './reference-capture-exp021-canary-live-window-activation.idempotent-arm.lib';
 
 @Injectable()
 export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
@@ -203,20 +210,12 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     }
   }
 
-  private async armOngoingTrip(
+  async armOngoingTrip(
     trip: CanaryLiveWindowTripSnapshot,
     activationNotBeforeMs: number,
   ): Promise<{ sessionId: string; studyRunId: string }> {
     const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     const ledger = await this.claimVehicleTripLedger(trip, activationNotBeforeMs);
-
-    if (
-      ledger.state === Exp021CanaryLiveWindowActivationState.RECORDING_STARTED &&
-      ledger.sessionId &&
-      ledger.studyRunId
-    ) {
-      return { sessionId: ledger.sessionId, studyRunId: ledger.studyRunId };
-    }
 
     const enrollment = await this.prisma.exp021StudyEnrollment.findFirst({
       where: {
@@ -238,42 +237,32 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       throw new Error('Canary enrollment not found');
     }
 
-    const persistence = {
-      updateLedger: async (
-        ledgerId: string,
-        patch: {
-          state: Exp021CanaryLiveWindowActivationState;
-          studyRunId?: string | null;
-          sessionId?: string | null;
-          failureReason?: string | null;
-        },
-      ) => {
-        await this.prisma.exp021CanaryLiveWindowActivationLedger.update({
-          where: { id: ledgerId },
-          data: patch,
-        });
-      },
-    };
-
-    const sideEffects = {
-      reserveStudyRun: async (enrollmentId: string) => {
-        const { run } = await this.fleetRepository.reserveStudyRunAssignment({
-          enrollmentId,
-          resolvedTokenId: canary.tokenId,
-        });
-        return { studyRunId: run.id };
-      },
-      createSession: async () => {
-        const session = await this.sessionService.createSession({
+    return executeIdempotentCanaryArm({
+      prisma: this.prisma,
+      fleetRepository: this.fleetRepository,
+      ledger,
+      enrollmentId: enrollment.id,
+      resolvedTokenId: canary.tokenId,
+      organizationId: canary.organizationId,
+      vehicleId: canary.vehicleId,
+      createSessionWithId: async (sessionId) => {
+        await this.sessionService.createSession({
+          sessionId,
           organizationId: canary.organizationId,
           vehicleId: canary.vehicleId,
         });
-        return { sessionId: session.id };
       },
-      runPreflight: async (sessionId: string) => {
+      getSessionStatus: async (sessionId) => {
+        const row = await this.prisma.referenceCaptureSession.findFirst({
+          where: { id: sessionId, organizationId: canary.organizationId },
+          select: { status: true },
+        });
+        return row?.status ?? null;
+      },
+      runPreflight: async (sessionId) => {
         await this.sessionService.runPreflight(canary.organizationId, sessionId);
       },
-      executeFastGo: async (sessionId: string) => {
+      executeFastGo: async (sessionId) => {
         const fastGo = await this.fastGoService.executeFastGo({
           organizationId: canary.organizationId,
           vehicleId: canary.vehicleId,
@@ -281,12 +270,10 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
         });
         return { ready: fastGo.readyToDrive, blockers: fastGo.blockers };
       },
-    };
-
-    return resumeCanaryArmFromLedger(ledger, enrollment.id, sideEffects, persistence);
+    });
   }
 
-  private async finalizeCompletedTrip(trip: CanaryLiveWindowTripSnapshot, sessionId: string): Promise<void> {
+  async finalizeCompletedTrip(trip: CanaryLiveWindowTripSnapshot, sessionId: string): Promise<void> {
     const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     const ledger = await this.prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
       where: { vehicleTripId: trip.tripId },
@@ -299,11 +286,43 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       return;
     }
 
-    await this.sessionService.stopRecording(canary.organizationId, sessionId);
+    const session = await this.prisma.referenceCaptureSession.findFirst({
+      where: { id: sessionId, organizationId: canary.organizationId },
+      select: { id: true, status: true },
+    });
+    if (!session) {
+      await this.prisma.exp021CanaryLiveWindowActivationLedger.update({
+        where: { vehicleTripId: trip.tripId },
+        data: {
+          state: Exp021CanaryLiveWindowActivationState.FAILED,
+          failureReason: 'finalize_session_not_found',
+        },
+      });
+      return;
+    }
+
+    const result = await finalizeCanaryLiveWindowRecording({
+      organizationId: canary.organizationId,
+      sessionId,
+      session,
+      stopRecording: (org, sid) => this.sessionService.stopRecording(org, sid),
+    });
+
+    if (result.outcome === 'failed') {
+      await this.prisma.exp021CanaryLiveWindowActivationLedger.update({
+        where: { vehicleTripId: trip.tripId },
+        data: {
+          state: Exp021CanaryLiveWindowActivationState.FAILED,
+          failureReason: result.reason,
+        },
+      });
+      return;
+    }
+
     await this.prisma.exp021CanaryLiveWindowActivationLedger.update({
       where: { vehicleTripId: trip.tripId },
       data: {
-        state: Exp021CanaryLiveWindowActivationState.TRIP_COMPLETED_SEEN,
+        state: ledgerStateAfterCanaryFinalize(ledger.state),
         tripEndTime: trip.endTimeMs != null ? new Date(trip.endTimeMs) : null,
       },
     });

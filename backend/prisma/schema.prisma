@@ -10993,6 +10993,8 @@ model Exp021StudyRun {
   rawEvidenceHash       String?             @map("raw_evidence_hash")
   evidenceLocation      String?             @map("evidence_location")
   scientificEligibility String?             @map("scientific_eligibility")
+  /// Durable idempotency anchor for KS MX 2024 canary live-window activation (one run per vehicle trip).
+  canaryActivationVehicleTripId String?     @unique @map("canary_activation_vehicle_trip_id")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
 

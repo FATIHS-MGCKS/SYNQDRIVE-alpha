@@ -7,6 +7,8 @@ on:
       - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/**'
       - 'backend/scripts/ops/reference-capture-exp021-maturation-shadow-m3-export.ts'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-fleet/**'
+      - 'backend/src/modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/**'
+      - 'backend/src/workers/schedulers/reference-capture-exp021-canary-live-window-activation.scheduler.ts'
       - 'backend/src/modules/vehicle-intelligence/reference-capture/testing/reference-capture-exp021*'
       - 'backend/src/workers/schedulers/reference-capture-exp021-fleet-coordinator.scheduler.ts'
       - 'backend/scripts/ops/reference-capture-exp-021*'
@@ -97,6 +99,44 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
       - run: npm run test:exp021:autonomous:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          TEST_POSTGRES_DATABASE: ${{ env.EXP021_PG_DB }}
+          RC_DEF019_POSTGRES_USER: ${{ env.EXP021_PG_USER }}
+          RC_DEF019_POSTGRES_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          REFERENCE_CAPTURE_POSTGRES_INTEGRATION: '1'
+          REFERENCE_CAPTURE_POSTGRES_REQUIRED: '1'
+
+  exp021-canary-live-window-postgres:
+    name: EXP-021 canary live window PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: exp021_pr1649_test
+          POSTGRES_PASSWORD: exp021_pr1649_test_local
+          POSTGRES_DB: synqdrive_exp021_pr1649_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:exp021:canary-live-window:postgres:ci
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -290,6 +330,7 @@ jobs:
       - exp021-unit-gate
       - exp021-postgres-integration
       - exp021-fleet-unit-gate
+      - exp021-canary-live-window-postgres
       - exp021-fleet-postgres-integration
       - exp021-fleet-migration
       - exp021-maturation-shadow-m3

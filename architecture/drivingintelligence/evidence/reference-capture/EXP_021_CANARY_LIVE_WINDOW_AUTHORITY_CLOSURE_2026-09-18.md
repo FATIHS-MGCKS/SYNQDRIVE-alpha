@@ -59,7 +59,8 @@ EXP-021 maturation canary operator (--wait-next-window)
 
 ## Final hardening (PR #1689 — pre-merge)
 
-- **Claim-before-side-effect:** `vehicle_trip_id` ledger row is inserted in `CLAIMED` before `reserveStudyRunAssignment`, session creation, preflight, or FAST GO (`resumeCanaryArmFromLedger` advances `STUDY_RUN_RESERVED` → `SESSION_CREATED` → `RECORDING_STARTED`).
+- **Claim-before-side-effect:** `vehicle_trip_id` ledger row is inserted in `CLAIMED` before study run, session, preflight, or FAST GO.
+- **Side-effect idempotency:** `reserveStudyRunForCanaryActivation` binds one `exp021_study_runs.canary_activation_vehicle_trip_id` per trip (order balance increments once). Session id is preallocated on the ledger before `createSession(sessionId)`. `executeIdempotentCanaryArm` skips preflight/FAST GO when session is already READY/RECORDING. Finalize adopts `COMPLETED` without re-calling `stopRecording`.
 - **Restart recovery:** Partial rows resume without duplicating study run/session when state already records progress.
 - **Orphan guard:** Foreign blocking RC session (no ledger `session_id` match) blocks new arms; in-progress ledger for the same trip may resume despite blocking session when `session_id` matches.
 - **Scheduler:** Default poll `30_000` ms, min `10_000` ms; arms only on **ONGOING** `vehicle_trips` — trips completing faster than poll interval may be missed (`NO_LEDGER_MISS_NO_BACKFILL` on completion). **Canary procedure:** drive longer than ~2× scheduler interval after T0 (recommend ≥3 minutes moving).

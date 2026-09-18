@@ -86,6 +86,45 @@ async function cleanupOrgVehicle(
     await cleanupOrgVehicle(prisma, organizationId, vehicleId);
   });
 
+  it('reserveStudyRunForCanaryActivation is idempotent per vehicle trip', async () => {
+    const study = await repository.createStudy({ studyKey: `exp021-canary-idem-${randomUUID()}`, dryRun: false });
+    const { organizationId, vehicleId } = await seedOrgVehicle(prisma);
+    const tripId = randomUUID();
+
+    const enrollment = await repository.createEnrollment({
+      studyId: study.id,
+      organizationId,
+      vehicleId,
+      enrolledTokenId: 999003,
+      allowedPlans: ['CANDIDATE_SHORT_AB_90_60'],
+    });
+
+    const balanceBefore = await prisma.exp021StudyOrderBalance.count({ where: { studyId: study.id } });
+
+    const first = await repository.reserveStudyRunForCanaryActivation({
+      enrollmentId: enrollment.id,
+      resolvedTokenId: 999003,
+      canaryActivationVehicleTripId: tripId,
+    });
+    const second = await repository.reserveStudyRunForCanaryActivation({
+      enrollmentId: enrollment.id,
+      resolvedTokenId: 999003,
+      canaryActivationVehicleTripId: tripId,
+    });
+
+    expect(second.run.id).toBe(first.run.id);
+    expect(second.adoptedExisting).toBe(true);
+    const balanceAfter = await prisma.exp021StudyOrderBalance.count({ where: { studyId: study.id } });
+    expect(balanceAfter).toBe(balanceBefore + 1);
+
+    await prisma.exp021StudyRun.delete({ where: { id: first.run.id } });
+    await prisma.exp021StudyOrderBalance.deleteMany({ where: { studyId: study.id } });
+    await prisma.exp021StudyVehicleOrderBalance.deleteMany({ where: { studyId: study.id } });
+    await prisma.exp021StudyEnrollment.delete({ where: { id: enrollment.id } });
+    await prisma.exp021Study.delete({ where: { id: study.id } });
+    await cleanupOrgVehicle(prisma, organizationId, vehicleId);
+  });
+
   it('reserveStudyRunAssignment derives run identity from enrollment authority', async () => {
     const study = await repository.createStudy({ studyKey: `exp021-run-${randomUUID()}`, dryRun: true });
     const { organizationId, vehicleId } = await seedOrgVehicle(prisma);

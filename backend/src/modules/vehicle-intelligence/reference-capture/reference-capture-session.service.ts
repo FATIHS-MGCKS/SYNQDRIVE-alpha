@@ -84,6 +84,7 @@ export class ReferenceCaptureSessionService {
     );
 
     const session = await this.sessionRepository.create({
+      id: input.sessionId,
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       connectionProfile: input.connectionProfile ?? REFERENCE_CAPTURE_CONNECTION_PROFILE,
