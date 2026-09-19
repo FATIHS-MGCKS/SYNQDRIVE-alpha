@@ -461,6 +461,19 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
    * Active families = families with at least one non-terminal observation slot.
    * Terminal slot: successful attempt OR transport retry budget exhausted.
    */
+  async maxEnrolledCanonicalWindowToMsForVehicle(
+    organizationId: string,
+    vehicleId: string,
+    tokenId: number,
+  ): Promise<number | null> {
+    const row = await this.prisma.exp021MaturationShadowWindowFamily.findFirst({
+      where: { organizationId, vehicleId, tokenId },
+      orderBy: { canonicalWindowTo: 'desc' },
+      select: { canonicalWindowTo: true },
+    });
+    return row ? row.canonicalWindowTo.getTime() : null;
+  }
+
   async countUnfinishedFamiliesForVehicle(
     vehicleId: string,
     tx?: Prisma.TransactionClient,

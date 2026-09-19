@@ -82,6 +82,9 @@ function memberDeps(member: Exp021CanaryCohortMember) {
     loadSettlementShadowExperiments: async () => [],
     sleep: async () => undefined,
     now: () => new Date(),
+    activationNotBeforeMs: Date.parse('2026-09-19T13:32:23.000Z'),
+    resolveEnrollmentCursorPhysicalEndMs: async () =>
+      Date.parse('2026-09-19T13:32:23.000Z') - 1,
   };
 }
 
