@@ -7,6 +7,7 @@ import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-
 import {
   buildRuntimeDetectionContextFromTrust,
   linearRiseSamples,
+  sampleAt,
   stablePlateauSamples,
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 
@@ -183,6 +184,85 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
     expect(result.observationsEmitted).toBe(2);
     expect(result.candidateOutcomes.some((o) => o.error)).toBe(true);
     expect(result.candidatesCreated).toBe(1);
+  });
+
+  it('F10.6.6-A.1 — strict-gap rise emits rejectedOrHeld only and does not persist', async () => {
+    const strictGapSamples = [
+      ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300),
+      sampleAt('2026-09-06T08:16:00.000Z', 20),
+      sampleAt('2026-09-06T08:24:00.000Z', 26),
+      sampleAt('2026-09-06T08:32:00.000Z', 30),
+    ];
+    const resolveOrCreateCandidate = jest.fn();
+    const { service } = createService({
+      fetchFuelLevelSamplesWithOutcome: jest.fn().mockResolvedValue({
+        status: 'SUCCESS',
+        samples: strictGapSamples.map((s) => ({
+          timestamp: s.timestamp,
+          absoluteLiters: s.absoluteLiters ?? null,
+          relativePercent: s.relativePercent ?? null,
+        })),
+      }),
+      resolveOrCreateCandidate,
+    });
+    const result = await service.scanIfEnabled(baseInput);
+    expect(result.observationsEmitted).toBe(0);
+    expect(result.persistAttempted).toBe(0);
+    expect(resolveOrCreateCandidate).not.toHaveBeenCalled();
+  });
+
+  it('F10.6.6-A.1 — prior persist path unchanged when later scan is strict-gap rejectedOrHeld only', async () => {
+    const resolveOrCreateCandidate = jest
+      .fn()
+      .mockResolvedValueOnce({
+        candidateId: 'cand-partial',
+        created: true,
+        updated: false,
+        lifecycleState: 'OBSERVED',
+        candidateIdentityKey: 'key-partial',
+        evidenceRevisionFingerprint: 'fp-1',
+      });
+    const partialSamples = [
+      ...stablePlateauSamples('2026-09-19T15:40:26.000Z', 5, 5, 120),
+      sampleAt('2026-09-19T16:11:24.000Z', 16),
+      sampleAt('2026-09-19T16:13:26.000Z', 17),
+      sampleAt('2026-09-19T16:15:27.000Z', 18),
+    ];
+    const strictGapSamples = [
+      ...stablePlateauSamples('2026-09-06T08:00:00.000Z', 10, 3, 300),
+      sampleAt('2026-09-06T08:16:00.000Z', 20),
+      sampleAt('2026-09-06T08:24:00.000Z', 26),
+      sampleAt('2026-09-06T08:32:00.000Z', 30),
+    ];
+    let call = 0;
+    const fetchFuelLevelSamplesWithOutcome = jest.fn().mockImplementation(async () => {
+      call += 1;
+      const samples = call === 1 ? partialSamples : strictGapSamples;
+      return {
+        status: 'SUCCESS',
+        samples: samples.map((s) => ({
+          timestamp: s.timestamp,
+          absoluteLiters: s.absoluteLiters ?? null,
+          relativePercent: s.relativePercent ?? null,
+        })),
+      };
+    });
+    const service = new RawFuelRefuelFallbackRuntimeService(
+      { fetchFuelLevelSamplesWithOutcome } as never,
+      { resolveOrCreateCandidate } as never,
+      undefined,
+      undefined,
+      undefined,
+    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
+
+    const partialInput = {
+      ...baseInput,
+      windowFrom: new Date('2026-09-19T15:00:00.000Z'),
+      windowTo: new Date('2026-09-19T18:00:00.000Z'),
+    };
+    await service.scanIfEnabled(partialInput);
+    await service.scanIfEnabled(baseInput);
+    expect(resolveOrCreateCandidate).toHaveBeenCalledTimes(1);
   });
 });
 

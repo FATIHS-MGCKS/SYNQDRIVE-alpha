@@ -115,5 +115,6 @@ export RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1
 npm test -- \
   raw-fuel-refuel-fallback-runtime.postgres.integration.spec.ts \
   raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts \
+  raw-fuel-rise-liveness.postgres.integration.spec.ts \
   raw-refuel-candidate.postgres.integration.spec.ts \
   --runInBand --verbose --forceExit

@@ -471,11 +471,11 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
       }
     });
 
-    it('throws on invalid lifecycle transition during non-terminal update', async () => {
+    it('allows F10.6.6-A evidence-maturity refinement INSUFFICIENT to READY_FOR_PERSIST on same row', async () => {
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       try {
-        await service.resolveOrCreateCandidate(
+        const first = await service.resolveOrCreateCandidate(
           buildTestObservation({
             organizationId: org.id,
             vehicleId: vehicle.id,
@@ -485,13 +485,42 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
             riseOnsetAt: new Date('2026-09-06T09:39:30.000Z'),
           }),
         );
+        const second = await service.resolveOrCreateCandidate(
+          buildTestObservation({
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            lifecycleState: 'READY_FOR_PERSIST',
+            preFuelAbsoluteLiters: 7,
+            riseOnsetAt: new Date('2026-09-06T09:39:30.000Z'),
+          }),
+        );
+        expect(second.candidateId).toBe(first.candidateId);
+        expect(second.lifecycleState).toBe('READY_FOR_PERSIST');
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('throws on invalid lifecycle regression during non-terminal update', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        await service.resolveOrCreateCandidate(
+          buildTestObservation({
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            lifecycleState: 'SETTLING',
+            rejectionReason: 'INSUFFICIENT_POST_PLATEAU',
+            riseOnsetAt: new Date('2026-09-06T09:39:30.000Z'),
+          }),
+        );
         await expect(
           service.resolveOrCreateCandidate(
             buildTestObservation({
               organizationId: org.id,
               vehicleId: vehicle.id,
-              lifecycleState: 'READY_FOR_PERSIST',
-              preFuelAbsoluteLiters: 7,
+              lifecycleState: 'OBSERVED',
               riseOnsetAt: new Date('2026-09-06T09:39:30.000Z'),
             }),
           ),
