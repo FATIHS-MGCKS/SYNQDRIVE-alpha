@@ -1,6 +1,7 @@
 import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import {
   buildDetectorPhysicsContext,
+  buildSparseBridgeRefuelEpisodeSamples,
   linearRiseSamples,
   sampleAt,
   stablePlateauSamples,
@@ -10,33 +11,6 @@ import {
   resolveNextLifecycleState,
 } from '../raw-refuel-candidate/raw-refuel-candidate-lifecycle';
 import { RawRefuelCandidateLifecycleTransitionError } from '../raw-refuel-candidate/raw-refuel-candidate.errors';
-
-/**
- * Generalized episode shape from F10.6.5 (stable pre, sparse bridge, stepped rise, delayed post).
- * No vehicle-specific identifiers — physics only.
- */
-function buildSparseBridgeRefuelEpisodeSamples(includeDelayedPost: boolean) {
-  const pre = [
-    sampleAt('2026-09-19T15:40:26.000Z', 5),
-    sampleAt('2026-09-19T15:42:26.000Z', 5),
-    sampleAt('2026-09-19T15:44:26.000Z', 5),
-    sampleAt('2026-09-19T15:46:26.000Z', 5),
-    sampleAt('2026-09-19T15:48:26.000Z', 5),
-  ];
-  const rise = [
-    sampleAt('2026-09-19T16:11:24.000Z', 16),
-    sampleAt('2026-09-19T16:13:26.000Z', 17),
-    sampleAt('2026-09-19T16:15:27.000Z', 18),
-  ];
-  const post = includeDelayedPost
-    ? [
-        sampleAt('2026-09-19T16:53:59.000Z', 18),
-        sampleAt('2026-09-19T16:56:15.000Z', 18),
-        sampleAt('2026-09-19T16:58:31.000Z', 18),
-      ]
-    : [];
-  return [...pre, ...rise, ...post];
-}
 
 describe('raw-fuel-rise-liveness F10.6.6-A', () => {
   const sparseBridgeContext = buildDetectorPhysicsContext({
