@@ -56,6 +56,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-6-a-candidate-liveness-2026-09-19',
+    version: '4.9.1148',
+    title: 'RFRF F10.6.6-A — candidate liveness (semantic gaps + lifecycle refinement)',
+    summary: [
+      'F3 gap model: strict continuity only inside PRE/RISE/POST regions; PRE→RISE and RISE→POST provider bridges no longer fail lifecycle on global max gap.',
+      'Post-plateau search horizon uses riseMaxDurationMs (45m); inter-sample post gaps remain bounded by maxSampleGapMs.',
+      'Lifecycle: evidence-maturity refinement allows INSUFFICIENT→SETTLING/READY without reactivating terminal rows; rise-internal gap failures terminal REJECTED.',
+      'Regression fixture: sparse-bridge refuel episode (generalized WOB shape) + adversarial liveness suite.',
+      'No Production deploy, schema migration, Stage change, or native VEE idempotency changes in this PR.',
+    ],
+    reason:
+      'F10.6.5 proved production candidate liveness defect: bridge gaps poisoned global maxGap, delayed post search capped at 6m, and INSUFFICIENT→SETTLING persist threw.',
+    previousBehavior:
+      'Concatenated pre+rise+post max gap blocked READY; findLocalPostPlateauAfterRise stopped ~6m after peak; INSUFFICIENT could not refine to SETTLING on better evidence.',
+    details:
+      'raw-fuel-rise-gap-semantics.ts; raw-fuel-rise-state-machine.ts; raw-refuel-candidate-lifecycle.ts; raw-fuel-rise-liveness.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T18:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19',
     version: '4.9.1147',
     title: 'RFRF F10.6.0 — Stage-4 convergence readiness + transaction safety',
