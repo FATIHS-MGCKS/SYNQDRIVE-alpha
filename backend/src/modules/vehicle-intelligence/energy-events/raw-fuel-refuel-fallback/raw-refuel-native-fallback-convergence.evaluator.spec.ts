@@ -170,6 +170,17 @@ describe('evaluateRawRefuelNativeFallbackConvergence (F5 authoritative)', () => 
     expect(result.detail).toBe('multiple_same_native_siblings');
   });
 
+  it('F10.6.6-B — pre-fix raw triple-SAME remains ambiguous before reconciliation filter', () => {
+    const result = evaluate([
+      nativeSame,
+      { ...nativeSame, id: 'native-same-2', dimoSegmentId: 'd2' },
+      { ...nativeSame, id: 'native-same-3', dimoSegmentId: 'd3' },
+    ]);
+    expect(result.classification).toBe('AMBIGUOUS');
+    expect(result.failClosed).toBe(true);
+    expect(result.sameNativeEventIds).toHaveLength(3);
+  });
+
   it('all DISTINCT => DISTINCT_FROM_NATIVE without convergence', () => {
     const result = evaluate([nativeDistinct]);
     expect(result.classification).toBe('DISTINCT_FROM_NATIVE');

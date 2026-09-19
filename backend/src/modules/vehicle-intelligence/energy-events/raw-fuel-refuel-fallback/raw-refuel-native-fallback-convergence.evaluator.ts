@@ -12,6 +12,12 @@ export const MAX_AUTHORITATIVE_NATIVE_SIBLINGS = 32;
 
 export const NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL = 'native_sibling_limit_exceeded';
 
+export const NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL =
+  'native_physical_reconciliation_not_final';
+
+export const PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL =
+  'physical_refuel_authority_conflict';
+
 /** Sentinel query size: load MAX+1 to detect overflow without silent truncation. */
 export const AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE =
   MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1;
@@ -30,6 +36,32 @@ export function buildNativeSiblingLimitExceededEvaluation(): RawRefuelNativeFall
     insufficientNativeEventIds: [],
     siblingAssessments: [],
     detail: NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: true,
+  });
+}
+
+export function buildPendingPhysicalReconciliationEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'INSUFFICIENT_EVIDENCE',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: false,
+  });
+}
+
+export function buildPhysicalRefuelAuthorityConflictEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'AMBIGUOUS',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL,
     shouldConvergeToNative: false,
     failClosed: true,
   });

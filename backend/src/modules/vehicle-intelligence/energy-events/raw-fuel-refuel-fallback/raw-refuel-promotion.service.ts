@@ -15,13 +15,14 @@ import { evaluateRawRefuelCandidateReadiness } from './raw-refuel-candidate-read
 import type { RawRefuelPromotionPreparationContext } from './raw-refuel-promotion-preparation.service';
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import {
-  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
-  buildAuthoritativeNativeRefuelSiblingWhere,
   buildNativeSiblingLimitExceededEvaluation,
+  buildPendingPhysicalReconciliationEvaluation,
+  buildPhysicalRefuelAuthorityConflictEvaluation,
   detectAuthoritativeNativeSiblingLimitExceeded,
   evaluateRawRefuelNativeFallbackConvergence,
   NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
 } from './raw-refuel-native-fallback-convergence.evaluator';
+import { loadAuthoritativeNativeRefuelSiblings } from './authoritative-native-refuel-siblings.resolver';
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
 import { evaluateRawRefuelPromotionCutover } from './raw-refuel-promotion-cutover.util';
@@ -399,19 +400,26 @@ export class RawRefuelPromotionService {
     candidate: RawRefuelCandidate,
   ): Promise<RawRefuelNativeFallbackConvergenceEvaluation> {
     const window = computeNativeOverlapQueryWindow(candidate);
-    const nativeRows = await tx.vehicleEnergyEvent.findMany({
-      where: buildAuthoritativeNativeRefuelSiblingWhere(candidate, window),
-      orderBy: { startTime: 'asc' },
-      take: AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
-    });
+    const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, candidate, window);
 
-    if (detectAuthoritativeNativeSiblingLimitExceeded(nativeRows.length)) {
+    if (siblingLoad.status === 'PENDING_RECONCILIATION') {
+      return buildPendingPhysicalReconciliationEvaluation();
+    }
+    if (siblingLoad.status === 'AUTHORITY_CONFLICT') {
+      return buildPhysicalRefuelAuthorityConflictEvaluation();
+    }
+
+    if (
+      detectAuthoritativeNativeSiblingLimitExceeded(
+        siblingLoad.authoritativeNativeRows.length,
+      )
+    ) {
       return buildNativeSiblingLimitExceededEvaluation();
     }
 
     return evaluateRawRefuelNativeFallbackConvergence({
       candidate,
-      nativeRefuelRows: nativeRows.map(vehicleEnergyEventToRefuelRow),
+      nativeRefuelRows: siblingLoad.authoritativeNativeRows,
     });
   }
 
