@@ -1,6 +1,6 @@
 import { EXP021_KS_MX_2024_CANARY } from '../exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.constants';
 
-/** Hard-coded KS MX 2024 canary — allowlist size 1. */
+/** Legacy KS MX 2024 reference token (tests / single-vehicle seeds). Live authority uses cohort JSON. */
 export const EXP021_CANARY_LIVE_WINDOW_TOKEN_ID = EXP021_KS_MX_2024_CANARY.tokenId;
 
 export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED_ENV =

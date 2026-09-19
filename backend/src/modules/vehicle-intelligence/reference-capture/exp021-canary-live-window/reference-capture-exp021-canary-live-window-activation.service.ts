@@ -24,8 +24,11 @@ import {
 import {
   EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED_ENV,
   EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO_ENV,
-  EXP021_CANARY_LIVE_WINDOW_CANARY,
 } from './reference-capture-exp021-canary-live-window-activation.constants';
+import {
+  resolveExp021CanaryCohortFromEnv,
+  type Exp021CanaryCohortMember,
+} from './reference-capture-exp021-canary-live-window-cohort.lib';
 import {
   finalizeCanaryLiveWindowRecording,
   ledgerStateAfterCanaryFinalize,
@@ -48,7 +51,46 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
   resolveConfigFromEnv(): ReturnType<typeof buildCanaryLiveWindowActivationConfig> {
     const enabled = process.env[EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED_ENV] === 'true';
     const notBeforeIso = process.env[EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO_ENV];
-    return buildCanaryLiveWindowActivationConfig({ enabled, activationNotBeforeIso: notBeforeIso });
+    const cohort = resolveExp021CanaryCohortFromEnv();
+    return buildCanaryLiveWindowActivationConfig({
+      enabled,
+      activationNotBeforeIso: notBeforeIso,
+      cohort,
+    });
+  }
+
+  private async resolveEligibleCohortMembers(
+    cohort: NonNullable<ReturnType<typeof buildCanaryLiveWindowActivationConfig>>['cohort'],
+  ): Promise<Exp021CanaryCohortMember[]> {
+    const vehicleIds = cohort.members.map((m) => m.vehicleId);
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: vehicleIds } },
+      select: {
+        id: true,
+        organizationId: true,
+        dimoVehicle: { select: { tokenId: true } },
+      },
+    });
+    const eligible: Exp021CanaryCohortMember[] = [];
+    for (const member of cohort.members) {
+      const row = vehicles.find((v) => v.id === member.vehicleId);
+      const boundToken = row?.dimoVehicle?.tokenId;
+      if (
+        !row ||
+        row.organizationId !== member.organizationId ||
+        boundToken !== member.tokenId
+      ) {
+        this.logger.error({
+          msg: 'EXP021_CANARY_COHORT_MEMBER_BINDING_INVALID',
+          vehicleId: member.vehicleId,
+          expectedTokenId: member.tokenId,
+          resolvedTokenId: boundToken ?? null,
+        });
+        continue;
+      }
+      eligible.push(member);
+    }
+    return eligible;
   }
 
   async runActivationTick(now = new Date()): Promise<void> {
@@ -65,44 +107,42 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       return;
     }
 
-    const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: canary.vehicleId, organizationId: canary.organizationId },
-      select: { dimoVehicle: { select: { tokenId: true } } },
-    });
-    const tokenId = vehicle?.dimoVehicle?.tokenId;
-    if (tokenId !== canary.tokenId) {
-      this.logger.error('EXP021 canary vehicle token binding mismatch — fail closed');
+    const eligibleMembers = await this.resolveEligibleCohortMembers(config.cohort);
+    if (eligibleMembers.length === 0) {
+      this.logger.error('EXP021 canary cohort has zero eligible members — fail closed');
       return;
     }
+
+    const eligibleVehicleIds = eligibleMembers.map((m) => m.vehicleId);
+    const memberByVehicleId = new Map(eligibleMembers.map((m) => [m.vehicleId, m]));
 
     const notBefore = new Date(config.activationNotBeforeMs);
     const ongoingTrips = await this.prisma.vehicleTrip.findMany({
       where: {
-        vehicleId: canary.vehicleId,
+        vehicleId: { in: eligibleVehicleIds },
         tripStatus: TripStatus.ONGOING,
         startTime: { gte: notBefore },
       },
       select: { id: true, vehicleId: true, startTime: true, endTime: true, tripStatus: true },
       orderBy: { startTime: 'asc' },
-      take: 5,
+      take: 15,
     });
 
     const completedTrips = await this.prisma.vehicleTrip.findMany({
       where: {
-        vehicleId: canary.vehicleId,
+        vehicleId: { in: eligibleVehicleIds },
         tripStatus: TripStatus.COMPLETED,
         endTime: { gte: notBefore },
       },
       select: { id: true, vehicleId: true, startTime: true, endTime: true, tripStatus: true },
       orderBy: { endTime: 'desc' },
-      take: 5,
+      take: 15,
     });
 
     const ledgerRows = await this.prisma.exp021CanaryLiveWindowActivationLedger.findMany({
-      where: { vehicleId: canary.vehicleId },
+      where: { vehicleId: { in: eligibleVehicleIds } },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: 60,
     });
     const ledgerByTripId = new Map<string, CanaryLiveWindowLedgerSnapshot>();
     for (const row of ledgerRows) {
@@ -113,48 +153,56 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       });
     }
 
-    const blockingSession = await this.prisma.referenceCaptureSession.findFirst({
+    const blockingSessions = await this.prisma.referenceCaptureSession.findMany({
       where: {
-        organizationId: canary.organizationId,
-        vehicleId: canary.vehicleId,
+        vehicleId: { in: eligibleVehicleIds },
         status: { in: ACTIVE_REFERENCE_CAPTURE_BLOCKING_STATUSES },
       },
-      select: { id: true },
+      select: { id: true, vehicleId: true, organizationId: true },
     });
-
-    if (
-      blockingSession &&
-      !ledgerRows.some((row) => row.sessionId === blockingSession.id)
-    ) {
-      this.logger.error({
-        msg: 'EXP021_CANARY_ORPHAN_BLOCKING_SESSION_WITHOUT_LEDGER',
-        sessionId: blockingSession.id,
-        vehicleId: canary.vehicleId,
-      });
+    const activeBlockingSessionByVehicleId = new Map<string, string>();
+    for (const session of blockingSessions) {
+      activeBlockingSessionByVehicleId.set(session.vehicleId, session.id);
+      if (!ledgerRows.some((row) => row.sessionId === session.id)) {
+        this.logger.error({
+          msg: 'EXP021_CANARY_ORPHAN_BLOCKING_SESSION_WITHOUT_LEDGER',
+          sessionId: session.id,
+          vehicleId: session.vehicleId,
+        });
+      }
     }
 
     const toTripSnapshot = (
-      row: (typeof ongoingTrips)[number],
-    ): CanaryLiveWindowTripSnapshot => ({
-      tripId: row.id,
-      vehicleId: row.vehicleId,
-      organizationId: canary.organizationId,
-      tokenId: canary.tokenId,
-      tripStatus: row.tripStatus === TripStatus.COMPLETED ? 'COMPLETED' : 'ONGOING',
-      startTimeMs: row.startTime.getTime(),
-      endTimeMs: row.endTime?.getTime() ?? null,
-    });
+      row: (typeof ongoingTrips)[number] | (typeof completedTrips)[number],
+    ): CanaryLiveWindowTripSnapshot | null => {
+      const member = memberByVehicleId.get(row.vehicleId);
+      if (!member) return null;
+      return {
+        tripId: row.id,
+        vehicleId: row.vehicleId,
+        organizationId: member.organizationId,
+        tokenId: member.tokenId,
+        tripStatus: row.tripStatus === TripStatus.COMPLETED ? 'COMPLETED' : 'ONGOING',
+        startTimeMs: row.startTime.getTime(),
+        endTimeMs: row.endTime?.getTime() ?? null,
+      };
+    };
 
     const tick = await runCanaryLiveWindowActivationCoordinatorTick({
       config,
-      ongoingTrips: ongoingTrips.map(toTripSnapshot),
-      completedTrips: completedTrips.map(toTripSnapshot),
+      ongoingTrips: ongoingTrips.map(toTripSnapshot).filter((t): t is CanaryLiveWindowTripSnapshot => t != null),
+      completedTrips: completedTrips.map(toTripSnapshot).filter((t): t is CanaryLiveWindowTripSnapshot => t != null),
       ledgerByTripId,
-      activeBlockingSessionId: blockingSession?.id ?? null,
+      activeBlockingSessionByVehicleId,
       ports: {
-        armOngoingTrip: (trip) => this.armOngoingTrip(trip, config.activationNotBeforeMs),
+        armOngoingTrip: (trip) => this.armOngoingTrip(trip, config.activationNotBeforeMs, config.cohort),
         finalizeCompletedTrip: (args) =>
-          this.finalizeCompletedTrip(args.trip, args.ledger.sessionId!, config.activationNotBeforeMs),
+          this.finalizeCompletedTrip(
+            args.trip,
+            args.ledger.sessionId!,
+            config.activationNotBeforeMs,
+            config.cohort,
+          ),
       },
     });
 
@@ -173,13 +221,12 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     trip: CanaryLiveWindowTripSnapshot,
     activationNotBeforeMs: number,
   ): Promise<CanaryArmLedgerRow> {
-    const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     try {
       const row = await this.prisma.exp021CanaryLiveWindowActivationLedger.create({
         data: {
-          organizationId: canary.organizationId,
-          vehicleId: canary.vehicleId,
-          tokenId: canary.tokenId,
+          organizationId: trip.organizationId,
+          vehicleId: trip.vehicleId,
+          tokenId: trip.tokenId,
           vehicleTripId: trip.tripId,
           state: Exp021CanaryLiveWindowActivationState.CLAIMED,
           activationNotBeforeAt: new Date(activationNotBeforeMs),
@@ -217,15 +264,15 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
   async armOngoingTrip(
     trip: CanaryLiveWindowTripSnapshot,
     activationNotBeforeMs: number,
+    cohort: NonNullable<ReturnType<typeof buildCanaryLiveWindowActivationConfig>>['cohort'],
   ): Promise<{ sessionId: string; studyRunId: string }> {
-    const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     const ledger = await this.claimVehicleTripLedger(trip, activationNotBeforeMs);
 
     const enrollment = await this.prisma.exp021StudyEnrollment.findFirst({
       where: {
-        vehicleId: canary.vehicleId,
-        organizationId: canary.organizationId,
-        enrolledTokenId: canary.tokenId,
+        vehicleId: trip.vehicleId,
+        organizationId: trip.organizationId,
+        enrolledTokenId: trip.tokenId,
         enabled: true,
       },
       orderBy: { enrolledAt: 'desc' },
@@ -246,30 +293,30 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       fleetRepository: this.fleetRepository,
       ledger,
       enrollmentId: enrollment.id,
-      resolvedTokenId: canary.tokenId,
-      organizationId: canary.organizationId,
-      vehicleId: canary.vehicleId,
+      resolvedTokenId: trip.tokenId,
+      organizationId: trip.organizationId,
+      vehicleId: trip.vehicleId,
       createSessionWithId: async (sessionId) => {
         await this.sessionService.createSession({
           sessionId,
-          organizationId: canary.organizationId,
-          vehicleId: canary.vehicleId,
+          organizationId: trip.organizationId,
+          vehicleId: trip.vehicleId,
         });
       },
       getSessionStatus: async (sessionId) => {
         const row = await this.prisma.referenceCaptureSession.findFirst({
-          where: { id: sessionId, organizationId: canary.organizationId },
+          where: { id: sessionId, organizationId: trip.organizationId },
           select: { status: true },
         });
         return row?.status ?? null;
       },
       runPreflight: async (sessionId) => {
-        await this.sessionService.runPreflight(canary.organizationId, sessionId);
+        await this.sessionService.runPreflight(trip.organizationId, sessionId);
       },
       executeFastGo: async (sessionId) => {
         const fastGo = await this.fastGoService.executeFastGo({
-          organizationId: canary.organizationId,
-          vehicleId: canary.vehicleId,
+          organizationId: trip.organizationId,
+          vehicleId: trip.vehicleId,
           sessionId,
         });
         return { ready: fastGo.readyToDrive, blockers: fastGo.blockers };
@@ -281,8 +328,8 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     trip: CanaryLiveWindowTripSnapshot,
     sessionId: string,
     currentActivationNotBeforeMs: number,
+    cohort: NonNullable<ReturnType<typeof buildCanaryLiveWindowActivationConfig>>['cohort'],
   ): Promise<void> {
-    const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
     const ledger = await this.prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
       where: { vehicleTripId: trip.tripId },
     });
@@ -295,7 +342,7 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     }
 
     const session = await this.prisma.referenceCaptureSession.findFirst({
-      where: { id: sessionId, organizationId: canary.organizationId },
+      where: { id: sessionId, organizationId: trip.organizationId },
       select: { id: true, status: true },
     });
     if (!session) {
@@ -310,7 +357,7 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
     }
 
     const result = await finalizeCanaryLiveWindowRecording({
-      organizationId: canary.organizationId,
+      organizationId: trip.organizationId,
       sessionId,
       session,
       stopRecording: (org, sid) => this.sessionService.stopRecording(org, sid),
@@ -334,10 +381,12 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationService {
       currentActivationNotBeforeMs,
       ctx: {
         vehicleTripId: trip.tripId,
-        vehicleId: canary.vehicleId,
-        tokenId: canary.tokenId,
+        vehicleId: trip.vehicleId,
+        tokenId: trip.tokenId,
+        organizationId: trip.organizationId,
         sessionId,
         activationNotBeforeMs: ledger.activationNotBeforeAt.getTime(),
+        cohort,
       },
     });
     if (pdiResult.outcome === 'conflict') {

@@ -28,6 +28,8 @@ import {
   EXP021_CANARY_WAIT_NEXT_WINDOW_TIMEOUT_MS,
   EXP021_KS_MX_2024_CANARY,
 } from './reference-capture-exp021-maturation-shadow-canary-enroll.constants';
+import type { Exp021CanaryCohortAuthority } from '../exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
+import { resolveExp021MaturationCanaryCohortFromEnv } from '../exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from './reference-capture-exp021-maturation-shadow.types';
 
 export type Exp021CanaryEnrollCliArgs = {
@@ -253,18 +255,36 @@ export function buildCanaryDryRunPlan(input: {
   };
 }
 
+function sortedTokenIds(ids: number[]): number[] {
+  return [...ids].sort((a, b) => a - b);
+}
+
+export function resolveCanaryCohortAuthorityForGuards(
+  cohortOverride?: Exp021CanaryCohortAuthority | null,
+): Exp021CanaryCohortAuthority {
+  const cohort = cohortOverride ?? resolveExp021MaturationCanaryCohortFromEnv();
+  if (!cohort || cohort.members.length === 0) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      'EXP-021 canary cohort is not configured (set EXP021_MATURATION_SHADOW_CANARY_COHORT_JSON or EXP021_CANARY_LIVE_WINDOW_COHORT_JSON)',
+    );
+  }
+  return cohort;
+}
+
 export async function assertCanaryHardGuards(input: {
   tokenId: number;
   config: ReferenceCaptureConfig;
+  cohort?: Exp021CanaryCohortAuthority | null;
   repository: Pick<
     ReferenceCaptureExp021MaturationShadowRepository,
-    'resolveAuthoritativeTokenId' | 'countUnfinishedFamilies'
+    'resolveAuthoritativeTokenId' | 'countUnfinishedFamiliesForVehicle'
   >;
 }): Promise<Exp021CanaryGuardSnapshot> {
-  const canary = EXP021_KS_MX_2024_CANARY;
-  if (input.tokenId !== canary.tokenId) {
+  const cohort = resolveCanaryCohortAuthorityForGuards(input.cohort);
+  const member = cohort.membersByTokenId.get(input.tokenId);
+  if (!member) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `Canary operator CLI requires tokenId ${canary.tokenId}, received ${input.tokenId}`,
+      `tokenId ${input.tokenId} is not in configured EXP-021 canary cohort [${cohort.tokenIds.join(', ')}]`,
     );
   }
 
@@ -273,6 +293,7 @@ export async function assertCanaryHardGuards(input: {
   const settlementLaneEnabled = input.config.isExp021MaturationShadowSettlementLaneEnabled();
   const allowlistTokenIds = input.config.getExp021MaturationShadowAllowlistTokenIds();
   const maxActiveFamilies = input.config.getExp021MaturationShadowMaxActiveFamilies();
+  const expectedAllowlist = cohort.tokenIds;
 
   if (!globalEnabled) {
     throw new Exp021MaturationShadowFamilyIdentityError(
@@ -289,42 +310,48 @@ export async function assertCanaryHardGuards(input: {
       'Settlement lane disabled (EXP021_MATURATION_SHADOW_SETTLEMENT_LANE_ENABLED=false)',
     );
   }
-  if (allowlistTokenIds.length !== 1 || allowlistTokenIds[0] !== canary.tokenId) {
+  const allowlistSorted = sortedTokenIds(allowlistTokenIds);
+  if (
+    allowlistSorted.length !== expectedAllowlist.length ||
+    allowlistSorted.some((id, index) => id !== expectedAllowlist[index])
+  ) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `Allowlist must contain exactly token ${canary.tokenId}, got [${allowlistTokenIds.join(', ')}]`,
+      `Allowlist must match cohort token ids [${expectedAllowlist.join(', ')}], got [${allowlistTokenIds.join(', ')}]`,
     );
   }
-  if (maxActiveFamilies !== 1) {
+  if (maxActiveFamilies !== cohort.members.length) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `maxActiveFamilies must be exactly 1 for canary, got ${maxActiveFamilies}`,
+      `maxActiveFamilies must equal cohort size (${cohort.members.length}) for multi-vehicle canary, got ${maxActiveFamilies}`,
     );
   }
 
   const authoritativeTokenId = await input.repository.resolveAuthoritativeTokenId(
-    canary.organizationId,
-    canary.vehicleId,
-    canary.tokenId,
+    member.organizationId,
+    member.vehicleId,
+    member.tokenId,
   );
 
-  if (authoritativeTokenId == null || authoritativeTokenId !== canary.tokenId) {
+  if (authoritativeTokenId == null || authoritativeTokenId !== member.tokenId) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `Authoritative token binding mismatch: expected ${canary.tokenId}, resolved ${String(authoritativeTokenId)}`,
+      `Authoritative token binding mismatch for vehicle ${member.vehicleId}: expected ${member.tokenId}, resolved ${String(authoritativeTokenId)}`,
     );
   }
 
-  const activeUnfinishedFamilies = await input.repository.countUnfinishedFamilies();
+  const activeUnfinishedFamilies = await input.repository.countUnfinishedFamiliesForVehicle(
+    member.vehicleId,
+  );
   if (activeUnfinishedFamilies >= 1) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `Active unfinished maturation shadow families must be 0 before enrollment, found ${activeUnfinishedFamilies}`,
+      `Active unfinished maturation shadow families for vehicle ${member.vehicleId} must be 0 before enrollment, found ${activeUnfinishedFamilies}`,
     );
   }
 
   const runtimeSha = resolveExp021MaturationShadowRuntimeBuildSha({ required: true });
 
   return {
-    organizationId: canary.organizationId,
-    vehicleId: canary.vehicleId,
-    tokenId: canary.tokenId,
+    organizationId: member.organizationId,
+    vehicleId: member.vehicleId,
+    tokenId: member.tokenId,
     globalEnabled,
     hfLaneEnabled,
     settlementLaneEnabled,
@@ -489,6 +516,7 @@ export async function waitForNextAuthoritativeWindowClose(
 export async function executeCanaryEnrollment(input: {
   args: Exp021CanaryEnrollCliArgs;
   config: ReferenceCaptureConfig;
+  cohort?: Exp021CanaryCohortAuthority | null;
   repository: ReferenceCaptureExp021MaturationShadowRepository;
   enrollment: ReferenceCaptureExp021MaturationShadowEnrollmentService;
   activityAuthorityByGeometry?: Exp021MaturationShadowActivityAuthorityByGeometry;
@@ -503,6 +531,7 @@ export async function executeCanaryEnrollment(input: {
   const guards = await assertCanaryHardGuards({
     tokenId: input.args.tokenId,
     config: input.config,
+    cohort: input.cohort,
     repository: input.repository,
   });
 
@@ -566,10 +595,10 @@ export async function executeCanaryEnrollment(input: {
     activityAuthorityByGeometry: input.activityAuthorityByGeometry,
   });
 
-  const activeAfter = await input.repository.countUnfinishedFamilies();
+  const activeAfter = await input.repository.countUnfinishedFamiliesForVehicle(guards.vehicleId);
   if (activeAfter !== 1) {
     throw new Exp021MaturationShadowFamilyIdentityError(
-      `Expected exactly 1 active unfinished family after enrollment, found ${activeAfter}`,
+      `Expected exactly 1 active unfinished family for vehicle ${guards.vehicleId} after enrollment, found ${activeAfter}`,
     );
   }
 

@@ -7,6 +7,30 @@ import {
   resolveCanaryLiveWindowVehicleTripPdiAuthority,
 } from './reference-capture-exp021-canary-live-window-pdi-publish.lib';
 import { EXP021_CANARY_LIVE_WINDOW_CANARY } from './reference-capture-exp021-canary-live-window-activation.constants';
+import { buildExp021CanaryCohortAuthority } from './reference-capture-exp021-canary-live-window-cohort.lib';
+
+function ksMxPdiCtx(overrides: {
+  vehicleTripId?: string;
+  sessionId?: string;
+  activationNotBeforeMs?: number;
+}) {
+  const cohort = buildExp021CanaryCohortAuthority([
+    {
+      organizationId: EXP021_CANARY_LIVE_WINDOW_CANARY.organizationId,
+      vehicleId: EXP021_CANARY_LIVE_WINDOW_CANARY.vehicleId,
+      tokenId: EXP021_CANARY_LIVE_WINDOW_CANARY.tokenId,
+    },
+  ])!;
+  return {
+    vehicleTripId: overrides.vehicleTripId ?? 'trip-1',
+    organizationId: EXP021_CANARY_LIVE_WINDOW_CANARY.organizationId,
+    vehicleId: EXP021_CANARY_LIVE_WINDOW_CANARY.vehicleId,
+    tokenId: EXP021_CANARY_LIVE_WINDOW_CANARY.tokenId,
+    sessionId: overrides.sessionId ?? 'sess-1',
+    activationNotBeforeMs: overrides.activationNotBeforeMs ?? Date.parse('2026-09-20T10:00:00.000Z'),
+    cohort,
+  };
+}
 
 describe('reference-capture-exp021-canary-live-window-pdi-publish.lib', () => {
   const T0 = Date.parse('2026-09-20T10:00:00.000Z');
@@ -89,13 +113,7 @@ describe('reference-capture-exp021-canary-live-window-pdi-publish.lib', () => {
       prisma: prisma as never,
       settlementShadow: { persistPhysicalDriveIntervalAuthority: persist } as never,
       currentActivationNotBeforeMs: T0,
-      ctx: {
-        vehicleTripId: 'trip-1',
-        vehicleId: EXP021_CANARY_LIVE_WINDOW_CANARY.vehicleId,
-        tokenId: EXP021_CANARY_LIVE_WINDOW_CANARY.tokenId,
-        sessionId,
-        activationNotBeforeMs: T0,
-      },
+      ctx: ksMxPdiCtx({ sessionId, activationNotBeforeMs: T0 }),
     });
     expect(result.outcome).toBe('already_present');
     expect(persist).not.toHaveBeenCalled();
@@ -128,13 +146,7 @@ describe('reference-capture-exp021-canary-live-window-pdi-publish.lib', () => {
       prisma: prisma as never,
       settlementShadow: { persistPhysicalDriveIntervalAuthority: jest.fn() } as never,
       currentActivationNotBeforeMs: T0,
-      ctx: {
-        vehicleTripId: 'trip-1',
-        vehicleId: EXP021_CANARY_LIVE_WINDOW_CANARY.vehicleId,
-        tokenId: EXP021_CANARY_LIVE_WINDOW_CANARY.tokenId,
-        sessionId: 'sess-1',
-        activationNotBeforeMs: T0,
-      },
+      ctx: ksMxPdiCtx({ activationNotBeforeMs: T0 }),
     });
     expect(result.outcome).toBe('conflict');
   });

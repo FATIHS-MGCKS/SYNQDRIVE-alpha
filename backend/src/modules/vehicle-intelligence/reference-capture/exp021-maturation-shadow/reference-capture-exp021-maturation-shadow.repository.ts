@@ -461,6 +461,37 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
    * Active families = families with at least one non-terminal observation slot.
    * Terminal slot: successful attempt OR transport retry budget exhausted.
    */
+  async countUnfinishedFamiliesForVehicle(
+    vehicleId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const db = this.client(tx);
+    const rows = await db.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(DISTINCT f.id)::bigint AS count
+      FROM exp021_maturation_shadow_window_families f
+      WHERE f.vehicle_id = ${vehicleId}
+        AND EXISTS (
+        SELECT 1
+        FROM exp021_maturation_shadow_windows w
+        JOIN exp021_maturation_shadow_observation_slots s ON s.window_stratum_id = w.id
+        WHERE w.window_family_id = f.id
+          AND NOT EXISTS (
+            SELECT 1
+            FROM exp021_maturation_shadow_observation_attempts a
+            WHERE a.observation_slot_id = s.id
+              AND a.provider_request_succeeded = true
+              AND a.provider_outcome_class <> 'PROVIDER_ERROR'
+          )
+          AND (
+            SELECT COUNT(*)::int
+            FROM exp021_maturation_shadow_observation_attempts a2
+            WHERE a2.observation_slot_id = s.id
+          ) < ${MAX_PROVIDER_ATTEMPTS_PER_SLOT}
+      )
+    `;
+    return Number(rows[0]?.count ?? 0);
+  }
+
   async countUnfinishedFamilies(tx?: Prisma.TransactionClient): Promise<number> {
     const db = this.client(tx);
     const rows = await db.$queryRaw<Array<{ count: bigint }>>`

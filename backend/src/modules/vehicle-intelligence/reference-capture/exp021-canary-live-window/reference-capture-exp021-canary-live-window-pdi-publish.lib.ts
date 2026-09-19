@@ -3,7 +3,8 @@ import type { PrismaService } from '@shared/database/prisma.service';
 import type { Exp021PhysicalDriveIntervalAuthority } from '../reference-capture-exp-021-motion.lib';
 import type { ReferenceCaptureSettlementShadowService } from '../reference-capture-settlement-shadow.service';
 import { readPhysicalDriveIntervalAuthority } from '../exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
-import { EXP021_CANARY_LIVE_WINDOW_CANARY } from './reference-capture-exp021-canary-live-window-activation.constants';
+import { resolveCohortMemberForTripIdentity } from './reference-capture-exp021-canary-live-window-cohort.lib';
+import type { Exp021CanaryCohortAuthority } from './reference-capture-exp021-canary-live-window-cohort.lib';
 
 /** Authoritative PDI source for trip-bound KS MX 2024 canary live-window finalize. */
 export const EXP021_CANARY_VEHICLE_TRIP_PDI_SOURCE: Exp021PhysicalDriveIntervalAuthority['source'] =
@@ -13,8 +14,10 @@ export type CanaryLiveWindowPdiPublishContext = {
   vehicleTripId: string;
   vehicleId: string;
   tokenId: number;
+  organizationId: string;
   sessionId: string;
   activationNotBeforeMs: number;
+  cohort: Exp021CanaryCohortAuthority;
 };
 
 export type CanaryLiveWindowPdiResolvedAuthority = {
@@ -32,12 +35,14 @@ export type CanaryLiveWindowPdiPublishResult =
 export function assertCanaryLiveWindowPdiIdentity(
   ctx: CanaryLiveWindowPdiPublishContext,
 ): void {
-  const canary = EXP021_CANARY_LIVE_WINDOW_CANARY;
-  if (ctx.tokenId !== canary.tokenId) {
-    throw new Error(`canary_pdi_token_mismatch:${ctx.tokenId}`);
-  }
-  if (ctx.vehicleId !== canary.vehicleId) {
-    throw new Error(`canary_pdi_vehicle_mismatch:${ctx.vehicleId}`);
+  const member = resolveCohortMemberForTripIdentity({
+    organizationId: ctx.organizationId,
+    vehicleId: ctx.vehicleId,
+    tokenId: ctx.tokenId,
+    cohort: ctx.cohort,
+  });
+  if (!member) {
+    throw new Error(`canary_pdi_cohort_mismatch:${ctx.vehicleId}:${ctx.tokenId}`);
   }
 }
 

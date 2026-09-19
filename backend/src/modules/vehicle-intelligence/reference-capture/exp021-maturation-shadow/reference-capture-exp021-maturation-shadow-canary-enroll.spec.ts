@@ -80,12 +80,14 @@ function makeRepositoryMock(
       ? jest.fn().mockResolvedValue(null)
       : jest.fn().mockResolvedValue(authoritativeTokenId);
 
+  const unfinishedFamilies = overrides.unfinishedFamilies ?? 0;
+  const unfinishedAfterEnroll = overrides.unfinishedAfterEnroll ?? 1;
   return {
     resolveAuthoritativeTokenId,
-    countUnfinishedFamilies: jest
+    countUnfinishedFamiliesForVehicle: jest
       .fn()
-      .mockResolvedValueOnce(overrides.unfinishedFamilies ?? 0)
-      .mockResolvedValue(overrides.unfinishedAfterEnroll ?? 1),
+      .mockResolvedValueOnce(unfinishedFamilies)
+      .mockResolvedValue(unfinishedAfterEnroll),
   } as unknown as ReferenceCaptureExp021MaturationShadowRepository;
 }
 
@@ -130,6 +132,18 @@ function geometryObservations(): Exp021CanarySpeedObservation[] {
 describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
   beforeEach(() => {
     process.env.GITHUB_SHA = RUNTIME_SHA;
+    process.env.EXP021_MATURATION_SHADOW_CANARY_COHORT_JSON = JSON.stringify([
+      {
+        organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
+        vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
+        tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
+        label: 'KS MX 2024',
+      },
+    ]);
+  });
+
+  afterEach(() => {
+    delete process.env.EXP021_MATURATION_SHADOW_CANARY_COHORT_JSON;
   });
 
   it('1) dry-run creates zero rows/jobs', async () => {
@@ -167,7 +181,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
         enrollment: makeEnrollmentMock().service,
         canonicalWindowTo: new Date('2026-09-17T12:00:00.000Z'),
       }),
-    ).rejects.toThrow('requires tokenId 187336');
+    ).rejects.toThrow('not in configured EXP-021 canary cohort');
   });
 
   it('A1) authoritative token = 187336 passes hard guard', async () => {
@@ -206,7 +220,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
         config: makeCanaryConfig({ allowlist: [186946] }),
         repository: makeRepositoryMock(),
       }),
-    ).rejects.toThrow('Allowlist must contain exactly token 187336');
+    ).rejects.toThrow('Allowlist must match cohort token ids');
   });
 
   it('5) global disabled fails', async () => {
@@ -244,7 +258,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
         config: makeCanaryConfig(),
         repository: makeRepositoryMock({ unfinishedFamilies: 1 }),
       }),
-    ).rejects.toThrow('Active unfinished maturation shadow families must be 0');
+    ).rejects.toThrow('Active unfinished maturation shadow families for vehicle');
   });
 
   it('8) stale window fails', async () => {
@@ -348,7 +362,7 @@ describe('reference-capture-exp021-maturation-shadow-canary-enroll.lib', () => {
         authoritativeWindowMatch: true,
         settlementShadowExperiments: [authoritativeExperiment(canonicalWindowTo.toISOString())],
       }),
-    ).rejects.toThrow('Active unfinished maturation shadow families must be 0');
+    ).rejects.toThrow('Active unfinished maturation shadow families for vehicle');
 
     expect(enrollWindowFamily).toHaveBeenCalledTimes(1);
   });
