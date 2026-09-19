@@ -617,6 +617,19 @@ if [[ "$DRY_RUN" == "1" ]]; then
     echo "STAGE3_DRY_RUN_RESTART_CALLS=0"
     echo "STAGE3_DRY_RUN_BACKUP_CREATED=NO"
     echo "STAGE3_DRY_RUN_TRANSITION=2->3"
+  elif (( STAGE == 4 )); then
+    persisted_cutover="$(rfrf_env_get "$BACKEND_ENV" "$RFRF_FLAG_CUTOVER")"
+    echo "Would set ${RFRF_FLAG_CONVERGENCE}=true"
+    echo "Would preserve ${RFRF_FLAG_MASTER}=true"
+    echo "Would preserve ${RFRF_FLAG_PERSIST}=true"
+    echo "Would preserve ${RFRF_FLAG_CUTOVER}=${persisted_cutover}"
+    echo "Would keep ${RFRF_FLAG_PROMOTION}=false/absent"
+    echo "Would keep ${RFRF_FLAG_G2_HANDOFF}=false/absent"
+    echo "AUTOMATIC_RECOVERY_TARGET_STAGE=$((STAGE - 1))"
+    echo "STAGE4_DRY_RUN_ZERO_MUTATION=PASS"
+    echo "STAGE4_DRY_RUN_RESTART_CALLS=0"
+    echo "STAGE4_DRY_RUN_BACKUP_CREATED=NO"
+    echo "STAGE4_DRY_RUN_TRANSITION=3->4"
   fi
   echo "RFRF_STAGE_DRY_RUN=PASS"
   exit 0

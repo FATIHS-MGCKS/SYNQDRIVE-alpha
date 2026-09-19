@@ -905,4 +905,6 @@ if [[ "$FROM_STAGE" == "2" ]]; then
   echo "STAGE2_ROLLBACK_PRODUCTION_SAFE=YES"
 elif [[ "$FROM_STAGE" == "3" ]]; then
   echo "STAGE3_ROLLBACK_TO_STAGE2_SAFE=YES"
+elif [[ "$FROM_STAGE" == "4" ]]; then
+  echo "STAGE4_ROLLBACK_TO_STAGE3_SAFE=YES"
 fi

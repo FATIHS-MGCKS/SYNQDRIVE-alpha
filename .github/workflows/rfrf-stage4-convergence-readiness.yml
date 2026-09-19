@@ -1,0 +1,67 @@
+name: RFRF Stage-4 convergence readiness
+
+on:
+  pull_request:
+    paths:
+      - 'backend/scripts/test/rfrf-*.sh'
+      - 'backend/scripts/test/lib/rfrf-isolated-postgres-admin.sh'
+      - 'backend/scripts/test/rfrf-stage4-convergence-readiness-ci-gate.sh'
+      - 'backend/scripts/test/rfrf-f10-operational-tooling-gate.sh'
+      - 'backend/scripts/ops/**'
+      - '.github/workflows/rfrf-stage4-convergence-readiness.yml'
+      - 'docs/audits/eed-rfrf-f10-6*.md'
+      - 'architecture/knowledge-graphs/energy-event-detection/**'
+
+concurrency:
+  group: rfrf-stage4-convergence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rfrf-stage4-convergence-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RFRF_CI_POSTGRES_SUPERUSER_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Redis (isolated test instance)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server postgresql-client
+          redis-server --port 56379 --bind 127.0.0.1 --save "" --appendonly no --daemonize yes
+          redis-cli -p 56379 ping
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: RFRF Stage-4 convergence readiness CI gate
+        working-directory: backend
+        run: bash scripts/test/rfrf-stage4-convergence-readiness-ci-gate.sh
+
+      - name: F10 operational tooling gate (Stage-4 fixtures)
+        working-directory: backend
+        run: bash scripts/test/rfrf-f10-operational-tooling-gate.sh
