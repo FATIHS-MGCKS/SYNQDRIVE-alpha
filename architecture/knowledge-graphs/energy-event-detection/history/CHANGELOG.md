@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-19 — RFRF F10.5.2 Stage-3 Production execution (evidence landing)
+
+- EED-EV-0070: authorized Production Stage 2→3; `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED=true`; convergence/promotion/G2 false; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6` / release `20260918174845_v4994`; tooling `5860b125f7f6bf3cd0077cfa8a1253c13be341ba` from isolated `/tmp/rfrf-f1051-tooling` (no application deploy); rolling restart A then B; TX committed; recovery to Stage 2 armed but not invoked; EXP-021 canary terminal before execution + immediate survival PASS; fleet coordinator natural-tick log proof OBSERVABILITY_LIMITED at evidence landing; VDC LEGACY / 4 scopes / T0 unchanged; canonical epoch obs/blockers 107/107 (monotonic vs F10.5.1); candidates 0, fallback VEE 0
+- `STAGE_3_EXECUTION_ACCEPTED=YES`; `STAGE3_AUTHORITY_TRANSITION_PROVEN=YES`; `REAL_RAW_RISE_POSITIVE_PATH_PROVEN_UNDER_STAGE3=NO`; `STAGE_4_START_AUTHORIZED=NO`
+- F10.5.3 evidence PR: governance/docs only on `main` @ `16000fce6…` (#1692 EXP-021 code only; Production runtime unchanged)
+
 ## 2026-09-18 — RFRF F10.5.0.1 Stage-3 readiness micro-closure
 
 - EED-EV-0069 extended: Production rebaseline **accepted** (post-#1689 deploy); exact canonical VDC **85/85** (4 pilot scopes, T0 unchanged); EXP-021 canary env armed; observational readiness NO retained as epistemic note only; CI workflow for isolated F3/F4/F9 PG+Redis gates; PR #1691 CI 28/28 green at F10.5.0 land
