@@ -155,6 +155,9 @@ function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): Physic
 /**
  * Pure, side-effect-free shadow comparator.
  * OLD (legacy) decision remains authoritative during P2.2.
+ *
+ * Legacy episode-resolution rejects (e.g. no_open_episode) and physical PROVENANCE_REFRESH
+ * are non-isomorphic propositions unless independently proven via GT-R1 (EXPECTED_FIX_*).
  */
 export function comparePhysicalStateShadowDecisions(
   input: PhysicalStateShadowComparisonInput,
