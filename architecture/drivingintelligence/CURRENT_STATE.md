@@ -191,6 +191,10 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 - V2 full stage DAG under production load
 - Natural fleet-scale block polling density proof
 
+## 2026-09-19 — EXP-021 multi-vehicle enrollment authority gap (WOB live drive)
+
+Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e95-a1f0-11ecb722ce17` failed at `armOngoingTrip` with `enrollment_not_found` (only KS MX 2024 had `exp021_study_enrollments`). Live activation disabled pending idempotent cohort study-enrollment bootstrap (`EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md`). Failed ledger immutable; no backfill.
+
 ## Coverage classification
 
 | Area | Status |
