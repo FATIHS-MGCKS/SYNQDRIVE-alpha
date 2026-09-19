@@ -760,6 +760,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T00:00:00.000Z',
   },
   {
+    id: 'vdc-rb019-p25-post-bootstrap-provenance-gt-r1-2026-09-19',
+    version: '4.9.1147',
+    title: 'VDC RB-019 P2.5 — post-bootstrap PROVENANCE_REFRESH GT-R1 proof (branch candidate)',
+    summary: [
+      'GT-R1 scenario SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH for established PLUGGED + newer same-state SNAPSHOT_OBD + legacy no_open_episode + coordinator PROVENANCE_REFRESH.',
+      'Proven cases classify as EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); unproven remain UNEXPLAINED_OLD_REJECT_NEW_ACCEPT.',
+      'Shadow comparison domain helper distinguishes episode-resolution vs same-state provenance refresh; T+24h historical rows immutable.',
+      'Read-only audit script emits ACTUAL_STATE_REGRESSIONS and related metrics (deprecates misleading STATE_REGRESSION_COUNT label).',
+    ],
+    reason:
+      'T+24h shadow audit showed 107 legacy no_open_episode vs physical PROVENANCE_REFRESH rows with zero effective state change — GT-R1/bootstrap coverage gap, not a physical transition defect.',
+    previousBehavior:
+      'Only bootstrap/repair/unplug GT-R1 proofs; steady-state PROVENANCE_REFRESH vs no_open_episode stayed UNEXPLAINED blocking.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md; physical-state-gt-r1-proof.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-19T11:20:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
     version: '4.9.1146',
     title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',

@@ -19,6 +19,7 @@ import type { PhysicalStateBindingScope } from './device-connection-physical-sta
 export type GtR1ExpectedFixProofScenario =
   | 'SNAPSHOT_PLUG_REPAIR_UNPLUGGED_BASELINE'
   | 'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT'
+  | 'SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH'
   | 'SNAPSHOT_UNPLUG_TRANSITION'
   | 'SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT'
   | 'WEBHOOK_PHYSICAL_ORDERING_OVERRIDES_STALE_LEGACY_GATE';
@@ -79,6 +80,9 @@ export function isProvenExpectedFixForPhysicalDecision(
   }
   if (proof!.scenario === 'SNAPSHOT_UNPLUG_TRANSITION') {
     return physicalDecision === 'APPLIED';
+  }
+  if (proof!.scenario === 'SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH') {
+    return physicalDecision === 'PROVENANCE_REFRESH';
   }
   return true;
 }
@@ -290,6 +294,36 @@ export function buildSnapshotUnplugInitialEstablishmentGtR1Proof(
 }
 
 /**
+ * Steady-state snapshot PLUG: established PLUGGED projection, newer same-state SNAPSHOT_OBD,
+ * legacy episode resolver rejects with no_open_episode (no OPEN episode to resolve).
+ *
+ * Distinct from bootstrap (absent projection) and repair (UNPLUGGED baseline).
+ * Comparator expected-fix requires actual coordinator decision PROVENANCE_REFRESH.
+ */
+export function buildSnapshotPlugPostBootstrapProvenanceRefreshGtR1Proof(
+  input: SnapshotGtR1ProofInput,
+): GtR1ExpectedFixProof | null {
+  if (!passesSharedSnapshotPlugGtR1Admissibility(input)) return null;
+  if (!isLegacyBindingAlignedForSnapshotProof(input)) return null;
+  if (input.physicalProjectionState !== 'PLUGGED') return null;
+  if (!input.physicalProjectionEvidenceAt) return null;
+  if (input.snapshotEvidenceObservedAt.getTime() <= input.physicalProjectionEvidenceAt.getTime()) {
+    return null;
+  }
+  if (input.legacyEvaluation.action !== 'reject') return null;
+  if (input.legacyEvaluation.reason !== 'no_open_episode') return null;
+  if (input.episode != null) return null;
+
+  return {
+    scenario: 'SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH',
+    proven: true,
+    evidenceReferenceId: input.evidenceReferenceId,
+    physicalEvidenceObservedAt: input.snapshotEvidenceObservedAt,
+    legacyEvidenceObservedAt: input.physicalProjectionEvidenceAt,
+  };
+}
+
+/**
  * Canonical snapshot GT-R1 proof resolver for production call-sites.
  * Repair (UNPLUGGED baseline) takes precedence over bootstrap (absent projection).
  */
@@ -297,6 +331,7 @@ export function buildSnapshotGtR1Proof(input: SnapshotGtR1ProofInput): GtR1Expec
   return (
     buildSnapshotPlugRepairGtR1Proof(input) ??
     buildSnapshotPlugInitialEstablishmentGtR1Proof(input) ??
+    buildSnapshotPlugPostBootstrapProvenanceRefreshGtR1Proof(input) ??
     buildSnapshotUnplugTransitionGtR1Proof(input) ??
     buildSnapshotUnplugInitialEstablishmentGtR1Proof(input)
   );

@@ -24,6 +24,8 @@
 | VDC-EVID-PLUG-WEBHOOK-RESTORATION-001 | OBD PLUG webhook restoration forensics + safe ops gate (read-only Production; no enable) | PROVIDER_API + PRODUCTION_OBSERVATION + CODE | CONFIRMED | [PLUG_WEBHOOK_RESTORATION_FORENSICS_2026-09-21.md](./PLUG_WEBHOOK_RESTORATION_FORENSICS_2026-09-21.md) |
 | VDC-EVID-PLUG-WEBHOOK-KS-MX-PARKED-GT-001 | KS MX 2024 parked UNPLUG→PLUG GT — isolated temp PLUG canary; dual-path physical vs legacy semantics; provider visibility vs SynqDrive acquisition | PRODUCTION_OBSERVATION | CONFIRMED | [PLUG_WEBHOOK_KS_MX_PARKED_GT_2026-09-22.md](./PLUG_WEBHOOK_KS_MX_PARKED_GT_2026-09-22.md) |
 | VDC-EVID-PLUG-WEBHOOK-WOB-LONG-STAND-WAKE-GT-001 | WOB L 7503 long-stand UNPLUG→parked REPLUG→wake-associated PLUG recovery — parked provider silence ~6982 s; post-trip-start visibility 56 s; webhook physical first | PRODUCTION_OBSERVATION | CONFIRMED | [PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md](./PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md) |
+| VDC-EVID-P25-POST-BOOTSTRAP-PROVENANCE-REFRESH-001 | P2.5 post-bootstrap same-state PROVENANCE_REFRESH GT-R1 proof (P1A subtype) | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT (not Production-deployed) | [P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md](./P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md) |
+| VDC-EVID-P25-T7-SEMANTIC-CLOSURE-001 | P2.5 T+7 shadow comparator semantic closure — Option C domain-aware non-isomorphic same-state refresh | PRODUCTION_OBSERVATION + CURRENT_CODE + TEST | CONFIRMED (pre-fix epoch) | [P25_T7_SHADOW_COMPARATOR_SEMANTIC_CLOSURE_2026-09-25.md](./P25_T7_SHADOW_COMPARATOR_SEMANTIC_CLOSURE_2026-09-25.md) |
 
 ## Code evidence (repository — bootstrap index)
 
