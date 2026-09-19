@@ -56,6 +56,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-6-a1-candidate-liveness-persistence-2026-09-19',
+    version: '4.9.1149',
+    title: 'RFRF F10.6.6-A.1 — candidate liveness persistence micro-closure',
+    summary: [
+      'PostgreSQL regression: sparse-bridge episode → same-row maturation to READY_FOR_PERSIST + readiness READY (opt-in gate).',
+      'Runtime proof: strict-gap rejectedOrHeld does not invoke F2 persist; existing rows unchanged on detector-only rejection.',
+      'Documents observation-local vs persisted REJECTED policy for strict internal gaps.',
+      'F4-PR2 postgres gate includes raw-fuel-rise-liveness.postgres.integration.spec.ts.',
+    ],
+    reason:
+      'F10.6.6-A fixed F3/lifecycle semantics; A.1 closes the persist-path proof gap (same row rediscovery, rejectedOrHeld semantics, global max gap audit).',
+    previousBehavior:
+      'Liveness fix lacked end-to-end PostgreSQL same-row rescan test and explicit runtime rejectedOrHeld non-persist behavior.',
+    details:
+      'raw-fuel-rise-liveness.postgres.integration.spec.ts; raw-fuel-refuel-fallback-runtime.service.spec.ts; rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: false,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T19:40:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-6-a-candidate-liveness-2026-09-19',
     version: '4.9.1148',
     title: 'RFRF F10.6.6-A — candidate liveness (semantic gaps + lifecycle refinement)',
