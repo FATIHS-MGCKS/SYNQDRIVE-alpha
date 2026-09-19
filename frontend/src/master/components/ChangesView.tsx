@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-t24h-scientific-shadow-audit-2026-09-19',
+    version: '4.9.1147',
+    title: 'P2.5 STATEFUL_SHADOW — T+24h scientific audit (read-only)',
+    summary: [
+      'Exact window 2026-09-18T09:33:25Z → 2026-09-19T09:33:25Z: 107 shadow observations (3/4 pilot scopes); all UNEXPLAINED_OLD_REJECT_NEW_ACCEPT correctness blockers on active pilots.',
+      'Arteon UNPLUGGED holdout: 0 shadow rows, 0 transitions, 959 stale snapshot polls — no GT-R1 regression; T0 unchanged; shadow-only; three in-window deploys + EXP-021 operator confounder documented.',
+      'P25_T24H_AUDIT_GATE=PASS; P25_T24H_SCIENTIFIC_STATUS=QUALIFIED; epoch continues to T+72h @ 2026-09-21T09:33:25Z.',
+    ],
+    reason:
+      'Mandatory seven-day shadow epoch requires read-only T+24h scientific checkpoint without resetting T0 or mutating production.',
+    previousBehavior: 'T+24h metrics not yet captured for canonical pilot restart T0.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_T24H_SCIENTIFIC_SHADOW_AUDIT_2026-09-19.md; backend/scripts/ops/p25-t24h-shadow-audit-readonly.cjs',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-19T10:13:19.285Z',
+  },
+  {
     id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
     version: '4.9.1146',
     title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
