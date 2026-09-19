@@ -1,5 +1,18 @@
 # KG-EED Changelog
 
+## 2026-09-19 — RFRF F10.6.0.1 micro-closure (EED-EV-0071 correction)
+
+- Production rebaseline **accepted**: `0384adf…` → `16000fce6…` with **empty** RFRF business runtime and VDC runtime diffs; EXP-021 + RFRF tooling-only paths on `main`
+- `PRODUCTION_REBASELINE_REQUIRED=NO`; resolves prior contradiction with `READY_FOR_STAGE4_AUTHORIZATION_GATE=YES`
+- VDC metrics: `VDC_PILOT_SCOPE_COUNT=4` (configured JSON); `VDC_CANONICAL_ACTIVE_VEHICLE_COUNT=3`; `VDC_CONFIGURED_SCOPE_DRIFT=NO`
+- CI: `rfrf-stage4-convergence-readiness` PASS, `rfrf-stage3-persistence-readiness` PASS; `i18n-authority-protection` FAIL until trusted label
+- Read-only Production: 3 `raw_refuel_candidates` (SETTLING×2, INSUFFICIENT×1); blast radius **BOUNDED**; observational gates unchanged (NO)
+
+## 2026-09-19 — RFRF F10.6.0 Stage-4 convergence readiness (tooling; no Production Stage 4)
+
+- EED-EV-0071: Stage-4 enable/recovery/rollback fixture closure (recovery target Stage 3); Production read-only rebaseline on release `20260918232713_v4994` / SHA `16000fce6…` (drift vs EED-EV-0070); RFRF still Stage 3 with cutover unchanged; Stage-4 dry-run 3→4 zero mutation on VPS; wrong-source rollback from stage 4 blocked; EXP-021 nonterminal ledger 0; VDC canonical epoch 107/107; candidates 0; observational readiness NO (epistemic P2); CI workflow for F5-PR1 + F9 + P20 promotion boundary
+- `STAGE_4_EXECUTED=NO`; `STAGE_4_START_AUTHORIZED=NO`; `READY_FOR_STAGE4_AUTHORIZATION_GATE=YES` (structural)
+
 ## 2026-09-19 — RFRF F10.5.2 Stage-3 Production execution (evidence landing)
 
 - EED-EV-0070: authorized Production Stage 2→3; `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED=true`; convergence/promotion/G2 false; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6` / release `20260918174845_v4994`; tooling `5860b125f7f6bf3cd0077cfa8a1253c13be341ba` from isolated `/tmp/rfrf-f1051-tooling` (no application deploy); rolling restart A then B; TX committed; recovery to Stage 2 armed but not invoked; EXP-021 canary terminal before execution + immediate survival PASS; fleet coordinator natural-tick log proof OBSERVABILITY_LIMITED at evidence landing; VDC LEGACY / 4 scopes / T0 unchanged; canonical epoch obs/blockers 107/107 (monotonic vs F10.5.1); candidates 0, fallback VEE 0

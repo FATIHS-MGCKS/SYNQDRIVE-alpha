@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19',
+    version: '4.9.1147',
+    title: 'RFRF F10.6.0 — Stage-4 convergence readiness + transaction safety',
+    summary: [
+      'Stage 4: master+persist+convergence true; promotion/G2 false; cutover immutable; convergence links candidates to native VEE only.',
+      'Stage-4 ops fixtures + CI F5-PR1/F9/P20; Production read-only rebaseline 20260918232713_v4994 / 16000fce6… still Stage 3.',
+      'Live preflight PASS; Stage-4 dry-run zero mutation; wrong-source rollback from stage 4 blocked.',
+      'Observational readiness NO (0 candidates); PRODUCTION_REBASELINE_REQUIRED=YES vs EED-EV-0070.',
+      'Stage 4 not executed.',
+    ],
+    reason:
+      'Close Stage-4 transaction safety and non-vacuous convergence boundary before any Production convergence authority enablement.',
+    previousBehavior:
+      'Stage-3 Production proven (EED-EV-0070) without Stage-4 tooling closure on main.',
+    details:
+      'docs/audits/eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19.md; EED-EV-0071',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T00:00:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
     version: '4.9.1146',
     title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
