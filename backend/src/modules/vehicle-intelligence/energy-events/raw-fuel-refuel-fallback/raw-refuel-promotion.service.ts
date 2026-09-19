@@ -15,13 +15,15 @@ import { evaluateRawRefuelCandidateReadiness } from './raw-refuel-candidate-read
 import type { RawRefuelPromotionPreparationContext } from './raw-refuel-promotion-preparation.service';
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import {
-  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
-  buildAuthoritativeNativeRefuelSiblingWhere,
   buildNativeSiblingLimitExceededEvaluation,
+  buildNativeSiblingRawLoadIncompleteEvaluation,
+  buildPendingPhysicalReconciliationEvaluation,
+  buildPhysicalRefuelAuthorityConflictEvaluation,
   detectAuthoritativeNativeSiblingLimitExceeded,
   evaluateRawRefuelNativeFallbackConvergence,
   NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
 } from './raw-refuel-native-fallback-convergence.evaluator';
+import { loadAuthoritativeNativeRefuelSiblings } from './authoritative-native-refuel-siblings.resolver';
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
 import { evaluateRawRefuelPromotionCutover } from './raw-refuel-promotion-cutover.util';
@@ -217,7 +219,7 @@ export class RawRefuelPromotionService {
           };
         }
 
-        const evaluation = await this.evaluateAuthoritativeConvergenceTx(tx, locked);
+        const evaluation = await this.evaluateAuthoritativeConvergenceTx(tx, locked, env);
         this.recordEvaluationMetrics(evaluation);
 
         if (evaluation.shouldConvergeToNative) {
@@ -397,21 +399,32 @@ export class RawRefuelPromotionService {
   private async evaluateAuthoritativeConvergenceTx(
     tx: Prisma.TransactionClient,
     candidate: RawRefuelCandidate,
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<RawRefuelNativeFallbackConvergenceEvaluation> {
     const window = computeNativeOverlapQueryWindow(candidate);
-    const nativeRows = await tx.vehicleEnergyEvent.findMany({
-      where: buildAuthoritativeNativeRefuelSiblingWhere(candidate, window),
-      orderBy: { startTime: 'asc' },
-      take: AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
-    });
+    const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, candidate, window, env);
 
-    if (detectAuthoritativeNativeSiblingLimitExceeded(nativeRows.length)) {
+    if (siblingLoad.status === 'PENDING_RECONCILIATION') {
+      return buildPendingPhysicalReconciliationEvaluation();
+    }
+    if (siblingLoad.status === 'AUTHORITY_CONFLICT') {
+      return buildPhysicalRefuelAuthorityConflictEvaluation();
+    }
+    if (siblingLoad.status === 'RAW_LOAD_INCOMPLETE') {
+      return buildNativeSiblingRawLoadIncompleteEvaluation();
+    }
+
+    if (
+      detectAuthoritativeNativeSiblingLimitExceeded(
+        siblingLoad.authoritativeNativeRows.length,
+      )
+    ) {
       return buildNativeSiblingLimitExceededEvaluation();
     }
 
     return evaluateRawRefuelNativeFallbackConvergence({
       candidate,
-      nativeRefuelRows: nativeRows.map(vehicleEnergyEventToRefuelRow),
+      nativeRefuelRows: siblingLoad.authoritativeNativeRows,
     });
   }
 

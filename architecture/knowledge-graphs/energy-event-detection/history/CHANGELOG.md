@@ -1,5 +1,19 @@
 # KG-EED Changelog
 
+## 2026-09-19 — RFRF F10.6.6-B.2 micro-closure (canonical query + pending INSUFFICIENT)
+
+- Canonical list query includes persisted `refuelReconciliation`; raw list remains lean
+- Pending Stage-4 authority: `INSUFFICIENT_EVIDENCE` and `SAME_PHYSICAL_REFUEL` → pending; `DISTINCT` does not
+- Product projection: hide conflicting dual-final / canonicalEventId mismatch groups
+- Tests: service-path WOB canonical read, loader pagination/raw cap, promotion/convergence fail-closed
+
+## 2026-09-19 — RFRF F10.6.6-B.1 micro-closure (race, bounded raw load, product reads)
+
+- Authoritative native loader: V2-owned `refuelReconciliation=null` → `PENDING_RECONCILIATION` via `isV2OwnedRefuelEvent` + effective cutover; legacy pre-V2 null-recon preserved
+- Raw native load pages with `MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW=512`; `RAW_LOAD_INCOMPLETE` fail-closed (no silent take=33 truncation)
+- Product canonical projection: `listCanonicalEnergyEvents`, trips timeline + GET `energy-events`; forensic `listEnergyEventsRaw` unchanged row retention
+- Tests: authoritative resolver B.1, canonical projection WOB 3→1, detectEnergyEvents reconciliation-before-RFRF ordering
+
 ## 2026-09-19 — RFRF F10.6.0.1 micro-closure (EED-EV-0071 correction)
 
 - Production rebaseline **accepted**: `0384adf…` → `16000fce6…` with **empty** RFRF business runtime and VDC runtime diffs; EXP-021 + RFRF tooling-only paths on `main`
