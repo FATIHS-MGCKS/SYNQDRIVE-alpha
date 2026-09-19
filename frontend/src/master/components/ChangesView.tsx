@@ -56,6 +56,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-6-b-native-canonical-authority-2026-09-19',
+    version: '4.9.1150',
+    title: 'RFRF F10.6.6-B — native physical-refuel canonical authority for Stage 4',
+    summary: [
+      'Stage-4 convergence loads authoritative native siblings via persisted Physical Refuel Reconciliation (enrichmentEligible + final), not every raw DIMO segment revision.',
+      'Three segment revisions of one physical refuel collapse to one authoritative native sibling for F5 evaluator input; raw rows retained.',
+      'Provisional reconciliation → native_physical_reconciliation_not_final (no convergence, no fallback selection).',
+      'Conflicting dual canonical authorities fail closed with physical_refuel_authority_conflict.',
+      'Legacy native rows without reconciliation remain matchable when not shadowed by finalized V2 canonical.',
+    ],
+    reason:
+      'F10.6.5 proved one physical refuel produced three native DIMO REFUEL VEEs; Stage-4 raw sibling load treated each revision as authoritative and fail-closed AMBIGUOUS.',
+    previousBehavior:
+      'buildAuthoritativeNativeRefuelSiblingWhere returned all native REFUEL rows in window; evaluateRawRefuelNativeFallbackConvergence saw multiple SAME siblings.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; raw-refuel-convergence.service.ts; authoritative-native-refuel-siblings.resolver.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:20:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-6-a1-candidate-liveness-persistence-2026-09-19',
     version: '4.9.1149',
     title: 'RFRF F10.6.6-A.1 — candidate liveness persistence micro-closure',
