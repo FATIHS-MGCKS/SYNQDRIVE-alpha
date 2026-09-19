@@ -11,6 +11,8 @@ import {
   type VehicleEnergyEvent,
 } from '@prisma/client';
 import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
+import { projectCanonicalProductEnergyEvents } from './canonical-energy-events.projection';
+import { resolveEffectiveV2OwnershipCutoverAt } from './v2-ownership-cutover.util';
 import {
   buildUpsertPayload,
   coalesceSegments,
@@ -67,11 +69,41 @@ export class EnergyEventsService {
     private readonly rawFuelRefuelFallbackRuntime?: RawFuelRefuelFallbackRuntimeService,
   ) {}
 
+  async listEnergyEventsRaw(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ): Promise<EnergyEventDto[]> {
+    const rows = await this.queryEnergyEventRows(vehicleId, options);
+    return rows.map(toEnergyEventDto);
+  }
+
+  /** Product-facing refuel/recharge list — one REFUEL per physical episode when V2 reconciliation applies. */
+  async listCanonicalEnergyEvents(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ): Promise<EnergyEventDto[]> {
+    const rows = await this.queryEnergyEventRows(vehicleId, options);
+    const cutover = resolveEffectiveV2OwnershipCutoverAt();
+    const canonical = projectCanonicalProductEnergyEvents(rows, cutover);
+    return canonical.map(toEnergyEventDto);
+  }
+
+  /**
+   * Forensic/raw list — all persisted source revisions. Prefer {@link listCanonicalEnergyEvents}
+   * for product surfaces (trips timeline, trips-tab energy list).
+   */
   async listEnergyEvents(
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
   ): Promise<EnergyEventDto[]> {
-    const rows = await this.prisma.vehicleEnergyEvent.findMany({
+    return this.listEnergyEventsRaw(vehicleId, options);
+  }
+
+  private async queryEnergyEventRows(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.prisma.vehicleEnergyEvent.findMany({
       where: {
         vehicleId,
         ...(options.from || options.to
@@ -88,7 +120,6 @@ export class EnergyEventsService {
       },
       orderBy: { startTime: 'asc' },
     });
-    return rows.map(toEnergyEventDto);
   }
 
   async detectEnergyEvents(
@@ -301,7 +332,7 @@ export class EnergyEventsService {
       | ({ itemType: 'energy-event'; startTime: string } & EnergyEventDto)
     >
   > {
-    const events = await this.listEnergyEvents(vehicleId, options);
+    const events = await this.listCanonicalEnergyEvents(vehicleId, options);
 
     const tripItems = hydratedTrips.map((trip) => {
       const startTime =

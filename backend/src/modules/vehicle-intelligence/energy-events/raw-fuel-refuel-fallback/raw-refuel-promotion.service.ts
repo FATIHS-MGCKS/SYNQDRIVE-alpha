@@ -16,6 +16,7 @@ import type { RawRefuelPromotionPreparationContext } from './raw-refuel-promotio
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import {
   buildNativeSiblingLimitExceededEvaluation,
+  buildNativeSiblingRawLoadIncompleteEvaluation,
   buildPendingPhysicalReconciliationEvaluation,
   buildPhysicalRefuelAuthorityConflictEvaluation,
   detectAuthoritativeNativeSiblingLimitExceeded,
@@ -407,6 +408,9 @@ export class RawRefuelPromotionService {
     }
     if (siblingLoad.status === 'AUTHORITY_CONFLICT') {
       return buildPhysicalRefuelAuthorityConflictEvaluation();
+    }
+    if (siblingLoad.status === 'RAW_LOAD_INCOMPLETE') {
+      return buildNativeSiblingRawLoadIncompleteEvaluation();
     }
 
     if (

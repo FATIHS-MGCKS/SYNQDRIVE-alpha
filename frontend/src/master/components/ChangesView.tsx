@@ -56,6 +56,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-6-b1-race-bounded-load-product-read-2026-09-19',
+    version: '4.9.1151',
+    title: 'RFRF F10.6.6-B.1 — reconciliation race, bounded raw load, product-canonical reads',
+    summary: [
+      'V2-owned native REFUEL rows with null reconciliation are pending (isV2OwnedRefuelEvent + cutover), not legacy authority — closes post-persist reconciliation race vs RFRF scan.',
+      'Authoritative sibling loader pages raw native rows (MAX_RAW 512) instead of silent take=33; RAW_LOAD_INCOMPLETE fail-closed when raw bound exceeded.',
+      'Product reads: listCanonicalEnergyEvents + trips timeline / GET energy-events expose one physical refuel; listEnergyEventsRaw preserves forensic revisions.',
+      'Regression: V2 unreconciled race, raw overflow canonical, WOB 3→1 product projection, detectEnergyEvents ordering test.',
+    ],
+    reason:
+      'F10.6.6-B authoritative loader still treated null-recon as legacy, truncated raw rows at 33, and buildTripsTimeline listed every DIMO revision.',
+    previousBehavior:
+      'refuelReconciliation==null → legacyEvents; findMany take=33 on raw rows; listEnergyEvents fed trips timeline.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; canonical-energy-events.projection.ts; energy-events.service.ts; vehicle-intelligence.controller.ts; B.1 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:45:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-6-b-native-canonical-authority-2026-09-19',
     version: '4.9.1150',
     title: 'RFRF F10.6.6-B — native physical-refuel canonical authority for Stage 4',

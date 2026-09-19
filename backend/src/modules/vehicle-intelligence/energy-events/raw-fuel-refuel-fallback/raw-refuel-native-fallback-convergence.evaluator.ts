@@ -18,7 +18,19 @@ export const NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL =
 export const PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL =
   'physical_refuel_authority_conflict';
 
-/** Sentinel query size: load MAX+1 to detect overflow without silent truncation. */
+export const NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL =
+  'native_sibling_raw_load_incomplete';
+
+/**
+ * Safety bound on raw native REFUEL rows loaded for authority resolution in one overlap
+ * window. Distinct from MAX_AUTHORITATIVE_NATIVE_SIBLINGS (physical authority count).
+ */
+export const MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW = 512;
+
+/** Batch size when paging raw native rows (must not silently truncate at 33). */
+export const RAW_NATIVE_REFUEL_SIBLING_LOAD_BATCH = 64;
+
+/** @deprecated Raw load uses paging; kept for tests documenting pre-B.1 sentinel misuse on raw rows. */
 export const AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE =
   MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1;
 
@@ -62,6 +74,19 @@ export function buildPhysicalRefuelAuthorityConflictEvaluation(): RawRefuelNativ
     insufficientNativeEventIds: [],
     siblingAssessments: [],
     detail: PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: true,
+  });
+}
+
+export function buildNativeSiblingRawLoadIncompleteEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'AMBIGUOUS',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL,
     shouldConvergeToNative: false,
     failClosed: true,
   });

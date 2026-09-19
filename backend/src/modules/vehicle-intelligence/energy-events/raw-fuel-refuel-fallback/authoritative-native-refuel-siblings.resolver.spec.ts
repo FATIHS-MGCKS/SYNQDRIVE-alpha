@@ -5,8 +5,13 @@ import {
   type VehicleEnergyEvent,
   type VehicleEnergyEventRefuelReconciliation,
 } from '@prisma/client';
-import { evaluateRawRefuelNativeFallbackConvergence } from './raw-refuel-native-fallback-convergence.evaluator';
 import { resolveAuthoritativeNativeRefuelSiblingsFromLoaded } from './authoritative-native-refuel-siblings.resolver';
+import {
+  evaluateRawRefuelNativeFallbackConvergence,
+  buildPendingPhysicalReconciliationEvaluation,
+  MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW,
+  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
+} from './raw-refuel-native-fallback-convergence.evaluator';
 import {
   NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL,
   PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL,
@@ -63,6 +68,7 @@ function nativeRevision(input: {
   fuelStart: number;
   fuelEnd: number;
   fuelDelta: number;
+  createdAtIso?: string;
 }): VehicleEnergyEvent {
   return {
     id: input.id,
@@ -78,8 +84,8 @@ function nativeRevision(input: {
       fuelStartLiters: input.fuelStart,
       fuelEndLiters: input.fuelEnd,
     },
-    createdAt: new Date(input.startIso),
-    updatedAt: new Date(input.startIso),
+    createdAt: new Date(input.createdAtIso ?? input.startIso),
+    updatedAt: new Date(input.createdAtIso ?? input.startIso),
   } as unknown as VehicleEnergyEvent;
 }
 
@@ -374,5 +380,153 @@ describe('authoritative-native-refuel-siblings.resolver (F10.6.6-B)', () => {
     });
     expect(resolved.authoritativeNativeRows).toHaveLength(1);
     expect(resolved.authoritativeNativeRows[0].id).toBe('v2-canonical');
+  });
+});
+
+describe('authoritative-native-refuel-siblings.resolver (F10.6.6-B.1)', () => {
+  const v2Cutover = new Date('2026-09-04T12:00:00.000Z');
+  const cand = candidate();
+
+  it('V2-owned unreconciled native matching candidate → PENDING_RECONCILIATION (not legacy authority)', () => {
+    const unreconciled = nativeRevision({
+      id: 'native-v2-awaiting-recon',
+      dimoSegmentId: 'dimo-v2-pending',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:15:27.000Z',
+      fuelStart: 5,
+      fuelEnd: 18,
+      fuelDelta: 13,
+      createdAtIso: '2026-09-19T16:20:00.000Z',
+    });
+    const resolved = resolveAuthoritativeNativeRefuelSiblingsFromLoaded({
+      candidate: cand,
+      loadedNativeEvents: [{ ...unreconciled, refuelReconciliation: null }],
+      v2OwnershipCutoverAt: v2Cutover,
+    });
+    expect(resolved.status).toBe('PENDING_RECONCILIATION');
+    expect(resolved.detail).toBe(NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL);
+    expect(resolved.authoritativeNativeRows).toHaveLength(0);
+
+    const convergenceEval = evaluateRawRefuelNativeFallbackConvergence({
+      candidate: cand,
+      nativeRefuelRows: resolved.authoritativeNativeRows,
+    });
+    expect(convergenceEval.classification).toBe('NO_NATIVE_SIBLINGS');
+    expect(convergenceEval.shouldConvergeToNative).toBe(false);
+
+    const promotionEval = buildPendingPhysicalReconciliationEvaluation();
+    expect(promotionEval.shouldConvergeToNative).toBe(false);
+    expect(promotionEval.failClosed).toBe(false);
+  });
+
+  it('after reconciliation finalizes → SAME_NATIVE authoritative count 1', () => {
+    const groupId = 'veh-test:post-race-final';
+    const rev = nativeRevision({
+      id: 'native-post-race',
+      dimoSegmentId: 'dimo-post-race',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:15:27.000Z',
+      fuelStart: 5,
+      fuelEnd: 18,
+      fuelDelta: 13,
+      createdAtIso: '2026-09-19T16:20:00.000Z',
+    });
+    const finalized = resolveAuthoritativeNativeRefuelSiblingsFromLoaded({
+      candidate: cand,
+      loadedNativeEvents: [
+        {
+          ...rev,
+          refuelReconciliation: reconFor(rev, {
+            groupId,
+            finalityState: PhysicalRefuelFinalityState.FINAL_CANONICAL,
+            enrichmentEligible: true,
+            canonicalEventId: rev.id,
+          }),
+        },
+      ],
+      v2OwnershipCutoverAt: v2Cutover,
+    });
+    expect(finalized.status).toBe('OK');
+    expect(finalized.authoritativeNativeRows).toHaveLength(1);
+    const evaluation = evaluateRawRefuelNativeFallbackConvergence({
+      candidate: cand,
+      nativeRefuelRows: finalized.authoritativeNativeRows,
+    });
+    expect(evaluation.classification).toBe('SAME_NATIVE');
+    expect(evaluation.shouldConvergeToNative).toBe(true);
+  });
+
+  it('pre-fix null-recon always legacy — V2-owned would have been wrongly authoritative', () => {
+    const unreconciled = nativeRevision({
+      id: 'native-v2-would-be-legacy',
+      dimoSegmentId: 'dimo-wrong-legacy',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:15:27.000Z',
+      fuelStart: 5,
+      fuelEnd: 18,
+      fuelDelta: 13,
+      createdAtIso: '2026-09-19T16:20:00.000Z',
+    });
+    const wronglyLegacy = resolveAuthoritativeNativeRefuelSiblingsFromLoaded({
+      candidate: cand,
+      loadedNativeEvents: [{ ...unreconciled, refuelReconciliation: null }],
+      v2OwnershipCutoverAt: null,
+    });
+    expect(wronglyLegacy.status).toBe('OK');
+    expect(wronglyLegacy.authoritativeNativeRows).toHaveLength(1);
+  });
+
+  it('raw overflow window — canonical beyond old take=33 still resolves when all rows loaded', () => {
+    const groupId = 'veh-test:overflow-canonical';
+    const decoys = Array.from({ length: 40 }, (_, index) => {
+      const event = nativeRevision({
+        id: `decoy-${index}`,
+        dimoSegmentId: `dimo-decoy-${index}`,
+        startIso: `2026-09-19T10:${String(index).padStart(2, '0')}:00.000Z`,
+        endIso: `2026-09-19T10:${String(index).padStart(2, '0')}:30.000Z`,
+        fuelStart: 1,
+        fuelEnd: 2,
+        fuelDelta: 1,
+        createdAtIso: '2026-09-05T00:00:00.000Z',
+      });
+      return { ...event, refuelReconciliation: null };
+    });
+    const canonical = nativeRevision({
+      id: 'canonical-after-decoys',
+      dimoSegmentId: 'dimo-canonical-late',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:15:27.000Z',
+      fuelStart: 5,
+      fuelEnd: 18,
+      fuelDelta: 13,
+      createdAtIso: '2026-09-05T00:00:00.000Z',
+    });
+    const loaded = [
+      ...decoys,
+      {
+        ...canonical,
+        refuelReconciliation: reconFor(canonical, {
+          groupId,
+          finalityState: PhysicalRefuelFinalityState.FINAL_CANONICAL,
+          enrichmentEligible: true,
+          canonicalEventId: canonical.id,
+        }),
+      },
+    ];
+    expect(loaded.length).toBeGreaterThan(AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE);
+    const resolved = resolveAuthoritativeNativeRefuelSiblingsFromLoaded({
+      candidate: cand,
+      loadedNativeEvents: loaded,
+      v2OwnershipCutoverAt: v2Cutover,
+    });
+    expect(resolved.status).toBe('OK');
+    expect(resolved.authoritativeNativeRows).toHaveLength(1);
+    expect(resolved.authoritativeNativeRows[0].id).toBe('canonical-after-decoys');
+  });
+
+  it('raw load exceeds MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW → RAW_LOAD_INCOMPLETE semantics via detail constant', () => {
+    expect(MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW).toBeGreaterThan(
+      AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
+    );
   });
 });

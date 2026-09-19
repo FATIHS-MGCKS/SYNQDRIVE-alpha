@@ -13,6 +13,7 @@ import type { RawRefuelPromotionPreparationContext } from './raw-refuel-promotio
 import { RawFuelRefuelFallbackMetricsService } from './raw-fuel-refuel-fallback-metrics.service';
 import {
   buildNativeSiblingLimitExceededEvaluation,
+  buildNativeSiblingRawLoadIncompleteEvaluation,
   buildPendingPhysicalReconciliationEvaluation,
   buildPhysicalRefuelAuthorityConflictEvaluation,
   detectAuthoritativeNativeSiblingLimitExceeded,
@@ -185,6 +186,19 @@ export class RawRefuelConvergenceService {
 
         if (siblingLoad.status === 'AUTHORITY_CONFLICT') {
           const evaluation = buildPhysicalRefuelAuthorityConflictEvaluation();
+          this.metrics?.recordConvergenceFailClosed();
+          this.metrics?.recordConvergenceAmbiguous();
+          return {
+            status: 'FAIL_CLOSED',
+            evaluation,
+            candidateId: locked.id,
+            convergedNativeEventId: null,
+            detail: siblingLoad.detail,
+          };
+        }
+
+        if (siblingLoad.status === 'RAW_LOAD_INCOMPLETE') {
+          const evaluation = buildNativeSiblingRawLoadIncompleteEvaluation();
           this.metrics?.recordConvergenceFailClosed();
           this.metrics?.recordConvergenceAmbiguous();
           return {

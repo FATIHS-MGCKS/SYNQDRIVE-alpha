@@ -1120,7 +1120,7 @@ export class VehicleIntelligenceController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.energyEventsService.listEnergyEvents(vehicleId, {
+    return this.energyEventsService.listCanonicalEnergyEvents(vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });

@@ -8,20 +8,27 @@ import {
   classifyPhysicalRefuelSibling,
   type RefuelRowForMatcher,
 } from '../physical-refuel-identity.matcher';
-import { isEnrichmentEligibleFinality } from '../physical-refuel-reconciliation.repository';
-import { vehicleEnergyEventToRefuelRow } from '../physical-refuel-row.mapper';
 import {
-  AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
+  isEnrichmentEligibleFinality,
+  isV2OwnedRefuelEvent,
+} from '../physical-refuel-reconciliation.repository';
+import { vehicleEnergyEventToRefuelRow } from '../physical-refuel-row.mapper';
+import { resolveEffectiveV2OwnershipCutoverAt } from '../v2-ownership-cutover.util';
+import {
   buildAuthoritativeNativeRefuelSiblingWhere,
   NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL,
+  NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL,
   PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL,
+  RAW_NATIVE_REFUEL_SIBLING_LOAD_BATCH,
+  MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW,
 } from './raw-refuel-native-fallback-convergence.evaluator';
 import { rawRefuelCandidateToRefuelRowForMatcher } from './raw-refuel-native-overlap.advisory';
 
 export type AuthoritativeNativeRefuelSiblingLoadStatus =
   | 'OK'
   | 'PENDING_RECONCILIATION'
-  | 'AUTHORITY_CONFLICT';
+  | 'AUTHORITY_CONFLICT'
+  | 'RAW_LOAD_INCOMPLETE';
 
 export interface AuthoritativeNativeRefuelSiblingLoadResult {
   status: AuthoritativeNativeRefuelSiblingLoadStatus;
@@ -43,18 +50,28 @@ type LoadedNativeRefuelEvent = VehicleEnergyEvent & {
 export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
   candidate: RawRefuelCandidate;
   loadedNativeEvents: LoadedNativeRefuelEvent[];
+  v2OwnershipCutoverAt?: Date | null;
 }): AuthoritativeNativeRefuelSiblingLoadResult {
   const { candidate, loadedNativeEvents } = input;
+  const v2OwnershipCutoverAt =
+    input.v2OwnershipCutoverAt !== undefined
+      ? input.v2OwnershipCutoverAt
+      : resolveEffectiveV2OwnershipCutoverAt();
   const candidateRow = rawRefuelCandidateToRefuelRowForMatcher(candidate);
   const rawNativeRowCount = loadedNativeEvents.length;
 
   const legacyEvents: LoadedNativeRefuelEvent[] = [];
+  const v2UnreconciledEvents: LoadedNativeRefuelEvent[] = [];
   const v2ByGroup = new Map<string, LoadedNativeRefuelEvent[]>();
 
   for (const event of loadedNativeEvents) {
     const recon = event.refuelReconciliation;
     if (!recon) {
-      legacyEvents.push(event);
+      if (isV2OwnedRefuelEvent(event, v2OwnershipCutoverAt)) {
+        v2UnreconciledEvents.push(event);
+      } else {
+        legacyEvents.push(event);
+      }
       continue;
     }
     const group = v2ByGroup.get(recon.reconciliationGroupId) ?? [];
@@ -62,9 +79,20 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
     v2ByGroup.set(recon.reconciliationGroupId, group);
   }
 
-  const physicalRefuelComponentCount = legacyEvents.length + v2ByGroup.size;
+  const physicalRefuelComponentCount =
+    legacyEvents.length + v2UnreconciledEvents.length + v2ByGroup.size;
   const authoritativeV2Rows: RefuelRowForMatcher[] = [];
   let pendingPhysicalMatch = false;
+
+  for (const unreconciled of v2UnreconciledEvents) {
+    const row = vehicleEnergyEventToRefuelRow(unreconciled);
+    if (
+      classifyPhysicalRefuelSibling(candidateRow, row).classification ===
+      'SAME_PHYSICAL_REFUEL'
+    ) {
+      pendingPhysicalMatch = true;
+    }
+  }
 
   for (const members of v2ByGroup.values()) {
     const enrichmentFinalMembers = members.filter(
@@ -125,12 +153,14 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
     }
   }
 
+  const authoritativeNativeRows = [...authoritativeV2Rows, ...authoritativeLegacyRows];
+
   return {
     status: 'OK',
     detail: 'authoritative_native_siblings_resolved',
     rawNativeRowCount,
     physicalRefuelComponentCount,
-    authoritativeNativeRows: [...authoritativeV2Rows, ...authoritativeLegacyRows],
+    authoritativeNativeRows,
   };
 }
 
@@ -138,17 +168,51 @@ export async function loadAuthoritativeNativeRefuelSiblings(
   tx: Prisma.TransactionClient,
   candidate: RawRefuelCandidate,
   window: { start: Date; end: Date },
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<AuthoritativeNativeRefuelSiblingLoadResult> {
-  const loadedNativeEvents = await tx.vehicleEnergyEvent.findMany({
-    where: buildAuthoritativeNativeRefuelSiblingWhere(candidate, window),
-    include: { refuelReconciliation: true },
-    orderBy: { startTime: 'asc' },
-    take: AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE,
-  });
+  const where = buildAuthoritativeNativeRefuelSiblingWhere(candidate, window);
+  const loadedNativeEvents: LoadedNativeRefuelEvent[] = [];
+  let cursorId: string | undefined;
+
+  while (true) {
+    const batch = await tx.vehicleEnergyEvent.findMany({
+      where,
+      include: { refuelReconciliation: true },
+      orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
+      take: RAW_NATIVE_REFUEL_SIBLING_LOAD_BATCH,
+      ...(cursorId
+        ? {
+            skip: 1,
+            cursor: { id: cursorId },
+          }
+        : {}),
+    });
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    loadedNativeEvents.push(...batch);
+    if (loadedNativeEvents.length > MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW) {
+      return {
+        status: 'RAW_LOAD_INCOMPLETE',
+        detail: NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL,
+        rawNativeRowCount: loadedNativeEvents.length,
+        physicalRefuelComponentCount: 0,
+        authoritativeNativeRows: [],
+      };
+    }
+
+    if (batch.length < RAW_NATIVE_REFUEL_SIBLING_LOAD_BATCH) {
+      break;
+    }
+    cursorId = batch[batch.length - 1].id;
+  }
 
   return resolveAuthoritativeNativeRefuelSiblingsFromLoaded({
     candidate,
     loadedNativeEvents,
+    v2OwnershipCutoverAt: resolveEffectiveV2OwnershipCutoverAt(env),
   });
 }
 

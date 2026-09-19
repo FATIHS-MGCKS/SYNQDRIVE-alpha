@@ -7,6 +7,7 @@ import {
   detectAuthoritativeNativeSiblingLimitExceeded,
   evaluateRawRefuelNativeFallbackConvergence,
   MAX_AUTHORITATIVE_NATIVE_SIBLINGS,
+  MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW,
   NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL,
 } from './raw-refuel-native-fallback-convergence.evaluator';
 
@@ -195,9 +196,15 @@ describe('evaluateRawRefuelNativeFallbackConvergence (F5 authoritative)', () => 
 });
 
 describe('authoritative native sibling bounded overflow (F5-PR1.1)', () => {
-  it('sentinel take is MAX+1', () => {
+  it('sentinel take is MAX+1 (legacy raw single-query sentinel — B.1 pages raw separately)', () => {
     expect(AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE).toBe(
       MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1,
+    );
+  });
+
+  it('raw overlap window bound is separate from authoritative sibling cap', () => {
+    expect(MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW).toBeGreaterThan(
+      MAX_AUTHORITATIVE_NATIVE_SIBLINGS,
     );
   });
 
