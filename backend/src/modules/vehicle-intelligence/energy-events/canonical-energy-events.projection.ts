@@ -52,7 +52,19 @@ export function projectCanonicalProductEnergyEvents<T extends EnergyEventWithRec
         member.refuelReconciliation.enrichmentEligible &&
         isEnrichmentEligibleFinality(member.refuelReconciliation.finalityState),
     );
+
+    if (enrichmentFinalMembers.length > 1) {
+      continue;
+    }
+
     if (enrichmentFinalMembers.length === 1) {
+      const recon = enrichmentFinalMembers[0].refuelReconciliation!;
+      if (
+        recon.canonicalEventId != null &&
+        recon.canonicalEventId !== enrichmentFinalMembers[0].id
+      ) {
+        continue;
+      }
       visibleRefuels.push(enrichmentFinalMembers[0]);
     }
   }

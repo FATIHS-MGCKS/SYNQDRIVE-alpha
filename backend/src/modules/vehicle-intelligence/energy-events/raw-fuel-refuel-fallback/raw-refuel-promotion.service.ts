@@ -219,7 +219,7 @@ export class RawRefuelPromotionService {
           };
         }
 
-        const evaluation = await this.evaluateAuthoritativeConvergenceTx(tx, locked);
+        const evaluation = await this.evaluateAuthoritativeConvergenceTx(tx, locked, env);
         this.recordEvaluationMetrics(evaluation);
 
         if (evaluation.shouldConvergeToNative) {
@@ -399,9 +399,10 @@ export class RawRefuelPromotionService {
   private async evaluateAuthoritativeConvergenceTx(
     tx: Prisma.TransactionClient,
     candidate: RawRefuelCandidate,
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<RawRefuelNativeFallbackConvergenceEvaluation> {
     const window = computeNativeOverlapQueryWindow(candidate);
-    const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, candidate, window);
+    const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, candidate, window, env);
 
     if (siblingLoad.status === 'PENDING_RECONCILIATION') {
       return buildPendingPhysicalReconciliationEvaluation();

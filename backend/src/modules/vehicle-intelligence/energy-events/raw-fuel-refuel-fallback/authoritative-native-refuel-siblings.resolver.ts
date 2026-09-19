@@ -24,6 +24,18 @@ import {
 } from './raw-refuel-native-fallback-convergence.evaluator';
 import { rawRefuelCandidateToRefuelRowForMatcher } from './raw-refuel-native-overlap.advisory';
 
+/** Candidate cannot treat native as absent while physical relationship is uncertain (Stage-4 safety). */
+export function nativePhysicalRelationshipImpliesPendingReconciliation(
+  candidateRow: RefuelRowForMatcher,
+  nativeRow: RefuelRowForMatcher,
+): boolean {
+  const { classification } = classifyPhysicalRefuelSibling(candidateRow, nativeRow);
+  if (classification === 'DISTINCT_PHYSICAL_REFUEL') return false;
+  if (classification === 'SAME_PHYSICAL_REFUEL') return true;
+  if (classification === 'INSUFFICIENT_EVIDENCE') return true;
+  return false;
+}
+
 export type AuthoritativeNativeRefuelSiblingLoadStatus =
   | 'OK'
   | 'PENDING_RECONCILIATION'
@@ -86,10 +98,7 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
 
   for (const unreconciled of v2UnreconciledEvents) {
     const row = vehicleEnergyEventToRefuelRow(unreconciled);
-    if (
-      classifyPhysicalRefuelSibling(candidateRow, row).classification ===
-      'SAME_PHYSICAL_REFUEL'
-    ) {
+    if (nativePhysicalRelationshipImpliesPendingReconciliation(candidateRow, row)) {
       pendingPhysicalMatch = true;
     }
   }
@@ -120,10 +129,7 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
 
     const matchesCandidate = members.some((member) => {
       const row = vehicleEnergyEventToRefuelRow(member);
-      return (
-        classifyPhysicalRefuelSibling(candidateRow, row).classification ===
-        'SAME_PHYSICAL_REFUEL'
-      );
+      return nativePhysicalRelationshipImpliesPendingReconciliation(candidateRow, row);
     });
     if (matchesCandidate) {
       pendingPhysicalMatch = true;

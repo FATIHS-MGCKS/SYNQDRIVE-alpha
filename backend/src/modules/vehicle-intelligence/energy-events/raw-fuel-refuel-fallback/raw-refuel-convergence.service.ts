@@ -171,7 +171,7 @@ export class RawRefuelConvergenceService {
         }
 
         const window = computeNativeOverlapQueryWindow(locked);
-        const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, locked, window);
+        const siblingLoad = await loadAuthoritativeNativeRefuelSiblings(tx, locked, window, env);
 
         if (siblingLoad.status === 'PENDING_RECONCILIATION') {
           const evaluation = buildPendingPhysicalReconciliationEvaluation();

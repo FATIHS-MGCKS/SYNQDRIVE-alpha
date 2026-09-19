@@ -56,6 +56,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-6-b2-canonical-query-pending-closure-2026-09-19',
+    version: '4.9.1152',
+    title: 'RFRF F10.6.6-B.2 — canonical query reconciliation load + pending INSUFFICIENT',
+    summary: [
+      'Canonical product queries include refuelReconciliation from Prisma; WOB service path 3→1 verified via listCanonicalEnergyEvents and buildTripsTimeline.',
+      'Stage-4 pending authority treats INSUFFICIENT_EVIDENCE like SAME for V2 unreconciled/non-final (DISTINCT does not block).',
+      'Paged loadAuthoritativeNativeRefuelSiblings + RAW_LOAD_INCOMPLETE fail-closed tested on convergence/promotion paths.',
+      'Product projection hides dual-final and canonicalEventId mismatch conflicts (no arbitrary canonical row).',
+    ],
+    reason:
+      'B.1 canonical read omitted refuelReconciliation include; pending logic ignored INSUFFICIENT neighbors; loader/promotion tests were mostly fromLoaded-only.',
+    previousBehavior:
+      'queryEnergyEventRows only included fuelStationEnrichment; pending only on SAME_PHYSICAL_REFUEL; product conflict could pick one final arbitrarily.',
+    details:
+      'energy-events.service.ts; canonical-energy-events.projection.ts; authoritative-native-refuel-siblings.resolver.ts; v2-ownership-cutover.util.ts; B.2 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T22:45:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-6-b1-race-bounded-load-product-read-2026-09-19',
     version: '4.9.1151',
     title: 'RFRF F10.6.6-B.1 — reconciliation race, bounded raw load, product-canonical reads',

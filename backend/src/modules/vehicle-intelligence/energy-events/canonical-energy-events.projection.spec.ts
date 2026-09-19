@@ -189,4 +189,50 @@ describe('canonical-energy-events.projection (F10.6.6-B.1)', () => {
     );
     expect(product).toHaveLength(0);
   });
+
+  it('dual enrichment-eligible finals in one component produce no product refuel', () => {
+    const groupId = 'veh-test:product-conflict';
+    const a = nativeRevision({
+      id: 'conflict-a',
+      dimoSegmentId: 'dimo-a',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:12:00.000Z',
+      fuelStart: 5,
+      fuelEnd: 16,
+      fuelDelta: 11,
+    });
+    const b = nativeRevision({
+      id: 'conflict-b',
+      dimoSegmentId: 'dimo-b',
+      startIso: '2026-09-19T16:09:00.000Z',
+      endIso: '2026-09-19T16:15:27.000Z',
+      fuelStart: 5,
+      fuelEnd: 18,
+      fuelDelta: 13,
+    });
+    const product = projectCanonicalProductEnergyEvents(
+      [
+        {
+          ...a,
+          refuelReconciliation: reconFor(a, {
+            groupId,
+            finalityState: PhysicalRefuelFinalityState.FINAL_CANONICAL,
+            enrichmentEligible: true,
+            canonicalEventId: a.id,
+          }),
+        },
+        {
+          ...b,
+          refuelReconciliation: reconFor(b, {
+            groupId,
+            finalityState: PhysicalRefuelFinalityState.FINAL_CANONICAL,
+            enrichmentEligible: true,
+            canonicalEventId: b.id,
+          }),
+        },
+      ],
+      v2Cutover,
+    );
+    expect(product.filter((row) => row.kind === EnergyEventKind.REFUEL)).toHaveLength(0);
+  });
 });

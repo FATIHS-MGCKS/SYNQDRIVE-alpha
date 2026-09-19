@@ -73,7 +73,7 @@ export class EnergyEventsService {
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
   ): Promise<EnergyEventDto[]> {
-    const rows = await this.queryEnergyEventRows(vehicleId, options);
+    const rows = await this.queryEnergyEventRowsForRaw(vehicleId, options);
     return rows.map(toEnergyEventDto);
   }
 
@@ -81,9 +81,10 @@ export class EnergyEventsService {
   async listCanonicalEnergyEvents(
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<EnergyEventDto[]> {
-    const rows = await this.queryEnergyEventRows(vehicleId, options);
-    const cutover = resolveEffectiveV2OwnershipCutoverAt();
+    const rows = await this.queryEnergyEventRowsForCanonical(vehicleId, options);
+    const cutover = resolveEffectiveV2OwnershipCutoverAt(env);
     const canonical = projectCanonicalProductEnergyEvents(rows, cutover);
     return canonical.map(toEnergyEventDto);
   }
@@ -99,27 +100,56 @@ export class EnergyEventsService {
     return this.listEnergyEventsRaw(vehicleId, options);
   }
 
-  private async queryEnergyEventRows(
+  private async queryEnergyEventRowsForRaw(
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
   ) {
     return this.prisma.vehicleEnergyEvent.findMany({
-      where: {
-        vehicleId,
-        ...(options.from || options.to
-          ? {
-              startTime: {
-                ...(options.from ? { gte: options.from } : {}),
-                ...(options.to ? { lte: options.to } : {}),
-              },
-            }
-          : {}),
-      },
+      where: this.buildEnergyEventListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
       },
       orderBy: { startTime: 'asc' },
     });
+  }
+
+  private async queryEnergyEventRowsForCanonical(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.prisma.vehicleEnergyEvent.findMany({
+      where: this.buildEnergyEventListWhere(vehicleId, options),
+      include: {
+        fuelStationEnrichment: true,
+        refuelReconciliation: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  private buildEnergyEventListWhere(
+    vehicleId: string,
+    options: { from?: Date; to?: Date },
+  ) {
+    return {
+      vehicleId,
+      ...(options.from || options.to
+        ? {
+            startTime: {
+              ...(options.from ? { gte: options.from } : {}),
+              ...(options.to ? { lte: options.to } : {}),
+            },
+          }
+        : {}),
+    };
+  }
+
+  /** @deprecated use queryEnergyEventRowsForRaw or queryEnergyEventRowsForCanonical */
+  private async queryEnergyEventRows(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.queryEnergyEventRowsForRaw(vehicleId, options);
   }
 
   async detectEnergyEvents(
@@ -326,13 +356,14 @@ export class EnergyEventsService {
     vehicleId: string,
     hydratedTrips: Array<Record<string, unknown> & { startTime: Date | string }>,
     options: { from?: Date; to?: Date } = {},
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<
     Array<
       | ({ itemType: 'trip'; startTime: string } & Record<string, unknown>)
       | ({ itemType: 'energy-event'; startTime: string } & EnergyEventDto)
     >
   > {
-    const events = await this.listCanonicalEnergyEvents(vehicleId, options);
+    const events = await this.listCanonicalEnergyEvents(vehicleId, options, env);
 
     const tripItems = hydratedTrips.map((trip) => {
       const startTime =
