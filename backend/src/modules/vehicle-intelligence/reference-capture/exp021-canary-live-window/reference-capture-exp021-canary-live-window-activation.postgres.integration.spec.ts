@@ -23,6 +23,7 @@ import { ReferenceCaptureSettlementShadowService } from '../reference-capture-se
 import { ReferenceCaptureSessionRepository } from '../reference-capture-session.repository';
 import { ReferenceCaptureSessionService } from '../reference-capture-session.service';
 import { ReferenceCaptureExp021CanaryLiveWindowActivationService } from './reference-capture-exp021-canary-live-window-activation.service';
+import { buildExp021CanaryCohortAuthority } from './reference-capture-exp021-canary-live-window-cohort.lib';
 import {
   buildReferenceCapturePostgresDatabaseUrl,
   emptyDataPlane,
@@ -33,6 +34,11 @@ import {
 const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.REFERENCE_CAPTURE_POSTGRES_REQUIRED === '1';
 const T0_MS = Date.parse('2026-09-20T10:00:00.000Z');
+
+function ksMxIntegrationCohort() {
+  const { organizationId, vehicleId, tokenId } = EXP021_KS_MX_2024_CANARY;
+  return buildExp021CanaryCohortAuthority([{ organizationId, vehicleId, tokenId }])!;
+}
 
 async function ensureCanaryVehicleGraph(prisma: PrismaClient): Promise<void> {
   const { organizationId, vehicleId, tokenId } = EXP021_KS_MX_2024_CANARY;
@@ -318,10 +324,12 @@ async function cleanupCanaryFinalizeChain(
         endTimeMs: null,
       };
 
-      const arm = (service as unknown as { armOngoingTrip: (t: typeof trip, ms: number) => Promise<unknown> })
-        .armOngoingTrip.bind(service);
+      const cohort = ksMxIntegrationCohort();
+      const arm = (service as unknown as {
+        armOngoingTrip: (t: typeof trip, ms: number, c: typeof cohort) => Promise<unknown>;
+      }).armOngoingTrip.bind(service);
 
-      await Promise.all([arm(trip, T0_MS), arm(trip, T0_MS)]);
+      await Promise.all([arm(trip, T0_MS, cohort), arm(trip, T0_MS, cohort)]);
 
       const runsAfter = await prisma.exp021StudyRun.count({ where: { enrollmentId } });
       const sessionsAfter = await prisma.referenceCaptureSession.count({
@@ -391,9 +399,11 @@ async function cleanupCanaryFinalizeChain(
         startTimeMs: T0_MS + 60_000,
         endTimeMs: null,
       };
-      const arm = (service as unknown as { armOngoingTrip: (t: typeof trip, ms: number) => Promise<unknown> })
-        .armOngoingTrip.bind(service);
-      await arm(trip, T0_MS);
+      const cohort = ksMxIntegrationCohort();
+      const arm = (service as unknown as {
+        armOngoingTrip: (t: typeof trip, ms: number, c: typeof cohort) => Promise<unknown>;
+      }).armOngoingTrip.bind(service);
+      await arm(trip, T0_MS, cohort);
 
       const runsAfter = await prisma.exp021StudyRun.count({ where: { enrollmentId } });
       expect(runsAfter).toBe(runsBefore);
@@ -448,10 +458,15 @@ async function cleanupCanaryFinalizeChain(
         endTimeMs: null,
       };
 
+      const cohort = ksMxIntegrationCohort();
       const arm = (activationService as unknown as {
-        armOngoingTrip: (t: typeof ongoingSnapshot, ms: number) => Promise<{ sessionId: string }>;
+        armOngoingTrip: (
+          t: typeof ongoingSnapshot,
+          ms: number,
+          c: typeof cohort,
+        ) => Promise<{ sessionId: string }>;
       }).armOngoingTrip.bind(activationService);
-      const armed = await arm(ongoingSnapshot, T0_MS);
+      const armed = await arm(ongoingSnapshot, T0_MS, cohort);
       const sessionId = armed.sessionId;
 
       const ledgerAfterArm = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
@@ -477,11 +492,12 @@ async function cleanupCanaryFinalizeChain(
           t: typeof completedSnapshot,
           sid: string,
           notBeforeMs: number,
+          c: typeof cohort,
         ) => Promise<void>;
       }).finalizeCompletedTrip.bind(activationService);
 
-      await finalize(completedSnapshot, sessionId, T0_MS);
-      await finalize(completedSnapshot, sessionId, T0_MS);
+      await finalize(completedSnapshot, sessionId, T0_MS, cohort);
+      await finalize(completedSnapshot, sessionId, T0_MS, cohort);
 
       const ledger = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
         where: { vehicleTripId: tripId },
@@ -574,6 +590,7 @@ async function cleanupCanaryFinalizeChain(
       });
 
       const { activationService, sessionService } = createCanaryActivationService(prisma, fleetRepo);
+      const cohort = ksMxIntegrationCohort();
       const finalize = (activationService as unknown as {
         finalizeCompletedTrip: (
           t: {
@@ -587,6 +604,7 @@ async function cleanupCanaryFinalizeChain(
           },
           sid: string,
           notBeforeMs: number,
+          c: typeof cohort,
         ) => Promise<void>;
       }).finalizeCompletedTrip.bind(activationService);
 
@@ -602,7 +620,7 @@ async function cleanupCanaryFinalizeChain(
 
       const stopSpy = jest.spyOn(sessionService, 'stopRecording');
       const resumeSpy = jest.spyOn(sessionService, 'resumeRecordingStop');
-      await finalize(tripSnap, sessionCompletedId, T0_MS);
+      await finalize(tripSnap, sessionCompletedId, T0_MS, cohort);
       expect(stopSpy).not.toHaveBeenCalled();
       expect(resumeSpy).not.toHaveBeenCalled();
       const ledgerCompleted = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
@@ -664,6 +682,7 @@ async function cleanupCanaryFinalizeChain(
         },
         sessionStoppingId,
         T0_MS,
+        cohort,
       );
       expect(stopSpy).not.toHaveBeenCalled();
       expect(resumeSpy).toHaveBeenCalledTimes(1);

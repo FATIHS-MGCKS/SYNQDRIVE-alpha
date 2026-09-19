@@ -42,7 +42,7 @@ export class ReferenceCaptureExp021CanaryLiveWindowActivationScheduler
       void this.tick();
     }, intervalMs);
     this.logger.log(
-      `EXP-021 canary live window activation scheduler active (intervalMs=${intervalMs}, tokenId=${config.canaryTokenId})`,
+      `EXP-021 canary live window activation scheduler active (intervalMs=${intervalMs}, cohortVehicles=${config.cohort.members.length}, tokenIds=[${config.cohort.tokenIds.join(',')}])`,
     );
   }
 

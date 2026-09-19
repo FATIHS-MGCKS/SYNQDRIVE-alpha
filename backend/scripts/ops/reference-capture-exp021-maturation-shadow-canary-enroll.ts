@@ -29,6 +29,11 @@ import {
   EXP021_CANARY_SPEED_PROVIDER_FIELDS,
   type Exp021CanaryEnrollCliArgs,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.lib';
+import {
+  resolveCohortForMaturationOperator,
+  buildSettlementShadowLoaderForMember,
+} from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-cohort-operator.lib';
+import type { Exp021CanaryCohortMember } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.errors';
 
 function hasFlag(flag: string): boolean {
@@ -89,28 +94,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function loadCanarySettlementShadowExperiments(prisma: PrismaService) {
-  return prisma.referenceCaptureSettlementShadowExperiment.findMany({
-    where: {
-      organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-      vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
-      tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 50,
-    select: { id: true, metadataJson: true, updatedAt: true },
-  });
+function resolveCliCohortMember(tokenId: number): Exp021CanaryCohortMember {
+  const cohort = resolveCohortForMaturationOperator();
+  const member = cohort.membersByTokenId.get(tokenId);
+  if (!member) {
+    throw new Exp021MaturationShadowFamilyIdentityError(
+      `tokenId ${tokenId} is not in configured EXP-021 canary cohort`,
+    );
+  }
+  return member;
 }
 
 async function loadSpeedObservationsForWindow(
   prisma: PrismaService,
+  member: Exp021CanaryCohortMember,
   canonicalWindowTo: Date,
 ) {
   const windowFrom = new Date(canonicalWindowTo.getTime() - 90_000);
   return prisma.referenceCaptureObservation.findMany({
     where: {
-      organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
-      vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
+      organizationId: member.organizationId,
+      vehicleId: member.vehicleId,
       providerField: { in: [...EXP021_CANARY_SPEED_PROVIDER_FIELDS] },
       providerTimestamp: {
         gte: windowFrom,
@@ -129,14 +133,19 @@ async function loadSpeedObservationsForWindow(
 
 async function main(): Promise<void> {
   const args = parseCliArgs();
+  const cohortMember = resolveCliCohortMember(args.tokenId);
   const app = await bootstrapExp021CanaryEnrollApplicationContext({
     logger: ['error', 'warn', 'log'],
   });
 
   try {
     const { config, repository, enrollment, prisma } = resolveExp021CanaryEnrollNestServices(app);
+    const loadCanarySettlementShadowExperiments = buildSettlementShadowLoaderForMember(
+      prisma,
+      cohortMember,
+    );
 
-    const settlementShadowExperiments = await loadCanarySettlementShadowExperiments(prisma);
+    const settlementShadowExperiments = await loadCanarySettlementShadowExperiments();
 
     let canonicalWindowTo = args.canonicalWindowTo;
     let windowCloseAuthority = EXP021_CANARY_CANONICAL_WINDOW_TO_AUTHORITY;
@@ -156,11 +165,11 @@ async function main(): Promise<void> {
     if (args.waitNextWindow) {
       const waited = await waitForNextCanaryWindowWithRefreshingDb({
         startupBaselineExperiments: settlementShadowExperiments,
-        loadSettlementShadowExperiments: () => loadCanarySettlementShadowExperiments(prisma),
+        loadSettlementShadowExperiments: loadCanarySettlementShadowExperiments,
         sleep,
         now: () => new Date(),
         config,
-        tokenId: EXP021_KS_MX_2024_CANARY.tokenId,
+        tokenId: cohortMember.tokenId,
       });
       canonicalWindowTo = waited.canonicalWindowTo;
       windowCloseAuthority = `${EXP021_CANARY_WINDOW_CLOSE_AUTHORITY}@${waited.physicalEndSource}`;
@@ -185,7 +194,11 @@ async function main(): Promise<void> {
       }
     }
 
-    const speedObservations = await loadSpeedObservationsForWindow(prisma, canonicalWindowTo!);
+    const speedObservations = await loadSpeedObservationsForWindow(
+      prisma,
+      cohortMember,
+      canonicalWindowTo!,
+    );
     const activityAuthorityByGeometry = resolveActivityAuthorityForCanonicalWindow(
       speedObservations,
       canonicalWindowTo!,
@@ -194,6 +207,7 @@ async function main(): Promise<void> {
     const result = await executeCanaryEnrollment({
       args,
       config,
+      cohort: resolveCohortForMaturationOperator(),
       repository,
       enrollment,
       activityAuthorityByGeometry,

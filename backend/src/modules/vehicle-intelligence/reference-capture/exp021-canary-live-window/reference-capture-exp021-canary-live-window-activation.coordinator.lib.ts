@@ -1,4 +1,5 @@
-import { EXP021_CANARY_LIVE_WINDOW_CANARY, EXP021_CANARY_LIVE_WINDOW_TOKEN_ID } from './reference-capture-exp021-canary-live-window-activation.constants';
+import type { Exp021CanaryCohortAuthority, Exp021CanaryCohortMember } from './reference-capture-exp021-canary-live-window-cohort.lib';
+import { isForensicExcludedVehicleTrip, resolveCohortMemberForTripIdentity } from './reference-capture-exp021-canary-live-window-cohort.lib';
 import {
   CanaryLiveWindowLedgerState,
   isCanaryLedgerArmComplete,
@@ -26,9 +27,7 @@ export type CanaryLiveWindowLedgerSnapshot = {
 export type CanaryLiveWindowActivationConfig = {
   enabled: boolean;
   activationNotBeforeMs: number;
-  canaryTokenId: number;
-  canaryVehicleId: string;
-  canaryOrganizationId: string;
+  cohort: Exp021CanaryCohortAuthority;
 };
 
 export type CanaryLiveWindowActivationPorts = {
@@ -57,25 +56,37 @@ export function parseActivationNotBeforeIso(value: string | undefined): number |
 export function buildCanaryLiveWindowActivationConfig(input: {
   enabled: boolean;
   activationNotBeforeIso: string | undefined;
+  cohort: Exp021CanaryCohortAuthority | null;
 }): CanaryLiveWindowActivationConfig | null {
   if (!input.enabled) return null;
   const activationNotBeforeMs = parseActivationNotBeforeIso(input.activationNotBeforeIso);
   if (activationNotBeforeMs == null) return null;
+  if (!input.cohort || input.cohort.members.length === 0) return null;
   return {
     enabled: true,
     activationNotBeforeMs,
-    canaryTokenId: EXP021_CANARY_LIVE_WINDOW_TOKEN_ID,
-    canaryVehicleId: EXP021_CANARY_LIVE_WINDOW_CANARY.vehicleId,
-    canaryOrganizationId: EXP021_CANARY_LIVE_WINDOW_CANARY.organizationId,
+    cohort: input.cohort,
   };
 }
 
-export function isCanaryTripIdentity(trip: CanaryLiveWindowTripSnapshot, config: CanaryLiveWindowActivationConfig): boolean {
-  return (
-    trip.tokenId === config.canaryTokenId &&
-    trip.vehicleId === config.canaryVehicleId &&
-    trip.organizationId === config.canaryOrganizationId
-  );
+export function resolveCohortMemberForTrip(
+  trip: CanaryLiveWindowTripSnapshot,
+  config: CanaryLiveWindowActivationConfig,
+): Exp021CanaryCohortMember | null {
+  if (isForensicExcludedVehicleTrip(trip.tripId)) return null;
+  return resolveCohortMemberForTripIdentity({
+    organizationId: trip.organizationId,
+    vehicleId: trip.vehicleId,
+    tokenId: trip.tokenId,
+    cohort: config.cohort,
+  });
+}
+
+export function isCanaryTripIdentity(
+  trip: CanaryLiveWindowTripSnapshot,
+  config: CanaryLiveWindowActivationConfig,
+): boolean {
+  return resolveCohortMemberForTrip(trip, config) != null;
 }
 
 export function isFutureWindowTrip(trip: CanaryLiveWindowTripSnapshot, config: CanaryLiveWindowActivationConfig): boolean {
@@ -87,7 +98,7 @@ export async function runCanaryLiveWindowActivationCoordinatorTick(args: {
   ongoingTrips: CanaryLiveWindowTripSnapshot[];
   completedTrips: CanaryLiveWindowTripSnapshot[];
   ledgerByTripId: Map<string, CanaryLiveWindowLedgerSnapshot>;
-  activeBlockingSessionId: string | null;
+  activeBlockingSessionByVehicleId: Map<string, string>;
   ports: CanaryLiveWindowActivationPorts;
 }): Promise<CanaryLiveWindowCoordinatorTickResult> {
   const result: CanaryLiveWindowCoordinatorTickResult = {
@@ -117,9 +128,11 @@ export async function runCanaryLiveWindowActivationCoordinatorTick(args: {
     }
 
     const resumeInProgress = ledger != null && isCanaryLedgerArmInProgress(ledger.state);
+    const activeBlockingSessionId =
+      args.activeBlockingSessionByVehicleId.get(trip.vehicleId) ?? null;
     if (
       isForeignBlockingReferenceCaptureSession({
-        activeBlockingSessionId: args.activeBlockingSessionId,
+        activeBlockingSessionId,
         ledgerForTrip: ledger,
       }) &&
       !resumeInProgress
