@@ -469,7 +469,7 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
     const rows = await db.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(DISTINCT f.id)::bigint AS count
       FROM exp021_maturation_shadow_window_families f
-      WHERE f.vehicle_id = ${vehicleId}::uuid
+      WHERE f.vehicle_id = ${vehicleId}
         AND EXISTS (
         SELECT 1
         FROM exp021_maturation_shadow_windows w

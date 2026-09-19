@@ -109,6 +109,41 @@ VDC does not enqueue `reference-capture-exp021-maturation-shadow-observe` jobs a
 
 **SAFE_FOR_EXP021_AND_VDC_PARALLEL_RUN=YES** (shared provider delay possible under enforce mode; no mutating authority collision).
 
+### Production effective vs repository default (read-only VPS, 2026-09-19)
+
+Inspection: `sudo grep` on `/opt/synqdrive/shared/backend.env` via Cloud Agent SSH (`synqdrive-admin` + sudo). **No production deploy or env mutation.**
+
+| Control | REPOSITORY_DEFAULT (code / `.env.example`) | PRODUCTION_EFFECTIVE |
+|---------|---------------------------------------------|----------------------|
+| `DIMO_PROVIDER_LIMITER_MODE` | `shadow` | **UNKNOWN** — key absent from `backend.env`; live Nest resolved env not exported to this read path |
+| `DIMO_PROVIDER_RATE_LIMIT_PER_SECOND` | `20` | **UNKNOWN** — absent from `backend.env` |
+| `DIMO_PROVIDER_RATE_BURST` | `5` (capacity ≈ 25 burst) | **UNKNOWN** — absent |
+| `DIMO_PROVIDER_MAX_IN_FLIGHT` | `40` | **UNKNOWN** — absent |
+| `DIMO_PROVIDER_RESERVED_HIGH_PRIORITY_SLOTS` | `12` | **UNKNOWN** — absent |
+| `EXP021_MATURATION_SHADOW_WORKER_CONCURRENCY` | `1` (`reference-capture-exp021-maturation-shadow.constants.ts`, not env-overridable) | **1** (same compile-time constant on deployed artifact) |
+
+**Production maturation flags present in `backend.env` (pre–PR #1694 cohort deploy):** `EXP021_MATURATION_SHADOW_ENABLED=true`, allowlist `187336` only, `EXP021_MATURATION_SHADOW_MAX_ACTIVE_FAMILIES=1` — cohort expansion remains a future config change, not performed in this closure.
+
+**Rate-headroom conclusion:** With DIMO limiter effective values **unverified**, `RATE_HEADROOM` stays **UNKNOWN** for enforce-mode arithmetic; repository analysis above still bounds maturation GraphQL via worker concurrency **1**.
+
+## PostgreSQL multi-vehicle cohort proof (A1/B1/C1/A2)
+
+**Spec:** `reference-capture-exp021-maturation-shadow-canary-cohort.postgres.integration.spec.ts`  
+**CI:** `npm run test:exp021:maturation-shadow:cohort-postgres:ci` (included in `test:exp021:fleet:postgres:ci`)
+
+| Step | Vehicle shape | Window (`canonicalWindowTo`) | Proof |
+|------|---------------|------------------------------|--------|
+| A1 | KS MX (`187336`) | `2026-09-21T10:00:00.000Z` | `executeCanaryEnrollment` + real `enrollWindowFamily`; concurrent duplicate enrollment converges to **one** family (DB unique identity) |
+| B1 | KS MS (`187361`) | `2026-09-21T10:05:00.000Z` | Independent family while A unfinished |
+| C1 | WOB (`192922`) | `2026-09-21T10:10:00.000Z` | Independent family; no cross-vehicle / cross-token contamination |
+| A2 | KS MX | `2026-09-21T11:00:00.000Z` | Second family after A1 observation horizon completed; same process + cohort config |
+
+**Restart convergence:** New `ReferenceCaptureExp021MaturationShadowEnrollmentService` instance; `enrollWindowFamily` replay for A1 returns same `familyId` (`RESTART_DUPLICATES_A1=NO`); `executeCanaryEnrollment` accepts A2 (`RESTART_ACCEPTS_A2=YES`).
+
+**Forensic trip** `a72fb179-3fca-42a1-bdc1-3461cbcade44`: seeded without `physicalDriveInterval`; no maturation family at forensic `endTime`.
+
+**Repository fix (Postgres binding):** `countUnfinishedFamiliesForVehicle` raw query — removed erroneous `::uuid` cast on Prisma text bind (enables per-vehicle guard under real Postgres).
+
 ## Activation / deploy sequence (future task)
 
 1. Deploy cohort PR with activation **still false**.
