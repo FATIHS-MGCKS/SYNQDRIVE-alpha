@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-09-19 — RFRF F10.6.0.1 micro-closure (EED-EV-0071 correction)
+
+- Production rebaseline **accepted**: `0384adf…` → `16000fce6…` with **empty** RFRF business runtime and VDC runtime diffs; EXP-021 + RFRF tooling-only paths on `main`
+- `PRODUCTION_REBASELINE_REQUIRED=NO`; resolves prior contradiction with `READY_FOR_STAGE4_AUTHORIZATION_GATE=YES`
+- VDC metrics: `VDC_PILOT_SCOPE_COUNT=4` (configured JSON); `VDC_CANONICAL_ACTIVE_VEHICLE_COUNT=3`; `VDC_CONFIGURED_SCOPE_DRIFT=NO`
+- CI: `rfrf-stage4-convergence-readiness` PASS, `rfrf-stage3-persistence-readiness` PASS; `i18n-authority-protection` FAIL until trusted label
+- Read-only Production: 3 `raw_refuel_candidates` (SETTLING×2, INSUFFICIENT×1); blast radius **BOUNDED**; observational gates unchanged (NO)
+
 ## 2026-09-19 — RFRF F10.6.0 Stage-4 convergence readiness (tooling; no Production Stage 4)
 
 - EED-EV-0071: Stage-4 enable/recovery/rollback fixture closure (recovery target Stage 3); Production read-only rebaseline on release `20260918232713_v4994` / SHA `16000fce6…` (drift vs EED-EV-0070); RFRF still Stage 3 with cutover unchanged; Stage-4 dry-run 3→4 zero mutation on VPS; wrong-source rollback from stage 4 blocked; EXP-021 nonterminal ledger 0; VDC canonical epoch 107/107; candidates 0; observational readiness NO (epistemic P2); CI workflow for F5-PR1 + F9 + P20 promotion boundary

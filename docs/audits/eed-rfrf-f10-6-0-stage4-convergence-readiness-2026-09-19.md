@@ -11,7 +11,8 @@
 | Field | Value |
 |-------|-------|
 | **RFRF_F10_6_0_STAGE4_CONVERGENCE_READINESS** | PASS (tooling + tests + read-only Production rebaseline) |
-| **PRODUCTION_REBASELINE_REQUIRED** | **YES** — release/SHA drift vs EED-EV-0070 |
+| **PRODUCTION_REBASELINE_ACCEPTED** | **YES** (F10.6.0.1 — see below) |
+| **PRODUCTION_REBASELINE_REQUIRED** | **NO** |
 | **STAGE_4_EXECUTED** | NO |
 | **STAGE_4_START_AUTHORIZED** | NO |
 | **READY_FOR_STAGE4_AUTHORIZATION_GATE** | YES (structural; observational maturity still NO) |
@@ -28,6 +29,34 @@ Stage **4** means **`RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED=true`** with ma
 | **MIXED_RUNTIME** | NO | **NO** |
 
 Deploy drift is consistent with post–#1692 application release on VPS; **RFRF Stage-3 env flags were re-verified** on current runtime (not re-executed).
+
+### F10.6.0.1 — Production rebaseline acceptance (`0384adf…` → `16000fce6…`)
+
+| Field | Value |
+|-------|-------|
+| **RFRF_BUSINESS_RUNTIME_DIFF_0384_TO_16000** | **EMPTY** (no paths under `raw-fuel-refuel-fallback`, `raw-refuel-candidate`, or RFRF runtime services) |
+| **VDC_RUNTIME_DIFF_0384_TO_16000** | **EMPTY** (no paths under `device-connection-physical-state`) |
+| **Allowed deploy delta** | EXP-021 reference-capture modules + RFRF **ops/test/docs** only (#1692 + #1691 tooling on `main`; not Stage-4 business semantics) |
+
+**Git commits between SHAs:** `5860b125` (RFRF F10.5.0 tooling/tests), `16000fce6` (EXP-021 PDI publish #1692).
+
+**Module classification (30 changed paths):**
+
+| Module | Paths | RFRF Stage-4 authority impact |
+|--------|-------|-------------------------------|
+| EXP-021 reference capture | 8 under `reference-capture/exp021-*` | Independent; cross-workstream gate PASS |
+| RFRF ops / CI / audits | 22 (`backend/scripts/**`, workflows, EED docs) | Tooling only; not deployed business runtime on VPS |
+| RFRF business runtime | **0** | Unchanged between Production SHAs |
+| VDC runtime | **0** | Unchanged between Production SHAs |
+
+**Read-only re-verify (F10.6.0.1 UTC):** replicas both `16000fce6…`; Stage **3**; master/persist true; convergence/promotion/G2 false/absent; cutover unchanged; live preflight **PASS**; fallback VEE **0**.
+
+| Field | Value |
+|-------|-------|
+| **PRODUCTION_REBASELINE_ACCEPTED** | **YES** |
+| **PRODUCTION_REBASELINE_REQUIRED** | **NO** |
+
+Historical EED-EV-0070 execution facts (release `20260918174845_v4994`, SHA `0384adf…`, candidates 0 at execution time) remain **unchanged** as historical record.
 
 ### RFRF authority (Production `backend.env`)
 
@@ -93,17 +122,17 @@ Wrong-source rollback `DRY_RUN=1 --from-stage 4` while env is Stage **3**: **BLO
 | Field | Value |
 |-------|-------|
 | **REAL_RAW_RISE_OBSERVED_UNDER_STAGE3** | **NO** |
-| **REAL_STAGE3_CANDIDATE_PERSISTENCE_PROVEN** | **NO** |
-| **STAGE3_CANDIDATE_COUNT** | **0** |
-| **STAGE3_CANDIDATE_LIFECYCLE_BREAKDOWN** | _(empty)_ |
+| **REAL_STAGE3_CANDIDATE_PERSISTENCE_PROVEN** | **NO** (unchanged epistemic gate; 3 live rows noted under count only) |
+| **STAGE3_CANDIDATE_COUNT** | **3** (read-only F10.6.0.1; natural rows after Stage 3 enablement) |
+| **STAGE3_CANDIDATE_LIFECYCLE_BREAKDOWN** | SETTLING×2, INSUFFICIENT×1 (vehicles under configured VDC pilot org) |
 | **STAGE4_OBSERVATIONAL_READINESS** | **NO** |
-| **Classification** | **Epistemic P2** (same policy as EED-EV-0069 / 0070 — not a structural P0 blocker for enabling convergence **authority**) |
+| **Classification** | **Epistemic P2** — `REAL_RAW_RISE_OBSERVED_UNDER_STAGE3` remains **NO**; formal positive-path observational proof not upgraded in this evidence (see EED-EV-0070 policy) |
 
 ## Blast radius
 
 | Field | Value |
 |-------|-------|
-| **STAGE4_EXISTING_CANDIDATE_BLAST_RADIUS** | **NONE** (0 rows) |
+| **STAGE4_EXISTING_CANDIDATE_BLAST_RADIUS** | **BOUNDED** (3 rows; convergence at Stage 4 would evaluate per readiness — no promotion/G2/fallback VEE paths) |
 
 ## Tooling / tests
 
@@ -113,10 +142,22 @@ Wrong-source rollback `DRY_RUN=1 --from-stage 4` while env is Stage **3**: **BLO
 | **STAGE4_ROLLBACK_TO_STAGE3_SAFE** | YES (fixtures + rollback script marker) |
 | **STAGE4_RECOVERY_TARGET_STAGE** | 3 |
 | **STAGE4_MIXED_AUTHORITY_PREVENTED** | YES (rollback fixtures) |
-| **STAGE4_CONVERGENCE_REAL_PG** | PASS (CI gate: F5-PR1) |
-| **STAGE4_MULTI_REPLICA_CONVERGENCE_SAFETY** | PASS (CI gate: F9 harness) |
+| **STAGE4_CONVERGENCE_REAL_PG** | **PASS** (GitHub `rfrf-stage4-convergence-readiness` @ PR #1695 head `2a29a76…`, run 35409974783) |
+| **STAGE4_MULTI_REPLICA_CONVERGENCE_SAFETY** | **PASS** (same CI job — F9 harness) |
 
 Local fixture scripts: `rfrf-f10-stage4-{authority-matrix,transaction-safety,rollback-fixture}-tests.sh`; operational gate extended.
+
+### CI completion (PR #1695 @ `2a29a76bad1b1c0869cbf1c82ee8aeb03a6ea24d`)
+
+| Check | Result |
+|-------|--------|
+| **rfrf-stage4-convergence-readiness** | **PASS** (~26m43s) |
+| **rfrf-stage3-persistence-readiness** | **PASS** (~27m35s) |
+| **validate-module-registry** | **PASS** |
+| **i18n-new-debt-gate** | **PASS** |
+| **i18n-authority-protection** | **FAIL** (new workflow file; requires trusted `i18n-governance-authority-change` label) |
+| **CI gate (all critical jobs)** | **PASS** (both workflow matrices) |
+| **Migration / Backend integration / boundary repair PostgreSQL** | **PASS** |
 
 ## Cross-workstream
 
@@ -130,16 +171,27 @@ Local fixture scripts: `rfrf-f10-stage4-{authority-matrix,transaction-safety,rol
 
 Ledger table on current DB: `exp021_canary_live_window_activation_ledgers` (post–#1692 schema).
 
-### VDC (canonical post-T0 population)
+### VDC (canonical post-T0 population + configured scopes)
+
+**Metric semantics (F10.6.0.1):**
+
+| Field | Definition |
+|-------|------------|
+| **VDC_PILOT_SCOPE_COUNT** / **VDC_CONFIGURED_PILOT_SCOPE_COUNT** | Count of tuples in `CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON` |
+| **VDC_CANONICAL_ACTIVE_VEHICLE_COUNT** | Distinct `(organization_id, vehicle_id)` with shadow observations where `observed_at >= T0` |
 
 | Field | Value |
 |-------|-------|
 | **VDC_CROSS_WORKSTREAM_GATE** | **PASS** |
-| **VDC_AUTHORITY_MODE** | LEGACY (env unchanged) |
+| **VDC_AUTHORITY_MODE** | **LEGACY** (authority cutover / side-effects env keys absent) |
 | **VDC_PILOT_T0** | `2026-09-18T09:33:25.000Z` |
+| **VDC_CONFIGURED_PILOT_SCOPE_COUNT** | **4** |
+| **VDC_PILOT_SCOPE_COUNT** | **4** (same as configured — do not conflate with observation count) |
+| **VDC_CONFIGURED_PILOT_SCOPES** | 4× `(org faa710c9…, vehicle ×4, provider DIMO)` — see Production env JSON |
+| **VDC_CANONICAL_ACTIVE_VEHICLE_COUNT** | **3** (fourth configured pilot vehicle has **no** rows in canonical post-T0 window yet) |
 | **VDC_CANONICAL_EPOCH_OBSERVATIONS** | **107** |
 | **VDC_CANONICAL_EPOCH_BLOCKERS** | **107** |
-| **VDC_PILOT_SCOPE_COUNT** | **3** distinct vehicles in canonical window (monotonic vs 107 obs; blockers ≤ observations) |
+| **VDC_CONFIGURED_SCOPE_DRIFT** | **NO** (configured count remains 4; active observation count 3 is not scope drift) |
 
 ## Observability
 
