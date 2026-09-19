@@ -947,3 +947,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Postgres driver | `testing/reference-capture-exp021-postgres-driver.harness.ts` — repo atomic bridge (not lifecycle duplicate) |
 | Authority | `EXP_021_AUTONOMOUS_ORCHESTRATOR_SHORT_AB_REGRESSION_2026-09-14.md` — evidence levels separated |
 | PR #1645 | **MERGED** @ `20269b9e7` — KS MX 2024 forensic evidence frozen; no reinterpretation |
+
+### EXP-021 — cohort study enrollment bootstrap (2026-09-19)
+
+| Event | Detail |
+|-------|--------|
+| Incident | WOB L 7503 live drive `c0889036-…` — ledger `FAILED` `enrollment_not_found`; PR #1692 PDI not reached |
+| Root cause | PR #1694 cohort expansion without `exp021_study_enrollments` for KS MS 661 / WOB L 7503 (`OPS_BOOTSTRAP_OMISSION`) |
+| Fix (review) | `reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts` + ops CLI `exp021:cohort:study-enrollment:bootstrap` |
+| Evidence | `evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md` |
+| Production | Activation disabled; enrollments **not** mutated in closure workstream |

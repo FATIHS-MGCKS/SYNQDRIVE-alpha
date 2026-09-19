@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-cohort-study-enrollment-bootstrap-2026-09-19',
+    version: '4.9.1148',
+    title: 'EXP-021 — cohort study enrollment bootstrap (WOB enrollment_not_found closure)',
+    summary: [
+      'Idempotent `exp021_study_enrollments` bootstrap from authoritative canary cohort JSON (vehicle/org/DIMO token validated).',
+      'Ops CLI `npm run exp021:cohort:study-enrollment:bootstrap` (dry-run default; `--execute` for writes).',
+      'PostgreSQL proof: 3-vehicle bootstrap idempotency + concurrent convergence + arm chain without `enrollment_not_found`.',
+      'Production safety: live activation disabled; cohort operator stopped; failed WOB ledger left immutable.',
+    ],
+    reason:
+      'Post-fix WOB drive proved PR #1694 cohort expansion without study enrollment rows for KS MS 661 / WOB L 7503 — live chain stopped before study run / RC / PDI.',
+    previousBehavior:
+      'Only KS MX 2024 had `exp021_study_enrollments` authority; multi-vehicle cohort JSON alone did not provision enrollments.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md; backend reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T12:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19',
     version: '4.9.1147',
     title: 'RFRF F10.6.0 — Stage-4 convergence readiness + transaction safety',
