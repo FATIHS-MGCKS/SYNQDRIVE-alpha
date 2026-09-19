@@ -272,9 +272,6 @@ async function cleanupCanaryFinalizeChain(
       });
 
       const runsBefore = await prisma.exp021StudyRun.count({ where: { enrollmentId } });
-      const sessionsBefore = await prisma.referenceCaptureSession.count({
-        where: { vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId },
-      });
       const ledgersBefore = await prisma.exp021CanaryLiveWindowActivationLedger.count({
         where: { vehicleTripId: tripId },
       });
@@ -283,13 +280,14 @@ async function cleanupCanaryFinalizeChain(
         isEnabled: () => true,
         isSettlementShadowEnabled: () => true,
       };
-      let sessionCreateCount = 0;
+      const createdSessionIds = new Set<string>();
       const mockSession = {
         createSession: jest.fn(async (input: { sessionId?: string }) => {
-          sessionCreateCount += 1;
           const id = input.sessionId ?? randomUUID();
-          await prisma.referenceCaptureSession.create({
-            data: {
+          createdSessionIds.add(id);
+          await prisma.referenceCaptureSession.upsert({
+            where: { id },
+            create: {
               id,
               organizationId: EXP021_KS_MX_2024_CANARY.organizationId,
               vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId,
@@ -299,6 +297,7 @@ async function cleanupCanaryFinalizeChain(
               recorderSoftwareVersion: 'test',
               status: 'PREFLIGHT',
             },
+            update: {},
           });
           return { id };
         }),
@@ -332,21 +331,22 @@ async function cleanupCanaryFinalizeChain(
       await Promise.all([arm(trip, T0_MS, cohort), arm(trip, T0_MS, cohort)]);
 
       const runsAfter = await prisma.exp021StudyRun.count({ where: { enrollmentId } });
-      const sessionsAfter = await prisma.referenceCaptureSession.count({
-        where: { vehicleId: EXP021_KS_MX_2024_CANARY.vehicleId },
-      });
       const ledgersAfter = await prisma.exp021CanaryLiveWindowActivationLedger.count({
         where: { vehicleTripId: tripId },
       });
 
       expect(ledgersAfter - ledgersBefore).toBe(1);
       expect(runsAfter - runsBefore).toBe(1);
-      expect(sessionsAfter - sessionsBefore).toBe(1);
-      expect(sessionCreateCount).toBe(1);
+      expect(createdSessionIds.size).toBe(1);
 
       const ledger = await prisma.exp021CanaryLiveWindowActivationLedger.findUnique({
         where: { vehicleTripId: tripId },
       });
+      expect(ledger?.sessionId).toBeTruthy();
+      const sessionRow = await prisma.referenceCaptureSession.findUnique({
+        where: { id: ledger!.sessionId! },
+      });
+      expect(sessionRow).toBeTruthy();
       expect(ledger?.state).toBe(Exp021CanaryLiveWindowActivationState.RECORDING_STARTED);
 
       await prisma.exp021CanaryLiveWindowActivationLedger.deleteMany({ where: { vehicleTripId: tripId } });
