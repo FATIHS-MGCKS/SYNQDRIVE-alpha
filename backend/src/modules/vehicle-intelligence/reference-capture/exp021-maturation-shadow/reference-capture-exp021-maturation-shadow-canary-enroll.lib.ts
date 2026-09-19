@@ -613,6 +613,8 @@ export async function executeCanaryEnrollment(input: {
   staleWindowsSkipped?: number;
   settlementShadowExperiments?: Array<{ metadataJson: Prisma.JsonValue }>;
   enrollmentFreshnessMode?: Exp021MaturationEnrollmentFreshnessMode;
+  activationNotBeforeMs?: number;
+  enrollmentCursorPhysicalEndMs?: number;
 }): Promise<Exp021CanaryDryRunPlan | Exp021CanaryEnrollSuccess> {
   const guards = await assertCanaryHardGuards({
     tokenId: input.args.tokenId,
@@ -649,6 +651,38 @@ export async function executeCanaryEnrollment(input: {
   }
 
   const enrollmentFreshnessMode = input.enrollmentFreshnessMode ?? 'OPERATOR_IMMEDIATE';
+
+  if (
+    enrollmentFreshnessMode === 'PROSPECTIVE_PDI_DISCOVERY' &&
+    input.activationNotBeforeMs != null &&
+    input.activationNotBeforeMs > 0 &&
+    input.settlementShadowExperiments?.length
+  ) {
+    const physicalEndMs = canonicalWindowTo.getTime();
+    for (const experiment of input.settlementShadowExperiments) {
+      const authority = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
+      if (!authority || !isAuthoritativePhysicalDriveInterval(authority)) {
+        continue;
+      }
+      if (Date.parse(authority.physicalEndAt) !== physicalEndMs) {
+        continue;
+      }
+      const cursorMs =
+        input.enrollmentCursorPhysicalEndMs ?? input.activationNotBeforeMs - 1;
+      const eligibility = evaluateProspectiveAuthoritativePdiEligibility({
+        authority,
+        physicalEndMs,
+        activationNotBeforeMs: input.activationNotBeforeMs,
+        enrollmentCursorPhysicalEndMs: cursorMs,
+      });
+      if (!eligibility.eligible) {
+        throw new Exp021MaturationShadowFamilyIdentityError(
+          `Prospective enrollment rejected (${eligibility.rejectionReason ?? 'ineligible'}) for physicalStartAt=${authority.physicalStartAt}`,
+        );
+      }
+      break;
+    }
+  }
 
   const plan = buildCanaryDryRunPlan({
     organizationId: guards.organizationId,

@@ -47,6 +47,7 @@ import {
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib';
 import type { Exp021CanaryCohortMember } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.errors';
+import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.types';
 
 function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
@@ -317,6 +318,7 @@ async function runCohortWatchMode(
           member.organizationId,
           member.vehicleId,
           member.tokenId,
+          EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
         );
         return computeCanaryEnrollmentCursorPhysicalEndMs({
           maxEnrolledCanonicalWindowToMs: maxEnrolled,

@@ -116,6 +116,8 @@ export async function runCohortMaturationMemberWaitIteration(input: {
     staleWindowsSkipped: waited.staleWindowsSkipped,
     settlementShadowExperiments: baseline,
     enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
+    activationNotBeforeMs: input.deps.activationNotBeforeMs,
+    enrollmentCursorPhysicalEndMs,
   });
 }
 

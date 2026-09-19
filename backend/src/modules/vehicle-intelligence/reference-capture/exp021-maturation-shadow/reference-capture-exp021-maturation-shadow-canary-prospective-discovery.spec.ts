@@ -135,6 +135,31 @@ describe('reference-capture-exp021-maturation-shadow-canary-prospective-discover
     expect(freshCursor).toBe(NOT_BEFORE - 1);
   });
 
+  it('PHASE_A — OLD NOT_BEFORE restart would select all seven-shaped forensic PDIs (anti-backfill requires NEW NOT_BEFORE)', () => {
+    const OLD_NOT_BEFORE = Date.parse('2026-09-19T13:32:23.000Z');
+    const cursor = OLD_NOT_BEFORE - 1;
+    const sevenShaped = [
+      { start: '2026-09-19T13:45:00.000Z', end: '2026-09-19T14:02:10.000Z' },
+      { start: '2026-09-19T14:10:00.000Z', end: '2026-09-19T14:28:40.000Z' },
+      { start: '2026-09-19T15:26:00.000Z', end: '2026-09-19T15:27:09.752Z' },
+      { start: '2026-09-19T17:00:00.000Z', end: '2026-09-19T17:35:00.000Z' },
+    ];
+    for (const trip of sevenShaped) {
+      const physicalEndMs = Date.parse(trip.end);
+      const eligibility = evaluateProspectiveAuthoritativePdiEligibility({
+        authority: {
+          physicalStartAt: trip.start,
+          physicalEndAt: trip.end,
+          source: 'CANARY_VEHICLE_TRIP_CONFIRMED',
+        },
+        physicalEndMs,
+        activationNotBeforeMs: OLD_NOT_BEFORE,
+        enrollmentCursorPhysicalEndMs: cursor,
+      });
+      expect(eligibility.eligible).toBe(true);
+    }
+  });
+
   it('freshness guard remains earliest-age operational contract', () => {
     const canonicalWindowTo = new Date('2026-09-17T12:00:00.000Z');
     const plannedAges = [8_000, ...EXP021_MATURATION_SHADOW_FIXED_AGES_MS];

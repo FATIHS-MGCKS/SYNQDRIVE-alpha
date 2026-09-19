@@ -21,8 +21,9 @@ import {
 import { resolveGeometryActivityAuthorityByWindow } from './reference-capture-exp021-maturation-shadow-canary-activity.lib';
 import {
   computeCanaryEnrollmentCursorPhysicalEndMs,
-  resolveCanaryMaturationActivationNotBeforeMs,
+  evaluateProspectiveAuthoritativePdiEligibility,
 } from './reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib';
+import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from './reference-capture-exp021-maturation-shadow.types';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture-exp021-maturation-shadow-runner.service';
@@ -36,7 +37,19 @@ const LIVE = process.env.REFERENCE_CAPTURE_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.REFERENCE_CAPTURE_POSTGRES_REQUIRED === '1';
 const RUNTIME_SHA = 'exp021-prospective-pdi-pg-proof-sha';
 
-const NOT_BEFORE_ISO = '2026-09-19T13:32:23.000Z';
+const OLD_NOT_BEFORE_ISO = '2026-09-19T13:32:23.000Z';
+const NEW_NOT_BEFORE_ISO = '2026-09-19T20:00:00.000Z';
+
+/** Seven-shaped post–OLD_NOT_BEFORE forensic intervals (production audit class; read-only). */
+const FORENSIC_SEVEN_SHAPED_TRIPS = [
+  { start: '2026-09-19T13:45:00.000Z', end: '2026-09-19T14:02:10.000Z' },
+  { start: '2026-09-19T14:10:00.000Z', end: '2026-09-19T14:28:40.000Z' },
+  { start: '2026-09-19T14:35:00.000Z', end: '2026-09-19T14:55:00.000Z' },
+  { start: '2026-09-19T15:00:00.000Z', end: '2026-09-19T15:27:09.752Z' },
+  { start: '2026-09-19T15:40:00.000Z', end: '2026-09-19T16:05:00.000Z' },
+  { start: '2026-09-19T16:20:00.000Z', end: '2026-09-19T16:48:00.000Z' },
+  { start: '2026-09-19T17:00:00.000Z', end: '2026-09-19T17:35:00.000Z' },
+] as const;
 const WINDOW_W1 = new Date('2026-09-21T14:00:00.000Z');
 const WINDOW_W2 = new Date('2026-09-21T15:00:00.000Z');
 const WINDOW_B = new Date('2026-09-21T14:05:00.000Z');
@@ -81,7 +94,7 @@ function activityAuthority(canonicalWindowTo: Date) {
 function canaryTripConfirmedExperiment(
   physicalStartAt: string,
   physicalEndAt: string,
-  id = randomUUID(),
+  id: string = randomUUID(),
 ) {
   return {
     id,
@@ -159,7 +172,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
 
     beforeAll(async () => {
       process.env.GITHUB_SHA = RUNTIME_SHA;
-      process.env.EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO = NOT_BEFORE_ISO;
+      process.env.EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO = OLD_NOT_BEFORE_ISO;
       process.env.DATABASE_URL = buildReferenceCapturePostgresDatabaseUrl();
       proveIsolatedReferenceCapturePostgres();
       const ok = await probeReferenceCapturePostgresDatabase();
@@ -206,7 +219,8 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       await purgeMaturationShadowTables(prisma);
     });
 
-    const activationNotBeforeMs = Date.parse(NOT_BEFORE_ISO);
+    const oldActivationNotBeforeMs = Date.parse(OLD_NOT_BEFORE_ISO);
+    const newActivationNotBeforeMs = Date.parse(NEW_NOT_BEFORE_ISO);
 
     async function enrollProspectiveLate(
       tokenId: number,
@@ -231,7 +245,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       return result.familyId;
     }
 
-    it('E5 — prospective execute enrolls after operational freshness would be stale', async () => {
+    it('E5_PDI_APPEARS_AFTER_INITIAL_POLL_POSTGRES — late PDI prospective execute persists family', async () => {
       const mx = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE[0];
       const familyId = await enrollProspectiveLate(mx.tokenId, WINDOW_W1);
       expect(familyId).toBeTruthy();
@@ -241,7 +255,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       expect(count).toBe(1);
     });
 
-    it('E6 — enrollment cursor advances from max enrolled canonicalWindowTo', async () => {
+    it('E6_RESTART_UNENROLLED_WINDOW_SURVIVES_POSTGRES — cursor from enrolled max, wait selects next window', async () => {
       const mx = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE[0];
       await enrollProspectiveLate(mx.tokenId, WINDOW_W1);
       const maxEnrolled = await repository.maxEnrolledCanonicalWindowToMsForVehicle(
@@ -252,7 +266,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       expect(maxEnrolled).toBe(WINDOW_W1.getTime());
       const cursor = computeCanaryEnrollmentCursorPhysicalEndMs({
         maxEnrolledCanonicalWindowToMs: maxEnrolled,
-        activationNotBeforeMs,
+        activationNotBeforeMs: oldActivationNotBeforeMs,
       });
       expect(cursor).toBe(WINDOW_W1.getTime());
 
@@ -276,7 +290,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
         },
         {
           afterPhysicalEndMs: cursor,
-          activationNotBeforeMs,
+          activationNotBeforeMs: oldActivationNotBeforeMs,
           enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
           timeoutMs: 5_000,
           pollMs: 1,
@@ -285,7 +299,7 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       expect(wait.canonicalWindowTo.getTime()).toBe(WINDOW_W2.getTime());
     });
 
-    it('E7 — three cohort vehicles each enroll one prospective family', async () => {
+    it('E7_THREE_VEHICLE_DELAYED_PDI_POSTGRES — three vehicles, one family each', async () => {
       const [mx, ms, wob] = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE;
       const ids = await Promise.all([
         enrollProspectiveLate(mx.tokenId, WINDOW_W1),
@@ -296,16 +310,137 @@ async function purgeMaturationShadowTables(prisma: PrismaClient): Promise<void> 
       expect(await prisma.exp021MaturationShadowWindowFamily.count()).toBe(3);
     });
 
-    it('E8 — duplicate prospective enroll is idempotent per family identity', async () => {
+    it('E8_DUPLICATE_CONCURRENT_ENROLLMENT_POSTGRES — concurrent execute converges to one family', async () => {
       const mx = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE[0];
-      const first = await enrollProspectiveLate(mx.tokenId, WINDOW_W1);
-      const second = await enrollProspectiveLate(mx.tokenId, WINDOW_W1);
-      expect(second).toBe(first);
+      const [first, second] = await Promise.all([
+        enrollProspectiveLate(mx.tokenId, WINDOW_W1),
+        enrollProspectiveLate(mx.tokenId, WINDOW_W1),
+      ]);
+      expect(first).toBe(second);
       expect(
         await prisma.exp021MaturationShadowWindowFamily.count({
           where: { vehicleId: mx.vehicleId, canonicalWindowTo: WINDOW_W1 },
         }),
       ).toBe(1);
+    });
+
+    it('ANTI_BACKFILL_POSTGRES — NEW NOT_BEFORE rejects seven-shaped forensic PDIs; new trip enrolls once', async () => {
+      const mx = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE[0];
+      const startupCursor = computeCanaryEnrollmentCursorPhysicalEndMs({
+        maxEnrolledCanonicalWindowToMs: null,
+        activationNotBeforeMs: newActivationNotBeforeMs,
+      });
+      expect(startupCursor).toBe(newActivationNotBeforeMs - 1);
+
+      for (const trip of FORENSIC_SEVEN_SHAPED_TRIPS) {
+        const physicalEndMs = Date.parse(trip.end);
+        const eligibility = evaluateProspectiveAuthoritativePdiEligibility({
+          authority: {
+            physicalStartAt: trip.start,
+            physicalEndAt: trip.end,
+            source: 'CANARY_VEHICLE_TRIP_CONFIRMED',
+          },
+          physicalEndMs,
+          activationNotBeforeMs: newActivationNotBeforeMs,
+          enrollmentCursorPhysicalEndMs: startupCursor,
+        });
+        expect(eligibility.eligible).toBe(false);
+        expect(eligibility.rejectionReason).toBe('physical_start_before_activation_not_before');
+      }
+
+      const endAfterNewStartBeforeNew = {
+        start: '2026-09-19T19:30:00.000Z',
+        end: '2026-09-19T20:30:00.000Z',
+      };
+      const splitEpoch = evaluateProspectiveAuthoritativePdiEligibility({
+        authority: {
+          physicalStartAt: endAfterNewStartBeforeNew.start,
+          physicalEndAt: endAfterNewStartBeforeNew.end,
+          source: 'CANARY_VEHICLE_TRIP_CONFIRMED',
+        },
+        physicalEndMs: Date.parse(endAfterNewStartBeforeNew.end),
+        activationNotBeforeMs: newActivationNotBeforeMs,
+        enrollmentCursorPhysicalEndMs: startupCursor,
+      });
+      expect(splitEpoch.eligible).toBe(false);
+      expect(splitEpoch.rejectionReason).toBe('physical_start_before_activation_not_before');
+
+      const forensicWaitExperiments = FORENSIC_SEVEN_SHAPED_TRIPS.map((trip) =>
+        canaryTripConfirmedExperiment(trip.start, trip.end),
+      );
+      await expect(
+        waitForNextFreshAuthoritativeWindowClose(
+          {
+            listSettlementShadowExperiments: async () => forensicWaitExperiments,
+            sleep: async () => undefined,
+            now: () => new Date(Date.parse(FORENSIC_SEVEN_SHAPED_TRIPS[0].end) + 400_000),
+            config,
+            tokenId: mx.tokenId,
+          },
+          {
+            afterPhysicalEndMs: startupCursor,
+            activationNotBeforeMs: newActivationNotBeforeMs,
+            enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
+            timeoutMs: 100,
+            pollMs: 1,
+          },
+        ),
+      ).rejects.toThrow('Timed out waiting');
+
+      expect(await prisma.exp021MaturationShadowWindowFamily.count()).toBe(0);
+
+      const forensicEnd = new Date(FORENSIC_SEVEN_SHAPED_TRIPS[0].end);
+      const forensicExecuteExperiments = FORENSIC_SEVEN_SHAPED_TRIPS.map((trip) =>
+        canaryTripConfirmedExperiment(trip.start, trip.end),
+      );
+      await expect(
+        executeCanaryEnrollment({
+          args: { tokenId: mx.tokenId, execute: true, waitNextWindow: false },
+          config,
+          cohort,
+          repository,
+          enrollment,
+          canonicalWindowTo: forensicEnd,
+          now: new Date(forensicEnd.getTime() + 400_000),
+          authoritativeWindowMatch: true,
+          enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
+          activationNotBeforeMs: newActivationNotBeforeMs,
+          enrollmentCursorPhysicalEndMs: startupCursor,
+          settlementShadowExperiments: forensicExecuteExperiments,
+          activityAuthorityByGeometry: activityAuthority(forensicEnd),
+        }),
+      ).rejects.toThrow('physical_start_before_activation_not_before');
+
+      const newTripEnd = new Date('2026-09-19T21:00:00.000Z');
+      const newTripStart = '2026-09-19T20:15:00.000Z';
+      const familyId = await enrollProspectiveLate(mx.tokenId, newTripEnd);
+      expect(familyId).toBeTruthy();
+      expect(await prisma.exp021MaturationShadowWindowFamily.count()).toBe(1);
+    });
+
+    it('CURSOR_SCOPE — schedule version isolates enrollment cursor across V1 vs future V2', async () => {
+      const mx = EXP021_INITIAL_PRODUCTION_COHORT_REFERENCE[0];
+      await enrollProspectiveLate(mx.tokenId, WINDOW_W1);
+      const v1Max = await repository.maxEnrolledCanonicalWindowToMsForVehicle(
+        mx.organizationId,
+        mx.vehicleId,
+        mx.tokenId,
+        EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+      );
+      expect(v1Max).toBe(WINDOW_W1.getTime());
+      const v2Max = await repository.maxEnrolledCanonicalWindowToMsForVehicle(
+        mx.organizationId,
+        mx.vehicleId,
+        mx.tokenId,
+        'MATURATION_SHADOW_SCHEDULE_v2',
+      );
+      expect(v2Max).toBeNull();
+      const v2Cursor = computeCanaryEnrollmentCursorPhysicalEndMs({
+        maxEnrolledCanonicalWindowToMs: v2Max,
+        activationNotBeforeMs: newActivationNotBeforeMs,
+      });
+      expect(v2Cursor).toBe(newActivationNotBeforeMs - 1);
+      expect(v2Cursor).toBeLessThan(WINDOW_W1.getTime());
     });
   },
 );
