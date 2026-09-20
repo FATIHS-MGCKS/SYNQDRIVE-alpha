@@ -10,6 +10,7 @@ export interface ClaimedRawRefuelCandidateRecoveryRow {
   lifecycleState: string;
   signalChannel: string;
   recoveryAttemptCount: number;
+  recoveryLeaseExpiresAt: Date;
 }
 
 const RECOVERY_ELIGIBLE_STATES = [...RAW_REFUEL_CANDIDATE_NON_TERMINAL_LIFECYCLE_STATES];
@@ -50,10 +51,12 @@ export class RawRefuelCandidateRecoveryRepository {
         c.organization_id AS "organizationId",
         c.lifecycle_state::text AS "lifecycleState",
         c.signal_channel::text AS "signalChannel",
-        c.recovery_attempt_count AS "recoveryAttemptCount"
+        c.recovery_attempt_count AS "recoveryAttemptCount",
+        c.recovery_lease_expires_at AS "recoveryLeaseExpiresAt"
     `;
   }
 
+  /** @deprecated use completeRecoveryAttemptFenced from recovery-fencing */
   async completeRecoveryAttempt(
     candidateId: string,
     data: {

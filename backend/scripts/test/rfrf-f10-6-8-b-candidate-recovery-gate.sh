@@ -37,18 +37,20 @@ const { PrismaClient } = require('@prisma/client');
 (async () => {
   const prisma = new PrismaClient();
   try {
-    await prisma.$queryRaw`SELECT 1 FROM "raw_refuel_candidates" LIMIT 0`;
-    await prisma.$queryRaw`SELECT "recovery_next_attempt_at" FROM "raw_refuel_candidates" LIMIT 0`;
     await prisma.$queryRaw`SELECT "powertrain_type" FROM "dimo_vehicles" LIMIT 0`;
   } finally {
     await prisma.$disconnect();
   }
-  console.log('RFRF F10.6.8-B schema verification OK');
+  console.log('RFRF full test schema verification OK (unrelated drift probe)');
 })().catch((error) => {
-  console.error('RFRF F10.6.8-B schema verification failed:', error.message);
+  console.error('RFRF full test schema verification failed:', error.message);
   process.exit(1);
 });
 NODE
+}
+
+verify_b_migration_contract() {
+  node scripts/test/verify-rfrf-f10-6-8-b-migration-contract.mjs
 }
 
 sync_schema_drift_if_needed() {
@@ -104,11 +106,18 @@ cd "${BACKEND_ROOT}"
 npx prisma generate
 
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+
+echo "==> Verify F10.6.8-B migration contract (pre db push)"
+verify_b_migration_contract
+
 sync_schema_drift_if_needed
 
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-b.postgres.integration.spec.ts|raw-refuel-candidate-recovery-restart-durability.postgres.integration.spec.ts'
+  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-b.postgres.integration.spec.ts|raw-refuel-candidate-recovery-restart-durability.postgres.integration.spec.ts|raw-refuel-candidate-recovery-stale-lease.postgres.integration.spec.ts'
+
+echo "==> B migration contract negative selftest"
+bash scripts/test/rfrf-f10-6-8-b-migration-contract-negative.selftest.sh
 
 echo "RFRF_F10_6_8_B_CANDIDATE_RECOVERY_PG_MATRIX=PASS"

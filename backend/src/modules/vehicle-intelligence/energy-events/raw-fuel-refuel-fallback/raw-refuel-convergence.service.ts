@@ -23,6 +23,10 @@ import {
 import { loadAuthoritativeNativeRefuelSiblings } from './authoritative-native-refuel-siblings.resolver';
 import type { RawRefuelConvergenceApplyResult } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
+import {
+  lockRecoveryClaimForMutation,
+  type RawRefuelCandidateRecoveryClaimFence,
+} from '../raw-refuel-candidate/raw-refuel-candidate-recovery-fencing';
 
 @Injectable()
 export class RawRefuelConvergenceService {
@@ -37,6 +41,7 @@ export class RawRefuelConvergenceService {
     candidateId: string,
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
+    recoveryClaimFence?: RawRefuelCandidateRecoveryClaimFence,
   ): Promise<RawRefuelConvergenceApplyResult> {
     if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
       this.metrics?.recordConvergenceSkippedNotAuthorized();
@@ -74,13 +79,14 @@ export class RawRefuelConvergenceService {
       };
     }
 
-    return this.evaluateAndApplyConvergence(candidate, context, env);
+    return this.evaluateAndApplyConvergence(candidate, context, env, recoveryClaimFence);
   }
 
   async evaluateAndApplyConvergence(
     candidate: RawRefuelCandidate,
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
+    recoveryClaimFence?: RawRefuelCandidateRecoveryClaimFence,
   ): Promise<RawRefuelConvergenceApplyResult> {
     if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
       this.metrics?.recordConvergenceSkippedNotAuthorized();
@@ -134,9 +140,23 @@ export class RawRefuelConvergenceService {
           buildRawRefuelCandidateLockKey(candidate.vehicleId),
         );
 
-        const locked = await tx.rawRefuelCandidate.findUnique({
-          where: { id: candidate.id },
-        });
+        let locked: RawRefuelCandidate | null;
+        if (recoveryClaimFence) {
+          locked = await lockRecoveryClaimForMutation(tx, candidate.id, recoveryClaimFence);
+          if (!locked) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: candidate.id,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
+        } else {
+          locked = await tx.rawRefuelCandidate.findUnique({
+            where: { id: candidate.id },
+          });
+        }
         if (!locked) {
           return {
             status: 'SKIPPED_NO_ACTION',

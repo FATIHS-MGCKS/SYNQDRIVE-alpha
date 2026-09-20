@@ -80,6 +80,7 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly candidateRecoveryTerminalSkipTotal: Counter<string>;
   readonly candidateRecoveryErrorTotal: Counter<string>;
   readonly candidateRecoverySkippedDisabledTotal: Counter<string>;
+  readonly candidateRecoveryStaleClaimRejectedTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -529,6 +530,11 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F10.6.8-B recovery batch skipped because feature gate is off',
       registers: [register],
     });
+    this.candidateRecoveryStaleClaimRejectedTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_stale_claim_rejected_total',
+      help: 'F10.6.8-B recovery mutation/completion rejected due to stale claim generation or expired lease',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -833,5 +839,9 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordCandidateRecoverySkippedDisabled(): void {
     this.candidateRecoverySkippedDisabledTotal.inc();
+  }
+
+  recordCandidateRecoveryStaleClaimRejected(): void {
+    this.candidateRecoveryStaleClaimRejectedTotal.inc();
   }
 }

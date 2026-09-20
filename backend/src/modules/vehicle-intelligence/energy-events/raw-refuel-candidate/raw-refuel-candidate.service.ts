@@ -29,6 +29,14 @@ import type {
   RawRefuelCandidateOverlapClassification,
   RawRefuelCandidateResolveResult,
 } from './raw-refuel-candidate.types';
+import {
+  lockRecoveryClaimForMutation,
+  type RawRefuelCandidateRecoveryClaimFence,
+} from './raw-refuel-candidate-recovery-fencing';
+
+export type RawRefuelCandidateRecoveryReconcileResult =
+  | { kind: 'APPLIED'; result: RawRefuelCandidateResolveResult }
+  | { kind: 'STALE_CLAIM' };
 
 @Injectable()
 export class RawRefuelCandidateService {
@@ -254,6 +262,52 @@ export class RawRefuelCandidateService {
         organizationId,
         serviceNow,
       );
+    });
+  }
+
+  /**
+   * F10.6.8-B3 — recovery-owned reconcile; fences on claim generation + active lease.
+   */
+  async reconcileExistingCandidateByIdForRecoveryClaim(
+    candidateId: string,
+    observation: RawRefuelCandidateObservation,
+    fence: RawRefuelCandidateRecoveryClaimFence,
+  ): Promise<RawRefuelCandidateRecoveryReconcileResult> {
+    validateObservationLifecycleRequest(observation);
+    const serviceNow = this.clock.now();
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await lockRecoveryClaimForMutation(tx, candidateId, fence);
+      if (!existing) {
+        return { kind: 'STALE_CLAIM' };
+      }
+      if (existing.vehicleId !== observation.vehicleId) {
+        throw new RawRefuelCandidateOrgVehicleIntegrityError(
+          observation.vehicleId,
+          existing.organizationId,
+          observation.organizationId,
+        );
+      }
+
+      await acquirePgAdvisoryXactLock64(
+        tx,
+        buildRawRefuelCandidateLockKey(observation.vehicleId),
+      );
+
+      const organizationId = await this.repository.resolveAuthoritativeOrganizationId(
+        tx,
+        observation.vehicleId,
+        observation.organizationId,
+      );
+
+      const result = await this.reconcileExistingCandidate(
+        tx,
+        existing,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+      return { kind: 'APPLIED', result };
     });
   }
 

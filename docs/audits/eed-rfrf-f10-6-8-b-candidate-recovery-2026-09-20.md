@@ -51,4 +51,29 @@ bash scripts/test/rfrf-f10-6-8-b-candidate-recovery-gate.sh  # isolated PG (CI S
 
 **B1 closure HEAD:** `1936ffb01831506a4d9fb9e36c37de854a70bc9f` — GitHub: Stage-3 SUCCESS, Stage-4 SUCCESS (incl. PG matrix), Legal Documents Typecheck SUCCESS.
 
+## F10.6.8-B3 remediation (2026-09-20)
+
+Independent B2 review (`de0413e4ef9a063b2fd209ccd305f115c6c5c704`) found stale-worker lease races and migration-gate false-pass risk.
+
+### Fencing (B3)
+
+- `recoveryAttemptCount` after claim is the monotonic **claim generation**.
+- `lockRecoveryClaimForMutation` + `completeRecoveryAttemptFenced` enforce atomic compare-and-set on generation (and active lease for batch claims).
+- Recovery-owned reconcile (`reconcileExistingCandidateByIdForRecoveryClaim`) and convergence (`evaluateAndApplyConvergenceById` + fence) revalidate ownership after network I/O.
+- Metric: `synqdrive_rfrf_candidate_recovery_stale_claim_rejected_total`.
+
+### Backoff (B3)
+
+- First claimed failure schedules **5m** retry (`exponent = max(attempt-1, 0)`).
+
+### CI migration integrity (B3)
+
+- `verify-rfrf-f10-6-8-b-migration-contract.mjs` runs **before** any test-only `db push`.
+- Negative selftest: `rfrf-f10-6-8-b-migration-contract-negative.selftest.sh`.
+
+### Tests (B3)
+
+- `raw-refuel-candidate-recovery-stale-lease.postgres.integration.spec.ts` — adversarial A/B lease expiry stale worker.
+- `raw-refuel-candidate-recovery-backoff.spec.ts` — backoff boundaries.
+
 Production: **not** deployed or mutated. Stage 5 **not** authorized.

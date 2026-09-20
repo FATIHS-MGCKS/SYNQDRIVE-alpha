@@ -10,7 +10,8 @@ export type RawRefuelCandidateRecoveryOutcome =
 export function computeRawRefuelCandidateRecoveryBackoffMs(
   recoveryAttemptCount: number,
 ): number {
-  const exponent = Math.min(Math.max(recoveryAttemptCount, 0), 8);
+  const attemptNumber = Math.max(recoveryAttemptCount, 0);
+  const exponent = Math.min(Math.max(attemptNumber - 1, 0), 8);
   const scaled =
     RAW_REFUEL_CANDIDATE_RECOVERY_MIN_BACKOFF_MS * Math.pow(2, exponent);
   return Math.min(scaled, RAW_REFUEL_CANDIDATE_RECOVERY_MAX_BACKOFF_MS);
