@@ -13,6 +13,10 @@ After F10.6.8-A.1 (#1702), runtime correctly pins `FINAL_CANONICAL` when an irre
 - **P21:** Assert A.1 pinning invariants (same canonical owner, single enrichment-eligible owner, no duplicate enrichment, audit reason `irreversible_canonical_pinned_after_late_sibling`, `late_sibling_after_finalization` in `reasonCodes`).
 - **P21B:** PostgreSQL negative control — canonical challenger (A≠B) remains fail closed.
 
+## Runtime micro-closure (A.2)
+
+- `evaluateIrreversibleCanonicalPinning` rejects pin when **more than one** component member is observed after the irreversible owner’s settlement close (P24 multi-late ambiguity preserved).
+
 ## Gates
 
 - `rfrf-f5-pr3-g2-handoff-gate.sh` (via F9 bundle in Stage-3 / Stage-4)

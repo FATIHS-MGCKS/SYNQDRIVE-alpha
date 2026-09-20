@@ -84,6 +84,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'F5-PR3 P21 updated for A.1 same-owner pinning after COMPLETED fallback enrichment.',
       'Asserts single enrichment-eligible owner, no duplicate native enrichment, late-sibling audit preserved.',
       'P21B PostgreSQL negative — canonical challenger remains fail closed.',
+      'A.1 pin guard: >1 post-settlement late sibling blocks pin (P24 multi-late ambiguity).',
     ],
     reason:
       'Stage-3 rfrf-stage3-persistence-readiness P21 expected pre-A.1 INSUFFICIENT forever.',
