@@ -173,7 +173,9 @@ const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION ===
         expect(finalRow.id).toBe(candidateId);
         expect(finalRow.recoveryLastOutcome).toBe(bOutcome);
         expect(finalRow.recoveryNextAttemptAt?.toISOString()).toBe(bNext?.toISOString());
-        expect(finalRow.recoveryLeaseExpiresAt?.toISOString()).toBe(bLease?.toISOString() ?? null);
+        expect(finalRow.recoveryLeaseExpiresAt?.toISOString() ?? null).toBe(
+          bLease?.toISOString() ?? null,
+        );
         expect(finalRow.lifecycleState).toBe(bLifecycle);
         expect(finalRow.postPlateauSampleCount).toBe(bPostPlateau);
         expect(
