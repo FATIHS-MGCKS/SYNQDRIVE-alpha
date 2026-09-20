@@ -12,7 +12,7 @@ import { FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS } from '../fuel-stations/en
 import {
   AUTHORITY_RECHECK_HOLD_REASON,
   isPermanentIdentityAmbiguityReason,
-  isSafeLateSiblingAuthorityRecheckRow,
+  isAuthorityRecheckEligibleRow,
   reconciliationImpliesLateSiblingAfterFinalization,
 } from './physical-refuel-late-sibling-authority.util';
 
@@ -507,7 +507,7 @@ export async function findPhysicalRefuelRecoveryWork(
         ownerRowForPolicy = canonicalOwnerRow;
       }
     }
-    if (!isSafeLateSiblingAuthorityRecheckRow(row, ownerRowForPolicy)) {
+    if (!isAuthorityRecheckEligibleRow(row, ownerRowForPolicy)) {
       continue;
     }
     await pushWork({

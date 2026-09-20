@@ -27,7 +27,8 @@ import { mapDecisionToPersistPayload, isV2OwnedRefuelEvent } from './physical-re
 import { loadPriorFinalizationBridgeContext } from './physical-refuel-prior-ownership.util';
 import {
   AUTHORITY_RECHECK_HOLD_REASON,
-  reconciliationImpliesLateSiblingAfterFinalization,
+  resolvePersistedLateSiblingCanonicalEventId,
+  shouldPersistAuthorityRecheckHold,
 } from './physical-refuel-late-sibling-authority.util';
 import {
   describeCoordinateHoldReason,
@@ -376,6 +377,13 @@ export class PhysicalRefuelReconciliationRuntimeService {
           currentCandidateIds,
         });
 
+        const existingReconciliations = await tx.vehicleEnergyEventRefuelReconciliation.findMany({
+          where: { vehicleId: params.vehicleId, energyEventId: { in: v2Candidates.map((c) => c.id) } },
+        });
+        const persistedLateSiblingCanonicalEventId = resolvePersistedLateSiblingCanonicalEventId(
+          existingReconciliations,
+        );
+
         const firstObservedAtById = buildFirstObservedAtById(v2Candidates);
         const decisions = reconcilePhysicalRefuelBatch(
           v2Candidates.map(vehicleEnergyEventToRefuelRow),
@@ -386,6 +394,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
             priorCanonicalFinalizationIds: priorContext.priorCanonicalFinalizationIds,
             priorFinalRowsById: priorContext.priorFinalRowsById,
             irreversiblePriorFinalOwnerIds: priorContext.irreversiblePriorFinalOwnerIds,
+            persistedLateSiblingCanonicalEventId,
             settlementConfig: { settlementHorizonMs: this.config.settlementHorizonMs },
           },
         );
@@ -425,12 +434,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
 
           const persistPayload =
             params.recoveryReason === 'authority_recheck' &&
-            decision.finalityState === 'INSUFFICIENT_EVIDENCE' &&
-            reconciliationImpliesLateSiblingAfterFinalization({
-              lateSiblingConflict: decision.reasonCodes.includes('late_sibling_after_finalization'),
-              reason: decision.reason,
-              reasonCodes: decision.reasonCodes,
-            })
+            shouldPersistAuthorityRecheckHold(decision)
               ? {
                   ...payload,
                   reason: AUTHORITY_RECHECK_HOLD_REASON,

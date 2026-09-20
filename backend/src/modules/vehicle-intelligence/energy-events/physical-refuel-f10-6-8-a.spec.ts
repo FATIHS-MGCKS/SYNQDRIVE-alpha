@@ -218,7 +218,7 @@ describe('F10.6.8-A recoverable late-sibling authority', () => {
       expect(recheck[0].triggerEventId).toBe('seg-1');
     });
 
-    it('does not select irreversible canonical owner for authority_recheck', async () => {
+    it('selects irreversible late-sibling row for authority_recheck evaluation', async () => {
       const ownerId = 'owner-irr';
       const prisma = {
         vehicleEnergyEventRefuelReconciliation: {
@@ -255,7 +255,7 @@ describe('F10.6.8-A recoverable late-sibling authority', () => {
       };
 
       const work = await findPhysicalRefuelRecoveryWork(prisma as never, recoveryParams);
-      expect(work.some((w) => w.reason === 'authority_recheck')).toBe(false);
+      expect(work.some((w) => w.reason === 'authority_recheck')).toBe(true);
     });
 
     it('excludes authority_recheck_hold rows from selector', () => {

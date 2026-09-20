@@ -4,6 +4,13 @@ import {
   PhysicalRefuelFinalityState,
   type VehicleEnergyEventRefuelReconciliation,
 } from '@prisma/client';
+import type {
+  PhysicalRefuelIdentityComponent,
+} from './physical-refuel-identity-component.design';
+import {
+  DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG,
+  isSettlementWindowOpen,
+} from './physical-refuel-settlement.design';
 
 /** Durable signals that enrichment pipeline materially consumed the final owner. */
 export function isIrreversibleEnrichmentConsumption(input: {
@@ -109,4 +116,119 @@ export function isSafeLateSiblingAuthorityRecheckRow(
   return true;
 }
 
+/**
+ * F10.6.8-A.1 — authority_recheck may evaluate irreversible late-sibling rows once;
+ * runtime decides pin vs hold vs settlement retry.
+ */
+export function isAuthorityRecheckEligibleRow(
+  row: Parameters<typeof isSafeLateSiblingAuthorityRecheckRow>[0],
+  canonicalOwnerRow?: Parameters<typeof isSafeLateSiblingAuthorityRecheckRow>[1],
+): boolean {
+  if (row.finalityState !== PhysicalRefuelFinalityState.INSUFFICIENT_EVIDENCE) {
+    return false;
+  }
+  if (row.reason === AUTHORITY_RECHECK_HOLD_REASON) {
+    return false;
+  }
+  if (!reconciliationImpliesLateSiblingAfterFinalization(row)) {
+    return false;
+  }
+  if (isPermanentIdentityAmbiguityReason(row.reason, row.reasonCodes)) {
+    return false;
+  }
+  void canonicalOwnerRow;
+  return true;
+}
+
+export function resolvePersistedLateSiblingCanonicalEventId(
+  rows: Array<
+    Pick<
+      VehicleEnergyEventRefuelReconciliation,
+      'canonicalEventId' | 'lateSiblingConflict' | 'reason' | 'reasonCodes'
+    >
+  >,
+): string | null {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (!reconciliationImpliesLateSiblingAfterFinalization(row)) continue;
+    if (row.canonicalEventId) ids.add(row.canonicalEventId);
+  }
+  if (ids.size === 1) {
+    return [...ids][0]!;
+  }
+  return null;
+}
+
+export function evaluateIrreversibleCanonicalPinning(input: {
+  component: PhysicalRefuelIdentityComponent;
+  chosenCanonicalId: string;
+  asOfMs: number;
+  firstObservedAtById: Record<string, number>;
+  settlementHorizonMs?: number;
+  irreversiblePriorFinalOwnerIds: Set<string>;
+  priorCanonicalFinalizationIds: Set<string>;
+  persistedCanonicalEventId?: string | null;
+}): { pin: true; ownerId: string } | { pin: false } {
+  if (input.component.status !== 'VALID_COMPLETE_CLIQUE') {
+    return { pin: false };
+  }
+  if (!input.component.isCompleteSameClique || input.component.members.length < 2) {
+    return { pin: false };
+  }
+
+  const irreversibleOwnersInComponent = input.component.memberIds.filter(
+    (id) =>
+      input.irreversiblePriorFinalOwnerIds.has(id) &&
+      input.priorCanonicalFinalizationIds.has(id),
+  );
+  if (irreversibleOwnersInComponent.length !== 1) {
+    return { pin: false };
+  }
+  const ownerId = irreversibleOwnersInComponent[0]!;
+  if (input.chosenCanonicalId !== ownerId) {
+    return { pin: false };
+  }
+  if (
+    input.persistedCanonicalEventId != null &&
+    input.persistedCanonicalEventId !== ownerId
+  ) {
+    return { pin: false };
+  }
+
+  const horizon =
+    input.settlementHorizonMs ??
+    DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG.settlementHorizonMs;
+  const settlement = isSettlementWindowOpen(
+    input.component.members,
+    input.asOfMs,
+    input.firstObservedAtById,
+    { settlementHorizonMs: horizon },
+  );
+  if (settlement.missingObservation || settlement.open) {
+    return { pin: false };
+  }
+
+  return { pin: true, ownerId };
+}
+
+export function shouldPersistAuthorityRecheckHold(decision: {
+  finalityState: string;
+  reasonCodes: unknown;
+  settlementWindowOpen: boolean;
+}): boolean {
+  if (decision.finalityState !== 'INSUFFICIENT_EVIDENCE') {
+    return false;
+  }
+  if (decision.settlementWindowOpen) {
+    return false;
+  }
+  if (!Array.isArray(decision.reasonCodes)) {
+    return false;
+  }
+  return decision.reasonCodes.includes('late_sibling_after_finalization');
+}
+
 export const AUTHORITY_RECHECK_HOLD_REASON = 'authority_recheck_hold';
+
+export const IRREVERSIBLE_CANONICAL_PINNED_REASON =
+  'irreversible_canonical_pinned_after_late_sibling';

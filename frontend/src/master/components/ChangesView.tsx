@@ -77,6 +77,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-8-a1-irreversible-canonical-pinning-2026-09-20',
+    version: '4.9.1154',
+    title: 'RFRF F10.6.8-A.1 — irreversible canonical pinning closure',
+    summary: [
+      'Irreversible consumed canonical restored when current evidence selects the same owner (pinning, not re-canonicalization).',
+      'authority_recheck evaluates irreversible late-sibling rows once; canonical change → authority_recheck_hold without infinite spin.',
+      'Pinned FINAL_CANONICAL retains late_sibling_after_finalization audit; existing enqueue/enrichment preserved (no new job).',
+    ],
+    reason:
+      'WOB L 7503 prior consumed canonical equals current chooser — authority preservation, not owner transfer.',
+    previousBehavior:
+      'Irreversible late-sibling INSUFFICIENT rows were excluded from authority_recheck and could not self-heal despite stable same-owner evidence.',
+    details:
+      'evaluateIrreversibleCanonicalPinning; physical-refuel-f10-6-8-a1.spec.ts; PR #1702',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T12:55:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-8-a-recoverable-late-sibling-2026-09-20',
     version: '4.9.1153',
     title: 'RFRF F10.6.8-A — recoverable native late-sibling authority',
