@@ -49,6 +49,7 @@ import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/
 import { ReferenceCaptureExp021MaturationShadowRecoveryScheduler } from './schedulers/reference-capture-exp021-maturation-shadow-recovery.scheduler';
 import { ReferenceCaptureExp021FleetCoordinatorScheduler } from './schedulers/reference-capture-exp021-fleet-coordinator.scheduler';
 import { ReferenceCaptureExp021CanaryLiveWindowActivationScheduler } from './schedulers/reference-capture-exp021-canary-live-window-activation.scheduler';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeModule } from '@modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-activation-scheduler-runtime.module';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
@@ -115,6 +116,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     IamDataRetentionModule,
     VehicleWarningGdprModule,
     BookingDocumentGenerationModule,
+    ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeModule,
   ],
   providers: [
     // Processors

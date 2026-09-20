@@ -30,7 +30,7 @@ describe('EXP-021 canary operator CLI bootstrap', () => {
   });
 
   describe('bootstrap composition seam', () => {
-    it('loads shared ops env before resolving AppModule.forRootAsync DynamicModule', async () => {
+    it('loads shared ops env before resolving slim operator module', async () => {
       const order: string[] = [];
       const mockConfig = { isExp021MaturationShadowEnabled: () => true } as ReferenceCaptureConfig;
       const mockRepository = {} as ReferenceCaptureExp021MaturationShadowRepository;
@@ -58,7 +58,7 @@ describe('EXP-021 canary operator CLI bootstrap', () => {
           },
           resolveRootModule: async () => {
             order.push('resolveRootModule');
-            return { module: TestRootModule } as DynamicModule;
+            return TestRootModule;
           },
           createApplicationContext: async (rootModule) => {
             order.push('createApplicationContext');
@@ -82,7 +82,8 @@ describe('EXP-021 canary operator CLI bootstrap', () => {
 
     it('uses shared backend env authority via loadOpsEnv', async () => {
       const loadOpsEnv = jest.fn();
-      const rootModule = { module: class EmptyModule {} } as DynamicModule;
+      class EmptyModule {}
+      const rootModule = EmptyModule;
 
       const app = await bootstrapExp021CanaryEnrollApplicationContext({
         logger: false,
