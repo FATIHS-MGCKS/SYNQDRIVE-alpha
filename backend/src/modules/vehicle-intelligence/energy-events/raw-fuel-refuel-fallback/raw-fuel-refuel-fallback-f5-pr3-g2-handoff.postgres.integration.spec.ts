@@ -797,7 +797,6 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
 
         expect(fallbackRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
         expect(fallbackRecon.enrichmentEligible).toBe(false);
-        expect(fallbackRecon.canonicalEventId).not.toBe(native.id);
 
         const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
           where: { energyEventId: fallbackVeeId! },
@@ -811,6 +810,15 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
 
         expect(nativeResult.enqueuedEventIds).toEqual([]);
         expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(0);
+        expect(
+          await prisma.vehicleEnergyEventRefuelReconciliation.findFirst({
+            where: {
+              vehicleId: vehicle.id,
+              enrichmentEligible: true,
+              canonicalEventId: native.id,
+            },
+          }),
+        ).toBeNull();
         expect(
           await prisma.vehicleEnergyEventRefuelReconciliation.count({
             where: { vehicleId: vehicle.id, enrichmentEligible: true },
