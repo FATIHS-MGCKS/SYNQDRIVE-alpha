@@ -28,7 +28,15 @@ cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-rfrf_test_psql_superuser_quiet "ALTER TABLE raw_refuel_candidates DROP COLUMN IF EXISTS recovery_next_attempt_at;"
+drop_b_column_for_negative_test() {
+  local sql='ALTER TABLE raw_refuel_candidates DROP COLUMN IF EXISTS recovery_next_attempt_at;'
+  if [[ -n "${RFRF_CI_POSTGRES_SUPERUSER_URL:-}" ]]; then
+    psql "${RFRF_CI_POSTGRES_SUPERUSER_URL}" -d "${PG_DB}" -v ON_ERROR_STOP=1 -c "${sql}"
+  else
+    su - postgres -c "psql -d ${PG_DB} -v ON_ERROR_STOP=1 -c $(printf '%q' "${sql}")"
+  fi
+}
+drop_b_column_for_negative_test
 
 set +e
 node scripts/test/verify-rfrf-f10-6-8-b-migration-contract.mjs
