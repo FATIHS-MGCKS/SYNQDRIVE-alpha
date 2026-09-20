@@ -32,3 +32,14 @@
 1. Stop or redeploy cohort operator on slim module (no lease capture).
 2. Confirm one PM2 replica is leader with activation timer installed.
 3. Prove ledger on **ONGOING** prospective trip before completion (no backfill of 2026-09-20 forensic drives).
+
+## Activation scheduler config dynamics (repair)
+
+- `ACTIVATION_ENABLED_DYNAMIC=YES` — resolved in each `tick()` via `resolveConfigFromEnv()`.
+- `NOT_BEFORE_DYNAMIC=YES` — part of activation config resolution each tick.
+- `COHORT_DYNAMIC=YES` — cohort membership read each tick when config is active.
+- `INTERVAL_DYNAMIC_REQUIRED=NO` — `intervalMs` remains bootstrap-time (`onModuleInit`) per existing semantics.
+
+## KS MX overlap (out of scope)
+
+Trip pair `a127e2a0-a7db-4f96-bb0f-5cbe5f736724` / `9037edf0-68cc-4a18-a438-b81a49d9ca0a` ONGOING+`endTime` anomaly — separate follow-up; not causal for global zero-ledger starvation.
