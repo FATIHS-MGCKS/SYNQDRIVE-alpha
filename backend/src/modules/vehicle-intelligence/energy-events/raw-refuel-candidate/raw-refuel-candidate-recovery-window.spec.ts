@@ -36,6 +36,8 @@ describe('computeRawRefuelCandidateRecoveryWindow (F10.6.8-B)', () => {
       wobPartialCandidate,
       serviceNow,
     );
+    expect(window.start.toISOString()).toBe('2026-09-19T15:16:26.000Z');
+    expect(window.end.toISOString()).toBe('2026-09-19T17:32:24.000Z');
     const contains = (iso: string) =>
       ts(iso) >= window.start.getTime() && ts(iso) <= window.end.getTime();
 

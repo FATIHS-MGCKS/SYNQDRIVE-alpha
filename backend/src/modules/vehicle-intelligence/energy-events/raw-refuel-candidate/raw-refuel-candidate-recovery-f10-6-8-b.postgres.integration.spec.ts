@@ -16,6 +16,11 @@ import { RawRefuelConvergenceService } from '../raw-fuel-refuel-fallback/raw-ref
 import { RawRefuelCandidateRecoveryRepository } from './raw-refuel-candidate-recovery.repository';
 import { RawRefuelCandidateRecoveryService } from './raw-refuel-candidate-recovery.service';
 import { RawRefuelCandidateService } from './raw-refuel-candidate.service';
+import { computeRawRefuelCandidateRecoveryWindow } from './raw-refuel-candidate-recovery-window';
+import {
+  RAW_REFUEL_CANDIDATE_RECOVERY_MIN_BACKOFF_MS,
+  computeRawRefuelCandidateRecoveryBackoffMs,
+} from './raw-refuel-candidate-recovery-backoff';
 import { detectRawFuelRises } from '../raw-fuel-rise-detector/raw-fuel-rise-detector';
 import {
   buildDetectorPhysicsContext,
@@ -23,12 +28,16 @@ import {
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 
 const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION === '1';
-const WOB_NATIVE_EVENT_ID = 'cafd8fdf-6c72-42c2-9897-2a279c3fae58';
+
+function readConvergedNativeId(meta: unknown): string | null {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null;
+  const value = (meta as Record<string, unknown>).convergedNativeEnergyEventId;
+  return typeof value === 'string' ? value : null;
+}
 
 function nativeSameSiblingFromCandidate(
   candidate: RawRefuelCandidate,
   suffix: string,
-  eventId?: string,
 ) {
   const start =
     candidate.riseOnsetAt ??
@@ -39,7 +48,6 @@ function nativeSameSiblingFromCandidate(
     candidate.physicalEvidenceEnd ??
     candidate.lastObservedAt;
   return {
-    ...(eventId ? { id: eventId } : {}),
     vehicleId: candidate.vehicleId,
     dimoSegmentId: `dimo-same-${suffix}`,
     detectionSource: 'DIMO_NATIVE' as const,
@@ -143,7 +151,8 @@ async function cleanup(
 
 function buildRecoveryStack(
   prisma: PrismaClient,
-  fetchImpl: (includePost: boolean) => ReturnType<typeof buildSparseBridgeRefuelEpisodeSamples>,
+  fetchImpl: () => ReturnType<typeof buildSparseBridgeRefuelEpisodeSamples> = () =>
+    buildSparseBridgeRefuelEpisodeSamples(true),
 ) {
   let fetchCount = 0;
   const candidateService = RawRefuelCandidateService.withFixedClock(
@@ -157,7 +166,7 @@ function buildRecoveryStack(
     convergence,
   ).withSampleFetcher(async () => {
     fetchCount += 1;
-    const samples = fetchImpl(fetchCount > 1);
+    const samples = fetchImpl();
     return {
       status: 'OK' as const,
       samples: samples.map((s) => ({
@@ -219,13 +228,17 @@ async function seedSparseBridgeCandidate(
       const now = new Date('2026-09-19T18:30:00.000Z');
       try {
         const candidate = await seedSparseBridgeCandidate(prisma, org.id, vehicle.id);
+        const window = computeRawRefuelCandidateRecoveryWindow(candidate, now);
+        const ts = (iso: string) => new Date(iso).getTime();
+        expect(ts('2026-09-19T15:48:26.000Z')).toBeGreaterThanOrEqual(window.start.getTime());
+        expect(ts('2026-09-19T16:11:24.000Z')).toBeLessThanOrEqual(window.end.getTime());
+        expect(ts('2026-09-19T16:53:59.000Z')).toBeLessThanOrEqual(window.end.getTime());
+        expect(ts('2026-09-19T16:58:31.000Z')).toBeLessThanOrEqual(window.end.getTime());
         await prisma.rawRefuelCandidate.update({
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: now },
         });
-        const { recovery } = buildRecoveryStack(prisma, (includePost) =>
-          buildSparseBridgeRefuelEpisodeSamples(includePost),
-        );
+        const { recovery } = buildRecoveryStack(prisma);
         const result = await recovery.recoverCandidateById(candidate.id, now);
         expect(['SUCCESS_MATURED_READY', 'PENDING_NATIVE_RECONCILIATION']).toContain(
           result.outcome,
@@ -252,9 +265,7 @@ async function seedSparseBridgeCandidate(
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: now },
         });
-        const { recovery, getFetchCount } = buildRecoveryStack(prisma, (includePost) =>
-          buildSparseBridgeRefuelEpisodeSamples(includePost),
-        );
+        const { recovery, getFetchCount } = buildRecoveryStack(prisma);
         const tick1 = await recovery.recoverCandidateById(candidate.id, now);
         expect(tick1.dimoFetchPerformed).toBe(true);
         expect(
@@ -272,8 +283,8 @@ async function seedSparseBridgeCandidate(
         candidate = await prisma.rawRefuelCandidate.findUniqueOrThrow({
           where: { id: candidate.id },
         });
-        await prisma.vehicleEnergyEvent.create({
-          data: nativeSameSiblingFromCandidate(candidate, suffix, WOB_NATIVE_EVENT_ID),
+        const native = await prisma.vehicleEnergyEvent.create({
+          data: nativeSameSiblingFromCandidate(candidate, suffix),
         });
 
         await prisma.rawRefuelCandidate.update({
@@ -286,11 +297,13 @@ async function seedSparseBridgeCandidate(
         );
         expect(tick2.outcome).toBe('SUCCESS_CONVERGED');
         expect(tick2.dimoFetchPerformed).toBe(false);
+        expect(tick2.convergenceStatus).toBe('CONVERGED_NATIVE');
         expect(getFetchCount()).toBe(fetchAfterTick1);
         const finalRow = await prisma.rawRefuelCandidate.findUniqueOrThrow({
           where: { id: candidate.id },
         });
         expect(finalRow.lifecycleState).toBe('CONVERGED_NATIVE');
+        expect(readConvergedNativeId(finalRow.qualityMeta)).toBe(native.id);
         expect(
           await prisma.vehicleEnergyEvent.count({
             where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
@@ -343,6 +356,76 @@ async function seedSparseBridgeCandidate(
         });
         const claimed = await repo.claimDueCandidates(5, now, new Date(now.getTime() + 60_000));
         expect(claimed.some((row) => row.id === candidate.id)).toBe(false);
+        const { recovery } = buildRecoveryStack(prisma);
+        const terminalResult = await recovery.recoverCandidateById(candidate.id, now);
+        expect(terminalResult.outcome).toBe('TERMINAL_NO_ACTION');
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('no-data backoff persists attempt state without inventing rejection', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const tokenId = 961000 + Math.floor(Math.random() * 10000);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix, tokenId);
+      const now = new Date('2026-09-19T18:30:00.000Z');
+      try {
+        const candidate = await seedSparseBridgeCandidate(prisma, org.id, vehicle.id);
+        const before = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { recoveryNextAttemptAt: now, recoveryAttemptCount: 2 },
+        });
+        const convergence = new RawRefuelConvergenceService(prisma as unknown as PrismaService);
+        const recovery = new RawRefuelCandidateRecoveryService(
+          prisma as unknown as PrismaService,
+          RawRefuelCandidateService.withFixedClock(
+            prisma as unknown as PrismaService,
+            now,
+          ),
+          convergence,
+        ).withSampleFetcher(async () => ({ status: 'EMPTY' as const }));
+        const result = await recovery.recoverCandidateById(candidate.id, now);
+        expect(result.outcome).toBe('NO_MATCHING_OBSERVATION');
+        const after = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        expect(after.lifecycleState).toBe(before.lifecycleState);
+        expect(after.rejectionReason).toBe(before.rejectionReason);
+        expect(after.recoveryAttemptCount).toBeGreaterThanOrEqual(2);
+        expect(after.recoveryNextAttemptAt).not.toBeNull();
+        const backoffMs = after.recoveryNextAttemptAt!.getTime() - now.getTime();
+        expect(backoffMs).toBeGreaterThanOrEqual(
+          computeRawRefuelCandidateRecoveryBackoffMs(after.recoveryAttemptCount) - 5_000,
+        );
+        expect(backoffMs).toBeGreaterThanOrEqual(RAW_REFUEL_CANDIDATE_RECOVERY_MIN_BACKOFF_MS);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('promotion flags ON still do not create fallback VEE via recovery', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const tokenId = 962000 + Math.floor(Math.random() * 10000);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix, tokenId);
+      const now = new Date('2026-09-19T18:30:00.000Z');
+      try {
+        const candidate = await seedSparseBridgeCandidate(prisma, org.id, vehicle.id);
+        await prisma.rawRefuelCandidate.update({
+          where: { id: candidate.id },
+          data: { recoveryNextAttemptAt: now },
+        });
+        const { recovery } = buildRecoveryStack(prisma);
+        await recovery.recoverCandidateById(candidate.id, now);
+        expect(
+          await prisma.vehicleEnergyEvent.count({
+            where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+          }),
+        ).toBe(0);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
       } finally {
         await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
       }

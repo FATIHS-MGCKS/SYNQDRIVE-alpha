@@ -1,6 +1,7 @@
 import {
   RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
   RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV,
+  defaultRawFuelRefuelFallbackConfigForTests,
 } from '@config/raw-fuel-refuel-fallback.config';
 import { FuelType } from '@prisma/client';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
@@ -61,7 +62,9 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       undefined,
       undefined,
       undefined,
-    ).withConfigLoader(() => ({ ...config, cutoverAt: null }));
+    ).withConfigLoader(() =>
+      defaultRawFuelRefuelFallbackConfigForTests(config),
+    );
     return { service, dimoSegments, rawRefuelCandidateService };
   }
 
@@ -179,7 +182,12 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       undefined,
       undefined,
       undefined,
-    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
+    ).withConfigLoader(() =>
+      defaultRawFuelRefuelFallbackConfigForTests({
+        masterEnabled: true,
+        persistEnabled: true,
+      }),
+    );
     const result = await svc.scanIfEnabled(baseInput);
     expect(result.observationsEmitted).toBe(2);
     expect(result.candidateOutcomes.some((o) => o.error)).toBe(true);
@@ -253,7 +261,12 @@ describe('RawFuelRefuelFallbackRuntimeService', () => {
       undefined,
       undefined,
       undefined,
-    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
+    ).withConfigLoader(() =>
+      defaultRawFuelRefuelFallbackConfigForTests({
+        masterEnabled: true,
+        persistEnabled: true,
+      }),
+    );
 
     const partialInput = {
       ...baseInput,

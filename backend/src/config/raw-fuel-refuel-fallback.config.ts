@@ -95,6 +95,22 @@ export function loadRawFuelRefuelFallbackConfig(
   };
 }
 
+/** Fail-closed test defaults — candidate recovery scheduler explicitly OFF. */
+export function defaultRawFuelRefuelFallbackConfigForTests(
+  overrides: Partial<RawFuelRefuelFallbackConfig> = {},
+): RawFuelRefuelFallbackConfig {
+  return {
+    masterEnabled: false,
+    persistEnabled: false,
+    cutoverAt: null,
+    candidateRecoveryEnabled: false,
+    candidateRecoveryIntervalMs: RFRF_CANDIDATE_RECOVERY_DEFAULT_INTERVAL_MS,
+    candidateRecoveryBatchSize: RFRF_CANDIDATE_RECOVERY_DEFAULT_BATCH_SIZE,
+    candidateRecoveryLeaseMs: RFRF_CANDIDATE_RECOVERY_DEFAULT_LEASE_MS,
+    ...overrides,
+  };
+}
+
 export default registerAs('rawFuelRefuelFallback', () => loadRawFuelRefuelFallbackConfig());
 
 /** Convenience for unit tests and future F4-PR2 wiring. */
