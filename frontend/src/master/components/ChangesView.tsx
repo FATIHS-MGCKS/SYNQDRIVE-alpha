@@ -92,7 +92,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'P21 treated irreversible late SAME as permanent INSUFFICIENT_EVIDENCE.',
     details:
       'raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts',
-    affectsArchitecture: false,
+    affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-20T15:15:00.000Z',
   },
