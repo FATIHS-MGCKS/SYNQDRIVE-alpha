@@ -77,6 +77,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-8-a2-p21-pinning-regression-2026-09-20',
+    version: '4.9.1155',
+    title: 'RFRF F10.6.8-A.2 — P21 irreversible canonical pinning regression alignment',
+    summary: [
+      'F5-PR3 P21 updated for A.1 same-owner pinning after COMPLETED fallback enrichment.',
+      'Asserts single enrichment-eligible owner, no duplicate native enrichment, late-sibling audit preserved.',
+      'P21B PostgreSQL negative — canonical challenger remains fail closed.',
+      'A.1 pin guard: >1 post-settlement late sibling blocks pin (P24 multi-late ambiguity).',
+    ],
+    reason:
+      'Stage-3 rfrf-stage3-persistence-readiness P21 expected pre-A.1 INSUFFICIENT forever.',
+    previousBehavior:
+      'P21 treated irreversible late SAME as permanent INSUFFICIENT_EVIDENCE.',
+    details:
+      'raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T15:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-8-a1-irreversible-canonical-pinning-2026-09-20',
     version: '4.9.1154',
     title: 'RFRF F10.6.8-A.1 — irreversible canonical pinning closure',
