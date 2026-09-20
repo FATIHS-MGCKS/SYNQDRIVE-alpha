@@ -22,4 +22,8 @@ echo "==> RFRF F9 multi-replica convergence safety (independent replica + prior 
 bash "${SCRIPT_DIR}/rfrf-f9-multi-replica-integration-gate.sh"
 echo "STAGE4_MULTI_REPLICA_CONVERGENCE_SAFETY=PASS"
 
+echo "==> RFRF F10.6.8-B candidate recovery PostgreSQL matrix"
+bash "${SCRIPT_DIR}/rfrf-f10-6-8-b-candidate-recovery-gate.sh"
+echo "STAGE4_F10_6_8_B_RECOVERY_PG_MATRIX=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"

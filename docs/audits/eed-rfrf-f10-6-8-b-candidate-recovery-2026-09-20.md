@@ -41,6 +41,11 @@ cd backend && bash scripts/test/rfrf-f10-stage3-authority-matrix-tests.sh
 cd backend && bash scripts/test/rfrf-f10-stage4-authority-matrix-tests.sh
 cd backend && npm test -- --testPathPattern='raw-refuel-candidate-recovery|raw-fuel-rise-liveness|physical-refuel-f10-6-8|raw-fuel-refuel-fallback.config'
 RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION=1 npm test -- --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-b.postgres.integration.spec.ts|raw-refuel-candidate-recovery-restart-durability.postgres.integration.spec.ts'
+bash scripts/test/rfrf-f10-6-8-b-candidate-recovery-gate.sh  # isolated PG (CI Stage-4 gate)
 ```
+
+### B1 follow-up — Stage-4 CI PostgreSQL matrix gate
+
+- Added `backend/scripts/test/rfrf-f10-6-8-b-candidate-recovery-gate.sh` and wired it into `rfrf-stage4-convergence-readiness-ci-gate.sh` so §4.1–4.7 proofs execute on GitHub Actions isolated PostgreSQL (not deferrable locally without Docker).
 
 Production: **not** deployed or mutated. Stage 5 **not** authorized.
