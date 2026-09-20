@@ -47,5 +47,8 @@ bash scripts/test/rfrf-f10-6-8-b-candidate-recovery-gate.sh  # isolated PG (CI S
 ### B1 follow-up — Stage-4 CI PostgreSQL matrix gate
 
 - Added `backend/scripts/test/rfrf-f10-6-8-b-candidate-recovery-gate.sh` and wired it into `rfrf-stage4-convergence-readiness-ci-gate.sh` so §4.1–4.7 proofs execute on GitHub Actions isolated PostgreSQL (not deferrable locally without Docker).
+- Gate includes resilient `db push` schema drift sync (e.g. `powertrain_type`) matching F5-PR1 isolated-DB pattern.
+
+**B1 closure HEAD:** `1936ffb01831506a4d9fb9e36c37de854a70bc9f` — GitHub: Stage-3 SUCCESS, Stage-4 SUCCESS (incl. PG matrix), Legal Documents Typecheck SUCCESS.
 
 Production: **not** deployed or mutated. Stage 5 **not** authorized.
