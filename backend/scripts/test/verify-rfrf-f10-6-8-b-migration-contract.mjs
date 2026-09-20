@@ -28,9 +28,7 @@ async function main() {
 
   const prisma = new PrismaClient();
   try {
-    const migrations = await prisma.$queryRaw<
-      Array<{ migration_name: string; finished_at: Date | null; rolled_back_at: Date | null }>
-    >`
+    const migrations = await prisma.$queryRaw`
       SELECT migration_name, finished_at, rolled_back_at
       FROM _prisma_migrations
       WHERE migration_name = ${B_MIGRATION}
@@ -47,7 +45,7 @@ async function main() {
     }
 
     for (const column of REQUIRED_COLUMNS) {
-      const cols = await prisma.$queryRaw<Array<{ column_name: string }>>`
+      const cols = await prisma.$queryRaw`
         SELECT column_name
         FROM information_schema.columns
         WHERE table_schema = 'public'
@@ -59,7 +57,7 @@ async function main() {
       }
     }
 
-    const enums = await prisma.$queryRaw<Array<{ typname: string }>>`
+    const enums = await prisma.$queryRaw`
       SELECT t.typname
       FROM pg_type t
       JOIN pg_namespace n ON n.oid = t.typnamespace
@@ -69,7 +67,7 @@ async function main() {
       fail(`missing enum ${REQUIRED_ENUM}`);
     }
 
-    const enumLabels = await prisma.$queryRaw<Array<{ enumlabel: string }>>`
+    const enumLabels = await prisma.$queryRaw`
       SELECT e.enumlabel
       FROM pg_enum e
       JOIN pg_type t ON t.oid = e.enumtypid
@@ -87,9 +85,7 @@ async function main() {
       }
     }
 
-    const indexes = await prisma.$queryRaw<
-      Array<{ indexname: string; indexdef: string }>
-    >`
+    const indexes = await prisma.$queryRaw`
       SELECT indexname, indexdef
       FROM pg_indexes
       WHERE schemaname = 'public'
