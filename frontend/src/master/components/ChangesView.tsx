@@ -77,6 +77,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-8-a-recoverable-late-sibling-2026-09-20',
+    version: '4.9.1153',
+    title: 'RFRF F10.6.8-A — recoverable native late-sibling authority',
+    summary: [
+      'Durable prior-finalization memory from late-sibling conflict rows (canonicalEventId, enrichment enqueue, fuel enrichment) — not only mutable enrichmentEligible FINAL bits.',
+      'Intra-component prior-canonical late sibling skipped when prior owner was not irreversibly consumed; irreversible enqueue/COMPLETED enrichment stays fail closed.',
+      'Recovery reason authority_recheck selects safe INSUFFICIENT late-sibling rows; authority_recheck_hold stops infinite recovery spin when reopen is unsafe.',
+    ],
+    reason:
+      'WOB L 7503 post-recovery regression: recovery reloads in-clique canonical finals as external late siblings; prior-final facts vanished when rows were overwritten to INSUFFICIENT.',
+    previousBehavior:
+      'loadPriorFinalizationBridgeContext and recovery selectors ignored stuck late-sibling INSUFFICIENT groups; in-component canonical priors false-triggered late_sibling_after_finalization on every recovery tick.',
+    details:
+      'physical-refuel-prior-ownership.util.ts; physical-refuel-late-sibling-authority.util.ts; physical-refuel-recovery.repository.ts; physical-refuel-reconciliation.design.ts; physical-refuel-f10-6-8-a.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T09:10:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-6-b2-canonical-query-pending-closure-2026-09-19',
     version: '4.9.1152',
     title: 'RFRF F10.6.6-B.2 — canonical query reconciliation load + pending INSUFFICIENT',

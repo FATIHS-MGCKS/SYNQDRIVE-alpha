@@ -41,6 +41,11 @@ export interface PhysicalRefuelReconciliationContext {
   firstSeenAtById?: Record<string, number>;
   asOfMs?: number;
   settlementConfig?: PhysicalRefuelSettlementConfig;
+  /**
+   * Prior-final owners whose enrichment/enqueue state is irreversible — intra-component
+   * late-sibling checks remain fail-closed for these ids (F10.6.8-A).
+   */
+  irreversiblePriorFinalOwnerIds?: Set<string>;
   /** IDs that reached FINAL_DISTINCT enrichment before a late sibling arrived. */
   priorDistinctFinalizationIds?: Set<string>;
   /** IDs that were in a FINAL_CANONICAL group that was already enriched. */
@@ -118,6 +123,7 @@ function hasLateSiblingFinalizationConflict(
   priorDistinct: Set<string>,
   priorCanonical: Set<string>,
   priorFinalRowsById?: Record<string, RefuelRowForMatcher>,
+  irreversiblePriorFinalOwnerIds?: Set<string>,
 ): boolean {
   const finalizedIds = new Set([...priorDistinct, ...priorCanonical]);
   if (!finalizedIds.size) return false;
@@ -125,6 +131,12 @@ function hasLateSiblingFinalizationConflict(
   for (const member of component.members) {
     for (const finalizedId of finalizedIds) {
       if (member.id === finalizedId) continue;
+      if (component.memberIds.includes(finalizedId)) {
+        const irreversible = irreversiblePriorFinalOwnerIds?.has(finalizedId) ?? false;
+        if (priorCanonical.has(finalizedId) && !irreversible) {
+          continue;
+        }
+      }
       const cell = getPairCell(matrix, member.id, finalizedId);
       if (cell) {
         if (
@@ -205,6 +217,7 @@ function decisionFromComponent(
     priorDistinct,
     priorCanonical,
     context?.priorFinalRowsById,
+    context?.irreversiblePriorFinalOwnerIds,
   );
 
   const settlement = determinePhysicalRefuelSettlement({

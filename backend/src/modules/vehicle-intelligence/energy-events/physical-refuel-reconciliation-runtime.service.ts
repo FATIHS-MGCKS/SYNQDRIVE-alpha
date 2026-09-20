@@ -26,6 +26,10 @@ import {
 import { mapDecisionToPersistPayload, isV2OwnedRefuelEvent } from './physical-refuel-reconciliation.repository';
 import { loadPriorFinalizationBridgeContext } from './physical-refuel-prior-ownership.util';
 import {
+  AUTHORITY_RECHECK_HOLD_REASON,
+  reconciliationImpliesLateSiblingAfterFinalization,
+} from './physical-refuel-late-sibling-authority.util';
+import {
   describeCoordinateHoldReason,
   isV2CoordinateEligibleForEnrichment,
 } from './physical-refuel-coordinate.policy';
@@ -381,6 +385,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
             priorDistinctFinalizationIds: priorContext.priorDistinctFinalizationIds,
             priorCanonicalFinalizationIds: priorContext.priorCanonicalFinalizationIds,
             priorFinalRowsById: priorContext.priorFinalRowsById,
+            irreversiblePriorFinalOwnerIds: priorContext.irreversiblePriorFinalOwnerIds,
             settlementConfig: { settlementHorizonMs: this.config.settlementHorizonMs },
           },
         );
@@ -418,11 +423,26 @@ export class PhysicalRefuelReconciliationRuntimeService {
             coordinateSelectionStatus: existing?.coordinateSelectionStatus,
           });
 
+          const persistPayload =
+            params.recoveryReason === 'authority_recheck' &&
+            decision.finalityState === 'INSUFFICIENT_EVIDENCE' &&
+            reconciliationImpliesLateSiblingAfterFinalization({
+              lateSiblingConflict: decision.reasonCodes.includes('late_sibling_after_finalization'),
+              reason: decision.reason,
+              reasonCodes: decision.reasonCodes,
+            })
+              ? {
+                  ...payload,
+                  reason: AUTHORITY_RECHECK_HOLD_REASON,
+                  nextReconciliationAt: null,
+                }
+              : payload;
+
           if (existing) {
             await tx.vehicleEnergyEventRefuelReconciliation.update({
               where: { energyEventId: event.id },
               data: {
-                ...payload,
+                ...persistPayload,
                 enrichmentEnqueuedAt: existing.enrichmentEnqueuedAt,
                 coordinateLatitude: existing.coordinateLatitude,
                 coordinateLongitude: existing.coordinateLongitude,
@@ -432,7 +452,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
               },
             });
           } else {
-            await tx.vehicleEnergyEventRefuelReconciliation.create({ data: payload });
+            await tx.vehicleEnergyEventRefuelReconciliation.create({ data: persistPayload });
           }
 
           this.logDecision(event.id, decision, v2Candidates.length, Date.now() - started);

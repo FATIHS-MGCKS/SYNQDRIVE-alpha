@@ -9,6 +9,12 @@ import { computeOrphanCreatedAtRange } from './physical-refuel-orphan-range.util
 import { isV2CoordinateEligibleForEnrichment } from './physical-refuel-coordinate.policy';
 import { RETRYABLE_COORDINATE_STATUS_LIST } from './physical-refuel-coordinate-retry.policy';
 import { FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS } from '../fuel-stations/enrichment/fuel-station-enrichment-stale.util';
+import {
+  AUTHORITY_RECHECK_HOLD_REASON,
+  isPermanentIdentityAmbiguityReason,
+  isSafeLateSiblingAuthorityRecheckRow,
+  reconciliationImpliesLateSiblingAfterFinalization,
+} from './physical-refuel-late-sibling-authority.util';
 
 export interface PhysicalRefuelRecoveryWorkItem {
   vehicleId: string;
@@ -19,7 +25,8 @@ export interface PhysicalRefuelRecoveryWorkItem {
     | 'stale_enrichment'
     | 'lost_enqueue'
     | 'coordinate_initial'
-    | 'coordinate_retry';
+    | 'coordinate_retry'
+    | 'authority_recheck';
 }
 
 export interface PhysicalRefuelRecoveryQuota {
@@ -29,6 +36,7 @@ export interface PhysicalRefuelRecoveryQuota {
   lostEnqueue: number;
   coordinateInitial: number;
   coordinateRetry: number;
+  authorityRecheck: number;
 }
 
 const FINAL_ELIGIBLE_STATES = [
@@ -41,10 +49,17 @@ export function computePhysicalRefuelRecoveryQuota(batchSize: number): PhysicalR
   const orphanRefuel = Math.max(1, Math.ceil(batchSize * 0.2));
   const staleEnrichment = Math.max(1, Math.ceil(batchSize * 0.15));
   const lostEnqueue = Math.max(1, Math.ceil(batchSize * 0.15));
+  const authorityRecheck = batchSize >= 12 ? 1 : 0;
   const coordinateInitial = Math.max(1, Math.ceil(batchSize * 0.15));
   const coordinateRetry = Math.max(
     0,
-    batchSize - settlementDue - orphanRefuel - staleEnrichment - lostEnqueue - coordinateInitial,
+    batchSize -
+      settlementDue -
+      orphanRefuel -
+      staleEnrichment -
+      lostEnqueue -
+      coordinateInitial -
+      authorityRecheck,
   );
   return {
     settlementDue,
@@ -53,6 +68,7 @@ export function computePhysicalRefuelRecoveryQuota(batchSize: number): PhysicalR
     lostEnqueue,
     coordinateInitial,
     coordinateRetry,
+    authorityRecheck,
   };
 }
 
@@ -185,6 +201,24 @@ export function buildCoordinateRetryRecoveryWhere(
       ...fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
       fuelStationEnrichment: { is: null },
     },
+  };
+}
+
+export function buildAuthorityRecheckRecoveryWhere(
+  fallbackG2Authorized: boolean,
+): Prisma.VehicleEnergyEventRefuelReconciliationWhereInput {
+  return {
+    finalityState: PhysicalRefuelFinalityState.INSUFFICIENT_EVIDENCE,
+    lateSiblingConflict: true,
+    reason: { not: AUTHORITY_RECHECK_HOLD_REASON },
+    NOT: {
+      OR: [
+        { reason: 'non_transitive_identity_component' },
+        { reason: 'pairwise_identity_insufficient' },
+        { reason: 'missing_system_observation_time' },
+      ],
+    },
+    energyEvent: fallbackAuthorityEnergyEventFilter(fallbackG2Authorized),
   };
 }
 
@@ -424,6 +458,62 @@ export async function findPhysicalRefuelRecoveryWork(
       vehicleId: row.vehicleId,
       triggerEventId: row.energyEventId,
       reason: 'coordinate_retry',
+    });
+  }
+
+  if (work.length >= params.batchSize) return work;
+
+  const authorityRecheckCandidates = await prisma.vehicleEnergyEventRefuelReconciliation.findMany({
+    where: buildAuthorityRecheckRecoveryWhere(fallbackG2Authorized),
+    orderBy: { updatedAt: 'asc' },
+    take: Math.max(quota.authorityRecheck * 4, quota.authorityRecheck),
+    include: {
+      energyEvent: { include: { fuelStationEnrichment: true } },
+    },
+  });
+
+  const canonicalOwnerCache = new Map<
+    string,
+    Awaited<ReturnType<typeof prisma.vehicleEnergyEventRefuelReconciliation.findUnique>>
+  >();
+
+  for (const row of authorityRecheckCandidates) {
+    if (work.filter((w) => w.reason === 'authority_recheck').length >= quota.authorityRecheck) {
+      break;
+    }
+    if (isPermanentIdentityAmbiguityReason(row.reason, row.reasonCodes)) {
+      continue;
+    }
+    if (!reconciliationImpliesLateSiblingAfterFinalization(row)) {
+      continue;
+    }
+    let ownerRowForPolicy:
+      | (typeof authorityRecheckCandidates)[number]
+      | NonNullable<Awaited<ReturnType<typeof prisma.vehicleEnergyEventRefuelReconciliation.findUnique>>>
+      = row;
+    if (row.canonicalEventId) {
+      const cached = canonicalOwnerCache.get(row.canonicalEventId);
+      let canonicalOwnerRow = cached;
+      if (cached === undefined) {
+        canonicalOwnerRow = await prisma.vehicleEnergyEventRefuelReconciliation.findUnique({
+          where: { energyEventId: row.canonicalEventId },
+          include: {
+            energyEvent: { include: { fuelStationEnrichment: true } },
+          },
+        });
+        canonicalOwnerCache.set(row.canonicalEventId, canonicalOwnerRow);
+      }
+      if (canonicalOwnerRow) {
+        ownerRowForPolicy = canonicalOwnerRow;
+      }
+    }
+    if (!isSafeLateSiblingAuthorityRecheckRow(row, ownerRowForPolicy)) {
+      continue;
+    }
+    await pushWork({
+      vehicleId: row.vehicleId,
+      triggerEventId: row.energyEventId,
+      reason: 'authority_recheck',
     });
   }
 
