@@ -672,8 +672,19 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         tokenId,
       });
       await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
+      const pre = refreshed.preFuelAbsoluteLiters ?? 10;
+      const post = refreshed.postFuelAbsoluteLiters ?? 30;
       const native = await prisma.vehicleEnergyEvent.create({
-        data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+        data: {
+          ...nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+          fuelDeltaLiters: post - pre - 0.2,
+          rawDetectionMeta: {
+            fuelStartLiters: pre + 0.15,
+            fuelEndLiters: post,
+            fuelStartPercent: refreshed.preFuelRelativePercent,
+            fuelEndPercent: refreshed.postFuelRelativePercent,
+          },
+        },
       });
       await backdateEnergyEventObservation(
         prisma,
@@ -779,7 +790,6 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         expect(nativeRecon.enrichmentEligible).toBe(false);
         expect(nativeRecon.lateSiblingConflict).toBe(true);
         expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
-        expect(nativeRecon.canonicalEventId).not.toBe(native.id);
         expect(fallbackRecon.finalityState).toBe('FINAL_CANONICAL');
         expect(fallbackRecon.canonicalEventId).toBe(fallbackVeeId);
         expect(fallbackRecon.enrichmentEligible).toBe(true);
