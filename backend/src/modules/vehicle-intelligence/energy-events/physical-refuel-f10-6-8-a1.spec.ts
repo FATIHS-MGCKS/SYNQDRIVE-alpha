@@ -160,6 +160,34 @@ describe('F10.6.8-A.1 irreversible canonical pinning', () => {
       expect(batch[0].reasonCodes).toContain('late_sibling_after_finalization');
     });
 
+    it('rejects pin when more than one late sibling arrives after irreversible owner settlement', () => {
+      const owner = { ...incidentA, id: 'owner-a' };
+      const lateB = { ...incidentB, id: 'late-b', startTime: incidentA.startTime, endTime: incidentA.endTime };
+      const lateC = { ...incidentA, id: 'late-c', dimoSegmentId: 'late-seg-c' };
+      const afterSettlement = t0 + horizon + 5 * 60 * 1000;
+      const observed = {
+        [owner.id]: t0,
+        [lateB.id]: afterSettlement,
+        [lateC.id]: afterSettlement + 10 * 60 * 1000,
+      };
+      const pin = evaluateIrreversibleCanonicalPinning({
+        component: {
+          memberIds: [owner.id, lateB.id, lateC.id],
+          members: [owner, lateB, lateC],
+          status: 'VALID_COMPLETE_CLIQUE',
+          isCompleteSameClique: true,
+          reasonCodes: [],
+        },
+        chosenCanonicalId: owner.id,
+        asOfMs: afterSettlement + 10 * 60 * 1000 + horizon + 1,
+        firstObservedAtById: observed,
+        irreversiblePriorFinalOwnerIds: new Set([owner.id]),
+        priorCanonicalFinalizationIds: new Set([owner.id]),
+        persistedCanonicalEventId: owner.id,
+      });
+      expect(pin.pin).toBe(false);
+    });
+
     it('rejects multiple irreversible owners in one component', () => {
       const a = { ...incidentA, id: 'irr-a' };
       const b = { ...incidentB, id: 'irr-b', startTime: incidentA.startTime, endTime: incidentA.endTime };

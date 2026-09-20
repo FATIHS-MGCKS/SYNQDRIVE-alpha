@@ -188,6 +188,27 @@ export function evaluateIrreversibleCanonicalPinning(input: {
   if (input.chosenCanonicalId !== ownerId) {
     return { pin: false };
   }
+
+  const horizon =
+    input.settlementHorizonMs ??
+    DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG.settlementHorizonMs;
+
+  const ownerFirstObservedMs = input.firstObservedAtById[ownerId];
+  if (ownerFirstObservedMs != null) {
+    const ownerSettlementCloseMs = ownerFirstObservedMs + horizon;
+    let lateArrivalsAfterOwnerSettlement = 0;
+    for (const memberId of input.component.memberIds) {
+      if (memberId === ownerId) continue;
+      const memberObservedMs = input.firstObservedAtById[memberId];
+      if (memberObservedMs != null && memberObservedMs > ownerSettlementCloseMs) {
+        lateArrivalsAfterOwnerSettlement += 1;
+      }
+    }
+    if (lateArrivalsAfterOwnerSettlement > 1) {
+      return { pin: false };
+    }
+  }
+
   if (
     input.persistedCanonicalEventId != null &&
     input.persistedCanonicalEventId !== ownerId
@@ -195,9 +216,6 @@ export function evaluateIrreversibleCanonicalPinning(input: {
     return { pin: false };
   }
 
-  const horizon =
-    input.settlementHorizonMs ??
-    DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG.settlementHorizonMs;
   const settlement = isSettlementWindowOpen(
     input.component.members,
     input.asOfMs,
