@@ -786,19 +786,36 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         const fallbackRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
           where: { energyEventId: fallbackVeeId! },
         });
+        await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+
         expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
         expect(nativeRecon.enrichmentEligible).toBe(false);
         expect(nativeRecon.lateSiblingConflict).toBe(true);
         expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
-        expect(fallbackRecon.finalityState).toBe('FINAL_CANONICAL');
-        expect(fallbackRecon.canonicalEventId).toBe(fallbackVeeId);
-        expect(fallbackRecon.enrichmentEligible).toBe(true);
+        expect(nativeRecon.reason).not.toBe(IRREVERSIBLE_CANONICAL_PINNED_REASON);
+        expect(nativeRecon.finalityState).not.toBe('FINAL_CANONICAL');
+
+        expect(fallbackRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+        expect(fallbackRecon.enrichmentEligible).toBe(false);
+        expect(fallbackRecon.canonicalEventId).not.toBe(native.id);
+
+        const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+          where: { energyEventId: fallbackVeeId! },
+        });
+        expect(fallbackEnrichment?.processingStatus).toBe('COMPLETED');
+        expect(
+          await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+            where: { energyEventId: native.id },
+          }),
+        ).toBeNull();
+
         expect(nativeResult.enqueuedEventIds).toEqual([]);
+        expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(0);
         expect(
           await prisma.vehicleEnergyEventRefuelReconciliation.count({
             where: { vehicleId: vehicle.id, enrichmentEligible: true },
           }),
-        ).toBe(1);
+        ).toBe(0);
       } finally {
         restore();
         await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
