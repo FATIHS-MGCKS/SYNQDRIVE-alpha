@@ -24,7 +24,7 @@ export async function lockRecoveryClaimForMutation(
     lockedIds = await tx.$queryRaw`
       SELECT id
       FROM raw_refuel_candidates
-      WHERE id = ${candidateId}::uuid
+      WHERE id = ${candidateId}
         AND recovery_attempt_count = ${fence.expectedClaimGeneration}
         AND recovery_lease_expires_at IS NOT NULL
         AND recovery_lease_expires_at > ${fence.now}
@@ -34,7 +34,7 @@ export async function lockRecoveryClaimForMutation(
     lockedIds = await tx.$queryRaw`
       SELECT id
       FROM raw_refuel_candidates
-      WHERE id = ${candidateId}::uuid
+      WHERE id = ${candidateId}
         AND recovery_attempt_count = ${fence.expectedClaimGeneration}
       FOR UPDATE
     `;
