@@ -12,6 +12,7 @@ function mockRecoveryPrisma(overrides?: {
   lostEnqueue?: unknown[];
   coordinateInitial?: unknown[];
   coordinateRetry?: unknown[];
+  authorityRecheck?: unknown[];
 }) {
   return {
     vehicleEnergyEventRefuelReconciliation: {
@@ -21,7 +22,8 @@ function mockRecoveryPrisma(overrides?: {
         .mockResolvedValueOnce(overrides?.stale ?? [])
         .mockResolvedValueOnce(overrides?.lostEnqueue ?? [])
         .mockResolvedValueOnce(overrides?.coordinateInitial ?? [])
-        .mockResolvedValueOnce(overrides?.coordinateRetry ?? []),
+        .mockResolvedValueOnce(overrides?.coordinateRetry ?? [])
+        .mockResolvedValueOnce(overrides?.authorityRecheck ?? []),
     },
     vehicleEnergyEvent: {
       findMany: jest.fn().mockResolvedValue(overrides?.orphans ?? []),
@@ -51,7 +53,8 @@ describe('G2.1b recovery hardening', () => {
         quota.staleEnrichment +
         quota.lostEnqueue +
         quota.coordinateInitial +
-        quota.coordinateRetry,
+        quota.coordinateRetry +
+        quota.authorityRecheck,
     ).toBe(25);
   });
 
