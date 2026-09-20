@@ -516,6 +516,7 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([])
             .mockResolvedValueOnce([]),
         },
         vehicleEnergyEvent: {
@@ -544,7 +545,8 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([{ vehicleId, energyEventId: 'retry-1' }]),
+            .mockResolvedValueOnce([{ vehicleId, energyEventId: 'retry-1' }])
+            .mockResolvedValueOnce([]),
         },
         vehicleEnergyEvent: {
           findMany: jest.fn().mockResolvedValue([]),
@@ -567,6 +569,7 @@ describe('G2.1c final recovery semantics closure', () => {
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([{ vehicleId, energyEventId: 'initial-1' }])
+            .mockResolvedValueOnce([])
             .mockResolvedValueOnce([]),
         },
         vehicleEnergyEvent: {
@@ -632,6 +635,7 @@ describe('G2.1c final recovery semantics closure', () => {
             .fn()
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([{ vehicleId, energyEventId: 'stale-1' }])
+            .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([])
             .mockResolvedValueOnce([]),
