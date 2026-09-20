@@ -84,6 +84,25 @@ describe('ReferenceCaptureExp021CanaryLiveWindowActivationScheduler', () => {
     expect(activationService.runActivationTick).toHaveBeenCalledTimes(1);
   });
 
+  it('ACTIVATION_TRUE_TO_FALSE — later callback stops executing when config becomes inactive', async () => {
+    const activationService = {
+      resolveConfigFromEnv: jest
+        .fn()
+        .mockReturnValueOnce({ enabled: true, cohort: { members: [] } })
+        .mockReturnValueOnce(null),
+      runActivationTick: jest.fn().mockResolvedValue(undefined),
+    };
+    const scheduler = new ReferenceCaptureExp021CanaryLiveWindowActivationScheduler(
+      activationService as never,
+      { shouldRun: jest.fn().mockReturnValue(true) } as never,
+      runtimeState,
+    );
+    await scheduler.tick();
+    await scheduler.tick();
+    expect(activationService.runActivationTick).toHaveBeenCalledTimes(1);
+    expect(runtimeState.getSnapshot().lastExecutedTickAt).not.toBeNull();
+  });
+
   it('skips execution when not leader but still records callback', async () => {
     const { scheduler, activationService } = buildScheduler({
       configAtTick: { enabled: true },
