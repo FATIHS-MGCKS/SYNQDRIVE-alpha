@@ -18,6 +18,11 @@ import type { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './
 import type { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
 import type { Exp021CohortMaturationMemberDeps } from './reference-capture-exp021-maturation-shadow-canary-cohort-operator.lib';
 import { resolveExp021MaturationShadowRuntimeBuildSha } from './reference-capture-exp021-maturation-shadow-runtime-sha.lib';
+import {
+  shouldEmitPdiDiscoveryDiagnostic,
+  updatePdiWatchState,
+  type Exp021CohortMemberPdiWatchState,
+} from './reference-capture-exp021-maturation-shadow-canary-cohort-watch-observability.lib';
 
 export const EXP021_COHORT_WATCH_MEMBER_ERROR_BACKOFF_MS_DEFAULT = 5_000;
 export const EXP021_COHORT_WATCH_MEMBER_SUCCESS_COOLDOWN_MS_DEFAULT = 250;
@@ -64,16 +69,59 @@ export type Exp021CohortMemberCycleInput = {
 
 export async function runDefaultCohortMemberCycle(
   input: Exp021CohortMemberCycleInput,
+  pdiWatchState?: Exp021CohortMemberPdiWatchState,
 ): Promise<Exp021CohortMemberCycleResult> {
   const baseline = await input.deps.loadSettlementShadowExperiments();
-  const waited = await waitForNextCanaryWindowWithRefreshingDb({
-    startupBaselineExperiments: baseline,
-    loadSettlementShadowExperiments: input.deps.loadSettlementShadowExperiments,
-    sleep: input.deps.sleep,
-    now: input.deps.now,
-    config: input.config,
-    tokenId: input.member.tokenId,
-  });
+  const enrollmentCursorPhysicalEndMs =
+    await input.deps.resolveEnrollmentCursorPhysicalEndMs();
+  const waited = await waitForNextCanaryWindowWithRefreshingDb(
+    {
+      startupBaselineExperiments: baseline,
+      loadSettlementShadowExperiments: input.deps.loadSettlementShadowExperiments,
+      sleep: input.deps.sleep,
+      now: input.deps.now,
+      config: input.config,
+      tokenId: input.member.tokenId,
+      onProspectivePdiCandidate: (event) => {
+        if (
+          pdiWatchState &&
+          shouldEmitPdiDiscoveryDiagnostic(
+            pdiWatchState,
+            Date.parse(event.physicalEndAt),
+            event.rejectionReason,
+            event.freshnessDecision,
+          )
+        ) {
+          updatePdiWatchState(
+            pdiWatchState,
+            Date.parse(event.physicalEndAt),
+            event.rejectionReason,
+            event.freshnessDecision,
+          );
+          input.deps.onPdiDiscoveryDiagnostic?.({
+            COHORT_PDI_DISCOVERY: {
+              vehicleId: input.member.vehicleId,
+              tokenId: input.member.tokenId,
+              PDI_DISCOVERED: 'YES',
+              PDI_PHYSICAL_END_AT: event.physicalEndAt,
+              PDI_DISCOVERED_AT: event.pdiDiscoveredAt.toISOString(),
+              PDI_AGE_MS: event.pdiAgeMs,
+              FRESHNESS_DECISION: event.freshnessDecision,
+              REJECTION_REASON: event.rejectionReason,
+              BASELINE_AFTER_PHYSICAL_END_MS: event.enrollmentCursorPhysicalEndMs,
+              ENROLLMENT_ATTEMPTED: 'NO',
+            },
+          });
+        }
+      },
+    },
+    {
+      cohortProspectiveDiscovery: {
+        activationNotBeforeMs: input.deps.activationNotBeforeMs,
+        enrollmentCursorPhysicalEndMs,
+      },
+    },
+  );
 
   const canonicalWindowTo = waited.canonicalWindowTo;
   const speedObservations = await input.loadSpeedObservationsForWindow(
@@ -110,11 +158,27 @@ export async function runDefaultCohortMemberCycle(
     staleWindowsSkipped: waited.staleWindowsSkipped,
     settlementShadowExperiments: baseline,
     now: input.deps.now(),
+    enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
   });
 
   const windowIso = canonicalWindowTo.toISOString();
   if ('familyId' in result) {
     const success = result as Exp021CanaryEnrollSuccess;
+    input.deps.onPdiDiscoveryDiagnostic?.({
+      COHORT_PDI_DISCOVERY: {
+        vehicleId: input.member.vehicleId,
+        tokenId: input.member.tokenId,
+        PDI_DISCOVERED: 'YES',
+        PDI_PHYSICAL_END_AT: waited.physicalEndAt,
+        PDI_DISCOVERED_AT: waited.detectedAt.toISOString(),
+        PDI_AGE_MS: waited.windowDetectionLagMs,
+        FRESHNESS_DECISION: 'PROSPECTIVE_ENROLLED',
+        REJECTION_REASON: null,
+        BASELINE_AFTER_PHYSICAL_END_MS: enrollmentCursorPhysicalEndMs,
+        ENROLLMENT_ATTEMPTED: 'YES',
+        FAMILY_ID: success.familyId,
+      },
+    });
     return { outcome: 'enrolled', familyId: success.familyId, canonicalWindowTo: windowIso };
   }
   return { outcome: 'dry_run', canonicalWindowTo: windowIso };
@@ -191,19 +255,27 @@ export async function runCohortMemberWatchLoop(input: {
   const successCooldownMs =
     input.memberSuccessCooldownMs ?? EXP021_COHORT_WATCH_MEMBER_SUCCESS_COOLDOWN_MS_DEFAULT;
   const key = memberKey(input.member);
+  const pdiWatchState: Exp021CohortMemberPdiWatchState = {
+    lastPhysicalEndMs: null,
+    lastRejectionReason: null,
+    lastFreshnessDecision: null,
+  };
 
   while (!input.signal.aborted) {
     try {
-      const cycleResult = await runCycle({
-        member: input.member,
-        cohort: input.cohort,
-        execute: input.execute,
-        config: input.config,
-        repository: input.repository,
-        enrollment: input.enrollment,
-        deps: input.deps,
-        loadSpeedObservationsForWindow: input.loadSpeedObservationsForWindow,
-      });
+      const cycleResult = await runCycle(
+        {
+          member: input.member,
+          cohort: input.cohort,
+          execute: input.execute,
+          config: input.config,
+          repository: input.repository,
+          enrollment: input.enrollment,
+          deps: input.deps,
+          loadSpeedObservationsForWindow: input.loadSpeedObservationsForWindow,
+        },
+        pdiWatchState,
+      );
 
       if (cycleResult.outcome === 'enrolled') {
         input.diagnostics.FAMILIES_ENROLLED_THIS_RUN[key] =

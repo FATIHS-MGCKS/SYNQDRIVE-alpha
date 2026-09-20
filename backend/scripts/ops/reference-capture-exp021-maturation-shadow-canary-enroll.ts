@@ -41,8 +41,13 @@ import {
   runCohortMaturationWatchLoop,
 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-cohort-watch.lib';
 import { resolveExp021MaturationShadowRuntimeBuildSha } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-runtime-sha.lib';
+import {
+  computeCanaryEnrollmentCursorPhysicalEndMs,
+  resolveCanaryMaturationActivationNotBeforeMs,
+} from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib';
 import type { Exp021CanaryCohortMember } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { Exp021MaturationShadowFamilyIdentityError } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.errors';
+import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.types';
 
 function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
@@ -279,8 +284,15 @@ async function runCohortWatchMode(
   enrollment: Awaited<ReturnType<typeof resolveExp021CanaryEnrollNestServices>>['enrollment'],
 ): Promise<void> {
   const cohort = resolveCohortForWatchFromEnv();
+  const activationNotBeforeMs = resolveCanaryMaturationActivationNotBeforeMs();
   const startup = buildCohortWatchStartupReport({ cohort, execute });
-  console.log(JSON.stringify(startup, null, 2));
+  console.log(
+    JSON.stringify({
+      ...startup,
+      ACTIVATION_NOT_BEFORE_MS: activationNotBeforeMs,
+      MATURATION_ENROLLMENT_FRESHNESS_MODE: 'PROSPECTIVE_PDI_DISCOVERY',
+    }),
+  );
 
   const controller = new AbortController();
   const shutdown = () => {
@@ -300,6 +312,22 @@ async function runCohortWatchMode(
       loadSettlementShadowExperiments: buildSettlementShadowLoaderForMember(prisma, member),
       sleep,
       now: () => new Date(),
+      activationNotBeforeMs,
+      resolveEnrollmentCursorPhysicalEndMs: async () => {
+        const maxEnrolled = await repository.maxEnrolledCanonicalWindowToMsForVehicle(
+          member.organizationId,
+          member.vehicleId,
+          member.tokenId,
+          EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+        );
+        return computeCanaryEnrollmentCursorPhysicalEndMs({
+          maxEnrolledCanonicalWindowToMs: maxEnrolled,
+          activationNotBeforeMs,
+        });
+      },
+      onPdiDiscoveryDiagnostic: (diagnostic) => {
+        console.log(JSON.stringify(diagnostic));
+      },
     }),
     loadSpeedObservationsForWindow: (member, windowTo) =>
       loadSpeedObservationsForWindow(prisma, member, windowTo),

@@ -6,6 +6,7 @@ import {
   type Exp021CanaryWaitWindowResult,
   type Exp021CanaryWindowPollDeps,
 } from './reference-capture-exp021-maturation-shadow-canary-enroll.lib';
+export type { Exp021CanaryWindowPollDeps };
 
 export type Exp021CanarySettlementShadowExperimentRow = {
   id: string;
@@ -61,15 +62,31 @@ export async function waitForNextCanaryWindowWithRefreshingDb(
     now: () => Date;
     config: ReferenceCaptureConfig;
     tokenId: number;
+    onProspectivePdiCandidate?: Exp021CanaryWindowPollDeps['onProspectivePdiCandidate'];
   },
   options: {
     timeoutMs?: number;
     pollMs?: number;
+    /** Cohort watch: enrolled-window cursor + prospective PDI discovery semantics. */
+    cohortProspectiveDiscovery?: {
+      activationNotBeforeMs: number;
+      enrollmentCursorPhysicalEndMs: number;
+    };
   } = {},
 ): Promise<Exp021CanaryWaitWindowResult> {
-  const afterPhysicalEndMs = computeCanaryWaitAfterPhysicalEndMs(input.startupBaselineExperiments);
+  const afterPhysicalEndMs =
+    options.cohortProspectiveDiscovery?.enrollmentCursorPhysicalEndMs ??
+    computeCanaryWaitAfterPhysicalEndMs(input.startupBaselineExperiments);
   return waitForNextFreshAuthoritativeWindowClose(
     buildCanaryWaitModePollDeps(input),
-    { afterPhysicalEndMs, ...options },
+    {
+      afterPhysicalEndMs,
+      timeoutMs: options.timeoutMs,
+      pollMs: options.pollMs,
+      activationNotBeforeMs: options.cohortProspectiveDiscovery?.activationNotBeforeMs,
+      enrollmentFreshnessMode: options.cohortProspectiveDiscovery
+        ? 'PROSPECTIVE_PDI_DISCOVERY'
+        : 'OPERATOR_IMMEDIATE',
+    },
   );
 }

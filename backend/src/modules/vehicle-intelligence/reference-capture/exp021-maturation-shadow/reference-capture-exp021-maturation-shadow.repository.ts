@@ -17,6 +17,7 @@ import type {
   Exp021MaturationShadowStratumIdentity,
   Exp021MaturationShadowStratumImmutableAttributes,
 } from './reference-capture-exp021-maturation-shadow.types';
+import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from './reference-capture-exp021-maturation-shadow.types';
 import {
   assertAttemptParentAuthority,
   assertCanonicalQueryGeometryMs,
@@ -461,6 +462,25 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
    * Active families = families with at least one non-terminal observation slot.
    * Terminal slot: successful attempt OR transport retry budget exhausted.
    */
+  async maxEnrolledCanonicalWindowToMsForVehicle(
+    organizationId: string,
+    vehicleId: string,
+    tokenId: number,
+    shadowScheduleVersion: string = EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1,
+  ): Promise<number | null> {
+    const row = await this.prisma.exp021MaturationShadowWindowFamily.findFirst({
+      where: {
+        organizationId,
+        vehicleId,
+        tokenId,
+        shadowScheduleVersion,
+      },
+      orderBy: { canonicalWindowTo: 'desc' },
+      select: { canonicalWindowTo: true },
+    });
+    return row ? row.canonicalWindowTo.getTime() : null;
+  }
+
   async countUnfinishedFamiliesForVehicle(
     vehicleId: string,
     tx?: Prisma.TransactionClient,

@@ -22,6 +22,9 @@ export type Exp021CohortMaturationMemberDeps = {
   >;
   sleep: (ms: number) => Promise<void>;
   now: () => Date;
+  activationNotBeforeMs: number;
+  resolveEnrollmentCursorPhysicalEndMs: () => Promise<number>;
+  onPdiDiscoveryDiagnostic?: (diagnostic: Record<string, unknown>) => void;
 };
 
 export function resolveCohortForMaturationOperator(
@@ -56,6 +59,8 @@ export async function runCohortMaturationMemberWaitIteration(input: {
   }
 
   const baseline = await input.deps.loadSettlementShadowExperiments();
+  const enrollmentCursorPhysicalEndMs =
+    await input.deps.resolveEnrollmentCursorPhysicalEndMs();
   const waited = await waitForNextCanaryWindowWithRefreshingDb({
     startupBaselineExperiments: baseline,
     loadSettlementShadowExperiments: input.deps.loadSettlementShadowExperiments,
@@ -63,7 +68,30 @@ export async function runCohortMaturationMemberWaitIteration(input: {
     now: input.deps.now,
     config: input.config,
     tokenId: input.member.tokenId,
-  });
+    onProspectivePdiCandidate: (event) => {
+      input.deps.onPdiDiscoveryDiagnostic?.({
+        COHORT_PDI_DISCOVERY: {
+          vehicleId: input.member.vehicleId,
+          tokenId: input.member.tokenId,
+          PDI_DISCOVERED: 'YES',
+          PDI_PHYSICAL_END_AT: event.physicalEndAt,
+          PDI_DISCOVERED_AT: event.pdiDiscoveredAt.toISOString(),
+          PDI_AGE_MS: event.pdiAgeMs,
+          FRESHNESS_DECISION: event.freshnessDecision,
+          REJECTION_REASON: event.rejectionReason,
+          BASELINE_AFTER_PHYSICAL_END_MS: event.enrollmentCursorPhysicalEndMs,
+          ENROLLMENT_ATTEMPTED: 'NO',
+        },
+      });
+    },
+  },
+    {
+      cohortProspectiveDiscovery: {
+        activationNotBeforeMs: input.deps.activationNotBeforeMs,
+        enrollmentCursorPhysicalEndMs,
+      },
+    },
+  );
 
   return executeCanaryEnrollment({
     args: {
@@ -87,6 +115,9 @@ export async function runCohortMaturationMemberWaitIteration(input: {
     },
     staleWindowsSkipped: waited.staleWindowsSkipped,
     settlementShadowExperiments: baseline,
+    enrollmentFreshnessMode: 'PROSPECTIVE_PDI_DISCOVERY',
+    activationNotBeforeMs: input.deps.activationNotBeforeMs,
+    enrollmentCursorPhysicalEndMs,
   });
 }
 

@@ -31,6 +31,11 @@ import {
 import type { Exp021CanaryCohortAuthority } from '../exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { resolveExp021MaturationCanaryCohortFromEnv } from '../exp021-canary-live-window/reference-capture-exp021-canary-live-window-cohort.lib';
 import { EXP021_MATURATION_SHADOW_SCHEDULE_VERSION_V1 } from './reference-capture-exp021-maturation-shadow.types';
+import {
+  evaluateOperationalEnrollmentFreshness,
+  evaluateProspectiveAuthoritativePdiEligibility,
+  type Exp021MaturationEnrollmentFreshnessMode,
+} from './reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib';
 
 export type Exp021CanaryEnrollCliArgs = {
   tokenId: number;
@@ -140,18 +145,12 @@ export function evaluateWindowFreshness(
   freshnessGuardMs: number;
   remainingEnrollmentBudgetMs: number;
 } {
-  const windowAgeAtEnrollmentMs = Math.max(0, now.getTime() - canonicalWindowTo.getTime());
-  const earliestPlannedAgeMs = Math.min(...plannedAgesMsExact);
-  const freshnessGuardMs = earliestPlannedAgeMs - executionSlackMs;
-  const stale = windowAgeAtEnrollmentMs >= freshnessGuardMs;
-  const remainingEnrollmentBudgetMs = freshnessGuardMs - windowAgeAtEnrollmentMs;
-  return {
-    windowAgeAtEnrollmentMs,
-    stale,
-    earliestPlannedAgeMs,
-    freshnessGuardMs,
-    remainingEnrollmentBudgetMs,
-  };
+  return evaluateOperationalEnrollmentFreshness(
+    canonicalWindowTo,
+    plannedAgesMsExact,
+    now,
+    executionSlackMs,
+  );
 }
 
 export function findAuthoritativePhysicalEndMatch(
@@ -204,15 +203,29 @@ export function buildCanaryDryRunPlan(input: {
   authoritativeWindowMatch?: boolean;
   windowFreshnessDiagnostic?: Exp021CanaryWindowFreshnessDiagnostic;
   staleWindowsSkipped?: number;
+  enrollmentFreshnessMode?: Exp021MaturationEnrollmentFreshnessMode;
 }): Exp021CanaryDryRunPlan {
   const hfPolicyBase = input.config.getHfRecoveryPolicyConfig();
   const policyDelayProbeMs = resolvePolicyDelayProbeMs(hfPolicyBase, input.tokenId);
   const schedule = buildFrozenFamilySchedule(policyDelayProbeMs);
-  const freshness = evaluateWindowFreshness(
-    input.canonicalWindowTo,
-    schedule.plannedAgesMsExact,
-    input.now ?? new Date(),
-  );
+  const enrollmentFreshnessMode = input.enrollmentFreshnessMode ?? 'OPERATOR_IMMEDIATE';
+  const freshness =
+    enrollmentFreshnessMode === 'PROSPECTIVE_PDI_DISCOVERY'
+      ? {
+          windowAgeAtEnrollmentMs: Math.max(
+            0,
+            (input.now ?? new Date()).getTime() - input.canonicalWindowTo.getTime(),
+          ),
+          stale: false,
+          earliestPlannedAgeMs: Math.min(...schedule.plannedAgesMsExact),
+          freshnessGuardMs: 0,
+          remainingEnrollmentBudgetMs: 0,
+        }
+      : evaluateWindowFreshness(
+          input.canonicalWindowTo,
+          schedule.plannedAgesMsExact,
+          input.now ?? new Date(),
+        );
   const lanesToEnroll: Array<'HF_FAST_LOOP' | 'SETTLEMENT_SHADOW'> = [];
   if (input.config.isExp021MaturationShadowHfLaneEnabled()) {
     lanesToEnroll.push('HF_FAST_LOOP');
@@ -371,6 +384,17 @@ export type Exp021CanaryWindowPollDeps = {
   now: () => Date;
   config: ReferenceCaptureConfig;
   tokenId: number;
+  onProspectivePdiCandidate?: (event: {
+    experimentId: string;
+    physicalEndAt: string;
+    physicalEndSource: string;
+    pdiDiscoveredAt: Date;
+    pdiAgeMs: number;
+    enrollmentCursorPhysicalEndMs: number;
+    freshnessDecision: string;
+    rejectionReason: string | null;
+    eligible: boolean;
+  }) => void;
 };
 
 export type Exp021CanaryWaitWindowResult = {
@@ -391,25 +415,31 @@ export async function waitForNextFreshAuthoritativeWindowClose(
     afterPhysicalEndMs: number;
     timeoutMs?: number;
     pollMs?: number;
+    activationNotBeforeMs?: number;
+    enrollmentFreshnessMode?: Exp021MaturationEnrollmentFreshnessMode;
   },
 ): Promise<Exp021CanaryWaitWindowResult> {
   const timeoutMs = options.timeoutMs ?? EXP021_CANARY_WAIT_NEXT_WINDOW_TIMEOUT_MS;
   const pollMs = options.pollMs ?? EXP021_CANARY_WAIT_NEXT_WINDOW_POLL_MS;
-  const startedMs = deps.now().getTime();
+  const deadlineWallMs = Date.now() + timeoutMs;
   const rejectedPhysicalEndMs = new Set<number>();
   let staleWindowsSkipped = 0;
 
   const hfPolicyBase = deps.config.getHfRecoveryPolicyConfig();
   const policyDelayProbeMs = resolvePolicyDelayProbeMs(hfPolicyBase, deps.tokenId);
   const schedule = buildFrozenFamilySchedule(policyDelayProbeMs);
+  const enrollmentFreshnessMode =
+    options.enrollmentFreshnessMode ?? 'OPERATOR_IMMEDIATE';
+  const activationNotBeforeMs = options.activationNotBeforeMs ?? 0;
 
-  while (deps.now().getTime() - startedMs < timeoutMs) {
+  while (Date.now() < deadlineWallMs) {
     const experiments = await deps.listSettlementShadowExperiments();
     const candidates: Array<{
       experimentId: string;
       physicalEndMs: number;
       physicalEndAt: string;
       physicalEndSource: string;
+      pdiDiscoveredAt: Date;
     }> = [];
 
     for (const experiment of experiments) {
@@ -430,6 +460,7 @@ export async function waitForNextFreshAuthoritativeWindowClose(
         physicalEndMs,
         physicalEndAt: authority.physicalEndAt,
         physicalEndSource: authority.source,
+        pdiDiscoveredAt: experiment.updatedAt,
       });
     }
 
@@ -438,6 +469,60 @@ export async function waitForNextFreshAuthoritativeWindowClose(
     for (const candidate of candidates) {
       const detectedAt = deps.now();
       const windowDetectionLagMs = Math.max(0, detectedAt.getTime() - candidate.physicalEndMs);
+      const pdiAgeMs = Math.max(0, detectedAt.getTime() - candidate.pdiDiscoveredAt.getTime());
+
+      if (enrollmentFreshnessMode === 'PROSPECTIVE_PDI_DISCOVERY') {
+        const authority = readPhysicalDriveIntervalAuthority(
+          experiments.find((e) => e.id === candidate.experimentId)?.metadataJson,
+        );
+        if (!authority) {
+          continue;
+        }
+        const eligibility = evaluateProspectiveAuthoritativePdiEligibility({
+          authority,
+          physicalEndMs: candidate.physicalEndMs,
+          activationNotBeforeMs,
+          enrollmentCursorPhysicalEndMs: options.afterPhysicalEndMs,
+        });
+        const freshnessDecision = eligibility.eligible
+          ? 'PROSPECTIVE_ELIGIBLE'
+          : 'PROSPECTIVE_REJECTED';
+        deps.onProspectivePdiCandidate?.({
+          experimentId: candidate.experimentId,
+          physicalEndAt: candidate.physicalEndAt,
+          physicalEndSource: candidate.physicalEndSource,
+          pdiDiscoveredAt: candidate.pdiDiscoveredAt,
+          pdiAgeMs,
+          enrollmentCursorPhysicalEndMs: options.afterPhysicalEndMs,
+          freshnessDecision,
+          rejectionReason: eligibility.rejectionReason ?? null,
+          eligible: eligibility.eligible,
+        });
+        if (!eligibility.eligible) {
+          if (eligibility.rejectionReason === 'physical_start_before_activation_not_before') {
+            rejectedPhysicalEndMs.add(candidate.physicalEndMs);
+          }
+          continue;
+        }
+        const operational = evaluateOperationalEnrollmentFreshness(
+          new Date(candidate.physicalEndMs),
+          schedule.plannedAgesMsExact,
+          detectedAt,
+          EXP021_CANARY_WINDOW_FRESHNESS_EXECUTION_SLACK_MS,
+        );
+        return {
+          canonicalWindowTo: new Date(candidate.physicalEndMs),
+          experimentId: candidate.experimentId,
+          physicalEndSource: candidate.physicalEndSource,
+          physicalEndAt: candidate.physicalEndAt,
+          detectedAt,
+          windowDetectionLagMs,
+          freshnessGuardMs: operational.freshnessGuardMs,
+          remainingEnrollmentBudgetMs: operational.remainingEnrollmentBudgetMs,
+          staleWindowsSkipped,
+        };
+      }
+
       const freshness = evaluateWindowFreshness(
         new Date(candidate.physicalEndMs),
         schedule.plannedAgesMsExact,
@@ -467,7 +552,7 @@ export async function waitForNextFreshAuthoritativeWindowClose(
   }
 
   throw new Exp021MaturationShadowFamilyIdentityError(
-    `Timed out waiting for next fresh authoritative KS MX 2024 physical drive window close (staleWindowsSkipped=${staleWindowsSkipped})`,
+    `Timed out waiting for next fresh authoritative physical drive window close (staleWindowsSkipped=${staleWindowsSkipped}, mode=${enrollmentFreshnessMode})`,
   );
 }
 
@@ -527,6 +612,9 @@ export async function executeCanaryEnrollment(input: {
   windowFreshnessDiagnostic?: Exp021CanaryWindowFreshnessDiagnostic;
   staleWindowsSkipped?: number;
   settlementShadowExperiments?: Array<{ metadataJson: Prisma.JsonValue }>;
+  enrollmentFreshnessMode?: Exp021MaturationEnrollmentFreshnessMode;
+  activationNotBeforeMs?: number;
+  enrollmentCursorPhysicalEndMs?: number;
 }): Promise<Exp021CanaryDryRunPlan | Exp021CanaryEnrollSuccess> {
   const guards = await assertCanaryHardGuards({
     tokenId: input.args.tokenId,
@@ -562,6 +650,40 @@ export async function executeCanaryEnrollment(input: {
     );
   }
 
+  const enrollmentFreshnessMode = input.enrollmentFreshnessMode ?? 'OPERATOR_IMMEDIATE';
+
+  if (
+    enrollmentFreshnessMode === 'PROSPECTIVE_PDI_DISCOVERY' &&
+    input.activationNotBeforeMs != null &&
+    input.activationNotBeforeMs > 0 &&
+    input.settlementShadowExperiments?.length
+  ) {
+    const physicalEndMs = canonicalWindowTo.getTime();
+    for (const experiment of input.settlementShadowExperiments) {
+      const authority = readPhysicalDriveIntervalAuthority(experiment.metadataJson);
+      if (!authority || !isAuthoritativePhysicalDriveInterval(authority)) {
+        continue;
+      }
+      if (Date.parse(authority.physicalEndAt) !== physicalEndMs) {
+        continue;
+      }
+      const cursorMs =
+        input.enrollmentCursorPhysicalEndMs ?? input.activationNotBeforeMs - 1;
+      const eligibility = evaluateProspectiveAuthoritativePdiEligibility({
+        authority,
+        physicalEndMs,
+        activationNotBeforeMs: input.activationNotBeforeMs,
+        enrollmentCursorPhysicalEndMs: cursorMs,
+      });
+      if (!eligibility.eligible) {
+        throw new Exp021MaturationShadowFamilyIdentityError(
+          `Prospective enrollment rejected (${eligibility.rejectionReason ?? 'ineligible'}) for physicalStartAt=${authority.physicalStartAt}`,
+        );
+      }
+      break;
+    }
+  }
+
   const plan = buildCanaryDryRunPlan({
     organizationId: guards.organizationId,
     vehicleId: guards.vehicleId,
@@ -574,6 +696,7 @@ export async function executeCanaryEnrollment(input: {
     authoritativeWindowMatch,
     windowFreshnessDiagnostic: input.windowFreshnessDiagnostic,
     staleWindowsSkipped: input.staleWindowsSkipped,
+    enrollmentFreshnessMode,
   });
 
   if (plan.staleWindow) {

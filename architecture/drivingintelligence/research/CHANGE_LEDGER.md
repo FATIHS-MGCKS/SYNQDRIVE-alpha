@@ -957,3 +957,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Fix (review) | `reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts` + ops CLI `exp021:cohort:study-enrollment:bootstrap` |
 | Evidence | `evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md` |
 | Production | Activation disabled; enrollments **not** mutated in closure workstream |
+
+### EXP-021 — PDI → M2 maturation integration repair (2026-09-19)
+
+| Event | Detail |
+|-------|--------|
+| Forensic | Seven post–NOT_BEFORE trips: RC + PDI, zero M2 families; `ZERO_FAMILY_CLASS=9` (not short-drive) |
+| Root cause | Operational `freshness.stale` on cohort wait; settlement-baseline cursor skipped unenrolled PDIs after restart |
+| Repair | `PROSPECTIVE_PDI_DISCOVERY` + enrolled-window cursor (`maxEnrolledCanonicalWindowToMsForVehicle`) |
+| Evidence | `evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md` |
+| Production | **No deploy / no backfill** in repository repair workstream |

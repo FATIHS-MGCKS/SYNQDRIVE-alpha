@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-pdi-m2-integration-repair-2026-09-19',
+    version: '4.9.1149',
+    title: 'EXP-021 — PDI → M2 maturation integration repair (prospective discovery)',
+    summary: [
+      'Cohort `--watch-cohort` uses `PROSPECTIVE_PDI_DISCOVERY`: late authoritative PDI (379–850s lag) no longer rejected as `freshness.stale`.',
+      'Enrollment cursor from max enrolled `canonicalWindowTo` per vehicle — unenrolled epoch PDIs survive operator restart.',
+      'Token-scoped CLI keeps `OPERATOR_IMMEDIATE` operational freshness guard.',
+      'Observability: `COHORT_PDI_DISCOVERY` structured diagnostics on prospective candidates.',
+      'No production deploy or backfill of the seven forensic drives in this change set.',
+    ],
+    reason:
+      'Production read-only audit: seven post–NOT_BEFORE trips with PDI and RC but zero M2 families (class 9 integration defect).',
+    previousBehavior:
+      'Wait/enroll path applied ~3–25s operational freshness to all discovery; settlement baseline max physical end poisoned restart cursor.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md; reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T19:30:00.000Z',
+  },
+  {
     id: 'exp021-cohort-study-enrollment-bootstrap-2026-09-19',
     version: '4.9.1148',
     title: 'EXP-021 — cohort study enrollment bootstrap (WOB enrollment_not_found closure)',
