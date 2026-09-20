@@ -12,6 +12,8 @@ import { mergeCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
 import {
   RawRefuelCandidateAmbiguityError,
   RawRefuelCandidateLifecycleValidationError,
+  RawRefuelCandidateOrgVehicleIntegrityError,
+  RawRefuelCandidateVehicleNotFoundError,
 } from './raw-refuel-candidate.errors';
 import { tryBuildCandidateIdentityKeyFromEvidence } from './raw-refuel-candidate-identity-key';
 import {
@@ -209,6 +211,50 @@ export class RawRefuelCandidateService {
     });
 
     return toResolveResult(updated, { created: false, updated: true });
+  }
+
+  /**
+   * F10.6.8-B — reconcile evidence into an existing row only (never inserts).
+   */
+  async reconcileExistingCandidateById(
+    candidateId: string,
+    observation: RawRefuelCandidateObservation,
+  ): Promise<RawRefuelCandidateResolveResult> {
+    validateObservationLifecycleRequest(observation);
+    const serviceNow = this.clock.now();
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await this.repository.findById(tx, candidateId);
+      if (!existing) {
+        throw new RawRefuelCandidateVehicleNotFoundError(observation.vehicleId);
+      }
+      if (existing.vehicleId !== observation.vehicleId) {
+        throw new RawRefuelCandidateOrgVehicleIntegrityError(
+          observation.vehicleId,
+          existing.organizationId,
+          observation.organizationId,
+        );
+      }
+
+      await acquirePgAdvisoryXactLock64(
+        tx,
+        buildRawRefuelCandidateLockKey(observation.vehicleId),
+      );
+
+      const organizationId = await this.repository.resolveAuthoritativeOrganizationId(
+        tx,
+        observation.vehicleId,
+        observation.organizationId,
+      );
+
+      return this.reconcileExistingCandidate(
+        tx,
+        existing,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+    });
   }
 
   private async insertCandidate(

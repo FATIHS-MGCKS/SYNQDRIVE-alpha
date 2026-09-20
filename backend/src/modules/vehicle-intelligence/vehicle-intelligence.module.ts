@@ -202,6 +202,7 @@ import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { RawRefuelCandidateService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate.service';
+import { RawRefuelCandidateRecoveryService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery.service';
 import { RawFuelRefuelFallbackRuntimeService } from './energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import { RawRefuelPromotionPreparationService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service';
 import { RawRefuelConvergenceService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence.service';
@@ -520,6 +521,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     TripDrivingImpactBackfillService,
     EnergyEventsService,
     RawRefuelCandidateService,
+    RawRefuelCandidateRecoveryService,
     RawFuelRefuelFallbackRuntimeService,
     RawRefuelPromotionPreparationService,
     RawRefuelConvergenceService,

@@ -63,6 +63,23 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly g2HandoffFailedTotal: Counter<string>;
   readonly g2HandoffSkippedNotAuthorizedTotal: Counter<string>;
   readonly g2HandoffSkippedG2DisabledTotal: Counter<string>;
+  readonly candidateRecoveryTickTotal: Counter<string>;
+  readonly candidateRecoveryDueTotal: Counter<string>;
+  readonly candidateRecoveryClaimedTotal: Counter<string>;
+  readonly candidateRecoveryAttemptTotal: Counter<string>;
+  readonly candidateRecoverySampleFetchSuccessTotal: Counter<string>;
+  readonly candidateRecoverySampleFetchFailureTotal: Counter<string>;
+  readonly candidateRecoverySameObservationTotal: Counter<string>;
+  readonly candidateRecoveryNoMatchingObservationTotal: Counter<string>;
+  readonly candidateRecoveryAmbiguousObservationTotal: Counter<string>;
+  readonly candidateRecoveryEvidenceMaturedTotal: Counter<string>;
+  readonly candidateRecoveryBecameReadyTotal: Counter<string>;
+  readonly candidateRecoveryPendingNativeTotal: Counter<string>;
+  readonly candidateRecoveryConvergedNativeTotal: Counter<string>;
+  readonly candidateRecoveryRetryScheduledTotal: Counter<string>;
+  readonly candidateRecoveryTerminalSkipTotal: Counter<string>;
+  readonly candidateRecoveryErrorTotal: Counter<string>;
+  readonly candidateRecoverySkippedDisabledTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -425,6 +442,93 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F5-PR3 fallback G2 handoffs skipped because PHYSICAL_REFUEL_RECONCILIATION_V2 is off',
       registers: [register],
     });
+
+    this.candidateRecoveryTickTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_tick_total',
+      help: 'F10.6.8-B raw refuel candidate recovery scheduler ticks',
+      registers: [register],
+    });
+    this.candidateRecoveryDueTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_due_total',
+      help: 'F10.6.8-B candidates due for recovery at tick time',
+      registers: [register],
+    });
+    this.candidateRecoveryClaimedTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_claimed_total',
+      help: 'F10.6.8-B candidates claimed for recovery',
+      registers: [register],
+    });
+    this.candidateRecoveryAttemptTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_attempt_total',
+      help: 'F10.6.8-B candidate recovery attempts executed',
+      registers: [register],
+    });
+    this.candidateRecoverySampleFetchSuccessTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_sample_fetch_success_total',
+      help: 'F10.6.8-B historical sample fetch success during candidate recovery',
+      registers: [register],
+    });
+    this.candidateRecoverySampleFetchFailureTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_sample_fetch_failure_total',
+      help: 'F10.6.8-B historical sample fetch failure during candidate recovery',
+      labelNames: ['error_class'],
+      registers: [register],
+    });
+    this.candidateRecoverySameObservationTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_same_observation_total',
+      help: 'F10.6.8-B recovery matched exactly one SAME observation',
+      registers: [register],
+    });
+    this.candidateRecoveryNoMatchingObservationTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_no_matching_observation_total',
+      help: 'F10.6.8-B recovery found no SAME observation',
+      registers: [register],
+    });
+    this.candidateRecoveryAmbiguousObservationTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_ambiguous_observation_total',
+      help: 'F10.6.8-B recovery ambiguous observation match',
+      registers: [register],
+    });
+    this.candidateRecoveryEvidenceMaturedTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_evidence_matured_total',
+      help: 'F10.6.8-B recovery updated candidate evidence',
+      registers: [register],
+    });
+    this.candidateRecoveryBecameReadyTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_became_ready_total',
+      help: 'F10.6.8-B recovery matured candidate to READY_FOR_PERSIST',
+      registers: [register],
+    });
+    this.candidateRecoveryPendingNativeTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_pending_native_total',
+      help: 'F10.6.8-B recovery pending native physical reconciliation',
+      registers: [register],
+    });
+    this.candidateRecoveryConvergedNativeTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_converged_native_total',
+      help: 'F10.6.8-B recovery converged candidate to native authority',
+      registers: [register],
+    });
+    this.candidateRecoveryRetryScheduledTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_retry_scheduled_total',
+      help: 'F10.6.8-B recovery scheduled durable retry',
+      registers: [register],
+    });
+    this.candidateRecoveryTerminalSkipTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_terminal_skip_total',
+      help: 'F10.6.8-B recovery skipped terminal candidate',
+      registers: [register],
+    });
+    this.candidateRecoveryErrorTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_error_total',
+      help: 'F10.6.8-B candidate recovery isolated errors',
+      registers: [register],
+    });
+    this.candidateRecoverySkippedDisabledTotal = new Counter({
+      name: 'synqdrive_rfrf_candidate_recovery_skipped_disabled_total',
+      help: 'F10.6.8-B recovery batch skipped because feature gate is off',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -661,5 +765,73 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordG2HandoffSkippedG2Disabled(): void {
     this.g2HandoffSkippedG2DisabledTotal.inc();
+  }
+
+  recordCandidateRecoveryTick(): void {
+    this.candidateRecoveryTickTotal.inc();
+  }
+
+  recordCandidateRecoveryDue(count: number): void {
+    if (count > 0) this.candidateRecoveryDueTotal.inc(count);
+  }
+
+  recordCandidateRecoveryClaimed(count: number): void {
+    if (count > 0) this.candidateRecoveryClaimedTotal.inc(count);
+  }
+
+  recordCandidateRecoveryAttempt(): void {
+    this.candidateRecoveryAttemptTotal.inc();
+  }
+
+  recordCandidateRecoverySampleFetchSuccess(): void {
+    this.candidateRecoverySampleFetchSuccessTotal.inc();
+  }
+
+  recordCandidateRecoverySampleFetchFailure(errorClass: string): void {
+    this.candidateRecoverySampleFetchFailureTotal.inc({ error_class: errorClass });
+  }
+
+  recordCandidateRecoverySameObservationMatched(): void {
+    this.candidateRecoverySameObservationTotal.inc();
+  }
+
+  recordCandidateRecoveryNoMatchingObservation(): void {
+    this.candidateRecoveryNoMatchingObservationTotal.inc();
+  }
+
+  recordCandidateRecoveryAmbiguousObservation(): void {
+    this.candidateRecoveryAmbiguousObservationTotal.inc();
+  }
+
+  recordCandidateRecoveryEvidenceMatured(): void {
+    this.candidateRecoveryEvidenceMaturedTotal.inc();
+  }
+
+  recordCandidateRecoveryBecameReady(): void {
+    this.candidateRecoveryBecameReadyTotal.inc();
+  }
+
+  recordCandidateRecoveryPendingNative(): void {
+    this.candidateRecoveryPendingNativeTotal.inc();
+  }
+
+  recordCandidateRecoveryConvergedNative(): void {
+    this.candidateRecoveryConvergedNativeTotal.inc();
+  }
+
+  recordCandidateRecoveryRetryScheduled(): void {
+    this.candidateRecoveryRetryScheduledTotal.inc();
+  }
+
+  recordCandidateRecoveryTerminalSkip(): void {
+    this.candidateRecoveryTerminalSkipTotal.inc();
+  }
+
+  recordCandidateRecoveryError(): void {
+    this.candidateRecoveryErrorTotal.inc();
+  }
+
+  recordCandidateRecoverySkippedDisabled(): void {
+    this.candidateRecoverySkippedDisabledTotal.inc();
   }
 }

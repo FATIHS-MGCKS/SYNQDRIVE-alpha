@@ -202,6 +202,7 @@ export class RawRefuelCandidateRepository {
         qualityMeta: (mergedEvidence.qualityMeta ?? undefined) as Prisma.InputJsonValue | undefined,
         firstObservedAt: data.firstObservedAt,
         lastObservedAt: data.lastObservedAt,
+        recoveryNextAttemptAt: data.firstObservedAt,
       },
     });
   }
