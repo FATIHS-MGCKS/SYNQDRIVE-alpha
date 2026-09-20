@@ -19,7 +19,7 @@ import {
 
 const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION === '1';
 
-function createRecoveryService(prisma: PrismaClient, fetchCountRef: { count: number }) {
+function createRecoveryService(prisma: PrismaClient, fetchCountRef: { count: number }, clockRef: { now: Date }) {
   const candidateService = RawRefuelCandidateService.withFixedClock(
     prisma as unknown as PrismaService,
     '2026-09-19T17:00:00.000Z',
@@ -29,7 +29,8 @@ function createRecoveryService(prisma: PrismaClient, fetchCountRef: { count: num
     prisma as unknown as PrismaService,
     candidateService,
     convergence,
-  ).withSampleFetcher(async () => {
+  )
+    .withRecoveryClock(() => clockRef.now).withSampleFetcher(async () => {
     fetchCountRef.count += 1;
     const samples = buildSparseBridgeRefuelEpisodeSamples(true);
     return {
@@ -96,8 +97,9 @@ function createRecoveryService(prisma: PrismaClient, fetchCountRef: { count: num
       });
 
       const now = new Date('2026-09-19T18:30:00.000Z');
+      const clockRef = { now };
       const fetchRef1 = { count: 0 };
-      let recovery1 = createRecoveryService(prisma, fetchRef1);
+      let recovery1 = createRecoveryService(prisma, fetchRef1, clockRef);
 
       try {
         const scanContext = buildDetectorPhysicsContext({
@@ -141,11 +143,12 @@ function createRecoveryService(prisma: PrismaClient, fetchCountRef: { count: num
         const persistedNext = afterAttempt1.recoveryNextAttemptAt;
 
         const fetchRef2 = { count: 0 };
-        const recovery2 = createRecoveryService(prisma, fetchRef2);
+        const recovery2 = createRecoveryService(prisma, fetchRef2, clockRef);
         const dueAt =
           persistedNext && persistedNext.getTime() > now.getTime()
             ? persistedNext
             : new Date(now.getTime() + 600_000);
+        clockRef.now = dueAt;
         await prisma.rawRefuelCandidate.update({
           where: { id: candidateId },
           data: {

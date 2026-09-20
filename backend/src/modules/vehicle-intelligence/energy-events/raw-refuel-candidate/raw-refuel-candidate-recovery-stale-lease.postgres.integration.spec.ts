@@ -41,7 +41,7 @@ const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION ===
       await prisma?.$disconnect().catch(() => undefined);
     });
 
-    function createRecoveryService(label: string) {
+    function createRecoveryService(label: string, clockRef: { now: Date }) {
       const candidateService = RawRefuelCandidateService.withFixedClock(
         prisma as unknown as PrismaService,
         '2026-09-19T17:00:00.000Z',
@@ -53,6 +53,7 @@ const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION ===
         convergence,
       )
         .withLeaseMs(1_000)
+        .withRecoveryClock(() => clockRef.now)
         .withSampleFetcher(async () => {
           if (label === 'A') {
             await new Promise<void>((resolve) => {
@@ -103,9 +104,10 @@ const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION ===
       });
 
       const t0 = new Date('2026-09-19T18:30:00.000Z');
+      const clockRef = { now: t0 };
       const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
-      const recoveryA = createRecoveryService('A');
-      const recoveryB = createRecoveryService('B');
+      const recoveryA = createRecoveryService('A', clockRef);
+      const recoveryB = createRecoveryService('B', clockRef);
 
       try {
         const scanContext = buildDetectorPhysicsContext({
@@ -140,6 +142,7 @@ const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION ===
         await new Promise((resolve) => setTimeout(resolve, 50));
         await new Promise((resolve) => setTimeout(resolve, 1_200));
         const t6 = new Date(t0.getTime() + 2_000);
+        clockRef.now = t6;
         const leaseB = new Date(t6.getTime() + 300_000);
         const claimedB = await repo.claimDueCandidates(1, t6, leaseB);
         expect(claimedB).toHaveLength(1);

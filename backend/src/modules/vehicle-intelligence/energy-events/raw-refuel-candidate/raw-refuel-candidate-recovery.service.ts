@@ -74,6 +74,7 @@ export class RawRefuelCandidateRecoveryService {
   ) => RawFuelRefuelFallbackConfig = loadRawFuelRefuelFallbackConfig;
   private sampleFetcherOverride: RawRefuelCandidateRecoverySampleFetcher | null = null;
   private leaseMs = 5 * 60 * 1000;
+  private recoveryClock: () => Date = () => new Date();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -99,6 +100,12 @@ export class RawRefuelCandidateRecoveryService {
 
   withLeaseMs(leaseMs: number): this {
     this.leaseMs = leaseMs;
+    return this;
+  }
+
+  /** Wall clock for lease expiry checks (override in PG tests with synthetic `now`). */
+  withRecoveryClock(clock: () => Date): this {
+    this.recoveryClock = clock;
     return this;
   }
 
@@ -168,13 +175,13 @@ export class RawRefuelCandidateRecoveryService {
   private isLeaseExpiredForMutation(fence: RawRefuelCandidateRecoveryClaimFence): boolean {
     if (!fence.requireActiveLease) return false;
     if (!fence.leaseExpiresAt) return true;
-    return Date.now() >= fence.leaseExpiresAt.getTime();
+    return this.recoveryClock().getTime() >= fence.leaseExpiresAt.getTime();
   }
 
   private mutationFence(
     fence: RawRefuelCandidateRecoveryClaimFence,
   ): RawRefuelCandidateRecoveryClaimFence {
-    return { ...fence, now: new Date() };
+    return { ...fence, now: this.recoveryClock() };
   }
 
   private staleClaimAttempt(

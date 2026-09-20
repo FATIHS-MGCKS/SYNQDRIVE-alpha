@@ -21,7 +21,7 @@ export async function lockRecoveryClaimForMutation(
 ): Promise<RawRefuelCandidate | null> {
   let lockedIds: Array<{ id: string }>;
   if (fence.requireActiveLease) {
-    lockedIds = await tx.$queryRaw<Array<{ id: string }>>`
+    lockedIds = await tx.$queryRaw`
       SELECT id
       FROM raw_refuel_candidates
       WHERE id = ${candidateId}::uuid
@@ -31,7 +31,7 @@ export async function lockRecoveryClaimForMutation(
       FOR UPDATE
     `;
   } else {
-    lockedIds = await tx.$queryRaw<Array<{ id: string }>>`
+    lockedIds = await tx.$queryRaw`
       SELECT id
       FROM raw_refuel_candidates
       WHERE id = ${candidateId}::uuid

@@ -153,6 +153,7 @@ function buildRecoveryStack(
   prisma: PrismaClient,
   fetchImpl: () => ReturnType<typeof buildSparseBridgeRefuelEpisodeSamples> = () =>
     buildSparseBridgeRefuelEpisodeSamples(true),
+  recoveryNow: () => Date = () => new Date('2026-09-19T18:30:00.000Z'),
 ) {
   let fetchCount = 0;
   const candidateService = RawRefuelCandidateService.withFixedClock(
@@ -175,7 +176,7 @@ function buildRecoveryStack(
         relativePercent: s.relativePercent ?? null,
       })),
     };
-  });
+  }).withRecoveryClock(recoveryNow);
   return { candidateService, recovery, getFetchCount: () => fetchCount };
 }
 
@@ -238,7 +239,7 @@ async function seedSparseBridgeCandidate(
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: now },
         });
-        const { recovery } = buildRecoveryStack(prisma);
+        const { recovery } = buildRecoveryStack(prisma, undefined, () => now);
         const result = await recovery.recoverCandidateById(candidate.id, now);
         expect(['SUCCESS_MATURED_READY', 'PENDING_NATIVE_RECONCILIATION']).toContain(
           result.outcome,
@@ -265,16 +266,22 @@ async function seedSparseBridgeCandidate(
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: now },
         });
-        const { recovery, getFetchCount } = buildRecoveryStack(prisma);
+        const clockRef = { now };
+        const { recovery, getFetchCount } = buildRecoveryStack(
+          prisma,
+          undefined,
+          () => clockRef.now,
+        );
         const tick1 = await recovery.recoverCandidateById(candidate.id, now);
         expect(tick1.dimoFetchPerformed).toBe(true);
         expect(
           await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } }),
         ).toMatchObject({ lifecycleState: 'READY_FOR_PERSIST' });
         const fetchAfterTick1 = getFetchCount();
+        clockRef.now = new Date(now.getTime() + 60_000);
         const tick2Pending = await recovery.recoverCandidateById(
           candidate.id,
-          new Date(now.getTime() + 60_000),
+          clockRef.now,
         );
         expect(tick2Pending.outcome).toBe('PENDING_NATIVE_RECONCILIATION');
         expect(tick2Pending.dimoFetchPerformed).toBe(false);
@@ -291,9 +298,10 @@ async function seedSparseBridgeCandidate(
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: new Date(now.getTime() + 120_000) },
         });
+        clockRef.now = new Date(now.getTime() + 120_000);
         const tick2 = await recovery.recoverCandidateById(
           candidate.id,
-          new Date(now.getTime() + 120_000),
+          clockRef.now,
         );
         expect(tick2.outcome).toBe('SUCCESS_CONVERGED');
         expect(tick2.dimoFetchPerformed).toBe(false);
@@ -356,7 +364,7 @@ async function seedSparseBridgeCandidate(
         });
         const claimed = await repo.claimDueCandidates(5, now, new Date(now.getTime() + 60_000));
         expect(claimed.some((row) => row.id === candidate.id)).toBe(false);
-        const { recovery } = buildRecoveryStack(prisma);
+        const { recovery } = buildRecoveryStack(prisma, undefined, () => now);
         const terminalResult = await recovery.recoverCandidateById(candidate.id, now);
         expect(terminalResult.outcome).toBe('TERMINAL_NO_ACTION');
       } finally {
@@ -386,7 +394,8 @@ async function seedSparseBridgeCandidate(
             now,
           ),
           convergence,
-        ).withSampleFetcher(async () => ({ status: 'EMPTY' as const }));
+        ).withSampleFetcher(async () => ({ status: 'EMPTY' as const }))
+          .withRecoveryClock(() => now);
         const result = await recovery.recoverCandidateById(candidate.id, now);
         expect(result.outcome).toBe('NO_MATCHING_OBSERVATION');
         const after = await prisma.rawRefuelCandidate.findUniqueOrThrow({
@@ -418,7 +427,7 @@ async function seedSparseBridgeCandidate(
           where: { id: candidate.id },
           data: { recoveryNextAttemptAt: now },
         });
-        const { recovery } = buildRecoveryStack(prisma);
+        const { recovery } = buildRecoveryStack(prisma, undefined, () => now);
         await recovery.recoverCandidateById(candidate.id, now);
         expect(
           await prisma.vehicleEnergyEvent.count({
