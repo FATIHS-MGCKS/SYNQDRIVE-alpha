@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-plug-webhook-restoration-forensics-2026-09-21',
+    version: '4.9.1994',
+    title: 'VDC — OBD PLUG webhook restoration forensics + safe ops gate',
+    summary: [
+      'Production read-only DIMO registry: PLUG webhook disabled; UNPLUG enabled; WOB 192922 subscribed to UNPLUG only.',
+      'Global PLUG enable blast radius = all tokens already on PLUG subscription list (6), not WOB-only.',
+      'gt-r1-plug-webhook-restoration.mjs — READ_ONLY default; PUT enable requires --execute + exact PLUG UUID confirm.',
+    ],
+    reason:
+      'Parked LTE_R1 replug latency is unbounded on snapshot-only path; restore PLUG webhook as fast path during P2.5 shadow epoch.',
+    previousBehavior:
+      'PLUG provider definition disabled since 2026-07-08; KS MX replug observed only after morning SNAPSHOT_OBD.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_RESTORATION_FORENSICS_2026-09-21.md; backend/scripts/ops/gt-r1-plug-webhook-restoration.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3a-generalized-evidence-2026-09-21',
     version: '4.9.1150',
     title: 'Battery V2 M3.3A — Generalized evidence + rest session foundation (shadow)',

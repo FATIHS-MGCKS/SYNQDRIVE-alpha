@@ -10,8 +10,8 @@
 | **Primary Production evidence** | [evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md](evidence/LTE_R1_KS_MX_2024_PRODUCTION_FORENSICS.md) |
 | **Phase 3 reconciliation** | [reconciliation/PHASE3_RECONCILIATION.md](reconciliation/PHASE3_RECONCILIATION.md) |
 | **Remediation backlog** | [reconciliation/REMEDIATION_BACKLOG.md](reconciliation/REMEDIATION_BACKLOG.md) |
-| **Last updated** | 2026-09-18 (Production runtime `ca7bad8826871376a58efaa874f12992b88c4a04`; P2.5 connectivity freshness deployed; controlled STATEFUL_SHADOW pilot **ON** for 4 scopes; canonical pilot T0 `2026-09-18T09:33:25.000Z`; seven-day clock **running** — completion **NOT_PROVEN**) |
-| **Production runtime SHA (connectivity)** | `ca7bad8826871376a58efaa874f12992b88c4a04` (release `20260918085306_v4994`) |
+| **Last updated** | 2026-09-21 (OBD PLUG webhook restoration pre-activation forensics; P2.5 pilot T0 unchanged; no Production PLUG enable) |
+| **Production runtime SHA (connectivity)** | `ca7bad8826871376a58efaa874f12992b88c4a04` (release `20260918085306_v4994`; see latest VPS deploy for current HEAD) |
 
 ## Executive summary
 
@@ -44,6 +44,7 @@ Phase 3 (reconciliation) establishes:
 - **Canonical evidence hierarchy** and **target semantic model** — PROPOSED (not implemented).
 - **18-item remediation backlog** — prioritized P0–P3; no runtime changes in Phase 3.
 - **GT-R1-UNPLUG-001** **executed** 2026-09-12 on KS MX 2024: UNPLUG webhook **delivered** post-recovery but **ignored** (`no_state_change` — stale canonical last-event); snapshot unplug/replug **confirmed**; **no episode/alert**; PLUG webhook **absent** (disabled); snapshot-only replug recovery **confirmed** (VDC-EVID-GT-R1-EXECUTION-001).
+- **OBD PLUG webhook restoration (2026-09-21):** Production read-only — PLUG definition still **disabled** (`7a0562d3-…`, `valueNumber == 1`); UNPLUG **enabled**; **6** PLUG-subscribed tokens vs **7** UNPLUG (**WOB 192922** on UNPLUG only). SynqDrive PLUG ingress path **implemented**; controlled enable **blocked** until WOB PLUG subscribe + operator authorize global `PUT` (VDC-EVID-PLUG-WEBHOOK-RESTORATION-001).
 - **Physical-state reconciliation Phase 1 (dark, merged):** VDC-DEC-012 + VDC-RB-019 — durable `device_connection_physical_states` projection, transition log, pure policy, repository (`SELECT FOR UPDATE`), service layer, `CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED` (**OFF**); **POSTGRES_VALIDATED / FINAL_CI_VALIDATED** (PR #1626, head `3df9f58a`, CI `34741055482`); **no** live webhook/snapshot cutover.
 - **RB-019 Phase 2 P2.1 (implemented, dark):** durability infrastructure — `device_connection_physical_authority_cutover` + `device_connection_physical_state_action_outbox` schemas; `reconcileInTransaction(tx)` refactor; `PhysicalStateReconcileCoordinator` outer transaction; outbox processor skeleton with `processing_claim_token` CAS fencing (row lifecycle only). **Flags OFF; unwired.** Evidence: [evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md](evidence/PHYSICAL_STATE_P21_DURABILITY_2026-09-13.md).
 - **RB-019 Phase 2 P2.2 (implemented, dark):** authority state-machine + effective flag resolver + compare-only shadow comparator + adjudication taxonomy + shadow metrics/logging. **No writers; flags OFF; unwired.** Evidence: [evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md](evidence/PHYSICAL_STATE_P22_SHADOW_AUTHORITY_INFRA_2026-09-13.md).
