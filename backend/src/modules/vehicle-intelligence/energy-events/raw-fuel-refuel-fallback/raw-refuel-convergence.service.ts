@@ -25,7 +25,7 @@ import type { RawRefuelConvergenceApplyResult } from './raw-refuel-native-fallba
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
 import {
   lockRecoveryClaimForMutation,
-  type RawRefuelCandidateRecoveryClaimFence,
+  type RawRefuelCandidateRecoveryMutationContext,
 } from '../raw-refuel-candidate/raw-refuel-candidate-recovery-fencing';
 
 @Injectable()
@@ -41,7 +41,7 @@ export class RawRefuelConvergenceService {
     candidateId: string,
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
-    recoveryClaimFence?: RawRefuelCandidateRecoveryClaimFence,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelConvergenceApplyResult> {
     if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
       this.metrics?.recordConvergenceSkippedNotAuthorized();
@@ -79,14 +79,14 @@ export class RawRefuelConvergenceService {
       };
     }
 
-    return this.evaluateAndApplyConvergence(candidate, context, env, recoveryClaimFence);
+    return this.evaluateAndApplyConvergence(candidate, context, env, recoveryMutation);
   }
 
   async evaluateAndApplyConvergence(
     candidate: RawRefuelCandidate,
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
-    recoveryClaimFence?: RawRefuelCandidateRecoveryClaimFence,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelConvergenceApplyResult> {
     if (!isRfrfNativeFallbackConvergenceAuthorized(env)) {
       this.metrics?.recordConvergenceSkippedNotAuthorized();
@@ -141,8 +141,14 @@ export class RawRefuelConvergenceService {
         );
 
         let locked: RawRefuelCandidate | null;
-        if (recoveryClaimFence) {
-          locked = await lockRecoveryClaimForMutation(tx, candidate.id, recoveryClaimFence);
+        if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          locked = await lockRecoveryClaimForMutation(
+            tx,
+            candidate.id,
+            recoveryMutation.claim,
+            mutationTime,
+          );
           if (!locked) {
             return {
               status: 'SKIPPED_NO_ACTION',

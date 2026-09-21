@@ -115,7 +115,7 @@ sync_schema_drift_if_needed
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-b.postgres.integration.spec.ts|raw-refuel-candidate-recovery-restart-durability.postgres.integration.spec.ts|raw-refuel-candidate-recovery-stale-lease.postgres.integration.spec.ts'
+  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-b.postgres.integration.spec.ts|raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts|raw-refuel-candidate-recovery-restart-durability.postgres.integration.spec.ts|raw-refuel-candidate-recovery-stale-lease.postgres.integration.spec.ts'
 
 echo "==> B migration contract negative selftest"
 bash scripts/test/rfrf-f10-6-8-b-migration-contract-negative.selftest.sh

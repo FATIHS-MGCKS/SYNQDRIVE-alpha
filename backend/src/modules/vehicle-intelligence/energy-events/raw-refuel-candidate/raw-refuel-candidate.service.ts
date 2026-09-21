@@ -31,7 +31,8 @@ import type {
 } from './raw-refuel-candidate.types';
 import {
   lockRecoveryClaimForMutation,
-  type RawRefuelCandidateRecoveryClaimFence,
+  type RawRefuelCandidateRecoveryClaimIdentity,
+  type RawRefuelCandidateRecoveryMutationContext,
 } from './raw-refuel-candidate-recovery-fencing';
 
 export type RawRefuelCandidateRecoveryReconcileResult =
@@ -271,13 +272,24 @@ export class RawRefuelCandidateService {
   async reconcileExistingCandidateByIdForRecoveryClaim(
     candidateId: string,
     observation: RawRefuelCandidateObservation,
-    fence: RawRefuelCandidateRecoveryClaimFence,
+    recoveryMutation: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelCandidateRecoveryReconcileResult> {
     validateObservationLifecycleRequest(observation);
     const serviceNow = this.clock.now();
 
     return this.prisma.$transaction(async (tx) => {
-      const existing = await lockRecoveryClaimForMutation(tx, candidateId, fence);
+      await acquirePgAdvisoryXactLock64(
+        tx,
+        buildRawRefuelCandidateLockKey(observation.vehicleId),
+      );
+
+      const mutationTime = recoveryMutation.mutationClock();
+      const existing = await lockRecoveryClaimForMutation(
+        tx,
+        candidateId,
+        recoveryMutation.claim,
+        mutationTime,
+      );
       if (!existing) {
         return { kind: 'STALE_CLAIM' };
       }
@@ -288,11 +300,6 @@ export class RawRefuelCandidateService {
           observation.organizationId,
         );
       }
-
-      await acquirePgAdvisoryXactLock64(
-        tx,
-        buildRawRefuelCandidateLockKey(observation.vehicleId),
-      );
 
       const organizationId = await this.repository.resolveAuthoritativeOrganizationId(
         tx,

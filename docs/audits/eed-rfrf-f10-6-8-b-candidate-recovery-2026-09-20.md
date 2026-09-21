@@ -79,3 +79,46 @@ Independent B2 review (`de0413e4ef9a063b2fd209ccd305f115c6c5c704`) found stale-w
 **B3 closure HEAD:** `f4c4cde1a0e2d5ee248e18f0b3515ccadc2261cd`
 
 Production: **not** deployed or mutated. Stage 5 **not** authorized.
+
+## F10.6.8-B4 review (2026-09-21)
+
+Read-only closure at `a77e3b03be6b6e1440aad028e0b69caa711313a4` (doc-only delta after B3 code SHA).
+
+**Result:** `FIX_REQUIRED`
+
+| Finding | Detail |
+|--------|--------|
+| Lock order | Recovery reconcile used `ROW → ADVISORY` while normal/convergence used `ADVISORY → ROW` → real deadlock cycle possible |
+| Lease time | `fence.now` could be snapshotted across reconcile/convergence/completion; stale timestamp could authorize expired lease |
+| Completion | Generation-only CAS; expired unreclaimed worker could still complete |
+| `finishRecovery` | Several branches ignored `false` / stale completion |
+| Negative selftest | Isolation guards partial vs main B gate |
+
+## F10.6.8-B5 remediation (2026-09-21)
+
+### Canonical lock order
+
+All recovery mutations that need both locks: **vehicle advisory xact lock → candidate `FOR UPDATE` (recovery fence) → write**.
+
+`reconcileExistingCandidateByIdForRecoveryClaim` reordered to match convergence and normal reconcile paths.
+
+### Fresh lease time
+
+- **Claim identity** (`RawRefuelCandidateRecoveryClaimIdentity`): generation + lease expectations only — no embedded clock.
+- **Mutation context** (`mutationClock()`): invoked after blocking lock acquisition at each DB boundary (reconcile, convergence, completion).
+- **Clock domain:** application `recoveryClock()` (overridable in PG tests); SQL lease checks use the fresh `mutationTime` parameter.
+
+### Completion fence
+
+`completeRecoveryAttemptFenced` requires matching generation **and** `recoveryLeaseExpiresAt > mutationTime` when `requireActiveLease`.
+
+All `finishRecovery` callers propagate `stale_claim` when completion returns `STALE_CLAIM`.
+
+### Tests (B5)
+
+- `raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts` — post-reconcile lease expiry, READY crossed-lease, expired unreclaimed completion, stale completion propagation.
+- Negative selftest: own `assert_test_db_isolation` before destructive DDL.
+
+**B5 closure HEAD:** _(filled after push)_
+
+Production: **not** deployed or mutated. Stage 5 **not** authorized.

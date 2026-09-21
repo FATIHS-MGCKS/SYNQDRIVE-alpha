@@ -13,6 +13,24 @@ PG_DB="rfrf_f10_6_8_b_neg_${GATE_ID//-/_}"
 PG_USER="rfrf_f10_6_8_b_neg_${GATE_ID//-/_}_u"
 PG_PASS="rfrf_f10_6_8_b_neg_${GATE_ID}_local"
 
+assert_test_db_isolation() {
+  case "${PG_HOST}" in
+    localhost|127.0.0.1) ;;
+    *)
+      echo "Refusing: TEST_POSTGRES_HOST must be localhost or 127.0.0.1 (got ${PG_HOST})" >&2
+      exit 1
+      ;;
+  esac
+  if [[ "${PG_DB}" != rfrf_f10_6_8_b_neg_* ]]; then
+    echo "Refusing: database name must match rfrf_f10_6_8_b_neg_* (got ${PG_DB})" >&2
+    exit 1
+  fi
+  if [[ "${DATABASE_URL}" == *"app.synqdrive"* || "${DATABASE_URL}" == *"production"* ]]; then
+    echo "Refusing: production-like DATABASE_URL detected" >&2
+    exit 1
+  fi
+}
+
 cleanup() {
   rfrf_test_psql_superuser_quiet "DROP DATABASE IF EXISTS ${PG_DB};"
   rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${PG_USER};"
@@ -23,11 +41,13 @@ rfrf_test_psql_superuser "CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';"
 rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
+assert_test_db_isolation
 
 cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
+assert_test_db_isolation
 node <<'NODE'
 const { PrismaClient } = require('@prisma/client');
 (async () => {

@@ -35,7 +35,8 @@ import {
 } from './raw-refuel-candidate-recovery.repository';
 import {
   completeRecoveryAttemptFenced,
-  type RawRefuelCandidateRecoveryClaimFence,
+  type RawRefuelCandidateRecoveryClaimIdentity,
+  type RawRefuelCandidateRecoveryMutationContext,
 } from './raw-refuel-candidate-recovery-fencing';
 import { RawRefuelCandidateService } from './raw-refuel-candidate.service';
 import type { RawRefuelCandidateObservation } from './raw-refuel-candidate.types';
@@ -136,6 +137,10 @@ export class RawRefuelCandidateRecoveryService {
     return { claimed: claimed.length, processed: outcomes.length, outcomes };
   }
 
+  /**
+   * Integration-test / direct-replay helper only.
+   * Production scheduler uses {@link runRecoveryBatch} with authoritative SKIP LOCKED claim.
+   */
   async recoverCandidateById(
     candidateId: string,
     now: Date,
@@ -154,34 +159,42 @@ export class RawRefuelCandidateRecoveryService {
     }
     return this.recoverLoadedCandidate(candidate, now, env, {
       expectedClaimGeneration: candidate.recoveryAttemptCount,
-      now,
       requireActiveLease: candidate.recoveryLeaseExpiresAt != null,
       leaseExpiresAt: candidate.recoveryLeaseExpiresAt,
     });
   }
 
-  private buildClaimFence(
-    row: ClaimedRawRefuelCandidateRecoveryRow,
-    now: Date,
-  ): RawRefuelCandidateRecoveryClaimFence {
+  private buildClaimIdentity(
+    row: Pick<ClaimedRawRefuelCandidateRecoveryRow, 'recoveryAttemptCount' | 'recoveryLeaseExpiresAt'>,
+  ): RawRefuelCandidateRecoveryClaimIdentity {
     return {
       expectedClaimGeneration: row.recoveryAttemptCount,
-      now,
       requireActiveLease: true,
       leaseExpiresAt: row.recoveryLeaseExpiresAt,
     };
   }
 
-  private isLeaseExpiredForMutation(fence: RawRefuelCandidateRecoveryClaimFence): boolean {
-    if (!fence.requireActiveLease) return false;
-    if (!fence.leaseExpiresAt) return true;
-    return this.recoveryClock().getTime() >= fence.leaseExpiresAt.getTime();
+  private recoveryMutationContext(
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
+  ): RawRefuelCandidateRecoveryMutationContext {
+    return { claim, mutationClock: () => this.recoveryClock() };
   }
 
-  private mutationFence(
-    fence: RawRefuelCandidateRecoveryClaimFence,
-  ): RawRefuelCandidateRecoveryClaimFence {
-    return { ...fence, now: this.recoveryClock() };
+  private isLeaseExpiredForMutation(claim: RawRefuelCandidateRecoveryClaimIdentity): boolean {
+    if (!claim.requireActiveLease) return false;
+    if (!claim.leaseExpiresAt) return true;
+    return this.recoveryClock().getTime() >= claim.leaseExpiresAt.getTime();
+  }
+
+  private staleIfNotApplied(
+    applied: boolean,
+    candidateId: string,
+    dimoFetchPerformed: boolean,
+  ): RawRefuelCandidateRecoveryAttemptResult | null {
+    if (!applied) {
+      return this.staleClaimAttempt(candidateId, dimoFetchPerformed);
+    }
+    return null;
   }
 
   private staleClaimAttempt(
@@ -202,7 +215,7 @@ export class RawRefuelCandidateRecoveryService {
     now: Date,
     env: NodeJS.ProcessEnv,
   ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
-    const fence = this.buildClaimFence(row, now);
+    const claim = this.buildClaimIdentity(row);
     const candidate = await this.prisma.rawRefuelCandidate.findUnique({
       where: { id: row.id },
     });
@@ -210,7 +223,8 @@ export class RawRefuelCandidateRecoveryService {
       const completion = await completeRecoveryAttemptFenced(
         this.prisma,
         row.id,
-        row.recoveryAttemptCount,
+        claim,
+        this.recoveryClock(),
         {
           recoveryNextAttemptAt: scheduleRecoveryNextAttemptAt(now, row.recoveryAttemptCount),
           recoveryLastOutcome: 'TERMINAL_NO_ACTION',
@@ -226,19 +240,26 @@ export class RawRefuelCandidateRecoveryService {
         detail: 'candidate_not_found_after_claim',
       };
     }
-    return this.recoverLoadedCandidate(candidate, now, env, fence);
+    return this.recoverLoadedCandidate(candidate, now, env, claim);
   }
 
   private async recoverLoadedCandidate(
     candidate: RawRefuelCandidate,
     now: Date,
     env: NodeJS.ProcessEnv,
-    claimFence: RawRefuelCandidateRecoveryClaimFence,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
   ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
     this.metrics?.recordCandidateRecoveryAttempt();
 
     if (isRawRefuelCandidateTerminal(candidate.lifecycleState)) {
-      await this.finishRecovery(candidate.id, now, claimFence, 'TERMINAL_NO_ACTION');
+      const applied = await this.finishRecovery(
+        candidate.id,
+        now,
+        claim,
+        'TERMINAL_NO_ACTION',
+      );
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       this.metrics?.recordCandidateRecoveryTerminalSkip();
       return {
         candidateId: candidate.id,
@@ -249,26 +270,27 @@ export class RawRefuelCandidateRecoveryService {
     }
 
     if (candidate.lifecycleState === 'READY_FOR_PERSIST') {
-      return this.recoverReadyCandidate(candidate, now, env, claimFence);
+      return this.recoverReadyCandidate(candidate, now, env, claim);
     }
 
-    return this.recoverEvidenceMaturityCandidate(candidate, now, env, claimFence);
+    return this.recoverEvidenceMaturityCandidate(candidate, now, env, claim);
   }
 
   private async recoverReadyCandidate(
     candidate: RawRefuelCandidate,
     now: Date,
     env: NodeJS.ProcessEnv,
-    claimFence: RawRefuelCandidateRecoveryClaimFence,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
   ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
-    const mutationFence = this.mutationFence(claimFence);
-    if (this.isLeaseExpiredForMutation(mutationFence)) {
+    if (this.isLeaseExpiredForMutation(claim)) {
       return this.staleClaimAttempt(candidate.id, false);
     }
     const vehicleContext = await this.loadVehicleRecoveryContext(candidate.vehicleId);
     if (!vehicleContext.ok) {
       const outcome = vehicleContext.outcome;
-      await this.finishRecovery(candidate.id, now, claimFence, outcome);
+      const applied = await this.finishRecovery(candidate.id, now, claim, outcome);
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome,
@@ -282,7 +304,9 @@ export class RawRefuelCandidateRecoveryService {
       absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
     });
     if (!readiness.ready) {
-      await this.finishRecovery(candidate.id, now, claimFence, 'NO_NEW_EVIDENCE');
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'NO_NEW_EVIDENCE',
@@ -298,7 +322,7 @@ export class RawRefuelCandidateRecoveryService {
         absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
       },
       env,
-      mutationFence,
+      this.recoveryMutationContext(claim),
     );
 
     if (convergence.detail === 'recovery_claim_stale') {
@@ -309,13 +333,12 @@ export class RawRefuelCandidateRecoveryService {
       const applied = await this.finishRecovery(
         candidate.id,
         now,
-        mutationFence,
+        claim,
         'SUCCESS_CONVERGED',
         null,
       );
-      if (!applied) {
-        return this.staleClaimAttempt(candidate.id, false);
-      }
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       this.metrics?.recordCandidateRecoveryConvergedNative();
       return {
         candidateId: candidate.id,
@@ -334,12 +357,11 @@ export class RawRefuelCandidateRecoveryService {
       const applied = await this.finishRecovery(
         candidate.id,
         now,
-        mutationFence,
+        claim,
         'PENDING_NATIVE_RECONCILIATION',
       );
-      if (!applied) {
-        return this.staleClaimAttempt(candidate.id, false);
-      }
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       this.metrics?.recordCandidateRecoveryPendingNative();
       return {
         candidateId: candidate.id,
@@ -353,12 +375,11 @@ export class RawRefuelCandidateRecoveryService {
     const appliedPending = await this.finishRecovery(
       candidate.id,
       now,
-      mutationFence,
+      claim,
       'PENDING_NATIVE_RECONCILIATION',
     );
-    if (!appliedPending) {
-      return this.staleClaimAttempt(candidate.id, false);
-    }
+    const stalePending = this.staleIfNotApplied(appliedPending, candidate.id, false);
+    if (stalePending) return stalePending;
     return {
       candidateId: candidate.id,
       outcome: 'PENDING_NATIVE_RECONCILIATION',
@@ -372,11 +393,13 @@ export class RawRefuelCandidateRecoveryService {
     candidate: RawRefuelCandidate,
     now: Date,
     env: NodeJS.ProcessEnv,
-    claimFence: RawRefuelCandidateRecoveryClaimFence,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
   ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
     const vehicleContext = await this.loadVehicleRecoveryContext(candidate.vehicleId);
     if (!vehicleContext.ok) {
-      await this.finishRecovery(candidate.id, now, claimFence, vehicleContext.outcome);
+      const applied = await this.finishRecovery(candidate.id, now, claim, vehicleContext.outcome);
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: vehicleContext.outcome,
@@ -386,12 +409,14 @@ export class RawRefuelCandidateRecoveryService {
     }
 
     if (vehicleContext.capability !== 'FUEL_CAPABLE') {
-      await this.finishRecovery(
+      const applied = await this.finishRecovery(
         candidate.id,
         now,
-        claimFence,
+        claim,
         'CAPABILITY_NOT_SUPPORTED',
       );
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'CAPABILITY_NOT_SUPPORTED',
@@ -407,15 +432,15 @@ export class RawRefuelCandidateRecoveryService {
       candidate.vehicleId,
     );
 
-    const mutationFence = this.mutationFence(claimFence);
-
-    if (this.isLeaseExpiredForMutation(mutationFence)) {
+    if (this.isLeaseExpiredForMutation(claim)) {
       return this.staleClaimAttempt(candidate.id, fetch.status !== 'ERROR');
     }
 
     if (fetch.status === 'ERROR') {
       this.metrics?.recordCandidateRecoverySampleFetchFailure(fetch.errorClass);
-      await this.finishRecovery(candidate.id, now, claimFence, 'SAMPLE_FETCH_FAILED');
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'SAMPLE_FETCH_FAILED');
+      const stale = this.staleIfNotApplied(applied, candidate.id, true);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'SAMPLE_FETCH_FAILED',
@@ -428,7 +453,9 @@ export class RawRefuelCandidateRecoveryService {
 
     if (fetch.status === 'EMPTY' || fetch.samples.length === 0) {
       this.metrics?.recordCandidateRecoveryNoMatchingObservation();
-      await this.finishRecovery(candidate.id, now, claimFence, 'NO_MATCHING_OBSERVATION');
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_MATCHING_OBSERVATION');
+      const stale = this.staleIfNotApplied(applied, candidate.id, true);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'NO_MATCHING_OBSERVATION',
@@ -466,7 +493,9 @@ export class RawRefuelCandidateRecoveryService {
     const match = selectRecoverySameObservation(candidate, detection.candidates);
     if (match.kind === 'NONE') {
       this.metrics?.recordCandidateRecoveryNoMatchingObservation();
-      await this.finishRecovery(candidate.id, now, claimFence, 'NO_MATCHING_OBSERVATION');
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_MATCHING_OBSERVATION');
+      const stale = this.staleIfNotApplied(applied, candidate.id, true);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'NO_MATCHING_OBSERVATION',
@@ -475,12 +504,14 @@ export class RawRefuelCandidateRecoveryService {
     }
     if (match.kind === 'AMBIGUOUS') {
       this.metrics?.recordCandidateRecoveryAmbiguousObservation();
-      await this.finishRecovery(
+      const applied = await this.finishRecovery(
         candidate.id,
         now,
-        claimFence,
+        claim,
         'AMBIGUOUS_RECOVERY_OBSERVATION',
       );
+      const stale = this.staleIfNotApplied(applied, candidate.id, true);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
@@ -492,7 +523,7 @@ export class RawRefuelCandidateRecoveryService {
     const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
       candidate.id,
       match.observation,
-      mutationFence,
+      this.recoveryMutationContext(claim),
     );
     if (reconcile.kind === 'STALE_CLAIM') {
       return this.staleClaimAttempt(candidate.id, true);
@@ -504,7 +535,9 @@ export class RawRefuelCandidateRecoveryService {
     });
 
     if (!resolveResult.updated) {
-      await this.finishRecovery(candidate.id, now, claimFence, 'NO_NEW_EVIDENCE');
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
+      const stale = this.staleIfNotApplied(applied, candidate.id, true);
+      if (stale) return stale;
       return {
         candidateId: candidate.id,
         outcome: 'NO_NEW_EVIDENCE',
@@ -528,7 +561,7 @@ export class RawRefuelCandidateRecoveryService {
           absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
         },
         env,
-        mutationFence,
+        this.recoveryMutationContext(claim),
       );
       if (convergence.detail === 'recovery_claim_stale') {
         return this.staleClaimAttempt(candidate.id, true);
@@ -537,13 +570,12 @@ export class RawRefuelCandidateRecoveryService {
         const applied = await this.finishRecovery(
           candidate.id,
           now,
-          mutationFence,
+          claim,
           'SUCCESS_CONVERGED',
           null,
         );
-        if (!applied) {
-          return this.staleClaimAttempt(candidate.id, true);
-        }
+        const stale = this.staleIfNotApplied(applied, candidate.id, true);
+        if (stale) return stale;
         this.metrics?.recordCandidateRecoveryConvergedNative();
         return {
           candidateId: candidate.id,
@@ -556,12 +588,11 @@ export class RawRefuelCandidateRecoveryService {
         const applied = await this.finishRecovery(
           candidate.id,
           now,
-          mutationFence,
+          claim,
           'PENDING_NATIVE_RECONCILIATION',
         );
-        if (!applied) {
-          return this.staleClaimAttempt(candidate.id, true);
-        }
+        const stale = this.staleIfNotApplied(applied, candidate.id, true);
+        if (stale) return stale;
         this.metrics?.recordCandidateRecoveryPendingNative();
         return {
           candidateId: candidate.id,
@@ -574,12 +605,11 @@ export class RawRefuelCandidateRecoveryService {
       const appliedReady = await this.finishRecovery(
         candidate.id,
         now,
-        mutationFence,
+        claim,
         'SUCCESS_MATURED_READY',
       );
-      if (!appliedReady) {
-        return this.staleClaimAttempt(candidate.id, true);
-      }
+      const staleReady = this.staleIfNotApplied(appliedReady, candidate.id, true);
+      if (staleReady) return staleReady;
       return {
         candidateId: candidate.id,
         outcome: 'SUCCESS_MATURED_READY',
@@ -588,7 +618,9 @@ export class RawRefuelCandidateRecoveryService {
       };
     }
 
-    await this.finishRecovery(candidate.id, now, claimFence, 'NO_NEW_EVIDENCE');
+    const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
+    const staleFinal = this.staleIfNotApplied(applied, candidate.id, true);
+    if (staleFinal) return staleFinal;
     return {
       candidateId: candidate.id,
       outcome: 'NO_NEW_EVIDENCE',
@@ -600,7 +632,7 @@ export class RawRefuelCandidateRecoveryService {
   private async finishRecovery(
     candidateId: string,
     now: Date,
-    claimFence: RawRefuelCandidateRecoveryClaimFence,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
     outcome: RawRefuelCandidateRecoveryOutcome,
     nextAttemptOverride: Date | null | undefined = undefined,
   ): Promise<boolean> {
@@ -614,13 +646,14 @@ export class RawRefuelCandidateRecoveryService {
           ? null
           : scheduleRecoveryNextAttemptAt(
               now,
-              claimFence.expectedClaimGeneration,
+              claim.expectedClaimGeneration,
             );
 
     const completion = await completeRecoveryAttemptFenced(
       this.prisma,
       candidateId,
-      claimFence.expectedClaimGeneration,
+      claim,
+      this.recoveryClock(),
       {
         recoveryNextAttemptAt: nextAttempt,
         recoveryLastOutcome: outcome,
