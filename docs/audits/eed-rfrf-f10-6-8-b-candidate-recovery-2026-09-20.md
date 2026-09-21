@@ -76,6 +76,6 @@ Independent B2 review (`de0413e4ef9a063b2fd209ccd305f115c6c5c704`) found stale-w
 - `raw-refuel-candidate-recovery-stale-lease.postgres.integration.spec.ts` — adversarial A/B lease expiry stale worker.
 - `raw-refuel-candidate-recovery-backoff.spec.ts` — backoff boundaries.
 
-**B3 closure HEAD:** `f9c9a46587db58b1c66919d1ec7bc374ecd1b24c` — GitHub: Stage-3/4/Legal typecheck on this SHA (see CI).
+**B3 closure HEAD:** `f4c4cde1a0e2d5ee248e18f0b3515ccadc2261cd`
 
 Production: **not** deployed or mutated. Stage 5 **not** authorized.
