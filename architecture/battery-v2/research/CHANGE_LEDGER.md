@@ -34,6 +34,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-21 — M3.3A.1 pre-merge semantic + concurrency hardening
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | PARKED_REST_CANDIDATE taxonomy; provider-only rest age; shared-state timestamps; anchor observation link; late trip association on trip-finalize + reconciliation + ENDED sessions; partial unique active session index; PostgreSQL integration tests. |
+| **WHY** | Close semantic overclaim (60s→REST_WAKE), provenance conflation, association blind spot, and multi-active-session races before merge. |
+| **VALIDATION** | Unit + `BATTERY_V2_GENERALIZED_EVIDENCE_INTEGRATION=1` integration suite; architecture validators PASS. |
+| **EVIDENCE** | `research/M3_3A_1_PRE_MERGE_HARDENING_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3A generalized battery evidence + rest session foundation
 
 | Field | Content |

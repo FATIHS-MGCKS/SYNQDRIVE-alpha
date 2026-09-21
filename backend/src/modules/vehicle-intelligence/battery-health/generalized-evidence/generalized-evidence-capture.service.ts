@@ -18,6 +18,10 @@ import {
   recordGeneralizedEvidenceCreated,
   recordGeneralizedEvidenceDuplicate,
 } from './generalized-evidence.metrics';
+import {
+  computeActualRestAgeMs,
+  resolveSharedVehicleStateObservation,
+} from './generalized-evidence-provenance.helpers';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { LateTripAssociationService } from './late-trip-association.service';
@@ -93,20 +97,30 @@ export class GeneralizedEvidenceCaptureService {
     });
 
     const { fields, providerLv, vlsSharedSnapshot } = bundleResult;
-    const referenceAt = providerLv.effectiveCaptureReferenceAt;
+    const sharedState = resolveSharedVehicleStateObservation(vlsSharedSnapshot);
+    const classificationReferenceAt =
+      providerLv.providerObservationAt ??
+      sharedState.stateObservedAt ??
+      ingestedAt;
 
     const activeSession = await this.repository.findActiveRestSession(payload.vehicleId);
     const actualRestAgeMs =
-      activeSession && referenceAt
-        ? referenceAt.getTime() - activeSession.anchorAt.getTime()
+      activeSession != null
+        ? computeActualRestAgeMs({
+            sessionAnchorAt: activeSession.anchorAt,
+            voltageObservedAt: fields.voltageObservedAt,
+            voltageTimestampSource: fields.voltageTimestampSource,
+          })
         : null;
 
     const classification = classifyGeneralizedEvidence({
       fields,
-      referenceAt,
+      referenceAt: classificationReferenceAt,
       providerObservationOutcome,
       actualRestAgeMs,
       restStablePromotionEnabled: false,
+      restWakeCadenceQualified: false,
+      restWakeSourceSemantic: false,
     });
 
     const ongoingTripId = vehicleRow?.tripDetectionState?.activeTripId ?? null;
@@ -140,8 +154,8 @@ export class GeneralizedEvidenceCaptureService {
       isLvCharging: fields.isLvCharging,
       isHvCharging: fields.isHvCharging,
       vehicleOnline: fields.vehicleOnline,
-      stateObservedAt: referenceAt,
-      stateTimestampSource: fields.voltageTimestampSource,
+      stateObservedAt: sharedState.stateObservedAt,
+      stateTimestampSource: sharedState.stateTimestampSource,
       stateTimestampSkewMs: classification.stateTimestampSkewMs,
       maxFieldTimestampSkewMs: classification.maxFieldTimestampSkewMs,
       stateCompleteness: classification.stateCompleteness,
@@ -152,6 +166,7 @@ export class GeneralizedEvidenceCaptureService {
           observedAt: vlsSharedSnapshot.observedAt?.toISOString() ?? null,
           timestampSource: vlsSharedSnapshot.source,
         },
+        voltageTimestampSource: fields.voltageTimestampSource,
         classifyIdempotencyKey: payload.idempotencyKey,
         providerObservationOutcome: providerObservationOutcome ?? null,
       },
@@ -179,7 +194,8 @@ export class GeneralizedEvidenceCaptureService {
         vehicleId: payload.vehicleId,
         observation,
         fields,
-        referenceAt,
+        referenceAt: classificationReferenceAt,
+        stateAlignmentClass: classification.stateAlignmentClass,
       });
       await this.lateTripAssociation.associatePendingSessions(payload.vehicleId);
     }

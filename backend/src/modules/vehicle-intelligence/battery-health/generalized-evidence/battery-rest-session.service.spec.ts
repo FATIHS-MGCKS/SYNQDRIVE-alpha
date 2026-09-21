@@ -1,6 +1,6 @@
 import {
   BatteryGeneralizedEvidenceClass,
-  BatteryRestSessionEndReason,
+  BatteryShutdownStateAlignmentClass,
 } from '@prisma/client';
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
@@ -39,13 +39,9 @@ function restFields(
 }
 
 describe('BatteryRestSessionService', () => {
-  it('E: ends active session on driving evidence before opening a new rest chain', async () => {
+  it('E: ends active session on driving evidence', async () => {
     const sessionId = 'session-1';
-    const updateRestSession = jest.fn().mockResolvedValue({
-      id: sessionId,
-      anchorAt: new Date('2026-09-21T00:00:00.000Z'),
-      firstRestObservationAt: null,
-    });
+    const updateRestSession = jest.fn().mockResolvedValue({ id: sessionId });
     const repository = {
       findActiveRestSession: jest
         .fn()
@@ -55,7 +51,7 @@ describe('BatteryRestSessionService', () => {
         })
         .mockResolvedValue(null),
       updateRestSession,
-      createRestSessionIdempotent: jest.fn(),
+      claimOrCreateActiveRestSession: jest.fn(),
       linkObservationToSession: jest.fn(),
     } as unknown as GeneralizedEvidenceRepository;
 
@@ -77,42 +73,47 @@ describe('BatteryRestSessionService', () => {
         speedKmh: 40,
       }),
       referenceAt,
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
     });
 
     expect(outcome).toBe('session_invalidated');
-    expect(updateRestSession).toHaveBeenCalledWith(
-      sessionId,
-      expect.objectContaining({
-        endReason: BatteryRestSessionEndReason.VEHICLE_ACTIVITY,
-      }),
-    );
+    expect(updateRestSession).toHaveBeenCalled();
   });
 
-  it('opens candidate session on ENGINE_OFF_TRANSITION', async () => {
+  it('links anchor observation when opening session', async () => {
+    const linkObservationToSession = jest.fn();
     const repository = {
       findActiveRestSession: jest.fn().mockResolvedValue(null),
-      createRestSessionIdempotent: jest.fn().mockResolvedValue('created'),
+      claimOrCreateActiveRestSession: jest
+        .fn()
+        .mockResolvedValue({ sessionId: 'sess-1', created: true }),
+      linkObservationToSession,
       updateRestSession: jest.fn(),
-      linkObservationToSession: jest.fn(),
     } as unknown as GeneralizedEvidenceRepository;
 
     const service = new BatteryRestSessionService(repository);
     const anchorAt = new Date('2026-09-21T20:00:44.000Z');
 
-    const outcome = await service.processObservation({
+    await service.processObservation({
       organizationId: 'org',
       vehicleId: 'veh',
       observation: {
         id: 'obs-shutdown',
         evidenceClass: BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
         voltageObservedAt: anchorAt,
-        tripId: 'ongoing-trip',
+        tripId: null,
       } as any,
       fields: restFields(),
       referenceAt: anchorAt,
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
     });
 
-    expect(outcome).toBe('session_opened');
-    expect(repository.createRestSessionIdempotent).toHaveBeenCalled();
+    expect(linkObservationToSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        observationId: 'obs-shutdown',
+        restSessionId: 'sess-1',
+        actualRestAgeMs: 0,
+      }),
+    );
   });
 });

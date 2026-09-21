@@ -13,16 +13,18 @@ import {
   resolveStateAlignment,
   resolveStateCompleteness,
 } from '../shutdown-evidence/shutdown-evidence-classification.policy';
-import {
-  MIN_REST_WAKE_AGE_AFTER_ANCHOR_MS,
-} from './generalized-evidence.constants';
 
 export interface ClassifyGeneralizedEvidenceInput {
   fields: GeneralizedEvidenceFieldBundle;
   referenceAt: Date;
   providerObservationOutcome?: string | null;
+  /** Provider-qualified age vs session anchor; null when LV provider time missing. */
   actualRestAgeMs?: number | null;
   restStablePromotionEnabled?: boolean;
+  /** M3.3B+ — R1 cadence qualification; must stay false in M3.3A.x */
+  restWakeCadenceQualified?: boolean;
+  /** Explicit provider/source semantic marking periodic R1 wake (not implemented in M3.3A) */
+  restWakeSourceSemantic?: boolean;
 }
 
 export interface ClassifyGeneralizedEvidenceResult {
@@ -52,11 +54,51 @@ function mapConfidence(
   }
   if (
     evidenceClass === BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE ||
-    evidenceClass === BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION
+    evidenceClass === BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION ||
+    evidenceClass === BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE
   ) {
     return BatteryGeneralizedEvidenceConfidence.MEDIUM;
   }
   return BatteryGeneralizedEvidenceConfidence.HIGH;
+}
+
+function classifyParkedEngineOff(
+  input: ClassifyGeneralizedEvidenceInput,
+  completeness: ReturnType<typeof resolveStateCompleteness>,
+  alignment: ReturnType<typeof resolveStateAlignment>,
+): ClassifyGeneralizedEvidenceResult {
+  const restAge = input.actualRestAgeMs;
+  const wakeQualified =
+    input.restWakeCadenceQualified === true || input.restWakeSourceSemantic === true;
+
+  if (wakeQualified) {
+    if (input.restStablePromotionEnabled === true) {
+      return wrap(
+        BatteryGeneralizedEvidenceClass.REST_STABLE_VOLTAGE,
+        completeness,
+        alignment,
+      );
+    }
+    return wrap(
+      BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+      completeness,
+      alignment,
+    );
+  }
+
+  if (restAge == null || restAge <= 0) {
+    return wrap(
+      BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
+      completeness,
+      alignment,
+    );
+  }
+
+  return wrap(
+    BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE,
+    completeness,
+    alignment,
+  );
 }
 
 export function classifyGeneralizedEvidence(
@@ -114,7 +156,7 @@ export function classifyGeneralizedEvidence(
   if (
     driving ||
     (voltage != null && isAlternatorVoltage(voltage)) ||
-    (fields.isLvCharging === true)
+    fields.isLvCharging === true
   ) {
     const evidenceClass =
       voltage != null && (isAlternatorVoltage(voltage) || fields.isLvCharging)
@@ -129,26 +171,7 @@ export function classifyGeneralizedEvidence(
     isSpeedKnownAtRest(fields.speedKmh);
 
   if (engineOff && isPlausibleLvVoltage(voltage)) {
-    const restAge = input.actualRestAgeMs ?? 0;
-    if (restAge >= MIN_REST_WAKE_AGE_AFTER_ANCHOR_MS) {
-      if (input.restStablePromotionEnabled === true) {
-        return wrap(
-          BatteryGeneralizedEvidenceClass.REST_STABLE_VOLTAGE,
-          completeness,
-          alignment,
-        );
-      }
-      return wrap(
-        BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
-        completeness,
-        alignment,
-      );
-    }
-    return wrap(
-      BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
-      completeness,
-      alignment,
-    );
+    return classifyParkedEngineOff(input, completeness, alignment);
   }
 
   if (

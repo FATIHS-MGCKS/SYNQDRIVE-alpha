@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ACTIVE_REST_SESSION_STATUSES } from './generalized-evidence.constants';
+
+function vehicleAdvisoryLockKey(vehicleId: string): bigint {
+  let hash = 0;
+  for (let i = 0; i < vehicleId.length; i += 1) {
+    hash = (hash * 31 + vehicleId.charCodeAt(i)) | 0;
+  }
+  return BigInt(Math.abs(hash));
+}
 
 @Injectable()
 export class GeneralizedEvidenceRepository {
@@ -40,11 +49,67 @@ export class GeneralizedEvidenceRepository {
     }
   }
 
+  /**
+   * Ensures at most one active rest session per vehicle under concurrent writers.
+   */
+  async claimOrCreateActiveRestSession(
+    data: Prisma.BatteryRestSessionCreateInput,
+  ): Promise<{ sessionId: string; created: boolean }> {
+    const vehicleId =
+      typeof data.vehicle === 'object' &&
+      data.vehicle !== null &&
+      'connect' in data.vehicle &&
+      data.vehicle.connect &&
+      'id' in data.vehicle.connect
+        ? (data.vehicle.connect.id as string)
+        : null;
+    if (!vehicleId) {
+      throw new Error('claimOrCreateActiveRestSession requires vehicle.connect.id');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${vehicleAdvisoryLockKey(vehicleId)})`;
+
+      const existing = await tx.batteryRestSession.findFirst({
+        where: {
+          vehicleId,
+          sessionStatus: { in: [...ACTIVE_REST_SESSION_STATUSES] },
+        },
+        orderBy: { anchorAt: 'desc' },
+      });
+      if (existing) {
+        return { sessionId: existing.id, created: false };
+      }
+
+      try {
+        const created = await tx.batteryRestSession.create({ data });
+        return { sessionId: created.id, created: true };
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          const raced = await tx.batteryRestSession.findFirst({
+            where: {
+              vehicleId,
+              sessionStatus: { in: [...ACTIVE_REST_SESSION_STATUSES] },
+            },
+            orderBy: { anchorAt: 'desc' },
+          });
+          if (raced) {
+            return { sessionId: raced.id, created: false };
+          }
+        }
+        throw err;
+      }
+    });
+  }
+
   async findActiveRestSession(vehicleId: string) {
     return this.prisma.batteryRestSession.findFirst({
       where: {
         vehicleId,
-        sessionStatus: { in: ['CANDIDATE', 'CONFIRMED', 'RESTING'] },
+        sessionStatus: { in: [...ACTIVE_REST_SESSION_STATUSES] },
       },
       orderBy: { anchorAt: 'desc' },
     });

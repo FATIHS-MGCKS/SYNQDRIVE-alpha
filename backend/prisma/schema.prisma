@@ -8824,6 +8824,7 @@ enum BatteryGeneralizedEvidenceClass {
   DRIVING_CHARGING
   DRIVING_NON_CHARGING
   ENGINE_OFF_TRANSITION
+  PARKED_REST_CANDIDATE
   REST_WAKE_VOLTAGE
   REST_STABLE_VOLTAGE
   ACTIVE_VEHICLE_CONTAMINATED
@@ -8933,6 +8934,7 @@ model BatteryRestSession {
   endReason               BatteryRestSessionEndReason? @map("end_reason")
   firstRestObservationAt  DateTime?                   @map("first_rest_observation_at")
   lastRestObservationAt   DateTime?                   @map("last_rest_observation_at")
+  restObservationCount    Int                         @default(0) @map("rest_observation_count")
   validRestObservationCount Int                       @default(0) @map("valid_rest_observation_count")
   idempotencyKey          String                      @map("idempotency_key")
   createdAt               DateTime                    @default(now()) @map("created_at")
