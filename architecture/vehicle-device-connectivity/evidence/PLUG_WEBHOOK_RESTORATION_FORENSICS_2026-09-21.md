@@ -38,7 +38,18 @@ No provider `PUT` enable, no subscription mutation, no P2.5 T0 reset, no PR #169
 | C — temporary unsubscribe others + enable global | **Technically possible; NOT RECOMMENDED** — parked replug events lost for 6 assets during window |
 | D — no safe single-vehicle canary via global enable alone | **YES** |
 
-`RECOMMENDED_CANARY_TOPOLOGY=A` — design script `backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.mjs` (read-only).
+`RECOMMENDED_CANARY_TOPOLOGY=A` — `backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.mjs` (inspect default; `--dry-run-plan`; authorized `--phase=activate|teardown` with `--confirm-canary=vdc-wob-7503-plug-isolated-canary`). Legacy global enable: `gt-r1-plug-webhook-restoration.mjs` (blast-radius explicit).
+
+## Pre-activation gate (2026-09-21 closure)
+
+| Gate | Result |
+|------|--------|
+| PR #1707 rebased on `main` `6e3bce843ed09c3603f02fcdb835a1840429372b` | YES |
+| Stale P2.5 dark-deploy audit file in PR | REMOVED |
+| PostgreSQL integration (CI `boundary-repair-postgres-ci`) | **115/115 PASS** (run `35599832934`) |
+| Vehicle Detail CI on head `e25360b6f…` | GREEN |
+| Production mutated | NO |
+| `READY_FOR_OPERATOR_CANARY_ACTIVATION` | YES (tooling); physical GT not executed |
 
 ## Section 8 — P2.5 non-interference (prospective)
 
