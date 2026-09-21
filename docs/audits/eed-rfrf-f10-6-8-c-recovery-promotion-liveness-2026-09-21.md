@@ -22,3 +22,4 @@ Transaction hooks cannot bypass recovery lease/generation validation (hook runs 
 
 - `raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts`
 - `backend/scripts/test/rfrf-f10-6-8-c-recovery-promotion-gate.sh`
+- `rfrf-stage4-convergence-readiness-ci-gate.sh` orchestrates the C gate on PR CI (PostgreSQL service)
