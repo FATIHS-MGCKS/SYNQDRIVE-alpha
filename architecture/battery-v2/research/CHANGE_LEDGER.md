@@ -32,6 +32,23 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 R1 8h REST evidence architecture audit
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.1/M3.2 documented REST_60M/REST_6H observability deadlock under wake-only LV; M3.2B shadow provenance deployed; no REST_8H ladder. |
+| **OBSERVATION** | Read-only code/architecture audit: raw `LIVE_VOLTAGE` persists without trip COMPLETED; rest session arming + REST targets + M3.2B shadow still trip-finalize gated; no charge-opportunity or retention-curve models; R1 ~8h wake is new provider contract. |
+| **HYPOTHESIS** | Battery V2 should center on **REST_WAKE_VOLTAGE** ladder (8h, 16h, …) with tolerance bands, session retention features, and longitudinal profiles — not absolute SOH. |
+| **CHANGE** | **None** (audit only). Added `M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md`. |
+| **WHY** | R1 hardware cadence enables long-rest evidence; prior 60m/6h targets were hard to observe naturally — architecture evolution, not invalidation of M3.1/M3.2 findings. |
+| **EXPECTED_EFFECT** | Clear phased path M3.3A–G; REST_60M/6H retained as opportunistic legacy. |
+| **VALIDATION** | Repository trace + authority cross-check; validators PASS. |
+| **OBSERVED_EFFECT** | `IMPLEMENTATION_READY=NO`; `NEXT_PHASE=M3.3A`; `RAW_LV_INDEPENDENT_OF_TRIP_FSM=YES` (persist layer). |
+| **NON_EFFECTS** | No production, flags, schema, or scoring changes. |
+| **REMAINING_GAPS** | R1 wake-load sampling order (A/B/C); 8h tolerance bands from production forensics; temperature co-alignment with each LV. |
+| **DECISION_STATUS** | Architecture audit complete — implementation gated on M3.3A. |
+| **EVIDENCE** | `M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md`. |
+
 ## CL-2026-09-08 — M3.2B Phase C controlled production shadow activation
 
 | Field | Content |
