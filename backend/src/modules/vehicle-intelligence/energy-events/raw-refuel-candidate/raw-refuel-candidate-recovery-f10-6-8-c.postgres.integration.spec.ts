@@ -418,6 +418,75 @@ function syntheticRiseSamples() {
     }
   });
 
+  function nativeDistinctSiblingFromCandidate(candidate: RawRefuelCandidate, suffix: string) {
+    const { end } = candidateMatcherWindow(candidate);
+    const start = new Date(end.getTime() + 2 * 60 * 60 * 1000);
+    const distinctEnd = new Date(start.getTime() + 30 * 60 * 1000);
+    return {
+      vehicleId: candidate.vehicleId,
+      dimoSegmentId: `dimo-distinct-${suffix}`,
+      kind: 'REFUEL' as const,
+      detectionMechanism: 'refuel',
+      startTime: start,
+      endTime: distinctEnd,
+      durationSeconds: 1800,
+      fuelDeltaLiters: 20,
+      rawDetectionMeta: { fuelStartLiters: 20, fuelEndLiters: 40 },
+    };
+  }
+
+  function nativeSameSiblingFromCandidate(candidate: RawRefuelCandidate, suffix: string) {
+    const { start, end } = candidateMatcherWindow(candidate);
+    return {
+      vehicleId: candidate.vehicleId,
+      dimoSegmentId: `dimo-same-ambig-${suffix}`,
+      kind: 'REFUEL' as const,
+      detectionMechanism: 'refuel',
+      startTime: start,
+      endTime: end,
+      durationSeconds: Math.max(1, Math.round((end.getTime() - start.getTime()) / 1000)),
+      fuelDeltaLiters: candidate.deltaAbsoluteLiters,
+      rawDetectionMeta: {
+        fuelStartLiters: candidate.preFuelAbsoluteLiters,
+        fuelEndLiters: candidate.postFuelAbsoluteLiters,
+      },
+    };
+  }
+
+  it('RECOVERY_PROMOTION_AMBIGUITY — SAME+DISTINCT natives fail closed, no fallback VEE', async () => {
+    const restore = setStage5Env(true);
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
+    const t0 = new Date('2026-09-06T11:10:00.000Z');
+    const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
+    try {
+      const candidate = await persistReadyCandidate(vehicle.id);
+      await prisma.vehicleEnergyEvent.createMany({
+        data: [
+          nativeSameSiblingFromCandidate(candidate, suffix),
+          nativeDistinctSiblingFromCandidate(candidate, suffix),
+        ],
+      });
+      await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
+      const result = await buildRecovery({ now: t0 }).recoverCandidateById(candidate.id, t0);
+      expect(result.outcome).toBe('AMBIGUOUS_RECOVERY_OBSERVATION');
+      expect(await prisma.vehicleEnergyEvent.count({
+        where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+      })).toBe(0);
+      expect(
+        (await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } }))
+          .lifecycleState,
+      ).not.toBe('PROMOTED');
+    } finally {
+      restore();
+      await prisma.rawRefuelCandidate.deleteMany({ where: { vehicleId: vehicle.id } });
+      await prisma.vehicleEnergyEvent.deleteMany({ where: { vehicleId: vehicle.id } });
+      await prisma.vehicle.deleteMany({ where: { id: vehicle.id } });
+      await prisma.dimoVehicle.deleteMany({ where: { id: dimoVehicle.id } });
+      await prisma.organization.deleteMany({ where: { id: org.id } });
+    }
+  });
+
   it('RECOVERY_PROMOTION_MULTI_REPLICA — parallel recovery attempts yield one VEE', async () => {
     const restore = setStage5Env(true);
     const suffix = randomUUID().slice(0, 8);
