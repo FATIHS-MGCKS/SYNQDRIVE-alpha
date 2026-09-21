@@ -45,6 +45,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Zero generalized-evidence and rest-session rows before and after 180s post-deploy smoke (flag OFF).',
       'M3.3 Prometheus counters registered on /api/v1/metrics; REST_WAKE auto-promotion remains disabled in code.',
       'B0_PASS — B1 requires explicit authorization; no backfill or flag enable.',
+      'Lineage: M3.3A schema applied at fe3dc6bf (descendant of #1710) before B0 target 105f2c5ff; MIGRATIONS_APPLIED=0_new expected.',
     ],
     reason:
       'Controlled production cutover for M3.3 shadow infrastructure without enabling writes or REST_WAKE promotion.',

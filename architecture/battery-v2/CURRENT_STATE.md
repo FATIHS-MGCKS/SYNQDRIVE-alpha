@@ -29,7 +29,7 @@
 | M3.3 R1 8h REST evidence architecture (`2026-09-21`) | **AUDIT COMPLETE** (read-only); see `research/M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md` |
 | M3.3A generalized evidence + rest sessions (`2026-09-21`) | **DEPLOYED (B0)** @ `105f2c5ff` release `20260921172342_v4994`; **`BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` effective FALSE**; schema on prod; **0 rows** post-deploy smoke |
 | M3.3B R1 natural cadence forensics (`2026-09-21`) | **DEPLOYED (B0, code only)** — M3.3B.2 ladder metadata + metrics registered; auto REST_WAKE **off**; zero shadow writes while flag OFF |
-| `M3_3_B0_STATUS` | **`B0_PASS`** — see `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` |
+| `M3_3_B0_STATUS` | **`B0_PASS`** — see `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` (M3.3A schema pre-existed at `fe3dc6bf` before B0 target `105f2c5ff`; **0 new migrations** at B0) |
 | `NEXT_PHASE` | **Explicit B1 authorization** — canary `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true` (not started); REST_WAKE promotion remains **off** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |

@@ -6,6 +6,29 @@
 **Deployed release:** `20260921172342_v4994`  
 **Deploy path:** `bash .cursor/scripts/cloud-agent-deploy.sh` with `CLOUD_AGENT_REQUESTED_DEPLOY_SHA=105f2c5ff28f74c0f8bc83655da94ab98749ce0d`
 
+## Deployment lineage (migration vs application code)
+
+This clarifies why B0 preflight already saw M3.3A tables and **`MIGRATIONS_APPLIED=0_new_pending_none`** on the dedicated B0 deploy — without changing the **`B0_PASS`** verdict.
+
+| Stage | Production SHA | Meaning |
+|-------|----------------|---------|
+| M3.3B read-only forensics (earlier snapshot) | `6e3bce843ed09c3603f02fcdb835a1840429372b` | M3.3A **not yet deployed** on VPS; forensic docs treated prod schema as absent for generalized evidence. |
+| Interim production deploy (before dedicated B0) | `fe3dc6bf1fc183eb6dd014a2eb2453489331da64` | Production advanced **before** the B0 target deploy; not the B0 target SHA. |
+| M3.3A merge baseline | `b83271dfb958c951bab831eae1b3a2fbbd4afd55` (PR **#1710**) | Canonical M3.3A merge; **`fe3dc6bf` is a descendant** — release at `fe3dc6bf` included M3.3A **migrations** in the deploy pipeline. |
+| Dedicated B0 deploy (this evidence) | `105f2c5ff28f74c0f8bc83655da94ab98749ce0d` | Lands **M3.3B** application code on top of schema already applied at `fe3dc6bf`; flag remains OFF. |
+
+**Consequence for B0 reporting**
+
+- **`MIGRATIONS_APPLIED=0_new_pending_none`** is **expected and correct**: `prisma migrate deploy` at B0 had no pending migrations.
+- **`battery_generalized_evidence_observations`**, **`battery_rest_sessions`**, and **active-session DB protection** were **already present** at B0 preflight (`PRE_DEPLOY_PRODUCTION_SHA=fe3dc6bf`).
+- B0 still validated the **intended cutover**: exact target SHA on both replicas, flag OFF, zero shadow writes, runtime health — verdict unchanged.
+
+```
+MIGRATION_LINEAGE_EXPLAINED=YES
+SCHEMA_PREEXISTENCE_EXPECTED=YES
+B0_VERDICT_CHANGED=NO
+```
+
 ## Scope
 
 | Allowed | Forbidden (this task) |
@@ -197,4 +220,8 @@ GENERALIZED_EVIDENCE_SHADOW_WRITES_ENABLED=NO
 
 B1_ALLOWED=NO
 NEXT_ACTION=EXPLICIT_B1_AUTHORIZATION_AFTER_B0_PASS
+
+MIGRATION_LINEAGE_EXPLAINED=YES
+SCHEMA_PREEXISTENCE_EXPECTED=YES
+B0_VERDICT_CHANGED=NO
 ```

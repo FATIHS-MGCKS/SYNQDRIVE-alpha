@@ -49,6 +49,7 @@ Append-only scientific record. Newest entries first.
 | **WHY** | Land M3.3A+M3.3B code on production without enabling shadow writes or REST_WAKE promotion. |
 | **VALIDATION** | Zero row delta T0→T1 (+180s); both replicas SHA invariant; scheduler leader=1; `/api/v1/metrics` M3.3 counters registered; no authoritative error signals in smoke window. |
 | **OBSERVED_EFFECT** | **`B0_PASS`**; production changed; shadow writes **disabled**. |
+| **LINEAGE** | Forensics once at `6e3bce843` (no M3.3A deploy); interim prod `fe3dc6bf` (descendant of #1710 `b83271dfb`) applied M3.3A migrations before B0 target `105f2c5ff` — **`MIGRATIONS_APPLIED=0_new`** expected; **`B0_VERDICT_CHANGED=NO`**. |
 | **NON_EFFECTS** | No B1; no generalized evidence rows; no REST_WAKE auto-promotion; REST/assess/pub paths not event-exercised in smoke. |
 | **DECISION_STATUS** | **`B0_COMPLETE`** — **`B1_ALLOWED=NO`** until explicit authorization. |
 | **EVIDENCE** | `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` |
