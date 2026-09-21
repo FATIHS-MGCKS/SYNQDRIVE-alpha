@@ -67,6 +67,13 @@ export const BATTERY_V2_READINESS_ENABLED_ENV = 'BATTERY_V2_READINESS_ENABLED';
 export const BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED_ENV =
   'BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED';
 
+/**
+ * M3.3A — generalized battery evidence + rest session layer (default OFF).
+ * Isolated from authoritative assessment/publication.
+ */
+export const BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV =
+  'BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -210,6 +217,10 @@ export function isBatteryV2ShutdownEvidenceShadowEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED_ENV], false);
 }
 
+export function isBatteryV2GeneralizedEvidenceEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV], false);
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -292,4 +303,5 @@ export default registerAs('batteryHealthV2', () => ({
   hvSohPublicationEnabled: isBatteryV2HvSohPublicationEnabled(),
   readinessEnabled: isBatteryV2ReadinessEnabled(),
   shutdownEvidenceShadowEnabled: isBatteryV2ShutdownEvidenceShadowEnabled(),
+  generalizedEvidenceEnabled: isBatteryV2GeneralizedEvidenceEnabled(),
 }));

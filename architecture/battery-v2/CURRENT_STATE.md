@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-21 (M3.3 R1 8h REST architecture audit)  
+**Snapshot date:** 2026-09-21 (M3.3A generalized evidence + rest session foundation)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -26,8 +26,9 @@
 | M3.2A shutdown anchor feasibility (`04:30Z`) | **IMPLEMENTATION_READY=NO**; `POST_ENGINE_OFF_PRE_SLEEP_PATTERN_SUPPORT=PARTIAL`; **0/13 confirmed**; see `research/M3_2A_SHUTDOWN_ANCHOR_HYBRID_EVIDENCE_FEASIBILITY_2026-09-07.md` |
 | Canonical seal (`05:30Z`, PR #1551) | **RUNTIME_DIFF=NONE**; `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`; see `research/M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md` |
 | M3.2B shadow shutdown evidence (`2026-09-07`, PR #1560) | **DEPLOYED** @ `0ba96e03`; Phase C shadow ON @ **`M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z`**; see Phase B/C + first-natural / post-probe forensics in `research/M3_2B_*_2026-09-08.md` |
-| M3.3 R1 8h REST evidence architecture (`2026-09-21`) | **AUDIT COMPLETE** (read-only); R1 ~8h wake → design around **`REST_WAKE_VOLTAGE`** ladder + retention/longitudinal model; raw `LIVE_VOLTAGE` persist **independent** of trip COMPLETED; REST_60M/REST_6H → **opportunistic legacy**; `IMPLEMENTATION_READY=NO`; **`NEXT_PHASE=M3.3A`**; see `research/M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md` |
-| `NEXT_PHASE` | **M3.3A** — evidence/session architecture (no authoritative scoring change); then M3.3B–G per audit; `M3_2C_ALLOWED=NO`; R1 device wake-load semantics **open** |
+| M3.3 R1 8h REST evidence architecture (`2026-09-21`) | **AUDIT COMPLETE** (read-only); see `research/M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md` |
+| M3.3A generalized evidence + rest sessions (`2026-09-21`) | **IMPLEMENTED (shadow, flag OFF)** — `battery_generalized_evidence_observations` + `battery_rest_sessions`; `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` default false; no assessment/publication/REST_60M/6H behavior change; see `research/M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md` |
+| `NEXT_PHASE` | **M3.3B** — production forensics, nominal ladder index, tolerance policy, metrics activation; then M3.3C–G per M3.3 audit; `M3_2C_ALLOWED=NO`; R1 wake-load semantics **open** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

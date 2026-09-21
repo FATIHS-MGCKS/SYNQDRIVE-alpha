@@ -6,6 +6,22 @@
 
 ---
 
+## 0 — Contract vs observation semantics (M3.3A errata)
+
+Do **not** conflate device configuration with production-validated cadence or wake semantics.
+
+| Token | M3.3 / M3.3A meaning |
+|-------|----------------------|
+| `R1_8H_SIGNAL_AVAILABLE_BY_CONTRACT` | **YES** — R1 hardware / DIMO configuration expects ~8h LV while parked |
+| `R1_8H_NATURAL_PRODUCTION_SEQUENCE_OBSERVED` | **NO** (as of audit) — no forensically validated 8h→16h→24h ladder in production evidence yet |
+| `R1_8H_CADENCE_EMPIRICALLY_VALIDATED` | **NO** — jitter, missing intervals, and tolerance bands not characterized |
+| `R1_WAKE_LOAD_ORDER_KNOWN` | **NO** — whether LV precedes/follows other wake fields is unproven |
+| `R1_REST_SIGNAL_SEMANTIC` | **`REST_WAKE_VOLTAGE`** until natural evidence proves stable OCV semantics |
+
+Implementation design: **`M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md`**.
+
+---
+
 ## Executive summary
 
 Battery V2 already persists **canonical `LIVE_VOLTAGE`** on each **new provider observation** via `BATTERY_OBSERVATION_CLASSIFY`, **without** requiring `trip_status=COMPLETED`. Trip FSM still gates **LV rest session arming**, **REST_60M/REST_6H target scheduling**, and **M3.2B shadow shutdown observations** on finalized trips — creating association lag and temporal blind spots documented in M3.2B forensics.
@@ -450,7 +466,13 @@ Trip FSM active  ──► contamination flags only (ACTIVE_VEHICLE_CONTAMINATED
 ```
 M3_3_R1_8H_ARCHITECTURE_AUDIT=COMPLETE
 
-R1_8H_SIGNAL_AVAILABLE=YES_BY_CONTRACT (hardware expectation; production timing forensics still required)
+R1_8H_SIGNAL_AVAILABLE_BY_CONTRACT=YES
+R1_8H_NATURAL_PRODUCTION_SEQUENCE_OBSERVED=NO
+R1_8H_CADENCE_EMPIRICALLY_VALIDATED=NO
+R1_WAKE_LOAD_ORDER_KNOWN=NO
+R1_REST_SIGNAL_SEMANTIC=REST_WAKE_VOLTAGE
+
+R1_8H_SIGNAL_AVAILABLE=YES_BY_CONTRACT (legacy alias — prefer BY_CONTRACT token above)
 R1_8H_SIGNAL_CURRENTLY_INGESTED=AS_LIVE_VOLTAGE_WHEN_NEW_PROVIDER_TIMESTAMP (no REST_8H type or ladder yet)
 R1_8H_PROVIDER_TIMESTAMP_PRESERVED=YES (lvBatteryObservedAt → observed_at / provider_timestamp)
 
