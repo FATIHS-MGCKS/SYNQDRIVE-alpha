@@ -40,6 +40,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B0 production deploy (generalized evidence flag OFF)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Prod @ `fe3dc6bf` release `20260921150734_v4994`; M3.3 schema present, 0 evidence/rest-session rows; flag key absent → false. |
+| **CHANGE** | Controlled deploy @ `105f2c5ff` (`20260921172342_v4994`); rolling restart both replicas; DB backup; migrate deploy (no pending); flag unchanged OFF. |
+| **WHY** | Land M3.3A+M3.3B code on production without enabling shadow writes or REST_WAKE promotion. |
+| **VALIDATION** | Zero row delta T0→T1 (+180s); both replicas SHA invariant; scheduler leader=1; `/api/v1/metrics` M3.3 counters registered; no authoritative error signals in smoke window. |
+| **OBSERVED_EFFECT** | **`B0_PASS`**; production changed; shadow writes **disabled**. |
+| **NON_EFFECTS** | No B1; no generalized evidence rows; no REST_WAKE auto-promotion; REST/assess/pub paths not event-exercised in smoke. |
+| **DECISION_STATUS** | **`B0_COMPLETE`** — **`B1_ALLOWED=NO`** until explicit authorization. |
+| **EVIDENCE** | `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3B.2 forensic/runtime mapping alignment + metric closure
 
 | Field | Content |
