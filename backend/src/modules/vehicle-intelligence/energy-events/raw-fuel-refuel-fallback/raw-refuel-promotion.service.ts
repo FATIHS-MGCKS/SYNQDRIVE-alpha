@@ -33,6 +33,26 @@ import type {
   RawRefuelPromotionTransactionHooks,
 } from './raw-refuel-promotion.types';
 import { mapPromotionDraftToVehicleEnergyEventCreateInput } from './raw-refuel-promotion-vee.mapper';
+import {
+  lockRecoveryClaimForMutation,
+  type RawRefuelCandidateRecoveryMutationContext,
+} from '../raw-refuel-candidate/raw-refuel-candidate-recovery-fencing';
+
+function assertRecoveryClaimActiveForPromotion(
+  locked: RawRefuelCandidate,
+  claim: RawRefuelCandidateRecoveryMutationContext['claim'],
+  mutationTime: Date,
+): boolean {
+  if (locked.recoveryAttemptCount !== claim.expectedClaimGeneration) {
+    return false;
+  }
+  if (claim.requireActiveLease) {
+    if (!locked.recoveryLeaseExpiresAt || locked.recoveryLeaseExpiresAt <= mutationTime) {
+      return false;
+    }
+  }
+  return true;
+}
 
 @Injectable()
 export class RawRefuelPromotionService {
@@ -49,6 +69,7 @@ export class RawRefuelPromotionService {
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelPromotionApplyResult> {
     const authority = evaluateFallbackPromotionAuthority(env);
     if (!authority.authorized) {
@@ -77,7 +98,7 @@ export class RawRefuelPromotionService {
       };
     }
 
-    return this.evaluateAndApplyPromotion(candidate, context, env, hooks);
+    return this.evaluateAndApplyPromotion(candidate, context, env, hooks, recoveryMutation);
   }
 
   async evaluateAndApplyPromotion(
@@ -85,6 +106,7 @@ export class RawRefuelPromotionService {
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelPromotionApplyResult> {
     const authority = evaluateFallbackPromotionAuthority(env);
     if (!authority.authorized) {
@@ -127,7 +149,28 @@ export class RawRefuelPromotionService {
       return await this.prisma.$transaction(async (tx) => {
         await acquirePgAdvisoryXactLock64(tx, buildRfrfPromotionLockKey(candidate.vehicleId));
 
-        const locked = await this.candidateRepository.findByIdForUpdate(tx, candidate.id);
+        let locked: RawRefuelCandidate | null;
+        if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          locked = await lockRecoveryClaimForMutation(
+            tx,
+            candidate.id,
+            recoveryMutation.claim,
+            mutationTime,
+          );
+          if (!locked) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: candidate.id,
+              fallbackVehicleEnergyEventId: null,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
+        } else {
+          locked = await this.candidateRepository.findByIdForUpdate(tx, candidate.id);
+        }
         if (!locked) {
           return {
             status: 'SKIPPED_NO_ACTION',
@@ -141,6 +184,20 @@ export class RawRefuelPromotionService {
 
         if (hooks?.afterCandidateRowLock) {
           await hooks.afterCandidateRowLock();
+        }
+
+        if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          if (!assertRecoveryClaimActiveForPromotion(locked, recoveryMutation.claim, mutationTime)) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: locked.id,
+              fallbackVehicleEnergyEventId: null,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
         }
 
         if (locked.lifecycleState === 'CONVERGED_NATIVE') {
@@ -343,6 +400,28 @@ export class RawRefuelPromotionService {
 
         if (hooks?.beforeVeeInsert) {
           await hooks.beforeVeeInsert();
+        } else if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          const freshLocked = await tx.rawRefuelCandidate.findUnique({
+            where: { id: locked.id },
+          });
+          if (
+            !freshLocked ||
+            !assertRecoveryClaimActiveForPromotion(
+              freshLocked,
+              recoveryMutation.claim,
+              mutationTime,
+            )
+          ) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: locked.id,
+              fallbackVehicleEnergyEventId: null,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
         }
 
         const createdVee = await tx.vehicleEnergyEvent.create({
