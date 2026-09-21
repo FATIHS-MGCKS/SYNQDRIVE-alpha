@@ -28,7 +28,7 @@
 | M3.2B shadow shutdown evidence (`2026-09-07`, PR #1560) | **DEPLOYED** @ `0ba96e03`; Phase C shadow ON @ **`M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z`**; see Phase B/C + first-natural / post-probe forensics in `research/M3_2B_*_2026-09-08.md` |
 | M3.3 R1 8h REST evidence architecture (`2026-09-21`) | **AUDIT COMPLETE** (read-only); see `research/M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md` |
 | M3.3A generalized evidence + rest sessions (`2026-09-21`) | **IMPLEMENTED (shadow, flag OFF)** + **M3.3A.1 hardening**; merged PR #1710 @ `b83271dfb`; **not deployed to prod VPS yet** |
-| M3.3B R1 natural cadence forensics (`2026-09-21`) | **M3.3B.1 CORRECTED** — strict provider-only + session segmentation; **`CADENCE_POLICY_DECISION=CADENCE_EXISTS_BUT_POLICY_TOLERANCE_NOT_READY`**; `REST_CADENCE_POLICY_VERSION=M3_3B_V1_1`; auto REST_WAKE **off**; see `M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md` §M3.3B.1 |
+| M3.3B R1 natural cadence forensics (`2026-09-21`) | **M3.3B.2** — runtime-aligned ladder residuals (n=35); research tolerance candidate **10.2756M ms**; auto REST_WAKE **off**; reproducible SQL script; metric `cadence_ladder_research_unqualified_total` |
 | `NEXT_PHASE` | Merge **#1713** → single **B0** deploy (M3.3A+M3.3B.1, flag OFF); validated rung-residual tolerance before REST_WAKE promotion |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
