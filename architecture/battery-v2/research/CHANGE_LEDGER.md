@@ -40,6 +40,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B1 generalized evidence shadow activation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B0 @ `105f2c5ff`; flag absent/false; 0 shadow rows. |
+| **CHANGE** | `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true` in shared `backend.env`; canary restart Replica A then B; **no** new code deploy. |
+| **WHY** | Enable shadow-only generalized evidence + rest-session capture without authoritative Battery / REST_WAKE promotion changes. |
+| **VALIDATION** | Immutable `M3_3_B1_T0=2026-09-21T18:08:19Z`; post-smoke 1 natural observation; idempotency/active-session checks clean; metrics registered. |
+| **OBSERVED_EFFECT** | **`B1_ACTIVATION_RUNTIME_PASS`**; generalized capture **`B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED`**; rest/R1 ladder **`B1_REST_EVIDENCE_VALIDATION=PENDING`**. Historical **`B1_NATURAL_EVIDENCE_VALIDATION=OBSERVED`** = **`GENERALIZED_CAPTURE_ONLY`**. |
+| **NON_EFFECTS** | Authoritative REST/assess/pub/health; `REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false`; no cadence-based REST_WAKE rows. |
+| **EVIDENCE** | `research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3 B0 production deploy (generalized evidence flag OFF)
 
 | Field | Content |
