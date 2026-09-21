@@ -122,9 +122,35 @@ Evidence class counts (Postgres enum):
 | `STATE_AMBIGUOUS` | 0 |
 | `STALE_REPLAY` | 0 |
 
-**Note:** User-facing rollup `DRIVING_EVIDENCE` is not a stored enum; driving-related shadow = `DRIVING_*` classes.
+**Driving class reporting (stored enum — not rollup labels):**
+
+| Field | Count |
+|-------|-------|
+| `DRIVING_NON_CHARGING` | **1** |
+| `DRIVING_CHARGING` | **0** |
+| `DRIVING_TOTAL` | **1** (`DRIVING_NON_CHARGING` + `DRIVING_CHARGING`) |
+
+The legacy machine label `DRIVING_EVIDENCE=0` was a **rollup naming mismatch**: `DRIVING_EVIDENCE` is **not** a `BatteryGeneralizedEvidenceClass` value. Post-smoke capture **did** produce driving shadow evidence via `DRIVING_NON_CHARGING`.
 
 No `REST_WAKE_VOLTAGE` — consistent with **`REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false`**.
+
+## 8b — Natural validation semantics (split)
+
+Runtime activation and path-specific natural validation are **separate**:
+
+| Field | Value |
+|-------|-------|
+| `B1_ACTIVATION_RUNTIME_RESULT` | **PASS** |
+| `GENERALIZED_EVIDENCE_CAPTURE_OBSERVED` | **YES** (1 post-smoke row) |
+| `REST_SESSION_PATH_OBSERVED` | **NO** |
+| `PARKED_REST_CANDIDATE_OBSERVED` | **NO** |
+| `R1_REST_LADDER_EVIDENCE_OBSERVED` | **NO** |
+| `B1_GENERALIZED_CAPTURE_VALIDATION` | **OBSERVED** |
+| `B1_REST_EVIDENCE_VALIDATION` | **PENDING** |
+
+**Historical field (unchanged value, clarified scope):**
+
+`B1_NATURAL_EVIDENCE_VALIDATION=OBSERVED` — annotate **`GENERALIZED_CAPTURE_ONLY`** (not rest-session / R1 ladder completeness).
 
 ## 9 — Provenance validation (sample n=1)
 
@@ -199,11 +225,18 @@ On failure: set `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=false`, rolling restart
 
 ```
 B1_ACTIVATION_RUNTIME_RESULT=PASS
-B1_NATURAL_EVIDENCE_VALIDATION=OBSERVED
+B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED
+B1_REST_EVIDENCE_VALIDATION=PENDING
+GENERALIZED_EVIDENCE_CAPTURE_OBSERVED=YES
+REST_SESSION_PATH_OBSERVED=NO
+PARKED_REST_CANDIDATE_OBSERVED=NO
+R1_REST_LADDER_EVIDENCE_OBSERVED=NO
 M3_3_B1_RESULT=B1_ACTIVATION_RUNTIME_PASS
 ```
 
-Runtime PASS does **not** require 8h cadence evidence. Rest-session and PARKED_REST ladder paths remain **PENDING** natural exercise.
+**Historical (preserved, annotated):** `B1_NATURAL_EVIDENCE_VALIDATION=OBSERVED` — scope **`GENERALIZED_CAPTURE_ONLY`**.
+
+Runtime PASS does **not** require 8h cadence or rest-session evidence. Rest-session and PARKED_REST / R1 ladder paths remain **PENDING** natural exercise.
 
 **`NEXT_ACTION`:** Continue read-only shadow monitoring; separate authorization before REST_WAKE tolerance / promotion research beyond metadata.
 
@@ -242,7 +275,15 @@ REST_SESSION_ROWS_PRE_B1=0
 REST_SESSION_ROWS_AT_B1_T0=0
 REST_SESSION_ROWS_POST_SMOKE=0
 
-DRIVING_EVIDENCE=0
+DRIVING_NON_CHARGING=1
+DRIVING_CHARGING=0
+DRIVING_TOTAL=1
+
+GENERALIZED_EVIDENCE_CAPTURE_OBSERVED=YES
+REST_SESSION_PATH_OBSERVED=NO
+PARKED_REST_CANDIDATE_OBSERVED=NO
+R1_REST_LADDER_EVIDENCE_OBSERVED=NO
+
 ENGINE_OFF_TRANSITION=0
 PARKED_REST_CANDIDATE=0
 REST_WAKE_VOLTAGE=0
@@ -271,10 +312,25 @@ AUTHORITATIVE_BATTERY_BEHAVIOR_CHANGED=NO
 AUTHORITATIVE_REGRESSION_OBSERVED=NO
 
 B1_ACTIVATION_RUNTIME_RESULT=PASS
+B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED
+B1_REST_EVIDENCE_VALIDATION=PENDING
 B1_NATURAL_EVIDENCE_VALIDATION=OBSERVED
+B1_NATURAL_EVIDENCE_VALIDATION_SCOPE=GENERALIZED_CAPTURE_ONLY
 
 PRODUCTION_CHANGED=YES
 AUTHORITATIVE_PRODUCTION_BEHAVIOR_CHANGED=NO
 
 NEXT_ACTION=SHADOW_MONITORING_REST_SESSION_AND_PARKED_REST_CANDIDATE_PENDING
+```
+
+---
+
+## Documentation clarification (2026-09-21, PR #1716)
+
+Semantic-only doc fix — **no** production mutation, flag change, deploy, or **`M3_3_B1_T0`** change.
+
+```
+B1_DOC_CLARIFICATION_RESULT=PASS
+M3_3_B1_T0_UNCHANGED=YES
+PRODUCTION_CHANGED=NO
 ```

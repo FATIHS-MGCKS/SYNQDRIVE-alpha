@@ -30,7 +30,7 @@
 | M3.3A generalized evidence + rest sessions (`2026-09-21`) | **B1 ACTIVE (shadow writes ON)** @ runtime `105f2c5ff` / `20260921172342_v4994`; `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true`; **`M3_3_B1_T0=2026-09-21T18:08:19Z`** |
 | M3.3B R1 natural cadence forensics (`2026-09-21`) | **Deployed (code)** — auto REST_WAKE **off**; ladder metadata + metrics; cadence promotion **not** enabled in B1 |
 | `M3_3_B0_STATUS` | **`B0_PASS`** — `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` |
-| `M3_3_B1_STATUS` | **`B1_ACTIVATION_RUNTIME_PASS`** — natural evidence **OBSERVED** (n=1 `DRIVING_NON_CHARGING`); rest-session ladder **PENDING** — `research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md` |
+| `M3_3_B1_STATUS` | **`B1_ACTIVATION_RUNTIME_PASS`** — **`B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED`** (1× `DRIVING_NON_CHARGING`, `DRIVING_TOTAL=1`); **`B1_REST_EVIDENCE_VALIDATION=PENDING`** — `research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md` |
 | `NEXT_PHASE` | Shadow monitoring; **no** REST_WAKE tolerance promotion; explicit authorization for further promotion research |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |

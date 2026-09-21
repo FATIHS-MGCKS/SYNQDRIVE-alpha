@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Runtime unchanged @ 105f2c5ff (B0 release); BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true via shared backend.env.',
       'Canary: Replica A restart then Replica B; bounded mixed-flag interval; M3_3_B1_T0=2026-09-21T18:08:19Z.',
-      'Natural shadow write: 1× DRIVING_NON_CHARGING; 0 rest sessions; REST_WAKE auto-promotion remains off.',
+      'Natural shadow write: 1× DRIVING_NON_CHARGING (DRIVING_TOTAL=1); 0 rest sessions; REST_WAKE auto-promotion remains off.',
+      'Validation split: B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED; B1_REST_EVIDENCE_VALIDATION=PENDING.',
       'PR #1709 closed SUPERSEDED_BY_1710; B1 docs on main lineage — no deploy of docs-only main for activation.',
     ],
     reason:
