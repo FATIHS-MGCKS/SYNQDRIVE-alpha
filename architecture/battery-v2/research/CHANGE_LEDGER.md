@@ -40,6 +40,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B1.2 first natural shutdown + rest session acceptance (read-only)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B1.1 capture PASS; post-T0 **0** trustworthy engine-off / rest sessions. |
+| **CHANGE** | Read-only production forensics only. |
+| **WHY** | B1.2 gate: first trustworthy shutdown → ENGINE_OFF → rest session acceptance. |
+| **VALIDATION** | **0** ENGINE_OFF_TRANSITION; **15** weak raw engine-off LV rows explicitly classified; **NO_SILENT_ENGINE_OFF_DROP=YES**; `POST_T0_TRIPS_WITH_SHUTDOWN_CONTEXT=2`; safety dupes **0**. |
+| **OBSERVED_EFFECT** | **`B1_2_PENDING_NATURAL_TRUSTWORTHY_SHUTDOWN`** — independent gates **PENDING** (not FAIL). |
+| **NON_EFFECTS** | No session anchor; no M3.3C; do not treat `engineRunning=false` alone as shutdown. |
+| **EVIDENCE** | `research/M3_3_B1_2_FIRST_NATURAL_SHUTDOWN_REST_SESSION_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3 B1.1 natural shadow evidence validation (read-only)
 
 | Field | Content |

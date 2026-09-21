@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or mutation.',
+      '0 ENGINE_OFF_TRANSITION and 0 rest sessions; POST_T0_TRIPS_WITH_SHUTDOWN_CONTEXT=2; 15 raw engineRunning=false LV not trustworthy shutdown.',
+      'Rows explicitly CHARGING/ACTIVE contaminated or DRIVING — NO_SILENT_ENGINE_OFF_DROP=YES.',
+      'ENGINE_OFF / REST_SESSION / PARKED / R1 gates PENDING; MULTI_REPLICA + PROVENANCE PASS.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'B1.2 acceptance for first natural shutdown anchor and rest session without requiring ~8h R1 ladder.',
+    previousBehavior:
+      'B1.1 generalized capture PASS; no trustworthy shutdown observed post-T0.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2_FIRST_NATURAL_SHUTDOWN_REST_SESSION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:50:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-1-natural-shadow-validation-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1.1 — Natural shadow evidence validation (read-only)',

@@ -32,6 +32,7 @@
 | `M3_3_B0_STATUS` | **`B0_PASS`** — `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` |
 | `M3_3_B1_STATUS` | **`B1_ACTIVATION_RUNTIME_PASS`** — **`B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED`**; **`B1_REST_EVIDENCE_VALIDATION=PENDING`** — `research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md` |
 | `M3_3_B1_1_STATUS` | **`B1_1_CAPTURE_AND_SAFETY_PASS_REST_CHAIN_PENDING`** @ forensics `2026-09-21T18:40:24Z` — 29 post-T0 shadow rows; LV capture **29/29**; rest/engine-off/parked/R1 **PENDING** natural events — `research/M3_3_B1_1_NATURAL_SHADOW_EVIDENCE_VALIDATION_2026-09-21.md` |
+| `M3_3_B1_2_STATUS` | **`B1_2_PENDING_NATURAL_TRUSTWORTHY_SHUTDOWN`** @ forensics `2026-09-21T18:47:32Z` — **0** `ENGINE_OFF_TRANSITION`; **15** weak raw engine-off LV rows explicitly classified (not trustworthy shutdown); **0** rest sessions — `research/M3_3_B1_2_FIRST_NATURAL_SHUTDOWN_REST_SESSION_2026-09-21.md` |
 | `NEXT_PHASE` | Shadow monitoring; **no** REST_WAKE tolerance promotion; explicit authorization for further promotion research |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
