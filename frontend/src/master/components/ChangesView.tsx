@@ -55,6 +55,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3b-r1-cadence-forensics-2026-09-21',
+    version: '4.9.1151',
+    title: 'Battery V2 M3.3B — R1 natural cadence forensics + REST ladder qualification (shadow)',
+    summary: [
+      'M3.3B.2 strict forensics aligned with runtime ladder mapping; reproducible SQL in repo.',
+      'Periodic ~8h-scale parked LV observed; ladder-candidate n=35; P95|residual| ~2.85h research tolerance candidate.',
+      'REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false; PARKED_REST_CANDIDATE retained.',
+      'Metric: synqdrive_battery_cadence_ladder_research_unqualified_total (replaces unreachable out-of-tolerance).',
+      'B0 deploy merged M3.3A+M3.3B with flag OFF; B1 shadow does not require REST_WAKE auto-promotion.',
+    ],
+    reason:
+      'Empirical R1 cadence grounding before shadow ladder promotion — no health scoring or authoritative REST_60M/6H changes.',
+    previousBehavior:
+      'M3.3A: PARKED_REST_CANDIDATE only; tolerance RESEARCH_PENDING; metrics stubs; no production interval statistics.',
+    details:
+      'architecture/battery-v2/research/M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T15:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3a-generalized-evidence-2026-09-21',
     version: '4.9.1150',
     title: 'Battery V2 M3.3A — Generalized evidence + rest session foundation (shadow)',

@@ -8,6 +8,9 @@ export const R1_NOMINAL_REST_CADENCE_MS = 8 * 60 * 60_000;
 /** Tolerance policy placeholder until production forensics characterize jitter. */
 export const INITIAL_REST_TOLERANCE_POLICY_VERSION = 'RESEARCH_PENDING';
 
+/** M3.3B — empirically grounded rest cadence qualification (shadow only). */
+export const REST_CADENCE_POLICY_VERSION = 'M3_3B_V1';
+
 export const GENERALIZED_EVIDENCE_SOURCE_KINDS = {
   LIVE_VOLTAGE_CLASSIFY: 'LIVE_VOLTAGE_CLASSIFY',
 } as const;

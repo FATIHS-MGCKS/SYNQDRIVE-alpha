@@ -11,21 +11,31 @@ import { classifyGeneralizedEvidence } from './generalized-evidence-classificati
 import {
   GENERALIZED_EVIDENCE_CLASSIFICATION_VERSION,
   GENERALIZED_EVIDENCE_SOURCE_KINDS,
-  INITIAL_REST_TOLERANCE_POLICY_VERSION,
 } from './generalized-evidence.constants';
 import { buildGeneralizedEvidenceIdempotencyKey } from './generalized-evidence-idempotency.policy';
 import {
+  recordCadenceOutOfTolerance,
   recordGeneralizedEvidenceCreated,
   recordGeneralizedEvidenceDuplicate,
+  recordRestObservation,
+  recordRestWakeQualified,
+  recordStaleReplay,
+  recordStateAmbiguous,
+  recordValidRestObservation,
 } from './generalized-evidence.metrics';
 import {
   computeActualRestAgeMs,
   resolveSharedVehicleStateObservation,
 } from './generalized-evidence-provenance.helpers';
+import { evaluateRestCadenceQualification } from './rest-cadence-qualification.policy';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { LateTripAssociationService } from './late-trip-association.service';
 import type { GeneralizedEvidenceCaptureOutcome } from './generalized-evidence.types';
+import {
+  resolveStateAlignment,
+} from '../shutdown-evidence/shutdown-evidence-classification.policy';
+import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
 
 function parseIso(value: string | null | undefined): Date | undefined {
   if (!value) return undefined;
@@ -113,13 +123,22 @@ export class GeneralizedEvidenceCaptureService {
           })
         : null;
 
+    const preAlignment = resolveStateAlignment(fields, classificationReferenceAt);
+    const cadenceQualification = evaluateRestCadenceQualification({
+      actualRestAgeMs,
+      voltageTimestampSource: fields.voltageTimestampSource,
+      providerObservationOutcome,
+      stateAlignmentClass: preAlignment.stateAlignmentClass,
+      hasActiveRestSession: activeSession != null,
+    });
+
     const classification = classifyGeneralizedEvidence({
       fields,
       referenceAt: classificationReferenceAt,
       providerObservationOutcome,
       actualRestAgeMs,
       restStablePromotionEnabled: false,
-      restWakeCadenceQualified: false,
+      restWakeCadenceQualified: cadenceQualification.restWakeCadenceQualified,
       restWakeSourceSemantic: false,
     });
 
@@ -146,8 +165,8 @@ export class GeneralizedEvidenceCaptureService {
       classificationVersion: GENERALIZED_EVIDENCE_CLASSIFICATION_VERSION,
       trip: ongoingTripId ? { connect: { id: ongoingTripId } } : undefined,
       actualRestAgeMs,
-      nominalRestIntervalIndex: null,
-      tolerancePolicyVersion: INITIAL_REST_TOLERANCE_POLICY_VERSION,
+      nominalRestIntervalIndex: cadenceQualification.nominalRestIntervalIndex,
+      tolerancePolicyVersion: cadenceQualification.tolerancePolicyVersion,
       speedKmh: fields.speedKmh,
       ignitionOn: fields.ignitionOn,
       engineRunning: fields.engineRunning,
@@ -179,6 +198,31 @@ export class GeneralizedEvidenceCaptureService {
     }
 
     recordGeneralizedEvidenceCreated(this.metrics, classification.evidenceClass);
+
+    if (classification.evidenceClass === BatteryGeneralizedEvidenceClass.STALE_REPLAY) {
+      recordStaleReplay(this.metrics);
+    }
+    if (classification.evidenceClass === BatteryGeneralizedEvidenceClass.STATE_AMBIGUOUS) {
+      recordStateAmbiguous(this.metrics);
+    }
+    if (
+      actualRestAgeMs != null &&
+      actualRestAgeMs > 0 &&
+      (classification.evidenceClass === BatteryGeneralizedEvidenceClass.PARKED_REST_CANDIDATE ||
+        classification.evidenceClass === BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE ||
+        classification.evidenceClass === BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION)
+    ) {
+      recordRestObservation(this.metrics);
+      if (cadenceQualification.restWakeCadenceQualified) {
+        recordRestWakeQualified(this.metrics);
+      } else if (
+        cadenceQualification.nominalRestIntervalIndex != null &&
+        cadenceQualification.nominalRestIntervalIndex >= 1 &&
+        !cadenceQualification.cadenceInTolerance
+      ) {
+        recordCadenceOutOfTolerance(this.metrics);
+      }
+    }
 
     const observation = await this.prisma.batteryGeneralizedEvidenceObservation.findFirst({
       where: {

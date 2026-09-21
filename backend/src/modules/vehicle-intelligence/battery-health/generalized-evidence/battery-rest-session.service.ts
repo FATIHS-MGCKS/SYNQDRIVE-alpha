@@ -24,6 +24,8 @@ import {
   recordRestSessionInvalidated,
   recordRestSessionOpened,
   recordRestSessionUpdated,
+  recordRestSessionEnded,
+  recordValidRestObservation,
 } from './generalized-evidence.metrics';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import type { GeneralizedEvidenceFieldBundle, RestSessionProcessOutcome } from './generalized-evidence.types';
@@ -118,6 +120,7 @@ export class BatteryRestSessionService {
       DEFAULT_REST_SESSION_MAX_DURATION_MS
     ) {
       await this.endSession(session.id, BatteryRestSessionEndReason.SESSION_TIMEOUT, referenceAt);
+      recordRestSessionEnded(this.metrics);
       return 'session_ended';
     }
 
@@ -146,6 +149,10 @@ export class BatteryRestSessionService {
       actualRestAgeMs,
       tripId: observation.tripId,
     });
+
+    if (countsAsValid) {
+      recordValidRestObservation(this.metrics);
+    }
 
     recordRestSessionUpdated(this.metrics);
     return 'session_updated';

@@ -36,6 +36,22 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-21 — M3.3B R1 natural cadence forensics + REST ladder qualification
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.3A emitted `PARKED_REST_CANDIDATE` only; `restWakeCadenceQualified=false`; `INITIAL_TOLERANCE_POLICY=RESEARCH_PENDING`; Prometheus stubs; no production R1 interval stats. |
+| **OBSERVATION** | Read-only prod DB: ICE LTE_R1 fleet shows parked-rest LV inter-arrivals median **~8.025h** (n=61 in 4–12h band); per-vehicle jitter; 0 duplicate provider timestamps; M3.3A schema not on prod yet. |
+| **CHANGE** | Forensic doc; `REST_CADENCE_POLICY_VERSION=M3_3B_V1`; `rest-cadence-qualification.policy.ts`; capture promotion + `nominalRestIntervalIndex`; Prometheus counters wired; ops replay script. |
+| **WHY** | Empirical grounding before shadow REST_WAKE promotion; preserve `actualRestAgeMs` authority and skipped-rung semantics. |
+| **VALIDATION** | VPS read-only SQL; unit tests `rest-cadence-qualification.policy.spec.ts`; architecture validators. |
+| **NON_EFFECTS** | REST_60M/6H, assessment, publication, health score, failure risk; production flag still OFF; prod not deployed. |
+| **REMAINING_GAPS** | Wake load order (PRE vs POST); STALE_REPLAY rate at shadow layer; B0/B1 deploy + shadow validation. |
+| **DECISION_STATUS** | **VALIDATED** (forensics + code); **PRODUCTION_SHADOW_VALIDATED=NO**. |
+| **EVIDENCE** | `research/M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3A.1 pre-merge semantic + concurrency hardening
 
 | Field | Content |
