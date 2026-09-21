@@ -197,7 +197,7 @@ export class RawRefuelPromotionService {
       };
     }
 
-    if (candidate.lifecycleState === 'CONVERGED_NATIVE') {
+    if (!recoveryMutation && candidate.lifecycleState === 'CONVERGED_NATIVE') {
       return {
         status: 'SKIPPED_CONVERGED_NATIVE',
         evaluation: null,
@@ -208,7 +208,10 @@ export class RawRefuelPromotionService {
       };
     }
 
-    if (candidate.lifecycleState === 'PROMOTED') {
+    // Recovery-fenced promotion must not idempotently short-circuit on a stale
+    // in-memory lifecycle snapshot — enter the transaction so generation/lease
+    // fencing runs before ALREADY_PROMOTED read-back.
+    if (!recoveryMutation && candidate.lifecycleState === 'PROMOTED') {
       const existingVeeId = await this.resolveExistingFallbackVeeId(candidate);
       this.metrics?.recordPromotionIdempotentReplay();
       return {
