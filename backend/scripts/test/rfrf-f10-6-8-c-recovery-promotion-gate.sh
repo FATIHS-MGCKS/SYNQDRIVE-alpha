@@ -28,8 +28,7 @@ cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_C_INTEGRATION=1
-npx jest --config jest.config.ts \
-  src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts \
-  --runInBand --forceExit
+npm test -- --runInBand --forceExit \
+  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts'
 
 echo "F10_6_8_C_RECOVERY_PROMOTION_GATE=PASS"
