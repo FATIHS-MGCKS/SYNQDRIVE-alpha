@@ -76,3 +76,17 @@ export async function bootstrapExp021CanaryEnrollApplicationContextDefective7779
     logger: options.logger ?? false,
   });
 }
+
+/**
+ * Production starvation path (pre-#1703): full AppModule.forRootAsync() CLI bootstrap.
+ * @deprecated Test seam only — must not be used by cohort operator entrypoints.
+ */
+export async function bootstrapExp021CanaryEnrollApplicationContextDefectiveFullProductionApp(
+  options: { logger?: LogLevel[] | false } = {},
+): Promise<INestApplicationContext> {
+  const { AppModule } = await import('../../../../app.module');
+  const rootModule = await AppModule.forRootAsync();
+  return NestFactory.createApplicationContext(rootModule, {
+    logger: options.logger ?? false,
+  });
+}

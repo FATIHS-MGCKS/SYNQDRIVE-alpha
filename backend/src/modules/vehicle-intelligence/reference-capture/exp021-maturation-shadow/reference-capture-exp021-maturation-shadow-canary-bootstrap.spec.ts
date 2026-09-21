@@ -3,29 +3,57 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureConfig } from '../reference-capture.config';
 import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture-exp021-maturation-shadow-enrollment.service';
 import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture-exp021-maturation-shadow.repository';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import {
   bootstrapExp021CanaryEnrollApplicationContext,
   bootstrapExp021CanaryEnrollApplicationContextDefective7779dd1,
+  EXP021_CANARY_ENROLL_DEFAULT_BOOTSTRAP_DEPS,
   resolveExp021CanaryEnrollNestServices,
 } from './reference-capture-exp021-maturation-shadow-canary-bootstrap.lib';
+import { Exp021MaturationShadowCanaryOperatorModule } from './reference-capture-exp021-maturation-shadow-canary-operator.module';
 
 describe('EXP-021 canary operator CLI bootstrap', () => {
   describe('merged #1677 / 7779dd1 defective bootstrap', () => {
-    it('fails to resolve ReferenceCaptureConfig when AppModule class is passed directly', async () => {
+    it('7779dd1 AppModule class bootstrap is not the production forRootAsync starvation path', async () => {
       const app = await bootstrapExp021CanaryEnrollApplicationContextDefective7779dd1({
         logger: false,
       });
 
       try {
-        expect(() => app.get(ReferenceCaptureConfig)).toThrow(
-          /Nest could not find ReferenceCaptureConfig/i,
+        const { SchedulerLeaderElectionService } = await import(
+          '@shared/scheduler-leader/scheduler-leader-election.service'
         );
-        expect(() => resolveExp021CanaryEnrollNestServices(app)).toThrow(
-          /Nest could not find ReferenceCaptureConfig/i,
-        );
+        let leaderElectionPresent = false;
+        try {
+          app.get(SchedulerLeaderElectionService, { strict: false });
+          leaderElectionPresent = true;
+        } catch {
+          leaderElectionPresent = false;
+        }
+        expect(leaderElectionPresent).toBe(false);
       } finally {
         await app.close();
       }
+    });
+
+    it('default bootstrap is slim operator module; production defect seam is forRootAsync AppModule only', async () => {
+      const root = await EXP021_CANARY_ENROLL_DEFAULT_BOOTSTRAP_DEPS.resolveRootModule();
+      expect(root).toBe(Exp021MaturationShadowCanaryOperatorModule);
+
+      const enrollCli = readFileSync(
+        join(__dirname, '../../../../../scripts/ops/reference-capture-exp021-maturation-shadow-canary-enroll.ts'),
+        'utf8',
+      );
+      expect(enrollCli).toContain('bootstrapExp021CanaryEnrollApplicationContext');
+      expect(enrollCli).not.toContain('bootstrapExp021CanaryEnrollApplicationContextDefectiveFullProductionApp');
+
+      const bootstrapLib = readFileSync(
+        join(__dirname, 'reference-capture-exp021-maturation-shadow-canary-bootstrap.lib.ts'),
+        'utf8',
+      );
+      expect(bootstrapLib).toContain('bootstrapExp021CanaryEnrollApplicationContextDefectiveFullProductionApp');
+      expect(bootstrapLib).toContain('AppModule.forRootAsync()');
     });
   });
 
