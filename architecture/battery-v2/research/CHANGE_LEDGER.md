@@ -40,6 +40,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B1.1 natural shadow evidence validation (read-only)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B1 @ T0 `2026-09-21T18:08:19Z`; 1 post-smoke driving row; rest path unobserved. |
+| **CHANGE** | Read-only production forensics only — **no** runtime mutation. |
+| **WHY** | Validate generalized capture, safety, and provenance after B1; classify rest-chain gates without requiring ~8h R1 yet. |
+| **VALIDATION** | Preflight SHA/flag/scheduler; 29 enum rows; 29/29 VALID LV→evidence; 0 dupes; 0 REST_WAKE/REST_STABLE; provenance guards clean. |
+| **OBSERVED_EFFECT** | **`B1_1_CAPTURE_AND_SAFETY_PASS_REST_CHAIN_PENDING`**; capture/safety/provenance **PASS**; engine-off/session/parked/R1 **PENDING**. |
+| **NON_EFFECTS** | No deploy; T0 unchanged; no M3.3C; no tolerance promotion. |
+| **EVIDENCE** | `research/M3_3_B1_1_NATURAL_SHADOW_EVIDENCE_VALIDATION_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3 B1 generalized evidence shadow activation
 
 | Field | Content |
