@@ -40,6 +40,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B1.2R WOB L 7503 targeted shutdown forensics (read-only)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B1.2 fleet-wide pending; operator reports WOB park ~18:48–18:58Z. |
+| **CHANGE** | Targeted read-only forensics on WOB L 7503 only. |
+| **WHY** | Accept/reject shutdown chain for known real-world drive+park; apply B1.2R FAIL rule only if raw trustworthy shutdown missing ENGINE_OFF. |
+| **VALIDATION** | Trip `db0039e8…` COMPLETED `18:47:47Z`; 6 LV rows 18:40+; **0** strict shutdown; **0** LV after `18:47:56Z`; **0** ENGINE_OFF/rest session. |
+| **OBSERVED_EFFECT** | **`B1_2R_SIGNAL_OBSERVABILITY_NO_TRUSTWORTHY_SHUTDOWN_LV`** — gates **PENDING_SIGNAL_OBSERVABILITY** / **PENDING_NATURAL_LV**; not classifier FAIL. |
+| **NON_EFFECTS** | No production mutation; M3.3C blocked. |
+| **EVIDENCE** | `research/M3_3_B1_2R_WOB_L7503_NATURAL_SHUTDOWN_FORENSICS_2026-09-21.md` |
+
 ## CL-2026-09-21 — M3.3 B1.2 first natural shutdown + rest session acceptance (read-only)
 
 | Field | Content |
