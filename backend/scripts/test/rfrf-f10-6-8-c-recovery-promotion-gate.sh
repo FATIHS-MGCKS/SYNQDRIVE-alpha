@@ -25,7 +25,8 @@ rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
 
 cd "${BACKEND_ROOT}"
-npx prisma migrate deploy
+npx prisma generate
+PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_C_INTEGRATION=1
 npx jest --config jest.config.ts \
   src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts \
