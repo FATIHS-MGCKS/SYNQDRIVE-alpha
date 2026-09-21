@@ -36,7 +36,7 @@ if [[ -z "$url" ]] || ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-fuel_capable="$(psql_count_or_err "$url" "SELECT COUNT(*) FROM vehicles v JOIN dimo_vehicle_snapshots d ON d.vehicle_id = v.id WHERE v.deleted_at IS NULL AND d.token_id IS NOT NULL;")"
+fuel_capable="$(psql_count_or_err "$url" "SELECT COUNT(*) FROM vehicles v INNER JOIN dimo_vehicles d ON d.id = v.dimo_vehicle_id WHERE d.token_id IS NOT NULL;")"
 candidate_total="$(psql_count_or_err "$url" "SELECT COUNT(*) FROM raw_refuel_candidates;")"
 candidate_ready="$(psql_count_or_err "$url" "SELECT COUNT(*) FROM raw_refuel_candidates WHERE lifecycle_state='READY_FOR_PERSIST';")"
 candidate_insufficient="metric_only"
@@ -73,7 +73,7 @@ for metric in \
   'sum(synqdrive_rfrf_promotion_blocked_cutover_total)' \
   'sum(synqdrive_rfrf_sample_fetch_success_total)' \
   'sum(synqdrive_rfrf_sample_fetch_failure_total)'; do
-  val="$(rfrf_prometheus_instant_scalar "$metric" || true)"
+  val="$(rfrf_prometheus_instant_scalar "${metric} or vector(0)" || true)"
   if [[ "$val" == "ERR" ]]; then
     QUERY_ERRORS=1
   fi
