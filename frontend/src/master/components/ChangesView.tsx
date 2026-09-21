@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b1-shadow-activation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1 — Generalized evidence shadow activation (production)',
+    summary: [
+      'Runtime unchanged @ 105f2c5ff (B0 release); BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true via shared backend.env.',
+      'Canary: Replica A restart then Replica B; bounded mixed-flag interval; M3_3_B1_T0=2026-09-21T18:08:19Z.',
+      'Natural shadow write: 1× DRIVING_NON_CHARGING; 0 rest sessions; REST_WAKE auto-promotion remains off.',
+      'PR #1709 closed SUPERSEDED_BY_1710; B1 docs on main lineage — no deploy of docs-only main for activation.',
+    ],
+    reason:
+      'Shadow-only M3.3 capture on production without authoritative Battery or cadence-based REST_WAKE promotion.',
+    previousBehavior:
+      'B0: flag false; zero generalized evidence and rest-session rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:15:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b0-flag-off-production-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B0 — Production deploy (generalized evidence flag OFF)',
