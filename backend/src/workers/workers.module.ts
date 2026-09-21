@@ -40,6 +40,7 @@ import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-r
 import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-enrichment.processor';
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
 import { PhysicalRefuelReconciliationRecoveryScheduler } from './schedulers/physical-refuel-reconciliation-recovery.scheduler';
+import { RawRefuelCandidateRecoveryScheduler } from './schedulers/raw-refuel-candidate-recovery.scheduler';
 import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
 import { ReferenceCaptureSettlementShadowProcessor } from './processors/reference-capture-settlement-shadow.processor';
 import { ReferenceCaptureExp021MaturationShadowProcessor } from './processors/reference-capture-exp021-maturation-shadow.processor';
@@ -164,6 +165,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     IamDataRetentionScheduler,
     FuelStationEnrichmentRecoveryScheduler,
     PhysicalRefuelReconciliationRecoveryScheduler,
+    RawRefuelCandidateRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
     ReferenceCaptureSettlementShadowRecoveryScheduler,
     ReferenceCaptureExp021MaturationShadowRecoveryScheduler,

@@ -12,6 +12,8 @@ import { mergeCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
 import {
   RawRefuelCandidateAmbiguityError,
   RawRefuelCandidateLifecycleValidationError,
+  RawRefuelCandidateOrgVehicleIntegrityError,
+  RawRefuelCandidateVehicleNotFoundError,
 } from './raw-refuel-candidate.errors';
 import { tryBuildCandidateIdentityKeyFromEvidence } from './raw-refuel-candidate-identity-key';
 import {
@@ -27,6 +29,15 @@ import type {
   RawRefuelCandidateOverlapClassification,
   RawRefuelCandidateResolveResult,
 } from './raw-refuel-candidate.types';
+import {
+  lockRecoveryClaimForMutation,
+  type RawRefuelCandidateRecoveryClaimIdentity,
+  type RawRefuelCandidateRecoveryMutationContext,
+} from './raw-refuel-candidate-recovery-fencing';
+
+export type RawRefuelCandidateRecoveryReconcileResult =
+  | { kind: 'APPLIED'; result: RawRefuelCandidateResolveResult }
+  | { kind: 'STALE_CLAIM' };
 
 @Injectable()
 export class RawRefuelCandidateService {
@@ -209,6 +220,102 @@ export class RawRefuelCandidateService {
     });
 
     return toResolveResult(updated, { created: false, updated: true });
+  }
+
+  /**
+   * F10.6.8-B — reconcile evidence into an existing row only (never inserts).
+   */
+  async reconcileExistingCandidateById(
+    candidateId: string,
+    observation: RawRefuelCandidateObservation,
+  ): Promise<RawRefuelCandidateResolveResult> {
+    validateObservationLifecycleRequest(observation);
+    const serviceNow = this.clock.now();
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await this.repository.findById(tx, candidateId);
+      if (!existing) {
+        throw new RawRefuelCandidateVehicleNotFoundError(observation.vehicleId);
+      }
+      if (existing.vehicleId !== observation.vehicleId) {
+        throw new RawRefuelCandidateOrgVehicleIntegrityError(
+          observation.vehicleId,
+          existing.organizationId,
+          observation.organizationId,
+        );
+      }
+
+      await acquirePgAdvisoryXactLock64(
+        tx,
+        buildRawRefuelCandidateLockKey(observation.vehicleId),
+      );
+
+      const organizationId = await this.repository.resolveAuthoritativeOrganizationId(
+        tx,
+        observation.vehicleId,
+        observation.organizationId,
+      );
+
+      return this.reconcileExistingCandidate(
+        tx,
+        existing,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+    });
+  }
+
+  /**
+   * F10.6.8-B3 — recovery-owned reconcile; fences on claim generation + active lease.
+   */
+  async reconcileExistingCandidateByIdForRecoveryClaim(
+    candidateId: string,
+    observation: RawRefuelCandidateObservation,
+    recoveryMutation: RawRefuelCandidateRecoveryMutationContext,
+  ): Promise<RawRefuelCandidateRecoveryReconcileResult> {
+    validateObservationLifecycleRequest(observation);
+    const serviceNow = this.clock.now();
+
+    return this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock64(
+        tx,
+        buildRawRefuelCandidateLockKey(observation.vehicleId),
+      );
+
+      const mutationTime = recoveryMutation.mutationClock();
+      const existing = await lockRecoveryClaimForMutation(
+        tx,
+        candidateId,
+        recoveryMutation.claim,
+        mutationTime,
+      );
+      if (!existing) {
+        return { kind: 'STALE_CLAIM' };
+      }
+      if (existing.vehicleId !== observation.vehicleId) {
+        throw new RawRefuelCandidateOrgVehicleIntegrityError(
+          observation.vehicleId,
+          existing.organizationId,
+          observation.organizationId,
+        );
+      }
+
+      const organizationId = await this.repository.resolveAuthoritativeOrganizationId(
+        tx,
+        observation.vehicleId,
+        observation.organizationId,
+      );
+
+      const result = await this.reconcileExistingCandidate(
+        tx,
+        existing,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+      return { kind: 'APPLIED', result };
+    });
   }
 
   private async insertCandidate(

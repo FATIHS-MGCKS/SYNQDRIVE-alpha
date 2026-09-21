@@ -7,6 +7,21 @@ export const RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV = 'RAW_FUEL_REFUEL_FALLBACK_EN
 export const RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV =
   'RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED';
 
+/** F10.6.8-B durable candidate recovery scheduler — default false. */
+export const RFRF_CANDIDATE_RECOVERY_ENABLED_ENV = 'RFRF_CANDIDATE_RECOVERY_ENABLED';
+
+export const RFRF_CANDIDATE_RECOVERY_INTERVAL_MS_ENV =
+  'RFRF_CANDIDATE_RECOVERY_INTERVAL_MS';
+
+export const RFRF_CANDIDATE_RECOVERY_BATCH_SIZE_ENV =
+  'RFRF_CANDIDATE_RECOVERY_BATCH_SIZE';
+
+export const RFRF_CANDIDATE_RECOVERY_LEASE_MS_ENV = 'RFRF_CANDIDATE_RECOVERY_LEASE_MS';
+
+export const RFRF_CANDIDATE_RECOVERY_DEFAULT_INTERVAL_MS = 120_000;
+export const RFRF_CANDIDATE_RECOVERY_DEFAULT_BATCH_SIZE = 20;
+export const RFRF_CANDIDATE_RECOVERY_DEFAULT_LEASE_MS = 5 * 60 * 1000;
+
 /**
  * Cutover instant preserved for F6+ rollout enforcement.
  * F4 does not discard delayed evidence using this value.
@@ -20,6 +35,11 @@ export interface RawFuelRefuelFallbackConfig {
   persistEnabled: boolean;
   /** Parsed ISO cutover instant when valid; null when absent or malformed. */
   cutoverAt: Date | null;
+  /** F10.6.8-B candidate-centric recovery scheduler. */
+  candidateRecoveryEnabled: boolean;
+  candidateRecoveryIntervalMs: number;
+  candidateRecoveryBatchSize: number;
+  candidateRecoveryLeaseMs: number;
 }
 
 /**
@@ -40,6 +60,12 @@ function parseOptionalIsoDate(value: string | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (value == null || value.trim() === '') return fallback;
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function loadRawFuelRefuelFallbackConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): RawFuelRefuelFallbackConfig {
@@ -51,6 +77,37 @@ export function loadRawFuelRefuelFallbackConfig(
       env[RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED_ENV],
     ),
     cutoverAt: parseOptionalIsoDate(env[RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT_ENV]),
+    candidateRecoveryEnabled: parseRawFuelRefuelFallbackBoolean(
+      env[RFRF_CANDIDATE_RECOVERY_ENABLED_ENV],
+    ),
+    candidateRecoveryIntervalMs: parsePositiveInt(
+      env[RFRF_CANDIDATE_RECOVERY_INTERVAL_MS_ENV],
+      RFRF_CANDIDATE_RECOVERY_DEFAULT_INTERVAL_MS,
+    ),
+    candidateRecoveryBatchSize: parsePositiveInt(
+      env[RFRF_CANDIDATE_RECOVERY_BATCH_SIZE_ENV],
+      RFRF_CANDIDATE_RECOVERY_DEFAULT_BATCH_SIZE,
+    ),
+    candidateRecoveryLeaseMs: parsePositiveInt(
+      env[RFRF_CANDIDATE_RECOVERY_LEASE_MS_ENV],
+      RFRF_CANDIDATE_RECOVERY_DEFAULT_LEASE_MS,
+    ),
+  };
+}
+
+/** Fail-closed test defaults — candidate recovery scheduler explicitly OFF. */
+export function defaultRawFuelRefuelFallbackConfigForTests(
+  overrides: Partial<RawFuelRefuelFallbackConfig> = {},
+): RawFuelRefuelFallbackConfig {
+  return {
+    masterEnabled: false,
+    persistEnabled: false,
+    cutoverAt: null,
+    candidateRecoveryEnabled: false,
+    candidateRecoveryIntervalMs: RFRF_CANDIDATE_RECOVERY_DEFAULT_INTERVAL_MS,
+    candidateRecoveryBatchSize: RFRF_CANDIDATE_RECOVERY_DEFAULT_BATCH_SIZE,
+    candidateRecoveryLeaseMs: RFRF_CANDIDATE_RECOVERY_DEFAULT_LEASE_MS,
+    ...overrides,
   };
 }
 
@@ -67,6 +124,18 @@ export function isRawFuelRefuelFallbackPersistEnabled(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
   return loadRawFuelRefuelFallbackConfig(env).persistEnabled;
+}
+
+/** F10.6.8-B — master + persist + dedicated recovery flag. */
+export function canExecuteRawRefuelCandidateRecovery(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const config = loadRawFuelRefuelFallbackConfig(env);
+  return (
+    config.masterEnabled &&
+    config.persistEnabled &&
+    config.candidateRecoveryEnabled
+  );
 }
 
 /**

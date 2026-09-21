@@ -10,6 +10,9 @@ on:
       - 'backend/scripts/ops/**'
       - '.github/workflows/rfrf-stage3-persistence-readiness.yml'
       - 'docs/audits/eed-rfrf-f10-5*.md'
+      - 'docs/audits/eed-rfrf-f10-6-8-b*.md'
+      - 'backend/src/config/raw-fuel-refuel-fallback.config.ts'
+      - 'backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/*.spec.ts'
       - 'architecture/knowledge-graphs/energy-event-detection/**'
 
 concurrency:

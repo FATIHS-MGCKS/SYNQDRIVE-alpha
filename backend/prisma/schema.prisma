@@ -10242,6 +10242,19 @@ enum RawRefuelAbsoluteSignalTrust {
   UNKNOWN
 }
 
+enum RawRefuelCandidateRecoveryLastOutcome {
+  SUCCESS_CONVERGED
+  SUCCESS_MATURED_READY
+  PENDING_NATIVE_RECONCILIATION
+  NO_MATCHING_OBSERVATION
+  NO_NEW_EVIDENCE
+  SAMPLE_FETCH_FAILED
+  NO_DIMO_TOKEN
+  CAPABILITY_NOT_SUPPORTED
+  AMBIGUOUS_RECOVERY_OBSERVATION
+  TERMINAL_NO_ACTION
+}
+
 enum RawRefuelCandidateRejectionReason {
   INSUFFICIENT_PRE_PLATEAU
   INSUFFICIENT_POST_PLATEAU
@@ -10295,6 +10308,11 @@ model RawRefuelCandidate {
   qualityMeta                 Json?                              @map("quality_meta")
   firstObservedAt             DateTime                           @map("first_observed_at")
   lastObservedAt              DateTime                           @map("last_observed_at")
+  recoveryNextAttemptAt       DateTime?                          @map("recovery_next_attempt_at")
+  recoveryLastAttemptAt       DateTime?                          @map("recovery_last_attempt_at")
+  recoveryAttemptCount        Int                                @default(0) @map("recovery_attempt_count")
+  recoveryLastOutcome         RawRefuelCandidateRecoveryLastOutcome? @map("recovery_last_outcome")
+  recoveryLeaseExpiresAt      DateTime?                          @map("recovery_lease_expires_at")
   createdAt                   DateTime                           @default(now()) @map("created_at")
   updatedAt                   DateTime                           @updatedAt @map("updated_at")
 
@@ -10307,6 +10325,7 @@ model RawRefuelCandidate {
   @@index([vehicleId, physicalEvidenceStart])
   @@index([vehicleId, firstObservedAt])
   @@index([lifecycleState, updatedAt])
+  @@index([lifecycleState, recoveryNextAttemptAt])
   @@map("raw_refuel_candidates")
 }
 
