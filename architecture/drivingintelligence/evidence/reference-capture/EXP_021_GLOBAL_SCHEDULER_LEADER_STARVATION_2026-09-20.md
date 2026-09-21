@@ -60,3 +60,32 @@
 ## KS MX overlap (out of scope)
 
 Trip pair `a127e2a0-a7db-4f96-bb0f-5cbe5f736724` / `9037edf0-68cc-4a18-a438-b81a49d9ca0a` ONGOING+`endTime` anomaly — separate follow-up; not causal for global zero-ledger starvation.
+
+## Production cutover gate (#1703) — 2026-09-21T10:47–10:53Z
+
+**Gate:** `EXP021_1703_POST_MERGE_PRODUCTION_CUTOVER_GATE=PASS`
+
+| Field | Value |
+|-------|-------|
+| `CURRENT_MAIN_SHA` | `6e3bce843ed09c3603f02fcdb835a1840429372b` (includes #1703 merge `bee8e51e…` + RFRF WorkersModule export hotfix) |
+| `TARGET_DEPLOY_SHA` | `6e3bce843ed09c3603f02fcdb835a1840429372b` |
+| `PREVIOUS_PRODUCTION_SHA` | `762e899da4124147f302b7ae8298798b6f7c81fa` |
+| `PRODUCTION_RELEASE` | `20260921103500_v4994` |
+| `OLD_COHORT_PID` | `4111560` (stopped SIGTERM, no SIGKILL) |
+| `NEW_COHORT_PID` | `378016` (`Exp021MaturationShadowCanaryOperatorModule`, `ACTIVE_MEMBER_WATCHERS=3`) |
+| `OLD_NOT_BEFORE` | `2026-09-20T00:29:10.000Z` |
+| `NEW_NOT_BEFORE` | `2026-09-21T10:47:02.000Z` |
+| `EXP021_CANARY_ACTIVATED` | `true` (after timer proof while disabled) |
+| `GLOBAL_LEADER` | `srv1374778:378598:6d4aaa3a` → `dist/src/main.js` (PM2 replica A) |
+| `NEW_COHORT_CLI_GLOBAL_LEADER` | `NO` |
+| `VDC_T0` | `2026-09-18T09:33:25.000Z` unchanged (shadow post-T0 count 309; min observed after T0) |
+| `NEW_EPOCH_*` | ledger/RC/PDI/M2 families/attempts = 0 |
+| `9037` | `COMPLETED`, start `2026-09-20 12:39:20` — not selected (`ELIGIBLE_*=0`) |
+
+**Deploy note:** First promote of merge-only `bee8e51e…` failed closed (RFRF `RawRefuelCandidateRecoveryScheduler` DI); rolled forward with hotfix `6e3bce843` on `main`. No VDC/EED/RFRF state reset.
+
+**Readiness proof (leader, activation on):** `LAST_CALLBACK_AT` / `LAST_CONFIG_VALID_AT` / `LAST_EXECUTED_TICK_AT` / `LAST_SUCCESSFUL_TICK_AT` advanced on 30s interval; follower `LAST_SKIPPED_NOT_LEADER_AT` advanced.
+
+**Env backup:** `/opt/synqdrive/shared/backups/env/backend.env.pre-exp021-1703-cutover-20260921T101917Z`
+
+**Cohort log:** `/opt/synqdrive/shared/logs/exp021-cohort-watch-20260921T104736Z.log`
