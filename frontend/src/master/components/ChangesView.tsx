@@ -119,6 +119,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-8-c-recovery-promotion-liveness-2026-09-21',
+    version: '4.9.1157',
+    title: 'RFRF F10.6.8-C — recovered READY promotion liveness + atomic SUCCESS_PROMOTED',
+    summary: [
+      'Durable recovery scheduler invokes canonical RawRefuelPromotionService after convergence when no SAME native.',
+      'C1: fallback VEE + PROMOTED + recoveryLastOutcome=SUCCESS_PROMOTED finalized in the same promotion transaction (no post-commit finishRecovery).',
+      'C2: EXPIRED lease and SUPERSEDED generation stale proofs; independent PrismaClient replica idempotency (one canonical VEE).',
+      'Stage 5 posture unchanged; Stage 6 / recovery-direct G2 handoff not started.',
+    ],
+    reason:
+      'READY candidates reachable only via recovery lacked guaranteed promotion liveness; post-commit crash window left recovery unfinished after PROMOTED.',
+    previousBehavior:
+      'recoverReadyCandidate finished PENDING_NATIVE_RECONCILIATION without promotion; SUCCESS_PROMOTED required a second recovery completion after promotion commit.',
+    details:
+      'raw-refuel-promotion.service.ts; raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts; migration 20260921140000_rfrf_f10_6_8_c_recovery_success_promoted; PR #1712',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
     id: 'exp021-pdi-m2-integration-repair-2026-09-19',
     version: '4.9.1149',
     title: 'EXP-021 — PDI → M2 maturation integration repair (prospective discovery)',

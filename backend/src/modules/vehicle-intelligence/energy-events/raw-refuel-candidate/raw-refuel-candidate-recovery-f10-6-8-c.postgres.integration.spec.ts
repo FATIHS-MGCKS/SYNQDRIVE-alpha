@@ -225,12 +225,12 @@ function syntheticRiseSamples() {
     }
   });
 
-  it('STALE_RECOVERY_PROMOTION — expired worker cannot create fallback VEE', async () => {
+  it('EXPIRED_RECOVERY_PROMOTION — expired lease cannot mutate before side effect', async () => {
     const restore = setStage5Env(true);
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
     const t0 = new Date('2026-09-06T11:00:00.000Z');
-    const clockRef = { now: t0 };
+    const tExpired = new Date(t0.getTime() + 5_000);
     const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
     try {
       const candidate = await persistReadyCandidate(vehicle.id);
@@ -240,57 +240,39 @@ function syntheticRiseSamples() {
       });
       const leaseEnd = new Date(t0.getTime() + 2_000);
       await repo.claimDueCandidates(1, t0, leaseEnd);
-
-      const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
-      let releaseHold!: () => void;
-      const holdPromise = new Promise<void>((resolve) => {
-        releaseHold = resolve;
+      const row = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
       });
-      const originalById = promotion.evaluateAndApplyPromotionById.bind(promotion);
-      promotion.evaluateAndApplyPromotionById = async (id, ctx, env, hooks, recoveryMutation) =>
-        originalById(id, ctx, env, {
-          ...hooks,
-          afterCandidateRowLock: async () => {
-            await holdPromise;
+      const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
+      const apply = await promotion.evaluateAndApplyPromotionById(
+        candidate.id,
+        {
+          capability: 'FUEL_CAPABLE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          absoluteSignalTrust: 'TRUSTED',
+        },
+        process.env,
+        undefined,
+        {
+          claim: {
+            expectedClaimGeneration: row.recoveryAttemptCount,
+            requireActiveLease: true,
+            leaseExpiresAt: row.recoveryLeaseExpiresAt,
           },
-        }, recoveryMutation);
-
-      const candidateService = RawRefuelCandidateService.withFixedClock(
-        prisma as unknown as PrismaService,
-        t0,
+          mutationClock: () => tExpired,
+        },
       );
-      const convergence = new RawRefuelConvergenceService(prisma as unknown as PrismaService);
-      const recoveryA = new RawRefuelCandidateRecoveryService(
-        prisma as unknown as PrismaService,
-        candidateService,
-        convergence,
-        promotion,
-      )
-        .withLeaseMs(2_000)
-        .withRecoveryClock(() => clockRef.now);
-
-      const workerA = recoveryA.recoverCandidateById(candidate.id, t0);
-      await new Promise((r) => setTimeout(r, 50));
-      clockRef.now = new Date(t0.getTime() + 5_000);
-      releaseHold();
-      const resultA = await workerA;
-      expect(resultA.detail).toBe('stale_claim');
-
-      const reclaimed = await repo.claimDueCandidates(
-        1,
-        clockRef.now,
-        new Date(clockRef.now.getTime() + 60_000),
-      );
-      expect(reclaimed.length).toBe(1);
-      const recoveryB = buildRecovery(clockRef);
-      const resultB = await recoveryB.recoverCandidateById(candidate.id, clockRef.now);
-      expect(resultB.outcome).toBe('SUCCESS_PROMOTED');
+      expect(apply.status).toBe('SKIPPED_NO_ACTION');
+      expect(apply.detail).toBe('recovery_claim_stale');
+      expect(apply.fallbackVehicleEnergyEventId).toBeNull();
+      const after = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      expect(after.lifecycleState).not.toBe('PROMOTED');
+      expect(after.recoveryLastOutcome).not.toBe('SUCCESS_PROMOTED');
       expect(await prisma.vehicleEnergyEvent.count({
         where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
-      })).toBe(1);
-      const row = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
-      expect(row.recoveryAttemptCount).toBe(reclaimed[0].recoveryAttemptCount);
-      expect(row.recoveryLastOutcome).toBe('SUCCESS_PROMOTED');
+      })).toBe(0);
     } finally {
       restore();
       await prisma.rawRefuelCandidate.deleteMany({ where: { vehicleId: vehicle.id } });
@@ -299,7 +281,89 @@ function syntheticRiseSamples() {
       await prisma.dimoVehicle.deleteMany({ where: { id: dimoVehicle.id } });
       await prisma.organization.deleteMany({ where: { id: org.id } });
     }
-  }, 60_000);
+  });
+
+  it('SUPERSEDED_GENERATION_PROMOTION — stale generation N cannot promote after N+1 reclaim', async () => {
+    const restore = setStage5Env(true);
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
+    const t0 = new Date('2026-09-06T11:05:00.000Z');
+    const tReclaim = new Date(t0.getTime() + 5_000);
+    const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
+    try {
+      const candidate = await persistReadyCandidate(vehicle.id);
+      await prisma.rawRefuelCandidate.update({
+        where: { id: candidate.id },
+        data: { lifecycleState: 'READY_FOR_PERSIST', recoveryNextAttemptAt: t0 },
+      });
+      const leaseEnd = new Date(t0.getTime() + 2_000);
+      await repo.claimDueCandidates(1, t0, leaseEnd);
+      const rowAfterClaimA = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      const staleClaimA = {
+        expectedClaimGeneration: rowAfterClaimA.recoveryAttemptCount,
+        requireActiveLease: true,
+        leaseExpiresAt: rowAfterClaimA.recoveryLeaseExpiresAt,
+      };
+
+      const reclaimed = await repo.claimDueCandidates(
+        1,
+        tReclaim,
+        new Date(tReclaim.getTime() + 120_000),
+      );
+      expect(reclaimed.length).toBe(1);
+      const resultB = await buildRecovery({ now: tReclaim }).recoverCandidateById(
+        candidate.id,
+        tReclaim,
+      );
+      expect(resultB.outcome).toBe('SUCCESS_PROMOTED');
+
+      const rowAfterB = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      expect(rowAfterB.recoveryAttemptCount).toBe(reclaimed[0].recoveryAttemptCount);
+      expect(rowAfterB.recoveryLastOutcome).toBe('SUCCESS_PROMOTED');
+      expect(rowAfterB.recoveryLeaseExpiresAt).toBeNull();
+
+      const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
+      const staleApply = await promotion.evaluateAndApplyPromotionById(
+        candidate.id,
+        {
+          capability: 'FUEL_CAPABLE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          absoluteSignalTrust: 'TRUSTED',
+        },
+        process.env,
+        undefined,
+        {
+          claim: staleClaimA,
+          mutationClock: () => new Date(tReclaim.getTime() + 1_000),
+        },
+      );
+      expect(staleApply.status).toBe('SKIPPED_NO_ACTION');
+      expect(staleApply.detail).toBe('recovery_claim_stale');
+      expect(staleApply.fallbackVehicleEnergyEventId).toBeNull();
+
+      const rowFinal = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      expect(rowFinal.recoveryAttemptCount).toBe(rowAfterB.recoveryAttemptCount);
+      expect(rowFinal.recoveryLastOutcome).toBe('SUCCESS_PROMOTED');
+      expect(rowFinal.recoveryLeaseExpiresAt).toBeNull();
+      expect(rowFinal.lifecycleState).toBe('PROMOTED');
+      expect(await prisma.vehicleEnergyEvent.count({
+        where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+      })).toBe(1);
+    } finally {
+      restore();
+      await prisma.rawRefuelCandidate.deleteMany({ where: { vehicleId: vehicle.id } });
+      await prisma.vehicleEnergyEvent.deleteMany({ where: { vehicleId: vehicle.id } });
+      await prisma.vehicle.deleteMany({ where: { id: vehicle.id } });
+      await prisma.dimoVehicle.deleteMany({ where: { id: dimoVehicle.id } });
+      await prisma.organization.deleteMany({ where: { id: org.id } });
+    }
+  });
 
   it('RECOVERY_SAME_NATIVE — converges without fallback VEE', async () => {
     const restore = setStage5Env(true);
@@ -591,7 +655,7 @@ function syntheticRiseSamples() {
     }
   });
 
-  it('RECOVERY_PROMOTION_INDEPENDENT_REPLICA — separate Prisma stacks, one VEE', async () => {
+  it('INDEPENDENT_REPLICA_PROMOTION — separate Prisma stacks, one canonical VEE', async () => {
     const restore = setStage5Env(true);
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
