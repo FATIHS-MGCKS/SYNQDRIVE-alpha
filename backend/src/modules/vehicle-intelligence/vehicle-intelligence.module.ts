@@ -718,6 +718,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriverAttributionService,
     TripDrivingImpactBackfillService,
     EnergyEventsService,
+    RawRefuelCandidateRecoveryService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,
