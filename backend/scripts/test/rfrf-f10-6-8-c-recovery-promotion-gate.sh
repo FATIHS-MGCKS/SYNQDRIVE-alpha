@@ -77,6 +77,7 @@ export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${
 cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+sync_schema_drift_if_needed
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_C_INTEGRATION=1
 npm test -- --runInBand --forceExit \
   --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts'
