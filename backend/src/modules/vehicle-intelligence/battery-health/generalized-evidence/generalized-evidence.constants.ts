@@ -9,7 +9,13 @@ export const R1_NOMINAL_REST_CADENCE_MS = 8 * 60 * 60_000;
 export const INITIAL_REST_TOLERANCE_POLICY_VERSION = 'RESEARCH_PENDING';
 
 /** M3.3B — empirically grounded rest cadence qualification (shadow only). */
-export const REST_CADENCE_POLICY_VERSION = 'M3_3B_V1';
+export const REST_CADENCE_POLICY_VERSION = 'M3_3B_V1_1';
+
+/**
+ * M3.3B.1 decision C — periodic LV observed but rung-residual tolerance not validated
+ * for automatic REST_WAKE promotion. Nominal index remains research metadata only.
+ */
+export const REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED = false;
 
 export const GENERALIZED_EVIDENCE_SOURCE_KINDS = {
   LIVE_VOLTAGE_CLASSIFY: 'LIVE_VOLTAGE_CLASSIFY',

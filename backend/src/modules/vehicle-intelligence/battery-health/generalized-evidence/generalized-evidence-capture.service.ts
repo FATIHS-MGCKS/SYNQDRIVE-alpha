@@ -11,6 +11,7 @@ import { classifyGeneralizedEvidence } from './generalized-evidence-classificati
 import {
   GENERALIZED_EVIDENCE_CLASSIFICATION_VERSION,
   GENERALIZED_EVIDENCE_SOURCE_KINDS,
+  R1_NOMINAL_REST_CADENCE_MS,
 } from './generalized-evidence.constants';
 import { buildGeneralizedEvidenceIdempotencyKey } from './generalized-evidence-idempotency.policy';
 import {
@@ -218,7 +219,9 @@ export class GeneralizedEvidenceCaptureService {
       } else if (
         cadenceQualification.nominalRestIntervalIndex != null &&
         cadenceQualification.nominalRestIntervalIndex >= 1 &&
-        !cadenceQualification.cadenceInTolerance
+        cadenceQualification.rungResidualMs != null &&
+        Math.abs(cadenceQualification.rungResidualMs) >
+          R1_NOMINAL_REST_CADENCE_MS / 2
       ) {
         recordCadenceOutOfTolerance(this.metrics);
       }

@@ -38,6 +38,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-21 — M3.3B.1 cadence forensics methodology + qualification gate
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.3B draft used COALESCE provider time, NULL-speed-as-rest, non-session inter-arrivals, 4–12h pre-filter, ±4.5h tolerance claim, overlapping ladder bands, auto REST_WAKE when flag ON. |
+| **OBSERVATION** | Strict repro: 260 strict-rest obs / 183 sessions; inter-arrival multimodal (P50 ~16m); rung-residual P95\|res\| ~7.9h; ±4.5h **not** equal to P95−median (~2.73h). |
+| **CHANGE** | Forensic doc §M3.3B.1; `M3_3B_V1_1` non-overlapping midpoint ladder metadata; `REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false`; expanded unit tests; B0 bundles M3.3A+B. |
+| **WHY** | Separate “periodic LV exists” from “tolerance validated”; prevent incidental 1–4h parked samples becoming REST_WAKE via broad bands. |
+| **VALIDATION** | VPS read-only SQL; `rest-cadence-qualification.policy.spec.ts`; architecture validators. |
+| **NON_EFFECTS** | Authoritative REST/publication/health; production flag; prod deploy. |
+| **DECISION_STATUS** | **`CADENCE_EXISTS_BUT_POLICY_TOLERANCE_NOT_READY`**. |
+| **EVIDENCE** | `M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md` §M3.3B.1. |
+
 ## CL-2026-09-21 — M3.3B R1 natural cadence forensics + REST ladder qualification
 
 | Field | Content |

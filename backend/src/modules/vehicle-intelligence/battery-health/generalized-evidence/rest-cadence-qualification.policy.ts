@@ -1,29 +1,24 @@
 import { BatteryShutdownStateAlignmentClass } from '@prisma/client';
-import { SHUTDOWN_TIMESTAMP_SOURCES, type ShutdownTimestampSource } from '../shutdown-evidence/shutdown-evidence.constants';
+import {
+  SHUTDOWN_TIMESTAMP_SOURCES,
+  type ShutdownTimestampSource,
+} from '../shutdown-evidence/shutdown-evidence.constants';
 import {
   R1_NOMINAL_REST_CADENCE_MS,
+  REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED,
   REST_CADENCE_POLICY_VERSION,
 } from './generalized-evidence.constants';
 
-/** Production forensic parked-rest inter-arrival P25 (2026-09-21, ICE LTE_R1). */
-export const R1_PARKED_REST_DELTA_P25_MS = 17_457_000;
+/** M3.3B.1 strict session rung-residual P50 (ms) — research only, not promotion gate. */
+export const R1_RUNG_RESIDUAL_P50_MS_STRICT_FORENSIC = 110_000;
 
-/** Production forensic parked-rest inter-arrival median. */
-export const R1_PARKED_REST_DELTA_MEDIAN_MS = 28_890_000;
-
-/** Production forensic parked-rest inter-arrival P95. */
-export const R1_PARKED_REST_DELTA_P95_MS = 38_726_000;
-
-/** Production forensic min inter-arrival in 4–12h candidate band. */
-export const R1_PARKED_REST_DELTA_MIN_MS = 14_619_000;
-
-/** Production forensic max inter-arrival in 4–12h candidate band. */
-export const R1_PARKED_REST_DELTA_MAX_MS = 39_872_000;
-
-/** Center tolerance — half-width from nominal ladder rung (derived from P95−median spread). */
-export const R1_CADENCE_CENTER_TOLERANCE_MS = 4.5 * 60 * 60_000;
+/** M3.3B.1 strict session rung-residual P95 |residual| (ms) — too wide for auto promotion. */
+export const R1_RUNG_RESIDUAL_P95_ABS_MS_STRICT_FORENSIC = 28_531_200;
 
 const ANCHOR_MAX_AGE_MS = 3 * 60_000;
+
+/** Midpoint between rung 0 and rung 1 (4h). Non-overlapping ladder partitions. */
+const RUNG_0_UPPER_BOUND_MS = 4 * 60 * 60_000;
 
 export interface RestCadenceQualificationInput {
   actualRestAgeMs: number | null | undefined;
@@ -36,57 +31,63 @@ export interface RestCadenceQualificationInput {
 export interface RestCadenceQualificationResult {
   tolerancePolicyVersion: string;
   nominalRestIntervalIndex: number | null;
+  rungResidualMs: number | null;
   cadenceInTolerance: boolean;
   restWakeCadenceQualified: boolean;
 }
 
-function restAgeBandForNominalIndex(index: number): { minMs: number; maxMs: number } {
-  if (index <= 0) {
-    return { minMs: 0, maxMs: ANCHOR_MAX_AGE_MS };
-  }
-  if (index === 1) {
-    return {
-      minMs: 4 * 60 * 60_000,
-      maxMs: 12 * 60 * 60_000,
-    };
-  }
-  const center = index * R1_NOMINAL_REST_CADENCE_MS;
-  return {
-    minMs: center - 4 * 60 * 60_000,
-    maxMs: center + 4.5 * 60 * 60_000,
-  };
+export function computeRungResidualMs(
+  actualRestAgeMs: number,
+  nominalRestIntervalIndex: number,
+): number {
+  return actualRestAgeMs - nominalRestIntervalIndex * R1_NOMINAL_REST_CADENCE_MS;
 }
 
 /**
- * Maps provider-authoritative rest age to a nominal ladder index (metadata only).
- * Supports skipped rungs (e.g. first observation at ~16h → index 2).
+ * Non-overlapping nominal index: rung k≥1 occupies
+ * [ (k−½)×8h , (k+½)×8h ) with anchor rung 0 for age < 4h.
  */
-export function deriveNominalRestIntervalIndex(
-  actualRestAgeMs: number,
-): { nominalRestIntervalIndex: number | null; cadenceInTolerance: boolean } {
+export function deriveNominalRestIntervalIndex(actualRestAgeMs: number): {
+  nominalRestIntervalIndex: number | null;
+  rungResidualMs: number | null;
+} {
   if (actualRestAgeMs <= ANCHOR_MAX_AGE_MS) {
-    return { nominalRestIntervalIndex: 0, cadenceInTolerance: true };
+    return { nominalRestIntervalIndex: 0, rungResidualMs: actualRestAgeMs };
   }
 
-  for (let index = 21; index >= 1; index -= 1) {
-    const { minMs, maxMs } = restAgeBandForNominalIndex(index);
-    if (actualRestAgeMs >= minMs && actualRestAgeMs <= maxMs) {
-      const center = index * R1_NOMINAL_REST_CADENCE_MS;
-      const cadenceInTolerance =
-        Math.abs(actualRestAgeMs - center) <= R1_CADENCE_CENTER_TOLERANCE_MS;
-      return { nominalRestIntervalIndex: index, cadenceInTolerance };
+  if (actualRestAgeMs < RUNG_0_UPPER_BOUND_MS) {
+    return {
+      nominalRestIntervalIndex: 0,
+      rungResidualMs: computeRungResidualMs(actualRestAgeMs, 0),
+    };
+  }
+
+  for (let index = 1; index <= 21; index += 1) {
+    const lowMs = (index - 0.5) * R1_NOMINAL_REST_CADENCE_MS;
+    const highMs = (index + 0.5) * R1_NOMINAL_REST_CADENCE_MS;
+    if (actualRestAgeMs >= lowMs && actualRestAgeMs < highMs) {
+      return {
+        nominalRestIntervalIndex: index,
+        rungResidualMs: computeRungResidualMs(actualRestAgeMs, index),
+      };
     }
   }
 
-  return { nominalRestIntervalIndex: null, cadenceInTolerance: false };
+  return { nominalRestIntervalIndex: null, rungResidualMs: null };
+}
+
+/** Reserved for a future validated tolerance — not used for promotion in M3.3B.1. */
+export function isRungResidualWithinResearchTolerance(_rungResidualMs: number): boolean {
+  return false;
 }
 
 export function evaluateRestCadenceQualification(
   input: RestCadenceQualificationInput,
 ): RestCadenceQualificationResult {
-  const base = {
+  const base: RestCadenceQualificationResult = {
     tolerancePolicyVersion: REST_CADENCE_POLICY_VERSION,
-    nominalRestIntervalIndex: null as number | null,
+    nominalRestIntervalIndex: null,
+    rungResidualMs: null,
     cadenceInTolerance: false,
     restWakeCadenceQualified: false,
   };
@@ -115,15 +116,22 @@ export function evaluateRestCadenceQualification(
   }
 
   const mapped = deriveNominalRestIntervalIndex(input.actualRestAgeMs);
+  if (mapped.nominalRestIntervalIndex == null || mapped.rungResidualMs == null) {
+    return base;
+  }
+
+  const cadenceInTolerance = isRungResidualWithinResearchTolerance(mapped.rungResidualMs);
+
   const restWakeCadenceQualified =
-    mapped.nominalRestIntervalIndex != null &&
+    REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED &&
     mapped.nominalRestIntervalIndex >= 1 &&
-    mapped.cadenceInTolerance;
+    cadenceInTolerance;
 
   return {
     tolerancePolicyVersion: REST_CADENCE_POLICY_VERSION,
     nominalRestIntervalIndex: mapped.nominalRestIntervalIndex,
-    cadenceInTolerance: mapped.cadenceInTolerance,
+    rungResidualMs: mapped.rungResidualMs,
+    cadenceInTolerance,
     restWakeCadenceQualified,
   };
 }

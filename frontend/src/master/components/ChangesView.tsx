@@ -59,11 +59,19 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.1151',
     title: 'Battery V2 M3.3B — R1 natural cadence forensics + REST ladder qualification (shadow)',
     summary: [
+<<<<<<< HEAD
       'M3.3B.2 strict forensics aligned with runtime ladder mapping; reproducible SQL in repo.',
       'Periodic ~8h-scale parked LV observed; ladder-candidate n=35; P95|residual| ~2.85h research tolerance candidate.',
       'REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false; PARKED_REST_CANDIDATE retained.',
       'Metric: synqdrive_battery_cadence_ladder_research_unqualified_total (replaces unreachable out-of-tolerance).',
       'B0 deploy merged M3.3A+M3.3B with flag OFF; B1 shadow does not require REST_WAKE auto-promotion.',
+=======
+      'M3.3B.1 strict forensics: provider_timestamp only, NULL speed excluded, activity-broken rest sessions.',
+      'Periodic ~8h-scale parked LV observed; rung-residual P95|abs| ~7.9h — auto REST_WAKE promotion NOT validated.',
+      'REST_CADENCE_POLICY_VERSION=M3_3B_V1_1; non-overlapping midpoint ladder metadata; promotion disabled in code.',
+      'Retracted ±4.5h tolerance derivation (P95−median inter-arrival ≈ 2.73h, not 4.5h).',
+      'B0 should deploy merged M3.3A+M3.3B.1 once with flag OFF.',
+>>>>>>> 8938a9af0 (fix(battery-v2): M3.3B.1 strict cadence forensics and disable auto REST_WAKE)
     ],
     reason:
       'Empirical R1 cadence grounding before shadow ladder promotion — no health scoring or authoritative REST_60M/6H changes.',
