@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-21 (M3.3B.2 runtime-aligned forensics + metric closure)  
+**Snapshot date:** 2026-09-21 (M3.3 B0 production deploy @ `105f2c5ff`, generalized evidence flag OFF)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -27,9 +27,10 @@
 | Canonical seal (`05:30Z`, PR #1551) | **RUNTIME_DIFF=NONE**; `PASSIVE_WAITING_FOR_MORE_TRIPS_SUFFICIENT=NO`; see `research/M3_1_M3_2A_CANONICAL_EVIDENCE_SEAL_2026-09-07.md` |
 | M3.2B shadow shutdown evidence (`2026-09-07`, PR #1560) | **DEPLOYED** @ `0ba96e03`; Phase C shadow ON @ **`M3_2B_PHASE_C_T0=2026-09-07T22:47:14Z`**; see Phase B/C + first-natural / post-probe forensics in `research/M3_2B_*_2026-09-08.md` |
 | M3.3 R1 8h REST evidence architecture (`2026-09-21`) | **AUDIT COMPLETE** (read-only); see `research/M3_3_R1_8H_REST_EVIDENCE_ARCHITECTURE_AUDIT_2026-09-21.md` |
-| M3.3A generalized evidence + rest sessions (`2026-09-21`) | **IMPLEMENTED (shadow, flag OFF)** + **M3.3A.1 hardening**; merged PR #1710 @ `b83271dfb`; **not deployed to prod VPS yet** |
-| M3.3B R1 natural cadence forensics (`2026-09-21`) | **M3.3B.2** — runtime-aligned ladder residuals (n=35); research tolerance candidate **10.2756M ms**; auto REST_WAKE **off**; reproducible SQL script; metric `cadence_ladder_research_unqualified_total` |
-| `NEXT_PHASE` | Merge **#1713** → single **B0** deploy (M3.3A+M3.3B.1, flag OFF); validated rung-residual tolerance before REST_WAKE promotion |
+| M3.3A generalized evidence + rest sessions (`2026-09-21`) | **DEPLOYED (B0)** @ `105f2c5ff` release `20260921172342_v4994`; **`BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` effective FALSE**; schema on prod; **0 rows** post-deploy smoke |
+| M3.3B R1 natural cadence forensics (`2026-09-21`) | **DEPLOYED (B0, code only)** — M3.3B.2 ladder metadata + metrics registered; auto REST_WAKE **off**; zero shadow writes while flag OFF |
+| `M3_3_B0_STATUS` | **`B0_PASS`** — see `research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md` (M3.3A schema pre-existed at `fe3dc6bf` before B0 target `105f2c5ff`; **0 new migrations** at B0) |
+| `NEXT_PHASE` | **Explicit B1 authorization** — canary `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true` (not started); REST_WAKE promotion remains **off** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
