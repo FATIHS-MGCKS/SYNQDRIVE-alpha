@@ -278,6 +278,26 @@ try {
 
   out.subscriptionScope = preflight.subscriptionScope;
   out.blastRadius = preflight.blastRadius;
+  out.canaryTopology = {
+    singleVehicleCanaryViaGlobalLegacyPlugEnable: false,
+    reason:
+      'Global legacy PLUG definition enable delivers to every token on PLUG subscription list, not WOB-only.',
+    globalEnableBlastRadiusCount: preflight.plugTokenIds.length,
+    globalEnableBlastRadiusTokens: preflight.plugTokenIds,
+    wobOnPlugSubscriptionList: preflight.plugTokenIds.includes(TOKEN_WOB_7503),
+    recommendedIsolatedCanaryScript: 'gt-r1-plug-webhook-canary-isolated.mjs (topology A, read-only design)',
+  };
+  out.opsSafety = {
+    defaultModeReadOnly: true,
+    explicitExecuteRequired: true,
+    exactWebhookConfirmationRequired: true,
+    dryRunSupported: true,
+    idempotentEnable: 'PUT with same semantics + enabled is repeatable',
+    rollbackSupported: 'Authorized PUT status=disabled on same webhook id restores pre-enable state',
+    unplugWebhookUntouched: true,
+    p25T0Untouched: true,
+    notLabeledWobOnlyCanary: true,
+  };
   out.before = preflight.before;
 
   if (!preflight.plugTokenIds.includes(TOKEN_WOB_7503)) {

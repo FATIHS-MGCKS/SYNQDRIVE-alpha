@@ -8,6 +8,47 @@
 
 No provider `PUT` enable, no subscription mutation, no P2.5 T0 reset, no PR #1697 changes.
 
+**Pre-activation closure (2026-09-21):** PR #1707 rebased onto `main` `6e3bce843ed09c3603f02fcdb835a1840429372b`; stale `docs/audits/vdc-rb019-p25-production-dark-deployment-readiness-2026-09-15.md` branch artifact removed from PR scope.
+
+---
+
+## Section 2 — Production token topology (@ 2026-09-21T11:53:17Z)
+
+| TOKEN_ID | Vehicle (license) | HARDWARE | PLUG sub | UNPLUG sub |
+|----------|-------------------|----------|----------|------------|
+| 186946 | KS FH 660E | LTE_R1 | YES | YES |
+| 187336 | KS MX 2024 | LTE_R1 | YES | YES |
+| 187361 | KS MS 661 | LTE_R1 | YES | YES |
+| 187784 | HMÜ C 215 | LTE_R1 | YES | YES |
+| 189118 | *(no vehicle row)* | unknown | YES | YES |
+| 190497 | WOB L 9755 | LTE_R1 | YES | YES |
+| 192922 | WOB L 7503 | LTE_R1 | **NO** | YES |
+
+`PLUG_EXISTING_SUBSCRIBER_COUNT=6`  
+`GLOBAL_ENABLE_BLAST_RADIUS_COUNT=6` (if legacy global PLUG definition enabled **now**)  
+`WOB_ALREADY_PLUG_SUBSCRIBED=NO`  
+`WOB_UNPLUG_SUBSCRIBED=YES`
+
+## Section 3 — Canary isolation
+
+| Capability | Supported |
+|------------|-----------|
+| A — temporary parallel PLUG webhook + WOB-only subscribe | **YES** (repo proof: `r9-subscribe-probe.mjs`, `POST/DELETE /v1/webhooks`) |
+| B — per-token enable on global definition | **NO** |
+| C — temporary unsubscribe others + enable global | **Technically possible; NOT RECOMMENDED** — parked replug events lost for 6 assets during window |
+| D — no safe single-vehicle canary via global enable alone | **YES** |
+
+`RECOMMENDED_CANARY_TOPOLOGY=A` — design script `backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.mjs` (read-only).
+
+## Section 8 — P2.5 non-interference (prospective)
+
+| Field | Value |
+|-------|-------|
+| P25_T0 | `2026-09-18T09:33:25.000Z` |
+| P25_T0_WILL_REMAIN_UNCHANGED | YES |
+| Future timestamps | `PLUG_WEBHOOK_CANARY_ACTIVATED_AT`, `PLUG_WEBHOOK_CANARY_DEACTIVATED_AT` (temp webhook), `GLOBAL_PLUG_WEBHOOK_ACTIVATED_AT` (if ever) |
+| T7 segments | `PRE_WEBHOOK_RESTORATION`, `CANARY_WEBHOOK_WINDOW`, `POST_GLOBAL_WEBHOOK_RESTORATION` |
+
 ---
 
 ## Phase A — Path / subscription forensics
