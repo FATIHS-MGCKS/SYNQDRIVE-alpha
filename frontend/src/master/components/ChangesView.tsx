@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b0-flag-off-production-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B0 — Production deploy (generalized evidence flag OFF)',
+    summary: [
+      'Deployed main @ 105f2c5ff release 20260921172342_v4994; both PM2 replicas on exact SHA.',
+      'M3.3A+M3.3B code live; additive schema present; BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED absent → effective FALSE.',
+      'Zero generalized-evidence and rest-session rows before and after 180s post-deploy smoke (flag OFF).',
+      'M3.3 Prometheus counters registered on /api/v1/metrics; REST_WAKE auto-promotion remains disabled in code.',
+      'B0_PASS — B1 requires explicit authorization; no backfill or flag enable.',
+    ],
+    reason:
+      'Controlled production cutover for M3.3 shadow infrastructure without enabling writes or REST_WAKE promotion.',
+    previousBehavior:
+      'Production @ fe3dc6bf without M3.3 application code; schema already migrated with zero shadow rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T17:35:00.000Z',
+  },
+  {
     id: 'vdc-plug-webhook-restoration-forensics-2026-09-21',
     version: '4.9.1994',
     title: 'VDC — OBD PLUG webhook restoration forensics + safe ops gate',
