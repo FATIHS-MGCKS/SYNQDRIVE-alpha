@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3a-generalized-evidence-2026-09-21',
+    version: '4.9.1150',
+    title: 'Battery V2 M3.3A — Generalized evidence + rest session foundation (shadow)',
+    summary: [
+      'Additive tables `battery_generalized_evidence_observations` + `battery_rest_sessions` — normalized LV evidence above immutable `battery_measurements`.',
+      'Flag `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` defaults false — no production writes until explicitly enabled.',
+      'Evidence classes include REST_WAKE_VOLTAGE (R1 ~8h semantic); REST_STABLE promotion disabled; actualRestAgeMs authority; tolerance RESEARCH_PENDING.',
+      'Rest sessions: PHYSICAL_SHUTDOWN anchor, open-ended ladder (no REST_8H columns); late COMPLETED-trip association read-only.',
+      'M3.2B provenance bundle reused; REST_60M/REST_6H unchanged opportunistic legacy; no health/publication/assessment wiring.',
+    ],
+    reason:
+      'M3.3 audit: separate raw LV persistence from trip-finalize-gated REST/shadow paths for R1 periodic wake architecture.',
+    previousBehavior:
+      'Only raw LIVE_VOLTAGE + trip-gated REST window / M3.2B shadow; no generalized rest ladder session model.',
+    details:
+      'architecture/battery-v2/research/M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
     id: 'exp021-pdi-m2-integration-repair-2026-09-19',
     version: '4.9.1149',
     title: 'EXP-021 — PDI → M2 maturation integration repair (prospective discovery)',
