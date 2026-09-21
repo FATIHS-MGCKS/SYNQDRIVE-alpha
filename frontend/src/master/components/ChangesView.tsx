@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b1-2r-wob-shutdown-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2R — WOB L 7503 targeted natural shutdown forensics',
+    summary: [
+      'Targeted read-only forensics for operator drive+park ~18:48–18:58Z UTC on WOB ICE LTE_R1.',
+      'Trip db0039e8 COMPLETED 18:47:47Z; last VALID LV 18:47:56Z (engineRunning=true, LV charging, speed 0).',
+      'Zero LIVE_VOLTAGE measurements after 18:47:56Z through audit — no post-park LV observability.',
+      'ENGINE_OFF_GATE=PENDING_SIGNAL_OBSERVABILITY (not FAIL — no trustworthy raw shutdown); PROVENANCE + safety PASS.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION_AWAIT_POST_PARK_LIVE_VOLTAGE.',
+    ],
+    reason:
+      'B1.2R acceptance case: distinguish signal observability gap from classifier defect when real-world park is known.',
+    previousBehavior:
+      'B1.2 fleet-wide pending; WOB contaminated kinematics during drive.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2R_WOB_L7503_NATURAL_SHUTDOWN_FORENSICS_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T19:25:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',
