@@ -33,6 +33,23 @@
 2. Confirm one PM2 replica is leader with activation timer installed.
 3. Prove ledger on **ONGOING** prospective trip before completion (no backfill of 2026-09-20 forensic drives).
 
+## No-backfill invariant (wording)
+
+- `COMPLETED_NO_LEDGER_BACKFILLED=NO` means a completed trip **without** a ledger must **not** receive a retroactive ledger (`NO_LEDGER_MISS_NO_BACKFILL`).
+- Do not read `COMPLETED_NO_LEDGER_BACKFILLED=YES` as “backfill occurred”.
+
+## Post-#1703 cutover (mandatory before fresh live drive)
+
+1. Disable EXP-021 live activation.
+2. Gracefully stop legacy full-`AppModule` cohort CLI (production PID 4111560 class).
+3. Prove `synqdrive:scheduler:leader` released/expired.
+4. Deploy rebased main (includes RFRF F10.6.8-B + #1703) to both PM2 replicas.
+5. Verify SHA on replicas; one backend is global leader.
+6. Set **new** `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO` after deploy (later than all 2026-09-20 forensic trips, including `9037edf0-…`).
+7. Keep VDC T0 `2026-09-18T09:33:25.000Z` unchanged.
+8. Start one cohort CLI from new SHA (default slim bootstrap).
+9. Re-enable activation; prove timer + successful activation tick on PM2 leader before any test drive.
+
 ## Activation scheduler config dynamics (repair)
 
 - `ACTIVATION_ENABLED_DYNAMIC=YES` — resolved in each `tick()` via `resolveConfigFromEnv()`.
