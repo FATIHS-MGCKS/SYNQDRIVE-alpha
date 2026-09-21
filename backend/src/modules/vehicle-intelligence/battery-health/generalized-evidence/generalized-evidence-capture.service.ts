@@ -76,6 +76,7 @@ export class GeneralizedEvidenceCaptureService {
             lastSeenAt: true,
             sourceTimestamp: true,
             providerFetchedAt: true,
+            syncJobRef: true,
           },
         },
         tripDetectionState: {
