@@ -16,5 +16,7 @@ describe('Exp021 post-completion gap observer bootstrap', () => {
     expect(source).not.toContain('AppModule');
     expect(source).not.toContain('WorkersModule');
     expect(source).not.toContain('SchedulerLeaderElectionModule');
+    expect(source).not.toContain('WorkersModule');
+    expect(source).not.toContain('AppModule');
   });
 });

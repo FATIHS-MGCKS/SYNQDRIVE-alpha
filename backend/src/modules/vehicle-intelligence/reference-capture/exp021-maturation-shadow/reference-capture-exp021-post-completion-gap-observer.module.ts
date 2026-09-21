@@ -8,12 +8,12 @@ import dimoProviderLimiterConfig from '@config/dimo-provider-limiter.config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
 import { DimoProviderBudgetModule } from '@modules/dimo/provider-budget/dimo-provider-budget.module';
+import { ObservabilityModule } from '@modules/observability/observability.module';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { DimoProviderGateway } from '@modules/dimo/provider/dimo-provider-gateway.service';
 import { DimoProviderAdmissionService } from '@modules/dimo/provider/dimo-provider-admission.service';
 import { DimoProviderLimiterService } from '@modules/dimo/provider/dimo-provider-limiter.service';
-import { DimoProviderMetricsService } from '@modules/dimo/provider/dimo-provider-metrics.service';
 import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './reference-capture-exp021-maturation-shadow-provider-query.adapter';
 
 /**
@@ -30,10 +30,10 @@ import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './re
     }),
     PrismaModule,
     RedisModule,
+    ObservabilityModule,
     DimoProviderBudgetModule,
   ],
   providers: [
-    DimoProviderMetricsService,
     DimoProviderLimiterService,
     DimoProviderAdmissionService,
     DimoProviderGateway,
