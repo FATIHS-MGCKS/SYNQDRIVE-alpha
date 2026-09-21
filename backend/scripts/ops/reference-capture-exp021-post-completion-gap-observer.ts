@@ -6,10 +6,12 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TripStatus } from '@prisma/client';
-import { NestFactory } from '@nestjs/core';
-import { PrismaService } from '@shared/database/prisma.service';
 import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-provider-query.adapter';
-import { loadOpsEnv, parseOpsArg } from './reference-capture-ops-shared';
+import {
+  bootstrapExp021PostCompletionGapObserverContext,
+  resolveExp021GapObserverNestServices,
+} from '../../src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-post-completion-gap-observer-bootstrap.lib';
+import { parseOpsArg } from './reference-capture-ops-shared';
 import {
   bucketIdentityVersion,
   compareLocusSets,
@@ -94,6 +96,11 @@ type ObserverState = {
   observerBootAt: string;
   outputDirectory: string;
   enrolledTripIds: string[];
+  lastDbPollAt: string | null;
+  cohortMembersWatched: number;
+  currentPendingSeries: string[];
+  currentActiveSeries: string[];
+  observerBootstrap: 'SLIM_READ_ONLY';
 };
 
 function resolveRuntimeSha(): string {
@@ -106,6 +113,51 @@ function resolveRuntimeSha(): string {
 
 function ensureDir(dir: string): void {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+function seriesDir(outputDir: string): string {
+  const dir = path.join(outputDir, 'series');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function appendSeriesJsonl(outputDir: string, tripId: string, record: unknown): void {
+  const file = path.join(seriesDir(outputDir), `${tripId}.jsonl`);
+  fs.appendFileSync(file, `${JSON.stringify(record)}\n`);
+}
+
+const SNAPSHOT_CSV_HEADER = [
+  'trip_id',
+  'vehicle',
+  'snapshot_label',
+  'canonical_window_from',
+  'canonical_window_to',
+  'official_completed_first_observed_at',
+  'target_offset_ms',
+  'request_started_at',
+  'actual_post_completion_age_ms',
+  'scheduler_drift_ms',
+  'provider_success',
+  'bucket_locus_count',
+  'temporal_bucket_count',
+  'first_provider_timestamp',
+  'last_provider_timestamp',
+  'median_gap_ms',
+  'p95_gap_ms',
+  'max_gap_ms',
+  'gaps_gt_2s',
+  'gaps_gt_5s',
+  'gaps_gt_10s',
+  'runtime_sha',
+  'query_schema_version',
+].join(',');
+
+function appendSnapshotCsv(outputDir: string, row: string[]): void {
+  const file = path.join(outputDir, 'snapshots.csv');
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, `${SNAPSHOT_CSV_HEADER}\n`);
+  }
+  fs.appendFileSync(file, `${row.join(',')}\n`);
 }
 
 function tripFilePath(outputDir: string, tripId: string): string {
@@ -318,6 +370,7 @@ function printStartupReport(input: {
     `OBSERVER_RUNNING=${input.running ? 'YES' : 'NO'}`,
     `OBSERVER_PID=${input.pid ?? ''}`,
     `OBSERVER_RUNTIME_SHA=${input.runtimeSha}`,
+    'OBSERVER_BOOTSTRAP=SLIM_READ_ONLY',
     `QUERY_SCHEMA_VERSION=${bucketIdentityVersion()}`,
     'CURRENT_WOB_STABLE_NO_LATER_THAN_33S=YES',
     'PRODUCTION_MUTATED=NO',
@@ -341,12 +394,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  loadOpsEnv();
-  const { AppModule } = await import('../../src/app.module');
-  const root = await AppModule.forRootAsync();
-  const app = await NestFactory.createApplicationContext(root, { logger: ['error', 'warn'] });
-  const prisma = app.get(PrismaService);
-  const adapter = app.get(ReferenceCaptureExp021MaturationShadowProviderQueryAdapter);
+  const app = await bootstrapExp021PostCompletionGapObserverContext({ logger: ['error', 'warn'] });
+  const { prisma, providerQuery: adapter } = resolveExp021GapObserverNestServices(app);
 
   const observerBootAt = new Date();
   let state =
@@ -357,6 +406,11 @@ async function main(): Promise<void> {
       observerBootAt: observerBootAt.toISOString(),
       outputDirectory: outputDir,
       enrolledTripIds: [],
+      lastDbPollAt: null,
+      cohortMembersWatched: EXP021_GAP_OBSERVER_COHORT.length,
+      currentPendingSeries: [],
+      currentActiveSeries: [],
+      observerBootstrap: 'SLIM_READ_ONLY',
     } satisfies ObserverState);
 
   state.observerRuntimeSha = runtimeSha;
@@ -384,6 +438,7 @@ async function main(): Promise<void> {
     const now = new Date();
     const nowMs = now.getTime();
 
+    state.lastDbPollAt = now.toISOString();
     const trips = await prisma.vehicleTrip.findMany({
       where: {
         vehicleId: { in: [...cohortVehicleIds] },
@@ -477,6 +532,50 @@ async function main(): Promise<void> {
           snap.lanes = lanes;
           snap.mergedManifest = merged;
           snap.mergedMetrics = computeGapMetricsFromManifest(merged);
+          const providerSuccess = lanes.every((l) => l.providerSuccess);
+          appendSeriesJsonl(outputDir, series.tripId, {
+            type: 'snapshot',
+            snapshotLabel: snap.label,
+            vehicle: series.vehicleLabel,
+            tripId: series.tripId,
+            canonicalWindowFrom: series.canonicalWindowFrom,
+            canonicalWindowTo: series.canonicalWindowTo,
+            officialCompletedFirstObservedAt: series.officialCompletedFirstObservedAt,
+            targetOffsetMs: snap.snapshotTargetOffsetMs,
+            requestStartedAt: snap.snapshotRequestStartedAt,
+            actualPostCompletionAgeMs: snap.actualPostCompletionAgeMs,
+            schedulerDriftMs: snap.schedulerDriftMs,
+            providerSuccess,
+            bucketLocusManifest: merged,
+            ...snap.mergedMetrics,
+            runtimeSha: runtimeSha,
+            querySchemaVersion: bucketIdentityVersion(),
+          });
+          appendSnapshotCsv(outputDir, [
+            series.tripId,
+            series.vehicleLabel,
+            snap.label,
+            series.canonicalWindowFrom,
+            series.canonicalWindowTo,
+            series.officialCompletedFirstObservedAt,
+            String(snap.snapshotTargetOffsetMs),
+            snap.snapshotRequestStartedAt ?? '',
+            String(snap.actualPostCompletionAgeMs ?? ''),
+            String(snap.schedulerDriftMs ?? ''),
+            providerSuccess ? 'true' : 'false',
+            String(snap.mergedMetrics.bucketLocusCount),
+            String(snap.mergedMetrics.temporalBucketCount),
+            snap.mergedMetrics.firstProviderTimestamp ?? '',
+            snap.mergedMetrics.lastProviderTimestamp ?? '',
+            String(snap.mergedMetrics.medianGapMs ?? ''),
+            String(snap.mergedMetrics.p95GapMs ?? ''),
+            String(snap.mergedMetrics.maxGapMs ?? ''),
+            String(snap.mergedMetrics.gapsGt2s),
+            String(snap.mergedMetrics.gapsGt5s),
+            String(snap.mergedMetrics.gapsGt10s),
+            runtimeSha,
+            bucketIdentityVersion(),
+          ]);
           advanced = true;
         } finally {
           queryInFlight = false;
@@ -495,6 +594,23 @@ async function main(): Promise<void> {
         }
       }
     }
+
+    state.currentActiveSeries = state.enrolledTripIds.filter((id) => {
+      const s = loadJson<TripSeriesState>(tripFilePath(outputDir, id));
+      return s && !s.seriesComplete;
+    });
+    state.currentPendingSeries = state.currentActiveSeries;
+    writeJsonAtomic(stateFilePath(outputDir), state);
+    writeJsonAtomic(path.join(outputDir, 'aggregate.json'), {
+      schemaVersion: OBSERVER_SCHEMA_VERSION,
+      observerRuntimeSha: runtimeSha,
+      lastDbPollAt: state.lastDbPollAt,
+      enrolledTripCount: state.enrolledTripIds.length,
+      activeSeriesCount: state.currentActiveSeries.length,
+      minCompleteSeries: 5,
+      targetCompleteSeries: 10,
+      historicalSeriesBackfilled: false,
+    });
   };
 
   await tick();

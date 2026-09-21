@@ -121,6 +121,7 @@
     "exp021:maturation-shadow:canary:enroll": "ts-node -r tsconfig-paths/register scripts/ops/reference-capture-exp021-maturation-shadow-canary-enroll.ts",
     "exp021:cohort:study-enrollment:bootstrap": "ts-node -r tsconfig-paths/register scripts/ops/reference-capture-exp021-cohort-study-enrollment-bootstrap.ts",
     "exp021:post-completion-gap-observer": "ts-node -r tsconfig-paths/register scripts/ops/reference-capture-exp021-post-completion-gap-observer.ts",
+    "exp021:post-completion-gap-observer:preflight": "ts-node -r tsconfig-paths/register scripts/ops/reference-capture-exp021-post-completion-gap-observer-preflight.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
