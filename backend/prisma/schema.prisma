@@ -1765,6 +1765,8 @@ model Organization {
   batteryPublications                                       BatteryPublication[]
   batteryShutdownEvidenceObservations                       BatteryShutdownEvidenceObservation[]
   batteryTripShutdownContexts                               BatteryTripShutdownContext[]
+  batteryGeneralizedEvidenceObservations                  BatteryGeneralizedEvidenceObservation[]
+  batteryRestSessions                                       BatteryRestSession[]
   vehicleBatteryCapabilities                                VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities                         VehicleBatteryReferenceCapacity[]
@@ -2974,6 +2976,8 @@ model Vehicle {
   batteryPublications                    BatteryPublication[]
   batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
   batteryTripShutdownContexts            BatteryTripShutdownContext[]
+  batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
+  batteryRestSessions                    BatteryRestSession[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -8616,6 +8620,7 @@ model BatteryMeasurement {
   supersededBy BatteryMeasurement?        @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
   supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
   evidenceRows BatteryEvidence[]
+  generalizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_measurements_tenant_idempotency_key")
   @@unique([vehicleId, type, observedAt], map: "battery_measurements_dedup_key")
@@ -8811,6 +8816,138 @@ model BatteryTripShutdownContext {
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_trip_shutdown_ctx_idempotency")
   @@index([vehicleId, tripEndedAt(sort: Desc)])
   @@map("battery_trip_shutdown_contexts")
+}
+
+// ── Battery Health V2 M3.3A — generalized evidence + rest sessions (isolated; default OFF) ──
+
+enum BatteryGeneralizedEvidenceClass {
+  DRIVING_CHARGING
+  DRIVING_NON_CHARGING
+  ENGINE_OFF_TRANSITION
+  REST_WAKE_VOLTAGE
+  REST_STABLE_VOLTAGE
+  ACTIVE_VEHICLE_CONTAMINATED
+  CHARGING_CONTAMINATED
+  STALE_REPLAY
+  STATE_AMBIGUOUS
+  UNKNOWN
+}
+
+enum BatteryGeneralizedEvidenceConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+enum BatteryRestSessionStatus {
+  CANDIDATE
+  CONFIRMED
+  RESTING
+  ENDED
+  INVALIDATED
+}
+
+enum BatteryRestSessionAnchorType {
+  PHYSICAL_SHUTDOWN
+  TRIP_END_CONFIRMED
+}
+
+enum BatteryRestSessionEndReason {
+  NEW_TRIP
+  VEHICLE_ACTIVITY
+  CHARGING_DETECTED
+  WAKE_DETECTED
+  SESSION_TIMEOUT
+  INVALIDATED
+  MANUAL
+}
+
+/// Normalized LV evidence interpretation layered above battery_measurements (M3.3A).
+/// Does not feed authoritative assessment/publication while flag is shadow-only.
+model BatteryGeneralizedEvidenceObservation {
+  id                           String                             @id @default(uuid())
+  organizationId               String                             @map("organization_id")
+  vehicleId                    String                             @map("vehicle_id")
+  sourceMeasurementId          String                             @map("source_measurement_id")
+  sourceKind                   String                             @default("LIVE_VOLTAGE_CLASSIFY") @map("source_kind")
+  voltage                      Float?                             @map("voltage")
+  voltageObservedAt            DateTime?                          @map("voltage_observed_at")
+  providerObservationAt        DateTime?                          @map("provider_observation_at")
+  providerTimestampSource      String?                            @map("provider_timestamp_source")
+  ingestedAt                   DateTime                           @map("ingested_at")
+  evidenceClass                BatteryGeneralizedEvidenceClass      @map("evidence_class")
+  evidenceConfidence           BatteryGeneralizedEvidenceConfidence @map("evidence_confidence")
+  classificationVersion        String                             @map("classification_version")
+  tripId                       String?                            @map("trip_id")
+  restSessionId                String?                            @map("rest_session_id")
+  actualRestAgeMs              Int?                               @map("actual_rest_age_ms")
+  nominalRestIntervalIndex     Int?                               @map("nominal_rest_interval_index")
+  tolerancePolicyVersion       String?                            @map("tolerance_policy_version")
+  speedKmh                     Float?                             @map("speed_kmh")
+  ignitionOn                   Boolean?                           @map("ignition_on")
+  engineRunning                Boolean?                           @map("engine_running")
+  isLvCharging                 Boolean?                           @map("is_lv_charging")
+  isHvCharging                 Boolean?                           @map("is_hv_charging")
+  vehicleOnline                Boolean?                           @map("vehicle_online")
+  temperatureC                 Float?                             @map("temperature_c")
+  temperatureObservedAt        DateTime?                          @map("temperature_observed_at")
+  stateObservedAt              DateTime?                          @map("state_observed_at")
+  stateTimestampSource         String?                            @map("state_timestamp_source")
+  stateTimestampSkewMs         Int?                               @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs      Int?                               @map("max_field_timestamp_skew_ms")
+  stateCompleteness            BatteryShutdownStateCompleteness   @map("state_completeness")
+  stateAlignmentClass          BatteryShutdownStateAlignmentClass @map("state_alignment_class")
+  atomicClaim                  Boolean                            @default(false) @map("atomic_claim")
+  fieldProvenance              Json?                              @map("field_provenance")
+  idempotencyKey               String                             @map("idempotency_key")
+  createdAt                    DateTime                           @default(now()) @map("created_at")
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle           Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  sourceMeasurement BatteryMeasurement  @relation(fields: [sourceMeasurementId], references: [id], onDelete: Cascade)
+  trip              VehicleTrip?        @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  restSession       BatteryRestSession? @relation(fields: [restSessionId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_gen_evidence_idempotency")
+  @@index([vehicleId, voltageObservedAt(sort: Desc)])
+  @@index([restSessionId, voltageObservedAt(sort: Desc)])
+  @@index([tripId, voltageObservedAt(sort: Desc)])
+  @@index([evidenceClass])
+  @@map("battery_generalized_evidence_observations")
+}
+
+/// Open-ended rest session for R1 ladder (M3.3A). actualRestAgeMs on observations is authority.
+model BatteryRestSession {
+  id                      String                      @id @default(uuid())
+  organizationId          String                      @map("organization_id")
+  vehicleId               String                      @map("vehicle_id")
+  anchorType              BatteryRestSessionAnchorType @map("anchor_type")
+  anchorAt                DateTime                    @map("anchor_at")
+  candidateTripId         String?                     @map("candidate_trip_id")
+  confirmedTripId         String?                     @map("confirmed_trip_id")
+  sessionStatus           BatteryRestSessionStatus    @map("session_status")
+  openedAt                DateTime                    @map("opened_at")
+  confirmedAt             DateTime?                   @map("confirmed_at")
+  endedAt                 DateTime?                   @map("ended_at")
+  endReason               BatteryRestSessionEndReason? @map("end_reason")
+  firstRestObservationAt  DateTime?                   @map("first_rest_observation_at")
+  lastRestObservationAt   DateTime?                   @map("last_rest_observation_at")
+  validRestObservationCount Int                       @default(0) @map("valid_rest_observation_count")
+  idempotencyKey          String                      @map("idempotency_key")
+  createdAt               DateTime                    @default(now()) @map("created_at")
+  updatedAt               DateTime                    @updatedAt @map("updated_at")
+
+  organization   Organization                          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle                               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  candidateTrip  VehicleTrip?                          @relation("RestSessionCandidateTrip", fields: [candidateTripId], references: [id], onDelete: SetNull)
+  confirmedTrip  VehicleTrip?                          @relation("RestSessionConfirmedTrip", fields: [confirmedTripId], references: [id], onDelete: SetNull)
+  observations   BatteryGeneralizedEvidenceObservation[]
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_rest_session_idempotency")
+  @@index([vehicleId, sessionStatus])
+  @@index([vehicleId, anchorAt(sort: Desc)])
+  @@map("battery_rest_sessions")
 }
 
 /// Preflight capability state per provider signal / measurement kind.
@@ -10019,6 +10156,9 @@ model VehicleTrip {
   batteryMeasurementSessions          BatteryMeasurementSession[]
   batteryShutdownEvidenceObservations BatteryShutdownEvidenceObservation[]
   batteryTripShutdownContext          BatteryTripShutdownContext?
+  batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
+  batteryRestSessionsAsCandidate      BatteryRestSession[] @relation("RestSessionCandidateTrip")
+  batteryRestSessionsAsConfirmed      BatteryRestSession[] @relation("RestSessionConfirmedTrip")
   dimoBrakingEventIntakes             DimoBrakingEventIntake[]
   brakingEventLedgerEntries           BrakingEventLedger[]
   routeArtifact                       VehicleTripRouteArtifact?

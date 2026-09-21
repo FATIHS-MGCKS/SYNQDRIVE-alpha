@@ -16,6 +16,7 @@ import { buildAssessmentJobIdempotencyKey } from './battery-v2-job-idempotency.p
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
 import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
+import { GeneralizedEvidenceCaptureService } from '../generalized-evidence/generalized-evidence-capture.service';
 
 function parseIso(value: string | null | undefined): Date | undefined {
   if (!value) return undefined;
@@ -62,6 +63,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly lvRestBridge: LvRestWindowIngestionBridgeService,
     @Optional()
     private readonly shutdownEvidenceCapture?: ShutdownEvidenceCaptureService,
+    @Optional()
+    private readonly generalizedEvidenceCapture?: GeneralizedEvidenceCaptureService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -79,11 +82,27 @@ export class BatteryV2SnapshotIngestionService {
       select: { tractionBatteryIsCharging: true },
     });
 
-    await this.lvLiveVoltage.persistFromObservationClassify(payload).catch((err) => {
+    const lvResult = await this.lvLiveVoltage.persistFromObservationClassify(payload).catch((err) => {
       this.logger.warn(
         `LIVE_VOLTAGE persistence failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
       );
+      return { persisted: false as const, skippedReason: 'persist_error' };
     });
+
+    if (lvResult.persisted && lvResult.measurementId) {
+      const providerOutcome = lvResult.decision?.outcome ?? null;
+      await this.generalizedEvidenceCapture
+        ?.captureFromObservationClassify(
+          payload,
+          lvResult.measurementId,
+          providerOutcome,
+        )
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Generalized evidence capture failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+          );
+        });
+    }
 
     await this.shutdownEvidenceCapture
       ?.captureFromObservationClassify(payload)

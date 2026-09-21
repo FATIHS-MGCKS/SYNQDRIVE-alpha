@@ -32,6 +32,24 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-21 — M3.3A generalized battery evidence + rest session foundation
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | M3.3 audit defined R1 ladder direction; raw LIVE_VOLTAGE independent of trip COMPLETED; REST association + M3.2B shadow still trip-finalize gated. |
+| **OBSERVATION** | Need isolated normalized evidence + open-ended rest sessions without authoritative health/publication changes. |
+| **CHANGE** | Add `battery_generalized_evidence_observations` + `battery_rest_sessions`; Nest module `generalized-evidence/`; flag `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` (default off); post-LIVE_VOLTAGE capture hook; late trip association read-only; unit tests + architecture doc. |
+| **WHY** | Decouple evidence preservation/classification from Trip FSM finalization for R1 ~8h wake ladder (M3.3A scope). |
+| **EXPECTED_EFFECT** | When flag ON (non-prod / shadow): classified evidence rows + rest session lifecycle without changing REST_60M/6H assessment or publication. |
+| **VALIDATION** | `generalized-evidence/*.spec.ts`; `bash architecture/battery-v2/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh`. |
+| **NON_EFFECTS** | Health score, failure risk, publication, REST_60M/REST_6H authoritative paths, Trip FSM, DIMO config, production flag default. |
+| **REMAINING_GAPS** | R1 cadence forensics; REST_STABLE promotion; nominal interval index; Prometheus metrics wiring; M3.3B tolerance policy. |
+| **DECISION_STATUS** | **VALIDATED** (repository + tests); **PRODUCTION_VALIDATED=NO** (flag off). |
+| **AFFECTED_GRAPH** | Battery V2 persistence + LV ingestion subgraph (shadow branch). |
+| **EVIDENCE** | `research/M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md` |
+
 ## CL-2026-09-21 — M3.3 R1 8h REST evidence architecture audit
 
 | Field | Content |
