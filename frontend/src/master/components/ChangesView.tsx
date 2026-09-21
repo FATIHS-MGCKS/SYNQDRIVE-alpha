@@ -77,6 +77,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T12:30:00.000Z',
   },
   {
+    id: 'eed-rfrf-f10-6-8-b5-lock-fencing-closure-2026-09-21',
+    version: '4.9.1156',
+    title: 'RFRF F10.6.8-B5 — canonical lock order + fresh lease fencing',
+    summary: [
+      'Recovery reconcile reordered to advisory → row → write (matches convergence).',
+      'Claim identity separated from mutationClock() at each DB boundary.',
+      'Completion requires active lease + generation CAS; stale finishRecovery propagates stale_claim.',
+      'B5 PostgreSQL proofs: post-reconcile lease expiry, READY crossed-lease, expired completion.',
+    ],
+    reason:
+      'B4 read-only review found lock inversion deadlock risk and snapshotted lease time authorizing stale mutations.',
+    previousBehavior:
+      'Recovery reconcile locked candidate row before vehicle advisory lock; fence.now could validate expired leases after blocking waits.',
+    details:
+      'raw-refuel-candidate-recovery-fencing.ts; raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts; PR #1705',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T07:25:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-8-a2-p21-pinning-regression-2026-09-20',
     version: '4.9.1155',
     title: 'RFRF F10.6.8-A.2 — P21 irreversible canonical pinning regression alignment',

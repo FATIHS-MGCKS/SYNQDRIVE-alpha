@@ -119,6 +119,6 @@ All `finishRecovery` callers propagate `stale_claim` when completion returns `ST
 - `raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts` — post-reconcile lease expiry, READY crossed-lease, expired unreclaimed completion, stale completion propagation.
 - Negative selftest: own `assert_test_db_isolation` before destructive DDL.
 
-**B5 closure HEAD:** _(filled after push)_
+**B5 closure HEAD:** `0986d6efc07d04443ba083bd979fcdf171309f00`
 
 Production: **not** deployed or mutated. Stage 5 **not** authorized.
