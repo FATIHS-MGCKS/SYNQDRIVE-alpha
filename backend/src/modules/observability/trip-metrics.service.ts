@@ -188,6 +188,19 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryShutdownContextMissingStateTotal: Counter<string>;
   readonly batteryShutdownPostEngineOffCandidateTotal: Counter<string>;
   readonly batteryShutdownPostEngineOffConfirmedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceCreatedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceDuplicateTotal: Counter<string>;
+  readonly batteryRestSessionOpenedTotal: Counter<string>;
+  readonly batteryRestSessionUpdatedTotal: Counter<string>;
+  readonly batteryRestSessionEndedTotal: Counter<string>;
+  readonly batteryRestSessionInvalidatedTotal: Counter<string>;
+  readonly batteryLateTripAssociationTotal: Counter<string>;
+  readonly batteryRestObservationTotal: Counter<string>;
+  readonly batteryValidRestObservationTotal: Counter<string>;
+  readonly batteryRestWakeQualifiedTotal: Counter<string>;
+  readonly batteryCadenceLadderResearchUnqualifiedTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceStateAmbiguousTotal: Counter<string>;
+  readonly batteryGeneralizedEvidenceStaleReplayTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
@@ -1616,6 +1629,86 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryShutdownPostEngineOffConfirmedTotal = new Counter({
       name: 'synqdrive_battery_shutdown_post_engine_off_confirmed_total',
       help: 'M3.2B shadow observations meeting strict post-engine-off pre-sleep contract',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceCreatedTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_created_total',
+      help: 'M3.3 shadow generalized battery evidence observations persisted',
+      labelNames: ['evidence_class'],
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceDuplicateTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_duplicate_total',
+      help: 'M3.3 shadow generalized evidence idempotent duplicates suppressed',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionOpenedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_opened_total',
+      help: 'M3.3 shadow rest sessions opened',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionUpdatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_updated_total',
+      help: 'M3.3 shadow rest sessions updated with rest observations',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionEndedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_ended_total',
+      help: 'M3.3 shadow rest sessions ended (timeout or natural close)',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionInvalidatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_invalidated_total',
+      help: 'M3.3 shadow rest sessions invalidated by vehicle activity',
+      registers: [this.registry],
+    });
+
+    this.batteryLateTripAssociationTotal = new Counter({
+      name: 'synqdrive_battery_late_trip_association_total',
+      help: 'M3.3 shadow late trip associations linked to rest sessions',
+      registers: [this.registry],
+    });
+
+    this.batteryRestObservationTotal = new Counter({
+      name: 'synqdrive_battery_rest_observation_total',
+      help: 'M3.3 shadow rest ladder observations captured',
+      registers: [this.registry],
+    });
+
+    this.batteryValidRestObservationTotal = new Counter({
+      name: 'synqdrive_battery_valid_rest_observation_total',
+      help: 'M3.3 shadow rest observations passing alignment validity gate',
+      registers: [this.registry],
+    });
+
+    this.batteryRestWakeQualifiedTotal = new Counter({
+      name: 'synqdrive_battery_rest_wake_qualified_total',
+      help: 'M3.3 shadow observations cadence-qualified for REST_WAKE_VOLTAGE',
+      registers: [this.registry],
+    });
+
+    this.batteryCadenceLadderResearchUnqualifiedTotal = new Counter({
+      name: 'synqdrive_battery_cadence_ladder_research_unqualified_total',
+      help:
+        'M3.3 shadow ladder candidates (nominal index>=1) not REST_WAKE promoted — research tolerance not validated or exceeds candidate band',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceStateAmbiguousTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_state_ambiguous_total',
+      help: 'M3.3 shadow generalized evidence classified as state ambiguous',
+      registers: [this.registry],
+    });
+
+    this.batteryGeneralizedEvidenceStaleReplayTotal = new Counter({
+      name: 'synqdrive_battery_generalized_evidence_stale_replay_total',
+      help: 'M3.3 shadow generalized evidence classified as stale replay',
       registers: [this.registry],
     });
 

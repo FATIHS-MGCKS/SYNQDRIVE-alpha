@@ -8,6 +8,21 @@ export const R1_NOMINAL_REST_CADENCE_MS = 8 * 60 * 60_000;
 /** Tolerance policy placeholder until production forensics characterize jitter. */
 export const INITIAL_REST_TOLERANCE_POLICY_VERSION = 'RESEARCH_PENDING';
 
+/** M3.3B — empirically grounded rest cadence qualification (shadow only). */
+export const REST_CADENCE_POLICY_VERSION = 'M3_3B_V1_1';
+
+/**
+ * M3.3B.1 decision C — periodic LV observed but rung-residual tolerance not validated
+ * for automatic REST_WAKE promotion. Nominal index remains research metadata only.
+ */
+export const REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED = false;
+
+/** M3.3B.2 — ladder-candidate |residual| P95 from strict runtime-mapped forensics (n=35). Research only. */
+export const R1_RUNG_RESEARCH_TOLERANCE_CANDIDATE_MS = 10_275_600;
+
+export const R1_LADDER_CANDIDATE_FORENSIC_COUNT = 35;
+export const R1_RUNG_RESIDUAL_P50_MS_LADDER_FORENSIC = 285_000;
+
 export const GENERALIZED_EVIDENCE_SOURCE_KINDS = {
   LIVE_VOLTAGE_CLASSIFY: 'LIVE_VOLTAGE_CLASSIFY',
 } as const;
