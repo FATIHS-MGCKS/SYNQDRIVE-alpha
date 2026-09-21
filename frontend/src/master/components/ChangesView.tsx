@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b1-1-natural-shadow-validation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.1 — Natural shadow evidence validation (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or env mutation.',
+      '29 generalized evidence rows; 29/29 VALID LIVE_VOLTAGE measurements captured; 0 unexpected gaps or duplicate captures.',
+      'Classes: 1× DRIVING_NON_CHARGING; 14× ACTIVE_VEHICLE_CONTAMINATED; 14× CHARGING_CONTAMINATED; 0 rest-path classes.',
+      'Gates: GENERALIZED_CAPTURE / PROVENANCE / MULTI_REPLICA_SAFETY PASS; engine-off / session / parked / R1 LADDER PENDING natural events.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Confirm B1 shadow chain health for generalized capture and safety invariants before any rest-ladder or M3.3C work.',
+    previousBehavior:
+      'B1 activation smoke only (1 driving row); rest-session validation explicitly pending.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_1_NATURAL_SHADOW_EVIDENCE_VALIDATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-shadow-activation-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1 — Generalized evidence shadow activation (production)',
