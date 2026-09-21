@@ -26,4 +26,8 @@ echo "==> RFRF F10.6.8-B candidate recovery PostgreSQL matrix"
 bash "${SCRIPT_DIR}/rfrf-f10-6-8-b-candidate-recovery-gate.sh"
 echo "STAGE4_F10_6_8_B_RECOVERY_PG_MATRIX=PASS"
 
+echo "==> RFRF F10.6.8-C recovery-owned promotion PostgreSQL gate"
+bash "${SCRIPT_DIR}/rfrf-f10-6-8-c-recovery-promotion-gate.sh"
+echo "STAGE4_F10_6_8_C_RECOVERY_PROMOTION_PG=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"
