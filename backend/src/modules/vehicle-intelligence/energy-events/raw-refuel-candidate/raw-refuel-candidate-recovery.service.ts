@@ -777,6 +777,15 @@ export class RawRefuelCandidateRecoveryService {
     switch (promotion.status) {
       case 'PROMOTED':
       case 'ALREADY_PROMOTED': {
+        if (promotion.recoveryOwnedPromotionFinalized) {
+          return {
+            candidateId,
+            outcome: 'SUCCESS_PROMOTED',
+            dimoFetchPerformed,
+            convergenceStatus: convergence.status,
+            detail: promotion.detail,
+          };
+        }
         const applied = await this.finishRecovery(
           candidateId,
           now,

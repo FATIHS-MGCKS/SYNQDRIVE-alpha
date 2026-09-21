@@ -12,7 +12,11 @@ After convergence handling, recovery invokes canonical `RawRefuelPromotionServic
 - Lease re-checked immediately before VEE insert
 - Outcome `SUCCESS_PROMOTED` added for recovery completion semantics
 
-Stage 6 / G2 handoff unchanged and not invoked from recovery.
+## F10.6.8-C1 — atomic recovery completion
+
+Recovery-owned successful promotion now commits `SUCCESS_PROMOTED` recovery terminal metadata (`recoveryLastOutcome`, cleared lease, null next attempt) in the **same** promotion transaction as fallback VEE + `lifecycleState=PROMOTED`. No second `finishRecovery` is required after `PROMOTED` when `recoveryOwnedPromotionFinalized=true`.
+
+Transaction hooks cannot bypass recovery lease/generation validation (hook runs first, fence runs independently before VEE insert and before lifecycle write).
 
 ## Evidence
 
