@@ -79,7 +79,7 @@ function syntheticRiseSamples() {
 
   afterAll(async () => {
     await prisma?.$disconnect().catch(() => undefined);
-  });
+  }, 30_000);
 
   async function seedVehicle(suffix: string) {
     const org = await prisma.organization.create({
@@ -294,7 +294,7 @@ function syntheticRiseSamples() {
       await prisma.dimoVehicle.deleteMany({ where: { id: dimoVehicle.id } });
       await prisma.organization.deleteMany({ where: { id: org.id } });
     }
-  });
+  }, 60_000);
 
   it('RECOVERY_SAME_NATIVE — converges without fallback VEE', async () => {
     const restore = setStage5Env(true);
