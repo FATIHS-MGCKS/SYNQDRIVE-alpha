@@ -257,6 +257,14 @@ export class RawRefuelCandidateRecoveryService {
     this.metrics?.recordCandidateRecoveryAttempt();
 
     if (isRawRefuelCandidateTerminal(candidate.lifecycleState)) {
+      if (candidate.recoveryLastOutcome === 'SUCCESS_PROMOTED') {
+        return {
+          candidateId: candidate.id,
+          outcome: 'SUCCESS_PROMOTED',
+          dimoFetchPerformed: false,
+          detail: 'recovery_promotion_already_finalized',
+        };
+      }
       const applied = await this.finishRecovery(
         candidate.id,
         now,

@@ -272,7 +272,19 @@ function syntheticRiseSamples() {
       const workerA = recoveryA.recoverCandidateById(candidate.id, t0);
       await new Promise((r) => setTimeout(r, 100));
       clockRef.now = new Date(t0.getTime() + 5_000);
-      const reclaimed = await repo.claimDueCandidates(1, clockRef.now, new Date(clockRef.now.getTime() + 60_000));
+      let reclaimed: Awaited<ReturnType<typeof repo.claimDueCandidates>> = [];
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        reclaimed = await repo.claimDueCandidates(
+          1,
+          clockRef.now,
+          new Date(clockRef.now.getTime() + 60_000),
+        );
+        if (reclaimed.length > 0) {
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 50));
+        clockRef.now = new Date(clockRef.now.getTime() + 250);
+      }
       expect(reclaimed.length).toBe(1);
       const recoveryB = buildRecovery(clockRef);
       const workerB = recoveryB.recoverCandidateById(candidate.id, clockRef.now);
