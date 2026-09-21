@@ -8,6 +8,7 @@ import {
   deriveNominalRestIntervalIndex,
   evaluateRestCadenceQualification,
   computeRungResidualMs,
+  shouldRecordCadenceLadderResearchUnqualified,
 } from './rest-cadence-qualification.policy';
 
 describe('rest-cadence-qualification.policy (M3.3B.1)', () => {
@@ -96,5 +97,33 @@ describe('rest-cadence-qualification.policy (M3.3B.1)', () => {
   it('supports skipped rung — 16h maps to index 2', () => {
     const mapped = deriveNominalRestIntervalIndex(h(16) + h(0.12));
     expect(mapped.nominalRestIntervalIndex).toBe(2);
+  });
+
+  it('sub-4h maps to index 0 and is excluded from ladder promotion metrics', () => {
+    const mapped = deriveNominalRestIntervalIndex(h(2));
+    expect(mapped.nominalRestIntervalIndex).toBe(0);
+    expect(
+      shouldRecordCadenceLadderResearchUnqualified({
+        nominalRestIntervalIndex: mapped.nominalRestIntervalIndex,
+        rungResidualMs: mapped.rungResidualMs,
+        restWakeCadenceQualified: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('records ladder research unqualified when promotion disabled and index>=1', () => {
+    expect(
+      shouldRecordCadenceLadderResearchUnqualified({
+        nominalRestIntervalIndex: 1,
+        rungResidualMs: 285_000,
+        restWakeCadenceQualified: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('old cadence_out_of_tolerance branch (>4h residual) is unreachable at index>=1', () => {
+    const mapped = deriveNominalRestIntervalIndex(h(8));
+    expect(mapped.nominalRestIntervalIndex).toBe(1);
+    expect(Math.abs(mapped.rungResidualMs!)).toBeLessThanOrEqual(4 * 60 * 60_000);
   });
 });

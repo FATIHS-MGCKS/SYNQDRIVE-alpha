@@ -198,7 +198,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRestObservationTotal: Counter<string>;
   readonly batteryValidRestObservationTotal: Counter<string>;
   readonly batteryRestWakeQualifiedTotal: Counter<string>;
-  readonly batteryCadenceOutOfToleranceTotal: Counter<string>;
+  readonly batteryCadenceLadderResearchUnqualifiedTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStateAmbiguousTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStaleReplayTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
@@ -1693,9 +1693,10 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
-    this.batteryCadenceOutOfToleranceTotal = new Counter({
-      name: 'synqdrive_battery_cadence_out_of_tolerance_total',
-      help: 'M3.3 shadow rest observations with nominal index but outside center tolerance',
+    this.batteryCadenceLadderResearchUnqualifiedTotal = new Counter({
+      name: 'synqdrive_battery_cadence_ladder_research_unqualified_total',
+      help:
+        'M3.3 shadow ladder candidates (nominal index>=1) not REST_WAKE promoted — research tolerance not validated or exceeds candidate band',
       registers: [this.registry],
     });
 

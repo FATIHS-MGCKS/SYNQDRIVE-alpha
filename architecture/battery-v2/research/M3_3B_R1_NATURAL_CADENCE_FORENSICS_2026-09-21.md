@@ -49,17 +49,15 @@
 | `UNFILTERED_REST_AGE_CLUSTERING` | **PARTIAL** (mass at 14–18h, 22–26h, >26h rest-age — consistent with 16h/24h-scale ladder **hypothesis**, not proof) |
 | `EIGHT_HOUR_COMPONENT_SUPPORTED` | **YES** (6–10h inter-arrival + multi-hour rest-age side modes; not a tight unimodal 8h clock) |
 
-### Rung residual (nearest rung k≥1; session anchor; strict)
+### Rung residual (M3.3B.1 — **superseded mapping**)
 
-`rungResidualMs = actualRestAgeMs − k×8h` (k chosen to minimize |residual|).
+~~Nearest k≥1 on all ages~~ — misaligned with runtime `deriveNominalRestIntervalIndex()`. **Use §M3.3B.2** ladder-candidate residuals only.
 
-| Stat | Global (n=55) |
-|------|----------------|
-| P50 | **110,000 ms** (~1.8 min) |
-| P95 \|residual\| | **28,531,200 ms** (~7.92 h) |
-| MAX \|residual\| | **28,610,000 ms** |
+| Stat (retracted) | Value |
+|------------------|-------|
+| P95 \|residual\| (wrong mapping) | ~~28,531,200 ms~~ |
 
-Per-vehicle P95 \|residual\|: HMÜ **28.0M**, KS MS 661 **28.6M**, KS MX **16.8M**, WOB **28.4M** ms.
+Per-vehicle P95 \|residual\| (wrong mapping): HMÜ **28.0M**, KS MS 661 **28.6M**, KS MX **16.8M**, WOB **28.4M** ms — **do not use**.
 
 ### Tolerance derivation audit (M3.3B draft)
 
@@ -80,10 +78,56 @@ Initial draft claimed **±4.5h** from “P95−median spread.” Using draft int
 | `BROAD_TIME_WINDOW_ALONE_CAN_PROMOTE_REST_WAKE` | **NO** |
 | `REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED` | **false** in code — retain **`PARKED_REST_CANDIDATE`** |
 | `NOMINAL_REST_INTERVAL_INDEX` | **Research metadata only** when mappable |
-| `GLOBAL_POLICY_SUPPORTED` | **YES** (per-vehicle residual tails similar; no per-vehicle policy fork) |
+| `GLOBAL_NOMINAL_8H_MAPPING_SUPPORTED` | **YES** |
 | `VEHICLE_SPECIFIC_POLICY_REQUIRED` | **NO** |
 | `R1_CADENCE_EMPIRICALLY_VALIDATED` (auto REST_WAKE) | **NO** |
 | `B0_TARGET_SHOULD_INCLUDE_M3_3B_CODE` | **YES** — deploy merged **M3.3A + M3.3B.1** once; flag OFF; then optional B1 |
+
+---
+
+## M3.3B.2 — Runtime-aligned residuals + reproducibility (authoritative for ladder stats)
+
+| Field | Value |
+|-------|-------|
+| `FORENSIC_MAPPING_MATCHES_RUNTIME_MAPPING` | **YES** — SQL §5 uses same rules as `deriveNominalRestIntervalIndex()` |
+| Repro script | `backend/scripts/ops/battery-v2-m3-3b-cadence-forensics.sql` + `battery-v2-m3-3b-r1-cadence-forensics.sh --local-vps` |
+
+### Observation cohorts (strict session rest-age)
+
+| Cohort | Count |
+|--------|-------|
+| `ALL_REST_OBSERVATIONS` | **262** |
+| `SUB_4H_INDEX0_OBSERVATIONS` | **227** |
+| `LADDER_CANDIDATE_OBSERVATIONS` (index ≥ 1) | **35** |
+
+**M3.3B.1 residual table (nearest k≥1 on all ages) is superseded** — it misclassified sub-4h rows and inflated \|residual\|.
+
+### Ladder-candidate rung residuals only (index ≥ 1)
+
+| Stat | Value |
+|------|-------|
+| `LADDER_RESIDUAL_P50_MS` | **285,000** |
+| `LADDER_RESIDUAL_P95_ABS_MS` | **10,275,600** (~2.85 h) |
+| MAX \|residual\| | **11,072,000** (~3.08 h — bounded by midpoint partitions) |
+
+### Tolerance policy decision (M3.3B.2)
+
+**`TOLERANCE_POLICY_DECISION=CONSERVATIVE_SHADOW_TOLERANCE_CAN_BE_DEFINED`**
+
+- Documented research candidate: `R1_RUNG_RESEARCH_TOLERANCE_CANDIDATE_MS=10_275_600` (ladder-candidate P95 \|residual\|).
+- **`REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false` unchanged** — small sample (n=35) requires B1 shadow before promotion.
+- Semantics: **`GLOBAL_NOMINAL_8H_MAPPING_SUPPORTED=YES`** (not “validated promotion tolerance”).
+
+### Prometheus
+
+| Field | Value |
+|-------|-------|
+| `CADENCE_OUT_OF_TOLERANCE_METRIC_REACHABLE` | **NO** (prior `abs(residual)>4h` branch unreachable for index≥1) |
+| `CADENCE_METRIC_ACTION` | **REDEFINED** → `synqdrive_battery_cadence_ladder_research_unqualified_total` (increments for ladder candidates while auto-promotion off) |
+
+### B1 shadow
+
+**`B1_REQUIRES_REST_WAKE_AUTO_PROMOTION=NO`** — B1 may collect `PARKED_REST_CANDIDATE`, `actualRestAgeMs`, `nominalRestIntervalIndex`, provider timestamps, and provenance while promotion stays disabled.
 
 ---
 
@@ -236,7 +280,7 @@ Wired counters (low cardinality, no vehicle IDs):
 - `synqdrive_battery_valid_rest_observation_total`
 - `synqdrive_battery_rest_wake_qualified_total`
 - `synqdrive_battery_late_trip_association_total`
-- `synqdrive_battery_cadence_out_of_tolerance_total`
+- `synqdrive_battery_cadence_ladder_research_unqualified_total`
 - `synqdrive_battery_generalized_evidence_state_ambiguous_total`
 - `synqdrive_battery_generalized_evidence_stale_replay_total`
 
@@ -281,43 +325,36 @@ Shell helper (read-only, VPS):
 
 ---
 
-## FINAL MACHINE BLOCK (M3.3B.1 authoritative)
+## FINAL MACHINE BLOCK (M3.3B.2 authoritative)
 
 ```
-M3_3B_1_RESULT=COMPLETE_METHODOLOGY_CORRECTION_AND_POLICY_GATE
+M3_3B_2_RESULT=RUNTIME_ALIGNED_FORENSICS_AND_METRIC_CLOSURE
 
-R1_NATURAL_PERIODIC_PARKED_LV_OBSERVED=YES
+FORENSIC_MAPPING_MATCHES_RUNTIME_MAPPING=YES
 
-CADENCE_FORENSICS_PROVIDER_TIME_ONLY=YES
-NULL_SPEED_TREATED_AS_REST=NO
-STRICT_SESSION_SEGMENTATION_USED=YES
+ALL_REST_OBSERVATIONS=262
+SUB_4H_INDEX0_OBSERVATIONS=227
+LADDER_CANDIDATE_OBSERVATIONS=35
 
-STRICT_REST_OBSERVATIONS=260
-STRICT_REST_SESSIONS=183
+LADDER_RESIDUAL_P50_MS=285000
+LADDER_RESIDUAL_P95_ABS_MS=10275600
 
-UNFILTERED_INTERVAL_MODE=MULTIMODAL
-EIGHT_HOUR_COMPONENT_SUPPORTED=YES
+TOLERANCE_POLICY_DECISION=CONSERVATIVE_SHADOW_TOLERANCE_CAN_BE_DEFINED
 
-INTERARRIVAL_COUNT=77
-REST_AGE_OBSERVATION_COUNT=55
-RUNG_RESIDUAL_P50_MS=110000
-RUNG_RESIDUAL_P95_ABS_MS=28531200
+FORENSIC_SCRIPT_SELF_CONTAINED=YES
+FORENSIC_RESULTS_REPRODUCIBLE_FROM_REPO=YES
 
-CURRENT_PLUS_MINUS_4_5H_DERIVATION_VALID=NO
-LADDER_BANDS_OVERLAP=NO
-BROAD_TIME_WINDOW_ALONE_CAN_PROMOTE_REST_WAKE=NO
+CADENCE_OUT_OF_TOLERANCE_METRIC_REACHABLE=NO
+CADENCE_METRIC_ACTION=REDEFINED_AS_LADDER_RESEARCH_UNQUALIFIED
 
-R1_CADENCE_EMPIRICALLY_VALIDATED=NO
-CADENCE_POLICY_DECISION=CADENCE_EXISTS_BUT_POLICY_TOLERANCE_NOT_READY
-REST_CADENCE_POLICY_VERSION=M3_3B_V1_1
-
-GLOBAL_POLICY_SUPPORTED=YES
+GLOBAL_NOMINAL_8H_MAPPING_SUPPORTED=YES
 VEHICLE_SPECIFIC_POLICY_REQUIRED=NO
 
+REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false
 R1_WAKE_LOAD_ORDER_KNOWN=NO
 REST_STABLE_PROMOTION_ALLOWED=NO
 
-B0_TARGET_SHOULD_INCLUDE_M3_3B_CODE=YES
+B1_REQUIRES_REST_WAKE_AUTO_PROMOTION=NO
 
 AUTHORITATIVE_BATTERY_BEHAVIOR_CHANGED=NO
 PRODUCTION_CHANGED=NO
@@ -327,10 +364,10 @@ B0_DEPLOY_ALLOWED=NO
 B1_ALLOWED=NO
 ```
 
-### Historical — initial M3.3B draft machine block (superseded)
+### Historical — M3.3B.1 machine block (partially superseded)
 
 ```
-M3_3B_RESULT=SUPERSEDED_BY_M3_3B_1
-R1_CADENCE_EMPIRICALLY_VALIDATED=YES  # overclaim — retracted
-REST_CADENCE_POLICY_VERSION=M3_3B_V1    # replaced by M3_3B_V1_1
+M3_3B_1_RESULT=COMPLETE_METHODOLOGY_CORRECTION_AND_POLICY_GATE
+CADENCE_POLICY_DECISION=CADENCE_EXISTS_BUT_POLICY_TOLERANCE_NOT_READY  # superseded by B.2 tolerance candidate doc
+RUNG_RESIDUAL_P95_ABS_MS=28531200  # wrong mapping — retracted
 ```

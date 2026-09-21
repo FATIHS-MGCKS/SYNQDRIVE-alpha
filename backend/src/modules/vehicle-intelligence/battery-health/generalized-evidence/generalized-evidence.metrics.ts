@@ -46,8 +46,10 @@ export function recordRestWakeQualified(metrics: TripMetricsService | undefined)
   metrics?.batteryRestWakeQualifiedTotal.inc();
 }
 
-export function recordCadenceOutOfTolerance(metrics: TripMetricsService | undefined): void {
-  metrics?.batteryCadenceOutOfToleranceTotal.inc();
+export function recordCadenceLadderResearchUnqualified(
+  metrics: TripMetricsService | undefined,
+): void {
+  metrics?.batteryCadenceLadderResearchUnqualifiedTotal.inc();
 }
 
 export function recordStateAmbiguous(metrics: TripMetricsService | undefined): void {

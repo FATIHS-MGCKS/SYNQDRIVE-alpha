@@ -40,6 +40,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3B.2 forensic/runtime mapping alignment + metric closure
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Forensic residuals used nearest k≥1 (misaligned with runtime); cadence_out_of_tolerance metric unreachable; SQL script placeholder. |
+| **CHANGE** | Self-contained `battery-v2-m3-3b-cadence-forensics.sql`; ladder-candidate residuals (n=35); `R1_RUNG_RESEARCH_TOLERANCE_CANDIDATE_MS`; metric → `cadence_ladder_research_unqualified_total`. |
+| **DECISION** | `CONSERVATIVE_SHADOW_TOLERANCE_CAN_BE_DEFINED` (research candidate only); auto REST_WAKE remains off. |
+| **EVIDENCE** | `M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md` §M3.3B.2 |
+
 ## CL-2026-09-21 — M3.3B.1 cadence forensics methodology + qualification gate
 
 | Field | Content |

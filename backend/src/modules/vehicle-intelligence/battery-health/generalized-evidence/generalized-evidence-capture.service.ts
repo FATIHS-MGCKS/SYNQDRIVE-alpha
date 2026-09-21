@@ -11,11 +11,10 @@ import { classifyGeneralizedEvidence } from './generalized-evidence-classificati
 import {
   GENERALIZED_EVIDENCE_CLASSIFICATION_VERSION,
   GENERALIZED_EVIDENCE_SOURCE_KINDS,
-  R1_NOMINAL_REST_CADENCE_MS,
 } from './generalized-evidence.constants';
 import { buildGeneralizedEvidenceIdempotencyKey } from './generalized-evidence-idempotency.policy';
 import {
-  recordCadenceOutOfTolerance,
+  recordCadenceLadderResearchUnqualified,
   recordGeneralizedEvidenceCreated,
   recordGeneralizedEvidenceDuplicate,
   recordRestObservation,
@@ -28,7 +27,7 @@ import {
   computeActualRestAgeMs,
   resolveSharedVehicleStateObservation,
 } from './generalized-evidence-provenance.helpers';
-import { evaluateRestCadenceQualification } from './rest-cadence-qualification.policy';
+import { evaluateRestCadenceQualification, shouldRecordCadenceLadderResearchUnqualified } from './rest-cadence-qualification.policy';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { LateTripAssociationService } from './late-trip-association.service';
@@ -216,14 +215,8 @@ export class GeneralizedEvidenceCaptureService {
       recordRestObservation(this.metrics);
       if (cadenceQualification.restWakeCadenceQualified) {
         recordRestWakeQualified(this.metrics);
-      } else if (
-        cadenceQualification.nominalRestIntervalIndex != null &&
-        cadenceQualification.nominalRestIntervalIndex >= 1 &&
-        cadenceQualification.rungResidualMs != null &&
-        Math.abs(cadenceQualification.rungResidualMs) >
-          R1_NOMINAL_REST_CADENCE_MS / 2
-      ) {
-        recordCadenceOutOfTolerance(this.metrics);
+      } else if (shouldRecordCadenceLadderResearchUnqualified(cadenceQualification)) {
+        recordCadenceLadderResearchUnqualified(this.metrics);
       }
     }
 

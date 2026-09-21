@@ -5,15 +5,10 @@ import {
 } from '../shutdown-evidence/shutdown-evidence.constants';
 import {
   R1_NOMINAL_REST_CADENCE_MS,
+  R1_RUNG_RESEARCH_TOLERANCE_CANDIDATE_MS,
   REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED,
   REST_CADENCE_POLICY_VERSION,
 } from './generalized-evidence.constants';
-
-/** M3.3B.1 strict session rung-residual P50 (ms) — research only, not promotion gate. */
-export const R1_RUNG_RESIDUAL_P50_MS_STRICT_FORENSIC = 110_000;
-
-/** M3.3B.1 strict session rung-residual P95 |residual| (ms) — too wide for auto promotion. */
-export const R1_RUNG_RESIDUAL_P95_ABS_MS_STRICT_FORENSIC = 28_531_200;
 
 const ANCHOR_MAX_AGE_MS = 3 * 60_000;
 
@@ -76,9 +71,34 @@ export function deriveNominalRestIntervalIndex(actualRestAgeMs: number): {
   return { nominalRestIntervalIndex: null, rungResidualMs: null };
 }
 
-/** Reserved for a future validated tolerance — not used for promotion in M3.3B.1. */
-export function isRungResidualWithinResearchTolerance(_rungResidualMs: number): boolean {
-  return false;
+/** Reserved for a future validated tolerance — not used for promotion in M3.3B.x. */
+export function isRungResidualWithinResearchTolerance(rungResidualMs: number): boolean {
+  return Math.abs(rungResidualMs) <= R1_RUNG_RESEARCH_TOLERANCE_CANDIDATE_MS;
+}
+
+/**
+ * Shadow metric: ladder candidate (index≥1) not auto-promoted, or exceeds research tolerance candidate.
+ * Reachable while REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false.
+ */
+export function shouldRecordCadenceLadderResearchUnqualified(
+  result: Pick<
+    RestCadenceQualificationResult,
+    'nominalRestIntervalIndex' | 'rungResidualMs' | 'restWakeCadenceQualified'
+  >,
+): boolean {
+  if (result.nominalRestIntervalIndex == null || result.nominalRestIntervalIndex < 1) {
+    return false;
+  }
+  if (result.restWakeCadenceQualified) {
+    return false;
+  }
+  if (!REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED) {
+    return true;
+  }
+  if (result.rungResidualMs == null) {
+    return true;
+  }
+  return !isRungResidualWithinResearchTolerance(result.rungResidualMs);
 }
 
 export function evaluateRestCadenceQualification(
