@@ -376,7 +376,6 @@ async function main(): Promise<void> {
   });
 
   const cohortVehicleIds = EXP021_GAP_OBSERVER_COHORT.map((c) => c.vehicleId);
-  const cohortByVehicleId = new Map(EXP021_GAP_OBSERVER_COHORT.map((c) => [c.vehicleId, c]));
   let queryInFlight = false;
 
   const tick = async () => {
