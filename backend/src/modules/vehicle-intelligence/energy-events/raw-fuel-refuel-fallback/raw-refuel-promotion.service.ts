@@ -33,6 +33,102 @@ import type {
   RawRefuelPromotionTransactionHooks,
 } from './raw-refuel-promotion.types';
 import { mapPromotionDraftToVehicleEnergyEventCreateInput } from './raw-refuel-promotion-vee.mapper';
+import {
+  lockRecoveryClaimForMutation,
+  type RawRefuelCandidateRecoveryMutationContext,
+} from '../raw-refuel-candidate/raw-refuel-candidate-recovery-fencing';
+
+function assertRecoveryClaimActiveForPromotion(
+  locked: RawRefuelCandidate,
+  claim: RawRefuelCandidateRecoveryMutationContext['claim'],
+  mutationTime: Date,
+): boolean {
+  if (locked.recoveryAttemptCount !== claim.expectedClaimGeneration) {
+    return false;
+  }
+  if (claim.requireActiveLease) {
+    if (!locked.recoveryLeaseExpiresAt || locked.recoveryLeaseExpiresAt <= mutationTime) {
+      return false;
+    }
+  }
+  return true;
+}
+
+type RecoveryPromotionStale = {
+  status: 'SKIPPED_NO_ACTION';
+  detail: 'recovery_claim_stale';
+  candidateId: string;
+};
+
+function recoveryPromotionStaleResult(candidateId: string): RawRefuelPromotionApplyResult {
+  return {
+    status: 'SKIPPED_NO_ACTION',
+    evaluation: null,
+    candidateId,
+    fallbackVehicleEnergyEventId: null,
+    convergedNativeEventId: null,
+    detail: 'recovery_claim_stale',
+  };
+}
+
+async function assertRecoveryFenceBeforeSideEffect(
+  tx: Prisma.TransactionClient,
+  locked: RawRefuelCandidate,
+  recoveryMutation: RawRefuelCandidateRecoveryMutationContext,
+): Promise<RecoveryPromotionStale | null> {
+  const mutationTime = recoveryMutation.mutationClock();
+  const freshLocked = await tx.rawRefuelCandidate.findUnique({
+    where: { id: locked.id },
+  });
+  if (
+    !freshLocked ||
+    !assertRecoveryClaimActiveForPromotion(freshLocked, recoveryMutation.claim, mutationTime)
+  ) {
+    return {
+      status: 'SKIPPED_NO_ACTION',
+      detail: 'recovery_claim_stale',
+      candidateId: locked.id,
+    };
+  }
+  return null;
+}
+
+async function commitRecoveryOwnedPromotedCandidate(
+  tx: Prisma.TransactionClient,
+  locked: RawRefuelCandidate,
+  recoveryMutation: RawRefuelCandidateRecoveryMutationContext,
+  data: {
+    lifecycleState: RawRefuelCandidate['lifecycleState'];
+    qualityMeta: Prisma.InputJsonValue;
+  },
+): Promise<RecoveryPromotionStale | null> {
+  const mutationTime = recoveryMutation.mutationClock();
+  const where: Prisma.RawRefuelCandidateWhereInput = {
+    id: locked.id,
+    recoveryAttemptCount: recoveryMutation.claim.expectedClaimGeneration,
+  };
+  if (recoveryMutation.claim.requireActiveLease) {
+    where.recoveryLeaseExpiresAt = { gt: mutationTime };
+  }
+  const result = await tx.rawRefuelCandidate.updateMany({
+    where,
+    data: {
+      lifecycleState: data.lifecycleState,
+      qualityMeta: data.qualityMeta,
+      recoveryLastOutcome: 'SUCCESS_PROMOTED',
+      recoveryNextAttemptAt: null,
+      recoveryLeaseExpiresAt: null,
+    },
+  });
+  if (result.count !== 1) {
+    return {
+      status: 'SKIPPED_NO_ACTION',
+      detail: 'recovery_claim_stale',
+      candidateId: locked.id,
+    };
+  }
+  return null;
+}
 
 @Injectable()
 export class RawRefuelPromotionService {
@@ -49,6 +145,7 @@ export class RawRefuelPromotionService {
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelPromotionApplyResult> {
     const authority = evaluateFallbackPromotionAuthority(env);
     if (!authority.authorized) {
@@ -77,7 +174,7 @@ export class RawRefuelPromotionService {
       };
     }
 
-    return this.evaluateAndApplyPromotion(candidate, context, env, hooks);
+    return this.evaluateAndApplyPromotion(candidate, context, env, hooks, recoveryMutation);
   }
 
   async evaluateAndApplyPromotion(
@@ -85,6 +182,7 @@ export class RawRefuelPromotionService {
     context: RawRefuelPromotionPreparationContext = {},
     env: NodeJS.ProcessEnv = process.env,
     hooks?: RawRefuelPromotionTransactionHooks,
+    recoveryMutation?: RawRefuelCandidateRecoveryMutationContext,
   ): Promise<RawRefuelPromotionApplyResult> {
     const authority = evaluateFallbackPromotionAuthority(env);
     if (!authority.authorized) {
@@ -99,7 +197,7 @@ export class RawRefuelPromotionService {
       };
     }
 
-    if (candidate.lifecycleState === 'CONVERGED_NATIVE') {
+    if (!recoveryMutation && candidate.lifecycleState === 'CONVERGED_NATIVE') {
       return {
         status: 'SKIPPED_CONVERGED_NATIVE',
         evaluation: null,
@@ -110,7 +208,10 @@ export class RawRefuelPromotionService {
       };
     }
 
-    if (candidate.lifecycleState === 'PROMOTED') {
+    // Recovery-fenced promotion must not idempotently short-circuit on a stale
+    // in-memory lifecycle snapshot — enter the transaction so generation/lease
+    // fencing runs before ALREADY_PROMOTED read-back.
+    if (!recoveryMutation && candidate.lifecycleState === 'PROMOTED') {
       const existingVeeId = await this.resolveExistingFallbackVeeId(candidate);
       this.metrics?.recordPromotionIdempotentReplay();
       return {
@@ -127,7 +228,28 @@ export class RawRefuelPromotionService {
       return await this.prisma.$transaction(async (tx) => {
         await acquirePgAdvisoryXactLock64(tx, buildRfrfPromotionLockKey(candidate.vehicleId));
 
-        const locked = await this.candidateRepository.findByIdForUpdate(tx, candidate.id);
+        let locked: RawRefuelCandidate | null;
+        if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          locked = await lockRecoveryClaimForMutation(
+            tx,
+            candidate.id,
+            recoveryMutation.claim,
+            mutationTime,
+          );
+          if (!locked) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: candidate.id,
+              fallbackVehicleEnergyEventId: null,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
+        } else {
+          locked = await this.candidateRepository.findByIdForUpdate(tx, candidate.id);
+        }
         if (!locked) {
           return {
             status: 'SKIPPED_NO_ACTION',
@@ -141,6 +263,20 @@ export class RawRefuelPromotionService {
 
         if (hooks?.afterCandidateRowLock) {
           await hooks.afterCandidateRowLock();
+        }
+
+        if (recoveryMutation) {
+          const mutationTime = recoveryMutation.mutationClock();
+          if (!assertRecoveryClaimActiveForPromotion(locked, recoveryMutation.claim, mutationTime)) {
+            return {
+              status: 'SKIPPED_NO_ACTION',
+              evaluation: null,
+              candidateId: locked.id,
+              fallbackVehicleEnergyEventId: null,
+              convergedNativeEventId: null,
+              detail: 'recovery_claim_stale',
+            };
+          }
         }
 
         if (locked.lifecycleState === 'CONVERGED_NATIVE') {
@@ -157,6 +293,24 @@ export class RawRefuelPromotionService {
         if (locked.lifecycleState === 'PROMOTED') {
           const existingVeeId = await this.resolveExistingFallbackVeeIdTx(tx, locked);
           this.metrics?.recordPromotionIdempotentReplay();
+          if (recoveryMutation) {
+            const stale = await commitRecoveryOwnedPromotedCandidate(tx, locked, recoveryMutation, {
+              lifecycleState: locked.lifecycleState,
+              qualityMeta: (locked.qualityMeta ?? {}) as Prisma.InputJsonValue,
+            });
+            if (stale) {
+              return recoveryPromotionStaleResult(stale.candidateId);
+            }
+            return {
+              status: 'ALREADY_PROMOTED',
+              evaluation: null,
+              candidateId: locked.id,
+              fallbackVehicleEnergyEventId: existingVeeId,
+              convergedNativeEventId: null,
+              detail: 'candidate_already_promoted',
+              recoveryOwnedPromotionFinalized: true,
+            };
+          }
           return {
             status: 'ALREADY_PROMOTED',
             evaluation: null,
@@ -300,17 +454,28 @@ export class RawRefuelPromotionService {
             };
           }
           const nextLifecycle = resolveNextLifecycleState(locked.lifecycleState, 'PROMOTED');
-          await tx.rawRefuelCandidate.update({
-            where: { id: locked.id },
-            data: {
+          const promotedMeta = mergePromotionMeta(locked.qualityMeta, {
+            promotedVehicleEnergyEventId: existingBySourceKey.id,
+            promotedAt: new Date().toISOString(),
+            promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
+          }) as Prisma.InputJsonValue;
+          if (recoveryMutation) {
+            const stale = await commitRecoveryOwnedPromotedCandidate(tx, locked, recoveryMutation, {
               lifecycleState: nextLifecycle,
-              qualityMeta: mergePromotionMeta(locked.qualityMeta, {
-                promotedVehicleEnergyEventId: existingBySourceKey.id,
-                promotedAt: new Date().toISOString(),
-                promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
-              }) as Prisma.InputJsonValue,
-            },
-          });
+              qualityMeta: promotedMeta,
+            });
+            if (stale) {
+              return recoveryPromotionStaleResult(stale.candidateId);
+            }
+          } else {
+            await tx.rawRefuelCandidate.update({
+              where: { id: locked.id },
+              data: {
+                lifecycleState: nextLifecycle,
+                qualityMeta: promotedMeta,
+              },
+            });
+          }
           this.metrics?.recordPromotionIdempotentReplay();
           this.metrics?.recordPromotionCommitted();
           return {
@@ -320,6 +485,7 @@ export class RawRefuelPromotionService {
             fallbackVehicleEnergyEventId: existingBySourceKey.id,
             convergedNativeEventId: null,
             detail: 'idempotent_existing_fallback_vee',
+            recoveryOwnedPromotionFinalized: recoveryMutation ? true : undefined,
           };
         }
 
@@ -344,6 +510,16 @@ export class RawRefuelPromotionService {
         if (hooks?.beforeVeeInsert) {
           await hooks.beforeVeeInsert();
         }
+        if (recoveryMutation) {
+          const staleFence = await assertRecoveryFenceBeforeSideEffect(
+            tx,
+            locked,
+            recoveryMutation,
+          );
+          if (staleFence) {
+            return recoveryPromotionStaleResult(staleFence.candidateId);
+          }
+        }
 
         const createdVee = await tx.vehicleEnergyEvent.create({
           data: mapPromotionDraftToVehicleEnergyEventCreateInput(draft),
@@ -352,19 +528,40 @@ export class RawRefuelPromotionService {
         if (hooks?.afterVeeInsertBeforeLifecycleUpdate) {
           await hooks.afterVeeInsertBeforeLifecycleUpdate();
         }
+        if (recoveryMutation) {
+          const staleFence = await assertRecoveryFenceBeforeSideEffect(
+            tx,
+            locked,
+            recoveryMutation,
+          );
+          if (staleFence) {
+            return recoveryPromotionStaleResult(staleFence.candidateId);
+          }
+        }
 
         const nextLifecycle = resolveNextLifecycleState(locked.lifecycleState, 'PROMOTED');
-        await tx.rawRefuelCandidate.update({
-          where: { id: locked.id },
-          data: {
+        const promotedMeta = mergePromotionMeta(locked.qualityMeta, {
+          promotedVehicleEnergyEventId: createdVee.id,
+          promotedAt: new Date().toISOString(),
+          promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
+        }) as Prisma.InputJsonValue;
+        if (recoveryMutation) {
+          const stale = await commitRecoveryOwnedPromotedCandidate(tx, locked, recoveryMutation, {
             lifecycleState: nextLifecycle,
-            qualityMeta: mergePromotionMeta(locked.qualityMeta, {
-              promotedVehicleEnergyEventId: createdVee.id,
-              promotedAt: new Date().toISOString(),
-              promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
-            }) as Prisma.InputJsonValue,
-          },
-        });
+            qualityMeta: promotedMeta,
+          });
+          if (stale) {
+            return recoveryPromotionStaleResult(stale.candidateId);
+          }
+        } else {
+          await tx.rawRefuelCandidate.update({
+            where: { id: locked.id },
+            data: {
+              lifecycleState: nextLifecycle,
+              qualityMeta: promotedMeta,
+            },
+          });
+        }
 
         this.metrics?.recordPromotionCommitted();
         this.logger.log(
@@ -384,6 +581,7 @@ export class RawRefuelPromotionService {
           fallbackVehicleEnergyEventId: createdVee.id,
           convergedNativeEventId: null,
           detail: 'promotion_committed',
+          recoveryOwnedPromotionFinalized: recoveryMutation ? true : undefined,
         };
       }, { timeout: 20_000 });
     } catch (error) {

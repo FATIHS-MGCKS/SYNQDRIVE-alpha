@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-21 — RFRF F10.6.8-C recovered READY → promotion liveness (C1+C2)
+
+- Recovery-owned canonical promotion after convergence when no SAME native; advisory → fresh clock → row lock → promotion
+- C1: fallback VEE + `PROMOTED` + `recoveryLastOutcome=SUCCESS_PROMOTED` + lease clear in one transaction; no second `finishRecovery` after promote
+- C2: EXPIRED lease vs SUPERSEDED generation stale proofs; independent `PrismaClient` stacks; additive migration `SUCCESS_PROMOTED`
+- Stage 5 production posture unchanged; Stage 6 / recovery-direct G2 handoff not started
+
 ## 2026-09-19 — RFRF F10.6.6-B.2 micro-closure (canonical query + pending INSUFFICIENT)
 
 - Canonical list query includes persisted `refuelReconciliation`; raw list remains lean

@@ -19,6 +19,8 @@ export interface RawRefuelPromotionApplyResult {
   fallbackVehicleEnergyEventId: string | null;
   convergedNativeEventId: string | null;
   detail: string;
+  /** True when recovery-owned promotion finalized SUCCESS_PROMOTED in the promotion transaction. */
+  recoveryOwnedPromotionFinalized?: boolean;
 }
 
 export interface RawRefuelPromotionTransactionHooks {

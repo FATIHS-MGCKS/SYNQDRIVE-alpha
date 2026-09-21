@@ -5,6 +5,7 @@ import type {
 } from '@prisma/client';
 import {
   canExecuteRawRefuelCandidateRecovery,
+  evaluateFallbackPromotionAuthority,
   loadRawFuelRefuelFallbackConfig,
   type RawFuelRefuelFallbackConfig,
 } from '@config/raw-fuel-refuel-fallback.config';
@@ -18,6 +19,9 @@ import {
 import type { RawFuelRiseDetectionContext } from '../raw-fuel-rise-detector/raw-fuel-signal-sample.types';
 import { evaluateRawRefuelCandidateReadiness } from '../raw-fuel-refuel-fallback/raw-refuel-candidate-readiness.evaluator';
 import { RawRefuelConvergenceService } from '../raw-fuel-refuel-fallback/raw-refuel-convergence.service';
+import type { RawRefuelConvergenceApplyResult } from '../raw-fuel-refuel-fallback/raw-refuel-native-fallback-convergence.types';
+import { RawRefuelPromotionService } from '../raw-fuel-refuel-fallback/raw-refuel-promotion.service';
+import type { RawRefuelPromotionApplyResult } from '../raw-fuel-refuel-fallback/raw-refuel-promotion.types';
 import { resolveRawFuelCapability } from '../raw-fuel-refuel-fallback/raw-fuel-capability.resolver';
 import { resolveRawFuelSignalTrust } from '../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
 import { RawFuelRefuelFallbackMetricsService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
@@ -81,6 +85,7 @@ export class RawRefuelCandidateRecoveryService {
     private readonly prisma: PrismaService,
     private readonly candidateService: RawRefuelCandidateService,
     private readonly convergenceService: RawRefuelConvergenceService,
+    @Optional() private readonly promotionService?: RawRefuelPromotionService,
     @Optional() private readonly dimoSegments?: DimoSegmentsService,
     @Optional() private readonly metrics?: RawFuelRefuelFallbackMetricsService,
   ) {
@@ -252,6 +257,14 @@ export class RawRefuelCandidateRecoveryService {
     this.metrics?.recordCandidateRecoveryAttempt();
 
     if (isRawRefuelCandidateTerminal(candidate.lifecycleState)) {
+      if (candidate.recoveryLastOutcome === 'SUCCESS_PROMOTED') {
+        return {
+          candidateId: candidate.id,
+          outcome: 'SUCCESS_PROMOTED',
+          dimoFetchPerformed: false,
+          detail: 'recovery_promotion_already_finalized',
+        };
+      }
       const applied = await this.finishRecovery(
         candidate.id,
         now,
@@ -372,21 +385,39 @@ export class RawRefuelCandidateRecoveryService {
       };
     }
 
-    const appliedPending = await this.finishRecovery(
-      candidate.id,
+    if (
+      convergence.status === 'FAIL_CLOSED' ||
+      convergence.status === 'FAIL_CLOSED_TERMINAL_PROMOTED'
+    ) {
+      const applied = await this.finishRecovery(
+        candidate.id,
+        now,
+        claim,
+        'AMBIGUOUS_RECOVERY_OBSERVATION',
+      );
+      const stale = this.staleIfNotApplied(applied, candidate.id, false);
+      if (stale) return stale;
+      return {
+        candidateId: candidate.id,
+        outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
+        dimoFetchPerformed: false,
+        convergenceStatus: convergence.status,
+        detail: convergence.detail ?? undefined,
+      };
+    }
+
+    return this.runRecoveryPromotionForReadyCandidate(
+      candidate,
       now,
+      env,
       claim,
-      'PENDING_NATIVE_RECONCILIATION',
+      {
+        capability: vehicleContext.capability,
+        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+      },
+      convergence,
+      false,
     );
-    const stalePending = this.staleIfNotApplied(appliedPending, candidate.id, false);
-    if (stalePending) return stalePending;
-    return {
-      candidateId: candidate.id,
-      outcome: 'PENDING_NATIVE_RECONCILIATION',
-      dimoFetchPerformed: false,
-      convergenceStatus: convergence.status,
-      detail: convergence.detail ?? undefined,
-    };
   }
 
   private async recoverEvidenceMaturityCandidate(
@@ -585,37 +616,69 @@ export class RawRefuelCandidateRecoveryService {
         };
       }
       if (convergence.status === 'SKIPPED_NO_ACTION') {
+        if (this.isConvergencePendingNative(convergence)) {
+          const applied = await this.finishRecovery(
+            candidate.id,
+            now,
+            claim,
+            'PENDING_NATIVE_RECONCILIATION',
+          );
+          const stale = this.staleIfNotApplied(applied, candidate.id, true);
+          if (stale) return stale;
+          this.metrics?.recordCandidateRecoveryPendingNative();
+          return {
+            candidateId: candidate.id,
+            outcome: 'PENDING_NATIVE_RECONCILIATION',
+            dimoFetchPerformed: true,
+            convergenceStatus: convergence.status,
+            detail: convergence.detail ?? undefined,
+          };
+        }
+        return this.runRecoveryPromotionForReadyCandidate(
+          refreshed,
+          now,
+          env,
+          claim,
+          {
+            capability: vehicleContext.capability,
+            absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+          },
+          convergence,
+          true,
+        );
+      }
+      if (
+        convergence.status === 'FAIL_CLOSED' ||
+        convergence.status === 'FAIL_CLOSED_TERMINAL_PROMOTED'
+      ) {
         const applied = await this.finishRecovery(
           candidate.id,
           now,
           claim,
-          'PENDING_NATIVE_RECONCILIATION',
+          'AMBIGUOUS_RECOVERY_OBSERVATION',
         );
         const stale = this.staleIfNotApplied(applied, candidate.id, true);
         if (stale) return stale;
-        this.metrics?.recordCandidateRecoveryPendingNative();
         return {
           candidateId: candidate.id,
-          outcome: 'PENDING_NATIVE_RECONCILIATION',
+          outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
           dimoFetchPerformed: true,
           convergenceStatus: convergence.status,
           detail: convergence.detail ?? undefined,
         };
       }
-      const appliedReady = await this.finishRecovery(
-        candidate.id,
+      return this.runRecoveryPromotionForReadyCandidate(
+        refreshed,
         now,
+        env,
         claim,
-        'SUCCESS_MATURED_READY',
+        {
+          capability: vehicleContext.capability,
+          absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+        },
+        convergence,
+        true,
       );
-      const staleReady = this.staleIfNotApplied(appliedReady, candidate.id, true);
-      if (staleReady) return staleReady;
-      return {
-        candidateId: candidate.id,
-        outcome: 'SUCCESS_MATURED_READY',
-        dimoFetchPerformed: true,
-        convergenceStatus: convergence.status,
-      };
     }
 
     const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
@@ -629,6 +692,245 @@ export class RawRefuelCandidateRecoveryService {
     };
   }
 
+  private isConvergencePendingNative(convergence: RawRefuelConvergenceApplyResult): boolean {
+    return (
+      convergence.detail?.includes('pending') === true ||
+      convergence.detail?.includes('reconciliation') === true ||
+      convergence.evaluation?.detail === 'pending_physical_reconciliation'
+    );
+  }
+
+  private async runRecoveryPromotionForReadyCandidate(
+    candidate: RawRefuelCandidate,
+    now: Date,
+    env: NodeJS.ProcessEnv,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
+    vehicleContext: {
+      capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+      absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
+    },
+    convergence: RawRefuelConvergenceApplyResult,
+    dimoFetchPerformed: boolean,
+  ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
+    if (!this.promotionService) {
+      const applied = await this.finishRecovery(
+        candidate.id,
+        now,
+        claim,
+        'PENDING_NATIVE_RECONCILIATION',
+      );
+      const stale = this.staleIfNotApplied(applied, candidate.id, dimoFetchPerformed);
+      if (stale) return stale;
+      return {
+        candidateId: candidate.id,
+        outcome: 'PENDING_NATIVE_RECONCILIATION',
+        dimoFetchPerformed,
+        convergenceStatus: convergence.status,
+        detail: 'promotion_service_unavailable',
+      };
+    }
+
+    const authority = evaluateFallbackPromotionAuthority(env);
+    if (!authority.authorized) {
+      const applied = await this.finishRecovery(
+        candidate.id,
+        now,
+        claim,
+        'PENDING_NATIVE_RECONCILIATION',
+      );
+      const stale = this.staleIfNotApplied(applied, candidate.id, dimoFetchPerformed);
+      if (stale) return stale;
+      return {
+        candidateId: candidate.id,
+        outcome: 'PENDING_NATIVE_RECONCILIATION',
+        dimoFetchPerformed,
+        detail: authority.detail,
+      };
+    }
+
+    const promotion = await this.promotionService.evaluateAndApplyPromotionById(
+      candidate.id,
+      {
+        capability: vehicleContext.capability,
+        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+        absoluteSignalTrust: candidate.absoluteSignalTrust,
+      },
+      env,
+      undefined,
+      this.recoveryMutationContext(claim),
+    );
+
+    return this.handleRecoveryPromotionApplyResult(
+      candidate.id,
+      now,
+      claim,
+      promotion,
+      dimoFetchPerformed,
+      convergence,
+    );
+  }
+
+  private async handleRecoveryPromotionApplyResult(
+    candidateId: string,
+    now: Date,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
+    promotion: RawRefuelPromotionApplyResult,
+    dimoFetchPerformed: boolean,
+    convergence: RawRefuelConvergenceApplyResult,
+  ): Promise<RawRefuelCandidateRecoveryAttemptResult> {
+    if (promotion.detail === 'recovery_claim_stale') {
+      return this.staleClaimAttempt(candidateId, dimoFetchPerformed);
+    }
+
+    switch (promotion.status) {
+      case 'PROMOTED':
+      case 'ALREADY_PROMOTED': {
+        if (promotion.recoveryOwnedPromotionFinalized) {
+          return {
+            candidateId,
+            outcome: 'SUCCESS_PROMOTED',
+            dimoFetchPerformed,
+            convergenceStatus: convergence.status,
+            detail: promotion.detail,
+          };
+        }
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'SUCCESS_PROMOTED',
+          null,
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'SUCCESS_PROMOTED',
+          dimoFetchPerformed,
+          convergenceStatus: convergence.status,
+          detail: promotion.detail,
+        };
+      }
+      case 'CONVERGED_NATIVE':
+      case 'SKIPPED_CONVERGED_NATIVE': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'SUCCESS_CONVERGED',
+          null,
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        this.metrics?.recordCandidateRecoveryConvergedNative();
+        return {
+          candidateId,
+          outcome: 'SUCCESS_CONVERGED',
+          dimoFetchPerformed,
+          convergenceStatus: promotion.status,
+          detail: promotion.detail,
+        };
+      }
+      case 'SKIPPED_NOT_AUTHORIZED': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'PENDING_NATIVE_RECONCILIATION',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'PENDING_NATIVE_RECONCILIATION',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+      case 'BLOCKED_CUTOVER': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'NO_NEW_EVIDENCE',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'NO_NEW_EVIDENCE',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+      case 'BLOCKED_PROMOTION_TRUST': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'AMBIGUOUS_RECOVERY_OBSERVATION',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+      case 'FAIL_CLOSED': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'AMBIGUOUS_RECOVERY_OBSERVATION',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+      case 'SKIPPED_NOT_READY': {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'NO_NEW_EVIDENCE',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'NO_NEW_EVIDENCE',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+      case 'SKIPPED_NO_ACTION':
+      default: {
+        const applied = await this.finishRecovery(
+          candidateId,
+          now,
+          claim,
+          'PENDING_NATIVE_RECONCILIATION',
+        );
+        const stale = this.staleIfNotApplied(applied, candidateId, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId,
+          outcome: 'PENDING_NATIVE_RECONCILIATION',
+          dimoFetchPerformed,
+          detail: promotion.detail,
+        };
+      }
+    }
+  }
+
   private async finishRecovery(
     candidateId: string,
     now: Date,
@@ -638,6 +940,7 @@ export class RawRefuelCandidateRecoveryService {
   ): Promise<boolean> {
     const terminalSuccess =
       outcome === 'SUCCESS_CONVERGED' ||
+      outcome === 'SUCCESS_PROMOTED' ||
       outcome === 'TERMINAL_NO_ACTION';
     const nextAttempt =
       nextAttemptOverride !== undefined
