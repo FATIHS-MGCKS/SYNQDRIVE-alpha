@@ -10,11 +10,8 @@ on:
       - 'backend/scripts/ops/**'
       - '.github/workflows/rfrf-stage4-convergence-readiness.yml'
       - 'docs/audits/eed-rfrf-f10-6*.md'
-      - 'backend/scripts/test/rfrf-f10-6-8-c-recovery-promotion-gate.sh'
-      - 'backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion*.ts'
       - 'backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery*.ts'
       - 'backend/src/modules/vehicle-intelligence/energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery*.spec.ts'
-      - 'backend/prisma/migrations/*rfrf_f10_6_8_c*'
       - 'backend/prisma/migrations/*rfrf_f10_6_8_b*'
       - 'architecture/knowledge-graphs/energy-event-detection/**'
 
