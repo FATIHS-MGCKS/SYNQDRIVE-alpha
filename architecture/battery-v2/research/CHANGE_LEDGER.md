@@ -51,6 +51,7 @@ Append-only scientific record. Newest entries first.
 | **DECISION_STATUS** | **`B1_2W_GAP_STATE_MODEL_SUFFICIENT_FOR_STATE_MACHINE_LIVENESS`**; implementation **NOT_STARTED**; M3.3C **BLOCKED**. |
 | **NON_EFFECTS** | Production behavior unchanged; no fabricated evidence; no provisional authoritative rest sessions. |
 | **EVIDENCE** | Forensics chain B1.2T/B1.2U; `research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md` |
+| **FOLLOW_UP** | B1.2X.1 — supersession notes on B1.1 `NEXT_ACTION` + M3.2 Step 10 / B1 activation stale normative pointers (PR #1720 amend). |
 
 ## CL-2026-09-21 — M3.3 B1.2 first natural shutdown + rest session acceptance (read-only)
 
