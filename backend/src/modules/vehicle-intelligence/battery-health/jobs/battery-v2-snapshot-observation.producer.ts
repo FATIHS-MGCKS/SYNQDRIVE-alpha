@@ -21,6 +21,7 @@ import {
 } from '../observability/battery-v2-prometheus.metrics';
 import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
 import { recordProviderGapLifecycleFailureFromError } from '../provider-observability-gap/provider-observability-gap.metrics';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 
 const LV_BATTERY_SIGNAL = 'lowVoltageBatteryCurrentVoltage';
 
@@ -117,6 +118,7 @@ export class BatteryV2SnapshotObservationProducer {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobProducer: BatteryV2JobProducerService,
+    private readonly lastStoredLiveVoltage: BatteryProviderLastStoredLiveVoltageResolver,
     @Optional() private readonly metrics?: TripMetricsService,
     @Optional() private readonly providerGap?: ProviderObservabilityGapService,
   ) {}
@@ -162,11 +164,11 @@ export class BatteryV2SnapshotObservationProducer {
 
     let lvDecision: BatteryProviderObservationDecision | null = null;
     if (isPlausibleLvVoltage(input.normalized.lvBatteryVoltage)) {
-      const lastLv = await this.prisma.batteryHealthSnapshot.findFirst({
-        where: { vehicleId: input.vehicleId },
-        orderBy: { recordedAt: 'desc' },
-        select: { recordedAt: true, voltageV: true },
-      });
+      const lastStored =
+        await this.lastStoredLiveVoltage.resolveLastStoredLiveVoltageObservation(
+          input.organizationId,
+          input.vehicleId,
+        );
 
       const lvObservedAt =
         input.lvBatteryObservedAt ?? input.batteryMap.lvBatteryVoltage.observedAt;
@@ -179,12 +181,7 @@ export class BatteryV2SnapshotObservationProducer {
         normalizedValue: input.normalized.lvBatteryVoltage,
         observedAt: lvObservedAt,
         receivedAt: input.receivedAt,
-        lastStored: lastLv
-          ? {
-              observedAt: lastLv.recordedAt,
-              normalizedValue: lastLv.voltageV,
-            }
-          : null,
+        lastStored,
       });
     }
 

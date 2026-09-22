@@ -36,6 +36,7 @@
 | `M3_3_B1_2W_STATUS` | **`B1_2W_GAP_STATE_MODEL_SUFFICIENT_FOR_STATE_MACHINE_LIVENESS`** — architecture semantic closure **COMPLETE** (B1.2X doc PR #1720) — `research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md` |
 | **B1.2Y1 implementation (PR #1721)** | **`PROVIDER_OBSERVABILITY_GAP` runtime foundation** — schema + service + poll hook + tests; **`BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED` default OFF** — production behavior unchanged until authorized activation |
 | **B1.2Y1.1 hardening (PR #1721 amend)** | Pre-gap OFF guard, STALE_REPLAY-only new gap, observable gap failures, duplicate-retry resolution, no synthetic provider time, gap∧generalized flag coupling, Postgres multi-replica integration CI script |
+| **B1.2Y3C.1 (engineering PR)** | Snapshot producer LV `lastStored` unified on canonical LIVE_VOLTAGE measurement resolver (fixes STALE_REPLAY reachability for provider-gap entry; **not deployed** until separate gate) |
 | **M3.3C** | **`BLOCKED`** until gap implementation merged + shadow/production validation (B1.2W §13) |
 | `NEXT_PHASE` | **Next workstream:** gap persistence + poll-path hook + multi-replica lifecycle + deterministic tests + shadow validation; **no** REST_WAKE tolerance promotion without authorization |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |

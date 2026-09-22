@@ -567,7 +567,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
     dataSource: 'Baut auf P66 Alerts + Task Domain V2 Catalog `BATTERY_CRITICAL_HEALTH`. Tests: `battery-task.policy.spec.ts`, `battery-task.service.spec.ts`. Architektur: `docs/architecture/battery-task-policy.md`.' },
   { name: 'Battery V2 M3.3 B1.2Y1 Provider Observability Gap (V4.9.1994)', icon: Battery,
     endpoint: 'Keine neuen Customer-Endpoints. Tabelle `battery_provider_observability_gaps`; Flag `BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED` (default false) + erfordert `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` für Runtime.',
-    service: '`provider-observability-gap/` — STALE_REPLAY poll hook → OPEN gap (nicht ENGINE_OFF/REST); fresh LV + persisted generalized class → RESOLVED_*; advisory lock + partial unique one OPEN pro Fahrzeug/contract. Metriken: `synqdrive_battery_provider_observability_gap_*`.',
+    service: '`provider-observability-gap/` — STALE_REPLAY poll hook → OPEN gap (nicht ENGINE_OFF/REST); fresh LV + persisted generalized class → RESOLVED_*; advisory lock + partial unique one OPEN pro Fahrzeug/contract. Snapshot producer + LV ingestion teilen `BatteryProviderLastStoredLiveVoltageResolver` (canonical LIVE_VOLTAGE measurement anchor). Metriken: `synqdrive_battery_provider_observability_gap_*`.',
     dataSource: 'architecture/battery-v2/research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md. Migration `20260922100000_battery_provider_observability_gap`. Tests: provider-observability-gap/*.spec.ts; Postgres: `npm run test:battery:v2:provider-gap:postgres`.' },
   { name: 'Battery V2 M3.3B R1 Cadence Forensics + REST Qualification (V4.9.1151)', icon: Battery,
     endpoint: 'Keine neuen Customer-Endpoints. Shadow-only; Flag unverändert default false.',

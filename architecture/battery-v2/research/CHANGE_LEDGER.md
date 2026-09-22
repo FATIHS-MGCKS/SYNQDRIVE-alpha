@@ -42,6 +42,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-22 — M3.3 B1.2Y3C.1 snapshot producer STALE_REPLAY reachability (engineering PR)
+
+| Field | Value |
+|-------|-------|
+| BEFORE | `BatteryV2SnapshotObservationProducer` used legacy `battery_health_snapshots` (`recordedAt` + `voltageV` only, no `receivedAt`) for LV provider dedup — **STALE_REPLAY unreachable** on snapshot poll path (Y3C shadow incomplete). |
+| CHANGE | Shared `BatteryProviderLastStoredLiveVoltageResolver` reads tenant-scoped canonical `battery_measurements` LIVE_VOLTAGE (`observedAt`, `numericValue`, `receivedAt`, `idempotencyKey`); producer + `LvLiveVoltageIngestionService` both use it. |
+| WHY | Provider-gap entry requires `STALE_REPLAY`; policy needs `lastReceivedAt` + advanced poll `receivedAt` + age > 5m threshold. |
+| VALIDATION | Unit: stale replay / duplicate-before-threshold / legacy bootstrap / advancing ts / gap hook. Postgres integration: producer → OPEN gap (when CI DB available). |
+| DECISION_STATUS | **PROPOSED** until merge + separate deploy gate (`Y3_STALE_REPLAY_FIX_DEPLOY_T0`). |
+| EVIDENCE | Y3C read-only forensics `M3_3_B1_2Y3C_RESULT=SHADOW_ACCEPTANCE_INCOMPLETE`; immutable `M3_3_B1_2Y3_T0` unchanged. |
+
+---
+
 ## CL-2026-09-22 — M3.3 B1.2Y1.2 fail-open boundary + bounded gap failure metrics (PR #1721 amend)
 
 | Field | Content |

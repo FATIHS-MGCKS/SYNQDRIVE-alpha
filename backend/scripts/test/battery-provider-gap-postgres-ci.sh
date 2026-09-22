@@ -7,6 +7,9 @@ cd "$ROOT"
 
 log() { printf '[battery-provider-gap-postgres-ci] %s\n' "$*"; }
 
+PROVIDER_GAP_INTEGRATION_SPEC="src/modules/vehicle-intelligence/battery-health/provider-observability-gap/provider-observability-gap.integration.spec.ts"
+STALE_REPLAY_INTEGRATION_SPEC="src/modules/vehicle-intelligence/battery-health/provider-observability-gap/battery-v2-snapshot-stale-replay-gap.integration.spec.ts"
+
 assert_ephemeral_database_url() {
   local lower_url="${DATABASE_URL,,}"
   case "$lower_url" in
@@ -34,7 +37,11 @@ assert_ephemeral_database_url
 log "prisma migrate deploy (resilient)"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-log "provider observability gap integration tests"
-BATTERY_V2_PROVIDER_GAP_INTEGRATION=1 npx jest provider-observability-gap.integration --runInBand --verbose
+log "provider observability gap integration tests (runTestsByPath)"
+BATTERY_V2_PROVIDER_GAP_INTEGRATION=1 npx jest --runTestsByPath \
+  "$PROVIDER_GAP_INTEGRATION_SPEC" \
+  "$STALE_REPLAY_INTEGRATION_SPEC" \
+  --runInBand \
+  --verbose
 
 log "battery-provider-gap-postgres-ci completed successfully"

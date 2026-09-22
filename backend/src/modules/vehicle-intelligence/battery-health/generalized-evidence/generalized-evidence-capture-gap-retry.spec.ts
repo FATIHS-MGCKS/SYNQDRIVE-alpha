@@ -5,14 +5,15 @@ import {
   BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV,
 } from '@config/battery-health-v2.config';
 import { GeneralizedEvidenceCaptureService } from './generalized-evidence-capture.service';
+import { restoreProcessEnv } from '../testing/battery-v2-process-env.test-util';
 
 describe('GeneralizedEvidenceCaptureService provider gap retry (B1.2Y1.1)', () => {
   const originalGap = process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV];
   const originalGen = process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV];
 
   afterEach(() => {
-    process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV] = originalGap;
-    process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV] = originalGen;
+    restoreProcessEnv(BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV, originalGap);
+    restoreProcessEnv(BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV, originalGen);
   });
 
   it('TEST_RESOLUTION_RETRY_AFTER_GENERALIZED_DUPLICATE completes gap on second pass', async () => {
