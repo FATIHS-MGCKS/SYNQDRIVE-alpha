@@ -9,6 +9,7 @@ log() { printf '[battery-provider-gap-postgres-ci] %s\n' "$*"; }
 
 PROVIDER_GAP_INTEGRATION_SPEC="src/modules/vehicle-intelligence/battery-health/provider-observability-gap/provider-observability-gap.integration.spec.ts"
 STALE_REPLAY_INTEGRATION_SPEC="src/modules/vehicle-intelligence/battery-health/provider-observability-gap/battery-v2-snapshot-stale-replay-gap.integration.spec.ts"
+SECTION_13_2_INTEGRATION_SPEC="src/modules/vehicle-intelligence/battery-health/provider-observability-gap/provider-observability-gap-b1-2w-section-13-2.integration.spec.ts"
 
 assert_ephemeral_database_url() {
   local lower_url="${DATABASE_URL,,}"
@@ -41,6 +42,7 @@ log "provider observability gap integration tests (runTestsByPath)"
 BATTERY_V2_PROVIDER_GAP_INTEGRATION=1 npx jest --runTestsByPath \
   "$PROVIDER_GAP_INTEGRATION_SPEC" \
   "$STALE_REPLAY_INTEGRATION_SPEC" \
+  "$SECTION_13_2_INTEGRATION_SPEC" \
   --runInBand \
   --verbose
 
