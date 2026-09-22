@@ -46,6 +46,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-22 — M3.3C.0A PR #1725 preflight semantic / provenance hardening (doc-only)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | PR #1725 branch inherited #1724 test commits in GitHub diff; digest contract too narrow; ambiguous retention duration and REST_60M wording. |
+| **OBSERVATION** | Merge-base `2b0ef15` caused no-op backend test files in PR compare; late trip association changes charge inputs without GE ID changes. |
+| **HYPOTHESIS** | Canonical normalized snapshot digest + explicit row lifecycle prevents silent stale shadow features. |
+| **CHANGE** | Rebase onto `47614a13`; expand `M3_3_C0_*` preflight: `FEATURE_INPUT_DIGEST`, INCREMENTAL/FINAL + VALID/INVALIDATED selection, units/signs, temperature/charge proxy semantics, Theil-Sen-only outlier policy, PARKED_REST_CANDIDATE + REST_60M/6H pipeline clarification. |
+| **WHY** | Close M3.3C.0A review gate before C1 schema work. |
+| **EXPECTED_EFFECT** | PR #1725 diff is documentation-only; C1 implements digest + lifecycle as specified. |
+| **VALIDATION** | `validate-graph.sh`; PR CI (registry, i18n, vehicle detail, legal docs). |
+| **OBSERVED_EFFECT** | Pending merge of PR #1725. |
+| **NON_EFFECTS** | No runtime/schema/migration/production. |
+| **REGRESSIONS_OR_TRADEOFFS** | Richer digest payload increases storage size of input snapshot — acceptable for explainability. |
+| **REMAINING_GAPS** | C1 implementation. |
+| **AFFECTED_GRAPH** | Battery V2 persistence/lifecycle documentation only. |
+| **EVIDENCE** | `research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md` §19 |
+
+---
+
 ## CL-2026-09-22 — M3.3C.0 retention curve + charge opportunity preflight (doc-only)
 
 | Field | Value |

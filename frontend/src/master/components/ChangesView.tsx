@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
     summary: [
       'Y3D.1 transition doc: B1.2W §13 COMPLETE, M3_3C_REOPENING_GATE=YES (historical M3.3C=BLOCKED preserved in B1.2W evidence).',
-      'M3.3C preflight: versioned BatteryRestSessionFeature storage (recommended), Theil-Sen retention slope, charge opportunity raw features + UNKNOWN classification default.',
+      'M3.3C preflight: versioned BatteryRestSessionFeature storage (recommended), Theil-Sen retention slope, canonical FEATURE_INPUT_DIGEST snapshot, charge opportunity raw features + UNKNOWN classification default.',
       'Shadow-only isolation: no assessment/publication/BatteryFeatures authority; REST_60M/6H remain opportunistic legacy until M3.3G.',
       'Production readiness snapshot: 7 rest sessions, 0 REST_WAKE_VOLTAGE, sparse ladder — Postgres-first validation matrix defined.',
     ],
