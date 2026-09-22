@@ -46,6 +46,16 @@ Both must preserve:
 | `BatteryHealthSnapshot` | — | Legacy 12V snapshots |
 | `HvBatteryHealthSnapshot` | — | HV poll snapshots |
 
+## M3.3A generalized evidence + future observability gap (B1.2W)
+
+| Model | Status | Purpose |
+|-------|--------|---------|
+| `BatteryGeneralizedEvidenceObservation` | **Deployed (shadow)** | Normalized evidence above `battery_measurements` |
+| `BatteryRestSession` | **Deployed (shadow)** | Opens only on **`ENGINE_OFF_TRANSITION`** |
+| **Future:** `battery_provider_observability_gaps` (name TBD) | **NOT IMPLEMENTED** | **`PROVIDER_OBSERVABILITY_GAP`** lifecycle — **not** rest, **not** ENGINE_OFF |
+
+Specification only: [`research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](../research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md). Optional future **`gapId`** on generalized rows when real evidence resumes — gap itself is not generalized ENGINE_OFF.
+
 ## Layer model
 
 ```

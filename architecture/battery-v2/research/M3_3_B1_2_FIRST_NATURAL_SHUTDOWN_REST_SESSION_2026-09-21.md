@@ -155,7 +155,18 @@ Post-B1 traffic on WOB is **ongoing ICE driving** with **LTE_R1 `engineRunning=f
 | Field | Value |
 |-------|-------|
 | `M3_3C_ALLOWED` | **NO** |
-| `NEXT_ACTION` | **`CONTINUE_NATURAL_SHADOW_OBSERVATION`** — wait for a **trustworthy** parked engine-off sequence (ignition off, speed at rest, plausible LV) before B1.2 PASS |
+| `NEXT_ACTION` | Superseded for acceptance wording by **B1.2W** — see [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md) §12. **Do not** require every physical shutdown to resolve authoritatively; **do** require explicit gap state after implementation. |
+
+## 13 — B1 acceptance contract (revised @ B1.2W)
+
+This document’s read-only forensics (**`B1_2_PENDING_NATURAL_TRUSTWORTHY_SHUTDOWN`**) remains valid historical evidence. **Normative B1 acceptance** after B1.2W:
+
+- **SAFETY:** no fabricated ENGINE_OFF / RestSession / rest age; gap ≠ shutdown; stale replay ≠ new evidence.
+- **STATE-MACHINE LIVENESS:** provider freeze → **`PROVIDER_OBSERVABILITY_GAP`** (post-implementation).
+- **RESOLUTION:** GAP→OFF @ **T4** only; GAP→RUNNING → **`RESOLVED_FRESH_RUNNING_NO_OBSERVED_OFF`** without historical rest.
+- **NOT REQUIRED:** every physical shutdown → authoritative rest (provider OFF delivery not guaranteed).
+
+Full specification: `M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`.
 
 Evidence log: `/opt/cursor/artifacts/m3_3_b1_2_production_forensics.log`
 
@@ -217,5 +228,6 @@ AUTHORITATIVE_BATTERY_BEHAVIOR_CHANGED=NO
 PRODUCTION_CHANGED=NO
 
 M3_3C_ALLOWED=NO
-NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION
+NEXT_ACTION=SEE_M3_3_B1_2W_PROVIDER_GAP_IMPLEMENTATION_WORKSTREAM
+B1_ACCEPTANCE_REVISED=B1_2W_SECTION_12
 ```

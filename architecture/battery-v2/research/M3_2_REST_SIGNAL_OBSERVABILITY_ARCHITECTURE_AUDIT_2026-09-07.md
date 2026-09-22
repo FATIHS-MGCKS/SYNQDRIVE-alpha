@@ -15,6 +15,8 @@
 
 Battery V2 REST measurement architecture assumes **passive in-window LIVE_VOLTAGE** during genuine rest. Deployed DIMO integration emits **new LV timestamps only during vehicle activity**; parked sleep produces **repeated stale `signalsLatest` payloads**. SynqDrive correctly suppresses duplicate observations and does not invent measurements. REST target evaluation then finds **zero eligible candidates** and, after retry grace, **persists historical alternator-era samples** labeled `CONTAMINATED_BY_WAKE` — even when the vehicle never woke.
 
+> **Normative closure (2026-09-21, B1.2W):** R1 ICE provider timestamp freeze and unreliable immediate post-off LV are documented with cohort forensics (B1.2T–B1.2U). **`PROVIDER_OBSERVABILITY_GAP`** state-machine semantics, revised B1 acceptance, and M3.3C gates: [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md). **Implementation not started** — runtime unchanged.
+
 This creates an **evidence observability deadlock** with current policy (Step 7). Pipeline health remains **PASS**; the blocker is **signal + evidence-model mismatch**, not scheduler/target defects.
 
 **Recommended direction (Step 10):** Hybrid evidence model — retain REST_60M/REST_6H as **opportunistic** paths when in-window LV exists; add explicit **trip-end shutdown anchor** and **insufficient-evidence** tiers; **do not** treat post-grace contaminated historical fallback as health evidence.

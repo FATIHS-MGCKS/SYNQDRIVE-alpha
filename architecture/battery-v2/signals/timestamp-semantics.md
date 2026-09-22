@@ -32,6 +32,19 @@ providerTimestamp: observedAt
 
 See `BAT-V2-CONTRA-LV-TIMESTAMP-PROVENANCE-001` and `BAT-V2-EVID-CODE-LV-TIMESTAMP-CHAIN-001`.
 
+## Field-level freshness (B1.2U / B1.2W cohort)
+
+```
+FIELDS_SHARE_COMMON_MEASUREMENT_FRESHNESS=NO
+FIELD_LEVEL_FRESHNESS_AVAILABLE=YES
+```
+
+- **`provider_fetched_at` / ingest `receivedAt` advancing does not imply all snapshot fields share a fresh provider measurement time.**
+- **`ignition=false` with `engineRunning=true` (load-derived) is not standalone shutdown proof.**
+- **`STALE_REPLAY` / duplicate provider timestamp+value must not advance evidence clocks.**
+
+Provider freeze semantics (future **`PROVIDER_OBSERVABILITY_GAP`**): [`research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](../research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md).
+
 ## Unknown / needs reconstruction
 
 - Whether fallback-created rows have entered REST evaluation in production
