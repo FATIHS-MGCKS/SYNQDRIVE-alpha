@@ -1,32 +1,34 @@
 /**
- * VDC OBD PLUG — topology A isolated canary (temporary webhook, WOB-only subscribe).
+ * VDC OBD PLUG — topology A isolated canary (allowlisted per-vehicle profiles).
  *
- * Activate order: CREATE disabled → verify → SUBSCRIBE WOB → verify WOB-only → ENABLE → verify → record activatedAt.
+ * Activate order: CREATE disabled → verify → SUBSCRIBE profile token → verify single subscriber
+ * → verify sibling canaries untouched → ENABLE → verify → record activatedAt.
  */
 import fs from 'fs';
 import crypto from 'crypto';
 import axios from 'axios';
 import { Wallet } from 'ethers';
 import {
-  CANARY_CONFIRM_VALUE,
-  TOKEN_WOB_7503,
+  CANARY_PROFILES,
   LEGACY_GLOBAL_PLUG_ID,
   UNPLUG_ID,
-  TEMP_PLUG_DISPLAY_NAME,
-  TEMP_PLUG_SEMANTICS,
   CREATE_TEMP_INITIAL_STATUS,
   ACTIVATION_SEQUENCE,
   PARTIAL_ROLLBACK_SEQUENCE,
   TEARDOWN_SEQUENCE,
   parseIsolatedCliArgs,
   resolveIsolatedExecutionMode,
+  buildProfileSemantics,
   buildTempWebhookPayload,
   verifyTempDefinition,
   validateExistingTempBeforeActivate,
-  validatePreEnableWobOnly,
+  validatePreEnableSingleTokenOnly,
   subscriptionsToTokenIds,
   buildPostActivateVerification,
   postActivateVerificationPasses,
+  findTempDefinitionsForProfile,
+  validateSiblingCanariesUntouched,
+  resolveCanaryProfile,
 } from './gt-r1-plug-webhook-canary-isolated.lib.mjs';
 
 const API = 'https://vehicle-triggers-api.dimo.zone';
@@ -120,10 +122,6 @@ async function getWebhookSubscriptions(headers, webhookId) {
   return list.map(normalizeAssetDid).filter(Boolean).map(String);
 }
 
-function findTempCanary(webhooks) {
-  return webhooks.filter((w) => w.displayName === TEMP_PLUG_DISPLAY_NAME);
-}
-
 async function getWebhookFromList(headers, webhookId) {
   const webhooks = await listWebhooks(headers);
   return webhooks.find((w) => String(w.id) === String(webhookId)) ?? null;
@@ -155,10 +153,10 @@ async function unsubscribeIdempotent(headers, contract, webhookId, tokenId) {
   }
 }
 
-async function putTempStatus(headers, tempId, targetURL, verificationToken, status) {
+async function putTempStatus(headers, tempId, semantics, targetURL, verificationToken, status) {
   return axios.put(
     `${API}/v1/webhooks/${tempId}`,
-    buildTempWebhookPayload(TEMP_PLUG_SEMANTICS, targetURL, verificationToken, status),
+    buildTempWebhookPayload(semantics, targetURL, verificationToken, status),
     { headers, validateStatus: () => true, timeout: 15000 },
   );
 }
@@ -173,57 +171,76 @@ async function deleteWebhookIdempotent(headers, webhookId) {
   }
 }
 
-/** Explicit partial activation rollback: DISABLE → UNSUBSCRIBE → DELETE */
-async function explicitPartialActivationRollback(headers, contract, tempId, targetURL, verificationToken, stepsOut) {
-  const results = [];
+async function explicitPartialActivationRollback(
+  headers,
+  contract,
+  tempId,
+  semantics,
+  targetURL,
+  verificationToken,
+  profileTokenId,
+  stepsOut,
+) {
   try {
-    const disableRes = await putTempStatus(headers, tempId, targetURL, verificationToken, 'disabled');
-    results.push({ step: 'ROLLBACK_DISABLE_TEMP', httpStatus: disableRes.status });
-    stepsOut.push(results[results.length - 1]);
+    const disableRes = await putTempStatus(headers, tempId, semantics, targetURL, verificationToken, 'disabled');
+    stepsOut.push({ step: 'ROLLBACK_DISABLE_TEMP', httpStatus: disableRes.status });
   } catch (e) {
-    results.push({ step: 'ROLLBACK_DISABLE_TEMP', error: e.message });
-    stepsOut.push(results[results.length - 1]);
+    stepsOut.push({ step: 'ROLLBACK_DISABLE_TEMP', error: e.message });
   }
   try {
-    const unsub = await unsubscribeIdempotent(headers, contract, tempId, TOKEN_WOB_7503);
-    results.push({ step: 'ROLLBACK_UNSUBSCRIBE_WOB', ...unsub });
-    stepsOut.push(results[results.length - 1]);
+    const unsub = await unsubscribeIdempotent(headers, contract, tempId, profileTokenId);
+    stepsOut.push({ step: 'ROLLBACK_UNSUBSCRIBE_PROFILE_TOKEN', tokenId: profileTokenId, ...unsub });
   } catch (e) {
-    results.push({ step: 'ROLLBACK_UNSUBSCRIBE_WOB', error: e.message });
-    stepsOut.push(results[results.length - 1]);
+    stepsOut.push({ step: 'ROLLBACK_UNSUBSCRIBE_PROFILE_TOKEN', error: e.message });
   }
   try {
     const del = await deleteWebhookIdempotent(headers, tempId);
-    results.push({ step: 'ROLLBACK_DELETE_TEMP', ...del });
-    stepsOut.push(results[results.length - 1]);
+    stepsOut.push({ step: 'ROLLBACK_DELETE_TEMP', ...del });
   } catch (e) {
-    results.push({ step: 'ROLLBACK_DELETE_TEMP', error: e.message });
-    stepsOut.push(results[results.length - 1]);
+    stepsOut.push({ step: 'ROLLBACK_DELETE_TEMP', error: e.message });
   }
-  return { sequence: PARTIAL_ROLLBACK_SEQUENCE, results };
+  return { sequence: PARTIAL_ROLLBACK_SEQUENCE };
 }
 
-async function inspectState(headers, contract) {
+async function buildProfileCanarySnapshot(headers, contract, webhooks, profile) {
+  const temps = findTempDefinitionsForProfile(webhooks, profile).map(pickWebhookFields);
+  const tempWebhook = temps[0] ?? null;
+  let subscriberTokenIds = [];
+  if (tempWebhook?.id) {
+    subscriberTokenIds = subscriptionsToTokenIds(await getWebhookSubscriptions(headers, tempWebhook.id));
+  }
+  return {
+    profileKey: profile.profileKey,
+    tokenId: profile.tokenId,
+    temporaryCanaryDefinitions: temps,
+    tempWebhook,
+    subscriberTokenIds,
+    TEMP_CANARY_SUBSCRIBER_COUNT: subscriberTokenIds.length,
+    TEMP_CANARY_ONLY_SUBSCRIBER_TOKEN:
+      subscriberTokenIds.length === 1 && subscriberTokenIds[0] === profile.tokenId
+        ? profile.tokenId
+        : null,
+  };
+}
+
+async function inspectState(headers, contract, focusProfile = null) {
   const webhooks = await listWebhooks(headers);
   const legacyPlug = webhooks.find((w) => w.id === LEGACY_GLOBAL_PLUG_ID);
   const legacyUnplug = webhooks.find((w) => w.id === UNPLUG_ID);
-  const temps = findTempCanary(webhooks);
-  const wobAssetDid = assetDid(contract, TOKEN_WOB_7503);
-  let wobLinks = [];
-  try {
-    const raw = (await axios.get(`${API}/v1/webhooks/vehicles/${wobAssetDid}`, { headers })).data;
-    wobLinks = Array.isArray(raw) ? raw : raw?.webhooks ?? [];
-  } catch {
-    wobLinks = [];
+
+  const profileSnapshots = {};
+  for (const profile of Object.values(CANARY_PROFILES)) {
+    profileSnapshots[profile.profileKey] = await buildProfileCanarySnapshot(headers, contract, webhooks, profile);
   }
+
   return {
     legacyGlobalPlug: pickWebhookFields(legacyPlug),
     legacyUnplug: pickWebhookFields(legacyUnplug),
-    temporaryCanaryDefinitions: temps.map(pickWebhookFields),
-    wobVehicleLinks: wobLinks.map((l) => ({
-      webhookId: l.webhookId ?? l.id,
-      stableId: stableId(l.webhookId ?? l.id ?? ''),
-    })),
+    canaryProfileModel: 'ALLOWLISTED_SINGLE_VEHICLE_PROFILES',
+    arbitraryTokenInputAllowed: false,
+    allowedProfiles: Object.keys(CANARY_PROFILES),
+    profileSnapshots,
+    focusProfile: focusProfile?.profileKey ?? null,
     topology: 'A_TEMPORARY_PARALLEL_PLUG_WEBHOOK',
     notWobOnlyIfLegacyGlobalPlugEnabled: true,
     globalLegacyPlugEnableBlastRadiusNote:
@@ -233,42 +250,69 @@ async function inspectState(headers, contract) {
 
 const cli = parseIsolatedCliArgs(process.argv.slice(2));
 const execution = resolveIsolatedExecutionMode(cli);
+const profileResolved = execution.profile ? { ok: true, profile: execution.profile } : resolveCanaryProfile(cli.canaryProfile);
+if (!profileResolved.ok) {
+  console.error(`MODE=READ_ONLY PHASE=${cli.phase} CANARY=${cli.canaryProfile ?? 'unset'}`);
+  console.log(
+    JSON.stringify(
+      {
+        abort: true,
+        reason: profileResolved.reason,
+        canaryProfile: cli.canaryProfile ?? null,
+        arbitraryTokenInputAllowed: false,
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(1);
+}
+const activeProfile = profileResolved.profile;
 
-const envPath = process.env.BACKEND_ENV_PATH || '/opt/synqdrive/shared/backend.env';
+const envPath = process.env.BACKEND_ENV_PATH || process.env.SYNQDRIVE_BACKEND_ENV || '/opt/synqdrive/shared/backend.env';
 const env = loadEnv(envPath);
 const contract = env.DIMO_VEHICLE_NFT_CONTRACT || '0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF';
 const callbackBase = (env.DIMO_WEBHOOK_BASE_URL || env.APP_URL || 'https://app.synqdrive.eu').replace(/\/+$/, '');
 const targetURL = `${callbackBase}/api/v1/webhooks/dimo`;
+const profileSemantics = buildProfileSemantics(activeProfile);
 
 const out = {
   sessionUtc: new Date().toISOString(),
   mode: execution.mode,
   phase: cli.phase,
+  canaryProfile: activeProfile.profileKey,
   activationSequence: ACTIVATION_SEQUENCE,
   executionGate: {
     executeFlag: cli.execute,
     confirmCanary: cli.confirmCanary,
+    canaryProfile: cli.canaryProfile,
     dryRunPlan: cli.dryRunPlan,
     authorized: execution.authorized,
     gateReason: execution.reason ?? null,
-    expectedConfirm: CANARY_CONFIRM_VALUE,
+    expectedConfirm: activeProfile.confirmValue,
   },
   opsSafety: {
     defaultModeReadOnly: true,
     explicitExecuteRequired: true,
     exactCanaryConfirmationRequired: true,
+    allowlistedProfilesOnly: true,
+    arbitraryTokenCliRejected: true,
     dryRunSupported: true,
     createTempInitialStatusDisabled: true,
     enableIsFinalMutatingActivationStep: true,
     preexistingEnabledTempAbortSupported: true,
     foreignSubscriberAbortSupported: true,
-    multipleTempAbortSupported: true,
+    multipleTempPerProfileAbortSupported: true,
+    siblingCanariesCoexistenceSupported: true,
     partialActivationRollbackExplicit: true,
     rollbackIdempotent: true,
+    teardownProfileScoped: true,
     teardownFullPostconditionVerification: true,
     legacyGlobalPlugUntouchedOnActivate: true,
     unplugWebhookUntouched: true,
-    notLabeledWobOnlyForLegacyGlobalEnable: true,
+    ksRollbackCannotTouchWob: true,
+    ksRollbackCannotTouchGlobalPlug: true,
+    ksRollbackCannotTouchUnplug: true,
   },
   abort: false,
   before: null,
@@ -276,11 +320,11 @@ const out = {
   after: null,
 };
 
-console.error(`MODE=${execution.mode} PHASE=${cli.phase}`);
+console.error(`MODE=${execution.mode} PHASE=${cli.phase} CANARY=${activeProfile.profileKey}`);
 
 try {
   const headers = await authenticate(env);
-  out.before = await inspectState(headers, contract);
+  out.before = await inspectState(headers, contract, activeProfile);
   const legacyPlugSubsBefore = subscriptionsToTokenIds(
     await getWebhookSubscriptions(headers, LEGACY_GLOBAL_PLUG_ID),
   );
@@ -288,12 +332,13 @@ try {
   if (cli.dryRunPlan && !execution.authorized) {
     out.dryRunPlan = {
       activate: [
-        `POST /v1/webhooks status=${CREATE_TEMP_INITIAL_STATUS}`,
+        `POST /v1/webhooks status=${CREATE_TEMP_INITIAL_STATUS} displayName=${activeProfile.displayName}`,
         'VERIFY temp definition (metric, condition, callback, disabled); legacy PLUG disabled',
-        `POST subscribe WOB ${TOKEN_WOB_7503} while temp disabled`,
-        'VERIFY TEMP_CANARY_SUBSCRIBER_COUNT=1 and token 192922 only',
+        `POST subscribe token ${activeProfile.tokenId} while temp disabled`,
+        `VERIFY TEMP_CANARY_SUBSCRIBER_COUNT=1 and token ${activeProfile.tokenId} only`,
+        'VERIFY sibling profile canaries untouched',
         'PUT status=enabled',
-        'VERIFY provider enabled; then record PLUG_WEBHOOK_CANARY_ACTIVATED_AT',
+        `VERIFY provider enabled; record ${activeProfile.activatedAtOutputKey}`,
       ],
       teardown: TEARDOWN_SEQUENCE,
       partialRollbackOnFailure: PARTIAL_ROLLBACK_SEQUENCE,
@@ -306,9 +351,9 @@ try {
   if (!execution.authorized) {
     out.readOnlyComplete = true;
     out.message =
-      'Read-only inspect complete. For WOB-only canary use topology A (this script). Do not enable legacy global PLUG for isolated test.';
+      'Read-only inspect complete. Use --canary=<PROFILE> with matching --confirm-canary for activate/teardown.';
     console.log(JSON.stringify(out, null, 2));
-    process.exit(0);
+    process.exit(execution.reason === 'unknown_canary_profile' || execution.reason === 'missing_canary_profile' ? 1 : 0);
   }
 
   const verificationToken = env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
@@ -326,8 +371,11 @@ try {
     process.exit(1);
   }
 
+  const webhooksBeforeMutate = await listWebhooks(headers);
+
   if (cli.phase === 'activate') {
-    const existingCheck = validateExistingTempBeforeActivate(out.before.temporaryCanaryDefinitions ?? []);
+    const profileTemps = findTempDefinitionsForProfile(webhooksBeforeMutate, activeProfile).map(pickWebhookFields);
+    const existingCheck = validateExistingTempBeforeActivate(profileTemps);
     if (existingCheck.abort) {
       out.abort = true;
       out.reason = existingCheck.reason;
@@ -340,7 +388,7 @@ try {
 
     if (!tempId) {
       const createPayload = buildTempWebhookPayload(
-        TEMP_PLUG_SEMANTICS,
+        profileSemantics,
         targetURL,
         verificationToken,
         CREATE_TEMP_INITIAL_STATUS,
@@ -353,11 +401,12 @@ try {
         tempWebhookId: tempId,
         stableId: stableId(tempId),
         initialStatus: CREATE_TEMP_INITIAL_STATUS,
+        profileKey: activeProfile.profileKey,
       });
       await new Promise((r) => setTimeout(r, 5000));
     } else {
       const preSubs = subscriptionsToTokenIds(await getWebhookSubscriptions(headers, tempId));
-      const foreignCheck = validatePreEnableWobOnly(preSubs);
+      const foreignCheck = validatePreEnableSingleTokenOnly(preSubs, activeProfile.tokenId);
       if (preSubs.length > 0 && foreignCheck.abort && foreignCheck.reason === 'foreign_subscriber_abort') {
         out.abort = true;
         out.reason = 'foreign_subscriber_abort';
@@ -365,16 +414,18 @@ try {
         console.log(JSON.stringify(out, null, 2));
         process.exit(1);
       }
-      out.steps.push({ step: 'CREATE_DISABLED', skipped: true, tempWebhookId: tempId });
+      out.steps.push({
+        step: 'CREATE_DISABLED',
+        skipped: true,
+        tempWebhookId: tempId,
+        profileKey: activeProfile.profileKey,
+      });
     }
 
     let tempWebhook = pickWebhookFields(await getWebhookFromList(headers, tempId));
-    const verifyAfterCreate = verifyTempDefinition(tempWebhook, targetURL);
+    const verifyAfterCreate = verifyTempDefinition(tempWebhook, targetURL, profileSemantics);
     out.steps.push({ step: 'VERIFY_TEMP_DEFINITION', ...verifyAfterCreate, status: tempWebhook?.status });
-    if (
-      !verifyAfterCreate.ok ||
-      String(tempWebhook?.status).toLowerCase() !== CREATE_TEMP_INITIAL_STATUS
-    ) {
+    if (!verifyAfterCreate.ok || String(tempWebhook?.status).toLowerCase() !== CREATE_TEMP_INITIAL_STATUS) {
       out.abort = true;
       out.reason = 'verify_temp_definition_failed';
       if (createdThisRun) {
@@ -382,24 +433,10 @@ try {
           headers,
           contract,
           tempId,
+          profileSemantics,
           targetURL,
           verificationToken,
-          out.steps,
-        );
-      }
-      console.log(JSON.stringify(out, null, 2));
-      process.exit(1);
-    }
-    if (out.before.legacyGlobalPlug?.status === 'enabled') {
-      out.abort = true;
-      out.reason = 'legacy_global_plug_enabled_during_activate';
-      if (createdThisRun) {
-        out.partialRollback = await explicitPartialActivationRollback(
-          headers,
-          contract,
-          tempId,
-          targetURL,
-          verificationToken,
+          activeProfile.tokenId,
           out.steps,
         );
       }
@@ -407,12 +444,17 @@ try {
       process.exit(1);
     }
 
-    const sub = await subscribeIdempotent(headers, contract, tempId, TOKEN_WOB_7503);
-    out.steps.push({ step: 'SUBSCRIBE_WOB_WHILE_DISABLED', tokenId: TOKEN_WOB_7503, ...sub });
+    const sub = await subscribeIdempotent(headers, contract, tempId, activeProfile.tokenId);
+    out.steps.push({
+      step: 'SUBSCRIBE_WHILE_DISABLED',
+      tokenId: activeProfile.tokenId,
+      profileKey: activeProfile.profileKey,
+      ...sub,
+    });
 
     const preEnableSubs = subscriptionsToTokenIds(await getWebhookSubscriptions(headers, tempId));
-    const preEnableGate = validatePreEnableWobOnly(preEnableSubs);
-    out.steps.push({ step: 'VERIFY_WOB_ONLY_SUBSCRIBER', ...preEnableGate.analysis });
+    const preEnableGate = validatePreEnableSingleTokenOnly(preEnableSubs, activeProfile.tokenId);
+    out.steps.push({ step: 'VERIFY_ONLY_SUBSCRIBER', ...preEnableGate.analysis });
     if (preEnableGate.abort) {
       out.abort = true;
       out.reason = preEnableGate.reason;
@@ -420,15 +462,70 @@ try {
         headers,
         contract,
         tempId,
+        profileSemantics,
         targetURL,
         verificationToken,
+        activeProfile.tokenId,
         out.steps,
       );
       console.log(JSON.stringify(out, null, 2));
       process.exit(1);
     }
 
-    const enableRes = await putTempStatus(headers, tempId, targetURL, verificationToken, 'enabled');
+    const siblingSnapshots = {};
+    const webhooksMid = await listWebhooks(headers);
+    for (const profile of Object.values(CANARY_PROFILES)) {
+      if (profile.profileKey === activeProfile.profileKey) continue;
+      const snap = await buildProfileCanarySnapshot(headers, contract, webhooksMid, profile);
+      siblingSnapshots[profile.profileKey] = {
+        tempWebhook: snap.tempWebhook,
+        subscriberTokenIds: snap.subscriberTokenIds,
+      };
+    }
+    const siblingGate = validateSiblingCanariesUntouched(siblingSnapshots, activeProfile);
+    out.steps.push({ step: 'VERIFY_OTHER_PROFILE_CANARIES_UNTOUCHED', ok: siblingGate.ok, issues: siblingGate.issues });
+    if (!siblingGate.ok) {
+      out.abort = true;
+      out.reason = 'sibling_canary_verification_failed';
+      out.partialRollback = await explicitPartialActivationRollback(
+        headers,
+        contract,
+        tempId,
+        profileSemantics,
+        targetURL,
+        verificationToken,
+        activeProfile.tokenId,
+        out.steps,
+      );
+      console.log(JSON.stringify(out, null, 2));
+      process.exit(1);
+    }
+
+    if (out.before.legacyGlobalPlug?.status === 'enabled') {
+      out.abort = true;
+      out.reason = 'legacy_global_plug_enabled_during_activate';
+      out.partialRollback = await explicitPartialActivationRollback(
+        headers,
+        contract,
+        tempId,
+        profileSemantics,
+        targetURL,
+        verificationToken,
+        activeProfile.tokenId,
+        out.steps,
+      );
+      console.log(JSON.stringify(out, null, 2));
+      process.exit(1);
+    }
+
+    const enableRes = await putTempStatus(
+      headers,
+      tempId,
+      profileSemantics,
+      targetURL,
+      verificationToken,
+      'enabled',
+    );
     out.steps.push({ step: 'ENABLE_TEMP', httpStatus: enableRes.status });
     if (enableRes.status < 200 || enableRes.status >= 300) {
       out.abort = true;
@@ -437,8 +534,10 @@ try {
         headers,
         contract,
         tempId,
+        profileSemantics,
         targetURL,
         verificationToken,
+        activeProfile.tokenId,
         out.steps,
       );
       console.log(JSON.stringify(out, null, 2));
@@ -455,8 +554,10 @@ try {
         headers,
         contract,
         tempId,
+        profileSemantics,
         targetURL,
         verificationToken,
+        activeProfile.tokenId,
         out.steps,
       );
       console.log(JSON.stringify(out, null, 2));
@@ -467,7 +568,7 @@ try {
     const legacyPlugSubsAfter = subscriptionsToTokenIds(
       await getWebhookSubscriptions(headers, LEGACY_GLOBAL_PLUG_ID),
     );
-    const afterState = await inspectState(headers, contract);
+    const afterState = await inspectState(headers, contract, activeProfile);
     out.activationVerification = buildPostActivateVerification({
       tempWebhook,
       subscriberTokenIds: postSubs,
@@ -476,6 +577,8 @@ try {
       legacyPlugSubscriptionTokenIdsBefore: legacyPlugSubsBefore,
       legacyPlugSubscriptionTokenIdsAfter: legacyPlugSubsAfter,
       expectedTargetURL: targetURL,
+      profile: activeProfile,
+      semantics: profileSemantics,
     });
     if (!postActivateVerificationPasses(out.activationVerification)) {
       out.abort = true;
@@ -484,58 +587,80 @@ try {
         headers,
         contract,
         tempId,
+        profileSemantics,
         targetURL,
         verificationToken,
+        activeProfile.tokenId,
         out.steps,
       );
       console.log(JSON.stringify(out, null, 2));
       process.exit(1);
     }
 
-    out.plugWebhookCanaryActivatedAt = new Date().toISOString();
-    out.steps.push({ step: 'RECORD_PLUG_WEBHOOK_CANARY_ACTIVATED_AT', at: out.plugWebhookCanaryActivatedAt });
+    const activatedAt = new Date().toISOString();
+    out[activeProfile.activatedAtOutputKey] = activatedAt;
+    out.plugWebhookCanaryActivatedAt = activeProfile.profileKey === 'WOB_L_7503' ? activatedAt : out.plugWebhookCanaryActivatedAt;
+    out.ksMxPlugWebhookCanaryActivatedAt =
+      activeProfile.profileKey === 'KS_MX_2024' ? activatedAt : out.ksMxPlugWebhookCanaryActivatedAt;
+    out.steps.push({
+      step: 'RECORD_PLUG_WEBHOOK_CANARY_ACTIVATED_AT',
+      at: activatedAt,
+      profileKey: activeProfile.profileKey,
+      outputKey: activeProfile.activatedAtOutputKey,
+    });
     out.tempWebhookId = tempId;
   }
 
   if (cli.phase === 'teardown') {
-    const temps = out.before.temporaryCanaryDefinitions ?? [];
+    const temps = findTempDefinitionsForProfile(webhooksBeforeMutate, activeProfile).map(pickWebhookFields);
     if (temps.length === 0) {
-      out.teardownVerification = { TEMP_DEFINITION_ABSENT: true };
-      out.message = 'No temp canary webhook to teardown (idempotent no-op).';
-      out.after = await inspectState(headers, contract);
+      out.teardownVerification = { TEMP_DEFINITION_ABSENT: true, profileKey: activeProfile.profileKey };
+      out.message = `No temp canary webhook for profile ${activeProfile.profileKey} (idempotent no-op).`;
+      out.after = await inspectState(headers, contract, activeProfile);
       console.log(JSON.stringify(out, null, 2));
       process.exit(0);
     }
-    out.teardownVerification = { perWebhook: [] };
-    for (const t of temps) {
-      const tempId = t.id;
-      const disableRes = await putTempStatus(headers, tempId, targetURL, verificationToken, 'disabled');
-      out.steps.push({ step: 'DISABLE_TEMP', webhookId: tempId, httpStatus: disableRes.status });
-      const afterDisable = pickWebhookFields(await getWebhookFromList(headers, tempId));
-      const disabledOk = String(afterDisable?.status).toLowerCase() === 'disabled';
-      out.steps.push({ step: 'VERIFY_DISABLED', ok: disabledOk, status: afterDisable?.status });
-
-      const unsub = await unsubscribeIdempotent(headers, contract, tempId, TOKEN_WOB_7503);
-      out.steps.push({ step: 'UNSUBSCRIBE_WOB', webhookId: tempId, ...unsub });
-      const stillLinked = await vehicleHasWebhook(headers, contract, TOKEN_WOB_7503, tempId);
-      out.steps.push({ step: 'VERIFY_UNSUBSCRIBED', ok: !stillLinked });
-
-      const del = await deleteWebhookIdempotent(headers, tempId);
-      out.steps.push({ step: 'DELETE_TEMP', webhookId: tempId, ...del });
-      const remaining = findTempCanary(await listWebhooks(headers));
-      const absent = !remaining.some((w) => String(w.id) === String(tempId));
-      out.steps.push({ step: 'VERIFY_TEMP_ABSENT', ok: absent });
-      out.teardownVerification.perWebhook.push({
-        webhookId: tempId,
-        disabledOk,
-        unsubscribedOk: !stillLinked,
-        absentOk: absent,
-      });
+    if (temps.length > 1) {
+      out.abort = true;
+      out.reason = 'multiple_temp_canary_definitions_conflict';
+      console.log(JSON.stringify(out, null, 2));
+      process.exit(1);
     }
+    out.teardownVerification = { perWebhook: [], profileKey: activeProfile.profileKey };
+    const tempId = temps[0].id;
+    const disableRes = await putTempStatus(
+      headers,
+      tempId,
+      profileSemantics,
+      targetURL,
+      verificationToken,
+      'disabled',
+    );
+    out.steps.push({ step: 'DISABLE_TEMP', webhookId: tempId, httpStatus: disableRes.status });
+    const afterDisable = pickWebhookFields(await getWebhookFromList(headers, tempId));
+    const disabledOk = String(afterDisable?.status).toLowerCase() === 'disabled';
+    out.steps.push({ step: 'VERIFY_DISABLED', ok: disabledOk, status: afterDisable?.status });
+
+    const unsub = await unsubscribeIdempotent(headers, contract, tempId, activeProfile.tokenId);
+    out.steps.push({ step: 'UNSUBSCRIBE_PROFILE_TOKEN', webhookId: tempId, tokenId: activeProfile.tokenId, ...unsub });
+    const stillLinked = await vehicleHasWebhook(headers, contract, activeProfile.tokenId, tempId);
+    out.steps.push({ step: 'VERIFY_UNSUBSCRIBED', ok: !stillLinked });
+
+    const del = await deleteWebhookIdempotent(headers, tempId);
+    out.steps.push({ step: 'DELETE_TEMP', webhookId: tempId, ...del });
+    const remaining = findTempDefinitionsForProfile(await listWebhooks(headers), activeProfile);
+    const absent = !remaining.some((w) => String(w.id) === String(tempId));
+    out.steps.push({ step: 'VERIFY_TEMP_ABSENT', ok: absent });
+    out.teardownVerification.perWebhook.push({
+      webhookId: tempId,
+      disabledOk,
+      unsubscribedOk: !stillLinked,
+      absentOk: absent,
+    });
     out.plugWebhookCanaryDeactivatedAt = new Date().toISOString();
   }
 
-  out.after = await inspectState(headers, contract);
+  out.after = await inspectState(headers, contract, activeProfile);
   if (out.after.legacyGlobalPlug?.id !== LEGACY_GLOBAL_PLUG_ID) out.abort = true;
   if (out.after.legacyUnplug?.status !== 'enabled') out.abort = true;
   if (cli.phase === 'activate' && out.after.legacyGlobalPlug?.status === 'enabled') out.abort = true;
