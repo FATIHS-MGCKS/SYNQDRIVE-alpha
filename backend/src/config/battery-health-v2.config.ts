@@ -74,6 +74,13 @@ export const BATTERY_V2_SHUTDOWN_EVIDENCE_SHADOW_ENABLED_ENV =
 export const BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV =
   'BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED';
 
+/**
+ * M3.3 B1.2Y — explicit PROVIDER_OBSERVABILITY_GAP lifecycle (default OFF).
+ * Safe to deploy merged code without changing production behavior until enabled.
+ */
+export const BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV =
+  'BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -221,6 +228,10 @@ export function isBatteryV2GeneralizedEvidenceEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV], false);
 }
 
+export function isBatteryV2ProviderObservabilityGapEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV], false);
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -304,4 +315,5 @@ export default registerAs('batteryHealthV2', () => ({
   readinessEnabled: isBatteryV2ReadinessEnabled(),
   shutdownEvidenceShadowEnabled: isBatteryV2ShutdownEvidenceShadowEnabled(),
   generalizedEvidenceEnabled: isBatteryV2GeneralizedEvidenceEnabled(),
+  providerObservabilityGapEnabled: isBatteryV2ProviderObservabilityGapEnabled(),
 }));

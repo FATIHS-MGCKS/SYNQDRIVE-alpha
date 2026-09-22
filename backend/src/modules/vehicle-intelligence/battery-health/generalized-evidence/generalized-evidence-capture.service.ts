@@ -32,6 +32,7 @@ import { GeneralizedEvidenceRepository } from './generalized-evidence.repository
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { LateTripAssociationService } from './late-trip-association.service';
 import type { GeneralizedEvidenceCaptureOutcome } from './generalized-evidence.types';
+import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
 import {
   resolveStateAlignment,
 } from '../shutdown-evidence/shutdown-evidence-classification.policy';
@@ -53,6 +54,7 @@ export class GeneralizedEvidenceCaptureService {
     private readonly batteryPolicy: BatteryPolicyProfileService,
     private readonly restSessions: BatteryRestSessionService,
     private readonly lateTripAssociation: LateTripAssociationService,
+    @Optional() private readonly providerGap?: ProviderObservabilityGapService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -238,6 +240,19 @@ export class GeneralizedEvidenceCaptureService {
         stateAlignmentClass: classification.stateAlignmentClass,
       });
       await this.lateTripAssociation.associatePendingSessions(payload.vehicleId);
+
+      await this.providerGap
+        ?.tryResolveAfterFreshLvObservation({
+          payload,
+          sourceMeasurementId,
+          providerObservationOutcome,
+          evidenceClass: classification.evidenceClass,
+          firstFreshProviderAt:
+            fields.voltageObservedAt ??
+            providerLv.providerObservationAt ??
+            classificationReferenceAt,
+        })
+        .catch(() => undefined);
     }
 
     this.logger.debug(

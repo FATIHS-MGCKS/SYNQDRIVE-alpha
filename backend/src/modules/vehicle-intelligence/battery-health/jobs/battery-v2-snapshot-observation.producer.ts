@@ -19,6 +19,7 @@ import {
   recordBatteryProviderDuplicate,
   recordBatteryProviderObservation,
 } from '../observability/battery-v2-prometheus.metrics';
+import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
 
 const LV_BATTERY_SIGNAL = 'lowVoltageBatteryCurrentVoltage';
 
@@ -114,6 +115,7 @@ export class BatteryV2SnapshotObservationProducer {
     private readonly prisma: PrismaService,
     private readonly jobProducer: BatteryV2JobProducerService,
     @Optional() private readonly metrics?: TripMetricsService,
+    @Optional() private readonly providerGap?: ProviderObservabilityGapService,
   ) {}
 
   async classify(
@@ -240,6 +242,13 @@ export class BatteryV2SnapshotObservationProducer {
    */
   async classifyAndEnqueue(input: ClassifySnapshotObservationInput): Promise<string | null> {
     const result = await this.classify(input);
+
+    if (this.providerGap) {
+      await this.providerGap
+        .handleSuccessfulPollWithoutPersist(input, result)
+        .catch(() => undefined);
+    }
+
     if (!result.shouldEnqueue || !result.idempotencyKey) {
       return null;
     }

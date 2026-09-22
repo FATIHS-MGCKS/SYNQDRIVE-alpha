@@ -40,6 +40,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-22 — M3.3 B1.2Y1 provider observability gap runtime foundation (implementation PR open)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | Silent stall on successful stale-replay polls (`shouldEnqueue=false`); no named gap entity. |
+| **CHANGE** | Additive `battery_provider_observability_gaps`, `ProviderObservabilityGapService`, successful-poll stale-replay hook on `BatteryV2SnapshotObservationProducer.classifyAndEnqueue`, fresh-LV resolution hook; flag `BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED` default **OFF**. |
+| **WHY** | B1.2W state-machine liveness without fabricating ENGINE_OFF/rest age. |
+| **NON_EFFECTS** | Production behavior unchanged with default flag; no deploy/activation in PR. |
+| **VALIDATION** | Unit + optional PostgreSQL integration tests; Battery Health selection continuity test. |
+| **STATUS** | **`IMPLEMENTATION_PR_OPEN`** — not production-validated; **`M3_3C_ALLOWED=NO`**. |
+
 ## CL-2026-09-21 — M3.3 B1.2W / B1.2X provider observability gap semantic closure (documentation authority)
 
 | Field | Content |

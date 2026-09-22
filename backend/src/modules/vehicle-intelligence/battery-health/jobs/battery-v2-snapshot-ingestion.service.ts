@@ -17,6 +17,7 @@ import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
 import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
 import { GeneralizedEvidenceCaptureService } from '../generalized-evidence/generalized-evidence-capture.service';
+import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
 
 function parseIso(value: string | null | undefined): Date | undefined {
   if (!value) return undefined;
@@ -65,6 +66,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly shutdownEvidenceCapture?: ShutdownEvidenceCaptureService,
     @Optional()
     private readonly generalizedEvidenceCapture?: GeneralizedEvidenceCaptureService,
+    @Optional()
+    private readonly providerGap?: ProviderObservabilityGapService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -102,6 +105,16 @@ export class BatteryV2SnapshotIngestionService {
             `Generalized evidence capture failed (pipeline continues): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
           );
         });
+
+      if (!this.generalizedEvidenceCapture) {
+        await this.providerGap
+          ?.tryResolveAfterFreshLvObservation({
+            payload,
+            sourceMeasurementId: lvResult.measurementId,
+            providerObservationOutcome: providerOutcome,
+          })
+          .catch(() => undefined);
+      }
     }
 
     await this.shutdownEvidenceCapture
