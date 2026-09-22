@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-ks-mx-plug-isolated-canary-profile-2026-09-22',
+    version: '4.9.1995',
+    title: 'VDC — KS MX 2024 isolated OBD PLUG canary profile (topology A)',
+    summary: [
+      'Generalized gt-r1-plug-webhook-canary-isolated.mjs to allowlisted profiles WOB_L_7503 (192922) and KS_MX_2024 (187336).',
+      'Unique temp webhook display names; --canary=<PROFILE> + matching --confirm-canary; arbitrary token CLI rejected.',
+      'WOB and KS MX temp canaries may coexist; sibling verification on activate; profile-scoped teardown preserves other canaries.',
+    ],
+    reason:
+      'KS MX 2024 LTE_R1 long-stand parked replug GT needs independent isolated PLUG fast path without fleet-wide legacy PLUG enable.',
+    previousBehavior:
+      'Single WOB-only isolated canary; multiple temp PLUG defs treated as global conflict.',
+    details:
+      'backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.{mjs,lib.mjs}; architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T08:30:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',

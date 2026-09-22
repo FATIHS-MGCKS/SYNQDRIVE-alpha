@@ -21,10 +21,11 @@ describe('gt-r1-plug-webhook-canary-isolated CLI gate', () => {
     assert.equal(mode.reason, 'dry_run_plan_only');
   });
 
-  it('authorize activate only with execute + confirm + phase', () => {
+  it('authorize activate only with execute + confirm + phase + canary', () => {
     const parsed = parseIsolatedCliArgs([
       '--execute',
       '--phase=activate',
+      '--canary=WOB_L_7503',
       `--confirm-canary=${CANARY_CONFIRM_VALUE}`,
     ]);
     const mode = resolveIsolatedExecutionMode(parsed);
