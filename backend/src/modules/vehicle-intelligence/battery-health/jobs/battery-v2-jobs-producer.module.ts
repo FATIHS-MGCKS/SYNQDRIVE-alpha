@@ -16,6 +16,7 @@ import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.pro
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryShutdownEvidenceModule } from '../shutdown-evidence/shutdown-evidence.module';
 import { BatteryGeneralizedEvidenceModule } from '../generalized-evidence/generalized-evidence.module';
+import { ProviderObservabilityGapModule } from '../provider-observability-gap/provider-observability-gap.module';
 import { ShutdownEvidenceTripContextService } from '../shutdown-evidence/shutdown-evidence-trip-context.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
@@ -25,7 +26,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule, BatteryShutdownEvidenceModule, BatteryGeneralizedEvidenceModule],
+  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule, BatteryShutdownEvidenceModule, BatteryGeneralizedEvidenceModule, ProviderObservabilityGapModule],
   providers: [
     BatteryPolicyProfileService,
     BatteryMeasurementSessionRepository,

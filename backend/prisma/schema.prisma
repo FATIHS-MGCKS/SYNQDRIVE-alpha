@@ -1767,6 +1767,7 @@ model Organization {
   batteryTripShutdownContexts                               BatteryTripShutdownContext[]
   batteryGeneralizedEvidenceObservations                  BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                                       BatteryRestSession[]
+  batteryProviderObservabilityGaps                          BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities                                VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities                         VehicleBatteryReferenceCapacity[]
@@ -2978,6 +2979,7 @@ model Vehicle {
   batteryTripShutdownContexts            BatteryTripShutdownContext[]
   batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                    BatteryRestSession[]
+  batteryProviderObservabilityGaps       BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
@@ -8621,6 +8623,8 @@ model BatteryMeasurement {
   supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
   evidenceRows BatteryEvidence[]
   generalizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
+  providerGapLastFreshLinks         BatteryProviderObservabilityGap[] @relation("GapLastFreshObservation")
+  providerGapFirstFreshAfterLinks   BatteryProviderObservabilityGap[] @relation("GapFirstFreshAfterGap")
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_measurements_tenant_idempotency_key")
   @@unique([vehicleId, type, observedAt], map: "battery_measurements_dedup_key")
@@ -8849,6 +8853,14 @@ enum BatteryRestSessionStatus {
   INVALIDATED
 }
 
+/// M3.3 B1.2Y — provider observability gap lifecycle (observability-only; default OFF).
+enum BatteryProviderObservabilityGapStatus {
+  OPEN
+  RESOLVED_OFF
+  RESOLVED_FRESH_RUNNING_NO_OBSERVED_OFF
+  RESOLVED_AMBIGUOUS
+}
+
 enum BatteryRestSessionAnchorType {
   PHYSICAL_SHUTDOWN
   TRIP_END_CONFIRMED
@@ -8916,6 +8928,38 @@ model BatteryGeneralizedEvidenceObservation {
   @@index([tripId, voltageObservedAt(sort: Desc)])
   @@index([evidenceClass])
   @@map("battery_generalized_evidence_observations")
+}
+
+/// Dedicated observability-gap entity — NOT engine-off, NOT rest session (M3.3 B1.2W).
+model BatteryProviderObservabilityGap {
+  id                              String                                @id @default(uuid())
+  organizationId                  String                                @map("organization_id")
+  vehicleId                       String                                @map("vehicle_id")
+  contractVersion                 String                                @default("R1_ICE_LV_ENGINE_BUNDLE_V1") @map("contract_version")
+  signalFamily                    String                                @default("LIVE_VOLTAGE_ENGINE_STATE_BUNDLE") @map("signal_family")
+  status                          BatteryProviderObservabilityGapStatus @default(OPEN)
+  gapDetectedAt                   DateTime                              @map("gap_detected_at")
+  lastFreshProviderAt             DateTime                              @map("last_fresh_provider_at")
+  lastFreshObservationId          String?                               @map("last_fresh_observation_id")
+  lastKnownEvidenceClass          BatteryGeneralizedEvidenceClass?      @map("last_known_evidence_class")
+  staleSuccessfulPollCount        Int                                   @default(1) @map("stale_successful_poll_count")
+  idempotencyKey                  String                                @map("idempotency_key")
+  resolutionAt                    DateTime?                             @map("resolution_at")
+  resolutionIdempotencyKey        String?                               @map("resolution_idempotency_key")
+  firstFreshObservationAfterGapId String?                               @map("first_fresh_observation_after_gap_id")
+  createdAt                       DateTime                              @default(now()) @map("created_at")
+  updatedAt                       DateTime                              @updatedAt @map("updated_at")
+
+  organization             Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle                  Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  lastFreshObservation     BatteryMeasurement? @relation("GapLastFreshObservation", fields: [lastFreshObservationId], references: [id], onDelete: SetNull)
+  firstFreshAfterGap       BatteryMeasurement? @relation("GapFirstFreshAfterGap", fields: [firstFreshObservationAfterGapId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_provider_gap_open_idempotency")
+  @@unique([resolutionIdempotencyKey], map: "battery_provider_gap_resolution_idempotency")
+  @@index([vehicleId, status])
+  @@index([vehicleId, contractVersion, status])
+  @@map("battery_provider_observability_gaps")
 }
 
 /// Open-ended rest session for R1 ladder (M3.3A). actualRestAgeMs on observations is authority.

@@ -4,8 +4,10 @@ import { BatteryRestSessionService } from './battery-rest-session.service';
 import { GeneralizedEvidenceCaptureService } from './generalized-evidence-capture.service';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import { LateTripAssociationService } from './late-trip-association.service';
+import { ProviderObservabilityGapModule } from '../provider-observability-gap/provider-observability-gap.module';
 
 @Module({
+  imports: [ProviderObservabilityGapModule],
   providers: [
     BatteryPolicyProfileService,
     GeneralizedEvidenceRepository,
@@ -18,6 +20,7 @@ import { LateTripAssociationService } from './late-trip-association.service';
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
+    ProviderObservabilityGapModule,
   ],
 })
 export class BatteryGeneralizedEvidenceModule {}

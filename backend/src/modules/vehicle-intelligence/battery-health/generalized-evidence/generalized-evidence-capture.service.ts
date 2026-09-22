@@ -31,11 +31,16 @@ import { evaluateRestCadenceQualification, shouldRecordCadenceLadderResearchUnqu
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import { BatteryRestSessionService } from './battery-rest-session.service';
 import { LateTripAssociationService } from './late-trip-association.service';
-import type { GeneralizedEvidenceCaptureOutcome } from './generalized-evidence.types';
+import type {
+  GeneralizedEvidenceCaptureOutcome,
+  GeneralizedEvidenceFieldBundle,
+} from './generalized-evidence.types';
+import type { BatteryGeneralizedEvidenceObservation } from '@prisma/client';
+import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
 import {
   resolveStateAlignment,
 } from '../shutdown-evidence/shutdown-evidence-classification.policy';
-import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
+import { BatteryGeneralizedEvidenceClass, BatteryShutdownStateAlignmentClass } from '@prisma/client';
 
 function parseIso(value: string | null | undefined): Date | undefined {
   if (!value) return undefined;
@@ -53,6 +58,7 @@ export class GeneralizedEvidenceCaptureService {
     private readonly batteryPolicy: BatteryPolicyProfileService,
     private readonly restSessions: BatteryRestSessionService,
     private readonly lateTripAssociation: LateTripAssociationService,
+    @Optional() private readonly providerGap?: ProviderObservabilityGapService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -194,6 +200,30 @@ export class GeneralizedEvidenceCaptureService {
 
     if (createResult === 'duplicate') {
       recordGeneralizedEvidenceDuplicate(this.metrics);
+      const duplicateObservation =
+        await this.prisma.batteryGeneralizedEvidenceObservation.findFirst({
+          where: {
+            organizationId: payload.organizationId,
+            vehicleId: payload.vehicleId,
+            idempotencyKey,
+          },
+        });
+      if (duplicateObservation) {
+        await this.completePostCaptureSideEffects({
+          payload,
+          sourceMeasurementId,
+          providerObservationOutcome,
+          classification: {
+            evidenceClass: duplicateObservation.evidenceClass,
+            stateAlignmentClass: duplicateObservation.stateAlignmentClass,
+          },
+          fields,
+          classificationReferenceAt,
+          cadenceQualification,
+          actualRestAgeMs,
+          observation: duplicateObservation,
+        });
+      }
       return 'duplicate';
     }
 
@@ -229,15 +259,17 @@ export class GeneralizedEvidenceCaptureService {
     });
 
     if (observation) {
-      await this.restSessions.processObservation({
-        organizationId: payload.organizationId,
-        vehicleId: payload.vehicleId,
-        observation,
+      await this.completePostCaptureSideEffects({
+        payload,
+        sourceMeasurementId,
+        providerObservationOutcome,
+        classification,
         fields,
-        referenceAt: classificationReferenceAt,
-        stateAlignmentClass: classification.stateAlignmentClass,
+        classificationReferenceAt,
+        cadenceQualification,
+        actualRestAgeMs,
+        observation,
       });
-      await this.lateTripAssociation.associatePendingSessions(payload.vehicleId);
     }
 
     this.logger.debug(
@@ -245,5 +277,50 @@ export class GeneralizedEvidenceCaptureService {
     );
 
     return 'created';
+  }
+
+  private async completePostCaptureSideEffects(input: {
+    payload: BatteryObservationClassifyPayload;
+    sourceMeasurementId: string;
+    providerObservationOutcome?: string | null;
+    classification: {
+      evidenceClass: BatteryGeneralizedEvidenceClass;
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass;
+    };
+    fields: GeneralizedEvidenceFieldBundle;
+    classificationReferenceAt: Date;
+    cadenceQualification: ReturnType<typeof evaluateRestCadenceQualification>;
+    actualRestAgeMs: number | null;
+    observation: BatteryGeneralizedEvidenceObservation;
+  }): Promise<void> {
+    await this.restSessions.processObservation({
+      organizationId: input.payload.organizationId,
+      vehicleId: input.payload.vehicleId,
+      observation: input.observation,
+      fields: input.fields,
+      referenceAt: input.classificationReferenceAt,
+      stateAlignmentClass: input.classification.stateAlignmentClass,
+    });
+    await this.lateTripAssociation.associatePendingSessions(input.payload.vehicleId);
+
+    if (!this.providerGap) {
+      return;
+    }
+
+    try {
+      await this.providerGap.tryResolveAfterFreshLvObservation({
+        payload: input.payload,
+        sourceMeasurementId: input.sourceMeasurementId,
+        providerObservationOutcome: input.providerObservationOutcome,
+        evidenceClass: input.observation.evidenceClass,
+        firstFreshProviderAt:
+          input.observation.voltageObservedAt ??
+          input.observation.providerObservationAt,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `provider gap resolution failed (capture continues): vehicle=${input.payload.vehicleId} measurement=${input.sourceMeasurementId} error=${(err as Error).message}`,
+      );
+    }
   }
 }

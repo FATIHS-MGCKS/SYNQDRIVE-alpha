@@ -201,6 +201,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryCadenceLadderResearchUnqualifiedTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStateAmbiguousTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStaleReplayTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapExtendedTotal: Counter<string>;
+  readonly batteryProviderObservabilityGapFailureTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
@@ -1709,6 +1712,25 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryGeneralizedEvidenceStaleReplayTotal = new Counter({
       name: 'synqdrive_battery_generalized_evidence_stale_replay_total',
       help: 'M3.3 shadow generalized evidence classified as stale replay',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapOpenedTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_opened_total',
+      help: 'M3.3 B1.2Y provider observability gaps opened',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapExtendedTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_extended_total',
+      help: 'M3.3 B1.2Y provider observability gaps extended (stale poll)',
+      registers: [this.registry],
+    });
+
+    this.batteryProviderObservabilityGapFailureTotal = new Counter({
+      name: 'synqdrive_battery_provider_observability_gap_failure_total',
+      help: 'M3.3 B1.2Y provider observability gap lifecycle failures',
+      labelNames: ['operation', 'reason'],
       registers: [this.registry],
     });
 
