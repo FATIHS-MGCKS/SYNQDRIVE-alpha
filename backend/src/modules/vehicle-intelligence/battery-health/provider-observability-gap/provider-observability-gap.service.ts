@@ -10,7 +10,6 @@ import {
 } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
-import type { BatteryProviderObservationDecision } from '../battery-provider-observation.policy';
 import type { ClassifySnapshotObservationInput } from '../jobs/battery-v2-snapshot-observation.producer';
 import type { ClassifySnapshotObservationResult } from '../jobs/battery-v2-snapshot-observation.producer';
 import type { BatteryObservationClassifyPayload } from '../jobs/battery-v2-job.types';
