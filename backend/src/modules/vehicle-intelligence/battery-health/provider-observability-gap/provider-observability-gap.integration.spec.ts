@@ -60,20 +60,29 @@ async function probeDatabase(): Promise<boolean> {
         },
       });
       organizationId = org.id;
-      const vehicle = await prisma.vehicle.create({
-        data: {
-          organizationId,
-          licensePlate: `GAP-${suffix}`,
-          vin: `VIN${suffix}`.slice(0, 17).padEnd(17, '0'),
-          make: 'Test',
-          model: 'ICE',
-          year: 2024,
-          fuelType: 'GASOLINE',
-          hardwareType: 'LTE_R1',
-          status: 'AVAILABLE',
-        },
-      });
-      vehicleId = vehicle.id;
+      vehicleId = randomUUID();
+      const vin = `VIN${suffix}`.slice(0, 17).padEnd(17, '0');
+      const plate = `GAP-${suffix}`;
+      // Minimal INSERT — resilient migrate-only DBs may lag optional Prisma columns.
+      await prisma.$executeRaw`
+        INSERT INTO vehicles (
+          id, organization_id, vin, make, model, year, fuel_type, hardware_type, status,
+          license_plate, created_at, updated_at
+        ) VALUES (
+          ${vehicleId}::uuid,
+          ${organizationId}::uuid,
+          ${vin},
+          'Test',
+          'ICE',
+          2024,
+          'GASOLINE'::"FuelType",
+          'LTE_R1'::"HardwareType",
+          'AVAILABLE'::"VehicleStatus",
+          ${plate},
+          NOW(),
+          NOW()
+        )
+      `;
     });
 
     afterEach(async () => {
@@ -113,6 +122,43 @@ async function probeDatabase(): Promise<boolean> {
         where: { vehicleId, status: 'OPEN' },
       });
       expect(rows).toHaveLength(1);
+    });
+
+    it('partial unique OPEN constraint rejects second OPEN gap', async () => {
+      const anchorA = new Date('2026-09-21T18:47:56.000Z');
+      const anchorB = new Date('2026-09-21T19:00:00.000Z');
+
+      await repository.openOrExtendGap({
+        organization: { connect: { id: organizationId } },
+        vehicle: { connect: { id: vehicleId } },
+        contractVersion: PROVIDER_GAP_CONTRACT_VERSION,
+        gapDetectedAt: new Date(),
+        lastFreshProviderAt: anchorA,
+        idempotencyKey: buildProviderGapOpenIdempotencyKey({
+          organizationId,
+          vehicleId,
+          lastFreshProviderAt: anchorA,
+        }),
+      });
+
+      await expect(
+        prisma.batteryProviderObservabilityGap.create({
+          data: {
+            organizationId,
+            vehicleId,
+            contractVersion: PROVIDER_GAP_CONTRACT_VERSION,
+            signalFamily: 'LIVE_VOLTAGE_ENGINE_STATE_BUNDLE',
+            status: 'OPEN',
+            gapDetectedAt: new Date(),
+            lastFreshProviderAt: anchorB,
+            idempotencyKey: buildProviderGapOpenIdempotencyKey({
+              organizationId,
+              vehicleId,
+              lastFreshProviderAt: anchorB,
+            }),
+          },
+        }),
+      ).rejects.toThrow();
     });
 
     it('I: concurrent resolve is idempotent', async () => {

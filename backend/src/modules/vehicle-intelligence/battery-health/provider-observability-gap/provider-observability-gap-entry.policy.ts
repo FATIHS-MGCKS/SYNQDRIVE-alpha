@@ -1,16 +1,25 @@
 import type { BatteryProviderObservationOutcome } from '../battery-provider-observation.policy';
 import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
 
-const GAP_ENTRY_OUTCOMES = new Set<BatteryProviderObservationOutcome>([
-  'STALE_REPLAY',
-  'DUPLICATE_OBSERVATION',
-]);
+/** Poll outcomes that may extend an already OPEN gap (idempotent stale polls). */
+export function canExtendOpenProviderObservabilityGap(
+  outcome: BatteryProviderObservationOutcome,
+): boolean {
+  return outcome === 'STALE_REPLAY' || outcome === 'DUPLICATE_OBSERVATION';
+}
 
-/** Transport failures and invalid samples must not open a gap. */
+/** NEW gap requires stale replay threshold — not short duplicate polling (B1.2W). */
+export function canOpenNewProviderObservabilityGap(
+  outcome: BatteryProviderObservationOutcome,
+): boolean {
+  return outcome === 'STALE_REPLAY';
+}
+
+/** @deprecated use canExtend/canOpen helpers */
 export function isSuccessfulPollGapEntryOutcome(
   outcome: BatteryProviderObservationOutcome,
 ): boolean {
-  return GAP_ENTRY_OUTCOMES.has(outcome);
+  return canExtendOpenProviderObservabilityGap(outcome);
 }
 
 export function isTransportOrNonPollGapOutcome(
@@ -23,7 +32,6 @@ export function isTransportOrNonPollGapOutcome(
   );
 }
 
-/** Pre-gap bundle must not already be trustworthy parked engine-off (B1.2W §4). */
 export function isPreGapTrustworthyEngineOffEvidenceClass(
   evidenceClass: BatteryGeneralizedEvidenceClass,
 ): boolean {

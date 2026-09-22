@@ -55,6 +55,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-22T08:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3-b1-2y1-1-provider-gap-hardening-2026-09-22',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2Y1.1 — Provider observability gap runtime hardening (PR #1721)',
+    summary: [
+      'Pre-gap ENGINE_OFF guard classifies last-fresh bundle without STALE_REPLAY short-circuit; STALE_REPLAY required for new gap open.',
+      'Gap lifecycle failures logged + metrics; ingestion fail-open; duplicate generalized evidence still completes gap resolution on retry.',
+      'No synthetic firstFreshProviderAt; gap runtime requires generalized evidence flag; removed parallel OFF resolve in snapshot ingestion.',
+      'PostgreSQL integration: concurrent open/resolve + partial unique OPEN; npm run test:battery:v2:provider-gap:postgres.',
+      'BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED default OFF; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Close B1.2W correctness/retry/test gaps before merge of provider observability gap lifecycle.',
+    previousBehavior:
+      'B1.2Y1 foundation could mis-open gap on pre-gap OFF, open on duplicate-before-threshold, silently drop gap errors, and skip resolution on generalized duplicate retry.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md, provider-observability-gap/*, generalized-evidence-capture.service.ts, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T10:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',

@@ -42,6 +42,25 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-22 — M3.3 B1.2Y1.2 fail-open boundary + bounded gap failure metrics (PR #1721 amend)
+
+| Field | Content |
+|-------|---------|
+| **CHANGE** | Full entry-hook try/catch; producer defense-in-depth; bounded `synqdrive_battery_provider_observability_gap_failure_total` reason taxonomy; health continuity test labeled policy-chain; rebase onto main @ `9a460b2d4` preserving VDC #1722 ChangesView entry. |
+| **WHY** | Auxiliary gap lifecycle must never abort classify/enqueue; Prometheus labels must stay low-cardinality. |
+| **VALIDATION** | Fail-open unit tests; metric cardinality guard; post-rebase `npm run test:battery:v2:provider-gap:postgres`. |
+
+## CL-2026-09-22 — M3.3 B1.2Y1.1 provider observability gap runtime hardening (PR #1721 amend)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B1.2Y1 review gaps: pre-gap OFF misclassified via STALE_REPLAY short-circuit; DUPLICATE could open gap; silent `.catch` on gap hooks; generalized duplicate skipped resolution retry; synthetic `new Date()` firstFreshProviderAt; gap ON without generalized evidence; parallel OFF resolve in ingestion. |
+| **CHANGE** | Entry policy STALE_REPLAY-only for new gap; pre-gap classify with `NEW_OBSERVATION`; observable gap failure logs/metrics; `completePostCaptureSideEffects` on duplicate path; provenance-required resolution timestamps; `isBatteryV2ProviderObservabilityGapRuntimeReady()`; remove ingestion fallback resolve; Postgres CI script + integration fixture hardening. |
+| **WHY** | B1.2W authoritative GAP→OFF via persisted generalized ENGINE_OFF only; retry-safe idempotent lifecycle. |
+| **VALIDATION** | Unit specs (pre-gap OFF, entry threshold, flag dependency, resolution retry, health continuity); `BATTERY_V2_PROVIDER_GAP_INTEGRATION=1` / `npm run test:battery:v2:provider-gap:postgres`. |
+| **NON_EFFECTS** | Default gap flag OFF; no deploy; no M3.3C. |
+| **STATUS** | **`IMPLEMENTATION_PR_OPEN`** — PR #1721 amend. |
+
 ## CL-2026-09-22 — M3.3 B1.2Y1 provider observability gap runtime foundation (implementation PR open)
 
 | Field | Content |

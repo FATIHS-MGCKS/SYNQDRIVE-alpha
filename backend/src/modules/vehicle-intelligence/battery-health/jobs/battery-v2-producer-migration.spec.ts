@@ -122,6 +122,53 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     expect(isDeterministicBatteryV2JobId(payload.idempotencyKey, opts.jobId)).toBe(true);
   });
 
+  it('TEST_FAIL_OPEN: provider gap hook throw still enqueues classify job', async () => {
+    const producerSvc = createJobProducer({
+      add: queueAdd,
+      getJob: jest.fn().mockResolvedValue(null),
+    } as any);
+    const gapHook = {
+      handleSuccessfulPollWithoutPersist: jest
+        .fn()
+        .mockRejectedValue(new Error('gap hook must not abort producer')),
+    };
+    const producer = new BatteryV2SnapshotObservationProducer(
+      prisma as any,
+      producerSvc,
+      undefined,
+      gapHook as any,
+    );
+
+    const receivedAt = new Date('2026-07-16T12:00:00.000Z');
+    const jobId = await producer.classifyAndEnqueue({
+      organizationId: ORG,
+      vehicleId: VEH,
+      receivedAt,
+      normalized: {
+        lvBatteryVoltage: 12.5,
+        evSoc: 72,
+        tractionBatteryCurrentEnergyKwh: 40,
+        tractionBatterySohPercent: 95,
+        tractionBatteryPowerKw: 0,
+        tractionBatteryChargingPowerKw: 0,
+        tractionBatteryAddedEnergyKwh: 0,
+        tractionBatteryChargeLimitPercent: 80,
+        tractionBatteryIsCharging: false,
+        tractionBatteryChargingCableConnected: false,
+        tractionBatteryTemperatureC: 22,
+        tractionBatteryGrossCapacityKwh: 60,
+        rangeKm: 300,
+        odometerKm: 12000,
+      },
+      batteryMap: baseBatteryMap() as any,
+      lvBatteryObservedAt: receivedAt,
+    });
+
+    expect(gapHook.handleSuccessfulPollWithoutPersist).toHaveBeenCalled();
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+    expect(jobId).toBeTruthy();
+  });
+
   it('does not enqueue duplicate snapshot observation for unchanged poll', async () => {
     const observedAt = new Date('2026-07-16T12:00:00.000Z');
     prisma.hvBatteryHealthSnapshot.findFirst.mockResolvedValue({

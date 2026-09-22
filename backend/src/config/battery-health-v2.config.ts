@@ -232,6 +232,14 @@ export function isBatteryV2ProviderObservabilityGapEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV], false);
 }
 
+/** Gap lifecycle requires generalized evidence for authoritative GAP→OFF resolution (B1.2W). */
+export function isBatteryV2ProviderObservabilityGapRuntimeReady(): boolean {
+  return (
+    isBatteryV2ProviderObservabilityGapEnabled() &&
+    isBatteryV2GeneralizedEvidenceEnabled()
+  );
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 

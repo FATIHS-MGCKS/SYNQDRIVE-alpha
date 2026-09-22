@@ -1,4 +1,4 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
@@ -20,6 +20,7 @@ import {
   recordBatteryProviderObservation,
 } from '../observability/battery-v2-prometheus.metrics';
 import { ProviderObservabilityGapService } from '../provider-observability-gap/provider-observability-gap.service';
+import { recordProviderGapLifecycleFailureFromError } from '../provider-observability-gap/provider-observability-gap.metrics';
 
 const LV_BATTERY_SIGNAL = 'lowVoltageBatteryCurrentVoltage';
 
@@ -111,6 +112,8 @@ export function buildBatteryObservationSnapshotContext(input: {
 
 @Injectable()
 export class BatteryV2SnapshotObservationProducer {
+  private readonly logger = new Logger(BatteryV2SnapshotObservationProducer.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobProducer: BatteryV2JobProducerService,
@@ -244,9 +247,14 @@ export class BatteryV2SnapshotObservationProducer {
     const result = await this.classify(input);
 
     if (this.providerGap) {
-      await this.providerGap
-        .handleSuccessfulPollWithoutPersist(input, result)
-        .catch(() => undefined);
+      try {
+        await this.providerGap.handleSuccessfulPollWithoutPersist(input, result);
+      } catch (err) {
+        recordProviderGapLifecycleFailureFromError(this.metrics, 'entry', err);
+        this.logger.warn(
+          `provider gap entry hook failed (ingestion continues): vehicle=${input.vehicleId} error=${(err as Error).message}`,
+        );
+      }
     }
 
     if (!result.shouldEnqueue || !result.idempotencyKey) {
