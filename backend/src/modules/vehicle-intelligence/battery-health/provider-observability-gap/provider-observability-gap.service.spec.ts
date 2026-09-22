@@ -6,14 +6,15 @@ import {
 import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { ProviderObservabilityGapService } from './provider-observability-gap.service';
 import type { ClassifySnapshotObservationResult } from '../jobs/battery-v2-snapshot-observation.producer';
+import { restoreProcessEnv } from '../testing/battery-v2-process-env.test-util';
 
 describe('ProviderObservabilityGapService (B1.2Y1.1)', () => {
   const originalGap = process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV];
   const originalGen = process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV];
 
   afterEach(() => {
-    process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV] = originalGap;
-    process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV] = originalGen;
+    restoreProcessEnv(BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV, originalGap);
+    restoreProcessEnv(BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV, originalGen);
   });
 
   function buildService(overrides: {

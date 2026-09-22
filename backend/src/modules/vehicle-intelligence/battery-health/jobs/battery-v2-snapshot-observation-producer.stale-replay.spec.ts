@@ -6,6 +6,7 @@ import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provide
 import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
+import { restoreProcessEnv } from '../testing/battery-v2-process-env.test-util';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -119,6 +120,8 @@ function mockHvDuplicate(
 describe('BatteryV2SnapshotObservationProducer — canonical LIVE_VOLTAGE lastStored (B1.2Y3C.1)', () => {
   const T1 = new Date('2026-09-21T18:47:56.000Z');
   const T1_RECEIVED = new Date('2026-09-21T18:47:58.000Z');
+  const originalGap = process.env[BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV];
+  const originalGen = process.env[BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV];
 
   const prismaFixture = {
     hvBatteryHealthSnapshot: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -132,6 +135,11 @@ describe('BatteryV2SnapshotObservationProducer — canonical LIVE_VOLTAGE lastSt
     jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
     prisma.hvBatteryHealthSnapshot.findFirst.mockResolvedValue(null);
     prisma.batteryHealthSnapshot.findFirst.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    restoreProcessEnv(BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED_ENV, originalGap);
+    restoreProcessEnv(BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED_ENV, originalGen);
   });
 
   it('TEST_PRODUCER_STALE_REPLAY_REACHABLE: STALE_REPLAY when poll repeats frozen provider ts beyond threshold', async () => {
