@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-21 (M3.3 B1 shadow activation @ runtime `105f2c5ff`, flag ON)  
+**Snapshot date:** 2026-09-22 (M3.3 B1.2Y3D.1 §13 closure; M3.3C preflight open @ main `47614a13`; production `2b0ef15f`)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -36,9 +36,13 @@
 | `M3_3_B1_2W_STATUS` | **`B1_2W_GAP_STATE_MODEL_SUFFICIENT_FOR_STATE_MACHINE_LIVENESS`** — architecture semantic closure **COMPLETE** (B1.2X doc PR #1720) — `research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md` |
 | **B1.2Y1 implementation (PR #1721)** | **`PROVIDER_OBSERVABILITY_GAP` runtime foundation** — schema + service + poll hook + tests; **`BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED` default OFF** — production behavior unchanged until authorized activation |
 | **B1.2Y1.1 hardening (PR #1721 amend)** | Pre-gap OFF guard, STALE_REPLAY-only new gap, observable gap failures, duplicate-retry resolution, no synthetic provider time, gap∧generalized flag coupling, Postgres multi-replica integration CI script |
-| **B1.2Y3C.1 (engineering PR)** | Snapshot producer LV `lastStored` unified on canonical LIVE_VOLTAGE measurement resolver (fixes STALE_REPLAY reachability for provider-gap entry; **not deployed** until separate gate) |
-| **M3.3C** | **`BLOCKED`** until gap implementation merged + shadow/production validation (B1.2W §13) |
-| `NEXT_PHASE` | **Next workstream:** gap persistence + poll-path hook + multi-replica lifecycle + deterministic tests + shadow validation; **no** REST_WAKE tolerance promotion without authorization |
+| **B1.2Y3D.1 (read-only audit)** | **B1.2W §13 FULLY SATISFIED** — deterministic Postgres A–I (PR #1724) + natural shadow PASS; **`M3_3C_REOPENING_GATE=YES`** — `research/M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md` |
+| **B1.2Y provider-gap production** | **ACTIVE** @ `2b0ef15f` — `BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED=true`; **`M3_3_B1_2Y3_T0`** / **`Y3_STALE_REPLAY_FIX_DEPLOY_T0`** unchanged |
+| **M3.3C** | **`OPEN`** (shadow retention curve + charge opportunity preflight) — **`M3_3C_ALLOWED=YES`**; authoritative cutover **NOT** authorized — `research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md` |
+| **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
+| **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
+| Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
+| `NEXT_PHASE` | **M3.3C packages C1–C5** (schema + shadow feature compute behind new flag default OFF); **no** REST_WAKE cadence promotion; **no** M3.3D/E premature scope |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
