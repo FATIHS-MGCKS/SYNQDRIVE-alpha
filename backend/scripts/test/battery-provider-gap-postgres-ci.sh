@@ -35,6 +35,6 @@ log "prisma migrate deploy (resilient)"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
 log "provider observability gap integration tests"
-BATTERY_V2_PROVIDER_GAP_INTEGRATION=1 npx jest provider-observability-gap.integration --runInBand --verbose
+BATTERY_V2_PROVIDER_GAP_INTEGRATION=1 npx jest '(provider-observability-gap\\.integration|battery-v2-snapshot-stale-replay-gap\\.integration)' --runInBand --verbose
 
 log "battery-provider-gap-postgres-ci completed successfully"

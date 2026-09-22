@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-b1-2y3c1-stale-replay-reachability-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3 B1.2Y3C.1 — Snapshot producer STALE_REPLAY reachability',
+    summary: [
+      'Shared BatteryProviderLastStoredLiveVoltageResolver: canonical battery_measurements LIVE_VOLTAGE (observedAt, receivedAt, value, idempotencyKey) tenant-scoped.',
+      'BatteryV2SnapshotObservationProducer no longer uses legacy battery_health_snapshots for LV provider dedup — restores STALE_REPLAY + provider-gap entry on frozen provider timestamps.',
+      'LvLiveVoltageIngestionService uses the same resolver (single semantic source of truth).',
+      'Tests: stale replay, duplicate-before-threshold, legacy snapshot bootstrap, advancing provider ts, Postgres producer→gap integration.',
+    ],
+    reason:
+      'Y3C shadow acceptance incomplete: production polls classified DUPLICATE_OBSERVATION because snapshot path lacked receivedAt on lastStored.',
+    previousBehavior:
+      'Producer lastStored from battery_health_snapshots.recordedAt/voltageV only; STALE_REPLAY policy branch unreachable on SNAPSHOT polls.',
+    details:
+      'battery-provider-last-stored-live-voltage.resolver.ts, battery-v2-snapshot-observation.producer.ts, architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T16:05:00.000Z',
+  },
+  {
     id: 'vdc-ks-mx-plug-isolated-canary-profile-2026-09-22',
     version: '4.9.1995',
     title: 'VDC — KS MX 2024 isolated OBD PLUG canary profile (topology A)',

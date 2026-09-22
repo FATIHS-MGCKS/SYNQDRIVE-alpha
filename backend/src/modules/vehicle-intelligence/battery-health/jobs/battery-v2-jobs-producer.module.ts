@@ -23,6 +23,7 @@ import { BatteryCapabilityRefreshService } from '../capability-preflight/battery
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
 import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
@@ -35,6 +36,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
     BatteryV2JobDeadLetterService,
     BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2LvRestSessionProducer,
@@ -51,6 +53,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
     BatteryV2JobDeadLetterService,
     BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2LvRestSessionProducer,

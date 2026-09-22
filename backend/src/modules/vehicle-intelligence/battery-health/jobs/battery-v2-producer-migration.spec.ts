@@ -1,5 +1,6 @@
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { createBatteryV2JobProducer } from './battery-v2-job-producer.test-util';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 import {
   BatteryV2SnapshotObservationProducer,
   buildBatteryObservationSnapshotContext,
@@ -61,9 +62,14 @@ function baseBatteryMap() {
   };
 }
 
+function attachLastStored(prisma: { batteryMeasurement?: { findFirst: jest.Mock } }) {
+  return new BatteryProviderLastStoredLiveVoltageResolver(prisma as never);
+}
+
 describe('BatteryV2SnapshotObservationProducer', () => {
   const prisma = {
     hvBatteryHealthSnapshot: { findFirst: jest.fn() },
+    batteryMeasurement: { findFirst: jest.fn() },
     batteryHealthSnapshot: { findFirst: jest.fn() },
   };
   const queueAdd = jest.fn();
@@ -72,6 +78,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     jest.clearAllMocks();
     jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
     prisma.hvBatteryHealthSnapshot.findFirst.mockResolvedValue(null);
+    prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     prisma.batteryHealthSnapshot.findFirst.mockResolvedValue(null);
     queueAdd.mockResolvedValue({ id: 'job-1' });
   });
@@ -84,6 +91,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     const producer = new BatteryV2SnapshotObservationProducer(
       prisma as any,
       producerSvc,
+      attachLastStored(prisma),
     );
 
     const receivedAt = new Date('2026-07-16T12:00:00.000Z');
@@ -135,6 +143,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     const producer = new BatteryV2SnapshotObservationProducer(
       prisma as any,
       producerSvc,
+      attachLastStored(prisma),
       undefined,
       gapHook as any,
     );
@@ -186,6 +195,12 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       recordedAt: observedAt,
       voltageV: 12.5,
     });
+    prisma.batteryMeasurement.findFirst.mockResolvedValue({
+      observedAt,
+      numericValue: 12.5,
+      receivedAt: observedAt,
+      idempotencyKey: 'lv-existing',
+    });
 
     const producerSvc = createJobProducer({
       add: queueAdd,
@@ -194,6 +209,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     const producer = new BatteryV2SnapshotObservationProducer(
       prisma as any,
       producerSvc,
+      attachLastStored(prisma),
     );
 
     const normalized = {
@@ -239,7 +255,11 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       add: queueAdd,
     };
     const producerSvc = createJobProducer(queue as any);
-    const producer = new BatteryV2SnapshotObservationProducer(prisma as any, producerSvc);
+    const producer = new BatteryV2SnapshotObservationProducer(
+      prisma as any,
+      producerSvc,
+      attachLastStored(prisma),
+    );
 
     const receivedAt = new Date('2026-07-16T12:00:00.000Z');
     const first = await producer.classifyAndEnqueue({
@@ -312,7 +332,11 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       add: queueAdd,
     };
     const producerSvc = createJobProducer(queue as any);
-    const producer = new BatteryV2SnapshotObservationProducer(prisma as any, producerSvc);
+    const producer = new BatteryV2SnapshotObservationProducer(
+      prisma as any,
+      producerSvc,
+      attachLastStored(prisma),
+    );
 
     const receivedAt = new Date('2026-07-16T12:00:00.000Z');
     const input = {
