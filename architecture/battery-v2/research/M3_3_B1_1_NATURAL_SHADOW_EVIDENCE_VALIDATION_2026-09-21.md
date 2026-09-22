@@ -220,14 +220,35 @@ Pre-T0 **`BATTERY_LV_REST_SESSION_OPEN` / `LOCK_CONTENTION`** lines remain in lo
 | `PROVENANCE_GATE` | **PASS** |
 | `MULTI_REPLICA_SAFETY_GATE` | **PASS** |
 
-## 16 — Next phase
+## 16 — Next phase (historical snapshot @ B1.1 forensics)
+
+**Status at `2026-09-21T18:40:24Z` only.** The `NEXT_ACTION` below was the valid recommendation **at the time of B1.1** given available evidence. It is **not** current normative B1 acceptance (see §17).
 
 | Field | Value |
 |-------|-------|
 | `M3_3C_ALLOWED` | **NO** |
-| `NEXT_ACTION` | **`CONTINUE_NATURAL_SHADOW_OBSERVATION`** |
+| `NEXT_ACTION` (historical @ B1.1) | **`CONTINUE_NATURAL_SHADOW_OBSERVATION`** |
 
-Immediate shadow chain through generalized capture is healthy; rest-session / engine-off / parked / R1 ladder await natural ICE shutdown + rest telemetry — **do not** start M3.3C or tolerance changes.
+Immediate shadow chain through generalized capture is healthy; rest-session / engine-off / parked / R1 ladder await natural ICE shutdown + rest telemetry — **do not** start M3.3C or tolerance changes *(B1.1-era wording; superseded §17)*.
+
+## 17 — Supersession (B1.2W / B1.2X — normative B1 acceptance)
+
+Subsequent read-only production forensics and architecture closure **supersede** passive shadow observation as the authoritative B1 closure strategy:
+
+| Phase | Result |
+|-------|--------|
+| B1.2T | `B1_2T_PROVIDER_OBSERVABILITY_GAP` (WOB reference trip) |
+| B1.2U | `B1_2U_COHORT_OBSERVABILITY_CONTRACT_GAP` (R1 ICE cohort) |
+| B1.2V | `B1_2V_MULTI_LAYER_ARCHITECTURE_CHANGE_REQUIRED` |
+| B1.2W / B1.2X | `B1_2W_GAP_STATE_MODEL_SUFFICIENT_FOR_STATE_MACHINE_LIVENESS` |
+
+**Normative B1 acceptance** is now governed by [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md) §12 (revised contract: safety, **state-machine liveness** via future **`PROVIDER_OBSERVABILITY_GAP`**, resolution paths, **no** requirement that every physical shutdown authoritatively resolves).
+
+- **`CONTINUE_NATURAL_SHADOW_OBSERVATION` alone is not sufficient** for B1 closure after B1.2W.
+- **Passive waiting for natural post-off LV** is **not** guaranteed on R1 ICE; provider timestamp freeze is a cohort-reproduced contract gap.
+- **`M3_3C_ALLOWED=NO`** until gap **implementation** + deterministic + shadow validation (B1.2W §13).
+
+**This document’s B1.1 machine block and `M3_3_B1_1_RESULT` remain auditable historical evidence** — do not rewrite counts or gates from the B1.1 window.
 
 ## Evidence artifact
 
@@ -302,5 +323,10 @@ MULTI_REPLICA_SAFETY_GATE=PASS
 PRODUCTION_CHANGED=NO
 
 M3_3C_ALLOWED=NO
-NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION
+
+NEXT_ACTION_AT_B1_1_FORENSICS=CONTINUE_NATURAL_SHADOW_OBSERVATION
+NEXT_ACTION_SUPERSEDED_BY=B1_2W_SECTION_12
+NORMATIVE_B1_ACCEPTANCE_AUTHORITY=M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md
+M3_3C_BLOCKED_UNTIL=GAP_IMPLEMENTATION_AND_VALIDATION_PER_B1_2W_SECTION_13
+NEXT_ACTION=SUPERSEDED_SEE_B1_2W_IMPLEMENTATION_WORKSTREAM
 ```

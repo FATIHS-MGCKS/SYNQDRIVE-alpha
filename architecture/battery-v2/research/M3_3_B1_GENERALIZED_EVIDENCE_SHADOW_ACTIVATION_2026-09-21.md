@@ -138,6 +138,10 @@ No `REST_WAKE_VOLTAGE` — consistent with **`REST_CADENCE_AUTOMATIC_WAKE_PROMOT
 
 Runtime activation and path-specific natural validation are **separate**:
 
+> **B1 acceptance (normative after B1.2W):** see [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md). Rest-session / ENGINE_OFF paths **PENDING** at activation does **not** imply passive natural observation alone is sufficient B1 closure.
+
+Runtime PASS does **not** require 8h cadence or rest-session evidence. Rest-session and PARKED_REST / R1 ladder paths remain **PENDING** natural exercise *(activation-era; B1 acceptance superseded by B1.2W §12)*.
+
 | Field | Value |
 |-------|-------|
 | `B1_ACTIVATION_RUNTIME_RESULT` | **PASS** |
