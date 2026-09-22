@@ -1767,6 +1767,7 @@ model Organization {
   batteryTripShutdownContexts                               BatteryTripShutdownContext[]
   batteryGeneralizedEvidenceObservations                  BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                                       BatteryRestSession[]
+  batteryRestSessionFeatures                                BatteryRestSessionFeature[]
   batteryProviderObservabilityGaps                          BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities                                VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
@@ -2979,6 +2980,7 @@ model Vehicle {
   batteryTripShutdownContexts            BatteryTripShutdownContext[]
   batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                    BatteryRestSession[]
+  batteryRestSessionFeatures             BatteryRestSessionFeature[]
   batteryProviderObservabilityGaps       BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
@@ -8989,11 +8991,72 @@ model BatteryRestSession {
   candidateTrip  VehicleTrip?                          @relation("RestSessionCandidateTrip", fields: [candidateTripId], references: [id], onDelete: SetNull)
   confirmedTrip  VehicleTrip?                          @relation("RestSessionConfirmedTrip", fields: [confirmedTripId], references: [id], onDelete: SetNull)
   observations   BatteryGeneralizedEvidenceObservation[]
+  featureRows    BatteryRestSessionFeature[]
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_rest_session_idempotency")
   @@index([vehicleId, sessionStatus])
   @@index([vehicleId, anchorAt(sort: Desc)])
   @@map("battery_rest_sessions")
+}
+
+enum BatteryRestSessionFeatureComputationPhase {
+  INCREMENTAL
+  FINAL
+}
+
+enum BatteryRestSessionFeatureSessionTrust {
+  VALID
+  INVALIDATED
+}
+
+enum BatteryRestSessionChargeOpportunityClass {
+  SUFFICIENT
+  PARTIAL
+  INSUFFICIENT
+  UNKNOWN
+}
+
+/// M3.3C — append-only shadow rest-session retention/charge feature rows (default OFF at runtime).
+model BatteryRestSessionFeature {
+  id                           String                                   @id @default(uuid())
+  organizationId               String                                   @map("organization_id")
+  vehicleId                    String                                   @map("vehicle_id")
+  restSessionId                String                                   @map("rest_session_id")
+  featureModelVersion          String                                   @map("feature_model_version")
+  retentionPolicyVersion       String                                   @map("retention_policy_version")
+  chargeOpportunityPolicyVersion String                                 @map("charge_opportunity_policy_version")
+  semanticRevision             Int                                      @map("semantic_revision")
+  inputDigest                  String                                   @map("input_digest")
+  inputSummary                 Json                                     @map("input_summary")
+  computationPhase             BatteryRestSessionFeatureComputationPhase @map("computation_phase")
+  sessionTrust                 BatteryRestSessionFeatureSessionTrust    @map("session_trust")
+  chargeOpportunityClass       BatteryRestSessionChargeOpportunityClass @default(UNKNOWN) @map("charge_opportunity_class")
+  chargeOpportunityRaw         Json?                                    @map("charge_opportunity_raw")
+  shutdownToFirstRestDeltaMv   Int?                                     @map("shutdown_to_first_rest_delta_mv")
+  robustRestSlopeMvPerHour     Float?                                   @map("robust_rest_slope_mv_per_hour")
+  minimumRestVoltageMv         Int?                                     @map("minimum_rest_voltage_mv")
+  maximumRestVoltageMv         Int?                                     @map("maximum_rest_voltage_mv")
+  medianRestVoltageMv          Int?                                     @map("median_rest_voltage_mv")
+  restVoltageVarianceMv2       Float?                                   @map("rest_voltage_variance_mv2")
+  numberOfValidRestPoints      Int                                      @default(0) @map("number_of_valid_rest_points")
+  maxActualRestAgeMs           Int?                                     @map("max_actual_rest_age_ms")
+  maxInterObservationGapMs     Int?                                     @map("max_inter_observation_gap_ms")
+  observationSpanMs            Int?                                     @map("observation_span_ms")
+  missingRungCount             Int?                                     @map("missing_rung_count")
+  pairwiseRestDeltas           Json?                                    @map("pairwise_rest_deltas")
+  computedAt                   DateTime                                 @map("computed_at")
+  createdAt                    DateTime                                 @default(now()) @map("created_at")
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  restSession  BatteryRestSession  @relation(fields: [restSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, restSessionId, featureModelVersion, inputDigest], map: "battery_rest_session_feature_input_digest")
+  @@unique([organizationId, restSessionId, featureModelVersion, retentionPolicyVersion, chargeOpportunityPolicyVersion, semanticRevision], map: "battery_rest_session_feature_semantic_revision")
+  @@index([vehicleId, computedAt(sort: Desc)])
+  @@index([restSessionId, featureModelVersion, semanticRevision(sort: Desc)])
+  @@index([organizationId, computedAt(sort: Desc)])
+  @@map("battery_rest_session_features")
 }
 
 /// Preflight capability state per provider signal / measurement kind.
