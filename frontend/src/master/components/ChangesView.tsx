@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-m3-3-b1-2x-provider-gap-docs-2026-09-21',
-    version: '4.9.1994',
-    title: 'Battery V2 M3.3 B1.2W/B1.2X — Provider observability gap semantic closure (documentation)',
-    summary: [
-      'Normative PROVIDER_OBSERVABILITY_GAP state machine; revised B1 acceptance; M3.3C reopen gates.',
-      'Architecture decision complete; implementation NOT STARTED; production unchanged.',
-      'Authoritative rest liveness NOT guaranteed; state-machine liveness after future gap hook.',
-    ],
-    reason:
-      'Close R1 ICE observability-contract liveness semantics before implementation without fabricating ENGINE_OFF or rest age.',
-    previousBehavior:
-      'Provider freeze after near-park running caused silent stall (no classify enqueue); implicit B1 assumed eventual post-off LV.',
-    details:
-      'architecture/battery-v2/research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md, CHANGE_LEDGER.md, CURRENT_STATE.md, M3_3A, B1.2, M3.2 observability cross-links',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-21T00:00:00.000Z',
-  },
-  {
     id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
     version: '4.9.1994',
     title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',
