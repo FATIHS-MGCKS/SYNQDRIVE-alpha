@@ -201,7 +201,26 @@ Fixed **REST_60M / REST_6H** observability remains for Stage-2 authoritative pat
 
 ---
 
-## 18 — Code map
+## 18 — Provider observability gap (B1.2W — future; not M3.3A runtime)
+
+M3.3A generalized evidence requires a **persisted** `LIVE_VOLTAGE` row. When provider measurement timestamps **stop advancing**, `shouldEnqueue=false` and **no** generalized row is written — a **silent stall** for rest-chain liveness.
+
+**Normative closure (documentation):** [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md)
+
+| Rule | Value |
+|------|-------|
+| Future state name | **`PROVIDER_OBSERVABILITY_GAP`** |
+| Asserts ENGINE_OFF? | **NO** |
+| Opens rest session / rest age? | **NO** |
+| Rest anchor after GAP→OFF | **T4 only** (first trustworthy OFF) |
+| Gap persistence | **Dedicated** entity — **not** `BatteryRestSession` |
+| Optional link | Minimal `gapId` on **real** generalized rows only |
+
+**Implementation status:** **NOT STARTED** — M3.3A code unchanged until authorized workstream.
+
+---
+
+## 19 — Code map
 
 | Path | Role |
 |------|------|

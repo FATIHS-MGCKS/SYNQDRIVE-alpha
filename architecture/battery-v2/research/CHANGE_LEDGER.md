@@ -40,6 +40,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-21 — M3.3 B1.2W / B1.2X provider observability gap semantic closure (documentation authority)
+
+| Field | Content |
+|-------|---------|
+| **BEFORE** | B1.2T–B1.2U proved provider freeze + unreliable post-off LV on R1 ICE; B1.2V required multi-layer change; **no** first-class gap state; silent stall when `shouldEnqueue=false`. |
+| **OBSERVATION** | Classifier **not** defective; observability-contract + rest-chain **liveness** defects; authoritative rest **not** guaranteed without real OFF at T4; cohort freeze on WOB / KS MS / KS MX. |
+| **CHANGE** | **Documentation authority only** (B1.2X PR): normative `PROVIDER_OBSERVABILITY_GAP` state machine, entry/exit, persistence spec, poll hook contract, **revised B1 acceptance**, M3.3C reopen gates. **No** runtime/schema/deploy. |
+| **WHY** | Close liveness semantics before implementation; avoid equating gap/silence/trip-end with ENGINE_OFF; separate state-machine liveness from authoritative-rest liveness. |
+| **DECISION_STATUS** | **`B1_2W_GAP_STATE_MODEL_SUFFICIENT_FOR_STATE_MACHINE_LIVENESS`**; implementation **NOT_STARTED**; M3.3C **BLOCKED**. |
+| **NON_EFFECTS** | Production behavior unchanged; no fabricated evidence; no provisional authoritative rest sessions. |
+| **EVIDENCE** | Forensics chain B1.2T/B1.2U; `research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md` |
+| **FOLLOW_UP** | B1.2X.1 — supersession notes on B1.1 `NEXT_ACTION` + M3.2 Step 10 / B1 activation stale normative pointers (PR #1720 amend). |
+
 ## CL-2026-09-21 — M3.3 B1.2 first natural shutdown + rest session acceptance (read-only)
 
 | Field | Content |
