@@ -2,6 +2,7 @@
 
 | Date | Change | Author/workstream |
 |------|--------|-------------------|
+| 2026-09-22 | KS MX 2024 parked UNPLUG→PLUG GT evidence closure — provider visibility ~191 s vs prior ~57148 s; webhook physical reconciliation first (61 ms HTTP→apply; 1833 ms lead over snapshot); legacy episode `resolvedAt` provider-time vs physical WEBHOOK winner; `CAUSAL_ATTRIBUTION_295X_TO_WEBHOOK_ALONE=NO`; VDC-DEC-010 unchanged (VDC-EVID-PLUG-WEBHOOK-KS-MX-PARKED-GT-001) | Vehicle & Device Connectivity GT evidence |
 | 2026-09-22 | Isolated OBD PLUG canary profile model — `WOB_L_7503` + `KS_MX_2024` allowlisted profiles in `gt-r1-plug-webhook-canary-isolated.mjs`; coexistence semantics; profile-scoped teardown/rollback; no legacy global PLUG enable | Vehicle & Device Connectivity PLUG canary |
 | 2026-09-11 | Bootstrap Phase 0 — authority scaffold, registry `AUDIT_IN_PROGRESS`, initial hypotheses and LTE_R1 placeholder evidence | Vehicle & Device Connectivity bootstrap |
 | 2026-09-11 | Canonical rename: Vehicle Connectivity → Vehicle & Device Connectivity; path `vehicle-device-connectivity/`; stable-ID prefix `VC-*` → `VDC-*`; device scope made explicit | Vehicle & Device Connectivity bootstrap |

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-ks-mx-parked-plug-gt-evidence-2026-09-22',
+    version: '4.9.1996',
+    title: 'VDC — KS MX 2024 parked PLUG GT scientific evidence closure',
+    summary: [
+      'Canonical evidence: parked UNPLUG→PLUG GT 2026-09-22 (token 187336); WEBHOOK physical APPLIED before SNAPSHOT_OBD PROVENANCE_REFRESH (1833 ms lead; 61 ms HTTP→apply).',
+      'Two-layer attribution: provider OBD visibility ~191 s after replug vs prior GT ~57148 s; CAUSAL_ATTRIBUTION_295X_TO_WEBHOOK_ALONE=NO.',
+      'Legacy episode resolvedAt = provider observation time; physical winner WEBHOOK; VDC-DEC-010 remains valid; global PLUG rollout deferred.',
+    ],
+    reason:
+      'Persist Production read-only GT forensics without over-crediting webhook for provider emission latency improvement.',
+    previousBehavior:
+      'KS MX canary activation documented as gated; parked replug GT results only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_KS_MX_PARKED_GT_2026-09-22.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T22:40:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c0-retention-charge-preflight-2026-09-22',
     version: '4.9.1995',
     title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
