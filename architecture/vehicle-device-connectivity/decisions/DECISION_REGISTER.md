@@ -176,7 +176,7 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **DATE** | 2026-09-11 (Phase 3); hardened 2026-09-12 |
 | **BEFORE** | Colloquial PHYSICAL_REPLUG / FULL_CONNECTIVITY_RECOVERED without epistemic precision; implicit PLUG webhook dependency risk |
 | **WHY** | Phase 2 proved snapshot plug signal without human-observed replug; Aug 2026 had **no** canonical PLUG webhook |
-| **EVIDENCE** | VDC-EVID-PHASE2-001 |
+| **EVIDENCE** | VDC-EVID-PHASE2-001; VDC-EVID-PLUG-WEBHOOK-KS-MX-PARKED-GT-001 (2026-09-22 — webhook physical fast-path while parked; snapshot confirmatory; no change to optional/mandatory split) |
 | **CHANGE** | Adopt vocabulary in TARGET_SEMANTIC_MODEL.md; `FULL_CONNECTIVITY_RECOVERED` requires strict source advance; **PLUG webhook = optional fast-path, not mandatory recovery dependency** |
 | **RECOVERY_FAST_PATH** | PLUG webhook may accelerate `PHYSICAL_DEVICE_PRESENT` / replug inference. **FULL_CONNECTIVITY_RECOVERED MUST NOT depend on PLUG webhook.** Provider-neutral: PLUG webhook **OR** fresh snapshot physical evidence **OR** other sufficiently strong provider/device evidence (per profile) may establish physical presence. **Never sufficient alone:** poll SUCCESS, `providerFetchedAt` advance, equal stale snapshot |
 | **GT-R1_LTE_R1** | Must determine: PLUG webhook emission; `obdIsPluggedIn=true` vs strict top-level source advance ordering; per-signal timestamp independence; recovery without PLUG webhook; exact recovery ordering |
