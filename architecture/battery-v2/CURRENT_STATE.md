@@ -39,6 +39,7 @@
 | **B1.2Y3D.1 (read-only audit)** | **B1.2W §13 FULLY SATISFIED** — deterministic Postgres A–I (PR #1724) + natural shadow PASS; **`M3_3C_REOPENING_GATE=YES`** — `research/M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md` |
 | **B1.2Y provider-gap production** | **ACTIVE** @ `2b0ef15f` — `BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED=true`; **`M3_3_B1_2Y3_T0`** / **`Y3_STALE_REPLAY_FIX_DEPLOY_T0`** unchanged |
 | **M3.3C C1 (engineering)** | **`battery_rest_session_features` schema + shadow flag default OFF + pure retention policy (A–H unit tests)** — **no runtime writers/hooks** — `research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md` |
+| **M3.3C C1.1 (PR #1726 amend)** | Anchor session/zero-age binding; Postgres semantic-revision + pg_catalog verifier; second deploy noop |
 | **M3.3C** | **`OPEN`** — C1 foundation merged pending; C2–C5 pending; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |

@@ -9054,7 +9054,7 @@ model BatteryRestSessionFeature {
   @@unique([organizationId, restSessionId, featureModelVersion, inputDigest], map: "battery_rest_session_feature_input_digest")
   @@unique([organizationId, restSessionId, featureModelVersion, retentionPolicyVersion, chargeOpportunityPolicyVersion, semanticRevision], map: "battery_rest_session_feature_semantic_revision")
   @@index([vehicleId, computedAt(sort: Desc)])
-  @@index([restSessionId, featureModelVersion, semanticRevision(sort: Desc)])
+  @@index([restSessionId, featureModelVersion, semanticRevision(sort: Desc)], map: "battery_rest_session_feature_rest_session_model_revision_idx")
   @@index([organizationId, computedAt(sort: Desc)])
   @@map("battery_rest_session_features")
 }

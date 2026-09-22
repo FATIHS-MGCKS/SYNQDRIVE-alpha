@@ -71,12 +71,16 @@ export function computeRestSessionRetentionFeatures(input: {
   anchor: RestSessionRetentionAnchorInput;
   candidates: RestSessionRetentionCandidateInput[];
 }): RestSessionRetentionFeatures {
+  // RETENTION_TIME_AUTHORITY=actualRestAgeMs only (no ingest/gap recalculation in C1).
   const eligible = selectRestSessionRetentionEligiblePoints({
     restSessionId: input.restSessionId,
     candidates: input.candidates,
   });
 
-  const anchorMv = resolveRestSessionRetentionAnchorVoltageMv(input.anchor);
+  const anchorMv = resolveRestSessionRetentionAnchorVoltageMv(
+    input.restSessionId,
+    input.anchor,
+  );
   const count = eligible.length;
 
   if (count === 0) {

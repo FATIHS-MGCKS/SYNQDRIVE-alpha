@@ -50,6 +50,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-22 — M3.3C C1.1 anchor binding + Postgres contract hardening (PR #1726 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C1 anchor accepted any ENGINE_OFF voltage without session/age binding; migration verifier lacked semantic-revision duplicate proof and pg_catalog index/FK checks. |
+| **OBSERVATION** | Foreign-session anchor could skew shutdown delta; PostgreSQL truncates long index names (>63). |
+| **HYPOTHESIS** | Fail-closed anchor contract + behavioral uniqueness proofs preserve domain integrity before C3 writers. |
+| **CHANGE** | `resolveRestSessionRetentionAnchorVoltageMv(targetRestSessionId, …)` requires matching session, ENGINE_OFF, `actualRestAgeMs===0`, finite V; ANCHOR_TEST_A–E; verifier proves duplicate semantic revision rejected; pg_catalog object contract; second `migrate deploy` noop; short revision index name. |
+| **WHY** | M3.3C C1.1 pre-merge hardening. |
+| **EXPECTED_EFFECT** | Pure policy cannot use foreign anchors; DB contract verified on ephemeral Postgres. |
+| **VALIDATION** | `rest-session-retention.policy.spec.ts`; `npm run test:battery:v2:rest-session-feature:migration`. |
+| **OBSERVED_EFFECT** | Pending PR #1726 merge. |
+| **NON_EFFECTS** | No runtime hooks; shadow flag still default OFF. |
+| **REGRESSIONS_OR_TRADEOFFS** | None intended. |
+| **DECISION_STATUS** | **C1.1 complete** on PR branch. |
+| **REMAINING_GAPS** | C2–C5 unchanged. |
+| **AFFECTED_GRAPH** | Battery V2 rest-session feature foundation. |
+| **EVIDENCE** | PR #1726 commits on `cursor/battery-v2-m3-3c1-rest-session-feature-foundation-90ec`. |
+
+---
+
 ## CL-2026-09-22 — M3.3C C1 rest-session feature foundation (schema + pure policy)
 
 | Field | Value |

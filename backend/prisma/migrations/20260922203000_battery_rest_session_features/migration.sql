@@ -60,7 +60,7 @@ CREATE UNIQUE INDEX "battery_rest_session_feature_semantic_revision"
 CREATE INDEX "battery_rest_session_features_vehicle_id_computed_at_idx"
   ON "battery_rest_session_features"("vehicle_id", "computed_at" DESC);
 
-CREATE INDEX "battery_rest_session_features_rest_session_id_feature_model_version_semantic_revision_idx"
+CREATE INDEX "battery_rest_session_feature_rest_session_model_revision_idx"
   ON "battery_rest_session_features"("rest_session_id", "feature_model_version", "semantic_revision" DESC);
 
 CREATE INDEX "battery_rest_session_features_organization_id_computed_at_idx"

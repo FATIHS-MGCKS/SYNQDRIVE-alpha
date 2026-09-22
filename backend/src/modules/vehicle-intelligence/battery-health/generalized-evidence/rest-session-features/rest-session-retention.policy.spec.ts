@@ -210,6 +210,72 @@ describe('rest-session-retention.policy (M3.3C C1 A–H)', () => {
   });
 });
 
+describe('rest-session-retention.policy anchor binding (M3.3C C1.1)', () => {
+  const ladderCandidate = [
+    restPoint({ id: 'anchor-l1', ageMs: MS_PER_HOUR, voltageV: 14.0 }),
+  ];
+
+  it('ANCHOR_TEST_A: correct session + ENGINE_OFF + age 0 → anchor accepted', () => {
+    const features = computeRestSessionRetentionFeatures({
+      restSessionId: SESSION,
+      anchor: anchor(14.2),
+      candidates: ladderCandidate,
+    });
+    expect(features.shutdownToFirstRestDeltaMv).toBe(200);
+    expect(features.numberOfValidRestPoints).toBe(1);
+  });
+
+  it('ANCHOR_TEST_B: wrong restSessionId → shutdown delta null', () => {
+    const features = computeRestSessionRetentionFeatures({
+      restSessionId: SESSION,
+      anchor: {
+        ...anchor(14.2),
+        restSessionId: 'foreign-session',
+      },
+      candidates: ladderCandidate,
+    });
+    expect(features.shutdownToFirstRestDeltaMv).toBeNull();
+    expect(features.numberOfValidRestPoints).toBe(1);
+  });
+
+  it('ANCHOR_TEST_C: ENGINE_OFF but actualRestAgeMs > 0 → shutdown delta null', () => {
+    const features = computeRestSessionRetentionFeatures({
+      restSessionId: SESSION,
+      anchor: {
+        ...anchor(14.2),
+        actualRestAgeMs: MS_PER_HOUR,
+      },
+      candidates: ladderCandidate,
+    });
+    expect(features.shutdownToFirstRestDeltaMv).toBeNull();
+  });
+
+  it('ANCHOR_TEST_D: wrong evidence class → shutdown delta null', () => {
+    const features = computeRestSessionRetentionFeatures({
+      restSessionId: SESSION,
+      anchor: {
+        ...anchor(14.2),
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+      },
+      candidates: ladderCandidate,
+    });
+    expect(features.shutdownToFirstRestDeltaMv).toBeNull();
+  });
+
+  it('ANCHOR_TEST_E: non-finite voltage → anchor rejected', () => {
+    const features = computeRestSessionRetentionFeatures({
+      restSessionId: SESSION,
+      anchor: {
+        ...anchor(14.2),
+        voltageV: Number.NaN,
+      },
+      candidates: ladderCandidate,
+    });
+    expect(features.shutdownToFirstRestDeltaMv).toBeNull();
+    expect(features.numberOfValidRestPoints).toBe(1);
+  });
+});
+
 describe('rest-session-retention.policy edge cases', () => {
   it('zero eligible points returns empty statistics', () => {
     const features = computeRestSessionRetentionFeatures({

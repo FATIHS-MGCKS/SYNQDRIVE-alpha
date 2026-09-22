@@ -77,10 +77,21 @@ export function sortRestSessionRetentionEligiblePoints(
   });
 }
 
+/**
+ * Fail-closed ENGINE_OFF anchor for shutdown delta only.
+ * Foreign-session or malformed anchors return null (ladder stats may still compute).
+ */
 export function resolveRestSessionRetentionAnchorVoltageMv(
+  targetRestSessionId: string,
   anchor: RestSessionRetentionAnchorInput,
 ): number | null {
+  if (anchor.restSessionId !== targetRestSessionId) {
+    return null;
+  }
   if (anchor.evidenceClass !== BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION) {
+    return null;
+  }
+  if (anchor.actualRestAgeMs !== 0) {
     return null;
   }
   if (anchor.voltageV == null || !Number.isFinite(anchor.voltageV)) {
