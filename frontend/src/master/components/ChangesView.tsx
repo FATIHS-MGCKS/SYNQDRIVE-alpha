@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3c0-retention-charge-preflight-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
+    summary: [
+      'Y3D.1 transition doc: B1.2W §13 COMPLETE, M3_3C_REOPENING_GATE=YES (historical M3.3C=BLOCKED preserved in B1.2W evidence).',
+      'M3.3C preflight: versioned BatteryRestSessionFeature storage (recommended), Theil-Sen retention slope, charge opportunity raw features + UNKNOWN classification default.',
+      'Shadow-only isolation: no assessment/publication/BatteryFeatures authority; REST_60M/6H remain opportunistic legacy until M3.3G.',
+      'Production readiness snapshot: 7 rest sessions, 0 REST_WAKE_VOLTAGE, sparse ladder — Postgres-first validation matrix defined.',
+    ],
+    reason:
+      'M3.3C reopening after provider-gap §13 closure requires design authority before schema/runtime packages C1–C5.',
+    previousBehavior:
+      'CURRENT_STATE listed M3.3C BLOCKED; no session retention/charge feature entity or contracts.',
+    details:
+      'architecture/battery-v2/research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md, M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-b1-2y3c1-stale-replay-reachability-2026-09-22',
     version: '4.9.1995',
     title: 'Battery V2 M3.3 B1.2Y3C.1 — Snapshot producer STALE_REPLAY reachability',

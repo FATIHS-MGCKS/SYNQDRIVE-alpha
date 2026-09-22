@@ -44,6 +44,44 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-22 — M3.3C.0 retention curve + charge opportunity preflight (doc-only)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3C blocked in `CURRENT_STATE.md`; no session-feature storage; R1 8h audit defined M3.3C scope but no implementation contract. |
+| **OBSERVATION** | Repo has `BatteryRestSession` lifecycle only; `BatteryFeatures` is per-vehicle REST_60M/6H; production has 7 rest sessions, 0 `REST_WAKE_VOLTAGE`, 6 `PARKED_REST_CANDIDATE`. |
+| **HYPOTHESIS** | Versioned `BatteryRestSessionFeature` rows + pure policies behind shadow flag isolate M3.3C from M3.3D/E and authoritative assessment. |
+| **CHANGE** | Add `M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md`: storage design B (`BatteryRestSessionFeature`), retention/charge contracts, Theil-Sen slope, idempotency/provenance, test matrix, packages C1–C5, production readiness counts. |
+| **WHY** | M3.3C reopening gate open after Y3D.1; need shadow-isolated design before schema/runtime. |
+| **EXPECTED_EFFECT** | Engineers can open C1 schema PR with explicit contracts; no accidental authoritative cutover. |
+| **VALIDATION** | Read-only repo audit + production `psql` rest/GE counts; no deploy. |
+| **OBSERVED_EFFECT** | Preflight doc + CURRENT_STATE/Changes/Architektur sync only (this PR). |
+| **NON_EFFECTS** | No schema migration; no runtime; assessment/publication/REST_60M/6H authority unchanged; `REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false`. |
+| **REGRESSIONS_OR_TRADEOFFS** | Additional table vs JSON-on-session — more migration surface; better audit/recompute. |
+| **DECISION_STATUS** | **`RECOMMENDED_STORAGE_MODEL=B`** versioned session feature entity; **`CHARGE_OPPORTUNITY_THRESHOLD_STATUS=NOT_PRODUCTION_CALIBRATED`**. |
+| **REMAINING_GAPS** | C1 schema PR; sparse production `REST_WAKE_VOLTAGE`; charge classification calibration; shadow flag wiring. |
+| **AFFECTED_GRAPH** | Battery V2 lifecycle/persistence planning nodes (documentation); no runtime graph edge changes. |
+| **EVIDENCE** | `research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md` |
+
+---
+
+## CL-2026-09-22 — M3.3 B1.2Y3D.1 §13 closure → M3.3C reopening transition
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `M3.3C=BLOCKED` pending B1.2W §13.2 deterministic + §13.3 natural shadow. |
+| **OBSERVATION** | Y3D.1 read-only audit: Postgres A–I PASS (PR #1724 merged); production natural gaps + KS MS OFF @ T4; production SHA `2b0ef15f` intentionally behind test-only main delta. |
+| **CHANGE** | Transition authority doc; update `CURRENT_STATE.md` — B1.2W/Y3 **CLOSED**, **`M3_3C_REOPENING_GATE=YES`**, **`M3_3C_ALLOWED=YES`**. Historical B1.2W §15 `M3_3C=BLOCKED` preserved as time-accurate. |
+| **WHY** | Separate closure record without rewriting forensic history. |
+| **NON_EFFECTS** | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED=NO`**; provider-gap runtime remains ON; no production mutation. |
+| **REMAINING_GAPS** | Prometheus provider-gap `opened_total` aggregation follow-up (non-blocking). |
+| **DECISION_STATUS** | **`B1_2W_SECTION_13_FULLY_SATISFIED=YES`**; **`STATE_MACHINE_LIVENESS_GUARANTEED=YES`**. |
+| **EVIDENCE** | `research/M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md` |
+
+---
+
 ## CL-2026-09-22 — M3.3 B1.2Y3C.1 snapshot producer STALE_REPLAY reachability (engineering PR)
 
 | Field | Value |
