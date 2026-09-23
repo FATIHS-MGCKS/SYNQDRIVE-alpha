@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D0 longitudinal profile architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3D described only as roadmap “next engineering” after C5B; no scientific comparability matrix, inclusion contract, or version/time authority for cross-session profiles. |
+| **OBSERVATION** | C3 canonical rows + C5A inspection exist per session; no runtime aggregates multiple canonical `BatteryRestSessionFeature` rows; legacy `BatteryFeatures` / SOH trend / `BatteryRetentionAggregate` use different evidence models. |
+| **HYPOTHESIS** | Longitudinal profile must consume **`selectCanonicalRestSessionFeatureShadowRow()`** only, order by **`anchorAt`**, segment by version tuple, and defer health meaning to M3.3E. |
+| **CHANGE** | Added `research/M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`; updated `CURRENT_STATE` M3.3D D0 row + `NEXT_PHASE` → D1. |
+| **WHY** | Prevent parallel source of truth and causal over-interpretation before M3.3D implementation. |
+| **EXPECTED_EFFECT** | D1–D5 slices implement against fixed contract; M3.3E/M3.3H boundaries explicit. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | D0 doc: comparability matrix, confounders, inclusion rules, `M3_3D_LONGITUDINAL_PROFILE_V1` shape, hybrid persistence recommendation, bounded reads, integrity enums, slice plan. |
+| **NON_EFFECTS** | No schema/migration/runtime/flag/deploy/customer UI/assessment writes/M3.3D code. |
+| **REGRESSIONS_OR_TRADEOFFS** | R1 §8 longitudinal planning superseded for normative M3.3D detail where this D0 differs. |
+| **REMAINING_GAPS** | DECISION_REQUIRED thresholds; SHADOW_CALIBRATION_REQUIRED gates; D1+ implementation; M3.3F for production C3 rows. |
+| **DECISION_STATUS** | **ARCHITECTURE_AUDIT_COMPLETE** (D0) — implementation **NOT_STARTED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Main @ `7878aee90`; `M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5B post-merge documentation seal (main)
 
 | Field | Value |
