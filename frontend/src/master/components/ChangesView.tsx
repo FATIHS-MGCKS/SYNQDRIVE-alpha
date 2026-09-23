@@ -94,6 +94,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-23T06:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c5b-master-admin-shadow-ui-2026-09-23',
+    version: '4.9.2001',
+    title: 'Battery V2 M3.3C C5B — Master Admin shadow inspection UI',
+    summary: [
+      'GET /admin/battery-v2/rest-sessions + rest-session-feature-inspection (MASTER_ADMIN, read-only).',
+      'Master Admin view battery-v2-shadow-inspection renders atomic M3_3C_C5A_V1 (no frontend domain recompute).',
+      'Integrity states OK / INTEGRITY_PARTIAL / INTEGRITY_WARNING displayed explicitly; M3.3H customer UI unchanged.',
+    ],
+    reason: 'Internal engineering inspection over C5A without ops CLI or manual SQL.',
+    previousBehavior: 'C5A via ts-node ops CLI only.',
+    details:
+      'platform-admin.controller.ts, battery-v2-rest-session-feature-inspection.admin.service.ts, frontend/src/master/battery-v2-shadow-inspection/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T19:30:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c5a-shadow-observability-inspection-2026-09-23',
     version: '4.9.2000',
     title: 'Battery V2 M3.3C C5A — Shadow observability + read-only inspection',
@@ -101,7 +118,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
       'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates; C5A.2 repeatable-read snapshot + canonical digest union + countAggregateConsistent.',
       'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
-      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI pending.',
+      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI delivered separately (M3.3C C5B).',
     ],
     reason:
       'Operational answers for C4 triggers and C3 persistence without health scoring or customer surfaces.',

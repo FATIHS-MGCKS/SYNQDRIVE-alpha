@@ -54,6 +54,42 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5B.2 documentation seal (pre-merge)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | C5A doc lists full `overallStatus` enum incl. `INTEGRITY_PARTIAL`; `CURRENT_STATE` snapshot header reflects C5A on main + C5B draft PR #1733. |
+| **NON_EFFECTS** | No runtime/code/schema/flag changes. |
+| **EVIDENCE** | PR #1733 amend |
+
+---
+
+## CL-2026-09-23 — M3.3C C5B.1 Master Admin shadow UI closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Render `inputSummary.retentionPoints` table from C5A; org-scoped vehicle load via `GET /admin/vehicles/operational?organizationId=` pagination; pre-merge roadmap wording. |
+| **WHY** | Count-only retention display insufficient; global `listAll(300)` incomplete org selection. |
+| **VALIDATION** | Frontend vitest (retention + vehicle selection + view); i18n PR gate. |
+| **EVIDENCE** | PR #1733 amend |
+
+---
+
+## CL-2026-09-23 — M3.3C C5B Master Admin shadow inspection UI
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C5A inspection available via ops CLI only; no Master Admin UI; no HTTP inspection endpoint. |
+| **CHANGE** | MASTER_ADMIN GET endpoints + `BatteryV2ShadowInspectionView` rendering atomic `M3_3C_C5A_V1`; nav entry `battery-v2-shadow-inspection`. |
+| **WHY** | Engineering/ops visibility without manual SQL; preserves C5A as sole domain source. |
+| **VALIDATION** | Platform admin security spec; frontend vitest (integrity states, nav permissions, presentation helpers); frontend `npm run build`. |
+| **OBSERVED_EFFECT** | Local PASS: backend security spec (5); frontend C5B vitest (8); backend build; frontend tsc+vite build. |
+| **NON_EFFECTS** | No customer UI (M3.3H separate); no flags/deploy/migration; no frontend domain recomputation. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **EVIDENCE** | `M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5B section |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5A.2 inspection snapshot + canonical digest union
 
 | Field | Value |
