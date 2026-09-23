@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C2.2 charge-opportunity provenance hardening (PR #1728 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Raw output omitted `restSessionId` and measurement lineage; STALE_REPLAY could inflate fetch-time diagnostic; foreign trip counted out-of-window; imprecise trip failure reasons. |
+| **OBSERVATION** | C3 digest needs material observation + measurement IDs; pure policy must be safe when called without reader prefilter. |
+| **HYPOTHESIS** | Window-local foreign-trip gating + stale firewall + precise trip reasons preserve scientific contract without classifier changes. |
+| **CHANGE** | Extended raw type/provenance arrays; material row accounting; PG_H–J; tests P–X. |
+| **WHY** | Prevent C3 input drift and false completeness from stale or out-of-window rows. |
+| **EXPECTED_EFFECT** | Deterministic material provenance; tenant entrypoint isolation proven in Postgres. |
+| **VALIDATION** | Unit 49/49; Postgres PG_A–J PASS. |
+| **OBSERVED_EFFECT** | Local suites green pending CI on new HEAD. |
+| **NON_EFFECTS** | No deploy; no writes; classifier unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | Completeness reason `NO_PRIOR_SESSION_FEATURE` replaced by `PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2`. |
+| **REMAINING_GAPS** | C3 persistence unchanged. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C charge-opportunity raw context |
+| **EVIDENCE** | `M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` C2.2 section |
+
+---
+
 ## CL-2026-09-23 — M3.3C C2.1 charge-opportunity raw context (read-only)
 
 | Field | Value |

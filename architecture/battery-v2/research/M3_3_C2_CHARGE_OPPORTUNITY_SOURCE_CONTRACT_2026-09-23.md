@@ -105,9 +105,20 @@ GE_TEMPERATURE_USED_AS_PROVIDER_QUALIFIED_V1=NO
 | Raw features policy | `rest-session-charge-opportunity.policy.ts` |
 | Read-only reader | `rest-session-charge-context.reader.ts` |
 
+### C2.2 hardening (PR #1728 amend)
+
+- `restSessionId` on raw output; `sourceMeasurementId` lineage arrays (sorted, deduped)
+- Pure-policy STALE_REPLAY firewall (including fetch-time-only diagnostic)
+- Foreign-trip count only for in-window rows
+- Trip integrity reasons: `TRIP_LINK_NOT_FOUND`, `TRIP_VEHICLE_MISMATCH`, `TRIP_END_BEFORE_START`
+- `PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2` (C2 does not assert prior feature absence)
+- `generalizedEvidenceRowsConsidered === chargeContextSourceObservationIds.length` (material rows only)
+
 ```
 LIVE_C2_CALCULATION_HOOKS=0
 BatteryRestSessionFeature writes=0 (C3)
+PRIOR_SESSION_FEATURE_REQUIRED_FOR_C2=NO
+C2_DOES_NOT_ASSERT_PRIOR_FEATURE_ABSENCE=YES
 ```
 
 ## Production forensics reference (C2.0)

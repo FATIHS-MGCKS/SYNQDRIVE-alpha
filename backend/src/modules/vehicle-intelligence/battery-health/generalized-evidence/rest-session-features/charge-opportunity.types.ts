@@ -9,6 +9,9 @@ export type ChargeOpportunityTemperatureSource =
 export type ChargeContextCompletenessReason =
   | 'NO_RELIABLE_PRECEDING_TRIP'
   | 'TRIP_NOT_COMPLETED'
+  | 'TRIP_LINK_NOT_FOUND'
+  | 'TRIP_VEHICLE_MISMATCH'
+  | 'TRIP_END_BEFORE_START'
   | 'TRIP_START_MISSING'
   | 'TRIP_END_MISSING'
   | 'TRIP_START_AFTER_ANCHOR'
@@ -19,7 +22,7 @@ export type ChargeContextCompletenessReason =
   | 'STATE_FETCH_TIME_ONLY'
   | 'MISSING_DISTANCE'
   | 'MISSING_TEMPERATURE'
-  | 'NO_PRIOR_SESSION_FEATURE'
+  | 'PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2'
   | 'FOREIGN_TRIP_OBSERVATIONS_EXCLUDED'
   | 'PARTIAL_CONTEXT';
 
@@ -44,6 +47,7 @@ export type ChargeOpportunityRestSessionSnapshot = {
 
 export type ChargeOpportunityGeObservationInput = {
   id: string;
+  sourceMeasurementId: string;
   organizationId: string;
   vehicleId: string;
   tripId: string | null;
@@ -67,6 +71,7 @@ export type ResolvedChargeOpportunityWindow = {
   chargeContextStartAt: Date | null;
   chargeContextEndAt: Date;
   tripEndToAnchorDeltaMs: number | null;
+  /** Canonical trip.endTime − trip.startTime metadata (not charge-window span). */
   precedingTripDurationMs: number | null;
   precedingTripDistanceKm: number | null;
   outsideTemperatureStartC: number | null;
@@ -75,6 +80,7 @@ export type ResolvedChargeOpportunityWindow = {
 
 export type ChargeOpportunityRawFeaturesV1 = {
   policyVersion: string;
+  restSessionId: string;
   windowSource: ChargeOpportunityWindowSource;
   precedingTripId: string | null;
   precedingTripStartAt: string | null;
@@ -105,10 +111,15 @@ export type ChargeOpportunityRawFeaturesV1 = {
   contextCompleteness: ChargeContextCompletenessReason[];
   chargeOpportunityClass: BatteryRestSessionChargeOpportunityClass;
   chargeContextSourceObservationIds: string[];
+  chargeContextSourceMeasurementIds: string[];
   qualifiedLvObservationIds: string[];
+  qualifiedLvSourceMeasurementIds: string[];
   engineRunningProviderSnapshotObservationIds: string[];
+  engineRunningProviderSnapshotSourceMeasurementIds: string[];
   runningAlternatorAlignedObservationIds: string[];
+  runningAlternatorAlignedSourceMeasurementIds: string[];
   runningAlternatorPartialObservationIds: string[];
+  runningAlternatorPartialSourceMeasurementIds: string[];
 };
 
 export type ChargeOpportunityReadResult =

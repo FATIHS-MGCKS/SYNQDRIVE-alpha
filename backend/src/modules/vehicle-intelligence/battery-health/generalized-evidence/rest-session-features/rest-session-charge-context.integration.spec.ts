@@ -325,6 +325,9 @@ async function createGeRow(
         expect(confirmed.features.qualifiedLvObservationCount).toBe(1);
         expect(confirmed.features.foreignTripObservationCount).toBe(1);
         expect(confirmed.features.chargeContextSourceObservationIds).toHaveLength(1);
+        expect(confirmed.features.chargeContextSourceMeasurementIds).toEqual([measIn.id]);
+        expect(confirmed.features.chargeContextSourceMeasurementIds).not.toContain(measFuture.id);
+        expect(confirmed.features.chargeContextSourceMeasurementIds).not.toContain(measForeign.id);
       }
 
       const candidate = await reader.readChargeOpportunityRawFeatures({
@@ -352,6 +355,157 @@ async function createGeRow(
 
       const afterReader = await tableCounts(prisma);
       expect(afterReader).toEqual(beforeReader);
+    });
+
+    it('PG_H: wrong org session → SESSION_NOT_FOUND', async () => {
+      if (!dbOk) return;
+      const a = await createOrgVehicle(prisma, 'PG-H-A');
+      const b = await createOrgVehicle(prisma, 'PG-H-B');
+      const anchor = new Date('2026-09-22T12:00:00.000Z');
+      const session = await prisma.batteryRestSession.create({
+        data: {
+          id: randomUUID(),
+          organizationId: a.organizationId,
+          vehicleId: a.vehicleId,
+          anchorType: 'PHYSICAL_SHUTDOWN',
+          anchorAt: anchor,
+          sessionStatus: BatteryRestSessionStatus.ENDED,
+          openedAt: anchor,
+          endedAt: anchor,
+          endReason: 'VEHICLE_ACTIVITY',
+          idempotencyKey: `rs:h:${randomUUID()}`,
+        },
+      });
+      const result = await reader.readChargeOpportunityRawFeatures({
+        organizationId: b.organizationId,
+        vehicleId: a.vehicleId,
+        restSessionId: session.id,
+      });
+      expect(result.status).toBe('SESSION_NOT_FOUND');
+    });
+
+    it('PG_I: wrong vehicle session → SESSION_NOT_FOUND', async () => {
+      if (!dbOk) return;
+      const a = await createOrgVehicle(prisma, 'PG-I-A');
+      const b = await createOrgVehicle(prisma, 'PG-I-B');
+      const anchor = new Date('2026-09-22T12:00:00.000Z');
+      const session = await prisma.batteryRestSession.create({
+        data: {
+          id: randomUUID(),
+          organizationId: a.organizationId,
+          vehicleId: a.vehicleId,
+          anchorType: 'PHYSICAL_SHUTDOWN',
+          anchorAt: anchor,
+          sessionStatus: BatteryRestSessionStatus.ENDED,
+          openedAt: anchor,
+          endedAt: anchor,
+          endReason: 'VEHICLE_ACTIVITY',
+          idempotencyKey: `rs:i:${randomUUID()}`,
+        },
+      });
+      const result = await reader.readChargeOpportunityRawFeatures({
+        organizationId: a.organizationId,
+        vehicleId: b.vehicleId,
+        restSessionId: session.id,
+      });
+      expect(result.status).toBe('SESSION_NOT_FOUND');
+    });
+
+    it('PG_J: sourceMeasurement provenance filtering', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'PG-J');
+      const tripStart = new Date('2026-09-22T13:44:00.000Z');
+      const tripEnd = new Date('2026-09-22T13:50:25.000Z');
+      const anchor = new Date('2026-09-22T13:50:28.000Z');
+      const trip = await prisma.vehicleTrip.create({
+        data: {
+          vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: tripStart,
+          endTime: tripEnd,
+        },
+      });
+      const foreignTrip = await prisma.vehicleTrip.create({
+        data: {
+          vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: tripStart,
+          endTime: tripEnd,
+        },
+      });
+      const session = await prisma.batteryRestSession.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          vehicleId,
+          anchorType: 'PHYSICAL_SHUTDOWN',
+          anchorAt: anchor,
+          confirmedTripId: trip.id,
+          sessionStatus: BatteryRestSessionStatus.CONFIRMED,
+          openedAt: anchor,
+          idempotencyKey: `rs:j:${randomUUID()}`,
+        },
+      });
+      const inWindow = new Date('2026-09-22T13:48:00.000Z');
+      const measX = await createMeasurement(prisma, organizationId, vehicleId, inWindow);
+      const measY = await createMeasurement(
+        prisma,
+        organizationId,
+        vehicleId,
+        new Date(inWindow.getTime() + 2000),
+      );
+      const measZ = await createMeasurement(
+        prisma,
+        organizationId,
+        vehicleId,
+        new Date(inWindow.getTime() + 3000),
+      );
+      const measW = await createMeasurement(
+        prisma,
+        organizationId,
+        vehicleId,
+        new Date(anchor.getTime() + 5000),
+      );
+      await createGeRow(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: measX.id,
+        observedAt: inWindow,
+        tripId: trip.id,
+      });
+      await createGeRow(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: measY.id,
+        observedAt: new Date(inWindow.getTime() + 2000),
+        tripId: trip.id,
+        evidenceClass: BatteryGeneralizedEvidenceClass.STALE_REPLAY,
+      });
+      await createGeRow(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: measZ.id,
+        observedAt: new Date(inWindow.getTime() + 3000),
+        tripId: foreignTrip.id,
+      });
+      await createGeRow(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: measW.id,
+        observedAt: new Date(anchor.getTime() + 5000),
+        tripId: trip.id,
+      });
+
+      const result = await reader.readChargeOpportunityRawFeatures({
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+      });
+      expect(result.status).toBe('OK');
+      if (result.status === 'OK') {
+        expect(result.features.chargeContextSourceMeasurementIds).toEqual([measX.id]);
+        expect(result.features.qualifiedLvSourceMeasurementIds).toEqual([measX.id]);
+      }
     });
   },
 );

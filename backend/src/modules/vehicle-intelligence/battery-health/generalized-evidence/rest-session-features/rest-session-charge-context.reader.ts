@@ -89,6 +89,7 @@ export class RestSessionChargeContextReader {
         },
         select: {
           id: true,
+          sourceMeasurementId: true,
           organizationId: true,
           vehicleId: true,
           tripId: true,

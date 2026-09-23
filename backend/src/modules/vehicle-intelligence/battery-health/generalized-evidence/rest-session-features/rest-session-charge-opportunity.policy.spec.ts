@@ -65,6 +65,7 @@ function geRow(
 ): ChargeOpportunityGeObservationInput {
   const base: ChargeOpportunityGeObservationInput = {
     id: overrides.id,
+    sourceMeasurementId: overrides.sourceMeasurementId ?? `meas-${overrides.id}`,
     organizationId: ORG,
     vehicleId: VEHICLE,
     tripId: TRIP,
@@ -120,6 +121,51 @@ describe('charge-opportunity-window.policy (M3.3C C2)', () => {
     });
     expect(window.windowSource).toBe('NONE');
     expect(window.completenessReasons).toEqual(['NO_RELIABLE_PRECEDING_TRIP']);
+  });
+
+  it('TEST_T: missing linked trip row → TRIP_LINK_NOT_FOUND', () => {
+    const window = resolveChargeOpportunityWindow({
+      session: session(),
+      confirmedTrip: null,
+      candidateTrip: null,
+    });
+    expect(window.windowSource).toBe('NONE');
+    expect(window.completenessReasons).toContain('TRIP_LINK_NOT_FOUND');
+  });
+
+  it('TEST_U: trip vehicle mismatch → TRIP_VEHICLE_MISMATCH', () => {
+    const window = resolveChargeOpportunityWindow({
+      session: session(),
+      confirmedTrip: trip({ vehicleId: 'other-vehicle' }),
+      candidateTrip: null,
+    });
+    expect(window.windowSource).toBe('NONE');
+    expect(window.completenessReasons).toContain('TRIP_VEHICLE_MISMATCH');
+  });
+
+  it('TEST_V: end before start → TRIP_END_BEFORE_START', () => {
+    const window = resolveChargeOpportunityWindow({
+      session: session(),
+      confirmedTrip: trip({
+        startTime: TRIP_END,
+        endTime: TRIP_START,
+      }),
+      candidateTrip: null,
+    });
+    expect(window.windowSource).toBe('NONE');
+    expect(window.completenessReasons).toContain('TRIP_END_BEFORE_START');
+  });
+
+  it('zero-duration trip start==end is valid metadata', () => {
+    const instant = TRIP_END;
+    const window = resolveChargeOpportunityWindow({
+      session: session(),
+      confirmedTrip: trip({ startTime: instant, endTime: instant }),
+      candidateTrip: null,
+    });
+    expect(window.windowSource).toBe('CONFIRMED_TRIP');
+    expect(window.precedingTripDurationMs).toBe(0);
+    expect(window.chargeContextEndAt.toISOString()).toBe(ANCHOR.toISOString());
   });
 });
 
@@ -355,5 +401,117 @@ describe('rest-session-charge-opportunity.policy (M3.3C C2 A–O)', () => {
     expect(features.chargeOpportunityClass).toBe(
       BatteryRestSessionChargeOpportunityClass.UNKNOWN,
     );
+  });
+
+  it('TEST_P: restSessionId retained in raw output', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: 'session-123',
+      window: confirmedWindow(),
+      observations: [],
+    });
+    expect(features.restSessionId).toBe('session-123');
+  });
+
+  it('TEST_Q: sourceMeasurement provenance retained', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window: confirmedWindow(),
+      observations: [geRow({ id: 'q1', sourceMeasurementId: 'measurement-X' })],
+    });
+    expect(features.qualifiedLvSourceMeasurementIds).toContain('measurement-X');
+    expect(features.chargeContextSourceMeasurementIds).toContain('measurement-X');
+  });
+
+  it('TEST_R: STALE_REPLAY fetch-time state contributes zero', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window: confirmedWindow(),
+      observations: [
+        geRow({
+          id: 'stale-fetch',
+          evidenceClass: BatteryGeneralizedEvidenceClass.STALE_REPLAY,
+          stateTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_PROVIDER_FETCHED_AT,
+          engineRunning: true,
+        }),
+      ],
+    });
+    expect(features.stateFetchTimeOnlyObservationCount).toBe(0);
+    expect(features.contextCompleteness).not.toContain('STATE_FETCH_TIME_ONLY');
+  });
+
+  it('TEST_S: out-of-window foreign trip contributes zero', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window: confirmedWindow(),
+      observations: [
+        geRow({
+          id: 'foreign-oow',
+          tripId: 'other-trip',
+          voltageObservedAt: new Date(ANCHOR.getTime() + 60_000),
+          stateObservedAt: new Date(ANCHOR.getTime() + 60_000),
+        }),
+      ],
+    });
+    expect(features.foreignTripObservationCount).toBe(0);
+    expect(features.contextCompleteness).not.toContain('FOREIGN_TRIP_OBSERVATIONS_EXCLUDED');
+  });
+
+  it('TEST_W: material provenance excludes stale/foreign/future rows', () => {
+    const window = confirmedWindow();
+    const after = new Date(ANCHOR.getTime() + 5000);
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window,
+      observations: [
+        geRow({ id: 'good', sourceMeasurementId: 'meas-good' }),
+        geRow({
+          id: 'stale',
+          sourceMeasurementId: 'meas-stale',
+          evidenceClass: BatteryGeneralizedEvidenceClass.STALE_REPLAY,
+        }),
+        geRow({
+          id: 'foreign',
+          sourceMeasurementId: 'meas-foreign',
+          tripId: 'other',
+        }),
+        geRow({
+          id: 'future',
+          sourceMeasurementId: 'meas-future',
+          voltageObservedAt: after,
+          stateObservedAt: after,
+        }),
+      ],
+    });
+    expect(features.chargeContextSourceObservationIds).toEqual(['good']);
+    expect(features.chargeContextSourceMeasurementIds).toEqual(['meas-good']);
+    expect(features.chargeContextSourceMeasurementIds).not.toContain('meas-stale');
+  });
+
+  it('TEST_X: rowsConsidered equals material observation provenance count', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window: confirmedWindow(),
+      observations: [
+        geRow({ id: 'x1' }),
+        geRow({
+          id: 'x2',
+          stateTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.VLS_PROVIDER_FETCHED_AT,
+        }),
+      ],
+    });
+    expect(features.generalizedEvidenceRowsConsidered).toBe(
+      features.chargeContextSourceObservationIds.length,
+    );
+    expect(features.generalizedEvidenceRowsConsidered).toBe(2);
+  });
+
+  it('PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2 not absence claim', () => {
+    const features = computeChargeOpportunityRawFeaturesV1({
+      restSessionId: SESSION,
+      window: confirmedWindow(),
+      observations: [],
+    });
+    expect(features.contextCompleteness).toContain('PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2');
+    expect(features.contextCompleteness).not.toContain('NO_PRIOR_SESSION_FEATURE');
   });
 });

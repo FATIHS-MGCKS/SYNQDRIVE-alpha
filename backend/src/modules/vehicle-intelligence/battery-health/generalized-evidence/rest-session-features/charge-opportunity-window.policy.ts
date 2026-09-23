@@ -20,7 +20,7 @@ function validateTripAgainstAnchor(input: {
   const { trip, sessionVehicleId, anchorAt } = input;
 
   if (trip.vehicleId !== sessionVehicleId) {
-    reasons.push('TRIP_NOT_COMPLETED');
+    reasons.push('TRIP_VEHICLE_MISMATCH');
     return reasons;
   }
   if (trip.tripStatus !== TripStatus.COMPLETED) {
@@ -31,6 +31,13 @@ function validateTripAgainstAnchor(input: {
   }
   if (trip.endTime == null) {
     reasons.push('TRIP_END_MISSING');
+  }
+  if (
+    trip.startTime != null &&
+    trip.endTime != null &&
+    trip.endTime.getTime() < trip.startTime.getTime()
+  ) {
+    reasons.push('TRIP_END_BEFORE_START');
   }
   if (trip.startTime != null && trip.startTime.getTime() >= anchorAt.getTime()) {
     reasons.push('TRIP_START_AFTER_ANCHOR');
@@ -44,6 +51,11 @@ function validateTripAgainstAnchor(input: {
   return reasons;
 }
 
+/**
+ * Valid window: charge context is [trip.startTime, restSession.anchorAt) — exclusive at anchor.
+ * precedingTripDurationMs remains trip.end − trip.start (repository metadata), even when
+ * anchorAt is after trip.end within association tolerance.
+ */
 function buildValidWindow(input: {
   windowSource: 'CONFIRMED_TRIP' | 'CANDIDATE_TRIP';
   trip: ChargeOpportunityTripSnapshot;
@@ -129,7 +141,7 @@ export function resolveChargeOpportunityWindow(input: {
 
   if (session.confirmedTripId != null) {
     if (!confirmedTrip || confirmedTrip.id !== session.confirmedTripId) {
-      return invalidLinkedTripWindow(anchorAt, ['TRIP_NOT_COMPLETED']);
+      return invalidLinkedTripWindow(anchorAt, ['TRIP_LINK_NOT_FOUND']);
     }
     const reasons = validateTripAgainstAnchor({
       trip: confirmedTrip,
@@ -149,7 +161,7 @@ export function resolveChargeOpportunityWindow(input: {
 
   if (session.candidateTripId != null) {
     if (!candidateTrip || candidateTrip.id !== session.candidateTripId) {
-      return invalidLinkedTripWindow(anchorAt, ['TRIP_NOT_COMPLETED']);
+      return invalidLinkedTripWindow(anchorAt, ['TRIP_LINK_NOT_FOUND']);
     }
     const reasons = validateTripAgainstAnchor({
       trip: candidateTrip,

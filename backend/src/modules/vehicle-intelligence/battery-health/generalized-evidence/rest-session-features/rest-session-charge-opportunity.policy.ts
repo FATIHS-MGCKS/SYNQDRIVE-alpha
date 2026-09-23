@@ -8,9 +8,7 @@ import {
   SHUTDOWN_ALTERNATOR_VOLTAGE_THRESHOLD_V,
   SHUTDOWN_TIMESTAMP_SOURCES,
 } from '../../shutdown-evidence/shutdown-evidence.constants';
-import {
-  CHARGE_OPPORTUNITY_RAW_POLICY_VERSION,
-} from './charge-opportunity.constants';
+import { CHARGE_OPPORTUNITY_RAW_POLICY_VERSION } from './charge-opportunity.constants';
 import { isTimestampInChargeWindow } from './charge-opportunity-window.policy';
 import type {
   ChargeContextCompletenessReason,
@@ -20,7 +18,7 @@ import type {
 } from './charge-opportunity.types';
 
 function sortIds(ids: string[]): string[] {
-  return [...ids].sort((a, b) => a.localeCompare(b));
+  return [...new Set(ids)].sort((a, b) => a.localeCompare(b));
 }
 
 function sortReasons(reasons: ChargeContextCompletenessReason[]): ChargeContextCompletenessReason[] {
@@ -40,7 +38,10 @@ function isForeignTripRow(
   return row.tripId !== precedingTripId;
 }
 
-function isVoltageQualified(row: ChargeOpportunityGeObservationInput, window: ResolvedChargeOpportunityWindow): boolean {
+function isVoltageQualified(
+  row: ChargeOpportunityGeObservationInput,
+  window: ResolvedChargeOpportunityWindow,
+): boolean {
   if (isStaleReplay(row.evidenceClass)) return false;
   if (row.providerTimestampSource !== SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_FIELD_TIMESTAMP) return false;
   if (!isPlausibleLvVoltage(row.voltage)) return false;
@@ -61,25 +62,25 @@ function isEngineRunningFetchTimeOnly(
   row: ChargeOpportunityGeObservationInput,
   window: ResolvedChargeOpportunityWindow,
 ): boolean {
+  if (isStaleReplay(row.evidenceClass)) return false;
   if (row.engineRunning !== true) return false;
   if (row.stateTimestampSource !== SHUTDOWN_TIMESTAMP_SOURCES.VLS_PROVIDER_FETCHED_AT) return false;
   return isTimestampInChargeWindow(row.stateObservedAt, window);
 }
 
-function isRowConsidered(
+/** In-window by qualified voltage time or any non-unknown state timestamp in window. */
+export function rowHasAnyChargeWindowTimestamp(
   row: ChargeOpportunityGeObservationInput,
   window: ResolvedChargeOpportunityWindow,
-  precedingTripId: string | null,
 ): boolean {
   if (isStaleReplay(row.evidenceClass)) return false;
-  if (isForeignTripRow(row, precedingTripId)) return false;
-  if (window.windowSource === 'NONE') return false;
-  const voltageIn = isVoltageQualified(row, window);
-  const stateIn =
+  if (window.windowSource === 'NONE' || window.chargeContextStartAt == null) return false;
+  if (isVoltageQualified(row, window)) return true;
+  return (
     isTimestampInChargeWindow(row.stateObservedAt, window) &&
     row.stateTimestampSource != null &&
-    row.stateTimestampSource !== SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN;
-  return voltageIn || stateIn;
+    row.stateTimestampSource !== SHUTDOWN_TIMESTAMP_SOURCES.UNKNOWN
+  );
 }
 
 function resolveTemperatureContext(input: {
@@ -123,19 +124,23 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
   window: ResolvedChargeOpportunityWindow;
   observations: ChargeOpportunityGeObservationInput[];
 }): ChargeOpportunityRawFeaturesV1 {
-  const { window, observations } = input;
+  const { window, observations, restSessionId } = input;
   const precedingTripId = window.precedingTripId;
   const reasons: ChargeContextCompletenessReason[] = [...window.completenessReasons];
 
   let foreignTripObservationCount = 0;
   let stateFetchTimeOnlyObservationCount = 0;
-  let rowsConsidered = 0;
 
-  const chargeContextSourceObservationIds: string[] = [];
+  const materialObservationIds = new Set<string>();
+  const materialMeasurementIds = new Set<string>();
   const qualifiedLvObservationIds: string[] = [];
+  const qualifiedLvSourceMeasurementIds: string[] = [];
   const engineRunningProviderSnapshotObservationIds: string[] = [];
+  const engineRunningProviderSnapshotSourceMeasurementIds: string[] = [];
   const runningAlternatorAlignedObservationIds: string[] = [];
+  const runningAlternatorAlignedSourceMeasurementIds: string[] = [];
   const runningAlternatorPartialObservationIds: string[] = [];
+  const runningAlternatorPartialSourceMeasurementIds: string[] = [];
 
   let qualifiedLvObservationCount = 0;
   let alternatorBandLvSampleCount = 0;
@@ -144,26 +149,37 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
   let runningAlternatorPartialObservationCount = 0;
   let classifierDrivingChargingObservationCount = 0;
 
+  const markMaterial = (row: ChargeOpportunityGeObservationInput) => {
+    materialObservationIds.add(row.id);
+    materialMeasurementIds.add(row.sourceMeasurementId);
+  };
+
   for (const row of observations) {
+    if (isStaleReplay(row.evidenceClass)) continue;
+    if (!rowHasAnyChargeWindowTimestamp(row, window)) continue;
+
     if (isForeignTripRow(row, precedingTripId)) {
       foreignTripObservationCount += 1;
       continue;
     }
+
+    let rowMaterial = false;
+
     if (isEngineRunningFetchTimeOnly(row, window)) {
       stateFetchTimeOnlyObservationCount += 1;
+      rowMaterial = true;
     }
-    if (!isRowConsidered(row, window, precedingTripId)) continue;
-
-    rowsConsidered += 1;
-    chargeContextSourceObservationIds.push(row.id);
 
     if (row.evidenceClass === BatteryGeneralizedEvidenceClass.DRIVING_CHARGING) {
       classifierDrivingChargingObservationCount += 1;
+      rowMaterial = true;
     }
 
     if (isVoltageQualified(row, window)) {
       qualifiedLvObservationCount += 1;
       qualifiedLvObservationIds.push(row.id);
+      qualifiedLvSourceMeasurementIds.push(row.sourceMeasurementId);
+      rowMaterial = true;
       if (row.voltage != null && row.voltage >= SHUTDOWN_ALTERNATOR_VOLTAGE_THRESHOLD_V) {
         alternatorBandLvSampleCount += 1;
       }
@@ -172,6 +188,8 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
     if (isEngineRunningProviderSnapshot(row, window)) {
       engineRunningTrueProviderSnapshotObservationCount += 1;
       engineRunningProviderSnapshotObservationIds.push(row.id);
+      engineRunningProviderSnapshotSourceMeasurementIds.push(row.sourceMeasurementId);
+      rowMaterial = true;
     }
 
     const voltageOk = isVoltageQualified(row, window);
@@ -183,12 +201,23 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
       if (row.stateAlignmentClass === BatteryShutdownStateAlignmentClass.ALIGNED) {
         runningAlternatorAlignedObservationCount += 1;
         runningAlternatorAlignedObservationIds.push(row.id);
+        runningAlternatorAlignedSourceMeasurementIds.push(row.sourceMeasurementId);
+        rowMaterial = true;
       } else if (row.stateAlignmentClass === BatteryShutdownStateAlignmentClass.PARTIAL) {
         runningAlternatorPartialObservationCount += 1;
         runningAlternatorPartialObservationIds.push(row.id);
+        runningAlternatorPartialSourceMeasurementIds.push(row.sourceMeasurementId);
+        rowMaterial = true;
       }
     }
+
+    if (rowMaterial) {
+      markMaterial(row);
+    }
   }
+
+  const chargeContextSourceObservationIds = sortIds([...materialObservationIds]);
+  const chargeContextSourceMeasurementIds = sortIds([...materialMeasurementIds]);
 
   if (window.windowSource !== 'NONE') {
     if (qualifiedLvObservationCount === 0) {
@@ -206,7 +235,7 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
     reasons.push('FOREIGN_TRIP_OBSERVATIONS_EXCLUDED');
   }
 
-  reasons.push('NO_PRIOR_SESSION_FEATURE');
+  reasons.push('PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2');
 
   if (
     resolveTemperatureContext({ window, anchorAt: window.chargeContextEndAt }).temperatureC == null &&
@@ -224,6 +253,7 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
 
   return {
     policyVersion: CHARGE_OPPORTUNITY_RAW_POLICY_VERSION,
+    restSessionId,
     windowSource: window.windowSource,
     precedingTripId: window.precedingTripId,
     precedingTripStartAt: window.precedingTripStartAt?.toISOString() ?? null,
@@ -233,7 +263,7 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
     tripEndToAnchorDeltaMs: window.tripEndToAnchorDeltaMs,
     precedingTripDurationMs: window.precedingTripDurationMs,
     precedingTripDistanceKm: window.precedingTripDistanceKm,
-    generalizedEvidenceRowsConsidered: rowsConsidered,
+    generalizedEvidenceRowsConsidered: chargeContextSourceObservationIds.length,
     qualifiedLvObservationCount,
     alternatorBandLvSampleCount,
     engineRunningTrueProviderSnapshotObservationCount,
@@ -249,12 +279,23 @@ export function computeChargeOpportunityRawFeaturesV1(input: {
     ...temperature,
     contextCompleteness: sortReasons(reasons),
     chargeOpportunityClass: BatteryRestSessionChargeOpportunityClass.UNKNOWN,
-    chargeContextSourceObservationIds: sortIds(chargeContextSourceObservationIds),
+    chargeContextSourceObservationIds,
+    chargeContextSourceMeasurementIds,
     qualifiedLvObservationIds: sortIds(qualifiedLvObservationIds),
+    qualifiedLvSourceMeasurementIds: sortIds(qualifiedLvSourceMeasurementIds),
     engineRunningProviderSnapshotObservationIds: sortIds(
       engineRunningProviderSnapshotObservationIds,
     ),
+    engineRunningProviderSnapshotSourceMeasurementIds: sortIds(
+      engineRunningProviderSnapshotSourceMeasurementIds,
+    ),
     runningAlternatorAlignedObservationIds: sortIds(runningAlternatorAlignedObservationIds),
+    runningAlternatorAlignedSourceMeasurementIds: sortIds(
+      runningAlternatorAlignedSourceMeasurementIds,
+    ),
     runningAlternatorPartialObservationIds: sortIds(runningAlternatorPartialObservationIds),
+    runningAlternatorPartialSourceMeasurementIds: sortIds(
+      runningAlternatorPartialSourceMeasurementIds,
+    ),
   };
 }
