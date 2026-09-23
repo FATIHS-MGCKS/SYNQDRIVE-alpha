@@ -48,6 +48,52 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+## CL-2026-09-22 — M3.3C C1.1 anchor binding + Postgres contract hardening (PR #1726 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C1 anchor accepted any ENGINE_OFF voltage without session/age binding; migration verifier lacked semantic-revision duplicate proof and pg_catalog index/FK checks. |
+| **OBSERVATION** | Foreign-session anchor could skew shutdown delta; PostgreSQL truncates long index names (>63). |
+| **HYPOTHESIS** | Fail-closed anchor contract + behavioral uniqueness proofs preserve domain integrity before C3 writers. |
+| **CHANGE** | `resolveRestSessionRetentionAnchorVoltageMv(targetRestSessionId, …)` requires matching session, ENGINE_OFF, `actualRestAgeMs===0`, finite V; ANCHOR_TEST_A–E; verifier proves duplicate semantic revision rejected; pg_catalog object contract; second `migrate deploy` noop; short revision index name. |
+| **WHY** | M3.3C C1.1 pre-merge hardening. |
+| **EXPECTED_EFFECT** | Pure policy cannot use foreign anchors; DB contract verified on ephemeral Postgres. |
+| **VALIDATION** | `rest-session-retention.policy.spec.ts`; `npm run test:battery:v2:rest-session-feature:migration`. |
+| **OBSERVED_EFFECT** | Pending PR #1726 merge. |
+| **NON_EFFECTS** | No runtime hooks; shadow flag still default OFF. |
+| **REGRESSIONS_OR_TRADEOFFS** | None intended. |
+| **DECISION_STATUS** | **C1.1 complete** on PR branch. |
+| **REMAINING_GAPS** | C2–C5 unchanged. |
+| **AFFECTED_GRAPH** | Battery V2 rest-session feature foundation. |
+| **EVIDENCE** | PR #1726 commits on `cursor/battery-v2-m3-3c1-rest-session-feature-foundation-90ec`. |
+
+---
+
+## CL-2026-09-22 — M3.3C C1 rest-session feature foundation (schema + pure policy)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3C preflight only; no `BatteryRestSessionFeature` persistence or retention policy module. |
+| **OBSERVATION** | C0 preflight approved versioned append-only feature rows + Theil-Sen retention contract. |
+| **HYPOTHESIS** | Additive schema + pure policy + tests de-risk C3/C4 without touching authoritative assessment/publication paths. |
+| **CHANGE** | Prisma `battery_rest_session_features` + migration `20260922203000_battery_rest_session_features`; flag `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED` default OFF; pure `rest-session-features/*` policy + A–H unit tests; ephemeral migration CI script. |
+| **WHY** | M3.3C C1 authorized scope boundary (no hooks/writers). |
+| **EXPECTED_EFFECT** | Repository can migrate on deploy when authorized; runtime behavior unchanged while flag OFF and no writers. |
+| **VALIDATION** | `rest-session-retention.policy.spec.ts`; `npm run test:battery:v2:rest-session-feature:migration` on ephemeral Postgres; prisma validate/generate. |
+| **OBSERVED_EFFECT** | Pending PR merge/deploy. |
+| **NON_EFFECTS** | No GE/rest-session service changes; no assessment/publication/BatteryFeatures consumption; production unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | Additional table/index footprint; append-only rows may grow — acceptable for shadow auditability. |
+| **DECISION_STATUS** | **C1 foundation complete**; C2–C5 **NOT_STARTED**. |
+| **REMAINING_GAPS** | C3 digest + writers; C4 hooks; charge opportunity compute (C2). |
+| **AFFECTED_GRAPH** | Battery V2 persistence + generalized evidence planning (implementation). |
+| **EVIDENCE** | `research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md` |
+
+---
+
 ## CL-2026-09-22 — M3.3C.0A PR #1725 preflight semantic / provenance hardening (doc-only)
 
 | Field | Value |

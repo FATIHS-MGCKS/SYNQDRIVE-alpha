@@ -55,6 +55,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-22T22:40:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c1-rest-session-feature-foundation-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C C1 — Rest session feature schema + pure retention policy',
+    summary: [
+      'Additive Prisma table battery_rest_session_features with append-only lifecycle enums and digest/revision unique constraints.',
+      'BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED default false — zero runtime writers in C1.',
+      'Pure rest-session retention policy: Theil-Sen slope, mV units, actualRestAgeMs authority, unit tests A–H.',
+      'Ephemeral PostgreSQL migration verification script; no assessment/publication/BatteryFeatures coupling.',
+    ],
+    reason:
+      'M3.3C C1 authorized foundation after preflight — schema and deterministic policy before C3 hooks.',
+    previousBehavior:
+      'No shadow rest-session feature persistence or retention curve computation module.',
+    details:
+      'architecture/battery-v2/research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md, generalized-evidence/rest-session-features/*, migration 20260922203000_battery_rest_session_features',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:35:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c0-retention-charge-preflight-2026-09-22',
     version: '4.9.1995',
     title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
