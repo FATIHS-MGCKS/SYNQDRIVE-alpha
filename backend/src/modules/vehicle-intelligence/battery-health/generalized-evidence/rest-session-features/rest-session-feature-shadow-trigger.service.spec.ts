@@ -236,6 +236,116 @@ describe('BatteryRestSessionService C4 hooks', () => {
     expect(triggerFeatureComputation).not.toHaveBeenCalled();
   });
 
+  it('C4.1: zero-age REST_WAKE (same timestamp as anchor) → no valid count, no C3', async () => {
+    const triggerFeatureComputation = jest.fn();
+    const trigger = { triggerFeatureComputation } as unknown as RestSessionFeatureShadowTriggerService;
+    const updateRestSession = jest.fn().mockResolvedValue({ id: 'sess-1' });
+    const anchorAt = new Date('2026-09-21T08:00:00.000Z');
+    const repository = {
+      findActiveRestSession: jest.fn().mockResolvedValue({
+        id: 'sess-1',
+        organizationId: 'org',
+        vehicleId: 'veh',
+        anchorAt,
+      }),
+      updateRestSession,
+      linkObservationToSession: jest.fn(),
+    } as unknown as GeneralizedEvidenceRepository;
+    const service = new BatteryRestSessionService(repository, undefined, trigger);
+    await service.processObservation({
+      organizationId: 'org',
+      vehicleId: 'veh',
+      observation: {
+        id: 'obs-zero',
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+        voltageObservedAt: anchorAt,
+        tripId: null,
+      } as any,
+      fields: restFields({ voltageObservedAt: anchorAt }),
+      referenceAt: anchorAt,
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+    });
+    expect(updateRestSession).toHaveBeenCalledWith(
+      'sess-1',
+      expect.not.objectContaining({ validRestObservationCount: { increment: 1 } }),
+    );
+    expect(triggerFeatureComputation).not.toHaveBeenCalled();
+  });
+
+  it('C4.1: 1 ms after anchor → valid count + C3 trigger once', async () => {
+    const triggerFeatureComputation = jest.fn().mockResolvedValue({ status: 'CREATED' });
+    const trigger = { triggerFeatureComputation } as unknown as RestSessionFeatureShadowTriggerService;
+    const updateRestSession = jest.fn().mockResolvedValue({ id: 'sess-1' });
+    const anchorAt = new Date('2026-09-21T08:00:00.000Z');
+    const observedAt = new Date(anchorAt.getTime() + 1);
+    const repository = {
+      findActiveRestSession: jest.fn().mockResolvedValue({
+        id: 'sess-1',
+        organizationId: 'org',
+        vehicleId: 'veh',
+        anchorAt,
+      }),
+      updateRestSession,
+      linkObservationToSession: jest.fn(),
+    } as unknown as GeneralizedEvidenceRepository;
+    const service = new BatteryRestSessionService(repository, undefined, trigger);
+    await service.processObservation({
+      organizationId: 'org',
+      vehicleId: 'veh',
+      observation: {
+        id: 'obs-pos',
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+        voltageObservedAt: observedAt,
+        tripId: null,
+      } as any,
+      fields: restFields({ voltageObservedAt: observedAt }),
+      referenceAt: observedAt,
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+    });
+    expect(updateRestSession).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({ validRestObservationCount: { increment: 1 } }),
+    );
+    expect(triggerFeatureComputation).toHaveBeenCalledTimes(1);
+  });
+
+  it('C4.1: negative rest age (observation before anchor) → no valid count, no C3', async () => {
+    const triggerFeatureComputation = jest.fn();
+    const trigger = { triggerFeatureComputation } as unknown as RestSessionFeatureShadowTriggerService;
+    const updateRestSession = jest.fn().mockResolvedValue({ id: 'sess-1' });
+    const anchorAt = new Date('2026-09-21T08:00:00.000Z');
+    const observedAt = new Date(anchorAt.getTime() - 60_000);
+    const repository = {
+      findActiveRestSession: jest.fn().mockResolvedValue({
+        id: 'sess-1',
+        organizationId: 'org',
+        vehicleId: 'veh',
+        anchorAt,
+      }),
+      updateRestSession,
+      linkObservationToSession: jest.fn(),
+    } as unknown as GeneralizedEvidenceRepository;
+    const service = new BatteryRestSessionService(repository, undefined, trigger);
+    await service.processObservation({
+      organizationId: 'org',
+      vehicleId: 'veh',
+      observation: {
+        id: 'obs-neg',
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+        voltageObservedAt: observedAt,
+        tripId: null,
+      } as any,
+      fields: restFields({ voltageObservedAt: observedAt }),
+      referenceAt: observedAt,
+      stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+    });
+    expect(updateRestSession).toHaveBeenCalledWith(
+      'sess-1',
+      expect.not.objectContaining({ validRestObservationCount: { increment: 1 } }),
+    );
+    expect(triggerFeatureComputation).not.toHaveBeenCalled();
+  });
+
   it('TEST_F: session terminal transition → one terminal trigger', async () => {
     const triggerFeatureComputation = jest.fn().mockResolvedValue({ status: 'CREATED' });
     const trigger = {

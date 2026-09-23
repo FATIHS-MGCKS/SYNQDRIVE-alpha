@@ -3,6 +3,13 @@
 **Date:** 2026-09-23  
 **Scope:** Wire C3 `RestSessionFeatureComputationService` behind default-OFF shadow flag via synchronous post-mutation triggers. No queues, no production deploy, no schema change.
 
+## Valid rest ladder age (C4.1)
+
+`isValidRestLadderObservation()` requires **`actualRestAgeMs > 0`** (strict) plus `ALIGNED` or `PARTIAL` alignment — aligned with C1 retention eligibility.
+
+- `actualRestAgeMs === 0` is **canonical ENGINE_OFF anchor semantics** (handled on the ENGINE_OFF branch); it is **not** a post-shutdown retention ladder point.
+- C4 `VALID_REST_OBSERVATION_LINKED` uses the same helper as `validRestObservationCount` — no ENGINE_OFF open trigger.
+
 ## Execution model
 
 `C4_EXECUTION_MODEL=SYNCHRONOUS_POST_MUTATION_FAIL_OPEN`

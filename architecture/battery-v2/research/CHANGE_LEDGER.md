@@ -54,6 +54,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C4.1 valid-rest age alignment + PG_K shadow-only proof (PR #1730 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `isValidRestLadderObservation` treated `actualRestAgeMs === 0` as valid; PG_K only opened ENGINE_OFF (no C4 compute path). |
+| **CHANGE** | Require `actualRestAgeMs > 0`; AGE_A–G + C4.1 unit boundaries; PG_M eligibility consistency; PG_K valid-rest + terminal feature rows with authoritative zero-write proof. |
+| **WHY** | Align rest-session valid count and C4 triggers with C1/C3 retention eligibility; non-vacuous shadow isolation proof. |
+| **VALIDATION** | Helper + C4 unit; C4 Postgres PG_M/PG_K; C1/C2/C3 regression suites. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **EVIDENCE** | `M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md` C4.1 section |
+
+---
+
 ## CL-2026-09-23 — M3.3C C4 shadow lifecycle wiring (post-mutation fail-open)
 
 | Field | Value |

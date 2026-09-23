@@ -137,5 +137,11 @@ describe('generalized evidence provenance helpers', () => {
         actualRestAgeMs: null,
       }),
     ).toBe(false);
+    expect(
+      isValidRestLadderObservation({
+        stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+        actualRestAgeMs: 0,
+      }),
+    ).toBe(false);
   });
 });

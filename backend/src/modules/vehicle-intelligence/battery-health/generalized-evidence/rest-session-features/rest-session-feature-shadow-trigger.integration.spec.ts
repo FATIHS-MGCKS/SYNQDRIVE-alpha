@@ -649,23 +649,146 @@ async function openSessionWithAnchor(
       expect(updated.confirmedTripId).toBe(trip.id);
     });
 
-    it('PG_K: authoritative battery tables unchanged by C4 triggers', async () => {
+    it('PG_M: validRestObservationCount matches C1 eligibility (zero / negative / positive)', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'M-elig');
+      const { restSessions } = buildC4Stack(prisma);
+      const anchorAt = new Date('2026-09-22T20:30:00.000Z');
+      const { session } = await openSessionWithAnchor(
+        prisma,
+        restSessions,
+        organizationId,
+        vehicleId,
+        anchorAt,
+      );
+
+      async function reloadSession() {
+        return prisma.batteryRestSession.findUniqueOrThrow({ where: { id: session.id } });
+      }
+
+      async function processRestAt(voltageObservedAt: Date, measurementObservedAt?: Date) {
+        const measObservedAt = measurementObservedAt ?? voltageObservedAt;
+        const meas = await createMeasurement(prisma, organizationId, vehicleId, measObservedAt);
+        const obs = await createGeObservation(prisma, {
+          organizationId,
+          vehicleId,
+          sourceMeasurementId: meas.id,
+          evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+          observedAt: voltageObservedAt,
+        });
+        await restSessions.processObservation({
+          organizationId,
+          vehicleId,
+          observation: obs,
+          fields: restFields(voltageObservedAt),
+          referenceAt: voltageObservedAt,
+          stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+        });
+      }
+
+      expect((await reloadSession()).validRestObservationCount).toBe(0);
+
+      await processRestAt(new Date(anchorAt.getTime()), new Date(anchorAt.getTime() + 5));
+      expect((await reloadSession()).validRestObservationCount).toBe(0);
+      expect(await prisma.batteryRestSessionFeature.count({ where: { restSessionId: session.id } })).toBe(
+        0,
+      );
+
+      await processRestAt(new Date(anchorAt.getTime() - 120_000), new Date(anchorAt.getTime() + 10));
+      expect((await reloadSession()).validRestObservationCount).toBe(0);
+      expect(await prisma.batteryRestSessionFeature.count({ where: { restSessionId: session.id } })).toBe(
+        0,
+      );
+
+      const positiveAt = new Date(anchorAt.getTime() + 3_600_000);
+      await processRestAt(positiveAt, positiveAt);
+      expect((await reloadSession()).validRestObservationCount).toBe(1);
+      expect(await prisma.batteryRestSessionFeature.count({ where: { restSessionId: session.id } })).toBe(
+        1,
+      );
+    });
+
+    it('PG_K: C4 executes shadow feature writes only (authoritative tables unchanged)', async () => {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'K');
-      const before = {
+      const beforeAuth = {
         features: await prisma.batteryFeatures.count(),
         assessments: await prisma.batteryAssessment.count(),
         publications: await prisma.batteryPublication.count(),
       };
       const { restSessions } = buildC4Stack(prisma);
       const anchorAt = new Date('2026-09-22T20:00:00.000Z');
-      await openSessionWithAnchor(prisma, restSessions, organizationId, vehicleId, anchorAt);
-      const after = {
+      const { session } = await openSessionWithAnchor(
+        prisma,
+        restSessions,
+        organizationId,
+        vehicleId,
+        anchorAt,
+      );
+      const shadowBefore = await prisma.batteryRestSessionFeature.count({
+        where: { organizationId },
+      });
+
+      const restAt = new Date(anchorAt.getTime() + 3_600_000);
+      const restMeas = await createMeasurement(prisma, organizationId, vehicleId, restAt);
+      const restObs = await createGeObservation(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: restMeas.id,
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+        observedAt: restAt,
+      });
+      await restSessions.processObservation({
+        organizationId,
+        vehicleId,
+        observation: restObs,
+        fields: restFields(restAt),
+        referenceAt: restAt,
+        stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+      });
+
+      const afterIncremental = await prisma.batteryRestSessionFeature.count({
+        where: { organizationId },
+      });
+      expect(afterIncremental - shadowBefore).toBeGreaterThanOrEqual(1);
+
+      const driveAt = new Date(restAt.getTime() + 120_000);
+      const driveMeas = await createMeasurement(prisma, organizationId, vehicleId, driveAt);
+      const driveObs = await createGeObservation(prisma, {
+        organizationId,
+        vehicleId,
+        sourceMeasurementId: driveMeas.id,
+        evidenceClass: BatteryGeneralizedEvidenceClass.DRIVING_NON_CHARGING,
+        observedAt: driveAt,
+      });
+      await restSessions.processObservation({
+        organizationId,
+        vehicleId,
+        observation: driveObs,
+        fields: restFields(driveAt, { speedKmh: 35, engineRunning: true }),
+        referenceAt: driveAt,
+        stateAlignmentClass: BatteryShutdownStateAlignmentClass.ALIGNED,
+      });
+
+      const shadowAfter = await prisma.batteryRestSessionFeature.count({ where: { organizationId } });
+      expect(shadowAfter - shadowBefore).toBeGreaterThanOrEqual(2);
+      const phases = await prisma.batteryRestSessionFeature.findMany({
+        where: { restSessionId: session.id },
+        select: { computationPhase: true },
+      });
+      expect(
+        phases.some((p) => p.computationPhase === BatteryRestSessionFeatureComputationPhase.INCREMENTAL),
+      ).toBe(true);
+      expect(
+        phases.some((p) => p.computationPhase === BatteryRestSessionFeatureComputationPhase.FINAL),
+      ).toBe(true);
+
+      const afterAuth = {
         features: await prisma.batteryFeatures.count(),
         assessments: await prisma.batteryAssessment.count(),
         publications: await prisma.batteryPublication.count(),
       };
-      expect(after).toEqual(before);
+      expect(afterAuth).toEqual(beforeAuth);
     });
 
     it('PG_L: flag OFF → lifecycle persists, feature table unchanged', async () => {

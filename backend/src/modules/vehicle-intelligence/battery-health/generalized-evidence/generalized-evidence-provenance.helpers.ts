@@ -56,7 +56,7 @@ export function isValidRestLadderObservation(input: {
   stateAlignmentClass: BatteryShutdownStateAlignmentClass;
   actualRestAgeMs: number | null;
 }): boolean {
-  if (input.actualRestAgeMs == null) return false;
+  if (input.actualRestAgeMs == null || input.actualRestAgeMs <= 0) return false;
   return (
     input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.ALIGNED ||
     input.stateAlignmentClass === BatteryShutdownStateAlignmentClass.PARTIAL
