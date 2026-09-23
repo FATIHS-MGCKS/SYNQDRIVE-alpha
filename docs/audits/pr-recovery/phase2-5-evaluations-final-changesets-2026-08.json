@@ -1,0 +1,2980 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-08-10T18:04:30Z",
+  "source_state": {
+    "phase2_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
+    "current_main_sha": "2d721a902feb56101eb9992249f1859ff64024cb",
+    "main_delta_left_right": "0\t0",
+    "git_version": "git version 2.43.0",
+    "gh_version": "gh version 2.91.0 (2026-04-22)"
+  },
+  "summary": {
+    "original_phase2_evaluation_changesets": 43,
+    "final_evaluation_changesets_including_main_baselines": 44,
+    "recovery_changesets": 42,
+    "already_in_main_baselines": 2,
+    "new_evaluation_changesets_from_residual": 0,
+    "residual_distinct_commits": 17,
+    "remaining_unknown": 0,
+    "accepted_adrs": 10,
+    "open_architecture_decisions": 0,
+    "integration_packages": 8,
+    "ready_for_phase3": true
+  },
+  "retired_changeset": "cs-evaluations-unresolved-residual",
+  "changesets": [
+    {
+      "changeset_id": "cs-evaluations-metric-registry-baseline",
+      "capability": "Metric Registry",
+      "status": "ALREADY_IN_MAIN",
+      "source_prs": [
+        752
+      ],
+      "source_commits": [
+        "850b20bc632e514acba32e05e38b92c864840779"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/app.module.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.controller.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.definitions.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.legacy-map.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.module.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.registry.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.registry.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.service.ts",
+        "backend/src/modules/evaluations-metrics/index.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/analytics/evaluations-metric-registry.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-metric.contract.test.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-metric.contract.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-metrics/evaluations-metric.contract.ts",
+        "shared/evaluations-metrics/evaluations-metric.i18n.ts",
+        "shared/evaluations-metrics/evaluations-metric.legacy-map.ts"
+      ],
+      "already_in_main": true,
+      "needs_port": false,
+      "needs_reimplementation": false,
+      "dependencies": [],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E1",
+      "risk": "LOW",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "ALREADY_IN_MAIN_NO_ACTION",
+      "tests": [
+        "preserve current evaluations registry/provenance tests"
+      ],
+      "staging": "Not separately required; regression gate in E1",
+      "vps": "Not separately required",
+      "rollback": "No action; baseline is already in main.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #752, commit 850b20bc632e514acba32e05e38b92c864840779",
+        "direct reachability verified",
+        "exact commit is reachable from current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-calculation-versioning-baseline",
+      "capability": "Calculation Versioning",
+      "status": "ALREADY_IN_MAIN",
+      "source_prs": [
+        752
+      ],
+      "source_commits": [
+        "312ee93f5315af7c8a4474a5014976a68584a7c6"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/prisma/migrations/20260724130000_dashboard_insight_calculation_meta/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.service.ts",
+        "backend/src/modules/business-insights/dashboard-insights.repository.ts",
+        "backend/src/modules/business-insights/evaluations-baseline.characterization.spec.ts",
+        "backend/src/modules/business-insights/insight.types.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-calculation-provenance.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric-calculation-versions.sync.spec.ts",
+        "backend/src/modules/evaluations-metrics/insight-calculation-provenance.ts",
+        "docs/architecture/analytics/evaluations-calculation-versioning.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-financial-provenance.test.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-financial-provenance.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-metric-registry.ts",
+        "shared/evaluations-metrics/evaluations-calculation-provenance.ts",
+        "shared/evaluations-metrics/evaluations-financial-provenance.ts",
+        "shared/evaluations-metrics/evaluations-metric-calculation-versions.ts"
+      ],
+      "already_in_main": true,
+      "needs_port": false,
+      "needs_reimplementation": false,
+      "dependencies": [],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E1",
+      "risk": "LOW",
+      "migration": true,
+      "backend": true,
+      "frontend": false,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "ALREADY_IN_MAIN_NO_ACTION",
+      "tests": [
+        "preserve current evaluations registry/provenance tests"
+      ],
+      "staging": "Not separately required; regression gate in E1",
+      "vps": "Not separately required",
+      "rollback": "No action; baseline is already in main.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #752, commit 312ee93f5315af7c8a4474a5014976a68584a7c6",
+        "direct reachability verified",
+        "exact commit is reachable from current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-timezone-period-model",
+      "capability": "Timezone / Period Model",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        754
+      ],
+      "source_commits": [
+        "f23e6bdab173c9e4705f56316737a2497d147ae1"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.module.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-period.controller.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-period.resolver.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-period.resolver.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-period.service.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/analytics/evaluations-timezone-period-model.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.ts",
+        "frontend/src/rental/components/dashboard/useDashboardViewModel.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-period.client.test.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-period.client.ts",
+        "frontend/src/rental/lib/evaluations/useEvaluationsReportingPeriods.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-periods/evaluations-period.contract.ts",
+        "shared/evaluations-periods/evaluations-zoned-date.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-002"
+      ],
+      "package_id": "E1",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #754, commit f23e6bdab173c9e4705f56316737a2497d147ae1",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-unified-kpi-contract",
+      "capability": "Unified KPI Contract",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        755
+      ],
+      "source_commits": [
+        "59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-kpi.controller.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric-response.dto.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric-response.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.module.ts",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.ts",
+        "docs/architecture/analytics/evaluations-metric-response-contract.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-metric-response.test.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-metric-response.ts",
+        "shared/evaluations-metrics/evaluations-metric-response.builder.ts",
+        "shared/evaluations-metrics/evaluations-metric-response.contract.ts",
+        "shared/evaluations-metrics/evaluations-metric-response.legacy-map.ts",
+        "shared/evaluations-metrics/evaluations-metric-response.validator.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-timezone-period-model",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E1",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #755, commit 59cbd9f1f8f2e5f55601b5f2385f9fc5701c49b2",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-money-domain",
+      "capability": "Money Domain",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        756
+      ],
+      "source_commits": [
+        "077ba5060251eaa4fae983249822be68b6b00293"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.ts",
+        "backend/src/shared/money/index.ts",
+        "backend/src/shared/money/money-domain.spec.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/finance/money-domain-model.md",
+        "frontend/src/lib/money.test.ts",
+        "frontend/src/lib/money.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-metric-response.ts",
+        "frontend/src/rental/lib/evaluations/insights-categories.characterization.test.ts",
+        "frontend/src/rental/lib/insights-categories.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/money/currency-decimals.ts",
+        "shared/money/money.contract.ts",
+        "shared/money/money.format.ts",
+        "shared/money/money.legacy-insight.ts",
+        "shared/money/money.util.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-unified-kpi-contract",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #756, commit 077ba5060251eaa4fae983249822be68b6b00293",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-money-migration",
+      "capability": "Money Migration",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        756
+      ],
+      "source_commits": [
+        "de17de779d1c3a5de9358268ecbc50da98270849"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/scripts/ops/backfill-evaluations-insight-money-metrics.ts",
+        "backend/src/modules/business-insights/detectors/low-utilization.detector.ts",
+        "backend/src/modules/business-insights/insight-grouping.service.ts",
+        "backend/src/modules/business-insights/insight-health-gate.spec.ts",
+        "backend/src/modules/business-insights/insight-health-gate.ts",
+        "backend/src/modules/business-insights/insight-ranking.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-calculation-provenance.spec.ts",
+        "backend/src/shared/money/index.ts",
+        "backend/src/shared/money/money-domain.spec.ts",
+        "backend/src/shared/money/money-insight-migration.spec.ts",
+        "docs/migrations/evaluations-money-migration.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-money.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-test-fixtures.ts",
+        "frontend/src/rental/lib/evaluations/insights-categories.characterization.test.ts",
+        "frontend/src/rental/lib/evaluations/insights-cockpit-kpi.characterization.test.ts",
+        "frontend/src/rental/lib/insights-categories.ts",
+        "shared/evaluations-metrics/evaluations-metric.legacy-map.ts",
+        "shared/money/money-insight-metrics.ts",
+        "shared/money/money.legacy-insight.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-money-domain",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #756, commit de17de779d1c3a5de9358268ecbc50da98270849",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-receivables",
+      "capability": "Receivables",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        757
+      ],
+      "source_commits": [
+        "d966961c2dc9d6690f5ea21d32d8360b77c0ab1c"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/financial-insights.logic.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.ts",
+        "backend/src/shared/receivables/index.ts",
+        "backend/src/shared/receivables/receivables-analytics.spec.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/finance/receivables-analytics.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.test.ts",
+        "frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.ts",
+        "frontend/src/rental/components/dashboard/useDashboardViewModel.ts",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/lib/evaluations/financial-insights-scenarios.characterization.test.ts",
+        "frontend/src/rental/lib/financial-insights.logic.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/receivables/receivables-analytics.ts",
+        "shared/receivables/receivables-invoice.contract.ts",
+        "shared/receivables/receivables-zoned-due.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-money-migration",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #757, commit d966961c2dc9d6690f5ea21d32d8360b77c0ab1c",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-revenue-cashflow-result",
+      "capability": "Revenue / Cashflow / Result",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        760
+      ],
+      "source_commits": [
+        "e340795d2f22198c867401becfa99217c321c0f5"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.definitions.ts",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.ts",
+        "backend/src/shared/finance/index.ts",
+        "backend/src/shared/finance/revenue-cashflow-contribution.spec.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/finance/revenue-cashflow-contribution-model.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.test.ts",
+        "frontend/src/rental/components/dashboard/runtime/businessPulseSliceBuilder.ts",
+        "frontend/src/rental/components/finance/FinanceMetricHint.tsx",
+        "frontend/src/rental/lib/evaluations/financial-insights-scenarios.characterization.test.ts",
+        "frontend/src/rental/lib/financial-insights.logic.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-metrics/evaluations-metric.i18n.ts",
+        "shared/finance/finance-metric-definitions.ts",
+        "shared/finance/revenue-cashflow-contribution.contract.ts",
+        "shared/finance/revenue-cashflow-contribution.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-receivables",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #760, commit e340795d2f22198c867401becfa99217c321c0f5",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-multi-currency",
+      "capability": "Multi-Currency",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        762
+      ],
+      "source_commits": [
+        "efb3abc5feda78818a04849b19d24226c8396282"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-fx-rate.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-metric.module.ts",
+        "backend/src/shared/fx/index.ts",
+        "backend/src/shared/fx/multi-currency-analytics.spec.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/finance/multi-currency-analytics.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/finance/MultiCurrencySummary.tsx",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "frontend/vitest.config.ts",
+        "shared/finance/revenue-cashflow-contribution.contract.ts",
+        "shared/finance/revenue-cashflow-contribution.ts",
+        "shared/fx/fx.analytics-resolver.ts",
+        "shared/fx/fx.contract.ts",
+        "shared/fx/fx.convert.ts",
+        "shared/fx/fx.org-reporting-currency.ts",
+        "shared/fx/fx.provider.ts",
+        "shared/fx/index.ts",
+        "shared/fx/multi-currency-definitions.ts",
+        "shared/receivables/receivables-analytics.ts",
+        "shared/receivables/receivables-invoice.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-revenue-cashflow-result",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #762, commit efb3abc5feda78818a04849b19d24226c8396282",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-finance-test-suite",
+      "capability": "Finance Test Suite",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        765
+      ],
+      "source_commits": [
+        "7ab6d01dac0cf6a979c321327b03289ed31afe92"
+      ],
+      "affected_files": [
+        "backend/package-lock.json",
+        "backend/package.json",
+        "backend/src/modules/evaluations-metrics/evaluations-finance-periods.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.harness.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.integration.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-financial-kpi.service.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-fx-rate.service.spec.ts",
+        "backend/src/modules/evaluations-metrics/evaluations-kpi.controller.characterization.spec.ts",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.spec.ts",
+        "backend/src/modules/evaluations-metrics/financial-kpi.logic.ts",
+        "backend/src/shared/evaluations-finance-golden.spec.ts",
+        "backend/src/shared/fx/fx.org-reporting-currency.spec.ts",
+        "backend/src/shared/fx/index.ts",
+        "backend/src/shared/money/money-domain.properties.spec.ts",
+        "backend/tsconfig.json",
+        "docs/audits/evaluations/evaluations-finance-test-report-2026-07.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/lib/evaluations/evaluations-finance-golden-fixtures.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-financial-mtd.contract.test.ts",
+        "frontend/src/rental/lib/evaluations/evaluations-test-fixtures.ts",
+        "frontend/src/rental/lib/evaluations/financial-insights-golden.characterization.test.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vitest.config.ts",
+        "scripts/test/evaluations-verify.sh",
+        "shared/evaluations-fixtures/finance-golden-organizations.ts",
+        "shared/finance/finance-metric-definitions.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-multi-currency",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-001"
+      ],
+      "package_id": "E2",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #765, commit 7ab6d01dac0cf6a979c321327b03289ed31afe92",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-summary-detail-separation",
+      "capability": "Summary / Detail Separation",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        767
+      ],
+      "source_commits": [
+        "515cd44e5b4beac30ffe8b9d63f3d941a9fb578b"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/prisma/migrations/20260724100000_dashboard_insights_analytics_index/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/business-insights.service.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.spec.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.ts",
+        "backend/src/modules/business-insights/dashboard-insights.controller.ts",
+        "backend/src/modules/business-insights/dashboard-insights.repository.ts",
+        "backend/src/modules/business-insights/dto/insight-analytics-query.dto.ts",
+        "backend/src/modules/business-insights/evaluations-insights.controller.ts",
+        "backend/src/modules/business-insights/insights-analytics.shared.spec.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/analytics/evaluations-summary-detail-separation.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/hooks/useEvaluationsInsightsAnalytics.ts",
+        "frontend/src/rental/lib/insights-categories.ts",
+        "frontend/tsconfig.app.json",
+        "frontend/vite.config.ts",
+        "shared/evaluations-insights/insights-analytics.contract.ts",
+        "shared/evaluations-insights/insights-analytics.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #767, commit 515cd44e5b4beac30ffe8b9d63f3d941a9fb578b",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-grouping-entity-references",
+      "capability": "Grouping / Entity References",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        770
+      ],
+      "source_commits": [
+        "da79b28aa4ad0d84202d332c1f20e10cad8f06dd"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/prisma/migrations/20260724110000_dashboard_insights_entity_references/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.service.ts",
+        "backend/src/modules/business-insights/business-insights.spec.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.ts",
+        "backend/src/modules/business-insights/dashboard-insights.repository.ts",
+        "backend/src/modules/business-insights/detectors/tight-handover.detector.ts",
+        "backend/src/modules/business-insights/insight-entity-reference.util.ts",
+        "backend/src/modules/business-insights/insight-entity-references.shared.spec.ts",
+        "backend/src/modules/business-insights/insight-grouping.service.ts",
+        "backend/src/modules/business-insights/insight.types.ts",
+        "backend/src/modules/business-insights/notification-engine.characterization.spec.ts",
+        "docs/architecture/analytics/evaluations-insight-grouping-model.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/hooks/useEvaluationsInsightsAnalytics.ts",
+        "shared/evaluations-insights/insight-entity-references.contract.ts",
+        "shared/evaluations-insights/insight-entity-references.ts",
+        "shared/evaluations-insights/insights-analytics.contract.ts",
+        "shared/evaluations-insights/insights-analytics.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-summary-detail-separation",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-004"
+      ],
+      "package_id": "E1",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #770, commit da79b28aa4ad0d84202d332c1f20e10cad8f06dd",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-analytics-summary",
+      "capability": "Analytics Summary",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        773
+      ],
+      "source_commits": [
+        "e65b88dbefb34b99d6c9520a6d785f571a8f33e6"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-query.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.characterization.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "docs/api/evaluations-analytics-summary-api.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-grouping-entity-references",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #773, commit e65b88dbefb34b99d6c9520a6d785f571a8f33e6",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-filter-architecture",
+      "capability": "Filter Architecture",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        774
+      ],
+      "source_commits": [
+        "642a210403b63cb719af7566f2019c76044933aa"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.spec.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-filters.dto.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-query.dto.ts",
+        "backend/src/modules/business-insights/dto/insight-analytics-query.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-filter.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-filter.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-filters.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-insights.controller.ts",
+        "docs/architecture/analytics/evaluations-filter-contract.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/insights/EvaluationsAnalyticsFilterBar.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/hooks/useEvaluationsAnalyticsFilters.ts",
+        "frontend/src/rental/hooks/useEvaluationsInsightsAnalytics.ts",
+        "frontend/tsconfig.app.json",
+        "shared/evaluations-insights/evaluations-analytics-filters.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-filters.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-filters.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-analytics-summary",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-002"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #774, commit 642a210403b63cb719af7566f2019c76044933aa",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-tenant-isolation",
+      "capability": "Tenant Isolation",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        776
+      ],
+      "source_commits": [
+        "1724bd92bf8e4dfab742767ded38fbc18dabb19e"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.spec.ts",
+        "backend/src/modules/business-insights/dashboard-insights-analytics.service.ts",
+        "backend/src/modules/business-insights/dashboard-insights.controller.ts",
+        "backend/src/modules/business-insights/dashboard-insights.repository.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-filter.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-filter.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-insights.controller.ts",
+        "backend/src/modules/business-insights/evaluations-tenant-isolation.security.spec.ts",
+        "backend/src/modules/business-insights/internal-business-insights.controller.ts",
+        "backend/src/shared/stations/station-access.service.ts",
+        "docs/security/evaluations-tenant-isolation-audit.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-filters.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-filters.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-filters.ts",
+        "shared/evaluations-insights/insights-analytics.contract.ts",
+        "shared/evaluations-insights/insights-analytics.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-filter-architecture",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts",
+        "cs-roles-access-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-007"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": true,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "cross-tenant negative and RBAC tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #776, commit 1724bd92bf8e4dfab742767ded38fbc18dabb19e",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-analytics-contracts",
+      "capability": "Analytics Contracts",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        778
+      ],
+      "source_commits": [
+        "26e4532201c94ddf0f72d17c324b42add7dec9cc"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-contracts.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-insights.controller.ts",
+        "docs/api/evaluations-analytics-contracts.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/DashboardInsightsContext.tsx",
+        "frontend/src/rental/hooks/useEvaluationsInsightsAnalytics.ts",
+        "frontend/src/rental/lib/evaluations-analytics-api.types.ts",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-insight-detail.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-tenant-isolation",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-004",
+        "EVAL-ADR-007"
+      ],
+      "package_id": "E1",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #778, commit 26e4532201c94ddf0f72d17c324b42add7dec9cc",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-cost-model",
+      "capability": "Cost Model",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        780
+      ],
+      "source_commits": [
+        "d96ba7a8c6379e533ca17f2f3c77b46bbeb6ee43"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.repository.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-cost-model.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-cost-model.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts",
+        "shared/evaluations-insights/evaluations-cost-model.contract.ts",
+        "shared/evaluations-insights/evaluations-cost-model.spec.ts",
+        "shared/evaluations-insights/evaluations-cost-model.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-analytics-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression",
+        "money precision, period, currency, receivable and financial reconciliation fixtures"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #780, commit d96ba7a8c6379e533ca17f2f3c77b46bbeb6ee43",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-utilization",
+      "capability": "Utilization",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        782
+      ],
+      "source_commits": [
+        "46f533afc431d9c68a4486133313e4f5d7888de0"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-utilization-model.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-utilization-snapshot.service.ts",
+        "backend/src/modules/vehicles/vehicles.service.ts",
+        "docs/architecture/analytics/evaluations-utilization-model.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-utilization-intervals.ts",
+        "shared/evaluations-insights/evaluations-utilization-model.contract.ts",
+        "shared/evaluations-insights/evaluations-utilization-model.spec.ts",
+        "shared/evaluations-insights/evaluations-utilization-model.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-cost-model",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #782, commit 46f533afc431d9c68a4486133313e4f5d7888de0",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-strength-detection",
+      "capability": "Strength Detection",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        783
+      ],
+      "source_commits": [
+        "f5cfe0c5cda1bef260dca6a0417977701530210e"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-strength-detection.service.ts",
+        "backend/src/modules/business-insights/evaluations-strength-detection.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-strength-detection.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-strength-detection.contract.ts",
+        "shared/evaluations-insights/evaluations-strength-detection.spec.ts",
+        "shared/evaluations-insights/evaluations-strength-detection.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-utilization",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #783, commit f5cfe0c5cda1bef260dca6a0417977701530210e",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-weakness-detection",
+      "capability": "Weakness Detection",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        784
+      ],
+      "source_commits": [
+        "32714750f7f197c5a8e4b9bb304011ca2444a05d"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-weakness-detection.service.ts",
+        "backend/src/modules/business-insights/evaluations-weakness-detection.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-strength-detection.md",
+        "docs/architecture/analytics/evaluations-weakness-detection.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts",
+        "shared/evaluations-insights/evaluations-weakness-detection.contract.ts",
+        "shared/evaluations-insights/evaluations-weakness-detection.spec.ts",
+        "shared/evaluations-insights/evaluations-weakness-detection.ts",
+        "shared/evaluations-insights/insights-analytics.contract.ts",
+        "shared/evaluations-insights/insights-analytics.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-utilization",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #784, commit 32714750f7f197c5a8e4b9bb304011ca2444a05d",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-driver-influence-analysis",
+      "capability": "Driver / Influence Analysis",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        786
+      ],
+      "source_commits": [
+        "56b9efe22b059cedf5aff64188922aef6e10ba37"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-driver-analysis.service.ts",
+        "backend/src/modules/business-insights/evaluations-driver-analysis.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-driver-analysis.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.spec.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-driver-analysis.contract.ts",
+        "shared/evaluations-insights/evaluations-driver-analysis.spec.ts",
+        "shared/evaluations-insights/evaluations-driver-analysis.ts",
+        "shared/evaluations-insights/evaluations-strength-detection.contract.ts",
+        "shared/evaluations-insights/evaluations-weakness-detection.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-strength-detection",
+        "cs-evaluations-weakness-detection",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E3",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #786, commit 56b9efe22b059cedf5aff64188922aef6e10ba37",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-data-quality",
+      "capability": "Data Quality",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        788
+      ],
+      "source_commits": [
+        "2c32183956d3aa4ce56cd3ce4b02f33bcb3dc9b4"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-data-quality.service.ts",
+        "backend/src/modules/business-insights/evaluations-data-quality.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-data-quality-model.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts",
+        "shared/evaluations-insights/evaluations-cost-model.contract.ts",
+        "shared/evaluations-insights/evaluations-data-quality.contract.ts",
+        "shared/evaluations-insights/evaluations-data-quality.spec.ts",
+        "shared/evaluations-insights/evaluations-data-quality.thresholds.ts",
+        "shared/evaluations-insights/evaluations-data-quality.ts",
+        "shared/evaluations-insights/evaluations-utilization-model.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-driver-influence-analysis",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #788, commit 2c32183956d3aa4ce56cd3ce4b02f33bcb3dc9b4",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-freshness-lineage",
+      "capability": "Freshness / Lineage",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        790
+      ],
+      "source_commits": [
+        "5de5e0295658ae3e23f4025e9c316b54193d2872"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dto/evaluations-analytics-response.dto.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.integration.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.spec.ts",
+        "backend/src/modules/business-insights/evaluations-analytics-summary.service.ts",
+        "backend/src/modules/business-insights/evaluations-analytics.controller.ts",
+        "backend/src/modules/business-insights/evaluations-lineage.service.ts",
+        "backend/src/modules/business-insights/evaluations-lineage.shared.spec.ts",
+        "docs/architecture/analytics/evaluations-lineage-freshness.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/evaluations-analytics-contract-validation.ts",
+        "shared/evaluations-insights/evaluations-analytics-contracts.index.ts",
+        "shared/evaluations-insights/evaluations-analytics-primitives.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.contract.ts",
+        "shared/evaluations-insights/evaluations-analytics-summary.ts",
+        "shared/evaluations-insights/evaluations-cost-model.contract.ts",
+        "shared/evaluations-insights/evaluations-lineage.contract.ts",
+        "shared/evaluations-insights/evaluations-lineage.spec.ts",
+        "shared/evaluations-insights/evaluations-lineage.ts",
+        "shared/evaluations-insights/evaluations-utilization-model.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-data-quality",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #790, commit 5de5e0295658ae3e23f4025e9c316b54193d2872",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-metric-state-ux",
+      "capability": "Metric State UX",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        792
+      ],
+      "source_commits": [
+        "c82e449362177a4c9d30ae308558464a2ab934f4"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/evaluations-chart-series.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-driver-analysis.service.ts",
+        "backend/src/modules/business-insights/evaluations-metric-state.shared.spec.ts",
+        "backend/src/modules/business-insights/evaluations-strength-detection.service.ts",
+        "backend/src/modules/business-insights/evaluations-weakness-detection.service.ts",
+        "docs/frontend/evaluations-metric-state-ux.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricKpiCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricStateBadge.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricValue.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricValue.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.test.ts",
+        "frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.ts",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-insights/evaluations-chart-series.spec.ts",
+        "shared/evaluations-insights/evaluations-chart-series.ts",
+        "shared/evaluations-insights/evaluations-data-quality.contract.ts",
+        "shared/evaluations-insights/evaluations-lineage.contract.ts",
+        "shared/evaluations-insights/evaluations-metric-state.contract.ts",
+        "shared/evaluations-insights/evaluations-metric-state.spec.ts",
+        "shared/evaluations-insights/evaluations-metric-state.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #792, commit c82e449362177a4c9d30ae308558464a2ab934f4",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-data-quality-panel",
+      "capability": "Data Quality Panel",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        793
+      ],
+      "source_commits": [
+        "ff34b66f0074e7f5efd155ff6301cae1790cc361"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/evaluations-data-quality-panel.shared.spec.ts",
+        "docs/frontend/evaluations-data-quality-panel.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/App.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualityAdminPanel.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualityPanel.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualitySourceCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualityStateBadge.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualityUserHint.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "frontend/src/rental/lib/evaluations-data-quality-navigation.test.ts",
+        "frontend/src/rental/lib/evaluations-data-quality-navigation.ts",
+        "shared/evaluations-insights/evaluations-data-quality-panel.contract.ts",
+        "shared/evaluations-insights/evaluations-data-quality-panel.spec.ts",
+        "shared/evaluations-insights/evaluations-data-quality-panel.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-metric-state-ux",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E5",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #793, commit ff34b66f0074e7f5efd155ff6301cae1790cc361",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-information-architecture",
+      "capability": "Information Architecture",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        794
+      ],
+      "source_commits": [
+        "14072b3141bbfc5001372334aca8c8df9311df76"
+      ],
+      "affected_files": [
+        "docs/frontend/evaluations-information-architecture.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/EvaluationsPage.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsFinanceInvoiceDetail.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsInsightListCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsPageStructure.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSection.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx",
+        "frontend/src/rental/components/evaluations/evaluations-page.constants.ts",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsActionsSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsDataQualitySection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsExecutiveSummarySection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsFleetSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsStrengthsWeaknessesSection.tsx",
+        "frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.types.ts",
+        "frontend/src/rental/hooks/useEvaluationsInvoiceData.ts",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "frontend/src/rental/lib/evaluations-format.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-data-quality-panel"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003",
+        "EVAL-ADR-010"
+      ],
+      "package_id": "E5",
+      "risk": "MEDIUM",
+      "migration": false,
+      "backend": false,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Recommended",
+      "vps": "Standard release smoke",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #794, commit 14072b3141bbfc5001372334aca8c8df9311df76",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-executive-kpi-strip",
+      "capability": "Executive KPI Strip",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        795
+      ],
+      "source_commits": [
+        "2759f22353106ac3c3804fce0e95f8e1aef32b25"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/evaluations-executive-kpi-registry.shared.spec.ts",
+        "docs/frontend/evaluations-executive-kpis.md",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsExecutiveSummarySection.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "shared/evaluations-insights/evaluations-executive-kpi-registry.contract.ts",
+        "shared/evaluations-insights/evaluations-executive-kpi-registry.spec.ts",
+        "shared/evaluations-insights/evaluations-executive-kpi-registry.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-information-architecture",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E5",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #795, commit 2759f22353106ac3c3804fce0e95f8e1aef32b25",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-strength-weakness-cockpit",
+      "capability": "Strength / Weakness Cockpit",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        796
+      ],
+      "source_commits": [
+        "cb2ced964d28bbbec11f1564e7081376cc12710d"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/evaluations-sw-cockpit.shared.spec.ts",
+        "docs/frontend/evaluations-information-architecture.md",
+        "docs/frontend/evaluations-strengths-weaknesses-cockpit.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwCockpit.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwFindingCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwFindingDetailDrawer.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsStrengthsWeaknessesSection.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "shared/evaluations-insights/evaluations-sw-cockpit.contract.ts",
+        "shared/evaluations-insights/evaluations-sw-cockpit.spec.ts",
+        "shared/evaluations-insights/evaluations-sw-cockpit.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-executive-kpi-strip",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E5",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #796, commit cb2ced964d28bbbec11f1564e7081376cc12710d",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-risk-cost-failure-visuals",
+      "capability": "Risk / Cost / Failure Visuals",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        798
+      ],
+      "source_commits": [
+        "7f6dde4c8c502dc238167d62c508ac9145e91c5c"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/src/modules/business-insights/evaluations-risk-cost-visualizations.shared.spec.ts",
+        "docs/frontend/evaluations-risk-cost-visualizations.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/EvaluationsPage.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsChartDataTable.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsRiskMatrixChart.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "shared/evaluations-insights/evaluations-risk-cost-visualizations.contract.ts",
+        "shared/evaluations-insights/evaluations-risk-cost-visualizations.spec.ts",
+        "shared/evaluations-insights/evaluations-risk-cost-visualizations.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-strength-weakness-cockpit",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003"
+      ],
+      "package_id": "E5",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #798, commit 7f6dde4c8c502dc238167d62c508ac9145e91c5c",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-mobile-readiness",
+      "capability": "Mobile Readiness",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        801
+      ],
+      "source_commits": [
+        "304a6ed19da12e30bde4ed8e78f9784e0984eb49"
+      ],
+      "affected_files": [
+        "docs/audits/evaluations/evaluations-mobile-readiness-2026-07.md",
+        "frontend/e2e/e2e/artifacts/evaluations/evaluations-page-desktop-1280.png",
+        "frontend/e2e/e2e/artifacts/evaluations/evaluations-page-mobile-375.png",
+        "frontend/e2e/evaluations-fixtures.ts",
+        "frontend/e2e/evaluations-responsive.spec.ts",
+        "frontend/e2e/playwright.config.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/EvaluationsPage.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsFinanceInvoiceDetail.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricKpiCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMobileReadiness.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSection.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx",
+        "frontend/src/rental/components/evaluations/evaluations-responsive.constants.ts",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsFleetSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx",
+        "frontend/src/rental/components/insights/EvaluationsAnalyticsFilterBar.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-risk-cost-failure-visuals"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003",
+        "EVAL-ADR-010"
+      ],
+      "package_id": "E5",
+      "risk": "MEDIUM",
+      "migration": false,
+      "backend": false,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Recommended",
+      "vps": "Standard release smoke",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #801, commit 304a6ed19da12e30bde4ed8e78f9784e0984eb49",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-accessibility-i18n",
+      "capability": "Accessibility / i18n",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        803
+      ],
+      "source_commits": [
+        "ddad560687ad7d42ca7a15bb033e85bc06b25187"
+      ],
+      "affected_files": [
+        "docs/audits/evaluations/evaluations-accessibility-i18n-2026-07.md",
+        "frontend/.gitignore",
+        "frontend/e2e/evaluations-a11y.spec.ts",
+        "frontend/e2e/evaluations-fixtures.ts",
+        "frontend/e2e/evaluations-responsive.spec.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/EvaluationsPage.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsDataQualityAdminPanel.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsInsightListCard.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsMetricValue.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSection.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwCockpit.test.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsSwFindingCard.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsChartDataTable.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx",
+        "frontend/src/rental/components/evaluations/charts/EvaluationsRiskMatrixChart.tsx",
+        "frontend/src/rental/components/evaluations/evaluations-a11y.ts",
+        "frontend/src/rental/components/evaluations/evaluations.a11y.ui.test.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx",
+        "frontend/src/rental/components/insights/EvaluationsAnalyticsFilterBar.tsx",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "shared/evaluations-insights/evaluations-data-quality-panel.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-mobile-readiness"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-003",
+        "EVAL-ADR-010"
+      ],
+      "package_id": "E5",
+      "risk": "MEDIUM",
+      "migration": false,
+      "backend": false,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Recommended",
+      "vps": "Standard release smoke",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #803, commit ddad560687ad7d42ca7a15bb033e85bc06b25187",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-recommendation-domain",
+      "capability": "Recommendation Domain",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        804
+      ],
+      "source_commits": [
+        "9eae4b1246fcbfe5efa7f04caa2bb429600ccf3b"
+      ],
+      "affected_files": [
+        "backend/prisma/migrations/20260724120000_org_recommendations/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/recommendations/dto/recommendation.dto.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.controller.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.repository.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.service.spec.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.service.ts",
+        "backend/src/shared/recommendations/recommendation-domain.logic.spec.ts",
+        "backend/src/shared/recommendations/recommendation-domain.logic.ts",
+        "backend/src/shared/recommendations/recommendation-domain.mapper.ts",
+        "backend/src/shared/recommendations/recommendation-domain.types.ts",
+        "docs/architecture/analytics/evaluations-recommendation-domain.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-004",
+        "EVAL-ADR-005"
+      ],
+      "package_id": "E6",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #804, commit 9eae4b1246fcbfe5efa7f04caa2bb429600ccf3b",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-action-center",
+      "capability": "Action Center",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        806
+      ],
+      "source_commits": [
+        "364bd93733e30c6a98ea579f1707b8a73be2ecd8"
+      ],
+      "affected_files": [
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/recommendations/dto/recommendation.dto.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.controller.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.service.ts",
+        "docs/frontend/evaluations-action-center.md",
+        "frontend/e2e/evaluations-action-center.spec.ts",
+        "frontend/e2e/evaluations-fixtures.ts",
+        "frontend/e2e/playwright.config.ts",
+        "frontend/src/lib/api.ts",
+        "frontend/src/rental/App.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsActionCenter.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRecommendationDetailDrawer.tsx",
+        "frontend/src/rental/components/evaluations/evaluations-action-center.ui.test.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsActionsSection.tsx",
+        "frontend/src/rental/hooks/useEvaluationsRecommendations.test.ts",
+        "frontend/src/rental/hooks/useEvaluationsRecommendations.ts",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "frontend/src/rental/lib/evaluations-recommendations-api.types.ts",
+        "frontend/src/rental/lib/evaluations-recommendations-format.ts",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-insights/evaluations-recommendations.shared.spec.ts",
+        "shared/evaluations-insights/evaluations-recommendations.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-recommendation-domain",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-004",
+        "EVAL-ADR-005",
+        "EVAL-ADR-008"
+      ],
+      "package_id": "E6",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": true,
+      "privacy": false,
+      "integration_method": "RECONSTRUCT_MERGE_RESULT",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #806, commit 364bd93733e30c6a98ea579f1707b8a73be2ecd8",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-action-integrations",
+      "capability": "Action Integrations",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        807
+      ],
+      "source_commits": [
+        "8829b6a56a0687994edde3ead74d6f95b3122d33"
+      ],
+      "affected_files": [
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/recommendations/dto/recommendation-integration.dto.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.controller.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-entity-validation.service.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-integrations.service.spec.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-integrations.service.ts",
+        "docs/architecture/analytics/evaluations-action-integrations.md",
+        "docs/frontend/artifacts/evaluations-action-center.png",
+        "frontend/e2e/artifacts/evaluations/evaluations-action-center-desktop.png",
+        "frontend/e2e/evaluations-action-center.spec.ts",
+        "frontend/e2e/evaluations-fixtures.ts",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/EvaluationsPage.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsActionCenter.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRecommendationDetailDrawer.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRecommendationIntegrations.tsx",
+        "frontend/src/rental/components/evaluations/sections/EvaluationsActionsSection.tsx",
+        "frontend/src/rental/hooks/useEvaluationsRecommendationIntegrations.ts",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "frontend/src/rental/lib/evaluations-recommendation-integrations-navigation.test.ts",
+        "frontend/src/rental/lib/evaluations-recommendation-integrations-navigation.ts",
+        "shared/evaluations-insights/evaluations-recommendation-integrations.shared.spec.ts",
+        "shared/evaluations-insights/evaluations-recommendation-integrations.ts",
+        "shared/evaluations-insights/evaluations-recommendations.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": false,
+      "dependencies": [
+        "cs-evaluations-action-center",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-005"
+      ],
+      "package_id": "E6",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "PORT_PATCH_MANUALLY",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #807, commit 8829b6a56a0687994edde3ead74d6f95b3122d33",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-impact-measurement",
+      "capability": "Impact Measurement",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        808
+      ],
+      "source_commits": [
+        "038223bc18dc475a7f0908baa34c6da22986fd68"
+      ],
+      "affected_files": [
+        "backend/prisma/migrations/20260724130000_org_recommendation_impacts/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/recommendations/dto/recommendation-impact.dto.ts",
+        "backend/src/modules/business-insights/recommendations/org-recommendations.controller.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-impact.repository.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-impact.service.spec.ts",
+        "backend/src/modules/business-insights/recommendations/recommendation-impact.service.ts",
+        "backend/src/shared/recommendations/recommendation-impact.mapper.ts",
+        "docs/architecture/analytics/evaluations-impact-measurement.md",
+        "frontend/e2e/evaluations-action-center.spec.ts",
+        "frontend/e2e/evaluations-fixtures.ts",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRecommendationDetailDrawer.tsx",
+        "frontend/src/rental/components/evaluations/EvaluationsRecommendationImpactPanel.tsx",
+        "frontend/src/rental/hooks/useEvaluationsRecommendationImpact.ts",
+        "frontend/src/rental/i18n/translations/de.ts",
+        "frontend/src/rental/i18n/translations/en.ts",
+        "shared/evaluations-insights/evaluations-impact-measurement.shared.spec.ts",
+        "shared/evaluations-insights/evaluations-impact-measurement.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-action-integrations",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-005"
+      ],
+      "package_id": "E6",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #808, commit 038223bc18dc475a7f0908baa34c6da22986fd68",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-predictive-analytics-architecture",
+      "capability": "Predictive Analytics Architecture",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        809
+      ],
+      "source_commits": [
+        "f988c3664bbe18edc49ba8a3e762bb1660a8e043"
+      ],
+      "affected_files": [
+        "docs/architecture/analytics/evaluations-predictive-analytics-architecture.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006"
+      ],
+      "package_id": "E7",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": false,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #809, commit f988c3664bbe18edc49ba8a3e762bb1660a8e043",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "architecture evidence is documentation-only"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-feature-store",
+      "capability": "Feature Store",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        810
+      ],
+      "source_commits": [
+        "9cb26ece2b380e456fc440c3e97a336dd80dd890"
+      ],
+      "affected_files": [
+        "backend/package.json",
+        "backend/prisma/migrations/20260724140000_org_predictive_feature_snapshots/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/internal-business-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/dto/build-predictive-features.dto.ts",
+        "backend/src/modules/business-insights/predictive/dto/list-predictive-feature-snapshots.dto.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.loader.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.repository.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.service.spec.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.service.ts",
+        "backend/src/shared/predictive/predictive-feature.mapper.ts",
+        "backend/tsconfig.json",
+        "docs/architecture/analytics/evaluations-feature-store.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/vitest.config.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-calendar.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-extraction.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-registry.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-store.contract.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-store.shared.spec.ts",
+        "shared/evaluations-insights/predictive/evaluations-feature-time.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-predictive-analytics-architecture",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006",
+        "EVAL-ADR-009"
+      ],
+      "package_id": "E7",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": false,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #810, commit 9cb26ece2b380e456fc440c3e97a336dd80dd890",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-demand-revenue-utilization-forecast",
+      "capability": "Demand / Revenue / Utilization Forecast",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        811
+      ],
+      "source_commits": [
+        "96edda271330a5904843034b98e16990f9ed76e7"
+      ],
+      "affected_files": [
+        "backend/prisma/migrations/20260724150000_org_predictive_forecasts/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/internal-business-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/dto/list-predictive-forecasts.dto.ts",
+        "backend/src/modules/business-insights/predictive/dto/run-predictive-forecasts.dto.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.loader.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.repository.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.scheduler.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.service.spec.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.service.ts",
+        "backend/src/shared/predictive/predictive-forecast.mapper.ts",
+        "docs/architecture/analytics/evaluations-demand-revenue-utilization-forecast.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/predictive/evaluations-baseline-forecast.shared.spec.ts",
+        "shared/evaluations-insights/predictive/evaluations-baseline-forecast.ts",
+        "shared/evaluations-insights/predictive/evaluations-forecast.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-feature-store",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006",
+        "EVAL-ADR-009"
+      ],
+      "package_id": "E7",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #811, commit 96edda271330a5904843034b98e16990f9ed76e7",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-maintenance-failure-forecast",
+      "capability": "Maintenance / Failure Forecast",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        812
+      ],
+      "source_commits": [
+        "8488537978d8294e8ac04c436866104b99958886"
+      ],
+      "affected_files": [
+        "backend/prisma/migrations/20260724160000_org_predictive_risk_forecasts/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/internal-business-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/dto/list-predictive-risk-forecasts.dto.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.scheduler.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.loader.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.repository.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.service.spec.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.service.ts",
+        "backend/src/shared/predictive/predictive-risk-forecast.mapper.ts",
+        "docs/architecture/analytics/evaluations-maintenance-failure-forecast.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "shared/evaluations-insights/predictive/evaluations-maintenance-risk-forecast.shared.spec.ts",
+        "shared/evaluations-insights/predictive/evaluations-maintenance-risk-forecast.ts",
+        "shared/evaluations-insights/predictive/evaluations-maintenance-risk.contract.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-demand-revenue-utilization-forecast",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006",
+        "EVAL-ADR-009"
+      ],
+      "package_id": "E7",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #812, commit 8488537978d8294e8ac04c436866104b99958886",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-backtesting-drift",
+      "capability": "Backtesting / Drift",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        813
+      ],
+      "source_commits": [
+        "e3c8966a51c00a80eadfc2bc69cdca0e398e9b9d"
+      ],
+      "affected_files": [
+        "backend/prisma/migrations/20260724170000_org_predictive_backtesting/migration.sql",
+        "backend/prisma/schema.prisma",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.loader.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.repository.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.scheduler.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.service.spec.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.service.ts",
+        "backend/src/shared/predictive/predictive-backtest.mapper.ts",
+        "docs/architecture/analytics/evaluations-forecast-backtesting.md",
+        "shared/evaluations-insights/predictive/evaluations-backtest.contract.ts",
+        "shared/evaluations-insights/predictive/evaluations-backtest.shared.spec.ts",
+        "shared/evaluations-insights/predictive/evaluations-backtest.ts",
+        "shared/evaluations-insights/predictive/evaluations-drift-monitor.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-maintenance-failure-forecast",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006",
+        "EVAL-ADR-009"
+      ],
+      "package_id": "E7",
+      "risk": "CRITICAL",
+      "migration": true,
+      "backend": true,
+      "frontend": false,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "Prisma migration and rollback rehearsal",
+        "backend evaluations contract/domain/integration tests"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Restore pre-migration backup and prior release; otherwise revert the isolated recovery commit.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #813, commit e3c8966a51c00a80eadfc2bc69cdca0e398e9b9d",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-forecast-ux",
+      "capability": "Forecast UX",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        814
+      ],
+      "source_commits": [
+        "46b905ad6a441f3c16a3f66c17ff88afc1fa7318"
+      ],
+      "affected_files": [
+        "docs/frontend/evaluations-forecast-ux.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/EvaluationsForecastsSection.test.ts",
+        "frontend/src/rental/components/evaluations-forecasts/EvaluationsForecastsSection.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/ForecastCard.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/ForecastDrilldown.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/ForecastTable.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/ForecastTermTooltip.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/ForecastUncertaintyBand.tsx",
+        "frontend/src/rental/hooks/useEvaluationsForecasts.ts",
+        "frontend/src/rental/lib/evaluations-forecast-view-model.test.ts",
+        "frontend/src/rental/lib/evaluations-forecast-view-model.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-backtesting-drift",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-006",
+        "EVAL-ADR-009",
+        "EVAL-ADR-010"
+      ],
+      "package_id": "E8",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": false,
+      "frontend": true,
+      "worker": true,
+      "security": false,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #814, commit 46b905ad6a441f3c16a3f66c17ff88afc1fa7318",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "cumulative source stack conflicts directly with current main"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-gdpr",
+      "capability": "GDPR",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        815
+      ],
+      "source_commits": [
+        "c8714b1f9e9760b29a282a294412bf9ebe31cec2"
+      ],
+      "affected_files": [
+        "backend/src/modules/business-insights/access/evaluations-privacy.policy.spec.ts",
+        "backend/src/modules/business-insights/access/evaluations-privacy.policy.ts",
+        "backend/src/modules/business-insights/dashboard-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.controller.ts",
+        "backend/src/modules/customers/customers.controller.ts",
+        "backend/src/modules/customers/customers.service.ts",
+        "backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.controller.ts",
+        "backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.service.ts",
+        "docs/compliance/evaluations-gdpr-privacy-by-design.md",
+        "frontend/src/lib/api.ts",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/Sidebar.tsx",
+        "frontend/src/rental/components/evaluations-forecasts/EvaluationsForecastsSection.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/lib/evaluations-privacy.test.ts",
+        "frontend/src/rental/lib/evaluations-privacy.ts",
+        "shared/evaluations-insights/evaluations-privacy.shared.spec.ts",
+        "shared/evaluations-insights/evaluations-privacy.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts",
+        "cs-roles-access-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-007",
+        "EVAL-ADR-008"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": true,
+      "privacy": true,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "GDPR purpose, retention and audit evidence review",
+        "backend evaluations contract/domain/integration tests",
+        "cross-tenant negative and RBAC tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #815, commit c8714b1f9e9760b29a282a294412bf9ebe31cec2",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-roles-permissions",
+      "capability": "Roles / Permissions",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        816
+      ],
+      "source_commits": [
+        "549c0e237d862eee491943b87077d3ce931ae8a8"
+      ],
+      "affected_files": [
+        "backend/src/modules/business-insights/access/evaluations-access.service.ts",
+        "backend/src/modules/business-insights/access/evaluations-export.controller.ts",
+        "backend/src/modules/business-insights/access/evaluations-permission.constants.ts",
+        "backend/src/modules/business-insights/access/evaluations-permission.defaults.ts",
+        "backend/src/modules/business-insights/access/evaluations-permission.guard.spec.ts",
+        "backend/src/modules/business-insights/access/evaluations-permission.guard.ts",
+        "backend/src/modules/business-insights/access/evaluations-privacy.policy.spec.ts",
+        "backend/src/modules/business-insights/access/evaluations-privacy.policy.ts",
+        "backend/src/modules/business-insights/access/evaluations.permissions.matrix.spec.ts",
+        "backend/src/modules/business-insights/access/require-evaluations-permission.decorator.ts",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/dashboard-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.controller.ts",
+        "backend/src/modules/customers/customers.controller.ts",
+        "backend/src/modules/customers/customers.module.ts",
+        "backend/src/modules/users/defaults/organization-role.defaults.ts",
+        "backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.controller.ts",
+        "backend/src/shared/auth/permission.constants.ts",
+        "docs/security/evaluations-role-permission-matrix.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx",
+        "frontend/src/rental/components/FinancialInsightsView.tsx",
+        "frontend/src/rental/components/Sidebar.tsx",
+        "frontend/src/rental/components/insights/InsightsCockpit.tsx",
+        "frontend/src/rental/components/users-roles/constants.ts",
+        "frontend/src/rental/lib/evaluations-permissions.test.ts",
+        "frontend/src/rental/lib/evaluations-permissions.ts",
+        "shared/evaluations-insights/evaluations-permission.contract.ts",
+        "shared/evaluations-insights/evaluations-privacy.shared.spec.ts",
+        "shared/evaluations-insights/evaluations-privacy.ts"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-gdpr",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts",
+        "cs-roles-access-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-007",
+        "EVAL-ADR-008"
+      ],
+      "package_id": "E4",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": true,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "cross-tenant negative and RBAC tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #816, commit 549c0e237d862eee491943b87077d3ce931ae8a8",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    },
+    {
+      "changeset_id": "cs-evaluations-audit-logging",
+      "capability": "Audit Logging",
+      "status": "REQUIRED_BUT_NEEDS_PORT",
+      "source_prs": [
+        817
+      ],
+      "source_commits": [
+        "d10d072efce62980e7732d086dd8f6f8f1e2f875"
+      ],
+      "affected_files": [
+        "backend/src/modules/business-audit/business-audit-outbox.processor.ts",
+        "backend/src/modules/business-audit/business-audit.constants.ts",
+        "backend/src/modules/business-insights/access/evaluations-audit-request.util.spec.ts",
+        "backend/src/modules/business-insights/access/evaluations-audit-request.util.ts",
+        "backend/src/modules/business-insights/access/evaluations-audit.constants.ts",
+        "backend/src/modules/business-insights/access/evaluations-audit.service.spec.ts",
+        "backend/src/modules/business-insights/access/evaluations-audit.service.ts",
+        "backend/src/modules/business-insights/access/evaluations-export.controller.ts",
+        "backend/src/modules/business-insights/business-insights.module.ts",
+        "backend/src/modules/business-insights/internal-business-insights.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-backtest.service.ts",
+        "backend/src/modules/business-insights/predictive/predictive-feature.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-forecast.controller.ts",
+        "backend/src/modules/business-insights/predictive/predictive-risk.controller.ts",
+        "backend/src/modules/business-insights/tenant-insight-policy.service.ts",
+        "backend/src/modules/customers/customers.controller.ts",
+        "backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.controller.ts",
+        "backend/src/modules/vehicle-intelligence/misuse-cases/misuse-cases.module.ts",
+        "docs/security/evaluations-audit-logging.md",
+        "frontend/src/master/components/ArchitekturView.tsx",
+        "frontend/src/master/components/ChangesView.tsx"
+      ],
+      "already_in_main": false,
+      "needs_port": true,
+      "needs_reimplementation": true,
+      "dependencies": [
+        "cs-evaluations-roles-permissions",
+        "cs-infrastructure-api-and-domain-contracts",
+        "cs-observability-api-and-domain-contracts",
+        "cs-roles-access-api-and-domain-contracts"
+      ],
+      "architecture_decisions": [
+        "EVAL-ADR-005",
+        "EVAL-ADR-008"
+      ],
+      "package_id": "E6",
+      "risk": "HIGH",
+      "migration": false,
+      "backend": true,
+      "frontend": true,
+      "worker": true,
+      "security": true,
+      "privacy": false,
+      "integration_method": "REIMPLEMENT_ON_CURRENT_MAIN",
+      "tests": [
+        "backend evaluations contract/domain/integration tests",
+        "cross-tenant negative and RBAC tests",
+        "frontend evaluations component and accessibility regression"
+      ],
+      "staging": "Required",
+      "vps": "Required after staging",
+      "rollback": "Revert the isolated recovery commit and redeploy the prior release.",
+      "confidence": "HIGH",
+      "evidence": [
+        "canonical source PR #817, commit d10d072efce62980e7732d086dd8f6f8f1e2f875",
+        "git cherry reports unique patch; no patch-equivalent main commit",
+        "narrower semantic behavior exists in main, but the canonical contract, persistence, API, or UI remains unique"
+      ]
+    }
+  ]
+}
