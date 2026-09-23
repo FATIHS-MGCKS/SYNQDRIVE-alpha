@@ -54,6 +54,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5B.2 documentation seal (pre-merge)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | C5A doc lists full `overallStatus` enum incl. `INTEGRITY_PARTIAL`; `CURRENT_STATE` snapshot header reflects C5A on main + C5B draft PR #1733. |
+| **NON_EFFECTS** | No runtime/code/schema/flag changes. |
+| **EVIDENCE** | PR #1733 amend |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5B.1 Master Admin shadow UI closure
 
 | Field | Value |

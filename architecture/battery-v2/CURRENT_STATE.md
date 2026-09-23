@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-23 (M3.3C C5A shadow observability @ branch; production unchanged `2b0ef15f`)  
+**Snapshot date:** 2026-09-23 (M3.3C C5A merged on main @ `87599311c` PR #1732; C5B engineering complete draft PR #1733 — not on `main`; production unchanged `2b0ef15f`)
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 

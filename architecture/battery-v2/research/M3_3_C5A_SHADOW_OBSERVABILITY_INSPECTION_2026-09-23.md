@@ -47,7 +47,7 @@ Recorded **only** in `RestSessionFeatureShadowTriggerService` (`finally` block �
 - **Revision limit:** `REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS = 100` with `revisionsTruncated`
 - **`includeRaw` default:** `false`; `true` exposes `inputSummary`, `chargeOpportunityRaw`, `pairwiseRestDeltas`
 
-**Overall status (diagnostic only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_WARNING` — not a health score.
+**Overall status (diagnostic only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_WARNING` | `INTEGRITY_PARTIAL` — not a health score.
 
 Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** (same milestones).
 
