@@ -67,20 +67,46 @@ TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=legacy
 
 | Legacy Rule | New Template | Status | Override | Test | Rollback |
 |-------------|--------------|--------|----------|------|----------|
-| `booking.lifecycle.confirmed.prep` | `[System] Buchung vorbereiten` (`BOOKING_PREPARATION`) | Migrated on execute; idempotent via migration records | `enabled`, timing offsets, `priority`, assignment, checklist → workflow `enabled` + `task.create` config | `migration.spec.ts` fresh org + overrides | `rollbackWorkflowVersion` + env `legacy` |
-| `booking.lifecycle.confirmed.pickup` | `[System] Fahrzeugübergabe (Pickup)` | same | same | same | same |
-| `booking.lifecycle.active.return` | `[System] Fahrzeugrücknahme (Return)` | same | same | same | same |
-| `booking.document.package.review` | `[System] Dokumentenpaket prüfen` | same | checklist items preserved in payload path | explicit checklist test | same |
-| `invoice.payment.check` | `[System] Zahlungsprüfung Rechnung` | same | invoice timing fields | invalid UUID → `requires_remediation` | same |
-| `vehicle.cleaning.required` | `[System] Fahrzeugreinigung` | same | urgent hours (catalog) | tenant isolation | same |
-| `insight.service_overdue` | `[System] Service überfällig` | same | — | repeated migration idempotent | same |
-| `insight.compliance.tuv_overdue` | `[System] TÜV fällig` | same | — | same | same |
-| `insight.compliance.bokraft_overdue` | `[System] BOKraft fällig` | same | — | same | same |
-| `insight.health.tire_critical` | `[System] Reifen kritisch` | same | — | same | same |
-| `insight.health.brake_critical` | `[System] Bremsen kritisch` | same | — | same | same |
-| `insight.health.battery_critical` | `[System] Batterie kritisch` | same | — | same | same |
-| `vendor.repair.ensure` | `[System] Reparatur erforderlich` | same | — | cutover dedup test | same |
-| `legacy-workflow:{workflowId}` | same workflow row (normalized triggers/actions) | `requires_remediation` when unmappable actions | n/a | legacy workflow scan | `rollbackWorkflowVersion` |
+| `booking.lifecycle.confirmed.prep` | `[System] Buchung vorbereiten` (`BOOKING_PREPARATION`) | `migrated` / `already_migrated` | `enabled`, offsets, `priority`, assignment, checklist → `task.create` config | `migrates fresh organization catalog rules` | `rollbackWorkflowVersion` + `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=legacy` |
+| `booking.lifecycle.confirmed.pickup` | `[System] Fahrzeugübergabe (Pickup)` (`BOOKING_PICKUP`) | same | same | same | same |
+| `booking.lifecycle.active.return` | `[System] Fahrzeugrücknahme (Return)` (`BOOKING_RETURN`) | same | same | same | same |
+| `booking.document.package.review` | `[System] Dokumentenpaket prüfen` (`DOCUMENT_PACKAGE_INCOMPLETE`) | same | checklist overrides in `checklistOverrides` | `preserves checklist overrides in task.create action config` | same |
+| `invoice.payment.check` | `[System] Zahlungsprüfung Rechnung` (`INVOICE_PAYMENT_CHECK`) | `requires_remediation` when invalid UUID | invoice timing fields | `marks invalid override as requires remediation` | same |
+| `vehicle.cleaning.required` | `[System] Fahrzeugreinigung` (`VEHICLE_CLEANING_REQUIRED`) | same | urgent hours (catalog) | `isolates templates per tenant` | same |
+| `insight.service_overdue` | `[System] Service überfällig` (`VEHICLE_SERVICE_OVERDUE`) | same | — | `is idempotent on repeated migration` | same |
+| `insight.compliance.tuv_overdue` | `[System] TÜV fällig` (`VEHICLE_INSPECTION_TUV_DUE`) | same | — | same | same |
+| `insight.compliance.bokraft_overdue` | `[System] BOKraft fällig` (`VEHICLE_INSPECTION_BOKRAFT_DUE`) | same | — | same | same |
+| `insight.health.tire_critical` | `[System] Reifen kritisch` (`TIRE_CRITICAL_HEALTH`) | same | — | same | same |
+| `insight.health.brake_critical` | `[System] Bremsen kritisch` (`BRAKE_CRITICAL_HEALTH`) | same | — | same | same |
+| `insight.health.battery_critical` | `[System] Batterie kritisch` (`BATTERY_CRITICAL_HEALTH`) | same | — | same | same |
+| `vendor.repair.ensure` | `[System] Reparatur erforderlich` (`REPAIR_REQUIRED`) | same | — | `deduplicates via findActiveByDedup on repeat execute` | same |
+| `legacy-workflow:{workflowId}` | same workflow row (normalized triggers/actions) | `requires_remediation` when unmappable actions | n/a | legacy workflow scan in `migrateLegacyWorkflows` | `rollbackWorkflowVersion` stored on record |
+
+### Scenario coverage (tests)
+
+| Scenario | Spec |
+|----------|------|
+| Fresh organization | `migrates fresh organization catalog rules` |
+| Org with overrides | `preserves org overrides in workflow enabled state` |
+| Partially migrated | `continues partial migration without duplicating completed rules` |
+| Repeated migration | `is idempotent on repeated migration` |
+| Invalid legacy rule | `marks invalid override as requires remediation` |
+| Dry-run | `dry-run analyzes without persisting workflow rows` |
+| Cutover | `cutover mode skips legacy and executes task.create` |
+| Rollback | `rollback to legacy stops workflow writes` |
+| Duplicate execution | `deduplicates via findActiveByDedup on repeat execute` |
+| Tenant isolation | `isolates templates per tenant`, `rejects cross-tenant vehicle on execute` |
+
+## Cutover readiness
+
+| Gate | Status |
+|------|--------|
+| Migration service + API | **Ready** — dry-run/execute, audit tables, rollback mapping |
+| Feature flag default | **`legacy`** — zero production behavior change until env change |
+| Idempotent backfill | **Verified** — 15 tests PASS |
+| Shadow validation path | **Ready** — `TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=shadow` |
+| Cutover path | **Ready** — router mutex + dedup keys; staging validation required |
+| Legacy code removal | **Not scheduled** — legacy paths remain behind flag until acceptance |
 
 ## Traceability fields
 
@@ -115,7 +141,11 @@ TASK_AUTOMATION_WORKFLOW_RUNTIME_MODE=legacy
 
 ## Tests
 
-`backend/src/modules/workflows/migration/task-automation-workflow-migration.spec.ts`
+`backend/src/modules/workflows/migration/task-automation-workflow-migration.spec.ts` — **15 tests PASS**
+
+```bash
+cd backend && npm test -- --testPathPattern=task-automation-workflow-migration
+```
 
 ## Files
 
