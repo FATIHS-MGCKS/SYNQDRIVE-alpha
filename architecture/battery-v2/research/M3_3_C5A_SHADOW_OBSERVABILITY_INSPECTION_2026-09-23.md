@@ -15,7 +15,7 @@ Answer operationally (without judging battery health):
 - Does persisted `inputSummary` still hash to `inputDigest`?
 - Is `semanticRevision` lineage internally consistent?
 
-**C5B** (Master Admin inspection UI) — **engineering complete on draft PR #1733** (not merged to `main`). Internal read-only surface over **`M3_3C_C5A_V1`**. **M3.3H** remains the future customer Vehicle Detail → Health UI.
+**C5B** (Master Admin inspection UI) — **COMPLETE ON MAIN** merged PR #1733 @ `969cc3f19`. Internal read-only engineering/ops surface over **`M3_3C_C5A_V1`** (not customer health). **M3.3H** remains the future customer-facing Vehicle Detail → Health UI.
 
 ## Prometheus metrics (bounded labels)
 
@@ -56,8 +56,8 @@ Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** 
 | Phase | Scope |
 |-------|--------|
 | **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **COMPLETE** PR #1732 @ main `87599311c` |
-| **M3.3C C5B** | Master Admin shadow inspection UI — **engineering complete**, **draft PR #1733** (not on `main`) |
-| **M3.3D** | Longitudinal battery profile across rest sessions |
+| **M3.3C C5B** | Master Admin shadow inspection UI — **COMPLETE ON MAIN** PR #1733 @ `969cc3f19` |
+| **M3.3D** | Longitudinal battery profile across rest sessions — **NEXT** engineering milestone |
 | **M3.3E** | Health / failure-risk / confidence model |
 | **M3.3F** | Production shadow validation |
 | **M3.3G** | Authoritative model cutover |
@@ -111,13 +111,19 @@ npm run battery:rest-feature:inspect -- \
 
 ## C5B Master Admin shadow UI (M3.3C)
 
-- **Surface:** Master Admin view `battery-v2-shadow-inspection` (engineering nav group).
+- **Status:** **COMPLETE ON MAIN** — PR #1733 merge commit `969cc3f19`.
+- **Surface:** Master Admin view `battery-v2-shadow-inspection` (engineering nav group); **internal only** — not customer Vehicle Health.
 - **API (MASTER_ADMIN only):**
   - `GET /admin/battery-v2/rest-sessions?organizationId&vehicleId&limit`
   - `GET /admin/battery-v2/rest-session-feature-inspection?organizationId&vehicleId&restSessionId` → single atomic **`M3_3C_C5A_V1`** payload (`includeRaw=true` for internal inspection only).
-- **Not M3.3H:** customer Vehicle Detail → Health UI remains a separate future milestone.
-- **Read-only:** no recompute/repair/flag mutation; frontend renders C5A fields without domain recomputation.
-- **Authorization:** `PlatformAdminController` is `@Roles('MASTER_ADMIN')` with `RolesGuard` + `MasterAdminMfaGuard` registered; C5B GET routes do **not** require MFA step-up (guard skips non-mutating GET unless action is in sensitive-read set).
+- **Source of truth:** **`M3_3C_C5A_V1`** / `RestSessionFeatureShadowInspectionService` — frontend **does not** recompute canonical selection, retention curve, slopes, charge context, or integrity.
+- **Retention evidence:** UI renders persisted **`inputSummary.retentionPoints`** (C3 snapshot shape) in inspection table — not count-only stubs.
+- **Vehicle selection:** organization-scoped paginated **`GET /admin/vehicles/operational?organizationId=`** — not global first-N `listAll`.
+- **Integrity (display only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_PARTIAL` | `INTEGRITY_WARNING` — diagnostic enums from C5A; no health scoring.
+- **Not M3.3H:** future customer Vehicle Detail → Health UI remains separate (authoritative customer outputs post-G only).
+- **Read-only:** no recompute/repair/flag mutation controls in UI.
+- **Authorization:** `PlatformAdminController` `@Roles('MASTER_ADMIN')` + `RolesGuard`; `MasterAdminMfaGuard` registered; C5B GET routes **do not** require MFA step-up under current guard policy (non-mutating GET).
+- **Non-effects (C5B):** no schema/migration; no `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED` activation; no production deploy requirement for documentation merge; no customer HTTP exposure.
 
 ## Non-effects
 
