@@ -99,7 +99,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Battery V2 M3.3C C5A — Shadow observability + read-only inspection',
     summary: [
       'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
-      'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract, digest re-hash via C3 serializer, canonical-row policy reuse, revision integrity, max 100 revisions.',
+      'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates.',
       'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
       'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI pending.',
     ],

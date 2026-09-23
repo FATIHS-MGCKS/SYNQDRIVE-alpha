@@ -1,6 +1,7 @@
 import type { BatteryRestSessionFeature } from '@prisma/client';
 import { computeFeatureInputDigestFromSnapshot } from './feature-input-canonical.serializer';
 import type { RestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.types';
+import type { RestSessionFeatureRevisionIntegrityAggregate } from './rest-session-feature-inspection.repository.types';
 
 export function verifyPersistedFeatureRowDigest(row: BatteryRestSessionFeature): boolean {
   try {
@@ -13,6 +14,42 @@ export function verifyPersistedFeatureRowDigest(row: BatteryRestSessionFeature):
   }
 }
 
+export function deriveSemanticRevisionIntegrityFromAggregate(
+  aggregate: RestSessionFeatureRevisionIntegrityAggregate,
+): {
+  semanticRevisionGapCount: number;
+  duplicateSemanticRevisionCount: number;
+} {
+  if (aggregate.totalRows === 0) {
+    return { semanticRevisionGapCount: 0, duplicateSemanticRevisionCount: 0 };
+  }
+
+  const duplicateSemanticRevisionCount = Math.max(
+    0,
+    aggregate.positiveRevisionRowCount - aggregate.distinctPositiveRevisionCount,
+  );
+
+  let semanticRevisionGapCount = 0;
+  if (aggregate.distinctPositiveRevisionCount === 0) {
+    if (aggregate.nonPositiveRevisionRowCount > 0) {
+      semanticRevisionGapCount = 1;
+    }
+    return { semanticRevisionGapCount, duplicateSemanticRevisionCount };
+  }
+
+  const maxPositive = aggregate.maxPositiveSemanticRevision ?? 0;
+  semanticRevisionGapCount = Math.max(
+    0,
+    maxPositive - aggregate.distinctPositiveRevisionCount,
+  );
+  if (aggregate.nonPositiveRevisionRowCount > 0) {
+    semanticRevisionGapCount += 1;
+  }
+
+  return { semanticRevisionGapCount, duplicateSemanticRevisionCount };
+}
+
+/** Pure-function lineage check (unit tests); inspection uses DB aggregate derivation. */
 export function analyzeSemanticRevisionIntegrity(revisions: number[]): {
   semanticRevisionGapCount: number;
   duplicateSemanticRevisionCount: number;

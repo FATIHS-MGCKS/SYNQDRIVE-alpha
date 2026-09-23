@@ -49,6 +49,30 @@ Recorded **only** in `RestSessionFeatureShadowTriggerService` (`finally` block �
 
 **Overall status (diagnostic only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_WARNING` — not a health score.
 
+Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** (same milestones).
+
+## Roadmap (M3.3C shadow → customer Health UI)
+
+| Phase | Scope |
+|-------|--------|
+| **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **engineering in review** PR #1732 |
+| **M3.3C C5B** | Master Admin shadow inspection UI |
+| **M3.3D** | Longitudinal battery profile across rest sessions |
+| **M3.3E** | Health / failure-risk / confidence model |
+| **M3.3F** | Production shadow validation |
+| **M3.3G** | Authoritative model cutover |
+| **M3.3H** | Vehicle Detail → Health **customer UI** cutover — consumes **customer-authorized authoritative outputs only after G**; must **not** expose raw `inputSummary`, `chargeOpportunityRaw`, pairwise deltas, per-revision C3 rows, or internal integrity diagnostics |
+
+Planning-only customer concepts for eventual M3.3H (labels/thresholds finalized after M3.3E/F): battery health state, confidence, charging-system health, retention stability, failure risk, last reliable assessment, evidence freshness.
+
+## Bounded inspection reads (C5A.1)
+
+- **Latest window:** `listLatestFeatureRowsForSession` — `ORDER BY semantic_revision DESC` **`take 100`**, reversed to ASC in response. Example: 125 rows → visible revisions **26..125** (not 1..100).
+- **Total rows:** separate **`count`** on version-scoped session filter.
+- **Revision lineage:** read-only **`SELECT` aggregate** (no full row load).
+- **Canonical row:** at most **four** highest-revision candidates (phase × trust) → existing `selectCanonicalRestSessionFeatureShadowRow()`. Canonical may appear in `canonicalFeature` even when outside the visible 100-revision window.
+- **Digest integrity:** only checked rows counted; `digestVerificationScope` **`FULL`** (≤100 rows) or **`BOUNDED_LATEST_WINDOW`**; **`INTEGRITY_PARTIAL`** when older rows unchecked; **`INTEGRITY_WARNING`** when checked mismatch/gap/duplicate/canonical failure.
+
 ## Ops CLI
 
 ```bash
@@ -57,7 +81,7 @@ npm run battery:rest-feature:inspect -- \
   --organization-id=<uuid> --vehicle-id=<uuid> --rest-session-id=<uuid> [--include-raw]
 ```
 
-**Exit codes:** `0` OK, `2` session not found, `3` integrity warning, `1` config/execution error.
+**Exit codes:** `0` OK, `2` session not found, `3` integrity warning **or** integrity partial (bounded digest coverage), `1` config/execution error.
 
 **Production safety:** recognized production `DATABASE_URL` hosts **denied** unless  
 `BATTERY_REST_FEATURE_INSPECT_ALLOW_PRODUCTION_READONLY=true` (explicit read-only ack). C5A tests use ephemeral DB only.

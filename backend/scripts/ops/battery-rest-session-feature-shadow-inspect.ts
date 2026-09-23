@@ -53,7 +53,8 @@ async function main(): Promise<void> {
     }
 
     console.log(JSON.stringify(result.inspection, null, 2));
-    if (result.inspection.integrity.overallStatus === 'INTEGRITY_WARNING') {
+    const overall = result.inspection.integrity.overallStatus;
+    if (overall === 'INTEGRITY_WARNING' || overall === 'INTEGRITY_PARTIAL') {
       process.exit(3);
     }
     process.exit(0);

@@ -1,8 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import {
-  BatteryRestSessionFeatureComputationPhase,
-  BatteryRestSessionFeatureSessionTrust,
-} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
@@ -15,11 +11,12 @@ import {
 import { selectCanonicalRestSessionFeatureShadowRow } from './rest-session-feature-canonical-row.policy';
 import { RestSessionFeatureRepository } from './rest-session-feature.repository';
 import {
-  analyzeSemanticRevisionIntegrity,
+  deriveSemanticRevisionIntegrityFromAggregate,
   verifyPersistedFeatureRowDigest,
 } from './rest-session-feature-shadow-inspection.integrity';
 import type {
   RestSessionFeatureShadowCanonicalSelectionStatus,
+  RestSessionFeatureShadowDigestVerificationScope,
   RestSessionFeatureShadowInspectionInput,
   RestSessionFeatureShadowInspectionOutcome,
   RestSessionFeatureShadowInspectionOverallStatus,
@@ -29,6 +26,7 @@ import { mapFeatureRowToInspectionRevision } from './rest-session-feature-shadow
 
 /**
  * M3.3C C5A — read-only shadow rest-session feature inspection (no writes).
+ * C5A.1 — bounded DB reads (latest-N window, COUNT, revision aggregate, canonical candidates).
  */
 @Injectable()
 export class RestSessionFeatureShadowInspectionService {
@@ -49,33 +47,49 @@ export class RestSessionFeatureShadowInspectionService {
     }
 
     const repository = new RestSessionFeatureRepository(this.prisma);
-    const allRows = await repository.listFeatureRowsForSession({
+    const scope = {
       organizationId: input.organizationId,
       restSessionId: input.restSessionId,
-    });
+    };
+
+    const [totalRows, aggregate, latestRows, canonicalCandidates] = await Promise.all([
+      repository.countFeatureRowsForSession(scope),
+      repository.readRevisionIntegrityAggregate(scope),
+      repository.listLatestFeatureRowsForSession({
+        ...scope,
+        limit: REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS,
+      }),
+      repository.listCanonicalCandidateRows(scope),
+    ]);
 
     const includeRaw = input.includeRaw === true;
-    const totalRows = allRows.length;
     const revisionsTruncated = totalRows > REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS;
-    const boundedRows = revisionsTruncated
-      ? allRows.slice(0, REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS)
-      : allRows;
+
+    const digestRowsChecked = latestRows.length;
+    const digestRowsUnchecked = Math.max(0, totalRows - digestRowsChecked);
+    let digestVerificationScope: RestSessionFeatureShadowDigestVerificationScope;
+    if (totalRows === 0) {
+      digestVerificationScope = 'FULL';
+    } else if (digestRowsUnchecked === 0) {
+      digestVerificationScope = 'FULL';
+    } else {
+      digestVerificationScope = 'BOUNDED_LATEST_WINDOW';
+    }
 
     let digestMismatchCount = 0;
-    const revisions = boundedRows.map((row) => {
+    const revisions = latestRows.map((row) => {
       const digestValid = verifyPersistedFeatureRowDigest(row);
       if (!digestValid) digestMismatchCount += 1;
       return mapFeatureRowToInspectionRevision(row, digestValid, includeRaw);
     });
 
-    const revisionNumbers = allRows.map((r) => r.semanticRevision);
     const { semanticRevisionGapCount, duplicateSemanticRevisionCount } =
-      analyzeSemanticRevisionIntegrity(revisionNumbers);
+      deriveSemanticRevisionIntegrityFromAggregate(aggregate);
 
     const canonicalRow = selectCanonicalRestSessionFeatureShadowRow({
       sessionStatus: session.sessionStatus,
       endReason: session.endReason,
-      rows: allRows,
+      rows: canonicalCandidates,
     });
 
     let canonicalSelectionStatus: RestSessionFeatureShadowCanonicalSelectionStatus;
@@ -97,6 +111,8 @@ export class RestSessionFeatureShadowInspectionService {
       canonicalSelectionStatus === 'CANONICAL_NOT_RESOLVABLE'
     ) {
       overallStatus = 'INTEGRITY_WARNING';
+    } else if (digestRowsUnchecked > 0) {
+      overallStatus = 'INTEGRITY_PARTIAL';
     } else {
       overallStatus = 'OK';
     }
@@ -135,22 +151,11 @@ export class RestSessionFeatureShadowInspectionService {
       },
       featureSummary: {
         totalRows,
-        latestSemanticRevision:
-          allRows.length > 0
-            ? Math.max(...allRows.map((r) => r.semanticRevision))
-            : null,
-        incrementalRows: allRows.filter(
-          (r) => r.computationPhase === BatteryRestSessionFeatureComputationPhase.INCREMENTAL,
-        ).length,
-        finalRows: allRows.filter(
-          (r) => r.computationPhase === BatteryRestSessionFeatureComputationPhase.FINAL,
-        ).length,
-        validRows: allRows.filter(
-          (r) => r.sessionTrust === BatteryRestSessionFeatureSessionTrust.VALID,
-        ).length,
-        invalidatedRows: allRows.filter(
-          (r) => r.sessionTrust === BatteryRestSessionFeatureSessionTrust.INVALIDATED,
-        ).length,
+        latestSemanticRevision: aggregate.latestSemanticRevision,
+        incrementalRows: aggregate.incrementalRows,
+        finalRows: aggregate.finalRows,
+        validRows: aggregate.validRows,
+        invalidatedRows: aggregate.invalidatedRows,
         canonicalFeatureRowId: canonicalRow?.id ?? null,
         canonicalSemanticRevision: canonicalRow?.semanticRevision ?? null,
         revisionsTruncated,
@@ -159,6 +164,9 @@ export class RestSessionFeatureShadowInspectionService {
       revisions,
       integrity: {
         digestMismatchCount,
+        digestRowsChecked,
+        digestRowsUnchecked,
+        digestVerificationScope,
         semanticRevisionGapCount,
         duplicateSemanticRevisionCount,
         canonicalSelectionStatus,

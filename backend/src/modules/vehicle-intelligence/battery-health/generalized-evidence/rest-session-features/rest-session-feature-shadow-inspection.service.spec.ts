@@ -17,6 +17,8 @@ import type { RestSessionFeatureInputSnapshotV1 } from './rest-session-feature-i
 import * as canonicalPolicy from './rest-session-feature-canonical-row.policy';
 import { REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS } from './rest-session-feature.constants';
 import { RestSessionFeatureShadowInspectionService } from './rest-session-feature-shadow-inspection.service';
+import { RestSessionFeatureRepository } from './rest-session-feature.repository';
+import type { RestSessionFeatureRevisionIntegrityAggregate } from './rest-session-feature-inspection.repository.types';
 
 const orgId = '11111111-1111-1111-1111-111111111111';
 const vehId = '22222222-2222-2222-2222-222222222222';
@@ -153,17 +155,146 @@ function featureRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function buildAggregateFromRows(
+  rows: ReturnType<typeof featureRow>[],
+): RestSessionFeatureRevisionIntegrityAggregate {
+  const positive = rows.filter((r) => r.semanticRevision > 0);
+  const distinctPositive = new Set(positive.map((r) => r.semanticRevision));
+  return {
+    totalRows: rows.length,
+    incrementalRows: rows.filter(
+      (r) =>
+        (r.computationPhase as BatteryRestSessionFeatureComputationPhase) ===
+        BatteryRestSessionFeatureComputationPhase.INCREMENTAL,
+    ).length,
+    finalRows: rows.filter(
+      (r) =>
+        (r.computationPhase as BatteryRestSessionFeatureComputationPhase) ===
+        BatteryRestSessionFeatureComputationPhase.FINAL,
+    ).length,
+    validRows: rows.filter(
+      (r) =>
+        (r.sessionTrust as BatteryRestSessionFeatureSessionTrust) ===
+        BatteryRestSessionFeatureSessionTrust.VALID,
+    ).length,
+    invalidatedRows: rows.filter(
+      (r) =>
+        (r.sessionTrust as BatteryRestSessionFeatureSessionTrust) ===
+        BatteryRestSessionFeatureSessionTrust.INVALIDATED,
+    ).length,
+    latestSemanticRevision: rows.length ? Math.max(...rows.map((r) => r.semanticRevision)) : null,
+    positiveRevisionRowCount: positive.length,
+    distinctPositiveRevisionCount: distinctPositive.size,
+    minPositiveSemanticRevision: positive.length
+      ? Math.min(...positive.map((r) => r.semanticRevision))
+      : null,
+    maxPositiveSemanticRevision: positive.length
+      ? Math.max(...positive.map((r) => r.semanticRevision))
+      : null,
+    nonPositiveRevisionRowCount: rows.filter((r) => r.semanticRevision <= 0).length,
+  };
+}
+
+function listCanonicalCandidatesFromRows(rows: ReturnType<typeof featureRow>[]) {
+  const pairs = [
+    {
+      phase: BatteryRestSessionFeatureComputationPhase.INCREMENTAL,
+      trust: BatteryRestSessionFeatureSessionTrust.VALID,
+    },
+    {
+      phase: BatteryRestSessionFeatureComputationPhase.INCREMENTAL,
+      trust: BatteryRestSessionFeatureSessionTrust.INVALIDATED,
+    },
+    {
+      phase: BatteryRestSessionFeatureComputationPhase.FINAL,
+      trust: BatteryRestSessionFeatureSessionTrust.VALID,
+    },
+    {
+      phase: BatteryRestSessionFeatureComputationPhase.FINAL,
+      trust: BatteryRestSessionFeatureSessionTrust.INVALIDATED,
+    },
+  ];
+  return pairs
+    .map(({ phase, trust }) =>
+      [...rows]
+        .filter(
+          (r) =>
+            (r.computationPhase as BatteryRestSessionFeatureComputationPhase) === phase &&
+            (r.sessionTrust as BatteryRestSessionFeatureSessionTrust) === trust,
+        )
+        .sort((a, b) => b.semanticRevision - a.semanticRevision)[0],
+    )
+    .filter((row): row is ReturnType<typeof featureRow> => row != null);
+}
+
+function wireRepositoryMocks(allRows: ReturnType<typeof featureRow>[]) {
+  const latest = [...allRows]
+    .sort((a, b) => b.semanticRevision - a.semanticRevision)
+    .slice(0, REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS)
+    .reverse();
+
+  jest
+    .spyOn(RestSessionFeatureRepository.prototype, 'countFeatureRowsForSession')
+    .mockResolvedValue(allRows.length);
+  jest
+    .spyOn(RestSessionFeatureRepository.prototype, 'readRevisionIntegrityAggregate')
+    .mockResolvedValue(buildAggregateFromRows(allRows));
+  jest
+    .spyOn(RestSessionFeatureRepository.prototype, 'listLatestFeatureRowsForSession')
+    .mockImplementation(async (input) => {
+      expect(input.limit).toBe(REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS);
+      return latest;
+    });
+  jest
+    .spyOn(RestSessionFeatureRepository.prototype, 'listCanonicalCandidateRows')
+    .mockResolvedValue(listCanonicalCandidatesFromRows(allRows));
+}
+
 function buildInspector(rows: ReturnType<typeof featureRow>[] = []) {
+  wireRepositoryMocks(rows);
   const prisma = {
     batteryRestSession: {
       findFirst: jest.fn().mockResolvedValue(sessionRow()),
     },
-    batteryRestSessionFeature: {
-      findMany: jest.fn().mockResolvedValue(rows),
-    },
   } as unknown as PrismaService;
   const inspector = new RestSessionFeatureShadowInspectionService(prisma);
   return { inspector, prisma };
+}
+
+function featureRowWithRevision(revision: number) {
+  const openedAt = new Date(Date.parse('2026-09-22T10:00:00.000Z') + revision);
+  const inputSummary = buildRestSessionFeatureInputSnapshotV1({
+    organizationId: orgId,
+    vehicleId: vehId,
+    restSessionId: sessId,
+    session: buildRestSessionFeatureInputSessionV1({
+      anchorType: 'ENGINE_OFF',
+      anchorAt,
+      candidateTripId: null,
+      confirmedTripId: null,
+      sessionStatus: 'RESTING',
+      computationPhase: 'INCREMENTAL',
+      sessionTrust: 'VALID',
+      openedAt,
+      confirmedAt: null,
+      endedAt: null,
+      endReason: null,
+    }),
+    anchorResolution: buildRestSessionFeatureInputAnchorResolutionV1({ status: 'UNAVAILABLE' }),
+    anchor: null,
+    eligibleRetentionPoints: [],
+    retentionMetadataByObservationId: new Map(),
+    chargeOpportunityRaw: {
+      ...minimalChargeRaw(),
+      qualifiedLvObservationCount: revision,
+    },
+  });
+  return featureRow({
+    id: `00000000-0000-4000-8000-${String(revision).padStart(12, '0')}`,
+    semanticRevision: revision,
+    inputDigest: computeFeatureInputDigestFromSnapshot(inputSummary),
+    inputSummary,
+  });
 }
 
 describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
@@ -342,21 +473,41 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
     expect(spy).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionStatus: BatteryRestSessionStatus.RESTING,
-        rows: expect.arrayContaining([expect.objectContaining({ id: row.id })]),
+        rows: listCanonicalCandidatesFromRows([row]),
       }),
     );
   });
 
-  it('TEST_I14: 100+ rows → bounded/truncated response', async () => {
-    const rows = Array.from({ length: 101 }, (_, i) => {
-      const inputSummary = minimalSnapshot({ computationPhase: 'INCREMENTAL' });
-      return featureRow({
-        id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
-        semanticRevision: i + 1,
-        inputDigest: computeFeatureInputDigestFromSnapshot(inputSummary),
-        inputSummary,
-      });
+  it('TEST_I14: 125 revisions → latest-100 window + bounded DB read', async () => {
+    const rows = Array.from({ length: 125 }, (_, i) => featureRowWithRevision(i + 1));
+    const listLatestSpy = jest.spyOn(
+      RestSessionFeatureRepository.prototype,
+      'listLatestFeatureRowsForSession',
+    );
+    const { inspector } = buildInspector(rows);
+    const result = await inspector.inspectSession({
+      organizationId: orgId,
+      vehicleId: vehId,
+      restSessionId: sessId,
     });
+    expect(listLatestSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS }),
+    );
+    if (result.status === 'OK') {
+      expect(result.inspection.featureSummary.totalRows).toBe(125);
+      expect(result.inspection.revisions).toHaveLength(100);
+      expect(result.inspection.featureSummary.revisionsTruncated).toBe(true);
+      expect(result.inspection.revisions[0]?.semanticRevision).toBe(26);
+      expect(result.inspection.revisions[99]?.semanticRevision).toBe(125);
+      expect(result.inspection.integrity.digestRowsChecked).toBe(100);
+      expect(result.inspection.integrity.digestRowsUnchecked).toBe(25);
+      expect(result.inspection.integrity.digestVerificationScope).toBe('BOUNDED_LATEST_WINDOW');
+      expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_PARTIAL');
+    }
+  });
+
+  it('PARTIAL_COVERAGE_TEST: unchecked older rows → INTEGRITY_PARTIAL not OK', async () => {
+    const rows = Array.from({ length: 125 }, (_, i) => featureRowWithRevision(i + 1));
     const { inspector } = buildInspector(rows);
     const result = await inspector.inspectSession({
       organizationId: orgId,
@@ -364,11 +515,22 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
       restSessionId: sessId,
     });
     if (result.status === 'OK') {
-      expect(result.inspection.featureSummary.totalRows).toBe(101);
-      expect(result.inspection.featureSummary.revisionsTruncated).toBe(true);
-      expect(result.inspection.revisions).toHaveLength(
-        REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS,
-      );
+      expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_PARTIAL');
+      expect(result.inspection.integrity.overallStatus).not.toBe('OK');
+    }
+  });
+
+  it('CHECKED_DIGEST_MISMATCH_TEST: mismatch in latest window → INTEGRITY_WARNING', async () => {
+    const bad = featureRow({ inputDigest: 'deadbeef'.repeat(8) });
+    const { inspector } = buildInspector([bad]);
+    const result = await inspector.inspectSession({
+      organizationId: orgId,
+      vehicleId: vehId,
+      restSessionId: sessId,
+    });
+    if (result.status === 'OK') {
+      expect(result.inspection.integrity.digestMismatchCount).toBe(1);
+      expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_WARNING');
     }
   });
 });

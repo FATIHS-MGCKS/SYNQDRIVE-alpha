@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5A.1 bounded inspection reads + digest coverage honesty
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Inspection loaded all feature rows then `slice(0,100)` (oldest window); digest OK could ignore unchecked rows. |
+| **OBSERVATION** | >100 revisions materialized unbounded arrays; digest integrity metadata overstated coverage. |
+| **HYPOTHESIS** | COUNT + latest-N DESC query + revision SQL aggregate + ≤4 canonical candidates preserves exact canonical/lineage semantics with bounded IO. |
+| **CHANGE** | Repository read methods; `INTEGRITY_PARTIAL`; digest coverage fields; CLI exit 3 for partial; M3.3H customer UI roadmap recorded. |
+| **WHY** | Safe ops inspection at scale without false full-lineage digest claims. |
+| **EXPECTED_EFFECT** | Max ~104 feature rows read per inspection; visible window = latest 100 revisions. |
+| **VALIDATION** | TEST_I14/PARTIAL_COVERAGE/CHECKED_DIGEST_MISMATCH; revision aggregate tests; C5A postgres matrix. |
+| **OBSERVED_EFFECT** | Local unit + postgres PASS on amend branch. |
+| **NON_EFFECTS** | Metrics unchanged; no deploy/migration/flag/customer UI. |
+| **REGRESSIONS_OR_TRADEOFFS** | Sessions >100 revisions return `INTEGRITY_PARTIAL` even when latest window is clean. |
+| **REMAINING_GAPS** | C5B UI; production shadow gate. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow inspection |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5A.1 section |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5A shadow observability + read-only inspection
 
 | Field | Value |

@@ -10,7 +10,12 @@ import {
 export type RestSessionFeatureShadowInspectionOverallStatus =
   | 'OK'
   | 'NO_FEATURE_ROWS'
-  | 'INTEGRITY_WARNING';
+  | 'INTEGRITY_WARNING'
+  | 'INTEGRITY_PARTIAL';
+
+export type RestSessionFeatureShadowDigestVerificationScope =
+  | 'FULL'
+  | 'BOUNDED_LATEST_WINDOW';
 
 export type RestSessionFeatureShadowCanonicalSelectionStatus =
   | 'NO_FEATURE_ROWS'
@@ -67,6 +72,9 @@ export type RestSessionFeatureShadowInspectionV1 = {
   revisions: RestSessionFeatureShadowInspectionRevisionV1[];
   integrity: {
     digestMismatchCount: number;
+    digestRowsChecked: number;
+    digestRowsUnchecked: number;
+    digestVerificationScope: RestSessionFeatureShadowDigestVerificationScope;
     semanticRevisionGapCount: number;
     duplicateSemanticRevisionCount: number;
     canonicalSelectionStatus: RestSessionFeatureShadowCanonicalSelectionStatus;
