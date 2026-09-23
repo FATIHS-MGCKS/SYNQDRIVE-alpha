@@ -169,10 +169,9 @@ Shadow pilot (KS MX in scope): controlled-cycle shadow rows documented in forens
 
 | Field | Value |
 |-------|--------|
-| **KS_MX_PARKED_GT** | **PROVEN** |
-| **WOB_PARKED_GT** | **PENDING** |
-| **GLOBAL_PLUG_ROLLOUT** | **DEFERRED_PENDING_SECOND_CANARY_OR_T7_REVIEW** |
-| **NEXT_RECOMMENDED_GT** | `WOB_L_7503_PARKED_REPLUG` |
+| **KS_MX_PARKED_GT** | **PARKED_RECOVERY_PROVEN** |
+| **WOB_LONG_STAND_GT** | **PARKED_RECOVERY_NOT_OBSERVED_WAKE_ASSOCIATED_RECOVERY_PROVEN** (see [PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md](./PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md)) |
+| **GLOBAL_PLUG_ROLLOUT** | **DEFERRED_TO_T7_REVIEW** |
 
 Do **not** authorize legacy global PLUG enable from this evidence alone.
 
