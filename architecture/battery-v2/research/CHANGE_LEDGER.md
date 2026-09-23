@@ -54,6 +54,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D0/D0.1 post-merge documentation seal (main)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D0/D0.1 architecture complete on draft PR #1735; active docs described pre-merge / not-on-main state. |
+| **OBSERVATION** | PR #1735 merged to `main` @ `bc69e1d9c9031d19e4225270be060ef900b58f41` (PR head `4b314f2a1`). |
+| **HYPOTHESIS** | Active authority must record D0 + D0.1 **COMPLETE ON MAIN** and set **D1** as next engineering slice without implying implementation exists. |
+| **CHANGE** | Post-merge seal: `CURRENT_STATE`, D0 doc header + invariant summary, C5A roadmap pointer; stale pre-merge wording removed from active docs. |
+| **WHY** | Unambiguous main baseline before M3.3D D1 engineering. |
+| **EXPECTED_EFFECT** | `NEXT_PHASE=M3.3D D1`; D2+ remain pending; M3.3F production shadow boundary preserved. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | Active Battery V2 docs reflect merge @ `bc69e1d9c`. |
+| **AFTER** | D0/D0.1 **COMPLETE ON MAIN**; **D1** next engineering slice; D2+ / M3.3E–H pending. |
+| **NON_EFFECTS** | No runtime code; no schema; no migration; no feature flag; no deploy; no production data mutation; no D1 implementation; no M3.3E health logic; no customer UI. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only. |
+| **REMAINING_GAPS** | M3.3D D1+ implementation; M3.3F authorization for production C3/longitudinal validation. |
+| **DECISION_STATUS** | **DOCUMENTATION_SEAL** (post-merge) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Merge commit `bc69e1d9c9031d19e4225270be060ef900b58f41`; PR #1735 |
+
+---
+
 ## CL-2026-09-24 — M3.3D D0.1 longitudinal architecture closure (draft PR #1735)
 
 | Field | Value |
