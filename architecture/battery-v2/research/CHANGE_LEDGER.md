@@ -54,6 +54,48 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D0.1 longitudinal architecture closure (draft PR #1735)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D0 draft implied unbounded `listFeatureRowsForSession` canonical path; runtime constants as historical version authority; overlapping single `profileStatus`; D1 integrity vs exclusion conflict; `DUPLICATE_ANCHOR_COLLISION`; D3/M3.3F circular wording; CURRENT_STATE implied D0 on main. |
+| **OBSERVATION** | C5A uses `listCanonicalCandidateRows()` (≤4 phase×trust candidates) + canonical policy; schema stores `inputContractVersion` only inside `inputSummary`; production C3 flag OFF until M3.3F. |
+| **HYPOTHESIS** | D1 must mirror C5A bounded canonical semantics and separate primary profile status from diagnostic flags without inventing integrity policy. |
+| **CHANGE** | D0 doc §5.1/5.1a, §10 fingerprint, §11–12, §15 sequencing; CURRENT_STATE pre-merge wording; C5A roadmap pointer. |
+| **WHY** | Prevent D1 unbounded reads, historical version mis-provenance, and ambiguous integrity/status before D0 merge. |
+| **EXPECTED_EFFECT** | `LONGITUDINAL_CANONICAL_SELECTION_EQUIVALENT_TO_C5A=YES`; D1 integrity scope explicit (`NOT_EVALUATED`). |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`. |
+| **OBSERVED_EFFECT** | D0.1 closures documented on amended draft #1735 branch. |
+| **NON_EFFECTS** | No runtime/schema/flag/deploy/D1 code. |
+| **REGRESSIONS_OR_TRADEOFFS** | D0 CL-2026-09-24 row remains historical append-only record of first D0 draft. |
+| **REMAINING_GAPS** | DEC-M3.3D-005 input-contract persistence; D1 implementation after D0 merge. |
+| **DECISION_STATUS** | **ARCHITECTURE_CLOSURE_COMPLETE** (D0.1 on draft) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Draft PR #1735 amend; `rest-session-feature.repository.ts` `listCanonicalCandidateRows` |
+
+---
+
+## CL-2026-09-24 — M3.3D D0 longitudinal profile architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3D described only as roadmap “next engineering” after C5B; no scientific comparability matrix, inclusion contract, or version/time authority for cross-session profiles. |
+| **OBSERVATION** | C3 canonical rows + C5A inspection exist per session; no runtime aggregates multiple canonical `BatteryRestSessionFeature` rows; legacy `BatteryFeatures` / SOH trend / `BatteryRetentionAggregate` use different evidence models. |
+| **HYPOTHESIS** | Longitudinal profile must consume **`selectCanonicalRestSessionFeatureShadowRow()`** only, order by **`anchorAt`**, segment by version tuple, and defer health meaning to M3.3E. |
+| **CHANGE** | Added `research/M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`; updated `CURRENT_STATE` M3.3D D0 row + `NEXT_PHASE` → D1. |
+| **WHY** | Prevent parallel source of truth and causal over-interpretation before M3.3D implementation. |
+| **EXPECTED_EFFECT** | D1–D5 slices implement against fixed contract; M3.3E/M3.3H boundaries explicit. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | D0 doc: comparability matrix, confounders, inclusion rules, `M3_3D_LONGITUDINAL_PROFILE_V1` shape, hybrid persistence recommendation, bounded reads, integrity enums, slice plan. |
+| **NON_EFFECTS** | No schema/migration/runtime/flag/deploy/customer UI/assessment writes/M3.3D code. |
+| **REGRESSIONS_OR_TRADEOFFS** | R1 §8 longitudinal planning superseded for normative M3.3D detail where this D0 differs. |
+| **REMAINING_GAPS** | DECISION_REQUIRED thresholds; SHADOW_CALIBRATION_REQUIRED gates; D1+ implementation; M3.3F for production C3 rows. |
+| **DECISION_STATUS** | **ARCHITECTURE_AUDIT_COMPLETE** (D0) — implementation **NOT_STARTED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Main @ `7878aee90`; `M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5B post-merge documentation seal (main)
 
 | Field | Value |

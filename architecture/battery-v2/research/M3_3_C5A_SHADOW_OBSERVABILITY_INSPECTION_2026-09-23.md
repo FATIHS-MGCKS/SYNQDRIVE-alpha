@@ -57,7 +57,7 @@ Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** 
 |-------|--------|
 | **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **COMPLETE** PR #1732 @ main `87599311c` |
 | **M3.3C C5B** | Master Admin shadow inspection UI — **COMPLETE ON MAIN** PR #1733 @ `969cc3f19` |
-| **M3.3D** | Longitudinal battery profile across rest sessions — **NEXT** engineering milestone |
+| **M3.3D** | Longitudinal battery profile — **D0 architecture audit on draft PR #1735** (`M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`); **not on main** until merge; **D1+ pending** |
 | **M3.3E** | Health / failure-risk / confidence model |
 | **M3.3F** | Production shadow validation |
 | **M3.3G** | Authoritative model cutover |

@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-23 (M3.3C C1–C5B on main — C5A @ `87599311c` PR #1732; C5B @ `969cc3f19` merge PR #1733; production runtime baseline unchanged `2b0ef15f`)
+**Snapshot date:** 2026-09-24 (M3.3C C1–C5B on main; M3.3D D0 on **draft PR #1735** — not on main until merge; C5B seal @ `7878aee90` PR #1734; production runtime baseline unchanged `2b0ef15f`)
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -48,12 +48,13 @@
 | **M3.3C C5A.1 (engineering)** | Bounded inspection DB reads, digest coverage metadata, `INTEGRITY_PARTIAL` — merged PR #1732 |
 | **M3.3C C5A.2 (engineering)** | Repeatable-read snapshot + canonical digest union — merged PR #1732 |
 | **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — **COMPLETE ON MAIN** merged PR #1733 @ `969cc3f19` — internal MASTER_ADMIN surface; atomic C5A GET; `inputSummary.retentionPoints` table; org-scoped operational vehicle pagination; no flags/migration/customer UI |
-| **M3.3C roadmap (planning)** | **M3.3D** longitudinal profile (**next engineering**) · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health **customer** UI (authoritative outputs only post-G; distinct from C5B) |
-| **M3.3C** | **`OPEN`** — C1–C5B **complete on main**; **M3.3D next**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3D D0 (architecture)** | Longitudinal profile scientific contract + `M3_3D_LONGITUDINAL_PROFILE_V1` proposal — **architecture audit complete on draft PR #1735** (not on main until merge); D0.1 bounded canonical read + version/integrity/status closures — `research/M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md` |
+| **M3.3C roadmap (planning)** | **M3.3D** longitudinal profile (**D0 on draft #1735**; **D1+ after D0 merge**) · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health **customer** UI |
+| **M3.3C** | **`OPEN`** — C1–C5B **complete on main**; **M3.3D D0 draft #1735**; **D1 not started**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3D — Longitudinal Profile** (scientifically defensible profile across multiple canonical rest sessions; **not** health/risk scoring — M3.3E); **no** REST_WAKE cadence promotion; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED` remains default OFF** until M3.3F authorization |
+| `NEXT_PHASE` | **M3.3D D0** merge draft PR #1735 → then **D1** bounded canonical reader (fixtures/test DB); contract @ `M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`; **not** health/risk scoring (M3.3E); **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED` remains default OFF** until **M3.3F** authorization |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
