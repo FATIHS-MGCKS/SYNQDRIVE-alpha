@@ -118,7 +118,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
       'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates; C5A.2 repeatable-read snapshot + canonical digest union + countAggregateConsistent.',
       'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
-      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI pending.',
+      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI delivered separately (M3.3C C5B).',
     ],
     reason:
       'Operational answers for C4 triggers and C3 persistence without health scoring or customer surfaces.',
