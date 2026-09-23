@@ -36,15 +36,21 @@ export function resolveCanonicalRestSessionFeatureRowPreference(input: {
   };
 }
 
-const FALLBACK_PHASE_ORDER: BatteryRestSessionFeatureComputationPhase[] = [
-  BatteryRestSessionFeatureComputationPhase.INCREMENTAL,
-  BatteryRestSessionFeatureComputationPhase.FINAL,
-];
+function alternateTrust(
+  trust: BatteryRestSessionFeatureSessionTrust,
+): BatteryRestSessionFeatureSessionTrust {
+  return trust === BatteryRestSessionFeatureSessionTrust.VALID
+    ? BatteryRestSessionFeatureSessionTrust.INVALIDATED
+    : BatteryRestSessionFeatureSessionTrust.VALID;
+}
 
-const FALLBACK_TRUST_ORDER: BatteryRestSessionFeatureSessionTrust[] = [
-  BatteryRestSessionFeatureSessionTrust.VALID,
-  BatteryRestSessionFeatureSessionTrust.INVALIDATED,
-];
+function alternatePhase(
+  phase: BatteryRestSessionFeatureComputationPhase,
+): BatteryRestSessionFeatureComputationPhase {
+  return phase === BatteryRestSessionFeatureComputationPhase.INCREMENTAL
+    ? BatteryRestSessionFeatureComputationPhase.FINAL
+    : BatteryRestSessionFeatureComputationPhase.INCREMENTAL;
+}
 
 function pickHighestRevision(
   rows: BatteryRestSessionFeature[],
@@ -53,28 +59,38 @@ function pickHighestRevision(
   return [...rows].sort((a, b) => b.semanticRevision - a.semanticRevision)[0];
 }
 
+function pickForPhaseTrust(
+  rows: BatteryRestSessionFeature[],
+  phase: BatteryRestSessionFeatureComputationPhase,
+  trust: BatteryRestSessionFeatureSessionTrust,
+): BatteryRestSessionFeature | null {
+  return pickHighestRevision(
+    rows.filter((row) => row.computationPhase === phase && row.sessionTrust === trust),
+  );
+}
+
 export function selectCanonicalRestSessionFeatureShadowRow(input: {
   sessionStatus: BatteryRestSessionStatus;
   endReason: string | null;
   rows: BatteryRestSessionFeature[];
 }): BatteryRestSessionFeature | null {
   const preference = resolveCanonicalRestSessionFeatureRowPreference(input);
-  const exact = input.rows.filter(
-    (row) =>
-      row.computationPhase === preference.computationPhase &&
-      row.sessionTrust === preference.sessionTrust,
-  );
-  const exactPick = pickHighestRevision(exact);
-  if (exactPick) return exactPick;
+  const altTrust = alternateTrust(preference.sessionTrust);
+  const altPhase = alternatePhase(preference.computationPhase);
 
-  for (const phase of FALLBACK_PHASE_ORDER) {
-    for (const trust of FALLBACK_TRUST_ORDER) {
-      const fallback = input.rows.filter(
-        (row) => row.computationPhase === phase && row.sessionTrust === trust,
-      );
-      const pick = pickHighestRevision(fallback);
-      if (pick) return pick;
-    }
+  const categories: Array<{
+    phase: BatteryRestSessionFeatureComputationPhase;
+    trust: BatteryRestSessionFeatureSessionTrust;
+  }> = [
+    { phase: preference.computationPhase, trust: preference.sessionTrust },
+    { phase: preference.computationPhase, trust: altTrust },
+    { phase: altPhase, trust: preference.sessionTrust },
+    { phase: altPhase, trust: altTrust },
+  ];
+
+  for (const category of categories) {
+    const pick = pickForPhaseTrust(input.rows, category.phase, category.trust);
+    if (pick) return pick;
   }
 
   return pickHighestRevision(input.rows);

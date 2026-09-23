@@ -5,6 +5,20 @@ import {
   REST_SESSION_FEATURE_MODEL_VERSION,
   REST_SESSION_RETENTION_POLICY_VERSION,
 } from './rest-session-feature.constants';
+import type { CanonicalRestSessionRetentionAnchorResult } from './rest-session-retention-anchor.policy';
+import { sortUtf16CodeUnitLexicographic } from './feature-input-canonical.serializer';
+
+export type RestSessionFeatureInputAnchorResolutionStatus =
+  | 'SELECTED'
+  | 'UNAVAILABLE'
+  | 'AMBIGUOUS';
+
+export type RestSessionFeatureInputAnchorResolutionV1 = {
+  status: RestSessionFeatureInputAnchorResolutionStatus;
+  selectedObservationId: string | null;
+  duplicateEquivalentObservationIds: string[];
+  conflictingCandidateObservationIds: string[];
+};
 
 export type RestSessionFeatureInputSessionV1 = {
   anchorType: string;
@@ -52,6 +66,7 @@ export type RestSessionFeatureInputSnapshotV1 = {
   retentionPolicyVersion: typeof REST_SESSION_RETENTION_POLICY_VERSION;
   chargeOpportunityPolicyVersion: typeof REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION;
   session: RestSessionFeatureInputSessionV1;
+  anchorResolution: RestSessionFeatureInputAnchorResolutionV1;
   anchor: RestSessionFeatureInputAnchorV1 | null;
   retentionPoints: RestSessionFeatureInputRetentionPointV1[];
   chargeOpportunityRaw: ChargeOpportunityRawFeaturesV1;
@@ -63,3 +78,34 @@ export const FEATURE_INPUT_VERSION_TUPLE = {
   chargeOpportunityPolicyVersion: REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
   inputContractVersion: REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION,
 } as const;
+
+export function buildRestSessionFeatureInputAnchorResolutionV1(
+  resolution: CanonicalRestSessionRetentionAnchorResult,
+): RestSessionFeatureInputAnchorResolutionV1 {
+  if (resolution.status === 'UNAVAILABLE') {
+    return {
+      status: 'UNAVAILABLE',
+      selectedObservationId: null,
+      duplicateEquivalentObservationIds: [],
+      conflictingCandidateObservationIds: [],
+    };
+  }
+  if (resolution.status === 'AMBIGUOUS') {
+    return {
+      status: 'AMBIGUOUS',
+      selectedObservationId: null,
+      duplicateEquivalentObservationIds: [],
+      conflictingCandidateObservationIds: sortUtf16CodeUnitLexicographic(
+        resolution.conflictingCandidateObservationIds,
+      ),
+    };
+  }
+  return {
+    status: 'SELECTED',
+    selectedObservationId: resolution.snapshotAnchor.observationId,
+    duplicateEquivalentObservationIds: sortUtf16CodeUnitLexicographic(
+      resolution.duplicateEquivalentObservationIds,
+    ),
+    conflictingCandidateObservationIds: [],
+  };
+}

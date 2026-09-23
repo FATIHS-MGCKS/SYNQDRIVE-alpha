@@ -7,6 +7,7 @@ import type {
   RestSessionRetentionCandidateInput,
   RestSessionRetentionEligiblePoint,
 } from './rest-session-retention.types';
+import { compareUtf16CodeUnitLexicographic } from './feature-input-canonical.serializer';
 import { convertRestRetentionVoltageToMillivolts } from './rest-session-retention-voltage.policy';
 
 const LADDER_EVIDENCE_CLASSES = new Set<BatteryGeneralizedEvidenceClass>([
@@ -70,10 +71,15 @@ export function sortRestSessionRetentionEligiblePoints(
     if (a.actualRestAgeMs !== b.actualRestAgeMs) {
       return a.actualRestAgeMs - b.actualRestAgeMs;
     }
-    const aProv = a.providerObservationAtMs ?? 0;
-    const bProv = b.providerObservationAtMs ?? 0;
+    const aProv = a.providerObservationAtMs;
+    const bProv = b.providerObservationAtMs;
+    if (aProv == null && bProv == null) {
+      return compareUtf16CodeUnitLexicographic(a.observationId, b.observationId);
+    }
+    if (aProv == null) return 1;
+    if (bProv == null) return -1;
     if (aProv !== bProv) return aProv - bProv;
-    return a.observationId.localeCompare(b.observationId);
+    return compareUtf16CodeUnitLexicographic(a.observationId, b.observationId);
   });
 }
 

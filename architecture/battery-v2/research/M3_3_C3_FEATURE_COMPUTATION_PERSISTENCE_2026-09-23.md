@@ -93,7 +93,17 @@ No update/delete/upsert-mutate APIs.
 - No deploy, migration, or prod flag change in C3.
 - `C1_PRODUCTION_MIGRATION_APPLIED=NO` on production baseline remains expected.
 
-## Pending
+## C3.1 hardening (PR #1729 amend)
+
+- Canonical serializer rejects `undefined` at any depth (no silent property omission).
+- Object keys sorted by **UTF-16 code unit** order (locale-independent).
+- Fixed literal key-order vector: `FEATURE_INPUT_CANONICAL_KEY_ORDER_JSON_LITERAL` + SHA-256 in `feature-input-canonical.serializer.ts`.
+- `anchorResolution` block in digest (`UNAVAILABLE` ≠ `AMBIGUOUS`; duplicate-equivalent IDs recorded).
+- Retention sort: `providerObservationAt` null-last at equal `actualRestAgeMs`.
+- P2002 retry narrowed to `BatteryRestSessionFeature` unique races (+ P2034).
+- Session lock via `$queryRaw … FOR UPDATE` with tenant scope before reads.
+- Canonical shadow-row fallback: phase-first relative to session preference.
+- Postgres PG_G/PG_H use independent `PrismaClient` instances; PG_J re-reads JSONB from DB.
 
 - **C4** — live hooks / service registration
 - **C5** — metrics, UI, debug surfaces

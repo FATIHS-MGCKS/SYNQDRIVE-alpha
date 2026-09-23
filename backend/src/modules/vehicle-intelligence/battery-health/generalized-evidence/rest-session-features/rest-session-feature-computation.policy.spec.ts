@@ -7,13 +7,17 @@ import {
   BatteryRestSessionFeatureSessionTrust,
   BatteryRestSessionStatus,
   BatteryShutdownStateAlignmentClass,
+  Prisma,
 } from '@prisma/client';
 import { BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED_ENV } from '@config/battery-health-v2.config';
 import type { PrismaService } from '@shared/database/prisma.service';
 import {
   canonicalFeatureInputUtf8,
   computeFeatureInputDigestFromSnapshot,
+  FEATURE_INPUT_CANONICAL_KEY_ORDER_JSON_LITERAL,
+  FEATURE_INPUT_CANONICAL_KEY_ORDER_SHA256_LITERAL,
   FeatureInputNonFiniteError,
+  FeatureInputUnsupportedValueError,
 } from './feature-input-canonical.serializer';
 import type { ChargeOpportunityRawFeaturesV1 } from './charge-opportunity.types';
 import { CHARGE_OPPORTUNITY_RAW_POLICY_VERSION } from './charge-opportunity.constants';
@@ -23,6 +27,7 @@ import {
   buildRestSessionFeatureInputSnapshotV1,
 } from './rest-session-feature-input-snapshot.builder';
 import type { RestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.types';
+import { buildRestSessionFeatureInputAnchorResolutionV1 } from './rest-session-feature-input-snapshot.types';
 import { REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION } from './rest-session-feature.constants';
 import {
   REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
@@ -35,6 +40,12 @@ import {
   mapRestSessionFeatureTrust,
 } from './rest-session-feature-session.policy';
 import { resolveCanonicalRestSessionRetentionAnchor } from './rest-session-retention-anchor.policy';
+import { sortRestSessionRetentionEligiblePoints } from './rest-session-retention-eligibility.policy';
+import type { RestSessionRetentionEligiblePoint } from './rest-session-retention.types';
+import {
+  isKnownBatteryRestSessionFeatureUniqueRace,
+  isRetryableRestSessionFeatureComputationConflict,
+} from './rest-session-feature-computation-retry.util';
 import { SHUTDOWN_TIMESTAMP_SOURCES } from '../../shutdown-evidence/shutdown-evidence.constants';
 
 const ORG = '00000000-0000-4000-8000-000000000001';
@@ -122,6 +133,18 @@ function baseSessionBlock(
   });
 }
 
+function defaultAnchorResolution(
+  overrides: Partial<RestSessionFeatureInputSnapshotV1['anchorResolution']> = {},
+) {
+  return {
+    status: 'UNAVAILABLE' as const,
+    selectedObservationId: null,
+    duplicateEquivalentObservationIds: [],
+    conflictingCandidateObservationIds: [],
+    ...overrides,
+  };
+}
+
 function baseSnapshot(
   overrides: Partial<RestSessionFeatureInputSnapshotV1> = {},
 ): RestSessionFeatureInputSnapshotV1 {
@@ -134,6 +157,7 @@ function baseSnapshot(
     retentionPolicyVersion: REST_SESSION_RETENTION_POLICY_VERSION,
     chargeOpportunityPolicyVersion: REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
     session: baseSessionBlock(),
+    anchorResolution: defaultAnchorResolution(),
     anchor: null,
     retentionPoints: [],
     chargeOpportunityRaw: minimalChargeRaw(),
@@ -149,6 +173,28 @@ describe('M3.3C C3 feature input digest (A–N, O)', () => {
     expect(computeFeatureInputDigestFromSnapshot(a)).toBe(
       computeFeatureInputDigestFromSnapshot(b),
     );
+  });
+
+  it('C3.1 fixed UTF-16 key-order literal vector', () => {
+    const object = { z: 6, A: 3, a: 4, '10': 1, '2': 2, ä: 5, Ω: 7 };
+    expect(canonicalFeatureInputUtf8(object)).toBe(FEATURE_INPUT_CANONICAL_KEY_ORDER_JSON_LITERAL);
+    expect(computeFeatureInputDigestFromSnapshot(object)).toBe(
+      FEATURE_INPUT_CANONICAL_KEY_ORDER_SHA256_LITERAL,
+    );
+    expect(
+      createHash('sha256')
+        .update(FEATURE_INPUT_CANONICAL_KEY_ORDER_JSON_LITERAL, 'utf8')
+        .digest('hex'),
+    ).toBe(FEATURE_INPUT_CANONICAL_KEY_ORDER_SHA256_LITERAL);
+  });
+
+  it('C3.1 rejects undefined at root, object property, and array element', () => {
+    expect(() => canonicalFeatureInputUtf8(undefined)).toThrow(FeatureInputUnsupportedValueError);
+    expect(() => canonicalFeatureInputUtf8({ a: 1, b: undefined })).toThrow(
+      FeatureInputUnsupportedValueError,
+    );
+    expect(() => canonicalFeatureInputUtf8([1, undefined])).toThrow(FeatureInputUnsupportedValueError);
+    expect(canonicalFeatureInputUtf8({ a: 1 })).toBe('{"a":1}');
   });
 
   it('TEST_B: same input, different computedAt metadata excluded from digest input', () => {
@@ -314,6 +360,7 @@ describe('M3.3C C3 feature input digest (A–N, O)', () => {
     expect(dup.status).toBe('SELECTED');
     if (dup.status === 'SELECTED') {
       expect(dup.snapshotAnchor.observationId).toBe('a-id');
+      expect(dup.duplicateEquivalentObservationIds).toEqual(['z-id']);
     }
   });
 
@@ -337,9 +384,49 @@ describe('M3.3C C3 feature input digest (A–N, O)', () => {
 
   it('deterministic digest test vector (documented)', () => {
     const snapshot = baseSnapshot();
-    const utf8 = canonicalFeatureInputUtf8(snapshot);
-    const digest = createHash('sha256').update(utf8, 'utf8').digest('hex');
-    expect(computeFeatureInputDigestFromSnapshot(snapshot)).toBe(digest);
+    expect(canonicalFeatureInputUtf8(snapshot)).toMatch(/"anchorResolution"/);
+    expect(computeFeatureInputDigestFromSnapshot(snapshot)).toHaveLength(64);
+  });
+
+  it('C3.1 UNAVAILABLE vs AMBIGUOUS anchorResolution changes digest', () => {
+    const unavailable = computeFeatureInputDigestFromSnapshot(
+      baseSnapshot({ anchorResolution: defaultAnchorResolution({ status: 'UNAVAILABLE' }) }),
+    );
+    const ambiguous = computeFeatureInputDigestFromSnapshot(
+      baseSnapshot({
+        anchorResolution: defaultAnchorResolution({
+          status: 'AMBIGUOUS',
+          conflictingCandidateObservationIds: ['obs-a', 'obs-b'],
+        }),
+      }),
+    );
+    expect(unavailable).not.toBe(ambiguous);
+  });
+
+  it('C3.1 duplicate-equivalent anchor IDs change digest when metadata added', () => {
+    const none = computeFeatureInputDigestFromSnapshot(
+      baseSnapshot({ anchorResolution: defaultAnchorResolution({ status: 'UNAVAILABLE' }) }),
+    );
+    const withDupes = computeFeatureInputDigestFromSnapshot(
+      baseSnapshot({
+        anchorResolution: defaultAnchorResolution({
+          status: 'SELECTED',
+          selectedObservationId: 'obs-low',
+          duplicateEquivalentObservationIds: ['obs-high'],
+        }),
+        anchor: {
+          observationId: 'obs-low',
+          sourceMeasurementId: 'meas-1',
+          evidenceClass: BatteryGeneralizedEvidenceClass.ENGINE_OFF_TRANSITION,
+          evidenceConfidence: BatteryGeneralizedEvidenceConfidence.HIGH,
+          actualRestAgeMs: 0,
+          voltageMv: 14150,
+          voltageObservedAt: ANCHOR_AT.toISOString(),
+          providerTimestampSource: SHUTDOWN_TIMESTAMP_SOURCES.PROVIDER_FIELD_TIMESTAMP,
+        },
+      }),
+    );
+    expect(none).not.toBe(withDupes);
   });
 });
 
@@ -386,6 +473,19 @@ describe('M3.3C C3 canonical shadow row (Q–S)', () => {
     });
     expect(pick?.semanticRevision).toBe(4);
   });
+
+  it('C3.1 ended session prefers FINAL+INVALIDATED over INCREMENTAL+VALID when exact pair missing', () => {
+    const pick = selectCanonicalRestSessionFeatureShadowRow({
+      sessionStatus: BatteryRestSessionStatus.ENDED,
+      endReason: null,
+      rows: [
+        row(5, BatteryRestSessionFeatureComputationPhase.INCREMENTAL, BatteryRestSessionFeatureSessionTrust.VALID),
+        row(2, BatteryRestSessionFeatureComputationPhase.FINAL, BatteryRestSessionFeatureSessionTrust.INVALIDATED),
+      ],
+    });
+    expect(pick?.semanticRevision).toBe(2);
+    expect(pick?.computationPhase).toBe(BatteryRestSessionFeatureComputationPhase.FINAL);
+  });
 });
 
 describe('M3.3C C3 flag-off (TEST_P)', () => {
@@ -417,6 +517,75 @@ describe('M3.3C C3 flag-off (TEST_P)', () => {
   });
 });
 
+describe('C3.1 retention providerObservationAt null-last sort', () => {
+  it('orders earlier, later, then null at same actualRestAgeMs', () => {
+    const points: RestSessionRetentionEligiblePoint[] = [
+      {
+        observationId: 'c-null',
+        actualRestAgeMs: 3600000,
+        voltageMv: 13800,
+        providerObservationAtMs: null,
+        nominalRestIntervalIndex: 1,
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+      },
+      {
+        observationId: 'a-early',
+        actualRestAgeMs: 3600000,
+        voltageMv: 13810,
+        providerObservationAtMs: 1000,
+        nominalRestIntervalIndex: 1,
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+      },
+      {
+        observationId: 'b-late',
+        actualRestAgeMs: 3600000,
+        voltageMv: 13820,
+        providerObservationAtMs: 2000,
+        nominalRestIntervalIndex: 1,
+        evidenceClass: BatteryGeneralizedEvidenceClass.REST_WAKE_VOLTAGE,
+      },
+    ];
+    const sorted = sortRestSessionRetentionEligiblePoints(points);
+    expect(sorted.map((p) => p.observationId)).toEqual(['a-early', 'b-late', 'c-null']);
+  });
+});
+
+describe('C3.1 narrowed P2002 retry classifier', () => {
+  it('retries known feature unique races and P2034 only', () => {
+    const featureP2002 = new Prisma.PrismaClientKnownRequestError('Unique', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: { modelName: 'BatteryRestSessionFeature', target: ['input_digest'] },
+    });
+    const foreignP2002 = new Prisma.PrismaClientKnownRequestError('Unique', {
+      code: 'P2002',
+      clientVersion: 'test',
+      meta: { modelName: 'Organization', target: ['slug'] },
+    });
+    const serial = new Prisma.PrismaClientKnownRequestError('Conflict', {
+      code: 'P2034',
+      clientVersion: 'test',
+    });
+    expect(isKnownBatteryRestSessionFeatureUniqueRace(featureP2002)).toBe(true);
+    expect(isKnownBatteryRestSessionFeatureUniqueRace(foreignP2002)).toBe(false);
+    expect(isRetryableRestSessionFeatureComputationConflict(featureP2002)).toBe(true);
+    expect(isRetryableRestSessionFeatureComputationConflict(foreignP2002)).toBe(false);
+    expect(isRetryableRestSessionFeatureComputationConflict(serial)).toBe(true);
+  });
+});
+
+describe('buildRestSessionFeatureInputAnchorResolutionV1', () => {
+  it('maps SELECTED anchor resolution metadata', () => {
+    const resolution = resolveCanonicalRestSessionRetentionAnchor({
+      restSessionId: SESSION,
+      anchorAt: ANCHOR_AT,
+      candidates: [],
+    });
+    expect(resolution.status).toBe('UNAVAILABLE');
+    expect(buildRestSessionFeatureInputAnchorResolutionV1(resolution).status).toBe('UNAVAILABLE');
+  });
+});
+
 describe('buildRestSessionFeatureInputSnapshotV1', () => {
   it('rejects charge raw restSessionId mismatch', () => {
     expect(() =>
@@ -425,6 +594,7 @@ describe('buildRestSessionFeatureInputSnapshotV1', () => {
         vehicleId: VEHICLE,
         restSessionId: SESSION,
         session: baseSessionBlock(),
+        anchorResolution: defaultAnchorResolution(),
         anchor: null,
         eligibleRetentionPoints: [],
         retentionMetadataByObservationId: new Map(),

@@ -8,6 +8,7 @@ import type { PrismaService } from '@shared/database/prisma.service';
 import { computeFeatureInputDigestFromSnapshot } from './feature-input-canonical.serializer';
 import { buildRestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.builder';
 import type { RestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.types';
+import { buildRestSessionFeatureInputAnchorResolutionV1 } from './rest-session-feature-input-snapshot.types';
 import {
   createRestSessionFeatureInputReaderForTx,
   lockBatteryRestSessionForFeatureComputation,
@@ -15,6 +16,7 @@ import {
 } from './rest-session-feature-input.reader';
 import { REST_SESSION_FEATURE_COMPUTATION_MAX_CONFLICT_RETRIES } from './rest-session-feature.constants';
 import { RestSessionFeatureRepository } from './rest-session-feature.repository';
+import { isRetryableRestSessionFeatureComputationConflict } from './rest-session-feature-computation-retry.util';
 import { computeRestSessionRetentionFeatures } from './rest-session-retention.policy';
 
 export type RestSessionFeatureComputationInput = RestSessionFeatureInputLoadInput & {
@@ -35,10 +37,7 @@ export type RestSessionFeatureComputationOutcome =
     };
 
 function isRetryableTransactionConflict(error: unknown): boolean {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    return error.code === 'P2034' || error.code === 'P2002';
-  }
-  return false;
+  return isRetryableRestSessionFeatureComputationConflict(error);
 }
 
 function mapComputationPhase(
@@ -104,7 +103,10 @@ export class RestSessionFeatureComputationService {
     input: RestSessionFeatureComputationInput,
     computedAt: Date,
   ): Promise<RestSessionFeatureComputationOutcome> {
-    await lockBatteryRestSessionForFeatureComputation(tx, input);
+    const locked = await lockBatteryRestSessionForFeatureComputation(tx, input);
+    if (!locked) {
+      return { status: 'SESSION_NOT_FOUND' };
+    }
 
     const reader = createRestSessionFeatureInputReaderForTx(tx);
     const loaded = await reader.loadForComputation(input);
@@ -122,11 +124,16 @@ export class RestSessionFeatureComputationService {
         ? loaded.anchorResolution.retentionAnchor
         : null;
 
+    const anchorResolutionBlock = buildRestSessionFeatureInputAnchorResolutionV1(
+      loaded.anchorResolution,
+    );
+
     const snapshot = buildRestSessionFeatureInputSnapshotV1({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       restSessionId: input.restSessionId,
       session: loaded.sessionBlock,
+      anchorResolution: anchorResolutionBlock,
       anchor: snapshotAnchor,
       eligibleRetentionPoints: loaded.eligibleRetentionPoints,
       retentionMetadataByObservationId: loaded.retentionMetadataByObservationId,

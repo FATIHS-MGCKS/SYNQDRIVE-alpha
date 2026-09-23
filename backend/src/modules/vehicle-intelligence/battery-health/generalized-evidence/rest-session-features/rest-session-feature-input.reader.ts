@@ -215,16 +215,17 @@ export class RestSessionFeatureInputReader {
 }
 
 export async function lockBatteryRestSessionForFeatureComputation(
-  tx: Pick<PrismaService, '$executeRaw'>,
+  tx: Pick<PrismaService, '$queryRaw'>,
   input: RestSessionFeatureInputLoadInput,
-): Promise<void> {
-  await tx.$executeRaw`
+): Promise<boolean> {
+  const locked = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT id FROM battery_rest_sessions
     WHERE id = ${input.restSessionId}
       AND organization_id = ${input.organizationId}
       AND vehicle_id = ${input.vehicleId}
     FOR UPDATE
   `;
+  return locked.length > 0;
 }
 
 export type RestSessionFeatureInputReaderTx = RestSessionFeatureInputDbClient;

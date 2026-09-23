@@ -2,6 +2,7 @@ import type { ChargeOpportunityRawFeaturesV1 } from './charge-opportunity.types'
 import type {
   RestSessionFeatureInputRetentionPointV1,
   RestSessionFeatureInputSnapshotV1,
+  RestSessionFeatureInputAnchorResolutionV1,
 } from './rest-session-feature-input-snapshot.types';
 import { FEATURE_INPUT_VERSION_TUPLE } from './rest-session-feature-input-snapshot.types';
 import type { RestSessionRetentionEligiblePoint } from './rest-session-retention.types';
@@ -17,6 +18,7 @@ export function buildRestSessionFeatureInputSnapshotV1(input: {
   vehicleId: string;
   restSessionId: string;
   session: RestSessionFeatureInputSessionV1;
+  anchorResolution: RestSessionFeatureInputAnchorResolutionV1;
   anchor: RestSessionFeatureInputAnchorV1 | null;
   eligibleRetentionPoints: RestSessionRetentionEligiblePoint[];
   retentionMetadataByObservationId: Map<
@@ -65,6 +67,7 @@ export function buildRestSessionFeatureInputSnapshotV1(input: {
     retentionPolicyVersion: FEATURE_INPUT_VERSION_TUPLE.retentionPolicyVersion,
     chargeOpportunityPolicyVersion: FEATURE_INPUT_VERSION_TUPLE.chargeOpportunityPolicyVersion,
     session: input.session,
+    anchorResolution: input.anchorResolution,
     anchor: input.anchor,
     retentionPoints,
     chargeOpportunityRaw: input.chargeOpportunityRaw,

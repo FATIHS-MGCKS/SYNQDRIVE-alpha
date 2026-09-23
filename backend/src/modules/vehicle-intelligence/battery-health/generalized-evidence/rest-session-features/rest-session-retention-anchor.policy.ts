@@ -7,6 +7,7 @@ import { SHUTDOWN_TIMESTAMP_SOURCES } from '../../shutdown-evidence/shutdown-evi
 import type { RestSessionRetentionAnchorInput } from './rest-session-retention.types';
 import { convertRestRetentionVoltageToMillivolts } from './rest-session-retention-voltage.policy';
 import type { RestSessionFeatureInputAnchorV1 } from './rest-session-feature-input-snapshot.types';
+import { sortUtf16CodeUnitLexicographic, compareUtf16CodeUnitLexicographic } from './feature-input-canonical.serializer';
 
 export type RestSessionRetentionAnchorCandidateRow = {
   observationId: string;
@@ -26,11 +27,11 @@ export type CanonicalRestSessionRetentionAnchorResult =
       status: 'SELECTED';
       snapshotAnchor: RestSessionFeatureInputAnchorV1;
       retentionAnchor: RestSessionRetentionAnchorInput;
-      duplicateCandidateObservationIds: string[];
+      duplicateEquivalentObservationIds: string[];
     }
   | {
       status: 'AMBIGUOUS';
-      duplicateCandidateObservationIds: string[];
+      conflictingCandidateObservationIds: string[];
     };
 
 function anchorSemanticFingerprint(row: {
@@ -102,14 +103,16 @@ export function resolveCanonicalRestSessionRetentionAnchor(input: {
   });
 
   const fingerprints = new Set(normalized.map((entry) => entry.fingerprint));
-  const allIds = normalized.map((entry) => entry.row.observationId).sort((a, b) => a.localeCompare(b));
+  const allIds = sortUtf16CodeUnitLexicographic(
+    normalized.map((entry) => entry.row.observationId),
+  );
 
   if (fingerprints.size > 1) {
-    return { status: 'AMBIGUOUS', duplicateCandidateObservationIds: allIds };
+    return { status: 'AMBIGUOUS', conflictingCandidateObservationIds: allIds };
   }
 
   const chosen = [...normalized].sort((a, b) =>
-    a.row.observationId.localeCompare(b.row.observationId),
+    compareUtf16CodeUnitLexicographic(a.row.observationId, b.row.observationId),
   )[0];
 
   const snapshotAnchor: RestSessionFeatureInputAnchorV1 = {
@@ -134,6 +137,8 @@ export function resolveCanonicalRestSessionRetentionAnchor(input: {
     status: 'SELECTED',
     snapshotAnchor,
     retentionAnchor,
-    duplicateCandidateObservationIds: allIds.filter((id) => id !== chosen.row.observationId),
+    duplicateEquivalentObservationIds: sortUtf16CodeUnitLexicographic(
+      allIds.filter((id) => id !== chosen.row.observationId),
+    ),
   };
 }

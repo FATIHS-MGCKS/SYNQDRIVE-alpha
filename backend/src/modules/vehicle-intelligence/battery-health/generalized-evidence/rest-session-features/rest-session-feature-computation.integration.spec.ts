@@ -397,7 +397,7 @@ async function buildRestingSessionFixture(prisma: PrismaClient) {
       }
     });
 
-    it('PG_G: concurrent same input → one row', async () => {
+    it('PG_G: concurrent same input → one row (independent Prisma clients)', async () => {
       if (!dbOk) return;
       const fx = await buildRestingSessionFixture(prisma);
       const input = {
@@ -405,19 +405,32 @@ async function buildRestingSessionFixture(prisma: PrismaClient) {
         vehicleId: fx.vehicleId,
         restSessionId: fx.sessionId,
       };
-      const [a, b] = await Promise.all([
-        service.computeAndPersist(input),
-        service.computeAndPersist(input),
-      ]);
-      const statuses = [a.status, b.status].sort();
-      expect(statuses).toEqual(['CREATED', 'DUPLICATE_EXISTING']);
-      const count = await prisma.batteryRestSessionFeature.count({
-        where: { restSessionId: fx.sessionId },
-      });
-      expect(count).toBe(1);
+      const prismaA = new PrismaClient();
+      const prismaB = new PrismaClient();
+      await Promise.all([prismaA.$connect(), prismaB.$connect()]);
+      try {
+        const serviceA = new RestSessionFeatureComputationService(
+          prismaA as unknown as PrismaService,
+        );
+        const serviceB = new RestSessionFeatureComputationService(
+          prismaB as unknown as PrismaService,
+        );
+        const [a, b] = await Promise.all([
+          serviceA.computeAndPersist(input),
+          serviceB.computeAndPersist(input),
+        ]);
+        const statuses = [a.status, b.status].sort();
+        expect(statuses).toEqual(['CREATED', 'DUPLICATE_EXISTING']);
+        const count = await prisma.batteryRestSessionFeature.count({
+          where: { restSessionId: fx.sessionId },
+        });
+        expect(count).toBe(1);
+      } finally {
+        await Promise.all([prismaA.$disconnect(), prismaB.$disconnect()]);
+      }
     });
 
-    it('PG_H: concurrent revision safety under changed input', async () => {
+    it('PG_H: concurrent revision safety (independent Prisma clients)', async () => {
       if (!dbOk) return;
       const fx = await buildRestingSessionFixture(prisma);
       await service.computeAndPersist({
@@ -442,23 +455,37 @@ async function buildRestingSessionFixture(prisma: PrismaClient) {
         observedAt: new Date(fx.anchor.getTime() + 10_800_000),
         nominalRestIntervalIndex: 3,
       });
-      const results = await Promise.all(
-        Array.from({ length: 4 }, () =>
-          service.computeAndPersist({
-            organizationId: fx.organizationId,
-            vehicleId: fx.vehicleId,
-            restSessionId: fx.sessionId,
-          }),
-        ),
-      );
-      const created = results.filter((r) => r.status === 'CREATED');
-      const dup = results.filter((r) => r.status === 'DUPLICATE_EXISTING');
-      expect(created.length).toBeGreaterThanOrEqual(1);
-      expect(created.length + dup.length).toBe(4);
-      const rev2Rows = await prisma.batteryRestSessionFeature.findMany({
-        where: { restSessionId: fx.sessionId, semanticRevision: 2 },
-      });
-      expect(rev2Rows.length).toBe(1);
+      const prismaA = new PrismaClient();
+      const prismaB = new PrismaClient();
+      await Promise.all([prismaA.$connect(), prismaB.$connect()]);
+      try {
+        const serviceA = new RestSessionFeatureComputationService(
+          prismaA as unknown as PrismaService,
+        );
+        const serviceB = new RestSessionFeatureComputationService(
+          prismaB as unknown as PrismaService,
+        );
+        const input = {
+          organizationId: fx.organizationId,
+          vehicleId: fx.vehicleId,
+          restSessionId: fx.sessionId,
+        };
+        const results = await Promise.all([
+          serviceA.computeAndPersist(input),
+          serviceB.computeAndPersist(input),
+          serviceA.computeAndPersist(input),
+          serviceB.computeAndPersist(input),
+        ]);
+        expect(results.every((r) => r.status === 'CREATED' || r.status === 'DUPLICATE_EXISTING')).toBe(
+          true,
+        );
+        const rev2Rows = await prisma.batteryRestSessionFeature.findMany({
+          where: { restSessionId: fx.sessionId, semanticRevision: 2 },
+        });
+        expect(rev2Rows.length).toBe(1);
+      } finally {
+        await Promise.all([prismaA.$disconnect(), prismaB.$disconnect()]);
+      }
     });
 
     it('PG_I: tenant isolation SESSION_NOT_FOUND', async () => {
@@ -478,7 +505,7 @@ async function buildRestingSessionFixture(prisma: PrismaClient) {
       expect(wrongVehicle.status).toBe('SESSION_NOT_FOUND');
     });
 
-    it('PG_J: inputSummary verifies against inputDigest', async () => {
+    it('PG_J: inputSummary verifies against inputDigest after JSONB roundtrip', async () => {
       if (!dbOk) return;
       const fx = await buildRestingSessionFixture(prisma);
       const result = await service.computeAndPersist({
@@ -488,10 +515,14 @@ async function buildRestingSessionFixture(prisma: PrismaClient) {
       });
       expect(result.status).toBe('CREATED');
       if (result.status !== 'CREATED') return;
+      const reloaded = await prisma.batteryRestSessionFeature.findUnique({
+        where: { id: result.row.id },
+      });
+      expect(reloaded).not.toBeNull();
       const digest = computeFeatureInputDigestFromSnapshot(
-        result.row.inputSummary as RestSessionFeatureInputSnapshotV1,
+        reloaded!.inputSummary as RestSessionFeatureInputSnapshotV1,
       );
-      expect(digest).toBe(result.row.inputDigest);
+      expect(digest).toBe(reloaded!.inputDigest);
     });
 
     it('PG_K: authoritative tables unchanged', async () => {
