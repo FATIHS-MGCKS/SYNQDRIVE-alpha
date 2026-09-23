@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/button';
 import { MasterEmptyState, MasterErrorState, MasterLoadingState } from '../shell/MasterPageStates';
 import { MasterPageHeader, MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
+import { RetentionPointsTable } from './RetentionPointsTable';
+import { fetchOrgVehiclesForBatteryV2Inspection } from './vehicle-selection';
 import {
   formatMillivolts,
   formatSlope,
@@ -132,9 +134,10 @@ function RevisionFeatures({
         />
       </div>
       {retentionPoints.length > 0 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.retentionCurveNote', { count: retentionPoints.length })}
-        </p>
+        <div className="mt-4 space-y-2">
+          <p className="text-sm font-medium">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.retentionSectionTitle')}</p>
+          <RetentionPointsTable points={retentionPoints} />
+        </div>
       )}
     </MasterPageSection>
   );
@@ -166,11 +169,15 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
     });
   }, [vehicles, organizationId, vehicleSearch]);
 
-  const loadVehicles = useCallback(async () => {
+  const loadVehiclesForOrganization = useCallback(async (orgId: string) => {
+    if (!orgId) {
+      setVehicles([]);
+      return;
+    }
     setVehiclesLoading(true);
     try {
-      const res = await api.vehicles.listAll({ limit: 300 });
-      setVehicles(res.data ?? []);
+      const rows = await fetchOrgVehiclesForBatteryV2Inspection(orgId);
+      setVehicles(rows);
     } catch {
       setVehicles([]);
     } finally {
@@ -179,8 +186,9 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   }, []);
 
   useEffect(() => {
-    void loadVehicles();
-  }, [loadVehicles]);
+    setVehicleId('');
+    void loadVehiclesForOrganization(organizationId);
+  }, [organizationId, loadVehiclesForOrganization]);
 
   const loadSessions = useCallback(async () => {
     if (!organizationId || !vehicleId) {

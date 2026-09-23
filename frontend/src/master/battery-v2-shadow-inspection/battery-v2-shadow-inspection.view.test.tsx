@@ -8,16 +8,18 @@ import type { RestSessionFeatureShadowInspectionV1 } from './types';
 vi.mock('../../lib/api', () => ({
   api: {
     vehicles: {
-      listAll: vi.fn(async () => ({
+      operationalList: vi.fn(async () => ({
         data: [
           {
-            id: 'veh-1',
+            vehicleId: 'veh-1',
             organizationId: 'org-1',
             licensePlate: 'SD-100',
             make: 'VW',
             model: 'Golf',
+            vin: 'VIN100',
           },
         ],
+        meta: { total: 1, page: 1, limit: 200, totalPages: 1 },
       })),
     },
     admin: {
@@ -105,6 +107,22 @@ function buildInspection(
       missingRungCount: 0,
       computedAt: '2026-09-23T10:05:00.000Z',
       digestValid: overallStatus !== 'INTEGRITY_WARNING',
+      inputSummary: {
+        inputContractVersion: 'M3_3C_FEATURE_INPUT_V1',
+        retentionPoints: [
+          {
+            observationId: 'obs-ret-1',
+            sourceMeasurementId: 'm1',
+            evidenceClass: 'REST_WAKE_VOLTAGE',
+            evidenceConfidence: 'HIGH',
+            stateAlignmentClass: 'ALIGNED',
+            actualRestAgeMs: 3600000,
+            voltageMv: 121800,
+            providerObservationAt: null,
+            nominalRestIntervalIndex: 1,
+          },
+        ],
+      },
     },
     revisions: [],
     integrity: {
@@ -187,6 +205,35 @@ describe('BatteryV2ShadowInspectionView (C5B)', () => {
     });
 
     expect(container.textContent).toContain(label);
+    expect(container.textContent).toContain('121.800 V');
+    expect(container.textContent).toContain('3600000');
+    expect(container.textContent).toContain('obs-ret');
     expect(vi.mocked(api.admin.batteryV2.inspectRestSessionFeature)).toHaveBeenCalled();
+  });
+
+  it('loads vehicles via org-scoped operationalList when organization selected', async () => {
+    vi.mocked(api.admin.batteryV2.inspectRestSessionFeature).mockResolvedValue(buildInspection('OK'));
+
+    await act(async () => {
+      root.render(
+        createElement(BatteryV2ShadowInspectionView, {
+          isDarkMode: false,
+          organizations: [{ id: 'org-1', companyName: 'Acme' }],
+        }),
+      );
+    });
+
+    const selects = container.querySelectorAll('select');
+    await act(async () => {
+      (selects[0] as HTMLSelectElement).value = 'org-1';
+      selects[0].dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(vi.mocked(api.vehicles.operationalList)).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org-1', registrationState: 'registered' }),
+    );
   });
 });

@@ -54,6 +54,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5B.1 Master Admin shadow UI closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Render `inputSummary.retentionPoints` table from C5A; org-scoped vehicle load via `GET /admin/vehicles/operational?organizationId=` pagination; pre-merge roadmap wording. |
+| **WHY** | Count-only retention display insufficient; global `listAll(300)` incomplete org selection. |
+| **VALIDATION** | Frontend vitest (retention + vehicle selection + view); i18n PR gate. |
+| **EVIDENCE** | PR #1733 amend |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5B Master Admin shadow inspection UI
 
 | Field | Value |

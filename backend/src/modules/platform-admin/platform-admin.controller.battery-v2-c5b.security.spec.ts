@@ -2,6 +2,7 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { PlatformAdminController } from './platform-admin.controller';
 
 const ROUTES = {
@@ -45,5 +46,22 @@ describe('PlatformAdminController Battery V2 C5B inspection — authorization', 
         contextFor({ platformRole: 'ORG_ADMIN', roles: ['ORG_ADMIN'] }, 'inspect'),
       ),
     ).toThrow(ForbiddenException);
+  });
+
+  it('MasterAdminMfaGuard registered at controller; C5B GET handlers have no handler-level step-up metadata', () => {
+    const guards = Reflect.getMetadata('__guards__', PlatformAdminController) as
+      | Array<new (...args: never[]) => unknown>
+      | undefined;
+    expect(guards?.map((g) => g.name)).toContain('MasterAdminMfaGuard');
+    expect(Reflect.getMetadata(MASTER_ADMIN_MFA_ACTION_KEY, PlatformAdminController)).toBeDefined();
+    expect(
+      Reflect.getMetadata(MASTER_ADMIN_MFA_ACTION_KEY, PlatformAdminController.prototype.listBatteryV2RestSessions),
+    ).toBeUndefined();
+    expect(
+      Reflect.getMetadata(
+        MASTER_ADMIN_MFA_ACTION_KEY,
+        PlatformAdminController.prototype.getBatteryV2RestSessionFeatureInspection,
+      ),
+    ).toBeUndefined();
   });
 });

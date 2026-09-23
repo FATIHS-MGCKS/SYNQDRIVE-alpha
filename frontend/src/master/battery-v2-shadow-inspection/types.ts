@@ -98,8 +98,29 @@ export function formatSlope(mvPerHour: number | null | undefined): string {
   return `${mvPerHour.toFixed(1)} mV/h`;
 }
 
-export function retentionPointsFromInputSummary(inputSummary: unknown): unknown[] {
+export type RestSessionFeatureInputRetentionPointV1 = {
+  observationId: string;
+  sourceMeasurementId: string;
+  evidenceClass: string;
+  evidenceConfidence: string;
+  stateAlignmentClass: string;
+  actualRestAgeMs: number;
+  voltageMv: number;
+  providerObservationAt: string | null;
+  nominalRestIntervalIndex: number | null;
+};
+
+export function retentionPointsFromInputSummary(inputSummary: unknown): RestSessionFeatureInputRetentionPointV1[] {
   if (!inputSummary || typeof inputSummary !== 'object') return [];
-  const points = (inputSummary as { eligibleRetentionPoints?: unknown }).eligibleRetentionPoints;
-  return Array.isArray(points) ? points : [];
+  const summary = inputSummary as { retentionPoints?: unknown; eligibleRetentionPoints?: unknown };
+  const raw = summary.retentionPoints ?? summary.eligibleRetentionPoints;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (p): p is RestSessionFeatureInputRetentionPointV1 =>
+      p != null &&
+      typeof p === 'object' &&
+      typeof (p as RestSessionFeatureInputRetentionPointV1).observationId === 'string' &&
+      typeof (p as RestSessionFeatureInputRetentionPointV1).actualRestAgeMs === 'number' &&
+      typeof (p as RestSessionFeatureInputRetentionPointV1).voltageMv === 'number',
+  );
 }
