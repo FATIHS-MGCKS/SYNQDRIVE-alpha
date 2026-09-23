@@ -54,6 +54,39 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C3.1 digest/anchor/concurrency hardening (PR #1729 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Undefined object properties silently omitted; localeCompare key sort; anchor UNAVAILABLE/AMBIGUOUS indistinguishable in digest; broad P2002 retry; shared-client concurrency tests. |
+| **CHANGE** | Strict undefined rejection; UTF-16 key order + fixed literal vector; `anchorResolution` in snapshot; null-last retention sort; narrowed P2002 classifier; `$queryRaw` session lock; phase-first canonical fallback; dual-client PG_G/H; JSONB roundtrip PG_J. |
+| **VALIDATION** | C1/C2/C3 unit + Postgres suites; backend build. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **EVIDENCE** | `M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md` C3.1 section |
+
+---
+
+## CL-2026-09-23 — M3.3C C3 deterministic feature computation (append-only shadow rows)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C2 raw charge context only; no combined input snapshot, digest, or feature persistence path. |
+| **OBSERVATION** | C3 requires hash-verifiable combined retention+charge inputs, semantic revisions, and Postgres-serialized idempotency without live hooks. |
+| **HYPOTHESIS** | Serializable transaction + session `FOR UPDATE` + canonical JSON digest enables safe multi-replica append-only writes behind default-OFF flag. |
+| **CHANGE** | `RestSessionFeatureComputationService`, input reader/snapshot builder, canonical serializer, anchor cardinality policy, append-only repository, canonical shadow-row policy; C2 reader tx-client refactor; unit A–S + Postgres PG_A–M. |
+| **WHY** | First persisted combined feature model isolated from assessment/publication until C4/C5. |
+| **EXPECTED_EFFECT** | Deterministic digest/idempotency; material-only retention in digest; flag-off zero DB access. |
+| **VALIDATION** | `rest-session-feature-computation.policy.spec.ts`; `test:battery:v2:rest-session-feature:computation:postgres`; C1/C2 suites re-run. |
+| **OBSERVED_EFFECT** | Unit 18/18; Postgres PG_A–M PASS locally; no Nest live registration. |
+| **NON_EFFECTS** | No deploy; production migration unchanged; shadow flag default OFF; classifier unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | `REST_SESSION_FEATURE_MODEL_VERSION` now `M3_3C_C3_V1` for new rows; charge policy version constant corrected to `M3_3C_C2_V1`. |
+| **REMAINING_GAPS** | C4 live wiring; C5 observability/UI. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature computation |
+| **EVIDENCE** | `research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C2.2 charge-opportunity provenance hardening (PR #1728 amend)
 
 | Field | Value |

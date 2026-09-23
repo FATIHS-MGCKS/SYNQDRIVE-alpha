@@ -75,6 +75,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-23T06:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c3-feature-computation-2026-09-23',
+    version: '4.9.1998',
+    title: 'Battery V2 M3.3C C3 — Deterministic feature computation (shadow append-only)',
+    summary: [
+      'RestSessionFeatureComputationService: shadow flag checked before any DB access; Serializable txn + battery_rest_sessions FOR UPDATE.',
+      'RestSessionFeatureInputSnapshotV1 + canonical JSON + SHA-256 inputDigest; semanticRevision monotonic per version tuple.',
+      'Combines C1 retention outputs + C2 chargeOpportunityRaw; chargeOpportunityClass=UNKNOWN; no live Nest registration or capture hooks.',
+      'Unit tests A–S; Postgres PG_A–M via test:battery:v2:rest-session-feature:computation:postgres.',
+    ],
+    reason:
+      'C3 authorized combined persisted feature model behind default-OFF flag before C4 lifecycle wiring.',
+    previousBehavior:
+      'C2 read-only charge raw only; no feature row writer or digest/idempotency path.',
+    details:
+      'architecture/battery-v2/research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md, rest-session-feature-computation.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T08:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c1-rest-session-feature-foundation-2026-09-22',
     version: '4.9.1995',
     title: 'Battery V2 M3.3C C1 — Rest session feature schema + pure retention policy',

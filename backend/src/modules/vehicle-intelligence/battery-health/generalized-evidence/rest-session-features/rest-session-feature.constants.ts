@@ -1,10 +1,18 @@
-/** M3.3C C1 — shadow rest-session feature versioning (schema + pure policy). */
+/** M3.3C — shadow rest-session feature versioning (schema + pure policy). */
 
-export const REST_SESSION_FEATURE_MODEL_VERSION = 'M3_3C_C1_V1';
+/** Combined persisted feature model (C3). */
+export const REST_SESSION_FEATURE_MODEL_VERSION = 'M3_3C_C3_V1';
 
+/** C1 pure retention policy version (unchanged in C3). */
 export const REST_SESSION_RETENTION_POLICY_VERSION = 'M3_3C_C1_V1';
 
-export const REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION = 'M3_3C_C1_V1';
+/** C2 charge raw policy version (not C1). */
+export const REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION = 'M3_3C_C2_V1';
+
+/** Normalized digest input contract (C3). */
+export const REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION = 'M3_3C_FEATURE_INPUT_V1';
+
+export const REST_SESSION_FEATURE_COMPUTATION_MAX_CONFLICT_RETRIES = 3;
 
 export const RETENTION_SLOPE_METHOD = 'THEIL_SEN_MEDIAN_PAIRWISE_SLOPE' as const;
 

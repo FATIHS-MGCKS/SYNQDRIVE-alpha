@@ -1,5 +1,11 @@
 import { BatteryGeneralizedEvidenceClass } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
+
+/** DB delegate surface for read-only charge context (supports transaction clients). */
+export type RestSessionChargeContextDbClient = Pick<
+  PrismaService,
+  'batteryRestSession' | 'batteryGeneralizedEvidenceObservation' | 'vehicleTrip'
+>;
 import { resolveChargeOpportunityWindow } from './charge-opportunity-window.policy';
 import type {
   ChargeOpportunityGeObservationInput,
@@ -20,12 +26,12 @@ export type RestSessionChargeContextReadInput = {
  * Requires explicit tenant scope (organizationId + vehicleId + restSessionId).
  */
 export class RestSessionChargeContextReader {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly db: RestSessionChargeContextDbClient) {}
 
   async readChargeOpportunityRawFeatures(
     input: RestSessionChargeContextReadInput,
   ): Promise<ChargeOpportunityReadResult> {
-    const sessionRow = await this.prisma.batteryRestSession.findFirst({
+    const sessionRow = await this.db.batteryRestSession.findFirst({
       where: {
         id: input.restSessionId,
         organizationId: input.organizationId,
@@ -67,7 +73,7 @@ export class RestSessionChargeContextReader {
       window.windowSource !== 'NONE' &&
       window.chargeContextStartAt != null
     ) {
-      const rows = await this.prisma.batteryGeneralizedEvidenceObservation.findMany({
+      const rows = await this.db.batteryGeneralizedEvidenceObservation.findMany({
         where: {
           organizationId: input.organizationId,
           vehicleId: input.vehicleId,
@@ -124,7 +130,7 @@ export class RestSessionChargeContextReader {
   }
 
   private async loadTripSnapshot(tripId: string): Promise<ChargeOpportunityTripSnapshot | null> {
-    const trip = await this.prisma.vehicleTrip.findUnique({
+    const trip = await this.db.vehicleTrip.findUnique({
       where: { id: tripId },
       select: {
         id: true,

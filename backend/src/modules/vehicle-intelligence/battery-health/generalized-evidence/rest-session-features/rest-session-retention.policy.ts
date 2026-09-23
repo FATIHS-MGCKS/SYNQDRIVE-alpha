@@ -68,7 +68,7 @@ export function computePairwiseNominalRungDeltas(
 
 export function computeRestSessionRetentionFeatures(input: {
   restSessionId: string;
-  anchor: RestSessionRetentionAnchorInput;
+  anchor: RestSessionRetentionAnchorInput | null;
   candidates: RestSessionRetentionCandidateInput[];
 }): RestSessionRetentionFeatures {
   // RETENTION_TIME_AUTHORITY=actualRestAgeMs only (no ingest/gap recalculation in C1).
@@ -77,10 +77,13 @@ export function computeRestSessionRetentionFeatures(input: {
     candidates: input.candidates,
   });
 
-  const anchorMv = resolveRestSessionRetentionAnchorVoltageMv(
-    input.restSessionId,
-    input.anchor,
-  );
+  const anchorMv =
+    input.anchor != null
+      ? resolveRestSessionRetentionAnchorVoltageMv(
+          input.restSessionId,
+          input.anchor,
+        )
+      : null;
   const count = eligible.length;
 
   if (count === 0) {
