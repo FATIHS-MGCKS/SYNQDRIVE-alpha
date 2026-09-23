@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vdc-wob-long-stand-wake-plug-gt-evidence-2026-09-23',
+    version: '4.9.1997',
+    title: 'VDC — WOB L 7503 long-stand wake-associated PLUG GT evidence closure',
+    summary: [
+      'Canonical evidence: UNPLUG→parked replug (6982 s silence, 21 polls, 0 fresh OBD) then trip-start-associated provider PLUG at +56 s.',
+      'Webhook APPLIED physical first (146 ms HTTP→apply); snapshot PROVENANCE_REFRESH 188563 ms later; no ignition causality claim.',
+      'Cross-vehicle parked behavior heterogeneous vs KS MX 191 s; global PLUG rollout DEFERRED_TO_T7_REVIEW; VDC-DEC-010 wording hardened.',
+    ],
+    reason:
+      'Persist Production read-only GT without claiming trip/ignition universally causes provider OBD refresh or bounded parked replug SLA.',
+    previousBehavior:
+      'WOB_LONG_STAND_GT listed as WOB_PARKED_GT=PENDING in CURRENT_STATE; forensics only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md; DECISION_REGISTER.md (VDC-DEC-010 evidence ref)',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-23T10:40:00.000Z',
+  },
+  {
     id: 'vdc-ks-mx-parked-plug-gt-evidence-2026-09-22',
     version: '4.9.1996',
     title: 'VDC — KS MX 2024 parked PLUG GT scientific evidence closure',

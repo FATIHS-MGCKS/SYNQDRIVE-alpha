@@ -2,6 +2,7 @@
 
 | Date | Change | Author/workstream |
 |------|--------|-------------------|
+| 2026-09-23 | WOB L 7503 long-stand UNPLUG→parked REPLUG→wake-associated PLUG GT — parked provider silence ≥6982 s (21 successful polls, 0 fresh OBD); post trip-start provider PLUG 56 s; webhook APPLIED first (146 ms HTTP→apply; 188563 ms lead over snapshot PROVENANCE_REFRESH); wake-associated recovery without ignition causality claim; PR #1697 UNEXPLAINED documented; global PLUG deferred to T7 (VDC-EVID-PLUG-WEBHOOK-WOB-LONG-STAND-WAKE-GT-001) | Vehicle & Device Connectivity GT evidence |
 | 2026-09-22 | KS MX 2024 parked UNPLUG→PLUG GT evidence closure — provider visibility ~191 s vs prior ~57148 s; webhook physical reconciliation first (61 ms HTTP→apply; 1833 ms lead over snapshot); legacy episode `resolvedAt` provider-time vs physical WEBHOOK winner; `CAUSAL_ATTRIBUTION_295X_TO_WEBHOOK_ALONE=NO`; VDC-DEC-010 unchanged (VDC-EVID-PLUG-WEBHOOK-KS-MX-PARKED-GT-001) | Vehicle & Device Connectivity GT evidence |
 | 2026-09-22 | Isolated OBD PLUG canary profile model — `WOB_L_7503` + `KS_MX_2024` allowlisted profiles in `gt-r1-plug-webhook-canary-isolated.mjs`; coexistence semantics; profile-scoped teardown/rollback; no legacy global PLUG enable | Vehicle & Device Connectivity PLUG canary |
 | 2026-09-11 | Bootstrap Phase 0 — authority scaffold, registry `AUDIT_IN_PROGRESS`, initial hypotheses and LTE_R1 placeholder evidence | Vehicle & Device Connectivity bootstrap |
