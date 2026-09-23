@@ -52,6 +52,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-23 — M3.3C C2.1 charge-opportunity raw context (read-only)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C0 proposed `driving_charging_observation_count` from GE `DRIVING_CHARGING`; classifier reachability forensics proved class unreachable; no C2 reader/policy. |
+| **OBSERVATION** | Production `DRIVING_CHARGING=0` while raw alternator/LV evidence abundant; 7/8 rest sessions lack trip link; no calibrated state/LV bridge for duration proxies. |
+| **HYPOTHESIS** | Raw GE field + timestamp-source contract can extract charge context without classifier or inferred trip windows. |
+| **CHANGE** | `RestSessionChargeContextReader` (tenant-scoped, zero writes); `computeChargeOpportunityRawFeaturesV1` + window policy; C2 source-contract doc; C0 addendum; unit A–O + Postgres PG_A–G script. |
+| **WHY** | Scientifically valid charge **context** extraction for C3 persistence without classifier change or inferred trip windows. |
+| **EXPECTED_EFFECT** | Deterministic raw features for linked trips; UNKNOWN classification; no production/runtime side effects. |
+| **VALIDATION** | `rest-session-charge-opportunity.policy.spec.ts`; optional `BATTERY_V2_CHARGE_OPPORTUNITY_INTEGRATION=1` + `test:battery:v2:charge-opportunity:postgres`. |
+| **OBSERVED_EFFECT** | Unit suite green; reader/policy compile; no live hooks. |
+| **NON_EFFECTS** | No deploy; no `BatteryRestSessionFeature` writes; no capture/rest-session service hooks; `chargeOpportunityClass` remains UNKNOWN. |
+| **REGRESSIONS_OR_TRADEOFFS** | C0 charge-count row superseded by addendum only; classifier dead branch unchanged pending M3.3A follow-up. |
+| **REMAINING_GAPS** | C3 digest + writers; C4 hooks; M3.3A classifier reachability follow-up (non-blocking). |
+| **DECISION_STATUS** | **VALIDATED** (engineering contract) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C charge-opportunity raw context |
+| **EVIDENCE** | `research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-22 — M3.3C C1.1 anchor binding + Postgres contract hardening (PR #1726 amend)
 
 | Field | Value |
