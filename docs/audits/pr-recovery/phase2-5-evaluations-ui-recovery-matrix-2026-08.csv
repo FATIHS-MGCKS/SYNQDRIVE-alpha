@@ -1,0 +1,213 @@
+file,source_pr,source_commit,purpose,still_needed,already_in_main,integration_package
+backend/package.json,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,true,E4
+backend/src/modules/business-insights/evaluations-chart-series.shared.spec.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+backend/src/modules/business-insights/evaluations-driver-analysis.service.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+backend/src/modules/business-insights/evaluations-metric-state.shared.spec.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+backend/src/modules/business-insights/evaluations-strength-detection.service.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+backend/src/modules/business-insights/evaluations-weakness-detection.service.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+docs/frontend/evaluations-metric-state-ux.md,792,c82e449362177a4c9d30ae308558464a2ab934f4,historical UI documentation,false,false,E4
+frontend/src/master/components/ArchitekturView.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,historical architecture/changelog bookkeeping,false,true,E4
+frontend/src/master/components/ChangesView.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,historical architecture/changelog bookkeeping,false,true,E4
+frontend/src/rental/components/FinancialInsightsView.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,true,E4
+frontend/src/rental/components/evaluations/EvaluationsMetricKpiCard.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,false,E4
+frontend/src/rental/components/evaluations/EvaluationsMetricStateBadge.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,false,E4
+frontend/src/rental/components/evaluations/EvaluationsMetricValue.test.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+frontend/src/rental/components/evaluations/EvaluationsMetricValue.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,false,E4
+frontend/src/rental/components/insights/InsightsCockpit.tsx,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,true,E4
+frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.test.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,false,E4
+frontend/vitest.config.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,Metric State UX UI implementation,true,true,E4
+shared/evaluations-insights/evaluations-chart-series.spec.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+shared/evaluations-insights/evaluations-chart-series.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+shared/evaluations-insights/evaluations-data-quality.contract.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+shared/evaluations-insights/evaluations-lineage.contract.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+shared/evaluations-insights/evaluations-metric-state.contract.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+shared/evaluations-insights/evaluations-metric-state.spec.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,reproducible test/fixture intent,true,false,E4
+shared/evaluations-insights/evaluations-metric-state.ts,792,c82e449362177a4c9d30ae308558464a2ab934f4,"backend/shared contract dependency, not UI ownership",true,false,E4
+backend/package.json,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,"backend/shared contract dependency, not UI ownership",true,true,E5
+backend/package.json,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,"backend/shared contract dependency, not UI ownership",true,true,E5
+backend/package.json,796,cb2ced964d28bbbec11f1564e7081376cc12710d,"backend/shared contract dependency, not UI ownership",true,true,E5
+backend/package.json,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,"backend/shared contract dependency, not UI ownership",true,true,E5
+backend/src/modules/business-insights/evaluations-data-quality-panel.shared.spec.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,reproducible test/fixture intent,true,false,E5
+backend/src/modules/business-insights/evaluations-executive-kpi-registry.shared.spec.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,reproducible test/fixture intent,true,false,E5
+backend/src/modules/business-insights/evaluations-risk-cost-visualizations.shared.spec.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,reproducible test/fixture intent,true,false,E5
+backend/src/modules/business-insights/evaluations-sw-cockpit.shared.spec.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,reproducible test/fixture intent,true,false,E5
+docs/frontend/evaluations-data-quality-panel.md,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,historical UI documentation,false,false,E5
+docs/frontend/evaluations-executive-kpis.md,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,historical UI documentation,false,false,E5
+docs/frontend/evaluations-information-architecture.md,794,14072b3141bbfc5001372334aca8c8df9311df76,historical UI documentation,false,false,E5
+docs/frontend/evaluations-information-architecture.md,796,cb2ced964d28bbbec11f1564e7081376cc12710d,historical UI documentation,false,false,E5
+docs/frontend/evaluations-risk-cost-visualizations.md,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,historical UI documentation,false,false,E5
+docs/frontend/evaluations-strengths-weaknesses-cockpit.md,796,cb2ced964d28bbbec11f1564e7081376cc12710d,historical UI documentation,false,false,E5
+frontend/.gitignore,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,true,E5
+frontend/e2e/e2e/artifacts/evaluations/evaluations-page-desktop-1280.png,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,historical screenshot artifact,false,false,E5
+frontend/e2e/e2e/artifacts/evaluations/evaluations-page-mobile-375.png,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,historical screenshot artifact,false,false,E5
+frontend/e2e/evaluations-a11y.spec.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,true,E5
+frontend/e2e/evaluations-fixtures.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,reproducible test/fixture intent,true,true,E5
+frontend/e2e/evaluations-fixtures.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,true,E5
+frontend/e2e/evaluations-responsive.spec.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,reproducible test/fixture intent,true,false,E5
+frontend/e2e/evaluations-responsive.spec.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,false,E5
+frontend/e2e/playwright.config.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,reproducible test/fixture intent,true,true,E5
+frontend/src/master/components/ArchitekturView.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ArchitekturView.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ArchitekturView.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ArchitekturView.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ArchitekturView.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ArchitekturView.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/master/components/ChangesView.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,historical architecture/changelog bookkeeping,false,true,E5
+frontend/src/rental/App.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,true,E5
+frontend/src/rental/components/EvaluationsPage.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/EvaluationsPage.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/EvaluationsPage.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/EvaluationsPage.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/FinancialInsightsView.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,true,E5
+frontend/src/rental/components/FinancialInsightsView.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,true,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualityAdminPanel.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualityAdminPanel.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualityPanel.test.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualitySourceCard.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualityStateBadge.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsDataQualityUserHint.tsx,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,Executive KPI Strip UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiCard.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.test.tsx,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.tsx,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,Executive KPI Strip UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsExecutiveKpiStrip.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsFinanceInvoiceDetail.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsFinanceInvoiceDetail.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsInsightListCard.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsInsightListCard.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsMetricKpiCard.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsMetricValue.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsMobileReadiness.test.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsPageStructure.test.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.test.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.test.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsRiskCostVizPanel.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSection.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSectionNav.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwCockpit.test.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwCockpit.test.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwCockpit.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwFindingCard.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwFindingCard.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/EvaluationsSwFindingDetailDrawer.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsChartCard.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsChartDataTable.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsChartDataTable.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsRiskCostCharts.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsRiskMatrixChart.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/charts/EvaluationsRiskMatrixChart.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/evaluations-a11y.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/evaluations-page.constants.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/evaluations-responsive.constants.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/evaluations.a11y.ui.test.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsActionsSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsCostsDowntimeSection.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsDataQualitySection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsExecutiveSummarySection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsExecutiveSummarySection.tsx,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,Executive KPI Strip UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsFinanceSection.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsFleetSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsFleetSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsGlobalFiltersSection.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsRisksSection.tsx,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsStrengthsWeaknessesSection.tsx,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/components/evaluations/sections/EvaluationsStrengthsWeaknessesSection.tsx,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,false,E5
+frontend/src/rental/components/insights/EvaluationsAnalyticsFilterBar.tsx,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,false,E5
+frontend/src/rental/components/insights/EvaluationsAnalyticsFilterBar.tsx,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,false,E5
+frontend/src/rental/hooks/useEvaluationsAnalyticsSummary.types.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/hooks/useEvaluationsInvoiceData.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+frontend/src/rental/i18n/translations/de.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,Executive KPI Strip UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/de.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,Executive KPI Strip UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,801,304a6ed19da12e30bde4ed8e78f9784e0984eb49,Mobile Readiness UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,Risk / Cost / Failure Visuals UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,Strength / Weakness Cockpit UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,Accessibility / i18n UI implementation,true,true,E5
+frontend/src/rental/i18n/translations/en.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,true,E5
+frontend/src/rental/lib/evaluations-data-quality-navigation.test.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,reproducible test/fixture intent,true,false,E5
+frontend/src/rental/lib/evaluations-data-quality-navigation.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,Data Quality Panel UI implementation,true,false,E5
+frontend/src/rental/lib/evaluations-format.ts,794,14072b3141bbfc5001372334aca8c8df9311df76,Information Architecture UI implementation,true,false,E5
+shared/evaluations-insights/evaluations-data-quality-panel.contract.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-data-quality-panel.spec.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,reproducible test/fixture intent,true,false,E5
+shared/evaluations-insights/evaluations-data-quality-panel.ts,803,ddad560687ad7d42ca7a15bb033e85bc06b25187,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-data-quality-panel.ts,793,ff34b66f0074e7f5efd155ff6301cae1790cc361,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-executive-kpi-registry.contract.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-executive-kpi-registry.spec.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,reproducible test/fixture intent,true,false,E5
+shared/evaluations-insights/evaluations-executive-kpi-registry.ts,795,2759f22353106ac3c3804fce0e95f8e1aef32b25,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-risk-cost-visualizations.contract.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-risk-cost-visualizations.spec.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,reproducible test/fixture intent,true,false,E5
+shared/evaluations-insights/evaluations-risk-cost-visualizations.ts,798,7f6dde4c8c502dc238167d62c508ac9145e91c5c,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-sw-cockpit.contract.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,"backend/shared contract dependency, not UI ownership",true,false,E5
+shared/evaluations-insights/evaluations-sw-cockpit.spec.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,reproducible test/fixture intent,true,false,E5
+shared/evaluations-insights/evaluations-sw-cockpit.ts,796,cb2ced964d28bbbec11f1564e7081376cc12710d,"backend/shared contract dependency, not UI ownership",true,false,E5
+backend/src/modules/business-insights/business-insights.module.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,"backend/shared contract dependency, not UI ownership",true,true,E6
+backend/src/modules/business-insights/recommendations/dto/recommendation.dto.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,"backend/shared contract dependency, not UI ownership",true,false,E6
+backend/src/modules/business-insights/recommendations/org-recommendations.controller.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,"backend/shared contract dependency, not UI ownership",true,false,E6
+backend/src/modules/business-insights/recommendations/org-recommendations.service.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,"backend/shared contract dependency, not UI ownership",true,false,E6
+docs/frontend/evaluations-action-center.md,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,historical UI documentation,false,false,E6
+frontend/e2e/evaluations-action-center.spec.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,false,E6
+frontend/e2e/evaluations-fixtures.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,true,E6
+frontend/e2e/playwright.config.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,true,E6
+frontend/src/lib/api.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,true,E6
+frontend/src/rental/App.tsx,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,true,E6
+frontend/src/rental/components/evaluations/EvaluationsActionCenter.tsx,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/src/rental/components/evaluations/EvaluationsRecommendationDetailDrawer.tsx,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/src/rental/components/evaluations/evaluations-action-center.ui.test.tsx,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,false,E6
+frontend/src/rental/components/evaluations/sections/EvaluationsActionsSection.tsx,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/src/rental/hooks/useEvaluationsRecommendations.test.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,false,E6
+frontend/src/rental/hooks/useEvaluationsRecommendations.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/src/rental/i18n/translations/de.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,true,E6
+frontend/src/rental/i18n/translations/en.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,true,E6
+frontend/src/rental/lib/evaluations-recommendations-api.types.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/src/rental/lib/evaluations-recommendations-format.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,false,E6
+frontend/vitest.config.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,Action Center UI implementation,true,true,E6
+shared/evaluations-insights/evaluations-recommendations.shared.spec.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,reproducible test/fixture intent,true,false,E6
+shared/evaluations-insights/evaluations-recommendations.ts,806,364bd93733e30c6a98ea579f1707b8a73be2ecd8,"backend/shared contract dependency, not UI ownership",true,false,E6
+docs/frontend/evaluations-forecast-ux.md,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,historical UI documentation,false,false,E8
+frontend/src/lib/api.ts,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,true,E8
+frontend/src/master/components/ArchitekturView.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,historical architecture/changelog bookkeeping,false,true,E8
+frontend/src/master/components/ChangesView.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,historical architecture/changelog bookkeeping,false,true,E8
+frontend/src/rental/components/FinancialInsightsView.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,true,E8
+frontend/src/rental/components/evaluations-forecasts/EvaluationsForecastsSection.test.ts,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,reproducible test/fixture intent,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/EvaluationsForecastsSection.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/ForecastCard.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/ForecastDrilldown.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/ForecastTable.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/ForecastTermTooltip.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/components/evaluations-forecasts/ForecastUncertaintyBand.tsx,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/hooks/useEvaluationsForecasts.ts,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
+frontend/src/rental/lib/evaluations-forecast-view-model.test.ts,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,reproducible test/fixture intent,true,false,E8
+frontend/src/rental/lib/evaluations-forecast-view-model.ts,814,46b905ad6a441f3c16a3f66c17ff88afc1fa7318,Forecast UX UI implementation,true,false,E8
