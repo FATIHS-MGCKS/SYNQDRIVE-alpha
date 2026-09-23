@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
@@ -9,79 +10,65 @@ import {
   REST_SESSION_RETENTION_POLICY_VERSION,
 } from './rest-session-feature.constants';
 import { selectCanonicalRestSessionFeatureShadowRow } from './rest-session-feature-canonical-row.policy';
-import { RestSessionFeatureRepository } from './rest-session-feature.repository';
+import { computeDigestVerificationAccounting } from './rest-session-feature-shadow-inspection.digest';
+import { deriveSemanticRevisionIntegrityFromAggregate } from './rest-session-feature-shadow-inspection.integrity';
 import {
-  deriveSemanticRevisionIntegrityFromAggregate,
-  verifyPersistedFeatureRowDigest,
-} from './rest-session-feature-shadow-inspection.integrity';
+  loadRestSessionFeatureInspectionReadSnapshot,
+  type RestSessionFeatureInspectionSnapshotHooks,
+} from './rest-session-feature-shadow-inspection.snapshot';
 import type {
   RestSessionFeatureShadowCanonicalSelectionStatus,
-  RestSessionFeatureShadowDigestVerificationScope,
   RestSessionFeatureShadowInspectionInput,
   RestSessionFeatureShadowInspectionOutcome,
   RestSessionFeatureShadowInspectionOverallStatus,
   RestSessionFeatureShadowInspectionV1,
 } from './rest-session-feature-shadow-inspection.types';
-import { mapFeatureRowToInspectionRevision } from './rest-session-feature-shadow-inspection.types';
 
 /**
  * M3.3C C5A — read-only shadow rest-session feature inspection (no writes).
- * C5A.1 — bounded DB reads (latest-N window, COUNT, revision aggregate, canonical candidates).
+ * C5A.1 — bounded DB reads.
+ * C5A.2 — repeatable-read snapshot + canonical digest accounting.
  */
 @Injectable()
 export class RestSessionFeatureShadowInspectionService {
+  private snapshotHooks: RestSessionFeatureInspectionSnapshotHooks | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Integration tests only — deterministic barrier inside repeatable-read snapshot. */
+  setSnapshotHooksForTests(hooks: RestSessionFeatureInspectionSnapshotHooks | null): void {
+    this.snapshotHooks = hooks;
+  }
 
   async inspectSession(
     input: RestSessionFeatureShadowInspectionInput,
   ): Promise<RestSessionFeatureShadowInspectionOutcome> {
-    const session = await this.prisma.batteryRestSession.findFirst({
-      where: {
-        id: input.restSessionId,
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
+    const includeRaw = input.includeRaw === true;
+    const hooks = this.snapshotHooks ?? undefined;
+
+    const snapshot = await this.prisma.$transaction(
+      async (tx) =>
+        loadRestSessionFeatureInspectionReadSnapshot(
+          tx as unknown as PrismaService,
+          {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            restSessionId: input.restSessionId,
+          },
+          hooks,
+        ),
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
       },
-    });
-    if (!session) {
+    );
+
+    if (!snapshot) {
       return { status: 'SESSION_NOT_FOUND' };
     }
 
-    const repository = new RestSessionFeatureRepository(this.prisma);
-    const scope = {
-      organizationId: input.organizationId,
-      restSessionId: input.restSessionId,
-    };
-
-    const [totalRows, aggregate, latestRows, canonicalCandidates] = await Promise.all([
-      repository.countFeatureRowsForSession(scope),
-      repository.readRevisionIntegrityAggregate(scope),
-      repository.listLatestFeatureRowsForSession({
-        ...scope,
-        limit: REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS,
-      }),
-      repository.listCanonicalCandidateRows(scope),
-    ]);
-
-    const includeRaw = input.includeRaw === true;
+    const { session, totalRows, aggregate, latestRows, canonicalCandidates } = snapshot;
     const revisionsTruncated = totalRows > REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS;
-
-    const digestRowsChecked = latestRows.length;
-    const digestRowsUnchecked = Math.max(0, totalRows - digestRowsChecked);
-    let digestVerificationScope: RestSessionFeatureShadowDigestVerificationScope;
-    if (totalRows === 0) {
-      digestVerificationScope = 'FULL';
-    } else if (digestRowsUnchecked === 0) {
-      digestVerificationScope = 'FULL';
-    } else {
-      digestVerificationScope = 'BOUNDED_LATEST_WINDOW';
-    }
-
-    let digestMismatchCount = 0;
-    const revisions = latestRows.map((row) => {
-      const digestValid = verifyPersistedFeatureRowDigest(row);
-      if (!digestValid) digestMismatchCount += 1;
-      return mapFeatureRowToInspectionRevision(row, digestValid, includeRaw);
-    });
+    const countAggregateConsistent = totalRows === aggregate.totalRows;
 
     const { semanticRevisionGapCount, duplicateSemanticRevisionCount } =
       deriveSemanticRevisionIntegrityFromAggregate(aggregate);
@@ -101,29 +88,29 @@ export class RestSessionFeatureShadowInspectionService {
       canonicalSelectionStatus = 'CANONICAL_NOT_RESOLVABLE';
     }
 
+    const digestAccounting = computeDigestVerificationAccounting({
+      totalRows,
+      latestRows,
+      canonicalRow,
+      includeRaw,
+    });
+
     let overallStatus: RestSessionFeatureShadowInspectionOverallStatus;
     if (totalRows === 0) {
       overallStatus = 'NO_FEATURE_ROWS';
     } else if (
-      digestMismatchCount > 0 ||
+      !countAggregateConsistent ||
+      digestAccounting.digestMismatchCount > 0 ||
       semanticRevisionGapCount > 0 ||
       duplicateSemanticRevisionCount > 0 ||
       canonicalSelectionStatus === 'CANONICAL_NOT_RESOLVABLE'
     ) {
       overallStatus = 'INTEGRITY_WARNING';
-    } else if (digestRowsUnchecked > 0) {
+    } else if (digestAccounting.digestRowsUnchecked > 0) {
       overallStatus = 'INTEGRITY_PARTIAL';
     } else {
       overallStatus = 'OK';
     }
-
-    const canonicalFeature = canonicalRow
-      ? mapFeatureRowToInspectionRevision(
-          canonicalRow,
-          verifyPersistedFeatureRowDigest(canonicalRow),
-          includeRaw,
-        )
-      : null;
 
     const inspection: RestSessionFeatureShadowInspectionV1 = {
       inspectionContractVersion: REST_SESSION_FEATURE_SHADOW_INSPECTION_CONTRACT_VERSION,
@@ -160,16 +147,17 @@ export class RestSessionFeatureShadowInspectionService {
         canonicalSemanticRevision: canonicalRow?.semanticRevision ?? null,
         revisionsTruncated,
       },
-      canonicalFeature,
-      revisions,
+      canonicalFeature: digestAccounting.canonicalFeature,
+      revisions: digestAccounting.revisions,
       integrity: {
-        digestMismatchCount,
-        digestRowsChecked,
-        digestRowsUnchecked,
-        digestVerificationScope,
+        digestMismatchCount: digestAccounting.digestMismatchCount,
+        digestRowsChecked: digestAccounting.digestRowsChecked,
+        digestRowsUnchecked: digestAccounting.digestRowsUnchecked,
+        digestVerificationScope: digestAccounting.digestVerificationScope,
         semanticRevisionGapCount,
         duplicateSemanticRevisionCount,
         canonicalSelectionStatus,
+        countAggregateConsistent,
         overallStatus,
       },
     };

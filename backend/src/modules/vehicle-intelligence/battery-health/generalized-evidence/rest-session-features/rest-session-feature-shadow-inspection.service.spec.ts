@@ -253,15 +253,48 @@ function wireRepositoryMocks(allRows: ReturnType<typeof featureRow>[]) {
 function buildInspector(rows: ReturnType<typeof featureRow>[] = []) {
   wireRepositoryMocks(rows);
   const prisma = {
-    batteryRestSession: {
-      findFirst: jest.fn().mockResolvedValue(sessionRow()),
-    },
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        batteryRestSession: {
+          findFirst: jest.fn().mockResolvedValue(sessionRow()),
+        },
+      }),
+    ),
   } as unknown as PrismaService;
   const inspector = new RestSessionFeatureShadowInspectionService(prisma);
   return { inspector, prisma };
 }
 
+function mockTransactionSession(
+  prisma: PrismaService,
+  session: ReturnType<typeof sessionRow>,
+) {
+  (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+    fn({
+      batteryRestSession: {
+        findFirst: jest.fn().mockResolvedValue(session),
+      },
+    }),
+  );
+}
+
+function build125RowsCanonicalOutsideWindow() {
+  const rows = [featureRowWithRevision(1)];
+  for (let revision = 2; revision <= 125; revision += 1) {
+    const base = featureRowWithRevision(revision);
+    rows.push(
+      featureRow({
+        ...base,
+        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+      }),
+    );
+  }
+  return rows;
+}
+
 function featureRowWithRevision(revision: number) {
+  const anchorAt = new Date(Date.parse('2026-09-22T10:00:00.000Z') + revision);
   const openedAt = new Date(Date.parse('2026-09-22T10:00:00.000Z') + revision);
   const inputSummary = buildRestSessionFeatureInputSnapshotV1({
     organizationId: orgId,
@@ -304,7 +337,13 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
 
   it('TEST_I1: wrong org → SESSION_NOT_FOUND', async () => {
     const { inspector, prisma } = buildInspector();
-    (prisma.batteryRestSession.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.$transaction as jest.Mock).mockImplementation(async (fn) =>
+      fn({
+        batteryRestSession: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      }),
+    );
     const result = await inspector.inspectSession({
       organizationId: '00000000-0000-0000-0000-000000000000',
       vehicleId: vehId,
@@ -315,7 +354,13 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
 
   it('TEST_I2: wrong vehicle → SESSION_NOT_FOUND', async () => {
     const { inspector, prisma } = buildInspector();
-    (prisma.batteryRestSession.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.$transaction as jest.Mock).mockImplementation(async (fn) =>
+      fn({
+        batteryRestSession: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      }),
+    );
     const result = await inspector.inspectSession({
       organizationId: orgId,
       vehicleId: '99999999-9999-9999-9999-999999999999',
@@ -362,7 +407,8 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
       }),
     ]);
-    (prisma.batteryRestSession.findFirst as jest.Mock).mockResolvedValue(
+    mockTransactionSession(
+      prisma,
       sessionRow({
         sessionStatus: BatteryRestSessionStatus.ENDED,
         endedAt: new Date('2026-09-22T12:00:00.000Z'),
@@ -389,7 +435,8 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
         sessionTrust: BatteryRestSessionFeatureSessionTrust.INVALIDATED,
       }),
     ]);
-    (prisma.batteryRestSession.findFirst as jest.Mock).mockResolvedValue(
+    mockTransactionSession(
+      prisma,
       sessionRow({
         sessionStatus: BatteryRestSessionStatus.INVALIDATED,
         endReason: 'INVALIDATED',
@@ -479,7 +526,7 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
   });
 
   it('TEST_I14: 125 revisions → latest-100 window + bounded DB read', async () => {
-    const rows = Array.from({ length: 125 }, (_, i) => featureRowWithRevision(i + 1));
+    const rows = build125RowsCanonicalOutsideWindow();
     const listLatestSpy = jest.spyOn(
       RestSessionFeatureRepository.prototype,
       'listLatestFeatureRowsForSession',
@@ -499,15 +546,18 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
       expect(result.inspection.featureSummary.revisionsTruncated).toBe(true);
       expect(result.inspection.revisions[0]?.semanticRevision).toBe(26);
       expect(result.inspection.revisions[99]?.semanticRevision).toBe(125);
-      expect(result.inspection.integrity.digestRowsChecked).toBe(100);
-      expect(result.inspection.integrity.digestRowsUnchecked).toBe(25);
+      expect(result.inspection.canonicalFeature?.semanticRevision).toBe(1);
+      expect(result.inspection.revisions.some((r) => r.semanticRevision === 1)).toBe(false);
+      expect(result.inspection.integrity.digestRowsChecked).toBe(101);
+      expect(result.inspection.integrity.digestRowsUnchecked).toBe(24);
       expect(result.inspection.integrity.digestVerificationScope).toBe('BOUNDED_LATEST_WINDOW');
       expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_PARTIAL');
+      expect(result.inspection.integrity.countAggregateConsistent).toBe(true);
     }
   });
 
   it('PARTIAL_COVERAGE_TEST: unchecked older rows → INTEGRITY_PARTIAL not OK', async () => {
-    const rows = Array.from({ length: 125 }, (_, i) => featureRowWithRevision(i + 1));
+    const rows = build125RowsCanonicalOutsideWindow();
     const { inspector } = buildInspector(rows);
     const result = await inspector.inspectSession({
       organizationId: orgId,
@@ -517,6 +567,41 @@ describe('RestSessionFeatureShadowInspectionService (C5A unit)', () => {
     if (result.status === 'OK') {
       expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_PARTIAL');
       expect(result.inspection.integrity.overallStatus).not.toBe('OK');
+    }
+  });
+
+  it('CANONICAL_OUTSIDE_WINDOW_DIGEST_FAILURE_TEST: corrupt canonical → INTEGRITY_WARNING', async () => {
+    const rows = build125RowsCanonicalOutsideWindow();
+    rows[0] = featureRow({
+      ...rows[0],
+      inputDigest: 'deadbeef'.repeat(8),
+    });
+    const { inspector } = buildInspector(rows);
+    const result = await inspector.inspectSession({
+      organizationId: orgId,
+      vehicleId: vehId,
+      restSessionId: sessId,
+    });
+    if (result.status === 'OK') {
+      expect(result.inspection.canonicalFeature?.digestValid).toBe(false);
+      expect(result.inspection.integrity.digestMismatchCount).toBe(1);
+      expect(result.inspection.integrity.overallStatus).toBe('INTEGRITY_WARNING');
+      expect(result.inspection.integrity.digestRowsChecked).toBe(101);
+    }
+  });
+
+  it('CANONICAL_WITHIN_WINDOW_DIGEST_DEDUPE: single row checked once', async () => {
+    const row = featureRow();
+    const { inspector } = buildInspector([row]);
+    const result = await inspector.inspectSession({
+      organizationId: orgId,
+      vehicleId: vehId,
+      restSessionId: sessId,
+    });
+    if (result.status === 'OK') {
+      expect(result.inspection.integrity.digestRowsChecked).toBe(1);
+      expect(result.inspection.integrity.digestRowsUnchecked).toBe(0);
+      expect(result.inspection.integrity.digestMismatchCount).toBe(0);
     }
   });
 

@@ -598,5 +598,82 @@ async function authoritativeTableCounts(prisma: PrismaClient) {
       const after = await authoritativeTableCounts(prisma);
       expect(after).toEqual(before);
     });
+
+    it('PG_J: concurrent write during repeatable-read snapshot stays coherent (C5A.2)', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'J');
+      const { restSessions } = buildC4Stack(prisma);
+      const computation = new RestSessionFeatureComputationService(
+        prisma as unknown as PrismaService,
+      );
+      const anchorAt = new Date('2026-09-23T19:00:00.000Z');
+      const { session } = await openSessionWithAnchor(
+        prisma,
+        restSessions,
+        organizationId,
+        vehicleId,
+        anchorAt,
+      );
+      await linkValidRest(prisma, restSessions, organizationId, vehicleId, session.id, anchorAt);
+
+      let releaseBarrier!: () => void;
+      const barrier = new Promise<void>((resolve) => {
+        releaseBarrier = resolve;
+      });
+      let snapshotPaused = false;
+      inspector.setSnapshotHooksForTests({
+        pauseAfterCountInSnapshot: async () => {
+          snapshotPaused = true;
+          await barrier;
+        },
+      });
+
+      try {
+        const inspectPromise = inspector.inspectSession({
+          organizationId,
+          vehicleId,
+          restSessionId: session.id,
+        });
+
+        while (!snapshotPaused) {
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        }
+
+        const restAt2 = new Date(anchorAt.getTime() + 180_000);
+        await linkValidRest(
+          prisma,
+          restSessions,
+          organizationId,
+          vehicleId,
+          session.id,
+          restAt2,
+        );
+        await computation.computeAndPersist({
+          organizationId,
+          vehicleId,
+          restSessionId: session.id,
+        });
+
+        releaseBarrier();
+        const result = await inspectPromise;
+        expect(result.status).toBe('OK');
+        if (result.status !== 'OK') return;
+
+        const persistedAfter = await prisma.batteryRestSessionFeature.count({
+          where: { organizationId, restSessionId: session.id },
+        });
+        expect(persistedAfter).toBeGreaterThanOrEqual(2);
+
+        expect(result.inspection.featureSummary.totalRows).toBe(1);
+        expect(result.inspection.featureSummary.latestSemanticRevision).toBe(1);
+        expect(result.inspection.integrity.countAggregateConsistent).toBe(true);
+        expect(result.inspection.integrity.digestVerificationScope).toBe('FULL');
+        expect(result.inspection.featureSummary.totalRows).toBe(
+          result.inspection.integrity.digestRowsChecked,
+        );
+      } finally {
+        inspector.setSnapshotHooksForTests(null);
+      }
+    });
   },
 );

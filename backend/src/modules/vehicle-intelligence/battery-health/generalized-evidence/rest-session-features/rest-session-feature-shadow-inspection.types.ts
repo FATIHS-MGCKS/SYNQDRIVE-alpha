@@ -78,6 +78,7 @@ export type RestSessionFeatureShadowInspectionV1 = {
     semanticRevisionGapCount: number;
     duplicateSemanticRevisionCount: number;
     canonicalSelectionStatus: RestSessionFeatureShadowCanonicalSelectionStatus;
+    countAggregateConsistent: boolean;
     overallStatus: RestSessionFeatureShadowInspectionOverallStatus;
   };
 };

@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5A.2 inspection snapshot + canonical digest union
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Parallel inspection reads without shared snapshot; canonical digest mismatch outside latest-100 could leave `digestMismatchCount=0` and `INTEGRITY_PARTIAL`. |
+| **OBSERVATION** | Concurrent C4 writes could mix count vs aggregate; canonical row digest not counted when outside visible window. |
+| **HYPOTHESIS** | One `REPEATABLE READ` transaction for session + bounded feature reads; digest verify on deduped union(latest window, canonical) fixes coverage honesty. |
+| **CHANGE** | `loadRestSessionFeatureInspectionReadSnapshot`; `computeDigestVerificationAccounting`; `countAggregateConsistent`; PG_J concurrent barrier test. |
+| **WHY** | Coherent ops inspection under concurrent shadow writes; canonical integrity must surface as `INTEGRITY_WARNING`. |
+| **EXPECTED_EFFECT** | Snapshot-consistent totals; canonical outside window increments `digestRowsChecked` by 1; canonical mismatch forces warning. |
+| **VALIDATION** | C5A unit + digest specs; PG_J; canonical outside-window unit tests. |
+| **OBSERVED_EFFECT** | Pending CI on amend branch. |
+| **NON_EFFECTS** | Metrics; C3/C4; deploy/migration/flag/customer UI unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | Slightly longer read-only transaction per inspection (still bounded IO). |
+| **REMAINING_GAPS** | C5B UI; production shadow gate. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow inspection |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5A.2 section |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5A.1 bounded inspection reads + digest coverage honesty
 
 | Field | Value |

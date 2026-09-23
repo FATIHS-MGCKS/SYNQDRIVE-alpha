@@ -73,6 +73,15 @@ Planning-only customer concepts for eventual M3.3H (labels/thresholds finalized 
 - **Canonical row:** at most **four** highest-revision candidates (phase × trust) → existing `selectCanonicalRestSessionFeatureShadowRow()`. Canonical may appear in `canonicalFeature` even when outside the visible 100-revision window.
 - **Digest integrity:** only checked rows counted; `digestVerificationScope` **`FULL`** (≤100 rows) or **`BOUNDED_LATEST_WINDOW`**; **`INTEGRITY_PARTIAL`** when older rows unchecked; **`INTEGRITY_WARNING`** when checked mismatch/gap/duplicate/canonical failure.
 
+## Coherent read snapshot + canonical digest union (C5A.2)
+
+- **Transaction:** single Prisma interactive transaction, **`RepeatableRead`**, read-only behavior (SELECT/count/findMany/`$queryRaw` SELECT only).
+- **Inside snapshot (sequential):** tenant-scoped `BatteryRestSession` → feature **COUNT** → revision **aggregate** → latest-100 rows → ≤4 canonical candidates.
+- **Outside transaction:** canonical policy selection, deduped digest verification on **union(latest window, canonical row by id)**, status derivation.
+- **`digestRowsChecked`:** unique rows digest-verified; canonical outside latest window adds **+1** checked row when not already in window.
+- **`countAggregateConsistent`:** `countFeatureRowsForSession === aggregate.totalRows`; mismatch → **`INTEGRITY_WARNING`**.
+- **PG_J:** deterministic barrier after COUNT; concurrent feature append during open RR snapshot must not mix revision totals.
+
 ## Ops CLI
 
 ```bash
