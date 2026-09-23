@@ -15,6 +15,7 @@ import {
 } from './generalized-evidence.constants';
 import { recordLateTripAssociation } from './generalized-evidence.metrics';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
+import { RestSessionFeatureShadowTriggerService } from './rest-session-features/rest-session-feature-shadow-trigger.service';
 
 const ASSOCIABLE_ACTIVE_STATUSES: BatteryRestSessionStatus[] = [
   BatteryRestSessionStatus.CANDIDATE,
@@ -30,6 +31,8 @@ export class LateTripAssociationService {
     private readonly prisma: PrismaService,
     private readonly repository: GeneralizedEvidenceRepository,
     @Optional() private readonly metrics?: TripMetricsService,
+    @Optional()
+    private readonly featureShadowTrigger?: RestSessionFeatureShadowTriggerService,
   ) {}
 
   /**
@@ -118,8 +121,9 @@ export class LateTripAssociationService {
   ) {
     const session = await this.prisma.batteryRestSession.findUnique({
       where: { id: sessionId },
-      select: { candidateTripId: true },
+      select: { candidateTripId: true, organizationId: true },
     });
+    if (!session) return;
 
     await this.repository.updateRestSession(sessionId, {
       confirmedTrip: { connect: { id: tripId } },
@@ -147,6 +151,13 @@ export class LateTripAssociationService {
     this.logger.debug(
       `late trip association vehicle=${vehicleId} session=${sessionId} trip=${tripId}`,
     );
+
+    await this.featureShadowTrigger?.triggerFeatureComputation({
+      organizationId: session.organizationId,
+      vehicleId,
+      restSessionId: sessionId,
+      reason: 'LATE_TRIP_ASSOCIATION',
+    });
   }
 
   private anchorMatchesTripEnd(anchorAt: Date, tripEnd: Date): boolean {

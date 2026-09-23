@@ -54,6 +54,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C4 shadow lifecycle wiring (post-mutation fail-open)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C3 computation service existed but was not Nest-registered; no lifecycle hooks; feature rows only via direct test calls. |
+| **CHANGE** | `RestSessionFeatureShadowTriggerService`; hooks on valid rest link, session terminal, late trip association; double flag gate; C3/C4 Nest registration in `BatteryGeneralizedEvidenceModule`; unit A–O + Postgres PG_A–L. |
+| **WHY** | Event-driven shadow feature recompute after authoritative mutations without blocking primary rest-session paths. |
+| **VALIDATION** | C4 unit/module + Postgres; C1/C2/C3 regression suites; module registry validator. |
+| **NON_EFFECTS** | No deploy; shadow flag default OFF; no schema/migration; no GE capture hook; no queue/scheduler. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **EVIDENCE** | `research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C3.1 digest/anchor/concurrency hardening (PR #1729 amend)
 
 | Field | Value |
