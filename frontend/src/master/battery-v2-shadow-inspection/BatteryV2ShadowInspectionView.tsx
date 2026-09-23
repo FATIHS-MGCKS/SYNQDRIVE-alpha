@@ -4,6 +4,7 @@ import { api } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { MasterEmptyState, MasterErrorState, MasterLoadingState } from '../shell/MasterPageStates';
 import { MasterPageHeader, MasterPageSection } from '../shell';
+import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
 import {
   formatMillivolts,
   formatSlope,
@@ -78,24 +79,61 @@ function RevisionFeatures({
         <span>rev {revision.semanticRevision}</span>
         <span>{revision.computationPhase}</span>
         <span>{revision.sessionTrust}</span>
-        {isCanonical && <span className="font-semibold text-foreground">canonical</span>}
-        <span>digest {revision.digestValid ? 'valid' : 'MISMATCH'}</span>
+        {isCanonical && (
+          <span className="font-semibold text-foreground">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.canonicalTag')}</span>
+        )}
+        <span>
+          digest{' '}
+          {revision.digestValid
+            ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.digestValid')
+            : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.digestMismatch')}
+        </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Metric label="Shutdown → first rest Δ" value={formatMillivolts(revision.shutdownToFirstRestDeltaMv)} />
-        <Metric label="Theil-Sen slope" value={formatSlope(revision.robustRestSlopeMvPerHour)} />
-        <Metric label="Median rest V" value={formatMillivolts(revision.medianRestVoltageMv)} />
-        <Metric label="Valid rest points" value={revision.numberOfValidRestPoints} />
-        <Metric label="Min rest V" value={formatMillivolts(revision.minimumRestVoltageMv)} />
-        <Metric label="Max rest V" value={formatMillivolts(revision.maximumRestVoltageMv)} />
-        <Metric label="Variance mV²" value={revision.restVoltageVarianceMv2} />
-        <Metric label="Missing rungs" value={revision.missingRungCount} />
-        <Metric label="Charge class" value={revision.chargeOpportunityClass} />
-        <Metric label="Observation span" value={revision.observationSpanMs != null ? `${revision.observationSpanMs} ms` : '—'} />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.shutdownRestDelta')}
+          value={formatMillivolts(revision.shutdownToFirstRestDeltaMv)}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.theilSenSlope')}
+          value={formatSlope(revision.robustRestSlopeMvPerHour)}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.medianRestV')}
+          value={formatMillivolts(revision.medianRestVoltageMv)}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.validRestPoints')}
+          value={revision.numberOfValidRestPoints}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.minRestV')}
+          value={formatMillivolts(revision.minimumRestVoltageMv)}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.maxRestV')}
+          value={formatMillivolts(revision.maximumRestVoltageMv)}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.variance')}
+          value={revision.restVoltageVarianceMv2}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.missingRungs')}
+          value={revision.missingRungCount}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.chargeClass')}
+          value={revision.chargeOpportunityClass}
+        />
+        <Metric
+          label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.observationSpan')}
+          value={revision.observationSpanMs != null ? `${revision.observationSpanMs} ms` : '—'}
+        />
       </div>
       {retentionPoints.length > 0 && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Retention curve points (from C5A inputSummary): {retentionPoints.length} eligible retention point(s) — values not recomputed in UI.
+          {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.retentionCurveNote', { count: retentionPoints.length })}
         </p>
       )}
     </MasterPageSection>
@@ -156,7 +194,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
       if (res.sessions.length === 1) setRestSessionId(res.sessions[0].id);
     } catch {
       setSessions([]);
-      setErrorMessage('Rest sessions could not be loaded.');
+      setErrorMessage(resolveBatteryV2ShadowCopy('master.batteryV2Shadow.errorSessionsLoad'));
     } finally {
       setSessionsLoading(false);
     }
@@ -188,7 +226,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
     } catch (e: unknown) {
       setInspection(null);
       setPhase('error');
-      setErrorMessage(e instanceof Error ? e.message : 'Inspection request failed.');
+      setErrorMessage(e instanceof Error ? e.message : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.errorInspectionRequest'));
     }
   }, [organizationId, vehicleId, restSessionId]);
 
@@ -201,20 +239,26 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   return (
     <>
       <MasterPageHeader
-        title="Battery V2 shadow inspection"
-        description="Read-only Master Admin view over M3_3C_C5A_V1 — internal engineering inspection, not customer health UI (M3.3H)."
+        title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.pageTitle')}
+        description={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.pageDescription')}
         icon={<Battery className="w-6 h-6 text-status-info" />}
         actions={
-          <Button type="button" variant="ghost" size="icon" onClick={() => void runInspection()} aria-label="Refresh inspection">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => void runInspection()}
+            aria-label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.refreshAria')}
+          >
             <RefreshCw className="w-4 h-4" />
           </Button>
         }
       />
 
-      <MasterPageSection title="Target selection">
+      <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.targetSelection')}>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="text-sm space-y-1">
-            <span className="text-muted-foreground">Organization</span>
+            <span className="text-muted-foreground">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.organization')}</span>
             <select
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={organizationId}
@@ -223,7 +267,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
                 setVehicleId('');
               }}
             >
-              <option value="">Select organization…</option>
+              <option value="">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.selectOrganization')}</option>
               {organizations.map((org) => (
                 <option key={org.id} value={org.id}>
                   {org.companyName}
@@ -232,12 +276,12 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
             </select>
           </label>
           <label className="text-sm space-y-1 md:col-span-2">
-            <span className="text-muted-foreground">Vehicle</span>
+            <span className="text-muted-foreground">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.vehicle')}</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm mb-2"
-                placeholder="Filter plate / VIN / make…"
+                placeholder={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.filterVehiclePlaceholder')}
                 value={vehicleSearch}
                 onChange={(e) => setVehicleSearch(e.target.value)}
               />
@@ -248,7 +292,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
               disabled={!organizationId || vehiclesLoading}
               onChange={(e) => setVehicleId(e.target.value)}
             >
-              <option value="">Select vehicle…</option>
+              <option value="">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.selectVehicle')}</option>
               {filteredVehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {[v.licensePlate, v.make, v.model].filter(Boolean).join(' · ') || v.id}
@@ -257,14 +301,14 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
             </select>
           </label>
           <label className="text-sm space-y-1 md:col-span-3">
-            <span className="text-muted-foreground">Rest session</span>
+            <span className="text-muted-foreground">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.restSession')}</span>
             <select
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={restSessionId}
               disabled={!vehicleId || sessionsLoading}
               onChange={(e) => setRestSessionId(e.target.value)}
             >
-              <option value="">Select rest session…</option>
+              <option value="">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.selectRestSession')}</option>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.sessionStatus} · opened {new Date(s.openedAt).toLocaleString()} · {s.id.slice(0, 8)}
@@ -277,22 +321,32 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
 
       {!organizationId || !vehicleId ? (
         <MasterEmptyState
-          title="No vehicle selected"
-          description="Choose an organization and vehicle to load Battery V2 rest-session inspection data."
+          title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.emptyNoVehicleTitle')}
+          description={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.emptyNoVehicleDescription')}
         />
       ) : !restSessionId ? (
         <MasterEmptyState
-          title="No rest session selected"
-          description={sessions.length === 0 ? 'No rest sessions found for this vehicle.' : 'Select a rest session to inspect.'}
+          title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.emptyNoSessionTitle')}
+          description={
+            sessions.length === 0
+              ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.emptyNoSessionsFound')
+              : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.emptySelectSession')
+          }
         />
       ) : phase === 'loading' ? (
         <MasterLoadingState variant="card" count={3} />
       ) : phase === 'error' ? (
-        <MasterErrorState title="Inspection failed" description={errorMessage ?? 'Unknown error'} onRetry={() => void runInspection()} />
+        <MasterErrorState
+          title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.errorInspectionTitle')}
+          description={errorMessage ?? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.errorUnknown')}
+          onRetry={() => void runInspection()}
+        />
       ) : inspection ? (
         <div className="space-y-4">
           <div className={`rounded-xl border px-4 py-3 ${integrityClass(inspection.integrity.overallStatus)}`}>
-            <p className="text-sm font-semibold">Integrity: {integrityLabel(inspection.integrity.overallStatus)}</p>
+            <p className="text-sm font-semibold">
+              {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.integrityPrefix')} {integrityLabel(inspection.integrity.overallStatus)}
+            </p>
             <p className="text-xs mt-1 opacity-90">
               Contract {inspection.inspectionContractVersion} · digest scope {inspection.integrity.digestVerificationScope} · checked{' '}
               {inspection.integrity.digestRowsChecked}/{inspection.featureSummary.totalRows} rows · mismatches{' '}
@@ -300,50 +354,105 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
             </p>
           </div>
 
-          <MasterPageSection title="Session identity">
+          <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.sessionIdentity')}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <Metric label="Vehicle" value={selectedVehicle?.licensePlate ?? inspection.session.vehicleId} />
-              <Metric label="Session status" value={inspection.session.sessionStatus} />
-              <Metric label="Anchor" value={`${inspection.session.anchorType} @ ${new Date(inspection.session.anchorAt).toLocaleString()}`} />
-              <Metric label="End reason" value={inspection.session.endReason ?? '—'} />
-              <Metric label="Rest observations" value={`${inspection.session.validRestObservationCount}/${inspection.session.restObservationCount}`} />
-              <Metric label="Session id" value={inspection.session.id} />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.vehicle')}
+                value={selectedVehicle?.licensePlate ?? inspection.session.vehicleId}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.sessionStatus')}
+                value={inspection.session.sessionStatus}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.anchor')}
+                value={`${inspection.session.anchorType} @ ${new Date(inspection.session.anchorAt).toLocaleString()}`}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.endReason')}
+                value={inspection.session.endReason ?? '—'}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.restObservations')}
+                value={`${inspection.session.validRestObservationCount}/${inspection.session.restObservationCount}`}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.sessionId')}
+                value={inspection.session.id}
+              />
             </div>
           </MasterPageSection>
 
-          <MasterPageSection title="Canonical state">
+          <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.canonicalState')}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Metric label="Canonical revision" value={inspection.featureSummary.canonicalSemanticRevision} />
-              <Metric label="Canonical row id" value={inspection.featureSummary.canonicalFeatureRowId?.slice(0, 12) ?? '—'} />
-              <Metric label="Selection" value={inspection.integrity.canonicalSelectionStatus} />
-              <Metric label="Latest semantic rev" value={inspection.featureSummary.latestSemanticRevision} />
-              <Metric label="Total feature rows" value={inspection.featureSummary.totalRows} />
-              <Metric label="Window truncated" value={inspection.featureSummary.revisionsTruncated ? 'yes (latest 100)' : 'no'} />
-              <Metric label="Count/aggregate consistent" value={inspection.integrity.countAggregateConsistent ? 'yes' : 'NO'} />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.canonicalRevision')}
+                value={inspection.featureSummary.canonicalSemanticRevision}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.canonicalRowId')}
+                value={inspection.featureSummary.canonicalFeatureRowId?.slice(0, 12) ?? '—'}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.selection')}
+                value={inspection.integrity.canonicalSelectionStatus}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.latestSemanticRev')}
+                value={inspection.featureSummary.latestSemanticRevision}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.totalFeatureRows')}
+                value={inspection.featureSummary.totalRows}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.windowTruncated')}
+                value={
+                  inspection.featureSummary.revisionsTruncated
+                    ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.yesLatest100')
+                    : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.no')
+                }
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.countAggregateConsistent')}
+                value={
+                  inspection.integrity.countAggregateConsistent
+                    ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.yes')
+                    : 'NO'
+                }
+              />
             </div>
           </MasterPageSection>
 
-          <RevisionFeatures title="Canonical feature (C5A)" revision={inspection.canonicalFeature} isCanonical />
+          <RevisionFeatures
+            title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.canonicalFeatureTitle')}
+            revision={inspection.canonicalFeature}
+            isCanonical
+          />
 
           {inspection.canonicalFeature?.chargeOpportunityRaw != null && (
-            <MasterPageSection title="Charge context (canonical, C5A raw)">
+            <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.chargeContextTitle')}>
               <pre className="text-xs overflow-auto max-h-48 rounded-lg border border-border p-3 bg-muted/30">
                 {JSON.stringify(inspection.canonicalFeature.chargeOpportunityRaw, null, 2)}
               </pre>
             </MasterPageSection>
           )}
 
-          <MasterPageSection title={`Revision history (visible window: ${inspection.revisions.length})`}>
+          <MasterPageSection
+            title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.revisionHistoryTitle', {
+              count: inspection.revisions.length,
+            })}
+          >
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-2 pr-2">Rev</th>
-                    <th className="py-2 pr-2">Phase</th>
-                    <th className="py-2 pr-2">Trust</th>
-                    <th className="py-2 pr-2">Digest</th>
-                    <th className="py-2 pr-2">Slope</th>
-                    <th className="py-2 pr-2">Canonical</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.rev')}</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.phase')}</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.trust')}</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.digest')}</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.slope')}</th>
+                    <th className="py-2 pr-2">{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.table.canonical')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -354,7 +463,11 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
                       <td className="py-1.5 pr-2">{row.sessionTrust}</td>
                       <td className="py-1.5 pr-2">{row.digestValid ? 'ok' : 'fail'}</td>
                       <td className="py-1.5 pr-2">{formatSlope(row.robustRestSlopeMvPerHour)}</td>
-                      <td className="py-1.5 pr-2">{row.id === inspection.featureSummary.canonicalFeatureRowId ? 'yes' : ''}</td>
+                      <td className="py-1.5 pr-2">
+                        {row.id === inspection.featureSummary.canonicalFeatureRowId
+                          ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.yes')
+                          : ''}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -362,12 +475,24 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
             </div>
           </MasterPageSection>
 
-          <MasterPageSection title="Digest / revision integrity">
+          <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.digestIntegrityTitle')}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Metric label="Semantic gaps" value={inspection.integrity.semanticRevisionGapCount} />
-              <Metric label="Duplicate revisions" value={inspection.integrity.duplicateSemanticRevisionCount} />
-              <Metric label="Unchecked rows" value={inspection.integrity.digestRowsUnchecked} />
-              <Metric label="Version tuple" value={inspection.versionTuple.featureModelVersion} />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.semanticGaps')}
+                value={inspection.integrity.semanticRevisionGapCount}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.duplicateRevisions')}
+                value={inspection.integrity.duplicateSemanticRevisionCount}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.uncheckedRows')}
+                value={inspection.integrity.digestRowsUnchecked}
+              />
+              <Metric
+                label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.metric.versionTuple')}
+                value={inspection.versionTuple.featureModelVersion}
+              />
             </div>
           </MasterPageSection>
         </div>
