@@ -41,7 +41,8 @@
 | **M3.3C C1 (engineering)** | **`battery_rest_session_features` schema + shadow flag default OFF + pure retention policy (A–H unit tests)** — **no runtime writers/hooks** — `research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md` |
 | **M3.3C C1.1 (PR #1726 amend)** | Anchor session/zero-age binding; Postgres semantic-revision + pg_catalog verifier; second deploy noop |
 | **M3.3C C2.1 (engineering)** | Read-only charge-context reader + pure raw-feature policy (`M3_3C_C2_V1`); **no** feature persistence, **no** live hooks; `chargeOpportunityClass=UNKNOWN`; classifier unchanged — `research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` |
-| **M3.3C** | **`OPEN`** — C1 merged; C2 raw extract in progress; C3–C5 pending; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3C C3 (engineering)** | `RestSessionFeatureComputationService` + canonical `RestSessionFeatureInputSnapshotV1` + SHA-256 digest + append-only `BatteryRestSessionFeature` writes **behind shadow flag default OFF**; **no** live Nest registration/hooks — `research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md` |
+| **M3.3C** | **`OPEN`** — C1–C3 engineering complete; C4–C5 pending; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
