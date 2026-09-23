@@ -214,6 +214,23 @@ Default v1: **`UNKNOWN`** unless explicit research policy version + calibrated t
 LOW_REST_AFTER_INSUFFICIENT_CHARGE != BATTERY_DEGRADATION_PROOF
 ```
 
+### C2.0 / C2.1 addendum (supersedes charge-count source only — 2026-09-23)
+
+Historical C0 row `driving_charging_observation_count` = GE `DRIVING_CHARGING` count is **superseded** for implementation. Forensics + C2.1 contract:
+
+| C0 proposal | C2.1 authority |
+|-------------|----------------|
+| `driving_charging_observation_count` | **`classifierDrivingChargingObservationCount`** — diagnostic only; **not** charge-opportunity source of truth |
+| (implicit class trust) | Primary raw evidence from persisted GE **fields** + timestamp sources — see `M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` |
+
+```
+C0_CHARGE_SOURCE_CONTRACT_CORRECTED=YES
+DRIVING_CHARGING_REACHABLE_BY_CURRENT_CLASSIFIER=NO
+C2_CAN_RELY_ON_DRIVING_CHARGING_CLASS=NO
+```
+
+C2.1 additionally sets `engineRunningObservedCoverageMs=null` and `lvVoltageTimeProxyVms=null` until bridge policies are validated (`DEFERRED_NO_BRIDGE_POLICY`).
+
 ---
 
 ## 8 — Charge temporal window

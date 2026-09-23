@@ -52,6 +52,50 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-23 — M3.3C C2.2 charge-opportunity provenance hardening (PR #1728 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Raw output omitted `restSessionId` and measurement lineage; STALE_REPLAY could inflate fetch-time diagnostic; foreign trip counted out-of-window; imprecise trip failure reasons. |
+| **OBSERVATION** | C3 digest needs material observation + measurement IDs; pure policy must be safe when called without reader prefilter. |
+| **HYPOTHESIS** | Window-local foreign-trip gating + stale firewall + precise trip reasons preserve scientific contract without classifier changes. |
+| **CHANGE** | Extended raw type/provenance arrays; material row accounting; PG_H–J; tests P–X. |
+| **WHY** | Prevent C3 input drift and false completeness from stale or out-of-window rows. |
+| **EXPECTED_EFFECT** | Deterministic material provenance; tenant entrypoint isolation proven in Postgres. |
+| **VALIDATION** | Unit 49/49; Postgres PG_A–J PASS. |
+| **OBSERVED_EFFECT** | Local suites green; GitHub CI **46/46 PASS** @ `ecca7526cfe6c931cf7797f1fbf11649860873aa` (PR #1728). |
+| **NON_EFFECTS** | No deploy; no writes; classifier unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | Completeness reason `NO_PRIOR_SESSION_FEATURE` replaced by `PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2`. |
+| **REMAINING_GAPS** | C3 persistence unchanged. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C charge-opportunity raw context |
+| **EVIDENCE** | `M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` C2.2 section |
+
+---
+
+## CL-2026-09-23 — M3.3C C2.1 charge-opportunity raw context (read-only)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C0 proposed `driving_charging_observation_count` from GE `DRIVING_CHARGING`; classifier reachability forensics proved class unreachable; no C2 reader/policy. |
+| **OBSERVATION** | Production `DRIVING_CHARGING=0` while raw alternator/LV evidence abundant; 7/8 rest sessions lack trip link; no calibrated state/LV bridge for duration proxies. |
+| **HYPOTHESIS** | Raw GE field + timestamp-source contract can extract charge context without classifier or inferred trip windows. |
+| **CHANGE** | `RestSessionChargeContextReader` (tenant-scoped, zero writes); `computeChargeOpportunityRawFeaturesV1` + window policy; C2 source-contract doc; C0 addendum; unit A–O + Postgres PG_A–G script. |
+| **WHY** | Scientifically valid charge **context** extraction for C3 persistence without classifier change or inferred trip windows. |
+| **EXPECTED_EFFECT** | Deterministic raw features for linked trips; UNKNOWN classification; no production/runtime side effects. |
+| **VALIDATION** | `rest-session-charge-opportunity.policy.spec.ts`; optional `BATTERY_V2_CHARGE_OPPORTUNITY_INTEGRATION=1` + `test:battery:v2:charge-opportunity:postgres`. |
+| **OBSERVED_EFFECT** | Unit suite green; reader/policy compile; no live hooks. |
+| **NON_EFFECTS** | No deploy; no `BatteryRestSessionFeature` writes; no capture/rest-session service hooks; `chargeOpportunityClass` remains UNKNOWN. |
+| **REGRESSIONS_OR_TRADEOFFS** | C0 charge-count row superseded by addendum only; classifier dead branch unchanged pending M3.3A follow-up. |
+| **REMAINING_GAPS** | C3 digest + writers; C4 hooks; M3.3A classifier reachability follow-up (non-blocking). |
+| **DECISION_STATUS** | **VALIDATED** (engineering contract) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C charge-opportunity raw context |
+| **EVIDENCE** | `research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-22 — M3.3C C1.1 anchor binding + Postgres contract hardening (PR #1726 amend)
 
 | Field | Value |

@@ -55,6 +55,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-22T22:40:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c2-charge-opportunity-raw-2026-09-23',
+    version: '4.9.1997',
+    title: 'Battery V2 M3.3C C2.1 — Charge opportunity raw context (read-only)',
+    summary: [
+      'RestSessionChargeContextReader: tenant-scoped org+vehicle+restSessionId; zero writes; trip window from confirmed/candidate links only.',
+      'Pure policy M3_3C_C2_V1: qualified LV/alternator counts, provider-snapshot engine-running counts, aligned/partial running+alternator; classifier DRIVING_CHARGING diagnostic only.',
+      'chargeOpportunityClass=UNKNOWN; no coverage/V·ms proxy (DEFERRED_NO_BRIDGE_POLICY); no inferred trip window for unlinked sessions.',
+      'C2 source-contract doc + C0 addendum; unit tests A–O; ephemeral Postgres PG_A–G integration script.',
+    ],
+    reason:
+      'C2.0 forensics proved DRIVING_CHARGING unreachable — raw field contract before C3 feature persistence.',
+    previousBehavior:
+      'No charge-context reader or raw-feature policy; C0 still proposed GE DRIVING_CHARGING count as primary source.',
+    details:
+      'architecture/battery-v2/research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md, rest-session-charge-context.reader.ts, rest-session-charge-opportunity.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T06:30:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c1-rest-session-feature-foundation-2026-09-22',
     version: '4.9.1995',
     title: 'Battery V2 M3.3C C1 — Rest session feature schema + pure retention policy',
