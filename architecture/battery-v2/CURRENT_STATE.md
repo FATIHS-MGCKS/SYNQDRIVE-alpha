@@ -44,11 +44,12 @@
 | **M3.3C C3 (engineering)** | `RestSessionFeatureComputationService` + canonical digest + append-only rows **behind shadow flag default OFF** — `research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md` |
 | **M3.3C C4 (engineering)** | `RestSessionFeatureShadowTriggerService` + post-mutation hooks (valid rest / terminal / late trip) + Nest registration; **fail-open**; flag OFF → zero C3 calls — `research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md` |
 | **M3.3C C4.1 (engineering)** | Valid-rest `actualRestAgeMs > 0`; strengthened PG_K shadow-only authoritative isolation — C4 formal post-merge closure **PASS** @ main `8f7d95e4` |
-| **M3.3C C5A (engineering)** | Shadow Prometheus metrics + read-only inspection + ops CLI — **C5A ENGINEERING IN REVIEW** (PR #1732); **no deploy / no migration / flag OFF** — `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
-| **M3.3C C5A.1 (engineering)** | Bounded inspection DB reads (latest-100 window, COUNT, revision aggregate, canonical candidates ≤4), digest coverage metadata (`FULL` / `BOUNDED_LATEST_WINDOW`), `INTEGRITY_PARTIAL` — amend PR #1732 |
-| **M3.3C C5A.2 (engineering)** | Repeatable-read inspection snapshot (session + features same tx); canonical row union digest accounting; `countAggregateConsistent` — amend PR #1732 |
-| **M3.3C roadmap (planning)** | **C5B** Master Admin shadow inspection UI · **M3.3D** longitudinal profile · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health customer UI (authoritative outputs only post-G; no raw C3 revisions) |
-| **M3.3C** | **`OPEN`** — C1–C4 engineering complete; C5A in review on PR #1732; **C5B–C5H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3C C5A (engineering)** | Shadow Prometheus metrics + read-only inspection (`M3_3C_C5A_V1`) + ops CLI — **merged** PR #1732 @ main `87599311c`; **no production flag change** — `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
+| **M3.3C C5A.1 (engineering)** | Bounded inspection DB reads, digest coverage metadata, `INTEGRITY_PARTIAL` — merged PR #1732 |
+| **M3.3C C5A.2 (engineering)** | Repeatable-read snapshot + canonical digest union — merged PR #1732 |
+| **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — in progress |
+| **M3.3C roadmap (planning)** | **C5B** Master Admin shadow UI · **M3.3D** longitudinal profile · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health **customer** UI (authoritative outputs only post-G; distinct from C5B) |
+| **M3.3C** | **`OPEN`** — C1–C5A engineering complete on main; **C5B in flight**; **M3.3D–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |

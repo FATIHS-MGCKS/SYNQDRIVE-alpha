@@ -109,6 +109,15 @@ npm run battery:rest-feature:inspect -- \
 - Unit: `rest-session-feature.metrics.spec.ts`, `rest-session-feature-shadow-inspection.*.spec.ts`
 - Postgres: `npm run test:battery:v2:rest-session-feature:inspection:postgres`
 
+## C5B Master Admin shadow UI (M3.3C)
+
+- **Surface:** Master Admin view `battery-v2-shadow-inspection` (engineering nav group).
+- **API (MASTER_ADMIN only):**
+  - `GET /admin/battery-v2/rest-sessions?organizationId&vehicleId&limit`
+  - `GET /admin/battery-v2/rest-session-feature-inspection?organizationId&vehicleId&restSessionId` → single atomic **`M3_3C_C5A_V1`** payload (`includeRaw=true` for internal inspection only).
+- **Not M3.3H:** customer Vehicle Detail → Health UI remains a separate future milestone.
+- **Read-only:** no recompute/repair/flag mutation; frontend renders C5A fields without domain recomputation.
+
 ## Non-effects
 
 - No customer HTTP/GraphQL/UI

@@ -24,11 +24,14 @@ import { VoiceAssistantModule } from '../voice-assistant/voice-assistant.module'
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
 import { PlatformIntegrationsController } from './platform-integrations.controller';
 import { PlatformIntegrationsService } from './platform-integrations.service';
+import { BatteryGeneralizedEvidenceModule } from '../vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
+import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
 
 @Module({
   imports: [
     AuthApiModule,
     DimoModule,
+    BatteryGeneralizedEvidenceModule,
     VehicleIntelligenceModule,
     HealthModule,
     BillingModule,
@@ -50,6 +53,7 @@ import { PlatformIntegrationsService } from './platform-integrations.service';
     PlatformOpsService,
     PlatformOpsAlertmanagerService,
     PlatformOpsInfrastructureService,
+    BatteryV2RestSessionFeatureInspectionAdminService,
   ],
   exports: [PlatformAdminService, PlatformDashboardService, PlatformConnectivitySummaryService],
 })

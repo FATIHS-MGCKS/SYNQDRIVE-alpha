@@ -34,6 +34,7 @@ import { BatteryShadowValidationService } from '../vehicle-intelligence/battery-
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
 
 @Controller('admin')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -54,6 +55,7 @@ export class PlatformAdminController {
     private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
     private readonly batteryShadowValidation: BatteryShadowValidationService,
     private readonly platformOpsService: PlatformOpsService,
+    private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
   ) {}
 
   @Get('changelogs')
@@ -422,6 +424,66 @@ export class PlatformAdminController {
       ...result,
       message: `Backfill complete: ${result.enqueued} trips enqueued for enrichment`,
     };
+  }
+
+  // GET /admin/battery-v2/rest-sessions — read-only session index for C5B Master Admin UI.
+  @Get('battery-v2/rest-sessions')
+  async listBatteryV2RestSessions(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('limit') limit?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const result = await this.batteryV2RestSessionFeatureInspection.listRestSessions({
+      organizationId,
+      vehicleId,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin listed Battery V2 rest sessions (C5B)',
+      metaJson: { organizationId, vehicleId, sessionCount: result.sessions.length },
+    });
+    return result;
+  }
+
+  // GET /admin/battery-v2/rest-session-feature-inspection — atomic M3_3C_C5A_V1 snapshot.
+  @Get('battery-v2/rest-session-feature-inspection')
+  async getBatteryV2RestSessionFeatureInspection(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('restSessionId') restSessionId?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId || !restSessionId) {
+      throw new BadRequestException('organizationId, vehicleId, and restSessionId are required');
+    }
+    const inspection = await this.batteryV2RestSessionFeatureInspection.inspectRestSession({
+      organizationId,
+      vehicleId,
+      restSessionId,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      entityId: restSessionId,
+      description: 'Master Admin Battery V2 rest-session feature inspection (C5B/C5A)',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        restSessionId,
+        overallStatus: inspection.integrity.overallStatus,
+        inspectionContractVersion: inspection.inspectionContractVersion,
+      },
+    });
+    return inspection;
   }
 
   // GET /admin/battery-shadow-validation-report

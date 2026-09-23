@@ -27,6 +27,7 @@ import { RestSessionFeatureShadowInspectionService } from './rest-session-featur
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
+    RestSessionFeatureShadowInspectionService,
     ProviderObservabilityGapModule,
   ],
 })
