@@ -1,9 +1,10 @@
 # M3.3D D0 — Longitudinal Battery Profile Architecture & Scientific Contract Audit
 
 **Date:** 2026-09-24  
-**Status:** Architecture / scientific contract audit only — **no runtime implementation**  
-**D0.1:** Architecture closure amendments on **draft PR #1735** (not on `main` until merge)  
-**Main anchor:** `7878aee90cd8e6cf7552533e4333878743c95622` (M3.3C C1–C5B complete on main)  
+**Status:** Architecture / scientific contract audit — **COMPLETE ON MAIN** (PR #1735 @ `bc69e1d9c`; PR head `4b314f2a1`) — **no runtime implementation**  
+**D0.1:** Architecture closure — **COMPLETE ON MAIN** (same merge)  
+**Main anchor (M3.3C C1–C5B):** `7878aee90cd8e6cf7552533e4333878743c95622`  
+**M3.3D D0 merge:** `bc69e1d9c9031d19e4225270be060ef900b58f41`  
 **Production runtime baseline (unchanged):** `2b0ef15fc80069676cd44f1b852a362434f7ffb7`  
 **Shadow feature flag (unchanged):** `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`
 
@@ -15,6 +16,25 @@
 **Canonical per-session input:** the row selected by **`selectCanonicalRestSessionFeatureShadowRow()`** only — no independent revision picking.  
 **Longitudinal time axis (recommended):** **`BatteryRestSession.anchorAt`** (rest-episode anchor), with deterministic tie-break — not `computedAt` / ingestion wall clock.  
 **Persistence recommendation:** **Hybrid (C)** — deterministic on-demand assembly from canonical C3 rows as source of truth; optional future **append-only profile revisions** for audit, bounded query, and M3.3E consumption (no D0 schema).
+
+### Active architecture invariants (normative for D1+)
+
+| # | Invariant |
+|---|-----------|
+| 1 | One canonical `BatteryRestSessionFeature` per rest session in profile |
+| 2 | `selectCanonicalRestSessionFeatureShadowRow()` — same policy as C5A |
+| 3 | Bounded retrieval (`listCanonicalCandidateRows` pattern); **forbid** `listFeatureRowsForSession()` in M3.3D; `LONGITUDINAL_CANONICAL_SELECTION_EQUIVALENT_TO_C5A=YES` |
+| 4 | Time axis: `BatteryRestSession.anchorAt`; tie-break `restSessionId` |
+| 5–6 | Historical versions from **persisted row columns** + `inputSummary.inputContractVersion`; **never** substitute current runtime constants |
+| 7–8 | D1 integrity: **CANONICAL_SELECTION_INTEGRITY** only; `perSessionInspectionStatus=NOT_EVALUATED` |
+| 9 | Digest / revision-lineage / digest-coverage integrity: **D4+** |
+| 10–11 | `profileStatus` primary usability; orthogonal `profileFlags[]` |
+| 12 | Equal `anchorAt` → order only; **not** auto-exclusion |
+| 13 | `profileGeneratedAt` envelope only; **excluded** from canonical input fingerprint |
+| 14–15 | D3 materialization **conditional**; no production materialization or shadow activation before **M3.3F** authorization |
+| 16–17 | M3.3E health/risk/confidence; M3.3H customer Health UI separate from internal longitudinal engineering |
+
+**Next engineering slice:** **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (**not started**).
 
 ---
 
