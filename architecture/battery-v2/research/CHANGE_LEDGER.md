@@ -54,6 +54,69 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5A.2 inspection snapshot + canonical digest union
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Parallel inspection reads without shared snapshot; canonical digest mismatch outside latest-100 could leave `digestMismatchCount=0` and `INTEGRITY_PARTIAL`. |
+| **OBSERVATION** | Concurrent C4 writes could mix count vs aggregate; canonical row digest not counted when outside visible window. |
+| **HYPOTHESIS** | One `REPEATABLE READ` transaction for session + bounded feature reads; digest verify on deduped union(latest window, canonical) fixes coverage honesty. |
+| **CHANGE** | `loadRestSessionFeatureInspectionReadSnapshot`; `computeDigestVerificationAccounting`; `countAggregateConsistent`; PG_J concurrent barrier test. |
+| **WHY** | Coherent ops inspection under concurrent shadow writes; canonical integrity must surface as `INTEGRITY_WARNING`. |
+| **EXPECTED_EFFECT** | Snapshot-consistent totals; canonical outside window increments `digestRowsChecked` by 1; canonical mismatch forces warning. |
+| **VALIDATION** | C5A unit + digest specs; PG_J; canonical outside-window unit tests. |
+| **OBSERVED_EFFECT** | Pending CI on amend branch. |
+| **NON_EFFECTS** | Metrics; C3/C4; deploy/migration/flag/customer UI unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | Slightly longer read-only transaction per inspection (still bounded IO). |
+| **REMAINING_GAPS** | C5B UI; production shadow gate. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow inspection |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5A.2 section |
+
+---
+
+## CL-2026-09-23 — M3.3C C5A.1 bounded inspection reads + digest coverage honesty
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Inspection loaded all feature rows then `slice(0,100)` (oldest window); digest OK could ignore unchecked rows. |
+| **OBSERVATION** | >100 revisions materialized unbounded arrays; digest integrity metadata overstated coverage. |
+| **HYPOTHESIS** | COUNT + latest-N DESC query + revision SQL aggregate + ≤4 canonical candidates preserves exact canonical/lineage semantics with bounded IO. |
+| **CHANGE** | Repository read methods; `INTEGRITY_PARTIAL`; digest coverage fields; CLI exit 3 for partial; M3.3H customer UI roadmap recorded. |
+| **WHY** | Safe ops inspection at scale without false full-lineage digest claims. |
+| **EXPECTED_EFFECT** | Max ~104 feature rows read per inspection; visible window = latest 100 revisions. |
+| **VALIDATION** | TEST_I14/PARTIAL_COVERAGE/CHECKED_DIGEST_MISMATCH; revision aggregate tests; C5A postgres matrix. |
+| **OBSERVED_EFFECT** | Local unit + postgres PASS on amend branch. |
+| **NON_EFFECTS** | Metrics unchanged; no deploy/migration/flag/customer UI. |
+| **REGRESSIONS_OR_TRADEOFFS** | Sessions >100 revisions return `INTEGRITY_PARTIAL` even when latest window is clean. |
+| **REMAINING_GAPS** | C5B UI; production shadow gate. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow inspection |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5A.1 section |
+
+---
+
+## CL-2026-09-23 — M3.3C C5A shadow observability + read-only inspection
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C4 wiring without Prometheus trigger/row metrics; no operator read-only inspection contract or CLI. |
+| **OBSERVATION** | Operators could not answer trigger outcomes, dedupe vs create, digest integrity, or canonical row selection without ad-hoc SQL. |
+| **HYPOTHESIS** | Bounded Prometheus labels + tenant-scoped read-only inspection reusing C3 digest/canonical policy enables safe shadow ops visibility without health authority. |
+| **CHANGE** | Three bounded-label metrics in `TripMetricsService` recorded only in `RestSessionFeatureShadowTriggerService`; `RestSessionFeatureShadowInspectionService` (tenant-scoped V1 response, digest re-hash via C3 serializer, canonical policy reuse, revision integrity); ops CLI with production host deny-by-default. |
+| **WHY** | Operational visibility for shadow feature pipeline before C5B UI and production shadow validation. |
+| **EXPECTED_EFFECT** | Single trigger accounting; flag-off observability without C3 DB access; inspection JSON with integrity enums; CLI exit codes for ops automation. |
+| **VALIDATION** | Metrics TEST_M1–M8; inspection TEST_I1–I14; Postgres PG_A–I via `test:battery:v2:rest-session-feature:inspection:postgres`; C1–C4 regression suites. |
+| **OBSERVED_EFFECT** | Local CI PASS on C5A unit + Postgres matrices; C4 fail-open tests unchanged. |
+| **NON_EFFECTS** | No deploy; no migration; shadow flag default OFF; no customer API/UI; no assessment/publication/battery_features writes. |
+| **REGRESSIONS_OR_TRADEOFFS** | Slightly larger TripMetricsService surface; ops CLI ts-node cold start (~5s) in PG_H. |
+| **REMAINING_GAPS** | C5B Master Admin UI; authorized production shadow flag + migration gate unchanged. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow observability |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C4.1 valid-rest age alignment + PG_K shadow-only proof (PR #1730 amend)
 
 | Field | Value |

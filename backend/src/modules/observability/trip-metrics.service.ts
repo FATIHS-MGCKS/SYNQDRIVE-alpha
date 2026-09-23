@@ -201,6 +201,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryCadenceLadderResearchUnqualifiedTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStateAmbiguousTotal: Counter<string>;
   readonly batteryGeneralizedEvidenceStaleReplayTotal: Counter<string>;
+  readonly batteryRestSessionFeatureTriggerTotal: Counter<'reason' | 'outcome'>;
+  readonly batteryRestSessionFeatureTriggerDurationSeconds: Histogram<'reason' | 'outcome'>;
+  readonly batteryRestSessionFeatureRowCreatedTotal: Counter<'phase' | 'trust'>;
   readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
   readonly batteryProviderObservabilityGapExtendedTotal: Counter<string>;
   readonly batteryProviderObservabilityGapFailureTotal: Counter<string>;
@@ -1712,6 +1715,28 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryGeneralizedEvidenceStaleReplayTotal = new Counter({
       name: 'synqdrive_battery_generalized_evidence_stale_replay_total',
       help: 'M3.3 shadow generalized evidence classified as stale replay',
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureTriggerTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_feature_trigger_total',
+      help: 'M3.3C C5A shadow rest-session feature C4 trigger outcomes',
+      labelNames: ['reason', 'outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureTriggerDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_rest_session_feature_trigger_duration_seconds',
+      help: 'M3.3C C5A shadow rest-session feature trigger duration (C4→C3)',
+      labelNames: ['reason', 'outcome'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+      registers: [this.registry],
+    });
+
+    this.batteryRestSessionFeatureRowCreatedTotal = new Counter({
+      name: 'synqdrive_battery_rest_session_feature_row_created_total',
+      help: 'M3.3C C5A append-only rest-session feature rows created by C3',
+      labelNames: ['phase', 'trust'],
       registers: [this.registry],
     });
 

@@ -65,6 +65,9 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_battery_provider_observation_total');
     expect(text).toContain('synqdrive_battery_jobs_total');
     expect(text).toContain('synqdrive_battery_publications_total');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_trigger_total');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_trigger_duration_seconds');
+    expect(text).toContain('synqdrive_battery_rest_session_feature_row_created_total');
     expect(text).toContain('synqdrive_battery_capability_signals_total');
     expect(text).toContain('synqdrive_hv_capacity_method_conflict_total');
     expect(text).toContain('synqdrive_battery_postgres_table_rows');

@@ -8,6 +8,7 @@ import { LateTripAssociationService } from './late-trip-association.service';
 import { ProviderObservabilityGapModule } from '../provider-observability-gap/provider-observability-gap.module';
 import { RestSessionFeatureComputationService } from './rest-session-features/rest-session-feature-computation.service';
 import { RestSessionFeatureShadowTriggerService } from './rest-session-features/rest-session-feature-shadow-trigger.service';
+import { RestSessionFeatureShadowInspectionService } from './rest-session-features/rest-session-feature-shadow-inspection.service';
 
 @Module({
   imports: [ProviderObservabilityGapModule, PrismaModule],
@@ -16,6 +17,7 @@ import { RestSessionFeatureShadowTriggerService } from './rest-session-features/
     GeneralizedEvidenceRepository,
     RestSessionFeatureComputationService,
     RestSessionFeatureShadowTriggerService,
+    RestSessionFeatureShadowInspectionService,
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,

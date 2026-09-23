@@ -94,6 +94,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-23T06:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c5a-shadow-observability-inspection-2026-09-23',
+    version: '4.9.2000',
+    title: 'Battery V2 M3.3C C5A — Shadow observability + read-only inspection',
+    summary: [
+      'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
+      'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates; C5A.2 repeatable-read snapshot + canonical digest union + countAggregateConsistent.',
+      'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
+      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI pending.',
+    ],
+    reason:
+      'Operational answers for C4 triggers and C3 persistence without health scoring or customer surfaces.',
+    previousBehavior:
+      'C4/C3 shadow path lacked metrics and operator inspection; C5 pending in CURRENT_STATE.',
+    details:
+      'architecture/battery-v2/research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md, rest-session-feature-shadow-inspection.service.ts, battery-rest-session-feature-shadow-inspect.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T11:45:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c4-shadow-lifecycle-wiring-2026-09-23',
     version: '4.9.1999',
     title: 'Battery V2 M3.3C C4 — Shadow lifecycle wiring (fail-open triggers)',
