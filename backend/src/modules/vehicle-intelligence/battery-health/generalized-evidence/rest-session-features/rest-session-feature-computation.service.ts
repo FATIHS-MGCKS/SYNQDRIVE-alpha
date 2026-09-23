@@ -1,10 +1,11 @@
+import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   BatteryRestSessionFeatureComputationPhase,
   BatteryRestSessionFeatureSessionTrust,
 } from '@prisma/client';
 import { isBatteryV2RestSessionFeaturesShadowEnabled } from '@config/battery-health-v2.config';
-import type { PrismaService } from '@shared/database/prisma.service';
+import { PrismaService } from '@shared/database/prisma.service';
 import { computeFeatureInputDigestFromSnapshot } from './feature-input-canonical.serializer';
 import { buildRestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.builder';
 import type { RestSessionFeatureInputSnapshotV1 } from './rest-session-feature-input-snapshot.types';
@@ -58,8 +59,8 @@ function mapSessionTrust(
 
 /**
  * M3.3C C3 — deterministic rest-session feature computation (shadow flag gated).
- * Not registered on live Nest modules in C3; tests instantiate directly.
  */
+@Injectable()
 export class RestSessionFeatureComputationService {
   constructor(private readonly prisma: PrismaService) {}
 

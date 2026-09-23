@@ -94,6 +94,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-23T06:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3c4-shadow-lifecycle-wiring-2026-09-23',
+    version: '4.9.1999',
+    title: 'Battery V2 M3.3C C4 — Shadow lifecycle wiring (fail-open triggers)',
+    summary: [
+      'RestSessionFeatureShadowTriggerService orchestrates C3 after authoritative mutations only (valid rest link, session terminal, late trip association).',
+      'Double flag gate: C4 + C3 both require BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED; flag OFF → zero computeAndPersist.',
+      'SYNCHRONOUS_POST_MUTATION_FAIL_OPEN — C3 errors isolated; no ENGINE_OFF open trigger; no GE capture hook; no queue/scheduler.',
+      'Unit A–O; Postgres PG_A–L via test:battery:v2:rest-session-feature:shadow:postgres.',
+    ],
+    reason:
+      'Authorized C4 wiring registers C3 in Nest and connects lifecycle boundaries without production deploy or flag enable.',
+    previousBehavior:
+      'C3 service test-only instantiation; no post-mutation feature triggers on rest-session or late-association paths.',
+    details:
+      'architecture/battery-v2/research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md, rest-session-feature-shadow-trigger.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T10:30:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3c3-feature-computation-2026-09-23',
     version: '4.9.1998',
     title: 'Battery V2 M3.3C C3 — Deterministic feature computation (shadow append-only)',

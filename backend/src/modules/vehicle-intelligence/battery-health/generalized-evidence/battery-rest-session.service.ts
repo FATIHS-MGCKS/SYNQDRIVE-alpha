@@ -29,6 +29,8 @@ import {
 } from './generalized-evidence.metrics';
 import { GeneralizedEvidenceRepository } from './generalized-evidence.repository';
 import type { GeneralizedEvidenceFieldBundle, RestSessionProcessOutcome } from './generalized-evidence.types';
+import { RestSessionFeatureShadowTriggerService } from './rest-session-features/rest-session-feature-shadow-trigger.service';
+import { mapRestSessionEndReasonToTerminalSubcontext } from './rest-session-features/rest-session-feature-shadow-trigger.types';
 
 const TERMINATING_EVIDENCE_CLASSES = new Set<BatteryGeneralizedEvidenceClass>([
   BatteryGeneralizedEvidenceClass.DRIVING_CHARGING,
@@ -50,6 +52,8 @@ export class BatteryRestSessionService {
   constructor(
     private readonly repository: GeneralizedEvidenceRepository,
     @Optional() private readonly metrics?: TripMetricsService,
+    @Optional()
+    private readonly featureShadowTrigger?: RestSessionFeatureShadowTriggerService,
   ) {}
 
   async processObservation(input: {
@@ -64,7 +68,11 @@ export class BatteryRestSessionService {
 
     const active = await this.repository.findActiveRestSession(vehicleId);
     if (active && this.shouldTerminateSession(input.fields, observation.evidenceClass)) {
-      await this.endSession(active.id, this.endReasonForClass(observation.evidenceClass), referenceAt);
+      await this.endSession(
+        active,
+        this.endReasonForClass(observation.evidenceClass),
+        referenceAt,
+      );
       recordRestSessionInvalidated(this.metrics);
       if (!SESSION_REST_EVIDENCE_CLASSES.has(observation.evidenceClass)) {
         return 'session_invalidated';
@@ -119,7 +127,7 @@ export class BatteryRestSessionService {
       referenceAt.getTime() - session.anchorAt.getTime() >
       DEFAULT_REST_SESSION_MAX_DURATION_MS
     ) {
-      await this.endSession(session.id, BatteryRestSessionEndReason.SESSION_TIMEOUT, referenceAt);
+      await this.endSession(session, BatteryRestSessionEndReason.SESSION_TIMEOUT, referenceAt);
       recordRestSessionEnded(this.metrics);
       return 'session_ended';
     }
@@ -152,6 +160,12 @@ export class BatteryRestSessionService {
 
     if (countsAsValid) {
       recordValidRestObservation(this.metrics);
+      await this.featureShadowTrigger?.triggerFeatureComputation({
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+        reason: 'VALID_REST_OBSERVATION_LINKED',
+      });
     }
 
     recordRestSessionUpdated(this.metrics);
@@ -208,17 +222,25 @@ export class BatteryRestSessionService {
   }
 
   private async endSession(
-    sessionId: string,
+    session: { id: string; organizationId: string; vehicleId: string },
     endReason: BatteryRestSessionEndReason,
     endedAt: Date,
   ) {
-    await this.repository.updateRestSession(sessionId, {
+    await this.repository.updateRestSession(session.id, {
       sessionStatus:
         endReason === BatteryRestSessionEndReason.INVALIDATED
           ? BatteryRestSessionStatus.INVALIDATED
           : BatteryRestSessionStatus.ENDED,
       endedAt,
       endReason,
+    });
+
+    await this.featureShadowTrigger?.triggerFeatureComputation({
+      organizationId: session.organizationId,
+      vehicleId: session.vehicleId,
+      restSessionId: session.id,
+      reason: 'REST_SESSION_TERMINAL',
+      terminalSubcontext: mapRestSessionEndReasonToTerminalSubcontext(endReason),
     });
   }
 }
