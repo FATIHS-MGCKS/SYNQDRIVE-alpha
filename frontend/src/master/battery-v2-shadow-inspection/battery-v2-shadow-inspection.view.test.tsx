@@ -7,20 +7,20 @@ import type { RestSessionFeatureShadowInspectionV1 } from './types';
 
 vi.mock('../../lib/api', () => ({
   api: {
+    vehicles: {
+      listAll: vi.fn(async () => ({
+        data: [
+          {
+            id: 'veh-1',
+            organizationId: 'org-1',
+            licensePlate: 'SD-100',
+            make: 'VW',
+            model: 'Golf',
+          },
+        ],
+      })),
+    },
     admin: {
-      vehicles: {
-        listAll: vi.fn(async () => ({
-          data: [
-            {
-              id: 'veh-1',
-              organizationId: 'org-1',
-              licensePlate: 'SD-100',
-              make: 'VW',
-              model: 'Golf',
-            },
-          ],
-        })),
-      },
       batteryV2: {
         listRestSessions: vi.fn(async () => ({
           sessions: [

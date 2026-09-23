@@ -553,7 +553,10 @@ export default function App() {
 
         {currentView === 'battery-v2-shadow-inspection' && (
           <PageContainer variant="wide">
-            <BatteryV2ShadowInspectionView isDarkMode={isDarkMode} organizations={organizations} />
+            <BatteryV2ShadowInspectionView
+              isDarkMode={isDarkMode}
+              organizations={organizations.map((o) => ({ id: o.id, companyName: o.company_name }))}
+            />
           </PageContainer>
         )}
 

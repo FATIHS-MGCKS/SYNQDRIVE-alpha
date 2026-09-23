@@ -47,9 +47,9 @@
 | **M3.3C C5A (engineering)** | Shadow Prometheus metrics + read-only inspection (`M3_3C_C5A_V1`) + ops CLI — **merged** PR #1732 @ main `87599311c`; **no production flag change** — `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
 | **M3.3C C5A.1 (engineering)** | Bounded inspection DB reads, digest coverage metadata, `INTEGRITY_PARTIAL` — merged PR #1732 |
 | **M3.3C C5A.2 (engineering)** | Repeatable-read snapshot + canonical digest union — merged PR #1732 |
-| **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — in progress |
-| **M3.3C roadmap (planning)** | **C5B** Master Admin shadow UI · **M3.3D** longitudinal profile · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health **customer** UI (authoritative outputs only post-G; distinct from C5B) |
-| **M3.3C** | **`OPEN`** — C1–C5A engineering complete on main; **C5B in flight**; **M3.3D–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — **COMPLETE** (draft PR; MASTER_ADMIN GET + `battery-v2-shadow-inspection` view) |
+| **M3.3C roadmap (planning)** | **M3.3D** longitudinal profile · **M3.3E** health/risk/confidence · **M3.3F** production shadow validation · **M3.3G** authoritative cutover · **M3.3H** Vehicle Detail → Health **customer** UI (authoritative outputs only post-G; distinct from C5B) |
+| **M3.3C** | **`OPEN`** — C1–C5B engineering complete on branch; **M3.3D–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |

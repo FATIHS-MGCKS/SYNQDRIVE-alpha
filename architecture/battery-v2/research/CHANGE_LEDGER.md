@@ -61,7 +61,8 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | C5A inspection available via ops CLI only; no Master Admin UI; no HTTP inspection endpoint. |
 | **CHANGE** | MASTER_ADMIN GET endpoints + `BatteryV2ShadowInspectionView` rendering atomic `M3_3C_C5A_V1`; nav entry `battery-v2-shadow-inspection`. |
 | **WHY** | Engineering/ops visibility without manual SQL; preserves C5A as sole domain source. |
-| **VALIDATION** | Platform admin security spec; frontend vitest (integrity states, nav permissions, presentation helpers). |
+| **VALIDATION** | Platform admin security spec; frontend vitest (integrity states, nav permissions, presentation helpers); frontend `npm run build`. |
+| **OBSERVED_EFFECT** | Local PASS: backend security spec (5); frontend C5B vitest (8); backend build; frontend tsc+vite build. |
 | **NON_EFFECTS** | No customer UI (M3.3H separate); no flags/deploy/migration; no frontend domain recomputation. |
 | **DECISION_STATUS** | **VALIDATED** (engineering) |
 | **EVIDENCE** | `M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` C5B section |

@@ -15,7 +15,7 @@ Answer operationally (without judging battery health):
 - Does persisted `inputSummary` still hash to `inputDigest`?
 - Is `semanticRevision` lineage internally consistent?
 
-**C5B** (Master Admin inspection UI) is **pending** after C5A contracts stabilize.
+**C5B** (Master Admin inspection UI) is **COMPLETE** on engineering branch — internal read-only surface over **`M3_3C_C5A_V1`**; **M3.3H** remains the future customer Vehicle Detail → Health UI.
 
 ## Prometheus metrics (bounded labels)
 
@@ -55,8 +55,8 @@ Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** 
 
 | Phase | Scope |
 |-------|--------|
-| **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **engineering in review** PR #1732 |
-| **M3.3C C5B** | Master Admin shadow inspection UI |
+| **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **COMPLETE** PR #1732 @ main `87599311c` |
+| **M3.3C C5B** | Master Admin shadow inspection UI — **COMPLETE** (engineering branch; draft PR) |
 | **M3.3D** | Longitudinal battery profile across rest sessions |
 | **M3.3E** | Health / failure-risk / confidence model |
 | **M3.3F** | Production shadow validation |

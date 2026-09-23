@@ -131,7 +131,7 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   const loadVehicles = useCallback(async () => {
     setVehiclesLoading(true);
     try {
-      const res = await api.admin.vehicles.listAll({ limit: 300 });
+      const res = await api.vehicles.listAll({ limit: 300 });
       setVehicles(res.data ?? []);
     } catch {
       setVehicles([]);
