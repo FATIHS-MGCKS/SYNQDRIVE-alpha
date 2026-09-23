@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D0.1 longitudinal architecture closure (draft PR #1735)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D0 draft implied unbounded `listFeatureRowsForSession` canonical path; runtime constants as historical version authority; overlapping single `profileStatus`; D1 integrity vs exclusion conflict; `DUPLICATE_ANCHOR_COLLISION`; D3/M3.3F circular wording; CURRENT_STATE implied D0 on main. |
+| **OBSERVATION** | C5A uses `listCanonicalCandidateRows()` (≤4 phase×trust candidates) + canonical policy; schema stores `inputContractVersion` only inside `inputSummary`; production C3 flag OFF until M3.3F. |
+| **HYPOTHESIS** | D1 must mirror C5A bounded canonical semantics and separate primary profile status from diagnostic flags without inventing integrity policy. |
+| **CHANGE** | D0 doc §5.1/5.1a, §10 fingerprint, §11–12, §15 sequencing; CURRENT_STATE pre-merge wording; C5A roadmap pointer. |
+| **WHY** | Prevent D1 unbounded reads, historical version mis-provenance, and ambiguous integrity/status before D0 merge. |
+| **EXPECTED_EFFECT** | `LONGITUDINAL_CANONICAL_SELECTION_EQUIVALENT_TO_C5A=YES`; D1 integrity scope explicit (`NOT_EVALUATED`). |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`. |
+| **OBSERVED_EFFECT** | D0.1 closures documented on amended draft #1735 branch. |
+| **NON_EFFECTS** | No runtime/schema/flag/deploy/D1 code. |
+| **REGRESSIONS_OR_TRADEOFFS** | D0 CL-2026-09-24 row remains historical append-only record of first D0 draft. |
+| **REMAINING_GAPS** | DEC-M3.3D-005 input-contract persistence; D1 implementation after D0 merge. |
+| **DECISION_STATUS** | **ARCHITECTURE_CLOSURE_COMPLETE** (D0.1 on draft) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Draft PR #1735 amend; `rest-session-feature.repository.ts` `listCanonicalCandidateRows` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D0 longitudinal profile architecture audit
 
 | Field | Value |

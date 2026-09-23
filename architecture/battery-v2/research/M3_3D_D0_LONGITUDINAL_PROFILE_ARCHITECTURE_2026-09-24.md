@@ -2,7 +2,8 @@
 
 **Date:** 2026-09-24  
 **Status:** Architecture / scientific contract audit only — **no runtime implementation**  
-**Main anchor:** `7878aee90cd8e6cf7552533e4333878743c95622` (PR #1734 merged; M3.3C C1–C5B complete on main)  
+**D0.1:** Architecture closure amendments on **draft PR #1735** (not on `main` until merge)  
+**Main anchor:** `7878aee90cd8e6cf7552533e4333878743c95622` (M3.3C C1–C5B complete on main)  
 **Production runtime baseline (unchanged):** `2b0ef15fc80069676cd44f1b852a362434f7ffb7`  
 **Shadow feature flag (unchanged):** `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`
 
@@ -114,7 +115,7 @@ Classification key:
 | `pairwiseRestDeltas` | **C** | Nominal-rung deltas; session-local; useful for inspection, not automatic longitudinal merge |
 | `chargeOpportunityRaw.*` counts | **C** | Diagnostic completeness; stratification inputs for M3.3E |
 | `inputDigest` / version tuple | **A** (lineage) | Required for reproducibility and version segmentation |
-| C5A `overallStatus` per session | **B** (inclusion gate) | `INTEGRITY_WARNING` → exclude or quarantine segment; `INTEGRITY_PARTIAL` → include with **`digestCoverage=PARTIAL`** metadata only |
+| C5A `overallStatus` per session | **B** (inclusion gate — **D4+ only**) | Full C5A digest/revision integrity is **not** evaluated in **D1**; when enabled later, `INTEGRITY_WARNING` may exclude; `INTEGRITY_PARTIAL` is coverage metadata only (§12) |
 
 **Temperature:** not persisted as a first-class C3 scalar today (`temperatureC` in charge raw is trip-start exterior, partial). **No temperature-adjusted longitudinal comparison in M3.3D without new evidence alignment (M3.3E / future spec).**
 
@@ -133,7 +134,7 @@ Classification key:
 | Provider observability gaps (B1.2Y) | Missing wake/engine-off evidence | Record **`providerGapFlags`** from session/GE context when available; **quality metadata** — no imputation |
 | Anchor quality (`AMBIGUOUS` / missing) | Invalid shutdown deltas | **Exclude** from delta/slope cohorts |
 | INCREMENTAL vs FINAL on ended sessions | Feature drift within session | Prefer **canonical FINAL** for ended sessions |
-| Voltage timestamp quality | Mis-ordered or weak provider times | Session-level C5A integrity; **exclude on INTEGRITY_WARNING** |
+| Voltage timestamp quality | Mis-ordered or weak provider times | Session-level digest integrity (**D4+**); **D1** does not apply integrity-based exclusion |
 | Environmental temperature | Confounds absolute mV | **Record only** (best-effort from charge raw); **no correction in M3.3D** |
 | Vehicle config / battery replacement / provider change | Step changes in series | **Segment boundary** metadata (**DECISION_REQUIRED** detection — likely manual/ops until automated signals exist) |
 | Policy version changes (C1/C2/C3 tuple) | Non-comparable feature semantics | **Version segmentation** (§6) — never silent merge |
@@ -144,25 +145,89 @@ Classification key:
 
 ## 5. Canonical inclusion contract
 
-### 5.1 Input row authority
+### 5.1 Input row authority (bounded — C5A-equivalent)
 
-For each candidate `BatteryRestSession`:
+**Invariant:** `LONGITUDINAL_CANONICAL_SELECTION_EQUIVALENT_TO_C5A=YES`
 
-1. Load **all** `BatteryRestSessionFeature` rows for `(organizationId, vehicleId, restSessionId)` matching current **`REST_SESSION_FEATURE_MODEL_VERSION`** (or explicit multi-version mode with segmentation — §6).
-2. Select **exactly one** canonical row via **`selectCanonicalRestSessionFeatureShadowRow({ sessionStatus, endReason, rows })`** — **no alternate selection policy in M3.3D**.
-3. Persist in profile point: `canonicalFeatureRowId`, `semanticRevision`, full version tuple, scalar features (denormalized from row + optional `inputDigest` reference).
+M3.3D **must not** load all feature revisions per session. C5A.1 removed the unbounded pattern; M3.3D follows the same bounded canonical path as C5A inspection snapshots.
 
-**Forbidden:** picking highest revision regardless of phase/trust; recomputing retention from raw GE without C3 row; using non-canonical revisions in default profile.
+**Forbidden for M3.3D reader:** `RestSessionFeatureRepository.listFeatureRowsForSession()` — documented in repository as *legacy unbounded list — avoid in inspection paths (C5A.1)*.
+
+**Required bounded canonical candidate retrieval (per session, current runtime version scope):**
+
+At most **four** rows — highest `semanticRevision` each for:
+
+| `computationPhase` | `sessionTrust` |
+|--------------------|----------------|
+| INCREMENTAL | VALID |
+| INCREMENTAL | INVALIDATED |
+| FINAL | VALID |
+| FINAL | INVALIDATED |
+
+Implementation reference: `listCanonicalCandidateRows()` → `selectCanonicalRestSessionFeatureShadowRow({ sessionStatus, endReason, rows: candidates })` (same as `loadRestSessionFeatureInspectionReadSnapshot` in C5A.2).
+
+**Preferred longitudinal read architecture (no N×unbounded loops):**
+
+1. **Bounded page** of `BatteryRestSession` rows for `(organizationId, vehicleId)` in window (cap N sessions).
+2. **Bounded batch** canonical-candidate retrieval for those `restSessionId`s (≤4 rows × N sessions per active version segment; batched SQL/`IN` queries — not one unbounded `findMany` per session).
+3. **Same** `selectCanonicalRestSessionFeatureShadowRow()` policy per session (requires paired `sessionStatus` + `endReason` from the rest session row).
+4. Deterministic profile assembly (inclusion policy, ordering, version segments).
+
+**Future multi-version support:** candidate retrieval stays bounded per  
+`(restSessionId, featureModelVersion, retentionPolicyVersion, chargeOpportunityPolicyVersion, computationPhase, sessionTrust)` — never “all revisions for session”.
+
+**Persist in profile point:** `canonicalFeatureRowId`, `semanticRevision`, persisted version authority (§5.1a), scalar features, `inputDigest`.
+
+**Still forbidden:** picking highest revision globally; recomputing retention from raw GE; using non-canonical revisions in the default profile.
+
+### 5.1a Persisted version authority (historical rows)
+
+**Schema fact:** `BatteryRestSessionFeature` persists **`featureModelVersion`**, **`retentionPolicyVersion`**, **`chargeOpportunityPolicyVersion`** as columns. **`inputContractVersion`** is **not** a column — it lives inside persisted **`inputSummary`** (`RestSessionFeatureInputSnapshotV1.inputContractVersion`).
+
+**C5A caveat:** `M3_3C_C5A_V1` response `versionTuple` for **current** inspection is built from **runtime constants**; repository queries scope to the **current** triple of column versions. That top-level tuple is **not** sufficient historical authority for arbitrary old rows in a multi-version longitudinal container.
+
+**Per longitudinal observation, version authority MUST be:**
+
+| Field | Source |
+|-------|--------|
+| `featureModelVersion` | Persisted feature **row column** |
+| `retentionPolicyVersion` | Persisted feature **row column** |
+| `chargeOpportunityPolicyVersion` | Persisted feature **row column** |
+| `inputContractVersion` | Parsed from canonical row **`inputSummary.inputContractVersion`** with snapshot shape validation |
+
+**Forbidden:** substituting `REST_SESSION_*_VERSION` runtime constants for historical row provenance when building observations or version segments.
+
+**Unresolved input contract:**
+
+| Condition | Outcome |
+|-----------|---------|
+| `inputSummary` missing or not object | `INPUT_CONTRACT_VERSION_UNRESOLVED` on observation + exclusion reason |
+| `inputContractVersion` missing / wrong type | `INPUT_CONTRACT_VERSION_UNRESOLVED` |
+| Known contract id but failed shape validation | `INPUT_CONTRACT_VERSION_UNRESOLVED` |
+
+Observations with `INPUT_CONTRACT_VERSION_UNRESOLVED` may appear in **coverage inventory** but **must not** enter default comparability series until resolved.
+
+**Forward invariant (no D0.1 migration):**
+
+Any future **input-contract semantic change** MUST either:
+
+- **A.** bump **`featureModelVersion`** (preferred alignment with C3 digest boundaries), **or**
+- **B.** persist **`inputContractVersion`** as an independently queryable column **before** cross-version longitudinal support depends on JSON-only reads.
+
+If neither is satisfied at D1 implementation time → **DECISION_REQUIRED** (`DEC-M3.3D-005`) before multi-version production profiles.
+
+**D1 initial scope:** single active column-version triple (same filter as today’s C5 repository `sessionVersionWhere`) + **`inputContractVersion` from `inputSummary`** per canonical row.
 
 ### 5.2 Session-level inclusion rules (proposed defaults)
 
 | Rule | Default | Status |
 |------|---------|--------|
-| Canonical row exists | Required | **VALIDATED** (C3/C5A) |
+| Canonical row exists (bounded C5A-equivalent selection) | Required | **VALIDATED** |
 | `sessionTrust=VALID` on canonical row | Required for default series | **VALIDATED** |
 | `sessionStatus=INVALIDATED` | Exclude | **VALIDATED** |
-| C5A-equivalent integrity `INTEGRITY_WARNING` | Exclude from default series | **PROPOSED** |
-| C5A `INTEGRITY_PARTIAL` | Include with `perSessionDigestCoverage=PARTIAL` flag | **PROPOSED** |
+| `inputContractVersion` resolvable from `inputSummary` | Required for default comparability series | **VALIDATED** (D0.1); else `INPUT_CONTRACT_VERSION_UNRESOLVED` |
+| C5A `INTEGRITY_WARNING` / digest exclusion | **Not applied in D1** | **D4+** bounded integrity slice (§12) |
+| C5A `INTEGRITY_PARTIAL` digest coverage | **Not applied in D1** | **D4+**; `perSessionInspectionStatus=NOT_EVALUATED` in D1 |
 | `chargeOpportunityClass` | Include all classes in **full inventory**; **retention trend sub-series** default **SUFFICIENT + PARTIAL** only | **DECISION_REQUIRED** |
 | Minimum `numberOfValidRestPoints` | e.g. ≥2 for slope-bearing sessions | **SHADOW_CALIBRATION_REQUIRED** |
 | Minimum `observationSpanMs` | Band for slope comparability | **SHADOW_CALIBRATION_REQUIRED** |
@@ -244,7 +309,7 @@ type LongitudinalProfileV1 = {
     lookbackRequested: { maxSessions: number; maxAnchorAgeDays: number | null };
     firstIncludedAnchorAt: string | null; // ISO UTC
     lastIncludedAnchorAt: string | null;
-    profileGeneratedAt: string; // wall clock — generation only
+    profileGeneratedAt: string; // envelope only — NOT in scientific/idempotency fingerprint (§10)
   };
 
   coverage: {
@@ -270,8 +335,9 @@ type LongitudinalProfileV1 = {
 
   derived: LongitudinalDerivedFeaturesV1 | null; // optional descriptive block — §9
 
-  profileStatus: LongitudinalProfileStatus;
-  profileStatusReasons: LongitudinalProfileReason[];
+  profileStatus: LongitudinalProfilePrimaryStatus;
+  profileFlags: LongitudinalProfileDiagnosticFlag[];
+  statusReasons: LongitudinalProfileReason[];
   completeness: {
     minimumSessionsForDescriptiveTrend: number;
     sessionsAvailable: number;
@@ -292,7 +358,7 @@ type LongitudinalProfileObservationV1 = {
     featureModelVersion: string;
     retentionPolicyVersion: string;
     chargeOpportunityPolicyVersion: string;
-    inputContractVersion: string;
+    inputContractVersion: string; // from inputSummary — not runtime constants
   };
 
   sessionTrust: 'VALID' | 'INVALIDATED';
@@ -315,7 +381,7 @@ type LongitudinalProfileObservationV1 = {
 
   quality: {
     anchorResolutionStatus: 'SELECTED' | 'UNAVAILABLE' | 'AMBIGUOUS';
-    perSessionInspectionStatus: 'OK' | 'NO_FEATURE_ROWS' | 'INTEGRITY_PARTIAL' | 'INTEGRITY_WARNING' | 'NOT_EVALUATED';
+    perSessionInspectionStatus: 'NOT_EVALUATED'; // D1 default; D4+ may set OK | INTEGRITY_PARTIAL | INTEGRITY_WARNING
     inclusionMode: 'DEFAULT' | 'PROVISIONAL' | 'EXCLUDED';
     exclusionReasons: LongitudinalExclusionReason[];
   };
@@ -367,17 +433,27 @@ type LongitudinalProfileObservationV1 = {
 
 **Recommendation: C (Hybrid)**
 
-- **Source of truth:** canonical C3 rows + inclusion policy code (deterministic function of DB state at `profileGeneratedAt`).
-- **Optional materialization (D3+):** append-only `LongitudinalProfileRevision` with `(organizationId, vehicleId, profilePolicyVersion, inputFingerprint)` unique idempotency — **conceptual only in D0**.
+- **Source of truth:** canonical C3 rows + inclusion policy code — **deterministic** function of persisted inputs (§5.1a fingerprint). **`profileGeneratedAt` is envelope metadata only** and **must not** appear in canonical input fingerprint or scientific equality comparison.
+- **Optional materialization (D3+):** append-only profile revision — **conditional**; no production activation before **M3.3F** (§15).
 - **Recomputation:** new policy version → new profile revision; never update prior revision rows.
-- **Multi-replica:** compute is read-only until materialization; writers use same idempotency as C3 (Serializable or advisory lock per vehicle profile job — **DECISION_REQUIRED** at D3).
+- **Multi-replica:** compute is read-only until materialization; writers use same idempotency as C3 (**DECISION_REQUIRED** at D3).
 - **M3.3E consumption:** reads profile revision **or** invokes same pure function — must not fork logic.
 
-**No schema/migration in D0.**
+**No schema/migration in D0 / D0.1.**
 
-Conceptual keys (future):
+**Canonical input fingerprint (deterministic only):**
 
-- `idempotencyKey`: `long-profile:{vehicleId}:{profilePolicyVersion}:{canonicalRowSetDigest}:{windowParamsDigest}`
+- `organizationId`, `vehicleId`
+- `profilePolicyVersion`
+- normalized window parameters (`maxSessions`, lookback bounds, cursor if paged)
+- deterministically ordered list of `(canonicalFeatureRowId, inputDigest)` for included observations
+- persisted version authority fields used for segmentation (row columns + resolved `inputContractVersion`)
+
+**Explicitly excluded from fingerprint:** `profileGeneratedAt`, wall-clock generation time, request id, replica id.
+
+Conceptual idempotency key (future materialization):
+
+- `long-profile:{vehicleId}:{profilePolicyVersion}:{canonicalInputFingerprint}`
 
 ---
 
@@ -394,34 +470,78 @@ Conceptual keys (future):
 | Older history | Beyond max sessions: **`truncatedOlderSessionCount`** metadata — optional **yearly summary** in future (**DECISION_REQUIRED**) | |
 | Index use | `BatteryRestSession` `(vehicleId, anchorAt DESC)`; features via session id batch `IN (...)` | **VALIDATED** (schema exists) |
 
-**Per session DB pattern (conceptual):**
+**Per-session DB pattern (conceptual — bounded):**
 
 1. Page rest sessions for vehicle in window (cap N).
-2. Batch-load feature rows for those session ids (model version filter).
-3. In-memory canonical pick per session (same policy as C5A).
-4. Optional C5A integrity pass — bounded; may reuse inspection service with batch limits.
+2. Batch bounded canonical-candidate fetch (≤4 rows per session per version segment) — **never** `listFeatureRowsForSession()`.
+3. In-memory `selectCanonicalRestSessionFeatureShadowRow()` per session (C5A-equivalent).
+4. Parse `inputContractVersion` from each canonical row’s `inputSummary` (§5.1a).
+5. **D1:** no full C5A `inspectSession()` per session (no N+1 unbounded inspection). **D4+:** optional batched C5A-equivalent integrity acquisition (§12).
 
 ---
 
 ## 12. Integrity / failure semantics
 
-**Profile-level status (machine-readable, not health):**
+### 12.1 Integrity dimensions (do not collapse)
 
-| `LongitudinalProfileStatus` | Meaning |
-|----------------------------|---------|
-| `OK` | Minimum included sessions met; no blocking integrity issues |
+Reuse **C5A semantics** when evaluated — **no second integrity policy**. Separate dimensions:
+
+| Dimension | Meaning | **D1 mandatory?** |
+|-----------|---------|---------------------|
+| **CANONICAL_SELECTION_INTEGRITY** | Bounded candidates → `selectCanonicalRestSessionFeatureShadowRow` resolves or not | **YES** |
+| **DIGEST_INTEGRITY** | Checked rows re-hash to `inputDigest` | **NO** (D4+ slice) |
+| **REVISION_LINEAGE_INTEGRITY** | Semantic revision gaps / duplicates vs aggregate | **NO** (D4+ slice) |
+| **DIGEST_COVERAGE** | FULL vs BOUNDED_LATEST_WINDOW (`INTEGRITY_PARTIAL`) | **NO** (D4+ slice) |
+
+**D1 rule:** `perSessionInspectionStatus` = **`NOT_EVALUATED`**. D1 **must not** claim `INTEGRITY_WARNING` exclusion was applied. Inclusion/exclusion in D1 uses **canonical selection + inclusion policy gates only** (trust, charge class, points, `INPUT_CONTRACT_VERSION_UNRESOLVED`, etc.).
+
+**D4+ (preferred):** bounded batch acquisition reusing C5A inspection **primitives** (snapshot loader + integrity helpers) — **not** N independent full `inspectSession()` workflows with unbounded revision loads per session.
+
+When digest integrity **is** evaluated (D4+):
+
+- `INTEGRITY_WARNING` → exclude from default series (or quarantine flag)
+- `INTEGRITY_PARTIAL` → include with `digestCoverage=PARTIAL` metadata; **not** a health signal
+
+### 12.2 Profile status composition (primary + flags)
+
+Overlapping conditions (version segments + truncated lookback + future integrity limits) require **orthogonal diagnostics**.
+
+**Primary `profileStatus`** — single lifecycle / usability state (no health semantics):
+
+| `LongitudinalProfilePrimaryStatus` | Meaning |
+|-----------------------------------|---------|
+| `OK` | Default series has minimum included sessions per policy |
 | `INSUFFICIENT_SESSIONS` | Below minimum for descriptive series |
-| `PARTIAL_COVERAGE` | Included sessions OK but lookback truncated / many exclusions |
-| `VERSION_SEGMENTED` | Multiple version segments — trends not auto-merged |
-| `INTEGRITY_LIMITED` | Some sessions excluded for per-session integrity |
-| `NO_ELIGIBLE_SESSIONS` | No canonical rows after gates |
-| `FAILED` | Query/contract error |
+| `NO_ELIGIBLE_SESSIONS` | Zero sessions after inclusion gates |
+| `FAILED` | Query/contract failure |
 
-**Exclusion reasons (`LongitudinalExclusionReason`):**
+**`profileFlags[]`** — zero or more independent diagnostics (all may be true together):
 
-`NO_CANONICAL_ROW`, `SESSION_INVALIDATED`, `SESSION_TRUST_INVALIDATED`, `INTEGRITY_WARNING`, `CHARGE_CLASS_FILTER`, `INSUFFICIENT_REST_POINTS`, `INSUFFICIENT_OBSERVATION_SPAN`, `ANCHOR_UNAVAILABLE`, `VERSION_FILTER`, `PROVISIONAL_INCREMENTAL`, `OUTSIDE_LOOKBACK`, `DUPLICATE_ANCHOR_COLLISION` (if ever detected)
+| Flag | Meaning |
+|------|---------|
+| `VERSION_SEGMENTED` | >1 version segment in container |
+| `PARTIAL_COVERAGE` | Lookback/window truncated or high exclusion rate |
+| `TRUNCATED_OLDER_SESSIONS` | Sessions beyond max window omitted |
+| `INTEGRITY_LIMITED` | D4+: some sessions excluded solely for integrity (not D1) |
+| `INPUT_CONTRACT_UNRESOLVED_PRESENT` | At least one candidate had unresolved input contract |
+| `PROVISIONAL_SESSIONS_INCLUDED` | Active INCREMENTAL sessions included when policy allows |
 
-**Per-session:** do not collapse to single boolean — retain **`exclusionReasons[]`**.
+**Deterministic primary precedence** (when deriving primary from flags — flags remain set):
+
+1. `FAILED`
+2. `NO_ELIGIBLE_SESSIONS`
+3. `INSUFFICIENT_SESSIONS`
+4. else `OK`
+
+**`statusReasons[]`:** machine-readable aggregate counts (exclusion reason histogram, segment count, etc.).
+
+### 12.3 Exclusion reasons (`LongitudinalExclusionReason`)
+
+`NO_CANONICAL_ROW`, `SESSION_INVALIDATED`, `SESSION_TRUST_INVALIDATED`, `INPUT_CONTRACT_VERSION_UNRESOLVED`, `INTEGRITY_WARNING` (**D4+ only**), `CHARGE_CLASS_FILTER`, `INSUFFICIENT_REST_POINTS`, `INSUFFICIENT_OBSERVATION_SPAN`, `ANCHOR_UNAVAILABLE`, `VERSION_FILTER`, `PROVISIONAL_INCREMENTAL`, `OUTSIDE_LOOKBACK`
+
+**Not an exclusion reason:** equal `anchorAt` across distinct `restSessionId` values — ordering uses `(anchorAt, restSessionId)`; timestamp collision alone is valid.
+
+**Per-session:** retain **`exclusionReasons[]`** — do not collapse to one boolean.
 
 ---
 
@@ -459,15 +579,22 @@ Smallest safe sequence:
 
 | Slice | Scope | Deliverable |
 |-------|--------|-------------|
-| **D1** | Canonical longitudinal **input reader** + pure inclusion policy + `M3_3D_LONGITUDINAL_PROFILE_V1` types (no persistence) | Unit tests against fixture sessions; bounded session query |
-| **D2** | Deterministic **profile assembly** (observations + version segments + exclusions + optional SAFE_DESCRIPTIVE derived block) | Pure function + golden tests; flag-gated service shell default OFF |
-| **D3** | **Persistence / materialization** (if approved after D2 shadow metrics) | Append-only revision concept + idempotency; migration only after review |
-| **D4** | **Inspection / observability** | Ops CLI or extend C5A pattern; Prometheus counters for exclusions (bounded labels) |
-| **D5** | **Integration hardening** | Postgres integration tests, multi-version segmentation, concurrency/idempotency, C5A integrity coupling |
+| **D1** | Bounded canonical longitudinal **input reader** + inclusion policy + contract types | Unit/integration tests on **fixtures + controlled test DB**; **no production flag**; `perSessionInspectionStatus=NOT_EVALUATED` |
+| **D2** | Deterministic **profile assembly** (observations, version segments, primary status + flags, exclusions) | Pure function + golden tests; same non-prod validation surfaces as D1 |
+| **D3** | **Persistence / materialization** — **CONDITIONAL** | Schema/migration **proposal only** after D2; **no production materialization** and **no flag enable** before **M3.3F** authorization; if natural fleet C3 evidence is required for schema sign-off → **defer D3 final approval until after relevant M3.3F read-only/shadow evidence** |
+| **D4** | **Inspection / observability** + optional **bounded** C5A-equivalent integrity batch | Ops CLI / metrics; digest + lineage integrity dimensions; still no customer UI |
+| **D5** | **Integration hardening** | Postgres, multi-version segmentation, concurrency/idempotency, integrity coupling tests |
 
-**Alternative considered:** merge D1+D2 — rejected for review clarity; D1 locks inclusion science before derived features.
+**Sequencing vs M3.3F (non-circular):**
 
-**Dependencies:** C3 rows must exist (shadow flag ON in non-prod / M3.3F for prod validation). D0 does not enable flag.
+- **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** on production today → fleet natural C3 rows absent until **M3.3F** explicitly authorizes production shadow validation.
+- **D1/D2** do **not** require production flag or natural fleet data.
+- **D3** must **not** be interpreted as “turn on shadow flag for production materialization.” Production profile materialization remains **forbidden** until **M3.3F+** explicit authorization (and later cutover stages as applicable).
+- **M3.3F** = authorized production shadow validation stage for C3 pipeline — prerequisite for production-realistic longitudinal validation, not a blocker for merging D1/D2 code that stays flag-gated OFF.
+
+**Alternative considered:** merge D1+D2 — rejected for review clarity.
+
+**D0 / D0.1:** do not enable any flag.
 
 ---
 
@@ -481,19 +608,21 @@ Smallest safe sequence:
 | **DEC-M3.3D-004** | Charge class filter for retention sub-series | **DECISION_REQUIRED** |
 | **CAL-M3.3D-001** | Thresholds: min points, span, missing rungs | **SHADOW_CALIBRATION_REQUIRED** (M3.3F) |
 | **CAL-M3.3D-003** | Rest-depth stratification bands | **SHADOW_CALIBRATION_REQUIRED** |
-| **BLOCK-M3.3D-001** | No fleet C3 rows while shadow flag OFF | Natural validation blocked until **M3.3F** authorization |
+| **DEC-M3.3D-005** | Input-contract column vs model-version bump for cross-version longitudinal | **DECISION_REQUIRED** (D1) |
+| **BLOCK-M3.3D-001** | No fleet C3 rows while shadow flag OFF | Natural **production** validation blocked until **M3.3F** — **not** a blocker for D1/D2 fixture validation |
 | **BLOCK-M3.3D-002** | Temperature alignment insufficient for adjusted trends | Defer to M3.3E |
 | **BLOCK-M3.3D-003** | Battery replacement / config change auto-segmentation | **DECISION_REQUIRED** — no automatic signal in C3 today |
 
 ---
 
-## Non-effects (D0)
+## Non-effects (D0 + D0.1)
 
 - No schema / migration / runtime service / worker / queue
 - No feature flag activation / production deploy / backfill
 - No `BatteryAssessment` / `BatteryPublication` / `BatteryFeatures` writes
 - No customer API or UI
 - No M3.3E health interpretation
+- No D1 implementation in D0.1
 
 ---
 
