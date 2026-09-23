@@ -54,6 +54,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5B post-merge documentation seal (main)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C5B engineering-complete on draft PR #1733; authority docs described pre-merge state. |
+| **CHANGE** | PR #1733 merged to `main` @ `969cc3f19`; `CURRENT_STATE` + C5A/C5B docs updated to **C5B COMPLETE ON MAIN**; **M3.3D** set as next engineering milestone. |
+| **AFTER** | C5B COMPLETE ON MAIN; M3.3D longitudinal profile next; M3.3E–H pending; M3.3H customer UI unchanged/future. |
+| **NON_EFFECTS** | No production deploy; no runtime flag changes; no migration; no customer UI; no M3.3D implementation in this record. |
+| **EVIDENCE** | Merge commit `969cc3f19248ab49f50694e9afdbf8e75bbe7395` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C5B.2 documentation seal (pre-merge)
 
 | Field | Value |
