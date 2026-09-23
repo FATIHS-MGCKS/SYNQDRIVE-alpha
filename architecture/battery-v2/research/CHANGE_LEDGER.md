@@ -59,9 +59,19 @@ Append-only scientific record. Newest entries first.
 | Field | Value |
 |-------|-------|
 | **BEFORE** | C5B engineering-complete on draft PR #1733; authority docs described pre-merge state. |
+| **OBSERVATION** | PR #1733 merged to `main` @ `969cc3f19248ab49f50694e9afdbf8e75bbe7395`; C5B runtime already on main. |
+| **HYPOTHESIS** | Authority snapshot must match merge baseline without re-describing C5B as draft/pending. |
 | **CHANGE** | PR #1733 merged to `main` @ `969cc3f19`; `CURRENT_STATE` + C5A/C5B docs updated to **C5B COMPLETE ON MAIN**; **M3.3D** set as next engineering milestone. |
+| **WHY** | Post-merge documentation seal — unambiguous C1–C5B complete on main before M3.3D work. |
+| **EXPECTED_EFFECT** | `CURRENT_STATE` + C5A doc record C5B **COMPLETE ON MAIN**; roadmap next = M3.3D longitudinal profile. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | Three authority files updated; stale pre-merge C5B wording removed from active docs (historical ledger rows preserved). |
 | **AFTER** | C5B COMPLETE ON MAIN; M3.3D longitudinal profile next; M3.3E–H pending; M3.3H customer UI unchanged/future. |
 | **NON_EFFECTS** | No production deploy; no runtime flag changes; no migration; no customer UI; no M3.3D implementation in this record. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only. |
+| **REMAINING_GAPS** | M3.3D longitudinal profile; M3.3E–H; authorized M3.3F production shadow validation gate unchanged. |
+| **DECISION_STATUS** | **DOCUMENTATION_SEAL** (post-merge) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C C5B Master Admin shadow inspection UI |
 | **EVIDENCE** | Merge commit `969cc3f19248ab49f50694e9afdbf8e75bbe7395` |
 
 ---
