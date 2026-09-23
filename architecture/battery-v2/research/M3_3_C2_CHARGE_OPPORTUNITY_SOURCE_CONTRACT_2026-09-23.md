@@ -114,6 +114,8 @@ GE_TEMPERATURE_USED_AS_PROVIDER_QUALIFIED_V1=NO
 - `PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2` (C2 does not assert prior feature absence)
 - `generalizedEvidenceRowsConsidered === chargeContextSourceObservationIds.length` (material rows only)
 
+**CI (PR #1728):** 46/46 checks PASS @ `ecca7526cfe6c931cf7797f1fbf11649860873aa` (includes Trip FSM R11 postgres+redis).
+
 ```
 LIVE_C2_CALCULATION_HOOKS=0
 BatteryRestSessionFeature writes=0 (C3)

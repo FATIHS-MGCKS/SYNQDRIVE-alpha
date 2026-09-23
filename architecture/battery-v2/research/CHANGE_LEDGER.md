@@ -65,7 +65,7 @@ Append-only scientific record. Newest entries first.
 | **WHY** | Prevent C3 input drift and false completeness from stale or out-of-window rows. |
 | **EXPECTED_EFFECT** | Deterministic material provenance; tenant entrypoint isolation proven in Postgres. |
 | **VALIDATION** | Unit 49/49; Postgres PG_A–J PASS. |
-| **OBSERVED_EFFECT** | Local suites green pending CI on new HEAD. |
+| **OBSERVED_EFFECT** | Local suites green; GitHub CI **46/46 PASS** @ `ecca7526cfe6c931cf7797f1fbf11649860873aa` (PR #1728). |
 | **NON_EFFECTS** | No deploy; no writes; classifier unchanged. |
 | **REGRESSIONS_OR_TRADEOFFS** | Completeness reason `NO_PRIOR_SESSION_FEATURE` replaced by `PRIOR_SESSION_FEATURE_NOT_RESOLVED_IN_C2`. |
 | **REMAINING_GAPS** | C3 persistence unchanged. |
