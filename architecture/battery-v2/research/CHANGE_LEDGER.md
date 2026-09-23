@@ -54,6 +54,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-23 — M3.3C C5A shadow observability + read-only inspection
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | C4 wiring without Prometheus trigger/row metrics; no operator read-only inspection contract or CLI. |
+| **OBSERVATION** | Operators could not answer trigger outcomes, dedupe vs create, digest integrity, or canonical row selection without ad-hoc SQL. |
+| **HYPOTHESIS** | Bounded Prometheus labels + tenant-scoped read-only inspection reusing C3 digest/canonical policy enables safe shadow ops visibility without health authority. |
+| **CHANGE** | Three bounded-label metrics in `TripMetricsService` recorded only in `RestSessionFeatureShadowTriggerService`; `RestSessionFeatureShadowInspectionService` (tenant-scoped V1 response, digest re-hash via C3 serializer, canonical policy reuse, revision integrity); ops CLI with production host deny-by-default. |
+| **WHY** | Operational visibility for shadow feature pipeline before C5B UI and production shadow validation. |
+| **EXPECTED_EFFECT** | Single trigger accounting; flag-off observability without C3 DB access; inspection JSON with integrity enums; CLI exit codes for ops automation. |
+| **VALIDATION** | Metrics TEST_M1–M8; inspection TEST_I1–I14; Postgres PG_A–I via `test:battery:v2:rest-session-feature:inspection:postgres`; C1–C4 regression suites. |
+| **OBSERVED_EFFECT** | Local CI PASS on C5A unit + Postgres matrices; C4 fail-open tests unchanged. |
+| **NON_EFFECTS** | No deploy; no migration; shadow flag default OFF; no customer API/UI; no assessment/publication/battery_features writes. |
+| **REGRESSIONS_OR_TRADEOFFS** | Slightly larger TripMetricsService surface; ops CLI ts-node cold start (~5s) in PG_H. |
+| **REMAINING_GAPS** | C5B Master Admin UI; authorized production shadow flag + migration gate unchanged. |
+| **DECISION_STATUS** | **VALIDATED** (engineering) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3C rest-session feature shadow observability |
+| **EVIDENCE** | `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
+
+---
+
 ## CL-2026-09-23 — M3.3C C4.1 valid-rest age alignment + PG_K shadow-only proof (PR #1730 amend)
 
 | Field | Value |

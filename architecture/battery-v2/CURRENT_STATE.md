@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-22 (M3.3C C1 schema + pure policy @ main `eca3673a`; production unchanged `2b0ef15f`)  
+**Snapshot date:** 2026-09-23 (M3.3C C5A shadow observability @ branch; production unchanged `2b0ef15f`)  
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -43,7 +43,9 @@
 | **M3.3C C2.1 (engineering)** | Read-only charge-context reader + pure raw-feature policy (`M3_3C_C2_V1`); **no** feature persistence, **no** live hooks; `chargeOpportunityClass=UNKNOWN`; classifier unchanged — `research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md` |
 | **M3.3C C3 (engineering)** | `RestSessionFeatureComputationService` + canonical digest + append-only rows **behind shadow flag default OFF** — `research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md` |
 | **M3.3C C4 (engineering)** | `RestSessionFeatureShadowTriggerService` + post-mutation hooks (valid rest / terminal / late trip) + Nest registration; **fail-open**; flag OFF → zero C3 calls — `research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md` |
-| **M3.3C** | **`OPEN`** — C1–C3 engineering complete; C4–C5 pending; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3C C4.1 (engineering)** | Valid-rest `actualRestAgeMs > 0`; strengthened PG_K shadow-only authoritative isolation — C4 formal post-merge closure **PASS** @ main `8f7d95e4` |
+| **M3.3C C5A (engineering)** | Shadow Prometheus metrics (C4/C3 observability) + `RestSessionFeatureShadowInspectionService` + read-only ops CLI; **no deploy / no migration / flag OFF** — `research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md` |
+| **M3.3C** | **`OPEN`** — C1–C4 engineering complete; C5A observability/inspection complete; **C5B UI + production shadow validation gate pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |

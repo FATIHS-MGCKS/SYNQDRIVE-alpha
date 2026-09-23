@@ -27,6 +27,8 @@
     "test:battery:v2:charge-opportunity:postgres": "bash scripts/test/battery-charge-opportunity-postgres-ci.sh",
     "test:battery:v2:rest-session-feature:computation:postgres": "bash scripts/test/battery-rest-session-feature-computation-postgres-ci.sh",
     "test:battery:v2:rest-session-feature:shadow:postgres": "bash scripts/test/battery-rest-session-feature-shadow-postgres-ci.sh",
+    "test:battery:v2:rest-session-feature:inspection:postgres": "bash scripts/test/battery-rest-session-feature-shadow-inspection-postgres-ci.sh",
+    "battery:rest-feature:inspect": "ts-node -r tsconfig-paths/register scripts/ops/battery-rest-session-feature-shadow-inspect.ts",
     "test:stations:v2": "jest --testPathPattern='stations-v2|station-access|station-rule-engine|station-validation|station-geofence-shadow' --testPathIgnorePatterns=integration",
     "test:battery:v2:verify": "bash scripts/test/battery-health-v2-verify.sh all",
     "test:battery:v2:verify:unit": "bash scripts/test/battery-health-v2-verify.sh unit",
