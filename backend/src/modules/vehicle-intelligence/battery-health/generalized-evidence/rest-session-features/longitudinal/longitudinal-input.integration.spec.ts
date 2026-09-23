@@ -58,6 +58,36 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
   return { organizationId: org.id, vehicleId };
 }
 
+async function createSecondVehicle(
+  prisma: PrismaClient,
+  organizationId: string,
+  label: string,
+) {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const vehicleId = randomUUID();
+  const vin = `VIN${suffix}`.slice(0, 17).padEnd(17, '0');
+  await prisma.$executeRaw`
+    INSERT INTO vehicles (
+      id, organization_id, vin, make, model, year, fuel_type, hardware_type, status,
+      license_plate, created_at, updated_at
+    ) VALUES (
+      ${vehicleId}::uuid,
+      ${organizationId}::uuid,
+      ${vin},
+      'Test',
+      'ICE',
+      2024,
+      'GASOLINE'::"FuelType",
+      'LTE_R1'::"HardwareType",
+      'AVAILABLE'::"VehicleStatus",
+      ${`${label}-${suffix}`.slice(0, 32)},
+      NOW(),
+      NOW()
+    )
+  `;
+  return vehicleId;
+}
+
 async function createRestSession(
   prisma: PrismaClient,
   input: {
@@ -94,6 +124,9 @@ async function createFeatureRow(
     sessionTrust: BatteryRestSessionFeatureSessionTrust;
     inputSummary: Record<string, unknown>;
     chargeOpportunityClass?: BatteryRestSessionChargeOpportunityClass;
+    featureModelVersion?: string;
+    retentionPolicyVersion?: string;
+    chargeOpportunityPolicyVersion?: string;
   },
 ) {
   const digest = `digest-${randomUUID()}-${input.semanticRevision}`;
@@ -102,9 +135,13 @@ async function createFeatureRow(
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       restSessionId: input.restSessionId,
-      featureModelVersion: REST_SESSION_FEATURE_MODEL_VERSION,
-      retentionPolicyVersion: REST_SESSION_RETENTION_POLICY_VERSION,
-      chargeOpportunityPolicyVersion: REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
+      featureModelVersion:
+        input.featureModelVersion ?? REST_SESSION_FEATURE_MODEL_VERSION,
+      retentionPolicyVersion:
+        input.retentionPolicyVersion ?? REST_SESSION_RETENTION_POLICY_VERSION,
+      chargeOpportunityPolicyVersion:
+        input.chargeOpportunityPolicyVersion ??
+        REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
       semanticRevision: input.semanticRevision,
       inputDigest: digest,
       inputSummary: input.inputSummary as Prisma.InputJsonValue,
@@ -255,6 +292,84 @@ async function createFeatureRow(
       expect(outcome.status).toBe('OK');
       if (outcome.status === 'OK') {
         expect(outcome.result.sessions).toHaveLength(0);
+      }
+    });
+
+    it('same organization + wrong vehicle does not leak sessions or features', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId: vehicleA } = await createOrgVehicle(prisma, 'VEH-A');
+      const vehicleB = await createSecondVehicle(prisma, organizationId, 'VEH-B');
+      const sessionOnB = await createRestSession(prisma, {
+        organizationId,
+        vehicleId: vehicleB,
+        anchorAt: new Date('2026-04-15T00:00:00.000Z'),
+        sessionStatus: BatteryRestSessionStatus.ENDED,
+      });
+      const summary = buildMinimalLongitudinalInputSummary({
+        organizationId,
+        vehicleId: vehicleB,
+        restSessionId: sessionOnB.id,
+      });
+      await createFeatureRow(prisma, {
+        organizationId,
+        vehicleId: vehicleB,
+        restSessionId: sessionOnB.id,
+        semanticRevision: 1,
+        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+        inputSummary: summary,
+      });
+      const outcome = await reader.readInventory({
+        organizationId,
+        vehicleId: vehicleA,
+        sessionLimit: 10,
+      });
+      expect(outcome.status).toBe('OK');
+      if (outcome.status === 'OK') {
+        expect(outcome.result.sessions).toHaveLength(0);
+      }
+    });
+
+    it('current-version SQL scope excludes wrong featureModelVersion noise', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'VERSCOPE');
+      const session = await createRestSession(prisma, {
+        organizationId,
+        vehicleId,
+        anchorAt: new Date('2026-04-20T00:00:00.000Z'),
+        sessionStatus: BatteryRestSessionStatus.ENDED,
+      });
+      const summary = buildMinimalLongitudinalInputSummary({
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+      });
+      await createFeatureRow(prisma, {
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+        semanticRevision: 1,
+        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+        inputSummary: summary,
+        featureModelVersion: 'LEGACY_MODEL_VERSION_NOISE',
+      });
+      const repo = new LongitudinalInputRepository(prisma as unknown as PrismaService);
+      const candidates = await repo.listBatchCanonicalCandidateRows({
+        organizationId,
+        vehicleId,
+        restSessionIds: [session.id],
+      });
+      expect(candidates).toHaveLength(0);
+      const outcome = await reader.readInventory({
+        organizationId,
+        vehicleId,
+        sessionLimit: 5,
+      });
+      expect(outcome.status).toBe('OK');
+      if (outcome.status === 'OK') {
+        const item = outcome.result.sessions.find((s) => s.restSessionId === session.id);
+        expect(item?.quality.exclusionReasons).toEqual(['NO_CANONICAL_ROW']);
       }
     });
 

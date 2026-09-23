@@ -47,7 +47,7 @@ export function classifyLongitudinalInputInclusion(input: {
     exclusionReasons.push('SESSION_TRUST_INVALIDATED');
   }
 
-  if (!input.inputContractResolved) {
+  if (input.canonicalRow && !input.inputContractResolved) {
     exclusionReasons.push('INPUT_CONTRACT_VERSION_UNRESOLVED');
   }
 

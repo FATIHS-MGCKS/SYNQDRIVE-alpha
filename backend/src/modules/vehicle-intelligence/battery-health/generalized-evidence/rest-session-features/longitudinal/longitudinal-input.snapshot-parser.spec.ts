@@ -26,17 +26,6 @@ describe('longitudinal-input.snapshot-parser (D1)', () => {
     }
   });
 
-  it('returns UNRESOLVED for malformed JSON', () => {
-    expect(
-      parseLongitudinalInputSnapshotSummary({
-        inputSummary: null,
-        organizationId: org,
-        vehicleId: vehicle,
-        restSessionId: session,
-      }).status,
-    ).toBe('UNRESOLVED');
-  });
-
   it('returns UNRESOLVED for tenant mismatch', () => {
     const summary = buildMinimalLongitudinalInputSummary({
       organizationId: org,
@@ -48,6 +37,68 @@ describe('longitudinal-input.snapshot-parser (D1)', () => {
         inputSummary: summary,
         organizationId: org,
         vehicleId: '00000000-0000-0000-0000-000000000099',
+        restSessionId: session,
+      }).status,
+    ).toBe('UNRESOLVED');
+  });
+
+  it('returns UNRESOLVED for malformed JSON root', () => {
+    expect(
+      parseLongitudinalInputSnapshotSummary({
+        inputSummary: null,
+        organizationId: org,
+        vehicleId: vehicle,
+        restSessionId: session,
+      }).status,
+    ).toBe('UNRESOLVED');
+  });
+
+  it('returns UNRESOLVED for malformed temperatureC', () => {
+    const summary = buildMinimalLongitudinalInputSummary({
+      organizationId: org,
+      vehicleId: vehicle,
+      restSessionId: session,
+      temperatureC: 'not-a-number' as unknown as number,
+    });
+    expect(
+      parseLongitudinalInputSnapshotSummary({
+        inputSummary: summary,
+        organizationId: org,
+        vehicleId: vehicle,
+        restSessionId: session,
+      }).status,
+    ).toBe('UNRESOLVED');
+  });
+
+  it('returns UNRESOLVED for invalid temperatureSource', () => {
+    const summary = buildMinimalLongitudinalInputSummary({
+      organizationId: org,
+      vehicleId: vehicle,
+      restSessionId: session,
+      temperatureSource: 'INVALID_SOURCE',
+    });
+    expect(
+      parseLongitudinalInputSnapshotSummary({
+        inputSummary: summary,
+        organizationId: org,
+        vehicleId: vehicle,
+        restSessionId: session,
+      }).status,
+    ).toBe('UNRESOLVED');
+  });
+
+  it('returns UNRESOLVED for invalid contextCompleteness entry', () => {
+    const summary = buildMinimalLongitudinalInputSummary({
+      organizationId: org,
+      vehicleId: vehicle,
+      restSessionId: session,
+      contextCompleteness: ['NOT_A_REAL_REASON'],
+    });
+    expect(
+      parseLongitudinalInputSnapshotSummary({
+        inputSummary: summary,
+        organizationId: org,
+        vehicleId: vehicle,
         restSessionId: session,
       }).status,
     ).toBe('UNRESOLVED');

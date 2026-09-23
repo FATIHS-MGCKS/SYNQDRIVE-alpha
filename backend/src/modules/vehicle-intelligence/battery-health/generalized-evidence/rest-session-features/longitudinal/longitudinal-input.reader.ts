@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { BatteryRestSession, BatteryRestSessionFeature } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { compareUtf16CodeUnitLexicographic } from '../feature-input-canonical.serializer';
 import { selectCanonicalRestSessionFeatureShadowRow } from '../rest-session-feature-canonical-row.policy';
 import {
   LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
@@ -40,6 +41,18 @@ function buildInventoryItem(input: {
   const parsed =
     input.parsedSnapshot.status === 'OK' ? input.parsedSnapshot.parsed : null;
 
+  const version = row
+    ? {
+        featureModelVersion: row.featureModelVersion,
+        retentionPolicyVersion: row.retentionPolicyVersion,
+        chargeOpportunityPolicyVersion: row.chargeOpportunityPolicyVersion,
+        inputContractVersion: parsed?.inputContractVersion ?? null,
+        inputContractResolution: input.inputContractResolved
+          ? ('RESOLVED' as const)
+          : ('UNRESOLVED' as const),
+      }
+    : null;
+
   return {
     organizationId: input.session.organizationId,
     vehicleId: input.session.vehicleId,
@@ -60,15 +73,7 @@ function buildInventoryItem(input: {
           inputDigest: row.inputDigest,
         }
       : null,
-    version:
-      row && parsed
-        ? {
-            featureModelVersion: row.featureModelVersion,
-            retentionPolicyVersion: row.retentionPolicyVersion,
-            chargeOpportunityPolicyVersion: row.chargeOpportunityPolicyVersion,
-            inputContractVersion: parsed.inputContractVersion,
-          }
-        : null,
+    version,
     features: row
       ? {
           shutdownToFirstRestDeltaMv: row.shutdownToFirstRestDeltaMv,
@@ -110,15 +115,19 @@ export class LongitudinalInputReaderService {
   async readInventory(
     request: LongitudinalInputReadRequest,
   ): Promise<LongitudinalInputReadOutcome> {
+    const { sessionLimit } = request;
     if (
-      !Number.isFinite(request.sessionLimit) ||
-      request.sessionLimit < 1 ||
-      request.sessionLimit > LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS
+      !Number.isInteger(sessionLimit) ||
+      sessionLimit < 1 ||
+      !Number.isFinite(sessionLimit)
     ) {
+      return { status: 'REJECTED', reason: 'INVALID_SESSION_LIMIT' };
+    }
+    if (sessionLimit > LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS) {
       return { status: 'REJECTED', reason: 'SESSION_LIMIT_EXCEEDED' };
     }
 
-    const appliedSessionLimit = request.sessionLimit;
+    const appliedSessionLimit = sessionLimit;
     const hooks = this.snapshotHooks ?? undefined;
 
     const snapshot = await this.prisma.$transaction(
@@ -143,7 +152,7 @@ export class LongitudinalInputReaderService {
     const sessionsChronological = [...snapshot.sessions].sort((a, b) => {
       const anchorDiff = a.anchorAt.getTime() - b.anchorAt.getTime();
       if (anchorDiff !== 0) return anchorDiff;
-      return a.id.localeCompare(b.id);
+      return compareUtf16CodeUnitLexicographic(a.id, b.id);
     });
 
     const sessions: LongitudinalInputSessionInventoryItem[] =

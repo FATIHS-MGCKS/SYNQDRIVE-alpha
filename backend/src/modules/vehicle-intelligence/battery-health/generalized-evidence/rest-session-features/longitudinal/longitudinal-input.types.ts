@@ -11,11 +11,14 @@ export type LongitudinalInputExclusionReason =
 
 export type LongitudinalInputPerSessionInspectionStatus = 'NOT_EVALUATED';
 
+export type LongitudinalInputInputContractResolution = 'RESOLVED' | 'UNRESOLVED';
+
 export type LongitudinalInputVersionTuple = {
   featureModelVersion: string;
   retentionPolicyVersion: string;
   chargeOpportunityPolicyVersion: string;
-  inputContractVersion: string;
+  inputContractVersion: string | null;
+  inputContractResolution: LongitudinalInputInputContractResolution;
 };
 
 export type LongitudinalInputSessionContext = {
@@ -81,7 +84,9 @@ export type LongitudinalInputReadRequest = {
   sessionLimit: number;
 };
 
-export type LongitudinalInputReadRejectReason = 'SESSION_LIMIT_EXCEEDED';
+export type LongitudinalInputReadRejectReason =
+  | 'SESSION_LIMIT_EXCEEDED'
+  | 'INVALID_SESSION_LIMIT';
 
 export type LongitudinalInputReadResultV1 = {
   longitudinalInputContractVersion: typeof REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION;

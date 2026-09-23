@@ -47,6 +47,15 @@ describe('longitudinal-input.policy (D1)', () => {
     expect(quality.exclusionReasons).toContain('SESSION_TRUST_INVALIDATED');
   });
 
+  it('excludes unresolved input contract only when canonical row exists', () => {
+    const quality = classifyLongitudinalInputInclusion({
+      session: baseSession,
+      canonicalRow: null,
+      inputContractResolved: false,
+    });
+    expect(quality.exclusionReasons).toEqual(['NO_CANONICAL_ROW']);
+  });
+
   it('excludes unresolved input contract', () => {
     const quality = classifyLongitudinalInputInclusion({
       session: baseSession,

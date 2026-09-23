@@ -12,6 +12,8 @@ export function buildMinimalLongitudinalInputSummary(input: {
   anchorResolutionStatus?: 'SELECTED' | 'UNAVAILABLE' | 'AMBIGUOUS';
   inputContractVersion?: string;
   contextCompleteness?: string[];
+  temperatureC?: number | null;
+  temperatureSource?: string;
 }): Record<string, unknown> {
   return {
     inputContractVersion:
@@ -68,8 +70,8 @@ export function buildMinimalLongitudinalInputSummary(input: {
       lvVoltageTimeProxyVms: null,
       lvVoltageTimeProxyCoveredMs: null,
       priorSessionMedianRestVoltageMv: null,
-      temperatureC: null,
-      temperatureSource: 'UNKNOWN',
+      temperatureC: input.temperatureC ?? null,
+      temperatureSource: input.temperatureSource ?? 'UNKNOWN',
       temperatureObservedAt: null,
       temperatureAgeMs: null,
       temperatureUncertainty: null,

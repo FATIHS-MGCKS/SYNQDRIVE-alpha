@@ -75,6 +75,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D1.1 input reader closure (draft PR #1737)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Remove Master Admin UI discoverability edits; strict snapshot parser; persisted column version provenance on contract failure; UTF-16 tie-break; integer sessionLimit validation; precise exclusion reasons; expanded contract/integration tests. |
+| **NON_EFFECTS** | No D2/D3/schema/flag/deploy/customer or Master Admin UI. |
+| **VALIDATION** | D1 unit + Postgres integration; battery-v2 failure differential vs main `6d250da6f`. |
+
+---
+
 ## CL-2026-09-24 — M3.3D D0/D0.1 post-merge documentation seal (main)
 
 | Field | Value |

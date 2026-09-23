@@ -74,25 +74,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-22T22:40:00.000Z',
   },
   {
-    id: 'battery-v2-m3-3d-d1-longitudinal-input-2026-09-24',
-    version: '4.9.2002',
-    title: 'Battery V2 M3.3D D1 — Bounded longitudinal input inventory reader',
-    summary: [
-      'Internal contract M3_3D_D1_LONGITUDINAL_INPUT_V1: org+vehicle bounded rest-session page (anchorAt, restSessionId tie-break; hard cap 100 sessions).',
-      'Single RepeatableRead snapshot: 1 session query + 1 batch canonical-candidate query (≤4 phase/trust rows per session); selectCanonicalRestSessionFeatureShadowRow reused (C5A-equivalent).',
-      'Pure inclusion policy DEFAULT / PROVISIONAL (active INCREMENTAL) / EXCLUDED; inputContractVersion from guarded inputSummary; perSessionInspectionStatus=NOT_EVALUATED; no D2 profile or customer API.',
-    ],
-    reason:
-      'D1 input inventory for future M3_3D_LONGITUDINAL_PROFILE_V2 assembly without trends, health, persistence, or production shadow activation.',
-    previousBehavior:
-      'No bounded longitudinal reader; D0/D0.1 architecture only on main.',
-    details:
-      'architecture/battery-v2/research/M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md, rest-session-features/longitudinal/*, npm run test:battery:v2:longitudinal-input:postgres',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-24T23:30:00.000Z',
-  },
-  {
     id: 'battery-v2-m3-3c2-charge-opportunity-raw-2026-09-23',
     version: '4.9.1997',
     title: 'Battery V2 M3.3C C2.1 — Charge opportunity raw context (read-only)',
