@@ -17,7 +17,7 @@ const TOKEN = 186946;
 const TRIP2 = 'a1788836-df34-48af-9945-6b1fe75ff288';
 const TRIP_START = new Date('2026-09-24T13:09:29.626Z');
 const STALE_LMM = new Date('2026-09-24T13:10:21.390Z');
-const LATEST_WP = new Date('2026-09-24T13:12:17.168Z');
+const PHYSICAL_STOP = new Date('2026-09-24T13:11:00.000Z');
 const WORKER_NOW = new Date('2026-09-24T13:13:00.000Z');
 
 function finalizeJob(): TripTrackingJobData {
@@ -37,57 +37,65 @@ function attachObservabilitySafe(svc: Record<string, unknown>) {
   return svc;
 }
 
-function waypointMocks() {
-  const earliest = {
-    latitude: 50.937,
-    longitude: 6.96,
-    recordedAt: new Date('2026-09-24T13:09:35.000Z'),
-  };
-  const latest = {
-    latitude: 50.939,
-    longitude: 6.965,
-    recordedAt: LATEST_WP,
-  };
+function buildProductionWaypoints() {
+  const rows = [
+    { t: '2026-09-24T13:09:35.000Z', lat: 50.937, lon: 6.96, speed: 25 },
+    { t: '2026-09-24T13:09:50.000Z', lat: 50.9375, lon: 6.961, speed: 30 },
+    { t: '2026-09-24T13:10:05.000Z', lat: 50.938, lon: 6.962, speed: 28 },
+    { t: '2026-09-24T13:10:21.390Z', lat: 50.9385, lon: 6.963, speed: 22 },
+    { t: '2026-09-24T13:10:40.000Z', lat: 50.939, lon: 6.964, speed: 18 },
+    { t: '2026-09-24T13:11:00.000Z', lat: 50.9395, lon: 6.965, speed: 8 },
+  ];
+  for (let i = 0; i < 9; i++) {
+    rows.push({
+      t: new Date(new Date('2026-09-24T13:12:30.000Z').getTime() - (8 - i) * 10_000).toISOString(),
+      lat: 50.9395 + i * 0.00001,
+      lon: 6.965 + i * 0.00001,
+      speed: 0,
+    });
+  }
+  return rows.map((r) => ({
+    latitude: r.lat,
+    longitude: r.lon,
+    speedKmh: r.speed,
+    recordedAt: new Date(r.t),
+  }));
+}
+
+function waypointPrismaMock(waypoints: ReturnType<typeof buildProductionWaypoints>) {
+  const findMany = jest.fn().mockResolvedValue(waypoints);
   const findFirst = jest.fn(
-    async (args: {
-      orderBy?: { recordedAt: 'asc' | 'desc' };
-      where?: { recordedAt?: { lte?: Date } };
-    }) => {
+    async (args: { where?: { recordedAt?: { lte?: Date } } }) => {
       if (args.where?.recordedAt?.lte) {
-        return latest;
+        const lte = args.where.recordedAt.lte.getTime();
+        const eligible = waypoints.filter((w) => w.recordedAt.getTime() <= lte);
+        return eligible[eligible.length - 1] ?? null;
       }
-      if (args.orderBy?.recordedAt === 'asc') {
-        return earliest;
-      }
-      return latest;
+      return null;
     },
   );
-  return { findFirst, count: jest.fn().mockResolvedValue(15), earliest, latest };
+  const count = jest.fn().mockResolvedValue(waypoints.length);
+  return { findMany, findFirst, count };
 }
 
 function buildPostSplitFinalizeHarness(options: {
   distanceKm?: number | null;
-  waypointCount?: number;
+  waypoints?: ReturnType<typeof buildProductionWaypoints>;
+  detectionProfile?: VehicleDetectionProfile;
   lastMeaningfulMovementAt?: Date;
-  latestWaypointAt?: Date;
 }) {
+  const waypoints = options.waypoints ?? buildProductionWaypoints();
+  const wp = waypointPrismaMock(waypoints);
   const finalizeTrip = jest.fn().mockResolvedValue({});
   const discardTrip = jest.fn().mockResolvedValue(undefined);
   const transitionState = jest.fn().mockResolvedValue({});
   const logTrackingRun = jest.fn().mockResolvedValue(undefined);
-  const wp = waypointMocks();
-  if (options.waypointCount != null) {
-    wp.count.mockResolvedValue(options.waypointCount);
-  }
-  if (options.latestWaypointAt) {
-    wp.latest.recordedAt = options.latestWaypointAt;
-  }
 
   const det = {
     vehicleId: VEHICLE,
     organizationId: ORG,
     state: TripDetectionState.POSSIBLE_END,
-    detectionProfile: VehicleDetectionProfile.ICE,
+    detectionProfile: options.detectionProfile ?? VehicleDetectionProfile.ICE,
     activeTripId: TRIP2,
     possibleEndAt: new Date('2026-09-24T13:12:30.000Z'),
     possibleStartAt: TRIP_START,
@@ -150,7 +158,7 @@ function buildPostSplitFinalizeHarness(options: {
     },
   });
 
-  return { svc, finalizeTrip, discardTrip, logTrackingRun, wp };
+  return { svc, finalizeTrip, discardTrip, logTrackingRun, waypoints };
 }
 
 describe('post-split finalize quality — processFinalize integration', () => {
@@ -173,27 +181,49 @@ describe('post-split finalize quality — processFinalize integration', () => {
     expect(discardTrip).not.toHaveBeenCalled();
     expect(finalizeTrip).toHaveBeenCalled();
     const endTime = finalizeTrip.mock.calls[0][1].endTime as Date;
-    expect(endTime.getTime() - TRIP_START.getTime()).toBeGreaterThanOrEqual(60_000);
-    expect(endTime.toISOString()).toBe(LATEST_WP.toISOString());
+    expect(endTime.toISOString()).toBe(PHYSICAL_STOP.toISOString());
+    expect(endTime.getTime()).toBeLessThan(
+      new Date('2026-09-24T13:12:30.000Z').getTime(),
+    );
 
     const trackingCall = logTrackingRun.mock.calls.find(
       (c) => c[0]?.resultSummary?.QUALITY_DECISION != null,
     );
     expect(trackingCall?.[0]?.resultSummary?.QUALITY_DECISION).toBe('keep');
-    expect(trackingCall?.[0]?.resultSummary?.QUALITY_WAYPOINT_COUNT).toBe(15);
     expect(trackingCall?.[0]?.resultSummary?.QUALITY_MEANINGFUL_MOVEMENT).toBe(
       true,
+    );
+    expect(trackingCall?.[0]?.resultSummary?.FINALIZE_END_EVENT_AT).toBe(
+      PHYSICAL_STOP.toISOString(),
     );
     expect(trackingCall?.[0]?.resultSummary?.terminalLifecycleCommit).toBe(
       'COMPLETED',
     );
   });
 
+  it('EV profile — same credible short post-split trip completes', async () => {
+    const { finalizeTrip, discardTrip, svc } = buildPostSplitFinalizeHarness({
+      detectionProfile: VehicleDetectionProfile.EV,
+    });
+    await TripDetectionOrchestrationService.prototype.processFinalize.call(
+      svc as unknown as TripDetectionOrchestrationService,
+      finalizeJob(),
+    );
+    expect(discardTrip).not.toHaveBeenCalled();
+    expect(finalizeTrip).toHaveBeenCalled();
+  });
+
   it('noise short start with no movement still discarded', async () => {
     const { svc, finalizeTrip, discardTrip } = buildPostSplitFinalizeHarness({
-      waypointCount: 0,
+      waypoints: [
+        {
+          latitude: 50.937,
+          longitude: 6.96,
+          speedKmh: 0,
+          recordedAt: new Date(TRIP_START.getTime() + 10_000),
+        },
+      ],
       lastMeaningfulMovementAt: new Date(TRIP_START.getTime() + 20_000),
-      latestWaypointAt: new Date(TRIP_START.getTime() + 20_000),
     });
 
     await TripDetectionOrchestrationService.prototype.processFinalize.call(

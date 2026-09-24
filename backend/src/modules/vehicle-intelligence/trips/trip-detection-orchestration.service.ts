@@ -216,6 +216,7 @@ import {
   observeTripDuration,
 } from './trip-fsm-timing-observability.util';
 import {
+  analyzePersistedRouteMovement,
   computePersistedRouteDisplacementM,
   resolveFinalizeEndTime,
 } from './trip-finalize-quality.util';
@@ -3947,17 +3948,28 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const [latestWaypoint, earliestWaypoint, waypointCount] = await Promise.all([
-            this.prisma.vehicleTripWaypoint.findFirst({
-              where: { tripId },
-              orderBy: { recordedAt: 'desc' },
-            }),
-            this.prisma.vehicleTripWaypoint.findFirst({
+          const [waypoints, waypointCountLegacy] = await Promise.all([
+            this.prisma.vehicleTripWaypoint.findMany({
               where: { tripId },
               orderBy: { recordedAt: 'asc' },
+              select: {
+                latitude: true,
+                longitude: true,
+                speedKmh: true,
+                recordedAt: true,
+              },
             }),
             this.prisma.vehicleTripWaypoint.count({ where: { tripId } }),
           ]);
+          const waypointCount = waypoints.length || waypointCountLegacy;
+          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
+          const routeMovement = analyzePersistedRouteMovement(
+            waypoints,
+            profileLabel,
+          );
+          const earliestWaypoint = waypoints[0] ?? null;
+          const latestWaypoint =
+            waypoints.length > 0 ? waypoints[waypoints.length - 1]! : null;
 
           const routeDisplacementM = computePersistedRouteDisplacementM(
             earliestWaypoint,
@@ -3967,7 +3979,7 @@ export class TripDetectionOrchestrationService {
           const resolvedEnd = resolveFinalizeEndTime({
             cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
             lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
-            latestWaypointRecordedAt: latestWaypoint?.recordedAt ?? null,
+            latestCredibleMovementAt: routeMovement.latestCredibleMovementAt,
             possibleEndAt: det.possibleEndAt ?? null,
             tripStartTime: trip.startTime,
             fallbackNow: new Date(),
@@ -4011,29 +4023,34 @@ export class TripDetectionOrchestrationService {
             waypointCount,
             null,
             trip.startTime,
-            { routeDisplacementM },
+            {
+              routeDisplacementM,
+              hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+              movementAuthority: routeMovement.movementAuthority,
+              cumulativeRouteMovementM: routeMovement.cumulativeRouteMovementM,
+            },
           );
           const qualityMeaningfulMovement = hasPersistedMeaningfulMovementForQuality({
-            persistedWaypointCount: waypointCount,
-            routeDisplacementM,
+            hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
           });
           finalizeQualityObservability = {
             QUALITY_DURATION_MS: durationMs,
             QUALITY_DISTANCE_KM: trip.distanceKm,
             QUALITY_WAYPOINT_COUNT: waypointCount,
             QUALITY_MEANINGFUL_MOVEMENT: qualityMeaningfulMovement,
+            QUALITY_MOVEMENT_AUTHORITY: routeMovement.movementAuthority,
+            QUALITY_ROUTE_MOVEMENT_METERS: routeMovement.cumulativeRouteMovementM,
             QUALITY_DECISION: qualityCheck.shouldDiscard
               ? 'discard'
               : qualityCheck.shouldMergeWithPrevious
                 ? 'merge'
                 : 'keep',
             QUALITY_REASON: qualityCheck.reason ?? null,
-            qualityEndSource: chosenEndSource,
-            qualityRouteDisplacementM: routeDisplacementM,
+            FINALIZE_END_SOURCE: chosenEndSource,
+            FINALIZE_END_EVENT_AT: endTime.toISOString(),
           };
 
           // ── Delegate all lifecycle mutations to TripDecisionEngine ──────────
-          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
 
           if (qualityCheck.shouldDiscard) {
             terminalLifecycleIntent = 'CANCEL';

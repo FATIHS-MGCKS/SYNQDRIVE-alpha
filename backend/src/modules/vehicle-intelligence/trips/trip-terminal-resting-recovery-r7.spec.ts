@@ -28,6 +28,23 @@ function finalizeJob(): TripTrackingJobData {
   };
 }
 
+function defaultHarnessRouteWaypoints(anchor: Date) {
+  return [
+    {
+      latitude: 50.937,
+      longitude: 6.96,
+      speedKmh: 30,
+      recordedAt: new Date(anchor.getTime() + 60_000),
+    },
+    {
+      latitude: 50.939,
+      longitude: 6.965,
+      speedKmh: 25,
+      recordedAt: new Date(anchor.getTime() + 120_000),
+    },
+  ];
+}
+
 function buildFinalizeHarness(overrides: {
   det?: Record<string, unknown>;
   trip?: Record<string, unknown> | null;
@@ -91,6 +108,14 @@ function buildFinalizeHarness(overrides: {
       },
       vehicleTripWaypoint: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue(
+          defaultHarnessRouteWaypoints(
+            overrides.trip === null || overrides.trip === undefined
+              ? new Date(WORKER_NOW.getTime() - 600_000)
+              : (overrides.trip as { startTime?: Date }).startTime ??
+                  new Date(WORKER_NOW.getTime() - 600_000),
+          ),
+        ),
         count: jest.fn().mockResolvedValue(overrides.waypointCount ?? 5),
       },
     },
@@ -124,6 +149,7 @@ function buildFinalizeHarness(overrides: {
 
   if (overrides.qualityDiscard) {
     svc.prisma.vehicleTripWaypoint.count.mockResolvedValue(0);
+    svc.prisma.vehicleTripWaypoint.findMany.mockResolvedValue([]);
   }
 
   return {

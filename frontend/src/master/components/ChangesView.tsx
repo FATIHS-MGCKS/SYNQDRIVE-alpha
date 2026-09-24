@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'Trip FSM — post-split short-trip finalize quality gate',
     summary: [
       'Production KS FH 660E 2026-09-24 Trip 2: real ~2 min post MID_TRIP_GAP_SPLIT drive cancelled with too_short_no_distance despite 15 persisted waypoints and null distanceKm.',
-      'Fix: resolveFinalizeEndTime uses event-time movement extent (max lastMeaningfulMovementAt vs latest waypoint); checkTripQuality respects persisted meaningful movement (≥3 wp or ≥2 wp + ≥50 m) before too_short_no_distance.',
+      'Fix: analyzePersistedRouteMovement (route speed/segment + cumulative path ≥ odometerMinDeltaKm); resolveFinalizeEndTime uses latest credible route movement (not latest waypoint); quality movement evidence independent of canonical duration.',
       'FINALIZATION_CHECK logs QUALITY_* forensics (non-authoritative).',
       'Portable BASE/HEAD repro + processFinalize integration tests; no threshold/policy/deploy changes.',
     ],

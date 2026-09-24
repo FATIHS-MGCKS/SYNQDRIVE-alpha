@@ -21,6 +21,23 @@ const TOKEN = 208;
 const TRIP1 = 'trip-r8b-1';
 const WORKER_NOW = new Date('2026-09-06T17:00:00.000Z');
 
+function defaultHarnessRouteWaypoints(anchor: Date) {
+  return [
+    {
+      latitude: 50.937,
+      longitude: 6.96,
+      speedKmh: 30,
+      recordedAt: new Date(anchor.getTime() + 60_000),
+    },
+    {
+      latitude: 50.939,
+      longitude: 6.965,
+      speedKmh: 25,
+      recordedAt: new Date(anchor.getTime() + 120_000),
+    },
+  ];
+}
+
 function finalizeJob(): TripTrackingJobData {
   return {
     vehicleId: VEHICLE,
@@ -104,6 +121,11 @@ function buildFinalizeHarness(options: {
       vehicleTrip: { findUnique: jest.fn().mockResolvedValue(options.trip) },
       vehicleTripWaypoint: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue(
+          defaultHarnessRouteWaypoints(
+            (options.trip.startTime as Date) ?? new Date('2026-09-06T16:09:55.000Z'),
+          ),
+        ),
         count: jest.fn().mockResolvedValue(5),
       },
       vehicleTripTrackingRun: { create: jest.fn().mockResolvedValue({}) },
@@ -445,6 +467,7 @@ describe('R8B.14 — CANCELLED terminal observability containment', () => {
         },
         vehicleTripWaypoint: {
           findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue([]),
           count: jest.fn().mockResolvedValue(0),
         },
         vehicleTripTrackingRun: { create: jest.fn().mockResolvedValue({}) },

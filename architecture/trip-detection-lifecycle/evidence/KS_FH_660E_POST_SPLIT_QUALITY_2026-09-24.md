@@ -17,12 +17,14 @@
 
 ## Fix (implementation branch — not deployed)
 
-- `resolveFinalizeEndTime()` — event-time max(LMM, latest waypoint) after trip start; CUSUM unchanged.
-- `hasPersistedMeaningfulMovementForQuality()` — ≥3 waypoints OR ≥2 waypoints with ≥50 m displacement.
-- `checkTripQuality()` — `too_short_no_distance` only when short/low-distance **and** no meaningful persisted movement.
-- FINALIZATION_CHECK `resultSummary` quality forensics keys (`QUALITY_*`).
+- **`analyzePersistedRouteMovement`** — reuses `findEarliestRouteActivityAt` semantics (`speedMotionKmh`, `TRIP_ROUTE_MOVEMENT_MIN_METERS` 25 m) plus cumulative path ≥ profile `odometerMinDeltaKm` (50 m). Waypoint count alone is not movement.
+- **`resolveFinalizeEndTime`** — CUSUM first, else max(LMM, **latest credible route movement**), never latest stationary waypoint.
+- **`checkTripQuality`** — `too_short_no_distance` defeated by credible persisted route movement independent of canonical duration.
+- FINALIZATION_CHECK `QUALITY_*` + `FINALIZE_END_*` forensics (non-authoritative).
+
+**Authority order:** `FINALIZE_END_AUTHORITY_ORDER` in `trip-finalize-quality.util.ts`
 
 ## Regression tests
 
-- `trip-finalize-quality.util.spec.ts` — BASE/HEAD portable repro + control matrix.
+- `trip-finalize-quality.util.spec.ts` — BASE/PR1750/FINAL proof + control matrix.
 - `trip-post-split-finalize-quality.spec.ts` — `processFinalize` integration (production timestamps).
