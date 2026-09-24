@@ -1009,9 +1009,18 @@ describe('checkTripQuality', () => {
     expect(r.shouldMergeWithPrevious).toBe(true);
   });
 
+  it('merges with previous trip when gap is exactly 5 min', () => {
+    const prevEnd = new Date(now.getTime() - 5 * 60_000);
+    expect(checkTripQuality(120_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      true,
+    );
+  });
+
   it('does NOT merge if gap > 5 min', () => {
     const prevEnd = new Date(now.getTime() - 10 * 60_000);
-    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(false);
+    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      false,
+    );
   });
 
   it('accepts a normal quality trip', () => {

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tdl-qualified-stop-contract-v1-2026-09-24',
+    version: '4.9.2100',
+    title: 'Trip FSM — Qualified Stop Contract V1 (5 min same-trip boundary)',
+    summary: [
+      'Product contract: physically qualified stop/pause duration ≤300_000 ms stays ONE trip; strictly greater duration SPLIT.',
+      'Single authority: trip-qualified-stop-duration.policy.ts + worker.tripSameTripMaxQualifiedStopMs (default 300_000; legacy TRIP_MID_GAP_SPLIT_MS alias).',
+      'Live mid-gap, small_gap_merge/reopen, and reconciliation intra-gap repair share LTE_SAME_GT_SPLIT comparator; qualification gates unchanged.',
+      'KS FH 660E controls: 217 s same trip; 349.586 s split. PR #1750 finalize quality unchanged.',
+    ],
+    reason:
+      'Production effective split threshold was 180_000 ms with >= admission while merge used <300_000 — inconsistent with five-minute qualified parking semantics.',
+    previousBehavior:
+      'Live path split when gapMs >= 180_000; merge when gapMs < 300_000 (300_000 ms not merged).',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md; trip-qualified-stop-duration.*; trip-mid-gap-split.util.ts; worker.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:15:00.000Z',
+  },
+  {
     id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
     version: '4.9.2099',
     title: 'Trip FSM — post-split short-trip finalize quality gate',

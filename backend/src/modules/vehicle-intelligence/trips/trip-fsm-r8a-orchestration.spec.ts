@@ -190,7 +190,7 @@ function buildContinuityHarness() {
     tryApplyClickHouseAssistedEnd: jest.fn().mockResolvedValue(false),
     hasClickHouseAnalyticsDetectors: jest.fn().mockReturnValue(false),
     findMidTripGap: jest.fn().mockReturnValue(null),
-    TRIP_MID_GAP_SPLIT_MS: 180_000,
+    maxSameTripQualifiedStopMs: 300_000,
     TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: 200,
     TRIP_MID_GAP_MIN_PRE_DURATION_MS: 60_000,
     resolveLiveMidGapDriftEvidence: jest.fn().mockResolvedValue({

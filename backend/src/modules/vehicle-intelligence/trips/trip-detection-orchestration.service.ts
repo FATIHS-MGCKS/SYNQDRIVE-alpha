@@ -105,10 +105,12 @@ import {
   buildMidGapRejectedForensics,
   classifyLiveMidGapDriftDecision,
   computeMidGapDriftEvidence,
+  findLargestQualifyingMidGapFromCoreTimeline,
   selectRoutePointAtOrAfter,
   selectRoutePointAtOrBefore,
   type MidGapSplitCommitPhase,
 } from './trip-mid-gap-split.util';
+import { resolveMaxSameTripQualifiedStopMs } from './trip-qualified-stop-duration.config';
 import {
   buildMidGapCommitAmbiguityForensics,
   readDurableLiveSplitOutcome,
@@ -306,7 +308,8 @@ export class TripDetectionOrchestrationService {
   // and the trip is split into two canonical trips. Covers the DIMO case
   // where the telematics unit sleeps during a brief stop and no explicit
   // ignition-off signal is ever emitted.
-  private readonly TRIP_MID_GAP_SPLIT_MS: number;
+  /** Max qualified-stop duration that remains the same trip (ms); split when duration > this. */
+  private readonly maxSameTripQualifiedStopMs: number;
   // Max GPS drift between pre-gap and post-gap position that still counts
   // as "same parking spot" (prevents splitting signal dropouts during
   // actual driving, e.g., tunnels).
@@ -362,7 +365,10 @@ export class TripDetectionOrchestrationService {
       this.configService.get<number>('worker.tripEndEmptyCoreBackoffMaxMs') ?? 600_000;
     this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO =
       this.configService.get<number>('worker.tripEndEmptyCoreBackoffJitterRatio') ?? 0.15;
-    this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
+    this.maxSameTripQualifiedStopMs =
+      this.configService.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
+      this.configService.get<number>('worker.tripMidGapSplitMs') ??
+      resolveMaxSameTripQualifiedStopMs();
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
     this.tripStartBoundaryMaxLookbackMs =
@@ -1399,6 +1405,8 @@ export class TripDetectionOrchestrationService {
           0,
           previousTrip?.endTime ?? null,
           effectiveStartAt,
+          undefined,
+          this.maxSameTripQualifiedStopMs,
         );
 
         const recoveryPreflight = await this.maybeRecoverLifecycleInvariant({
@@ -2351,6 +2359,8 @@ export class TripDetectionOrchestrationService {
                   driftM: driftEvidence.driftM,
                   firstTripId: splitResult.firstTripId,
                   secondTripId: splitResult.secondTripId,
+                  maxSameTripStopMs: this.maxSameTripQualifiedStopMs,
+                  qualificationReason: 'live_mid_gap_qualified_stationary',
                 }),
                 durationMs: Date.now() - startedMs,
               });
@@ -5002,56 +5012,18 @@ export class TripDetectionOrchestrationService {
 
     if (timeline.length < 2) return null;
 
-    let bestIdx = -1;
-    let bestGapMs = 0;
-    for (let i = 1; i < timeline.length; i++) {
-      const before = timeline[i - 1];
-      const after = timeline[i];
-      const gapMs = after.ts.getTime() - before.ts.getTime();
-      if (gapMs < this.TRIP_MID_GAP_SPLIT_MS) continue;
-      const beforeStopped = before.speed == null || before.speed <= 5;
-      if (!beforeStopped) continue;
-      if (gapMs > bestGapMs) {
-        bestIdx = i;
-        bestGapMs = gapMs;
-      }
-    }
+    const selected = findLargestQualifyingMidGapFromCoreTimeline({
+      timeline,
+      maxSameTripQualifiedStopMs: this.maxSameTripQualifiedStopMs,
+    });
+    if (!selected) return null;
 
-    if (bestIdx < 0) return null;
-
-    // Confirm motion resumed at/after the gap: the `after` sample itself
-    // is moving, OR a later sample in the same batch shows motion.
-    const after = timeline[bestIdx];
-    const afterMoving = after.speed != null && after.speed > 5;
-    const anyLaterMoving = timeline
-      .slice(bestIdx)
-      .some((p) => p.speed != null && p.speed > 5);
-    if (!afterMoving && !anyLaterMoving) return null;
-
-    // Resolve the split point: prefer the after-gap sample if it shows
-    // motion; otherwise advance to the first later sample that does.
-    let secondStartIdx = bestIdx;
-    if (!afterMoving) {
-      for (let i = bestIdx + 1; i < timeline.length; i++) {
-        const p = timeline[i];
-        if (p.speed != null && p.speed > 5) {
-          secondStartIdx = i;
-          break;
-        }
-      }
-    }
-
-    const before = timeline[bestIdx - 1];
-    const second = timeline[secondStartIdx];
-
-    // Lat/Lng are not on the core-data shape — caller will resolve these
-    // via waypoints when drift-validating the split.
     return {
-      gapMs: bestGapMs,
-      firstEndAt: before.ts,
+      gapMs: selected.gapMs,
+      firstEndAt: selected.firstEndAt,
       firstEndLatitude: null,
       firstEndLongitude: null,
-      secondStartAt: second.ts,
+      secondStartAt: selected.secondStartAt,
       secondStartLatitude: null,
       secondStartLongitude: null,
     };

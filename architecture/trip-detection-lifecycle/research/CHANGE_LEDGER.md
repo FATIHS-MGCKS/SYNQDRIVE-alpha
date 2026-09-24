@@ -66,6 +66,8 @@ Append-only record for this authority directory.
 | 2026-09-24 | KS FH 660E post-split Trip 2 false cancel — stale LMM finalize boundary + quality gate ignoring persisted route evidence; event-time end extent + movement-evidence quality contract; BASE/HEAD tests | Trip FSM finalize quality (draft) | [KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md](../evidence/KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md) |
 | 2026-09-24 | PR #1750 semantic closure — decouple quality from canonical end; credible route movement analysis; no latest-stationary-waypoint end extension | Trip FSM finalize quality (draft) | Same evidence doc |
 | 2026-09-24 | PR #1750 route spike seal — exclude isolated post-stop coordinate out-and-back from credible movement/end; credible cumulative path for quality | Trip FSM finalize quality (draft) | Same evidence doc |
+| 2026-09-24 | Qualified Stop Contract V1 — single max same-trip qualified stop 300_000 ms; split when duration > max; live mid-gap + small_gap_merge + reconciliation aligned; config default migration off 180_000 | Trip FSM duration policy (draft) | [QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md](../evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md) |
+| 2026-09-24 | PR #1753 closure — TripQualityDetector reads worker max; configSource observability; repair coverage 180s documented as independent of V1 | Trip FSM duration policy (draft) | Same evidence doc |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

@@ -20,6 +20,10 @@ import {
   type StartConfirmationPolicy,
 } from './trip-start-detection-policy';
 import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
+import {
+  CANONICAL_MAX_SAME_TRIP_QUALIFIED_STOP_MS,
+  shouldMergePreviousTripQualifiedGap,
+} from './trip-qualified-stop-duration.policy';
 
 type ProfileThresholds = ReturnType<typeof getLegacyProfileThresholds>;
 
@@ -1429,6 +1433,7 @@ export function checkTripQuality(
   previousTripEndTime: Date | null,
   currentTripStartTime: Date,
   persistedRoute?: TripQualityPersistedRouteEvidence,
+  maxSameTripQualifiedStopMs: number = CANONICAL_MAX_SAME_TRIP_QUALIFIED_STOP_MS,
 ): TripQualityCheck {
   const meaningfulMovement = hasPersistedMeaningfulMovementForQuality({
     hasMeaningfulPersistedRouteMovement:
@@ -1462,7 +1467,7 @@ export function checkTripQuality(
   if (previousTripEndTime) {
     const gapMs =
       currentTripStartTime.getTime() - previousTripEndTime.getTime();
-    if (gapMs >= 0 && gapMs < 5 * 60_000) {
+    if (shouldMergePreviousTripQualifiedGap(gapMs, maxSameTripQualifiedStopMs)) {
       return {
         shouldDiscard: false,
         shouldMergeWithPrevious: true,

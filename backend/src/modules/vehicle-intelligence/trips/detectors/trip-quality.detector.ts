@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { TripDetector, DetectorContext, DetectorFinding } from './detector.interfaces';
 import { checkTripQuality } from '../trip-evidence.helpers';
+import { readMaxSameTripQualifiedStopMsFromWorkerConfig } from '../trip-qualified-stop-duration.config';
 
 export interface TripQualityContext extends DetectorContext {
   durationMs: number;
@@ -27,6 +29,8 @@ export interface TripQualityContext extends DetectorContext {
 export class TripQualityDetector implements TripDetector {
   readonly name = 'TripQualityDetector';
 
+  constructor(private readonly configService: ConfigService) {}
+
   async evaluate(ctx: TripQualityContext): Promise<DetectorFinding> {
     const {
       durationMs,
@@ -36,12 +40,18 @@ export class TripQualityDetector implements TripDetector {
       currentTripStartTime,
     } = ctx;
 
+    const maxSameTripQualifiedStopMs = readMaxSameTripQualifiedStopMsFromWorkerConfig(
+      this.configService,
+    );
+
     const result = checkTripQuality(
       durationMs,
       distanceKm,
       maxConsecutiveActive,
       previousTripEndTime,
       currentTripStartTime,
+      undefined,
+      maxSameTripQualifiedStopMs,
     );
 
     if (result.shouldDiscard) {

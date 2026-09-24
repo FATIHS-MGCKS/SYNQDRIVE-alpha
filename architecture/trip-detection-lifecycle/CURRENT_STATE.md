@@ -12,6 +12,7 @@
 | **Pre-R11 Production (historical)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` (R10 deploy 2026-09-08) |
 | **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
 | **Last verified Production evidence** | `2026-09-09T19:26:03Z` (R12 pre-hardening deploy TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…`); KS MS 661 R11 natural drive @ `f7eb94cb…` remains historical |
+| **Qualified stop duration (repo @ main + draft V1)** | `trip-qualified-stop-duration.policy.ts` — max same-trip qualified stop **300_000 ms**; split when **>** max; live mid-gap + merge/reopen + reconciliation share one config (`worker.tripSameTripMaxQualifiedStopMs`) |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Authority axes (mandatory separation — do not conflate)
