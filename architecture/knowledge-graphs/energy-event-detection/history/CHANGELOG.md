@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E2 native recharge normalization hardening
+
+- Evidence: `evidence/ERD-E2-NATIVE-NORMALIZATION-2026-09-24.md`
+- Hardened DIMO recharge normalizer (live contract, fingerprint dedupe, extrema/boolean semantics, duration provenance)
+- HV quality uses truthful extrema proxy (PARTIAL cap); legacy VEE mapper unchanged in role
+- Opt-in Postgres gate: `ERD_E2_POSTGRES_INTEGRATION=1`
+
 ## 2026-09-24 — ERD E1 canonical physical charge authority (Model A)
 
 - ADR: `decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md`

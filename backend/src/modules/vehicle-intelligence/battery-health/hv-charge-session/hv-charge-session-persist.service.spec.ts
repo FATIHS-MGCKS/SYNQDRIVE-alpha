@@ -107,7 +107,12 @@ describe('hv-charge-session merge', () => {
         fingerprint: ongoing.fingerprint,
         segmentId: ongoing.segmentId,
         startAt: ongoing.startAt,
-        soc: { min: ongoing.soc.min, max: completed.soc.max, delta: completed.soc.delta },
+        soc: {
+          min: ongoing.soc.min,
+          max: completed.soc.max,
+          delta: completed.soc.delta,
+          provenance: 'SEGMENT_EXTREMA',
+        },
       },
     });
 
@@ -171,7 +176,7 @@ describe('hv-charge-session merge', () => {
       vehicleId: VEH,
       segment: {
         ...segment,
-        soc: { min: 41.2, max: 45, delta: 3.8 },
+        soc: { min: 41.2, max: 45, delta: 3.8, provenance: 'SEGMENT_EXTREMA' },
         endAt: segment.endAt,
         ongoing: false,
       },
