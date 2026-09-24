@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E1 canonical physical charge authority (Model A)
+
+- ADR: `decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md`
+- EED/ERD owns physical charge session semantics; Battery V2 role = CONSUMER; VEE RECHARGE = product projection post-cutover
+- Physical identity v1, native>fallback, lifecycle, legacy VEE policy, writer inventory (no runtime change)
+- Graph: `EED-DEC-ERD-001`, `EED-EV-0076`/`0077`, invariants `EED-INV-014`–`017`; `EED-OQ-004` superseded by ERD policy
+- Reconciles prior Battery V2 OUT_OF_SCOPE boundary for HV sessions
+
 ## 2026-09-21 — RFRF F10.6.8-C recovered READY → promotion liveness (C1+C2)
 
 - Recovery-owned canonical promotion after convergence when no SAME native; advisory → fresh clock → row lock → promotion

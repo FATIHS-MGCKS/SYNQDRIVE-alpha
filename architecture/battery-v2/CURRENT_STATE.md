@@ -153,6 +153,14 @@ See `resolution/` — priority matrix, implementation packages, dependency graph
 - Primary API + rental health → canonical read model
 - **D3 target:** V2 core mandatory; PUBLICATION = effect gate; HANDOFF flag rejected
 
+## Cross-module: ERD physical HV charge sessions (2026-09-24)
+
+**Semantic authority:** KG-EED / **ERD** owns physical EV/PHEV charging episode meaning (`EED-DEC-ERD-001`; ADR `architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md`).
+
+**This module:** Implementation host for `hv-charge-session/*` persist/ingest/fallback services; **consumes** canonical session evidence for HV battery analysis — does **not** own physical charging authority after ERD E1.
+
+**Runtime:** `BATTERY_V2_HV_RECHARGE_SESSION_ENABLED` and `BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED` remain default **false**; no E1 behavior change.
+
 ## Unresolved gaps
 
 See `contradictions/KNOWLEDGE_GAPS.md` (**20 gaps**) and `research/OPEN_QUESTIONS.md`. **Planning ≠ resolution** — gaps remain open.
