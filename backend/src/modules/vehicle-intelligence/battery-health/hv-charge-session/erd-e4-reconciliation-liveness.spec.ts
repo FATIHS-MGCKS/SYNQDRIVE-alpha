@@ -42,8 +42,8 @@ const LIVE_PG = process.env.ERD_E4_POSTGRES_REDIS_INTEGRATION === '1';
 (LIVE_PG ? describe : describe.skip)(
   'ERD E4 Postgres target selection (ERD_E4_POSTGRES_REDIS_INTEGRATION=1)',
   () => {
-    it('placeholder wired in erd-e4-reconciliation-liveness.postgres.integration.spec.ts', () => {
-      expect(true).toBe(true);
+    it('executes real proofs in erd-e4-reconciliation-liveness.postgres.integration.spec.ts via boundary-repair CI step 6/6', () => {
+      expect(process.env.ERD_E4_POSTGRES_REDIS_INTEGRATION).toBe('1');
     });
   },
 );

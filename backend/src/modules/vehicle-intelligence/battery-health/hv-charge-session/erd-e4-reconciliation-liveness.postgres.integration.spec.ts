@@ -1,10 +1,18 @@
 import { randomUUID } from 'crypto';
 import { FuelType, PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { fetchHvRechargePeriodicTargetCandidates } from './hv-recharge-reconcile-target.query';
-import { selectFairPeriodicReconcileTargets } from './hv-recharge-periodic-target.policy';
-import { buildHvRechargePeriodicPeriodBucket } from './hv-recharge-session-reconcile.policy';
-import { HV_ERD_SOC_SIGNAL_KEY } from './hv-erd-reconcile-eligibility.policy';
+import { getBatteryV2ReconciliationIntervalMs } from '@config/battery-health-v2.config';
+import {
+  fetchHvRechargePeriodicReconcileTargets,
+  fetchHvRechargePeriodicTargetCandidates,
+} from './hv-recharge-reconcile-target.query';
+import {
+  computeHvRechargePeriodicMaxWaitBoundTicks,
+} from './hv-recharge-periodic-target.policy';
+import {
+  HV_ERD_SOC_SIGNAL_KEY,
+} from './hv-erd-reconcile-eligibility.policy';
+import { HV_ERD_SIGNAL_KEYS } from '../hv-erd-capability-signal-keys';
 
 jest.mock('@config/battery-health-v2.config', () => {
   const actual = jest.requireActual('@config/battery-health-v2.config');
@@ -84,6 +92,23 @@ async function upsertCap(
   });
 }
 
+async function cleanupFleet(
+  prisma: PrismaClient,
+  ids: { orgIds: string[]; dimoIds: string[]; vehicleIds: string[] },
+) {
+  for (const id of ids.vehicleIds) {
+    await prisma.vehicleBatteryCapability.deleteMany({ where: { vehicleId: id } });
+    await prisma.hvChargeSession.deleteMany({ where: { vehicleId: id } });
+    await prisma.vehicle.deleteMany({ where: { id } });
+  }
+  for (const id of ids.dimoIds) {
+    await prisma.dimoVehicle.deleteMany({ where: { id } });
+  }
+  for (const id of ids.orgIds) {
+    await prisma.organization.deleteMany({ where: { id } });
+  }
+}
+
 (LIVE ? describe : describe.skip)(
   'ERD E4 reconciliation liveness PostgreSQL gate',
   () => {
@@ -104,7 +129,7 @@ async function upsertCap(
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle, dimo } = await seedVehicle(prisma, suffix, FuelType.ELECTRIC);
       await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SOC_SIGNAL_KEY);
-      await upsertCap(prisma, org.id, vehicle.id, 'hv.cable_connected');
+      await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SIGNAL_KEYS.cableConnected);
 
       const candidates = await fetchHvRechargePeriodicTargetCandidates(
         prisma as unknown as PrismaService,
@@ -112,19 +137,48 @@ async function upsertCap(
       );
       expect(candidates.some((c) => c.vehicleId === vehicle.id)).toBe(true);
 
-      await prisma.vehicleBatteryCapability.deleteMany({ where: { vehicleId: vehicle.id } });
-      await prisma.vehicle.deleteMany({ where: { id: vehicle.id } });
-      await prisma.dimoVehicle.deleteMany({ where: { id: dimo.id } });
-      await prisma.organization.deleteMany({ where: { id: org.id } });
+      await cleanupFleet(prisma, {
+        orgIds: [org.id],
+        dimoIds: [dimo.id],
+        vehicleIds: [vehicle.id],
+      });
     });
 
-    it('fairness: rotating buckets cover all seeded fallback candidates', async () => {
-      const batch = 3;
+    it('selects SOC+hv.charging_power and rejects SOC+hv.current_power only', async () => {
       const suffix = randomUUID().slice(0, 6);
-      const ids: string[] = [];
+      const charging = await seedVehicle(prisma, `${suffix}-cp`, FuelType.ELECTRIC);
+      const currentOnly = await seedVehicle(prisma, `${suffix}-cur`, FuelType.ELECTRIC);
+      await upsertCap(prisma, charging.org.id, charging.vehicle.id, HV_ERD_SOC_SIGNAL_KEY);
+      await upsertCap(prisma, charging.org.id, charging.vehicle.id, HV_ERD_SIGNAL_KEYS.chargingPower);
+      await upsertCap(prisma, currentOnly.org.id, currentOnly.vehicle.id, HV_ERD_SOC_SIGNAL_KEY);
+      await upsertCap(prisma, currentOnly.org.id, currentOnly.vehicle.id, HV_ERD_SIGNAL_KEYS.currentPower);
+
+      const candidates = await fetchHvRechargePeriodicTargetCandidates(
+        prisma as unknown as PrismaService,
+        50,
+      );
+      expect(candidates.some((c) => c.vehicleId === charging.vehicle.id)).toBe(true);
+      expect(candidates.some((c) => c.vehicleId === currentOnly.vehicle.id)).toBe(false);
+
+      await cleanupFleet(prisma, {
+        orgIds: [charging.org.id, currentOnly.org.id],
+        dimoIds: [charging.dimo.id, currentOnly.dimo.id],
+        vehicleIds: [charging.vehicle.id, currentOnly.vehicle.id],
+      });
+    });
+
+    it('bounded DB fairness covers >3× old maxScan fleet without global truncation', async () => {
+      const batch = 3;
+      const oldMaxScan = batch * 12;
+      const fleetSize = oldMaxScan * 3 + 1;
+      expect(fleetSize).toBeGreaterThan(3 * oldMaxScan);
+
+      const suffix = randomUUID().slice(0, 5);
       const orgIds: string[] = [];
       const dimoIds: string[] = [];
-      for (let i = 0; i < 9; i += 1) {
+      const vehicleIds: string[] = [];
+
+      for (let i = 0; i < fleetSize; i += 1) {
         const { org, vehicle, dimo } = await seedVehicle(
           prisma,
           `${suffix}-${i}`,
@@ -132,36 +186,60 @@ async function upsertCap(
         );
         orgIds.push(org.id);
         dimoIds.push(dimo.id);
-        ids.push(vehicle.id);
+        vehicleIds.push(vehicle.id);
         await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SOC_SIGNAL_KEY);
-        await upsertCap(prisma, org.id, vehicle.id, 'hv.added_energy');
+        await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SIGNAL_KEYS.addedEnergy);
       }
 
-      const candidates = await fetchHvRechargePeriodicTargetCandidates(
+      const allEligible = await fetchHvRechargePeriodicTargetCandidates(
         prisma as unknown as PrismaService,
         batch,
       );
-      const ours = candidates.filter((c) => ids.includes(c.vehicleId));
-      expect(ours.length).toBe(ids.length);
+      const ours = allEligible.filter((c) => vehicleIds.includes(c.vehicleId));
+      expect(ours.length).toBe(fleetSize);
 
+      const intervalMs = getBatteryV2ReconciliationIntervalMs();
+      const maxWait = computeHvRechargePeriodicMaxWaitBoundTicks({
+        eligibleCount: fleetSize,
+        batchSize: batch,
+      });
       const seen = new Set<string>();
-      for (let i = 0; i < 48; i += 1) {
-        const bucket = String(i);
-        const selected = selectFairPeriodicReconcileTargets(ours, batch, bucket);
-        for (const row of selected) seen.add(row.vehicleId);
-      }
-      expect(seen.size).toBe(ours.length);
+      const base = Date.parse('2026-09-24T00:00:00.000Z');
 
-      for (const id of ids) {
-        await prisma.vehicleBatteryCapability.deleteMany({ where: { vehicleId: id } });
-        await prisma.vehicle.deleteMany({ where: { id } });
+      for (let tick = 0; tick < maxWait; tick += 1) {
+        const selected = await fetchHvRechargePeriodicReconcileTargets(
+          prisma as unknown as PrismaService,
+          batch,
+          new Date(base + tick * intervalMs),
+        );
+        for (const row of selected) {
+          if (vehicleIds.includes(row.vehicleId)) {
+            seen.add(row.vehicleId);
+          }
+        }
       }
-      for (const id of dimoIds) {
-        await prisma.dimoVehicle.deleteMany({ where: { id } });
-      }
-      for (const id of orgIds) {
-        await prisma.organization.deleteMany({ where: { id } });
-      }
+
+      expect(seen.size).toBe(fleetSize);
+
+      await cleanupFleet(prisma, { orgIds, dimoIds, vehicleIds });
+    }, 120_000);
+
+    it('restart at same periodIndex yields identical bounded selection', async () => {
+      const suffix = randomUUID().slice(0, 6);
+      const { org, vehicle, dimo } = await seedVehicle(prisma, suffix, FuelType.ELECTRIC);
+      await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SOC_SIGNAL_KEY);
+      await upsertCap(prisma, org.id, vehicle.id, HV_ERD_SIGNAL_KEYS.chargingPower);
+      const at = new Date('2026-09-24T08:00:00.000Z');
+      const svc = prisma as unknown as PrismaService;
+      const first = await fetchHvRechargePeriodicReconcileTargets(svc, 5, at);
+      const second = await fetchHvRechargePeriodicReconcileTargets(svc, 5, at);
+      expect(second).toEqual(first);
+
+      await cleanupFleet(prisma, {
+        orgIds: [org.id],
+        dimoIds: [dimo.id],
+        vehicleIds: [vehicle.id],
+      });
     });
   },
 );

@@ -1,6 +1,7 @@
 import { BatteryMeasurementType } from '../battery-v2-domain';
+import { HV_ERD_SIGNAL_KEYS } from '../hv-erd-capability-signal-keys';
 
-export const RECHARGE_SEGMENTS_SIGNAL_KEY = 'dimo.segments.recharge';
+export const RECHARGE_SEGMENTS_SIGNAL_KEY = HV_ERD_SIGNAL_KEYS.rechargeSegments;
 
 export interface BatteryCapabilitySignalDefinition {
   signalKey: string;

@@ -12,7 +12,8 @@ Pre-E4 periodic reconciliation selected fallback-capable vehicles using **`hv.is
 
 - **Canonical eligibility:** `hv-erd-reconcile-eligibility.policy.ts` — shared by periodic target query and aligned with E3 activation semantics.
 - **Periodic target query:** `hv-recharge-reconcile-target.query.ts` — ongoing sessions, native `dimo.segments.recharge`, and fallback telemetry profiles (not is_charging-only).
-- **Fair bounded selection:** `hv-recharge-periodic-target.policy.ts` — rotating slice by period bucket (no in-memory cursor, no new recovery table).
+- **Fair bounded selection:** `hv-recharge-periodic-target.policy.ts` — `periodIndex % partitionCount` rotation with md5 vehicle partitions and SQL-bounded batch selection (E4.1; replaces hash(periodBucket) slice + pre-fairness maxScan truncation).
+- **Canonical HV signal keys:** `hv-erd-capability-signal-keys.ts` — shared by registry, HvMethodProfile resolver, E3 fallback corroboration, E4 eligibility (`hv.charging_power` yes; `hv.current_power` not fallback corroboration).
 - **Explicit period buckets:** `buildHvRechargePeriodicPeriodBucket(evaluatedAt)` passed into enqueue/idempotency for `PERIODIC` triggers.
 - **Flag-off:** `reconcilePeriodic` returns 0 when `BATTERY_V2_HV_RECHARGE_SESSION_ENABLED` is false (no queue churn).
 - **Observability:** `synqdrive_erd_e4_liveness_total{reason}` bounded reasons.
@@ -38,7 +39,13 @@ Pre-E4 periodic reconciliation selected fallback-capable vehicles using **`hv.is
 - Production flag enablement
 - New ERD recovery persistence table
 
-## Validation
+## E4.1 closure (2026-09-24, PR #1749)
+
+- Removed false fairness: legacy `hash(periodBucket) % 12` and `take: batch×12` candidate truncation could permanently starve eligible vehicles.
+- Deterministic bound: `periodIndex = floor(evaluatedAt / reconciliationIntervalMs)`, `activePartition = periodIndex % 12`, within-partition batch rotation via `subRotation = floor(periodIndex / 12)`.
+- Max wait ticks (worst case): `partitionCount × ceil(eligibleCount / batchSize)`.
+- PostgreSQL gate proves SOC+`hv.charging_power` eligible, SOC+`hv.current_power` only ineligible, and 109+ vehicle fleet coverage.
+
 
 - Unit: eligibility, fairness, idempotency policy, producer flag-off
 - CI gate step 6: `ERD_E4_POSTGRES_REDIS_INTEGRATION=1` → `erd-e4-reconciliation-liveness*.spec.ts`

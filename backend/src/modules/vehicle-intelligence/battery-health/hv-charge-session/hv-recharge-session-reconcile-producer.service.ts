@@ -15,8 +15,7 @@ import {
   HvRechargeSessionReconcileTrigger,
   type HvRechargeSessionReconcileTrigger as HvRechargeSessionReconcileTriggerType,
 } from './hv-recharge-session-reconcile.trigger';
-import { fetchHvRechargePeriodicTargetCandidates } from './hv-recharge-reconcile-target.query';
-import { selectFairPeriodicReconcileTargets } from './hv-recharge-periodic-target.policy';
+import { fetchHvRechargePeriodicReconcileTargets } from './hv-recharge-reconcile-target.query';
 import { recordErdLivenessMetric } from './hv-erd-liveness.metrics';
 
 export interface EnqueueHvRechargeReconcileInput {
@@ -106,14 +105,10 @@ export class HvRechargeSessionReconcileProducerService {
     }
 
     const periodBucket = buildHvRechargePeriodicPeriodBucket(evaluatedAt);
-    const candidates = await fetchHvRechargePeriodicTargetCandidates(
+    const selected = await fetchHvRechargePeriodicReconcileTargets(
       this.prisma,
       batchSize,
-    );
-    const selected = selectFairPeriodicReconcileTargets(
-      candidates,
-      batchSize,
-      periodBucket,
+      evaluatedAt,
     );
 
     recordErdLivenessMetric(

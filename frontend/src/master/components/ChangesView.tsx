@@ -13117,6 +13117,24 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T14:30:00.000Z',
   },
   {
+    id: 'erd-e4-1-signal-fairness-closure-2026-09-24',
+    version: '4.9.903',
+    title: 'ERD E4.1 — eligibility signal authority + true bounded no-starvation',
+    summary: [
+      'Canonical HV signal keys shared across registry, HvMethodProfile, E3 fallback, and E4 eligibility (charging_power corroborates; current_power does not).',
+      'Partition rotation fairness via periodIndex mod 12 with PostgreSQL-bounded selection — removes hash(periodBucket) slice and pre-fairness maxScan truncation.',
+      'Postgres gate proves 109+ vehicle fleet coverage, charging_power vs current_power, and restart-stable deterministic selection.',
+    ],
+    reason: 'Close E4 signal drift vs E3 and false periodic fairness that could permanently starve eligible vehicles.',
+    previousBehavior:
+      'E4 listed hv.current_power as fallback corroboration; fairness used hash(periodBucket)%12 on a truncated candidate prefix (batch×12).',
+    details:
+      'hv-erd-capability-signal-keys.ts, hv-recharge-reconcile-target.query.ts, hv-recharge-periodic-target.policy.ts, evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T16:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E4.1 signal authority + bounded partition fairness
+
+- Evidence append: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md` (E4.1 section)
+- Canonical `hv-erd-capability-signal-keys.ts`; E4 mirrors E3 fallback corroboration (`hv.charging_power`, not `hv.current_power`)
+- SQL-bounded periodic selection; partition rotation; 109+ vehicle postgres fairness proof
+
 ## 2026-09-24 — ERD E4 durable reconciliation / recovery liveness
 
 - Evidence: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md`

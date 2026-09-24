@@ -2,19 +2,17 @@ import {
   isErdFallbackEligibleFuelType,
 } from './hv-fallback-charge-session-activation.policy';
 import type { HvMethodProfile } from '../hv-method-profile/hv-method-profile.types';
-import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
+import {
+  HV_E3_FALLBACK_CORROBORATING_SIGNAL_KEYS,
+  HV_ERD_SIGNAL_KEYS,
+} from '../hv-erd-capability-signal-keys';
 import { hasFallbackTelemetryCapabilities } from './hv-fallback-charge-session-activation.policy';
 
 /** SOC is mandatory for ERD telemetry fallback reconciliation. */
-export const HV_ERD_SOC_SIGNAL_KEY = 'hv.soc';
+export const HV_ERD_SOC_SIGNAL_KEY = HV_ERD_SIGNAL_KEYS.soc;
 
-/** Corroborating HV signals aligned with E3 fallback activation (see hasFallbackTelemetryCapabilities). */
-export const HV_ERD_FALLBACK_CORROBORATING_SIGNAL_KEYS = [
-  'hv.is_charging',
-  'hv.cable_connected',
-  'hv.added_energy',
-  'hv.current_power',
-] as const;
+/** Corroborating HV signals aligned with E3 fallback activation (charging_power, not current_power). */
+export const HV_ERD_FALLBACK_CORROBORATING_SIGNAL_KEYS = HV_E3_FALLBACK_CORROBORATING_SIGNAL_KEYS;
 
 export type HvErdReconcileEligibilityCategory =
   | 'ongoing_hv_charge_session'
