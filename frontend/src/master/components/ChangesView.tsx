@@ -13234,6 +13234,25 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T20:15:00.000Z',
   },
   {
+    version: '4.9.907',
+    title: 'ERD E5.2 — canonical VEE RECHARGE projector idempotency',
+    summary: [
+      'Persisting projector `projectCanonicalRecharge()` under shared E3 vehicle advisory lock with locked session re-read.',
+      'Bounded outcomes: CREATED, RECONCILED, NO_OP, NOT_PROJECTABLE, HANDOFF_REQUIRED, LEGACY_DIMO_COLLISION, IDENTITY_CONFLICT.',
+      'Same-authority reconciliation allowlist; immutable sourceEventKey + VEE row id; HANDOFF_REQUIRED defers to E5.3.',
+      'PostgreSQL T1–T20 + independent PrismaClient race + rollback proofs (boundary-repair step 9/9). Not Nest-wired; no automatic runtime triggers.',
+    ],
+    reason:
+      'E5.1 foundation merged — prove one HvChargeSession maps to at most one canonical VEE RECHARGE before cutover wiring.',
+    previousBehavior:
+      'E5.1 mapper/eligibility only; no persisting canonical ERD recharge projector.',
+    details:
+      'erd-recharge-projection/erd-canonical-recharge-projector.ts; erd-e5-2-recharge-projector.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T00:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',
