@@ -41,7 +41,7 @@ D2 is **pure**: no DB, no network, no assembler clock. D2.1 validates malformed 
 | `BatteryRetentionAggregate` | Bucket summaries (legacy retention) | Unrelated rollup — not M3.3C profile |
 | `BatteryFeatures` | **Upsert** single row per vehicle | Operational LV/SOH store — not longitudinal profile |
 
-**Multi-replica insert precedent:** C3 uses DB unique constraints + conflict handling (input digest / semantic revision). D3 should follow **database unique authority**, not Redis mutex.
+**Multi-replica insert precedent:** C3 uses **database-enforced uniqueness** as part of correctness (pre-read by input digest, Serializable transaction, rest-session lock, semantic revision allocation, append-only create, conflict retry). C3 does **not** implement the D3 `INSERT … ON CONFLICT DO NOTHING` idempotent materialization algorithm. D3 follows the same **principle** of DB unique authority with a **D3-specific** insert/verify contract (§12).
 
 ### 1.4 Canonical JSON / SHA-256 utilities
 
@@ -87,12 +87,11 @@ Materialization **must never**:
 - rebuild version segments with different rules
 - emit different `profileStatus` / trends / health
 
-**Writer algorithm (normative):**
-
 1. Read D1 inventory (same service/contract as today).
-2. `assembleLongitudinalProfileV1({ inventory, profileGeneratedAt: FIXED_ENVELOPE_OR_OMIT_FROM_STORED_JSON })`.
-3. Compute scientific projection + fingerprint (below).
-4. INSERT revision; on unique conflict verify payload equality.
+2. `assembleLongitudinalProfileV1({ inventory, profileGeneratedAt })` (envelope for assembly only; not stored inside scientific JSON).
+3. Build **scientific projection** (omit `window.profileGeneratedAt` by property removal — §4.1 / D3.1 §6).
+4. Compute `canonicalProfileFingerprint` from projection (§4).
+5. Idempotent persist via PostgreSQL-safe algorithm (§12).
 
 ---
 
@@ -116,9 +115,24 @@ Same DEFAULT canonical ids/digests → **different** `M3_3D_LONGITUDINAL_PROFILE
 **`FINGERPRINT_ALGORITHM=`**
 
 1. Start from successful D2 `LongitudinalProfileV1`.
-2. Build **scientific projection** = profile with **`window.profileGeneratedAt` removed** (envelope only).
+2. Build **scientific projection** by **omitting** `window.profileGeneratedAt` (do not set `undefined` — serializer rejects undefined; see D3.1 §6).
 3. `canonicalUtf8 = canonicalFeatureInputUtf8(scientificProjection)` (same primitives as C3).
 4. `canonicalProfileFingerprint = sha256HexLowercaseUtf8(canonicalUtf8)`.
+
+### 4.1 Scientific projection construction (normative)
+
+Conceptual shape (no mutation of assembled D2 profile):
+
+```typescript
+const { profileGeneratedAt: _envelope, ...scientificWindow } = profile.window;
+const scientificProjection = {
+  ...profile,
+  window: scientificWindow,
+};
+```
+
+**`PROFILE_GENERATED_AT_PROPERTY_OMITTED=YES`**  
+**`UNDEFINED_INSERTED_IN_PROJECTION=NO`**
 
 **Rejected for D3 authority:** manual tuple of `(canonicalFeatureRowId, inputDigest)` for DEFAULT rows only.
 
@@ -165,13 +179,25 @@ Classification: **IDENTITY_INCLUDED** | **IDENTITY_EXCLUDED**
 
 **`FINGERPRINT_COLLISION_DEFENSE=FAIL_CLOSED_PAYLOAD_VERIFY`**
 
-On unique `(org, vehicle, contractVersion, policyVersion, fingerprint)` conflict:
+On unique `(org, vehicle, contractVersion, policyVersion, fingerprint)` conflict after `ON CONFLICT DO NOTHING`:
 
-1. Load existing row.
-2. Re-canonicalize **stored** `scientificProfileJson` and compare to newly computed canonical UTF-8 (or compare stored precomputed canonical UTF-8 if persisted).
-3. If fingerprint equal but canonical payload differs → **`PROFILE_FINGERPRINT_COLLISION_OR_CANONICALIZATION_DRIFT`** (fail closed; do not return existing row silently).
+1. Load existing row by exact scientific unique key.
+2. Compute `storedCanonicalUtf8 = canonicalFeatureInputUtf8(existing.scientificProfileJson)`.
+3. Compute `newCanonicalUtf8 = canonicalFeatureInputUtf8(newScientificProjection)`.
+4. If equal → return **EXISTING** revision.
+5. If fingerprint matches unique key but canonical UTF-8 differs → **`PROFILE_FINGERPRINT_COLLISION_OR_CANONICALIZATION_DRIFT`** (fail closed).
 
-**`CANONICAL_PAYLOAD_STORED=YES`** — persist **`scientificProfileJson`** (projection without `profileGeneratedAt`) plus **`canonicalProfileFingerprint`**. Optionally persist `canonicalScientificUtf8` for cheap equality checks (DERIVABLE but useful operationally).
+**`JSONB_RAW_BYTES_ARE_CANONICAL_AUTHORITY=NO`** — PostgreSQL JSONB is not a canonical byte representation.
+
+**`CANONICAL_RESERIALIZATION_IS_COMPARISON_AUTHORITY=YES`**
+
+For fixed scientific semantics:
+
+`canonicalFeatureInputUtf8(storedJson) === canonicalFeatureInputUtf8(newProjection)`
+
+**`CANONICAL_SCIENTIFIC_UTF8_STORED=NO` (D3 V1)** — persist `scientificProfileJson` + fingerprint only; recompute canonical UTF-8 on the rare conflict path. A future additive migration may introduce a stored UTF-8 column if profiling proves need.
+
+**`CANONICAL_PAYLOAD_STORED=YES`** — `scientificProfileJson` holds the **semantic** scientific projection (property omission of `profileGeneratedAt`).
 
 ---
 
@@ -181,13 +207,13 @@ On unique `(org, vehicle, contractVersion, policyVersion, fingerprint)` conflict
 
 | Store | Content |
 |-------|---------|
-| `scientificProfileJson` | Deterministic D2 projection **without** `profileGeneratedAt` |
+| `scientificProfileJson` | Semantic scientific projection (JSONB storage; **not** canonical bytes) |
 | `materializedAt` / `createdAt` | DB envelope timestamps |
 | Indexed metadata | Small query fields duplicated from JSON (see schema) |
 
-**Do not** store full profile JSON with varying `profileGeneratedAt` as the scientific blob — that breaks byte stability for identical science.
+**Do not** store `profileGeneratedAt` inside `scientificProfileJson`.
 
-**Property:** for a fixed fingerprint, `scientificProfileJson` bytes are stable regardless of materialization time.
+**Invariant:** for a fixed scientific projection, **`canonicalFeatureInputUtf8(storedJson)`** is stable — not raw JSONB octets.
 
 ---
 
@@ -198,10 +224,10 @@ On unique `(org, vehicle, contractVersion, policyVersion, fingerprint)` conflict
 | Field | Classification | Notes |
 |-------|----------------|-------|
 | `id` | REQUIRED_IDENTITY | UUID PK |
-| `organizationId`, `vehicleId` | REQUIRED_IDENTITY + FK | Cascade policy §16 |
+| `organizationId`, `vehicleId` | REQUIRED_IDENTITY + FK | **onDelete: Cascade** with Organization/Vehicle (§18) |
 | `longitudinalProfileContractVersion` | REQUIRED_IDENTITY | Part of unique key |
 | `profilePolicyVersion` | REQUIRED_IDENTITY | Part of unique key |
-| `canonicalProfileFingerprint` | REQUIRED_IDENTITY | SHA-256 hex, part of unique key |
+| `canonicalProfileFingerprint` | REQUIRED_IDENTITY | **SHA-256 lowercase hex, fixed 64 chars** — see §10.1 |
 | `scientificProfileJson` | REQUIRED_IDENTITY | Bounded JSONB (≤100 sessions in D1 window) |
 | `requestedSessionLimit`, `appliedSessionLimit` | REQUIRED_QUERY_METADATA | List/filter revisions by window |
 | `candidateRestSessionCount`, `includedSessionCount`, `provisionalSessionCount`, `excludedSessionCount` | REQUIRED_QUERY_METADATA | Ops/audit dashboards |
@@ -248,6 +274,22 @@ Authoritative per-session evidence remains in **`BatteryRestSessionFeature`**. D
 
 Do **not** use `(vehicleId, createdAt)` alone as scientific identity.
 
+### 10.1 Fingerprint column contract (D3 V1)
+
+| Rule | Value |
+|------|-------|
+| Algorithm | SHA-256 over `canonicalFeatureInputUtf8(scientificProjection)` |
+| Encoding | Lowercase hexadecimal |
+| Length | **64** characters |
+| Prisma (proposed) | `String @db.Char(64)` or equivalent strict 64-char DB type |
+| Writer validation | Must match `/^[0-9a-f]{64}$/` before INSERT |
+| DB guard (migration) | Prefer PostgreSQL `CHECK (canonical_profile_fingerprint ~ '^[0-9a-f]{64}$')` if consistent with repo migration conventions; otherwise enforce in writer + integration tests only |
+
+**`FINGERPRINT_FIXED_LENGTH=64`**  
+**`FINGERPRINT_ENCODING=LOWERCASE_HEX`**  
+**`FINGERPRINT_DB_CONTRACT_DEFINED=YES`**  
+**`FINGERPRINT_WRITER_VALIDATION_DEFINED=YES`**
+
 ---
 
 ## 11. Revision number (Decision 6)
@@ -260,22 +302,51 @@ Per-vehicle `max(revision)+1` introduces unnecessary contention under multi-repl
 
 ## 12. Multi-replica write safety (Decision 7)
 
-**`MULTI_REPLICA_IDEMPOTENCY=INSERT_THEN_VERIFY_ON_CONFLICT`**
+**`POSTGRES_CONFLICT_ALGORITHM=INSERT_ON_CONFLICT_DO_NOTHING_THEN_VERIFY`**
+
+**`MULTI_REPLICA_IDEMPOTENCY=`** same as above (supersedes informal “INSERT then catch unique violation in same tx” wording)
 
 **`DB_UNIQUE_AUTHORITY=YES`**
 
+**`SAME_ABORTED_TX_USED_AFTER_UNIQUE_ERROR=NO`**
+
+A PostgreSQL transaction that hits a normal unique-violation error enters **aborted** state unless a savepoint rolls back. D3 must **not** specify “INSERT; on unique violation SELECT in the same transaction” without savepoints.
+
+### Normative algorithm (READ COMMITTED)
+
 ```
-BEGIN (Read Committed default acceptable)
-  INSERT revision
-  IF unique violation:
-    SELECT existing BY unique key
-    ASSERT canonicalScientificUtf8(existing) == canonicalScientificUtf8(new)
-    RETURN EXISTING
-  ELSE RETURN CREATED
-COMMIT
+BEGIN;  -- READ COMMITTED (default) is sufficient: ON CONFLICT is atomic at statement level
+
+INSERT INTO battery_longitudinal_profile_revisions (...)
+VALUES (...)
+ON CONFLICT (
+  organization_id,
+  vehicle_id,
+  longitudinal_profile_contract_version,
+  profile_policy_version,
+  canonical_profile_fingerprint
+) DO NOTHING
+RETURNING ...;
+
+IF RETURNING row present:
+  outcome = CREATED
+ELSE:
+  SELECT existing row BY exact scientific unique key
+  ASSERT canonicalFeatureInputUtf8(existing.scientific_profile_json)
+       === canonicalFeatureInputUtf8(new_scientific_projection)
+  IF equal: outcome = EXISTING
+  ELSE: FAIL CLOSED PROFILE_FINGERPRINT_COLLISION_OR_CANONICALIZATION_DRIFT
+
+COMMIT;
 ```
 
-No Redis mutex as correctness authority. Optional Redis **cache** only after DB truth established.
+**Why READ COMMITTED suffices:** uniqueness is enforced by the **single INSERT … ON CONFLICT** statement; the follow-up SELECT runs only when no row was inserted, in a still-valid transaction (no prior aborted statement).
+
+**Alternative (allowed):** Prisma `create` outside a long transaction → catch `P2002` → **new** read/verify transaction with payload equality check. Equally rigorous; still **`SAME_ABORTED_TX_USED_AFTER_UNIQUE_ERROR=NO`**.
+
+**`UNIQUE_CONFLICT_TRANSACTION_RECOVERY_VALID_FOR_POSTGRES=YES`**
+
+No Redis mutex as correctness authority.
 
 ---
 
@@ -339,15 +410,25 @@ Append-only revisions can grow without bound. Options (product/legal not audited
 
 ## 18. Source row deletion / cascade (Decision 13)
 
-**`DELETE_CASCADE_POLICY=DECISION_REQUIRED_WITH_DEFAULT_RECOMMENDATION`**
+**`DELETE_CASCADE_POLICY=ORG_AND_VEHICLE_CASCADE__NO_C3_ROW_CASCADE`**
 
-| Event | Recommendation |
-|-------|----------------|
-| Vehicle deleted | **Cascade** delete revisions (derived cache; rebuild impossible) |
-| Organization deleted | **Cascade** |
-| C3 rows purged by future retention | Revisions may become **historical orphans** referencing stale digests — mark **rebuildability lost**; D4 may flag `SOURCE_EVIDENCE_MISSING` later |
+| Relation | D3 V1 semantics |
+|----------|-----------------|
+| **Organization deleted** | **CASCADE** delete profile revision rows |
+| **Vehicle deleted** | **CASCADE** delete profile revision rows |
+| **C3 `BatteryRestSessionFeature` rows** | **No direct FK** from profile revision to individual feature rows |
+| **Future C3 retention/purge** | Does **not** cascade-delete D3 revisions |
 
-Do **not** silently inherit C3 cascade onto revision semantics without explicit decision. Default: revisions are **rebuildable cache + audit**, not a substitute for C3 retention.
+`scientificProfileJson` may retain canonical source IDs/digests as **historical lineage** after source rows disappear.
+
+| State | Meaning |
+|-------|---------|
+| **SOURCE_RECONSTRUCTABILITY** | May be **lost** after C3 purge |
+| **Revision row** | Remains immutable **derived historical artifact** until a separately authorized D3 **retention** policy deletes it (retention still `DECISION_REQUIRED`) |
+| **D4** | May later detect/report missing source evidence — **no D4 fields in D3 schema** |
+
+**`DIRECT_C3_SOURCE_ROW_FK=NO`**  
+**`C3_PURGE_CASCADES_PROFILE_REVISION=NO`**
 
 ---
 
@@ -408,18 +489,17 @@ New `M3_3D_PROFILE_POLICY_V2` or `M3_3D_LONGITUDINAL_PROFILE_V2` → distinct un
 
 | Gate | Status |
 |------|--------|
-| **`SCHEMA_IMPLEMENTATION_READY=`** **CONDITIONAL** — proceed to D3 engineering PR (schema+migration+writer) **after** this audit merges |
-| **`PRODUCTION_MATERIALIZATION_READY=`** **NO** — shadow flag off; M3.3F not authorized |
+| **`SCHEMA_IMPLEMENTATION_READY=`** **YES_FOR_FOUNDATION** — schema-critical contracts closed in D3.1 (§12, fingerprint column, JSONB semantics, FK/cascade); separate **D3 engineering PR** may propose Prisma model + migration + internal idempotent service **after** audit merge |
+| **`PRODUCTION_MATERIALIZATION_READY=`** **NO** — shadow flag off; M3.3F not authorized; no reachable production trigger in foundation PR |
 
----
+## 24. Open decisions (non-blocking for foundation schema)
 
-## 24. Open decisions (explicit)
+1. **`RETENTION_POLICY=DECISION_REQUIRED`** — long-term compaction/archival  
+2. **`MATERIALIZATION_FLAG_NAME=DECISION_REQUIRED`** — exact env flag string (default OFF)  
+3. **`M3_3F_WIRING_STATUS=PENDING`** — runtime trigger schedule  
+4. **DEC-M3.3D-001** — minimum sessions (unchanged; unrelated to D3 idempotency)
 
-1. Retention/compaction policy  
-2. Long-term audit vs rebuildable-cache classification when C3 source purged  
-3. Exact materialization flag name and M3.3F wiring schedule  
-4. Whether to persist `canonicalScientificUtf8` column vs recompute on conflict  
-5. DEC-M3.3D-001 minimum sessions (unchanged; unrelated to D3 idempotency)
+Closed in D3.1 (no longer open): Postgres conflict algorithm; fingerprint DB representation; canonical UTF-8 column choice; org/vehicle/C3 FK semantics.
 
 ---
 
@@ -432,3 +512,34 @@ New `M3_3D_PROFILE_POLICY_V2` or `M3_3D_LONGITUDINAL_PROFILE_V2` → distinct un
 ## 26. Validation
 
 Local: `validate-module-registry.sh`, `validate-graph.sh` on documentation PR.
+
+---
+
+## 27. D3.1 architecture closure (2026-09-24)
+
+Amends PR #1744 audit with persistence-contract decisions required **before** schema/migration engineering:
+
+| Fix | Closure |
+|-----|---------|
+| **1** | PostgreSQL-safe **`INSERT … ON CONFLICT DO NOTHING RETURNING`** + verify path; **no** same aborted tx after unique error |
+| **2** | JSONB = semantic storage; **canonical UTF-8 reserialization** = comparison authority |
+| **3** | **`CANONICAL_SCIENTIFIC_UTF8_STORED=NO`** for D3 V1 |
+| **4** | **`DELETE_CASCADE_POLICY=ORG_AND_VEHICLE_CASCADE__NO_C3_ROW_CASCADE`** |
+| **5** | Fingerprint **`Char(64)`** lowercase hex + writer regex validation |
+| **6** | **`profileGeneratedAt` omitted** from projection (not `undefined`) |
+| **7** | C3 precedent wording corrected (principle shared; algorithm differs) |
+| **8** | **`SCHEMA_IMPLEMENTATION_READY=YES_FOR_FOUNDATION`** |
+
+### D3 engineering boundary (post-audit merge)
+
+A **separate** D3 engineering PR may add: Prisma model, migration, fingerprint wrapper, repository, idempotent materialization service, payload-equivalence tests.
+
+Foundation engineering **must still have**:
+
+- **NO** reachable production trigger  
+- **NO** C3 lifecycle hook  
+- **NO** scheduled writer  
+- **NO** API/customer path  
+- **NO** production flag enable  
+
+Internal/unreachable service only until M3.3F.

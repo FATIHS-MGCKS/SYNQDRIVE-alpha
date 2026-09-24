@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3.1 materialization persistence-contract closure (draft PR #1744)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D3 audit on PR #1744 @ `7c62ffdd0`; Postgres conflict algorithm unsafe for aborted tx; JSONB byte-stability wording; optional `canonicalScientificUtf8` column; open cascade/fingerprint contracts; C3 precedent overstated. |
+| **OBSERVATION** | Schema/migration engineering blocked until persistence contracts are normative; PostgreSQL unique-violation without savepoint aborts the transaction. |
+| **HYPOTHESIS** | D3.1 documentation closure (fixes 1–8) authorizes **foundation schema only** in a separate engineering PR; production materialization remains M3.3F-gated. |
+| **CHANGE** | D3 research doc §4.1, §6–7, §10.1, §12, §18, §23–27: `INSERT … ON CONFLICT DO NOTHING RETURNING` + canonical UTF-8 verify; JSONB semantic storage; `CANONICAL_SCIENTIFIC_UTF8_STORED=NO`; `DELETE_CASCADE_POLICY=ORG_AND_VEHICLE_CASCADE__NO_C3_ROW_CASCADE`; fingerprint `Char(64)`; projection property omission; accurate C3 precedent; `SCHEMA_IMPLEMENTATION_READY=YES_FOR_FOUNDATION`. |
+| **WHY** | Close schema-critical decisions before Prisma/migration slice; preserve `HYBRID_IMPLEMENT` + canonical scientific projection fingerprint authority. |
+| **EXPECTED_EFFECT** | Post-merge D3 engineering PR may propose model/migration/internal idempotent service with **no** reachable production trigger until M3.3F. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`; PR #1744 CI. |
+| **OBSERVED_EFFECT** | Pending PR #1744 amend merge. |
+| **NON_EFFECTS** | No Prisma schema; no migration; no runtime writer; no feature flag; no production deploy; no production data mutation; D3 not marked complete. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only closure. |
+| **REMAINING_GAPS** | D3 foundation engineering; `RETENTION_POLICY`; `MATERIALIZATION_FLAG_NAME`; M3.3F wiring; DEC-M3.3D-001. |
+| **DECISION_STATUS** | **ARCHITECTURE_CLOSURE_D3_1** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
+| **EVIDENCE** | Draft PR #1744 amend; `M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` §27 |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 materialization & persistence architecture audit (draft PR)
 
 | Field | Value |
