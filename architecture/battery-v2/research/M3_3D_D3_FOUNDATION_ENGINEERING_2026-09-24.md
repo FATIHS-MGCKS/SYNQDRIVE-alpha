@@ -36,7 +36,7 @@
 | **DB CHECK matrix (PG-B)** | Reject uppercase / 63 / 65 / non-hex; accept 64 lowercase hex |
 | **Full metadata mirror (PG-O)** | All mirrored columns verified vs persistence input + canonical UTF-8 equivalence |
 | **Duplicate metadata drift** | EXISTING path throws `PROFILE_MATERIALIZED_METADATA_DRIFT` (PG-Q) |
-| **Postgres execution** | **`CI_ENFORCED`** via Vehicle Detail workflow job `battery-v2-d3-materialization-postgres` |
+| **Postgres execution** | Script **`npm run test:battery:v2:longitudinal-profile-materialization:postgres`** (ephemeral DB); **`LOCAL_EPHEMERAL_ONLY`** in standard PR CI (Vehicle Detail workflow wiring deferred — requires `i18n-governance-authority-change` label for `.github` edits) |
 
 ---
 
