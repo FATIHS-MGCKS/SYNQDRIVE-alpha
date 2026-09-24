@@ -50,12 +50,13 @@
 | **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — **COMPLETE ON MAIN** merged PR #1733 @ `969cc3f19` — internal MASTER_ADMIN surface; atomic C5A GET; `inputSummary.retentionPoints` table; org-scoped operational vehicle pagination; no flags/migration/customer UI |
 | **M3.3D D0 (architecture)** | Longitudinal profile scientific contract + `M3_3D_LONGITUDINAL_PROFILE_V1` — **COMPLETE ON MAIN** merged PR #1735 @ `bc69e1d9c` — `research/M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md` |
 | **M3.3D D0.1 (architecture)** | Bounded canonical read (C5A-equivalent), persisted version authority, D1 integrity scope, profileStatus+flags, fingerprint determinism, D3/M3.3F sequencing — **COMPLETE ON MAIN** PR #1735 @ `bc69e1d9c` |
-| **M3.3C roadmap (planning)** | **M3.3D D1** bounded reader (**next engineering**) · **M3.3D D2+** pending · **M3.3E** health/risk/confidence · **M3.3F** production shadow authorization · **M3.3G** cutover · **M3.3H** customer Vehicle Detail → Health UI (distinct from C5B / internal longitudinal) |
-| **M3.3C** | **`OPEN`** — C1–C5B + **M3.3D D0/D0.1 complete on main**; **M3.3D D1 next**; **D2+ / M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3D D1 (engineering)** | Bounded canonical longitudinal input reader + inclusion policy (`M3_3D_D1_LONGITUDINAL_INPUT_V1`) — **engineering on draft PR #1737** (not on main until merge) — `research/M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md` |
+| **M3.3C roadmap (planning)** | **M3.3D D1** reader (**draft PR**) · **M3.3D D2+** pending · **M3.3E–H** pending |
+| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1 on main**; **D1 draft**; **D2+ / M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (fixtures/test DB; flag remains OFF); contract @ `M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`; **not** health/risk scoring (M3.3E); **no** production shadow/materialization before **M3.3F** authorization |
+| `NEXT_PHASE` | **M3.3D D1** merge (draft PR) → **M3.3D D2** deterministic profile assembly; reader contract @ `M3_3D_D1_LONGITUDINAL_INPUT_V1`; flag remains OFF until **M3.3F** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

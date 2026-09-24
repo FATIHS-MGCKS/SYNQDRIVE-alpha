@@ -54,6 +54,37 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D1 canonical longitudinal input reader (engineering)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D0/D0.1 defined contract only; no runtime longitudinal input inventory. |
+| **OBSERVATION** | C5A batch canonical pattern exists per session; M3.3D requires multi-session bounded batch without `listFeatureRowsForSession()`. |
+| **HYPOTHESIS** | Single RR transaction + one ROW_NUMBER batch query + pure inclusion policy satisfies D0 invariants without D2/D3 scope. |
+| **CHANGE** | `LongitudinalInputReaderService`, repository batch reader, snapshot parser, inclusion policy, unit + Postgres integration tests; Nest registration; D1 research doc. |
+| **WHY** | First runtime slice — input inventory for future D2 profile assembly. |
+| **EXPECTED_EFFECT** | `M3_3D_D1_LONGITUDINAL_INPUT_V1` read-only inventory with `NOT_EVALUATED` integrity. |
+| **VALIDATION** | `npm run test:battery:v2:longitudinal-input:postgres`; unit suite; backend build. |
+| **OBSERVED_EFFECT** | Local/CI postgres: batch ≤4, tenant isolation, RR barrier PASS. |
+| **NON_EFFECTS** | No schema/migration/flag/deploy/customer UI/D2/D3/M3.3E writes. |
+| **REGRESSIONS_OR_TRADEOFFS** | `sessionLimit` hard cap 100 is DB safety only. |
+| **REMAINING_GAPS** | D2 profile assembly; D4 integrity batch; M3.3F production validation. |
+| **DECISION_STATUS** | **VALIDATED** (engineering, pre-merge) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | `M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md` |
+
+---
+
+## CL-2026-09-24 — M3.3D D1.1 input reader closure (draft PR #1737)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Remove Master Admin UI discoverability edits; strict snapshot parser; persisted column version provenance on contract failure; UTF-16 tie-break; integer sessionLimit validation; precise exclusion reasons; expanded contract/integration tests. |
+| **NON_EFFECTS** | No D2/D3/schema/flag/deploy/customer or Master Admin UI. |
+| **VALIDATION** | D1 unit + Postgres integration; battery-v2 failure differential vs main `6d250da6f`. |
+
+---
+
 ## CL-2026-09-24 — M3.3D D0/D0.1 post-merge documentation seal (main)
 
 | Field | Value |

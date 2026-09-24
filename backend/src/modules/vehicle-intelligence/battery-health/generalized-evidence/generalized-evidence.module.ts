@@ -9,6 +9,7 @@ import { ProviderObservabilityGapModule } from '../provider-observability-gap/pr
 import { RestSessionFeatureComputationService } from './rest-session-features/rest-session-feature-computation.service';
 import { RestSessionFeatureShadowTriggerService } from './rest-session-features/rest-session-feature-shadow-trigger.service';
 import { RestSessionFeatureShadowInspectionService } from './rest-session-features/rest-session-feature-shadow-inspection.service';
+import { LongitudinalInputReaderService } from './rest-session-features/longitudinal/longitudinal-input.reader';
 
 @Module({
   imports: [ProviderObservabilityGapModule, PrismaModule],
@@ -18,6 +19,7 @@ import { RestSessionFeatureShadowInspectionService } from './rest-session-featur
     RestSessionFeatureComputationService,
     RestSessionFeatureShadowTriggerService,
     RestSessionFeatureShadowInspectionService,
+    LongitudinalInputReaderService,
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
@@ -28,6 +30,7 @@ import { RestSessionFeatureShadowInspectionService } from './rest-session-featur
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
     RestSessionFeatureShadowInspectionService,
+    LongitudinalInputReaderService,
     ProviderObservabilityGapModule,
   ],
 })
