@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E3.1 shared authority lock + fallback identity races
+
+- Single `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes
+- Fallback identity: persisted fingerprint/start anchor immutable; replay uses matcher-based reuse
+- Postgres race matrix with independent PrismaClient A/B
+
 ## 2026-09-24 — ERD E3 telemetry fallback + native/fallback convergence
 
 - Evidence: `evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md`

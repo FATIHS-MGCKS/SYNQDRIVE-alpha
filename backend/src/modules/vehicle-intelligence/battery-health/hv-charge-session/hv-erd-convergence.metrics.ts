@@ -9,7 +9,11 @@ export type ErdE3ConvergenceMetricReason =
   | 'match_different'
   | 'match_ambiguous'
   | 'native_superseded_fallback'
-  | 'convergence_failed';
+  | 'convergence_failed'
+  | 'authority_lock_contention'
+  | 'fallback_blocked_by_native_after_revalidation'
+  | 'fallback_reused_existing_identity'
+  | 'fallback_anchor_ambiguous';
 
 export function recordErdE3ConvergenceMetric(
   metrics: TripMetricsService,

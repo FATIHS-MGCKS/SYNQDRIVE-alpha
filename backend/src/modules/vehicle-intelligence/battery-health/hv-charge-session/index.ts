@@ -18,6 +18,7 @@ export * from './hv-fallback-charge-session.mapper';
 export * from './hv-fallback-charge-session.supersede';
 export * from './hv-fallback-charge-session-detector.service';
 export * from './hv-fallback-charge-session-activation.policy';
+export * from './erd-hv-charge-session-authority.lock';
 export * from './hv-fallback-charge-session-anchor.policy';
 export * from './erd-physical-episode-matcher';
 export * from './hv-charge-session-native-fallback-convergence.service';

@@ -16,6 +16,14 @@
 - Atomic late-native convergence transaction (`pg_advisory_xact_lock` + single TX)
 - Bounded E3 observability counter `synqdrive_erd_e3_convergence_total{reason}`
 
+## E3.1 addendum (same PR #1747)
+
+- **Shared authority lock:** `erd-hv-charge-session-authority.lock.ts` — one `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes
+- **Native:** removed unlocked `persistDraftOutsideTx`; every native upsert re-reads fallback + matcher under lock
+- **Fallback:** `persistProvisionalFallbackUnderAuthorityLock` re-validates native-first + matcher-based identity reuse
+- **Identity rule:** `PERSISTED_START_ANCHOR_AND_FINGERPRINT_IMMUTABLE` — earlier-start replay cannot mint second fingerprint
+- **Postgres:** independent PrismaClient A/B race matrix (native-first, fallback-first, concurrent fallback, replay, rollback)
+
 ## Out of scope (unchanged)
 
 - Production flag activation

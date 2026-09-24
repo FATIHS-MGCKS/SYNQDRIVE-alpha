@@ -13081,6 +13081,24 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T12:00:00.000Z',
   },
   {
+    id: 'erd-e3-1-authority-lock-2026-09-24',
+    version: '4.9.901',
+    title: 'ERD E3.1 — shared ERD vehicle authority lock + fallback identity races',
+    summary: [
+      'Single pg_advisory_xact_lock per vehicle for native convergence and fallback provisional writes; lock → re-read → decide → write.',
+      'Persisted fallback fingerprint/start anchor immutable; matcher-based replay reuse (fail-closed on ambiguous anchors).',
+      'Postgres gate: independent PrismaClient A/B races, replay, rollback proofs (ERD_E3_POSTGRES_INTEGRATION=1).',
+    ],
+    reason: 'E3.1 closes split-brain between unlocked native no-supersede path and unlocked fallback writes.',
+    previousBehavior:
+      'Native without supersede used persistDraftOutsideTx; fallback used unlocked persistSessionDraft — concurrent native+fallback could leave active native + active fallback for one episode.',
+    details:
+      'erd-hv-charge-session-authority.lock.ts, hv-charge-session-native-fallback-convergence.service.ts, hv-fallback-charge-session-anchor.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T13:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

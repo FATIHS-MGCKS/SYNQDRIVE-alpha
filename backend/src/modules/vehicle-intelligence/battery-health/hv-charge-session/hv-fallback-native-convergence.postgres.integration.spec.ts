@@ -14,6 +14,34 @@ import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
 import { HvChargeSessionNativeFallbackConvergenceService } from './hv-charge-session-native-fallback-convergence.service';
 
+function buildAuthorityStack(client: PrismaClient) {
+  const repository = new HvChargeSessionRepository(client as unknown as PrismaService);
+  const metrics = { erdE3ConvergenceTotal: { inc: jest.fn() } } as never;
+  const convergence = new HvChargeSessionNativeFallbackConvergenceService(
+    client as unknown as PrismaService,
+    repository,
+    metrics,
+  );
+  const persist = new HvChargeSessionPersistService(
+    repository,
+    { log: jest.fn() } as never,
+    { maybeEnqueueAfterSessionPersist: jest.fn().mockResolvedValue(null) } as never,
+    convergence,
+  );
+  return { client, repository, convergence, persist, metrics };
+}
+
+async function countActiveFallback(prisma: PrismaClient, vehicleId: string): Promise<number> {
+  const rows = await prisma.hvChargeSession.findMany({
+    where: { vehicleId, source: 'TELEMETRY_POLL_FALLBACK' },
+  });
+  return rows.filter(
+    (row) =>
+      !(row.metadata as { supersededBySegmentFingerprint?: string })
+        ?.supersededBySegmentFingerprint,
+  ).length;
+}
+
 const LIVE = process.env.ERD_E3_POSTGRES_INTEGRATION === '1';
 
 async function probeDatabase(): Promise<boolean> {
@@ -83,6 +111,7 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
   () => {
     let prisma: PrismaClient;
     let persist: HvChargeSessionPersistService;
+    let convergence: HvChargeSessionNativeFallbackConvergenceService;
     let repository: HvChargeSessionRepository;
     const evaluatedAt = new Date('2026-07-16T14:00:00.000Z');
 
@@ -92,19 +121,10 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
         throw new Error('ERD_E3_POSTGRES_INTEGRATION=1 requires reachable DATABASE_URL');
       }
       prisma = new PrismaClient();
-      repository = new HvChargeSessionRepository(prisma as unknown as PrismaService);
-      const metrics = { erdE3ConvergenceTotal: { inc: jest.fn() } } as never;
-      const convergence = new HvChargeSessionNativeFallbackConvergenceService(
-        prisma as unknown as PrismaService,
-        repository,
-        metrics,
-      );
-      persist = new HvChargeSessionPersistService(
-        repository,
-        { log: jest.fn() } as never,
-        { maybeEnqueueAfterSessionPersist: jest.fn().mockResolvedValue(null) } as never,
-        convergence,
-      );
+      const stack = buildAuthorityStack(prisma);
+      repository = stack.repository;
+      convergence = stack.convergence;
+      persist = stack.persist;
     }, 60_000);
 
     afterAll(async () => {
@@ -120,48 +140,37 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
         expect(detection.sessions.length).toBeGreaterThanOrEqual(1);
 
         const candidate = detection.sessions[0];
-        const draft = mapFallbackCandidateToHvChargeSessionDraft({
+
+        const first = await convergence.persistProvisionalFallbackUnderAuthorityLock({
           organizationId: org.id,
           vehicleId: vehicle.id,
           candidate,
-          reconciledAt: evaluatedAt,
+          evaluatedAt,
         });
-
-        const first = await persist.persistSessionDraft({
+        const replay = await convergence.persistProvisionalFallbackUnderAuthorityLock({
           organizationId: org.id,
           vehicleId: vehicle.id,
-          draft,
-        });
-        const replay = await persist.persistSessionDraft({
-          organizationId: org.id,
-          vehicleId: vehicle.id,
-          draft,
+          candidate,
+          evaluatedAt,
         });
         expect(first.created).toBe(true);
         expect(replay.changeKind).toBe('no_op');
         expect(await prisma.hvChargeSession.count({ where: { vehicleId: vehicle.id } })).toBe(1);
 
-        const ongoingDraft = mapFallbackCandidateToHvChargeSessionDraft({
+        const ongoingCandidate = {
+          ...candidate,
+          endAt: null,
+          endSocPercent: null,
+          deltaSocPercent: null,
+          isOngoing: true,
+          endReason: 'ONGOING' as const,
+          startAt: new Date('2026-07-16T18:00:00.000Z'),
+        };
+        const ongoing = await convergence.persistProvisionalFallbackUnderAuthorityLock({
           organizationId: org.id,
           vehicleId: vehicle.id,
-          candidate: {
-            ...candidate,
-            endAt: null,
-            endSocPercent: null,
-            deltaSocPercent: null,
-            isOngoing: true,
-            endReason: 'ONGOING',
-          },
-          reconciledAt: evaluatedAt,
-        });
-        const ongoing = await persist.persistSessionDraft({
-          organizationId: org.id,
-          vehicleId: vehicle.id,
-          draft: {
-            ...ongoingDraft,
-            segmentFingerprint: `poll-charge:${vehicle.id}:${new Date('2026-07-16T18:00:00.000Z').getTime()}`,
-            startAt: new Date('2026-07-16T18:00:00.000Z'),
-          },
+          candidate: ongoingCandidate,
+          evaluatedAt,
         });
         expect(ongoing.created).toBe(true);
       } finally {
@@ -222,16 +231,11 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
         );
         expect(fallbackDetection.sessions.length).toBeGreaterThanOrEqual(1);
 
-        const fbDraft = mapFallbackCandidateToHvChargeSessionDraft({
+        await convergence.persistProvisionalFallbackUnderAuthorityLock({
           organizationId: org.id,
           vehicleId: vehicle.id,
           candidate: fallbackDetection.sessions[0],
-          reconciledAt: evaluatedAt,
-        });
-        await persist.persistSessionDraft({
-          organizationId: org.id,
-          vehicleId: vehicle.id,
-          draft: fbDraft,
+          evaluatedAt,
         });
 
         const converge = await persist.persistRechargeSegment({
@@ -255,7 +259,7 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
           TESLA_RECHARGE_AUDIT_TOKEN_ID,
           TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[1],
         )!;
-        const fb2 = mapFallbackCandidateToHvChargeSessionDraft({
+        await convergence.persistProvisionalFallbackUnderAuthorityLock({
           organizationId: org.id,
           vehicleId: vehicle.id,
           candidate: {
@@ -265,13 +269,7 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
             startSocPercent: 10,
             endSocPercent: 12,
           },
-          reconciledAt: evaluatedAt,
-        });
-        fb2.segmentFingerprint = `poll-charge:${vehicle.id}:${fb2.startAt.getTime()}`;
-        await persist.persistSessionDraft({
-          organizationId: org.id,
-          vehicleId: vehicle.id,
-          draft: fb2,
+          evaluatedAt,
         });
         await persist.persistRechargeSegment({
           organizationId: org.id,
@@ -280,7 +278,10 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
           evaluatedAt,
         });
         const fb2Row = await prisma.hvChargeSession.findFirst({
-          where: { vehicleId: vehicle.id, segmentFingerprint: fb2.segmentFingerprint },
+          where: {
+            vehicleId: vehicle.id,
+            startAt: new Date('2026-07-10T08:00:00.000Z'),
+          },
         });
         expect(
           (fb2Row?.metadata as { supersededBySegmentFingerprint?: string })
@@ -288,6 +289,230 @@ function lteR1Observations(base: Date): HvFallbackChargeObservation[] {
         ).toBeUndefined();
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('E3.1: independent Prisma clients + authority race matrix', async () => {
+      const prismaA = new PrismaClient();
+      const prismaB = new PrismaClient();
+      expect(prismaA).not.toBe(prismaB);
+
+      const stackA = buildAuthorityStack(prismaA);
+      const stackB = buildAuthorityStack(prismaB);
+
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prismaA, suffix);
+      const segmentRaw = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[0];
+      const nativeSegment = normalizeDimoRechargeSegment(
+        TESLA_RECHARGE_AUDIT_TOKEN_ID,
+        segmentRaw,
+      )!;
+      const base = new Date(nativeSegment.startAt);
+      const candidate = detectFallbackChargeSessions(
+        lteR1Observations(new Date(base.getTime() - 15 * 60_000)),
+        evaluatedAt,
+      ).sessions[0];
+      expect(candidate).toBeDefined();
+
+      try {
+        await stackA.persist.persistRechargeSegment({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: nativeSegment,
+          evaluatedAt,
+        });
+
+        const fallbackAfterNative =
+          await stackB.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            candidate,
+            evaluatedAt,
+          });
+        expect(fallbackAfterNative.authority.skipped).toBe(true);
+        expect(await countActiveFallback(prismaA, vehicle.id)).toBe(0);
+
+        await cleanup(prismaA, vehicle.id, org.id);
+        const suffix2 = `${suffix}-b`;
+        const seeded = await seedOrgVehicle(prismaA, suffix2);
+        const vehicle2 = seeded.vehicle;
+        const org2 = seeded.org;
+
+        await stackB.convergence.persistProvisionalFallbackUnderAuthorityLock({
+          organizationId: org2.id,
+          vehicleId: vehicle2.id,
+          candidate,
+          evaluatedAt,
+        });
+
+        await stackA.persist.persistRechargeSegment({
+          organizationId: org2.id,
+          vehicleId: vehicle2.id,
+          segment: nativeSegment,
+          evaluatedAt,
+        });
+
+        const rows = await prismaA.hvChargeSession.findMany({
+          where: { vehicleId: vehicle2.id },
+        });
+        expect(rows.filter((r) => r.source === 'DIMO_RECHARGE_SEGMENT')).toHaveLength(1);
+        const superseded = rows.filter((r) => r.source === 'TELEMETRY_POLL_FALLBACK');
+        expect(superseded).toHaveLength(1);
+        expect(
+          (superseded[0].metadata as { supersededBySegmentFingerprint?: string })
+            ?.supersededBySegmentFingerprint,
+        ).toBe(nativeSegment.fingerprint);
+        expect(await countActiveFallback(prismaA, vehicle2.id)).toBe(0);
+
+        const suffixFbRace = `${suffix}-fb-race`;
+        const seededFbRace = await seedOrgVehicle(prismaA, suffixFbRace);
+        await Promise.all([
+          stackA.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: seededFbRace.org.id,
+            vehicleId: seededFbRace.vehicle.id,
+            candidate,
+            evaluatedAt,
+          }),
+          stackB.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: seededFbRace.org.id,
+            vehicleId: seededFbRace.vehicle.id,
+            candidate,
+            evaluatedAt,
+          }),
+        ]);
+        expect(await countActiveFallback(prismaA, seededFbRace.vehicle.id)).toBe(1);
+
+        await cleanup(prismaA, seededFbRace.vehicle.id, seededFbRace.org.id);
+        await cleanup(prismaA, vehicle2.id, org2.id);
+
+        const suffix3 = `${suffix}-c`;
+        const seeded3 = await seedOrgVehicle(prismaA, suffix3);
+        const vehicle3 = seeded3.vehicle;
+        const org3 = seeded3.org;
+        const lateWindow = lteR1Observations(new Date(base.getTime() + 20 * 60_000));
+        const lateCandidate = detectFallbackChargeSessions(lateWindow, evaluatedAt).sessions[0];
+        const firstPersist =
+          await stackA.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: org3.id,
+            vehicleId: vehicle3.id,
+            candidate: lateCandidate,
+            evaluatedAt,
+          });
+        const fp1 = firstPersist.session!.segmentFingerprint;
+
+        const wideCandidate = detectFallbackChargeSessions(
+          lteR1Observations(new Date(base.getTime() - 30 * 60_000)),
+          evaluatedAt,
+        ).sessions[0];
+        const replay =
+          await stackB.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: org3.id,
+            vehicleId: vehicle3.id,
+            candidate: wideCandidate,
+            evaluatedAt,
+          });
+        expect(replay.session!.segmentFingerprint).toBe(fp1);
+        expect(await prismaA.hvChargeSession.count({ where: { vehicleId: vehicle3.id } })).toBe(
+          1,
+        );
+
+        const suffixTrunc = `${suffix}-trunc`;
+        const seededTrunc = await seedOrgVehicle(prismaA, suffixTrunc);
+        const fullFirst =
+          await stackA.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: seededTrunc.org.id,
+            vehicleId: seededTrunc.vehicle.id,
+            candidate: wideCandidate,
+            evaluatedAt,
+          });
+        const anchoredStart = fullFirst.session!.startAt.getTime();
+        const truncatedCandidate = detectFallbackChargeSessions(
+          lteR1Observations(new Date(base.getTime() + 20 * 60_000)),
+          evaluatedAt,
+        ).sessions[0];
+        const truncatedReplay =
+          await stackB.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: seededTrunc.org.id,
+            vehicleId: seededTrunc.vehicle.id,
+            candidate: truncatedCandidate,
+            evaluatedAt,
+          });
+        expect(truncatedReplay.session!.segmentFingerprint).toBe(
+          fullFirst.session!.segmentFingerprint,
+        );
+        expect(truncatedReplay.session!.startAt.getTime()).toBe(anchoredStart);
+        expect(
+          await prismaA.hvChargeSession.count({ where: { vehicleId: seededTrunc.vehicle.id } }),
+        ).toBe(1);
+        await cleanup(prismaA, seededTrunc.vehicle.id, seededTrunc.org.id);
+
+        await Promise.all([
+          stackA.persist.persistRechargeSegment({
+            organizationId: org3.id,
+            vehicleId: vehicle3.id,
+            segment: nativeSegment,
+            evaluatedAt,
+          }),
+          stackB.persist.persistRechargeSegment({
+            organizationId: org3.id,
+            vehicleId: vehicle3.id,
+            segment: nativeSegment,
+            evaluatedAt,
+          }),
+        ]);
+        expect(
+          await prismaA.hvChargeSession.count({
+            where: { vehicleId: vehicle3.id, source: 'DIMO_RECHARGE_SEGMENT' },
+          }),
+        ).toBe(1);
+
+        const suffix4 = `${suffix}-d`;
+        const seeded4 = await seedOrgVehicle(prismaA, suffix4);
+        await stackA.convergence.persistProvisionalFallbackUnderAuthorityLock({
+          organizationId: seeded4.org.id,
+          vehicleId: seeded4.vehicle.id,
+          candidate,
+          evaluatedAt,
+        });
+        await expect(
+          stackA.convergence.persistNativeWithFallbackConvergence({
+            organizationId: seeded4.org.id,
+            vehicleId: seeded4.vehicle.id,
+            segment: nativeSegment,
+            evaluatedAt,
+            injectFailureAfterSupersede: true,
+          }),
+        ).rejects.toThrow();
+        const fbRow = await prismaA.hvChargeSession.findFirst({
+          where: {
+            vehicleId: seeded4.vehicle.id,
+            source: 'TELEMETRY_POLL_FALLBACK',
+          },
+        });
+        expect(
+          (fbRow?.metadata as { supersededBySegmentFingerprint?: string })
+            ?.supersededBySegmentFingerprint,
+        ).toBeUndefined();
+
+        await cleanup(prismaA, seeded4.vehicle.id, seeded4.org.id);
+        await cleanup(prismaA, vehicle3.id, org3.id);
+
+        const suffixFbRollback = `${suffix}-fb-rollback`;
+        const seededFbRb = await seedOrgVehicle(prismaA, suffixFbRollback);
+        await expect(
+          stackA.convergence.persistProvisionalFallbackUnderAuthorityLock({
+            organizationId: seededFbRb.org.id,
+            vehicleId: seededFbRb.vehicle.id,
+            candidate,
+            evaluatedAt,
+            injectFailureBeforeCommit: true,
+          }),
+        ).rejects.toThrow();
+        expect(await countActiveFallback(prismaA, seededFbRb.vehicle.id)).toBe(0);
+        await cleanup(prismaA, seededFbRb.vehicle.id, seededFbRb.org.id);
+      } finally {
+        await prismaA.$disconnect().catch(() => undefined);
+        await prismaB.$disconnect().catch(() => undefined);
       }
     });
   },

@@ -11,21 +11,15 @@ import {
   isBatteryV2HvRechargeSessionEnabled,
 } from '@config/battery-health-v2.config';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
-import { mapFallbackCandidateToHvChargeSessionDraft } from './hv-fallback-charge-session.mapper';
 import { detectFallbackChargeSessions } from './hv-fallback-charge-session.policy';
 import type { HvFallbackChargeObservation } from './hv-fallback-charge-session.types';
-import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
+import {
+  HvChargeSessionNativeFallbackConvergenceService,
+  type HvFallbackAuthorityPersistResult,
+} from './hv-charge-session-native-fallback-convergence.service';
 import type { HvChargeSessionPersistResult } from './hv-charge-session.types';
 import { HV_RECHARGE_ROLLING_WINDOW_DAYS } from './hv-recharge-session-reconcile.policy';
-import {
-  shouldAttemptFallbackDetection,
-  shouldPersistFallbackCandidate,
-} from './hv-fallback-charge-session-activation.policy';
-import { alignFallbackDraftToPersistedAnchor } from './hv-fallback-charge-session-anchor.policy';
-import {
-  HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
-  HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
-} from './hv-charge-session.types';
+import { shouldAttemptFallbackDetection } from './hv-fallback-charge-session-activation.policy';
 import { recordErdE3ConvergenceMetric } from './hv-erd-convergence.metrics';
 
 export interface HvFallbackChargeSessionDetectResult {
@@ -40,7 +34,11 @@ export interface HvFallbackChargeSessionDetectResult {
   detected: number;
   persisted: number;
   rejectedFalsePositives: number;
-  results: HvChargeSessionPersistResult[];
+  results: Array<
+    HvChargeSessionPersistResult & {
+      authority?: HvFallbackAuthorityPersistResult['authority'];
+    }
+  >;
 }
 
 @Injectable()
@@ -50,7 +48,7 @@ export class HvFallbackChargeSessionDetectorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hvMethodProfile: HvMethodProfileService,
-    private readonly persist: HvChargeSessionPersistService,
+    private readonly nativeFallbackConvergence: HvChargeSessionNativeFallbackConvergenceService,
     private readonly metrics: TripMetricsService,
   ) {}
 
@@ -155,60 +153,32 @@ export class HvFallbackChargeSessionDetectorService {
       };
     }
 
-    const nativeSessions = await this.prisma.hvChargeSession.findMany({
-      where: {
-        vehicleId: input.vehicleId,
-        source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
-      },
-    });
-
-    const fallbackRows = await this.prisma.hvChargeSession.findMany({
-      where: {
-        vehicleId: input.vehicleId,
-        source: HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
-      },
-    });
-
-    const results: HvChargeSessionPersistResult[] = [];
+    const results: HvFallbackChargeSessionDetectResult['results'] = [];
     for (const candidate of detection.sessions) {
-      const persistDecision = shouldPersistFallbackCandidate({
-        vehicleId: input.vehicleId,
-        candidate,
-        nativeSessions,
-        evaluatedAt,
-      });
-      if (!persistDecision.allowed) {
+      const authorityResult =
+        await this.nativeFallbackConvergence.persistProvisionalFallbackUnderAuthorityLock(
+          {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            candidate,
+            evaluatedAt,
+            correlationId:
+              input.correlationId ??
+              `hv-fallback:${input.vehicleId}:${candidate.startAt.getTime()}`,
+          },
+        );
+
+      if (authorityResult.authority.skipped || !authorityResult.session) {
         continue;
       }
 
-      let draft = mapFallbackCandidateToHvChargeSessionDraft({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        candidate,
-        reconciledAt: evaluatedAt,
+      results.push({
+        session: authorityResult.session,
+        created: authorityResult.created,
+        changed: authorityResult.changed,
+        changeKind: authorityResult.changeKind,
+        authority: authorityResult.authority,
       });
-      draft = alignFallbackDraftToPersistedAnchor({
-        vehicleId: input.vehicleId,
-        candidate,
-        draft,
-        existingFallbackRows: fallbackRows,
-        evaluatedAt,
-      });
-
-      const result = await this.persist.persistSessionDraft({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        draft,
-        correlationId:
-          input.correlationId ??
-          `hv-fallback:${input.vehicleId}:${draft.segmentFingerprint}`,
-      });
-      if (result.created) {
-        recordErdE3ConvergenceMetric(this.metrics, 'fallback_created');
-      } else if (result.changed) {
-        recordErdE3ConvergenceMetric(this.metrics, 'fallback_updated');
-      }
-      results.push(result);
     }
 
     this.logger.debug(
