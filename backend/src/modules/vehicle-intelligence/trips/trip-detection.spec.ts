@@ -988,6 +988,15 @@ describe('checkTripQuality', () => {
     expect(checkTripQuality(30_000, null, 0, null, now).shouldDiscard).toBe(true);
   });
 
+  it('keeps short trip with null distance when persisted route movement evidence is strong', () => {
+    const r = checkTripQuality(45_000, null, 15, null, now, {
+      hasMeaningfulPersistedRouteMovement: true,
+      movementAuthority: 'route_speed_motion',
+      cumulativeRouteMovementM: 120,
+    });
+    expect(r.shouldDiscard).toBe(false);
+  });
+
   it('discards trip with < 0.1 km and low consecutive active points', () => {
     const r = checkTripQuality(120_000, 0.05, 1, null, now);
     expect(r.shouldDiscard).toBe(true);
