@@ -342,6 +342,8 @@ COMMIT;
 
 **Why READ COMMITTED suffices:** uniqueness is enforced by the **single INSERT … ON CONFLICT** statement; the follow-up SELECT runs only when no row was inserted, in a still-valid transaction (no prior aborted statement).
 
+**`READ_COMMITTED_SUFFICIENT_DOCUMENTED=YES`**
+
 **Alternative (allowed):** Prisma `create` outside a long transaction → catch `P2002` → **new** read/verify transaction with payload equality check. Equally rigorous; still **`SAME_ABORTED_TX_USED_AFTER_UNIQUE_ERROR=NO`**.
 
 **`UNIQUE_CONFLICT_TRANSACTION_RECOVERY_VALID_FOR_POSTGRES=YES`**
