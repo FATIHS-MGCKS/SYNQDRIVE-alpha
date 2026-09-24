@@ -6,6 +6,90 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4.3 final architecture consistency closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4.2 sealed V1 contract; remaining ambiguity on single `sourceContentIntegrity`, DEFAULT-only SOURCE_EVIDENCE_LIMITED flag scope, and four-step ≤10,100 total result-instance bound. |
+| **OBSERVATION** | Unsupported input contract requires independent scalar vs snapshot subdimensions; PROVISIONAL/EXCLUDED source limits must emit profile-wide flag; step 2+4 may return ≤10,200 row instances. |
+| **HYPOTHESIS** | D4.3 doc-only closure preserves **`D4_IMPLEMENTATION_READY=YES`**. |
+| **CHANGE** | Split `sourceFeatureScalarIntegrity` / `sourceSnapshotContextIntegrity`; profile-wide `SOURCE_EVIDENCE_LIMITED` flag rules; `D4_UNIQUE_C3_ROW_ID_BOUND` vs `D4_FOUR_STEP_C3_RESULT_INSTANCE_BOUND`. |
+| **WHY** | Remove last machine-contract inconsistencies before D4 engineering. |
+| **EXPECTED_EFFECT** | Implementable read-only inspection contract without ambiguous aggregates. |
+| **VALIDATION** | Governance validators; CI on PR #1751. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/schema/deploy; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering. |
+| **DECISION_STATUS** | **ARCHITECTURE_CONSISTENCY_SEALED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 D4.3 amend |
+
+---
+
+## CL-2026-09-24 — M3.3D D4.2 integrity inspection final contract seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4.1 closed major provenance/rebuildability gaps; remaining ambiguities on unparseable outcome shape, D2 semantic invariants, unsupported matching input contract, digest coverage representation, DEFAULT accounting, inspectionFlags. |
+| **OBSERVATION** | Fake full overlay on parse failure contradicts trusted perSession/rebuildability; digest coverage is scope not PASS/FAIL; eligibility requires partitioned DEFAULT counts. |
+| **HYPOTHESIS** | D4.2 can freeze V1 machine contract without runtime implementation. |
+| **CHANGE** | Amended `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` (D4.2): distinct `REVISION_SELF_INTEGRITY_FAILED` top-level failure, §7 D2 semantic invariants, §9.8 unsupported input contract, digest scope enum, disposition accounting, closed `D4InspectionFlagV1`. |
+| **WHY** | Preserve authoritative **`D4_IMPLEMENTATION_READY=YES`** for engineering PR. |
+| **EXPECTED_EFFECT** | D4 service contract fully implementable read-only. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on PR #1751. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/schema/flag/deploy; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering implementation. |
+| **DECISION_STATUS** | **ARCHITECTURE_CONTRACT_SEALED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 D4.2 amend |
+
+---
+
+## CL-2026-09-24 — M3.3D D4.1 integrity inspection architecture contract closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 architecture audit on PR #1751 with correct direction but ambiguous machine contract (source content authority, rebuildability thresholds, outcome taxonomy, batch round trips). |
+| **OBSERVATION** | D1/D2 code copies feature scalars from C3 row columns; excluded sessions omit features; D1 snapshot parser is current-contract-only; C5A repository queries use runtime version constants. |
+| **HYPOTHESIS** | D4.1 closure can freeze `M3_3D_D4_INTEGRITY_INSPECTION_V1` without runtime implementation. |
+| **CHANGE** | Amended `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` (D4.1): source content map, historical input contract, deterministic rebuildability, service outcome vs overallStatus, processing order, full contract dimensions, constant SQL round trips, perSession cardinality. |
+| **WHY** | **`D4_IMPLEMENTATION_READY=YES`** requires unambiguous engineering contract. |
+| **EXPECTED_EFFECT** | D4 engineering PR can implement read-only inspection without policy drift. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on PR #1751. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/schema/migration/flag/Nest/API/UI/deploy; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering; combined SQL engineering detail; post-V1 ops surfaces. |
+| **DECISION_STATUS** | **ARCHITECTURE_CONTRACT_CLOSED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 D4.1 amend @ GitHub head |
+
+---
+
+## CL-2026-09-24 — M3.3D D4 longitudinal integrity / inspection architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 scope described in D0/D3 docs; **NEXT** = M3.3D D4; no frozen D4 inspection contract or overlay decision on main. |
+| **OBSERVATION** | D3 foundation complete on main; D3 runtime unreachable; C5A per-session inspection exists; D3 `findById` not tenant-scoped — D4 requires explicit architecture before engineering. |
+| **HYPOTHESIS** | Read-only **`M3_3D_D4_INTEGRITY_INSPECTION_V1`** overlay (no D2/D3 mutation) + C5A semantic reuse + bounded batch C3 reads closes D4 contract without M3.3E/M3.3F activation. |
+| **CHANGE** | Added `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md`; updated `CURRENT_STATE` (architecture audit on draft PR; not implemented). |
+| **WHY** | Freeze integrity dimensions, rebuildability semantics, tenant scoping, and test matrix before D4 code. |
+| **EXPECTED_EFFECT** | **`D4_IMPLEMENTATION_READY=YES`** after audit merge; engineering PR can follow without policy drift. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on audit PR. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/service/schema/migration/flag/Nest/API/UI/deploy; no D3 writer; no M3.3E health logic; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering; parameterized batch SQL detail; optional ops CLI post-V1; retention/rebuildability product policy. |
+| **DECISION_STATUS** | **ARCHITECTURE_AUDIT_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | Main @ `989d560f5`; D4 audit draft PR #1751 |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 Foundation post-merge seal
 
 | Field | Value |
