@@ -9,6 +9,7 @@ import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import { END_DETECTION_MODES } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 
 const VEHICLE = 'veh-r5a';
 const ORG = 'org-r5a';
@@ -245,6 +246,9 @@ describe('R5A — processFinalize rawDetectionMeta persistence', () => {
         },
         vehicleTripWaypoint: {
           findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue(
+            defaultFinalizeHarnessRouteWaypoints(trip.startTime),
+          ),
           count: jest.fn().mockResolvedValue(3),
         },
       },

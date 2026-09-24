@@ -209,7 +209,7 @@ function buildChContinuityHarness(options: {
     tryApplyClickHouseAssistedEnd: jest.fn().mockResolvedValue(false),
     hasClickHouseAnalyticsDetectors: jest.fn().mockReturnValue(true),
     findMidTripGap: jest.fn().mockReturnValue(null),
-    TRIP_MID_GAP_SPLIT_MS: 180_000,
+    maxSameTripQualifiedStopMs: 300_000,
     TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: 200,
     TRIP_MID_GAP_MIN_PRE_DURATION_MS: 60_000,
     resolveLiveMidGapDriftEvidence: jest.fn().mockResolvedValue({
@@ -634,7 +634,7 @@ describe('R8C.11 — mid_gap_split metric non-blocking', () => {
       OVERLAP_CORE_MS: 30_000,
       OVERLAP_ROUTE_MS: 15_000,
       OVERLAP_PERF_MS: 30_000,
-      TRIP_MID_GAP_SPLIT_MS: 180_000,
+      maxSameTripQualifiedStopMs: 300_000,
       TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: 200,
       TRIP_MID_GAP_MIN_PRE_DURATION_MS: 60_000,
       getOrCreateDetectionState: jest.fn().mockResolvedValue({
@@ -654,7 +654,7 @@ describe('R8C.11 — mid_gap_split metric non-blocking', () => {
       releaseWorkerLock: jest.fn().mockResolvedValue(undefined),
       maybeRecoverLifecycleInvariant: jest.fn().mockResolvedValue('continue'),
       findMidTripGap: jest.fn().mockReturnValue({
-        gapMs: 190_000,
+        gapMs: 349_586,
         firstEndAt: GAP_START,
         secondStartAt: GAP_END,
       }),

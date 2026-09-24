@@ -33,6 +33,8 @@ import {
   type ReconciliationTier,
   type TripAnomaly,
 } from './reconciliation.types';
+import { shouldSplitQualifiedStop } from '../trip-qualified-stop-duration.policy';
+import { resolveMaxSameTripQualifiedStopMs } from '../trip-qualified-stop-duration.config';
 import {
   TripDetectionState,
   TripStatus,
@@ -146,7 +148,7 @@ export class TripReconciliationService {
   // ─── Retroactive mid-trip gap-split thresholds ─────────────────────────
   // Mirrors TripDetectionOrchestrationService's live-path constants so the
   // two paths stay in lock-step and can't diverge silently.
-  private readonly TRIP_MID_GAP_SPLIT_MS: number;
+  private readonly maxSameTripQualifiedStopMs: number;
   private readonly TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: number;
   private readonly TRIP_MID_GAP_MIN_PRE_DURATION_MS: number;
   // Hard cap to prevent pathological recursion when a single trip contains
@@ -178,8 +180,10 @@ export class TripReconciliationService {
     @Optional()
     private readonly reconciliationMutex?: ReconciliationExecutionMutexService,
   ) {
-    this.TRIP_MID_GAP_SPLIT_MS =
-      this.configService?.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
+    this.maxSameTripQualifiedStopMs =
+      this.configService?.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
+      this.configService?.get<number>('worker.tripMidGapSplitMs') ??
+      resolveMaxSameTripQualifiedStopMs();
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M =
       this.configService?.get<number>(
         'worker.tripMidGapMaxStationaryDriftM',
@@ -2004,8 +2008,8 @@ export class TripReconciliationService {
   // already-finalized trips. Walks VehicleTripWaypoint records for each
   // completed trip in [from, to] and finds the largest eligible "stationary
   // silence" between consecutive waypoints. If the vehicle stayed in place
-  // (drift <= TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M) for at least
-  // TRIP_MID_GAP_SPLIT_MS, the trip is split into two canonical trips via
+  // (drift <= TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M) for a qualified stationary
+  // gap strictly longer than maxSameTripQualifiedStopMs, the trip is split into two canonical trips via
   // `TripDecisionEngine.splitTripAtGap`. Segment 2 is then finalized with
   // the original trip's endTime/endLat/endLng so both segments appear as
   // completed trips in the timeline.
@@ -2261,7 +2265,7 @@ export class TripReconciliationService {
    * satisfies ALL split criteria, or null if none qualify.
    *
    * Criteria:
-   *  - Gap between consecutive waypoints >= TRIP_MID_GAP_SPLIT_MS
+   *  - Gap between consecutive waypoints strictly exceeds maxSameTripQualifiedStopMs
    *  - Drift between pre- and post-gap waypoints <= TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M
    *  - Speed at pre-gap waypoint is null or <= 5 km/h (stopped)
    *  - Pre-segment duration (trip.startTime -> before.recordedAt) >= MIN_PRE_DURATION_MS
@@ -2295,7 +2299,7 @@ export class TripReconciliationService {
       const before = waypoints[i - 1];
       const after = waypoints[i];
       const gapMs = after.recordedAt.getTime() - before.recordedAt.getTime();
-      if (gapMs < this.TRIP_MID_GAP_SPLIT_MS) continue;
+      if (!shouldSplitQualifiedStop(gapMs, this.maxSameTripQualifiedStopMs)) continue;
 
       const beforeStopped = before.speedKmh == null || before.speedKmh <= 5;
       if (!beforeStopped) continue;

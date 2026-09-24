@@ -45,6 +45,7 @@ import {
   // assessActiveContinuity/evaluatePerformanceActivity → ContinuityAssessmentDetector (Phase 2 seam, done)
   // hasActivityResumed → EndContinuityDetector (Phase 2 seam, done)
   checkTripQuality,
+  hasPersistedMeaningfulMovementForQuality,
   refineTripStartBoundary,
   resolveAnalyticsAssistedStartDecision,
   resolveAnalyticsAssistedEndDecision,
@@ -104,10 +105,12 @@ import {
   buildMidGapRejectedForensics,
   classifyLiveMidGapDriftDecision,
   computeMidGapDriftEvidence,
+  findLargestQualifyingMidGapFromCoreTimeline,
   selectRoutePointAtOrAfter,
   selectRoutePointAtOrBefore,
   type MidGapSplitCommitPhase,
 } from './trip-mid-gap-split.util';
+import { resolveMaxSameTripQualifiedStopMs } from './trip-qualified-stop-duration.config';
 import {
   buildMidGapCommitAmbiguityForensics,
   readDurableLiveSplitOutcome,
@@ -214,6 +217,11 @@ import {
   observeStartRecognitionLatency,
   observeTripDuration,
 } from './trip-fsm-timing-observability.util';
+import {
+  analyzePersistedRouteMovement,
+  computePersistedRouteDisplacementM,
+  resolveFinalizeEndTime,
+} from './trip-finalize-quality.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -300,7 +308,8 @@ export class TripDetectionOrchestrationService {
   // and the trip is split into two canonical trips. Covers the DIMO case
   // where the telematics unit sleeps during a brief stop and no explicit
   // ignition-off signal is ever emitted.
-  private readonly TRIP_MID_GAP_SPLIT_MS: number;
+  /** Max qualified-stop duration that remains the same trip (ms); split when duration > this. */
+  private readonly maxSameTripQualifiedStopMs: number;
   // Max GPS drift between pre-gap and post-gap position that still counts
   // as "same parking spot" (prevents splitting signal dropouts during
   // actual driving, e.g., tunnels).
@@ -356,7 +365,10 @@ export class TripDetectionOrchestrationService {
       this.configService.get<number>('worker.tripEndEmptyCoreBackoffMaxMs') ?? 600_000;
     this.TRIP_EMPTY_CORE_BACKOFF_JITTER_RATIO =
       this.configService.get<number>('worker.tripEndEmptyCoreBackoffJitterRatio') ?? 0.15;
-    this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
+    this.maxSameTripQualifiedStopMs =
+      this.configService.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
+      this.configService.get<number>('worker.tripMidGapSplitMs') ??
+      resolveMaxSameTripQualifiedStopMs();
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
     this.tripStartBoundaryMaxLookbackMs =
@@ -1393,6 +1405,8 @@ export class TripDetectionOrchestrationService {
           0,
           previousTrip?.endTime ?? null,
           effectiveStartAt,
+          undefined,
+          this.maxSameTripQualifiedStopMs,
         );
 
         const recoveryPreflight = await this.maybeRecoverLifecycleInvariant({
@@ -2345,6 +2359,8 @@ export class TripDetectionOrchestrationService {
                   driftM: driftEvidence.driftM,
                   firstTripId: splitResult.firstTripId,
                   secondTripId: splitResult.secondTripId,
+                  maxSameTripStopMs: this.maxSameTripQualifiedStopMs,
+                  qualificationReason: 'live_mid_gap_qualified_stationary',
                 }),
                 durationMs: Date.now() - startedMs,
               });
@@ -3895,6 +3911,7 @@ export class TripDetectionOrchestrationService {
     let terminalTripId: string | null = null;
     let restingTransitionSucceeded = false;
     let detectionProfileLabel = 'UNKNOWN';
+    let finalizeQualityObservability: Record<string, unknown> | null = null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -3941,40 +3958,48 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const [latestWaypoint, waypointCount] = await Promise.all([
-            this.prisma.vehicleTripWaypoint.findFirst({
+          const [waypoints, waypointCountLegacy] = await Promise.all([
+            this.prisma.vehicleTripWaypoint.findMany({
               where: { tripId },
-              orderBy: { recordedAt: 'desc' },
+              orderBy: { recordedAt: 'asc' },
+              select: {
+                latitude: true,
+                longitude: true,
+                speedKmh: true,
+                recordedAt: true,
+              },
             }),
             this.prisma.vehicleTripWaypoint.count({ where: { tripId } }),
           ]);
+          const waypointCount = waypoints.length || waypointCountLegacy;
+          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
+          const routeMovement = analyzePersistedRouteMovement(
+            waypoints,
+            profileLabel,
+          );
+          const earliestWaypoint = waypoints[0] ?? null;
+          const latestWaypoint =
+            waypoints.length > 0 ? waypoints[waypoints.length - 1]! : null;
 
-          // ── End-time priority (most reliable → least reliable):
-          //   1. CUSUM validated segment end (change-point detected)
-          //   2. lastMeaningfulMovementAt (last observed movement)
-          //   3. lastWaypoint.recordedAt (last GPS fix)
-          //   4. possibleEndAt (first inactivity candidate)
-          //   5. now (absolute fallback)
-          const endTime =
-            (det as any).cusumSegmentEnd ??
-            (det as any).lastMeaningfulMovementAt ??
-            latestWaypoint?.recordedAt ??
-            det.possibleEndAt ??
-            new Date();
+          const routeDisplacementM = computePersistedRouteDisplacementM(
+            earliestWaypoint,
+            latestWaypoint,
+          );
 
+          const resolvedEnd = resolveFinalizeEndTime({
+            cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+            latestCredibleMovementAt: routeMovement.latestCredibleMovementAt,
+            possibleEndAt: det.possibleEndAt ?? null,
+            tripStartTime: trip.startTime,
+            fallbackNow: new Date(),
+          });
+          const endTime = resolvedEnd.endTime;
           const chosenEndSource =
             det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST &&
             (det as any).cusumSegmentEnd
               ? 'clickhouse_segment_end'
-              : (det as any).cusumSegmentEnd
-              ? 'cusum_segment_end'
-              : (det as any).lastMeaningfulMovementAt
-                ? 'last_meaningful_movement'
-                : latestWaypoint?.recordedAt
-                  ? 'last_waypoint'
-                  : det.possibleEndAt
-                    ? 'possible_end_at'
-                    : 'fallback_now';
+              : resolvedEnd.source;
 
           const boundaryWaypoint =
             latestWaypoint &&
@@ -4008,10 +4033,34 @@ export class TripDetectionOrchestrationService {
             waypointCount,
             null,
             trip.startTime,
+            {
+              routeDisplacementM,
+              hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+              movementAuthority: routeMovement.movementAuthority,
+              cumulativeRouteMovementM: routeMovement.cumulativeCredibleRouteMovementM,
+            },
           );
+          const qualityMeaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+            hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+          });
+          finalizeQualityObservability = {
+            QUALITY_DURATION_MS: durationMs,
+            QUALITY_DISTANCE_KM: trip.distanceKm,
+            QUALITY_WAYPOINT_COUNT: waypointCount,
+            QUALITY_MEANINGFUL_MOVEMENT: qualityMeaningfulMovement,
+            QUALITY_MOVEMENT_AUTHORITY: routeMovement.movementAuthority,
+            QUALITY_ROUTE_MOVEMENT_METERS: routeMovement.cumulativeCredibleRouteMovementM,
+            QUALITY_DECISION: qualityCheck.shouldDiscard
+              ? 'discard'
+              : qualityCheck.shouldMergeWithPrevious
+                ? 'merge'
+                : 'keep',
+            QUALITY_REASON: qualityCheck.reason ?? null,
+            FINALIZE_END_SOURCE: chosenEndSource,
+            FINALIZE_END_EVENT_AT: endTime.toISOString(),
+          };
 
           // ── Delegate all lifecycle mutations to TripDecisionEngine ──────────
-          const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
 
           if (qualityCheck.shouldDiscard) {
             terminalLifecycleIntent = 'CANCEL';
@@ -4339,6 +4388,10 @@ export class TripDetectionOrchestrationService {
         stateAtRun: det.state,
         runType: TripTrackingRunType.FINALIZATION_CHECK,
         resultState: TripDetectionState.RESTING,
+        resultSummary: {
+          terminalLifecycleCommit,
+          ...(finalizeQualityObservability ?? {}),
+        },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
@@ -4959,56 +5012,18 @@ export class TripDetectionOrchestrationService {
 
     if (timeline.length < 2) return null;
 
-    let bestIdx = -1;
-    let bestGapMs = 0;
-    for (let i = 1; i < timeline.length; i++) {
-      const before = timeline[i - 1];
-      const after = timeline[i];
-      const gapMs = after.ts.getTime() - before.ts.getTime();
-      if (gapMs < this.TRIP_MID_GAP_SPLIT_MS) continue;
-      const beforeStopped = before.speed == null || before.speed <= 5;
-      if (!beforeStopped) continue;
-      if (gapMs > bestGapMs) {
-        bestIdx = i;
-        bestGapMs = gapMs;
-      }
-    }
+    const selected = findLargestQualifyingMidGapFromCoreTimeline({
+      timeline,
+      maxSameTripQualifiedStopMs: this.maxSameTripQualifiedStopMs,
+    });
+    if (!selected) return null;
 
-    if (bestIdx < 0) return null;
-
-    // Confirm motion resumed at/after the gap: the `after` sample itself
-    // is moving, OR a later sample in the same batch shows motion.
-    const after = timeline[bestIdx];
-    const afterMoving = after.speed != null && after.speed > 5;
-    const anyLaterMoving = timeline
-      .slice(bestIdx)
-      .some((p) => p.speed != null && p.speed > 5);
-    if (!afterMoving && !anyLaterMoving) return null;
-
-    // Resolve the split point: prefer the after-gap sample if it shows
-    // motion; otherwise advance to the first later sample that does.
-    let secondStartIdx = bestIdx;
-    if (!afterMoving) {
-      for (let i = bestIdx + 1; i < timeline.length; i++) {
-        const p = timeline[i];
-        if (p.speed != null && p.speed > 5) {
-          secondStartIdx = i;
-          break;
-        }
-      }
-    }
-
-    const before = timeline[bestIdx - 1];
-    const second = timeline[secondStartIdx];
-
-    // Lat/Lng are not on the core-data shape — caller will resolve these
-    // via waypoints when drift-validating the split.
     return {
-      gapMs: bestGapMs,
-      firstEndAt: before.ts,
+      gapMs: selected.gapMs,
+      firstEndAt: selected.firstEndAt,
       firstEndLatitude: null,
       firstEndLongitude: null,
-      secondStartAt: second.ts,
+      secondStartAt: selected.secondStartAt,
       secondStartLatitude: null,
       secondStartLongitude: null,
     };

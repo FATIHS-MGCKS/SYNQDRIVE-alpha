@@ -988,6 +988,15 @@ describe('checkTripQuality', () => {
     expect(checkTripQuality(30_000, null, 0, null, now).shouldDiscard).toBe(true);
   });
 
+  it('keeps short trip with null distance when persisted route movement evidence is strong', () => {
+    const r = checkTripQuality(45_000, null, 15, null, now, {
+      hasMeaningfulPersistedRouteMovement: true,
+      movementAuthority: 'route_speed_motion',
+      cumulativeRouteMovementM: 120,
+    });
+    expect(r.shouldDiscard).toBe(false);
+  });
+
   it('discards trip with < 0.1 km and low consecutive active points', () => {
     const r = checkTripQuality(120_000, 0.05, 1, null, now);
     expect(r.shouldDiscard).toBe(true);
@@ -1000,9 +1009,18 @@ describe('checkTripQuality', () => {
     expect(r.shouldMergeWithPrevious).toBe(true);
   });
 
+  it('merges with previous trip when gap is exactly 5 min', () => {
+    const prevEnd = new Date(now.getTime() - 5 * 60_000);
+    expect(checkTripQuality(120_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      true,
+    );
+  });
+
   it('does NOT merge if gap > 5 min', () => {
     const prevEnd = new Date(now.getTime() - 10 * 60_000);
-    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(false);
+    expect(checkTripQuality(300_000, 5, 3, prevEnd, now).shouldMergeWithPrevious).toBe(
+      false,
+    );
   });
 
   it('accepts a normal quality trip', () => {

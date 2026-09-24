@@ -45,7 +45,7 @@ describe('TripDecisionEngine.splitTripAtGap (R6A)', () => {
         tripId: 'trip-1',
         firstEndAt,
         secondStartAt,
-        gapMs: 190_000,
+        gapMs: 349_586,
         reason: 'live_mid_trip_gap_split',
         triggeredBy: 'LIVE_FSM',
         splitDriftM: 12,
