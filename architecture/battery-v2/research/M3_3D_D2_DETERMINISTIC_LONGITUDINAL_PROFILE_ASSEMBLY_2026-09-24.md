@@ -1,7 +1,7 @@
 # M3.3D D2 — Deterministic Longitudinal Profile Assembly
 
 **Date:** 2026-09-24  
-**Status:** Engineering — **DRAFT PR** (not on `main`)  
+**Status:** Engineering — **DRAFT PR #1739** (not on `main`)  
 **Main anchor (D1 seal):** `9d0dbc7d3db0b5a3137356fc5c50b732bfd7fe3f`  
 **Input contract:** `M3_3D_D1_LONGITUDINAL_INPUT_V1` (`LongitudinalInputReadResultV1`)  
 **Output contract:** `M3_3D_LONGITUDINAL_PROFILE_V1`  

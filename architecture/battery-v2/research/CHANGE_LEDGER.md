@@ -23,7 +23,7 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | D3 materialization; D4 integrity batch; DEC-M3.3D-001 minimum sessions; M3.3E health. |
 | **DECISION_STATUS** | **ENGINEERING_DRAFT** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
-| **EVIDENCE** | Draft PR (D2); D1 main @ `9d0dbc7d3` |
+| **EVIDENCE** | Draft PR #1739 (D2); D1 main @ `9d0dbc7d3` |
 
 ---
 
