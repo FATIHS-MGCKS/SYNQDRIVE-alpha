@@ -416,4 +416,83 @@ describe('parseLongitudinalScientificProfileProjectionV1 (M3.3D D4)', () => {
       });
     });
   });
+
+  describe('strict V1 unknown keys and coercion', () => {
+    it('rejects unknown root field', () => {
+      const projection = validProjection();
+      expect(parseRaw({ ...projection, extraRootField: true })).toEqual({
+        status: 'FAILED',
+        reason: 'MALFORMED_SCIENTIFIC_PROFILE',
+      });
+    });
+
+    it('rejects unknown observation field', () => {
+      const projection = validProjection();
+      const obs = { ...projection.observations[0], extraObservationField: true };
+      expect(parseRaw({ ...projection, observations: [obs] })).toEqual({
+        status: 'FAILED',
+        reason: 'MALFORMED_SCIENTIFIC_PROFILE',
+      });
+    });
+
+    it('rejects unknown feature field', () => {
+      const projection = validProjection();
+      const obs = {
+        ...projection.observations[0],
+        features: { ...projection.observations[0].features, extraFeatureField: 1 },
+      };
+      expect(parseRaw({ ...projection, observations: [obs] })).toEqual({
+        status: 'FAILED',
+        reason: 'MALFORMED_SCIENTIFIC_PROFILE',
+      });
+    });
+
+    it('rejects excluded version tuple with numeric featureModelVersion', () => {
+      const projection = buildD4TestProjection([
+        buildProfileTestInventoryItem({
+          restSessionId: 'e-num',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'EXCLUDED',
+          exclusionReasons: ['NO_CANONICAL_ROW'],
+          includePayload: false,
+        }),
+      ]);
+      const excluded = {
+        ...projection.excludedSessions[0],
+        version: {
+          featureModelVersion: 1,
+          retentionPolicyVersion: 'ret-v1',
+          chargeOpportunityPolicyVersion: 'chg-v1',
+          inputContractVersion: null,
+          inputContractResolution: 'UNRESOLVED',
+        },
+      };
+      expect(parseRaw({ ...projection, excludedSessions: [excluded] })).toEqual({
+        status: 'FAILED',
+        reason: 'MALFORMED_SCIENTIFIC_PROFILE',
+      });
+    });
+
+    it('accepts JSON key-order differences on observation objects', () => {
+      const projection = validProjection();
+      const obs = projection.observations[0];
+      const reordered = JSON.parse(
+        JSON.stringify({
+          features: obs.features,
+          restSessionId: obs.restSessionId,
+          anchorAt: obs.anchorAt,
+          sessionStatus: obs.sessionStatus,
+          endReason: obs.endReason,
+          canonical: obs.canonical,
+          versionTuple: obs.versionTuple,
+          anchorResolutionStatus: obs.anchorResolutionStatus,
+          perSessionInspectionStatus: obs.perSessionInspectionStatus,
+          chargeContextCompleteness: obs.chargeContextCompleteness,
+          temperatureC: obs.temperatureC,
+          temperatureSource: obs.temperatureSource,
+        }),
+      );
+      expect(parseRaw({ ...projection, observations: [reordered] }).status).toBe('OK');
+    });
+  });
 });

@@ -41,6 +41,27 @@ function fail(reason: D4ReasonCode): ParseLongitudinalScientificProfileProjectio
   return { status: 'FAILED', reason };
 }
 
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  const allowedSet = new Set(allowed);
+  for (const key of Object.keys(value)) {
+    if (!allowedSet.has(key)) return false;
+  }
+  for (const key of allowed) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) return false;
+  }
+  return true;
+}
+
+const COMPUTATION_PHASES = ['INCREMENTAL', 'FINAL'] as const;
+const SESSION_TRUSTS = ['VALID', 'INVALIDATED'] as const;
+const CHARGE_OPPORTUNITY_CLASSES = [
+  'SUFFICIENT',
+  'PARTIAL',
+  'INSUFFICIENT',
+  'UNKNOWN',
+] as const;
+const ANCHOR_RESOLUTION_STATUSES = ['SELECTED', 'UNAVAILABLE', 'AMBIGUOUS'] as const;
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
@@ -119,6 +140,16 @@ function recomputeExcludedByReason(
 function parseVersionTuple(value: unknown): LongitudinalProfileVersionTupleV1 | null {
   if (!isRecord(value)) return null;
   if (
+    !hasOnlyKeys(value, [
+      'featureModelVersion',
+      'retentionPolicyVersion',
+      'chargeOpportunityPolicyVersion',
+      'inputContractVersion',
+    ])
+  ) {
+    return null;
+  }
+  if (
     !isNonEmptyString(value.featureModelVersion) ||
     !isNonEmptyString(value.retentionPolicyVersion) ||
     !isNonEmptyString(value.chargeOpportunityPolicyVersion) ||
@@ -137,12 +168,29 @@ function parseVersionTuple(value: unknown): LongitudinalProfileVersionTupleV1 | 
 function parseCanonical(value: unknown): LongitudinalProfileObservationV1['canonical'] | null {
   if (!isRecord(value)) return null;
   if (
+    !hasOnlyKeys(value, [
+      'canonicalFeatureRowId',
+      'semanticRevision',
+      'computationPhase',
+      'sessionTrust',
+      'inputDigest',
+    ])
+  ) {
+    return null;
+  }
+  if (
     !isNonEmptyString(value.canonicalFeatureRowId) ||
     typeof value.semanticRevision !== 'number' ||
     !Number.isInteger(value.semanticRevision) ||
-    !isNonEmptyString(value.computationPhase) ||
-    !isNonEmptyString(value.sessionTrust) ||
+    typeof value.computationPhase !== 'string' ||
+    typeof value.sessionTrust !== 'string' ||
     !isNonEmptyString(value.inputDigest)
+  ) {
+    return null;
+  }
+  if (
+    !COMPUTATION_PHASES.includes(value.computationPhase as (typeof COMPUTATION_PHASES)[number]) ||
+    !SESSION_TRUSTS.includes(value.sessionTrust as (typeof SESSION_TRUSTS)[number])
   ) {
     return null;
   }
@@ -171,9 +219,7 @@ function parseFeatures(value: unknown): LongitudinalProfileObservationV1['featur
     'missingRungCount',
     'chargeOpportunityClass',
   ];
-  for (const key of fields) {
-    if (!(key in value)) return null;
-  }
+  if (!hasOnlyKeys(value, fields)) return null;
   if (
     !isNullableNumber(value.shutdownToFirstRestDeltaMv) ||
     !isNullableNumber(value.robustRestSlopeMvPerHour) ||
@@ -187,7 +233,10 @@ function parseFeatures(value: unknown): LongitudinalProfileObservationV1['featur
     !isNullableNumber(value.maxInterObservationGapMs) ||
     !isNullableNumber(value.observationSpanMs) ||
     !isNullableNumber(value.missingRungCount) ||
-    typeof value.chargeOpportunityClass !== 'string'
+    typeof value.chargeOpportunityClass !== 'string' ||
+    !CHARGE_OPPORTUNITY_CLASSES.includes(
+      value.chargeOpportunityClass as (typeof CHARGE_OPPORTUNITY_CLASSES)[number],
+    )
   ) {
     return null;
   }
@@ -196,6 +245,24 @@ function parseFeatures(value: unknown): LongitudinalProfileObservationV1['featur
 
 function parseObservation(value: unknown): LongitudinalProfileObservationV1 | null {
   if (!isRecord(value)) return null;
+  if (
+    !hasOnlyKeys(value, [
+      'restSessionId',
+      'anchorAt',
+      'sessionStatus',
+      'endReason',
+      'canonical',
+      'versionTuple',
+      'features',
+      'anchorResolutionStatus',
+      'perSessionInspectionStatus',
+      'chargeContextCompleteness',
+      'temperatureC',
+      'temperatureSource',
+    ])
+  ) {
+    return null;
+  }
   if (
     !isNonEmptyString(value.restSessionId) ||
     !isCanonicalUtcIsoTimestamp(String(value.anchorAt)) ||
@@ -214,7 +281,10 @@ function parseObservation(value: unknown): LongitudinalProfileObservationV1 | nu
   const features = parseFeatures(value.features);
   if (!versionTuple || !canonical || !features) return null;
   if (
-    typeof value.anchorResolutionStatus !== 'string'
+    typeof value.anchorResolutionStatus !== 'string' ||
+    !ANCHOR_RESOLUTION_STATUSES.includes(
+      value.anchorResolutionStatus as (typeof ANCHOR_RESOLUTION_STATUSES)[number],
+    )
   ) {
     return null;
   }
@@ -237,6 +307,20 @@ function parseObservation(value: unknown): LongitudinalProfileObservationV1 | nu
 
 function parseExcluded(value: unknown): LongitudinalProfileExcludedSessionV1 | null {
   if (!isRecord(value)) return null;
+  if (
+    !hasOnlyKeys(value, [
+      'restSessionId',
+      'anchorAt',
+      'sessionStatus',
+      'endReason',
+      'exclusionReasons',
+      'canonical',
+      'version',
+      'inputDigest',
+    ])
+  ) {
+    return null;
+  }
   if (
     !isNonEmptyString(value.restSessionId) ||
     !isCanonicalUtcIsoTimestamp(String(value.anchorAt)) ||
@@ -268,25 +352,47 @@ function parseExcluded(value: unknown): LongitudinalProfileExcludedSessionV1 | n
   let version: LongitudinalProfileExcludedSessionV1['version'] = null;
   if (value.version !== null) {
     if (!isRecord(value.version)) return null;
-    const resolution = value.version.inputContractResolution;
-    if (resolution !== 'RESOLVED' && resolution !== 'UNRESOLVED') return null;
-    version = {
-      featureModelVersion: String(value.version.featureModelVersion ?? ''),
-      retentionPolicyVersion: String(value.version.retentionPolicyVersion ?? ''),
-      chargeOpportunityPolicyVersion: String(value.version.chargeOpportunityPolicyVersion ?? ''),
-      inputContractVersion:
-        value.version.inputContractVersion === null
-          ? null
-          : String(value.version.inputContractVersion),
-      inputContractResolution: resolution,
-    };
     if (
-      !version.featureModelVersion ||
-      !version.retentionPolicyVersion ||
-      !version.chargeOpportunityPolicyVersion
+      !hasOnlyKeys(value.version, [
+        'featureModelVersion',
+        'retentionPolicyVersion',
+        'chargeOpportunityPolicyVersion',
+        'inputContractVersion',
+        'inputContractResolution',
+      ])
     ) {
       return null;
     }
+    const resolution = value.version.inputContractResolution;
+    if (resolution !== 'RESOLVED' && resolution !== 'UNRESOLVED') return null;
+    const featureModelVersion = value.version.featureModelVersion;
+    const retentionPolicyVersion = value.version.retentionPolicyVersion;
+    const chargeOpportunityPolicyVersion = value.version.chargeOpportunityPolicyVersion;
+    const inputContractVersion = value.version.inputContractVersion;
+    if (
+      typeof featureModelVersion !== 'string' ||
+      featureModelVersion.length === 0 ||
+      typeof retentionPolicyVersion !== 'string' ||
+      retentionPolicyVersion.length === 0 ||
+      typeof chargeOpportunityPolicyVersion !== 'string' ||
+      chargeOpportunityPolicyVersion.length === 0
+    ) {
+      return null;
+    }
+    if (
+      inputContractVersion !== null &&
+      (typeof inputContractVersion !== 'string' || inputContractVersion.length === 0)
+    ) {
+      return null;
+    }
+    version = {
+      featureModelVersion,
+      retentionPolicyVersion,
+      chargeOpportunityPolicyVersion,
+      inputContractVersion:
+        inputContractVersion === null ? null : inputContractVersion,
+      inputContractResolution: resolution,
+    };
   }
   const inputDigest =
     value.inputDigest === null
@@ -344,7 +450,38 @@ export function parseLongitudinalScientificProfileProjectionV1(
   if (!isRecord(input.window)) {
     return fail('MALFORMED_SCIENTIFIC_PROFILE');
   }
+  if (
+    !hasOnlyKeys(input.window, [
+      'requestedSessionLimit',
+      'appliedSessionLimit',
+      'firstIncludedAnchorAt',
+      'lastIncludedAnchorAt',
+    ])
+  ) {
+    return fail('MALFORMED_SCIENTIFIC_PROFILE');
+  }
   if (Object.prototype.hasOwnProperty.call(input.window, 'profileGeneratedAt')) {
+    return fail('MALFORMED_SCIENTIFIC_PROFILE');
+  }
+
+  const ROOT_KEYS = [
+    'longitudinalProfileContractVersion',
+    'profilePolicyVersion',
+    'organizationId',
+    'vehicleId',
+    'window',
+    'coverage',
+    'profileStatus',
+    'statusReasons',
+    'profileFlags',
+    'trendReadiness',
+    'observations',
+    'provisionalObservations',
+    'excludedSessions',
+    'versionSegments',
+    'derived',
+  ] as const;
+  if (!hasOnlyKeys(input, ROOT_KEYS)) {
     return fail('MALFORMED_SCIENTIFIC_PROFILE');
   }
 

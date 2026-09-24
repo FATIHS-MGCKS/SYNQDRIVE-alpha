@@ -45,15 +45,15 @@ export function evaluateMaterializedRevisionSelfIntegrity(
     reasons.push('PROFILE_FINGERPRINT_MISMATCH');
   }
 
-  const canonicalUtf8 = canonicalFeatureInputUtf8(projection);
-  const recomputed = sha256HexLowercaseUtf8(canonicalUtf8);
-  if (recomputed !== revision.canonicalProfileFingerprint) {
+  const rawCanonicalUtf8 = canonicalFeatureInputUtf8(revision.scientificProfileJson);
+  const rawRecomputed = sha256HexLowercaseUtf8(rawCanonicalUtf8);
+  if (rawRecomputed !== revision.canonicalProfileFingerprint) {
     reasons.push('PROFILE_FINGERPRINT_MISMATCH');
   }
 
   const persistenceInput = buildLongitudinalProfileMaterializationPersistenceInput({
     scientificProjection: projection,
-    canonicalScientificUtf8: canonicalUtf8,
+    canonicalScientificUtf8: rawCanonicalUtf8,
     canonicalProfileFingerprint: revision.canonicalProfileFingerprint,
   });
 

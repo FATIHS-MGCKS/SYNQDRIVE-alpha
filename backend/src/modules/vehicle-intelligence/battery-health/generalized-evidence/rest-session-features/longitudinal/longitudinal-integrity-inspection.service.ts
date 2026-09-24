@@ -2,12 +2,7 @@ import { Prisma } from '@prisma/client';
 import type { PrismaService } from '@shared/database/prisma.service';
 import { REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION } from './longitudinal-integrity-inspection.constants';
 import { aggregateD4InspectionOverlay } from './longitudinal-integrity-inspection.aggregate';
-import {
-  getDbRoundTripCount,
-  incrementDbRoundTripCount,
-  recordLastD4InspectionDbRoundTripCount,
-  resetDbRoundTripCount,
-} from './longitudinal-integrity-inspection.db-round-trips';
+import { D4InspectionDbRoundTripBudget } from './longitudinal-integrity-inspection.db-round-trips';
 import {
   LongitudinalIntegrityInspectionRepository,
   buildD4SessionKeysFromProjection,
@@ -33,6 +28,7 @@ export type LongitudinalIntegrityInspectionServiceDb = LongitudinalIntegrityInsp
 
 export class LongitudinalIntegrityInspectionService {
   private readonly repository: LongitudinalIntegrityInspectionRepository;
+  private lastInspectionDbRoundTrips: number | null = null;
 
   constructor(
     private readonly prisma: LongitudinalIntegrityInspectionServiceDb,
@@ -41,13 +37,17 @@ export class LongitudinalIntegrityInspectionService {
     this.repository = new LongitudinalIntegrityInspectionRepository(prisma);
   }
 
+  getLastInspectionDbRoundTrips(): number | null {
+    return this.lastInspectionDbRoundTrips;
+  }
+
   async inspectRevision(request: D4InspectionRequest): Promise<D4InspectionOutcome> {
-    resetDbRoundTripCount();
+    const budget = new D4InspectionDbRoundTripBudget();
     let outcome: D4InspectionOutcome = { status: 'REVISION_NOT_FOUND' };
 
     await this.prisma.$transaction(
       async (tx) => {
-        incrementDbRoundTripCount();
+        budget.increment();
         const revision = await tx.batteryLongitudinalProfileRevision.findFirst({
           where: {
             id: request.revisionId,
@@ -57,7 +57,7 @@ export class LongitudinalIntegrityInspectionService {
         });
         if (!revision) {
           outcome = { status: 'REVISION_NOT_FOUND' };
-          recordLastD4InspectionDbRoundTripCount(getDbRoundTripCount());
+          this.lastInspectionDbRoundTrips = budget.getCount();
           return;
         }
 
@@ -82,7 +82,7 @@ export class LongitudinalIntegrityInspectionService {
             reasons: selfCheck.reasons,
           };
           outcome = { status: 'REVISION_SELF_INTEGRITY_FAILED', failure };
-          recordLastD4InspectionDbRoundTripCount(getDbRoundTripCount());
+          this.lastInspectionDbRoundTrips = budget.getCount();
           return;
         }
 
@@ -106,7 +106,10 @@ export class LongitudinalIntegrityInspectionService {
             sessionKeys,
             referencedRowIds,
           },
+          budget,
         );
+
+        budget.assertWithinBound();
 
         const inspection = aggregateD4InspectionOverlay({
           projection,
@@ -128,7 +131,7 @@ export class LongitudinalIntegrityInspectionService {
         });
 
         outcome = { status: 'OK', inspection };
-        recordLastD4InspectionDbRoundTripCount(getDbRoundTripCount());
+        this.lastInspectionDbRoundTrips = budget.getCount();
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );

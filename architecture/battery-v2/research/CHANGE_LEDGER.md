@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4 engineering correctness + Postgres proof closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 V1 draft had EXCLUDED canonical skip bug, zero-row aggregate `COUNT(*)`, process-global DB counter, projection-based fingerprint self-check, loose parser/historical taxonomy, partial PG matrix, unauthorized frontend runtime entries. |
+| **CHANGE** | CASE A–D source integrity; `COUNT(f.id)` aggregates; inspection-local `D4InspectionDbRoundTripBudget`; raw JSON fingerprint; strict parser + historical outcome taxonomy; PG-A–PG-Y (25) + helpers; frontend D4 UI reverted; engineering doc closure section. |
+| **VALIDATION** | `npm run test:battery:v2:longitudinal-integrity-inspection:postgres` (93); D3/D1/C5A postgres regressions PASS on ephemeral DB. |
+| **NON_EFFECTS** | No Nest/API/migration/flags; **`D3_RUNTIME_REACHABLE=NO`**; goldens unchanged. |
+| **DECISION_STATUS** | **ENGINEERING_V1_DRAFT** (PR #1754) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D D4 integrity inspection |
+
+## CL-2026-09-24 — M3.3D D4 PostgreSQL integration PG-A–PG-Y closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 integration spec used legacy `getLastD4InspectionDbRoundTripCount` / `getDbRoundTripCount`; partial PG labels; synthetic `row-s1` ids. |
+| **CHANGE** | Full gated PG-A–PG-Y suite + `longitudinal-integrity-inspection.integration.helpers.ts`; `getLastInspectionDbRoundTrips()`; `loadInspectionBatch` `{ snapshot, dbRoundTrips }`; referenced-id SQL `text[]` cast; excluded identity `input.excluded` fix. |
+| **VALIDATION** | `BATTERY_V2_LONGITUDINAL_INTEGRITY_INSPECTION_INTEGRATION=1 npx jest longitudinal-integrity-inspection.integration --runInBand` (25/25). |
+| **DECISION_STATUS** | **ENGINEERING_V1_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D D4 integrity inspection |
+
 ## CL-2026-09-24 — M3.3D D4 longitudinal integrity inspection engineering V1
 
 | Field | Value |

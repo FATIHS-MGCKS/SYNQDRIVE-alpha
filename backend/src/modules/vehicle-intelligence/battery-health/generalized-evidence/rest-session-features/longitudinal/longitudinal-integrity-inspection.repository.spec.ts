@@ -1,9 +1,6 @@
 import type { BatteryLongitudinalProfileRevision } from '@prisma/client';
-import {
-  LongitudinalIntegrityInspectionRepository,
-  getDbRoundTripCount,
-  resetDbRoundTripCount,
-} from './longitudinal-integrity-inspection.repository';
+import { D4InspectionDbRoundTripBudget } from './longitudinal-integrity-inspection.db-round-trips';
+import { LongitudinalIntegrityInspectionRepository } from './longitudinal-integrity-inspection.repository';
 import type { PrismaService } from '@shared/database/prisma.service';
 
 function mockTx() {
@@ -27,8 +24,7 @@ describe('LongitudinalIntegrityInspectionRepository (D4 round trips)', () => {
       $transaction: jest.fn(async (fn: (inner: typeof tx) => Promise<unknown>) => fn(tx)),
     } as unknown as PrismaService;
     const repo = new LongitudinalIntegrityInspectionRepository(db);
-    resetDbRoundTripCount();
-    const snapshot = await repo.loadInspectionBatch({
+    const loaded = await repo.loadInspectionBatch({
       request: {
         organizationId: '11111111-1111-1111-1111-111111111111',
         vehicleId: '22222222-2222-2222-2222-222222222222',
@@ -47,25 +43,31 @@ describe('LongitudinalIntegrityInspectionRepository (D4 round trips)', () => {
       ],
       referencedRowIds: ['row-s1'],
     });
-    expect(snapshot?.revision.id).toBe('rev-1');
-    expect(getDbRoundTripCount()).toBeLessThanOrEqual(4);
+    expect(loaded?.snapshot.revision.id).toBe('rev-1');
+    expect(loaded?.dbRoundTrips).toBeLessThanOrEqual(4);
     expect(tx.batteryRestSessionFeature.findMany).toHaveBeenCalledTimes(1);
     expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
   });
 
-  it('readSourceEvidenceBatchInTransaction uses three counted round trips without revision fetch', async () => {
+  it('readSourceEvidenceBatchInTransaction skips DB increments when no keys or ids', async () => {
     const tx = mockTx();
     const repo = new LongitudinalIntegrityInspectionRepository({} as PrismaService);
-    resetDbRoundTripCount();
-    await repo.readSourceEvidenceBatchInTransaction(tx as never, {
-      request: {
-        organizationId: '11111111-1111-1111-1111-111111111111',
-        vehicleId: '22222222-2222-2222-2222-222222222222',
-        revisionId: 'rev-1',
+    const budget = new D4InspectionDbRoundTripBudget();
+    await repo.readSourceEvidenceBatchInTransaction(
+      tx as never,
+      {
+        request: {
+          organizationId: '11111111-1111-1111-1111-111111111111',
+          vehicleId: '22222222-2222-2222-2222-222222222222',
+          revisionId: 'rev-1',
+        },
+        sessionKeys: [],
+        referencedRowIds: [],
       },
-      sessionKeys: [],
-      referencedRowIds: [],
-    });
-    expect(getDbRoundTripCount()).toBe(3);
+      budget,
+    );
+    expect(budget.getCount()).toBe(0);
+    expect(tx.batteryRestSessionFeature.findMany).not.toHaveBeenCalled();
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
   });
 });

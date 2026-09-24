@@ -110,5 +110,37 @@ describe('LongitudinalIntegrityInspectionService', () => {
       expect(outcome.inspection.perSession.length).toBe(1);
       expect(outcome.inspection.profile.overallStatus).toBe('SOURCE_EVIDENCE_LIMITED');
     }
+    expect(service.getLastInspectionDbRoundTrips()).toBe(1);
+  });
+
+  it('keeps independent DB round-trip budgets for concurrent inspections', async () => {
+    const revision = mockRevision();
+    jest
+      .spyOn(
+        LongitudinalIntegrityInspectionRepository.prototype,
+        'readSourceEvidenceBatchInTransaction',
+      )
+      .mockResolvedValue({
+        sourceRowsById: new Map(),
+        aggregatesBySessionKey: new Map(),
+        totalRowsBySessionKey: new Map(),
+        latestRowsBySessionKey: new Map(),
+      });
+
+    const prisma = mockPrismaWithRevision(revision) as never;
+    const serviceA = new LongitudinalIntegrityInspectionService(prisma, {
+      nowIso: () => '2026-09-24T12:00:00.000Z',
+    });
+    const serviceB = new LongitudinalIntegrityInspectionService(prisma, {
+      nowIso: () => '2026-09-24T12:00:00.000Z',
+    });
+    const request = {
+      organizationId: PROFILE_TEST_ORG,
+      vehicleId: PROFILE_TEST_VEHICLE,
+      revisionId: revision.id,
+    };
+    await Promise.all([serviceA.inspectRevision(request), serviceB.inspectRevision(request)]);
+    expect(serviceA.getLastInspectionDbRoundTrips()).toBe(1);
+    expect(serviceB.getLastInspectionDbRoundTrips()).toBe(1);
   });
 });

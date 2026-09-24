@@ -48,15 +48,40 @@ describe('parseHistoricalFeatureInputSummaryForD4', () => {
       inputSummary: { ...validSummary, inputContractVersion: undefined },
       expectedInputContractVersion: REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION,
     });
-    expect(outcome.status).toBe('UNRESOLVED');
+    expect(outcome.status).toBe('VERSION_UNRESOLVED_OR_MISMATCH');
   });
 
-  it('returns UNRESOLVED when expected version differs from persisted summary', () => {
+  it('returns VERSION_UNRESOLVED_OR_MISMATCH when expected version differs from persisted summary', () => {
     const outcome = parseHistoricalFeatureInputSummaryForD4({
       ...identity,
       inputSummary: validSummary,
       expectedInputContractVersion: 'OTHER_VERSION',
     });
-    expect(outcome.status).toBe('UNRESOLVED');
+    expect(outcome.status).toBe('VERSION_UNRESOLVED_OR_MISMATCH');
+  });
+
+  it('returns MALFORMED_SUPPORTED_INPUT_SUMMARY when registered contract payload is invalid', () => {
+    const outcome = parseHistoricalFeatureInputSummaryForD4({
+      ...identity,
+      inputSummary: {
+        ...validSummary,
+        chargeOpportunityRaw: {
+          contextCompleteness: ['NOT_A_REAL_REASON'],
+          temperatureC: null,
+          temperatureSource: 'UNKNOWN',
+        },
+      },
+      expectedInputContractVersion: REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION,
+    });
+    expect(outcome.status).toBe('MALFORMED_SUPPORTED_INPUT_SUMMARY');
+  });
+
+  it('returns IDENTITY_MISMATCH when summary identity disagrees with caller', () => {
+    const outcome = parseHistoricalFeatureInputSummaryForD4({
+      ...identity,
+      inputSummary: { ...validSummary, restSessionId: 'other-session' },
+      expectedInputContractVersion: REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION,
+    });
+    expect(outcome.status).toBe('IDENTITY_MISMATCH');
   });
 });

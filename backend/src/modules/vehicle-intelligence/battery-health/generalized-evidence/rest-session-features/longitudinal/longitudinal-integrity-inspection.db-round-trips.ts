@@ -1,23 +1,22 @@
-/** Test/diagnostic counter for SQL round trips inside one D4 inspection transaction. */
-let activeRoundTripCount = 0;
-let lastCompletedInspectionDbRoundTrips = 0;
+import { D4_INSPECTION_DB_ROUND_TRIP_BOUND } from './longitudinal-integrity-inspection.constants';
 
-export function resetDbRoundTripCount(): void {
-  activeRoundTripCount = 0;
-}
+/** Per-inspection SQL round-trip budget (no process-global mutable state). */
+export class D4InspectionDbRoundTripBudget {
+  private count = 0;
 
-export function getDbRoundTripCount(): number {
-  return activeRoundTripCount;
-}
+  increment(): void {
+    this.count += 1;
+  }
 
-export function incrementDbRoundTripCount(): void {
-  activeRoundTripCount += 1;
-}
+  getCount(): number {
+    return this.count;
+  }
 
-export function recordLastD4InspectionDbRoundTripCount(count: number): void {
-  lastCompletedInspectionDbRoundTrips = count;
-}
-
-export function getLastD4InspectionDbRoundTripCount(): number {
-  return lastCompletedInspectionDbRoundTrips;
+  assertWithinBound(max = D4_INSPECTION_DB_ROUND_TRIP_BOUND): void {
+    if (this.count > max) {
+      throw new Error(
+        `D4 inspection exceeded DB round trip bound (${this.count} > ${max})`,
+      );
+    }
+  }
 }
