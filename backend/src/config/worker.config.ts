@@ -1,4 +1,7 @@
 import { registerAs } from '@nestjs/config';
+import { resolveMaxSameTripQualifiedStopMs } from '../modules/vehicle-intelligence/trips/trip-qualified-stop-duration.config';
+
+const maxSameTripQualifiedStopMs = resolveMaxSameTripQualifiedStopMs();
 
 export default registerAs('worker', () => ({
   snapshotIntervalMs: parseInt(process.env.WORKER_SNAPSHOT_INTERVAL_MS || '30000', 10),
@@ -71,13 +74,13 @@ export default registerAs('worker', () => ({
   // ── Trip End: How far forward from possibleEndAt to fetch data for CUSUM ──
   tripEndSegmentLookaheadMs: parseInt(process.env.TRIP_END_SEGMENT_LOOKAHEAD_MS || '300000', 10),
 
-  // ── Trip Mid-Gap Split ──
-  // Minimum stationary silence inside an otherwise ACTIVE trip that triggers
-  // an automatic split into two trips. Covers the common case of a driver
-  // parking briefly (coffee run, pickup, short errand) with the engine off:
-  // DIMO then drops the connection, resumes on restart, and neither side
-  // emits an explicit ignition-off transition. Default 3 min.
-  tripMidGapSplitMs: parseInt(process.env.TRIP_MID_GAP_SPLIT_MS || '180000', 10),
+  // ── Qualified stop duration (Trip FSM mid-gap + merge/reopen) ──
+  // Max duration of a physically qualified stop/pause that remains ONE trip.
+  // Split when qualified gap duration is STRICTLY GREATER than this value (ms).
+  // Default 5 minutes. Legacy env TRIP_MID_GAP_SPLIT_MS maps to the same authority.
+  tripSameTripMaxQualifiedStopMs: maxSameTripQualifiedStopMs,
+  /** @deprecated alias — identical to tripSameTripMaxQualifiedStopMs */
+  tripMidGapSplitMs: maxSameTripQualifiedStopMs,
   // Maximum position drift (meters) between the last pre-gap waypoint and
   // the first post-gap waypoint for the gap to be considered a stationary
   // stop (i.e., the same parking spot). Larger drifts mean the vehicle kept

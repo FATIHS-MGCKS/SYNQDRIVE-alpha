@@ -81,8 +81,9 @@ export const SUBSTANTIAL_COVERAGE_RATIO = 0.9;
 
 /**
  * A single uncovered span at or above this length can never be dismissed as
- * coverage noise, whatever the ratio. Equal to TRIP_MID_GAP_SPLIT_MS: a silence
- * this long is precisely what the live path treats as a trip boundary, so
+ * coverage noise, whatever the ratio. At the default max same-trip qualified
+ * stop of 300_000 ms, a single uncovered span this long is precisely what the
+ * live path treats as a trip boundary, so calling it "already covered" would
  * calling it "already covered" would contradict the detector. On the replay
  * dataset this guard rescues 6 candidates from DUPLICATE, 5 of which contain
  * real uncovered driving.
