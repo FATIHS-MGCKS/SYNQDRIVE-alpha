@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3 Foundation post-merge seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D3 foundation validated on draft PR #1746; active authority still described foundation as in-flight / not on main. |
+| **OBSERVATION** | PR #1746 merged to main @ `c5c1129f62e11eb68c8fc6566fd7fecef376743b` (PR head `944a6839ed18dd57244897924d72ac49b9a968a2`). |
+| **HYPOTHESIS** | Post-merge documentation seal can mark D3 foundation COMPLETE ON MAIN while preserving D3 runtime non-reachability and M3.3F gating. |
+| **CHANGE** | Updated `CURRENT_STATE`, D3 foundation research doc, D0/D1/D2/D3 phase pointers; appended this seal entry. |
+| **WHY** | Align active Battery V2 authority with merged foundation implementation without implying production materialization. |
+| **EXPECTED_EFFECT** | **`NEXT_PHASE=M3.3D D4 Integrity / Inspection`**; D3 foundation marked complete; stale draft wording removed from active docs. |
+| **VALIDATION** | `validate-module-registry.sh`; `architecture/battery-v2/scripts/validate-graph.sh`; governance CI on seal PR. |
+| **OBSERVED_EFFECT** | Active docs state D3 foundation COMPLETE ON MAIN; D4 next; runtime gates unchanged. |
+| **NON_EFFECTS** | No new runtime code; no schema/migration in seal; no production trigger; no feature flag; no Nest registration; no deploy; no M3.3E health logic. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 integrity; M3.3E health; M3.3F materialization authorization; retention/flag open decisions. |
+| **DECISION_STATUS** | **AUTHORITY_SEALED_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
+| **EVIDENCE** | PR #1746 merge `c5c1129f`; head `944a6839e` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 foundation hardening (draft PR #1746 amend)
 
 | Field | Value |
