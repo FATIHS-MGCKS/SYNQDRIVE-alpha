@@ -1993,7 +1993,7 @@ function TripsSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
             { label: 'Cancellation', items: ['Duration < 60s AND distance < 0.1 km', 'Distance < 0.1 km AND maxConsecutiveActive < 2'] },
-            { label: 'Merge with previous trip', items: ['Gap to previous COMPLETED trip < 5 min', 'Reopens previous trip record (ONGOING)'] },
+            { label: 'Merge with previous trip', items: ['Gap to previous COMPLETED trip ≤ 5 min (300_000 ms, Qualified Stop V1)', 'Reopens previous trip record (ONGOING)'] },
             { label: 'Success → HF Enrichment', items: ['Trip status set to COMPLETED', 'BullMQ job: hf-enrich queued (5s delay)', 'High-frequency 1s segments fetched'] },
             { label: 'Post-HF → Driving Impact', items: ['TripBehaviorEvent records created', 'VehicleDrivingImpactCurrent updated', 'Tire + Brake health modules consume output'] },
           ].map(g => (
