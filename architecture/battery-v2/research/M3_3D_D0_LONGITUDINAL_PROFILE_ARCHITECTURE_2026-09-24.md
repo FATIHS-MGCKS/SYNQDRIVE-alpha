@@ -34,7 +34,7 @@
 | 14–15 | D3 materialization **conditional**; no production materialization or shadow activation before **M3.3F** authorization |
 | 16–17 | M3.3E health/risk/confidence; M3.3H customer Health UI separate from internal longitudinal engineering |
 
-**Next engineering slice:** **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (**COMPLETE ON MAIN**). **M3.3D D2** — deterministic profile assembly (**draft PR**; see D2 research doc).
+**Next engineering slice:** **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (**COMPLETE ON MAIN**). **M3.3D D2** — deterministic profile assembly (**COMPLETE ON MAIN** PR #1739 @ `ed7adb79b`; see D2 research doc). **M3.3D D3** — materialization/persistence boundary (**NEXT**, not implemented).
 
 ### D2 implementation closure (2026-09-24)
 

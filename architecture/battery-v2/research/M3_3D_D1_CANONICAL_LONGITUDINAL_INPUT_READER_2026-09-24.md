@@ -22,8 +22,9 @@ Deterministic **input inventory** for a bounded rest-session window (not longitu
 |-------|--------|
 | D0 / D0.1 | **COMPLETE ON MAIN** |
 | **D1** | **COMPLETE ON MAIN** (this document) |
-| **D2** | **NEXT** — deterministic read-only profile assembly consuming `M3_3D_D1_LONGITUDINAL_INPUT_V1` → `M3_3D_LONGITUDINAL_PROFILE_V1` |
-| D3+ | **PENDING** (persistence/materialization not authorized) |
+| **D2** | **COMPLETE ON MAIN** — PR #1739 @ `ed7adb79b` — see `M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
+| **D3** | **NEXT** — materialization/persistence (not implemented) |
+| D4+ | **PENDING** |
 | M3.3E | **PENDING** (health/risk logic) |
 | M3.3F | **PENDING** / production shadow authorization |
 | M3.3G | **PENDING** |
@@ -125,12 +126,12 @@ When a **canonical row exists**, column tuple from row; `inputContractVersion` +
 
 Do **not** claim the entire historical `test:battery:v2` suite is green.
 
-## D2 boundary (next slice — not implemented)
+## D3 boundary (next slice — not implemented)
 
-D2 will consume `M3_3D_D1_LONGITUDINAL_INPUT_V1` and assemble **`M3_3D_LONGITUDINAL_PROFILE_V1`**. D2 remains deterministic, read-only, non-health, non-causal, non-persistent unless separately authorized.
+D3 introduces the **materialization / persistence** boundary (fingerprint, revision model, schema, idempotency, M3.3F authorization). D2 on main provides pure `assembleLongitudinalProfileV1()` only — no D3 tables, writers, or fingerprint implementation.
 
 ## Non-effects (D1 merge)
 
 - No production deploy; no runtime flag change; no schema/migration; no production data mutation
-- No D2 implementation; no D3 persistence; no M3.3E health logic; no customer UI; no Master Admin UI
+- D2 **COMPLETE ON MAIN** (PR #1739); **no D3** persistence; no M3.3E health logic; no customer UI; no Master Admin UI
 - No `BatteryAssessment` / `BatteryPublication` / `BatteryFeatures` writes
