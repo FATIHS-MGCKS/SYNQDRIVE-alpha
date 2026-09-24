@@ -50,14 +50,14 @@
 | **M3.3C C5B (engineering)** | Master Admin read-only shadow inspection UI over `M3_3C_C5A_V1` (not M3.3H customer UI) — **COMPLETE ON MAIN** merged PR #1733 @ `969cc3f19` — internal MASTER_ADMIN surface; atomic C5A GET; `inputSummary.retentionPoints` table; org-scoped operational vehicle pagination; no flags/migration/customer UI |
 | **M3.3D D0 (architecture)** | Longitudinal profile scientific contract + `M3_3D_LONGITUDINAL_PROFILE_V1` — **COMPLETE ON MAIN** merged PR #1735 @ `bc69e1d9c` — `research/M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md` |
 | **M3.3D D0.1 (architecture)** | Bounded canonical read (C5A-equivalent), persisted version authority, D1 integrity scope, profileStatus+flags, fingerprint determinism, D3/M3.3F sequencing — **COMPLETE ON MAIN** PR #1735 @ `bc69e1d9c` |
-| **M3.3D D1 (engineering)** | Bounded canonical longitudinal input reader + inclusion policy (`M3_3D_D1_LONGITUDINAL_INPUT_V1`) — **COMPLETE ON MAIN** squash-merged PR #1737 @ `9577e0f146ddec2b81fc2ede35389a5fa2e6db94` — `research/M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md` |
-| **M3.3D D2 (engineering)** | Deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` from D1 inventory) — **NEXT**; **not implemented** |
-| **M3.3C roadmap (planning)** | **M3.3D D2** next · **M3.3D D3+** pending · **M3.3E–H** pending |
-| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1 on main**; **D2 next**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3D D1 (engineering)** | Bounded canonical longitudinal input reader + inclusion policy (`M3_3D_D1_LONGITUDINAL_INPUT_V1`) — **COMPLETE ON MAIN** squash-merged PR #1737 @ `9577e0f146ddec2b81fc2ede35389a5fa2e6db94`; post-merge seal PR #1738 @ `9d0dbc7d3` — `research/M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md` |
+| **M3.3D D2 (engineering)** | Deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` / `M3_3D_PROFILE_POLICY_V1` from D1 inventory) — **engineering on DRAFT PR**; **NOT complete on main** — `research/M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
+| **M3.3C roadmap (planning)** | **M3.3D D2** draft PR · **M3.3D D3+** pending · **M3.3E–H** pending |
+| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1 on main**; **D2 draft PR**; **D3+ / M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3D D2** — deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` from `M3_3D_D1_LONGITUDINAL_INPUT_V1`); **D2 not implemented**; production C3/longitudinal flag remains OFF until **M3.3F** |
+| `NEXT_PHASE` | **M3.3D D2** — deterministic profile assembly on **draft PR** (pure assembler + tests); **D3+** pending; production C3/longitudinal flag remains OFF until **M3.3F** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

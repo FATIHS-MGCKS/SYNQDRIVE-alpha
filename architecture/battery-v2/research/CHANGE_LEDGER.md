@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D2 deterministic longitudinal profile assembly (engineering, draft PR)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D1 inventory reader complete on main; no D2 profile assembler. |
+| **OBSERVATION** | D0 working contract required D2 V1 closure for stable/provisional/excluded separation, contiguous version segments, and no invented health thresholds. |
+| **HYPOTHESIS** | Pure `assembleLongitudinalProfileV1` from D1 inventory satisfies M3.3D D2 without DB/Nest/API. |
+| **CHANGE** | D2 types/constants/validation/assembler + test matrix A–T; research doc `M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md`; `CURRENT_STATE` pre-merge D2 draft PR status. |
+| **WHY** | Freeze implementable `M3_3D_LONGITUDINAL_PROFILE_V1` / `M3_3D_PROFILE_POLICY_V1` semantics before D3 materialization. |
+| **EXPECTED_EFFECT** | Deterministic profile from explicit D1 input + `profileGeneratedAt`; D3 owns fingerprint/persistence. |
+| **VALIDATION** | `longitudinal-profile.assembler.spec.ts` (25 tests); existing D1 Jest suites unchanged (36 passed). |
+| **OBSERVED_EFFECT** | Pending PR merge / CI on draft PR. |
+| **NON_EFFECTS** | No Prisma/Postgres access in D2; no schema; no migration; no Nest provider; no API/UI; no runtime flags; no production deploy; no D3 fingerprint; no D4 integrity; no M3.3E health logic. |
+| **REGRESSIONS_OR_TRADEOFFS** | D0 conceptual fields refined (provisional separate array; `INSUFFICIENT_SESSIONS` reserved; no truncation inference). |
+| **REMAINING_GAPS** | D3 materialization; D4 integrity batch; DEC-M3.3D-001 minimum sessions; M3.3E health. |
+| **DECISION_STATUS** | **ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Draft PR (D2); D1 main @ `9d0dbc7d3` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D1 post-merge documentation seal (main)
 
 | Field | Value |
