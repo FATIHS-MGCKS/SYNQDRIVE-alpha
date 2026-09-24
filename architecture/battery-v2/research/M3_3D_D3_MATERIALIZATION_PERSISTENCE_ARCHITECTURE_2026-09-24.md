@@ -1,7 +1,7 @@
 # M3.3D D3 — Longitudinal Profile Materialization & Persistence Architecture Audit
 
 **Date:** 2026-09-24  
-**Status:** Architecture / persistence decision audit — **DRAFT PR** (not on `main` until merged)  
+**Status:** Architecture / persistence decision audit — **DRAFT PR #1744** (not merged)  
 **Main anchor (D2 seal):** `d37a8714f4e4ee80e2dda8882d95003bb7285fd7`  
 **Scope:** **Audit only** — no Prisma schema, no migration, no runtime writer, no flag, no deploy  
 **Normative inputs:** D0/D0.1, D1, D2 research docs; `assembleLongitudinalProfileV1()` on main

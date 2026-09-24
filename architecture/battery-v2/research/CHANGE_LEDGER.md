@@ -23,7 +23,7 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | D3 implementation; retention/cascade product decisions; M3.3F authorization. |
 | **DECISION_STATUS** | **ARCHITECTURE_AUDIT_DRAFT** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
-| **EVIDENCE** | Draft PR (D3 audit); main @ `d37a8714f` |
+| **EVIDENCE** | Draft PR #1744 (D3 audit); main @ `d37a8714f` |
 
 ---
 
