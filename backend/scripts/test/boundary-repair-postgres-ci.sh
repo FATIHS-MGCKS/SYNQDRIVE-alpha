@@ -35,8 +35,7 @@ log "Step 7/8: ERD E4 BullMQ + Redis liveness gate (real Queue/Worker on Redis)"
 ERD_E4_BULLMQ_REDIS_INTEGRATION=1 ERD_E4_BULLMQ_REDIS_REQUIRED=1 \
   npx jest erd-e4-reconciliation-liveness.bullmq.redis.integration --runInBand --forceExit --verbose
 
-log "Step 8/8: ERD E5.1 recharge projection foundation PostgreSQL gate"
-ERD_E5_1_POSTGRES_INTEGRATION=1 ERD_E5_1_POSTGRES_REQUIRED=1 \
-  npx jest erd-e5-1-recharge-projection-foundation.postgres.integration --runInBand --verbose
+log "Step 8/8: ERD E5.1 recharge projection foundation PostgreSQL gate (ephemeral migrate deploy)"
+bash scripts/test/erd-e5-1-migration-ephemeral-gate.sh
 
 log "boundary-repair-postgres-ci completed successfully"

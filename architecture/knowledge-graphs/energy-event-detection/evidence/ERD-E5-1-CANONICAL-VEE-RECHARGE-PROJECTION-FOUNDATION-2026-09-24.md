@@ -65,7 +65,7 @@ PostgreSQL requires new enum values to be **committed before use** in CHECK cons
 
 - Unit: `erd-recharge-projection/*.spec.ts`
 - PostgreSQL gate (opt-in): `erd-e5-1-recharge-projection-foundation.postgres.integration.spec.ts` — scenarios PG-A … PG-K
-- CI: `boundary-repair-postgres-ci.sh` step 8/8
+- CI: `boundary-repair-postgres-ci.sh` step 8/8 via `erd-e5-1-migration-ephemeral-gate.sh` (**migrate deploy**, not db push — CHECK is migration SQL only)
 
 ## Explicit non-goals (E5.1)
 
