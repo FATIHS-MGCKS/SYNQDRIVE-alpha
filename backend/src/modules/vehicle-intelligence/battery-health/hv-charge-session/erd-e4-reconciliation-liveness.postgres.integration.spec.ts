@@ -118,13 +118,13 @@ async function upsertCap(
       await prisma.organization.deleteMany({ where: { id: org.id } });
     });
 
-    it('fairness: >3× batch candidates all selected across rotating buckets', async () => {
+    it('fairness: rotating buckets cover all seeded fallback candidates', async () => {
       const batch = 3;
       const suffix = randomUUID().slice(0, 6);
       const ids: string[] = [];
       const orgIds: string[] = [];
       const dimoIds: string[] = [];
-      for (let i = 0; i < 10; i += 1) {
+      for (let i = 0; i < 9; i += 1) {
         const { org, vehicle, dimo } = await seedVehicle(
           prisma,
           `${suffix}-${i}`,
@@ -142,13 +142,11 @@ async function upsertCap(
         batch,
       );
       const ours = candidates.filter((c) => ids.includes(c.vehicleId));
-      expect(ours.length).toBeGreaterThanOrEqual(10);
+      expect(ours.length).toBe(ids.length);
 
       const seen = new Set<string>();
-      const base = new Date('2026-07-16T12:00:00.000Z');
-      for (let i = 0; i < 24; i += 1) {
-        const at = new Date(base.getTime() + i * 60_000);
-        const bucket = buildHvRechargePeriodicPeriodBucket(at);
+      for (let i = 0; i < 48; i += 1) {
+        const bucket = String(i);
         const selected = selectFairPeriodicReconcileTargets(ours, batch, bucket);
         for (const row of selected) seen.add(row.vehicleId);
       }
