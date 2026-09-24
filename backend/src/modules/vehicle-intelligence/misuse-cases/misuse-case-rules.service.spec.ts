@@ -199,9 +199,10 @@ describe('MisuseCaseRulesService', () => {
     expect(result.some((c) => c.type === MisuseCaseType.REPEATED_ENGINE_REV_IN_IDLE)).toBe(true);
   });
 
-  it('COLD_ENGINE_FULL_THROTTLE creates COLD_ENGINE_ABUSE', () => {
+  it('COLD_ENGINE_FULL_THROTTLE creates COLD_ENGINE_ABUSE when timing semantics allow', () => {
     const result = service.evaluate(
       ctx({
+        telemetrySourceFamily: 'API_SYNTHETIC',
         behaviorEvents: [
           {
             id: 'c1',
@@ -214,6 +215,24 @@ describe('MisuseCaseRulesService', () => {
       }),
     );
     expect(result.some((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE)).toBe(true);
+  });
+
+  it('does not open COLD_ENGINE_ABUSE from R1 COLD_ENGINE_FULL_THROTTLE alone (CG-01)', () => {
+    const result = service.evaluate(
+      ctx({
+        telemetrySourceFamily: 'RUPTELA_R1',
+        behaviorEvents: [
+          {
+            id: 'c1',
+            eventCategory: 'ABUSE',
+            eventType: 'COLD_ENGINE_FULL_THROTTLE',
+            classification: 'SEVERE',
+            startedAt: new Date('2026-06-01T10:05:00Z'),
+          } as any,
+        ],
+      }),
+    );
+    expect(result.some((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE)).toBe(false);
   });
 
   it('POSSIBLE_IMPACT creates DAMAGE_SUSPICION case', () => {

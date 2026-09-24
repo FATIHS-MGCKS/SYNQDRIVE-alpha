@@ -18,6 +18,7 @@ import { enrichCaseWithEvidence } from '../trips/trip-evidence-case.builder';
 import { evaluateCanonicalDamageIncidents } from '../damage-incidents/damage-incident-canonical';
 import { resolveAttribution } from './misuse-case.types';
 import { tagR1TemporallyUncertainEvidence } from './misuse-case-r1-temporal-containment';
+import { isContainedHfAbuseEvent } from '../r1-temporal-containment';
 
 const MS_15_MIN = 15 * 60 * 1000;
 const MS_30_MIN = 30 * 60 * 1000;
@@ -35,7 +36,7 @@ export class MisuseCaseRulesService {
     const aggressive = this.ruleAggressiveDriving(context, abuse);
     if (aggressive) candidates.push(aggressive);
 
-    const coldEngine = this.ruleColdEngineAbuse(abuse);
+    const coldEngine = this.ruleColdEngineAbuse(abuse, context.telemetrySourceFamily);
     if (coldEngine) candidates.push(coldEngine);
 
     const revIdle = this.ruleRepeatedEngineRevInIdle(abuse);
@@ -217,12 +218,21 @@ export class MisuseCaseRulesService {
     };
   }
 
-  private ruleColdEngineAbuse(abuse: TripBehaviorEvent[]): CaseCandidate | null {
-    const coldEvents = abuse.filter(
-      (e) =>
-        e.eventType === 'COLD_ENGINE_HIGH_RPM' ||
-        e.eventType === 'COLD_ENGINE_FULL_THROTTLE',
-    );
+  private ruleColdEngineAbuse(
+    abuse: TripBehaviorEvent[],
+    telemetrySourceFamily: TripEvaluationContext['telemetrySourceFamily'],
+  ): CaseCandidate | null {
+    const coldEvents = abuse.filter((e) => {
+      if (e.eventType === 'COLD_ENGINE_HIGH_RPM') return true;
+      if (e.eventType === 'COLD_ENGINE_FULL_THROTTLE') {
+        return !isContainedHfAbuseEvent(
+          telemetrySourceFamily ?? 'UNKNOWN',
+          e.eventCategory,
+          e.eventType,
+        );
+      }
+      return false;
+    });
     if (coldEvents.length === 0) return null;
 
     const hasSevere = coldEvents.some(

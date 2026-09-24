@@ -44,7 +44,14 @@ describe('TripBehaviorEnrichmentService R1 temporal containment', () => {
       tripId: 'trip-1',
       NOT: {
         eventCategory: BehaviorEventCategory.ABUSE,
-        eventType: { in: ['FULL_BRAKING', 'POSSIBLE_IMPACT', 'ENGINE_SHUTDOWN_WHILE_DRIVING'] },
+        eventType: {
+          in: [
+            'FULL_BRAKING',
+            'POSSIBLE_IMPACT',
+            'ENGINE_SHUTDOWN_WHILE_DRIVING',
+            'COLD_ENGINE_FULL_THROTTLE',
+          ],
+        },
       },
     });
   });

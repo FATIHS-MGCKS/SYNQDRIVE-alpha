@@ -176,7 +176,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 
 ## R1 temporal-safety containment — ACTIVE CONTAINMENT (EXP-021 C0.3, 2026-09-24)
 
-**Status:** code + tests on draft PR #1755 (`VALIDATED`, **not deployed**, not production-validated). **Not** the final source-quality architecture.
+**Status:** C0.3 merged/deployed (`e30de759…`, release `20260924201136_v4994`). C0.5 CG-01 extension in draft PR (not deployed). **Not** the final source-quality architecture.
 
 | Constraint | Current behaviour (branch) |
 |------------|----------------------------|
@@ -185,6 +185,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 | 3. No R1 OBD-only engine-shutdown claim | `ENGINE_SHUTDOWN_WHILE_DRIVING` not derived for R1 (fail closed; no 2-record ≥3 s proof path) |
 | 4. No exact-time context claims for R1 | Presentation nulls anchor-relative values, caps confidence LOW, adds `temporalContainment` marker; persisted assessment unchanged |
 | 5. No R1-only misuse escalation | R1 OBD-derived evidence tagged `temporalProvenance`; uncertain-only ≤ WARNING / MEDIUM + proxy-only lifecycle (REVIEW_REQUIRED preserved); mixed capped by independent support |
+| 6. CG-01 — no R1 cold+full-throttle conjunction claim | `COLD_ENGINE_FULL_THROTTLE` in contained HF abuse set (C0.5): future suppression, read-model omission, marker-aware counter adjustment; misuse rule skips R1-only full-throttle rows (`COLD_ENGINE_HIGH_RPM` unchanged) |
 
 No historical row, ledger row, misuse case, score or ClickHouse data is modified. Residual consumers: DI-GAP-R1-CONTAINMENT-RESIDUAL-001. Wording debt (12 sites): DI-GAP-R1-OVERCLAIM-WORDING-001. Record: `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md`.
 

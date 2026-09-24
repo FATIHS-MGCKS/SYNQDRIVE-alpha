@@ -103,3 +103,9 @@
 ### Validation
 
 - `node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs`
+
+## 2026-09-24 — EXP-021 C0.5 CG-01 (cross-module note, draft)
+
+- **Trigger:** C0.4 contract gap CG-01 — R1 `COLD_ENGINE_FULL_THROTTLE` point-time conjunction not defensible.
+- **ATE effect:** Orchestrator unchanged. DI enrichment extends R1 contained HF abuse types; replace-scope shape unchanged (additional `eventType` in `NOT` list).
+- **Evidence:** `architecture/drivingintelligence/evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md`

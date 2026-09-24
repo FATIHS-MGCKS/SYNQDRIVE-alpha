@@ -989,3 +989,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No persistence mutation; admin-only raw aggregates (`trips.service.getStats`, logbook) still deferred |
 | Status | `VALIDATED` (code/tests) — draft PR #1755 |
 | Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` §5.1 |
+
+### EXP-021 C0.5 — CG-01 `COLD_ENGINE_FULL_THROTTLE` containment (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.4 `CG-01` — 326 R1 `HF_DERIVED` rows at full event-list strength |
+| CHANGE | Extend `R1_CONTAINED_HF_ABUSE_EVENT_TYPES`; `countContainedAbuseRowsForReadAdjustment` (v1 marker-aware); misuse `ruleColdEngineAbuse` R1 filter; containment marker v2 |
+| NON_EFFECTS | CG-02…CG-10, COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, no DB mutation |
+| Status | `VALIDATED` (code/tests) — draft PR, not deployed |
+| Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
