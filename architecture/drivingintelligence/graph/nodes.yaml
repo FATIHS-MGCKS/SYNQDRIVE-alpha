@@ -1196,3 +1196,112 @@ nodes:
     evidence:
       - DI-EVID-EXP020-WINDOW-001
       - DI-EVID-EXP021-DESIGN-001
+
+  # --- EXP-021 C0.3 R1 temporal-safety containment (2026-09-24) ---
+  - id: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    type: policy
+    title: R1 temporal-safety containment (active containment, not final source-quality model)
+    epistemic_status: CONFIRMED
+    summary: >
+      Ruptela R1 (DimoVehicle.rawJson aftermarket serial "R1-"; hardwareType not consulted) historical OBD
+      records cannot establish point-in-time claims. Future FULL_BRAKING / POSSIBLE_IMPACT /
+      ENGINE_SHUTDOWN_WHILE_DRIVING derivation suppressed; existing rows contained at read/consumer
+      boundaries (ledger summary, impact, brake wear, event list, counters, event context); R1 OBD-derived
+      misuse evidence tagged temporally uncertain and cannot establish or upgrade SEVERE+.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts
+      - backend/src/modules/vehicle-intelligence/r1-temporal-containment.ts
+      - backend/src/modules/vehicle-intelligence/event-context/event-context-r1-temporal-containment.ts
+      - backend/src/modules/vehicle-intelligence/misuse-cases/misuse-case-r1-temporal-containment.ts
+    evidence:
+      - DI-EVID-EXP021-C03-001
+      - DI-TEST-R1-CONTAINMENT-001
+
+  - id: DI-DEC-R1-TEMPORAL-CONTAINMENT-001
+    type: decision
+    title: Minimal reversible R1 temporal-safety containment (EXP-021 C0.3)
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: >
+      Contain R1 point-in-time abuse/misuse claims without data mutation; integration identity from
+      DimoVehicle.rawJson; fail closed (UNKNOWN not contained, R1 engine-shutdown not derivable).
+      Code + tests only; not production-validated.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-EXP021-C03-001
+
+  - id: DI-GAP-R1-CONTAINMENT-RESIDUAL-001
+    type: gap
+    title: Residual R1 consumers outside C0.3 containment
+    epistemic_status: CONFIRMED
+    summary: >
+      Historical per-trip stress scores embedding FULL_BRAKING, trips.service stats aggregate, platform-admin
+      logbook abuse counter, trip-assessability counters, persisted abuseScore/possibleImpactCount, and
+      context misuse rules reading persisted anchor-relative values remain uncontained (see C0.3 evidence §6).
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+
+  - id: DI-GAP-R1-OVERCLAIM-WORDING-001
+    type: gap
+    title: Twelve temporal semantic overclaim sites not reworded
+    epistemic_status: CONFIRMED
+    summary: >
+      C0.2 TEMPORAL_SEMANTIC_OVERCLAIM_COUNT=12 (providerTimestamp as physical time, Δt from row labels,
+      nearestSampleDistanceMs 0, max_speed naming, speeding/waypoint/trip-end clock labels). Deferred;
+      only R1 API context boundary contained by C0.3.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+
+  - id: DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001
+    type: contradiction
+    title: hardwareType LTE_R1 vs actual telemetry integration
+    epistemic_status: CONTRADICTED
+    summary: >
+      Vehicle.hardwareType has no API-synthetic value; the Tesla (synthetic device, no aftermarket device) is
+      LTE_R1. Semantics decisions must use DimoVehicle.rawJson device identity; routing left unchanged.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+
+  - id: DI-EVID-EXP021-C03-001
+    type: evidence
+    title: EXP-021 C0.3 R1 temporal-safety containment record (C0–C0.2 findings + containment design)
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Restates C0 (C0_GATE_1), C0.1 (|offset| P50 14 s / P90 45 s), C0.2 (FULL_BRAKING 0/5 supported,
+      ENGINE_SHUTDOWN 0/6 sustained, hardware_type unreliable) and records the containment, consumer map,
+      static bypass search and deferred paths.
+    source_paths:
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+
+  - id: DI-TEST-R1-CONTAINMENT-001
+    type: test_evidence
+    title: R1 temporal containment unit / regression suites
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      Resolver fail-closed, detector-level dropout / point-decel regressions, enrichment replace scope,
+      ledger/brake-wear/impact containment (R1 vs Tesla), event-context and read-model containment,
+      counter containment with marker, misuse tag / rating caps / fingerprint stability / persistence.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/r1-temporal-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.r1-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/brakes/braking-event-ledger.r1-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/brakes/brake-health.r1-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/event-context/event-context-r1-temporal-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/trips/unified-behavior-read-model.r1-containment.spec.ts
+      - backend/src/modules/vehicle-intelligence/misuse-cases/misuse-case-r1-temporal-containment.spec.ts
+
+  - id: DI-CONTRA-PROVIDER-TS-R1-OBD-001
+    type: contradiction
+    title: providerTimestamp as physical time vs R1 OBD grid-labelled misdated records
+    epistemic_status: CONTRADICTED
+    summary: >
+      DI-DEC-PROVIDER-TS-001 treats providerTimestamp as physical event time; EXP-021 C0/C0.1 show R1
+      historical OBD rows are query-grid bucket starts with misdated records. Decision preserved (not
+      superseded); R1 point-in-time claims contained by C0.3.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md

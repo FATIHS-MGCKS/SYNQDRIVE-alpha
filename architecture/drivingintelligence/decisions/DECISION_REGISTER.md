@@ -302,3 +302,18 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **GRAPH NODES** | DI-CONTRA-HF-1HZ-001 |
 | **EPISTEMIC** | CONFIRMED |
 | **EVIDENCE** | DI-EVID-RD004-A-001 |
+
+## DI-DEC-R1-TEMPORAL-CONTAINMENT-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | Minimal reversible R1 temporal-safety containment (EXP-021 C0.3) |
+| **ERA** | EXP-021 C0 → C0.2 audits; C0.3 implementation (2026-09-24, draft PR #1755) |
+| **STATUS** | VALIDATED |
+| **PROBLEM** | R1 historical OBD records (grid-labelled, misdated, absolute offset P50 14 s / P90 45 s) produced unsupported point-in-time claims (FULL_BRAKING 0/5 supported; ENGINE_SHUTDOWN 0/6 sustained) feeding counters, brake wear, impact and SEVERE misuse |
+| **DECISION** | Identify R1 from `DimoVehicle.rawJson` (serial `R1-`), never `hardwareType`; suppress future R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING; contain existing rows at read/consumer boundaries; tag R1 OBD-derived misuse evidence and cap it (cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved); withhold anchor-relative context values in presentation |
+| **RATIONALE** | Smallest reversible change; no data rewrite; fingerprints/category gates untouched; fail closed (UNKNOWN not contained; no 2-record ≥3 s shutdown proof) |
+| **CONSEQUENCES** | ACTIVE CONTAINMENT, not final source-quality architecture; residual consumers DI-GAP-R1-CONTAINMENT-RESIDUAL-001; wording debt DI-GAP-R1-OVERCLAIM-WORDING-001; OBSERVED_EFFECT UNKNOWN until authorized deploy |
+| **GRAPH NODES** | DI-POL-R1-TEMPORAL-CONTAINMENT-001, DI-INV-R1-OBD-NO-POINT-CLAIM-001 |
+| **EPISTEMIC** | CONFIRMED |
+| **EVIDENCE** | DI-EVID-EXP021-C03-001 |

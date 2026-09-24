@@ -322,6 +322,17 @@ nodes:
     source_paths:
       - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: VDC-GAP-013
+    type: gap
+    title: Telemetry integration identity vs vehicles.hardware_type
+    epistemic_status: CONFIRMED
+    summary: >
+      hardware_type has no API-synthetic value (Tesla = LTE_R1); device identity is in dimo_vehicles.raw_json.
+      DI EXP-021 C0.3 uses it for R1 temporal containment only; provider-neutral integration identity undecided.
+    source_paths:
+      - architecture/vehicle-device-connectivity/contradictions/KNOWLEDGE_GAPS.md
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts
+
   - id: VDC-EVID-REPO-PHASE1-001
     type: evidence
     title: Phase 1 repository current-state audit

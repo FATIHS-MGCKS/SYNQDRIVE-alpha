@@ -3,7 +3,7 @@
 Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.  
 **Rejected hypotheses are NOT defects** — see `HYPOTHESIS_REGISTER.md`.
 
-**Summary:** TOTAL=**19** | FIXED=**16** (DI-DEF-003–017, 019 production-validated) | OPEN=**3** (DI-DEF-001, 002, 018)
+**Summary:** TOTAL=**20** | FIXED=**16** (DI-DEF-003–017, 019 production-validated) | OPEN=**4** (DI-DEF-001, 002, 018, 020)
 
 | ID | Phase | Symptom | Cause | Risk | Fix | Tests | Status |
 |----|-------|---------|-------|------|-----|-------|--------|
@@ -26,3 +26,4 @@ Significant defects discovered during the 2026-08-30 → 2026-09-06 workstream.
 | DI-DEF-017 | C.1e CI | Constructor dependency mismatch | Test-only DI wiring | CI failure | Test-only fix in PR #1533 | 113 RC HF tests | FIXED |
 | DI-DEF-018 | Production detectors | ~1 Hz assumption in HF window producer | Code predates RD003/RD002 cadence evidence | Detector timing on sparse HF | **Not fixed** — documented as semantic debt | — | OPEN |
 | DI-DEF-019 | Live cal 2026-09-06 | `switchHfCalibrationPhase` fails in production | `lockSessionRow` raw SQL used Prisma model table `"ReferenceCaptureSession"` + camelCase columns; Prisma maps IDs to PostgreSQL `text` (no `::uuid` cast) | **Live HF calibration blocked**; stop/abort finalization also affected | Fix `reference_capture_sessions` + `organization_id`; GATE 1 PG integration + GATE 2 production dress rehearsal | `reference-capture-lock-session.postgres.integration` (10 tests) + gate script; GATE 2 STOP/ABORT on prod | FIXED_PRODUCTION_VALIDATED |
+| DI-DEF-020 | EXP-021 C0–C0.2 audits | R1 HF abuse FULL_BRAKING / ENGINE_SHUTDOWN_WHILE_DRIVING (and POSSIBLE_IMPACT) asserted from point-in-time OBD conjunctions; 0/5 FULL_BRAKING supported, 0/6 shutdowns sustained | Detectors treat R1 GraphQL row labels (query-grid bucket starts) as physical time; R1 records misdated (absolute offset P50 14 s / P90 45 s) | Unsupported abuse KPIs, brake wear, impact, SEVERE misuse | **Contained** (C0.3, DI-DEC-R1-TEMPORAL-CONTAINMENT-001) — not fixed: root cause UNKNOWN, historical rows retained | DI-TEST-R1-CONTAINMENT-001 | OPEN |

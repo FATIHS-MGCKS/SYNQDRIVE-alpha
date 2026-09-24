@@ -359,3 +359,49 @@ edges:
     from: DI-DEC-PROD-DET-UNCHANGED-001
     relation: governs
     to: DI-ALGO-HF-ACCEL-001
+
+  - id: DI-EDGE-127
+    from: DI-DEC-R1-TEMPORAL-CONTAINMENT-001
+    relation: governs
+    to: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+
+  - id: DI-EDGE-128
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-ALGO-HF-ABUSE-001
+    notes: R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING suppressed after detection
+
+  - id: DI-EDGE-129
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-SVC-BEHAVIOR-ENRICH-001
+    notes: Replace scope never deletes historical contained rows; summary marker
+
+  - id: DI-EDGE-130
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-SVC-IMPACT-001
+    notes: R1 full-braking rate 0 for trip / rolling impact and Brake Health readers
+
+  - id: DI-EDGE-131
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-ADJ-BRAKE-HEALTH-001
+    notes: Brake wear model + fingerprint ignore R1 full-braking rate (read-time)
+
+  - id: DI-EDGE-132
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: tested_by
+    to: DI-TEST-R1-CONTAINMENT-001
+
+  - id: DI-EDGE-133
+    from: DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001
+    relation: contradicts
+    to: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    notes: Recorded so hardwareType is never used as the containment trigger
+
+  - id: DI-EDGE-134
+    from: DI-CONTRA-PROVIDER-TS-R1-OBD-001
+    relation: contradicts
+    to: DI-DEC-PROVIDER-TS-001
+    notes: Recorded, not resolved — R1 OBD family only

@@ -16,5 +16,6 @@ Phase 3 adds **resolution status** per gap. Historical IDs preserved.
 | **VDC-GAP-010** | Dual telemetry resolution paths | CONFIRMED | **STILL_OPEN** | VDC-RB-009 |
 | **VDC-GAP-011** | Episode/webhook retention | CONFIRMED | **STILL_OPEN** | Confirmed **design gap** — retention policy missing (VDC-Q-008) |
 | **VDC-GAP-012** | Frontend dual connectivity paths | CONFIRMED | **STILL_OPEN** | VDC-RB-010 |
+| **VDC-GAP-013** | Telemetry integration identity vs `vehicles.hardware_type` | CONFIRMED (Production read-only, EXP-021 C0.2) | **STILL_OPEN** | Enum `{LTE_R1, SMART5, UNKNOWN}` has no API-synthetic value; the Tesla (synthetic device, no aftermarket device) is `LTE_R1`. Device identity lives in `dimo_vehicles.raw_json` (`aftermarketDevice.serial` `R1-…` vs `syntheticDevice`). DI C0.3 uses `resolveTelemetrySourceFamily(rawJson)` for R1 temporal containment semantics only; routing/enum unchanged ([DI evidence](../../drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md)). Canonical provider-neutral integration identity is a VDC question (not decided here). |
 
-**Summary:** 1 RESOLVED; 3 PARTIALLY_RESOLVED; 8 STILL_OPEN (including 1 DEFERRED_TO_OTHER_MODULE).
+**Summary:** 1 RESOLVED; 3 PARTIALLY_RESOLVED; 9 STILL_OPEN (including 1 DEFERRED_TO_OTHER_MODULE).
