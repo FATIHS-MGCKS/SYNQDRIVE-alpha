@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3 foundation engineering (append-only materialization, draft PR)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D3/D3.1 architecture complete on main @ `b62cc2c19`; no `BatteryLongitudinalProfileRevision` model or materialization code. |
+| **OBSERVATION** | Foundation schema contracts closed (`SCHEMA_IMPLEMENTATION_READY=YES_FOR_FOUNDATION`); engineering slice authorized without production reachability. |
+| **HYPOTHESIS** | Append-only revision table + ON CONFLICT idempotent repository + D1→D2 orchestration service (unregistered) satisfies D3 foundation without second scientific computation path. |
+| **CHANGE** | Prisma model + migration `20260924110000_battery_longitudinal_profile_revisions`; scientific projection + fingerprint wrapper; persistence mapper/repository/service; unit + Postgres integration tests; `M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md`; `CURRENT_STATE` draft status. |
+| **WHY** | Persist reproducible longitudinal profile revisions under architecture authority before M3.3F wiring. |
+| **EXPECTED_EFFECT** | Tests prove idempotency/concurrency/equivalence; production behavior unchanged (no Nest registration, no flag, no trigger). |
+| **VALIDATION** | `longitudinal-profile-fingerprint.spec.ts`; `longitudinal-profile-materialization.integration.spec.ts` (env-gated); D2 37/37; C3 canonical vector; `prisma validate`; `npm run build`. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No Nest module registration; no feature flag; no C3 hook; no API/UI; no production deploy; **`PRODUCTION_MATERIALIZATION_READY=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | Additive migration only; new table. |
+| **REMAINING_GAPS** | M3.3F registration/wiring; retention; `MATERIALIZATION_FLAG_NAME`; D4 integrity batch. |
+| **DECISION_STATUS** | **ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
+| **EVIDENCE** | Draft PR (D3 foundation); main @ `b62cc2c19` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 architecture post-merge documentation seal (main)
 
 | Field | Value |

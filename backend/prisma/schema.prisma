@@ -1768,6 +1768,7 @@ model Organization {
   batteryGeneralizedEvidenceObservations                  BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                                       BatteryRestSession[]
   batteryRestSessionFeatures                                BatteryRestSessionFeature[]
+  batteryLongitudinalProfileRevisions                     BatteryLongitudinalProfileRevision[]
   batteryProviderObservabilityGaps                          BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities                                VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
@@ -2981,6 +2982,7 @@ model Vehicle {
   batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                    BatteryRestSession[]
   batteryRestSessionFeatures             BatteryRestSessionFeature[]
+  batteryLongitudinalProfileRevisions    BatteryLongitudinalProfileRevision[]
   batteryProviderObservabilityGaps       BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
@@ -9057,6 +9059,36 @@ model BatteryRestSessionFeature {
   @@index([restSessionId, featureModelVersion, semanticRevision(sort: Desc)], map: "battery_rest_session_feature_rest_session_model_revision_idx")
   @@index([organizationId, computedAt(sort: Desc)])
   @@map("battery_rest_session_features")
+}
+
+/// M3.3D D3 — append-only longitudinal profile revision materialization (foundation; no production trigger).
+model BatteryLongitudinalProfileRevision {
+  id                                 String   @id @default(uuid())
+  organizationId                     String   @map("organization_id")
+  vehicleId                          String   @map("vehicle_id")
+  longitudinalProfileContractVersion String   @map("longitudinal_profile_contract_version")
+  profilePolicyVersion               String   @map("profile_policy_version")
+  canonicalProfileFingerprint        String   @db.Char(64) @map("canonical_profile_fingerprint")
+  scientificProfileJson              Json     @map("scientific_profile_json")
+  requestedSessionLimit              Int      @map("requested_session_limit")
+  appliedSessionLimit                Int      @map("applied_session_limit")
+  candidateRestSessionCount          Int      @map("candidate_rest_session_count")
+  includedSessionCount               Int      @map("included_session_count")
+  provisionalSessionCount            Int      @map("provisional_session_count")
+  excludedSessionCount               Int      @map("excluded_session_count")
+  firstIncludedAnchorAt              DateTime? @map("first_included_anchor_at")
+  lastIncludedAnchorAt               DateTime? @map("last_included_anchor_at")
+  profileStatus                      String   @map("profile_status")
+  materializedAt                     DateTime @default(now()) @map("materialized_at")
+  createdAt                          DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, longitudinalProfileContractVersion, profilePolicyVersion, canonicalProfileFingerprint], map: "battery_longitudinal_profile_revision_scientific_identity")
+  @@index([vehicleId, materializedAt(sort: Desc)], map: "battery_longitudinal_profile_revisions_vehicle_materialized_idx")
+  @@index([organizationId, createdAt(sort: Desc)], map: "battery_longitudinal_profile_revisions_org_created_idx")
+  @@map("battery_longitudinal_profile_revisions")
 }
 
 /// Preflight capability state per provider signal / measurement kind.
