@@ -22,6 +22,7 @@ import {
   BehaviorEventCategory,
   BehaviorEventClassification,
   FuelType,
+  type Prisma,
 } from '@prisma/client';
 import { preprocessHighFrequency, splitByGaps } from './hf-preprocessing';
 import { detectAccelerationEvents, type AccelerationEvent } from './hf-acceleration';
@@ -38,6 +39,12 @@ import {
   type VehicleRpmConfig,
 } from './hf-abuse';
 import { getVehicleCapabilities, deriveVehicleCapabilityProfile } from '../vehicle-capabilities';
+import { resolveTelemetrySourceFamily, type TelemetrySourceFamily } from '../telemetry-source-family';
+import {
+  applyR1HfAbuseContainment,
+  buildR1TemporalContainmentSummary,
+  R1_CONTAINED_HF_ABUSE_EVENT_TYPES,
+} from '../r1-temporal-containment';
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
 import { BrakingEventLedgerService } from '../brakes/braking-event-ledger.service';
 import { HfMirrorService } from './hf-mirror.service';
@@ -261,7 +268,7 @@ export class TripBehaviorEnrichmentService {
             hardwareType: true,
             fuelType: true,
             tankCapacityLiters: true,
-            dimoVehicle: { select: { tokenId: true } },
+            dimoVehicle: { select: { tokenId: true, rawJson: true } },
           },
         },
       },
@@ -403,13 +410,16 @@ export class TripBehaviorEnrichmentService {
     // ── Run detectors across all segments ────────────────────────────────────
     const allAccel: AccelerationEvent[] = [];
     const allBrake: BrakingEvent[] = [];
-    const allAbuse: AbuseEvent[] = [];
+    const detectedAbuse: AbuseEvent[] = [];
 
     for (const seg of segs) {
       allAccel.push(...detectAccelerationEvents(seg));
       allBrake.push(...detectBrakingEvents(seg));
-      allAbuse.push(...detectAbuseEvents(seg, rpmConfig));
+      detectedAbuse.push(...detectAbuseEvents(seg, rpmConfig));
     }
+
+    const sourceFamily = resolveTelemetrySourceFamily(trip.vehicle.dimoVehicle?.rawJson);
+    const allAbuse = this.containR1HfAbuse(tripId, detectedAbuse, sourceFamily);
 
     // ── Build DB rows ─────────────────────────────────────────────────────────
     const accelRows = allAccel.map((e) => ({
@@ -562,7 +572,9 @@ export class TripBehaviorEnrichmentService {
     // behavior is preserved: a second run deletes the previous events and
     // recreates them, atomically.
     await this.prisma.$transaction(async (tx) => {
-      await tx.tripBehaviorEvent.deleteMany({ where: { tripId } });
+      await tx.tripBehaviorEvent.deleteMany({
+        where: this.buildBehaviorEventReplaceScope(tripId, sourceFamily),
+      });
 
       if (allRows.length > 0) {
         await tx.tripBehaviorEvent.createMany({ data: allRows });
@@ -633,6 +645,7 @@ export class TripBehaviorEnrichmentService {
             brakeTotal: allBrake.length,
             abuseTotal: allAbuse.length,
             abuseScore,
+            ...buildR1TemporalContainmentSummary(sourceFamily),
             // Signal availability — distinguishes "no event" from "detector not evaluable"
             coolantAvailable: signalAvail.coolantAvailable,
             rpmAvailable: signalAvail.rpmAvailable,
@@ -726,6 +739,45 @@ export class TripBehaviorEnrichmentService {
     };
   }
 
+  /**
+   * EXP-021 C0.3 — Ruptela R1 historical OBD record time is not a defensible
+   * physical instant, so point-in-time HF abuse conjunctions (FULL_BRAKING,
+   * POSSIBLE_IMPACT, ENGINE_SHUTDOWN_WHILE_DRIVING) are not derived from it.
+   * Other source families are returned unchanged.
+   */
+  private containR1HfAbuse(
+    tripId: string,
+    detected: AbuseEvent[],
+    sourceFamily: TelemetrySourceFamily,
+  ): AbuseEvent[] {
+    const result = applyR1HfAbuseContainment(detected, sourceFamily);
+    if (result.suppressed.length > 0) {
+      this.logger.log(
+        `R1_HF_ABUSE_CONTAINED trip=${tripId} suppressed=${JSON.stringify(result.suppressedByType)}`,
+      );
+    }
+    return result.kept;
+  }
+
+  /**
+   * Re-enrichment replaces a trip's behavior events. For R1 the previously
+   * persisted contained abuse rows are kept out of the replace scope, so
+   * containment never deletes historical rows — read paths contain them instead.
+   */
+  private buildBehaviorEventReplaceScope(
+    tripId: string,
+    sourceFamily: TelemetrySourceFamily,
+  ): Prisma.TripBehaviorEventWhereInput {
+    if (sourceFamily !== 'RUPTELA_R1') return { tripId };
+    return {
+      tripId,
+      NOT: {
+        eventCategory: BehaviorEventCategory.ABUSE,
+        eventType: { in: [...R1_CONTAINED_HF_ABUSE_EVENT_TYPES] },
+      },
+    };
+  }
+
   // ── V3 LTE_R1 enrichment path ──────────────────────────────────────────────
   // For LTE_R1 vehicles:
   //   1. Ingest Driving Events from DIMO Telemetry API (via LteR1BehaviorEnrichmentService)
@@ -746,11 +798,12 @@ export class TripBehaviorEnrichmentService {
         hardwareType: import('@prisma/client').HardwareType;
         fuelType: FuelType | null;
         tankCapacityLiters: number | null;
-        dimoVehicle: { tokenId: number | null } | null;
+        dimoVehicle: { tokenId: number | null; rawJson?: unknown } | null;
       };
     },
   ): Promise<BehaviorEnrichmentOutcome> {
     const hardwareType = trip.vehicle.hardwareType ?? 'LTE_R1';
+    const sourceFamily = resolveTelemetrySourceFamily(trip.vehicle.dimoVehicle?.rawJson);
 
     if (!trip.endTime) {
       return {
@@ -837,9 +890,11 @@ export class TripBehaviorEnrichmentService {
           evTractionSummaryLte = summarizeEvTractionPowerFromHf(rawReadings);
         }
 
+        const detectedAbuse: AbuseEvent[] = [];
         for (const seg of segs) {
-          allAbuse.push(...detectAbuseEvents(seg, rpmConfig));
+          detectedAbuse.push(...detectAbuseEvents(seg, rpmConfig));
         }
+        allAbuse = this.containR1HfAbuse(tripId, detectedAbuse, sourceFamily);
         abuseScore = computeAbuseScore(allAbuse);
 
         for (const e of allAbuse) {
@@ -933,7 +988,9 @@ export class TripBehaviorEnrichmentService {
     // Always persist abuse slice in one transaction (transaction-safe, idempotent for TripBehaviorEvent).
     // Canonical hard* counters were already set by LteR1BehaviorEnrichmentService and are not touched here.
     await this.prisma.$transaction(async (tx) => {
-      await tx.tripBehaviorEvent.deleteMany({ where: { tripId } });
+      await tx.tripBehaviorEvent.deleteMany({
+        where: this.buildBehaviorEventReplaceScope(tripId, sourceFamily),
+      });
       if (abuseRows.length > 0) {
         await tx.tripBehaviorEvent.createMany({ data: abuseRows });
       }
@@ -986,6 +1043,7 @@ export class TripBehaviorEnrichmentService {
             segments: segmentCount,
             abuseTotal: allAbuse.length,
             abuseScore,
+            ...buildR1TemporalContainmentSummary(sourceFamily),
             drivingEventsSource: 'TELEMETRY_EVENTS',
             nativeEventCount,
             nativeQuerySucceeded,

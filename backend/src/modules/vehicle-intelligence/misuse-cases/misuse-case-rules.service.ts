@@ -17,6 +17,7 @@ import { evaluateContextAnchors } from './context-misuse-rules';
 import { enrichCaseWithEvidence } from '../trips/trip-evidence-case.builder';
 import { evaluateCanonicalDamageIncidents } from '../damage-incidents/damage-incident-canonical';
 import { resolveAttribution } from './misuse-case.types';
+import { tagR1TemporallyUncertainEvidence } from './misuse-case-r1-temporal-containment';
 
 const MS_15_MIN = 15 * 60 * 1000;
 const MS_30_MIN = 30 * 60 * 1000;
@@ -59,7 +60,11 @@ export class MisuseCaseRulesService {
     // Merged by type with behavior-event candidates above.
     candidates.push(...evaluateContextAnchors(context.contextAnchors ?? []));
 
-    return this.mergeSameType(candidates).map((candidate) => enrichCaseWithEvidence(candidate));
+    return this.mergeSameType(candidates).map((candidate) =>
+      enrichCaseWithEvidence(
+        tagR1TemporallyUncertainEvidence(candidate, context.telemetrySourceFamily),
+      ),
+    );
   }
 
   /**

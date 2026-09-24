@@ -20,11 +20,48 @@ function makeMockPrisma() {
     vehicleTrip: {
       aggregate: jest.fn(),
       count: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     vehicle: {
       findFirst: jest.fn().mockResolvedValue({ id: 'vehicle-1' }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    tripBehaviorEvent: {
+      groupBy: jest.fn().mockResolvedValue([]),
     },
   } as any;
+}
+
+const R1_RAW_JSON = { aftermarketDevice: { serial: 'R1-TEST-0001' }, syntheticDevice: null };
+const TESLA_RAW_JSON = { aftermarketDevice: null, syntheticDevice: { tokenId: 1 } };
+
+function tripWithFullBraking(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'trip-1',
+    vehicleId: 'vehicle-1',
+    driverName: null,
+    startTime: new Date('2026-03-01T08:00:00Z'),
+    endTime: new Date('2026-03-01T09:00:00Z'),
+    drivingScore: null,
+    speedingSectionCount: 0,
+    speedingSegments: null,
+    speedingExposurePct: null,
+    totalAccelerationEvents: 0,
+    hardAccelerationEvents: 0,
+    totalBrakingEvents: 6,
+    hardBrakingEvents: 4,
+    fullBrakingEvents: 2,
+    corneringEvents: 0,
+    abuseEvents: 3,
+    speedingEvents: 0,
+    assignmentStatus: TripAssignmentStatus.UNKNOWN_ASSIGNMENT,
+    assignmentSubjectType: null,
+    assignmentSubjectId: null,
+    assignedBookingId: null,
+    bookingLinkSource: null,
+    isPrivateTrip: false,
+    ...overrides,
+  };
 }
 
 describe('TripAnalyticsCanonicalService', () => {
@@ -202,5 +239,115 @@ describe('TripAnalyticsCanonicalService', () => {
     expect(stats.avgDrivingStressScore).toBe(74.46);
     expect(stats.stressLevel).toBe('high');
     expect((stats as any).avgSafetyScore).toBeUndefined();
+  });
+
+  describe('EXP-021 C0.3 R1 temporal containment (read-time counters)', () => {
+    beforeEach(() => {
+      prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    });
+
+    it('removes FULL_BRAKING and contained HF abuse from R1 trip counters without writes', async () => {
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
+      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-1', _count: { _all: 2 } }]);
+
+      const [hydrated] = await service.hydrateTrips('org-1', [tripWithFullBraking()] as any);
+
+      expect(hydrated.canonicalTripSummary.events).toMatchObject({
+        fullBrakingEvents: 0,
+        totalBrakingEvents: 4,
+        hardBrakingEvents: 4,
+        abuseEvents: 1,
+      });
+      expect(prisma.tripBehaviorEvent.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tripId: { in: ['trip-1'] },
+            eventCategory: 'ABUSE',
+            eventType: { in: ['FULL_BRAKING', 'POSSIBLE_IMPACT', 'ENGINE_SHUTDOWN_WHILE_DRIVING'] },
+          }),
+        }),
+      );
+      expect(prisma.vehicle.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: { in: ['vehicle-1'] }, organizationId: 'org-1' } }),
+      );
+    });
+
+    it('leaves Tesla (API synthetic, hardwareType LTE_R1) counters untouched', async () => {
+      prisma.vehicle.findMany.mockResolvedValue([
+        { id: 'vehicle-1', dimoVehicle: { rawJson: TESLA_RAW_JSON } },
+      ]);
+
+      const [hydrated] = await service.hydrateTrips('org-1', [tripWithFullBraking()] as any);
+
+      expect(hydrated.canonicalTripSummary.events).toMatchObject({
+        fullBrakingEvents: 2,
+        totalBrakingEvents: 6,
+        abuseEvents: 3,
+      });
+      expect(prisma.tripBehaviorEvent.groupBy).not.toHaveBeenCalled();
+    });
+
+    it('does not subtract preserved rows again for trips re-enriched under containment', async () => {
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
+      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-1', _count: { _all: 2 } }]);
+      prisma.vehicleTrip.findMany.mockResolvedValue([
+        {
+          id: 'trip-1',
+          behaviorSummaryJson: { r1TemporalContainment: { version: 'r1-temporal-containment-v1' } },
+        },
+      ]);
+
+      const [hydrated] = await service.hydrateTrips('org-1', [
+        tripWithFullBraking({ totalBrakingEvents: 4, fullBrakingEvents: 0, abuseEvents: 1 }),
+      ] as any);
+
+      expect(hydrated.canonicalTripSummary.events).toMatchObject({
+        fullBrakingEvents: 0,
+        totalBrakingEvents: 4,
+        abuseEvents: 1,
+      });
+    });
+
+    it('leaves UNKNOWN-family (missing rawJson) counters untouched', async () => {
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: null }]);
+
+      const [hydrated] = await service.hydrateTrips('org-1', [tripWithFullBraking()] as any);
+
+      expect(hydrated.canonicalTripSummary.events.fullBrakingEvents).toBe(2);
+      expect(hydrated.canonicalTripSummary.events.abuseEvents).toBe(3);
+    });
+
+    it('contains R1 vehicle stats totals', async () => {
+      prisma.vehicleTrip.aggregate.mockResolvedValue({
+        _count: { _all: 2 },
+        _sum: {
+          distanceKm: 40,
+          totalAccelerationEvents: 0,
+          hardAccelerationEvents: 0,
+          totalBrakingEvents: 10,
+          hardBrakingEvents: 7,
+          fullBrakingEvents: 3,
+          abuseEvents: 5,
+          speedingEvents: 0,
+        },
+      });
+      prisma.tripDrivingImpact.aggregate.mockResolvedValue({ _avg: { drivingStressScore: null } });
+      prisma.vehicleTrip.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
+      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([
+        { tripId: 'trip-a', _count: { _all: 4 } },
+        { tripId: 'trip-b', _count: { _all: 3 } },
+      ]);
+      prisma.vehicleTrip.findMany.mockResolvedValue([
+        { id: 'trip-a', behaviorSummaryJson: { abuseTotal: 5 } },
+        { id: 'trip-b', behaviorSummaryJson: { r1TemporalContainment: { version: 'v1' } } },
+      ]);
+
+      const stats = await service.getVehicleStats('org-1', 'vehicle-1');
+
+      expect(stats.totalBrakingEvents).toBe(7);
+      expect(stats.totalHardBrakingEvents).toBe(7);
+      expect(stats.totalAbuseEvents).toBe(1);
+    });
   });
 });

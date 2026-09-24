@@ -23,6 +23,13 @@
  * and reused. The controller only does the DB reads and passes rows in.
  */
 
+import {
+  hasUncertainHistoricalObdRecordTime,
+  type TelemetrySourceFamily,
+} from '../telemetry-source-family';
+import { isContainedHfAbuseEvent } from '../r1-temporal-containment';
+import { applyR1ContextTemporalContainment } from '../event-context/event-context-r1-temporal-containment';
+
 // ── Provenance / detection metadata ──────────────────────────────────────────
 
 /** Where the event physically came from. */
@@ -547,13 +554,52 @@ export function buildUnifiedBehaviorEvents(input: {
   behaviorEvents: BehaviorEventRow[];
   drivingEvents: DrivingEventRow[];
   tripId: string;
+  telemetrySourceFamily?: TelemetrySourceFamily;
 }): UnifiedBehaviorEvent[] {
-  const mappedDriving = input.drivingEvents.map((de) =>
-    mapDrivingEventRow(de, input.tripId),
-  );
-  const mappedBehavior = input.behaviorEvents.map((e) => mapBehaviorEventRow(e));
+  const family = input.telemetrySourceFamily ?? 'UNKNOWN';
+  const uncertainObdRecordTime = hasUncertainHistoricalObdRecordTime(family);
+  const mappedDriving = input.drivingEvents.map((de) => {
+    const mapped = mapDrivingEventRow(de, input.tripId);
+    return uncertainObdRecordTime ? containNativeEventForUncertainObdTime(mapped) : mapped;
+  });
+  const mappedBehavior = input.behaviorEvents
+    .filter((e) => !isContainedHfAbuseEvent(family, e.eventCategory, e.eventType))
+    .map((e) => mapBehaviorEventRow(e));
   return dedupeUnifiedBehaviorEvents(
     [...mappedDriving, ...mappedBehavior],
     input.tripId,
   );
+}
+
+/**
+ * EXP-021 C0.3 — presentation containment of a native event on a vehicle whose
+ * historical OBD record time is uncertain (Ruptela R1): point-in-time engine
+ * values at the event are withheld and the context assessment is marked
+ * time-uncertain. The native event itself is kept.
+ */
+function containNativeEventForUncertainObdTime(
+  event: UnifiedBehaviorEvent,
+): UnifiedBehaviorEvent {
+  const meta = event.metadataJson;
+  let metadataJson: unknown = meta;
+  if (meta != null && typeof meta === 'object' && !Array.isArray(meta)) {
+    const { rpm: _rpm, throttlePct: _throttlePct, coolantC: _coolantC, ...rest } =
+      meta as Record<string, unknown>;
+    metadataJson =
+      rest.contextAssessment != null
+        ? { ...rest, contextAssessment: applyR1ContextTemporalContainment(rest.contextAssessment) }
+        : rest;
+  }
+  return {
+    ...event,
+    maxThrottlePos: null,
+    maxEngineRpm: null,
+    maxCoolantTemp: null,
+    legacyIngestEvidence: null,
+    metadataJson,
+    contextAssessment:
+      event.contextAssessment != null
+        ? applyR1ContextTemporalContainment(event.contextAssessment)
+        : null,
+  };
 }

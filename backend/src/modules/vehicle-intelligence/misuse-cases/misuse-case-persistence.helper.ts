@@ -152,7 +152,7 @@ export class MisuseCasePersistenceHelper {
       analysisRunId: upsertContext.analysisRunId ?? null,
       shouldResolve: rating.shouldResolve,
       resolutionReason: rating.resolutionReason,
-      proxyOnly: rating.proxyOnly,
+      proxyOnly: rating.proxyOnly || rating.temporallyUncertainOnly,
     };
 
     if (plan.action === 'SUPERSEDE') {

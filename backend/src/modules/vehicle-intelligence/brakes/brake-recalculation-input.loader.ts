@@ -8,6 +8,12 @@ import {
   classifyBrakeDtc,
   isBrakeDtcEvidenceRelevant,
 } from './brake-dtc-classification';
+import { interpretLedgerRowForUncertainObdTime } from './braking-event-ledger.domain';
+import {
+  hasUncertainHistoricalObdRecordTime,
+  resolveTelemetrySourceFamily,
+} from '../telemetry-source-family';
+import { containFullBrakingRate } from '../r1-temporal-containment';
 
 const GAP_POLICY_VERSION = 'brake-coverage-gap-v1';
 
@@ -51,9 +57,12 @@ export class BrakeRecalculationInputLoader {
         organizationId: true,
         fuelType: true,
         brakeForceFrontPercent: true,
+        dimoVehicle: { select: { rawJson: true } },
       },
     });
     if (!vehicle) return null;
+    const sourceFamily = resolveTelemetrySourceFamily(vehicle.dimoVehicle?.rawJson);
+    const uncertainObdRecordTime = hasUncertainHistoricalObdRecordTime(sourceFamily);
 
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
@@ -156,7 +165,7 @@ export class BrakeRecalculationInputLoader {
       rawDistanceKm += raw;
       authoritativeDistanceKm += auth;
       hardBrakePer100KmSum += trip.hardBrakePer100Km ?? 0;
-      fullBrakingPer100KmSum += trip.fullBrakingPer100Km ?? 0;
+      fullBrakingPer100KmSum += containFullBrakingRate(trip.fullBrakingPer100Km, sourceFamily) ?? 0;
       if (!latestTripStartedAt || trip.tripStartedAt > latestTripStartedAt) {
         latestTripStartedAt = trip.tripStartedAt;
       }
@@ -165,7 +174,7 @@ export class BrakeRecalculationInputLoader {
       }
     }
 
-    const ledgerRows = await this.prisma.brakingEventLedger.findMany({
+    const persistedLedgerRows = await this.prisma.brakingEventLedger.findMany({
       where: {
         vehicleId,
         invalidatedAt: null,
@@ -176,9 +185,15 @@ export class BrakeRecalculationInputLoader {
       },
       select: {
         canonicalType: true,
+        primarySource: true,
         occurredAt: true,
       },
     });
+    const ledgerRows = uncertainObdRecordTime
+      ? persistedLedgerRows
+          .map(interpretLedgerRowForUncertainObdTime)
+          .filter((row): row is (typeof persistedLedgerRows)[number] => row != null)
+      : persistedLedgerRows;
     let harshBraking = 0;
     let extremeBraking = 0;
     let fullBraking = 0;
