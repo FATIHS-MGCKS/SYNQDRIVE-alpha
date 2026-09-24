@@ -8,6 +8,7 @@ import {
   MisuseEvidenceSourceType,
 } from '@prisma/client';
 import type { EvidenceCandidate } from '../misuse-case.types';
+import { isTemporallyUncertainEvidence } from '../misuse-case-r1-temporal-containment';
 import { EVIDENCE_LEVEL_RANK, type TripEvidenceLevel } from '../../trips/trip-evidence-level.types';
 import {
   CLUSTER_SEVERE_THRESHOLD,
@@ -270,6 +271,76 @@ function applyNormalization(
   return { severity: nextSeverity, confidence: nextConfidence };
 }
 
+/** Severity supported by the given evidence items alone (no trip evidence level). */
+function severitySupportedByEvidence(
+  caseType: MisuseCaseRatingReconciliationInput['caseType'],
+  items: EvidenceCandidate[],
+): MisuseCaseSeverity {
+  let rank = 0;
+  for (const item of items) {
+    rank = Math.max(rank, SEVERITY_RANK[evidenceItemSeverity(item)]);
+  }
+  if (items.length >= CLUSTER_SEVERE_THRESHOLD) {
+    rank = Math.max(rank, SEVERITY_RANK[MisuseCaseSeverity.SEVERE]);
+  }
+  if (hasHighValueEvidence({ caseType, qualifiedEvidence: items })) {
+    rank = Math.max(
+      rank,
+      SEVERITY_RANK[
+        caseType === 'DIMO_COLLISION_REPORTED' ? MisuseCaseSeverity.CRITICAL : MisuseCaseSeverity.SEVERE
+      ],
+    );
+  }
+  return severityFromRank(rank);
+}
+
+/**
+ * EXP-021 C0.3 — temporally uncertain (Ruptela R1 historical OBD) evidence can
+ * neither establish nor upgrade SEVERE+. Uncertain-only → severity ≤ WARNING,
+ * confidence ≤ MEDIUM. Mixed → severity ≤ max(WARNING, what the independent
+ * evidence supports on its own).
+ */
+function applyTemporalUncertaintyCap(
+  severity: MisuseCaseSeverity,
+  confidence: MisuseCaseConfidence,
+  input: MisuseCaseRatingReconciliationInput,
+  reasons: string[],
+): {
+  severity: MisuseCaseSeverity;
+  confidence: MisuseCaseConfidence;
+  uncertainEvidenceCount: number;
+  temporallyUncertainOnly: boolean;
+} {
+  const uncertainEvidenceCount = input.qualifiedEvidence.filter(isTemporallyUncertainEvidence).length;
+  if (uncertainEvidenceCount === 0) {
+    return { severity, confidence, uncertainEvidenceCount, temporallyUncertainOnly: false };
+  }
+  const independent = input.qualifiedEvidence.filter((e) => !isTemporallyUncertainEvidence(e));
+  if (independent.length === 0) {
+    reasons.push('temporallyUncertainOnlyCap');
+    return {
+      severity: minSeverityRank(severity, MisuseCaseSeverity.WARNING),
+      confidence: minConfidenceRank(confidence, MisuseCaseConfidence.MEDIUM),
+      uncertainEvidenceCount,
+      temporallyUncertainOnly: true,
+    };
+  }
+  const supported = severitySupportedByEvidence(input.caseType, independent);
+  const ceiling =
+    SEVERITY_RANK[supported] > SEVERITY_RANK[MisuseCaseSeverity.WARNING]
+      ? supported
+      : MisuseCaseSeverity.WARNING;
+  if (SEVERITY_RANK[severity] > SEVERITY_RANK[ceiling]) {
+    reasons.push('temporallyUncertainEvidenceCap');
+  }
+  return {
+    severity: minSeverityRank(severity, ceiling),
+    confidence,
+    uncertainEvidenceCount,
+    temporallyUncertainOnly: false,
+  };
+}
+
 function buildAuditEntry(
   input: MisuseCaseRatingReconciliationInput,
   severity: MisuseCaseSeverity,
@@ -281,6 +352,7 @@ function buildAuditEntry(
     coverageQuality: CoverageQuality;
     sourceStrengthMax: number;
     hasHighValueEvidence: boolean;
+    temporalContainment?: RatingReconciliationAuditEntry['temporalContainment'];
   },
   evaluatedAt: Date = new Date(),
 ): RatingReconciliationAuditEntry {
@@ -312,6 +384,7 @@ function buildAuditEntry(
     clusterCount: meta.clusterCount,
     proxyOnly: meta.proxyOnly,
     hasHighValueEvidence: meta.hasHighValueEvidence,
+    ...(meta.temporalContainment ? { temporalContainment: meta.temporalContainment } : {}),
   };
 }
 
@@ -354,6 +427,7 @@ export function reconcileMisuseCaseRating(
       shouldResolve: true,
       resolutionReason: 'Evidence entfallen — automatische Auflösung',
       proxyOnly: false,
+      temporallyUncertainOnly: false,
       clusterCount: 0,
       coverageQuality: 'NONE',
       sourceStrengthMax: 0,
@@ -383,11 +457,17 @@ export function reconcileMisuseCaseRating(
     },
     reasons,
   );
+  const capped = applyTemporalUncertaintyCap(
+    normalized.severity,
+    normalized.confidence,
+    enrichedInput,
+    reasons,
+  );
 
   const audit = buildAuditEntry(
     input,
-    normalized.severity,
-    normalized.confidence,
+    capped.severity,
+    capped.confidence,
     reasons,
     {
       proxyOnly,
@@ -395,15 +475,23 @@ export function reconcileMisuseCaseRating(
       coverageQuality,
       sourceStrengthMax,
       hasHighValueEvidence: highValue,
+      temporalContainment:
+        capped.uncertainEvidenceCount > 0
+          ? {
+              uncertainEvidenceCount: capped.uncertainEvidenceCount,
+              temporallyUncertainOnly: capped.temporallyUncertainOnly,
+            }
+          : undefined,
     },
   );
 
   return {
-    severity: normalized.severity,
-    confidence: normalized.confidence,
+    severity: capped.severity,
+    confidence: capped.confidence,
     shouldResolve: false,
     resolutionReason: null,
     proxyOnly,
+    temporallyUncertainOnly: capped.temporallyUncertainOnly,
     clusterCount,
     coverageQuality,
     sourceStrengthMax,

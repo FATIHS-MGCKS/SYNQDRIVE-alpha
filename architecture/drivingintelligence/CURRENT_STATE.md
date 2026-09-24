@@ -174,6 +174,20 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 - `VehicleTrip`: scoped via vehicle join; repositories assert org
 - ClickHouse: `org_id` on all mirror tables
 
+## R1 temporal-safety containment — ACTIVE CONTAINMENT (EXP-021 C0.3, 2026-09-24)
+
+**Status:** code + tests on draft PR #1755 (`VALIDATED`, **not deployed**, not production-validated). **Not** the final source-quality architecture.
+
+| Constraint | Current behaviour (branch) |
+|------------|----------------------------|
+| 1. Integration identity | `resolveTelemetrySourceFamily(DimoVehicle.rawJson)` → `RUPTELA_R1` (serial `R1-`) / `API_SYNTHETIC` / `UNKNOWN` (fail closed). `hardwareType` never consulted (Tesla is `LTE_R1`: DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001) |
+| 2. No R1 point-deceleration abuse | Future `FULL_BRAKING` / `POSSIBLE_IMPACT` suppressed; existing rows omitted from event list, excluded from ledger summary FULL count, impact, brake wear, counters |
+| 3. No R1 OBD-only engine-shutdown claim | `ENGINE_SHUTDOWN_WHILE_DRIVING` not derived for R1 (fail closed; no 2-record ≥3 s proof path) |
+| 4. No exact-time context claims for R1 | Presentation nulls anchor-relative values, caps confidence LOW, adds `temporalContainment` marker; persisted assessment unchanged |
+| 5. No R1-only misuse escalation | R1 OBD-derived evidence tagged `temporalProvenance`; uncertain-only ≤ WARNING / MEDIUM + proxy-only lifecycle (REVIEW_REQUIRED preserved); mixed capped by independent support |
+
+No historical row, ledger row, misuse case, score or ClickHouse data is modified. Residual consumers: DI-GAP-R1-CONTAINMENT-RESIDUAL-001. Wording debt (12 sites): DI-GAP-R1-OVERCLAIM-WORDING-001. Record: `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md`.
+
 ## Known limitations
 
 1. HF assumed ~1 Hz in production detectors; RD003 ~2s median; RD002 sealed P50 13.489s
@@ -182,6 +196,7 @@ Downstream: `DRIVING_HEALTH_IMPACT_PUBLISH` → `BrakeHealthService.recalculate`
 4. `DriverScoreService` naming contradicts vehicle-stress semantics
 5. `profilesComparable()` rolling aggregate defect (pre-existing, open)
 6. Fleet HF request rate / cost: **NOT BENCHMARKED**
+7. R1 historical OBD record time is uncertain (EXP-021 C0.1); point-in-time claims are **contained**, not corrected (DI-DEF-020 OPEN)
 
 ## Unresolved validation items
 

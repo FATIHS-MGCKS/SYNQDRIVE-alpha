@@ -235,6 +235,7 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 | DI-DEC-DEPLOY-DISABLED-001 | Deploy code with features off | VALIDATED |
 | DI-DEC-NATIVE-LTE-001 | Native events LTE_R1 misuse authority | VALIDATED |
 | DI-DEC-ALIGN-HARD-BOUNDS-001 | Reject implausible alignments | VALIDATED |
+| DI-DEC-R1-TEMPORAL-CONTAINMENT-001 | R1 temporal-safety containment (active containment) | VALIDATED |
 
 ## Open gaps (canonical)
 
@@ -246,6 +247,8 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 | DI-GAP-FLEET-COST-001 | Fleet HF request cost not benchmarked |
 | DI-GAP-DRIVER-SCORE-NAMING-001 | DriverScoreService misnamed |
 | DI-GAP-RAW-HF-REPLAY-001 | No Postgres raw HF replay store |
+| DI-GAP-R1-CONTAINMENT-RESIDUAL-001 | Residual R1 consumers outside C0.3 containment (historical stress scores, raw counter aggregates, assessability) |
+| DI-GAP-R1-OVERCLAIM-WORDING-001 | 12 temporal semantic overclaim sites not reworded (C0.2 inventory) |
 
 ## Epistemic legend
 

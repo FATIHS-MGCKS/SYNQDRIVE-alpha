@@ -11,6 +11,7 @@ import {
   BRAKING_EVENT_LEDGER_SOURCE_VERSION,
   correlateBrakingCandidates,
   DEFAULT_BRAKING_DEDUPE_WINDOW_MS,
+  interpretLedgerRowForUncertainObdTime,
   mapDimoIntakeToCandidate,
   mapDrivingEventToCandidate,
   mapTripBehaviorEventToCandidate,
@@ -257,10 +258,16 @@ export class BrakingEventLedgerService {
     };
   }
 
+  /**
+   * @param options.uncertainObdRecordTime EXP-021 C0.3 — read-time containment for
+   *   Ruptela R1 (see `interpretLedgerRowForUncertainObdTime`). Ledger rows are not
+   *   modified.
+   */
   async getCanonicalSummaryForTrip(
     tripId: string,
+    options?: { uncertainObdRecordTime?: boolean },
   ): Promise<BrakingEventCanonicalTripSummary | null> {
-    const rows = await this.prisma.brakingEventLedger.findMany({
+    const persistedRows = await this.prisma.brakingEventLedger.findMany({
       where: { tripId, invalidatedAt: null },
       orderBy: { occurredAt: 'asc' },
       select: {
@@ -278,6 +285,12 @@ export class BrakingEventLedgerService {
         correlatedSourceIds: true,
       },
     });
+
+    const rows = options?.uncertainObdRecordTime
+      ? persistedRows
+          .map((row) => interpretLedgerRowForUncertainObdTime(row))
+          .filter((row): row is (typeof persistedRows)[number] => row != null)
+      : persistedRows;
 
     if (rows.length === 0) return null;
 

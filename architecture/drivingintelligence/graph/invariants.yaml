@@ -184,3 +184,27 @@ invariants:
       - DI-EVID-0035C1-BLOCK-001
     source_paths:
       - architecture/drivingintelligence/evidence/signal-inventory/CADENCE_DENSITY.md
+
+  - id: DI-INV-R1-OBD-NO-POINT-CLAIM-001
+    kind: CONDITIONAL_INVARIANT
+    statement: >
+      For RUPTELA_R1 vehicles (DimoVehicle.rawJson aftermarket serial "R1-"), historical OBD-family records
+      must not produce or support point-in-time claims: no FULL_BRAKING / POSSIBLE_IMPACT /
+      ENGINE_SHUTDOWN_WHILE_DRIVING derivation, no exact anchor-relative context values in presentation,
+      and no SEVERE+ misuse established or upgraded by such evidence alone.
+    rationale: >
+      EXP-021 C0–C0.2 — row labels are query-grid bucket starts; records misdated (|offset| P50 14 s,
+      P90 45 s); FULL_BRAKING 0/5 supported, ENGINE_SHUTDOWN 0/6 sustained. ACTIVE CONTAINMENT — condition
+      lifts only with a validated source-quality model (future decision), never by hardwareType.
+    epistemic_status: CONFIRMED
+    affected_nodes:
+      - DI-POL-R1-TEMPORAL-CONTAINMENT-001
+      - DI-ALGO-HF-ABUSE-001
+      - DI-SVC-BEHAVIOR-ENRICH-001
+      - DI-SVC-IMPACT-001
+    evidence:
+      - DI-EVID-EXP021-C03-001
+      - DI-TEST-R1-CONTAINMENT-001
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/r1-temporal-containment.ts
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts

@@ -118,6 +118,7 @@ import {
   DRIVING_EVENT_CATEGORY_MAP,
 } from './trips/unified-behavior-read-model';
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
+import { resolveTelemetrySourceFamily } from './telemetry-source-family';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
 
 @Controller('vehicles/:vehicleId')
@@ -1367,6 +1368,7 @@ export class VehicleIntelligenceController {
         behaviorEnrichmentStatus: true,
         tripAnalysisStatus: true,
         tripStatus: true,
+        vehicle: { select: { dimoVehicle: { select: { rawJson: true } } } },
       },
     });
     const behaviorReady = trip?.behaviorEnrichmentStatus === 'COMPLETED';
@@ -1423,6 +1425,7 @@ export class VehicleIntelligenceController {
       behaviorEvents,
       drivingEvents,
       tripId,
+      telemetrySourceFamily: resolveTelemetrySourceFamily(trip?.vehicle?.dimoVehicle?.rawJson),
     });
 
     return {

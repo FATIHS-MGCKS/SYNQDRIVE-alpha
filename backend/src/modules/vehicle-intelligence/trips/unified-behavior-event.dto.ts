@@ -8,6 +8,7 @@
  */
 
 import type { EventContextAssessment } from '../event-context/event-context-assessment.types';
+import type { ContextTemporalContainmentMarker } from '../event-context/event-context-r1-temporal-containment';
 import type { UnifiedBehaviorEvent } from './unified-behavior-read-model';
 
 /** Legacy point-in-time values from native event ingest — not the T±30s context window. */
@@ -76,6 +77,8 @@ export interface TripBehaviorEventContextAssessmentDto {
   keyValues: TripBehaviorEventContextKeyValuesDto;
   generatedAt: string;
   error?: string | null;
+  /** Present when anchor-relative timing is withheld (EXP-021 C0.3, Ruptela R1). */
+  temporalContainment?: ContextTemporalContainmentMarker;
 }
 
 export interface UnifiedBehaviorEventDto {
@@ -238,6 +241,12 @@ export function normalizeContextAssessmentForDto(
     generatedAt:
       typeof raw.generatedAt === 'string' ? raw.generatedAt : raw.anchorTimestamp,
     error: typeof raw.error === 'string' ? raw.error : null,
+    ...(isRecord(raw.temporalContainment)
+      ? {
+          temporalContainment:
+            raw.temporalContainment as unknown as ContextTemporalContainmentMarker,
+        }
+      : {}),
   };
 }
 

@@ -51,3 +51,23 @@ Record disagreements between sources. **Do not resolve by guessing.**
 | B | Sep `driving-intelligence-v2-canonical-design-2026-09.md` — episode reconstruction | DI-EV-0034F |
 | **Resolution** | **Layered, not contradictory** | Different concerns: presentation vs reconstruction |
 | **Authority** | Reconstruction: 0034F; UX contract: July doc until merged |
+
+## DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001 — `hardwareType` vs actual telemetry integration
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | `Vehicle.hardwareType = LTE_R1` identifies the LTE_R1 (Ruptela R1) path | `vehicles.hardware_type` enum `{LTE_R1, SMART5, UNKNOWN}`; routing in `trip-behavior-enrichment.service.ts` |
+| B | The Tesla is `LTE_R1` although it has no aftermarket device and is backed by a DIMO synthetic device | EXP-021 C0.2 §2 (Production read-only); `DimoVehicle.rawJson` |
+| **Status** | Open — enum cannot express API-synthetic integrations | Routing intentionally unchanged (C0.3 non-goal) |
+| **Mitigation** | Telemetry **semantics** decisions use `resolveTelemetrySourceFamily(rawJson)`; never `hardwareType` | `telemetry-source-family.ts`; DI-DEC-R1-TEMPORAL-CONTAINMENT-001 |
+| **Graph** | DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001, DI-POL-R1-TEMPORAL-CONTAINMENT-001 |
+
+## DI-CONTRA-PROVIDER-TS-R1-OBD-001 — providerTimestamp as physical time vs R1 OBD record provenance
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | `providerTimestamp` is the physical event-time authority for reconstruction | DI-DEC-PROVIDER-TS-001 (RD003 era, VALIDATED) |
+| B | For Ruptela R1 historical OBD-family rows the GraphQL row timestamp is a query-grid bucket start; underlying records are misdated (absolute offset P50 14 s, P90 45 s; backlog records with foreign GPS snapshots) | EXP-021 C0 / C0.1 (read-only audits); `EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` §1 |
+| **Status** | Open — DI-DEC-PROVIDER-TS-001 **not** superseded in C0.3 (historical decision preserved) | Formal revision requires a source-quality decision |
+| **Mitigation** | R1 point-in-time claims contained (DI-INV-R1-OBD-NO-POINT-CLAIM-001); wording debt DI-GAP-R1-OVERCLAIM-WORDING-001 |
+| **Graph** | DI-CONTRA-PROVIDER-TS-R1-OBD-001, DI-DEC-PROVIDER-TS-001 |

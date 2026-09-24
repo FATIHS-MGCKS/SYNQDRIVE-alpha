@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  type Prisma,
   TripAssignmentStatus,
   TripAssignmentSubjectType,
   TripDrivingImpact,
@@ -33,6 +34,16 @@ import {
 import { CanonicalTripHydrationBatchLoader } from './trip-canonical-hydration.batch';
 import type { CanonicalTripDecisionSummary } from './trip-canonical-hydration.types';
 import type { TripHydrationTripInput } from './trip-canonical-hydration.types';
+import {
+  hasUncertainHistoricalObdRecordTime,
+  resolveTelemetrySourceFamily,
+} from '../telemetry-source-family';
+import {
+  containTripEventCounters,
+  hasR1TemporalContainmentSummary,
+  R1_CONTAINED_HF_ABUSE_EVENT_TYPES,
+  shouldWithholdR1PersistedDrivingStressScore,
+} from '../r1-temporal-containment';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -51,7 +62,11 @@ export interface CanonicalTripScoreSummary {
   /** Composite vehicle stress 0–100. Higher = more load. */
   drivingStressScore: number | null;
   stressLevel: StressLevel | null;
-  scoreSource: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  scoreSource:
+    | 'trip_driving_impact'
+    | 'vehicle_trip_compat'
+    | 'derived'
+    | 'r1_temporal_containment_unavailable';
   /** @deprecated Use drivingStressScore */
   drivingStyleScore?: number | null;
 }
@@ -151,6 +166,13 @@ export class TripAnalyticsCanonicalService {
 
     const hydrationInputs = trips.map((trip) => this.toHydrationInput(trip));
     const prefetch = await this.hydrationBatchLoader.prefetch(organizationId, hydrationInputs);
+    const uncertainObdVehicleIds = await this.loadUncertainObdVehicleIds(
+      organizationId,
+      trips.map((trip) => trip.vehicleId),
+    );
+    const containedAbuseByTrip = await this.countContainedAbuseEventsByTrip(
+      trips.filter((trip) => uncertainObdVehicleIds.has(trip.vehicleId)).map((trip) => trip.id),
+    );
 
     return trips.map((trip, index) => {
       const hydrationTrip = hydrationInputs[index]!;
@@ -172,9 +194,72 @@ export class TripAnalyticsCanonicalService {
           assignment,
           attribution,
           prefetch.decisionSummaryByTripId.get(trip.id) ?? null,
+          uncertainObdVehicleIds.has(trip.vehicleId)
+            ? {
+                family: 'RUPTELA_R1' as const,
+                containedAbuseEvents: containedAbuseByTrip.get(trip.id) ?? 0,
+              }
+            : null,
         ),
       };
     });
+  }
+
+  /** Vehicles whose historical OBD record time is uncertain (Ruptela R1). */
+  private async loadUncertainObdVehicleIds(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<Set<string>> {
+    const ids = [...new Set(vehicleIds)];
+    if (ids.length === 0) return new Set();
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: ids }, organizationId },
+      select: { id: true, dimoVehicle: { select: { rawJson: true } } },
+    });
+    return new Set(
+      vehicles
+        .filter((v) =>
+          hasUncertainHistoricalObdRecordTime(resolveTelemetrySourceFamily(v.dimoVehicle?.rawJson)),
+        )
+        .map((v) => v.id),
+    );
+  }
+
+  private async countContainedAbuseEventsByTrip(tripIds: string[]): Promise<Map<string, number>> {
+    if (tripIds.length === 0) return new Map();
+    return this.countContainedAbuseEvents({ tripId: { in: tripIds } });
+  }
+
+  /**
+   * Persisted contained HF abuse rows per trip that are still included in the
+   * trip's persisted counters. Trips re-enriched under containment carry the
+   * `r1TemporalContainment` summary marker: their counters already exclude these
+   * rows (kept only because containment never deletes history), so they are skipped.
+   */
+  private async countContainedAbuseEvents(
+    scope: Prisma.TripBehaviorEventWhereInput,
+  ): Promise<Map<string, number>> {
+    const rows = await this.prisma.tripBehaviorEvent.groupBy({
+      by: ['tripId'],
+      where: {
+        ...scope,
+        eventCategory: 'ABUSE',
+        eventType: { in: [...R1_CONTAINED_HF_ABUSE_EVENT_TYPES] },
+      },
+      _count: { _all: true },
+    });
+    const counts = new Map(
+      rows.filter((row) => row._count._all > 0).map((row) => [row.tripId, row._count._all]),
+    );
+    if (counts.size === 0) return counts;
+    const trips = await this.prisma.vehicleTrip.findMany({
+      where: { id: { in: [...counts.keys()] } },
+      select: { id: true, behaviorSummaryJson: true },
+    });
+    for (const trip of trips) {
+      if (hasR1TemporalContainmentSummary(trip.behaviorSummaryJson)) counts.delete(trip.id);
+    }
+    return counts;
   }
 
   async hydrateTrip<T extends TripProjection>(
@@ -198,7 +283,7 @@ export class TripAnalyticsCanonicalService {
     },
     canonicalSummary: CanonicalTripSummary,
   ): Promise<TripAssessment> {
-    const [behaviorEvents, drivingEvents, misuseCases] = await Promise.all([
+    const [behaviorEvents, drivingEvents, misuseCases, vehicle] = await Promise.all([
       this.prisma.tripBehaviorEvent.findMany({
         where: { tripId: trip.id, vehicleId: trip.vehicleId, vehicle: { organizationId } },
         orderBy: { startedAt: 'asc' },
@@ -210,6 +295,10 @@ export class TripAnalyticsCanonicalService {
       this.prisma.misuseCase.findMany({
         where: { tripId: trip.id, vehicleId: trip.vehicleId, organizationId },
         select: { evidenceSummary: true },
+      }),
+      this.prisma.vehicle.findFirst({
+        where: { id: trip.vehicleId, organizationId },
+        select: { dimoVehicle: { select: { rawJson: true } } },
       }),
     ]);
 
@@ -228,6 +317,7 @@ export class TripAnalyticsCanonicalService {
       behaviorEvents,
       drivingEvents,
       tripId: trip.id,
+      telemetrySourceFamily: resolveTelemetrySourceFamily(vehicle?.dimoVehicle?.rawJson),
     });
 
     const assessability = deriveAnalysisAssessability(trip);
@@ -258,13 +348,14 @@ export class TripAnalyticsCanonicalService {
           hardAccelerationEvents: true,
           totalBrakingEvents: true,
           hardBrakingEvents: true,
+          fullBrakingEvents: true,
           abuseEvents: true,
           speedingEvents: true,
         },
       }),
       this.prisma.tripDrivingImpact.aggregate({
         where: impactWhere,
-        _avg: { drivingStressScore: true },
+        _avg: { drivingStressScore: true, fullBrakingPer100Km: true },
       }),
     ]);
 
@@ -286,8 +377,34 @@ export class TripAnalyticsCanonicalService {
       }),
     ]);
 
-    const stressAvg = impactAvg._avg.drivingStressScore;
-    const avgDrivingStressScore = stressAvg != null ? this.round2(stressAvg) : null;
+    let avgDrivingStressScore =
+      impactAvg._avg.drivingStressScore != null
+        ? this.round2(impactAvg._avg.drivingStressScore)
+        : null;
+    const persistedEventTotals = {
+      totalBrakingEvents: tripSummary._sum.totalBrakingEvents ?? 0,
+      fullBrakingEvents: tripSummary._sum.fullBrakingEvents ?? 0,
+      abuseEvents: tripSummary._sum.abuseEvents ?? 0,
+    };
+    const uncertainObd = (await this.loadUncertainObdVehicleIds(organizationId, [vehicleId])).has(
+      vehicleId,
+    );
+    let eventTotals = persistedEventTotals;
+    if (uncertainObd) {
+      const containedByTrip = await this.countContainedAbuseEvents({ vehicleId, trip: where });
+      let containedAbuseEvents = 0;
+      for (const count of containedByTrip.values()) containedAbuseEvents += count;
+      eventTotals = containTripEventCounters(persistedEventTotals, containedAbuseEvents);
+      if (
+        shouldWithholdR1PersistedDrivingStressScore('RUPTELA_R1', {
+          persistedFullBrakingEvents: persistedEventTotals.fullBrakingEvents,
+          containedAbuseEventCount: containedAbuseEvents,
+          impactFullBrakingPer100Km: impactAvg._avg.fullBrakingPer100Km,
+        })
+      ) {
+        avgDrivingStressScore = null;
+      }
+    }
     return {
       totalTrips: tripSummary._count._all ?? 0,
       totalDistanceKm: this.round2(tripSummary._sum.distanceKm ?? 0),
@@ -297,9 +414,9 @@ export class TripAnalyticsCanonicalService {
       avgDrivingStyleScore: avgDrivingStressScore,
       totalAccelerationEvents: tripSummary._sum.totalAccelerationEvents ?? 0,
       totalHardAccelerationEvents: tripSummary._sum.hardAccelerationEvents ?? 0,
-      totalBrakingEvents: tripSummary._sum.totalBrakingEvents ?? 0,
+      totalBrakingEvents: eventTotals.totalBrakingEvents,
       totalHardBrakingEvents: tripSummary._sum.hardBrakingEvents ?? 0,
-      totalAbuseEvents: tripSummary._sum.abuseEvents ?? 0,
+      totalAbuseEvents: eventTotals.abuseEvents,
       totalSpeedingEvents: tripSummary._sum.speedingEvents ?? 0,
       privateTripCount,
       assignedTripCount,
@@ -308,12 +425,19 @@ export class TripAnalyticsCanonicalService {
 
   private buildSummary(
     trip: TripProjection,
-    impact: Pick<TripDrivingImpact, 'drivingStressScore' | 'sourceSummaryJson'> | null,
+    impact: Pick<
+      TripDrivingImpact,
+      'drivingStressScore' | 'sourceSummaryJson' | 'fullBrakingPer100Km'
+    > | null,
     assignment: TripAssignmentResolution,
     attribution?: TripAttribution,
     decisionSummary?: CanonicalTripDecisionSummary | null,
+    uncertainObdContainment?: {
+      family: 'RUPTELA_R1';
+      containedAbuseEvents: number;
+    } | null,
   ): CanonicalTripSummary {
-    const events: CanonicalTripEventSummary = {
+    const persistedEvents: CanonicalTripEventSummary = {
       totalAccelerationEvents: trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0,
       hardAccelerationEvents: trip.hardAccelerationEvents ?? trip.hardAccelerationCount ?? 0,
       totalBrakingEvents: trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0,
@@ -324,13 +448,33 @@ export class TripAnalyticsCanonicalService {
       speedingEvents: trip.speedingEvents ?? trip.speedingSectionCount ?? trip.speedingSegments ?? 0,
       speedingExposurePct: trip.speedingExposurePct ?? null,
     };
+    const events = uncertainObdContainment
+      ? containTripEventCounters(persistedEvents, uncertainObdContainment.containedAbuseEvents)
+      : persistedEvents;
+
+    const persistedFullBrakingBeforeContainment =
+      trip.fullBrakingEvents ?? trip.fullBrakingCount ?? 0;
+    const withholdStress =
+      uncertainObdContainment != null &&
+      shouldWithholdR1PersistedDrivingStressScore(uncertainObdContainment.family, {
+        persistedFullBrakingEvents: persistedFullBrakingBeforeContainment,
+        containedAbuseEventCount: uncertainObdContainment.containedAbuseEvents,
+        impactFullBrakingPer100Km: impact?.fullBrakingPer100Km,
+      });
 
     const impactHasStress = impact?.drivingStressScore != null;
-    const drivingStressScore = impactHasStress
-      ? impact!.drivingStressScore
-      : (trip.drivingScore ?? null);
-    const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
-      impactHasStress ? 'trip_driving_impact' : drivingStressScore != null ? 'vehicle_trip_compat' : 'derived';
+    let drivingStressScore = withholdStress
+      ? null
+      : impactHasStress
+        ? impact!.drivingStressScore
+        : (trip.drivingScore ?? null);
+    let scoreSource: CanonicalTripScoreSummary['scoreSource'] = withholdStress
+      ? 'r1_temporal_containment_unavailable'
+      : impactHasStress
+        ? 'trip_driving_impact'
+        : drivingStressScore != null
+          ? 'vehicle_trip_compat'
+          : 'derived';
 
     const drivingImpactModelProfile = impact?.sourceSummaryJson
       ? readTripDrivingImpactModelProfile(impact.sourceSummaryJson)

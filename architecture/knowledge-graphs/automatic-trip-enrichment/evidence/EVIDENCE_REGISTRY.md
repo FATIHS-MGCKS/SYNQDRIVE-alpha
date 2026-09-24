@@ -38,6 +38,7 @@ Stable IDs: `ATE-EV-####`. Each item: source, path, what it proves, what it does
 | ATE-EV-0032 | PRODUCTION | Deploy doc | `P1_3_S6_PRODUCTION_DEPLOY_SINGLE_REPLICA_2026-08-30.md` | Single-replica deploy PASS | 24h soak completion | PROVEN_IN_PRODUCTION | 2026-09-01 |
 | ATE-EV-0033 | HISTORICAL_PR | Hotfix | commit `3874360e0` via deploy doc | Metric collision fix | No future metric collisions | PROVEN_IN_PRODUCTION | 2026-09-01 |
 | ATE-EV-0038 | CODE | Mutex disable | `reconciliation-execution-mutex.service.ts` | Mutex off allows overlap | Safe multi-replica without mutex | PROVEN_IN_CODE | 2026-09-01 |
+| ATE-EV-0039 | CODE+TEST | R1 temporal containment (EXP-021 C0.3) | `trip-behavior-enrichment.service.ts`, `r1-temporal-containment.ts`, `trip-behavior-enrichment.r1-containment.spec.ts` | R1 contained HF abuse not created; re-enrichment never deletes historical contained rows; non-R1 unchanged | Production effect (draft PR #1755, not deployed); root cause of R1 misdating | PROVEN_BY_TEST | 2026-09-24 |
 
 ## Negative results (first-class)
 

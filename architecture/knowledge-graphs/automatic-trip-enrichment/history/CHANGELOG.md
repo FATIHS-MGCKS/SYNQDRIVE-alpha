@@ -81,3 +81,25 @@
 | Evidence | 38 |
 | Open questions (remaining) | 7 |
 | Invariants | 9 |
+
+## 2026-09-24 — EXP-021 C0.3 R1 temporal-safety containment (IMPLEMENTATION_CHANGE)
+
+**Base SHA:** `3067fad1aad509c29b2c83a6f3f0b16135da7a63` · **Branch:** `cursor/exp021-c03-r1-temporal-containment-7d78` · draft PR #1755 (not merged, not deployed)  
+**Owner of semantics:** Driving Intelligence (`DI-DEC-R1-TEMPORAL-CONTAINMENT-001`); ATE carries the write-path gate only.
+
+### Changed
+
+- `ATE-SVC-004` TripBehaviorEnrichmentService: both paths resolve the telemetry source family from `DimoVehicle.rawJson` (not `hardwareType`). For R1, `FULL_BRAKING` / `POSSIBLE_IMPACT` / `ENGINE_SHUTDOWN_WHILE_DRIVING` are dropped after detection (bounded log); the `tripBehaviorEvent.deleteMany` replace scope excludes contained ABUSE rows so historical rows are never deleted; `behaviorSummaryJson.r1TemporalContainment` marker written.
+- Evidence `ATE-EV-0039` (CODE+TEST).
+
+### Unchanged
+
+- Orchestrator entry, hardware routing, queue/job topology, stage order, retry semantics, energy semantics (EED), LTE_R1 native event ingestion.
+
+### Uncertainty
+
+- OBSERVED_EFFECT UNKNOWN (not deployed). Re-enrichment of historical R1 trips (if later triggered) rewrites trip counters without contained types while preserving the rows (marker prevents double subtraction in DI read paths).
+
+### Validation
+
+- `node architecture/knowledge-graphs/automatic-trip-enrichment/scripts/validate-graph.mjs`

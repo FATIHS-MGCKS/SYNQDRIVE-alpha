@@ -105,12 +105,12 @@ ReferenceCapture runner (5s) → HF recovery V2 / block polling testbed
 | [COVERAGE_MATRIX.md](./COVERAGE_MATRIX.md) | Topic completion matrix |
 | [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph + evolution diagram |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
-| [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) | Decision register (18 decisions) |
+| [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) | Decision register (19 decisions) |
 | [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md) | Granular evolution ledger |
 | [research/DI_EV_CHRONOLOGY.md](./research/DI_EV_CHRONOLOGY.md) | Complete DI-EV sequence |
 | [research/HYPOTHESIS_REGISTER.md](./research/HYPOTHESIS_REGISTER.md) | Hypotheses tested/rejected |
 | [research/EXPERIMENT_REGISTER.md](./research/EXPERIMENT_REGISTER.md) | Experiments (**16 entries: 15 executed, 1 pending**) |
-| [research/DEFECT_LEDGER.md](./research/DEFECT_LEDGER.md) | Proven defects discovered (**18 total: 15 fixed, 3 open**) |
+| [research/DEFECT_LEDGER.md](./research/DEFECT_LEDGER.md) | Proven defects discovered (**20 total: 16 fixed, 4 open**) |
 | [research/LESSONS_LEARNED.md](./research/LESSONS_LEARNED.md) | Evidence-backed lessons |
 | [research/PR_TIMELINE.md](./research/PR_TIMELINE.md) | Workstream PR timeline (**27 merged**) |
 | [research/OPEN_QUESTIONS.md](./research/OPEN_QUESTIONS.md) | Explicit unknowns |

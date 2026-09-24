@@ -56,3 +56,14 @@ Explicit **UNKNOWN** items. Absence of an answer here is not a documentation fai
 | DI-OQ-PROD-001 | Has V2 full DAG run on production fleet with master flag on? | E2E proof |
 | DI-OQ-PROD-002 | Live HF calibration operator runbook finalized? | C.1c–e execution |
 | DI-OQ-PROD-003 | Reconciliation scheduler leader election enabled in prod? | Duplicate sweep risk |
+
+## R1 temporal provenance (EXP-021 C0.3 containment)
+
+| ID | Question | Why it matters |
+|----|----------|----------------|
+| DI-OQ-R1-001 | At which layer does R1 OBD record misdating originate (device buffer, DIMO ingest, storage)? C0.1 root layer = UNKNOWN | Determines whether a correction (vs containment) is possible |
+| DI-OQ-R1-002 | What source-quality model (evidence-state contract, e.g. `OBD_TIME_UNCERTAIN`) should replace the C0.3 containment? | Containment is not the final architecture |
+| DI-OQ-R1-003 | Should `hardwareType` gain an API-synthetic value or be replaced by device identity for routing? | DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001 |
+| DI-OQ-R1-004 | Should historical R1 misuse cases / trip counters / stress scores be reviewed or recomputed (authorized backfill)? | C0.3 contains reads only; persisted history unchanged |
+| DI-OQ-R1-005 | Can SMART5 / UNKNOWN-family OBD records be shown to have reliable record time, or do they need the same containment? | Containment is R1-only by evidence scope |
+| DI-OQ-R1-006 | Should context misuse rules stop reading persisted anchor-relative values (`coolantAtAnchor`, `preSpeed`) for R1? | Escalation capped, but candidate generation still uses them |

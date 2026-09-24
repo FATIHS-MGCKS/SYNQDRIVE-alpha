@@ -517,6 +517,50 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(result.action).toBe('skipped');
   });
 
+  it('EXP-021 C0.3: R1 trip impact ignores persisted HF FULL_BRAKING counter', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        fullBrakingCount: 5,
+        vehicle: {
+          organizationId: 'org-1',
+          hardwareType: 'LTE_R1',
+          fuelType: 'PETROL',
+          dimoVehicle: { rawJson: { aftermarketDevice: { serial: 'R1-TEST-0001' } } },
+        },
+      }),
+    );
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    expect(prisma.tripDrivingImpact.upsert.mock.calls[0][0].create.fullBrakingPer100Km).toBe(0);
+  });
+
+  it('EXP-021 C0.3: Tesla (API synthetic, hardwareType LTE_R1) keeps FULL_BRAKING counter', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        fullBrakingCount: 5,
+        vehicle: {
+          organizationId: 'org-1',
+          hardwareType: 'LTE_R1',
+          fuelType: 'PETROL',
+          dimoVehicle: { rawJson: { aftermarketDevice: null, syntheticDevice: { tokenId: 7 } } },
+        },
+      }),
+    );
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    expect(prisma.tripDrivingImpact.upsert.mock.calls[0][0].create.fullBrakingPer100Km).toBe(10);
+  });
+
   it('persists TripDrivingImpact for a valid urban trip', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
     prisma.tripBehaviorEvent.count.mockResolvedValue(2);
@@ -1003,42 +1047,27 @@ describe('DrivingImpactService.computeForTrip', () => {
     prisma.tripBehaviorEvent.findMany.mockResolvedValue([
       { startSpeedKmh: 90, endSpeedKmh: 10, peakValue: 6.5 },
     ]);
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findUnique.mockResolvedValue(null);
+
+    const first = await service.computeForTrip('trip-1', 'vehicle-1');
+    expect(first.action).toBe('created');
+    expect(first.sourceFingerprint).toBeTruthy();
+
     prisma.tripDrivingImpact.findUnique.mockResolvedValue({
-      sourceFingerprint: 'existing-fp',
+      sourceFingerprint: first.sourceFingerprint,
       analysisStatus: 'COMPLETE',
       authoritativeDistanceKm: 50,
       tripDistanceKmAtSource: 50,
     });
+    prisma.tripDrivingImpact.upsert.mockClear();
+    prisma.vehicleDrivingImpactCurrent.upsert.mockClear();
 
-    const { buildTripDrivingImpactSourceFingerprint } = await import(
-      './trip-driving-impact-coverage.domain'
-    );
-    const fp = buildTripDrivingImpactSourceFingerprint({
-      tripId: 'trip-1',
-      vehicleId: 'vehicle-1',
-      authoritativeDistanceKm: 50,
-      sourceVersion: 'v1.1.0:trip-distance-km-v1',
-      hardAccelerationCount: 4,
-      hardBrakingCount: 6,
-      fullBrakingCount: 2,
-      brakingEventCount: 12,
-      citySharePct: 30,
-      highwaySharePct: 60,
-      countryRoadSharePct: 10,
-      behaviorEnrichmentStatus: 'COMPLETED',
-      telemetryInput: 'HF_DERIVED',
-      tripUpdatedAt: new Date('2026-03-01T09:00:00.000Z').toISOString(),
-    });
-    prisma.tripDrivingImpact.findUnique.mockResolvedValue({
-      sourceFingerprint: fp,
-      analysisStatus: 'COMPLETE',
-      authoritativeDistanceKm: 50,
-      tripDistanceKmAtSource: 50,
-    });
-
-    const result = await service.computeForTrip('trip-1', 'vehicle-1');
-    expect(result.action).toBe('unchanged');
-    expect(result.shouldRecalculateBrake).toBe(false);
+    const second = await service.computeForTrip('trip-1', 'vehicle-1');
+    expect(second.action).toBe('unchanged');
+    expect(second.shouldRecalculateBrake).toBe(false);
     expect(prisma.tripDrivingImpact.upsert).not.toHaveBeenCalled();
   });
 
@@ -1286,6 +1315,52 @@ describe('DrivingImpactService consumer accessors', () => {
     prisma.tripDrivingImpact.findUnique.mockResolvedValue(null);
     const result = await service.getTripImpactForBrake('nonexistent-trip');
     expect(result).toBeNull();
+  });
+
+  describe('EXP-021 C0.3 R1 temporal containment', () => {
+    const R1_RAW_JSON = { aftermarketDevice: { serial: 'R1-TEST-0001' }, syntheticDevice: null };
+    const TESLA_RAW_JSON = { aftermarketDevice: null, syntheticDevice: { tokenId: 7 } };
+
+    it('reports FULL_BRAKING rate as 0 for R1 rolling brake impact without writing', async () => {
+      prisma.vehicleDrivingImpactCurrent.findUnique.mockResolvedValue({
+        vehicleId: 'v1',
+        hardBrakePer100Km: 8,
+        fullBrakingPer100Km: 2,
+      });
+      prisma.vehicle.findUnique.mockResolvedValue({ dimoVehicle: { rawJson: R1_RAW_JSON } });
+
+      const result = await service.getVehicleImpactForBrake('v1');
+
+      expect(result?.fullBrakingPer100Km).toBe(0);
+      expect(result?.hardBrakePer100Km).toBe(8);
+      expect(prisma.vehicleDrivingImpactCurrent.upsert).not.toHaveBeenCalled();
+    });
+
+    it('keeps FULL_BRAKING rate for Tesla (API synthetic) rolling brake impact', async () => {
+      prisma.vehicleDrivingImpactCurrent.findUnique.mockResolvedValue({
+        vehicleId: 'v1',
+        fullBrakingPer100Km: 2,
+      });
+      prisma.vehicle.findUnique.mockResolvedValue({ dimoVehicle: { rawJson: TESLA_RAW_JSON } });
+
+      const result = await service.getVehicleImpactForBrake('v1');
+
+      expect(result?.fullBrakingPer100Km).toBe(2);
+    });
+
+    it('reports FULL_BRAKING rate as 0 for an R1 trip impact and does not leak vehicleId', async () => {
+      prisma.tripDrivingImpact.findUnique.mockResolvedValue({
+        vehicleId: 'v1',
+        tripId: 't1',
+        hardBrakePer100Km: 4,
+        fullBrakingPer100Km: 3,
+      });
+      prisma.vehicle.findUnique.mockResolvedValue({ dimoVehicle: { rawJson: R1_RAW_JSON } });
+
+      const result = await service.getTripImpactForBrake('t1');
+
+      expect(result).toEqual({ tripId: 't1', hardBrakePer100Km: 4, fullBrakingPer100Km: 0 });
+    });
   });
 });
 

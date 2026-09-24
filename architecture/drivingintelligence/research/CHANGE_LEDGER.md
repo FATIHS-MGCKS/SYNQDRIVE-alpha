@@ -967,3 +967,25 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Repair | `PROSPECTIVE_PDI_DISCOVERY` + enrolled-window cursor (`maxEnrolledCanonicalWindowToMsForVehicle`) |
 | Evidence | `evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md` |
 | Production | **No deploy / no backfill** in repository repair workstream |
+
+### EXP-021 C0.3 — minimal R1 temporal-safety containment (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.2 `C02_GATE_A` (P1 scoped) — R1 point-in-time HF abuse / context / misuse claims unsupported |
+| BEFORE | R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING derived from grid-labelled OBD records; fed counters, ledger, impact, brake wear, SEVERE misuse; exact anchor-relative context in API |
+| CHANGE | `telemetry-source-family.ts` (rawJson resolver); `r1-temporal-containment.ts`; enrichment gate + replace scope + summary marker; ledger read interpretation; impact / brake readers / brake wear / fingerprint; unified read model + DTO marker; trip counters/stats; misuse evidence tag + rating cap + proxy-only lifecycle |
+| NON_EFFECTS | Speeding, max speed, trip end/FSM, waypoints, grid anchoring, aggregation, hardwareType, routing, historical data |
+| Validation | Focused suites (DI-TEST-R1-CONTAINMENT-001); vehicle-intelligence tree failure set = base + 1 load-dependent pre-existing flake |
+| Status | `VALIDATED` (code/tests) — draft PR #1755; not merged, not deployed |
+| Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` |
+
+### EXP-021 C0.3B — read-presentation closure (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.3A merge-gate — stale customer judgment + unqualified persisted SEVERE misuse presentation |
+| CHANGE | `shouldWithholdR1PersistedDrivingStressScore` on canonical trip/vehicle stats; `misuse-case-read-presentation.ts` on misuse list/detail API; provider-native braking documented INDEPENDENT; driving-impact fingerprint test fixture repair |
+| NON_EFFECTS | No persistence mutation; admin-only raw aggregates (`trips.service.getStats`, logbook) still deferred |
+| Status | `VALIDATED` (code/tests) — draft PR #1755 |
+| Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` §5.1 |
