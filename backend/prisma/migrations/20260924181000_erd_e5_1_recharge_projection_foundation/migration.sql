@@ -1,7 +1,5 @@
--- ERD E5.1 — canonical VEE RECHARGE projection foundation (additive, no backfill).
--- Forward-only: nullable dimo_segment_id for telemetry-only projections; explicit HvChargeSession FK.
-
-ALTER TYPE "VehicleEnergyEventDetectionSource" ADD VALUE IF NOT EXISTS 'SYNQDRIVE_ERD_RECHARGE_PROJECTION';
+-- ERD E5.1b — canonical VEE RECHARGE projection foundation (additive, no backfill).
+-- Requires prior migration that committed SYNQDRIVE_ERD_RECHARGE_PROJECTION enum value.
 
 ALTER TABLE "vehicle_energy_events"
   ADD COLUMN "canonical_charge_session_id" TEXT;

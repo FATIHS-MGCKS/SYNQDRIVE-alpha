@@ -38,12 +38,28 @@ RFRF pairings unchanged. No backfill.
 
 ## Migration
 
-`20260924180000_erd_e5_1_recharge_projection_foundation`
+PostgreSQL requires new enum values to be **committed before use** in CHECK constraints. E5.1a splits the unmerged PR migration into two sequential directories (no transaction hacks):
 
-- Add enum value `SYNQDRIVE_ERD_RECHARGE_PROJECTION`
-- Add column + FK + unique index on `canonical_charge_session_id`
-- Drop NOT NULL on `dimo_segment_id`
-- Replace `vehicle_energy_events_source_identity_check` (legacy + RFRF + ERD branches)
+| Migration | Purpose |
+|-----------|---------|
+| `20260924180000_erd_e5_1_recharge_projection_enum_value` | `ALTER TYPE … ADD VALUE 'SYNQDRIVE_ERD_RECHARGE_PROJECTION'` only |
+| `20260924181000_erd_e5_1_recharge_projection_foundation` | Column, FK, unique index, nullable `dimo_segment_id`, replacement `vehicle_energy_events_source_identity_check` |
+
+**Fresh chain proof:** `prisma migrate deploy` on ephemeral DB + PG-A…PG-K integration gate (local 2026-09-24 E5.1a).
+
+### Source identity CHECK (preserved families)
+
+- Legacy: `detection_source` NULL, `source_event_key` NULL, `dimo_segment_id` NOT NULL
+- DIMO native: `DIMO_NATIVE`, no key, segment NOT NULL
+- RFRF: `SYNQDRIVE_RAW_FUEL_FALLBACK`, key NOT NULL, segment NOT NULL
+- ERD projection: `SYNQDRIVE_ERD_RECHARGE_PROJECTION`, key NOT NULL; `dimo_segment_id` optional (NULL telemetry-only or real native id)
+
+**Kind/source pairing:** DB CHECK does **not** yet enforce `kind = RECHARGE` for ERD projection rows (application policy + E5.2 projector scope). ERD rows must not substitute REFUEL identity via `detection_source` enum separation.
+
+## E5.1a CI closure (2026-09-24)
+
+- Root cause: single migration used new enum in CHECK in same execution boundary → RFRF Stage-3/4 readiness PG failures.
+- i18n: mixed authority/product change requires existing label `i18n-governance-authority-change` on PR #1756 (no gate bypass).
 
 ## Tests
 

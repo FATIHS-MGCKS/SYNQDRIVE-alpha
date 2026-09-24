@@ -13219,6 +13219,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     summary: [
       'Schema: nullable canonicalChargeSessionId → HvChargeSession (unique, onDelete SetNull); dimoSegmentId nullable for telemetry-only ERD projections.',
       'Provenance: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION + extended vehicle_energy_events_source_identity_check (RFRF pairings preserved).',
+      'E5.1a: split enum ADD VALUE migration from CHECK/FK migration (PostgreSQL commit boundary); fresh migrate deploy + PG-A…PG-K reproven.',
       'Pure policies: projection eligibility (fail-closed), identity v1 sourceEventKey, non-persisting field mapper; documented E3 shared advisory-lock contract for E5.2+.',
       'PostgreSQL gate PG-A…PG-K (boundary-repair step 8/8). No runtime projector, no cutover, legacy DIMO→VEE writer unchanged.',
     ],
@@ -13227,7 +13228,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     previousBehavior:
       'VehicleEnergyEvent RECHARGE required dimoSegmentId; no FK to HvChargeSession; no ERD-specific detectionSource.',
     details:
-      'backend/prisma/migrations/20260924180000_erd_e5_1_recharge_projection_foundation; erd-recharge-projection/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md',
+      'backend/prisma/migrations/20260924180000_erd_e5_1_recharge_projection_enum_value + 20260924181000_erd_e5_1_recharge_projection_foundation; erd-recharge-projection/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-24T20:15:00.000Z',
