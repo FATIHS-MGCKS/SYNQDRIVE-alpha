@@ -17,6 +17,17 @@ const CAPABILITY_STATUSES = ['AVAILABLE', 'AVAILABLE_STALE'] as const;
 const CORROBORATING_KEYS = [...HV_E3_FALLBACK_CORROBORATING_SIGNAL_KEYS];
 const QUERY_SIGNAL_KEYS = [...HV_ERD_RECONCILE_CAPABILITY_QUERY_KEYS];
 
+const ERD_EV_FUEL_TYPES = [
+  'ELECTRIC',
+  'HYBRID',
+  'PLUGIN_HYBRID',
+  'PHEV',
+  'BEV',
+] as const;
+
+/** SQL fragment: fuel_type enum compared as text (never coerce NULL to enum). */
+const SQL_ERD_EV_FUEL = Prisma.sql`fuel_type IS NOT NULL AND fuel_type::text IN (${Prisma.join(ERD_EV_FUEL_TYPES)})`;
+
 /**
  * Bounded periodic reconcile target selection — eligibility + partition fairness in PostgreSQL.
  * Returns at most `batchSize` rows; no global fleet truncation before partition filter.
@@ -80,14 +91,12 @@ export async function fetchHvRechargePeriodicReconcileTargets(
         vehicle_id,
         organization_id,
         CASE
-          WHEN has_native
-            AND UPPER(COALESCE(fuel_type, '')) IN ('ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'PHEV', 'BEV')
+          WHEN has_native AND ${SQL_ERD_EV_FUEL}
             THEN 1
           WHEN has_soc
             AND has_corroborating
             AND ${fallbackEnabled}
-            AND UPPER(COALESCE(fuel_type, '')) IN ('ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'PHEV', 'BEV')
-            AND UPPER(COALESCE(fuel_type, '')) NOT IN ('GASOLINE', 'DIESEL', 'PETROL', 'GAS', 'LPG', 'CNG')
+            AND ${SQL_ERD_EV_FUEL}
             THEN 2
           ELSE NULL
         END AS cat
@@ -200,11 +209,9 @@ export async function fetchHvRechargePeriodicTargetCandidates(
     cap_eligible AS (
       SELECT vehicle_id, organization_id,
         CASE
-          WHEN has_native
-            AND UPPER(COALESCE(fuel_type, '')) IN ('ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'PHEV', 'BEV')
+          WHEN has_native AND ${SQL_ERD_EV_FUEL}
             THEN 1
-          WHEN has_soc AND has_corroborating AND ${fallbackEnabled}
-            AND UPPER(COALESCE(fuel_type, '')) IN ('ELECTRIC', 'HYBRID', 'PLUGIN_HYBRID', 'PHEV', 'BEV')
+          WHEN has_soc AND has_corroborating AND ${fallbackEnabled} AND ${SQL_ERD_EV_FUEL}
             THEN 2
           ELSE NULL
         END AS cat
