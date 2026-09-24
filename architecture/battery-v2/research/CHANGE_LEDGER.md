@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D1 post-merge documentation seal (main)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D1 engineering validated on draft PR #1737; active docs described pre-merge / not-on-main state. |
+| **OBSERVATION** | PR #1737 squash-merged to `main` @ `9577e0f146ddec2b81fc2ede35389a5fa2e6db94` (PR head `295a4e94ee80eac522d0cedb799a02e4da23b916`). |
+| **HYPOTHESIS** | Active authority must record D1 **COMPLETE ON MAIN** and set **D2** as next engineering slice without implying D2 exists. |
+| **CHANGE** | Post-merge seal: `CURRENT_STATE`, D1 research doc status + invariants + test evidence; stale pre-merge D1 wording removed from active docs. |
+| **WHY** | Unambiguous main baseline before M3.3D D2 engineering. |
+| **EXPECTED_EFFECT** | `NEXT_PHASE=M3.3D D2`; D3+ / M3.3E–H remain pending; M3.3F production shadow boundary preserved. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | Active Battery V2 docs reflect D1 merge @ `9577e0f14`. |
+| **AFTER** | M3.3D D1 **COMPLETE ON MAIN**; **M3.3D D2** next engineering slice; D3+ / M3.3E / M3.3F / M3.3G / M3.3H pending. |
+| **NON_EFFECTS** | No production deploy; no runtime flag change; no schema; no migration; no production data mutation; no D2 implementation; no D3 persistence; no M3.3E health logic; no customer UI; no Master Admin UI. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only. |
+| **REMAINING_GAPS** | M3.3D D2 profile assembly; D4 integrity batch; M3.3F authorization for production C3/longitudinal validation. |
+| **DECISION_STATUS** | **DOCUMENTATION_SEAL** (post-merge) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Merge commit `9577e0f146ddec2b81fc2ede35389a5fa2e6db94`; PR #1737 |
+
+---
+
 ---
 
 ---
