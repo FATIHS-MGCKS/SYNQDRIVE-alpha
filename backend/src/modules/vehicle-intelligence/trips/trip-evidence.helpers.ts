@@ -102,6 +102,38 @@ export interface TripQualityCheck {
   reason?: string;
 }
 
+export interface TripQualityPersistedRouteEvidence {
+  routeDisplacementM?: number | null;
+}
+
+export interface TripQualityEvaluationObservability {
+  qualityDurationMs: number;
+  qualityDistanceKm: number | null;
+  qualityWaypointCount: number;
+  qualityMeaningfulMovement: boolean;
+  qualityDecision: 'keep' | 'discard' | 'merge';
+  qualityReason?: string;
+}
+
+/**
+ * Independent persisted-route evidence for finalize quality.
+ * Waypoint count alone is not sufficient at count=2 unless displacement corroborates.
+ */
+export function hasPersistedMeaningfulMovementForQuality(input: {
+  persistedWaypointCount: number;
+  routeDisplacementM?: number | null;
+}): boolean {
+  const count = input.persistedWaypointCount;
+  const displacement = input.routeDisplacementM;
+  if (count >= 3) {
+    return true;
+  }
+  if (count >= 2 && displacement != null && displacement >= 50) {
+    return true;
+  }
+  return false;
+}
+
 export interface SnapshotStartEvidence {
   triggered: boolean;
   strong: number;
@@ -1401,8 +1433,18 @@ export function checkTripQuality(
   maxConsecutiveActive: number,
   previousTripEndTime: Date | null,
   currentTripStartTime: Date,
+  persistedRoute?: TripQualityPersistedRouteEvidence,
 ): TripQualityCheck {
-  if (durationMs < 60_000 && (distanceKm == null || distanceKm < 0.1)) {
+  const meaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+    persistedWaypointCount: maxConsecutiveActive,
+    routeDisplacementM: persistedRoute?.routeDisplacementM,
+  });
+
+  if (
+    durationMs < 60_000 &&
+    (distanceKm == null || distanceKm < 0.1) &&
+    !meaningfulMovement
+  ) {
     return {
       shouldDiscard: true,
       shouldMergeWithPrevious: false,

@@ -45,6 +45,7 @@ import {
   // assessActiveContinuity/evaluatePerformanceActivity → ContinuityAssessmentDetector (Phase 2 seam, done)
   // hasActivityResumed → EndContinuityDetector (Phase 2 seam, done)
   checkTripQuality,
+  hasPersistedMeaningfulMovementForQuality,
   refineTripStartBoundary,
   resolveAnalyticsAssistedStartDecision,
   resolveAnalyticsAssistedEndDecision,
@@ -214,6 +215,10 @@ import {
   observeStartRecognitionLatency,
   observeTripDuration,
 } from './trip-fsm-timing-observability.util';
+import {
+  computePersistedRouteDisplacementM,
+  resolveFinalizeEndTime,
+} from './trip-finalize-quality.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -3895,6 +3900,7 @@ export class TripDetectionOrchestrationService {
     let terminalTripId: string | null = null;
     let restingTransitionSucceeded = false;
     let detectionProfileLabel = 'UNKNOWN';
+    let finalizeQualityObservability: Record<string, unknown> | null = null;
 
     try {
       const det = await this.getOrCreateDetectionState(vehicleId, organizationId);
@@ -3941,40 +3947,37 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const [latestWaypoint, waypointCount] = await Promise.all([
+          const [latestWaypoint, earliestWaypoint, waypointCount] = await Promise.all([
             this.prisma.vehicleTripWaypoint.findFirst({
               where: { tripId },
               orderBy: { recordedAt: 'desc' },
             }),
+            this.prisma.vehicleTripWaypoint.findFirst({
+              where: { tripId },
+              orderBy: { recordedAt: 'asc' },
+            }),
             this.prisma.vehicleTripWaypoint.count({ where: { tripId } }),
           ]);
 
-          // ── End-time priority (most reliable → least reliable):
-          //   1. CUSUM validated segment end (change-point detected)
-          //   2. lastMeaningfulMovementAt (last observed movement)
-          //   3. lastWaypoint.recordedAt (last GPS fix)
-          //   4. possibleEndAt (first inactivity candidate)
-          //   5. now (absolute fallback)
-          const endTime =
-            (det as any).cusumSegmentEnd ??
-            (det as any).lastMeaningfulMovementAt ??
-            latestWaypoint?.recordedAt ??
-            det.possibleEndAt ??
-            new Date();
+          const routeDisplacementM = computePersistedRouteDisplacementM(
+            earliestWaypoint,
+            latestWaypoint,
+          );
 
+          const resolvedEnd = resolveFinalizeEndTime({
+            cusumSegmentEnd: (det as any).cusumSegmentEnd ?? null,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+            latestWaypointRecordedAt: latestWaypoint?.recordedAt ?? null,
+            possibleEndAt: det.possibleEndAt ?? null,
+            tripStartTime: trip.startTime,
+            fallbackNow: new Date(),
+          });
+          const endTime = resolvedEnd.endTime;
           const chosenEndSource =
             det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST &&
             (det as any).cusumSegmentEnd
               ? 'clickhouse_segment_end'
-              : (det as any).cusumSegmentEnd
-              ? 'cusum_segment_end'
-              : (det as any).lastMeaningfulMovementAt
-                ? 'last_meaningful_movement'
-                : latestWaypoint?.recordedAt
-                  ? 'last_waypoint'
-                  : det.possibleEndAt
-                    ? 'possible_end_at'
-                    : 'fallback_now';
+              : resolvedEnd.source;
 
           const boundaryWaypoint =
             latestWaypoint &&
@@ -4008,7 +4011,26 @@ export class TripDetectionOrchestrationService {
             waypointCount,
             null,
             trip.startTime,
+            { routeDisplacementM },
           );
+          const qualityMeaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+            persistedWaypointCount: waypointCount,
+            routeDisplacementM,
+          });
+          finalizeQualityObservability = {
+            QUALITY_DURATION_MS: durationMs,
+            QUALITY_DISTANCE_KM: trip.distanceKm,
+            QUALITY_WAYPOINT_COUNT: waypointCount,
+            QUALITY_MEANINGFUL_MOVEMENT: qualityMeaningfulMovement,
+            QUALITY_DECISION: qualityCheck.shouldDiscard
+              ? 'discard'
+              : qualityCheck.shouldMergeWithPrevious
+                ? 'merge'
+                : 'keep',
+            QUALITY_REASON: qualityCheck.reason ?? null,
+            qualityEndSource: chosenEndSource,
+            qualityRouteDisplacementM: routeDisplacementM,
+          };
 
           // ── Delegate all lifecycle mutations to TripDecisionEngine ──────────
           const profileLabel = String(det.detectionProfile ?? 'UNKNOWN');
@@ -4339,6 +4361,10 @@ export class TripDetectionOrchestrationService {
         stateAtRun: det.state,
         runType: TripTrackingRunType.FINALIZATION_CHECK,
         resultState: TripDetectionState.RESTING,
+        resultSummary: {
+          terminalLifecycleCommit,
+          ...(finalizeQualityObservability ?? {}),
+        },
         durationMs: Date.now() - startedMs,
       });
     } catch (err) {
