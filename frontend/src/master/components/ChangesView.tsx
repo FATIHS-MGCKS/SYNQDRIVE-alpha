@@ -13160,7 +13160,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     title: 'ERD E4.2 — real BullMQ + Redis liveness proof',
     summary: [
       'Real BullMQ Queue/Worker/QueueEvents on Redis for HV_RECHARGE_SESSION_RECONCILE periodic idempotency, next-bucket recovery, lost-job rediscovery, and retry transitions.',
-      'Dedicated CI job ERD E4 postgres+redis liveness (TEST_REDIS_PORT); boundary-repair step 6 stays PostgreSQL-only.',
+      'Boundary-repair CI step 7/7 runs bullmq redis integration (redis-memory-server); step 6 remains PostgreSQL-only.',
     ],
     reason: 'Close evidence gap: ERD_E4_POSTGRES_REDIS_INTEGRATION did not exercise Redis.',
     previousBehavior:

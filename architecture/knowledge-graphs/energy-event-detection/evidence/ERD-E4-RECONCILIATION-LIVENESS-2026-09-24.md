@@ -49,8 +49,7 @@ Pre-E4 periodic reconciliation selected fallback-capable vehicles using **`hv.is
 ## E4.2 BullMQ + Redis liveness (2026-09-24, PR #1749)
 
 - Real BullMQ `Queue` / `Worker` / `QueueEvents` on Redis (`erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`).
-- CI: job **ERD E4 postgres+redis liveness** → `scripts/test/erd-e4-bullmq-redis-ci.sh` with `TEST_REDIS_PORT`.
-- Boundary-repair step 6 remains PostgreSQL-only (no Redis service).
+- Boundary-repair CI **step 7/7** runs this gate (`ERD_E4_BULLMQ_REDIS_INTEGRATION=1`, embedded redis-memory-server).
 
 ## Validation
 
