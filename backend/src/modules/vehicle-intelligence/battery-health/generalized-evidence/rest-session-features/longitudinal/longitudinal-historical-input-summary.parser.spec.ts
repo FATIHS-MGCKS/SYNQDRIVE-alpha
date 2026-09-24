@@ -41,4 +41,22 @@ describe('parseHistoricalFeatureInputSummaryForD4', () => {
       inputContractVersion: 'FUTURE_CONTRACT_V9',
     });
   });
+
+  it('returns UNRESOLVED when persisted contract version missing', () => {
+    const outcome = parseHistoricalFeatureInputSummaryForD4({
+      ...identity,
+      inputSummary: { ...validSummary, inputContractVersion: undefined },
+      expectedInputContractVersion: REST_SESSION_FEATURE_INPUT_CONTRACT_VERSION,
+    });
+    expect(outcome.status).toBe('UNRESOLVED');
+  });
+
+  it('returns UNRESOLVED when expected version differs from persisted summary', () => {
+    const outcome = parseHistoricalFeatureInputSummaryForD4({
+      ...identity,
+      inputSummary: validSummary,
+      expectedInputContractVersion: 'OTHER_VERSION',
+    });
+    expect(outcome.status).toBe('UNRESOLVED');
+  });
 });

@@ -49,16 +49,31 @@ function mockRevision(): BatteryLongitudinalProfileRevision {
   } as unknown as BatteryLongitudinalProfileRevision;
 }
 
-describe('LongitudinalIntegrityInspectionService', () => {
-  it('returns REVISION_NOT_FOUND when tenant lookup misses', async () => {
-    const findRevisionForInspection = jest.fn().mockResolvedValue(null);
-    const repoProto = LongitudinalIntegrityInspectionRepository.prototype;
-    jest.spyOn(repoProto, 'findRevisionForInspection').mockImplementation(findRevisionForInspection);
-    jest.spyOn(repoProto, 'loadInspectionBatch').mockResolvedValue(null);
+function mockPrismaWithRevision(revision: BatteryLongitudinalProfileRevision | null) {
+  return {
+    $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        batteryLongitudinalProfileRevision: {
+          findFirst: jest.fn().mockResolvedValue(revision),
+        },
+      }),
+    ),
+    batteryLongitudinalProfileRevision: {},
+    batteryRestSessionFeature: {},
+    $queryRaw: jest.fn(),
+  };
+}
 
-    const service = new LongitudinalIntegrityInspectionService({} as never, {
-      nowIso: () => '2026-09-24T12:00:00.000Z',
-    });
+describe('LongitudinalIntegrityInspectionService', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns REVISION_NOT_FOUND when tenant lookup misses', async () => {
+    const service = new LongitudinalIntegrityInspectionService(
+      mockPrismaWithRevision(null) as never,
+      { nowIso: () => '2026-09-24T12:00:00.000Z' },
+    );
     const outcome = await service.inspectRevision({
       organizationId: PROFILE_TEST_ORG,
       vehicleId: PROFILE_TEST_VEHICLE,
@@ -70,21 +85,21 @@ describe('LongitudinalIntegrityInspectionService', () => {
   it('returns OK inspection for coherent revision without source rows', async () => {
     const revision = mockRevision();
     jest
-      .spyOn(LongitudinalIntegrityInspectionRepository.prototype, 'findRevisionForInspection')
-      .mockResolvedValue(revision);
-    jest
-      .spyOn(LongitudinalIntegrityInspectionRepository.prototype, 'loadInspectionBatch')
+      .spyOn(
+        LongitudinalIntegrityInspectionRepository.prototype,
+        'readSourceEvidenceBatchInTransaction',
+      )
       .mockResolvedValue({
-        revision,
         sourceRowsById: new Map(),
         aggregatesBySessionKey: new Map(),
         totalRowsBySessionKey: new Map(),
         latestRowsBySessionKey: new Map(),
       });
 
-    const service = new LongitudinalIntegrityInspectionService({} as never, {
-      nowIso: () => '2026-09-24T12:00:00.000Z',
-    });
+    const service = new LongitudinalIntegrityInspectionService(
+      mockPrismaWithRevision(revision) as never,
+      { nowIso: () => '2026-09-24T12:00:00.000Z' },
+    );
     const outcome = await service.inspectRevision({
       organizationId: PROFILE_TEST_ORG,
       vehicleId: PROFILE_TEST_VEHICLE,
