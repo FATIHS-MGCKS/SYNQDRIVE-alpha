@@ -12,6 +12,7 @@ import { TripDetectionOrchestrationService } from './trip-detection-orchestratio
 import * as tripEvidence from './trip-evidence.helpers';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
 import { runTripObservabilitySafely } from './trip-fsm-observability-safe.util';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 
 const VEHICLE = 'veh-r8a';
 const ORG = 'org-r8a';
@@ -485,6 +486,9 @@ describe('R8A — finalize start forensic provenance orchestration', () => {
       prisma: {
         vehicleTrip: { findUnique: jest.fn().mockResolvedValue(trip) },
         vehicleTripWaypoint: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue(defaultFinalizeHarnessRouteWaypoints(canonicalStartAt)),
           findFirst: jest.fn().mockResolvedValue(null),
           count: jest.fn().mockResolvedValue(5),
         },
@@ -572,6 +576,9 @@ describe('R8A — finalize start forensic provenance orchestration', () => {
           }),
         },
         vehicleTripWaypoint: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue(defaultFinalizeHarnessRouteWaypoints(canonicalStartAt)),
           findFirst: jest.fn().mockResolvedValue(null),
           count: jest.fn().mockResolvedValue(5),
         },
@@ -660,6 +667,9 @@ describe('R8A — finalize start forensic provenance orchestration', () => {
       prisma: {
         vehicleTrip: { findUnique },
         vehicleTripWaypoint: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue(defaultFinalizeHarnessRouteWaypoints(canonicalStartAt)),
           findFirst: jest.fn().mockResolvedValue(null),
           count: jest.fn().mockResolvedValue(5),
         },
