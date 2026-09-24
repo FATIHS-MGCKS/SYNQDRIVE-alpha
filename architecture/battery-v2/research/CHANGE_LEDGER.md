@@ -23,7 +23,7 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | D4 engineering; parameterized batch SQL detail; optional ops CLI post-V1; retention/rebuildability product policy. |
 | **DECISION_STATUS** | **ARCHITECTURE_AUDIT_DRAFT** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
-| **EVIDENCE** | Main @ `989d560f5`; D4 audit draft PR |
+| **EVIDENCE** | Main @ `989d560f5`; D4 audit draft PR #1751 |
 
 ---
 
