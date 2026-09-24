@@ -13062,6 +13062,25 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-07-17T11:00:00.000Z',
   },
   {
+    id: 'erd-e3-fallback-convergence-2026-09-24',
+    version: '4.9.900',
+    title: 'ERD E3 — telemetry fallback hardening + native/fallback convergence',
+    summary: [
+      'Native-first fallback activation: capability ≠ episode; provisional TELEMETRY_POLL_FALLBACK when telemetry qualifies and no SAME native row.',
+      'Physical matcher SAME/AMBIGUOUS/DIFFERENT with deterministic evaluatedAt overlap; fail-closed supersession (no mass temporal supersede).',
+      'Atomic late-native convergence: advisory lock + single TX supersede fallback + upsert native HvChargeSession.',
+      'E3 observability: synqdrive_erd_e3_convergence_total{reason}; postgres gate ERD_E3_POSTGRES_INTEGRATION=1.',
+    ],
+    reason: 'ERD E3 workstream — provider-delay + LTE telemetry fallback without E5 VEE cutover or production flags.',
+    previousBehavior:
+      'Fallback skipped when rechargeSegmentsAvailable; temporal overlap superseded all overlapping fallback rows outside one transaction.',
+    details:
+      'erd-physical-episode-matcher.ts, hv-charge-session-native-fallback-convergence.service.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T12:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',
