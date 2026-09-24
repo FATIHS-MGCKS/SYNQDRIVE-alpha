@@ -45,6 +45,7 @@ function baseEnergyEvent(overrides: Record<string, unknown> = {}) {
     id: 'evt-1',
     vehicleId: 'veh-1',
     dimoSegmentId: 'dimo-1',
+    canonicalChargeSessionId: null,
     detectionSource: null,
     sourceEventKey: null,
     kind: 'REFUEL' as const,
