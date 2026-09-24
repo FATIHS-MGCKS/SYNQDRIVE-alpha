@@ -1,0 +1,16 @@
+export const REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION =
+  'M3_3D_D4_INTEGRITY_INSPECTION_V1' as const;
+
+export const D4_HISTORICAL_INPUT_CONTRACT_M3_3C_FEATURE_INPUT_V1 =
+  'M3_3C_FEATURE_INPUT_V1' as const;
+
+export const D4_INSPECTION_SNAPSHOT_ISOLATION = 'REPEATABLE_READ' as const;
+
+/** Architecture maximum DB read round trips inside one inspection transaction. */
+export const D4_INSPECTION_DB_ROUND_TRIP_BOUND = 4;
+
+export const D4_INSPECTION_FLAG_ORDER = [
+  'INTEGRITY_LIMITED',
+  'SOURCE_EVIDENCE_LIMITED',
+  'REBUILDABILITY_LIMITED',
+] as const;

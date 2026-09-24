@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4 longitudinal integrity inspection engineering V1
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 architecture complete on main; **`D4_ENGINEERING_IMPLEMENTED=NO`**. |
+| **CHANGE** | Added read-only D4 inspection stack under `rest-session-features/longitudinal/` (parser, historical input summary, self/source integrity, aggregate, repository, service, tests, postgres CI script); `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ENGINEERING_2026-09-24.md`; `CURRENT_STATE` D4 engineering draft. |
+| **WHY** | Implement frozen `M3_3D_D4_INTEGRITY_INSPECTION_V1` contract without Nest/API/migration activation. |
+| **EXPECTED_EFFECT** | **`D4_ENGINEERING_IMPLEMENTED=YES (V1 draft PR)`**; internal inspectRevision path test-covered; DB batch ≤4 round trips. |
+| **VALIDATION** | `npx jest longitudinal-integrity-inspection longitudinal-scientific-profile.parser.spec --runInBand`; gated `BATTERY_V2_LONGITUDINAL_INTEGRITY_INSPECTION_INTEGRATION=1`. |
+| **NON_EFFECTS** | No Nest registration; no production deploy; **`D3_RUNTIME_REACHABLE=NO`**; golden fingerprints unchanged. |
+| **DECISION_STATUS** | **ENGINEERING_V1_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D D4 integrity inspection |
+| **EVIDENCE** | Branch `cursor/battery-v2-m3-3d-d4-integrity-inspection-v1-90ec` |
+
 ## CL-2026-09-24 — M3.3D D4 architecture post-merge seal
 
 | Field | Value |
