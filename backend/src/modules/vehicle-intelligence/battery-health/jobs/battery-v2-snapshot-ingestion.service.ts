@@ -182,11 +182,13 @@ export class BatteryV2SnapshotIngestionService {
           isCharging: ctx.tractionBatteryIsCharging,
           observedAt: parseIso(ctx.signalObservedAt?.isCharging) ?? receivedAt,
         });
-      } else if (isBatteryV2HvFallbackChargeSessionEnabled()) {
+      }
+      if (isBatteryV2HvFallbackChargeSessionEnabled()) {
         await this.fallbackDetector.detectAndPersistForVehicle({
           organizationId: payload.organizationId,
           vehicleId: payload.vehicleId,
           correlationId: `hv-fallback:charging:${payload.vehicleId}`,
+          evaluatedAt: receivedAt,
         });
       }
     }

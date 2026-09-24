@@ -98,6 +98,14 @@ describe('HvRechargeSessionReconcileService', () => {
     hvMethodProfile.resolveForVehicle.mockResolvedValue({
       rechargeSegmentsAvailable: true,
     });
+    fallbackDetector.detectAndPersistForVehicle.mockResolvedValue({
+      skipped: true,
+      skipReason: 'no_observations',
+      detected: 0,
+      persisted: 0,
+      rejectedFalsePositives: 0,
+      results: [],
+    });
     service = new HvRechargeSessionReconcileService(
       prisma as never,
       hvMethodProfile as never,
@@ -158,7 +166,8 @@ describe('HvRechargeSessionReconcileService', () => {
       vehicleId: VEH,
     });
 
-    expect(result.skipReason).toBe('capability_unavailable');
+    expect(result.skipped).toBe(false);
+    expect(result.skipReason).toBeUndefined();
     expect(result.fallback?.persisted).toBe(1);
     expect(fallbackDetector.detectAndPersistForVehicle).toHaveBeenCalled();
     expect(ingest.ingestForVehicle).not.toHaveBeenCalled();

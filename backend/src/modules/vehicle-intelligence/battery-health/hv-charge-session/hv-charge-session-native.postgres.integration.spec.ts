@@ -10,6 +10,7 @@ import { withSyntheticProviderId } from '@modules/dimo/recharge-segments/dimo-re
 import { PrismaService } from '@shared/database/prisma.service';
 import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
+import { HvChargeSessionNativeFallbackConvergenceService } from './hv-charge-session-native-fallback-convergence.service';
 
 const LIVE = process.env.ERD_E2_POSTGRES_INTEGRATION === '1';
 
@@ -70,10 +71,17 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
       }
       prisma = new PrismaClient();
       const repository = new HvChargeSessionRepository(prisma as unknown as PrismaService);
+      const metrics = { erdE3ConvergenceTotal: { inc: jest.fn() } } as never;
+      const convergence = new HvChargeSessionNativeFallbackConvergenceService(
+        prisma as unknown as PrismaService,
+        repository,
+        metrics,
+      );
       persist = new HvChargeSessionPersistService(
         repository,
         { log: jest.fn() } as never,
         { maybeEnqueueAfterSessionPersist: jest.fn().mockResolvedValue(null) } as never,
+        convergence,
       );
     }, 60_000);
 

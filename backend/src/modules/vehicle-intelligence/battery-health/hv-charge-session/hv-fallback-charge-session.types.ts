@@ -16,7 +16,8 @@ export interface HvFallbackChargeObservation {
   providerReceivedAt: Date | null;
   socPercent: number;
   energyKwh: number | null;
-  isCharging: boolean;
+  /** null when hv.is_charging capability is absent — not authoritative false. */
+  isCharging: boolean | null;
   cableConnected: boolean | null;
   chargingPowerKw: number | null;
   addedEnergyKwh: number | null;
