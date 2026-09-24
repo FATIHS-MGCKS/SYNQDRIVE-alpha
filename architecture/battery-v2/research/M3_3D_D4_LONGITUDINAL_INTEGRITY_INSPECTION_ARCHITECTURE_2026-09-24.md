@@ -3,7 +3,7 @@
 **Date:** 2026-09-24  
 **Status:** **ARCHITECTURE COMPLETE ON MAIN** — merged PR #1751 @ merge `158f9c516fe4be55f4ef8d3e9cb4c5df02333074` (PR head `e77ac83e94a746070eca9bfdc9ef88a7d23da8b4`)  
 **Inspection contract (frozen):** `M3_3D_D4_INTEGRITY_INSPECTION_V1`  
-**Engineering status:** **`D4_IMPLEMENTATION_READY=YES`** · **`D4_ENGINEERING_IMPLEMENTED=NO`** · **next slice: M3.3D D4 engineering**  
+**Engineering status:** **`D4_ENGINEERING_IMPLEMENTED=YES`** · **`D4_IMPLEMENTATION_READY=YES`** · **next slice: M3.3E architecture / consumption contract** (merged PR #1754 @ merge `9a3e457d9eb8e38025a63bb2a2448c74f05263bf`; PR head `309da8252658d096fbbce585c2f220c4c2795080`)
 **Main anchor (merged):** `158f9c516fe4be55f4ef8d3e9cb4c5df02333074`  
 **Upstream complete on main:** D0/D0.1, D1, D2, D3 architecture/D3.1, D3 foundation (PR #1746 @ `c5c1129f`; seal PR #1748 @ `989d560f5`)  
 **Runtime gates (unchanged):** **`D3_RUNTIME_REACHABLE=NO`** · **`PRODUCTION_MATERIALIZATION_READY=NO`**

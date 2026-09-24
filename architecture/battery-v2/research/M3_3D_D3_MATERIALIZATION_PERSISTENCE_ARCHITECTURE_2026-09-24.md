@@ -3,7 +3,7 @@
 **Date:** 2026-09-24  
 **Status:** **ARCHITECTURE COMPLETE ON MAIN** · **D3.1 PERSISTENCE CONTRACT COMPLETE ON MAIN** — merged PR #1744 @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` (PR head `0e7ea2884c4d0a016bdcc92f4d54b262014d8109`)  
 **Main anchor:** `7919bdd5ce9f9128810c83627b0bc9995d99a16b`  
-**Next slice:** **M3.3D D4 engineering** — architecture **COMPLETE ON MAIN** PR #1751 @ `158f9c516f` (**NOT** production D3 materialization; M3.3F remains later)  
+**Next slice:** **M3.3E** — architecture / consumption contract (**NEXT**). **D4 Engineering V1 COMPLETE ON MAIN** PR #1754 @ merge `9a3e457d9`. D4 architecture **COMPLETE ON MAIN** PR #1751 @ `158f9c516f` (**NOT** production D3 materialization; M3.3F remains later)  
 **Foundation status:** **D3 foundation engineering COMPLETE ON MAIN** — PR #1746 @ merge `c5c1129f62e11eb68c8fc6566fd7fecef376743b` (head `944a6839ed18dd57244897924d72ac49b9a968a2`); **`D3_RUNTIME_REACHABLE=NO`**
 **Normative inputs:** D0/D0.1, D1, D2 research docs; `assembleLongitudinalProfileV1()` on main
 
@@ -558,7 +558,8 @@ Internal/unreachable service only until M3.3F.
 | **D3.1 persistence contract** | **COMPLETE ON MAIN** |
 | **D3 foundation engineering** | **COMPLETE ON MAIN** — PR #1746 @ `c5c1129f`; see `M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md` |
 | **D4 architecture** | **COMPLETE ON MAIN** — PR #1751 @ `158f9c516f`; see `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` |
-| **D4 engineering** | **NEXT** |
+| **D4 engineering V1** | **COMPLETE ON MAIN** PR #1754 @ `9a3e457d9` |
+| **M3.3E** | **NEXT** |
 | **`PRODUCTION_MATERIALIZATION_READY`** | **NO** — M3.3F authorization required |
 
 **Authority chain (unchanged):** persisted C3 → D1 → D2; materialized D3 revisions are **DERIVED**, **REPRODUCIBLE**, **APPEND_ONLY**, **REBUILDABLE** — not a second scientific authority.

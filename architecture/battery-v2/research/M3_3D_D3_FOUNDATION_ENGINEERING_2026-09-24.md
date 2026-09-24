@@ -6,7 +6,7 @@
 **Scope:** Prisma + migration + scientific projection + fingerprint + repository + internal service + tests  
 **Reachability:** **`D3_SERVICE_CODE_EXISTS=YES`** · **`D3_RUNTIME_REACHABLE=NO`** — service **not** registered in Nest modules  
 
-**Next phase:** **M3.3D D4 engineering** (architecture **COMPLETE ON MAIN** PR #1751 @ `158f9c516f`; not M3.3F — production materialization authorization remains later).
+**Next phase:** **M3.3E** architecture / consumption contract (**NEXT**). **D4 Engineering V1 COMPLETE ON MAIN** PR #1754 @ merge `9a3e457d9`. D4 architecture **COMPLETE ON MAIN** PR #1751 @ `158f9c516f` (not M3.3F — production materialization authorization remains later).
 
 ---
 
@@ -131,6 +131,7 @@ No Redis lock, no Serializable requirement, no in-place update/repair of immutab
 ## Boundaries
 
 - **D4 architecture (complete on main):** digest/revision/source-evidence integrity inspection contract — **not** production materialization activation  
-- **D4 engineering (next):** read-only inspection service implementation  
+- **D4 Engineering V1 (complete on main):** read-only inspection service implementation (PR #1754)
+- **M3.3E (next):** consumption architecture — D3 profile + D4 overlay contract before health logic
 - **M3.3E:** health/SOH/risk/confidence — pending  
 - **M3.3F:** explicit future authorization for Nest registration, materialization flag, triggers, production shadow materialization  

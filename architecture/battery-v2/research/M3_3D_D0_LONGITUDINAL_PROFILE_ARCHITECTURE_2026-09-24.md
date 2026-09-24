@@ -34,7 +34,7 @@
 | 14–15 | D3 materialization **conditional**; no production materialization or shadow activation before **M3.3F** authorization |
 | 16–17 | M3.3E health/risk/confidence; M3.3H customer Health UI separate from internal longitudinal engineering |
 
-**Next engineering slice:** **M3.3D D4 engineering** — (**NEXT**). **M3.3D D4 architecture** — (**COMPLETE ON MAIN** PR #1751 @ merge `158f9c516f` / head `e77ac83e9`). **M3.3D D1** — (**COMPLETE ON MAIN**). **M3.3D D2** — (**COMPLETE ON MAIN** PR #1739 @ `ed7adb79b`). **M3.3D D3 architecture + D3.1 persistence contract** — (**COMPLETE ON MAIN** PR #1744 @ `7919bdd5c`). **M3.3D D3 foundation engineering** — (**COMPLETE ON MAIN** PR #1746 @ merge `c5c1129f` / head `944a6839e`; **`D3_RUNTIME_REACHABLE=NO`**; production materialization **NOT AUTHORIZED** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md`).
+**Next engineering slice:** **M3.3E** — architecture / consumption contract (**NEXT**). **M3.3D D4 Engineering V1** — (**COMPLETE ON MAIN** PR #1754 @ merge `9a3e457d9` / head `309da8252`). **M3.3D D4 architecture** — (**COMPLETE ON MAIN** PR #1751 @ merge `158f9c516f` / head `e77ac83e9`). **M3.3D D1** — (**COMPLETE ON MAIN**). **M3.3D D2** — (**COMPLETE ON MAIN** PR #1739 @ `ed7adb79b`). **M3.3D D3 architecture + D3.1 persistence contract** — (**COMPLETE ON MAIN** PR #1744 @ `7919bdd5c`). **M3.3D D3 foundation engineering** — (**COMPLETE ON MAIN** PR #1746 @ merge `c5c1129f` / head `944a6839e`; **`D3_RUNTIME_REACHABLE=NO`**; production materialization **NOT AUTHORIZED** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md`).
 
 ### D2 implementation closure (2026-09-24)
 

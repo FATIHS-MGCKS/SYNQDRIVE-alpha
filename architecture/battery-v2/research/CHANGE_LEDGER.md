@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4 Engineering V1 post-merge seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 engineering validated on draft PR #1754; active docs described **ENGINEERING ON DRAFT PR #1754** / **`D4_ENGINEERING_IMPLEMENTED=NO` on main**. |
+| **CHANGE** | PR #1754 merged to main @ `9a3e457d9eb8e38025a63bb2a2448c74f05263bf` (PR head `309da8252658d096fbbce585c2f220c4c2795080`). Active Battery V2 authority updated: **`D4 Engineering V1 COMPLETE ON MAIN`**; **`NEXT_PHASE=M3.3E`** architecture / consumption contract. |
+| **AFTER** | **`D4_ENGINEERING_IMPLEMENTED=YES`**; **`D4_RUNTIME_REACHABLE=NO`**; **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**. |
+| **VALIDATION** | Final merged evidence: D4 **98/98** (73 unit + 25 PG); D3 PG **22/22**; D1 PG **5/5**; C5A PG **10/10**; D2 **37/37**; D1 **36/36**; final PR CI **46/46** on head `309da8252`. |
+| **NON_EFFECTS** | No D4 runtime registration; no API/UI/CLI; no schema/migration; no D4 persistence; no production deploy; no production data mutation; no D3 runtime activation; no production materialization; no M3.3E health logic. |
+| **REMAINING_GAPS** | M3.3E consumption architecture; M3.3F production materialization authorization; M3.3G / M3.3H. |
+| **DECISION_STATUS** | **ENGINEERING_V1_COMPLETE_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D D4 integrity inspection |
+
 ## CL-2026-09-24 — M3.3D D4 engineering correctness + Postgres proof closure
 
 | Field | Value |
