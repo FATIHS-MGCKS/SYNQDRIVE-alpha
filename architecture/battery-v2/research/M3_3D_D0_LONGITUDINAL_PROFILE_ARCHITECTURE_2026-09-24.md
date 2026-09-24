@@ -34,7 +34,7 @@
 | 14–15 | D3 materialization **conditional**; no production materialization or shadow activation before **M3.3F** authorization |
 | 16–17 | M3.3E health/risk/confidence; M3.3H customer Health UI separate from internal longitudinal engineering |
 
-**Next engineering slice:** **M3.3D D1** — (**COMPLETE ON MAIN**). **M3.3D D2** — (**COMPLETE ON MAIN** PR #1739 @ `ed7adb79b`). **M3.3D D3** — materialization/persistence architecture audit → engineering (**NEXT**; see D3 research doc when merged).
+**Next engineering slice:** **M3.3D D1** — (**COMPLETE ON MAIN**). **M3.3D D2** — (**COMPLETE ON MAIN** PR #1739 @ `ed7adb79b`). **M3.3D D3 architecture + D3.1 persistence contract** — (**COMPLETE ON MAIN** PR #1744 @ `7919bdd5c`). **M3.3D D3 foundation engineering** — (**NEXT**; schema/migration/internal service **NOT IMPLEMENTED**; production materialization **NOT AUTHORIZED** until **M3.3F** — see `research/M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md`).
 
 ### D2 implementation closure (2026-09-24)
 

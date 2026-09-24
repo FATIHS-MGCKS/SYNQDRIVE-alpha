@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3 architecture post-merge documentation seal (main)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D3/D3.1 architecture validated on draft PR #1744; active docs described audit in flight / pending merge. |
+| **OBSERVATION** | PR #1744 squash-merged to `main` @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` (PR head `0e7ea2884c4d0a016bdcc92f4d54b262014d8109`). |
+| **HYPOTHESIS** | Active authority must record D3 architecture + D3.1 persistence contract **COMPLETE ON MAIN** and set **D3 foundation engineering** as next slice without implying implementation exists. |
+| **CHANGE** | Post-merge seal: `CURRENT_STATE`, D3 research doc status + §28, D0 active phase pointer; removed stale pre-merge D3 wording from active docs. |
+| **WHY** | Unambiguous main baseline before M3.3D D3 foundation engineering PR. |
+| **EXPECTED_EFFECT** | `NEXT_PHASE=M3.3D D3 foundation engineering`; `PRODUCTION_MATERIALIZATION_READY=NO`; D4+ / M3.3E / M3.3F / M3.3G / M3.3H pending. |
+| **VALIDATION** | `bash architecture/scripts/validate-module-registry.sh`; `bash architecture/battery-v2/scripts/validate-graph.sh`. |
+| **OBSERVED_EFFECT** | Active Battery V2 docs reflect D3 merge @ `7919bdd5c`. |
+| **AFTER** | M3.3D D3 architecture audit + D3.1 persistence contract **COMPLETE ON MAIN**; **D3 foundation engineering NEXT** (not implemented); production materialization not authorized until M3.3F. |
+| **NON_EFFECTS** | No runtime code; no Prisma schema; no migration; no repository; no materialization service; no feature flag; no runtime trigger; no deploy; no production data mutation; no D4 integrity; no M3.3E health logic. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only seal. |
+| **REMAINING_GAPS** | D3 foundation engineering; retention/flag/M3.3F wiring; DEC-M3.3D-001. |
+| **DECISION_STATUS** | **DOCUMENTATION_SEAL** (post-merge) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
+| **EVIDENCE** | Merge commit `7919bdd5ce9f9128810c83627b0bc9995d99a16b`; PR #1744 |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3.1 materialization persistence-contract closure (draft PR #1744)
 
 | Field | Value |

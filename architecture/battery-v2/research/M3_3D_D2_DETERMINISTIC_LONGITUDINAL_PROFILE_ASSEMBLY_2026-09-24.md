@@ -13,7 +13,8 @@
 | D0 / D0.1 | **COMPLETE ON MAIN** |
 | D1 | **COMPLETE ON MAIN** |
 | **D2** | **COMPLETE ON MAIN** (this document) |
-| **D3** | **NEXT** — materialization/persistence (not implemented) |
+| **D3 architecture / D3.1** | **COMPLETE ON MAIN** PR #1744 @ `7919bdd5c` — see `M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
+| **D3 foundation engineering** | **NEXT** — schema/migration/internal service (**NOT IMPLEMENTED**); production materialization **NOT AUTHORIZED** until M3.3F |
 | D4+ | **PENDING** |
 | M3.3E | **PENDING** (health/risk logic) |
 | M3.3F | **PENDING** / production shadow authorization |
@@ -167,11 +168,11 @@ D2 V1: `derived = null`. No cross-session slopes, SOH proxies, or health scores.
 
 | Slice | D2 relationship |
 |-------|-----------------|
-| **D3** | Materialization, idempotency fingerprint, persistence schema — **NEXT** (separate decision; not implemented) |
+| **D3** | Materialization architecture + persistence contract **COMPLETE ON MAIN**; **foundation engineering NEXT** (not implemented) — `M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
 | **D4** | Digest/revision integrity batch — **not evaluated** |
 | **M3.3E+** | Health, risk, customer conclusions — **out of scope** |
 
-D3 topics (not decided in D2 seal): whether to materialize; append-only revision model; fingerprint input state; provisional/excluded in revision identity; idempotency; schema; M3.3F production authorization.
+D3 persistence decisions (architecture on main): `HYBRID_IMPLEMENT`; canonical scientific projection fingerprint; append-only revisions; idempotency via Postgres unique + ON CONFLICT; foundation schema authorized; production materialization remains M3.3F-gated.
 
 ## Test evidence (validated @ PR #1739 merge)
 

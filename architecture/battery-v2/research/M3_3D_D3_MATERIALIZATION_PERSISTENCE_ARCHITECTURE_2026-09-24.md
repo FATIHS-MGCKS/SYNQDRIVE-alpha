@@ -1,9 +1,9 @@
 # M3.3D D3 — Longitudinal Profile Materialization & Persistence Architecture Audit
 
 **Date:** 2026-09-24  
-**Status:** Architecture / persistence decision audit — **DRAFT PR #1744** (not merged)  
-**Main anchor (D2 seal):** `d37a8714f4e4ee80e2dda8882d95003bb7285fd7`  
-**Scope:** **Audit only** — no Prisma schema, no migration, no runtime writer, no flag, no deploy  
+**Status:** **ARCHITECTURE COMPLETE ON MAIN** · **D3.1 PERSISTENCE CONTRACT COMPLETE ON MAIN** — merged PR #1744 @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` (PR head `0e7ea2884c4d0a016bdcc92f4d54b262014d8109`)  
+**Main anchor:** `7919bdd5ce9f9128810c83627b0bc9995d99a16b`  
+**Next slice:** **M3.3D D3 foundation engineering** — Prisma/migration/internal idempotent service (**NOT IMPLEMENTED**); production materialization **NOT AUTHORIZED** until **M3.3F**  
 **Normative inputs:** D0/D0.1, D1, D2 research docs; `assembleLongitudinalProfileV1()` on main
 
 ---
@@ -491,7 +491,7 @@ New `M3_3D_PROFILE_POLICY_V2` or `M3_3D_LONGITUDINAL_PROFILE_V2` → distinct un
 
 | Gate | Status |
 |------|--------|
-| **`SCHEMA_IMPLEMENTATION_READY=`** **YES_FOR_FOUNDATION** — schema-critical contracts closed in D3.1 (§12, fingerprint column, JSONB semantics, FK/cascade); separate **D3 engineering PR** may propose Prisma model + migration + internal idempotent service **after** audit merge |
+| **`SCHEMA_IMPLEMENTATION_READY=`** **YES_FOR_FOUNDATION** — schema-critical contracts closed in D3.1 (§12, fingerprint column, JSONB semantics, FK/cascade); separate **D3 foundation engineering PR** may propose Prisma model + migration + internal idempotent service (**architecture on main @ `7919bdd5c`**) |
 | **`PRODUCTION_MATERIALIZATION_READY=`** **NO** — shadow flag off; M3.3F not authorized; no reachable production trigger in foundation PR |
 
 ## 24. Open decisions (non-blocking for foundation schema)
@@ -519,7 +519,7 @@ Local: `validate-module-registry.sh`, `validate-graph.sh` on documentation PR.
 
 ## 27. D3.1 architecture closure (2026-09-24)
 
-Amends PR #1744 audit with persistence-contract decisions required **before** schema/migration engineering:
+Persistence-contract decisions merged on main via PR #1744 @ `7919bdd5c` (required **before** foundation schema/migration engineering):
 
 | Fix | Closure |
 |-----|---------|
@@ -545,3 +545,19 @@ Foundation engineering **must still have**:
 - **NO** production flag enable  
 
 Internal/unreachable service only until M3.3F.
+
+---
+
+## 28. Post-merge documentation seal (2026-09-24)
+
+| Field | Value |
+|-------|-------|
+| **PR** | #1744 merged @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` |
+| **D3 architecture audit** | **COMPLETE ON MAIN** |
+| **D3.1 persistence contract** | **COMPLETE ON MAIN** |
+| **D3 foundation engineering** | **NEXT** — not implemented on main |
+| **`PRODUCTION_MATERIALIZATION_READY`** | **NO** — M3.3F authorization required |
+
+**Authority chain (unchanged):** persisted C3 → D1 → D2; materialized D3 revisions are **DERIVED**, **REPRODUCIBLE**, **APPEND_ONLY**, **REBUILDABLE** — not a second scientific authority.
+
+**Open (non-blocking):** `RETENTION_POLICY=DECISION_REQUIRED`; `MATERIALIZATION_FLAG_NAME=DECISION_REQUIRED`; `M3_3F_WIRING_STATUS=PENDING`; `DEC-M3.3D-001=DECISION_REQUIRED`.
