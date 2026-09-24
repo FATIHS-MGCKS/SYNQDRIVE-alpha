@@ -979,3 +979,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Validation | Focused suites (DI-TEST-R1-CONTAINMENT-001); vehicle-intelligence tree failure set = base + 1 load-dependent pre-existing flake |
 | Status | `VALIDATED` (code/tests) — draft PR #1755; not merged, not deployed |
 | Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` |
+
+### EXP-021 C0.3B — read-presentation closure (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.3A merge-gate — stale customer judgment + unqualified persisted SEVERE misuse presentation |
+| CHANGE | `shouldWithholdR1PersistedDrivingStressScore` on canonical trip/vehicle stats; `misuse-case-read-presentation.ts` on misuse list/detail API; provider-native braking documented INDEPENDENT; driving-impact fingerprint test fixture repair |
+| NON_EFFECTS | No persistence mutation; admin-only raw aggregates (`trips.service.getStats`, logbook) still deferred |
+| Status | `VALIDATED` (code/tests) — draft PR #1755 |
+| Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` §5.1 |
