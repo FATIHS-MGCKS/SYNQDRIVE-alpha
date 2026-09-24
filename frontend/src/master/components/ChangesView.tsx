@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'erd-e1-canonical-physical-charge-authority-2026-09-24',
-    version: '4.9.1998',
-    title: 'ERD E1 — Canonical physical EV charge authority + VEE projection contract',
-    summary: [
-      'Model A ADR: HvChargeSession semantic model = canonical physical charge session (EED/ERD); VehicleEnergyEvent.RECHARGE = future idempotent product projection.',
-      'Identity v1, native>fallback supersession, lifecycle (ongoing/completed/superseded), legacy Production VEE = LEGACY_PRODUCT_HISTORY; writer inventory; no runtime/schema/flag changes.',
-      'KG-EED: EED-SYS-002 ERD sub-domain, invariants EED-INV-014–017, authority boundary reconciled vs Battery V2 consumer role.',
-    ],
-    reason:
-      'Close E0 split-brain finding (dual RECHARGE writers, no cross-pipeline reconciliation) with deterministic architecture before E2–E8 implementation.',
-    previousBehavior:
-      'EED-OQ-004 treated HV sessions as Battery V2–owned orthogonal path; VEE RECHARGE and HvChargeSession could both represent physical recharge independently.',
-    details:
-      'architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md; evidence/ERD-E1-WRITER-INVENTORY-2026-09-24.md; governance/AUTHORITY_BOUNDARIES.md; graph nodes/edges/invariants.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-24T07:30:00.000Z',
-  },
-  {
     id: 'vdc-wob-long-stand-wake-plug-gt-evidence-2026-09-23',
     version: '4.9.1997',
     title: 'VDC — WOB L 7503 long-stand wake-associated PLUG GT evidence closure',
