@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4 longitudinal integrity / inspection architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 scope described in D0/D3 docs; **NEXT** = M3.3D D4; no frozen D4 inspection contract or overlay decision on main. |
+| **OBSERVATION** | D3 foundation complete on main; D3 runtime unreachable; C5A per-session inspection exists; D3 `findById` not tenant-scoped — D4 requires explicit architecture before engineering. |
+| **HYPOTHESIS** | Read-only **`M3_3D_D4_INTEGRITY_INSPECTION_V1`** overlay (no D2/D3 mutation) + C5A semantic reuse + bounded batch C3 reads closes D4 contract without M3.3E/M3.3F activation. |
+| **CHANGE** | Added `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md`; updated `CURRENT_STATE` (architecture audit on draft PR; not implemented). |
+| **WHY** | Freeze integrity dimensions, rebuildability semantics, tenant scoping, and test matrix before D4 code. |
+| **EXPECTED_EFFECT** | **`D4_IMPLEMENTATION_READY=YES`** after audit merge; engineering PR can follow without policy drift. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on audit PR. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/service/schema/migration/flag/Nest/API/UI/deploy; no D3 writer; no M3.3E health logic; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering; parameterized batch SQL detail; optional ops CLI post-V1; retention/rebuildability product policy. |
+| **DECISION_STATUS** | **ARCHITECTURE_AUDIT_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | Main @ `989d560f5`; D4 audit draft PR |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 Foundation post-merge seal
 
 | Field | Value |
