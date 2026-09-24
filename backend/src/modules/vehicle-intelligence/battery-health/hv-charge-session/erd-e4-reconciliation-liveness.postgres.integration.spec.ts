@@ -6,10 +6,14 @@ import { selectFairPeriodicReconcileTargets } from './hv-recharge-periodic-targe
 import { buildHvRechargePeriodicPeriodBucket } from './hv-recharge-session-reconcile.policy';
 import { HV_ERD_SOC_SIGNAL_KEY } from './hv-erd-reconcile-eligibility.policy';
 
-jest.mock('@config/battery-health-v2.config', () => ({
-  isBatteryV2HvFallbackChargeSessionEnabled: () => true,
-  isBatteryV2HvRechargeSessionEnabled: () => true,
-}));
+jest.mock('@config/battery-health-v2.config', () => {
+  const actual = jest.requireActual('@config/battery-health-v2.config');
+  return {
+    ...actual,
+    isBatteryV2HvFallbackChargeSessionEnabled: () => true,
+    isBatteryV2HvRechargeSessionEnabled: () => true,
+  };
+});
 
 const LIVE = process.env.ERD_E4_POSTGRES_REDIS_INTEGRATION === '1';
 
