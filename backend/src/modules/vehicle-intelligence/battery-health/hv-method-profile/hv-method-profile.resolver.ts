@@ -4,6 +4,7 @@ import {
   type BatteryDataQualityStatus,
 } from '../battery-data-quality';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
+import { HV_ERD_SIGNAL_KEYS } from '../hv-erd-capability-signal-keys';
 import {
   HV_CAPACITY_METHODS,
   HV_METHOD_PROFILE_RESOLVER_VERSION,
@@ -22,17 +23,17 @@ export {
 } from './hv-method-profile.types';
 
 const HV_PROFILE_SIGNAL_KEYS = {
-  soc: 'hv.soc',
+  soc: HV_ERD_SIGNAL_KEYS.soc,
   currentEnergy: 'hv.current_energy',
-  addedEnergy: 'hv.added_energy',
+  addedEnergy: HV_ERD_SIGNAL_KEYS.addedEnergy,
   rechargeSegments: RECHARGE_SEGMENTS_SIGNAL_KEY,
-  isCharging: 'hv.is_charging',
-  chargingCableConnected: 'hv.cable_connected',
+  isCharging: HV_ERD_SIGNAL_KEYS.isCharging,
+  chargingCableConnected: HV_ERD_SIGNAL_KEYS.cableConnected,
   providerSoh: 'hv.provider_soh',
   grossCapacity: 'hv.gross_capacity',
   packTemperature: 'hv.pack_temperature',
-  chargingPower: 'hv.charging_power',
-  currentPower: 'hv.current_power',
+  chargingPower: HV_ERD_SIGNAL_KEYS.chargingPower,
+  currentPower: HV_ERD_SIGNAL_KEYS.currentPower,
 } as const;
 
 function reason(

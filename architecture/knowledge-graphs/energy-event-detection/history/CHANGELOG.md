@@ -1,5 +1,21 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E4.2 real BullMQ + Redis liveness proof
+
+- `erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`; CI job ERD E4 postgres+redis liveness
+- Boundary-repair step 6 explicitly Postgres-only; Redis gate separate
+
+## 2026-09-24 — ERD E4.1 signal authority + bounded partition fairness
+
+- Evidence append: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md` (E4.1 section)
+- Canonical `hv-erd-capability-signal-keys.ts`; E4 mirrors E3 fallback corroboration (`hv.charging_power`, not `hv.current_power`)
+- SQL-bounded periodic selection; partition rotation; 109+ vehicle postgres fairness proof
+
+## 2026-09-24 — ERD E4 durable reconciliation / recovery liveness
+
+- Evidence: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md`
+- Canonical ERD reconcile eligibility shared with E3; expanded periodic fallback selector; explicit period buckets; rotating fair batch selection; E4 liveness metrics; CI gate step 6
+
 ## 2026-09-24 — ERD E3.1 shared authority lock + fallback identity races
 
 - Single `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes

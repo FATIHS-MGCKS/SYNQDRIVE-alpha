@@ -23,8 +23,16 @@ log "Step 4/4: ERD E2 native HvChargeSession PostgreSQL gate"
 ERD_E2_POSTGRES_INTEGRATION=1 ERD_E2_POSTGRES_REQUIRED=1 \
   npx jest hv-charge-session-native.postgres.integration --runInBand --verbose
 
-log "Step 5/5: ERD E3 fallback + convergence PostgreSQL gate"
+log "Step 5/6: ERD E3 fallback + convergence PostgreSQL gate"
 ERD_E3_POSTGRES_INTEGRATION=1 ERD_E3_POSTGRES_REQUIRED=1 \
   npx jest hv-fallback-native-convergence.postgres.integration --runInBand --verbose
+
+log "Step 6/6: ERD E4 Postgres liveness gate (PostgreSQL only — Redis/BullMQ gate is separate CI job)"
+ERD_E4_POSTGRES_REDIS_INTEGRATION=1 ERD_E4_POSTGRES_REDIS_REQUIRED=1 \
+  npx jest erd-e4-reconciliation-liveness.postgres.integration erd-e4-reconciliation-liveness.spec --runInBand --verbose
+
+log "Step 7/7: ERD E4 BullMQ + Redis liveness gate (real Queue/Worker on Redis)"
+ERD_E4_BULLMQ_REDIS_INTEGRATION=1 ERD_E4_BULLMQ_REDIS_REQUIRED=1 \
+  npx jest erd-e4-reconciliation-liveness.bullmq.redis.integration --runInBand --forceExit --verbose
 
 log "boundary-repair-postgres-ci completed successfully"

@@ -13139,6 +13139,59 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T13:00:00.000Z',
   },
   {
+    id: 'erd-e4-reconciliation-liveness-2026-09-24',
+    version: '4.9.902',
+    title: 'ERD E4 — durable reconciliation / recovery liveness',
+    summary: [
+      'Canonical ERD reconcile eligibility shared with E3 fallback activation (SOC + corroborating signals, not is_charging-only periodic selector).',
+      'Explicit periodic idempotency buckets; rotating fair batch selection without new recovery table.',
+      'Master HV flag off skips periodic enqueue; synqdrive_erd_e4_liveness_total observability; CI gate step 6.',
+    ],
+    reason: 'Close liveness gaps for telemetry-only fallback profiles and deterministic periodic recovery after DLQ/restart.',
+    previousBehavior:
+      'Periodic fallback targets used hv.is_charging capability only; PERIODIC idempotency could derive bucket from implicit Date.now().',
+    details:
+      'hv-erd-reconcile-eligibility.policy.ts, hv-recharge-reconcile-target.query.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:30:00.000Z',
+  },
+  {
+    id: 'erd-e4-1-signal-fairness-closure-2026-09-24',
+    version: '4.9.903',
+    title: 'ERD E4.1 — eligibility signal authority + true bounded no-starvation',
+    summary: [
+      'Canonical HV signal keys shared across registry, HvMethodProfile, E3 fallback, and E4 eligibility (charging_power corroborates; current_power does not).',
+      'Partition rotation fairness via periodIndex mod 12 with PostgreSQL-bounded selection — removes hash(periodBucket) slice and pre-fairness maxScan truncation.',
+      'Postgres gate proves 109+ vehicle fleet coverage, charging_power vs current_power, and restart-stable deterministic selection.',
+    ],
+    reason: 'Close E4 signal drift vs E3 and false periodic fairness that could permanently starve eligible vehicles.',
+    previousBehavior:
+      'E4 listed hv.current_power as fallback corroboration; fairness used hash(periodBucket)%12 on a truncated candidate prefix (batch×12).',
+    details:
+      'hv-erd-capability-signal-keys.ts, hv-recharge-reconcile-target.query.ts, hv-recharge-periodic-target.policy.ts, evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T16:00:00.000Z',
+  },
+  {
+    id: 'erd-e4-2-bullmq-redis-liveness-2026-09-24',
+    version: '4.9.904',
+    title: 'ERD E4.2 — real BullMQ + Redis liveness proof',
+    summary: [
+      'Real BullMQ Queue/Worker/QueueEvents on Redis for HV_RECHARGE_SESSION_RECONCILE periodic idempotency, next-bucket recovery, lost-job rediscovery, and retry transitions.',
+      'Boundary-repair CI step 7/7 runs bullmq redis integration (redis-memory-server); step 6 remains PostgreSQL-only.',
+    ],
+    reason: 'Close evidence gap: ERD_E4_POSTGRES_REDIS_INTEGRATION did not exercise Redis.',
+    previousBehavior:
+      'No Redis in boundary-repair CI; duplicate/recovery semantics documented but not proven against real BullMQ state.',
+    details:
+      'erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts, scripts/test/erd-e4-bullmq-redis-ci.sh, .github/workflows/vehicle-detail-production-readiness.yml',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:05:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

@@ -1,19 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { isBatteryV2HvFallbackChargeSessionEnabled } from '@config/battery-health-v2.config';
-import { BatteryCapabilityStatus } from '../battery-v2-domain';
 import {
-  RECHARGE_SEGMENTS_SIGNAL_KEY,
-} from '../capability-preflight/battery-capability-signals.registry';
+  isBatteryV2HvFallbackChargeSessionEnabled,
+  isBatteryV2HvRechargeSessionEnabled,
+} from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { BatteryV2JobProducerService } from '../jobs/battery-v2-job-producer.service';
 import { BatteryV2JobDeadLetterService } from '../jobs/battery-v2-job-dead-letter.service';
 import {
+  buildHvRechargePeriodicPeriodBucket,
   buildHvRechargeVehicleReconcileIdempotencyKey,
 } from './hv-recharge-session-reconcile.policy';
 import {
   HvRechargeSessionReconcileTrigger,
   type HvRechargeSessionReconcileTrigger as HvRechargeSessionReconcileTriggerType,
 } from './hv-recharge-session-reconcile.trigger';
+import { fetchHvRechargePeriodicReconcileTargets } from './hv-recharge-reconcile-target.query';
+import { recordErdLivenessMetric } from './hv-erd-liveness.metrics';
 
 export interface EnqueueHvRechargeReconcileInput {
   organizationId: string;
@@ -23,6 +26,8 @@ export interface EnqueueHvRechargeReconcileInput {
   correlationId?: string;
   delayMs?: number;
   nonce?: string;
+  periodBucket?: string;
+  evaluatedAt?: Date;
 }
 
 @Injectable()
@@ -33,9 +38,17 @@ export class HvRechargeSessionReconcileProducerService {
     private readonly prisma: PrismaService,
     private readonly jobProducer: BatteryV2JobProducerService,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async enqueue(input: EnqueueHvRechargeReconcileInput): Promise<string | null> {
+    const evaluatedAt = input.evaluatedAt ?? new Date();
+    const periodBucket =
+      input.periodBucket ??
+      (input.trigger === HvRechargeSessionReconcileTrigger.PERIODIC
+        ? buildHvRechargePeriodicPeriodBucket(evaluatedAt)
+        : undefined);
+
     const idempotencyKey = input.segmentFingerprint
       ? buildHvRechargeVehicleReconcileIdempotencyKey({
           vehicleId: input.vehicleId,
@@ -45,12 +58,15 @@ export class HvRechargeSessionReconcileProducerService {
       : buildHvRechargeVehicleReconcileIdempotencyKey({
           vehicleId: input.vehicleId,
           trigger: input.trigger,
+          periodBucket,
           nonce: input.nonce,
+          evaluatedAt,
         });
 
     if (
       await this.deadLetters.isDeadLetter('HV_RECHARGE_SESSION_RECONCILE', idempotencyKey)
     ) {
+      recordErdLivenessMetric(this.metrics, 'reconcile_skipped_dead_letter');
       return null;
     }
 
@@ -68,84 +84,55 @@ export class HvRechargeSessionReconcileProducerService {
     );
 
     if (jobId) {
+      recordErdLivenessMetric(this.metrics, 'reconcile_enqueued');
       this.logger.debug(
         `Enqueued HV_RECHARGE_SESSION_RECONCILE vehicle=${input.vehicleId} trigger=${input.trigger}`,
       );
+    } else {
+      recordErdLivenessMetric(this.metrics, 'reconcile_duplicate_suppressed');
     }
 
     return jobId;
   }
 
-  async reconcilePeriodic(batchSize: number): Promise<number> {
-    const targets = new Map<string, { vehicleId: string; organizationId: string }>();
-
-    const ongoing = await this.prisma.hvChargeSession.findMany({
-      where: { isOngoing: true },
-      take: batchSize,
-      select: { vehicleId: true, organizationId: true },
-    });
-    for (const row of ongoing) {
-      targets.set(row.vehicleId, row);
+  async reconcilePeriodic(
+    batchSize: number,
+    evaluatedAt: Date = new Date(),
+  ): Promise<number> {
+    if (!isBatteryV2HvRechargeSessionEnabled()) {
+      recordErdLivenessMetric(this.metrics, 'reconcile_skipped_disabled');
+      return 0;
     }
 
-    if (targets.size < batchSize) {
-      const capable = await this.prisma.vehicleBatteryCapability.findMany({
-        where: {
-          signalKey: RECHARGE_SEGMENTS_SIGNAL_KEY,
-          status: {
-            in: [
-              BatteryCapabilityStatus.AVAILABLE,
-              BatteryCapabilityStatus.AVAILABLE_STALE,
-            ],
-          },
-          vehicle: { dimoVehicle: { is: { tokenId: { not: null } } } },
-        },
-        distinct: ['vehicleId'],
-        take: batchSize - targets.size,
-        orderBy: { checkedAt: 'asc' },
-        select: { vehicleId: true, organizationId: true },
-      });
+    const periodBucket = buildHvRechargePeriodicPeriodBucket(evaluatedAt);
+    const selected = await fetchHvRechargePeriodicReconcileTargets(
+      this.prisma,
+      batchSize,
+      evaluatedAt,
+    );
 
-      for (const row of capable) {
-        if (!targets.has(row.vehicleId)) {
-          targets.set(row.vehicleId, row);
-        }
-      }
-    }
-
-    if (targets.size < batchSize && isBatteryV2HvFallbackChargeSessionEnabled()) {
-      const chargingCapable = await this.prisma.vehicleBatteryCapability.findMany({
-        where: {
-          signalKey: 'hv.is_charging',
-          status: {
-            in: [
-              BatteryCapabilityStatus.AVAILABLE,
-              BatteryCapabilityStatus.AVAILABLE_STALE,
-            ],
-          },
-          vehicle: { dimoVehicle: { is: { tokenId: { not: null } } } },
-        },
-        distinct: ['vehicleId'],
-        take: batchSize - targets.size,
-        orderBy: { checkedAt: 'asc' },
-        select: { vehicleId: true, organizationId: true },
-      });
-
-      for (const row of chargingCapable) {
-        if (!targets.has(row.vehicleId)) {
-          targets.set(row.vehicleId, row);
-        }
-      }
-    }
+    recordErdLivenessMetric(
+      this.metrics,
+      'reconcile_target_selected',
+      selected.length,
+    );
 
     let enqueued = 0;
-    for (const target of targets.values()) {
+    for (const target of selected) {
       const jobId = await this.enqueue({
         organizationId: target.organizationId,
         vehicleId: target.vehicleId,
         trigger: HvRechargeSessionReconcileTrigger.PERIODIC,
+        periodBucket,
+        evaluatedAt,
       });
       if (jobId) enqueued += 1;
+    }
+
+    if (!isBatteryV2HvFallbackChargeSessionEnabled()) {
+      this.logger.debug(
+        'HV recharge periodic: fallback flag off — native + ongoing targets only',
+      );
     }
 
     return enqueued;
@@ -157,6 +144,11 @@ export class HvRechargeSessionReconcileProducerService {
     isCharging: boolean;
     observedAt?: Date;
   }): Promise<string | null> {
+    if (!isBatteryV2HvRechargeSessionEnabled()) {
+      recordErdLivenessMetric(this.metrics, 'reconcile_skipped_disabled');
+      return null;
+    }
+
     const nonce = `${input.isCharging ? 'on' : 'off'}:${(input.observedAt ?? new Date()).toISOString()}`;
     return this.enqueue({
       organizationId: input.organizationId,
@@ -173,6 +165,11 @@ export class HvRechargeSessionReconcileProducerService {
     vehicleId: string,
     correlationId?: string,
   ): Promise<string | null> {
+    if (!isBatteryV2HvRechargeSessionEnabled()) {
+      recordErdLivenessMetric(this.metrics, 'reconcile_skipped_disabled');
+      return null;
+    }
+
     return this.enqueue({
       organizationId,
       vehicleId,
