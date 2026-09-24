@@ -9240,6 +9240,7 @@ model HvChargeSession {
   vehicle              Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   measurementSession   BatteryMeasurementSession? @relation(fields: [measurementSessionId], references: [id], onDelete: SetNull)
   capacityObservations HvCapacityObservation[]
+  erdRechargeProductProjection VehicleEnergyEvent?
 
   @@unique([vehicleId, idempotencyKey], map: "hv_charge_sessions_idempotency_key")
   @@unique([vehicleId, segmentFingerprint], map: "hv_charge_sessions_segment_fingerprint")
@@ -10399,20 +10400,26 @@ enum EnergyEventConfidence {
 }
 
 /// RFRF F4 — explicit native vs fallback detection source (NULL = legacy native-era).
+/// ERD E5 — canonical HV charge session product projection (RECHARGE only).
 enum VehicleEnergyEventDetectionSource {
   DIMO_NATIVE
   SYNQDRIVE_RAW_FUEL_FALLBACK
+  SYNQDRIVE_ERD_RECHARGE_PROJECTION
 }
 
 model VehicleEnergyEvent {
   id                           String                             @id @default(uuid())
   vehicleId                    String                             @map("vehicle_id")
-  dimoSegmentId                String                             @unique @map("dimo_segment_id")
-  /// NULL = legacy native-era row; never means raw fallback (F4 contract).
+  /// Real DIMO segment / coalesced legacy identity when present; NULL allowed for ERD telemetry-only projections.
+  dimoSegmentId                String?                            @unique @map("dimo_segment_id")
+  /// NULL = legacy native-era row; never means raw fuel fallback (F4 contract).
   detectionSource              VehicleEnergyEventDetectionSource? @map("detection_source")
   /// Canonical fallback idempotency key (candidateIdentityKey); NULL for legacy/native.
+  /// ERD RECHARGE projection uses stable physical projection key (see E5 identity v1).
   /// SQL CHECK `vehicle_energy_events_source_identity_check` enforces pairings (migration SQL only).
   sourceEventKey               String?                            @map("source_event_key") @db.VarChar(512)
+  /// ERD E5 — current canonical HvChargeSession authority for this product projection (nullable; handoff updates FK).
+  canonicalChargeSessionId     String?                            @unique @map("canonical_charge_session_id")
   kind                         EnergyEventKind
   detectionMechanism           String                             @map("detection_mechanism")
   startTime                    DateTime              @map("start_time")
@@ -10438,6 +10445,7 @@ model VehicleEnergyEvent {
   updatedAt                    DateTime              @updatedAt @map("updated_at")
 
   vehicle               Vehicle                                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  canonicalChargeSession HvChargeSession?                        @relation(fields: [canonicalChargeSessionId], references: [id], onDelete: SetNull)
   fuelStationEnrichment VehicleEnergyEventFuelStationEnrichment?
   refuelReconciliation  VehicleEnergyEventRefuelReconciliation?
 
@@ -10448,6 +10456,7 @@ model VehicleEnergyEvent {
   @@index([vehicleId, kind, createdAt])
   @@index([kind])
   @@index([detectionSource])
+  @@index([canonicalChargeSessionId])
   @@map("vehicle_energy_events")
 }
 

@@ -17,7 +17,7 @@ import {
 export interface EnergyEventDto {
   id: string;
   vehicleId: string;
-  dimoSegmentId: string;
+  dimoSegmentId: string | null;
   kind: EnergyEventKind;
   detectionMechanism: string;
   startTime: string;
