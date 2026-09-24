@@ -52,7 +52,7 @@
 | **M3.3D D0.1 (architecture)** | Bounded canonical read (C5A-equivalent), persisted version authority, D1 integrity scope, profileStatus+flags, fingerprint determinism, D3/M3.3F sequencing — **COMPLETE ON MAIN** PR #1735 @ `bc69e1d9c` |
 | **M3.3D D1 (engineering)** | Bounded canonical longitudinal input reader + inclusion policy (`M3_3D_D1_LONGITUDINAL_INPUT_V1`) — **COMPLETE ON MAIN** squash-merged PR #1737 @ `9577e0f146ddec2b81fc2ede35389a5fa2e6db94`; post-merge seal PR #1738 @ `9d0dbc7d3` — `research/M3_3D_D1_CANONICAL_LONGITUDINAL_INPUT_READER_2026-09-24.md` |
 | **M3.3D D2 (engineering)** | Deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` / `M3_3D_PROFILE_POLICY_V1` from D1 inventory) — **COMPLETE ON MAIN** merged PR #1739 @ `ed7adb79b50d28663fd64a2e856f1f615bece046` (PR head `55357add3`) — `research/M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
-| **M3.3D D3 (architecture)** | Profile materialization / persistence decision audit — **ARCHITECTURE AUDIT ON DRAFT PR**; **implementation NOT STARTED** — `research/M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
+| **M3.3D D3 (architecture)** | Profile materialization / persistence decision audit — **ARCHITECTURE AUDIT ON DRAFT PR #1744**; **implementation NOT STARTED** — `research/M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
 | **M3.3C roadmap (planning)** | **M3.3D D3** audit → engineering · **M3.3D D4+** pending · **M3.3E–H** pending |
 | **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2 on main**; **D3 audit in flight**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
