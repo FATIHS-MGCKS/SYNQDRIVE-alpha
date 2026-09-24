@@ -36,7 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-<<<<<<< HEAD
     id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
     version: '4.9.2100',
     title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',
@@ -58,9 +57,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-24T18:00:00.000Z',
   },
   {
-=======
-<<<<<<< HEAD
->>>>>>> a7bc49d43 (test(battery-v2): D4 longitudinal integrity PG-A–PG-Y PostgreSQL suite)
     id: 'tdl-qualified-stop-contract-v1-2026-09-24',
     version: '4.9.2100',
     title: 'Trip FSM — Qualified Stop Contract V1 (5 min same-trip boundary)',
@@ -81,8 +77,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-24T17:15:00.000Z',
   },
   {
-=======
->>>>>>> af8827dc2 (test(battery-v2): D4 longitudinal integrity PG-A–PG-Y PostgreSQL suite)
     id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
     version: '4.9.2099',
     title: 'Trip FSM — post-split short-trip finalize quality gate',
