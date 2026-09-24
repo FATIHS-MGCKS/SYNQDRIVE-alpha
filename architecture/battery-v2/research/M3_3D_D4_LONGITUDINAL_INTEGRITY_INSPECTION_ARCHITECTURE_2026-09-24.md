@@ -1,7 +1,7 @@
 # M3.3D D4 — Longitudinal Integrity / Inspection Architecture Audit
 
 **Date:** 2026-09-24  
-**Status:** **ARCHITECTURE AUDIT — D4.2 FINAL CONTRACT SEAL** (read-only; **not implemented**)  
+**Status:** **ARCHITECTURE AUDIT — D4.3 FINAL CONSISTENCY CLOSURE** (read-only; **not implemented**)  
 **Inspection contract (frozen):** `M3_3D_D4_INTEGRITY_INSPECTION_V1`  
 **Draft PR:** #1751  
 **Main anchor (audit start):** `989d560f57ee4785e0d12fc518e2a204dfa5f826`  
@@ -282,31 +282,37 @@ When row exists, verify:
 
 For **EXCLUDED** with `INPUT_CONTRACT_VERSION_UNRESOLVED`: see §9.6 — do **not** emit `SOURCE_VERSION_MISMATCH` merely because D1’s current parser rejects the summary.
 
-### 9.4 Source content integrity (D1/D2 provenance — frozen)
+### 9.4 Source content subdimensions (D1/D2 provenance — frozen)
 
-**Dimension:** `SOURCE_CONTENT_INTEGRITY`  
+| Decision | Value |
+|----------|-------|
+| `SOURCE_CONTENT_SINGLE_AMBIGUOUS_FIELD_REMOVED` | **YES** |
+| `SOURCE_FEATURE_SCALAR_DIMENSION` | **`sourceFeatureScalarIntegrity`** |
+| `SOURCE_SNAPSHOT_CONTEXT_DIMENSION` | **`sourceSnapshotContextIntegrity`** |
+
+V1 contract exposes **two** explicit `DimensionResult` fields — **not** a single ambiguous `sourceContentIntegrity`.
 
 | Authority key | Value |
 |---------------|-------|
 | `SOURCE_FEATURE_SCALAR_AUTHORITY` | **`C3_ROW_COLUMNS`** |
-| `SOURCE_SNAPSHOT_CONTEXT_AUTHORITY` | **`C3_INPUT_SUMMARY`** (strict historical parser) |
-| `EXCLUDED_SOURCE_CONTENT_INTEGRITY` | **`NOT_APPLICABLE`** |
+| `SOURCE_SNAPSHOT_CONTEXT_AUTHORITY` | **`C3_INPUT_SUMMARY`** (D4 historical parser when registered) |
+| `EXCLUDED_CONTENT_RESULT` | **`NOT_APPLICABLE`** (both subdimensions) |
 
-D2 copies **feature scalars** from persisted `BatteryRestSessionFeature` **column fields** (`LongitudinalInputReaderService.buildInventoryItem()` → `assembleLongitudinalProfileV1()` → `mapObservation()`). They are **not** stored inside `inputSummary`.
+**Applicability matrix:**
 
-**Applicability:**
-
-| Profile slice | Feature scalar ↔ row columns | Snapshot context ↔ parsed `inputSummary` |
-|---------------|------------------------------|------------------------------------------|
-| DEFAULT | **EVALUATED** | **EVALUATED** |
-| PROVISIONAL | **EVALUATED** | **EVALUATED** |
+| Profile slice | `sourceFeatureScalarIntegrity` | `sourceSnapshotContextIntegrity` |
+|---------------|-------------------------------|----------------------------------|
+| DEFAULT / PROVISIONAL (canonical present) | PASS \| FAIL \| NOT_EVALUATED | PASS \| FAIL \| NOT_EVALUATED |
 | EXCLUDED (with canonical ref) | **NOT_APPLICABLE** | **NOT_APPLICABLE** |
+| `NO_SOURCE_REFERENCE_EXPECTED` | **NOT_APPLICABLE** | **NOT_APPLICABLE** |
+| Missing referenced source row | **NOT_EVALUATED** | **NOT_EVALUATED** |
 
-Excluded sessions persist only: `restSessionId`, `anchorAt`, `sessionStatus`, `endReason`, `exclusionReasons`, `canonical`, `version`, `inputDigest` — **no** `features` or snapshot fields. Do **not** fabricate content comparisons.
+| Decision | Value |
+|----------|-------|
+| `NO_SOURCE_EXPECTED_CONTENT_RESULT` | **NOT_APPLICABLE** |
+| `MISSING_SOURCE_CONTENT_RESULT` | **NOT_EVALUATED** |
 
-**Session metadata** (`anchorAt`, `sessionStatus`, `endReason`) on observations originates from **`BatteryRestSession`** via D1 — **not** C3 row scalars. D4 V1 **does not** treat these as C3 source-content checks unless a future spec defines a separate D1-session provenance dimension (out of scope for V1).
-
-Mismatch on evaluated fields → `SOURCE_CONTENT_MISMATCH` (integrity-warning class), not health signal.
+Mismatch on an evaluated subdimension → **`SOURCE_CONTENT_MISMATCH`** (integrity-warning class). Documentation must record **which subdimension** failed (scalar vs snapshot); optional future split to `SOURCE_FEATURE_SCALAR_MISMATCH` / `SOURCE_SNAPSHOT_CONTEXT_MISMATCH` is **not required** for V1 if `SOURCE_CONTENT_MISMATCH` + subdimension FAIL is sufficient.
 
 See **§9.7** field map table.
 
@@ -395,16 +401,21 @@ Profile `inputContractVersion = X` and persisted C3 `inputSummary.inputContractV
 
 Reason code: **`UNSUPPORTED_SOURCE_INPUT_CONTRACT`**.
 
+| Decision | Value |
+|----------|-------|
+| `UNSUPPORTED_INPUT_CONTRACT_SNAPSHOT_RESULT` | **`NOT_EVALUATED`** |
+
 **V1 semantics (DEFAULT/PROVISIONAL with canonical row):**
 
 | Check | Result |
 |-------|--------|
 | `sourceIdentity` | **PASS** if persisted version strings match |
 | `digestIntegrity` | Evaluate normally (canonical digest) |
-| Feature scalar `sourceContentIntegrity` | Compare C3 **row columns** |
-| Snapshot-context `sourceContentIntegrity` | **`NOT_EVALUATED`** (verification limitation, not corruption) |
-| DEFAULT disposition | **`SOURCE_EVIDENCE_LIMITED`** unless higher-precedence integrity warning |
-| Rebuildability | Reference **not** `VERIFIABLE_SOURCE_REFERENCE` (snapshot correspondence not evaluable) |
+| `sourceFeatureScalarIntegrity` | Compare C3 **row columns** (`UNSUPPORTED_INPUT_CONTRACT_SCALAR_CHECKED=YES`) |
+| `sourceSnapshotContextIntegrity` | **PASS/FAIL** when parser registered; else **`NOT_EVALUATED`** + `UNSUPPORTED_SOURCE_INPUT_CONTRACT` |
+| DEFAULT disposition precedence | **`sourceFeatureScalarIntegrity=FAIL`** → **`INTEGRITY_WARNING`** / `QUARANTINED_INTEGRITY_WARNING` (**`SCALAR_MISMATCH_OUTRANKS_UNSUPPORTED_PARSER=YES`**) |
+| Else unsupported snapshot parser only | **`SOURCE_EVIDENCE_LIMITED`** |
+| Rebuildability | Reference **not** `VERIFIABLE_SOURCE_REFERENCE` when snapshot subdimension not PASS where applicable |
 
 **D4 V1 historical input parser registry (architecture time):**
 
@@ -463,7 +474,7 @@ Define **`VERIFIABLE_SOURCE_REFERENCE`** (per expected canonical reference):
 - referenced source row **exists**  
 - source **identity/version** checks pass (per §9.3 / §9.6)  
 - referenced-row **digest** passes  
-- applicable **source-content** check passes (DEFAULT/PROVISIONAL only)  
+- where applicable: `sourceFeatureScalarIntegrity === PASS` **and** `sourceSnapshotContextIntegrity === PASS` (EXCLUDED canonical refs: content subdimensions **NOT_APPLICABLE** — do not block verifiability)  
 - **temporal provenance** passes  
 
 **States — dimension `REBUILDABILITY`:**
@@ -560,16 +571,18 @@ Combined SQL is acceptable if statement count remains constant.
 
 **`D4_DB_ROUND_TRIP_BOUND`:** **≤ 4** SQL round trips (or **1** combined statement design) — **independent of session count (≤100) and independent of distinct version triple count**.
 
-**Result row bound (materialized rows returned to application):**
+**Result row bounds (four-step design — D4.3):**
 
-```text
-≤ 100 session references × (K=100 latest rows + at most 1 referenced-row union)
-→ ≤ 10,100 materialized C3 revision rows
-+ ≤ 100 aggregate result rows
-```
+| Bound | Value |
+|-------|-------|
+| `D4_UNIQUE_C3_ROW_ID_BOUND` | **≤ 10,100** unique C3 row ids materialized across the inspection snapshot |
+| `D4_FOUR_STEP_C3_RESULT_INSTANCE_BOUND` | **≤ 10,200** total C3 row **result instances** returned across SQL responses in the 4-step design (step 2 ≤100 referenced rows + step 4 ≤10,100 window/union rows; overlap allowed) |
+| `D4_AGGREGATE_RESULT_ROW_BOUND` | **≤ 100** aggregate result rows |
+
+A **combined** SQL design that merges referenced lookup with step 4 may prove a **tighter** transfer bound (≤10,100 instances) but must not weaken the architecture maximum above.
 
 | Decision | Value |
-|----------|-------|
+|-------|-------|
 | `D4_RESULT_ROW_BOUND_EXPLICIT` | **YES** |
 | `D4_SERVER_SIDE_AGGREGATE_SCAN_CLAIMED_K_BOUNDED` | **NO** |
 
@@ -782,17 +795,18 @@ Unexpected DB failures: **throw** — not `overallStatus`.
 1. `MATERIALIZED_REVISION_SELF_INTEGRITY`  
 2. `SOURCE_EVIDENCE_AVAILABILITY`  
 3. `SOURCE_ROW_IDENTITY_INTEGRITY`  
-4. `SOURCE_CONTENT_INTEGRITY`  
-5. `SOURCE_TEMPORAL_PROVENANCE_INTEGRITY`  
-6. `DIGEST_INTEGRITY`  
-7. `REVISION_LINEAGE_INTEGRITY`  
-8. `DIGEST_COVERAGE`  
-9. `REBUILDABILITY`  
-10. `INTEGRITY_QUALIFIED_ELIGIBILITY`  
+4. `SOURCE_FEATURE_SCALAR_INTEGRITY`  
+5. `SOURCE_SNAPSHOT_CONTEXT_INTEGRITY`  
+6. `SOURCE_TEMPORAL_PROVENANCE_INTEGRITY`  
+7. `DIGEST_INTEGRITY`  
+8. `REVISION_LINEAGE_INTEGRITY`  
+9. `DIGEST_COVERAGE`  
+10. `REBUILDABILITY`  
+11. `INTEGRITY_QUALIFIED_ELIGIBILITY`  
 
 **`DimensionResult` (frozen enum):** `PASS` | `FAIL` | `NOT_EVALUATED` | `NOT_APPLICABLE`
 
-When source row missing: identity, digest, content, temporal → **`NOT_EVALUATED`**; lineage → evaluate from aggregate if session/version aggregate available, else **`NOT_EVALUATED`**.
+When source row missing: identity, digest, both content subdimensions, temporal → **`NOT_EVALUATED`**; lineage → evaluate from aggregate if available, else **`NOT_EVALUATED`**.
 
 ---
 
@@ -811,7 +825,7 @@ Separate codes (no health terminology):
 | `SOURCE_IDENTITY_MISMATCH` | Row exists but identity fields mismatch |
 | `SOURCE_VERSION_MISMATCH` | Version tuple mismatch |
 | `SOURCE_DIGEST_MISMATCH` | Digest recompute failure |
-| `SOURCE_CONTENT_MISMATCH` | Observation copy ≠ C3 parsed content |
+| `SOURCE_CONTENT_MISMATCH` | Feature scalar and/or snapshot context subdimension mismatch (record which failed) |
 | `SOURCE_TEMPORAL_ORDER_INVALID` | C3 `createdAt` > revision `createdAt` |
 | `SEMANTIC_REVISION_GAP` | Lineage gap count > 0 |
 | `SEMANTIC_REVISION_DUPLICATE` | Duplicate semantic revision count > 0 |
@@ -932,7 +946,8 @@ type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
     canonicalFeatureRowId: string | null;
     sourceEvidenceAvailability: 'FOUND' | 'MISSING' | 'NO_SOURCE_REFERENCE_EXPECTED';
     sourceIdentity: DimensionResult;
-    sourceContentIntegrity: DimensionResult;
+    sourceFeatureScalarIntegrity: DimensionResult;
+    sourceSnapshotContextIntegrity: DimensionResult;
     sourceTemporalProvenance: DimensionResult;
     digestIntegrity: DimensionResult;
     revisionLineage: DimensionResult;
@@ -966,17 +981,20 @@ type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
 };
 ```
 
-**`D4InspectionFlagV1` emission (deterministic order):**
+**`D4InspectionFlagV1` emission (`INSPECTION_FLAG_ORDER` — deterministic, no duplicates):**
 
-1. `INTEGRITY_LIMITED` if `overallStatus` is `INTEGRITY_PARTIAL` or `INTEGRITY_WARNING`  
-2. `SOURCE_EVIDENCE_LIMITED` if any DEFAULT has `SOURCE_EVIDENCE_LIMITED` or unsupported input contract limitation  
-3. `REBUILDABILITY_LIMITED` if `rebuildability !== 'FULL'`
+| Order | Flag | Rule |
+|-------|------|------|
+| 1 | `INTEGRITY_LIMITED` | `overallStatus` is `INTEGRITY_PARTIAL` or `INTEGRITY_WARNING`, **or** bounded digest coverage applies as defined for integrity-limited reporting |
+| 2 | `SOURCE_EVIDENCE_LIMITED` | **`SOURCE_EVIDENCE_LIMITED_FLAG_SCOPE=ALL_AUDITED_PROFILE_REFERENCES`**: any inspected profile candidate/reference has a source-evidence verification limitation (missing referenced row in DEFAULT/PROVISIONAL/EXCLUDED, unsupported matching input contract, etc.) — **not** DEFAULT disposition counts alone. If `overallStatus=SOURCE_EVIDENCE_LIMITED`, this flag **must** be present. **`SOURCE_LIMITATION_UNDER_HIGHER_OVERALL_STATUS_PRESERVED=YES`**: retain when `INTEGRITY_WARNING` or forensic `REVISION_SELF_INTEGRITY_FAILED` masks `SOURCE_EVIDENCE_LIMITED` at overallStatus but a limitation still exists. |
+| 3 | `REBUILDABILITY_LIMITED` | `rebuildability !== 'FULL'` |
 
 | Decision | Value |
 |----------|-------|
 | `INSPECTION_FLAGS_OPEN_STRING_ARRAY` | **NO** |
 | `INSPECTION_FLAG_ENUM_FROZEN` | **YES** |
-| `SOURCE_CONTENT_DIMENSION_IN_CONTRACT` | **YES** |
+| `SOURCE_FEATURE_SCALAR_DIMENSION_IN_CONTRACT` | **YES** |
+| `SOURCE_SNAPSHOT_CONTEXT_DIMENSION_IN_CONTRACT` | **YES** |
 | `SOURCE_TEMPORAL_DIMENSION_IN_CONTRACT` | **YES** |
 
 ---
@@ -1038,7 +1056,16 @@ D4 tests may insert isolated revisions in **ephemeral PostgreSQL** only.
 
 ## 29. Test matrix (design only — not implemented in this audit)
 
-### Strict profile semantic invariants (§7)
+### Source content subdimensions + flags + bounds (D4.3)
+
+- Feature scalar PASS + snapshot PASS; scalar FAIL + snapshot PASS; scalar PASS + snapshot FAIL  
+- Unsupported parser: scalar PASS + snapshot NOT_EVALUATED; scalar FAIL → INTEGRITY_WARNING (outranks limitation)  
+- EXCLUDED: both NOT_APPLICABLE; missing source: both NOT_EVALUATED; no source expected: NOT_APPLICABLE  
+- Missing source only in PROVISIONAL or EXCLUDED → `SOURCE_EVIDENCE_LIMITED` flag present  
+- Integrity warning + source limitation → both flags retained  
+- Four-step max ≤10,200 C3 result instances; unique row ids ≤10,100; aggregates ≤100  
+
+### Strict profile / unparseable / digest / eligibility (carry-forward)
 
 - `profileGeneratedAt` present in scientific JSON → parse failure / distinct self-integrity outcome  
 - Candidate / included / provisional / excluded count mismatches  
@@ -1089,23 +1116,20 @@ D4 tests may insert isolated revisions in **ephemeral PostgreSQL** only.
 
 ---
 
-## 31. Implementation readiness gate (D4.2 final seal)
+## 31. Implementation readiness gate (D4.3 final consistency)
 
 | Gate | Result |
 |------|--------|
-| Unparseable distinct failure outcome (D4.2) | **CLOSED** |
-| D2 semantic invariant validator (D4.2) | **CLOSED** |
-| Unsupported matching input contract (D4.2) | **CLOSED** |
-| Digest coverage scope enum + aggregation (D4.2) | **CLOSED** |
-| DEFAULT disposition accounting (D4.2) | **CLOSED** |
-| Closed inspectionFlags enum (D4.2) | **CLOSED** |
-| D4.1 provenance / rebuildability / batch plan | **CLOSED** |
+| Source content subdimensions (D4.3) | **CLOSED** |
+| SOURCE_EVIDENCE_LIMITED flag scope (D4.3) | **CLOSED** |
+| Four-step result instance bounds (D4.3) | **CLOSED** |
+| D4.2 / D4.1 contract | **CLOSED** |
 
 **`D4_IMPLEMENTATION_READY=YES`**
 
 ---
 
-## Appendix — audit decision summary (incl. D4.2)
+## Appendix — audit decision summary (incl. D4.3)
 
 | Key | Value |
 |-----|-------|
@@ -1114,16 +1138,9 @@ D4 tests may insert isolated revisions in **ephemeral PostgreSQL** only.
 | `D4_USES_SEPARATE_INSPECTION_OVERLAY` | YES |
 | `D4_PERSISTENCE_REQUIRED` | NO |
 | `D4_INSPECTION_CONTRACT_VERSION` | `M3_3D_D4_INTEGRITY_INSPECTION_V1` |
-| `D4_DB_ROUND_TRIP_BOUND` | ≤4 (constant; not scaling with sessions/triples) |
-| `D4_RESULT_ROW_BOUND` | ≤10,100 materialized C3 rows + ≤100 aggregates |
-| `D4_INSPECTION_TRANSACTION` | RepeatableRead |
-| `REBUILDABILITY_STATES` | FULL \| PARTIAL \| UNAVAILABLE |
-| `SOURCE_FEATURE_SCALAR_AUTHORITY` | C3_ROW_COLUMNS |
-| `SOURCE_SNAPSHOT_CONTEXT_AUTHORITY` | C3_INPUT_SUMMARY |
-| `EXCLUDED_SOURCE_CONTENT_INTEGRITY` | NOT_APPLICABLE |
-| `MALFORMED_PROFILE_STATUS` | Top-level `REVISION_SELF_INTEGRITY_FAILED` failure |
-| `UNSUPPORTED_CONTRACT_STATUS` | Top-level `REVISION_SELF_INTEGRITY_FAILED` failure |
-| `DIGEST_SCOPE_ENUM` | FULL \| BOUNDED_LATEST_WINDOW \| NOT_EVALUATED |
-| `ZERO_EVALUATED_DIGEST_SCOPE` | NOT_EVALUATED |
-| `INSPECTION_FLAG_ENUM_FROZEN` | YES |
-| `UNSUPPORTED_SOURCE_INPUT_CONTRACT_DISPOSITION` | SOURCE_EVIDENCE_LIMITED |
+| `D4_DB_ROUND_TRIP_BOUND` | ≤4 (constant) |
+| `D4_UNIQUE_C3_ROW_ID_BOUND` | ≤10,100 |
+| `D4_FOUR_STEP_C3_RESULT_INSTANCE_BOUND` | ≤10,200 |
+| `D4_AGGREGATE_RESULT_ROW_BOUND` | ≤100 |
+| `SOURCE_EVIDENCE_LIMITED_FLAG_SCOPE` | ALL_AUDITED_PROFILE_REFERENCES |
+| `INSPECTION_FLAG_ORDER` | INTEGRITY_LIMITED → SOURCE_EVIDENCE_LIMITED → REBUILDABILITY_LIMITED |

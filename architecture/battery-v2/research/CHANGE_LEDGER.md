@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4.3 final architecture consistency closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4.2 sealed V1 contract; remaining ambiguity on single `sourceContentIntegrity`, DEFAULT-only SOURCE_EVIDENCE_LIMITED flag scope, and four-step ≤10,100 total result-instance bound. |
+| **OBSERVATION** | Unsupported input contract requires independent scalar vs snapshot subdimensions; PROVISIONAL/EXCLUDED source limits must emit profile-wide flag; step 2+4 may return ≤10,200 row instances. |
+| **HYPOTHESIS** | D4.3 doc-only closure preserves **`D4_IMPLEMENTATION_READY=YES`**. |
+| **CHANGE** | Split `sourceFeatureScalarIntegrity` / `sourceSnapshotContextIntegrity`; profile-wide `SOURCE_EVIDENCE_LIMITED` flag rules; `D4_UNIQUE_C3_ROW_ID_BOUND` vs `D4_FOUR_STEP_C3_RESULT_INSTANCE_BOUND`. |
+| **WHY** | Remove last machine-contract inconsistencies before D4 engineering. |
+| **EXPECTED_EFFECT** | Implementable read-only inspection contract without ambiguous aggregates. |
+| **VALIDATION** | Governance validators; CI on PR #1751. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/schema/deploy; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering. |
+| **DECISION_STATUS** | **ARCHITECTURE_CONSISTENCY_SEALED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 D4.3 amend |
+
+---
+
 ## CL-2026-09-24 — M3.3D D4.2 integrity inspection final contract seal
 
 | Field | Value |
