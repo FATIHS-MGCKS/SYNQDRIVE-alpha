@@ -1,7 +1,9 @@
 import { registerAs } from '@nestjs/config';
-import { resolveMaxSameTripQualifiedStopMs } from '../modules/vehicle-intelligence/trips/trip-qualified-stop-duration.config';
+import {
+  resolveMaxSameTripQualifiedStopMsConfig,
+} from '../modules/vehicle-intelligence/trips/trip-qualified-stop-duration.config';
 
-const maxSameTripQualifiedStopMs = resolveMaxSameTripQualifiedStopMs();
+const maxSameTripStopConfig = resolveMaxSameTripQualifiedStopMsConfig();
 
 export default registerAs('worker', () => ({
   snapshotIntervalMs: parseInt(process.env.WORKER_SNAPSHOT_INTERVAL_MS || '30000', 10),
@@ -78,9 +80,11 @@ export default registerAs('worker', () => ({
   // Max duration of a physically qualified stop/pause that remains ONE trip.
   // Split when qualified gap duration is STRICTLY GREATER than this value (ms).
   // Default 5 minutes. Legacy env TRIP_MID_GAP_SPLIT_MS maps to the same authority.
-  tripSameTripMaxQualifiedStopMs: maxSameTripQualifiedStopMs,
+  tripSameTripMaxQualifiedStopMs:
+    maxSameTripStopConfig.resolvedMaxSameTripQualifiedStopMs,
+  tripSameTripMaxQualifiedStopMsConfigSource: maxSameTripStopConfig.configSource,
   /** @deprecated alias — identical to tripSameTripMaxQualifiedStopMs */
-  tripMidGapSplitMs: maxSameTripQualifiedStopMs,
+  tripMidGapSplitMs: maxSameTripStopConfig.resolvedMaxSameTripQualifiedStopMs,
   // Maximum position drift (meters) between the last pre-gap waypoint and
   // the first post-gap waypoint for the gap to be considered a stationary
   // stop (i.e., the same parking spot). Larger drifts mean the vehicle kept
