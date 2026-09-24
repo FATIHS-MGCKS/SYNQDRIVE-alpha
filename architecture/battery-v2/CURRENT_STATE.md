@@ -54,13 +54,13 @@
 | **M3.3D D2 (engineering)** | Deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` / `M3_3D_PROFILE_POLICY_V1` from D1 inventory) — **COMPLETE ON MAIN** merged PR #1739 @ `ed7adb79b50d28663fd64a2e856f1f615bece046` (PR head `55357add3`) — `research/M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
 | **M3.3D D3 (architecture)** | Profile materialization / persistence architecture audit — **COMPLETE ON MAIN** merged PR #1744 @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` (PR head `0e7ea2884`) — `research/M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
 | **M3.3D D3.1 (architecture)** | Persistence-contract closure (Postgres idempotency, JSONB semantics, fingerprint `Char(64)`, FK/cascade, foundation readiness) — **COMPLETE ON MAIN** (same merge @ `7919bdd5c`) |
-| **M3.3D D3 foundation** | Prisma model + migration + internal idempotent materialization service — **NOT IMPLEMENTED**; **`SCHEMA_IMPLEMENTATION_READY=YES_FOR_FOUNDATION`**; **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F** |
-| **M3.3C roadmap (planning)** | **M3.3D D3 foundation engineering** → **M3.3D D4+** pending · **M3.3E–H** pending |
-| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2/D3 architecture on main**; **D3 foundation engineering NEXT**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3D D3 foundation** | Prisma `BatteryLongitudinalProfileRevision` + migration + internal idempotent materialization stack — **ENGINEERING ON DRAFT PR #1746** (not complete on main); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md` |
+| **M3.3C roadmap (planning)** | **M3.3D D3 foundation merge** → **M3.3D D4+** pending · **M3.3E–H** pending |
+| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2/D3 architecture on main**; **D3 foundation engineering in flight**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3D D3 foundation engineering** (schema/migration/internal service only — **NOT IMPLEMENTED**); D3 runtime materialization **NOT PRODUCTION AUTHORIZED**; D4+ / M3.3E / M3.3F / M3.3G / M3.3H **pending**; production C3/longitudinal materialization remains OFF until **M3.3F** |
+| `NEXT_PHASE` | **M3.3D D3 foundation engineering** (draft PR — schema/migration/internal service, not production-reachable); D3 runtime materialization **NOT PRODUCTION AUTHORIZED**; D4+ / M3.3E / M3.3F / M3.3G / M3.3H **pending** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
