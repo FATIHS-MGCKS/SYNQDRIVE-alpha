@@ -13099,6 +13099,24 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T13:00:00.000Z',
   },
   {
+    id: 'erd-e4-reconciliation-liveness-2026-09-24',
+    version: '4.9.902',
+    title: 'ERD E4 — durable reconciliation / recovery liveness',
+    summary: [
+      'Canonical ERD reconcile eligibility shared with E3 fallback activation (SOC + corroborating signals, not is_charging-only periodic selector).',
+      'Explicit periodic idempotency buckets; rotating fair batch selection without new recovery table.',
+      'Master HV flag off skips periodic enqueue; synqdrive_erd_e4_liveness_total observability; CI gate step 6.',
+    ],
+    reason: 'Close liveness gaps for telemetry-only fallback profiles and deterministic periodic recovery after DLQ/restart.',
+    previousBehavior:
+      'Periodic fallback targets used hv.is_charging capability only; PERIODIC idempotency could derive bucket from implicit Date.now().',
+    details:
+      'hv-erd-reconcile-eligibility.policy.ts, hv-recharge-reconcile-target.query.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:30:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

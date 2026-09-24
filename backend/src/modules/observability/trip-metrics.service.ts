@@ -210,6 +210,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
   readonly erdE3ConvergenceTotal: Counter<string>;
+  readonly erdE4LivenessTotal: Counter<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
   readonly batteryCapabilitySignalsTotal: Counter<string>;
   readonly hvCapacityMethodConflictTotal: Counter<string>;
@@ -1778,6 +1779,13 @@ export class TripMetricsService implements OnModuleInit {
     this.erdE3ConvergenceTotal = new Counter({
       name: 'synqdrive_erd_e3_convergence_total',
       help: 'ERD E3 fallback detection and native/fallback convergence outcomes',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.erdE4LivenessTotal = new Counter({
+      name: 'synqdrive_erd_e4_liveness_total',
+      help: 'ERD E4 reconciliation scheduling and recovery liveness outcomes',
       labelNames: ['reason'],
       registers: [this.registry],
     });

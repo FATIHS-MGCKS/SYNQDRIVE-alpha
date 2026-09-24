@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E4 durable reconciliation / recovery liveness
+
+- Evidence: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md`
+- Canonical ERD reconcile eligibility shared with E3; expanded periodic fallback selector; explicit period buckets; rotating fair batch selection; E4 liveness metrics; CI gate step 6
+
 ## 2026-09-24 — ERD E3.1 shared authority lock + fallback identity races
 
 - Single `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes

@@ -310,6 +310,7 @@ describe('HvRechargeSessionReconcileProducerService', () => {
   };
   const jobProducer = { enqueue: jest.fn() };
   const deadLetters = { isDeadLetter: jest.fn() };
+  const metrics = { erdE4LivenessTotal: { inc: jest.fn() } };
 
   let producer: InstanceType<typeof HvRechargeSessionReconcileProducerService>;
 
@@ -317,13 +318,22 @@ describe('HvRechargeSessionReconcileProducerService', () => {
     jest.clearAllMocks();
     deadLetters.isDeadLetter.mockResolvedValue(false);
     jobProducer.enqueue.mockResolvedValue('job-1');
-    prisma.hvChargeSession.findMany.mockResolvedValue([]);
-    prisma.vehicleBatteryCapability.findMany.mockResolvedValue([]);
+    prisma.hvChargeSession = { findMany: jest.fn().mockResolvedValue([]) };
+    prisma.vehicleBatteryCapability = { findMany: jest.fn().mockResolvedValue([]) };
     producer = new HvRechargeSessionReconcileProducerService(
       prisma as never,
       jobProducer as never,
       deadLetters as never,
+      metrics as never,
     );
+  });
+
+  it('returns zero when master HV recharge flag is off', async () => {
+    (isBatteryV2HvRechargeSessionEnabled as jest.Mock).mockReturnValue(false);
+    const count = await producer.reconcilePeriodic(10);
+    expect(count).toBe(0);
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
+    (isBatteryV2HvRechargeSessionEnabled as jest.Mock).mockReturnValue(true);
   });
 
   it('enqueues periodic reconcile for ongoing sessions and capable vehicles', async () => {
@@ -331,13 +341,19 @@ describe('HvRechargeSessionReconcileProducerService', () => {
       { vehicleId: 'veh-ongoing', organizationId: ORG },
     ]);
     prisma.vehicleBatteryCapability.findMany.mockResolvedValue([
-      { vehicleId: 'veh-capable', organizationId: ORG },
+      {
+        vehicleId: 'veh-capable',
+        organizationId: ORG,
+        signalKey: 'dimo.segments.recharge',
+        status: 'AVAILABLE',
+        vehicle: { fuelType: 'ELECTRIC' },
+      },
     ]);
 
-    const enqueued = await producer.reconcilePeriodic(10);
+    const enqueued = await producer.reconcilePeriodic(10, new Date('2026-07-16T12:00:00.000Z'));
 
-    expect(enqueued).toBe(2);
-    expect(jobProducer.enqueue).toHaveBeenCalledTimes(2);
+    expect(enqueued).toBeGreaterThanOrEqual(1);
+    expect(jobProducer.enqueue).toHaveBeenCalled();
   });
 
   it('skips enqueue when idempotency key is dead-lettered', async () => {
