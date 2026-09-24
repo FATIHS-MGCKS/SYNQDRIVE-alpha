@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D2.1 profile contract & determinism closure (draft PR #1739)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D2 assembler on PR #1739 @ `b8db1e42e`; accepted-malformed D1 inputs could pass validation; profile output could alias mutable D1 references. |
+| **OBSERVATION** | Independent review: unknown inclusion modes could vanish from partition counts; non-ISO timestamps could yield NaN spans; D1 window metadata not fully enforced; D0 §12.1 still listed non-D1 exclusion gates. |
+| **HYPOTHESIS** | Structural D2 validation + detached output closes audit/determinism gaps without D1 policy duplication or D3 scope. |
+| **CHANGE** | Strengthened D2 validation (inclusion partition, exclusion coherence, temporal/window/metadata, detached snapshot output); full golden profile test; corrected D0 §12.1 D1 gate wording. |
+| **WHY** | Freeze trustworthy `M3_3D_LONGITUDINAL_PROFILE_V1` semantics before main merge / D3. |
+| **EXPECTED_EFFECT** | Malformed D1 inventories reject deterministically; assembled profile immutable vs post-assembly input mutation. |
+| **VALIDATION** | `longitudinal-profile.assembler.spec.ts` 37/37; D1 suites unchanged; battery-v2 differential BASE `9d0dbc7d3` vs HEAD — same 7 failing suites / 11 tests. |
+| **OBSERVED_EFFECT** | Local validation PASS pending PR #1739 CI on amend HEAD. |
+| **NON_EFFECTS** | No D1 runtime change; no DB/schema/API/flags/deploy; no D3/D4/M3.3E. |
+| **REGRESSIONS_OR_TRADEOFFS** | Stricter D2 rejection surface for malformed inventories (intended). |
+| **REMAINING_GAPS** | D3 materialization; D4 integrity; DEC-M3.3D-001. |
+| **DECISION_STATUS** | **ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Draft PR #1739 amend; `/opt/cursor/artifacts/battery-v2-{base,head}-test.log` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D2 deterministic longitudinal profile assembly (engineering, draft PR)
 
 | Field | Value |

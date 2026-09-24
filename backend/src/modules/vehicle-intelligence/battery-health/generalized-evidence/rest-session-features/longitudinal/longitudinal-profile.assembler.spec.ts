@@ -529,7 +529,7 @@ describe('longitudinal-profile.assembler (M3.3D D2)', () => {
   });
 
   describe('T — determinism golden vector', () => {
-    it('fixed fixture deep equality', () => {
+    it('fixed fixture asserts complete profile structure', () => {
       const inventory = buildProfileTestInventory([
         buildProfileTestInventoryItem({
           restSessionId: 'golden-default',
@@ -544,20 +544,361 @@ describe('longitudinal-profile.assembler (M3.3D D2)', () => {
         }),
       ]);
       const generatedAt = '2026-09-24T12:00:00.000Z';
-      const first = assembleLongitudinalProfileV1({ inventory, profileGeneratedAt: generatedAt });
-      const second = assembleLongitudinalProfileV1({ inventory, profileGeneratedAt: generatedAt });
-      expect(first).toEqual(second);
-      expect(first.status).toBe('OK');
-      if (first.status !== 'OK') return;
-      expect(first.profile.longitudinalProfileContractVersion).toBe(
-        REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
-      );
-      expect(first.profile.profilePolicyVersion).toBe(
-        REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
-      );
-      expect(first.profile.organizationId).toBe(PROFILE_TEST_ORG);
-      expect(first.profile.vehicleId).toBe(PROFILE_TEST_VEHICLE);
-      expect(first.profile.window.profileGeneratedAt).toBe(generatedAt);
+      const out = assembleLongitudinalProfileV1({ inventory, profileGeneratedAt: generatedAt });
+      expect(out.status).toBe('OK');
+      if (out.status !== 'OK') return;
+
+      const expectedProfile = {
+        longitudinalProfileContractVersion: REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+        profilePolicyVersion: REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+        organizationId: PROFILE_TEST_ORG,
+        vehicleId: PROFILE_TEST_VEHICLE,
+        window: {
+          requestedSessionLimit: 10,
+          appliedSessionLimit: 10,
+          firstIncludedAnchorAt: '2026-06-15T08:00:00.000Z',
+          lastIncludedAnchorAt: '2026-06-15T08:00:00.000Z',
+          profileGeneratedAt: generatedAt,
+        },
+        coverage: {
+          candidateRestSessionCount: 2,
+          includedSessionCount: 1,
+          provisionalSessionCount: 1,
+          excludedSessionCount: 0,
+          excludedByReason: {},
+          validEvidenceSpanMs: 0,
+        },
+        profileStatus: 'OK' as const,
+        profileFlags: ['PROVISIONAL_SESSIONS_PRESENT'] as const,
+        statusReasons: {
+          stableDefaultCount: 1,
+          provisionalCount: 1,
+          excludedCount: 0,
+          versionSegmentCount: 1,
+          excludedByReason: {},
+        },
+        trendReadiness: {
+          trendReadiness: 'NOT_EVALUATED' as const,
+          minimumSessionsForDescriptiveTrend: null,
+          meetsMinimum: null,
+        },
+        observations: [
+          {
+            restSessionId: 'golden-default',
+            anchorAt: '2026-06-15T08:00:00.000Z',
+            sessionStatus: 'ENDED',
+            endReason: null,
+            canonical: {
+              canonicalFeatureRowId: 'row-golden-default',
+              semanticRevision: 1,
+              computationPhase: 'FINAL',
+              sessionTrust: 'VALID',
+              inputDigest: 'digest-golden-default',
+            },
+            versionTuple: {
+              featureModelVersion: 'fm-golden',
+              retentionPolicyVersion: 'ret-v1',
+              chargeOpportunityPolicyVersion: 'chg-v1',
+              inputContractVersion: 'M3_3C_FEATURE_INPUT_V1',
+            },
+            features: {
+              shutdownToFirstRestDeltaMv: null,
+              robustRestSlopeMvPerHour: null,
+              minimumRestVoltageMv: 12000,
+              maximumRestVoltageMv: 12100,
+              medianRestVoltageMv: 12050,
+              restVoltageVarianceMv2: null,
+              numberOfValidRestPoints: 2,
+              maxActualRestAgeMs: 1000,
+              maxInterObservationGapMs: 500,
+              observationSpanMs: 100,
+              missingRungCount: 0,
+              chargeOpportunityClass: 'UNKNOWN',
+            },
+            anchorResolutionStatus: 'SELECTED',
+            perSessionInspectionStatus: 'NOT_EVALUATED',
+            chargeContextCompleteness: [],
+            temperatureC: null,
+            temperatureSource: 'UNKNOWN',
+          },
+        ],
+        provisionalObservations: [
+          {
+            restSessionId: 'golden-prov',
+            anchorAt: '2026-06-16T08:00:00.000Z',
+            sessionStatus: 'ENDED',
+            endReason: null,
+            canonical: {
+              canonicalFeatureRowId: 'row-golden-prov',
+              semanticRevision: 1,
+              computationPhase: 'FINAL',
+              sessionTrust: 'VALID',
+              inputDigest: 'digest-golden-prov',
+            },
+            versionTuple: {
+              featureModelVersion: 'fm-v1',
+              retentionPolicyVersion: 'ret-v1',
+              chargeOpportunityPolicyVersion: 'chg-v1',
+              inputContractVersion: 'M3_3C_FEATURE_INPUT_V1',
+            },
+            features: {
+              shutdownToFirstRestDeltaMv: null,
+              robustRestSlopeMvPerHour: null,
+              minimumRestVoltageMv: 12000,
+              maximumRestVoltageMv: 12100,
+              medianRestVoltageMv: 12050,
+              restVoltageVarianceMv2: null,
+              numberOfValidRestPoints: 2,
+              maxActualRestAgeMs: 1000,
+              maxInterObservationGapMs: 500,
+              observationSpanMs: 100,
+              missingRungCount: 0,
+              chargeOpportunityClass: 'UNKNOWN',
+            },
+            anchorResolutionStatus: 'SELECTED',
+            perSessionInspectionStatus: 'NOT_EVALUATED',
+            chargeContextCompleteness: [],
+            temperatureC: null,
+            temperatureSource: 'UNKNOWN',
+          },
+        ],
+        excludedSessions: [],
+        versionSegments: [
+          {
+            segmentIndex: 0,
+            versionTuple: {
+              featureModelVersion: 'fm-golden',
+              retentionPolicyVersion: 'ret-v1',
+              chargeOpportunityPolicyVersion: 'chg-v1',
+              inputContractVersion: 'M3_3C_FEATURE_INPUT_V1',
+            },
+            sessionCount: 1,
+            firstAnchorAt: '2026-06-15T08:00:00.000Z',
+            lastAnchorAt: '2026-06-15T08:00:00.000Z',
+          },
+        ],
+        derived: null,
+      };
+
+      expect(out.profile).toEqual(expectedProfile);
+      const repeat = assembleLongitudinalProfileV1({ inventory, profileGeneratedAt: generatedAt });
+      expect(repeat).toEqual(out);
+    });
+  });
+
+  describe('D2.1 — contract & determinism closure', () => {
+    it('rejects unknown inclusionMode at runtime', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+      });
+      (item.quality as { inclusionMode: string }).inclusionMode = 'MYSTERY';
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INVALID_INCLUSION_MODE',
+      });
+    });
+
+    it('rejects DEFAULT with exclusionReasons', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+        exclusionReasons: ['SESSION_INVALIDATED'],
+      });
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INCONSISTENT_DEFAULT_ITEM',
+      });
+    });
+
+    it('rejects PROVISIONAL with exclusionReasons', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'PROVISIONAL',
+        exclusionReasons: ['INPUT_CONTRACT_VERSION_UNRESOLVED'],
+      });
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INCONSISTENT_PROVISIONAL_ITEM',
+      });
+    });
+
+    it('rejects EXCLUDED without exclusionReasons', () => {
+      const out = assemble([
+        buildProfileTestInventoryItem({
+          restSessionId: 's1',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'EXCLUDED',
+          exclusionReasons: [],
+          includePayload: false,
+        }),
+      ]);
+      expect(out).toEqual({ status: 'REJECTED', reason: 'INCONSISTENT_EXCLUDED_ITEM' });
+    });
+
+    it('rejects unknown exclusion reason', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['NO_CANONICAL_ROW'],
+        includePayload: false,
+      });
+      (item.quality.exclusionReasons as string[])[0] = 'NOT_A_REAL_REASON';
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INVALID_EXCLUSION_REASON',
+      });
+    });
+
+    it('rejects invalid anchorAt', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: 'not-a-date',
+        inclusionMode: 'DEFAULT',
+      });
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INVALID_TEMPORAL_METADATA',
+      });
+    });
+
+    it('rejects invalid anchorAt among multiple DEFAULT sessions', () => {
+      expect(
+        assemble([
+          buildProfileTestInventoryItem({
+            restSessionId: 's1',
+            anchorAt: '2026-01-01T10:00:00.000Z',
+            inclusionMode: 'DEFAULT',
+          }),
+          buildProfileTestInventoryItem({
+            restSessionId: 's2',
+            anchorAt: 'garbage',
+            inclusionMode: 'DEFAULT',
+          }),
+        ]),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_TEMPORAL_METADATA' });
+    });
+
+    it('rejects non-canonical ISO anchor (finite parse but not toISOString form)', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+      });
+      item.session.anchorAt = '2026-01-01T10:00:00Z';
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INVALID_TEMPORAL_METADATA',
+      });
+    });
+
+    it('rejects malformed profileGeneratedAt', () => {
+      const inventory = buildProfileTestInventory([
+        buildProfileTestInventoryItem({
+          restSessionId: 's1',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'DEFAULT',
+        }),
+      ]);
+      expect(
+        assembleLongitudinalProfileV1({
+          inventory,
+          profileGeneratedAt: 'garbage',
+        }),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_PROFILE_GENERATED_AT' });
+    });
+
+    it('rejects impossible D1 window metadata shapes', () => {
+      const base = [
+        buildProfileTestInventoryItem({
+          restSessionId: 's1',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'DEFAULT',
+        }),
+      ];
+      const inv101 = buildProfileTestInventory(base, {
+        requestedSessionLimit: 101,
+        appliedSessionLimit: 100,
+      });
+      expect(
+        assembleLongitudinalProfileV1({
+          inventory: inv101,
+          profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+        }),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_WINDOW_METADATA' });
+
+      const invMismatch1 = buildProfileTestInventory(base, {
+        requestedSessionLimit: 5,
+        appliedSessionLimit: 10,
+      });
+      expect(
+        assembleLongitudinalProfileV1({
+          inventory: invMismatch1,
+          profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+        }),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_WINDOW_METADATA' });
+
+      const invMismatch2 = buildProfileTestInventory(base, {
+        requestedSessionLimit: 10,
+        appliedSessionLimit: 5,
+      });
+      expect(
+        assembleLongitudinalProfileV1({
+          inventory: invMismatch2,
+          profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+        }),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_WINDOW_METADATA' });
+
+      const invBadSafety = buildProfileTestInventory(base);
+      invBadSafety.dbSafetyMaxSessions = 99;
+      expect(
+        assembleLongitudinalProfileV1({
+          inventory: invBadSafety,
+          profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+        }),
+      ).toEqual({ status: 'REJECTED', reason: 'INVALID_WINDOW_METADATA' });
+    });
+
+    it('rejects malformed perSessionInspectionStatus', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+      });
+      (item.quality as { perSessionInspectionStatus: string }).perSessionInspectionStatus =
+        'INTEGRITY_WARNING';
+      expect(assemble([item])).toEqual({
+        status: 'REJECTED',
+        reason: 'INVALID_D1_INSPECTION_STATUS',
+      });
+    });
+
+    it('profile output is detached from mutable D1 input', () => {
+      const item = buildProfileTestInventoryItem({
+        restSessionId: 's1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+      });
+      item.snapshot!.chargeContextCompleteness.push('INITIAL');
+      const inventory = buildProfileTestInventory([item]);
+      const out = assembleLongitudinalProfileV1({
+        inventory,
+        profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+      });
+      expect(out.status).toBe('OK');
+      if (out.status !== 'OK') return;
+
+      item.canonical!.inputDigest = 'MUTATED';
+      item.features!.medianRestVoltageMv = 99999;
+      item.snapshot!.chargeContextCompleteness.push('MUTATED');
+
+      expect(out.profile.observations[0].canonical.inputDigest).toBe('digest-s1');
+      expect(out.profile.observations[0].features.medianRestVoltageMv).toBe(12050);
+      expect(out.profile.observations[0].chargeContextCompleteness).toEqual(['INITIAL']);
     });
   });
 

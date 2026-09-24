@@ -1,6 +1,8 @@
 import { compareUtf16CodeUnitLexicographic } from '../feature-input-canonical.serializer';
 import type {
+  LongitudinalInputCanonicalContext,
   LongitudinalInputExclusionReason,
+  LongitudinalInputFeatureScalars,
   LongitudinalInputSessionInventoryItem,
   LongitudinalInputVersionTuple,
 } from './longitudinal-input.types';
@@ -17,7 +19,7 @@ import type {
   LongitudinalProfileVersionSegmentV1,
   LongitudinalProfileVersionTupleV1,
 } from './longitudinal-profile.types';
-import { validateLongitudinalProfileAssemblyInput } from './longitudinal-profile.validation';
+import { validateLongitudinalProfileAssembly } from './longitudinal-profile.validation';
 
 const EXCLUSION_REASON_ORDER: LongitudinalInputExclusionReason[] = [
   'NO_CANONICAL_ROW',
@@ -37,14 +39,33 @@ export function sortLongitudinalInventoryChronological(
   });
 }
 
+function detachCanonical(
+  canonical: LongitudinalInputCanonicalContext,
+): LongitudinalInputCanonicalContext {
+  return { ...canonical };
+}
+
+function detachFeatures(
+  features: LongitudinalInputFeatureScalars,
+): LongitudinalInputFeatureScalars {
+  return { ...features };
+}
+
+function detachVersionTuple(
+  version: LongitudinalInputVersionTuple,
+): LongitudinalInputVersionTuple {
+  return { ...version };
+}
+
 function toResolvedVersionTuple(
   version: LongitudinalInputVersionTuple,
 ): LongitudinalProfileVersionTupleV1 {
+  const detached = detachVersionTuple(version);
   return {
-    featureModelVersion: version.featureModelVersion,
-    retentionPolicyVersion: version.retentionPolicyVersion,
-    chargeOpportunityPolicyVersion: version.chargeOpportunityPolicyVersion,
-    inputContractVersion: version.inputContractVersion as string,
+    featureModelVersion: detached.featureModelVersion,
+    retentionPolicyVersion: detached.retentionPolicyVersion,
+    chargeOpportunityPolicyVersion: detached.chargeOpportunityPolicyVersion,
+    inputContractVersion: detached.inputContractVersion as string,
   };
 }
 
@@ -68,12 +89,12 @@ function mapObservation(
     anchorAt: item.session.anchorAt,
     sessionStatus: item.session.sessionStatus,
     endReason: item.session.endReason,
-    canonical: item.canonical!,
+    canonical: detachCanonical(item.canonical!),
     versionTuple: toResolvedVersionTuple(item.version!),
-    features: item.features!,
+    features: detachFeatures(item.features!),
     anchorResolutionStatus: item.snapshot!.anchorResolutionStatus,
-    perSessionInspectionStatus: 'NOT_EVALUATED',
-    chargeContextCompleteness: item.snapshot!.chargeContextCompleteness,
+    perSessionInspectionStatus: item.quality.perSessionInspectionStatus,
+    chargeContextCompleteness: [...item.snapshot!.chargeContextCompleteness],
     temperatureC: item.snapshot!.temperatureC,
     temperatureSource: item.snapshot!.temperatureSource,
   };
@@ -82,16 +103,17 @@ function mapObservation(
 function mapExcluded(
   item: LongitudinalInputSessionInventoryItem,
 ): LongitudinalProfileExcludedSessionV1 {
+  const sortedReasons = [...item.quality.exclusionReasons].sort(
+    (a, b) => EXCLUSION_REASON_ORDER.indexOf(a) - EXCLUSION_REASON_ORDER.indexOf(b),
+  );
   return {
     restSessionId: item.restSessionId,
     anchorAt: item.session.anchorAt,
     sessionStatus: item.session.sessionStatus,
     endReason: item.session.endReason,
-    exclusionReasons: [...item.quality.exclusionReasons].sort((a, b) =>
-      EXCLUSION_REASON_ORDER.indexOf(a) - EXCLUSION_REASON_ORDER.indexOf(b),
-    ),
-    canonical: item.canonical,
-    version: item.version,
+    exclusionReasons: sortedReasons,
+    canonical: item.canonical ? detachCanonical(item.canonical) : null,
+    version: item.version ? detachVersionTuple(item.version) : null,
     inputDigest: item.canonical?.inputDigest ?? null,
   };
 }
@@ -105,7 +127,7 @@ function countExcludedByReason(
       counts[reason] = (counts[reason] ?? 0) + 1;
     }
   }
-  return counts;
+  return { ...counts };
 }
 
 function buildVersionSegments(
@@ -125,7 +147,7 @@ function buildVersionSegments(
     const slice = observations.slice(segmentStart, i);
     segments.push({
       segmentIndex: segments.length,
-      versionTuple: currentTuple,
+      versionTuple: { ...currentTuple },
       sessionCount: slice.length,
       firstAnchorAt: slice[0].anchorAt,
       lastAnchorAt: slice[slice.length - 1].anchorAt,
@@ -176,7 +198,7 @@ function buildProfileFlags(input: {
 export function assembleLongitudinalProfileV1(
   input: LongitudinalProfileAssemblyInput,
 ): LongitudinalProfileAssemblyOutcome {
-  const rejection = validateLongitudinalProfileAssemblyInput(input.inventory);
+  const rejection = validateLongitudinalProfileAssembly(input);
   if (rejection) {
     return { status: 'REJECTED', reason: rejection };
   }
@@ -240,7 +262,7 @@ export function assembleLongitudinalProfileV1(
         provisionalCount: provisionalObservations.length,
         excludedCount: excludedSessions.length,
         versionSegmentCount: versionSegments.length,
-        excludedByReason,
+        excludedByReason: { ...excludedByReason },
       },
       trendReadiness: {
         trendReadiness: 'NOT_EVALUATED',

@@ -95,9 +95,23 @@ D2 preserves D1 `requestedSessionLimit` / `appliedSessionLimit`. **`sessions.len
 
 ## D1 input validation
 
-Reject reasons: `UNSUPPORTED_D1_CONTRACT`, `IDENTITY_MISMATCH`, `DUPLICATE_REST_SESSION`, `INVALID_WINDOW_METADATA`, `INCONSISTENT_DEFAULT_ITEM`, `INCONSISTENT_PROVISIONAL_ITEM`.
+Reject reasons include: `UNSUPPORTED_D1_CONTRACT`, `IDENTITY_MISMATCH`, `DUPLICATE_REST_SESSION`, `INVALID_WINDOW_METADATA`, `INVALID_INCLUSION_MODE`, `INVALID_EXCLUSION_REASON`, `INCONSISTENT_DEFAULT_ITEM`, `INCONSISTENT_PROVISIONAL_ITEM`, `INCONSISTENT_EXCLUDED_ITEM`, `INVALID_TEMPORAL_METADATA`, `INVALID_PROFILE_GENERATED_AT`, `INVALID_SESSION_IDENTITY`, `INVALID_D1_INSPECTION_STATUS`.
 
-DEFAULT and PROVISIONAL items must have resolved canonical payload; EXCLUDED items allow legitimate null shapes.
+DEFAULT and PROVISIONAL items must have resolved canonical payload and **empty** `exclusionReasons`. EXCLUDED items must carry ≥1 recognized D1 exclusion reason. Unknown inclusion modes or exclusion reasons reject — they are never silently omitted from partition accounting.
+
+### D2.1 closure (contract hardening)
+
+| Area | Behavior |
+|------|----------|
+| **Total partition** | Only `DEFAULT` / `PROVISIONAL` / `EXCLUDED`; unknown mode → `INVALID_INCLUSION_MODE` |
+| **Inclusion coherence** | DEFAULT/PROVISIONAL: empty exclusion reasons; EXCLUDED: ≥1 recognized reason |
+| **Temporal** | Every `session.anchorAt` and caller `profileGeneratedAt` must satisfy `new Date(v).toISOString() === v` |
+| **D1 window** | `dbSafetyMaxSessions === LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS`; `requestedSessionLimit === appliedSessionLimit`; limits within safety max |
+| **D1 item identity** | Non-empty `restSessionId`; `perSessionInspectionStatus === NOT_EVALUATED` |
+| **Detached output** | Profile copies canonical/features/version/arrays — no aliasing mutable D1 input |
+| **Golden test** | Full expected `LongitudinalProfileV1` structure asserted (37 assembler tests) |
+
+Battery V2 broad suite differential @ BASE `9d0dbc7d3`: **7 suites / 11 tests fail** — identical failing suite set on D2.1 HEAD → **`PRE_EXISTING_BASE_AND_HEAD`** (LV handoff / M3.0D closure specs; not D2 longitudinal code).
 
 ## derived
 
@@ -113,7 +127,7 @@ D2 V1: `derived = null`. No cross-session slopes, SOH proxies, or health scores.
 
 ## Test evidence
 
-Unit/golden matrix **A–T** in `longitudinal-profile.assembler.spec.ts` (25 tests). Existing D1 suites unchanged.
+Unit/golden matrix **A–T** + **D2.1 closure** in `longitudinal-profile.assembler.spec.ts` (**37** tests). Existing D1 suites unchanged.
 
 ## Non-effects
 

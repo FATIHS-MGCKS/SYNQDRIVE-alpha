@@ -1,4 +1,4 @@
-import { REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION } from './longitudinal-input.constants';
+import { LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS, REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION } from './longitudinal-input.constants';
 import type {
   LongitudinalInputInclusionMode,
   LongitudinalInputReadResultV1,
@@ -101,7 +101,7 @@ export function buildProfileTestInventory(
     longitudinalInputContractVersion: REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION,
     organizationId: ORG,
     vehicleId: VEHICLE,
-    dbSafetyMaxSessions: 100,
+    dbSafetyMaxSessions: LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
     requestedSessionLimit: requested,
     appliedSessionLimit: applied,
     sessions,
