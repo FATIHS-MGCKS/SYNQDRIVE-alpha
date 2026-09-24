@@ -17,7 +17,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-001 | Should EED get dedicated BullMQ scheduler? | **OPEN** | Future architecture only; current state in EED-ST-001 | NO | LOW |
 | EED-OQ-002 | Safe automated backfill for NULL fuelLevelRise rows? | **RESOLVED** (policy) | EED-DEC-009: no fleet backfill | NO | NO |
 | EED-OQ-003 | Persist recharge charging flags on VehicleEnergyEvent? | **OPEN** | Fetched in normalizer; not persisted | NO | LOW |
-| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **OUT_OF_SCOPE** | Battery V2 owns HV sessions; INFERRED orthogonality | NO | NO |
+| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **RESOLVED** (design) | EED-DEC-ERD-001 Model A: HvChargeSession = physical authority; VEE RECHARGE = product projection (E5); no runtime link in E1 | NO | NO |
 | EED-OQ-005 | detectorVersion DB column? | **OPEN** | Version in logs/meta only | NO | LOW |
 | EED-OQ-006 | Plausibility flags on production rows? | **PARTIALLY_RESOLVED** | Recovery tooling only today | NO | LOW |
 | EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Sept04 incident proves gap; design in forensics audit | NO | HIGH |

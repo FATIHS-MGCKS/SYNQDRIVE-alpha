@@ -523,15 +523,17 @@ nodes:
 
   - id: EED-EXT-003
     type: external_authority
-    title: Battery V2 / HvChargeSession
-    epistemic_status: INFERRED
+    title: Battery V2 (HV charge session implementation host)
+    epistemic_status: CONFIRMED
     summary: >
-      Separate HV charge session lifecycle (HvChargeSession). No code linkage to
-      VehicleEnergyEvent RECHARGE today; orthogonality inferred from parallel paths.
-    authority_class: OUT_OF_SCOPE
+      Hosts HvChargeSession persist/ingest/fallback code under battery-health.
+      ERD (EED) owns physical charging episode semantics; Battery V2 CONSUMES
+      session evidence for capacity/health — does not own physical authority.
+    authority_class: EED_REFERENCES_EXTERNAL
     source_paths:
-      - architecture/battery-v2/lifecycle/hv-charge-sessions.md
-    evidence: [EED-EV-0022, EED-EV-0025]
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+    evidence: [EED-EV-0022, EED-EV-0076, EED-EV-0077]
 
   - id: EED-EXT-004
     type: external_authority
@@ -732,9 +734,12 @@ nodes:
   - id: EED-OQ-004
     type: open_question
     title: Link VehicleEnergyEvent RECHARGE to HvChargeSession
-    epistemic_status: UNKNOWN
-    summary: Battery V2 orthogonal; no automatic linkage implemented.
-    authority_class: OUT_OF_SCOPE
+    epistemic_status: INFERRED
+    summary: >
+      SUPERSEDED by EED-DEC-ERD-001 — Model A projection link contract (E5);
+      no runtime linkage in E1.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0076, EED-EV-0077]
     discovery_ref: EED-OQ-04
 
   - id: EED-OQ-005
@@ -1796,3 +1801,101 @@ nodes:
       KS MS 661 positive fixture alone is insufficient for fleet-wide constants.
     authority_class: EED_OWNS
     evidence: [EED-EV-0041]
+
+  # ── ERD (EV Recharge Detection) sub-domain ───────────────────────────────────
+  - id: EED-SYS-002
+    type: system
+    title: EV Recharge Detection (ERD)
+    epistemic_status: CONFIRMED
+    summary: >
+      EED sub-domain for canonical physical EV/PHEV charging episodes (Model A),
+      native>fallback convergence, and VehicleEnergyEvent RECHARGE projection.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+
+  - id: EED-SVC-005
+    type: service
+    title: HvRechargeSessionReconcileService
+    epistemic_status: CONFIRMED
+    summary: >
+      Orchestrates native segment ingest or telemetry fallback when capabilities
+      require; gated by BATTERY_V2_HV_RECHARGE_SESSION_ENABLED (default false).
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-recharge-session-reconcile.service.ts
+    evidence: [EED-EV-0077]
+
+  - id: EED-SVC-006
+    type: service
+    title: HvChargeSessionPersistService
+    epistemic_status: CONFIRMED
+    summary: >
+      Canonical physical session writer (native + fallback drafts); supersede
+      overlapping fallback on native ingest.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+    evidence: [EED-EV-0077]
+
+  - id: EED-SVC-007
+    type: service
+    title: HvFallbackChargeSessionDetectorService
+    epistemic_status: CONFIRMED
+    summary: >
+      Capability-driven telemetry fallback when native recharge segments unavailable;
+      requires fallback + recharge session flags.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-fallback-charge-session-detector.service.ts
+    evidence: [EED-EV-0077]
+
+  - id: EED-SVC-008
+    type: service
+    title: EnergyEventsService RECHARGE upsert (legacy physical writer)
+    epistemic_status: CONFIRMED
+    summary: >
+      Direct DIMO recharge → VehicleEnergyEvent until E5 projection cutover;
+      idempotent on dimoSegmentId; no HvChargeSession link.
+    authority_class: EED_OWNS
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+    evidence: [EED-EV-0076, EED-EV-0077]
+
+  - id: EED-DEC-ERD-001
+    type: decision
+    title: ERD Model A — HvChargeSession physical authority, VEE RECHARGE projection
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Canonical physical charge session semantic model; Battery V2 consumes;
+      legacy direct VEE writer deprecated after cutover; identity v1 contract.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+
+  - id: EED-EV-0076
+    type: evidence
+    title: ERD E0 architecture and Production forensics 2026-09-24
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E1-WRITER-INVENTORY-2026-09-24.md
+      - backend/src/config/battery-health-v2.config.ts
+    evidence_maturity: PROVEN_IN_PRODUCTION
+    summary: >
+      VEE RECHARGE 151 rows / 0 HvChargeSession; HV recharge flags unset default false;
+      split-brain risk when both paths enabled; LTE R1 ELECTRIC production sample.
+
+  - id: EED-EV-0077
+    type: evidence
+    title: ERD E1 canonical authority ADR 2026-09-24
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+    evidence_maturity: ARCHITECTURE_AUTHORITY
+    summary: Model A contracts — identity, lifecycle, projection, legacy VEE, writer map.

@@ -773,3 +773,52 @@ edges:
   - from: EED-EV-0026
     relation: REFERENCES
     to: EED-COMP-004
+
+  # ── ERD E1 sub-domain ────────────────────────────────────────────────────────
+  - from: EED-SYS-001
+    relation: OWNED_BY
+    to: EED-SYS-002
+
+  - from: EED-SYS-002
+    relation: REFERENCES
+    to: EED-DEC-ERD-001
+
+  - from: EED-DEC-ERD-001
+    relation: PROVEN_BY
+    to: EED-EV-0076
+
+  - from: EED-DEC-ERD-001
+    relation: PROVEN_BY
+    to: EED-EV-0077
+
+  - from: EED-SYS-002
+    relation: DEPENDS_ON
+    to: EED-SVC-005
+
+  - from: EED-SVC-005
+    relation: DEPENDS_ON
+    to: EED-SVC-006
+
+  - from: EED-SVC-005
+    relation: DEPENDS_ON
+    to: EED-SVC-007
+
+  - from: EED-SVC-006
+    relation: REFERENCES
+    to: EED-EXT-003
+
+  - from: EED-SVC-008
+    relation: PARALLEL_TO
+    to: EED-SVC-006
+
+  - from: EED-SVC-008
+    relation: MUST_NOT_INTERPRET_AS
+    to: EED-SVC-006
+
+  - from: EED-EXT-003
+    relation: MUST_NOT_INTERPRET_AS
+    to: EED-SYS-002
+
+  - from: EED-OQ-004
+    relation: REFERENCES
+    to: EED-DEC-ERD-001

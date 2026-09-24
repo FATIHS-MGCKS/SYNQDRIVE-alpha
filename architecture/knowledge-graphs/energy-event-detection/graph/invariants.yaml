@@ -159,3 +159,53 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
       - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+
+  - id: EED-INV-014
+    kind: CONFIRMED_INVARIANT
+    title: ERD one physical charge one canonical session
+    epistemic_status: CONFIRMED
+    statement: >
+      After ERD cutover, exactly one canonical HvChargeSession semantic row represents
+      each physical EV/PHEV charging episode. Superseded fallback rows remain as
+      evidence but must not be product-counted as separate recharge episodes.
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+
+  - id: EED-INV-015
+    kind: CONFIRMED_INVARIANT
+    title: ERD native recharge authoritative over telemetry fallback
+    epistemic_status: CONFIRMED
+    statement: >
+      For the same physical episode, DIMO native recharge supersedes
+      TELEMETRY_POLL_FALLBACK sessions in metadata without deleting historical rows.
+    evidence: [EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-fallback-charge-session.supersede.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.merge.ts
+
+  - id: EED-INV-016
+    kind: CONFIRMED_INVARIANT
+    title: VehicleEnergyEvent RECHARGE is product projection after ERD cutover
+    epistemic_status: CONFIRMED
+    statement: >
+      VehicleEnergyEvent RECHARGE must not remain an independent physical authority
+      after ERD projection cutover (E5). Pre-cutover direct DIMO→VEE writes are
+      legacy product history only.
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+
+  - id: EED-INV-017
+    kind: CONFIRMED_INVARIANT
+    title: ERD authority is capability-driven not OEM-driven
+    epistemic_status: CONFIRMED
+    statement: >
+      EV recharge routing uses VehicleBatteryCapability and HvMethodProfile signal
+      availability, not Tesla or LTE R1 name as authority keys.
+    evidence: [EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-method-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts

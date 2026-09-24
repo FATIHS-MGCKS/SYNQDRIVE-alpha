@@ -410,3 +410,21 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Evidence** | EED-EV-0052, EED-EV-0031 |
 | **Consequences** | F5-PR3 implements late-native execution + PG tests L1–L11 |
 | **Related nodes** | EED-DEC-RFRF-009 |
+
+---
+
+## EED-DEC-ERD-001 — ERD Model A canonical physical charge authority (2026-09-24)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-ERD-001 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-24 |
+| **Question** | Which authority owns physical EV/PHEV charging episodes vs product `VehicleEnergyEvent.RECHARGE`? |
+| **Decision** | **Model A:** `HvChargeSession` (semantic model) is canonical physical charge session authority under **EED/ERD**; `VehicleEnergyEvent.RECHARGE` becomes idempotent **product projection** after E5 cutover. Battery V2 **consumes** session evidence only. Reuse existing `HvChargeSession` storage (structurally sufficient); code remains under `battery-health/hv-charge-session/*` until optional successor. |
+| **Why** | E0 proved dual writers (151 VEE / 0 sessions) and duplicate physical episode risk without reconciliation. |
+| **Alternatives** | Independent VEE physical authority (rejected); new ERD-only table immediately (deferred — reuse preferred) |
+| **Evidence** | EED-EV-0076, EED-EV-0077 |
+| **Consequences** | E2–E8 roadmap; legacy Production VEE rows = `LEGACY_PRODUCT_HISTORY`; ongoing sessions: no VEE projection until completed (Option 1) |
+| **Related invariants** | EED-INV-014, EED-INV-015, EED-INV-016, EED-INV-017 |
+| **Detail ADR** | [ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md](../decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md) |
