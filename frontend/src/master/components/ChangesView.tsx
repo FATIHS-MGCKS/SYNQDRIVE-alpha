@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
+    version: '4.9.2099',
+    title: 'Trip FSM — post-split short-trip finalize quality gate',
+    summary: [
+      'Production KS FH 660E 2026-09-24 Trip 2: real ~2 min post MID_TRIP_GAP_SPLIT drive cancelled with too_short_no_distance despite 15 persisted waypoints and null distanceKm.',
+      'Fix: resolveFinalizeEndTime uses event-time movement extent (max lastMeaningfulMovementAt vs latest waypoint); checkTripQuality respects persisted meaningful movement (≥3 wp or ≥2 wp + ≥50 m) before too_short_no_distance.',
+      'FINALIZATION_CHECK logs QUALITY_* forensics (non-authoritative).',
+      'Portable BASE/HEAD repro + processFinalize integration tests; no threshold/policy/deploy changes.',
+    ],
+    reason:
+      'Stale LMM before route catch-up made canonical finalize duration <60s while independent waypoint evidence proved a real short drive.',
+    previousBehavior:
+      'Finalize end chain preferred LMM over later waypoints; quality discard ignored waypoint/route evidence for too_short_no_distance.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md; trip-finalize-quality.util.ts; trip-evidence.helpers.ts; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:45:00.000Z',
+  },
+  {
     id: 'vdc-wob-long-stand-wake-plug-gt-evidence-2026-09-23',
     version: '4.9.1997',
     title: 'VDC — WOB L 7503 long-stand wake-associated PLUG GT evidence closure',

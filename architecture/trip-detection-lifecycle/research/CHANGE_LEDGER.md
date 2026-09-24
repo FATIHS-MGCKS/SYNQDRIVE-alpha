@@ -63,6 +63,7 @@ Append-only record for this authority directory.
 | 2026-09-14 | Shadow orchestration regression fix — module-level fail-open wrapper preserves R10/R5/R7 harness `.call()` compatibility | PR #1648 CI differential | Same evidence doc |
 | 2026-09-17 | KS MX 2024 CH assist skip resume revalidation — bounded post-boundary movement guard before `clickhouse_end_assist_skip_cusum` finalize; forensic authority PR #1673 preserved separately | Runtime safety implementation (draft) | [KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md](../evidence/KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md) |
 | 2026-09-17 | PR #1674 closure — FETCH_UNCERTAIN bounded handoff to CUSUM after immaturity/defer budget; literal BASE/HEAD portable proof harness; Scenario A regression | Closure review (draft PR #1674) | Same evidence doc |
+| 2026-09-24 | KS FH 660E post-split Trip 2 false cancel — stale LMM finalize boundary + quality gate ignoring persisted route evidence; event-time end extent + movement-evidence quality contract; BASE/HEAD tests | Trip FSM finalize quality (draft) | [KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md](../evidence/KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
