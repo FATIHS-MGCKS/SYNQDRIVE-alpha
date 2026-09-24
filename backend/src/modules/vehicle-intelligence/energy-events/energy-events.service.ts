@@ -521,15 +521,20 @@ export class EnergyEventsService {
   ): Promise<number> {
     if (canonicalRows.length === 0) return 0;
 
-    const canonicalWindows: RefuelEventWindow[] = canonicalRows.map((row) => ({
-      id: row.id,
-      dimoSegmentId: row.dimoSegmentId,
-      startTime: row.startTime,
-      endTime: row.endTime,
-      durationSeconds: row.durationSeconds,
-      fuelDeltaPercent: row.fuelDeltaPercent,
-      fuelDeltaLiters: row.fuelDeltaLiters,
-    }));
+    const canonicalWindows: RefuelEventWindow[] = canonicalRows
+      .filter(
+        (row): row is typeof row & { dimoSegmentId: string } =>
+          row.dimoSegmentId != null,
+      )
+      .map((row) => ({
+        id: row.id,
+        dimoSegmentId: row.dimoSegmentId,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        durationSeconds: row.durationSeconds,
+        fuelDeltaPercent: row.fuelDeltaPercent,
+        fuelDeltaLiters: row.fuelDeltaLiters,
+      }));
 
     const searchFrom = new Date(
       Math.min(...canonicalRows.map((r) => r.startTime.getTime())) - 2 * 60 * 60_000,
@@ -549,15 +554,20 @@ export class EnergyEventsService {
 
     const siblingIds = resolveSupersededRefuelSiblingIds(
       canonicalWindows,
-      candidates.map((row) => ({
-        id: row.id,
-        dimoSegmentId: row.dimoSegmentId,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        durationSeconds: row.durationSeconds,
-        fuelDeltaPercent: row.fuelDeltaPercent,
-        fuelDeltaLiters: row.fuelDeltaLiters,
-      })),
+      candidates
+        .filter(
+          (row): row is typeof row & { dimoSegmentId: string } =>
+            row.dimoSegmentId != null,
+        )
+        .map((row) => ({
+          id: row.id,
+          dimoSegmentId: row.dimoSegmentId,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          durationSeconds: row.durationSeconds,
+          fuelDeltaPercent: row.fuelDeltaPercent,
+          fuelDeltaLiters: row.fuelDeltaLiters,
+        })),
     );
 
     if (siblingIds.length === 0) return 0;

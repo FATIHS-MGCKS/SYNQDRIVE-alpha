@@ -232,3 +232,11 @@ No native parser changes, fallback detector runtime changes, convergence jobs, V
 - Evidence: `EED-EV-0076`, `EED-EV-0077`
 - Invariants: `EED-INV-014` … `EED-INV-017`
 - Supersedes open question: `EED-OQ-004` (link policy — now ERD-owned)
+
+---
+
+## 15. Governance addendum (2026-09-24 — post E2–E4 merge, E5.1 foundation)
+
+**Decision status (governance):** **ACCEPTED** for physical-session authority and projection contract semantics. E2–E4 implementation and merge commit `5b9afe05039d33ad25f2c5414bf441e8dd64cced` supersede the original “PROPOSED / no runtime cutover” header intent for **physical authority** only. The header **Status: PROPOSED** is retained as historical labeling; this addendum records accepted authority without rewriting §1–§14 decision text.
+
+**E5.1 foundation (schema + pure policy):** evidence `ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md` — still **no** product projector runtime or cutover.

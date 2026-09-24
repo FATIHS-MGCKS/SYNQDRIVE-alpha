@@ -13213,6 +13213,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T17:05:00.000Z',
   },
   {
+    id: 'erd-e5-1-canonical-vee-recharge-foundation-2026-09-24',
+    version: '4.9.905',
+    title: 'ERD E5.1 — canonical VEE RECHARGE projection foundation',
+    summary: [
+      'Schema: nullable canonicalChargeSessionId → HvChargeSession (unique, onDelete SetNull); dimoSegmentId nullable for telemetry-only ERD projections.',
+      'Provenance: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION + extended vehicle_energy_events_source_identity_check (RFRF pairings preserved).',
+      'Pure policies: projection eligibility (fail-closed), identity v1 sourceEventKey, non-persisting field mapper; documented E3 shared advisory-lock contract for E5.2+.',
+      'PostgreSQL gate PG-A…PG-K (boundary-repair step 8/8). No runtime projector, no cutover, legacy DIMO→VEE writer unchanged.',
+    ],
+    reason:
+      'E5.0 preflight PASS — establish DB + policy substrate before E5.2 idempotent projector wiring.',
+    previousBehavior:
+      'VehicleEnergyEvent RECHARGE required dimoSegmentId; no FK to HvChargeSession; no ERD-specific detectionSource.',
+    details:
+      'backend/prisma/migrations/20260924180000_erd_e5_1_recharge_projection_foundation; erd-recharge-projection/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T20:15:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

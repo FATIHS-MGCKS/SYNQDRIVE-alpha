@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E5.1 canonical VEE RECHARGE projection foundation
+
+- Evidence: `evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md`
+- Schema: `canonicalChargeSessionId` FK (SetNull), nullable `dimoSegmentId`, `SYNQDRIVE_ERD_RECHARGE_PROJECTION` + SQL CHECK extension
+- Pure eligibility + mapper policies; E3 shared-lock contract documented; PG-A…PG-K gate (boundary-repair step 8/8)
+- No runtime projector, no cutover, legacy DIMO→VEE writer unchanged
+
 ## 2026-09-24 — ERD E4.2 real BullMQ + Redis liveness proof
 
 - `erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`; CI job ERD E4 postgres+redis liveness
