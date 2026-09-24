@@ -209,6 +209,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryProviderObservabilityGapFailureTotal: Counter<string>;
   readonly batteryV2HvRechargeReconcileErrors: Counter<string>;
   readonly batteryV2HvRechargeProviderDelay: Histogram<string>;
+  readonly erdE3ConvergenceTotal: Counter<string>;
   readonly batteryV2PublicationAgeHours: Histogram<string>;
   readonly batteryCapabilitySignalsTotal: Counter<string>;
   readonly hvCapacityMethodConflictTotal: Counter<string>;
@@ -1771,6 +1772,13 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Delay between latest provider segment end and reconcile time',
       labelNames: ['trigger'],
       buckets: [60, 300, 900, 1800, 3600, 7200, 21600, 86400],
+      registers: [this.registry],
+    });
+
+    this.erdE3ConvergenceTotal = new Counter({
+      name: 'synqdrive_erd_e3_convergence_total',
+      help: 'ERD E3 fallback detection and native/fallback convergence outcomes',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
 

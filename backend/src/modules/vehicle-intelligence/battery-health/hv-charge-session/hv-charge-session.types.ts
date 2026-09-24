@@ -49,6 +49,8 @@ export interface HvChargeSessionMetadata {
   fallbackEndReason?: string | null;
   supersededBySegmentFingerprint?: string | null;
   supersededAt?: string | null;
+  erdMatchVersion?: string | null;
+  erdMatchReason?: string | null;
   qualityStatus?: HvChargeSessionQualityStatus | null;
   qualityReasonCodes?: HvChargeSessionQualityReasonCode[];
   capacityShadowEligible?: boolean;

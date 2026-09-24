@@ -243,6 +243,9 @@ describe('HvChargeSessionPersistService', () => {
   const capacityShadowProducer = {
     maybeEnqueueAfterSessionPersist: jest.fn().mockResolvedValue(null),
   };
+  const nativeFallbackConvergence = {
+    persistNativeWithFallbackConvergence: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -250,13 +253,23 @@ describe('HvChargeSessionPersistService', () => {
   });
 
   it('creates new session for unseen segment', async () => {
-    repository.findByFingerprint.mockResolvedValue(null);
-    repository.create.mockResolvedValue({ id: 'new-session' });
+    nativeFallbackConvergence.persistNativeWithFallbackConvergence.mockResolvedValue({
+      session: { id: 'new-session', idempotencyKey: 'key-1' },
+      created: true,
+      changed: true,
+      changeKind: 'created',
+      convergence: {
+        matchResult: null,
+        supersededFallbackId: null,
+        skippedSupersession: true,
+      },
+    });
 
     const service = new HvChargeSessionPersistService(
       repository as never,
       observability as never,
       capacityShadowProducer as never,
+      nativeFallbackConvergence as never,
     );
 
     const segment = completedSegment();
@@ -268,51 +281,39 @@ describe('HvChargeSessionPersistService', () => {
 
     expect(result.created).toBe(true);
     expect(result.changeKind).toBe('created');
-    expect(repository.create).toHaveBeenCalled();
+    expect(nativeFallbackConvergence.persistNativeWithFallbackConvergence).toHaveBeenCalled();
     expect(observability.log).toHaveBeenCalled();
   });
 
   it('updates ongoing session when provider completes segment', async () => {
-    const segment = ongoingSegment();
-    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
-    const draft = mapRechargeSegmentToHvChargeSessionDraft({
-      organizationId: ORG,
-      vehicleId: VEH,
-      segment,
-      reconciledAt,
+    nativeFallbackConvergence.persistNativeWithFallbackConvergence.mockResolvedValue({
+      session: { id: 'session-ongoing', isOngoing: false, idempotencyKey: 'key-2' },
+      created: false,
+      changed: true,
+      changeKind: 'completed',
+      convergence: {
+        matchResult: 'SAME',
+        supersededFallbackId: 'fallback-1',
+        skippedSupersession: false,
+      },
     });
-
-    repository.findByFingerprint.mockResolvedValue({
-      id: 'session-ongoing',
-      ...draft,
-      isOngoing: true,
-      endAt: null,
-      endSocPercent: null,
-    });
-    repository.update.mockResolvedValue({ id: 'session-ongoing', isOngoing: false });
 
     const completed = completedSegment();
     const service = new HvChargeSessionPersistService(
       repository as never,
       observability as never,
       capacityShadowProducer as never,
+      nativeFallbackConvergence as never,
     );
 
     const result = await service.persistRechargeSegment({
       organizationId: ORG,
       vehicleId: VEH,
-      segment: {
-        ...completed,
-        fingerprint: segment.fingerprint,
-        segmentId: segment.segmentId,
-        startAt: segment.startAt,
-        ongoing: false,
-      },
+      segment: completed,
     });
 
     expect(result.changed).toBe(true);
     expect(result.changeKind).toBe('completed');
-    expect(repository.update).toHaveBeenCalled();
   });
 });
 

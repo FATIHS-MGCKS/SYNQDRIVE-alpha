@@ -78,30 +78,28 @@ export class HvRechargeSessionReconcileService {
       vehicleId: input.vehicleId,
     });
 
+    const window = input.from && input.to
+      ? { from: input.from, to: input.to }
+      : buildHvRechargeRollingWindow(input.to);
+
     if (!profile.rechargeSegmentsAvailable) {
       this.logger.debug(
         `HV recharge reconcile segments unavailable — attempting fallback vehicle=${input.vehicleId}`,
       );
-      const window = input.from && input.to
-        ? { from: input.from, to: input.to }
-        : buildHvRechargeRollingWindow(input.to);
       const fallback = await this.fallbackDetector.detectAndPersistForVehicle({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         from: window.from,
         to: window.to,
         correlationId: input.correlationId,
+        evaluatedAt: window.to,
       });
       return {
         skipped: fallback.skipped,
-        skipReason: 'capability_unavailable',
+        skipReason: fallback.skipped ? 'capability_unavailable' : undefined,
         fallback,
       };
     }
-
-    const window = input.from && input.to
-      ? { from: input.from, to: input.to }
-      : buildHvRechargeRollingWindow(input.to);
 
     try {
       if (input.segmentFingerprint) {
@@ -133,7 +131,15 @@ export class HvRechargeSessionReconcileService {
         };
 
         this.recordSuccess(trigger, ingest, window.to);
-        return { skipped: false, ingest };
+        const fallback = await this.fallbackDetector.detectAndPersistForVehicle({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          from: window.from,
+          to: window.to,
+          correlationId: input.correlationId,
+          evaluatedAt: window.to,
+        });
+        return { skipped: false, ingest, fallback };
       }
 
       const ingest = await this.ingest.ingestForVehicle({
@@ -149,7 +155,15 @@ export class HvRechargeSessionReconcileService {
       }
 
       this.recordSuccess(trigger, ingest, window.to);
-      return { skipped: false, ingest };
+      const fallback = await this.fallbackDetector.detectAndPersistForVehicle({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        from: window.from,
+        to: window.to,
+        correlationId: input.correlationId,
+        evaluatedAt: window.to,
+      });
+      return { skipped: false, ingest, fallback };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       recordHvRechargeReconcileMetrics(this.metrics, {

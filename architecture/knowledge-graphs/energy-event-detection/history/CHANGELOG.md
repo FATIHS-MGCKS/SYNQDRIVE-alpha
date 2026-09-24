@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E3.1 shared authority lock + fallback identity races
+
+- Single `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes
+- Fallback identity: persisted fingerprint/start anchor immutable; replay uses matcher-based reuse
+- Postgres race matrix with independent PrismaClient A/B
+
+## 2026-09-24 — ERD E3 telemetry fallback + native/fallback convergence
+
+- Evidence: `evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md`
+- Native-first fallback activation; physical matcher SAME/AMBIGUOUS/DIFFERENT; atomic late-native convergence TX
+- E3 postgres gate step 5 in boundary-repair CI; observability `synqdrive_erd_e3_convergence_total`
+
 ## 2026-09-24 — ERD E2.1 deterministic native dedupe closure
 
 - Total-order dedupe in `dimo-recharge-segments.dedupe.ts` (no last-writer-wins)
