@@ -114,6 +114,40 @@ export interface HfAbuseContainmentResult<T> {
  * Future-derivation gate: drop contained HF abuse detections for R1. For any other
  * family the input is returned unchanged.
  */
+/**
+ * True when persisted trip/impact signals show the trip may have carried a contained
+ * R1 OBD-derived FULL_BRAKING or contained HF abuse claim before read-time containment.
+ */
+export function hasPersistedR1ContainedClaimIndicators(input: {
+  persistedFullBrakingEvents: number;
+  containedAbuseEventCount: number;
+  impactFullBrakingPer100Km: number | null | undefined;
+}): boolean {
+  return (
+    input.persistedFullBrakingEvents > 0 ||
+    input.containedAbuseEventCount > 0 ||
+    (input.impactFullBrakingPer100Km ?? 0) > 0
+  );
+}
+
+/**
+ * EXP-021 C0.3B — withhold a persisted driving-stress score at read time when it may
+ * embed contained R1 FULL_BRAKING. Does not fabricate a corrected score.
+ */
+export function shouldWithholdR1PersistedDrivingStressScore(
+  family: TelemetrySourceFamily,
+  indicators: {
+    persistedFullBrakingEvents: number;
+    containedAbuseEventCount: number;
+    impactFullBrakingPer100Km: number | null | undefined;
+  },
+): boolean {
+  return (
+    hasUncertainHistoricalObdRecordTime(family) &&
+    hasPersistedR1ContainedClaimIndicators(indicators)
+  );
+}
+
 export function applyR1HfAbuseContainment<T extends { eventType: string }>(
   events: T[],
   family: TelemetrySourceFamily,

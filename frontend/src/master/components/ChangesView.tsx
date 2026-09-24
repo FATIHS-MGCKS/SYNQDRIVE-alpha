@@ -36,7 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-<<<<<<< HEAD
+    id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
+    version: '4.9.2100',
+    title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',
+    summary: [
+      'Telemetry source family from DimoVehicle.rawJson (R1 serial "R1-" / API synthetic / UNKNOWN fail-closed); hardwareType not consulted (Tesla is LTE_R1).',
+      'R1: FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING no longer derived; re-enrichment never deletes historical contained rows.',
+      'Existing rows contained at read time: braking ledger summary, trip/rolling impact, brake wear + fingerprint, event list, trip counters/stats; R1 native context withholds anchor-relative values.',
+      'Misuse: R1 OBD-derived evidence tagged temporally uncertain — cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved; fingerprints unchanged.',
+      'C0.3B: read-time presentation caps existing persisted SEVERE misuse rows; withholds R1 stress scores when persisted full-braking indicators exist (no fabricated correction).',
+    ],
+    reason:
+      'EXP-021 C0–C0.2: R1 historical OBD rows are grid-labelled and misdated (|offset| P50 14 s / P90 45 s); FULL_BRAKING 0/5 supported, ENGINE_SHUTDOWN 0/6 sustained.',
+    previousBehavior:
+      'R1 point-in-time abuse claims fed KPIs, brake wear, impact and SEVERE misuse; context API exposed "nearest sample 0 ms" values.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md; DI-DEC-R1-TEMPORAL-CONTAINMENT-001; telemetry-source-family.ts; r1-temporal-containment.ts; no migration/backfill/data mutation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T18:00:00.000Z',
+  },
+  {
     id: 'tdl-qualified-stop-contract-v1-2026-09-24',
     version: '4.9.2100',
     title: 'Trip FSM — Qualified Stop Contract V1 (5 min same-trip boundary)',
@@ -55,26 +75,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-24T17:15:00.000Z',
-=======
-    id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
-    version: '4.9.2100',
-    title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',
-    summary: [
-      'Telemetry source family from DimoVehicle.rawJson (R1 serial "R1-" / API synthetic / UNKNOWN fail-closed); hardwareType not consulted (Tesla is LTE_R1).',
-      'R1: FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING no longer derived; re-enrichment never deletes historical contained rows.',
-      'Existing rows contained at read time: braking ledger summary, trip/rolling impact, brake wear + fingerprint, event list, trip counters/stats; R1 native context withholds anchor-relative values.',
-      'Misuse: R1 OBD-derived evidence tagged temporally uncertain — cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved; fingerprints unchanged.',
-    ],
-    reason:
-      'EXP-021 C0–C0.2: R1 historical OBD rows are grid-labelled and misdated (|offset| P50 14 s / P90 45 s); FULL_BRAKING 0/5 supported, ENGINE_SHUTDOWN 0/6 sustained.',
-    previousBehavior:
-      'R1 point-in-time abuse claims fed KPIs, brake wear, impact and SEVERE misuse; context API exposed "nearest sample 0 ms" values.',
-    details:
-      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md; DI-DEC-R1-TEMPORAL-CONTAINMENT-001; telemetry-source-family.ts; r1-temporal-containment.ts; no migration/backfill/data mutation.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-24T18:00:00.000Z',
->>>>>>> 48d39ae96 (docs(ui): SynqDrive Code entries for EXP-021 C0.3 R1 temporal containment)
   },
   {
     id: 'tdl-post-split-finalize-quality-gate-2026-09-24',

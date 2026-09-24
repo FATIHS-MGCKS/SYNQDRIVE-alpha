@@ -249,6 +249,14 @@ describe('TripAnalyticsCanonicalService', () => {
     it('removes FULL_BRAKING and contained HF abuse from R1 trip counters without writes', async () => {
       prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
       prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-1', _count: { _all: 2 } }]);
+      prisma.tripDrivingImpact.findMany.mockResolvedValue([
+        {
+          tripId: 'trip-1',
+          drivingStressScore: 88,
+          fullBrakingPer100Km: 4,
+          sourceSummaryJson: null,
+        },
+      ]);
 
       const [hydrated] = await service.hydrateTrips('org-1', [tripWithFullBraking()] as any);
 
@@ -258,6 +266,10 @@ describe('TripAnalyticsCanonicalService', () => {
         hardBrakingEvents: 4,
         abuseEvents: 1,
       });
+      expect(hydrated.canonicalTripSummary.scores.drivingStressScore).toBeNull();
+      expect(hydrated.canonicalTripSummary.scores.scoreSource).toBe(
+        'r1_temporal_containment_unavailable',
+      );
       expect(prisma.tripBehaviorEvent.groupBy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
@@ -315,6 +327,32 @@ describe('TripAnalyticsCanonicalService', () => {
 
       expect(hydrated.canonicalTripSummary.events.fullBrakingEvents).toBe(2);
       expect(hydrated.canonicalTripSummary.events.abuseEvents).toBe(3);
+    });
+
+    it('withholds R1 vehicle avg stress when persisted full-braking indicators exist', async () => {
+      prisma.vehicleTrip.aggregate.mockResolvedValue({
+        _count: { _all: 1 },
+        _sum: {
+          distanceKm: 20,
+          totalAccelerationEvents: 0,
+          hardAccelerationEvents: 0,
+          totalBrakingEvents: 4,
+          hardBrakingEvents: 4,
+          fullBrakingEvents: 2,
+          abuseEvents: 2,
+          speedingEvents: 0,
+        },
+      });
+      prisma.tripDrivingImpact.aggregate.mockResolvedValue({
+        _avg: { drivingStressScore: 72, fullBrakingPer100Km: 3 },
+      });
+      prisma.vehicleTrip.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
+      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-a', _count: { _all: 2 } }]);
+      prisma.vehicleTrip.findMany.mockResolvedValue([{ id: 'trip-a', behaviorSummaryJson: {} }]);
+
+      const stats = await service.getVehicleStats('org-1', 'vehicle-1');
+      expect(stats.avgDrivingStressScore).toBeNull();
     });
 
     it('contains R1 vehicle stats totals', async () => {

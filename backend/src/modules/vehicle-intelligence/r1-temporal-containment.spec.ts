@@ -4,6 +4,7 @@ import {
 } from './telemetry-source-family';
 import {
   applyR1HfAbuseContainment,
+  shouldWithholdR1PersistedDrivingStressScore,
   buildR1TemporalContainmentSummary,
   hasR1TemporalContainmentSummary,
   containFullBrakingRate,
@@ -94,6 +95,30 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
       'POSSIBLE_IMPACT',
       'ENGINE_SHUTDOWN_WHILE_DRIVING',
     ]);
+  });
+
+  it('withholds persisted stress scores only when R1 contained-claim indicators are present', () => {
+    expect(
+      shouldWithholdR1PersistedDrivingStressScore('RUPTELA_R1', {
+        persistedFullBrakingEvents: 0,
+        containedAbuseEventCount: 0,
+        impactFullBrakingPer100Km: 0,
+      }),
+    ).toBe(false);
+    expect(
+      shouldWithholdR1PersistedDrivingStressScore('RUPTELA_R1', {
+        persistedFullBrakingEvents: 1,
+        containedAbuseEventCount: 0,
+        impactFullBrakingPer100Km: 0,
+      }),
+    ).toBe(true);
+    expect(
+      shouldWithholdR1PersistedDrivingStressScore('API_SYNTHETIC', {
+        persistedFullBrakingEvents: 5,
+        containedAbuseEventCount: 5,
+        impactFullBrakingPer100Km: 9,
+      }),
+    ).toBe(false);
   });
 
   it('reports the FULL_BRAKING rate as 0 for R1 only', () => {

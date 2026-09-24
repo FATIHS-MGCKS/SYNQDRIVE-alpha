@@ -51,4 +51,33 @@ describe('Brake wear model — R1 temporal containment', () => {
     const teslaNone = await padHealthAfterTrip(TESLA_RAW_JSON, 0);
     expect(teslaHeavy).toBeLessThan(teslaNone);
   });
+
+  it('R1 scheduled recalculation is deterministic when contained full-braking input is unchanged', async () => {
+    const h = createBrakeLifecycleHarness({ latestStateOdometerKm: 30_000 });
+    h.store.vehicles.set(h.vehicleId, {
+      ...h.store.vehicles.get(h.vehicleId)!,
+      dimoVehicle: { rawJson: R1_RAW_JSON },
+    });
+    await seedMeasuredBrakeBaseline(h, { odometerKm: 10_000 });
+    h.store.vehicleLatestState.set(h.vehicleId, { vehicleId: h.vehicleId, odometerKm: 30_000 });
+    h.store.tripDrivingImpact.push({
+      vehicleId: h.vehicleId,
+      tripId: 'trip-1',
+      tripStartedAt: '2026-02-01T10:00:00Z',
+      analysisStatus: 'COMPLETE',
+      distanceKm: 20_000,
+      citySharePct: 40,
+      highwaySharePct: 40,
+      countryRoadSharePct: 20,
+      hardBrakePer100Km: 3,
+      fullBrakingPer100Km: 15,
+      stopDensity: 1.0,
+      highSpeedBrakeShare: 0.1,
+      thermalBrakeStressScore: 30,
+    });
+    const first = await h.brakeHealth.recalculate(h.vehicleId);
+    const second = await h.brakeHealth.recalculate(h.vehicleId);
+    expect(second?.skipReason).toBe('identical_input_fingerprint');
+    expect(first?.inputFingerprint).toBe(second?.inputFingerprint);
+  });
 });

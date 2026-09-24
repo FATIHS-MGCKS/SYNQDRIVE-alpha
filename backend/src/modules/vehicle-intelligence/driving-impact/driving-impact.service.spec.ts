@@ -1047,42 +1047,27 @@ describe('DrivingImpactService.computeForTrip', () => {
     prisma.tripBehaviorEvent.findMany.mockResolvedValue([
       { startSpeedKmh: 90, endSpeedKmh: 10, peakValue: 6.5 },
     ]);
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findUnique.mockResolvedValue(null);
+
+    const first = await service.computeForTrip('trip-1', 'vehicle-1');
+    expect(first.action).toBe('created');
+    expect(first.sourceFingerprint).toBeTruthy();
+
     prisma.tripDrivingImpact.findUnique.mockResolvedValue({
-      sourceFingerprint: 'existing-fp',
+      sourceFingerprint: first.sourceFingerprint,
       analysisStatus: 'COMPLETE',
       authoritativeDistanceKm: 50,
       tripDistanceKmAtSource: 50,
     });
+    prisma.tripDrivingImpact.upsert.mockClear();
+    prisma.vehicleDrivingImpactCurrent.upsert.mockClear();
 
-    const { buildTripDrivingImpactSourceFingerprint } = await import(
-      './trip-driving-impact-coverage.domain'
-    );
-    const fp = buildTripDrivingImpactSourceFingerprint({
-      tripId: 'trip-1',
-      vehicleId: 'vehicle-1',
-      authoritativeDistanceKm: 50,
-      sourceVersion: 'v1.1.0:trip-distance-km-v1',
-      hardAccelerationCount: 4,
-      hardBrakingCount: 6,
-      fullBrakingCount: 2,
-      brakingEventCount: 12,
-      citySharePct: 30,
-      highwaySharePct: 60,
-      countryRoadSharePct: 10,
-      behaviorEnrichmentStatus: 'COMPLETED',
-      telemetryInput: 'HF_DERIVED',
-      tripUpdatedAt: new Date('2026-03-01T09:00:00.000Z').toISOString(),
-    });
-    prisma.tripDrivingImpact.findUnique.mockResolvedValue({
-      sourceFingerprint: fp,
-      analysisStatus: 'COMPLETE',
-      authoritativeDistanceKm: 50,
-      tripDistanceKmAtSource: 50,
-    });
-
-    const result = await service.computeForTrip('trip-1', 'vehicle-1');
-    expect(result.action).toBe('unchanged');
-    expect(result.shouldRecalculateBrake).toBe(false);
+    const second = await service.computeForTrip('trip-1', 'vehicle-1');
+    expect(second.action).toBe('unchanged');
+    expect(second.shouldRecalculateBrake).toBe(false);
     expect(prisma.tripDrivingImpact.upsert).not.toHaveBeenCalled();
   });
 

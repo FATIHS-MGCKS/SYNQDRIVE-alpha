@@ -136,6 +136,18 @@ Rejected alternatives: capping the evidence grade to C, or nulling fields at gen
 
 ---
 
+## 5.1 C0.3B read-presentation closure (2026-09-24)
+
+Without mutating persistence:
+
+| Surface | Closure |
+|---------|---------|
+| Canonical trip / vehicle stress scores | `shouldWithholdR1PersistedDrivingStressScore` — when R1 and persisted full-braking / contained-abuse indicators exist, `drivingStressScore` is withheld (`scoreSource = r1_temporal_containment_unavailable`); no fabricated correction |
+| Misuse case list/detail API | `misuse-case-read-presentation.ts` — retroactive R1 evidence tagging + `reconcileMisuseCaseRating` caps existing persisted SEVERE rows at presentation; `temporalPresentationContainment` discloses stored vs presented severity |
+| Provider-native braking | **INDEPENDENT** stream (`DimoSegmentsService.fetchDrivingEvents` → `DrivingEvent` TELEMETRY_EVENTS); not the HF Δv/Δt scanner. Ledger FULL_BRAKING upgrades from HF correlation remain downgraded at read for R1 |
+
+Deferred admin-only raw counters (`trips.service.getStats`, platform logbook) remain unchanged.
+
 ## 6. Static bypass search (Step 13) and deferred paths
 
 Search terms: `FULL_BRAKING`, `POSSIBLE_IMPACT`, `ENGINE_SHUTDOWN_WHILE_DRIVING`, `fullBrakingCount`, `fullBrakingEvents`, `possibleImpactCount`, `abuseEvents`, `nearestSampleDistanceMs`, `providerDelayMs`, `hardwareType`/`LTE_R1`, brake wear and impact consumers.

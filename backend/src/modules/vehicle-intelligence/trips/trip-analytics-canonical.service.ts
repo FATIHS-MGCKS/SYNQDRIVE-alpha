@@ -42,6 +42,7 @@ import {
   containTripEventCounters,
   hasR1TemporalContainmentSummary,
   R1_CONTAINED_HF_ABUSE_EVENT_TYPES,
+  shouldWithholdR1PersistedDrivingStressScore,
 } from '../r1-temporal-containment';
 
 export interface CanonicalTripEventSummary {
@@ -61,7 +62,11 @@ export interface CanonicalTripScoreSummary {
   /** Composite vehicle stress 0–100. Higher = more load. */
   drivingStressScore: number | null;
   stressLevel: StressLevel | null;
-  scoreSource: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  scoreSource:
+    | 'trip_driving_impact'
+    | 'vehicle_trip_compat'
+    | 'derived'
+    | 'r1_temporal_containment_unavailable';
   /** @deprecated Use drivingStressScore */
   drivingStyleScore?: number | null;
 }
@@ -190,7 +195,10 @@ export class TripAnalyticsCanonicalService {
           attribution,
           prefetch.decisionSummaryByTripId.get(trip.id) ?? null,
           uncertainObdVehicleIds.has(trip.vehicleId)
-            ? { containedAbuseEvents: containedAbuseByTrip.get(trip.id) ?? 0 }
+            ? {
+                family: 'RUPTELA_R1' as const,
+                containedAbuseEvents: containedAbuseByTrip.get(trip.id) ?? 0,
+              }
             : null,
         ),
       };
@@ -347,7 +355,7 @@ export class TripAnalyticsCanonicalService {
       }),
       this.prisma.tripDrivingImpact.aggregate({
         where: impactWhere,
-        _avg: { drivingStressScore: true },
+        _avg: { drivingStressScore: true, fullBrakingPer100Km: true },
       }),
     ]);
 
@@ -369,8 +377,10 @@ export class TripAnalyticsCanonicalService {
       }),
     ]);
 
-    const stressAvg = impactAvg._avg.drivingStressScore;
-    const avgDrivingStressScore = stressAvg != null ? this.round2(stressAvg) : null;
+    let avgDrivingStressScore =
+      impactAvg._avg.drivingStressScore != null
+        ? this.round2(impactAvg._avg.drivingStressScore)
+        : null;
     const persistedEventTotals = {
       totalBrakingEvents: tripSummary._sum.totalBrakingEvents ?? 0,
       fullBrakingEvents: tripSummary._sum.fullBrakingEvents ?? 0,
@@ -385,6 +395,15 @@ export class TripAnalyticsCanonicalService {
       let containedAbuseEvents = 0;
       for (const count of containedByTrip.values()) containedAbuseEvents += count;
       eventTotals = containTripEventCounters(persistedEventTotals, containedAbuseEvents);
+      if (
+        shouldWithholdR1PersistedDrivingStressScore('RUPTELA_R1', {
+          persistedFullBrakingEvents: persistedEventTotals.fullBrakingEvents,
+          containedAbuseEventCount: containedAbuseEvents,
+          impactFullBrakingPer100Km: impactAvg._avg.fullBrakingPer100Km,
+        })
+      ) {
+        avgDrivingStressScore = null;
+      }
     }
     return {
       totalTrips: tripSummary._count._all ?? 0,
@@ -406,11 +425,17 @@ export class TripAnalyticsCanonicalService {
 
   private buildSummary(
     trip: TripProjection,
-    impact: Pick<TripDrivingImpact, 'drivingStressScore' | 'sourceSummaryJson'> | null,
+    impact: Pick<
+      TripDrivingImpact,
+      'drivingStressScore' | 'sourceSummaryJson' | 'fullBrakingPer100Km'
+    > | null,
     assignment: TripAssignmentResolution,
     attribution?: TripAttribution,
     decisionSummary?: CanonicalTripDecisionSummary | null,
-    uncertainObdContainment?: { containedAbuseEvents: number } | null,
+    uncertainObdContainment?: {
+      family: 'RUPTELA_R1';
+      containedAbuseEvents: number;
+    } | null,
   ): CanonicalTripSummary {
     const persistedEvents: CanonicalTripEventSummary = {
       totalAccelerationEvents: trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0,
@@ -427,12 +452,29 @@ export class TripAnalyticsCanonicalService {
       ? containTripEventCounters(persistedEvents, uncertainObdContainment.containedAbuseEvents)
       : persistedEvents;
 
+    const persistedFullBrakingBeforeContainment =
+      trip.fullBrakingEvents ?? trip.fullBrakingCount ?? 0;
+    const withholdStress =
+      uncertainObdContainment != null &&
+      shouldWithholdR1PersistedDrivingStressScore(uncertainObdContainment.family, {
+        persistedFullBrakingEvents: persistedFullBrakingBeforeContainment,
+        containedAbuseEventCount: uncertainObdContainment.containedAbuseEvents,
+        impactFullBrakingPer100Km: impact?.fullBrakingPer100Km,
+      });
+
     const impactHasStress = impact?.drivingStressScore != null;
-    const drivingStressScore = impactHasStress
-      ? impact!.drivingStressScore
-      : (trip.drivingScore ?? null);
-    const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
-      impactHasStress ? 'trip_driving_impact' : drivingStressScore != null ? 'vehicle_trip_compat' : 'derived';
+    let drivingStressScore = withholdStress
+      ? null
+      : impactHasStress
+        ? impact!.drivingStressScore
+        : (trip.drivingScore ?? null);
+    let scoreSource: CanonicalTripScoreSummary['scoreSource'] = withholdStress
+      ? 'r1_temporal_containment_unavailable'
+      : impactHasStress
+        ? 'trip_driving_impact'
+        : drivingStressScore != null
+          ? 'vehicle_trip_compat'
+          : 'derived';
 
     const drivingImpactModelProfile = impact?.sourceSummaryJson
       ? readTripDrivingImpactModelProfile(impact.sourceSummaryJson)
