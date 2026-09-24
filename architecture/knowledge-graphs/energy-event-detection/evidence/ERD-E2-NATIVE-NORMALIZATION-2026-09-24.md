@@ -34,3 +34,4 @@ Signal requests use MIN/MAX in the GraphQL **request**; response values are an u
 - Postgres gate: `hv-charge-session-native.postgres.integration.spec.ts` (scenarios A–F).
   - Local opt-in: `ERD_E2_POSTGRES_INTEGRATION=1` + `DATABASE_URL`.
 - CI: Vehicle Detail `backend-boundary-postgres` job via `npm run test:boundary-repair:postgres` (step 4).
+- E2.1: deterministic dedupe total order; tie-break = lexicographic `stableDedupeTieBreakKey` (higher key wins).

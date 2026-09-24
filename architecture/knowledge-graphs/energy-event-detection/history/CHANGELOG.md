@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E2.1 deterministic native dedupe closure
+
+- Total-order dedupe in `dimo-recharge-segments.dedupe.ts` (no last-writer-wins)
+- Forward/reverse unit tests + postgres dedupe order proof
+
 ## 2026-09-24 — ERD E2 native recharge normalization hardening
 
 - Evidence: `evidence/ERD-E2-NATIVE-NORMALIZATION-2026-09-24.md`

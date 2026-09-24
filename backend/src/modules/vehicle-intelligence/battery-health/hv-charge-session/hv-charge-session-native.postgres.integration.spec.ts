@@ -158,6 +158,11 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         )!;
         const deduped = dedupeNormalizedRechargeSegmentsByFingerprint([withoutId, withId]);
         expect(deduped).toHaveLength(1);
+        const reverseDeduped = dedupeNormalizedRechargeSegmentsByFingerprint([
+          withId,
+          withoutId,
+        ]);
+        expect(reverseDeduped[0].providerSegmentId).toBe(deduped[0].providerSegmentId);
         await persist.persistRechargeSegment({
           organizationId: org.id,
           vehicleId: vehicle.id,
@@ -173,6 +178,43 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         });
         expect(countProvider).toBe(1);
 
+        const segment3Raw = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[2];
+        const seg3Plain = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          segment3Raw,
+        )!;
+        const seg3WithId = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          withSyntheticProviderId(segment3Raw),
+        )!;
+        const winnerForward = dedupeNormalizedRechargeSegmentsByFingerprint([
+          seg3Plain,
+          seg3WithId,
+        ])[0];
+        const winnerReverse = dedupeNormalizedRechargeSegmentsByFingerprint([
+          seg3WithId,
+          seg3Plain,
+        ])[0];
+        expect(winnerForward.providerSegmentId).toBeTruthy();
+        expect(winnerReverse.providerSegmentId).toBe(winnerForward.providerSegmentId);
+        const firstSeg3 = await persist.persistRechargeSegment({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: winnerForward,
+        });
+        const secondSeg3 = await persist.persistRechargeSegment({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: winnerReverse,
+        });
+        expect(firstSeg3.created).toBe(true);
+        expect(secondSeg3.changeKind).toBe('no_op');
+        expect(
+          await prisma.hvChargeSession.count({
+            where: { vehicleId: vehicle.id, segmentFingerprint: seg3Plain.fingerprint },
+          }),
+        ).toBe(1);
+
         const malformed = normalizeDimoRechargeSegment(TESLA_RECHARGE_AUDIT_TOKEN_ID, {
           start: { timestamp: 'bad' },
           isOngoing: false,
@@ -181,7 +223,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         expect(malformed).toBeNull();
 
         const total = await prisma.hvChargeSession.count({ where: { vehicleId: vehicle.id } });
-        expect(total).toBeGreaterThanOrEqual(2);
+        expect(total).toBeGreaterThanOrEqual(3);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
