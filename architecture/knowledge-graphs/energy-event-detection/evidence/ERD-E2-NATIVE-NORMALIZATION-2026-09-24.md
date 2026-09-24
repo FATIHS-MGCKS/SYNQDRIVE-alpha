@@ -31,4 +31,6 @@ Signal requests use MIN/MAX in the GraphQL **request**; response values are an u
 ## Tests
 
 - Unit: `dimo-recharge-segments.normalizer.spec.ts`, updated client/persist/quality specs.
-- Postgres gate (opt-in): `ERD_E2_POSTGRES_INTEGRATION=1` → `hv-charge-session-native.postgres.integration.spec.ts`.
+- Postgres gate: `hv-charge-session-native.postgres.integration.spec.ts` (scenarios A–F).
+  - Local opt-in: `ERD_E2_POSTGRES_INTEGRATION=1` + `DATABASE_URL`.
+- CI: Vehicle Detail `backend-boundary-postgres` job via `npm run test:boundary-repair:postgres` (step 4).

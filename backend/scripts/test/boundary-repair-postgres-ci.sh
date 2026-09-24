@@ -8,15 +8,19 @@ cd "$ROOT"
 
 log() { printf '[boundary-repair-postgres-ci] %s\n' "$*"; }
 
-log "Step 1/3: boundary repair PostgreSQL integration tests"
+log "Step 1/4: boundary repair PostgreSQL integration tests"
 BOUNDARY_REPAIR_POSTGRES_INTEGRATION=1 INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1 \
   npx jest boundary-repair.postgres.integration intra-trip-gap-split-repair.postgres.integration --runInBand
 
-log "Step 2/3: VDC physical-state ephemeral migration validation (isolated database)"
+log "Step 2/4: VDC physical-state ephemeral migration validation (isolated database)"
 PHYSICAL_STATE_MIGRATION_EPHEMERAL=1 bash scripts/test/physical-state-migration-ephemeral.sh
 
-log "Step 3/3: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
+log "Step 3/4: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
 PHYSICAL_STATE_POSTGRES_INTEGRATION=1 PHYSICAL_STATE_POSTGRES_REQUIRED=1 \
   npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\.integration' --runInBand --verbose
+
+log "Step 4/4: ERD E2 native HvChargeSession PostgreSQL gate"
+ERD_E2_POSTGRES_INTEGRATION=1 ERD_E2_POSTGRES_REQUIRED=1 \
+  npx jest hv-charge-session-native.postgres.integration --runInBand --verbose
 
 log "boundary-repair-postgres-ci completed successfully"
