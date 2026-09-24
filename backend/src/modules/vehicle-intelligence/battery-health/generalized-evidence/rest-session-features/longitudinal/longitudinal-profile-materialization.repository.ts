@@ -3,11 +3,15 @@ import {
   Prisma,
   type BatteryLongitudinalProfileRevision,
 } from '@prisma/client';
-import { canonicalFeatureInputUtf8 } from '../feature-input-canonical.serializer';
+import {
+  canonicalFeatureInputUtf8,
+  sha256HexLowercaseUtf8,
+} from '../feature-input-canonical.serializer';
 import type { PrismaService } from '@shared/database/prisma.service';
 import { assertValidProfileFingerprintHex } from './longitudinal-profile-fingerprint';
 import {
   ProfileFingerprintCollisionOrCanonicalizationDriftError,
+  ProfileFingerprintPayloadMismatchError,
   ProfileIdempotencyConflictRowNotFoundError,
 } from './longitudinal-profile-materialization.errors';
 import type { LongitudinalProfileMaterializationPersistenceInput } from './longitudinal-profile-materialization.mapper';
@@ -26,6 +30,22 @@ export type LongitudinalProfileScientificIdentity = {
   profilePolicyVersion: string;
   canonicalProfileFingerprint: string;
 };
+
+function assertIncomingFingerprintMatchesScientificPayload(
+  input: LongitudinalProfileMaterializationPersistenceInput,
+): string {
+  assertValidProfileFingerprintHex(input.canonicalProfileFingerprint);
+  const incomingCanonicalScientificUtf8 = canonicalFeatureInputUtf8(
+    input.scientificProfileJson,
+  );
+  const incomingRecomputedFingerprint = sha256HexLowercaseUtf8(
+    incomingCanonicalScientificUtf8,
+  );
+  if (incomingRecomputedFingerprint !== input.canonicalProfileFingerprint) {
+    throw new ProfileFingerprintPayloadMismatchError();
+  }
+  return incomingCanonicalScientificUtf8;
+}
 
 export class LongitudinalProfileMaterializationRepository {
   constructor(private readonly db: LongitudinalProfileMaterializationRepositoryDb) {}
@@ -50,12 +70,12 @@ export class LongitudinalProfileMaterializationRepository {
 
   /**
    * PostgreSQL-safe idempotent insert (explicit READ COMMITTED + ON CONFLICT DO NOTHING RETURNING).
+   * Incoming canonical UTF-8 and fingerprint coherence are derived from input.scientificProfileJson only.
    */
   async insertIdempotent(
     input: LongitudinalProfileMaterializationPersistenceInput,
-    expectedCanonicalScientificUtf8: string,
   ): Promise<LongitudinalProfileMaterializationInsertOutcome> {
-    assertValidProfileFingerprintHex(input.canonicalProfileFingerprint);
+    const incomingCanonicalScientificUtf8 = assertIncomingFingerprintMatchesScientificPayload(input);
 
     return this.db.$transaction(
       async (tx) => {
@@ -129,7 +149,7 @@ export class LongitudinalProfileMaterializationRepository {
         }
 
         const storedCanonicalUtf8 = canonicalFeatureInputUtf8(existing.scientificProfileJson);
-        if (storedCanonicalUtf8 !== expectedCanonicalScientificUtf8) {
+        if (storedCanonicalUtf8 !== incomingCanonicalScientificUtf8) {
           throw new ProfileFingerprintCollisionOrCanonicalizationDriftError();
         }
 

@@ -18,6 +18,7 @@ import {
   buildLongitudinalScientificProfileProjectionV1,
   scientificProjectionOmitsProfileGeneratedAt,
 } from './longitudinal-profile-scientific-projection';
+import type { LongitudinalProfileV1 } from './longitudinal-profile.types';
 import {
   buildProfileTestInventory,
   buildProfileTestInventoryItem,
@@ -188,6 +189,23 @@ describe('longitudinal-profile D3 scientific projection + fingerprint', () => {
         REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
       );
     });
+
+    it('same evidence + different profilePolicyVersion → different fingerprint', () => {
+      const profile = assemble([
+        buildProfileTestInventoryItem({
+          restSessionId: 's1',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'DEFAULT',
+        }),
+      ]);
+      const profilePolicyV2Test = {
+        ...profile,
+        profilePolicyVersion: 'M3_3D_PROFILE_POLICY_V2_TEST',
+      } as unknown as LongitudinalProfileV1;
+      const fpV1 = computeLongitudinalScientificProfileFingerprintV1(profile);
+      const fpV2 = computeLongitudinalScientificProfileFingerprintV1(profilePolicyV2Test);
+      expect(fpV1.canonicalProfileFingerprint).not.toBe(fpV2.canonicalProfileFingerprint);
+    });
   });
 
   describe('H — contract version', () => {
@@ -206,6 +224,23 @@ describe('longitudinal-profile D3 scientific projection + fingerprint', () => {
       expect(fp.scientificProjection.longitudinalProfileContractVersion).toBe(
         REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
       );
+    });
+
+    it('same evidence + different longitudinalProfileContractVersion → different fingerprint', () => {
+      const profile = assemble([
+        buildProfileTestInventoryItem({
+          restSessionId: 's1',
+          anchorAt: '2026-01-01T10:00:00.000Z',
+          inclusionMode: 'DEFAULT',
+        }),
+      ]);
+      const contractV2Test = {
+        ...profile,
+        longitudinalProfileContractVersion: 'M3_3D_LONGITUDINAL_PROFILE_V2_TEST',
+      } as unknown as LongitudinalProfileV1;
+      const fpV1 = computeLongitudinalScientificProfileFingerprintV1(profile);
+      const fpV2 = computeLongitudinalScientificProfileFingerprintV1(contractV2Test);
+      expect(fpV1.canonicalProfileFingerprint).not.toBe(fpV2.canonicalProfileFingerprint);
     });
   });
 

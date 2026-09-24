@@ -213,7 +213,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CREATE');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      const out = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      const out = await repo.insertIdempotent(input);
       expect(out.persistenceOutcome).toBe('CREATED');
       const count = await prisma.batteryLongitudinalProfileRevision.count({
         where: { organizationId, vehicleId },
@@ -225,8 +225,8 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'DUP');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      const first = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
-      const second = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      const first = await repo.insertIdempotent(input);
+      const second = await repo.insertIdempotent(input);
       expect(first.persistenceOutcome).toBe('CREATED');
       expect(second.persistenceOutcome).toBe('EXISTING');
       expect(second.revision.id).toBe(first.revision.id);
@@ -242,8 +242,8 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'ENV');
       const a = buildPersistencePair(organizationId, vehicleId, '2026-01-01T00:00:00.000Z');
       const b = buildPersistencePair(organizationId, vehicleId, '2026-06-01T00:00:00.000Z');
-      const first = await repo.insertIdempotent(a.input, a.fingerprint.canonicalScientificUtf8);
-      const second = await repo.insertIdempotent(a.input, b.fingerprint.canonicalScientificUtf8);
+      const first = await repo.insertIdempotent(a.input);
+      const second = await repo.insertIdempotent(a.input);
       expect(first.persistenceOutcome).toBe('CREATED');
       expect(second.persistenceOutcome).toBe('EXISTING');
       expect(
@@ -265,7 +265,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
             new LongitudinalProfileMaterializationRepository(c as unknown as PrismaService),
         );
         const results = await Promise.all(
-          repos.map((r) => r.insertIdempotent(input, fingerprint.canonicalScientificUtf8)),
+          repos.map((r) => r.insertIdempotent(input)),
         );
         const created = results.filter((r) => r.persistenceOutcome === 'CREATED');
         const existing = results.filter((r) => r.persistenceOutcome === 'EXISTING');
@@ -321,8 +321,8 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       const f2 = computeLongitudinalScientificProfileFingerprintV1(p2.profile);
       const row1 = buildLongitudinalProfileMaterializationPersistenceInput(f1);
       const row2 = buildLongitudinalProfileMaterializationPersistenceInput(f2);
-      await repo.insertIdempotent(row1, f1.canonicalScientificUtf8);
-      await repo.insertIdempotent(row2, f2.canonicalScientificUtf8);
+      await repo.insertIdempotent(row1);
+      await repo.insertIdempotent(row2);
       expect(f1.canonicalProfileFingerprint).not.toBe(f2.canonicalProfileFingerprint);
       expect(
         await prisma.batteryLongitudinalProfileRevision.count({
@@ -384,7 +384,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       `;
       const scoped = profileA.input;
       await expect(
-        repo.insertIdempotent(scoped, profileA.fingerprint.canonicalScientificUtf8),
+        repo.insertIdempotent(scoped),
       ).rejects.toBeInstanceOf(ProfileFingerprintCollisionOrCanonicalizationDriftError);
     });
 
@@ -394,8 +394,8 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       const b = await createOrgVehicle(prisma, 'TEN-B');
       const packA = buildPersistencePair(a.organizationId, a.vehicleId);
       const packB = buildPersistencePair(b.organizationId, b.vehicleId);
-      await repo.insertIdempotent(packA.input, packA.fingerprint.canonicalScientificUtf8);
-      await repo.insertIdempotent(packB.input, packB.fingerprint.canonicalScientificUtf8);
+      await repo.insertIdempotent(packA.input);
+      await repo.insertIdempotent(packB.input);
       expect(packA.fingerprint.canonicalProfileFingerprint).not.toBe(
         packB.fingerprint.canonicalProfileFingerprint,
       );
@@ -408,7 +408,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'ORGC');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      await repo.insertIdempotent(input);
       await prisma.organization.delete({ where: { id: organizationId } });
       expect(
         await prisma.batteryLongitudinalProfileRevision.count({
@@ -421,7 +421,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'VEHC');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      await repo.insertIdempotent(input);
       await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;
       expect(
         await prisma.batteryLongitudinalProfileRevision.count({
@@ -471,7 +471,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'EQ');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      const out = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      const out = await repo.insertIdempotent(input);
       const stored = out.revision.scientificProfileJson;
       expect(canonicalFeatureInputUtf8(stored)).toBe(fingerprint.canonicalScientificUtf8);
     });
@@ -480,7 +480,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'META');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      const out = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      const out = await repo.insertIdempotent(input);
       expect(revisionMetadataMirrorsPersistenceInput(out.revision, input)).toBe(true);
       expect(canonicalFeatureInputUtf8(out.revision.scientificProfileJson)).toBe(
         fingerprint.canonicalScientificUtf8,
@@ -519,7 +519,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
         )
       `;
       await expect(
-        repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8),
+        repo.insertIdempotent(input),
       ).rejects.toBeInstanceOf(ProfileMaterializedMetadataDriftError);
     });
 
@@ -527,7 +527,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'ABS');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      const out = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      const out = await repo.insertIdempotent(input);
       const json = out.revision.scientificProfileJson as Record<string, unknown>;
       const window = json.window as Record<string, unknown>;
       expect(window).toBeDefined();
@@ -538,9 +538,9 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'TX');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
-      await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
+      await repo.insertIdempotent(input);
       await expect(
-        repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8),
+        repo.insertIdempotent(input),
       ).resolves.toMatchObject({ persistenceOutcome: 'EXISTING' });
     });
   },

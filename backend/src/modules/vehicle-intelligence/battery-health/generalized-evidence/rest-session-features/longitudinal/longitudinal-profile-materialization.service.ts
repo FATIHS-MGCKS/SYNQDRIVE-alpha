@@ -46,7 +46,6 @@ export class LongitudinalProfileMaterializationService {
 
     const insertOutcome = await this.materializationRepository.insertIdempotent(
       persistenceInput,
-      fingerprint.canonicalScientificUtf8,
     );
 
     return {

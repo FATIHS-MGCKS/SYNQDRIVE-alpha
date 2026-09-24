@@ -13,11 +13,11 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | D3 foundation on PR #1746 with dual-source mapper, implicit isolation, partial PG-B/O coverage, no service orchestration spec, env-gated PG suite only in standard Jest. |
 | **OBSERVATION** | Independent review identified persistence-contract gaps before merge. |
 | **HYPOTHESIS** | Single-source derivation + explicit ReadCommitted + metadata drift guard closes contract gaps without runtime wiring. |
-| **CHANGE** | Single-source mapper; explicit ReadCommitted; repository fingerprint validation; metadata drift fail-closed; full PG-B/O/Q; service/repository/mapper specs; postgres CI script + Vehicle Detail CI job. |
+| **CHANGE** | Single-source mapper; explicit ReadCommitted; repository fingerprint format + payload coherence validation; metadata drift fail-closed; full PG-B/O/Q; service/repository/mapper specs; safe ephemeral PostgreSQL script + `package.json` entrypoint (`LOCAL_EPHEMERAL_ONLY`; no Vehicle Detail workflow change; not a required GitHub CI job). |
 | **WHY** | Close foundation persistence contract before merge without adding runtime reachability. |
-| **EXPECTED_EFFECT** | Internally consistent JSON/metadata; reproducible ephemeral Postgres proof; CI-enforced D3 PG matrix. |
-| **VALIDATION** | `npm run test:battery:v2:longitudinal-profile-materialization:postgres`; unit specs; governance validators. |
-| **OBSERVED_EFFECT** | Pending PR #1746 amend merge verification. |
+| **EXPECTED_EFFECT** | Internally consistent JSON/metadata/fingerprint; reproducible ephemeral Postgres proof via local script. |
+| **VALIDATION** | `npm run test:battery:v2:longitudinal-profile-materialization:postgres`; `npm run test:battery:v2:longitudinal-input:postgres`; unit specs; governance validators. |
+| **OBSERVED_EFFECT** | D3 postgres script PASS on ephemeral DB; D1 postgres 5/5 on final head (closure validation). |
 | **NON_EFFECTS** | No Nest registration; no feature flag; no production materialization. |
 | **REGRESSIONS_OR_TRADEOFFS** | Mapper API breaking for any internal dual-arg callers (removed). |
 | **REMAINING_GAPS** | M3.3F wiring; retention; materialization flag name. |

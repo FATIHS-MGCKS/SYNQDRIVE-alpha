@@ -36,7 +36,11 @@
 | **DB CHECK matrix (PG-B)** | Reject uppercase / 63 / 65 / non-hex; accept 64 lowercase hex |
 | **Full metadata mirror (PG-O)** | All mirrored columns verified vs persistence input + canonical UTF-8 equivalence |
 | **Duplicate metadata drift** | EXISTING path throws `PROFILE_MATERIALIZED_METADATA_DRIFT` (PG-Q) |
-| **Postgres execution** | Script **`npm run test:battery:v2:longitudinal-profile-materialization:postgres`** (ephemeral DB); **`LOCAL_EPHEMERAL_ONLY`** in standard PR CI (Vehicle Detail workflow wiring deferred — requires `i18n-governance-authority-change` label for `.github` edits) |
+| **REPOSITORY_SINGLE_SCIENTIFIC_SOURCE** | `insertIdempotent(input)` only — canonical UTF-8 derived from `input.scientificProfileJson` |
+| **Incoming fingerprint coherence** | Recompute SHA-256 before INSERT; `PROFILE_FINGERPRINT_PAYLOAD_MISMATCH` if inconsistent |
+| **Policy/contract identity tests** | Synthetic `*_V2_TEST` versions prove fingerprint namespace separation |
+| **Postgres execution** | Script **`npm run test:battery:v2:longitudinal-profile-materialization:postgres`** — **`LOCAL_EPHEMERAL_ONLY`**, **`D3_POSTGRES_CI_ENFORCED=NO`** (no `.github` workflow change in PR #1746) |
+| **D1 regression evidence** | `npm run test:battery:v2:longitudinal-input:postgres` — 5/5 on final head |
 
 ---
 

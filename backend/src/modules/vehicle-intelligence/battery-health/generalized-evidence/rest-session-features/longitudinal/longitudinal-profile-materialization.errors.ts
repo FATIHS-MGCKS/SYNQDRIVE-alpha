@@ -20,6 +20,17 @@ export class ProfileFingerprintCollisionOrCanonicalizationDriftError extends Err
   }
 }
 
+export class ProfileFingerprintPayloadMismatchError extends Error {
+  readonly code = 'PROFILE_FINGERPRINT_PAYLOAD_MISMATCH' as const;
+
+  constructor(
+    message = 'Supplied canonical profile fingerprint does not match scientificProfileJson payload',
+  ) {
+    super(message);
+    this.name = 'ProfileFingerprintPayloadMismatchError';
+  }
+}
+
 export class ProfileMaterializedMetadataDriftError extends Error {
   readonly code = 'PROFILE_MATERIALIZED_METADATA_DRIFT' as const;
 
