@@ -65,7 +65,10 @@ function mergeMetadata(
   return {
     ...incoming,
     reconcileVersion: (existing?.reconcileVersion ?? 0) + (changeKind === 'no_op' ? 0 : 1),
-    lastReconciledAt: reconciledAt.toISOString(),
+    lastReconciledAt:
+      changeKind === 'no_op'
+        ? (existing?.lastReconciledAt ?? incoming.lastReconciledAt)
+        : reconciledAt.toISOString(),
     changeHistory: history,
   };
 }

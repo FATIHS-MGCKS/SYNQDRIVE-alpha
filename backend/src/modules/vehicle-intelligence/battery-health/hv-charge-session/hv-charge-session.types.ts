@@ -24,8 +24,16 @@ export type HvChargeSessionChangeKind =
 export interface HvChargeSessionMetadata {
   providerSegmentFingerprint: string;
   durationSeconds: number | null;
+  durationProvenance?: string | null;
   lastReconciledAt: string;
   reconcileVersion: number;
+  isChargingObservedAny?: boolean | null;
+  isChargingObservedAll?: boolean | null;
+  cableConnectedObservedAny?: boolean | null;
+  cableConnectedObservedAll?: boolean | null;
+  socProvenance?: string | null;
+  currentEnergyProvenance?: string | null;
+  addedEnergyProvenance?: string | null;
   isChargingStart?: boolean | null;
   isChargingEnd?: boolean | null;
   cableConnectedStart?: boolean | null;
