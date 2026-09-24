@@ -4027,7 +4027,7 @@ export class TripDetectionOrchestrationService {
               routeDisplacementM,
               hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
               movementAuthority: routeMovement.movementAuthority,
-              cumulativeRouteMovementM: routeMovement.cumulativeRouteMovementM,
+              cumulativeRouteMovementM: routeMovement.cumulativeCredibleRouteMovementM,
             },
           );
           const qualityMeaningfulMovement = hasPersistedMeaningfulMovementForQuality({
@@ -4039,7 +4039,7 @@ export class TripDetectionOrchestrationService {
             QUALITY_WAYPOINT_COUNT: waypointCount,
             QUALITY_MEANINGFUL_MOVEMENT: qualityMeaningfulMovement,
             QUALITY_MOVEMENT_AUTHORITY: routeMovement.movementAuthority,
-            QUALITY_ROUTE_MOVEMENT_METERS: routeMovement.cumulativeRouteMovementM,
+            QUALITY_ROUTE_MOVEMENT_METERS: routeMovement.cumulativeCredibleRouteMovementM,
             QUALITY_DECISION: qualityCheck.shouldDiscard
               ? 'discard'
               : qualityCheck.shouldMergeWithPrevious

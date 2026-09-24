@@ -312,6 +312,139 @@ describe('BASE / PR1750-HEAD / FINAL proof harness', () => {
   });
 });
 
+describe('post-stop GPS spike robustness (Phase A controls)', () => {
+  const PARK_LAT = 50.9395;
+  const PARK_LON = 6.965;
+  /** ~35 m north — above TRIP_ROUTE_MOVEMENT_MIN_METERS. */
+  const SPIKE_LAT = PARK_LAT + 0.00032;
+
+  function realMotionUntilStop(): PersistedRouteWaypointForMovement[] {
+    return [
+      wp('2026-09-24T13:09:35.000Z', 50.937, 6.96, 25),
+      wp('2026-09-24T13:09:50.000Z', 50.9375, 6.961, 30),
+      wp('2026-09-24T13:10:05.000Z', 50.938, 6.962, 28),
+      wp('2026-09-24T13:10:21.390Z', 50.9385, 6.963, 22),
+      wp('2026-09-24T13:10:40.000Z', 50.939, 6.964, 18),
+      wp('2026-09-24T13:11:00.000Z', PARK_LAT, PARK_LON, 8),
+    ];
+  }
+
+  function withPostStopGpsSpike(
+    base: PersistedRouteWaypointForMovement[],
+  ): PersistedRouteWaypointForMovement[] {
+    return [
+      ...base,
+      wp('2026-09-24T13:11:30.000Z', PARK_LAT, PARK_LON, 0),
+      wp('2026-09-24T13:12:00.000Z', SPIKE_LAT, PARK_LON, 0),
+      wp('2026-09-24T13:12:10.000Z', PARK_LAT, PARK_LON, 0),
+    ];
+  }
+
+  it('CASE 1 — isolated post-stop GPS spike must not extend canonical end', () => {
+    const waypoints = withPostStopGpsSpike(realMotionUntilStop());
+    const analysis = analyzePersistedRouteMovement(waypoints, 'ICE');
+    const resolved = resolveFinalizeEndTime({
+      cusumSegmentEnd: null,
+      lastMeaningfulMovementAt: STALE_LMM,
+      latestCredibleMovementAt: analysis.latestCredibleMovementAt,
+      possibleEndAt: null,
+      tripStartTime: TRIP_START,
+      fallbackNow: new Date('2026-09-24T13:15:00.000Z'),
+    });
+
+    expect(analysis.latestCredibleMovementAt!.getTime()).toBeLessThanOrEqual(
+      PHYSICAL_STOP.getTime(),
+    );
+    expect(resolved.endTime.getTime()).toBeLessThanOrEqual(
+      PHYSICAL_STOP.getTime(),
+    );
+    expect(resolved.endTime.toISOString()).toBe(PHYSICAL_STOP.toISOString());
+  });
+
+  it('CASE 1b — spike-only tail must not prove meaningful movement', () => {
+    const parkedOnly = [
+      wp('2026-09-24T13:11:00.000Z', PARK_LAT, PARK_LON, 0),
+      wp('2026-09-24T13:11:30.000Z', PARK_LAT, PARK_LON, 0),
+      wp('2026-09-24T13:12:00.000Z', SPIKE_LAT, PARK_LON, 0),
+      wp('2026-09-24T13:12:10.000Z', PARK_LAT, PARK_LON, 0),
+    ];
+    const analysis = analyzePersistedRouteMovement(parkedOnly, 'ICE');
+    expect(analysis.hasMeaningfulMovement).toBe(false);
+    expect(
+      analysis.latestCredibleMovementAt == null ||
+        analysis.latestCredibleMovementAt.getTime() <=
+          new Date('2026-09-24T13:11:00.000Z').getTime(),
+    ).toBe(true);
+  });
+
+  it('CASE 2 — sustained coordinate-only progression remains usable', () => {
+    const baseLat = 50.937;
+    const baseLon = 6.96;
+    const step = 0.0003;
+    const sustained = [
+      wp('2026-09-24T13:10:00.000Z', baseLat, baseLon, 0),
+      wp('2026-09-24T13:10:20.000Z', baseLat + step, baseLon, 0),
+      wp('2026-09-24T13:10:40.000Z', baseLat + 2 * step, baseLon, 0),
+      wp('2026-09-24T13:11:00.000Z', baseLat + 3 * step, baseLon, 0),
+    ];
+    const analysis = analyzePersistedRouteMovement(sustained, 'ICE');
+    expect(analysis.hasMeaningfulMovement).toBe(true);
+    expect(analysis.latestCredibleMovementAt!.toISOString()).toBe(
+      '2026-09-24T13:11:00.000Z',
+    );
+  });
+
+  it('CASE 3 — speed-corroborated motion unchanged', () => {
+    const two = [
+      wp('2026-09-24T13:09:35.000Z', 50.937, 6.96, 15),
+      wp('2026-09-24T13:09:55.000Z', 50.938, 6.962, 18),
+    ];
+    expect(analyzePersistedRouteMovement(two, 'ICE').hasMeaningfulMovement).toBe(
+      true,
+    );
+  });
+
+  it('CASE 4 — loop return unchanged', () => {
+    const loop = [
+      wp('2026-09-24T13:09:35.000Z', 50.937, 6.96, 20),
+      wp('2026-09-24T13:09:50.000Z', 50.939, 6.96, 22),
+      wp('2026-09-24T13:10:05.000Z', 50.939, 6.963, 20),
+      wp('2026-09-24T13:10:20.000Z', 50.937, 6.963, 18),
+      wp('2026-09-24T13:10:35.000Z', 50.937, 6.96, 0),
+    ];
+    expect(analyzePersistedRouteMovement(loop, 'ICE').hasMeaningfulMovement).toBe(
+      true,
+    );
+  });
+
+  it('CASE 5 — tiny jitter unchanged', () => {
+    const jitter = [
+      wp('2026-09-24T13:09:35.000Z', 50.937, 6.96, 0),
+      wp('2026-09-24T13:09:40.000Z', 50.93701, 6.96001, 0),
+      wp('2026-09-24T13:09:45.000Z', 50.93702, 6.96002, 0),
+    ];
+    expect(analyzePersistedRouteMovement(jitter, 'ICE').hasMeaningfulMovement).toBe(
+      false,
+    );
+  });
+
+  it('CASE D — production repro still fixed with post-stop spike present', () => {
+    const waypoints = withPostStopGpsSpike(productionReproWaypoints());
+    const routeMovement = analyzePersistedRouteMovement(waypoints, 'ICE');
+    const quality = checkTripQuality(
+      STALE_LMM.getTime() - TRIP_START.getTime(),
+      null,
+      waypoints.length,
+      null,
+      TRIP_START,
+      {
+        hasMeaningfulPersistedRouteMovement: routeMovement.hasMeaningfulMovement,
+      },
+    );
+    expect(quality.shouldDiscard).toBe(false);
+  });
+});
+
 describe('checkTripQuality — persisted movement evidence controls', () => {
   it('control 4: distance >= 0.1 km still preserved', () => {
     expect(checkTripQuality(30_000, 0.15, 0, null, TRIP_START).shouldDiscard).toBe(
