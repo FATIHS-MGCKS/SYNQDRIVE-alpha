@@ -17,7 +17,7 @@
 
 ## Fix (implementation branch — not deployed)
 
-- **`analyzePersistedRouteMovement`** — reuses `findEarliestRouteActivityAt` semantics (`speedMotionKmh`, `TRIP_ROUTE_MOVEMENT_MIN_METERS` 25 m) plus cumulative path ≥ profile `odometerMinDeltaKm` (50 m). Waypoint count alone is not movement.
+- **`analyzePersistedRouteMovement`** — reuses `findEarliestRouteActivityAt` semantics (`speedMotionKmh`, `TRIP_ROUTE_MOVEMENT_MIN_METERS` 25 m). **Quality/end authority uses cumulative credible path** ≥ `odometerMinDeltaKm` (50 m); raw GPS path is observability-only. Coordinate-only motion requires sustained progression; isolated post-stop out-and-back spikes are excluded.
 - **`resolveFinalizeEndTime`** — CUSUM first, else max(LMM, **latest credible route movement**), never latest stationary waypoint.
 - **`checkTripQuality`** — `too_short_no_distance` defeated by credible persisted route movement independent of canonical duration.
 - FINALIZATION_CHECK `QUALITY_*` + `FINALIZE_END_*` forensics (non-authoritative).
