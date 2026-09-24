@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
+    version: '4.9.2101',
+    title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',
+    summary: [
+      'C0.4 CG-01: R1 historical OBD cannot support cold coolant + full throttle point-time conjunction.',
+      'COLD_ENGINE_FULL_THROTTLE added to R1 HF abuse containment set — future derivation suppressed; 326 persisted rows kept, omitted from customer event list.',
+      'Marker-aware read-time abuse counter adjustment for trips enriched under C0.3 v1 marker; misuse rules skip R1-only full-throttle evidence.',
+      'COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, and non-R1 families unchanged.',
+    ],
+    reason:
+      'Persisted R1 HF_DERIVED COLD_ENGINE_FULL_THROTTLE events exceeded KEC L1 ceiling at unified behaviour read strength while misuse was already capped.',
+    previousBehavior:
+      'R1 COLD_ENGINE_FULL_THROTTLE visible as SEVERE/WARNING abuse events; could open COLD_ENGINE_ABUSE misuse from full-throttle rows alone.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md; r1-temporal-containment.ts v2; no migration/backfill.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T21:45:00.000Z',
+  },
+  {
     id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
     version: '4.9.2100',
     title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',

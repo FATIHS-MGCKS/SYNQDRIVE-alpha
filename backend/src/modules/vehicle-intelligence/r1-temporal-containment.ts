@@ -17,19 +17,21 @@ import {
   type TelemetrySourceFamily,
 } from './telemetry-source-family';
 
-export const R1_TEMPORAL_CONTAINMENT_VERSION = 'r1-temporal-containment-v1';
+export const R1_TEMPORAL_CONTAINMENT_VERSION = 'r1-temporal-containment-v2';
 
 /** Marker attached to evidence / assessments whose timing rests on R1 historical OBD records. */
 export const R1_OBD_RECORD_TIME_UNCERTAIN = 'R1_HISTORICAL_OBD_RECORD_TIME_UNCERTAIN';
 
 /**
  * HF abuse event types whose claim depends on a point-in-time conjunction of R1
- * OBD records (Δv/Δt between records; RPM death while speed > threshold).
+ * OBD records (Δv/Δt between records; RPM death while speed > threshold;
+ * cold coolant + full throttle aligned on bucket-labelled samples — EXP-021 CG-01).
  */
 export const R1_CONTAINED_HF_ABUSE_EVENT_TYPES: readonly string[] = [
   'FULL_BRAKING',
   'POSSIBLE_IMPACT',
   'ENGINE_SHUTDOWN_WHILE_DRIVING',
+  'COLD_ENGINE_FULL_THROTTLE',
 ];
 
 const CONTAINED_SET = new Set(R1_CONTAINED_HF_ABUSE_EVENT_TYPES);
@@ -81,10 +83,49 @@ export function buildR1TemporalContainmentSummary(
   };
 }
 
+export interface R1TemporalContainmentSummaryMarker {
+  version: string;
+  containedEventTypes: string[];
+}
+
+export function parseR1TemporalContainmentSummary(
+  behaviorSummaryJson: unknown,
+): R1TemporalContainmentSummaryMarker | null {
+  if (behaviorSummaryJson == null || typeof behaviorSummaryJson !== 'object') return null;
+  const raw = (behaviorSummaryJson as Record<string, unknown>).r1TemporalContainment;
+  if (raw == null || typeof raw !== 'object') return null;
+  const marker = raw as Record<string, unknown>;
+  const types = marker.containedEventTypes;
+  if (!Array.isArray(types) || !types.every((t) => typeof t === 'string')) return null;
+  return {
+    version: typeof marker.version === 'string' ? marker.version : '',
+    containedEventTypes: types,
+  };
+}
+
 export function hasR1TemporalContainmentSummary(behaviorSummaryJson: unknown): boolean {
-  if (behaviorSummaryJson == null || typeof behaviorSummaryJson !== 'object') return false;
-  const marker = (behaviorSummaryJson as Record<string, unknown>).r1TemporalContainment;
-  return marker != null && typeof marker === 'object';
+  return parseR1TemporalContainmentSummary(behaviorSummaryJson) != null;
+}
+
+/**
+ * Persisted contained abuse rows still included in `VehicleTrip.abuseEvents` /
+ * related counters and therefore requiring read-time subtraction. Trips enriched
+ * under an older marker may already exclude earlier contained types in persisted
+ * counters while newer contained types (CG-01) still need adjustment.
+ */
+export function countContainedAbuseRowsForReadAdjustment(
+  rows: ReadonlyArray<{ eventType: string }>,
+  behaviorSummaryJson: unknown,
+): number {
+  const marker = parseR1TemporalContainmentSummary(behaviorSummaryJson);
+  const excludedFromPersistedCounters = new Set(marker?.containedEventTypes ?? []);
+  let count = 0;
+  for (const row of rows) {
+    if (!isR1ContainedHfAbuseEventType(row.eventType)) continue;
+    if (excludedFromPersistedCounters.has(row.eventType)) continue;
+    count += 1;
+  }
+  return count;
 }
 
 /**

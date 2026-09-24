@@ -95,7 +95,7 @@ describe('Misuse evidence tagging — R1 temporal containment (EXP-021 C0.3)', (
       temporalProvenance: 'R1_HISTORICAL_OBD_RECORD_TIME_UNCERTAIN',
     });
     expect(tagged.evidenceSummary?.r1TemporalContainment).toEqual({
-      version: 'r1-temporal-containment-v1',
+      version: 'r1-temporal-containment-v2',
       reason: 'R1_HISTORICAL_OBD_RECORD_TIME_UNCERTAIN',
       uncertainEvidenceCount: 2,
       independentEvidenceCount: 2,

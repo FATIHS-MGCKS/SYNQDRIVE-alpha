@@ -40,7 +40,7 @@ import {
 } from '../telemetry-source-family';
 import {
   containTripEventCounters,
-  hasR1TemporalContainmentSummary,
+  countContainedAbuseRowsForReadAdjustment,
   R1_CONTAINED_HF_ABUSE_EVENT_TYPES,
   shouldWithholdR1PersistedDrivingStressScore,
 } from '../r1-temporal-containment';
@@ -239,25 +239,34 @@ export class TripAnalyticsCanonicalService {
   private async countContainedAbuseEvents(
     scope: Prisma.TripBehaviorEventWhereInput,
   ): Promise<Map<string, number>> {
-    const rows = await this.prisma.tripBehaviorEvent.groupBy({
-      by: ['tripId'],
+    const rows = await this.prisma.tripBehaviorEvent.findMany({
       where: {
         ...scope,
         eventCategory: 'ABUSE',
         eventType: { in: [...R1_CONTAINED_HF_ABUSE_EVENT_TYPES] },
       },
-      _count: { _all: true },
+      select: { tripId: true, eventType: true },
     });
-    const counts = new Map(
-      rows.filter((row) => row._count._all > 0).map((row) => [row.tripId, row._count._all]),
-    );
-    if (counts.size === 0) return counts;
+    if (rows.length === 0) return new Map();
+    const tripIds = [...new Set(rows.map((r) => r.tripId))];
     const trips = await this.prisma.vehicleTrip.findMany({
-      where: { id: { in: [...counts.keys()] } },
+      where: { id: { in: tripIds } },
       select: { id: true, behaviorSummaryJson: true },
     });
-    for (const trip of trips) {
-      if (hasR1TemporalContainmentSummary(trip.behaviorSummaryJson)) counts.delete(trip.id);
+    const summaryByTrip = new Map(trips.map((t) => [t.id, t.behaviorSummaryJson]));
+    const byTrip = new Map<string, Array<{ eventType: string }>>();
+    for (const row of rows) {
+      const list = byTrip.get(row.tripId) ?? [];
+      list.push({ eventType: row.eventType });
+      byTrip.set(row.tripId, list);
+    }
+    const counts = new Map<string, number>();
+    for (const [tripId, eventRows] of byTrip) {
+      const adjusted = countContainedAbuseRowsForReadAdjustment(
+        eventRows,
+        summaryByTrip.get(tripId),
+      );
+      if (adjusted > 0) counts.set(tripId, adjusted);
     }
     return counts;
   }

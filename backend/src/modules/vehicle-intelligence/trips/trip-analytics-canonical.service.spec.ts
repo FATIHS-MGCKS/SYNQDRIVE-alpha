@@ -27,6 +27,7 @@ function makeMockPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
     },
     tripBehaviorEvent: {
+      findMany: jest.fn().mockResolvedValue([]),
       groupBy: jest.fn().mockResolvedValue([]),
     },
   } as any;
@@ -248,7 +249,10 @@ describe('TripAnalyticsCanonicalService', () => {
 
     it('removes FULL_BRAKING and contained HF abuse from R1 trip counters without writes', async () => {
       prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
-      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-1', _count: { _all: 2 } }]);
+      prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+        { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
+      ]);
       prisma.tripDrivingImpact.findMany.mockResolvedValue([
         {
           tripId: 'trip-1',
@@ -270,12 +274,19 @@ describe('TripAnalyticsCanonicalService', () => {
       expect(hydrated.canonicalTripSummary.scores.scoreSource).toBe(
         'r1_temporal_containment_unavailable',
       );
-      expect(prisma.tripBehaviorEvent.groupBy).toHaveBeenCalledWith(
+      expect(prisma.tripBehaviorEvent.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             tripId: { in: ['trip-1'] },
             eventCategory: 'ABUSE',
-            eventType: { in: ['FULL_BRAKING', 'POSSIBLE_IMPACT', 'ENGINE_SHUTDOWN_WHILE_DRIVING'] },
+            eventType: {
+              in: [
+                'FULL_BRAKING',
+                'POSSIBLE_IMPACT',
+                'ENGINE_SHUTDOWN_WHILE_DRIVING',
+                'COLD_ENGINE_FULL_THROTTLE',
+              ],
+            },
           }),
         }),
       );
@@ -296,16 +307,28 @@ describe('TripAnalyticsCanonicalService', () => {
         totalBrakingEvents: 6,
         abuseEvents: 3,
       });
-      expect(prisma.tripBehaviorEvent.groupBy).not.toHaveBeenCalled();
+      expect(prisma.tripBehaviorEvent.findMany).not.toHaveBeenCalled();
     });
 
     it('does not subtract preserved rows again for trips re-enriched under containment', async () => {
       prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
-      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-1', _count: { _all: 2 } }]);
+      prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+        { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
+      ]);
       prisma.vehicleTrip.findMany.mockResolvedValue([
         {
           id: 'trip-1',
-          behaviorSummaryJson: { r1TemporalContainment: { version: 'r1-temporal-containment-v1' } },
+          behaviorSummaryJson: {
+            r1TemporalContainment: {
+              version: 'r1-temporal-containment-v1',
+              containedEventTypes: [
+                'FULL_BRAKING',
+                'POSSIBLE_IMPACT',
+                'ENGINE_SHUTDOWN_WHILE_DRIVING',
+              ],
+            },
+          },
         },
       ]);
 
@@ -318,6 +341,36 @@ describe('TripAnalyticsCanonicalService', () => {
         totalBrakingEvents: 4,
         abuseEvents: 1,
       });
+    });
+
+    it('still subtracts CG-01 rows for trips with a v1 marker that predates COLD_ENGINE_FULL_THROTTLE containment', async () => {
+      prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
+      prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+        { tripId: 'trip-1', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-1', eventType: 'COLD_ENGINE_FULL_THROTTLE' },
+        { tripId: 'trip-1', eventType: 'COLD_ENGINE_FULL_THROTTLE' },
+      ]);
+      prisma.vehicleTrip.findMany.mockResolvedValue([
+        {
+          id: 'trip-1',
+          behaviorSummaryJson: {
+            r1TemporalContainment: {
+              version: 'r1-temporal-containment-v1',
+              containedEventTypes: [
+                'FULL_BRAKING',
+                'POSSIBLE_IMPACT',
+                'ENGINE_SHUTDOWN_WHILE_DRIVING',
+              ],
+            },
+          },
+        },
+      ]);
+
+      const [hydrated] = await service.hydrateTrips('org-1', [
+        tripWithFullBraking({ totalBrakingEvents: 4, fullBrakingEvents: 0, abuseEvents: 5 }),
+      ] as any);
+
+      expect(hydrated.canonicalTripSummary.events.abuseEvents).toBe(3);
     });
 
     it('leaves UNKNOWN-family (missing rawJson) counters untouched', async () => {
@@ -348,7 +401,10 @@ describe('TripAnalyticsCanonicalService', () => {
       });
       prisma.vehicleTrip.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
       prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
-      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([{ tripId: 'trip-a', _count: { _all: 2 } }]);
+      prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+        { tripId: 'trip-a', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-a', eventType: 'FULL_BRAKING' },
+      ]);
       prisma.vehicleTrip.findMany.mockResolvedValue([{ id: 'trip-a', behaviorSummaryJson: {} }]);
 
       const stats = await service.getVehicleStats('org-1', 'vehicle-1');
@@ -372,13 +428,30 @@ describe('TripAnalyticsCanonicalService', () => {
       prisma.tripDrivingImpact.aggregate.mockResolvedValue({ _avg: { drivingStressScore: null } });
       prisma.vehicleTrip.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
       prisma.vehicle.findMany.mockResolvedValue([{ id: 'vehicle-1', dimoVehicle: { rawJson: R1_RAW_JSON } }]);
-      prisma.tripBehaviorEvent.groupBy.mockResolvedValue([
-        { tripId: 'trip-a', _count: { _all: 4 } },
-        { tripId: 'trip-b', _count: { _all: 3 } },
+      prisma.tripBehaviorEvent.findMany.mockResolvedValue([
+        { tripId: 'trip-a', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-a', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-a', eventType: 'POSSIBLE_IMPACT' },
+        { tripId: 'trip-a', eventType: 'ENGINE_SHUTDOWN_WHILE_DRIVING' },
+        { tripId: 'trip-b', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-b', eventType: 'FULL_BRAKING' },
+        { tripId: 'trip-b', eventType: 'POSSIBLE_IMPACT' },
       ]);
       prisma.vehicleTrip.findMany.mockResolvedValue([
         { id: 'trip-a', behaviorSummaryJson: { abuseTotal: 5 } },
-        { id: 'trip-b', behaviorSummaryJson: { r1TemporalContainment: { version: 'v1' } } },
+        {
+          id: 'trip-b',
+          behaviorSummaryJson: {
+            r1TemporalContainment: {
+              version: 'r1-temporal-containment-v1',
+              containedEventTypes: [
+                'FULL_BRAKING',
+                'POSSIBLE_IMPACT',
+                'ENGINE_SHUTDOWN_WHILE_DRIVING',
+              ],
+            },
+          },
+        },
       ]);
 
       const stats = await service.getVehicleStats('org-1', 'vehicle-1');

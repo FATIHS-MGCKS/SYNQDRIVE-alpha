@@ -60,7 +60,7 @@ describe('Event context R1 temporal containment (EXP-021 C0.3)', () => {
     expect(out.contextQuality.contextConfidence).toBe('LOW');
     expect(out.confidence).toBe('LOW');
     expect(out.temporalContainment).toEqual({
-      version: 'r1-temporal-containment-v1',
+      version: 'r1-temporal-containment-v2',
       reason: 'R1_HISTORICAL_OBD_RECORD_TIME_UNCERTAIN',
     });
     expect(isTemporallyContainedContextAssessment(out)).toBe(true);

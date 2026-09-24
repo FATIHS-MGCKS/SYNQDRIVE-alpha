@@ -6,6 +6,7 @@ import {
   applyR1HfAbuseContainment,
   shouldWithholdR1PersistedDrivingStressScore,
   buildR1TemporalContainmentSummary,
+  countContainedAbuseRowsForReadAdjustment,
   hasR1TemporalContainmentSummary,
   containFullBrakingRate,
   containTripEventCounters,
@@ -63,6 +64,7 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
     { eventType: 'FULL_BRAKING' },
     { eventType: 'POSSIBLE_IMPACT' },
     { eventType: 'ENGINE_SHUTDOWN_WHILE_DRIVING' },
+    { eventType: 'COLD_ENGINE_FULL_THROTTLE' },
     { eventType: 'KICKDOWN' },
     { eventType: 'COLD_ENGINE_HIGH_RPM' },
     { eventType: 'FULL_BRAKING' },
@@ -75,6 +77,7 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
       FULL_BRAKING: 2,
       POSSIBLE_IMPACT: 1,
       ENGINE_SHUTDOWN_WHILE_DRIVING: 1,
+      COLD_ENGINE_FULL_THROTTLE: 1,
     });
   });
 
@@ -88,12 +91,17 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
     expect(isContainedHfAbuseEvent('RUPTELA_R1', 'ABUSE', 'FULL_BRAKING')).toBe(true);
     expect(isContainedHfAbuseEvent('RUPTELA_R1', 'BRAKING', 'FULL_BRAKING')).toBe(false);
     expect(isContainedHfAbuseEvent('RUPTELA_R1', 'ABUSE', 'KICKDOWN')).toBe(false);
+    expect(isContainedHfAbuseEvent('RUPTELA_R1', 'ABUSE', 'COLD_ENGINE_FULL_THROTTLE')).toBe(true);
     expect(isContainedHfAbuseEvent('API_SYNTHETIC', 'ABUSE', 'FULL_BRAKING')).toBe(false);
+    expect(isContainedHfAbuseEvent('API_SYNTHETIC', 'ABUSE', 'COLD_ENGINE_FULL_THROTTLE')).toBe(
+      false,
+    );
     expect(isContainedHfAbuseEvent('UNKNOWN', 'ABUSE', 'ENGINE_SHUTDOWN_WHILE_DRIVING')).toBe(false);
     expect([...R1_CONTAINED_HF_ABUSE_EVENT_TYPES]).toEqual([
       'FULL_BRAKING',
       'POSSIBLE_IMPACT',
       'ENGINE_SHUTDOWN_WHILE_DRIVING',
+      'COLD_ENGINE_FULL_THROTTLE',
     ]);
   });
 
@@ -132,8 +140,13 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
     const marker = buildR1TemporalContainmentSummary('RUPTELA_R1');
     expect(marker).toEqual({
       r1TemporalContainment: {
-        version: 'r1-temporal-containment-v1',
-        containedEventTypes: ['FULL_BRAKING', 'POSSIBLE_IMPACT', 'ENGINE_SHUTDOWN_WHILE_DRIVING'],
+        version: 'r1-temporal-containment-v2',
+        containedEventTypes: [
+          'FULL_BRAKING',
+          'POSSIBLE_IMPACT',
+          'ENGINE_SHUTDOWN_WHILE_DRIVING',
+          'COLD_ENGINE_FULL_THROTTLE',
+        ],
       },
     });
     expect(buildR1TemporalContainmentSummary('API_SYNTHETIC')).toBeNull();
@@ -141,6 +154,41 @@ describe('HF abuse containment helpers (EXP-021 C0.3)', () => {
     expect(hasR1TemporalContainmentSummary({ abuseTotal: 1, ...marker })).toBe(true);
     expect(hasR1TemporalContainmentSummary({ abuseTotal: 1 })).toBe(false);
     expect(hasR1TemporalContainmentSummary(null)).toBe(false);
+  });
+
+  it('counts only contained rows still reflected in persisted counters (marker-aware)', () => {
+    const v1Marker = {
+      r1TemporalContainment: {
+        version: 'r1-temporal-containment-v1',
+        containedEventTypes: [
+          'FULL_BRAKING',
+          'POSSIBLE_IMPACT',
+          'ENGINE_SHUTDOWN_WHILE_DRIVING',
+        ],
+      },
+    };
+    expect(
+      countContainedAbuseRowsForReadAdjustment(
+        [
+          { eventType: 'FULL_BRAKING' },
+          { eventType: 'COLD_ENGINE_FULL_THROTTLE' },
+          { eventType: 'COLD_ENGINE_FULL_THROTTLE' },
+        ],
+        v1Marker,
+      ),
+    ).toBe(2);
+    expect(
+      countContainedAbuseRowsForReadAdjustment(
+        [{ eventType: 'FULL_BRAKING' }, { eventType: 'FULL_BRAKING' }],
+        v1Marker,
+      ),
+    ).toBe(0);
+    expect(
+      countContainedAbuseRowsForReadAdjustment(
+        [{ eventType: 'COLD_ENGINE_FULL_THROTTLE' }],
+        null,
+      ),
+    ).toBe(1);
   });
 
   it('recomputes trip counters without FULL_BRAKING and contained abuse', () => {
@@ -187,6 +235,31 @@ describe('Detector + containment regression (EXP-021 C0.3)', () => {
     const r1 = applyR1HfAbuseContainment(detected, 'RUPTELA_R1');
     expect(r1.kept.some((e) => e.eventType === 'ENGINE_SHUTDOWN_WHILE_DRIVING')).toBe(false);
     expect(r1.suppressedByType.ENGINE_SHUTDOWN_WHILE_DRIVING).toBeGreaterThanOrEqual(1);
+  });
+
+  it('R1 bucket-labelled cold coolant + full throttle cannot create COLD_ENGINE_FULL_THROTTLE (CG-01)', () => {
+    const seg: CleanHfPoint[] = [];
+    for (let i = 0; i < 5; i++) {
+      seg.push({
+        ts: BASE + i * 1000,
+        speedKmh: 55,
+        speedMs: 55 / 3.6,
+        coolantC: 42,
+        rpm: 2800,
+        throttlePct: 96,
+        loadPct: null,
+        tractionBatteryPowerKw: null,
+      } as CleanHfPoint);
+    }
+    const detected = detectAbuseEvents(seg, ICE);
+    expect(detected.some((e) => e.eventType === 'COLD_ENGINE_FULL_THROTTLE')).toBe(true);
+
+    const r1 = applyR1HfAbuseContainment(detected, 'RUPTELA_R1');
+    expect(r1.kept.some((e) => e.eventType === 'COLD_ENGINE_FULL_THROTTLE')).toBe(false);
+    expect(r1.suppressedByType.COLD_ENGINE_FULL_THROTTLE).toBeGreaterThanOrEqual(1);
+
+    const synthetic = applyR1HfAbuseContainment(detected, 'API_SYNTHETIC');
+    expect(synthetic.kept.some((e) => e.eventType === 'COLD_ENGINE_FULL_THROTTLE')).toBe(true);
   });
 
   it('R1 point deceleration cannot create FULL_BRAKING or POSSIBLE_IMPACT', () => {

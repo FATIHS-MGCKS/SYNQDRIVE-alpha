@@ -71,11 +71,12 @@ const behaviorEvents = [
   behaviorRow('b-fb', 'ABUSE', 'FULL_BRAKING', 0),
   behaviorRow('b-imp', 'ABUSE', 'POSSIBLE_IMPACT', 30),
   behaviorRow('b-esd', 'ABUSE', 'ENGINE_SHUTDOWN_WHILE_DRIVING', 60),
+  behaviorRow('b-ceft', 'ABUSE', 'COLD_ENGINE_FULL_THROTTLE', 75),
   behaviorRow('b-kd', 'ABUSE', 'KICKDOWN', 90),
 ];
 
 describe('Unified behaviour read-model — R1 temporal containment (EXP-021 C0.3)', () => {
-  it('omits persisted R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN rows from presentation', () => {
+  it('omits persisted R1 contained HF abuse rows (incl. CG-01 COLD_ENGINE_FULL_THROTTLE) from presentation', () => {
     const events = buildUnifiedBehaviorEvents({
       behaviorEvents,
       drivingEvents: [],
@@ -126,7 +127,14 @@ describe('Unified behaviour read-model — R1 temporal containment (EXP-021 C0.3
         tripId: 't1',
         telemetrySourceFamily: family,
       });
-      expect(events.map((e) => e.id).sort()).toEqual(['b-esd', 'b-fb', 'b-imp', 'b-kd', 'de-1']);
+      expect(events.map((e) => e.id).sort()).toEqual([
+        'b-ceft',
+        'b-esd',
+        'b-fb',
+        'b-imp',
+        'b-kd',
+        'de-1',
+      ]);
       const native = events.find((e) => e.id === 'de-1')!;
       expect(native.maxEngineRpm).toBe(4200);
       expect(native.legacyIngestEvidence).toEqual({ rpm: 4200, throttlePct: 88, coolantC: 41 });
