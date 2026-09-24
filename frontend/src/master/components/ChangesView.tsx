@@ -36,25 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-m3-3d-d4-longitudinal-integrity-inspection-v1-2026-09-24',
-    version: '4.9.2100',
-    title: 'Battery V2 M3.3D D4 — Longitudinal integrity inspection V1 (read-only)',
-    summary: [
-      'Internal LongitudinalIntegrityInspectionService (`M3_3D_D4_INTEGRITY_INSPECTION_V1`) over materialized profile revisions + bounded C3 source batch.',
-      'Strict scientific profile parser (D2 invariants, no window.profileGeneratedAt); D4 historical input-summary registry for M3_3C_FEATURE_INPUT_V1.',
-      'RepeatableRead repository batch ≤4 SQL round trips; no Nest/API/migration/flags; D3_RUNTIME_REACHABLE unchanged NO.',
-    ],
-    reason:
-      'Frozen D4 architecture engineering slice — trust overlay for materialized longitudinal evidence without production materialization activation.',
-    previousBehavior:
-      'D4 architecture only on main; no inspectRevision implementation or postgres CI harness.',
-    details:
-      'architecture/battery-v2/research/M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ENGINEERING_2026-09-24.md; backend/.../longitudinal/longitudinal-integrity-inspection.*; npm run test:battery:v2:longitudinal-integrity-inspection:postgres',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-24T16:55:00.000Z',
-  },
-  {
     id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
     version: '4.9.2099',
     title: 'Trip FSM — post-split short-trip finalize quality gate',
