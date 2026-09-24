@@ -46,9 +46,17 @@ Pre-E4 periodic reconciliation selected fallback-capable vehicles using **`hv.is
 - Max wait ticks (worst case): `partitionCount × ceil(eligibleCount / batchSize)`.
 - PostgreSQL gate proves SOC+`hv.charging_power` eligible, SOC+`hv.current_power` only ineligible, and 109+ vehicle fleet coverage.
 
+## E4.2 BullMQ + Redis liveness (2026-09-24, PR #1749)
+
+- Real BullMQ `Queue` / `Worker` / `QueueEvents` on Redis (`erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`).
+- CI: job **ERD E4 postgres+redis liveness** → `scripts/test/erd-e4-bullmq-redis-ci.sh` with `TEST_REDIS_PORT`.
+- Boundary-repair step 6 remains PostgreSQL-only (no Redis service).
+
+## Validation
 
 - Unit: eligibility, fairness, idempotency policy, producer flag-off
-- CI gate step 6: `ERD_E4_POSTGRES_REDIS_INTEGRATION=1` → `erd-e4-reconciliation-liveness*.spec.ts`
+- CI Postgres gate (boundary repair step 6): `ERD_E4_POSTGRES_REDIS_INTEGRATION=1` → postgres integration specs only
+- CI Redis/BullMQ gate: `ERD_E4_BULLMQ_REDIS_INTEGRATION=1` + `TEST_REDIS_PORT` → bullmq redis integration spec
 - E3 postgres gate (step 5) unchanged
 
 ## Reconciliation window

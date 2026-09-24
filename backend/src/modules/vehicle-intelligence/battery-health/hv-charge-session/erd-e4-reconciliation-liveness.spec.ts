@@ -1,9 +1,11 @@
 /**
- * ERD E4 reconciliation / recovery liveness gate (unit + optional Postgres/Redis).
+ * ERD E4 reconciliation / recovery liveness gate (unit + optional Postgres / BullMQ+Redis).
  *
  * Env:
- * - ERD_E4_POSTGRES_REDIS_INTEGRATION=1 + DATABASE_URL → Postgres target-query proofs
- * - REDIS_URL → BullMQ duplicate-enqueue idempotency (optional)
+ * - ERD_E4_POSTGRES_REDIS_INTEGRATION=1 + DATABASE_URL → Postgres target-query proofs (boundary-repair CI step 6)
+ * - ERD_E4_BULLMQ_REDIS_INTEGRATION=1 + TEST_REDIS_PORT → real BullMQ + Redis gate (erd-e4-bullmq-redis-ci.sh)
+ *
+ * Note: ERD_E4_POSTGRES_REDIS_INTEGRATION does not provide Redis; name is historical.
  */
 import { getBatteryV2JobRetryPolicy } from '../jobs/battery-v2-job.retry-policy';
 import { buildHvRechargePeriodicPeriodBucket } from './hv-recharge-session-reconcile.policy';

@@ -84,6 +84,7 @@
     "test:vehicle-detail:verify": "bash scripts/test/vehicle-detail-backend-verify.sh all",
     "test:vehicle-detail:verify:unit": "bash scripts/test/vehicle-detail-backend-verify.sh unit",
     "test:boundary-repair:postgres": "bash scripts/test/boundary-repair-postgres-ci.sh",
+    "test:erd-e4:bullmq-redis": "bash scripts/test/erd-e4-bullmq-redis-ci.sh",
     "test:erd:e2:native:postgres:ci": "ERD_E2_POSTGRES_INTEGRATION=1 ERD_E2_POSTGRES_REQUIRED=1 jest hv-charge-session-native.postgres.integration --runInBand --verbose",
     "test:physical-state:postgres": "PHYSICAL_STATE_POSTGRES_INTEGRATION=1 jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\\.integration' --runInBand",
     "test:physical-state:migration": "bash scripts/test/physical-state-migration-test.sh",

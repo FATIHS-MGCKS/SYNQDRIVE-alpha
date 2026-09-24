@@ -149,6 +149,45 @@ jobs:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
           BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
 
+  erd-e4-postgres-redis-liveness:
+    name: ERD E4 postgres+redis liveness
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install Redis (isolated test instance)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y redis-server
+          redis-server --port 56379 --bind 127.0.0.1 --save "" --appendonly no --daemonize yes
+          redis-cli -p 56379 ping
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:erd-e4:bullmq-redis
+        working-directory: backend
+        env:
+          TEST_REDIS_PORT: '56379'
+          ERD_E4_BULLMQ_REDIS_INTEGRATION: '1'
+
   frontend-component:
     name: Frontend component tests
     needs: install-lockfile

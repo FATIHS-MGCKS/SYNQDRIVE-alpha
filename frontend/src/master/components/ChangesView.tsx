@@ -13155,6 +13155,23 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T16:00:00.000Z',
   },
   {
+    id: 'erd-e4-2-bullmq-redis-liveness-2026-09-24',
+    version: '4.9.904',
+    title: 'ERD E4.2 — real BullMQ + Redis liveness proof',
+    summary: [
+      'Real BullMQ Queue/Worker/QueueEvents on Redis for HV_RECHARGE_SESSION_RECONCILE periodic idempotency, next-bucket recovery, lost-job rediscovery, and retry transitions.',
+      'Dedicated CI job ERD E4 postgres+redis liveness (TEST_REDIS_PORT); boundary-repair step 6 stays PostgreSQL-only.',
+    ],
+    reason: 'Close evidence gap: ERD_E4_POSTGRES_REDIS_INTEGRATION did not exercise Redis.',
+    previousBehavior:
+      'No Redis in boundary-repair CI; duplicate/recovery semantics documented but not proven against real BullMQ state.',
+    details:
+      'erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts, scripts/test/erd-e4-bullmq-redis-ci.sh, .github/workflows/vehicle-detail-production-readiness.yml',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:05:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

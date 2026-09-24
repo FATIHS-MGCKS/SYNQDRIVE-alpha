@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-24 — ERD E4.2 real BullMQ + Redis liveness proof
+
+- `erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`; CI job ERD E4 postgres+redis liveness
+- Boundary-repair step 6 explicitly Postgres-only; Redis gate separate
+
 ## 2026-09-24 — ERD E4.1 signal authority + bounded partition fairness
 
 - Evidence append: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md` (E4.1 section)
