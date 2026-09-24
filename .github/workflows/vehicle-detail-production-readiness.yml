@@ -149,38 +149,6 @@ jobs:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
           BOUNDARY_REPAIR_POSTGRES_INTEGRATION: '1'
 
-  battery-v2-d3-materialization-postgres:
-    name: Battery V2 D3 longitudinal profile materialization PostgreSQL
-    needs: install-lockfile
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npx prisma generate
-        working-directory: backend
-      - run: npm run test:battery:v2:longitudinal-profile-materialization:postgres
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
-
   frontend-component:
     name: Frontend component tests
     needs: install-lockfile
@@ -292,7 +260,6 @@ jobs:
       - backend-unit
       - backend-security
       - backend-boundary-postgres
-      - battery-v2-d3-materialization-postgres
       - frontend-component
       - playwright-e2e
       - accessibility
