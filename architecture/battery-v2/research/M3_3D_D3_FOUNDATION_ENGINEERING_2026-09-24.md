@@ -1,10 +1,12 @@
 # M3.3D D3 — Foundation engineering (append-only materialization)
 
 **Date:** 2026-09-24  
-**Status:** **ENGINEERING DRAFT PR** (not on main until merge)  
-**Architecture baseline:** PR #1744 @ `7919bdd5c` · post-merge seal PR #1745 @ `b62cc2c19`  
+**Status:** **COMPLETE ON MAIN** — merged PR #1746 @ merge `c5c1129f62e11eb68c8fc6566fd7fecef376743b` (PR head `944a6839ed18dd57244897924d72ac49b9a968a2`)  
+**Architecture baseline:** PR #1744 @ `7919bdd5c` · D3.1 persistence contract · post-merge seals PR #1745 @ `b62cc2c19`  
 **Scope:** Prisma + migration + scientific projection + fingerprint + repository + internal service + tests  
-**Reachability:** **`D3_RUNTIME_REACHABLE=NO`** — service **not** registered in Nest modules  
+**Reachability:** **`D3_SERVICE_CODE_EXISTS=YES`** · **`D3_RUNTIME_REACHABLE=NO`** — service **not** registered in Nest modules  
+
+**Next phase:** **M3.3D D4 engineering** (architecture **COMPLETE ON MAIN** PR #1751 @ `158f9c516f`; not M3.3F — production materialization authorization remains later).
 
 ---
 
@@ -22,56 +24,113 @@
 | Internal service | `longitudinal-profile-materialization.service.ts` |
 | Unit tests | `longitudinal-profile-fingerprint.spec.ts`, `*.mapper/repository/service.spec.ts` |
 | Postgres integration | `longitudinal-profile-materialization.integration.spec.ts` (`BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_INTEGRATION=1`) |
-| Ephemeral Postgres CI | `backend/scripts/test/battery-longitudinal-profile-materialization-postgres-ci.sh` → `npm run test:battery:v2:longitudinal-profile-materialization:postgres` |
+| Ephemeral Postgres runner | `backend/scripts/test/battery-longitudinal-profile-materialization-postgres-ci.sh` → `npm run test:battery:v2:longitudinal-profile-materialization:postgres` |
 
 ---
 
-## Foundation hardening (PR #1746 amend)
+## Source of truth
 
-| Contract | Implementation |
-|----------|----------------|
-| **`PERSISTENCE_SINGLE_DERIVATION_SOURCE=YES`** | `buildLongitudinalProfileMaterializationPersistenceInput(fingerprint)` derives JSON + metadata from `fingerprint.scientificProjection` only |
-| **`READ_COMMITTED_EXPLICIT=YES`** | `insertIdempotent()` uses `Prisma.TransactionIsolationLevel.ReadCommitted` |
-| **Application fingerprint validation** | Repository validates `/^[0-9a-f]{64}$/` before INSERT (`INVALID_PROFILE_FINGERPRINT`) |
-| **DB CHECK matrix (PG-B)** | Reject uppercase / 63 / 65 / non-hex; accept 64 lowercase hex |
-| **Full metadata mirror (PG-O)** | All mirrored columns verified vs persistence input + canonical UTF-8 equivalence |
-| **Duplicate metadata drift** | EXISTING path throws `PROFILE_MATERIALIZED_METADATA_DRIFT` (PG-Q) |
-| **REPOSITORY_SINGLE_SCIENTIFIC_SOURCE** | `insertIdempotent(input)` only — canonical UTF-8 derived from `input.scientificProfileJson` |
-| **Incoming fingerprint coherence** | Recompute SHA-256 before INSERT; `PROFILE_FINGERPRINT_PAYLOAD_MISMATCH` if inconsistent |
-| **Policy/contract identity tests** | Synthetic `*_V2_TEST` versions prove fingerprint namespace separation |
-| **Postgres execution** | Script **`npm run test:battery:v2:longitudinal-profile-materialization:postgres`** — **`LOCAL_EPHEMERAL_ONLY`**, **`D3_POSTGRES_CI_ENFORCED=NO`** (no `.github` workflow change in PR #1746) |
-| **D1 regression evidence** | `npm run test:battery:v2:longitudinal-input:postgres` — 5/5 on final head |
+Persisted C3 → D1 → D2 → D3 projection / fingerprint / persistence only.
+
+D3 materialized revisions are **DERIVED**, **REPRODUCIBLE**, **APPEND_ONLY**, **REBUILDABLE**. D3 is **not** a second scientific computation authority.
 
 ---
 
-## Authority preserved
+## Schema authority (merged)
 
-- Source chain: C3 → D1 reader → D2 assembler → D3 projection/fingerprint/persist only  
-- **`CANONICAL_SCIENTIFIC_PROFILE_PROJECTION`** fingerprint (omit `window.profileGeneratedAt` by property removal)  
-- **`CANONICAL_SCIENTIFIC_UTF8_STORED=NO`** — compare via `canonicalFeatureInputUtf8`  
-- Postgres idempotency: **`INSERT … ON CONFLICT DO NOTHING RETURNING`** + canonical UTF-8 verify  
-- **`DELETE_CASCADE_POLICY=ORG_AND_VEHICLE_CASCADE__NO_C3_ROW_CASCADE`**  
-- No sequential revision number, no current pointer, no C3 row FK  
+| Field | Contract |
+|-------|----------|
+| Model / table | `BatteryLongitudinalProfileRevision` / `battery_longitudinal_profile_revisions` |
+| Fingerprint column | SHA-256 lowercase hex, exactly 64 chars — `@db.Char(64)` + DB CHECK `^[0-9a-f]{64}$` |
+| Scientific unique identity | `organizationId` + `vehicleId` + `longitudinalProfileContractVersion` + `profilePolicyVersion` + `canonicalProfileFingerprint` |
+| Forbidden in V1 | sequential revision number, current pointer, normalized child tables, direct C3/rest-session FK |
+| Delete semantics | **`DELETE_CASCADE_POLICY=ORG_AND_VEHICLE_CASCADE__NO_C3_ROW_CASCADE`** |
 
 ---
 
-## Golden vectors
+## Scientific projection / fingerprint
+
+| Invariant | Value |
+|-----------|--------|
+| Fingerprint authority | **`CANONICAL_SCIENTIFIC_PROFILE_PROJECTION`** |
+| Algorithm | (1) `M3_3D_LONGITUDINAL_PROFILE_V1` → (2) omit `window.profileGeneratedAt` by property removal → (3) `canonicalFeatureInputUtf8(scientificProjection)` → (4) `sha256HexLowercaseUtf8(...)` |
+| `profileGeneratedAt` | **Not** in scientific fingerprint |
+| `scientificProfileJson` | JSONB semantic payload; raw JSONB bytes **not** canonical authority |
+| Canonical comparison | `canonicalFeatureInputUtf8(storedJson)` |
+| Stored canonical UTF-8 column | **NO** (`CANONICAL_SCIENTIFIC_UTF8_STORED=NO`) |
+
+---
+
+## Single-source persistence contract (final)
+
+**Mapper:** `buildLongitudinalProfileMaterializationPersistenceInput(fingerprint)` — all mirror metadata + `scientificProfileJson` from `fingerprint.scientificProjection` only.
+
+**Repository:** `insertIdempotent(input)` — does **not** accept external canonical UTF-8.
+
+Before INSERT:
+
+1. Validate fingerprint format `/^[0-9a-f]{64}$/` → else `INVALID_PROFILE_FINGERPRINT`
+2. `incomingCanonicalUtf8 = canonicalFeatureInputUtf8(input.scientificProfileJson)`
+3. Recompute SHA-256; require match → else **`PROFILE_FINGERPRINT_PAYLOAD_MISMATCH`**
+
+**Multi-replica idempotency:** explicit **`READ COMMITTED`**; DB unique constraint is correctness authority; `INSERT … ON CONFLICT DO NOTHING RETURNING`.
+
+On EXISTING path after canonical JSON equality:
+
+- mismatch stored vs incoming canonical JSON → **`PROFILE_FINGERPRINT_COLLISION_OR_CANONICALIZATION_DRIFT`**
+- mismatch mirror metadata → **`PROFILE_MATERIALIZED_METADATA_DRIFT`**
+- conflict with no row → **`PROFILE_IDEMPOTENCY_CONFLICT_ROW_NOT_FOUND`**
+
+No Redis lock, no Serializable requirement, no in-place update/repair of immutable revisions.
+
+---
+
+## Final test evidence (PR #1746)
+
+| Suite | Result |
+|-------|--------|
+| D3 unit specs | PASS |
+| D3 PostgreSQL (ephemeral script) | PASS |
+| D1 unit | 36/36 PASS |
+| D1 PostgreSQL | 5/5 PASS |
+| D2 assembler | 37/37 PASS |
+| Final merge-gate PR head | `944a6839ed18dd57244897924d72ac49b9a968a2` |
+| Final PR GitHub CI | 46/46 SUCCESS; 0 pending; 0 failed |
+
+**Postgres execution mode:** **`D3_POSTGRES_EXECUTION_MODE=LOCAL_EPHEMERAL_ONLY`** · **`D3_POSTGRES_CI_ENFORCED=NO`** (safe script + package entrypoint exist; no `.github` workflow job added for D3 PG suite).
+
+---
+
+## Golden vectors (sealed)
 
 | Vector | Value |
 |--------|-------|
-| C3 key-order SHA-256 | `e7b6e05a14a7bece2b8568b716d7dfc2ff360507b7a9f308c5771f648fd8dff3` (unchanged) |
+| C3 key-order SHA-256 | `e7b6e05a14a7bece2b8568b716d7dfc2ff360507b7a9f308c5771f648fd8dff3` |
 | D3 two-DEFAULT fixture fingerprint | `e2d39c602370c92a7b4304d01ee0f0d102aa4ce033c38a03f72187a3afbcaecb` |
 
 ---
 
-## Non-effects (this slice)
+## Runtime boundary (still sealed)
 
-No Nest provider registration, no feature flag, no C3 hook, no scheduler/worker/API/UI, no production deploy, **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F**.
+| Gate | Value |
+|------|-------|
+| `D3_NEST_PROVIDER_REGISTERED` | **NO** |
+| `D3_MODULE_EXPORTED` | **NO** |
+| `D3_RUNTIME_CALL_SITES` | **0** (implementation + tests only) |
+| Feature flag / trigger / C3 hook / scheduler / queue / API | **NO** |
+| `PRODUCTION_MATERIALIZATION_READY` | **NO** until **M3.3F** |
+
+---
+
+## Open decisions (unchanged)
+
+`RETENTION_POLICY=DECISION_REQUIRED` · `MATERIALIZATION_FLAG_NAME=DECISION_REQUIRED` · `M3_3F_WIRING_STATUS=PENDING` · `DEC-M3.3D-001=DECISION_REQUIRED`
 
 ---
 
 ## Boundaries
 
-- **D4:** no digest/rebuildability enforcement on persist  
-- **M3.3E:** no health/SOH/risk  
-- **M3.3F:** required before any production materialization trigger or module registration  
+- **D4 architecture (complete on main):** digest/revision/source-evidence integrity inspection contract — **not** production materialization activation  
+- **D4 engineering (next):** read-only inspection service implementation  
+- **M3.3E:** health/SOH/risk/confidence — pending  
+- **M3.3F:** explicit future authorization for Nest registration, materialization flag, triggers, production shadow materialization  

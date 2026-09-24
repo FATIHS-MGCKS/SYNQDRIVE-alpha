@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-24 (M3.3C C1–C5B + M3.3D D0/D0.1/D1/D2/D3 architecture on main; D3 merge PR #1744 @ `7919bdd5c`; D2 merge PR #1739 @ `ed7adb79b`; D1 merge PR #1737 @ `9577e0f14`; production runtime baseline unchanged `2b0ef15f`)
+**Snapshot date:** 2026-09-24 (M3.3C C1–C5B + M3.3D D0/D0.1/D1/D2/D3 architecture + **D3 foundation on main**; D3 merge PR #1746 @ `c5c1129f`; D3 architecture merge PR #1744 @ `7919bdd5c`; D2 merge PR #1739 @ `ed7adb79b`; D1 merge PR #1737 @ `9577e0f14`; production runtime baseline unchanged `2b0ef15f`)
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -54,13 +54,14 @@
 | **M3.3D D2 (engineering)** | Deterministic longitudinal profile assembly (`M3_3D_LONGITUDINAL_PROFILE_V1` / `M3_3D_PROFILE_POLICY_V1` from D1 inventory) — **COMPLETE ON MAIN** merged PR #1739 @ `ed7adb79b50d28663fd64a2e856f1f615bece046` (PR head `55357add3`) — `research/M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
 | **M3.3D D3 (architecture)** | Profile materialization / persistence architecture audit — **COMPLETE ON MAIN** merged PR #1744 @ `7919bdd5ce9f9128810c83627b0bc9995d99a16b` (PR head `0e7ea2884`) — `research/M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
 | **M3.3D D3.1 (architecture)** | Persistence-contract closure (Postgres idempotency, JSONB semantics, fingerprint `Char(64)`, FK/cascade, foundation readiness) — **COMPLETE ON MAIN** (same merge @ `7919bdd5c`) |
-| **M3.3D D3 foundation** | Prisma `BatteryLongitudinalProfileRevision` + migration + internal idempotent materialization stack — **ENGINEERING ON DRAFT PR #1746** (not complete on main); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md` |
-| **M3.3C roadmap (planning)** | **M3.3D D3 foundation merge** → **M3.3D D4+** pending · **M3.3E–H** pending |
-| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2/D3 architecture on main**; **D3 foundation engineering in flight**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3D D3 foundation** | Prisma `BatteryLongitudinalProfileRevision` + migration + internal idempotent materialization stack — **COMPLETE ON MAIN** merged PR #1746 @ merge `c5c1129f62e11eb68c8fc6566fd7fecef376743b` (PR head `944a6839ed18dd57244897924d72ac49b9a968a2`); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md` |
+| **M3.3D D4 (architecture)** | Longitudinal integrity / inspection architecture — **COMPLETE ON MAIN** merged PR #1751 @ merge `158f9c516fe4be55f4ef8d3e9cb4c5df02333074` (PR head `e77ac83e94a746070eca9bfdc9ef88a7d23da8b4`); **`D4_IMPLEMENTATION_READY=YES`**; **`D4_ENGINEERING_IMPLEMENTED=NO`** — `research/M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` |
+| **M3.3C roadmap (planning)** | **M3.3D D4 engineering** → **M3.3E–H** pending |
+| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2/D3 architecture + D3 foundation + D4 architecture on main**; **M3.3D D4 engineering next**; **M3.3E–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3D D3 foundation engineering** (draft PR — schema/migration/internal service, not production-reachable); D3 runtime materialization **NOT PRODUCTION AUTHORIZED**; D4+ / M3.3E / M3.3F / M3.3G / M3.3H **pending** |
+| `NEXT_PHASE` | **M3.3D D4 engineering** — read-only integrity inspection service (`M3_3D_D4_INTEGRITY_INSPECTION_V1`); **not** production D3 materialization (**M3.3F** remains later); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**; M3.3E / M3.3F / M3.3G / M3.3H **pending** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

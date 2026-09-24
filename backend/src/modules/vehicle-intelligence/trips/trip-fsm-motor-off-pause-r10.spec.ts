@@ -15,6 +15,7 @@ import {
 import { END_DETECTION_MODES, TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 import { hasActivityResumed } from './trip-evidence.helpers';
 import { EndContinuityDetector } from './detectors/end-continuity.detector';
 import { DETECTION_PHASES } from './detectors/detector.interfaces';
@@ -199,6 +200,11 @@ describe('R10 processFinalize — consumer guards + true end completion', () => 
           },
           vehicleTripWaypoint: {
             findFirst: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue(
+              defaultFinalizeHarnessRouteWaypoints(
+                new Date('2026-09-08T04:33:00.000Z'),
+              ),
+            ),
             count: jest.fn().mockResolvedValue(10),
           },
         },

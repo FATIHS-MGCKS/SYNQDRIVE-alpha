@@ -102,6 +102,33 @@ export interface TripQualityCheck {
   reason?: string;
 }
 
+export interface TripQualityPersistedRouteEvidence {
+  routeDisplacementM?: number | null;
+  /** Credible persisted route movement (independent of canonical end selection). */
+  hasMeaningfulPersistedRouteMovement?: boolean;
+  movementAuthority?: string | null;
+  cumulativeRouteMovementM?: number | null;
+}
+
+export interface TripQualityEvaluationObservability {
+  qualityDurationMs: number;
+  qualityDistanceKm: number | null;
+  qualityWaypointCount: number;
+  qualityMeaningfulMovement: boolean;
+  qualityDecision: 'keep' | 'discard' | 'merge';
+  qualityReason?: string;
+}
+
+/**
+ * Quality-only predicate — delegates to persisted route movement analysis
+ * (`analyzePersistedRouteMovement`); waypoint count alone is never sufficient.
+ */
+export function hasPersistedMeaningfulMovementForQuality(input: {
+  hasMeaningfulPersistedRouteMovement?: boolean;
+}): boolean {
+  return input.hasMeaningfulPersistedRouteMovement === true;
+}
+
 export interface SnapshotStartEvidence {
   triggered: boolean;
   strong: number;
@@ -1401,8 +1428,18 @@ export function checkTripQuality(
   maxConsecutiveActive: number,
   previousTripEndTime: Date | null,
   currentTripStartTime: Date,
+  persistedRoute?: TripQualityPersistedRouteEvidence,
 ): TripQualityCheck {
-  if (durationMs < 60_000 && (distanceKm == null || distanceKm < 0.1)) {
+  const meaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+    hasMeaningfulPersistedRouteMovement:
+      persistedRoute?.hasMeaningfulPersistedRouteMovement,
+  });
+
+  if (
+    durationMs < 60_000 &&
+    (distanceKm == null || distanceKm < 0.1) &&
+    !meaningfulMovement
+  ) {
     return {
       shouldDiscard: true,
       shouldMergeWithPrevious: false,
@@ -1485,11 +1522,14 @@ function findEarliestCoreActivityAt(
   return null;
 }
 
+/** Same threshold as route start activity (`findEarliestRouteActivityAt`). */
+export const TRIP_ROUTE_MOVEMENT_MIN_METERS = 25;
+
 function findEarliestRouteActivityAt(
   points: RoutePoint[],
   speedMotionKmh: number,
 ): Date | null {
-  const ROUTE_MOVEMENT_MIN_METERS = 25;
+  const ROUTE_MOVEMENT_MIN_METERS = TRIP_ROUTE_MOVEMENT_MIN_METERS;
 
   for (let index = 0; index < points.length; index++) {
     const point = points[index];
