@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3 materialization & persistence architecture audit (draft PR)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D2 complete on main @ `d37a8714f`; D3 materialization semantics unresolved (D0 DEFAULT-only fingerprint insufficient). |
+| **OBSERVATION** | D2.1 profile includes DEFAULT + PROVISIONAL + EXCLUDED + coverage + segments; persistence idempotency must not hash stable observations alone. |
+| **HYPOTHESIS** | Hybrid append-only revisions with **canonical scientific profile projection fingerprint** preserve D1+D2 authority without a forked computation path. |
+| **CHANGE** | D3 architecture audit doc: materialization decision, fingerprint matrix, schema candidate, multi-replica idempotency, triggers, activation boundary, D4/M3.3E/M3.3F separation; `CURRENT_STATE` D3 audit status. |
+| **WHY** | Reviewable persistence decision before any Prisma migration or writer. |
+| **EXPECTED_EFFECT** | Next slice = D3 engineering (schema+migration+writer) only after audit merge; production materialization remains forbidden until M3.3F. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`. |
+| **OBSERVED_EFFECT** | Pending audit PR merge. |
+| **NON_EFFECTS** | No Prisma schema; no migration; no runtime writer; no feature flag; no production deploy; no production data mutation; no D4 integrity; no M3.3E health logic; no customer/Master Admin UI. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — documentation-only audit. |
+| **REMAINING_GAPS** | D3 implementation; retention/cascade product decisions; M3.3F authorization. |
+| **DECISION_STATUS** | **ARCHITECTURE_AUDIT_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile |
+| **EVIDENCE** | Draft PR (D3 audit); main @ `d37a8714f` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D2 post-merge documentation seal (main)
 
 | Field | Value |
