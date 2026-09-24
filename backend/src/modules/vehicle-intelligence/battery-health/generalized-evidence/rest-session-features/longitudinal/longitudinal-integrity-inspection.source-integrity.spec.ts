@@ -274,6 +274,253 @@ describe('longitudinal-integrity-inspection.source-integrity', () => {
     const session = evaluateD4SourceIntegrityForSession(candidates[0], batchContext);
     expect(session.sourceSnapshotContextIntegrity).toBe('PASS');
   });
+
+  it('evaluates EXCLUDED canonical source identity, digest, temporal, and lineage', () => {
+    const projection = buildD4TestProjection([
+      buildProfileTestInventoryItem({
+        restSessionId: 'e-canonical',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['SESSION_INVALIDATED'],
+        includePayload: true,
+      }),
+    ]);
+    const excluded = projection.excludedSessions[0];
+    const obsLike = {
+      restSessionId: excluded.restSessionId,
+      anchorAt: excluded.anchorAt,
+      sessionStatus: excluded.sessionStatus,
+      endReason: excluded.endReason,
+      canonical: excluded.canonical!,
+      versionTuple: excluded.version!,
+      features: {
+        shutdownToFirstRestDeltaMv: null,
+        robustRestSlopeMvPerHour: null,
+        minimumRestVoltageMv: 12000,
+        maximumRestVoltageMv: 12100,
+        medianRestVoltageMv: 12050,
+        restVoltageVarianceMv2: null,
+        numberOfValidRestPoints: 2,
+        maxActualRestAgeMs: 1000,
+        maxInterObservationGapMs: 500,
+        observationSpanMs: 100,
+        missingRungCount: 0,
+        chargeOpportunityClass: 'UNKNOWN',
+      },
+      anchorResolutionStatus: 'SELECTED' as const,
+      perSessionInspectionStatus: 'NOT_EVALUATED' as const,
+      chargeContextCompleteness: [] as string[],
+      temperatureC: null,
+      temperatureSource: 'UNKNOWN' as const,
+    };
+    const row = buildMatchingFeatureRowForObservation(obsLike as never);
+    const excludedSessions = projection.excludedSessions.map((session) =>
+      session.restSessionId === excluded.restSessionId
+        ? {
+            ...session,
+            canonical: {
+              ...session.canonical!,
+              canonicalFeatureRowId: row.id,
+              inputDigest: row.inputDigest,
+            },
+          }
+        : session,
+    );
+    const sessionKey = buildD4SessionVersionKey({
+      restSessionId: row.restSessionId,
+      featureModelVersion: row.featureModelVersion,
+      retentionPolicyVersion: row.retentionPolicyVersion,
+      chargeOpportunityPolicyVersion: row.chargeOpportunityPolicyVersion,
+    });
+    const batchContext = buildD4TestBatchContext({
+      sourceRowsById: new Map([[row.id, row]]),
+      aggregatesBySessionKey: new Map([
+        [
+          sessionKey,
+          {
+            totalRows: 1,
+            incrementalRows: 0,
+            finalRows: 1,
+            validRows: 1,
+            invalidatedRows: 0,
+            latestSemanticRevision: row.semanticRevision,
+            positiveRevisionRowCount: 1,
+            distinctPositiveRevisionCount: 1,
+            minPositiveSemanticRevision: row.semanticRevision,
+            maxPositiveSemanticRevision: row.semanticRevision,
+            nonPositiveRevisionRowCount: 0,
+          },
+        ],
+      ]),
+      totalRowsBySessionKey: new Map([[sessionKey, 1]]),
+      latestRowsBySessionKey: new Map([[sessionKey, [row]]]),
+    });
+    const candidates = buildD4ProfileSessionCandidates({
+      observations: [],
+      provisionalObservations: [],
+      excludedSessions,
+    });
+    const session = evaluateD4SourceIntegrityForSession(candidates[0], batchContext);
+    expect(session.sourceEvidenceAvailability).toBe('FOUND');
+    expect(session.sourceIdentity).toBe('PASS');
+    expect(session.digestIntegrity).toBe('PASS');
+    expect(session.sourceTemporalProvenance).toBe('PASS');
+    expect(session.revisionLineage).toBe('PASS');
+    expect(session.sourceFeatureScalarIntegrity).toBe('NOT_APPLICABLE');
+    expect(session.sourceSnapshotContextIntegrity).toBe('NOT_APPLICABLE');
+  });
+
+  it('emits SOURCE_DIGEST_MISMATCH for EXCLUDED canonical digest drift', () => {
+    const projection = buildD4TestProjection([
+      buildProfileTestInventoryItem({
+        restSessionId: 'e-digest',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['SESSION_INVALIDATED'],
+        includePayload: true,
+      }),
+    ]);
+    const excluded = projection.excludedSessions[0];
+    const row = buildMatchingFeatureRowForObservation({
+      restSessionId: excluded.restSessionId,
+      anchorAt: excluded.anchorAt,
+      sessionStatus: excluded.sessionStatus,
+      endReason: excluded.endReason,
+      canonical: excluded.canonical!,
+      versionTuple: excluded.version!,
+      features: projection.observations[0]?.features ?? {
+        shutdownToFirstRestDeltaMv: null,
+        robustRestSlopeMvPerHour: null,
+        minimumRestVoltageMv: 12000,
+        maximumRestVoltageMv: 12100,
+        medianRestVoltageMv: 12050,
+        restVoltageVarianceMv2: null,
+        numberOfValidRestPoints: 2,
+        maxActualRestAgeMs: 1000,
+        maxInterObservationGapMs: 500,
+        observationSpanMs: 100,
+        missingRungCount: 0,
+        chargeOpportunityClass: 'UNKNOWN',
+      },
+      anchorResolutionStatus: 'SELECTED',
+      perSessionInspectionStatus: 'NOT_EVALUATED',
+      chargeContextCompleteness: [],
+      temperatureC: null,
+      temperatureSource: 'UNKNOWN',
+    } as never);
+    row.inputDigest = 'deadbeef'.repeat(8);
+    const batchContext = buildD4TestBatchContext({
+      sourceRowsById: new Map([[row.id, row]]),
+    });
+    const candidates = buildD4ProfileSessionCandidates({
+      observations: [],
+      provisionalObservations: [],
+      excludedSessions: projection.excludedSessions,
+    });
+    const session = evaluateD4SourceIntegrityForSession(candidates[0], batchContext);
+    expect(session.digestIntegrity).toBe('FAIL');
+    expect(session.reasons).toContain('SOURCE_DIGEST_MISMATCH');
+  });
+
+  it('emits SOURCE_IDENTITY_MISMATCH for EXCLUDED canonical identity drift', () => {
+    const projection = buildD4TestProjection([
+      buildProfileTestInventoryItem({
+        restSessionId: 'e-id',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['SESSION_INVALIDATED'],
+        includePayload: true,
+      }),
+    ]);
+    const excluded = projection.excludedSessions[0];
+    const row = buildMatchingFeatureRowForObservation({
+      restSessionId: excluded.restSessionId,
+      anchorAt: excluded.anchorAt,
+      sessionStatus: excluded.sessionStatus,
+      endReason: excluded.endReason,
+      canonical: excluded.canonical!,
+      versionTuple: excluded.version!,
+      features: {
+        shutdownToFirstRestDeltaMv: null,
+        robustRestSlopeMvPerHour: null,
+        minimumRestVoltageMv: 12000,
+        maximumRestVoltageMv: 12100,
+        medianRestVoltageMv: 12050,
+        restVoltageVarianceMv2: null,
+        numberOfValidRestPoints: 2,
+        maxActualRestAgeMs: 1000,
+        maxInterObservationGapMs: 500,
+        observationSpanMs: 100,
+        missingRungCount: 0,
+        chargeOpportunityClass: 'UNKNOWN',
+      },
+      anchorResolutionStatus: 'SELECTED',
+      perSessionInspectionStatus: 'NOT_EVALUATED',
+      chargeContextCompleteness: [],
+      temperatureC: null,
+      temperatureSource: 'UNKNOWN',
+    } as never, { semanticRevision: 999 });
+    const batchContext = buildD4TestBatchContext({
+      sourceRowsById: new Map([[row.id, row]]),
+    });
+    const candidates = buildD4ProfileSessionCandidates({
+      observations: [],
+      provisionalObservations: [],
+      excludedSessions: projection.excludedSessions,
+    });
+    const session = evaluateD4SourceIntegrityForSession(candidates[0], batchContext);
+    expect(session.sourceIdentity).toBe('FAIL');
+    expect(session.reasons).toContain('SOURCE_IDENTITY_MISMATCH');
+  });
+
+  it('emits SOURCE_ROW_MISSING for EXCLUDED canonical when source row absent', () => {
+    const projection = buildD4TestProjection([
+      buildProfileTestInventoryItem({
+        restSessionId: 'e-missing',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['SESSION_INVALIDATED'],
+        includePayload: true,
+      }),
+    ]);
+    const candidates = buildD4ProfileSessionCandidates({
+      observations: [],
+      provisionalObservations: [],
+      excludedSessions: projection.excludedSessions,
+    });
+    const session = evaluateD4SourceIntegrityForSession(candidates[0], buildD4TestBatchContext());
+    expect(session.sourceEvidenceAvailability).toBe('MISSING');
+    expect(session.reasons).toContain('SOURCE_ROW_MISSING');
+    expect(session.sourceFeatureScalarIntegrity).toBe('NOT_APPLICABLE');
+  });
+
+  it('marks matching-version malformed input summary as SOURCE_CONTENT_MISMATCH not version mismatch', () => {
+    const { projection, batchContext } = buildVerifiableSourceContextForSession('s1');
+    const obs = projection.observations[0];
+    const summary = buildMinimalLongitudinalInputSummary({
+      organizationId: PROFILE_TEST_ORG,
+      vehicleId: PROFILE_TEST_VEHICLE,
+      restSessionId: obs.restSessionId,
+      inputContractVersion: obs.versionTuple.inputContractVersion,
+      anchorResolutionStatus: obs.anchorResolutionStatus,
+      contextCompleteness: ['NOT_A_REAL_REASON'],
+      temperatureC: obs.temperatureC,
+      temperatureSource: obs.temperatureSource ?? 'UNKNOWN',
+    });
+    const row = buildMatchingFeatureRowForObservation(obs, {
+      inputSummary: summary as BatteryRestSessionFeature['inputSummary'],
+    });
+    batchContext.sourceRowsById.set(row.id, row);
+    const candidates = buildD4ProfileSessionCandidates({
+      observations: projection.observations,
+      provisionalObservations: [],
+      excludedSessions: [],
+    });
+    const session = evaluateD4SourceIntegrityForSession(candidates[0], batchContext);
+    expect(session.reasons).not.toContain('SOURCE_VERSION_MISMATCH');
+    expect(session.reasons).toContain('SOURCE_CONTENT_MISMATCH');
+    expect(session.sourceSnapshotContextIntegrity).toBe('FAIL');
+  });
 });
 
 describe('aggregate overlay source flags from source-integrity batch', () => {

@@ -6,16 +6,9 @@ import {
 import type { PrismaService } from '@shared/database/prisma.service';
 import { REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS } from '../rest-session-feature.constants';
 import type { RestSessionFeatureRevisionIntegrityAggregate } from '../rest-session-feature-inspection.repository.types';
-import { D4_INSPECTION_DB_ROUND_TRIP_BOUND } from './longitudinal-integrity-inspection.constants';
-import {
-  getDbRoundTripCount,
-  incrementDbRoundTripCount,
-  resetDbRoundTripCount,
-} from './longitudinal-integrity-inspection.db-round-trips';
+import { D4InspectionDbRoundTripBudget } from './longitudinal-integrity-inspection.db-round-trips';
 import type { D4InspectionRequest } from './longitudinal-integrity-inspection.types';
 import { buildD4SessionVersionKey } from './longitudinal-integrity-inspection.source-integrity';
-
-export { getDbRoundTripCount, resetDbRoundTripCount };
 
 export type D4SessionVersionKeyInput = {
   organizationId: string;
@@ -139,12 +132,8 @@ function mapAggregateRow(row: {
   };
 }
 
-function assertRoundTripBound(): void {
-  if (getDbRoundTripCount() > D4_INSPECTION_DB_ROUND_TRIP_BOUND) {
-    throw new Error(
-      `D4 inspection exceeded DB round trip bound (${getDbRoundTripCount()} > ${D4_INSPECTION_DB_ROUND_TRIP_BOUND})`,
-    );
-  }
+function assertRoundTripBound(budget: D4InspectionDbRoundTripBudget): void {
+  budget.assertWithinBound();
 }
 
 export class LongitudinalIntegrityInspectionRepository {
@@ -170,26 +159,27 @@ export class LongitudinalIntegrityInspectionRepository {
       sessionKeys: D4SessionVersionKeyInput[];
       referencedRowIds: string[];
     },
+    budget: D4InspectionDbRoundTripBudget,
   ): Promise<D4SourceEvidenceBatch> {
     const referencedIds = [...new Set(input.referencedRowIds.filter(Boolean))];
-    incrementDbRoundTripCount();
-    const sourceRows =
-      referencedIds.length === 0
-        ? []
-        : await tx.batteryRestSessionFeature.findMany({
-            where: {
-              organizationId: input.request.organizationId,
-              vehicleId: input.request.vehicleId,
-              id: { in: referencedIds },
-            },
-          });
+    let sourceRows: BatteryRestSessionFeature[] = [];
+    if (referencedIds.length > 0) {
+      budget.increment();
+      sourceRows = await tx.batteryRestSessionFeature.findMany({
+        where: {
+          organizationId: input.request.organizationId,
+          vehicleId: input.request.vehicleId,
+          id: { in: referencedIds },
+        },
+      });
+    }
 
     const keys = input.sessionKeys;
     const aggregatesBySessionKey = new Map<string, RestSessionFeatureRevisionIntegrityAggregate>();
     const totalRowsBySessionKey = new Map<string, number>();
 
-    incrementDbRoundTripCount();
     if (keys.length > 0) {
+      budget.increment();
       const restSessionIds = keys.map((k) => k.restSessionId);
       const featureModelVersions = keys.map((k) => k.featureModelVersion);
       const retentionPolicyVersions = keys.map((k) => k.retentionPolicyVersion);
@@ -235,17 +225,17 @@ export class LongitudinalIntegrityInspectionRepository {
           k.feature_model_version,
           k.retention_policy_version,
           k.charge_opportunity_policy_version,
-          COUNT(*)::int AS total_rows,
-          COUNT(*) FILTER (WHERE f.computation_phase = 'INCREMENTAL')::int AS incremental_rows,
-          COUNT(*) FILTER (WHERE f.computation_phase = 'FINAL')::int AS final_rows,
-          COUNT(*) FILTER (WHERE f.session_trust = 'VALID')::int AS valid_rows,
-          COUNT(*) FILTER (WHERE f.session_trust = 'INVALIDATED')::int AS invalidated_rows,
+          COUNT(f.id)::int AS total_rows,
+          COUNT(f.id) FILTER (WHERE f.computation_phase = 'INCREMENTAL')::int AS incremental_rows,
+          COUNT(f.id) FILTER (WHERE f.computation_phase = 'FINAL')::int AS final_rows,
+          COUNT(f.id) FILTER (WHERE f.session_trust = 'VALID')::int AS valid_rows,
+          COUNT(f.id) FILTER (WHERE f.session_trust = 'INVALIDATED')::int AS invalidated_rows,
           MAX(f.semantic_revision)::int AS latest_semantic_revision,
-          COUNT(*) FILTER (WHERE f.semantic_revision > 0)::int AS positive_revision_row_count,
+          COUNT(f.id) FILTER (WHERE f.semantic_revision > 0)::int AS positive_revision_row_count,
           COUNT(DISTINCT f.semantic_revision) FILTER (WHERE f.semantic_revision > 0)::int AS distinct_positive_revision_count,
           MIN(f.semantic_revision) FILTER (WHERE f.semantic_revision > 0)::int AS min_positive_semantic_revision,
           MAX(f.semantic_revision) FILTER (WHERE f.semantic_revision > 0)::int AS max_positive_semantic_revision,
-          COUNT(*) FILTER (WHERE f.semantic_revision <= 0)::int AS non_positive_revision_row_count
+          COUNT(f.id) FILTER (WHERE f.semantic_revision <= 0)::int AS non_positive_revision_row_count
         FROM keys k
         LEFT JOIN battery_rest_session_features f
           ON f.organization_id = ${input.request.organizationId}
@@ -273,9 +263,9 @@ export class LongitudinalIntegrityInspectionRepository {
       }
     }
 
-    incrementDbRoundTripCount();
     const latestRowsBySessionKey = new Map<string, BatteryRestSessionFeature[]>();
     if (keys.length > 0) {
+      budget.increment();
       const restSessionIds = keys.map((k) => k.restSessionId);
       const featureModelVersions = keys.map((k) => k.featureModelVersion);
       const retentionPolicyVersions = keys.map((k) => k.retentionPolicyVersion);
@@ -375,7 +365,7 @@ export class LongitudinalIntegrityInspectionRepository {
           created_at
         FROM ranked
         WHERE rn <= ${REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS}
-           OR id = ANY(${referencedIds}::uuid[])
+           OR id = ANY(${referencedIds}::text[])
       `;
 
       const grouped = new Map<string, BatteryRestSessionFeature[]>();
@@ -400,7 +390,7 @@ export class LongitudinalIntegrityInspectionRepository {
       }
     }
 
-    assertRoundTripBound();
+    assertRoundTripBound(budget);
 
     const sourceRowsById = new Map<string, BatteryRestSessionFeature>();
     for (const row of sourceRows) {
@@ -419,12 +409,12 @@ export class LongitudinalIntegrityInspectionRepository {
     request: D4InspectionRequest;
     sessionKeys: D4SessionVersionKeyInput[];
     referencedRowIds: string[];
-  }): Promise<D4InspectionBatchSnapshot | null> {
-    resetDbRoundTripCount();
+  }): Promise<{ snapshot: D4InspectionBatchSnapshot; dbRoundTrips: number } | null> {
+    const budget = new D4InspectionDbRoundTripBudget();
 
-    return this.db.$transaction(
+    const snapshot = await this.db.$transaction(
       async (tx) => {
-        incrementDbRoundTripCount();
+        budget.increment();
         const revision = await tx.batteryLongitudinalProfileRevision.findFirst({
           where: {
             id: input.request.revisionId,
@@ -437,12 +427,16 @@ export class LongitudinalIntegrityInspectionRepository {
         const batch = await this.readSourceEvidenceBatchInTransaction(
           tx as LongitudinalIntegrityInspectionTx,
           input,
+          budget,
         );
-        assertRoundTripBound();
+        assertRoundTripBound(budget);
         return { revision, ...batch };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
+
+    if (!snapshot) return null;
+    return { snapshot, dbRoundTrips: budget.getCount() };
   }
 }
 
