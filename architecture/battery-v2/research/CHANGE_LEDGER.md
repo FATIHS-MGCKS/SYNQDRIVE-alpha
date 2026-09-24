@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4.2 integrity inspection final contract seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4.1 closed major provenance/rebuildability gaps; remaining ambiguities on unparseable outcome shape, D2 semantic invariants, unsupported matching input contract, digest coverage representation, DEFAULT accounting, inspectionFlags. |
+| **OBSERVATION** | Fake full overlay on parse failure contradicts trusted perSession/rebuildability; digest coverage is scope not PASS/FAIL; eligibility requires partitioned DEFAULT counts. |
+| **HYPOTHESIS** | D4.2 can freeze V1 machine contract without runtime implementation. |
+| **CHANGE** | Amended `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` (D4.2): distinct `REVISION_SELF_INTEGRITY_FAILED` top-level failure, §7 D2 semantic invariants, §9.8 unsupported input contract, digest scope enum, disposition accounting, closed `D4InspectionFlagV1`. |
+| **WHY** | Preserve authoritative **`D4_IMPLEMENTATION_READY=YES`** for engineering PR. |
+| **EXPECTED_EFFECT** | D4 service contract fully implementable read-only. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on PR #1751. |
+| **OBSERVED_EFFECT** | Pending draft PR merge. |
+| **NON_EFFECTS** | No runtime/schema/flag/deploy; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering implementation. |
+| **DECISION_STATUS** | **ARCHITECTURE_CONTRACT_SEALED** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 D4.2 amend |
+
+---
+
 ## CL-2026-09-24 — M3.3D D4.1 integrity inspection architecture contract closure
 
 | Field | Value |

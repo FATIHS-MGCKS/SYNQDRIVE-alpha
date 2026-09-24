@@ -1,7 +1,7 @@
 # M3.3D D4 — Longitudinal Integrity / Inspection Architecture Audit
 
 **Date:** 2026-09-24  
-**Status:** **ARCHITECTURE AUDIT — D4.1 CONTRACT CLOSURE** (read-only; **not implemented**)  
+**Status:** **ARCHITECTURE AUDIT — D4.2 FINAL CONTRACT SEAL** (read-only; **not implemented**)  
 **Inspection contract (frozen):** `M3_3D_D4_INTEGRITY_INSPECTION_V1`  
 **Draft PR:** #1751  
 **Main anchor (audit start):** `989d560f57ee4785e0d12fc518e2a204dfa5f826`  
@@ -107,29 +107,109 @@ Self-failure **does not** imply C3 corruption; it implies **stored revision row 
 
 ---
 
-## 7. Strict scientific JSON validation
+## 7. Strict scientific JSON validation (D2 semantic invariants)
 
 | Decision | Value |
 |----------|-------|
 | `STRICT_SCIENTIFIC_JSON_VALIDATION_REQUIRED` | **YES** |
+| `STRICT_PARSER_VALIDATES_D2_SEMANTIC_INVARIANTS` | **YES** |
+| `SCIENTIFIC_JSON_PROFILE_GENERATED_AT_FORBIDDEN` | **YES** |
 
-D4 engineering **must** introduce a pure parser/validator, e.g. `parseLongitudinalScientificProfileProjectionV1(json)`, that validates:
+D4 engineering **must** introduce a pure validator, e.g. `parseLongitudinalScientificProfileProjectionV1(json)`, that validates **sealed D2 V1 output semantics** — not merely JSON/TypeScript shape. This is **contract verification**, not a second scientific computation path.
 
-- identity, window, coverage, status, flags, statusReasons, trendReadiness  
-- observations, provisionalObservations, excludedSessions (with canonical refs)  
-- version segments, derived field rules, canonical contexts, version tuples  
+Prisma `Json` must **not** be blindly cast at the D4 boundary.
 
-**No silent coercion.**
+### 7.1 Identity / contract
 
-| Failure | `overallStatus` (inside inspection) | Reason code |
-|---------|-------------------------------------|-------------|
-| Malformed scientific JSON | `REVISION_SELF_INTEGRITY_FAILED` | `MALFORMED_SCIENTIFIC_PROFILE` |
-| Unsupported profile contract | `REVISION_SELF_INTEGRITY_FAILED` | `UNSUPPORTED_PROFILE_CONTRACT` |
-| Unsupported profile policy | `REVISION_SELF_INTEGRITY_FAILED` | `UNSUPPORTED_PROFILE_POLICY_VERSION` |
+- Supported `longitudinalProfileContractVersion` and `profilePolicyVersion` (registry in engineering)  
+- Non-empty `organizationId`, `vehicleId`  
+- Scientific projection **must not** contain `window.profileGeneratedAt` (omitted in D3 stored scientific JSON)
 
-These are **stored revision self-integrity / compatibility failures**, not infrastructure execution failures.
+### 7.2 Window
 
-Prisma `Json` must **not** be blindly cast to TypeScript types at the D4 boundary.
+- `requestedSessionLimit` / `appliedSessionLimit`: integers in `1..LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS` (**100**)  
+- `requestedSessionLimit === appliedSessionLimit`  
+- `candidateRestSessionCount <= appliedSessionLimit`  
+- Canonical ISO timestamps where applicable
+
+### 7.3 Partition (coverage counts)
+
+| Invariant | Rule |
+|-----------|------|
+| `PROFILE_PARTITION_INVARIANTS_DEFINED` | **YES** |
+| Candidate partition | `candidateRestSessionCount === observations.length + provisionalObservations.length + excludedSessions.length` |
+| Included / provisional / excluded counts | Match respective array lengths |
+| Unique sessions | Every `restSessionId` appears **exactly once** across the three arrays |
+
+### 7.4 DEFAULT / PROVISIONAL observations
+
+- Require `canonical`, resolved four-part `versionTuple`, `features`, snapshot-derived fields  
+- `perSessionInspectionStatus === 'NOT_EVALUATED'` only — no pre-embedded D4 status in D2 JSON
+
+### 7.5 EXCLUDED sessions
+
+- Valid recognized `exclusionReasons` only  
+- No fabricated feature/snapshot fields  
+- `canonical` / `version` nullability consistent with sealed D2 V1
+
+### 7.6 Profile status
+
+- `profileStatus === 'OK'` iff `observations.length > 0`  
+- `profileStatus === 'NO_ELIGIBLE_SESSIONS'` iff `observations.length === 0`
+
+### 7.7 Window derivations (`PROFILE_DERIVED_INVARIANTS_DEFINED=YES`)
+
+| Observations | Rule |
+|--------------|------|
+| 0 | `firstIncludedAnchorAt`, `lastIncludedAnchorAt`, `validEvidenceSpanMs` all **null** |
+| 1 | first/last anchors equal observation[0].anchorAt; `validEvidenceSpanMs === 0` |
+| >1 | first/last anchors equal first/last DEFAULT observation; `validEvidenceSpanMs === lastAnchor - firstAnchor` |
+
+### 7.8 Status reasons
+
+- `stableDefaultCount === observations.length`  
+- `provisionalCount === provisionalObservations.length`  
+- `excludedCount === excludedSessions.length`  
+- `versionSegmentCount === versionSegments.length`  
+- `excludedByReason` equals recomputation from `excludedSessions[].exclusionReasons` (multi-reason per session allowed — **do not** require histogram sum == excluded session count)
+
+### 7.9 Version segments (`VERSION_SEGMENT_INVARIANTS_DEFINED=YES`)
+
+Must match ordered DEFAULT observations exactly:
+
+- contiguous `segmentIndex` from 0  
+- constant four-part tuple within each segment  
+- correct `sessionCount`, `firstAnchorAt`, `lastAnchorAt`  
+- adjacent equal tuples **not** split into two segments  
+- all DEFAULT observations covered once; no PROVISIONAL/EXCLUDED in segments
+
+### 7.10 Profile flags (`PROFILE_FLAG_INVARIANTS_DEFINED=YES`)
+
+Deterministic D2 flags only — no unknown flags, no duplicates:
+
+| Flag | Rule |
+|------|------|
+| `VERSION_SEGMENTED` | iff `versionSegments.length > 1` |
+| `PROVISIONAL_SESSIONS_PRESENT` | iff `provisionalObservations.length > 0` |
+| `INPUT_CONTRACT_UNRESOLVED_PRESENT` | iff any excluded candidate includes `INPUT_CONTRACT_VERSION_UNRESOLVED` |
+
+### 7.11 Derived / ordering
+
+- `derived === null` for D2 V1  
+- Each of observations / provisionalObservations / excludedSessions: sort **anchorAt ASC**, then `restSessionId` **UTF-16 code-unit lexical** (no `localeCompare`)
+
+### 7.12 Parse failure outcome (no fake full overlay)
+
+| Decision | Value |
+|----------|-------|
+| `UNPARSEABLE_PROFILE_RETURNS_FULL_INSPECTION` | **NO** |
+| `UNPARSEABLE_PROFILE_HAS_DISTINCT_FAILURE_OUTCOME` | **YES** |
+
+If strict parse / unsupported profile contract or policy fails → return top-level `{ status: 'REVISION_SELF_INTEGRITY_FAILED', failure: D4RevisionSelfIntegrityFailureV1 }` — **not** `{ status: 'OK', inspection }` with fabricated `perSession[]`, rebuildability, or digest coverage.
+
+Reason codes on failure envelope: `MALFORMED_SCIENTIFIC_PROFILE`, `UNSUPPORTED_PROFILE_CONTRACT`, `UNSUPPORTED_PROFILE_POLICY_VERSION`, etc.
+
+Architecture requires **unit tests for each invariant family** in §7.1–§7.11.
 
 ---
 
@@ -148,7 +228,9 @@ Prisma `Json` must **not** be blindly cast to TypeScript types at the D4 boundar
 perSession.length === coverage.candidateRestSessionCount
 ```
 
-Sessions with `canonical = null`: `sourceEvidenceAvailability = NO_SOURCE_REFERENCE_EXPECTED`; nullable `versionTuple` (see §23).
+Sessions with `canonical = null`: `sourceEvidenceAvailability = NO_SOURCE_REFERENCE_EXPECTED`; nullable `versionTuple` (see §24).
+
+**Note:** `perSession[]` exists only on `{ status: 'OK', inspection }`. Unparseable revisions return `D4RevisionSelfIntegrityFailureV1` without `perSession[]`.
 
 ---
 
@@ -299,6 +381,38 @@ Do **not** mutate D1 parser semantics.
 | Decision | Value |
 |----------|-------|
 | `SOURCE_CONTENT_FIELD_MAP_DOCUMENTED` | **YES** |
+
+### 9.8 Unsupported but matching historical input contract (D4.2)
+
+Profile `inputContractVersion = X` and persisted C3 `inputSummary.inputContractVersion = X` (no version mismatch), but **no** D4 snapshot parser registered for `X`.
+
+| Decision | Value |
+|----------|-------|
+| `UNSUPPORTED_MATCHING_SOURCE_INPUT_CONTRACT_IS_VERSION_MISMATCH` | **NO** |
+| `UNSUPPORTED_SOURCE_INPUT_CONTRACT_REASON_DEFINED` | **YES** |
+| `UNSUPPORTED_SOURCE_INPUT_CONTRACT_IS_INTEGRITY_WARNING` | **NO** |
+| `UNSUPPORTED_SOURCE_INPUT_CONTRACT_DISPOSITION` | **`SOURCE_EVIDENCE_LIMITED`** |
+
+Reason code: **`UNSUPPORTED_SOURCE_INPUT_CONTRACT`**.
+
+**V1 semantics (DEFAULT/PROVISIONAL with canonical row):**
+
+| Check | Result |
+|-------|--------|
+| `sourceIdentity` | **PASS** if persisted version strings match |
+| `digestIntegrity` | Evaluate normally (canonical digest) |
+| Feature scalar `sourceContentIntegrity` | Compare C3 **row columns** |
+| Snapshot-context `sourceContentIntegrity` | **`NOT_EVALUATED`** (verification limitation, not corruption) |
+| DEFAULT disposition | **`SOURCE_EVIDENCE_LIMITED`** unless higher-precedence integrity warning |
+| Rebuildability | Reference **not** `VERIFIABLE_SOURCE_REFERENCE` (snapshot correspondence not evaluable) |
+
+**D4 V1 historical input parser registry (architecture time):**
+
+| Registered contract | Parser |
+|---------------------|--------|
+| `M3_3C_FEATURE_INPUT_V1` | D4 historical snapshot parser (engineering; not D1 parser reuse) |
+
+Future contracts: **additive explicit registration only** — do not invent parsers in architecture.
 
 ---
 
@@ -506,12 +620,35 @@ Referenced canonical row for D3 profile item **always** included in checked set 
 
 Mismatch → digest integrity warning (C5A-equivalent).
 
-**Coverage dimension:** `DIGEST_COVERAGE`
+**Coverage dimension:** `DIGEST_COVERAGE` — **not** a `DimensionResult` PASS/FAIL.
 
-- `FULL` when ≤ K rows and all checked  
-- `BOUNDED_LATEST_WINDOW` when older rows exist unchecked  
+| Decision | Value |
+|----------|-------|
+| `DIGEST_COVERAGE_HAS_DEDICATED_SCOPE_ENUM` | **YES** |
+| `DIGEST_SCOPE_ENUM` | `FULL` \| `BOUNDED_LATEST_WINDOW` \| `NOT_EVALUATED` |
 
-`INTEGRITY_PARTIAL` disposition: **bounded verification only** — **not** quarantine by coverage alone (D0 rule preserved).
+Per session (minimum):
+
+- `digestRowsChecked: number`  
+- `digestRowsUnchecked: number`  
+- `digestVerificationScope: DigestVerificationScope`  
+
+When scope is `BOUNDED_LATEST_WINDOW`, include reason **`DIGEST_COVERAGE_PARTIAL`** — this is **not** FAIL.
+
+No-source / no evaluable revision history: `digestVerificationScope = NOT_EVALUATED`.
+
+**Profile-level aggregation (`PROFILE_DIGEST_SCOPE_AGGREGATION_DEFINED=YES`):**
+
+| Condition | Profile `digestVerificationScope` |
+|-----------|-----------------------------------|
+| Zero sessions with evaluated digest coverage | **`NOT_EVALUATED`** (`ZERO_EVALUATED_DIGEST_SCOPE=NOT_EVALUATED`) |
+| Any evaluated session is `BOUNDED_LATEST_WINDOW` | **`BOUNDED_LATEST_WINDOW`** |
+| Else | **`FULL`** |
+
+- `digestRowsChecked` = sum of per-session checked (no double-count referenced canonical union)  
+- `digestRowsUnchecked` = sum of per-session unchecked  
+
+`INTEGRITY_PARTIAL` **overallStatus** when profile scope is `BOUNDED_LATEST_WINDOW` and no higher-precedence warning — coverage partial alone does **not** quarantine DEFAULT observations.
 
 ---
 
@@ -527,82 +664,118 @@ Non-zero `semanticRevisionGapCount` or `duplicateSemanticRevisionCount` → line
 
 ## 19. Integrity-qualified eligibility (overlay)
 
-D4 **does not** rewrite D2/D3 JSON. Disposition applies to **DEFAULT observations** (and reporting counts) on the overlay:
+| Decision | Value |
+|----------|-------|
+| `DEFAULT_DISPOSITION_PARTITION_DEFINED` | **YES** |
+| `PROVISIONAL_DISPOSITION` | **`NOT_APPLICABLE`** |
+| `EXCLUDED_DISPOSITION` | **`NOT_APPLICABLE`** |
+| `DEFAULT_DISPOSITION_COUNTS_SUM_TO_INCLUDED_COUNT` | **YES** |
 
-| Condition | Default observation disposition |
-|-----------|----------------------------------|
-| Digest mismatch on referenced canonical row | `QUARANTINED_INTEGRITY_WARNING` |
-| Revision lineage warning (gap/duplicate) | `QUARANTINED_INTEGRITY_WARNING` (preserve C5A overall semantics) |
-| Digest coverage partial only | **`ELIGIBLE`** (metadata: bounded coverage — not quarantine) |
-| Missing historical source row | `SOURCE_EVIDENCE_LIMITED` (not auto-labeled corruption) |
+D4 **does not** rewrite D2/D3 JSON. Disposition applies to **DEFAULT** observations only.
+
+**DEFAULT** — exactly one of: `ELIGIBLE` | `QUARANTINED_INTEGRITY_WARNING` | `SOURCE_EVIDENCE_LIMITED` | `NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED`.
+
+**PROVISIONAL / EXCLUDED:** `integrityQualifiedDisposition = NOT_APPLICABLE`.
+
+| Condition | DEFAULT disposition |
+|-----------|---------------------|
+| Digest mismatch / lineage warning / content mismatch / temporal invalid | `QUARANTINED_INTEGRITY_WARNING` |
+| Digest coverage partial only | **`ELIGIBLE`** |
+| Missing historical source row | `SOURCE_EVIDENCE_LIMITED` |
+| Unsupported matching input contract (§9.8) | `SOURCE_EVIDENCE_LIMITED` |
 | Self-integrity OK + source OK | `ELIGIBLE` |
-| Self-integrity failed (parseable projection) | **`NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED`** for all DEFAULT observations — forensic source findings only |
+| Parseable fingerprint/mirror self-failure (forensic) | `NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED` |
 
-Overlay may expose:
+**Profile accounting (required):**
 
-- `integrityQualifiedDefaultObservationIds[]`  
-- `quarantinedDefaultObservationCount`  
-- per-session `integrityQualifiedDisposition`
+```text
+defaultObservationCount
+=== integrityQualifiedDefaultCount
+ + quarantinedIntegrityWarningDefaultCount
+ + sourceEvidenceLimitedDefaultCount
+ + notEligibleRevisionSelfIntegrityFailedDefaultCount
 
-**Profile flags:** do **not** inject into `LongitudinalProfileV1.profileFlags`. Use overlay `inspectionFlags` only, e.g.:
+defaultObservationCount === scientificProfile.coverage.includedSessionCount
+```
 
-- `INTEGRITY_LIMITED`  
-- `SOURCE_EVIDENCE_LIMITED`  
-- `REBUILDABILITY_LIMITED`  
+Overlay **`inspectionFlags`:** closed enum `D4InspectionFlagV1` (§24) — **`INSPECTION_FLAGS_OPEN_STRING_ARRAY=NO`**.
+
+Do **not** inject into `LongitudinalProfileV1.profileFlags`.
 
 ---
 
 ## 20. Service outcome vs inspection `overallStatus`
 
-### 20.1 Top-level service result
+### 20.1 Top-level service result (frozen union)
 
 ```typescript
+type D4RevisionSelfIntegrityFailureV1 = {
+  inspectionContractVersion: 'M3_3D_D4_INTEGRITY_INSPECTION_V1';
+  inspectionGeneratedAt: string;
+  snapshotIsolation: 'REPEATABLE_READ';
+  identity: { organizationId: string; vehicleId: string; revisionId: string };
+  storedRevisionEnvelope?: {
+    canonicalProfileFingerprint: string;
+    longitudinalProfileContractVersion: string;
+    profilePolicyVersion: string;
+  };
+  selfIntegrity: 'SELF_INTEGRITY_FAILED';
+  reasons: ReasonCode[]; // MALFORMED_SCIENTIFIC_PROFILE | UNSUPPORTED_* | ...
+};
+
 type D4InspectionOutcome =
   | { status: 'REVISION_NOT_FOUND' }
+  | { status: 'REVISION_SELF_INTEGRITY_FAILED'; failure: D4RevisionSelfIntegrityFailureV1 }
   | { status: 'OK'; inspection: M3_3D_D4_INTEGRITY_INSPECTION_V1 };
 ```
 
 | Decision | Value |
 |----------|-------|
 | `REVISION_NOT_FOUND_IS_TOP_LEVEL_OUTCOME` | **YES** |
+| `UNPARSEABLE_PROFILE_RETURNS_FULL_INSPECTION` | **NO** |
+| `UNPARSEABLE_PROFILE_HAS_DISTINCT_FAILURE_OUTCOME` | **YES** |
+| `PARSEABLE_SELF_FAILURE_FORENSIC_OVERLAY_ALLOWED` | **YES** |
 | `TECHNICAL_EXECUTION_FAILURE_IS_SCIENTIFIC_INTEGRITY_STATUS` | **NO** |
 
-Unexpected DB / internal failures: **throw / fail closed** (or repository-layer technical error) — **not** represented as `inspection.profile.overallStatus`.
+**CASE B (unparseable / unsupported profile):** `{ status: 'REVISION_SELF_INTEGRITY_FAILED', failure }` — **no** `perSession[]`, rebuildability, digest coverage, or source batch.
 
-`REVISION_NOT_FOUND` is **not** a reason code inside `overallStatus`.
+**CASE C (parse OK, fingerprint/mirror fail):** `{ status: 'OK', inspection }` with `overallStatus = REVISION_SELF_INTEGRITY_FAILED` and forensic source batch; all DEFAULT dispositions `NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED`.
 
-### 20.2 Inspection `overallStatus` (evidence / integrity only)
+Unexpected DB failures: **throw** — not `overallStatus`.
+
+### 20.2 Inspection `overallStatus` (only when `status='OK'`)
 
 | `overallStatus` | Meaning |
 |-----------------|--------|
 | `OK` | Self-integrity OK; no integrity warnings in checked scope |
-| `INTEGRITY_PARTIAL` | Self-integrity OK; bounded digest coverage only |
-| `INTEGRITY_WARNING` | Digest mismatch, lineage gap/duplicate, identity/content/temporal failures in checked rows |
-| `SOURCE_EVIDENCE_LIMITED` | Self-integrity OK; one or more referenced rows missing |
-| `REVISION_SELF_INTEGRITY_FAILED` | Malformed/unsupported stored profile **or** fingerprint/mirror self-failure |
+| `INTEGRITY_PARTIAL` | Self-integrity OK; profile digest scope `BOUNDED_LATEST_WINDOW` only |
+| `INTEGRITY_WARNING` | Digest mismatch, lineage gap/duplicate, identity/content/temporal failures |
+| `SOURCE_EVIDENCE_LIMITED` | Self-integrity OK; missing sources and/or unsupported matching input contract limits |
+| `REVISION_SELF_INTEGRITY_FAILED` | **Parseable** projection but fingerprint/mirror self-failure (forensic overlay) |
 
-**Removed from `overallStatus`:** `INSPECTION_EXECUTION_FAILED`.
+**Not in `overallStatus`:** unparseable failures (top-level failure outcome); execution errors.
 
-| Semantic failure | Maps to |
-|------------------|---------|
-| `MALFORMED_SCIENTIFIC_PROFILE` | `REVISION_SELF_INTEGRITY_FAILED` |
-| `UNSUPPORTED_PROFILE_CONTRACT` | `REVISION_SELF_INTEGRITY_FAILED` |
-| `UNSUPPORTED_PROFILE_POLICY_VERSION` | `REVISION_SELF_INTEGRITY_FAILED` |
+| Semantic failure (parse phase) | Top-level outcome |
+|-------------------------------|-------------------|
+| `MALFORMED_SCIENTIFIC_PROFILE` | `REVISION_SELF_INTEGRITY_FAILED` failure envelope |
+| `UNSUPPORTED_PROFILE_CONTRACT` | same |
+| `UNSUPPORTED_PROFILE_POLICY_VERSION` | same |
 
-**Precedence (deterministic):**
+**Precedence (when `status='OK'`):**
 
-1. If strict parse fails / contract unsupported → return inspection with `overallStatus = REVISION_SELF_INTEGRITY_FAILED` (**no source batch**)  
-2. Else if fingerprint or mirror fails → **forensic source batch allowed**; `overallStatus = REVISION_SELF_INTEGRITY_FAILED`; **zero** `ELIGIBLE` defaults  
-3. Else if any source integrity warning → `INTEGRITY_WARNING`  
-4. Else if missing sources → `SOURCE_EVIDENCE_LIMITED`  
-5. Else if digest coverage partial only → `INTEGRITY_PARTIAL`  
-6. Else `OK`  
+1. If fingerprint/mirror self-failure → `overallStatus = REVISION_SELF_INTEGRITY_FAILED` (forensic batch allowed)  
+2. Else if any source integrity warning → `INTEGRITY_WARNING`  
+3. Else if missing sources or unsupported matching input contract disposition → `SOURCE_EVIDENCE_LIMITED`  
+4. Else if profile digest scope `BOUNDED_LATEST_WINDOW` → `INTEGRITY_PARTIAL`  
+5. Else `OK`  
 
 | Decision | Value |
 |----------|-------|
 | `SOURCE_BATCH_AFTER_PARSE_FAILURE` | **NO** |
 | `SOURCE_BATCH_AFTER_PARSEABLE_FINGERPRINT_OR_MIRROR_FAILURE` | **FORENSIC_ALLOWED** |
 | `SELF_FAILED_PROFILE_CAN_REPORT_ELIGIBLE_DEFAULT` | **NO** |
+| `MALFORMED_PROFILE_STATUS` | Top-level **`REVISION_SELF_INTEGRITY_FAILED`** (not full inspection) |
+| `UNSUPPORTED_CONTRACT_STATUS` | Top-level **`REVISION_SELF_INTEGRITY_FAILED`** (not full inspection) |
 
 ### 20.3 Orthogonal dimensions (unchanged visibility)
 
@@ -643,7 +816,8 @@ Separate codes (no health terminology):
 | `SEMANTIC_REVISION_GAP` | Lineage gap count > 0 |
 | `SEMANTIC_REVISION_DUPLICATE` | Duplicate semantic revision count > 0 |
 | `SOURCE_INPUT_CONTRACT_VERSION_UNRESOLVED` | Excluded / expected unresolved input contract (non-warning) |
-| `DIGEST_COVERAGE_PARTIAL` | Unchecked rows remain in session history |
+| `UNSUPPORTED_SOURCE_INPUT_CONTRACT` | Matching version strings but no registered snapshot parser (§9.8) |
+| `DIGEST_COVERAGE_PARTIAL` | Session/profile scope `BOUNDED_LATEST_WINDOW` (not FAIL) |
 | `INSPECTION_INTERNAL_ERROR` | Unexpected failure (service layer — not `overallStatus`) |
 
 ---
@@ -652,7 +826,7 @@ Separate codes (no health terminology):
 
 **CASE A — revision not found:** return `{ status: 'REVISION_NOT_FOUND' }` — **no** source inspection.
 
-**CASE B — strict scientific parse fails / contract unsupported:** return `{ status: 'OK', inspection }` with `overallStatus = REVISION_SELF_INTEGRITY_FAILED` — **no** source batch (trusted reference set not extractable).
+**CASE B — strict parse fails / unsupported profile contract or policy:** return `{ status: 'REVISION_SELF_INTEGRITY_FAILED', failure }` — **no** source batch; **no** fake full inspection overlay.
 
 **CASE C — parse succeeds but fingerprint or mirror fails:** source batch **may** run for forensic reporting; `overallStatus = REVISION_SELF_INTEGRITY_FAILED`; no DEFAULT `ELIGIBLE`.
 
@@ -686,13 +860,38 @@ Optional caller-provided envelope timestamp deferred (open for deterministic rep
 ```typescript
 type DimensionResult = 'PASS' | 'FAIL' | 'NOT_EVALUATED' | 'NOT_APPLICABLE';
 
+type DigestVerificationScope =
+  | 'FULL'
+  | 'BOUNDED_LATEST_WINDOW'
+  | 'NOT_EVALUATED';
+
+type D4InspectionFlagV1 =
+  | 'INTEGRITY_LIMITED'
+  | 'SOURCE_EVIDENCE_LIMITED'
+  | 'REBUILDABILITY_LIMITED';
+
+type D4RevisionSelfIntegrityFailureV1 = {
+  inspectionContractVersion: 'M3_3D_D4_INTEGRITY_INSPECTION_V1';
+  inspectionGeneratedAt: string;
+  snapshotIsolation: 'REPEATABLE_READ';
+  identity: { organizationId: string; vehicleId: string; revisionId: string };
+  storedRevisionEnvelope?: {
+    canonicalProfileFingerprint: string;
+    longitudinalProfileContractVersion: string;
+    profilePolicyVersion: string;
+  };
+  selfIntegrity: 'SELF_INTEGRITY_FAILED';
+  reasons: ReasonCode[];
+};
+
 type D4InspectionOutcome =
   | { status: 'REVISION_NOT_FOUND' }
+  | { status: 'REVISION_SELF_INTEGRITY_FAILED'; failure: D4RevisionSelfIntegrityFailureV1 }
   | { status: 'OK'; inspection: M3_3D_D4_INTEGRITY_INSPECTION_V1 };
 
 type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
   inspectionContractVersion: 'M3_3D_D4_INTEGRITY_INSPECTION_V1';
-  inspectionGeneratedAt: string; // ISO-8601, service wall clock
+  inspectionGeneratedAt: string;
   snapshotIsolation: 'REPEATABLE_READ';
 
   identity: {
@@ -715,7 +914,7 @@ type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
     verifiableSourceReferenceCount: number;
     digestRowsChecked: number;
     digestRowsUnchecked: number;
-    digestVerificationScope: 'FULL' | 'BOUNDED_LATEST_WINDOW';
+    digestVerificationScope: DigestVerificationScope;
   };
 
   perSession: Array<{
@@ -737,7 +936,9 @@ type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
     sourceTemporalProvenance: DimensionResult;
     digestIntegrity: DimensionResult;
     revisionLineage: DimensionResult;
-    digestCoverage: DimensionResult;
+    digestRowsChecked: number;
+    digestRowsUnchecked: number;
+    digestVerificationScope: DigestVerificationScope;
     integrityQualifiedDisposition:
       | 'ELIGIBLE'
       | 'QUARANTINED_INTEGRITY_WARNING'
@@ -754,16 +955,27 @@ type M3_3D_D4_INTEGRITY_INSPECTION_V1 = {
       | 'INTEGRITY_WARNING'
       | 'SOURCE_EVIDENCE_LIMITED'
       | 'REVISION_SELF_INTEGRITY_FAILED';
-    inspectionFlags: string[];
+    inspectionFlags: D4InspectionFlagV1[]; // deterministic order, no duplicates
     rebuildability: 'FULL' | 'PARTIAL' | 'UNAVAILABLE';
+    defaultObservationCount: number;
     integrityQualifiedDefaultCount: number;
-    quarantinedDefaultCount: number;
+    quarantinedIntegrityWarningDefaultCount: number;
+    sourceEvidenceLimitedDefaultCount: number;
+    notEligibleRevisionSelfIntegrityFailedDefaultCount: number;
   };
 };
 ```
 
+**`D4InspectionFlagV1` emission (deterministic order):**
+
+1. `INTEGRITY_LIMITED` if `overallStatus` is `INTEGRITY_PARTIAL` or `INTEGRITY_WARNING`  
+2. `SOURCE_EVIDENCE_LIMITED` if any DEFAULT has `SOURCE_EVIDENCE_LIMITED` or unsupported input contract limitation  
+3. `REBUILDABILITY_LIMITED` if `rebuildability !== 'FULL'`
+
 | Decision | Value |
 |----------|-------|
+| `INSPECTION_FLAGS_OPEN_STRING_ARRAY` | **NO** |
+| `INSPECTION_FLAG_ENUM_FROZEN` | **YES** |
 | `SOURCE_CONTENT_DIMENSION_IN_CONTRACT` | **YES** |
 | `SOURCE_TEMPORAL_DIMENSION_IN_CONTRACT` | **YES** |
 
@@ -826,40 +1038,46 @@ D4 tests may insert isolated revisions in **ephemeral PostgreSQL** only.
 
 ## 29. Test matrix (design only — not implemented in this audit)
 
-### Unit
+### Strict profile semantic invariants (§7)
 
-- Valid revision self-integrity  
-- Malformed JSON → `REVISION_SELF_INTEGRITY_FAILED`, **no** source batch  
-- Unsupported contract/policy → `REVISION_SELF_INTEGRITY_FAILED`  
-- Fingerprint mismatch after valid parse → forensic source batch; **zero** eligible defaults  
-- Metadata mirror mismatch (same as fingerprint case)  
-- DEFAULT feature scalar copy equals C3 **row columns**  
-- PROVISIONAL feature scalar copy equals C3 row columns  
-- Snapshot context equality uses D4 historical `inputSummary` parser (not D1 parser for wrong contract)  
-- Excluded canonical: source content **`NOT_APPLICABLE`**; identity/digest/lineage/temporal still evaluated  
-- Unresolved excluded input contract → expected reason, **not** integrity warning  
-- Missing source ≠ profile corruption; rebuildability **FULL/PARTIAL/UNAVAILABLE** deterministic  
-- Partial digest coverage alone does **not** downgrade rebuildability  
-- Integrity warning → quarantine DEFAULT; partial coverage does not auto-quarantine  
-- `perSession.length === candidateRestSessionCount`; nullable version tuple for no-source candidates  
-- `REVISION_NOT_FOUND` top-level outcome  
+- `profileGeneratedAt` present in scientific JSON → parse failure / distinct self-integrity outcome  
+- Candidate / included / provisional / excluded count mismatches  
+- Duplicate `restSessionId` across slices  
+- Bad `profileStatus`; anchor / `validEvidenceSpanMs` derivations  
+- `statusReasons` / `excludedByReason` mismatches  
+- Broken version segments (index, split equal tuples, coverage)  
+- Profile flag missing/extra/duplicate; `derived !== null`  
+- Non-deterministic ordering rejected  
 
-### PostgreSQL (ephemeral)
+### Unparseable result
 
-- Tenant-scoped revision lookup; cross-tenant source ids cannot leak rows  
-- RepeatableRead snapshot behavior  
-- **Fixed SQL statement count** for 1, 10, and 100 sessions (same count)  
-- **Fixed SQL statement count** with 1 vs many persisted version triples  
-- Latest K + referenced union output bound (≤ 10,100 materialized rows)  
-- Aggregate may scan >K server-side without materializing all rows  
-- Historical version tuples in one set-based batch  
-- Source row delete → `SOURCE_EVIDENCE_LIMITED`  
-- D3 revision survives C3 purge simulation  
-- **Zero D4 writes**  
+- Malformed profile → `{ status: 'REVISION_SELF_INTEGRITY_FAILED', failure }` — no fake `perSession`, rebuildability, or source batch  
+
+### Unsupported source input contract (§9.8)
+
+- Profile version == `inputSummary` version; parser not registered  
+- Not `SOURCE_VERSION_MISMATCH`; digest + scalars still checked; snapshot `NOT_EVALUATED`  
+- `SOURCE_EVIDENCE_LIMITED` disposition; not integrity warning  
+
+### Digest coverage
+
+- Profile scope aggregation: all FULL → FULL; one BOUNDED → BOUNDED; zero evaluated → NOT_EVALUATED  
+- Checked/unchecked sums exact; referenced union not double-counted  
+
+### Eligibility
+
+- PROVISIONAL/EXCLUDED → `NOT_APPLICABLE`  
+- Four DEFAULT disposition buckets sum to `includedSessionCount`  
+
+### Unit / PostgreSQL (carry-forward from D4.1)
+
+- Parseable fingerprint mismatch → forensic overlay; zero eligible defaults  
+- Rebuildability deterministic; fixed SQL statement count vs 1/10/100 sessions and vs version triple count  
+- Tenant isolation; zero D4 writes  
 
 ---
 
-## 30. Open decisions (non-blocking for D4.1 closure)
+## 30. Open decisions (non-blocking for D4.2 seal)
 
 | Item | Status |
 |------|--------|
@@ -871,30 +1089,23 @@ D4 tests may insert isolated revisions in **ephemeral PostgreSQL** only.
 
 ---
 
-## 31. Implementation readiness gate (D4.1)
+## 31. Implementation readiness gate (D4.2 final seal)
 
 | Gate | Result |
 |------|--------|
-| Source content authority (row columns vs inputSummary) | **CLOSED** (D4.1) |
-| Excluded content applicability | **CLOSED** (D4.1) |
-| Historical input contract semantics | **CLOSED** (D4.1) |
-| Deterministic rebuildability | **CLOSED** (D4.1) |
-| Outcome vs overallStatus taxonomy | **CLOSED** (D4.1) |
-| Self-failure processing order | **CLOSED** (D4.1) |
-| Complete V1 contract dimensions | **CLOSED** (D4.1) |
-| Constant round-trip batch plan | **CLOSED** (D4.1) |
-| perSession cardinality + nullable tuples | **CLOSED** (D4.1) |
-| Overlay vs mutation | **CLOSED** |
-| Tenant scoping / RepeatableRead | **CLOSED** |
-| Test matrix | **CLOSED** (design) |
+| Unparseable distinct failure outcome (D4.2) | **CLOSED** |
+| D2 semantic invariant validator (D4.2) | **CLOSED** |
+| Unsupported matching input contract (D4.2) | **CLOSED** |
+| Digest coverage scope enum + aggregation (D4.2) | **CLOSED** |
+| DEFAULT disposition accounting (D4.2) | **CLOSED** |
+| Closed inspectionFlags enum (D4.2) | **CLOSED** |
+| D4.1 provenance / rebuildability / batch plan | **CLOSED** |
 
 **`D4_IMPLEMENTATION_READY=YES`**
 
-Engineering may proceed on a **separate PR** after this architecture audit merges. **No D4 code in PR #1751.**
-
 ---
 
-## Appendix — audit decision summary (incl. D4.1)
+## Appendix — audit decision summary (incl. D4.2)
 
 | Key | Value |
 |-----|-------|
@@ -910,6 +1121,9 @@ Engineering may proceed on a **separate PR** after this architecture audit merge
 | `SOURCE_FEATURE_SCALAR_AUTHORITY` | C3_ROW_COLUMNS |
 | `SOURCE_SNAPSHOT_CONTEXT_AUTHORITY` | C3_INPUT_SUMMARY |
 | `EXCLUDED_SOURCE_CONTENT_INTEGRITY` | NOT_APPLICABLE |
-| `MALFORMED_PROFILE_STATUS` | REVISION_SELF_INTEGRITY_FAILED |
-| `UNSUPPORTED_CONTRACT_STATUS` | REVISION_SELF_INTEGRITY_FAILED |
-| `DIMENSION_RESULT_ENUM` | PASS \| FAIL \| NOT_EVALUATED \| NOT_APPLICABLE |
+| `MALFORMED_PROFILE_STATUS` | Top-level `REVISION_SELF_INTEGRITY_FAILED` failure |
+| `UNSUPPORTED_CONTRACT_STATUS` | Top-level `REVISION_SELF_INTEGRITY_FAILED` failure |
+| `DIGEST_SCOPE_ENUM` | FULL \| BOUNDED_LATEST_WINDOW \| NOT_EVALUATED |
+| `ZERO_EVALUATED_DIGEST_SCOPE` | NOT_EVALUATED |
+| `INSPECTION_FLAG_ENUM_FROZEN` | YES |
+| `UNSUPPORTED_SOURCE_INPUT_CONTRACT_DISPOSITION` | SOURCE_EVIDENCE_LIMITED |
