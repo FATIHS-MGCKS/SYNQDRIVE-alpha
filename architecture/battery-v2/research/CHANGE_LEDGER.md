@@ -23,7 +23,7 @@ Append-only scientific record. Newest entries first.
 | **REMAINING_GAPS** | M3.3F registration/wiring; retention; `MATERIALIZATION_FLAG_NAME`; D4 integrity batch. |
 | **DECISION_STATUS** | **ENGINEERING_DRAFT** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
-| **EVIDENCE** | Draft PR (D3 foundation); main @ `b62cc2c19` |
+| **EVIDENCE** | Draft PR #1746 (D3 foundation); main @ `b62cc2c19` |
 
 ---
 
