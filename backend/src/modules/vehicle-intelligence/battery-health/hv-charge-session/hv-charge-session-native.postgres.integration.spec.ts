@@ -111,31 +111,31 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         });
         expect(countAfterReplay).toBe(1);
 
-        const start = completed.startAt;
-        const fingerprint = completed.fingerprint;
-        const ongoing = normalizeDimoRechargeSegment(TESLA_RECHARGE_AUDIT_TOKEN_ID, {
-          start: { timestamp: start, value: {} },
+        const segment2Raw = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[1];
+        const ongoingSegment = normalizeDimoRechargeSegment(TESLA_RECHARGE_AUDIT_TOKEN_ID, {
+          start: segment2Raw.start,
           end: null,
           duration: 600,
           isOngoing: true,
-          signals: completedRaw.signals,
+          signals: segment2Raw.signals,
         })!;
-        expect(ongoing.fingerprint).toBe(fingerprint);
-
-        await persist.persistRechargeSegment({
+        const ongoingCreate = await persist.persistRechargeSegment({
           organizationId: org.id,
           vehicleId: vehicle.id,
-          segment: ongoing,
+          segment: ongoingSegment,
         });
+        expect(ongoingCreate.created).toBe(true);
 
-        const completedSameStart = normalizeDimoRechargeSegment(
+        const completedSegment2 = normalizeDimoRechargeSegment(
           TESLA_RECHARGE_AUDIT_TOKEN_ID,
-          completedRaw,
+          segment2Raw,
         )!;
+        expect(completedSegment2.fingerprint).toBe(ongoingSegment.fingerprint);
+
         const done = await persist.persistRechargeSegment({
           organizationId: org.id,
           vehicleId: vehicle.id,
-          segment: completedSameStart,
+          segment: completedSegment2,
         });
         expect(done.changeKind).toBe('completed');
 
@@ -143,14 +143,14 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
           where: {
             vehicleId_segmentFingerprint: {
               vehicleId: vehicle.id,
-              segmentFingerprint: fingerprint,
+              segmentFingerprint: ongoingSegment.fingerprint,
             },
           },
         });
         expect(row?.isOngoing).toBe(false);
-        expect(row?.startAt.toISOString()).toBe(new Date(start).toISOString());
+        expect(row?.startAt.toISOString()).toBe(new Date(ongoingSegment.startAt).toISOString());
 
-        const sparse = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[1];
+        const sparse = segment2Raw;
         const withoutId = normalizeDimoRechargeSegment(TESLA_RECHARGE_AUDIT_TOKEN_ID, sparse)!;
         const withId = normalizeDimoRechargeSegment(
           TESLA_RECHARGE_AUDIT_TOKEN_ID,
