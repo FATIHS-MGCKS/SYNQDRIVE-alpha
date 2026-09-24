@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D4 architecture post-merge seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4.3 architecture validated on draft PR #1751; active docs described D4 as in-flight / draft. |
+| **OBSERVATION** | PR #1751 merged to main @ `158f9c516fe4be55f4ef8d3e9cb4c5df02333074` (head `e77ac83e94a746070eca9bfdc9ef88a7d23da8b4`). |
+| **HYPOTHESIS** | Post-merge seal can mark D4 architecture COMPLETE ON MAIN and set D4 engineering as next without runtime activation. |
+| **CHANGE** | Updated `CURRENT_STATE`, D4 research doc status, D0/D1/D2/D3 phase pointers; appended this seal entry. |
+| **WHY** | Align active Battery V2 authority with merged D4 architecture contract (`M3_3D_D4_INTEGRITY_INSPECTION_V1`). |
+| **EXPECTED_EFFECT** | **`D4_IMPLEMENTATION_READY=YES`**; **`NEXT_PHASE=M3.3D D4 engineering`**; **`D4_ENGINEERING_IMPLEMENTED=NO`**. |
+| **VALIDATION** | `validate-module-registry.sh`; `validate-graph.sh`; governance CI on seal PR. |
+| **OBSERVED_EFFECT** | Pending seal PR merge. |
+| **NON_EFFECTS** | No runtime implementation; no schema/migration; no feature flag; no D3 writer; no deploy; no M3.3E health logic; **`D3_RUNTIME_REACHABLE=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None (documentation-only). |
+| **REMAINING_GAPS** | D4 engineering; M3.3E+; M3.3F materialization authorization. |
+| **DECISION_STATUS** | **AUTHORITY_SEALED_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal integrity / inspection |
+| **EVIDENCE** | PR #1751 merge `158f9c516f`; head `e77ac83e9` |
+
+---
+
 ## CL-2026-09-24 — M3.3D D4.3 final architecture consistency closure
 
 | Field | Value |

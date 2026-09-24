@@ -1,10 +1,10 @@
 # M3.3D D4 — Longitudinal Integrity / Inspection Architecture Audit
 
 **Date:** 2026-09-24  
-**Status:** **ARCHITECTURE AUDIT — D4.3 FINAL CONSISTENCY CLOSURE** (read-only; **not implemented**)  
+**Status:** **ARCHITECTURE COMPLETE ON MAIN** — merged PR #1751 @ merge `158f9c516fe4be55f4ef8d3e9cb4c5df02333074` (PR head `e77ac83e94a746070eca9bfdc9ef88a7d23da8b4`)  
 **Inspection contract (frozen):** `M3_3D_D4_INTEGRITY_INSPECTION_V1`  
-**Draft PR:** #1751  
-**Main anchor (audit start):** `989d560f57ee4785e0d12fc518e2a204dfa5f826`  
+**Engineering status:** **`D4_IMPLEMENTATION_READY=YES`** · **`D4_ENGINEERING_IMPLEMENTED=NO`** · **next slice: M3.3D D4 engineering**  
+**Main anchor (merged):** `158f9c516fe4be55f4ef8d3e9cb4c5df02333074`  
 **Upstream complete on main:** D0/D0.1, D1, D2, D3 architecture/D3.1, D3 foundation (PR #1746 @ `c5c1129f`; seal PR #1748 @ `989d560f5`)  
 **Runtime gates (unchanged):** **`D3_RUNTIME_REACHABLE=NO`** · **`PRODUCTION_MATERIALIZATION_READY=NO`**
 

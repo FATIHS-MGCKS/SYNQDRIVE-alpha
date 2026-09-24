@@ -25,7 +25,8 @@ Deterministic **input inventory** for a bounded rest-session window (not longitu
 | **D2** | **COMPLETE ON MAIN** — PR #1739 @ `ed7adb79b` — see `M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md` |
 | **D3 architecture / D3.1** | **COMPLETE ON MAIN** PR #1744 @ `7919bdd5c` — see `M3_3D_D3_MATERIALIZATION_PERSISTENCE_ARCHITECTURE_2026-09-24.md` |
 | **D3 foundation engineering** | **COMPLETE ON MAIN** PR #1746 @ merge `c5c1129f` — internal stack present; **`D3_RUNTIME_REACHABLE=NO`** |
-| **D4 Integrity / Inspection** | **NEXT** |
+| **D4 architecture** | **COMPLETE ON MAIN** PR #1751 @ merge `158f9c516f` |
+| **D4 engineering** | **NEXT** |
 | M3.3E | **PENDING** (health/risk logic) |
 | M3.3F | **PENDING** / production shadow authorization |
 | M3.3G | **PENDING** |
