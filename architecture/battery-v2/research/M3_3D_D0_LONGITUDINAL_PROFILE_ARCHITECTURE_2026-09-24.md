@@ -34,7 +34,18 @@
 | 14–15 | D3 materialization **conditional**; no production materialization or shadow activation before **M3.3F** authorization |
 | 16–17 | M3.3E health/risk/confidence; M3.3H customer Health UI separate from internal longitudinal engineering |
 
-**Next engineering slice:** **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (**not started**).
+**Next engineering slice:** **M3.3D D1** — bounded canonical longitudinal input reader + inclusion policy (**COMPLETE ON MAIN**). **M3.3D D2** — deterministic profile assembly (**draft PR**; see D2 research doc).
+
+### D2 implementation closure (2026-09-24)
+
+D0 remained a **working/conceptual** contract. **M3.3D D2 V1** (`M3_3D_PROFILE_POLICY_V1`) supersedes implementable semantics without rewriting D0 history:
+
+- Stable series = D1 `DEFAULT` → `observations[]` only; `PROVISIONAL` → separate `provisionalObservations[]`; `EXCLUDED` → `excludedSessions[]` audit shape (not full observation).
+- `includedSessionCount` counts **DEFAULT** only; `profileStatus=OK` requires ≥1 DEFAULT (provisional-only → `NO_ELIGIBLE_SESSIONS`).
+- Contiguous chronological **version segments** (not global tuple grouping); `INSUFFICIENT_SESSIONS` **reserved**, not emitted until DEC-M3.3D-001.
+- No truncation inference when `sessions.length === limit`; `trendReadiness=NOT_EVALUATED`; `derived=null`; D3 owns materialization fingerprint.
+
+See `research/M3_3D_D2_DETERMINISTIC_LONGITUDINAL_PROFILE_ASSEMBLY_2026-09-24.md`.
 
 ---
 
@@ -513,7 +524,14 @@ Reuse **C5A semantics** when evaluated — **no second integrity policy**. Separ
 | **REVISION_LINEAGE_INTEGRITY** | Semantic revision gaps / duplicates vs aggregate | **NO** (D4+ slice) |
 | **DIGEST_COVERAGE** | FULL vs BOUNDED_LATEST_WINDOW (`INTEGRITY_PARTIAL`) | **NO** (D4+ slice) |
 
-**D1 rule:** `perSessionInspectionStatus` = **`NOT_EVALUATED`**. D1 **must not** claim `INTEGRITY_WARNING` exclusion was applied. Inclusion/exclusion in D1 uses **canonical selection + inclusion policy gates only** (trust, charge class, points, `INPUT_CONTRACT_VERSION_UNRESOLVED`, etc.).
+**D1 rule:** `perSessionInspectionStatus` = **`NOT_EVALUATED`**. D1 **must not** claim `INTEGRITY_WARNING` exclusion was applied. D1 inclusion/exclusion uses **canonical selection + inclusion policy only** — the authoritative machine-readable exclusion reasons are:
+
+- `NO_CANONICAL_ROW`
+- `SESSION_INVALIDATED`
+- `SESSION_TRUST_INVALIDATED`
+- `INPUT_CONTRACT_VERSION_UNRESOLVED`
+
+D1 **does not** exclude on `chargeOpportunityClass`, `numberOfValidRestPoints`, `observationSpanMs`, `missingRungCount`, voltage scalars, slope, or temperature. Those fields remain **metadata** and future calibration surfaces (M3.3E+), not D1 gates.
 
 **D4+ (preferred):** bounded batch acquisition reusing C5A inspection **primitives** (snapshot loader + integrity helpers) — **not** N independent full `inspectSession()` workflows with unbounded revision loads per session.
 
