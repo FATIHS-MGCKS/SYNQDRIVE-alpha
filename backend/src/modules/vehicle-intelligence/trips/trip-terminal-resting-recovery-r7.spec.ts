@@ -9,6 +9,7 @@ import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import { END_DETECTION_MODES } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 import { evaluateTripLifecycleInvariant } from './trip-lifecycle-invariant';
 
 const VEHICLE = 'veh-r7';
@@ -26,23 +27,6 @@ function finalizeJob(): TripTrackingJobData {
     trigger: TRIP_TRACKING_TRIGGERS.FINALIZE,
     requestedAt: WORKER_NOW.toISOString(),
   };
-}
-
-function defaultHarnessRouteWaypoints(anchor: Date) {
-  return [
-    {
-      latitude: 50.937,
-      longitude: 6.96,
-      speedKmh: 30,
-      recordedAt: new Date(anchor.getTime() + 60_000),
-    },
-    {
-      latitude: 50.939,
-      longitude: 6.965,
-      speedKmh: 25,
-      recordedAt: new Date(anchor.getTime() + 120_000),
-    },
-  ];
 }
 
 function buildFinalizeHarness(overrides: {
@@ -109,7 +93,7 @@ function buildFinalizeHarness(overrides: {
       vehicleTripWaypoint: {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue(
-          defaultHarnessRouteWaypoints(
+          defaultFinalizeHarnessRouteWaypoints(
             overrides.trip === null || overrides.trip === undefined
               ? new Date(WORKER_NOW.getTime() - 600_000)
               : (overrides.trip as { startTime?: Date }).startTime ??
