@@ -20,6 +20,17 @@ export class ProfileFingerprintCollisionOrCanonicalizationDriftError extends Err
   }
 }
 
+export class ProfileMaterializedMetadataDriftError extends Error {
+  readonly code = 'PROFILE_MATERIALIZED_METADATA_DRIFT' as const;
+
+  constructor(
+    message = 'Canonical scientific payload matched but mirrored relational metadata differed',
+  ) {
+    super(message);
+    this.name = 'ProfileMaterializedMetadataDriftError';
+  }
+}
+
 export class ProfileIdempotencyConflictRowNotFoundError extends Error {
   readonly code = 'PROFILE_IDEMPOTENCY_CONFLICT_ROW_NOT_FOUND' as const;
 

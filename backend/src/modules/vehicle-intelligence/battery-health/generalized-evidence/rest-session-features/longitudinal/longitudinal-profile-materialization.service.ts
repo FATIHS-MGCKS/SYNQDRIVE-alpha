@@ -42,10 +42,7 @@ export class LongitudinalProfileMaterializationService {
     const fingerprint = computeLongitudinalScientificProfileFingerprintV1(
       assemblyOutcome.profile,
     );
-    const persistenceInput = buildLongitudinalProfileMaterializationPersistenceInput(
-      assemblyOutcome.profile,
-      fingerprint,
-    );
+    const persistenceInput = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
 
     const insertOutcome = await this.materializationRepository.insertIdempotent(
       persistenceInput,

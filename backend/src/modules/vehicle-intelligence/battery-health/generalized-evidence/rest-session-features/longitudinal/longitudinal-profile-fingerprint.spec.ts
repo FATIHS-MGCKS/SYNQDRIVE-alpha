@@ -320,7 +320,7 @@ describe('longitudinal-profile D3 scientific projection + fingerprint', () => {
         }),
       ]);
       const fp = computeLongitudinalScientificProfileFingerprintV1(profile);
-      const row = buildLongitudinalProfileMaterializationPersistenceInput(profile, fp);
+      const row = buildLongitudinalProfileMaterializationPersistenceInput(fp);
       expect(row.includedSessionCount).toBe(profile.coverage.includedSessionCount);
       expect(row.organizationId).toBe(PROFILE_TEST_ORG);
       expect(row.vehicleId).toBe(PROFILE_TEST_VEHICLE);

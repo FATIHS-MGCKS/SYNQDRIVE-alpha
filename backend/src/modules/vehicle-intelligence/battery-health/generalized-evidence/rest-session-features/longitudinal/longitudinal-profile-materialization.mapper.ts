@@ -1,6 +1,5 @@
 import type { Prisma } from '@prisma/client';
 import type { LongitudinalScientificProfileFingerprintV1 } from './longitudinal-profile-fingerprint';
-import type { LongitudinalProfileV1 } from './longitudinal-profile.types';
 
 export type LongitudinalProfileMaterializationPersistenceInput = {
   organizationId: string;
@@ -25,26 +24,28 @@ function parseOptionalAnchor(iso: string | null): Date | null {
   return new Date(iso);
 }
 
+/**
+ * Derives all persistence fields from the fingerprint's scientific projection only.
+ */
 export function buildLongitudinalProfileMaterializationPersistenceInput(
-  profile: LongitudinalProfileV1,
   fingerprint: LongitudinalScientificProfileFingerprintV1,
 ): LongitudinalProfileMaterializationPersistenceInput {
+  const projection = fingerprint.scientificProjection;
   return {
-    organizationId: profile.organizationId,
-    vehicleId: profile.vehicleId,
-    longitudinalProfileContractVersion: profile.longitudinalProfileContractVersion,
-    profilePolicyVersion: profile.profilePolicyVersion,
+    organizationId: projection.organizationId,
+    vehicleId: projection.vehicleId,
+    longitudinalProfileContractVersion: projection.longitudinalProfileContractVersion,
+    profilePolicyVersion: projection.profilePolicyVersion,
     canonicalProfileFingerprint: fingerprint.canonicalProfileFingerprint,
-    scientificProfileJson:
-      fingerprint.scientificProjection as unknown as Prisma.InputJsonValue,
-    requestedSessionLimit: profile.window.requestedSessionLimit,
-    appliedSessionLimit: profile.window.appliedSessionLimit,
-    candidateRestSessionCount: profile.coverage.candidateRestSessionCount,
-    includedSessionCount: profile.coverage.includedSessionCount,
-    provisionalSessionCount: profile.coverage.provisionalSessionCount,
-    excludedSessionCount: profile.coverage.excludedSessionCount,
-    firstIncludedAnchorAt: parseOptionalAnchor(profile.window.firstIncludedAnchorAt),
-    lastIncludedAnchorAt: parseOptionalAnchor(profile.window.lastIncludedAnchorAt),
-    profileStatus: profile.profileStatus,
+    scientificProfileJson: projection as unknown as Prisma.InputJsonValue,
+    requestedSessionLimit: projection.window.requestedSessionLimit,
+    appliedSessionLimit: projection.window.appliedSessionLimit,
+    candidateRestSessionCount: projection.coverage.candidateRestSessionCount,
+    includedSessionCount: projection.coverage.includedSessionCount,
+    provisionalSessionCount: projection.coverage.provisionalSessionCount,
+    excludedSessionCount: projection.coverage.excludedSessionCount,
+    firstIncludedAnchorAt: parseOptionalAnchor(projection.window.firstIncludedAnchorAt),
+    lastIncludedAnchorAt: parseOptionalAnchor(projection.window.lastIncludedAnchorAt),
+    profileStatus: projection.profileStatus,
   };
 }

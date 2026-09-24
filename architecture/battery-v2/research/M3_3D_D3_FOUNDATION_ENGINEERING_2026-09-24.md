@@ -16,11 +16,27 @@
 | Migration | `20260924110000_battery_longitudinal_profile_revisions` |
 | Scientific projection | `longitudinal-profile-scientific-projection.ts` |
 | Fingerprint wrapper | `longitudinal-profile-fingerprint.ts` |
-| Persistence mapper | `longitudinal-profile-materialization.mapper.ts` |
-| Repository (ON CONFLICT) | `longitudinal-profile-materialization.repository.ts` |
+| Persistence mapper | `longitudinal-profile-materialization.mapper.ts` (single-source: fingerprint only) |
+| Metadata mirror guard | `longitudinal-profile-materialization.metadata-mirror.ts` |
+| Repository (ON CONFLICT) | `longitudinal-profile-materialization.repository.ts` (explicit `ReadCommitted`) |
 | Internal service | `longitudinal-profile-materialization.service.ts` |
-| Unit tests | `longitudinal-profile-fingerprint.spec.ts` |
+| Unit tests | `longitudinal-profile-fingerprint.spec.ts`, `*.mapper/repository/service.spec.ts` |
 | Postgres integration | `longitudinal-profile-materialization.integration.spec.ts` (`BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_INTEGRATION=1`) |
+| Ephemeral Postgres CI | `backend/scripts/test/battery-longitudinal-profile-materialization-postgres-ci.sh` → `npm run test:battery:v2:longitudinal-profile-materialization:postgres` |
+
+---
+
+## Foundation hardening (PR #1746 amend)
+
+| Contract | Implementation |
+|----------|----------------|
+| **`PERSISTENCE_SINGLE_DERIVATION_SOURCE=YES`** | `buildLongitudinalProfileMaterializationPersistenceInput(fingerprint)` derives JSON + metadata from `fingerprint.scientificProjection` only |
+| **`READ_COMMITTED_EXPLICIT=YES`** | `insertIdempotent()` uses `Prisma.TransactionIsolationLevel.ReadCommitted` |
+| **Application fingerprint validation** | Repository validates `/^[0-9a-f]{64}$/` before INSERT (`INVALID_PROFILE_FINGERPRINT`) |
+| **DB CHECK matrix (PG-B)** | Reject uppercase / 63 / 65 / non-hex; accept 64 lowercase hex |
+| **Full metadata mirror (PG-O)** | All mirrored columns verified vs persistence input + canonical UTF-8 equivalence |
+| **Duplicate metadata drift** | EXISTING path throws `PROFILE_MATERIALIZED_METADATA_DRIFT` (PG-Q) |
+| **Postgres execution** | **`CI_ENFORCED`** via Vehicle Detail workflow job `battery-v2-d3-materialization-postgres` |
 
 ---
 

@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-24 — M3.3D D3 foundation hardening (draft PR #1746 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D3 foundation on PR #1746 with dual-source mapper, implicit isolation, partial PG-B/O coverage, no service orchestration spec, env-gated PG suite only in standard Jest. |
+| **OBSERVATION** | Independent review identified persistence-contract gaps before merge. |
+| **HYPOTHESIS** | Single-source derivation + explicit ReadCommitted + metadata drift guard closes contract gaps without runtime wiring. |
+| **CHANGE** | Single-source mapper; explicit ReadCommitted; repository fingerprint validation; metadata drift fail-closed; full PG-B/O/Q; service/repository/mapper specs; postgres CI script + Vehicle Detail CI job. |
+| **WHY** | Close foundation persistence contract before merge without adding runtime reachability. |
+| **EXPECTED_EFFECT** | Internally consistent JSON/metadata; reproducible ephemeral Postgres proof; CI-enforced D3 PG matrix. |
+| **VALIDATION** | `npm run test:battery:v2:longitudinal-profile-materialization:postgres`; unit specs; governance validators. |
+| **OBSERVED_EFFECT** | Pending PR #1746 amend merge verification. |
+| **NON_EFFECTS** | No Nest registration; no feature flag; no production materialization. |
+| **REGRESSIONS_OR_TRADEOFFS** | Mapper API breaking for any internal dual-arg callers (removed). |
+| **REMAINING_GAPS** | M3.3F wiring; retention; materialization flag name. |
+| **DECISION_STATUS** | **ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3D longitudinal profile materialization |
+| **EVIDENCE** | PR #1746 amend |
+
+---
+
 ## CL-2026-09-24 — M3.3D D3 foundation engineering (append-only materialization, draft PR)
 
 | Field | Value |

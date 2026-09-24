@@ -7,8 +7,10 @@ import { assembleLongitudinalProfileV1 } from './longitudinal-profile.assembler'
 import { computeLongitudinalScientificProfileFingerprintV1 } from './longitudinal-profile-fingerprint';
 import {
   ProfileFingerprintCollisionOrCanonicalizationDriftError,
+  ProfileMaterializedMetadataDriftError,
 } from './longitudinal-profile-materialization.errors';
 import { buildLongitudinalProfileMaterializationPersistenceInput } from './longitudinal-profile-materialization.mapper';
+import { revisionMetadataMirrorsPersistenceInput } from './longitudinal-profile-materialization.metadata-mirror';
 import { LongitudinalProfileMaterializationRepository } from './longitudinal-profile-materialization.repository';
 import {
   buildProfileTestInventory,
@@ -42,11 +44,43 @@ function buildPersistencePair(
   });
   if (assembled.status !== 'OK') throw new Error(assembled.reason);
   const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-  const input = buildLongitudinalProfileMaterializationPersistenceInput(
-    assembled.profile,
-    fingerprint,
-  );
-  return { assembled: assembled.profile, fingerprint, input };
+  const input = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+  return { projection: fingerprint.scientificProjection, fingerprint, input };
+}
+
+async function rawInsertRevision(
+  prisma: PrismaClient,
+  organizationId: string,
+  vehicleId: string,
+  input: ReturnType<typeof buildLongitudinalProfileMaterializationPersistenceInput>,
+  fingerprint: string,
+) {
+  return prisma.$executeRaw`
+    INSERT INTO battery_longitudinal_profile_revisions (
+      id, organization_id, vehicle_id,
+      longitudinal_profile_contract_version, profile_policy_version,
+      canonical_profile_fingerprint, scientific_profile_json,
+      requested_session_limit, applied_session_limit,
+      candidate_rest_session_count, included_session_count,
+      provisional_session_count, excluded_session_count,
+      profile_status
+    ) VALUES (
+      ${randomUUID()},
+      ${organizationId},
+      ${vehicleId},
+      ${input.longitudinalProfileContractVersion},
+      ${input.profilePolicyVersion},
+      ${fingerprint},
+      ${input.scientificProfileJson as Prisma.InputJsonValue},
+      ${input.requestedSessionLimit},
+      ${input.appliedSessionLimit},
+      ${input.candidateRestSessionCount},
+      ${input.includedSessionCount},
+      ${input.provisionalSessionCount},
+      ${input.excludedSessionCount},
+      ${input.profileStatus}
+    )
+  `;
 }
 
 async function createOrgVehicle(prisma: PrismaClient, label: string) {
@@ -110,38 +144,69 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       expect(rows[0]?.regclass).toBe('battery_longitudinal_profile_revisions');
     });
 
-    it('PG-B — fingerprint CHECK rejects invalid hex', async () => {
-      if (!dbOk) return;
-      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK');
-      const { input } = buildPersistencePair(organizationId, vehicleId);
-      await expect(
-        prisma.$executeRaw`
-          INSERT INTO battery_longitudinal_profile_revisions (
-            id, organization_id, vehicle_id,
-            longitudinal_profile_contract_version, profile_policy_version,
-            canonical_profile_fingerprint, scientific_profile_json,
-            requested_session_limit, applied_session_limit,
-            candidate_rest_session_count, included_session_count,
-            provisional_session_count, excluded_session_count,
-            profile_status
-          ) VALUES (
-            ${randomUUID()},
-            ${organizationId},
-            ${vehicleId},
-            ${input.longitudinalProfileContractVersion},
-            ${input.profilePolicyVersion},
-            ${'ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789'},
-            ${input.scientificProfileJson as Prisma.InputJsonValue},
-            ${input.requestedSessionLimit},
-            ${input.appliedSessionLimit},
-            ${input.candidateRestSessionCount},
-            ${input.includedSessionCount},
-            ${input.provisionalSessionCount},
-            ${input.excludedSessionCount},
-            ${input.profileStatus}
-          )
-        `,
-      ).rejects.toThrow();
+    describe('PG-B — fingerprint CHECK matrix', () => {
+      it('rejects uppercase 64-char hex', async () => {
+        if (!dbOk) return;
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK-UP');
+        const { input } = buildPersistencePair(organizationId, vehicleId);
+        await expect(
+          rawInsertRevision(
+            prisma,
+            organizationId,
+            vehicleId,
+            input,
+            'ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789',
+          ),
+        ).rejects.toThrow();
+      });
+
+      it('rejects 63 lowercase hex chars', async () => {
+        if (!dbOk) return;
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK-63');
+        const { input } = buildPersistencePair(organizationId, vehicleId);
+        await expect(
+          rawInsertRevision(prisma, organizationId, vehicleId, input, 'a'.repeat(63)),
+        ).rejects.toThrow();
+      });
+
+      it('rejects 65 lowercase hex chars', async () => {
+        if (!dbOk) return;
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK-65');
+        const { input } = buildPersistencePair(organizationId, vehicleId);
+        await expect(
+          rawInsertRevision(prisma, organizationId, vehicleId, input, 'a'.repeat(65)),
+        ).rejects.toThrow();
+      });
+
+      it('rejects 64 chars with non-hex character', async () => {
+        if (!dbOk) return;
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK-NH');
+        const { input } = buildPersistencePair(organizationId, vehicleId);
+        await expect(
+          rawInsertRevision(
+            prisma,
+            organizationId,
+            vehicleId,
+            input,
+            `g${'a'.repeat(63)}`,
+          ),
+        ).rejects.toThrow();
+      });
+
+      it('accepts exactly 64 lowercase hex characters', async () => {
+        if (!dbOk) return;
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'CHK-OK');
+        const { input, fingerprint } = buildPersistencePair(organizationId, vehicleId);
+        await expect(
+          rawInsertRevision(
+            prisma,
+            organizationId,
+            vehicleId,
+            input,
+            fingerprint.canonicalProfileFingerprint,
+          ),
+        ).resolves.toBeDefined();
+      });
     });
 
     it('PG-C — first insert CREATED', async () => {
@@ -254,8 +319,8 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (p1.status !== 'OK' || p2.status !== 'OK') throw new Error('assemble failed');
       const f1 = computeLongitudinalScientificProfileFingerprintV1(p1.profile);
       const f2 = computeLongitudinalScientificProfileFingerprintV1(p2.profile);
-      const row1 = buildLongitudinalProfileMaterializationPersistenceInput(p1.profile, f1);
-      const row2 = buildLongitudinalProfileMaterializationPersistenceInput(p2.profile, f2);
+      const row1 = buildLongitudinalProfileMaterializationPersistenceInput(f1);
+      const row2 = buildLongitudinalProfileMaterializationPersistenceInput(f2);
       await repo.insertIdempotent(row1, f1.canonicalScientificUtf8);
       await repo.insertIdempotent(row2, f2.canonicalScientificUtf8);
       expect(f1.canonicalProfileFingerprint).not.toBe(f2.canonicalProfileFingerprint);
@@ -411,14 +476,51 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       expect(canonicalFeatureInputUtf8(stored)).toBe(fingerprint.canonicalScientificUtf8);
     });
 
-    it('PG-O — metadata mirrors projection', async () => {
+    it('PG-O — full metadata mirror', async () => {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'META');
-      const { assembled, fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
+      const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
       const out = await repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8);
-      expect(out.revision.includedSessionCount).toBe(assembled.coverage.includedSessionCount);
-      expect(out.revision.profileStatus).toBe(assembled.profileStatus);
-      expect(out.revision.requestedSessionLimit).toBe(assembled.window.requestedSessionLimit);
+      expect(revisionMetadataMirrorsPersistenceInput(out.revision, input)).toBe(true);
+      expect(canonicalFeatureInputUtf8(out.revision.scientificProfileJson)).toBe(
+        fingerprint.canonicalScientificUtf8,
+      );
+    });
+
+    it('PG-Q — metadata drift fail closed on EXISTING path', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'MDRIFT');
+      const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
+      const seedId = randomUUID();
+      await prisma.$executeRaw`
+        INSERT INTO battery_longitudinal_profile_revisions (
+          id, organization_id, vehicle_id,
+          longitudinal_profile_contract_version, profile_policy_version,
+          canonical_profile_fingerprint, scientific_profile_json,
+          requested_session_limit, applied_session_limit,
+          candidate_rest_session_count, included_session_count,
+          provisional_session_count, excluded_session_count,
+          profile_status
+        ) VALUES (
+          ${seedId},
+          ${organizationId},
+          ${vehicleId},
+          ${input.longitudinalProfileContractVersion},
+          ${input.profilePolicyVersion},
+          ${input.canonicalProfileFingerprint},
+          ${input.scientificProfileJson as Prisma.InputJsonValue},
+          ${input.requestedSessionLimit},
+          ${input.appliedSessionLimit},
+          ${input.candidateRestSessionCount},
+          ${999},
+          ${input.provisionalSessionCount},
+          ${input.excludedSessionCount},
+          ${input.profileStatus}
+        )
+      `;
+      await expect(
+        repo.insertIdempotent(input, fingerprint.canonicalScientificUtf8),
+      ).rejects.toBeInstanceOf(ProfileMaterializedMetadataDriftError);
     });
 
     it('PG-P — profileGeneratedAt absent from JSONB', async () => {
@@ -432,7 +534,7 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       expect(Object.prototype.hasOwnProperty.call(window, 'profileGeneratedAt')).toBe(false);
     });
 
-    it('TX — duplicate path succeeds without aborted-transaction pattern', async () => {
+    it('TX — duplicate path succeeds under explicit READ COMMITTED', async () => {
       if (!dbOk) return;
       const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'TX');
       const { fingerprint, input } = buildPersistencePair(organizationId, vehicleId);
