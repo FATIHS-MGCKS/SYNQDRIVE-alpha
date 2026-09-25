@@ -1,7 +1,7 @@
 # M3.3E E1 — Longitudinal Assessment Input Adapter (Engineering)
 
 **Date:** 2026-09-25  
-**Status:** **ENGINEERING ON DRAFT PR #1765** (pure TypeScript adapter; no Nest/DB/runtime wiring)  
+**Status:** **M3.3E E1 COMPLETE ON MAIN** — merged PR #1765 @ merge `553ba670a0a5b99689c6575417b75d4f0b9fb422` (PR head `4891c6dc48b33fba0a4992158b62566ca3eebcd8`)  
 **Consumption contract:** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` (sealed on main via PR #1761)  
 **Health model:** **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 
@@ -14,8 +14,8 @@
 | `backend/.../longitudinal-assessment-input.adapter.ts` | Pure `buildLongitudinalAssessmentInputV1` |
 | `backend/.../longitudinal-assessment-input.golden.ts` | Frozen E1 consumption fingerprint literal |
 | `backend/.../longitudinal-assessment-input.adapter.spec.ts` | Unit + golden tests |
-| `backend/.../longitudinal-assessment-input.adapter.e11-matrix.spec.ts` | E1.1 frozen minimum test matrix (explicit pairing/eligibility/coverage/segments/fingerprint) |
-| `backend/.../longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts` | E1.2 isolated `computeM3_3E_ConsumptionInputFingerprintV1` field sensitivity (fixed `canonicalProfileFingerprint`) |
+| `backend/.../longitudinal-assessment-input.adapter.e11-matrix.spec.ts` | E1.1 frozen minimum test matrix |
+| `backend/.../longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts` | E1.2 isolated fingerprint preimage field sensitivity |
 | `backend/.../longitudinal-assessment-input.test-helpers.ts` | Deterministic D3/D4 pairing fixtures (tests only) |
 
 ## Public entry point
@@ -58,49 +58,108 @@ See E0 doc §15 — `M3_3E_ConsumptionRejectReason` (no health-related reasons).
 
 **Golden vector:** `M3_3E_E1_GOLDEN_CONSUMPTION_FINGERPRINT_LITERAL` = `d426d1b020a2e281581bba677cbc16a9b96f46705dc1f7c4acfa26f49e93ae5f` (two DEFAULT ELIGIBLE fixture).
 
-**Unchanged upstream goldens:** C3 key-order SHA256 `e7b6e05a…`; D3 profile `e2d39c60…`.
+**Unchanged upstream goldens:** C3 key-order SHA256 `e7b6e05a14a7bece2b8568b716d7dfc2ff360507b7a9f308c5771f648fd8dff3`; D3 profile `e2d39c602370c92a7b4304d01ee0f0d102aa4ce033c38a03f72187a3afbcaecb`.
 
 ## Runtime isolation
 
 - **`E1_NEST_PROVIDER_REGISTERED=NO`**
 - **`E1_MODULE_EXPORTED=NO`**
-- **`E1_RUNTIME_CALL_SITES=0`** (production wiring deferred)
+- **`E1_RUNTIME_CALL_SITES=0`**
 - **`D3_RUNTIME_REACHABLE=NO`** · **`D4_RUNTIME_REACHABLE=NO`**
+- **`PRODUCTION_MATERIALIZATION_READY=NO`**
 - No BatteryAssessment / BatteryPublication writes; no LV pipeline changes
 
 ## Tests
 
-`longitudinal-assessment-input.adapter.spec.ts` — identity, D4 gates, parse/bind, pairing, eligibility, segments, fingerprint, purity.
+- **`longitudinal-assessment-input.adapter.spec.ts`** — identity, D4 gates, parse/bind, pairing, eligibility, segments, fingerprint, purity.
+- **`longitudinal-assessment-input.adapter.e11-matrix.spec.ts`** — E1.1 frozen minimum matrix.
+- **`longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts`** — E1.2 isolated preimage sensitivity.
 
-`longitudinal-assessment-input.adapter.e11-matrix.spec.ts` — **E1.1 closure** (draft PR #1765 amend): explicit session-set / profile-slice / canonical / version / eligibility / coverage / evidence-window / version-segment / fingerprint sensitivity matrix; source audit `LOCALECOMPARE_OCCURRENCES_IN_E1_ADAPTER=0`.
+Regressions (minimum): D3 parser, D3 fingerprint, D4 self-integrity, D4 service, D2 assembler, D1 reader/policy specs.
 
-Regressions (minimum): D3 parser, D3 fingerprint, D4 self-integrity, D4 service, D2 assembler, D1 reader specs.
-
-## E1.1 closure evidence (2026-09-25, PR #1765 amend)
+## E1.1 closure evidence (2026-09-25, historical — PR #1765 amend)
 
 | Gate | Result |
 |------|--------|
 | Locale-independent scientific ordering | **`E1_LOCALE_DEPENDENT_ORDERING_USED=NO`** · **`E1_UTF16_CANONICAL_ORDERING_USED=YES`** |
 | Golden consumption fingerprint after ordering fix | **`d426d1b020a2e281581bba677cbc16a9b96f46705dc1f7c4acfa26f49e93ae5f`** (unchanged) |
-| C3 / D3 upstream goldens | **`e7b6e05a…`** / **`e2d39c60…`** (unchanged) |
-| Frozen minimum test matrix | **`E1_TEST_MATRIX_COMPLETE=YES`** (85 E1 unit tests across base + E1.1 spec) |
-| Pure determinism | **`E1_PURE_OUTPUT_DETERMINISTIC=YES`** |
+| Frozen minimum test matrix | **`E1_TEST_MATRIX_COMPLETE=YES`** |
 
-## E1.2 merge-gate closure (2026-09-25, PR #1765)
+## E1.2 merge-gate closure (2026-09-25, historical — PR #1765)
 
 | Gate | Result |
 |------|--------|
-| Sync with current `origin/main` | Rebased; **`MAIN_INCLUDED=YES`** |
-| Frontend runtime diff | **`FRONTEND_RUNTIME_FILES_CHANGED=NO`** (Architektur/Changes restored to main) |
-| Isolated fingerprint preimage tests | **`FINGERPRINT_FIELD_SENSITIVITY_ISOLATED=YES`** (`e12-fingerprint-preimage.spec.ts`) |
-| Observation / object key canonicalization | **`FINGERPRINT_OBSERVATION_ORDER_CANONICALIZED=YES`** · **`FINGERPRINT_OBJECT_KEY_ORDER_CANONICALIZED=YES`** |
+| Sync with `origin/main` before merge | **`MAIN_INCLUDED=YES`** |
+| Frontend runtime diff | **`FRONTEND_RUNTIME_FILES_CHANGED=NO`** |
+| Isolated fingerprint preimage tests | **`FINGERPRINT_FIELD_SENSITIVITY_ISOLATED=YES`** |
 
-## Remaining work (post-E1 merge)
+## E1 post-merge engineering seal (2026-09-25)
 
-- M3.3E health model (not in E1 scope)
-- M3.3F production D3 materialization authorization (unchanged gate)
-- Optional Nest wiring / call sites only after explicit authorization
+| Field | Value |
+|-------|-------|
+| PR | **#1765** merged |
+| PR head | `4891c6dc48b33fba0a4992158b62566ca3eebcd8` |
+| Merge commit | `553ba670a0a5b99689c6575417b75d4f0b9fb422` |
+| **`E1_ADAPTER_IMPLEMENTED`** | **YES** |
+| **`M3_3E_CONSUMPTION_CONTRACT_VERSION`** | **`M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1`** |
+| E1 unit tests | **97 passed / 3 suites** |
+| Exact-head CI (PR #1765) | **28/28 SUCCESS** |
+| **`M3_3E_HEALTH_MODEL_IMPLEMENTED`** | **NO** |
+
+### Implementation properties (sealed)
+
+| Property | Value |
+|----------|-------|
+| `E1_PURE_FUNCTION` | YES |
+| `E1_PURE_OUTPUT_DETERMINISTIC` | YES |
+| `E1_REUSES_D4_STRICT_PROFILE_VALIDATION` | YES |
+| `E1_DUPLICATE_PROFILE_PARSER_ADDED` | NO |
+| `E1_RECOMPUTES_D3_SCIENTIFIC_FINGERPRINT` | YES |
+| `D3_D4_SESSION_SET_SCOPE` | ALL_PROFILE_CANDIDATES |
+| `D3_D4_PROFILE_SLICE_PAIRING_IMPLEMENTED` | YES |
+| `FULL_CANDIDATE_CANONICAL_PAIRING_IMPLEMENTED` | YES |
+| `FULL_CANDIDATE_VERSION_PAIRING_IMPLEMENTED` | YES |
+| `DEFAULT_ELIGIBLE_ONLY_ASSESSMENT_GRADE` | YES |
+| `COVERAGE_PARTITION_INVARIANT_IMPLEMENTED` | YES |
+| `ELIGIBLE_EVIDENCE_WINDOW_IMPLEMENTED` | YES |
+| `ORIGINAL_D2_SEGMENT_BOUNDARIES_PRESERVED` | YES |
+| `SOURCE_SEGMENT_INDEX_PRESERVED` | YES |
+| `NON_ADJACENT_EQUAL_VERSION_SEGMENTS_MERGED` | NO |
+| `MODEL_SUFFICIENCY` | NOT_EVALUATED |
+
+### Determinism / fingerprint (sealed)
+
+| Property | Value |
+|----------|-------|
+| `E1_LOCALE_DEPENDENT_ORDERING_USED` | NO |
+| `E1_UTF16_CANONICAL_ORDERING_USED` | YES |
+| `LOCALECOMPARE_OCCURRENCES_IN_E1_ADAPTER` | 0 |
+| `INTL_COLLATOR_OCCURRENCES_IN_E1_ADAPTER` | 0 |
+| `CONSUMPTION_FINGERPRINT_IMPLEMENTED` | YES |
+| `CONSUMPTION_FINGERPRINT_REQUIRED_ON_SUCCESS` | YES |
+| `ZERO_ELIGIBLE_HAS_FINGERPRINT` | YES |
+| `CONSUMPTION_FINGERPRINT_WALL_CLOCK_FREE` | YES |
+| `FINGERPRINT_FIELD_SENSITIVITY_ISOLATED` | YES |
+| `FINGERPRINT_OBSERVATION_ORDER_CANONICALIZED` | YES |
+| `FINGERPRINT_OBJECT_KEY_ORDER_CANONICALIZED` | YES |
+| `E1_TEST_MATRIX_COMPLETE` | YES |
+
+### Persistence / runtime boundary (sealed)
+
+| Property | Value |
+|----------|-------|
+| `DB_ACCESS_ADDED` | NO |
+| `PRISMA_ACCESS_ADDED` | NO |
+| `EXISTING_LV_ASSESSMENT_PATH_CHANGED` | NO |
+| `LONGITUDINAL_EVIDENCE_MAPPED_TO_BATTERY_MEASUREMENT` | NO |
+| `BATTERY_ASSESSMENT_WRITES` | NO |
+| `BATTERY_PUBLICATION_WRITES` | NO |
+
+## Next phase (not E1)
+
+- **`NEXT_PHASE=M3.3E E2 HEALTH MODEL ARCHITECTURE`** — define battery-condition semantics, evidence sufficiency, comparability, uncertainty, output taxonomy, LV interaction, and persistence boundary **before** any health implementation.
+- **`M3_3F_REMAINS_PENDING=YES`** — production D3 materialization authorization remains separate.
 
 ## Non-effects
 
-No schema/migration, no feature flags, no deploy, no production data mutation.
+No schema/migration, no feature flags, no deploy, no production data mutation from E1 engineering.
