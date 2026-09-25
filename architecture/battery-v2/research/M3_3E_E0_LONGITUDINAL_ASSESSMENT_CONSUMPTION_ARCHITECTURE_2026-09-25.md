@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-25  
 **Status:** **E0 + E0.1 + E0.2 COMPLETE ON MAIN** — merged PR #1761 @ merge `658b804d74fc3fe6290f504ba3c81d7e642c3903` (PR head `b2685a0f88d17ce251d3dc2fcb84d2a6a42506e5`)  
-**Consumption contract:** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` · **`M3_3E_E1_IMPLEMENTATION_READY=YES`** · **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`** · no runtime implementation on main  
+**Consumption contract:** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` · **`M3_3E_E1_IMPLEMENTATION_READY=YES`** · **E1 adapter COMPLETE ON MAIN (PR #1765)** · **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`** · E1 pure TypeScript on main; **no** Nest/DB/runtime wiring  
 **Upstream complete on main:** M3.3D D0–D4 (D4 engineering V1 PR #1754 @ merge `9a3e457d9`)
 
 **Runtime gates (unchanged):** **`D3_RUNTIME_REACHABLE=NO`** · **`D4_RUNTIME_REACHABLE=NO`** · **`PRODUCTION_MATERIALIZATION_READY=NO`**
@@ -901,7 +901,7 @@ None block E1 pure adapter implementation.
 
 **`M3_3E_E1_IMPLEMENTATION_READY=YES`**
 
-**Next action:** M3.3E E1 engineering (pure function + tests). Do **not** implement health model or persistence in E1.
+**Next action:** **M3.3E E2 HEALTH MODEL ARCHITECTURE** — define longitudinal battery-condition semantics, evidence thresholds, and output taxonomy (**not** E1 adapter work; E1 **COMPLETE ON MAIN** PR #1765). Do **not** implement health model or persistence without explicit authorization. **M3.3F** (production D3 materialization) remains a separate gate.
 
 ---
 

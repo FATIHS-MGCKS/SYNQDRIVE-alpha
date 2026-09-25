@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E1 post-merge engineering seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E1 validated on draft PR #1765; active authority still described E1 as pre-merge engineering. |
+| **CHANGE** | PR #1765 merged to main @ `553ba670a0a5b99689c6575417b75d4f0b9fb422` (PR head `4891c6dc48b33fba0a4992158b62566ca3eebcd8`). Post-merge seal updates `CURRENT_STATE`, E1 engineering doc, E0 active next-action pointer. |
+| **AFTER** | **M3.3E E1 COMPLETE ON MAIN**; **`E1_ADAPTER_IMPLEMENTED=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`NEXT_PHASE=M3.3E E2 HEALTH MODEL ARCHITECTURE`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **EVIDENCE** | 97 E1 unit tests / 3 suites; PR #1765 exact-head CI **28/28 SUCCESS**; golden `d426d1b0…` unchanged. |
+| **NON_EFFECTS** | No health model; no BatteryAssessment/BatteryPublication writes; no Nest reachability; no D3 materialization; no deploy; no production data mutation. |
+| **DECISION_STATUS** | **E1_COMPLETE_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
 ## CL-2026-09-25 — M3.3E E1.2 final merge-gate closure (engineering draft)
 
 | Field | Value |
