@@ -33,6 +33,9 @@ import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback
 import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
 import { isErdRechargeProductReadDedupeEnabled } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.config';
 import { ErdRechargeProductReadDedupeMetricsService } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { evaluateLegacyRechargeWriteGate } from './erd-recharge-write-authority/erd-recharge-write-gate.policy';
+import { ErdRechargeWriteAuthorityMetricsService } from './erd-recharge-write-authority/erd-recharge-write-authority.metrics';
+import type { ErdRechargeLegacyWriteGateOutcome } from './erd-recharge-write-authority/erd-recharge-write-authority.constants';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -74,6 +77,8 @@ export class EnergyEventsService {
     private readonly erdRechargeShadowParityRuntime?: ErdRechargeShadowParityRuntimeService,
     @Optional()
     private readonly erdRechargeProductReadDedupeMetrics?: ErdRechargeProductReadDedupeMetricsService,
+    @Optional()
+    private readonly erdRechargeWriteAuthorityMetrics?: ErdRechargeWriteAuthorityMetricsService,
   ) {}
 
   async listEnergyEventsRaw(
@@ -237,12 +242,17 @@ export class EnergyEventsService {
     const persistedRows: VehicleEnergyEvent[] = [];
 
     for (const group of coalesced) {
-      const { row, wasCreated } = await this.upsertSegment(
+      const upsertResult = await this.upsertSegment(
         vehicleId,
         tokenId,
         group,
         requestContext,
+        process.env,
       );
+      if (upsertResult.kind === 'skipped') {
+        continue;
+      }
+      const { row, wasCreated } = upsertResult;
       persistedRows.push(row);
       if (wasCreated) created++;
       else updated++;
@@ -416,7 +426,11 @@ export class EnergyEventsService {
       vehicleId: string;
       tokenId: number;
     },
-  ): Promise<{ row: VehicleEnergyEvent; wasCreated: boolean }> {
+    env: NodeJS.ProcessEnv,
+  ): Promise<
+    | { kind: 'persisted'; row: VehicleEnergyEvent; wasCreated: boolean }
+    | { kind: 'skipped'; outcome: ErdRechargeLegacyWriteGateOutcome; row?: VehicleEnergyEvent }
+  > {
     const refuelObservation =
       segment.mechanism === 'refuel'
         ? await this.deriveRefuelObservation(segment, tokenId, requestContext)
@@ -430,6 +444,17 @@ export class EnergyEventsService {
     const existing = await this.prisma.vehicleEnergyEvent.findUnique({
       where: { dimoSegmentId: payload.dimoSegmentId },
     });
+
+    if (segment.mechanism !== 'refuel') {
+      const gate = evaluateLegacyRechargeWriteGate({ segment, existing, env });
+      this.erdRechargeWriteAuthorityMetrics?.recordLegacyWriteGate(gate.outcome);
+      if (!gate.allowPersist) {
+        if (existing) {
+          return { kind: 'skipped', outcome: gate.outcome, row: existing };
+        }
+        return { kind: 'skipped', outcome: gate.outcome };
+      }
+    }
 
     const data = {
       vehicleId: payload.vehicleId,
@@ -512,7 +537,7 @@ export class EnergyEventsService {
       });
     }
 
-    return { row, wasCreated };
+    return { kind: 'persisted', row, wasCreated };
   }
 
   private async deriveRefuelObservation(

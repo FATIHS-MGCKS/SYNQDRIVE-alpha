@@ -50,8 +50,12 @@ log "Step 11/12: ERD E5.4 recharge shadow parity PostgreSQL gate"
 ERD_E5_4_POSTGRES_INTEGRATION=1 ERD_E5_4_POSTGRES_REQUIRED=1 \
   npx jest erd-e5-4-recharge-shadow-parity.postgres.integration --runInBand --verbose
 
-log "Step 12/12: ERD E5.5 product read dedupe PostgreSQL gate"
+log "Step 12/13: ERD E5.5 product read dedupe PostgreSQL gate"
 ERD_E5_5_POSTGRES_INTEGRATION=1 ERD_E5_5_POSTGRES_REQUIRED=1 \
   npx jest erd-e5-5-product-read-dedupe.postgres.integration --runInBand --verbose
+
+log "Step 13/13: ERD E5.6 write authority cutover PostgreSQL gate"
+ERD_E5_6_POSTGRES_INTEGRATION=1 ERD_E5_6_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-6-write-authority-cutover.postgres.integration --runInBand --verbose
 
 log "boundary-repair-postgres-ci completed successfully"
