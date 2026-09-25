@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **REPO_CURRENT** | `bca9579a1c32ebac23cb8d696870b011a76d30dd` — post PR #1769 (#1767 lineage on prior rebaseline) |
+| **REPO_CURRENT** | `567a5766f5968e5234ef7dc71699a740b4d55656` — post #1779 (`origin/main`) |
 | **PRODUCTION_CURRENT (verified release)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994` (`LIVE_RELEASE_ID=20260924235024_v4994`) |
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
 | **origin/main (historical @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — superseded on main by later merges |
@@ -16,8 +16,9 @@
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **REPO_CURRENT** | `bca9579a1…` | Mainline @ post #1769 |
+| **REPO_CURRENT** | `567a5766f…` @ post #1779 |
 | **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 + TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 | **`RESOLVED_BY_SCOPE_REDUCTION`** — 0 active PP_NOT_VALIDATED after OQ-007.1 |
+| **OQ003_DETECTION_STATE_CARDINALITY** | TDL-EVID-OQ003-CARDINALITY-001 | **`RESOLVED_EXPECTED_CARDINALITY`** — 6 FSM rows = 6 scheduler-eligible; tracking runs are execution multiplicity |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
@@ -57,6 +58,8 @@ Phase **1** documents an **initial consolidated baseline** — not a claim that 
 ~249 TypeScript files under `backend/src/modules/vehicle-intelligence/trips/`.
 
 ### Persistent FSM model (`VehicleTripDetectionState`)
+
+**Cardinality (TDL-DEC-OQ003-001):** **≤1 row per vehicle** (`vehicleId` unique); lazy `getOrCreateDetectionState`; **not** comparable to `vehicle_trip_tracking_runs` volume. See TDL-EVID-OQ003-CARDINALITY-001.
 
 Prisma enum `TripDetectionState`:
 

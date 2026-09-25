@@ -257,6 +257,21 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 
 ---
 
+## TDL-DEC-OQ003-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-003 / TDL-GAP-003 OPEN — operators compared `vehicle_trip_tracking_runs` volume to `vehicle_trip_detection_states` row count as if missing FSM coverage |
+| **WHY** | Cardinality misunderstanding drives false defect reports; reconciliation can create trips without FSM rows |
+| **CHANGE** | **One detection-state row max per vehicle** (lazy `getOrCreateDetectionState`); **tracking runs are append-only execution logs**; coverage metric = eligible scheduler cohort with state / eligible cohort; never compare raw run count to state count |
+| **NON-EFFECTS** | Does not pre-provision FSM rows for non-telematics vehicles; does not add GC for tracking runs; does not change scheduler eligibility |
+| **PRODUCTION STATUS** | Read-only @ `99d722b4…`: 6 state rows = 6 scheduler-eligible; 4273 runs/7d on 4 vehicles; 0 eligible-without-state |
+| **VERDICT** | **`RESOLVED_EXPECTED_CARDINALITY`** |
+| **EVIDENCE** | TDL-EVID-OQ003-CARDINALITY-001 |
+
+---
+
 ## TDL-DEC-OQ002-001
 
 | Field | Value |

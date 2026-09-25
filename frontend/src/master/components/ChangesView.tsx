@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tdl-oq003-detection-state-cardinality-2026-09-25',
+    version: '4.9.2102',
+    title: 'Trip FSM — TDL-OQ-003 detection-state cardinality (authority)',
+    summary: [
+      'VehicleTripDetectionState: at most one lazy row per vehicle (unique vehicleId); not a fleet-wide registry.',
+      'VehicleTripTrackingRun: append-only execution log — thousands of runs vs handful of state rows is expected multiplicity.',
+      'Production @ 99d722b4…: 6 FSM rows = 6 snapshot-scheduler-eligible DIMO vehicles; 3 non-linked fleet vehicles correctly have zero rows.',
+      'Coverage metric: eligible vehicles with state / eligible vehicles — not COUNT(runs)/COUNT(states).',
+      'Reconciliation may create vehicle_trips without ever creating detection-state rows.',
+    ],
+    reason:
+      'Operators compared tracking-run volume to detection-state row count as missing FSM coverage; code + read-only SQL prove expected cardinality.',
+    previousBehavior:
+      'Authority listed TDL-OQ-003 OPEN with historical “6 rows vs thousands of runs” without structural explanation.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md; TDL-DEC-OQ003-001; docs-only.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T18:10:00.000Z',
+  },
+  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',

@@ -145,3 +145,6 @@ edges:
   - from: TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001
     relation: supports
     to: TDL-DEC-OQ007-001
+  - from: TDL-EVID-OQ003-CARDINALITY-001
+    relation: supports
+    to: TDL-DEC-OQ003-001
