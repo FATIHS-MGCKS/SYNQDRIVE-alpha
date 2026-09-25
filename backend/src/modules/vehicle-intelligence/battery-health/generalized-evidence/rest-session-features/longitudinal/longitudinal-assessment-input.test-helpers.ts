@@ -205,4 +205,67 @@ export function buildE1OkFromSessions(
   return { scientificProfile: projection, revisionIdentity, d4Outcome };
 }
 
+export function buildE1FullPartitionFixture(revisionId = 'part-rev'): {
+  scientificProfile: LongitudinalScientificProfileProjectionV1;
+  revisionIdentity: M3_3E_RevisionIdentityV1;
+  d4Outcome: D4InspectionOutcome;
+} {
+  return buildE1OkFromSessions(
+    [
+      buildProfileTestInventoryItem({
+        restSessionId: 'd-s1',
+        anchorAt: '2026-01-01T10:00:00.000Z',
+        inclusionMode: 'DEFAULT',
+      }),
+      buildProfileTestInventoryItem({
+        restSessionId: 'd-p1',
+        anchorAt: '2026-01-02T10:00:00.000Z',
+        inclusionMode: 'PROVISIONAL',
+      }),
+      buildProfileTestInventoryItem({
+        restSessionId: 'd-x1',
+        anchorAt: '2026-01-03T10:00:00.000Z',
+        inclusionMode: 'EXCLUDED',
+        exclusionReasons: ['NO_CANONICAL_ROW'],
+        includePayload: false,
+      }),
+    ],
+    revisionId,
+  );
+}
+
+export function withE1D4Inspection(
+  fixture: {
+    scientificProfile: LongitudinalScientificProfileProjectionV1;
+    revisionIdentity: M3_3E_RevisionIdentityV1;
+    d4Outcome: D4InspectionOutcome;
+  },
+  mutate: (
+    inspection: Extract<D4InspectionOutcome, { status: 'OK' }>['inspection'],
+  ) => Extract<D4InspectionOutcome, { status: 'OK' }>['inspection'],
+): typeof fixture {
+  if (fixture.d4Outcome.status !== 'OK') {
+    throw new Error('expected OK d4Outcome');
+  }
+  return {
+    ...fixture,
+    d4Outcome: {
+      status: 'OK',
+      inspection: mutate(fixture.d4Outcome.inspection),
+    },
+  };
+}
+
+export function d4RowForSession(
+  fixture: { d4Outcome: D4InspectionOutcome },
+  restSessionId: string,
+) {
+  if (fixture.d4Outcome.status !== 'OK') throw new Error('expected OK');
+  const row = fixture.d4Outcome.inspection.perSession.find(
+    (r) => r.restSessionId === restSessionId,
+  );
+  if (!row) throw new Error(`missing d4 row ${restSessionId}`);
+  return row;
+}
+
 export { buildD4TestProjection, buildProfileTestInventoryItem, buildD4TestBatchContext };

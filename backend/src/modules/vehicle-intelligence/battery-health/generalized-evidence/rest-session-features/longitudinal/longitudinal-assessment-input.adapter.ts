@@ -106,7 +106,7 @@ function compareAssessmentGradeObservations(
   a: M3_3E_AssessmentGradeObservationV1,
   b: M3_3E_AssessmentGradeObservationV1,
 ): number {
-  const anchorCmp = a.anchorAt.localeCompare(b.anchorAt);
+  const anchorCmp = compareUtf16CodeUnitLexicographic(a.anchorAt, b.anchorAt);
   if (anchorCmp !== 0) return anchorCmp;
   return compareUtf16CodeUnitLexicographic(a.restSessionId, b.restSessionId);
 }
