@@ -148,3 +148,7 @@ edges:
   - from: TDL-EVID-OQ003-CARDINALITY-001
     relation: supports
     to: TDL-DEC-OQ003-001
+
+  - from: TDL-EVID-OQ004-ROUTE-COV-001
+    relation: supports
+    to: TDL-DEC-OQ004-001

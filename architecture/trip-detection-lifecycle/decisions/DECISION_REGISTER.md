@@ -18,6 +18,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-OQ002-001 | drive-profile ownership — Battery V2 owns; TDL non-owner | VALIDATED | TDL-EVID-OQ002-DRIVE-PROFILE-001 |
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority | VALIDATED | TDL-EVID-OQ006-BOUNDARY-001 |
 | TDL-DEC-OQ007-001 | R1–R8 Production validation coverage — behavior matrix + scope reduction | VALIDATED | TDL-EVID-OQ007-R1R8-COV-001 |
+| TDL-DEC-OQ004-001 | Route artifact coverage policy — taxonomy, eligibility, Mapbox vs artifact vs MATCHED | VALIDATED | TDL-EVID-OQ004-ROUTE-COV-001 |
 
 ---
 
@@ -285,3 +286,20 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **NON-EFFECTS** | Does not move files or rename module in this decision |
 | **VALIDATION** | Repository consumer graph + zero trip FSM imports — TDL-EVID-OQ002-DRIVE-PROFILE-001 |
 | **EVIDENCE** | TDL-EVID-OQ002-DRIVE-PROFILE-001 |
+
+---
+
+## TDL-DEC-OQ004-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-004 OPEN — ~4.7% all-time artifact/trip ratio conflated with Mapbox/FMM bottleneck; no durable coverage policy |
+| **WHY** | Route V2 separates artifact existence, canonical read readiness, and MATCHED quality; post-finalize DI pipeline eligibility dominates historical gaps |
+| **CHANGE** | Adopt three-tier policy: (1) **artifact** — 100% for route-eligible trips with ROUTE stage COMPLETED post–Route V2 anchor; (2) **canonical render** — MATCHED→FILTERED→RAW hierarchy when ≥2 measured points; (3) **MATCHED** — observational KPI from FILTERED `failure_reason`, not correctness gate. Canonical matcher = **TripRouteChunkedMatcherService**; FMM **SCAFFOLD** only |
+| **ALTERNATIVES REJECTED** | FMM as Production bottleneck (no runtime callsite); 100% MATCHED as coverage target; all-time completed/trip ratio without eligibility denominator |
+| **EXPECTED EFFECT** | OQ-004 closed; H3 partially confirmed; follow-up slice for handler/job artifact contract if product requires strict artifact invariant |
+| **PRODUCTION STATUS** | **7d artifact 100%**; **observed materialization era 374/374** @ `8a1d9c658…`; exact Route-V2 30d policy **NOT_EXACTLY_COMPUTABLE** (R2 deploy **UNKNOWN**) |
+| **NON-EFFECTS** | Does not change Mapbox gates or handler code in this audit |
+| **VALIDATION** | Read-only SQL + code trace — TDL-EVID-OQ004-ROUTE-COV-001 |
+| **EVIDENCE** | TDL-EVID-OQ004-ROUTE-COV-001 |
