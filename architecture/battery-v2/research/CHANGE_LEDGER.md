@@ -6,6 +6,41 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E1.2 final merge-gate closure (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | PR #1765 behind current main; frontend Architektur/Changes runtime diffs; E1.1 fingerprint e2e mutations coupled to `canonicalProfileFingerprint`. |
+| **CHANGE** | Rebase onto `origin/main`; restore frontend files to main; add `longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts` with direct isolated `computeM3_3E_ConsumptionInputFingerprintV1` mutations. |
+| **AFTER** | **`MAIN_INCLUDED=YES`**; **`FRONTEND_RUNTIME_FILES_CHANGED=NO`**; **`FINGERPRINT_FIELD_SENSITIVITY_ISOLATED=YES`**; golden unchanged. |
+| **NON_EFFECTS** | No contract/preimage/policy change; no health model; no materialization; no deploy. |
+| **DECISION_STATUS** | **E1_2_MERGE_GATE_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
+## CL-2026-09-25 — M3.3E E1.1 determinism + frozen test matrix closure (engineering draft amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E1 adapter on draft PR #1765 used `localeCompare` for `anchorAt` ordering; generic unit tests did not fully cover frozen E0/E0.2 minimum matrix categories. |
+| **CHANGE** | Replace scientific ordering with `compareUtf16CodeUnitLexicographic` for `anchorAt` + `restSessionId`; add `longitudinal-assessment-input.adapter.e11-matrix.spec.ts` + fixture helpers; amend E1 engineering doc with E1.1 evidence. |
+| **AFTER** | **`E1_LOCALE_DEPENDENT_ORDERING_USED=NO`**; **`E1_UTF16_CANONICAL_ORDERING_USED=YES`**; **`E1_TEST_MATRIX_COMPLETE=YES`**; golden **`d426d1b0…`** unchanged; no preimage / taxonomy / runtime expansion. |
+| **VALIDATION** | E1 unit suite (85 tests); longitudinal regressions (D3 parser/fingerprint, D4 self-integrity/service, D2 assembler, D1 reader/policy); registry validator. |
+| **NON_EFFECTS** | No health model; no D3 materialization; no Nest/DB/schema/flags; no LV pipeline change; no deploy. |
+| **DECISION_STATUS** | **E1_1_ENGINEERING_DRAFT_AMEND** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
+## CL-2026-09-25 — M3.3E E1 pure longitudinal assessment input adapter (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0/E0.1/E0.2 consumption contract on main; no E1 adapter implementation. |
+| **CHANGE** | Pure TypeScript `buildLongitudinalAssessmentInputV1` + types/constants + unit/golden tests + E1 engineering doc (draft PR). Reuses D4 strict scientific parser and D3 canonical fingerprint authority. |
+| **AFTER** | **`E1_ADAPTER_IMPLEMENTED=YES`** on draft branch; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`E1_NEST_PROVIDER_REGISTERED=NO`**; **`D3_RUNTIME_REACHABLE=NO`**; **`D4_RUNTIME_REACHABLE=NO`**. |
+| **NEXT** | Merge E1 PR; then separate authorization for health model / M3.3F — not automatic. |
+| **NON_EFFECTS** | No BatteryAssessment/BatteryPublication writes; no LV pipeline change; no materialization; no deploy. |
+| **DECISION_STATUS** | **E1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
 ## CL-2026-09-25 — M3.3E E0–E0.2 post-merge architecture seal
 
 | Field | Value |
