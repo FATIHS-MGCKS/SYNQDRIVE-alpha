@@ -70,7 +70,7 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other OQs (e.g. TDL-OQ-002).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-003).
 
 ## TDL-OQ-002 — resolution (2026-09-25)
 
