@@ -17,6 +17,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
 | TDL-DEC-OQ002-001 | drive-profile ownership — Battery V2 owns; TDL non-owner | VALIDATED | TDL-EVID-OQ002-DRIVE-PROFILE-001 |
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority | VALIDATED | TDL-EVID-OQ006-BOUNDARY-001 |
+| TDL-DEC-OQ007-001 | R1–R8 Production validation coverage — behavior matrix + scope reduction | VALIDATED | TDL-EVID-OQ007-R1R8-COV-001 |
 
 ---
 
@@ -238,6 +239,21 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | Read-only @ `99d722b4…`: 7 partial boundary repairs, 134 DIMO missing-trip applies (90d), 672 suppressions, 0 confirmed boundary corruption |
 | **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ006-BOUNDARY-001 |
 | **EVIDENCE** | TDL-EVID-OQ006-BOUNDARY-001 |
+
+---
+
+## TDL-DEC-OQ007-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-007 **PARTIALLY_RESOLVED** — QS acceptance alone could not seal per-behavior R1–R8 Production validation |
+| **WHY** | Promotion claims must separate **merged**, **present**, and **validated**; superseded paths must not force replay; active PP_NOT_VALIDATED gaps must keep OQ-007 open |
+| **CHANGE** | Behavior matrix (18 exclusive classes); survivorship vs R9–R12; passive addendum @ `2026-09-25T12:41Z`; fleet SQL + evidence reuse |
+| **NON-EFFECTS** | Does not claim **`FULLY_PRODUCTION_VALIDATED`** for QS; does not close OQ-003/004/008/009/010 |
+| **PRODUCTION STATUS** | LIVE @ `99d722b4…`; 4 active **PRODUCTION_PRESENT_NOT_VALIDATED**; no runtime defect |
+| **VERDICT** | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** — see TDL-EVID-OQ007-R1R8-COV-001 |
+| **EVIDENCE** | TDL-EVID-OQ007-R1R8-COV-001 |
 
 ---
 

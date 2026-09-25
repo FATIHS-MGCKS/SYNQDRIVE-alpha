@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **REPO_CURRENT (`origin/main` @ rebaseline audit)** | `d6ff7e198110ff7401d03389c232398af47766f0` — **not** identical to Production |
+| **REPO_CURRENT** | `bca9579a1c32ebac23cb8d696870b011a76d30dd` — post PR #1769 (#1767 lineage on prior rebaseline) |
 | **PRODUCTION_CURRENT (verified release)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994` (`LIVE_RELEASE_ID=20260924235024_v4994`) |
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
 | **origin/main (historical @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — superseded on main by later merges |
@@ -16,7 +16,8 @@
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **REPO_CURRENT** | `51b4590e4…` | Mainline @ post PR #1767 |
+| **REPO_CURRENT** | `bca9579a1…` | Mainline @ post #1769 |
+| **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** — 4 active PP_NOT_VALIDATED (R1-BEH-003, R3-BEH-002, R4-BEH-001, R8-BEH-001); superseded/dead excluded |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
@@ -257,7 +258,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 
 ## Explicit non-claims
 
-- Production validation of R1–R8 **in full** on current Production (TDL-OQ-007 **PARTIALLY_RESOLVED** — QS V1 natural SAME_TRIP + regression scan only; see TDL-EVID-QS-V1-PROD-ACCEPT-001)
+- Production validation of R1–R8 on current Production — **TDL-OQ-007 PARTIALLY_RESOLVED** (TDL-EVID-OQ007-R1R8-COV-001): scope reduction for superseded/dead paths; **4 active PRODUCTION_PRESENT_NOT_VALIDATED** gaps remain; QS acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001)
 - **`FULLY_PRODUCTION_VALIDATED`** for all Qualified Stop paths — acceptance is **`PASS_WITH_EVIDENCE_GAPS`**
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…` (R10 release); **provider trigger wiring validated** (5/5 canary); **natural start wake partially observed** on KS MS 661 tokenId 187361 (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)
