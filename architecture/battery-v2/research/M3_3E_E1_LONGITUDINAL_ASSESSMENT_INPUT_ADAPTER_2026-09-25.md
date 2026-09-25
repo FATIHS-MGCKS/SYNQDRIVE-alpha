@@ -1,7 +1,7 @@
 # M3.3E E1 — Longitudinal Assessment Input Adapter (Engineering)
 
 **Date:** 2026-09-25  
-**Status:** **ENGINEERING ON DRAFT PR** (pure TypeScript adapter; no Nest/DB/runtime wiring)  
+**Status:** **ENGINEERING ON DRAFT PR #1765** (pure TypeScript adapter; no Nest/DB/runtime wiring)  
 **Consumption contract:** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` (sealed on main via PR #1761)  
 **Health model:** **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 
