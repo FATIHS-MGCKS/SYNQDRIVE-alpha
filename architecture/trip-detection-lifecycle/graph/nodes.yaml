@@ -609,9 +609,10 @@ nodes:
   - id: TDL-GAP-007
     type: gap
     title: Complete feature-flag matrix
-    epistemic_status: UNKNOWN
-    summary: Only trip-adjacent env keys sampled on Production.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — TDL-DEC-OQ008-001; TDL-EVID-OQ008-FLAG-MATRIX-001 @ Production 8a1d9c658…
     source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
   - id: TDL-GAP-008
@@ -889,3 +890,26 @@ nodes:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:
       - TDL-EVID-OQ004-ROUTE-COV-001
+
+  - id: TDL-EVID-OQ008-FLAG-MATRIX-001
+    type: evidence
+    title: TDL-OQ-008 trip feature-flag runtime matrix audit
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Ten mode/boolean trip controls + 28 knobs; Production ACTIVITY_TIERED snapshot polling; FSM shadow observability-only;
+      repair coverage shadow mode; DI V2 master on Production with segment validation off.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md
+
+  - id: TDL-DEC-OQ008-001
+    type: decision
+    title: Trip runtime-control matrix authority (defaults vs Production)
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Closes TDL-OQ-008; separates code default, configured, and effective runtime; documents dead worker.config shadow duplicate.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+    evidence:
+      - TDL-EVID-OQ008-FLAG-MATRIX-001

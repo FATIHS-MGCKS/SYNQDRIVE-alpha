@@ -152,3 +152,10 @@ edges:
   - from: TDL-EVID-OQ004-ROUTE-COV-001
     relation: supports
     to: TDL-DEC-OQ004-001
+
+  - from: TDL-EVID-OQ008-FLAG-MATRIX-001
+    relation: supports
+    to: TDL-DEC-OQ008-001
+  - from: TDL-DEC-OQ008-001
+    relation: validates
+    to: TDL-GAP-007

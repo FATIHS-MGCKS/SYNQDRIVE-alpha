@@ -9,7 +9,7 @@
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | OPEN |
+| **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | **RESOLVED** — see §TDL-OQ-008 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
 | **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
 
@@ -80,7 +80,15 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-004, TDL-OQ-008–010).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-009–010).
+
+## TDL-OQ-008 — resolution (2026-09-25)
+
+**Evidence:** [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](../evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) (TDL-EVID-OQ008-FLAG-MATRIX-001) @ `origin/main` `6af181bf9…`, Production @ `8a1d9c658…` / `20260925182907_v4994`.
+
+**Verdict:** **`RESOLVED_COMPLETE_MATRIX`** — 10 productive mode/boolean controls + 28 lifecycle knobs; Production effective values read-only from shared `backend.env`; **`REPLICA_FLAG_CONFIG_CONSISTENT=YES`**; FSM shadow **observability-only**; repair **`shadow`** mode (legacy overlap authority); snapshot **`ACTIVITY_TIERED`**.
+
+**Status:** **RESOLVED**
 
 ## TDL-OQ-002 — resolution (2026-09-25)
 

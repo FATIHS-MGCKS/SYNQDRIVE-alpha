@@ -23,7 +23,7 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | **4 — Authority construction** | **Partial** — R9 wake subgraph, R10–R12 decisions, Qualified Stop V1 decision + graph hooks; full FSM graph incomplete |
 | **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (other open OQs) |
 
-Phase 1 gaps remain: dead/legacy inventory, full feature-flag matrix, Mapbox/FMM failure taxonomy.
+Phase 1 gaps remain: dead/legacy inventory (TDL-OQ-010), Mapbox handler contract follow-up. Feature-flag matrix **closed** (TDL-OQ-008).
 
 **Reconstruction reality (2026-09-25):** Production @ `99d722b4…`. **TDL-OQ-001**, **TDL-OQ-002**, and **TDL-OQ-006** **RESOLVED** (TDL-EVID-OQ002-DRIVE-PROFILE-001; TDL-EVID-OQ006-BOUNDARY-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by other open OQs.
 

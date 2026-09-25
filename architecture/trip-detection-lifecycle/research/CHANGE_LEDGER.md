@@ -84,6 +84,7 @@ Append-only record for this authority directory.
 
 | 2026-09-25 | TDL-OQ-004 final epistemic naming — OBSERVED_MATERIALIZATION_ERA_* vs Route-V2 policy; contract-gap UNKNOWN post-R2 | Docs-only | [TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md](../evidence/TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md) |
 | 2026-09-25 | TDL-OQ-004 route artifact coverage / eligibility / failure taxonomy — read-only Production SQL @ `8a1d9c658…`; closes OQ-004 | Docs-only audit | [TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md](../evidence/TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md) |
+| 2026-09-25 | TDL-OQ-008 trip feature-flag / runtime-control matrix — read-only Production `backend.env` @ `8a1d9c658…`; closes OQ-008 | Docs-only audit | [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](../evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) |
 
 ## Planned later phases (Standard 1.0)
 
