@@ -79,7 +79,7 @@ function stableResolveResult(result: Awaited<ReturnType<ChargingStationLocationR
 
   it('PG4 clear nearest candidate', async () => {
     if (!dbOk) return;
-    const result = await resolver.resolve({ latitude: 50.001, longitude: 7.9995 });
+    const result = await resolver.resolve({ latitude: 50.001, longitude: 7.9998 });
     expect(result.status).toBe('MATCHED');
     expect(result.station?.osmId).toBe('1001');
   });
