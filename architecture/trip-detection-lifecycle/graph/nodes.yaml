@@ -807,3 +807,27 @@ nodes:
       - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
     evidence:
       - TDL-EVID-OQ006-BOUNDARY-001
+
+  - id: TDL-EVID-OQ007-R1R8-COV-001
+    type: evidence
+    title: TDL-OQ-007 R1–R8 Production validation coverage matrix
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only behavior-level matrix separating merged/present/validated axes; RESOLVED_BY_SCOPE_REDUCTION;
+      18 contracts; fleet SQL 2026-09-25; reuses QS/KS661/WOB/#1674 evidence; no new runtime defect.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md
+
+  - id: TDL-DEC-OQ007-001
+    type: decision
+    title: R1–R8 Production validation coverage — scope reduction
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Closes TDL-OQ-007 without replaying superseded R1–R8 paths; active contracts validated or current-equivalent;
+      passive observation suffices for remaining non-blocking gaps.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+    evidence:
+      - TDL-EVID-OQ007-R1R8-COV-001

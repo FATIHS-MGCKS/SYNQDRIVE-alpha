@@ -76,6 +76,7 @@ Append-only record for this authority directory.
 | 2026-09-25 | **TDL-OQ-001.1** org invariant audit — **`STRUCTURALLY_IMPOSSIBLE`** durable org orphan; TDL-OQ-001 **RESOLVED** | Docs-only authority | [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-006** DIMO segment vs live FSM boundary cross-authority audit | Docs-only authority | [TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](../evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-002** drive-profile ownership — **Battery V2 owns**; TDL explicit non-ownership | Docs-only authority | [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](../evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) |
+| 2026-09-25 | **TDL-OQ-007** R1–R8 Production validation coverage — behavior matrix; **`RESOLVED_BY_SCOPE_REDUCTION`**; read-only Production SQL | Docs-only authority | [TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md](../evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

@@ -8,28 +8,31 @@
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **PARTIALLY_RESOLVED** — see §TDL-OQ-007 below |
+| **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | OPEN |
 | **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
 | **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
 
-## TDL-OQ-007 — partial resolution (2026-09-25)
+## TDL-OQ-007 — resolution (2026-09-25)
 
-**Evidence:** [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](../evidence/QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) (TDL-EVID-QS-V1-PROD-ACCEPT-001) @ Production `99d722b4…`.
+**Evidence:** [TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md](../evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md) (TDL-EVID-OQ007-R1R8-COV-001) @ `REPO_CURRENT` `bca9579a1…`, Production @ `99d722b4…`.
 
-**What this evidence supports:**
+**Verdict:** **`RESOLVED_BY_SCOPE_REDUCTION`** (TDL-DEC-OQ007-001).
 
-- Current Qualified Stop V1 **SAME_TRIP** semantics on **3/3** natural Production cases (`durationMs <= 300_000`).
-- **PRODUCTION_PRESENT** ancestry for post-R12 fix merges including #1627, #1635, #1648, #1674, #1750, #1753 on `99d722b4…`.
-- **No** known regression failure signatures in the read-only audit window (`NOT_OBSERVED_IN_AUDIT_WINDOW`).
+**What was proven:**
 
-**What this evidence does NOT support:**
+- Behavior-level matrix separating **MERGED_ON_MAIN**, **PRODUCTION_PRESENT**, and **PRODUCTION_VALIDATED** for **18** R1–R8-derived contracts (including explicit superseded/dead paths).
+- Historical R5-only PEC/EV and pre-R9 poll-only ingress are **SUPERSEDED** — no natural re-validation required.
+- Active contracts covered by QS natural SAME_TRIP, post-R12 hardening ancestry, KS661/WOB/#1674 forensics, and read-only fleet SQL (`0` ONGOING, `0` FSM/trip divergence @ `2026-09-25T12:31:04Z`).
+- **No** new runtime defect in failure-signature scan (`NEW_RUNTIME_DEFECT_FOUND=NO`).
 
-- Per-behavior **PRODUCTION_VALIDATED** seal for **every** historical R1–R8 path.
-- Natural Production proof for all end-detection modes, wake paths, or edge cases outside the audit window.
-- **`FULLY_PRODUCTION_VALIDATED`** Qualified Stop classification — acceptance remains **`PASS_WITH_EVIDENCE_GAPS`**.
+**What remains outside OQ-007 (explicit non-blockers):**
 
-**Status:** **PARTIALLY_RESOLVED** — do not close OQ-007 without path-specific Production evidence or explicit scope reduction.
+- Passive-only gaps (R1 movement trace, R3 PS rethrow natural, R4 sparse-GPS start, R8 p95 histogram) — **PRODUCTION_PRESENT_NOT_VALIDATED**, observable without mandatory physical drives.
+- QS **>300s SPLIT** / post-split natural acceptance — **current-feature** QS acceptance, not R1–R8 package validation.
+- **`FULLY_PRODUCTION_VALIDATED`** QS classification unchanged — **`PASS_WITH_EVIDENCE_GAPS`**.
+
+**Status:** **RESOLVED** — OQ-007 closed; R1–R8 **historical package** validation is not claimed as universal natural replay on Production.
 
 ## TDL-OQ-001 — partial resolution (2026-09-25)
 

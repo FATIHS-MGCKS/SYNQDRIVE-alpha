@@ -8,7 +8,8 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 
 | Fact | State |
 |------|-------|
-| **REPO_CURRENT** | `f87391f79…` @ post PR #1764 — **≠ PRODUCTION_CURRENT** |
+| **REPO_CURRENT** | `bca9579a1…` @ post PR #1769 — **≠ PRODUCTION_CURRENT** |
+| **TDL-OQ-007** | **RESOLVED** — TDL-EVID-OQ007-R1R8-COV-001 (`RESOLVED_BY_SCOPE_REDUCTION`) |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` |
 | **Qualified Stop V1** | **PRODUCTION_PRESENT** (#1753); acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001) |
 | **Shadow runtime** | **PRESENT** + **ENABLED** on Production; divergences **NOT_EVALUATED_SHORT_WINDOW** |

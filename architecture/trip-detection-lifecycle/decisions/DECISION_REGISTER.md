@@ -17,6 +17,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
 | TDL-DEC-OQ002-001 | drive-profile ownership — Battery V2 owns; TDL non-owner | VALIDATED | TDL-EVID-OQ002-DRIVE-PROFILE-001 |
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority | VALIDATED | TDL-EVID-OQ006-BOUNDARY-001 |
+| TDL-DEC-OQ007-001 | R1–R8 Production validation coverage — scope reduction + active-contract matrix | VALIDATED | TDL-EVID-OQ007-R1R8-COV-001 |
 
 ---
 
@@ -238,6 +239,21 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | Read-only @ `99d722b4…`: 7 partial boundary repairs, 134 DIMO missing-trip applies (90d), 672 suppressions, 0 confirmed boundary corruption |
 | **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ006-BOUNDARY-001 |
 | **EVIDENCE** | TDL-EVID-OQ006-BOUNDARY-001 |
+
+---
+
+## TDL-DEC-OQ007-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-007 **PARTIALLY_RESOLVED** — QS acceptance alone could not seal per-behavior R1–R8 Production validation |
+| **WHY** | Promotion and operator claims must separate **merged**, **present**, and **validated**; superseded R1–R8 semantics must not be forced through natural replay |
+| **CHANGE** | Behavior-level matrix (18 contracts) with survivorship vs R9–R12 + post-R12 hardening; reuse KS661/WOB/#1674/QS natural evidence; read-only fleet SQL @ `2026-09-25T12:31:04Z` |
+| **NON-EFFECTS** | Does not claim **`FULLY_PRODUCTION_VALIDATED`** for QS; does not close OQ-003/004/008/009/010; does not require new physical drives for OQ-007 closure |
+| **PRODUCTION STATUS** | LIVE @ `99d722b4…`; 0 ONGOING; 0 FSM/trip divergence; failure signatures **NOT_OBSERVED_IN_AUDIT_WINDOW** |
+| **VERDICT** | **`RESOLVED_BY_SCOPE_REDUCTION`** — see TDL-EVID-OQ007-R1R8-COV-001 |
+| **EVIDENCE** | TDL-EVID-OQ007-R1R8-COV-001 |
 
 ---
 

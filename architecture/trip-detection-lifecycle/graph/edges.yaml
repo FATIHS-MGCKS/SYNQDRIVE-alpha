@@ -139,3 +139,6 @@ edges:
   - from: TDL-DEC-R12-001
     relation: tested_by
     to: TDL-TEST-R12-002
+  - from: TDL-EVID-OQ007-R1R8-COV-001
+    relation: supports
+    to: TDL-DEC-OQ007-001
