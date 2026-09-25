@@ -13274,6 +13274,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e5-4-recharge-shadow-parity-2026-09-25',
+    version: '4.9.910',
+    title: 'ERD E5.4 — canonical vs legacy recharge shadow parity',
+    summary: [
+      'Bidirectional parity evaluator: legacy `LEGACY_DIRECT_DIMO_RECHARGE` cohort vs eligible `HvChargeSession` → pure E5.1 projection drafts (no `projectCanonicalRecharge()`).',
+      'Pairing hierarchy P1 exact DIMO, P2 coalesced lineage, P3 unique window; explicit cardinality classes for legacy coalescing vs multiple canonical sessions.',
+      'Diagnostic persistence `ErdRechargeProjectionShadowObservation` with deterministic comparison fingerprint idempotency; PENDING_SETTLEMENT finality for fallback-only lateness.',
+      'Flag `ERD_RECHARGE_SHADOW_PARITY_ENABLED` default OFF; fail-open post-`detectEnergyEvents` hook; bounded Prometheus metrics; PostgreSQL S1–S28 (boundary step 11/11).',
+    ],
+    reason:
+      'E5.3 merged — measure legacy DIMO recharge vs canonical ERD drafts before E5.5 product read dedupe or cutover; observation-only, no product mutation.',
+    previousBehavior:
+      'No structured shadow parity between direct DIMO recharge VEE rows and canonical HvChargeSession projection drafts.',
+    details:
+      'erd-recharge-shadow-parity/*; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T08:30:00.000Z',
+  },
+  {
     id: 'erd-e5-3-late-native-handoff-2026-09-25',
     version: '4.9.908',
     title: 'ERD E5.3 — late-native canonical VEE handoff',

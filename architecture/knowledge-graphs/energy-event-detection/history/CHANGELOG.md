@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E5.4 canonical vs legacy recharge shadow parity
+
+- Evidence: `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md`
+- Non-mutating bidirectional parity: legacy DIMO `VehicleEnergyEvent.RECHARGE` vs pure E5.1 projection drafts from eligible `HvChargeSession`
+- Diagnostic table `erd_recharge_projection_shadow_observations`; deterministic fingerprint idempotency; bounded metrics
+- Flag-gated fail-open hook after `detectEnergyEvents` (`ERD_RECHARGE_SHADOW_PARITY_ENABLED`, default OFF); never calls `projectCanonicalRecharge()`
+- PostgreSQL gate S1–S28 (boundary-repair step 11/11); no cutover, no product read change
+
 ## 2026-09-25 — ERD E5.3 late-native canonical VEE handoff
 
 - Evidence: `evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md`

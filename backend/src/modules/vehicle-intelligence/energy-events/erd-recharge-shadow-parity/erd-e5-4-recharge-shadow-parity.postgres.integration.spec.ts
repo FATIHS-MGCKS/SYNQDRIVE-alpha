@@ -254,6 +254,41 @@ describeFn(
       await prisma?.$disconnect().catch(() => undefined);
     });
 
+    it('S2: coalesced lineage pairing → LEGACY_COALESCED_LINEAGE + EXACT_MATCH', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(
+          prisma,
+          vehicle.id,
+          `dimo-recharge-coalesced-${suffix}`,
+          {
+            rawDetectionMeta: {
+              coalescedFromSegmentIds: [session.dimoSegmentId!],
+            },
+          },
+        );
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: true,
+        });
+
+        expect(out.observations).toHaveLength(1);
+        expect(out.observations[0]!.pairingEvidence).toBe(
+          ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.LEGACY_COALESCED_LINEAGE,
+        );
+        expect(out.observations[0]!.parityClass).toBe(
+          ERD_RECHARGE_SHADOW_PARITY_CLASS.EXACT_MATCH,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('S1: exact DIMO id pairing → EXACT_MATCH persisted', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
@@ -306,6 +341,29 @@ describeFn(
       }
     });
 
+    it('S7: legacy-only recharge VEE → SETTLED LEGACY_ONLY', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        await createLegacyRechargeVee(prisma, vehicle.id, `legacy-only-${suffix}`);
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: true,
+        });
+
+        expect(out.observations).toHaveLength(1);
+        expect(out.observations[0]!.parityClass).toBe(
+          ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
+        );
+        expect(out.observations[0]!.finality).toBe(ERD_RECHARGE_SHADOW_FINALITY.SETTLED);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('S6: native canonical without legacy → SETTLED CANONICAL_ONLY', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
@@ -324,6 +382,42 @@ describeFn(
           ERD_RECHARGE_SHADOW_PARITY_CLASS.CANONICAL_ONLY,
         );
         expect(out.observations[0]!.finality).toBe(ERD_RECHARGE_SHADOW_FINALITY.SETTLED);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S9: multiple legacy rows overlapping one canonical → MULTIPLE_LEGACY_ONE_CANONICAL', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, `legacy-a-${suffix}`, {
+          startTime: SESSION_START,
+          endTime: SESSION_END,
+        });
+        await createLegacyRechargeVee(prisma, vehicle.id, `legacy-b-${suffix}`, {
+          startTime: SESSION_START,
+          endTime: SESSION_END,
+        });
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: true,
+        });
+
+        const multiLegacy = out.observations.filter(
+          (o) =>
+            o.parityClass ===
+            ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL,
+        );
+        expect(multiLegacy).toHaveLength(1);
+        expect(multiLegacy[0]!.canonicalChargeSessionId).toBe(session.id);
+        expect(
+          multiLegacy[0]!.fieldDiff?.relatedLegacyVehicleEnergyEventIds?.length,
+        ).toBe(2);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
@@ -372,6 +466,81 @@ describeFn(
       }
     });
 
+    it('S10: paired episodes with equal material fields → EXACT_MATCH', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+
+        expect(out.observations[0]!.parityClass).toBe(
+          ERD_RECHARGE_SHADOW_PARITY_CLASS.EXACT_MATCH,
+        );
+        expect(out.observations[0]!.fieldDiff?.mismatches ?? []).toHaveLength(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S12: SOC mismatch → numeric soc delta recorded', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
+          deltaSocPercent: 50,
+        });
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!, {
+          socDeltaPercent: 10,
+        });
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+
+        const paired = out.observations[0]!;
+        expect(paired.parityClass).toBe(ERD_RECHARGE_SHADOW_PARITY_CLASS.FIELD_MISMATCH);
+        expect(paired.fieldDiff?.numericDeltas.socDeltaDifferencePercent).toBe(40);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S13: energy mismatch → numeric energy delta recorded', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
+          energyAddedKwh: 30,
+        });
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!, {
+          energyDeltaKwh: 5,
+        });
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+
+        expect(out.observations[0]!.fieldDiff?.numericDeltas.energyDeltaDifferenceKwh).toBe(
+          25,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('S11: time boundary delta beyond tolerance → FIELD_MISMATCH with numeric deltas', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
@@ -389,13 +558,16 @@ describeFn(
           persist: true,
         });
 
-        expect(out.observations[0]!.parityClass).toBe(
+        const paired = out.observations.find(
+          (o) => o.canonicalChargeSessionId != null && o.legacyVehicleEnergyEventId != null,
+        );
+        expect(paired!.parityClass).toBe(
           ERD_RECHARGE_SHADOW_PARITY_CLASS.FIELD_MISMATCH,
         );
-        expect(out.observations[0]!.fieldDiff?.numericDeltas.startDeltaSeconds).toBe(5);
-        expect(
-          out.observations[0]!.fieldDiff?.mismatches.some((m) => m.field === 'startTime'),
-        ).toBe(true);
+        expect(paired!.fieldDiff?.numericDeltas.startDeltaSeconds).toBe(-5);
+        expect(paired!.fieldDiff?.mismatches.some((m) => m.field === 'startTime')).toBe(
+          true,
+        );
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
@@ -429,6 +601,41 @@ describeFn(
         expect(coordMismatch?.severity).toBe(
           ERD_RECHARGE_SHADOW_FIELD_SEVERITY.EXPECTED_BY_DESIGN,
         );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S16: E3 DIFFERENT native episodes remain independent canonical-only rows', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        await createNativeSession(prisma, org.id, vehicle.id, `${suffix}-morning`, {
+          startAt: new Date('2026-06-01T08:00:00.000Z'),
+          endAt: new Date('2026-06-01T09:00:00.000Z'),
+          dimoSegmentId: `dimo-morning-${suffix}`,
+          segmentFingerprint: `fp-morning-${suffix}`,
+          idempotencyKey: `native-morning-${suffix}`,
+        });
+        await createNativeSession(prisma, org.id, vehicle.id, `${suffix}-evening`, {
+          startAt: new Date('2026-06-01T18:00:00.000Z'),
+          endAt: new Date('2026-06-01T19:00:00.000Z'),
+          dimoSegmentId: `dimo-evening-${suffix}`,
+          segmentFingerprint: `fp-evening-${suffix}`,
+          idempotencyKey: `native-evening-${suffix}`,
+        });
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: true,
+        });
+
+        const canonicalOnly = out.observations.filter(
+          (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.CANONICAL_ONLY,
+        );
+        expect(canonicalOnly).toHaveLength(2);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
@@ -528,6 +735,34 @@ describeFn(
       }
     });
 
+    it('S22: legacy DIMO recharge cohort predicate stable after shadow evaluation', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        const legacy = await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        const cohortBefore = await loadCohortCounts(prisma, org.id, vehicle.id);
+        expect(cohortBefore.legacyEpisodeCount).toBe(1);
+        expect(isLegacyDirectDimoRechargeRow(legacy)).toBe(true);
+
+        await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: true,
+        });
+
+        const cohortAfter = await loadCohortCounts(prisma, org.id, vehicle.id);
+        expect(cohortAfter.legacyEpisodeCount).toBe(1);
+        const legacyAfter = await prisma.vehicleEnergyEvent.findUnique({
+          where: { id: legacy.id },
+        });
+        expect(isLegacyDirectDimoRechargeRow(legacyAfter!)).toBe(true);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('S19–S21: shadow evaluate persist:true does not mutate VEE, HV, or REFUEL counts', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
@@ -541,6 +776,7 @@ describeFn(
             vehicleId: vehicle.id,
             kind: EnergyEventKind.REFUEL,
             detectionMechanism: 'refuel',
+            dimoSegmentId: `refuel-${suffix}`,
             startTime: SESSION_START,
             endTime: SESSION_END,
             durationSeconds: 3600,
@@ -551,16 +787,20 @@ describeFn(
           data: {
             vehicleId: vehicle.id,
             kind: EnergyEventKind.RECHARGE,
-            detectionMechanism: 'recharge',
+            detectionMechanism: 'ERD_HV_CHARGE_SESSION_PROJECTION',
             detectionSource:
               VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
-            dimoSegmentId: session.dimoSegmentId,
+            dimoSegmentId: null,
             canonicalChargeSessionId: session.id,
-            sourceEventKey: `erd-proj-${suffix}`,
+            sourceEventKey: `erd:physical:v1:${vehicle.id}:${session.segmentFingerprint}`,
             startTime: SESSION_START,
             endTime: SESSION_END,
             durationSeconds: 3600,
             confidence: EnergyEventConfidence.HIGH,
+            rawDetectionMeta: {
+              anchorSegmentFingerprint: session.segmentFingerprint,
+              projectionVersion: 1,
+            },
           },
         });
 
