@@ -3,7 +3,7 @@
 **Date:** 2026-09-25  
 **Phase:** M3.3E E2 (architecture + scientific audit — documentation / contract design only)  
 **Registry module:** Battery V2 (`AUTHORITY_ACTIVE`)  
-**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 + E2.1.1 pre-merge closure in draft PR #1773)  
+**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 + E2.1.1 + E2.1.2 pre-merge closure in draft PR #1773)  
 **Contract names introduced (design only, not implemented):** `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1`, `M3_3E_E2_MODEL_POLICY_V1`, `M3_3E_CALIBRATION_UNSET_V1`  
 **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 
@@ -292,6 +292,34 @@ Observations are those with non-null metric values, in E1 series order.
 
 Trend, dispersion, and step gates are **stricter** than segment evaluability. A segment may be structurally evaluable on median alone while slope, MAD, or step magnitude remain `null`.
 
+#### Per-metric `trendState` (frozen — E2.1.2)
+
+`trendState` describes **longitudinal trend classification readiness** for that metric. It depends **only** on **`METRIC_TREND_EVALUABLE`** and calibration maturity — **not** on dispersion or step gates.
+
+| Rule | Assignment |
+|------|------------|
+| `METRIC_TREND_EVALUABLE = false` | `trendState = NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` (even if `seriesMedianQuantized` exists) |
+| `METRIC_TREND_EVALUABLE = true` **and** `calibrationProfileId = M3_3E_CALIBRATION_UNSET_V1` | `trendState = NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| `METRIC_TREND_EVALUABLE = true` **and** calibrated profile with unset limits | Follow calibrated classification states (§7.2); unreachable in V1 default |
+
+**Independence (mandatory):**
+
+| Gate failure | Effect on `trendState` | Effect on statistics / reason codes |
+|--------------|------------------------|-------------------------------------|
+| `METRIC_DISPERSION_EVALUABLE = false` | **No change** if trend evaluable | `residualMadQuantized = null`; add `INSUFFICIENT_POINTS_FOR_DISPERSION` when trend evaluable and fewer than 3 distinct anchors |
+| `METRIC_STEP_EVALUABLE = false` | **No change** if trend evaluable | `stepChangeMagnitudeQuantized = null`; add `INSUFFICIENT_POINTS_FOR_STEP` when applicable |
+| `METRIC_LEVEL_EVALUABLE = false` | Trend not evaluable ⇒ `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | `seriesMedianQuantized = null`; may add `INSUFFICIENT_DISTINCT_ANCHORS` |
+
+| Machine flag (E2.1.2) | Value |
+|-----------------------|-------|
+| `TREND_STATE_SEMANTICS_FROZEN` | **YES** |
+| `TREND_STATE_NOT_EVALUABLE_GATE` | **`METRIC_TREND_EVALUABLE`** |
+| `DISPERSION_GATE_CAN_INVALIDATE_TREND_STATE` | **NO** |
+| `STEP_GATE_CAN_INVALIDATE_TREND_STATE` | **NO** |
+| `LEVEL_ONLY_METRIC_CAN_STILL_BE_DESCRIPTIVELY_EVALUATED` | **YES** |
+
+Formal equivalence: **`trendState = NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` ⇔ `METRIC_TREND_EVALUABLE = false`** (for V1 assignment path).
+
 #### `SEGMENT_STRUCTURALLY_EVALUABLE`
 
 **True** iff the segment contains **≥1 primary metric** (`MEDIAN_REST_VOLTAGE`, `ROBUST_REST_SLOPE`, or `SHUTDOWN_TO_FIRST_REST_DELTA`) that satisfies **`METRIC_LEVEL_EVALUABLE`**.
@@ -376,14 +404,23 @@ If the slope set is empty after skips only (e.g. all pairs equal-time — should
 
 ### 7.2 Trend states
 
+**Assignment order (V1, per segment × metric):**
+
+1. If comparability forbids trend interpretation ⇒ `trendState = NOT_COMPARABLE` (before classification; does not substitute for structural trend gate).
+2. Else if **`METRIC_TREND_EVALUABLE = false`** ⇒ `trendState = NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`.
+3. Else if calibration is **`M3_3E_CALIBRATION_UNSET_V1`** ⇒ `trendState = NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`.
+4. Else apply calibrated directional / step states below (not reachable under UNSET V1).
+
+Failure of **`METRIC_DISPERSION_EVALUABLE`** or **`METRIC_STEP_EVALUABLE`** does **not** alter steps 2–3. Those gates only null `residualMadQuantized` / `stepChangeMagnitudeQuantized` and add reason codes (§6.4).
+
 | State | Reachable in V1 (UNSET calibration)? | Meaning |
 |-------|--------------------------------------|---------|
-| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | Fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, `METRIC_DISPERSION_EVALUABLE`, or `METRIC_STEP_EVALUABLE` as applicable (§6.4 / §7.1) |
-| `NOT_COMPARABLE` | Yes | Comparability state not comparable |
-| `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` | **Yes (default for every evaluable series)** | Statistics exist; no classification permitted |
+| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | **`METRIC_TREND_EVALUABLE = false`** only (<2 distinct `anchorAt` among non-null values) |
+| `NOT_COMPARABLE` | Yes | Comparability state not comparable for trend |
+| `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` | Yes | **`METRIC_TREND_EVALUABLE = true`** but UNSET calibration — trend statistics may exist; **no** directional classification |
 | `NO_DIRECTIONAL_CHANGE_RESOLVED` | No (requires calibrated detection limits) | Not "stable" — change below calibrated detectable magnitude |
 | `DIRECTIONAL_CHANGE_INCREASING` / `DIRECTIONAL_CHANGE_DECREASING` | No | Physically neutral direction of the **descriptor**; never "worsening"/"improving" |
-| `STEP_CHANGE_CANDIDATE` | No | Possible discontinuity (e.g., unobserved battery replacement, BLOCK-M3.3D-003) — requires corroboration |
+| `STEP_CHANGE_CANDIDATE` | No | Classified step (not the same as descriptive `stepChangeMagnitudeQuantized`) |
 | `INCONSISTENT` | No | Directional agreement below calibrated minimum or split-half disagreement |
 
 Mapping a descriptor direction to an adverse/benign battery meaning is a **condition** step and is not defined in V1.
@@ -516,7 +553,7 @@ M3_3E_LongitudinalHealthEvaluationV1 {
 |-------|--------------------------------------|
 | `condition` | **`NOT_ASSESSED` always** |
 | `claimLevel` | **`NONE` always** (`MEASURED_DESCRIPTOR_CHANGE` requires calibrated classification; unreachable in V1) |
-| Per-metric `trendState` | **`NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`** when trend/dispersion statistics exist; **`NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`** when metric-level gate fails |
+| Per-metric `trendState` | See §6.4 / §7.2: **`NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` ⇔ `METRIC_TREND_EVALUABLE = false`**; if trend evaluable under UNSET ⇒ **`NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`** (dispersion/step gate failure does **not** change this) |
 | Per-metric `confidence` | **`NOT_APPLICABLE`** |
 
 **`NO_CONCLUSION` is not used merely because calibration is unset** when descriptive statistics were produced — use `EVALUATED_DESCRIPTIVE_ONLY` instead.
@@ -528,8 +565,8 @@ M3_3E_LongitudinalHealthEvaluationV1 {
 | # | Scenario | `evaluationStatus` | `vehicleSummary` | `condition` | `claimLevel` | Notes |
 |---|----------|-------------------|------------------|-------------|--------------|-------|
 | 1 | Zero assessment-grade observations (valid empty E1) | `NO_CONCLUSION` | `NO_EVALUABLE_SEGMENT` | `NOT_ASSESSED` | `NONE` | `NO_ASSESSMENT_GRADE_OBSERVATIONS` |
-| 2 | One observation with non-null `medianRestVoltageMv` | `EVALUATED_DESCRIPTIVE_ONLY` | `SINGLE_EVALUABLE_SEGMENT` | `NOT_ASSESSED` | `NONE` | Median quantized; slope `null` (trend gate) |
-| 3 | Two distinct `anchorAt`, median metric | `EVALUATED_DESCRIPTIVE_ONLY` | per §6.4 | `NOT_ASSESSED` | `NONE` | Slope may exist; classification still `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| 2 | One observation with non-null `medianRestVoltageMv` | `EVALUATED_DESCRIPTIVE_ONLY` | `SINGLE_EVALUABLE_SEGMENT` | `NOT_ASSESSED` | `NONE` | **Case A:** `trendState=NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`; median defined; slope null |
+| 3 | Two distinct `anchorAt`, median metric | `EVALUATED_DESCRIPTIVE_ONLY` | per §6.4 | `NOT_ASSESSED` | `NONE` | **Case B:** `trendState=NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; slope defined; MAD/step null + reason codes |
 | 4 | Valid descriptive metrics, UNSET calibration | `EVALUATED_DESCRIPTIVE_ONLY` | per §6.4 | `NOT_ASSESSED` | `NONE` | **Not** `NO_CONCLUSION` |
 | 5 | Two+ structurally evaluable segments | `EVALUATED_DESCRIPTIVE_ONLY` | `SEGMENTED_NO_POOLED_CONCLUSION` | `NOT_ASSESSED` | `NONE` | No pooling |
 | 6 | Malformed / inconsistent input | **Reject** (typed error) | — | — | — | **Not** `NO_CONCLUSION` |
@@ -538,6 +575,24 @@ M3_3E_LongitudinalHealthEvaluationV1 {
 |--------------|-------|
 | `EVALUATION_STATUS_SEMANTICS_FROZEN` | **YES** |
 | `NO_CONCLUSION_DISTINCT_FROM_UNCALIBRATED_CLASSIFICATION` | **YES** |
+
+#### Per-metric structural / `trendState` truth table (frozen — E2.1.2)
+
+Assume comparable segment, UNSET calibration, single primary metric series unless noted.
+
+| Case | Observations | Gates | Key outputs | `trendState` |
+|------|--------------|-------|-------------|--------------|
+| **A** | 1 non-null | level YES; trend NO | `seriesMedianQuantized` defined; `theilSenSlopePerDayQuantized=null` | `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` |
+| **B** | 2 distinct anchors | level YES; trend YES; dispersion NO; step NO | slope defined; `residualMadQuantized=null`; `stepChangeMagnitudeQuantized=null`; reasons include `INSUFFICIENT_POINTS_FOR_DISPERSION`, `INSUFFICIENT_POINTS_FOR_STEP` | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| **C** | 3 distinct anchors | trend YES; dispersion YES; step NO (only 3 values) | MAD may be defined; step null; `INSUFFICIENT_POINTS_FOR_STEP` | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| **D** | ≥4 with valid ≥2/≥2 split | trend YES; dispersion YES; step YES | all descriptive stats may exist | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` (no directional class under UNSET) |
+
+| Reference flags (E2.1.2) | Value |
+|--------------------------|-------|
+| `ONE_POINT_TREND_STATE` | `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` |
+| `TWO_POINT_TREND_STATE_UNSET_CALIBRATION` | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| `THREE_POINT_STEP_AVAILABLE` | **NO** |
+| `FOUR_POINT_STEP_STRUCTURALLY_POSSIBLE` | **YES** |
 
 ---
 
@@ -693,7 +748,8 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
 | # | Situation | Result |
 |---|-----------|--------|
 | 1 | `modelEvaluation.inputAvailability='NO_ASSESSMENT_GRADE_INPUT'` | `evaluationStatus=NO_CONCLUSION`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`, `vehicleSummary=NO_EVALUABLE_SEGMENT` |
-| 2 | Metric fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, `METRIC_DISPERSION_EVALUABLE`, or `METRIC_STEP_EVALUABLE` where applicable | Metric `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` + reason codes (`INSUFFICIENT_DISTINCT_ANCHORS`, `INSUFFICIENT_POINTS_FOR_DISPERSION`, `INSUFFICIENT_POINTS_FOR_STEP`); segment may still be structurally evaluable on another metric |
+| 2 | Trend not evaluable (`METRIC_TREND_EVALUABLE=false`) | `trendState=NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`; level stats may still exist (Case A); `evaluationStatus` may still be `EVALUATED_DESCRIPTIVE_ONLY` |
+| 2b | Trend evaluable but dispersion or step gate fails | **`trendState` unchanged** (Cases B–D); null `residualMadQuantized` and/or `stepChangeMagnitudeQuantized`; `INSUFFICIENT_POINTS_FOR_DISPERSION` / `INSUFFICIENT_POINTS_FOR_STEP` on metric `reasonCodes` — **not** `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` |
 | 3 | Observations split across segments with none structurally evaluable | `evaluationStatus=NO_CONCLUSION`, `vehicleSummary=NO_EVALUABLE_SEGMENT`; if ≥1 evaluable segment ⇒ `EVALUATED_DESCRIPTIVE_ONLY` per §11.4 |
 | 4 | Evidence temporally concentrated | Descriptors emitted; classification suppressed (`UNDETERMINED_CALIBRATION_REQUIRED` until `CAL-M3.3E-003`) |
 | 5 | Charge context unknown (all V1 data) | `CHARGE_CONTEXT_UNCONTROLLED`; Level B `NOT_COMPARABLE_CHARGE_CONTEXT_UNRESOLVED` |
@@ -702,7 +758,7 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
 | 8 | Outlier-dominated or zero-dispersion series | No deletion; flags only when calibrated; `residualMadQuantized=0` ⇒ no statistical flags |
 | 9 | Contradictory metrics (descriptors move in different directions) | No reconciliation into a condition; each metric reported independently |
 | 10 | Step discontinuity (possible battery replacement / configuration change) | Only when **`METRIC_STEP_EVALUABLE`** (≥4 values, ≥2 per side); descriptive `stepChangeMagnitudeQuantized` + split metadata; **3 observations ⇒ step null**; no event claim (BLOCK-M3.3D-003) |
-| 11 | Calibration profile UNSET (V1 default) | `evaluationStatus` may be `EVALUATED_DESCRIPTIVE_ONLY`; every evaluable series `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition=NOT_ASSESSED`; `claimLevel=NONE`; `CALIBRATION_NOT_ESTABLISHED` |
+| 11 | Calibration profile UNSET (V1 default) | `evaluationStatus` may be `EVALUATED_DESCRIPTIVE_ONLY`; per metric: if `METRIC_TREND_EVALUABLE` ⇒ `trendState=NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`, else `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`; `condition=NOT_ASSESSED`; `claimLevel=NONE`; `CALIBRATION_NOT_ESTABLISHED` |
 | 12 | Quarantined / source-limited sessions exist | `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`; excluded sessions never enter series |
 | 13 | D4 scope `BOUNDED_LATEST_WINDOW` / `NOT_EVALUATED` | Reason code only |
 | 14 | Malformed / inconsistent input (contract version mismatch, invalid `anchorAt`, fingerprint mismatch, non-null delta with non-`SELECTED` anchor, `x_j < x_i` in a metric series, non-finite pairwise slope with `x_j > x_i`, quantized integer not safe) | **Reject** — `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW` where applicable; fail closed, no partial result |
@@ -804,7 +860,7 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 | Forbidden imports | Nest, Prisma, repositories, `lv-assessment/*`, `battery-readiness.policy.ts`, publication, flags/config, clock |
 | Default calibration | `M3_3E_CALIBRATION_UNSET_V1` (`UNCALIBRATED`); every calibrated minimum `null` |
 | Output under default | `evaluationStatus=EVALUATED_DESCRIPTIVE_ONLY` when any segment structurally evaluable; else `NO_CONCLUSION`; descriptive **`…Quantized`** statistics; `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition='NOT_ASSESSED'`; `claimLevel='NONE'`; `confidence='NOT_APPLICABLE'` |
-| Minimum test matrix | §11.4 truth-table cases; empty input (`NO_CONCLUSION`); single observation (`EVALUATED_DESCRIPTIVE_ONLY` + median µV); two distinct anchors (slope); equal anchors skipped; **3 distinct anchors: MAD evaluable, `stepChangeMagnitudeQuantized` MUST be null**; **4+ values with valid split: step structurally evaluable, classification still `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` under UNSET**; non-finite slope on valid pair ⇒ `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW`; relative `x_i`; multi-segment A→B→A; median-only segment; charge/temperature reason codes; zero MAD; `-0` canonicalization; safe-integer reject; UTF-16 ordering; forbidden fields; no-clock; immutability; malformed `anchorAt`; golden fingerprint; static import guard |
+| Minimum test matrix | §11.4 + **§11.4 trendState Cases A–D**; assert `trendState` gate = `METRIC_TREND_EVALUABLE` only; 2-point UNSET ⇒ `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` with MAD/step null + reason codes (not `NOT_EVALUABLE`); 1-point ⇒ `NOT_EVALUABLE` with `EVALUATED_DESCRIPTIVE_ONLY` allowed; 3-point step null; 4-point step descriptive; non-finite slope reject; prior E2.1/E2.1.1 matrix items |
 | Non-goals | Persistence, Nest reachability, flags, D3 materialization, readiness, publication, UI, calibration values |
 
 `M3_3E_E3_IMPLEMENTATION_READY=YES` applies **only** to this boundary. A conclusion-bearing model is **not** ready (`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`), blocked by all B items (notably CAL-M3.3E-010) and D items (notably NAT-M3.3F-001, NAT-M3.3F-008).
@@ -817,6 +873,16 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 M3_3E_E2_ARCHITECTURE: COMPLETE
 M3_3E_E2_1_HARDENING: COMPLETE
 M3_3E_E2_1_1_FINAL_CLOSURE: COMPLETE
+M3_3E_E2_1_2_TREND_STATE_CLOSURE: COMPLETE
+TREND_STATE_SEMANTICS_FROZEN: YES
+TREND_STATE_NOT_EVALUABLE_GATE: METRIC_TREND_EVALUABLE
+DISPERSION_GATE_CAN_INVALIDATE_TREND_STATE: NO
+STEP_GATE_CAN_INVALIDATE_TREND_STATE: NO
+LEVEL_ONLY_METRIC_CAN_STILL_BE_DESCRIPTIVELY_EVALUATED: YES
+ONE_POINT_TREND_STATE: NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL
+TWO_POINT_TREND_STATE_UNSET_CALIBRATION: NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED
+THREE_POINT_STEP_AVAILABLE: NO
+FOUR_POINT_STEP_STRUCTURALLY_POSSIBLE: YES
 STEP_CHANGE_GATE_CONTRADICTION_RESOLVED: YES
 METRIC_STEP_EVALUABILITY_SEMANTICS_FROZEN: YES
 STEP_CHANGE_MIN_TOTAL_VALUES: 4

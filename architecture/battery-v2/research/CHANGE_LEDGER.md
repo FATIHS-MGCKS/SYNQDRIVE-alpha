@@ -10,6 +10,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-25 — M3.3E E2.1.2 trend-state structural semantic closure (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2.1.1 @ `69f2d9c0d` — §7.2 and §16 implied `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` when dispersion/step gates failed; conflated trend availability with secondary statistics. |
+| **OBSERVATION** | `trendState` must reflect `METRIC_TREND_EVALUABLE` only; level-only metrics can still yield `EVALUATED_DESCRIPTIVE_ONLY`. |
+| **HYPOTHESIS** | Freezing `trendState` assignment in §6.4/§7.2/§11.4 Cases A–D removes last E3 interpretation freedom without changing E2.1.1 gates. |
+| **CHANGE** | Amend E2 doc: per-metric `trendState` rules; truth table Cases A–D; fix §16 rows 2/2b; §19 tests; §20 flags (`TREND_STATE_*`, `ONE_POINT_*`, etc.). |
+| **WHY** | E3 must not mark trend not-evaluable when only MAD or step magnitude is unavailable. |
+| **EXPECTED_EFFECT** | 2+ distinct anchors under UNSET ⇒ `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` even when MAD/step null. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only. |
+| **OBSERVED_EFFECT** | Pending merge — PR #1773 amend. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies E2.1.1 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers. |
+| **AFTER** | **`TREND_STATE_SEMANTICS_FROZEN=YES`**; **`TREND_STATE_NOT_EVALUABLE_GATE=METRIC_TREND_EVALUABLE`**; dispersion/step gates cannot invalidate `trendState`. |
+| **EVIDENCE** | Cross-section audit §6.4 / §7.2 / §11.4 / §16. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1.2 on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E2.1.1 final pre-merge semantic closure (draft PR #1773 amend)
 
 | Field | Value |
