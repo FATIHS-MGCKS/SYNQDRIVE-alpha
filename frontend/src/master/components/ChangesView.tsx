@@ -13314,6 +13314,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e6-2-charging-station-reference-resolver-2026-09-25',
+    version: '4.9.914',
+    title: 'ERD E6.2 — charging station reference dataset and resolver',
+    summary: [
+      'Independent OSM amenity=charging_station infrastructure (live/staging + charging-specific dataset metadata).',
+      'Python importer/validation/promotion under backend/scripts/ops/osm-charging-stations/; motorcar=no and fuel/device tags excluded.',
+      'TypeScript ChargingStationLocationResolverService — geometry-first matching, bounded ambiguity, connector summary metadata.',
+      'PostgreSQL gate PG1–PG15 (boundary-repair step 15/15); no Prisma migration; no VEE enrichment wiring.',
+    ],
+    reason:
+      'E6.1 established recharge coordinates; E6.2 adds auditable local charging-location reference resolution without fuel-domain reuse.',
+    previousBehavior:
+      'No EV charging-station OSM reference dataset or resolver; fuel-station OSM pipeline was fuel-only (amenity=fuel).',
+    details:
+      'charging-stations/*; osm-charging-stations/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T18:00:00.000Z',
+  },
+  {
     id: 'erd-e6-1-recharge-location-provenance-2026-09-25',
     version: '4.9.913',
     title: 'ERD E6.1 — canonical recharge location provenance',
