@@ -2,7 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **REPO_CURRENT** | `567a5766f5968e5234ef7dc71699a740b4d55656` — post #1779 (`origin/main`) |
+| **REPO_CURRENT_AT_OQ004_AUDIT** | `55fcbe7a229db9858cecc1538b9ec1919ff30fbc` — `origin/main` at TDL-OQ-004 read-only audit (PR #1783 base; **not** a claim that PR head equals live `origin/main` after further merges) |
+| **REPO_CURRENT (legacy table row — stale)** | `567a5766f…` — pre-OQ-004 axis; superseded for route coverage claims by **REPO_CURRENT_AT_OQ004_AUDIT** |
 | **PRODUCTION_CURRENT (verified release)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (`LIVE_RELEASE_ID=20260925182907_v4994`) |
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
 | **origin/main (historical @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — superseded on main by later merges |
@@ -16,16 +17,17 @@
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **REPO_CURRENT** | `567a5766f…` @ post #1779 |
+| **REPO_CURRENT_AT_OQ004_AUDIT** | `55fcbe7a…` | OQ-004 code trace baseline |
+| **REPO_CURRENT (legacy)** | `567a5766f…` @ post #1779 | **Stale** — do not use for OQ-004 |
 | **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 + TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 | **`RESOLVED_BY_SCOPE_REDUCTION`** — 0 active PP_NOT_VALIDATED after OQ-007.1 |
 | **OQ003_DETECTION_STATE_CARDINALITY** | TDL-EVID-OQ003-CARDINALITY-001 | **`RESOLVED_EXPECTED_CARDINALITY`** — 6 FSM rows = 6 scheduler-eligible; tracking runs are execution multiplicity |
-| **OQ004_ROUTE_ARTIFACT_COVERAGE** | TDL-EVID-OQ004-ROUTE-COV-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — Route V2 Mapbox canonical; 7d eligible artifact **100%**; MATCHED = quality KPI |
+| **OQ004_ROUTE_ARTIFACT_COVERAGE** | TDL-EVID-OQ004-ROUTE-COV-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — Route V2 policy **374/374 (100%)**; 33 historical rows reclassified; code contract gap ≠ Production defect |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` | **VERIFIED_READ_ONLY** — post `99d722b4…` release |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
 | **OQ001_COMPLETED_TO_DI_HANDOFF** | TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001 | **`RESOLVED`** — handoff contract + org invariant; non-atomic enqueue accepted |
 | **PRE_HARDENING_R12_PRODUCTION (historical)** | `157b3c722…` | **HISTORICAL** deploy — TDL-EV-R12-PROD-DEPLOY-001 |
-| **SHADOW_RUNTIME (Production)** | @ `99d722b4…` | **PRESENT** + **ENABLED** — divergences **NOT_EVALUATED_SHORT_WINDOW** |
+| **SHADOW_RUNTIME (Production)** | **LAST_VERIFIED @ `99d722b4…`** (`20260924235024_v4994`) | **PRESENT** + **ENABLED** on that release — **NOT re-verified @ `8a1d9c658…`** in OQ-004 pass |
 
 ## Phase status (this document)
 

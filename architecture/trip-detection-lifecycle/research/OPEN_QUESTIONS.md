@@ -103,12 +103,12 @@
 - **H1a:** Six detection-state rows = current scheduler-eligible DIMO live-FSM cohort — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003).
 - **H1b:** “Most fleet vehicles lack live FSM rows until connected” — **NOT CONFIRMED** (6/9 have rows; 3 non-DIMO only).
 - **H2:** High `MISSING_TRIP` repair PROPOSED count is reconciliation scanning historical DIMO gaps, not live FSM failure.
-- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage — **PARTIALLY_CONFIRMED** @ `2026-09-25` (TDL-OQ-004): 7d eligible artifact **100%**; 30d gap **33** trips pre–Route V2 artifact anchor; Mapbox drives **MATCHED vs FILTERED**, not missing rows.
+- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage — **PARTIALLY_CONFIRMED** @ `2026-09-25` (TDL-OQ-004): Route V2 **policy** cohort **374/374 (100%)**; **33** missing rows = pre-first-artifact job execution (**26** pre-R2-merge UTC, **7** unknown historical); Mapbox → **FILTERED**, not missing artifacts.
 
 ## TDL-OQ-004 — resolution (2026-09-25)
 
 **Evidence:** [TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md](../evidence/TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md) (TDL-EVID-OQ004-ROUTE-COV-001) @ `origin/main` `55fcbe7a…`, Production @ `8a1d9c658…` / `20260925182907_v4994`.
 
-**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** (TDL-DEC-OQ004-001) — canonical matcher **Route V2 chunked Mapbox**; **FMM scaffold-only**; target policy separates **artifact coverage**, **canonical ready**, and **MATCHED quality SLO**; recent **7d** eligible coverage **100%**; bounded **33** historical **ROUTE COMPLETED without artifact** in early rollout window; handler **CONTRACT_GAP** (job/stage COMPLETE without artifact) documented, not active **7d** regression.
+**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** (TDL-DEC-OQ004-001) — three-tier coverage policy; **R2 Production deploy anchor UNKNOWN**; **33** rows reclassified (**0** post-first-artifact handler-gap proof); **`CURRENT_CODE_CONTRACT_GAP`** structural only (**not** observed post-anchor in Production).
 
 **Status:** **RESOLVED**

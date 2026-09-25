@@ -299,7 +299,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **CHANGE** | Adopt three-tier policy: (1) **artifact** — 100% for route-eligible trips with ROUTE stage COMPLETED post–Route V2 anchor; (2) **canonical render** — MATCHED→FILTERED→RAW hierarchy when ≥2 measured points; (3) **MATCHED** — observational KPI from FILTERED `failure_reason`, not correctness gate. Canonical matcher = **TripRouteChunkedMatcherService**; FMM **SCAFFOLD** only |
 | **ALTERNATIVES REJECTED** | FMM as Production bottleneck (no runtime callsite); 100% MATCHED as coverage target; all-time completed/trip ratio without eligibility denominator |
 | **EXPECTED EFFECT** | OQ-004 closed; H3 partially confirmed; follow-up slice for handler/job artifact contract if product requires strict artifact invariant |
-| **PRODUCTION STATUS** | **7d eligible artifact coverage 100%** @ `8a1d9c658…`; **33** bounded pre-anchor gaps in 30d window |
+| **PRODUCTION STATUS** | **Route V2 policy cohort 100%** @ `8a1d9c658…`; R2 Production deploy anchor **UNKNOWN**; **33** historical missing rows **not** post-R2 handler-gap proof |
 | **NON-EFFECTS** | Does not change Mapbox gates or handler code in this audit |
 | **VALIDATION** | Read-only SQL + code trace — TDL-EVID-OQ004-ROUTE-COV-001 |
 | **EVIDENCE** | TDL-EVID-OQ004-ROUTE-COV-001 |

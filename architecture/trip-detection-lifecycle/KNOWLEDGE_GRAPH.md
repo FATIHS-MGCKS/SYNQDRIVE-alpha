@@ -11,10 +11,9 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 | **REPO_CURRENT** | `bca9579a1…` @ post PR #1769 — **≠ PRODUCTION_CURRENT** |
 | **TDL-OQ-007** | **RESOLVED** — OQ-007.1 passive closure @ `2026-09-25T13:25Z` |
 | **TDL-OQ-003** | **RESOLVED** — detection-state cardinality @ `2026-09-25T18:05Z` (TDL-EVID-OQ003-CARDINALITY-001) |
-| **TDL-OQ-004** | **RESOLVED** — route artifact coverage policy @ `2026-09-25T21:15Z` (TDL-EVID-OQ004-ROUTE-COV-001) |
+| **TDL-OQ-004** | **RESOLVED** — route artifact coverage policy @ `2026-09-25` (TDL-EVID-OQ004-ROUTE-COV-001; epistemic correction same day) |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` |
-| **Qualified Stop V1** | **PRODUCTION_PRESENT** (#1753); acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001) |
-| **Shadow runtime** | **PRESENT** + **ENABLED** on Production; divergences **NOT_EVALUATED_SHORT_WINDOW** |
+| **Shadow runtime** | **LAST_VERIFIED @ `99d722b4…`** — not re-checked @ `8a1d9c658…` in OQ-004 |
 | R9 on `origin/main` | **YES** — merged #1553 |
 | R9 runtime on Production | **YES** — ancestor of `99d722b4…` |
 | Provider speed+ignition wiring | **5/5** active cohort (190497 excluded) — historical canary |
