@@ -15,7 +15,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED | TDL-EVID-R10-KS-MX-001 |
 | TDL-DEC-R11-001 | Empty-core evidence contract (pause, provider anchor, stop boundary) | PROPOSED | TDL-EVID-R11-IMPL-001; TDL-EVID-KS-MS-661-PROPOSAL-001; TDL-EVID-KS-MS-661-002; KS661 audit corpus |
-| TDL-DEC-R12-001 | Provider-time stop boundary + boundary-backed end liveness | PROPOSED | TDL-EVID-R12-IMPL-001; TDL-EVID-KS-MS-661-R11-NATURAL-001 |
+| TDL-DEC-OQ002-001 | drive-profile ownership — Battery V2 owns; TDL non-owner | VALIDATED | TDL-EVID-OQ002-DRIVE-PROFILE-001 |
+| TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority | VALIDATED | TDL-EVID-OQ006-BOUNDARY-001 |
 
 ---
 
@@ -223,6 +224,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 
 ---
 
+---
+
 ## TDL-DEC-OQ006-001
 
 | Field | Value |
@@ -235,3 +238,19 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | Read-only @ `99d722b4…`: 7 partial boundary repairs, 134 DIMO missing-trip applies (90d), 672 suppressions, 0 confirmed boundary corruption |
 | **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ006-BOUNDARY-001 |
 | **EVIDENCE** | TDL-EVID-OQ006-BOUNDARY-001 |
+
+---
+
+## TDL-DEC-OQ002-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-002 / TDL-GAP-002 OPEN — unclear whether `drive-profile/` belongs to Trip Detection vs Battery vs shared layer |
+| **WHY** | Cross-authority audit required before TDL promotion; physical adjacency to `trips/` is not ownership proof |
+| **CHANGE** | **Battery V2 owns** `drive-profile/` resolver stack; TDL **explicit non-ownership**; distinguish from `VehicleDetectionProfile` |
+| **ALTERNATIVES REJECTED** | TDL owns (no runtime dependency); shared neutral layer (implementation is `BatteryDriveProfile`-typed and battery-policy-coupled) |
+| **EXPECTED EFFECT** | Agents do not extend trip FSM via drive-profile; battery work owns classification changes |
+| **NON-EFFECTS** | Does not move files or rename module in this decision |
+| **VALIDATION** | Repository consumer graph + zero trip FSM imports — TDL-EVID-OQ002-DRIVE-PROFILE-001 |
+| **EVIDENCE** | TDL-EVID-OQ002-DRIVE-PROFILE-001 |

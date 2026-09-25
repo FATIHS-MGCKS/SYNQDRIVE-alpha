@@ -93,7 +93,7 @@ Never merge these axes:
 | Battery V2 | Battery health; may consume trip lifecycle hooks |
 | DIMO Integration (`AUDIT_IN_PROGRESS`) | Provider auth, telemetry, segments, webhooks, triggers — canonical authority at [`architecture/dimo-integration/`](../dimo-integration/); R9 cross-module contract DIM-DEC-R9-001 / TDL-DEC-R9-CX-001 |
 
-**Open:** exact COMPLETED → Driving Intelligence handoff; ownership of `drive-profile/`.
+**Resolved:** COMPLETED → Driving Intelligence handoff (TDL-OQ-001). **`drive-profile/`** — Battery V2 owns; TDL non-owner (TDL-OQ-002).
 
 ## Production safety
 

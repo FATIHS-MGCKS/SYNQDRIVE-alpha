@@ -5,7 +5,7 @@ Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 | Gap ID | Topic | Epistemic | Notes |
 |--------|-------|-----------|-------|
 | **TDL-GAP-001** | COMPLETED → Driving Intelligence handoff | **RESOLVED** | TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001; org orphan **STRUCTURALLY_IMPOSSIBLE** |
-| **TDL-GAP-002** | `drive-profile/` module ownership | UNKNOWN | Physically adjacent to trips; Battery-oriented resolver — not proven trip FSM owner |
+| **TDL-GAP-002** | `drive-profile/` module ownership | **RESOLVED** | TDL-EVID-OQ002-DRIVE-PROFILE-001 — **Battery V2 owns**; Trip FSM uses separate `VehicleDetectionProfile`; TDL has **no runtime dependency** |
 | **TDL-GAP-003** | Full fleet FSM row coverage | INFERRED | Production shows 6 detection states vs ~2000 trips — cohort/telematics subset unclear |
 | **TDL-GAP-004** | Route artifact coverage (~4.7%) | CONFIRMED aggregate | Why 94/1994 completed trips have artifacts — root cause not proven |
 | **TDL-GAP-005** | ClickHouse trip-assist runtime | UNKNOWN | Flag present on Production; mirror contents not queried |

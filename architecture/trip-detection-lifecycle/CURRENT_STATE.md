@@ -237,7 +237,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Histor
 ## UNKNOWN facts
 
 - ~~Exact COMPLETED → Driving Intelligence durable handoff (TDL-OQ-001)~~ → **RESOLVED** — TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001
-- `drive-profile/` ownership (TDL-OQ-002)
+- ~~`drive-profile/` ownership (TDL-OQ-002)~~ → **RESOLVED** — Battery V2 owns; TDL-EVID-OQ002-DRIVE-PROFILE-001
 - ClickHouse trip-assist runtime on Production
 - Complete trip feature-flag matrix
 - Full dead/legacy/competing path inventory (**Phase 1 incomplete**)
@@ -291,4 +291,4 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 | **Battery V2** | Downstream trip hooks |
 | **DIMO Integration** | Provider transport/auth/webhook gateway ([`architecture/dimo-integration/`](../dimo-integration/), `AUDIT_IN_PROGRESS`) — R9 webhook wiring documented on both authorities |
 
-**Open:** COMPLETED handoff to DI; `drive-profile/` ownership.
+**Open:** other OQs (TDL-OQ-006 on main may still be OPEN in registry until merged PR); ClickHouse trip-assist; feature-flag matrix; legacy path inventory.

@@ -5,6 +5,8 @@
 
 ## Resolver split (important)
 
+**Ownership (TDL-OQ-002 / 2026-09-25):** `backend/src/modules/vehicle-intelligence/drive-profile/` is **Battery V2–owned** powertrain classification (`BatteryDriveProfile` → `resolveBatteryPolicy`). Trip Detection uses separate **`VehicleDetectionProfile`** on FSM state — not this resolver. Evidence: [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](../../trip-detection-lifecycle/evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md).
+
 | Layer | Branches on ICE/HEV/PHEV/BEV? | Source |
 |-------|------------------------------|--------|
 | `resolveHvMethodProfile()` | **No** — capability-driven only | `hv-method-profile.resolver.ts` |

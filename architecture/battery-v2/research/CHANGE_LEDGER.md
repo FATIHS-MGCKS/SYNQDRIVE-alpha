@@ -6,11 +6,24 @@ Append-only scientific record. Newest entries first.
 
 ---
 
----
+## CL-2026-09-25 — drive-profile ownership (TDL-OQ-002 cross-authority)
 
----
-
----
+| Field | Value |
+|-------|-------|
+| **BEFORE** | TDL-GAP-002 OPEN — ambiguous ownership of `vehicle-intelligence/drive-profile/` adjacent to trips. |
+| **OBSERVATION** | Repository consumer graph: BatteryPolicyProfileService + measurement sessions primary; zero trip FSM imports. |
+| **HYPOTHESIS** | N/A — audit closed with code proof. |
+| **CHANGE** | Cross-authority audit documents **Battery V2 owns** resolver + `BatteryDriveProfile` classification; TDL explicit non-owner. |
+| **WHY** | Unblocks TDL promotion boundary TDL-OQ-002 without moving code. |
+| **EXPECTED_EFFECT** | Agents route drive-profile changes through Battery V2 authority. |
+| **VALIDATION** | TDL-EVID-OQ002-DRIVE-PROFILE-001; graph validators PASS. |
+| **OBSERVED_EFFECT** | Docs-only; runtime unchanged. |
+| **NON_EFFECTS** | No code move; optional future relocate under battery module documented only. |
+| **REGRESSIONS_OR_TRADEOFFS** | None. |
+| **REMAINING_GAPS** | Folder naming `drive-profile` vs powertrain semantics; `confirmedDriveProfile` not wired in input builder. |
+| **DECISION_STATUS** | TDL-DEC-OQ002-001 VALIDATED (cross-ref). |
+| **AFFECTED_GRAPH** | BAT-V2-EVID-OQ002-DRIVE-PROFILE-001; TDL-GAP-002 resolved. |
+| **EVIDENCE** | TDL-EVID-OQ002-DRIVE-PROFILE-001 / BAT-V2-EVID-OQ002-DRIVE-PROFILE-001 |
 
 ## CL-2026-09-25 — M3.3E E2.1.2 trend-state structural semantic closure (draft PR #1773 amend)
 

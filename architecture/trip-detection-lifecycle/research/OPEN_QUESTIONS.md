@@ -3,7 +3,7 @@
 | OQ ID | Question | Priority | Blocking promotion? | Status (2026-09-25) |
 |-------|----------|----------|---------------------|---------------------|
 | **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | No — contract + org invariant closed | **RESOLVED** — see §TDL-OQ-001 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | OPEN |
+| **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | **RESOLVED** — see §TDL-OQ-002 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-003** | Why does Production have only 6 `vehicle_trip_detection_states` rows while tracking runs are in the thousands per week? | Medium | No | OPEN (historical aggregate; re-verify on `99d722b4…` when needed) |
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
@@ -70,7 +70,23 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other OQs (e.g. TDL-OQ-002).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-003).
+
+## TDL-OQ-002 — resolution (2026-09-25)
+
+**Evidence:** [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](../evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) (TDL-EVID-OQ002-DRIVE-PROFILE-001) @ `origin/main` `51b4590e4…`.
+
+**Resolved contract:**
+
+- **`backend/src/modules/vehicle-intelligence/drive-profile/` is Battery V2–owned** (powertrain classification for `BatteryDriveProfile` → battery policy / measurement sessions).
+- **Trip Detection & Lifecycle does not own** this module and has **no productive runtime import** of the resolver (trip FSM uses **`VehicleDetectionProfile`** on detection state — separate concept).
+- **Driving Intelligence** consumes **partial** classification only via `deriveVehicleCapabilityProfile` (master `fuelType` layer) for diagnostics — not trip boundary authority.
+- **Energy Event Detection** uses **`resolveFleetPowertrainClass`**, not drive-profile resolver.
+- Output is **`DERIVED_READ_MODEL`** (on-demand); optional snapshot on **`BatteryMeasurementSession.driveProfile`**.
+
+**Verdict:** **`BATTERY_V2_OWNER`** — folder name is misleading (`LAYERING_SMELL`); optional future relocate/rename slice documented, **not required** for OQ-002 closure.
+
+**Status:** **RESOLVED** for TDL authority boundary; **`AUTHORITY_ACTIVE` promotion** still blocked by other OQs.
 
 ## Hypotheses (not confirmed)
 
