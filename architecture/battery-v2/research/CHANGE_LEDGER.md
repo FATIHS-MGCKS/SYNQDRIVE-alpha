@@ -16,7 +16,7 @@ Append-only scientific record. Newest entries first.
 | **VALIDATION** | Docs-only; `validate-module-registry.sh` + `validate-graph.sh`. |
 | **NON_EFFECTS** | No runtime, schema, migration, flags, Nest/API/UI/CLI, BatteryAssessment/BatteryPublication writes, D3 materialization, deploy, production data mutation. |
 | **REMAINING_GAPS** | M3.3E E1 engineering; M3.3E+ health model; M3.3F authorization; M3.3G cutover; M3.3H UI. |
-| **DECISION_STATUS** | **E0_ARCHITECTURE_AUDIT_DRAFT** |
+| **DECISION_STATUS** | **E0_ARCHITECTURE_AUDIT_DRAFT** (PR #1761) |
 | **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
 
 ## CL-2026-09-24 — M3.3D D4 Engineering V1 post-merge seal
