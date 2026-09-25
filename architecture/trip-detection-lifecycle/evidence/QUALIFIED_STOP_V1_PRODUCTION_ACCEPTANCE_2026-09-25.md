@@ -8,7 +8,9 @@
 | **Acceptance classification** | **`PASS_WITH_EVIDENCE_GAPS`** — **not** `FULLY_PRODUCTION_VALIDATED` for all Qualified-Stop paths |
 | **Decision status** | TDL-DEC-QS-V1-001 — **PRODUCTION_PRESENT**; natural SAME_TRIP controls **PASS**; natural SPLIT / POST_SPLIT_TRIP2 **INSUFFICIENT_EVIDENCE** in audit window |
 
-## Production baseline (verified)
+## Production baseline (verified at acceptance time — historical evidence anchor)
+
+This document records the **acceptance-time Production anchor** (`99d722b4…` @ `20260924235024_v4994`). It is **not** a claim about latest/current Production; later releases (e.g. `8a1d9c6586…` @ `20260925182907_v4994`) supersede the deploy pointer only for **current-runtime** audits, not this acceptance artifact.
 
 | Field | Value |
 |-------|-------|
@@ -78,7 +80,7 @@ Observed failure signatures in the read-only audit window:
 | Field | Value |
 |-------|-------|
 | **SHADOW_RUNTIME_PRESENT** | YES |
-| **SHADOW_RUNTIME_ENABLED** | YES (Production @ `99d722b4…`; introduced with #1648 merge lineage) |
+| **SHADOW_RUNTIME_ENABLED** | YES (acceptance-time Production @ `99d722b4…`; introduced with #1648 merge lineage; also present on later releases) |
 | **SHADOW_DIVERGENCES_OBSERVED** | **NOT_EVALUATED_SHORT_WINDOW** |
 
 No shadow accuracy or counterfactual correctness claims are made here. Detail: [SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md](SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md).
@@ -89,7 +91,7 @@ No shadow accuracy or counterfactual correctness claims are made here. Detail: [
 |----|------|---------------------------|-------|
 | #1627 | MERGED | Present (ancestor) | Retry-budget POSSIBLE_END re-entry |
 | #1635 | MERGED | Present (ancestor) | Provider-silence × #1627 continuity |
-| #1648 | MERGED | Present (ancestor) | Shadow observability — **enabled** on current Production |
+| #1648 | MERGED | Present (ancestor) | Shadow observability — **enabled** on acceptance-time Production @ `99d722b4…` |
 | #1674 | MERGED | Present (ancestor) | FETCH_UNCERTAIN bounded CUSUM handoff |
 | #1750 | MERGED | **PRODUCTION_PRESENT** | Post-split finalize quality — natural post-split trip2 acceptance **evidence-gapped** |
 | #1753 | MERGED | **PRODUCTION_PRESENT** | Qualified Stop V1 — 3/3 natural SAME_TRIP controls **PASS** |

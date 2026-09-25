@@ -8,6 +8,20 @@
 | **Production baseline** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `20260925182907_v4994` |
 | **Audit mode** | READ_ONLY — no env/deploy/DB/Redis mutation |
 | **Verdict** | **`RESOLVED_COMPLETE_MATRIX`** |
+| **Control inventory (productive)** | **10** mode/boolean · **1** scope allowlist · **28** runtime knobs · **1** dead unused surface |
+| **PR head (OQ-008 docs)** | `cf617f834f4f21e2dee7048ba296a2d4c2d81743` (#1786) |
+
+## Control count contract (OQ-008)
+
+| Metric | Count | Definition |
+|--------|------:|------------|
+| **ACTIVE_FEATURE_MODE_CONTROL_COUNT** | 10 | Boolean/mode env keys that change authority path or behavior class (Matrix A mode table) |
+| **ACTIVE_SCOPE_CONTROL_COUNT** | 1 | Vehicle-scoped allowlist selector: `TRIP_FSM_SHADOW_VEHICLE_IDS` (not a mode flag) |
+| **ACTIVE_RUNTIME_KNOB_COUNT** | 28 | Numeric/timing env keys with trip lifecycle consumers (appendix; not feature flags) |
+| **DEAD_OR_UNUSED_CONTROL_COUNT** | 1 | `worker.tripFsmShadow*` Nest config mirror — parsed, no consumer |
+| **ACTIVE_FEATURE_CONTROL_COUNT** (compat) | 10 | Same as **ACTIVE_FEATURE_MODE_CONTROL_COUNT** — **excludes** allowlist/scope selectors |
+
+**Total productive runtime-control surfaces (mode + scope + knobs):** 10 + 1 + 28 = **39** (plus 1 dead unused parse surface).
 
 ## Phase 0 — Baseline verification
 
@@ -20,7 +34,7 @@
 
 ---
 
-## Matrix A — Feature / mode controls (productive runtime)
+## Matrix A — Feature / mode controls (productive runtime, n=10)
 
 Legend columns: **ENV_KEY** · **CONFIG_OWNER** · **PARSER** · **CODE_DEFAULT** · **PROD_CONFIGURED** · **PROD_EFFECTIVE** · **CONSUMER_CLASS** · **ON/OFF BEHAVIOR** · **SHADOW vs AUTHORITATIVE** · **ROLLBACK**
 
@@ -43,7 +57,12 @@ Legend columns: **ENV_KEY** · **CONFIG_OWNER** · **PARSER** · **CODE_DEFAULT*
 | ENV_KEY | CONFIG_OWNER | PARSER | CODE_DEFAULT | PROD_CONFIGURED | PROD_EFFECTIVE | CONSUMERS | BEHAVIOR | AUTHORITY | ROLLBACK |
 |---------|--------------|--------|--------------|-----------------|----------------|-----------|----------|-----------|----------|
 | `TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED` | `trip-fsm-shadow-observability.config.ts` (+ duplicate parse in `worker.config.ts` **unused**) | bool; invalid → fallback `false` | `false` | `true` | `true` | `trip-fsm-shadow-observability.integration.ts` via orchestration | Enables shadow branch for allowlisted vehicles only | **OBSERVABILITY_ONLY** | `false` |
-| `TRIP_FSM_SHADOW_VEHICLE_IDS` | same | CSV → `Set`; empty set | empty | present (count **1**, IDs not exported) | **1 vehicle** effective | same | enabled + empty allowlist → **no vehicle** (fail-closed) | Vehicle-scoped allowlist | Clear list or disable master flag |
+
+### Matrix A-scope — Vehicle allowlist (productive, n=1)
+
+| ENV_KEY | CONFIG_OWNER | PARSER | CODE_DEFAULT | PROD_CONFIGURED | PROD_EFFECTIVE | CONSUMERS | BEHAVIOR | AUTHORITY | ROLLBACK |
+|---------|--------------|--------|--------------|-----------------|----------------|-----------|----------|-----------|----------|
+| `TRIP_FSM_SHADOW_VEHICLE_IDS` | `trip-fsm-shadow-observability.config.ts` | CSV → `Set`; empty set | empty | present (count **1**, IDs not exported) | **1 vehicle** effective | `isTripFsmShadowObservabilityEnabledForVehicle` | Master enabled + empty allowlist → **no vehicle** (fail-closed) | **SCOPE_SELECTOR** (pairs with shadow master flag) | Clear list or disable master flag |
 
 **Shadow authority (Phase 7):**
 
@@ -135,7 +154,9 @@ DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED=true
 WORKER_TRIP_TRACKING_CONCURRENCY=5
 ```
 
-Absent → effective from code: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`, tier MS defaults, `TRIP_REPAIR_COVERAGE_MODE=shadow`, `WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0`, all DI absent sub-flags follow master-gated defaults.
+Keys **not** listed above → effective from code: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`, tier MS defaults, `TRIP_REPAIR_COVERAGE_MODE=shadow`, `WORKER_SNAPSHOT_MAX_ENQUEUE_PER_TICK=0`.
+
+**DI subflags on Production:** all three V2 subordinate keys are **explicitly configured** in `backend.env` (values in snapshot block). With `DRIVING_INTELLIGENCE_V2_ENABLED=true`, subordinate flags are evaluated normally. If master were `false`, all three would be effective **false** regardless of configured subordinate values.
 
 **Trip-related env line fingerprint (both replicas share file):** SHA256 `260af363c91767ab3cfec5c5c0aaf9f0516683ece3ecef189ab6264c7b47a799` (12 lines).
 
@@ -145,9 +166,12 @@ Absent → effective from code: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`, ti
 
 | Field | Value |
 |-------|-------|
-| PM2 apps | `synqdrive`, `synqdrive-b` — both **online** |
-| Env source | Single shared `backend.env` linked at deploy; trip flags not duplicated in `/proc/environ` (dotenv at boot) |
-| **REPLICA_FLAG_CONFIG_CONSISTENT** | **YES** — one canonical env file; no per-replica override observed |
+| PM2 apps | `synqdrive`, `synqdrive-b` — both **online** @ OQ-008 observation |
+| Config source contract | Each release `backend/.env` → symlink `/opt/synqdrive/shared/backend.env`; rolling deploy restarts both replicas; post-deploy topology checks in deploy script — **no per-replica trip flag override observed** |
+| Process introspection | Trip flags not present in `/proc/<pid>/environ` (loaded via dotenv at boot); **restart time vs `backend.env` mtime not proven** in this audit |
+| **REPLICA_CONFIG_SOURCE_CONSISTENT** | **YES** — single shared file; both apps same release path @ observation |
+| **REPLICA_EFFECTIVE_FLAG_STATE_CONSISTENT** | **INFERRED_NOT_DIRECTLY_INTROSPECTED** — config source consistent; effective in-memory values not read per replica after env file state |
+| **REPLICA_FLAG_CONFIG_CONSISTENT** (legacy alias) | **YES** — same as **REPLICA_CONFIG_SOURCE_CONSISTENT** |
 
 ---
 
@@ -166,8 +190,8 @@ Absent → effective from code: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`, ti
 | Claim | Location | Classification |
 |-------|----------|----------------|
 | "Default enabled for PR testing; disable in production" on partial boundary repair | `worker.config.ts` comment ~L179 | **COMMENT_ONLY_STALE** — Production has **`TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true`** (verified) |
-| `.env.example` implies `DRIVING_INTELLIGENCE_V2_ENABLED=false` as product default | `.env.example` | **DOC_STALE** vs Production explicit **`true`** — example reflects code default, not Production |
-| QS acceptance doc Production SHA `99d722b4…` | `QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md` | **DOC_STALE** for release pointer — superseded by `8a1d9c6586…` (flag semantics unchanged on lineage) |
+| `.env.example` documents `DRIVING_INTELLIGENCE_V2_ENABLED=false` | `.env.example` | **ENV_EXAMPLE_DI_DEFAULT=CODE_DEFAULT_CORRECT_NOT_PRODUCTION_AUTHORITY** — matches parser default; Production explicit **`true`** is a separate override axis |
+| QS acceptance doc Production SHA `99d722b4…` | `QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md` | **QS_ACCEPTANCE_SHA=HISTORICAL_EVIDENCE_ANCHOR** — acceptance-time snapshot; newer release `8a1d9c6586…` does not invalidate historical acceptance evidence |
 
 **RUNTIME_CONTRACT_MISMATCH_FOUND=NO** — parser behavior matches implemented consumers.
 
@@ -178,11 +202,13 @@ Absent → effective from code: `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`, ti
 | Control | Drift class |
 |---------|-------------|
 | Tier MS, legacy cadence, repair mode, max enqueue | **DEFAULT_IN_USE** (env absent) |
-| `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED`, `TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED`, `CLICKHOUSE_TRIP_ASSIST_ENABLED`, DI sub-shadows `true`, `WORKER_SNAPSHOT_INTERVAL_MS=30000`, `WORKER_TRIP_TRACKING_CONCURRENCY=5` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** (or opt-out default for CH) |
+| `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED`, `TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED`, `CLICKHOUSE_TRIP_ASSIST_ENABLED`, `WORKER_SNAPSHOT_INTERVAL_MS=30000`, `WORKER_TRIP_TRACKING_CONCURRENCY=5` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** (or opt-out default for CH) |
+| `DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED=false` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** (explicit in Production env) |
+| `DRIVING_V2_ENGINE_DETECTOR_SHADOW_ENABLED=true` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** (explicit in Production env; effective when master on) |
+| `DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED=true` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** (explicit in Production env; effective when master on) |
 | `WORKER_SNAPSHOT_CONCURRENCY=8` | **EXPLICIT_OVERRIDE_DIFFERS_FROM_DEFAULT** (5→8) |
 | `TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED=true` | **EXPLICIT_OVERRIDE_DIFFERS_FROM_DEFAULT** (false→true) |
 | `DRIVING_INTELLIGENCE_V2_ENABLED=true` | **EXPLICIT_OVERRIDE_DIFFERS_FROM_DEFAULT** (false→true) |
-| `DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED=false` | **EXPLICIT_OVERRIDE_SAME_AS_DEFAULT** |
 
 ---
 
@@ -214,12 +240,13 @@ Selected productive knobs from `worker.config.ts` / tier config / qualified-stop
 
 | Gate | Status |
 |------|--------|
-| Productive controls inventoried | YES — 10 mode/boolean feature controls + 28 knobs |
+| Productive controls inventoried | YES — 10 mode + 1 scope + 28 knobs |
 | Code defaults proven | YES — parser source cited |
 | Production effective state | YES — read-only `backend.env` @ `8a1d9c6586…` |
 | Interactions documented | YES |
 | Dead/stale separated | YES |
-| Replica drift | NONE — **CONSISTENT=YES** |
+| Replica config source drift | NONE — **REPLICA_CONFIG_SOURCE_CONSISTENT=YES** |
+| Replica effective runtime parity | **INFERRED_NOT_DIRECTLY_INTROSPECTED** (not overclaimed) |
 
 **OQ-008 status:** **CLOSED** — `RESOLVED_COMPLETE_MATRIX`
 
@@ -227,4 +254,4 @@ Selected productive knobs from `worker.config.ts` / tier config / qualified-stop
 
 **BLOCKERS=NONE**
 
-**NEXT_ACTION=** Use this matrix for TDL-OQ-009 tiered polling vs ingress documentation; refresh QS acceptance doc Production SHA when convenient (non-blocking).
+**NEXT_ACTION=** Use this matrix for TDL-OQ-009 tiered polling vs ingress documentation.

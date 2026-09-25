@@ -314,7 +314,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **STATUS** | VALIDATED |
 | **BEFORE** | TDL-OQ-008 OPEN — code defaults conflated with Production; partial env name sampling only (TDL-GAP-007) |
 | **WHY** | Rollback and incident response require ENV_KEY, CODE_DEFAULT, PRODUCTION_CONFIGURED, PRODUCTION_EFFECTIVE, consumer class, and shadow vs authoritative separation |
-| **CHANGE** | Canonical matrix in TDL-EVID-OQ008-FLAG-MATRIX-001: 10 mode/boolean controls + 28 lifecycle knobs; Production @ `8a1d9c658…` read-only; replica env **CONSISTENT** |
+| **CHANGE** | Canonical matrix in TDL-EVID-OQ008-FLAG-MATRIX-001: 10 mode + 1 scope + 28 lifecycle knobs; Production @ `8a1d9c658…` read-only; replica config source **CONSISTENT**; effective flag state **inferred not introspected** |
 | **EXPECTED EFFECT** | OQ-008 closed; OQ-009 can compare tiered polling doc vs Production **ACTIVITY_TIERED** mode without re-auditing flags |
 | **PRODUCTION STATUS** | Snapshot **ACTIVITY_TIERED**; FSM shadow **enabled** (1 allowlisted vehicle); repair coverage **shadow** (legacy overlap authority); DI V2 master **on**, segment validation **off** |
 | **NON-EFFECTS** | No env mutation; no promotion to `AUTHORITY_ACTIVE` |

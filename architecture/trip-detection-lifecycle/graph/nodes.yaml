@@ -897,8 +897,8 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
     summary: >
-      Ten mode/boolean trip controls + 28 knobs; Production ACTIVITY_TIERED snapshot polling; FSM shadow observability-only;
-      repair coverage shadow mode; DI V2 master on Production with segment validation off.
+      Ten mode/boolean trip controls, one scope allowlist, 28 knobs; Production ACTIVITY_TIERED snapshot polling; FSM shadow observability-only;
+      repair coverage shadow mode; DI V2 master on Production with segment validation off; DI subflags explicitly configured in backend.env.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md
 

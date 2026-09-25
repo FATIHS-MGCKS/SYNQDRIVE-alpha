@@ -86,7 +86,7 @@
 
 **Evidence:** [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](../evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) (TDL-EVID-OQ008-FLAG-MATRIX-001) @ `origin/main` `6af181bf9…`, Production @ `8a1d9c658…` / `20260925182907_v4994`.
 
-**Verdict:** **`RESOLVED_COMPLETE_MATRIX`** — 10 productive mode/boolean controls + 28 lifecycle knobs; Production effective values read-only from shared `backend.env`; **`REPLICA_FLAG_CONFIG_CONSISTENT=YES`**; FSM shadow **observability-only**; repair **`shadow`** mode (legacy overlap authority); snapshot **`ACTIVITY_TIERED`**.
+**Verdict:** **`RESOLVED_COMPLETE_MATRIX`** — 10 mode + 1 scope allowlist + 28 lifecycle knobs; Production effective values read-only from shared `backend.env`; **`REPLICA_CONFIG_SOURCE_CONSISTENT=YES`**; **`REPLICA_EFFECTIVE_FLAG_STATE_CONSISTENT=INFERRED_NOT_DIRECTLY_INTROSPECTED`**; FSM shadow **observability-only**; repair **`shadow`** mode (legacy overlap authority); snapshot **`ACTIVITY_TIERED`**.
 
 **Status:** **RESOLVED**
 
