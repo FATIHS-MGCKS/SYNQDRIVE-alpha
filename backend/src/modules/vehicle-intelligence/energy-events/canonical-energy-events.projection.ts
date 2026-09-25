@@ -11,10 +11,22 @@ import {
   isV2OwnedRefuelEvent,
 } from './physical-refuel-reconciliation.repository';
 import { vehicleEnergyEventToRefuelRow } from './physical-refuel-row.mapper';
+import { applyRechargeProductReadDedupe } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe';
+import type { RechargeProductReadDedupeMetricResult } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe';
 
 export type EnergyEventWithReconciliation = VehicleEnergyEvent & {
   refuelReconciliation?: VehicleEnergyEventRefuelReconciliation | null;
 };
+
+function sortCanonicalProductRows<T extends EnergyEventWithReconciliation>(
+  rows: T[],
+): T[] {
+  return [...rows].sort((a, b) => {
+    const startDiff = a.startTime.getTime() - b.startTime.getTime();
+    if (startDiff !== 0) return startDiff;
+    return a.id.localeCompare(b.id);
+  });
+}
 
 /**
  * Product-canonical energy events — one visible REFUEL per physical episode.
@@ -23,8 +35,13 @@ export type EnergyEventWithReconciliation = VehicleEnergyEvent & {
 export function projectCanonicalProductEnergyEvents<T extends EnergyEventWithReconciliation>(
   rows: T[],
   v2OwnershipCutoverAt: Date | null,
+  rechargeReadDedupeEnabled = false,
+  onRechargeDedupeMetrics?: (results: RechargeProductReadDedupeMetricResult[]) => void,
 ): T[] {
-  const nonRefuel = rows.filter((row) => row.kind !== EnergyEventKind.REFUEL);
+  const nonRefuelNonRecharge = rows.filter(
+    (row) => row.kind !== EnergyEventKind.REFUEL && row.kind !== EnergyEventKind.RECHARGE,
+  );
+  const recharges = rows.filter((row) => row.kind === EnergyEventKind.RECHARGE);
   const refuels = rows.filter((row) => row.kind === EnergyEventKind.REFUEL);
 
   const visibleRefuels: T[] = [];
@@ -83,7 +100,15 @@ export function projectCanonicalProductEnergyEvents<T extends EnergyEventWithRec
     }
   }
 
-  return [...nonRefuel, ...visibleRefuels].sort(
-    (a, b) => a.startTime.getTime() - b.startTime.getTime(),
+  const { visible: visibleRecharges, metricResults } = applyRechargeProductReadDedupe(
+    recharges,
+    rechargeReadDedupeEnabled,
   );
+  onRechargeDedupeMetrics?.(metricResults);
+
+  return sortCanonicalProductRows([
+    ...nonRefuelNonRecharge,
+    ...visibleRecharges,
+    ...visibleRefuels,
+  ]);
 }

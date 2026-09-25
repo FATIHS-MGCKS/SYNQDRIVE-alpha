@@ -13274,6 +13274,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e5-5-product-read-dedupe-2026-09-25',
+    version: '4.9.911',
+    title: 'ERD E5.5 — canonical recharge product-read dedupe',
+    summary: [
+      'Product-facing read dedupe for coexisting legacy DIMO RECHARGE VEE and canonical ERD projection rows (strict identity v1: exact DIMO + coalesced lineage only).',
+      'Fail-open on ambiguity, partial coalesced coverage, fallback-null-DIMO, and malformed projection rows; REFUEL canonicalization unchanged.',
+      'Flag `ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED` default OFF; independent of E5.4 shadow parity; raw/forensic reads unchanged.',
+      'PostgreSQL + unit gate (boundary-repair step 12/12); no schema migration; not write cutover (E5.6).',
+    ],
+    reason:
+      'E5.4 merged — one physical recharge should appear once in product reads when duplicate identity is strongly proven, without mutating DB rows or activating canonical writer.',
+    previousBehavior:
+      'listCanonicalEnergyEvents passed all RECHARGE rows through; legacy and canonical ERD duplicates could both appear in Trips timeline.',
+    details:
+      'erd-recharge-product-read-dedupe/*; canonical-energy-events.projection.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T09:35:00.000Z',
+  },
+  {
     id: 'erd-e5-4-recharge-shadow-parity-2026-09-25',
     version: '4.9.910',
     title: 'ERD E5.4 — canonical vs legacy recharge shadow parity',

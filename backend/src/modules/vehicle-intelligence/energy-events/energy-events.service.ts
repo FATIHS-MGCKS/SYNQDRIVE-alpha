@@ -31,6 +31,8 @@ import { PhysicalRefuelReconciliationRuntimeService } from './physical-refuel-re
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.types';
 import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
+import { isErdRechargeProductReadDedupeEnabled } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.config';
+import { ErdRechargeProductReadDedupeMetricsService } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -70,6 +72,8 @@ export class EnergyEventsService {
     private readonly rawFuelRefuelFallbackRuntime?: RawFuelRefuelFallbackRuntimeService,
     @Optional()
     private readonly erdRechargeShadowParityRuntime?: ErdRechargeShadowParityRuntimeService,
+    @Optional()
+    private readonly erdRechargeProductReadDedupeMetrics?: ErdRechargeProductReadDedupeMetricsService,
   ) {}
 
   async listEnergyEventsRaw(
@@ -88,7 +92,15 @@ export class EnergyEventsService {
   ): Promise<EnergyEventDto[]> {
     const rows = await this.queryEnergyEventRowsForCanonical(vehicleId, options);
     const cutover = resolveEffectiveV2OwnershipCutoverAt(env);
-    const canonical = projectCanonicalProductEnergyEvents(rows, cutover);
+    const rechargeReadDedupeEnabled = isErdRechargeProductReadDedupeEnabled(env);
+    const canonical = projectCanonicalProductEnergyEvents(
+      rows,
+      cutover,
+      rechargeReadDedupeEnabled,
+      (metricResults) => {
+        this.erdRechargeProductReadDedupeMetrics?.recordResults(metricResults);
+      },
+    );
     return canonical.map(toEnergyEventDto);
   }
 

@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E5.5 product-read RECHARGE dedupe
+
+- Evidence: `evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md`
+- Strict product-read identity v1 (exact DIMO + coalesced lineage only); fail-open; REFUEL unchanged
+- Flag `ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED` default OFF; independent of E5.4 shadow
+- PostgreSQL gate + boundary-repair step 12/12; no schema migration; not E5.6 cutover
+
 ## 2026-09-25 — ERD E5.4 canonical vs legacy recharge shadow parity
 
 - Evidence: `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md`
