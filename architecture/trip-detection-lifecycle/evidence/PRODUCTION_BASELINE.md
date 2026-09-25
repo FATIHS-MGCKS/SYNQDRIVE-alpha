@@ -10,7 +10,8 @@ Chronological Production baseline index. **Do not conflate** `REPO_CURRENT`, `PR
 |-------|-------|
 | **Evidence class** | `VERIFIED_READ_ONLY` (release SHA + read-only acceptance audit) |
 | **Observation window (natural QS acceptance)** | Anchored from QS-active release `2026-09-24T20:11:36+00` through rebaseline `2026-09-25` |
-| **Production release (current verified)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994` |
+| **Production release (current verified)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` |
+| **Prior verified release (superseded)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `20260924235024_v4994` |
 | **Classification** | **PRODUCTION_PRESENT** (#1750, #1753 ancestors); Qualified Stop V1 acceptance **`PASS_WITH_EVIDENCE_GAPS`** |
 | **Canonical detailed evidence** | [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) — **TDL-EVID-QS-V1-PROD-ACCEPT-001** |
 | **Shadow runtime** | **PRESENT** and **ENABLED** on this release (#1648 lineage) |

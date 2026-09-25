@@ -5,7 +5,7 @@
 | **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | No — contract + org invariant closed | **RESOLVED** — see §TDL-OQ-001 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | **RESOLVED** — see §TDL-OQ-002 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-003** | Why does Production have only a small number of `vehicle_trip_detection_states` rows while tracking runs are in the thousands? | Medium | No | **RESOLVED** — see §TDL-OQ-003 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
+| **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | **RESOLVED** — see §TDL-OQ-004 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
@@ -103,6 +103,12 @@
 - **H1a:** Six detection-state rows = current scheduler-eligible DIMO live-FSM cohort — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003).
 - **H1b:** “Most fleet vehicles lack live FSM rows until connected” — **NOT CONFIRMED** (6/9 have rows; 3 non-DIMO only).
 - **H2:** High `MISSING_TRIP` repair PROPOSED count is reconciliation scanning historical DIMO gaps, not live FSM failure.
-- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage.
+- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage — **PARTIALLY_CONFIRMED** @ `2026-09-25` (TDL-OQ-004): **7d** **100%**; **observed materialization era** **374/374**; exact Route-V2 **30d policy** **NOT_EXACTLY_COMPUTABLE** (R2 deploy **UNKNOWN**); **33** missing = **26** pre-R2-merge execution + **7** unknown runtime.
 
-Hypotheses require Phase 3+ evidence — do not treat as CURRENT_STATE facts.
+## TDL-OQ-004 — resolution (2026-09-25)
+
+**Evidence:** [TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md](../evidence/TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md) (TDL-EVID-OQ004-ROUTE-COV-001) @ `origin/main` `55fcbe7a…`, Production @ `8a1d9c658…` / `20260925182907_v4994`.
+
+**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** (TDL-DEC-OQ004-001) — three-tier coverage policy; **R2 Production deploy anchor UNKNOWN**; **33** rows reclassified (**0** post-first-artifact handler-gap proof); **`CURRENT_CODE_CONTRACT_GAP`** structural only (**not** observed post-anchor in Production).
+
+**Status:** **RESOLVED**
