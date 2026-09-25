@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3 pure longitudinal health evaluator (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2 contract frozen on main (PR #1773 + seal #1775); E1 adapter on main; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**. |
+| **OBSERVATION** | E3 scope is pure fail-closed evaluator only — no Nest, DB, flags, or conclusion-bearing output under `M3_3E_CALIBRATION_UNSET_V1`. |
+| **HYPOTHESIS** | Frozen E2 §6.4–§12.3 can be implemented mechanically without new scientific semantics. |
+| **CHANGE** | Added `evaluateM3_3E_LongitudinalHealthEvaluationV1` + UNSET calibration profile + unit/golden tests; authority doc `M3_3E_E3_PURE_LONGITUDINAL_HEALTH_EVALUATOR_2026-09-25.md`; `CURRENT_STATE` marks E3 **draft PR** (not complete on main). |
+| **WHY** | Close E3 engineering gate while preserving **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **EXPECTED_EFFECT** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`**; E1 golden unchanged; longitudinal regressions PASS. |
+| **VALIDATION** | `longitudinal-health-evaluation.spec.ts`; E1 + D1–D4 longitudinal jest suites; `validate-graph.sh`; `validate-module-registry.sh`. |
+| **OBSERVED_EFFECT** | Pending E3 draft PR merge to main. |
+| **NON_EFFECTS** | No production reachability, persistence, readiness, LV assessment, publication, deploy, or calibration numeric defaults. |
+| **REGRESSIONS_OR_TRADEOFFS** | None observed in regression run. |
+| **REMAINING_GAPS** | All `CAL-M3.3E-*` unset; M3.3F+ natural/product gates unchanged. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **DECISION_STATUS** | **E3_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal evaluator (implementation only) |
+| **EVIDENCE** | `M3_3E_E3_GOLDEN_RESULT_FINGERPRINT_LITERAL`; `M3_3E_CALIBRATION_UNSET_PROFILE_FINGERPRINT_V1` |
+
+---
+
 ## CL-2026-09-25 — drive-profile ownership (TDL-OQ-002 cross-authority)
 
 | Field | Value |
@@ -43,7 +65,7 @@ Append-only scientific record. Newest entries first.
 | **REGRESSIONS_OR_TRADEOFFS** | None — wording/authority only. |
 | **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
 | **AFTER** | **`M3_3E_E2_COMPLETE_ON_MAIN=YES`**; **`M3_3E_E2_POST_MERGE_SEAL=PASS`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
-| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`8b000a6e07f9fce501b201bdf156a1d7dece95e4`**. |
+| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`a3af27585fe3a84bc9cbc9c600186dc707fce79a`**. |
 | **DECISION_STATUS** | **E2_COMPLETE_ON_MAIN** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
 
