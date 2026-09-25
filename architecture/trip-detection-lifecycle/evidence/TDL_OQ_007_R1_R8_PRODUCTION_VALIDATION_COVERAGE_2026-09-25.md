@@ -8,7 +8,7 @@
 | **PRODUCTION_CURRENT** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `LIVE_RELEASE_ID=20260924235024_v4994` |
 | **Production observation (this audit)** | `2026-09-25T12:30:42Z` — release symlink + read-only SQL; **addendum** `2026-09-25T12:41:04Z` passive gap probes |
 | **AUDIT_MODE** | **READ_ONLY** — no deploy, restart, env/flag change, DB/Redis/BullMQ mutation, enqueue, or synthetic trips |
-| **Verdict (OQ-007)** | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** (see Phase 14–16; PR #1777 consistency correction) |
+| **Verdict (OQ-007)** | **`RESOLVED_BY_SCOPE_REDUCTION`** — closed by [TDL-OQ-007.1 passive closure](TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md) (`2026-09-25T13:25Z`) |
 
 ## Mandatory axis separation
 
