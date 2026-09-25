@@ -3,7 +3,7 @@
 **Date:** 2026-09-25  
 **Phase:** M3.3E E2 (architecture + scientific audit — documentation / contract design only)  
 **Registry module:** Battery V2 (`AUTHORITY_ACTIVE`)  
-**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 semantic hardening in draft PR #1773; merge + post-merge seal pending)  
+**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 + E2.1.1 pre-merge closure in draft PR #1773)  
 **Contract names introduced (design only, not implemented):** `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1`, `M3_3E_E2_MODEL_POLICY_V1`, `M3_3E_CALIBRATION_UNSET_V1`  
 **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 
@@ -212,8 +212,8 @@ These are not battery thresholds; they follow from the definition of the statist
 |-----------|-------------------|--------|
 | Series level (median) | ≥1 non-null value | Median undefined on empty set |
 | Theil-Sen trend slope vs `anchorAt` | ≥2 **distinct** `anchorAt` values among non-null metric values | Pairwise slope needs a non-zero time delta (same rule as C1 zero-age skip) |
-| Residual dispersion / outlier flags / persistence counts | ≥3 distinct `anchorAt` values | With 2 points the Theil-Sen line passes through both; residuals are identically zero, so dispersion is undefined |
-| Step-change candidate | ≥2 values on each side of a candidate split (≥4 total) | A median of each side must exist with a non-trivial split |
+| Residual dispersion (`residualMadQuantized`) | ≥3 distinct `anchorAt` values | With 2 points the Theil-Sen line passes through both; residuals are identically zero, so MAD is undefined |
+| Step-change candidate (`stepChangeMagnitudeQuantized`) | ≥4 non-null values **and** ∃ ordered split with ≥2 on each side | Each side median requires ≥2 points; 3 total observations cannot satisfy both sides |
 
 ### 5.4 Calibrated sufficiency dimensions (all `CALIBRATION_REQUIRED`)
 
@@ -280,9 +280,17 @@ Observations are those with non-null metric values, in E1 series order.
 |-----------|------------|
 | **`METRIC_LEVEL_EVALUABLE`** | ≥1 non-null metric value ⇒ `seriesCount ≥ 1` and **`seriesMedianQuantized`** (§12.3) is defined |
 | **`METRIC_TREND_EVALUABLE`** | ≥2 observations with **distinct** `anchorAt` (UTF-16–validated ISO strings; equal timestamps do not count twice) ⇒ **`theilSenSlopePerDayQuantized`** (§12.3) may be computed |
-| **`METRIC_DISPERSION_EVALUABLE`** | ≥3 distinct `anchorAt` values ⇒ **`residualMadQuantized`** / step magnitude may be computed |
+| **`METRIC_DISPERSION_EVALUABLE`** | ≥3 distinct `anchorAt` values among non-null rows ⇒ **`residualMadQuantized`** may be computed (**not** step change) |
+| **`METRIC_STEP_EVALUABLE`** | ≥4 non-null metric values **and** there exists at least one **ordered** split index with ≥2 observations on the left and ≥2 on the right (in E1 series order) ⇒ **`stepChangeMagnitudeQuantized`** / split metadata may be computed |
 
-Trend and dispersion gates are **stricter** than segment evaluability. A segment may be structurally evaluable on median alone while slope remains `null`.
+| Step-change structural flags (E2.1.1) | Value |
+|---------------------------------------|-------|
+| `METRIC_STEP_EVALUABILITY_SEMANTICS_FROZEN` | **YES** |
+| `STEP_CHANGE_MIN_TOTAL_VALUES` | **4** |
+| `STEP_CHANGE_MIN_VALUES_PER_SIDE` | **2** |
+| `STEP_CHANGE_USES_DISPERSION_GATE` | **NO** |
+
+Trend, dispersion, and step gates are **stricter** than segment evaluability. A segment may be structurally evaluable on median alone while slope, MAD, or step magnitude remain `null`.
 
 #### `SEGMENT_STRUCTURALLY_EVALUABLE`
 
@@ -330,7 +338,7 @@ Does **not** require all three metrics, trend evaluability, or calibrated classi
 | `TREND_NUMERICAL_TIME_ORIGIN` | `FIRST_VALID_SERIES_ANCHOR` |
 | `RAW_EPOCH_ARITHMETIC_REQUIRED` | **NO** |
 
-### 7.1 Estimators (descriptive, computed when metric-level / trend / dispersion gates pass)
+### 7.1 Estimators (descriptive; gates in §6.4)
 
 Series: observations with non-null metric value, E1 order (`anchorAt`, then `restSessionId`, UTF-16 code-unit comparison). Let `y_i` be the **source scalar** for that metric (see §12.3). Let `x_i` be relative ms as above.
 
@@ -338,11 +346,29 @@ Series: observations with non-null metric value, E1 order (`anchorAt`, then `res
 |-----------|------------|------|
 | `seriesCount`, `distinctAnchorCount` | Counts over non-null rows; distinct anchors = distinct `anchorAt` strings among them | metric-level |
 | `seriesSpanMs` | `x_last` where last = final non-null row in series (equals `Date.parse(lastAnchor) − Date.parse(t0)`) | metric-level |
-| `seriesMedianQuantized` | §12.3 | metric-level |
-| `theilSenSlopePerDayQuantized` | Median of `(y_j − y_i) × DAY_MS / (x_j − x_i)` over all `i < j` with `x_j > x_i`; non-finite slopes omitted; empty set ⇒ `null` | trend |
-| `kendallPairCounts` | Over the same pairs: increment `increasing` if `y_j > y_i`, `decreasing` if `y_j < y_i`, `tied` if equal | trend |
-| `residualMadQuantized` | With dequantized slope `s` from `theilSenSlopePerDayQuantized`: `r_i = y_i − s × (x_i / DAY_MS)`; MAD of `r_i`; then §12.3 quantize | dispersion |
-| `stepChangeCandidate` | Split index `k` (earliest on tie) with ≥2 points per side maximizing `|median(right y) − median(left y)|`; includes **`stepChangeMagnitudeQuantized`** (§12.3) | dispersion |
+| `seriesMedianQuantized` | §12.3 | `METRIC_LEVEL_EVALUABLE` |
+| `theilSenSlopePerDayQuantized` | See §12.3 pairwise rules (fail-closed on non-finite valid pairs) | `METRIC_TREND_EVALUABLE` |
+| `kendallPairCounts` | Over pairs with `x_j > x_i` only: increment `increasing` if `y_j > y_i`, `decreasing` if `y_j < y_i`, `tied` if equal | `METRIC_TREND_EVALUABLE` |
+| `residualMadQuantized` | §12.3 MAD on `r_i = y_i − s × (x_i / DAY_MS)` | `METRIC_DISPERSION_EVALUABLE` |
+| `stepChangeCandidate` + `stepChangeMagnitudeQuantized` | Split index `k` (earliest on tie) with ≥2 points per side maximizing `|median(right y) − median(left y)|`; magnitude §12.3 | `METRIC_STEP_EVALUABLE` |
+
+#### Pairwise Theil-Sen slope population (frozen — E2.1.1)
+
+For each pair `i < j` in series order with relative times `x_i`, `x_j`:
+
+| Condition | Action |
+|-----------|--------|
+| `x_j === x_i` | **Skip pair** (equal `anchorAt`; deterministic, same as zero time delta) |
+| `x_j < x_i` | **Reject input** — inconsistent with E1 ascending series + validated ISO `anchorAt` (§16 row 14) |
+| `x_j > x_i` and `s = (y_j − y_i) × DAY_MS / (x_j − x_i)` is finite | Include `s` in the pairwise slope set |
+| `x_j > x_i` and `s` is **not** finite | **Reject evaluation** with typed error **`M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW`** — do **not** omit the pair (`NONFINITE_VALID_TIME_PAIR_SLOPE_OMITTED=NO`) |
+
+If the slope set is empty after skips only (e.g. all pairs equal-time — should not occur with ≥2 **distinct** anchors), `theilSenSlopePerDayQuantized = null` without reject.
+
+| Numeric overflow flags (E2.1.1) | Value |
+|-----------------------------------|-------|
+| `NONFINITE_VALID_TIME_PAIR_SLOPE_OMITTED` | **NO** |
+| `NUMERIC_OVERFLOW_FAIL_CLOSED` | **YES** |
 
 **Intercept (frozen):** `b = median(y_i − s × (x_i / DAY_MS))` with `s` dequantized from `theilSenSlopePerDayQuantized`. Residuals use `r_i = y_i − s × (x_i / DAY_MS) − b` or equivalently the MAD step above on `y_i − s × (x_i / DAY_MS)`.
 
@@ -352,7 +378,7 @@ Series: observations with non-null metric value, E1 order (`anchorAt`, then `res
 
 | State | Reachable in V1 (UNSET calibration)? | Meaning |
 |-------|--------------------------------------|---------|
-| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | Metric-level, trend, or dispersion gate not met (§6.4 / §7.1) |
+| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | Fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, `METRIC_DISPERSION_EVALUABLE`, or `METRIC_STEP_EVALUABLE` as applicable (§6.4 / §7.1) |
 | `NOT_COMPARABLE` | Yes | Comparability state not comparable |
 | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` | **Yes (default for every evaluable series)** | Statistics exist; no classification permitted |
 | `NO_DIRECTIONAL_CHANGE_RESOLVED` | No (requires calibrated detection limits) | Not "stable" — change below calibrated detectable magnitude |
@@ -414,7 +440,7 @@ Outlier classes (per `restSessionId`):
 | Descriptive statistics | Carry no confidence claim; uncertainty is expressed by counts, spans, `residualMadQuantized`, `kendallPairCounts` |
 
 Reason codes (closed V1 set; additions require model policy version bump):
-`CALIBRATION_NOT_ESTABLISHED`, `CHARGE_CONTEXT_UNCONTROLLED`, `CHARGE_CLASSIFIER_NOT_PRODUCTION_CALIBRATED`, `REST_DEPTH_UNCONTROLLED`, `FIRST_POINT_AGE_UNCONTROLLED`, `TEMPERATURE_CONTEXT_ONLY`, `TEMPERATURE_UNKNOWN_PRESENT`, `TEMPERATURE_RANGE_UNCONTROLLED`, `ANCHOR_UNRESOLVED_FOR_DELTA_METRIC`, `INSUFFICIENT_DISTINCT_ANCHORS`, `INSUFFICIENT_POINTS_FOR_DISPERSION`, `MULTI_SEGMENT_NO_POOLING`, `DIGEST_SCOPE_BOUNDED_LATEST_WINDOW`, `DIGEST_SCOPE_NOT_EVALUATED`, `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`, `WAKE_SAMPLED_REST_NOT_TRUSTED_REST`, `SHARED_PROVENANCE_WITH_LV_ESTIMATED_HEALTH_UNRESOLVED`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`.
+`CALIBRATION_NOT_ESTABLISHED`, `CHARGE_CONTEXT_UNCONTROLLED`, `CHARGE_CLASSIFIER_NOT_PRODUCTION_CALIBRATED`, `REST_DEPTH_UNCONTROLLED`, `FIRST_POINT_AGE_UNCONTROLLED`, `TEMPERATURE_CONTEXT_ONLY`, `TEMPERATURE_UNKNOWN_PRESENT`, `TEMPERATURE_RANGE_UNCONTROLLED`, `ANCHOR_UNRESOLVED_FOR_DELTA_METRIC`, `INSUFFICIENT_DISTINCT_ANCHORS`, `INSUFFICIENT_POINTS_FOR_DISPERSION`, `INSUFFICIENT_POINTS_FOR_STEP`, `MULTI_SEGMENT_NO_POOLING`, `DIGEST_SCOPE_BOUNDED_LATEST_WINDOW`, `DIGEST_SCOPE_NOT_EVALUATED`, `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`, `WAKE_SAMPLED_REST_NOT_TRUSTED_REST`, `SHARED_PROVENANCE_WITH_LV_ESTIMATED_HEALTH_UNRESOLVED`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`.
 
 ---
 
@@ -579,16 +605,17 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
    - Even `n`: `Math.round((sorted[n/2−1] + sorted[n/2]) / 2)`.
 
 2. **Theil-Sen slope (`theilSenSlopePerDayQuantized`):**
+   - Requires **`METRIC_TREND_EVALUABLE`** (§6.4).
    - Use **source `y_i`** (mV int or mV/h float) and relative `x_i` (ms).
-   - Each pair slope: `s = (y_j − y_i) * DAY_MS / (x_j − x_i)`; skip if `x_j <= x_i` or `!Number.isFinite(s)`.
-   - Median of pair slopes in **physical units** (mV/day or (mV/h)/day): same even/odd median rule as C1 Theil-Sen (`rest-session-retention-theil-sen.policy.ts` — even count uses **unrounded mean** of two middle slopes, then quantize once at end).
+   - Pair rules: §7.1 table — skip only `x_j === x_i`; **reject** on non-finite slope when `x_j > x_i`; reject on `x_j < x_i`.
+   - Median of finite pair slopes in **physical units** (mV/day or (mV/h)/day): same even/odd median rule as C1 Theil-Sen (even count: **unrounded mean** of two middle slopes, then quantize once).
    - Quantize: mV metrics → `Math.round(s_mv_per_day * 1000)` (µV/day); ROBUST → `Math.round(s * 1_000_000)` (µ(mV/h)/day).
 
 3. **Dequantize for residual step only** (not stored): mV → `s_mv_per_day = quantized / 1000`; ROBUST → `s = quantized / 1_000_000`.
 
-4. **Residual MAD:** compute MAD on physical-unit residuals `r_i = y_i − s × (x_i / DAY_MS)`; then quantize with same rule as `seriesMedianQuantized` for that metric.
+4. **Residual MAD:** requires **`METRIC_DISPERSION_EVALUABLE`**. MAD on `r_i = y_i − s × (x_i / DAY_MS)`; quantize per §12.3 B.
 
-5. **Step magnitude:** `|median(right y) − median(left y)|` in physical units, then same quantize as median for that metric.
+5. **Step magnitude:** requires **`METRIC_STEP_EVALUABLE`**. `|median(right y) − median(left y)|` in physical units, then same quantize as median for that metric. If gate fails ⇒ `stepChangeMagnitudeQuantized = null` and no split metadata.
 
 #### D. Rounding and serialization
 
@@ -596,7 +623,8 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
 |------|-------|
 | Rounding function | **`Math.round` only** (no banker's rounding) |
 | Negative zero | After every `Math.round`, if `Object.is(v, -0)` replace with `0` |
-| Finite checks | Before storing any integer, `Number.isFinite` on the pre-quantized value; non-finite ⇒ omit pair or reject if overflow path |
+| Finite checks | Before storing any integer, `Number.isFinite` on the pre-quantized value; non-finite pre-quantized storage ⇒ reject (§12.3 E) |
+| Pairwise slopes | Non-finite slope with `x_j > x_i` ⇒ **`M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW`** (§7.1); never silently omit |
 | Locale | None |
 
 #### E. Safe integer boundary
@@ -665,7 +693,7 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
 | # | Situation | Result |
 |---|-----------|--------|
 | 1 | `modelEvaluation.inputAvailability='NO_ASSESSMENT_GRADE_INPUT'` | `evaluationStatus=NO_CONCLUSION`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`, `vehicleSummary=NO_EVALUABLE_SEGMENT` |
-| 2 | Metric fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, or `METRIC_DISPERSION_EVALUABLE` (§6.4) | Metric `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` + `INSUFFICIENT_DISTINCT_ANCHORS` / `INSUFFICIENT_POINTS_FOR_DISPERSION`; segment may still be structurally evaluable on another metric |
+| 2 | Metric fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, `METRIC_DISPERSION_EVALUABLE`, or `METRIC_STEP_EVALUABLE` where applicable | Metric `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` + reason codes (`INSUFFICIENT_DISTINCT_ANCHORS`, `INSUFFICIENT_POINTS_FOR_DISPERSION`, `INSUFFICIENT_POINTS_FOR_STEP`); segment may still be structurally evaluable on another metric |
 | 3 | Observations split across segments with none structurally evaluable | `evaluationStatus=NO_CONCLUSION`, `vehicleSummary=NO_EVALUABLE_SEGMENT`; if ≥1 evaluable segment ⇒ `EVALUATED_DESCRIPTIVE_ONLY` per §11.4 |
 | 4 | Evidence temporally concentrated | Descriptors emitted; classification suppressed (`UNDETERMINED_CALIBRATION_REQUIRED` until `CAL-M3.3E-003`) |
 | 5 | Charge context unknown (all V1 data) | `CHARGE_CONTEXT_UNCONTROLLED`; Level B `NOT_COMPARABLE_CHARGE_CONTEXT_UNRESOLVED` |
@@ -673,11 +701,11 @@ All stored statistics are **integers** in the JSON result (nullable when gate fa
 | 7 | Anchor unresolved for delta metric | Delta is already `null` upstream for non-`SELECTED` anchors, so those sessions are absent from the delta series; reason code `ANCHOR_UNRESOLVED_FOR_DELTA_METRIC` when any exist; other metrics unaffected. A non-null delta paired with non-`SELECTED` status is an **inconsistent input** ⇒ row 14 (reject) |
 | 8 | Outlier-dominated or zero-dispersion series | No deletion; flags only when calibrated; `residualMadQuantized=0` ⇒ no statistical flags |
 | 9 | Contradictory metrics (descriptors move in different directions) | No reconciliation into a condition; each metric reported independently |
-| 10 | Step discontinuity (possible battery replacement / configuration change) | Descriptive `stepChangeMagnitudeQuantized` + split metadata only; no event claim (BLOCK-M3.3D-003) |
+| 10 | Step discontinuity (possible battery replacement / configuration change) | Only when **`METRIC_STEP_EVALUABLE`** (≥4 values, ≥2 per side); descriptive `stepChangeMagnitudeQuantized` + split metadata; **3 observations ⇒ step null**; no event claim (BLOCK-M3.3D-003) |
 | 11 | Calibration profile UNSET (V1 default) | `evaluationStatus` may be `EVALUATED_DESCRIPTIVE_ONLY`; every evaluable series `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition=NOT_ASSESSED`; `claimLevel=NONE`; `CALIBRATION_NOT_ESTABLISHED` |
 | 12 | Quarantined / source-limited sessions exist | `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`; excluded sessions never enter series |
 | 13 | D4 scope `BOUNDED_LATEST_WINDOW` / `NOT_EVALUATED` | Reason code only |
-| 14 | Malformed / inconsistent input (contract version mismatch, invalid `anchorAt`, `consumptionInputFingerprint` mismatch on recompute via `computeM3_3E_ConsumptionInputFingerprintV1`, non-null delta with non-`SELECTED` anchor, quantized integer not safe) | **Reject** (typed error) — fail closed, no partial result |
+| 14 | Malformed / inconsistent input (contract version mismatch, invalid `anchorAt`, fingerprint mismatch, non-null delta with non-`SELECTED` anchor, `x_j < x_i` in a metric series, non-finite pairwise slope with `x_j > x_i`, quantized integer not safe) | **Reject** — `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW` where applicable; fail closed, no partial result |
 
 ---
 
@@ -776,7 +804,7 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 | Forbidden imports | Nest, Prisma, repositories, `lv-assessment/*`, `battery-readiness.policy.ts`, publication, flags/config, clock |
 | Default calibration | `M3_3E_CALIBRATION_UNSET_V1` (`UNCALIBRATED`); every calibrated minimum `null` |
 | Output under default | `evaluationStatus=EVALUATED_DESCRIPTIVE_ONLY` when any segment structurally evaluable; else `NO_CONCLUSION`; descriptive **`…Quantized`** statistics; `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition='NOT_ASSESSED'`; `claimLevel='NONE'`; `confidence='NOT_APPLICABLE'` |
-| Minimum test matrix | §11.4 truth-table cases; empty input (`NO_CONCLUSION`); single observation (`EVALUATED_DESCRIPTIVE_ONLY` + median µV); two distinct anchors (slope quantized, relative `x_i`); equal anchors skipped; ≥3 anchors (MAD); relative-time origin (`x_0=0`); no raw-epoch slope path; anchor unresolved exclusion for delta metric; multi-segment A→B→A (`SEGMENTED_NO_POOLED_CONCLUSION`); segment with median-only evaluable; charge `UNKNOWN` reason codes; temperature unknown/mixed; zero MAD; step magnitude quantized; `-0` canonicalization; safe-integer overflow reject; UTF-16 ordering; forbidden-field absence; no-clock; input immutability; malformed `anchorAt` rejection; golden `resultFingerprint`; fingerprint sensitivity; calibration profile change ⇒ fingerprint change; static import guard |
+| Minimum test matrix | §11.4 truth-table cases; empty input (`NO_CONCLUSION`); single observation (`EVALUATED_DESCRIPTIVE_ONLY` + median µV); two distinct anchors (slope); equal anchors skipped; **3 distinct anchors: MAD evaluable, `stepChangeMagnitudeQuantized` MUST be null**; **4+ values with valid split: step structurally evaluable, classification still `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` under UNSET**; non-finite slope on valid pair ⇒ `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW`; relative `x_i`; multi-segment A→B→A; median-only segment; charge/temperature reason codes; zero MAD; `-0` canonicalization; safe-integer reject; UTF-16 ordering; forbidden fields; no-clock; immutability; malformed `anchorAt`; golden fingerprint; static import guard |
 | Non-goals | Persistence, Nest reachability, flags, D3 materialization, readiness, publication, UI, calibration values |
 
 `M3_3E_E3_IMPLEMENTATION_READY=YES` applies **only** to this boundary. A conclusion-bearing model is **not** ready (`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`), blocked by all B items (notably CAL-M3.3E-010) and D items (notably NAT-M3.3F-001, NAT-M3.3F-008).
@@ -788,6 +816,14 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 ```yaml
 M3_3E_E2_ARCHITECTURE: COMPLETE
 M3_3E_E2_1_HARDENING: COMPLETE
+M3_3E_E2_1_1_FINAL_CLOSURE: COMPLETE
+STEP_CHANGE_GATE_CONTRADICTION_RESOLVED: YES
+METRIC_STEP_EVALUABILITY_SEMANTICS_FROZEN: YES
+STEP_CHANGE_MIN_TOTAL_VALUES: 4
+STEP_CHANGE_MIN_VALUES_PER_SIDE: 2
+STEP_CHANGE_USES_DISPERSION_GATE: NO
+NONFINITE_VALID_TIME_PAIR_SLOPE_OMITTED: NO
+NUMERIC_OVERFLOW_FAIL_CLOSED: YES
 M3_3E_E2_CONTRACT: M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1
 M3_3E_E2_MODEL_POLICY_VERSION: M3_3E_E2_MODEL_POLICY_V1
 M3_3E_E2_DEFAULT_CALIBRATION_PROFILE: M3_3E_CALIBRATION_UNSET_V1

@@ -8,6 +8,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-25 — M3.3E E2.1.1 final pre-merge semantic closure (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2.1 @ `53ddf00df` — `METRIC_DISPERSION_EVALUABLE` (≥3 anchors) incorrectly gated step magnitude; pairwise Theil-Sen allowed silent omission of non-finite slopes on valid time pairs. |
+| **OBSERVATION** | Independent review: §5.3 step minimum (≥4) contradicted §6.4/§7.1 dispersion gate for step; omitting non-finite slopes changes Theil-Sen population. |
+| **HYPOTHESIS** | Separate `METRIC_STEP_EVALUABLE` and fail-closed reject on non-finite valid-pair slopes restore single coherent structural rules. |
+| **CHANGE** | Amend E2 doc: add `METRIC_STEP_EVALUABLE`; gate `residualMadQuantized` vs `stepChangeMagnitudeQuantized`; §7.1 pairwise fail-closed table; align §12.3, §16, §19 tests, §20 flags (`STEP_CHANGE_*`, `NONFINITE_*`). |
+| **WHY** | E3 must not treat 3-point series as step-capable or drop slope pairs silently. |
+| **EXPECTED_EFFECT** | 3 anchors ⇒ MAD only; 4+ with valid split ⇒ step descriptive only; overflow on valid pair ⇒ typed reject. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only. |
+| **OBSERVED_EFFECT** | Pending merge — PR #1773 amend. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies E2.1 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers. |
+| **AFTER** | **`STEP_CHANGE_GATE_CONTRADICTION_RESOLVED=YES`**; **`METRIC_STEP_EVALUABILITY_SEMANTICS_FROZEN=YES`**; **`NONFINITE_VALID_TIME_PAIR_SLOPE_OMITTED=NO`**; **`NUMERIC_OVERFLOW_FAIL_CLOSED=YES`**. |
+| **EVIDENCE** | Internal consistency search across E2 normative sections. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1.1 on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E2.1 longitudinal health model contract hardening (draft PR #1773 amend)
 
 | Field | Value |
