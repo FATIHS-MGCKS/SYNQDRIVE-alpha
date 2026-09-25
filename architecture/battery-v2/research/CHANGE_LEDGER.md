@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E0.2 final machine-contract seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0.1 closed pairing/fingerprint/segments but left `M3_3E_RevisionIdentityV1` undefined, evidenceWindow/segment window derivation implicit, optional diagnostic fields, E0-OD-002 implementer discretion. |
+| **CHANGE** | E0.2 amendments — normative `M3_3E_RevisionIdentityV1`, frozen `evidenceWindow` + eligible segment window derivation, deterministic V1 `diagnosticContext` (no optional reason lists), domain type reuse, E0-OD-002 deferred post-V1, expanded E1 test matrix notes. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`**; **`E1_PURE_OUTPUT_DETERMINISTIC=YES`**. |
+| **VALIDATION** | Docs-only; registry + graph validators. |
+| **NON_EFFECTS** | No runtime, E1 code, health logic, assessment writes, D3 materialization, deploy. |
+| **DECISION_STATUS** | **E0_2_MACHINE_CONTRACT_SEALED** (PR #1761) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
 ## CL-2026-09-25 — M3.3E E0.1 longitudinal assessment consumption final contract closure
 
 | Field | Value |

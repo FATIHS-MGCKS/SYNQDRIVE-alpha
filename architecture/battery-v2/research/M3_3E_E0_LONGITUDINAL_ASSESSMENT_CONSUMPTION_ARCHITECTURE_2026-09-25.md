@@ -1,7 +1,7 @@
 # M3.3E E0 — Longitudinal Assessment Consumption Architecture Audit
 
-**Date:** 2026-09-25 (E0 audit + **E0.1 final contract closure** on draft PR #1761)  
-**Status:** **ARCHITECTURE AUDIT — CONTRACT CLOSED FOR E1** (docs-only; no runtime)  
+**Date:** 2026-09-25 (E0 audit + E0.1 contract closure + **E0.2 machine-contract seal** on draft PR #1761)  
+**Status:** **ARCHITECTURE AUDIT — MACHINE CONTRACT SEALED FOR E1** (docs-only; no runtime)  
 **Consumption contract (frozen):** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1`  
 **Upstream complete on main:** M3.3D D0–D4 (D4 engineering V1 PR #1754 @ merge `9a3e457d9`)
 
@@ -176,6 +176,43 @@ buildLongitudinalAssessmentInputV1({
 
 Internally: `parseLongitudinalScientificProfileProjectionV1(...)` from D4 strict parser on `scientificProfile`. Malformed → **`MALFORMED_D3_SCIENTIFIC_PROFILE`**. Do **not** duplicate or loosen the D4 parser.
 
+### 5.6 `M3_3E_RevisionIdentityV1` (E0.2)
+
+**`REVISION_IDENTITY_V1_DEFINED=YES`** · **`REVISION_IDENTITY_INCLUDES_WALL_CLOCK=NO`**
+
+Normative caller-supplied revision envelope (non-scientific wall clock excluded):
+
+```typescript
+import type {
+  REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+  REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+} from './longitudinal-profile.constants';
+
+export type M3_3E_RevisionIdentityV1 = {
+  organizationId: string;
+  vehicleId: string;
+  revisionId: string;
+
+  /** 64-char lowercase SHA-256 hex — same authority as D3 revision row */
+  canonicalProfileFingerprint: string;
+
+  longitudinalProfileContractVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION;
+  profilePolicyVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION;
+};
+```
+
+**Must NOT include:** `materializedAt`, `createdAt`, or any inspection/request timestamp as identity.
+
+**E1 validation (fail-closed before pairing):**
+
+| Field | Rule |
+|-------|------|
+| `organizationId`, `vehicleId`, `revisionId` | Non-empty strings |
+| `canonicalProfileFingerprint` | Valid 64-char lowercase hex (reuse D3 fingerprint validation authority where applicable) |
+| Contract / policy literals | Must equal supported sealed constants (`M3_3D_LONGITUDINAL_PROFILE_V1`, `M3_3D_PROFILE_POLICY_V1`) |
+
+Then apply §5.4 scientific profile binding (parsed profile ↔ this identity + recomputed fingerprint).
+
 ---
 
 ## 6. D4 outcome gate (revision-level)
@@ -333,6 +370,19 @@ Rules:
 - **Omit** a source segment when zero eligible observations remain
 - **Never** merge two different `sourceSegmentIndex` values even if tuples match (e.g. D2 pattern A→B→A must remain **three** segments when all eligible; if B is fully filtered, emit **two** segments — not one merged A)
 
+**`ELIGIBLE_SEGMENT_WINDOW_DERIVATION_FROZEN=YES`** (E0.2) — for each emitted segment:
+
+| Field | Derivation |
+|-------|------------|
+| `observationCount` | Count of ELIGIBLE DEFAULT observations retained from that `sourceSegmentIndex` |
+| `restSessionIds` | Those observations’ ids in canonical E1 ordering (§16.3) |
+| `firstAnchorAt` | First retained eligible observation in that segment (same ordering) |
+| `lastAnchorAt` | Last retained eligible observation in that segment |
+| Zero retained | Segment **omitted** (not emitted) |
+| One retained | `firstAnchorAt === lastAnchorAt` |
+
+Do **not** preserve original D2 segment first/last anchors when boundary observations were filtered out.
+
 Removed/quarantined observations do **not** imply cross-segment continuity.
 
 ---
@@ -409,9 +459,25 @@ Do not map D4 `overallStatus` or dispositions mechanically to HIGH/MEDIUM/LOW or
 
 **Assessment input only** — no health result fields.
 
+**`E1_CONTRACT_REUSES_EXISTING_DOMAIN_TYPES=YES`** — reuse sealed D1/D2/D3/D4 types; do not introduce widened string vocabularies where a domain type already exists.
+
 Suggested TypeScript-shaped contract (names normative for E1):
 
 ```typescript
+import type { REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION } from './longitudinal-integrity-inspection.constants';
+import type {
+  REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+  REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+} from './longitudinal-profile.constants';
+import type { RestSessionFeatureInputAnchorResolutionStatus } from '../rest-session-feature-input-snapshot.types';
+import type {
+  LongitudinalInputFeatureScalars,
+  LongitudinalInputSnapshotContext,
+} from './longitudinal-input.types';
+import type {
+  LongitudinalProfileVersionTupleV1,
+} from './longitudinal-profile.types';
+
 export const M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_CONTRACT_VERSION =
   'M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1' as const;
 
@@ -429,9 +495,9 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     vehicleId: string;
     revisionId: string;
     canonicalProfileFingerprint: string;
-    longitudinalProfileContractVersion: string;
-    profilePolicyVersion: string;
-    integrityInspectionContractVersion: string;
+    longitudinalProfileContractVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION;
+    profilePolicyVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION;
+    integrityInspectionContractVersion: typeof REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION;
   };
 
   evidenceWindow: {
@@ -450,8 +516,6 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     excludedContextCount: number;
     d4DigestVerificationScope: D4DigestVerificationScope;
     d4Rebuildability: D4RebuildabilityStatus;
-    /** Optional profile-wide diagnostic; PROVISIONAL/EXCLUDED source limits do not increment sourceEvidenceLimitedCount */
-    sourceEvidenceLimitedReferenceCount?: number;
   };
 
   assessmentGradeObservations: Array<{
@@ -461,8 +525,8 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     inputDigest: string;
     versionTuple: LongitudinalProfileVersionTupleV1;
     features: LongitudinalInputFeatureScalars;
-    anchorResolutionStatus: string;
-    chargeOpportunityClass: string;
+    anchorResolutionStatus: RestSessionFeatureInputAnchorResolutionStatus;
+    chargeOpportunityClass: LongitudinalInputFeatureScalars['chargeOpportunityClass'];
     chargeContextCompleteness: string[];
     temperatureC: number | null;
     temperatureSource: string | null;
@@ -486,12 +550,11 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     modelSufficiency: M3_3E_ModelSufficiency;
   };
 
+  /** E0.2: exact fields only — no optional reason lists */
   diagnosticContext: {
     d4OverallStatus: D4InspectionOverallStatus;
     inspectionFlags: D4InspectionFlagV1[];
     rebuildability: D4RebuildabilityStatus;
-    provisionalSummary?: { count: number; reasons?: string[] };
-    excludedSummary?: { count: number; reasons?: string[] };
   };
 
   /** Required on every successful build (including zero eligible observations) */
@@ -557,7 +620,31 @@ d3DefaultObservationCount
 
 **`NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED`** on DEFAULT rows must **not** appear when `materializedRevision.selfIntegrity === 'SELF_INTEGRITY_OK'`. If encountered → **`D3_D4_CONTRACT_INCONSISTENCY`**. E1 does **not** expose `notEligibleRevisionSelfIntegrityFailedDefaultCount` on successful inputs.
 
-Profile-wide `SOURCE_EVIDENCE_LIMITED` from PROVISIONAL/EXCLUDED does **not** increment `sourceEvidenceLimitedCount`. Use optional `sourceEvidenceLimitedReferenceCount` and/or `diagnosticContext.d4OverallStatus` / `inspectionFlags` for profile-wide diagnostics.
+Profile-wide `SOURCE_EVIDENCE_LIMITED` from PROVISIONAL/EXCLUDED does **not** increment `sourceEvidenceLimitedCount`. Profile-wide limitation is represented only via **`diagnosticContext.d4OverallStatus`**, **`inspectionFlags`**, and **`rebuildability`** (E0.2 — no optional reference counters or reason lists).
+
+### 16.3 Eligible evidence window derivation (E0.2)
+
+**`ELIGIBLE_EVIDENCE_WINDOW_DERIVATION_FROZEN=YES`**
+
+Computed from **`assessmentGradeObservations[]`** after all D3/D4 validation and D4 eligibility filtering.
+
+**Canonical ordering** (same as fingerprint): `anchorAt` ascending, then `restSessionId` ascending via `compareUtf16CodeUnitLexicographic`.
+
+| Case | `firstEligibleAnchorAt` | `lastEligibleAnchorAt` | `eligibleEvidenceSpanMs` |
+|------|-------------------------|--------------------------|----------------------------|
+| 0 eligible | `null` | `null` | `null` |
+| 1 eligible | that observation’s `anchorAt` | same | `0` |
+| ≥2 eligible | first ordered `anchorAt` | last ordered `anchorAt` | `Date.parse(last) - Date.parse(first)` (must be ≥ 0) |
+
+No wall clock. No D3 `materializedAt`. No D4 `inspectionGeneratedAt`.
+
+### 16.4 Deterministic pure output (E0.2)
+
+**`E1_PURE_OUTPUT_DETERMINISTIC=YES`**
+
+For the same validated `(scientificProfile, revisionIdentity, d4Outcome)`, E1 must produce logically identical output on every invocation: stable ordering, frozen field set, no caller clock, no optional implementation-dependent diagnostics.
+
+**`E1_V1_DIAGNOSTIC_SHAPE_DETERMINISTIC=YES`** · **`E1_V1_OPTIONAL_REASON_LIST_POLICY=NONE`**
 
 ### 16.2 Input availability vs model sufficiency
 
@@ -631,11 +718,13 @@ The same immutable D3 revision may be inspected at different times; C3 retention
 
 ---
 
-## 18. Non-eligible diagnostic context
+## 18. Non-eligible diagnostic context (E0.2)
 
 **`NON_ELIGIBLE_EVIDENCE_SEPARATE_FROM_MODEL_INPUT=YES`**
 
-Carry **counts** (and optional reason summaries) for provisional/excluded/quarantined/source-limited sessions in `diagnosticContext` / `coverage`. Do **not** duplicate full provisional/excluded scientific payloads in assessment-grade arrays unless a later model policy explicitly requires it.
+**Coverage** carries partition counts (`provisionalContextCount`, `excludedContextCount`, DEFAULT disposition buckets). **`diagnosticContext`** carries **exactly** `{ d4OverallStatus, inspectionFlags, rebuildability }` — no optional reason lists, no optional profile-wide reference counters in V1.
+
+Do **not** duplicate full provisional/excluded scientific payloads in assessment-grade arrays.
 
 ---
 
@@ -748,6 +837,26 @@ Internally: parse profile via D4 strict parser; full candidate pairing §8; fing
 - same payload + different `inspectionGeneratedAt` → same fingerprint
 - `anchorAt` / feature / temperature / context / digest scope / eligible set changes → different fingerprint; JSON key reorder → same
 
+### Determinism (E0.2)
+
+- same E1 inputs → deep-equal output
+- no optional diagnostics appear/disappear between runs
+- D4 `inspectionGeneratedAt` change alone does not change model input or `consumptionInputFingerprint` when eligibility/evidence unchanged
+
+### Revision identity (E0.2)
+
+- empty `organizationId` / `vehicleId` / `revisionId` → reject
+- malformed fingerprint → reject
+- exact supported contract literals pass
+
+### Evidence window (E0.2)
+
+- zero eligible → null/null/null; one → anchor/anchor/0; multiple → first/last/exact ms; equal `anchorAt` UTF-16 `restSessionId` tie order
+
+### Segment window (E0.2)
+
+- boundary quarantined → segment first/last move inward; one eligible → first === last; zero eligible → segment omitted; `sourceSegmentIndex` unchanged
+
 ### Existing assessment isolation
 
 - no `BatteryMeasurement` conversion; no assessment/publication writes
@@ -759,7 +868,7 @@ Internally: parse profile via D4 strict parser; full candidate pairing §8; fing
 | ID | Topic | Default / note |
 |----|-------|----------------|
 | **E0-OD-001** | Future `BatteryAssessmentType` for longitudinal model vs pure compute-first | Prefer **C** until M3.3G |
-| **E0-OD-002** | Whether diagnosticContext includes capped reason code lists vs counts-only | Counts-only minimum; reason lists optional in E1 |
+| **E0-OD-002** | Optional diagnostic reason lists / extended diagnostic payloads | **DEFERRED_POST_V1** — not an E1 V1 implementer choice |
 | **E0-OD-003** | Operational revision picker (which revisionId to assess) | Out of E0 — not “latest row” authority |
 | **E0-OD-004** | Eventual fusion contract with `LV_ESTIMATED_HEALTH` | Explicit M3.3G+ migration only; **no automatic fusion** |
 
@@ -783,6 +892,7 @@ None block E1 pure adapter implementation.
 | Time authority | **CLOSED** |
 | Input contract + required fingerprint | **CLOSED** (E0.1) |
 | Build outcome union | **CLOSED** (E0.1) |
+| Revision identity V1 + evidence/segment windows + deterministic diagnostics | **CLOSED** (E0.2) |
 | No implicit health/confidence mapping | **CLOSED** |
 | LV assessment isolation | **CLOSED** |
 | Persistence boundary | **CLOSED** |
@@ -837,3 +947,11 @@ None block E1 pure adapter implementation.
 | `SUCCESSFUL_E1_SELF_FAILED_DEFAULT_COUNT` | **0** |
 | `BUILD_OUTCOME_UNION_FROZEN` | **YES** |
 | `M3_3E_E1_IMPLEMENTATION_READY` | **YES** |
+| `REVISION_IDENTITY_V1_DEFINED` | **YES** |
+| `REVISION_IDENTITY_INCLUDES_WALL_CLOCK` | **NO** |
+| `E1_CONTRACT_REUSES_EXISTING_DOMAIN_TYPES` | **YES** |
+| `ELIGIBLE_EVIDENCE_WINDOW_DERIVATION_FROZEN` | **YES** |
+| `ELIGIBLE_SEGMENT_WINDOW_DERIVATION_FROZEN` | **YES** |
+| `E1_V1_DIAGNOSTIC_SHAPE_DETERMINISTIC` | **YES** |
+| `E1_V1_OPTIONAL_REASON_LIST_POLICY` | **NONE** |
+| `E1_PURE_OUTPUT_DETERMINISTIC` | **YES** |
