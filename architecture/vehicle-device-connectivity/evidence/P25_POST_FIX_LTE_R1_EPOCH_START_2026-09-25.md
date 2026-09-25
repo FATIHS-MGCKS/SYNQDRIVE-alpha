@@ -19,6 +19,13 @@
 
 ## Shared post-fix epoch
 
+| Field | Value |
+|-------|--------|
+| **NEW_T0** | `2026-09-25T21:39:17.621Z` |
+| **NEW_T7** | `2026-10-02T21:39:17.621Z` |
+| **CORRECTNESS_BLOCKING_AT_T0** | `0` |
+| **LTE_R1 cadence cohort** | `6` vehicles (4/4 P2.5 pilots ⊆ cohort) |
+
 Canonical manifest (Production shared evidence path):
 
 `/opt/synqdrive/shared/evidence/p25-post-fix-lte-r1-epoch/P25_LTE_R1_EPOCH_MANIFEST.json`
