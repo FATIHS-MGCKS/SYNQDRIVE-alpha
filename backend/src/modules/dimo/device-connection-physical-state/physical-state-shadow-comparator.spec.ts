@@ -410,7 +410,7 @@ describe('physical-state shadow comparator', () => {
       baseInput({ equalTimeOpposingState: true }),
     );
     expect(result.classification).toBe(PhysicalStateShadowClassification.CONFLICT);
-    expect(result.correctnessBlocking).toBe(false);
+    expect(result.correctnessBlocking).toBe(true);
   });
 
   it('comparator has no persistence side effects', () => {

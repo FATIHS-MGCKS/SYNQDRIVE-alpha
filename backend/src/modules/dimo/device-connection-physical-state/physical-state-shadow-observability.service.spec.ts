@@ -4,6 +4,7 @@ import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
 import { PhysicalStateShadowClassification } from './physical-state-shadow.classification';
 import { PhysicalStateShadowObservabilityService } from './physical-state-shadow-observability.service';
 import type { PhysicalStateShadowComparisonResult } from './physical-state-shadow-comparator.types';
+import type { PhysicalStateShadowComparisonDomain } from './physical-state-shadow-comparison-domain';
 
 describe('PhysicalStateShadowObservabilityService', () => {
   function createMetricsStub() {
@@ -52,6 +53,8 @@ describe('PhysicalStateShadowObservabilityService', () => {
       correlationId: 'corr-1',
       evidenceReferenceId: 'evidence-1',
       observedAt: new Date().toISOString(),
+      comparisonDomain: 'STATE_TRANSITION' as PhysicalStateShadowComparisonDomain,
+      provenSameStateRefreshVariant: null,
       ...overrides,
     };
   }

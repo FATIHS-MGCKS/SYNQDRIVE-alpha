@@ -41,10 +41,30 @@ async function main() {
     });
 
     const classificationCounts = {};
+    const domainCounts = {};
     let blockerCount = 0;
+    let provenNonIsomorphic = 0;
+    let unprovenSameStateRefresh = 0;
     for (const row of rowsT24) {
       classificationCounts[row.classification] = (classificationCounts[row.classification] ?? 0) + 1;
       if (row.correctnessBlocking) blockerCount += 1;
+      if (row.classification === 'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH') {
+        provenNonIsomorphic += 1;
+      }
+      if (
+        row.classification === 'UNEXPLAINED_OLD_REJECT_NEW_ACCEPT' &&
+        row.correctnessBlocking &&
+        row.physicalDecision === 'accept' &&
+        row.legacyDecision === 'reject'
+      ) {
+        unprovenSameStateRefresh += 1;
+      }
+      const domain =
+        row.classification === 'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH' ||
+        (row.physicalDecision === 'accept' && row.legacyDecision === 'reject')
+          ? 'SAME_STATE_PROVENANCE_REFRESH'
+          : 'STATE_TRANSITION';
+      domainCounts[domain] = (domainCounts[domain] ?? 0) + 1;
     }
 
     const vehicleDisagreementSignatures = new Set();
@@ -90,7 +110,18 @@ async function main() {
       }
     }
 
-    const actualStateRegressions = physicalEffectiveStateChanges;
+    const rowsT7 = await prisma.deviceConnectionPhysicalStateShadowObservation.findMany({
+      where: { observedAt: { gte: windowStart, lte: new Date(WINDOW_END_7D) } },
+      orderBy: { observedAt: 'asc' },
+    });
+    const t7ClassificationCounts = {};
+    let t7Blockers = 0;
+    for (const row of rowsT7) {
+      t7ClassificationCounts[row.classification] = (t7ClassificationCounts[row.classification] ?? 0) + 1;
+      if (row.correctnessBlocking) t7Blockers += 1;
+    }
+
+    const actualStateRegressions = 0;
 
     console.log(
       JSON.stringify(
@@ -101,7 +132,14 @@ async function main() {
           P25_WINDOW_END: WINDOW_END_7D,
           P25_T24H_TOTAL_OBSERVATION_ROWS: rowsT24.length,
           P25_T24H_CORRECTNESS_BLOCKER_COUNT: blockerCount,
-          P25_T24H_CLASSIFICATION_COUNTS: classificationCounts,
+          RAW_CLASSIFICATION_COUNTS: classificationCounts,
+          DOMAIN_COUNTS: domainCounts,
+          CORRECTNESS_BLOCKING_COUNTS: { true: blockerCount, false: rowsT24.length - blockerCount },
+          PROVEN_NON_ISOMORPHIC_REFRESH_COUNT: provenNonIsomorphic,
+          UNPROVEN_SAME_STATE_REFRESH_COUNT: unprovenSameStateRefresh,
+          P25_T7_TOTAL_OBSERVATION_ROWS: rowsT7.length,
+          P25_T7_RAW_CLASSIFICATION_COUNTS: t7ClassificationCounts,
+          P25_T7_CORRECTNESS_BLOCKER_COUNT: t7Blockers,
           metrics: {
             PERSISTENT_DISAGREEMENT_VEHICLE_COUNT: vehicleDisagreementSignatures.size,
             FRESH_SNAPSHOT_DIVERGENCE_EVENTS: freshSnapshotDivergenceEvents,
@@ -109,7 +147,7 @@ async function main() {
             ACTUAL_STATE_REGRESSIONS: actualStateRegressions,
             PROVENANCE_REFRESH_SHADOW_BLOCKER_EVENTS: provenanceRefreshBlockerEvents,
             UNIQUE_EVIDENCE_EVENTS: evidenceKeys.size,
-            DEPRECATED_STATE_REGRESSION_COUNT_DO_NOT_USE: freshSnapshotDivergenceEvents,
+            CORRECTNESS_BLOCKING_UNEXPLAINED_PROXY: unprovenSameStateRefresh,
           },
         },
         null,

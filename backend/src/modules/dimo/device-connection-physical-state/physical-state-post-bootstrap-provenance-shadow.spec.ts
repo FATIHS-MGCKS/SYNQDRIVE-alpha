@@ -1,4 +1,7 @@
-import { DeviceConnectionPhysicalTransitionDecision } from '@prisma/client';
+import {
+  DeviceConnectionPhysicalEvidenceSource,
+  DeviceConnectionPhysicalTransitionDecision,
+} from '@prisma/client';
 import {
   buildSnapshotGtR1Proof,
   buildSnapshotPlugPostBootstrapProvenanceRefreshGtR1Proof,
@@ -86,10 +89,25 @@ describe('P2.5 post-bootstrap PROVENANCE_REFRESH shadow semantics', () => {
         effectiveState: 'PLUGGED',
       },
       provenExpectedFix: isProvenExpectedFixForPhysicalDecision(proof, transition.decision),
+      sameStateRefresh: {
+        previousProjection: {
+          effectiveState: 'PLUGGED',
+          evidenceObservedAt: T0,
+          evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+          evidenceReferenceId: 'prior',
+          stateVersion: 2,
+        },
+        incoming: {
+          candidateState: 'PLUGGED',
+          evidenceObservedAt: T1,
+          evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+          evidenceReferenceId: production107ShapeProofInput.evidenceReferenceId,
+        },
+      },
     });
 
     expect(comparison.classification).toBe(
-      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+      PhysicalStateShadowClassification.NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH,
     );
     expect(comparison.correctnessBlocking).toBe(false);
     expect(

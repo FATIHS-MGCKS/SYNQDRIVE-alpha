@@ -71,6 +71,8 @@ export interface PhysicalStateReconcileContext {
   candidateState: PhysicalEffectiveState;
   resultingState: PhysicalEffectiveState | null;
   previousEvidenceAt: Date | null;
+  previousEvidenceReferenceId: string | null;
+  previousEvidenceSource: PhysicalEvidenceSource | null;
   candidateEvidenceAt: Date;
   incomingEvidenceSource: PhysicalEvidenceSource;
   stateVersionBefore: number | null;

@@ -12,7 +12,17 @@ import type {
   PhysicalStateShadowComparisonInput,
   PhysicalStateShadowComparisonResult,
 } from './physical-state-shadow-comparator.types';
+import { inferPhysicalStateShadowComparisonDomain } from './physical-state-shadow-comparison-domain';
+import {
+  isProvenNonIsomorphicSameStateRefresh,
+  proveNonIsomorphicSameStateProvenanceRefresh,
+} from './physical-state-same-state-admissibility';
 import { getShadowComparisonObservedAt } from './physical-state-shadow-comparison.clock';
+
+const LEGACY_STALE_LAST_EVENT_REASONS: ReadonlySet<string> = new Set([
+  'no_state_change',
+  'baseline_already_plugged',
+]);
 
 const EXPECTED_PHYSICAL_REJECT_DECISIONS: ReadonlySet<DeviceConnectionPhysicalTransitionDecision> =
   new Set([
@@ -21,11 +31,6 @@ const EXPECTED_PHYSICAL_REJECT_DECISIONS: ReadonlySet<DeviceConnectionPhysicalTr
     DeviceConnectionPhysicalTransitionDecision.CONFLICT,
     DeviceConnectionPhysicalTransitionDecision.INSUFFICIENT_EVIDENCE,
   ]);
-
-const LEGACY_STALE_LAST_EVENT_REASONS: ReadonlySet<string> = new Set([
-  'no_state_change',
-  'baseline_already_plugged',
-]);
 
 function normalizeReason(reason: string | null | undefined): string | null {
   if (reason == null) return null;
@@ -55,6 +60,12 @@ export function resolvePhysicalEffectiveState(
   return input.physicalDecision.effectiveState ?? null;
 }
 
+/** Diagnostic helper — legacy reason metadata only; does not establish independent proof. */
+export function isGtR1ExpectedFixLegacyReason(reason: string | null | undefined): boolean {
+  const normalized = normalizeReason(reason);
+  return normalized != null && LEGACY_STALE_LAST_EVENT_REASONS.has(normalized);
+}
+
 function plugStatesAlign(
   legacy: 'plugged' | 'unplugged' | 'unknown' | null | undefined,
   physical: PhysicalEffectiveState | null,
@@ -64,12 +75,6 @@ function plugStatesAlign(
   const mapped =
     physical === 'PLUGGED' ? 'plugged' : physical === 'UNPLUGGED' ? 'unplugged' : null;
   return mapped === legacy;
-}
-
-/** Diagnostic helper — legacy reason metadata only; does not establish independent proof. */
-export function isGtR1ExpectedFixLegacyReason(reason: string | null | undefined): boolean {
-  const normalized = normalizeReason(reason);
-  return normalized != null && LEGACY_STALE_LAST_EVENT_REASONS.has(normalized);
 }
 
 function resolveComparatorLegacyBinding(
@@ -98,13 +103,47 @@ function classifyBindingDivergence(
   return null;
 }
 
+function isStrictStateTransitionComparison(input: PhysicalStateShadowComparisonInput): boolean {
+  const transition = input.physicalDecision.transitionDecision ?? null;
+  if (
+    transition !== DeviceConnectionPhysicalTransitionDecision.APPLIED &&
+    transition !== DeviceConnectionPhysicalTransitionDecision.ESTABLISHED
+  ) {
+    return false;
+  }
+
+  const refresh = input.sameStateRefresh;
+  if (!refresh) return true;
+
+  const previous = refresh.previousProjection?.effectiveState ?? null;
+  const candidate = refresh.incoming.candidateState;
+  if (previous == null) return true;
+  return previous !== candidate;
+}
+
+function resolveProvenSameStateRefresh(input: PhysicalStateShadowComparisonInput) {
+  if (input.provenSameStateRefresh && isProvenNonIsomorphicSameStateRefresh(input.provenSameStateRefresh)) {
+    return input.provenSameStateRefresh;
+  }
+  if (!input.sameStateRefresh) return null;
+  return proveNonIsomorphicSameStateProvenanceRefresh({
+    comparison: input,
+    previousProjection: input.sameStateRefresh.previousProjection,
+    incoming: input.sameStateRefresh.incoming,
+  });
+}
+
 function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): PhysicalStateShadowClassification {
   const legacyAccepted = input.legacyDecision.accepted;
   const physicalAccepted = input.physicalDecision.accepted;
   const physicalEffectiveState = resolvePhysicalEffectiveState(input);
+  const transition = input.physicalDecision.transitionDecision ?? null;
 
-  // 1. Equal-time opposing state
+  // 1. Equal-time opposing state / physical CONFLICT
   if (input.equalTimeOpposingState) {
+    return PhysicalStateShadowClassification.CONFLICT;
+  }
+  if (transition === DeviceConnectionPhysicalTransitionDecision.CONFLICT) {
     return PhysicalStateShadowClassification.CONFLICT;
   }
 
@@ -114,7 +153,49 @@ function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): Physic
     return bindingClassification;
   }
 
-  // 3. Decision pair differs
+  // 3. Real state transitions — strict legacy vs physical (GT-R1 expected-fix path)
+  if (isStrictStateTransitionComparison(input)) {
+    if (!legacyAccepted && physicalAccepted) {
+      if (input.provenExpectedFix === true) {
+        return PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT;
+      }
+      return PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT;
+    }
+
+    if (legacyAccepted && !physicalAccepted) {
+      if (transition && EXPECTED_PHYSICAL_REJECT_DECISIONS.has(transition)) {
+        return PhysicalStateShadowClassification.OLD_ACCEPT_NEW_REJECT_EXPECTED;
+      }
+      return PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT;
+    }
+
+    if (legacyAccepted && physicalAccepted) {
+      if (!plugStatesAlign(input.legacyEffectivePlugState, physicalEffectiveState)) {
+        return PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN;
+      }
+      if (timestampsDiffer(input)) {
+        return PhysicalStateShadowClassification.TIMESTAMP_DIVERGENCE;
+      }
+      return PhysicalStateShadowClassification.MATCH;
+    }
+
+    if (timestampsDiffer(input)) {
+      return PhysicalStateShadowClassification.TIMESTAMP_DIVERGENCE;
+    }
+    return PhysicalStateShadowClassification.MATCH;
+  }
+
+  // 4. Proven same-state provenance refresh (non-isomorphic domains)
+  const sameStateProof = resolveProvenSameStateRefresh(input);
+  if (
+    transition === DeviceConnectionPhysicalTransitionDecision.PROVENANCE_REFRESH &&
+    sameStateProof &&
+    isProvenNonIsomorphicSameStateRefresh(sameStateProof)
+  ) {
+    return PhysicalStateShadowClassification.NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH;
+  }
+
+  // 5. Standard decision-pair classification (includes unproven same-state refresh)
   if (!legacyAccepted && physicalAccepted) {
     if (input.provenExpectedFix === true) {
       return PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT;
@@ -123,17 +204,12 @@ function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): Physic
   }
 
   if (legacyAccepted && !physicalAccepted) {
-    const transitionDecision = input.physicalDecision.transitionDecision;
-    if (
-      transitionDecision &&
-      EXPECTED_PHYSICAL_REJECT_DECISIONS.has(transitionDecision)
-    ) {
+    if (transition && EXPECTED_PHYSICAL_REJECT_DECISIONS.has(transition)) {
       return PhysicalStateShadowClassification.OLD_ACCEPT_NEW_REJECT_EXPECTED;
     }
     return PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT;
   }
 
-  // 4. Both accept — state correctness before timestamp metadata
   if (legacyAccepted && physicalAccepted) {
     if (!plugStatesAlign(input.legacyEffectivePlugState, physicalEffectiveState)) {
       return PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN;
@@ -144,7 +220,7 @@ function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): Physic
     return PhysicalStateShadowClassification.MATCH;
   }
 
-  // 5. Both reject — outcome agreement; differing reason text is forensic metadata only
+  // 6. Both reject — timestamp metadata
   if (timestampsDiffer(input)) {
     return PhysicalStateShadowClassification.TIMESTAMP_DIVERGENCE;
   }
@@ -155,15 +231,18 @@ function classifyDecisionPair(input: PhysicalStateShadowComparisonInput): Physic
 /**
  * Pure, side-effect-free shadow comparator.
  * OLD (legacy) decision remains authoritative during P2.2.
- *
- * Legacy episode-resolution rejects (e.g. no_open_episode) and physical PROVENANCE_REFRESH
- * are non-isomorphic propositions unless independently proven via GT-R1 (EXPECTED_FIX_*).
  */
 export function comparePhysicalStateShadowDecisions(
   input: PhysicalStateShadowComparisonInput,
 ): PhysicalStateShadowComparisonResult {
-  const classification = classifyDecisionPair(input);
+  const provenSameStateRefresh = resolveProvenSameStateRefresh(input);
+  const enrichedInput: PhysicalStateShadowComparisonInput = {
+    ...input,
+    provenSameStateRefresh,
+  };
+  const classification = classifyDecisionPair(enrichedInput);
   const physicalEffectiveState = resolvePhysicalEffectiveState(input);
+  const comparisonDomain = inferPhysicalStateShadowComparisonDomain(enrichedInput);
   const correctnessBlocking = isShadowClassificationCorrectnessBlocking(classification, {
     bindingDivergenceUnexplained: input.bindingDivergenceExplained !== true,
   });
@@ -184,7 +263,8 @@ export function comparePhysicalStateShadowDecisions(
     legacyEvidenceObservedAt: toIso(input.legacyEvidenceObservedAt),
     correlationId: input.correlationId ?? null,
     evidenceReferenceId: input.evidenceReferenceId ?? null,
-    observedAt:
-      toIso(input.comparisonObservedAt) ?? getShadowComparisonObservedAt().toISOString(),
+    observedAt: toIso(input.comparisonObservedAt) ?? getShadowComparisonObservedAt().toISOString(),
+    comparisonDomain,
+    provenSameStateRefreshVariant: provenSameStateRefresh?.variant ?? null,
   };
 }
