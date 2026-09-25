@@ -362,6 +362,101 @@ describeFn(
       }
     });
 
+    it('H17/H18: ambiguous or invalid E3 evidence → fail closed (no VEE mutation)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const sessionN = await prisma.hvChargeSession.create({
+          data: {
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            segmentFingerprint: `native-${suffix}`,
+            dimoSegmentId: `dimo-${suffix}`,
+            source: 'DIMO_RECHARGE_SEGMENT',
+            startAt: new Date('2026-06-01T10:00:00.000Z'),
+            endAt: new Date('2026-06-01T11:00:00.000Z'),
+            deltaSocPercent: 40,
+            energyAddedKwh: 22,
+            isOngoing: false,
+            idempotencyKey: `n-${suffix}`,
+            metadata: { qualityStatus: 'QUALIFIED' },
+          },
+        });
+        const validMeta = {
+          supersededBySegmentFingerprint: sessionN.segmentFingerprint,
+          supersededAt: '2026-06-01T12:00:00.000Z',
+          erdMatchVersion: 1,
+          erdMatchReason: 'same',
+        };
+        await prisma.hvChargeSession.createMany({
+          data: [
+            {
+              organizationId: org.id,
+              vehicleId: vehicle.id,
+              segmentFingerprint: `fb-a-${suffix}`,
+              source: 'TELEMETRY_POLL_FALLBACK',
+              startAt: new Date('2026-06-01T09:30:00.000Z'),
+              endAt: new Date('2026-06-01T10:30:00.000Z'),
+              deltaSocPercent: 35,
+              isOngoing: false,
+              idempotencyKey: `fa-${suffix}`,
+              metadata: validMeta,
+            },
+            {
+              organizationId: org.id,
+              vehicleId: vehicle.id,
+              segmentFingerprint: `fb-b-${suffix}`,
+              source: 'TELEMETRY_POLL_FALLBACK',
+              startAt: new Date('2026-06-01T09:35:00.000Z'),
+              endAt: new Date('2026-06-01T10:35:00.000Z'),
+              deltaSocPercent: 36,
+              isOngoing: false,
+              idempotencyKey: `fb-${suffix}`,
+              metadata: validMeta,
+            },
+          ],
+        });
+        const ambiguous = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionN.id,
+        });
+        expect(ambiguous.outcome).toBe(
+          ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.AMBIGUOUS_PREDECESSOR,
+        );
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(0);
+
+        await prisma.hvChargeSession.deleteMany({
+          where: { vehicleId: vehicle.id, source: 'TELEMETRY_POLL_FALLBACK' },
+        });
+        await prisma.hvChargeSession.create({
+          data: {
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            segmentFingerprint: `fb-invalid-${suffix}`,
+            source: 'TELEMETRY_POLL_FALLBACK',
+            startAt: new Date('2026-06-01T09:30:00.000Z'),
+            endAt: new Date('2026-06-01T10:30:00.000Z'),
+            deltaSocPercent: 35,
+            isOngoing: false,
+            idempotencyKey: `finv-${suffix}`,
+            metadata: { supersededBySegmentFingerprint: sessionN.segmentFingerprint },
+          },
+        });
+        const invalid = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionN.id,
+        });
+        expect(invalid.outcome).toBe(
+          ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.INVALID_SUPERSESSION_EVIDENCE,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('H20: E3 SAME but no fallback VEE → ordinary native CREATE', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
