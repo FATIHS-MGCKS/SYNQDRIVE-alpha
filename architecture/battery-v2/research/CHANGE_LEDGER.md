@@ -6,6 +6,94 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3.1.2 C1 primary-metric envelope closure (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3.1.1 accepted impossible C1 states (e.g. `numberOfValidRestPoints=0` with non-null slope). |
+| **OBSERVATION** | `computeRestSessionRetentionFeatures()` zero-count and one-count control flow fixes required-null primary fields. |
+| **HYPOTHESIS** | E3 can reject impossible upstream combinations without inferring C1 internals. |
+| **CHANGE** | Extended `validateObservationNumerics` zero/one-point C1 envelope; fixed E3.1.1 test F; `longitudinal-health-evaluation.e312-c1-envelope.spec.ts`. |
+| **WHY** | Prevent E3 from evaluating metrics from states C1 cannot produce. |
+| **EXPECTED_EFFECT** | **`E3_1_2_C1_ENVELOPE=PASS`**; E3 golden unchanged. |
+| **VALIDATION** | E3 + E3.1 + E3.1.1 + E3.1.2 specs; E1/longitudinal regressions. |
+| **OBSERVED_EFFECT** | Pending PR #1778 amend. |
+| **NON_EFFECTS** | No E2 math, runtime, calibration, or golden change when input legal. |
+| **REGRESSIONS_OR_TRADEOFFS** | Forged malformed E1 combinations now reject (intended). |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1.2). |
+| **DECISION_STATUS** | **E3_1_2_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778; C1 policy cross-check |
+
+---
+
+## CL-2026-09-25 — M3.3E E3.1.1 V1 comparability / context closure (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3.1 @ PR #1778 — `SAME_SEGMENT_COMPARABLE` reachable on empty/non-UNKNOWN metric series; `firstRestPointAgeMs` could be derived with `observationSpanMs ?? 0`. |
+| **OBSERVATION** | E2 §6.2 marks `SAME_SEGMENT_COMPARABLE` unreachable under V1 UNSET; C1 retention requires paired `maxActualRestAgeMs` / `observationSpanMs`. |
+| **HYPOTHESIS** | Narrow closure fixes comparability + context derivation without changing estimators or calibration. |
+| **CHANGE** | UNSET profile always emits `SAME_SEGMENT_CONTEXT_LIMITED`; charge-class mirror reject; C1 E3 feature envelope + rest-age pair invariant; exact first-point-age derivation only when both inputs non-null; `longitudinal-health-evaluation.e311-v1-closure.spec.ts`. |
+| **WHY** | Final E2 V1 contract alignment before E3 merge. |
+| **EXPECTED_EFFECT** | **`E3_1_1_V1_CLOSURE=PASS`**; E3 golden updates only if comparability in canonical body changes. |
+| **VALIDATION** | E3 + E3.1 + E3.1.1 specs; E1/longitudinal regressions; graph/registry validators. |
+| **OBSERVED_EFFECT** | Pending PR #1778 amend merge. |
+| **NON_EFFECTS** | No runtime, persistence, calibration numerics, or E2 mathematics changes. |
+| **REGRESSIONS_OR_TRADEOFFS** | E3 result golden may change for metrics with empty series (comparability field). |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`; M3.3F separate. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1.1 closed). |
+| **DECISION_STATUS** | **E3_1_1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778; E3.1.1 tests |
+
+---
+
+## CL-2026-09-25 — M3.3E E3 pure longitudinal health evaluator (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2 contract frozen on main (PR #1773 + seal #1775); E1 adapter on main; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**. |
+| **OBSERVATION** | E3 scope is pure fail-closed evaluator only — no Nest, DB, flags, or conclusion-bearing output under `M3_3E_CALIBRATION_UNSET_V1`. |
+| **HYPOTHESIS** | Frozen E2 §6.4–§12.3 can be implemented mechanically without new scientific semantics. |
+| **CHANGE** | Added `evaluateM3_3E_LongitudinalHealthEvaluationV1` + UNSET calibration profile + unit/golden tests; authority doc `M3_3E_E3_PURE_LONGITUDINAL_HEALTH_EVALUATOR_2026-09-25.md`; `CURRENT_STATE` marks E3 **draft PR** (not complete on main). |
+| **WHY** | Close E3 engineering gate while preserving **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **EXPECTED_EFFECT** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`**; E1 golden unchanged; longitudinal regressions PASS. |
+| **VALIDATION** | `longitudinal-health-evaluation.spec.ts`; E1 + D1–D4 longitudinal jest suites; `validate-graph.sh`; `validate-module-registry.sh`. |
+| **OBSERVED_EFFECT** | Pending E3 draft PR merge to main. |
+| **NON_EFFECTS** | No production reachability, persistence, readiness, LV assessment, publication, deploy, or calibration numeric defaults. |
+| **REGRESSIONS_OR_TRADEOFFS** | None observed in regression run. |
+| **REMAINING_GAPS** | All `CAL-M3.3E-*` unset; M3.3F+ natural/product gates unchanged. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **DECISION_STATUS** | **E3_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal evaluator (implementation only) |
+| **EVIDENCE** | `M3_3E_E3_GOLDEN_RESULT_FINGERPRINT_LITERAL`; `M3_3E_CALIBRATION_UNSET_PROFILE_FINGERPRINT_V1` |
+
+---
+
+## CL-2026-09-25 — M3.3E E3.1 pre-merge contract conformance hardening (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3 draft evaluator on PR #1778 with partial E1 revalidation, metric-global context descriptors, and historical E2 ledger drift. |
+| **OBSERVATION** | Pre-merge gate requires append-only ledger integrity, full E1 evidence/coverage/segment validation, per-metric series scoping, and completed test matrix. |
+| **HYPOTHESIS** | Hardening can close conformance gaps without changing frozen E2 scientific semantics. |
+| **CHANGE** | Restored historical E2 seal ledger entry from main; expanded fail-closed validation; metric-scoped context/outliers/comparability; FIRST_POINT_AGE reason scoping; fingerprint helper + sensitivity tests; expanded E3 spec matrix. |
+| **WHY** | Make PR #1778 merge-safe under E2/E1 authority without runtime reachability. |
+| **EXPECTED_EFFECT** | **`E3_1_CONFORMANCE=PASS`** on draft branch; E1 golden unchanged; E3 golden may update only if scoping fixes change canonical body. |
+| **VALIDATION** | `longitudinal-health-evaluation.spec.ts`; E1 + longitudinal regressions; graph/registry validators. |
+| **OBSERVED_EFFECT** | Pending merge of PR #1778 amend. |
+| **NON_EFFECTS** | No Nest/Prisma/flags/persistence/deploy; no calibration numerics; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None intended. |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`; M3.3F gate separate. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1 hardened). |
+| **DECISION_STATUS** | **E3_1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778 exact-head CI; E3.1 test matrix |
+
+---
+
 ## CL-2026-09-25 — drive-profile ownership (TDL-OQ-002 cross-authority)
 
 | Field | Value |
