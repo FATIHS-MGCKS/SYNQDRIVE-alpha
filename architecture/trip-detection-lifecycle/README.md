@@ -25,7 +25,7 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 
 Phase 1 is **not** fully complete while dead/legacy inventory, the full feature-flag matrix, Mapbox/FMM failure taxonomy, and the Driving Intelligence handoff (TDL-OQ-001 — **next engineering audit slice**) remain unresolved.
 
-**Reconstruction reality (2026-09-25):** Production @ `99d722b4…` carries Qualified Stop V1 (#1753) and post-split finalize quality (#1750). **TDL-OQ-001** handoff contract documented (TDL-EVID-OQ001-HANDOFF-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by **TDL-OQ-006**, **TDL-OQ-002**, and OQ-001 bounded gaps.
+**Reconstruction reality (2026-09-25):** Production @ `99d722b4…`. **TDL-OQ-001** **RESOLVED** (handoff TDL-EVID-OQ001-HANDOFF-001; org invariant TDL-EVID-OQ001-1-ORG-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by **TDL-OQ-006**, **TDL-OQ-002**, and other open OQs.
 
 Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) are **supporting evidence only** — linked via [`evidence/EVIDENCE_INDEX.md`](evidence/EVIDENCE_INDEX.md).
 

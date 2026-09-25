@@ -149,7 +149,8 @@ Coordinator states (`PENDING` / `IN_PROGRESS` / `PARTIAL` / `COMPLETED` / `FAILE
 | Reconciliation repair finalize | **YES** (`REPAIR_FINALIZE`) | DI reconciliation | **YES** | **SAFE** |
 | Boundary repair refresh | **YES** (`REPAIR_FINALIZE`) | DI reconciliation | **YES** | **SAFE** |
 | Retroactive intra-gap split repair | **YES** (`enqueueRepairEnrichment`) | DI reconciliation | **YES** | **SAFE** |
-| Missing `organizationId` at finalize | **SKIP** (producer returns null) | **GAP** — no documented DI scan for this skip | — | **GAP** |
+| Missing **job context** `organizationId` at finalize | **SKIP** (producer returns null) | **YES** — `TRIP_WITHOUT_ANALYSIS_RUN` uses **`vehicle.organizationId`** (see TDL-EVID-OQ001-1-ORG-001) | — | **SAFE** (recoverable) |
+| Missing **`vehicles.organization_id`** | N/A — trip FK to vehicle | **NO** — org-scoped scan cannot index vehicle | DB NOT NULL | **STRUCTURALLY_IMPOSSIBLE** (prod: 0 rows) |
 
 ## Phase 8 — Production read-only audit
 
@@ -209,7 +210,7 @@ TDL: VehicleTrip.tripStatus=COMPLETED persisted
 ## Phase 11 — Bounded gaps (not runtime defects)
 
 1. **Non-atomic** COMPLETED commit vs DI enqueue — mitigated by **persisted jobs + 10m reconciliation**, bounded **14d** lookback.
-2. **Missing `organizationId`** skips DI init entirely — **no** proven recovery path in DI reconciliation scan.
+2. ~~**Missing `organizationId`** skips DI init with no recovery~~ — **superseded by TDL-OQ-001.1:** null **producer context** org is recoverable via vehicle-scoped reconciliation; null **vehicle** org is DB-forbidden (TDL-EVID-OQ001-1-ORG-001).
 3. **Dual analysis surfaces** — legacy behavior enqueue + DI V2 init both run post-finalize; UI `tripAnalysisStatus` may track legacy coordinator more visibly than DI run rows.
 4. **Production temporal proof** — DB-correlated only (3 trips); not full log-based E2E seal.
 5. **Terminal FINALIZE recovery wake** re-schedules FSM finalize — **not** a direct DI init replay (DI reconciliation still covers missing runs).

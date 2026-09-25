@@ -73,6 +73,7 @@ Append-only record for this authority directory.
 | 2026-09-25 | PR #1750 / #1753 — **MERGED** + **PRODUCTION_PRESENT**; natural acceptance gaps documented explicitly | Docs-only authority | Same acceptance doc |
 | 2026-09-25 | PR #1757 accidental merge @ `301e4a32…` classified **NO_RUNTIME_DELTA_INTRODUCED**; isolated candidate `9f346230…` **DEPLOY_REQUIRED=NO** | Docs-only authority | [QUALIFIED_STOP_V1_ISOLATED_CANDIDATE_PROVENANCE.md](../../../docs/releases/QUALIFIED_STOP_V1_ISOLATED_CANDIDATE_PROVENANCE.md) |
 | 2026-09-25 | **TDL-OQ-001** COMPLETED → DI handoff authority audit — canonical producer/queue/recovery documented; Production 14d orphan scan 0/210 | Docs-only authority | [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) |
+| 2026-09-25 | **TDL-OQ-001.1** org invariant audit — **`STRUCTURALLY_IMPOSSIBLE`** durable org orphan; TDL-OQ-001 **RESOLVED** | Docs-only authority | [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

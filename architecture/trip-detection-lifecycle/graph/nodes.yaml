@@ -500,8 +500,8 @@ nodes:
     title: COMPLETED to Driving Intelligence handoff
     epistemic_status: CONFIRMED
     summary: >
-      Canonical producer→DI V2 contract documented (TDL-DEC-OQ001-001); bounded gaps remain
-      (non-atomic DB vs enqueue, 14d reconciliation, missing orgId skip, dual legacy+DI paths).
+      Handoff contract RESOLVED (TDL-DEC-OQ001-001); org orphan defect STRUCTURALLY_IMPOSSIBLE
+      (TDL-EVID-OQ001-1-ORG-001). Non-atomic DB vs enqueue remains documented bounded behavior.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md
       - architecture/trip-detection-lifecycle/research/OPEN_QUESTIONS.md

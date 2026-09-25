@@ -2,7 +2,7 @@
 
 | OQ ID | Question | Priority | Blocking promotion? | Status (2026-09-25) |
 |-------|----------|----------|---------------------|---------------------|
-| **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | Partial — contract documented | **PARTIALLY_RESOLVED** — see §TDL-OQ-001 below | **OPEN** — **next Authority-Engineering audit slice** |
+| **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | No — contract + org invariant closed | **RESOLVED** — see §TDL-OQ-001 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | OPEN |
 | **TDL-OQ-003** | Why does Production have only 6 `vehicle_trip_detection_states` rows while tracking runs are in the thousands per week? | Medium | No | OPEN (historical aggregate; re-verify on `99d722b4…` when needed) |
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
@@ -43,16 +43,18 @@
 - Persisted handoff intent: **`DrivingAnalysisRun` + `DrivingIntelligenceJob`** before BullMQ
 - Recovery: **`DrivingAnalysisReconciliationService`** (`TRIP_WITHOUT_ANALYSIS_RUN`, `PENDING_JOB_RETRY`, 10m leader scheduler)
 
-**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — not a confirmed handoff-loss defect; bounded reconciliation + documented edge cases (missing `organizationId`, 14d lookback).
+**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — not a confirmed handoff-loss defect; non-atomic DB vs enqueue + 14d reconciliation bound accepted.
 
-**Status:** **PARTIALLY_RESOLVED** — promotion still blocked for undifferentiated “full DI production seal” claims until bounded gaps are closed or explicitly accepted.
+**Org invariant (TDL-OQ-001.1):** [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) (TDL-EVID-OQ001-1-ORG-001) — **`STRUCTURALLY_IMPOSSIBLE`** for durable COMPLETED trip with missing vehicle org + unrecoverable DI; producer null-context skip is recoverable via `TRIP_WITHOUT_ANALYSIS_RUN` when vehicle has org.
+
+**Status:** **RESOLVED** — authority question answered; non-atomic enqueue is documented behavior, not an open org orphan defect.
 
 ## TDL-OQ-001 / TDL-OQ-006 — sequencing
 
 | OQ | Required state |
 |----|----------------|
-| **TDL-OQ-001** | Remains **PARTIALLY_RESOLVED** — handoff contract documented (TDL-EVID-OQ001-HANDOFF-001); bounded gaps remain |
-| **TDL-OQ-006** | Remains **OPEN** — schedule **after** OQ-001 baseline |
+| **TDL-OQ-001** | **RESOLVED** — TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001 |
+| **TDL-OQ-006** | **OPEN** — may proceed without OQ-001 blocker |
 
 ## Hypotheses (not confirmed)
 

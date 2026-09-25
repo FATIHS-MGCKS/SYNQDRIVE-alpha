@@ -88,7 +88,7 @@ POSSIBLE_END (possibleEndEnteredAt clocked)
 
 ## Open boundaries
 
-- COMPLETED → Driving Intelligence handoff (TDL-GAP-001) — **contract documented** (TDL-DEC-OQ001-001); bounded gaps (atomicity, orgId skip, dual paths) remain under TDL-OQ-001 **PARTIALLY_RESOLVED**
+- COMPLETED → Driving Intelligence handoff (TDL-GAP-001) — **RESOLVED** (TDL-DEC-OQ001-001; org invariant TDL-EVID-OQ001-1-ORG-001)
 - `drive-profile/` ownership (TDL-GAP-002)
 - Natural R9 wake end-to-end delivery (TDL-GAP-013; cross-ref DIM-GAP-006)
 - DIMO Integration `AUDIT_IN_PROGRESS` — segment/trigger ownership gaps remain (TDL-CX-006 partially superseded)
