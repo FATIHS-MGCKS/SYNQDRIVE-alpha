@@ -19,6 +19,7 @@
 | **REPO_CURRENT** | `d6ff7e19…` | Mainline code @ rebaseline audit — **ahead/behind Production independently** |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
+| **OQ001_COMPLETED_TO_DI_HANDOFF** | TDL-EVID-OQ001-HANDOFF-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — canonical producer + DI queue proven; **not** DB⊕queue atomic |
 | **PRE_HARDENING_R12_PRODUCTION (historical)** | `157b3c722…` | **HISTORICAL** deploy — TDL-EV-R12-PROD-DEPLOY-001 |
 | **SHADOW_RUNTIME (Production)** | @ `99d722b4…` | **PRESENT** + **ENABLED** — divergences **NOT_EVALUATED_SHORT_WINDOW** |
 
@@ -234,7 +235,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Histor
 
 ## UNKNOWN facts
 
-- Exact COMPLETED → Driving Intelligence durable handoff (TDL-OQ-001)
+- ~~Exact COMPLETED → Driving Intelligence durable handoff (TDL-OQ-001)~~ → **PARTIALLY_RESOLVED** — see TDL-EVID-OQ001-HANDOFF-001 (bounded gaps remain)
 - `drive-profile/` ownership (TDL-OQ-002)
 - ClickHouse trip-assist runtime on Production
 - Complete trip feature-flag matrix
