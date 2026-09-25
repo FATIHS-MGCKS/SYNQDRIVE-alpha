@@ -24,6 +24,7 @@
 | DIM-EV-KS-MS-661-R9-001 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_2026-09-08.md](KS_MS_661_R9_WAKE_2026-09-08.md) | **First** natural R9 trigger delivery observed (tokenId 187361); 22 webhook logs window A on replica A; 19:53:24 **not** proven ignition-off | CONFIRMED_AT_PRODUCTION_RELEASE @ `684950419…` | Cross-ref TDL-EVID-KS-MS-661-001; payload archive gap |
 | DIM-EV-KS-MS-661-R9-002 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_R11_2026-09-09.md](KS_MS_661_R9_WAKE_R11_2026-09-09.md) | **Second** natural start wake @ R11 `f7eb94cb…`; FSM `DIMO_TRIGGER`/`IGNITION_ON` @ 04:38:17Z; replica A | CONFIRMED_AT_PRODUCTION_RELEASE @ `f7eb94cb…` | Start wake only; end-path wake not observed |
 | DIM-EV-WEBHOOK-OPS-001 | OPERATIONS_RUNBOOK | [operations/WEBHOOK_OPERATIONS.md](../operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (auth, list, create, subscribe, PUT update, rollback); UNPLUG recovery PUT executed 2026-09-12 | CONFIRMED | Cross-ref VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
+| DIM-EVID-OQ006-BOUNDARY-001 | PRODUCTION_OBSERVATION | [../trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](../trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) | DIM-GAP-001 / segment vs FSM boundary ownership | CONFIRMED @ `99d722b4…` audit window | Cross-ref TDL-EVID-OQ006-BOUNDARY-001 |
 
 ## Cross-reference
 

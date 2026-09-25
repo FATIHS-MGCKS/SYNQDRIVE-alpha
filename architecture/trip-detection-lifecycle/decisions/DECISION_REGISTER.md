@@ -203,7 +203,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **INDEPENDENT AUTHORITY** | `MAX_IGNORABLE_UNCOVERED_SPAN_SECONDS=180` remains repair/coverage — **not** the V1 qualified-stop contract |
 | **VALIDATION** | CI + Production read-only acceptance TDL-EVID-QS-V1-PROD-ACCEPT-001 |
 | **PRODUCTION STATUS** | **PRODUCTION_PRESENT** @ `99d722b4…` (#1753 merge `b0a7cd089…`); natural SAME_TRIP **3/3 PASS**; classification **`PASS_WITH_EVIDENCE_GAPS`** — **not** `FULLY_PRODUCTION_VALIDATED` |
-| **NON_EFFECTS** | Does not auto-repair historical trips; does not replace DIMO Segments canonical boundary authority (TDL-OQ-006); does not close TDL-OQ-007 for all R1–R8 paths |
+| **NON_EFFECTS** | Does not auto-repair historical trips; does not grant DIMO segments live FSM override authority (see TDL-DEC-OQ006-001); does not close TDL-OQ-007 for all R1–R8 paths |
 | **EVIDENCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001; [QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md](../evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md) |
 
 ---
@@ -220,3 +220,18 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | Read-only audit @ `99d722b4…`: **0** COMPLETED trips without TRIP_ENRICHMENT run in **14d** (n=210) |
 | **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ001-HANDOFF-001 |
 | **EVIDENCE** | TDL-EVID-OQ001-HANDOFF-001 |
+
+---
+
+## TDL-DEC-OQ006-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-006 / DIM-GAP-001 OPEN — unclear whether DIMO segments or live FSM own canonical trip boundaries when both exist |
+| **WHY** | Cross-module operators need a single conflict-safe contract for start/end/split when provider segments arrive after live FSM persistence |
+| **CHANGE** | **Live FSM + `TripDecisionEngine`** own lifecycle boundaries; **`DimoSegmentsService`** is transport/normalization only; **`TripReconciliationService`** consumes segments as repair evidence (missing trip, optional partial extension) under overlap/partial-boundary/qualified-stop gates; **DI segment validation read-only** |
+| **NON-EFFECTS** | Does not re-enable V1 segment sync writers; does not make mechanism fallback order a live FSM hierarchy; does not auto-merge/unsplit live mid-gap decisions from DIMO alone |
+| **PRODUCTION STATUS** | Read-only @ `99d722b4…`: 7 partial boundary repairs, 134 DIMO missing-trip applies (90d), 672 suppressions, 0 confirmed boundary corruption |
+| **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ006-BOUNDARY-001 |
+| **EVIDENCE** | TDL-EVID-OQ006-BOUNDARY-001 |

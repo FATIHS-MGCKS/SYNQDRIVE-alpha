@@ -9,7 +9,7 @@ Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 | **TDL-GAP-003** | Full fleet FSM row coverage | INFERRED | Production shows 6 detection states vs ~2000 trips — cohort/telematics subset unclear |
 | **TDL-GAP-004** | Route artifact coverage (~4.7%) | CONFIRMED aggregate | Why 94/1994 completed trips have artifacts — root cause not proven |
 | **TDL-GAP-005** | ClickHouse trip-assist runtime | UNKNOWN | Flag present on Production; mirror contents not queried |
-| **TDL-GAP-006** | DIMO segment reconciliation vs live FSM | PARTIAL | `TripReconciliationService` + `dimoSegmentId` exist; segment authority split documented partially via [DIMO Integration](../../dimo-integration/) `AUDIT_IN_PROGRESS` bootstrap |
+| **TDL-GAP-006** | DIMO segment reconciliation vs live FSM | **RESOLVED** | TDL-EVID-OQ006-BOUNDARY-001 — live FSM + TripDecisionEngine canonical; DIMO repair evidence only |
 | **TDL-GAP-007** | Complete feature-flag matrix | UNKNOWN | Only trip-adjacent env keys sampled on Production |
 | **TDL-GAP-008** | Mapbox/FMM failure recovery paths | UNKNOWN | Route V2 pipeline referenced in code; failure taxonomy not reconstructed |
 | **TDL-GAP-009** | Pre-R9 deploy drift (R8/R9) | **HISTORICAL** | At `01541c2ab…` R8/R9 NOT_ON_PRODUCTION; resolved @ `0ba96e03…` |
