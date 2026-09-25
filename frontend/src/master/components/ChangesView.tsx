@@ -13274,6 +13274,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e5-6-write-authority-cutover-2026-09-25',
+    version: '4.9.912',
+    title: 'ERD E5.6 — recharge write-authority cutover gate',
+    summary: [
+      'Single write-authority resolver (`ERD_RECHARGE_WRITE_CUTOVER_AUTHORIZED` + `ERD_RECHARGE_WRITE_CUTOVER_AT`) with physical evidence end boundary.',
+      'Legacy DIMO RECHARGE upsert gate + canonical-row protection; canonical projection runtime after HV session reconcile (isolated from E3 transaction).',
+      'CANONICAL authority requires Battery HV session + fallback + reconciliation + E5.5 read dedupe; default OFF — no Production activation.',
+      'PostgreSQL + unit gates (boundary-repair step 13/13); no schema migration; no historical backfill.',
+    ],
+    reason:
+      'E5.5 merged — code must enforce exactly one product writer per post-cutover recharge episode without weakening E5.2 collision protection or mutating historical rows.',
+    previousBehavior:
+      'Legacy DIMO writer always persisted RECHARGE VEE; projectCanonicalRecharge was test-only with no automatic runtime cutover.',
+    details:
+      'erd-recharge-write-authority/*; energy-events.service.ts; hv-recharge-session-reconcile.service.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-6-WRITE-AUTHORITY-CUTOVER-GATE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
     id: 'erd-e5-5-product-read-dedupe-2026-09-25',
     version: '4.9.911',
     title: 'ERD E5.5 — canonical recharge product-read dedupe',

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.config';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
@@ -16,6 +16,9 @@ import {
   type HvRechargeSessionReconcileTrigger as HvRechargeSessionReconcileTriggerType,
 } from './hv-recharge-session-reconcile.trigger';
 import type { HvChargeSessionIngestResult } from './hv-charge-session-ingest.service';
+import type { HvChargeSessionPersistResult } from './hv-charge-session.types';
+import { ErdRechargeCanonicalProjectionRuntimeService } from '../../energy-events/erd-recharge-write-authority/erd-recharge-canonical-projection-runtime.service';
+import type { HvFallbackChargeSessionDetectResult } from './hv-fallback-charge-session-detector.service';
 
 export interface HvRechargeSessionReconcileInput {
   organizationId: string;
@@ -52,6 +55,8 @@ export class HvRechargeSessionReconcileService {
     private readonly ingest: HvChargeSessionIngestService,
     private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
     private readonly metrics: TripMetricsService,
+    @Optional()
+    private readonly erdCanonicalProjectionRuntime?: ErdRechargeCanonicalProjectionRuntimeService,
   ) {}
 
   async reconcile(input: HvRechargeSessionReconcileInput): Promise<HvRechargeSessionReconcileResult> {
@@ -94,6 +99,7 @@ export class HvRechargeSessionReconcileService {
         correlationId: input.correlationId,
         evaluatedAt: window.to,
       });
+      this.scheduleCanonicalProjection(input, undefined, fallback);
       return {
         skipped: fallback.skipped,
         skipReason: fallback.skipped ? 'capability_unavailable' : undefined,
@@ -139,6 +145,7 @@ export class HvRechargeSessionReconcileService {
           correlationId: input.correlationId,
           evaluatedAt: window.to,
         });
+        this.scheduleCanonicalProjection(input, ingest, fallback);
         return { skipped: false, ingest, fallback };
       }
 
@@ -163,6 +170,7 @@ export class HvRechargeSessionReconcileService {
         correlationId: input.correlationId,
         evaluatedAt: window.to,
       });
+      this.scheduleCanonicalProjection(input, ingest, fallback);
       return { skipped: false, ingest, fallback };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -212,5 +220,44 @@ export class HvRechargeSessionReconcileService {
     this.logger.debug(
       `HV recharge reconcile vehicle window=${HV_RECHARGE_ROLLING_WINDOW_DAYS}d fetched=${ingest.fetched} created=${ingest.created} updated=${ingest.updated} unchanged=${ingest.unchanged}`,
     );
+  }
+
+  private scheduleCanonicalProjection(
+    input: HvRechargeSessionReconcileInput,
+    ingest?: HvChargeSessionIngestResult,
+    fallback?: HvFallbackChargeSessionDetectResult,
+  ): void {
+    if (!this.erdCanonicalProjectionRuntime) return;
+
+    const sessionResults = this.collectPersistedSessions(ingest, fallback);
+    if (sessionResults.length === 0) return;
+
+    void this.erdCanonicalProjectionRuntime
+      .projectAfterPhysicalReconcile({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        sessionResults,
+        correlationId: input.correlationId,
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `ERD canonical projection post-reconcile hook failed vehicle=${input.vehicleId}: ${message}`,
+        );
+      });
+  }
+
+  private collectPersistedSessions(
+    ingest?: HvChargeSessionIngestResult,
+    fallback?: HvFallbackChargeSessionDetectResult,
+  ): HvChargeSessionPersistResult[] {
+    const byId = new Map<string, HvChargeSessionPersistResult>();
+    for (const row of ingest?.results ?? []) {
+      byId.set(row.session.id, row);
+    }
+    for (const row of fallback?.results ?? []) {
+      byId.set(row.session.id, row);
+    }
+    return [...byId.values()];
   }
 }

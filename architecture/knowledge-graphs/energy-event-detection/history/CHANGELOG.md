@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E5.6 write-authority cutover gate
+
+- Single `evaluateErdRechargeWriteAuthority` resolver (LEGACY | CANONICAL only).
+- Legacy RECHARGE upsert gate + canonical-row protection; canonical projection runtime wired post-HV reconcile.
+- Strict cutover authorization (`true` only); prerequisite conjunction includes E5.5 read dedupe.
+- Evidence: `ERD-E5-6-WRITE-AUTHORITY-CUTOVER-GATE-2026-09-25.md` (EED-EV-0086). No Production activation.
+
 ## 2026-09-25 — ERD E5.5 product-read RECHARGE dedupe
 
 - Evidence: `evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md`
