@@ -18,31 +18,29 @@ export async function probeChargingStationPostgresDatabase(): Promise<boolean> {
   }
 }
 
+async function executeSqlStatements(prisma: PrismaClient, sql: string): Promise<void> {
+  const buffer: string[] = [];
+  for (const line of sql.split('\n')) {
+    const stripped = line.trim();
+    if (!stripped || stripped.startsWith('--')) continue;
+    buffer.push(line);
+    if (stripped.endsWith(';')) {
+      const statement = buffer.join('\n').trim();
+      buffer.length = 0;
+      if (statement.toUpperCase().startsWith('CREATE SCHEMA')) continue;
+      await prisma.$executeRawUnsafe(statement);
+    }
+  }
+}
+
 export async function ensureChargingStationOsmSchema(prisma: PrismaClient): Promise<void> {
-  const schemaPath = join(
-    process.cwd(),
-    'scripts/ops/osm-charging-stations/schema.sql',
-  );
-  const sql = readFileSync(schemaPath, 'utf8');
-  const statements = sql
-    .split(';')
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0 && !part.startsWith('--'));
+  await prisma.$executeRawUnsafe('CREATE SCHEMA IF NOT EXISTS osm');
 
-  for (const statement of statements) {
-    await prisma.$executeRawUnsafe(`${statement};`);
-  }
+  const schemaPath = join(process.cwd(), 'scripts/ops/osm-charging-stations/schema.sql');
+  await executeSqlStatements(prisma, readFileSync(schemaPath, 'utf8'));
 
-  const indexSql = readFileSync(
-    join(process.cwd(), 'scripts/ops/osm-charging-stations/build_staging_indexes.sql'),
-    'utf8',
-  );
-  for (const statement of indexSql
-    .split(';')
-    .map((part) => part.trim())
-    .filter(Boolean)) {
-    await prisma.$executeRawUnsafe(`${statement};`);
-  }
+  const indexPath = join(process.cwd(), 'scripts/ops/osm-charging-stations/build_staging_indexes.sql');
+  await executeSqlStatements(prisma, readFileSync(indexPath, 'utf8'));
 
   await prisma.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS charging_stations_centroid_gist

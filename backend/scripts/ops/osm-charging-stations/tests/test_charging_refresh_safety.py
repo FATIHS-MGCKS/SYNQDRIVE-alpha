@@ -32,14 +32,23 @@ def _connect():
 
 def _apply_schema(conn) -> None:
     schema_sql = (ROOT / 'schema.sql').read_text(encoding='utf-8')
-    statements = [
-        s.strip()
-        for s in schema_sql.split(';')
-        if s.strip() and not s.strip().startswith('--')
-    ]
     with conn.cursor() as cur:
-        for statement in statements:
-            cur.execute(f'{statement};')
+        cur.execute('CREATE SCHEMA IF NOT EXISTS osm')
+    conn.commit()
+
+    buffer: list[str] = []
+    for line in schema_sql.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('--'):
+            continue
+        buffer.append(line)
+        if stripped.endswith(';'):
+            statement = '\n'.join(buffer).strip()
+            buffer.clear()
+            if statement.upper().startswith('CREATE SCHEMA'):
+                continue
+            with conn.cursor() as cur:
+                cur.execute(statement)
     conn.commit()
 
 
