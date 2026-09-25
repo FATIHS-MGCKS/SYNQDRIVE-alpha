@@ -6,6 +6,91 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+---
+
+## CL-2026-09-25 — M3.3E E2.1.2 trend-state structural semantic closure (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2.1.1 @ `69f2d9c0d` — §7.2 and §16 implied `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` when dispersion/step gates failed; conflated trend availability with secondary statistics. |
+| **OBSERVATION** | `trendState` must reflect `METRIC_TREND_EVALUABLE` only; level-only metrics can still yield `EVALUATED_DESCRIPTIVE_ONLY`. |
+| **HYPOTHESIS** | Freezing `trendState` assignment in §6.4/§7.2/§11.4 Cases A–D removes last E3 interpretation freedom without changing E2.1.1 gates. |
+| **CHANGE** | Amend E2 doc: per-metric `trendState` rules; truth table Cases A–D; fix §16 rows 2/2b; §19 tests; §20 flags (`TREND_STATE_*`, `ONE_POINT_*`, etc.). |
+| **WHY** | E3 must not mark trend not-evaluable when only MAD or step magnitude is unavailable. |
+| **EXPECTED_EFFECT** | 2+ distinct anchors under UNSET ⇒ `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` even when MAD/step null. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only. |
+| **OBSERVED_EFFECT** | Pending merge — PR #1773 amend. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies E2.1.1 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers. |
+| **AFTER** | **`TREND_STATE_SEMANTICS_FROZEN=YES`**; **`TREND_STATE_NOT_EVALUABLE_GATE=METRIC_TREND_EVALUABLE`**; dispersion/step gates cannot invalidate `trendState`. |
+| **EVIDENCE** | Cross-section audit §6.4 / §7.2 / §11.4 / §16. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1.2 on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
+## CL-2026-09-25 — M3.3E E2.1.1 final pre-merge semantic closure (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2.1 @ `53ddf00df` — `METRIC_DISPERSION_EVALUABLE` (≥3 anchors) incorrectly gated step magnitude; pairwise Theil-Sen allowed silent omission of non-finite slopes on valid time pairs. |
+| **OBSERVATION** | Independent review: §5.3 step minimum (≥4) contradicted §6.4/§7.1 dispersion gate for step; omitting non-finite slopes changes Theil-Sen population. |
+| **HYPOTHESIS** | Separate `METRIC_STEP_EVALUABLE` and fail-closed reject on non-finite valid-pair slopes restore single coherent structural rules. |
+| **CHANGE** | Amend E2 doc: add `METRIC_STEP_EVALUABLE`; gate `residualMadQuantized` vs `stepChangeMagnitudeQuantized`; §7.1 pairwise fail-closed table; align §12.3, §16, §19 tests, §20 flags (`STEP_CHANGE_*`, `NONFINITE_*`). |
+| **WHY** | E3 must not treat 3-point series as step-capable or drop slope pairs silently. |
+| **EXPECTED_EFFECT** | 3 anchors ⇒ MAD only; 4+ with valid split ⇒ step descriptive only; overflow on valid pair ⇒ typed reject. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only. |
+| **OBSERVED_EFFECT** | Pending merge — PR #1773 amend. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies E2.1 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers. |
+| **AFTER** | **`STEP_CHANGE_GATE_CONTRADICTION_RESOLVED=YES`**; **`METRIC_STEP_EVALUABILITY_SEMANTICS_FROZEN=YES`**; **`NONFINITE_VALID_TIME_PAIR_SLOPE_OMITTED=NO`**; **`NUMERIC_OVERFLOW_FAIL_CLOSED=YES`**. |
+| **EVIDENCE** | Internal consistency search across E2 normative sections. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1.1 on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
+## CL-2026-09-25 — M3.3E E2.1 longitudinal health model contract hardening (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2 draft PR #1773 @ `9ee706544` — quantization left as “E3 engineering choice”; `evaluationStatus` vs uncalibrated descriptive output ambiguous; `vehicleSummary` referenced undifferentiated “structural minima”; trend/residual time arithmetic mixed epoch-relative wording. |
+| **OBSERVATION** | Four E3-blocking ambiguities remained in §7/§11/§12/§6.3 despite otherwise complete E2 architecture. |
+| **HYPOTHESIS** | Freezing integer units, relative-ms trend axis, evaluability predicates, and top-level status truth table removes all numerical-policy freedom without changing scientific conclusions. |
+| **CHANGE** | Amend `M3_3E_E2_LONGITUDINAL_HEALTH_MODEL_ARCHITECTURE_2026-09-25.md`: freeze §12.3 integer units + `Math.round` + safe-integer reject + relative `x_i`; §11.4 `evaluationStatus` truth table; §6.4 segment/metric evaluability + `vehicleSummary` mapping; §7 relative-ms Theil-Sen/residual intercept; align §16–§19/E3 test matrix + §20 machine flags. |
+| **WHY** | E3 must not re-decide numerical representation, top-level status semantics, or multi-segment summary rules. |
+| **EXPECTED_EFFECT** | E3 implements one deterministic numerical path; `EVALUATED_DESCRIPTIVE_ONLY` coexists with `NOT_ASSESSED` under UNSET calibration. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only diff. |
+| **OBSERVED_EFFECT** | Pending merge — contract-only amend on PR #1773. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy, or production mutation. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies prior E2 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers (`CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`). |
+| **AFTER** | **`E2_QUANTIZATION_CONTRACT_FROZEN=YES`**; **`EVALUATION_STATUS_SEMANTICS_FROZEN=YES`**; **`VEHICLE_SUMMARY_SEMANTICS_FROZEN=YES`**; **`E3_NUMERICAL_POLICY_CHOICE_REMAINING=NO`**; **`OPEN_E2_ARCHITECTURE_AMBIGUITIES=[]`**. |
+| **EVIDENCE** | Internal consistency audit of E2 doc; C1 Theil-Sen even-median convention; E1 `anchorAt` validation discipline. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1 hardening on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
+## CL-2026-09-25 — M3.3E E2 longitudinal battery health model architecture (scientific contract)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E1 `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` complete on main (PR #1765 @ `553ba670a`, seal PR #1771 @ `a37f372bf`); `modelSufficiency='NOT_EVALUATED'`; no scientific contract for longitudinal conclusions; `CURRENT_STATE` header still named only E0/E0.1/E0.2. |
+| **OBSERVATION** | E1 carries 11 per-session C1 descriptors + context; C2 V1 `chargeOpportunityClass` is always `UNKNOWN`; temperature is preceding trip-start exterior air; no natural C3 rows (shadow flag OFF); existing LV chemistry bands have `UNKNOWN` provenance; GE `sourceMeasurementId` shares `LIVE_VOLTAGE` provenance with LV Estimated Health measurements. |
+| **HYPOTHESIS** | Current evidence supports only same-segment descriptive statistics of measured rest-voltage descriptors; any condition, SOH, RUL, or replacement claim would be unsupported. |
+| **CHANGE** | Add `research/M3_3E_E2_LONGITUDINAL_HEALTH_MODEL_ARCHITECTURE_2026-09-25.md`: signal inventory, 7-layer semantic separation, sufficiency (structural minima + `CALIBRATION_REQUIRED` dimensions), comparability contract (no cross-segment pooling), Theil-Sen/Kendall trend semantics, temperature-as-context, no-deletion outlier policy, categorical calibration-capped confidence, `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1` output taxonomy (`condition='NOT_ASSESSED'` only), determinism/versioning, LV Estimated Health / readiness / persistence separation, 14 no-conclusion states, claim-control matrix, open-decision register, E3 boundary. Update `CURRENT_STATE` header, E2 row, roadmap/M3.3C/`NEXT_PHASE` rows. |
+| **WHY** | E3 needs a scientifically defensible, fail-closed contract before any evaluator code; the default must be "insufficient evidence", not invented thresholds. |
+| **EXPECTED_EFFECT** | E3 can implement a pure evaluator whose default output (`M3_3E_CALIBRATION_UNSET_V1`) is descriptive statistics + first-class no-conclusion. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh`; docs-only diff. |
+| **NON_EFFECTS** | No TypeScript/runtime change; no health model; no `BatteryAssessment`/`BatteryPublication` writes; no Prisma/migration; no flags; no readiness policy change; no Nest reachability; no D3 materialization; no deploy; no production data mutation; `LV_ESTIMATED_HEALTH` unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | V1 evaluator will produce no classification until calibration exists; this is intentional. |
+| **REMAINING_GAPS** | `CAL-M3.3E-001…011`; `PROD-M3.3G-001…007`, `PROD-M3.3H-001`; `NAT-M3.3F-001…009`. No open architecture blocker for a pure E3 evaluator. |
+| **AFTER** | **M3.3E E2 ARCHITECTURE COMPLETE**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`** (pure, non-persisted, fail-closed evaluator only); **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **EVIDENCE** | E1 types/adapter/golden `d426d1b0…` on main; C1 retention policies; C2 constants; C3 anchor binding; `lv-estimated-health-assessment.policy.ts`; `battery-readiness.policy.ts`; Prisma GE `sourceMeasurementId` FK. |
+| **DECISION_STATUS** | **PROPOSED** (architecture contract) — `E2_ARCHITECTURE_COMPLETE` |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E1 post-merge engineering seal
 
 | Field | Value |
