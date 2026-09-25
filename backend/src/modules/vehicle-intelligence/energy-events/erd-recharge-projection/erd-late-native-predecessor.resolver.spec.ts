@@ -8,7 +8,7 @@ describe('erd-late-native-predecessor.resolver', () => {
   const native = {
     source: 'DIMO_RECHARGE_SEGMENT',
     segmentFingerprint: 'native-fp',
-  } as Pick<HvChargeSession, 'source' | 'segmentFingerprint'>;
+  };
 
   it('requires persisted E3 supersession metadata', () => {
     expect(
