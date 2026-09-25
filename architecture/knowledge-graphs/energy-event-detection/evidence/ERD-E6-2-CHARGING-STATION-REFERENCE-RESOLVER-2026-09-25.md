@@ -52,6 +52,8 @@ Required Vehicle Detail `backend-boundary-postgres` job uses **PostGIS-enabled**
 
 Explicit closure tests: G3 polygon-edge fixture; I11 invalid geometry validation; I12 failed validation preserves L1 live dataset; pyosmium required in CI importer step.
 
+SynqDrive Code → Changes/Architektur UI entries for E6.2 are deferred to a separate PR (no mixed governance-authority + presentation change with `.github/workflows/*` per i18n authority protection).
+
 
 - No Production charging dataset import
 - No Prisma schema migration
