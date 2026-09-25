@@ -27,7 +27,8 @@ Deterministic **input inventory** for a bounded rest-session window (not longitu
 | **D3 foundation engineering** | **COMPLETE ON MAIN** PR #1746 @ merge `c5c1129f` — internal stack present; **`D3_RUNTIME_REACHABLE=NO`** |
 | **D4 architecture** | **COMPLETE ON MAIN** PR #1751 @ merge `158f9c516f` |
 | **D4 engineering V1** | **COMPLETE ON MAIN** PR #1754 @ merge `9a3e457d9` |
-| M3.3E | **NEXT** — architecture / consumption contract (not health logic) |
+| **M3.3E E0** | **ARCHITECTURE AUDIT (DRAFT PR)** — `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` |
+| **M3.3E health model** | **NOT IMPLEMENTED** |
 | M3.3F | **PENDING** / production shadow authorization |
 | M3.3G | **PENDING** |
 | M3.3H | **PENDING** customer Vehicle Detail → Health UI |

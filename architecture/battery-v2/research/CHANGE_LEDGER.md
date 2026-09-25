@@ -6,6 +6,43 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E0.2 final machine-contract seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0.1 closed pairing/fingerprint/segments but left `M3_3E_RevisionIdentityV1` undefined, evidenceWindow/segment window derivation implicit, optional diagnostic fields, E0-OD-002 implementer discretion. |
+| **CHANGE** | E0.2 amendments — normative `M3_3E_RevisionIdentityV1`, frozen `evidenceWindow` + eligible segment window derivation, deterministic V1 `diagnosticContext` (no optional reason lists), domain type reuse, E0-OD-002 deferred post-V1, expanded E1 test matrix notes. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`**; **`E1_PURE_OUTPUT_DETERMINISTIC=YES`**. |
+| **VALIDATION** | Docs-only; registry + graph validators. |
+| **NON_EFFECTS** | No runtime, E1 code, health logic, assessment writes, D3 materialization, deploy. |
+| **DECISION_STATUS** | **E0_2_MACHINE_CONTRACT_SEALED** (PR #1761) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
+## CL-2026-09-25 — M3.3E E0.1 longitudinal assessment consumption final contract closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0 audit (PR #1761) defined consumption direction but left machine-contract gaps: DEFAULT-only session set, optional fingerprint, recommended preimage, tuple regrouping segments, profile↔identity substitution, TypeScript-trust validation. |
+| **CHANGE** | E0.1 amendments to `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` — full D3 candidate partition pairing, slice mapping, scientific fingerprint rebind, D4 strict parser reuse, frozen fingerprint preimage, D2 `sourceSegmentIndex` preservation, coverage semantics, frozen `M3_3E_BuildOutcome` union, expanded E1 test matrix. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`** (architecture); contract frozen for pure E1 adapter. |
+| **VALIDATION** | Docs-only; registry + graph validators. |
+| **NON_EFFECTS** | No runtime, E1 code, health logic, assessment/publication writes, D3 materialization, deploy. |
+| **DECISION_STATUS** | **E0_1_CONTRACT_CLOSED** (PR #1761) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
+## CL-2026-09-25 — M3.3E E0 longitudinal assessment consumption architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 Engineering V1 complete on main; active docs pointed to M3.3E consumption architecture as next slice without a frozen `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` contract. |
+| **CHANGE** | Added `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` — D3+D4 pair identity, D4 outcome/per-session gates, version segments, time axis, input contract, consumption fingerprint, LV assessment isolation, persistence/M3.3F/M3.3G boundaries, E1 pure-adapter shape, E1 test matrix design. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`** (architecture); **`M3_3E_HEALTH_MODEL=NOT IMPLEMENTED`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **VALIDATION** | Docs-only; `validate-module-registry.sh` + `validate-graph.sh`. |
+| **NON_EFFECTS** | No runtime, schema, migration, flags, Nest/API/UI/CLI, BatteryAssessment/BatteryPublication writes, D3 materialization, deploy, production data mutation. |
+| **REMAINING_GAPS** | M3.3E E1 engineering; M3.3E+ health model; M3.3F authorization; M3.3G cutover; M3.3H UI. |
+| **DECISION_STATUS** | **E0_ARCHITECTURE_AUDIT_DRAFT** (PR #1761) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
 ## CL-2026-09-24 — M3.3D D4 Engineering V1 post-merge seal
 
 | Field | Value |
