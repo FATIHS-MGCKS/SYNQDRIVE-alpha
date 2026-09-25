@@ -7,11 +7,11 @@ Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 | **TDL-GAP-001** | COMPLETED → Driving Intelligence handoff | **RESOLVED** | TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001; org orphan **STRUCTURALLY_IMPOSSIBLE** |
 | **TDL-GAP-002** | `drive-profile/` module ownership | **RESOLVED** | TDL-EVID-OQ002-DRIVE-PROFILE-001 — **Battery V2 owns**; Trip FSM uses separate `VehicleDetectionProfile`; TDL has **no runtime dependency** |
 | **TDL-GAP-003** | Full fleet FSM row coverage | **RESOLVED** | TDL-EVID-OQ003-CARDINALITY-001 — lazy 1:0..1 FSM row vs append tracking runs; Production 6/6 eligible materialized |
-| **TDL-GAP-004** | Route artifact coverage (~4.7%) | CONFIRMED aggregate | Why 94/1994 completed trips have artifacts — root cause not proven |
+| **TDL-GAP-004** | Route artifact coverage (~4.7%) | **RESOLVED** | TDL-EVID-OQ004-ROUTE-COV-001 — eligibility + early rollout window; 7d **100%** eligible; Mapbox = quality not missing rows |
 | **TDL-GAP-005** | ClickHouse trip-assist runtime | UNKNOWN | Flag present on Production; mirror contents not queried |
 | **TDL-GAP-006** | DIMO segment reconciliation vs live FSM | **RESOLVED** | TDL-EVID-OQ006-BOUNDARY-001 — live FSM + TripDecisionEngine canonical; DIMO repair evidence only |
 | **TDL-GAP-007** | Complete feature-flag matrix | UNKNOWN | Only trip-adjacent env keys sampled on Production |
-| **TDL-GAP-008** | Mapbox/FMM failure recovery paths | UNKNOWN | Route V2 pipeline referenced in code; failure taxonomy not reconstructed |
+| **TDL-GAP-008** | Mapbox/FMM failure recovery paths | **PARTIAL** | Failure taxonomy reconstructed in TDL-EVID-OQ004-ROUTE-COV-001; handler artifact contract gap remains follow-up |
 | **TDL-GAP-009** | Pre-R9 deploy drift (R8/R9) | **HISTORICAL** | At `01541c2ab…` R8/R9 NOT_ON_PRODUCTION; resolved @ `0ba96e03…` |
 | **TDL-GAP-013** | Natural R9 webhook wake end-to-end delivery | **PARTIAL** | Start wake observed KS MS 661 @ `684950419…` (TDL-EVID-KS-MS-661-001); efficiency + payload archive gaps remain — cross-ref DIM-GAP-006 |
 | **TDL-GAP-014** | Empty-core `no_core_data_keep_open` end block on natural LTE drive | **PARTIAL** | KS MS 661 @ `684950419…` reproduced; R11 merged CI (Scenarios C/I/J); **natural Production revalidation after deploy** — cross-ref TDL-EVID-KS-MS-661-002 |
