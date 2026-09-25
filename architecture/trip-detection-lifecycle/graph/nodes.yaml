@@ -814,8 +814,9 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
     summary: >
-      Read-only behavior-level matrix separating merged/present/validated axes; RESOLVED_BY_SCOPE_REDUCTION;
-      18 contracts; fleet SQL 2026-09-25; reuses QS/KS661/WOB/#1674 evidence; no new runtime defect.
+      Read-only behavior-level matrix separating merged/present/validated axes;
+      PARTIALLY_RESOLVED_ACTIVE_GAPS (4 active PP_NOT_VALIDATED); superseded/dead excluded from replay;
+      fleet SQL + Phase 2b passive probes; no new runtime defect.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md
 
@@ -825,8 +826,8 @@ nodes:
     decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
-      Closes TDL-OQ-007 without replaying superseded R1–R8 paths; active contracts validated or current-equivalent;
-      passive observation suffices for remaining non-blocking gaps.
+      Closes scope-reduction slice only; OQ-007 remains PARTIALLY_RESOLVED while 4 active contracts lack Production validation;
+      passive observation preferred over physical drives.
     source_paths:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:

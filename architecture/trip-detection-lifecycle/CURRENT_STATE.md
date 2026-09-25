@@ -17,7 +17,7 @@
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
 | **REPO_CURRENT** | `bca9579a1…` | Mainline @ post #1769 |
-| **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 | **`RESOLVED_BY_SCOPE_REDUCTION`** — behavior matrix; superseded R1–R8 paths excluded; fleet SQL + reused natural evidence |
+| **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** — 4 active PP_NOT_VALIDATED (R1-BEH-003, R3-BEH-002, R4-BEH-001, R8-BEH-001); superseded/dead excluded |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
@@ -258,7 +258,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 
 ## Explicit non-claims
 
-- Production validation of R1–R8 on current Production — **TDL-OQ-007 RESOLVED** (TDL-EVID-OQ007-R1R8-COV-001) via scope reduction + active-contract evidence; QS V1 acceptance remains **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001)
+- Production validation of R1–R8 on current Production — **TDL-OQ-007 PARTIALLY_RESOLVED** (TDL-EVID-OQ007-R1R8-COV-001): scope reduction for superseded/dead paths; **4 active PRODUCTION_PRESENT_NOT_VALIDATED** gaps remain; QS acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001)
 - **`FULLY_PRODUCTION_VALIDATED`** for all Qualified Stop paths — acceptance is **`PASS_WITH_EVIDENCE_GAPS`**
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…` (R10 release); **provider trigger wiring validated** (5/5 canary); **natural start wake partially observed** on KS MS 661 tokenId 187361 (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)

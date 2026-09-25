@@ -6,9 +6,9 @@
 | **Audit date (UTC)** | 2026-09-25 |
 | **REPO_CURRENT** | `bca9579a1c32ebac23cb8d696870b011a76d30dd` (`origin/main` after #1769) |
 | **PRODUCTION_CURRENT** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `LIVE_RELEASE_ID=20260924235024_v4994` |
-| **Production observation (this audit)** | `2026-09-25T12:30:42Z` — release symlink + read-only SQL |
+| **Production observation (this audit)** | `2026-09-25T12:30:42Z` — release symlink + read-only SQL; **addendum** `2026-09-25T12:41:04Z` passive gap probes |
 | **AUDIT_MODE** | **READ_ONLY** — no deploy, restart, env/flag change, DB/Redis/BullMQ mutation, enqueue, or synthetic trips |
-| **Verdict (OQ-007)** | **`RESOLVED_BY_SCOPE_REDUCTION`** |
+| **Verdict (OQ-007)** | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** (see Phase 14–16; PR #1777 consistency correction) |
 
 ## Mandatory axis separation
 
@@ -81,7 +81,41 @@ Each row: **BEHAVIOR_ID**, owner, code path, test authority, success/failure sig
 | **R9-LEGACY-POLL** | pre-R9 | **SUPERSEDED** | — | Tiered poll as sole RESTING wake | — | — | — |
 | **R5-LEGACY-PEC** | R5 | **SUPERSEDED** | — | R5-only PEC/EV ordering without R10–R12 | — | — | — |
 
-**Total behavior contracts inventoried:** **18** (16 active/superseded/dead counted; 2 explicit legacy superseded paths).
+**Total behavior contracts inventoried:** **18** = **14 ACTIVE** + **3 SUPERSEDED** + **1 DEAD** (mutually exclusive status classes in Phase 7 matrix).
+
+---
+
+## Behavior status cardinality (exclusive — Phase 1 reconcile)
+
+Each of the **18** rows in Phase 7 carries **exactly one** terminal status class:
+
+| Status class | Count | Behavior IDs |
+|--------------|------:|--------------|
+| **PRODUCTION_VALIDATED** | **5** | R2-BEH-001, R2-BEH-002, R4-BEH-002, R6-BEH-001, R8-BEH-002 |
+| **VALIDATED_BY_CURRENT_EQUIVALENT** | **5** | R1-BEH-001, R1-BEH-002, R3-BEH-001, R5-BEH-002, R7-BEH-001 |
+| **PRODUCTION_PRESENT_NOT_VALIDATED** | **4** | R1-BEH-003, R3-BEH-002, R4-BEH-001, R8-BEH-001 |
+| **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** | **3** | R5-BEH-001, R9-LEGACY-POLL, R5-LEGACY-PEC |
+| **DEAD_NO_LONGER_REQUIRES_VALIDATION** | **1** | TripDetectionState.ENDED writer |
+| **TOTAL** | **18** | — |
+
+**Check:** 5 + 5 + 4 + 3 + 1 = **18**. No row appears in more than one class.
+
+**Active contracts:** 5 + 5 + 4 = **14**. Scope reduction removes only the **3 SUPERSEDED** + **1 DEAD** rows from required historical replay; it does **not** remove the **4** active **PRODUCTION_PRESENT_NOT_VALIDATED** rows from OQ-007 obligations.
+
+---
+
+## Phase 2b — Passive evidence addendum (consistency correction @ `2026-09-25T12:41Z`)
+
+Read-only probes before recomputing verdict (no new physical drives):
+
+| BEHAVIOR_ID | Passive probe | Result | Status after probe |
+|-------------|---------------|--------|-------------------|
+| **R1-BEH-003** | FSM `last_meaningful_movement_at` vs `last_activity_at` (7d); trip `raw_detection_meta` keys | `movement_le_activity_violations=0` (n=1 FSM row with movement in 7d); meta lacks per-tick movement trace — cannot prove ACTIVE_TICK writer used provider event time only | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| **R3-BEH-002** | `vehicle_trip_tracking_runs` `POSSIBLE_START_VALIDATION` errors (14d) | `69` runs with `error_message` (single class: Prisma `dimo_` unique on create); **2** vehicles with fail→success within 2h — proves errors are **persisted**, not proof of BullMQ retry contract for all failure classes | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| **R4-BEH-001** | Completed trips (7d) with `startConfidence` in meta | **72/98** have `startConfidence` — does **not** expose candidate vs confirm scoring decision trace | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| **R8-BEH-001** | `GET http://127.0.0.1:3001/metrics` on VPS | HTTP 200 but **764 B** body; `/api/v1/metrics` → **401** missing bearer — **cannot** verify non-zero `synqdrive_trip_*_recognition_latency_seconds` samples without authorized scrape | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+
+**PASSIVE_EVIDENCE_NEWLY_FOUND:** partial only (R3 error persistence + 2 fail→ok vehicles); **insufficient** to reclassify any of the four gaps to PRODUCTION_VALIDATED or VALIDATED_BY_CURRENT_EQUIVALENT.
 
 ---
 
@@ -136,35 +170,35 @@ Historical **PRE_HARDENING_R12** deploy @ `157b3c722…` is **SUPERSEDED_BEFORE_
 |-------------|--------|---------------|----------------|---------------------|-------------------|--------|
 | R1-BEH-001 | R1 | YES | ACTIVE_UNCHANGED | YES | Indirect via completed trips + clock tests | **VALIDATED_BY_CURRENT_EQUIVALENT** |
 | R1-BEH-002 | R1 | YES | ACTIVE_HARDENED | YES | KS661/WOB end forensics + QS window | **VALIDATED_BY_CURRENT_EQUIVALENT** |
-| R1-BEH-003 | R1 | YES | ACTIVE_UNCHANGED | YES | Fleet movement on completed trips (implicit) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| R1-BEH-003 | R1 | YES | ACTIVE_UNCHANGED | YES | No event-time movement trace in-window (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
 | R2-BEH-001 | R2 | YES | ACTIVE_HARDENED | YES | 0 divergence SQL + KS661 STALE_ONGOING repairs (pre-fix) | **PRODUCTION_VALIDATED** |
 | R2-BEH-002 | R2 | YES | ACTIVE_UNCHANGED | YES | dup ONGOING=0 @ audit | **PRODUCTION_VALIDATED** |
 | R3-BEH-001 | R3 | YES | ACTIVE_HARDENED | YES | KS661 R9 wake + ACTIVE_TRIP entry | **VALIDATED_BY_CURRENT_EQUIVALENT** |
-| R3-BEH-002 | R3 | YES | ACTIVE_UNCHANGED | YES | NOT_OBSERVED_IN_AUDIT_WINDOW | **PRODUCTION_PRESENT_NOT_VALIDATED** |
-| R4-BEH-001 | R4 | YES | ACTIVE_UNCHANGED | YES | NOT_OBSERVED_IN_AUDIT_WINDOW | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| R3-BEH-002 | R3 | YES | ACTIVE_UNCHANGED | YES | PS errors persisted; no full retry-signature proof (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| R4-BEH-001 | R4 | YES | ACTIVE_UNCHANGED | YES | `startConfidence` present; scoring symmetry not observable (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
 | R4-BEH-002 | R4 | YES | ACTIVE_HARDENED | YES | QS 3/3 SAME_TRIP | **PRODUCTION_VALIDATED** |
 | R5-BEH-001 | R5 | NO | SUPERSEDED | n/a | n/a | **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** |
 | R5-BEH-002 | R5 | YES | ACTIVE_REIMPLEMENTED | YES | WOB/#1627/#1674 + no regression in QS scan | **VALIDATED_BY_CURRENT_EQUIVALENT** |
 | R6-BEH-001 | R6 | YES | ACTIVE_HARDENED | YES | QS SAME_TRIP + fail-closed tests on main | **PRODUCTION_VALIDATED** |
 | R7-BEH-001 | R7 | YES | ACTIVE_REIMPLEMENTED | YES | Equivalent to R2 recovery; 0 stuck COMPLETED+active FSM | **VALIDATED_BY_CURRENT_EQUIVALENT** |
-| R8-BEH-001 | R8 | YES | ACTIVE_UNCHANGED | YES | Metrics on prod (deploy present) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| R8-BEH-001 | R8 | YES | ACTIVE_UNCHANGED | YES | Metrics scrape blocked (401 bearer); not inferred from deploy (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
 | R8-BEH-002 | R8 | YES | ACTIVE_HARDENED | YES | #1648 shadow ENABLED @ `99d722b4…` | **PRODUCTION_VALIDATED** |
 | R9-LEGACY-POLL | pre-R9 | NO | SUPERSEDED | n/a | n/a | **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** |
 | R5-LEGACY-PEC | R5 | NO | SUPERSEDED | n/a | n/a | **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** |
 | TripDetectionState.ENDED writer | schema | NO | DEAD_OR_UNREACHABLE | n/a | n/a | **DEAD_NO_LONGER_REQUIRES_VALIDATION** |
 
-**Package rollup (R1–R8):**
+**Package rollup (R1–R8)** — package label **cannot exceed** weakest active behavior (Phase 5):
 
-| Package | Rollup status |
-|---------|---------------|
-| **R1** | **VALIDATED_BY_CURRENT_EQUIVALENT** (one field-level gap: R1-BEH-003 passive) |
-| **R2** | **PRODUCTION_VALIDATED** |
-| **R3** | **VALIDATED_BY_CURRENT_EQUIVALENT** |
-| **R4** | **PRODUCTION_VALIDATED** (merge/scoring gap acceptable passive) |
-| **R5** | **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** (legacy PEC) + **VALIDATED_BY_CURRENT_EQUIVALENT** (active end handoff) |
-| **R6** | **PRODUCTION_VALIDATED** |
-| **R7** | **VALIDATED_BY_CURRENT_EQUIVALENT** |
-| **R8** | **PRODUCTION_VALIDATED** (observability); metrics histogram passive gap |
+| Package | Active behaviors | Rollup status |
+|---------|------------------|---------------|
+| **R1** | 001/002 equivalent; **003 PP_NOT_VALIDATED** | **PARTIALLY_PRODUCTION_VALIDATED** |
+| **R2** | both **PRODUCTION_VALIDATED** | **PRODUCTION_VALIDATED** |
+| **R3** | 001 equivalent; **002 PP_NOT_VALIDATED** | **PARTIALLY_PRODUCTION_VALIDATED** |
+| **R4** | 002 **PRODUCTION_VALIDATED**; **001 PP_NOT_VALIDATED** | **PARTIALLY_PRODUCTION_VALIDATED** |
+| **R5** | legacy PEC **SUPERSEDED**; **002 equivalent** | **PARTIALLY_PRODUCTION_VALIDATED** (active slice only) |
+| **R6** | **PRODUCTION_VALIDATED** | **PRODUCTION_VALIDATED** |
+| **R7** | **VALIDATED_BY_CURRENT_EQUIVALENT** | **VALIDATED_BY_CURRENT_EQUIVALENT** |
+| **R8** | 002 **PRODUCTION_VALIDATED**; **001 PP_NOT_VALIDATED** | **PARTIALLY_PRODUCTION_VALIDATED** |
 
 ---
 
@@ -175,7 +209,7 @@ Historical **PRE_HARDENING_R12** deploy @ `157b3c722…` is **SUPERSEDED_BEFORE_
 | R3 ordering + R4 confirm | R9 adds **SnapshotWakeIntakeService** ingress; confirm still **POSSIBLE_START → ACTIVE_TRIP** | KS661 natural R9 wake (historical release) + current code **PRODUCTION_PRESENT** |
 | R9-LEGACY-POLL-only | **SUPERSEDED** as primary contract | OQ-009 remains separate (polling docs), not OQ-007 blocker |
 
-**START_PATH_CURRENT_VALIDATION:** **VALIDATED_BY_CURRENT_EQUIVALENT** — no new physical drive required for OQ-007 closure.
+**START_PATH_CURRENT_VALIDATION:** **PARTIALLY_PRODUCTION_VALIDATED** (R3-BEH-002 + R4-BEH-001 gaps remain)
 
 ---
 
@@ -233,7 +267,8 @@ Historical R5 PEC/EV tunnel → **SUPERSEDED** by R10–R12 + #1627/#1635/#1674 
 
 | Signature class | Result |
 |-----------------|--------|
-| duplicate physical trip | **NOT_OBSERVED_IN_AUDIT_WINDOW** (dup ONGOING=0) |
+| **NO_DUPLICATE_ONGOING_STATE** (simultaneous ONGOING per vehicle) | **NOT_OBSERVED_IN_AUDIT_WINDOW** — SQL `dup_ongoing_vehicle=0` @ `2026-09-25T12:31:04Z` |
+| Duplicate trip row (physical / reconciliation duplication) | **NOT_OBSERVED_IN_AUDIT_WINDOW** — cross-ref [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) regression table (`Duplicate trip row`, `Reconciliation duplication`) |
 | stale ONGOING | **NOT_OBSERVED_IN_AUDIT_WINDOW** (ongoing=0) |
 | missing finalize | **NOT_OBSERVED_IN_AUDIT_WINDOW** |
 | wrong RESTING transition | **NOT_OBSERVED_IN_AUDIT_WINDOW** |
@@ -245,17 +280,21 @@ Historical R5 PEC/EV tunnel → **SUPERSEDED** by R10–R12 + #1627/#1635/#1674 
 
 ---
 
-## Phase 14 — Scope reduction (OQ-007 closure logic)
+## Phase 14 — Scope reduction vs active validation gaps
 
-All 18 inventoried contracts map to:
+**Scope reduction (allowed without replay):** **3 SUPERSEDED** + **1 DEAD** = **4** historical contracts excluded from required natural replay.
 
-- **PRODUCTION_VALIDATED** (6 behavior rows)
-- **VALIDATED_BY_CURRENT_EQUIVALENT** (7 behavior rows)
-- **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** (2 legacy + R5-BEH-001)
-- **DEAD_NO_LONGER_REQUIRES_VALIDATION** (ENDED writer)
-- **PRODUCTION_PRESENT_NOT_VALIDATED** (4 rows — **passive observation sufficient**; not blocking OQ-007)
+**Active contracts (still in scope for OQ-007):** **14** rows. Of these:
 
-Remaining **PRODUCTION_PRESENT_NOT_VALIDATED** rows are **not** activation blockers: they lack natural proof in-window but have **no observed defect** and do **not** require physical drives for OQ-007 closure.
+| Active subset | Count |
+|---------------|------:|
+| PRODUCTION_VALIDATED | 5 |
+| VALIDATED_BY_CURRENT_EQUIVALENT | 5 |
+| **PRODUCTION_PRESENT_NOT_VALIDATED** | **4** |
+
+**Closure rule (OQ-007 contract):** If **any** active contract remains **PRODUCTION_PRESENT_NOT_VALIDATED**, verdict **must not** be `RESOLVED_BY_SCOPE_REDUCTION` with `OQ007_STATUS_AFTER=RESOLVED`.
+
+The four gaps are **not** runtime defects (no `DEFECT_CONFIRMED`); they **do** keep OQ-007 **open** until passively or naturally evidenced, or until superseded/dead reclassification is proven.
 
 ---
 
@@ -274,23 +313,25 @@ Remaining **PRODUCTION_PRESENT_NOT_VALIDATED** rows are **not** activation block
 
 ## Phase 16 — Verdict
 
-**TDL_OQ_007_AUDIT_RESULT = `RESOLVED_BY_SCOPE_REDUCTION`**
+**TDL_OQ_007_AUDIT_RESULT = `PARTIALLY_RESOLVED_ACTIVE_GAPS`**
 
-Not every historical R1–R8 path was naturally reproduced on Production; superseded/dead paths **do not require** reproduction. Active contracts hold sufficient Production or current-equivalent evidence; no **DEFECT_CONFIRMED**.
+Historical R1–R8 paths that are **SUPERSEDED** or **DEAD** no longer require natural replay. **Four** active contracts remain **PRODUCTION_PRESENT_NOT_VALIDATED** after passive addendum (Phase 2b). No **DEFECT_CONFIRMED** on current Production.
+
+**OQ007_STATUS_AFTER = `PARTIALLY_RESOLVED`** (OQ-007 table row remains open until the four gaps close or are reclassified with proof).
 
 ---
 
-## Phase 17 — Active gaps (non-blocking for OQ-007)
+## Phase 17 — Active validation gaps (OQ-007 blocking)
 
 | BEHAVIOR_ID | WHY_STILL_ACTIVE | WHAT_EVIDENCE_IS_MISSING | CAN_BE_PASSIVELY_OBSERVED | REQUIRES_PHYSICAL_DRIVE | SAFE_ACCEPTANCE_SIGNATURE |
 |-------------|------------------|--------------------------|----------------------------|-------------------------|---------------------------|
-| R1-BEH-003 | Movement anchor still written on ACTIVE ticks | Explicit per-trip metric trace in prod logs | YES | NO | `lastMeaningfulMovementAt` monotonic with provider timestamps on sample trip |
-| R3-BEH-002 | PS error rethrow path | Natural PS failure + retry in window | YES | NO | BullMQ retry + FSM progress without silent SUCCESS |
-| R4-BEH-001 | Start scoring symmetry | Edge-case natural start with sparse GPS | YES | MAYBE (rare) | Confirm without false negative vs candidate |
-| R8-BEH-001 | Histogram SLO proof | p95 recognition latency sample | YES | NO | Metric export non-zero on recent starts |
+| R1-BEH-003 | Movement anchor still written on ACTIVE ticks | Per-trip/provider trace that `lastMeaningfulMovementAt` advances only on event timestamps during ACTIVE | YES | NO | Provider-timestamp-ordered movement samples on a completed trip window |
+| R3-BEH-002 | PS failure must not be swallowed | Documented BullMQ retry / recovery after PS `error_message` for a representative failure class | YES | NO | Failed PS run → retried job → FSM progress without silent SUCCESS |
+| R4-BEH-001 | Start scoring symmetry | Production-visible candidate vs confirm decision (sparse GPS case if available) | YES | NO (rare edge may need natural sparse case) | Meta or run forensics showing confirm aligned with candidate policy |
+| R8-BEH-001 | Recognition latency metrics | Authorized Prometheus scrape: non-zero `_count` on `synqdrive_trip_start_recognition_latency_seconds` / end counterpart | YES | NO | Bearer-authenticated `/api/v1/metrics` sample with expected histogram labels |
 
-**PHYSICAL_DRIVE_REQUIRED=NO** (for OQ-007 closure)  
-**PASSIVE_OBSERVATION_SUFFICIENT=YES**
+**PHYSICAL_DRIVE_REQUIRED=NO** (gaps closable via passive observation / metrics / run forensics)
+**PASSIVE_OBSERVATION_SUFFICIENT=YES** (preferred next step — not OQ-007 closure today)
 
 ---
 
