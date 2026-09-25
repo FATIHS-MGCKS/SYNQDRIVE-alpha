@@ -9,6 +9,10 @@ export const ERD_RECHARGE_PROJECTION_MUTABLE_FIELD_NAMES = [
   'startTime',
   'endTime',
   'durationSeconds',
+  'startLatitude',
+  'startLongitude',
+  'endLatitude',
+  'endLongitude',
   'socDeltaPercent',
   'energyDeltaKwh',
   'odometerStartKm',
@@ -37,9 +41,11 @@ function jsonEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
 }
 
-function floatEqual(a: number | null, b: number | null): boolean {
-  if (a === null || b === null) return a === b;
-  return Math.abs(a - b) < 1e-9;
+function floatEqual(a: number | null | undefined, b: number | null | undefined): boolean {
+  const left = a ?? null;
+  const right = b ?? null;
+  if (left === null || right === null) return left === right;
+  return Math.abs(left - right) < 1e-9;
 }
 
 function datesEqual(a: Date, b: Date): boolean {
@@ -81,6 +87,18 @@ export function listProjectionDraftPersistedMismatches(
   if (row.durationSeconds !== draft.durationSeconds) {
     mismatches.push(`durationSeconds row=${row.durationSeconds} draft=${draft.durationSeconds}`);
   }
+  if (!floatEqual(row.startLatitude, draft.startLatitude)) {
+    mismatches.push(`startLatitude row=${row.startLatitude} draft=${draft.startLatitude}`);
+  }
+  if (!floatEqual(row.startLongitude, draft.startLongitude)) {
+    mismatches.push(`startLongitude row=${row.startLongitude} draft=${draft.startLongitude}`);
+  }
+  if (!floatEqual(row.endLatitude, draft.endLatitude)) {
+    mismatches.push(`endLatitude row=${row.endLatitude} draft=${draft.endLatitude}`);
+  }
+  if (!floatEqual(row.endLongitude, draft.endLongitude)) {
+    mismatches.push(`endLongitude row=${row.endLongitude} draft=${draft.endLongitude}`);
+  }
   if (!floatEqual(row.socDeltaPercent, draft.socDeltaPercent)) {
     mismatches.push(`socDeltaPercent row=${row.socDeltaPercent} draft=${draft.socDeltaPercent}`);
   }
@@ -118,6 +136,10 @@ export function buildProjectionReconcileUpdate(
   startTime: Date;
   endTime: Date;
   durationSeconds: number;
+  startLatitude: number | null;
+  startLongitude: number | null;
+  endLatitude: number | null;
+  endLongitude: number | null;
   socDeltaPercent: number | null;
   energyDeltaKwh: number | null;
   odometerStartKm: number | null;
@@ -130,6 +152,10 @@ export function buildProjectionReconcileUpdate(
     startTime: draft.startTime,
     endTime: draft.endTime,
     durationSeconds: draft.durationSeconds,
+    startLatitude: draft.startLatitude,
+    startLongitude: draft.startLongitude,
+    endLatitude: draft.endLatitude,
+    endLongitude: draft.endLongitude,
     socDeltaPercent: draft.socDeltaPercent,
     energyDeltaKwh: draft.energyDeltaKwh,
     odometerStartKm: draft.odometerStartKm,

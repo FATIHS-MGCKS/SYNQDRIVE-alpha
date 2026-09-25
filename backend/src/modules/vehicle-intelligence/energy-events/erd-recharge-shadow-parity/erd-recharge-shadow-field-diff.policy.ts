@@ -161,8 +161,32 @@ export function compareShadowProjectionFields(input: {
         endLongitude: l.endLongitude,
       },
       severity: ERD_RECHARGE_SHADOW_FIELD_SEVERITY.EXPECTED_BY_DESIGN,
-      reason: 'canonical_mapper_emits_coordinates_only_with_authoritative_evidence',
+      reason: 'canonical_coordinates_null_without_authoritative_session_metadata',
     });
+  } else if (legacyHasCoords && canonicalHasCoords) {
+    const startLatOk = numClose(l.startLatitude, c.startLatitude, 1e-6);
+    const startLonOk = numClose(l.startLongitude, c.startLongitude, 1e-6);
+    const endLatOk = numClose(l.endLatitude, c.endLatitude, 1e-6);
+    const endLonOk = numClose(l.endLongitude, c.endLongitude, 1e-6);
+    if (!startLatOk || !startLonOk || !endLatOk || !endLonOk) {
+      mismatches.push({
+        field: 'coordinates',
+        canonical: {
+          startLatitude: c.startLatitude,
+          startLongitude: c.startLongitude,
+          endLatitude: c.endLatitude,
+          endLongitude: c.endLongitude,
+        },
+        legacy: {
+          startLatitude: l.startLatitude,
+          startLongitude: l.startLongitude,
+          endLatitude: l.endLatitude,
+          endLongitude: l.endLongitude,
+        },
+        severity: ERD_RECHARGE_SHADOW_FIELD_SEVERITY.PROVENANCE_ONLY,
+        reason: 'coordinate_value_mismatch',
+      });
+    }
   }
 
   if (c.confidence !== l.confidence) {

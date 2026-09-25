@@ -13,6 +13,13 @@ export type HvChargeSessionSource =
   | typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE
   | typeof HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK;
 
+/** Native DIMO authoritative recharge coordinates stored on HvChargeSession.metadata (E6.1). */
+export interface HvChargeSessionAuthoritativeLocation {
+  latitude: number;
+  longitude: number;
+  source: typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE;
+}
+
 export type HvChargeSessionChangeKind =
   | 'created'
   | 'ongoing_updated'
@@ -61,6 +68,8 @@ export interface HvChargeSessionMetadata {
     at: string;
     kind: HvChargeSessionChangeKind;
   }>;
+  startLocation?: HvChargeSessionAuthoritativeLocation;
+  endLocation?: HvChargeSessionAuthoritativeLocation;
 }
 
 export interface HvChargeSessionDraft {

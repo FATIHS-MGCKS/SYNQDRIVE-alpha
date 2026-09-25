@@ -6,6 +6,7 @@ import {
   type HvChargeSessionDraft,
   type HvChargeSessionMetadata,
 } from './hv-charge-session.types';
+import { mapDimoSegmentToAuthoritativeSessionLocations } from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
 
 export function mapRechargeSegmentToHvChargeSessionDraft(input: {
   organizationId: string;
@@ -43,6 +44,7 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     qualityReasonCodes: qualityAssessment.reasonCodes,
     capacityShadowEligible: qualityAssessment.capacityShadowEligible,
     capacityValidationEligible: qualityAssessment.capacityValidationEligible,
+    ...mapDimoSegmentToAuthoritativeSessionLocations(segment),
   };
 
   return {

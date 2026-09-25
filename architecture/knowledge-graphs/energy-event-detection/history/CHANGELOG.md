@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E6.1 canonical recharge location provenance
+
+- Native DIMO coordinates preserved on `HvChargeSession.metadata` and projected to canonical VEE (mutable fields + handoff/reconcile).
+- Fallback sessions remain location-null; no fuel-station resolver reuse.
+- Evidence: `ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md` (EED-EV-0087). No backfill.
+
 ## 2026-09-25 — ERD E5.6 write-authority cutover gate
 
 - Single `evaluateErdRechargeWriteAuthority` resolver (LEGACY | CANONICAL only).

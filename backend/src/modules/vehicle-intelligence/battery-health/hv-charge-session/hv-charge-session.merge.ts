@@ -6,7 +6,12 @@ import type {
   HvChargeSessionDraft,
   HvChargeSessionMetadata,
   HvChargeSessionRow,
+  HvChargeSessionSource,
 } from './hv-charge-session.types';
+import {
+  authoritativeSessionLocationsEqual,
+  mergeAuthoritativeSessionLocationMetadata,
+} from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
 
 export interface HvChargeSessionMergeResult {
   update: Record<string, unknown> | null;
@@ -53,6 +58,7 @@ function mergeMetadata(
   incoming: HvChargeSessionMetadata,
   changeKind: HvChargeSessionChangeKind,
   reconciledAt: Date,
+  sources: { existingSource: HvChargeSessionSource; incomingSource: HvChargeSessionSource },
 ): HvChargeSessionMetadata {
   const history = [...(existing?.changeHistory ?? [])];
   if (changeKind !== 'no_op') {
@@ -62,8 +68,16 @@ function mergeMetadata(
     }
   }
 
+  const locations = mergeAuthoritativeSessionLocationMetadata({
+    existingMeta: existing,
+    incomingMeta: incoming,
+    existingSource: sources.existingSource,
+    incomingSource: sources.incomingSource,
+  });
+
   return {
     ...incoming,
+    ...locations,
     reconcileVersion: (existing?.reconcileVersion ?? 0) + (changeKind === 'no_op' ? 0 : 1),
     lastReconciledAt:
       changeKind === 'no_op'
@@ -157,6 +171,10 @@ export function mergeHvChargeSessionUpdate(input: {
     incoming.metadata,
     'no_op',
     reconciledAt,
+    {
+      existingSource: existing.source as HvChargeSessionSource,
+      incomingSource: incoming.source,
+    },
   );
 
   const changedFields: Record<string, unknown> = {};
@@ -182,7 +200,9 @@ export function mergeHvChargeSessionUpdate(input: {
   const metadataChanged =
     metadata.lastReconciledAt !== existingMeta?.lastReconciledAt ||
     metadata.durationSeconds !== existingMeta?.durationSeconds ||
-    metadata.reconcileVersion !== existingMeta?.reconcileVersion;
+    metadata.reconcileVersion !== existingMeta?.reconcileVersion ||
+    !authoritativeSessionLocationsEqual(existingMeta?.startLocation, metadata.startLocation) ||
+    !authoritativeSessionLocationsEqual(existingMeta?.endLocation, metadata.endLocation);
 
   if (Object.keys(changedFields).length === 0 && !metadataChanged) {
     return { update: null, changed: false, changeKind: 'no_op' };
@@ -197,7 +217,16 @@ export function mergeHvChargeSessionUpdate(input: {
     changeKind = 'provider_refresh';
   }
 
-  const finalMetadata = mergeMetadata(existingMeta, incoming.metadata, changeKind, reconciledAt);
+  const finalMetadata = mergeMetadata(
+    existingMeta,
+    incoming.metadata,
+    changeKind,
+    reconciledAt,
+    {
+      existingSource: existing.source as HvChargeSessionSource,
+      incomingSource: incoming.source,
+    },
+  );
 
   return {
     changed: true,
