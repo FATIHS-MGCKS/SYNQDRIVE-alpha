@@ -65,6 +65,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED |
 | TDL-DEC-QS-V1-001 | Qualified Stop Contract V1 — 300_000 ms shared same-trip/split authority | VALIDATED (Production **`PASS_WITH_EVIDENCE_GAPS`**) |
 | TDL-DEC-OQ001-001 | COMPLETED → DI V2 handoff via post-finalize producer + PG job ledger | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
+| TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority (repair evidence, not live override) | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 

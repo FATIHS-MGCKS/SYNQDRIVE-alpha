@@ -16,7 +16,8 @@
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **REPO_CURRENT** | `d6ff7e19…` | Mainline code @ rebaseline audit — **ahead/behind Production independently** |
+| **REPO_CURRENT** | `51b4590e4…` | Mainline @ post PR #1767 |
+| **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
 | **OQ001_COMPLETED_TO_DI_HANDOFF** | TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001 | **`RESOLVED`** — handoff contract + org invariant; non-atomic enqueue accepted |
@@ -274,7 +275,7 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
-- Resolved DIMO Integration vs trip reconciliation ownership (partial — DIMO authority bootstrapped; segment split gaps remain TDL-CX-006 / DIM-GAP-001)
+- Resolved DIMO Integration vs trip reconciliation ownership — **TDL-OQ-006 / DIM-GAP-001 RESOLVED** (TDL-EVID-OQ006-BOUNDARY-001); TDL-CX-006 DI registry wording remains open
 
 ---
 

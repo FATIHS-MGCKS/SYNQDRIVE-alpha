@@ -104,13 +104,34 @@ nodes:
     evidence:
       - DIM-EVID-R9-AUDIT-001
 
+  - id: DIM-EVID-OQ006-BOUNDARY-001
+    type: evidence
+    title: OQ-006 segment vs FSM boundary audit (cross-ref TDL)
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: DIMO fetch-only; Trip Detection owns mutations; RESOLVED_WITH_BOUNDED_GAPS.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
+
+  - id: DIM-DEC-OQ006-001
+    type: decision
+    title: Segment provider transport vs trip boundary mutation ownership
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DimoSegmentsService does not mutate VehicleTrip; reconciliation gates apply.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence:
+      - DIM-EVID-OQ006-BOUNDARY-001
+
   - id: DIM-GAP-001
     type: gap
     title: Segment reconciliation ownership
-    epistemic_status: UNKNOWN
-    summary: Partial split with Trip Detection.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — DIM-DEC-OQ006-001; provider transport vs TripDecisionEngine mutations.
     source_paths:
-      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
 
   - id: DIM-GAP-002
     type: gap

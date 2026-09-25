@@ -21,11 +21,11 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | **2 — Production read-only audit** | **Verified** — **PRODUCTION_CURRENT** @ `99d722b4…` + TDL-EVID-QS-V1-PROD-ACCEPT-001; historical releases preserved |
 | **3 — Reconciliation and classification** | **In progress** — Qualified Stop V1 Production acceptance classified **`PASS_WITH_EVIDENCE_GAPS`** |
 | **4 — Authority construction** | **Partial** — R9 wake subgraph, R10–R12 decisions, Qualified Stop V1 decision + graph hooks; full FSM graph incomplete |
-| **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (TDL-OQ-006, TDL-OQ-002; TDL-OQ-001 partial) |
+| **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (TDL-OQ-002; other open OQs) |
 
 Phase 1 is **not** fully complete while dead/legacy inventory, the full feature-flag matrix, Mapbox/FMM failure taxonomy, and the Driving Intelligence handoff (TDL-OQ-001 — **next engineering audit slice**) remain unresolved.
 
-**Reconstruction reality (2026-09-25):** Production @ `99d722b4…`. **TDL-OQ-001** **RESOLVED** (handoff TDL-EVID-OQ001-HANDOFF-001; org invariant TDL-EVID-OQ001-1-ORG-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by **TDL-OQ-006**, **TDL-OQ-002**, and other open OQs.
+**Reconstruction reality (2026-09-25):** Production @ `99d722b4…`. **TDL-OQ-001** **RESOLVED**. **TDL-OQ-006** **RESOLVED** (DIMO segment vs FSM boundaries — TDL-EVID-OQ006-BOUNDARY-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by **TDL-OQ-002** and other open OQs.
 
 Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) are **supporting evidence only** — linked via [`evidence/EVIDENCE_INDEX.md`](evidence/EVIDENCE_INDEX.md).
 

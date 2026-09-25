@@ -541,10 +541,10 @@ nodes:
   - id: TDL-GAP-006
     type: gap
     title: DIMO segment reconciliation vs live FSM
-    epistemic_status: UNKNOWN
-    summary: Segment authority split; DIMO Integration bootstrapped AUDIT_IN_PROGRESS 2026-09-07; reconciliation ownership still incomplete.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — TDL-DEC-OQ006-001; live FSM canonical; DIMO segments repair/validation evidence only.
     source_paths:
-      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
 
   - id: TDL-GAP-009
     type: gap
@@ -758,3 +758,29 @@ nodes:
       - backend/src/workers/processors/driving-intelligence-job.processor.ts
     evidence:
       - TDL-EVID-OQ001-HANDOFF-001
+
+  - id: TDL-EVID-OQ006-BOUNDARY-001
+    type: evidence
+    title: TDL-OQ-006 DIMO segment vs FSM boundary audit
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Cross-authority audit; live FSM + TripDecisionEngine canonical; DIMO segments repair evidence;
+      RESOLVED_WITH_BOUNDED_GAPS; 0 confirmed boundary corruptions (90d read-only).
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
+
+  - id: TDL-DEC-OQ006-001
+    type: decision
+    title: DIMO segment vs live FSM boundary authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      DimoSegmentsService transport only; TripReconciliationService consumes segments as repair evidence;
+      mutations via TripDecisionEngine gates; DIMO alone cannot overwrite completed FSM trip.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence:
+      - TDL-EVID-OQ006-BOUNDARY-001
