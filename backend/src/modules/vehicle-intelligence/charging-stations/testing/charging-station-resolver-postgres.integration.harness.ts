@@ -103,12 +103,20 @@ export async function seedSyntheticChargingDataset(prisma: PrismaClient): Promis
       ST_SetSRID(ST_MakePoint(8.05, 50.05), 4326)::geography,
       '${datasetVersion}',
       '{"amenity":"charging_station"}'::jsonb
+    ),
+    (
+      'node', 6001, 'PG4 Isolated Nearest', 'BrandF', 'OpF', 'NetF',
+      NULL, NULL, 'DE', NULL, NULL, NULL,
+      ST_SetSRID(ST_MakePoint(9.0, 51.0), 4326),
+      ST_SetSRID(ST_MakePoint(9.0, 51.0), 4326)::geography,
+      '${datasetVersion}',
+      '{"amenity":"charging_station"}'::jsonb
     );
   `);
 
   await prisma.$executeRawUnsafe(`
     INSERT INTO osm.charging_station_dataset_metadata (
       dataset_version, station_count, imported_at, promoted_at, is_current
-    ) VALUES ('${datasetVersion}', 5, now(), now(), true);
+    ) VALUES ('${datasetVersion}', 6, now(), now(), true);
   `);
 }
