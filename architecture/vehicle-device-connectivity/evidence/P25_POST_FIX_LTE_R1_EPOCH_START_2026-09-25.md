@@ -40,6 +40,8 @@ Passive observer (no provider calls, no Production DB writes, no poll cadence mu
 
 `backend/scripts/ops/p25-lte-r1-passive-cadence-observer.cjs` (deployed to VPS shared ops path)
 
+**Observer restart (corrected accounting):** `2026-09-25T22:44:39Z` — tmux session `lte-r1-cadence-observer` (root), script SHA256 unchanged; derived poll cursors preserved in `lte-r1-cadence-derived-state.json`.
+
 ## Scientific rules (epoch freeze)
 
 - Do not equate HTTP poll success with fresh device telemetry.
