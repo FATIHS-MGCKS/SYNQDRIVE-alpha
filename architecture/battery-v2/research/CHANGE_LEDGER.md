@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E1.1 determinism + frozen test matrix closure (engineering draft amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E1 adapter on draft PR #1765 used `localeCompare` for `anchorAt` ordering; generic unit tests did not fully cover frozen E0/E0.2 minimum matrix categories. |
+| **CHANGE** | Replace scientific ordering with `compareUtf16CodeUnitLexicographic` for `anchorAt` + `restSessionId`; add `longitudinal-assessment-input.adapter.e11-matrix.spec.ts` + fixture helpers; amend E1 engineering doc with E1.1 evidence. |
+| **AFTER** | **`E1_LOCALE_DEPENDENT_ORDERING_USED=NO`**; **`E1_UTF16_CANONICAL_ORDERING_USED=YES`**; **`E1_TEST_MATRIX_COMPLETE=YES`**; golden **`d426d1b0…`** unchanged; no preimage / taxonomy / runtime expansion. |
+| **VALIDATION** | E1 unit suite (85 tests); longitudinal regressions (D3 parser/fingerprint, D4 self-integrity/service, D2 assembler, D1 reader/policy); registry validator. |
+| **NON_EFFECTS** | No health model; no D3 materialization; no Nest/DB/schema/flags; no LV pipeline change; no deploy. |
+| **DECISION_STATUS** | **E1_1_ENGINEERING_DRAFT_AMEND** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
 ## CL-2026-09-25 — M3.3E E1 pure longitudinal assessment input adapter (engineering draft)
 
 | Field | Value |

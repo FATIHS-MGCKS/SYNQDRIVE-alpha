@@ -14,6 +14,7 @@
 | `backend/.../longitudinal-assessment-input.adapter.ts` | Pure `buildLongitudinalAssessmentInputV1` |
 | `backend/.../longitudinal-assessment-input.golden.ts` | Frozen E1 consumption fingerprint literal |
 | `backend/.../longitudinal-assessment-input.adapter.spec.ts` | Unit + golden tests |
+| `backend/.../longitudinal-assessment-input.adapter.e11-matrix.spec.ts` | E1.1 frozen minimum test matrix (explicit pairing/eligibility/coverage/segments/fingerprint) |
 | `backend/.../longitudinal-assessment-input.test-helpers.ts` | Deterministic D3/D4 pairing fixtures (tests only) |
 
 ## Public entry point
@@ -40,7 +41,7 @@ Synchronous, pure — no clock parameter, no IO, no environment reads.
 8. Canonical + version tuple pairing for all candidates
 9. DEFAULT disposition accounting (`D3_D4_CONTRACT_INCONSISTENCY` on incompatible DEFAULT dispositions when revision self-integrity OK)
 10. Assessment-grade subset (DEFAULT + D4 `ELIGIBLE` only)
-11. Canonical ordering (`anchorAt` ASC, UTF-16 `restSessionId` tie-break)
+11. Canonical ordering (`anchorAt` ASC, UTF-16 code-unit `restSessionId` tie-break via `compareUtf16CodeUnitLexicographic` — **no** `localeCompare` / `Intl.Collator`)
 12. Evidence window + D2 `eligibleVersionSegments` (preserve `sourceSegmentIndex`; no tuple regroup merge)
 13. Coverage + diagnostic context (exact V1 shape; no reason lists)
 14. Model evaluation (`modelSufficiency=NOT_EVALUATED` always)
@@ -70,7 +71,19 @@ See E0 doc §15 — `M3_3E_ConsumptionRejectReason` (no health-related reasons).
 
 `longitudinal-assessment-input.adapter.spec.ts` — identity, D4 gates, parse/bind, pairing, eligibility, segments, fingerprint, purity.
 
+`longitudinal-assessment-input.adapter.e11-matrix.spec.ts` — **E1.1 closure** (draft PR #1765 amend): explicit session-set / profile-slice / canonical / version / eligibility / coverage / evidence-window / version-segment / fingerprint sensitivity matrix; source audit `LOCALECOMPARE_OCCURRENCES_IN_E1_ADAPTER=0`.
+
 Regressions (minimum): D3 parser, D3 fingerprint, D4 self-integrity, D4 service, D2 assembler, D1 reader specs.
+
+## E1.1 closure evidence (2026-09-25, PR #1765 amend)
+
+| Gate | Result |
+|------|--------|
+| Locale-independent scientific ordering | **`E1_LOCALE_DEPENDENT_ORDERING_USED=NO`** · **`E1_UTF16_CANONICAL_ORDERING_USED=YES`** |
+| Golden consumption fingerprint after ordering fix | **`d426d1b020a2e281581bba677cbc16a9b96f46705dc1f7c4acfa26f49e93ae5f`** (unchanged) |
+| C3 / D3 upstream goldens | **`e7b6e05a…`** / **`e2d39c60…`** (unchanged) |
+| Frozen minimum test matrix | **`E1_TEST_MATRIX_COMPLETE=YES`** (85 E1 unit tests across base + E1.1 spec) |
+| Pure determinism | **`E1_PURE_OUTPUT_DETERMINISTIC=YES`** |
 
 ## Remaining work (post-E1 merge)
 

@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3e-e1-1-determinism-test-matrix-2026-09-25',
+    version: '4.9.2102',
+    title: 'Battery V2 M3.3E E1.1 — UTF-16 ordering + frozen E1 test matrix (draft PR #1765)',
+    summary: [
+      'E1 adapter scientific ordering: compareUtf16CodeUnitLexicographic for anchorAt + restSessionId (no localeCompare).',
+      'Golden consumption fingerprint d426d1b0… unchanged after ordering fix; C3/D3 upstream goldens unchanged.',
+      'New e11-matrix.spec.ts: explicit session-set, slice, canonical, version, eligibility, coverage, evidence window, segments, fingerprint sensitivity tests.',
+      'Pure function only — no Nest/DB/runtime wiring; health model and D3 materialization still deferred.',
+    ],
+    reason:
+      'Close E1 determinism gate and frozen E0/E0.2 minimum test matrix before E1 merge authorization.',
+    previousBehavior:
+      'E1 compareAssessmentGradeObservations used localeCompare on ISO anchorAt; matrix coverage relied on generic branches only.',
+    details:
+      'longitudinal-assessment-input.adapter.ts; longitudinal-assessment-input.adapter.e11-matrix.spec.ts; architecture/battery-v2/research/M3_3E_E1_LONGITUDINAL_ASSESSMENT_INPUT_ADAPTER_2026-09-25.md; CHANGE_LEDGER CL E1.1',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T08:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',
