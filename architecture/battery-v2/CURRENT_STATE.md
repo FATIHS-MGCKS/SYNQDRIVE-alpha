@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-24 (M3.3C C1–C5B + M3.3D D0/D0.1/D1/D2/D3 + **D4 engineering V1 on main**; D4 merge PR #1754 @ `9a3e457d9`; D3 merge PR #1746 @ `c5c1129f`; D3 architecture merge PR #1744 @ `7919bdd5c`; D2 merge PR #1739 @ `ed7adb79b`; D1 merge PR #1737 @ `9577e0f14`; production runtime baseline unchanged `2b0ef15f`)
+**Snapshot date:** 2026-09-25 (M3.3D complete on main through D4 Engineering V1; **M3.3E E0/E0.1/E0.2 on main** PR #1761 @ `658b804d7`; D4 merge PR #1754 @ `9a3e457d9`; production runtime baseline unchanged `2b0ef15f`)
 **Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -57,12 +57,13 @@
 | **M3.3D D3 foundation** | Prisma `BatteryLongitudinalProfileRevision` + migration + internal idempotent materialization stack — **COMPLETE ON MAIN** merged PR #1746 @ merge `c5c1129f62e11eb68c8fc6566fd7fecef376743b` (PR head `944a6839ed18dd57244897924d72ac49b9a968a2`); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`** until **M3.3F** — `research/M3_3D_D3_FOUNDATION_ENGINEERING_2026-09-24.md` |
 | **M3.3D D4 (architecture)** | Longitudinal integrity / inspection architecture — **COMPLETE ON MAIN** merged PR #1751 @ merge `158f9c516fe4be55f4ef8d3e9cb4c5df02333074` (PR head `e77ac83e94a746070eca9bfdc9ef88a7d23da8b4`); **`D4_IMPLEMENTATION_READY=YES`** — `research/M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` |
 | **M3.3D D4 (engineering V1)** | Read-only inspection service — **COMPLETE ON MAIN** merged PR #1754 @ merge `9a3e457d9eb8e38025a63bb2a2448c74f05263bf` (PR head `309da8252658d096fbbce585c2f220c4c2795080`); **`D4_ENGINEERING_IMPLEMENTED=YES`**; **`D4_RUNTIME_REACHABLE=NO`**; **`D4_CONTRACT_VERSION=M3_3D_D4_INTEGRITY_INSPECTION_V1`** — `research/M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ENGINEERING_2026-09-24.md` |
-| **M3.3C roadmap (planning)** | **M3.3E** (architecture / consumption contract) → **M3.3F–H** pending |
-| **M3.3C** | **`OPEN`** — C1–C5B + **D0/D0.1/D1/D2/D3 architecture + D3 foundation + D4 architecture + D4 engineering V1 on main**; **M3.3E next**; **M3.3F–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
+| **M3.3E E0 / E0.1 / E0.2 (architecture)** | Longitudinal assessment consumption — **`M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1`** — **COMPLETE ON MAIN** merged PR #1761 @ merge `658b804d74fc3fe6290f504ba3c81d7e642c3903` (PR head `b2685a0f88d17ce251d3dc2fcb84d2a6a42506e5`); **`M3_3E_E1_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`** — `research/M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` |
+| **M3.3C roadmap (planning)** | **M3.3E E1** (pure `buildLongitudinalAssessmentInputV1` adapter) → **M3.3F–H** pending |
+| **M3.3C** | **`OPEN`** — C1–C5B + **M3.3D + M3.3E E0–E0.2 on main**; **M3.3E E1 next**; **M3.3F–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=false`** |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **M3.3E** — architecture / consumption contract (how M3.3E consumes D3 scientific profile + D4 integrity overlay **before** any BatteryAssessment / health / risk logic); **not** production D3 materialization (**M3.3F** authorization gate remains later); **`D3_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**; M3.3F / M3.3G / M3.3H **pending** |
+| `NEXT_PHASE` | **M3.3E E1** — pure `buildLongitudinalAssessmentInputV1` adapter (E0/E0.1/E0.2 **COMPLETE ON MAIN** PR #1761); **not** health model, **not** production D3 materialization (**M3.3F** gate); **`D3_RUNTIME_REACHABLE=NO`**; **`D4_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**; M3.3F / M3.3G / M3.3H **pending** |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **YES** |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

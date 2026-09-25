@@ -17,7 +17,8 @@
 | **D3 foundation engineering** | **COMPLETE ON MAIN** PR #1746 @ merge `c5c1129f` — **`D3_RUNTIME_REACHABLE=NO`**; production materialization **NOT AUTHORIZED** until **M3.3F** |
 | **D4 architecture** | **COMPLETE ON MAIN** PR #1751 @ `158f9c516f` — `M3_3D_D4_LONGITUDINAL_INTEGRITY_INSPECTION_ARCHITECTURE_2026-09-24.md` |
 | **D4 engineering V1** | **COMPLETE ON MAIN** PR #1754 @ `9a3e457d9` |
-| **M3.3E** | **NEXT** — architecture / consumption contract |
+| **M3.3E E0/E0.1/E0.2** | **COMPLETE ON MAIN** PR #1761 @ `658b804d7` |
+| **M3.3E E1** | **NEXT** |
 | M3.3F | **PENDING** / production shadow authorization |
 | M3.3G | **PENDING** |
 | M3.3H | **PENDING** customer Vehicle Detail → Health UI |

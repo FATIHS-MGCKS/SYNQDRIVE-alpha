@@ -117,7 +117,7 @@ D4 engineering V1 completion on main does **not** authorize:
 
 ## Next slice
 
-**M3.3E** — architecture / consumption contract (define how consumers combine D3 scientific profile + D4 integrity overlay **before** BatteryAssessment / health / risk implementation). **M3.3E NEXT ≠ health logic implemented.**
+**M3.3E E0/E0.1/E0.2** — **COMPLETE ON MAIN** PR #1761 @ merge `658b804d7` (see `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md`). **M3.3E E1** — pure input adapter (**NEXT**). **M3.3E health model NOT IMPLEMENTED.**
 
 ---
 
