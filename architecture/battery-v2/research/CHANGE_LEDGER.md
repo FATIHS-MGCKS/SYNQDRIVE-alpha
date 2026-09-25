@@ -6,6 +6,25 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E2 longitudinal battery health model architecture (scientific contract)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E1 `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` complete on main (PR #1765 @ `553ba670a`, seal PR #1771 @ `a37f372bf`); `modelSufficiency='NOT_EVALUATED'`; no scientific contract for longitudinal conclusions; `CURRENT_STATE` header still named only E0/E0.1/E0.2. |
+| **OBSERVATION** | E1 carries 11 per-session C1 descriptors + context; C2 V1 `chargeOpportunityClass` is always `UNKNOWN`; temperature is preceding trip-start exterior air; no natural C3 rows (shadow flag OFF); existing LV chemistry bands have `UNKNOWN` provenance; GE `sourceMeasurementId` shares `LIVE_VOLTAGE` provenance with LV Estimated Health measurements. |
+| **HYPOTHESIS** | Current evidence supports only same-segment descriptive statistics of measured rest-voltage descriptors; any condition, SOH, RUL, or replacement claim would be unsupported. |
+| **CHANGE** | Add `research/M3_3E_E2_LONGITUDINAL_HEALTH_MODEL_ARCHITECTURE_2026-09-25.md`: signal inventory, 7-layer semantic separation, sufficiency (structural minima + `CALIBRATION_REQUIRED` dimensions), comparability contract (no cross-segment pooling), Theil-Sen/Kendall trend semantics, temperature-as-context, no-deletion outlier policy, categorical calibration-capped confidence, `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1` output taxonomy (`condition='NOT_ASSESSED'` only), determinism/versioning, LV Estimated Health / readiness / persistence separation, 14 no-conclusion states, claim-control matrix, open-decision register, E3 boundary. Update `CURRENT_STATE` header, E2 row, roadmap/M3.3C/`NEXT_PHASE` rows. |
+| **WHY** | E3 needs a scientifically defensible, fail-closed contract before any evaluator code; the default must be "insufficient evidence", not invented thresholds. |
+| **EXPECTED_EFFECT** | E3 can implement a pure evaluator whose default output (`M3_3E_CALIBRATION_UNSET_V1`) is descriptive statistics + first-class no-conclusion. |
+| **VALIDATION** | `bash architecture/battery-v2/scripts/validate-graph.sh`; `bash architecture/scripts/validate-module-registry.sh`; docs-only diff. |
+| **NON_EFFECTS** | No TypeScript/runtime change; no health model; no `BatteryAssessment`/`BatteryPublication` writes; no Prisma/migration; no flags; no readiness policy change; no Nest reachability; no D3 materialization; no deploy; no production data mutation; `LV_ESTIMATED_HEALTH` unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | V1 evaluator will produce no classification until calibration exists; this is intentional. |
+| **REMAINING_GAPS** | `CAL-M3.3E-001…011`; `PROD-M3.3G-001…007`, `PROD-M3.3H-001`; `NAT-M3.3F-001…009`. No open architecture blocker for a pure E3 evaluator. |
+| **AFTER** | **M3.3E E2 ARCHITECTURE COMPLETE**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`** (pure, non-persisted, fail-closed evaluator only); **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **EVIDENCE** | E1 types/adapter/golden `d426d1b0…` on main; C1 retention policies; C2 constants; C3 anchor binding; `lv-estimated-health-assessment.policy.ts`; `battery-readiness.policy.ts`; Prisma GE `sourceMeasurementId` FK. |
+| **DECISION_STATUS** | **PROPOSED** (architecture contract) — `E2_ARCHITECTURE_COMPLETE` |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E1 post-merge engineering seal
 
 | Field | Value |
