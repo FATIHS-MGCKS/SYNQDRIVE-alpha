@@ -17,9 +17,9 @@
 
 **Evidence:** [TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md](../evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md) (TDL-EVID-OQ003-CARDINALITY-001) @ Production `99d722b4…`.
 
-**Verdict:** **`RESOLVED_EXPECTED_CARDINALITY`** (TDL-DEC-OQ003-001) — one lazy FSM row per vehicle (unique `vehicleId`); tracking runs are append-only execution logs; scheduler-eligible cohort **6/6** has state rows; **3** non-DIMO fleet vehicles correctly have zero rows; **0** eligible-without-state; comparing run count to state count is not a coverage metric.
+**Verdict:** **`RESOLVED_EXPECTED_CARDINALITY`** (TDL-DEC-OQ003-001) — one lazy FSM row per vehicle (unique `vehicleId`); tracking runs append-only during Vehicle lifetime (cascade-delete on Vehicle delete); scheduler-eligible cohort **6/6** has state rows; **3** non-DIMO fleet vehicles correctly have zero rows; **0** eligible-without-state; comparing run count to state count is not a coverage metric.
 
-**Status:** **RESOLVED** — H1 **CONFIRMED** (count still 6 = eligible telematics cohort, not stale folklore).
+**Status:** **RESOLVED** — historical H1 **`PARTIALLY_CONFIRMED`** (H1a cohort **CONFIRMED**; H1b “most fleet … until connected” **NOT CONFIRMED**).
 
 ## TDL-OQ-007 — resolution (2026-09-25, OQ-007.1 passive closure)
 
@@ -100,7 +100,8 @@
 
 ## Hypotheses (not confirmed)
 
-- **H1:** ~~Six detection-state rows reflect vehicles with active DIMO snapshot polling only~~ — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003); see evidence artifact.
+- **H1a:** Six detection-state rows = current scheduler-eligible DIMO live-FSM cohort — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003).
+- **H1b:** “Most fleet vehicles lack live FSM rows until connected” — **NOT CONFIRMED** (6/9 have rows; 3 non-DIMO only).
 - **H2:** High `MISSING_TRIP` repair PROPOSED count is reconciliation scanning historical DIMO gaps, not live FSM failure.
 - **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage.
 

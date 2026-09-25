@@ -541,7 +541,7 @@ nodes:
     type: gap
     title: Full fleet FSM row coverage
     epistemic_status: CONFIRMED
-    summary: RESOLVED — lazy 1 row per vehicle; 6/6 scheduler-eligible materialized @ 99d722b4…; tracking runs are execution logs.
+    summary: RESOLVED — lazy 1 row per vehicle; 6/6 scheduler-eligible materialized @ 99d722b4…; tracking runs append-only during Vehicle lifetime (Vehicle cascade delete).
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
@@ -850,8 +850,8 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
     summary: >
-      Read-only code + Production SQL; one FSM row per vehicle; tracking-run multiplicity;
-      scheduler cohort 6/6 with state; reconciliation trips without FSM rows expected.
+      Read-only code + Production SQL; one FSM row per vehicle; tracking-run multiplicity during Vehicle lifetime;
+      cascade-delete on Vehicle delete; scheduler cohort 6/6 with state; reconciliation trips without FSM rows expected.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md
 

@@ -16,7 +16,7 @@ Why does Production have a **small** count of `vehicle_trip_detection_states` ro
 
 **`RESOLVED_EXPECTED_CARDINALITY`**
 
-The low detection-state row count is **structurally expected**: at most **one row per `vehicleId`**, lazily materialized for vehicles that enter live snapshot/FSM paths, while tracking runs are **append-only execution logs** (many per vehicle per week). Comparing raw tracking-run counts to detection-state row counts is **not** a coverage metric.
+The low detection-state row count is **structurally expected**: at most **one row per `vehicleId`**, lazily materialized for vehicles that enter live snapshot/FSM paths, while **`VehicleTripTrackingRun` is append-only during the normal lifetime of a Vehicle** — rows accumulate as historical execution evidence and are **cascade-deleted if the parent Vehicle is deleted** (many runs per vehicle per week). Comparing raw tracking-run counts to detection-state row counts is **not** a coverage metric.
 
 **OQ003_STATUS_AFTER = `RESOLVED`**
 
@@ -40,8 +40,8 @@ The low detection-state row count is **structurally expected**: at most **one ro
 | Property | Value |
 |----------|-------|
 | PK | `id` (uuid) |
-| Vehicle relation | `vehicleId` (indexed, **not unique**) → **1:N append log** |
-| onDelete | `Cascade` with `Vehicle` |
+| Vehicle relation | `vehicleId` (indexed, **not unique**) → **1:N execution log** (append-only while Vehicle exists) |
+| onDelete | `Cascade` with `Vehicle` — **tracking runs deleted when parent Vehicle is deleted** |
 | Timestamps | `createdAt` only (no `updatedAt`) |
 | Semantics | One row per orchestration **execution** (`runType`, `stateAtRun`, optional `tripId`) |
 
@@ -113,9 +113,9 @@ Mutations in production: **`upsert` (create)**, **`update`**, **`updateMany`** (
 | `END_VALIDATION` | CUSUM / qualified stop validation attempts |
 | `FINALIZATION_CHECK` | Pre-finalize quality gates |
 
-Runs **persist** through RESTING reset, trip completion, and FSM field clears — they are **historical audit**, not FSM state.
+Runs **persist** through RESTING reset, trip completion, and FSM field clears — they are **historical execution evidence**, not FSM state. Normal runtime **creates** rows via `logTrackingRun`; production code does **not** update or delete them.
 
-**Retention:** No production cleanup — only test harness `deleteMany`. All-time Production: **41_330** rows, **6** distinct vehicles.
+**Retention / GC:** No production retention job or `deleteMany` on tracking runs (tests only). Rows **do** disappear when the parent **`Vehicle` is deleted** (`onDelete: Cascade`). All-time Production: **41_330** rows, **6** distinct vehicles.
 
 ---
 
@@ -254,11 +254,21 @@ Two eligible vehicles had **no tracking runs in 7d** but **do** have FSM rows (i
 
 ## Phase 13 — Historical “6 rows” hypothesis (H1)
 
+**Historical wording (retired as a single claim):**
+
 > Six detection-state rows reflect vehicles with active DIMO snapshot polling only — most fleet vehicles lack live FSM rows until connected.
 
-**HISTORICAL_SIX_ROW_HYPOTHESIS = `CONFIRMED`**
+**Split assessment @ `2026-09-25`:**
 
-Re-verified @ `2026-09-25`: still **6** state rows = **6** scheduler-eligible = **6** DIMO-connected with token; **3** non-linked fleet vehicles correctly have **zero** FSM rows. Count unchanged from TDL-EV-PROD-005 — not superseded, **confirmed** with full join evidence.
+| Sub-claim | Result |
+|-----------|--------|
+| **H1a:** Six detection-state rows correspond to the **current scheduler-eligible DIMO live-FSM cohort** | **CONFIRMED** — `DETECTION_STATE_ROWS=6` = `SNAPSHOT_SCHEDULER_ELIGIBLE=6`; `ELIGIBLE_WITH_STATE=6`; `ELIGIBLE_WITHOUT_STATE=0` |
+| **H1b:** **Most** fleet vehicles lack live FSM rows until connected | **NOT CONFIRMED** — `TOTAL_VEHICLES=9`; **6/9** already have FSM rows; only **3** non-DIMO-linked vehicles lack rows (expected, not “most of fleet awaiting connection”) |
+
+**HISTORICAL_SIX_ROW_HYPOTHESIS = `PARTIALLY_CONFIRMED`**
+
+- Cardinality / scheduler-cohort portion **confirmed** (unchanged count vs TDL-EV-PROD-005, now with full join proof).
+- **“Most fleet vehicles … until connected”** wording is **historically imprecise** and must not be reused as authority.
 
 ---
 
@@ -287,7 +297,7 @@ Re-verified @ `2026-09-25`: still **6** state rows = **6** scheduler-eligible = 
 
 2. **At most one row per vehicle** (`vehicleId` unique).
 
-3. **`VehicleTripTrackingRun` is an append-only execution log.** One state row may correlate with **arbitrarily many** runs.
+3. **`VehicleTripTrackingRun` is append-only during the normal lifetime of a Vehicle** — rows accumulate as historical execution evidence and are **cascade-deleted if the parent Vehicle is deleted**. One state row may correlate with **arbitrarily many** runs while the Vehicle exists.
 
 4. **Never use `COUNT(tracking_runs) / COUNT(detection_states)` as FSM coverage.**
 
