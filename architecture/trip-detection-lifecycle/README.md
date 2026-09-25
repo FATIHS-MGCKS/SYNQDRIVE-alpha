@@ -6,7 +6,7 @@
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/trip-detection-lifecycle/` |
 | **Canonical target** | This directory — **not** `docs/architecture/trip-fsm/` or `architecture/trip-fsm/` |
-| **Last updated** | 2026-09-07 |
+| **Last updated** | 2026-09-25 |
 
 ## Status banner
 
@@ -17,13 +17,15 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | Phase | Status |
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
-| **1 — Repository current-state audit** | **Initial consolidated baseline established** — further reconstruction **in progress** |
-| **2 — Production read-only audit** | **Verified baseline established** (with documented limitations) |
-| **3 — Reconciliation and classification** | **Pending / in progress** |
-| **4 — Authority construction** | **Partial** — R9 wake subgraph, decision register entries, and `validate-graph.sh` created; full FSM graph incomplete |
-| **5 — Validation and promotion gate** | **Pending** |
+| **1 — Repository current-state audit** | **Consolidated baseline established** — rebaselined @ `REPO_CURRENT` `d6ff7e19…`; ongoing gaps (DI handoff, flags, dead paths) remain |
+| **2 — Production read-only audit** | **Verified** — **PRODUCTION_CURRENT** @ `99d722b4…` + TDL-EVID-QS-V1-PROD-ACCEPT-001; historical releases preserved |
+| **3 — Reconciliation and classification** | **In progress** — Qualified Stop V1 Production acceptance classified **`PASS_WITH_EVIDENCE_GAPS`** |
+| **4 — Authority construction** | **Partial** — R9 wake subgraph, R10–R12 decisions, Qualified Stop V1 decision + graph hooks; full FSM graph incomplete |
+| **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (TDL-OQ-001, TDL-OQ-006, OQ-007 partial) |
 
-Phase 1 is **not** fully complete while dead/legacy inventory, the full feature-flag matrix, Mapbox/FMM failure taxonomy, and the Driving Intelligence handoff remain unresolved.
+Phase 1 is **not** fully complete while dead/legacy inventory, the full feature-flag matrix, Mapbox/FMM failure taxonomy, and the Driving Intelligence handoff (TDL-OQ-001 — **next engineering audit slice**) remain unresolved.
+
+**Reconstruction reality (2026-09-25):** Production @ `99d722b4…` carries Qualified Stop V1 (#1753) and post-split finalize quality (#1750). Authority docs rebaselined against verified Production acceptance; promotion to `AUTHORITY_ACTIVE` remains blocked by open questions (especially TDL-OQ-001, TDL-OQ-006).
 
 Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) are **supporting evidence only** — linked via [`evidence/EVIDENCE_INDEX.md`](evidence/EVIDENCE_INDEX.md).
 

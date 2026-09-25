@@ -690,3 +690,41 @@ nodes:
     summary: Large proposed repair backlog; not root-caused.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: TDL-POL-QS-V1-001
+    type: policy
+    title: Qualified Stop Contract V1 duration authority
+    epistemic_status: CONFIRMED
+    summary: >
+      Max same-trip qualified stop 300_000 ms (CANONICAL_DEFAULT on Production @ 99d722b4…);
+      LTE same trip, GT split; shared across orchestration, mid-gap, merge/reopen, reconciliation,
+      TripQualityDetector. Production acceptance PASS_WITH_EVIDENCE_GAPS — not FULLY_PRODUCTION_VALIDATED.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-qualified-stop-duration.policy.ts
+      - architecture/trip-detection-lifecycle/evidence/QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md
+    evidence:
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+
+  - id: TDL-EVID-QS-V1-PROD-ACCEPT-001
+    type: evidence
+    title: Qualified Stop V1 Production acceptance (read-only)
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: Production @ 99d722b4…; 3/3 natural SAME_TRIP; PASS_WITH_EVIDENCE_GAPS; shadow enabled; divergences not evaluated.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md
+
+  - id: TDL-DEC-QS-V1-001
+    type: decision
+    title: Qualified Stop Contract V1 shared duration authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Single 300_000 ms qualified-stop contract across orchestration, mid-gap, merge/reopen, reconciliation,
+      TripQualityDetector. Production @ 99d722b4… (#1753). Acceptance PASS_WITH_EVIDENCE_GAPS — not full path seal.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-qualified-stop-duration.policy.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-mid-gap-split.util.ts
+      - backend/src/config/worker.config.ts
+    evidence:
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001

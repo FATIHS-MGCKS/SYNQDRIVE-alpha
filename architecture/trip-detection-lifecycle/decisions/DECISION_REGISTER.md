@@ -189,3 +189,19 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **PRODUCTION STATUS** | **Not deployed** |
 | **NON_EFFECTS** | 120s threshold unchanged; R10 finalize guards unchanged; UNKNOWN semantic unchanged; no provider subscription changes |
 | **EVIDENCE** | TDL-EVID-R12-IMPL-001; TDL-EVID-KS-MS-661-R11-NATURAL-001 |
+
+---
+
+## TDL-DEC-QS-V1-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | Divergent mid-gap thresholds (180_000 ms legacy default) across orchestration, merge/reopen, reconciliation, and quality read paths |
+| **WHY** | Operators and repair logic need one canonical qualified-stop duration for same-trip vs split decisions |
+| **CHANGE** | Single max same-trip qualified stop **300_000 ms**; `durationMs <= max` → SAME_TRIP; `durationMs > max` → SPLIT; shared resolver/config across orchestration, live mid-gap, merge/reopen, reconciliation, `TripQualityDetector` |
+| **INDEPENDENT AUTHORITY** | `MAX_IGNORABLE_UNCOVERED_SPAN_SECONDS=180` remains repair/coverage — **not** the V1 qualified-stop contract |
+| **VALIDATION** | CI + Production read-only acceptance TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+| **PRODUCTION STATUS** | **PRODUCTION_PRESENT** @ `99d722b4…` (#1753 merge `b0a7cd089…`); natural SAME_TRIP **3/3 PASS**; classification **`PASS_WITH_EVIDENCE_GAPS`** — **not** `FULLY_PRODUCTION_VALIDATED` |
+| **NON_EFFECTS** | Does not auto-repair historical trips; does not replace DIMO Segments canonical boundary authority (TDL-OQ-006); does not close TDL-OQ-007 for all R1–R8 paths |
+| **EVIDENCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 |

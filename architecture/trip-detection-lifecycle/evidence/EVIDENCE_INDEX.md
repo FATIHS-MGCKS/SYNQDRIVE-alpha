@@ -2,11 +2,13 @@
 
 **origin/main (historical @ R9 rebase):** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9**
 
-**origin/main (current @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
+**REPO_CURRENT (@ rebaseline audit):** `d6ff7e198110ff7401d03389c232398af47766f0`
 
-**R9 audit branch (historical):** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
+**PRODUCTION_CURRENT (verified):** `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994`
 
-**Production release (current known — PRE_HARDENING_R12):** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` — **does not include #1594 hardening**
+**origin/main (historical @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
+
+**Production release (historical — PRE_HARDENING_R12):** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994`
 
 **Production release (historical @ R11):** `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994`
 
@@ -54,7 +56,8 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 
 | Qualifier | Meaning |
 |-----------|---------|
-| **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** PR #1594 hardening; distinct from hardened main @ `f4109e34…` |
+| **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** later release chain; **HISTORICAL** — superseded by `99d722b4…` |
+| **PRODUCTION_CURRENT** | Verified Production @ `99d722b4…` — Qualified Stop V1 + #1750 lineage; acceptance **`PASS_WITH_EVIDENCE_GAPS`** |
 
 ---
 
@@ -103,7 +106,7 @@ Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Applicati
 
 ## Production observations (read-only) — historical session `2026-09-06T23:47:41Z` @ `01541c2ab…`
 
-**Note:** These observations remain valid for the **historical** release @ `01541c2ab…` @ `2026-09-06T23:47:41Z`. **Current known Production** is `157b3c722…` — see TDL-EV-R12-PROD-DEPLOY-001.
+**Note:** These observations remain valid for the **historical** release @ `01541c2ab…` @ `2026-09-06T23:47:41Z`. **PRODUCTION_CURRENT** is `99d722b4…` — see TDL-EVID-QS-V1-PROD-ACCEPT-001.
 
 | Evidence ID | Source type | Method | Timestamp (UTC) | Environment | Supported claim | Currentness | Limitations |
 |-------------|-------------|--------|-----------------|-------------|-----------------|-------------|-------------|
@@ -184,6 +187,7 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 | TDL-TEST-R12-RETRY-BUDGET-002 | CURRENT_TEST | [trip-end-cycle-reset.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.spec.ts) | `2026-09-13` | CI run `34741464230` | Unit: CUSUM preserve vs ACTIVITY/movement reset + POSSIBLE_END re-entry | **CONFIRMED_CI** | via `test:trip-r12:hardening` |
 | TDL-EVID-R12-KSMX-CH-SKIP-RESUME-001 | PRODUCTION_OBSERVATION + CODE + TEST | [KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md](KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md) | `2026-09-17T06:00:00Z` | Forensic #1673; BASE `9580a3247…` | KS MX 2024 POST-#1648 false-terminal: CH skip finalize without post-boundary resume revalidation | **PROPOSED** (fix not deployed) | Forensic root cause in #1673; no Production mutation |
 | TDL-TEST-R12-CH-SKIP-RESUME-001 | CURRENT_TEST | [trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts) | `2026-09-17` | implementation branch | Production race RED/GREEN + visible-resume block + true-stop event-time preserve | **PENDING_CI** | via `test:trip-r12:postgres-redis:ci` |
+| TDL-EVID-QS-V1-PROD-ACCEPT-001 | PRODUCTION_OBSERVATION | [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) | `2026-09-25T00:00:00Z` | Production @ `99d722b4…`; REPO audit @ `d6ff7e19…` | Qualified Stop V1 Production acceptance — 3/3 natural SAME_TRIP; **`PASS_WITH_EVIDENCE_GAPS`**; regression scan NOT_OBSERVED_IN_AUDIT_WINDOW; shadow divergences not evaluated | **CONFIRMED_AT_PRODUCTION_RELEASE** | Does **not** seal all R1–R8 paths (TDL-OQ-007 partial); not FULLY_PRODUCTION_VALIDATED |
 
 ---
 

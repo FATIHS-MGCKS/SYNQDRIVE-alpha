@@ -2,27 +2,25 @@
 
 | Field | Value |
 |-------|-------|
+| **REPO_CURRENT (`origin/main` @ rebaseline audit)** | `d6ff7e198110ff7401d03389c232398af47766f0` — **not** identical to Production |
+| **PRODUCTION_CURRENT (verified release)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994` (`LIVE_RELEASE_ID=20260924235024_v4994`) |
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
-| **origin/main (current @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — **CI_VALIDATED** (Trip FSM run 34424546044); **NOT_DEPLOYED** |
-| **origin/main (historical @ evidence auth)** | `32526c95a6ae6fae930fd048072dccfc19b30516` — includes R11 merged via #1584 |
-| **origin/main (at R11 deploy)** | `0b91dcd96f68164282a38458242fe8489e0b3b82` — **not deployed** (frozen target used) |
-| **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline |
-| **Production baseline (current known — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` (R12 deploy 2026-09-09) — **does not include #1594 hardening** |
-| **Pre-R12 Production (historical)** | `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994` (R11 deploy 2026-09-09) |
-| **Pre-R11 Production (historical)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `20260908172927_v4994` (R10 deploy 2026-09-08) |
-| **Pre-R10 Production (historical)** | `7b9a785710fdb4b2c620514de2e8afc0923a5b6a` @ `20260908045043_v4994` |
-| **Last verified Production evidence** | `2026-09-09T19:26:03Z` (R12 pre-hardening deploy TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…`); KS MS 661 R11 natural drive @ `f7eb94cb…` remains historical |
-| **Qualified stop duration (repo @ main + draft V1)** | `trip-qualified-stop-duration.policy.ts` — max same-trip qualified stop **300_000 ms**; split when **>** max; live mid-gap + merge/reopen + reconciliation share one config (`worker.tripSameTripMaxQualifiedStopMs`) |
+| **origin/main (historical @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — superseded on main by later merges |
+| **Production baseline (historical — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `20260909190912_v4994` — **HISTORICAL** |
+| **Production baseline (historical — QS-active)** | `e30de7591d97868e24d6e1f379a71b52ada8a3eb` @ `20260924201136_v4994` — **HISTORICAL** (superseded by `99d722b4…`) |
+| **Last verified Production evidence** | `2026-09-25` — TDL-EVID-QS-V1-PROD-ACCEPT-001 @ `99d722b4…`; deploy audit TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…` remains **HISTORICAL** |
+| **Qualified stop duration (Production @ `99d722b4…`)** | **300_000 ms** threshold; `durationMs <= max` → SAME_TRIP; `durationMs > max` → SPLIT; config **`CANONICAL_DEFAULT`**; orchestration + mid-gap + merge/reopen + reconciliation + `TripQualityDetector` **aligned** |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
 ## Authority axes (mandatory separation — do not conflate)
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **R12_HARDENED_CODE_ON_MAIN** | `f4109e34…` (#1594 merged) | **CI_VALIDATED** — main push run 34424546044 |
-| **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** | `157b3c722…` @ `20260909190912_v4994` | **DEPLOYED** / **POST_DEPLOY_HEALTH_CONFIRMED** — TDL-EV-R12-PROD-DEPLOY-001 |
-| **R12_HARDENED_PRODUCTION_DEPLOYED** | — | **NOT YET CONFIRMED** — no deploy evidence for `f4109e34…` |
-| **R12_HARDENED_PRODUCTION_BEHAVIOR_VALIDATED** | — | **NOT YET CONFIRMED** — no natural-drive acceptance on hardened production SHA |
+| **REPO_CURRENT** | `d6ff7e19…` | Mainline code @ rebaseline audit — **ahead/behind Production independently** |
+| **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` | **VERIFIED_READ_ONLY** — #1750 + #1753 **PRODUCTION_PRESENT** |
+| **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
+| **PRE_HARDENING_R12_PRODUCTION (historical)** | `157b3c722…` | **HISTORICAL** deploy — TDL-EV-R12-PROD-DEPLOY-001 |
+| **SHADOW_RUNTIME (Production)** | @ `99d722b4…` | **PRESENT** + **ENABLED** — divergences **NOT_EVALUATED_SHORT_WINDOW** |
 
 ## Phase status (this document)
 
@@ -115,7 +113,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463�
 
 ## CONFIRMED — R9 runtime on main (@ `4bef60463…`)
 
-**Epistemic note:** R9 code merged to `origin/main` via #1553. **Current known Production** is **not** @ `0ba96e03…` — see authority axes above (`157b3c722…` pre-hardening R12). Historical R9 Production snapshot @ `0ba96e03…` preserved below. Provider speed/ignition trigger wiring **validated** on that historical release (5/5 active cohort — see TDL-EV-R9-CANARY-001). **Natural wake delivery not yet validated.**
+**Epistemic note:** R9 code merged to `origin/main` via #1553. **PRODUCTION_CURRENT** is @ `99d722b4…` — see authority axes above. Historical R9 Production snapshot @ `0ba96e03…` preserved below.
 
 ### R9 wake subsystem entry points
 
@@ -145,13 +143,31 @@ See [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*.
 
 ---
 
-## CONFIRMED — Current known Production state (read-only)
+## CONFIRMED — Current verified Production (read-only)
 
-**Current known Production authority:** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` — **PRE_HARDENING_R12** (does not include #1594 hardening).
+**PRODUCTION_CURRENT authority:** `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994`.
 
-Canonical detailed evidence: [R12_PRODUCTION_DEPLOY_2026-09-09.md](evidence/R12_PRODUCTION_DEPLOY_2026-09-09.md) (**TDL-EV-R12-PROD-DEPLOY-001** @ `2026-09-09T19:26:03Z`).
+Canonical acceptance evidence: [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](evidence/QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) (**TDL-EVID-QS-V1-PROD-ACCEPT-001** @ `2026-09-25`).
 
 Chronological baseline index: [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
+
+| Observation | Value | Evidence ID |
+|-------------|-------|-------------|
+| Deployed SHA / path | `99d722b4…` @ `20260924235024_v4994` | TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+| #1750 / #1753 on Production | **YES** (ancestor / present) | TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+| Qualified Stop V1 acceptance | **PASS_WITH_EVIDENCE_GAPS** (3/3 natural SAME_TRIP) | TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+| Shadow runtime | **PRESENT** + **ENABLED** | TDL-EVID-QS-V1-PROD-ACCEPT-001; [SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md](evidence/SHADOW_END_PAUSE_OBSERVABILITY_2026-09-14.md) |
+| Regression signatures (audit window) | **NOT_OBSERVED_IN_AUDIT_WINDOW** (see acceptance doc) | TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+
+**Do not claim** Production @ `99d722b4…` equals `REPO_CURRENT` @ `d6ff7e19…`.
+
+---
+
+## HISTORICAL — PRE_HARDENING_R12 Production @ `157b3c722…`
+
+**Not current Production.** Superseded by later releases ending at `99d722b4…`.
+
+Canonical deploy evidence: [R12_PRODUCTION_DEPLOY_2026-09-09.md](evidence/R12_PRODUCTION_DEPLOY_2026-09-09.md) (**TDL-EV-R12-PROD-DEPLOY-001** @ `2026-09-09T19:26:03Z`).
 
 | Observation | Value | Evidence ID |
 |-------------|-------|-------------|
@@ -164,7 +180,7 @@ Chronological baseline index: [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCT
 
 ## HISTORICAL — R9 Production / canary @ `0ba96e03…`
 
-**Not current Production.** Superseded by R10 → R11 → R12 deploy chain; **current known Production** is `157b3c722…`.
+**Not current Production.** Superseded by R10 → R11 → R12 → `99d722b4…`.
 
 | Observation | Value | Evidence ID |
 |-------------|-------|-------------|
@@ -204,7 +220,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Histor
 |-----------|-------|
 | Small telematics cohort drives live FSM rows (historical @ `01541c2ab…` session) | TDL-EV-PROD-005 vs PROD-009 @ `2026-09-06T23:47:41Z` |
 | Reconciliation scans broader history than live FSM (historical session) | TDL-EV-PROD-008 vs PROD-006 @ `2026-09-06T23:47:41Z` |
-| Production trip FSM R8/R9 deploy (historical) | R8/R9 **were deployed** @ `0ba96e03…` (historical); superseded by R10→R11→R12; current known Production @ `157b3c722…` |
+| Production trip FSM deploy (historical chain) | R8/R9 **were deployed** on historical releases; **PRODUCTION_CURRENT** @ `99d722b4…` includes R12 fixes through #1753 |
 | Natural trip processing active (historical session inference) | TDL-EV-PROD-009 @ `2026-09-06T23:47:41Z` — not current fleet state |
 
 ---
@@ -239,7 +255,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 
 ## Explicit non-claims
 
-- Production validation of R1–R8 (separate from repo/test evidence)
+- Production validation of R1–R8 **in full** on current Production (TDL-OQ-007 **PARTIALLY_RESOLVED** — QS V1 natural SAME_TRIP + regression scan only; see TDL-EVID-QS-V1-PROD-ACCEPT-001)
+- **`FULLY_PRODUCTION_VALIDATED`** for all Qualified Stop paths — acceptance is **`PASS_WITH_EVIDENCE_GAPS`**
 - Production validation of R9 adaptive polling wake — **runtime deployed** @ `684950419…` (R10 release); **provider trigger wiring validated** (5/5 canary); **natural start wake partially observed** on KS MS 661 tokenId 187361 (TDL-EVID-KS-MS-661-001); efficiency vs polling-only **not proven**
 - Natural R9 wake delivery — **PARTIAL** (start wake observed KS MS 661 @ `684950419…`); in-trip/end-path wake and archived webhook payloads remain **OPEN** (DIM-GAP-006 / TDL-GAP-013)
 - R10 motor-off pause / finalize guards — **deployed** @ `684950419…` (TDL-EV-R10-PROD-DEPLOY-001); **NOT exercised** on KS MS 661 (0× `POSSIBLE_END`); TDL-DEC-R10-001/002 remain **not** `PRODUCTION_VALIDATED`
@@ -247,8 +264,12 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - TDL-DEC-R12-001 — **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** @ `157b3c722…` (`20260909190912_v4994`, TDL-EV-R12-PROD-DEPLOY-001); **CI_VALIDATED** (run 34387586390); **POST_DEPLOY_HEALTH_CONFIRMED**; **NOT PRODUCTION_BEHAVIOR_VALIDATED**; KS MS 661 post-deploy T0 **PHYSICAL_TEST_READY=NO**
 - TDL-DEC-R12 pre-drive hardening (#1594) — **R12_HARDENED_CODE_ON_MAIN** @ `f4109e34…` **MERGED**; **CI_VALIDATED** (main push run 34424546044); closes AUD-002/003/004/007; **R12_HARDENED_PRODUCTION_DEPLOYED = NOT YET CONFIRMED**; **R12_HARDENED_PRODUCTION_BEHAVIOR_VALIDATED = NOT YET CONFIRMED**
 - PR #1600 end-cycle hardening — **MERGED**; PE clock durability **PRODUCTION_PROVEN** on drive `fc93f98f…`; POST-#1600 defect class documented (TDL-EVID-R12-KS661-DISPATCH-GAP-001); trip `fc93f98f…` **NOT repaired**
-- PR #1603 PEC→EV lock-order fix — **MERGED** @ `9e3a5a19c`; **DEPLOYED** @ `f6f5eaa3a…` (`20260911234818_v4994`, `2026-09-11T23:58:46Z`); **#1603 failure class NOT reproduced** on KS MS 661 drive `a05fa903…`; **#1617** CUSUM boundary preservation **DEPLOYED** @ `a8320f2ca…`; WOB L 7503 POST-#1617 drive **FAIL** — `END_VALIDATION_RETRY_BUDGET_RESET_LOOP` (17× EV, 0× FINALIZE); retry-budget fix **draft** (references forensic PR #1625); Production **FAIL** unrepaired
-- KS MX 2024 POST-#1648 CH skip false-terminal — **forensic authority PR #1673**; runtime bounded resume revalidation before `clickhouse_end_assist_skip_cusum` **draft implementation** @ `9580a3247…` (not deployed; no historical repair)
+- PR #1603 PEC→EV lock-order fix — **MERGED**; **PRODUCTION_PRESENT** @ `99d722b4…` ancestor chain; **#1617** CUSUM boundary preservation **PRODUCTION_PRESENT**; #1627 retry-budget fix — **MERGED / PRODUCTION_PRESENT**; #1635 provider-silence continuity — **MERGED / PRODUCTION_PRESENT**; #1634/#1634-class silence dead-zone fix — **MERGED** (#1634 lineage on main); WOB L 7503 historical POST-#1617 **FAIL** remains forensic — **not reproduced** in QS acceptance audit window
+- PR #1648 shadow observability — **MERGED / PRODUCTION_PRESENT**; shadow **ENABLED** on `99d722b4…`; divergences **NOT_EVALUATED_SHORT_WINDOW**
+- PR #1674 FETCH_UNCERTAIN bounded CUSUM handoff — **MERGED / PRODUCTION_PRESENT**; KS MX 2024 CH skip resume revalidation — **MERGED** (#1674); historical false-terminal trips **not repaired**
+- PR #1750 post-split finalize quality — **MERGED / PRODUCTION_PRESENT**; natural post-split Trip2 acceptance **evidence-gapped** (TDL-EVID-QS-V1-PROD-ACCEPT-001)
+- PR #1753 Qualified Stop Contract V1 — **MERGED / PRODUCTION_PRESENT**; 3/3 natural SAME_TRIP controls **PASS**; natural >300s SPLIT acceptance **evidence-gapped**
+- PR #1757 accidental squash merge @ `301e4a32…` — **NO_RUNTIME_DELTA_INTRODUCED** (test harness + provenance only); isolated candidate `9f346230…` **DEPLOY_REQUIRED=NO**
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
 - Promotion to `AUTHORITY_ACTIVE`
 - Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)

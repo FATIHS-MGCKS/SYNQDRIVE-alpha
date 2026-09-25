@@ -1,19 +1,46 @@
 # Production Baseline — Trip Detection & Lifecycle (Read-Only)
 
-Chronological Production baseline index. **Do not conflate** current known Production, hardened main code, and behavior validation — see [CURRENT_STATE.md](../CURRENT_STATE.md) authority axes.
+Chronological Production baseline index. **Do not conflate** `REPO_CURRENT`, `PRODUCTION_CURRENT`, hardened-main code, and behavior validation — see [CURRENT_STATE.md](../CURRENT_STATE.md) authority axes.
 
 ---
 
-## Current known Production (PRE_HARDENING_R12)
+## Current verified Production (Qualified Stop V1 + post-#1750 lineage)
+
+| Field | Value |
+|-------|-------|
+| **Evidence class** | `VERIFIED_READ_ONLY` (release SHA + read-only acceptance audit) |
+| **Observation window (natural QS acceptance)** | Anchored from QS-active release `2026-09-24T20:11:36+00` through rebaseline `2026-09-25` |
+| **Production release (current verified)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994` |
+| **Classification** | **PRODUCTION_PRESENT** (#1750, #1753 ancestors); Qualified Stop V1 acceptance **`PASS_WITH_EVIDENCE_GAPS`** |
+| **Canonical detailed evidence** | [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) — **TDL-EVID-QS-V1-PROD-ACCEPT-001** |
+| **Shadow runtime** | **PRESENT** and **ENABLED** on this release (#1648 lineage) |
+
+Summary cross-ref only — contract thresholds, natural-case counts, regression scan, and explicit evidence gaps live in the acceptance artifact above.
+
+---
+
+## Historical — QS-active intermediate release @ `e30de759…`
+
+| Field | Value |
+|-------|-------|
+| **Release** | `e30de7591d97868e24d6e1f379a71b52ada8a3eb` @ `/opt/synqdrive/releases/20260924201136_v4994` |
+| **Classification** | **HISTORICAL** — superseded by `99d722b4…`; natural-case observation window **opens** at this deploy timestamp |
+| **Note** | Qualified Stop V1 runtime present; post-#1750 finalize-quality fixes landed in later release |
+
+---
+
+## Historical — PRE_HARDENING_R12 @ `157b3c722…`
 
 | Field | Value |
 |-------|-------|
 | **Evidence class** | `VERIFIED_READ_ONLY` (deploy audit) |
 | **Observation window** | `2026-09-09T19:08:29Z` – `2026-09-09T19:26:03Z` |
-| **Production release (current known)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` |
-| **Classification** | **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** — CI_VALIDATED; POST_DEPLOY_HEALTH_CONFIRMED; **NOT PRODUCTION_BEHAVIOR_VALIDATED** |
+| **Production release** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` |
+| **Classification** | **HISTORICAL** — **PRE_HARDENING_R12_PRODUCTION_DEPLOYED** — CI_VALIDATED; POST_DEPLOY_HEALTH_CONFIRMED; **NOT PRODUCTION_BEHAVIOR_VALIDATED** |
 | **Canonical detailed evidence** | [R12_PRODUCTION_DEPLOY_2026-09-09.md](R12_PRODUCTION_DEPLOY_2026-09-09.md) — **TDL-EV-R12-PROD-DEPLOY-001** |
-| **Does not include** | PR #1594 pre-drive hardening @ `f4109e34…` (merged to main; **NOT_DEPLOYED**) |
+| **Does not include** | PR #1594 pre-drive hardening @ `f4109e34…` (merged to main earlier; later releases supersede) |
+
+**Not current Production.** Superseded by subsequent release chain (R12 hardening fixes, #1603/#1617/#1627/#1635/#1648/#1674, #1750/#1753) ending at `99d722b4…`.
 
 Summary cross-ref only — full gates (CI admission, rolling deploy, scheduler, KS MS 661 T0) live in the deploy artifact above.
 
@@ -21,7 +48,7 @@ Summary cross-ref only — full gates (CI admission, rolling deploy, scheduler, 
 
 ## Historical R9 Production snapshot (canary cross-ref @ `2026-09-07T22:35:00Z`)
 
-**Not current Production.** Superseded by R10 → R11 → R12 deploy chain ending at `157b3c722…`.
+**Not current Production.** Superseded by R10 → R11 → R12 → later releases ending at `99d722b4…`.
 
 | Field | Value |
 |-------|-------|
@@ -41,7 +68,7 @@ Summary cross-ref only — full gates (CI admission, rolling deploy, scheduler, 
 | **Evidence class** | `VERIFIED_READ_ONLY` |
 | **Observation timestamp** | `2026-09-06T23:47:41Z` (`date -u` at start of single read-only session) |
 | **Production release (historical)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
-| **Note** | At this session R8/R9 were **NOT_ON_PRODUCTION** — superseded by later R9→R10→R11→R12 deploy chain; **current known Production** is `157b3c722…` |
+| **Note** | At this session R8/R9 were **NOT_ON_PRODUCTION** — superseded by later R9→R10→R11→R12→Qualified Stop releases; **current verified Production** is `99d722b4…` |
 | **Access path** | SSH to `srv1374778.hstgr.cloud` as `synqdrive-admin` |
 | **External PostgreSQL `:5432`** | Not reachable from agent network |
 | **DB access method** | SSH + `sudo` sourced `/opt/synqdrive/shared/backend.env`; `psql` with URI query string stripped |
