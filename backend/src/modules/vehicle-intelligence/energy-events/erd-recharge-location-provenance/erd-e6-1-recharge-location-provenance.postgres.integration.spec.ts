@@ -1,8 +1,10 @@
 import { randomUUID } from 'crypto';
 import {
+  EnergyEventConfidence,
   EnergyEventKind,
   PrismaClient,
   VehicleEnergyEventDetectionSource,
+  type VehicleEnergyEvent,
 } from '@prisma/client';
 import { mapRechargeSegmentToHvChargeSessionDraft } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.mapper';
 import { mergeHvChargeSessionUpdate } from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.merge';
@@ -17,10 +19,24 @@ import {
   TESLA_RECHARGE_AUDIT_TOKEN_ID,
 } from '@modules/dimo/recharge-segments/dimo-recharge-segments.fixtures';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  decideFallbackSupersessionForNative,
+  ERD_PHYSICAL_MATCH_RESULT,
+  nativeSideFromDimoSegment,
+} from '@modules/vehicle-intelligence/battery-health/hv-charge-session/erd-physical-episode-matcher';
 import { readAnchorSegmentFingerprintFromVee } from '../erd-recharge-projection/erd-recharge-projection-reconciliation.policy';
+import { buildErdRechargePhysicalProjectionSourceEventKey } from '../erd-recharge-projection/erd-recharge-projection-identity.policy';
 import { projectCanonicalRecharge } from '../erd-recharge-projection/erd-canonical-recharge-projector';
 import { ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME } from '../erd-recharge-projection/erd-canonical-recharge-projector.types';
+import { ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM } from '../erd-recharge-projection/erd-recharge-projection.constants';
+import { ErdRechargeCanonicalProjectionRuntimeService } from '../erd-recharge-write-authority/erd-recharge-canonical-projection-runtime.service';
+import { ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME } from '../erd-recharge-write-authority/erd-recharge-write-authority.constants';
+import { EnergyEventsService } from '../energy-events.service';
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
+
+const E6_CUTOVER_AT = '2026-09-01T12:00:00.000Z';
+const E6_PRE_END = new Date('2026-08-31T12:00:00.000Z');
+const E6_POST_END = new Date('2026-09-02T12:00:00.000Z');
 
 const LIVE = process.env.ERD_E6_1_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.ERD_E6_1_POSTGRES_REQUIRED === '1';
@@ -62,10 +78,56 @@ async function seedOrgVehicle(prisma: PrismaClient, suffix: string) {
 }
 
 async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: string) {
+  const eventIds = (
+    await prisma.vehicleEnergyEvent.findMany({
+      where: { vehicleId },
+      select: { id: true },
+    })
+  ).map((row) => row.id);
+  if (eventIds.length > 0) {
+    await prisma.vehicleEnergyEventFuelStationEnrichment
+      .deleteMany({ where: { energyEventId: { in: eventIds } } })
+      .catch(() => undefined);
+  }
   await prisma.vehicleEnergyEvent.deleteMany({ where: { vehicleId } }).catch(() => undefined);
   await prisma.hvChargeSession.deleteMany({ where: { vehicleId } }).catch(() => undefined);
   await prisma.vehicle.deleteMany({ where: { id: vehicleId } }).catch(() => undefined);
   await prisma.organization.deleteMany({ where: { id: organizationId } }).catch(() => undefined);
+}
+
+function buildEnergyEventsService(client: PrismaClient) {
+  return new EnergyEventsService(client as unknown as PrismaService, {} as never);
+}
+
+function e6CutoverEnv(): NodeJS.ProcessEnv {
+  process.env.BATTERY_V2_HV_RECHARGE_SESSION_ENABLED = 'true';
+  process.env.BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED = 'true';
+  process.env.BATTERY_V2_RECONCILIATION_ENABLED = 'true';
+  return {
+    ...process.env,
+    ERD_RECHARGE_WRITE_CUTOVER_AUTHORIZED: 'true',
+    ERD_RECHARGE_WRITE_CUTOVER_AT: E6_CUTOVER_AT,
+    ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED: '1',
+  };
+}
+
+function snapshotRefuelRow(row: VehicleEnergyEvent) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    dimoSegmentId: row.dimoSegmentId,
+    startTime: row.startTime.toISOString(),
+    endTime: row.endTime.toISOString(),
+    startLatitude: row.startLatitude,
+    startLongitude: row.startLongitude,
+    endLatitude: row.endLatitude,
+    endLongitude: row.endLongitude,
+    fuelDeltaLiters: row.fuelDeltaLiters,
+    fuelDeltaPercent: row.fuelDeltaPercent,
+    detectionSource: row.detectionSource,
+    detectionMechanism: row.detectionMechanism,
+    rawDetectionMeta: JSON.stringify(row.rawDetectionMeta),
+  };
 }
 
 function dimoSegment(suffix: string, loc?: Partial<NormalizedDimoRechargeSegment>): NormalizedDimoRechargeSegment {
@@ -193,7 +255,7 @@ describeFn('ERD E6.1 recharge location provenance PostgreSQL gate', () => {
     await cleanup(prisma, vehicle.id, org.id);
   });
 
-  it('P4/P5: native projection populates coordinates and idempotently NO_OP', async () => {
+  it('P4: native projection populates coordinates', async () => {
     if (!dbReady) return;
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
@@ -234,6 +296,39 @@ describeFn('ERD E6.1 recharge location provenance PostgreSQL gate', () => {
     const vee = await prisma.vehicleEnergyEvent.findFirst({ where: { vehicleId: vehicle.id } });
     expect(vee?.startLatitude).toBe(52.520008);
     expect(vee?.endLongitude).toBe(13.405054);
+
+    await cleanup(prisma, vehicle.id, org.id);
+  });
+
+  it('P5: repeat projection → one VEE, NO_OP when unchanged', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segment: dimoSegment(suffix),
+    });
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: draft.segmentFingerprint,
+        dimoSegmentId: draft.dimoSegmentId,
+        source: draft.source,
+        startAt: draft.startAt,
+        endAt: draft.endAt!,
+        deltaSocPercent: draft.deltaSocPercent,
+        isOngoing: false,
+        idempotencyKey: draft.idempotencyKey,
+        metadata: { ...draft.metadata, qualityStatus: 'QUALIFIED' } as object,
+      },
+    });
+    await projectCanonicalRecharge(prisma, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      chargeSessionId: session.id,
+    });
 
     const second = await projectCanonicalRecharge(prisma, {
       organizationId: org.id,
@@ -495,5 +590,487 @@ describeFn('ERD E6.1 recharge location provenance PostgreSQL gate', () => {
     } finally {
       await cleanup(prisma, vehicle.id, org.id);
     }
+  });
+
+  it('P9: E3 DIFFERENT — native location isolated per physical episode', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const { convergence } = buildAuthorityStack(prisma);
+    const evaluatedAt = new Date('2026-07-16T14:00:00.000Z');
+    try {
+      const segment0 = normalizeDimoRechargeSegment(
+        TESLA_RECHARGE_AUDIT_TOKEN_ID,
+        TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[0],
+      )!;
+      const base = new Date(segment0.startAt);
+      const fallbackDetection = detectFallbackChargeSessions(
+        lteR1Observations(new Date(base.getTime() - 15 * 60_000)),
+        evaluatedAt,
+      );
+      const fbPersist = await convergence.persistProvisionalFallbackUnderAuthorityLock({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        candidate: fallbackDetection.sessions[0],
+        evaluatedAt,
+      });
+      const sessionF = fbPersist.session!;
+
+      const projectedF = await projectCanonicalRecharge(prisma, {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        chargeSessionId: sessionF.id,
+      });
+      expect(projectedF.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+      const vfId = projectedF.vehicleEnergyEventId!;
+
+      const differentSegment = normalizeDimoRechargeSegment(
+        TESLA_RECHARGE_AUDIT_TOKEN_ID,
+        TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[1],
+      )!;
+      const converge = await convergence.persistNativeWithFallbackConvergence({
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segment: differentSegment,
+        evaluatedAt,
+      });
+      expect(converge.convergence.skippedSupersession).toBe(true);
+
+      const fallbackRows = await prisma.hvChargeSession.findMany({
+        where: { vehicleId: vehicle.id, source: 'TELEMETRY_POLL_FALLBACK' },
+      });
+      const e3Decision = decideFallbackSupersessionForNative({
+        vehicleId: vehicle.id,
+        fallbackSessions: fallbackRows,
+        native: nativeSideFromDimoSegment(differentSegment),
+        evaluatedAt,
+      });
+      expect(e3Decision.evaluatedMatches.every((m) => m.result === ERD_PHYSICAL_MATCH_RESULT.DIFFERENT)).toBe(
+        true,
+      );
+
+      const sessionN = await prisma.hvChargeSession.findFirstOrThrow({
+        where: {
+          vehicleId: vehicle.id,
+          source: 'DIMO_RECHARGE_SEGMENT',
+          segmentFingerprint: differentSegment.fingerprint,
+        },
+      });
+      const nativeMeta = sessionN.metadata as {
+        startLocation?: { latitude: number; longitude: number };
+      };
+      expect(nativeMeta.startLocation?.latitude).not.toBeNull();
+
+      const projectedN = await projectCanonicalRecharge(prisma, {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        chargeSessionId: sessionN.id,
+      });
+      expect(projectedN.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+
+      const vfRow = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: vfId } });
+      const vnRow = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
+        where: { id: projectedN.vehicleEnergyEventId! },
+      });
+      expect(vfRow.startLatitude).toBeNull();
+      expect(vfRow.endLatitude).toBeNull();
+      expect(vnRow.startLatitude).not.toBeNull();
+      expect(vnRow.startLongitude).not.toBeNull();
+
+      const fMeta = (await prisma.hvChargeSession.findUniqueOrThrow({ where: { id: sessionF.id } }))
+        .metadata as { startLocation?: { latitude: number } };
+      expect(fMeta.startLocation).toBeUndefined();
+    } finally {
+      await cleanup(prisma, vehicle.id, org.id);
+    }
+  });
+
+  it('P10: cross-vehicle location isolation (separate organizations)', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const a = await seedOrgVehicle(prisma, `a-${suffix}`);
+    const b = await seedOrgVehicle(prisma, `b-${suffix}`);
+    try {
+      const draftA = mapRechargeSegmentToHvChargeSessionDraft({
+        organizationId: a.org.id,
+        vehicleId: a.vehicle.id,
+        segment: dimoSegment(`a-${suffix}`),
+      });
+      const sessionA = await prisma.hvChargeSession.create({
+        data: {
+          organizationId: a.org.id,
+          vehicleId: a.vehicle.id,
+          segmentFingerprint: draftA.segmentFingerprint,
+          dimoSegmentId: draftA.dimoSegmentId,
+          source: draftA.source,
+          startAt: draftA.startAt,
+          endAt: draftA.endAt!,
+          deltaSocPercent: draftA.deltaSocPercent,
+          isOngoing: false,
+          idempotencyKey: draftA.idempotencyKey,
+          metadata: { ...draftA.metadata, qualityStatus: 'QUALIFIED' } as object,
+        },
+      });
+      const bBefore = await prisma.hvChargeSession.create({
+        data: {
+          organizationId: b.org.id,
+          vehicleId: b.vehicle.id,
+          segmentFingerprint: `b-fp-${suffix}`,
+          dimoSegmentId: `b-dimo-${suffix}`,
+          source: 'DIMO_RECHARGE_SEGMENT',
+          startAt: new Date('2026-06-02T10:00:00.000Z'),
+          endAt: new Date('2026-06-02T11:00:00.000Z'),
+          deltaSocPercent: 10,
+          isOngoing: false,
+          idempotencyKey: `b-${suffix}`,
+          metadata: { qualityStatus: 'QUALIFIED' },
+        },
+      });
+      const bMetaBefore = JSON.stringify(bBefore.metadata);
+
+      await projectCanonicalRecharge(prisma, {
+        organizationId: a.org.id,
+        vehicleId: a.vehicle.id,
+        chargeSessionId: sessionA.id,
+      });
+
+      const veeA = await prisma.vehicleEnergyEvent.findFirstOrThrow({
+        where: { vehicleId: a.vehicle.id },
+      });
+      expect(veeA.startLatitude).toBe(52.520008);
+
+      const bAfter = await prisma.hvChargeSession.findUniqueOrThrow({ where: { id: bBefore.id } });
+      expect(JSON.stringify(bAfter.metadata)).toBe(bMetaBefore);
+      expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: b.vehicle.id } })).toBe(0);
+    } finally {
+      await cleanup(prisma, a.vehicle.id, a.org.id);
+      await cleanup(prisma, b.vehicle.id, b.org.id);
+    }
+  });
+
+  it('P11: REFUEL row unchanged after E6.1 recharge projection', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const refuel = await prisma.vehicleEnergyEvent.create({
+      data: {
+        vehicleId: vehicle.id,
+        kind: EnergyEventKind.REFUEL,
+        detectionMechanism: 'refuel',
+        dimoSegmentId: `refuel-${suffix}`,
+        startTime: new Date('2026-05-01T10:00:00.000Z'),
+        endTime: new Date('2026-05-01T11:00:00.000Z'),
+        durationSeconds: 3600,
+        confidence: EnergyEventConfidence.MEDIUM,
+        fuelDeltaLiters: 33.5,
+        startLatitude: 48.1,
+        startLongitude: 11.5,
+        rawDetectionMeta: { probe: 'refuel-unchanged' },
+      },
+    });
+    const before = snapshotRefuelRow(refuel);
+
+    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segment: dimoSegment(suffix),
+    });
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: draft.segmentFingerprint,
+        dimoSegmentId: draft.dimoSegmentId,
+        source: draft.source,
+        startAt: draft.startAt,
+        endAt: draft.endAt!,
+        deltaSocPercent: draft.deltaSocPercent,
+        isOngoing: false,
+        idempotencyKey: draft.idempotencyKey,
+        metadata: { ...draft.metadata, qualityStatus: 'QUALIFIED' } as object,
+      },
+    });
+    await projectCanonicalRecharge(prisma, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      chargeSessionId: session.id,
+    });
+
+    const after = snapshotRefuelRow(
+      await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: refuel.id } }),
+    );
+    expect(after).toEqual(before);
+    await cleanup(prisma, vehicle.id, org.id);
+  });
+
+  it('P12: FuelStationEnrichment unchanged; no RECHARGE enrichment rows', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const refuel = await prisma.vehicleEnergyEvent.create({
+      data: {
+        vehicleId: vehicle.id,
+        kind: EnergyEventKind.REFUEL,
+        detectionMechanism: 'refuel',
+        dimoSegmentId: `refuel-enr-${suffix}`,
+        startTime: new Date('2026-05-02T10:00:00.000Z'),
+        endTime: new Date('2026-05-02T11:00:00.000Z'),
+        durationSeconds: 3600,
+        confidence: EnergyEventConfidence.MEDIUM,
+        fuelDeltaLiters: 40,
+      },
+    });
+    const enrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.create({
+      data: {
+        energyEventId: refuel.id,
+        processingStatus: 'COMPLETED',
+        resolutionStatus: 'MATCHED',
+        matchConfidence: 'HIGH',
+        stationName: 'Test Station',
+        stationLatitude: 52.5,
+        stationLongitude: 13.4,
+        inputFingerprint: `fp-${suffix}`,
+        resolverVersion: 'fuel-station-resolver-v1',
+      },
+    });
+    const enrichmentBefore = JSON.stringify(enrichment);
+    const countBefore = await prisma.vehicleEnergyEventFuelStationEnrichment.count();
+
+    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segment: dimoSegment(suffix),
+    });
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: draft.segmentFingerprint,
+        dimoSegmentId: draft.dimoSegmentId,
+        source: draft.source,
+        startAt: draft.startAt,
+        endAt: draft.endAt!,
+        deltaSocPercent: draft.deltaSocPercent,
+        isOngoing: false,
+        idempotencyKey: draft.idempotencyKey,
+        metadata: { ...draft.metadata, qualityStatus: 'QUALIFIED' } as object,
+      },
+    });
+    const projected = await projectCanonicalRecharge(prisma, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      chargeSessionId: session.id,
+    });
+    expect(projected.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+
+    expect(await prisma.vehicleEnergyEventFuelStationEnrichment.count()).toBe(countBefore);
+    const enrichmentAfter = await prisma.vehicleEnergyEventFuelStationEnrichment.findUniqueOrThrow({
+      where: { id: enrichment.id },
+    });
+    expect(JSON.stringify(enrichmentAfter)).toBe(enrichmentBefore);
+    expect(
+      await prisma.vehicleEnergyEventFuelStationEnrichment.count({
+        where: { energyEventId: projected.vehicleEnergyEventId! },
+      }),
+    ).toBe(0);
+
+    await cleanup(prisma, vehicle.id, org.id);
+  });
+
+  it('P13: product read exposes recharge coordinates via listCanonicalEnergyEvents', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const service = buildEnergyEventsService(prisma);
+    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segment: dimoSegment(suffix),
+    });
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: draft.segmentFingerprint,
+        dimoSegmentId: draft.dimoSegmentId,
+        source: draft.source,
+        startAt: draft.startAt,
+        endAt: draft.endAt!,
+        deltaSocPercent: draft.deltaSocPercent,
+        isOngoing: false,
+        idempotencyKey: draft.idempotencyKey,
+        metadata: { ...draft.metadata, qualityStatus: 'QUALIFIED' } as object,
+      },
+    });
+    await projectCanonicalRecharge(prisma, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      chargeSessionId: session.id,
+    });
+
+    const envOn = { ...process.env, ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED: '1' };
+    const canonical = await service.listCanonicalEnergyEvents(vehicle.id, {}, envOn);
+    const recharge = canonical.filter((e) => e.kind === EnergyEventKind.RECHARGE);
+    expect(recharge).toHaveLength(1);
+    expect(recharge[0]!.startLatitude).toBe(52.520008);
+    expect(recharge[0]!.startLongitude).toBe(13.404954);
+    expect(recharge[0]!.endLatitude).toBe(52.520108);
+    expect(recharge[0]!.endLongitude).toBe(13.405054);
+
+    await cleanup(prisma, vehicle.id, org.id);
+  });
+
+  it('P14: raw read exposes coordinates without dedupe', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const service = buildEnergyEventsService(prisma);
+    const draft = mapRechargeSegmentToHvChargeSessionDraft({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      segment: dimoSegment(suffix),
+    });
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: draft.segmentFingerprint,
+        dimoSegmentId: draft.dimoSegmentId,
+        source: draft.source,
+        startAt: draft.startAt,
+        endAt: draft.endAt!,
+        deltaSocPercent: draft.deltaSocPercent,
+        isOngoing: false,
+        idempotencyKey: draft.idempotencyKey,
+        metadata: { ...draft.metadata, qualityStatus: 'QUALIFIED' } as object,
+      },
+    });
+    await projectCanonicalRecharge(prisma, {
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      chargeSessionId: session.id,
+    });
+    await prisma.vehicleEnergyEvent.create({
+      data: {
+        vehicleId: vehicle.id,
+        kind: EnergyEventKind.RECHARGE,
+        detectionMechanism: 'recharge',
+        detectionSource: VehicleEnergyEventDetectionSource.DIMO_NATIVE,
+        dimoSegmentId: `legacy-${suffix}`,
+        startTime: draft.startAt,
+        endTime: draft.endAt!,
+        durationSeconds: 3600,
+        confidence: EnergyEventConfidence.MEDIUM,
+      },
+    });
+
+    const raw = await service.listEnergyEventsRaw(vehicle.id, {});
+    expect(raw.filter((e) => e.kind === EnergyEventKind.RECHARGE)).toHaveLength(2);
+    const canonicalRaw = raw.find(
+      (e) => e.detectionMechanism === ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM,
+    );
+    expect(canonicalRaw?.startLatitude).toBe(52.520008);
+    expect(canonicalRaw?.endLongitude).toBe(13.405054);
+
+    await cleanup(prisma, vehicle.id, org.id);
+  });
+
+  it('P15: E5.6 write authority unchanged by recharge coordinates', async () => {
+    if (!dbReady) return;
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+    const env = e6CutoverEnv();
+    const runtime = new ErdRechargeCanonicalProjectionRuntimeService(
+      prisma as unknown as PrismaService,
+    );
+
+    const preWithCoords = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: `pre-loc-${suffix}`,
+        dimoSegmentId: `dimo-pre-${suffix}`,
+        source: 'DIMO_RECHARGE_SEGMENT',
+        startAt: new Date('2026-08-01T10:00:00.000Z'),
+        endAt: E6_PRE_END,
+        deltaSocPercent: 20,
+        isOngoing: false,
+        idempotencyKey: `pre-loc-${suffix}`,
+        metadata: {
+          qualityStatus: 'QUALIFIED',
+          startLocation: { latitude: 52.1, longitude: 13.4, source: 'DIMO_RECHARGE_SEGMENT' },
+        },
+      },
+    });
+    const preOutcome = await runtime.projectSingleSessionSafe({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      session: preWithCoords,
+      env,
+    });
+    expect(preOutcome).toBe(ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME.SKIPPED_PRE_CUTOVER);
+
+    const postFp = `post-loc-${suffix}`;
+    const postWithCoords = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: postFp,
+        dimoSegmentId: `dimo-post-${suffix}`,
+        source: 'DIMO_RECHARGE_SEGMENT',
+        startAt: new Date('2026-09-01T10:00:00.000Z'),
+        endAt: E6_POST_END,
+        deltaSocPercent: 25,
+        isOngoing: false,
+        idempotencyKey: `post-loc-${suffix}`,
+        metadata: {
+          qualityStatus: 'QUALIFIED',
+          startLocation: { latitude: 52.520008, longitude: 13.404954, source: 'DIMO_RECHARGE_SEGMENT' },
+          endLocation: { latitude: 52.520108, longitude: 13.405054, source: 'DIMO_RECHARGE_SEGMENT' },
+        },
+      },
+    });
+    const postWithOutcome = await runtime.projectSingleSessionSafe({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      session: postWithCoords,
+      env,
+    });
+    expect(postWithOutcome).toBe(ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME.CREATED);
+
+    const postNoLoc = await prisma.hvChargeSession.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        segmentFingerprint: `post-noloc-${suffix}`,
+        dimoSegmentId: `dimo-post-noloc-${suffix}`,
+        source: 'DIMO_RECHARGE_SEGMENT',
+        startAt: new Date('2026-09-01T12:00:00.000Z'),
+        endAt: E6_POST_END,
+        deltaSocPercent: 18,
+        isOngoing: false,
+        idempotencyKey: `post-noloc-${suffix}`,
+        metadata: { qualityStatus: 'QUALIFIED' },
+      },
+    });
+    const postNoLocOutcome = await runtime.projectSingleSessionSafe({
+      organizationId: org.id,
+      vehicleId: vehicle.id,
+      session: postNoLoc,
+      env,
+    });
+    expect(postNoLocOutcome).toBe(ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME.CREATED);
+
+    const sourceKey = buildErdRechargePhysicalProjectionSourceEventKey({
+      vehicleId: vehicle.id,
+      anchorSegmentFingerprint: postFp,
+    });
+    const veeWithLoc = await prisma.vehicleEnergyEvent.findFirstOrThrow({
+      where: { canonicalChargeSessionId: postWithCoords.id },
+    });
+    expect(veeWithLoc.sourceEventKey).toBe(sourceKey);
+    expect(veeWithLoc.startLatitude).not.toBeNull();
+
+    await cleanup(prisma, vehicle.id, org.id);
   });
 });

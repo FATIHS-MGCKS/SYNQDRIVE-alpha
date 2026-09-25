@@ -59,8 +59,22 @@ Late native SAME handoff upgrades fallback-originated VEE with native DIMO coord
 ## Tests
 
 - Unit: `erd-recharge-location-provenance.spec.ts` (L1–L15)
-- PostgreSQL: `erd-e6-1-recharge-location-provenance.postgres.integration.spec.ts`
+- PostgreSQL: `erd-e6-1-recharge-location-provenance.postgres.integration.spec.ts` (**P1–P15** explicit cases)
 - CI: boundary-repair step **14/14**
+
+## E6.1 explicit boundary closure (P9–P15)
+
+Addendum **2026-09-25** — dedicated PostgreSQL proofs:
+
+| Case | Proof |
+|------|--------|
+| P9 | Real E3 **DIFFERENT** episodes; native coords only on native VEE; fallback VEE null |
+| P10 | Cross-vehicle / cross-org isolation |
+| P11 | REFUEL row field snapshot unchanged after recharge projection |
+| P12 | `VehicleEnergyEventFuelStationEnrichment` unchanged; zero RECHARGE enrichment rows |
+| P13 | `listCanonicalEnergyEvents` returns coordinate DTO fields |
+| P14 | `listEnergyEventsRaw` exposes coords; no dedupe |
+| P15 | E5.6 cutover runtime: coords do not change pre/post cutover authority |
 
 ## E5.4 shadow parity addendum
 
