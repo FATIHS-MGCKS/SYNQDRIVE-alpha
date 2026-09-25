@@ -202,6 +202,10 @@ import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './re
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
+import { ErdRechargeShadowParityMetricsService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.metrics';
+import { ErdRechargeShadowParityRepository } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.repository';
+import { ErdRechargeShadowParityRuntimeService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
+import { ErdRechargeShadowParityService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.service';
 import { RawRefuelCandidateService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate.service';
 import { RawRefuelCandidateRecoveryService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery.service';
 import { RawFuelRefuelFallbackRuntimeService } from './energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
@@ -522,6 +526,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DrivingDecisionsService,
     TripDrivingImpactBackfillService,
     EnergyEventsService,
+    ErdRechargeShadowParityRepository,
+    ErdRechargeShadowParityMetricsService,
+    ErdRechargeShadowParityService,
+    ErdRechargeShadowParityRuntimeService,
     RawRefuelCandidateService,
     RawRefuelCandidateRecoveryService,
     RawFuelRefuelFallbackRuntimeService,

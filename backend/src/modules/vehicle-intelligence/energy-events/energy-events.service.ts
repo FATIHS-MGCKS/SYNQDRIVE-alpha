@@ -30,6 +30,7 @@ import {
 import { PhysicalRefuelReconciliationRuntimeService } from './physical-refuel-reconciliation-runtime.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.types';
+import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -67,6 +68,8 @@ export class EnergyEventsService {
     private readonly physicalRefuelReconciliationRuntime?: PhysicalRefuelReconciliationRuntimeService,
     @Optional()
     private readonly rawFuelRefuelFallbackRuntime?: RawFuelRefuelFallbackRuntimeService,
+    @Optional()
+    private readonly erdRechargeShadowParityRuntime?: ErdRechargeShadowParityRuntimeService,
   ) {}
 
   async listEnergyEventsRaw(
@@ -281,6 +284,13 @@ export class EnergyEventsService {
       dimoPowertrainType: vehicle.dimoVehicle?.powertrainType ?? null,
       dimoFuelType: vehicle.dimoVehicle?.fuelType ?? null,
       requestContext,
+    });
+
+    this.erdRechargeShadowParityRuntime?.runAfterEnergyDetectionSafe({
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      windowFrom: options.from,
+      windowTo: options.to,
     });
 
     return {
