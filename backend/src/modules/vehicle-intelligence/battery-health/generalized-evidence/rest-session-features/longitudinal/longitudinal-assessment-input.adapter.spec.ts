@@ -5,11 +5,9 @@ import {
 import { M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_CONTRACT_VERSION } from './longitudinal-assessment-input.constants';
 import { M3_3E_E1_GOLDEN_CONSUMPTION_FINGERPRINT_LITERAL } from './longitudinal-assessment-input.golden';
 import {
-  buildE1D4OkOutcome,
   buildE1GoldenConsumptionFixture,
   buildE1OkFromSessions,
   buildE1SingleEligibleFixture,
-  computeRevisionIdentityForProjection,
 } from './longitudinal-assessment-input.test-helpers';
 import { REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION } from './longitudinal-integrity-inspection.constants';
 import type { D4InspectionOutcome } from './longitudinal-integrity-inspection.types';
