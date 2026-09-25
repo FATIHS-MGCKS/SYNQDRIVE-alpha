@@ -13254,6 +13254,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-24T20:15:00.000Z',
   },
   {
+    id: 'erd-e5-2-canonical-vee-recharge-projector-idempotency-2026-09-25',
     version: '4.9.907',
     title: 'ERD E5.2 — canonical VEE RECHARGE projector idempotency',
     summary: [
@@ -13271,6 +13272,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-25T00:00:00.000Z',
+  },
+  {
+    id: 'erd-e5-3-late-native-handoff-2026-09-25',
+    version: '4.9.908',
+    title: 'ERD E5.3 — late-native canonical VEE handoff',
+    summary: [
+      'E3 persisted supersession evidence → authoritative fallback predecessor resolver (no independent physical matcher).',
+      'Same VEE row: `canonicalChargeSessionId` F→N; immutable F-anchored sourceEventKey; native evidence reconciled with original anchor.',
+      'Post-handoff idempotency via anchor-rebuilt identity (not native mint key); HANDOFF_COMPLETED + bounded fail-closed outcomes.',
+      'Real E3 `persistRechargeSegment` + explicit projector PostgreSQL proof; multi-client race + handoff rollback/retry (boundary step 10/10). Not runtime-wired.',
+    ],
+    reason:
+      'E5.2 proved idempotent projection; E5.3 closes late-native SAME episode without duplicating product rows or rewriting projection identity.',
+    previousBehavior:
+      'Native projection after fallback VEE returned HANDOFF_REQUIRED; no atomic reassignment of canonicalChargeSessionId on same VEE.',
+    details:
+      'erd-late-native-predecessor.resolver.ts; erd-late-native-handoff.policy.ts; erd-e5-3-late-native-handoff.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T06:00:00.000Z',
   },
   {
     id: 'hv-charge-session-persist-v49548-2026-07-17',

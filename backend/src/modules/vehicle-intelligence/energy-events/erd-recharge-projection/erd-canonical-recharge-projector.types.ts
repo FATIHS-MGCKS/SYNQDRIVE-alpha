@@ -6,6 +6,11 @@ export const ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME = {
   NO_OP: 'no_op',
   NOT_PROJECTABLE: 'not_projectable',
   HANDOFF_REQUIRED: 'handoff_required',
+  HANDOFF_COMPLETED: 'handoff_completed',
+  HANDOFF_NOT_PROVEN: 'handoff_not_proven',
+  AMBIGUOUS_PREDECESSOR: 'ambiguous_predecessor',
+  INVALID_SUPERSESSION_EVIDENCE: 'invalid_supersession_evidence',
+  DUAL_PROJECTION_CONFLICT: 'dual_projection_conflict',
   LEGACY_DIMO_COLLISION: 'legacy_dimo_collision',
   IDENTITY_CONFLICT: 'identity_conflict',
   AUTHORITY_CONFLICT: 'authority_conflict',
@@ -24,6 +29,8 @@ export interface ProjectCanonicalRechargeInput {
   injectFailureAfterCreate?: boolean;
   /** Test-only: throw after UPDATE reconcile, before COMMIT */
   injectFailureDuringReconcile?: boolean;
+  /** Test-only: throw after E5.3 handoff UPDATE, before COMMIT */
+  injectFailureAfterHandoff?: boolean;
 }
 
 export interface ProjectCanonicalRechargeResult {

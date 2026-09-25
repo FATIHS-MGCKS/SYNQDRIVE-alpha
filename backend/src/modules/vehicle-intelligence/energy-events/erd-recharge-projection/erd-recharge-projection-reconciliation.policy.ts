@@ -138,3 +138,14 @@ export function buildProjectionReconcileUpdate(
     rawDetectionMeta: draft.rawDetectionMeta as Prisma.InputJsonValue,
   };
 }
+
+/** E5.3 — reassign canonical session pointer while preserving immutable projection identity. */
+export function buildProjectionHandoffUpdate(
+  draft: ErdRechargeProjectionDraft,
+  newCanonicalChargeSessionId: string,
+) {
+  return {
+    ...buildProjectionReconcileUpdate(draft),
+    canonicalChargeSessionId: newCanonicalChargeSessionId,
+  };
+}
