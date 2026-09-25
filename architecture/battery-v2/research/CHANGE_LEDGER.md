@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E1 pure longitudinal assessment input adapter (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0/E0.1/E0.2 consumption contract on main; no E1 adapter implementation. |
+| **CHANGE** | Pure TypeScript `buildLongitudinalAssessmentInputV1` + types/constants + unit/golden tests + E1 engineering doc (draft PR). Reuses D4 strict scientific parser and D3 canonical fingerprint authority. |
+| **AFTER** | **`E1_ADAPTER_IMPLEMENTED=YES`** on draft branch; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`E1_NEST_PROVIDER_REGISTERED=NO`**; **`D3_RUNTIME_REACHABLE=NO`**; **`D4_RUNTIME_REACHABLE=NO`**. |
+| **NEXT** | Merge E1 PR; then separate authorization for health model / M3.3F — not automatic. |
+| **NON_EFFECTS** | No BatteryAssessment/BatteryPublication writes; no LV pipeline change; no materialization; no deploy. |
+| **DECISION_STATUS** | **E1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
 ## CL-2026-09-25 — M3.3E E0–E0.2 post-merge architecture seal
 
 | Field | Value |
