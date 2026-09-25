@@ -9,6 +9,7 @@
 | REFUEL detection semantics | EED_OWNS | KG-EED | Persist gate, coalesce, rise derivation | Trip FSM rules |
 | RECHARGE detection semantics | EED_OWNS | KG-EED / **ERD** | Physical charge session lifecycle, native>fallback, projection contract | Trip FSM rules |
 | RECHARGE product projection (`VehicleEnergyEvent.RECHARGE`) | EED_OWNS | KG-EED / **ERD** | Idempotent projection from canonical session; E5.1 schema FK + `SYNQDRIVE_ERD_RECHARGE_PROJECTION` provenance (post-cutover E5.2+) | Independent physical authority after cutover |
+| RECHARGE product-read dedupe (E5.5) | EED_OWNS | KG-EED / **ERD** | `listCanonicalEnergyEvents` strict identity v1 (exact DIMO + coalesced lineage); fail-open; flag default OFF | Shadow parity observations as product authority; time-window dedupe |
 | `durationSeconds` REFUEL meaning | EED_OWNS | KG-EED | Detection envelope, not pump time | Trip wall-clock duration |
 | `fuelLevelRise*` semantics | EED_OWNS | KG-EED | Observed telemetry transition | Physical nozzle duration |
 | Sibling reconciliation | EED_OWNS | KG-EED | Token-scoped REFUEL delete rules | Trip row deletion |

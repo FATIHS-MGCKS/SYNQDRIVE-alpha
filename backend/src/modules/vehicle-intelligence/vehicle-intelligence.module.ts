@@ -203,6 +203,7 @@ import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { ErdRechargeShadowParityMetricsService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.metrics';
+import { ErdRechargeProductReadDedupeMetricsService } from './energy-events/erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
 import { ErdRechargeShadowParityRepository } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.repository';
 import { ErdRechargeShadowParityRuntimeService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
 import { ErdRechargeShadowParityService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.service';
@@ -528,6 +529,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     EnergyEventsService,
     ErdRechargeShadowParityRepository,
     ErdRechargeShadowParityMetricsService,
+    ErdRechargeProductReadDedupeMetricsService,
     ErdRechargeShadowParityService,
     ErdRechargeShadowParityRuntimeService,
     RawRefuelCandidateService,
