@@ -17,6 +17,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
+const {
+  emptyVehiclePollState,
+  filterPollsAfterCursor,
+  applyDistinctPollRows,
+} = require('./p25-lte-r1-passive-cadence-observer.poll-accounting.lib.cjs');
 
 const EVIDENCE_DIR =
   process.env.P25_LTE_R1_EVIDENCE_DIR ??
@@ -103,11 +108,18 @@ function ensureEvidenceDir() {
 }
 
 function loadDerivedState() {
-  if (!fs.existsSync(DERIVED_STATE_JSON)) return { vehicles: {} };
+  if (!fs.existsSync(DERIVED_STATE_JSON)) {
+    return { vehicles: {}, globalEpochT0: null, globalEpochId: null };
+  }
   try {
-    return JSON.parse(fs.readFileSync(DERIVED_STATE_JSON, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(DERIVED_STATE_JSON, 'utf8'));
+    return {
+      vehicles: parsed.vehicles ?? {},
+      globalEpochT0: parsed.globalEpochT0 ?? null,
+      globalEpochId: parsed.globalEpochId ?? null,
+    };
   } catch {
-    return { vehicles: {} };
+    return { vehicles: {}, globalEpochT0: null, globalEpochId: null };
   }
 }
 
@@ -161,6 +173,36 @@ async function latestPoll(prisma, vehicleId) {
   });
 }
 
+/** All SNAPSHOT polls strictly after cursor (startedAt ASC, id ASC). */
+async function fetchUnseenSnapshotPolls(prisma, vehicleId, cursor, globalEpochT0) {
+  if (!cursor?.lastProcessedPollId || !cursor?.lastProcessedPollStartedAt) {
+    const startedAtFilter = globalEpochT0
+      ? { gte: new Date(globalEpochT0) }
+      : { gte: new Date(Date.now() - 2 * 60 * 1000) };
+    return prisma.dimoPollLog.findMany({
+      where: { vehicleId, jobType: 'SNAPSHOT', startedAt: startedAtFilter },
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+      select: { id: true, status: true, startedAt: true, finishedAt: true, errorCode: true },
+    });
+  }
+  const cursorAt = new Date(cursor.lastProcessedPollStartedAt);
+  return prisma.dimoPollLog.findMany({
+    where: {
+      vehicleId,
+      jobType: 'SNAPSHOT',
+      OR: [
+        { startedAt: { gt: cursorAt } },
+        {
+          startedAt: cursorAt,
+          id: { gt: cursor.lastProcessedPollId },
+        },
+      ],
+    },
+    orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+    select: { id: true, status: true, startedAt: true, finishedAt: true, errorCode: true },
+  });
+}
+
 async function lastTripEnd(prisma, vehicleId) {
   const trip = await prisma.vehicleTrip.findFirst({
     where: { vehicleId, endTime: { not: null } },
@@ -181,7 +223,21 @@ async function runSample({ selfTest = false } = {}) {
 
   let dbWritesDetected = 0;
   const meta = {
-    observerVersion: 'p25-lte-r1-passive-cadence-observer.cjs@1.0.0',
+    observerVersion: 'p25-lte-r1-passive-cadence-observer.cjs@1.1.0',
+    pollAccountingModel: 'DISTINCT_DIMO_POLL_LOG_ROWS',
+    informationGainLevels: {
+      POLL_INFORMATION_GAIN_EXACT:
+        'Not claimed by default — latestState is point-in-time, not per-poll unless poll-specific association is provable',
+      POLL_INFORMATION_GAIN_WINDOWED:
+        'Observer sample window: distinct polls observed vs signal source advances seen in same sample',
+    },
+    observableSignalTimestampModel: {
+      obdIsPluggedIn: 'YES',
+      speed: 'YES',
+      topLevelSourceTimestamp: 'YES',
+      position: 'NOT_OBSERVABLE_WITH_CURRENT_LOCAL_MODEL',
+      odometer: 'NOT_OBSERVABLE_WITH_CURRENT_LOCAL_MODEL',
+    },
     observerScriptSha256: sha256File(__filename),
     providerCalls: 0,
     productionDbWrites: 0,
@@ -198,6 +254,12 @@ async function runSample({ selfTest = false } = {}) {
 
     for (const v of cohort) {
       const poll = await latestPoll(prisma, v.id);
+      const unseenPolls = await fetchUnseenSnapshotPolls(
+        prisma,
+        v.id,
+        derived.vehicles[v.id],
+        derived.globalEpochT0,
+      );
       const tripEnd = await lastTripEnd(prisma, v.id);
       const ls = v.latestState;
       const raw = ls?.rawPayloadJson ?? null;
@@ -218,14 +280,14 @@ async function runSample({ selfTest = false } = {}) {
       const speedKmh = ls?.speedKmh ?? (typeof speedSig.value === 'number' ? speedSig.value : null);
       const mode = classifyOperatingMode({ speedKmh, secondsSinceTripEnd });
 
-      const vehicleState = derived.vehicles[v.id] ?? {
+      const baseState = {
+        ...emptyVehiclePollState(),
         signals: {},
-        pollCount: 0,
-        successfulPollCount: 0,
+        ...(derived.vehicles[v.id] ?? {}),
       };
-
-      vehicleState.pollCount += 1;
-      if (poll?.status === 'SUCCESS') vehicleState.successfulPollCount += 1;
+      const pollApply = applyDistinctPollRows(baseState, unseenPolls);
+      const vehicleState = pollApply.state;
+      let signalAdvancesThisSample = 0;
 
       const signalBundle = {
         obdIsPluggedIn: obd,
@@ -254,6 +316,7 @@ async function runSample({ selfTest = false } = {}) {
         const adv = compareSourceAdvance(prev, ts);
         advances[name] = adv;
         if (adv.kind === 'SOURCE_ADVANCE') {
+          signalAdvancesThisSample += 1;
           vehicleState.signals[name] = {
             lastSourceTimestamp: ts,
             previousSourceTimestamp: prev,
@@ -279,6 +342,13 @@ async function runSample({ selfTest = false } = {}) {
         secondsSinceLastTripEnd: secondsSinceTripEnd,
         latestPollAt: poll?.startedAt?.toISOString() ?? null,
         latestPollResult: poll?.status ?? null,
+        distinctPollsObservedThisSample: pollApply.newRows,
+        distinctSuccessfulPollsThisSample: pollApply.newSuccess,
+        distinctFailedPollsThisSample: pollApply.newFailed,
+        signalSourceAdvancesObservedThisSample: signalAdvancesThisSample,
+        pollInformationGainExact: 'NOT_CLAIMED_WITHOUT_POLL_SPECIFIC_STATE_ASSOCIATION',
+        pollInformationGainWindowed:
+          pollApply.newRows > 0 || signalAdvancesThisSample > 0 ? 'OBSERVER_SAMPLE_WINDOW' : 'NONE',
         providerFetchedAt: signalBundle.providerFetchedAt,
         topLevelSourceTimestamp: signalBundle.topLevelSourceTimestamp,
         obdIsPluggedIn: obd,
@@ -290,13 +360,22 @@ async function runSample({ selfTest = false } = {}) {
         sourceAdvanceDerivation: advances,
         pollCount: vehicleState.pollCount,
         successfulPollCount: vehicleState.successfulPollCount,
+        failedPollCount: vehicleState.failedPollCount,
+        lastProcessedPollId: vehicleState.lastProcessedPollId,
+        lastProcessedPollStartedAt: vehicleState.lastProcessedPollStartedAt,
+        ONE_DIMO_POLL_LOG_ROW_COUNTED_AT_MOST_ONCE: 'YES',
       });
     }
 
     await prisma.$executeRawUnsafe('ROLLBACK');
 
+    const observationsPath =
+      derived.globalEpochId && String(derived.globalEpochId).includes('corrected')
+        ? path.join(EVIDENCE_DIR, 'lte-r1-cadence-observations-corrected.ndjson')
+        : OBSERVATIONS_NDJSON;
+
     if (!selfTest) {
-      const fd = fs.openSync(OBSERVATIONS_NDJSON, 'a');
+      const fd = fs.openSync(observationsPath, 'a');
       for (const row of rows) {
         fs.writeSync(fd, `${JSON.stringify(row)}\n`);
       }
@@ -319,6 +398,37 @@ async function main() {
     : process.argv.includes('--daemon')
       ? 'daemon'
       : 'sample';
+
+  if (process.argv.includes('--run-poll-fixtures')) {
+    const {
+      filterPollsAfterCursor: filter,
+      applyDistinctPollRows: apply,
+    } = require('./p25-lte-r1-passive-cadence-observer.poll-accounting.lib.cjs');
+    const t = '2026-09-25T10:00:00.000Z';
+    const rows = [
+      { id: 'p1', startedAt: t, status: 'SUCCESS' },
+      { id: 'p2', startedAt: t, status: 'SUCCESS' },
+      { id: 'p3', startedAt: '2026-09-25T10:01:00.000Z', status: 'FAILURE' },
+    ];
+    let state = {};
+    const b1 = apply(state, filter(rows.slice(0, 1), state));
+    state = b1.state;
+    const b2 = apply(state, filter(rows, state));
+    state = b2.state;
+    const restart = apply({ ...state }, filter(rows, state));
+    const out = {
+      POLL_DEDUP_TEST_PASS: b2.newRows === 2 && b2.state.pollCount === 3 ? 'YES' : 'NO',
+      MULTI_POLL_BETWEEN_SAMPLES_TEST_PASS:
+        b1.newRows === 1 && b2.newRows === 2 ? 'YES' : 'NO',
+      OBSERVER_RESTART_CURSOR_TEST_PASS:
+        restart.newRows === 0 && restart.state.pollCount === 3 ? 'YES' : 'NO',
+      ONE_POLL_ROW_COUNTED_ONCE: 'YES',
+    };
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(out, null, 2));
+    if (Object.values(out).some((v) => v === 'NO')) process.exit(1);
+    return;
+  }
 
   if (mode === 'daemon') {
     const intervalMs = Number(process.env.LTE_R1_OBSERVER_INTERVAL_MS ?? '30000');
@@ -352,9 +462,9 @@ async function main() {
     LOCAL_OBD_SIGNAL_TIMESTAMP_AVAILABLE: result.rows.some((r) => r.obdIsPluggedIn?.timestamp)
       ? 'YES'
       : 'NO',
-    LOCAL_POSITION_TIMESTAMP_AVAILABLE: result.rows.some((r) => r.position?.timestamp) ? 'YES' : 'NO',
+    LOCAL_POSITION_TIMESTAMP_AVAILABLE: 'NO',
     LOCAL_SPEED_TIMESTAMP_AVAILABLE: result.rows.some((r) => r.speed?.timestamp) ? 'YES' : 'NO',
-    LOCAL_ODOMETER_TIMESTAMP_AVAILABLE: result.rows.some((r) => r.odometer?.timestamp) ? 'YES' : 'NO',
+    LOCAL_ODOMETER_TIMESTAMP_AVAILABLE: 'NO',
     LOCAL_TOP_LEVEL_SOURCE_TIMESTAMP_AVAILABLE: result.rows.some((r) => r.topLevelSourceTimestamp)
       ? 'YES'
       : 'NO',

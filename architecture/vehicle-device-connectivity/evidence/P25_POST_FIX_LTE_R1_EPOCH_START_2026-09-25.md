@@ -21,8 +21,10 @@
 
 | Field | Value |
 |-------|--------|
-| **NEW_T0** | `2026-09-25T21:39:17.621Z` |
-| **NEW_T7** | `2026-10-02T21:39:17.621Z` |
+| **NEW_T0 (aborted)** | `2026-09-25T21:39:17.621Z` — **ABORTED_OBSERVER_ACCOUNTING_DEFECT** |
+| **NEW_T0_CORRECTED** | `2026-09-25T21:51:46.109Z` |
+| **NEW_T7_CORRECTED** | `2026-10-02T21:51:46.109Z` |
+| **Observer SHA256 (v1.1.0)** | `6857699ae6ac2c8d11140765267638ba0a04ffe941f9aa1878739a63e06e8d2c` |
 | **CORRECTNESS_BLOCKING_AT_T0** | `0` |
 | **LTE_R1 cadence cohort** | `6` vehicles (4/4 P2.5 pilots ⊆ cohort) |
 
