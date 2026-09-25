@@ -2,12 +2,12 @@
 
 | OQ ID | Question | Priority | Blocking promotion? | Status (2026-09-25) |
 |-------|----------|----------|---------------------|---------------------|
-| **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | Yes | **OPEN** — **next Authority-Engineering audit slice** |
+| **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | Partial — contract documented | **PARTIALLY_RESOLVED** — see §TDL-OQ-001 below | **OPEN** — **next Authority-Engineering audit slice** |
 | **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | OPEN |
 | **TDL-OQ-003** | Why does Production have only 6 `vehicle_trip_detection_states` rows while tracking runs are in the thousands per week? | Medium | No | OPEN (historical aggregate; re-verify on `99d722b4…` when needed) |
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
-| **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | Yes (cross-module) | **OPEN** — follow **after TDL-OQ-001** |
+| **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | Yes (cross-module) | **OPEN** — follow **after TDL-OQ-001** contract baseline |
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **PARTIALLY_RESOLVED** — see §TDL-OQ-007 below |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | OPEN |
 | **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
@@ -31,12 +31,28 @@
 
 **Status:** **PARTIALLY_RESOLVED** — do not close OQ-007 without path-specific Production evidence or explicit scope reduction.
 
+## TDL-OQ-001 — partial resolution (2026-09-25)
+
+**Evidence:** [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) (TDL-EVID-OQ001-HANDOFF-001) @ `REPO_CURRENT` `f87391f79…`, Production @ `99d722b4…`.
+
+**Resolved (code + read-only Production):**
+
+- Canonical producer: **`TripPostFinalizeAnalysisProducer.produceAfterPersistedCompletion`**
+- DI ingress: **`DrivingAnalysisInitService.initializeForCompletedTrip`** → **`driving.intelligence.jobs`**
+- **`WHEN_IS_TRIP_COMPLETED_DURABLE`:** PostgreSQL commit of `TripDecisionEngine.finalizeTrip()` / `finalizeRepairedTrip()` update (**not** in same transaction as enqueue)
+- Persisted handoff intent: **`DrivingAnalysisRun` + `DrivingIntelligenceJob`** before BullMQ
+- Recovery: **`DrivingAnalysisReconciliationService`** (`TRIP_WITHOUT_ANALYSIS_RUN`, `PENDING_JOB_RETRY`, 10m leader scheduler)
+
+**Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — not a confirmed handoff-loss defect; bounded reconciliation + documented edge cases (missing `organizationId`, 14d lookback).
+
+**Status:** **PARTIALLY_RESOLVED** — promotion still blocked for undifferentiated “full DI production seal” claims until bounded gaps are closed or explicitly accepted.
+
 ## TDL-OQ-001 / TDL-OQ-006 — sequencing
 
 | OQ | Required state |
 |----|----------------|
-| **TDL-OQ-001** | Remains **OPEN** — mark as **NEXT_ENGINEERING_SLICE** = durable COMPLETED → Driving Intelligence handoff audit |
-| **TDL-OQ-006** | Remains **OPEN** — schedule **after** OQ-001 |
+| **TDL-OQ-001** | Remains **PARTIALLY_RESOLVED** — handoff contract documented (TDL-EVID-OQ001-HANDOFF-001); bounded gaps remain |
+| **TDL-OQ-006** | Remains **OPEN** — schedule **after** OQ-001 baseline |
 
 ## Hypotheses (not confirmed)
 

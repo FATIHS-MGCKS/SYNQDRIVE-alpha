@@ -25,11 +25,14 @@ SynqDrive Driving Intelligence today is a **dual-path post-trip enrichment syste
 
 Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature disabled**. Detail: `evidence/production/DEPLOYMENT_STATE.md`.
 
+**Cross-authority handoff (TDL-OQ-001, 2026-09-25):** Trip Detection invokes `TripPostFinalizeAnalysisProducer` after persisted `COMPLETED`; DI owns `initializeForCompletedTrip`, durable runs/jobs, BullMQ `driving.intelligence.jobs`, and `DrivingAnalysisReconciliationService` recovery. Evidence: [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](../trip-detection-lifecycle/evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) (TDL-EVID-OQ001-HANDOFF-001). Verdict: **`RESOLVED_WITH_BOUNDED_GAPS`** (not DB⊕queue atomic).
+
 ## System boundary (confirmed)
 
 | Inside DI | Outside DI (interface only) |
 |-----------|----------------------------|
 | Post-trip HF fetch + detectors | Trip FSM / `TripDetectionOrchestrationService` |
+| **`DrivingAnalysisInitService` + `driving.intelligence.jobs`** | **`TripDecisionEngine.finalizeTrip()` COMPLETED commit** (TDL owns) |
 | `TripBehaviorEvent`, `DrivingEvent` | DIMO segment canonical boundaries |
 | `TripDrivingImpact`, load components | Energy Event Detection (REFUEL) |
 | V2 stage orchestrator + jobs | Tankstellenerkennung |
