@@ -252,8 +252,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **CHANGE** | Behavior matrix (18 exclusive classes); survivorship vs R9–R12; passive addendum @ `2026-09-25T12:41Z`; fleet SQL + evidence reuse |
 | **NON-EFFECTS** | Does not claim **`FULLY_PRODUCTION_VALIDATED`** for QS; does not close OQ-003/004/008/009/010 |
 | **PRODUCTION STATUS** | LIVE @ `99d722b4…`; 4 active **PRODUCTION_PRESENT_NOT_VALIDATED**; no runtime defect |
-| **VERDICT** | **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** — see TDL-EVID-OQ007-R1R8-COV-001 |
-| **EVIDENCE** | TDL-EVID-OQ007-R1R8-COV-001 |
+| **VERDICT** | **`RESOLVED_BY_SCOPE_REDUCTION`** — OQ-007.1 closed remaining active gaps (TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001) |
+| **EVIDENCE** | TDL-EVID-OQ007-R1R8-COV-001; TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 |
 
 ---
 

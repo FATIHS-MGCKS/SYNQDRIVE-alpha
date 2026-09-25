@@ -142,3 +142,6 @@ edges:
   - from: TDL-EVID-OQ007-R1R8-COV-001
     relation: supports
     to: TDL-DEC-OQ007-001
+  - from: TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001
+    relation: supports
+    to: TDL-DEC-OQ007-001

@@ -8,31 +8,30 @@
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **PARTIALLY_RESOLVED** — see §TDL-OQ-007 below | **OPEN** (active validation gaps) |
+| **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | OPEN |
 | **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
 | **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
 
-## TDL-OQ-007 — partial resolution (2026-09-25, consistency correction)
+## TDL-OQ-007 — resolution (2026-09-25, OQ-007.1 passive closure)
 
-**Evidence:** [TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md](../evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md) (TDL-EVID-OQ007-R1R8-COV-001) @ `REPO_CURRENT` `bca9579a1…`, Production @ `99d722b4…`.
+**Evidence:**
 
-**Verdict:** **`PARTIALLY_RESOLVED_ACTIVE_GAPS`** (TDL-DEC-OQ007-001).
+- [TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md](../evidence/TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md) (TDL-EVID-OQ007-R1R8-COV-001)
+- [TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md](../evidence/TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md) (TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001)
 
-**Cardinality (exclusive, 18 contracts):** PRODUCTION_VALIDATED **5** + VALIDATED_BY_CURRENT_EQUIVALENT **5** + PRODUCTION_PRESENT_NOT_VALIDATED **4** + SUPERSEDED **3** + DEAD **1**.
+**Verdict:** **`RESOLVED_BY_SCOPE_REDUCTION`** (TDL-DEC-OQ007-001) — all **14** active contracts now **PRODUCTION_VALIDATED** or **VALIDATED_BY_CURRENT_EQUIVALENT**; **0** active **PRODUCTION_PRESENT_NOT_VALIDATED**.
 
-**Closed by scope reduction only:** superseded/dead historical paths (no natural replay required).
+**OQ-007.1 closed the four former gaps:**
 
-**Still open (active, Production-present, not validated):**
+| ID | Result |
+|----|--------|
+| R1-BEH-003 | PRODUCTION_VALIDATED (movement anchor vs waypoint event times) |
+| R3-BEH-002 | VALIDATED_BY_CURRENT_EQUIVALENT (persisted PS errors + fail→ACTIVE_TRIP chains; BullMQ attempt **PARTIAL**) |
+| R4-BEH-001 | PRODUCTION_VALIDATED — explicit two-phase start contract (candidate vs confirmation phase, freshness authority, anchor consistency; **not** identical scoring) |
+| R8-BEH-001 | PRODUCTION_VALIDATED (authorized metrics scrape; non-zero recognition histograms) |
 
-- **R1-BEH-003** — event-time `lastMeaningfulMovementAt` trace
-- **R3-BEH-002** — PS failure → retry/recovery signature
-- **R4-BEH-001** — start candidate/confirm scoring symmetry observable in Production
-- **R8-BEH-001** — recognition latency histogram non-zero samples (authorized metrics scrape)
-
-Passive observation can close these gaps; **no physical drive required** for the documented acceptance signatures. **No runtime defect** observed.
-
-**Status:** **PARTIALLY_RESOLVED** — do **not** mark OQ-007 **RESOLVED** until the four active gaps are evidenced or reclassified with proof.
+**Status:** **RESOLVED** — OQ-007 closed. QS acceptance remains **`PASS_WITH_EVIDENCE_GAPS`** (separate surface).
 
 ## TDL-OQ-001 — partial resolution (2026-09-25)
 
