@@ -6,6 +6,26 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3 post-merge engineering authority seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3 implementation merged via PR #1778; active authority still described E3 as draft / merge pending. |
+| **OBSERVATION** | PR #1778 merged successfully; exact engineering head verified; merge SHA verified on main; E3 golden unchanged; 58 E3 tests + regressions passed at final engineering head; exact-head CI **28/28 SUCCESS**. |
+| **HYPOTHESIS** | Authority seal can record merged E3 reality without altering scientific contract or implementation. |
+| **CHANGE** | `CURRENT_STATE` converted E3 draft → **COMPLETE ON MAIN**; E3 engineering document converted to merged authority; `NEXT_PHASE` advanced to **M3.3F**; old draft ledger records preserved unchanged. |
+| **WHY** | Active authority must reflect main, not closed draft PR #1778. |
+| **EXPECTED_EFFECT** | **`M3_3E_E3_COMPLETE_ON_MAIN=YES`**; navigation to M3.3F without implying conclusion-bearing model or production materialization readiness. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only diff; E3 implementation byte-identical to main. |
+| **OBSERVED_EFFECT** | Post-merge authority seal PR establishes active E3 authority when merged. |
+| **NON_EFFECTS** | No runtime wiring; no DB access; no persistence; no Prisma; no migration; no feature flag; no readiness change; no LV Estimated Health change; no publication; no deploy; no production mutation; no M3.3F implementation. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — wording/authority only. |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`; M3.3F separate. |
+| **AFTER** | **`M3_3E_E3_COMPLETE_ON_MAIN=YES`**; **`M3_3E_E3_POST_MERGE_SEAL=PASS`**; **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`E3_RUNTIME_REACHABLE=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **EVIDENCE** | PR1778_HEAD=`984bf2ec3d82eac160c84c0ad8ce2ff796904165`; PR1778_MERGE_SHA=`55fcbe7a229db9858cecc1538b9ec1919ff30fbc`; E3_GOLDEN=`4d4b7ee105cb329b6610cde3648733257f46f1cb4b01abc6e519b05206410398`. |
+| **DECISION_STATUS** | **E3_COMPLETE_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E3.1.2 C1 primary-metric envelope closure (draft PR #1778 amend)
 
 | Field | Value |
