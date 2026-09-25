@@ -2,6 +2,7 @@
 """Unit tests for OSM charging-station dataset tooling (no database required)."""
 from __future__ import annotations
 
+import os
 import importlib.util
 import sys
 import unittest
@@ -25,6 +26,9 @@ try:
     HAS_OSMIUM = True
 except ImportError:
     HAS_OSMIUM = False
+
+if os.environ.get('CHARGING_OSM_TESTS_REQUIRED') == '1' and not HAS_OSMIUM:
+    raise SystemExit('ERROR: pyosmium required when CHARGING_OSM_TESTS_REQUIRED=1')
 
 
 class FakeTags:
@@ -69,8 +73,19 @@ class TagFilterTests(unittest.TestCase):
 
 
 class ImporterIdentityTests(unittest.TestCase):
-    @unittest.skipUnless(HAS_OSMIUM, 'pyosmium not installed')
     def test_duplicate_identity_rejected_in_memory(self) -> None:
+        if not HAS_OSMIUM:
+            fake = types.SimpleNamespace()
+
+            class SimpleHandler:
+                def __init__(self) -> None:
+                    pass
+
+            fake.SimpleHandler = SimpleHandler
+            fake.osm = types.SimpleNamespace(Node=object, Way=object, Relation=object, TagList=object)
+            fake.geom = types.SimpleNamespace(WKTFactory=MagicMock)
+            sys.modules['osmium'] = fake
+
         spec = importlib.util.spec_from_file_location(
             'charging_station_importer', LIB_DIR / 'charging_station_importer.py'
         )
@@ -85,6 +100,89 @@ class ImporterIdentityTests(unittest.TestCase):
         self.assertEqual(len(collector.rows), 1)
 
 
+class ImporterGeometryTypeTests(unittest.TestCase):
+    def _ensure_osmium_stub(self) -> None:
+        if 'osmium' in sys.modules:
+            return
+        if HAS_OSMIUM:
+            return
+        fake = types.SimpleNamespace()
+
+        class SimpleHandler:
+            def __init__(self) -> None:
+                pass
+
+        fake.SimpleHandler = SimpleHandler
+        fake.osm = types.SimpleNamespace(Node=object, Way=object, Relation=object, TagList=object)
+        fake.geom = types.SimpleNamespace(WKTFactory=MagicMock)
+        sys.modules['osmium'] = fake
+
+    def _load_importer(self):
+        self._ensure_osmium_stub()
+        spec = importlib.util.spec_from_file_location(
+            'charging_station_importer', LIB_DIR / 'charging_station_importer.py'
+        )
+        assert spec and spec.loader
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_i1_node_import(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append('node', 1, FakeTags({'amenity': 'charging_station'}), 'POINT(8 50)', None)
+        self.assertEqual(len(collector.rows), 1)
+        self.assertEqual(collector.rows[0]['osm_type'], 'node')
+
+    def test_i2_way_import(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append('way', 2, FakeTags({'amenity': 'charging_station'}), 'LINESTRING(8 50, 8.1 50.1)', None)
+        self.assertEqual(collector.rows[0]['osm_type'], 'way')
+
+    def test_i3_relation_import(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append(
+            'relation',
+            3,
+            FakeTags({'amenity': 'charging_station'}),
+            'POLYGON((8 50, 8.1 50, 8.1 50.1, 8 50.1, 8 50))',
+            None,
+        )
+        self.assertEqual(collector.rows[0]['osm_type'], 'relation')
+
+    def test_i4_fuel_ignored(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append('node', 4, FakeTags({'amenity': 'fuel'}), 'POINT(8 50)', None)
+        self.assertEqual(len(collector.rows), 0)
+
+    def test_i5_device_charger_ignored(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append(
+            'node',
+            5,
+            FakeTags({'amenity': 'device_charging_station'}),
+            'POINT(8 50)',
+            None,
+        )
+        self.assertEqual(len(collector.rows), 0)
+
+    def test_i6_motorcar_no_ignored(self) -> None:
+        mod = self._load_importer()
+        collector = mod.ChargingStationCollector({}, MagicMock())
+        collector._append(
+            'node',
+            6,
+            FakeTags({'amenity': 'charging_station', 'motorcar': 'no'}),
+            'POINT(8 50)',
+            None,
+        )
+        self.assertEqual(len(collector.rows), 0)
+
+
 class PromotionSqlTests(unittest.TestCase):
     def test_promote_is_transactional(self) -> None:
         sql = (Path(__file__).resolve().parent.parent / 'promote.sql').read_text(encoding='utf-8')
@@ -92,6 +190,14 @@ class PromotionSqlTests(unittest.TestCase):
         self.assertIn('COMMIT;', sql)
         self.assertIn('charging_stations_staging', sql)
         self.assertIn('charging_stations_old', sql)
+
+    def test_i13_single_current_metadata_on_promote(self) -> None:
+        sql = (Path(__file__).resolve().parent.parent / 'promote.sql').read_text(encoding='utf-8')
+        self.assertIn(
+            'UPDATE osm.charging_station_dataset_metadata SET is_current = false WHERE is_current = true',
+            sql,
+        )
+        self.assertIn('is_current', sql)
 
 
 class GeometryTests(unittest.TestCase):

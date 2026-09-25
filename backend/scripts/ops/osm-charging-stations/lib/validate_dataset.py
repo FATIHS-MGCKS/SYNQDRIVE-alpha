@@ -122,6 +122,15 @@ def run_validation(conn: 'psycopg2.extensions.connection', dataset_version: str)
 
         cur.execute(
             """
+            SELECT COUNT(*) FROM osm.charging_stations_staging
+            WHERE NOT ST_IsValid(geom)
+            """
+        )
+        invalid_geom = int(cur.fetchone()[0])
+        record('M_valid_geometries', invalid_geom == 0, {'invalid_geometry_count': invalid_geom})
+
+        cur.execute(
+            """
             SELECT COUNT(*) FROM pg_indexes
             WHERE schemaname = 'osm' AND tablename = 'charging_stations_staging'
               AND indexdef ILIKE '%USING gist%'

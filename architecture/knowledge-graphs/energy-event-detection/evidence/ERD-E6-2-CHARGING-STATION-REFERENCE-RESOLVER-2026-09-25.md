@@ -46,7 +46,12 @@ Promotion is atomic; failed validation preserves last-good live dataset.
 - Python importer/validation tests (I*)
 - PostgreSQL gate: `charging-station-location-resolver.postgres.integration.spec.ts` (PG1–PG15), `boundary-repair-postgres-ci.sh` step **15/15**
 
-## Explicit non-goals (E6.2)
+## CI closure addendum (2026-09-25)
+
+Required Vehicle Detail `backend-boundary-postgres` job uses **PostGIS-enabled** service image (`postgis/postgis:16-3.4`) with explicit `CREATE EXTENSION postgis` before Prisma push. E6.2 PG1–PG15 require real `PostGIS_Version()` — plain `postgres:16-alpine` is insufficient.
+
+Explicit closure tests: G3 polygon-edge fixture; I11 invalid geometry validation; I12 failed validation preserves L1 live dataset; pyosmium required in CI importer step.
+
 
 - No Production charging dataset import
 - No Prisma schema migration

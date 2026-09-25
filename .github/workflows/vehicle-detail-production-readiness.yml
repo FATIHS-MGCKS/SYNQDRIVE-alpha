@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgis/postgis:16-3.4
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive
@@ -139,7 +139,31 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - name: Enable PostGIS extension (Required CI spatial contract)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          export PGPASSWORD=synqdrive
+          for i in $(seq 1 30); do
+            if psql -h 127.0.0.1 -U synqdrive -d synqdrive -c 'SELECT 1' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS postgis;'
+          psql -h 127.0.0.1 -U synqdrive -d synqdrive -v ON_ERROR_STOP=1 -c 'SELECT PostGIS_Version();'
       - run: npm ci && npx prisma generate && npx prisma db push --accept-data-loss --skip-generate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+      - name: OSM charging importer tests (pyosmium required)
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pyosmium psycopg2-binary
+          export CHARGING_OSM_TESTS_REQUIRED=1
+          export CHARGING_REFRESH_SAFETY_INTEGRATION=1
+          bash scripts/ops/osm-charging-stations/run-tests.sh
+          python3 scripts/ops/osm-charging-stations/tests/test_charging_refresh_safety.py
         working-directory: backend
         env:
           DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
