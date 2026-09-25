@@ -3,7 +3,8 @@
 **Date:** 2026-09-25  
 **Phase:** M3.3E E2 (architecture + scientific audit — documentation / contract design only)  
 **Registry module:** Battery V2 (`AUTHORITY_ACTIVE`)  
-**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 + E2.1.1 + E2.1.2 pre-merge closure in draft PR #1773)  
+**Status:** **M3.3E E2 ARCHITECTURE COMPLETE ON MAIN** — merged PR #1773 @ merge `d7cb2d1e8b6d449752d03cd3733d111fee3cfeeb` (head `8502928af94c6a3d6f000dd41ab413b4ce4c63cc`); post-merge authority seal: PR #1775  
+**Scientific validation:** architecture authority on main; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`** (calibration / natural fleet evidence not established) — **`DECISION_STATUS=PROPOSED`** for model/calibration claims until M3.3F+ evidence  
 **Contract names introduced (design only, not implemented):** `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1`, `M3_3E_E2_MODEL_POLICY_V1`, `M3_3E_CALIBRATION_UNSET_V1`  
 **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 

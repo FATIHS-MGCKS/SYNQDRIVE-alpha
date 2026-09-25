@@ -25,6 +25,28 @@ Append-only scientific record. Newest entries first.
 | **AFFECTED_GRAPH** | BAT-V2-EVID-OQ002-DRIVE-PROFILE-001; TDL-GAP-002 resolved. |
 | **EVIDENCE** | TDL-EVID-OQ002-DRIVE-PROFILE-001 / BAT-V2-EVID-OQ002-DRIVE-PROFILE-001 |
 
+---
+
+## CL-2026-09-25 — M3.3E E2 post-merge architecture seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2 architecture + E2.1/E2.1.1/E2.1.2 hardenings merged via PR #1773 @ merge `d7cb2d1e8b6d449752d03cd3733d111fee3cfeeb` (head `8502928af94c6a3d6f000dd41ab413b4ce4c63cc`); active `CURRENT_STATE` / E2 doc header still contained draft/pre-merge pointers. |
+| **OBSERVATION** | PR #1773 **MERGED**; head and merge SHA are ancestors of `origin/main`; post-merge main advanced with ERD E5.6 (#1774) — HV recharge write-authority only; no `architecture/battery-v2` or longitudinal/E1/E2 semantic changes. |
+| **HYPOTHESIS** | Authority seal can record merged reality without altering E2 scientific contract. |
+| **CHANGE** | `CURRENT_STATE` draft → **COMPLETE ON MAIN** (PR #1773 SHAs); E2 doc top authority sealed; `NEXT_PHASE` → **M3.3E E3 PURE FAIL-CLOSED LONGITUDINAL EVALUATOR**; historical E2/E2.1 ledger entries **unchanged**. |
+| **WHY** | Active authority must reflect main, not closed draft PR #1773. |
+| **EXPECTED_EFFECT** | **`M3_3E_E2_COMPLETE_ON_MAIN=YES`**; navigation to E3 engineering without implying conclusion-bearing model or M3.3F readiness. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only diff; PR #1773 exact-head CI 3/3 SUCCESS (historical). |
+| **OBSERVED_EFFECT** | Authority-only seal prepared in PR #1775; this diff establishes the final active E2 authority when merged. |
+| **NON_EFFECTS** | No runtime, schema, Prisma, migration, flags, readiness, publication, deploy, or production mutation; E2 estimator/quantization/gates unchanged. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — wording/authority only. |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **AFTER** | **`M3_3E_E2_COMPLETE_ON_MAIN=YES`**; **`M3_3E_E2_POST_MERGE_SEAL=PASS`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**. |
+| **DECISION_STATUS** | **E2_COMPLETE_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E2.1.2 trend-state structural semantic closure (draft PR #1773 amend)
 
 | Field | Value |
