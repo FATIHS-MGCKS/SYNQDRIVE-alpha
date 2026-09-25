@@ -760,6 +760,46 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-19T00:00:00.000Z',
   },
   {
+    id: 'vdc-rb019-p25-t7-option-c-semantic-closure-2026-09-25',
+    version: '4.9.1148',
+    title: 'VDC RB-019 P2.5 — T+7 shadow Option C (domain-aware same-state admissibility)',
+    summary: [
+      'T7 closure: 1552/1552 raw unexplained = same-state PROVENANCE_REFRESH (P1A/P1B/P2/P3); zero true state disagreement.',
+      'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH + proveNonIsomorphicSameStateProvenanceRefresh; STATE_TRANSITION remains strict.',
+      'Cutover metrics use CORRECTNESS_BLOCKING_UNEXPLAINED / UNPROVEN_SAME_STATE_REFRESH — not raw UNEXPLAINED count alone.',
+      'WOB sequence guard: same-state refresh must not suppress later APPLIED transition; T7 epoch stays pre-fix until post-deploy epoch.',
+    ],
+    reason:
+      'Narrow GT-R1/EXPECTED_FIX left 567 T7-safe rows blocking; Option C closes semantic domain without four unrelated EXPECTED_FIX scenarios.',
+    previousBehavior:
+      'Steady-state PROVENANCE_REFRESH vs legacy no_open_episode/no_state_change classified UNEXPLAINED blocking when not GT-R1 expected-fix.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_T7_SHADOW_COMPARATOR_SEMANTIC_CLOSURE_2026-09-25.md; VDC-DEC-014; PR #1697',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-post-bootstrap-provenance-gt-r1-2026-09-19',
+    version: '4.9.1147',
+    title: 'VDC RB-019 P2.5 — post-bootstrap PROVENANCE_REFRESH GT-R1 proof (branch candidate)',
+    summary: [
+      'GT-R1 scenario SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH for established PLUGGED + newer same-state SNAPSHOT_OBD + legacy no_open_episode + coordinator PROVENANCE_REFRESH.',
+      'Proven cases classify as EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); unproven remain UNEXPLAINED_OLD_REJECT_NEW_ACCEPT.',
+      'Shadow comparison domain helper distinguishes episode-resolution vs same-state provenance refresh; T+24h historical rows immutable.',
+      'Read-only audit script emits ACTUAL_STATE_REGRESSIONS and related metrics (deprecates misleading STATE_REGRESSION_COUNT label).',
+    ],
+    reason:
+      'T+24h shadow audit showed 107 legacy no_open_episode vs physical PROVENANCE_REFRESH rows with zero effective state change — GT-R1/bootstrap coverage gap, not a physical transition defect.',
+    previousBehavior:
+      'Only bootstrap/repair/unplug GT-R1 proofs; steady-state PROVENANCE_REFRESH vs no_open_episode stayed UNEXPLAINED blocking.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md; physical-state-gt-r1-proof.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-19T11:20:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
     version: '4.9.1146',
     title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',

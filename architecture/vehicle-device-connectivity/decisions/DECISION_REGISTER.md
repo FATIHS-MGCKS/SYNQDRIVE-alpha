@@ -229,6 +229,23 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 
 ---
 
+## VDC-DEC-014 — P2.5 shadow same-state provenance refresh (Option C)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED (implementation PR #1697; not Production-deployed) |
+| **DATE** | 2026-09-25 |
+| **BEFORE** | Narrow GT-R1 / EXPECTED_FIX proofs left **567** T7-pattern shadow rows blocking cutover; raw `UNEXPLAINED_OLD_REJECT_NEW_ACCEPT` counted as correctness-blocking |
+| **WHY** | T+7 semantic closure proved **1552/1552** unexplained rows are non-isomorphic same-state `PROVENANCE_REFRESH` with **zero** effective state change or true physical disagreement — not legacy-wrong corrections |
+| **EVIDENCE** | VDC-EVID-P25-T7-SEMANTIC-CLOSURE-001; prior #1697 replay: 970 direct pass, 15 retention-edge P1A, 567 outside narrow proof |
+| **CHANGE** | Adopt **Option C:** domain-aware shadow comparator + mandatory online `proveNonIsomorphicSameStateProvenanceRefresh` (P1A/P1B/P2/P3). New classification `NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH` (`correctnessBlocking=false`). Keep `STATE_TRANSITION` strict for APPLIED/ESTABLISHED with real state change. Separate **online row admissibility** from **sequence/replay safety** (WOB 07:41:49 refresh must not suppress 07:41:53 UNPLUG). Cutover metrics: `CORRECTNESS_BLOCKING_UNEXPLAINED`, `UNPROVEN_SAME_STATE_REFRESH`, `TRUE_STATE_DISAGREEMENT`, etc. — future gate requires blocking metrics **=0**, not raw unexplained alone |
+| **EXCLUDES** | Production row rewrite; provider/canary mutation; authority cutover; T0 reset; weakening CONFLICT/binding/stale/opposing-state guards |
+| **VALIDATION** | Unit matrices P1A/P1B/P2/P3/WOB; T7 replay fixtures; shadow comparator precedence guards; p25 audit script metric emission |
+| **POST_DEPLOY** | New signed build attestation for deployed post-fix SHA; new full seven-day post-fix shadow epoch before cutover proof |
+| **OWNING_MODULE** | VDC |
+
+---
+
 ## VDC-DEC-011 — Adaptive / information-gain provider polling
 
 | Field | Value |

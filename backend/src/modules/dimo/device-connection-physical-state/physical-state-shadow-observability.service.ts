@@ -148,6 +148,8 @@ export class PhysicalStateShadowObservabilityService {
         return 'physical_state_shadow_match';
       case PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT:
         return 'physical_state_shadow_expected_fix';
+      case PhysicalStateShadowClassification.NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH:
+        return 'physical_state_shadow_non_isomorphic_same_state_refresh';
       case PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT:
       case PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT:
       case PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN:

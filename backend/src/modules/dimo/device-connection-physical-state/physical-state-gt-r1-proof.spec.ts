@@ -2,6 +2,7 @@ import { DeviceConnectionPhysicalTransitionDecision } from '@prisma/client';
 import {
   buildSnapshotGtR1Proof,
   buildSnapshotPlugInitialEstablishmentGtR1Proof,
+  buildSnapshotPlugPostBootstrapProvenanceRefreshGtR1Proof,
   buildSnapshotPlugRepairGtR1Proof,
   buildSnapshotUnplugInitialEstablishmentGtR1Proof,
   buildSnapshotUnplugTransitionGtR1Proof,
@@ -89,13 +90,20 @@ describe('physical-state-gt-r1-proof', () => {
     ).toBeNull();
   });
 
-  it('no_open_episode without UNPLUGGED baseline -> no proof', () => {
+  it('no_open_episode without UNPLUGGED baseline -> no repair proof (steady-state uses post-bootstrap proof)', () => {
     expect(
       buildSnapshotPlugRepairGtR1Proof({
         ...admissibleBase,
         physicalProjectionState: 'PLUGGED',
       }),
     ).toBeNull();
+    const postBootstrap = buildSnapshotPlugPostBootstrapProvenanceRefreshGtR1Proof({
+      ...admissibleBase,
+      physicalProjectionState: 'PLUGGED',
+      physicalProjectionEvidenceAt: T1,
+      snapshotEvidenceObservedAt: T3,
+    });
+    expect(postBootstrap?.scenario).toBe('SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH');
   });
 
   it('snapshot UNPLUGGED baseline + newer PLUG + typed no_open_episode -> EXPECTED_FIX eligible', () => {

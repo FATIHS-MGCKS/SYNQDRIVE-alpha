@@ -23,7 +23,15 @@ import {
   evaluatePhysicalStateTransition,
   isAcceptedPhysicalTransition,
 } from './device-connection-physical-state.policy';
-import type { CurrentPhysicalStateProjection } from './device-connection-physical-state.types';
+import type {
+  CurrentPhysicalStateProjection,
+  IncomingPhysicalStateEvidence,
+} from './device-connection-physical-state.types';
+import type { SameStateProofParentSource } from './physical-state-same-state-proof-parent';
+import {
+  resolveSameStateProofParentFromCoordinatorReconcile,
+  resolveSameStateProofParentFromReadOnlyProjection,
+} from './physical-state-same-state-proof-parent';
 import type { EffectivePhysicalStateRuntimePolicy } from './physical-state-authority.types';
 import { PhysicalStateCanonicalGate } from './physical-state-authority.types';
 import {
@@ -210,6 +218,13 @@ export class PhysicalStateEvidenceWriterService {
       };
     }
 
+    const incomingEvidence: IncomingPhysicalStateEvidence = {
+      candidateState: extracted.candidateState,
+      evidenceObservedAt: extracted.evidenceObservedAt,
+      evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+      evidenceReferenceId: extracted.evidenceReferenceId,
+    };
+
     let coordinatorResult = null;
     let readOnlyDecision: DeviceConnectionPhysicalTransitionDecision | null = null;
     let readOnlyReason: string | undefined;
@@ -276,6 +291,17 @@ export class PhysicalStateEvidenceWriterService {
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
+    const sameStateProofParent =
+      coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+        ? resolveSameStateProofParentFromCoordinatorReconcile(coordinatorResult.reconcile)
+        : resolveSameStateProofParentFromReadOnlyProjection(
+            await this.loadProjection(
+              input.vehicleId,
+              input.provider,
+              extracted.binding.bindingKey,
+            ),
+          );
+
     const shadowComparison = await this.maybeRecordShadowComparison({
       policy,
       scope,
@@ -293,6 +319,11 @@ export class PhysicalStateEvidenceWriterService {
       gtR1Proof: input.gtR1Proof,
       equalTimeOpposingState:
         physicalDecision === DeviceConnectionPhysicalTransitionDecision.CONFLICT,
+      sameStateRefresh: {
+        previousProjection: sameStateProofParent.parent,
+        incoming: incomingEvidence,
+        parentSource: sameStateProofParent.source,
+      },
     });
 
     return {
@@ -341,6 +372,13 @@ export class PhysicalStateEvidenceWriterService {
         skippedReason: 'insufficient_snapshot_obd_evidence',
       };
     }
+
+    const incomingEvidence: IncomingPhysicalStateEvidence = {
+      candidateState: extracted.candidateState,
+      evidenceObservedAt: extracted.evidenceObservedAt,
+      evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+      evidenceReferenceId: extracted.evidenceReferenceId,
+    };
 
     let coordinatorResult = null;
     let readOnlyDecision: DeviceConnectionPhysicalTransitionDecision | null = null;
@@ -393,6 +431,17 @@ export class PhysicalStateEvidenceWriterService {
     const physicalAccepted =
       physicalDecision != null && isAcceptedPhysicalTransition(physicalDecision);
 
+    const sameStateProofParent =
+      coordinatorResult && isPhysicalStateCoordinatorReconciled(coordinatorResult)
+        ? resolveSameStateProofParentFromCoordinatorReconcile(coordinatorResult.reconcile)
+        : resolveSameStateProofParentFromReadOnlyProjection(
+            await this.loadProjection(
+              input.vehicleId,
+              'DIMO',
+              extracted.binding.bindingKey,
+            ),
+          );
+
     const shadowComparison = await this.maybeRecordShadowComparison({
       policy,
       scope,
@@ -410,6 +459,11 @@ export class PhysicalStateEvidenceWriterService {
       gtR1Proof: input.gtR1Proof,
       equalTimeOpposingState:
         physicalDecision === DeviceConnectionPhysicalTransitionDecision.CONFLICT,
+      sameStateRefresh: {
+        previousProjection: sameStateProofParent.parent,
+        incoming: incomingEvidence,
+        parentSource: sameStateProofParent.source,
+      },
     });
 
     return {
@@ -566,6 +620,11 @@ export class PhysicalStateEvidenceWriterService {
     evidenceReferenceId: string;
     gtR1Proof?: GtR1ExpectedFixProof | null;
     equalTimeOpposingState?: boolean;
+    sameStateRefresh?: {
+      previousProjection: CurrentPhysicalStateProjection | null;
+      incoming: IncomingPhysicalStateEvidence;
+      parentSource?: SameStateProofParentSource;
+    };
   }): Promise<ReturnType<typeof comparePhysicalStateShadowDecisions> | null> {
     if (!input.policy.shadowCompareEnabled) return null;
 
@@ -602,6 +661,7 @@ export class PhysicalStateEvidenceWriterService {
         input.physicalDecision,
       ),
       equalTimeOpposingState: input.equalTimeOpposingState,
+      sameStateRefresh: input.sameStateRefresh,
     });
 
     await this.shadowObservability?.recordShadowComparison(comparison);

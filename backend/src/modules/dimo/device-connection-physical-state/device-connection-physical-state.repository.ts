@@ -70,6 +70,8 @@ function buildContext(input: {
     candidateState: input.evidence.candidateState,
     resultingState: input.resulting?.effectiveState ?? input.previous?.effectiveState ?? null,
     previousEvidenceAt: input.previous?.evidenceObservedAt ?? null,
+    previousEvidenceReferenceId: input.previous?.evidenceReferenceId ?? null,
+    previousEvidenceSource: input.previous?.evidenceSource ?? null,
     candidateEvidenceAt: input.evidence.evidenceObservedAt,
     incomingEvidenceSource: input.evidence.evidenceSource,
     stateVersionBefore: input.previous?.stateVersion ?? null,

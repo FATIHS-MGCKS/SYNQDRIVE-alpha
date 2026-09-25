@@ -17,7 +17,7 @@ PHYSICAL_STATE_MIGRATION_EPHEMERAL=1 bash scripts/test/physical-state-migration-
 
 log "Step 3/4: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
 PHYSICAL_STATE_POSTGRES_INTEGRATION=1 PHYSICAL_STATE_POSTGRES_REQUIRED=1 \
-  npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\.integration' --runInBand --verbose
+  npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile|physical-state-coordinator-parent-adversarial).*postgres\.integration' --runInBand --verbose
 
 log "Step 4/4: ERD E2 native HvChargeSession PostgreSQL gate"
 ERD_E2_POSTGRES_INTEGRATION=1 ERD_E2_POSTGRES_REQUIRED=1 \
