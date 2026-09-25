@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import importlib.util
 import sys
+import types
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -85,6 +86,11 @@ class ImporterIdentityTests(unittest.TestCase):
             fake.osm = types.SimpleNamespace(Node=object, Way=object, Relation=object, TagList=object)
             fake.geom = types.SimpleNamespace(WKTFactory=MagicMock)
             sys.modules['osmium'] = fake
+        if 'psycopg2' not in sys.modules:
+            psycopg2 = types.ModuleType('psycopg2')
+            psycopg2.extras = types.SimpleNamespace(execute_batch=lambda *args, **kwargs: None)
+            sys.modules['psycopg2'] = psycopg2
+            sys.modules['psycopg2.extras'] = psycopg2.extras
 
         spec = importlib.util.spec_from_file_location(
             'charging_station_importer', LIB_DIR / 'charging_station_importer.py'
@@ -101,24 +107,27 @@ class ImporterIdentityTests(unittest.TestCase):
 
 
 class ImporterGeometryTypeTests(unittest.TestCase):
-    def _ensure_osmium_stub(self) -> None:
-        if 'osmium' in sys.modules:
-            return
-        if HAS_OSMIUM:
-            return
-        fake = types.SimpleNamespace()
+    def _ensure_importer_deps_stub(self) -> None:
+        if not HAS_OSMIUM and 'osmium' not in sys.modules:
+            fake = types.SimpleNamespace()
 
-        class SimpleHandler:
-            def __init__(self) -> None:
-                pass
+            class SimpleHandler:
+                def __init__(self) -> None:
+                    pass
 
-        fake.SimpleHandler = SimpleHandler
-        fake.osm = types.SimpleNamespace(Node=object, Way=object, Relation=object, TagList=object)
-        fake.geom = types.SimpleNamespace(WKTFactory=MagicMock)
-        sys.modules['osmium'] = fake
+            fake.SimpleHandler = SimpleHandler
+            fake.osm = types.SimpleNamespace(Node=object, Way=object, Relation=object, TagList=object)
+            fake.geom = types.SimpleNamespace(WKTFactory=MagicMock)
+            sys.modules['osmium'] = fake
+
+        if 'psycopg2' not in sys.modules:
+            psycopg2 = types.ModuleType('psycopg2')
+            psycopg2.extras = types.SimpleNamespace(execute_batch=lambda *args, **kwargs: None)
+            sys.modules['psycopg2'] = psycopg2
+            sys.modules['psycopg2.extras'] = psycopg2.extras
 
     def _load_importer(self):
-        self._ensure_osmium_stub()
+        self._ensure_importer_deps_stub()
         spec = importlib.util.spec_from_file_location(
             'charging_station_importer', LIB_DIR / 'charging_station_importer.py'
         )
