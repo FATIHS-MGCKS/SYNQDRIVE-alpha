@@ -1,8 +1,8 @@
 # M3.3E E0 — Longitudinal Assessment Consumption Architecture Audit
 
-**Date:** 2026-09-25 (E0 audit + E0.1 contract closure + **E0.2 machine-contract seal** on draft PR #1761)  
-**Status:** **ARCHITECTURE AUDIT — MACHINE CONTRACT SEALED FOR E1** (docs-only; no runtime)  
-**Consumption contract (frozen):** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1`  
+**Date:** 2026-09-25  
+**Status:** **E0 + E0.1 + E0.2 COMPLETE ON MAIN** — merged PR #1761 @ merge `658b804d74fc3fe6290f504ba3c81d7e642c3903` (PR head `b2685a0f88d17ce251d3dc2fcb84d2a6a42506e5`)  
+**Consumption contract:** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` · **`M3_3E_E1_IMPLEMENTATION_READY=YES`** · **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`** · no runtime implementation on main  
 **Upstream complete on main:** M3.3D D0–D4 (D4 engineering V1 PR #1754 @ merge `9a3e457d9`)
 
 **Runtime gates (unchanged):** **`D3_RUNTIME_REACHABLE=NO`** · **`D4_RUNTIME_REACHABLE=NO`** · **`PRODUCTION_MATERIALIZATION_READY=NO`**

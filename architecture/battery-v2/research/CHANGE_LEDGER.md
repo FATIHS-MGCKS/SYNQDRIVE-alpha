@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E0–E0.2 post-merge architecture seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0/E0.1/E0.2 consumption contract validated on draft PR #1761; active docs described audit in flight / draft PR pointers. |
+| **CHANGE** | PR #1761 merged to main @ `658b804d74fc3fe6290f504ba3c81d7e642c3903` (PR head `b2685a0f88d17ce251d3dc2fcb84d2a6a42506e5`). Active Battery V2 authority updated: **M3.3E E0/E0.1/E0.2 COMPLETE ON MAIN**; **`NEXT_PHASE=M3.3E E1`**. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`D3_RUNTIME_REACHABLE=NO`**; **`D4_RUNTIME_REACHABLE=NO`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**. |
+| **NEXT** | M3.3E E1 pure longitudinal assessment input adapter. |
+| **NON_EFFECTS** | No E1 runtime; no health model; no BatteryAssessment/BatteryPublication writes; no D3/D4 Nest reachability; no production materialization; no deploy; no production data mutation. |
+| **DECISION_STATUS** | **E0_E0_2_COMPLETE_ON_MAIN** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
 ## CL-2026-09-25 — M3.3E E0.2 final machine-contract seal
 
 | Field | Value |
