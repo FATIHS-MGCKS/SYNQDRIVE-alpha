@@ -3,7 +3,7 @@
 **Date:** 2026-09-25  
 **Phase:** M3.3E E2 (architecture + scientific audit — documentation / contract design only)  
 **Registry module:** Battery V2 (`AUTHORITY_ACTIVE`)  
-**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (draft PR; merge + post-merge seal pending)  
+**Status:** **M3.3E E2 ARCHITECTURE COMPLETE** (E2.1 semantic hardening in draft PR #1773; merge + post-merge seal pending)  
 **Contract names introduced (design only, not implemented):** `M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1`, `M3_3E_E2_MODEL_POLICY_V1`, `M3_3E_CALIBRATION_UNSET_V1`  
 **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**
 
@@ -265,37 +265,94 @@ Two observations are comparable for a metric at a claim level only if all applic
 
 - Evaluate each segment independently. **`CROSS_VERSION_POOLING_DEFAULT=NO`**.
 - No latest-segment-wins, no concatenation, no averaging across segments.
-- Vehicle summary:
-  - exactly one segment passes structural minima → `SINGLE_EVALUABLE_SEGMENT` (reference its `sourceSegmentIndex`);
-  - more than one → `SEGMENTED_NO_POOLED_CONCLUSION` (all segment results listed; no vehicle-level trend);
-  - none → `NO_EVALUABLE_SEGMENT`.
+- **`vehicleSummary` uses `SEGMENT_STRUCTURALLY_EVALUABLE` only** (§6.4) — not per-metric trend minima, not classification sufficiency, not “all primary metrics”.
 - Future cross-version pooling requires an explicit equivalence decision (links `DEC-M3.3D-005`) and a model policy version bump.
+
+### 6.4 Segment and metric evaluability (frozen — E2.1)
+
+These definitions are **normative for E3**. E3 may not substitute trend-capable, dispersion-capable, or “all metrics” rules for `vehicleSummary`.
+
+#### Per-metric structural gates (within one segment × primary metric series)
+
+Observations are those with non-null metric values, in E1 series order.
+
+| Predicate | Definition |
+|-----------|------------|
+| **`METRIC_LEVEL_EVALUABLE`** | ≥1 non-null metric value ⇒ `seriesCount ≥ 1` and **`seriesMedianQuantized`** (§12.3) is defined |
+| **`METRIC_TREND_EVALUABLE`** | ≥2 observations with **distinct** `anchorAt` (UTF-16–validated ISO strings; equal timestamps do not count twice) ⇒ **`theilSenSlopePerDayQuantized`** (§12.3) may be computed |
+| **`METRIC_DISPERSION_EVALUABLE`** | ≥3 distinct `anchorAt` values ⇒ **`residualMadQuantized`** / step magnitude may be computed |
+
+Trend and dispersion gates are **stricter** than segment evaluability. A segment may be structurally evaluable on median alone while slope remains `null`.
+
+#### `SEGMENT_STRUCTURALLY_EVALUABLE`
+
+**True** iff the segment contains **≥1 primary metric** (`MEDIAN_REST_VOLTAGE`, `ROBUST_REST_SLOPE`, or `SHUTDOWN_TO_FIRST_REST_DELTA`) that satisfies **`METRIC_LEVEL_EVALUABLE`**.
+
+Does **not** require all three metrics, trend evaluability, or calibrated classification.
+
+#### `vehicleSummary` (frozen mapping)
+
+| Value | Condition |
+|-------|-----------|
+| `NO_EVALUABLE_SEGMENT` | Zero segments satisfy `SEGMENT_STRUCTURALLY_EVALUABLE` |
+| `SINGLE_EVALUABLE_SEGMENT` | Exactly one segment satisfies it (reference that `sourceSegmentIndex`) |
+| `SEGMENTED_NO_POOLED_CONCLUSION` | ≥2 segments satisfy it (list all segment results; **no** vehicle-level pooled trend; **no** latest-segment winner) |
+
+| Machine flag | Value |
+|--------------|-------|
+| `VEHICLE_SUMMARY_REQUIRES_ALL_PRIMARY_METRICS` | **NO** |
+| `LATEST_SEGMENT_WINNER` | **NO** |
+| `SEGMENT_EVALUABILITY_SEMANTICS_FROZEN` | **YES** |
+| `VEHICLE_SUMMARY_SEMANTICS_FROZEN` | **YES** |
+
+#### Examples
+
+| Case | Segment A | `SEGMENT_STRUCTURALLY_EVALUABLE`? |
+|------|-----------|-------------------------------------|
+| Median only | `medianRestVoltageMv` has 1 valid value; `robustRestSlopeMvPerHour` null on all rows; delta null | **YES** (`MEDIAN_REST_VOLTAGE` metric-level evaluable) |
+| All null | All three primary metrics null on every observation | **NO** |
+| A→B→A version tuple | `sourceSegmentIndex` 0 and 2 share tuple; index 1 differs | **Three independent segments** — evaluability counted per index, never merged |
 
 ---
 
 ## 7. Trend semantics
 
-### 7.1 Estimators (descriptive, always computed when structurally possible)
+**Scientific time axis:** `anchorAt` (ISO-8601 UTC, validated).  
+**Numerical time axis (frozen — E2.1):** within each segment × metric series, use **relative integer milliseconds** only — never raw epoch in slope/residual/intercept arithmetic.
 
-For each segment × primary metric, over observations with non-null metric values, ordered as E1 orders them (`anchorAt`, then `restSessionId`, UTF-16 code-unit comparison):
+| Constant / rule | Value |
+|-----------------|-------|
+| `DAY_MS` | `86_400_000` exactly |
+| Series origin `t0` | `Date.parse(anchorAt)` of the **first** observation in the series (E1 order) with non-null metric value |
+| Relative time | `x_i = Date.parse(anchorAt_i) − Date.parse(t0)` (integer ms, `x_0 = 0`) |
+| Pair skip | Pairs with `x_j === x_i` skipped (equal `anchorAt`) |
+| `TREND_TIME_AXIS` | `anchorAt` |
+| `TREND_NUMERICAL_TIME_ORIGIN` | `FIRST_VALID_SERIES_ANCHOR` |
+| `RAW_EPOCH_ARITHMETIC_REQUIRED` | **NO** |
 
-| Statistic | Definition |
-|-----------|-----------|
-| `seriesCount`, `distinctAnchorCount` | Integers |
-| `seriesSpanMs` | `Date.parse(last anchorAt) − Date.parse(first anchorAt)` |
-| `seriesMedian` | Median of metric values (even n: mean of two middle values) |
-| `theilSenSlopePerDay` | Median of pairwise slopes `(y_j − y_i) × 86_400_000 / (t_j − t_i)` for `t_j > t_i`; pairs with equal `t` skipped |
-| `kendallPairCounts` | Integers `{increasing, decreasing, tied}` over the same pairs (sign of `y_j − y_i`) — directional agreement without any significance transform |
-| `residualMad` | Median absolute deviation of residuals from the Theil-Sen line (intercept = median of `y − slope·t`), n ≥ 3 |
-| `stepChangeCandidate` | Split index maximizing `|median(right) − median(left)|` with ≥2 per side; earliest index on ties; reported as descriptive, never as event |
+### 7.1 Estimators (descriptive, computed when metric-level / trend / dispersion gates pass)
 
-Slope units: rest level and delta metrics → mV/day; retention metric → (mV/h)/day.
+Series: observations with non-null metric value, E1 order (`anchorAt`, then `restSessionId`, UTF-16 code-unit comparison). Let `y_i` be the **source scalar** for that metric (see §12.3). Let `x_i` be relative ms as above.
+
+| Statistic | Definition | Gate |
+|-----------|------------|------|
+| `seriesCount`, `distinctAnchorCount` | Counts over non-null rows; distinct anchors = distinct `anchorAt` strings among them | metric-level |
+| `seriesSpanMs` | `x_last` where last = final non-null row in series (equals `Date.parse(lastAnchor) − Date.parse(t0)`) | metric-level |
+| `seriesMedianQuantized` | §12.3 | metric-level |
+| `theilSenSlopePerDayQuantized` | Median of `(y_j − y_i) × DAY_MS / (x_j − x_i)` over all `i < j` with `x_j > x_i`; non-finite slopes omitted; empty set ⇒ `null` | trend |
+| `kendallPairCounts` | Over the same pairs: increment `increasing` if `y_j > y_i`, `decreasing` if `y_j < y_i`, `tied` if equal | trend |
+| `residualMadQuantized` | With dequantized slope `s` from `theilSenSlopePerDayQuantized`: `r_i = y_i − s × (x_i / DAY_MS)`; MAD of `r_i`; then §12.3 quantize | dispersion |
+| `stepChangeCandidate` | Split index `k` (earliest on tie) with ≥2 points per side maximizing `|median(right y) − median(left y)|`; includes **`stepChangeMagnitudeQuantized`** (§12.3) | dispersion |
+
+**Intercept (frozen):** `b = median(y_i − s × (x_i / DAY_MS))` with `s` dequantized from `theilSenSlopePerDayQuantized`. Residuals use `r_i = y_i − s × (x_i / DAY_MS) − b` or equivalently the MAD step above on `y_i − s × (x_i / DAY_MS)`.
+
+**Physical units of `y`:** `MEDIAN_REST_VOLTAGE` and `SHUTDOWN_TO_FIRST_REST_DELTA` → integer mV upstream; `ROBUST_REST_SLOPE` → mV/h (finite Number from C1). Fingerprinted outputs store §12.3 integer fields only.
 
 ### 7.2 Trend states
 
 | State | Reachable in V1 (UNSET calibration)? | Meaning |
 |-------|--------------------------------------|---------|
-| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | Below structural minimum |
+| `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` | Yes | Metric-level, trend, or dispersion gate not met (§6.4 / §7.1) |
 | `NOT_COMPARABLE` | Yes | Comparability state not comparable |
 | `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` | **Yes (default for every evaluable series)** | Statistics exist; no classification permitted |
 | `NO_DIRECTIONAL_CHANGE_RESOLVED` | No (requires calibrated detection limits) | Not "stable" — change below calibrated detectable magnitude |
@@ -329,7 +386,7 @@ Charge context: always emit `CHARGE_CONTEXT_UNCONTROLLED` while any observation 
 |------|-------|
 | Observation deletion | **Never** (consistent with C1 `NO_HARD_POINT_DELETION_THEIL_SEN_ROBUST_ONLY`) |
 | Robustness | Theil-Sen + medians already bound single-point influence |
-| Flag basis | Residual vs Theil-Sen line in units of `residualMad`; multiplier `CAL-M3.3E-008` — **UNSET** ⇒ no statistical flags emitted in V1 |
+| Flag basis | Residual vs Theil-Sen line using dequantized slope; compare to **`residualMadQuantized`** (dequantized for ratio); multiplier `CAL-M3.3E-008` — **UNSET** ⇒ no statistical flags emitted in V1 |
 | Zero MAD | No statistical outlier flag possible (division undefined) |
 
 Outlier classes (per `restSessionId`):
@@ -354,7 +411,7 @@ Outlier classes (per `restSessionId`):
 | Aggregation | Weakest link over factors: structural sufficiency, calibrated sufficiency, comparability state, context control (charge, rest depth, first-point age), temperature coverage, outlier presence, step-change presence |
 | Calibration cap | `UNCALIBRATED` ⇒ `NOT_APPLICABLE` (no classification exists); `SHADOW_CALIBRATED` ⇒ ≤ `MODERATE`; `NATURAL_VALIDATED` ⇒ `HIGH` possible |
 | D4 integrity | Carried as reason codes (`DIGEST_SCOPE_BOUNDED_LATEST_WINDOW`, `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`); **not** a mechanical confidence input (E0 §14) |
-| Descriptive statistics | Carry no confidence claim; uncertainty is expressed by counts, spans, `residualMad`, `kendallPairCounts` |
+| Descriptive statistics | Carry no confidence claim; uncertainty is expressed by counts, spans, `residualMadQuantized`, `kendallPairCounts` |
 
 Reason codes (closed V1 set; additions require model policy version bump):
 `CALIBRATION_NOT_ESTABLISHED`, `CHARGE_CONTEXT_UNCONTROLLED`, `CHARGE_CLASSIFIER_NOT_PRODUCTION_CALIBRATED`, `REST_DEPTH_UNCONTROLLED`, `FIRST_POINT_AGE_UNCONTROLLED`, `TEMPERATURE_CONTEXT_ONLY`, `TEMPERATURE_UNKNOWN_PRESENT`, `TEMPERATURE_RANGE_UNCONTROLLED`, `ANCHOR_UNRESOLVED_FOR_DELTA_METRIC`, `INSUFFICIENT_DISTINCT_ANCHORS`, `INSUFFICIENT_POINTS_FOR_DISPERSION`, `MULTI_SEGMENT_NO_POOLING`, `DIGEST_SCOPE_BOUNDED_LATEST_WINDOW`, `DIGEST_SCOPE_NOT_EVALUATED`, `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`, `WAKE_SAMPLED_REST_NOT_TRUSTED_REST`, `SHARED_PROVENANCE_WITH_LV_ESTIMATED_HEALTH_UNRESOLVED`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`.
@@ -389,9 +446,15 @@ M3_3E_LongitudinalHealthEvaluationV1 {
       metric: 'MEDIAN_REST_VOLTAGE' | 'ROBUST_REST_SLOPE' | 'SHUTDOWN_TO_FIRST_REST_DELTA'
       comparability: ComparabilityState
       sufficiency: SufficiencyState
-      statistics: { seriesCount, distinctAnchorCount, seriesSpanMs, seriesMedian,
-                    theilSenSlopePerDay | null, kendallPairCounts | null,
-                    residualMad | null, stepChangeCandidate | null }
+      statistics: {
+        seriesCount, distinctAnchorCount, seriesSpanMs,
+        seriesMedianQuantized: number | null,
+        theilSenSlopePerDayQuantized: number | null,
+        kendallPairCounts: { increasing, decreasing, tied } | null,
+        residualMadQuantized: number | null,
+        stepChangeMagnitudeQuantized: number | null,
+        // integer storage units per metric — §12.3 (E3 must emit unit implicitly via metric enum)
+      }
       contextDescriptors: { temperature, chargeClassCounts, restDepthRangeMs, firstPointAgeRangeMs }
       trendState: TrendState
       outliers: [{ restSessionId, outlierClass }]   // UTF-16 ordered by restSessionId
@@ -411,6 +474,44 @@ M3_3E_LongitudinalHealthEvaluationV1 {
 ### 11.3 Condition taxonomy
 
 **`condition='NOT_ASSESSED'` is the only legal V1 value.** The R1 §9 "in principle" labels (`HEALTHY`/`WATCH`/`DEGRADED`/`HIGH_RISK`/`UNKNOWN`) are **not adopted**: no evidence links any E1 descriptor pattern to battery condition on SynqDrive data, and no ground truth exists (`NAT-M3.3F-008`). Adoption is `PROD-M3.3G-001`.
+
+### 11.4 Top-level `evaluationStatus` (frozen — E2.1)
+
+**Question answered:** “Was a valid **descriptive** scientific evaluation produced?” — **not** “Was a condition conclusion reached?” and **not** “Was calibration satisfied?”
+
+| Value | Exact condition |
+|-------|-----------------|
+| `EVALUATED_DESCRIPTIVE_ONLY` | E1 input passes validation (§12.2) **and** ≥1 segment satisfies `SEGMENT_STRUCTURALLY_EVALUABLE` (§6.4) **and** ≥1 primary metric on that segment satisfies `METRIC_LEVEL_EVALUABLE` (quantized `seriesMedianQuantized` emitted) |
+| `NO_CONCLUSION` | E1 input passes validation **but** **zero** segments satisfy `SEGMENT_STRUCTURALLY_EVALUABLE` |
+
+**Orthogonal fields (do not collapse into `evaluationStatus`):**
+
+| Field | Under `M3_3E_CALIBRATION_UNSET_V1` |
+|-------|--------------------------------------|
+| `condition` | **`NOT_ASSESSED` always** |
+| `claimLevel` | **`NONE` always** (`MEASURED_DESCRIPTOR_CHANGE` requires calibrated classification; unreachable in V1) |
+| Per-metric `trendState` | **`NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`** when trend/dispersion statistics exist; **`NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL`** when metric-level gate fails |
+| Per-metric `confidence` | **`NOT_APPLICABLE`** |
+
+**`NO_CONCLUSION` is not used merely because calibration is unset** when descriptive statistics were produced — use `EVALUATED_DESCRIPTIVE_ONLY` instead.
+
+**Top-level `noConclusionReasons`:** populated **only when** `evaluationStatus='NO_CONCLUSION'` (e.g. `NO_ASSESSMENT_GRADE_OBSERVATIONS`). When `EVALUATED_DESCRIPTIVE_ONLY`, metric-level `reasonCodes` carry `CALIBRATION_NOT_ESTABLISHED` etc.
+
+#### Truth table
+
+| # | Scenario | `evaluationStatus` | `vehicleSummary` | `condition` | `claimLevel` | Notes |
+|---|----------|-------------------|------------------|-------------|--------------|-------|
+| 1 | Zero assessment-grade observations (valid empty E1) | `NO_CONCLUSION` | `NO_EVALUABLE_SEGMENT` | `NOT_ASSESSED` | `NONE` | `NO_ASSESSMENT_GRADE_OBSERVATIONS` |
+| 2 | One observation with non-null `medianRestVoltageMv` | `EVALUATED_DESCRIPTIVE_ONLY` | `SINGLE_EVALUABLE_SEGMENT` | `NOT_ASSESSED` | `NONE` | Median quantized; slope `null` (trend gate) |
+| 3 | Two distinct `anchorAt`, median metric | `EVALUATED_DESCRIPTIVE_ONLY` | per §6.4 | `NOT_ASSESSED` | `NONE` | Slope may exist; classification still `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED` |
+| 4 | Valid descriptive metrics, UNSET calibration | `EVALUATED_DESCRIPTIVE_ONLY` | per §6.4 | `NOT_ASSESSED` | `NONE` | **Not** `NO_CONCLUSION` |
+| 5 | Two+ structurally evaluable segments | `EVALUATED_DESCRIPTIVE_ONLY` | `SEGMENTED_NO_POOLED_CONCLUSION` | `NOT_ASSESSED` | `NONE` | No pooling |
+| 6 | Malformed / inconsistent input | **Reject** (typed error) | — | — | — | **Not** `NO_CONCLUSION` |
+
+| Machine flag | Value |
+|--------------|-------|
+| `EVALUATION_STATUS_SEMANTICS_FROZEN` | **YES** |
+| `NO_CONCLUSION_DISTINCT_FROM_UNCALIBRATED_CLASSIFICATION` | **YES** |
 
 ---
 
@@ -434,13 +535,81 @@ M3_3E_LongitudinalHealthEvaluationV1 {
 | Arithmetic | IEEE-754 basic operations (`+ − × ÷`, comparisons) and `Math.round`/`Math.abs`/`Math.floor` only; squares by `x * x`; **no** `**`, `Math.pow`, `Math.sqrt`, `Math.log`, `Math.exp`, or other implementation-approximated functions in fingerprinted outputs |
 | Operation order | Fixed, documented summation order (ascending series order) |
 | Ordering | E1 order for series; `restSessionId` by `compareUtf16CodeUnitLexicographic`; reason codes by the same comparator |
-| Quantization | Derived real outputs quantized with `Math.round` to integer micro-units (µV/day; (µV/h)/day; µV for MAD/medians of floats) — resolution ≪ 1 mV input resolution; exact rule is an E3 engineering choice recorded in the E3 doc |
+| Quantization | **Frozen in §12.3** — E3 has **no** freedom to choose scale, rounding direction, unit order, or time origin |
 | Locale | No `localeCompare`, `Intl`, `toLocaleString` |
 | Result fingerprint | `sha256HexLowercaseUtf8(canonicalFeatureInputUtf8(preimage))` with preimage `{contractVersion, modelPolicyVersion, calibrationProfileId, calibrationProfileFingerprint, consumptionInputFingerprint, canonical result body without resultFingerprint}` — same primitives as E1 |
 | Serializer constraints | `canonicalizeFeatureInputValue` rejects `undefined` and non-finite numbers ⇒ absent values are `null`, never omitted-by-undefined; division by zero must be guarded before it can produce `Infinity`/`NaN`; `String(-0)` serializes as `0` |
 | Golden | E3 must pin a golden `resultFingerprint` for a fixed fixture under `M3_3E_CALIBRATION_UNSET_V1` |
 
 Note: C1 `populationVariance` uses `**`; that value is already computed and digested upstream and is consumed as data, so it does not affect E2 determinism. E3 must not reuse that helper in fingerprinted code.
+
+### 12.3 Quantized numerical representation (frozen — E2.1)
+
+E3 must implement **exactly** this representation. **`E3_NUMERICAL_POLICY_CHOICE_REMAINING=NO`**.
+
+#### A. Time basis
+
+| Rule | Value |
+|------|-------|
+| Trend deltas | Integer milliseconds from validated `Date.parse(anchorAt)` |
+| Relative origin | `t0` = first non-null observation in series; `x_i = parse(anchorAt_i) − parse(t0)` |
+| Per-day conversion | `DAY_MS = 86_400_000` (exact) |
+| Raw epoch in slope/residual/intercept | **Forbidden** — use `x_i` only |
+| `E2_RELATIVE_TIME_ORIGIN_REQUIRED` | **YES** |
+
+#### B. Integer storage units (by primary metric)
+
+All stored statistics are **integers** in the JSON result (nullable when gate fails).
+
+| Metric | `y` source | `seriesMedianQuantized` | `theilSenSlopePerDayQuantized` | `residualMadQuantized` | `stepChangeMagnitudeQuantized` |
+|--------|------------|-------------------------|--------------------------------|------------------------|--------------------------------|
+| `MEDIAN_REST_VOLTAGE` | integer mV | **microvolts (µV)** | **µV/day** | **µV** | **µV** |
+| `SHUTDOWN_TO_FIRST_REST_DELTA` | integer mV | **µV** | **µV/day** | **µV** | **µV** |
+| `ROBUST_REST_SLOPE` | mV/h Number | **µ(mV/h)** = micro-mV-per-hour | **µ(mV/h)/day** | **µ(mV/h)** | **µ(mV/h)** |
+
+**Naming:** field names in §11.1; unit implied by `metric` enum — E3 must not add parallel float fields.
+
+#### C. Conversions and operation order
+
+1. **Median (`seriesMedianQuantized`):**
+   - mV metrics: map each `y` to `µV = y * 1000` (integer mV ⇒ exact integer µV).
+   - ROBUST: map each `y` to `microMvPerHour = Math.round(y * 1_000_000)`.
+   - Sort ascending (numeric sort on integers).
+   - Odd `n`: middle value.
+   - Even `n`: `Math.round((sorted[n/2−1] + sorted[n/2]) / 2)`.
+
+2. **Theil-Sen slope (`theilSenSlopePerDayQuantized`):**
+   - Use **source `y_i`** (mV int or mV/h float) and relative `x_i` (ms).
+   - Each pair slope: `s = (y_j − y_i) * DAY_MS / (x_j − x_i)`; skip if `x_j <= x_i` or `!Number.isFinite(s)`.
+   - Median of pair slopes in **physical units** (mV/day or (mV/h)/day): same even/odd median rule as C1 Theil-Sen (`rest-session-retention-theil-sen.policy.ts` — even count uses **unrounded mean** of two middle slopes, then quantize once at end).
+   - Quantize: mV metrics → `Math.round(s_mv_per_day * 1000)` (µV/day); ROBUST → `Math.round(s * 1_000_000)` (µ(mV/h)/day).
+
+3. **Dequantize for residual step only** (not stored): mV → `s_mv_per_day = quantized / 1000`; ROBUST → `s = quantized / 1_000_000`.
+
+4. **Residual MAD:** compute MAD on physical-unit residuals `r_i = y_i − s × (x_i / DAY_MS)`; then quantize with same rule as `seriesMedianQuantized` for that metric.
+
+5. **Step magnitude:** `|median(right y) − median(left y)|` in physical units, then same quantize as median for that metric.
+
+#### D. Rounding and serialization
+
+| Rule | Value |
+|------|-------|
+| Rounding function | **`Math.round` only** (no banker's rounding) |
+| Negative zero | After every `Math.round`, if `Object.is(v, -0)` replace with `0` |
+| Finite checks | Before storing any integer, `Number.isFinite` on the pre-quantized value; non-finite ⇒ omit pair or reject if overflow path |
+| Locale | None |
+
+#### E. Safe integer boundary
+
+| Rule | Value |
+|------|-------|
+| Stored integers | Must satisfy `Number.isSafeInteger(v)` after quantization |
+| On violation | **Reject input** with typed error `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW` (fail closed; no partial result) |
+| Audit note | With upstream mV integers and session spacing ≥1 ms, pairwise products stay within safe range; E3 must still enforce the check |
+
+| Machine flag | Value |
+|--------------|-------|
+| `E2_QUANTIZATION_CONTRACT_FROZEN` | **YES** |
 
 ---
 
@@ -496,19 +665,19 @@ Note: C1 `populationVariance` uses `**`; that value is already computed and dige
 | # | Situation | Result |
 |---|-----------|--------|
 | 1 | `modelEvaluation.inputAvailability='NO_ASSESSMENT_GRADE_INPUT'` | `evaluationStatus=NO_CONCLUSION`, `NO_ASSESSMENT_GRADE_OBSERVATIONS`, `vehicleSummary=NO_EVALUABLE_SEGMENT` |
-| 2 | Segment below structural minimum for a metric | Metric `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` + `INSUFFICIENT_DISTINCT_ANCHORS` / `INSUFFICIENT_POINTS_FOR_DISPERSION` |
-| 3 | Enough total observations but split across segments, each below minimum | Per-segment insufficiency; `MULTI_SEGMENT_NO_POOLING`; no pooled rescue |
+| 2 | Metric fails `METRIC_LEVEL_EVALUABLE`, `METRIC_TREND_EVALUABLE`, or `METRIC_DISPERSION_EVALUABLE` (§6.4) | Metric `NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL` + `INSUFFICIENT_DISTINCT_ANCHORS` / `INSUFFICIENT_POINTS_FOR_DISPERSION`; segment may still be structurally evaluable on another metric |
+| 3 | Observations split across segments with none structurally evaluable | `evaluationStatus=NO_CONCLUSION`, `vehicleSummary=NO_EVALUABLE_SEGMENT`; if ≥1 evaluable segment ⇒ `EVALUATED_DESCRIPTIVE_ONLY` per §11.4 |
 | 4 | Evidence temporally concentrated | Descriptors emitted; classification suppressed (`UNDETERMINED_CALIBRATION_REQUIRED` until `CAL-M3.3E-003`) |
 | 5 | Charge context unknown (all V1 data) | `CHARGE_CONTEXT_UNCONTROLLED`; Level B `NOT_COMPARABLE_CHARGE_CONTEXT_UNRESOLVED` |
 | 6 | Temperature missing / uncontrolled | Context reason codes only; no gate, no adjustment |
 | 7 | Anchor unresolved for delta metric | Delta is already `null` upstream for non-`SELECTED` anchors, so those sessions are absent from the delta series; reason code `ANCHOR_UNRESOLVED_FOR_DELTA_METRIC` when any exist; other metrics unaffected. A non-null delta paired with non-`SELECTED` status is an **inconsistent input** ⇒ row 14 (reject) |
-| 8 | Outlier-dominated or zero-dispersion series | No deletion; flags only when calibrated; `residualMad=0` ⇒ no statistical flags |
+| 8 | Outlier-dominated or zero-dispersion series | No deletion; flags only when calibrated; `residualMadQuantized=0` ⇒ no statistical flags |
 | 9 | Contradictory metrics (descriptors move in different directions) | No reconciliation into a condition; each metric reported independently |
-| 10 | Step discontinuity (possible battery replacement / configuration change) | Descriptive `stepChangeCandidate` only; no event claim (BLOCK-M3.3D-003) |
-| 11 | Calibration profile UNSET (V1 default) | Every evaluable series `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `CALIBRATION_NOT_ESTABLISHED` |
+| 10 | Step discontinuity (possible battery replacement / configuration change) | Descriptive `stepChangeMagnitudeQuantized` + split metadata only; no event claim (BLOCK-M3.3D-003) |
+| 11 | Calibration profile UNSET (V1 default) | `evaluationStatus` may be `EVALUATED_DESCRIPTIVE_ONLY`; every evaluable series `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition=NOT_ASSESSED`; `claimLevel=NONE`; `CALIBRATION_NOT_ESTABLISHED` |
 | 12 | Quarantined / source-limited sessions exist | `EXCLUDED_NON_ELIGIBLE_SESSIONS_PRESENT`; excluded sessions never enter series |
 | 13 | D4 scope `BOUNDED_LATEST_WINDOW` / `NOT_EVALUATED` | Reason code only |
-| 14 | Malformed / inconsistent input (contract version mismatch, invalid `anchorAt`, `consumptionInputFingerprint` mismatch on recompute via `computeM3_3E_ConsumptionInputFingerprintV1`, non-null delta with non-`SELECTED` anchor) | **Reject** (typed error) — fail closed, no partial result |
+| 14 | Malformed / inconsistent input (contract version mismatch, invalid `anchorAt`, `consumptionInputFingerprint` mismatch on recompute via `computeM3_3E_ConsumptionInputFingerprintV1`, non-null delta with non-`SELECTED` anchor, quantized integer not safe) | **Reject** (typed error) — fail closed, no partial result |
 
 ---
 
@@ -517,7 +686,7 @@ Note: C1 `populationVariance` uses `**`; that value is already computed and dige
 | CLAIM | SUPPORTED_NOW? | REQUIRED_EVIDENCE | STATUS |
 |-------|----------------|-------------------|--------|
 | "Insufficient evidence for a longitudinal conclusion" | **YES** | Structural/calibrated sufficiency evaluation | `SUPPORTED` |
-| "Measured rest-voltage descriptor X changed within segment S (context uncontrolled)" | **YES, descriptively** (statistics only; no classification under UNSET calibration) | Same-segment series, structural minima | `SUPPORTED_DESCRIPTIVE_ONLY` |
+| "Measured rest-voltage descriptor X changed within segment S (context uncontrolled)" | **YES, descriptively** (quantized statistics only; no classification under UNSET calibration) | Same-segment series, `METRIC_LEVEL_EVALUABLE` | `SUPPORTED_DESCRIPTIVE_ONLY` |
 | "Voltage behavior changed" (classified direction) | **NO** | Calibrated detection limits (`CAL-M3.3E-006`), sufficiency minima | `CALIBRATION_REQUIRED` |
 | "Trusted REST behavior changed" | **NO** | Resolved charge class (calibrated C2), rest-depth + first-point-age bands, trusted wake sampling, natural data | `BLOCKED_CALIBRATION_AND_NATURAL_DATA` |
 | "Battery behavior is stable" | **NO** | Calibrated detection power; absence of change is not evidence of stability | `NOT_SUPPORTED` |
@@ -545,7 +714,7 @@ Note: C1 `populationVariance` uses `**`; that value is already computed and dige
 | ARCH-M3.3E-002 | Trend time axis and estimator family | Not defined | §7 (`anchorAt`, Theil-Sen, Kendall counts) | NO | E2 | **CLOSED_IN_E2** |
 | ARCH-M3.3E-003 | Cross-segment pooling | E1 preserved segments but model policy undefined | §6.3 (no pooling V1) | NO | E2 | **CLOSED_IN_E2** |
 | ARCH-M3.3E-004 | Behavior with UNSET calibration | Risk of inventing numbers | §5.4 fail-closed, named UNSET profile | NO | E2 | **CLOSED_IN_E2** |
-| ARCH-M3.3E-005 | Determinism of derived float outputs | Float ops / quantization undefined | §12.2 | NO | E2 | **CLOSED_IN_E2** |
+| ARCH-M3.3E-005 | Determinism of derived float outputs | Float ops / quantization undefined | §12.2–§12.3 (E2.1 frozen) | NO | E2 | **CLOSED_IN_E2** |
 | ARCH-M3.3E-006 | Relation to LV Estimated Health / readiness / persistence | Undefined | §13–§15 | NO | E2 | **CLOSED_IN_E2** |
 
 No architecture question blocking a pure, non-persisted, fail-closed E3 evaluator remains open.
@@ -606,8 +775,8 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 | Allowed imports | E1 types/constants, `computeM3_3E_ConsumptionInputFingerprintV1`, `compareUtf16CodeUnitLexicographic`, `canonicalFeatureInputUtf8`, `sha256HexLowercaseUtf8` |
 | Forbidden imports | Nest, Prisma, repositories, `lv-assessment/*`, `battery-readiness.policy.ts`, publication, flags/config, clock |
 | Default calibration | `M3_3E_CALIBRATION_UNSET_V1` (`UNCALIBRATED`); every calibrated minimum `null` |
-| Output under default | Descriptive statistics + `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition='NOT_ASSESSED'`; `confidence='NOT_APPLICABLE'` |
-| Minimum test matrix | Empty input; single observation; two distinct anchors (slope, no MAD); equal anchors; ≥3 anchors (MAD); anchor unresolved exclusion for delta metric; multi-segment A→B→A (no pooling, `SEGMENTED_NO_POOLED_CONCLUSION`); charge `UNKNOWN` reason codes; temperature unknown/mixed; zero MAD; step-change descriptive split with ties; UTF-16 ordering; forbidden-field absence; no-clock (fake timers unchanged output); input immutability; malformed `anchorAt` rejection; golden `resultFingerprint`; fingerprint sensitivity per preimage field; calibration profile change ⇒ fingerprint change; static import guard |
+| Output under default | `evaluationStatus=EVALUATED_DESCRIPTIVE_ONLY` when any segment structurally evaluable; else `NO_CONCLUSION`; descriptive **`…Quantized`** statistics; `NOT_CLASSIFIED_CALIBRATION_NOT_ESTABLISHED`; `condition='NOT_ASSESSED'`; `claimLevel='NONE'`; `confidence='NOT_APPLICABLE'` |
+| Minimum test matrix | §11.4 truth-table cases; empty input (`NO_CONCLUSION`); single observation (`EVALUATED_DESCRIPTIVE_ONLY` + median µV); two distinct anchors (slope quantized, relative `x_i`); equal anchors skipped; ≥3 anchors (MAD); relative-time origin (`x_0=0`); no raw-epoch slope path; anchor unresolved exclusion for delta metric; multi-segment A→B→A (`SEGMENTED_NO_POOLED_CONCLUSION`); segment with median-only evaluable; charge `UNKNOWN` reason codes; temperature unknown/mixed; zero MAD; step magnitude quantized; `-0` canonicalization; safe-integer overflow reject; UTF-16 ordering; forbidden-field absence; no-clock; input immutability; malformed `anchorAt` rejection; golden `resultFingerprint`; fingerprint sensitivity; calibration profile change ⇒ fingerprint change; static import guard |
 | Non-goals | Persistence, Nest reachability, flags, D3 materialization, readiness, publication, UI, calibration values |
 
 `M3_3E_E3_IMPLEMENTATION_READY=YES` applies **only** to this boundary. A conclusion-bearing model is **not** ready (`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`), blocked by all B items (notably CAL-M3.3E-010) and D items (notably NAT-M3.3F-001, NAT-M3.3F-008).
@@ -618,12 +787,25 @@ No architecture question blocking a pure, non-persisted, fail-closed E3 evaluato
 
 ```yaml
 M3_3E_E2_ARCHITECTURE: COMPLETE
+M3_3E_E2_1_HARDENING: COMPLETE
 M3_3E_E2_CONTRACT: M3_3E_LONGITUDINAL_HEALTH_EVALUATION_V1
 M3_3E_E2_MODEL_POLICY_VERSION: M3_3E_E2_MODEL_POLICY_V1
 M3_3E_E2_DEFAULT_CALIBRATION_PROFILE: M3_3E_CALIBRATION_UNSET_V1
 M3_3E_HEALTH_MODEL_IMPLEMENTED: NO
 M3_3E_E3_IMPLEMENTATION_READY: YES   # pure, non-persisted, fail-closed evaluator only
 M3_3E_CONCLUSION_BEARING_MODEL_READY: NO
+E2_QUANTIZATION_CONTRACT_FROZEN: YES
+E2_RELATIVE_TIME_ORIGIN_REQUIRED: YES
+E3_NUMERICAL_POLICY_CHOICE_REMAINING: NO
+EVALUATION_STATUS_SEMANTICS_FROZEN: YES
+NO_CONCLUSION_DISTINCT_FROM_UNCALIBRATED_CLASSIFICATION: YES
+SEGMENT_EVALUABILITY_SEMANTICS_FROZEN: YES
+VEHICLE_SUMMARY_SEMANTICS_FROZEN: YES
+VEHICLE_SUMMARY_REQUIRES_ALL_PRIMARY_METRICS: NO
+LATEST_SEGMENT_WINNER: NO
+TREND_NUMERICAL_TIME_ORIGIN: FIRST_VALID_SERIES_ANCHOR
+RAW_EPOCH_ARITHMETIC_REQUIRED: NO
+OPEN_E2_ARCHITECTURE_AMBIGUITIES: []
 SCIENTIFIC_SIGNAL_INVENTORY_COMPLETE: YES
 PRIMARY_METRICS_V1: [MEDIAN_REST_VOLTAGE, ROBUST_REST_SLOPE, SHUTDOWN_TO_FIRST_REST_DELTA]
 EVIDENCE_SUFFICIENCY_DEFINED: YES

@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-25 — M3.3E E2.1 longitudinal health model contract hardening (draft PR #1773 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E2 draft PR #1773 @ `9ee706544` — quantization left as “E3 engineering choice”; `evaluationStatus` vs uncalibrated descriptive output ambiguous; `vehicleSummary` referenced undifferentiated “structural minima”; trend/residual time arithmetic mixed epoch-relative wording. |
+| **OBSERVATION** | Four E3-blocking ambiguities remained in §7/§11/§12/§6.3 despite otherwise complete E2 architecture. |
+| **HYPOTHESIS** | Freezing integer units, relative-ms trend axis, evaluability predicates, and top-level status truth table removes all numerical-policy freedom without changing scientific conclusions. |
+| **CHANGE** | Amend `M3_3E_E2_LONGITUDINAL_HEALTH_MODEL_ARCHITECTURE_2026-09-25.md`: freeze §12.3 integer units + `Math.round` + safe-integer reject + relative `x_i`; §11.4 `evaluationStatus` truth table; §6.4 segment/metric evaluability + `vehicleSummary` mapping; §7 relative-ms Theil-Sen/residual intercept; align §16–§19/E3 test matrix + §20 machine flags. |
+| **WHY** | E3 must not re-decide numerical representation, top-level status semantics, or multi-segment summary rules. |
+| **EXPECTED_EFFECT** | E3 implements one deterministic numerical path; `EVALUATED_DESCRIPTIVE_ONLY` coexists with `NOT_ASSESSED` under UNSET calibration. |
+| **VALIDATION** | `validate-graph.sh`; `validate-module-registry.sh`; docs-only diff. |
+| **OBSERVED_EFFECT** | Pending merge — contract-only amend on PR #1773. |
+| **NON_EFFECTS** | No runtime, schema, flags, readiness, persistence, deploy, or production mutation. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — clarifies prior E2 intent. |
+| **REMAINING_GAPS** | Unchanged calibration/product/natural-data registers (`CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`). |
+| **AFTER** | **`E2_QUANTIZATION_CONTRACT_FROZEN=YES`**; **`EVALUATION_STATUS_SEMANTICS_FROZEN=YES`**; **`VEHICLE_SUMMARY_SEMANTICS_FROZEN=YES`**; **`E3_NUMERICAL_POLICY_CHOICE_REMAINING=NO`**; **`OPEN_E2_ARCHITECTURE_AMBIGUITIES=[]`**. |
+| **EVIDENCE** | Internal consistency audit of E2 doc; C1 Theil-Sen even-median convention; E1 `anchorAt` validation discipline. |
+| **DECISION_STATUS** | **PROPOSED** — E2.1 hardening on draft PR #1773 |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
+
 ## CL-2026-09-25 — M3.3E E2 longitudinal battery health model architecture (scientific contract)
 
 | Field | Value |
