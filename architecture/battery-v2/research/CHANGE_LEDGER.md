@@ -6,6 +6,26 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3F production shadow + natural calibration architecture (draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3E E3 sealed on main (PR #1782); **`NEXT_PHASE=M3.3F`** without activation boundary doc; D3 foundation on main unreachable; C3 shadow flag OFF in production. |
+| **OBSERVATION** | Code audit: C3/C4 Nest-registered with **3** production hook call sites; D3/D4/E3 **0** production runtime call sites; D3 not in Nest module; separate C3 flag exists; no D3 materialization flag yet. |
+| **HYPOTHESIS** | M3.3F can freeze shadow write gates, D3 trigger V1, natural-data/calibration evidence plans, and staged activation without production mutation. |
+| **CHANGE** | Added `M3_3F_PRODUCTION_SHADOW_MATERIALIZATION_NATURAL_CALIBRATION_ARCHITECTURE_2026-09-25.md`; `CURRENT_STATE` M3.3F architecture draft row; `NEXT_PHASE` → **M3.3F F1** engineering slice. |
+| **WHY** | First phase that may eventually authorize natural C3 + D3 shadow evidence requires explicit boundaries before any flag ON. |
+| **EXPECTED_EFFECT** | **`M3_3F_SCOPE_DEFINED=YES`**; **`M3_3F_F1_IMPLEMENTATION_READY=YES`**; no production activation. |
+| **VALIDATION** | Read-only code audit; `validate-graph.sh`; `validate-module-registry.sh`; docs-only diff. |
+| **OBSERVED_EFFECT** | Architecture draft PR establishes F0 authority when merged. |
+| **NON_EFFECTS** | No runtime, Prisma, migration, flag add/value change, deploy, C3/D3/E3 activation, assessment/publication/readiness, numeric calibration. |
+| **REGRESSIONS_OR_TRADEOFFS** | None — audit/authority only. |
+| **REMAINING_GAPS** | `RETENTION_POLICY=DECISION_REQUIRED`; `DEC-M3.3D-001`; all `CAL-M3.3E-*` unset; NAT-008/009 remain M3.3G. |
+| **AFTER** | **`M3_3F_REMAINS_PENDING=YES`**; **`PRODUCTION_MATERIALIZATION_READY=NO`**; **`M3_3F_D3_TRIGGER_V1=ON_DEMAND_INTERNAL_OPS_PLUS_BOUNDED_SCHEDULED_RECONCILIATION`**; **`M3_3F_BACKFILL_POLICY=NO_BACKFILL`**. |
+| **DECISION_STATUS** | **M3_3F_ARCHITECTURE_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3F gate (no graph node change in F0) |
+| **EVIDENCE** | Main `abc2e6c2b`; call-site audit; D3 architecture cross-check |
+
 ## CL-2026-09-25 — M3.3E E3 post-merge engineering authority seal
 
 | Field | Value |
