@@ -61,6 +61,10 @@ class RefreshSafetyIntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        with cls.conn.cursor() as cur:
+            cur.execute('TRUNCATE osm.charging_stations_staging')
+            cur.execute('TRUNCATE osm.charging_station_dataset_metadata_staging')
+        cls.conn.commit()
         cls.conn.close()
 
     def _seed_live_l1(self) -> None:
