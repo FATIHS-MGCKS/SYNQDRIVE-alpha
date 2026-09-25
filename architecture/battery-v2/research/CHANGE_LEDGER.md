@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E0.1 longitudinal assessment consumption final contract closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E0 audit (PR #1761) defined consumption direction but left machine-contract gaps: DEFAULT-only session set, optional fingerprint, recommended preimage, tuple regrouping segments, profile↔identity substitution, TypeScript-trust validation. |
+| **CHANGE** | E0.1 amendments to `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` — full D3 candidate partition pairing, slice mapping, scientific fingerprint rebind, D4 strict parser reuse, frozen fingerprint preimage, D2 `sourceSegmentIndex` preservation, coverage semantics, frozen `M3_3E_BuildOutcome` union, expanded E1 test matrix. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`** (architecture); contract frozen for pure E1 adapter. |
+| **VALIDATION** | Docs-only; registry + graph validators. |
+| **NON_EFFECTS** | No runtime, E1 code, health logic, assessment/publication writes, D3 materialization, deploy. |
+| **DECISION_STATUS** | **E0_1_CONTRACT_CLOSED** (PR #1761) |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
 ## CL-2026-09-25 — M3.3E E0 longitudinal assessment consumption architecture audit
 
 | Field | Value |

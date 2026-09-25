@@ -1,7 +1,7 @@
 # M3.3E E0 — Longitudinal Assessment Consumption Architecture Audit
 
-**Date:** 2026-09-25  
-**Status:** **ARCHITECTURE AUDIT** (docs-only; no runtime)  
+**Date:** 2026-09-25 (E0 audit + **E0.1 final contract closure** on draft PR #1761)  
+**Status:** **ARCHITECTURE AUDIT — CONTRACT CLOSED FOR E1** (docs-only; no runtime)  
 **Consumption contract (frozen):** `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1`  
 **Upstream complete on main:** M3.3D D0–D4 (D4 engineering V1 PR #1754 @ merge `9a3e457d9`)
 
@@ -133,8 +133,48 @@ Any mismatch → **reject pair** (no assessment input struct).
 | `UNSUPPORTED_D3_PROFILE_CONTRACT` | Not `M3_3D_LONGITUDINAL_PROFILE_V1` |
 | `UNSUPPORTED_D3_PROFILE_POLICY` | Not `M3_3D_PROFILE_POLICY_V1` |
 | `UNSUPPORTED_D4_INSPECTION_CONTRACT` | Not `M3_3D_D4_INTEGRITY_INSPECTION_V1` |
+| `MALFORMED_D3_SCIENTIFIC_PROFILE` | `scientificProfile` fails D4 strict parser (see §5.4) |
+| `D3_SCIENTIFIC_PROFILE_FINGERPRINT_MISMATCH` | Parsed profile recomputed fingerprint ≠ `revisionIdentity.canonicalProfileFingerprint` |
+| `D3_D4_PROFILE_SLICE_MISMATCH` | D4 `profileSlice` ≠ D3 partition for same `restSessionId` |
+| `D3_D4_CONTRACT_INCONSISTENCY` | Impossible D4 disposition vs self-integrity (e.g. DEFAULT `NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED` when revision self-integrity OK) |
 
 These are **input-contract failures**, not health results.
+
+### 5.4 Scientific profile bound to revision identity (E0.1)
+
+**`SCIENTIFIC_PROFILE_BOUND_TO_REVISION_IDENTITY=YES`**
+
+E1 must not trust caller-supplied `revisionIdentity` without proving the **`scientificProfile` payload** belongs to that identity.
+
+**Runtime validation (E0.1):**
+
+| Check | Rule |
+|-------|------|
+| `scientificProfile.organizationId` | `=== revisionIdentity.organizationId` |
+| `scientificProfile.vehicleId` | `=== revisionIdentity.vehicleId` |
+| `scientificProfile.longitudinalProfileContractVersion` | `=== revisionIdentity.longitudinalProfileContractVersion` (and supported contract gate) |
+| `scientificProfile.profilePolicyVersion` | `=== revisionIdentity.profilePolicyVersion` (and supported policy gate) |
+| D3 scientific fingerprint | Recompute using **existing** D3 authority: `canonicalFeatureInputUtf8(...)` → `sha256HexLowercaseUtf8(...)` on the exact scientific projection; require `=== revisionIdentity.canonicalProfileFingerprint` |
+
+**`E1_RECOMPUTES_D3_SCIENTIFIC_FINGERPRINT=YES`** — do **not** invent a new fingerprint algorithm.
+
+Substitution attack (profile B + identity A + D4 for A) → **`D3_SCIENTIFIC_PROFILE_FINGERPRINT_MISMATCH`**.
+
+### 5.5 E1 strict runtime validation (E0.1)
+
+**`E1_REUSES_D4_STRICT_PROFILE_VALIDATION=YES`** · **`E1_TRUSTS_TYPESCRIPT_SHAPE_ONLY=NO`**
+
+Preferred E1 API:
+
+```typescript
+buildLongitudinalAssessmentInputV1({
+  scientificProfile: unknown,
+  revisionIdentity: M3_3E_RevisionIdentityV1,
+  d4Outcome: D4InspectionOutcome,
+}): M3_3E_BuildOutcome;
+```
+
+Internally: `parseLongitudinalScientificProfileProjectionV1(...)` from D4 strict parser on `scientificProfile`. Malformed → **`MALFORMED_D3_SCIENTIFIC_PROFILE`**. Do **not** duplicate or loosen the D4 parser.
 
 ---
 
@@ -191,39 +231,109 @@ If disposition remains **`ELIGIBLE`**, retain observation as assessment-grade; c
 
 ---
 
-## 8. Cross-object session coherence
+## 8. Full candidate partition pairing (E0.1)
 
-**`SESSION_PAIRING_INTEGRITY_REQUIRED=YES`**
+**`D3_D4_SESSION_SET_SCOPE=ALL_PROFILE_CANDIDATES`** · **`D3_D4_PROFILE_SLICE_PAIRING_REQUIRED=YES`** · **`FULL_CANDIDATE_CANONICAL_PAIRING=YES`** · **`FULL_CANDIDATE_VERSION_PAIRING=YES`**
 
-For each D3 `observations[]` entry selected as assessment-grade, exactly one D4 `perSession[]` row must exist with:
+D4 V1 `perSession[]` contains **every** D3 profile candidate exactly once — **DEFAULT**, **PROVISIONAL**, and **EXCLUDED**. E1 validates the **complete partition**, not DEFAULT observations alone.
 
-| Check | Rule |
-|-------|------|
-| `restSessionId` | Equal |
-| D4 `profileSlice` | `DEFAULT` |
-| `canonicalFeatureRowId` | D4 equals D3 `canonical.canonicalFeatureRowId` |
-| Version tuple | D4 envelope matches D3 `versionTuple` (all four parts when D3 resolved) |
+### 8.1 Candidate set invariants
 
-Additional fail-closed codes:
+D3 candidate partition:
 
-| Code | Condition |
-|------|-----------|
-| `D3_D4_SESSION_SET_MISMATCH` | D4 session set ≠ expected D3 DEFAULT candidate set |
-| `D3_D4_CANONICAL_REFERENCE_MISMATCH` | canonical row id mismatch |
-| `D3_D4_VERSION_TUPLE_MISMATCH` | tuple mismatch |
-| `DUPLICATE_SESSION_MAPPING` | >1 D4 row per `restSessionId` for DEFAULT slice |
+```
+scientificProfile.observations[]
++ scientificProfile.provisionalObservations[]
++ scientificProfile.excludedSessions[]
+```
+
+Required equalities before model input:
+
+```
+scientificProfile.coverage.candidateRestSessionCount
+=== observations.length + provisionalObservations.length + excludedSessions.length
+
+d4Inspection.perSession.length
+=== scientificProfile.coverage.candidateRestSessionCount
+```
+
+Every D3 candidate `restSessionId` maps to **exactly one** D4 `perSession` row. **No** extra D4 sessions. **No** missing sessions. **No** duplicate D4 `restSessionId`.
+
+**`D3_D4_SESSION_SET_MISMATCH`** means: the set of D4 `perSession[].restSessionId` ≠ the set of all D3 candidate `restSessionId` values (full partition). **Not** “D4 set vs DEFAULT-only”.
+
+**`DUPLICATE_SESSION_MAPPING`**: more than one D4 row for the same `restSessionId`.
+
+### 8.2 Profile slice ↔ D3 partition (fail-closed)
+
+| D3 source | Required D4 `profileSlice` |
+|-----------|------------------------------|
+| `observations[]` | `DEFAULT` |
+| `provisionalObservations[]` | `PROVISIONAL` |
+| `excludedSessions[]` | `EXCLUDED` |
+
+Wrong slice for a known candidate → **`D3_D4_PROFILE_SLICE_MISMATCH`**.
+
+### 8.3 Canonical + version pairing (all three slices)
+
+Validate **before** building assessment-grade arrays — for **every** paired candidate, not only ELIGIBLE DEFAULT rows.
+
+**DEFAULT / PROVISIONAL:**
+
+- D3 `canonical.canonicalFeatureRowId` `===` D4 `canonicalFeatureRowId`
+- D4 `versionTuple` **non-null**
+- D4 `inputContractResolution === 'RESOLVED'`
+- D4 four version fields `===` D3 `versionTuple` (`featureModelVersion`, `retentionPolicyVersion`, `chargeOpportunityPolicyVersion`, `inputContractVersion`)
+
+**EXCLUDED:**
+
+- If D3 `canonical === null` → D4 `canonicalFeatureRowId` must be **null**
+- If D3 `canonical != null` → `canonicalFeatureRowId` must match
+- D3 excluded `version` may be **null** or a tuple envelope with `inputContractResolution: 'RESOLVED' | 'UNRESOLVED'` and `inputContractVersion: string | null`
+- D4 `versionTuple` must match that **exact** state (unresolved excluded contract is **not** a pairing error merely because `inputContractVersion` is null)
+
+Mismatch → **`D3_D4_CANONICAL_REFERENCE_MISMATCH`** or **`D3_D4_VERSION_TUPLE_MISMATCH`**.
+
+### 8.4 Assessment-grade subset (after full partition passes)
+
+Only after §8.1–8.3 pass, apply §7 eligibility: **DEFAULT + `ELIGIBLE`** → `assessmentGradeObservations[]`.
 
 ---
 
-## 9. Version segmentation
+## 9. Version segmentation (preserve D2 boundaries — E0.1)
 
-**`CROSS_VERSION_POOLING_DEFAULT=NO`** · **`VERSION_TUPLE_PRESERVED=YES`**
+**`CROSS_VERSION_POOLING_DEFAULT=NO`** · **`VERSION_TUPLE_PRESERVED=YES`** · **`ORIGINAL_D2_SEGMENT_BOUNDARIES_PRESERVED=YES`** · **`NON_ADJACENT_EQUAL_VERSION_SEGMENTS_MERGED=NO`** · **`SOURCE_SEGMENT_INDEX_PRESERVED=YES`**
 
-D2 `versionSegments[]` may contain multiple homogeneous tuples. After D4 filtering, E0 emits **`eligibleVersionSegments[]`**: each segment lists assessment-grade observations sharing one full `(featureModelVersion, retentionPolicyVersion, chargeOpportunityPolicyVersion, inputContractVersion)` tuple.
+**`E0_IMPLICIT_SEGMENT_WINNER=NO`**
+
+### 9.1 Segment membership authority
+
+Use original D3 `versionSegments[]` (from D2 assembly) plus ordered DEFAULT `observations[]`. **Do not** reconstruct segments solely by grouping tuple equality after D4 filtering.
+
+E1 may validate D2 segment consistency but must **not** alter D2 scientific segmentation.
+
+### 9.2 `eligibleVersionSegments[]` (normative)
+
+Derived from **original** D2 `versionSegments[]` in **source order**:
+
+```typescript
+eligibleVersionSegments: Array<{
+  sourceSegmentIndex: number; // D2 versionSegments[].segmentIndex
+  versionTuple: LongitudinalProfileVersionTupleV1;
+  observationCount: number;
+  firstAnchorAt: string;
+  lastAnchorAt: string;
+  restSessionIds: string[];
+}>;
+```
+
+Rules:
+
+- Preserve D2 segment **order** and **identity** (`sourceSegmentIndex`)
+- Include only **ELIGIBLE DEFAULT** observations belonging to that source segment (membership from D2 segment boundaries, not post-filter tuple regrouping)
+- **Omit** a source segment when zero eligible observations remain
+- **Never** merge two different `sourceSegmentIndex` values even if tuples match (e.g. D2 pattern A→B→A must remain **three** segments when all eligible; if B is fully filtered, emit **two** segments — not one merged A)
 
 Removed/quarantined observations do **not** imply cross-segment continuity.
-
-**`E0_IMPLICIT_SEGMENT_WINNER=NO`** — E0 must not silently pick latest/largest/longest segment. Emit **all** assessment-grade homogeneous segments; future model policy chooses support.
 
 ---
 
@@ -334,11 +444,14 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     d3DefaultObservationCount: number;
     assessmentGradeObservationCount: number;
     quarantinedIntegrityWarningCount: number;
+    /** DEFAULT slice only — not profile-wide source limitation */
     sourceEvidenceLimitedCount: number;
     provisionalContextCount: number;
     excludedContextCount: number;
     d4DigestVerificationScope: D4DigestVerificationScope;
     d4Rebuildability: D4RebuildabilityStatus;
+    /** Optional profile-wide diagnostic; PROVISIONAL/EXCLUDED source limits do not increment sourceEvidenceLimitedCount */
+    sourceEvidenceLimitedReferenceCount?: number;
   };
 
   assessmentGradeObservations: Array<{
@@ -360,6 +473,7 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
   }>;
 
   eligibleVersionSegments: Array<{
+    sourceSegmentIndex: number;
     versionTuple: LongitudinalProfileVersionTupleV1;
     observationCount: number;
     firstAnchorAt: string;
@@ -380,62 +494,138 @@ export type M3_3E_LongitudinalAssessmentInputV1 = {
     excludedSummary?: { count: number; reasons?: string[] };
   };
 
-  /** Present when pair validation succeeds and fingerprint computed */
-  consumptionInputFingerprint?: string;
+  /** Required on every successful build (including zero eligible observations) */
+  consumptionInputFingerprint: string;
 };
 ```
 
-Pair validation failures return **`M3_3E_ConsumptionRejectOutcome`** (separate from input struct):
+**`SUCCESSFUL_E1_INPUT_FINGERPRINT_REQUIRED=YES`** · **`SUCCESSFUL_E1_INPUT_FINGERPRINT_OPTIONAL=NO`** · **`ZERO_ELIGIBLE_INPUT_HAS_FINGERPRINT=YES`**
+
+Frozen E1 result union (**`BUILD_OUTCOME_UNION_FROZEN=YES`**):
+
+```typescript
+export type M3_3E_BuildOutcome =
+  | { status: 'OK'; input: M3_3E_LongitudinalAssessmentInputV1 }
+  | { status: 'REJECTED'; reason: M3_3E_ConsumptionRejectReason };
+```
+
+Expected scientific contract rejections return **`REJECTED`** — no throw. Unexpected programming errors may throw.
 
 ```typescript
 export type M3_3E_ConsumptionRejectReason =
   | 'REVISION_NOT_FOUND'
   | 'REVISION_SELF_INTEGRITY_FAILED'
+  | 'MALFORMED_D3_SCIENTIFIC_PROFILE'
+  | 'D3_SCIENTIFIC_PROFILE_FINGERPRINT_MISMATCH'
   | 'D3_D4_IDENTITY_MISMATCH'
   | 'UNSUPPORTED_D3_PROFILE_CONTRACT'
   | 'UNSUPPORTED_D3_PROFILE_POLICY'
   | 'UNSUPPORTED_D4_INSPECTION_CONTRACT'
   | 'D3_D4_SESSION_SET_MISMATCH'
+  | 'D3_D4_PROFILE_SLICE_MISMATCH'
   | 'D3_D4_CANONICAL_REFERENCE_MISMATCH'
   | 'D3_D4_VERSION_TUPLE_MISMATCH'
-  | 'DUPLICATE_SESSION_MAPPING';
+  | 'DUPLICATE_SESSION_MAPPING'
+  | 'D3_D4_CONTRACT_INCONSISTENCY';
 ```
 
 ---
 
-## 16. Input availability vs model sufficiency
+## 16. Input availability, coverage counts, model sufficiency (E0.1)
+
+**`COVERAGE_COUNT_SEMANTICS_FROZEN=YES`** · **`SUCCESSFUL_E1_SELF_FAILED_DEFAULT_COUNT=0`**
+
+### 16.1 Coverage field semantics (V1)
+
+| Field | Exact population |
+|-------|------------------|
+| `d3DefaultObservationCount` | `scientificProfile.observations.length` |
+| `assessmentGradeObservationCount` | DEFAULT D4 rows with `integrityQualifiedDisposition === 'ELIGIBLE'` |
+| `quarantinedIntegrityWarningCount` | DEFAULT D4 rows with `QUARANTINED_INTEGRITY_WARNING` |
+| `sourceEvidenceLimitedCount` | DEFAULT D4 rows with `SOURCE_EVIDENCE_LIMITED` only |
+| `provisionalContextCount` | `scientificProfile.provisionalObservations.length` |
+| `excludedContextCount` | `scientificProfile.excludedSessions.length` |
+
+Accounting on successful E1 input (revision self-integrity OK):
+
+```
+d3DefaultObservationCount
+=== assessmentGradeObservationCount
+ + quarantinedIntegrityWarningCount
+ + sourceEvidenceLimitedCount
+```
+
+**`NOT_ELIGIBLE_REVISION_SELF_INTEGRITY_FAILED`** on DEFAULT rows must **not** appear when `materializedRevision.selfIntegrity === 'SELF_INTEGRITY_OK'`. If encountered → **`D3_D4_CONTRACT_INCONSISTENCY`**. E1 does **not** expose `notEligibleRevisionSelfIntegrityFailedDefaultCount` on successful inputs.
+
+Profile-wide `SOURCE_EVIDENCE_LIMITED` from PROVISIONAL/EXCLUDED does **not** increment `sourceEvidenceLimitedCount`. Use optional `sourceEvidenceLimitedReferenceCount` and/or `diagnosticContext.d4OverallStatus` / `inspectionFlags` for profile-wide diagnostics.
+
+### 16.2 Input availability vs model sufficiency
 
 | Concept | E0 rule |
 |---------|---------|
 | Structural availability | `assessmentGradeObservationCount > 0` → `ASSESSMENT_GRADE_INPUT_AVAILABLE` |
-| Zero eligible | Valid pair but all DEFAULT quarantined/limited/absent → `NO_ASSESSMENT_GRADE_INPUT` with diagnostic counts — **not** battery failure |
+| Zero eligible | Valid pair → `NO_ASSESSMENT_GRADE_INPUT`, `assessmentGradeObservations=[]`, `eligibleVersionSegments=[]`, **`consumptionInputFingerprint` still required** (empty assessment-grade set bound to D3 identity/contracts) |
 | Model sufficiency | **`MODEL_SUFFICIENCY=NOT_EVALUATED`** always in E0/E1 adapter |
 
 E0 does **not** define minimum sessions/days/span/slope thresholds.
 
 ---
 
-## 17. Consumption input fingerprint
+## 17. Consumption input fingerprint (frozen V1 preimage — E0.1)
 
-**`M3_3E_INPUT_FINGERPRINT_REQUIRED=YES`**  
+**`M3_3E_INPUT_FINGERPRINT_REQUIRED=YES`** · **`M3_3E_FINGERPRINT_PREIMAGE_FROZEN=YES`**  
 **`M3_3E_INPUT_FINGERPRINT_INCLUDES_WALL_CLOCK=NO`**
 
 Purpose: future model idempotency / input identity for the **assessment-grade set**, distinct from D3 science fingerprint alone.
 
-**Authority:** reuse C3/D3 canonical serialization semantics (`canonicalizeFeatureInputValue` + `serializeCanonicalJsonValue` + SHA-256 lowercase hex from `feature-input-canonical.serializer.ts` / `longitudinal-profile-fingerprint.ts` patterns). Do **not** invent a parallel JSON canonicalizer.
+**Authority:** `canonicalFeatureInputUtf8` → `sha256HexLowercaseUtf8` (same as D3/C3 canonical paths). Do **not** invent a parallel JSON canonicalizer.
 
-Recommended preimage fields (canonical object, sorted keys):
+### 17.1 Normative fingerprint preimage object (V1)
 
-- `contractVersion`
-- `organizationId`, `vehicleId`
-- `canonicalProfileFingerprint` (D3 revision)
-- `longitudinalProfileContractVersion`, `profilePolicyVersion`, `integrityInspectionContractVersion`
-- Ordered assessment-grade observations (ascending `anchorAt`, tie-break `restSessionId`): each entry `{ restSessionId, canonicalFeatureRowId, inputDigest, versionTuple, features, integrityContext.digestVerificationScope }`
-- Eligibility marker: disposition must be `ELIGIBLE` (only eligible rows included)
+Serialize this object with existing canonical JSON rules (`canonicalizeFeatureInputValue` + `serializeCanonicalJsonValue`), then SHA-256 lowercase hex:
 
-**Exclude:** `inspectionGeneratedAt`, `materializedAt`, `createdAt`, request timestamps.
+```typescript
+{
+  contractVersion: 'M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1',
 
-### 17.1 D3 science identity ≠ D4 inspection state identity
+  organizationId: string,
+  vehicleId: string,
+
+  canonicalProfileFingerprint: string,
+
+  longitudinalProfileContractVersion: string,
+  profilePolicyVersion: string,
+  integrityInspectionContractVersion: string,
+
+  assessmentGradeObservations: Array<{
+    restSessionId: string,
+    anchorAt: string,
+    canonicalFeatureRowId: string,
+    inputDigest: string,
+    versionTuple: LongitudinalProfileVersionTupleV1,
+
+    features: LongitudinalInputFeatureScalars,
+
+    anchorResolutionStatus: string,
+    chargeOpportunityClass: string,
+    chargeContextCompleteness: string[],
+    temperatureC: number | null,
+    temperatureSource: string | null,
+
+    digestVerificationScope: D4DigestVerificationScope,
+  }>,
+}
+```
+
+**Ordering:** sort `assessmentGradeObservations` by `anchorAt` ascending, then `restSessionId` ascending using `compareUtf16CodeUnitLexicographic`.
+
+**Exclude from preimage:** `revisionId`, `inspectionGeneratedAt`, `materializedAt`, `createdAt`, request time, wall clock, diagnostic reason lists.
+
+**Include `canonicalProfileFingerprint`:** binds consumption input to immutable D3 scientific revision. Full observation payload makes model-input identity explicit and auditable.
+
+Empty `assessmentGradeObservations[]` still yields a deterministic fingerprint (zero-eligible case).
+
+### 17.2 D3 science identity ≠ D4 inspection state identity
 
 The same immutable D3 revision may be inspected at different times; C3 retention may change rebuildability. **`consumptionInputFingerprint`** reflects the **actual assessment-grade evidence set** under the supplied D4 outcome, not wall-clock inspection time. Later source loss does not rewrite original D3 science fingerprint.
 
@@ -485,26 +675,46 @@ Next slice: **M3.3E E1 — pure longitudinal assessment input adapter**
 
 ```typescript
 buildLongitudinalAssessmentInputV1({
-  scientificProfile: LongitudinalScientificProfileProjectionV1,
-  revisionIdentity: { organizationId, vehicleId, revisionId, canonicalProfileFingerprint, ... },
+  scientificProfile: unknown,
+  revisionIdentity: M3_3E_RevisionIdentityV1,
   d4Outcome: D4InspectionOutcome,
-}): M3_3E_BuildOutcome; // OK input | REJECT reason
+}): M3_3E_BuildOutcome;
 ```
+
+Internally: parse profile via D4 strict parser; full candidate pairing §8; fingerprint §17.
 
 - No DB, Nest provider, writes, or health algorithm in E1.
 - Unit + golden tests per §23 matrix only.
 
 ---
 
-## 23. E1 test matrix (design only — not implemented in E0)
+## 23. E1 test matrix (design only — not implemented in E0/E0.1)
 
-### Pairing
+### Pairing (revision + identity)
 
 - exact matching D3+D4 pair; org/vehicle/revision/fingerprint mismatch; unsupported D3/D4 contracts; D4 `REVISION_NOT_FOUND`; top-level / parseable self-integrity failure
 
+### Full candidate pairing (E0.1)
+
+- DEFAULT + PROVISIONAL + EXCLUDED exact set passes
+- D4 missing PROVISIONAL → reject; missing EXCLUDED → reject; extra session → reject
+- DEFAULT mapped as PROVISIONAL / PROVISIONAL as DEFAULT / EXCLUDED wrong slice → reject
+- excluded canonical null ↔ D4 null; excluded canonical reference exact match
+- unresolved excluded version tuple exact match (null `inputContractVersion` allowed when UNRESOLVED)
+
+### Scientific profile binding (E0.1)
+
+- profile org/vehicle/contract/policy mismatch vs revision identity → reject
+- profile content altered with unchanged revision fingerprint → reject
+- key-order-only JSON difference → same D3 fingerprint
+
+### Strict validation (E0.1)
+
+- malformed scientific JSON → reject; unknown V1 field → reject via reused D4 parser only
+
 ### Session mapping
 
-- one-to-one; duplicate D4 `restSessionId`; missing/extra session; canonical mismatch; version tuple mismatch
+- duplicate D4 `restSessionId`; canonical/version mismatch on any slice
 
 ### Eligibility
 
@@ -514,9 +724,15 @@ buildLongitudinalAssessmentInputV1({
 
 - `SOURCE_EVIDENCE_LIMITED` from provisional-only limitation still retains ELIGIBLE DEFAULTs; `INTEGRITY_PARTIAL` ≠ poor health
 
-### Versions
+### Version segments (E0.1)
 
-- single segment; multiple segments; no cross-version pooling; no implicit winner
+- A→B→A remains 3 source segments when all eligible; B fully filtered → two segments (never one merged A)
+- zero-eligible source segment omitted; `sourceSegmentIndex` preserved; counts/first/last exact
+
+### Coverage (E0.1)
+
+- DEFAULT bucket partition equation; provisional/excluded counts from D3 partition
+- provisional-only source limitation does not increment DEFAULT `sourceEvidenceLimitedCount`
 
 ### Time
 
@@ -526,9 +742,11 @@ buildLongitudinalAssessmentInputV1({
 
 - >0 eligible → `ASSESSMENT_GRADE_INPUT_AVAILABLE`; 0 → `NO_ASSESSMENT_GRADE_INPUT`; `modelSufficiency` always `NOT_EVALUATED`
 
-### Fingerprint
+### Fingerprint (E0.1)
 
-- same science + eligibility → same fingerprint; different `inspectionGeneratedAt` → same fingerprint; different eligible set → different fingerprint; key reorder idempotent; no wall clock in preimage
+- successful input always has fingerprint; zero eligible still has fingerprint
+- same payload + different `inspectionGeneratedAt` → same fingerprint
+- `anchorAt` / feature / temperature / context / digest scope / eligible set changes → different fingerprint; JSON key reorder → same
 
 ### Existing assessment isolation
 
@@ -553,18 +771,22 @@ None block E1 pure adapter implementation.
 
 | Gate | Status |
 |------|--------|
-| D3+D4 pair identity | **CLOSED** |
+| D3+D4 pair identity | **CLOSED** (E0.1) |
+| Full candidate session set + slice pairing | **CLOSED** (E0.1) |
+| Scientific profile ↔ revision identity + fingerprint recompute | **CLOSED** (E0.1) |
+| E1 strict parser reuse | **CLOSED** (E0.1) |
 | D4 outcome handling | **CLOSED** |
 | Per-session eligibility | **CLOSED** |
-| Source-limited semantics | **CLOSED** |
-| Version segmentation | **CLOSED** |
+| Source-limited semantics (DEFAULT vs profile-wide) | **CLOSED** (E0.1) |
+| Version segmentation (D2 sourceSegmentIndex) | **CLOSED** (E0.1) |
+| Coverage count semantics | **CLOSED** (E0.1) |
 | Time authority | **CLOSED** |
-| Input contract shape | **CLOSED** |
-| Input fingerprint | **CLOSED** (reuse existing canonical serializer) |
+| Input contract + required fingerprint | **CLOSED** (E0.1) |
+| Build outcome union | **CLOSED** (E0.1) |
 | No implicit health/confidence mapping | **CLOSED** |
 | LV assessment isolation | **CLOSED** |
 | Persistence boundary | **CLOSED** |
-| E1 pure-function shape | **CLOSED** |
+| E1 pure-function shape | **CLOSED** (E0.1) |
 | Test matrix | **CLOSED** (design) |
 
 **`M3_3E_E1_IMPLEMENTATION_READY=YES`**
@@ -596,3 +818,22 @@ None block E1 pure adapter implementation.
 | `TEMPERATURE_CONTEXT_ONLY` | **YES** |
 | `MODEL_SUFFICIENCY` | `NOT_EVALUATED` |
 | `M3_3F_REMAINS_PENDING` | **YES** |
+| `D3_D4_SESSION_SET_SCOPE` | `ALL_PROFILE_CANDIDATES` |
+| `D3_D4_PROFILE_SLICE_PAIRING_REQUIRED` | **YES** |
+| `FULL_CANDIDATE_CANONICAL_PAIRING` | **YES** |
+| `FULL_CANDIDATE_VERSION_PAIRING` | **YES** |
+| `SCIENTIFIC_PROFILE_BOUND_TO_REVISION_IDENTITY` | **YES** |
+| `E1_RECOMPUTES_D3_SCIENTIFIC_FINGERPRINT` | **YES** |
+| `E1_REUSES_D4_STRICT_PROFILE_VALIDATION` | **YES** |
+| `E1_TRUSTS_TYPESCRIPT_SHAPE_ONLY` | **NO** |
+| `SUCCESSFUL_E1_INPUT_FINGERPRINT_REQUIRED` | **YES** |
+| `SUCCESSFUL_E1_INPUT_FINGERPRINT_OPTIONAL` | **NO** |
+| `ZERO_ELIGIBLE_INPUT_HAS_FINGERPRINT` | **YES** |
+| `M3_3E_FINGERPRINT_PREIMAGE_FROZEN` | **YES** |
+| `ORIGINAL_D2_SEGMENT_BOUNDARIES_PRESERVED` | **YES** |
+| `NON_ADJACENT_EQUAL_VERSION_SEGMENTS_MERGED` | **NO** |
+| `SOURCE_SEGMENT_INDEX_PRESERVED` | **YES** |
+| `COVERAGE_COUNT_SEMANTICS_FROZEN` | **YES** |
+| `SUCCESSFUL_E1_SELF_FAILED_DEFAULT_COUNT` | **0** |
+| `BUILD_OUTCOME_UNION_FROZEN` | **YES** |
+| `M3_3E_E1_IMPLEMENTATION_READY` | **YES** |
