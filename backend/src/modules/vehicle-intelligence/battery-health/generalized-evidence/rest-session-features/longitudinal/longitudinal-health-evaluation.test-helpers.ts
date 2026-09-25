@@ -1,4 +1,4 @@
-import { buildLongitudinalAssessmentInputV1 } from './longitudinal-assessment-input.adapter';
+import { buildLongitudinalAssessmentInputV1, computeM3_3E_ConsumptionInputFingerprintV1 } from './longitudinal-assessment-input.adapter';
 import type { M3_3E_LongitudinalAssessmentInputV1 } from './longitudinal-assessment-input.types';
 import type { LongitudinalInputFeatureScalars } from './longitudinal-input.types';
 import {
@@ -37,11 +37,13 @@ export function sessionWithFeatures(input: {
   anchorAt: string;
   features?: Partial<LongitudinalInputFeatureScalars>;
   anchorResolutionStatus?: RestSessionFeatureInputAnchorResolutionStatus;
+  version?: LongitudinalInputSessionInventoryItem['version'];
 }): LongitudinalInputSessionInventoryItem {
   const item = buildProfileTestInventoryItem({
     restSessionId: input.restSessionId,
     anchorAt: input.anchorAt,
     inclusionMode: 'DEFAULT',
+    version: input.version,
   });
   if (input.features && item.features) {
     item.features = { ...item.features, ...input.features };
@@ -50,4 +52,19 @@ export function sessionWithFeatures(input: {
     item.snapshot = { ...item.snapshot, anchorResolutionStatus: input.anchorResolutionStatus };
   }
   return item;
+}
+
+export function syncE3ConsumptionInputFingerprint(
+  input: M3_3E_LongitudinalAssessmentInputV1,
+): void {
+  const id = input.identity;
+  input.consumptionInputFingerprint = computeM3_3E_ConsumptionInputFingerprintV1({
+    organizationId: id.organizationId,
+    vehicleId: id.vehicleId,
+    canonicalProfileFingerprint: id.canonicalProfileFingerprint,
+    longitudinalProfileContractVersion: id.longitudinalProfileContractVersion,
+    profilePolicyVersion: id.profilePolicyVersion,
+    integrityInspectionContractVersion: id.integrityInspectionContractVersion,
+    assessmentGradeObservations: input.assessmentGradeObservations,
+  });
 }

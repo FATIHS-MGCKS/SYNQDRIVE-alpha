@@ -28,6 +28,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3.1 pre-merge contract conformance hardening (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3 draft evaluator on PR #1778 with partial E1 revalidation, metric-global context descriptors, and historical E2 ledger drift. |
+| **OBSERVATION** | Pre-merge gate requires append-only ledger integrity, full E1 evidence/coverage/segment validation, per-metric series scoping, and completed test matrix. |
+| **HYPOTHESIS** | Hardening can close conformance gaps without changing frozen E2 scientific semantics. |
+| **CHANGE** | Restored historical E2 seal ledger entry from main; expanded fail-closed validation; metric-scoped context/outliers/comparability; FIRST_POINT_AGE reason scoping; fingerprint helper + sensitivity tests; expanded E3 spec matrix. |
+| **WHY** | Make PR #1778 merge-safe under E2/E1 authority without runtime reachability. |
+| **EXPECTED_EFFECT** | **`E3_1_CONFORMANCE=PASS`** on draft branch; E1 golden unchanged; E3 golden may update only if scoping fixes change canonical body. |
+| **VALIDATION** | `longitudinal-health-evaluation.spec.ts`; E1 + longitudinal regressions; graph/registry validators. |
+| **OBSERVED_EFFECT** | Pending merge of PR #1778 amend. |
+| **NON_EFFECTS** | No Nest/Prisma/flags/persistence/deploy; no calibration numerics; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
+| **REGRESSIONS_OR_TRADEOFFS** | None intended. |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`; M3.3F gate separate. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1 hardened). |
+| **DECISION_STATUS** | **E3_1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778 exact-head CI; E3.1 test matrix |
+
+---
+
 ## CL-2026-09-25 — drive-profile ownership (TDL-OQ-002 cross-authority)
 
 | Field | Value |
@@ -65,7 +87,7 @@ Append-only scientific record. Newest entries first.
 | **REGRESSIONS_OR_TRADEOFFS** | None — wording/authority only. |
 | **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
 | **AFTER** | **`M3_3E_E2_COMPLETE_ON_MAIN=YES`**; **`M3_3E_E2_POST_MERGE_SEAL=PASS`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
-| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`a3af27585fe3a84bc9cbc9c600186dc707fce79a`**. |
+| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`8b000a6e07f9fce501b201bdf156a1d7dece95e4`**. |
 | **DECISION_STATUS** | **E2_COMPLETE_ON_MAIN** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
 

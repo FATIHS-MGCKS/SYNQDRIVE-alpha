@@ -515,6 +515,115 @@ function segmentHasUnresolvedDeltaAnchor(
   );
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function validateObservationNumerics(
+  obs: M3_3E_AssessmentGradeObservationV1,
+): Reject | null {
+  const f = obs.features;
+  if (!Number.isSafeInteger(f.numberOfValidRestPoints) || f.numberOfValidRestPoints < 0) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  for (const key of [
+    'medianRestVoltageMv',
+    'minimumRestVoltageMv',
+    'maximumRestVoltageMv',
+    'shutdownToFirstRestDeltaMv',
+  ] as const) {
+    const v = f[key];
+    if (v !== null && !Number.isSafeInteger(v)) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
+  }
+  if (f.robustRestSlopeMvPerHour !== null && !Number.isFinite(f.robustRestSlopeMvPerHour)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.restVoltageVarianceMv2 !== null && !Number.isFinite(f.restVoltageVarianceMv2)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.maxActualRestAgeMs !== null && !isSafeNonNegativeInteger(f.maxActualRestAgeMs)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.maxInterObservationGapMs !== null && !isSafeNonNegativeInteger(f.maxInterObservationGapMs)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.observationSpanMs !== null && !isSafeNonNegativeInteger(f.observationSpanMs)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.missingRungCount !== null && !isSafeNonNegativeInteger(f.missingRungCount)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (obs.temperatureC !== null && !Number.isFinite(obs.temperatureC)) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.maxActualRestAgeMs !== null && f.observationSpanMs !== null) {
+    const firstAge = f.maxActualRestAgeMs - f.observationSpanMs;
+    if (!Number.isSafeInteger(firstAge) || firstAge < 0) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
+  }
+  return null;
+}
+
+function validateCoverageAccounting(input: M3_3E_LongitudinalAssessmentInputV1): Reject | null {
+  const c = input.coverage;
+  for (const n of [
+    c.d3DefaultObservationCount,
+    c.assessmentGradeObservationCount,
+    c.quarantinedIntegrityWarningCount,
+    c.sourceEvidenceLimitedCount,
+    c.provisionalContextCount,
+    c.excludedContextCount,
+  ]) {
+    if (!isSafeNonNegativeInteger(n)) {
+      return reject('M3_3E_EVALUATION_MALFORMED_COVERAGE');
+    }
+  }
+  if (c.assessmentGradeObservationCount !== input.assessmentGradeObservations.length) {
+    return reject('M3_3E_EVALUATION_MALFORMED_COVERAGE');
+  }
+  if (
+    c.d3DefaultObservationCount !==
+    c.assessmentGradeObservationCount +
+      c.quarantinedIntegrityWarningCount +
+      c.sourceEvidenceLimitedCount
+  ) {
+    return reject('M3_3E_EVALUATION_MALFORMED_COVERAGE');
+  }
+  return null;
+}
+
+function validateEvidenceWindow(input: M3_3E_LongitudinalAssessmentInputV1): Reject | null {
+  const w = input.evidenceWindow;
+  const n = input.assessmentGradeObservations.length;
+  if (n === 0) {
+    if (
+      w.firstEligibleAnchorAt !== null ||
+      w.lastEligibleAnchorAt !== null ||
+      w.eligibleEvidenceSpanMs !== null
+    ) {
+      return reject('M3_3E_EVALUATION_EVIDENCE_WINDOW_INCONSISTENT');
+    }
+    return null;
+  }
+  const sorted = [...input.assessmentGradeObservations].sort(compareObservations);
+  const first = sorted[0].anchorAt;
+  const last = sorted[sorted.length - 1].anchorAt;
+  if (w.firstEligibleAnchorAt !== first || w.lastEligibleAnchorAt !== last) {
+    return reject('M3_3E_EVALUATION_EVIDENCE_WINDOW_INCONSISTENT');
+  }
+  const expectedSpan = n === 1 ? 0 : Date.parse(last) - Date.parse(first);
+  if (!Number.isFinite(expectedSpan) || expectedSpan < 0 || !Number.isSafeInteger(expectedSpan)) {
+    return reject('M3_3E_EVALUATION_EVIDENCE_WINDOW_INCONSISTENT');
+  }
+  if (w.eligibleEvidenceSpanMs !== expectedSpan) {
+    return reject('M3_3E_EVALUATION_EVIDENCE_WINDOW_INCONSISTENT');
+  }
+  return null;
+}
+
 function validateInput(
   input: M3_3E_LongitudinalAssessmentInputV1,
   profile: M3_3E_CalibrationProfileV1,
@@ -540,18 +649,6 @@ function validateInput(
   ) {
     return reject('M3_3E_EVALUATION_CONSUMPTION_FINGERPRINT_MISMATCH');
   }
-  const recomputed = computeM3_3E_ConsumptionInputFingerprintV1({
-    organizationId: id.organizationId,
-    vehicleId: id.vehicleId,
-    canonicalProfileFingerprint: id.canonicalProfileFingerprint,
-    longitudinalProfileContractVersion: id.longitudinalProfileContractVersion,
-    profilePolicyVersion: id.profilePolicyVersion,
-    integrityInspectionContractVersion: id.integrityInspectionContractVersion,
-    assessmentGradeObservations: input.assessmentGradeObservations,
-  });
-  if (recomputed !== input.consumptionInputFingerprint) {
-    return reject('M3_3E_EVALUATION_CONSUMPTION_FINGERPRINT_MISMATCH');
-  }
 
   const obsCount = input.assessmentGradeObservations.length;
   const hasObs = obsCount > 0;
@@ -560,6 +657,13 @@ function validateInput(
   }
   if (!hasObs && input.modelEvaluation.inputAvailability !== 'NO_ASSESSMENT_GRADE_INPUT') {
     return reject('M3_3E_EVALUATION_MODEL_INPUT_AVAILABILITY_MISMATCH');
+  }
+  if (input.modelEvaluation.modelSufficiency !== 'NOT_EVALUATED') {
+    return reject('M3_3E_EVALUATION_MODEL_SUFFICIENCY_MISMATCH');
+  }
+  const coverageErr = validateCoverageAccounting(input);
+  if (coverageErr) {
+    return coverageErr;
   }
 
   const seenSession = new Set<string>();
@@ -571,15 +675,9 @@ function validateInput(
     if (!isCanonicalUtcIsoTimestamp(obs.anchorAt)) {
       return reject('M3_3E_EVALUATION_MALFORMED_ANCHOR_AT');
     }
-    for (const key of [
-      'medianRestVoltageMv',
-      'robustRestSlopeMvPerHour',
-      'shutdownToFirstRestDeltaMv',
-    ] as const) {
-      const v = obs.features[key];
-      if (v !== null && !Number.isFinite(v)) {
-        return overflowReject();
-      }
+    const numericErr = validateObservationNumerics(obs);
+    if (numericErr) {
+      return numericErr;
     }
     if (
       obs.features.shutdownToFirstRestDeltaMv !== null &&
@@ -595,23 +693,63 @@ function validateInput(
     }
   }
 
+  const recomputed = computeM3_3E_ConsumptionInputFingerprintV1({
+    organizationId: id.organizationId,
+    vehicleId: id.vehicleId,
+    canonicalProfileFingerprint: id.canonicalProfileFingerprint,
+    longitudinalProfileContractVersion: id.longitudinalProfileContractVersion,
+    profilePolicyVersion: id.profilePolicyVersion,
+    integrityInspectionContractVersion: id.integrityInspectionContractVersion,
+    assessmentGradeObservations: input.assessmentGradeObservations,
+  });
+  if (recomputed !== input.consumptionInputFingerprint) {
+    return reject('M3_3E_EVALUATION_CONSUMPTION_FINGERPRINT_MISMATCH');
+  }
+
   const segmentBySession = new Map<string, number>();
+  let prevSegmentIndex = -1;
   for (const seg of input.eligibleVersionSegments) {
+    if (!isSafeNonNegativeInteger(seg.sourceSegmentIndex)) {
+      return reject('M3_3E_EVALUATION_MALFORMED_SEGMENT_STRUCTURE');
+    }
+    if (seg.sourceSegmentIndex <= prevSegmentIndex) {
+      return reject('M3_3E_EVALUATION_MALFORMED_SEGMENT_STRUCTURE');
+    }
+    prevSegmentIndex = seg.sourceSegmentIndex;
+    if (!Number.isSafeInteger(seg.observationCount) || seg.observationCount <= 0) {
+      return reject('M3_3E_EVALUATION_MALFORMED_SEGMENT_STRUCTURE');
+    }
+    if (seg.restSessionIds.length !== seg.observationCount) {
+      return reject('M3_3E_EVALUATION_MALFORMED_SEGMENT_STRUCTURE');
+    }
+    const seenInSegment = new Set<string>();
+    for (const sid of seg.restSessionIds) {
+      if (seenInSegment.has(sid)) {
+        return reject('M3_3E_EVALUATION_MALFORMED_SEGMENT_STRUCTURE');
+      }
+      seenInSegment.add(sid);
+    }
     const segObs = input.assessmentGradeObservations.filter((o) =>
       seg.restSessionIds.includes(o.restSessionId),
     );
     if (segObs.length !== seg.observationCount) {
       return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
     }
-    if (segObs.length > 0) {
-      const sorted = [...segObs].sort(compareObservations);
-      if (sorted[0].anchorAt !== seg.firstAnchorAt || sorted[sorted.length - 1].anchorAt !== seg.lastAnchorAt) {
-        return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
-      }
-      const ids = sorted.map((o) => o.restSessionId);
+    const sorted = [...segObs].sort(compareObservations);
+    if (sorted[0].anchorAt !== seg.firstAnchorAt || sorted[sorted.length - 1].anchorAt !== seg.lastAnchorAt) {
+      return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
+    }
+    const ids = sorted.map((o) => o.restSessionId);
+    if (ids.some((id, idx) => id !== seg.restSessionIds[idx])) {
+      return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
+    }
+    for (const obs of segObs) {
       if (
-        ids.length !== seg.restSessionIds.length ||
-        ids.some((id, idx) => id !== seg.restSessionIds[idx])
+        seg.versionTuple.featureModelVersion !== obs.versionTuple.featureModelVersion ||
+        seg.versionTuple.retentionPolicyVersion !== obs.versionTuple.retentionPolicyVersion ||
+        seg.versionTuple.chargeOpportunityPolicyVersion !==
+          obs.versionTuple.chargeOpportunityPolicyVersion ||
+        seg.versionTuple.inputContractVersion !== obs.versionTuple.inputContractVersion
       ) {
         return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
       }
@@ -625,32 +763,14 @@ function validateInput(
   }
 
   for (const obs of input.assessmentGradeObservations) {
-    const segIdx = segmentBySession.get(obs.restSessionId);
-    if (segIdx === undefined) {
+    if (!segmentBySession.has(obs.restSessionId)) {
       return reject('M3_3E_EVALUATION_OBSERVATION_SEGMENT_MISMATCH');
-    }
-    const seg = input.eligibleVersionSegments.find((s) => s.sourceSegmentIndex === segIdx);
-    if (!seg) {
-      return reject('M3_3E_EVALUATION_OBSERVATION_SEGMENT_MISMATCH');
-    }
-    if (
-      seg.versionTuple.featureModelVersion !== obs.versionTuple.featureModelVersion ||
-      seg.versionTuple.retentionPolicyVersion !== obs.versionTuple.retentionPolicyVersion ||
-      seg.versionTuple.chargeOpportunityPolicyVersion !==
-        obs.versionTuple.chargeOpportunityPolicyVersion ||
-      seg.versionTuple.inputContractVersion !== obs.versionTuple.inputContractVersion
-    ) {
-      return reject('M3_3E_EVALUATION_SEGMENT_METADATA_INCONSISTENT');
     }
   }
 
-  if (hasObs) {
-    const sorted = [...input.assessmentGradeObservations].sort(compareObservations);
-    const first = sorted[0].anchorAt;
-    const last = sorted[sorted.length - 1].anchorAt;
-    if (input.evidenceWindow.firstEligibleAnchorAt !== first || input.evidenceWindow.lastEligibleAnchorAt !== last) {
-      return reject('M3_3E_EVALUATION_EVIDENCE_WINDOW_INCONSISTENT');
-    }
+  const evidenceErr = validateEvidenceWindow(input);
+  if (evidenceErr) {
+    return evidenceErr;
   }
 
   return null;
@@ -670,17 +790,18 @@ function isSegmentStructurallyEvaluable(
 
 function computeMetricEvaluation(input: {
   metric: M3_3E_HEALTH_PRIMARY_METRIC_V1;
-  observations: M3_3E_AssessmentGradeObservationV1[];
+  segmentObservations: M3_3E_AssessmentGradeObservationV1[];
   calibrationProfileId: string;
   multiSegmentPooling: boolean;
   coverageReasons: M3_3E_HEALTH_EVALUATION_REASON_CODE_V1[];
   digestScope: M3_3E_LongitudinalAssessmentInputV1['coverage']['d4DigestVerificationScope'];
 }): M3_3E_HealthMetricEvaluationV1 | Reject {
-  const seriesResult = buildSeriesPoints(input.observations, input.metric);
+  const seriesResult = buildSeriesPoints(input.segmentObservations, input.metric);
   if ('kind' in seriesResult) {
     return seriesResult;
   }
   const points = seriesResult;
+  const metricSeriesObservations = points.map((p) => p.obs);
   const levelEvaluable = points.length >= 1;
   const distinctAnchors = distinctAnchorCount(points);
   const trendEvaluable = distinctAnchors >= 2;
@@ -732,19 +853,29 @@ function computeMetricEvaluation(input: {
 
   const reasonCodes: M3_3E_HEALTH_EVALUATION_REASON_CODE_V1[] = [...input.coverageReasons];
   reasonCodes.push('TEMPERATURE_CONTEXT_ONLY');
-  if (input.observations.some((o) => o.temperatureSource !== 'TRIP_EXTERIOR' || o.temperatureC === null)) {
+  if (
+    metricSeriesObservations.some(
+      (o) => o.temperatureSource !== 'TRIP_EXTERIOR' || o.temperatureC === null,
+    )
+  ) {
     reasonCodes.push('TEMPERATURE_UNKNOWN_PRESENT');
   }
-  const ctx = buildContextDescriptors(input.observations);
+  const ctx = buildContextDescriptors(metricSeriesObservations);
   if (ctx.temperature.knownMinC !== null && ctx.temperature.knownMaxC !== null) {
     reasonCodes.push('TEMPERATURE_RANGE_UNCONTROLLED');
   }
   reasonCodes.push('CHARGE_CLASSIFIER_NOT_PRODUCTION_CALIBRATED');
-  if (input.observations.some((o) => o.chargeOpportunityClass === 'UNKNOWN')) {
+  if (metricSeriesObservations.some((o) => o.chargeOpportunityClass === 'UNKNOWN')) {
     reasonCodes.push('CHARGE_CONTEXT_UNCONTROLLED');
   }
-  reasonCodes.push('REST_DEPTH_UNCONTROLLED', 'FIRST_POINT_AGE_UNCONTROLLED');
-  if (input.metric === 'SHUTDOWN_TO_FIRST_REST_DELTA' && segmentHasUnresolvedDeltaAnchor(input.observations)) {
+  reasonCodes.push('REST_DEPTH_UNCONTROLLED');
+  if (input.metric === 'ROBUST_REST_SLOPE' || input.metric === 'SHUTDOWN_TO_FIRST_REST_DELTA') {
+    reasonCodes.push('FIRST_POINT_AGE_UNCONTROLLED');
+  }
+  if (
+    input.metric === 'SHUTDOWN_TO_FIRST_REST_DELTA' &&
+    segmentHasUnresolvedDeltaAnchor(input.segmentObservations)
+  ) {
     reasonCodes.push('ANCHOR_UNRESOLVED_FOR_DELTA_METRIC');
   }
   if (!levelEvaluable) {
@@ -771,12 +902,12 @@ function computeMetricEvaluation(input: {
 
   return {
     metric: input.metric,
-    comparability: resolveComparability(input.metric, input.observations),
+    comparability: resolveComparability(input.metric, metricSeriesObservations),
     sufficiency: resolveSufficiency(levelEvaluable, trendEvaluable),
     statistics: stats,
     contextDescriptors: ctx,
     trendState: resolveTrendState(trendEvaluable, input.calibrationProfileId),
-    outliers: buildOutliers(input.observations),
+    outliers: buildOutliers(metricSeriesObservations),
     confidence: 'NOT_APPLICABLE',
     reasonCodes: sortReasonCodes(reasonCodes),
   };
@@ -803,6 +934,12 @@ function computeResultFingerprint(
     },
   };
   return sha256HexLowercaseUtf8(canonicalFeatureInputUtf8(preimage));
+}
+
+export function computeM3_3E_HealthEvaluationResultFingerprintV1(
+  body: Omit<M3_3E_LongitudinalHealthEvaluationV1, 'resultFingerprint'>,
+): string {
+  return computeResultFingerprint(body);
 }
 
 export function evaluateM3_3E_LongitudinalHealthEvaluationV1(
@@ -853,7 +990,7 @@ export function evaluateM3_3E_LongitudinalHealthEvaluationV1(
     for (const metric of M3_3E_HEALTH_PRIMARY_METRICS_V1) {
       const metricEval = computeMetricEvaluation({
         metric,
-        observations: segObs,
+        segmentObservations: segObs,
         calibrationProfileId: profile.calibrationProfileId,
         multiSegmentPooling: multiSegment,
         coverageReasons,

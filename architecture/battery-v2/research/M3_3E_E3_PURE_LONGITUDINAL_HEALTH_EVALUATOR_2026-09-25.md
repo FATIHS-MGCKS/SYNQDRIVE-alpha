@@ -33,7 +33,7 @@
 - **Quantization / Theil-Sen / MAD / step:** per E2 §12.3 (relative ms origin, `DAY_MS`, safe integers, `-0→0`)
 - **Reject:** `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW` + narrow engineering reject codes (no new scientific semantics)
 - **Fingerprint preimage:** `{ contractVersion, modelPolicyVersion, calibrationProfileId, calibrationProfileFingerprint, consumptionInputFingerprint, canonical body without resultFingerprint }`
-- **Golden result fingerprint:** `3d4dbae5f46afe46e3775718643540c92b43f0b81e93059d736735591ee18799`
+- **Golden result fingerprint:** `42cfc8a737a9cff99c5982b1f44937fee8a2fc0d7e30bbefe612144b148f7043` (E3.1: metric-scoped `FIRST_POINT_AGE_UNCONTROLLED` on median)
 - **Calibration fingerprint:** `4bd9be2fc11cfc5c99335b77467ecffb57edc0ace9cee1317d1f2785c561af65`
 
 ## 17–18. Regression / non-effects
@@ -42,7 +42,18 @@
 - Longitudinal D1–D4 + E1 suites **PASS** with E3 added
 - **No** Nest wiring, Prisma, flags, persistence, deploy, readiness, LV assessment, publication
 
-## 19–20. Blockers / M3.3F
+## 21. E3.1 pre-merge conformance hardening (draft PR #1778 amend)
+
+| Area | Change |
+|------|--------|
+| **CHANGE_LEDGER** | Restored historical E2 seal entry byte-for-byte from `origin/main`; append-only E3 + E3.1 entries only |
+| **E1 revalidation** | Full evidence window + `eligibleEvidenceSpanMs`; coverage accounting; observation/segment numerics; segment index order + membership |
+| **Metric scoping** | Context descriptors, outliers, comparability, and charge/temperature/rest-age aggregates use **metric series** observations only |
+| **FIRST_POINT_AGE** | Emitted only for `ROBUST_REST_SLOPE` and `SHUTDOWN_TO_FIRST_REST_DELTA`, not `MEDIAN_REST_VOLTAGE` under UNSET |
+| **Tests** | `longitudinal-health-evaluation.e31-conformance.spec.ts` — matrix D/H/I/L/M/O/P/Q/R/V/W/AC/AD + validation + fingerprint field sensitivity |
+| **Fingerprint helper** | `computeM3_3E_HealthEvaluationResultFingerprintV1` (pure, no runtime reachability) |
+
+**Status:** E3 engineering **DRAFT** — **NOT COMPLETE ON MAIN**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**.
 
 - **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`** — all `CAL-M3.3E-*` unset
 - **M3.3F** materialization / natural calibration remains a **separate** gate
