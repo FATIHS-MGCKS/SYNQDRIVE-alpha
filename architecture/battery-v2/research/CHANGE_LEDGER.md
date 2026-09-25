@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E0 longitudinal assessment consumption architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | D4 Engineering V1 complete on main; active docs pointed to M3.3E consumption architecture as next slice without a frozen `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` contract. |
+| **CHANGE** | Added `M3_3E_E0_LONGITUDINAL_ASSESSMENT_CONSUMPTION_ARCHITECTURE_2026-09-25.md` — D3+D4 pair identity, D4 outcome/per-session gates, version segments, time axis, input contract, consumption fingerprint, LV assessment isolation, persistence/M3.3F/M3.3G boundaries, E1 pure-adapter shape, E1 test matrix design. |
+| **AFTER** | **`M3_3E_E1_IMPLEMENTATION_READY=YES`** (architecture); **`M3_3E_HEALTH_MODEL=NOT IMPLEMENTED`**; **`M3_3F_REMAINS_PENDING=YES`**. |
+| **VALIDATION** | Docs-only; `validate-module-registry.sh` + `validate-graph.sh`. |
+| **NON_EFFECTS** | No runtime, schema, migration, flags, Nest/API/UI/CLI, BatteryAssessment/BatteryPublication writes, D3 materialization, deploy, production data mutation. |
+| **REMAINING_GAPS** | M3.3E E1 engineering; M3.3E+ health model; M3.3F authorization; M3.3G cutover; M3.3H UI. |
+| **DECISION_STATUS** | **E0_ARCHITECTURE_AUDIT_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment consumption |
+
 ## CL-2026-09-24 — M3.3D D4 Engineering V1 post-merge seal
 
 | Field | Value |
