@@ -1,7 +1,8 @@
 # M3.3E E3 — Pure Fail-Closed Longitudinal Health Evaluator (Engineering)
 
 **Date:** 2026-09-25  
-**Phase:** M3.3E E3 (pure engineering — **draft PR**, not on `main`)  
+**Phase:** M3.3E E3 — **COMPLETE ON MAIN**  
+**Merged engineering PR:** #1778 — head `984bf2ec3d82eac160c84c0ad8ce2ff796904165` / merge `55fcbe7a229db9858cecc1538b9ec1919ff30fbc`  
 **Authority:** Implements frozen **`M3_3E_E2_LONGITUDINAL_HEALTH_MODEL_ARCHITECTURE_2026-09-25.md`** without semantic changes.
 
 ## 1. Starting authority
@@ -10,7 +11,7 @@
 |-------|--------|
 | E1 `M3_3E_LONGITUDINAL_ASSESSMENT_INPUT_V1` | **COMPLETE ON MAIN** PR #1765 |
 | E2 scientific contract | **COMPLETE ON MAIN** PR #1773; seal PR #1775 @ `a58773e72125b14bcc1640c742a9d127d46c2955` |
-| E3 engineering | **DRAFT PR** — pure evaluator only |
+| E3 engineering | **COMPLETE ON MAIN** PR #1778 |
 
 ## 2. Implemented files
 
@@ -70,3 +71,18 @@
 
 - **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`** — all `CAL-M3.3E-*` unset
 - **M3.3F** materialization / natural calibration remains a **separate** gate
+
+## 24. Post-merge authority seal (merged engineering on main)
+
+| Field | Value |
+|-------|-------|
+| **`M3_3E_E3_COMPLETE_ON_MAIN`** | **YES** |
+| **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED`** | **YES** |
+| **`M3_3E_E3_POST_MERGE_SEAL`** | **PASS** (documentation seal; engineering merged PR #1778) |
+| **`M3_3E_HEALTH_MODEL_IMPLEMENTED`** | **NO** |
+| **`M3_3E_CONCLUSION_BEARING_MODEL_READY`** | **NO** |
+| **`E3_RUNTIME_REACHABLE`** | **NO** |
+| **`E3_PERSISTENCE`** | **NO** |
+| **`M3_3F_REMAINS_PENDING`** | **YES** |
+
+Sections §21–§23 remain historical engineering closure records from PR #1778; estimator mathematics unchanged on main.
