@@ -16,6 +16,17 @@ import {
   evaluateErdRechargeProjectionEligibility,
   type ErdRechargeProjectionIneligibleReason,
 } from './erd-recharge-projection-eligibility.policy';
+import {
+  HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+} from '@modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.types';
+import {
+  executeLateNativeCanonicalHandoff,
+  existingProjectionSourceEventKeyMatchesAnchor,
+} from './erd-late-native-handoff.policy';
+import {
+  ERD_LATE_NATIVE_PREDECESSOR_RESOLUTION,
+  resolveAuthoritativeFallbackPredecessorForNative,
+} from './erd-late-native-predecessor.resolver';
 import { buildErdRechargePhysicalProjectionSourceEventKey } from './erd-recharge-projection-identity.policy';
 import { mapCanonicalHvChargeSessionToErdRechargeProjectionDraft } from './erd-recharge-projection-mapper';
 import {
@@ -166,6 +177,85 @@ async function reconcileExistingProjection(
   };
 }
 
+async function tryLateNativeHandoffIfApplicable(
+  tx: Prisma.TransactionClient,
+  session: HvChargeSession,
+  input: ProjectCanonicalRechargeInput,
+): Promise<ProjectCanonicalRechargeResult | null> {
+  if (session.source !== HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE) {
+    return null;
+  }
+
+  const predecessorResolution = await resolveAuthoritativeFallbackPredecessorForNative(
+    tx,
+    session,
+  );
+
+  if (
+    predecessorResolution.kind ===
+    ERD_LATE_NATIVE_PREDECESSOR_RESOLUTION.AMBIGUOUS_PREDECESSOR
+  ) {
+    return {
+      outcome: ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.AMBIGUOUS_PREDECESSOR,
+      reason: 'multiple_fallback_predecessors_claim_native',
+    };
+  }
+
+  if (
+    predecessorResolution.kind ===
+    ERD_LATE_NATIVE_PREDECESSOR_RESOLUTION.INVALID_SUPERSESSION_EVIDENCE
+  ) {
+    return {
+      outcome: ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.INVALID_SUPERSESSION_EVIDENCE,
+      reason: predecessorResolution.reason,
+    };
+  }
+
+  if (
+    predecessorResolution.kind === ERD_LATE_NATIVE_PREDECESSOR_RESOLUTION.NO_PREDECESSOR
+  ) {
+    return null;
+  }
+
+  const fallbackSession = predecessorResolution.predecessor;
+  const veeByNative = await findByCanonicalSessionId(tx, session.id);
+  const veeByFallback = await findByCanonicalSessionId(tx, fallbackSession.id);
+
+  if (veeByNative && veeByFallback && veeByNative.id !== veeByFallback.id) {
+    return {
+      outcome: ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.DUAL_PROJECTION_CONFLICT,
+      reason: 'native_canonical_session_already_owned_by_different_vee',
+      vehicleEnergyEventId: veeByNative.id,
+    };
+  }
+
+  if (veeByNative && !veeByFallback && veeByNative.canonicalChargeSessionId === session.id) {
+    return null;
+  }
+
+  if (veeByNative && !veeByFallback) {
+    return {
+      outcome: ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.DUAL_PROJECTION_CONFLICT,
+      reason: 'native_canonical_session_already_owned_by_different_vee',
+      vehicleEnergyEventId: veeByNative.id,
+    };
+  }
+
+  if (!veeByFallback) {
+    return null;
+  }
+
+  return executeLateNativeCanonicalHandoff({
+    tx,
+    nativeSession: session,
+    fallbackSession,
+    existingProjection: veeByFallback,
+    projectInput: input,
+    findByDimoSegmentId,
+    notProjectable,
+  });
+}
+
 async function projectCanonicalRechargeInTransaction(
   tx: Prisma.TransactionClient,
   input: ProjectCanonicalRechargeInput,
@@ -215,6 +305,11 @@ async function projectCanonicalRechargeInTransaction(
     return notProjectable(eligibility.reason);
   }
 
+  const handoffResult = await tryLateNativeHandoffIfApplicable(tx, session, input);
+  if (handoffResult != null) {
+    return handoffResult;
+  }
+
   const mintSourceEventKey = buildErdRechargePhysicalProjectionSourceEventKey({
     vehicleId: session.vehicleId,
     anchorSegmentFingerprint: session.segmentFingerprint,
@@ -251,8 +346,10 @@ async function projectCanonicalRechargeInTransaction(
     if (
       byCanonical &&
       byCanonical.sourceEventKey != null &&
-      byCanonical.sourceEventKey !== mintSourceEventKey &&
-      bySourceKey == null
+      !existingProjectionSourceEventKeyMatchesAnchor({
+        existing: byCanonical,
+        vehicleId: session.vehicleId,
+      })
     ) {
       return {
         outcome: ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.IDENTITY_CONFLICT,

@@ -38,8 +38,12 @@ ERD_E4_BULLMQ_REDIS_INTEGRATION=1 ERD_E4_BULLMQ_REDIS_REQUIRED=1 \
 log "Step 8/8: ERD E5.1 recharge projection foundation PostgreSQL gate (ephemeral migrate deploy)"
 bash scripts/test/erd-e5-1-migration-ephemeral-gate.sh
 
-log "Step 9/9: ERD E5.2 canonical recharge projector PostgreSQL gate"
+log "Step 9/10: ERD E5.2 canonical recharge projector PostgreSQL gate"
 ERD_E5_2_POSTGRES_INTEGRATION=1 ERD_E5_2_POSTGRES_REQUIRED=1 \
   npx jest erd-e5-2-recharge-projector.postgres.integration --runInBand --verbose
+
+log "Step 10/10: ERD E5.3 late-native handoff PostgreSQL gate"
+ERD_E5_3_POSTGRES_INTEGRATION=1 ERD_E5_3_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-3-late-native-handoff.postgres.integration --runInBand --verbose
 
 log "boundary-repair-postgres-ci completed successfully"

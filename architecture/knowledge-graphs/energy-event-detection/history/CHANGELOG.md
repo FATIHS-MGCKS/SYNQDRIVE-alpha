@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E5.3 late-native canonical VEE handoff
+
+- Evidence: `evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md`
+- Consumes persisted E3 supersession evidence; reassigns `canonicalChargeSessionId` on same VEE; preserves immutable F-anchored `sourceEventKey`
+- Post-handoff identity validation via anchor rebuild (not native mint key); real E3 convergence + projector PostgreSQL proof (boundary step 10/10)
+- No automatic runtime triggers; physical E3 authority independent of product handoff TX
+
 ## 2026-09-25 — ERD E5.2 canonical VEE RECHARGE projector idempotency
 
 - Evidence: `evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md`
