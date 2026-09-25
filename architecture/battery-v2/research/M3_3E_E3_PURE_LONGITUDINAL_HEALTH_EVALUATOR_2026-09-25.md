@@ -24,6 +24,7 @@
 | `longitudinal-health-evaluation.spec.ts` | E3 test matrix |
 | `longitudinal-health-evaluation.e31-conformance.spec.ts` | E3.1 conformance matrix |
 | `longitudinal-health-evaluation.e311-v1-closure.spec.ts` | E3.1.1 V1 comparability / context closure |
+| `longitudinal-health-evaluation.e312-c1-envelope.spec.ts` | E3.1.2 C1 primary-metric envelope |
 | `longitudinal-health-evaluation.test-helpers.ts` | Fixture builders |
 
 ## 3–16. Contract summary
@@ -35,7 +36,7 @@
 - **Quantization / Theil-Sen / MAD / step:** per E2 §12.3 (relative ms origin, `DAY_MS`, safe integers, `-0→0`)
 - **Reject:** `M3_3E_HEALTH_EVALUATION_NUMERIC_OVERFLOW` + narrow engineering reject codes (no new scientific semantics)
 - **Fingerprint preimage:** `{ contractVersion, modelPolicyVersion, calibrationProfileId, calibrationProfileFingerprint, consumptionInputFingerprint, canonical body without resultFingerprint }`
-- **Golden result fingerprint:** `42cfc8a737a9cff99c5982b1f44937fee8a2fc0d7e30bbefe612144b148f7043` (E3.1: metric-scoped `FIRST_POINT_AGE_UNCONTROLLED` on median)
+- **Golden result fingerprint:** `4d4b7ee105cb329b6610cde3648733257f46f1cb4b01abc6e519b05206410398` (E3.1.1: all metrics `SAME_SEGMENT_CONTEXT_LIMITED` under UNSET)
 - **Calibration fingerprint:** `4bd9be2fc11cfc5c99335b77467ecffb57edc0ace9cee1317d1f2785c561af65`
 
 ## 17–18. Regression / non-effects
@@ -56,6 +57,16 @@
 | **Fingerprint helper** | `computeM3_3E_HealthEvaluationResultFingerprintV1` (pure, no runtime reachability) |
 
 **Status:** E3 engineering **DRAFT** — **NOT COMPLETE ON MAIN**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**.
+
+## 22. E3.1.1 V1 comparability / context closure (draft PR #1778 amend)
+
+| Area | Change |
+|------|--------|
+| **Comparability** | Under `M3_3E_CALIBRATION_UNSET_V1`, same-segment comparability is always **`SAME_SEGMENT_CONTEXT_LIMITED`** (E2 §6.2 V1 unreachable `SAME_SEGMENT_COMPARABLE`) |
+| **Charge mirror** | Top-level `chargeOpportunityClass` must match `features.chargeOpportunityClass` or reject (`M3_3E_EVALUATION_CHARGE_CLASS_MIRROR_MISMATCH`) |
+| **C1 envelope** | Fail-closed on E3-consumed retention/voltage fields per `computeRestSessionRetentionFeatures()` semantics |
+| **First-point age** | Derived only when **both** `maxActualRestAgeMs` and `observationSpanMs` are non-null; mismatched pairs reject |
+| **Tests** | `longitudinal-health-evaluation.e311-v1-closure.spec.ts` (cases A–I) |
 
 - **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`** — all `CAL-M3.3E-*` unset
 - **M3.3F** materialization / natural calibration remains a **separate** gate

@@ -132,10 +132,13 @@ describe('M3.3E E3.1 conformance hardening', () => {
             medianRestVoltageMv: null,
             minimumRestVoltageMv: null,
             maximumRestVoltageMv: null,
-            robustRestSlopeMvPerHour: -0.5,
+            robustRestSlopeMvPerHour: null,
             numberOfValidRestPoints: 0,
             maxActualRestAgeMs: null,
+            maxInterObservationGapMs: null,
             observationSpanMs: null,
+            shutdownToFirstRestDeltaMv: null,
+            restVoltageVarianceMv2: null,
           },
         }),
         sessionWithFeatures({
@@ -156,7 +159,7 @@ describe('M3.3E E3.1 conformance hardening', () => {
       const slopeMetric = out.evaluation.segments[0].metrics.find(
         (m) => m.metric === 'ROBUST_REST_SLOPE',
       );
-      expect(slopeMetric?.contextDescriptors.temperature.tripExteriorCount).toBe(1);
+      expect(slopeMetric?.contextDescriptors.temperature.tripExteriorCount).toBe(0);
       expect(slopeMetric?.contextDescriptors.temperature.unknownCount).toBe(1);
     });
 
@@ -307,8 +310,10 @@ describe('M3.3E E3.1 conformance hardening', () => {
             maximumRestVoltageMv: null,
             robustRestSlopeMvPerHour: null,
             shutdownToFirstRestDeltaMv: null,
+            restVoltageVarianceMv2: null,
             numberOfValidRestPoints: 0,
             maxActualRestAgeMs: null,
+            maxInterObservationGapMs: null,
             observationSpanMs: null,
           },
         }),

@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3.1.2 C1 primary-metric envelope closure (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3.1.1 accepted impossible C1 states (e.g. `numberOfValidRestPoints=0` with non-null slope). |
+| **OBSERVATION** | `computeRestSessionRetentionFeatures()` zero-count and one-count control flow fixes required-null primary fields. |
+| **HYPOTHESIS** | E3 can reject impossible upstream combinations without inferring C1 internals. |
+| **CHANGE** | Extended `validateObservationNumerics` zero/one-point C1 envelope; fixed E3.1.1 test F; `longitudinal-health-evaluation.e312-c1-envelope.spec.ts`. |
+| **WHY** | Prevent E3 from evaluating metrics from states C1 cannot produce. |
+| **EXPECTED_EFFECT** | **`E3_1_2_C1_ENVELOPE=PASS`**; E3 golden unchanged. |
+| **VALIDATION** | E3 + E3.1 + E3.1.1 + E3.1.2 specs; E1/longitudinal regressions. |
+| **OBSERVED_EFFECT** | Pending PR #1778 amend. |
+| **NON_EFFECTS** | No E2 math, runtime, calibration, or golden change when input legal. |
+| **REGRESSIONS_OR_TRADEOFFS** | Forged malformed E1 combinations now reject (intended). |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1.2). |
+| **DECISION_STATUS** | **E3_1_2_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778; C1 policy cross-check |
+
+---
+
 ## CL-2026-09-25 — M3.3E E3.1.1 V1 comparability / context closure (draft PR #1778 amend)
 
 | Field | Value |

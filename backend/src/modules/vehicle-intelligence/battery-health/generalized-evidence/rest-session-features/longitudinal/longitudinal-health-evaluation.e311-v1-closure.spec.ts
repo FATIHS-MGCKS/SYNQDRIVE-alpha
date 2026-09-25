@@ -129,8 +129,11 @@ describe('M3.3E E3.1.1 V1 comparability / context closure', () => {
             medianRestVoltageMv: null,
             minimumRestVoltageMv: null,
             maximumRestVoltageMv: null,
-            robustRestSlopeMvPerHour: -0.5,
+            robustRestSlopeMvPerHour: null,
+            shutdownToFirstRestDeltaMv: null,
+            restVoltageVarianceMv2: null,
             maxActualRestAgeMs: null,
+            maxInterObservationGapMs: null,
             observationSpanMs: null,
             numberOfValidRestPoints: 0,
           },
@@ -139,10 +142,14 @@ describe('M3.3E E3.1.1 V1 comparability / context closure', () => {
       const out = evaluate({ input });
       expect(out.status).toBe('OK');
       if (out.status !== 'OK') return;
+      expect(out.evaluation.evaluationStatus).toBe('NO_CONCLUSION');
       const slope = out.evaluation.segments[0].metrics.find(
         (m) => m.metric === 'ROBUST_REST_SLOPE',
       );
+      expect(slope?.statistics.seriesCount).toBe(0);
       expect(slope?.contextDescriptors.firstPointAgeRangeMs).toEqual({ min: null, max: null });
+      expect(slope?.trendState).toBe('NOT_EVALUABLE_INSUFFICIENT_STRUCTURAL');
+      expect(slope?.comparability).toBe('SAME_SEGMENT_CONTEXT_LIMITED');
     });
 
     it('G — one valid point: span 0, firstPointAge equals maxActualRestAgeMs', () => {
@@ -179,8 +186,11 @@ describe('M3.3E E3.1.1 V1 comparability / context closure', () => {
             medianRestVoltageMv: null,
             minimumRestVoltageMv: null,
             maximumRestVoltageMv: null,
-            robustRestSlopeMvPerHour: -0.5,
+            robustRestSlopeMvPerHour: null,
+            shutdownToFirstRestDeltaMv: null,
+            restVoltageVarianceMv2: null,
             maxActualRestAgeMs: null,
+            maxInterObservationGapMs: null,
             observationSpanMs: null,
             numberOfValidRestPoints: 0,
           },
@@ -221,10 +231,13 @@ describe('M3.3E E3.1.1 V1 comparability / context closure', () => {
             medianRestVoltageMv: null,
             minimumRestVoltageMv: null,
             maximumRestVoltageMv: null,
-            robustRestSlopeMvPerHour: -0.5,
+            robustRestSlopeMvPerHour: null,
             numberOfValidRestPoints: 0,
             maxActualRestAgeMs: null,
+            maxInterObservationGapMs: null,
             observationSpanMs: null,
+            shutdownToFirstRestDeltaMv: null,
+            restVoltageVarianceMv2: null,
           },
         }),
         sessionWithFeatures({
@@ -245,7 +258,7 @@ describe('M3.3E E3.1.1 V1 comparability / context closure', () => {
       const slopeMetric = out.evaluation.segments[0].metrics.find(
         (m) => m.metric === 'ROBUST_REST_SLOPE',
       );
-      expect(slopeMetric?.contextDescriptors.temperature.tripExteriorCount).toBe(1);
+      expect(slopeMetric?.contextDescriptors.temperature.tripExteriorCount).toBe(0);
       expect(slopeMetric?.contextDescriptors.temperature.unknownCount).toBe(1);
     });
   });

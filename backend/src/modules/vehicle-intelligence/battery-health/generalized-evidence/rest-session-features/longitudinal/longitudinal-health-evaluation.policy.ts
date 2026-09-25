@@ -543,8 +543,25 @@ function validateObservationNumerics(
       f.medianRestVoltageMv !== null ||
       f.minimumRestVoltageMv !== null ||
       f.maximumRestVoltageMv !== null ||
+      f.robustRestSlopeMvPerHour !== null ||
+      f.shutdownToFirstRestDeltaMv !== null ||
+      f.restVoltageVarianceMv2 !== null ||
       f.maxActualRestAgeMs !== null ||
+      f.maxInterObservationGapMs !== null ||
       f.observationSpanMs !== null
+    ) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
+  } else if (f.numberOfValidRestPoints === 1) {
+    if (f.robustRestSlopeMvPerHour !== null) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
+    if (
+      f.medianRestVoltageMv === null ||
+      f.minimumRestVoltageMv === null ||
+      f.maximumRestVoltageMv === null ||
+      f.maxActualRestAgeMs === null ||
+      f.observationSpanMs === null
     ) {
       return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
     }
